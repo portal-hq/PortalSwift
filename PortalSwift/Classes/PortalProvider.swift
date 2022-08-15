@@ -177,22 +177,21 @@ public class PortalProvider {
         path: "/api/clients/config",
         headers: [
           "Authorization": String(format: "Bearer %@", apiKey),
-        ],
-        completion: { (config: ClientConfig?) in
-          if (config == nil) {
-            // TODO: Handle errors
-            return
-          }
-          
-          // Set instance variables dependent on ClientConfig
-          self.alchemyId = config!.alchemyId
-          self.autoApprove = config!.autoApprove
-          self.infuraId = config!.infuraId
-          self.isMPC = config!.enableMpc
-          
-          self.signer = self.isMPC ? MPCSigner() : HttpSigner(portal: self.portal)
+        ]
+      ) { (config: ClientConfig?) in
+        if (config == nil) {
+          // TODO: Handle errors
+          return
         }
-      )
+        
+        // Set instance variables dependent on ClientConfig
+        self.alchemyId = config!.alchemyId
+        self.autoApprove = config!.autoApprove
+        self.infuraId = config!.infuraId
+        self.isMPC = config!.enableMpc
+        
+        self.signer = self.isMPC ? MPCSigner() : HttpSigner(portal: self.portal)
+      }
     } catch {}
   }
   
