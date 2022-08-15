@@ -14,7 +14,11 @@ struct Signature: Codable {
 }
 
 class Signer {
-  func sign(payload: ETHRequestPayload, provider: PortalProvider) throws -> Signature? {
+  func sign(
+    payload: ETHRequestPayload,
+    provider: PortalProvider,
+    completion: @escaping (_ signature: Signature?) -> Void
+  ) throws -> Void {
     fatalError("Subclasses need to implement the sign() method")
   }
   

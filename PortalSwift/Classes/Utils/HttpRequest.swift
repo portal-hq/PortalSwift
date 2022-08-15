@@ -27,13 +27,17 @@ public class HttpRequest<T: Codable, U: Codable> {
     self.url = url
   }
   
-  public func send(completion: @escaping (_ response: T) -> Void) throws -> Void {
+  public func send(completion: @escaping (_ result: T?) -> Void) throws -> Void {
     do {
       // Build the request object
       let request = try prepareRequest()
+      
+      var result: T?
+      
       // Make the request via URLSession
-      (URLSession.shared.dataTask(with: request) {
+      let task = URLSession.shared.dataTask(with: request) {
         (data, response, error) -> Void in
+        
         // Handle errors
         if (error != nil) {
           // TODO: Figure out how to fail here
@@ -41,28 +45,35 @@ public class HttpRequest<T: Codable, U: Codable> {
         }
         
         // Parse the response and return the properly typed data
-        if let httpResponse = response as? HTTPURLResponse {
-          if httpResponse.statusCode == 200 {
-            do {
-              // Decode the response into the appropriate type
-              let decoder = JSONDecoder()
-              let typedData = try decoder.decode(T.self, from: data!)
-              
-              // Pass off to the completion closure
-              completion(typedData)
-            } catch let err {
-              print("[Portal] Error decode HTTPRequest response data: ")
-              print(err)
-              // TODO: Figure out how to fail here
-              return
-            }
-          } else {
-            print("[Portal] Error generating URLResponse.")
+        let httpResponse = response as? HTTPURLResponse
+        
+        // Process the response object
+        if httpResponse?.statusCode == 200 {
+          do {
+            // Decode the response into the appropriate type
+            let decoder = JSONDecoder()
+            let typedData = try decoder.decode(T.self, from: data!)
+            
+            // Pass off to the completion closure
+            result = typedData
+            
+            return
+          } catch let err {
+            print("[Portal] Error decode HTTPRequest response data: ")
+            print(err)
+            
             // TODO: Figure out how to fail here
             return
           }
+        } else {
+          // TODO: Handle non-200 status codes
+          return
         }
-      }).resume()
+      }
+      
+      task.resume()
+      
+      return result
     }
   }
   

@@ -174,20 +174,25 @@ public class PortalProvider {
     do {
       // Get ClientConfig from server
       try portal.get(
-        path: "/api/networks",
+        path: "/api/clients/config",
         headers: [
           "Authorization": String(format: "Bearer %@", apiKey),
-        ]
-      ) { (config: ClientConfig) in
-        // Set instance variables dependent on ClientConfig
-        self.alchemyId = config.alchemyId
-        self.autoApprove = config.autoApprove
-        self.infuraId = config.infuraId
-        self.isMPC = config.enableMpc
-        self.signer = self.isMPC ? MPCSigner() : HttpSigner(portal: self.portal)
-        
-        return config
-      }
+        ],
+        completion: { (config: ClientConfig?) in
+          if (config == nil) {
+            // TODO: Handle errors
+            return
+          }
+          
+          // Set instance variables dependent on ClientConfig
+          self.alchemyId = config!.alchemyId
+          self.autoApprove = config!.autoApprove
+          self.infuraId = config!.infuraId
+          self.isMPC = config!.enableMpc
+          
+          self.signer = self.isMPC ? MPCSigner() : HttpSigner(portal: self.portal)
+        }
+      )
     } catch {}
   }
   
@@ -263,22 +268,27 @@ public class PortalProvider {
     return self
   }
   
-  public func request(payload: ETHRequestPayload) throws -> Any? {
+  public func request(
+    payload: ETHRequestPayload,
+    completion: @escaping (_ response: Any?) -> Void
+  ) throws -> Void {
     let isSignerMethod = signerMethods.contains(payload.method)
     
     if (!isSignerMethod && payload.method.starts(with: "eth_")) {
-      return try handleGatewayRequest(payload: payload)
+      try handleGatewayRequest(payload: payload) { response in
+        completion(response)
+      }
     } else if (!isSignerMethod && payload.method.starts(with: "wallet_")) {
-      return try handleWalletRequest(payload: payload)
+      try handleWalletRequest(payload: payload) { response in
+        completion(response)
+      }
     } else if (isSignerMethod) {
       try handleSigningRequest(payload: payload) { signature in
-        return signature
+        completion(signature)
       }
     } else {
       // TODO: Throw error
     }
-    
-    return nil
   }
   
   // ------ Private Functions
@@ -289,33 +299,38 @@ public class PortalProvider {
   ) throws -> Void {
     do {
       if (autoApprove) {
-        let _ = completion(true)
+        completion(true)
       } else if (events[Events.PortalSigningRequested.rawValue] == nil) {
         // TODO: Throw an error
-        let _ = completion(false)
+        completion(false)
       }
       
+      // Bind to signing approval callbacks
       let _ = once(event: Events.PortalSigningApproved.rawValue, callback: { (approved) in
-        let _ = completion(true)
-      })
-      
-      let _ = once(event: Events.PortalSigningRejected.rawValue, callback: { approved in
-        let _ = completion(false)
+        completion(true)
+      }).once(event: Events.PortalSigningRejected.rawValue, callback: { approved in
+        completion(false)
       })
     }
   }
   
-  private func handleGatewayRequest(payload: ETHRequestPayload) throws -> Any {
+  private func handleGatewayRequest(
+    payload: ETHRequestPayload,
+    completion: @escaping (_ response: [String]?) -> Void
+  ) throws -> Void {
     try rpc.post(
       path: "",
       body: GatewayRequestPayload(method: payload.method, params: payload.params),
       headers: [:]
-    ) { (response: [String]) in
-      return response
+    ) { (response: [String]?) -> Void in
+      completion(response)
     }
   }
   
-  private func handleSigningRequest(payload: ETHRequestPayload, completion: @escaping (_ signature: Signature?) -> Signature?) throws -> Void {
+  private func handleSigningRequest(
+    payload: ETHRequestPayload,
+    completion: @escaping (Signature?) -> Void
+  ) throws -> Void {
     try getApproval(payload: payload) { approved in
       if (!approved) {
         // TODO: Handle the rejection here
@@ -323,14 +338,25 @@ public class PortalProvider {
       }
       
       do {
-        let signed = try self.signer?.sign(payload: payload, provider: self)
-        let _ = completion(signed)
+        try self.signer?.sign(
+          payload: payload,
+          provider: self
+        ) { (signature: Signature?) -> Void in
+            completion(signature)
+        }
       } catch {}
     }
   }
   
-  private func handleWalletRequest(payload: ETHRequestPayload) throws -> Any {
+  private func handleWalletRequest(
+    payload: ETHRequestPayload,
+    completion: @escaping (_ response: String?) -> Void
+  ) throws -> Void {
     try getApproval(payload: payload) { approved in
+      if (!approved) {
+        // TODO: Handle the rejection here
+        return
+      }
       do {
         try self.portal.post(
           path: "/api/clients/wallet",
@@ -338,8 +364,8 @@ public class PortalProvider {
           headers: [
             "Authorization": String(format: "Bearer %@", self.apiKey)
           ]
-        ) { (response: String) in
-          return response
+        ) { (response: String?) -> Void in
+          completion(response)
         }
       } catch {}
     }

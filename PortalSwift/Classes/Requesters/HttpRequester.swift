@@ -25,13 +25,10 @@ public struct HttpRequester {
   func get<T: Codable>(
     path: String,
     headers: Dictionary<String, String>,
-    completion: @escaping (_ response: T) -> T
+    completion: @escaping (_ result: T?) -> Void
   ) throws -> Void {
     // Build the HTTPRequest object
     let url = String(format:"%@%@", self.baseUrl, path)
-    print("URL: ")
-    print(url)
-    print(headers)
     let request = HttpRequest<T, [String: String]>(
       url: url,
       method: "GET",
@@ -40,9 +37,8 @@ public struct HttpRequester {
     )
     do {
       // Send the HTTP request
-      let _ = try request.send() { response in
-        // Pass the result off to the completion closure
-        let _ = completion(response)
+      try request.send() { response in
+        completion(response)
       }
     }
   }
@@ -51,7 +47,7 @@ public struct HttpRequester {
     path: String,
     body: U,
     headers: Dictionary<String, String>,
-    completion: @escaping (_ response: T) -> T
+    completion: @escaping (_ response: T?) -> Void
   ) throws -> Void {
     // Build the HTTPRequest object
     let request = HttpRequest<T, U>(
@@ -63,9 +59,9 @@ public struct HttpRequester {
     
     do {
       // Send the HTTP request
-      let _ = try request.send() { response in
+      try request.send() { response in
         // Pass the result off to the completion closure
-        let _ = completion(response)
+        completion(response)
       }
     }
   }

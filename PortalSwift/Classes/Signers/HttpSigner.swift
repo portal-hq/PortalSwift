@@ -15,17 +15,20 @@ class HttpSigner: Signer {
     self.portal = portal
   }
   
-  override func sign(payload: ETHRequestPayload, provider: PortalProvider) throws -> Signature? {
+  override func sign(
+    payload: ETHRequestPayload,
+    provider: PortalProvider,
+    completion: @escaping (_ signature: Signature?) -> Void
+  ) throws -> Void {
     do {
-      let _ = try portal.post(
+      try portal.post(
         path: "/api/clients/sign",
         body: payload,
         headers: [
           "Authorization": String(format: "Bearer %@", provider.getApiKey()),
-        ]
-      ) { (signature: Signature) in
-        return signature
-      }
+        ],
+        completion: completion
+      )
     }
     
     return nil
