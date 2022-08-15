@@ -1,0 +1,22 @@
+{
+  "name": "PortalSwift",
+  "version": "0.1.0",
+  "summary": "The PortalProvider libary for native Swift development.",
+  "description": "TODO: Add long description of the pod here.",
+  "homepage": "https://github.com/portal-hq/PortalSwift",
+  "license": {
+    "type": "MIT",
+    "file": "LICENSE"
+  },
+  "authors": {
+    "Blake Williams": "blake@portalhq.io"
+  },
+  "source": {
+    "git": "https://github.com/portal-hq/PortalSwift.git",
+    "tag": "0.1.0"
+  },
+  "platforms": {
+    "ios": "9.0"
+  },
+  "source_files": "PortalSwift/Classes/**/*"
+}

@@ -7,12 +7,28 @@
 //
 
 import UIKit
+import PortalSwift
 
 class ViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
+      
+      let request = HttpRequest<String, [String: String]>(
+        url: "https://portalhq.io/",
+        method: "GET",
+        body: [:],
+        headers: [:]
+      )
+      
+      do {
+        let _ = try request.send() { (response: String) in
+          print(response)
+        }
+      } catch let error {
+        print(error)
+      }
     }
 
     override func didReceiveMemoryWarning() {
