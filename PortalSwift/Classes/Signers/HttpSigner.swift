@@ -21,7 +21,7 @@ class HttpSigner: Signer {
         path: "/api/clients/sign",
         body: payload,
         headers: [
-          "Authorization": String(format: "Bearer %s", provider.getApiKey()),
+          "Authorization": String(format: "Bearer %@", provider.getApiKey()),
         ]
       ) { (signature: Signature) in
         return signature

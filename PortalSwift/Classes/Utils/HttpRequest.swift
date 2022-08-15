@@ -50,11 +50,14 @@ public class HttpRequest<T: Codable, U: Codable> {
               
               // Pass off to the completion closure
               completion(typedData)
-            } catch {
+            } catch let err {
+              print("[Portal] Error decode HTTPRequest response data: ")
+              print(err)
               // TODO: Figure out how to fail here
               return
             }
           } else {
+            print("[Portal] Error generating URLResponse.")
             // TODO: Figure out how to fail here
             return
           }
@@ -84,9 +87,6 @@ public class HttpRequest<T: Codable, U: Codable> {
       } else {
         request.httpBody = nil
       }
-      
-      print("Request Body: ")
-      print(request.httpBody)
       
       return request
     }

@@ -9,7 +9,7 @@
 import Foundation
 
 // enums
-enum Chains: Int {
+public enum Chains: Int {
   case Mainnet = 1
   case Ropsten = 3
   case Rinkeby = 4
@@ -17,7 +17,7 @@ enum Chains: Int {
   case Kovan = 42
 }
 
-enum Events: String {
+public enum Events: String {
   case ChainChanged = "chainChanged"
   case Connect = "connect"
   case Disconnect = "disconnect"
@@ -26,7 +26,7 @@ enum Events: String {
   case PortalSigningRequested = "portal_signingRequested"
 }
 
-enum ETHRequestMethods: String {
+public enum ETHRequestMethods: String {
   // ETH Methods
   case Accounts = "eth_accounts"
   case BlockNumber = "eth_blockNumber"
@@ -103,18 +103,26 @@ struct ClientConfig: Codable {
   var infuraId: String
 }
 
-struct ETHRequestPayload: Codable {
+public struct ETHRequestPayload: Codable {
   var method: ETHRequestMethods.RawValue
   var params: [String]
 }
 
-struct GatewayRequestPayload: Codable {
+public struct GatewayRequestPayload: Codable {
   var jsonrpc: String = "2.0"
   var method: ETHRequestMethods.RawValue
   var params: [String]
 }
 
-struct RegisteredEventHandler {
+public struct Network: Codable {
+  var id: String
+  var chainId: String
+  var name: String
+  var createdAt: String
+  var updatedAt: String
+}
+
+public struct RegisteredEventHandler {
   var handler: (_ data: Any) -> Void
   var once: Bool
 }
@@ -154,7 +162,7 @@ public class PortalProvider {
     ETHRequestMethods.WalletWatchAsset.rawValue,
   ]
   
-  init(apiKey: String, chainId: Chains.RawValue, gatewayUrl: String) {
+  public init(apiKey: String, chainId: Chains.RawValue, gatewayUrl: String) {
     // User-defined instance variables
     self.apiKey = apiKey
     self.chainId = chainId
@@ -166,9 +174,9 @@ public class PortalProvider {
     do {
       // Get ClientConfig from server
       try portal.get(
-        path: "/api/clients/config",
+        path: "/api/networks",
         headers: [
-          "Authorization": String(format: "Bearer %s", apiKey),
+          "Authorization": String(format: "Bearer %@", apiKey),
         ]
       ) { (config: ClientConfig) in
         // Set instance variables dependent on ClientConfig
@@ -185,11 +193,11 @@ public class PortalProvider {
   
   // ------ Public Functions
   
-  func emit(event: Events.RawValue, data: Any) -> PortalProvider {
+  public func emit(event: Events.RawValue, data: Any) -> PortalProvider {
     let registeredEventHandlers = self.events[event]
     
     if (registeredEventHandlers == nil) {
-      print(String(format: "[Portal] Could not find any bindings for event '%s'. Ignoring...", event))
+      print(String(format: "[Portal] Could not find any bindings for event '%@'. Ignoring...", event))
       return self
     } else {
       // Invoke all registered handlers for the event
@@ -204,11 +212,11 @@ public class PortalProvider {
     }
   }
   
-  func getApiKey() -> String {
+  public func getApiKey() -> String {
     return self.apiKey
   }
   
-  func on(
+  public func on(
     event: Events.RawValue,
     callback: @escaping (_ data: Any) -> Void
   ) -> PortalProvider {
@@ -224,7 +232,7 @@ public class PortalProvider {
     return self
   }
   
-  func once(
+  public func once(
     event: Events.RawValue,
     callback: @escaping (_ data: Any) -> Void
   ) -> PortalProvider {
@@ -240,12 +248,12 @@ public class PortalProvider {
     return self
   }
   
-  func removeListener(
+  public func removeListener(
     event: Events.RawValue,
     callback: @escaping (_ data: Any) -> Void
   ) -> PortalProvider {
     if (events[event] == nil) {
-      print(String(format: "[Portal] Could not find any bindings for event '%s'. Ignoring...", event))
+      print(String(format: "[Portal] Could not find any bindings for event '%@'. Ignoring...", event))
     }
     
     events[event] = events[event]!.filter{ (registeredEventHandler) -> Bool in
@@ -255,7 +263,7 @@ public class PortalProvider {
     return self
   }
   
-  func request(payload: ETHRequestPayload) throws -> Any? {
+  public func request(payload: ETHRequestPayload) throws -> Any? {
     let isSignerMethod = signerMethods.contains(payload.method)
     
     if (!isSignerMethod && payload.method.starts(with: "eth_")) {
@@ -328,7 +336,7 @@ public class PortalProvider {
           path: "/api/clients/wallet",
           body: payload,
           headers: [
-            "Authorization": String(format: "Bearer %s", self.apiKey)
+            "Authorization": String(format: "Bearer %@", self.apiKey)
           ]
         ) { (response: String) in
           return response

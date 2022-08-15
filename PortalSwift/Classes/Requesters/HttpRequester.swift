@@ -28,8 +28,12 @@ public struct HttpRequester {
     completion: @escaping (_ response: T) -> T
   ) throws -> Void {
     // Build the HTTPRequest object
+    let url = String(format:"%@%@", self.baseUrl, path)
+    print("URL: ")
+    print(url)
+    print(headers)
     let request = HttpRequest<T, [String: String]>(
-      url: String(format:"%s%s", self.baseUrl, path),
+      url: url,
       method: "GET",
       body: [:],
       headers: headers
@@ -51,7 +55,7 @@ public struct HttpRequester {
   ) throws -> Void {
     // Build the HTTPRequest object
     let request = HttpRequest<T, U>(
-      url: String(format:"%s%s", self.baseUrl, path),
+      url: String(format:"%@%@", self.baseUrl, path),
       method: "POST",
       body: body,
       headers: headers

@@ -54,9 +54,9 @@ struct RpcProviderError: Error {
   init(code: ProviderRpcErrorCodes.RawValue, data: AnyObject) {
     self.definition = providerErrors[code]!
     let message = String(
-      format: "[Portal] RPC Error: %d %s",
+      format: "[Portal] RPC Error: %@ %@",
       code,
-      String(format: "%s - %s", self.definition.name, self.definition.description)
+      String(format: "%@ - %@", self.definition.name, self.definition.description)
     )
     
     self.code = code
