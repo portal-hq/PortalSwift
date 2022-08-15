@@ -30,7 +30,5 @@ class HttpSigner: Signer {
         completion: completion
       )
     }
-    
-    return nil
   }
 }

@@ -32,8 +32,6 @@ public class HttpRequest<T: Codable, U: Codable> {
       // Build the request object
       let request = try prepareRequest()
       
-      var result: T?
-      
       // Make the request via URLSession
       let task = URLSession.shared.dataTask(with: request) {
         (data, response, error) -> Void in
@@ -55,7 +53,7 @@ public class HttpRequest<T: Codable, U: Codable> {
             let typedData = try decoder.decode(T.self, from: data!)
             
             // Pass off to the completion closure
-            result = typedData
+            completion(typedData)
             
             return
           } catch let err {
@@ -72,8 +70,6 @@ public class HttpRequest<T: Codable, U: Codable> {
       }
       
       task.resume()
-      
-      return result
     }
   }
   
