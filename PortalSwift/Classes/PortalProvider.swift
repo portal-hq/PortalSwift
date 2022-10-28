@@ -123,7 +123,7 @@ public struct Network: Codable {
 }
 
 public struct RegisteredEventHandler {
-  var handler: (_ data: Any) -> Void
+  var handler: (_ data: Any) throws -> Void
   var once: Bool
 }
 
@@ -141,6 +141,7 @@ public class PortalProvider {
   private var infuraId: String = ""
   private var rpc: HttpRequester
   private var signer: Signer?
+  private var address: String = ""
   
   private var signerMethods: [ETHRequestMethods.RawValue] = [
     ETHRequestMethods.Accounts.rawValue,
@@ -162,7 +163,7 @@ public class PortalProvider {
     ETHRequestMethods.WalletWatchAsset.rawValue,
   ]
   
-  public init(apiKey: String, chainId: Chains.RawValue, gatewayUrl: String) {
+    public init(apiKey: String, chainId: Chains.RawValue, gatewayUrl: String) throws {
     // User-defined instance variables
     self.apiKey = apiKey
     self.chainId = chainId
@@ -171,6 +172,10 @@ public class PortalProvider {
     // Other instance variables
     self.portal = HttpRequester(baseUrl: apiUrl)
     
+      if (self.apiKey.isEmpty || apiKey.count == 0) {
+          throw RpcProviderError(code: 4100)
+      }
+
     do {
       // Get ClientConfig from server
       try portal.get(
@@ -191,6 +196,7 @@ public class PortalProvider {
         self.isMPC = config!.enableMpc
         
         self.signer = self.isMPC ? MPCSigner() : HttpSigner(portal: self.portal)
+        self.dispatchConnect()
       }
     } catch {}
   }
@@ -205,9 +211,14 @@ public class PortalProvider {
       return self
     } else {
       // Invoke all registered handlers for the event
-      for registeredEventHandler in registeredEventHandlers! {
-        registeredEventHandler.handler(data)
-      }
+        do {
+            for registeredEventHandler in registeredEventHandlers! {
+              try registeredEventHandler.handler(data)
+            }
+        } catch {
+            print("Error invoking registered handlers")
+        }
+
       
       // Remove once instances
       self.events[event] = registeredEventHandlers?.filter(self.removeOnce)
@@ -238,7 +249,7 @@ public class PortalProvider {
   
   public func once(
     event: Events.RawValue,
-    callback: @escaping (_ data: Any) -> Void
+    callback: @escaping (_ data: Any) throws -> Void
   ) -> PortalProvider {
     if (events[event] == nil) {
       events[event] = []
@@ -286,29 +297,44 @@ public class PortalProvider {
         completion(signature)
       }
     } else {
-      // TODO: Throw error
+        throw RpcProviderError(code: 4200)
     }
   }
+    
+    public func setAddress(value: String) -> Void {
+        self.address = value
+//    TODO: assign address to signer when we implement signer
+//        if (self.signer != nil && self.isMPC) {
+//            (self.signer as MPCSigner).setAddress(value: value)
+//        }
+    }
+    
+    public func setChainId(value: Int) -> PortalProvider {
+        self.chainId = value
+        let hexChainId = String(format:"%02x", self.chainId)
+        let provider = self.emit(event: Events.ChainChanged.rawValue, data: ["chainId": hexChainId])
+        return provider
+    }
   
   // ------ Private Functions
   
   private func getApproval(
     payload: ETHRequestPayload,
-    completion: @escaping (_ approved: Bool) -> Void
+    completion: @escaping (_ approved: Bool) throws -> Void
   ) throws -> Void {
     do {
       if (autoApprove) {
-        completion(true)
+        try completion(true)
       } else if (events[Events.PortalSigningRequested.rawValue] == nil) {
-        // TODO: Throw an error
-        completion(false)
+          throw PortalProviderErrors.AutoApproveDisabled(PortalProviderErrorMessages.AutoApproveDisabled.rawValue)
+          try completion(false)
       }
       
       // Bind to signing approval callbacks
       let _ = once(event: Events.PortalSigningApproved.rawValue, callback: { (approved) in
-        completion(true)
+        try completion(true)
       }).once(event: Events.PortalSigningRejected.rawValue, callback: { approved in
-        completion(false)
+        try completion(false)
       })
     }
   }
@@ -332,11 +358,12 @@ public class PortalProvider {
   ) throws -> Void {
     try getApproval(payload: payload) { approved in
       if (!approved) {
-        // TODO: Handle the rejection here
+          throw RpcProviderError(code: 4001)
         return
       }
       
       do {
+          // we let the signer handle the EthRequests
         try self.signer?.sign(
           payload: payload,
           provider: self
@@ -353,7 +380,7 @@ public class PortalProvider {
   ) throws -> Void {
     try getApproval(payload: payload) { approved in
       if (!approved) {
-        // TODO: Handle the rejection here
+          throw PortalProviderErrors.WalletRequestRejected(PortalProviderErrorMessages.WalletRequestRejected.rawValue)
         return
       }
       do {
@@ -373,4 +400,9 @@ public class PortalProvider {
   private func removeOnce(registeredEventHandler: RegisteredEventHandler) -> Bool {
     return !registeredEventHandler.once
   }
+    
+    private func dispatchConnect() -> Void {
+        let hexChainId = String(format:"%02x", self.chainId)
+        let portalProvider = self.emit(event: Events.Connect.rawValue, data: ["chaindId": hexChainId])
+    }
 }

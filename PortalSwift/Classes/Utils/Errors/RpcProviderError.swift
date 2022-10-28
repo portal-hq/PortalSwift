@@ -48,10 +48,10 @@ var providerErrors: Dictionary<ProviderRpcErrorCodes.RawValue, ProviderRpcErrorD
 struct RpcProviderError: Error {
   var code: Int
   var definition: ProviderRpcErrorDefinition
-  var data: AnyObject
+  var data: Any? = []
   var message: String
   
-  init(code: ProviderRpcErrorCodes.RawValue, data: AnyObject) {
+  init(code: ProviderRpcErrorCodes.RawValue, data: Any? = []) {
     self.definition = providerErrors[code]!
     let message = String(
       format: "[Portal] RPC Error: %@ %@",
@@ -63,4 +63,19 @@ struct RpcProviderError: Error {
     self.data = data
     self.message = message
   }
+}
+
+
+
+enum PortalProviderErrorMessages: String {
+    case AutoApproveDisabled = "[PortalProvider] Auto-approve is disabled. Cannot perform signing requests without an event handler for the 'portal_signingRequested' event."
+    case SigningRequestRejected = "[PortalProvider] Request for signing method '${method}' could not be completed because it was not approved by the user."
+    case WalletRequestRejected = "[PortalProvider] Request for wallet method '${method}' could not be completed because it was not approved by the user."
+    
+}
+
+enum PortalProviderErrors: Error {
+   case AutoApproveDisabled(String)
+   case SigningRequestRejected(String)
+   case WalletRequestRejected(String)
 }

@@ -9,13 +9,33 @@
 import Foundation
 
 class MPCSigner: Signer {
-  override func sign(
+    
+    public var address: String = ""
+    
+    private var mpcUrl: String = "mpc.portalhq.io"
+    
+    
+    public override init() {
+        
+        
+    }
+    
+    
+  public func sign(
     payload: ETHRequestPayload,
     provider: PortalProvider,
     completion: @escaping (_ signature: Signature?) -> Void
-  ) throws -> Void {
+  ) throws -> Any {
     // TODO: Do MPC Signing with the mpc.xcframework binary
-    
-    return
+      switch (payload.method) {
+      case "eth_requestAccounts":
+          return [self.address]
+      case "eth_accounts":
+          return [self.address]
+      default :
+          return ""
+      }
+      
+    return ""
   }
 }
