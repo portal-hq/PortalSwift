@@ -2,12 +2,16 @@
 //  HttpRequest.swift
 //  PortalSwift
 //
-//  Created by Blake Williams on 8/12/22.
-//  Copyright © 2022 CocoaPods. All rights reserved.
+//  Created by Portal Labs, Inc.
+//  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
 import Foundation
 import UIKit
+
+private enum HttpError: Error {
+  
+}
 
 public class HttpRequest<T: Codable, U: Codable> {
   private var body: U?

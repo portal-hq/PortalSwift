@@ -2,14 +2,31 @@
 //  Portal.swift
 //  FBSnapshotTestCase
 //
-//  Created by Portal Labs, Inc. on 11/10/22.
+//  Created by Portal Labs, Inc.
+//  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
 import Foundation
 
+public enum BackupMethods: String {
+  case GoogleDrive = "gdrive"
+  case iCloud = "icloud"
+}
+
 public struct BackupOptions {
   public var gdrive: GDriveStorage?
   public var icloud: ICloudStorage?
+  
+  subscript(key: String) -> Any? {
+    switch(key) {
+    case BackupMethods.GoogleDrive.rawValue:
+      return self.gdrive
+    case BackupMethods.iCloud.rawValue:
+      return self.icloud
+    default:
+      return nil
+    }
+  }
 }
 
 private enum PortalArgumentError: Error {

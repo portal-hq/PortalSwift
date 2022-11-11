@@ -2,8 +2,8 @@
 //  PortalProvider.swift
 //  PortalSwift
 //
-//  Created by Blake Williams on 8/12/22.
-//  Copyright © 2022 CocoaPods. All rights reserved.
+//  Created by Portal Labs, Inc.
+//  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
 import Foundation
@@ -108,17 +108,12 @@ private enum ProviderRpcError: Error {
 }
 
 private enum ProviderSigningError: Error {
+  case noBindingForSigningApprovalFound
   case userDeclinedApproval
+  case walletRequestRejected
 }
 
 // structs
-struct ClientConfig: Codable {
-  var alchemyId: String
-  var autoApprove: Bool
-  var enableMpc: Bool
-  var infuraId: String
-}
-
 public struct ETHRequestPayload: Codable {
   var method: ETHRequestMethods.RawValue
   var params: [String]
@@ -145,6 +140,7 @@ public struct RegisteredEventHandler {
 
 public class PortalProvider {
   public var chainId: Chains.RawValue
+  public var gatewayUrl: String
   public var portal: HttpRequester
   public var rpc: HttpRequester
 
@@ -187,6 +183,7 @@ public class PortalProvider {
     // User-defined instance variables
     self.apiKey = apiKey
     self.chainId = chainId
+    self.gatewayUrl = gatewayUrl
     self.rpc = HttpRequester(baseUrl: gatewayUrl)
     
     // Other instance variables
@@ -326,7 +323,7 @@ public class PortalProvider {
       if (autoApprove) {
         try completion(true)
       } else if (events[Events.PortalSigningRequested.rawValue] == nil) {
-          throw PortalProviderErrors.AutoApproveDisabled(PortalProviderErrorMessages.AutoApproveDisabled.rawValue)
+        throw ProviderSigningError.noBindingForSigningApprovalFound
       }
       
       // Bind to signing approval callbacks
@@ -376,7 +373,7 @@ public class PortalProvider {
   ) throws -> Void {
     try getApproval(payload: payload) { approved in
       if (!approved) {
-          throw PortalProviderErrors.WalletRequestRejected(PortalProviderErrorMessages.WalletRequestRejected.rawValue)
+        throw ProviderSigningError.walletRequestRejected
       }
       do {
         try self.portal.post(

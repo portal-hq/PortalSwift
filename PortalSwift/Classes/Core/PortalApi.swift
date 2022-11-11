@@ -1,8 +1,9 @@
 //
-//  Api.swift
+//  PortalApi.swift
 //  FBSnapshotTestCase
 //
-//  Created by Portal Labs, Inc. on 11/10/22.
+//  Created by Portal Labs, Inc.
+//  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
 import Foundation
@@ -104,7 +105,7 @@ public class PortalApi {
         "Authorization": String(format: "Bearer %@", apiKey)
       ]
     ) {
-      (response: [Dapp]) -> Void in {
+      (_ response: [Dapp]) -> Void in {
         completion(response)
       }
     }

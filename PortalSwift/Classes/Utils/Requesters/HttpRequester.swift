@@ -2,8 +2,8 @@
 //  HttpRequester.swift
 //  PortalSwift
 //
-//  Created by Blake Williams on 8/13/22.
-//  Copyright © 2022 CocoaPods. All rights reserved.
+//  Created by Portal Labs, Inc.
+//  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
 import Foundation

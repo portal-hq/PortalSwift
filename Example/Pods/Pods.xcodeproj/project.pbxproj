@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 46;
+	objectVersion = 52;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -25,18 +25,18 @@
 		6E8631961ACE7E7492F24CDB31EFCF1B /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 57221B54D014471C3D3E1925EFC917C8 /* Foundation.framework */; };
 		74339C58AC4E5631FB8C0E662668A796 /* UIApplication+StrictKeyWindow.m in Sources */ = {isa = PBXBuildFile; fileRef = 0F538C426803AE34255FC6E35B408CCA /* UIApplication+StrictKeyWindow.m */; };
 		7C67CBD15D9B5D0B7769B2F469478332 /* FBSnapshotTestCase.m in Sources */ = {isa = PBXBuildFile; fileRef = 277B6BE10C665F515606A22FD60C6DCC /* FBSnapshotTestCase.m */; };
+		7E3FB5C6291DF08B00EB1094 /* GDriveStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E3FB5C4291DF08B00EB1094 /* GDriveStorage.swift */; };
+		7E3FB5C9291DF0CA00EB1094 /* ICloudStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E3FB5C8291DF0CA00EB1094 /* ICloudStorage.swift */; };
+		7E3FB5CE291EAB4A00EB1094 /* mpc.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7E3FB5CD291EAB4A00EB1094 /* mpc.xcframework */; };
+		7E3FB5D2291EB7D700EB1094 /* Storage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E3FB5D1291EB7D700EB1094 /* Storage.swift */; };
 		7EE5A040291DCF5F001E71F1 /* PortalMpc.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE5A03C291DCF5F001E71F1 /* PortalMpc.swift */; };
 		7EE5A041291DCF5F001E71F1 /* PortalApi.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE5A03D291DCF5F001E71F1 /* PortalApi.swift */; };
 		7EE5A042291DCF5F001E71F1 /* Portal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE5A03E291DCF5F001E71F1 /* Portal.swift */; };
 		7EE5A043291DCF5F001E71F1 /* PortalKeychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE5A03F291DCF5F001E71F1 /* PortalKeychain.swift */; };
 		7EE5A048291DCF68001E71F1 /* PortalProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE5A045291DCF68001E71F1 /* PortalProvider.swift */; };
 		7EE5A049291DCF68001E71F1 /* MpcSigner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE5A047291DCF68001E71F1 /* MpcSigner.swift */; };
-		7EE5A04D291DCF70001E71F1 /* ICloudStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE5A04B291DCF70001E71F1 /* ICloudStorage.swift */; };
-		7EE5A04E291DCF70001E71F1 /* GDriveStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE5A04C291DCF70001E71F1 /* GDriveStorage.swift */; };
 		7EE5A056291DDE2F001E71F1 /* HttpRequester.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE5A051291DDE2F001E71F1 /* HttpRequester.swift */; };
 		7EE5A057291DDE2F001E71F1 /* HttpRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE5A052291DDE2F001E71F1 /* HttpRequest.swift */; };
-		7EE5A058291DDE2F001E71F1 /* RpcProviderError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE5A054291DDE2F001E71F1 /* RpcProviderError.swift */; };
-		7EE5A059291DDE2F001E71F1 /* HttpError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE5A055291DDE2F001E71F1 /* HttpError.swift */; };
 		875A310EAF4D0C136C3FFFF5E0335BE4 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1DA24A38BA9EE106B59E3D4C8DD1CE0E /* UIKit.framework */; };
 		8AE19756F0126FE92AF625E36F3D70FE /* UIImage+Compare.h in Headers */ = {isa = PBXBuildFile; fileRef = 656116C8FA5458F45D4707110C9530EC /* UIImage+Compare.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		9D3C5E2F56838937146191468A893244 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E658F388F01C72599CA75537950B6095 /* XCTest.framework */; };
@@ -106,18 +106,18 @@
 		6E089EDEF70A310CA7310F4DB365F3B9 /* Pods-PortalSwift_Tests-dummy.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = "Pods-PortalSwift_Tests-dummy.m"; sourceTree = "<group>"; };
 		6E902DBD0CC21442EAFDF4E2AD2175F4 /* Pods-PortalSwift_Tests */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; name = "Pods-PortalSwift_Tests"; path = Pods_PortalSwift_Tests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		7E1B7EA746BF6557FD565BAE12AF9198 /* FBSnapshotTestController.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = FBSnapshotTestController.m; path = FBSnapshotTestCase/FBSnapshotTestController.m; sourceTree = "<group>"; };
+		7E3FB5C4291DF08B00EB1094 /* GDriveStorage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = GDriveStorage.swift; sourceTree = "<group>"; };
+		7E3FB5C8291DF0CA00EB1094 /* ICloudStorage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ICloudStorage.swift; sourceTree = "<group>"; };
+		7E3FB5CD291EAB4A00EB1094 /* mpc.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = mpc.xcframework; sourceTree = "<group>"; };
+		7E3FB5D1291EB7D700EB1094 /* Storage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Storage.swift; sourceTree = "<group>"; };
 		7EE5A03C291DCF5F001E71F1 /* PortalMpc.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalMpc.swift; sourceTree = "<group>"; };
 		7EE5A03D291DCF5F001E71F1 /* PortalApi.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalApi.swift; sourceTree = "<group>"; };
 		7EE5A03E291DCF5F001E71F1 /* Portal.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Portal.swift; sourceTree = "<group>"; };
 		7EE5A03F291DCF5F001E71F1 /* PortalKeychain.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalKeychain.swift; sourceTree = "<group>"; };
 		7EE5A045291DCF68001E71F1 /* PortalProvider.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalProvider.swift; sourceTree = "<group>"; };
 		7EE5A047291DCF68001E71F1 /* MpcSigner.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MpcSigner.swift; sourceTree = "<group>"; };
-		7EE5A04B291DCF70001E71F1 /* ICloudStorage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ICloudStorage.swift; sourceTree = "<group>"; };
-		7EE5A04C291DCF70001E71F1 /* GDriveStorage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = GDriveStorage.swift; sourceTree = "<group>"; };
 		7EE5A051291DDE2F001E71F1 /* HttpRequester.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HttpRequester.swift; sourceTree = "<group>"; };
 		7EE5A052291DDE2F001E71F1 /* HttpRequest.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HttpRequest.swift; sourceTree = "<group>"; };
-		7EE5A054291DDE2F001E71F1 /* RpcProviderError.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RpcProviderError.swift; sourceTree = "<group>"; };
-		7EE5A055291DDE2F001E71F1 /* HttpError.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HttpError.swift; sourceTree = "<group>"; };
 		7F0F961F8E2FDD4F7A5297D5CF095CEE /* PortalSwift.modulemap */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.module; path = PortalSwift.modulemap; sourceTree = "<group>"; };
 		8015ACECB9A6B167A46F88EBABA45ED7 /* PortalSwift-dummy.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = "PortalSwift-dummy.m"; sourceTree = "<group>"; };
 		888403B6F47A1963671F5669A5CAD981 /* PortalSwift.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = PortalSwift.debug.xcconfig; sourceTree = "<group>"; };
@@ -140,7 +140,6 @@
 		CBFF6C5FD9C3A84274A9314D3E940B6E /* FBSnapshotTestCase.modulemap */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.module; path = FBSnapshotTestCase.modulemap; sourceTree = "<group>"; };
 		D08CEBB9BDD9EF7A662ECFC0305C169E /* FBSnapshotTestCase-prefix.pch */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "FBSnapshotTestCase-prefix.pch"; sourceTree = "<group>"; };
 		D156FA127D993AB3F7E5A2EFFE939F2D /* Pods-PortalSwift_Example-frameworks.sh */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.script.sh; path = "Pods-PortalSwift_Example-frameworks.sh"; sourceTree = "<group>"; };
-		D5A654ED1795F06F529CD7C9F347F00B /* LICENSE */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 		D872A3EE224412D4057C234FBC629F9C /* UIImage+Snapshot.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = "UIImage+Snapshot.m"; path = "FBSnapshotTestCase/Categories/UIImage+Snapshot.m"; sourceTree = "<group>"; };
 		DE03189B0B0FCCC0EF00BB0FDCD736C0 /* Pods-PortalSwift_Example-dummy.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = "Pods-PortalSwift_Example-dummy.m"; sourceTree = "<group>"; };
 		E3E8C13CD2DBF7583BAF5613791D8722 /* Pods-PortalSwift_Example */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; name = "Pods-PortalSwift_Example"; path = Pods_PortalSwift_Example.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -179,6 +178,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2ECCAC52EF4C74E1032E0BC646BBE5B9 /* Foundation.framework in Frameworks */,
+				7E3FB5CE291EAB4A00EB1094 /* mpc.xcframework in Frameworks */,
 				C9F76407497DF0205D7460B36D22259F /* QuartzCore.framework in Frameworks */,
 				875A310EAF4D0C136C3FFFF5E0335BE4 /* UIKit.framework in Frameworks */,
 				9D3C5E2F56838937146191468A893244 /* XCTest.framework in Frameworks */,
@@ -244,11 +244,18 @@
 		5CE40A822989FAA550B5CA2077CB9605 /* Pod */ = {
 			isa = PBXGroup;
 			children = (
-				D5A654ED1795F06F529CD7C9F347F00B /* LICENSE */,
 				9713E10B31451AA6AF0214FCC4439942 /* PortalSwift.podspec */,
 				5A6767C95F341EFE479172591ED5DFFE /* README.md */,
 			);
 			name = Pod;
+			sourceTree = "<group>";
+		};
+		7E3FB5CC291EAB2300EB1094 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				7E3FB5CD291EAB4A00EB1094 /* mpc.xcframework */,
+			);
+			path = Frameworks;
 			sourceTree = "<group>";
 		};
 		7EE5A03B291DCF5F001E71F1 /* Core */ = {
@@ -284,8 +291,9 @@
 		7EE5A04A291DCF70001E71F1 /* Storage */ = {
 			isa = PBXGroup;
 			children = (
-				7EE5A04C291DCF70001E71F1 /* GDriveStorage.swift */,
-				7EE5A04B291DCF70001E71F1 /* ICloudStorage.swift */,
+				7E3FB5C4291DF08B00EB1094 /* GDriveStorage.swift */,
+				7E3FB5C8291DF0CA00EB1094 /* ICloudStorage.swift */,
+				7E3FB5D1291EB7D700EB1094 /* Storage.swift */,
 			);
 			name = Storage;
 			path = PortalSwift/Classes/Storage;
@@ -296,7 +304,6 @@
 			children = (
 				7EE5A050291DDE2F001E71F1 /* Requesters */,
 				7EE5A052291DDE2F001E71F1 /* HttpRequest.swift */,
-				7EE5A053291DDE2F001E71F1 /* Errors */,
 			);
 			name = Utils;
 			path = PortalSwift/Classes/Utils;
@@ -310,18 +317,10 @@
 			path = Requesters;
 			sourceTree = "<group>";
 		};
-		7EE5A053291DDE2F001E71F1 /* Errors */ = {
-			isa = PBXGroup;
-			children = (
-				7EE5A054291DDE2F001E71F1 /* RpcProviderError.swift */,
-				7EE5A055291DDE2F001E71F1 /* HttpError.swift */,
-			);
-			path = Errors;
-			sourceTree = "<group>";
-		};
 		8ABC99D9DD842C3FD6CBD52CBAE1E05E /* PortalSwift */ = {
 			isa = PBXGroup;
 			children = (
+				7E3FB5CC291EAB2300EB1094 /* Frameworks */,
 				7EE5A03B291DCF5F001E71F1 /* Core */,
 				5CE40A822989FAA550B5CA2077CB9605 /* Pod */,
 				7EE5A044291DCF68001E71F1 /* Provider */,
@@ -661,20 +660,19 @@
 			buildActionMask = 2147483647;
 			files = (
 				7C67CBD15D9B5D0B7769B2F469478332 /* FBSnapshotTestCase.m in Sources */,
-				7EE5A059291DDE2F001E71F1 /* HttpError.swift in Sources */,
 				5BE525FF6FA14B999ED2CCC0AA4FA0CF /* FBSnapshotTestCase-dummy.m in Sources */,
 				7EE5A057291DDE2F001E71F1 /* HttpRequest.swift in Sources */,
-				7EE5A058291DDE2F001E71F1 /* RpcProviderError.swift in Sources */,
 				30D475DF57C0C682A723231E7BCA0D14 /* FBSnapshotTestCasePlatform.m in Sources */,
-				7EE5A04D291DCF70001E71F1 /* ICloudStorage.swift in Sources */,
 				7EE5A056291DDE2F001E71F1 /* HttpRequester.swift in Sources */,
 				C390C6005353FB986CB52F474CEF8588 /* FBSnapshotTestController.m in Sources */,
 				2975A09730FD83DC0897129A11EA6585 /* SwiftSupport.swift in Sources */,
+				7E3FB5C6291DF08B00EB1094 /* GDriveStorage.swift in Sources */,
 				7EE5A042291DCF5F001E71F1 /* Portal.swift in Sources */,
+				7E3FB5D2291EB7D700EB1094 /* Storage.swift in Sources */,
 				7EE5A048291DCF68001E71F1 /* PortalProvider.swift in Sources */,
 				74339C58AC4E5631FB8C0E662668A796 /* UIApplication+StrictKeyWindow.m in Sources */,
+				7E3FB5C9291DF0CA00EB1094 /* ICloudStorage.swift in Sources */,
 				7EE5A040291DCF5F001E71F1 /* PortalMpc.swift in Sources */,
-				7EE5A04E291DCF70001E71F1 /* GDriveStorage.swift in Sources */,
 				B52281F9F4340D4FC8ABB2FEB1FEC08E /* UIImage+Compare.m in Sources */,
 				7EE5A041291DCF5F001E71F1 /* PortalApi.swift in Sources */,
 				7EE5A043291DCF5F001E71F1 /* PortalKeychain.swift in Sources */,
@@ -724,7 +722,11 @@
 				INFOPLIST_FILE = "Target Support Files/FBSnapshotTestCase/FBSnapshotTestCase-Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
 				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
 				MODULEMAP_FILE = "Target Support Files/FBSnapshotTestCase/FBSnapshotTestCase.modulemap";
 				PRODUCT_MODULE_NAME = FBSnapshotTestCase;
 				PRODUCT_NAME = FBSnapshotTestCase;
@@ -755,7 +757,11 @@
 				INFOPLIST_FILE = "Target Support Files/PortalSwift/PortalSwift-Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
 				MODULEMAP_FILE = "Target Support Files/PortalSwift/PortalSwift.modulemap";
 				PRODUCT_MODULE_NAME = PortalSwift;
 				PRODUCT_NAME = PortalSwift;
@@ -825,7 +831,8 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRIP_INSTALLED_PRODUCT = NO;
-				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
 				SYMROOT = "${SRCROOT}/../build";
 			};
@@ -847,7 +854,11 @@
 				INFOPLIST_FILE = "Target Support Files/FBSnapshotTestCase/FBSnapshotTestCase-Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
 				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
 				MODULEMAP_FILE = "Target Support Files/FBSnapshotTestCase/FBSnapshotTestCase.modulemap";
 				PRODUCT_MODULE_NAME = FBSnapshotTestCase;
 				PRODUCT_NAME = FBSnapshotTestCase;
@@ -878,7 +889,11 @@
 				INFOPLIST_FILE = "Target Support Files/Pods-PortalSwift_Example/Pods-PortalSwift_Example-Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
 				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
 				MACH_O_TYPE = staticlib;
 				MODULEMAP_FILE = "Target Support Files/Pods-PortalSwift_Example/Pods-PortalSwift_Example.modulemap";
 				OTHER_LDFLAGS = "";
@@ -912,7 +927,11 @@
 				INFOPLIST_FILE = "Target Support Files/Pods-PortalSwift_Example/Pods-PortalSwift_Example-Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
 				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
 				MACH_O_TYPE = staticlib;
 				MODULEMAP_FILE = "Target Support Files/Pods-PortalSwift_Example/Pods-PortalSwift_Example.modulemap";
 				OTHER_LDFLAGS = "";
@@ -945,7 +964,11 @@
 				INFOPLIST_FILE = "Target Support Files/Pods-PortalSwift_Tests/Pods-PortalSwift_Tests-Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
 				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
 				MACH_O_TYPE = staticlib;
 				MODULEMAP_FILE = "Target Support Files/Pods-PortalSwift_Tests/Pods-PortalSwift_Tests.modulemap";
 				OTHER_LDFLAGS = "";
@@ -1045,7 +1068,11 @@
 				INFOPLIST_FILE = "Target Support Files/Pods-PortalSwift_Tests/Pods-PortalSwift_Tests-Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
 				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
 				MACH_O_TYPE = staticlib;
 				MODULEMAP_FILE = "Target Support Files/Pods-PortalSwift_Tests/Pods-PortalSwift_Tests.modulemap";
 				OTHER_LDFLAGS = "";
@@ -1077,7 +1104,11 @@
 				INFOPLIST_FILE = "Target Support Files/PortalSwift/PortalSwift-Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
 				MODULEMAP_FILE = "Target Support Files/PortalSwift/PortalSwift.modulemap";
 				PRODUCT_MODULE_NAME = PortalSwift;
 				PRODUCT_NAME = PortalSwift;

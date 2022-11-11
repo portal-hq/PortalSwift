@@ -2,11 +2,12 @@
 //  MPCSigner.swift
 //  PortalSwift
 //
-//  Created by Blake Williams on 8/14/22.
-//  Copyright © 2022 CocoaPods. All rights reserved.
+//  Created by Portal Labs, Inc.
+//  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
 import Foundation
+import Mpc
 
 struct Signature: Codable {
   var x: String
@@ -14,8 +15,18 @@ struct Signature: Codable {
 }
 
 class MpcSigner {
-  public var address: String = ""
-  private var mpcUrl: String = "mpc.portalhq.io"
+  public var address: String?
+  public var keychain: PortalKeychain
+
+  private var mpcUrl: String
+  
+  init (
+    keychain: PortalKeychain,
+    mpcUrl: String = "mpc.portalhq.io"
+  ) {
+    self.keychain = keychain
+    self.mpcUrl = mpcUrl
+  }
     
     
   public func sign(
@@ -23,14 +34,25 @@ class MpcSigner {
     provider: PortalProvider,
     completion: @escaping (_ signature: Signature?) -> Void
   ) throws -> Any {
-    // TODO: Do MPC Signing with the mpc.xcframework binary
-      switch (payload.method) {
-      case "eth_requestAccounts":
-          return [self.address]
-      case "eth_accounts":
-          return [self.address]
-      default :
-          return ""
-      }
+    switch (payload.method) {
+    case "eth_requestAccounts":
+        return [self.address]
+    case "eth_accounts":
+        return [self.address]
+    default :
+      let address = keychain.getAddress()
+      let signingShare = keychain.getSigningShare()
+      let jsonParams = try JSONSerialization.data(withJSONObject: payload.params, options: .prettyPrinted)
+      
+      return ClientSign(
+        provider.getApiKey(),
+        mpcUrl,
+        signingShare,
+        payload.method,
+        String(data: jsonParams, encoding: .utf8),
+        provider.gatewayUrl,
+        String(provider.chainId)
+      )
+    }
   }
 }
