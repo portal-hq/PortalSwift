@@ -95,6 +95,22 @@ public enum ETHRequestMethods: String {
   case Web3Sha3 = "web3_sha3"
 }
 
+private enum InvalidArgumentError: Error {
+  case invalidGatewayUrl
+}
+
+private enum ProviderRpcError: Error {
+  case chainDisconnected
+  case disconnected
+  case unauthorized
+  case unsupportedMethod
+  case userRejectedRequest
+}
+
+private enum ProviderSigningError: Error {
+  case userDeclinedApproval
+}
+
 // structs
 struct ClientConfig: Codable {
   var alchemyId: String
@@ -128,19 +144,18 @@ public struct RegisteredEventHandler {
 }
 
 public class PortalProvider {
-  public var isMPC: Bool = false
+  public var chainId: Chains.RawValue
   public var portal: HttpRequester
+  public var rpc: HttpRequester
 
   private var apiKey: String = "NO_API_KEY_PROVIDED"
   private var apiUrl: String = "https://api.portalhq.io"
   private var alchemyId: String = ""
   private var autoApprove: Bool = false
-  private var chainId: Chains.RawValue
   private var events: Dictionary<Events.RawValue, [RegisteredEventHandler]> = [:]
   private var httpHost: String = "https://api.portalhq.io"
   private var infuraId: String = ""
-  private var rpc: HttpRequester
-  private var signer: Signer?
+  private var signer: MpcSigner
   private var address: String = ""
   
   private var signerMethods: [ETHRequestMethods.RawValue] = [
@@ -163,7 +178,12 @@ public class PortalProvider {
     ETHRequestMethods.WalletWatchAsset.rawValue,
   ]
   
-    public init(apiKey: String, chainId: Chains.RawValue, gatewayUrl: String) throws {
+  public init(
+    apiKey: String,
+    chainId: Chains.RawValue,
+    gatewayUrl: String,
+    apiHost: String = "api.portalhq.io"
+  ) throws {
     // User-defined instance variables
     self.apiKey = apiKey
     self.chainId = chainId
@@ -172,33 +192,13 @@ public class PortalProvider {
     // Other instance variables
     self.portal = HttpRequester(baseUrl: apiUrl)
     
-      if (self.apiKey.isEmpty || apiKey.count == 0) {
-          throw RpcProviderError(code: 4100)
-      }
-
-    do {
-      // Get ClientConfig from server
-      try portal.get(
-        path: "/api/clients/config",
-        headers: [
-          "Authorization": String(format: "Bearer %@", apiKey),
-        ]
-      ) { (config: ClientConfig?) in
-        if (config == nil) {
-          // TODO: Handle errors
-          return
-        }
-        
-        // Set instance variables dependent on ClientConfig
-        self.alchemyId = config!.alchemyId
-        self.autoApprove = config!.autoApprove
-        self.infuraId = config!.infuraId
-        self.isMPC = config!.enableMpc
-        
-        self.signer = self.isMPC ? MPCSigner() : HttpSigner(portal: self.portal)
-        self.dispatchConnect()
-      }
-    } catch {}
+    if (gatewayUrl.isEmpty) {
+      throw InvalidArgumentError.invalidGatewayUrl
+    }
+    
+    self.portal = HttpRequester(baseUrl: String(format: "https://%@", apiHost))
+    self.signer = MpcSigner()
+    self.dispatchConnect()
   }
   
   // ------ Public Functions
@@ -297,7 +297,7 @@ public class PortalProvider {
         completion(signature)
       }
     } else {
-        throw RpcProviderError(code: 4200)
+      throw ProviderRpcError.unsupportedMethod
     }
   }
     
@@ -327,7 +327,6 @@ public class PortalProvider {
         try completion(true)
       } else if (events[Events.PortalSigningRequested.rawValue] == nil) {
           throw PortalProviderErrors.AutoApproveDisabled(PortalProviderErrorMessages.AutoApproveDisabled.rawValue)
-          try completion(false)
       }
       
       // Bind to signing approval callbacks
@@ -358,19 +357,16 @@ public class PortalProvider {
   ) throws -> Void {
     try getApproval(payload: payload) { approved in
       if (!approved) {
-          throw RpcProviderError(code: 4001)
-        return
+        throw ProviderSigningError.userDeclinedApproval
       }
       
-      do {
-          // we let the signer handle the EthRequests
-        try self.signer?.sign(
-          payload: payload,
-          provider: self
-        ) { (signature: Signature?) -> Void in
-            completion(signature)
-        }
-      } catch {}
+      // we let the signer handle the EthRequests
+      try self.signer.sign(
+        payload: payload,
+        provider: self
+      ) { (signature: Signature?) -> Void in
+          completion(signature)
+      }
     }
   }
   
@@ -381,7 +377,6 @@ public class PortalProvider {
     try getApproval(payload: payload) { approved in
       if (!approved) {
           throw PortalProviderErrors.WalletRequestRejected(PortalProviderErrorMessages.WalletRequestRejected.rawValue)
-        return
       }
       do {
         try self.portal.post(

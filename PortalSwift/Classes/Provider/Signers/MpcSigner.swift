@@ -8,17 +8,14 @@
 
 import Foundation
 
-class MPCSigner: Signer {
-    
-    public var address: String = ""
-    
-    private var mpcUrl: String = "mpc.portalhq.io"
-    
-    
-    public override init() {
-        
-        
-    }
+struct Signature: Codable {
+  var x: String
+  var y: String
+}
+
+class MpcSigner {
+  public var address: String = ""
+  private var mpcUrl: String = "mpc.portalhq.io"
     
     
   public func sign(
@@ -35,7 +32,5 @@ class MPCSigner: Signer {
       default :
           return ""
       }
-      
-    return ""
   }
 }

@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		15E6C4358FF6B040C732C31939B6F11E /* Pods-PortalSwift_Example-umbrella.h in Headers */ = {isa = PBXBuildFile; fileRef = B04803F75332BCCA904B5773D6EB0E3B /* Pods-PortalSwift_Example-umbrella.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		1F84FE646CD1D7BAFFB58C243277AFF8 /* FBSnapshotTestCase-umbrella.h in Headers */ = {isa = PBXBuildFile; fileRef = 8E5923010B02074CAA9AAF6EA02D66AA /* FBSnapshotTestCase-umbrella.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		28A1F92D77AC7CEE8CB1CC149CE6C777 /* utils.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7294A25B5B6BD97CE5C1109B61DA0D9 /* utils.swift */; };
 		2975A09730FD83DC0897129A11EA6585 /* SwiftSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F0D66CF296ABBC57EC4D0452397E235 /* SwiftSupport.swift */; };
 		2B88C28DD20CBFA7B3AEB21A365197FE /* FBSnapshotTestController.h in Headers */ = {isa = PBXBuildFile; fileRef = AE9FF9459FBCDC4AF88FB6B5A4CC1439 /* FBSnapshotTestController.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		2CB61F6FA511CAACB43A50DC3A82E0DD /* UIImage+Snapshot.m in Sources */ = {isa = PBXBuildFile; fileRef = D872A3EE224412D4057C234FBC629F9C /* UIImage+Snapshot.m */; };
@@ -26,25 +25,29 @@
 		6E8631961ACE7E7492F24CDB31EFCF1B /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 57221B54D014471C3D3E1925EFC917C8 /* Foundation.framework */; };
 		74339C58AC4E5631FB8C0E662668A796 /* UIApplication+StrictKeyWindow.m in Sources */ = {isa = PBXBuildFile; fileRef = 0F538C426803AE34255FC6E35B408CCA /* UIApplication+StrictKeyWindow.m */; };
 		7C67CBD15D9B5D0B7769B2F469478332 /* FBSnapshotTestCase.m in Sources */ = {isa = PBXBuildFile; fileRef = 277B6BE10C665F515606A22FD60C6DCC /* FBSnapshotTestCase.m */; };
+		7EE5A040291DCF5F001E71F1 /* PortalMpc.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE5A03C291DCF5F001E71F1 /* PortalMpc.swift */; };
+		7EE5A041291DCF5F001E71F1 /* PortalApi.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE5A03D291DCF5F001E71F1 /* PortalApi.swift */; };
+		7EE5A042291DCF5F001E71F1 /* Portal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE5A03E291DCF5F001E71F1 /* Portal.swift */; };
+		7EE5A043291DCF5F001E71F1 /* PortalKeychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE5A03F291DCF5F001E71F1 /* PortalKeychain.swift */; };
+		7EE5A048291DCF68001E71F1 /* PortalProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE5A045291DCF68001E71F1 /* PortalProvider.swift */; };
+		7EE5A049291DCF68001E71F1 /* MpcSigner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE5A047291DCF68001E71F1 /* MpcSigner.swift */; };
+		7EE5A04D291DCF70001E71F1 /* ICloudStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE5A04B291DCF70001E71F1 /* ICloudStorage.swift */; };
+		7EE5A04E291DCF70001E71F1 /* GDriveStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE5A04C291DCF70001E71F1 /* GDriveStorage.swift */; };
+		7EE5A056291DDE2F001E71F1 /* HttpRequester.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE5A051291DDE2F001E71F1 /* HttpRequester.swift */; };
+		7EE5A057291DDE2F001E71F1 /* HttpRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE5A052291DDE2F001E71F1 /* HttpRequest.swift */; };
+		7EE5A058291DDE2F001E71F1 /* RpcProviderError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE5A054291DDE2F001E71F1 /* RpcProviderError.swift */; };
+		7EE5A059291DDE2F001E71F1 /* HttpError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE5A055291DDE2F001E71F1 /* HttpError.swift */; };
 		875A310EAF4D0C136C3FFFF5E0335BE4 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1DA24A38BA9EE106B59E3D4C8DD1CE0E /* UIKit.framework */; };
 		8AE19756F0126FE92AF625E36F3D70FE /* UIImage+Compare.h in Headers */ = {isa = PBXBuildFile; fileRef = 656116C8FA5458F45D4707110C9530EC /* UIImage+Compare.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		988ADEACA1C0C607BA10369F7444A498 /* Signer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 445FF0525B9B9F34FFA9DB6FDD042D6C /* Signer.swift */; };
-		9CA6C6CB7ADB3F219271E294BEA6E732 /* HttpRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0AE1565326A1D3AF4F404160A9A57C3 /* HttpRequest.swift */; };
 		9D3C5E2F56838937146191468A893244 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E658F388F01C72599CA75537950B6095 /* XCTest.framework */; };
 		A3FB22CE64A4EF315B9CCD2FD1153BA6 /* PortalSwift-umbrella.h in Headers */ = {isa = PBXBuildFile; fileRef = AF2087274C34CFE980C154772F3727A5 /* PortalSwift-umbrella.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		ABD81B394B56FB2E690AFCE11BA9C062 /* Pods-PortalSwift_Tests-umbrella.h in Headers */ = {isa = PBXBuildFile; fileRef = A9FFB205892136F8E71A3AE2FFB64B96 /* Pods-PortalSwift_Tests-umbrella.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		B52281F9F4340D4FC8ABB2FEB1FEC08E /* UIImage+Compare.m in Sources */ = {isa = PBXBuildFile; fileRef = 235A78CFFA6D8B8D86CACD733531CB13 /* UIImage+Compare.m */; };
 		B59062D8E4D2D3C3D510AAF993C12D6C /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 57221B54D014471C3D3E1925EFC917C8 /* Foundation.framework */; };
-		B64A118B780B20C9370E563A0F2AC33E /* MPCSigner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A651CB5680D8355FF06685DFCCD83039 /* MPCSigner.swift */; };
 		C390C6005353FB986CB52F474CEF8588 /* FBSnapshotTestController.m in Sources */ = {isa = PBXBuildFile; fileRef = 7E1B7EA746BF6557FD565BAE12AF9198 /* FBSnapshotTestController.m */; };
 		C6EEFF0AF6DE6A5020E01DB12E9D5423 /* PortalSwift-dummy.m in Sources */ = {isa = PBXBuildFile; fileRef = 8015ACECB9A6B167A46F88EBABA45ED7 /* PortalSwift-dummy.m */; };
 		C9F76407497DF0205D7460B36D22259F /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3280BB5E7B57C31D41117A74F76E9DF3 /* QuartzCore.framework */; };
 		CA54C09A12400567AFFCB407EEB7E154 /* UIImage+Diff.m in Sources */ = {isa = PBXBuildFile; fileRef = 4568279DE47DC3AB91598E1317503995 /* UIImage+Diff.m */; };
-		CB1E8E6098110D77CF93765D977FB040 /* HttpRequester.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB0AD70FA27DA43AF3DF7208ACCAE767 /* HttpRequester.swift */; };
-		E0C6270CC7930D3410A0DE29A701E850 /* HttpError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B2DE8F1EC22CFAD8D8E9FEBFE217AE5 /* HttpError.swift */; };
-		E12D9E7FED4BB1AF2418FCA829780642 /* RpcProviderError.swift in Sources */ = {isa = PBXBuildFile; fileRef = E870F32DC5EED09D89F95B0D464D8696 /* RpcProviderError.swift */; };
-		E684970253C69DB36988688C706B3E6C /* PortalProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 302970220DC2A7766A91FC1C71BB78B2 /* PortalProvider.swift */; };
-		F873A1A01C83E33EF41CF514652EA2F8 /* HttpSigner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1B647F31136D955FB6314DEC36CD9DC /* HttpSigner.swift */; };
 		FF8307B7346F4D3BA13C11AECFE6EDD0 /* FBSnapshotTestCase.h in Headers */ = {isa = PBXBuildFile; fileRef = FEE661E58CA6655B39AA49AA4C021C33 /* FBSnapshotTestCase.h */; settings = {ATTRIBUTES = (Public, ); }; };
 /* End PBXBuildFile section */
 
@@ -78,7 +81,6 @@
 		0CBAF4504E7E9ABF12FDE2C4542D7C98 /* PortalSwift-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "PortalSwift-Info.plist"; sourceTree = "<group>"; };
 		0F538C426803AE34255FC6E35B408CCA /* UIApplication+StrictKeyWindow.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = "UIApplication+StrictKeyWindow.m"; path = "FBSnapshotTestCase/Categories/UIApplication+StrictKeyWindow.m"; sourceTree = "<group>"; };
 		1ADA6E655DC84D06359BD0ED5E36C783 /* FBSnapshotTestCase-dummy.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = "FBSnapshotTestCase-dummy.m"; sourceTree = "<group>"; };
-		1B2DE8F1EC22CFAD8D8E9FEBFE217AE5 /* HttpError.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HttpError.swift; sourceTree = "<group>"; };
 		1C71EDA565B32DF0EACD749B70711D15 /* PortalSwift-prefix.pch */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "PortalSwift-prefix.pch"; sourceTree = "<group>"; };
 		1DA24A38BA9EE106B59E3D4C8DD1CE0E /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS14.0.sdk/System/Library/Frameworks/UIKit.framework; sourceTree = DEVELOPER_DIR; };
 		1F62C77A1CC9613856D8F3707C37251B /* Pods-PortalSwift_Tests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = "Pods-PortalSwift_Tests.release.xcconfig"; sourceTree = "<group>"; };
@@ -87,10 +89,8 @@
 		277B6BE10C665F515606A22FD60C6DCC /* FBSnapshotTestCase.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = FBSnapshotTestCase.m; path = FBSnapshotTestCase/FBSnapshotTestCase.m; sourceTree = "<group>"; };
 		284833D18C244D2B42966B6EE425AA59 /* UIImage+Snapshot.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = "UIImage+Snapshot.h"; path = "FBSnapshotTestCase/Categories/UIImage+Snapshot.h"; sourceTree = "<group>"; };
 		2C05E30DE811F873834F145FE9CDA686 /* Pods-PortalSwift_Tests-acknowledgements.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "Pods-PortalSwift_Tests-acknowledgements.plist"; sourceTree = "<group>"; };
-		302970220DC2A7766A91FC1C71BB78B2 /* PortalProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PortalProvider.swift; path = PortalSwift/Classes/PortalProvider.swift; sourceTree = "<group>"; };
 		3280BB5E7B57C31D41117A74F76E9DF3 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS14.0.sdk/System/Library/Frameworks/QuartzCore.framework; sourceTree = DEVELOPER_DIR; };
 		3F0D66CF296ABBC57EC4D0452397E235 /* SwiftSupport.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SwiftSupport.swift; path = FBSnapshotTestCase/SwiftSupport.swift; sourceTree = "<group>"; };
-		445FF0525B9B9F34FFA9DB6FDD042D6C /* Signer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Signer.swift; sourceTree = "<group>"; };
 		4568279DE47DC3AB91598E1317503995 /* UIImage+Diff.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = "UIImage+Diff.m"; path = "FBSnapshotTestCase/Categories/UIImage+Diff.m"; sourceTree = "<group>"; };
 		4AD2D71368B32B1F4CCA3FBB240CE176 /* Pods-PortalSwift_Example.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = "Pods-PortalSwift_Example.release.xcconfig"; sourceTree = "<group>"; };
 		4C6513B09838318BD763CFD5390D1DE0 /* FBSnapshotTestCase.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = FBSnapshotTestCase.release.xcconfig; sourceTree = "<group>"; };
@@ -106,6 +106,18 @@
 		6E089EDEF70A310CA7310F4DB365F3B9 /* Pods-PortalSwift_Tests-dummy.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = "Pods-PortalSwift_Tests-dummy.m"; sourceTree = "<group>"; };
 		6E902DBD0CC21442EAFDF4E2AD2175F4 /* Pods-PortalSwift_Tests */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; name = "Pods-PortalSwift_Tests"; path = Pods_PortalSwift_Tests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		7E1B7EA746BF6557FD565BAE12AF9198 /* FBSnapshotTestController.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = FBSnapshotTestController.m; path = FBSnapshotTestCase/FBSnapshotTestController.m; sourceTree = "<group>"; };
+		7EE5A03C291DCF5F001E71F1 /* PortalMpc.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalMpc.swift; sourceTree = "<group>"; };
+		7EE5A03D291DCF5F001E71F1 /* PortalApi.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalApi.swift; sourceTree = "<group>"; };
+		7EE5A03E291DCF5F001E71F1 /* Portal.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Portal.swift; sourceTree = "<group>"; };
+		7EE5A03F291DCF5F001E71F1 /* PortalKeychain.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalKeychain.swift; sourceTree = "<group>"; };
+		7EE5A045291DCF68001E71F1 /* PortalProvider.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalProvider.swift; sourceTree = "<group>"; };
+		7EE5A047291DCF68001E71F1 /* MpcSigner.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MpcSigner.swift; sourceTree = "<group>"; };
+		7EE5A04B291DCF70001E71F1 /* ICloudStorage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ICloudStorage.swift; sourceTree = "<group>"; };
+		7EE5A04C291DCF70001E71F1 /* GDriveStorage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = GDriveStorage.swift; sourceTree = "<group>"; };
+		7EE5A051291DDE2F001E71F1 /* HttpRequester.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HttpRequester.swift; sourceTree = "<group>"; };
+		7EE5A052291DDE2F001E71F1 /* HttpRequest.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HttpRequest.swift; sourceTree = "<group>"; };
+		7EE5A054291DDE2F001E71F1 /* RpcProviderError.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RpcProviderError.swift; sourceTree = "<group>"; };
+		7EE5A055291DDE2F001E71F1 /* HttpError.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HttpError.swift; sourceTree = "<group>"; };
 		7F0F961F8E2FDD4F7A5297D5CF095CEE /* PortalSwift.modulemap */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.module; path = PortalSwift.modulemap; sourceTree = "<group>"; };
 		8015ACECB9A6B167A46F88EBABA45ED7 /* PortalSwift-dummy.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = "PortalSwift-dummy.m"; sourceTree = "<group>"; };
 		888403B6F47A1963671F5669A5CAD981 /* PortalSwift.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = PortalSwift.debug.xcconfig; sourceTree = "<group>"; };
@@ -118,28 +130,22 @@
 		9D2DF81BFBCD0222F4A0B787CCF38F3E /* Pods-PortalSwift_Tests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = "Pods-PortalSwift_Tests.debug.xcconfig"; sourceTree = "<group>"; };
 		9D940727FF8FB9C785EB98E56350EF41 /* Podfile */ = {isa = PBXFileReference; explicitFileType = text.script.ruby; includeInIndex = 1; indentWidth = 2; name = Podfile; path = ../Podfile; sourceTree = SOURCE_ROOT; tabWidth = 2; xcLanguageSpecificationIdentifier = xcode.lang.ruby; };
 		9FC91E5F2B4C5D63FB2C722B4947F44D /* Pods-PortalSwift_Tests.modulemap */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.module; path = "Pods-PortalSwift_Tests.modulemap"; sourceTree = "<group>"; };
-		A651CB5680D8355FF06685DFCCD83039 /* MPCSigner.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MPCSigner.swift; sourceTree = "<group>"; };
 		A9FFB205892136F8E71A3AE2FFB64B96 /* Pods-PortalSwift_Tests-umbrella.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "Pods-PortalSwift_Tests-umbrella.h"; sourceTree = "<group>"; };
 		AE9FF9459FBCDC4AF88FB6B5A4CC1439 /* FBSnapshotTestController.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = FBSnapshotTestController.h; path = FBSnapshotTestCase/FBSnapshotTestController.h; sourceTree = "<group>"; };
 		AF2087274C34CFE980C154772F3727A5 /* PortalSwift-umbrella.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "PortalSwift-umbrella.h"; sourceTree = "<group>"; };
 		B04803F75332BCCA904B5773D6EB0E3B /* Pods-PortalSwift_Example-umbrella.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "Pods-PortalSwift_Example-umbrella.h"; sourceTree = "<group>"; };
 		B37F9B650D3D997A3D066A89BC04DCAA /* Pods-PortalSwift_Tests-acknowledgements.markdown */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = "Pods-PortalSwift_Tests-acknowledgements.markdown"; sourceTree = "<group>"; };
 		B7103CA00AED20722C5B69CA5B4F6938 /* FBSnapshotTestCase-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "FBSnapshotTestCase-Info.plist"; sourceTree = "<group>"; };
-		C0AE1565326A1D3AF4F404160A9A57C3 /* HttpRequest.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HttpRequest.swift; sourceTree = "<group>"; };
 		C7611A86025E44D1B60E33479491176A /* PortalSwift */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; name = PortalSwift; path = PortalSwift.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		CBFF6C5FD9C3A84274A9314D3E940B6E /* FBSnapshotTestCase.modulemap */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.module; path = FBSnapshotTestCase.modulemap; sourceTree = "<group>"; };
 		D08CEBB9BDD9EF7A662ECFC0305C169E /* FBSnapshotTestCase-prefix.pch */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "FBSnapshotTestCase-prefix.pch"; sourceTree = "<group>"; };
 		D156FA127D993AB3F7E5A2EFFE939F2D /* Pods-PortalSwift_Example-frameworks.sh */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.script.sh; path = "Pods-PortalSwift_Example-frameworks.sh"; sourceTree = "<group>"; };
 		D5A654ED1795F06F529CD7C9F347F00B /* LICENSE */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
-		D7294A25B5B6BD97CE5C1109B61DA0D9 /* utils.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = utils.swift; sourceTree = "<group>"; };
 		D872A3EE224412D4057C234FBC629F9C /* UIImage+Snapshot.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = "UIImage+Snapshot.m"; path = "FBSnapshotTestCase/Categories/UIImage+Snapshot.m"; sourceTree = "<group>"; };
 		DE03189B0B0FCCC0EF00BB0FDCD736C0 /* Pods-PortalSwift_Example-dummy.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = "Pods-PortalSwift_Example-dummy.m"; sourceTree = "<group>"; };
 		E3E8C13CD2DBF7583BAF5613791D8722 /* Pods-PortalSwift_Example */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; name = "Pods-PortalSwift_Example"; path = Pods_PortalSwift_Example.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		E658F388F01C72599CA75537950B6095 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS14.0.sdk/System/Library/Frameworks/XCTest.framework; sourceTree = DEVELOPER_DIR; };
-		E870F32DC5EED09D89F95B0D464D8696 /* RpcProviderError.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RpcProviderError.swift; sourceTree = "<group>"; };
 		F14323AF1AC6ACB5F48247937CB7BBCD /* Pods-PortalSwift_Example.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = "Pods-PortalSwift_Example.debug.xcconfig"; sourceTree = "<group>"; };
-		F1B647F31136D955FB6314DEC36CD9DC /* HttpSigner.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HttpSigner.swift; sourceTree = "<group>"; };
-		FB0AD70FA27DA43AF3DF7208ACCAE767 /* HttpRequester.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HttpRequester.swift; sourceTree = "<group>"; };
 		FEE661E58CA6655B39AA49AA4C021C33 /* FBSnapshotTestCase.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = FBSnapshotTestCase.h; path = FBSnapshotTestCase/FBSnapshotTestCase.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -182,17 +188,6 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		06EAD9508CF5A74EB239E665CE2B658E /* Utils */ = {
-			isa = PBXGroup;
-			children = (
-				C0AE1565326A1D3AF4F404160A9A57C3 /* HttpRequest.swift */,
-				D7294A25B5B6BD97CE5C1109B61DA0D9 /* utils.swift */,
-				9C29AB471DABC601BE6A594309BA9054 /* Errors */,
-			);
-			name = Utils;
-			path = PortalSwift/Classes/Utils;
-			sourceTree = "<group>";
-		};
 		184B0EFBF0FB686C3AFFA0FD62A44F7B /* Support Files */ = {
 			isa = PBXGroup;
 			children = (
@@ -206,17 +201,6 @@
 			);
 			name = "Support Files";
 			path = "Example/Pods/Target Support Files/PortalSwift";
-			sourceTree = "<group>";
-		};
-		18AB026E10411BA498DCF577D1B649F7 /* Signers */ = {
-			isa = PBXGroup;
-			children = (
-				F1B647F31136D955FB6314DEC36CD9DC /* HttpSigner.swift */,
-				A651CB5680D8355FF06685DFCCD83039 /* MPCSigner.swift */,
-				445FF0525B9B9F34FFA9DB6FDD042D6C /* Signer.swift */,
-			);
-			name = Signers;
-			path = PortalSwift/Classes/Signers;
 			sourceTree = "<group>";
 		};
 		250DC5EB6D781258AB4438754DF14B2B /* Pods-PortalSwift_Tests */ = {
@@ -234,15 +218,6 @@
 			);
 			name = "Pods-PortalSwift_Tests";
 			path = "Target Support Files/Pods-PortalSwift_Tests";
-			sourceTree = "<group>";
-		};
-		294CE974C9B7BC0C5AACF9F9CFF22B68 /* Requesters */ = {
-			isa = PBXGroup;
-			children = (
-				FB0AD70FA27DA43AF3DF7208ACCAE767 /* HttpRequester.swift */,
-			);
-			name = Requesters;
-			path = PortalSwift/Classes/Requesters;
 			sourceTree = "<group>";
 		};
 		4BA2479549DD918290454B1CDCD0B92B /* Core */ = {
@@ -276,15 +251,83 @@
 			name = Pod;
 			sourceTree = "<group>";
 		};
+		7EE5A03B291DCF5F001E71F1 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				7EE5A03E291DCF5F001E71F1 /* Portal.swift */,
+				7EE5A03D291DCF5F001E71F1 /* PortalApi.swift */,
+				7EE5A03F291DCF5F001E71F1 /* PortalKeychain.swift */,
+				7EE5A03C291DCF5F001E71F1 /* PortalMpc.swift */,
+			);
+			name = Core;
+			path = PortalSwift/Classes/Core;
+			sourceTree = "<group>";
+		};
+		7EE5A044291DCF68001E71F1 /* Provider */ = {
+			isa = PBXGroup;
+			children = (
+				7EE5A046291DCF68001E71F1 /* Signers */,
+				7EE5A045291DCF68001E71F1 /* PortalProvider.swift */,
+			);
+			name = Provider;
+			path = PortalSwift/Classes/Provider;
+			sourceTree = "<group>";
+		};
+		7EE5A046291DCF68001E71F1 /* Signers */ = {
+			isa = PBXGroup;
+			children = (
+				7EE5A047291DCF68001E71F1 /* MpcSigner.swift */,
+			);
+			path = Signers;
+			sourceTree = "<group>";
+		};
+		7EE5A04A291DCF70001E71F1 /* Storage */ = {
+			isa = PBXGroup;
+			children = (
+				7EE5A04C291DCF70001E71F1 /* GDriveStorage.swift */,
+				7EE5A04B291DCF70001E71F1 /* ICloudStorage.swift */,
+			);
+			name = Storage;
+			path = PortalSwift/Classes/Storage;
+			sourceTree = "<group>";
+		};
+		7EE5A04F291DDE2F001E71F1 /* Utils */ = {
+			isa = PBXGroup;
+			children = (
+				7EE5A050291DDE2F001E71F1 /* Requesters */,
+				7EE5A052291DDE2F001E71F1 /* HttpRequest.swift */,
+				7EE5A053291DDE2F001E71F1 /* Errors */,
+			);
+			name = Utils;
+			path = PortalSwift/Classes/Utils;
+			sourceTree = "<group>";
+		};
+		7EE5A050291DDE2F001E71F1 /* Requesters */ = {
+			isa = PBXGroup;
+			children = (
+				7EE5A051291DDE2F001E71F1 /* HttpRequester.swift */,
+			);
+			path = Requesters;
+			sourceTree = "<group>";
+		};
+		7EE5A053291DDE2F001E71F1 /* Errors */ = {
+			isa = PBXGroup;
+			children = (
+				7EE5A054291DDE2F001E71F1 /* RpcProviderError.swift */,
+				7EE5A055291DDE2F001E71F1 /* HttpError.swift */,
+			);
+			path = Errors;
+			sourceTree = "<group>";
+		};
 		8ABC99D9DD842C3FD6CBD52CBAE1E05E /* PortalSwift */ = {
 			isa = PBXGroup;
 			children = (
-				302970220DC2A7766A91FC1C71BB78B2 /* PortalProvider.swift */,
+				7EE5A03B291DCF5F001E71F1 /* Core */,
 				5CE40A822989FAA550B5CA2077CB9605 /* Pod */,
-				294CE974C9B7BC0C5AACF9F9CFF22B68 /* Requesters */,
-				18AB026E10411BA498DCF577D1B649F7 /* Signers */,
+				7EE5A044291DCF68001E71F1 /* Provider */,
+				7EE5A04A291DCF70001E71F1 /* Storage */,
 				184B0EFBF0FB686C3AFFA0FD62A44F7B /* Support Files */,
-				06EAD9508CF5A74EB239E665CE2B658E /* Utils */,
+				7EE5A04F291DDE2F001E71F1 /* Utils */,
 			);
 			name = PortalSwift;
 			path = ../..;
@@ -304,15 +347,6 @@
 				8ABC99D9DD842C3FD6CBD52CBAE1E05E /* PortalSwift */,
 			);
 			name = "Development Pods";
-			sourceTree = "<group>";
-		};
-		9C29AB471DABC601BE6A594309BA9054 /* Errors */ = {
-			isa = PBXGroup;
-			children = (
-				1B2DE8F1EC22CFAD8D8E9FEBFE217AE5 /* HttpError.swift */,
-				E870F32DC5EED09D89F95B0D464D8696 /* RpcProviderError.swift */,
-			);
-			path = Errors;
 			sourceTree = "<group>";
 		};
 		B69B2ECE2D2C9A3924A9231138CE0BBC /* Support Files */ = {
@@ -618,16 +652,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				E0C6270CC7930D3410A0DE29A701E850 /* HttpError.swift in Sources */,
-				9CA6C6CB7ADB3F219271E294BEA6E732 /* HttpRequest.swift in Sources */,
-				CB1E8E6098110D77CF93765D977FB040 /* HttpRequester.swift in Sources */,
-				F873A1A01C83E33EF41CF514652EA2F8 /* HttpSigner.swift in Sources */,
-				B64A118B780B20C9370E563A0F2AC33E /* MPCSigner.swift in Sources */,
-				E684970253C69DB36988688C706B3E6C /* PortalProvider.swift in Sources */,
 				C6EEFF0AF6DE6A5020E01DB12E9D5423 /* PortalSwift-dummy.m in Sources */,
-				E12D9E7FED4BB1AF2418FCA829780642 /* RpcProviderError.swift in Sources */,
-				988ADEACA1C0C607BA10369F7444A498 /* Signer.swift in Sources */,
-				28A1F92D77AC7CEE8CB1CC149CE6C777 /* utils.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -636,12 +661,24 @@
 			buildActionMask = 2147483647;
 			files = (
 				7C67CBD15D9B5D0B7769B2F469478332 /* FBSnapshotTestCase.m in Sources */,
+				7EE5A059291DDE2F001E71F1 /* HttpError.swift in Sources */,
 				5BE525FF6FA14B999ED2CCC0AA4FA0CF /* FBSnapshotTestCase-dummy.m in Sources */,
+				7EE5A057291DDE2F001E71F1 /* HttpRequest.swift in Sources */,
+				7EE5A058291DDE2F001E71F1 /* RpcProviderError.swift in Sources */,
 				30D475DF57C0C682A723231E7BCA0D14 /* FBSnapshotTestCasePlatform.m in Sources */,
+				7EE5A04D291DCF70001E71F1 /* ICloudStorage.swift in Sources */,
+				7EE5A056291DDE2F001E71F1 /* HttpRequester.swift in Sources */,
 				C390C6005353FB986CB52F474CEF8588 /* FBSnapshotTestController.m in Sources */,
 				2975A09730FD83DC0897129A11EA6585 /* SwiftSupport.swift in Sources */,
+				7EE5A042291DCF5F001E71F1 /* Portal.swift in Sources */,
+				7EE5A048291DCF68001E71F1 /* PortalProvider.swift in Sources */,
 				74339C58AC4E5631FB8C0E662668A796 /* UIApplication+StrictKeyWindow.m in Sources */,
+				7EE5A040291DCF5F001E71F1 /* PortalMpc.swift in Sources */,
+				7EE5A04E291DCF70001E71F1 /* GDriveStorage.swift in Sources */,
 				B52281F9F4340D4FC8ABB2FEB1FEC08E /* UIImage+Compare.m in Sources */,
+				7EE5A041291DCF5F001E71F1 /* PortalApi.swift in Sources */,
+				7EE5A043291DCF5F001E71F1 /* PortalKeychain.swift in Sources */,
+				7EE5A049291DCF68001E71F1 /* MpcSigner.swift in Sources */,
 				CA54C09A12400567AFFCB407EEB7E154 /* UIImage+Diff.m in Sources */,
 				2CB61F6FA511CAACB43A50DC3A82E0DD /* UIImage+Snapshot.m in Sources */,
 			);
