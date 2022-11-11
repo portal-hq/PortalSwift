@@ -218,14 +218,14 @@ public class PortalProvider {
 
       
       // Remove once instances
-      self.events[event] = registeredEventHandlers?.filter(self.removeOnce)
+      events[event] = registeredEventHandlers?.filter(self.removeOnce)
       
       return self
     }
   }
   
   public func getApiKey() -> String {
-    return self.apiKey
+    return apiKey
   }
   
   public func on(
@@ -276,23 +276,14 @@ public class PortalProvider {
   }
   
   public func request(
-    payload: ETHRequestPayload,
-    completion: @escaping (_ response: Any?) -> Void
-  ) throws -> Void {
+    payload: ETHRequestPayload
+  ) throws -> Any {
     let isSignerMethod = signerMethods.contains(payload.method)
     
     if (!isSignerMethod && payload.method.starts(with: "eth_")) {
-      try handleGatewayRequest(payload: payload) { response in
-        completion(response)
-      }
-    } else if (!isSignerMethod && payload.method.starts(with: "wallet_")) {
-      try handleWalletRequest(payload: payload) { response in
-        completion(response)
-      }
+      return try handleGatewayRequest(payload: payload)
     } else if (isSignerMethod) {
-      try handleSigningRequest(payload: payload) { signature in
-        completion(signature)
-      }
+      return try handleSigningRequest(payload: payload)
     } else {
       throw ProviderRpcError.unsupportedMethod
     }
@@ -308,8 +299,8 @@ public class PortalProvider {
     
     public func setChainId(value: Int) -> PortalProvider {
         self.chainId = value
-        let hexChainId = String(format:"%02x", self.chainId)
-        let provider = self.emit(event: Events.ChainChanged.rawValue, data: ["chainId": hexChainId])
+        let hexChainId = String(format:"%02x", value)
+        let provider = emit(event: Events.ChainChanged.rawValue, data: ["chainId": hexChainId])
         return provider
     }
   
@@ -336,65 +327,39 @@ public class PortalProvider {
   }
   
   private func handleGatewayRequest(
-    payload: ETHRequestPayload,
-    completion: @escaping (_ response: [String]?) -> Void
-  ) throws -> Void {
-    try rpc.post(
+    payload: ETHRequestPayload
+  ) throws -> Any {
+    // TODO: Figure out how to parse types for RPC Calls
+    let result = try rpc.post(
       path: "",
       body: GatewayRequestPayload(method: payload.method, params: payload.params),
       headers: [:]
-    ) { (response: [String]?) -> Void in
-      completion(response)
-    }
+    ) as Any
+    
+    return result
   }
   
   private func handleSigningRequest(
-    payload: ETHRequestPayload,
-    completion: @escaping (Signature?) -> Void
-  ) throws -> Void {
+    payload: ETHRequestPayload
+  ) throws -> Any {
     try getApproval(payload: payload) { approved in
       if (!approved) {
         throw ProviderSigningError.userDeclinedApproval
       }
-      
-      // we let the signer handle the EthRequests
-      try self.signer.sign(
-        payload: payload,
-        provider: self
-      ) { (signature: Signature?) -> Void in
-          completion(signature)
-      }
     }
-  }
-  
-  private func handleWalletRequest(
-    payload: ETHRequestPayload,
-    completion: @escaping (_ response: String?) -> Void
-  ) throws -> Void {
-    try getApproval(payload: payload) { approved in
-      if (!approved) {
-        throw ProviderSigningError.walletRequestRejected
-      }
-      do {
-        try self.portal.post(
-          path: "/api/clients/wallet",
-          body: payload,
-          headers: [
-            "Authorization": String(format: "Bearer %@", self.apiKey)
-          ]
-        ) { (response: String?) -> Void in
-          completion(response)
-        }
-      } catch {}
-    }
+    
+    return try signer.sign(
+      payload: payload,
+      provider: self
+    )
   }
   
   private func removeOnce(registeredEventHandler: RegisteredEventHandler) -> Bool {
     return !registeredEventHandler.once
   }
     
-    private func dispatchConnect() -> Void {
-        let hexChainId = String(format:"%02x", self.chainId)
-        let portalProvider = self.emit(event: Events.Connect.rawValue, data: ["chaindId": hexChainId])
-    }
+  private func dispatchConnect() -> Void {
+      let hexChainId = String(format:"%02x", chainId)
+      let portalProvider = emit(event: Events.Connect.rawValue, data: ["chaindId": hexChainId])
+  }
 }

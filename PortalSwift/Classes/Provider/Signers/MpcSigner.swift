@@ -31,8 +31,7 @@ class MpcSigner {
     
   public func sign(
     payload: ETHRequestPayload,
-    provider: PortalProvider,
-    completion: @escaping (_ signature: Signature?) -> Void
+    provider: PortalProvider
   ) throws -> Any {
     switch (payload.method) {
     case "eth_requestAccounts":
@@ -40,8 +39,8 @@ class MpcSigner {
     case "eth_accounts":
         return [self.address]
     default :
-      let address = keychain.getAddress()
-      let signingShare = keychain.getSigningShare()
+      let address = try keychain.getAddress()
+      let signingShare = try keychain.getSigningShare()
       let jsonParams = try JSONSerialization.data(withJSONObject: payload.params, options: .prettyPrinted)
       
       return ClientSign(
