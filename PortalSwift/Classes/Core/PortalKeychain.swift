@@ -10,18 +10,18 @@ import Foundation
 
 public class PortalKeychain {
   public func getAddress() throws -> String {
-    
+    return ""
   }
   
   public func getSigningShare() throws -> String {
-    
+    return ""
   }
   
   public func setAddress(address: String) throws -> Bool {
-    
+    return true
   }
   
   public func setSigningShare(signingShare: String) throws -> Bool {
-    
+    return true
   }
 }
