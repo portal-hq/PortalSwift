@@ -29,6 +29,8 @@
 		7E3FB5C9291DF0CA00EB1094 /* ICloudStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E3FB5C8291DF0CA00EB1094 /* ICloudStorage.swift */; };
 		7E3FB5CE291EAB4A00EB1094 /* mpc.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7E3FB5CD291EAB4A00EB1094 /* mpc.xcframework */; };
 		7E3FB5D2291EB7D700EB1094 /* Storage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E3FB5D1291EB7D700EB1094 /* Storage.swift */; };
+		7E3FB5DA291EC90900EB1094 /* PortalSwiftTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E3FB5D9291EC90900EB1094 /* PortalSwiftTests.swift */; };
+		7E3FB5DB291EC90900EB1094 /* PortalSwift in Frameworks */ = {isa = PBXBuildFile; fileRef = C7611A86025E44D1B60E33479491176A /* PortalSwift */; };
 		7EE5A040291DCF5F001E71F1 /* PortalMpc.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE5A03C291DCF5F001E71F1 /* PortalMpc.swift */; };
 		7EE5A041291DCF5F001E71F1 /* PortalApi.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE5A03D291DCF5F001E71F1 /* PortalApi.swift */; };
 		7EE5A042291DCF5F001E71F1 /* Portal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE5A03E291DCF5F001E71F1 /* Portal.swift */; };
@@ -58,6 +60,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 98A98149697C80CEF8D5772791E92E66;
 			remoteInfo = FBSnapshotTestCase;
+		};
+		7E3FB5DC291EC90900EB1094 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BFDFE7DC352907FC980B868725387E98 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B0DDCCEB9D84D2C04909388977473FC2;
+			remoteInfo = PortalSwift;
 		};
 		CC2CB30D71189A547F10B7F8132CEEF7 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -110,6 +119,8 @@
 		7E3FB5C8291DF0CA00EB1094 /* ICloudStorage.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ICloudStorage.swift; sourceTree = "<group>"; };
 		7E3FB5CD291EAB4A00EB1094 /* mpc.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = mpc.xcframework; sourceTree = "<group>"; };
 		7E3FB5D1291EB7D700EB1094 /* Storage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Storage.swift; sourceTree = "<group>"; };
+		7E3FB5D7291EC90800EB1094 /* PortalSwiftTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PortalSwiftTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7E3FB5D9291EC90900EB1094 /* PortalSwiftTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalSwiftTests.swift; sourceTree = "<group>"; };
 		7EE5A03C291DCF5F001E71F1 /* PortalMpc.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalMpc.swift; sourceTree = "<group>"; };
 		7EE5A03D291DCF5F001E71F1 /* PortalApi.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalApi.swift; sourceTree = "<group>"; };
 		7EE5A03E291DCF5F001E71F1 /* Portal.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Portal.swift; sourceTree = "<group>"; };
@@ -162,6 +173,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				3DD7F6345A9F6DA0A5B9B40D57AC4575 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7E3FB5D4291EC90800EB1094 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7E3FB5DB291EC90900EB1094 /* PortalSwift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -256,6 +275,14 @@
 				7E3FB5CD291EAB4A00EB1094 /* mpc.xcframework */,
 			);
 			path = Frameworks;
+			sourceTree = "<group>";
+		};
+		7E3FB5D8291EC90800EB1094 /* PortalSwiftTests */ = {
+			isa = PBXGroup;
+			children = (
+				7E3FB5D9291EC90900EB1094 /* PortalSwiftTests.swift */,
+			);
+			path = PortalSwiftTests;
 			sourceTree = "<group>";
 		};
 		7EE5A03B291DCF5F001E71F1 /* Core */ = {
@@ -403,6 +430,7 @@
 			children = (
 				9D940727FF8FB9C785EB98E56350EF41 /* Podfile */,
 				9155676633F4AD5ED932D20229D6962A /* Development Pods */,
+				7E3FB5D8291EC90800EB1094 /* PortalSwiftTests */,
 				BA4F31F07263C99FC76E66D632A59F09 /* Frameworks */,
 				E81A37DBDE41E671312C56736544E2FA /* Pods */,
 				F0343B9F3989513615B7ED267D6ACB6B /* Products */,
@@ -434,6 +462,7 @@
 				E3E8C13CD2DBF7583BAF5613791D8722 /* Pods-PortalSwift_Example */,
 				6E902DBD0CC21442EAFDF4E2AD2175F4 /* Pods-PortalSwift_Tests */,
 				C7611A86025E44D1B60E33479491176A /* PortalSwift */,
+				7E3FB5D7291EC90800EB1094 /* PortalSwiftTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -514,6 +543,24 @@
 			productReference = 6E902DBD0CC21442EAFDF4E2AD2175F4 /* Pods-PortalSwift_Tests */;
 			productType = "com.apple.product-type.framework";
 		};
+		7E3FB5D6291EC90800EB1094 /* PortalSwiftTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7E3FB5DE291EC90900EB1094 /* Build configuration list for PBXNativeTarget "PortalSwiftTests" */;
+			buildPhases = (
+				7E3FB5D3291EC90800EB1094 /* Sources */,
+				7E3FB5D4291EC90800EB1094 /* Frameworks */,
+				7E3FB5D5291EC90800EB1094 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7E3FB5DD291EC90900EB1094 /* PBXTargetDependency */,
+			);
+			name = PortalSwiftTests;
+			productName = PortalSwiftTests;
+			productReference = 7E3FB5D7291EC90800EB1094 /* PortalSwiftTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		98A98149697C80CEF8D5772791E92E66 /* FBSnapshotTestCase */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 28DAA9880679133EC375B7072B9AEABB /* Build configuration list for PBXNativeTarget "FBSnapshotTestCase" */;
@@ -575,8 +622,13 @@
 		BFDFE7DC352907FC980B868725387E98 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastSwiftUpdateCheck = 1240;
+				LastSwiftUpdateCheck = 1410;
 				LastUpgradeCheck = 1240;
+				TargetAttributes = {
+					7E3FB5D6291EC90800EB1094 = {
+						CreatedOnToolsVersion = 14.1;
+					};
+				};
 			};
 			buildConfigurationList = 4821239608C13582E20E6DA73FD5F1F9 /* Build configuration list for PBXProject "Pods" */;
 			compatibilityVersion = "Xcode 3.2";
@@ -595,6 +647,7 @@
 				CCA953C7AA860680DFB7A637C81605DD /* Pods-PortalSwift_Example */,
 				5401213810D38F9D9B86E2681F6132C4 /* Pods-PortalSwift_Tests */,
 				B0DDCCEB9D84D2C04909388977473FC2 /* PortalSwift */,
+				7E3FB5D6291EC90800EB1094 /* PortalSwiftTests */,
 			);
 		};
 /* End PBXProject section */
@@ -608,6 +661,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		6649D1682E1082237E1D76EEA31E30EB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7E3FB5D5291EC90800EB1094 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -636,6 +696,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				34F655AA26D356870A7F489CA066E1D2 /* Pods-PortalSwift_Example-dummy.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7E3FB5D3291EC90800EB1094 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7E3FB5DA291EC90900EB1094 /* PortalSwiftTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -696,6 +764,11 @@
 			name = "Pods-PortalSwift_Example";
 			target = CCA953C7AA860680DFB7A637C81605DD /* Pods-PortalSwift_Example */;
 			targetProxy = CC2CB30D71189A547F10B7F8132CEEF7 /* PBXContainerItemProxy */;
+		};
+		7E3FB5DD291EC90900EB1094 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B0DDCCEB9D84D2C04909388977473FC2 /* PortalSwift */;
+			targetProxy = 7E3FB5DC291EC90900EB1094 /* PBXContainerItemProxy */;
 		};
 		EA77446AC3D306FE3337387E5C88A945 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -773,6 +846,49 @@
 				VALIDATE_PRODUCT = YES;
 				VERSIONING_SYSTEM = "apple-generic";
 				VERSION_INFO_PREFIX = "";
+			};
+			name = Release;
+		};
+		7E3FB5DF291EC90900EB1094 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = WTQ4Q66FY6;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.portalhq.PortalSwiftTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		7E3FB5E0291EC90900EB1094 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = WTQ4Q66FY6;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.portalhq.PortalSwiftTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
 		};
@@ -1166,6 +1282,15 @@
 			buildConfigurations = (
 				9FF4B01A57358683D5CF0D7BB16D5024 /* Debug */,
 				8D3B481E33EE7C16121BBAF0562EA74D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7E3FB5DE291EC90900EB1094 /* Build configuration list for PBXNativeTarget "PortalSwiftTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7E3FB5DF291EC90900EB1094 /* Debug */,
+				7E3FB5E0291EC90900EB1094 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
