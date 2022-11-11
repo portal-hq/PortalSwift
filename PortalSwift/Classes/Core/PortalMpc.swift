@@ -132,6 +132,9 @@ public class PortalMpc {
     
     // TODO:
     // - Parse newBackupShare
+    // - Encrypt the newBackupShare
+    // - Write the newBackupShare to Cloud Storage
+    // - Return the cipherText
     
     return ""
   }
@@ -161,6 +164,11 @@ public class PortalMpc {
   
   private func recoverBackup(signingShare: String) throws -> Any { // <-- Have this return an MpcShare
     let _ = ClientRecoverBackup(apiKey, mpcHost, signingShare)
+    
+    // TODO:
+    // - Parse the result object
+    // - Handle errors
+    // - Return the new MpcShare data
     
     return ""
   }
