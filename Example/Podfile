@@ -1,9 +1,10 @@
 use_frameworks!
 
-platform :ios, '9.0'
+platform :ios, '10.0'
 
 target 'PortalSwift_Example' do
   pod 'PortalSwift', :path => '../'
+  pod 'GoogleSignIn', '~> 6.2'
 
   target 'PortalSwift_Tests' do
     inherit! :search_paths

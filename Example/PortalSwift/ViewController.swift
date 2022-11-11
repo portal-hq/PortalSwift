@@ -17,24 +17,42 @@ struct Todo: Codable {
 }
 
 class ViewController: UIViewController {
+  public var portal: Portal?
+  
+  override func viewDidLoad() {
+    super.viewDidLoad()
+    
+    registerPortal()
+  }
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        // Do any additional setup after loading the view, typically from a nib.
-      
-      let provider = PortalProvider(
+  override func didReceiveMemoryWarning() {
+    super.didReceiveMemoryWarning()
+    // Dispose of any resources that can be recreated.
+  }
+  
+  func registerPortal() -> Void {
+    do {
+      let backup = BackupOptions(gdrive: GDriveStorage())
+      let keychain = PortalKeychain()
+      portal = try Portal(
         apiKey: "31515686-b8c4-48d5-a5e7-1b0f0d876a10",
-        chainId: 1,
-        gatewayUrl: ""
+        backup: backup,
+        chainId: 5,
+        keychain: keychain,
+        gatewayConfig: [
+          5: ""
+        ]
       )
       
-      print(provider.getApiKey())
+      print(portal!.apiKey)
+    } catch ProviderInvalidArgumentError.invalidGatewayUrl {
+      print("The provided gateway URL is not valid")
+    } catch PortalArgumentError.noGatewayConfigForChain(let chainId) {
+      print(String(format: "There is no valid gateway config for chain ID: %d", chainId))
+    } catch {
+      print(error)
     }
-
-    override func didReceiveMemoryWarning() {
-        super.didReceiveMemoryWarning()
-        // Dispose of any resources that can be recreated.
-    }
+  }
 
 }
 
