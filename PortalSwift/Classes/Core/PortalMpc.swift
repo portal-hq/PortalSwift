@@ -197,10 +197,6 @@ public class PortalMpc {
       throw MpcError.unableToWriteToKeychain
     }
     
-//    if (!success) {
-//      throw MpcError.unableToWriteToKeychain
-//    }
-    
     return share
   }
 }
