@@ -12,7 +12,7 @@ public class ICloudStorage: Storage {
   public var api: PortalApi?
   
   override
-  init() {
+  public init() {
     
   }
   
@@ -22,16 +22,16 @@ public class ICloudStorage: Storage {
   
   override
   public func delete() throws -> Bool {
-
+    return true
   }
   
   override
   public func read() throws -> String {
-    
+    return ""
   }
   
   override
   public func write(privateKey: String) throws -> String {
-    
+   return ""
   }
 }

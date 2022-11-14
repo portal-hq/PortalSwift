@@ -63,54 +63,63 @@ public class PortalApi {
   /// Fetch the Portal information for the current client
   ///
   /// ```
-  ///   let client = try portal.api.getClient()
+  /// try portal.api.getClient() {
+  ///   (client: Client) -> Void in
+  ///   // do something with the client
+  /// }
   /// ```
   ///
   /// - Returns: Void
-  public func getClient() throws -> Client {
-    let client: Client = try requests.get(
+  public func getClient(completion: @escaping (Client) -> Void) throws -> Void {
+    try requests.get(
       path: "/api/v1/clients/me",
       headers: [
         "Authorization": String(format: "Bearer %@", apiKey)
       ]
-    )
-    
-    return client
+    ) { (client: Client) -> Void in
+      completion(client)
+    }
   }
   
   /// Fetch a list of enabled dApps
   ///
   /// ```
-  ///   let dapps = try portal.api.getEnabledDapps()
+  /// try portal.api.getEnabledDapps() {
+  ///   (dapps: [Dapp]) -> Void in
+  ///   // do something with the dapp list
+  /// }
   /// ```
   ///
   /// - Returns: [Dapp]
-  public func getEnabledDapps() throws -> [Dapp] {
-    let dapps: [Dapp] = try requests.get(
+  public func getEnabledDapps(completion: @escaping ([Dapp]) -> Void) throws -> Void {
+    try requests.get(
       path: "/api/v1/config/dapps",
       headers: [
         "Authorization": String(format: "Bearer %@", apiKey)
       ]
-    )
-    
-    return dapps
+    ) { (dapps: [Dapp]) -> Void in
+      completion(dapps)
+    }
   }
   
   /// Fetch a list of supported networks
   ///
   /// ```
-  ///   let networks = try portal.api.getSupportedNetworks()
+  /// try portal.api.getSupportedNetworks() {
+  ///   (networks: [ContractNetwork] -> Void in
+  ///   // do something with the network list
+  /// }
   /// ```
   ///
   /// - Returns: [ContractNetwork]
-  public func getSupportedNetworks() throws -> [ContractNetwork] {
-    let networks: [ContractNetwork] = try requests.get(
+  public func getSupportedNetworks(completion: @escaping ([ContractNetwork]) -> Void) throws -> Void {
+    try requests.get(
       path: "/api/v1/config/networks",
       headers: [
         "Authorization": String(format: "Bearer %@", apiKey)
       ]
-    )
-    
-    return networks
+    ) { (networks: [ContractNetwork]) -> Void in
+      completion(networks)
+    }
   }
 }

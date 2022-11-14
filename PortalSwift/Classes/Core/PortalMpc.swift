@@ -34,7 +34,7 @@ private struct RotateResult: Codable {
   public var error: String?
 }
 
-private enum MpcError: Error {
+public enum MpcError: Error {
   case noSigningSharePresent
   case signingRecoveryError(message: String)
   case unableToAuthenticate

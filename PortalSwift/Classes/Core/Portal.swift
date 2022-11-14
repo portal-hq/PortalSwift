@@ -17,6 +17,21 @@ public struct BackupOptions {
   public var gdrive: GDriveStorage?
   public var icloud: ICloudStorage?
   
+  public init(gdrive: GDriveStorage) {
+    self.gdrive = gdrive
+  }
+  
+  public init(icloud: ICloudStorage) {
+    self.icloud = icloud
+  }
+  
+  public init(gdrive: GDriveStorage, icloud: ICloudStorage) {
+    self.gdrive = gdrive
+    self.icloud = icloud
+  }
+  
+  
+  
   subscript(key: String) -> Any? {
     switch(key) {
     case BackupMethods.GoogleDrive.rawValue:
@@ -29,9 +44,20 @@ public struct BackupOptions {
   }
 }
 
-private enum PortalArgumentError: Error {
+public enum PortalArgumentError: Error {
   case invalidGatewayConfig
   case noGatewayConfigForChain(chainId: Int)
+}
+
+/// Determines the appropriate Gateway URL to use for the current chainId
+///
+/// - Returns: The URL to be used for Gateway requests
+private func getGatewayUrl(gatewayConfig: Dictionary<Int, String>, chainId: Int) throws -> String {
+  if (gatewayConfig[chainId] == nil) {
+    throw PortalArgumentError.noGatewayConfigForChain(chainId: chainId)
+  }
+  
+  return gatewayConfig[chainId]!
 }
 
 public class Portal {
@@ -47,7 +73,7 @@ public class Portal {
   public var provider: PortalProvider
   public var gatewayConfig: Dictionary<Int, String>
   
-  init(
+  public init(
     apiKey: String,
     backup: BackupOptions,
     chainId: Int,
@@ -88,7 +114,7 @@ public class Portal {
     }
     
     // Determine the Gateway URL for the current chain
-    let gatewayUrl = try getGatewayUrl()
+    let gatewayUrl = try getGatewayUrl(gatewayConfig: gatewayConfig, chainId: chainId)
     
     // Initialize the PortalProvider
     self.provider = try PortalProvider(
@@ -102,6 +128,7 @@ public class Portal {
       apiKey: apiKey,
       chainId: chainId,
       keychain: keychain,
+      storage: backup,
       gatewayUrl: gatewayUrl,
       isSimulator: isSimulator,
       mpcHost: mpcHost
@@ -135,7 +162,7 @@ public class Portal {
       self.chainId = to
       
       // Get a fresh gatewayUrl
-      let gatewayUrl = try getGatewayUrl()
+      let gatewayUrl = try getGatewayUrl(gatewayConfig: gatewayConfig, chainId: chainId)
 
       // Update MPC
       mpc.chainId = to
@@ -145,16 +172,5 @@ public class Portal {
       provider.chainId = to
       provider.rpc = HttpRequester(baseUrl: gatewayUrl)
     }
-  }
-  
-  /// Determines the appropriate Gateway URL to use for the current chainId
-  ///
-  /// - Returns: The URL to be used for Gateway requests
-  private func getGatewayUrl() throws -> String {
-    if (gatewayConfig[chainId] == nil) {
-      throw PortalArgumentError.noGatewayConfigForChain(chainId: chainId)
-    }
-    
-    return gatewayConfig[chainId]!
   }
 }

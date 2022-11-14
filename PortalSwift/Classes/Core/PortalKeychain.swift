@@ -9,6 +9,8 @@
 import Foundation
 
 public class PortalKeychain {
+  public init() {}
+  
   public func getAddress() throws -> String {
     return ""
   }

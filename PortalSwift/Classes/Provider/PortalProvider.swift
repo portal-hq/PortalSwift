@@ -95,11 +95,11 @@ public enum ETHRequestMethods: String {
   case Web3Sha3 = "web3_sha3"
 }
 
-private enum InvalidArgumentError: Error {
+public enum ProviderInvalidArgumentError: Error {
   case invalidGatewayUrl
 }
 
-private enum ProviderRpcError: Error {
+public enum ProviderRpcError: Error {
   case chainDisconnected
   case disconnected
   case unauthorized
@@ -107,7 +107,7 @@ private enum ProviderRpcError: Error {
   case userRejectedRequest
 }
 
-private enum ProviderSigningError: Error {
+public enum ProviderSigningError: Error {
   case noBindingForSigningApprovalFound
   case userDeclinedApproval
   case walletRequestRejected
@@ -117,6 +117,20 @@ private enum ProviderSigningError: Error {
 public struct ETHRequestPayload: Codable {
   var method: ETHRequestMethods.RawValue
   var params: [String]
+  
+  public init(method: ETHRequestMethods.RawValue, params: [String]) {
+    self.method = method
+    self.params = params
+  }
+}
+
+public struct ETHTransactionParams: Codable {
+  
+}
+
+public struct ETHTransactionPayload: Codable {
+  var method: ETHRequestMethods.RawValue
+  var params: ETHTransactionParams
 }
 
 public struct GatewayRequestPayload: Codable {
@@ -190,11 +204,11 @@ public class PortalProvider {
     self.portal = HttpRequester(baseUrl: apiUrl)
     
     if (gatewayUrl.isEmpty) {
-      throw InvalidArgumentError.invalidGatewayUrl
+      throw ProviderInvalidArgumentError.invalidGatewayUrl
     }
     
     self.portal = HttpRequester(baseUrl: String(format: "https://%@", apiHost))
-    self.signer = MpcSigner()
+    self.signer = MpcSigner(keychain: PortalKeychain())
     self.dispatchConnect()
   }
   
@@ -276,14 +290,18 @@ public class PortalProvider {
   }
   
   public func request(
-    payload: ETHRequestPayload
-  ) throws -> Any {
+    payload: ETHRequestPayload,
+    completion: @escaping (Any) -> Void
+  ) throws -> Void {
     let isSignerMethod = signerMethods.contains(payload.method)
     
     if (!isSignerMethod && payload.method.starts(with: "eth_")) {
-      return try handleGatewayRequest(payload: payload)
+      try handleGatewayRequest(payload: payload) {
+        (result: Any) -> Void in completion(result)
+      }
     } else if (isSignerMethod) {
-      return try handleSigningRequest(payload: payload)
+      let result = try handleSigningRequest(payload: payload)
+      completion(result)
     } else {
       throw ProviderRpcError.unsupportedMethod
     }
@@ -327,16 +345,16 @@ public class PortalProvider {
   }
   
   private func handleGatewayRequest(
-    payload: ETHRequestPayload
-  ) throws -> Any {
-    // TODO: Figure out how to parse types for RPC Calls
-    let result = try rpc.post(
-      path: "",
-      body: GatewayRequestPayload(method: payload.method, params: payload.params),
-      headers: [:]
-    ) as Any
-    
-    return result
+    payload: ETHRequestPayload,
+    completion: @escaping (Any) -> Void
+  ) throws -> Void {
+//    try rpc.post(
+//      path: "",
+//      body: GatewayRequestPayload(method: payload.method, params: payload.params),
+//      headers: [:]
+//    ) { (result: Any) -> Void in
+//      completion(result)
+//    }
   }
   
   private func handleSigningRequest(
@@ -359,7 +377,7 @@ public class PortalProvider {
   }
     
   private func dispatchConnect() -> Void {
-      let hexChainId = String(format:"%02x", chainId)
-      let portalProvider = emit(event: Events.Connect.rawValue, data: ["chaindId": hexChainId])
+    let hexChainId = String(format:"%02x", chainId)
+    _ = emit(event: Events.Connect.rawValue, data: ["chaindId": hexChainId])
   }
 }

@@ -5,12 +5,14 @@ Pod::Spec.new do |s|
 
   s.description      = "Portal's native Swift implementation"
 
-  s.homepage         = 'https://github.com/portal-hq/PortalSwift'
-  s.license          = { :type => 'MIT', :file => 'LICENSE' }
+  s.homepage         = 'https://portalhq.io'
+  s.license          = { :type => 'MIT' }
   s.author           = 'Portal Labs, Inc.'
   s.source           = { :git => 'https://github.com/portal-hq/PortalSwift.git', :tag => s.version.to_s }
 
   s.ios.deployment_target = '10.0'
 
-  s.source_files = '**/*'
+  s.source_files = 'PortalSwift/**/*'
+  
+  s.dependency "GoogleSignIn", "~> 6.2"
 end

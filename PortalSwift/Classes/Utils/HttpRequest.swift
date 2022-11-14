@@ -10,7 +10,10 @@ import Foundation
 import UIKit
 
 private enum HttpError: Error {
-  
+  case clientError
+  case internalServerError
+  case httpError(String)
+  case unknownError
 }
 
 public class HttpRequest<T: Codable, U: Codable> {
@@ -31,7 +34,7 @@ public class HttpRequest<T: Codable, U: Codable> {
     self.url = url
   }
   
-  public func send(completion: @escaping (_ result: T?) -> Void) throws -> Void {
+  public func send(completion: @escaping (T) -> Void) throws -> Void {
     do {
       // Build the request object
       let request = try prepareRequest()
@@ -40,36 +43,34 @@ public class HttpRequest<T: Codable, U: Codable> {
       let task = URLSession.shared.dataTask(with: request) {
         (data, response, error) -> Void in
         
-        // Handle errors
-        if (error != nil) {
-          // TODO: Figure out how to fail here
-          return
-        }
-        
-        // Parse the response and return the properly typed data
-        let httpResponse = response as? HTTPURLResponse
-        
-        // Process the response object
-        if httpResponse?.statusCode == 200 {
-          do {
+        do {
+          // Handle errors
+          if (error != nil) {
+            throw HttpError.httpError(error!.localizedDescription)
+          }
+          
+          // Parse the response and return the properly typed data
+          let httpResponse = response as? HTTPURLResponse
+          
+          if (httpResponse == nil) {
+            throw HttpError.unknownError
+          }
+          
+          // Process the response object
+          if httpResponse?.statusCode == 200 {
             // Decode the response into the appropriate type
             let decoder = JSONDecoder()
             let typedData = try decoder.decode(T.self, from: data!)
             
             // Pass off to the completion closure
-            completion(typedData)
-            
-            return
-          } catch let err {
-            print("[Portal] Error decode HTTPRequest response data: ")
-            print(err)
-            
-            // TODO: Figure out how to fail here
-            return
+            _ = completion(typedData)
+          } else if httpResponse!.statusCode >= 500 {
+            throw HttpError.internalServerError
+          } else if httpResponse!.statusCode >= 400 {
+            throw HttpError.clientError
           }
-        } else {
-          // TODO: Handle non-200 status codes
-          return
+        } catch {
+          print(error)
         }
       }
       
