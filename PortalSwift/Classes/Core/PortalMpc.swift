@@ -191,11 +191,15 @@ public class PortalMpc {
     let jsonEncodedShare = try JSONEncoder().encode(share)
     let stringifiedShare = String(data: jsonEncodedShare, encoding: .utf8)
     
-    let success = try keychain.setSigningShare(signingShare: stringifiedShare!)
-    
-    if (!success) {
+    do {
+      try keychain.setSigningShare(signingShare: stringifiedShare!)
+    } catch {
       throw MpcError.unableToWriteToKeychain
     }
+    
+//    if (!success) {
+//      throw MpcError.unableToWriteToKeychain
+//    }
     
     return share
   }
