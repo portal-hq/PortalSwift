@@ -20,8 +20,8 @@ class ViewController: UIViewController {
   public var portal: Portal?
   
   // Buttons
-  @IBOutlet public var generateButton: UIButton!
   @IBOutlet public var backupButton: UIButton!
+  @IBOutlet public var generateButton: UIButton!
   @IBOutlet public var recoverButton: UIButton!
   
   // Send form
@@ -39,22 +39,22 @@ class ViewController: UIViewController {
     // Dispose of any resources that can be recreated.
   }
   
-  @IBAction func handleBackup(sender: UIButton!) throws -> Void {
+  @IBAction func handleBackup(_ sender: UIButton!) throws -> Void {
     print(String(format: "Tapped button: ", sender))
     _ = try portal?.mpc.backup(method: BackupMethods.GoogleDrive.rawValue)
   }
   
-  @IBAction func handleGenerate(sender: UIButton!) throws -> Void {
+  @IBAction func handleGenerate(_ sender: UIButton!) throws -> Void {
     print(String(format: "Tapped button: ", sender))
     _ = try portal?.mpc.generate()
   }
   
-  @IBAction func handleRecover(sender: UIButton!) throws -> Void {
+  @IBAction func handleRecover(_ sender: UIButton!) throws -> Void {
     print(String(format: "Tapped button: ", sender))
     _ = try portal?.mpc.recover(cipherText: "", method: BackupMethods.GoogleDrive.rawValue)
   }
   
-  @IBAction func handleSend(sender: UIButton!) throws -> Void {
+  @IBAction func handleSend(_ sender: UIButton!) throws -> Void {
     print(String(format: "Tapped button: ", sender))
     let payload = ETHRequestPayload(
       method: "eth_sendTransaction",
@@ -76,7 +76,7 @@ class ViewController: UIViewController {
         chainId: 5,
         keychain: keychain,
         gatewayConfig: [
-          5: ""
+          5: "https://eth-goerli.g.alchemy.com/v2/53va-QZAS8TnaBH3-oBHqcNJtIlygLi-"
         ]
       )
       

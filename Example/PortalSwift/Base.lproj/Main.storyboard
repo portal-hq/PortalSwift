@@ -30,7 +30,7 @@
                                     <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
                                 </buttonConfiguration>
                                 <connections>
-                                    <action selector="handleGenerate" destination="vXZ-lx-hvc" eventType="touchUpInside" id="SEl-IN-jye"/>
+                                    <action selector="handleGenerate:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="V91-S7-0CY"/>
                                 </connections>
                             </button>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="ErE-g3-dsZ">
@@ -44,7 +44,7 @@
                                     <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
                                 </buttonConfiguration>
                                 <connections>
-                                    <action selector="handleBackup" destination="vXZ-lx-hvc" eventType="touchUpInside" id="c3g-0e-v3e"/>
+                                    <action selector="handleBackup:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="XL3-VO-QZu"/>
                                 </connections>
                             </button>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="J4p-Hr-lwd">
@@ -58,7 +58,7 @@
                                     <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
                                 </buttonConfiguration>
                                 <connections>
-                                    <action selector="handleRecover" destination="vXZ-lx-hvc" eventType="touchUpInside" id="6iV-dG-thy"/>
+                                    <action selector="handleRecover:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="CaR-CA-YHA"/>
                                 </connections>
                             </button>
                             <textField opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="248" fixedFrame="YES" contentHorizontalAlignment="left" contentVerticalAlignment="center" borderStyle="roundedRect" placeholder="Address" textAlignment="natural" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="rf6-ZQ-VL3">
@@ -78,14 +78,14 @@
                                     <color key="baseForegroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 </buttonConfiguration>
                                 <connections>
-                                    <action selector="handleSend" destination="vXZ-lx-hvc" eventType="touchUpInside" id="4lz-1p-bkt"/>
+                                    <action selector="handleSend:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="vZv-06-fJd"/>
                                 </connections>
                             </button>
                         </subviews>
                         <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                     </view>
                     <connections>
-                        <outlet property="backupButton" destination="ErE-g3-dsZ" id="uZi-6Y-8Uf"/>
+                        <outlet property="backupButton" destination="ErE-g3-dsZ" id="EzL-j1-u6I"/>
                         <outlet property="generateButton" destination="PLS-JE-WGU" id="KyF-w1-tAO"/>
                         <outlet property="recoverButton" destination="J4p-Hr-lwd" id="Um1-lC-X9R"/>
                         <outlet property="sendAddress" destination="rf6-ZQ-VL3" id="jeB-Fl-Ghp"/>
