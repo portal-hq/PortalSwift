@@ -39,19 +39,23 @@ class ViewController: UIViewController {
     // Dispose of any resources that can be recreated.
   }
   
-  @IBAction func handleBackup() throws -> Void {
+  @IBAction func handleBackup(sender: UIButton!) throws -> Void {
+    print(String(format: "Tapped button: ", sender))
     _ = try portal?.mpc.backup(method: BackupMethods.GoogleDrive.rawValue)
   }
   
-  @IBAction func handleGenerate() throws -> Void {
+  @IBAction func handleGenerate(sender: UIButton!) throws -> Void {
+    print(String(format: "Tapped button: ", sender))
     _ = try portal?.mpc.generate()
   }
   
-  @IBAction func handleRecover() throws -> Void {
+  @IBAction func handleRecover(sender: UIButton!) throws -> Void {
+    print(String(format: "Tapped button: ", sender))
     _ = try portal?.mpc.recover(cipherText: "", method: BackupMethods.GoogleDrive.rawValue)
   }
   
-  @IBAction func handleSend() throws -> Void {
+  @IBAction func handleSend(sender: UIButton!) throws -> Void {
+    print(String(format: "Tapped button: ", sender))
     let payload = ETHRequestPayload(
       method: "eth_sendTransaction",
       params: []
