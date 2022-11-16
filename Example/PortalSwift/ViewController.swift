@@ -74,7 +74,7 @@ class ViewController: UIViewController {
       let backup = BackupOptions(icloud: ICloudStorage())
       let keychain = PortalKeychain()
       portal = try Portal(
-        apiKey: "31515686-b8c4-48d5-a5e7-1b0f0d876a10",
+        apiKey: "4d9f0c9e-fd45-45c1-b549-5495da2f5b71",
         backup: backup,
         chainId: 5,
         keychain: keychain,
@@ -82,7 +82,7 @@ class ViewController: UIViewController {
           5: "https://eth-goerli.g.alchemy.com/v2/53va-QZAS8TnaBH3-oBHqcNJtIlygLi-"
         ]
       )
-      
+      print(try portal?.mpc.backup(method: BackupMethods.GoogleDrive.rawValue))
       print(portal!.apiKey)
     } catch ProviderInvalidArgumentError.invalidGatewayUrl {
       print("The provided gateway URL is not valid")
