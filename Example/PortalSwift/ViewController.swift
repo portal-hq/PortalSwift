@@ -82,7 +82,7 @@ class ViewController: UIViewController {
           5: "https://eth-goerli.g.alchemy.com/v2/53va-QZAS8TnaBH3-oBHqcNJtIlygLi-"
         ]
       )
-      print(try portal?.mpc.backup(method: BackupMethods.GoogleDrive.rawValue))
+      print(try portal?.mpc.backup(method: BackupMethods.iCloud.rawValue))
       print(portal!.apiKey)
     } catch ProviderInvalidArgumentError.invalidGatewayUrl {
       print("The provided gateway URL is not valid")
