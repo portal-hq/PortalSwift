@@ -13,33 +13,29 @@ import GoogleSignIn
 public class GDriveStorage: Storage {
   public var accessToken: String?
   public var api: PortalApi?
-  
-  override
-  public init() {
+
+  public override init() {
     let signInConfig = GIDConfiguration(clientID: "YOUR_IOS_CLIENT_ID")
-    
+
   }
-  
+
   public func assignAccessToken() -> Void {
-    
+
   }
-  
-  override
-  public func delete() throws -> Bool {
+
+  public override func delete() throws -> Bool {
     return true
   }
-  
-  override
-  public func read() throws -> String {
+
+  public override func read() throws -> String {
     return ""
   }
-  
-  override
-  public func write(privateKey: String) throws -> String {
-    return ""
+
+  public override func write(privateKey: String) throws -> Bool {
+    return true
   }
-  
+
   private func signIn() throws -> Void {
-    
+
   }
 }

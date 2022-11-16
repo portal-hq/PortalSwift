@@ -22,16 +22,20 @@ final class ICloudStorageTest: XCTestCase {
     }
 
     func testDelete() throws {
-        _ = try storage!.write(privateKey: "test")
-        XCTAssert(try storage!.delete())
+        let privateKey = "privateKey"
+        _ = try storage!.write(privateKey: privateKey)
+        XCTAssert(try storage!.read() == privateKey)
+        _ = try storage!.delete()
+        XCTAssert(try storage!.read() == "")
     }
 
     func testRead() throws {
-        _ = try storage!.write(privateKey: "test")
-        XCTAssert(try storage!.read() == "test")
+        XCTAssert(try storage!.read() == "")
     }
 
     func testWrite() throws {
-        XCTAssert(try storage!.write(privateKey: "test") == "test")
+        let privateKey = "privateKey"
+        _ = try storage!.write(privateKey: privateKey)
+        XCTAssert(try storage!.read() == privateKey)
     }
 }

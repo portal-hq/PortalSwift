@@ -31,20 +31,6 @@ public class ICloudStorage: Storage {
   public override init() {}
 
   /**
-     Deletes the private key stored in iCloud's key-value store.
-
-     - Returns: A boolean indicating whether the private key was deleted.
-     */
-  public override func delete() throws -> Bool {
-    let key = try self.getKey()
-
-    NSUbiquitousKeyValueStore.default.removeObject(forKey: key)
-    NSUbiquitousKeyValueStore.default.synchronize()
-
-    return true
-  }
-
-  /**
      Reads the private key stored in iCloud's key-value store.
 
      - Returns: The private key stored in iCloud's key-value store.
@@ -64,13 +50,27 @@ public class ICloudStorage: Storage {
 
      - Returns: The private key written to iCloud's key-value store.
      */
-  public override func write(privateKey: String) throws -> String {
+  public override func write(privateKey: String) throws -> Bool {
     let key = try self.getKey()
 
     NSUbiquitousKeyValueStore.default.set(privateKey, forKey: key)
     NSUbiquitousKeyValueStore.default.synchronize()
 
-    return try self.read()
+    return true
+  }
+
+  /**
+     Deletes the private key stored in iCloud's key-value store.
+
+     - Returns: A boolean indicating whether the private key was deleted.
+     */
+  public override func delete() throws -> Bool {
+    let key = try self.getKey()
+
+    NSUbiquitousKeyValueStore.default.removeObject(forKey: key)
+    NSUbiquitousKeyValueStore.default.synchronize()
+
+    return true
   }
 
   /**
