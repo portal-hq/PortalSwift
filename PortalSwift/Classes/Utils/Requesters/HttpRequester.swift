@@ -10,18 +10,18 @@ import Foundation
 
 public struct HttpRequester {
   var baseUrl: String
-  
+
   init(baseUrl: String) {
     self.baseUrl = baseUrl
   }
-  
+
   func handleResponse(
     data: Dictionary<String, AnyObject>,
     response: String?
   ) -> Void {
-    
+
   }
-  
+
   func get<T: Codable>(
     path: String,
     headers: Dictionary<String, String>,
@@ -42,7 +42,7 @@ public struct HttpRequester {
       }
     }
   }
-  
+
   func post<T: Codable, U: Codable>(
     path: String,
     body: U,
@@ -56,7 +56,7 @@ public struct HttpRequester {
       body: body,
       headers: headers
     )
-    
+
     do {
       // Send the HTTP request
       try request.send() { (response: T) -> Void in

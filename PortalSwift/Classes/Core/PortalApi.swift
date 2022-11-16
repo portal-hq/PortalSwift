@@ -50,16 +50,16 @@ public class PortalApi {
   public var apiHost: String
   public var apiKey: String
   public var requests: HttpRequester
-  
+
   init(
     apiKey: String,
-    apiHost: String = "https://api.portalhq.io"
+    apiHost: String = "api.portalhq.io"
   ) {
     self.apiKey = apiKey
     self.apiHost = String(format:"https://%@", apiHost)
     self.requests = HttpRequester(baseUrl: self.apiHost)
   }
-  
+
   /// Fetch the Portal information for the current client
   ///
   /// ```
@@ -80,7 +80,7 @@ public class PortalApi {
       completion(client)
     }
   }
-  
+
   /// Fetch a list of enabled dApps
   ///
   /// ```
@@ -101,7 +101,7 @@ public class PortalApi {
       completion(dapps)
     }
   }
-  
+
   /// Fetch a list of supported networks
   ///
   /// ```
