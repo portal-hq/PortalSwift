@@ -64,6 +64,7 @@
 		468CEC1F1ED6564685600D76F289F8CB /* AppAuthCore.h in Headers */ = {isa = PBXBuildFile; fileRef = F1B9411D5300C77643E5237CC940DBD1 /* AppAuthCore.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		47410143C6FC4CE127EF8EF916A5D3D4 /* GIDAuthentication.m in Sources */ = {isa = PBXBuildFile; fileRef = 25646510D02F728F574222340EC0854D /* GIDAuthentication.m */; };
 		4755041C760B9AA070B8D960D7A0E067 /* GTMSessionFetcher.h in Headers */ = {isa = PBXBuildFile; fileRef = 3E3119D7CD87F1D5C01953BDFD5C97AE /* GTMSessionFetcher.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		479E372E292567740080AEDB /* MockPortalApi.swift in Sources */ = {isa = PBXBuildFile; fileRef = 479E372D292567740080AEDB /* MockPortalApi.swift */; };
 		4816ED359D1CCB98A1C010564EE02C2F /* SafariServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1BD78ACE6B123923D8420D771D862F51 /* SafariServices.framework */; };
 		4845BF5ED5999291320D49E88162F62A /* OIDError.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E7F109778554D08BF19598DB1AAB53B /* OIDError.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		48B1B9E539FE704957CE5D8A1500EFB5 /* OIDAuthState+IOS.m in Sources */ = {isa = PBXBuildFile; fileRef = 630C1EA563733F47F5D1E8A0D23069F4 /* OIDAuthState+IOS.m */; };
@@ -425,6 +426,7 @@
 		438C1DD3B850F5CF82A58E20006BE017 /* OIDURLQueryComponent.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = OIDURLQueryComponent.m; path = Source/AppAuthCore/OIDURLQueryComponent.m; sourceTree = "<group>"; };
 		43EA8EBA4326EB72D3CEA61655D0C45A /* OIDFieldMapping.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = OIDFieldMapping.m; path = Source/AppAuthCore/OIDFieldMapping.m; sourceTree = "<group>"; };
 		44F2DB1BDC25E462DB16109ED57BF4B9 /* UIImage+Compare.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = "UIImage+Compare.m"; path = "FBSnapshotTestCase/Categories/UIImage+Compare.m"; sourceTree = "<group>"; };
+		479E372D292567740080AEDB /* MockPortalApi.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPortalApi.swift; sourceTree = "<group>"; };
 		47E2D84912D96198C149C60011BDFAC5 /* he.lproj */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; name = he.lproj; path = GoogleSignIn/Sources/Strings/he.lproj; sourceTree = "<group>"; };
 		490A132A064D898F8A38D7ADF6A4470C /* GTMSessionFetcher.modulemap */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.module; path = GTMSessionFetcher.modulemap; sourceTree = "<group>"; };
 		495952ABDC76D65DF68B84C1B1C908CF /* fi.lproj */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; name = fi.lproj; path = GoogleSignIn/Sources/Strings/fi.lproj; sourceTree = "<group>"; };
@@ -463,7 +465,7 @@
 		67B5ECEB812C4B573EC3F155FE75476C /* Pods-PortalSwift_Tests-frameworks.sh */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.script.sh; path = "Pods-PortalSwift_Tests-frameworks.sh"; sourceTree = "<group>"; };
 		6ABFEE99E42323CDE403DE5F19F760D8 /* en_GB.lproj */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; name = en_GB.lproj; path = GoogleSignIn/Sources/Strings/en_GB.lproj; sourceTree = "<group>"; };
 		6E089EDEF70A310CA7310F4DB365F3B9 /* Pods-PortalSwift_Tests-dummy.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = "Pods-PortalSwift_Tests-dummy.m"; sourceTree = "<group>"; };
-		6E902DBD0CC21442EAFDF4E2AD2175F4 /* Pods-PortalSwift_Tests */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; name = "Pods-PortalSwift_Tests"; path = Pods_PortalSwift_Tests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		6E902DBD0CC21442EAFDF4E2AD2175F4 /* Pods_PortalSwift_Tests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PortalSwift_Tests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		6FD122EA0AB9AB2A8FFA5F676C795DF0 /* GTMAppAuth */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; name = GTMAppAuth; path = GTMAppAuth.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		70ADA0933AD98C01AFA4A6BD0324A2CC /* GIDMDMPasscodeCache.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = GIDMDMPasscodeCache.m; path = GoogleSignIn/Sources/GIDMDMPasscodeCache.m; sourceTree = "<group>"; };
 		70B4AD4436D79BE1F548623C470041E9 /* GoogleSignIn.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = GoogleSignIn.debug.xcconfig; sourceTree = "<group>"; };
@@ -804,6 +806,7 @@
 		19696E029AC26E71C3C82C753729B9D8 /* PortalSwift */ = {
 			isa = PBXGroup;
 			children = (
+				479E372B292567550080AEDB /* Mocks */,
 				1982E422DC9BB536C169715E409E4FE9 /* Core */,
 				7EB608D8291EF37800CF1346 /* Frameworks */,
 				B727BF5161D293198ABEA76CC73D8978 /* Pod */,
@@ -877,6 +880,22 @@
 			);
 			name = "Support Files";
 			path = "../Target Support Files/AppAuth";
+			sourceTree = "<group>";
+		};
+		479E372B292567550080AEDB /* Mocks */ = {
+			isa = PBXGroup;
+			children = (
+				479E372C2925675E0080AEDB /* Core */,
+			);
+			path = Mocks;
+			sourceTree = "<group>";
+		};
+		479E372C2925675E0080AEDB /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				479E372D292567740080AEDB /* MockPortalApi.swift */,
+			);
+			path = Core;
 			sourceTree = "<group>";
 		};
 		513D9E343461BEB27086BC742393D8EC /* Pods */ = {
@@ -1175,7 +1194,7 @@
 				6FD122EA0AB9AB2A8FFA5F676C795DF0 /* GTMAppAuth */,
 				C1998E0D8085221AD87F89B614C10E52 /* GTMSessionFetcher */,
 				E3E8C13CD2DBF7583BAF5613791D8722 /* Pods-PortalSwift_Example */,
-				6E902DBD0CC21442EAFDF4E2AD2175F4 /* Pods-PortalSwift_Tests */,
+				6E902DBD0CC21442EAFDF4E2AD2175F4 /* Pods_PortalSwift_Tests.framework */,
 				C7611A86025E44D1B60E33479491176A /* PortalSwift.framework */,
 			);
 			name = Products;
@@ -1442,7 +1461,7 @@
 			);
 			name = "Pods-PortalSwift_Tests";
 			productName = Pods_PortalSwift_Tests;
-			productReference = 6E902DBD0CC21442EAFDF4E2AD2175F4 /* Pods-PortalSwift_Tests */;
+			productReference = 6E902DBD0CC21442EAFDF4E2AD2175F4 /* Pods_PortalSwift_Tests.framework */;
 			productType = "com.apple.product-type.framework";
 		};
 		5C642AA10FB29936669CC269F42079C6 /* AppAuth */ = {
@@ -1609,6 +1628,11 @@
 			attributes = {
 				LastSwiftUpdateCheck = 1300;
 				LastUpgradeCheck = 1300;
+				TargetAttributes = {
+					5401213810D38F9D9B86E2681F6132C4 = {
+						LastSwiftMigration = 1410;
+					};
+				};
 			};
 			buildConfigurationList = 4821239608C13582E20E6DA73FD5F1F9 /* Build configuration list for PBXProject "Pods" */;
 			compatibilityVersion = "Xcode 3.2";
@@ -1825,6 +1849,7 @@
 				7031BDE2F7891F5EDB9693387E88A896 /* ICloudStorage.swift in Sources */,
 				7F6781E460190FC8C5ECDF2CFBB2D7B3 /* MpcSigner.swift in Sources */,
 				CD1035D8A5E30274A3E1DBBC33D41C35 /* Portal.swift in Sources */,
+				479E372E292567740080AEDB /* MockPortalApi.swift in Sources */,
 				41301195E1617D44C395832A59F056A3 /* PortalApi.swift in Sources */,
 				73E19CA710E50DF8673E5A1404F9C09E /* PortalKeychain.swift in Sources */,
 				F4A1654199B24C6E9CDA85F07C59ABD7 /* PortalMpc.swift in Sources */,
@@ -2448,6 +2473,7 @@
 			baseConfigurationReference = 1F62C77A1CC9613856D8F3707C37251B /* Pods-PortalSwift_Tests.release.xcconfig */;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = NO;
+				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
@@ -2474,6 +2500,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALIDATE_PRODUCT = YES;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -2635,6 +2662,7 @@
 			baseConfigurationReference = 9D2DF81BFBCD0222F4A0B787CCF38F3E /* Pods-PortalSwift_Tests.debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = NO;
+				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
@@ -2661,6 +2689,8 @@
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
 				VERSION_INFO_PREFIX = "";

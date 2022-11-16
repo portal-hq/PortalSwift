@@ -16,12 +16,12 @@ public class Storage {
   public func delete() throws -> Bool {
     throw StorageError.mustExtendStorageClass
   }
-  
+
   public func read() throws -> String {
     throw StorageError.mustExtendStorageClass
   }
-  
-  public func write(privateKey: String) throws -> String {
+
+  public func write(privateKey: String) throws -> Bool {
     throw StorageError.mustExtendStorageClass
   }
 }
