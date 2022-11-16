@@ -10,10 +10,11 @@ import XCTest
 import PortalSwift
 
 final class PortalMpcTests: XCTestCase {
-//  var portalMpc: PortalMpc
+  var portalMpc: PortalMpc?
 
     override func setUpWithError() throws {
-//      portalMpc = PortalMpc()
+
+      portalMpc = PortalMpc(apiKey: "3d68e265-0d88-41a4-bc8b-142191999061", chainId: 2, keychain: PortalKeychain(), storage: BackupOptions(icloud: ICloudStorage()), gatewayUrl: "https://gatewayUrl.com")
         // Put setup code here. This method is called before the invocation of each test method in the class.
     }
 
@@ -22,13 +23,19 @@ final class PortalMpcTests: XCTestCase {
     }
 
     func testGenerate() throws {
-//      let address = try portalMpc.generate()
+      let address = try portalMpc!.generate()
+      XCTAssert(<#T##expression: Bool##Bool#>)
         // This is an example of a functional test case.
         // Use XCTAssert and related functions to verify your tests produce the correct results.
         // Any test you write for XCTest can be annotated as throws and async.
         // Mark your test throws to produce an unexpected failure when your test encounters an uncaught error.
         // Mark your test async to allow awaiting for asynchronous code to complete. Check the results with assertions afterwards.
     }
+  
+  func testBackup() throws {
+    let cipherText = try portalMpc?.backup(method: BackupMethods.iCloud.rawValue)
+    XCTAssert(cipherText!.count != 0 )
+  }
 
     func testPerformanceExample() throws {
         // This is an example of a performance test case.

@@ -93,7 +93,8 @@ public class PortalMpc {
   private var rsaHeader = "-----BEGIN RSA KEY-----\n"
   private var rsaFooter = "\n-----END RSA KEY-----"
   
-  init(
+  // This probably shouldn't be public
+  public init(
     apiKey: String,
     chainId: Int,
     keychain: PortalKeychain,

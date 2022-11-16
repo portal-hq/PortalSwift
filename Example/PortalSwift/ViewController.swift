@@ -83,6 +83,7 @@ class ViewController: UIViewController {
         ]
       )
       print(try portal?.mpc.backup(method: BackupMethods.iCloud.rawValue))
+      print(try portal?.mpc.sign(method: "eth_sign", params: <#T##String#>))
       print(portal!.apiKey)
     } catch ProviderInvalidArgumentError.invalidGatewayUrl {
       print("The provided gateway URL is not valid")
