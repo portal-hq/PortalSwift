@@ -10,6 +10,10 @@ import Foundation
 
 import GoogleSignIn
 
+public enum GDriveStorageError: Error {
+  case unknownError
+}
+
 public class GDriveStorage: Storage {
   public var accessToken: String?
   public var api: PortalApi?
@@ -23,19 +27,19 @@ public class GDriveStorage: Storage {
 
   }
 
-  public override func delete() throws -> Bool {
-    return true
+  public override func delete(completion: @escaping (Result<Bool>) -> Void) -> Void {
+    return completion(Result(error: GDriveStorageError.unknownError))
   }
 
-  public override func read() throws -> String {
-    return ""
+  public override func read(completion: @escaping (Result<String>) -> Void) -> Void {
+    return completion(Result(data: ""))
   }
 
-  public override func write(privateKey: String) throws -> Bool {
-    return true
+  public override func write(privateKey: String, completion: @escaping (Result<Bool>) -> Void) -> Void {
+    return completion(Result(error: GDriveStorageError.unknownError))
   }
 
-  private func signIn() throws -> Void {
-
+  private func signIn() -> Void {
+    return
   }
 }

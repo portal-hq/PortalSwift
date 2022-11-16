@@ -22,20 +22,46 @@ final class ICloudStorageTest: XCTestCase {
     }
 
     func testDelete() throws {
-        let privateKey = "privateKey"
-        _ = try storage!.write(privateKey: privateKey)
-        XCTAssert(try storage!.read() == privateKey)
-        _ = try storage!.delete()
-        XCTAssert(try storage!.read() == "")
+      let privateKey = "privateKey"
+      storage!.write(privateKey: privateKey) {
+        (result: Result<Bool>) -> Void in
+        
+        do {
+          self.storage!.read() {
+            (result: Result<String>) -> Void in
+            XCTAssert(result.data! == privateKey)
+            
+            self.storage!.delete() {
+              (result: Result<Bool>) -> Void in
+              XCTAssert(result.data! == true)
+              
+              self.storage!.read() {
+                (result: Result<String>) -> Void in
+                XCTAssert(result.data! == "")
+              }
+            }
+          }
+      }
     }
 
     func testRead() throws {
-        XCTAssert(try storage!.read() == "")
+      storage!.read() {
+        (result: Result<String>) -> Void in
+        XCTAssert(result.data! == "")
+      }
     }
 
     func testWrite() throws {
-        let privateKey = "privateKey"
-        _ = try storage!.write(privateKey: privateKey)
-        XCTAssert(try storage!.read() == privateKey)
+      let privateKey = "privateKey"
+      storage!.write(privateKey: privateKey) {
+        (result: Result<Bool>) -> Void in
+          XCTAssert(result.data! == true)
+          
+          self.storage!.read() {
+            (result: Result<String>) -> Void in
+            XCTAssert(result.data! == privateKey)
+          }
+        }
+      }
     }
 }

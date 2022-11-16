@@ -120,6 +120,7 @@
 		7B8662965A406B52E017499708C29093 /* GIDMDMPasscodeState.h in Headers */ = {isa = PBXBuildFile; fileRef = 5EB6805673A93176492D6644EDF42CD4 /* GIDMDMPasscodeState.h */; settings = {ATTRIBUTES = (Project, ); }; };
 		7C67CBD15D9B5D0B7769B2F469478332 /* FBSnapshotTestCase.m in Sources */ = {isa = PBXBuildFile; fileRef = AE56AE1C4286FD02C7B298A7ED694A18 /* FBSnapshotTestCase.m */; };
 		7D02B5B52AEBDF06DA2B08399F64B418 /* GTMSessionUploadFetcher.h in Headers */ = {isa = PBXBuildFile; fileRef = 7F20460EC6633B9230F7E712BFA02097 /* GTMSessionUploadFetcher.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		7E06344E29259384004E23CC /* Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E06344D29259384004E23CC /* Result.swift */; };
 		7EB608DA291EF37800CF1346 /* mpc.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7EB608D9291EF37800CF1346 /* mpc.xcframework */; };
 		7EB608DB291EF38C00CF1346 /* mpc.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7EB608D9291EF37800CF1346 /* mpc.xcframework */; };
 		7EB608DC291EF38C00CF1346 /* mpc.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 7EB608D9291EF37800CF1346 /* mpc.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -486,6 +487,7 @@
 		7C86451E8631CBE895ED5A1F8E929DF1 /* PortalSwift.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = PortalSwift.release.xcconfig; sourceTree = "<group>"; };
 		7D339CE9034D5E14F8D0FCECBF17C61B /* FBSnapshotTestCasePlatform.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = FBSnapshotTestCasePlatform.m; path = FBSnapshotTestCase/FBSnapshotTestCasePlatform.m; sourceTree = "<group>"; };
 		7DEBE39160786975AF0CB3399DF96A38 /* GIDSignInStrings.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = GIDSignInStrings.h; path = GoogleSignIn/Sources/GIDSignInStrings.h; sourceTree = "<group>"; };
+		7E06344D29259384004E23CC /* Result.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Result.swift; sourceTree = "<group>"; };
 		7EB608D9291EF37800CF1346 /* mpc.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = mpc.xcframework; sourceTree = "<group>"; };
 		7F0575BE2BA383CEF487DB18CD24E5A6 /* PortalMpc.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PortalMpc.swift; sourceTree = "<group>"; };
 		7F20460EC6633B9230F7E712BFA02097 /* GTMSessionUploadFetcher.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = GTMSessionUploadFetcher.h; path = Sources/Core/Public/GTMSessionFetcher/GTMSessionUploadFetcher.h; sourceTree = "<group>"; };
@@ -1285,6 +1287,7 @@
 			children = (
 				9FAC37A50350CAFC96707C99A92F8F31 /* HttpRequest.swift */,
 				D532CCDA52631126E18676C0D0938B1F /* Requesters */,
+				7E06344D29259384004E23CC /* Result.swift */,
 			);
 			name = Utils;
 			path = PortalSwift/Classes/Utils;
@@ -1847,6 +1850,7 @@
 				3067F903C33980C62862D664AE88ED2E /* HttpRequest.swift in Sources */,
 				1F6AB0DF6788AB72DE2E3A4C94F8873A /* HttpRequester.swift in Sources */,
 				7031BDE2F7891F5EDB9693387E88A896 /* ICloudStorage.swift in Sources */,
+				7E06344E29259384004E23CC /* Result.swift in Sources */,
 				7F6781E460190FC8C5ECDF2CFBB2D7B3 /* MpcSigner.swift in Sources */,
 				CD1035D8A5E30274A3E1DBBC33D41C35 /* Portal.swift in Sources */,
 				479E372E292567740080AEDB /* MockPortalApi.swift in Sources */,

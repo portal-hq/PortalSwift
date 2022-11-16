@@ -10,10 +10,11 @@ import Foundation
 import UIKit
 
 private enum HttpError: Error {
-  case clientError
-  case internalServerError
+  case clientError(String)
   case httpError(String)
-  case unknownError
+  case internalServerError(String)
+  case nilResponseError
+  case unknownError(String)
 }
 
 public class HttpRequest<T: Codable, U: Codable> {
@@ -34,7 +35,7 @@ public class HttpRequest<T: Codable, U: Codable> {
     self.url = url
   }
 
-  public func send(completion: @escaping (T) -> Void) throws -> Void {
+  public func send(completion: @escaping (Result<T>) -> Void) -> Void {
     do {
       // Build the request object
       let request = try prepareRequest()
@@ -46,14 +47,14 @@ public class HttpRequest<T: Codable, U: Codable> {
         do {
           // Handle errors
           if (error != nil) {
-            throw HttpError.httpError(error!.localizedDescription)
+            return completion(Result(error: HttpError.unknownError(error!.localizedDescription)))
           }
 
           // Parse the response and return the properly typed data
           let httpResponse = response as? HTTPURLResponse
 
           if (httpResponse == nil) {
-            throw HttpError.unknownError
+            return completion(Result(error: HttpError.nilResponseError))
           }
 
           // Process the response object
@@ -63,18 +64,20 @@ public class HttpRequest<T: Codable, U: Codable> {
             let typedData = try decoder.decode(T.self, from: data!)
 
             // Pass off to the completion closure
-            _ = completion(typedData)
+            return completion(Result(data: typedData))
           } else if httpResponse!.statusCode >= 500 {
-            throw HttpError.internalServerError
+            return completion(Result(error: HttpError.internalServerError(httpResponse!.description)))
           } else if httpResponse!.statusCode >= 400 {
-            throw HttpError.clientError
+            return completion(Result(error: HttpError.clientError(httpResponse!.description)))
           }
         } catch {
-          print(error)
+          return completion(Result(error: error))
         }
       }
 
       task.resume()
+    } catch {
+      return completion(Result(error: error))
     }
   }
 

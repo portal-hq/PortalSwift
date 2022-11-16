@@ -116,27 +116,38 @@ public class PortalMpc {
     return ""
   }
   
-  public func recover(cipherText: String, method: BackupMethods.RawValue) throws -> String {
+  public func recover(
+    cipherText: String,
+    method: BackupMethods.RawValue,
+    completion: @escaping (Result<String>) -> Void
+  ) -> Void {
     var storage = self.storage[method] as? Storage
     
     if (storage == nil) {
-      throw MpcError.unsupportedStorageMethod
+      return completion(Result(error: MpcError.unsupportedStorageMethod))
     }
     
-    let backupShare = try getBackupShare(cipherText: cipherText, method: method)
-    let newSigningShare = try recoverSigning(backupShare: backupShare)
-    let jsonSigningShare = try JSONEncoder().encode(newSigningShare)
-    let stringifiedSigningShare = String(data: jsonSigningShare, encoding: .utf8)
-    
-    let newBackupShare = try recoverBackup(signingShare: stringifiedSigningShare!)
-    
-    // TODO:
-    // - Parse newBackupShare
-    // - Encrypt the newBackupShare
-    // - Write the newBackupShare to Cloud Storage
-    // - Return the cipherText
-    
-    return ""
+    getBackupShare(cipherText: cipherText, method: method) {
+      (result: Result<String>) -> Void in
+      
+      do {
+        let newSigningShare = try self.recoverSigning(backupShare: result.data!)
+        let jsonSigningShare = try JSONEncoder().encode(newSigningShare)
+        let stringifiedSigningShare = String(data: jsonSigningShare, encoding: .utf8)
+        
+        let newBackupShare = try self.recoverBackup(signingShare: stringifiedSigningShare!)
+        
+        // TODO:
+        // - Parse newBackupShare
+        // - Encrypt the newBackupShare
+        // - Write the newBackupShare to Cloud Storage
+        // - Return the cipherText
+        
+        return completion(Result(data: ""))
+      } catch {
+        return completion(Result(error: error))
+      }
+    }
   }
   
   private func decryptShare(cipherText: String, privateKey: String) throws -> String {
@@ -149,17 +160,31 @@ public class PortalMpc {
     return ""
   }
   
-  private func getBackupShare(cipherText: String, method: BackupMethods.RawValue) throws -> String {
+  private func getBackupShare(
+    cipherText: String,
+    method: BackupMethods.RawValue,
+    completion: @escaping (Result<String>) -> Void
+  ) -> Void {
     var storage = self.storage[method] as? Storage
 
     if (storage == nil) {
-      throw MpcError.unsupportedStorageMethod
+      return completion(Result(error: MpcError.unsupportedStorageMethod))
     }
 
-    let privateKey = try storage!.read()
-    let backupShare = try decryptShare(cipherText: cipherText, privateKey: privateKey)
-
-    return backupShare
+    storage!.read() {
+      (result: Result<String>) -> Void in
+      if (result.data != nil) {
+        do {
+          let backupShare = try self.decryptShare(cipherText: cipherText, privateKey: result.data!)
+          
+          return completion(Result(data: backupShare))
+        } catch {
+          return completion(Result(error: error))
+        }
+      } else {
+        return completion(result)
+      }
+    }
   }
   
   private func recoverBackup(signingShare: String) throws -> Any { // <-- Have this return an MpcShare
