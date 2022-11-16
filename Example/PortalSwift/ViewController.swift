@@ -41,7 +41,7 @@ class ViewController: UIViewController {
   
   @IBAction func handleBackup(_ sender: UIButton!) throws -> Void {
     print(String(format: "Tapped button: ", sender))
-    _ = try portal?.mpc.backup(method: BackupMethods.GoogleDrive.rawValue)
+    _ = try portal?.mpc.backup(method: BackupMethods.iCloud.rawValue)
   }
   
   @IBAction func handleGenerate(_ sender: UIButton!) throws -> Void {
@@ -51,7 +51,10 @@ class ViewController: UIViewController {
   
   @IBAction func handleRecover(_ sender: UIButton!) throws -> Void {
     print(String(format: "Tapped button: ", sender))
-    _ = try portal?.mpc.recover(cipherText: "", method: BackupMethods.GoogleDrive.rawValue)
+    portal?.mpc.recover(cipherText: "", method: BackupMethods.iCloud.rawValue) {
+      (result: Result<String>) -> Void in
+      print(result)
+    }
   }
   
   @IBAction func handleSend(_ sender: UIButton!) throws -> Void {
@@ -68,7 +71,7 @@ class ViewController: UIViewController {
   
   func registerPortal() -> Void {
     do {
-      let backup = BackupOptions(gdrive: GDriveStorage())
+      let backup = BackupOptions(icloud: ICloudStorage())
       let keychain = PortalKeychain()
       portal = try Portal(
         apiKey: "31515686-b8c4-48d5-a5e7-1b0f0d876a10",

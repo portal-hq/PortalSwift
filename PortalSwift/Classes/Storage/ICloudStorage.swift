@@ -15,6 +15,7 @@ public class ICloudStorage: Storage {
     case noAPIKeyProvided(String)
     case unableToRetrieveClient(String)
     case unableToDeriveKey(String)
+    case unknownError
   }
 
   /// The Portal API instance to retrieve the client's and custodian's IDs.
@@ -35,11 +36,18 @@ public class ICloudStorage: Storage {
 
      - Returns: The private key stored in iCloud's key-value store.
      */
-  public override func read() throws -> String {
-    let key = try self.getKey()
-
-    NSUbiquitousKeyValueStore.default.synchronize()
-    return NSUbiquitousKeyValueStore.default.string(forKey: key) ?? ""
+  public override func read(completion: @escaping (Result<String>) -> Void) -> Void {
+    self.getKey() {
+      (result: Result<String>) -> Void in
+      
+      if (result.data != nil) {
+        NSUbiquitousKeyValueStore.default.synchronize()
+        
+        return completion(Result(data: NSUbiquitousKeyValueStore.default.string(forKey: result.data!) ?? ""))
+      }
+      
+      return completion(result)
+    }
   }
 
   /**
@@ -50,13 +58,21 @@ public class ICloudStorage: Storage {
 
      - Returns: The private key written to iCloud's key-value store.
      */
-  public override func write(privateKey: String) throws -> Bool {
-    let key = try self.getKey()
-
-    NSUbiquitousKeyValueStore.default.set(privateKey, forKey: key)
-    NSUbiquitousKeyValueStore.default.synchronize()
-
-    return true
+  public override func write(privateKey: String, completion: @escaping (Result<Bool>) -> Void) -> Void {
+    self.getKey() {
+      (result: Result<String>) -> Void in
+      
+      if (result.data != nil) {
+        NSUbiquitousKeyValueStore.default.set(privateKey, forKey: result.data!)
+        NSUbiquitousKeyValueStore.default.synchronize()
+        
+        return completion(Result(data: true))
+      } else if (result.error != nil) {
+        return completion(Result(error: result.error!))
+      }
+      
+      return completion(Result(error: ICloudStorageError.unknownError))
+    }
   }
 
   /**
@@ -64,13 +80,21 @@ public class ICloudStorage: Storage {
 
      - Returns: A boolean indicating whether the private key was deleted.
      */
-  public override func delete() throws -> Bool {
-    let key = try self.getKey()
-
-    NSUbiquitousKeyValueStore.default.removeObject(forKey: key)
-    NSUbiquitousKeyValueStore.default.synchronize()
-
-    return true
+  public override func delete(completion: @escaping (Result<Bool>) -> Void) -> Void {
+    self.getKey() {
+      (result: Result<String>) -> Void in
+      
+      if (result.data != nil) {
+        NSUbiquitousKeyValueStore.default.removeObject(forKey: result.data!)
+        NSUbiquitousKeyValueStore.default.synchronize()
+        
+        return completion(Result(data: true))
+      } else if (result.error != nil) {
+        return completion(Result(error: result.error!))
+      }
+      
+      return completion(Result(error: ICloudStorageError.unknownError))
+    }
   }
 
   /**
@@ -78,28 +102,30 @@ public class ICloudStorage: Storage {
 
       - Returns: The key to use for storing/retrieving the private key in iCloud's key-value store.
       */
-  private func getKey() throws -> String {
+  private func getKey(completion: @escaping (Result<String>) -> Void) -> Void {
     if self.key.count > 0 {
-      return self.key
+      return completion(Result(data: self.key))
     }
 
     if self.api == nil {
-      throw ICloudStorageError.noAPIKeyProvided("No API key provided")
+      return completion(Result(error: ICloudStorageError.noAPIKeyProvided("No API key provided")))
     }
 
     do {
-      try self.api!.getClient() { (client: Client) -> Void in
-        self.key = ICloudStorage.hash("\(client.custodian.id)\(client.id)")
+      try self.api!.getClient() { (result: Result<Client>) -> Void in
+        if (result.data != nil) {
+          self.key = ICloudStorage.hash("\(result.data!.custodian.id)\(result.data!.id)")
+          
+          return completion(Result(data: self.key))
+        } else if (result.error != nil) {
+          return completion(Result(error: result.error!))
+        }
+        
+        return completion(Result(error: ICloudStorageError.unknownError))
       }
     } catch {
-      throw ICloudStorageError.unableToRetrieveClient("Unable to retrieve client from API")
+      completion(Result(error: ICloudStorageError.unableToRetrieveClient("Unable to retrieve client from API")))
     }
-
-    if self.key.count == 0 {
-      throw ICloudStorageError.unableToDeriveKey("Unable to derive the key from API")
-    }
-
-    return self.key
   }
 
   /**
