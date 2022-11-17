@@ -84,7 +84,8 @@ class ViewController: UIViewController {
         keychain: keychain,
         gatewayConfig: [
           5: "https://eth-goerli.g.alchemy.com/v2/53va-QZAS8TnaBH3-oBHqcNJtIlygLi-"
-        ]
+        ],
+        autoApprove: true
       )
 
       print(portal!.apiKey)

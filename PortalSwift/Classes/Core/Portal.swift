@@ -120,7 +120,8 @@ public class Portal {
     self.provider = try PortalProvider(
       apiKey: apiKey,
       chainId: chainId,
-      gatewayUrl: gatewayUrl
+      gatewayUrl: gatewayUrl,
+      autoApprove: autoApprove
     )
     
     // Initialize Mpc

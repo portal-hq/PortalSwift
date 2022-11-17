@@ -192,12 +192,14 @@ public class PortalProvider {
     apiKey: String,
     chainId: Chains.RawValue,
     gatewayUrl: String,
-    apiHost: String = "api.portalhq.io"
+    apiHost: String = "api.portalhq.io",
+    autoApprove: Bool
   ) throws {
     // User-defined instance variables
     self.apiKey = apiKey
     self.chainId = chainId
     self.gatewayUrl = gatewayUrl
+    self.autoApprove = autoApprove
     self.rpc = HttpRequester(baseUrl: gatewayUrl)
 
     // Other instance variables
@@ -295,7 +297,7 @@ public class PortalProvider {
   ) throws -> Void {
     let isSignerMethod = signerMethods.contains(payload.method)
 
-    if (!isSignerMethod && payload.method.starts(with: "eth_")) {
+    if (!isSignerMethod && !payload.method.starts(with: "wallet_")) {
       try handleGatewayRequest(payload: payload) {
         (result: Any) -> Void in completion(result)
       }
@@ -308,10 +310,10 @@ public class PortalProvider {
   }
 
     public func setAddress(value: String) -> Void {
-        self.address = value
-        if (self.signer != nil && self.isMPC) {
-            (self.signer as MPCSigner).setAddress(value: value)
-        }
+//        self.address = value
+//        if (self.signer != nil && self.isMPC) {
+//            (self.signer as MPCSigner).setAddress(value: value)
+//        }
     }
 
     public func setChainId(value: Int) -> PortalProvider {
@@ -328,6 +330,7 @@ public class PortalProvider {
     completion: @escaping (_ approved: Bool) throws -> Void
   ) throws -> Void {
     do {
+      print("autoApprove", autoApprove)
       if (autoApprove) {
         try completion(true)
       } else if (events[Events.PortalSigningRequested.rawValue] == nil) {
