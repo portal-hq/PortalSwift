@@ -30,7 +30,7 @@ class ViewController: UIViewController {
 
   override func viewDidLoad() {
     super.viewDidLoad()
-
+    registerPortal()
     injectWebView()
   }
 
@@ -78,7 +78,7 @@ class ViewController: UIViewController {
       let backup = BackupOptions(icloud: ICloudStorage())
       let keychain = PortalKeychain()
       portal = try Portal(
-        apiKey: "4d9f0c9e-fd45-45c1-b549-5495da2f5b71",
+        apiKey: "bd0b7fba-6a47-440f-bdb6-cbcbb7f6562e",
         backup: backup,
         chainId: 5,
         keychain: keychain,
@@ -88,6 +88,9 @@ class ViewController: UIViewController {
       )
 
       print(portal!.apiKey)
+//      try portal!.mpc.generate()
+      portal?.address = try portal?.keychain.getAddress()
+      
     } catch ProviderInvalidArgumentError.invalidGatewayUrl {
       print("The provided gateway URL is not valid")
     } catch PortalArgumentError.noGatewayConfigForChain(let chainId) {
@@ -98,7 +101,7 @@ class ViewController: UIViewController {
   }
 
   func injectWebView() {
-    let webViewController = WebViewController()
+    let webViewController = WebViewController(portal: portal!)
 
     // install the WebViewController as a child view controller
     addChildViewController(webViewController)

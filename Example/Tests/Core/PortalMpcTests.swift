@@ -23,29 +23,29 @@ final class PortalMpcTests: XCTestCase {
         // Put teardown code here. This method is called after the invocation of each test method in the class.
     }
 
-    func testGenerate() throws {
-      let address = try portalMpc!.generate()
-//      XCTAssert(<#T##expression: Bool##Bool#>)
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-        // Any test you write for XCTest can be annotated as throws and async.
-        // Mark your test throws to produce an unexpected failure when your test encounters an uncaught error.
-        // Mark your test async to allow awaiting for asynchronous code to complete. Check the results with assertions afterwards.
-    }
+//    func testGenerate() throws {
+//      let address = try portalMpc!.generate()
+////      XCTAssert(<#T##expression: Bool##Bool#>)
+//        // This is an example of a functional test case.
+//        // Use XCTAssert and related functions to verify your tests produce the correct results.
+//        // Any test you write for XCTest can be annotated as throws and async.
+//        // Mark your test throws to produce an unexpected failure when your test encounters an uncaught error.
+//        // Mark your test async to allow awaiting for asynchronous code to complete. Check the results with assertions afterwards.
+//    }
   
-  func testBackupAndRecover() throws {
-    portalMpc!.backup(method: BackupMethods.iCloud.rawValue) {
-      (result: Result<String>) -> Void in
-      print("Data: ", result.data)
-      print("Error: ", result.error)
-      portalMpc!.recover(cipherText: result.data!, method: BackupMethods.iCloud.rawValue) {
-        (result: Result<String>) -> Void in
-        print("Data: in recover", result.data)
-        print("Error: in recover ", result.error)
-      }
-    }
-
-  }
+//  func testBackupAndRecover() throws {
+//    portalMpc!.backup(method: BackupMethods.iCloud.rawValue) {
+//      (result: Result<String>) -> Void in
+//      print("Data: ", result.data)
+//      print("Error: ", result.error)
+//      portalMpc!.recover(cipherText: result.data!, method: BackupMethods.iCloud.rawValue) {
+//        (result: Result<String>) -> Void in
+//        print("Data: in recover", result.data)
+//        print("Error: in recover ", result.error)
+//      }
+//    }
+//
+//  }
   
   func testRecover() throws {
     
