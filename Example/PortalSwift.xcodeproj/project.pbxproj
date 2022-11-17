@@ -16,6 +16,7 @@
 		607FACEC1AFB9204008FA782 /* Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FACEB1AFB9204008FA782 /* Tests.swift */; };
 		A9147DADD1E43490C26F8829 /* Pods_PortalSwift_Example.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 29723E6FD45D32C23A9F4F69 /* Pods_PortalSwift_Example.framework */; };
 		B96417820F7757FB7C9962DE /* Pods_PortalSwift_Tests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4648C35B0F07F04812A2F611 /* Pods_PortalSwift_Tests.framework */; };
+		F9C94B422923F87E00DFD461 /* PortalMpcTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9C94B412923F87E00DFD461 /* PortalMpcTests.swift */; };
 		F9F2E2F72922F09B0016B90D /* PortalKeychainTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9F2E2F62922F09B0016B90D /* PortalKeychainTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -52,6 +53,7 @@
 		607FACEB1AFB9204008FA782 /* Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests.swift; sourceTree = "<group>"; };
 		7EB608D3291EF2F000CF1346 /* PortalSwift.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = PortalSwift.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		E432DE04613E5E5869FDCD55 /* Pods-PortalSwift_Example.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PortalSwift_Example.debug.xcconfig"; path = "Target Support Files/Pods-PortalSwift_Example/Pods-PortalSwift_Example.debug.xcconfig"; sourceTree = "<group>"; };
+		F9C94B412923F87E00DFD461 /* PortalMpcTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalMpcTests.swift; sourceTree = "<group>"; };
 		F9F2E2F62922F09B0016B90D /* PortalKeychainTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalKeychainTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -181,6 +183,7 @@
 			isa = PBXGroup;
 			children = (
 				F9F2E2F62922F09B0016B90D /* PortalKeychainTests.swift */,
+				F9C94B412923F87E00DFD461 /* PortalMpcTests.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -395,6 +398,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				607FACEC1AFB9204008FA782 /* Tests.swift in Sources */,
+				F9C94B422923F87E00DFD461 /* PortalMpcTests.swift in Sources */,
 				F9F2E2F72922F09B0016B90D /* PortalKeychainTests.swift in Sources */,
 				4766B0CE2922EDD80072C85E /* ICloudStorage.swift in Sources */,
 			);
