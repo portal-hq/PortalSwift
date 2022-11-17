@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		475984932926C09300405C7D /* WebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 475984922926C09300405C7D /* WebViewController.swift */; };
+		475984952926C0FD00405C7D /* WebView.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 475984942926C0FD00405C7D /* WebView.storyboard */; };
 		4766B0CE2922EDD80072C85E /* ICloudStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4766B0CD2922EDD80072C85E /* ICloudStorage.swift */; };
 		607FACD61AFB9204008FA782 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FACD51AFB9204008FA782 /* AppDelegate.swift */; };
 		607FACD81AFB9204008FA782 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FACD71AFB9204008FA782 /* ViewController.swift */; };
@@ -38,6 +40,8 @@
 		359FCB6C7A51B84D8283B50D /* README.md */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = net.daringfireball.markdown; name = README.md; path = ../README.md; sourceTree = "<group>"; };
 		37221617F625AA0FF0DB854C /* Pods-PortalSwift_Tests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PortalSwift_Tests.debug.xcconfig"; path = "Target Support Files/Pods-PortalSwift_Tests/Pods-PortalSwift_Tests.debug.xcconfig"; sourceTree = "<group>"; };
 		4648C35B0F07F04812A2F611 /* Pods_PortalSwift_Tests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PortalSwift_Tests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		475984922926C09300405C7D /* WebViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewController.swift; sourceTree = "<group>"; };
+		475984942926C0FD00405C7D /* WebView.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = WebView.storyboard; sourceTree = "<group>"; };
 		4766B0CD2922EDD80072C85E /* ICloudStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ICloudStorage.swift; sourceTree = "<group>"; };
 		4766B0CF292304BB0072C85E /* PortalSwift_Example.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PortalSwift_Example.entitlements; sourceTree = "<group>"; };
 		57121DAE6093704B6C653083 /* Pods-PortalSwift_Example.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PortalSwift_Example.release.xcconfig"; path = "Target Support Files/Pods-PortalSwift_Example/Pods-PortalSwift_Example.release.xcconfig"; sourceTree = "<group>"; };
@@ -116,6 +120,8 @@
 				607FACDC1AFB9204008FA782 /* Images.xcassets */,
 				607FACDE1AFB9204008FA782 /* LaunchScreen.xib */,
 				607FACD31AFB9204008FA782 /* Supporting Files */,
+				475984922926C09300405C7D /* WebViewController.swift */,
+				475984942926C0FD00405C7D /* WebView.storyboard */,
 			);
 			name = "Example for PortalSwift";
 			path = PortalSwift;
@@ -279,6 +285,7 @@
 			files = (
 				607FACDB1AFB9204008FA782 /* Main.storyboard in Resources */,
 				607FACE01AFB9204008FA782 /* LaunchScreen.xib in Resources */,
+				475984952926C0FD00405C7D /* WebView.storyboard in Resources */,
 				607FACDD1AFB9204008FA782 /* Images.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -389,6 +396,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				607FACD81AFB9204008FA782 /* ViewController.swift in Sources */,
+				475984932926C09300405C7D /* WebViewController.swift in Sources */,
 				607FACD61AFB9204008FA782 /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
