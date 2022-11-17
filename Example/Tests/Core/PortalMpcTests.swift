@@ -24,7 +24,7 @@ final class PortalMpcTests: XCTestCase {
 
     func testGenerate() throws {
       let address = try portalMpc!.generate()
-      XCTAssert(<#T##expression: Bool##Bool#>)
+//      XCTAssert(<#T##expression: Bool##Bool#>)
         // This is an example of a functional test case.
         // Use XCTAssert and related functions to verify your tests produce the correct results.
         // Any test you write for XCTest can be annotated as throws and async.
@@ -33,8 +33,12 @@ final class PortalMpcTests: XCTestCase {
     }
   
   func testBackup() throws {
-    let cipherText = try portalMpc?.backup(method: BackupMethods.iCloud.rawValue)
-    XCTAssert(cipherText!.count != 0 )
+    portalMpc?.backup(method: BackupMethods.iCloud.rawValue)  {
+      (result: Result<String>) -> Void in
+      print(result.data)
+      print(result.error)
+    }
+
   }
 
     func testPerformanceExample() throws {

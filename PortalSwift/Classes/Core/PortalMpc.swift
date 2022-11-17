@@ -70,6 +70,7 @@ public enum MpcError: Error {
   case unableToAuthenticate
   case unableToWriteToKeychain
   case unsupportedStorageMethod
+  case failedToGetBackupFromStorage
 }
 
 public enum RsaError: Error {
@@ -118,40 +119,49 @@ public class PortalMpc {
   /// Creates a backup share, encrypts it, stores the private key in cloud storage, returns the cipherText of the encrypted share.
   /// - Parameter method: either gdrive or icloud
   /// - Returns: cipherText of the encrypted backup share
-  public func backup(method: BackupMethods.RawValue) throws -> String {
-    let signingShare = try keychain.getSigningShare()
-    let storage = self.storage[method] as? Storage
+  public func backup(method: BackupMethods.RawValue, completion: @escaping (Result<String>) -> Void) -> Void {
+    do {
+      let signingShare = try keychain.getSigningShare()
+      let storage = self.storage[method] as? Storage
 
-    if (storage == nil) {
-      throw MpcError.unsupportedStorageMethod
-    }
-
-    if (method == BackupMethods.GoogleDrive.rawValue) {
-      (storage as! GDriveStorage).assignAccessToken()
-
-      if ((storage as! GDriveStorage).accessToken == nil) {
-        throw MpcError.unableToAuthenticate
+      if (storage == nil) {
+        return completion(Result(error: MpcError.unsupportedStorageMethod))
       }
+
+      if (method == BackupMethods.GoogleDrive.rawValue) {
+        (storage as! GDriveStorage).assignAccessToken()
+
+        if ((storage as! GDriveStorage).accessToken == nil) {
+          return completion(Result(error: MpcError.unableToAuthenticate))
+        }
+      }
+      
+      let res = ClientBackup(apiKey, mpcHost, signingShare)
+      
+      let jsonData = res.data(using: .utf8)!
+      let rotateResult: RotateResult  = try JSONDecoder().decode(RotateResult.self, from: jsonData)
+      guard rotateResult.error == "" else {
+        return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: rotateResult.error!)))
+      }
+      
+      let backupShare = rotateResult.data!.share
+      
+      var signingShareJson = try JSONParseShare(shareString: signingShare)
+      signingShareJson.share = backupShare
+      
+      let encryptedResult = try encryptShare(mpcShare: signingShareJson)
+      
+      storage?.write(privateKey: encryptedResult.privateKey)  {
+        (result: Result<Bool>) -> Void in
+        if !result.data! {
+          return completion(Result(error: result.error!))
+        }
+      }
+      return completion(Result(data: encryptedResult.cipherText))
+    } catch {
+      return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: "Backup failed")))
     }
     
-    let res = ClientBackup(apiKey, mpcHost, signingShare)
-    
-    let jsonData = res.data(using: .utf8)!
-    let rotateResult: RotateResult  = try JSONDecoder().decode(RotateResult.self, from: jsonData)
-    guard rotateResult.error == "" else {
-      throw MpcError.unexpectedErrorOnBackup(message: rotateResult.error!)
-    }
-    
-    let backupShare = rotateResult.data!.share
-    
-    var signingShareJson = try JSONParseShare(shareString: signingShare)
-    signingShareJson.share = backupShare
-    
-    let encryptedResult = try encryptShare(mpcShare: signingShareJson)
-    
-    try storage?.write(privateKey: encryptedResult.privateKey)
-        
-    return encryptedResult.cipherText
   }
   
   /// Generates an mpc wallet and signing share for a client
@@ -207,7 +217,7 @@ public class PortalMpc {
     method: BackupMethods.RawValue,
     completion: @escaping (Result<String>) -> Void
   ) -> Void {
-    var storage = self.storage[method] as? Storage
+    let storage = self.storage[method] as? Storage
     
     if (storage == nil) {
       return completion(Result(error: MpcError.unsupportedStorageMethod))
@@ -217,17 +227,22 @@ public class PortalMpc {
       (result: Result<String>) -> Void in
       
       do {
+        guard result.error == nil else {
+          return completion(Result(error: result.error!))
+        }
         let newSigningShare = try self.recoverSigning(backupShare: result.data!)
         let jsonSigningShare = try JSONEncoder().encode(newSigningShare)
         let stringifiedSigningShare = String(data: jsonSigningShare, encoding: .utf8)
         
         let newBackupShare = try self.recoverBackup(signingShare: stringifiedSigningShare!)
+        let encryptedResult = try self.encryptShare(mpcShare: newBackupShare)
         
-        let newBackupShare = try recoverBackup(signingShare: stringifiedSigningShare!)
-        let encryptedResult = try encryptShare(mpcShare: newBackupShare)
-        
-        try storage?.write(privateKey: encryptedResult.privateKey)
- 
+        storage?.write(privateKey: encryptedResult.privateKey)  {
+          (result: Result<Bool>) -> Void in
+          if !result.data! {
+            return completion(Result(error: result.error!))
+          }
+        }
         
         return completion(Result(data: encryptedResult.cipherText))
       } catch {
@@ -242,6 +257,7 @@ public class PortalMpc {
   ///   - privateKey: a base64 encoded string; PEM key format
   /// - Returns: a string of the backupShare object
   private func decryptShare(cipherText: String, privateKey: String) throws -> String {
+    print(cipherText)
     let algorithm: SecKeyAlgorithm = .rsaEncryptionOAEPSHA512AESGCM
     
     let options: [String: Any] = [kSecAttrKeyType as String: kSecAttrKeyTypeRSA,
@@ -269,6 +285,7 @@ public class PortalMpc {
                                                     &decryptError) as Data? else {
                                                         throw decryptError!.takeRetainedValue() as Error
     }
+    print("Clear Text", String(data: clearText, encoding: .utf8)!)
     return String(data: clearText, encoding: .utf8)!
                   
   }
@@ -335,7 +352,7 @@ public class PortalMpc {
     method: BackupMethods.RawValue,
     completion: @escaping (Result<String>) -> Void
   ) -> Void {
-    var storage = self.storage[method] as? Storage
+    let storage = self.storage[method] as? Storage
     
     if (storage == nil) {
       return completion(Result(error: MpcError.unsupportedStorageMethod))
@@ -345,6 +362,9 @@ public class PortalMpc {
       (result: Result<String>) -> Void in
       if (result.data != nil) {
         do {
+          print("about to call decrypt")
+          
+          print(result.data!)
           let backupShare = try self.decryptShare(cipherText: cipherText, privateKey: result.data!)
           
           return completion(Result(data: backupShare))
@@ -352,14 +372,14 @@ public class PortalMpc {
           return completion(Result(error: error))
         }
       } else {
-        return completion(result)
+        return completion(Result(error: MpcError.failedToGetBackupFromStorage))
       }
     }
   }
   
   /// uses the signing share to create a new backup share and returns that share in json format
   /// - Parameter signingShare: the stringied share
-  /// - Returns: <#description#>
+  /// - Returns: the backup share
   private func recoverBackup(signingShare: String) throws -> MpcShare {
     let res = ClientRecoverBackup(apiKey, mpcHost, signingShare)
     
@@ -378,7 +398,9 @@ public class PortalMpc {
   /// - Returns: the new signing share
   private func recoverSigning(backupShare: String) throws -> MpcShare {
     var share = try JSONDecoder().decode(MpcShare.self, from: backupShare.data(using: .utf8)!)
+    print(type(of: backupShare))
     let result = ClientRecoverSigning(apiKey, mpcHost, backupShare)
+    print(result)
     let rotateResult = try JSONDecoder().decode(RotateResult.self, from: result.data(using: .utf8)!)
     
     if (rotateResult.error != nil) {
