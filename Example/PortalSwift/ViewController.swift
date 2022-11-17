@@ -89,7 +89,7 @@ class ViewController: UIViewController {
 
       print(portal!.apiKey)
 //      try portal!.mpc.generate()
-      portal?.address = try portal?.keychain.getAddress()
+//      portal?.address = try portal?.keychain.getAddress()
       
     } catch ProviderInvalidArgumentError.invalidGatewayUrl {
       print("The provided gateway URL is not valid")
