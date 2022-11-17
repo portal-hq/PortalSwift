@@ -112,11 +112,14 @@ class WebViewController: UIViewController, WKNavigationDelegate, WKScriptMessage
   // MARK: - WKScriptMessageHandler
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
       do {
-        let body: PortalMessageBody = try JSONDecoder().decode(PortalMessageBody.self, from: message.body as! Data)
+        let bodyString = message.body as? String
+        let bodyData = bodyString!.data(using: .utf8)!
+        let body: PortalMessageBody = try JSONDecoder().decode(PortalMessageBody.self, from: bodyData)
 
         switch body.type as String {
           case "portal_sign":
             do {
+              print("body", body)
               try portal.provider.request(payload: ETHRequestPayload(method: body.data.method, params: body.data.params)) { (result: Any) -> Void in
                 print("result", result)
               }
