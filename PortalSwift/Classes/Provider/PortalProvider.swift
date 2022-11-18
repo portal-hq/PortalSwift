@@ -117,10 +117,17 @@ public enum ProviderSigningError: Error {
 public struct ETHRequestPayload: Codable {
   var method: ETHRequestMethods.RawValue
   var params: [String]
+  var signature: String?
 
   public init(method: ETHRequestMethods.RawValue, params: [String]) {
     self.method = method
     self.params = params
+  }
+
+  public init(method: ETHRequestMethods.RawValue, params: [String], signature: String) {
+    self.method = method
+    self.params = params
+    self.signature = signature
   }
 }
 
@@ -299,11 +306,11 @@ public class PortalProvider {
 
     if (!isSignerMethod && !payload.method.starts(with: "wallet_")) {
       try handleGatewayRequest(payload: payload) {
-        (result: Any) -> Void in completion(result)
+        (result: Any) -> Void in completion(ETHRequestPayload(method: payload.method, params: payload.params, signature: result as! String))
       }
     } else if (isSignerMethod) {
       let result = try handleSigningRequest(payload: payload)
-      completion(result)
+      completion(ETHRequestPayload(method: payload.method, params: payload.params, signature: result as! String))
     } else {
       throw ProviderRpcError.unsupportedMethod
     }

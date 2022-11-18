@@ -39,6 +39,11 @@ public struct SignData: Codable {
   public var S: String
 }
 
+public struct SignResult: Codable {
+  public var data: String?
+  public var error: String?
+}
+
 private struct GenerateResult: Codable {
   public var data: GenerateData?
   public var error: String?
@@ -46,11 +51,6 @@ private struct GenerateResult: Codable {
 
 private struct RotateResult: Codable {
   public var data: RotateData?
-  public var error: String?
-}
-
-private struct SignResult: Codable {
-  public var data: SignData?
   public var error: String?
 }
 
@@ -187,24 +187,24 @@ public class PortalMpc {
     return address
   }
   
-  /// Signs a message using mpc
-  /// - Parameters:
-  ///   - method: the specific rpc method to use when signing
-  ///   - params: specific params for the corresponding rpc method
-  /// - Returns: the R and S values of the signature
-  public func sign(method: String, params: String) throws -> SignData {
-    let signingShare = try keychain.getSigningShare()
-    
-    let res = ClientSign(apiKey, mpcHost, signingShare, method, params, gatewayUrl, String(chainId))
-
-    let jsonData = res.data(using: .utf8)!
-    let signResult: SignResult = try JSONDecoder().decode(SignResult.self, from: jsonData)
-    guard signResult.error == "" else {
-      throw MpcError.unexpectedErrorOnSign(message: signResult.error!)
-    }
-    
-    return SignData(R: signResult.data!.R, S: signResult.data!.S)
-  }
+//  /// Signs a message using mpc
+//  /// - Parameters:
+//  ///   - method: the specific rpc method to use when signing
+//  ///   - params: specific params for the corresponding rpc method
+//  /// - Returns: the R and S values of the signature
+//  public func sign(method: String, params: String) throws -> String {
+//    let signingShare = try keychain.getSigningShare()
+//
+//    let res = ClientSign(apiKey, mpcHost, signingShare, method, params, gatewayUrl, String(chainId))
+//
+//    let jsonData = res.data(using: .utf8)!
+//    let signResult: SignResult = try JSONDecoder().decode(SignResult.self, from: jsonData)
+//    guard signResult.error == "" else {
+//      throw MpcError.unexpectedErrorOnSign(message: signResult.error!)
+//    }
+//
+//    return signResult.data!
+//  }
   
   /// Uses the backup share to create a new signing share and a new backup share, encrypts the new backup share, stores the private key in cloud storage
   /// - Parameters:

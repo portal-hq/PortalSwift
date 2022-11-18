@@ -39,11 +39,11 @@ class MpcSigner {
     case "eth_accounts":
         return [self.address]
     default :
-      let address = try keychain.getAddress()
+      _ = try keychain.getAddress()
       let signingShare = try keychain.getSigningShare()
       let jsonParams = try JSONSerialization.data(withJSONObject: payload.params, options: .prettyPrinted)
       
-      return ClientSign(
+      let clientSignResult = ClientSign(
         provider.getApiKey(),
         mpcUrl,
         signingShare,
@@ -52,6 +52,14 @@ class MpcSigner {
         provider.gatewayUrl,
         String(provider.chainId)
       )
+      
+      let jsonData = clientSignResult.data(using: .utf8)!
+      let signResult: SignResult = try JSONDecoder().decode(SignResult.self, from: jsonData)
+      guard signResult.error == "" else {
+        throw MpcError.unexpectedErrorOnSign(message: signResult.error!)
+      }
+      
+      return signResult.data!
     }
   }
 }
