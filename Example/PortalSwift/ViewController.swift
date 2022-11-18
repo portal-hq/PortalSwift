@@ -36,104 +36,99 @@ class ViewController: UIViewController {
   @IBOutlet public var generateButton: UIButton!
   @IBOutlet public var backupButton: UIButton!
   @IBOutlet public var recoverButton: UIButton!
-  
+
   // Send form
   @IBOutlet public var sendAddress: UITextField!
   @IBOutlet public var sendButton: UIButton!
   @IBOutlet public var username: UITextField!
   public var user: UserResult?
-  
-  
+
+
   override func viewDidLoad() {
     super.viewDidLoad()
     //    registerPortal()
     //    injectWebView()
   }
-  
+
   override func didReceiveMemoryWarning() {
     super.didReceiveMemoryWarning()
     // Dispose of any resources that can be recreated.
   }
-  
+
   @IBAction func handleSignIn(_ sender: UIButton) {
     signIn(username: username.text!) {
       (user: UserResult) -> Void in
-      print(user.clientApiKey)
+      print("Signed in: API key:", user.clientApiKey)
       self.user = user
       self.registerPortal(apiKey: user.clientApiKey)
     }
   }
-  
+
   @IBAction func handleWebview(_ sender: UIButton) {
     injectWebView()
   }
   @IBAction func handleSignup(_ sender: UIButton) {
     signUp(username: username.text!) {
       (user: UserResult) -> Void in
-      print(user.clientApiKey)
+      print("Signed up: API key:", user.clientApiKey)
       self.user = user
       self.registerPortal(apiKey: user.clientApiKey)
     }
-    
+
   }
-  
+
   @IBAction func handleBackup(_ sender: UIButton!) {
-    print(String(format: "Tapped button: ", sender))
     _ = portal?.mpc.backup(method: BackupMethods.iCloud.rawValue)  {
       (result: Result<String>) -> Void in
       if (result.error != nil) {
         print(result.error)
       } else {
-        print("CipherText", result.data!)
-        
+        print("Backup successful: Cipher text:", result.value)
+
         var request = HttpRequest<String, [String : String]>(
           url: self.CUSTODIAN_SERVER_URL + "/mobile/\(self.user!.exchangeUserId)/cipher-text",
           method: "POST",
           body: ["cipherText": result.data!],
           headers: ["Content-Type": "application/json"], isString: true)
-        
+
         request.send() {
           (result: Result<String>) in
-          print("Sent the cipher text", result.data)
-          print("Error in sending the cipherText", result.error)
+          print("Sent the cipher text:")
+          print("Error in sending the cipherText:", result.error)
         }
 
       }
 
     }
   }
-  
+
   @IBAction func generatePressed(_ sender: UIButton!) {
-    print(String(format: "Tapped button: ", sender))
     handleGenerate()
   }
-  
-  
+
+
   @IBAction func handleRecover(_ sender: UIButton!) {
-    print(String(format: "Tapped button: ", sender))
-    
     var request = HttpRequest<CipherTextResult, [String : String]>(
       url: self.CUSTODIAN_SERVER_URL + "/mobile/\(self.user!.exchangeUserId)/cipher-text/fetch",
       method: "GET", body:[:],
       headers: ["Content-Type": "application/json"],isString: false)
-    
+
     request.send() {
       (result: Result<CipherTextResult>) in
-      
-      print("Data in recover", result.data)
-      print("error in recover", result.error)
+
+      print("Sent recover request:", result.data)
+      print("Error in sending the recover request:", result.error)
       self.portal?.mpc.recover(cipherText: result.data!.cipherText, method: BackupMethods.iCloud.rawValue) {
         (result: Result<String>) -> Void in
-        print("Recovered the keys", result)
+        print("Recovered the keys:", result)
       }
     }
   }
-  
+
   @IBAction func sendPressed(_ sender: UIButton!) {
-    print(String(format: "Tapped button: ", sender))
     handleSend()
   }
-  
+
   func handleSend() {
     let payload = ETHRequestPayload(
       method: "eth_sendTransaction",
@@ -147,9 +142,9 @@ class ViewController: UIViewController {
     } catch {
       print("Error in send \(error)")
     }
-    
+
   }
-  
+
   func handleGenerate() {
     do {
       var address = try portal?.mpc.generate()
@@ -159,7 +154,7 @@ class ViewController: UIViewController {
       print("Error in generate \(error)")
     }
   }
-  
+
   func registerPortal(apiKey: String) -> Void {
     do {
       let backup = BackupOptions(icloud: ICloudStorage())
@@ -174,11 +169,6 @@ class ViewController: UIViewController {
         ],
         autoApprove: true
       )
-      
-      print(portal!.apiKey)
-//      try portal!.mpc.generate()
-//     print(try portal?.keychain.getAddress())
-
     } catch ProviderInvalidArgumentError.invalidGatewayUrl {
       print("The provided gateway URL is not valid")
     } catch PortalArgumentError.noGatewayConfigForChain(let chainId) {
@@ -187,42 +177,41 @@ class ViewController: UIViewController {
       print(error)
     }
   }
-  
+
   func injectWebView() {
     let webViewController = WebViewController(portal: portal!)
-    
+
     // install the WebViewController as a child view controller
     addChildViewController(webViewController)
-    
+
     let webViewControllerView = webViewController.view!
-    
+
     view.addSubview(webViewControllerView)
-    
+
     webViewControllerView.translatesAutoresizingMaskIntoConstraints = false
     webViewControllerView.topAnchor.constraint(equalTo: view.topAnchor).isActive = true
     webViewControllerView.bottomAnchor.constraint(equalTo: view.bottomAnchor).isActive = true
     webViewControllerView.leftAnchor.constraint(equalTo: view.leftAnchor).isActive = true
     webViewControllerView.rightAnchor.constraint(equalTo: view.rightAnchor).isActive = true
-    
+
     webViewController.didMove(toParentViewController: self)
   }
-  
-  
+
+
   func signIn(username: String, completionHandler: @escaping (UserResult) -> Void) {
     let request = HttpRequest<UserResult, [String : String]>(url: CUSTODIAN_SERVER_URL + "/mobile/login", method: "POST", body: ["username": username], headers: ["Content-Type": "application/json"])
-    
+
     request.send() {
       (result: Result<UserResult>) in
       completionHandler(result.data!)
     }
   }
-  
+
   func signUp(username: String, completionHandler: @escaping (UserResult) -> Void) {
     let request = HttpRequest<UserResult, [String : String]>(url: CUSTODIAN_SERVER_URL + "/mobile/signup", method: "POST", body: ["username": username], headers: ["Content-Type": "application/json"])
-    
+
     request.send() {
       (result: Result<UserResult>) in
-      print(result)
       completionHandler(result.data!)
     }
   }

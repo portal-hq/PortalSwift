@@ -93,7 +93,7 @@ public class PortalMpc {
   public var storage: BackupOptions
   private var rsaHeader = "-----BEGIN RSA KEY-----\n"
   private var rsaFooter = "\n-----END RSA KEY-----"
-  
+
   // This probably shouldn't be public
   public init(
     apiKey: String,
@@ -110,11 +110,11 @@ public class PortalMpc {
     self.gatewayUrl = gatewayUrl
     self.keychain = keychain
     self.storage = storage
-    
+
     // Other stuff
     self.isSimulator = isSimulator
     self.mpcHost = mpcHost
-    
+
     // Attempt to get the address
     do {
       self.address = try self.keychain.getAddress()
@@ -122,7 +122,7 @@ public class PortalMpc {
       self.address = nil
     }
   }
-  
+
   /// Creates a backup share, encrypts it, stores the private key in cloud storage, returns the cipherText of the encrypted share.
   /// - Parameter method: either gdrive or icloud
   /// - Returns: cipherText of the encrypted backup share
@@ -142,22 +142,22 @@ public class PortalMpc {
           return completion(Result(error: MpcError.unableToAuthenticate))
         }
       }
-      
+
       let res = ClientBackup(apiKey, mpcHost, signingShare)
-      
+
       let jsonData = res.data(using: .utf8)!
       let rotateResult: RotateResult  = try JSONDecoder().decode(RotateResult.self, from: jsonData)
       guard rotateResult.error == "" else {
         return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: rotateResult.error!)))
       }
-      
+
       let backupShare = rotateResult.data!.share
-      
+
       var signingShareJson = try JSONParseShare(shareString: signingShare)
       signingShareJson.share = backupShare
-      
+
       let encryptedResult = try encryptShare(mpcShare: signingShareJson)
-      
+
       storage?.write(privateKey: encryptedResult.privateKey)  {
         (result: Result<Bool>) -> Void in
         if !result.data! {
@@ -168,9 +168,9 @@ public class PortalMpc {
     } catch {
       return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: "Backup failed")))
     }
-    
+
   }
-  
+
   /// Generates an mpc wallet and signing share for a client
   /// - Returns: The address of the newly created mpc wallet
   public func generate() throws -> String {
@@ -181,19 +181,19 @@ public class PortalMpc {
     guard generateResult.error == "" else {
       throw MpcError.unexpectedErrorOnGenerate(message: generateResult.error!)
     }
-    
+
     let address = generateResult.data!.address
     let mpcShare = generateResult.data!.dkgResult
     try keychain.setAddress(address: address)
-    
+
     let mpcShareData = try JSONEncoder().encode(mpcShare)
     let mpcShareString = String(data: mpcShareData, encoding: .utf8 )!
     try keychain.setSigningShare(signingShare: mpcShareString )
-    
+
     self.address = address
     return address
   }
-  
+
 //  /// Signs a message using mpc
 //  /// - Parameters:
 //  ///   - method: the specific rpc method to use when signing
@@ -212,7 +212,7 @@ public class PortalMpc {
 //
 //    return signResult.data!
 //  }
-  
+
   /// Uses the backup share to create a new signing share and a new backup share, encrypts the new backup share, stores the private key in cloud storage
   /// - Parameters:
   ///   - cipherText: the cipherText of the backup share (should be passed in from the custodian)
@@ -224,14 +224,14 @@ public class PortalMpc {
     completion: @escaping (Result<String>) -> Void
   ) -> Void {
     let storage = self.storage[method] as? Storage
-    
+
     if (storage == nil) {
       return completion(Result(error: MpcError.unsupportedStorageMethod))
     }
-    
+
     getBackupShare(cipherText: cipherText, method: method) {
       (result: Result<String>) -> Void in
-      
+
       do {
         guard result.error == nil else {
           return completion(Result(error: result.error!))
@@ -239,10 +239,9 @@ public class PortalMpc {
         let newSigningShare = try self.recoverSigning(backupShare: result.data!)
         let jsonSigningShare = try JSONEncoder().encode(newSigningShare)
         let stringifiedSigningShare = String(data: jsonSigningShare, encoding: .utf8)
-        print( "New singing share: ", stringifiedSigningShare)
         let newBackupShare = try self.recoverBackup(signingShare: stringifiedSigningShare!)
         let encryptedResult = try self.encryptShare(mpcShare: newBackupShare)
-        
+
         storage?.write(privateKey: encryptedResult.privateKey)  {
           (result: Result<Bool>) -> Void in
           if !result.data! {
@@ -250,36 +249,35 @@ public class PortalMpc {
           }
           return completion(Result(data: encryptedResult.cipherText))
         }
-        
-        
+
+
       } catch {
         return completion(Result(error: error))
       }
     }
   }
-  
+
   /// Decrypts cipherText using a private key
   /// - Parameters:
   ///   - cipherText: a base64 encoded string of the cipherText
   ///   - privateKey: a base64 encoded string; PEM key format
   /// - Returns: a string of the backupShare object
   private func decryptShare(cipherText: String, privateKey: String) throws -> String {
-    print(cipherText)
     let algorithm: SecKeyAlgorithm = .rsaEncryptionOAEPSHA512AESGCM
-    
+
     let options: [String: Any] = [kSecAttrKeyType as String: kSecAttrKeyTypeRSA,
                                   kSecAttrKeyClass as String: kSecAttrKeyClassPrivate,
                                   kSecAttrKeySizeInBits as String: 2048,]
     var error: Unmanaged<CFError>?
     let privateKeyBase64 = privateKey.replacingOccurrences(of: rsaHeader, with: "").replacingOccurrences(of: rsaFooter, with: "")
-    
+
     let privateKeyData = Data(base64Encoded: privateKeyBase64)! as CFData
     guard let key = SecKeyCreateWithData(privateKeyData,
                                          options as CFDictionary,
                                          &error) else {
                                             throw error!.takeRetainedValue() as Error
     }
-    
+
     guard SecKeyIsAlgorithmSupported(key, .decrypt, algorithm) else {
       throw RsaError.incompatibleKeyWithAlgorithm
     }
@@ -292,18 +290,17 @@ public class PortalMpc {
                                                     &decryptError) as Data? else {
                                                         throw decryptError!.takeRetainedValue() as Error
     }
-    print("Clear Text", String(data: clearText, encoding: .utf8)!)
     return String(data: clearText, encoding: .utf8)!
-                  
+
   }
-  
+
   /// Encrypts the backup share using a public key that it creates
   /// - Parameter mpcShare: the share to encrypt
   /// - Returns: the cipherText and the private key
   private func encryptShare(mpcShare: MpcShare) throws -> EncryptedResult {
     let mpcShareData = try JSONEncoder().encode(mpcShare)
     let mpcShareString = String(data: mpcShareData, encoding: .utf8 )!
-    
+
     // https://developer.apple.com/documentation/security/certificate_key_and_trust_services/keys/generating_new_cryptographic_keys
     let attributes: CFDictionary =
     [kSecAttrKeyType as String: kSecAttrKeyTypeRSA, // 1
@@ -311,24 +308,24 @@ public class PortalMpc {
      kSecPrivateKeyAttrs as String:
       [kSecAttrIsPermanent as String: false]
     ] as CFDictionary
-    
+
     var error: Unmanaged<CFError>?
     guard let privateKey = SecKeyCreateRandomKey(attributes, &error) else {
         throw error!.takeRetainedValue() as Error
     }
-     
+
 
     guard let publicKey = SecKeyCopyPublicKey(privateKey) else {
       throw RsaError.unableToGetPublicKey
     }
-    
+
     // https://developer.apple.com/documentation/security/certificate_key_and_trust_services/keys/using_keys_for_encryption
     let algorithm: SecKeyAlgorithm = .rsaEncryptionOAEPSHA512AESGCM
-    
+
     guard SecKeyIsAlgorithmSupported(publicKey, .encrypt, algorithm) else {
       throw RsaError.incompatibleKeyWithAlgorithm
     }
-    
+
     var encyrptDataError: Unmanaged<CFError>?
     guard let cipherText = SecKeyCreateEncryptedData(publicKey,
                                                      algorithm,
@@ -336,19 +333,19 @@ public class PortalMpc {
                                                      &encyrptDataError) as Data? else {
                                                         throw encyrptDataError!.takeRetainedValue() as Error
     }
-    
+
     var createKeyStringError: Unmanaged<CFError>?
     guard let data = SecKeyCopyExternalRepresentation(privateKey, &createKeyStringError) as? Data else {
         throw createKeyStringError!.takeRetainedValue() as Error
     }
     let base64String = data.base64EncodedString(options: Data.Base64EncodingOptions(rawValue: 0))
 
-    
+
     let privateKeyString = "\(rsaHeader)\(base64String)\(rsaFooter)"
-    
+
     return EncryptedResult(privateKey: privateKeyString, cipherText: cipherText.base64EncodedString(options: .lineLength64Characters))
   }
-  
+
   /// Loads the private key from cloud storage, uses that to decrypt the cipherText and returns the string of the backup share
   /// - Parameters:
   ///   - cipherText: the cipherText of the backup share
@@ -360,7 +357,7 @@ public class PortalMpc {
     completion: @escaping (Result<String>) -> Void
   ) -> Void {
     let storage = self.storage[method] as? Storage
-    
+
     if (storage == nil) {
       return completion(Result(error: MpcError.unsupportedStorageMethod))
     }
@@ -369,11 +366,8 @@ public class PortalMpc {
       (result: Result<String>) -> Void in
       if (result.data != nil) {
         do {
-          print("about to call decrypt")
-          
-          print(result.data!)
           let backupShare = try self.decryptShare(cipherText: cipherText, privateKey: result.data!)
-          
+
           return completion(Result(data: backupShare))
         } catch {
           return completion(Result(error: error))
@@ -383,13 +377,13 @@ public class PortalMpc {
       }
     }
   }
-  
+
   /// uses the signing share to create a new backup share and returns that share in json format
   /// - Parameter signingShare: the stringied share
   /// - Returns: the backup share
   private func recoverBackup(signingShare: String) throws -> MpcShare {
     let res = ClientRecoverBackup(apiKey, mpcHost, signingShare)
-    
+
     let jsonData = res.data(using: .utf8)!
     let rotateResult: RotateResult  = try JSONDecoder().decode(RotateResult.self, from: jsonData)
     guard rotateResult.error!.isEmpty else {
@@ -399,39 +393,37 @@ public class PortalMpc {
     newBackup.share = rotateResult.data!.share
     return newBackup
   }
-  
+
   /// Uses the backup share to create a new signing share and stores it in the keychain
   /// - Parameter backupShare: backup share in string form
   /// - Returns: the new signing share
   private func recoverSigning(backupShare: String) throws -> MpcShare {
     var share = try JSONDecoder().decode(MpcShare.self, from: backupShare.data(using: .utf8)!)
-    print("print type of backup share: ", type(of: backupShare))
     let result = ClientRecoverSigning(apiKey, mpcHost, backupShare)
-    print("Recover signing", result)
     let rotateResult = try JSONDecoder().decode(RotateResult.self, from: result.data(using: .utf8)!)
-    
+
     if (!rotateResult.error!.isEmpty) {
       throw MpcError.signingRecoveryError(message: rotateResult.error!)
     }
-    
+
     if (rotateResult.data == nil) {
       throw MpcError.signingRecoveryError(message: "Could not read recovery data")
     }
-    
+
     share.share = rotateResult.data!.share
-    
+
     let jsonEncodedShare = try JSONEncoder().encode(share)
     let stringifiedShare = String(data: jsonEncodedShare, encoding: .utf8)
-    
+
     do {
       try keychain.setSigningShare(signingShare: stringifiedShare!)
     } catch {
       throw MpcError.unableToWriteToKeychain
     }
-    
+
     return share
   }
-  
+
   /// Helper function to json parse the mpc share string
   /// - Parameter shareString: string of the mpc share
   /// - Returns: json object of the mpc share
@@ -443,7 +435,7 @@ public class PortalMpc {
     } catch  {
       throw MpcError.unableToDecodeShare
     }
-    
+
     return shareJson
   }
 }

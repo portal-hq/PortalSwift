@@ -16,22 +16,22 @@ public enum BackupMethods: String {
 public struct BackupOptions {
   public var gdrive: GDriveStorage?
   public var icloud: ICloudStorage?
-  
+
   public init(gdrive: GDriveStorage) {
     self.gdrive = gdrive
   }
-  
+
   public init(icloud: ICloudStorage) {
     self.icloud = icloud
   }
-  
+
   public init(gdrive: GDriveStorage, icloud: ICloudStorage) {
     self.gdrive = gdrive
     self.icloud = icloud
   }
-  
-  
-  
+
+
+
   subscript(key: String) -> Any? {
     switch(key) {
     case BackupMethods.GoogleDrive.rawValue:
@@ -56,7 +56,7 @@ private func getGatewayUrl(gatewayConfig: Dictionary<Int, String>, chainId: Int)
   if (gatewayConfig[chainId] == nil) {
     throw PortalArgumentError.noGatewayConfigForChain(chainId: chainId)
   }
-  
+
   return gatewayConfig[chainId]!
 }
 
@@ -72,7 +72,7 @@ public class Portal {
   public var mpc: PortalMpc
   public var provider: PortalProvider
   public var gatewayConfig: Dictionary<Int, String>
-  
+
   public init(
     apiKey: String,
     backup: BackupOptions,
@@ -92,19 +92,19 @@ public class Portal {
     self.chainId = chainId
     self.gatewayConfig = gatewayConfig
     self.keychain = keychain
-    
+
     // Other stuff
     self.autoApprove = autoApprove
     self.isSimulator = isSimulator
-    
+
     if (!address.isEmpty) {
       self.address = address
     }
-    
+
     // Initialize the Portal API
     let api = PortalApi(apiKey: apiKey, apiHost: apiHost)
     self.api = api
-    
+
     // Ensure storage adapters have access to the Portal API
     if (backup.gdrive != nil) {
       backup.gdrive?.api = api
@@ -112,10 +112,10 @@ public class Portal {
     if (backup.icloud != nil) {
       backup.icloud?.api = api
     }
-    
+
     // Determine the Gateway URL for the current chain
     let gatewayUrl = try getGatewayUrl(gatewayConfig: gatewayConfig, chainId: chainId)
-    
+
     // Initialize the PortalProvider
     self.provider = try PortalProvider(
       apiKey: apiKey,
@@ -123,7 +123,7 @@ public class Portal {
       gatewayUrl: gatewayUrl,
       autoApprove: autoApprove
     )
-    
+
     // Initialize Mpc
     self.mpc = PortalMpc(
       apiKey: apiKey,
@@ -135,7 +135,7 @@ public class Portal {
       mpcHost: mpcHost
     )
   }
-  
+
   /// Set the address on the instance and update the Provider address
   ///
   /// - Parameters:
@@ -144,14 +144,14 @@ public class Portal {
   /// - Returns: Void
   public func setAddress(to: String?) -> Void {
     let address = to != nil ? to : mpc.address
-    
+
     if (address != nil) {
       self.address = address!
-      
+
       provider.setAddress(value: address!)
     }
   }
-  
+
   /// Set the chainId on the instance and update MPC and Provider chainId
   ///
   /// - Parameters:
@@ -161,7 +161,7 @@ public class Portal {
   public func setChainId(to: Int) throws -> Void {
     if (self.chainId != to) {
       self.chainId = to
-      
+
       // Get a fresh gatewayUrl
       let gatewayUrl = try getGatewayUrl(gatewayConfig: gatewayConfig, chainId: chainId)
 

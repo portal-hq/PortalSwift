@@ -36,7 +36,7 @@ public class HttpRequest<T: Codable, U: Codable> {
     self.url = url
     self.isString = false
   }
-  
+
   public init(
     url: String,
     method: String,
@@ -55,8 +55,7 @@ public class HttpRequest<T: Codable, U: Codable> {
     do {
       // Build the request object
       let request = try prepareRequest()
-      print("BODY ", self.body)
-      
+
       // Make the request via URLSession
       let task = URLSession.shared.dataTask(with: request) {
         (data, response, error) -> Void in
@@ -78,8 +77,7 @@ public class HttpRequest<T: Codable, U: Codable> {
           if httpResponse?.statusCode == 200 {
             // Decode the response into the appropriate type
             let decoder = JSONDecoder()
-            print("String type?: ", String.self)
-            
+
             let typedData = self.isString ? String(data: data!, encoding: .utf8) as! T : try decoder.decode(T.self, from: data!)
 
             // Pass off to the completion closure
@@ -118,7 +116,6 @@ public class HttpRequest<T: Codable, U: Codable> {
       // Set the request body to the string literal of the Dictionary
       if (method != "GET" && body != nil) {
         request.httpBody = try JSONEncoder().encode(body!)
-        print("Updated request body:", String(data: request.httpBody!, encoding: .utf8)!)
       } else {
         request.httpBody = nil
       }

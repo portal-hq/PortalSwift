@@ -86,9 +86,7 @@ class WebViewController: UIViewController, WKNavigationDelegate, WKScriptMessage
       javascript = "//# sourceURL=\(sourceURL).js\n" + javascript
     }
 
-    print("Evaluating javascript: \(javascript)")
     webView.evaluateJavaScript(javascript) { _, error in
-      print("Javascript evaluation completed with error: \(error?.localizedDescription ?? "none")")
       completion?(error?.localizedDescription)
     }
   }

@@ -337,7 +337,6 @@ public class PortalProvider {
     completion: @escaping (_ approved: Bool) throws -> Void
   ) throws -> Void {
     do {
-      print("autoApprove", autoApprove)
       if (autoApprove) {
         try completion(true)
       } else if (events[Events.PortalSigningRequested.rawValue] == nil) {
