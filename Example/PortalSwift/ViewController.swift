@@ -93,12 +93,13 @@ class ViewController: UIViewController {
 
         request.send() {
           (result: Result<String>) in
-          print("Sent the cipher text:")
-          print("Error in sending the cipherText:", result.error)
+          if (result.error != nil) {
+            print(result.error)
+          } else {
+            print("Cipher text sent to custodian server")
+          }
         }
-
       }
-
     }
   }
 
