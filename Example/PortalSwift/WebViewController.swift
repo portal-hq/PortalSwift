@@ -133,7 +133,7 @@ class WebViewController: UIViewController, WKNavigationDelegate, WKScriptMessage
                 let resultData = try JSONDecoder().decode(PortalProviderResponse.self, from: resultUTF8)
 
                 // Send back javascript that dispatches the event "portal_signatureReceived":
-                let javascript = "window.dispatchEvent(new CustomEvent('portal_signatureReceived', { type: 'portal_signatureReceived', data: '\(resultData.data)' }));"
+                let javascript = "window.postMessage(JSON.stringify({ type: 'portal_signatureReceived', data: '\(resultData.data)' }));"
                 self.evaluateJavascript(javascript, sourceURL: "portal_sign")
               } catch {
                 print(error)
