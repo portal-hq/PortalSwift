@@ -83,7 +83,7 @@ class ViewController: UIViewController {
       if (result.error != nil) {
         print(result.error)
       } else {
-        print("Backup successful: Cipher text:", result.value)
+        print("Backup successful: Cipher text:", result.data)
 
         var request = HttpRequest<String, [String : String]>(
           url: self.CUSTODIAN_SERVER_URL + "/mobile/\(self.user!.exchangeUserId)/cipher-text",
