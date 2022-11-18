@@ -78,7 +78,7 @@ class ViewController: UIViewController {
       let backup = BackupOptions(icloud: ICloudStorage())
       let keychain = PortalKeychain()
       portal = try Portal(
-        apiKey: "bd0b7fba-6a47-440f-bdb6-cbcbb7f6562e",
+        apiKey: "e6133d7f-5ec0-4f51-8dbe-d96c38c127c5",
         backup: backup,
         chainId: 5,
         keychain: keychain,
