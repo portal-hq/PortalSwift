@@ -39,7 +39,8 @@ public class HttpRequest<T: Codable, U: Codable> {
     do {
       // Build the request object
       let request = try prepareRequest()
-
+      print("BODY ", self.body)
+      
       // Make the request via URLSession
       let task = URLSession.shared.dataTask(with: request) {
         (data, response, error) -> Void in
@@ -97,8 +98,9 @@ public class HttpRequest<T: Codable, U: Codable> {
       }
 
       // Set the request body to the string literal of the Dictionary
-      if (method != "GET") {
-        request.httpBody = try JSONEncoder().encode(body)
+      if (method != "GET" && body != nil) {
+        request.httpBody = try JSONEncoder().encode(body!)
+        print("Updated request body:", String(data: request.httpBody!, encoding: .utf8)!)
       } else {
         request.httpBody = nil
       }

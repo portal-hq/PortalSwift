@@ -156,8 +156,8 @@ public class PortalMpc {
         if !result.data! {
           return completion(Result(error: result.error!))
         }
+        return completion(Result(data: encryptedResult.cipherText))
       }
-      return completion(Result(data: encryptedResult.cipherText))
     } catch {
       return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: "Backup failed")))
     }
@@ -241,9 +241,10 @@ public class PortalMpc {
           if !result.data! {
             return completion(Result(error: result.error!))
           }
+          return completion(Result(data: encryptedResult.cipherText))
         }
         
-        return completion(Result(data: encryptedResult.cipherText))
+        
       } catch {
         return completion(Result(error: error))
       }

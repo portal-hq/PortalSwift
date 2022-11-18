@@ -16,69 +16,144 @@ struct Todo: Codable {
   var completed: Bool
 }
 
+struct UserResult: Codable {
+  var clientApiKey: String
+  var exchangeUserId: Int
+}
+
+struct SignUpBody: Codable {
+  var username: String
+}
+
+
 class ViewController: UIViewController {
   public var portal: Portal?
-
+  public var CUSTODIAN_SERVER_URL = "https://portalex-mpc.portalhq.io"
   // Buttons
-  @IBOutlet public var backupButton: UIButton!
   @IBOutlet public var generateButton: UIButton!
+  @IBOutlet public var backupButton: UIButton!
   @IBOutlet public var recoverButton: UIButton!
-
+  
   // Send form
   @IBOutlet public var sendAddress: UITextField!
   @IBOutlet public var sendButton: UIButton!
-
+  @IBOutlet public var username: UITextField!
+  public var user: UserResult?
+  
+  
   override func viewDidLoad() {
     super.viewDidLoad()
-    registerPortal()
-    injectWebView()
+    //    registerPortal()
+    //    injectWebView()
   }
-
+  
   override func didReceiveMemoryWarning() {
     super.didReceiveMemoryWarning()
     // Dispose of any resources that can be recreated.
   }
-
-  @IBAction func handleBackup(_ sender: UIButton!) throws -> Void {
+  
+  @IBAction func handleSignIn(_ sender: UIButton) {
+    signIn(username: username.text!) {
+      (user: UserResult) -> Void in
+      print(user.clientApiKey)
+      self.user = user
+      self.registerPortal(apiKey: user.clientApiKey)
+    }
+  }
+  
+  @IBAction func handleSignup(_ sender: UIButton) {
+    signUp(username: username.text!) {
+      (user: UserResult) -> Void in
+      print(user.clientApiKey)
+      self.user = user
+      self.registerPortal(apiKey: user.clientApiKey)
+    }
+    
+  }
+  
+  @IBAction func handleBackup(_ sender: UIButton!) {
     print(String(format: "Tapped button: ", sender))
-    _ = try portal?.mpc.backup(method: BackupMethods.iCloud.rawValue)  {
+    _ = portal?.mpc.backup(method: BackupMethods.iCloud.rawValue)  {
       (result: Result<String>) -> Void in
+      if (result.error != nil) {
+        print(result.error)
+      } else {
+        print("CipherText", result.data!)
+        
+        var request = HttpRequest<String, [String : String]>(
+          url: self.CUSTODIAN_SERVER_URL + "/mobile/\(self.user!.exchangeUserId)/cipher-text",
+          method: "POST",
+          body: ["cipherText": ""],
+          headers: ["Content-Type": "application/json"])
+        
+        request.send() {
+          (result: Result<String>) in
+          print("Sent the cipher text", result.data)
+          print("Error in sending the cipherText", result.error)
+        }
+
+      }
+
+    }
+  }
+  
+  @IBAction func generatePressed(_ sender: UIButton!) {
+    print(String(format: "Tapped button: ", sender))
+    handleGenerate()
+  }
+  
+  @IBAction func handleRecover(_ sender: UIButton!) {
+    print(String(format: "Tapped button: ", sender))
+    
+    var request = HttpRequest<String, [String : String]>(url: self.CUSTODIAN_SERVER_URL + "/mobile/\(self.user!.exchangeUserId)/cipher-text", method: "GET", body:nil, headers: ["Content-Type": "application/json"])
+    request.send() {
+      (result: Result<String>) in
       print(result.data)
-      print(result.error)
+      self.portal?.mpc.recover(cipherText: result.data!, method: BackupMethods.iCloud.rawValue) {
+        (result: Result<String>) -> Void in
+        print("Recovered the keys", result)
+      }
     }
+    
   }
-
-  @IBAction func handleGenerate(_ sender: UIButton!) throws -> Void {
+  
+  @IBAction func sendPressed(_ sender: UIButton!) {
     print(String(format: "Tapped button: ", sender))
-    _ = try portal?.mpc.generate()
+    handleSend()
   }
-
-  @IBAction func handleRecover(_ sender: UIButton!) throws -> Void {
-    print(String(format: "Tapped button: ", sender))
-    portal?.mpc.recover(cipherText: "", method: BackupMethods.iCloud.rawValue) {
-      (result: Result<String>) -> Void in
-      print(result)
-    }
-  }
-
-  @IBAction func handleSend(_ sender: UIButton!) throws -> Void {
-    print(String(format: "Tapped button: ", sender))
+  
+  func handleSend() {
     let payload = ETHRequestPayload(
       method: "eth_sendTransaction",
       params: []
     )
-    _ = try portal?.provider.request(payload: payload) {
-      (result: Any) -> Void in
-      print(result)
+    do {
+      _ = try portal?.provider.request(payload: payload) {
+        (result: Any) -> Void in
+        print(result)
+      }
+    } catch {
+      print("Error in send \(error)")
+    }
+    
+  }
+  
+  func handleGenerate() {
+    do {
+      var address = try portal?.mpc.generate()
+      print(address)
+      print(try portal?.keychain.getSigningShare())
+    } catch {
+      print("Error in generate \(error)")
     }
   }
-
-  func registerPortal() -> Void {
+  
+  func registerPortal(apiKey: String) -> Void {
     do {
       let backup = BackupOptions(icloud: ICloudStorage())
       let keychain = PortalKeychain()
       portal = try Portal(
-        apiKey: "e6133d7f-5ec0-4f51-8dbe-d96c38c127c5",
+        apiKey: apiKey,
         backup: backup,
         chainId: 5,
         keychain: keychain,
@@ -87,7 +162,7 @@ class ViewController: UIViewController {
         ],
         autoApprove: true
       )
-
+      
       print(portal!.apiKey)
 //      try portal!.mpc.generate()
 //     print(try portal?.keychain.getAddress())
@@ -100,23 +175,43 @@ class ViewController: UIViewController {
       print(error)
     }
   }
-
+  
   func injectWebView() {
     let webViewController = WebViewController(portal: portal!)
-
+    
     // install the WebViewController as a child view controller
     addChildViewController(webViewController)
-
+    
     let webViewControllerView = webViewController.view!
-
+    
     view.addSubview(webViewControllerView)
-
+    
     webViewControllerView.translatesAutoresizingMaskIntoConstraints = false
     webViewControllerView.topAnchor.constraint(equalTo: view.topAnchor).isActive = true
     webViewControllerView.bottomAnchor.constraint(equalTo: view.bottomAnchor).isActive = true
     webViewControllerView.leftAnchor.constraint(equalTo: view.leftAnchor).isActive = true
     webViewControllerView.rightAnchor.constraint(equalTo: view.rightAnchor).isActive = true
-
+    
     webViewController.didMove(toParentViewController: self)
+  }
+  
+  
+  func signIn(username: String, completionHandler: @escaping (UserResult) -> Void) {
+    let request = HttpRequest<UserResult, [String : String]>(url: CUSTODIAN_SERVER_URL + "/mobile/login", method: "POST", body: ["username": username], headers: ["Content-Type": "application/json"])
+    
+    request.send() {
+      (result: Result<UserResult>) in
+      completionHandler(result.data!)
+    }
+  }
+  
+  func signUp(username: String, completionHandler: @escaping (UserResult) -> Void) {
+    let request = HttpRequest<UserResult, [String : String]>(url: CUSTODIAN_SERVER_URL + "/mobile/signup", method: "POST", body: ["username": username], headers: ["Content-Type": "application/json"])
+    
+    request.send() {
+      (result: Result<UserResult>) in
+      print(result)
+      completionHandler(result.data!)
+    }
   }
 }
