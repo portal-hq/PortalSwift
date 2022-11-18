@@ -114,6 +114,13 @@ public class PortalMpc {
     // Other stuff
     self.isSimulator = isSimulator
     self.mpcHost = mpcHost
+    
+    // Attempt to get the address
+    do {
+      self.address = try self.keychain.getAddress()
+    } catch {
+      self.address = nil
+    }
   }
   
   /// Creates a backup share, encrypts it, stores the private key in cloud storage, returns the cipherText of the encrypted share.
@@ -232,7 +239,7 @@ public class PortalMpc {
         let newSigningShare = try self.recoverSigning(backupShare: result.data!)
         let jsonSigningShare = try JSONEncoder().encode(newSigningShare)
         let stringifiedSigningShare = String(data: jsonSigningShare, encoding: .utf8)
-        
+        print( "New singing share: ", stringifiedSigningShare)
         let newBackupShare = try self.recoverBackup(signingShare: stringifiedSigningShare!)
         let encryptedResult = try self.encryptShare(mpcShare: newBackupShare)
         
@@ -385,7 +392,7 @@ public class PortalMpc {
     
     let jsonData = res.data(using: .utf8)!
     let rotateResult: RotateResult  = try JSONDecoder().decode(RotateResult.self, from: jsonData)
-    guard rotateResult.error == "" else {
+    guard rotateResult.error!.isEmpty else {
       throw MpcError.unexpectedErrorOnRecoverBackup(message: rotateResult.error!)
     }
     var newBackup = try JSONParseShare(shareString: signingShare)
@@ -398,12 +405,12 @@ public class PortalMpc {
   /// - Returns: the new signing share
   private func recoverSigning(backupShare: String) throws -> MpcShare {
     var share = try JSONDecoder().decode(MpcShare.self, from: backupShare.data(using: .utf8)!)
-    print(type(of: backupShare))
+    print("print type of backup share: ", type(of: backupShare))
     let result = ClientRecoverSigning(apiKey, mpcHost, backupShare)
-    print(result)
+    print("Recover signing", result)
     let rotateResult = try JSONDecoder().decode(RotateResult.self, from: result.data(using: .utf8)!)
     
-    if (rotateResult.error != nil) {
+    if (!rotateResult.error!.isEmpty) {
       throw MpcError.signingRecoveryError(message: rotateResult.error!)
     }
     

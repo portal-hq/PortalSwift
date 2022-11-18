@@ -22,6 +22,7 @@ public class HttpRequest<T: Codable, U: Codable> {
   private var headers: Dictionary<String, String>
   private var method: String
   private var url: String
+  private var isString: Bool
 
   public init(
     url: String,
@@ -33,6 +34,21 @@ public class HttpRequest<T: Codable, U: Codable> {
     self.headers = headers
     self.method = method
     self.url = url
+    self.isString = false
+  }
+  
+  public init(
+    url: String,
+    method: String,
+    body: U?,
+    headers: Dictionary<String, String>,
+    isString: Bool
+  ) {
+    self.body = body
+    self.headers = headers
+    self.method = method
+    self.url = url
+    self.isString = isString
   }
 
   public func send(completion: @escaping (Result<T>) -> Void) -> Void {
@@ -62,7 +78,9 @@ public class HttpRequest<T: Codable, U: Codable> {
           if httpResponse?.statusCode == 200 {
             // Decode the response into the appropriate type
             let decoder = JSONDecoder()
-            let typedData = try decoder.decode(T.self, from: data!)
+            print("String type?: ", String.self)
+            
+            let typedData = self.isString ? String(data: data!, encoding: .utf8) as! T : try decoder.decode(T.self, from: data!)
 
             // Pass off to the completion closure
             return completion(Result(data: typedData))

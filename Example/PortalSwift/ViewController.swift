@@ -25,6 +25,9 @@ struct SignUpBody: Codable {
   var username: String
 }
 
+struct CipherTextResult: Codable {
+  var cipherText: String
+}
 
 class ViewController: UIViewController {
   public var portal: Portal?
@@ -61,6 +64,9 @@ class ViewController: UIViewController {
     }
   }
   
+  @IBAction func handleWebview(_ sender: UIButton) {
+    injectWebView()
+  }
   @IBAction func handleSignup(_ sender: UIButton) {
     signUp(username: username.text!) {
       (user: UserResult) -> Void in
@@ -83,8 +89,8 @@ class ViewController: UIViewController {
         var request = HttpRequest<String, [String : String]>(
           url: self.CUSTODIAN_SERVER_URL + "/mobile/\(self.user!.exchangeUserId)/cipher-text",
           method: "POST",
-          body: ["cipherText": ""],
-          headers: ["Content-Type": "application/json"])
+          body: ["cipherText": result.data!],
+          headers: ["Content-Type": "application/json"], isString: true)
         
         request.send() {
           (result: Result<String>) in
@@ -102,19 +108,25 @@ class ViewController: UIViewController {
     handleGenerate()
   }
   
+  
   @IBAction func handleRecover(_ sender: UIButton!) {
     print(String(format: "Tapped button: ", sender))
     
-    var request = HttpRequest<String, [String : String]>(url: self.CUSTODIAN_SERVER_URL + "/mobile/\(self.user!.exchangeUserId)/cipher-text", method: "GET", body:nil, headers: ["Content-Type": "application/json"])
+    var request = HttpRequest<CipherTextResult, [String : String]>(
+      url: self.CUSTODIAN_SERVER_URL + "/mobile/\(self.user!.exchangeUserId)/cipher-text/fetch",
+      method: "GET", body:[:],
+      headers: ["Content-Type": "application/json"],isString: false)
+    
     request.send() {
-      (result: Result<String>) in
-      print(result.data)
-      self.portal?.mpc.recover(cipherText: result.data!, method: BackupMethods.iCloud.rawValue) {
+      (result: Result<CipherTextResult>) in
+      
+      print("Data in recover", result.data)
+      print("error in recover", result.error)
+      self.portal?.mpc.recover(cipherText: result.data!.cipherText, method: BackupMethods.iCloud.rawValue) {
         (result: Result<String>) -> Void in
         print("Recovered the keys", result)
       }
     }
-    
   }
   
   @IBAction func sendPressed(_ sender: UIButton!) {

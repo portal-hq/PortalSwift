@@ -104,8 +104,8 @@ class WebViewController: UIViewController, WKNavigationDelegate, WKScriptMessage
 
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
     let javascript = injectPortal(
-      address: "0x006c14d102050ba6a002e48b7a92b7aa8efa709c",
-      apiKey: "e6133d7f-5ec0-4f51-8dbe-d96c38c127c5",
+      address: portal.mpc.address!,
+      apiKey: portal.apiKey,
       chainId: "5",
       gatewayConfig: "https://eth-goerli.g.alchemy.com/v2/53va-QZAS8TnaBH3-oBHqcNJtIlygLi-",
       autoApprove: true,
