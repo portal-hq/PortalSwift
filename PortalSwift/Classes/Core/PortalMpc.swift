@@ -184,7 +184,6 @@ public class PortalMpc {
     try keychain.setSigningShare(signingShare: mpcShareString )
     
     self.address = address
-    self.portal!.address = address
     return address
   }
   
