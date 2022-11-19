@@ -69,7 +69,7 @@ class WebViewController: UIViewController, WKNavigationDelegate, WKScriptMessage
     super.viewWillAppear(animated)
 
     if !webViewContentIsLoaded {
-      let url = URL(string: "https://app.aave.com/")!
+      let url = URL(string: "https://testnets.opensea.io")!
       let request = URLRequest(url: url)
 
       webView.load(request)
