@@ -36,6 +36,7 @@ class ViewController: UIViewController {
 
   // Static information
   @IBOutlet weak var addressInformation: UITextView!
+  @IBOutlet weak var ethBalanceInformation: UITextView!
 
   // Buttons
   @IBOutlet public var generateButton: UIButton!
@@ -67,7 +68,7 @@ class ViewController: UIViewController {
       self.user = user
       self.registerPortal(apiKey: user.clientApiKey)
     }
-    populateAddressInformation()
+    updateStaticContent()
   }
 
   @IBAction func handleWebview(_ sender: UIButton) {
@@ -81,7 +82,7 @@ class ViewController: UIViewController {
       self.user = user
       self.registerPortal(apiKey: user.clientApiKey)
     }
-    populateAddressInformation()
+    updateStaticContent()
   }
 
   @IBAction func handleBackup(_ sender: UIButton!) {
@@ -112,7 +113,7 @@ class ViewController: UIViewController {
 
   @IBAction func generatePressed(_ sender: UIButton!) {
     handleGenerate()
-    populateAddressInformation()
+    updateStaticContent()
   }
 
 
@@ -138,6 +139,11 @@ class ViewController: UIViewController {
     handleSend()
   }
 
+  func updateStaticContent() {
+    populateAddressInformation()
+    populateEthBalance()
+  }
+
   // populateAddressInformation: Populates the address information and eth balance.
   func populateAddressInformation() {
     do {
@@ -145,6 +151,28 @@ class ViewController: UIViewController {
       self.addressInformation.text = "Address: \(address ?? "N/A")"
     } catch {
       print("Error: \(error)")
+    }
+  }
+
+  func populateEthBalance() {
+    do {
+      let address = try portal?.keychain.getAddress()
+      guard let ethAddress = address else {
+        print("address in eth balance", address as Any)
+        return
+      }
+      let payload = ETHRequestPayload(
+        method: "eth_getBalance",
+        params: [ethAddress, "latest"]
+      )
+      print("payload", payload)
+      _ = try portal?.provider.request(payload: payload) {
+        (result: Any) -> Void in
+        print("ETH balance:", result)
+        self.ethBalanceInformation.text = "ETH Balance: \(result)"
+      }
+    } catch {
+      print("Error getting eth balance:", error)
     }
   }
 
