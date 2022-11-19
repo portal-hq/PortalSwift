@@ -53,6 +53,7 @@ class MpcSigner {
         String(provider.chainId)
       )
       
+      print("Client Sign Result", clientSignResult)
       let jsonData = clientSignResult.data(using: .utf8)!
       let signResult: SignResult = try JSONDecoder().decode(SignResult.self, from: jsonData)
       guard signResult.error == "" else {

@@ -29,6 +29,7 @@ struct CipherTextResult: Codable {
   var cipherText: String
 }
 
+
 class ViewController: UIViewController {
   public var portal: Portal?
   public var CUSTODIAN_SERVER_URL = "https://portalex-mpc.portalhq.io"

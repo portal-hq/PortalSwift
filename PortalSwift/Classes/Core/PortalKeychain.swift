@@ -57,15 +57,15 @@ public class PortalKeychain {
                                 kSecAttrService as String: "PortalMpc.\(item)",
                                 kSecMatchLimit as String: kSecMatchLimitOne,
                                 kSecReturnData as String: true]
-    var item: CFTypeRef?
-    let status = SecItemCopyMatching(query as CFDictionary, &item)
-    guard status != errSecItemNotFound else { throw KeychainError.ItemNotFound(item: item as! String)}
+    var keychainItem: CFTypeRef?
+    let status = SecItemCopyMatching(query as CFDictionary, &keychainItem)
+    guard status != errSecItemNotFound else { throw KeychainError.ItemNotFound(item: item)}
     guard status == errSecSuccess else { throw KeychainError.unhandledError(status: status) }
     
-    guard let itemData = item as? Data,
+    guard let itemData = keychainItem as? Data,
         let itemString = String(data: itemData, encoding: String.Encoding.utf8)
     else {
-      throw KeychainError.unexpectedItemData(item: item as! String)
+      throw KeychainError.unexpectedItemData(item: item)
     }
     return itemString
   }

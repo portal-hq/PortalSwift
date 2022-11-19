@@ -69,7 +69,7 @@ class WebViewController: UIViewController, WKNavigationDelegate, WKScriptMessage
     super.viewWillAppear(animated)
 
     if !webViewContentIsLoaded {
-      let url = URL(string: "https://testnets.opensea.io")!
+      let url = URL(string: "https://app.aave.com/")!
       let request = URLRequest(url: url)
 
       webView.load(request)
@@ -126,9 +126,9 @@ class WebViewController: UIViewController, WKNavigationDelegate, WKScriptMessage
               do {
                 let resultData = try JSONEncoder().encode(result as! ETHRequestPayload)
                 let resultJSONString = String(data: resultData, encoding: .utf8)
-
+                print("Result json string", resultJSONString!)
                 // Send back javascript that dispatches the event "portal_signatureReceived":
-                let javascript = "window.postMessage(JSON.stringify({ type: 'portal_signatureReceived', data: \(resultJSONString ?? "") }));"
+                let javascript = "window.postMessage(JSON.stringify({ type: 'portal_signatureReceived', data: \(resultJSONString!) }));"
                 self.evaluateJavascript(javascript, sourceURL: "portal_sign")
               } catch {
                 print(error)
