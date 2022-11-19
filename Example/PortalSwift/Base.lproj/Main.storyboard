@@ -4,6 +4,7 @@
     <dependencies>
         <deployment identifier="iOS"/>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="21505"/>
+        <capability name="System colors in document resources" minToolsVersion="11.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <scenes>
@@ -65,6 +66,7 @@
                                 </buttonConfiguration>
                                 <connections>
                                     <action selector="handleSend:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="vZv-06-fJd"/>
+                                    <action selector="sendPressed:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="Z2q-nf-dwU"/>
                                 </connections>
                             </button>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="PLS-JE-WGU">
@@ -129,10 +131,19 @@
                                     <action selector="handleWebview:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="nyZ-th-qvt"/>
                                 </connections>
                             </button>
+                            <textView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" fixedFrame="YES" text="Address: N/A" textAlignment="natural" translatesAutoresizingMaskIntoConstraints="NO" id="0fE-Dt-jQE">
+                                <rect key="frame" x="16" y="203" width="343" height="37"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                                <color key="textColor" systemColor="labelColor"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="14"/>
+                                <textInputTraits key="textInputTraits" autocapitalizationType="sentences"/>
+                            </textView>
                         </subviews>
                         <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                     </view>
                     <connections>
+                        <outlet property="addressInformation" destination="0fE-Dt-jQE" id="FgG-eb-2eu"/>
                         <outlet property="backupButton" destination="ErE-g3-dsZ" id="EzL-j1-u6I"/>
                         <outlet property="generateButton" destination="PLS-JE-WGU" id="zFt-uo-qUb"/>
                         <outlet property="recoverButton" destination="J4p-Hr-lwd" id="Um1-lC-X9R"/>
@@ -146,4 +157,12 @@
             <point key="canvasLocation" x="93.599999999999994" y="-2.2488755622188905"/>
         </scene>
     </scenes>
+    <resources>
+        <systemColor name="labelColor">
+            <color red="0.0" green="0.0" blue="0.0" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+        </systemColor>
+        <systemColor name="systemBackgroundColor">
+            <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+        </systemColor>
+    </resources>
 </document>

@@ -33,6 +33,10 @@ struct CipherTextResult: Codable {
 class ViewController: UIViewController {
   public var portal: Portal?
   public var CUSTODIAN_SERVER_URL = "https://portalex-mpc.portalhq.io"
+
+  // Static information
+  @IBOutlet weak var addressInformation: UITextView!
+
   // Buttons
   @IBOutlet public var generateButton: UIButton!
   @IBOutlet public var backupButton: UIButton!
@@ -63,11 +67,13 @@ class ViewController: UIViewController {
       self.user = user
       self.registerPortal(apiKey: user.clientApiKey)
     }
+    populateAddressInformation()
   }
 
   @IBAction func handleWebview(_ sender: UIButton) {
     injectWebView()
   }
+
   @IBAction func handleSignup(_ sender: UIButton) {
     signUp(username: username.text!) {
       (user: UserResult) -> Void in
@@ -75,7 +81,7 @@ class ViewController: UIViewController {
       self.user = user
       self.registerPortal(apiKey: user.clientApiKey)
     }
-
+    populateAddressInformation()
   }
 
   @IBAction func handleBackup(_ sender: UIButton!) {
@@ -106,6 +112,7 @@ class ViewController: UIViewController {
 
   @IBAction func generatePressed(_ sender: UIButton!) {
     handleGenerate()
+    populateAddressInformation()
   }
 
 
@@ -129,6 +136,16 @@ class ViewController: UIViewController {
 
   @IBAction func sendPressed(_ sender: UIButton!) {
     handleSend()
+  }
+
+  // populateAddressInformation: Populates the address information and eth balance.
+  func populateAddressInformation() {
+    do {
+      let address = try portal?.keychain.getAddress()
+      self.addressInformation.text = "Address: \(address ?? "N/A")"
+    } catch {
+      print("Error: \(error)")
+    }
   }
 
   func handleSend() {
@@ -198,7 +215,6 @@ class ViewController: UIViewController {
 
     webViewController.didMove(toParentViewController: self)
   }
-
 
   func signIn(username: String, completionHandler: @escaping (UserResult) -> Void) {
     let request = HttpRequest<UserResult, [String : String]>(url: CUSTODIAN_SERVER_URL + "/mobile/login", method: "POST", body: ["username": username], headers: ["Content-Type": "application/json"])
