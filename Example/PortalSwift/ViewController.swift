@@ -67,8 +67,9 @@ class ViewController: UIViewController {
       print("Signed in: API key:", user.clientApiKey)
       self.user = user
       self.registerPortal(apiKey: user.clientApiKey)
+//      self.updateStaticContent()
     }
-    updateStaticContent()
+    
   }
 
   @IBAction func handleWebview(_ sender: UIButton) {
@@ -81,17 +82,18 @@ class ViewController: UIViewController {
       print("Signed up: API key:", user.clientApiKey)
       self.user = user
       self.registerPortal(apiKey: user.clientApiKey)
+//      self.updateStaticContent()
     }
-    updateStaticContent()
+    
   }
 
   @IBAction func handleBackup(_ sender: UIButton!) {
     _ = portal?.mpc.backup(method: BackupMethods.iCloud.rawValue)  {
       (result: Result<String>) -> Void in
       if (result.error != nil) {
-        print(result.error)
+        print(result.error!)
       } else {
-        print("Backup successful: Cipher text:", result.data)
+        print("Backup successful: Cipher text:", result.data!)
 
         var request = HttpRequest<String, [String : String]>(
           url: self.CUSTODIAN_SERVER_URL + "/mobile/\(self.user!.exchangeUserId)/cipher-text",
@@ -102,7 +104,7 @@ class ViewController: UIViewController {
         request.send() {
           (result: Result<String>) in
           if (result.error != nil) {
-            print(result.error)
+            print("Error in sending cipher Text", result.error!)
           } else {
             print("Cipher text sent to custodian server")
           }
@@ -121,16 +123,33 @@ class ViewController: UIViewController {
     var request = HttpRequest<CipherTextResult, [String : String]>(
       url: self.CUSTODIAN_SERVER_URL + "/mobile/\(self.user!.exchangeUserId)/cipher-text/fetch",
       method: "GET", body:[:],
-      headers: ["Content-Type": "application/json"],isString: false)
+      headers: ["Content-Type": "application/json"])
 
     request.send() {
       (result: Result<CipherTextResult>) in
-
-      print("Sent recover request:", result.data)
-      print("Error in sending the recover request:", result.error)
+      guard result.error == nil else {
+        print("Error in sending the recover request:", result.error!)
+        return
+      }
+      print("Sent recover request:", result.data!)
       self.portal?.mpc.recover(cipherText: result.data!.cipherText, method: BackupMethods.iCloud.rawValue) {
         (result: Result<String>) -> Void in
-        print("Recovered the keys:", result)
+        print("Recover successful: Cipher text:", result.data!)
+
+        var request = HttpRequest<String, [String : String]>(
+          url: self.CUSTODIAN_SERVER_URL + "/mobile/\(self.user!.exchangeUserId)/cipher-text",
+          method: "POST",
+          body: ["cipherText": result.data!],
+          headers: ["Content-Type": "application/json"], isString: true)
+
+        request.send() {
+          (result: Result<String>) in
+          if (result.error != nil) {
+            print("Error in sending cipher Text", result.error!)
+          } else {
+            print("Cipher text sent to custodian server")
+          }
+        }
       }
     }
   }
@@ -194,9 +213,9 @@ class ViewController: UIViewController {
 
   func handleGenerate() {
     do {
-      var address = try portal?.mpc.generate()
-      print(address)
-      print(try portal?.keychain.getSigningShare())
+      let address = try portal?.mpc.generate()
+      print("Address: ", address!)
+      print(try portal?.keychain.getSigningShare() ?? "")
     } catch {
       print("Error in generate \(error)")
     }
@@ -221,7 +240,7 @@ class ViewController: UIViewController {
     } catch PortalArgumentError.noGatewayConfigForChain(let chainId) {
       print(String(format: "There is no valid gateway config for chain ID: %d", chainId))
     } catch {
-      print(error)
+      print("Error in registering portal \(error)")
     }
   }
 
@@ -249,6 +268,10 @@ class ViewController: UIViewController {
 
     request.send() {
       (result: Result<UserResult>) in
+      guard result.error == nil else {
+        print("Error in sending request to login: ", result.error!)
+        return
+      }
       completionHandler(result.data!)
     }
   }
@@ -258,6 +281,10 @@ class ViewController: UIViewController {
 
     request.send() {
       (result: Result<UserResult>) in
+      guard result.error == nil else {
+        print("Error in sending request to sign up: ", result.error!)
+        return
+      }
       completionHandler(result.data!)
     }
   }

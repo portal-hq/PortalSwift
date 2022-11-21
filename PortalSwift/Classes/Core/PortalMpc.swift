@@ -236,10 +236,11 @@ public class PortalMpc {
         guard result.error == nil else {
           return completion(Result(error: result.error!))
         }
+        print("Old Backup Share: ", result.data!)
         let newSigningShare = try self.recoverSigning(backupShare: result.data!)
         let jsonSigningShare = try JSONEncoder().encode(newSigningShare)
         let stringifiedSigningShare = String(data: jsonSigningShare, encoding: .utf8)
-        let newBackupShare = try self.recoverBackup(signingShare: stringifiedSigningShare!)
+        let newBackupShare = try self.recoverBackup(signingShare: result.data!)
         let encryptedResult = try self.encryptShare(mpcShare: newBackupShare)
 
         storage?.write(privateKey: encryptedResult.privateKey)  {
