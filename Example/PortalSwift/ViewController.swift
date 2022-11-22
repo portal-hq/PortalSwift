@@ -69,7 +69,7 @@ class ViewController: UIViewController {
       self.registerPortal(apiKey: user.clientApiKey)
       self.updateStaticContent()
     }
-    
+
   }
 
   @IBAction func handleWebview(_ sender: UIButton) {
@@ -84,7 +84,7 @@ class ViewController: UIViewController {
       self.registerPortal(apiKey: user.clientApiKey)
       self.updateStaticContent()
     }
-    
+
   }
 
   @IBAction func handleBackup(_ sender: UIButton!) {
@@ -161,6 +161,26 @@ class ViewController: UIViewController {
   func updateStaticContent() {
     populateAddressInformation()
     populateEthBalance()
+    testSignerMethods()
+  }
+
+  func testSignerMethods() {
+    // logAccounts()
+  }
+
+  func logAccounts() {
+    do {
+      let payload = ETHRequestPayload(
+        method: ETHRequestMethods.Accounts.rawValue,
+        params: []
+      )
+      _ = try portal?.provider.request(payload: payload) {
+        (result: Any) -> Void in
+        print("Accounts:", result)
+      }
+    } catch {
+      print("Error logging accounts: ", error)
+    }
   }
 
   func populateAddressInformation() {
@@ -185,7 +205,6 @@ class ViewController: UIViewController {
         method: "eth_getBalance",
         params: [ethAddress, "latest"]
       )
-      print("payload", payload)
       _ = try portal?.provider.request(payload: payload) {
         (result: Any) -> Void in
         print("ETH balance:", result)

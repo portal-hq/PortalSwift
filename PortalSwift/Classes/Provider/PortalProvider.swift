@@ -367,13 +367,13 @@ public class PortalProvider {
     payload: ETHRequestPayload,
     completion: @escaping (Any) -> Void
   ) throws -> Void {
-    try rpc.post<ETHGatewayResponse>(
-      path: "",
-      body: GatewayRequestPayload(method: payload.method, params: payload.params),
-      headers: [:]
-    ) { (result: Any) -> Void in
-      completion(result)
-    }
+//    try rpc.post<ETHGatewayResponse>(
+//      path: "",
+//      body: GatewayRequestPayload(method: payload.method, params: payload.params),
+//      headers: [:]
+//    ) { (result: Any) -> Void in
+//      completion(result)
+//    }
   }
 
   private func handleSigningRequest(
