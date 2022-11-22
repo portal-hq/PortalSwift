@@ -236,8 +236,7 @@ public class PortalMpc {
         guard result.error == nil else {
           return completion(Result(error: result.error!))
         }
-        let newSigningShare = try self.recoverSigning(backupShare: result.data!)
-   
+        _ = try self.recoverSigning(backupShare: result.data!)
         let newBackupShare = try self.recoverBackup(signingShare: result.data!)
         let encryptedResult = try self.encryptShare(mpcShare: newBackupShare)
 

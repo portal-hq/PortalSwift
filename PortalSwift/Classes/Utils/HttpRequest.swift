@@ -76,8 +76,6 @@ public class HttpRequest<AnyObject, U> {
           // Process the response object
           if httpResponse?.statusCode == 200 {
             // Decode the response into the appropriate type
-            let decoder = JSONDecoder()
-
             let typedData = self.isString ? String(data: data!, encoding: .utf8)! : try JSONSerialization.jsonObject(with: data!)
 
             // Pass off to the completion closure

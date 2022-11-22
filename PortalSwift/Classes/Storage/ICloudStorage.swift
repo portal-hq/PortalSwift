@@ -113,7 +113,7 @@ public class ICloudStorage: Storage {
 
     do {
       try self.api!.getClient() { (result: Result<Any>) -> Void in
-        var data = result.data as! Client
+        let data = result.data as! Client
         if (result.data != nil) {
           self.key = ICloudStorage.hash("\(data.custodian.id)\(data.id)")
           

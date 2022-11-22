@@ -31,13 +31,13 @@ class MpcSigner {
     self.keychain = keychain
     self.mpcUrl = mpcUrl
   }
-    
-    
+
   public func sign(
     payload: ETHRequestPayload,
     provider: PortalProvider
   ) throws -> Any {
     let address = try keychain.getAddress()
+
     switch (payload.method) {
     case ETHRequestMethods.RequestAccounts.rawValue:
       return SignerResult(accounts: [address])
@@ -45,14 +45,14 @@ class MpcSigner {
       return SignerResult(accounts: [address])
     default :
       let signingShare = try keychain.getSigningShare()
-      let jsonParams = try JSONSerialization.data(withJSONObject: payload.params, options: .prettyPrinted)
+      let formattedPayload = try formatParams(payload: payload)
       
       let clientSignResult = ClientSign(
         provider.getApiKey(),
         mpcUrl,
         signingShare,
         payload.method,
-        String(data: jsonParams, encoding: .utf8),
+        formattedPayload,
         provider.gatewayUrl,
         String(provider.chainId)
       )
@@ -66,5 +66,17 @@ class MpcSigner {
       
       return SignerResult(signature: signResult.data!)
     }
+  }
+  
+  private func formatParams(payload: ETHRequestPayload) throws -> String {
+    var json: Data
+    
+    if payload.method == ETHRequestMethods.SendTransaction.rawValue {
+      json = try JSONSerialization.data(withJSONObject: payload.params.first!, options: .prettyPrinted)
+    } else {
+      json = try JSONSerialization.data(withJSONObject: payload.params, options: .prettyPrinted)
+    }
+    
+    return String(data: json, encoding: .utf8)!
   }
 }

@@ -84,10 +84,14 @@ class ViewController: UIViewController {
 
   @IBAction func handleSignup(_ sender: UIButton) {
     signUp(username: username.text!) {
-      (user: UserResult) -> Void in
-      print("Signed up: API key:", user.clientApiKey)
-      self.user = user
-      self.registerPortal(apiKey: user.clientApiKey)
+      (user: Any) -> Void in
+      let userResult = UserResult(
+        clientApiKey: (user as! Dictionary<String, Any>)["clientApiKey"]! as! String,
+        exchangeUserId: (user as! Dictionary<String, Any>)["exchangeUserId"]! as! Int
+      )
+      print("Signed up: API key:", userResult.clientApiKey)
+      self.user = userResult
+      self.registerPortal(apiKey: userResult.clientApiKey)
       self.updateStaticContent()
     }
 
@@ -209,13 +213,14 @@ class ViewController: UIViewController {
         return
       }
       let payload = ETHRequestPayload(
-        method: "eth_getLogs",
-        params: [
-          [
-            "fromBlock": "latest",
-            "toBlock": "latest"
-          ]
-        ]
+        method: ETHRequestMethods.SendTransaction.rawValue,
+        params: [[
+          "gas": "0x60000",
+          "value": "0x38d7ea4c68000",
+          "from": address,
+          "to": "0x51a3837B768Faa63D15108925e06a1cad8BEfa50",
+          "data": ""
+        ]]
       )
       _ = try portal?.provider.request(payload: payload) {
         (result: Any) -> Void in

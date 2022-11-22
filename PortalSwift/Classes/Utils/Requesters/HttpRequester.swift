@@ -49,7 +49,7 @@ public struct HttpRequester {
     completion: @escaping (Result<Any>) -> Void
   ) throws -> Void {
     // Build the HTTPRequest object
-    var request = HttpRequest<Any, Dictionary<String, Any>>(
+    let request = HttpRequest<Any, Dictionary<String, Any>>(
       url: String(format:"%@%@", self.baseUrl, path),
       method: "POST",
       body: body,
