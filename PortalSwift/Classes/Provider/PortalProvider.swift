@@ -134,6 +134,17 @@ public struct ETHRequestPayload: Codable {
 public struct ETHTransactionParams: Codable {
 
 }
+public struct ETHGatewayErrorResponse: Codable {
+  var code: Int
+  var message: String
+}
+
+public struct ETHGatewayResponse: Codable {
+  var jsonrpc: String = "2.0"
+  var id: Int = 1
+  var result: String?
+  var error: ETHGatewayErrorResponse?
+}
 
 public struct ETHTransactionPayload: Codable {
   var method: ETHRequestMethods.RawValue
@@ -356,13 +367,13 @@ public class PortalProvider {
     payload: ETHRequestPayload,
     completion: @escaping (Any) -> Void
   ) throws -> Void {
-//    try rpc.post(
-//      path: "",
-//      body: GatewayRequestPayload(method: payload.method, params: payload.params),
-//      headers: [:]
-//    ) { (result: Any) -> Void in
-//      completion(result)
-//    }
+    try rpc.post<ETHGatewayResponse>(
+      path: "",
+      body: GatewayRequestPayload(method: payload.method, params: payload.params),
+      headers: [:]
+    ) { (result: Any) -> Void in
+      completion(result)
+    }
   }
 
   private func handleSigningRequest(
