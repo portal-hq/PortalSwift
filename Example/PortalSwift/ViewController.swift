@@ -287,7 +287,7 @@ class ViewController: UIViewController {
     let webViewController = WebViewController(portal: portal!)
 
     // install the WebViewController as a child view controller
-    addChildViewController(webViewController)
+    addChild(webViewController)
 
     let webViewControllerView = webViewController.view!
 
@@ -299,7 +299,7 @@ class ViewController: UIViewController {
     webViewControllerView.leftAnchor.constraint(equalTo: view.leftAnchor).isActive = true
     webViewControllerView.rightAnchor.constraint(equalTo: view.rightAnchor).isActive = true
 
-    webViewController.didMove(toParentViewController: self)
+    webViewController.didMove(toParent: self)
   }
 
   func signIn(username: String, completionHandler: @escaping (Any) -> Void) {
