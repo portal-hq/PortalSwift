@@ -17,7 +17,7 @@ private enum HttpError: Error {
   case unknownError(String)
 }
 
-public class HttpRequest<T: Codable, U: Codable> {
+public class HttpRequest<AnyObject, U> {
   private var body: U?
   private var headers: Dictionary<String, String>
   private var method: String
@@ -51,7 +51,7 @@ public class HttpRequest<T: Codable, U: Codable> {
     self.isString = isString
   }
 
-  public func send(completion: @escaping (Result<T>) -> Void) -> Void {
+  public func send(completion: @escaping (Result<Any>) -> Void) -> Void {
     do {
       // Build the request object
       let request = try prepareRequest()
@@ -63,7 +63,7 @@ public class HttpRequest<T: Codable, U: Codable> {
         do {
           // Handle errors
           if (error != nil) {
-            return completion(Result(error: HttpError.unknownError(error!.localizedDescription)))
+            return completion(Result<Any>(error: HttpError.unknownError(error!.localizedDescription)))
           }
 
           // Parse the response and return the properly typed data
@@ -78,7 +78,7 @@ public class HttpRequest<T: Codable, U: Codable> {
             // Decode the response into the appropriate type
             let decoder = JSONDecoder()
 
-            let typedData = self.isString ? String(data: data!, encoding: .utf8) as! T : try decoder.decode(T.self, from: data!)
+            let typedData = self.isString ? String(data: data!, encoding: .utf8)! : try JSONSerialization.jsonObject(with: data!)
 
             // Pass off to the completion closure
             return completion(Result(data: typedData))
@@ -115,7 +115,9 @@ public class HttpRequest<T: Codable, U: Codable> {
 
       // Set the request body to the string literal of the Dictionary
       if (method != "GET" && body != nil) {
-        request.httpBody = try JSONEncoder().encode(body!)
+        print("Body ", body!)
+        print("Is valid json: ", JSONSerialization.isValidJSONObject(body!))
+        request.httpBody = try JSONSerialization.data(withJSONObject: body!, options: [])
       } else {
         request.httpBody = nil
       }

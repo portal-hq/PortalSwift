@@ -13,7 +13,7 @@ public class MockPortalApi: PortalApi {
   public var dapps: [Dapp]?
   public var networks: [ContractNetwork]?
 
-  public override func getClient(completion: @escaping (Result<Client>) -> Void) -> Void {
+  public override func getClient(completion: @escaping (Result<Any>) -> Void) -> Void {
     // Make an instance of Client.
     let client = Client(
       id: "fakeClientID",
@@ -29,13 +29,13 @@ public class MockPortalApi: PortalApi {
     completion(Result(data: client))
   }
 
-  public override func getEnabledDapps(completion: @escaping (Result<[Dapp]>) -> Void) -> Void {
+  public override func getEnabledDapps(completion: @escaping (Result<Any>) -> Void) -> Void {
     if let dapps = dapps {
       completion(Result(data: dapps))
     }
   }
 
-  public override func getSupportedNetworks(completion: @escaping (Result<[ContractNetwork]>) -> Void) -> Void {
+  public override func getSupportedNetworks(completion: @escaping (Result<Any>) -> Void) -> Void {
     if let networks = networks {
       completion(Result(data: networks))
     }

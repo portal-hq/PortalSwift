@@ -122,7 +122,7 @@ public class WebViewController: UIViewController, WKNavigationDelegate, WKScript
           do {
             try portal.provider.request(payload: ETHRequestPayload(method: body.data.method, params: body.data.params)) { (result: Any) -> Void in
               do {
-                let resultData = try JSONEncoder().encode(result as! ETHRequestPayload)
+                let resultData = try JSONSerialization.data(withJSONObject: result, options: [])
                 let resultJSONString = String(data: resultData, encoding: .utf8)
                 print("Result json string", resultJSONString!)
                 // Send back javascript that dispatches the event "portal_signatureReceived":

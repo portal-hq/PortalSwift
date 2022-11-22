@@ -22,14 +22,14 @@ public struct HttpRequester {
 
   }
 
-  func get<T: Codable>(
+  func get(
     path: String,
     headers: Dictionary<String, String>,
-    completion: @escaping (Result<T>) -> Void
+    completion: @escaping (Result<Any>) -> Void
   ) throws -> Void {
     // Build the HTTPRequest object
     let url = String(format:"%@%@", self.baseUrl, path)
-    let request = HttpRequest<T, [String: String]>(
+    let request = HttpRequest<Dictionary<String, Any>, [String: String]>(
       url: url,
       method: "GET",
       body: [:],
@@ -37,19 +37,19 @@ public struct HttpRequester {
     )
     
     // Send the HTTP request
-    request.send() { (result: Result<T>) -> Void in
+    request.send() { (result: Result<Any>) -> Void in
       return completion(result)
     }
   }
 
-  func post<T: Codable, U: Codable>(
+  func post(
     path: String,
-    body: U,
+    body: Dictionary<String, Any>,
     headers: Dictionary<String, String>,
-    completion: @escaping (Result<T>) -> Void
+    completion: @escaping (Result<Any>) -> Void
   ) throws -> Void {
     // Build the HTTPRequest object
-    let request = HttpRequest<T, U>(
+    var request = HttpRequest<Any, Dictionary<String, Any>>(
       url: String(format:"%@%@", self.baseUrl, path),
       method: "POST",
       body: body,
@@ -57,7 +57,7 @@ public struct HttpRequester {
     )
 
     // Send the HTTP request
-    request.send() { (result: Result<T>) -> Void in
+    request.send() { (result: Result<Any>) -> Void in
       completion(result)
     }
   }

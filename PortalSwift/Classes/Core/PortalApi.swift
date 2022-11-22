@@ -70,13 +70,13 @@ public class PortalApi {
   /// ```
   ///
   /// - Returns: Void
-  public func getClient(completion: @escaping (Result<Client>) -> Void) throws -> Void {
+  public func getClient(completion: @escaping (Result<Any>) -> Void) throws -> Void {
     try requests.get(
       path: "/api/v1/clients/me",
       headers: [
         "Authorization": String(format: "Bearer %@", apiKey)
       ]
-    ) { (result: Result<Client>) -> Void in
+    ) { (result: Result<Any>) -> Void in
       completion(result)
     }
   }
@@ -91,13 +91,13 @@ public class PortalApi {
   /// ```
   ///
   /// - Returns: [Dapp]
-  public func getEnabledDapps(completion: @escaping (Result<[Dapp]>) -> Void) throws -> Void {
+  public func getEnabledDapps(completion: @escaping (Result<Any>) -> Void) throws -> Void {
     try requests.get(
       path: "/api/v1/config/dapps",
       headers: [
         "Authorization": String(format: "Bearer %@", apiKey)
       ]
-    ) { (result: Result<[Dapp]>) -> Void in
+    ) { (result: Result<Any>) -> Void in
       completion(result)
     }
   }
@@ -112,13 +112,13 @@ public class PortalApi {
   /// ```
   ///
   /// - Returns: [ContractNetwork]
-  public func getSupportedNetworks(completion: @escaping (Result<[ContractNetwork]>) -> Void) throws -> Void {
+  public func getSupportedNetworks(completion: @escaping (Result<Any>) -> Void) throws -> Void {
     try requests.get(
       path: "/api/v1/config/networks",
       headers: [
         "Authorization": String(format: "Bearer %@", apiKey)
       ]
-    ) { (result: Result<[ContractNetwork]>) -> Void in
+    ) { (result: Result<Any>) -> Void in
       completion(result)
     }
   }

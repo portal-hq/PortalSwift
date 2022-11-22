@@ -14,6 +14,10 @@ struct Signature: Codable {
   var y: String
 }
 
+struct SignerResult: Codable {
+  var signature: String?
+  var accounts: [String]?
+}
 class MpcSigner {
   public var address: String?
   public var keychain: PortalKeychain
@@ -33,13 +37,13 @@ class MpcSigner {
     payload: ETHRequestPayload,
     provider: PortalProvider
   ) throws -> Any {
+    let address = try keychain.getAddress()
     switch (payload.method) {
-    case "eth_requestAccounts":
-        return [self.address]
-    case "eth_accounts":
-        return [self.address]
+    case ETHRequestMethods.RequestAccounts.rawValue:
+      return SignerResult(accounts: [address])
+    case ETHRequestMethods.Accounts.rawValue:
+      return SignerResult(accounts: [address])
     default :
-      _ = try keychain.getAddress()
       let signingShare = try keychain.getSigningShare()
       let jsonParams = try JSONSerialization.data(withJSONObject: payload.params, options: .prettyPrinted)
       
@@ -60,7 +64,7 @@ class MpcSigner {
         throw MpcError.unexpectedErrorOnSign(message: signResult.error!)
       }
       
-      return signResult.data!
+      return SignerResult(signature: signResult.data!)
     }
   }
 }

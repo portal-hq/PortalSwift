@@ -7,7 +7,7 @@
 
 import Foundation
 
-public struct Result<T: Codable> {
+public struct Result<T> {
   public var data: T?
   public var error: Error?
   

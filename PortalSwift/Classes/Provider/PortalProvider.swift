@@ -114,17 +114,17 @@ public enum ProviderSigningError: Error {
 }
 
 // structs
-public struct ETHRequestPayload: Codable {
+public struct ETHRequestPayload {
   var method: ETHRequestMethods.RawValue
-  var params: [String]
+  var params: [Any]
   var signature: String?
 
-  public init(method: ETHRequestMethods.RawValue, params: [String]) {
+  public init(method: ETHRequestMethods.RawValue, params: [Any]) {
     self.method = method
     self.params = params
   }
 
-  public init(method: ETHRequestMethods.RawValue, params: [String], signature: String) {
+  public init(method: ETHRequestMethods.RawValue, params: [Any], signature: String) {
     self.method = method
     self.params = params
     self.signature = signature
@@ -141,7 +141,7 @@ public struct ETHGatewayErrorResponse: Codable {
 
 public struct ETHGatewayResponse: Codable {
   var jsonrpc: String = "2.0"
-  var id: Int = 1
+  var id: Int?
   var result: String?
   var error: ETHGatewayErrorResponse?
 }
@@ -151,10 +151,11 @@ public struct ETHTransactionPayload: Codable {
   var params: ETHTransactionParams
 }
 
-public struct GatewayRequestPayload: Codable {
+public struct GatewayRequestPayload {
   var jsonrpc: String = "2.0"
+  var id: Int = 1
   var method: ETHRequestMethods.RawValue
-  var params: [String]
+  var params: Any
 }
 
 public struct Network: Codable {
@@ -317,11 +318,11 @@ public class PortalProvider {
 
     if (!isSignerMethod && !payload.method.starts(with: "wallet_")) {
       try handleGatewayRequest(payload: payload) {
-        (result: Any) -> Void in completion(ETHRequestPayload(method: payload.method, params: payload.params, signature: result as! String))
+        (result: Any) -> Void in completion(result)
       }
     } else if (isSignerMethod) {
       let result = try handleSigningRequest(payload: payload)
-      completion(ETHRequestPayload(method: payload.method, params: payload.params, signature: result as! String))
+      completion(result)
     } else {
       throw ProviderRpcError.unsupportedMethod
     }
@@ -367,7 +368,26 @@ public class PortalProvider {
     payload: ETHRequestPayload,
     completion: @escaping (Any) -> Void
   ) throws -> Void {
-//    try rpc.post<ETHGatewayResponse>(
+    
+    let body: Dictionary<String, Any> = ["method": payload.method, "params": payload.params]
+    let request = HttpRequest<Dictionary<String, Any>, Dictionary<String, Any>>(
+      url: self.rpc.baseUrl,
+      method: "POST",
+      body:body,
+      headers: ["Content-Type": "application/json"])
+print(payload)
+    request.send() {
+      (result: Result<Any>) in
+      if (result.error != nil) {
+        print("Error in sending Gateway request", result.error!)
+      } else {
+        print("Gateway request sent")
+        print("Result from gateway", result.data!)
+        completion(result.data!)
+      }
+    }
+    
+//    try rpc.post<ETHGatewayResponse, GatewayRequestPayload>(
 //      path: "",
 //      body: GatewayRequestPayload(method: payload.method, params: payload.params),
 //      headers: [:]

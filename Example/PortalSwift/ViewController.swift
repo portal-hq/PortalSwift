@@ -16,7 +16,7 @@ struct Todo: Codable {
   var completed: Bool
 }
 
-struct UserResult: Codable {
+struct UserResult {
   var clientApiKey: String
   var exchangeUserId: Int
 }
@@ -62,11 +62,13 @@ class ViewController: UIViewController {
   }
 
   @IBAction func handleSignIn(_ sender: UIButton) {
+    
     signIn(username: username.text!) {
-      (user: UserResult) -> Void in
-      print("Signed in: API key:", user.clientApiKey)
-      self.user = user
-      self.registerPortal(apiKey: user.clientApiKey)
+      (user: Any) -> Void in
+      var formattedUser = user as! UserResult
+      print("Signed in: API key:", formattedUser.clientApiKey)
+      self.user = formattedUser
+      self.registerPortal(apiKey: formattedUser.clientApiKey)
       self.updateStaticContent()
     }
 
@@ -102,7 +104,7 @@ class ViewController: UIViewController {
           headers: ["Content-Type": "application/json"], isString: true)
 
         request.send() {
-          (result: Result<String>) in
+          (result: Result<Any>) in
           if (result.error != nil) {
             print("Error in sending cipher Text", result.error!)
           } else {
@@ -126,13 +128,14 @@ class ViewController: UIViewController {
       headers: ["Content-Type": "application/json"])
 
     request.send() {
-      (result: Result<CipherTextResult>) in
+      (result: Result<Any>) in
       guard result.error == nil else {
         print("Error in sending the recover request:", result.error!)
         return
       }
       print("Sent recover request:", result.data!)
-      self.portal?.mpc.recover(cipherText: result.data!.cipherText, method: BackupMethods.iCloud.rawValue) {
+      var data = result.data as! CipherTextResult
+      self.portal?.mpc.recover(cipherText: data.cipherText , method: BackupMethods.iCloud.rawValue) {
         (result: Result<String>) -> Void in
         print("Recover successful: Cipher text:", result.data!)
 
@@ -143,7 +146,7 @@ class ViewController: UIViewController {
           headers: ["Content-Type": "application/json"], isString: true)
 
         request.send() {
-          (result: Result<String>) in
+          (result: Result<Any>) in
           if (result.error != nil) {
             print("Error in sending cipher Text", result.error!)
           } else {
@@ -202,8 +205,13 @@ class ViewController: UIViewController {
         return
       }
       let payload = ETHRequestPayload(
-        method: "eth_getBalance",
-        params: [ethAddress, "latest"]
+        method: "eth_getLogs",
+        params: [
+          [
+            "fromBlock": "latest",
+            "toBlock": "latest"
+          ]
+        ] 
       )
       _ = try portal?.provider.request(payload: payload) {
         (result: Any) -> Void in
@@ -285,16 +293,17 @@ class ViewController: UIViewController {
     webViewController.didMove(toParentViewController: self)
   }
 
-  func signIn(username: String, completionHandler: @escaping (UserResult) -> Void) {
+  func signIn(username: String, completionHandler: @escaping (Any) -> Void) {
     let request = HttpRequest<UserResult, [String : String]>(url: CUSTODIAN_SERVER_URL + "/mobile/login", method: "POST", body: ["username": username], headers: ["Content-Type": "application/json"])
 
     request.send() {
-      (result: Result<UserResult>) in
+      (result: Result<Any>) in
       guard result.error == nil else {
         print("Error in sending request to login: ", result.error!)
         return
       }
-      completionHandler(result.data!)
+      print()
+      completionHandler(result.data )
     }
   }
 
@@ -302,12 +311,12 @@ class ViewController: UIViewController {
     let request = HttpRequest<UserResult, [String : String]>(url: CUSTODIAN_SERVER_URL + "/mobile/signup", method: "POST", body: ["username": username], headers: ["Content-Type": "application/json"])
 
     request.send() {
-      (result: Result<UserResult>) in
+      (result: Result<Any>) in
       guard result.error == nil else {
         print("Error in sending request to sign up: ", result.error!)
         return
       }
-      completionHandler(result.data!)
+      completionHandler(result.data as! UserResult)
     }
   }
 }
