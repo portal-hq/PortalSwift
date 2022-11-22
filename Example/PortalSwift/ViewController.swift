@@ -174,7 +174,7 @@ class ViewController: UIViewController {
 
   func updateStaticContent() {
     populateAddressInformation()
-//    populateEthBalance()
+    populateEthBalance()
 //    testSignerMethods()
   }
 
@@ -208,6 +208,13 @@ class ViewController: UIViewController {
     }
   }
 
+  func parseETHBalanceHex(hex: String) -> String {
+    let hexString = hex.replacingOccurrences(of: "0x", with: "")
+    let hexInt = Int(hexString, radix: 16)!
+    let ethBalance = Double(hexInt) / 1000000000000000000
+    return String(ethBalance)
+  }
+
   func populateEthBalance() {
     do {
       let address = try portal?.keychain.getAddress()
@@ -216,20 +223,15 @@ class ViewController: UIViewController {
         return
       }
       let payload = ETHRequestPayload(
-        method: ETHRequestMethods.SendTransaction.rawValue,
-        params: [[
-          "gas": "0x60000",
-          "value": "0x38d7ea4c68000",
-          "from": address,
-          "to": "0x51a3837B768Faa63D15108925e06a1cad8BEfa50",
-          "data": ""
-        ]]
+        method: ETHRequestMethods.GetBalance.rawValue,
+        params: [address!, "latest"]
       )
       _ = try portal?.provider.request(payload: payload) {
         (result: Any) -> Void in
-        print("ETH balance:", result)
+        let response = result as! Dictionary<String, Any>
+        let balanceHex = response["result"] as! String
         DispatchQueue.main.async {
-          self.ethBalanceInformation.text = "ETH Balance: \(result)"
+          self.ethBalanceInformation.text = "ETH Balance: \(self.parseETHBalanceHex(hex: balanceHex)) ETH"
         }
       }
     } catch {
