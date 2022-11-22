@@ -113,13 +113,13 @@ public class ICloudStorage: Storage {
 
     do {
       try self.api!.getClient() { (result: Result<Any>) -> Void in
-        let client = result.data as! Dictionary<String, Any>
-        let clientID = client["id"] as! String
-        
-        let custodian = client["custodian"] as! Dictionary<String, Any>
-        let custodianID = custodian["id"] as! String
-
         if (result.data != nil) {
+          let client = result.data as! Dictionary<String, Any>
+          let clientID = client["id"] as! String
+          
+          let custodian = client["custodian"] as! Dictionary<String, Any>
+          let custodianID = custodian["id"] as! String
+
           self.key = ICloudStorage.hash("\(custodianID)\(clientID)")
           return completion(Result(data: self.key))
         } else if (result.error != nil) {

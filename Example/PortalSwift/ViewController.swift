@@ -137,13 +137,16 @@ class ViewController: UIViewController {
 
     request.send() {
       (result: Result<Any>) in
+
       guard result.error == nil else {
         print("Error in sending the recover request:", result.error!)
         return
       }
-      print("Sent recover request:", result.data!)
-      let data = result.data as! CipherTextResult
-      self.portal?.mpc.recover(cipherText: data.cipherText , method: BackupMethods.iCloud.rawValue) {
+
+      let response = result.data as! Dictionary<String, String>
+      let cipherText = response["cipherText"]!
+
+      self.portal?.mpc.recover(cipherText: cipherText, method: BackupMethods.iCloud.rawValue) {
         (result: Result<String>) -> Void in
         print("Recover successful: Cipher text:", result.data!)
 
