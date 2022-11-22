@@ -39,13 +39,13 @@ public class ICloudStorage: Storage {
   public override func read(completion: @escaping (Result<String>) -> Void) -> Void {
     self.getKey() {
       (result: Result<String>) -> Void in
-      
+
       if (result.data != nil) {
         NSUbiquitousKeyValueStore.default.synchronize()
-        
+
         return completion(Result(data: NSUbiquitousKeyValueStore.default.string(forKey: result.data!) ?? ""))
       }
-      
+
       return completion(result)
     }
   }
@@ -61,16 +61,16 @@ public class ICloudStorage: Storage {
   public override func write(privateKey: String, completion: @escaping (Result<Bool>) -> Void) -> Void {
     self.getKey() {
       (result: Result<String>) -> Void in
-      
+
       if (result.data != nil) {
         NSUbiquitousKeyValueStore.default.set(privateKey, forKey: result.data!)
         NSUbiquitousKeyValueStore.default.synchronize()
-        
+
         return completion(Result(data: true))
       } else if (result.error != nil) {
         return completion(Result(error: result.error!))
       }
-      
+
       return completion(Result(error: ICloudStorageError.unknownError))
     }
   }
@@ -83,16 +83,16 @@ public class ICloudStorage: Storage {
   public override func delete(completion: @escaping (Result<Bool>) -> Void) -> Void {
     self.getKey() {
       (result: Result<String>) -> Void in
-      
+
       if (result.data != nil) {
         NSUbiquitousKeyValueStore.default.removeObject(forKey: result.data!)
         NSUbiquitousKeyValueStore.default.synchronize()
-        
+
         return completion(Result(data: true))
       } else if (result.error != nil) {
         return completion(Result(error: result.error!))
       }
-      
+
       return completion(Result(error: ICloudStorageError.unknownError))
     }
   }
@@ -113,15 +113,19 @@ public class ICloudStorage: Storage {
 
     do {
       try self.api!.getClient() { (result: Result<Any>) -> Void in
-        let data = result.data as! Client
+        let client = result.data as! Dictionary<String, Any>
+        let clientID = client["id"] as! String
+        
+        let custodian = client["custodian"] as! Dictionary<String, Any>
+        let custodianID = custodian["id"] as! String
+
         if (result.data != nil) {
-          self.key = ICloudStorage.hash("\(data.custodian.id)\(data.id)")
-          
+          self.key = ICloudStorage.hash("\(custodianID)\(clientID)")
           return completion(Result(data: self.key))
         } else if (result.error != nil) {
           return completion(Result(error: result.error!))
         }
-        
+
         return completion(Result(error: ICloudStorageError.unknownError))
       }
     } catch {

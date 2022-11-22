@@ -171,12 +171,12 @@ class ViewController: UIViewController {
 
   func updateStaticContent() {
     populateAddressInformation()
-    populateEthBalance()
-    testSignerMethods()
+//    populateEthBalance()
+//    testSignerMethods()
   }
 
   func testSignerMethods() {
-    // logAccounts()
+     logAccounts()
   }
 
   func logAccounts() {
@@ -316,7 +316,7 @@ class ViewController: UIViewController {
     }
   }
 
-  func signUp(username: String, completionHandler: @escaping (UserResult) -> Void) {
+  func signUp(username: String, completionHandler: @escaping (Any) -> Void) {
     let request = HttpRequest<UserResult, [String : String]>(url: CUSTODIAN_SERVER_URL + "/mobile/signup", method: "POST", body: ["username": username], headers: ["Content-Type": "application/json"])
 
     request.send() {
@@ -325,7 +325,7 @@ class ViewController: UIViewController {
         print("Error in sending request to sign up: ", result.error!)
         return
       }
-      completionHandler(result.data as! UserResult)
+      completionHandler(result.data!)
     }
   }
 }

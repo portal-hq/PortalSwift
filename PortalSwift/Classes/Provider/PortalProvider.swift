@@ -368,14 +368,14 @@ public class PortalProvider {
     payload: ETHRequestPayload,
     completion: @escaping (Any) -> Void
   ) throws -> Void {
-    
     let body: Dictionary<String, Any> = ["method": payload.method, "params": payload.params]
     let request = HttpRequest<Dictionary<String, Any>, Dictionary<String, Any>>(
       url: self.rpc.baseUrl,
       method: "POST",
       body:body,
-      headers: ["Content-Type": "application/json"])
-print(payload)
+      headers: ["Content-Type": "application/json"]
+    )
+
     request.send() {
       (result: Result<Any>) in
       if (result.error != nil) {
@@ -386,14 +386,6 @@ print(payload)
         completion(result.data!)
       }
     }
-    
-//    try rpc.post<ETHGatewayResponse, GatewayRequestPayload>(
-//      path: "",
-//      body: GatewayRequestPayload(method: payload.method, params: payload.params),
-//      headers: [:]
-//    ) { (result: Any) -> Void in
-//      completion(result)
-//    }
   }
 
   private func handleSigningRequest(
