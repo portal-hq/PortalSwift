@@ -62,13 +62,17 @@ class ViewController: UIViewController {
   }
 
   @IBAction func handleSignIn(_ sender: UIButton) {
-    
+
     signIn(username: username.text!) {
       (user: Any) -> Void in
-      var formattedUser = user as! UserResult
-      print("Signed in: API key:", formattedUser.clientApiKey)
-      self.user = formattedUser
-      self.registerPortal(apiKey: formattedUser.clientApiKey)
+      print("user", user)
+      let userResult = UserResult(
+        clientApiKey: (user as! Dictionary<String, Any>)["clientApiKey"]! as! String,
+        exchangeUserId: (user as! Dictionary<String, Any>)["exchangeUserId"]! as! Int
+      )
+      print("Signed in: API key:", userResult.clientApiKey)
+      self.user = userResult
+      self.registerPortal(apiKey: userResult.clientApiKey)
       self.updateStaticContent()
     }
 
@@ -97,7 +101,7 @@ class ViewController: UIViewController {
       } else {
         print("Backup successful: Cipher text:", result.data!)
 
-        var request = HttpRequest<String, [String : String]>(
+        let request = HttpRequest<String, [String : String]>(
           url: self.CUSTODIAN_SERVER_URL + "/mobile/\(self.user!.exchangeUserId)/cipher-text",
           method: "POST",
           body: ["cipherText": result.data!],
@@ -122,7 +126,7 @@ class ViewController: UIViewController {
 
 
   @IBAction func handleRecover(_ sender: UIButton!) {
-    var request = HttpRequest<CipherTextResult, [String : String]>(
+    let request = HttpRequest<CipherTextResult, [String : String]>(
       url: self.CUSTODIAN_SERVER_URL + "/mobile/\(self.user!.exchangeUserId)/cipher-text/fetch",
       method: "GET", body:[:],
       headers: ["Content-Type": "application/json"])
@@ -134,12 +138,12 @@ class ViewController: UIViewController {
         return
       }
       print("Sent recover request:", result.data!)
-      var data = result.data as! CipherTextResult
+      let data = result.data as! CipherTextResult
       self.portal?.mpc.recover(cipherText: data.cipherText , method: BackupMethods.iCloud.rawValue) {
         (result: Result<String>) -> Void in
         print("Recover successful: Cipher text:", result.data!)
 
-        var request = HttpRequest<String, [String : String]>(
+        let request = HttpRequest<String, [String : String]>(
           url: self.CUSTODIAN_SERVER_URL + "/mobile/\(self.user!.exchangeUserId)/cipher-text",
           method: "POST",
           body: ["cipherText": result.data!],
@@ -200,7 +204,7 @@ class ViewController: UIViewController {
   func populateEthBalance() {
     do {
       let address = try portal?.keychain.getAddress()
-      guard let ethAddress = address else {
+      guard address != nil else {
         print("address in eth balance", address as Any)
         return
       }
@@ -211,7 +215,7 @@ class ViewController: UIViewController {
             "fromBlock": "latest",
             "toBlock": "latest"
           ]
-        ] 
+        ]
       )
       _ = try portal?.provider.request(payload: payload) {
         (result: Any) -> Void in
@@ -303,7 +307,7 @@ class ViewController: UIViewController {
         return
       }
       print()
-      completionHandler(result.data )
+      completionHandler(result.data!)
     }
   }
 
