@@ -67,7 +67,7 @@ class ViewController: UIViewController {
       print("Signed in: API key:", user.clientApiKey)
       self.user = user
       self.registerPortal(apiKey: user.clientApiKey)
-//      self.updateStaticContent()
+      self.updateStaticContent()
     }
     
   }
@@ -82,7 +82,7 @@ class ViewController: UIViewController {
       print("Signed up: API key:", user.clientApiKey)
       self.user = user
       self.registerPortal(apiKey: user.clientApiKey)
-//      self.updateStaticContent()
+      self.updateStaticContent()
     }
     
   }
@@ -163,11 +163,12 @@ class ViewController: UIViewController {
     populateEthBalance()
   }
 
-  // populateAddressInformation: Populates the address information and eth balance.
   func populateAddressInformation() {
     do {
       let address = try portal?.keychain.getAddress()
-      self.addressInformation.text = "Address: \(address ?? "N/A")"
+      DispatchQueue.main.async {
+        self.addressInformation.text = "Address: \(address ?? "N/A")"
+      }
     } catch {
       print("Error: \(error)")
     }
@@ -188,7 +189,9 @@ class ViewController: UIViewController {
       _ = try portal?.provider.request(payload: payload) {
         (result: Any) -> Void in
         print("ETH balance:", result)
-        self.ethBalanceInformation.text = "ETH Balance: \(result)"
+        DispatchQueue.main.async {
+          self.ethBalanceInformation.text = "ETH Balance: \(result)"
+        }
       }
     } catch {
       print("Error getting eth balance:", error)
