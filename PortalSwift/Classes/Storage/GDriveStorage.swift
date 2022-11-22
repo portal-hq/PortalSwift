@@ -19,8 +19,7 @@ public class GDriveStorage: Storage {
   public var api: PortalApi?
 
   public override init() {
-    let signInConfig = GIDConfiguration(clientID: "YOUR_IOS_CLIENT_ID")
-
+    _ = GIDConfiguration(clientID: "YOUR_IOS_CLIENT_ID")
   }
 
   public func assignAccessToken() -> Void {
