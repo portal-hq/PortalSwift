@@ -47,6 +47,7 @@ class ViewController: UIViewController {
   @IBOutlet public var sendAddress: UITextField!
   @IBOutlet public var sendButton: UIButton!
   @IBOutlet public var username: UITextField!
+  @IBOutlet public var url: UITextField!
   public var user: UserResult?
 
 
@@ -62,7 +63,6 @@ class ViewController: UIViewController {
   }
 
   @IBAction func handleSignIn(_ sender: UIButton) {
-
     signIn(username: username.text!) {
       (user: Any) -> Void in
       let userResult = UserResult(
@@ -74,7 +74,6 @@ class ViewController: UIViewController {
       self.registerPortal(apiKey: userResult.clientApiKey)
       self.updateStaticContent()
     }
-
   }
 
   @IBAction func handleWebview(_ sender: UIButton) {
@@ -424,7 +423,7 @@ class ViewController: UIViewController {
   }
 
   func injectWebView() {
-    let webViewController = WebViewController(portal: portal!)
+    let webViewController = WebViewController(portal: portal!, url: URL(string: url.text!)!)
 
     // Install the WebViewController as a child view controller.
     addChild(webViewController)

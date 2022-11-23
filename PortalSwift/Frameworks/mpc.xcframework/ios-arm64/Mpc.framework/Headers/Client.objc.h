@@ -100,14 +100,14 @@
 @property (nonatomic) NSString* _Nonnull error;
 @end
 
-FOUNDATION_EXPORT NSString* _Nonnull ClientBackup(NSString* _Nullable clientApiKey, NSString* _Nullable addr, NSString* _Nullable dkgResult);
+FOUNDATION_EXPORT NSString* _Nonnull ClientBackup(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult);
 
-FOUNDATION_EXPORT NSString* _Nonnull ClientGenerate(NSString* _Nullable clientApiKey, NSString* _Nullable addr);
+FOUNDATION_EXPORT NSString* _Nonnull ClientGenerate(NSString* _Nullable clientAPIKey, NSString* _Nullable addr);
 
-FOUNDATION_EXPORT NSString* _Nonnull ClientRecoverBackup(NSString* _Nullable clientApiKey, NSString* _Nullable addr, NSString* _Nullable dkgResult);
+FOUNDATION_EXPORT NSString* _Nonnull ClientRecoverBackup(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult);
 
-FOUNDATION_EXPORT NSString* _Nonnull ClientRecoverSigning(NSString* _Nullable clientApiKey, NSString* _Nullable addr, NSString* _Nullable dkgResult);
+FOUNDATION_EXPORT NSString* _Nonnull ClientRecoverSigning(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult);
 
-FOUNDATION_EXPORT NSString* _Nonnull ClientSign(NSString* _Nullable clientApiKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable method, NSString* _Nullable params, NSString* _Nullable rpcUrl, NSString* _Nullable chainId);
+FOUNDATION_EXPORT NSString* _Nonnull ClientSign(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable method, NSString* _Nullable params, NSString* _Nullable rpcURL, NSString* _Nullable chainId);
 
 #endif

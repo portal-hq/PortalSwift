@@ -28,10 +28,11 @@ public class WebViewController: UIViewController, WKNavigationDelegate, WKScript
   private var webView: WKWebView!
   private var webViewContentIsLoaded = false
   private var portal: Portal
+  private var url: URL
 
-
-  public init(portal: Portal) {
+  public init(portal: Portal, url: URL) {
     self.portal = portal
+    self.url = url
     super.init(nibName: nil, bundle: nil)
 
     self.webView = {
@@ -68,8 +69,7 @@ public class WebViewController: UIViewController, WKNavigationDelegate, WKScript
     super.viewWillAppear(animated)
 
     if !webViewContentIsLoaded {
-      let url = URL(string: "https://testnets.opensea.io")!
-      let request = URLRequest(url: url)
+      let request = URLRequest(url: self.url)
 
       webView.load(request)
 
