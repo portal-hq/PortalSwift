@@ -70,7 +70,9 @@ class MpcSigner {
   private func formatParams(payload: ETHRequestPayload) throws -> String {
     var json: Data
 
-    if payload.method == ETHRequestMethods.SendTransaction.rawValue {
+    if payload.params.count == 0 {
+      return ""
+    } else if payload.method == ETHRequestMethods.SendTransaction.rawValue {
       json = try JSONSerialization.data(withJSONObject: payload.params.first!, options: .prettyPrinted)
     } else {
       json = try JSONSerialization.data(withJSONObject: payload.params, options: .prettyPrinted)

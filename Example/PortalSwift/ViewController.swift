@@ -50,16 +50,12 @@ class ViewController: UIViewController {
   @IBOutlet public var url: UITextField!
   public var user: UserResult?
 
-
   override func viewDidLoad() {
     super.viewDidLoad()
-    //    registerPortal()
-    //    injectWebView()
   }
 
   override func didReceiveMemoryWarning() {
     super.didReceiveMemoryWarning()
-    // Dispose of any resources that can be recreated.
   }
 
   @IBAction func handleSignIn(_ sender: UIButton) {
@@ -76,10 +72,6 @@ class ViewController: UIViewController {
     }
   }
 
-  @IBAction func handleWebview(_ sender: UIButton) {
-    injectWebView()
-  }
-
   @IBAction func handleSignup(_ sender: UIButton) {
     signUp(username: username.text!) {
       (user: Any) -> Void in
@@ -92,7 +84,12 @@ class ViewController: UIViewController {
       self.registerPortal(apiKey: userResult.clientApiKey)
       self.updateStaticContent()
     }
+  }
 
+  @IBAction func handleSignOut(_ sender: UIButton) {
+    self.user = nil
+    self.addressInformation.text = "Address: N/A"
+    self.ethBalanceInformation.text = "ETH Balance: N/A"
   }
 
   @IBAction func handleBackup(_ sender: UIButton!) {
@@ -125,7 +122,6 @@ class ViewController: UIViewController {
     handleGenerate()
     updateStaticContent()
   }
-
 
   @IBAction func handleRecover(_ sender: UIButton!) {
     let request = HttpRequest<CipherTextResult, [String : String]>(
@@ -180,6 +176,10 @@ class ViewController: UIViewController {
     // testWalletMethods()
     // testOtherMethods()
     print("====================\n[FINISHED] Testing provider methods\n====================\n")
+  }
+
+  @IBAction func handleWebview(_ sender: UIButton) {
+    injectWebView()
   }
 
   func updateStaticContent() {
