@@ -45,14 +45,14 @@ class MpcSigner {
       return SignerResult(accounts: [address])
     default :
       let signingShare = try keychain.getSigningShare()
-      let formattedPayload = try formatParams(payload: payload)
+      let formattedParams = try formatParams(payload: payload)
 
       let clientSignResult = ClientSign(
         provider.getApiKey(),
         mpcUrl,
         signingShare,
         payload.method,
-        formattedPayload,
+        formattedParams,
         provider.gatewayUrl,
         String(provider.chainId)
       )
