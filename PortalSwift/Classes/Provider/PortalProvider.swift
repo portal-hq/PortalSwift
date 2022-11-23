@@ -370,10 +370,10 @@ public class PortalProvider {
   ) throws -> Void {
     let body: Dictionary<String, Any> = ["method": payload.method, "params": payload.params]
     let request = HttpRequest<Dictionary<String, Any>, Dictionary<String, Any>>(
-      body: body,
-      headers: ["Content-Type": "application/json"],
+      url: self.rpc.baseUrl,
       method: "POST",
-      url: self.rpc.baseUrl
+      body: body,
+      headers: ["Content-Type": "application/json"]
     )
 
     request.send() {
