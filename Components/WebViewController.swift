@@ -2,8 +2,8 @@
 //  WebViewController.swift
 //  PortalSwift_Example
 //
-//  Created by Kelson Adams on 11/17/22.
-//  Copyright © 2022 CocoaPods. All rights reserved.
+//  Created by Portal Labs, Inc.
+//  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
 import UIKit
@@ -16,7 +16,34 @@ public struct PortalProviderResponse: Codable {
 
 public struct PortalMessageBodyData: Codable {
   public var method: String
-  public var params: [String]
+  public var params: [Any]
+
+  enum CodingKeys: String, CodingKey {
+    case method
+    case params
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    method = try container.decode(String.self, forKey: .method)
+
+    if method == ETHRequestMethods.SignTransaction.rawValue {
+      params = try container.decode([Dictionary<String, Any>].self, forKey: .params)
+    } else {
+      params = try container.decode([String].self, forKey: .params)
+    }
+  }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(method, forKey: .method)
+
+    if method == ETHRequestMethods.SignTransaction.rawValue {
+      try container.encode(params as! [Dictionary<String, Any>], forKey: .params)
+    } else {
+      try container.encode(params as! [String], forKey: .params)
+    }
+  }
 }
 
 public struct PortalMessageBody: Codable {
