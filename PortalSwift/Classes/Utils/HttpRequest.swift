@@ -113,8 +113,6 @@ public class HttpRequest<AnyObject, U> {
 
       // Set the request body to the string literal of the Dictionary
       if (method != "GET" && body != nil) {
-        print("Body ", body!)
-        print("Is valid json: ", JSONSerialization.isValidJSONObject(body!))
         request.httpBody = try JSONSerialization.data(withJSONObject: body!, options: [])
       } else {
         request.httpBody = nil

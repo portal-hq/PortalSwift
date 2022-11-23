@@ -124,7 +124,6 @@ public class WebViewController: UIViewController, WKNavigationDelegate, WKScript
               do {
                 let resultData = try JSONSerialization.data(withJSONObject: result, options: [])
                 let resultJSONString = String(data: resultData, encoding: .utf8)
-                print("Result json string", resultJSONString!)
                 // Send back javascript that dispatches the event "portal_signatureReceived":
                 let javascript = "window.postMessage(JSON.stringify({ type: 'portal_signatureReceived', data: \(resultJSONString!) }));"
                 self.evaluateJavascript(javascript, sourceURL: "portal_sign")

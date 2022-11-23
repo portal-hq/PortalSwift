@@ -23,7 +23,7 @@ class MpcSigner {
   public var keychain: PortalKeychain
 
   private var mpcUrl: String
-  
+
   init (
     keychain: PortalKeychain,
     mpcUrl: String = "mpc.portalhq.io"
@@ -46,7 +46,7 @@ class MpcSigner {
     default :
       let signingShare = try keychain.getSigningShare()
       let formattedPayload = try formatParams(payload: payload)
-      
+
       let clientSignResult = ClientSign(
         provider.getApiKey(),
         mpcUrl,
@@ -56,27 +56,26 @@ class MpcSigner {
         provider.gatewayUrl,
         String(provider.chainId)
       )
-      
-      print("Client Sign Result", clientSignResult)
+
       let jsonData = clientSignResult.data(using: .utf8)!
       let signResult: SignResult = try JSONDecoder().decode(SignResult.self, from: jsonData)
       guard signResult.error == "" else {
         throw MpcError.unexpectedErrorOnSign(message: signResult.error!)
       }
-      
+
       return SignerResult(signature: signResult.data!)
     }
   }
-  
+
   private func formatParams(payload: ETHRequestPayload) throws -> String {
     var json: Data
-    
+
     if payload.method == ETHRequestMethods.SendTransaction.rawValue {
       json = try JSONSerialization.data(withJSONObject: payload.params.first!, options: .prettyPrinted)
     } else {
       json = try JSONSerialization.data(withJSONObject: payload.params, options: .prettyPrinted)
     }
-    
+
     return String(data: json, encoding: .utf8)!
   }
 }

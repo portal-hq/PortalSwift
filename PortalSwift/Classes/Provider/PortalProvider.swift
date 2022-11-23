@@ -243,14 +243,13 @@ public class PortalProvider {
       return self
     } else {
       // Invoke all registered handlers for the event
-        do {
-            for registeredEventHandler in registeredEventHandlers! {
-              try registeredEventHandler.handler(data)
-            }
-        } catch {
-            print("Error invoking registered handlers")
+      do {
+        for registeredEventHandler in registeredEventHandlers! {
+          try registeredEventHandler.handler(data)
         }
-
+      } catch {
+        print("Error invoking registered handlers", error)
+      }
 
       // Remove once instances
       events[event] = registeredEventHandlers?.filter(self.removeOnce)
@@ -329,17 +328,18 @@ public class PortalProvider {
   }
 
     public func setAddress(value: String) -> Void {
-//        self.address = value
-//        if (self.signer != nil && self.isMPC) {
-//            (self.signer as MPCSigner).setAddress(value: value)
-//        }
+      // self.address = value
+
+      // if (self.signer != nil && self.isMPC) {
+      //   (self.signer as MPCSigner).setAddress(value: value)
+      // }
     }
 
     public func setChainId(value: Int) -> PortalProvider {
-        self.chainId = value
-        let hexChainId = String(format:"%02x", value)
-        let provider = emit(event: Events.ChainChanged.rawValue, data: ["chainId": hexChainId])
-        return provider
+      self.chainId = value
+      let hexChainId = String(format:"%02x", value)
+      let provider = emit(event: Events.ChainChanged.rawValue, data: ["chainId": hexChainId])
+      return provider
     }
 
   // ------ Private Functions
@@ -370,21 +370,15 @@ public class PortalProvider {
   ) throws -> Void {
     let body: Dictionary<String, Any> = ["method": payload.method, "params": payload.params]
     let request = HttpRequest<Dictionary<String, Any>, Dictionary<String, Any>>(
-      url: self.rpc.baseUrl,
+      body: body,
+      headers: ["Content-Type": "application/json"],
       method: "POST",
-      body:body,
-      headers: ["Content-Type": "application/json"]
+      url: self.rpc.baseUrl
     )
 
     request.send() {
       (result: Result<Any>) in
-      if (result.error != nil) {
-        print("Error in sending Gateway request", result.error!)
-      } else {
-        print("Gateway request sent")
-        print("Result from gateway", result.data!)
-        completion(result.data!)
-      }
+      completion(result.data!)
     }
   }
 
