@@ -176,11 +176,11 @@ class ViewController: UIViewController {
   }
 
   @IBAction func testProviderMethods(_ sender: UIButton!) {
-    print("\n====================\nTesting provider methods\n====================\n")
+    print("\n====================\nTesting provider methods\n====================")
     testSignerMethods()
     // testWalletMethods()
     // testOtherMethods()
-    print("\n====================\n[FINISHED] Testing provider methods\n====================\n")
+    print("====================\n[FINISHED] Testing provider methods\n====================\n")
   }
 
   func updateStaticContent() {
@@ -204,7 +204,7 @@ class ViewController: UIViewController {
   }
 
   func testSignerMethods() {
-    print("\nTesting Signer Methods:\n")
+    print("Testing Signer Methods:\n")
     let signerMethods = [
       ETHRequestMethods.Accounts.rawValue,
       ETHRequestMethods.PersonalSign.rawValue,
