@@ -29,6 +29,20 @@ struct CipherTextResult: Codable {
   var cipherText: String
 }
 
+struct ProviderRequest {
+  var method: String
+  var params: [Any]
+  var skipLoggingResult: Bool
+}
+
+struct SendTransactionParams {
+  var from: String
+  var to: String
+  var gas: String
+  var gasPrice: String
+  var value: String
+  var data: String
+}
 
 class ViewController: UIViewController {
   public var portal: Portal?
@@ -170,11 +184,11 @@ class ViewController: UIViewController {
     handleSend()
   }
 
-  @IBAction func testProviderMethods(_ sender: UIButton!) {
+  @IBAction func testProviderRequests(_ sender: UIButton!) {
     print("\n====================\nTesting provider methods\n====================")
-    testSignerMethods()
-    // testWalletMethods()
-    // testOtherMethods()
+    testSignerRequests()
+    // testWalletRequests()
+    // testOtherRequests()
     print("====================\n[FINISHED] Testing provider methods\n====================\n")
   }
 
@@ -187,41 +201,55 @@ class ViewController: UIViewController {
     populateEthBalance()
   }
 
-  func testProviderMethod(method: String, params: [Any]) {
+  func testProviderRequest(method: String, params: [Any], skipLoggingResult: Bool = false) {
     do {
       let payload = ETHRequestPayload(
         method: method,
-        params: []
+        params: params
       )
       _ = try portal?.provider.request(payload: payload) {
         (result: Any) -> Void in
-        print("✅ Received result for:", method)
+        if (!skipLoggingResult) {
+          print("✅ ", method, "() result:", result)
+        } else {
+          print("✅ ", method, "()")
+        }
       }
     } catch {
       print("❌ Error testing method:", method, "Error:", error)
     }
   }
 
-  func testSignerMethods() {
+  func testSignerRequests() {
     print("Testing Signer Methods:\n")
-    let signerMethods = [
-      ETHRequestMethods.Accounts.rawValue,
-      ETHRequestMethods.PersonalSign.rawValue,
-      ETHRequestMethods.RequestAccounts.rawValue,
-      ETHRequestMethods.SendTransaction.rawValue,
-      ETHRequestMethods.Sign.rawValue,
-      ETHRequestMethods.SignTransaction.rawValue,
-      ETHRequestMethods.SignTypedData.rawValue,
-    ]
-
     do {
-      let address = try portal?.keychain.getAddress()
-      guard address != nil else {
+      let fromAddress = try portal?.keychain.getAddress()
+      let toAddress = "0x4cd042bba0da4b3f37ea36e8a2737dce2ed70db7"
+      let fakeTransaction = SendTransactionParams(
+        from: fromAddress!,
+        to: toAddress,
+        gas: "0x76c0",
+        gasPrice: "0x9184e72a000",
+        value: "0x9184e72a",
+        data: "0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675"
+      )
+      guard fromAddress != nil else {
         print("❌ Error testing signer methods: address is nil")
         return
       }
-      for method in signerMethods {
-        testProviderMethod(method: method, params: [address!])
+      let signerRequests = [
+        ProviderRequest(method: ETHRequestMethods.Accounts.rawValue, params: [], skipLoggingResult: false),
+        // ProviderRequest(method: ETHRequestMethods.PersonalSign.rawValue, params: [], skipLoggingResult: false),
+        ProviderRequest(method: ETHRequestMethods.RequestAccounts.rawValue, params: [], skipLoggingResult: false),
+        // ProviderRequest(method: ETHRequestMethods.SendTransaction.rawValue, params: [fakeTransaction], skipLoggingResult: false),
+        ProviderRequest(method: ETHRequestMethods.Sign.rawValue, params: [fromAddress!, "0xdeadbeaf"], skipLoggingResult: false),
+        // ProviderRequest(method: ETHRequestMethods.SignTransaction.rawValue, params: [fakeTransaction], skipLoggingResult: false),
+        // @Skipping next one because it's a weird one (can't imagine it gets utilized much): https://eips.ethereum.org/EIPS/eip-712#specification-of-the-eth_signtypeddata-json-rpc
+        // ProviderRequest(method: ETHRequestMethods.SignTypedData.rawValue, params: [], skipLoggingResult: false)
+      ]
+
+      for request in signerRequests {
+        testProviderRequest(method: request.method, params: request.params)
       }
     } catch {
       print("❌ Error testing signer methods:", error)
@@ -229,89 +257,89 @@ class ViewController: UIViewController {
     }
   }
 
-  func testWalletMethods() {
+  func testWalletRequests() {
     print("\nTesting Wallet Methods:\n")
-    let walletMethods = [
-      ETHRequestMethods.WalletAddEthereumChain.rawValue,
-      ETHRequestMethods.WalletGetPermissions.rawValue,
-      ETHRequestMethods.WalletRegisterOnboarding.rawValue,
-      ETHRequestMethods.WalletRequestPermissions.rawValue,
-      ETHRequestMethods.WalletSwitchEthereumChain.rawValue,
-      ETHRequestMethods.WalletWatchAsset.rawValue,
+    let walletRequests = [
+      ProviderRequest(method: ETHRequestMethods.WalletAddEthereumChain.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.WalletGetPermissions.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.WalletRegisterOnboarding.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.WalletRequestPermissions.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.WalletSwitchEthereumChain.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.WalletWatchAsset.rawValue, params: [], skipLoggingResult: false)
     ]
 
-    for method in walletMethods {
-      testProviderMethod(method: method, params: [])
+    for request in walletRequests {
+      testProviderRequest(method: request.method, params: request.params)
     }
   }
 
-  func testOtherMethods() {
+  func testOtherRequests() {
     print("\nTesting Other Methods:\n")
-    let otherMethods = [
-      ETHRequestMethods.BlockNumber.rawValue,
-      ETHRequestMethods.Call.rawValue,
-      ETHRequestMethods.Coinbase.rawValue,
-      ETHRequestMethods.CompileLLL.rawValue,
-      ETHRequestMethods.CompileSerpent.rawValue,
-      ETHRequestMethods.CompileSolidity.rawValue,
-      ETHRequestMethods.EstimateGas.rawValue,
-      ETHRequestMethods.GasPrice.rawValue,
-      ETHRequestMethods.GetBalance.rawValue,
-      ETHRequestMethods.GetBlockByHash.rawValue,
-      ETHRequestMethods.GetBlockByNumber.rawValue,
-      ETHRequestMethods.GetBlockTransactionCountByHash.rawValue,
-      ETHRequestMethods.GetBlockTransactionCountByNumber.rawValue,
-      ETHRequestMethods.GetCode.rawValue,
-      ETHRequestMethods.GetCompilers.rawValue,
-      ETHRequestMethods.GetFilterChange.rawValue,
-      ETHRequestMethods.GetFilterLogs.rawValue,
-      ETHRequestMethods.GetLogs.rawValue,
-      ETHRequestMethods.GetStorageAt.rawValue,
-      ETHRequestMethods.GetTransactionByBlockHashAndIndex.rawValue,
-      ETHRequestMethods.GetTransactionByBlockNumberAndIndex.rawValue,
-      ETHRequestMethods.GetTransactionByHash.rawValue,
-      ETHRequestMethods.GetTransactionCount.rawValue,
-      ETHRequestMethods.GetTransactionReceipt.rawValue,
-      ETHRequestMethods.GetUncleByBlockHashIndex.rawValue,
-      ETHRequestMethods.GetUncleByBlockNumberAndIndex.rawValue,
-      ETHRequestMethods.GetUncleCountByBlockHash.rawValue,
-      ETHRequestMethods.GetUncleCountByBlockNumber.rawValue,
-      ETHRequestMethods.GetWork.rawValue,
-      ETHRequestMethods.Hashrate.rawValue,
-      ETHRequestMethods.Mining.rawValue,
-      ETHRequestMethods.NetListening.rawValue,
-      ETHRequestMethods.NetPeerCount.rawValue,
-      ETHRequestMethods.NetVersion.rawValue,
-      ETHRequestMethods.NewBlockFilter.rawValue,
-      ETHRequestMethods.NewFilter.rawValue,
-      ETHRequestMethods.NewPendingTransactionFilter.rawValue,
-      ETHRequestMethods.ProtocolVersion.rawValue,
-      ETHRequestMethods.SendRawTransaction.rawValue,
-      ETHRequestMethods.SubmitHashrate.rawValue,
-      ETHRequestMethods.SubmitWork.rawValue,
-      ETHRequestMethods.Synching.rawValue,
-      ETHRequestMethods.UninstallFilter.rawValue,
-      ETHRequestMethods.WalletAddEthereumChain.rawValue,
-      ETHRequestMethods.WalletGetPermissions.rawValue,
-      ETHRequestMethods.WalletRegisterOnboarding.rawValue,
-      ETHRequestMethods.WalletRequestPermissions.rawValue,
-      ETHRequestMethods.WalletSwitchEthereumChain.rawValue,
-      ETHRequestMethods.WalletWatchAsset.rawValue,
-      ETHRequestMethods.Web3ClientVersion.rawValue,
-      ETHRequestMethods.Web3Sha3.rawValue,
+    let otherRequests = [
+      ProviderRequest(method: ETHRequestMethods.BlockNumber.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.Call.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.Coinbase.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.CompileLLL.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.CompileSerpent.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.CompileSolidity.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.EstimateGas.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.GasPrice.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.GetBalance.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.GetBlockByHash.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.GetBlockByNumber.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.GetBlockTransactionCountByHash.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.GetBlockTransactionCountByNumber.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.GetCode.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.GetCompilers.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.GetFilterChange.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.GetFilterLogs.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.GetLogs.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.GetStorageAt.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.GetTransactionByBlockHashAndIndex.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.GetTransactionByBlockNumberAndIndex.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.GetTransactionByHash.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.GetTransactionCount.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.GetTransactionReceipt.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.GetUncleByBlockHashIndex.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.GetUncleByBlockNumberAndIndex.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.GetUncleCountByBlockHash.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.GetUncleCountByBlockNumber.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.GetWork.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.Hashrate.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.Mining.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.NetListening.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.NetPeerCount.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.NetVersion.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.NewBlockFilter.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.NewFilter.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.NewPendingTransactionFilter.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.ProtocolVersion.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.SendRawTransaction.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.SubmitHashrate.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.SubmitWork.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.Synching.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.UninstallFilter.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.WalletAddEthereumChain.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.WalletGetPermissions.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.WalletRegisterOnboarding.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.WalletRequestPermissions.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.WalletSwitchEthereumChain.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.WalletWatchAsset.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.Web3ClientVersion.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.Web3Sha3.rawValue, params: [], skipLoggingResult: false)
     ]
 
-    for method in otherMethods {
-      testProviderMethod(method: method, params: [])
+    for request in otherRequests {
+      testProviderRequest(method: request.method, params: request.params)
     }
   }
 
-  func testUnsupportedMethods() {
+  func testUnsupportedRequests() {
     print("\nTesting Unsupported Methods:\n")
-    testUnsupportedSignerMethods()
+    testUnsupportedSignerRequests()
   }
 
-  func testUnsupportedSignerMethods() {
+  func testUnsupportedSignerRequests() {
     print("\nTesting Unsupported Signer Methods:\n")
     let unsupportedSignerMethods = [
       ETHRequestMethods.ChainId.rawValue,
@@ -320,11 +348,11 @@ class ViewController: UIViewController {
     do {
       let address = try portal?.keychain.getAddress()
       guard address != nil else {
-        print("❌ testUnsupportedSignerMethods(): Error getting address")
+        print("❌ testUnsupportedSignerRequests(): Error getting address")
         return
       }
       for method in unsupportedSignerMethods {
-        testProviderMethod(method: method, params: [address!])
+        testProviderRequest(method: method, params: [address!])
       }
     } catch {
       print("❌ Error testing signer methods:", error)

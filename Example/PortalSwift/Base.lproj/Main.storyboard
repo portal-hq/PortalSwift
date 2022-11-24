@@ -59,7 +59,7 @@
                                     <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
                                 </buttonConfiguration>
                                 <connections>
-                                    <action selector="testProviderMethods:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="MBY-Ww-Vku"/>
+                                    <action selector="testProviderRequests:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="BbZ-Fy-J0c"/>
                                 </connections>
                             </button>
                             <textField opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="248" fixedFrame="YES" contentHorizontalAlignment="left" contentVerticalAlignment="center" borderStyle="roundedRect" placeholder="Address" textAlignment="natural" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="rf6-ZQ-VL3">
