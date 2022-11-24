@@ -378,7 +378,7 @@ public class PortalProvider {
 
     request.send() {
       (result: Result<Any>) in
-      completion(result.data!)
+      completion(result.data ?? "")
     }
   }
 
