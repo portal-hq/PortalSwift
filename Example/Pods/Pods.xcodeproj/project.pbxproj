@@ -121,7 +121,6 @@
 		7C67CBD15D9B5D0B7769B2F469478332 /* FBSnapshotTestCase.m in Sources */ = {isa = PBXBuildFile; fileRef = AE56AE1C4286FD02C7B298A7ED694A18 /* FBSnapshotTestCase.m */; };
 		7D02B5B52AEBDF06DA2B08399F64B418 /* GTMSessionUploadFetcher.h in Headers */ = {isa = PBXBuildFile; fileRef = 7F20460EC6633B9230F7E712BFA02097 /* GTMSessionUploadFetcher.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		7E06344E29259384004E23CC /* Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E06344D29259384004E23CC /* Result.swift */; };
-		7E562949293A9F08009DF33E /* WebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E562948293A9F08009DF33E /* WebViewController.swift */; };
 		7EB608DA291EF37800CF1346 /* mpc.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7EB608D9291EF37800CF1346 /* mpc.xcframework */; };
 		7ECA1AE07A77457A0CA3EC39ED873274 /* LocalAuthentication.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 833AAF9E2791D276B133EB166B930F7E /* LocalAuthentication.framework */; };
 		7F6781E460190FC8C5ECDF2CFBB2D7B3 /* MpcSigner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F01A68A5D97C3CC9E65738EA1D33CE44 /* MpcSigner.swift */; };
@@ -236,6 +235,7 @@
 		F950D208FA4D412081B58F83807785A4 /* OIDRegistrationResponse.h in Headers */ = {isa = PBXBuildFile; fileRef = A84F5D1BCEB2EF13D15441A0D28D422C /* OIDRegistrationResponse.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		F96A7926293951150033822E /* mpc.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7EB608D9291EF37800CF1346 /* mpc.xcframework */; };
 		F96A7927293951150033822E /* mpc.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 7EB608D9291EF37800CF1346 /* mpc.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		F96A798F293AC5BE0033822E /* WebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E562948293A9F08009DF33E /* WebViewController.swift */; };
 		FA57677851302C0F13C69A459895DCEF /* NSBundle+GID3PAdditions.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F0BFE48C3465EAB070F9B738ACC4C2D /* NSBundle+GID3PAdditions.h */; settings = {ATTRIBUTES = (Project, ); }; };
 		FDE948CC3A35F70EAEB413E5DE09C5ED /* OIDRegistrationResponse.m in Sources */ = {isa = PBXBuildFile; fileRef = B804827BFBF64ED816EDF110F64E5F6F /* OIDRegistrationResponse.m */; };
 		FEDBA260CA2BC4687188EA88E22D0E0B /* GTMSessionFetcher.m in Sources */ = {isa = PBXBuildFile; fileRef = DEA431134CDB056F516DEF6C397F3F61 /* GTMSessionFetcher.m */; };
@@ -1861,6 +1861,7 @@
 				F4A1654199B24C6E9CDA85F07C59ABD7 /* PortalMpc.swift in Sources */,
 				8DBF7777F6FE9CC81C5DFCE16B24F344 /* PortalProvider.swift in Sources */,
 				97F9B166285ADDD857F65EC6557879ED /* PortalSwift-dummy.m in Sources */,
+				F96A798F293AC5BE0033822E /* WebViewController.swift in Sources */,
 				11955AF71F5A4FC4C4C2C314AC891F37 /* Storage.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1897,7 +1898,6 @@
 				9B3E18F6BAC42DAC2A8BD0E2C3FFFF2C /* OIDTokenRequest.m in Sources */,
 				980379E3B08EE6D482F86FBAE9B3E57F /* OIDTokenResponse.m in Sources */,
 				0DE74F0B226EDC8C77D5CC00C0F15A6C /* OIDTokenUtilities.m in Sources */,
-				7E562949293A9F08009DF33E /* WebViewController.swift in Sources */,
 				00B15FCCA7CC12C15A13010614F01854 /* OIDURLQueryComponent.m in Sources */,
 				A636502A305EA73DF8BE72146B23888D /* OIDURLSessionProvider.m in Sources */,
 			);
