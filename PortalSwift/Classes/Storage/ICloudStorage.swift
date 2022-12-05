@@ -32,18 +32,12 @@ public class ICloudStorage: Storage {
 
   private let isSimulator = TARGET_OS_SIMULATOR != 0
 
-  /**
-    Initializes a new ICloudStorage instance.
-
-    - Returns: A new ICloudStorage instance.
-  */
+  /// Initializes a new ICloudStorage instance.
   public override init() {}
 
-  /**
-    Reads the private key stored in iCloud's key-value store.
-
-    - Returns: The private key stored in iCloud's key-value store.
-  */
+  /// Reads the private key stored in iCloud's key-value store.
+  /// - Parameter completion: Resolves as a Result which can include the private key stored in iCloud's key-value store.
+  /// - Returns: Void
   public override func read(completion: @escaping (Result<String>) -> Void) -> Void {
     self.getKey() { (result: Result<String>) -> Void in
       // Escape early if we can't get the key.
@@ -65,15 +59,12 @@ public class ICloudStorage: Storage {
       }
     }
   }
-
-  /**
-    Writes the private key to iCloud's key-value store.
-
-    - Parameters:
-      - privateKey: The private key to write to iCloud's key-value store.
-
-    - Returns: The private key written to iCloud's key-value store.
-  */
+  
+  /// Writes the private key to iCloud's key-value store.
+  /// - Parameters:
+  ///   - privateKey: The private key to write to iCloud's key-value store.
+  ///   - completion: Resolves as a Result<Bool>.
+  /// - Returns: Void
   public override func write(privateKey: String, completion: @escaping (Result<Bool>) -> Void) -> Void {
     getKey() { (result: Result<String>) -> Void in
       // Escape early if we can't get the key.
@@ -98,11 +89,9 @@ public class ICloudStorage: Storage {
     }
   }
 
-  /**
-    Deletes the private key stored in iCloud's key-value store.
-
-    - Returns: A boolean indicating whether the private key was deleted.
-  */
+  /// Deletes the private key stored in iCloud's key-value store.
+  /// - Parameter completion: Resolves as a Result<Bool>.
+  /// - Returns: Void
   public override func delete(completion: @escaping (Result<Bool>) -> Void) -> Void {
     getKey() { (result: Result<String>) -> Void in
       // Escape early if we can't get the key.
@@ -127,11 +116,8 @@ public class ICloudStorage: Storage {
     }
   }
 
-  /**
-    Checks if the user is signed into iCloud and has iCloud Key-Value Storage enabled.
-
-    - Returns: The status string. One of: "available", "not_signed_in", or "no_access".
-    */
+  /// Checks if the user is signed into iCloud and has iCloud Key-Value Storage enabled.
+  /// - Returns: An ICloudStatus.
   public func getAvailability() -> String {
     // Check ubiquityIdentityToken from FileManager to see if the user is signed in.
     if FileManager.default.ubiquityIdentityToken == nil {
@@ -158,12 +144,6 @@ Test this on a REAL DEVICE if you want to test when iCloud has no access to key-
     return ICloudStatus.available.rawValue
   }
 
-  /**
-    Handles rejection of the promise returned by the Portal API when iCloud is not available.
-
-    - Parameters:
-      - completion: The completion handler to call when the promise is rejected.
-  */
   private func checkAvailability(completion: @escaping (Result<Any>) -> Void) -> Void {
     let status = getAvailability()
 
@@ -176,11 +156,6 @@ Test this on a REAL DEVICE if you want to test when iCloud has no access to key-
     }
   }
 
-  /**
-    Gets the key to use for storing/retrieving the private key in iCloud's key-value store.
-
-    - Returns: The key to use for storing/retrieving the private key in iCloud's key-value store.
-  */
   private func getKey(completion: @escaping (Result<String>) -> Void) -> Void {
     if self.key.count > 0 {
       completion(Result(data: self.key))
@@ -206,11 +181,6 @@ Test this on a REAL DEVICE if you want to test when iCloud has no access to key-
     }
   }
 
-  /**
-    Creates the key to use for storing/retrieving the private key in iCloud's key-value store.
-
-    - Returns: The key to use for storing/retrieving the private key in iCloud's key-value store.
-  */
   private func createKey(client: Dictionary<String, Any>) -> String {
     let clientID = client["id"] as! String
     let custodian = client["custodian"] as! Dictionary<String, Any>
@@ -219,14 +189,6 @@ Test this on a REAL DEVICE if you want to test when iCloud has no access to key-
     return ICloudStorage.hash("\(custodianID)\(clientID)")
   }
 
-  /**
-    Hashes the given string.
-
-    - Parameters:
-      - str: The string to hash.
-
-    - Returns: The hashed string.
-    */
   private static func hash(_ str: String) -> String {
     let data = str.data(using: .utf8)!
     var digest = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
