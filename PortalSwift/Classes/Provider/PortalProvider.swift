@@ -118,7 +118,7 @@ public enum ProviderSigningError: Error {
   case walletRequestRejected
 }
 
-/// A normal ETH request payload 
+/// An ETH request payload where params is of type [Any].
 public struct ETHRequestPayload {
   var method: ETHRequestMethods.RawValue
   var params: [Any]
@@ -136,6 +136,7 @@ public struct ETHRequestPayload {
   }
 }
 
+/// A param within ETHTransactionPayload.params.
 public struct ETHTransactionParam: Codable {
   var from: String
   var to: String
@@ -143,7 +144,7 @@ public struct ETHTransactionParam: Codable {
   var gasPrice: String
   var value: String
   var data: String
-  
+
   public init(from: String, to: String, gas: String, gasPrice: String, value: String, data: String) {
     self.from = from
     self.to = to
@@ -154,11 +155,13 @@ public struct ETHTransactionParam: Codable {
   }
 }
 
+/// An error response from Gateway.
 public struct ETHGatewayErrorResponse {
   var code: Int
   var message: String
 }
 
+/// A response from Gateway.
 public struct ETHGatewayResponse {
   var jsonrpc: String = "2.0"
   var id: Int?
@@ -166,48 +169,38 @@ public struct ETHGatewayResponse {
   var error: ETHGatewayErrorResponse?
 }
 
+/// The payload for a transaction request.
 public struct ETHTransactionPayload: Codable {
   var method: ETHRequestMethods.RawValue
   var params: [ETHTransactionParam]
-  
+
   public init(method: ETHRequestMethods.RawValue, params: [ETHTransactionParam]) {
     self.method = method
     self.params = params
   }
 }
 
+/// A param within ETHAddressPayload.params.
 public struct ETHAddressParam: Codable {
   var address: String
-  
+
   public init(address: String) {
     self.address = address
   }
 }
 
+/// The payload for an address request.
 public struct ETHAddressPayload: Codable {
   var method: ETHRequestMethods.RawValue
   var params: [ETHAddressParam]
-  
+
   public init(method: ETHRequestMethods.RawValue, params: [ETHAddressParam]) {
     self.method = method
     self.params = params
   }
 }
 
-public struct GatewayRequestPayload {
-  var jsonrpc: String = "2.0"
-  var id: Int = 1
-  var method: ETHRequestMethods.RawValue
-  var params: Any
-}
-
-public struct Network: Codable {
-  var id: String
-  var chainId: String
-  var name: String
-  var createdAt: String
-  var updatedAt: String
-}
+/// A list of JSON-RPC transaction methods.
 public var TransactionMethods: [ETHRequestMethods.RawValue] = [
   ETHRequestMethods.Call.rawValue, // string
   ETHRequestMethods.EstimateGas.rawValue, // string
@@ -217,6 +210,7 @@ public var TransactionMethods: [ETHRequestMethods.RawValue] = [
   ETHRequestMethods.SignTransaction.rawValue,
 ]
 
+/// A list of JSON-RPC signing methods.
 public var signerMethods: [ETHRequestMethods.RawValue] = [
   ETHRequestMethods.Accounts.rawValue,
   ETHRequestMethods.ChainId.rawValue,
@@ -228,35 +222,34 @@ public var signerMethods: [ETHRequestMethods.RawValue] = [
   ETHRequestMethods.SignTypedData.rawValue,
 ]
 
+/// A registered event handler.
 public struct RegisteredEventHandler {
   var handler: (_ data: Any) throws -> Void
   var once: Bool
 }
 
+/// The result of a request.
 public struct RequestCompletionResult {
   public var method: String
   public var params: [Any]
   public var result: Any
 }
 
-public struct GatewayCompletionResult {
-  public var method: String
-  public var params: [Any]
-  public var result: ETHGatewayResponse
-}
-
+/// The result of a transaction request.
 public struct TransactionCompletionResult {
   public var method: String
   public var params: [ETHTransactionParam]
   public var result: Any
 }
 
+/// The result of an address request.
 public struct AddressCompletionResult {
   public var method: String
   public var params: [ETHAddressParam]
   public var result: Any
 }
 
+/// Portal's EVM blockchain provider.
 public class PortalProvider {
   public var chainId: Chains.RawValue
   public var gatewayUrl: String
@@ -273,8 +266,6 @@ public class PortalProvider {
   private var signer: MpcSigner
   private var address: String = ""
 
-
-
   private var walletMethods: [ETHRequestMethods.RawValue] = [
     ETHRequestMethods.WalletAddEthereumChain.rawValue,
     ETHRequestMethods.WalletGetPermissions.rawValue,
@@ -283,7 +274,14 @@ public class PortalProvider {
     ETHRequestMethods.WalletSwitchEthereumChain.rawValue,
     ETHRequestMethods.WalletWatchAsset.rawValue,
   ]
-
+  
+  /// Creates an instance of PortalProvider.
+  /// - Parameters:
+  ///   - apiKey: The client API key. You can obtain this via Portal's REST API.
+  ///   - chainId: The ID of the EVM network you are using.
+  ///   - gatewayUrl: The gateway URL, such as Infura or Alchemy.
+  ///   - apiHost: The hostname of the API to use.
+  ///   - autoApprove: Auto approves all transactions.
   public init(
     apiKey: String,
     chainId: Chains.RawValue,
@@ -311,7 +309,12 @@ public class PortalProvider {
   }
 
   // ------ Public Functions
-
+  
+  /// Emits an event from the provider to registered event handlers.
+  /// - Parameters:
+  ///   - event: The event to be emitted.
+  ///   - data: The data to pass to registered event handlers.
+  /// - Returns: The Portal Provider instance.
   public func emit(event: Events.RawValue, data: Any) -> PortalProvider {
     let registeredEventHandlers = self.events[event]
 
@@ -334,11 +337,18 @@ public class PortalProvider {
       return self
     }
   }
-
+  
+  /// Retrieves the API key.
+  /// - Returns: The client API key.
   public func getApiKey() -> String {
     return apiKey
   }
-
+  
+  /// Registers a callback for an event.
+  /// - Parameters:
+  ///   - event: The event to register a callback.
+  ///   - callback: The function to be invoked whenever the event fires.
+  /// - Returns: The Portal Provider instance.
   public func on(
     event: Events.RawValue,
     callback: @escaping (_ data: Any) -> Void
@@ -354,7 +364,12 @@ public class PortalProvider {
 
     return self
   }
-
+  
+  /// Registers a callback for an event. Deletes the registered callback after it's fired once.
+  /// - Parameters:
+  ///   - event: The event to register a callback.
+  ///   - callback: The function to be invoked whenever the event fires.
+  /// - Returns: The Portal Provider instance.
   public func once(
     event: Events.RawValue,
     callback: @escaping (_ data: Any) throws -> Void
@@ -370,7 +385,12 @@ public class PortalProvider {
 
     return self
   }
-
+  
+  /// Removes the callback for the specified event.
+  /// - Parameters:
+  ///   - event: A specific event from the list of Events.
+  ///   - callback: A callback function for the event.
+  /// - Returns: An instance of Portal Provider.
   public func removeListener(
     event: Events.RawValue,
     callback: @escaping (_ data: Any) -> Void
@@ -385,7 +405,12 @@ public class PortalProvider {
 
     return self
   }
-
+  
+  /// Makes a request.
+  /// - Parameters:
+  ///   - payload: A normal payload whose params are of type [Any].
+  ///   - completion: Resolves with a Result.
+  /// - Returns: Void
   public func request(
     payload: ETHRequestPayload,
     completion: @escaping (Result<RequestCompletionResult>) -> Void
@@ -404,7 +429,12 @@ public class PortalProvider {
       completion(Result(error: ProviderRpcError.unsupportedMethod))
     }
   }
-  
+
+  /// Makes a request.
+  /// - Parameters:
+  ///   - payload: A transaction payload.
+  ///   - completion: Resolves with a Result.
+  /// - Returns: Void
   public func request(
     payload: ETHTransactionPayload,
     completion: @escaping (Result<TransactionCompletionResult>) -> Void
@@ -419,12 +449,17 @@ public class PortalProvider {
       handleSigningRequest(payload: payload) { (result: Any) -> Void in
         completion(Result(data: TransactionCompletionResult(method: payload.method, params: payload.params, result: result)))
       }
-      
+
     } else {
       completion(Result(error: ProviderRpcError.unsupportedMethod))
     }
   }
-  
+
+  /// Makes a request.
+  /// - Parameters:
+  ///   - payload: An address payload.
+  ///   - completion: Resolves with a Result.
+  /// - Returns: Void
   public func request(
     payload: ETHAddressPayload,
     completion: @escaping (Result<AddressCompletionResult>) -> Void
@@ -440,11 +475,17 @@ public class PortalProvider {
       completion(Result(error: ProviderRpcError.unsupportedMethod))
     }
   }
-
+  
+  /// Sets the public address.
+  /// - Parameter value: The public address.
+  /// - Returns: Void
   public func setAddress(value: String) -> Void {
      self.address = value
   }
-
+  
+  /// Sets the EVM network chainId.
+  /// - Parameter value: The chainId.
+  /// - Returns: An instance of Portal Provider.
   public func setChainId(value: Int) -> PortalProvider {
     self.chainId = value
     let hexChainId = String(format:"%02x", value)
@@ -457,44 +498,43 @@ public class PortalProvider {
     payload: ETHRequestPayload,
     completion: @escaping (Result<Bool>) -> Void
   ) -> Void {
-      if (autoApprove) {
-        completion(Result(data: true))
-      } else if (events[Events.PortalSigningRequested.rawValue] == nil) {
-        completion(Result(error: ProviderSigningError.noBindingForSigningApprovalFound))
-      }
+    if (autoApprove) {
+      completion(Result(data: true))
+    } else if (events[Events.PortalSigningRequested.rawValue] == nil) {
+      completion(Result(error: ProviderSigningError.noBindingForSigningApprovalFound))
+    }
 
-      // Bind to signing approval callbacks
-      let _ = once(event: Events.PortalSigningApproved.rawValue, callback: { (approved) in
-          completion(Result(data: true))
-      }).once(event: Events.PortalSigningRejected.rawValue, callback: { approved in
-            completion(Result(data: false))
-      })
+    // Bind to signing approval callbacks
+    let _ = once(event: Events.PortalSigningApproved.rawValue, callback: { (approved) in
+      completion(Result(data: true))
+    }).once(event: Events.PortalSigningRejected.rawValue, callback: { approved in
+      completion(Result(data: false))
+    })
   }
-  
+
   private func getApproval(
     payload: ETHTransactionPayload,
     completion: @escaping (Result<Bool>) -> Void
   ) -> Void {
-      if (autoApprove) {
-        completion(Result(data: true))
-      } else if (events[Events.PortalSigningRequested.rawValue] == nil) {
-        completion(Result(error: ProviderSigningError.noBindingForSigningApprovalFound))
-      }
+    if (autoApprove) {
+      completion(Result(data: true))
+    } else if (events[Events.PortalSigningRequested.rawValue] == nil) {
+      completion(Result(error: ProviderSigningError.noBindingForSigningApprovalFound))
+    }
 
-      // Bind to signing approval callbacks
-      let _ = once(event: Events.PortalSigningApproved.rawValue, callback: { (approved) in
-          completion(Result(data: true))
-      }).once(event: Events.PortalSigningRejected.rawValue, callback: { approved in
-            completion(Result(data: false))
-      })
+    // Bind to signing approval callbacks
+    let _ = once(event: Events.PortalSigningApproved.rawValue, callback: { (approved) in
+      completion(Result(data: true))
+    }).once(event: Events.PortalSigningRejected.rawValue, callback: { approved in
+      completion(Result(data: false))
+    })
   }
 
-
-  
   private func handleGatewayRequest(
     payload: ETHTransactionPayload,
     completion: @escaping (String, [ETHTransactionParam], Any) -> Void
   ) -> Void {
+    // Create the body of the request.
     let body: Dictionary<String, Any> = [
       "method": payload.method,
       "params": payload.params.map { (p: ETHTransactionParam) in
@@ -508,6 +548,8 @@ public class PortalProvider {
         ]
       }
     ]
+    
+    // Create the request.
     let request = HttpRequest<ETHTransactionPayload, Dictionary<String, Any>>(
       url: self.rpc.baseUrl,
       method: "POST",
@@ -515,22 +557,25 @@ public class PortalProvider {
       headers: ["Content-Type": "application/json"]
     )
 
-    request.send() {
-      (result: Result<Any>) in
+    // Attempt to send the request.
+    request.send() { (result: Result<Any>) in
       completion(payload.method, payload.params, result.data ?? "")
     }
   }
-  
+
   private func handleGatewayRequest(
     payload: ETHAddressPayload,
     completion: @escaping (String, [ETHAddressParam], Any) -> Void
   ) -> Void {
+    // Create the body of the request.
     let body: Dictionary<String, Any> = [
       "method": payload.method,
       "params": payload.params.map { (p: ETHAddressParam) in
         return [ "address": p.address ]
       }
     ]
+    
+    // Create the request.
     let request = HttpRequest<ETHAddressParam, Dictionary<String, Any>>(
       url: self.rpc.baseUrl,
       method: "POST",
@@ -538,17 +583,23 @@ public class PortalProvider {
       headers: ["Content-Type": "application/json"]
     )
 
-    request.send() {
-      (result: Result<Any>) in
+    // Attempt to send the request.
+    request.send() { (result: Result<Any>) in
       completion(payload.method, payload.params, result.data ?? "")
     }
   }
-  
+
   private func handleGatewayRequest(
     payload: ETHRequestPayload,
     completion: @escaping (String, [Any], Any) -> Void
   ) -> Void {
-    let body: Dictionary<String, Any> = ["method": payload.method, "params": payload.params]
+    // Create the body of the request.
+    let body: Dictionary<String, Any> = [
+      "method": payload.method,
+      "params": payload.params
+    ]
+    
+    // Create the request.
     let request = HttpRequest<Dictionary<String, Any>, Dictionary<String, Any>>(
       url: self.rpc.baseUrl,
       method: "POST",
@@ -556,12 +607,12 @@ public class PortalProvider {
       headers: ["Content-Type": "application/json"]
     )
 
-    request.send() {
-      (result: Result<Any>) in
+    // Attempt to send the request.
+    request.send() { (result: Result<Any>) in
       completion(payload.method, payload.params, result.data ?? "")
     }
   }
-  
+
   private func handleSigningRequest(
     payload: ETHRequestPayload,
     completion: @escaping (Result<Any>) -> Void
@@ -573,9 +624,8 @@ public class PortalProvider {
       }
     }
 
-    var signResult: Any
     do {
-      signResult = try signer.sign(
+      let signResult = try signer.sign(
         payload: payload,
         provider: self
       )
@@ -585,7 +635,7 @@ public class PortalProvider {
       completion(Result(error: error))
     }
   }
-  
+
   private func handleSigningRequest(
     payload: ETHTransactionPayload,
     completion: @escaping (Result<Any>) -> Void
@@ -596,9 +646,9 @@ public class PortalProvider {
         return
       }
     }
-    let signResult: SignerResult
+
     do {
-      signResult = try signer.sign(
+      let signResult = try signer.sign(
         payload: payload,
         provider: self
       )
