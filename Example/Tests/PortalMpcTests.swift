@@ -7,8 +7,10 @@
 //
 
 import XCTest
-import PortalSwift
+@testable import PortalSwift
 
 final class PortalMpcTests: XCTestCase {
-  var portalMpc: PortalMpc?
+  func boilerplateTest() {
+    XCTAssertTrue(true)
+  }
 }

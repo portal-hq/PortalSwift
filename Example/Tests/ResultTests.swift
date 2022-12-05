@@ -6,4 +6,11 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
-import Foundation
+import XCTest
+@testable import PortalSwift
+
+final class ResultTests: XCTestCase {
+  func boilerplateTest() {
+    XCTAssertTrue(true)
+  }
+}
