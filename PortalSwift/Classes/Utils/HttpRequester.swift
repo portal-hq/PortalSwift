@@ -7,6 +7,7 @@
 
 import Foundation
 
+/// A class for making HTTP requests.
 public struct HttpRequester {
   var baseUrl: String
 
@@ -14,19 +15,12 @@ public struct HttpRequester {
     self.baseUrl = baseUrl
   }
 
-  func handleResponse(
-    data: Dictionary<String, AnyObject>,
-    response: String?
-  ) -> Void {
-
-  }
-
   func get(
     path: String,
     headers: Dictionary<String, String>,
     completion: @escaping (Result<Any>) -> Void
   ) throws -> Void {
-    // Build the HTTPRequest object
+    // Create the request.
     let url = String(format:"%@%@", self.baseUrl, path)
     let request = HttpRequest<Dictionary<String, Any>, [String: String]>(
       url: url,
@@ -34,8 +28,8 @@ public struct HttpRequester {
       body: [:],
       headers: headers
     )
-    
-    // Send the HTTP request
+
+    // Attempt to send the request.
     request.send() { (result: Result<Any>) -> Void in
       return completion(result)
     }
@@ -47,7 +41,7 @@ public struct HttpRequester {
     headers: Dictionary<String, String>,
     completion: @escaping (Result<Any>) -> Void
   ) throws -> Void {
-    // Build the HTTPRequest object
+    // Create the request.
     let request = HttpRequest<Any, Dictionary<String, Any>>(
       url: String(format:"%@%@", self.baseUrl, path),
       method: "POST",
@@ -55,7 +49,7 @@ public struct HttpRequester {
       headers: headers
     )
 
-    // Send the HTTP request
+    // Attempt to send the request.
     request.send() { (result: Result<Any>) -> Void in
       completion(result)
     }

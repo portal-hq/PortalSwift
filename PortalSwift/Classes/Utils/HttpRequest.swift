@@ -16,13 +16,20 @@ private enum HttpError: Error {
   case unknownError(String)
 }
 
+/// A class for making HTTP requests.
 public class HttpRequest<AnyObject, U> {
   private var body: U?
   private var headers: Dictionary<String, String>
   private var method: String
   private var url: String
   private var isString: Bool
-
+  
+  /// Creates an instance of HttpRequest.
+  /// - Parameters:
+  ///   - url: The URL to make a request to.
+  ///   - method: The HTTP method to use.
+  ///   - body: The body of a type you specify.
+  ///   - headers: The HTTP headers.
   public init(
     url: String,
     method: String,
@@ -36,6 +43,13 @@ public class HttpRequest<AnyObject, U> {
     self.isString = false
   }
 
+  /// Creates an instance of HttpRequest.
+  /// - Parameters:
+  ///   - url: The URL to make a request to.
+  ///   - method: The HTTP method to use.
+  ///   - body: The body of a type you specify.
+  ///   - headers: The HTTP headers.
+  ///   - isString: If we should convert the response to a string.
   public init(
     url: String,
     method: String,
@@ -49,7 +63,10 @@ public class HttpRequest<AnyObject, U> {
     self.url = url
     self.isString = isString
   }
-
+  
+  /// Sends an HTTP request.
+  /// - Parameter completion: Resolves as a result with the HTTP response.
+  /// - Returns: Void.
   public func send(completion: @escaping (Result<Any>) -> Void) -> Void {
     do {
       // Build the request object
