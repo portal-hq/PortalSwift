@@ -308,10 +308,14 @@ class ViewController: UIViewController {
   }
 
   func signIn(username: String, completionHandler: @escaping (Any) -> Void) {
-    let request = HttpRequest<UserResult, [String : String]>(url: CUSTODIAN_SERVER_URL + "/mobile/login", method: "POST", body: ["username": username], headers: ["Content-Type": "application/json"])
+    let request = HttpRequest<UserResult, [String : String]>(
+      url: CUSTODIAN_SERVER_URL + "/mobile/login",
+      method: "POST",
+      body: ["username": username],
+      headers: ["Content-Type": "application/json"]
+    )
 
-    request.send() {
-      (result: Result<Any>) in
+    request.send() { (result: Result<Any>) in
       guard result.error == nil else {
         print("❌ Error signing in:", result.error!)
         return
@@ -321,10 +325,14 @@ class ViewController: UIViewController {
   }
 
   func signUp(username: String, completionHandler: @escaping (Any) -> Void) {
-    let request = HttpRequest<UserResult, [String : String]>(url: CUSTODIAN_SERVER_URL + "/mobile/signup", method: "POST", body: ["username": username], headers: ["Content-Type": "application/json"])
+    let request = HttpRequest<UserResult, [String : String]>(
+      url: CUSTODIAN_SERVER_URL + "/mobile/signup",
+      method: "POST",
+      body: ["username": username],
+      headers: ["Content-Type": "application/json"]
+    )
 
-    request.send() {
-      (result: Result<Any>) in
+    request.send() { (result: Result<Any>) in
       guard result.error == nil else {
         print("❌ Error signing up:", result.error!)
         return
@@ -334,24 +342,25 @@ class ViewController: UIViewController {
   }
 
   func testProviderRequest(method: String, params: [Any], skipLoggingResult: Bool = false, completion: @escaping (Bool) -> Void) {
-
       let payload = ETHRequestPayload(
         method: method,
         params: params
       )
+
       print("Starting to test method ", method, "...")
-      portal?.provider.request(payload: payload) {
-        (result) -> Void in
+      portal?.provider.request(payload: payload) { (result) -> Void in
         guard (result.error == nil) else {
           print("❌ Error testing provider request:", method, "Error:", result.error!)
           completion(false)
           return
         }
+
         if (!skipLoggingResult) {
           print("✅ ", method, "() result:", result.data!)
         } else {
           print("✅ ", method, "()")
         }
+
         completion(true)
       }
 
@@ -362,19 +371,21 @@ class ViewController: UIViewController {
         method: method,
         params: params
       )
+
       print("Starting to test method ", method, "...")
-      portal?.provider.request(payload: payload) {
-        (result: Result<TransactionCompletionResult>) -> Void in
+      portal?.provider.request(payload: payload) { (result: Result<TransactionCompletionResult>) -> Void in
         guard result.error == nil else {
           print("❌ Error testing provider request:", result.error!)
           completion(false)
           return
         }
+
         if (!skipLoggingResult) {
           print("✅ ", method, "() result:", result.data!.result)
         } else {
           print("✅ ", method, "()")
         }
+
         completion(true)
       }
   }
@@ -384,18 +395,20 @@ class ViewController: UIViewController {
         method: method,
         params: params
       )
+
       print("Starting to test method ", method, "...")
-      portal?.provider.request(payload: payload) {
-        (result: Result<AddressCompletionResult>) -> Void in
+      portal?.provider.request(payload: payload) { (result: Result<AddressCompletionResult>) -> Void in
         guard result.error == nil else {
           print("❌ Error testing provider request:", result.error!)
           return
         }
+
         if (!skipLoggingResult) {
           print("✅ ", method, "() result:", result.data!.result)
         } else {
           print("✅ ", method, "()")
         }
+
         completion(true)
       }
   }
@@ -413,7 +426,7 @@ class ViewController: UIViewController {
         ProviderRequest(method: ETHRequestMethods.RequestAccounts.rawValue, params: [], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.Sign.rawValue, params: [fromAddress!, "0xdeadbeaf"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.PersonalSign.rawValue, params: ["0xdeadbeaf", fromAddress!], skipLoggingResult: false),
-//        ProviderRequest(method: ETHRequestMethods.SignTypedData.rawValue, params: [], skipLoggingResult: false),
+        // ProviderRequest(method: ETHRequestMethods.SignTypedData.rawValue, params: [], skipLoggingResult: false),
       ]
 
       for request in signerRequests {

@@ -30,7 +30,7 @@ class MpcSigner {
     self.keychain = keychain
     self.mpcUrl = mpcUrl
   }
-  
+
   /// Signs a standard ETH request.
   /// - Parameters:
   ///   - payload: A normal payload whose params are of type [Any].
