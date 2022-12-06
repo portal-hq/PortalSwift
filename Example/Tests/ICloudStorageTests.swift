@@ -22,41 +22,51 @@ final class ICloudStorageTests: XCTestCase {
   }
 
   func testDelete() throws {
+    let expectation = XCTestExpectation(description: "Delete")
     let privateKey = "privateKey"
-    storage!.write(privateKey: privateKey) {
-      (result: Result<Bool>) -> Void in
 
-      do {
-        self.storage!.read() { (result: Result<String>) -> Void in
-          XCTAssert(result.data! == privateKey)
-
-          self.storage!.delete() { (result: Result<Bool>) -> Void in
-            XCTAssert(result.data! == true)
-
-            self.storage!.read() { (result: Result<String>) -> Void in
-              XCTAssert(result.data! == "")
-            }
-          }
-        }
-    }
-  }
-
-  func testRead() throws {
-    storage!.read() {
-      (result: Result<String>) -> Void in
-      XCTAssert(result.data! == "")
-    }
-  }
-
-  func testWrite() throws {
-    let privateKey = "privateKey"
     storage!.write(privateKey: privateKey) { (result: Result<Bool>) -> Void in
-        XCTAssert(result.data! == true)
+      self.storage!.read() { (result: Result<String>) -> Void in
+        XCTAssert(result.data! == privateKey)
 
-        self.storage!.read() { (result: Result<String>) -> Void in
-          XCTAssert(result.data! == privateKey)
+        self.storage!.delete() { (result: Result<Bool>) -> Void in
+          XCTAssert(result.data! == true)
+
+          self.storage!.read() { (result: Result<String>) -> Void in
+            XCTAssert(result.data! == "")
+            expectation.fulfill()
+          }
         }
       }
     }
+
+    wait(for: [expectation], timeout: 5.0)
+  }
+
+  func testRead() throws {
+    let expectation = XCTestExpectation(description: "Read")
+
+    storage!.read() { (result: Result<String>) -> Void in
+      XCTAssert(result.data! == "")
+      expectation.fulfill()
+    }
+
+    wait(for: [expectation], timeout: 5.0)
+  }
+
+  func testWrite() throws {
+    let expectation = XCTestExpectation(description: "Write")
+    let privateKey = "privateKey"
+
+    storage!.write(privateKey: privateKey) { (result: Result<Bool>) -> Void in
+      XCTAssert(result.data! == true)
+
+      self.storage!.read() { (result: Result<String>) -> Void in
+        XCTAssert(result.data! == privateKey)
+        expectation.fulfill()
+      }
+    }
+
+    wait(for: [expectation], timeout: 5.0)
   }
 }

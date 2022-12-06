@@ -14,15 +14,15 @@ public class MockPortalApi: PortalApi {
 
   public override func getClient(completion: @escaping (Result<Any>) -> Void) -> Void {
     // Make an instance of Client.
-    let client = Client(
-      id: "fakeClientID",
-      address: "address",
-      clientApiKey: "clientApiKey",
-      custodian: Custodian(
-        id: "fakeCustodianID",
-        name: "name"
-      )
-    )
+    let client: Dictionary<String, Any> = [
+      "id": "fakeClientID",
+      "address": "address",
+      "clientApiKey": "clientApiKey",
+      "custodian": [
+        "id": "fakeCustodianID",
+        "name": "name"
+      ]
+    ]
 
     // Call the completion handler.
     completion(Result(data: client))

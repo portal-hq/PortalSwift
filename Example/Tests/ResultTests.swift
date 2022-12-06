@@ -10,7 +10,7 @@ import XCTest
 @testable import PortalSwift
 
 final class ResultTests: XCTestCase {
-  func boilerplateTest() {
+  func testExample() {
     XCTAssertTrue(true)
   }
 }

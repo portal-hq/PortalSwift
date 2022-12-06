@@ -56,7 +56,7 @@ public class PortalApi {
   public var apiHost: String
   public var apiKey: String
   public var requests: HttpRequester
-  
+
   /// Create an instance of a PortalApi class.
   /// - Parameters:
   ///   - apiKey: The Client API key. You can create one using Portal's REST API.
@@ -80,7 +80,6 @@ public class PortalApi {
         "Authorization": String(format: "Bearer %@", apiKey)
       ]
     ) { (result: Result<Any>) -> Void in
-      
       if (result.error != nil) {
         completion(Result<Any>(error: result.error!))
       } else if (result.data != nil) {
@@ -88,7 +87,7 @@ public class PortalApi {
       }
     }
   }
-  
+
   /// Retrieve a list of enabled dapps for the client.
   /// - Parameter completion: The callback that contains the list of Dapps.
   /// - Returns: Void.
