@@ -7,7 +7,7 @@
 
 import Foundation
 
-private enum StorageError: Error {
+public enum StorageError: Error {
   case mustExtendStorageClass
 }
 
