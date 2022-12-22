@@ -8,7 +8,7 @@
 import Foundation
 
 /// A class for making HTTP requests.
-public struct HttpRequester {
+public class HttpRequester {
   var baseUrl: String
 
   init(baseUrl: String) {

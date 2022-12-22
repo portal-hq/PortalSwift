@@ -8,14 +8,8 @@
 
 import Foundation
 
-public struct MockHttpRequester {
-  var baseUrl: String
-
-  init(baseUrl: String) {
-    self.baseUrl = baseUrl
-  }
-
-  public func get(
+public class MockHttpRequester: HttpRequester {
+  public override func get(
     path: String,
     headers: Dictionary<String, String>,
     completion: @escaping (Result<Any>) -> Void
@@ -23,7 +17,7 @@ public struct MockHttpRequester {
     completion(Result(data: mockBackupShare))
   }
 
-  public func post(
+  public override func post(
     path: String,
     body: Dictionary<String, Any>,
     headers: Dictionary<String, String>,
