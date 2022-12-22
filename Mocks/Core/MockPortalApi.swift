@@ -16,7 +16,7 @@ public class MockPortalApi: PortalApi {
     // Make an instance of Client.
     let client: Dictionary<String, Any> = [
       "id": "fakeClientID",
-      "address": "address",
+      "address": mockAddress,
       "clientApiKey": "clientApiKey",
       "custodian": [
         "id": "fakeCustodianID",

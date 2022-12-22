@@ -26,6 +26,10 @@ final class ICloudStorageTests: XCTestCase {
     let privateKey = "privateKey"
 
     storage!.write(privateKey: privateKey) { (result: Result<Bool>) -> Void in
+      if (result.error != nil) {
+        XCTFail("Failed to write private key to storage. Make sure you are signed into iCloud on your simulator before running tests.")
+      }
+
       self.storage!.read() { (result: Result<String>) -> Void in
         XCTAssert(result.data! == privateKey)
 

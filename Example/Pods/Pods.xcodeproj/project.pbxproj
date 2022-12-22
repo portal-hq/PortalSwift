@@ -65,6 +65,16 @@
 		47410143C6FC4CE127EF8EF916A5D3D4 /* GIDAuthentication.m in Sources */ = {isa = PBXBuildFile; fileRef = 25646510D02F728F574222340EC0854D /* GIDAuthentication.m */; };
 		4755041C760B9AA070B8D960D7A0E067 /* GTMSessionFetcher.h in Headers */ = {isa = PBXBuildFile; fileRef = 3E3119D7CD87F1D5C01953BDFD5C97AE /* GTMSessionFetcher.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		479E372E292567740080AEDB /* MockPortalApi.swift in Sources */ = {isa = PBXBuildFile; fileRef = 479E372D292567740080AEDB /* MockPortalApi.swift */; };
+		47FA8DEB29539E3A0020EF35 /* MockPortal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47FA8DEA29539E3A0020EF35 /* MockPortal.swift */; };
+		47FA8DED29539E4B0020EF35 /* MockPortalKeychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47FA8DEC29539E4B0020EF35 /* MockPortalKeychain.swift */; };
+		47FA8DEF29539E5B0020EF35 /* MockPortalMpc.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47FA8DEE29539E5B0020EF35 /* MockPortalMpc.swift */; };
+		47FA8DF429539EB60020EF35 /* MockPortalProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47FA8DF329539EB60020EF35 /* MockPortalProvider.swift */; };
+		47FA8DF829539ED40020EF35 /* MockGDriveStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47FA8DF729539ED40020EF35 /* MockGDriveStorage.swift */; };
+		47FA8DFA29539EDE0020EF35 /* MockICloudStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47FA8DF929539EDE0020EF35 /* MockICloudStorage.swift */; };
+		47FA8DFC29539EE90020EF35 /* MockStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47FA8DFB29539EE90020EF35 /* MockStorage.swift */; };
+		47FA8DFE29539EFB0020EF35 /* MockHttpRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47FA8DFD29539EFB0020EF35 /* MockHttpRequest.swift */; };
+		47FA8E0029539F060020EF35 /* MockHttpRequester.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47FA8DFF29539F060020EF35 /* MockHttpRequester.swift */; };
+		47FA8E022953A1720020EF35 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47FA8E012953A1720020EF35 /* Constants.swift */; };
 		4816ED359D1CCB98A1C010564EE02C2F /* SafariServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1BD78ACE6B123923D8420D771D862F51 /* SafariServices.framework */; };
 		4845BF5ED5999291320D49E88162F62A /* OIDError.h in Headers */ = {isa = PBXBuildFile; fileRef = 1E7F109778554D08BF19598DB1AAB53B /* OIDError.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		48B1B9E539FE704957CE5D8A1500EFB5 /* OIDAuthState+IOS.m in Sources */ = {isa = PBXBuildFile; fileRef = 630C1EA563733F47F5D1E8A0D23069F4 /* OIDAuthState+IOS.m */; };
@@ -430,6 +440,16 @@
 		44F2DB1BDC25E462DB16109ED57BF4B9 /* UIImage+Compare.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = "UIImage+Compare.m"; path = "FBSnapshotTestCase/Categories/UIImage+Compare.m"; sourceTree = "<group>"; };
 		479E372D292567740080AEDB /* MockPortalApi.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPortalApi.swift; sourceTree = "<group>"; };
 		47E2D84912D96198C149C60011BDFAC5 /* he.lproj */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; name = he.lproj; path = GoogleSignIn/Sources/Strings/he.lproj; sourceTree = "<group>"; };
+		47FA8DEA29539E3A0020EF35 /* MockPortal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPortal.swift; sourceTree = "<group>"; };
+		47FA8DEC29539E4B0020EF35 /* MockPortalKeychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPortalKeychain.swift; sourceTree = "<group>"; };
+		47FA8DEE29539E5B0020EF35 /* MockPortalMpc.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPortalMpc.swift; sourceTree = "<group>"; };
+		47FA8DF329539EB60020EF35 /* MockPortalProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPortalProvider.swift; sourceTree = "<group>"; };
+		47FA8DF729539ED40020EF35 /* MockGDriveStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockGDriveStorage.swift; sourceTree = "<group>"; };
+		47FA8DF929539EDE0020EF35 /* MockICloudStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockICloudStorage.swift; sourceTree = "<group>"; };
+		47FA8DFB29539EE90020EF35 /* MockStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockStorage.swift; sourceTree = "<group>"; };
+		47FA8DFD29539EFB0020EF35 /* MockHttpRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockHttpRequest.swift; sourceTree = "<group>"; };
+		47FA8DFF29539F060020EF35 /* MockHttpRequester.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockHttpRequester.swift; sourceTree = "<group>"; };
+		47FA8E012953A1720020EF35 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 		490A132A064D898F8A38D7ADF6A4470C /* GTMSessionFetcher.modulemap */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.module; path = GTMSessionFetcher.modulemap; sourceTree = "<group>"; };
 		495952ABDC76D65DF68B84C1B1C908CF /* fi.lproj */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; name = fi.lproj; path = GoogleSignIn/Sources/Strings/fi.lproj; sourceTree = "<group>"; };
 		4968161EB626EA888D3CD2DF273CB800 /* GIDSignInPreferences.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = GIDSignInPreferences.m; path = GoogleSignIn/Sources/GIDSignInPreferences.m; sourceTree = "<group>"; };
@@ -883,6 +903,10 @@
 			isa = PBXGroup;
 			children = (
 				479E372C2925675E0080AEDB /* Core */,
+				47FA8DF029539E680020EF35 /* Provider */,
+				47FA8DF129539E6F0020EF35 /* Storage */,
+				47FA8DF229539E740020EF35 /* Utils */,
+				47FA8E012953A1720020EF35 /* Constants.swift */,
 			);
 			path = Mocks;
 			sourceTree = "<group>";
@@ -890,9 +914,39 @@
 		479E372C2925675E0080AEDB /* Core */ = {
 			isa = PBXGroup;
 			children = (
+				47FA8DEA29539E3A0020EF35 /* MockPortal.swift */,
 				479E372D292567740080AEDB /* MockPortalApi.swift */,
+				47FA8DEC29539E4B0020EF35 /* MockPortalKeychain.swift */,
+				47FA8DEE29539E5B0020EF35 /* MockPortalMpc.swift */,
 			);
 			path = Core;
+			sourceTree = "<group>";
+		};
+		47FA8DF029539E680020EF35 /* Provider */ = {
+			isa = PBXGroup;
+			children = (
+				47FA8DF329539EB60020EF35 /* MockPortalProvider.swift */,
+			);
+			path = Provider;
+			sourceTree = "<group>";
+		};
+		47FA8DF129539E6F0020EF35 /* Storage */ = {
+			isa = PBXGroup;
+			children = (
+				47FA8DF729539ED40020EF35 /* MockGDriveStorage.swift */,
+				47FA8DF929539EDE0020EF35 /* MockICloudStorage.swift */,
+				47FA8DFB29539EE90020EF35 /* MockStorage.swift */,
+			);
+			path = Storage;
+			sourceTree = "<group>";
+		};
+		47FA8DF229539E740020EF35 /* Utils */ = {
+			isa = PBXGroup;
+			children = (
+				47FA8DFD29539EFB0020EF35 /* MockHttpRequest.swift */,
+				47FA8DFF29539F060020EF35 /* MockHttpRequester.swift */,
+			);
+			path = Utils;
 			sourceTree = "<group>";
 		};
 		513D9E343461BEB27086BC742393D8EC /* Pods */ = {
@@ -1851,17 +1905,27 @@
 				9681178E13100678CC6526FFE3015726 /* GDriveStorage.swift in Sources */,
 				3067F903C33980C62862D664AE88ED2E /* HttpRequest.swift in Sources */,
 				1F6AB0DF6788AB72DE2E3A4C94F8873A /* HttpRequester.swift in Sources */,
+				47FA8DFE29539EFB0020EF35 /* MockHttpRequest.swift in Sources */,
+				47FA8DFA29539EDE0020EF35 /* MockICloudStorage.swift in Sources */,
+				47FA8E0029539F060020EF35 /* MockHttpRequester.swift in Sources */,
 				7031BDE2F7891F5EDB9693387E88A896 /* ICloudStorage.swift in Sources */,
+				47FA8E022953A1720020EF35 /* Constants.swift in Sources */,
 				7E06344E29259384004E23CC /* Result.swift in Sources */,
 				7F6781E460190FC8C5ECDF2CFBB2D7B3 /* MpcSigner.swift in Sources */,
+				47FA8DED29539E4B0020EF35 /* MockPortalKeychain.swift in Sources */,
 				CD1035D8A5E30274A3E1DBBC33D41C35 /* Portal.swift in Sources */,
+				47FA8DEB29539E3A0020EF35 /* MockPortal.swift in Sources */,
 				479E372E292567740080AEDB /* MockPortalApi.swift in Sources */,
 				41301195E1617D44C395832A59F056A3 /* PortalApi.swift in Sources */,
 				73E19CA710E50DF8673E5A1404F9C09E /* PortalKeychain.swift in Sources */,
+				47FA8DF829539ED40020EF35 /* MockGDriveStorage.swift in Sources */,
+				47FA8DF429539EB60020EF35 /* MockPortalProvider.swift in Sources */,
 				F4A1654199B24C6E9CDA85F07C59ABD7 /* PortalMpc.swift in Sources */,
 				8DBF7777F6FE9CC81C5DFCE16B24F344 /* PortalProvider.swift in Sources */,
 				97F9B166285ADDD857F65EC6557879ED /* PortalSwift-dummy.m in Sources */,
+				47FA8DFC29539EE90020EF35 /* MockStorage.swift in Sources */,
 				F96A798F293AC5BE0033822E /* WebViewController.swift in Sources */,
+				47FA8DEF29539E5B0020EF35 /* MockPortalMpc.swift in Sources */,
 				11955AF71F5A4FC4C4C2C314AC891F37 /* Storage.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

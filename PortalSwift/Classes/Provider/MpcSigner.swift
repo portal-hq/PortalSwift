@@ -81,20 +81,25 @@ class MpcSigner {
   /// - Returns: A SignerResult.
   public func sign(
     payload: ETHTransactionPayload,
-    provider: PortalProvider
+    provider: PortalProvider,
+    mockClientSign: Bool = false
   ) throws -> SignerResult {
     // Obtain the sign result.
     let signingShare = try keychain.getSigningShare()
     let formattedParams = try formatParams(payload: payload)
-    let clientSignResult = ClientSign(
-      provider.getApiKey(),
-      mpcUrl,
-      signingShare,
-      payload.method,
-      formattedParams,
-      provider.gatewayUrl,
-      String(provider.chainId)
-    )
+    
+    var clientSignResult = mockClientSignResult
+    if (!mockClientSign) {
+      clientSignResult = ClientSign(
+        provider.getApiKey(),
+        mpcUrl,
+        signingShare,
+        payload.method,
+        formattedParams,
+        provider.gatewayUrl,
+        String(provider.chainId)
+      )
+    }
 
     // Attempt to decode the sign result.
     let jsonData = clientSignResult.data(using: .utf8)!
