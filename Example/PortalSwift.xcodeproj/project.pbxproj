@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		47323B4B293A9B920029B69E /* ResultTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47323B4A293A9B920029B69E /* ResultTests.swift */; };
 		47323B4D293A9BA20029B69E /* HttpRequesterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47323B4C293A9BA20029B69E /* HttpRequesterTests.swift */; };
 		47323B4F293A9BB40029B69E /* HttpRequestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47323B4E293A9BB40029B69E /* HttpRequestTests.swift */; };
 		47323B51293A9BCB0029B69E /* GDriveStorageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47323B50293A9BCB0029B69E /* GDriveStorageTests.swift */; };
@@ -48,7 +47,6 @@
 		359FCB6C7A51B84D8283B50D /* README.md */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = net.daringfireball.markdown; name = README.md; path = ../README.md; sourceTree = "<group>"; };
 		37221617F625AA0FF0DB854C /* Pods-PortalSwift_Tests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PortalSwift_Tests.debug.xcconfig"; path = "Target Support Files/Pods-PortalSwift_Tests/Pods-PortalSwift_Tests.debug.xcconfig"; sourceTree = "<group>"; };
 		4648C35B0F07F04812A2F611 /* Pods_PortalSwift_Tests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PortalSwift_Tests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		47323B4A293A9B920029B69E /* ResultTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResultTests.swift; sourceTree = "<group>"; };
 		47323B4C293A9BA20029B69E /* HttpRequesterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HttpRequesterTests.swift; sourceTree = "<group>"; };
 		47323B4E293A9BB40029B69E /* HttpRequestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HttpRequestTests.swift; sourceTree = "<group>"; };
 		47323B50293A9BCB0029B69E /* GDriveStorageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GDriveStorageTests.swift; sourceTree = "<group>"; };
@@ -140,7 +138,6 @@
 			children = (
 				47323B4E293A9BB40029B69E /* HttpRequestTests.swift */,
 				47323B4C293A9BA20029B69E /* HttpRequesterTests.swift */,
-				47323B4A293A9B920029B69E /* ResultTests.swift */,
 			);
 			name = Utils;
 			sourceTree = "<group>";
@@ -457,7 +454,6 @@
 				47323B59293A9C0B0029B69E /* MpcSignerTests.swift in Sources */,
 				47323B5D293A9C610029B69E /* PortalApiTests.swift in Sources */,
 				47323B5B293A9C520029B69E /* PortalTests.swift in Sources */,
-				47323B4B293A9B920029B69E /* ResultTests.swift in Sources */,
 				47323B4F293A9BB40029B69E /* HttpRequestTests.swift in Sources */,
 				47323B57293A9BFD0029B69E /* PortalProviderTests.swift in Sources */,
 				47323B55293A9BE80029B69E /* StorageTests.swift in Sources */,

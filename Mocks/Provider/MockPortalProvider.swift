@@ -31,10 +31,7 @@ public class MockPortalProvider: PortalProvider {
     return self
   }
 
-  public override func removeListener(
-    event: Events.RawValue,
-    callback: @escaping (_ data: Any) -> Void
-  ) -> PortalProvider {
+  public override func removeListener(event: Events.RawValue) -> PortalProvider {
     return self
   }
 

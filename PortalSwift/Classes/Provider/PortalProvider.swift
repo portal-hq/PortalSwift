@@ -274,7 +274,7 @@ public class PortalProvider {
     ETHRequestMethods.WalletSwitchEthereumChain.rawValue,
     ETHRequestMethods.WalletWatchAsset.rawValue,
   ]
-  
+
   /// Creates an instance of PortalProvider.
   /// - Parameters:
   ///   - apiKey: The client API key. You can obtain this via Portal's REST API.
@@ -309,7 +309,7 @@ public class PortalProvider {
   }
 
   // ------ Public Functions
-  
+
   /// Emits an event from the provider to registered event handlers.
   /// - Parameters:
   ///   - event: The event to be emitted.
@@ -337,13 +337,13 @@ public class PortalProvider {
       return self
     }
   }
-  
+
   /// Retrieves the API key.
   /// - Returns: The client API key.
   public func getApiKey() -> String {
     return apiKey
   }
-  
+
   /// Registers a callback for an event.
   /// - Parameters:
   ///   - event: The event to register a callback.
@@ -364,7 +364,7 @@ public class PortalProvider {
 
     return self
   }
-  
+
   /// Registers a callback for an event. Deletes the registered callback after it's fired once.
   /// - Parameters:
   ///   - event: The event to register a callback.
@@ -385,27 +385,23 @@ public class PortalProvider {
 
     return self
   }
-  
+
   /// Removes the callback for the specified event.
   /// - Parameters:
   ///   - event: A specific event from the list of Events.
-  ///   - callback: A callback function for the event.
   /// - Returns: An instance of Portal Provider.
   public func removeListener(
-    event: Events.RawValue,
-    callback: @escaping (_ data: Any) -> Void
+    event: Events.RawValue
   ) -> PortalProvider {
     if (events[event] == nil) {
       print(String(format: "[Portal] Could not find any bindings for event '%@'. Ignoring...", event))
     }
 
-    events[event] = events[event]!.filter{ (registeredEventHandler) -> Bool in
-      return true
-    }
+    events[event] = nil
 
     return self
   }
-  
+
   /// Makes a request.
   /// - Parameters:
   ///   - payload: A normal payload whose params are of type [Any].
@@ -475,14 +471,14 @@ public class PortalProvider {
       completion(Result(error: ProviderRpcError.unsupportedMethod))
     }
   }
-  
+
   /// Sets the public address.
   /// - Parameter value: The public address.
   /// - Returns: Void
   public func setAddress(value: String) -> Void {
      self.address = value
   }
-  
+
   /// Sets the EVM network chainId.
   /// - Parameter value: The chainId.
   /// - Returns: An instance of Portal Provider.
@@ -548,7 +544,7 @@ public class PortalProvider {
         ]
       }
     ]
-    
+
     // Create the request.
     let request = HttpRequest<ETHTransactionPayload, Dictionary<String, Any>>(
       url: self.rpc.baseUrl,
@@ -574,7 +570,7 @@ public class PortalProvider {
         return [ "address": p.address ]
       }
     ]
-    
+
     // Create the request.
     let request = HttpRequest<ETHAddressParam, Dictionary<String, Any>>(
       url: self.rpc.baseUrl,
@@ -598,7 +594,7 @@ public class PortalProvider {
       "method": payload.method,
       "params": payload.params
     ]
-    
+
     // Create the request.
     let request = HttpRequest<Dictionary<String, Any>, Dictionary<String, Any>>(
       url: self.rpc.baseUrl,
