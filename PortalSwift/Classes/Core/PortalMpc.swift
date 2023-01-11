@@ -168,7 +168,7 @@ public class PortalMpc {
         }
       }
 
-      // @TODO: Add iCloud authentication.
+      // @TODO: Check if we are authenticated with iCloud or throw an error if we are not.
 
       // Call the MPC service to generate a backup share.
       let response = ClientBackup(apiKey, mpcHost, signingShare)
