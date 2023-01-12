@@ -59,7 +59,7 @@ public class ICloudStorage: Storage {
       }
     }
   }
-  
+
   /// Writes the private key to iCloud's key-value store.
   /// - Parameters:
   ///   - privateKey: The private key to write to iCloud's key-value store.
@@ -128,9 +128,10 @@ public class ICloudStorage: Storage {
     if isSimulator {
       print("""
 
-@WARNING: Detected that you are on a SIMULATOR.
-Skipping check to see if iCloud key-value storage is enabled as this fails consistently on simulators.
-Test this on a REAL DEVICE if you want to test when iCloud has no access to key-value storage.
+⚠️ iCloud key-value storage does not synchronize on some iOS simulator versions.
+
+If you test recovery by uninstalling your app on an iOS simulator and reinstalling your app on a different device, recovery can fail.
+We highly recommend using real devices to test the recovery process.
 
 """)
       return ICloudStatus.available.rawValue
