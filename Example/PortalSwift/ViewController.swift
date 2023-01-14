@@ -199,7 +199,7 @@ class ViewController: UIViewController {
 
   func updateStaticContent() {
     populateAddressInformation()
-    populateEthBalance()
+    // populateEthBalance()
   }
 
   func populateAddressInformation() {
