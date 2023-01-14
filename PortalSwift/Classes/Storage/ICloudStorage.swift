@@ -145,7 +145,7 @@ We highly recommend using real devices to test the recovery process.
     return ICloudStatus.available.rawValue
   }
 
-  private func checkAvailability(completion: @escaping (Result<Any>) -> Void) -> Void {
+  public func checkAvailability(completion: @escaping (Result<Any>) -> Void) -> Void {
     let status = getAvailability()
 
     if status == ICloudStatus.noAccess.rawValue {
