@@ -68,7 +68,7 @@ public class PortalApi {
   ) {
     self.apiKey = apiKey
     self.apiHost = String(format:"https://%@", apiHost)
-    self.requests = mockRequests ? MockHttpRequester(baseUrl: apiHost) : HttpRequester(baseUrl: apiHost)
+    self.requests = mockRequests ? MockHttpRequester(baseUrl: self.apiHost) : HttpRequester(baseUrl: self.apiHost)
   }
 
   /// Retrieve the client by API key.
