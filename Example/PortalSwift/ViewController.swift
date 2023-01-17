@@ -175,6 +175,7 @@ class ViewController: UIViewController {
             print("✅ handleRecover(): Successfully sent custodian cipherText:", result.data!)
           }
         }
+        self.updateStaticContent()
       }
     }
   }
@@ -197,6 +198,22 @@ class ViewController: UIViewController {
     injectWebView()
   }
 
+  @IBAction func handleDeleteKeychain(_ sender: Any) {
+    deleteKeychain()
+    updateStaticContent()
+  }
+  func deleteKeychain() {
+    do {
+      print("Here is the keychain address: ", try portal?.keychain.getAddress() ?? "")
+      try portal?.keychain.deleteAddress()
+      try portal?.keychain.deleteSigningShare()
+      
+      print("Now its gone: ", try portal?.keychain.getAddress() ?? "")
+    } catch {
+      print(" ✅  Deleted keychain:", error)
+
+    }
+  }
   func updateStaticContent() {
     populateAddressInformation()
     // populateEthBalance()
@@ -209,6 +226,9 @@ class ViewController: UIViewController {
         self.addressInformation.text = "Address: \(address ?? "N/A")"
       }
     } catch {
+      DispatchQueue.main.async {
+        self.addressInformation.text = "Address: N/A"
+      }
       print("❌ Error getting address:", error)
     }
   }

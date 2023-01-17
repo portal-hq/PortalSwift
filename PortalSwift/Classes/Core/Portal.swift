@@ -154,6 +154,7 @@ public class Portal {
       keychain: keychain,
       storage: backup,
       gatewayUrl: gatewayUrl,
+      api: self.api,
       isSimulator: isSimulator,
       mpcHost: mpcHost
     )

@@ -46,6 +46,19 @@ public class PortalKeychain {
   public func setSigningShare(signingShare: String) throws  {
     try setItem(key: SigningShare, value: signingShare)
   }
+  
+  /// Deletes the address stored in the client's keychain.
+  /// - Returns: The client's address.
+  public func deleteAddress() throws {
+    try deleteItem(key: Address)
+  }
+
+  /// Deletes the signing share stored in the client's keychain.
+  /// - Returns: The client's signing share.
+  public func deleteSigningShare() throws {
+    try deleteItem(key: SigningShare)
+
+  }
 
   private func getItem(item: String) throws -> String {
     // Construct the query to retrieve the keychain item.
@@ -119,5 +132,16 @@ public class PortalKeychain {
     guard status == errSecSuccess else {
       throw KeychainError.unhandledError(status: status)
     }
+  }
+  
+  private func deleteItem(key: String) throws {
+    let query: [String: AnyObject] = [
+      kSecAttrService as String: "PortalMpc.\(key)" as AnyObject,
+      kSecAttrAccount as String: key as AnyObject,
+      kSecClass as String: kSecClassGenericPassword
+    ]
+    
+    let status = SecItemDelete(query as CFDictionary)
+    guard status == errSecSuccess || status == errSecItemNotFound else { throw KeychainError.unhandledError(status: status) }
   }
 }
