@@ -77,6 +77,7 @@ public enum MpcError: Error {
   case unexpectedErrorOnBackup(message: String)
   case unexpectedErrorOnSign(message: String)
   case unexpectedErrorOnRecoverBackup(message: String)
+  case unableToRetrieveClient(String)
   case unableToDecodeShare
   case unableToAuthenticate
   case unableToWriteToKeychain
@@ -104,6 +105,7 @@ public class PortalMpc {
   public var gatewayUrl: String
   public var portal: Portal?
   public var storage: BackupOptions
+  public var api: PortalApi
   private var rsaHeader = "-----BEGIN RSA KEY-----\n"
   private var rsaFooter = "\n-----END RSA KEY-----"
 
@@ -122,6 +124,7 @@ public class PortalMpc {
     keychain: PortalKeychain,
     storage: BackupOptions,
     gatewayUrl: String,
+    api: PortalApi,
     isSimulator: Bool = false,
     mpcHost: String = "mpc.portalhq.io"
   ) {
@@ -131,6 +134,7 @@ public class PortalMpc {
     self.gatewayUrl = gatewayUrl
     self.keychain = keychain
     self.storage = storage
+    self.api = api
 
     // Other stuff
     self.isSimulator = isSimulator
@@ -459,6 +463,26 @@ public class PortalMpc {
   ///   - backupShare: The backup share.
   /// - Returns: The new signing share.
   private func recoverSigning(backupShare: String) throws -> MpcShare {
+    // Retrieve the address and set it in the keychain.
+    do {
+      try self.api.getClient() { (result: Result<Any>) -> Void in
+        if (result.error != nil) {
+          print(result.error!)
+          return
+        }
+        let client = result.data as! Dictionary<String, Any>
+          do {
+            try self.keychain.setAddress(address: client["address"] as! String)
+            self.address = client["address"] as? String
+          } catch {
+            print(MpcError.unableToWriteToKeychain)
+            return
+        }
+      }
+    } catch {
+      throw MpcError.unableToRetrieveClient("Unable to retrieve client from API")
+    }
+    
     // Decode the backup share.
     var share = try JSONDecoder().decode(MpcShare.self, from: backupShare.data(using: .utf8)!)
 
