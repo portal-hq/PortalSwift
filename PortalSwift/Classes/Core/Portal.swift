@@ -106,10 +106,10 @@ public class Portal {
     // Optional
     isSimulator: Bool = false,
     version: String = "v1",
-    address: String = "",
-    apiHost: String = "api.portalhq.io",
     autoApprove: Bool = false,
-    mpcHost: String = "mpc.portalhq.io"
+    apiHost: String = "api.portalhq.io",
+    mpcHost: String = "mpc.portalhq.io",
+    address: String = ""
   ) throws {
     // Basic setup
     self.apiKey = apiKey

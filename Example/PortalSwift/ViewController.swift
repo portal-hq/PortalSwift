@@ -41,7 +41,7 @@ struct ProviderAddressRequest {
 
 class ViewController: UIViewController {
   public var portal: Portal?
-  public var CUSTODIAN_SERVER_URL = "https://staging-portalex-mpc-service.onrender.com"
+  public var CUSTODIAN_SERVER_URL = "https://portalex-mpc.portalhq.io"
 
   // Static information
   @IBOutlet weak var addressInformation: UITextView!
@@ -295,11 +295,7 @@ class ViewController: UIViewController {
           5: "https://eth-goerli.g.alchemy.com/v2/53va-QZAS8TnaBH3-oBHqcNJtIlygLi-"
         ],
         version: "v1",
-        apiHost: "api-staging.portalhq.io",
-        autoApprove: true,
-        mpcHost: "mpc-staging.portalhq.io"
-        
-
+        autoApprove: true
       )
     } catch ProviderInvalidArgumentError.invalidGatewayUrl {
       print("❌ Error: Invalid Gateway URL")
