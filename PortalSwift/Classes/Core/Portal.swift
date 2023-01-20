@@ -83,6 +83,7 @@ public class Portal {
   public var mpc: PortalMpc
   public var provider: PortalProvider
   public var gatewayConfig: Dictionary<Int, String>
+  public var version: String
   
   /// Create a Portal instance.
   /// - Parameters:
@@ -104,10 +105,11 @@ public class Portal {
     gatewayConfig: Dictionary<Int, String>,
     // Optional
     isSimulator: Bool = false,
-    address: String = "",
-    apiHost: String = "api.portalhq.io",
+    version: String = "v1",
     autoApprove: Bool = false,
-    mpcHost: String = "mpc.portalhq.io"
+    apiHost: String = "api.portalhq.io",
+    mpcHost: String = "mpc.portalhq.io",
+    address: String = ""
   ) throws {
     // Basic setup
     self.apiKey = apiKey
@@ -119,6 +121,7 @@ public class Portal {
     // Other stuff
     self.autoApprove = autoApprove
     self.isSimulator = isSimulator
+    self.version = version
 
     if (!address.isEmpty) {
       self.address = address
@@ -144,7 +147,9 @@ public class Portal {
       apiKey: apiKey,
       chainId: chainId,
       gatewayUrl: gatewayUrl,
-      autoApprove: autoApprove
+      autoApprove: autoApprove,
+      mpcHost: mpcHost,
+      version: version
     )
 
     // Initialize Mpc
@@ -156,7 +161,8 @@ public class Portal {
       gatewayUrl: gatewayUrl,
       api: self.api,
       isSimulator: isSimulator,
-      mpcHost: mpcHost
+      mpcHost: mpcHost,
+      version: version
     )
   }
 
