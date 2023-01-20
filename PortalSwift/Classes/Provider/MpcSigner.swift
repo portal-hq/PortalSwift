@@ -57,7 +57,7 @@ class MpcSigner {
       let formattedParams = try formatParams(payload: payload)
       let clientSignResult = ClientSign(
         provider.getApiKey(),
-        mpcUrl,
+        self.mpcUrl,
         signingShare,
         payload.method,
         formattedParams,

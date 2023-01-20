@@ -13,15 +13,16 @@ import Mpc
 /// GG18 shares will only contain: bks, pubkey, and share
 /// CGGMP shares will contain all fields except: pubkey.
 public struct MpcShare: Codable {
+  public var share: String
   public var allY: PartialPublicKey
   public var bks: Berkhoffs
-  public var clientId: String
   public var p: String
-  public var partialPubKey: PartialPublicKey
+  public var partialPubkey: PartialPublicKey
   public var pederson: Pedersons
   public var q: String
-  public var share: String
   public var ssid: String
+  public var clientId: String
+  public var pubkey: PublicKey
 }
 
 /// In the bks dictionary for an MPC share, Berkhoff is the value.
@@ -70,7 +71,7 @@ private struct DecryptData: Codable {
 
 /// The response from encrypting.
 private struct EncryptData: Codable {
-  public var privateKey: String
+  public var key: String
   public var cipherText: String
 }
 
@@ -216,7 +217,6 @@ public class PortalMpc {
     do {
       // Obtain the signing share.
       let signingShare = try keychain.getSigningShare()
-
       // Derive the storage and throw an error if none was provided.
       let storage = self.storage[method] as? Storage
       if (storage == nil) {
@@ -259,7 +259,7 @@ public class PortalMpc {
               let encryptedResult = try self.encryptShare(mpcShare: backupShare)
               
               // Attempt to write the encrypted share to storage.
-              storage?.write(privateKey: encryptedResult.privateKey)  { (result: Result<Bool>) -> Void in
+              storage?.write(privateKey: encryptedResult.key)  { (result: Result<Bool>) -> Void in
                 // Throw an error if we can't write to storage.
                 if result.error != nil {
                   return completion(Result(error: result.error!))
@@ -269,12 +269,14 @@ public class PortalMpc {
                 return completion(Result(data: encryptedResult.cipherText))
               }
             } catch {
+              print("Backup Failed: ", error)
               return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: "Backup failed")))
             }
           }
         }
       }
     } catch {
+      print("Backup Failed: ", error)
       return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: "Backup failed")))
     }
   }
@@ -354,7 +356,7 @@ public class PortalMpc {
             let encryptedResult = try self.encryptShare(mpcShare: newBackupShare)
             
             // Attempt to write the encrypted share to storage.
-            storage?.write(privateKey: encryptedResult.privateKey) { (result: Result<Bool>) -> Void in
+            storage?.write(privateKey: encryptedResult.key) { (result: Result<Bool>) -> Void in
               // Throw an error if we can't write to storage.
               if !result.data! {
                 return completion(Result(error: result.error!))

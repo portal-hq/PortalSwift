@@ -265,6 +265,7 @@ public class PortalProvider {
   private var infuraId: String = ""
   private var signer: MpcSigner
   private var address: String = ""
+  private var mpcHost: String = "mpc.portalhq.io"
   private var version: String = "v1"
 
   private var walletMethods: [ETHRequestMethods.RawValue] = [
@@ -289,6 +290,7 @@ public class PortalProvider {
     gatewayUrl: String,
     apiHost: String = "api.portalhq.io",
     autoApprove: Bool,
+    mpcHost: String = "mpc.portalhq.io",
     version: String = "v1"
   ) throws {
     // User-defined instance variables
@@ -297,6 +299,7 @@ public class PortalProvider {
     self.gatewayUrl = gatewayUrl
     self.autoApprove = autoApprove
     self.rpc = HttpRequester(baseUrl: gatewayUrl)
+    self.mpcHost = mpcHost
     self.version = version
 
     // Other instance variables
@@ -307,7 +310,7 @@ public class PortalProvider {
     }
 
     self.portal = HttpRequester(baseUrl: String(format: "https://%@", apiHost))
-    self.signer = MpcSigner(keychain: PortalKeychain(), version: version)
+    self.signer = MpcSigner(keychain: PortalKeychain(), mpcUrl: self.mpcHost, version: version)
     self.dispatchConnect()
   }
 

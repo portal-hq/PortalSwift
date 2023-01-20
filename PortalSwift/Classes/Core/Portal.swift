@@ -148,6 +148,7 @@ public class Portal {
       chainId: chainId,
       gatewayUrl: gatewayUrl,
       autoApprove: autoApprove,
+      mpcHost: mpcHost,
       version: version
     )
 

@@ -268,12 +268,12 @@ class ViewController: UIViewController {
   }
 
   func handleSend() {
-    let payload = ETHRequestPayload(
+    let payload = ETHTransactionPayload(
       method: "eth_sendTransaction",
-      params: []
+      params: [ETHTransactionParam(from: portal!.address, to: sendAddress.text!, gas: "0x6000", gasPrice: "0x100", value: "0x10", data: "")]
     )
-      portal?.provider.request(payload: payload) {
-        (result: Result<RequestCompletionResult>) -> Void in
+    portal?.provider.request(payload: payload) {
+        (result: Result<TransactionCompletionResult>) -> Void in
         guard result.error == nil else {
           print("❌ Error sending transaction:", result.error!)
           return

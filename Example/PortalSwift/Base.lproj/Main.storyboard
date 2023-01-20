@@ -79,8 +79,7 @@
                                     <color key="baseForegroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 </buttonConfiguration>
                                 <connections>
-                                    <action selector="handleSend:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="vZv-06-fJd"/>
-                                    <action selector="sendPressed:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="Z2q-nf-dwU"/>
+                                    <action selector="sendPressed:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="jz1-9o-E08"/>
                                 </connections>
                             </button>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="PLS-JE-WGU">
