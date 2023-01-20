@@ -22,13 +22,16 @@ class MpcSigner {
   public var address: String?
   public var keychain: PortalKeychain
   private var mpcUrl: String
+  private var version: String
 
   init (
     keychain: PortalKeychain,
-    mpcUrl: String = "mpc.portalhq.io"
+    mpcUrl: String = "mpc.portalhq.io",
+    version: String = "v1"
   ) {
     self.keychain = keychain
     self.mpcUrl = mpcUrl
+    self.version = version
   }
 
   /// Signs a standard ETH request.
@@ -59,7 +62,8 @@ class MpcSigner {
         payload.method,
         formattedParams,
         provider.gatewayUrl,
-        String(provider.chainId)
+        String(provider.chainId),
+        version
       )
 
       // Attempt to decode the sign result.
@@ -97,7 +101,8 @@ class MpcSigner {
         payload.method,
         formattedParams,
         provider.gatewayUrl,
-        String(provider.chainId)
+        String(provider.chainId),
+        version
       )
     }
 

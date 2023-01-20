@@ -11,14 +11,63 @@
 #include "Universe.objc.h"
 
 
+@class ClientDecryptData;
+@class ClientDecryptResult;
+@class ClientEncryptData;
+@class ClientEncryptResult;
 @class ClientGenerateData;
-@class ClientGenerateResult;
+@class ClientGenerateDataCGGMP;
+@class ClientGenerateResultCGGMP;
+@class ClientGenerateResultGG18;
 @class ClientMessage;
-@class ClientReshareResult;
+@class ClientReshareDataCGGMP;
+@class ClientReshareResultCGGMP;
+@class ClientReshareResultGG18;
 @class ClientShare;
 @class ClientSignature;
 @class ClientSigningRequest;
 @class ClientSigningResult;
+
+@interface ClientDecryptData : NSObject <goSeqRefInterface> {
+}
+@property(strong, readonly) _Nonnull id _ref;
+
+- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
+- (nonnull instancetype)init;
+@property (nonatomic) NSString* _Nonnull plaintext;
+@end
+
+@interface ClientDecryptResult : NSObject <goSeqRefInterface> {
+}
+@property(strong, readonly) _Nonnull id _ref;
+
+- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
+- (nonnull instancetype)init;
+// skipped field DecryptResult.Data with unsupported type: github.com/portal-hq/mpc/client.DecryptData
+
+@property (nonatomic) NSString* _Nonnull error;
+@end
+
+@interface ClientEncryptData : NSObject <goSeqRefInterface> {
+}
+@property(strong, readonly) _Nonnull id _ref;
+
+- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
+- (nonnull instancetype)init;
+@property (nonatomic) NSString* _Nonnull key;
+@property (nonatomic) NSString* _Nonnull cipherText;
+@end
+
+@interface ClientEncryptResult : NSObject <goSeqRefInterface> {
+}
+@property(strong, readonly) _Nonnull id _ref;
+
+- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
+- (nonnull instancetype)init;
+// skipped field EncryptResult.Data with unsupported type: github.com/portal-hq/mpc/client.EncryptData
+
+@property (nonatomic) NSString* _Nonnull error;
+@end
 
 @interface ClientGenerateData : NSObject <goSeqRefInterface> {
 }
@@ -26,18 +75,40 @@
 
 - (nonnull instancetype)initWithRef:(_Nonnull id)ref;
 - (nonnull instancetype)init;
-// skipped field GenerateData.DkgResult with unsupported type: github.com/portal-hq/mpc/shared/dkg.DkgResult
+// skipped field GenerateData.DkgResult with unsupported type: github.com/portal-hq/mpc/shared/gg18/dkg.DkgResult
 
 @property (nonatomic) NSString* _Nonnull address;
 @end
 
-@interface ClientGenerateResult : NSObject <goSeqRefInterface> {
+@interface ClientGenerateDataCGGMP : NSObject <goSeqRefInterface> {
 }
 @property(strong, readonly) _Nonnull id _ref;
 
 - (nonnull instancetype)initWithRef:(_Nonnull id)ref;
 - (nonnull instancetype)init;
-// skipped field GenerateResult.Data with unsupported type: github.com/portal-hq/mpc/client.GenerateData
+// skipped field GenerateDataCGGMP.DkgResult with unsupported type: github.com/portal-hq/mpc/shared/cggmp/mpcHelpers.AuxInfo
+
+@property (nonatomic) NSString* _Nonnull address;
+@end
+
+@interface ClientGenerateResultCGGMP : NSObject <goSeqRefInterface> {
+}
+@property(strong, readonly) _Nonnull id _ref;
+
+- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
+- (nonnull instancetype)init;
+// skipped field GenerateResultCGGMP.Data with unsupported type: github.com/portal-hq/mpc/client.GenerateDataCGGMP
+
+@property (nonatomic) NSString* _Nonnull error;
+@end
+
+@interface ClientGenerateResultGG18 : NSObject <goSeqRefInterface> {
+}
+@property(strong, readonly) _Nonnull id _ref;
+
+- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
+- (nonnull instancetype)init;
+// skipped field GenerateResultGG18.Data with unsupported type: github.com/portal-hq/mpc/client.GenerateData
 
 @property (nonatomic) NSString* _Nonnull error;
 @end
@@ -51,13 +122,35 @@
 @property (nonatomic) NSString* _Nonnull message;
 @end
 
-@interface ClientReshareResult : NSObject <goSeqRefInterface> {
+@interface ClientReshareDataCGGMP : NSObject <goSeqRefInterface> {
 }
 @property(strong, readonly) _Nonnull id _ref;
 
 - (nonnull instancetype)initWithRef:(_Nonnull id)ref;
 - (nonnull instancetype)init;
-// skipped field ReshareResult.Data with unsupported type: github.com/portal-hq/mpc/client.Share
+// skipped field ReshareDataCGGMP.DkgResult with unsupported type: github.com/portal-hq/mpc/shared/cggmp/mpcHelpers.AuxInfo
+
+@property (nonatomic) NSString* _Nonnull address;
+@end
+
+@interface ClientReshareResultCGGMP : NSObject <goSeqRefInterface> {
+}
+@property(strong, readonly) _Nonnull id _ref;
+
+- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
+- (nonnull instancetype)init;
+// skipped field ReshareResultCGGMP.Data with unsupported type: github.com/portal-hq/mpc/client.ReshareDataCGGMP
+
+@property (nonatomic) NSString* _Nonnull error;
+@end
+
+@interface ClientReshareResultGG18 : NSObject <goSeqRefInterface> {
+}
+@property(strong, readonly) _Nonnull id _ref;
+
+- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
+- (nonnull instancetype)init;
+// skipped field ReshareResultGG18.Data with unsupported type: github.com/portal-hq/mpc/client.Share
 
 @property (nonatomic) NSString* _Nonnull error;
 @end
@@ -100,14 +193,20 @@
 @property (nonatomic) NSString* _Nonnull error;
 @end
 
-FOUNDATION_EXPORT NSString* _Nonnull ClientBackup(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult);
+FOUNDATION_EXPORT NSString* _Nonnull ClientBackup(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable version);
 
-FOUNDATION_EXPORT NSString* _Nonnull ClientGenerate(NSString* _Nullable clientAPIKey, NSString* _Nullable addr);
+FOUNDATION_EXPORT NSString* _Nonnull ClientDecrypt(NSString* _Nullable key, NSString* _Nullable dkgCipherText);
 
-FOUNDATION_EXPORT NSString* _Nonnull ClientRecoverBackup(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult);
+FOUNDATION_EXPORT NSString* _Nonnull ClientEncrypt(NSString* _Nullable rawData);
 
-FOUNDATION_EXPORT NSString* _Nonnull ClientRecoverSigning(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult);
+FOUNDATION_EXPORT NSString* _Nonnull ClientGenerate(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable version);
 
-FOUNDATION_EXPORT NSString* _Nonnull ClientSign(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable method, NSString* _Nullable params, NSString* _Nullable rpcURL, NSString* _Nullable chainId);
+FOUNDATION_EXPORT BOOL ClientIs1559(NSString* _Nullable params, BOOL* _Nullable ret0_, NSError* _Nullable* _Nullable error);
+
+FOUNDATION_EXPORT NSString* _Nonnull ClientRecoverBackup(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable version);
+
+FOUNDATION_EXPORT NSString* _Nonnull ClientRecoverSigning(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable version);
+
+FOUNDATION_EXPORT NSString* _Nonnull ClientSign(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable method, NSString* _Nullable params, NSString* _Nullable rpcURL, NSString* _Nullable chainId, NSString* _Nullable version);
 
 #endif
