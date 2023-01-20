@@ -14,7 +14,7 @@ import Mpc
 /// CGGMP shares will contain all fields except: pubkey.
 public struct MpcShare: Codable {
   public var allY: PartialPublicKey
-  public var bks: [String: Berkhoff]
+  public var bks: Berkhoffs
   public var clientId: String
   public var p: String
   public var partialPubKey: PartialPublicKey
@@ -36,6 +36,12 @@ public struct PartialPublicKey: Codable {
   public var server: PublicKey
 }
 
+/// A berhkoff coefficient mapping for client and server (x, rank)
+public struct Berkhoffs: Codable {
+  public var client: Berkhoff
+  public var server: Berkhoff
+}
+
 public struct Pederson: Codable {
   public var n: String
   public var s: String
@@ -54,8 +60,12 @@ public struct PublicKey: Codable {
 }
 
 private struct DecryptResult: Codable {
-  public var plaintext: String?
+  public var data: DecryptData?
   public var error: String?
+}
+
+private struct DecryptData: Codable {
+  public var plaintext: String
 }
 
 /// The response from encrypting.
@@ -371,7 +381,7 @@ public class PortalMpc {
       throw MpcError.unexpectedErrorOnDecrypt(message: decryptResult.error!)
     }
     
-    return decryptResult.plaintext!
+    return decryptResult.data!.plaintext
   }
 
   /// Encrypts the backup share using a public key that it creates.
@@ -450,26 +460,6 @@ public class PortalMpc {
   ///   - backupShare: The backup share.
   /// - Returns: The new signing share.
   private func recoverSigning(backupShare: String) throws -> MpcShare {
-    // Retrieve the address and set it in the keychain.
-    do {
-      try self.api.getClient() { (result: Result<Any>) -> Void in
-        if (result.error != nil) {
-          print(result.error!)
-          return
-        }
-        let client = result.data as! Dictionary<String, Any>
-          do {
-            try self.keychain.setAddress(address: client["address"] as! String)
-            self.address = client["address"] as? String
-          } catch {
-            print(MpcError.unableToWriteToKeychain)
-            return
-        }
-      }
-    } catch {
-      throw MpcError.unableToRetrieveClient("Unable to retrieve client from API")
-    }
-
     // Call the MPC service to recover the signing share.
     let result = ClientRecoverSigning(apiKey, mpcHost, backupShare, version)
     let rotateResult = try JSONDecoder().decode(RotateResult.self, from: result.data(using: .utf8)!)
