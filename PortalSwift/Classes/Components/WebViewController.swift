@@ -30,6 +30,7 @@ public struct PortalMessageBody {
 /// The errors the web view controller can throw.
 enum WebViewControllerErrors: Error {
   case unparseableMessage
+  case MissingFieldsForEIP1559Transation
   case unknownMessageType(type: String)
 }
 
@@ -140,7 +141,7 @@ public class WebViewController: UIViewController, WKNavigationDelegate, WKScript
       switch portalMessageBody.type as String {
       case "portal_sign":
         if (TransactionMethods.contains(portalMessageBody.data.method)) {
-          handlePortalSignTransaction(method: portalMessageBody.data.method, params: portalMessageBody.data.params)
+          try handlePortalSignTransaction(method: portalMessageBody.data.method, params: portalMessageBody.data.params)
         } else {
           handlePortalSign(method: portalMessageBody.data.method, params: portalMessageBody.data.params)
         }
@@ -177,16 +178,32 @@ public class WebViewController: UIViewController, WKNavigationDelegate, WKScript
     }
   }
 
-  private func handlePortalSignTransaction(method: String, params: [Any]) -> Void {
+  private func handlePortalSignTransaction(method: String, params: [Any]) throws -> Void {
     let firstParams = params.first! as! Dictionary<String, String>
-    let transactionParam = ETHTransactionParam(
-      from: firstParams["from"]!,
-      to: firstParams["to"]!,
-      gas: firstParams["gas"]!,
-      gasPrice: firstParams["gasPrice"] ?? "",
-      value: firstParams["value"]!,
-      data: firstParams["data"]!
-    )
+    let transactionParam: ETHTransactionParam
+    if (firstParams["maxPriorityFeePerGas"] != nil && firstParams["maxFeePerGas"] != nil) {
+      guard firstParams["maxPriorityFeePerGas"]!.isEmpty || firstParams["maxFeePerGas"]!.isEmpty else {
+        throw WebViewControllerErrors.MissingFieldsForEIP1559Transation
+      }
+      transactionParam = ETHTransactionParam(
+        from: firstParams["from"]!,
+        to: firstParams["to"]!,
+        gas: firstParams["gas"]!,
+        value: firstParams["value"]!,
+        data: firstParams["data"]!,
+        maxPriorityFeePerGas: firstParams["maxPriorityFeePerGas"]!,
+        maxFeePerGas: firstParams["maxFeePerGas"]!
+      )
+    } else{
+      transactionParam = ETHTransactionParam(
+        from: firstParams["from"]!,
+        to: firstParams["to"]!,
+        gas: firstParams["gas"]!,
+        gasPrice: firstParams["gasPrice"] ?? "",
+        value: firstParams["value"]!,
+        data: firstParams["data"]!
+      )
+    }
     let payload = ETHTransactionPayload(method: method, params: [transactionParam])
 
     if (signerMethods.contains(method)) {
@@ -194,6 +211,7 @@ public class WebViewController: UIViewController, WKNavigationDelegate, WKScript
     } else{
       portal.provider.request(payload: payload, completion: gatewayTransactionRequestCompletion)
     }
+
   }
 
   private func signerTransactionRequestCompletion(result: Result<TransactionCompletionResult>) -> Void {

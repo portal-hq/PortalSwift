@@ -270,8 +270,9 @@ class ViewController: UIViewController {
   func handleSend() {
     let payload = ETHTransactionPayload(
       method: "eth_sendTransaction",
-      params: [ETHTransactionParam(from: portal!.address, to: sendAddress.text!, gas: "0x6000", gasPrice: "0x100", value: "0x10", data: "")]
+      params: [ETHTransactionParam(from: portal!.address, to: sendAddress.text!, gas: "0x6000", gasPrice: "0x6000", value: "0x10", data: "")]
     )
+//    maxPriorityFeePerGas: "0x3", maxFeePerGas: "0x4"
     portal?.provider.request(payload: payload) {
         (result: Result<TransactionCompletionResult>) -> Void in
         guard result.error == nil else {
@@ -292,7 +293,7 @@ class ViewController: UIViewController {
         chainId: 5,
         keychain: keychain,
         gatewayConfig: [
-          5: ""
+          5: "https://eth-goerli.g.alchemy.com/v2/53va-QZAS8TnaBH3-oBHqcNJtIlygLi-"
         ],
         autoApprove: true
       )
