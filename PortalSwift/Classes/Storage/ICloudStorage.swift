@@ -138,7 +138,7 @@ We highly recommend using real devices to test the recovery process.
     }
 
     // Check if the user has iCloud Key-Value Storage enabled.
-    if FileManager.default.url(forUbiquityContainerIdentifier: nil) == nil {
+    if NSUbiquitousKeyValueStore.default.synchronize() == false {
       return ICloudStatus.noAccess.rawValue
     }
 
