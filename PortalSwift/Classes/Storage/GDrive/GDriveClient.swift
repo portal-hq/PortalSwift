@@ -43,7 +43,7 @@ private enum GDriveClientError: Error {
 
 class GDriveClient {
   private var api: HttpRequester
-  private var auth: GoogleAuth
+  public var auth: GoogleAuth
   private var baseUrl: String = "https://www.googleapis.com"
   private var boundary: String = "portal-backup-share"
   private var clientId: String
@@ -95,7 +95,7 @@ class GDriveClient {
     }
   }
   
-  private func getIdForFilename(filename: String, callback: @escaping (Result<String>) -> Void) throws -> Void {
+  public func getIdForFilename(filename: String, callback: @escaping (Result<String>) -> Void) throws -> Void {
     if auth.getCurrentUser() == nil {
       throw GDriveClientError.userNotAuthenticated
     }
@@ -167,7 +167,7 @@ class GDriveClient {
             callback(Result(error: fileId.error!))
           }
           
-          var existingFileId = fileId.data!
+          let existingFileId = fileId.data!
           self.delete(id: existingFileId) { result in
             do {
               try self.writeFile(filename: filename, content: content, accessToken: accessToken.data!) {
@@ -196,8 +196,8 @@ class GDriveClient {
   }
   
   private func buildMultipartFormData(content: String, metadata: GDriveFileMetadata) throws -> String {
-    var metadataString = try JSONEncoder().encode(metadata)
-    var body = [
+    let metadataString = try JSONEncoder().encode(metadata)
+    let body = [
       "--\(boundary)\n",
       "Content-Type: application/json; charset=UTF-8\n\n",
       "\(metadataString)\n",
@@ -218,13 +218,13 @@ class GDriveClient {
       }
       
       do {
-        var body = GDriveFolderMetadata(
+        let body = GDriveFolderMetadata(
           mimeType: "application/vnd.google-apps.folder",
           name: self.folder,
           parents: ["root"]
         )
-        var bodyData = try JSONEncoder().encode(body)
-        var bodyString = String(data: bodyData, encoding: .utf8 )!
+        let bodyData = try JSONEncoder().encode(body)
+        let bodyString = String(data: bodyData, encoding: .utf8)!
         
         
         try self.api.post(
@@ -297,12 +297,12 @@ class GDriveClient {
       }
       
       do {
-        var metadata = GDriveFileMetadata(
+        let metadata = GDriveFileMetadata(
           name: filename,
           parents: [folder.data!.id]
         )
 
-        var body = try self.buildMultipartFormData(
+        let body = try self.buildMultipartFormData(
           content: content,
           metadata: metadata
         )

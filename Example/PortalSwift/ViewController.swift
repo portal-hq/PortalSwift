@@ -283,7 +283,7 @@ class ViewController: UIViewController {
 
   func registerPortal(apiKey: String) -> Void {
     do {
-      let backup = BackupOptions(icloud: ICloudStorage())
+      let backup = BackupOptions(gdrive: GDriveStorage(clientID: "", viewController: self))
       let keychain = PortalKeychain()
       portal = try Portal(
         apiKey: apiKey,
