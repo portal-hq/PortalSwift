@@ -275,6 +275,44 @@ public class PortalMpc {
           }
         }
       }
+      
+      // Check if we are authenticated with iCloud or throw an error if we are not.
+      if (method == BackupMethods.GoogleDrive.rawValue) {
+        print("Running backup since Google Drive is available! 🎉")
+        do {
+          // Call the MPC service to generate a backup share.
+          let response = ClientBackup(self.apiKey, self.mpcHost, signingShare, self.version)
+          let jsonData = response.data(using: .utf8)!
+          let rotateResult: RotateResult  = try JSONDecoder().decode(RotateResult.self, from: jsonData)
+          
+          // Throw if there is an error getting the backup share.
+          guard rotateResult.error == "" else {
+            return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: rotateResult.error!)))
+          }
+          
+          // Attach the backup share to the signing share JSON.
+          let backupShare = rotateResult.data!.dkgResult
+          
+          // Encrypt the share.
+          let encryptedResult = try self.encryptShare(mpcShare: backupShare)
+          
+          // Attempt to write the encrypted share to storage.
+          storage?.write(privateKey: encryptedResult.key)  { (result: Result<Bool>) -> Void in
+            // Throw an error if we can't write to storage.
+            if result.error != nil {
+              return completion(Result(error: result.error!))
+            }
+            
+            // Return the cipherText.
+            return completion(Result(data: encryptedResult.cipherText))
+          }
+        } catch {
+          print("Backup Failed: ", error)
+          return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: "Backup failed")))
+        }
+      }
+      
+      return completion(Result(error: MpcError.unsupportedStorageMethod))
     } catch {
       print("Backup Failed: ", error)
       return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: "Backup failed")))

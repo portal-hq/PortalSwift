@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import CommonCrypto
 
 import GoogleSignIn
 
@@ -126,41 +127,28 @@ public class GDriveStorage: Storage {
             return
           }
           
-          let name = self.hash(
-            value: "\(client.data!.custodian.id)\(client.data!.id)"
+          let name = GDriveStorage.hash(
+            "\(client.data!.custodian.id)\(client.data!.id)"
           )
           
           self.filename = "\(name).txt"
           
           callback(Result(data: self.filename!))
         }
+      } else {
+        callback(Result(data: self.filename!))
       }
-      
-      callback(Result(data: self.filename!))
     } catch {
       callback(Result(error: error))
     }
   }
   
-  private func hash(value: String) -> String {
-//    let s = String(self).unicodeScalars
-//    return Int(s[s.startIndex].value)
-    
-    var hash = 0
-
-    // Handle empty strings
-    if (value.count == 0) {
-      return "\(hash)"
+  private static func hash(_ str: String) -> String {
+    let data = str.data(using: .utf8)!
+    var digest = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
+    data.withUnsafeBytes {
+      _ = CC_SHA256($0.baseAddress, CC_LONG(data.count), &digest)
     }
-
-    for char in value {
-      let charScalars = String(char).unicodeScalars
-      let char = Int(charScalars[charScalars.startIndex].value)
-      
-      hash = (hash << 5) - hash + char
-      hash |= 0 // Convert to 32bit integer
-    }
-
-    return "\(abs(hash))"
+    return Data(digest).map { String(format: "%02hhx", $0) }.joined()
   }
 }

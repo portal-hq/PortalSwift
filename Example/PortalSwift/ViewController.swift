@@ -68,12 +68,7 @@ class ViewController: UIViewController {
   }
 
   @IBAction func handleSignIn(_ sender: UIButton) {
-    signIn(username: username.text!) {
-      (user: Any) -> Void in
-      let userResult = UserResult(
-        clientApiKey: (user as! Dictionary<String, Any>)["clientApiKey"]! as! String,
-        exchangeUserId: (user as! Dictionary<String, Any>)["exchangeUserId"]! as! Int
-      )
+    signIn(username: username.text!) { (userResult: UserResult) -> Void in
       print("✅ handleSignIn(): API key:", userResult.clientApiKey)
       self.user = userResult
       self.registerPortal(apiKey: userResult.clientApiKey)
@@ -82,12 +77,7 @@ class ViewController: UIViewController {
   }
 
   @IBAction func handleSignup(_ sender: UIButton) {
-    signUp(username: username.text!) {
-      (user: Any) -> Void in
-      let userResult = UserResult(
-        clientApiKey: (user as! Dictionary<String, Any>)["clientApiKey"]! as! String,
-        exchangeUserId: (user as! Dictionary<String, Any>)["exchangeUserId"]! as! Int
-      )
+    signUp(username: username.text!) { (userResult: UserResult) -> Void in
       print("✅ handleSignup(): API key:", userResult.clientApiKey)
       self.user = userResult
       self.registerPortal(apiKey: userResult.clientApiKey)
@@ -113,7 +103,7 @@ class ViewController: UIViewController {
 
   @IBAction func handleBackup(_ sender: UIButton!) {
     print("Starting backup...")
-    portal?.mpc.backup(method: BackupMethods.iCloud.rawValue)  { (result: Result<String>) -> Void in
+    portal?.mpc.backup(method: BackupMethods.GoogleDrive.rawValue)  { (result: Result<String>) -> Void in
       if (result.error != nil) {
         print("❌ handleBackup():", result.error!)
       } else {
@@ -293,6 +283,7 @@ class ViewController: UIViewController {
         gatewayConfig: [
           5: ""
         ],
+        version: "v1",
         autoApprove: true
       )
     } catch ProviderInvalidArgumentError.invalidGatewayUrl {
@@ -326,7 +317,7 @@ class ViewController: UIViewController {
     webViewController.didMove(toParent: self)
   }
 
-  func signIn(username: String, completionHandler: @escaping (Any) -> Void) {
+  func signIn(username: String, completionHandler: @escaping (UserResult) -> Void) {
     let request = HttpRequest<UserResult, [String : String]>(
       url: CUSTODIAN_SERVER_URL + "/mobile/login",
       method: "POST",
@@ -343,7 +334,7 @@ class ViewController: UIViewController {
     }
   }
 
-  func signUp(username: String, completionHandler: @escaping (Any) -> Void) {
+  func signUp(username: String, completionHandler: @escaping (UserResult) -> Void) {
     let request = HttpRequest<UserResult, [String : String]>(
       url: CUSTODIAN_SERVER_URL + "/mobile/signup",
       method: "POST",
