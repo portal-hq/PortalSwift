@@ -74,17 +74,17 @@ public class PortalApi {
   /// Retrieve the client by API key.
   /// - Parameter completion: The callback that contains the Client.
   /// - Returns: Void.
-  public func getClient(completion: @escaping (Result<Any>) -> Void) throws -> Void {
+  public func getClient(completion: @escaping (Result<Client>) -> Void) throws -> Void {
     try requests.get(
       path: "/api/v1/clients/me",
       headers: [
         "Authorization": String(format: "Bearer %@", apiKey)
       ]
-    ) { (result: Result<Any>) -> Void in
+    ) { (result: Result<Client>) -> Void in
       if (result.error != nil) {
-        completion(Result<Any>(error: result.error!))
+        completion(Result<Client>(error: result.error!))
       } else if (result.data != nil) {
-        completion(Result<Any>(data: result.data!))
+        completion(Result<Client>(data: result.data!))
       }
     }
   }
@@ -92,13 +92,13 @@ public class PortalApi {
   /// Retrieve a list of enabled dapps for the client.
   /// - Parameter completion: The callback that contains the list of Dapps.
   /// - Returns: Void.
-  public func getEnabledDapps(completion: @escaping (Result<Any>) -> Void) throws -> Void {
+  public func getEnabledDapps(completion: @escaping (Result<[Dapp]>) -> Void) throws -> Void {
     try requests.get(
       path: "/api/v1/config/dapps",
       headers: [
         "Authorization": String(format: "Bearer %@", apiKey)
       ]
-    ) { (result: Result<Any>) -> Void in
+    ) { (result: Result<[Dapp]>) -> Void in
       completion(result)
     }
   }
@@ -106,13 +106,13 @@ public class PortalApi {
   /// Retrieves a list of supported networks.
   /// - Parameter completion: The callback that contains the list of Networks.
   /// - Returns: Void.
-  public func getSupportedNetworks(completion: @escaping (Result<Any>) -> Void) throws -> Void {
+  public func getSupportedNetworks(completion: @escaping (Result<[ContractNetwork]>) -> Void) throws -> Void {
     try requests.get(
       path: "/api/v1/config/networks",
       headers: [
         "Authorization": String(format: "Bearer %@", apiKey)
       ]
-    ) { (result: Result<Any>) -> Void in
+    ) { (result: Result<[ContractNetwork]>) -> Void in
       completion(result)
     }
   }

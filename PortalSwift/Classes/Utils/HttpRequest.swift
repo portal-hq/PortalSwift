@@ -17,7 +17,7 @@ private enum HttpError: Error {
 }
 
 /// A class for making HTTP requests.
-public class HttpRequest<AnyObject, U> {
+public class HttpRequest<T: Codable, U> {
   private var body: U?
   private var headers: Dictionary<String, String>
   private var method: String
@@ -67,7 +67,7 @@ public class HttpRequest<AnyObject, U> {
   /// Sends an HTTP request.
   /// - Parameter completion: Resolves as a result with the HTTP response.
   /// - Returns: Void.
-  public func send(completion: @escaping (Result<Any>) -> Void) -> Void {
+  public func send(completion: @escaping (Result<T>) -> Void) -> Void {
     do {
       // Build the request object
       let request = try prepareRequest()
@@ -78,7 +78,7 @@ public class HttpRequest<AnyObject, U> {
         do {
           // Handle errors
           if (error != nil) {
-            return completion(Result<Any>(error: HttpError.unknownError(error!.localizedDescription)))
+            return completion(Result<T>(error: HttpError.unknownError(error!.localizedDescription)))
           }
 
           // Parse the response and return the properly typed data
@@ -91,7 +91,7 @@ public class HttpRequest<AnyObject, U> {
           // Process the response object
           if httpResponse?.statusCode == 200 {
             // Decode the response into the appropriate type
-            let typedData = self.isString ? String(data: data!, encoding: .utf8)! : try JSONSerialization.jsonObject(with: data!)
+            let typedData = try JSONDecoder().decode(T.self, from: data!)
 
             // Pass off to the completion closure
             return completion(Result(data: typedData))

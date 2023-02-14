@@ -8,8 +8,8 @@
 
 import Foundation
 
-public class MockHttpRequest: HttpRequest<Any, Any> {
-  public override func send(completion: @escaping (Result<Any>) -> Void) -> Void {
+public class MockHttpRequest: HttpRequest<String, Any> {
+  public override func send(completion: @escaping (Result<String>) -> Void) -> Void {
     completion(Result(data: mockBackupShare))
   }
 }

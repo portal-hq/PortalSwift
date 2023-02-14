@@ -8,7 +8,7 @@
 
 import PortalSwift
 
-struct UserResult {
+struct UserResult: Codable {
   var clientApiKey: String
   var exchangeUserId: Int
 }
@@ -126,7 +126,7 @@ class ViewController: UIViewController {
           headers: ["Content-Type": "application/json"], isString: true)
 
         request.send() {
-          (result: Result<Any>) in
+          (result: Result<String>) in
           if (result.error != nil) {
             print("❌ handleBackup(): Error sending custodian cipherText:", result.error!)
           } else {
@@ -144,14 +144,13 @@ class ViewController: UIViewController {
       method: "GET", body:[:],
       headers: ["Content-Type": "application/json"])
 
-    request.send() { (result: Result<Any>) in
+    request.send() { (result: Result<CipherTextResult>) in
       guard result.error == nil else {
         print("❌ handleRecover(): Error fetching cipherText:", result.error!)
         return
       }
 
-      let response = result.data as! Dictionary<String, String>
-      let cipherText = response["cipherText"]!
+      let cipherText = result.data!.cipherText
 
       self.portal?.mpc.recover(cipherText: cipherText, method: BackupMethods.iCloud.rawValue) { (result: Result<String>) -> Void in
         if (result.error != nil) {
@@ -168,7 +167,7 @@ class ViewController: UIViewController {
           headers: ["Content-Type": "application/json"], isString: true)
 
         request.send() {
-          (result: Result<Any>) in
+          (result: Result<String>) in
           if (result.error != nil) {
             print("❌ handleRecover(): Error sending custodian cipherText:", result.error!)
           } else {
@@ -335,7 +334,7 @@ class ViewController: UIViewController {
       headers: ["Content-Type": "application/json"]
     )
 
-    request.send() { (result: Result<Any>) in
+    request.send() { (result: Result<UserResult>) in
       guard result.error == nil else {
         print("❌ Error signing in:", result.error!)
         return
@@ -352,7 +351,7 @@ class ViewController: UIViewController {
       headers: ["Content-Type": "application/json"]
     )
 
-    request.send() { (result: Result<Any>) in
+    request.send() { (result: Result<UserResult>) in
       guard result.error == nil else {
         print("❌ Error signing up:", result.error!)
         return

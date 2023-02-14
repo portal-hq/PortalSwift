@@ -22,7 +22,7 @@ final class HttpRequesterTests: XCTestCase {
     try requester?.get(
       path: "/",
       headers: [:]
-    ) { (result: Result<Any>) -> Void in
+    ) { (result: Result<String>) -> Void in
       expectation.fulfill()
     }
 
@@ -36,7 +36,7 @@ final class HttpRequesterTests: XCTestCase {
       path: "/",
       body: ["test": "test"],
       headers: [:]
-    ) { (result: Result<Any>) -> Void in
+    ) { (result: Result<String>) -> Void in
       expectation.fulfill()
     }
 

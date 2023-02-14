@@ -16,6 +16,7 @@ public enum GDriveStorageError: Error {
 public class GDriveStorage: Storage {
   public var accessToken: String?
   public var api: PortalApi?
+  private var separator: String = ""
 
   public override init() {
     _ = GIDConfiguration(clientID: "YOUR_IOS_CLIENT_ID")

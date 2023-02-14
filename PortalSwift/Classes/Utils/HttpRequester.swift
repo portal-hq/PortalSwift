@@ -14,15 +14,35 @@ public class HttpRequester {
   init(baseUrl: String) {
     self.baseUrl = baseUrl
   }
-
-  func get(
+  
+  func delete<T: Codable>(
     path: String,
     headers: Dictionary<String, String>,
-    completion: @escaping (Result<Any>) -> Void
+    completion: @escaping (Result<T>) -> Void
   ) throws -> Void {
     // Create the request.
     let url = String(format:"%@%@", self.baseUrl, path)
-    let request = HttpRequest<Dictionary<String, Any>, [String: String]>(
+    let request = HttpRequest<T, [String: String]>(
+      url: url,
+      method: "DELETE",
+      body: [:],
+      headers: headers
+    )
+
+    // Attempt to send the request.
+    request.send() { (result: Result<T>) -> Void in
+      return completion(result)
+    }
+  }
+
+  func get<T: Codable>(
+    path: String,
+    headers: Dictionary<String, String>,
+    completion: @escaping (Result<T>) -> Void
+  ) throws -> Void {
+    // Create the request.
+    let url = String(format:"%@%@", self.baseUrl, path)
+    let request = HttpRequest<T, [String: String]>(
       url: url,
       method: "GET",
       body: [:],
@@ -30,19 +50,19 @@ public class HttpRequester {
     )
 
     // Attempt to send the request.
-    request.send() { (result: Result<Any>) -> Void in
+    request.send() { (result: Result<T>) -> Void in
       return completion(result)
     }
   }
 
-  func post(
+  func post<T: Codable>(
     path: String,
     body: Dictionary<String, Any>,
     headers: Dictionary<String, String>,
-    completion: @escaping (Result<Any>) -> Void
+    completion: @escaping (Result<T>) -> Void
   ) throws -> Void {
     // Create the request.
-    let request = HttpRequest<Any, Dictionary<String, Any>>(
+    let request = HttpRequest<T, Dictionary<String, Any>>(
       url: String(format:"%@%@", self.baseUrl, path),
       method: "POST",
       body: body,
@@ -50,7 +70,7 @@ public class HttpRequester {
     )
 
     // Attempt to send the request.
-    request.send() { (result: Result<Any>) -> Void in
+    request.send() { (result: Result<T>) -> Void in
       completion(result)
     }
   }
