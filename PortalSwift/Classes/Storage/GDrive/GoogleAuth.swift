@@ -31,10 +31,12 @@ class GoogleAuth {
           callback(Result(error: user.error!))
         } else if user.data == nil {
           callback(Result(error: GoogleAuthError.noUserFound))
+        } else {
+          callback(Result(data: user.data!.authentication.accessToken))
         }
-        
-        callback(Result(data: user.data!.authentication.accessToken))
       }
+    } else {
+      callback(Result(data: getCurrentUser()!.authentication.accessToken))
     }
   }
 

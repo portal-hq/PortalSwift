@@ -37,9 +37,10 @@ struct GDriveFilesListResponse: Codable {
 }
 
 private enum GDriveClientError: Error {
-  case noFileFound
   case userNotAuthenticated
 }
+
+private struct NoFileFoundError: Error {}
 
 class GDriveClient {
   private var api: HttpRequester
@@ -48,7 +49,7 @@ class GDriveClient {
   private var boundary: String = "portal-backup-share"
   private var clientId: String
   private var folder: String
-  
+
   init(
     clientId: String,
     view: UIViewController,
@@ -59,7 +60,7 @@ class GDriveClient {
     self.clientId = clientId
     self.folder = folder
   }
-  
+
   public func delete(id: String, callback: @escaping (Result<Bool>) -> Void) -> Void {
     auth.getAccessToken() { accessToken in
       if accessToken.error != nil {
@@ -67,11 +68,11 @@ class GDriveClient {
       } else if (accessToken.data == "") {
         callback(Result(error: GDriveClientError.userNotAuthenticated))
       }
-      
+
       do {
         try self.api.delete(
           path: "/drive/v3/files/\(id)",
-          headers: ["Authorization": "Bearer \(accessToken)"]
+          headers: ["Authorization": "Bearer \(accessToken.data!)"]
         ) { (result: Result<GDriveDeleteResponse>) -> Void in
           if result.error != nil {
             callback(Result(error: result.error!))
@@ -84,51 +85,58 @@ class GDriveClient {
       }
     }
   }
-  
+
   private func getAccessToken(callback: @escaping (Result<String>) -> Void) -> Void {
     if auth.getCurrentUser() == nil {
       callback(Result(error: GDriveClientError.userNotAuthenticated))
     }
-    
+
     auth.getAccessToken() { (accessToken) in
       callback(accessToken)
     }
   }
-  
+
   public func getIdForFilename(filename: String, callback: @escaping (Result<String>) -> Void) throws -> Void {
     if auth.getCurrentUser() == nil {
+      print("no user found")
       throw GDriveClientError.userNotAuthenticated
     }
-    
+
+    print("⚡️ getting access token")
     auth.getAccessToken() { accessToken in
+      print("received access token", accessToken)
       let query = "name='\(filename)'".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
       do {
+        print("⚡️ making api request")
         try self.api.get(
           path: "/drive/v3/files?corpora=user&q=\(query!)",
           headers: [
             "Accept": "application/json",
-            "Authorization": "Bearer \(accessToken)",
+            "Authorization": "Bearer \(accessToken.data!)",
             "Content-Type": "application/json"
           ]
         ) { (result: Result<GDriveFilesListResponse>) in
+          print("⚡️ /drive/v3/files", result)
           if (result.error != nil) {
             callback(Result(error: result.error!))
+            return
           }
-          
+
           if (result.data!.files.count > 0) {
             callback(Result(data: result.data!.files[0].id))
             return
           }
-          
-          callback(Result(error: GDriveClientError.noFileFound))
+
+          print("⚡️ no file found")
+          callback(Result(error: NoFileFoundError()))
         }
       } catch {
         callback(Result(error: error))
       }
     }
   }
-  
-  
+
+
   public func read(id: String, callback: @escaping (Result<String>) -> Void) -> Void {
     auth.getAccessToken() { (accessToken) in
       do {
@@ -136,7 +144,7 @@ class GDriveClient {
           path: "/drive/v3/files/\(id)?alt=media",
           headers: [
             "Accept": "application/json",
-            "Authorization": "Bearer \(accessToken)",
+            "Authorization": "Bearer \(accessToken.data!)",
             "Content-Type": "application/json",
           ]
         ) { (result: Result<String>) in
@@ -144,7 +152,7 @@ class GDriveClient {
             callback(Result(error: result.error!))
             return
           }
-          
+
           callback(result)
         }
       } catch {
@@ -152,49 +160,59 @@ class GDriveClient {
       }
     }
   }
-  
+
   public func write(filename: String, content: String, callback: @escaping (Result<String>) -> Void) throws -> Void {
     auth.getAccessToken() { accessToken in
+      print("⚡️ accessToken", accessToken)
       if (accessToken.error != nil) {
         callback(Result(error: accessToken.error!))
         return
       }
-      
+
       // Delete existing file
       do {
+        print("⚡️ getting id for filename")
         try self.getIdForFilename(filename: filename) { (fileId: Result<String>) in
+          print("⚡️ fileId", fileId)
           if (fileId.error != nil) {
-            callback(Result(error: fileId.error!))
+            if (fileId.error is NoFileFoundError) {
+              print("[Portal.GDriveStorage] No existing file found. Skipping delete.")
+              do {
+                try self.writeFile(filename: filename, content: content, accessToken: accessToken.data!) { result in
+                  callback(result)
+                }
+                return
+              } catch {
+                callback(Result(error: error))
+                return
+              }
+            } else {
+              callback(Result(error: fileId.error!))
+              return
+            }
           }
-          
+
           let existingFileId = fileId.data!
+          print("⚡️ deleting")
           self.delete(id: existingFileId) { result in
+            print("⚡️ deleted:", existingFileId)
             do {
-              try self.writeFile(filename: filename, content: content, accessToken: accessToken.data!) {
-                (result: Result<String>) in
+              try self.writeFile(filename: filename, content: content, accessToken: accessToken.data!) { (result: Result<String>) in
+                print("⚡️ wrote file", filename)
                 callback(result)
               }
             } catch {
+              print("⚡️ bubbling error", error)
               callback(Result(error: error))
             }
           }
-        }
-      } catch GDriveClientError.noFileFound {
-        print("[Portal.GDriveStorage] No existing file found. Skipping delete.")
-        do {
-          try self.writeFile(filename: filename, content: content, accessToken: accessToken.data!) {
-            result in
-            callback(result)
-          }
-        } catch {
-          callback(Result(error: error))
         }
       } catch {
         callback(Result(error: error))
       }
     }
   }
-  
+
   private func buildMultipartFormData(content: String, metadata: GDriveFileMetadata) throws -> String {
     let metadataString = try JSONEncoder().encode(metadata)
     let body = [
@@ -206,17 +224,17 @@ class GDriveClient {
       "\(content)\n",
       "--\(boundary)--",
     ]
-    
+
     return body.joined(separator: "")
   }
-  
+
   private func createFolder(callback: @escaping (Result<GDriveFile>) -> Void) throws -> Void {
     auth.getAccessToken() { accessToken in
       if (accessToken.error != nil) {
         callback(Result(error: accessToken.error!))
         return
       }
-      
+
       do {
         let body = GDriveFolderMetadata(
           mimeType: "application/vnd.google-apps.folder",
@@ -225,8 +243,8 @@ class GDriveClient {
         )
         let bodyData = try JSONEncoder().encode(body)
         let bodyString = String(data: bodyData, encoding: .utf8)!
-        
-        
+
+
         try self.api.post(
           path:"/drive/v3/files?ignoreDefaultVisibility=true",
           body: [
@@ -236,33 +254,33 @@ class GDriveClient {
           ],
           headers: [
             "Accept": "application/json",
-            "Authorization": "Bearer $accessToken",
+            "Authorization": "Bearer \(accessToken.data!)",
             "Content-Type": "application/json",
             "Content-Length": String(bodyString.count)
           ]
         ) { (result: Result<GDriveFile>) in
-          
+
         }
       } catch {
         callback(Result(error: error))
       }
     }
   }
-    
+
   private func getOrCreateFolder(callback: @escaping (Result<GDriveFile>) -> Void) -> Void {
     auth.getAccessToken() { accessToken in
       if (accessToken.error != nil) {
         callback(Result(error: accessToken.error!))
         return
       }
-      
+
       do {
         let query = "name='\(self.folder)'".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
         try self.api.get(
           path: "/drive/v3/files?q=\(query!)",
           headers: [
             "Accept": "application/json",
-            "Authorization": "Bearer $accessToken",
+            "Authorization": "Bearer \(accessToken.data!)",
             "Content-Type": "application/json"
           ]
         ) { (result: Result<GDriveFilesListResponse>) in
@@ -270,7 +288,7 @@ class GDriveClient {
             callback(Result(error: result.error!))
             return
           }
-          
+
           do {
             if (result.data!.files.count > 0) {
               callback(Result(data: result.data!.files[0]))
@@ -288,14 +306,14 @@ class GDriveClient {
       }
     }
   }
-  
+
   private func writeFile(filename: String, content: String, accessToken: String, callback: @escaping (Result<String>) -> Void) throws {
     getOrCreateFolder() { folder in
       if (folder.error != nil) {
         callback(Result(error: folder.error!))
         return
       }
-      
+
       do {
         let metadata = GDriveFileMetadata(
           name: filename,
@@ -319,7 +337,7 @@ class GDriveClient {
             callback(Result(error: result.error!))
             return
           }
-          
+
           callback(Result(data: result.data!.id))
         }
       } catch {
