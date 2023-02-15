@@ -65,20 +65,23 @@ class GDriveClient {
     auth.getAccessToken() { accessToken in
       if accessToken.error != nil {
         callback(Result(error: accessToken.error!))
+        return
       } else if (accessToken.data == "") {
         callback(Result(error: GDriveClientError.userNotAuthenticated))
+        return
       }
 
       do {
         try self.api.delete(
           path: "/drive/v3/files/\(id)",
           headers: ["Authorization": "Bearer \(accessToken.data!)"]
-        ) { (result: Result<GDriveDeleteResponse>) -> Void in
+        ) { (result: Result<String>) -> Void in
           if result.error != nil {
             callback(Result(error: result.error!))
-          } else {
-            callback(Result(data: true))
+            return
           }
+
+          callback(Result(data: true))
         }
       } catch {
         callback(Result(error: error))
@@ -176,6 +179,11 @@ class GDriveClient {
 
           let existingFileId = fileId.data!
           self.delete(id: existingFileId) { result in
+            if (result.error != nil) {
+              callback(Result(error: result.error!))
+              return
+            }
+
             do {
               try self.writeFile(filename: filename, content: content, accessToken: accessToken.data!) { (result: Result<String>) in
                 callback(result)

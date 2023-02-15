@@ -97,7 +97,7 @@ public class GDriveStorage: Storage {
           completion(Result(data: true))
         }
       } catch {
-        completion(Result(error: error))
+        completion(Result(data: false, error: error))
       }
     }
   }
@@ -130,7 +130,7 @@ public class GDriveStorage: Storage {
           )
           
           self.filename = "\(name).txt"
-          
+
           callback(Result(data: self.filename!))
         }
       } else {
