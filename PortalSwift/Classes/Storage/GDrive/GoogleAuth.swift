@@ -25,23 +25,49 @@ class GoogleAuth {
   }
   
   func getAccessToken(callback: @escaping (Result<String>) -> Void) {
-    if auth.currentUser == nil {
-      signIn() { (user) in
-        if user.error != nil {
-          callback(Result(error: user.error!))
-        } else if user.data == nil {
-          callback(Result(error: GoogleAuthError.noUserFound))
-        } else {
-          callback(Result(data: user.data!.authentication.accessToken))
+    if hasPreviousSignIn() {
+      // Attempt to sign in silently
+      restorePreviousSignIn { result in
+        if result.error != nil {
+          // Handle error
+          callback(Result(error: result.error!))
+        } else if let user = result.data {
+          // Handle successful sign-in
+          callback(Result(data: user.authentication.accessToken))
         }
       }
     } else {
-      callback(Result(data: getCurrentUser()!.authentication.accessToken))
+      // User has not signed in before, prompt for sign-in
+      signIn() { result in
+        if result.error != nil {
+          // Handle error
+          callback(Result(error: result.error!))
+        } else if let user = result.data {
+          // Handle successful sign-in
+          callback(Result(data: user.authentication.accessToken))
+        }
+      }
     }
   }
 
   func getCurrentUser() -> GIDGoogleUser? {
     return auth.currentUser
+  }
+  
+  func hasPreviousSignIn() -> Bool {
+    return auth.hasPreviousSignIn()
+  }
+  
+  func restorePreviousSignIn(callback: @escaping (Result<GIDGoogleUser>) -> Void) {
+    auth.restorePreviousSignIn { user, error in
+      if error != nil {
+        // Handle error
+        callback(Result(error: error!))
+      } else if let user = user {
+        // Handle successful sign-in
+        callback(Result(data: user))
+      }
+    }
   }
   
   func signIn(callback: @escaping (Result<GIDGoogleUser>) -> Void) {
