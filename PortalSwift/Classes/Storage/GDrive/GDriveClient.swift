@@ -98,16 +98,12 @@ class GDriveClient {
 
   public func getIdForFilename(filename: String, callback: @escaping (Result<String>) -> Void) throws -> Void {
     if auth.getCurrentUser() == nil {
-      print("no user found")
       throw GDriveClientError.userNotAuthenticated
     }
 
-    print("⚡️ getting access token")
     auth.getAccessToken() { accessToken in
-      print("received access token", accessToken)
       let query = "name='\(filename)'".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
       do {
-        print("⚡️ making api request")
         try self.api.get(
           path: "/drive/v3/files?corpora=user&q=\(query!)",
           headers: [
@@ -116,7 +112,6 @@ class GDriveClient {
             "Content-Type": "application/json"
           ]
         ) { (result: Result<GDriveFilesListResponse>) in
-          print("⚡️ /drive/v3/files", result)
           if (result.error != nil) {
             callback(Result(error: result.error!))
             return
@@ -127,7 +122,6 @@ class GDriveClient {
             return
           }
 
-          print("⚡️ no file found")
           callback(Result(error: NoFileFoundError()))
         }
       } catch {
@@ -163,7 +157,6 @@ class GDriveClient {
 
   public func write(filename: String, content: String, callback: @escaping (Result<String>) -> Void) throws -> Void {
     auth.getAccessToken() { accessToken in
-      print("⚡️ accessToken", accessToken)
       if (accessToken.error != nil) {
         callback(Result(error: accessToken.error!))
         return
@@ -171,9 +164,7 @@ class GDriveClient {
 
       // Delete existing file
       do {
-        print("⚡️ getting id for filename")
         try self.getIdForFilename(filename: filename) { (fileId: Result<String>) in
-          print("⚡️ fileId", fileId)
           if (fileId.error != nil) {
             if (fileId.error is NoFileFoundError) {
               print("[Portal.GDriveStorage] No existing file found. Skipping delete.")
@@ -193,16 +184,12 @@ class GDriveClient {
           }
 
           let existingFileId = fileId.data!
-          print("⚡️ deleting")
           self.delete(id: existingFileId) { result in
-            print("⚡️ deleted:", existingFileId)
             do {
               try self.writeFile(filename: filename, content: content, accessToken: accessToken.data!) { (result: Result<String>) in
-                print("⚡️ wrote file", filename)
                 callback(result)
               }
             } catch {
-              print("⚡️ bubbling error", error)
               callback(Result(error: error))
             }
           }
@@ -214,7 +201,8 @@ class GDriveClient {
   }
 
   private func buildMultipartFormData(content: String, metadata: GDriveFileMetadata) throws -> String {
-    let metadataString = try JSONEncoder().encode(metadata)
+    let metadataJSON = try JSONEncoder().encode(metadata)
+    let metadataString = String(data: metadataJSON, encoding: .utf8 )!
     let body = [
       "--\(boundary)\n",
       "Content-Type: application/json; charset=UTF-8\n\n",

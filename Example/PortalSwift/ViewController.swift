@@ -113,15 +113,11 @@ class ViewController: UIViewController {
           url: self.CUSTODIAN_SERVER_URL + "/mobile/\(self.user!.exchangeUserId)/cipher-text",
           method: "POST",
           body: ["cipherText": result.data!],
-          headers: ["Content-Type": "application/json"], isString: true)
+          headers: [:]
+        )
 
-        request.send() {
-          (result: Result<String>) in
-          if (result.error != nil) {
-            print("❌ handleBackup(): Error sending custodian cipherText:", result.error!)
-          } else {
-            print("✅ handleBackup(): Successfully sent custodian cipherText:", result.data!)
-          }
+        request.send() { (result: Result<String>) in
+          print("✅ handleBackup(): Successfully sent custodian cipherText:", result.data!)
         }
       }
     }
@@ -132,7 +128,8 @@ class ViewController: UIViewController {
     let request = HttpRequest<CipherTextResult, [String : String]>(
       url: self.CUSTODIAN_SERVER_URL + "/mobile/\(self.user!.exchangeUserId)/cipher-text/fetch",
       method: "GET", body:[:],
-      headers: ["Content-Type": "application/json"])
+      headers: [:]
+    )
 
     request.send() { (result: Result<CipherTextResult>) in
       guard result.error == nil else {
@@ -154,7 +151,8 @@ class ViewController: UIViewController {
           url: self.CUSTODIAN_SERVER_URL + "/mobile/\(self.user!.exchangeUserId)/cipher-text",
           method: "POST",
           body: ["cipherText": result.data!],
-          headers: ["Content-Type": "application/json"], isString: true)
+          headers: [:]
+        )
 
         request.send() {
           (result: Result<String>) in
