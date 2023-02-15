@@ -88,14 +88,12 @@ public class GDriveStorage: Storage {
       }
       
       do {
-        print("⚡️ writing")
         try self.drive.write(filename: filename.data!, content: privateKey) { writeResult in
           if (writeResult.error != nil) {
             completion(Result(data: false, error: writeResult.error!))
             return
           }
           
-          print("⚡️ written", filename.data!)
           completion(Result(data: true))
         }
       } catch {

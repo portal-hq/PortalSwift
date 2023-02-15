@@ -218,22 +218,11 @@ public class PortalMpc {
     do {
       // Obtain the signing share.
       let signingShare = try keychain.getSigningShare()
-      print("got signing share")
       // Derive the storage and throw an error if none was provided.
       let storage = self.storage[method] as? Storage
-      print("storage", storage)
       if (storage == nil) {
         return completion(Result(error: MpcError.unsupportedStorageMethod))
       }
-
-      // Authenticate with Google Drive or throw an error if we can't.
-//      if (method == BackupMethods.GoogleDrive.rawValue) {
-//        (storage as! GDriveStorage).assignAccessToken()
-//
-//        if ((storage as! GDriveStorage).accessToken == nil) {
-//          return completion(Result(error: MpcError.unableToAuthenticate))
-//        }
-//      }
 
       // Check if we are authenticated with iCloud or throw an error if we are not.
       if (method == BackupMethods.iCloud.rawValue) {
@@ -281,20 +270,20 @@ public class PortalMpc {
         print("Running backup since Google Drive is available! 🎉")
         do {
           // Call the MPC service to generate a backup share.
-//          let response = ClientBackup(self.apiKey, self.mpcHost, signingShare, self.version)
-//          let jsonData = response.data(using: .utf8)!
-//          let rotateResult: RotateResult  = try JSONDecoder().decode(RotateResult.self, from: jsonData)
+          let response = ClientBackup(self.apiKey, self.mpcHost, signingShare, self.version)
+          let jsonData = response.data(using: .utf8)!
+          let rotateResult: RotateResult  = try JSONDecoder().decode(RotateResult.self, from: jsonData)
           
           // Throw if there is an error getting the backup share.
-//          guard rotateResult.error == "" else {
-//            return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: rotateResult.error!)))
-//          }
+          guard rotateResult.error == "" else {
+            return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: rotateResult.error!)))
+          }
           
           // Attach the backup share to the signing share JSON.
-//          let backupShare = rotateResult.data!.dkgResult
+          let backupShare = rotateResult.data!.dkgResult
           
           // Encrypt the share.
-          let encryptedResult = EncryptData(key: "test", cipherText: "test") // try self.encryptShare(mpcShare: backupShare)
+          let encryptedResult = try self.encryptShare(mpcShare: backupShare)
           
           // Attempt to write the encrypted share to storage.
           storage?.write(privateKey: encryptedResult.key)  { (result: Result<Bool>) -> Void in
@@ -307,15 +296,12 @@ public class PortalMpc {
             return completion(Result(data: encryptedResult.cipherText))
           }
         } catch {
-          print("Backup Failed: ", error)
           return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: "Backup failed")))
         }
       } else {
-        
         return completion(Result(error: MpcError.unsupportedStorageMethod))
       }
     } catch {
-      print("Backup Failed: ", error)
       return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: "Backup failed")))
     }
   }
