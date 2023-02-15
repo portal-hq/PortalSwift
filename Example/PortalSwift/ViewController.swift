@@ -154,8 +154,7 @@ class ViewController: UIViewController {
           headers: [:]
         )
 
-        request.send() {
-          (result: Result<String>) in
+        request.send() { (result: Result<String>) in
           if (result.error != nil) {
             print("❌ handleRecover(): Error sending custodian cipherText:", result.error!)
           } else {

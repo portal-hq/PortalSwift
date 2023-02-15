@@ -88,11 +88,13 @@ public class HttpRequest<T: Codable, U> {
           }
           
           // Process the response object
-          if httpResponse?.statusCode == 200 {
+          if httpResponse!.statusCode == 204 {
+            return completion(Result(data: "OK" as! T))
+          } else if httpResponse!.statusCode >= 200 && httpResponse!.statusCode < 300 {
             var typedData: T
 
             // Decode the response into the appropriate type
-            if T.self is String {
+            if T.self == String.self {
               typedData = String(data: data!, encoding: .utf8) as! T
             } else {
               typedData = try JSONDecoder().decode(T.self, from: data!)
@@ -139,7 +141,7 @@ public class HttpRequest<T: Codable, U> {
       if (headers["Content-Type"] != nil && (headers["Content-Type"]!).contains("multipart")) {
         let rawBody = (body as! Dictionary<String, Any>)["rawBody"] as! String
         request.httpBody = rawBody.data(using: .utf8)
-      } else if (method != "GET" && body != nil) {
+      } else if (method != "GET" && method != "DELETE" && body != nil) {
         request.httpBody = try JSONSerialization.data(withJSONObject: body!, options: [])
       } else {
         request.httpBody = nil
