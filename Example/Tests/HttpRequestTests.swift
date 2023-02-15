@@ -14,7 +14,7 @@ final class HttpRequestTests: XCTestCase {
     let expectation = XCTestExpectation(description: "Request")
 
     // Create the request.
-    let request = HttpRequest<Dictionary<String, Any>, Dictionary<String, Any>>(
+    let request = HttpRequest<String, Dictionary<String, Any>>(
       url: "https://www.portalhq.io",
       method: "GET",
       body: [:],
@@ -22,7 +22,7 @@ final class HttpRequestTests: XCTestCase {
     )
 
     // Attempt to send the request.
-    request.send() { (result: Result<Any>) -> Void in
+    request.send() { (result: Result<String>) -> Void in
       expectation.fulfill()
     }
 
@@ -33,7 +33,7 @@ final class HttpRequestTests: XCTestCase {
     let expectation = XCTestExpectation(description: "Request")
 
     // Create the request.
-    let request = HttpRequest<Dictionary<String, Any>, Dictionary<String, Any>>(
+    let request = HttpRequest<String, Dictionary<String, Any>>(
       url: "https://www.portalhq.io",
       method: "POST",
       body: ["test": "test"],
@@ -41,7 +41,7 @@ final class HttpRequestTests: XCTestCase {
     )
 
     // Attempt to send the request.
-    request.send() { (result: Result<Any>) -> Void in
+    request.send() { (result: Result<String>) -> Void in
       expectation.fulfill()
     }
 
@@ -52,7 +52,7 @@ final class HttpRequestTests: XCTestCase {
     let expectation = XCTestExpectation(description: "Request")
 
     // Create the request.
-    let request = HttpRequest<Dictionary<String, Any>, Dictionary<String, Any>>(
+    let request = HttpRequest<String, Dictionary<String, Any>>(
       url: "https://www.portalhq.io",
       method: "GET",
       body: [:],
@@ -61,7 +61,7 @@ final class HttpRequestTests: XCTestCase {
     )
 
     // Attempt to send the request.
-    request.send() { (result: Result<Any>) -> Void in
+    request.send() { (result: Result<String>) -> Void in
       expectation.fulfill()
     }
 

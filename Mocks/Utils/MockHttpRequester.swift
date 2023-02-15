@@ -9,19 +9,19 @@
 import Foundation
 
 public class MockHttpRequester: HttpRequester {
-  public override func get(
+  public func get(
     path: String,
     headers: Dictionary<String, String>,
-    completion: @escaping (Result<Any>) -> Void
+    completion: @escaping (Result<String>) -> Void
   ) throws -> Void {
     completion(Result(data: mockBackupShare))
   }
 
-  public override func post(
+  public func post(
     path: String,
     body: Dictionary<String, Any>,
     headers: Dictionary<String, String>,
-    completion: @escaping (Result<Any>) -> Void
+    completion: @escaping (Result<String>) -> Void
   ) throws -> Void {
     completion(Result(data: mockBackupShare))
   }

@@ -17,13 +17,13 @@ private enum HttpError: Error {
 }
 
 /// A class for making HTTP requests.
-public class HttpRequest<AnyObject, U> {
+public class HttpRequest<T: Codable, U> {
   private var body: U?
   private var headers: Dictionary<String, String>
   private var method: String
   private var url: String
   private var isString: Bool
-  
+
   /// Creates an instance of HttpRequest.
   /// - Parameters:
   ///   - url: The URL to make a request to.
@@ -63,35 +63,42 @@ public class HttpRequest<AnyObject, U> {
     self.url = url
     self.isString = isString
   }
-  
+
   /// Sends an HTTP request.
   /// - Parameter completion: Resolves as a result with the HTTP response.
   /// - Returns: Void.
-  public func send(completion: @escaping (Result<Any>) -> Void) -> Void {
+  public func send(completion: @escaping (Result<T>) -> Void) -> Void {
     do {
       // Build the request object
       let request = try prepareRequest()
 
       // Make the request via URLSession
-      let task = URLSession.shared.dataTask(with: request) {
-        (data, response, error) -> Void in
+      let task = URLSession.shared.dataTask(with: request) { (data, response, error) -> Void in
         do {
           // Handle errors
           if (error != nil) {
-            return completion(Result<Any>(error: HttpError.unknownError(error!.localizedDescription)))
+            return completion(Result<T>(error: HttpError.unknownError(error!.localizedDescription)))
           }
-
+          
           // Parse the response and return the properly typed data
           let httpResponse = response as? HTTPURLResponse
-
+          
           if (httpResponse == nil) {
             return completion(Result(error: HttpError.nilResponseError))
           }
-
+          
           // Process the response object
-          if httpResponse?.statusCode == 200 {
+          if httpResponse!.statusCode == 204 {
+            return completion(Result(data: "OK" as! T))
+          } else if httpResponse!.statusCode >= 200 && httpResponse!.statusCode < 300 {
+            var typedData: T
+
             // Decode the response into the appropriate type
-            let typedData = self.isString ? String(data: data!, encoding: .utf8)! : try JSONSerialization.jsonObject(with: data!)
+            if T.self == String.self {
+              typedData = String(data: data!, encoding: .utf8) as! T
+            } else {
+              typedData = try JSONDecoder().decode(T.self, from: data!)
+            }
 
             // Pass off to the completion closure
             return completion(Result(data: typedData))
@@ -122,12 +129,19 @@ public class HttpRequest<AnyObject, U> {
 
       // Add request headers as defined in the constructor
       for (key, value) in headers {
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(value, forHTTPHeaderField: key)
+      }
+      
+      // If no Content-Type header was provided, set one.
+      if (headers["Content-Type"] == nil) {
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
       }
 
       // Set the request body to the string literal of the Dictionary
-      if (method != "GET" && body != nil) {
+      if (headers["Content-Type"] != nil && (headers["Content-Type"]!).contains("multipart")) {
+        let rawBody = (body as! Dictionary<String, Any>)["rawBody"] as! String
+        request.httpBody = rawBody.data(using: .utf8)
+      } else if (method != "GET" && method != "DELETE" && body != nil) {
         request.httpBody = try JSONSerialization.data(withJSONObject: body!, options: [])
       } else {
         request.httpBody = nil

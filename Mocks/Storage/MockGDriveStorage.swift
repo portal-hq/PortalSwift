@@ -9,10 +9,6 @@
 import Foundation
 
 public class MockGDriveStorage: GDriveStorage {
-  public override func assignAccessToken() -> Void {
-    return
-  }
-
   public override func delete(completion: @escaping (Result<Bool>) -> Void) -> Void {
     completion(Result(data: true))
   }

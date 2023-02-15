@@ -131,6 +131,8 @@
 		7C67CBD15D9B5D0B7769B2F469478332 /* FBSnapshotTestCase.m in Sources */ = {isa = PBXBuildFile; fileRef = AE56AE1C4286FD02C7B298A7ED694A18 /* FBSnapshotTestCase.m */; };
 		7D02B5B52AEBDF06DA2B08399F64B418 /* GTMSessionUploadFetcher.h in Headers */ = {isa = PBXBuildFile; fileRef = 7F20460EC6633B9230F7E712BFA02097 /* GTMSessionUploadFetcher.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		7E06344E29259384004E23CC /* Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E06344D29259384004E23CC /* Result.swift */; };
+		7E0A58612992EDE30003D945 /* GDriveClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E0A58602992EDE30003D945 /* GDriveClient.swift */; };
+		7E0A58632992F1580003D945 /* GoogleAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E0A58622992F1580003D945 /* GoogleAuth.swift */; };
 		7EB608DA291EF37800CF1346 /* mpc.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7EB608D9291EF37800CF1346 /* mpc.xcframework */; };
 		7ECA1AE07A77457A0CA3EC39ED873274 /* LocalAuthentication.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 833AAF9E2791D276B133EB166B930F7E /* LocalAuthentication.framework */; };
 		7F6781E460190FC8C5ECDF2CFBB2D7B3 /* MpcSigner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F01A68A5D97C3CC9E65738EA1D33CE44 /* MpcSigner.swift */; };
@@ -244,7 +246,7 @@
 		F8473F19A98E8C04DA797F91A71F8443 /* GIDGoogleUser.m in Sources */ = {isa = PBXBuildFile; fileRef = 5FEFA4DBD3F3F81E300A7B024BEF99C5 /* GIDGoogleUser.m */; };
 		F950D208FA4D412081B58F83807785A4 /* OIDRegistrationResponse.h in Headers */ = {isa = PBXBuildFile; fileRef = A84F5D1BCEB2EF13D15441A0D28D422C /* OIDRegistrationResponse.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		F96A7926293951150033822E /* mpc.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7EB608D9291EF37800CF1346 /* mpc.xcframework */; };
-		F96A7927293951150033822E /* mpc.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 7EB608D9291EF37800CF1346 /* mpc.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		F96A7927293951150033822E /* mpc.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 7EB608D9291EF37800CF1346 /* mpc.xcframework */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		F96A798F293AC5BE0033822E /* WebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E562948293A9F08009DF33E /* WebViewController.swift */; };
 		FA57677851302C0F13C69A459895DCEF /* NSBundle+GID3PAdditions.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F0BFE48C3465EAB070F9B738ACC4C2D /* NSBundle+GID3PAdditions.h */; settings = {ATTRIBUTES = (Project, ); }; };
 		FDE948CC3A35F70EAEB413E5DE09C5ED /* OIDRegistrationResponse.m in Sources */ = {isa = PBXBuildFile; fileRef = B804827BFBF64ED816EDF110F64E5F6F /* OIDRegistrationResponse.m */; };
@@ -509,6 +511,8 @@
 		7D339CE9034D5E14F8D0FCECBF17C61B /* FBSnapshotTestCasePlatform.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = FBSnapshotTestCasePlatform.m; path = FBSnapshotTestCase/FBSnapshotTestCasePlatform.m; sourceTree = "<group>"; };
 		7DEBE39160786975AF0CB3399DF96A38 /* GIDSignInStrings.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = GIDSignInStrings.h; path = GoogleSignIn/Sources/GIDSignInStrings.h; sourceTree = "<group>"; };
 		7E06344D29259384004E23CC /* Result.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Result.swift; sourceTree = "<group>"; };
+		7E0A58602992EDE30003D945 /* GDriveClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GDriveClient.swift; sourceTree = "<group>"; };
+		7E0A58622992F1580003D945 /* GoogleAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleAuth.swift; sourceTree = "<group>"; };
 		7E562948293A9F08009DF33E /* WebViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WebViewController.swift; sourceTree = "<group>"; };
 		7EB608D9291EF37800CF1346 /* mpc.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = mpc.xcframework; sourceTree = "<group>"; };
 		7F0575BE2BA383CEF487DB18CD24E5A6 /* PortalMpc.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PortalMpc.swift; sourceTree = "<group>"; };
@@ -876,7 +880,7 @@
 		26A89D4D67F856EF58B28C0203A7DEEE /* Storage */ = {
 			isa = PBXGroup;
 			children = (
-				3E90286F8C75B96B34BBF9F6C5ABED1A /* GDriveStorage.swift */,
+				7E0A585F2992EDD00003D945 /* GDrive */,
 				AE003222D50C215CB32678DCF897EE15 /* ICloudStorage.swift */,
 				EDBC5E37C56915F6631BE603CA3CCA98 /* Storage.swift */,
 			);
@@ -1046,6 +1050,16 @@
 			);
 			name = "Support Files";
 			path = "../Target Support Files/GoogleSignIn";
+			sourceTree = "<group>";
+		};
+		7E0A585F2992EDD00003D945 /* GDrive */ = {
+			isa = PBXGroup;
+			children = (
+				3E90286F8C75B96B34BBF9F6C5ABED1A /* GDriveStorage.swift */,
+				7E0A58602992EDE30003D945 /* GDriveClient.swift */,
+				7E0A58622992F1580003D945 /* GoogleAuth.swift */,
+			);
+			path = GDrive;
 			sourceTree = "<group>";
 		};
 		7E562947293A9F08009DF33E /* Components */ = {
@@ -1915,6 +1929,8 @@
 				47FA8DED29539E4B0020EF35 /* MockPortalKeychain.swift in Sources */,
 				CD1035D8A5E30274A3E1DBBC33D41C35 /* Portal.swift in Sources */,
 				47FA8DEB29539E3A0020EF35 /* MockPortal.swift in Sources */,
+				7E0A58612992EDE30003D945 /* GDriveClient.swift in Sources */,
+				7E0A58632992F1580003D945 /* GoogleAuth.swift in Sources */,
 				479E372E292567740080AEDB /* MockPortalApi.swift in Sources */,
 				41301195E1617D44C395832A59F056A3 /* PortalApi.swift in Sources */,
 				73E19CA710E50DF8673E5A1404F9C09E /* PortalKeychain.swift in Sources */,
@@ -2255,6 +2271,7 @@
 			baseConfigurationReference = 5CDE2ADA46D96CC503DFA2F6DD166CB0 /* GoogleSignIn.release.xcconfig */;
 			buildSettings = {
 				CONFIGURATION_BUILD_DIR = "$(BUILD_DIR)/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/GoogleSignIn";
+				DEVELOPMENT_TEAM = 4B4VPL895G;
 				IBSC_MODULE = GoogleSignIn;
 				INFOPLIST_FILE = "Target Support Files/GoogleSignIn/ResourceBundle-GoogleSignIn-GoogleSignIn-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
@@ -2585,6 +2602,7 @@
 			baseConfigurationReference = 70B4AD4436D79BE1F548623C470041E9 /* GoogleSignIn.debug.xcconfig */;
 			buildSettings = {
 				CONFIGURATION_BUILD_DIR = "$(BUILD_DIR)/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/GoogleSignIn";
+				DEVELOPMENT_TEAM = 4B4VPL895G;
 				IBSC_MODULE = GoogleSignIn;
 				INFOPLIST_FILE = "Target Support Files/GoogleSignIn/ResourceBundle-GoogleSignIn-GoogleSignIn-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
