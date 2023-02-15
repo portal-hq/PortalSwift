@@ -87,20 +87,12 @@ class GDriveClient {
   }
 
   private func getAccessToken(callback: @escaping (Result<String>) -> Void) -> Void {
-    if auth.getCurrentUser() == nil {
-      callback(Result(error: GDriveClientError.userNotAuthenticated))
-    }
-
     auth.getAccessToken() { (accessToken) in
       callback(accessToken)
     }
   }
 
   public func getIdForFilename(filename: String, callback: @escaping (Result<String>) -> Void) throws -> Void {
-    if auth.getCurrentUser() == nil {
-      throw GDriveClientError.userNotAuthenticated
-    }
-
     auth.getAccessToken() { accessToken in
       let query = "name='\(filename)'".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
       do {
@@ -129,7 +121,6 @@ class GDriveClient {
       }
     }
   }
-
 
   public func read(id: String, callback: @escaping (Result<String>) -> Void) -> Void {
     auth.getAccessToken() { (accessToken) in

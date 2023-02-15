@@ -73,25 +73,30 @@ public class HttpRequest<T: Codable, U> {
       let request = try prepareRequest()
 
       // Make the request via URLSession
-      let task = URLSession.shared.dataTask(with: request) {
-        (data, response, error) -> Void in
+      let task = URLSession.shared.dataTask(with: request) { (data, response, error) -> Void in
         do {
           // Handle errors
           if (error != nil) {
             return completion(Result<T>(error: HttpError.unknownError(error!.localizedDescription)))
           }
-
+          
           // Parse the response and return the properly typed data
           let httpResponse = response as? HTTPURLResponse
-
+          
           if (httpResponse == nil) {
             return completion(Result(error: HttpError.nilResponseError))
           }
-
+          
           // Process the response object
           if httpResponse?.statusCode == 200 {
+            var typedData: T
+
             // Decode the response into the appropriate type
-            let typedData = try JSONDecoder().decode(T.self, from: data!)
+            if T.self is String {
+              typedData = String(data: data!, encoding: .utf8) as! T
+            } else {
+              typedData = try JSONDecoder().decode(T.self, from: data!)
+            }
 
             // Pass off to the completion closure
             return completion(Result(data: typedData))

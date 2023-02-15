@@ -117,7 +117,7 @@ class ViewController: UIViewController {
         )
 
         request.send() { (result: Result<String>) in
-          print("✅ handleBackup(): Successfully sent custodian cipherText:", result.data!)
+          print("✅ handleBackup(): Successfully sent custodian cipherText:")
         }
       }
     }
@@ -139,7 +139,7 @@ class ViewController: UIViewController {
 
       let cipherText = result.data!.cipherText
 
-      self.portal?.mpc.recover(cipherText: cipherText, method: BackupMethods.iCloud.rawValue) { (result: Result<String>) -> Void in
+      self.portal?.mpc.recover(cipherText: cipherText, method: BackupMethods.GoogleDrive.rawValue) { (result: Result<String>) -> Void in
         if (result.error != nil) {
           print("❌ handleRecover(): portal.mpc.recover", result.error!)
           return;
