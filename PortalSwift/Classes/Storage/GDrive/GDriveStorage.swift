@@ -112,6 +112,7 @@ public class GDriveStorage: Storage {
   private func getFilename(callback: @escaping (Result<String>) -> Void) -> Void {
     if (api == nil) {
       callback(Result(error: GDriveStorageError.portalApiNotConfigured))
+        return
     }
 
     do {

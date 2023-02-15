@@ -42,7 +42,7 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>***REMOVED***</string>
+				<string>{{REPLACE_ME}}</string>
 			</array>
 		</dict>
 	</array>

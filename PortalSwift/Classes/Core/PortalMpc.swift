@@ -343,6 +343,8 @@ public class PortalMpc {
               
               completion(Result(data: recoveryResult.data!))
           }
+      } else {
+          completion(Result(error: MpcError.unsupportedStorageMethod))
       }
   }
   
