@@ -23,7 +23,7 @@ public class HttpRequest<T: Codable, U> {
   private var method: String
   private var url: String
   private var isString: Bool
-  
+
   /// Creates an instance of HttpRequest.
   /// - Parameters:
   ///   - url: The URL to make a request to.
@@ -63,7 +63,7 @@ public class HttpRequest<T: Codable, U> {
     self.url = url
     self.isString = isString
   }
-  
+
   /// Sends an HTTP request.
   /// - Parameter completion: Resolves as a result with the HTTP response.
   /// - Returns: Void.
@@ -129,6 +129,8 @@ public class HttpRequest<T: Codable, U> {
       // Set the request body to the string literal of the Dictionary
       if (method != "GET" && body != nil) {
         request.httpBody = try JSONSerialization.data(withJSONObject: body!, options: [])
+      } else if (headers["Content-Type"] != nil && (headers["Content-Type"] as! String).contains("multipart")) {
+        request.httpBody = (body as! Dictionary<String, Any>)["rawBody"] as! Data
       } else {
         request.httpBody = nil
       }
