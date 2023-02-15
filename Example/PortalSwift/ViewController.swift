@@ -8,7 +8,7 @@
 
 import PortalSwift
 
-struct UserResult {
+struct UserResult: Codable {
   var clientApiKey: String
   var exchangeUserId: Int
 }
@@ -68,12 +68,7 @@ class ViewController: UIViewController {
   }
 
   @IBAction func handleSignIn(_ sender: UIButton) {
-    signIn(username: username.text!) {
-      (user: Any) -> Void in
-      let userResult = UserResult(
-        clientApiKey: (user as! Dictionary<String, Any>)["clientApiKey"]! as! String,
-        exchangeUserId: (user as! Dictionary<String, Any>)["exchangeUserId"]! as! Int
-      )
+    signIn(username: username.text!) { (userResult: UserResult) -> Void in
       print("✅ handleSignIn(): API key:", userResult.clientApiKey)
       self.user = userResult
       self.registerPortal(apiKey: userResult.clientApiKey)
@@ -82,12 +77,7 @@ class ViewController: UIViewController {
   }
 
   @IBAction func handleSignup(_ sender: UIButton) {
-    signUp(username: username.text!) {
-      (user: Any) -> Void in
-      let userResult = UserResult(
-        clientApiKey: (user as! Dictionary<String, Any>)["clientApiKey"]! as! String,
-        exchangeUserId: (user as! Dictionary<String, Any>)["exchangeUserId"]! as! Int
-      )
+    signUp(username: username.text!) { (userResult: UserResult) -> Void in
       print("✅ handleSignup(): API key:", userResult.clientApiKey)
       self.user = userResult
       self.registerPortal(apiKey: userResult.clientApiKey)
@@ -113,7 +103,7 @@ class ViewController: UIViewController {
 
   @IBAction func handleBackup(_ sender: UIButton!) {
     print("Starting backup...")
-    portal?.mpc.backup(method: BackupMethods.iCloud.rawValue)  { (result: Result<String>) -> Void in
+    portal?.mpc.backup(method: BackupMethods.GoogleDrive.rawValue)  { (result: Result<String>) -> Void in
       if (result.error != nil) {
         print("❌ handleBackup():", result.error!)
       } else {
@@ -123,15 +113,11 @@ class ViewController: UIViewController {
           url: self.CUSTODIAN_SERVER_URL + "/mobile/\(self.user!.exchangeUserId)/cipher-text",
           method: "POST",
           body: ["cipherText": result.data!],
-          headers: ["Content-Type": "application/json"], isString: true)
+          headers: [:]
+        )
 
-        request.send() {
-          (result: Result<Any>) in
-          if (result.error != nil) {
-            print("❌ handleBackup(): Error sending custodian cipherText:", result.error!)
-          } else {
-            print("✅ handleBackup(): Successfully sent custodian cipherText:", result.data!)
-          }
+        request.send() { (result: Result<String>) in
+          print("✅ handleBackup(): Successfully sent custodian cipherText:")
         }
       }
     }
@@ -142,18 +128,18 @@ class ViewController: UIViewController {
     let request = HttpRequest<CipherTextResult, [String : String]>(
       url: self.CUSTODIAN_SERVER_URL + "/mobile/\(self.user!.exchangeUserId)/cipher-text/fetch",
       method: "GET", body:[:],
-      headers: ["Content-Type": "application/json"])
+      headers: [:]
+    )
 
-    request.send() { (result: Result<Any>) in
+    request.send() { (result: Result<CipherTextResult>) in
       guard result.error == nil else {
         print("❌ handleRecover(): Error fetching cipherText:", result.error!)
         return
       }
 
-      let response = result.data as! Dictionary<String, String>
-      let cipherText = response["cipherText"]!
+      let cipherText = result.data!.cipherText
 
-      self.portal?.mpc.recover(cipherText: cipherText, method: BackupMethods.iCloud.rawValue) { (result: Result<String>) -> Void in
+      self.portal?.mpc.recover(cipherText: cipherText, method: BackupMethods.GoogleDrive.rawValue) { (result: Result<String>) -> Void in
         if (result.error != nil) {
           print("❌ handleRecover(): portal.mpc.recover", result.error!)
           return;
@@ -165,10 +151,10 @@ class ViewController: UIViewController {
           url: self.CUSTODIAN_SERVER_URL + "/mobile/\(self.user!.exchangeUserId)/cipher-text",
           method: "POST",
           body: ["cipherText": result.data!],
-          headers: ["Content-Type": "application/json"], isString: true)
+          headers: [:]
+        )
 
-        request.send() {
-          (result: Result<Any>) in
+        request.send() { (result: Result<String>) in
           if (result.error != nil) {
             print("❌ handleRecover(): Error sending custodian cipherText:", result.error!)
           } else {
@@ -284,7 +270,7 @@ class ViewController: UIViewController {
 
   func registerPortal(apiKey: String) -> Void {
     do {
-      let backup = BackupOptions(icloud: ICloudStorage())
+      let backup = BackupOptions(gdrive: GDriveStorage(clientID: "", viewController: self))
       let keychain = PortalKeychain()
       portal = try Portal(
         apiKey: apiKey,
@@ -294,6 +280,7 @@ class ViewController: UIViewController {
         gatewayConfig: [
           5: ""
         ],
+        version: "v1",
         autoApprove: true
       )
     } catch ProviderInvalidArgumentError.invalidGatewayUrl {
@@ -327,7 +314,7 @@ class ViewController: UIViewController {
     webViewController.didMove(toParent: self)
   }
 
-  func signIn(username: String, completionHandler: @escaping (Any) -> Void) {
+  func signIn(username: String, completionHandler: @escaping (UserResult) -> Void) {
     let request = HttpRequest<UserResult, [String : String]>(
       url: CUSTODIAN_SERVER_URL + "/mobile/login",
       method: "POST",
@@ -335,7 +322,7 @@ class ViewController: UIViewController {
       headers: ["Content-Type": "application/json"]
     )
 
-    request.send() { (result: Result<Any>) in
+    request.send() { (result: Result<UserResult>) in
       guard result.error == nil else {
         print("❌ Error signing in:", result.error!)
         return
@@ -344,7 +331,7 @@ class ViewController: UIViewController {
     }
   }
 
-  func signUp(username: String, completionHandler: @escaping (Any) -> Void) {
+  func signUp(username: String, completionHandler: @escaping (UserResult) -> Void) {
     let request = HttpRequest<UserResult, [String : String]>(
       url: CUSTODIAN_SERVER_URL + "/mobile/signup",
       method: "POST",
@@ -352,7 +339,7 @@ class ViewController: UIViewController {
       headers: ["Content-Type": "application/json"]
     )
 
-    request.send() { (result: Result<Any>) in
+    request.send() { (result: Result<UserResult>) in
       guard result.error == nil else {
         print("❌ Error signing up:", result.error!)
         return

@@ -169,12 +169,12 @@ We highly recommend using real devices to test the recovery process.
     }
 
     do {
-      try self.api!.getClient() { (result: Result<Any>) -> Void in
+      try self.api!.getClient() { (result: Result<Client>) -> Void in
         if (result.error != nil) {
           completion(Result(error: result.error!))
           return
         }
-        let key = self.createKey(client: result.data as! Dictionary<String, Any>)
+        let key = self.createKey(client: result.data!)
         completion(Result(data: key))
       }
     } catch {
@@ -182,12 +182,8 @@ We highly recommend using real devices to test the recovery process.
     }
   }
 
-  private func createKey(client: Dictionary<String, Any>) -> String {
-    let clientID = client["id"] as! String
-    let custodian = client["custodian"] as! Dictionary<String, Any>
-    let custodianID = custodian["id"] as! String
-
-    return ICloudStorage.hash("\(custodianID)\(clientID)")
+  private func createKey(client: Client) -> String {
+    return ICloudStorage.hash("\(client.custodian.id)\(client.id)")
   }
 
   private static func hash(_ str: String) -> String {

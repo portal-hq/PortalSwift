@@ -552,7 +552,7 @@ public class PortalProvider {
     ]
 
     // Create the request.
-    let request = HttpRequest<ETHTransactionPayload, Dictionary<String, Any>>(
+    let request = HttpRequest<String, Dictionary<String, Any>>(
       url: self.rpc.baseUrl,
       method: "POST",
       body: body,
@@ -560,7 +560,7 @@ public class PortalProvider {
     )
 
     // Attempt to send the request.
-    request.send() { (result: Result<Any>) in
+    request.send() { (result: Result<String>) in
       completion(payload.method, payload.params, result.data ?? "")
     }
   }
@@ -578,7 +578,7 @@ public class PortalProvider {
     ]
 
     // Create the request.
-    let request = HttpRequest<ETHAddressParam, Dictionary<String, Any>>(
+    let request = HttpRequest<String, Dictionary<String, Any>>(
       url: self.rpc.baseUrl,
       method: "POST",
       body: body,
@@ -586,7 +586,7 @@ public class PortalProvider {
     )
 
     // Attempt to send the request.
-    request.send() { (result: Result<Any>) in
+    request.send() { (result: Result<String>) in
       completion(payload.method, payload.params, result.data ?? "")
     }
   }
@@ -602,7 +602,7 @@ public class PortalProvider {
     ]
 
     // Create the request.
-    let request = HttpRequest<Dictionary<String, Any>, Dictionary<String, Any>>(
+    let request = HttpRequest<String, Dictionary<String, Any>>(
       url: self.rpc.baseUrl,
       method: "POST",
       body: body,
@@ -610,7 +610,7 @@ public class PortalProvider {
     )
 
     // Attempt to send the request.
-    request.send() { (result: Result<Any>) in
+    request.send() { (result: Result<String>) in
       completion(payload.method, payload.params, result.data ?? "")
     }
   }
