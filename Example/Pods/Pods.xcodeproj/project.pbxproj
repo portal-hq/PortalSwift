@@ -912,7 +912,8 @@
 				47FA8DF229539E740020EF35 /* Utils */,
 				47FA8E012953A1720020EF35 /* Constants.swift */,
 			);
-			path = Mocks;
+			name = Mocks;
+			path = PortalSwift/Classes/Mocks;
 			sourceTree = "<group>";
 		};
 		479E372C2925675E0080AEDB /* Core */ = {
