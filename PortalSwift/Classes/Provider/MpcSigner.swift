@@ -13,7 +13,7 @@ struct Signature: Codable {
   var y: String
 }
 
-struct SignerResult: Codable {
+public struct SignerResult: Codable {
   var signature: String?
   var accounts: [String]?
 }
@@ -42,7 +42,7 @@ class MpcSigner {
   public func sign(
     payload: ETHRequestPayload,
     provider: PortalProvider
-  ) throws -> Any {
+  ) throws -> SignerResult {
     // Obtain the public address.
     let address = try keychain.getAddress()
 
