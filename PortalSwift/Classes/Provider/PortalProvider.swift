@@ -140,8 +140,8 @@ public struct ETHRequestPayload {
 public struct ETHTransactionParam: Codable {
   var from: String
   var to: String
-  var gas: String
-  var gasPrice: String
+  var gas: String?
+  var gasPrice: String?
   var value: String
   var data: String
 
@@ -150,6 +150,12 @@ public struct ETHTransactionParam: Codable {
     self.to = to
     self.gas = gas
     self.gasPrice = gasPrice
+    self.value = value
+    self.data = data
+  }
+  public init(from: String, to: String, value: String, data: String) {
+    self.from = from
+    self.to = to
     self.value = value
     self.data = data
   }
@@ -420,8 +426,13 @@ public class PortalProvider {
     let isSignerMethod = signerMethods.contains(payload.method)
 
     if (!isSignerMethod && !payload.method.starts(with: "wallet_")) {
-      handleGatewayRequest(payload: payload) { (method: String, params: [Any], result: Any) -> Void in
-        completion(Result(data: RequestCompletionResult(method: method, params: params, result: result)))
+      handleGatewayRequest(payload: payload) { (method: String, params: [Any], result: Result<Any>) -> Void in
+        if (result.data != nil) {
+          completion(Result(data: RequestCompletionResult(method: method, params: params, result: result.data!)))
+        } else {
+          completion(Result(error: result.error!))
+        }
+        
       }
     } else if (isSignerMethod) {
       handleSigningRequest(payload: payload) { (result: Any) -> Void in
@@ -445,7 +456,11 @@ public class PortalProvider {
 
     if (!isSignerMethod && !payload.method.starts(with: "wallet_")) {
       handleGatewayRequest(payload: payload) {
-        (method: String, params: [ETHTransactionParam], result: Any) -> Void in         completion(Result(data: TransactionCompletionResult(method: method, params: params, result: result)))
+        (method: String, params: [ETHTransactionParam], result: Result<Any>) -> Void in                 if (result.data != nil) {
+          completion(Result(data: TransactionCompletionResult(method: method, params: params, result: result.data!)))
+        } else {
+          completion(Result(error: result.error!))
+        }
       }
     } else if (isSignerMethod) {
       handleSigningRequest(payload: payload) { (result: Any) -> Void in
@@ -470,8 +485,12 @@ public class PortalProvider {
 
     if (!isSignerMethod && !payload.method.starts(with: "wallet_")) {
       handleGatewayRequest(payload: payload) {
-        (method: String, params: [ETHAddressParam], result: Any) -> Void in
-        completion(Result(data: AddressCompletionResult(method: method, params: params, result: result)))
+        (method: String, params: [ETHAddressParam], result: Result<Any>) -> Void in
+        if (result.data != nil) {
+          completion(Result(data: AddressCompletionResult(method: method, params: params, result: result.data!)))
+        } else {
+          completion(Result(error: result.error!))
+        }
       }
     } else {
       completion(Result(error: ProviderRpcError.unsupportedMethod))
@@ -534,7 +553,7 @@ public class PortalProvider {
 
   private func handleGatewayRequest(
     payload: ETHTransactionPayload,
-    completion: @escaping (String, [ETHTransactionParam], Any) -> Void
+    completion: @escaping (String, [ETHTransactionParam], Result<Any>) -> Void
   ) -> Void {
     // Create the body of the request.
     let body: Dictionary<String, Any> = [
@@ -556,18 +575,22 @@ public class PortalProvider {
       url: self.rpc.baseUrl,
       method: "POST",
       body: body,
-      headers: ["Content-Type": "application/json"]
+      headers: ["Content-Type": "application/json", "accept": "application/json"]
     )
 
     // Attempt to send the request.
     request.send() { (result: Result<String>) in
-      completion(payload.method, payload.params, result.data ?? "")
+      if (result.data != nil) {
+        completion(payload.method, payload.params, Result(data: result.data!))
+      } else {
+        return completion(payload.method, payload.params, Result(error: result.error!))
+        }
     }
   }
 
   private func handleGatewayRequest(
     payload: ETHAddressPayload,
-    completion: @escaping (String, [ETHAddressParam], Any) -> Void
+    completion: @escaping (String, [ETHAddressParam], Result<Any>) -> Void
   ) -> Void {
     // Create the body of the request.
     let body: Dictionary<String, Any> = [
@@ -587,13 +610,17 @@ public class PortalProvider {
 
     // Attempt to send the request.
     request.send() { (result: Result<String>) in
-      completion(payload.method, payload.params, result.data ?? "")
-    }
+      if (result.data != nil) {
+        completion(payload.method, payload.params, Result(data: result.data!))
+      } else {
+        return completion(payload.method, payload.params, Result(error: result.error!))
+        }
+      }
   }
 
   private func handleGatewayRequest(
     payload: ETHRequestPayload,
-    completion: @escaping (String, [Any], Any) -> Void
+    completion: @escaping (String, [Any], Result<Any>) -> Void
   ) -> Void {
     // Create the body of the request.
     let body: Dictionary<String, Any> = [
@@ -611,7 +638,11 @@ public class PortalProvider {
 
     // Attempt to send the request.
     request.send() { (result: Result<String>) in
-      completion(payload.method, payload.params, result.data ?? "")
+      if (result.data != nil) {
+        completion(payload.method, payload.params, Result(data: result.data!))
+      } else {
+        return completion(payload.method, payload.params, Result(error: result.error!))
+        }
     }
   }
 
