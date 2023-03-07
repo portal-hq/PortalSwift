@@ -89,7 +89,7 @@ public class HttpRequest<T: Codable, U> {
           // Process the response object
           if httpResponse!.statusCode == 204 {
             return completion(Result(data: "OK" as! T))
-          } else if httpResponse!.statusCode >= 200 && httpResponse!.statusCode < 300 {
+          } else if httpResponse!.statusCode >= 200 && httpResponse!.statusCode < 300 || httpResponse!.statusCode >= 500 || httpResponse!.statusCode >= 400 {
             var typedData: T
 
             // Decode the response into the appropriate type
@@ -101,10 +101,8 @@ public class HttpRequest<T: Codable, U> {
 
             // Pass off to the completion closure
             return completion(Result(data: typedData))
-          } else if httpResponse!.statusCode >= 500 {
-            return completion(Result(error: HttpError.internalServerError(httpResponse!.description)))
-          } else if httpResponse!.statusCode >= 400 {
-            return completion(Result(error: HttpError.clientError(httpResponse!.description)))
+          } else {
+            return completion(Result(error: HttpError.internalServerError("Status Code: \(httpResponse!.statusCode)")))
           }
         } catch {
           return completion(Result(error: error))
