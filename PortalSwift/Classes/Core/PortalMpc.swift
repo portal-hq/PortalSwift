@@ -62,7 +62,7 @@ public struct PublicKey: Codable {
 
 private struct DecryptResult: Codable {
   public var data: DecryptData?
-  public var error: String?
+  public var error: PortalError
 }
 
 private struct DecryptData: Codable {
@@ -77,7 +77,7 @@ private struct EncryptData: Codable {
 
 private struct EncryptResult: Codable {
   public var data: EncryptData?
-  public var error: String?
+  public var error: PortalError
 }
 
 /// The data for GenerateResult.
@@ -89,7 +89,7 @@ public struct GenerateData: Codable {
 /// The response from generating.
 private struct GenerateResult: Codable {
   public var data: GenerateData?
-  public var error: String?
+  public var error: PortalError
 }
 
 /// The data for RotateResult.
@@ -101,7 +101,7 @@ public struct RotateData: Codable {
 /// The response from rotating.
 private struct RotateResult: Codable {
   public var data: RotateData?
-  public var error: String?
+  public var error: PortalError
 }
 
 /// The data for SignResult.
@@ -113,7 +113,7 @@ public struct SignData: Codable {
 /// The response from signing.
 public struct SignResult: Codable {
   public var data: String?
-  public var error: String?
+  public var error: PortalError
 }
 
 
@@ -234,12 +234,12 @@ public class PortalMpc {
           } else {
             print("Running backup since iCloud is available! 🎉")
               self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
-                  if (backupResult.error != nil) {
-                      completion(Result(error: backupResult.error!))
-                      return
-                  }
+                if (backupResult.error != nil) {
+                  completion(Result(error: backupResult.error!))
+                  return
+                }
                   
-                  completion(backupResult)
+                completion(backupResult)
               }
           }
         }
@@ -274,8 +274,8 @@ public class PortalMpc {
     let generateResult: GenerateResult = try JSONDecoder().decode(GenerateResult.self, from: jsonData)
 
     // Throw if there was an error generating the wallet.
-    guard generateResult.error == "" else {
-      throw MpcError.unexpectedErrorOnGenerate(message: generateResult.error!)
+    guard generateResult.error.code == 0 else {
+      throw PortalMpcError(generateResult.error)
     }
 
     // Set the client's address.
@@ -354,8 +354,8 @@ public class PortalMpc {
     let decryptResult: DecryptResult = try JSONDecoder().decode(DecryptResult.self, from: jsonResult)
     
     // Throw if there was an error decrypting the value.
-    guard decryptResult.error == "" else {
-      throw MpcError.unexpectedErrorOnDecrypt(message: decryptResult.error!)
+    guard decryptResult.error.code == 0 else {
+      throw PortalMpcError(decryptResult.error)
     }
     
     return decryptResult.data!.plaintext
@@ -373,8 +373,8 @@ public class PortalMpc {
     let jsonResult = result.data(using: .utf8)!
     let encryptResult: EncryptResult = try JSONDecoder().decode(EncryptResult.self, from: jsonResult)
     
-    guard encryptResult.error == "" else {
-      throw MpcError.unexpectedErrorOnEncrypt(message: encryptResult.error!)
+    guard encryptResult.error.code == 0 else {
+      throw PortalMpcError(encryptResult.error)
     }
     
     return encryptResult.data!
@@ -392,8 +392,8 @@ public class PortalMpc {
           let rotateResult: RotateResult  = try JSONDecoder().decode(RotateResult.self, from: jsonData)
           
           // Throw if there is an error getting the backup share.
-          guard rotateResult.error == "" else {
-            return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: rotateResult.error!)))
+          guard rotateResult.error.code == 0 else {
+            return completion(Result(error: PortalMpcError(rotateResult.error)))
           }
           
           // Attach the backup share to the signing share JSON.
@@ -496,8 +496,8 @@ public class PortalMpc {
     let rotateResult: RotateResult  = try JSONDecoder().decode(RotateResult.self, from: jsonData)
 
     // Throw an error if the MPC service returned an error.
-    guard rotateResult.error!.isEmpty else {
-      throw MpcError.unexpectedErrorOnRecoverBackup(message: rotateResult.error!)
+    guard rotateResult.error.code == 0 else {
+      throw PortalMpcError(rotateResult.error)
     }
 
     // Return the new backup share.
@@ -514,9 +514,10 @@ public class PortalMpc {
     let rotateResult = try JSONDecoder().decode(RotateResult.self, from: result.data(using: .utf8)!)
 
     // Throw an error if the MPC service returned an error.
-    if (!rotateResult.error!.isEmpty) {
-      throw MpcError.signingRecoveryError(message: rotateResult.error!)
+    guard rotateResult.error.code == 0 else {
+      throw PortalMpcError(rotateResult.error)
     }
+    
     if (rotateResult.data == nil) {
       throw MpcError.signingRecoveryError(message: "Could not read recovery data")
     }
