@@ -45,7 +45,8 @@
 - (nonnull instancetype)init;
 // skipped field DecryptResult.Data with unsupported type: github.com/portal-hq/mpc/client.DecryptData
 
-@property (nonatomic) NSString* _Nonnull error;
+// skipped field DecryptResult.Error with unsupported type: *github.com/portal-hq/mpc/crypto/utils.PortalError
+
 @end
 
 @interface ClientEncryptData : NSObject <goSeqRefInterface> {
@@ -66,7 +67,8 @@
 - (nonnull instancetype)init;
 // skipped field EncryptResult.Data with unsupported type: github.com/portal-hq/mpc/client.EncryptData
 
-@property (nonatomic) NSString* _Nonnull error;
+// skipped field EncryptResult.Error with unsupported type: *github.com/portal-hq/mpc/crypto/utils.PortalError
+
 @end
 
 @interface ClientGenerateData : NSObject <goSeqRefInterface> {
@@ -99,7 +101,8 @@
 - (nonnull instancetype)init;
 // skipped field GenerateResultCGGMP.Data with unsupported type: github.com/portal-hq/mpc/client.GenerateDataCGGMP
 
-@property (nonatomic) NSString* _Nonnull error;
+// skipped field GenerateResultCGGMP.Error with unsupported type: *github.com/portal-hq/mpc/crypto/utils.PortalError
+
 @end
 
 @interface ClientGenerateResultGG18 : NSObject <goSeqRefInterface> {
@@ -141,7 +144,8 @@
 - (nonnull instancetype)init;
 // skipped field ReshareResultCGGMP.Data with unsupported type: github.com/portal-hq/mpc/client.ReshareDataCGGMP
 
-@property (nonatomic) NSString* _Nonnull error;
+// skipped field ReshareResultCGGMP.Error with unsupported type: *github.com/portal-hq/mpc/crypto/utils.PortalError
+
 @end
 
 @interface ClientReshareResultGG18 : NSObject <goSeqRefInterface> {
@@ -190,7 +194,8 @@
 - (nonnull instancetype)initWithRef:(_Nonnull id)ref;
 - (nonnull instancetype)init;
 @property (nonatomic) NSString* _Nonnull data;
-@property (nonatomic) NSString* _Nonnull error;
+// skipped field SigningResult.Error with unsupported type: *github.com/portal-hq/mpc/crypto/utils.PortalError
+
 @end
 
 FOUNDATION_EXPORT NSString* _Nonnull ClientBackup(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable version);
@@ -201,7 +206,7 @@ FOUNDATION_EXPORT NSString* _Nonnull ClientEncrypt(NSString* _Nullable rawData);
 
 FOUNDATION_EXPORT NSString* _Nonnull ClientGenerate(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable version);
 
-FOUNDATION_EXPORT BOOL ClientIs1559(NSString* _Nullable params, BOOL* _Nullable ret0_, NSError* _Nullable* _Nullable error);
+FOUNDATION_EXPORT BOOL ClientIs1559(NSString* _Nullable params);
 
 FOUNDATION_EXPORT NSString* _Nonnull ClientRecoverBackup(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable version);
 
