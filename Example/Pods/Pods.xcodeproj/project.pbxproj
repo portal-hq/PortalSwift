@@ -521,6 +521,11 @@
 		7EB42DC329B951E6000BA354 /* PortalError.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalError.swift; sourceTree = "<group>"; };
 		7EB608D9291EF37800CF1346 /* mpc.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = mpc.xcframework; sourceTree = "<group>"; };
 		7E562948293A9F08009DF33E /* PortalWebView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalWebView.swift; sourceTree = "<group>"; };
+		7EB42DC029B951E6000BA354 /* PortalMpcError.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalMpcError.swift; sourceTree = "<group>"; };
+		7EB42DC129B951E6000BA354 /* PortalErrorCodes.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalErrorCodes.swift; sourceTree = "<group>"; };
+		7EB42DC229B951E6000BA354 /* PortalErrorCodeTypes.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalErrorCodeTypes.swift; sourceTree = "<group>"; };
+		7EB42DC329B951E6000BA354 /* PortalError.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalError.swift; sourceTree = "<group>"; };
+		7EB608D9291EF37800CF1346 /* mpc.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = mpc.xcframework; sourceTree = "<group>"; };
 		7F0575BE2BA383CEF487DB18CD24E5A6 /* PortalMpc.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PortalMpc.swift; sourceTree = "<group>"; };
 		7F20460EC6633B9230F7E712BFA02097 /* GTMSessionUploadFetcher.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = GTMSessionUploadFetcher.h; path = Sources/Core/Public/GTMSessionFetcher/GTMSessionUploadFetcher.h; sourceTree = "<group>"; };
 		7FE3B5D28E237D64A445101DA0015814 /* ja.lproj */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; name = ja.lproj; path = GoogleSignIn/Sources/Strings/ja.lproj; sourceTree = "<group>"; };
