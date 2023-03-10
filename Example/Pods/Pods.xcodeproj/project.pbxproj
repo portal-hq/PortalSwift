@@ -133,6 +133,10 @@
 		7E06344E29259384004E23CC /* Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E06344D29259384004E23CC /* Result.swift */; };
 		7E0A58612992EDE30003D945 /* GDriveClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E0A58602992EDE30003D945 /* GDriveClient.swift */; };
 		7E0A58632992F1580003D945 /* GoogleAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E0A58622992F1580003D945 /* GoogleAuth.swift */; };
+		7EB42DC429B951E6000BA354 /* PortalMpcError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EB42DC029B951E6000BA354 /* PortalMpcError.swift */; };
+		7EB42DC529B951E6000BA354 /* PortalErrorCodes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EB42DC129B951E6000BA354 /* PortalErrorCodes.swift */; };
+		7EB42DC629B951E6000BA354 /* PortalErrorCodeTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EB42DC229B951E6000BA354 /* PortalErrorCodeTypes.swift */; };
+		7EB42DC729B951E6000BA354 /* PortalError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EB42DC329B951E6000BA354 /* PortalError.swift */; };
 		7EB608DA291EF37800CF1346 /* mpc.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7EB608D9291EF37800CF1346 /* mpc.xcframework */; };
 		7ECA1AE07A77457A0CA3EC39ED873274 /* LocalAuthentication.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 833AAF9E2791D276B133EB166B930F7E /* LocalAuthentication.framework */; };
 		7F6781E460190FC8C5ECDF2CFBB2D7B3 /* MpcSigner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F01A68A5D97C3CC9E65738EA1D33CE44 /* MpcSigner.swift */; };
@@ -514,6 +518,10 @@
 		7E0A58602992EDE30003D945 /* GDriveClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GDriveClient.swift; sourceTree = "<group>"; };
 		7E0A58622992F1580003D945 /* GoogleAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleAuth.swift; sourceTree = "<group>"; };
 		7E562948293A9F08009DF33E /* WebViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WebViewController.swift; sourceTree = "<group>"; };
+		7EB42DC029B951E6000BA354 /* PortalMpcError.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalMpcError.swift; sourceTree = "<group>"; };
+		7EB42DC129B951E6000BA354 /* PortalErrorCodes.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalErrorCodes.swift; sourceTree = "<group>"; };
+		7EB42DC229B951E6000BA354 /* PortalErrorCodeTypes.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalErrorCodeTypes.swift; sourceTree = "<group>"; };
+		7EB42DC329B951E6000BA354 /* PortalError.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalError.swift; sourceTree = "<group>"; };
 		7EB608D9291EF37800CF1346 /* mpc.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = mpc.xcframework; sourceTree = "<group>"; };
 		7F0575BE2BA383CEF487DB18CD24E5A6 /* PortalMpc.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PortalMpc.swift; sourceTree = "<group>"; };
 		7F20460EC6633B9230F7E712BFA02097 /* GTMSessionUploadFetcher.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = GTMSessionUploadFetcher.h; path = Sources/Core/Public/GTMSessionFetcher/GTMSessionUploadFetcher.h; sourceTree = "<group>"; };
@@ -1072,6 +1080,17 @@
 			path = PortalSwift/Classes/Components;
 			sourceTree = "<group>";
 		};
+		7EB42DBF29B951E6000BA354 /* Errors */ = {
+			isa = PBXGroup;
+			children = (
+				7EB42DC029B951E6000BA354 /* PortalMpcError.swift */,
+				7EB42DC129B951E6000BA354 /* PortalErrorCodes.swift */,
+				7EB42DC229B951E6000BA354 /* PortalErrorCodeTypes.swift */,
+				7EB42DC329B951E6000BA354 /* PortalError.swift */,
+			);
+			path = Errors;
+			sourceTree = "<group>";
+		};
 		7EB608D8291EF37800CF1346 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -1350,6 +1369,7 @@
 		EE0715CAF21F2088D16FF4E6F7629B19 /* Utils */ = {
 			isa = PBXGroup;
 			children = (
+				7EB42DBF29B951E6000BA354 /* Errors */,
 				9FAC37A50350CAFC96707C99A92F8F31 /* HttpRequest.swift */,
 				514FA2B20EBDA5345A5E75271DD8D7F8 /* HttpRequester.swift */,
 				7E06344D29259384004E23CC /* Result.swift */,
@@ -1920,13 +1940,16 @@
 				9681178E13100678CC6526FFE3015726 /* GDriveStorage.swift in Sources */,
 				3067F903C33980C62862D664AE88ED2E /* HttpRequest.swift in Sources */,
 				1F6AB0DF6788AB72DE2E3A4C94F8873A /* HttpRequester.swift in Sources */,
+				7EB42DC629B951E6000BA354 /* PortalErrorCodeTypes.swift in Sources */,
 				47FA8DFE29539EFB0020EF35 /* MockHttpRequest.swift in Sources */,
+				7EB42DC529B951E6000BA354 /* PortalErrorCodes.swift in Sources */,
 				47FA8DFA29539EDE0020EF35 /* MockICloudStorage.swift in Sources */,
 				47FA8E0029539F060020EF35 /* MockHttpRequester.swift in Sources */,
 				7031BDE2F7891F5EDB9693387E88A896 /* ICloudStorage.swift in Sources */,
 				47FA8E022953A1720020EF35 /* Constants.swift in Sources */,
 				7E06344E29259384004E23CC /* Result.swift in Sources */,
 				7F6781E460190FC8C5ECDF2CFBB2D7B3 /* MpcSigner.swift in Sources */,
+				7EB42DC729B951E6000BA354 /* PortalError.swift in Sources */,
 				47FA8DED29539E4B0020EF35 /* MockPortalKeychain.swift in Sources */,
 				CD1035D8A5E30274A3E1DBBC33D41C35 /* Portal.swift in Sources */,
 				47FA8DEB29539E3A0020EF35 /* MockPortal.swift in Sources */,
@@ -1940,6 +1963,7 @@
 				F4A1654199B24C6E9CDA85F07C59ABD7 /* PortalMpc.swift in Sources */,
 				8DBF7777F6FE9CC81C5DFCE16B24F344 /* PortalProvider.swift in Sources */,
 				97F9B166285ADDD857F65EC6557879ED /* PortalSwift-dummy.m in Sources */,
+				7EB42DC429B951E6000BA354 /* PortalMpcError.swift in Sources */,
 				47FA8DFC29539EE90020EF35 /* MockStorage.swift in Sources */,
 				F96A798F293AC5BE0033822E /* WebViewController.swift in Sources */,
 				47FA8DEF29539E5B0020EF35 /* MockPortalMpc.swift in Sources */,

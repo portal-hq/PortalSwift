@@ -69,8 +69,8 @@ class MpcSigner {
       // Attempt to decode the sign result.
       let jsonData = clientSignResult.data(using: .utf8)!
       let signResult: SignResult = try JSONDecoder().decode(SignResult.self, from: jsonData)
-      guard signResult.error == "" else {
-        throw MpcError.unexpectedErrorOnSign(message: signResult.error!)
+      guard signResult.error.code == 0 else {
+        throw PortalMpcError(signResult.error)
       }
 
       // Return the sign result.
@@ -109,8 +109,8 @@ class MpcSigner {
     // Attempt to decode the sign result.
     let jsonData = clientSignResult.data(using: .utf8)!
     let signResult: SignResult = try JSONDecoder().decode(SignResult.self, from: jsonData)
-    guard signResult.error == "" else {
-      throw MpcError.unexpectedErrorOnSign(message: signResult.error!)
+    guard signResult.error.code == 0 else {
+      throw PortalMpcError(signResult.error)
     }
 
     // Return the sign result.

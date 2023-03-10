@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import UIKit
 
 private enum HttpError: Error {
   case clientError(String)
