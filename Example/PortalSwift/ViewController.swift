@@ -273,7 +273,7 @@ class ViewController: UIViewController {
       let backup = BackupOptions(gdrive: GDriveStorage(clientID: "", viewController: self))
       let keychain = PortalKeychain()
       portal = try Portal(
-        apiKey: user!.clientApiKey,
+        apiKey: apiKey,
         backup: backup,
         chainId: 5,
         keychain: keychain,
