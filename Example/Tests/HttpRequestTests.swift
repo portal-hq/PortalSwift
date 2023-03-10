@@ -18,7 +18,9 @@ final class HttpRequestTests: XCTestCase {
       url: "https://www.portalhq.io",
       method: "GET",
       body: [:],
-      headers: [:]
+      headers: [:],
+      requestType: HttpRequestType.CustomRequest
+
     )
 
     // Attempt to send the request.
@@ -37,7 +39,8 @@ final class HttpRequestTests: XCTestCase {
       url: "https://www.portalhq.io",
       method: "POST",
       body: ["test": "test"],
-      headers: ["Content-Type": "application/json"]
+      headers: ["Content-Type": "application/json"],
+      requestType: HttpRequestType.CustomRequest
     )
 
     // Attempt to send the request.
@@ -57,7 +60,8 @@ final class HttpRequestTests: XCTestCase {
       method: "GET",
       body: [:],
       headers: [:],
-      isString: true
+      isString: true,
+      requestType: HttpRequestType.CustomRequest
     )
 
     // Attempt to send the request.

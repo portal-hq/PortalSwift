@@ -18,6 +18,7 @@ public class HttpRequester {
   func delete<T: Codable>(
     path: String,
     headers: Dictionary<String, String>,
+    requestType: HttpRequestType,
     completion: @escaping (Result<T>) -> Void
   ) throws -> Void {
     // Create the request.
@@ -26,7 +27,8 @@ public class HttpRequester {
       url: url,
       method: "DELETE",
       body: [:],
-      headers: headers
+      headers: headers,
+      requestType: requestType
     )
 
     // Attempt to send the request.
@@ -38,6 +40,7 @@ public class HttpRequester {
   func get<T: Codable>(
     path: String,
     headers: Dictionary<String, String>,
+    requestType: HttpRequestType,
     completion: @escaping (Result<T>) -> Void
   ) throws -> Void {
     // Create the request.
@@ -46,7 +49,8 @@ public class HttpRequester {
       url: url,
       method: "GET",
       body: [:],
-      headers: headers
+      headers: headers,
+      requestType: requestType
     )
 
     // Attempt to send the request.
@@ -59,6 +63,7 @@ public class HttpRequester {
     path: String,
     body: Dictionary<String, Any>,
     headers: Dictionary<String, String>,
+    requestType: HttpRequestType,
     completion: @escaping (Result<T>) -> Void
   ) throws -> Void {
     // Create the request.
@@ -66,7 +71,8 @@ public class HttpRequester {
       url: String(format:"%@%@", self.baseUrl, path),
       method: "POST",
       body: body,
-      headers: headers
+      headers: headers,
+      requestType: requestType
     )
 
     // Attempt to send the request.

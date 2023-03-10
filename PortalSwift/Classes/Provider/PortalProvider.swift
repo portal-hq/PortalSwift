@@ -34,10 +34,6 @@ public enum ETHRequestMethods: String {
   case BlockNumber = "eth_blockNumber"
   case Call = "eth_call"
   case ChainId = "eth_chainId"
-  case Coinbase = "eth_coinbase"
-  case CompileSolidity = "eth_compileSolidity"
-  case CompileLLL = "eth_compileLLL"
-  case CompileSerpent = "eth_compileSerpent"
   case EstimateGas = "eth_estimateGas"
   case GasPrice = "eth_gasPrice"
   case GetBalance = "eth_getBalance"
@@ -46,8 +42,6 @@ public enum ETHRequestMethods: String {
   case GetBlockTransactionCountByHash = "eth_getBlockTransactionCountByHash"
   case GetBlockTransactionCountByNumber = "eth_getBlockTransactionCountByNumber"
   case GetCode = "eth_getCode"
-  case GetCompilers = "eth_getCompilers"
-  case GetFilterChange = "eth_getFilterChange"
   case GetFilterLogs = "eth_getFilterLogs"
   case GetLogs = "eth_getLogs"
   case GetStorageAt = "eth_getStorageAt"
@@ -60,9 +54,6 @@ public enum ETHRequestMethods: String {
   case GetUncleByBlockNumberAndIndex = "eth_getUncleByBlockNumberAndIndex"
   case GetUncleCountByBlockHash = "eth_getUncleCountByBlockHash"
   case GetUncleCountByBlockNumber = "eth_getUncleCountByBlockNumber"
-  case GetWork = "eth_getWork"
-  case Hashrate = "eth_hashrate"
-  case Mining = "eth_mining"
   case NewBlockFilter = "eth_newBlockFilter"
   case NewFilter = "eth_newFilter"
   case NewPendingTransactionFilter = "eth_newPendingTransactionFilter"
@@ -74,9 +65,7 @@ public enum ETHRequestMethods: String {
   case Sign = "eth_sign"
   case SignTransaction = "eth_signTransaction"
   case SignTypedData = "eth_signTypedData"
-  case SubmitHashrate = "eth_submitHashrate"
   case SubmitWork = "eth_submitWork"
-  case Synching = "eth_syncing"
   case UninstallFilter = "eth_uninstallFilter"
 
   // Wallet Methods (MetaMask stuff)
@@ -89,7 +78,6 @@ public enum ETHRequestMethods: String {
 
   // Net Methods
   case NetListening = "net_listening"
-  case NetPeerCount = "net_peerCount"
   case NetVersion = "net_version"
 
   // Web3 Methods
@@ -162,13 +150,13 @@ public struct ETHTransactionParam: Codable {
 }
 
 /// An error response from Gateway.
-public struct ETHGatewayErrorResponse {
+public struct ETHGatewayErrorResponse: Codable {
   var code: Int
   var message: String
 }
 
 /// A response from Gateway.
-public struct ETHGatewayResponse {
+public struct ETHGatewayResponse: Codable {
   var jsonrpc: String = "2.0"
   var id: Int?
   var result: String?
@@ -571,15 +559,16 @@ public class PortalProvider {
     ]
 
     // Create the request.
-    let request = HttpRequest<String, Dictionary<String, Any>>(
+    let request = HttpRequest<ETHGatewayResponse, Dictionary<String, Any>>(
       url: self.rpc.baseUrl,
       method: "POST",
       body: body,
-      headers: ["Content-Type": "application/json", "accept": "application/json"]
+      headers: ["Content-Type": "application/json"],
+      requestType: HttpRequestType.GatewayRequest
     )
 
     // Attempt to send the request.
-    request.send() { (result: Result<String>) in
+    request.send() { (result: Result<ETHGatewayResponse>) in
       if (result.data != nil) {
         completion(payload.method, payload.params, Result(data: result.data!))
       } else {
@@ -601,15 +590,16 @@ public class PortalProvider {
     ]
 
     // Create the request.
-    let request = HttpRequest<String, Dictionary<String, Any>>(
+    let request = HttpRequest<ETHGatewayResponse, Dictionary<String, Any>>(
       url: self.rpc.baseUrl,
       method: "POST",
       body: body,
-      headers: ["Content-Type": "application/json"]
+      headers: ["Content-Type": "application/json"],
+      requestType: HttpRequestType.GatewayRequest
     )
 
     // Attempt to send the request.
-    request.send() { (result: Result<String>) in
+    request.send() { (result: Result<ETHGatewayResponse>) in
       if (result.data != nil) {
         completion(payload.method, payload.params, Result(data: result.data!))
       } else {
@@ -629,15 +619,16 @@ public class PortalProvider {
     ]
 
     // Create the request.
-    let request = HttpRequest<String, Dictionary<String, Any>>(
+    let request = HttpRequest<ETHGatewayResponse, Dictionary<String, Any>>(
       url: self.rpc.baseUrl,
       method: "POST",
       body: body,
-      headers: ["Content-Type": "application/json"]
+      headers: ["Content-Type": "application/json"],
+      requestType: HttpRequestType.GatewayRequest
     )
 
     // Attempt to send the request.
-    request.send() { (result: Result<String>) in
+    request.send() { (result: Result<ETHGatewayResponse>) in
       if (result.data != nil) {
         completion(payload.method, payload.params, Result(data: result.data!))
       } else {

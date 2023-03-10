@@ -113,7 +113,8 @@ class ViewController: UIViewController {
           url: self.CUSTODIAN_SERVER_URL + "/mobile/\(self.user!.exchangeUserId)/cipher-text",
           method: "POST",
           body: ["cipherText": result.data!],
-          headers: [:]
+          headers: [:],
+          requestType: HttpRequestType.CustomRequest
         )
 
         request.send() { (result: Result<String>) in
@@ -128,7 +129,9 @@ class ViewController: UIViewController {
     let request = HttpRequest<CipherTextResult, [String : String]>(
       url: self.CUSTODIAN_SERVER_URL + "/mobile/\(self.user!.exchangeUserId)/cipher-text/fetch",
       method: "GET", body:[:],
-      headers: [:]
+      headers: [:],
+      requestType: HttpRequestType.CustomRequest
+
     )
 
     request.send() { (result: Result<CipherTextResult>) in
@@ -151,7 +154,8 @@ class ViewController: UIViewController {
           url: self.CUSTODIAN_SERVER_URL + "/mobile/\(self.user!.exchangeUserId)/cipher-text",
           method: "POST",
           body: ["cipherText": result.data!],
-          headers: [:]
+          headers: [:],
+          requestType: HttpRequestType.CustomRequest
         )
 
         request.send() { (result: Result<String>) in
@@ -278,7 +282,7 @@ class ViewController: UIViewController {
         chainId: 5,
         keychain: keychain,
         gatewayConfig: [
-          5: ""
+          5: "https://eth-goerli.g.alchemy.com/v2/53va-QZAS8TnaBH3-oBHqcNJtIlygLi-"
         ],
         version: "v1",
         autoApprove: true
@@ -319,7 +323,8 @@ class ViewController: UIViewController {
       url: CUSTODIAN_SERVER_URL + "/mobile/login",
       method: "POST",
       body: ["username": username],
-      headers: ["Content-Type": "application/json"]
+      headers: ["Content-Type": "application/json"],
+      requestType: HttpRequestType.CustomRequest
     )
 
     request.send() { (result: Result<UserResult>) in
@@ -336,7 +341,8 @@ class ViewController: UIViewController {
       url: CUSTODIAN_SERVER_URL + "/mobile/signup",
       method: "POST",
       body: ["username": username],
-      headers: ["Content-Type": "application/json"]
+      headers: ["Content-Type": "application/json"],
+      requestType: HttpRequestType.CustomRequest
     )
 
     request.send() { (result: Result<UserResult>) in
@@ -481,22 +487,16 @@ class ViewController: UIViewController {
       }
       let otherRequests = [
         ProviderRequest(method: ETHRequestMethods.BlockNumber.rawValue, params: [], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.Coinbase.rawValue, params: [], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.CompileLLL.rawValue, params: ["(returnlll (suicide (caller)))"], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.CompileSerpent.rawValue, params: ["/* some serpent */"], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.CompileSolidity.rawValue, params: ["contract test { function multiply(uint a) returns(uint d) {   return a * 7;   } }"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GasPrice.rawValue, params: [], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetBalance.rawValue, params: [fromAddress!, "latest"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetBlockByHash.rawValue, params: ["0xdc0818cf78f21a8e70579cb46a43643f78291264dda342ae31049421c82d21ae", false], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.GetBlockByNumber.rawValue, params: ["latest", false], skipLoggingResult: false),
+//        ProviderRequest(method: ETHRequestMethods.GetBlockByNumber.rawValue, params: ["latest", false], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetBlockTransactionCountByHash.rawValue, params: ["0xb903239f8543d04b5dc1ba6579132b143087c68db1b2168786408fcbce568238"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetBlockTransactionCountByNumber.rawValue, params: ["latest"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetCode.rawValue, params: [fromAddress!, "latest"], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.GetCompilers.rawValue, params: [], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.GetFilterChange.rawValue, params: ["0x16"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetFilterLogs.rawValue, params: ["0x16"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetTransactionByBlockHashAndIndex.rawValue, params: ["0xe670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d1527331", "0x0"], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.GetTransactionByBlockNumberAndIndex.rawValue, params: ["latest", "0x0"], skipLoggingResult: false),
+//        ProviderRequest(method: ETHRequestMethods.GetTransactionByBlockNumberAndIndex.rawValue, params: ["latest", "0x0"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetTransactionByHash.rawValue, params: ["0x88df016429689c079f3b2f6ad39fa052532c56795b733da78a91ebe6a713944b"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetTransactionCount.rawValue, params: [fromAddress!, "latest"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetTransactionReceipt.rawValue, params: ["0x88df016429689c079f3b2f6ad39fa052532c56795b733da78a91ebe6a713944b"], skipLoggingResult: false),
@@ -504,19 +504,13 @@ class ViewController: UIViewController {
         ProviderRequest(method: ETHRequestMethods.GetUncleByBlockNumberAndIndex.rawValue, params: ["latest", "0x0"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetUncleCountByBlockHash.rawValue, params: ["0xc6ef2fc5426d6ad6fd9e2a26abeab0aa2411b7ab17f30a99d3cb96aed1d1055b"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetUncleCountByBlockNumber.rawValue, params: ["latest"], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.GetWork.rawValue, params: [], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.Hashrate.rawValue, params: [], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.Mining.rawValue, params: [], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.NetListening.rawValue, params: [], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.NetPeerCount.rawValue, params: [], skipLoggingResult: false),
+//        ProviderRequest(method: ETHRequestMethods.NetListening.rawValue, params: [], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.NetVersion.rawValue, params: [], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.NewBlockFilter.rawValue, params: [], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.NewPendingTransactionFilter.rawValue, params: [], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.ProtocolVersion.rawValue, params: [], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.SendRawTransaction.rawValue, params: ["0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675"], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.SubmitHashrate.rawValue, params: ["0x0000000000000000000000000000000000000000000000000000000000500000", "0x59daa26581d0acd1fce254fb7e85952f4c09d0915afd33d3886cd914bc7d283c"], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.Synching.rawValue, params: [], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.UninstallFilter.rawValue, params: ["0xb"], skipLoggingResult: false),
+//        ProviderRequest(method: ETHRequestMethods.UninstallFilter.rawValue, params: ["0xb"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.Web3ClientVersion.rawValue, params: [], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.Web3Sha3.rawValue, params: ["0x68656c6c6f20776f726c64"], skipLoggingResult: false),
       ]

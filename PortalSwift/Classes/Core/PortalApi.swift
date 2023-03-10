@@ -79,7 +79,8 @@ public class PortalApi {
       path: "/api/v1/clients/me",
       headers: [
         "Authorization": String(format: "Bearer %@", apiKey)
-      ]
+      ],
+      requestType: HttpRequestType.CustomRequest
     ) { (result: Result<Client>) -> Void in
       if (result.error != nil) {
         completion(Result<Client>(error: result.error!))
@@ -97,7 +98,8 @@ public class PortalApi {
       path: "/api/v1/config/dapps",
       headers: [
         "Authorization": String(format: "Bearer %@", apiKey)
-      ]
+      ],
+      requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[Dapp]>) -> Void in
       completion(result)
     }
@@ -111,7 +113,8 @@ public class PortalApi {
       path: "/api/v1/config/networks",
       headers: [
         "Authorization": String(format: "Bearer %@", apiKey)
-      ]
+      ],
+      requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[ContractNetwork]>) -> Void in
       completion(result)
     }

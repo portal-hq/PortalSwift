@@ -120,9 +120,9 @@ public class WebViewController: UIViewController, WKNavigationDelegate, WKScript
     let javascript = injectPortal(
       address: portal.mpc.address!,
       apiKey: portal.apiKey,
-      chainId: "5",
-      gatewayConfig: "https://eth-goerli.g.alchemy.com/v2/53va-QZAS8TnaBH3-oBHqcNJtIlygLi-",
-      autoApprove: true,
+      chainId: String(portal.chainId),
+      gatewayConfig: portal.gatewayConfig[portal.chainId]!,
+      autoApprove: portal.autoApprove,
       enableMpc: true
     )
     
