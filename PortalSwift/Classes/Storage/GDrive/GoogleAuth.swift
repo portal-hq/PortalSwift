@@ -76,7 +76,7 @@ class GoogleAuth {
       if error != nil {
         callback(Result(error: error! as Error))
       } else {
-//        self.auth.addScopes(["https://www.googleapis.com/auth/drive.file"], presenting:  self.view)
+        self.auth.addScopes(["https://www.googleapis.com/auth/drive.file"], presenting:  self.view)
         callback(Result(data: user!))
       }
     }
