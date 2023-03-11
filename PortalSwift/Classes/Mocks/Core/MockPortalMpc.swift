@@ -13,8 +13,8 @@ public class MockPortalMpc: PortalMpc {
     completion(Result(data: mockBackupShare))
   }
 
-  public override func generate() throws -> String {
-    return mockAddress
+  public override func generate(completion: @escaping (Result<String>) -> Void) -> Void {
+    completion(Result(data: mockAddress))
   }
 
   public override func recover(cipherText: String, method: BackupMethods.RawValue, completion: @escaping (Result<String>) -> Void) -> Void {

@@ -92,13 +92,16 @@ class ViewController: UIViewController {
   }
 
   @IBAction func handleGenerate(_ sender: UIButton!) {
-    do {
-      let address = try portal?.mpc.generate()
-      print("✅ handleGenerate(): Address:", address ?? "N/A")
-    } catch {
-      print("❌ Error generating address:", error)
+    portal?.mpc.generate() { (addressResult) -> Void in
+      if (addressResult.error != nil) {
+        print("❌ handleGenerate():", addressResult.error!)
+      }
+      
+      print("✅ handleGenerate(): Address:", addressResult.data ?? "N/A")
+      
+      
+      self.updateStaticContent()
     }
-    updateStaticContent()
   }
 
   @IBAction func handleBackup(_ sender: UIButton!) {

@@ -30,8 +30,9 @@ final class PortalMpcTests: XCTestCase {
   }
 
   func testGenerate() throws {
-    let address = try mpc?.generate()
-    XCTAssert(address == mockAddress)
+    mpc?.generate() { addressResult in
+      XCTAssert(addressResult.data == mockAddress)
+    }
   }
 
   func testRecover() throws {
