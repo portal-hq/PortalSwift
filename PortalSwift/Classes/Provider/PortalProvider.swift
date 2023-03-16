@@ -444,7 +444,8 @@ public class PortalProvider {
 
     if (!isSignerMethod && !payload.method.starts(with: "wallet_")) {
       handleGatewayRequest(payload: payload) {
-        (method: String, params: [ETHTransactionParam], result: Result<Any>) -> Void in                 if (result.data != nil) {
+        (method: String, params: [ETHTransactionParam], result: Result<Any>) -> Void in
+        if (result.data != nil) {
           completion(Result(data: TransactionCompletionResult(method: method, params: params, result: result.data!)))
         } else {
           completion(Result(error: result.error!))
