@@ -38,16 +38,16 @@ public enum ETHRequestMethods: String {
   case GasPrice = "eth_gasPrice"
   case GetBalance = "eth_getBalance"
   case GetBlockByHash = "eth_getBlockByHash"
-  case GetBlockByNumber = "eth_getBlockByNumber"
+//  case GetBlockByNumber = "eth_getBlockByNumber"
   case GetBlockTransactionCountByHash = "eth_getBlockTransactionCountByHash"
   case GetBlockTransactionCountByNumber = "eth_getBlockTransactionCountByNumber"
   case GetCode = "eth_getCode"
   case GetFilterLogs = "eth_getFilterLogs"
-  case GetLogs = "eth_getLogs"
+//  case GetLogs = "eth_getLogs"
   case GetStorageAt = "eth_getStorageAt"
   case GetTransactionByHash = "eth_getTransactionByHash"
   case GetTransactionByBlockHashAndIndex = "eth_getTransactionByBlockHashAndIndex"
-  case GetTransactionByBlockNumberAndIndex = "eth_getTransactionByBlockNumberAndIndex"
+//  case GetTransactionByBlockNumberAndIndex = "eth_getTransactionByBlockNumberAndIndex"
   case GetTransactionCount = "eth_getTransactionCount"
   case GetTransactionReceipt = "eth_getTransactionReceipt"
   case GetUncleByBlockHashIndex = "eth_getUncleByBlockHashAndIndex"
@@ -55,7 +55,7 @@ public enum ETHRequestMethods: String {
   case GetUncleCountByBlockHash = "eth_getUncleCountByBlockHash"
   case GetUncleCountByBlockNumber = "eth_getUncleCountByBlockNumber"
   case NewBlockFilter = "eth_newBlockFilter"
-  case NewFilter = "eth_newFilter"
+//  case NewFilter = "eth_newFilter"
   case NewPendingTransactionFilter = "eth_newPendingTransactionFilter"
   case PersonalSign = "personal_sign"
   case ProtocolVersion = "eth_protocolVersion"
@@ -65,8 +65,7 @@ public enum ETHRequestMethods: String {
   case Sign = "eth_sign"
   case SignTransaction = "eth_signTransaction"
   case SignTypedData = "eth_signTypedData"
-  case SubmitWork = "eth_submitWork"
-  case UninstallFilter = "eth_uninstallFilter"
+//  case UninstallFilter = "eth_uninstallFilter"
 
   // Wallet Methods (MetaMask stuff)
   case WalletAddEthereumChain = "wallet_addEthereumChain"
@@ -77,7 +76,7 @@ public enum ETHRequestMethods: String {
   case WalletWatchAsset = "wallet_watchAsset"
 
   // Net Methods
-  case NetListening = "net_listening"
+//  case NetListening = "net_listening"
   case NetVersion = "net_version"
 
   // Web3 Methods
@@ -108,9 +107,9 @@ public enum ProviderSigningError: Error {
 
 /// An ETH request payload where params is of type [Any].
 public struct ETHRequestPayload {
-  var method: ETHRequestMethods.RawValue
-  var params: [Any]
-  var signature: String?
+  public var method: ETHRequestMethods.RawValue
+  public var params: [Any]
+  public var signature: String?
 
   public init(method: ETHRequestMethods.RawValue, params: [Any]) {
     self.method = method
@@ -126,12 +125,12 @@ public struct ETHRequestPayload {
 
 /// A param within ETHTransactionPayload.params.
 public struct ETHTransactionParam: Codable {
-  var from: String
-  var to: String
-  var gas: String?
-  var gasPrice: String?
-  var value: String
-  var data: String
+  public var from: String
+  public var to: String
+  public var gas: String?
+  public var gasPrice: String?
+  public var value: String
+  public var data: String
 
   public init(from: String, to: String, gas: String, gasPrice: String, value: String, data: String) {
     self.from = from
@@ -151,22 +150,24 @@ public struct ETHTransactionParam: Codable {
 
 /// An error response from Gateway.
 public struct ETHGatewayErrorResponse: Codable {
-  var code: Int
-  var message: String
+  public var code: Int
+  public var message: String
+
 }
+  
 
 /// A response from Gateway.
 public struct ETHGatewayResponse: Codable {
-  var jsonrpc: String = "2.0"
-  var id: Int?
-  var result: String?
-  var error: ETHGatewayErrorResponse?
+  public var jsonrpc: String = "2.0"
+  public var id: Int?
+  public var result: String?
+  public var error: ETHGatewayErrorResponse?
 }
 
 /// The payload for a transaction request.
 public struct ETHTransactionPayload: Codable {
-  var method: ETHRequestMethods.RawValue
-  var params: [ETHTransactionParam]
+  public var method: ETHRequestMethods.RawValue
+  public var params: [ETHTransactionParam]
 
   public init(method: ETHRequestMethods.RawValue, params: [ETHTransactionParam]) {
     self.method = method
@@ -176,7 +177,7 @@ public struct ETHTransactionPayload: Codable {
 
 /// A param within ETHAddressPayload.params.
 public struct ETHAddressParam: Codable {
-  var address: String
+  public var address: String
 
   public init(address: String) {
     self.address = address
@@ -185,8 +186,8 @@ public struct ETHAddressParam: Codable {
 
 /// The payload for an address request.
 public struct ETHAddressPayload: Codable {
-  var method: ETHRequestMethods.RawValue
-  var params: [ETHAddressParam]
+  public var method: ETHRequestMethods.RawValue
+  public var params: [ETHAddressParam]
 
   public init(method: ETHRequestMethods.RawValue, params: [ETHAddressParam]) {
     self.method = method
@@ -199,7 +200,6 @@ public var TransactionMethods: [ETHRequestMethods.RawValue] = [
   ETHRequestMethods.Call.rawValue, // string
   ETHRequestMethods.EstimateGas.rawValue, // string
   ETHRequestMethods.GetStorageAt.rawValue, // data
-  ETHRequestMethods.SubmitWork.rawValue, // boolean
   ETHRequestMethods.SendTransaction.rawValue,
   ETHRequestMethods.SignTransaction.rawValue,
 ]
@@ -423,7 +423,7 @@ public class PortalProvider {
         
       }
     } else if (isSignerMethod) {
-      handleSigningRequest(payload: payload) { (result: Any) -> Void in
+      handleSigningRequest(payload: payload) { (result: Result<SignerResult>) -> Void in
         completion(Result(data: RequestCompletionResult(method: payload.method, params: payload.params, result: result)))
       }
     } else {
@@ -639,7 +639,7 @@ public class PortalProvider {
 
   private func handleSigningRequest(
     payload: ETHRequestPayload,
-    completion: @escaping (Result<Any>) -> Void
+    completion: @escaping (Result<SignerResult>) -> Void
   ) -> Void {
     getApproval(payload: payload) { result in
       if (!result.data!) {

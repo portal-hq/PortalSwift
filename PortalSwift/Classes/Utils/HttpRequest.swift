@@ -21,14 +21,14 @@ private enum HttpError: Error {
 }
 
 private enum GatewayError: Error {
-  case gatewayError(response: ETHGatewayErrorResponse)
+  case gatewayError(response: ETHGatewayErrorResponse, status: String)
 }
 
 extension GatewayError: CustomStringConvertible {
   public var description: String {
         switch self {
-        case .gatewayError(let response):
-          return "[Protal Provider] - Gateway Error -code: \(response.code) -message: \(response.message)"
+        case .gatewayError(let response, let status):
+          return "HTTP Gateway Error -status: \(status) -code: \(response.code) -message: \(response.message)"
         }
   }
 }
@@ -135,7 +135,7 @@ public class HttpRequest<T: Codable, U> {
               } else {
                 typedData = try JSONDecoder().decode(T.self, from: data!)
               }
-              return completion(Result(error: GatewayError.gatewayError(response: (typedData as! ETHGatewayResponse).error!) ))
+              return completion(Result(error: GatewayError.gatewayError(response: (typedData as! ETHGatewayResponse).error!, status: String(httpResponse!.statusCode)) ))
             }
             return completion(Result(error: HttpError.internalServerError(httpResponse!.description)))
           } else if (httpResponse!.statusCode >= 400) {
@@ -148,9 +148,7 @@ public class HttpRequest<T: Codable, U> {
               } else {
                 typedData = try JSONDecoder().decode(T.self, from: data!)
               }
-              print("Typed data", typedData)
-              
-              return completion(Result(error: GatewayError.gatewayError(response: (typedData as! ETHGatewayResponse).error!)))
+              return completion(Result(error: GatewayError.gatewayError(response: (typedData as! ETHGatewayResponse).error!, status: String(httpResponse!.statusCode))))
             }
             return completion(Result(error: HttpError.clientError(httpResponse!.description)))
           } else {

@@ -179,8 +179,8 @@ class ViewController: UIViewController {
     testSignerRequests()
     // testWalletRequests()
     testOtherRequests()
-    testTransactionRequests()
-    testAddressRequests()
+//    testTransactionRequests()
+//    testAddressRequests()
     print("====================\n[FINISHED] Testing provider methods\n====================\n")
   }
 
@@ -206,7 +206,7 @@ class ViewController: UIViewController {
   }
   func updateStaticContent() {
     populateAddressInformation()
-    // populateEthBalance()
+//     populateEthBalance()
   }
 
   func populateAddressInformation() {
@@ -247,9 +247,10 @@ class ViewController: UIViewController {
           print("❌ Error getting ETH balance:", result.error!)
           return
         }
-        print("✅ Balance result:", (result.data!.result as! Dictionary<String, Any>)["result"]!)
+        let res = (result.data!.result as! ETHGatewayResponse)
+        print("✅ Balance result:", res.result)
         DispatchQueue.main.async {
-          self.ethBalanceInformation.text = "ETH Balance: \(self.parseETHBalanceHex(hex: (result.data!.result as! Dictionary<String, Any>)["result"] as! String)) ETH"
+          self.ethBalanceInformation.text = "ETH Balance: \(self.parseETHBalanceHex(hex: res.result as! String)) ETH"
         }
       }
     } catch {
@@ -264,10 +265,15 @@ class ViewController: UIViewController {
     )
     portal?.provider.request(payload: payload) {
         (result: Result<TransactionCompletionResult>) -> Void in
+      print(result)
         guard result.error == nil else {
           print("❌ Error sending transaction:", result.error!)
           return
         }
+      guard (result.data!.result as! Result<Any>).error == nil else {
+        print("❌ Error sending transaction:", ((result.data!.result as! Result<Any>).error as! PortalMpcError).description)
+        return
+      }
         print("✅ handleSend(): Result:", result.data!.result)
       }
   }
@@ -301,7 +307,7 @@ class ViewController: UIViewController {
   }
 
   func injectWebView() {
-    let webViewController = WebViewController(portal: portal!, url: URL(string: url.text!)!, onError: onError)
+    let webViewController = PortalWebView(portal: portal!, url: URL(string: url.text!)!, onError: onError)
 
     // Install the WebViewController as a child view controller.
     addChild(webViewController)
@@ -361,18 +367,31 @@ class ViewController: UIViewController {
       )
 
       print("Starting to test method ", method, "...")
-      portal?.provider.request(payload: payload) { (result) -> Void in
-        guard (result.error == nil) else {
+    portal?.provider.request(payload: payload) { (result: Result<RequestCompletionResult>) -> Void in
+      guard (result.error == nil) else {
           print("❌ Error testing provider request:", method, "Error:", result.error!)
           completion(false)
           return
         }
-
-        if (!skipLoggingResult) {
-          print("✅ ", method, "() result:", result.data!)
+      if (signerMethods.contains(method)) {
+        guard ((result.data!.result as! Result<SignerResult>).error == nil) else {
+            print("❌ Error testing signer request:", method, "Error:", (result.data!.result as! Result<SignerResult>).error)
+            completion(false)
+            return
+          }
+        if ((result.data!.result as! Result<SignerResult>).data!.signature != nil) {
+          print("✅ Signature for", method,(result.data!.result as! Result<SignerResult>).data!.signature)
         } else {
-          print("✅ ", method, "()")
+          print("✅ Accounts for", method,(result.data!.result as! Result<SignerResult>).data!.accounts)
         }
+      } else {
+        guard ((result.data!.result as! ETHGatewayResponse).error == nil) else {
+          print("❌ Error testing provider request:", method, "Error:", (result.data!.result as! ETHGatewayResponse).error)
+            completion(false)
+            return
+          }
+        print("✅ Gateway response for", method, (result.data!.result as! ETHGatewayResponse).result)
+      }
 
         completion(true)
       }
@@ -388,7 +407,7 @@ class ViewController: UIViewController {
       print("Starting to test method ", method, "...")
       portal?.provider.request(payload: payload) { (result: Result<TransactionCompletionResult>) -> Void in
         guard result.error == nil else {
-          print("❌ Error testing provider request:", result.error!)
+          print("❌ Error testing provider transaction request:", method, result.error!)
           completion(false)
           return
         }
@@ -412,7 +431,7 @@ class ViewController: UIViewController {
       print("Starting to test method ", method, "...")
       portal?.provider.request(payload: payload) { (result: Result<AddressCompletionResult>) -> Void in
         guard result.error == nil else {
-          print("❌ Error testing provider request:", result.error!)
+          print("❌ Error testing provider request:", method, result.error!)
           return
         }
 
@@ -490,13 +509,11 @@ class ViewController: UIViewController {
         ProviderRequest(method: ETHRequestMethods.GasPrice.rawValue, params: [], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetBalance.rawValue, params: [fromAddress!, "latest"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetBlockByHash.rawValue, params: ["0xdc0818cf78f21a8e70579cb46a43643f78291264dda342ae31049421c82d21ae", false], skipLoggingResult: false),
-//        ProviderRequest(method: ETHRequestMethods.GetBlockByNumber.rawValue, params: ["latest", false], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetBlockTransactionCountByHash.rawValue, params: ["0xb903239f8543d04b5dc1ba6579132b143087c68db1b2168786408fcbce568238"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetBlockTransactionCountByNumber.rawValue, params: ["latest"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetCode.rawValue, params: [fromAddress!, "latest"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetFilterLogs.rawValue, params: ["0x16"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetTransactionByBlockHashAndIndex.rawValue, params: ["0xe670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d1527331", "0x0"], skipLoggingResult: false),
-//        ProviderRequest(method: ETHRequestMethods.GetTransactionByBlockNumberAndIndex.rawValue, params: ["latest", "0x0"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetTransactionByHash.rawValue, params: ["0x88df016429689c079f3b2f6ad39fa052532c56795b733da78a91ebe6a713944b"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetTransactionCount.rawValue, params: [fromAddress!, "latest"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetTransactionReceipt.rawValue, params: ["0x88df016429689c079f3b2f6ad39fa052532c56795b733da78a91ebe6a713944b"], skipLoggingResult: false),
@@ -504,15 +521,18 @@ class ViewController: UIViewController {
         ProviderRequest(method: ETHRequestMethods.GetUncleByBlockNumberAndIndex.rawValue, params: ["latest", "0x0"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetUncleCountByBlockHash.rawValue, params: ["0xc6ef2fc5426d6ad6fd9e2a26abeab0aa2411b7ab17f30a99d3cb96aed1d1055b"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetUncleCountByBlockNumber.rawValue, params: ["latest"], skipLoggingResult: false),
-//        ProviderRequest(method: ETHRequestMethods.NetListening.rawValue, params: [], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.NetVersion.rawValue, params: [], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.NewBlockFilter.rawValue, params: [], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.NewPendingTransactionFilter.rawValue, params: [], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.ProtocolVersion.rawValue, params: [], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.SendRawTransaction.rawValue, params: ["0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675"], skipLoggingResult: false),
-//        ProviderRequest(method: ETHRequestMethods.UninstallFilter.rawValue, params: ["0xb"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.Web3ClientVersion.rawValue, params: [], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.Web3Sha3.rawValue, params: ["0x68656c6c6f20776f726c64"], skipLoggingResult: false),
+        ProviderRequest(method: ETHRequestMethods.GetStorageAt.rawValue, params: [fromAddress, "0x0", "latest"], skipLoggingResult: false),
+//        ProviderRequest(method: ETHRequestMethods.UninstallFilter.rawValue, params: ["0xb"], skipLoggingResult: false),
+//        ProviderRequest(method: ETHRequestMethods.NetListening.rawValue, params: [], skipLoggingResult:
+//        ProviderRequest(method: ETHRequestMethods.GetTransactionByBlockNumberAndIndex.rawValue, params: ["latest", "0x0"], skipLoggingResult: false),
+//        ProviderRequest(method: ETHRequestMethods.GetBlockByNumber.rawValue, params: ["latest", false], skipLoggingResult: false),
       ]
 
       for request in otherRequests {
@@ -534,8 +554,6 @@ class ViewController: UIViewController {
       let fakeTransaction = ETHTransactionParam(
         from: fromAddress!,
         to: toAddress,
-        gas: "0x76c0",
-        gasPrice: "0x9184e72a000",
         value: "0x9184e72a",
         data: "0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675"
       )
@@ -546,8 +564,7 @@ class ViewController: UIViewController {
       let requests = [
         ProviderTransactionRequest(method: ETHRequestMethods.Call.rawValue, params: [fakeTransaction], skipLoggingResult: false),
         ProviderTransactionRequest(method: ETHRequestMethods.EstimateGas.rawValue, params: [fakeTransaction], skipLoggingResult: false),
-        ProviderTransactionRequest(method: ETHRequestMethods.GetStorageAt.rawValue, params: [], skipLoggingResult: false),
-        ProviderTransactionRequest(method: ETHRequestMethods.SubmitWork.rawValue, params: [], skipLoggingResult: false),
+
         ProviderTransactionRequest(method: ETHRequestMethods.SendTransaction.rawValue, params: [fakeTransaction], skipLoggingResult: false),
         ProviderTransactionRequest(method: ETHRequestMethods.SignTransaction.rawValue, params: [fakeTransaction], skipLoggingResult: false),
       ]
@@ -563,30 +580,31 @@ class ViewController: UIViewController {
     }
   }
 
-  func testAddressRequests() {
-    print("\nTesting Address Requests:\n")
-    do {
-      let fromAddress = try portal?.keychain.getAddress()
-      let fakeAddressParam = ETHAddressParam(address: fromAddress!)
-      guard fromAddress != nil else {
-        print("❌ Error testing transaction provider requests: address is nil")
-        return
-      }
-      let requests = [
-        ProviderAddressRequest(method: ETHRequestMethods.GetLogs.rawValue, params: [fakeAddressParam], skipLoggingResult: false),
-        ProviderAddressRequest(method: ETHRequestMethods.NewFilter.rawValue, params: [fakeAddressParam], skipLoggingResult: false),
-      ]
-
-      for request in requests {
-        testProviderAddressRequest(method: request.method, params: request.params) { (success: Bool) -> Void in
-          // Do something
-        }
-      }
-    } catch {
-      print("❌ Error testing other provider requests:", error)
-      return
-    }
-  }
+//  func testAddressRequests() {
+//    print("\nTesting Address Requests:\n")
+//    do {
+//      let fromAddress = try portal?.keychain.getAddress()
+//      let fakeAddressParam = ETHAddressParam(address: fromAddress!)
+//      guard fromAddress != nil else {
+//        print("❌ Error testing address provider requests: address is nil")
+//        return
+//      }
+//      let requests = [
+//        // Unsupported methods
+//        ProviderAddressRequest(method: ETHRequestMethods.GetLogs.rawValue, params: [fakeAddressParam], skipLoggingResult: false),
+//        ProviderAddressRequest(method: ETHRequestMethods.NewFilter.rawValue, params: [fakeAddressParam], skipLoggingResult: false),
+//      ]
+//
+//      for request in requests {
+//        testProviderAddressRequest(method: request.method, params: request.params) { (success: Bool) -> Void in
+//          // Do something
+//        }
+//      }
+//    } catch {
+//      print("❌ Error testing other provider requests:", error)
+//      return
+//    }
+//  }
 
   func testUnsupportedRequests() {
     print("\nTesting Unsupported Methods:\n")

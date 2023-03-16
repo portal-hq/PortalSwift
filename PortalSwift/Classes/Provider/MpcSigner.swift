@@ -9,13 +9,13 @@ import Foundation
 import Mpc
 
 struct Signature: Codable {
-  var x: String
-  var y: String
+  public var x: String
+  public var y: String
 }
 
 public struct SignerResult: Codable {
-  var signature: String?
-  var accounts: [String]?
+  public var signature: String?
+  public var accounts: [String]?
 }
 
 class MpcSigner {
