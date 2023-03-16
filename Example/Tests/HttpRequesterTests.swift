@@ -21,7 +21,8 @@ final class HttpRequesterTests: XCTestCase {
 
     try requester?.get(
       path: "/",
-      headers: [:]
+      headers: [:],
+      requestType: HttpRequestType.CustomRequest
     ) { (result: Result<String>) -> Void in
       expectation.fulfill()
     }
@@ -35,7 +36,8 @@ final class HttpRequesterTests: XCTestCase {
     try requester?.post(
       path: "/",
       body: ["test": "test"],
-      headers: [:]
+      headers: [:],
+      requestType: HttpRequestType.CustomRequest
     ) { (result: Result<String>) -> Void in
       expectation.fulfill()
     }

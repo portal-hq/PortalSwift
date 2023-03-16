@@ -7,6 +7,11 @@
 
 import Foundation
 
+public enum HttpRequestType {
+  case GatewayRequest
+  case CustomRequest
+}
+
 private enum HttpError: Error {
   case clientError(String)
   case httpError(String)
@@ -15,6 +20,20 @@ private enum HttpError: Error {
   case unknownError(String)
 }
 
+private enum GatewayError: Error {
+  case gatewayError(response: ETHGatewayErrorResponse, status: String)
+}
+
+extension GatewayError: CustomStringConvertible {
+  public var description: String {
+        switch self {
+        case .gatewayError(let response, let status):
+          return "HTTP Gateway Error -status: \(status) -code: \(response.code) -message: \(response.message)"
+        }
+  }
+}
+
+
 /// A class for making HTTP requests.
 public class HttpRequest<T: Codable, U> {
   private var body: U?
@@ -22,6 +41,7 @@ public class HttpRequest<T: Codable, U> {
   private var method: String
   private var url: String
   private var isString: Bool
+  private var requestType: HttpRequestType
 
   /// Creates an instance of HttpRequest.
   /// - Parameters:
@@ -33,13 +53,15 @@ public class HttpRequest<T: Codable, U> {
     url: String,
     method: String,
     body: U?,
-    headers: Dictionary<String, String>
+    headers: Dictionary<String, String>,
+    requestType: HttpRequestType
   ) {
     self.body = body
     self.headers = headers
     self.method = method
     self.url = url
     self.isString = false
+    self.requestType = requestType
   }
 
   /// Creates an instance of HttpRequest.
@@ -54,13 +76,15 @@ public class HttpRequest<T: Codable, U> {
     method: String,
     body: U?,
     headers: Dictionary<String, String>,
-    isString: Bool
+    isString: Bool,
+    requestType: HttpRequestType
   ) {
     self.body = body
     self.headers = headers
     self.method = method
     self.url = url
     self.isString = isString
+    self.requestType = requestType
   }
 
   /// Sends an HTTP request.
@@ -89,7 +113,7 @@ public class HttpRequest<T: Codable, U> {
           // Process the response object
           if httpResponse!.statusCode == 204 {
             return completion(Result(data: "OK" as! T))
-          } else if httpResponse!.statusCode >= 200 && httpResponse!.statusCode < 300 {
+          } else if httpResponse!.statusCode >= 200 && httpResponse!.statusCode < 300  {
             var typedData: T
 
             // Decode the response into the appropriate type
@@ -101,10 +125,34 @@ public class HttpRequest<T: Codable, U> {
 
             // Pass off to the completion closure
             return completion(Result(data: typedData))
-          } else if httpResponse!.statusCode >= 500 {
+          } else if (httpResponse!.statusCode >= 500 ){
+            if (self.requestType == HttpRequestType.GatewayRequest) {
+              var typedData: T
+
+              // Decode the response into the appropriate type
+              if T.self == String.self {
+                typedData = String(data: data!, encoding: .utf8) as! T
+              } else {
+                typedData = try JSONDecoder().decode(T.self, from: data!)
+              }
+              return completion(Result(error: GatewayError.gatewayError(response: (typedData as! ETHGatewayResponse).error!, status: String(httpResponse!.statusCode)) ))
+            }
             return completion(Result(error: HttpError.internalServerError(httpResponse!.description)))
-          } else if httpResponse!.statusCode >= 400 {
+          } else if (httpResponse!.statusCode >= 400) {
+            if (self.requestType == HttpRequestType.GatewayRequest) {
+              var typedData: T
+
+              // Decode the response into the appropriate type
+              if T.self == String.self {
+                typedData = String(data: data!, encoding: .utf8) as! T
+              } else {
+                typedData = try JSONDecoder().decode(T.self, from: data!)
+              }
+              return completion(Result(error: GatewayError.gatewayError(response: (typedData as! ETHGatewayResponse).error!, status: String(httpResponse!.statusCode))))
+            }
             return completion(Result(error: HttpError.clientError(httpResponse!.description)))
+          } else {
+            return completion(Result(error: HttpError.internalServerError(httpResponse!.description)))
           }
         } catch {
           return completion(Result(error: error))

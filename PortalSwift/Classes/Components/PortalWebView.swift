@@ -35,7 +35,7 @@ enum WebViewControllerErrors: Error {
 
 
 /// A controller that allows you to create Portal's web view.
-public class WebViewController: UIViewController, WKNavigationDelegate, WKScriptMessageHandler {
+public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessageHandler {
   private var webView: WKWebView!
   private var webViewContentIsLoaded = false
   private var portal: Portal
@@ -120,9 +120,9 @@ public class WebViewController: UIViewController, WKNavigationDelegate, WKScript
     let javascript = injectPortal(
       address: portal.mpc.address!,
       apiKey: portal.apiKey,
-      chainId: "5",
-      gatewayConfig: "https://eth-goerli.g.alchemy.com/v2/53va-QZAS8TnaBH3-oBHqcNJtIlygLi-",
-      autoApprove: true,
+      chainId: String(portal.chainId),
+      gatewayConfig: portal.gatewayConfig[portal.chainId]!,
+      autoApprove: portal.autoApprove,
       enableMpc: true
     )
     
@@ -169,7 +169,7 @@ public class WebViewController: UIViewController, WKNavigationDelegate, WKScript
 
   private func handlePortalSign(method: String, params: [Any]) -> Void {
     let payload = ETHRequestPayload(method: method, params: params)
-
+    
     if (signerMethods.contains(method)) {
       portal.provider.request(payload: payload, completion: signerRequestCompletion)
     } else {
@@ -182,7 +182,7 @@ public class WebViewController: UIViewController, WKNavigationDelegate, WKScript
     let transactionParam = ETHTransactionParam(
       from: firstParams["from"]!,
       to: firstParams["to"]!,
-      gas: firstParams["gas"]!,
+      gas: firstParams["gas"] ?? "",
       gasPrice: firstParams["gasPrice"] ?? "",
       value: firstParams["value"]!,
       data: firstParams["data"]!
@@ -243,7 +243,7 @@ public class WebViewController: UIViewController, WKNavigationDelegate, WKScript
 
 
   private func signerRequestCompletion(result: Result<RequestCompletionResult>) -> Void {
-    let response = result.data!.result as! Result<Any>
+    let response = result.data!.result as! Result<SignerResult>
     guard response.error == nil else {
        onError(Result(error: response.error!))
       return
@@ -252,7 +252,7 @@ public class WebViewController: UIViewController, WKNavigationDelegate, WKScript
     let payload: Dictionary<String, Any> = [
       "method": result.data!.method,
       "params": result.data!.params,
-      "signature": (response.data as! SignerResult).signature!
+      "signature": response.data!.signature!
     ]
     postMessage(payload: payload)
   }

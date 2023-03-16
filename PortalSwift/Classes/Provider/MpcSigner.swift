@@ -9,13 +9,13 @@ import Foundation
 import Mpc
 
 struct Signature: Codable {
-  var x: String
-  var y: String
+  public var x: String
+  public var y: String
 }
 
-struct SignerResult: Codable {
-  var signature: String?
-  var accounts: [String]?
+public struct SignerResult: Codable {
+  public var signature: String?
+  public var accounts: [String]?
 }
 
 class MpcSigner {
@@ -42,7 +42,7 @@ class MpcSigner {
   public func sign(
     payload: ETHRequestPayload,
     provider: PortalProvider
-  ) throws -> Any {
+  ) throws -> SignerResult {
     // Obtain the public address.
     let address = try keychain.getAddress()
 

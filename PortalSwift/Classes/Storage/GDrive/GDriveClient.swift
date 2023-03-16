@@ -74,7 +74,8 @@ class GDriveClient {
       do {
         try self.api.delete(
           path: "/drive/v3/files/\(id)",
-          headers: ["Authorization": "Bearer \(accessToken.data!)"]
+          headers: ["Authorization": "Bearer \(accessToken.data!)"],
+          requestType: HttpRequestType.CustomRequest
         ) { (result: Result<String>) -> Void in
           if result.error != nil {
             callback(Result(error: result.error!))
@@ -105,7 +106,9 @@ class GDriveClient {
             "Accept": "application/json",
             "Authorization": "Bearer \(accessToken.data!)",
             "Content-Type": "application/json"
-          ]
+          ],
+          requestType: HttpRequestType.CustomRequest
+
         ) { (result: Result<GDriveFilesListResponse>) in
           if (result.error != nil) {
             callback(Result(error: result.error!))
@@ -134,7 +137,9 @@ class GDriveClient {
             "Accept": "application/json",
             "Authorization": "Bearer \(accessToken.data!)",
             "Content-Type": "application/json",
-          ]
+          ],
+          requestType: HttpRequestType.CustomRequest
+
         ) { (result: Result<String>) in
           if (result.error != nil) {
             callback(Result(error: result.error!))
@@ -244,7 +249,9 @@ class GDriveClient {
             "Authorization": "Bearer \(accessToken.data!)",
             "Content-Type": "application/json",
             "Content-Length": String(bodyString.count)
-          ]
+          ],
+          requestType: HttpRequestType.CustomRequest
+
         ) { (result: Result<GDriveFile>) in
 
         }
@@ -269,7 +276,9 @@ class GDriveClient {
             "Accept": "application/json",
             "Authorization": "Bearer \(accessToken.data!)",
             "Content-Type": "application/json"
-          ]
+          ],
+          requestType: HttpRequestType.CustomRequest
+
         ) { (result: Result<GDriveFilesListResponse>) in
           if (result.error != nil) {
             callback(Result(error: result.error!))
@@ -318,7 +327,9 @@ class GDriveClient {
           headers: [
             "Authorization": "Bearer \(accessToken)",
             "Content-Type": "multipart/related; boundary=\(self.boundary)"
-          ]
+          ],
+          requestType: HttpRequestType.CustomRequest
+
         ) { (result: Result<GDriveFile>) in
           if (result.error != nil) {
             callback(Result(error: result.error!))
