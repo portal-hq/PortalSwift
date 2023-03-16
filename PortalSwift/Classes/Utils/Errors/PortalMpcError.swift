@@ -15,4 +15,10 @@ public class PortalMpcError: Error {
     self.code = error.code
     self.message = error.message
   }
+  
+  public var description: String {
+        return "PortalMpcError -code: \(self.code) -message: \(self.message)"
+  }
+  
+  
 }

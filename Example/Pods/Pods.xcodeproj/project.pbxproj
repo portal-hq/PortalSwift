@@ -249,9 +249,8 @@
 		F6E75F5FD0501A6E1464C1153B20CB97 /* OIDDefines.h in Headers */ = {isa = PBXBuildFile; fileRef = A09613A27E286BA45D16116C62A5A82A /* OIDDefines.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		F8473F19A98E8C04DA797F91A71F8443 /* GIDGoogleUser.m in Sources */ = {isa = PBXBuildFile; fileRef = 5FEFA4DBD3F3F81E300A7B024BEF99C5 /* GIDGoogleUser.m */; };
 		F950D208FA4D412081B58F83807785A4 /* OIDRegistrationResponse.h in Headers */ = {isa = PBXBuildFile; fileRef = A84F5D1BCEB2EF13D15441A0D28D422C /* OIDRegistrationResponse.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		F96A7926293951150033822E /* mpc.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7EB608D9291EF37800CF1346 /* mpc.xcframework */; };
-		F96A7927293951150033822E /* mpc.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 7EB608D9291EF37800CF1346 /* mpc.xcframework */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		F96A798F293AC5BE0033822E /* WebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E562948293A9F08009DF33E /* WebViewController.swift */; };
+		F96A798F293AC5BE0033822E /* PortalWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E562948293A9F08009DF33E /* PortalWebView.swift */; };
+		F9800CF529BA934400C17DCD /* mpc.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = F9800CF429BA934400C17DCD /* mpc.xcframework */; };
 		FA57677851302C0F13C69A459895DCEF /* NSBundle+GID3PAdditions.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F0BFE48C3465EAB070F9B738ACC4C2D /* NSBundle+GID3PAdditions.h */; settings = {ATTRIBUTES = (Project, ); }; };
 		FDE948CC3A35F70EAEB413E5DE09C5ED /* OIDRegistrationResponse.m in Sources */ = {isa = PBXBuildFile; fileRef = B804827BFBF64ED816EDF110F64E5F6F /* OIDRegistrationResponse.m */; };
 		FEDBA260CA2BC4687188EA88E22D0E0B /* GTMSessionFetcher.m in Sources */ = {isa = PBXBuildFile; fileRef = DEA431134CDB056F516DEF6C397F3F61 /* GTMSessionFetcher.m */; };
@@ -366,7 +365,6 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				F96A7927293951150033822E /* mpc.xcframework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -517,12 +515,18 @@
 		7E06344D29259384004E23CC /* Result.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Result.swift; sourceTree = "<group>"; };
 		7E0A58602992EDE30003D945 /* GDriveClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GDriveClient.swift; sourceTree = "<group>"; };
 		7E0A58622992F1580003D945 /* GoogleAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleAuth.swift; sourceTree = "<group>"; };
-		7E562948293A9F08009DF33E /* WebViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WebViewController.swift; sourceTree = "<group>"; };
 		7EB42DC029B951E6000BA354 /* PortalMpcError.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalMpcError.swift; sourceTree = "<group>"; };
 		7EB42DC129B951E6000BA354 /* PortalErrorCodes.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalErrorCodes.swift; sourceTree = "<group>"; };
 		7EB42DC229B951E6000BA354 /* PortalErrorCodeTypes.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalErrorCodeTypes.swift; sourceTree = "<group>"; };
 		7EB42DC329B951E6000BA354 /* PortalError.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalError.swift; sourceTree = "<group>"; };
 		7EB608D9291EF37800CF1346 /* mpc.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = mpc.xcframework; sourceTree = "<group>"; };
+		7E562948293A9F08009DF33E /* PortalWebView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalWebView.swift; sourceTree = "<group>"; };
+		7EB42DC029B951E6000BA354 /* PortalMpcError.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalMpcError.swift; sourceTree = "<group>"; };
+		7EB42DC129B951E6000BA354 /* PortalErrorCodes.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalErrorCodes.swift; sourceTree = "<group>"; };
+		7EB42DC229B951E6000BA354 /* PortalErrorCodeTypes.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalErrorCodeTypes.swift; sourceTree = "<group>"; };
+		7EB42DC329B951E6000BA354 /* PortalError.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalError.swift; sourceTree = "<group>"; };
+		7EB608D9291EF37800CF1346 /* mpc.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = mpc.xcframework; sourceTree = "<group>"; };
+		7E562948293A9F08009DF33E /* PortalWebView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalWebView.swift; sourceTree = "<group>"; };
 		7F0575BE2BA383CEF487DB18CD24E5A6 /* PortalMpc.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PortalMpc.swift; sourceTree = "<group>"; };
 		7F20460EC6633B9230F7E712BFA02097 /* GTMSessionUploadFetcher.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = GTMSessionUploadFetcher.h; path = Sources/Core/Public/GTMSessionFetcher/GTMSessionUploadFetcher.h; sourceTree = "<group>"; };
 		7FE3B5D28E237D64A445101DA0015814 /* ja.lproj */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; name = ja.lproj; path = GoogleSignIn/Sources/Strings/ja.lproj; sourceTree = "<group>"; };
@@ -656,6 +660,7 @@
 		F335FE0A61683553C438D7608C7A926B /* PortalSwift-dummy.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = "PortalSwift-dummy.m"; sourceTree = "<group>"; };
 		F6675FC4F4584DA5B5FDA02ACD604D08 /* zh_CN.lproj */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; name = zh_CN.lproj; path = GoogleSignIn/Sources/Strings/zh_CN.lproj; sourceTree = "<group>"; };
 		F6E987FC4B58F7AFA41C143EB1A2C017 /* UIImage+Snapshot.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = "UIImage+Snapshot.m"; path = "FBSnapshotTestCase/Categories/UIImage+Snapshot.m"; sourceTree = "<group>"; };
+		F9800CF429BA934400C17DCD /* mpc.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = mpc.xcframework; sourceTree = "<group>"; };
 		FA55B2F5996FDD1D8801B62058F29326 /* AppAuth-prefix.pch */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "AppAuth-prefix.pch"; sourceTree = "<group>"; };
 		FB346B7DD1B1CF8912F75E01F486B6F3 /* OIDTokenRequest.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = OIDTokenRequest.m; path = Source/AppAuthCore/OIDTokenRequest.m; sourceTree = "<group>"; };
 		FC0EC03E3095AC12047215E83E64D9A0 /* GIDProfileData_Private.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = GIDProfileData_Private.h; path = GoogleSignIn/Sources/GIDProfileData_Private.h; sourceTree = "<group>"; };
@@ -725,7 +730,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F96A7926293951150033822E /* mpc.xcframework in Frameworks */,
+				F9800CF529BA934400C17DCD /* mpc.xcframework in Frameworks */,
 				0425CB4E3B484880C95CADB6EB60EC78 /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -746,7 +751,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				8CF9E0A7ADD7449CF2026546440EBB1F /* Foundation.framework in Frameworks */,
-				7EB608DA291EF37800CF1346 /* mpc.xcframework in Frameworks */,
 				4816ED359D1CCB98A1C010564EE02C2F /* SafariServices.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1074,7 +1078,7 @@
 		7E562947293A9F08009DF33E /* Components */ = {
 			isa = PBXGroup;
 			children = (
-				7E562948293A9F08009DF33E /* WebViewController.swift */,
+				7E562948293A9F08009DF33E /* PortalWebView.swift */,
 			);
 			name = Components;
 			path = PortalSwift/Classes/Components;
@@ -1094,7 +1098,7 @@
 		7EB608D8291EF37800CF1346 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				7EB608D9291EF37800CF1346 /* mpc.xcframework */,
+				F9800CF429BA934400C17DCD /* mpc.xcframework */,
 			);
 			name = Frameworks;
 			path = PortalSwift/Frameworks;
@@ -1965,7 +1969,7 @@
 				97F9B166285ADDD857F65EC6557879ED /* PortalSwift-dummy.m in Sources */,
 				7EB42DC429B951E6000BA354 /* PortalMpcError.swift in Sources */,
 				47FA8DFC29539EE90020EF35 /* MockStorage.swift in Sources */,
-				F96A798F293AC5BE0033822E /* WebViewController.swift in Sources */,
+				F96A798F293AC5BE0033822E /* PortalWebView.swift in Sources */,
 				47FA8DEF29539E5B0020EF35 /* MockPortalMpc.swift in Sources */,
 				11955AF71F5A4FC4C4C2C314AC891F37 /* Storage.swift in Sources */,
 			);
@@ -2627,7 +2631,7 @@
 			baseConfigurationReference = 70B4AD4436D79BE1F548623C470041E9 /* GoogleSignIn.debug.xcconfig */;
 			buildSettings = {
 				CONFIGURATION_BUILD_DIR = "$(BUILD_DIR)/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/GoogleSignIn";
-				DEVELOPMENT_TEAM = 4B4VPL895G;
+				DEVELOPMENT_TEAM = "";
 				IBSC_MODULE = GoogleSignIn;
 				INFOPLIST_FILE = "Target Support Files/GoogleSignIn/ResourceBundle-GoogleSignIn-GoogleSignIn-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
