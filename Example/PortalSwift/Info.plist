@@ -49,7 +49,7 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.469902597101-5q6coj9opt4prc8dtmsqqj92eahcktda</string>
+				<string>{{REPLACE_ME}}</string>
 			</array>
 		</dict>
 	</array>
