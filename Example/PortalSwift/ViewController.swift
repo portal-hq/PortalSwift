@@ -178,8 +178,8 @@ class ViewController: UIViewController {
     print("\n====================\nTesting provider methods\n====================")
     testSignerRequests()
     // testWalletRequests()
-    testOtherRequests()
-//    testTransactionRequests()
+//    testOtherRequests()
+    testTransactionRequests()
 //    testAddressRequests()
     print("====================\n[FINISHED] Testing provider methods\n====================\n")
   }
@@ -288,7 +288,7 @@ class ViewController: UIViewController {
         chainId: 5,
         keychain: keychain,
         gatewayConfig: [
-          5: "https://eth-goerli.g.alchemy.com/v2/53va-QZAS8TnaBH3-oBHqcNJtIlygLi-"
+          5: ""
         ],
         version: "v1",
         autoApprove: true
@@ -509,16 +509,12 @@ class ViewController: UIViewController {
         ProviderRequest(method: ETHRequestMethods.GasPrice.rawValue, params: [], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetBalance.rawValue, params: [fromAddress!, "latest"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetBlockByHash.rawValue, params: ["0xdc0818cf78f21a8e70579cb46a43643f78291264dda342ae31049421c82d21ae", false], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.GetBlockTransactionCountByHash.rawValue, params: ["0xb903239f8543d04b5dc1ba6579132b143087c68db1b2168786408fcbce568238"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetBlockTransactionCountByNumber.rawValue, params: ["latest"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetCode.rawValue, params: [fromAddress!, "latest"], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.GetFilterLogs.rawValue, params: ["0x16"], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.GetTransactionByBlockHashAndIndex.rawValue, params: ["0xe670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d1527331", "0x0"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetTransactionByHash.rawValue, params: ["0x88df016429689c079f3b2f6ad39fa052532c56795b733da78a91ebe6a713944b"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetTransactionCount.rawValue, params: [fromAddress!, "latest"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetTransactionReceipt.rawValue, params: ["0x88df016429689c079f3b2f6ad39fa052532c56795b733da78a91ebe6a713944b"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetUncleByBlockHashIndex.rawValue, params: ["0xc6ef2fc5426d6ad6fd9e2a26abeab0aa2411b7ab17f30a99d3cb96aed1d1055b", "0x0"], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.GetUncleByBlockNumberAndIndex.rawValue, params: ["latest", "0x0"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetUncleCountByBlockHash.rawValue, params: ["0xc6ef2fc5426d6ad6fd9e2a26abeab0aa2411b7ab17f30a99d3cb96aed1d1055b"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetUncleCountByBlockNumber.rawValue, params: ["latest"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.NetVersion.rawValue, params: [], skipLoggingResult: false),
@@ -529,10 +525,7 @@ class ViewController: UIViewController {
         ProviderRequest(method: ETHRequestMethods.Web3ClientVersion.rawValue, params: [], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.Web3Sha3.rawValue, params: ["0x68656c6c6f20776f726c64"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetStorageAt.rawValue, params: [fromAddress, "0x0", "latest"], skipLoggingResult: false),
-//        ProviderRequest(method: ETHRequestMethods.UninstallFilter.rawValue, params: ["0xb"], skipLoggingResult: false),
-//        ProviderRequest(method: ETHRequestMethods.NetListening.rawValue, params: [], skipLoggingResult:
-//        ProviderRequest(method: ETHRequestMethods.GetTransactionByBlockNumberAndIndex.rawValue, params: ["latest", "0x0"], skipLoggingResult: false),
-//        ProviderRequest(method: ETHRequestMethods.GetBlockByNumber.rawValue, params: ["latest", false], skipLoggingResult: false),
+
       ]
 
       for request in otherRequests {
@@ -579,32 +572,6 @@ class ViewController: UIViewController {
       return
     }
   }
-
-//  func testAddressRequests() {
-//    print("\nTesting Address Requests:\n")
-//    do {
-//      let fromAddress = try portal?.keychain.getAddress()
-//      let fakeAddressParam = ETHAddressParam(address: fromAddress!)
-//      guard fromAddress != nil else {
-//        print("❌ Error testing address provider requests: address is nil")
-//        return
-//      }
-//      let requests = [
-//        // Unsupported methods
-//        ProviderAddressRequest(method: ETHRequestMethods.GetLogs.rawValue, params: [fakeAddressParam], skipLoggingResult: false),
-//        ProviderAddressRequest(method: ETHRequestMethods.NewFilter.rawValue, params: [fakeAddressParam], skipLoggingResult: false),
-//      ]
-//
-//      for request in requests {
-//        testProviderAddressRequest(method: request.method, params: request.params) { (success: Bool) -> Void in
-//          // Do something
-//        }
-//      }
-//    } catch {
-//      print("❌ Error testing other provider requests:", error)
-//      return
-//    }
-//  }
 
   func testUnsupportedRequests() {
     print("\nTesting Unsupported Methods:\n")
