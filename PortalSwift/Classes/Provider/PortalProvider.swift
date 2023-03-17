@@ -38,24 +38,16 @@ public enum ETHRequestMethods: String {
   case GasPrice = "eth_gasPrice"
   case GetBalance = "eth_getBalance"
   case GetBlockByHash = "eth_getBlockByHash"
-//  case GetBlockByNumber = "eth_getBlockByNumber"
-  case GetBlockTransactionCountByHash = "eth_getBlockTransactionCountByHash"
   case GetBlockTransactionCountByNumber = "eth_getBlockTransactionCountByNumber"
   case GetCode = "eth_getCode"
-  case GetFilterLogs = "eth_getFilterLogs"
-//  case GetLogs = "eth_getLogs"
   case GetStorageAt = "eth_getStorageAt"
   case GetTransactionByHash = "eth_getTransactionByHash"
-  case GetTransactionByBlockHashAndIndex = "eth_getTransactionByBlockHashAndIndex"
-//  case GetTransactionByBlockNumberAndIndex = "eth_getTransactionByBlockNumberAndIndex"
   case GetTransactionCount = "eth_getTransactionCount"
   case GetTransactionReceipt = "eth_getTransactionReceipt"
   case GetUncleByBlockHashIndex = "eth_getUncleByBlockHashAndIndex"
-  case GetUncleByBlockNumberAndIndex = "eth_getUncleByBlockNumberAndIndex"
   case GetUncleCountByBlockHash = "eth_getUncleCountByBlockHash"
   case GetUncleCountByBlockNumber = "eth_getUncleCountByBlockNumber"
   case NewBlockFilter = "eth_newBlockFilter"
-//  case NewFilter = "eth_newFilter"
   case NewPendingTransactionFilter = "eth_newPendingTransactionFilter"
   case PersonalSign = "personal_sign"
   case ProtocolVersion = "eth_protocolVersion"
@@ -64,8 +56,19 @@ public enum ETHRequestMethods: String {
   case SendTransaction = "eth_sendTransaction"
   case Sign = "eth_sign"
   case SignTransaction = "eth_signTransaction"
-  case SignTypedData = "eth_signTypedData"
+// Unsupported Methods:
+//  case SignTypedData = "eth_signTypedData"
 //  case UninstallFilter = "eth_uninstallFilter"
+//  case NewFilter = "eth_newFilter"
+//  case GetTransactionByBlockNumberAndIndex = "eth_getTransactionByBlockNumberAndIndex"
+//  case GetLogs = "eth_getLogs"
+//  case GetBlockByNumber = "eth_getBlockByNumber"
+//  case GetFilterLogs = "eth_getFilterLogs"
+//  case GetBlockTransactionCountByHash = "eth_getBlockTransactionCountByHash"
+//  case NetListening = "net_listening"
+//  case GetTransactionByBlockHashAndIndex = "eth_getTransactionByBlockHashAndIndex"
+//  case GetFilterLogs = "eth_getFilterLogs"
+//  case GetUncleByBlockNumberAndIndex = "eth_getUncleByBlockNumberAndIndex"
 
   // Wallet Methods (MetaMask stuff)
   case WalletAddEthereumChain = "wallet_addEthereumChain"
@@ -76,7 +79,6 @@ public enum ETHRequestMethods: String {
   case WalletWatchAsset = "wallet_watchAsset"
 
   // Net Methods
-//  case NetListening = "net_listening"
   case NetVersion = "net_version"
 
   // Web3 Methods
@@ -213,7 +215,7 @@ public var signerMethods: [ETHRequestMethods.RawValue] = [
   ETHRequestMethods.SendTransaction.rawValue,
   ETHRequestMethods.Sign.rawValue,
   ETHRequestMethods.SignTransaction.rawValue,
-  ETHRequestMethods.SignTypedData.rawValue,
+//  ETHRequestMethods.SignTypedData.rawValue,
 ]
 
 /// A registered event handler.
