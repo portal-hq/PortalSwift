@@ -263,36 +263,44 @@ public class PortalMpc {
 
   /// Generates a MPC wallet and signing share for a client.
   /// - Returns: The address of the newly created MPC wallet.
-  public func generate() throws -> String {
+  public func generate(completion: @escaping (Result<String>) -> Void) -> Void {
     if version != "v1" {
-      throw MpcError.generateNoLongerSupported(message: "[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = v1` to generate a new wallet using CGGMP.")
+      let result = Result<String>(error: MpcError.generateNoLongerSupported(
+        message: "[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = v1` to generate a new wallet using CGGMP."
+      ))
+      completion(result)
     }
     
     // Call the MPC service to generate a new wallet.
     let response = ClientGenerate(apiKey, mpcHost, version)
     let jsonData = response.data(using: .utf8)!
-    let generateResult: GenerateResult = try JSONDecoder().decode(GenerateResult.self, from: jsonData)
-
-    // Throw if there was an error generating the wallet.
-    guard generateResult.error.code == 0 else {
-      throw PortalMpcError(generateResult.error)
+    do {
+      let generateResult: GenerateResult = try JSONDecoder().decode(GenerateResult.self, from: jsonData)
+      // Throw if there was an error generating the wallet.
+      
+      guard generateResult.error.code == 0 else {
+        completion(Result(error: PortalMpcError(generateResult.error)))
+        return
+      }
+      
+      // Set the client's address.
+      let address = generateResult.data!.address
+      try keychain.setAddress(address: address)
+      
+      // Set the client's signing share.
+      let mpcShare = generateResult.data!.dkgResult
+      let mpcShareData = try JSONEncoder().encode(mpcShare)
+      let mpcShareString = String(data: mpcShareData, encoding: .utf8 )!
+      try keychain.setSigningShare(signingShare: mpcShareString )
+      
+      // Assign the address to the class.
+      self.address = address
+      
+      // Return the address.
+      return completion(Result(data: address))
+    } catch {
+      return completion(Result(error: error))
     }
-
-    // Set the client's address.
-    let address = generateResult.data!.address
-    try keychain.setAddress(address: address)
-
-    // Set the client's signing share.
-    let mpcShare = generateResult.data!.dkgResult
-    let mpcShareData = try JSONEncoder().encode(mpcShare)
-    let mpcShareString = String(data: mpcShareData, encoding: .utf8 )!
-    try keychain.setSigningShare(signingShare: mpcShareString )
-
-    // Assign the address to the class.
-    self.address = address
-
-    // Return the address.
-    return address
   }
 
   /// Uses the backup share to create a new signing share and a new backup share, encrypts the new backup share, and stores the private key in storage.
