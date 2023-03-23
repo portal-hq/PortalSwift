@@ -133,6 +133,8 @@ public struct ETHTransactionParam: Codable {
   public var to: String
   public var gas: String?
   public var gasPrice: String?
+  public var maxPriorityFeePerGas: String?
+  public var maxFeePerGas: String?
   public var value: String?
   public var data: String?
 
@@ -167,6 +169,17 @@ public struct ETHTransactionParam: Codable {
     self.from = from
     self.to = to
     self.data = data
+  }
+  
+  // Below is the variation for EIP-1559
+  public init(from: String, to: String, gas: String, value: String, data: String, maxPriorityFeePerGas: String?, maxFeePerGas: String?) {
+    self.from = from
+    self.to = to
+    self.gas = gas
+    self.value = value
+    self.data = data
+    self.maxPriorityFeePerGas = maxPriorityFeePerGas
+    self.maxFeePerGas = maxFeePerGas
   }
 }
 

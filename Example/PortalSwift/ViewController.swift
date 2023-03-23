@@ -264,8 +264,9 @@ class ViewController: UIViewController {
   func handleSend() {
     let payload = ETHTransactionPayload(
       method: "eth_sendTransaction",
-      params: [ETHTransactionParam(from: portal!.address, to: sendAddress.text!, gas: "0x6000", gasPrice: "0x100", value: "0x10", data: "")]
-    )
+      params: [ETHTransactionParam(from: portal!.mpc.getAddress(), to: sendAddress.text!,  gas:"0x5208", gasPrice: "0x100", value: "0x10", data: "")])
+      // Test EIP-1559 Transactions with these params
+//      params: [ETHTransactionParam(from: portal!.mpc.getAddress(), to: sendAddress.text!,  gas:"0x5208", value: "0x10", data: "", maxPriorityFeePerGas: "0x2710", maxFeePerGas: "0x2710")])
     portal?.provider.request(payload: payload) {
         (result: Result<TransactionCompletionResult>) -> Void in
       print(result)
