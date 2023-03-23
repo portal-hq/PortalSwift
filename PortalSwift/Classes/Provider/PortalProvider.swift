@@ -57,7 +57,9 @@ public enum ETHRequestMethods: String {
   case Sign = "eth_sign"
   case SignTransaction = "eth_signTransaction"
 // Unsupported Methods:
-//  case SignTypedData = "eth_signTypedData"
+  case SignTypedData = "eth_signTypedData"
+  case SignTypedDataV4 = "eth_signTypedData_v4"
+
 //  case UninstallFilter = "eth_uninstallFilter"
 //  case NewFilter = "eth_newFilter"
 //  case GetTransactionByBlockNumberAndIndex = "eth_getTransactionByBlockNumberAndIndex"
@@ -233,7 +235,8 @@ public var signerMethods: [ETHRequestMethods.RawValue] = [
   ETHRequestMethods.SendTransaction.rawValue,
   ETHRequestMethods.Sign.rawValue,
   ETHRequestMethods.SignTransaction.rawValue,
-//  ETHRequestMethods.SignTypedData.rawValue,
+  ETHRequestMethods.SignTypedData.rawValue,
+  ETHRequestMethods.SignTypedDataV4.rawValue
 ]
 
 /// A registered event handler.
@@ -674,6 +677,11 @@ public class PortalProvider {
         return
       }
     }
+    
+    if (payload.method == ETHRequestMethods.SignTypedData.rawValue || payload.method == ETHRequestMethods.SignTypedDataV4.rawValue) {
+      completion(Result (error: ProviderRpcError.unsupportedMethod))
+      return
+    }
 
     do {
       let signResult = try signer.sign(
@@ -697,7 +705,10 @@ public class PortalProvider {
         return
       }
     }
-
+    if (payload.method == ETHRequestMethods.SignTypedData.rawValue || payload.method == ETHRequestMethods.SignTypedDataV4.rawValue) {
+      completion(Result (error: ProviderRpcError.unsupportedMethod))
+      return
+    }
     do {
       let signResult = try signer.sign(
         payload: payload,

@@ -306,7 +306,7 @@ class ViewController: UIViewController {
   }
 
   func onError(result: Result<Any>) -> Void {
-    print("why", result.error!.localizedDescription, result.error!.localizedDescription.description)
+    print("PortalWebviewError:", result.error!, "Description:", result.error!.localizedDescription)
   }
 
   func injectWebView() {
