@@ -43,7 +43,7 @@ class ViewController: UIViewController {
   public var portal: Portal?
   public var CUSTODIAN_SERVER_URL = "https://portalex-mpc.portalhq.io"
 
-    public var eth_estimate: String?
+  public var eth_estimate: String?
   // Static information
   @IBOutlet weak var addressInformation: UITextView!
   @IBOutlet weak var ethBalanceInformation: UITextView!
@@ -283,10 +283,10 @@ class ViewController: UIViewController {
       }
   }
     
-    func callTransaction (ethEstimate: String) {
+  func callTransaction (ethEstimate: String, params: ETHTransactionParam) {
         let payload = ETHTransactionPayload(
-              method: "eth_sendTransaction",
-              params: [ETHTransactionParam(from: "0xdFd8302f44727A6348F702fF7B594f127dE3A902", to: sendAddress.text!, gas: ethEstimate, gasPrice: "0x100", value: "0x10", data: "")]
+              method: ETHRequestMethods.SendTransaction.rawValue,
+              params: [ETHTransactionParam(from: portal!.mpc.address!, to: sendAddress.text!, gas: ethEstimate, gasPrice: "0x100", value: "0x10", data: "")]
             )
         portal?.provider.request(payload: payload) {
                 (result: Result<TransactionCompletionResult>) -> Void in
@@ -447,26 +447,6 @@ class ViewController: UIViewController {
       }
   }
     
-    
-    func setEthEstimate(method: String, params: [ETHTransactionParam], skipLoggingResult: Bool = false, completion: @escaping (Bool) -> Void) {
-        let payload = ETHTransactionPayload(
-          method: method,
-          params: params
-        )
-        print("Starting to test method ", method, "...")
-        portal?.provider.request(payload: payload) { (result: Result<TransactionCompletionResult>) -> Void in
-          guard result.error == nil else {
-            print("❌ Error testing provider transaction request:", method, result.error!)
-            completion(false)
-            return
-          }
-            let testResponse = result.data!.result as! ETHGatewayResponse
-            if (testResponse.result != nil){
-                self.eth_estimate = testResponse.result!
-            }
-          completion(true)
-        }
-    }
 
 
 
