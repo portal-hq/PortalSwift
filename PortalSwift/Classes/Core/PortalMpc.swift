@@ -150,17 +150,17 @@ public enum RsaError: Error {
 
 /// The main interface with Portal's MPC service.
 public class PortalMpc {
-  public var address: String?
-  public var apiKey: String
-  public var chainId: Int
-  public var mpcHost: String
-  public var isSimulator: Bool
-  public var keychain: PortalKeychain
-  public var gatewayUrl: String
-  public var portal: Portal?
-  public var storage: BackupOptions
-  public var api: PortalApi
-  public var version: String
+  private var address: String?
+  private var apiKey: String
+  private var chainId: Int
+  private var mpcHost: String
+  private var isSimulator: Bool
+  private var keychain: PortalKeychain
+  private var gatewayUrl: String
+  private var portal: Portal?
+  private var storage: BackupOptions
+  private var api: PortalApi
+  private var version: String
   private var rsaHeader = "-----BEGIN RSA KEY-----\n"
   private var rsaFooter = "\n-----END RSA KEY-----"
 
@@ -203,6 +203,23 @@ public class PortalMpc {
     } catch {
       self.address = nil
     }
+  }
+  
+  // Setters
+  public func setAddress(address: String) {
+    self.address = address
+  }
+  
+  public func setChainId(chainId: Int) {
+    self.chainId = chainId
+  }
+  
+  public func setGatewayUrl(gatewayUrl: String) {
+    self.gatewayUrl = gatewayUrl
+  }
+  
+  public func getAddress() -> String {
+    return self.address!
   }
 
   /// Creates a backup share, encrypts it, and stores the private key in cloud storage.
