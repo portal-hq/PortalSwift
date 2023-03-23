@@ -171,7 +171,7 @@ public class Portal {
   ///   - to: The address to be used for wallet transactions
   /// - Returns: Void
   public func setAddress(to: String?) -> Void {
-    let address = to != nil ? to : mpc.address
+    let address = to != nil ? to : mpc.getAddress()
 
     if (address != nil) {
       self.address = address!
@@ -192,8 +192,8 @@ public class Portal {
       let gatewayUrl = try getGatewayUrl(gatewayConfig: gatewayConfig, chainId: chainId)
 
       // Update MPC
-      mpc.chainId = to
-      mpc.gatewayUrl = gatewayUrl
+      mpc.setChainId(chainId: to)
+      mpc.setGatewayUrl(gatewayUrl: gatewayUrl) 
 
       // Update the Provider
       provider.chainId = to

@@ -118,7 +118,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   ///   - navigation: The WKNavigation instance.
   public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
     let javascript = injectPortal(
-      address: portal.mpc.address!,
+      address: portal.mpc.getAddress(),
       apiKey: portal.apiKey,
       chainId: String(portal.chainId),
       gatewayConfig: portal.gatewayConfig[portal.chainId]!,
