@@ -181,7 +181,7 @@ class ViewController: UIViewController {
     print("\n====================\nTesting provider methods\n====================")
     testSignerRequests()
     // testWalletRequests()
-//    testOtherRequests()
+    testOtherRequests()
     testTransactionRequests()
 //    testAddressRequests()
     print("====================\n[FINISHED] Testing provider methods\n====================\n")
@@ -291,7 +291,7 @@ class ViewController: UIViewController {
         chainId: 5,
         keychain: keychain,
         gatewayConfig: [
-          5: ""
+          5: "https://eth-goerli.g.alchemy.com/v2/53va-QZAS8TnaBH3-oBHqcNJtIlygLi-"
         ],
         version: "v1",
         autoApprove: true
@@ -306,7 +306,7 @@ class ViewController: UIViewController {
   }
 
   func onError(result: Result<Any>) -> Void {
-    print(result.error!)
+    print("why", result.error!.localizedDescription, result.error!.localizedDescription.description)
   }
 
   func injectWebView() {

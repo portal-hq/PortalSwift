@@ -131,8 +131,8 @@ public struct ETHTransactionParam: Codable {
   public var to: String
   public var gas: String?
   public var gasPrice: String?
-  public var value: String
-  public var data: String
+  public var value: String?
+  public var data: String?
 
   public init(from: String, to: String, gas: String, gasPrice: String, value: String, data: String) {
     self.from = from
@@ -142,10 +142,28 @@ public struct ETHTransactionParam: Codable {
     self.value = value
     self.data = data
   }
+  
   public init(from: String, to: String, value: String, data: String) {
     self.from = from
     self.to = to
     self.value = value
+    self.data = data
+  }
+  
+  public init(from: String, to: String) {
+    self.from = from
+    self.to = to
+  }
+  
+  public init(from: String, to: String, value: String) {
+    self.from = from
+    self.to = to
+    self.value = value
+  }
+  
+  public init(from: String, to: String, data: String) {
+    self.from = from
+    self.to = to
     self.data = data
   }
 }
@@ -447,14 +465,20 @@ public class PortalProvider {
     if (!isSignerMethod && !payload.method.starts(with: "wallet_")) {
       handleGatewayRequest(payload: payload) {
         (method: String, params: [ETHTransactionParam], result: Result<Any>) -> Void in
+        guard result.error == nil else {
+          completion(Result(error: result.error!))
+          return
+        }
         if (result.data != nil) {
           completion(Result(data: TransactionCompletionResult(method: method, params: params, result: result.data!)))
-        } else {
-          completion(Result(error: result.error!))
         }
       }
     } else if (isSignerMethod) {
-      handleSigningRequest(payload: payload) { (result: Any) -> Void in
+      handleSigningRequest(payload: payload) { (result: Result<Any>) -> Void in
+        guard result.error == nil else {
+          completion(Result(error: result.error!))
+          return
+        }
         completion(Result(data: TransactionCompletionResult(method: payload.method, params: payload.params, result: result)))
       }
 

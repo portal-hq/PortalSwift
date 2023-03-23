@@ -161,7 +161,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     // Unpack what we need from the message.
     let data = json["data"]! as! Dictionary<String, Any>
     let type = json["type"]! as! String
-    let method = data["method"]! as! String
+    let method = data["method"]! as! String == "eth_signTypedData_v4" ? "eth_sign" : data["method"]! as! String
     let params = data["params"]! as! [Any]
     
     return PortalMessageBody(data: PortalMessageBodyData(method: method, params: params), type: type);
@@ -184,8 +184,8 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       to: firstParams["to"]!,
       gas: firstParams["gas"] ?? "",
       gasPrice: firstParams["gasPrice"] ?? "",
-      value: firstParams["value"]!,
-      data: firstParams["data"]!
+      value: firstParams["value"] ?? "0x0",
+      data: firstParams["data"] ?? ""
     )
     let payload = ETHTransactionPayload(method: method, params: [transactionParam])
 
@@ -197,11 +197,12 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   }
 
   private func signerTransactionRequestCompletion(result: Result<TransactionCompletionResult>) -> Void {
-    guard result.error == nil else {
+    guard (result.error == nil) else {
       onError(Result(error: result.error!))
       return
     }
     let signature = (result.data!.result as! Result<Any>).data
+    print(result)
     let payload: Dictionary<String, Any> = [
       "method": result.data!.method,
       "params": result.data!.params.map { (p) in
