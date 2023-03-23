@@ -181,7 +181,7 @@ class ViewController: UIViewController {
     print("\n====================\nTesting provider methods\n====================")
     testSignerRequests()
     // testWalletRequests()
-//    testOtherRequests()
+    testOtherRequests()
     testTransactionRequests()
 //    testAddressRequests()
     print("====================\n[FINISHED] Testing provider methods\n====================\n")
@@ -306,7 +306,7 @@ class ViewController: UIViewController {
   }
 
   func onError(result: Result<Any>) -> Void {
-    print(result.error!)
+    print("PortalWebviewError:", result.error!, "Description:", result.error!.localizedDescription)
   }
 
   func injectWebView() {
