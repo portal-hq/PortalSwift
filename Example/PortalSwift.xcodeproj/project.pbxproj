@@ -178,6 +178,7 @@
 		607FACE81AFB9204008FA782 /* Tests */ = {
 			isa = PBXGroup;
 			children = (
+				F921AB0129CE16210063305E /* Integration Tests */,
 				47323B45293A9B200029B69E /* Core */,
 				47323B48293A9B5F0029B69E /* Provider */,
 				47323B46293A9B340029B69E /* Storage */,
@@ -225,6 +226,13 @@
 				4648C35B0F07F04812A2F611 /* Pods_PortalSwift_Tests.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		F921AB0129CE16210063305E /* Integration Tests */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = "Integration Tests";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

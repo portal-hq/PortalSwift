@@ -169,13 +169,16 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   }
 
   private func handlePortalSign(method: String, params: [Any]) -> Void {
-    let payload = ETHRequestPayload(method: method, params: params)
-    
-    if (signerMethods.contains(method)) {
-      portal.provider.request(payload: payload, completion: signerRequestCompletion)
-    } else {
-      portal.provider.request(payload: payload, completion: gatewayRequestCompletion)
+    DispatchQueue.global(qos: .background).async {
+        // Perform a long-running task
+      let payload = ETHRequestPayload(method: method, params: params)
+      if (signerMethods.contains(method)) {
+        self.portal.provider.request(payload: payload, completion: self.signerRequestCompletion)
+      } else {
+        self.portal.provider.request(payload: payload, completion: self.gatewayRequestCompletion)
+      }
     }
+
   }
 
   private func handlePortalSignTransaction(method: String, params: [Any]) throws -> Void {
