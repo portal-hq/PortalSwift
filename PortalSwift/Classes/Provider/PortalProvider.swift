@@ -503,6 +503,18 @@ public class PortalProvider {
     }
   }
 
+    
+    public func request(
+      payload: String,
+      completion: @escaping (Result<ETHGatewayResponse>) -> Void
+    ) -> Void {
+        
+        handleSigningRequest(payload: payload) { (result: Result<ETHGatewayResponse>) -> Void in
+          completion(result)
+        }
+    }
+    
+
   /// Makes a request.
   /// - Parameters:
   ///   - payload: An address payload.
@@ -679,6 +691,36 @@ public class PortalProvider {
         }
     }
   }
+    
+    private func handleGatewayRequest(
+      payload: ETHRequestMethods,
+      completion: @escaping (Result<ETHGatewayResponse>) -> Void
+    ) -> Void {
+      // Create the body of the request.
+      let body: Dictionary<String, Any> = [
+        "method": payload
+      ]
+
+      // Create the request.
+      let request = HttpRequest<ETHGatewayResponse, Dictionary<String, Any>>(
+        url: self.rpc.baseUrl,
+        method: "POST",
+        body: body,
+        headers: ["Content-Type": "application/json"],
+        requestType: HttpRequestType.GatewayRequest
+      )
+
+      // Attempt to send the request.
+      request.send() { (result: Result<ETHGatewayResponse>) in
+        if (result.data != nil) {
+            completion(Result(data: result.data!))
+            return
+        } else {
+          completion(Result(error: result.error!))
+          return
+          }
+      }
+    }
 
   private func handleSigningRequest(
     payload: ETHRequestPayload,

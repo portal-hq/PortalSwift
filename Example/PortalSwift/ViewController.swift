@@ -283,14 +283,14 @@ class ViewController: UIViewController {
       }
   }
     
-  func callTransaction (ethEstimate: String, params: ETHTransactionParam) {
+    func callTransaction (ethEstimate: String) {
         let payload = ETHTransactionPayload(
               method: ETHRequestMethods.SendTransaction.rawValue,
-              params: [ETHTransactionParam(from: portal!.mpc.address!, to: sendAddress.text!, gas: ethEstimate, gasPrice: "0x100", value: "0x10", data: "")]
+              params: [ETHTransactionParam(from: portal!.mpc.address!, to: sendAddress.text!, gas: "0x2964017df", gasPrice: "0x2964017df", value: "0x10", data: "")]
             )
         portal?.provider.request(payload: payload) {
                 (result: Result<TransactionCompletionResult>) -> Void in
-              print(result)
+              print("The Entire Result Top Block" , result)
                 guard result.error == nil else {
                   print("❌ Error sending transaction:", result.error!)
                   return
@@ -300,6 +300,7 @@ class ViewController: UIViewController {
                 return
               }
                 print("✅ handleSend(): Result:", result.data!.result)
+                print("The Entire Result Block Bottom", result)
               }
     }
 
