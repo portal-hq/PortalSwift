@@ -285,7 +285,7 @@ class ViewController: UIViewController {
               method: ETHRequestMethods.SendTransaction.rawValue,
               params: [ETHTransactionParam(from: portal!.mpc.getAddress(), to: sendAddress.text!, gas: ethEstimate, gasPrice: ethEstimate, value: "0x10", data: "")]
                // Test EIP-1559 Transactions with these params
-            // params: [ETHTransactionParam(from: portal!.mpc.getAddress(), to: sendAddress.text!,  gas:"0x5208", value: "0x10", data: "", maxPriorityFeePerGas: "0x2710", maxFeePerGas: "0x2710")])
+            // params: [ETHTransactionParam(from: portal!.mpc.getAddress(), to: sendAddress.text!,  gas:"0x5208", value: "0x10", data: "", maxPriorityFeePerGas: ethEstimate, maxFeePerGas: ethEstimate)]
             )
             
         portal?.provider.request(payload: payload) {
@@ -314,7 +314,6 @@ class ViewController: UIViewController {
         gatewayConfig: [
           5: ""
         ],
-        version: "v1",
         autoApprove: true
       )
     } catch ProviderInvalidArgumentError.invalidGatewayUrl {
