@@ -503,6 +503,8 @@ public class PortalProvider {
     }
   }
 
+    
+
   /// Makes a request.
   /// - Parameters:
   ///   - payload: An address payload.
@@ -679,6 +681,7 @@ public class PortalProvider {
         }
     }
   }
+    
 
   private func handleSigningRequest(
     payload: ETHRequestPayload,

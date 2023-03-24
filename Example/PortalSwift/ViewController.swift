@@ -43,6 +43,7 @@ class ViewController: UIViewController {
   public var portal: Portal?
   public var CUSTODIAN_SERVER_URL = "https://portalex-mpc.portalhq.io"
 
+  public var eth_estimate: String?
   // Static information
   @IBOutlet weak var addressInformation: UITextView!
   @IBOutlet weak var ethBalanceInformation: UITextView!
@@ -261,26 +262,45 @@ class ViewController: UIViewController {
     }
   }
 
-  func handleSend() {
-    let payload = ETHTransactionPayload(
-      method: "eth_sendTransaction",
-      params: [ETHTransactionParam(from: portal!.mpc.getAddress(), to: sendAddress.text!,  gas:"0x5208", gasPrice: "0x100", value: "0x10", data: "")])
-      // Test EIP-1559 Transactions with these params
-//      params: [ETHTransactionParam(from: portal!.mpc.getAddress(), to: sendAddress.text!,  gas:"0x5208", value: "0x10", data: "", maxPriorityFeePerGas: "0x2710", maxFeePerGas: "0x2710")])
-    portal?.provider.request(payload: payload) {
-        (result: Result<TransactionCompletionResult>) -> Void in
-      print(result)
-        guard result.error == nil else {
-          print("❌ Error sending transaction:", result.error!)
-          return
+    func handleSend() {
+        let payload = ETHTransactionPayload(
+            method: ETHRequestMethods.GasPrice.rawValue,
+            params: []
+        )
+        portal?.provider.request(payload: payload) {
+            (result: Result<TransactionCompletionResult>) -> Void in
+            guard result.error == nil else {
+                print("❌ Error estimating gas:", result.error!)
+                return
+            }
+            let response = result.data!.result as! ETHGatewayResponse
+            if (response.result != nil) {
+                self.sendTransaction(ethEstimate: response.result!)
+            }
         }
-      guard (result.data!.result as! Result<Any>).error == nil else {
-        print("❌ Error sending transaction:", ((result.data!.result as! Result<Any>).error as! PortalMpcError).description)
-        return
-      }
-        print("✅ handleSend(): Result:", result.data!.result)
-      }
-  }
+    }
+    
+    func sendTransaction (ethEstimate: String) {
+        let payload = ETHTransactionPayload(
+              method: ETHRequestMethods.SendTransaction.rawValue,
+              params: [ETHTransactionParam(from: portal!.mpc.getAddress(), to: sendAddress.text!, gas: ethEstimate, gasPrice: ethEstimate, value: "0x10", data: "")]
+               // Test EIP-1559 Transactions with these params
+            // params: [ETHTransactionParam(from: portal!.mpc.getAddress(), to: sendAddress.text!,  gas:"0x5208", value: "0x10", data: "", maxPriorityFeePerGas: "0x2710", maxFeePerGas: "0x2710")])
+            )
+            
+        portal?.provider.request(payload: payload) {
+                (result: Result<TransactionCompletionResult>) -> Void in
+                guard result.error == nil else {
+                  print("❌ Error sending transaction:", result.error!)
+                  return
+                }
+              guard (result.data!.result as! Result<Any>).error == nil else {
+                print("❌ Error sending transaction:", ((result.data!.result as! Result<Any>).error as! PortalMpcError).description)
+                return
+              }
+                print("✅ handleSend(): Result:", result.data!.result)
+              }
+    }
 
   func registerPortal(apiKey: String) -> Void {
     do {
@@ -425,6 +445,9 @@ class ViewController: UIViewController {
         completion(true)
       }
   }
+    
+
+
 
   func testProviderAddressRequest(method: String, params: [ETHAddressParam], skipLoggingResult: Bool = false, completion: @escaping (Bool) -> Void) {
       let payload = ETHAddressPayload(
