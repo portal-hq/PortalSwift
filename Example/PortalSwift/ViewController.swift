@@ -262,35 +262,34 @@ class ViewController: UIViewController {
     }
   }
 
-  func handleSend() {
-    let payload = ETHTransactionPayload(
-      method: "eth_sendTransaction",
-      params: [ETHTransactionParam(from: portal!.mpc.getAddress(), to: sendAddress.text!,  gas:"0x5208", gasPrice: "0x100", value: "0x10", data: "")])
-      // Test EIP-1559 Transactions with these params
-//      params: [ETHTransactionParam(from: portal!.mpc.getAddress(), to: sendAddress.text!,  gas:"0x5208", value: "0x10", data: "", maxPriorityFeePerGas: "0x2710", maxFeePerGas: "0x2710")])
-    portal?.provider.request(payload: payload) {
-        (result: Result<TransactionCompletionResult>) -> Void in
-      print(result)
-        guard result.error == nil else {
-          print("❌ Error sending transaction:", result.error!)
-          return
+    func handleSend() {
+        let payload = ETHTransactionPayload(
+            method: ETHRequestMethods.GasPrice.rawValue,
+            params: []
+        )
+        portal?.provider.request(payload: payload) {
+            (result: Result<TransactionCompletionResult>) -> Void in
+            guard result.error == nil else {
+                print("❌ Error estimating gas:", result.error!)
+                return
+            }
+            let response = result.data!.result as! ETHGatewayResponse
+            if (response.result != nil) {
+                self.sendTransaction(ethEstimate: response.result!)
+            }
         }
-      guard (result.data!.result as! Result<Any>).error == nil else {
-        print("❌ Error sending transaction:", ((result.data!.result as! Result<Any>).error as! PortalMpcError).description)
-        return
-      }
-        print("✅ handleSend(): Result:", result.data!.result)
-      }
-  }
+    }
     
-    func callTransaction (ethEstimate: String) {
+    func sendTransaction (ethEstimate: String) {
         let payload = ETHTransactionPayload(
               method: ETHRequestMethods.SendTransaction.rawValue,
-              params: [ETHTransactionParam(from: portal!.mpc.address!, to: sendAddress.text!, gas: "0x2964017df", gasPrice: "0x2964017df", value: "0x10", data: "")]
+              params: [ETHTransactionParam(from: portal!.mpc.getAddress(), to: sendAddress.text!, gas: ethEstimate, gasPrice: ethEstimate, value: "0x10", data: "")]
+               // Test EIP-1559 Transactions with these params
+            // params: [ETHTransactionParam(from: portal!.mpc.getAddress(), to: sendAddress.text!,  gas:"0x5208", value: "0x10", data: "", maxPriorityFeePerGas: "0x2710", maxFeePerGas: "0x2710")])
             )
+            
         portal?.provider.request(payload: payload) {
                 (result: Result<TransactionCompletionResult>) -> Void in
-              print("The Entire Result Top Block" , result)
                 guard result.error == nil else {
                   print("❌ Error sending transaction:", result.error!)
                   return
@@ -300,13 +299,12 @@ class ViewController: UIViewController {
                 return
               }
                 print("✅ handleSend(): Result:", result.data!.result)
-                print("The Entire Result Block Bottom", result)
               }
     }
 
   func registerPortal(apiKey: String) -> Void {
     do {
-      let backup = BackupOptions(gdrive: GDriveStorage(clientID: "469902597101-5q6coj9opt4prc8dtmsqqj92eahcktda.apps.googleusercontent.com", viewController: self))
+      let backup = BackupOptions(gdrive: GDriveStorage(clientID: "", viewController: self))
       let keychain = PortalKeychain()
       portal = try Portal(
         apiKey: apiKey,
@@ -314,7 +312,7 @@ class ViewController: UIViewController {
         chainId: 5,
         keychain: keychain,
         gatewayConfig: [
-          5: "https://eth-goerli.g.alchemy.com/v2/53va-QZAS8TnaBH3-oBHqcNJtIlygLi-"
+          5: ""
         ],
         version: "v1",
         autoApprove: true
