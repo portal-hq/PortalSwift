@@ -54,6 +54,7 @@ public struct BackupOptions {
 public enum PortalArgumentError: Error {
   case invalidGatewayConfig
   case noGatewayConfigForChain(chainId: Int)
+  case versionNoLongerSupported(message: String)
 }
 
 /// Determines the appropriate Gateway URL to use for the current chainId
@@ -105,7 +106,7 @@ public class Portal {
     gatewayConfig: Dictionary<Int, String>,
     // Optional
     isSimulator: Bool = false,
-    version: String = "v1",
+    version: String = "v2",
     autoApprove: Bool = false,
     apiHost: String = "api.portalhq.io",
     mpcHost: String = "mpc.portalhq.io",
@@ -121,6 +122,11 @@ public class Portal {
     // Other stuff
     self.autoApprove = autoApprove
     self.isSimulator = isSimulator
+    
+    if (version != "v2") {
+      throw PortalArgumentError.versionNoLongerSupported(message: "MPC Version is not supported. Only version 'v2' is currently supported.")
+    }
+    
     self.version = version
 
     if (!address.isEmpty) {
