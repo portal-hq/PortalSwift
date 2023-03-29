@@ -116,6 +116,24 @@ public struct SignResult: Codable {
   public var error: PortalError
 }
 
+public struct MpcStatus {
+  public var status: MpcStatuses
+  public var done: Bool
+}
+
+public enum MpcStatuses: String {
+    case decryptingShare = "Decrypting share"
+    case done = "Done"
+    case encryptingShare = "Encrypting share"
+    case generatingShare = "Generating share"
+    case parsingShare = "Parsing share"
+    case readingShare = "Reading share"
+    case recoveringBackupShare = "Recovering backup share"
+    case recoveringSigningShare = "Recovering signing share"
+    case storingShare = "Storing share"
+}
+
+
 
 
 /// A list of errors MPC can throw.
@@ -226,14 +244,19 @@ public class PortalMpc {
   /// - Parameters:
   ///   - method: Either gdrive or icloud.
   ///   - completion: The callback which includes the cipherText of the backed up share.
-  public func backup(method: BackupMethods.RawValue, completion: @escaping (Result<String>) -> Void) -> Void {
+  public func backup(method: BackupMethods.RawValue, completion: @escaping (Result<String>) -> Void, progress: @escaping (MpcStatus) -> Void) -> Void {
     if version != "v2" {
       return completion(Result(error: MpcError.backupNoLongerSupported(message: "[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = v2`.")))
     }
     
     do {
+
       // Obtain the signing share.
       let signingShare = try keychain.getSigningShare()
+      progress(MpcStatus(status: MpcStatuses.readingShare, done: false))
+
+
+      
       // Derive the storage and throw an error if none was provided.
       let storage = self.storage[method] as? Storage
       if (storage == nil) {
@@ -249,13 +272,15 @@ public class PortalMpc {
             return completion(Result(error: result.error!))
           } else {
             print("Running backup since iCloud is available! 🎉")
-              self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
+            self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
                 if (backupResult.error != nil) {
                   completion(Result(error: backupResult.error!))
                   return
                 }
                   
                 completion(backupResult)
+              } progress: { status in
+                progress(status)
               }
           }
         }
@@ -268,6 +293,8 @@ public class PortalMpc {
               }
               
               completion(backupResult)
+          } progress: { status in
+            progress(status)
           }
       } else {
         return completion(Result(error: MpcError.unsupportedStorageMethod))
@@ -279,7 +306,7 @@ public class PortalMpc {
 
   /// Generates a MPC wallet and signing share for a client.
   /// - Returns: The address of the newly created MPC wallet.
-  public func generate(completion: @escaping (Result<String>) -> Void) -> Void {
+  public func generate(completion: @escaping (Result<String>) -> Void, progress: @escaping (MpcStatus) -> Void) -> Void {
     if version != "v2" {
       let result = Result<String>(error: MpcError.generateNoLongerSupported(
         message: "[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = v2`."
@@ -407,11 +434,16 @@ public class PortalMpc {
     private func executeBackup(
         storage: Storage,
         signingShare: String,
-        completion: @escaping (Result<String>) -> Void
+        completion: @escaping (Result<String>) -> Void,
+        progress: @escaping (MpcStatus) -> Void
     ) -> Void {
         do {
+          progress(MpcStatus(status: MpcStatuses.generatingShare, done: false))
           // Call the MPC service to generate a backup share.
           let response = ClientBackup(apiKey, mpcHost, signingShare, version)
+          
+          progress(MpcStatus(status: MpcStatuses.parsingShare, done: false))
+
           let jsonData = response.data(using: .utf8)!
           let rotateResult: RotateResult  = try JSONDecoder().decode(RotateResult.self, from: jsonData)
           
