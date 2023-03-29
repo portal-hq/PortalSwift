@@ -16,13 +16,10 @@
 @class ClientEncryptData;
 @class ClientEncryptResult;
 @class ClientGenerateData;
-@class ClientGenerateDataCGGMP;
-@class ClientGenerateResultCGGMP;
-@class ClientGenerateResultGG18;
+@class ClientGenerateResult;
 @class ClientMessage;
-@class ClientReshareDataCGGMP;
-@class ClientReshareResultCGGMP;
-@class ClientReshareResultGG18;
+@class ClientReshareData;
+@class ClientReshareResult;
 @class ClientShare;
 @class ClientSignature;
 @class ClientSigningRequest;
@@ -77,43 +74,21 @@
 
 - (nonnull instancetype)initWithRef:(_Nonnull id)ref;
 - (nonnull instancetype)init;
-// skipped field GenerateData.DkgResult with unsupported type: github.com/portal-hq/mpc/shared/gg18/dkg.DkgResult
+// skipped field GenerateData.DkgResult with unsupported type: github.com/portal-hq/mpc/shared/cggmp/mpcHelpers.AuxInfo
 
 @property (nonatomic) NSString* _Nonnull address;
 @end
 
-@interface ClientGenerateDataCGGMP : NSObject <goSeqRefInterface> {
+@interface ClientGenerateResult : NSObject <goSeqRefInterface> {
 }
 @property(strong, readonly) _Nonnull id _ref;
 
 - (nonnull instancetype)initWithRef:(_Nonnull id)ref;
 - (nonnull instancetype)init;
-// skipped field GenerateDataCGGMP.DkgResult with unsupported type: github.com/portal-hq/mpc/shared/cggmp/mpcHelpers.AuxInfo
+// skipped field GenerateResult.Data with unsupported type: github.com/portal-hq/mpc/client.GenerateData
 
-@property (nonatomic) NSString* _Nonnull address;
-@end
+// skipped field GenerateResult.Error with unsupported type: *github.com/portal-hq/mpc/crypto/utils.PortalError
 
-@interface ClientGenerateResultCGGMP : NSObject <goSeqRefInterface> {
-}
-@property(strong, readonly) _Nonnull id _ref;
-
-- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
-- (nonnull instancetype)init;
-// skipped field GenerateResultCGGMP.Data with unsupported type: github.com/portal-hq/mpc/client.GenerateDataCGGMP
-
-// skipped field GenerateResultCGGMP.Error with unsupported type: *github.com/portal-hq/mpc/crypto/utils.PortalError
-
-@end
-
-@interface ClientGenerateResultGG18 : NSObject <goSeqRefInterface> {
-}
-@property(strong, readonly) _Nonnull id _ref;
-
-- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
-- (nonnull instancetype)init;
-// skipped field GenerateResultGG18.Data with unsupported type: github.com/portal-hq/mpc/client.GenerateData
-
-@property (nonatomic) NSString* _Nonnull error;
 @end
 
 @interface ClientMessage : NSObject <goSeqRefInterface> {
@@ -125,38 +100,27 @@
 @property (nonatomic) NSString* _Nonnull message;
 @end
 
-@interface ClientReshareDataCGGMP : NSObject <goSeqRefInterface> {
+@interface ClientReshareData : NSObject <goSeqRefInterface> {
 }
 @property(strong, readonly) _Nonnull id _ref;
 
 - (nonnull instancetype)initWithRef:(_Nonnull id)ref;
 - (nonnull instancetype)init;
-// skipped field ReshareDataCGGMP.DkgResult with unsupported type: github.com/portal-hq/mpc/shared/cggmp/mpcHelpers.AuxInfo
+// skipped field ReshareData.DkgResult with unsupported type: github.com/portal-hq/mpc/shared/cggmp/mpcHelpers.AuxInfo
 
 @property (nonatomic) NSString* _Nonnull address;
 @end
 
-@interface ClientReshareResultCGGMP : NSObject <goSeqRefInterface> {
+@interface ClientReshareResult : NSObject <goSeqRefInterface> {
 }
 @property(strong, readonly) _Nonnull id _ref;
 
 - (nonnull instancetype)initWithRef:(_Nonnull id)ref;
 - (nonnull instancetype)init;
-// skipped field ReshareResultCGGMP.Data with unsupported type: github.com/portal-hq/mpc/client.ReshareDataCGGMP
+// skipped field ReshareResult.Data with unsupported type: github.com/portal-hq/mpc/client.ReshareData
 
-// skipped field ReshareResultCGGMP.Error with unsupported type: *github.com/portal-hq/mpc/crypto/utils.PortalError
+// skipped field ReshareResult.Error with unsupported type: *github.com/portal-hq/mpc/crypto/utils.PortalError
 
-@end
-
-@interface ClientReshareResultGG18 : NSObject <goSeqRefInterface> {
-}
-@property(strong, readonly) _Nonnull id _ref;
-
-- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
-- (nonnull instancetype)init;
-// skipped field ReshareResultGG18.Data with unsupported type: github.com/portal-hq/mpc/client.Share
-
-@property (nonatomic) NSString* _Nonnull error;
 @end
 
 @interface ClientShare : NSObject <goSeqRefInterface> {
