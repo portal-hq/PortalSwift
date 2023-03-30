@@ -8,7 +8,7 @@
 import Foundation
 
 /// The main interface for Portal to securely store the client's signing share.
-public class PortalKeychain {
+public class PortalKeychain: MobileStorageAdapter {
   let Address = "PortalMpc.Address"
   let SigningShare = "PortalMpc.DkgResult"
 
@@ -20,42 +20,42 @@ public class PortalKeychain {
   }
 
   /// Creates an instance of PortalKeychain.
-  public init() {}
+  override public init() {}
 
   /// Retrieve the address stored in the client's keychain.
   /// - Returns: The client's address.
-  public func getAddress() throws -> String {
+  override public func getAddress() throws -> String {
     return try getItem(item: Address)
   }
 
   /// Retrieve the signing share stored in the client's keychain.
   /// - Returns: The client's signing share.
-  public func getSigningShare() throws -> String {
+  override public func getSigningShare() throws -> String {
     return try getItem(item: SigningShare)
 
   }
 
   /// Sets the address in the client's keychain.
   /// - Parameter address: The public address of the client's wallet.
-  public func setAddress(address: String) throws {
+  override public func setAddress(address: String) throws {
     try setItem(key: Address, value: address)
   }
 
   /// Sets the signing share in the client's keychain.
   /// - Parameter signingShare: A dkg object.
-  public func setSigningShare(signingShare: String) throws  {
+  override public func setSigningShare(signingShare: String) throws  {
     try setItem(key: SigningShare, value: signingShare)
   }
   
   /// Deletes the address stored in the client's keychain.
   /// - Returns: The client's address.
-  public func deleteAddress() throws {
+  override public func deleteAddress() throws {
     try deleteItem(key: Address)
   }
 
   /// Deletes the signing share stored in the client's keychain.
   /// - Returns: The client's signing share.
-  public func deleteSigningShare() throws {
+  override public func deleteSigningShare() throws {
     try deleteItem(key: SigningShare)
 
   }
