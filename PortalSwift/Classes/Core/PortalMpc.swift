@@ -291,7 +291,7 @@ public class PortalMpc {
                   completion(Result(error: backupResult.error!))
                   return
               }
-              
+            progress(MpcStatus(status: MpcStatuses.done, done: true))
               completion(backupResult)
           } progress: { status in
             progress(status)
@@ -306,7 +306,7 @@ public class PortalMpc {
 
   /// Generates a MPC wallet and signing share for a client.
   /// - Returns: The address of the newly created MPC wallet.
-  public func generate(completion: @escaping (Result<String>) -> Void, progress: @escaping (MpcStatus) -> Void) -> Void {
+  public func generate(completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?) -> Void {
     if version != "v2" {
       let result = Result<String>(error: MpcError.generateNoLongerSupported(
         message: "[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = v2`."
@@ -314,8 +314,10 @@ public class PortalMpc {
       completion(result)
     }
     
+    progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
     // Call the MPC service to generate a new wallet.
     let response = ClientGenerate(apiKey, mpcHost, version)
+    progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
     let jsonData = response.data(using: .utf8)!
     do {
       let generateResult: GenerateResult = try JSONDecoder().decode(GenerateResult.self, from: jsonData)
@@ -330,6 +332,7 @@ public class PortalMpc {
       let address = generateResult.data!.address
       try keychain.setAddress(address: address)
       
+      progress?(MpcStatus(status: MpcStatuses.storingShare, done: false))
       // Set the client's signing share.
       let mpcShare = generateResult.data!.dkgResult
       let mpcShareData = try JSONEncoder().encode(mpcShare)
@@ -339,6 +342,7 @@ public class PortalMpc {
       // Assign the address to the class.
       self.address = address
       
+      progress?(MpcStatus(status: MpcStatuses.done, done: true))
       // Return the address.
       return completion(Result(data: address))
     } catch {
@@ -354,7 +358,8 @@ public class PortalMpc {
   public func recover(
     cipherText: String,
     method: BackupMethods.RawValue,
-    completion: @escaping (Result<String>) -> Void
+    completion: @escaping (Result<String>) -> Void,
+    progress: ( (MpcStatus) -> Void)?
   ) -> Void {
     if version != "v2" {
       return completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v2`.")))
@@ -382,6 +387,8 @@ public class PortalMpc {
                       }
                       
                       completion(Result(data: recoveryResult.data!))
+                  }  progress: { status in
+                    progress?(status)
                   }
               }
           }
@@ -393,6 +400,8 @@ public class PortalMpc {
               }
               
               completion(Result(data: recoveryResult.data!))
+          }  progress: { status in
+            progress?(status)
           }
       } else {
           completion(Result(error: MpcError.unsupportedStorageMethod))
@@ -435,14 +444,14 @@ public class PortalMpc {
         storage: Storage,
         signingShare: String,
         completion: @escaping (Result<String>) -> Void,
-        progress: @escaping (MpcStatus) -> Void
+        progress:  ((MpcStatus) -> Void)?
     ) -> Void {
         do {
-          progress(MpcStatus(status: MpcStatuses.generatingShare, done: false))
+          progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
           // Call the MPC service to generate a backup share.
           let response = ClientBackup(apiKey, mpcHost, signingShare, version)
           
-          progress(MpcStatus(status: MpcStatuses.parsingShare, done: false))
+          progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
 
           let jsonData = response.data(using: .utf8)!
           let rotateResult: RotateResult  = try JSONDecoder().decode(RotateResult.self, from: jsonData)
@@ -456,8 +465,10 @@ public class PortalMpc {
           let backupShare = rotateResult.data!.dkgResult
           
           // Encrypt the share.
+          progress?(MpcStatus(status: MpcStatuses.encryptingShare, done: false))
           let encryptedResult = try encryptShare(mpcShare: backupShare)
           
+          progress?(MpcStatus(status: MpcStatuses.storingShare, done: false))
           // Attempt to write the encrypted share to storage.
           storage.write(privateKey: encryptedResult.key)  { (result: Result<Bool>) -> Void in
             // Throw an error if we can't write to storage.
@@ -478,8 +489,10 @@ public class PortalMpc {
         storage: Storage,
         method: BackupMethods.RawValue,
         cipherText: String,
-        completion: @escaping (Result<String>) -> Void
+        completion: @escaping (Result<String>) -> Void,
+        progress: ((MpcStatus) -> Void)?
     ) -> Void {
+      progress?(MpcStatus(status: MpcStatuses.readingShare, done: false))
         self.getBackupShare(cipherText: cipherText, method: method) { (result: Result<String>) -> Void in
           do {
             // Throw if there was an error getting the backup share.
@@ -487,11 +500,15 @@ public class PortalMpc {
               return completion(Result(error: result.error!))
             }
             
+            progress?(MpcStatus(status: MpcStatuses.recoveringSigningShare, done: false))
             // Encrypt the new backup share.
             _ = try self.recoverSigning(backupShare: result.data!)
+            progress?(MpcStatus(status: MpcStatuses.recoveringBackupShare, done: false))
             let newBackupShare = try self.recoverBackup(signingShare: result.data!)
+            progress?(MpcStatus(status: MpcStatuses.encryptingShare, done: false))
             let encryptedResult = try self.encryptShare(mpcShare: newBackupShare)
             
+            progress?(MpcStatus(status: MpcStatuses.storingShare, done: false))
             // Attempt to write the encrypted share to storage.
             storage.write(privateKey: encryptedResult.key) { (result: Result<Bool>) -> Void in
               // Throw an error if we can't write to storage.
