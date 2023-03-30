@@ -133,8 +133,7 @@
 		7E06344E29259384004E23CC /* Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E06344D29259384004E23CC /* Result.swift */; };
 		7E0A58612992EDE30003D945 /* GDriveClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E0A58602992EDE30003D945 /* GDriveClient.swift */; };
 		7E0A58632992F1580003D945 /* GoogleAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E0A58622992F1580003D945 /* GoogleAuth.swift */; };
-		7E6FA1A629D4B5A10057DA38 /* PortalConnect.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6FA1A529D4B5A10057DA38 /* PortalConnect.swift */; };
-		7E6FA1A829D4BE090057DA38 /* WebSocket.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6FA1A729D4BE090057DA38 /* WebSocket.swift */; };
+		7EAC4D0B29D5F62B003262D2 /* MobileStorageAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EAC4D0A29D5F62B003262D2 /* MobileStorageAdapter.swift */; };
 		7EB42DC429B951E6000BA354 /* PortalMpcError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EB42DC029B951E6000BA354 /* PortalMpcError.swift */; };
 		7EB42DC529B951E6000BA354 /* PortalErrorCodes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EB42DC129B951E6000BA354 /* PortalErrorCodes.swift */; };
 		7EB42DC629B951E6000BA354 /* PortalErrorCodeTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EB42DC229B951E6000BA354 /* PortalErrorCodeTypes.swift */; };
@@ -517,8 +516,7 @@
 		7E0A58602992EDE30003D945 /* GDriveClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GDriveClient.swift; sourceTree = "<group>"; };
 		7E0A58622992F1580003D945 /* GoogleAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleAuth.swift; sourceTree = "<group>"; };
 		7E562948293A9F08009DF33E /* PortalWebView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalWebView.swift; sourceTree = "<group>"; };
-		7E6FA1A529D4B5A10057DA38 /* PortalConnect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalConnect.swift; sourceTree = "<group>"; };
-		7E6FA1A729D4BE090057DA38 /* WebSocket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocket.swift; sourceTree = "<group>"; };
+		7EAC4D0A29D5F62B003262D2 /* MobileStorageAdapter.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MobileStorageAdapter.swift; sourceTree = "<group>"; };
 		7EB42DC029B951E6000BA354 /* PortalMpcError.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalMpcError.swift; sourceTree = "<group>"; };
 		7EB42DC129B951E6000BA354 /* PortalErrorCodes.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalErrorCodes.swift; sourceTree = "<group>"; };
 		7EB42DC229B951E6000BA354 /* PortalErrorCodeTypes.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalErrorCodeTypes.swift; sourceTree = "<group>"; };
@@ -860,6 +858,7 @@
 		1982E422DC9BB536C169715E409E4FE9 /* Core */ = {
 			isa = PBXGroup;
 			children = (
+				7EAC4D0A29D5F62B003262D2 /* MobileStorageAdapter.swift */,
 				2C19E6B2E8F00EE367050DD99C3A7F49 /* Portal.swift */,
 				79B3DA8947A36E9E3B195F24C8EE15E9 /* PortalApi.swift */,
 				C226D7D30F19BFEBAA5E4353DE93D001 /* PortalKeychain.swift */,
@@ -1950,6 +1949,7 @@
 				9681178E13100678CC6526FFE3015726 /* GDriveStorage.swift in Sources */,
 				3067F903C33980C62862D664AE88ED2E /* HttpRequest.swift in Sources */,
 				1F6AB0DF6788AB72DE2E3A4C94F8873A /* HttpRequester.swift in Sources */,
+				7EAC4D0B29D5F62B003262D2 /* MobileStorageAdapter.swift in Sources */,
 				7EB42DC629B951E6000BA354 /* PortalErrorCodeTypes.swift in Sources */,
 				47FA8DFE29539EFB0020EF35 /* MockHttpRequest.swift in Sources */,
 				7EB42DC529B951E6000BA354 /* PortalErrorCodes.swift in Sources */,
