@@ -133,11 +133,12 @@
 		7E06344E29259384004E23CC /* Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E06344D29259384004E23CC /* Result.swift */; };
 		7E0A58612992EDE30003D945 /* GDriveClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E0A58602992EDE30003D945 /* GDriveClient.swift */; };
 		7E0A58632992F1580003D945 /* GoogleAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E0A58622992F1580003D945 /* GoogleAuth.swift */; };
+		7E6FA1A629D4B5A10057DA38 /* PortalConnect.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6FA1A529D4B5A10057DA38 /* PortalConnect.swift */; };
+		7E6FA1A829D4BE090057DA38 /* WebSocket.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6FA1A729D4BE090057DA38 /* WebSocket.swift */; };
 		7EB42DC429B951E6000BA354 /* PortalMpcError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EB42DC029B951E6000BA354 /* PortalMpcError.swift */; };
 		7EB42DC529B951E6000BA354 /* PortalErrorCodes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EB42DC129B951E6000BA354 /* PortalErrorCodes.swift */; };
 		7EB42DC629B951E6000BA354 /* PortalErrorCodeTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EB42DC229B951E6000BA354 /* PortalErrorCodeTypes.swift */; };
 		7EB42DC729B951E6000BA354 /* PortalError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EB42DC329B951E6000BA354 /* PortalError.swift */; };
-		7EB608DA291EF37800CF1346 /* mpc.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7EB608D9291EF37800CF1346 /* mpc.xcframework */; };
 		7ECA1AE07A77457A0CA3EC39ED873274 /* LocalAuthentication.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 833AAF9E2791D276B133EB166B930F7E /* LocalAuthentication.framework */; };
 		7F6781E460190FC8C5ECDF2CFBB2D7B3 /* MpcSigner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F01A68A5D97C3CC9E65738EA1D33CE44 /* MpcSigner.swift */; };
 		7F6E015D616C80C1FDC9C2EBAACD8BF4 /* OIDEndSessionRequest.m in Sources */ = {isa = PBXBuildFile; fileRef = 65708D4F2C4ED7F43F41F3A238BBCCEB /* OIDEndSessionRequest.m */; };
@@ -515,18 +516,13 @@
 		7E06344D29259384004E23CC /* Result.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Result.swift; sourceTree = "<group>"; };
 		7E0A58602992EDE30003D945 /* GDriveClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GDriveClient.swift; sourceTree = "<group>"; };
 		7E0A58622992F1580003D945 /* GoogleAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleAuth.swift; sourceTree = "<group>"; };
+		7E562948293A9F08009DF33E /* PortalWebView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalWebView.swift; sourceTree = "<group>"; };
+		7E6FA1A529D4B5A10057DA38 /* PortalConnect.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalConnect.swift; sourceTree = "<group>"; };
+		7E6FA1A729D4BE090057DA38 /* WebSocket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocket.swift; sourceTree = "<group>"; };
 		7EB42DC029B951E6000BA354 /* PortalMpcError.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalMpcError.swift; sourceTree = "<group>"; };
 		7EB42DC129B951E6000BA354 /* PortalErrorCodes.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalErrorCodes.swift; sourceTree = "<group>"; };
 		7EB42DC229B951E6000BA354 /* PortalErrorCodeTypes.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalErrorCodeTypes.swift; sourceTree = "<group>"; };
 		7EB42DC329B951E6000BA354 /* PortalError.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalError.swift; sourceTree = "<group>"; };
-		7EB608D9291EF37800CF1346 /* mpc.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = mpc.xcframework; sourceTree = "<group>"; };
-		7E562948293A9F08009DF33E /* PortalWebView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalWebView.swift; sourceTree = "<group>"; };
-		7EB42DC029B951E6000BA354 /* PortalMpcError.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalMpcError.swift; sourceTree = "<group>"; };
-		7EB42DC129B951E6000BA354 /* PortalErrorCodes.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalErrorCodes.swift; sourceTree = "<group>"; };
-		7EB42DC229B951E6000BA354 /* PortalErrorCodeTypes.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalErrorCodeTypes.swift; sourceTree = "<group>"; };
-		7EB42DC329B951E6000BA354 /* PortalError.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalError.swift; sourceTree = "<group>"; };
-		7EB608D9291EF37800CF1346 /* mpc.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = mpc.xcframework; sourceTree = "<group>"; };
-		7E562948293A9F08009DF33E /* PortalWebView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalWebView.swift; sourceTree = "<group>"; };
 		7F0575BE2BA383CEF487DB18CD24E5A6 /* PortalMpc.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PortalMpc.swift; sourceTree = "<group>"; };
 		7F20460EC6633B9230F7E712BFA02097 /* GTMSessionUploadFetcher.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = GTMSessionUploadFetcher.h; path = Sources/Core/Public/GTMSessionFetcher/GTMSessionUploadFetcher.h; sourceTree = "<group>"; };
 		7FE3B5D28E237D64A445101DA0015814 /* ja.lproj */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; name = ja.lproj; path = GoogleSignIn/Sources/Strings/ja.lproj; sourceTree = "<group>"; };
@@ -847,9 +843,10 @@
 			isa = PBXGroup;
 			children = (
 				7E562947293A9F08009DF33E /* Components */,
-				479E372B292567550080AEDB /* Mocks */,
+				7E6FA1A429D4B5680057DA38 /* Connect */,
 				1982E422DC9BB536C169715E409E4FE9 /* Core */,
 				7EB608D8291EF37800CF1346 /* Frameworks */,
+				479E372B292567550080AEDB /* Mocks */,
 				B727BF5161D293198ABEA76CC73D8978 /* Pod */,
 				D11DFC8573953C4DB69DD128DACCC5C1 /* Provider */,
 				26A89D4D67F856EF58B28C0203A7DEEE /* Storage */,
@@ -1082,6 +1079,14 @@
 			);
 			name = Components;
 			path = PortalSwift/Classes/Components;
+			sourceTree = "<group>";
+		};
+		7E6FA1A429D4B5680057DA38 /* Connect */ = {
+			isa = PBXGroup;
+			children = (
+				7E6FA1A529D4B5A10057DA38 /* PortalConnect.swift */,
+			);
+			path = Connect;
 			sourceTree = "<group>";
 		};
 		7EB42DBF29B951E6000BA354 /* Errors */ = {
@@ -1377,6 +1382,7 @@
 				9FAC37A50350CAFC96707C99A92F8F31 /* HttpRequest.swift */,
 				514FA2B20EBDA5345A5E75271DD8D7F8 /* HttpRequester.swift */,
 				7E06344D29259384004E23CC /* Result.swift */,
+				7E6FA1A729D4BE090057DA38 /* WebSocket.swift */,
 			);
 			name = Utils;
 			path = PortalSwift/Classes/Utils;
@@ -1951,6 +1957,7 @@
 				47FA8E0029539F060020EF35 /* MockHttpRequester.swift in Sources */,
 				7031BDE2F7891F5EDB9693387E88A896 /* ICloudStorage.swift in Sources */,
 				47FA8E022953A1720020EF35 /* Constants.swift in Sources */,
+				7E6FA1A629D4B5A10057DA38 /* PortalConnect.swift in Sources */,
 				7E06344E29259384004E23CC /* Result.swift in Sources */,
 				7F6781E460190FC8C5ECDF2CFBB2D7B3 /* MpcSigner.swift in Sources */,
 				7EB42DC729B951E6000BA354 /* PortalError.swift in Sources */,
@@ -1965,6 +1972,7 @@
 				47FA8DF829539ED40020EF35 /* MockGDriveStorage.swift in Sources */,
 				47FA8DF429539EB60020EF35 /* MockPortalProvider.swift in Sources */,
 				F4A1654199B24C6E9CDA85F07C59ABD7 /* PortalMpc.swift in Sources */,
+				7E6FA1A829D4BE090057DA38 /* WebSocket.swift in Sources */,
 				8DBF7777F6FE9CC81C5DFCE16B24F344 /* PortalProvider.swift in Sources */,
 				97F9B166285ADDD857F65EC6557879ED /* PortalSwift-dummy.m in Sources */,
 				7EB42DC429B951E6000BA354 /* PortalMpcError.swift in Sources */,
