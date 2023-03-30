@@ -102,6 +102,8 @@ class ViewController: UIViewController {
       
       
       self.updateStaticContent()
+    }  progress: { status in
+      print("Generate Status: ", status)
     }
   }
 
@@ -125,6 +127,8 @@ class ViewController: UIViewController {
           print("✅ handleBackup(): Successfully sent custodian cipherText:")
         }
       }
+    } progress: { status in
+      print("Backup Status: ", status)
     }
   }
 
@@ -170,6 +174,8 @@ class ViewController: UIViewController {
           }
         }
         self.updateStaticContent()
+      } progress: { status in
+        print("Recover Status: ", status)
       }
     }
   }
