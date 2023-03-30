@@ -21,7 +21,7 @@ public class PortalKeychain: MobileStorageAdapter {
   
   /// Creates an instance of PortalKeychain.
   override public init() {}
-  
+
   /// Retrieve the address stored in the client's keychain.
   /// - Returns: The client's address.
   override public func getAddress() throws -> String {
