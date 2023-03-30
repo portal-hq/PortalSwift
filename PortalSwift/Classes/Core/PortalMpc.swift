@@ -282,10 +282,10 @@ public class PortalMpc {
               } progress: { status in
                 progress?(status)
               }
+            }
           }
-        }
-      } else if (method == BackupMethods.GoogleDrive.rawValue) {
-        print("Running backup since Google Drive is available! 🎉")
+        } else if (method == BackupMethods.GoogleDrive.rawValue) {
+          print("Running backup since Google Drive is available! 🎉")
           self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
               if (backupResult.error != nil) {
                   completion(Result(error: backupResult.error!))
@@ -296,57 +296,59 @@ public class PortalMpc {
           } progress: { status in
             progress?(status)
           }
-      } else {
-        return completion(Result(error: MpcError.unsupportedStorageMethod))
+        } else {
+          return completion(Result(error: MpcError.unsupportedStorageMethod))
+        }
+      } catch {
+        return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: "Backup failed")))
       }
-    } catch {
-      return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: "Backup failed")))
-    }
   }
-
   /// Generates a MPC wallet and signing share for a client.
   /// - Returns: The address of the newly created MPC wallet.
   public func generate(completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)? = nil) -> Void {
-    if version != "v2" {
-      let result = Result<String>(error: MpcError.generateNoLongerSupported(
-        message: "[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = v2`."
-      ))
-      completion(result)
-    }
-    
-    progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
-    // Call the MPC service to generate a new wallet.
-    let response = ClientGenerate(apiKey, mpcHost, version)
-    progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
-    let jsonData = response.data(using: .utf8)!
-    do {
-      let generateResult: GenerateResult = try JSONDecoder().decode(GenerateResult.self, from: jsonData)
-      // Throw if there was an error generating the wallet.
-      
-      guard generateResult.error.code == 0 else {
-        completion(Result(error: PortalMpcError(generateResult.error)))
-        return
+    DispatchQueue.global(qos: .background).async { [self] in
+      if version != "v2" {
+        let result = Result<String>(error: MpcError.generateNoLongerSupported(
+          message: "[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = v2`."
+        ))
+        completion(result)
       }
       
-      // Set the client's address.
-      let address = generateResult.data!.address
-      try keychain.setAddress(address: address)
+      progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
+      // Call the MPC service to generate a new wallet.
+      let response = ClientGenerate(apiKey, mpcHost, version)
+      progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
+      let jsonData = response.data(using: .utf8)!
+      do {
+        let generateResult: GenerateResult = try JSONDecoder().decode(GenerateResult.self, from: jsonData)
+        // Throw if there was an error generating the wallet.
+        
+        guard generateResult.error.code == 0 else {
+          completion(Result(error: PortalMpcError(generateResult.error)))
+          return
+        }
+        
+        // Set the client's address.
+        let address = generateResult.data!.address
+        try keychain.setAddress(address: address)
+        
+        progress?(MpcStatus(status: MpcStatuses.storingShare, done: false))
+        // Set the client's signing share.
+        let mpcShare = generateResult.data!.dkgResult
+        let mpcShareData = try JSONEncoder().encode(mpcShare)
+        let mpcShareString = String(data: mpcShareData, encoding: .utf8 )!
+        try keychain.setSigningShare(signingShare: mpcShareString )
+        
+        // Assign the address to the class.
+        self.address = address
+        
+        progress?(MpcStatus(status: MpcStatuses.done, done: true))
+        // Return the address.
+        return completion(Result(data: address))
       
-      progress?(MpcStatus(status: MpcStatuses.storingShare, done: false))
-      // Set the client's signing share.
-      let mpcShare = generateResult.data!.dkgResult
-      let mpcShareData = try JSONEncoder().encode(mpcShare)
-      let mpcShareString = String(data: mpcShareData, encoding: .utf8 )!
-      try keychain.setSigningShare(signingShare: mpcShareString )
-      
-      // Assign the address to the class.
-      self.address = address
-      
-      progress?(MpcStatus(status: MpcStatuses.done, done: true))
-      // Return the address.
-      return completion(Result(data: address))
-    } catch {
-      return completion(Result(error: error))
+      } catch {
+        return completion(Result(error: error))
+      }
     }
   }
 
@@ -395,8 +397,8 @@ public class PortalMpc {
       } else if (method == BackupMethods.GoogleDrive.rawValue) {
           executeRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
               if (recoveryResult.error != nil) {
-                  completion(Result(error: recoveryResult.error!))
-                  return
+                completion(Result(error: recoveryResult.error!))
+                return
               }
               progress?(MpcStatus(status: MpcStatuses.done, done: true))
               completion(Result(data: recoveryResult.data!))
@@ -404,7 +406,7 @@ public class PortalMpc {
             progress?(status)
           }
       } else {
-          completion(Result(error: MpcError.unsupportedStorageMethod))
+        completion(Result(error: MpcError.unsupportedStorageMethod))
       }
   }
   

@@ -181,7 +181,9 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
 
   }
 
-  private func handlePortalSignTransaction(method: String, params: [Any]) throws -> Void {
+  private func handlePortalSignTransaction(method: String, params: [Any]) -> Void {
+    DispatchQueue.global(qos: .background).async {
+    
     let firstParams = params.first! as! Dictionary<String, String>
     let transactionParam: ETHTransactionParam
     if (firstParams["maxPriorityFeePerGas"] != nil && firstParams["maxFeePerGas"] != nil) {
@@ -210,34 +212,37 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     let payload = ETHTransactionPayload(method: method, params: [transactionParam])
 
     if (signerMethods.contains(method)) {
-      portal.provider.request(payload: payload, completion: signerTransactionRequestCompletion)
+      self.portal.provider.request(payload: payload, completion: self.signerTransactionRequestCompletion)
     } else{
-      portal.provider.request(payload: payload, completion: gatewayTransactionRequestCompletion)
+      self.portal.provider.request(payload: payload, completion: self.gatewayTransactionRequestCompletion)
     }
+  }
   }
 
   private func signerTransactionRequestCompletion(result: Result<TransactionCompletionResult>) -> Void {
-    guard (result.error == nil) else {
-      onError(Result(error: result.error!))
-      return
+    DispatchQueue.global(qos: .background).async {
+      
+      guard result.error == nil else {
+        self.onError(Result(error: result.error!))
+        return
+      }
+      let signature = (result.data!.result as! Result<Any>).data
+      let payload: Dictionary<String, Any> = [
+        "method": result.data!.method,
+        "params": result.data!.params.map { (p) in
+          return [
+            "from": p.from,
+            "to": p.to,
+            "gas": p.gas,
+            "gasPrice": p.gasPrice,
+            "value": p.value,
+            "data": p.data
+          ]
+        },
+        "signature": signature!
+      ]
+      self.postMessage(payload: payload)
     }
-    let signature = (result.data!.result as! Result<Any>).data
-    print(result)
-    let payload: Dictionary<String, Any> = [
-      "method": result.data!.method,
-      "params": result.data!.params.map { (p) in
-        return [
-          "from": p.from,
-          "to": p.to,
-          "gas": p.gas,
-          "gasPrice": p.gasPrice,
-          "value": p.value,
-          "data": p.data
-        ]
-      },
-      "signature": signature!
-    ]
-    postMessage(payload: payload)
   }
 
   private func gatewayTransactionRequestCompletion(result: Result<TransactionCompletionResult>) -> Void {
