@@ -300,21 +300,36 @@ public class PortalMpc {
         return
       }
       
-      // Set the client's address.
+      // Get the client's address.
       let address = generateResult.data!.address
-      try keychain.setAddress(address: address)
       
-      // Set the client's signing share.
+      // Get the client's signing share
       let mpcShare = generateResult.data!.dkgResult
       let mpcShareData = try JSONEncoder().encode(mpcShare)
       let mpcShareString = String(data: mpcShareData, encoding: .utf8 )!
-      try keychain.setSigningShare(signingShare: mpcShareString )
       
-      // Assign the address to the class.
-      self.address = address
-      
-      // Return the address.
-      return completion(Result(data: address))
+      keychain.setAddress(address: address) { result in
+        // Handle errors
+        if result.error != nil {
+          completion(Result(error: result.error!))
+          return
+        }
+        
+        // Assign the address to the class.
+        self.address = address
+        
+        // Set the client's signing share.
+        keychain.setSigningShare(signingShare: mpcShareString ) { result in
+          // Handle errors
+          if result.error != nil {
+            completion(Result(error: result.error!))
+            return
+          }
+          
+          // Return the address.
+          return completion(Result(data: address))
+        }
+      }
     } catch {
       return completion(Result(error: error))
     }
@@ -390,19 +405,26 @@ public class PortalMpc {
   /// - Parameter
   ///   - mpcShare: The share to encrypt.
   /// - Returns: The cipherText and the private key.
-  private func encryptShare(mpcShare: MpcShare) throws -> EncryptData {
-    let mpcShareData = try JSONEncoder().encode(mpcShare)
-    let mpcShareString = String(data: mpcShareData, encoding: .utf8 )!
-    
-    let result = ClientEncrypt(mpcShareString)
-    let jsonResult = result.data(using: .utf8)!
-    let encryptResult: EncryptResult = try JSONDecoder().decode(EncryptResult.self, from: jsonResult)
-    
-    guard encryptResult.error.code == 0 else {
-      throw PortalMpcError(encryptResult.error)
+  private func encryptShare(
+    mpcShare: MpcShare,
+    completion: (Result<EncryptData>) -> Void
+  ) -> Void {
+    do {
+      let mpcShareData = try JSONEncoder().encode(mpcShare)
+      let mpcShareString = String(data: mpcShareData, encoding: .utf8 )!
+      
+      let result = ClientEncrypt(mpcShareString)
+      let jsonResult = result.data(using: .utf8)!
+      let encryptResult: EncryptResult = try JSONDecoder().decode(EncryptResult.self, from: jsonResult)
+      
+      guard encryptResult.error.code == 0 else {
+        return completion(Result(error: PortalMpcError(encryptResult.error)))
+      }
+      
+      return completion(Result(data: encryptResult.data!))
+    } catch {
+      return completion(Result(error: error))
     }
-    
-    return encryptResult.data!
   }
 
     private func executeBackup(
@@ -425,17 +447,22 @@ public class PortalMpc {
           let backupShare = rotateResult.data!.dkgResult
           
           // Encrypt the share.
-          let encryptedResult = try encryptShare(mpcShare: backupShare)
-          
-          // Attempt to write the encrypted share to storage.
-          storage.write(privateKey: encryptedResult.key)  { (result: Result<Bool>) -> Void in
-            // Throw an error if we can't write to storage.
-            if result.error != nil {
-              return completion(Result(error: result.error!))
+          encryptShare(mpcShare: backupShare) { encryptedResult in
+            if encryptedResult.error != nil {
+              completion(Result(error: encryptedResult.error!))
+              return
             }
             
-            // Return the cipherText.
-            return completion(Result(data: encryptedResult.cipherText))
+            // Attempt to write the encrypted share to storage.
+            storage.write(privateKey: encryptedResult.data!.key)  { (result: Result<Bool>) -> Void in
+              // Throw an error if we can't write to storage.
+              if result.error != nil {
+                return completion(Result(error: result.error!))
+              }
+              
+              // Return the cipherText.
+              return completion(Result(data: encryptedResult.data!.cipherText))
+            }
           }
         } catch {
           print("Backup Failed: ", error)
@@ -449,32 +476,39 @@ public class PortalMpc {
         cipherText: String,
         completion: @escaping (Result<String>) -> Void
     ) -> Void {
-        self.getBackupShare(cipherText: cipherText, method: method) { (result: Result<String>) -> Void in
-          do {
-            // Throw if there was an error getting the backup share.
-            guard result.error == nil else {
-              return completion(Result(error: result.error!))
+      self.getBackupShare(cipherText: cipherText, method: method) { (result: Result<String>) -> Void in
+        // Throw if there was an error getting the backup share.
+        guard result.error == nil else {
+          return completion(Result(error: result.error!))
+        }
+        
+        // Encrypt the new backup share.
+        self.recoverSigning(backupShare: result.data!) { signinRsult in
+          self.recoverBackup(signingShare: result.data!) { backupResult in
+            if backupResult.error != nil {
+              return completion(Result(error: backupResult.error!))
             }
             
-            // Encrypt the new backup share.
-            _ = try self.recoverSigning(backupShare: result.data!)
-            let newBackupShare = try self.recoverBackup(signingShare: result.data!)
-            let encryptedResult = try self.encryptShare(mpcShare: newBackupShare)
-            
-            // Attempt to write the encrypted share to storage.
-            storage.write(privateKey: encryptedResult.key) { (result: Result<Bool>) -> Void in
-              // Throw an error if we can't write to storage.
-              if !result.data! {
-                return completion(Result(error: result.error!))
+            self.encryptShare(mpcShare: backupResult.data!) { encryptedResult in
+              // Handle errors
+              if encryptedResult.error != nil {
+                return completion(Result(error: encryptedResult.error!))
               }
               
-              // Return the cipherText.
-              return completion(Result(data: encryptedResult.cipherText))
+              // Attempt to write the encrypted share to storage.
+              storage.write(privateKey: encryptedResult.data!.key) { (result: Result<Bool>) -> Void in
+                // Throw an error if we can't write to storage.
+                if !result.data! {
+                  return completion(Result(error: result.error!))
+                }
+                
+                // Return the cipherText.
+                return completion(Result(data: encryptedResult.data!.cipherText))
+              }
             }
-          } catch {
-            return completion(Result(error: error))
           }
         }
+      }
     }
 
   /// Loads the private key from cloud storage, uses that to decrypt the cipherText, and returns the string of the backup share.
@@ -514,51 +548,73 @@ public class PortalMpc {
   /// - Parameter
   ///   - signingShare: The signing share as a string.
   /// - Returns: The backup share.
-  private func recoverBackup(signingShare: String) throws -> MpcShare {
-    // Call the MPC service to recover the backup share.
-    let res = ClientRecoverBackup(apiKey, mpcHost, signingShare, version)
-    let jsonData = res.data(using: .utf8)!
-    let rotateResult: RotateResult  = try JSONDecoder().decode(RotateResult.self, from: jsonData)
-
-    // Throw an error if the MPC service returned an error.
-    guard rotateResult.error.code == 0 else {
-      throw PortalMpcError(rotateResult.error)
+  private func recoverBackup(
+    signingShare: String,
+    completion: (Result<MpcShare>) -> Void
+  ) -> Void {
+    do {
+      // Call the MPC service to recover the backup share.
+      let res = ClientRecoverBackup(apiKey, mpcHost, signingShare, version)
+      let jsonData = res.data(using: .utf8)!
+      let rotateResult: RotateResult  = try JSONDecoder().decode(RotateResult.self, from: jsonData)
+      
+      // Throw an error if the MPC service returned an error.
+      guard rotateResult.error.code == 0 else {
+        return completion(Result(error: PortalMpcError(rotateResult.error)))
+      }
+      
+      // Return the new backup share.
+      return completion(Result(data: rotateResult.data!.dkgResult))
+    } catch {
+      return completion(Result(error: error))
     }
-
-    // Return the new backup share.
-    return rotateResult.data!.dkgResult
   }
 
   /// Uses the backup share to create a new signing share and stores it in the keychain.
   /// - Parameter
   ///   - backupShare: The backup share.
   /// - Returns: The new signing share.
-  private func recoverSigning(backupShare: String) throws -> MpcShare {
-    // Call the MPC service to recover the signing share.
-    let result = ClientRecoverSigning(apiKey, mpcHost, backupShare, version)
-    let rotateResult = try JSONDecoder().decode(RotateResult.self, from: result.data(using: .utf8)!)
-
-    // Throw an error if the MPC service returned an error.
-    guard rotateResult.error.code == 0 else {
-      throw PortalMpcError(rotateResult.error)
-    }
-    
-    if (rotateResult.data == nil) {
-      throw MpcError.signingRecoveryError(message: "Could not read recovery data")
-    }
-
-    // Store the signing share in the keychain.
+  private func recoverSigning(
+    backupShare: String,
+    completion: (Result<MpcShare>) -> Void
+  ) -> Void {
     do {
+      // Call the MPC service to recover the signing share.
+      let result = ClientRecoverSigning(apiKey, mpcHost, backupShare, version)
+      let rotateResult = try JSONDecoder().decode(RotateResult.self, from: result.data(using: .utf8)!)
+
+      // Throw an error if the MPC service returned an error.
+      guard rotateResult.error.code == 0 else {
+        return completion(Result(error: PortalMpcError(rotateResult.error)))
+      }
+      
+      if (rotateResult.data == nil) {
+        return completion(Result(error: MpcError.signingRecoveryError(message: "Could not read recovery data")))
+      }
+
+      // Store the signing share in the keychain.
       let encodedShare = try JSONEncoder().encode(rotateResult.data!.dkgResult)
       let shareString = String(data: encodedShare, encoding: .utf8)
-      try keychain.setSigningShare(signingShare: shareString!)
-      try keychain.setAddress(address: rotateResult.data!.address)
+      
+      keychain.setAddress(address: rotateResult.data!.address) { result in
+        // Handle errors
+        if result.error != nil {
+          return completion(Result(error: result.error!))
+        }
+        
+        keychain.setSigningShare(signingShare: shareString!) { result in
+          // Handle errors
+          if result.error != nil {
+            return completion(Result(error: result.error!))
+          }
+          
+          // Return the new signing share.
+          return completion(Result(data: rotateResult.data!.dkgResult))
+        }
+      }
     } catch {
-      throw MpcError.unableToWriteToKeychain
+      return completion(Result(error: MpcError.unableToWriteToKeychain))
     }
-
-    // Return the new signing share.
-    return rotateResult.data!.dkgResult
   }
 
   /// Helper function to parse the MPC share from a JSON string.
