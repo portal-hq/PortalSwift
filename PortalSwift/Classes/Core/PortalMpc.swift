@@ -277,7 +277,7 @@ public class PortalMpc {
                   completion(Result(error: backupResult.error!))
                   return
                 }
-                  
+                progress(MpcStatus(status: MpcStatuses.done, done: true))
                 completion(backupResult)
               } progress: { status in
                 progress(status)
@@ -291,7 +291,7 @@ public class PortalMpc {
                   completion(Result(error: backupResult.error!))
                   return
               }
-            progress(MpcStatus(status: MpcStatuses.done, done: true))
+              progress(MpcStatus(status: MpcStatuses.done, done: true))
               completion(backupResult)
           } progress: { status in
             progress(status)
@@ -385,7 +385,7 @@ public class PortalMpc {
                           completion(Result(error: recoveryResult.error!))
                           return
                       }
-                      
+                      progress?(MpcStatus(status: MpcStatuses.done, done: true))
                       completion(Result(data: recoveryResult.data!))
                   }  progress: { status in
                     progress?(status)
@@ -398,7 +398,7 @@ public class PortalMpc {
                   completion(Result(error: recoveryResult.error!))
                   return
               }
-              
+              progress?(MpcStatus(status: MpcStatuses.done, done: true))
               completion(Result(data: recoveryResult.data!))
           }  progress: { status in
             progress?(status)

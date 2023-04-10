@@ -59,7 +59,6 @@ class ViewController: UIViewController {
   @IBOutlet public var username: UITextField!
   @IBOutlet public var url: UITextField!
   public var user: UserResult?
-
   override func viewDidLoad() {
     super.viewDidLoad()
   }
@@ -307,21 +306,33 @@ class ViewController: UIViewController {
                 print("✅ handleSend(): Result:", result.data!.result)
               }
     }
-
   func registerPortal(apiKey: String) -> Void {
+    
     do {
       let backup = BackupOptions(gdrive: GDriveStorage(clientID: "", viewController: self))
       let keychain = PortalKeychain()
+      // Configure the chain.
+      let chainId = 5
+      let chain = "goerli"
+      print("")
+      guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
+        print("problem")
+        return }
+      guard let ALCHEMY_API_KEY: String = infoDictionary["ALCHEMY_API_KEY"] as? String else {
+        print("problem 2")
+        return  }
+      print("about to make obj")
       portal = try Portal(
         apiKey: apiKey,
         backup: backup,
         chainId: 5,
         keychain: keychain,
         gatewayConfig: [
-          5: ""
+          chainId: "https://eth-\(chain).g.alchemy.com/v2/\(ALCHEMY_API_KEY)",
         ],
         autoApprove: true
       )
+      print("done")
     } catch ProviderInvalidArgumentError.invalidGatewayUrl {
       print("❌ Error: Invalid Gateway URL")
     } catch PortalArgumentError.noGatewayConfigForChain(let chainId) {
