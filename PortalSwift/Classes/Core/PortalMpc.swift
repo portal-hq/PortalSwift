@@ -244,7 +244,7 @@ public class PortalMpc {
   /// - Parameters:
   ///   - method: Either gdrive or icloud.
   ///   - completion: The callback which includes the cipherText of the backed up share.
-  public func backup(method: BackupMethods.RawValue, completion: @escaping (Result<String>) -> Void, progress: @escaping (MpcStatus) -> Void) -> Void {
+  public func backup(method: BackupMethods.RawValue, completion: @escaping (Result<String>) -> Void, progress:  ((MpcStatus) -> Void)? = nil) -> Void {
     if version != "v2" {
       return completion(Result(error: MpcError.backupNoLongerSupported(message: "[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = v2`.")))
     }
@@ -253,7 +253,7 @@ public class PortalMpc {
 
       // Obtain the signing share.
       let signingShare = try keychain.getSigningShare()
-      progress(MpcStatus(status: MpcStatuses.readingShare, done: false))
+      progress?(MpcStatus(status: MpcStatuses.readingShare, done: false))
 
 
       
@@ -277,10 +277,10 @@ public class PortalMpc {
                   completion(Result(error: backupResult.error!))
                   return
                 }
-                progress(MpcStatus(status: MpcStatuses.done, done: true))
+                progress?(MpcStatus(status: MpcStatuses.done, done: true))
                 completion(backupResult)
               } progress: { status in
-                progress(status)
+                progress?(status)
               }
           }
         }
@@ -291,10 +291,10 @@ public class PortalMpc {
                   completion(Result(error: backupResult.error!))
                   return
               }
-              progress(MpcStatus(status: MpcStatuses.done, done: true))
+              progress?(MpcStatus(status: MpcStatuses.done, done: true))
               completion(backupResult)
           } progress: { status in
-            progress(status)
+            progress?(status)
           }
       } else {
         return completion(Result(error: MpcError.unsupportedStorageMethod))
@@ -306,7 +306,7 @@ public class PortalMpc {
 
   /// Generates a MPC wallet and signing share for a client.
   /// - Returns: The address of the newly created MPC wallet.
-  public func generate(completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?) -> Void {
+  public func generate(completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)? = nil) -> Void {
     if version != "v2" {
       let result = Result<String>(error: MpcError.generateNoLongerSupported(
         message: "[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = v2`."
@@ -359,7 +359,7 @@ public class PortalMpc {
     cipherText: String,
     method: BackupMethods.RawValue,
     completion: @escaping (Result<String>) -> Void,
-    progress: ( (MpcStatus) -> Void)?
+    progress: ( (MpcStatus) -> Void)? = nil
   ) -> Void {
     if version != "v2" {
       return completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v2`.")))
@@ -444,7 +444,7 @@ public class PortalMpc {
         storage: Storage,
         signingShare: String,
         completion: @escaping (Result<String>) -> Void,
-        progress:  ((MpcStatus) -> Void)?
+        progress:  ((MpcStatus) -> Void)? = nil
     ) -> Void {
         do {
           progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
@@ -490,7 +490,7 @@ public class PortalMpc {
         method: BackupMethods.RawValue,
         cipherText: String,
         completion: @escaping (Result<String>) -> Void,
-        progress: ((MpcStatus) -> Void)?
+        progress: ((MpcStatus) -> Void)? = nil
     ) -> Void {
       progress?(MpcStatus(status: MpcStatuses.readingShare, done: false))
         self.getBackupShare(cipherText: cipherText, method: method) { (result: Result<String>) -> Void in
