@@ -35,13 +35,6 @@
 			remoteGlobalIDString = 607FACCF1AFB9204008FA782;
 			remoteInfo = PortalSwift;
 		};
-		F921AB0A29D1BF370063305E /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 607FACC81AFB9204008FA782 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 607FACCF1AFB9204008FA782;
-			remoteInfo = PortalSwift_Example;
-		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
@@ -76,7 +69,6 @@
 		607FACEB1AFB9204008FA782 /* Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests.swift; sourceTree = "<group>"; };
 		7EB608D3291EF2F000CF1346 /* PortalSwift.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = PortalSwift.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		E432DE04613E5E5869FDCD55 /* Pods-PortalSwift_Example.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PortalSwift_Example.debug.xcconfig"; path = "Target Support Files/Pods-PortalSwift_Example/Pods-PortalSwift_Example.debug.xcconfig"; sourceTree = "<group>"; };
-		F921AB0629D1BF370063305E /* PortalSwift_IntegrationTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PortalSwift_IntegrationTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F9866E2529E47ED60008A9C3 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -94,13 +86,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				B96417820F7757FB7C9962DE /* Pods_PortalSwift_Tests.framework in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		F921AB0329D1BF370063305E /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -164,7 +149,6 @@
 			children = (
 				607FACD01AFB9204008FA782 /* PortalSwift_Example.app */,
 				607FACE51AFB9204008FA782 /* PortalSwift_Tests.xctest */,
-				F921AB0629D1BF370063305E /* PortalSwift_IntegrationTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -285,24 +269,6 @@
 			productReference = 607FACE51AFB9204008FA782 /* PortalSwift_Tests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		F921AB0529D1BF370063305E /* PortalSwift_IntegrationTests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = F921AB0E29D1BF370063305E /* Build configuration list for PBXNativeTarget "PortalSwift_IntegrationTests" */;
-			buildPhases = (
-				F921AB0229D1BF370063305E /* Sources */,
-				F921AB0329D1BF370063305E /* Frameworks */,
-				F921AB0429D1BF370063305E /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				F921AB0B29D1BF370063305E /* PBXTargetDependency */,
-			);
-			name = PortalSwift_IntegrationTests;
-			productName = PortalSwift_IntegrationTests;
-			productReference = F921AB0629D1BF370063305E /* PortalSwift_IntegrationTests.xctest */;
-			productType = "com.apple.product-type.bundle.unit-test";
-		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -324,12 +290,6 @@
 						LastSwiftMigration = "";
 						TestTargetID = 607FACCF1AFB9204008FA782;
 					};
-					F921AB0529D1BF370063305E = {
-						CreatedOnToolsVersion = 14.2;
-						DevelopmentTeam = WTQ4Q66FY6;
-						ProvisioningStyle = Automatic;
-						TestTargetID = 607FACCF1AFB9204008FA782;
-					};
 				};
 			};
 			buildConfigurationList = 607FACCB1AFB9204008FA782 /* Build configuration list for PBXProject "PortalSwift" */;
@@ -347,7 +307,6 @@
 			targets = (
 				607FACCF1AFB9204008FA782 /* PortalSwift_Example */,
 				607FACE41AFB9204008FA782 /* PortalSwift_Tests */,
-				F921AB0529D1BF370063305E /* PortalSwift_IntegrationTests */,
 			);
 		};
 /* End PBXProject section */
@@ -364,13 +323,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		607FACE31AFB9204008FA782 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		F921AB0429D1BF370063305E /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -498,13 +450,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		F921AB0229D1BF370063305E /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -512,11 +457,6 @@
 			isa = PBXTargetDependency;
 			target = 607FACCF1AFB9204008FA782 /* PortalSwift_Example */;
 			targetProxy = 607FACE61AFB9204008FA782 /* PBXContainerItemProxy */;
-		};
-		F921AB0B29D1BF370063305E /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 607FACCF1AFB9204008FA782 /* PortalSwift_Example */;
-			targetProxy = F921AB0A29D1BF370063305E /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -737,63 +677,6 @@
 			};
 			name = Release;
 		};
-		F921AB0C29D1BF370063305E /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-				CLANG_ENABLE_OBJC_WEAK = YES;
-				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
-				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = WTQ4Q66FY6;
-				GCC_C_LANGUAGE_STANDARD = gnu11;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
-				MARKETING_VERSION = 1.0;
-				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
-				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.portalhq.PortalSwift-IntegrationTests";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PortalSwift_Example.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PortalSwift_Example";
-			};
-			name = Debug;
-		};
-		F921AB0D29D1BF370063305E /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-				CLANG_ENABLE_OBJC_WEAK = YES;
-				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
-				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = WTQ4Q66FY6;
-				GCC_C_LANGUAGE_STANDARD = gnu11;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
-				MARKETING_VERSION = 1.0;
-				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.portalhq.PortalSwift-IntegrationTests";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PortalSwift_Example.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PortalSwift_Example";
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -820,15 +703,6 @@
 			buildConfigurations = (
 				607FACF31AFB9204008FA782 /* Debug */,
 				607FACF41AFB9204008FA782 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		F921AB0E29D1BF370063305E /* Build configuration list for PBXNativeTarget "PortalSwift_IntegrationTests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				F921AB0C29D1BF370063305E /* Debug */,
-				F921AB0D29D1BF370063305E /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
