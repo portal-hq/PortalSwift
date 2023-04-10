@@ -314,14 +314,12 @@ class ViewController: UIViewController {
       // Configure the chain.
       let chainId = 5
       let chain = "goerli"
-      print("")
       guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
-        print("problem")
+        print("Couldnt load info plist")
         return }
       guard let ALCHEMY_API_KEY: String = infoDictionary["ALCHEMY_API_KEY"] as? String else {
-        print("problem 2")
+        print("Error: Do you have `ALCHEMY_API_KEY=$(ALCHEMY_API_KEY)` in your info.plist?")
         return  }
-      print("about to make obj")
       portal = try Portal(
         apiKey: apiKey,
         backup: backup,
@@ -332,7 +330,6 @@ class ViewController: UIViewController {
         ],
         autoApprove: true
       )
-      print("done")
     } catch ProviderInvalidArgumentError.invalidGatewayUrl {
       print("❌ Error: Invalid Gateway URL")
     } catch PortalArgumentError.noGatewayConfigForChain(let chainId) {

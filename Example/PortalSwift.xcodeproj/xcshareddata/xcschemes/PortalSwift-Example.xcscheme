@@ -61,17 +61,6 @@
                ReferencedContainer = "container:PortalSwift.xcodeproj">
             </BuildableReference>
          </TestableReference>
-         <TestableReference
-            skipped = "NO"
-            parallelizable = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "F921AB0529D1BF370063305E"
-               BuildableName = "PortalSwift_IntegrationTests.xctest"
-               BlueprintName = "PortalSwift_IntegrationTests"
-               ReferencedContainer = "container:PortalSwift.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction
