@@ -101,7 +101,7 @@ class ViewController: UIViewController {
       
       
       self.updateStaticContent()
-    }  progress: { status in
+    } progress: { status in
       print("Generate Status: ", status)
     }
   }
@@ -309,17 +309,20 @@ class ViewController: UIViewController {
   func registerPortal(apiKey: String) -> Void {
     
     do {
-      let backup = BackupOptions(gdrive: GDriveStorage(clientID: "", viewController: self))
-      let keychain = PortalKeychain()
-      // Configure the chain.
-      let chainId = 5
-      let chain = "goerli"
       guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
         print("Couldnt load info plist")
         return }
       guard let ALCHEMY_API_KEY: String = infoDictionary["ALCHEMY_API_KEY"] as? String else {
         print("Error: Do you have `ALCHEMY_API_KEY=$(ALCHEMY_API_KEY)` in your info.plist?")
         return  }
+      guard let GDRIVE_CLIENT_ID: String = infoDictionary["GDRIVE_CLIENT_ID"] as? String else {
+        print("Error: Do you have `GDRIVE_CLIENT_ID=$(GDRIVE_CLIENT_ID)` in your info.plist?")
+        return  }
+      let backup = BackupOptions(gdrive: GDriveStorage(clientID: GDRIVE_CLIENT_ID, viewController: self))
+      let keychain = PortalKeychain()
+      // Configure the chain.
+      let chainId = 5
+      let chain = "goerli"
       portal = try Portal(
         apiKey: apiKey,
         backup: backup,
