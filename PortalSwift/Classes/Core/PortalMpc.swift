@@ -182,7 +182,7 @@ public class PortalMpc {
     api: PortalApi,
     isSimulator: Bool = false,
     mpcHost: String = "mpc.portalhq.io",
-    version: String = "v1"
+    version: String = "v2"
   ) {
     // Basic setup
     self.apiKey = apiKey
@@ -227,9 +227,8 @@ public class PortalMpc {
   ///   - method: Either gdrive or icloud.
   ///   - completion: The callback which includes the cipherText of the backed up share.
   public func backup(method: BackupMethods.RawValue, completion: @escaping (Result<String>) -> Void) -> Void {
-    if version != "v1" {
-      print("not version 1", version)
-      return completion(Result(error: MpcError.backupNoLongerSupported(message: "[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = v1` to generate a new wallet using CGGMP.")))
+    if version != "v2" {
+      return completion(Result(error: MpcError.backupNoLongerSupported(message: "[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = v2`.")))
     }
     
     do {
@@ -281,9 +280,9 @@ public class PortalMpc {
   /// Generates a MPC wallet and signing share for a client.
   /// - Returns: The address of the newly created MPC wallet.
   public func generate(completion: @escaping (Result<String>) -> Void) -> Void {
-    if version != "v1" {
+    if version != "v2" {
       let result = Result<String>(error: MpcError.generateNoLongerSupported(
-        message: "[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = v1` to generate a new wallet using CGGMP."
+        message: "[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = v2`."
       ))
       completion(result)
     }
@@ -345,8 +344,8 @@ public class PortalMpc {
     method: BackupMethods.RawValue,
     completion: @escaping (Result<String>) -> Void
   ) -> Void {
-    if version != "v1" {
-      return completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v1` to generate a new wallet using CGGMP.")))
+    if version != "v2" {
+      return completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v2`.")))
     }
     
     // Derive the storage and throw an error if none was provided.
