@@ -53,19 +53,18 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     self.url = url
     self.onError = onError
     super.init(nibName: nil, bundle: nil)
-
+    
     self.webView = {
       let contentController = WKUserContentController()
-
+      
       contentController.add(self, name: "WebViewControllerMessageHandler")
-
+      
       let configuration = WKWebViewConfiguration()
       configuration.userContentController = contentController
-
       let webView = WKWebView(frame: .zero, configuration: configuration)
       webView.scrollView.bounces = false
       webView.navigationDelegate = self
-
+      
       return webView
     }()
   }
@@ -75,39 +74,39 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   /// When the view loads, add the web view as a subview. Also add default configuration values for the web view.
   public override func viewDidLoad() {
     super.viewDidLoad()
-
     view.addSubview(webView)
-
+    
     webView.translatesAutoresizingMaskIntoConstraints = false
-    webView.topAnchor.constraint(equalTo: view.topAnchor).isActive = true
-    webView.bottomAnchor.constraint(equalTo: view.bottomAnchor).isActive = true
-    webView.leftAnchor.constraint(equalTo: view.leftAnchor).isActive = true
-    webView.rightAnchor.constraint(equalTo: view.rightAnchor).isActive = true
+    NSLayoutConstraint.activate([
+      webView.topAnchor.constraint(equalTo: view.topAnchor),
+      webView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+      webView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+      webView.trailingAnchor.constraint(equalTo: view.trailingAnchor)
+    ])
   }
   
   /// When the view will appear, load the web view to the url.
   /// - Parameter animated: Determines if the view will be animated when appearing or not.
   public override func viewWillAppear(_ animated: Bool) {
     super.viewWillAppear(animated)
-
     if !webViewContentIsLoaded {
       let request = URLRequest(url: self.url)
-
+      
       webView.load(request)
-
+      
       webViewContentIsLoaded = true
     }
   }
   
-
+  
   private func evaluateJavascript(_ javascript: String, sourceURL: String? = nil, completion: ((_ error: String?) -> Void)? = nil) {
     var javascript = javascript
-
+    
     // Adding a sourceURL comment makes the javascript source visible when debugging the simulator via Safari in Mac OS
     if let sourceURL = sourceURL {
       javascript = "//# sourceURL=\(sourceURL).js\n" + javascript
     }
-
+    
     webView.evaluateJavaScript(javascript) { _, error in
       completion?(error?.localizedDescription)
     }
@@ -158,7 +157,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     let bodyString = message.body as? String
     let bodyData = bodyString!.data(using: .utf8)!
     let json = try JSONSerialization.jsonObject(with: bodyData) as! Dictionary<String, Any>
-
+    
     // Unpack what we need from the message.
     let data = json["data"]! as! Dictionary<String, Any>
     let type = json["type"]! as! String
@@ -167,84 +166,76 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     
     return PortalMessageBody(data: PortalMessageBodyData(method: method, params: params), type: type);
   }
-
+  
   private func handlePortalSign(method: String, params: [Any]) -> Void {
-    DispatchQueue.global(qos: .background).async {
-        // Perform a long-running task
-      let payload = ETHRequestPayload(method: method, params: params)
-      if (signerMethods.contains(method)) {
-        self.portal.provider.request(payload: payload, completion: self.signerRequestCompletion)
-      } else {
-        self.portal.provider.request(payload: payload, completion: self.gatewayRequestCompletion)
-      }
+    // Perform a long-running task
+    let payload = ETHRequestPayload(method: method, params: params)
+    if (signerMethods.contains(method)) {
+      self.portal.provider.request(payload: payload, completion: self.signerRequestCompletion)
+    } else {
+      self.portal.provider.request(payload: payload, completion: self.gatewayRequestCompletion)
     }
-
-  }
-
-  private func handlePortalSignTransaction(method: String, params: [Any]) -> Void {
-    DispatchQueue.global(qos: .background).async {
     
+  }
+  
+  private func handlePortalSignTransaction(method: String, params: [Any]) throws -> Void {
     let firstParams = params.first! as! Dictionary<String, String>
     let transactionParam: ETHTransactionParam
     if (firstParams["maxPriorityFeePerGas"] != nil && firstParams["maxFeePerGas"] != nil) {
-          guard firstParams["maxPriorityFeePerGas"]!.isEmpty || firstParams["maxFeePerGas"]!.isEmpty else {
-            throw WebViewControllerErrors.MissingFieldsForEIP1559Transation
-          }
-          transactionParam = ETHTransactionParam(
-            from: firstParams["from"]!,
-            to: firstParams["to"]!,
-            gas: firstParams["gas"] ?? "",
-            value: firstParams["value"] ?? "0x0",
-            data: firstParams["data"]!,
-            maxPriorityFeePerGas: firstParams["maxPriorityFeePerGas"] ?? "",
-            maxFeePerGas: firstParams["maxFeePerGas"] ?? ""
-          )
-        } else{
-          transactionParam = ETHTransactionParam(
-            from: firstParams["from"]!,
-            to: firstParams["to"]!,
-            gas: firstParams["gas"] ?? "",
-            gasPrice: firstParams["gasPrice"] ?? "",
-            value: firstParams["value"] ?? "0x0",
-            data: firstParams["data"]!
-          )
-        }
+      guard firstParams["maxPriorityFeePerGas"]!.isEmpty || firstParams["maxFeePerGas"]!.isEmpty else {
+        throw WebViewControllerErrors.MissingFieldsForEIP1559Transation
+      }
+      transactionParam = ETHTransactionParam(
+        from: firstParams["from"]!,
+        to: firstParams["to"]!,
+        gas: firstParams["gas"] ?? "",
+        value: firstParams["value"] ?? "0x0",
+        data: firstParams["data"]!,
+        maxPriorityFeePerGas: firstParams["maxPriorityFeePerGas"] ?? "",
+        maxFeePerGas: firstParams["maxFeePerGas"] ?? ""
+      )
+    } else{
+      transactionParam = ETHTransactionParam(
+        from: firstParams["from"]!,
+        to: firstParams["to"]!,
+        gas: firstParams["gas"] ?? "",
+        gasPrice: firstParams["gasPrice"] ?? "",
+        value: firstParams["value"] ?? "0x0",
+        data: firstParams["data"]!
+      )
+    }
     let payload = ETHTransactionPayload(method: method, params: [transactionParam])
-
+    
     if (signerMethods.contains(method)) {
       self.portal.provider.request(payload: payload, completion: self.signerTransactionRequestCompletion)
     } else{
       self.portal.provider.request(payload: payload, completion: self.gatewayTransactionRequestCompletion)
     }
   }
-  }
-
+  
   private func signerTransactionRequestCompletion(result: Result<TransactionCompletionResult>) -> Void {
-    DispatchQueue.global(qos: .background).async {
-      
-      guard result.error == nil else {
-        self.onError(Result(error: result.error!))
-        return
-      }
-      let signature = (result.data!.result as! Result<Any>).data
-      let payload: Dictionary<String, Any> = [
-        "method": result.data!.method,
-        "params": result.data!.params.map { (p) in
-          return [
-            "from": p.from,
-            "to": p.to,
-            "gas": p.gas,
-            "gasPrice": p.gasPrice,
-            "value": p.value,
-            "data": p.data
-          ]
-        },
-        "signature": signature!
-      ]
-      self.postMessage(payload: payload)
+    guard result.error == nil else {
+      self.onError(Result(error: result.error!))
+      return
     }
+    let signature = (result.data!.result as! Result<Any>).data
+    let payload: Dictionary<String, Any> = [
+      "method": result.data!.method,
+      "params": result.data!.params.map { (p) in
+        return [
+          "from": p.from,
+          "to": p.to,
+          "gas": p.gas,
+          "gasPrice": p.gasPrice,
+          "value": p.value,
+          "data": p.data
+        ]
+      },
+      "signature": signature!
+    ]
+    self.postMessage(payload: payload)
   }
-
+  
   private func gatewayTransactionRequestCompletion(result: Result<TransactionCompletionResult>) -> Void {
     guard result.error == nil else {
       onError(Result(error: result.error!))
@@ -266,12 +257,12 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     ]
     postMessage(payload: payload)
   }
-
-
+  
+  
   private func signerRequestCompletion(result: Result<RequestCompletionResult>) -> Void {
     let response = result.data!.result as! Result<SignerResult>
     guard response.error == nil else {
-       onError(Result(error: response.error!))
+      onError(Result(error: response.error!))
       return
     }
     print("result in signing request completion", result)
@@ -282,7 +273,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     ]
     postMessage(payload: payload)
   }
-
+  
   private func gatewayRequestCompletion(result: Result<RequestCompletionResult>) -> Void {
     guard result.error == nil else {
       onError(Result(error: result.error!))
@@ -295,7 +286,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     ]
     postMessage(payload: payload)
   }
-
+  
   private func postMessage(payload: Dictionary<String, Any>) -> Void {
     do {
       let data = try JSONSerialization.data(withJSONObject: payload, options: .prettyPrinted)
@@ -303,7 +294,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       let javascript = "window.postMessage(JSON.stringify({ type: 'portal_signatureReceived', data: \(dataString!) }));"
       self.evaluateJavascript(javascript, sourceURL: "portal_sign")
     } catch {
-        onError(Result(error: error))
+      onError(Result(error: error))
     }
   }
   

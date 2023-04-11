@@ -122,15 +122,15 @@ public struct MpcStatus {
 }
 
 public enum MpcStatuses: String {
-    case decryptingShare = "Decrypting share"
-    case done = "Done"
-    case encryptingShare = "Encrypting share"
-    case generatingShare = "Generating share"
-    case parsingShare = "Parsing share"
-    case readingShare = "Reading share"
-    case recoveringBackupShare = "Recovering backup share"
-    case recoveringSigningShare = "Recovering signing share"
-    case storingShare = "Storing share"
+  case decryptingShare = "Decrypting share"
+  case done = "Done"
+  case encryptingShare = "Encrypting share"
+  case generatingShare = "Generating share"
+  case parsingShare = "Parsing share"
+  case readingShare = "Reading share"
+  case recoveringBackupShare = "Recovering backup share"
+  case recoveringSigningShare = "Recovering signing share"
+  case storingShare = "Storing share"
 }
 
 
@@ -181,7 +181,7 @@ public class PortalMpc {
   private var version: String
   private var rsaHeader = "-----BEGIN RSA KEY-----\n"
   private var rsaFooter = "\n-----END RSA KEY-----"
-
+  
   /// Create an instance of Portal's MPC service.
   /// - Parameters:
   ///   - apiKey: A Client API key.
@@ -210,11 +210,11 @@ public class PortalMpc {
     self.storage = storage
     self.api = api
     self.version = version
-
+    
     // Other stuff
     self.isSimulator = isSimulator
     self.mpcHost = mpcHost
-
+    
     // Attempt to get the address
     do {
       self.address = try self.keychain.getAddress()
@@ -239,7 +239,7 @@ public class PortalMpc {
   public func getAddress() -> String {
     return self.address!
   }
-
+  
   /// Creates a backup share, encrypts it, and stores the private key in cloud storage.
   /// - Parameters:
   ///   - method: Either gdrive or icloud.
@@ -250,19 +250,16 @@ public class PortalMpc {
     }
     
     do {
-
       // Obtain the signing share.
       let signingShare = try keychain.getSigningShare()
       progress?(MpcStatus(status: MpcStatuses.readingShare, done: false))
-
-
       
       // Derive the storage and throw an error if none was provided.
       let storage = self.storage[method] as? Storage
       if (storage == nil) {
         return completion(Result(error: MpcError.unsupportedStorageMethod))
       }
-
+      
       // Check if we are authenticated with iCloud or throw an error if we are not.
       if (method == BackupMethods.iCloud.rawValue) {
         (storage as! ICloudStorage).checkAvailability { (result: Result<Any>) -> Void in
@@ -273,36 +270,37 @@ public class PortalMpc {
           } else {
             print("Running backup since iCloud is available! 🎉")
             self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
-                if (backupResult.error != nil) {
-                  completion(Result(error: backupResult.error!))
-                  return
-                }
-                progress?(MpcStatus(status: MpcStatuses.done, done: true))
-                completion(backupResult)
-              } progress: { status in
-                progress?(status)
-              }
-            }
-          }
-        } else if (method == BackupMethods.GoogleDrive.rawValue) {
-          print("Running backup since Google Drive is available! 🎉")
-          self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
               if (backupResult.error != nil) {
-                  completion(Result(error: backupResult.error!))
-                  return
+                completion(Result(error: backupResult.error!))
+                return
               }
               progress?(MpcStatus(status: MpcStatuses.done, done: true))
               completion(backupResult)
-          } progress: { status in
-            progress?(status)
+            } progress: { status in
+              progress?(status)
+            }
           }
-        } else {
-          return completion(Result(error: MpcError.unsupportedStorageMethod))
         }
-      } catch {
-        return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: "Backup failed")))
+      } else if (method == BackupMethods.GoogleDrive.rawValue) {
+        print("Running backup since Google Drive is available! 🎉")
+        self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
+          if (backupResult.error != nil) {
+            completion(Result(error: backupResult.error!))
+            return
+          }
+          progress?(MpcStatus(status: MpcStatuses.done, done: true))
+          completion(backupResult)
+        } progress: { status in
+          progress?(status)
+        }
+      } else {
+        return completion(Result(error: MpcError.unsupportedStorageMethod))
       }
+    } catch {
+      return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: "Backup failed")))
+    }
   }
+  
   /// Generates a MPC wallet and signing share for a client.
   /// - Returns: The address of the newly created MPC wallet.
   public func generate(completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)? = nil) -> Void {
@@ -351,7 +349,7 @@ public class PortalMpc {
       }
     }
   }
-
+  
   /// Uses the backup share to create a new signing share and a new backup share, encrypts the new backup share, and stores the private key in storage.
   /// - Parameters:
   ///   - cipherText: the cipherText of the backup share (should be passed in from the custodian).
@@ -373,41 +371,41 @@ public class PortalMpc {
       return completion(Result(error: MpcError.unsupportedStorageMethod))
     }
     
-      if (method == BackupMethods.iCloud.rawValue) {
-          (storage as! ICloudStorage).checkAvailability { (result: Result<Any>) -> Void in
-              if (result.error != nil) {
-                  print("❌ iCloud is not available:")
-                  print(result)
-                  return completion(Result(error: result.error!))
-              } else {
-                  print("Running recovery since iCloud is available! 🎉")
-                  // Call the MPC service to get the backup share.
-                  self.executeRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
-                      if (recoveryResult.error != nil) {
-                          completion(Result(error: recoveryResult.error!))
-                          return
-                      }
-                      progress?(MpcStatus(status: MpcStatuses.done, done: true))
-                      completion(Result(data: recoveryResult.data!))
-                  }  progress: { status in
-                    progress?(status)
-                  }
-              }
-          }
-      } else if (method == BackupMethods.GoogleDrive.rawValue) {
-          executeRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
-              if (recoveryResult.error != nil) {
-                completion(Result(error: recoveryResult.error!))
-                return
-              }
-              progress?(MpcStatus(status: MpcStatuses.done, done: true))
-              completion(Result(data: recoveryResult.data!))
+    if (method == BackupMethods.iCloud.rawValue) {
+      (storage as! ICloudStorage).checkAvailability { (result: Result<Any>) -> Void in
+        if (result.error != nil) {
+          print("❌ iCloud is not available:")
+          print(result)
+          return completion(Result(error: result.error!))
+        } else {
+          print("Running recovery since iCloud is available! 🎉")
+          // Call the MPC service to get the backup share.
+          self.executeRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
+            if (recoveryResult.error != nil) {
+              completion(Result(error: recoveryResult.error!))
+              return
+            }
+            progress?(MpcStatus(status: MpcStatuses.done, done: true))
+            completion(Result(data: recoveryResult.data!))
           }  progress: { status in
             progress?(status)
           }
-      } else {
-        completion(Result(error: MpcError.unsupportedStorageMethod))
+        }
       }
+    } else if (method == BackupMethods.GoogleDrive.rawValue) {
+      executeRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
+        if (recoveryResult.error != nil) {
+          completion(Result(error: recoveryResult.error!))
+          return
+        }
+        progress?(MpcStatus(status: MpcStatuses.done, done: true))
+        completion(Result(data: recoveryResult.data!))
+      }  progress: { status in
+        progress?(status)
+      }
+    } else {
+      completion(Result(error: MpcError.unsupportedStorageMethod))
+    }
   }
   
   private func decryptShare(cipherText: String, privateKey: String) throws -> String {
@@ -422,7 +420,7 @@ public class PortalMpc {
     
     return decryptResult.data!.plaintext
   }
-
+  
   /// Encrypts the backup share using a public key that it creates.
   /// - Parameter
   ///   - mpcShare: The share to encrypt.
@@ -441,92 +439,92 @@ public class PortalMpc {
     
     return encryptResult.data!
   }
-
-    private func executeBackup(
-        storage: Storage,
-        signingShare: String,
-        completion: @escaping (Result<String>) -> Void,
-        progress:  ((MpcStatus) -> Void)? = nil
-    ) -> Void {
-        do {
-          progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
-          // Call the MPC service to generate a backup share.
-          let response = ClientBackup(apiKey, mpcHost, signingShare, version)
-          
-          progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
-
-          let jsonData = response.data(using: .utf8)!
-          let rotateResult: RotateResult  = try JSONDecoder().decode(RotateResult.self, from: jsonData)
-          
-          // Throw if there is an error getting the backup share.
-          guard rotateResult.error.code == 0 else {
-            return completion(Result(error: PortalMpcError(rotateResult.error)))
-          }
-          
-          // Attach the backup share to the signing share JSON.
-          let backupShare = rotateResult.data!.dkgResult
-          
-          // Encrypt the share.
-          progress?(MpcStatus(status: MpcStatuses.encryptingShare, done: false))
-          let encryptedResult = try encryptShare(mpcShare: backupShare)
-          
-          progress?(MpcStatus(status: MpcStatuses.storingShare, done: false))
-          // Attempt to write the encrypted share to storage.
-          storage.write(privateKey: encryptedResult.key)  { (result: Result<Bool>) -> Void in
-            // Throw an error if we can't write to storage.
-            if result.error != nil {
-              return completion(Result(error: result.error!))
-            }
-            
-            // Return the cipherText.
-            return completion(Result(data: encryptedResult.cipherText))
-          }
-        } catch {
-          print("Backup Failed: ", error)
-          return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: "Backup failed")))
+  
+  private func executeBackup(
+    storage: Storage,
+    signingShare: String,
+    completion: @escaping (Result<String>) -> Void,
+    progress:  ((MpcStatus) -> Void)? = nil
+  ) -> Void {
+    do {
+      progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
+      // Call the MPC service to generate a backup share.
+      let response = ClientBackup(apiKey, mpcHost, signingShare, version)
+      
+      progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
+      
+      let jsonData = response.data(using: .utf8)!
+      let rotateResult: RotateResult  = try JSONDecoder().decode(RotateResult.self, from: jsonData)
+      
+      // Throw if there is an error getting the backup share.
+      guard rotateResult.error.code == 0 else {
+        return completion(Result(error: PortalMpcError(rotateResult.error)))
+      }
+      
+      // Attach the backup share to the signing share JSON.
+      let backupShare = rotateResult.data!.dkgResult
+      
+      // Encrypt the share.
+      progress?(MpcStatus(status: MpcStatuses.encryptingShare, done: false))
+      let encryptedResult = try encryptShare(mpcShare: backupShare)
+      
+      progress?(MpcStatus(status: MpcStatuses.storingShare, done: false))
+      // Attempt to write the encrypted share to storage.
+      storage.write(privateKey: encryptedResult.key)  { (result: Result<Bool>) -> Void in
+        // Throw an error if we can't write to storage.
+        if result.error != nil {
+          return completion(Result(error: result.error!))
         }
+        
+        // Return the cipherText.
+        return completion(Result(data: encryptedResult.cipherText))
+      }
+    } catch {
+      print("Backup Failed: ", error)
+      return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: "Backup failed")))
     }
-    
-    private func executeRecovery(
-        storage: Storage,
-        method: BackupMethods.RawValue,
-        cipherText: String,
-        completion: @escaping (Result<String>) -> Void,
-        progress: ((MpcStatus) -> Void)? = nil
-    ) -> Void {
-      progress?(MpcStatus(status: MpcStatuses.readingShare, done: false))
-        self.getBackupShare(cipherText: cipherText, method: method) { (result: Result<String>) -> Void in
-          do {
-            // Throw if there was an error getting the backup share.
-            guard result.error == nil else {
-              return completion(Result(error: result.error!))
-            }
-            
-            progress?(MpcStatus(status: MpcStatuses.recoveringSigningShare, done: false))
-            // Encrypt the new backup share.
-            _ = try self.recoverSigning(backupShare: result.data!)
-            progress?(MpcStatus(status: MpcStatuses.recoveringBackupShare, done: false))
-            let newBackupShare = try self.recoverBackup(signingShare: result.data!)
-            progress?(MpcStatus(status: MpcStatuses.encryptingShare, done: false))
-            let encryptedResult = try self.encryptShare(mpcShare: newBackupShare)
-            
-            progress?(MpcStatus(status: MpcStatuses.storingShare, done: false))
-            // Attempt to write the encrypted share to storage.
-            storage.write(privateKey: encryptedResult.key) { (result: Result<Bool>) -> Void in
-              // Throw an error if we can't write to storage.
-              if !result.data! {
-                return completion(Result(error: result.error!))
-              }
-              
-              // Return the cipherText.
-              return completion(Result(data: encryptedResult.cipherText))
-            }
-          } catch {
-            return completion(Result(error: error))
-          }
+  }
+  
+  private func executeRecovery(
+    storage: Storage,
+    method: BackupMethods.RawValue,
+    cipherText: String,
+    completion: @escaping (Result<String>) -> Void,
+    progress: ((MpcStatus) -> Void)? = nil
+  ) -> Void {
+    progress?(MpcStatus(status: MpcStatuses.readingShare, done: false))
+    self.getBackupShare(cipherText: cipherText, method: method) { (result: Result<String>) -> Void in
+      do {
+        // Throw if there was an error getting the backup share.
+        guard result.error == nil else {
+          return completion(Result(error: result.error!))
         }
+        
+        progress?(MpcStatus(status: MpcStatuses.recoveringSigningShare, done: false))
+        // Encrypt the new backup share.
+        _ = try self.recoverSigning(backupShare: result.data!)
+        progress?(MpcStatus(status: MpcStatuses.recoveringBackupShare, done: false))
+        let newBackupShare = try self.recoverBackup(signingShare: result.data!)
+        progress?(MpcStatus(status: MpcStatuses.encryptingShare, done: false))
+        let encryptedResult = try self.encryptShare(mpcShare: newBackupShare)
+        
+        progress?(MpcStatus(status: MpcStatuses.storingShare, done: false))
+        // Attempt to write the encrypted share to storage.
+        storage.write(privateKey: encryptedResult.key) { (result: Result<Bool>) -> Void in
+          // Throw an error if we can't write to storage.
+          if !result.data! {
+            return completion(Result(error: result.error!))
+          }
+          
+          // Return the cipherText.
+          return completion(Result(data: encryptedResult.cipherText))
+        }
+      } catch {
+        return completion(Result(error: error))
+      }
     }
-
+  }
+  
   /// Loads the private key from cloud storage, uses that to decrypt the cipherText, and returns the string of the backup share.
   /// - Parameters:
   ///   - cipherText: The cipherText of the backup share.
@@ -542,14 +540,14 @@ public class PortalMpc {
     if (storage == nil) {
       return completion(Result(error: MpcError.unsupportedStorageMethod))
     }
-
+    
     // Attempt to read the private key from storage.
     storage!.read() { (result: Result<String>) -> Void in
       // If the private key was not found, return an error.
       if (result.data == nil) {
         return completion(Result(error: MpcError.failedToGetBackupFromStorage))
       }
-
+      
       // Attempt to decrypt the cipherText.
       do {
         let backupShare = try self.decryptShare(cipherText: cipherText, privateKey: result.data!)
@@ -559,7 +557,7 @@ public class PortalMpc {
       }
     }
   }
-
+  
   /// Uses the signing share to create a new backup share and returns that share in JSON format.
   /// - Parameter
   ///   - signingShare: The signing share as a string.
@@ -569,16 +567,16 @@ public class PortalMpc {
     let res = ClientRecoverBackup(apiKey, mpcHost, signingShare, version)
     let jsonData = res.data(using: .utf8)!
     let rotateResult: RotateResult  = try JSONDecoder().decode(RotateResult.self, from: jsonData)
-
+    
     // Throw an error if the MPC service returned an error.
     guard rotateResult.error.code == 0 else {
       throw PortalMpcError(rotateResult.error)
     }
-
+    
     // Return the new backup share.
     return rotateResult.data!.dkgResult
   }
-
+  
   /// Uses the backup share to create a new signing share and stores it in the keychain.
   /// - Parameter
   ///   - backupShare: The backup share.
@@ -587,7 +585,7 @@ public class PortalMpc {
     // Call the MPC service to recover the signing share.
     let result = ClientRecoverSigning(apiKey, mpcHost, backupShare, version)
     let rotateResult = try JSONDecoder().decode(RotateResult.self, from: result.data(using: .utf8)!)
-
+    
     // Throw an error if the MPC service returned an error.
     guard rotateResult.error.code == 0 else {
       throw PortalMpcError(rotateResult.error)
@@ -596,7 +594,7 @@ public class PortalMpc {
     if (rotateResult.data == nil) {
       throw MpcError.signingRecoveryError(message: "Could not read recovery data")
     }
-
+    
     // Store the signing share in the keychain.
     do {
       let encodedShare = try JSONEncoder().encode(rotateResult.data!.dkgResult)
@@ -606,11 +604,11 @@ public class PortalMpc {
     } catch {
       throw MpcError.unableToWriteToKeychain
     }
-
+    
     // Return the new signing share.
     return rotateResult.data!.dkgResult
   }
-
+  
   /// Helper function to parse the MPC share from a JSON string.
   /// - Parameter
   ///   - shareString: The JSON string of the MPC share.
@@ -623,7 +621,7 @@ public class PortalMpc {
     } catch  {
       throw MpcError.unableToDecodeShare
     }
-
+    
     return shareJson
   }
 }

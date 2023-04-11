@@ -348,20 +348,12 @@ class ViewController: UIViewController {
 
   func injectWebView() {
     let webViewController = PortalWebView(portal: portal!, url: URL(string: url.text!)!, onError: onError)
-
     // Install the WebViewController as a child view controller.
-    addChild(webViewController)
-
-    let webViewControllerView = webViewController.view!
-    view.addSubview(webViewControllerView)
-
-    webViewControllerView.translatesAutoresizingMaskIntoConstraints = false
-    webViewControllerView.topAnchor.constraint(equalTo: view.topAnchor).isActive = true
-    webViewControllerView.bottomAnchor.constraint(equalTo: view.bottomAnchor).isActive = true
-    webViewControllerView.leftAnchor.constraint(equalTo: view.leftAnchor).isActive = true
-    webViewControllerView.rightAnchor.constraint(equalTo: view.rightAnchor).isActive = true
-
-    webViewController.didMove(toParent: self)
+      addChild(webViewController)
+      let webViewControllerView = webViewController.view!
+      view.addSubview(webViewControllerView)
+      webViewController.didMove(toParent: self)
+    
   }
 
   func signIn(username: String, completionHandler: @escaping (UserResult) -> Void) {
