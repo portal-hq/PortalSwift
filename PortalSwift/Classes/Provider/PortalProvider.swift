@@ -296,7 +296,7 @@ public class PortalProvider {
   private var signer: MpcSigner
   private var address: String = ""
   private var mpcHost: String = "mpc.portalhq.io"
-  private var version: String = "v1"
+  private var version: String = "v2"
 
   private var walletMethods: [ETHRequestMethods.RawValue] = [
     ETHRequestMethods.WalletAddEthereumChain.rawValue,
@@ -321,7 +321,7 @@ public class PortalProvider {
     apiHost: String = "api.portalhq.io",
     autoApprove: Bool,
     mpcHost: String = "mpc.portalhq.io",
-    version: String = "v1"
+    version: String = "v2"
   ) throws {
     // User-defined instance variables
     self.apiKey = apiKey
