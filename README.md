@@ -17,7 +17,10 @@ Create an xcConfig file.
 ALCHEMY_API_KEY = ALCHEMY_API_KEY
 REVERSE_URL = REVERSE_URL
 GDRIVE_CLIENT_ID = GDRIVE_CLIENT_ID
+ENV = prod // staging
 ```
+
+> If you want to switch to point to staging. Change the ENV variable in your Secrets.xcconfig to be staging.
 
 The info plist and main debug configuration file is already configured to import these values directly into the app.
 
