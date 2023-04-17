@@ -59,7 +59,6 @@ class ViewController: UIViewController {
   @IBOutlet public var username: UITextField!
   @IBOutlet public var url: UITextField!
   public var user: UserResult?
-
   override func viewDidLoad() {
     super.viewDidLoad()
   }
@@ -102,6 +101,8 @@ class ViewController: UIViewController {
       
       
       self.updateStaticContent()
+    } progress: { status in
+      print("Generate Status: ", status)
     }
   }
 
@@ -125,6 +126,8 @@ class ViewController: UIViewController {
           print("✅ handleBackup(): Successfully sent custodian cipherText:")
         }
       }
+    } progress: { status in
+      print("Backup Status: ", status)
     }
   }
 
@@ -170,6 +173,8 @@ class ViewController: UIViewController {
           }
         }
         self.updateStaticContent()
+      } progress: { status in
+        print("Recover Status: ", status)
       }
     }
   }
@@ -301,18 +306,30 @@ class ViewController: UIViewController {
                 print("✅ handleSend(): Result:", result.data!.result)
               }
     }
-
   func registerPortal(apiKey: String) -> Void {
+    
     do {
-      let backup = BackupOptions(gdrive: GDriveStorage(clientID: "", viewController: self))
+      guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
+        print("Couldnt load info plist")
+        return }
+      guard let ALCHEMY_API_KEY: String = infoDictionary["ALCHEMY_API_KEY"] as? String else {
+        print("Error: Do you have `ALCHEMY_API_KEY=$(ALCHEMY_API_KEY)` in your info.plist?")
+        return  }
+      guard let GDRIVE_CLIENT_ID: String = infoDictionary["GDRIVE_CLIENT_ID"] as? String else {
+        print("Error: Do you have `GDRIVE_CLIENT_ID=$(GDRIVE_CLIENT_ID)` in your info.plist?")
+        return  }
+      let backup = BackupOptions(gdrive: GDriveStorage(clientID: GDRIVE_CLIENT_ID, viewController: self))
       let keychain = PortalKeychain()
+      // Configure the chain.
+      let chainId = 5
+      let chain = "goerli"
       portal = try Portal(
         apiKey: apiKey,
         backup: backup,
         chainId: 5,
         keychain: keychain,
         gatewayConfig: [
-          5: ""
+          chainId: "https://eth-\(chain).g.alchemy.com/v2/\(ALCHEMY_API_KEY)",
         ],
         autoApprove: true
       )
@@ -331,20 +348,12 @@ class ViewController: UIViewController {
 
   func injectWebView() {
     let webViewController = PortalWebView(portal: portal!, url: URL(string: url.text!)!, onError: onError)
-
     // Install the WebViewController as a child view controller.
-    addChild(webViewController)
-
-    let webViewControllerView = webViewController.view!
-    view.addSubview(webViewControllerView)
-
-    webViewControllerView.translatesAutoresizingMaskIntoConstraints = false
-    webViewControllerView.topAnchor.constraint(equalTo: view.topAnchor).isActive = true
-    webViewControllerView.bottomAnchor.constraint(equalTo: view.bottomAnchor).isActive = true
-    webViewControllerView.leftAnchor.constraint(equalTo: view.leftAnchor).isActive = true
-    webViewControllerView.rightAnchor.constraint(equalTo: view.rightAnchor).isActive = true
-
-    webViewController.didMove(toParent: self)
+      addChild(webViewController)
+      let webViewControllerView = webViewController.view!
+      view.addSubview(webViewControllerView)
+      webViewController.didMove(toParent: self)
+    
   }
 
   func signIn(username: String, completionHandler: @escaping (UserResult) -> Void) {
