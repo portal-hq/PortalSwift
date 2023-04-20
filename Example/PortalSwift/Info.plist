@@ -52,6 +52,8 @@
 	</array>
 	<key>GDRIVE_CLIENT_ID</key>
 	<string>$(GDRIVE_CLIENT_ID)</string>
+	<key>ENV</key>
+	<string>$(ENV)</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

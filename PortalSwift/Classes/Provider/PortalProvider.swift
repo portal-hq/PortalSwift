@@ -56,8 +56,7 @@ public enum ETHRequestMethods: String {
   case SendTransaction = "eth_sendTransaction"
   case Sign = "eth_sign"
   case SignTransaction = "eth_signTransaction"
-  // Unsupported Methods:
-  case SignTypedData = "eth_signTypedData"
+//  case SignTypedData = "eth_signTypedData"
   case SignTypedDataV4 = "eth_signTypedData_v4"
   
   //  case UninstallFilter = "eth_uninstallFilter"
@@ -248,7 +247,7 @@ public var signerMethods: [ETHRequestMethods.RawValue] = [
   ETHRequestMethods.SendTransaction.rawValue,
   ETHRequestMethods.Sign.rawValue,
   ETHRequestMethods.SignTransaction.rawValue,
-  ETHRequestMethods.SignTypedData.rawValue,
+//  ETHRequestMethods.SignTypedData.rawValue,
   ETHRequestMethods.SignTypedDataV4.rawValue
 ]
 
@@ -697,10 +696,6 @@ public class PortalProvider {
       }
     }
     
-    if (payload.method == ETHRequestMethods.SignTypedData.rawValue || payload.method == ETHRequestMethods.SignTypedDataV4.rawValue) {
-      completion(Result (error: ProviderRpcError.unsupportedMethod))
-      return
-    }
     
     self.mpcQueue.async {
       // This code will be executed in a background thread
@@ -733,10 +728,6 @@ public class PortalProvider {
         completion(Result(error: ProviderSigningError.userDeclinedApproval))
         return
       }
-    }
-    if (payload.method == ETHRequestMethods.SignTypedData.rawValue || payload.method == ETHRequestMethods.SignTypedDataV4.rawValue) {
-      completion(Result (error: ProviderRpcError.unsupportedMethod))
-      return
     }
     self.mpcQueue.async {
       // This code will be executed in a background thread

@@ -41,8 +41,6 @@ struct ProviderAddressRequest {
 
 class ViewController: UIViewController {
   public var portal: Portal?
-  public var CUSTODIAN_SERVER_URL = "https://portalex-mpc.portalhq.io"
-
   public var eth_estimate: String?
   // Static information
   @IBOutlet weak var addressInformation: UITextView!
@@ -59,8 +57,33 @@ class ViewController: UIViewController {
   @IBOutlet public var username: UITextField!
   @IBOutlet public var url: UITextField!
   public var user: UserResult?
+  public var CUSTODIAN_SERVER_URL: String?
+  public var API_URL: String?
+  public var MPC_URL: String?
+  
   override func viewDidLoad() {
     super.viewDidLoad()
+    let PROD_CUSTODIAN_SERVER_URL = "https://portalex-mpc.portalhq.io"
+    let STAGING_CUSTODIAN_SERVER_URL = "https://staging-portalex-mpc-service.onrender.com"
+    let PROD_API_URL = "https://api.portalhq.io"
+    let PROD_MPC_URL = "https://mpc.portalhq.io"
+    let STAGING_API_URL = "https://api-staging.portalhq.io"
+    let STAGING_MPC_URL = "https://mpc-staging.portalhq.io"
+    guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
+      print("Couldnt load info plist")
+      return }
+    guard let ENV: String = infoDictionary["ENV"] as? String else {
+      print("Error: Do you have `ENV=$(ENV)` in your info.plist?")
+      return  }
+    if (ENV == "prod") {
+      CUSTODIAN_SERVER_URL = PROD_CUSTODIAN_SERVER_URL
+      API_URL = PROD_API_URL
+      MPC_URL = PROD_MPC_URL
+    } else {
+      CUSTODIAN_SERVER_URL = STAGING_CUSTODIAN_SERVER_URL
+      API_URL = STAGING_API_URL
+      MPC_URL = STAGING_MPC_URL
+    }
   }
 
   override func didReceiveMemoryWarning() {
@@ -115,7 +138,7 @@ class ViewController: UIViewController {
         print("✅ handleBackup(): cipherText:", result.data!)
 
         let request = HttpRequest<String, [String : String]>(
-          url: self.CUSTODIAN_SERVER_URL + "/mobile/\(self.user!.exchangeUserId)/cipher-text",
+          url: self.CUSTODIAN_SERVER_URL! + "/mobile/\(self.user!.exchangeUserId)/cipher-text",
           method: "POST",
           body: ["cipherText": result.data!],
           headers: [:],
@@ -134,7 +157,7 @@ class ViewController: UIViewController {
   @IBAction func handleRecover(_ sender: UIButton!) {
     print("Starting recover...")
     let request = HttpRequest<CipherTextResult, [String : String]>(
-      url: self.CUSTODIAN_SERVER_URL + "/mobile/\(self.user!.exchangeUserId)/cipher-text/fetch",
+      url: self.CUSTODIAN_SERVER_URL! + "/mobile/\(self.user!.exchangeUserId)/cipher-text/fetch",
       method: "GET", body:[:],
       headers: [:],
       requestType: HttpRequestType.CustomRequest
@@ -158,7 +181,7 @@ class ViewController: UIViewController {
         print("✅ handleRecover(): portal.mpc.recover - cipherText:", result.data!)
 
         let request = HttpRequest<String, [String : String]>(
-          url: self.CUSTODIAN_SERVER_URL + "/mobile/\(self.user!.exchangeUserId)/cipher-text",
+          url: self.CUSTODIAN_SERVER_URL! + "/mobile/\(self.user!.exchangeUserId)/cipher-text",
           method: "POST",
           body: ["cipherText": result.data!],
           headers: [:],
@@ -296,7 +319,7 @@ class ViewController: UIViewController {
         portal?.provider.request(payload: payload) {
                 (result: Result<TransactionCompletionResult>) -> Void in
                 guard result.error == nil else {
-                  print("❌ Error sending transaction:", result.error!)
+                  print("❌ Error sending transaction:", ((result.error as! PortalMpcError).description))
                   return
                 }
               guard (result.data!.result as! Result<Any>).error == nil else {
@@ -331,7 +354,9 @@ class ViewController: UIViewController {
         gatewayConfig: [
           chainId: "https://eth-\(chain).g.alchemy.com/v2/\(ALCHEMY_API_KEY)",
         ],
-        autoApprove: true
+        autoApprove: false,
+        apiHost: API_URL!,
+        mpcHost: MPC_URL!
       )
     } catch ProviderInvalidArgumentError.invalidGatewayUrl {
       print("❌ Error: Invalid Gateway URL")
@@ -358,7 +383,7 @@ class ViewController: UIViewController {
 
   func signIn(username: String, completionHandler: @escaping (UserResult) -> Void) {
     let request = HttpRequest<UserResult, [String : String]>(
-      url: CUSTODIAN_SERVER_URL + "/mobile/login",
+      url: CUSTODIAN_SERVER_URL! + "/mobile/login",
       method: "POST",
       body: ["username": username],
       headers: ["Content-Type": "application/json"],
@@ -376,7 +401,7 @@ class ViewController: UIViewController {
 
   func signUp(username: String, completionHandler: @escaping (UserResult) -> Void) {
     let request = HttpRequest<UserResult, [String : String]>(
-      url: CUSTODIAN_SERVER_URL + "/mobile/signup",
+      url: CUSTODIAN_SERVER_URL! + "/mobile/signup",
       method: "POST",
       body: ["username": username],
       headers: ["Content-Type": "application/json"],
