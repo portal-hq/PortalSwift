@@ -37,14 +37,34 @@ public class PortalKeychain: MobileStorageAdapter {
   
   /// Sets the address in the client's keychain.
   /// - Parameter address: The public address of the client's wallet.
-  override public func setAddress(address: String) throws {
-    try setItem(key: Address, value: address)
+  override public func setAddress(
+    address: String,
+    completion: (Result<OSStatus>) -> Void
+  ) {
+    setItem(key: Address, value: address) { result in
+      // Handle errors
+      guard result.error == nil else {
+        return completion(Result(error: result.error!))
+      }
+      
+      return completion(Result(data: result.data!))
+    }
   }
   
   /// Sets the signing share in the client's keychain.
   /// - Parameter signingShare: A dkg object.
-  override public func setSigningShare(signingShare: String) throws  {
-    try setItem(key: SigningShare, value: signingShare)
+  override public func setSigningShare(
+    signingShare: String,
+    completion: (Result<OSStatus>) -> Void
+  ) -> Void {
+    setItem(key: SigningShare, value: signingShare) { result in
+      // Handle errors
+      guard result.error == nil else {
+        return completion(Result(error: result.error!))
+      }
+      
+      return completion(Result(data: result.data!))
+    }
   }
   
   /// Deletes the address stored in the client's keychain.
@@ -87,25 +107,34 @@ public class PortalKeychain: MobileStorageAdapter {
     
     return itemString
   }
-  
-  private func setItem(key: String, value: String) throws {
-    // Construct the query to set the keychain item.
-    let query: [String: AnyObject] = [
-      kSecAttrService as String: "PortalMpc.\(key)" as AnyObject,
-      kSecAttrAccount as String: key as AnyObject,
-      kSecClass as String: kSecClassGenericPassword,
-      kSecValueData as String: value.data(using: String.Encoding.utf8) as AnyObject
-    ]
-    
-    // Try to set the keychain item that matches the query.
-    let status = SecItemAdd(query as CFDictionary, nil)
-    
-    // Throw if the status is not successful.
-    if (status == errSecDuplicateItem) {
-      return try self.updateItem(key: key, value: value)
-    }
-    guard status == errSecSuccess else {
-      throw KeychainError.unhandledError(status: status)
+
+  private func setItem(
+    key: String,
+    value: String,
+    completion: (Result<OSStatus>) -> Void
+  ) -> Void {
+    do {
+      // Construct the query to set the keychain item.
+      let query: [String: AnyObject] = [
+        kSecAttrService as String: "PortalMpc.\(key)" as AnyObject,
+        kSecAttrAccount as String: key as AnyObject,
+        kSecClass as String: kSecClassGenericPassword,
+        kSecValueData as String: value.data(using: String.Encoding.utf8) as AnyObject
+      ]
+      
+      // Try to set the keychain item that matches the query.
+      let status = SecItemAdd(query as CFDictionary, nil)
+      
+      // Throw if the status is not successful.
+      if (status == errSecDuplicateItem) {
+        try self.updateItem(key: key, value: value)
+        return completion(Result(data: status))
+      }
+      guard status == errSecSuccess else {
+        return completion(Result(error: KeychainError.unhandledError(status: status)))
+      }
+    } catch {
+      return completion(Result(error: error))
     }
   }
   

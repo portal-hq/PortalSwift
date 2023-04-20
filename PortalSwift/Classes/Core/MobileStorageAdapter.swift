@@ -21,13 +21,13 @@ public class MobileStorageAdapter {
 
   /// Sets the address in the client's keychain.
   /// - Parameter address: The public address of the client's wallet.
-  public func setAddress(address: String) throws {
+  public func setAddress(address: String, completion: (Result<OSStatus>) -> Void) {
     fatalError("Subclass must override setAddress()")
   }
 
   /// Sets the signing share in the client's keychain.
   /// - Parameter signingShare: A dkg object.
-  public func setSigningShare(signingShare: String) throws  {
+  public func setSigningShare(signingShare: String, completion: (Result<OSStatus>) -> Void)  {
     fatalError("Subclass must override setSigningShare()")
   }
   
