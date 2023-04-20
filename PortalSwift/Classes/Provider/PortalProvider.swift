@@ -559,11 +559,30 @@ public class PortalProvider {
     }
 
     // Bind to signing approval callbacks
-    let _ = once(event: Events.PortalSigningApproved.rawValue, callback: { (approved) in
+    let _ = once(event: Events.PortalSigningApproved.rawValue, callback: { approved in
+      // If the approved event is fired
       completion(Result(data: true))
     }).once(event: Events.PortalSigningRejected.rawValue, callback: { approved in
+      // If the rejected event is fired
       completion(Result(data: false))
     })
+    
+    // Execute event handlers
+    let handlers = events[Events.PortalSigningRequested.rawValue]
+    
+    // Fail if there are no handlers
+    if handlers == nil || handlers!.isEmpty {
+      return completion(Result(data: false))
+    }
+    
+    do {
+      // Loop over the event handlers
+      for eventHandler in handlers! {
+        try eventHandler.handler(payload)
+      }
+    } catch {
+      completion(Result(error: error))
+    }
   }
 
   private func getApproval(
