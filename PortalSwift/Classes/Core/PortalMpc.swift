@@ -567,9 +567,6 @@ public class PortalMpc {
               return completion(Result(data: encryptedResult.data!.cipherText))
             }
           }
-          
-          // Return the cipherText.
-          return completion(Result(data: encryptedResult.cipherText))
         }
       }
     }
