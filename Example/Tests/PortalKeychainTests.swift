@@ -23,23 +23,12 @@ final class PortalKeychainTests: XCTestCase {
   }
 
   func testShare() {
-    do {
-      try keychain!.setSigningShare(signingShare: "TestSigningShare")
-    }
-    catch {
-      print("Error setting the share")
-    }
-
+    keychain!.setSigningShare(signingShare: "TestSigningShare") { result in }
     XCTAssert(try keychain!.getSigningShare() == "TestSigningShare", "Signing Share should equal what we stored.")
   }
 
   func testAddress() {
-    do {
-      try keychain!.setAddress(address: "0xhahashdfasAJHAFKJ")
-    }
-    catch {
-      print("Error setting the address")
-    }
+    keychain!.setAddress(address: "0xhahashdfasAJHAFKJ") { result in }
 
     XCTAssert(try keychain!.getAddress() == "0xhahashdfasAJHAFKJ", "Address should equal what we stored.")
   }

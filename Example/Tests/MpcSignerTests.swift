@@ -15,15 +15,19 @@ final class MpcSignerTests: XCTestCase {
   var provider: PortalProvider?
 
   override func setUpWithError() throws {
-    keychain = MockPortalKeychain()
-    try keychain!.setSigningShare(signingShare: mockSigningShare)
-    signer = MpcSigner(keychain: keychain!)
-    provider = try MockPortalProvider(
-      apiKey: "API_KEY",
-      chainId: Chains.Goerli.rawValue,
-      gatewayUrl: "https://eth-goerli.g.alchemy.com/v2/API_KEY",
-      autoApprove: true
-    )
+    do {
+      keychain = MockPortalKeychain()
+      keychain!.setSigningShare(signingShare: mockSigningShare) { result in }
+      signer = MpcSigner(keychain: keychain!)
+      provider = try MockPortalProvider(
+        apiKey: "API_KEY",
+        chainId: Chains.Goerli.rawValue,
+        gatewayUrl: "https://eth-goerli.g.alchemy.com/v2/API_KEY",
+        autoApprove: true
+      )
+    } catch {
+      throw error
+    }
   }
 
   override func tearDownWithError() throws {

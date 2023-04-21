@@ -22,7 +22,6 @@
 @class ClientReshareResult;
 @class ClientShare;
 @class ClientSignature;
-@class ClientSigningRequest;
 @class ClientSigningResult;
 
 @interface ClientDecryptData : NSObject <goSeqRefInterface> {
@@ -140,15 +139,6 @@
 - (nonnull instancetype)init;
 @property (nonatomic) NSString* _Nonnull r;
 @property (nonatomic) NSString* _Nonnull s;
-@end
-
-@interface ClientSigningRequest : NSObject <goSeqRefInterface> {
-}
-@property(strong, readonly) _Nonnull id _ref;
-
-- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
-- (nonnull instancetype)init;
-@property (nonatomic) NSString* _Nonnull hash;
 @end
 
 @interface ClientSigningResult : NSObject <goSeqRefInterface> {
