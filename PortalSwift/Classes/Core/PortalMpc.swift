@@ -315,7 +315,6 @@ public class PortalMpc {
       // Call the MPC service to generate a new wallet.
       progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
       let response = ClientGenerate(apiKey, mpcHost, version)
-      
       // Parse the share
       progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
       let jsonData = response.data(using: .utf8)!
@@ -355,7 +354,8 @@ public class PortalMpc {
               completion(Result(error: result.error!))
               return
             }
-            
+            progress?(MpcStatus(status: MpcStatuses.done, done: true))
+
             // Return the address.
             return completion(Result(data: address))
           }
