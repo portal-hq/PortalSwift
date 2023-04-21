@@ -398,8 +398,8 @@ class ViewController: UIViewController {
       let backup = BackupOptions(gdrive: GDriveStorage(clientID: GDRIVE_CLIENT_ID, viewController: self))
       let keychain = PortalKeychain()
       // Configure the chain.
-      let chainId = 1
-      let chain = "mainnet"
+      let chainId = 5
+      let chain = "goerli"
       portal = try Portal(
         apiKey: apiKey,
         backup: backup,
