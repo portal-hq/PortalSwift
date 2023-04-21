@@ -56,7 +56,7 @@ public enum ETHRequestMethods: String {
   case SendTransaction = "eth_sendTransaction"
   case Sign = "eth_sign"
   case SignTransaction = "eth_signTransaction"
-//  case SignTypedData = "eth_signTypedData"
+  case SignTypedDataV3 = "eth_signTypedData_v3"
   case SignTypedDataV4 = "eth_signTypedData_v4"
   
   //  case UninstallFilter = "eth_uninstallFilter"
@@ -247,7 +247,7 @@ public var signerMethods: [ETHRequestMethods.RawValue] = [
   ETHRequestMethods.SendTransaction.rawValue,
   ETHRequestMethods.Sign.rawValue,
   ETHRequestMethods.SignTransaction.rawValue,
-//  ETHRequestMethods.SignTypedData.rawValue,
+  ETHRequestMethods.SignTypedDataV3.rawValue,
   ETHRequestMethods.SignTypedDataV4.rawValue
 ]
 
@@ -295,7 +295,7 @@ public class PortalProvider {
   private var signer: MpcSigner
   private var address: String = ""
   private var mpcHost: String = "mpc.portalhq.io"
-  private var version: String = "v2"
+  private var version: String = "v3"
   private var mpcQueue: DispatchQueue
   
   private var walletMethods: [ETHRequestMethods.RawValue] = [
@@ -321,7 +321,7 @@ public class PortalProvider {
     apiHost: String = "api.portalhq.io",
     autoApprove: Bool,
     mpcHost: String = "mpc.portalhq.io",
-    version: String = "v2"
+    version: String = "v3"
   ) throws {
     // User-defined instance variables
     self.apiKey = apiKey
@@ -690,7 +690,11 @@ public class PortalProvider {
     completion: @escaping (Result<SignerResult>) -> Void
   ) -> Void {
     getApproval(payload: payload) { result in
-      if (!result.data!) {
+      guard result.error == nil else {
+        completion(Result(error: result.error!))
+        return
+      }
+      if (!(result.data!)) {
         completion(Result(error: ProviderSigningError.userDeclinedApproval))
         return
       }
@@ -723,7 +727,13 @@ public class PortalProvider {
     payload: ETHTransactionPayload,
     completion: @escaping (Result<Any>) -> Void
   ) -> Void {
+    
     getApproval(payload: payload) { result in
+      guard result.error == nil else {
+        completion(Result(error: result.error!))
+        return
+      }
+      
       if (!result.data!) {
         completion(Result(error: ProviderSigningError.userDeclinedApproval))
         return

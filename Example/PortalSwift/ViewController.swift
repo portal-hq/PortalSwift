@@ -65,16 +65,17 @@ class ViewController: UIViewController {
     super.viewDidLoad()
     let PROD_CUSTODIAN_SERVER_URL = "https://portalex-mpc.portalhq.io"
     let STAGING_CUSTODIAN_SERVER_URL = "https://staging-portalex-mpc-service.onrender.com"
-    let PROD_API_URL = "https://api.portalhq.io"
-    let PROD_MPC_URL = "https://mpc.portalhq.io"
-    let STAGING_API_URL = "https://api-staging.portalhq.io"
-    let STAGING_MPC_URL = "https://mpc-staging.portalhq.io"
+    let PROD_API_URL = "api.portalhq.io"
+    let PROD_MPC_URL = "mpc.portalhq.io"
+    let STAGING_API_URL = "api-staging.portalhq.io"
+    let STAGING_MPC_URL = "mpc-staging.portalhq.io"
     guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
       print("Couldnt load info plist")
       return }
     guard let ENV: String = infoDictionary["ENV"] as? String else {
       print("Error: Do you have `ENV=$(ENV)` in your info.plist?")
       return  }
+    print("ENV", ENV)
     if (ENV == "prod") {
       CUSTODIAN_SERVER_URL = PROD_CUSTODIAN_SERVER_URL
       API_URL = PROD_API_URL
@@ -354,7 +355,7 @@ class ViewController: UIViewController {
         gatewayConfig: [
           chainId: "https://eth-\(chain).g.alchemy.com/v2/\(ALCHEMY_API_KEY)",
         ],
-        autoApprove: false,
+        autoApprove: true,
         apiHost: API_URL!,
         mpcHost: MPC_URL!
       )
@@ -518,7 +519,8 @@ class ViewController: UIViewController {
         ProviderRequest(method: ETHRequestMethods.RequestAccounts.rawValue, params: [], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.Sign.rawValue, params: [fromAddress!, "0xdeadbeaf"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.PersonalSign.rawValue, params: ["0xdeadbeaf", fromAddress!], skipLoggingResult: false),
-        // ProviderRequest(method: ETHRequestMethods.SignTypedData.rawValue, params: [], skipLoggingResult: false),
+        ProviderRequest(method: ETHRequestMethods.SignTypedDataV4.rawValue, params: [], skipLoggingResult: false),
+        ProviderRequest(method: ETHRequestMethods.SignTypedDataV3.rawValue, params: [], skipLoggingResult: false),
       ]
 
       for request in signerRequests {
