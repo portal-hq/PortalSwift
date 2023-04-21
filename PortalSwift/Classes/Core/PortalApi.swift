@@ -56,7 +56,7 @@ public class PortalApi {
   public var apiHost: String
   public var apiKey: String
   public var requests: HttpRequester
-
+  
   /// Create an instance of a PortalApi class.
   /// - Parameters:
   ///   - apiKey: The Client API key. You can create one using Portal's REST API.
@@ -70,7 +70,7 @@ public class PortalApi {
     self.apiHost = String(format:"https://%@", apiHost)
     self.requests = mockRequests ? MockHttpRequester(baseUrl: self.apiHost) : HttpRequester(baseUrl: self.apiHost)
   }
-
+  
   /// Retrieve the client by API key.
   /// - Parameter completion: The callback that contains the Client.
   /// - Returns: Void.
@@ -89,7 +89,7 @@ public class PortalApi {
       }
     }
   }
-
+  
   /// Retrieve a list of enabled dapps for the client.
   /// - Parameter completion: The callback that contains the list of Dapps.
   /// - Returns: Void.
@@ -104,7 +104,7 @@ public class PortalApi {
       completion(result)
     }
   }
-
+  
   /// Retrieves a list of supported networks.
   /// - Parameter completion: The callback that contains the list of Networks.
   /// - Returns: Void.
