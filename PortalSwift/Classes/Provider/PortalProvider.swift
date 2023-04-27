@@ -585,6 +585,8 @@ public class PortalProvider {
     } catch {
       completion(Result(error: error))
     }
+    
+    return completion(Result(data: true))
   }
   
   private func getApproval(
