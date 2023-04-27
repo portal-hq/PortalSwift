@@ -17,4 +17,5 @@ Pod::Spec.new do |s|
   s.source_files = 'PortalSwift/Classes/**/*'
 
   s.dependency "GoogleSignIn", "~> 6.2"
+  s.dependency "Starscream"
 end
