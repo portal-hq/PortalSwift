@@ -569,6 +569,8 @@ public class PortalMpc {
           }
         }
       }
+    }   progress: { status in
+      progress?(status)
     }
   }
   
@@ -580,7 +582,8 @@ public class PortalMpc {
   private func getBackupShare(
     cipherText: String,
     method: BackupMethods.RawValue,
-    completion: @escaping (Result<String>) -> Void
+    completion: @escaping (Result<String>) -> Void,
+    progress: ((MpcStatus) -> Void)? = nil
   ) -> Void {
     // Derive the storage and throw an error if none was provided.
     let storage = self.storage[method] as? Storage
@@ -597,6 +600,7 @@ public class PortalMpc {
       
       // Attempt to decrypt the cipherText.
       do {
+        progress?(MpcStatus(status: MpcStatuses.decryptingShare, done: false))
         let backupShare = try self.decryptShare(cipherText: cipherText, privateKey: result.data!)
         return completion(Result(data: backupShare))
       } catch {
