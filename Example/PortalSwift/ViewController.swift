@@ -136,8 +136,6 @@ class ViewController: UIViewController {
       if (result.error != nil) {
         print("❌ handleBackup():", result.error!)
       } else {
-        print("✅ handleBackup(): cipherText:", result.data!)
-
         let request = HttpRequest<String, [String : String]>(
           url: self.CUSTODIAN_SERVER_URL! + "/mobile/\(self.user!.exchangeUserId)/cipher-text",
           method: "POST",
@@ -147,7 +145,7 @@ class ViewController: UIViewController {
         )
 
         request.send() { (result: Result<String>) in
-          print("✅ handleBackup(): Successfully sent custodian cipherText:")
+          print("✅ handleBackup(): Successfully sent custodian cipherText")
         }
       }
     } progress: { status in
@@ -350,7 +348,7 @@ class ViewController: UIViewController {
       portal = try Portal(
         apiKey: apiKey,
         backup: backup,
-        chainId: 5,
+        chainId: chainId,
         keychain: keychain,
         gatewayConfig: [
           chainId: "https://eth-\(chain).g.alchemy.com/v2/\(ALCHEMY_API_KEY)",
@@ -359,6 +357,8 @@ class ViewController: UIViewController {
         apiHost: API_URL!,
         mpcHost: MPC_URL!
       )
+      
+      _ = portal?.provider.on(event: Events.PortalSigningRequested.rawValue, callback: { [weak self] data in self?.didRequestApproval(data: data)})
     } catch ProviderInvalidArgumentError.invalidGatewayUrl {
       print("❌ Error: Invalid Gateway URL")
     } catch PortalArgumentError.noGatewayConfigForChain(let chainId) {
@@ -366,6 +366,11 @@ class ViewController: UIViewController {
     } catch {
       print("❌ Error registering portal:", error)
     }
+  }
+  
+  func didRequestApproval(data: Any) -> Void {
+    print("Requesting Approval: ", data)
+    _ = portal?.provider.emit(event: Events.PortalSigningApproved.rawValue, data: data)
   }
 
   func onError(result: Result<Any>) -> Void {

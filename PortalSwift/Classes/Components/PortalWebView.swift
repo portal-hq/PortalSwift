@@ -265,7 +265,6 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       onError(Result(error: response.error!))
       return
     }
-    print("result in signing request completion", result)
     let payload: Dictionary<String, Any> = [
       "method": result.data!.method,
       "params": result.data!.params,
