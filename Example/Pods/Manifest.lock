@@ -18,7 +18,7 @@ PODS:
     - AppAuth/Core (~> 1.6)
     - GTMSessionFetcher/Core (< 3.0, >= 1.5)
   - GTMSessionFetcher/Core (2.1.0)
-  - PortalSwift (0.0.1):
+  - PortalSwift (0.1.9):
     - GoogleSignIn (~> 6.2)
 
 DEPENDENCIES:
@@ -44,8 +44,8 @@ SPEC CHECKSUMS:
   GoogleSignIn: 5651ce3a61e56ca864160e79b484cd9ed3f49b7a
   GTMAppAuth: 0ff230db599948a9ad7470ca667337803b3fc4dd
   GTMSessionFetcher: ffbb25ec00ebcb5201adab0a56d808f6f1902d9f
-  PortalSwift: 34ace443e608f85babdf0bdb29977a4e600a7ac4
+  PortalSwift: 7c839cb675965e8cf9b1954f9f29d67b25791976
 
 PODFILE CHECKSUM: efda62deb7a6a126b2c71d13b649a6dc0c823f36
 
-COCOAPODS: 1.11.3
+COCOAPODS: 1.12.0
