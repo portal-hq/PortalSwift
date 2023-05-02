@@ -350,7 +350,7 @@ class ViewController: UIViewController {
       portal = try Portal(
         apiKey: apiKey,
         backup: backup,
-        chainId: 5,
+        chainId: chainId,
         keychain: keychain,
         gatewayConfig: [
           chainId: "https://eth-\(chain).g.alchemy.com/v2/\(ALCHEMY_API_KEY)",
@@ -369,7 +369,15 @@ class ViewController: UIViewController {
   }
 
   func onError(result: Result<Any>) -> Void {
-    print("PortalWebviewError:", result.error!, "Description:", result.error!.localizedDescription)
+      print("PortalWebviewError:", result.error!, "Description:", result.error!.localizedDescription.description)
+         guard result.error == nil else {
+           print("❌ Error in PortalWebviewError:", ((result.error as! PortalMpcError).description))
+           return
+         }
+         guard ((result.data! as AnyObject).result as! Result<Any>).error == nil else {
+           print("❌ Error in PortalWebviewError:", (((result.data as! AnyObject).result as! Result<Any>).error as! PortalMpcError).description)
+         return
+       }
   }
 
   func injectWebView() {
