@@ -25,7 +25,7 @@ jobs:
           rm "$PODSPEC_FILE.bak"
           cat "$PODSPEC_FILE"
 
-      - name: Open PR for Swift repo to update version
+      - name: Open PR for Swift repo (main)
         id: cpr
         uses: portal-hq/create-pull-request@v5
         with:
@@ -37,7 +37,7 @@ jobs:
           body: "This PR contains the updated version for the SDK: ${{ inputs.version }}"
           labels: "Release"
 
-      - name: Open PR for Swift repo to update version
+      - name: Open PR for Swift repo (release-candidate)
         id: cprRc
         uses: portal-hq/create-pull-request@v5
         with:
