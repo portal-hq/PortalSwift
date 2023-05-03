@@ -1,4 +1,4 @@
-name: Release the swift SDK
+name: Update the sdk version
 on:
   workflow_dispatch:
     inputs:
@@ -33,12 +33,12 @@ jobs:
           branch: "release"
           branch-suffix: short-commit-hash
           delete-branch: true
-          title: "SDK Release ${{ inputs.version }} at "
-          body: "This PR contains the upadted version for the SDK: ${{ inputs.version }}"
+          title: "SDK Release ${{ inputs.version }}"
+          body: "This PR contains the updated version for the SDK: ${{ inputs.version }}"
           labels: "Release"
 
       - name: Open PR for Swift repo to update version
-        id: cpr-rc
+        id: cprRc
         uses: portal-hq/create-pull-request@v5
         with:
           token: ${{ secrets.GH_PAT }}
@@ -47,5 +47,17 @@ jobs:
           branch-suffix: short-commit-hash
           delete-branch: true
           title: "SDK Release ${{ inputs.version }} at "
-          body: "This PR contains the upadted version for the SDK: ${{ inputs.version }}"
+          body: "This PR contains the updated version for the SDK: ${{ inputs.version }}"
           labels: "Release"
+
+      - name: Slack - send version updated message
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          payload: |
+            {
+            "Title": "Swift SDK Version Updated",
+            "Body": "To complete the release for version: ${{ inputs.version }}.\n\n Please approve these PRs: `main``: ${{ steps.cpr.outputs.pull-request-url }}\n\n `release-candidate`: ${{ steps.cprRc.outputs.pull-request-url }}\n",
+            "Status": "Success"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

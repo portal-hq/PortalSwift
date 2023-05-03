@@ -1,9 +1,10 @@
-name: Tag Pod Version
+name: Tag the sdk version
 
 on:
   push:
     branches:
       - main
+      - release-candidate
 
 jobs:
   tag_pod_version:
