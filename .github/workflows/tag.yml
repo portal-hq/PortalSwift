@@ -2,7 +2,7 @@ name: Tag the sdk version
 on:
   push:
     branches:
-      - main
+      - testing-tagging
 
 jobs:
   tag_pod_version:
