@@ -183,7 +183,6 @@
 			isa = PBXGroup;
 			children = (
 				F921AB0129CE16210063305E /* Integration Tests */,
-				F921AB0129CE16210063305E /* Integration Tests */,
 				47323B45293A9B200029B69E /* Core */,
 				47323B48293A9B5F0029B69E /* Provider */,
 				47323B46293A9B340029B69E /* Storage */,
@@ -295,7 +294,6 @@
 		607FACC81AFB9204008FA782 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastSwiftUpdateCheck = 1420;
 				LastSwiftUpdateCheck = 1420;
 				LastUpgradeCheck = 1410;
 				ORGANIZATIONNAME = CocoaPods;
