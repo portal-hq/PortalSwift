@@ -16,14 +16,27 @@ struct ConnectRequestData: Codable {
 
 struct ConnectData: Codable {
   let active: Bool
-  let expiry: Int32
+  let expiry: Int32?
   let peerMetadata: PeerMetadata
-  let relay: ProtocolOptions
-  let topic: String
+  let relay: ProtocolOptions?
+  let topic: String?
+}
+
+struct ConnectV1Data: Codable {
+  let id: Int
+  let jsonrpc: String
+  let method: String
+  let params: [ConnectV1Params]
+}
+
+struct ConnectV1Params: Codable {
+  let peerId: String
+  let peerMeta: PeerMetadata
+  let chainId: Int
 }
 
 struct DisconnectData: Codable {
-  let id: Int32
+  let id: Int
   let topic: String
 }
 
@@ -39,9 +52,34 @@ struct ProtocolOptions: Codable {
   let data: String?
 }
 
+struct ProviderRequestAddressData: Codable {
+  let method: String
+  let params: [ETHAddressParam]
+}
+
+struct ProviderRequestTransactionData: Codable {
+  let method: String
+  let params: [ETHTransactionParam]
+}
+
 struct ProviderRequestData: Codable {
   let method: String
   let params: [String]
+}
+
+struct ProviderRequestParams: Codable {
+  let chainId: Int?
+  let request: ProviderRequestData
+}
+
+struct ProviderRequestTransactionParams: Codable {
+  let chainId: Int?
+  let request: ProviderRequestTransactionData
+}
+
+struct ProviderRequestAddressParams: Codable {
+  let chainId: Int?
+  let request: ProviderRequestAddressData
 }
 
 struct ProviderRequestPayload: Codable {
@@ -49,9 +87,31 @@ struct ProviderRequestPayload: Codable {
   let data: ProviderRequestData
 }
 
+struct ProviderRequestTransactionPayload: Codable {
+  let event: String
+  let data: ProviderRequestTransactionData
+}
+
+struct ProviderRequestAddressPayload: Codable {
+  let event: String
+  let data: ProviderRequestAddressData
+}
+
 struct SessionRequestData: Codable {
-  let id: String
-  let params: ProviderRequestPayload
+  let id: Int
+  let params: ProviderRequestParams
+  let topic: String
+}
+
+struct SessionRequestTransactionData: Codable {
+  let id: Int
+  let params: ProviderRequestTransactionParams
+  let topic: String
+}
+
+struct SessionRequestAddressData: Codable {
+  let id: Int
+  let params: ProviderRequestAddressParams
   let topic: String
 }
 
@@ -60,9 +120,44 @@ struct WebSocketMessage: Codable {
   let data: WebSocketMessageData?
 }
 
+struct WebSocketConnectedMessage: Codable {
+  var event: String = "connected"
+  let data: ConnectData
+}
+
+struct WebSocketConnectedV1Message: Codable {
+  var event: String = "connected"
+  let data: ConnectV1Data
+}
+
+struct WebSocketDisconnectMessage: Codable {
+  var event: String = "disconnect"
+  let data: DisconnectData
+}
+
+struct WebSocketSessionRequestMessage: Codable {
+  var event: String = "session_request"
+  let data: SessionRequestData
+}
+
+struct WebSocketSessionRequestAddressMessage: Codable {
+  var event: String = "session_request"
+  let data: SessionRequestAddressData
+}
+
+struct WebSocketSessionRequestTransactionMessage: Codable {
+  var event: String = "session_request"
+  let data: SessionRequestTransactionData
+}
+
 struct WebSocketRequest: Codable {
   let event: String
   let data: WebSocketRequestData?
+}
+
+struct WebSocketConnectRequest: Codable {
+  let event: String
+  let data: ConnectRequestData
 }
 
 enum WebSocketMessageData: Codable {
@@ -75,8 +170,28 @@ enum WebSocketRequestData: Codable {
   case connect(data: ConnectRequestData)
 }
 
+struct EventHandlers {
+  var close: [() -> Void]
+  var connected: [(ConnectData) -> Void]
+  var connectedV1: [(ConnectV1Data) -> Void]
+  var disconnect: [(DisconnectData) -> Void]
+  var session_request: [(SessionRequestData) -> Void]
+  var session_request_address: [(SessionRequestAddressData) -> Void]
+  var session_request_transaction: [(SessionRequestTransactionData) -> Void]
+  
+  init() {
+    close = []
+    connected = []
+    connectedV1 = []
+    disconnect = []
+    session_request = []
+    session_request_address = []
+    session_request_transaction = []
+  }
+}
+
 class WebSocketClient : Starscream.WebSocketDelegate {
-  private var events: [String: [(WebSocketMessageData?) -> Void]] = [:]
+  private var events = EventHandlers()
   private var isConnected = false
   private var portal: Portal
   private var webSocketServer: String
@@ -88,26 +203,32 @@ class WebSocketClient : Starscream.WebSocketDelegate {
     self.portal = portal
     self.webSocketServer = webSocketServer
     
-    // Build appropriate connection string
-    let connectionString = webSocketServer.starts(with: "localhost")
-      ? "ws://\(webSocketServer)"
-      : "wss://\(webSocketServer)"
-    
     // Create a new URLRequest instance
-    var request = URLRequest(url: URL(string: connectionString)!)
+    var request = URLRequest(url: URL(string: webSocketServer)!)
     request.timeoutInterval = 5
+    request.setValue("Bearer \(portal.apiKey)", forHTTPHeaderField: "Authorization")
     
     // Create the WebSocket to be connected on demand
     // - this WebSocket does not actually connect until
     //   the `connect` function is called
+    print("[WebSocketClient] Creating WebSocket client with headers: \(String(describing: request.allHTTPHeaderFields))")
     socket = Starscream.WebSocket(request: request)
+    socket.delegate = self
+  }
+  
+  func close() {
+    socket.disconnect(closeCode: 1000)
   }
   
   func connect(uri: String) {
+    self.uri = uri
+    
+    print("[WebSocketClient] Connecting to proxy...")
     socket.connect()
   }
   
   func didReceive(event: Starscream.WebSocketEvent, client: Starscream.WebSocket) {
+    print("[WebSocketClient] Received event: \(event)")
     // Handle incoming messages
     switch event {
       case .connected:
@@ -147,14 +268,17 @@ class WebSocketClient : Starscream.WebSocketDelegate {
     print("[WebSocketClient] Connected to proxy service.")
     
     do {
+      print("[WebSocketClient] Sending connect message...")
+      
+      let address = try portal.keychain.getAddress()
       // Build the WebSocketRequest
-      let request = WebSocketRequest(
+      let request = WebSocketConnectRequest(
         event: "connect",
-        data: .connect(data: ConnectRequestData(
-          address: portal.address,
+        data: ConnectRequestData(
+          address: address,
           chainId: portal.chainId,
           uri: uri!
-        ))
+        )
       )
       
       // JSON encode the WebSocketRequest
@@ -169,13 +293,62 @@ class WebSocketClient : Starscream.WebSocketDelegate {
   }
   
   func handleData(_ data: Data) {
+    // Attempt to parse various data types
     do {
       // JSON decode the incoming message
-      let payload = try JSONDecoder().decode(WebSocketMessage.self, from: data)
-      
+      let payload = try JSONDecoder().decode(WebSocketSessionRequestMessage.self, from: data)
+      print("[WebSocketClient] Received message: \(payload)")
       emit(payload.event, payload.data)
+      return
     } catch {
-      print("[WebSocketClient] Error when processing incoming data: \(error)")
+      print(error)
+      do {
+        let payload = try JSONDecoder().decode(WebSocketSessionRequestAddressMessage.self, from: data)
+        print("[WebSocketClient] Received message: \(payload)")
+        emit(payload.event, payload.data)
+        return
+      } catch {
+        print("[WebSocketClient] Unable to parse message as WebSocketSessionRequestMessage, attempting WebSocketSessionRequestAddressMessage...")
+        do {
+          let payload = try JSONDecoder().decode(WebSocketSessionRequestAddressMessage.self, from: data)
+          print("[WebSocketClient] Received message: \(payload)")
+          emit(payload.event, payload.data)
+          return
+        } catch {
+          print("[WebSocketClient] Unable to parse message as WebSocketSessionRequestAddressMessage, attempting WebSocketSessionRequestTransactionMessage...")
+          do {
+            let payload = try JSONDecoder().decode(WebSocketSessionRequestTransactionMessage.self, from: data)
+            print("[WebSocketClient] Received message: \(payload)")
+            emit(payload.event, payload.data)
+            return
+          } catch {
+            do {
+              let payload = try JSONDecoder().decode(WebSocketConnectedMessage.self, from: data)
+              print("[WebSocketClient] Received message: \(payload)")
+              emit(payload.event, payload.data)
+              return
+            } catch {
+              do {
+                print("[WebSocketClient] Unable to parse message as WebSocketConnectedMessage, attempting WebSocketConnectedV1Message...")
+                let payload = try JSONDecoder().decode(WebSocketConnectedV1Message.self, from: data)
+                print("[WebSocketClient] Received message: \(payload)")
+                emit(payload.event, payload.data)
+                return
+              } catch {
+                print("[WebSocketClient] Unable to parse message as WebSocketConnectedV1Message, attempting WebSocketDisconnectMessage...")
+                do {
+                  let payload = try JSONDecoder().decode(WebSocketDisconnectMessage.self, from: data)
+                  print("[WebSocketClient] Received message: \(payload)")
+                  emit(payload.event, payload.data)
+                  return
+                } catch {
+                  print("[WebSocketClient] Error when processing incoming data: \(error)")
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
   
@@ -185,7 +358,7 @@ class WebSocketClient : Starscream.WebSocketDelegate {
   }
   
   func handleError(_ error: (any Error)?) {
-    
+    print("[WebSocketClient] Received error: \(String(describing: error))")
   }
   
   func handleText(_ text: String) {
@@ -196,14 +369,14 @@ class WebSocketClient : Starscream.WebSocketDelegate {
     handleData(data)
   }
   
-  func emit(_ event: String, _ data: WebSocketMessageData?) {
+  func emit(_ event: String, _ data: ConnectData) {
     // Get the list of event handlers for this event
-    let eventHandlers = events[event]
+    let eventHandlers = events.connected
     
     // Ensure there's something to invoke
-    if (eventHandlers != nil && eventHandlers?.count ?? 0 > 0) {
+    if (eventHandlers.count > 0) {
       // Loop through the event handlers
-      for handler in eventHandlers! {
+      for handler in eventHandlers {
         // Invoke the handler
         handler(data)
       }
@@ -213,17 +386,128 @@ class WebSocketClient : Starscream.WebSocketDelegate {
     }
   }
   
-  func on(_ event: String, _ handler: @escaping (WebSocketMessageData?) -> Void) {
-    // Create a new Array if none exists yet
-    if (events[event] == nil) {
-      events[event] = []
-    }
+  func emit(_ event: String, _ data: ConnectV1Data) {
+    // Get the list of event handlers for this event
+    let eventHandlers = events.connectedV1
     
+    // Ensure there's something to invoke
+    if (eventHandlers.count > 0) {
+      // Loop through the event handlers
+      for handler in eventHandlers {
+        // Invoke the handler
+        handler(data)
+      }
+    } else {
+      // Ignore the event
+      print("[PortalConnect] No registered event handlers for \(event). Ignoring...")
+    }
+  }
+  
+  func emit(_ event: String, _ data: DisconnectData) {
+    // Get the list of event handlers for this event
+    let eventHandlers = events.disconnect
+    
+    // Ensure there's something to invoke
+    if (eventHandlers.count  > 0) {
+      // Loop through the event handlers
+      for handler in eventHandlers {
+        // Invoke the handler
+        handler(data)
+      }
+    } else {
+      // Ignore the event
+      print("[PortalConnect] No registered event handlers for \(event). Ignoring...")
+    }
+  }
+  
+  func emit(_ event: String, _ data: SessionRequestData) {
+    // Get the list of event handlers for this event
+    let eventHandlers = events.session_request
+    
+    // Ensure there's something to invoke
+    if (eventHandlers.count > 0) {
+      // Loop through the event handlers
+      for handler in eventHandlers {
+        // Invoke the handler
+        handler(data)
+      }
+    } else {
+      // Ignore the event
+      print("[PortalConnect] No registered event handlers for \(event). Ignoring...")
+    }
+  }
+  
+  func emit(_ event: String, _ data: SessionRequestAddressData) {
+    // Get the list of event handlers for this event
+    let eventHandlers = events.session_request_address
+    
+    // Ensure there's something to invoke
+    if (eventHandlers.count > 0) {
+      // Loop through the event handlers
+      for handler in eventHandlers {
+        // Invoke the handler
+        handler(data)
+      }
+    } else {
+      // Ignore the event
+      print("[PortalConnect] No registered event handlers for \(event). Ignoring...")
+    }
+  }
+  
+  func emit(_ event: String, _ data: SessionRequestTransactionData) {
+    // Get the list of event handlers for this event
+    let eventHandlers = events.session_request_transaction
+    
+    // Ensure there's something to invoke
+    if (eventHandlers.count > 0) {
+      // Loop through the event handlers
+      for handler in eventHandlers {
+        // Invoke the handler
+        handler(data)
+      }
+    } else {
+      // Ignore the event
+      print("[PortalConnect] No registered event handlers for \(event). Ignoring...")
+    }
+  }
+  
+  func on(_ event: String, _ handler: @escaping () -> Void) {
     // Add event handler to the list
-    events[event]!.append(handler)
+    events.close.append(handler)
+  }
+  
+  func on(_ event: String, _ handler: @escaping (ConnectData) -> Void) {
+    // Add event handler to the list
+    events.connected.append(handler)
+  }
+  
+  func on(_ event: String, _ handler: @escaping (ConnectV1Data) -> Void) {
+    // Add event handler to the list
+    events.connectedV1.append(handler)
+  }
+  
+  func on(_ event: String, _ handler: @escaping (DisconnectData) -> Void) {
+    // Add event handler to the list
+    events.disconnect.append(handler)
+  }
+  
+  func on(_ event: String, _ handler: @escaping (SessionRequestData) -> Void) {
+    // Add event handler to the list
+    events.session_request.append(handler)
+  }
+  
+  func on(_ event: String, _ handler: @escaping (SessionRequestAddressData) -> Void) {
+    // Add event handler to the list
+    events.session_request_address.append(handler)
+  }
+  
+  func on(_ event: String, _ handler: @escaping (SessionRequestTransactionData) -> Void) {
+    // Add event handler to the list
+    events.session_request_transaction.append(handler)
   }
   
   func send(_ message: String) {
+    print("[WebSocketClient] Sending message: \(message)")
     socket.write(string: message)
   }
   
