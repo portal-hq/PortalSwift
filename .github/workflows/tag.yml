@@ -1,5 +1,4 @@
 name: Tag the sdk version
-
 on:
   push:
     branches:
