@@ -20,7 +20,7 @@ jobs:
         run: |
           cd ${{ github.workspace }}/main
           export PODSPEC_FILE="PortalSwift.podspec"
-          export NEW_VERSION="${{ github.event.inputs.new_version }}"
+          export NEW_VERSION="${{ inputs.new_version }}"
           sed -i.bak -E "s/^( *s.version *= *).*/\1'$NEW_VERSION'/" "$PODSPEC_FILE"
           rm "$PODSPEC_FILE.bak"
           cat "$PODSPEC_FILE"
@@ -29,6 +29,7 @@ jobs:
         id: cpr
         uses: portal-hq/create-pull-request@v5
         with:
+          path: main
           token: ${{ secrets.GH_PAT }}
           branch: "release"
           branch-suffix: short-commit-hash
@@ -41,6 +42,7 @@ jobs:
         id: cprRc
         uses: portal-hq/create-pull-request@v5
         with:
+          path: main
           token: ${{ secrets.GH_PAT }}
           branch: "release"
           base: "release-candidate"
