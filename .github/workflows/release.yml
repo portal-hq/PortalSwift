@@ -1,52 +1,53 @@
-# name: Release the swift SDK
-# on:
-#   push:
-#     branches: [testing-release]
-#   workflow_dispatch:
-#     version:
-#       description: "The version of the SDK to release" # we might also tag release-candidate and then just read the version from that branch
-#       required: true
-#       type: string
+name: Release the swift SDK
+on:
+  push:
+    branches: [testing-release]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "The version of the SDK to release" # we might also tag release-candidate and then just read the version from that branch
+        required: true
+        type: string
 
-# jobs:
-#   release_sdk:
-#     runs-on: macos-latest
-#     steps:
-#       - name: Checkout swift repo
-#         uses: actions/checkout@v2
-#         with:
-#           path: main
+jobs:
+  release_sdk:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout swift repo
+        uses: actions/checkout@v2
+        with:
+          path: main
 
-#       - name: Update version in podspec
-#         run: |
-#           cd ${{ github.workspace }}/main
-#           export PODSPEC_FILE="PortalSwift.podspec"
-#           export NEW_VERSION="${{ github.event.inputs.new_version }}"
-#           sed -i.bak -E "s/^( *s.version *= *).*/\1'$NEW_VERSION'/" "$PODSPEC_FILE"
-#           rm "$PODSPEC_FILE.bak"
-#           cat "$PODSPEC_FILE"
+      - name: Update version in podspec
+        run: |
+          cd ${{ github.workspace }}/main
+          export PODSPEC_FILE="PortalSwift.podspec"
+          export NEW_VERSION="${{ github.event.inputs.new_version }}"
+          sed -i.bak -E "s/^( *s.version *= *).*/\1'$NEW_VERSION'/" "$PODSPEC_FILE"
+          rm "$PODSPEC_FILE.bak"
+          cat "$PODSPEC_FILE"
 
-#       - name: Open PR for Swift repo to update version
-#         id: cpr
-#         uses: portal-hq/create-pull-request@v5
-#         with:
-#           token: ${{ secrets.GH_PAT }}
-#           branch: "release"
-#           branch-suffix: short-commit-hash
-#           delete-branch: true
-#           title: "SDK Release ${{ inputs.version }} at "
-#           body: "This PR contains the upadted version for the SDK: ${{ inputs.version }}"
-#           labels: "Release"
+      - name: Open PR for Swift repo to update version
+        id: cpr
+        uses: portal-hq/create-pull-request@v5
+        with:
+          token: ${{ secrets.GH_PAT }}
+          branch: "release"
+          branch-suffix: short-commit-hash
+          delete-branch: true
+          title: "SDK Release ${{ inputs.version }} at "
+          body: "This PR contains the upadted version for the SDK: ${{ inputs.version }}"
+          labels: "Release"
 
-#       - name: Open PR for Swift repo to update version
-#         id: cpr
-#         uses: portal-hq/create-pull-request@v5
-#         with:
-#           token: ${{ secrets.GH_PAT }}
-#           branch: "release"
-#           base: "release-candidate"
-#           branch-suffix: short-commit-hash
-#           delete-branch: true
-#           title: "SDK Release ${{ inputs.version }} at "
-#           body: "This PR contains the upadted version for the SDK: ${{ inputs.version }}"
-#           labels: "Release"
+      - name: Open PR for Swift repo to update version
+        id: cpr
+        uses: portal-hq/create-pull-request@v5
+        with:
+          token: ${{ secrets.GH_PAT }}
+          branch: "release"
+          base: "release-candidate"
+          branch-suffix: short-commit-hash
+          delete-branch: true
+          title: "SDK Release ${{ inputs.version }} at "
+          body: "This PR contains the upadted version for the SDK: ${{ inputs.version }}"
+          labels: "Release"

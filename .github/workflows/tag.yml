@@ -1,0 +1,36 @@
+name: Tag Pod Version
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  tag_pod_version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Tag podspec version
+        run: |
+          # Set your podspec file name
+          PODSPEC_FILE="PortalSwift.podspec"
+
+          # Get current version from podspec file
+          CURRENT_VERSION=$(grep -E "s.version\s*=\s*'.*'" $PODSPEC_FILE | sed -E "s/^ *s.version *= *'(.*)'/\1/")
+
+          # Get latest git tag version
+          LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
+
+          # Compare the versions and create a new tag if necessary
+          if [ "$CURRENT_VERSION" != "$LATEST_TAG" ]; then
+            git config --local user.name "psa-funky-sparrow"
+            git config --local user.email "render-service-account-staging@portalhq.io"
+            git tag "$CURRENT_VERSION"
+            git push --tags
+          else
+            echo "The podspec version ($CURRENT_VERSION) is equal to the latest tag version ($LATEST_TAG). No new tag needed."
+          fi
