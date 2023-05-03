@@ -1,5 +1,4 @@
 name: Handle Release Status
-
 on:
   workflow_run:
     workflows: ["Update the sdk version", "Tag the sdk version"]
