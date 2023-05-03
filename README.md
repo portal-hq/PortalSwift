@@ -27,3 +27,11 @@ The info plist and main debug configuration file is already configured to import
 ## Next Steps
 
 Follow our docs [here](https://docs.portalhq.io/swift-pod/portalswift) to get started!
+
+# Release the SDK
+
+## Trigger the Version Updating
+
+- Go to Actions
+- Input the most recent version we are updating to into the input for version
+- Check slack for any release errors or the actions console

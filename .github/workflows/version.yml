@@ -1,0 +1,63 @@
+name: Update the sdk version
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "The version of the SDK to release" # we might also tag release-candidate and then just read the version from that branch
+        required: true
+        type: string
+
+jobs:
+  release_sdk:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout swift repo
+        uses: actions/checkout@v2
+        with:
+          path: main
+
+      - name: Update version in podspec
+        run: |
+          cd ${{ github.workspace }}/main
+          export PODSPEC_FILE="PortalSwift.podspec"
+          export NEW_VERSION="${{ github.event.inputs.new_version }}"
+          sed -i.bak -E "s/^( *s.version *= *).*/\1'$NEW_VERSION'/" "$PODSPEC_FILE"
+          rm "$PODSPEC_FILE.bak"
+          cat "$PODSPEC_FILE"
+
+      - name: Open PR for Swift repo to update version
+        id: cpr
+        uses: portal-hq/create-pull-request@v5
+        with:
+          token: ${{ secrets.GH_PAT }}
+          branch: "release"
+          branch-suffix: short-commit-hash
+          delete-branch: true
+          title: "SDK Release ${{ inputs.version }}"
+          body: "This PR contains the updated version for the SDK: ${{ inputs.version }}"
+          labels: "Release"
+
+      - name: Open PR for Swift repo to update version
+        id: cprRc
+        uses: portal-hq/create-pull-request@v5
+        with:
+          token: ${{ secrets.GH_PAT }}
+          branch: "release"
+          base: "release-candidate"
+          branch-suffix: short-commit-hash
+          delete-branch: true
+          title: "SDK Release ${{ inputs.version }} at "
+          body: "This PR contains the updated version for the SDK: ${{ inputs.version }}"
+          labels: "Release"
+
+      - name: Slack - send version updated message
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          payload: |
+            {
+            "Title": "Swift SDK Version Updated",
+            "Body": "To complete the release for version: ${{ inputs.version }}.\n\n Please approve these PRs: `main``: ${{ steps.cpr.outputs.pull-request-url }}\n\n `release-candidate`: ${{ steps.cprRc.outputs.pull-request-url }}\n",
+            "Status": "Success"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
