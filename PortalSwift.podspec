@@ -10,11 +10,12 @@ Pod::Spec.new do |s|
   s.author           = 'Portal Labs, Inc.'
   s.source           = { :git => 'https://github.com/portal-hq/PortalSwift.git', :tag => s.version.to_s }
 
-  s.ios.deployment_target = '10.0'
+  s.ios.deployment_target = '13.0'
   s.vendored_frameworks = "PortalSwift/Frameworks/mpc.xcframework"
 
 
   s.source_files = 'PortalSwift/Classes/**/*'
 
   s.dependency "GoogleSignIn", "~> 6.2"
+  s.dependency "Starscream"
 end
