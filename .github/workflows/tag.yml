@@ -26,8 +26,8 @@ jobs:
 
           # Compare the versions and create a new tag if necessary
           if [ "$CURRENT_VERSION" != "$LATEST_TAG" ]; then
-            git config --local user.name "psa-funky-sparrow"
-            git config --local user.email "render-service-account-staging@portalhq.io"
+            git config --local user.name "portal-release-bot"
+            git config --local user.email "release-bot@portalhq.io"
             git tag "$CURRENT_VERSION"
             git push --tags
           else

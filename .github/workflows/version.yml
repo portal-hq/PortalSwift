@@ -33,6 +33,8 @@ jobs:
           token: ${{ secrets.GH_PAT }}
           branch: "release"
           branch-suffix: short-commit-hash
+          committer: portal-release-bot <release-bot@portalhq.io>
+          author: portal-release-bot <release-bot@portalhq.io>
           delete-branch: true
           title: "SDK Release ${{ inputs.version }}"
           body: "This PR contains the updated version for the SDK: ${{ inputs.version }}"
@@ -61,6 +63,8 @@ jobs:
           token: ${{ secrets.GH_PAT }}
           branch: "release-rc"
           branch-suffix: short-commit-hash
+          committer: portal-release-bot <release-bot@portalhq.io>
+          author: portal-release-bot <release-bot@portalhq.io>
           delete-branch: true
           title: "SDK Release ${{ inputs.version }} for (release-candidate) "
           body: "This PR contains the updated version for the SDK: ${{ inputs.version }}"
