@@ -44,7 +44,7 @@ jobs:
         with:
           path: main
           token: ${{ secrets.GH_PAT }}
-          branch: "release"
+          branch: "release-rc"
           base: "release-candidate"
           branch-suffix: short-commit-hash
           delete-branch: true
