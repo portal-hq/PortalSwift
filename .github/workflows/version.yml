@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "The version of the SDK to release" # we might also tag release-candidate and then just read the version from that branch
+        description: "The version of the SDK to release"
         required: true
         type: string
 
@@ -62,7 +62,7 @@ jobs:
           branch: "release-rc"
           branch-suffix: short-commit-hash
           delete-branch: true
-          title: "SDK Release ${{ inputs.version }} at "
+          title: "SDK Release ${{ inputs.version }} for (release-candidate) "
           body: "This PR contains the updated version for the SDK: ${{ inputs.version }}"
           labels: "Release"
 
@@ -72,7 +72,7 @@ jobs:
           payload: |
             {
             "Title": "Swift SDK Version Updated",
-            "Body": "To complete the release for version: ${{ inputs.version }}.\n\n Please approve these PRs:\n `main``: ${{ steps.cpr.outputs.pull-request-url }}\n\n `release-candidate`: ${{ steps.cprRc.outputs.pull-request-url }}\n",
+            "Body": "To complete the release for version: ${{ inputs.version }}.\n\n Please approve these PRs:\n `main`: ${{ steps.cpr.outputs.pull-request-url }}\n\n `release-candidate`: ${{ steps.cprRc.outputs.pull-request-url }}\n",
             "Status": "Success"
             }
         env:
