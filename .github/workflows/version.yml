@@ -20,7 +20,7 @@ jobs:
         run: |
           cd ${{ github.workspace }}/main
           export PODSPEC_FILE="PortalSwift.podspec"
-          export NEW_VERSION="${{ inputs.new_version }}"
+          export NEW_VERSION="${{ inputs.version }}"
           sed -i.bak -E "s/^( *s.version *= *).*/\1'$NEW_VERSION'/" "$PODSPEC_FILE"
           rm "$PODSPEC_FILE.bak"
           cat "$PODSPEC_FILE"
