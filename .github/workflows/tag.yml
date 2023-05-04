@@ -28,8 +28,8 @@ jobs:
           if [ "$CURRENT_VERSION" != "$LATEST_TAG" ]; then
             git config --local user.name "portal-release-bot"
             git config --local user.email "release-bot@portalhq.io"
-            git tag "$CURRENT_VERSION"
-            git push --tags
+            git tag -a ${{ env.CURRENT_VERSION }} -m "Version ${{ env.CURRENT_VERSION }}"
+            git push origin ${{ env.CURRENT_VERSION }}
           else
             echo "The podspec version ($CURRENT_VERSION) is equal to the latest tag version ($LATEST_TAG). No new tag needed."
           fi
