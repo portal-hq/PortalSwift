@@ -30,7 +30,7 @@ jobs:
           payload: |
             {
             "Title": "Tagging the swift sdk version failed",
-            "Body": "'Tagging the sdk version' Github Action failed to complete. Please check the GH Action Console.}}",
+            "Body": "'Tag the sdk version' Github Action failed to complete. Please check the GH Action Console.}}",
             "Status": "Failure"
             }
         env:
