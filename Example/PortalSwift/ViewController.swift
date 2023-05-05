@@ -413,10 +413,10 @@ class ViewController: UIViewController {
       
       DispatchQueue.main.async {
         do {
+          self.generateButton.isEnabled = true
+          
           let address = try self.portal?.keychain.getAddress()
           let hasAddress = address?.count ?? 0 > 0
-          
-          self.generateButton.isEnabled = true
           
           self.backupButton.isEnabled = hasAddress
           self.dappBrowserButton.isEnabled = hasAddress
