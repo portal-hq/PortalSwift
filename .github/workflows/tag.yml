@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - main
+      - testing-tagging
+      - release-candidate
 
 jobs:
   tag_pod_version:
