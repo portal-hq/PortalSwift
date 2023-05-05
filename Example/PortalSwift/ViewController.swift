@@ -47,15 +47,23 @@ class ViewController: UIViewController {
   @IBOutlet weak var ethBalanceInformation: UITextView!
 
   // Buttons
-  @IBOutlet public var generateButton: UIButton!
-  @IBOutlet public var backupButton: UIButton!
-  @IBOutlet public var recoverButton: UIButton!
-
+  @IBOutlet weak var backupButton: UIButton!
+  @IBOutlet weak var dappBrowserButton: UIButton!
+  @IBOutlet weak var generateButton: UIButton!
+  @IBOutlet weak var logoutButton: UIButton!
+  @IBOutlet weak var portalConnectButton: UIButton!
+  @IBOutlet weak var recoverButton: UIButton!
+  @IBOutlet weak var signInButton: UIButton!
+  @IBOutlet weak var signUpButton: UIButton!
+  @IBOutlet weak var testButton: UIButton!
+  
   // Send form
   @IBOutlet public var sendAddress: UITextField!
   @IBOutlet public var sendButton: UIButton!
   @IBOutlet public var username: UITextField!
   @IBOutlet public var url: UITextField!
+  
+  
   public var user: UserResult?
   public var CUSTODIAN_SERVER_URL: String?
   public var API_URL: String?
@@ -85,10 +93,28 @@ class ViewController: UIViewController {
       API_URL = STAGING_API_URL
       MPC_URL = STAGING_MPC_URL
     }
+    
+    DispatchQueue.main.async {
+      self.backupButton.isEnabled = false
+      self.dappBrowserButton.isEnabled = false
+      self.generateButton.isEnabled = false
+      self.logoutButton.isEnabled = false
+      self.portalConnectButton.isEnabled = false
+      self.recoverButton.isEnabled = false
+      self.signInButton.isEnabled = false
+      self.signUpButton.isEnabled = false
+      self.testButton.isEnabled = false
+    }
   }
 
   override func didReceiveMemoryWarning() {
     super.didReceiveMemoryWarning()
+  }
+  
+  override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+    if let connectViewController = segue.destination as? ConnectViewController {
+      connectViewController.portal = self.portal
+    }
   }
 
   @IBAction func handleSignIn(_ sender: UIButton) {
@@ -97,6 +123,10 @@ class ViewController: UIViewController {
       self.user = userResult
       self.registerPortal(apiKey: userResult.clientApiKey)
       self.updateStaticContent()
+      
+      DispatchQueue.main.async {
+        self.logoutButton.isEnabled = true
+      }
     }
   }
 
@@ -106,6 +136,10 @@ class ViewController: UIViewController {
       self.user = userResult
       self.registerPortal(apiKey: userResult.clientApiKey)
       self.updateStaticContent()
+      
+      DispatchQueue.main.async {
+        self.logoutButton.isEnabled = true
+      }
     }
   }
 
@@ -113,6 +147,10 @@ class ViewController: UIViewController {
     self.user = nil
     self.addressInformation.text = "Address: N/A"
     self.ethBalanceInformation.text = "ETH Balance: N/A"
+    
+    DispatchQueue.main.async {
+      self.logoutButton.isEnabled = false
+    }
   }
 
   @IBAction func handleGenerate(_ sender: UIButton!) {
@@ -125,6 +163,14 @@ class ViewController: UIViewController {
       
       
       self.updateStaticContent()
+      
+      DispatchQueue.main.async {
+        self.backupButton.isEnabled = true
+        self.dappBrowserButton.isEnabled = true
+        self.portalConnectButton.isEnabled = true
+        self.recoverButton.isEnabled = true
+        self.testButton.isEnabled = true
+      }
     } progress: { status in
       print("Generate Status: ", status)
     }
@@ -136,8 +182,6 @@ class ViewController: UIViewController {
       if (result.error != nil) {
         print("❌ handleBackup():", result.error!)
       } else {
-        print("✅ handleBackup(): cipherText:", result.data!)
-
         let request = HttpRequest<String, [String : String]>(
           url: self.CUSTODIAN_SERVER_URL! + "/mobile/\(self.user!.exchangeUserId)/cipher-text",
           method: "POST",
@@ -147,7 +191,7 @@ class ViewController: UIViewController {
         )
 
         request.send() { (result: Result<String>) in
-          print("✅ handleBackup(): Successfully sent custodian cipherText:")
+          print("✅ handleBackup(): Successfully sent custodian cipherText")
         }
       }
     } progress: { status in
@@ -207,6 +251,13 @@ class ViewController: UIViewController {
     handleSend()
   }
 
+  @IBAction func usernameChanged(_ sender: Any) {
+    let hasUsername = username.text?.count ?? 0 > 3
+    
+    signInButton.isEnabled = hasUsername
+    signUpButton.isEnabled = hasUsername
+  }
+  
   @IBAction func testProviderRequests(_ sender: UIButton!) {
     print("\n====================\nTesting provider methods\n====================")
     testSignerRequests()
@@ -350,7 +401,7 @@ class ViewController: UIViewController {
       portal = try Portal(
         apiKey: apiKey,
         backup: backup,
-        chainId: 5,
+        chainId: chainId,
         keychain: keychain,
         gatewayConfig: [
           chainId: "https://eth-\(chain).g.alchemy.com/v2/\(ALCHEMY_API_KEY)",
@@ -359,6 +410,25 @@ class ViewController: UIViewController {
         apiHost: API_URL!,
         mpcHost: MPC_URL!
       )
+      
+      DispatchQueue.main.async {
+        do {
+          let address = try self.portal?.keychain.getAddress()
+          let hasAddress = address?.count ?? 0 > 0
+          
+          self.generateButton.isEnabled = true
+          
+          self.backupButton.isEnabled = hasAddress
+          self.dappBrowserButton.isEnabled = hasAddress
+          self.portalConnectButton.isEnabled = hasAddress
+          self.recoverButton.isEnabled = hasAddress
+          self.testButton.isEnabled = hasAddress
+        } catch {
+          print("Error fetching address: \(error)")
+        }
+      }
+      
+      _ = portal?.provider.on(event: Events.PortalSigningRequested.rawValue, callback: { [weak self] data in self?.didRequestApproval(data: data)})
     } catch ProviderInvalidArgumentError.invalidGatewayUrl {
       print("❌ Error: Invalid Gateway URL")
     } catch PortalArgumentError.noGatewayConfigForChain(let chainId) {
@@ -366,6 +436,11 @@ class ViewController: UIViewController {
     } catch {
       print("❌ Error registering portal:", error)
     }
+  }
+  
+  func didRequestApproval(data: Any) -> Void {
+    print("Requesting Approval: ", data)
+    _ = portal?.provider.emit(event: Events.PortalSigningApproved.rawValue, data: data)
   }
 
   func onError(result: Result<Any>) -> Void {
