@@ -424,11 +424,8 @@ public class PortalMpc {
     }
   }
   
-  private func decryptShare(cipherText: String, privateKey: String, progress: ( (MpcStatus) -> Void)? = nil) throws -> String {
-    progress?(MpcStatus(status: MpcStatuses.decryptingShare, done: false))
+  private func decryptShare(cipherText: String, privateKey: String) throws -> String {
     let result = ClientDecrypt(privateKey, cipherText)
-    
-    progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
     let jsonResult = result.data(using: .utf8)!
     let decryptResult: DecryptResult = try JSONDecoder().decode(DecryptResult.self, from: jsonResult)
     
@@ -446,11 +443,9 @@ public class PortalMpc {
   /// - Returns: The cipherText and the private key.
   private func encryptShare(
     mpcShare: MpcShare,
-    completion: (Result<EncryptData>) -> Void,
-    progress: ( (MpcStatus) -> Void)? = nil
+    completion: (Result<EncryptData>) -> Void
   ) -> Void {
     do {
-      progress?(MpcStatus(status: MpcStatuses.encryptingShare, done: false))
       let mpcShareData = try JSONEncoder().encode(mpcShare)
       let mpcShareString = String(data: mpcShareData, encoding: .utf8 )!
       
@@ -495,6 +490,8 @@ public class PortalMpc {
       let backupShare = rotateResult.data!.dkgResult
       
       // Encrypt the backup share.
+      progress?(MpcStatus(status: MpcStatuses.encryptingShare, done: false))
+      
       encryptShare(mpcShare: backupShare) { encryptedResult in
         if encryptedResult.error != nil {
           completion(Result(error: encryptedResult.error!))
@@ -513,8 +510,6 @@ public class PortalMpc {
           // Return the cipherText.
           return completion(Result(data: encryptedResult.data!.cipherText))
         }
-      } progress: { status in
-        progress?(status)
       }
     } catch {
       print("Backup Failed: ", error)
@@ -537,6 +532,7 @@ public class PortalMpc {
         return completion(Result(error: result.error!))
       }
       
+      // Encrypt the new backup share.
       progress?(MpcStatus(status: MpcStatuses.recoveringSigningShare, done: false))
       self.recoverSigning(backupShare: result.data!) { signingResult in
         if (signingResult.error != nil) {
@@ -549,7 +545,9 @@ public class PortalMpc {
           if backupResult.error != nil {
             return completion(Result(error: backupResult.error!))
           }
-                    
+          
+          progress?(MpcStatus(status: MpcStatuses.encryptingShare, done: false))
+          
           self.encryptShare(mpcShare: backupResult.data!) { encryptedResult in
             // Handle errors
             if encryptedResult.error != nil {
@@ -568,17 +566,9 @@ public class PortalMpc {
               // Return the cipherText.
               return completion(Result(data: encryptedResult.data!.cipherText))
             }
-          } progress: { status in
-            progress?(status)
           }
-        } progress: { status in
-          progress?(status)
         }
-      } progress: { status in
-        progress?(status)
       }
-    } progress: { status in
-      progress?(status)
     }
   }
   
@@ -590,8 +580,7 @@ public class PortalMpc {
   private func getBackupShare(
     cipherText: String,
     method: BackupMethods.RawValue,
-    completion: @escaping (Result<String>) -> Void,
-    progress: ((MpcStatus) -> Void)? = nil
+    completion: @escaping (Result<String>) -> Void
   ) -> Void {
     // Derive the storage and throw an error if none was provided.
     let storage = self.storage[method] as? Storage
@@ -608,9 +597,7 @@ public class PortalMpc {
       
       // Attempt to decrypt the cipherText.
       do {
-        let backupShare = try self.decryptShare(cipherText: cipherText, privateKey: result.data!) { status in
-          progress?(status)
-        }
+        let backupShare = try self.decryptShare(cipherText: cipherText, privateKey: result.data!)
         return completion(Result(data: backupShare))
       } catch {
         return completion(Result(error: error))
@@ -624,17 +611,13 @@ public class PortalMpc {
   /// - Returns: The backup share.
   private func recoverBackup(
     signingShare: String,
-    completion: (Result<MpcShare>) -> Void,
-    progress: ((MpcStatus) -> Void)? = nil
+    completion: (Result<MpcShare>) -> Void
   ) -> Void {
     do {
-      progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
-
       // Call the MPC service to recover the backup share.
-      let result = ClientRecoverBackup(apiKey, mpcHost, signingShare, version)
-      
-      progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
-      let rotateResult: RotateResult  = try JSONDecoder().decode(RotateResult.self, from: result.data(using: .utf8)!)
+      let res = ClientRecoverBackup(apiKey, mpcHost, signingShare, version)
+      let jsonData = res.data(using: .utf8)!
+      let rotateResult: RotateResult  = try JSONDecoder().decode(RotateResult.self, from: jsonData)
       
       // Throw an error if the MPC service returned an error.
       guard rotateResult.error.code == 0 else {
@@ -654,15 +637,11 @@ public class PortalMpc {
   /// - Returns: The new signing share.
   private func recoverSigning(
     backupShare: String,
-    completion: (Result<MpcShare>) -> Void,
-    progress: ((MpcStatus) -> Void)? = nil
+    completion: (Result<MpcShare>) -> Void
   ) -> Void {
     do {
-      progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
       // Call the MPC service to recover the signing share.
       let result = ClientRecoverSigning(apiKey, mpcHost, backupShare, version)
-      
-      progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
       let rotateResult = try JSONDecoder().decode(RotateResult.self, from: result.data(using: .utf8)!)
 
       // Throw an error if the MPC service returned an error.
@@ -673,9 +652,8 @@ public class PortalMpc {
       if (rotateResult.data == nil) {
         return completion(Result(error: MpcError.signingRecoveryError(message: "Could not read recovery data")))
       }
-      
+
       // Store the signing share in the keychain.
-      progress?(MpcStatus(status: MpcStatuses.storingShare, done: false))
       let encodedShare = try JSONEncoder().encode(rotateResult.data!.dkgResult)
       let shareString = String(data: encodedShare, encoding: .utf8)
       

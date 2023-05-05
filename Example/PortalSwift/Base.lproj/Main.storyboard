@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="21701" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" colorMatched="YES" initialViewController="vXZ-lx-hvc">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="21507" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" colorMatched="YES" initialViewController="vXZ-lx-hvc">
     <device id="retina4_7" orientation="portrait" appearance="light"/>
     <dependencies>
         <deployment identifier="iOS"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="21678"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="21505"/>
         <capability name="System colors in document resources" minToolsVersion="11.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
@@ -24,10 +24,11 @@
                                 <rect key="frame" x="16" y="353" width="343" height="35"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <state key="normal" title="Button"/>
-                                <buttonConfiguration key="configuration" style="filled" title="Backup Wallet">
-                                    <backgroundConfiguration key="background"/>
+                                <buttonConfiguration key="configuration" style="plain" title="Backup Wallet">
+                                    <backgroundConfiguration key="background">
+                                        <color key="backgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                    </backgroundConfiguration>
                                     <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
-                                    <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 </buttonConfiguration>
                                 <connections>
                                     <action selector="handleBackup:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="XL3-VO-QZu"/>
@@ -37,10 +38,11 @@
                                 <rect key="frame" x="16" y="396" width="343" height="35"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <state key="normal" title="Button"/>
-                                <buttonConfiguration key="configuration" style="filled" title="Recover Wallet">
-                                    <backgroundConfiguration key="background"/>
+                                <buttonConfiguration key="configuration" style="plain" title="Recover Wallet">
+                                    <backgroundConfiguration key="background">
+                                        <color key="backgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                    </backgroundConfiguration>
                                     <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
-                                    <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 </buttonConfiguration>
                                 <connections>
                                     <action selector="handleRecover:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="CaR-CA-YHA"/>
@@ -50,10 +52,11 @@
                                 <rect key="frame" x="16" y="439" width="343" height="35"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <state key="normal" title="Button"/>
-                                <buttonConfiguration key="configuration" style="filled" title="Test ~70 Provider Methods (View Logs)">
-                                    <backgroundConfiguration key="background"/>
+                                <buttonConfiguration key="configuration" style="plain" title="Test ~70 Provider Methods (View Logs)">
+                                    <backgroundConfiguration key="background">
+                                        <color key="backgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                    </backgroundConfiguration>
                                     <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
-                                    <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 </buttonConfiguration>
                                 <connections>
                                     <action selector="testProviderRequests:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="BbZ-Fy-J0c"/>
@@ -69,10 +72,11 @@
                                 <rect key="frame" x="249" y="482" width="110" height="35"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <state key="normal" title="Button"/>
-                                <buttonConfiguration key="configuration" style="filled" title="Send 1 WEI">
-                                    <backgroundConfiguration key="background"/>
+                                <buttonConfiguration key="configuration" style="plain" title="Send 1 WEI">
+                                    <backgroundConfiguration key="background">
+                                        <color key="backgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                    </backgroundConfiguration>
                                     <color key="baseForegroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                                    <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 </buttonConfiguration>
                                 <connections>
                                     <action selector="sendPressed:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="jz1-9o-E08"/>
@@ -82,10 +86,11 @@
                                 <rect key="frame" x="16" y="310" width="343" height="35"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <state key="normal" title="Button"/>
-                                <buttonConfiguration key="configuration" style="filled" title="Generate Wallet">
-                                    <backgroundConfiguration key="background"/>
+                                <buttonConfiguration key="configuration" style="plain" title="Generate Wallet">
+                                    <backgroundConfiguration key="background">
+                                        <color key="backgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                    </backgroundConfiguration>
                                     <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
-                                    <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 </buttonConfiguration>
                                 <connections>
                                     <action selector="handleGenerate:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="ahE-Y9-hUe"/>
@@ -95,10 +100,11 @@
                                 <rect key="frame" x="210" y="153" width="149" height="35"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <state key="normal" title="Button"/>
-                                <buttonConfiguration key="configuration" style="filled" title="Sign up">
-                                    <backgroundConfiguration key="background"/>
+                                <buttonConfiguration key="configuration" style="plain" title="Sign up">
+                                    <backgroundConfiguration key="background">
+                                        <color key="backgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                    </backgroundConfiguration>
                                     <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
-                                    <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 </buttonConfiguration>
                                 <connections>
                                     <action selector="handleSignup:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="p7a-Gd-hd8"/>
@@ -109,9 +115,6 @@
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <fontDescription key="fontDescription" type="system" pointSize="14"/>
                                 <textInputTraits key="textInputTraits"/>
-                                <connections>
-                                    <action selector="usernameChanged:" destination="vXZ-lx-hvc" eventType="editingChanged" id="FaD-rJ-bgD"/>
-                                </connections>
                             </textField>
                             <textField opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="248" fixedFrame="YES" contentHorizontalAlignment="left" contentVerticalAlignment="center" text="https://app.uniswap.org/#/swap" borderStyle="roundedRect" placeholder="URL" textAlignment="center" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="5Yb-DH-Pnv" userLabel="Username">
                                 <rect key="frame" x="16" y="526" width="343" height="34"/>
@@ -123,10 +126,11 @@
                                 <rect key="frame" x="16" y="153" width="153" height="35"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <state key="normal" title="Button"/>
-                                <buttonConfiguration key="configuration" style="filled" title="Sign In">
-                                    <backgroundConfiguration key="background"/>
+                                <buttonConfiguration key="configuration" style="plain" title="Sign In">
+                                    <backgroundConfiguration key="background">
+                                        <color key="backgroundColor" white="0.0" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                    </backgroundConfiguration>
                                     <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
-                                    <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 </buttonConfiguration>
                                 <connections>
                                     <action selector="handleSignIn:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="CRy-Tb-tzA"/>
@@ -150,10 +154,11 @@
                                 <rect key="frame" x="16" y="568" width="343" height="35"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <state key="normal" title="Button"/>
-                                <buttonConfiguration key="configuration" style="filled" title="Dapp Browser">
-                                    <backgroundConfiguration key="background"/>
+                                <buttonConfiguration key="configuration" style="plain" title="Dapp Browser">
+                                    <backgroundConfiguration key="background">
+                                        <color key="backgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                    </backgroundConfiguration>
                                     <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
-                                    <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 </buttonConfiguration>
                                 <connections>
                                     <action selector="handleWebview:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="nyZ-th-qvt"/>
@@ -189,36 +194,17 @@
                                     <action selector="handleDeleteKeychain:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="t3k-ZL-4Lv"/>
                                 </connections>
                             </button>
-                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" restorationIdentifier="portalConnectButton" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Oix-QY-d5L">
-                                <rect key="frame" x="17" y="612" width="342" height="35"/>
-                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                <state key="normal" title="Button"/>
-                                <buttonConfiguration key="configuration" style="filled" title="Portal Connect">
-                                    <backgroundConfiguration key="background"/>
-                                    <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
-                                    <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
-                                </buttonConfiguration>
-                                <connections>
-                                    <segue destination="7fk-LF-non" kind="presentation" id="suo-jY-leB"/>
-                                </connections>
-                            </button>
                         </subviews>
                         <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                     </view>
                     <connections>
                         <outlet property="addressInformation" destination="0fE-Dt-jQE" id="FgG-eb-2eu"/>
-                        <outlet property="backupButton" destination="ErE-g3-dsZ" id="gep-cG-Yf0"/>
-                        <outlet property="dappBrowserButton" destination="qcu-G8-SAB" id="A5q-1k-dxD"/>
+                        <outlet property="backupButton" destination="ErE-g3-dsZ" id="EzL-j1-u6I"/>
                         <outlet property="ethBalanceInformation" destination="XWB-hw-iZv" id="c0l-fG-eWb"/>
                         <outlet property="generateButton" destination="PLS-JE-WGU" id="i8N-R8-wtj"/>
-                        <outlet property="logoutButton" destination="nDW-CF-6N1" id="Ke0-ny-I4Y"/>
-                        <outlet property="portalConnectButton" destination="Oix-QY-d5L" id="ggO-uw-BBj"/>
                         <outlet property="recoverButton" destination="J4p-Hr-lwd" id="Um1-lC-X9R"/>
                         <outlet property="sendAddress" destination="rf6-ZQ-VL3" id="jeB-Fl-Ghp"/>
                         <outlet property="sendButton" destination="a21-UV-DHr" id="e3D-3c-9Tc"/>
-                        <outlet property="signInButton" destination="Ojs-ji-UfQ" id="c9X-B9-99T"/>
-                        <outlet property="signUpButton" destination="um8-uX-tq6" id="b5D-14-Cen"/>
-                        <outlet property="testButton" destination="jgr-2k-ChE" id="Iwz-Qk-mgO"/>
                         <outlet property="url" destination="5Yb-DH-Pnv" id="kdn-BV-aGw"/>
                         <outlet property="username" destination="Ysr-eH-5f6" id="lgr-mF-HfE"/>
                     </connections>
@@ -226,60 +212,6 @@
                 <placeholder placeholderIdentifier="IBFirstResponder" id="x5A-6p-PRh" sceneMemberID="firstResponder"/>
             </objects>
             <point key="canvasLocation" x="93.599999999999994" y="-2.2488755622188905"/>
-        </scene>
-        <!--Connect View Controller-->
-        <scene sceneID="94S-6a-j1d">
-            <objects>
-                <viewController storyboardIdentifier="Connect" useStoryboardIdentifierAsRestorationIdentifier="YES" id="7fk-LF-non" customClass="ConnectViewController" customModule="PortalSwift_Example" customModuleProvider="target" sceneMemberID="viewController">
-                    <layoutGuides>
-                        <viewControllerLayoutGuide type="top" id="zXS-6W-gVU"/>
-                        <viewControllerLayoutGuide type="bottom" id="qa6-Jg-pyi"/>
-                    </layoutGuides>
-                    <view key="view" contentMode="scaleToFill" id="0xn-vt-Nek">
-                        <rect key="frame" x="0.0" y="0.0" width="375" height="647"/>
-                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
-                        <subviews>
-                            <textField opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="248" fixedFrame="YES" contentHorizontalAlignment="left" contentVerticalAlignment="center" borderStyle="roundedRect" placeholder="Enter a WalletConnect URI" textAlignment="natural" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="xEv-Ac-DYF">
-                                <rect key="frame" x="16" y="306" width="343" height="34"/>
-                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                <fontDescription key="fontDescription" type="system" pointSize="14"/>
-                                <textInputTraits key="textInputTraits"/>
-                                <connections>
-                                    <action selector="uriChanged:" destination="7fk-LF-non" eventType="editingChanged" id="a8j-35-2Ml"/>
-                                </connections>
-                            </textField>
-                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Xyb-ta-tdQ">
-                                <rect key="frame" x="16" y="348" width="343" height="35"/>
-                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                <state key="normal" title="Button"/>
-                                <buttonConfiguration key="configuration" style="filled" title="Connect">
-                                    <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
-                                    <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
-                                </buttonConfiguration>
-                                <connections>
-                                    <action selector="connectPressed" destination="7fk-LF-non" eventType="touchUpInside" id="1cO-XR-MPS"/>
-                                </connections>
-                            </button>
-                            <textView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" fixedFrame="YES" restorationIdentifier="connection" textAlignment="natural" translatesAutoresizingMaskIntoConstraints="NO" id="A21-NP-6vy">
-                                <rect key="frame" x="16" y="391" width="343" height="73"/>
-                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                <color key="backgroundColor" systemColor="systemBackgroundColor"/>
-                                <color key="textColor" systemColor="labelColor"/>
-                                <fontDescription key="fontDescription" type="system" pointSize="14"/>
-                                <textInputTraits key="textInputTraits" autocapitalizationType="sentences"/>
-                            </textView>
-                        </subviews>
-                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
-                    </view>
-                    <connections>
-                        <outlet property="addressTextInput" destination="xEv-Ac-DYF" id="88M-H0-RU1"/>
-                        <outlet property="connectButton" destination="Xyb-ta-tdQ" id="kIP-YV-aqE"/>
-                        <outlet property="connectMessage" destination="A21-NP-6vy" id="7wQ-fi-ddK"/>
-                    </connections>
-                </viewController>
-                <placeholder placeholderIdentifier="IBFirstResponder" id="KzE-SA-JBs" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
-            </objects>
-            <point key="canvasLocation" x="952.79999999999995" y="-2.2488755622188905"/>
         </scene>
     </scenes>
     <resources>
