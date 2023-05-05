@@ -40,6 +40,12 @@ jobs:
           body: "This PR contains the updated version for the SDK: ${{ inputs.version }}"
           labels: "Release"
 
+      - name: Checkout swift repo
+        uses: actions/checkout@v2
+        with:
+          path: main
+          ref: "main"
+
       - name: Open PR for Swift repo
         id: cpr
         uses: portal-hq/create-pull-request@v5
