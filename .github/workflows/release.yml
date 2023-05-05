@@ -90,24 +90,6 @@ jobs:
           git tag -a ${{ env.NEW_VERSION }} -m "Version ${{ env.NEW_VERSION }}"
           git push origin ${{ env.NEW_VERSION }}
 
-      - name: Push new version to release-candidate
-        if: ${{ env.OVERRIDE_PATCH_BUMP  == 'false' }}
-        run: |
-          cd ${{ github.workspace }}/main
-          git config --local user.name "portal-release-bot"
-          git config --local user.email "release-bot@portalhq.io"
-          git checkout release-candidate
-
-          # Update the version in the podspec file
-          sed -i.bak -E "s/^( *s.version *= *).*/\1\"${{ env.NEW_VERSION }}\"/" "$PODSPEC_FILE"
-          rm "$PODSPEC_FILE.bak"
-
-          # Print the first 4 lines of the podspec file
-          head -n 4 "$PODSPEC_FILE"
-
-          git commit -A -m "Bump version to ${{ env.NEW_VERSION }}"
-          git push
-
       - name: Slack - send pod published
         uses: slackapi/slack-github-action@v1.23.0
         with:
@@ -119,3 +101,21 @@ jobs:
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Push new version to release-candidate
+        if: ${{ env.OVERRIDE_PATCH_BUMP  == 'false' }}
+        run: |
+          cd ${{ github.workspace }}/main
+          git config --local user.name "portal-release-bot"
+          git config --local user.email "release-bot@portalhq.io"
+          git checkout testing-tagging
+
+          # Update the version in the podspec file
+          sed -i.bak -E "s/^( *s.version *= *).*/\1\"${{ env.NEW_VERSION }}\"/" "$PODSPEC_FILE"
+          rm "$PODSPEC_FILE.bak"
+
+          # Print the first 4 lines of the podspec file
+          head -n 4 "$PODSPEC_FILE"
+
+          git commit -A -m "Bump version to ${{ env.NEW_VERSION }}"
+          git push
