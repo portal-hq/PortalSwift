@@ -40,33 +40,13 @@ jobs:
           body: "This PR contains the updated version for the SDK: ${{ inputs.version }}"
           labels: "Release"
 
-      - name: Checkout swift repo
-        uses: actions/checkout@v2
-        with:
-          path: main
-          ref: "main"
-
-      - name: Open PR for Swift repo
-        id: cpr
-        uses: portal-hq/create-pull-request@v5
-        with:
-          path: main
-          token: ${{ secrets.GH_PAT }}
-          branch: "release-candidate"
-          base: "main"
-          committer: portal-release-bot <release-bot@portalhq.io>
-          author: portal-release-bot <release-bot@portalhq.io>
-          title: "SDK Release ${{ inputs.version }}"
-          body: "This PR contains the updated version for the SDK: ${{ inputs.version }}. Please ensure you have merged the branch release-${{ inputs.version }} into `release-candidate` before merging this PR."
-          labels: "Release"
-
       - name: Slack - send version updated message
         uses: slackapi/slack-github-action@v1.23.0
         with:
           payload: |
             {
             "Title": "Swift SDK Version Updated",
-            "Body": "To complete the release for version: ${{ inputs.version }}.\n\n Please approve these PRs:\n First `release-candidate`: `release-candidate`: ${{ steps.cprRc.outputs.pull-request-url }}\n\n Then `main`: ${{ steps.cpr.outputs.pull-request-url }}\n",
+            "Body": "To complete the release for version: ${{ inputs.version }}.\n\n Please approve these PRs:\n First `release-candidate`: `release-candidate`: ${{ steps.cprRc.outputs.pull-request-url }}\n\n Then open a PR from `release-candidate` to main.",
             "Status": "Success"
             }
         env:
