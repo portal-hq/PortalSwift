@@ -17,7 +17,7 @@ jobs:
           payload: |
             {
             "Title": "Updating the swift sdk version failed",
-            "Body": "'Update the sdk version' Github Action failed to complete. Please check the GH Action Console.}}",
+            "Body": "'Update the sdk version' Github Action failed to complete. Please check the GH Action Console. https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}",
             "Status": "Failure"
             }
         env:
@@ -30,7 +30,7 @@ jobs:
           payload: |
             {
             "Title": "Tagging the swift sdk version failed",
-            "Body": "'Tag the sdk version' Github Action failed to complete. Please check the GH Action Console.}}",
+            "Body": "'Tag the sdk version' Github Action failed to complete. Please check the GH Action Console. https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}",
             "Status": "Failure"
             }
         env:
