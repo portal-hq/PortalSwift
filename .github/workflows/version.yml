@@ -15,35 +15,6 @@ jobs:
         uses: actions/checkout@v2
         with:
           path: main
-
-      - name: Update version in podspec
-        run: |
-          cd ${{ github.workspace }}/main
-          export PODSPEC_FILE="PortalSwift.podspec"
-          export NEW_VERSION="${{ inputs.version }}"
-          sed -i.bak -E "s/^( *s.version *= *).*/\1'$NEW_VERSION'/" "$PODSPEC_FILE"
-          rm "$PODSPEC_FILE.bak"
-          cat "$PODSPEC_FILE"
-
-      - name: Open PR for Swift repo
-        id: cpr
-        uses: portal-hq/create-pull-request@v5
-        with:
-          path: main
-          token: ${{ secrets.GH_PAT }}
-          branch: "release"
-          branch-suffix: short-commit-hash
-          committer: portal-release-bot <release-bot@portalhq.io>
-          author: portal-release-bot <release-bot@portalhq.io>
-          delete-branch: true
-          title: "SDK Release ${{ inputs.version }}"
-          body: "This PR contains the updated version for the SDK: ${{ inputs.version }}"
-          labels: "Release"
-
-      - name: Checkout swift repo
-        uses: actions/checkout@v2
-        with:
-          path: main
           ref: "release-candidate"
 
       - name: Update version in podspec
@@ -53,7 +24,7 @@ jobs:
           export NEW_VERSION="${{ inputs.version }}"
           sed -i.bak -E "s/^( *s.version *= *).*/\1'$NEW_VERSION'/" "$PODSPEC_FILE"
           rm "$PODSPEC_FILE.bak"
-          cat "$PODSPEC_FILE"
+          head -n 4 "$PODSPEC_FILE"
 
       - name: Open PR for Swift repo (release-candidate)
         id: cprRc
@@ -61,13 +32,26 @@ jobs:
         with:
           path: main
           token: ${{ secrets.GH_PAT }}
-          branch: "release-rc"
-          branch-suffix: short-commit-hash
+          branch: "release-${{ inputs.version }}"
           committer: portal-release-bot <release-bot@portalhq.io>
           author: portal-release-bot <release-bot@portalhq.io>
           delete-branch: true
           title: "SDK Release ${{ inputs.version }} for (release-candidate) "
           body: "This PR contains the updated version for the SDK: ${{ inputs.version }}"
+          labels: "Release"
+
+      - name: Open PR for Swift repo
+        id: cpr
+        uses: portal-hq/create-pull-request@v5
+        with:
+          path: main
+          token: ${{ secrets.GH_PAT }}
+          branch: "release-candidate"
+          base: "main"
+          committer: portal-release-bot <release-bot@portalhq.io>
+          author: portal-release-bot <release-bot@portalhq.io>
+          title: "SDK Release ${{ inputs.version }}"
+          body: "This PR contains the updated version for the SDK: ${{ inputs.version }}. Please ensure you have merged the branch release-${{ inputs.version }} into `release-candidate` before merging this PR."
           labels: "Release"
 
       - name: Slack - send version updated message
@@ -76,7 +60,7 @@ jobs:
           payload: |
             {
             "Title": "Swift SDK Version Updated",
-            "Body": "To complete the release for version: ${{ inputs.version }}.\n\n Please approve these PRs:\n `main`: ${{ steps.cpr.outputs.pull-request-url }}\n\n `release-candidate`: ${{ steps.cprRc.outputs.pull-request-url }}\n",
+            "Body": "To complete the release for version: ${{ inputs.version }}.\n\n Please approve these PRs:\n First `release-candidate`: `release-candidate`: ${{ steps.cprRc.outputs.pull-request-url }}\n\n Then `main`: ${{ steps.cpr.outputs.pull-request-url }}\n",
             "Status": "Success"
             }
         env:
