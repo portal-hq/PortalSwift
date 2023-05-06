@@ -445,6 +445,14 @@ class ViewController: UIViewController {
 
   func onError(result: Result<Any>) -> Void {
     print("PortalWebviewError:", result.error!, "Description:", result.error!.localizedDescription)
+    guard result.error == nil else {
+               print("❌ Error in PortalWebviewError:", ((result.error as! PortalMpcError).description))
+               return
+             }
+             guard ((result.data! as AnyObject).result as! Result<Any>).error == nil else {
+               print("❌ Error in PortalWebviewError:", (((result.data as! AnyObject).result as! Result<Any>).error as! PortalMpcError).description)
+             return
+           }
   }
 
   func injectWebView() {
