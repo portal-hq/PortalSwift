@@ -133,6 +133,7 @@ public class PortalKeychain: MobileStorageAdapter {
       guard status == errSecSuccess else {
         return completion(Result(error: KeychainError.unhandledError(status: status)))
       }
+      return completion(Result(data: status))
     } catch {
       return completion(Result(error: error))
     }
