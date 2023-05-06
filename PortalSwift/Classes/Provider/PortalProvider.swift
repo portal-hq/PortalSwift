@@ -561,11 +561,32 @@ public class PortalProvider {
     }
     
     // Bind to signing approval callbacks
-    let _ = once(event: Events.PortalSigningApproved.rawValue, callback: { (approved) in
+    let _ = once(event: Events.PortalSigningApproved.rawValue, callback: { approved in
+      // If the approved event is fired
       completion(Result(data: true))
     }).once(event: Events.PortalSigningRejected.rawValue, callback: { approved in
+      // If the rejected event is fired
       completion(Result(data: false))
     })
+    
+    // Execute event handlers
+    let handlers = events[Events.PortalSigningRequested.rawValue]
+    
+    // Fail if there are no handlers
+    if handlers == nil || handlers!.isEmpty {
+      return completion(Result(data: false))
+    }
+    
+    do {
+      // Loop over the event handlers
+      for eventHandler in handlers! {
+        try eventHandler.handler(payload)
+      }
+    } catch {
+      completion(Result(error: error))
+    }
+    
+    return completion(Result(data: true))
   }
   
   private func getApproval(
@@ -579,11 +600,32 @@ public class PortalProvider {
     }
     
     // Bind to signing approval callbacks
-    let _ = once(event: Events.PortalSigningApproved.rawValue, callback: { (approved) in
+    let _ = once(event: Events.PortalSigningApproved.rawValue, callback: { approved in
+      // If the approved event is fired
       completion(Result(data: true))
     }).once(event: Events.PortalSigningRejected.rawValue, callback: { approved in
+      // If the rejected event is fired
       completion(Result(data: false))
     })
+    
+    // Execute event handlers
+    let handlers = events[Events.PortalSigningRequested.rawValue]
+    
+    // Fail if there are no handlers
+    if handlers == nil || handlers!.isEmpty {
+      return completion(Result(data: false))
+    }
+    
+    do {
+      // Loop over the event handlers
+      for eventHandler in handlers! {
+        try eventHandler.handler(payload)
+      }
+    } catch {
+      completion(Result(error: error))
+    }
+    
+    return completion(Result(data: true))
   }
   
   private func handleGatewayRequest(
@@ -698,27 +740,26 @@ public class PortalProvider {
         completion(Result(error: ProviderSigningError.userDeclinedApproval))
         return
       }
-    }
-    
-    
-    self.mpcQueue.async {
-      // This code will be executed in a background thread
-      var signResult = SignerResult()
-      do {
-        signResult = try self.signer.sign(
-          payload: payload,
-          provider: self
-        )
-      } catch {
+      
+      self.mpcQueue.async {
+        // This code will be executed in a background thread
+        var signResult = SignerResult()
+        do {
+          signResult = try self.signer.sign(
+            payload: payload,
+            provider: self
+          )
+        } catch {
+          DispatchQueue.main.async {
+            completion(Result(error: error))
+            return
+          }
+        }
+        // When the work is done, call the completion handler
         DispatchQueue.main.async {
-          completion(Result(error: error))
+          completion(Result(data: signResult))
           return
         }
-      }
-      // When the work is done, call the completion handler
-      DispatchQueue.main.async {
-        completion(Result(data: signResult))
-        return
       }
     }
   }
@@ -727,7 +768,6 @@ public class PortalProvider {
     payload: ETHTransactionPayload,
     completion: @escaping (Result<Any>) -> Void
   ) -> Void {
-    
     getApproval(payload: payload) { result in
       guard result.error == nil else {
         completion(Result(error: result.error!))
@@ -738,27 +778,29 @@ public class PortalProvider {
         completion(Result(error: ProviderSigningError.userDeclinedApproval))
         return
       }
-    }
-    self.mpcQueue.async {
-      // This code will be executed in a background thread
-      var signResult = SignerResult()
-      do {
+      
+      self.mpcQueue.async {
+        // This code will be executed in a background thread
+        var signResult = SignerResult()
+        do {
         signResult = try self.signer.sign(
-          payload: payload,
-          provider: self
-        )
-      } catch {
+            payload: payload,
+            provider: self
+          )
+        } catch {
+          DispatchQueue.main.async {
+            completion(Result(error: error))
+            return
+          }
+        }
+        // When the work is done, call the completion handler
         DispatchQueue.main.async {
-          completion(Result(error: error))
+          completion(Result(data: signResult.signature))
           return
         }
       }
-      // When the work is done, call the completion handler
-      DispatchQueue.main.async {
-        completion(Result(data: signResult.signature))
-        return
-      }
     }
+
   }
   
   private func removeOnce(registeredEventHandler: RegisteredEventHandler) -> Bool {
