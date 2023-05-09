@@ -185,7 +185,7 @@ class PortalSwaps {
   private func buildHostForChain() -> String {
     let chain = ChainUtils.getChainNameForId(portal.chainId)
     
-    if (chain != nil) {
+    if (chain != nil && chain != "mainnet") {
       return "\(chain!).\(domain)"
     }
     

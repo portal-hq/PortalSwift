@@ -9,10 +9,12 @@ import Foundation
 
 class ChainUtils {
   private static let chainIdToName: [Int:String] = [
+    1: "mainnet",
     5: "goerli",
   ]
 
   private static let chainNameToId: [String:Int] = [
+    "mainnet": 1,
     "goerli": 5,
   ]
 
