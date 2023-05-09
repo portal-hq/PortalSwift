@@ -4,7 +4,6 @@ on:
     inputs:
       version:
         description: "The version of the SDK to release"
-        required: true
         type: string
 
 jobs:
