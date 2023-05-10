@@ -17,7 +17,7 @@ public class PortalKeychain: MobileStorageAdapter {
     case ItemAlreadyExists(item: String)
     case unexpectedItemData(item: String)
     case unhandledError(status: OSStatus)
-    case noPasscodeSet(status: OSStatus)
+    case keychainUnavailableOrNoPasscode(status: OSStatus)
   }
   
   /// Creates an instance of PortalKeychain.
@@ -133,7 +133,7 @@ public class PortalKeychain: MobileStorageAdapter {
         return completion(Result(data: status))
       }
       guard status != errSecNotAvailable else {
-        return completion(Result(error: KeychainError.noPasscodeSet(status: status)))
+        return completion(Result(error: KeychainError.keychainUnavailableOrNoPasscode(status: status)))
       }
       guard status == errSecSuccess else {
         return completion(Result(error: KeychainError.unhandledError(status: status)))
@@ -164,6 +164,9 @@ public class PortalKeychain: MobileStorageAdapter {
     // Throw if the status is not successful.
     guard status != errSecItemNotFound else {
       throw KeychainError.ItemNotFound(item: key)
+    }
+    guard status != errSecNotAvailable else {
+      throw KeychainError.keychainUnavailableOrNoPasscode(status: status)
     }
     guard status == errSecSuccess else {
       throw KeychainError.unhandledError(status: status)
