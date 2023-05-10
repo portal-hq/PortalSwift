@@ -17,6 +17,7 @@ public class PortalKeychain: MobileStorageAdapter {
     case ItemAlreadyExists(item: String)
     case unexpectedItemData(item: String)
     case unhandledError(status: OSStatus)
+    case noPasscodeSet(status: OSStatus)
   }
   
   /// Creates an instance of PortalKeychain.
@@ -119,6 +120,7 @@ public class PortalKeychain: MobileStorageAdapter {
         kSecAttrService as String: "PortalMpc.\(key)" as AnyObject,
         kSecAttrAccount as String: key as AnyObject,
         kSecClass as String: kSecClassGenericPassword,
+        kSecAttrAccessible as String: kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly as AnyObject,
         kSecValueData as String: value.data(using: String.Encoding.utf8) as AnyObject
       ]
       
@@ -129,6 +131,9 @@ public class PortalKeychain: MobileStorageAdapter {
       if (status == errSecDuplicateItem) {
         try self.updateItem(key: key, value: value)
         return completion(Result(data: status))
+      }
+      guard status != errSecNotAvailable else {
+        return completion(Result(error: KeychainError.noPasscodeSet(status: status)))
       }
       guard status == errSecSuccess else {
         return completion(Result(error: KeychainError.unhandledError(status: status)))
@@ -149,6 +154,7 @@ public class PortalKeychain: MobileStorageAdapter {
     
     // Construct the attributes to update the keychain item.
     let attributes: [String: AnyObject] = [
+      kSecAttrAccessible as String: kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly as AnyObject,
       kSecValueData as String: value.data(using: String.Encoding.utf8) as AnyObject
     ]
     
