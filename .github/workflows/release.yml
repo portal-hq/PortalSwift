@@ -11,7 +11,6 @@ jobs:
     runs-on: macos-latest
     env:
       NEW_VERSION: ${{ inputs.version}}
-      CURRENT_VERSION: ""
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -19,7 +18,7 @@ jobs:
           fetch-depth: 0
           path: main
 
-      - name: Auto bump patch version in podspec
+      - name: Auto bump patch version
         if: ${{ !inputs.version}}
         run: |
           cd ${{ github.workspace }}/main
@@ -42,26 +41,26 @@ jobs:
 
           # Increment the patch version by 1
           NEW_PATCH_VERSION=$((PATCH_VERSION + 1))
-          echo "$NEW_PATCH_VERSION"
 
           # Construct the new version string with the pre-release tag
           NEW_VERSION="$MAJOR_VERSION.$MINOR_VERSION.$NEW_PATCH_VERSION${PRE_RELEASE_TAG:+-$PRE_RELEASE_TAG}"
           echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
           echo "$NEW_VERSION"
 
-          # Update the version in the podspec file
-          sed -i.bak -E "s/^( *s.version *= *).*/\1\"$NEW_VERSION\"/" "$PODSPEC_FILE"
-          rm "$PODSPEC_FILE.bak"
-
-          echo "Passed adding it to the podspec file"
-          # Print the first 4 lines of the podspec file
-          head -n 4 "$PODSPEC_FILE"
-
       - name: Push new version to main
         run: |
           cd ${{ github.workspace }}/main
           git config --local user.name "portal-release-bot"
           git config --local user.email "release-bot@portalhq.io"
+
+          # Update the version in the podspec file
+          export PODSPEC_FILE="PortalSwift.podspec"
+
+          sed -i.bak -E "s/^( *s.version *= *).*/\1\"${{ env.NEW_VERSION }}\"/" "$PODSPEC_FILE"
+          rm "$PODSPEC_FILE.bak"
+
+          # Print the first 4 lines of the podspec file
+          head -n 4 "$PODSPEC_FILE"
 
           git add -A
           git commit -m "Bump version to ${{ env.NEW_VERSION }}"
@@ -94,9 +93,10 @@ jobs:
           git config --local user.name "portal-release-bot"
           git config --local user.email "release-bot@portalhq.io"
           git checkout release-candidate
-          export PODSPEC_FILE="PortalSwift.podspec"
 
           # Update the version in the podspec file
+          export PODSPEC_FILE="PortalSwift.podspec"
+
           sed -i.bak -E "s/^( *s.version *= *).*/\1\"${{ env.NEW_VERSION }}\"/" "$PODSPEC_FILE"
           rm "$PODSPEC_FILE.bak"
 
