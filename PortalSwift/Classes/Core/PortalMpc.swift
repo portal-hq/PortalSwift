@@ -14,15 +14,15 @@ import Mpc
 /// CGGMP shares will contain all fields except: pubkey.
 public struct MpcShare: Codable {
   public var share: String
-  public var allY: PartialPublicKey
-  public var bks: Berkhoffs
+  public var allY: PartialPublicKey?
+  public var bks: Berkhoffs?
   public var p: String
-  public var partialPubkey: PartialPublicKey
-  public var pederson: Pedersons
+  public var partialPubkey: PartialPublicKey?
+  public var pederson: Pedersons?
   public var q: String
   public var ssid: String
   public var clientId: String
-  public var pubkey: PublicKey
+  public var pubkey: PublicKey?
 }
 
 /// In the bks dictionary for an MPC share, Berkhoff is the value.
@@ -33,31 +33,31 @@ public struct Berkhoff: Codable {
 
 /// A partial public key for client and server (x, y)
 public struct PartialPublicKey: Codable {
-  public var client: PublicKey
-  public var server: PublicKey
+  public var client: PublicKey?
+  public var server: PublicKey?
 }
 
 /// A berhkoff coefficient mapping for client and server (x, rank)
 public struct Berkhoffs: Codable {
-  public var client: Berkhoff
-  public var server: Berkhoff
+  public var client: Berkhoff?
+  public var server: Berkhoff?
 }
 
 public struct Pederson: Codable {
-  public var n: String
-  public var s: String
-  public var t: String
+  public var n: String?
+  public var s: String?
+  public var t: String?
 }
 
 public struct Pedersons: Codable {
-  public var client: Pederson
-  public var server: Pederson
+  public var client: Pederson?
+  public var server: Pederson?
 }
 
 /// A public key's coordinates (x, y).
 public struct PublicKey: Codable {
-  public var X: String
-  public var Y: String
+  public var X: String?
+  public var Y: String?
 }
 
 private struct DecryptResult: Codable {
@@ -83,7 +83,7 @@ private struct EncryptResult: Codable {
 /// The data for GenerateResult.
 public struct GenerateData: Codable {
   public var address: String
-  public var dkgResult: MpcShare
+  public var dkgResult: MpcShare?
 }
 
 /// The response from generating.
