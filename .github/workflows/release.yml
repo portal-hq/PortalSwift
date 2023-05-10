@@ -47,7 +47,7 @@ jobs:
           echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
           echo "$NEW_VERSION"
 
-      - name: Push new version to main
+      - name: Push new version
         run: |
           cd ${{ github.workspace }}/main
           git config --local user.name "portal-release-bot"
