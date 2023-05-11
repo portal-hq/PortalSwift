@@ -271,8 +271,7 @@ public class PortalMpc {
             print("Running backup since iCloud is available! 🎉")
             self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
               if (backupResult.error != nil) {
-                completion(Result(error: backupResult.error!))
-                return
+                return completion(Result(error: backupResult.error!))
               }
               progress?(MpcStatus(status: MpcStatuses.done, done: true))
               completion(backupResult)
@@ -285,8 +284,7 @@ public class PortalMpc {
         print("Running backup since Google Drive is available! 🎉")
         self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
           if (backupResult.error != nil) {
-            completion(Result(error: backupResult.error!))
-            return
+            return completion(Result(error: backupResult.error!))
           }
           progress?(MpcStatus(status: MpcStatuses.done, done: true))
           completion(backupResult)
@@ -316,8 +314,7 @@ public class PortalMpc {
       keychain.testSetItem() { result in
         // Handle errors
         if result.error != nil {
-          completion(Result(error: result.error!))
-          return
+          return completion(Result(error: result.error!))
         }
         
         // Call the MPC service to generate a new wallet.
@@ -330,11 +327,10 @@ public class PortalMpc {
         
         do {
           let generateResult: GenerateResult = try JSONDecoder().decode(GenerateResult.self, from: jsonData)
+
           // Throw if there was an error generating the wallet.
-          
           guard generateResult.error.code == 0 else {
-            completion(Result(error: PortalMpcError(generateResult.error)))
-            return
+            return completion(Result(error: PortalMpcError(generateResult.error)))
           }
           
           // Set the client's address.
@@ -350,8 +346,7 @@ public class PortalMpc {
           keychain.setSigningShare(signingShare: mpcShareString) { result in
             // Handle errors
             if result.error != nil {
-              completion(Result(error: result.error!))
-              return
+              return completion(Result(error: result.error!))
             }
             
             // Assign the address to the class.
@@ -361,8 +356,7 @@ public class PortalMpc {
             keychain.setAddress(address: address ) { result in
               // Handle errors
               if result.error != nil {
-                completion(Result(error: result.error!))
-                return
+                return completion(Result(error: result.error!))
               }
               progress?(MpcStatus(status: MpcStatuses.done, done: true))
               
@@ -414,7 +408,7 @@ public class PortalMpc {
             }
             progress?(MpcStatus(status: MpcStatuses.done, done: true))
             completion(Result(data: recoveryResult.data!))
-          }  progress: { status in
+          } progress: { status in
             progress?(status)
           }
         }
@@ -422,12 +416,11 @@ public class PortalMpc {
     } else if (method == BackupMethods.GoogleDrive.rawValue) {
       executeRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
         if (recoveryResult.error != nil) {
-          completion(Result(error: recoveryResult.error!))
-          return
+          return completion(Result(error: recoveryResult.error!))
         }
         progress?(MpcStatus(status: MpcStatuses.done, done: true))
         completion(Result(data: recoveryResult.data!))
-      }  progress: { status in
+      } progress: { status in
         progress?(status)
       }
     } else {
@@ -508,8 +501,7 @@ public class PortalMpc {
       // Encrypt the backup share.
       encryptShare(mpcShare: backupShare) { encryptedResult in
         if encryptedResult.error != nil {
-          completion(Result(error: encryptedResult.error!))
-          return
+          return completion(Result(error: encryptedResult.error!))
         }
         
         // Attempt to write the encrypted share to storage.
@@ -546,8 +538,7 @@ public class PortalMpc {
     keychain.testSetItem() { result in
       // Handle errors
       if result.error != nil {
-        completion(Result(error: result.error!))
-        return
+        return completion(Result(error: result.error!))
       }
       
       self.getBackupShare(cipherText: cipherText, method: method) { (result: Result<String>) -> Void in
