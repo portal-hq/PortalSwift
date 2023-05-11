@@ -155,8 +155,9 @@ class ViewController: UIViewController {
 
   @IBAction func handleGenerate(_ sender: UIButton!) {
     portal?.mpc.generate() { (addressResult) -> Void in
-      if (addressResult.error != nil) {
-        print("❌ handleGenerate():", addressResult.error!)
+      guard addressResult.error == nil else {
+        print("❌ handleGenerate():", ((addressResult.error as! PortalMpcError).description))
+        return
       }
       
       print("✅ handleGenerate(): Address:", addressResult.data ?? "N/A")
@@ -180,7 +181,7 @@ class ViewController: UIViewController {
     print("Starting backup...")
     portal?.mpc.backup(method: BackupMethods.GoogleDrive.rawValue)  { (result: Result<String>) -> Void in
       if (result.error != nil) {
-        print("❌ handleBackup():", result.error!)
+        print("❌ handleBackup():",  (result.error as! PortalMpcError).description)
       } else {
         let request = HttpRequest<String, [String : String]>(
           url: self.CUSTODIAN_SERVER_URL! + "/mobile/\(self.user!.exchangeUserId)/cipher-text",
@@ -218,9 +219,9 @@ class ViewController: UIViewController {
       let cipherText = result.data!.cipherText
 
       self.portal?.mpc.recover(cipherText: cipherText, method: BackupMethods.GoogleDrive.rawValue) { (result: Result<String>) -> Void in
-        if (result.error != nil) {
-          print("❌ handleRecover(): portal.mpc.recover", result.error!)
-          return;
+        guard result.error == nil else {
+          print("❌ handleRecover(): Error fetching cipherText:", (result.error as! PortalMpcError).description)
+          return
         }
 
         print("✅ handleRecover(): portal.mpc.recover - cipherText:", result.data!)
