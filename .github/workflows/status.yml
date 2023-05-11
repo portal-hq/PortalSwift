@@ -1,0 +1,37 @@
+name: Handle Release Status
+on:
+  workflow_run:
+    workflows: ["Update the sdk version", "Tag the sdk version"]
+    types:
+      - completed
+
+jobs:
+  handle_workflow_status:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Slack - send failed status of version workflow
+        if: ${{github.event.workflow_run.name == 'Update the sdk version' && github.event.workflow_run.conclusion == 'failure'}}
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          payload: |
+            {
+            "Title": "Updating the swift sdk version failed",
+            "Body": "'Update the sdk version' Github Action failed to complete. Please check the GH Action Console. https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}",
+            "Status": "Failure"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Slack - send failed status of tag workflow
+        if: ${{github.event.workflow_run.name == 'Tag the sdk version' && github.event.workflow_run.conclusion == 'failure'}}
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          payload: |
+            {
+            "Title": "Tagging the swift sdk version failed",
+            "Body": "'Tag the sdk version' Github Action failed to complete. Please check the GH Action Console. https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}",
+            "Status": "Failure"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
