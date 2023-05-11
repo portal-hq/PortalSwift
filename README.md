@@ -8,10 +8,12 @@ To run the example project, clone the repo, and from the Example directory run `
 
 Create an xcConfig file.
 
-1. Add new file to PortalSwift
+1. Add new file to PortalSwift by right clicking on PortalSwift and clicking add new file
 2. Search for configuration file
 3. Call the new configuration file "Secrets"
-4. Add these variables:
+4. Add both example and test as targets
+5. Add `#include? "Secrets.xcconfig"` to the Pods directory within the `Pods-PortalSwift_Example.debug.xcconfig` file
+6. Add these variables:
 
 ```
 ALCHEMY_API_KEY = ALCHEMY_API_KEY
@@ -27,3 +29,11 @@ The info plist and main debug configuration file is already configured to import
 ## Next Steps
 
 Follow our docs [here](https://docs.portalhq.io/swift-pod/portalswift) to get started!
+
+# Release the SDK
+
+## Trigger the Version Updating
+
+- Go to Actions
+- Input the most recent version we are updating to into the input for version
+- Check slack for any release errors or the actions console
