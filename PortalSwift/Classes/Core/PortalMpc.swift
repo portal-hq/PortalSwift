@@ -271,8 +271,7 @@ public class PortalMpc {
             print("Running backup since iCloud is available! 🎉")
             self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
               if (backupResult.error != nil) {
-                completion(Result(error: backupResult.error!))
-                return
+                return completion(Result(error: backupResult.error!))
               }
               progress?(MpcStatus(status: MpcStatuses.done, done: true))
               completion(backupResult)
@@ -285,8 +284,7 @@ public class PortalMpc {
         print("Running backup since Google Drive is available! 🎉")
         self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
           if (backupResult.error != nil) {
-            completion(Result(error: backupResult.error!))
-            return
+            return completion(Result(error: backupResult.error!))
           }
           progress?(MpcStatus(status: MpcStatuses.done, done: true))
           completion(backupResult)
@@ -312,56 +310,63 @@ public class PortalMpc {
         completion(result)
       }
       
-      // Call the MPC service to generate a new wallet.
-      progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
-      let response = ClientGenerate(apiKey, mpcHost, version)
-      // Parse the share
-      progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
-      let jsonData = response.data(using: .utf8)!
-      do {
-        let generateResult: GenerateResult = try JSONDecoder().decode(GenerateResult.self, from: jsonData)
-        // Throw if there was an error generating the wallet.
-        
-        guard generateResult.error.code == 0 else {
-          completion(Result(error: PortalMpcError(generateResult.error)))
-          return
+      // Test the Keychain before generating.
+      keychain.testSetItem() { result in
+        // Handle errors
+        if result.error != nil {
+          return completion(Result(error: result.error!))
         }
         
-        // Set the client's address.
-        let address = generateResult.data!.address
+        // Call the MPC service to generate a new wallet.
+        progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
+        let response = ClientGenerate(apiKey, mpcHost, version)
         
-        // Set the client's signing share
-        let mpcShare = generateResult.data!.dkgResult
-        let mpcShareData = try JSONEncoder().encode(mpcShare)
-        let mpcShareString = String(data: mpcShareData, encoding: .utf8 )!
+        // Parse the share
+        progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
+        let jsonData = response.data(using: .utf8)!
         
-        progress?(MpcStatus(status: MpcStatuses.storingShare, done: false))
-        
-        keychain.setSigningShare(signingShare: mpcShareString) { result in
-          // Handle errors
-          if result.error != nil {
-            completion(Result(error: result.error!))
-            return
+        do {
+          let generateResult: GenerateResult = try JSONDecoder().decode(GenerateResult.self, from: jsonData)
+
+          // Throw if there was an error generating the wallet.
+          guard generateResult.error.code == 0 else {
+            return completion(Result(error: PortalMpcError(generateResult.error)))
           }
           
-          // Assign the address to the class.
-          self.address = address
+          // Set the client's address.
+          let address = generateResult.data!.address
           
+          // Set the client's signing share
+          let mpcShare = generateResult.data!.dkgResult
+          let mpcShareData = try JSONEncoder().encode(mpcShare)
+          let mpcShareString = String(data: mpcShareData, encoding: .utf8 )!
           
-          keychain.setAddress(address: address ) { result in
+          progress?(MpcStatus(status: MpcStatuses.storingShare, done: false))
+          
+          keychain.setSigningShare(signingShare: mpcShareString) { result in
             // Handle errors
             if result.error != nil {
-              completion(Result(error: result.error!))
-              return
+              return completion(Result(error: result.error!))
             }
-            progress?(MpcStatus(status: MpcStatuses.done, done: true))
-
-            // Return the address.
-            return completion(Result(data: address))
+            
+            // Assign the address to the class.
+            self.address = address
+            
+            
+            keychain.setAddress(address: address ) { result in
+              // Handle errors
+              if result.error != nil {
+                return completion(Result(error: result.error!))
+              }
+              progress?(MpcStatus(status: MpcStatuses.done, done: true))
+              
+              // Return the address.
+              return completion(Result(data: address))
+            }
           }
+        } catch {
+          return completion(Result(error: error))
         }
-      } catch {
-        return completion(Result(error: error))
       }
     }
   }
@@ -403,7 +408,7 @@ public class PortalMpc {
             }
             progress?(MpcStatus(status: MpcStatuses.done, done: true))
             completion(Result(data: recoveryResult.data!))
-          }  progress: { status in
+          } progress: { status in
             progress?(status)
           }
         }
@@ -411,12 +416,11 @@ public class PortalMpc {
     } else if (method == BackupMethods.GoogleDrive.rawValue) {
       executeRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
         if (recoveryResult.error != nil) {
-          completion(Result(error: recoveryResult.error!))
-          return
+          return completion(Result(error: recoveryResult.error!))
         }
         progress?(MpcStatus(status: MpcStatuses.done, done: true))
         completion(Result(data: recoveryResult.data!))
-      }  progress: { status in
+      } progress: { status in
         progress?(status)
       }
     } else {
@@ -497,8 +501,7 @@ public class PortalMpc {
       // Encrypt the backup share.
       encryptShare(mpcShare: backupShare) { encryptedResult in
         if encryptedResult.error != nil {
-          completion(Result(error: encryptedResult.error!))
-          return
+          return completion(Result(error: encryptedResult.error!))
         }
         
         // Attempt to write the encrypted share to storage.
@@ -531,42 +534,52 @@ public class PortalMpc {
   ) -> Void {
     progress?(MpcStatus(status: MpcStatuses.readingShare, done: false))
     
-    self.getBackupShare(cipherText: cipherText, method: method) { (result: Result<String>) -> Void in
-      // Throw if there was an error getting the backup share.
-      guard result.error == nil else {
+    // Test keychain before we start.
+    keychain.testSetItem() { result in
+      // Handle errors
+      if result.error != nil {
         return completion(Result(error: result.error!))
       }
       
-      progress?(MpcStatus(status: MpcStatuses.recoveringSigningShare, done: false))
-      self.recoverSigning(backupShare: result.data!) { signingResult in
-        if (signingResult.error != nil) {
-          return completion(Result(error: signingResult.error!))
+      self.getBackupShare(cipherText: cipherText, method: method) { (result: Result<String>) -> Void in
+        // Throw if there was an error getting the backup share.
+        guard result.error == nil else {
+          return completion(Result(error: result.error!))
         }
         
-        progress?(MpcStatus(status: MpcStatuses.recoveringBackupShare, done: false))
-        
-        self.recoverBackup(signingShare: result.data!) { backupResult in
-          if backupResult.error != nil {
-            return completion(Result(error: backupResult.error!))
+        progress?(MpcStatus(status: MpcStatuses.recoveringSigningShare, done: false))
+        self.recoverSigning(backupShare: result.data!) { signingResult in
+          if (signingResult.error != nil) {
+            return completion(Result(error: signingResult.error!))
           }
-                    
-          self.encryptShare(mpcShare: backupResult.data!) { encryptedResult in
-            // Handle errors
-            if encryptedResult.error != nil {
-              return completion(Result(error: encryptedResult.error!))
+          
+          progress?(MpcStatus(status: MpcStatuses.recoveringBackupShare, done: false))
+          
+          self.recoverBackup(signingShare: result.data!) { backupResult in
+            if backupResult.error != nil {
+              return completion(Result(error: backupResult.error!))
             }
             
-            // Attempt to write the encrypted share to storage.
-            progress?(MpcStatus(status: MpcStatuses.storingShare, done: false))
-            
-            storage.write(privateKey: encryptedResult.data!.key) { (result: Result<Bool>) -> Void in
-              // Throw an error if we can't write to storage.
-              if !result.data! {
-                return completion(Result(error: result.error!))
+            self.encryptShare(mpcShare: backupResult.data!) { encryptedResult in
+              // Handle errors
+              if encryptedResult.error != nil {
+                return completion(Result(error: encryptedResult.error!))
               }
               
-              // Return the cipherText.
-              return completion(Result(data: encryptedResult.data!.cipherText))
+              // Attempt to write the encrypted share to storage.
+              progress?(MpcStatus(status: MpcStatuses.storingShare, done: false))
+              
+              storage.write(privateKey: encryptedResult.data!.key) { (result: Result<Bool>) -> Void in
+                // Throw an error if we can't write to storage.
+                if !result.data! {
+                  return completion(Result(error: result.error!))
+                }
+                
+                // Return the cipherText.
+                return completion(Result(data: encryptedResult.data!.cipherText))
+              }
+            } progress: { status in
+              progress?(status)
             }
           } progress: { status in
             progress?(status)
@@ -577,8 +590,6 @@ public class PortalMpc {
       } progress: { status in
         progress?(status)
       }
-    } progress: { status in
-      progress?(status)
     }
   }
   
