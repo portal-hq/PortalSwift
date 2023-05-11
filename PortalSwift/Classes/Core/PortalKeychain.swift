@@ -78,7 +78,25 @@ public class PortalKeychain: MobileStorageAdapter {
   /// - Returns: The client's signing share.
   override public func deleteSigningShare() throws {
     try deleteItem(key: SigningShare)
-    
+  }
+  
+  /// Tests `setItem` in the client's keychain.
+  public func testSetItem(completion: (Result<OSStatus>) -> Void) {
+    let testKey = "answer"
+    setItem(key: testKey, value: "42") { [weak self] result in
+      // Handle errors.
+      guard result.error == nil else {
+        return completion(Result(error: result.error!))
+      }
+      
+      do {
+        // Delete the key that was created.
+        try self?.deleteItem(key: testKey)
+        return completion(Result(data: result.data!))
+      } catch {
+        return completion(Result(error: error))
+      }
+    }
   }
   
   private func getItem(item: String) throws -> String {
