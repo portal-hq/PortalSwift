@@ -181,7 +181,7 @@ class ViewController: UIViewController {
     print("Starting backup...")
     portal?.mpc.backup(method: BackupMethods.GoogleDrive.rawValue)  { (result: Result<String>) -> Void in
       if (result.error != nil) {
-        print("❌ handleBackup():",  (result.error as! PortalMpcError).description)
+        print("❌ handleBackup():",  result.error)
       } else {
         let request = HttpRequest<String, [String : String]>(
           url: self.CUSTODIAN_SERVER_URL! + "/mobile/\(self.user!.exchangeUserId)/cipher-text",
@@ -218,9 +218,9 @@ class ViewController: UIViewController {
 
       let cipherText = result.data!.cipherText
 
-      self.portal?.mpc.recover(cipherText: cipherText, method: BackupMethods.GoogleDrive.rawValue) { (result: Result<String>) -> Void in
+      self.portal?.mpc.recover(cipherText: cipherText, method: BackupMethods.iCloud.rawValue) { (result: Result<String>) -> Void in
         guard result.error == nil else {
-          print("❌ handleRecover(): Error fetching cipherText:", (result.error as! PortalMpcError).description)
+          print("❌ handleRecover(): Error fetching cipherText:", result.error)
           return
         }
 
