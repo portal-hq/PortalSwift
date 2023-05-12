@@ -454,18 +454,18 @@ public class PortalProvider {
     if (!isSignerMethod && !payload.method.starts(with: "wallet_")) {
       handleGatewayRequest(payload: payload) { (method: String, params: [Any], result: Result<Any>) -> Void in
         if (result.data != nil) {
-          completion(Result(data: RequestCompletionResult(method: method, params: params, result: result.data!)))
+          return completion(Result(data: RequestCompletionResult(method: method, params: params, result: result.data!)))
         } else {
-          completion(Result(error: result.error!))
+          return completion(Result(error: result.error!))
         }
         
       }
     } else if (isSignerMethod) {
       handleSigningRequest(payload: payload) { (result: Result<SignerResult>) -> Void in
-        completion(Result(data: RequestCompletionResult(method: payload.method, params: payload.params, result: result)))
+        return completion(Result(data: RequestCompletionResult(method: payload.method, params: payload.params, result: result)))
       }
     } else {
-      completion(Result(error: ProviderRpcError.unsupportedMethod))
+      return completion(Result(error: ProviderRpcError.unsupportedMethod))
     }
   }
   
@@ -484,24 +484,23 @@ public class PortalProvider {
       handleGatewayRequest(payload: payload) {
         (method: String, params: [ETHTransactionParam], result: Result<Any>) -> Void in
         guard result.error == nil else {
-          completion(Result(error: result.error!))
-          return
+          return completion(Result(error: result.error!))
+          
         }
         if (result.data != nil) {
-          completion(Result(data: TransactionCompletionResult(method: method, params: params, result: result.data!)))
+          return completion(Result(data: TransactionCompletionResult(method: method, params: params, result: result.data!)))
         }
       }
     } else if (isSignerMethod) {
       handleSigningRequest(payload: payload) { (result: Result<Any>) -> Void in
         guard result.error == nil else {
-          completion(Result(error: result.error!))
-          return
+          return completion(Result(error: result.error!))
         }
-        completion(Result(data: TransactionCompletionResult(method: payload.method, params: payload.params, result: result)))
+        return completion(Result(data: TransactionCompletionResult(method: payload.method, params: payload.params, result: result)))
       }
       
     } else {
-      completion(Result(error: ProviderRpcError.unsupportedMethod))
+      return completion(Result(error: ProviderRpcError.unsupportedMethod))
     }
   }
   
@@ -522,13 +521,13 @@ public class PortalProvider {
       handleGatewayRequest(payload: payload) {
         (method: String, params: [ETHAddressParam], result: Result<Any>) -> Void in
         if (result.data != nil) {
-          completion(Result(data: AddressCompletionResult(method: method, params: params, result: result.data!)))
+          return completion(Result(data: AddressCompletionResult(method: method, params: params, result: result.data!)))
         } else {
-          completion(Result(error: result.error!))
+          return completion(Result(error: result.error!))
         }
       }
     } else {
-      completion(Result(error: ProviderRpcError.unsupportedMethod))
+      return completion(Result(error: ProviderRpcError.unsupportedMethod))
     }
   }
   
@@ -555,18 +554,18 @@ public class PortalProvider {
     completion: @escaping (Result<Bool>) -> Void
   ) -> Void {
     if (autoApprove) {
-      completion(Result(data: true))
+      return completion(Result(data: true))
     } else if (events[Events.PortalSigningRequested.rawValue] == nil) {
-      completion(Result(error: ProviderSigningError.noBindingForSigningApprovalFound))
+      return completion(Result(error: ProviderSigningError.noBindingForSigningApprovalFound))
     }
     
     // Bind to signing approval callbacks
     let _ = once(event: Events.PortalSigningApproved.rawValue, callback: { approved in
       // If the approved event is fired
-      completion(Result(data: true))
+      return completion(Result(data: true))
     }).once(event: Events.PortalSigningRejected.rawValue, callback: { approved in
       // If the rejected event is fired
-      completion(Result(data: false))
+      return completion(Result(data: false))
     })
     
     // Execute event handlers
@@ -583,7 +582,7 @@ public class PortalProvider {
         try eventHandler.handler(payload)
       }
     } catch {
-      completion(Result(error: error))
+      return completion(Result(error: error))
     }
     
     return completion(Result(data: true))
@@ -594,18 +593,18 @@ public class PortalProvider {
     completion: @escaping (Result<Bool>) -> Void
   ) -> Void {
     if (autoApprove) {
-      completion(Result(data: true))
+      return completion(Result(data: true))
     } else if (events[Events.PortalSigningRequested.rawValue] == nil) {
-      completion(Result(error: ProviderSigningError.noBindingForSigningApprovalFound))
+      return completion(Result(error: ProviderSigningError.noBindingForSigningApprovalFound))
     }
     
     // Bind to signing approval callbacks
     let _ = once(event: Events.PortalSigningApproved.rawValue, callback: { approved in
       // If the approved event is fired
-      completion(Result(data: true))
+      return completion(Result(data: true))
     }).once(event: Events.PortalSigningRejected.rawValue, callback: { approved in
       // If the rejected event is fired
-      completion(Result(data: false))
+      return completion(Result(data: false))
     })
     
     // Execute event handlers
@@ -622,10 +621,8 @@ public class PortalProvider {
         try eventHandler.handler(payload)
       }
     } catch {
-      completion(Result(error: error))
+      return completion(Result(error: error))
     }
-    
-    return completion(Result(data: true))
   }
   
   private func handleGatewayRequest(
@@ -659,7 +656,7 @@ public class PortalProvider {
     // Attempt to send the request.
     request.send() { (result: Result<ETHGatewayResponse>) in
       if (result.data != nil) {
-        completion(payload.method, payload.params, Result(data: result.data!))
+        return completion(payload.method, payload.params, Result(data: result.data!))
       } else {
         return completion(payload.method, payload.params, Result(error: result.error!))
       }
@@ -690,7 +687,7 @@ public class PortalProvider {
     // Attempt to send the request.
     request.send() { (result: Result<ETHGatewayResponse>) in
       if (result.data != nil) {
-        completion(payload.method, payload.params, Result(data: result.data!))
+        return completion(payload.method, payload.params, Result(data: result.data!))
       } else {
         return completion(payload.method, payload.params, Result(error: result.error!))
       }
@@ -733,12 +730,10 @@ public class PortalProvider {
   ) -> Void {
     getApproval(payload: payload) { result in
       guard result.error == nil else {
-        completion(Result(error: result.error!))
-        return
+        return completion(Result(error: result.error!))
       }
       if (!(result.data!)) {
-        completion(Result(error: ProviderSigningError.userDeclinedApproval))
-        return
+        return completion(Result(error: ProviderSigningError.userDeclinedApproval))
       }
       
       self.mpcQueue.async {
@@ -751,14 +746,12 @@ public class PortalProvider {
           )
         } catch {
           DispatchQueue.main.async {
-            completion(Result(error: error))
-            return
+            return completion(Result(error: error))
           }
         }
         // When the work is done, call the completion handler
         DispatchQueue.main.async {
-          completion(Result(data: signResult))
-          return
+          return completion(Result(data: signResult))
         }
       }
     }
@@ -770,15 +763,12 @@ public class PortalProvider {
   ) -> Void {
     getApproval(payload: payload) { result in
       guard result.error == nil else {
-        completion(Result(error: result.error!))
-        return
+        return completion(Result(error: result.error!))
       }
       
       if (!result.data!) {
-        completion(Result(error: ProviderSigningError.userDeclinedApproval))
-        return
+        return completion(Result(error: ProviderSigningError.userDeclinedApproval))
       }
-      
       self.mpcQueue.async {
         // This code will be executed in a background thread
         var signResult = SignerResult()
@@ -789,14 +779,12 @@ public class PortalProvider {
           )
         } catch {
           DispatchQueue.main.async {
-            completion(Result(error: error))
-            return
+            return completion(Result(error: error))
           }
         }
         // When the work is done, call the completion handler
         DispatchQueue.main.async {
-          completion(Result(data: signResult.signature))
-          return
+          return completion(Result(data: signResult.signature))
         }
       }
     }
