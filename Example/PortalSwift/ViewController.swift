@@ -156,7 +156,7 @@ class ViewController: UIViewController {
   @IBAction func handleGenerate(_ sender: UIButton!) {
     portal?.mpc.generate() { (addressResult) -> Void in
       guard addressResult.error == nil else {
-        print("❌ handleGenerate():", ((addressResult.error as! PortalMpcError).description))
+        print("❌ handleGenerate():", addressResult.error!)
         return
       }
       
