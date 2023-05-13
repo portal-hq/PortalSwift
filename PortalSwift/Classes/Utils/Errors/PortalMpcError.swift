@@ -7,7 +7,7 @@
 
 import Foundation
 
-public class PortalMpcError: LocalizedError, CustomStringConvertible {
+public class PortalMpcError: Error {
   public var code: Int
   public var message: String
   
@@ -16,12 +16,19 @@ public class PortalMpcError: LocalizedError, CustomStringConvertible {
     self.message = error.message
   }
 
-  public var errorDescription: String {
+  public var description: String {
         return "PortalMpcError -code: \(self.code) -message: \(self.message)"
   }
   
-  public var description: String {
-      return self.errorDescription
-  }
+  
 }
 
+extension PortalMpcError: LocalizedError {
+    public var errorDescription: String? {
+      switch self {
+      default:
+        return NSLocalizedString("PortalMpcError", comment: "-code: \(self.code) -message: \(self.message)")
+      }
+            
+    }
+}

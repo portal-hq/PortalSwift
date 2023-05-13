@@ -17,7 +17,6 @@ public class PortalKeychain: MobileStorageAdapter {
     case ItemAlreadyExists(item: String)
     case unexpectedItemData(item: String)
     case unhandledError(status: OSStatus)
-    case keychainUnavailableOrNoPasscode(status: OSStatus)
   }
   
   /// Creates an instance of PortalKeychain.
@@ -78,25 +77,7 @@ public class PortalKeychain: MobileStorageAdapter {
   /// - Returns: The client's signing share.
   override public func deleteSigningShare() throws {
     try deleteItem(key: SigningShare)
-  }
-  
-  /// Tests `setItem` in the client's keychain.
-  public func testSetItem(completion: (Result<OSStatus>) -> Void) {
-    let testKey = "answer"
-    setItem(key: testKey, value: "42") { [weak self] result in
-      // Handle errors.
-      guard result.error == nil else {
-        return completion(Result(error: result.error!))
-      }
-      
-      do {
-        // Delete the key that was created.
-        try self?.deleteItem(key: testKey)
-        return completion(Result(data: result.data!))
-      } catch {
-        return completion(Result(error: error))
-      }
-    }
+    
   }
   
   private func getItem(item: String) throws -> String {
@@ -138,7 +119,6 @@ public class PortalKeychain: MobileStorageAdapter {
         kSecAttrService as String: "PortalMpc.\(key)" as AnyObject,
         kSecAttrAccount as String: key as AnyObject,
         kSecClass as String: kSecClassGenericPassword,
-        kSecAttrAccessible as String: kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly as AnyObject,
         kSecValueData as String: value.data(using: String.Encoding.utf8) as AnyObject
       ]
       
@@ -149,9 +129,6 @@ public class PortalKeychain: MobileStorageAdapter {
       if (status == errSecDuplicateItem) {
         try self.updateItem(key: key, value: value)
         return completion(Result(data: status))
-      }
-      guard status != errSecNotAvailable else {
-        return completion(Result(error: KeychainError.keychainUnavailableOrNoPasscode(status: status)))
       }
       guard status == errSecSuccess else {
         return completion(Result(error: KeychainError.unhandledError(status: status)))
@@ -172,7 +149,6 @@ public class PortalKeychain: MobileStorageAdapter {
     
     // Construct the attributes to update the keychain item.
     let attributes: [String: AnyObject] = [
-      kSecAttrAccessible as String: kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly as AnyObject,
       kSecValueData as String: value.data(using: String.Encoding.utf8) as AnyObject
     ]
     
@@ -182,9 +158,6 @@ public class PortalKeychain: MobileStorageAdapter {
     // Throw if the status is not successful.
     guard status != errSecItemNotFound else {
       throw KeychainError.ItemNotFound(item: key)
-    }
-    guard status != errSecNotAvailable else {
-      throw KeychainError.keychainUnavailableOrNoPasscode(status: status)
     }
     guard status == errSecSuccess else {
       throw KeychainError.unhandledError(status: status)
