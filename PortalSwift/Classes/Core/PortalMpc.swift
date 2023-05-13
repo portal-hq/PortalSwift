@@ -228,6 +228,10 @@ public class PortalMpc {
     self.address = address
   }
   
+  public func getBinaryVersion() -> String {
+    return ClientGetVersiion()
+  }
+  
   public func setChainId(chainId: Int) {
     self.chainId = chainId
   }
