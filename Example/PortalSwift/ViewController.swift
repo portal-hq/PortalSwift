@@ -155,9 +155,8 @@ class ViewController: UIViewController {
 
   @IBAction func handleGenerate(_ sender: UIButton!) {
     portal?.mpc.generate() { (addressResult) -> Void in
-      guard addressResult.error == nil else {
+      if (addressResult.error != nil) {
         print("❌ handleGenerate():", addressResult.error!)
-        return
       }
       
       print("✅ handleGenerate(): Address:", addressResult.data ?? "N/A")
@@ -181,7 +180,7 @@ class ViewController: UIViewController {
     print("Starting backup...")
     portal?.mpc.backup(method: BackupMethods.GoogleDrive.rawValue)  { (result: Result<String>) -> Void in
       if (result.error != nil) {
-        print("❌ handleBackup():",  result.error)
+        print("❌ handleBackup():", result.error!)
       } else {
         let request = HttpRequest<String, [String : String]>(
           url: self.CUSTODIAN_SERVER_URL! + "/mobile/\(self.user!.exchangeUserId)/cipher-text",
@@ -207,6 +206,7 @@ class ViewController: UIViewController {
       method: "GET", body:[:],
       headers: [:],
       requestType: HttpRequestType.CustomRequest
+
     )
 
     request.send() { (result: Result<CipherTextResult>) in
@@ -218,9 +218,9 @@ class ViewController: UIViewController {
       let cipherText = result.data!.cipherText
 
       self.portal?.mpc.recover(cipherText: cipherText, method: BackupMethods.GoogleDrive.rawValue) { (result: Result<String>) -> Void in
-        guard result.error == nil else {
-          print("❌ handleRecover(): Error fetching cipherText:", result.error)
-          return
+        if (result.error != nil) {
+          print("❌ handleRecover(): portal.mpc.recover", result.error!)
+          return;
         }
 
         print("✅ handleRecover(): portal.mpc.recover - cipherText:", result.data!)
@@ -367,19 +367,19 @@ class ViewController: UIViewController {
                // Test EIP-1559 Transactions with these params
             // params: [ETHTransactionParam(from: portal!.mpc.getAddress(), to: sendAddress.text!,  gas:"0x5208", value: "0x10", data: "", maxPriorityFeePerGas: ethEstimate, maxFeePerGas: ethEstimate)]
             )
-      
+            
         portal?.provider.request(payload: payload) {
-            (result: Result<TransactionCompletionResult>) -> Void in
-            guard result.error == nil else {
-              print("❌ Error sending transaction:", result.error!)
-              return
-            }
-          guard (result.data!.result as! Result<Any>).error == nil else {
-            print("❌ Error sending transaction:", ((result.data!.result as! Result<Any>).error))
-            return
-          }
-            print("✅ handleSend(): Result:", result.data!.result)
-          }
+                (result: Result<TransactionCompletionResult>) -> Void in
+                guard result.error == nil else {
+                  print("❌ Error sending transaction:", ((result.error as! PortalMpcError).description))
+                  return
+                }
+              guard (result.data!.result as! Result<Any>).error == nil else {
+                print("❌ Error sending transaction:", ((result.data!.result as! Result<Any>).error as! PortalMpcError).description)
+                return
+              }
+                print("✅ handleSend(): Result:", result.data!.result)
+              }
     }
   func registerPortal(apiKey: String) -> Void {
     
@@ -439,17 +439,18 @@ class ViewController: UIViewController {
   }
   
   func didRequestApproval(data: Any) -> Void {
+    print("Requesting Approval: ", data)
     _ = portal?.provider.emit(event: Events.PortalSigningApproved.rawValue, data: data)
   }
 
   func onError(result: Result<Any>) -> Void {
     print("PortalWebviewError:", result.error!, "Description:", result.error!.localizedDescription)
     guard result.error == nil else {
-               print("❌ Error in PortalWebviewError:", result.error)
+               print("❌ Error in PortalWebviewError:", ((result.error as! PortalMpcError).description))
                return
              }
              guard ((result.data! as AnyObject).result as! Result<Any>).error == nil else {
-               print("❌ Error in PortalWebviewError:", ((result.data as! AnyObject).result as! Result<Any>))
+               print("❌ Error in PortalWebviewError:", (((result.data as! AnyObject).result as! Result<Any>).error as! PortalMpcError).description)
              return
            }
   }
@@ -601,6 +602,8 @@ class ViewController: UIViewController {
         ProviderRequest(method: ETHRequestMethods.RequestAccounts.rawValue, params: [], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.Sign.rawValue, params: [fromAddress!, "0xdeadbeaf"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.PersonalSign.rawValue, params: ["0xdeadbeaf", fromAddress!], skipLoggingResult: false),
+        ProviderRequest(method: ETHRequestMethods.SignTypedDataV4.rawValue, params: [], skipLoggingResult: false),
+        ProviderRequest(method: ETHRequestMethods.SignTypedDataV3.rawValue, params: [], skipLoggingResult: false),
       ]
 
       for request in signerRequests {

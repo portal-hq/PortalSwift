@@ -160,8 +160,6 @@ FOUNDATION_EXPORT NSString* _Nonnull ClientEncrypt(NSString* _Nullable rawData);
 
 FOUNDATION_EXPORT NSString* _Nonnull ClientGenerate(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable version);
 
-FOUNDATION_EXPORT NSString* _Nonnull ClientGetVersiion(void);
-
 FOUNDATION_EXPORT NSString* _Nonnull ClientRecoverBackup(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable version);
 
 FOUNDATION_EXPORT NSString* _Nonnull ClientRecoverSigning(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable version);
