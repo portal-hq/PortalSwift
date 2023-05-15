@@ -33,11 +33,16 @@ struct ProviderAddressRequest {
 }
 class Tests: XCTestCase {
   public var user: UserResult?
-  var username = "Test18"
   public var CUSTODIAN_SERVER_URL = "https://portalex-mpc.portalhq.io"
   public var portal: Portal?
+  let API_URL = "api.portalhq.io"
+  let MPC_URL = "mpc.portalhq.io"
   private var asyncExpectation: XCTestExpectation!
-
+  
+  func randomString(length: Int) -> String {
+      let letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+      return String((0..<length).map { _ in letters.randomElement()! })
+  }
   func signUp(username: String, completionHandler: @escaping (Result<UserResult>) -> Void) {
     let request = HttpRequest<UserResult, [String : String]>(
       url: CUSTODIAN_SERVER_URL + "/mobile/signup",
@@ -76,28 +81,39 @@ class Tests: XCTestCase {
   }
   
   func registerPortal(apiKey: String) -> Void {
+    
     do {
+      guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
+        print("Couldnt load info plist")
+        return }
+      guard let ALCHEMY_API_KEY: String = infoDictionary["ALCHEMY_API_KEY"] as? String else {
+        print("Error: Do you have `ALCHEMY_API_KEY=$(ALCHEMY_API_KEY)` in your info.plist?")
+        return  }
+      guard let GDRIVE_CLIENT_ID: String = infoDictionary["GDRIVE_CLIENT_ID"] as? String else {
+        print("Error: Do you have `GDRIVE_CLIENT_ID=$(GDRIVE_CLIENT_ID)` in your info.plist?")
+        return  }
+      
       let backup = BackupOptions(icloud: ICloudStorage())
       let keychain = PortalKeychain()
+      // Configure the chain.
+      let chainId = 5
+      let chain = "goerli"
       portal = try Portal(
         apiKey: apiKey,
         backup: backup,
-        chainId: 5,
+        chainId: chainId,
         keychain: keychain,
         gatewayConfig: [
-          5: "https://eth-goerli.g.alchemy.com/v2/53va-QZAS8TnaBH3-oBHqcNJtIlygLi-"
+          chainId: "https://eth-\(chain).g.alchemy.com/v2/\(ALCHEMY_API_KEY)",
         ],
-        autoApprove: true
+        autoApprove: true,
+        apiHost: API_URL!,
+        mpcHost: MPC_URL!
       )
-    } catch ProviderInvalidArgumentError.invalidGatewayUrl {
-      print("❌ Error: Invalid Gateway URL")
-    } catch PortalArgumentError.noGatewayConfigForChain(let chainId) {
-      print("❌ Error: No gateway config for chainId: \(chainId)")
     } catch {
       print("❌ Error registering portal:", error)
     }
   }
-  
   func deleteKeychain() {
     do {
       print("Here is the keychain address: ", try portal?.keychain.getAddress() ?? "")
@@ -114,6 +130,8 @@ class Tests: XCTestCase {
         super.setUp()
         // Put setup code here. This method is called before the invocation of each test method in the class.
       let expectation = self.expectation(description: "Async operation completed")
+      var username = self.randomString(length: 10)
+
       signUp(username: username) { (result: Result<UserResult>) -> Void in
         guard (result.error == nil) else {
           XCTFail("Failed on sign up: \(result.error!)")
