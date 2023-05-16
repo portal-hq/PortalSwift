@@ -716,7 +716,7 @@ public class PortalProvider {
     // Attempt to send the request.
     request.send() { (result: Result<ETHGatewayResponse>) in
       if (result.data != nil) {
-        completion(payload.method, payload.params, Result(data: result.data!))
+        return completion(payload.method, payload.params, Result(data: result.data!))
       } else {
         return completion(payload.method, payload.params, Result(error: result.error!))
       }
@@ -744,14 +744,15 @@ public class PortalProvider {
             payload: payload,
             provider: self
           )
+          // When the work is done, call the completion handler
+          DispatchQueue.main.async {
+            return completion(Result(data: signResult))
+          }
+
         } catch {
           DispatchQueue.main.async {
             return completion(Result(error: error))
           }
-        }
-        // When the work is done, call the completion handler
-        DispatchQueue.main.async {
-          return completion(Result(data: signResult))
         }
       }
     }
@@ -777,15 +778,16 @@ public class PortalProvider {
             payload: payload,
             provider: self
           )
+          // When the work is done, call the completion handler
+          DispatchQueue.main.async {
+            return completion(Result(data: signResult.signature))
+          }
         } catch {
           DispatchQueue.main.async {
             return completion(Result(error: error))
           }
         }
-        // When the work is done, call the completion handler
-        DispatchQueue.main.async {
-          return completion(Result(data: signResult.signature))
-        }
+
       }
     }
 
