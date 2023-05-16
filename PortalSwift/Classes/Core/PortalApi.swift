@@ -51,6 +51,7 @@ public struct ContractNetwork: Codable {
   public var name: String
 }
 
+/// Represents an NFT smart contract.
 public struct NFTContract: Codable {
   public var address: String
 }
