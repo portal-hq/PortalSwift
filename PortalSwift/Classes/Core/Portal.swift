@@ -134,7 +134,7 @@ public class Portal {
     }
     
     // Initialize the Portal API
-    let api = PortalApi(apiKey: apiKey, apiHost: apiHost)
+    let api = PortalApi(apiKey: apiKey, apiHost: apiHost, chainId: chainId)
     self.api = api
     
     // Ensure storage adapters have access to the Portal API
