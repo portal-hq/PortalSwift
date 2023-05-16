@@ -5,6 +5,9 @@ on:
       version:
         description: "SDK Release Version (only if major or minor bump)"
         type: string
+      hot_fix:
+        description: "Is this release a hotfix?"
+        type: boolean
 
 jobs:
   release_sdk:
@@ -17,6 +20,7 @@ jobs:
         with:
           fetch-depth: 0
           path: main
+          token: ${{ secrets.GH_PAT }}
 
       - name: Auto bump patch version
         if: ${{ !inputs.version}}
@@ -76,6 +80,7 @@ jobs:
           git push origin ${{ env.NEW_VERSION }}
 
       - name: Slack - send pod published
+        if: ${{ inputs.hot_fix == false }}
         uses: slackapi/slack-github-action@v1.23.0
         with:
           payload: |
@@ -87,7 +92,21 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
+      - name: Slack - send hotfix pod published
+        if: ${{ inputs.hot_fix == true }}
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          payload: |
+            {
+            "Title": "**Swift SDK - Hotfix ${{ env.NEW_VERSION }} Published**",
+            "Body": "The Swift SDK has been published with version: ${{ env.NEW_VERSION }}.\n Please merge the hotfix into release-candidate.\n",
+            "Status": "Success"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
       - name: Merge main to release-candidate
+        if: ${{ inputs.hot_fix == false }}
         run: |
           cd ${{ github.workspace }}/main
           git config --local user.name "portal-release-bot"
