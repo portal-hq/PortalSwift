@@ -106,9 +106,9 @@ public class Portal {
   ///   - mpcHost: (optional) Portal's MPC API host.
   public init(
     apiKey: String,
-    chainId: Int,
     gatewayConfig: Dictionary<Int, String>,
     // Optional
+    chainId: Int = 5,
     backup: BackupOptions = BackupOptions(portal: PortalStorage()),
     keychain: PortalKeychain = PortalKeychain(),
     isSimulator: Bool = false,

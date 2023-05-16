@@ -12,7 +12,7 @@ public enum PortalBackupStorageError: Error {
 }
 
 public class PortalStorage: Storage {
-  public init() {}
+  override public init() {}
   
   /// Deletes an item in storage.
   /// - Parameter completion: Resolves as a Result<Bool>.
