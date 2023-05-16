@@ -11,12 +11,14 @@ import Foundation
 public enum BackupMethods: String {
   case GoogleDrive = "gdrive"
   case iCloud = "icloud"
+  case Portal = "portal"
 }
 
 /// A struct with the backup options (gdrive and/or icloud) initialized.
 public struct BackupOptions {
   public var gdrive: GDriveStorage?
   public var icloud: ICloudStorage?
+  public var portal: PortalStorage?
   
   /// Create the backup options for PortalSwift.
   /// - Parameter gdrive: The instance of GDriveStorage to use for backup.
@@ -28,6 +30,10 @@ public struct BackupOptions {
   /// - Parameter icloud: The instance of ICloudStorage to use for backup.
   public init(icloud: ICloudStorage) {
     self.icloud = icloud
+  }
+  
+  public init(portal: PortalStorage) {
+    self.portal = portal
   }
   
   /// Create the backup options for PortalSwift.
@@ -100,11 +106,11 @@ public class Portal {
   ///   - mpcHost: (optional) Portal's MPC API host.
   public init(
     apiKey: String,
-    backup: BackupOptions,
     chainId: Int,
-    keychain: PortalKeychain,
     gatewayConfig: Dictionary<Int, String>,
     // Optional
+    backup: BackupOptions = BackupOptions(portal: PortalStorage()),
+    keychain: PortalKeychain = PortalKeychain(),
     isSimulator: Bool = false,
     version: String = "v3",
     autoApprove: Bool = false,

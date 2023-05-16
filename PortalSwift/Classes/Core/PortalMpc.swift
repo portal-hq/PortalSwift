@@ -248,7 +248,7 @@ public class PortalMpc {
   /// - Parameters:
   ///   - method: Either gdrive or icloud.
   ///   - completion: The callback which includes the cipherText of the backed up share.
-  public func backup(method: BackupMethods.RawValue, completion: @escaping (Result<String>) -> Void, progress:  ((MpcStatus) -> Void)? = nil) -> Void {
+  public func backup(method: BackupMethods.RawValue = BackupMethods.Portal.rawValue, completion: @escaping (Result<String>) -> Void, progress:  ((MpcStatus) -> Void)? = nil) -> Void {
     if version != "v3" {
       return completion(Result(error: MpcError.backupNoLongerSupported(message: "[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = v3`.")))
     }
@@ -382,7 +382,7 @@ public class PortalMpc {
   ///   - completion: The callback which includes the cipherText of the new backup share.
   public func recover(
     cipherText: String,
-    method: BackupMethods.RawValue,
+    method: BackupMethods.RawValue = BackupMethods.Portal.rawValue,
     completion: @escaping (Result<String>) -> Void,
     progress: ( (MpcStatus) -> Void)? = nil
   ) -> Void {
@@ -531,7 +531,7 @@ public class PortalMpc {
     
   private func executeRecovery(
       storage: Storage,
-      method: BackupMethods.RawValue,
+      method: BackupMethods.RawValue = BackupMethods.Portal.rawValue,
       cipherText: String,
       completion: @escaping (Result<String>) -> Void,
       progress: ((MpcStatus) -> Void)? = nil
@@ -604,7 +604,7 @@ public class PortalMpc {
   ///   - completion: The completion handler that includes the backup share string.
   private func getBackupShare(
     cipherText: String,
-    method: BackupMethods.RawValue,
+    method: BackupMethods.RawValue = BackupMethods.Portal.rawValue,
     completion: @escaping (Result<String>) -> Void,
     progress: ((MpcStatus) -> Void)? = nil
   ) -> Void {
