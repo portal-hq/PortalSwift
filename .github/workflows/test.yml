@@ -1,0 +1,36 @@
+name: Run Swift Tests
+
+on:
+  push:
+    branches: [rami/integration-tests]
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          path: main
+
+      - name: Build and Test
+        run: |
+          cd ${{ github.workspace }}/main/Example
+          gem install xcpretty
+          xcodebuild \
+              -workspace PortalSwift.xcworkspace \
+              -scheme PortalSwift-Example \
+              -destination 'platform=iOS Simulator,name=iPhone 14 Pro,OS=16.2' \
+              -only-testing:PortalSwift_Tests/Tests \
+              build test | xcpretty -r junit --output test-results.xml
+          cat test-results.xml 
+          passed_tests=$(xmlstarlet sel -t -v "count(//testcase[not(@failure)])" test-results.xml)
+          failed_tests=$(xmlstarlet sel -t -v "count(//testcase[@failure])" test-results.xml)
+          echo "Passed tests: $passed_tests"
+          echo "Failed tests: $failed_tests"
+
+          # Exit if any tests failed
+          if [ $failed_tests -gt 0 ]; then
+              echo "Some tests failed. Exiting..."
+              exit 1
+          fi
