@@ -644,12 +644,20 @@ public class PortalProvider {
       }
     ]
     
+    var headers: Dictionary<String, String> = [
+      "Content-Type": "application/json"
+    ]
+    
+    if (gatewayUrl.contains("portalhq.io/api/v1/node")) {
+      headers["Authorization"] = "Bearer \(self.apiKey)"
+    }
+    
     // Create the request.
     let request = HttpRequest<ETHGatewayResponse, Dictionary<String, Any>>(
       url: self.rpc.baseUrl,
       method: "POST",
       body: body,
-      headers: ["Content-Type": "application/json"],
+      headers: headers,
       requestType: HttpRequestType.GatewayRequest
     )
     
@@ -670,17 +678,32 @@ public class PortalProvider {
     // Create the body of the request.
     let body: Dictionary<String, Any> = [
       "method": payload.method,
-      "params": payload.params.map { (p: ETHAddressParam) in
-        return [ "address": p.address ]
+      "params": payload.params.map { (p: ETHTransactionParam) in
+        return [
+          "from": p.from,
+          "to": p.to,
+          "gas": p.gas,
+          "gasPrice": p.gasPrice,
+          "value": p.value,
+          "data": p.data,
+        ]
       }
     ]
+    
+    var headers: Dictionary<String, String> = [
+      "Content-Type": "application/json"
+    ]
+    
+    if (gatewayUrl.contains("portalhq.io/api/v1/node")) {
+      headers["Authorization"] = "Bearer \(self.apiKey)"
+    }
     
     // Create the request.
     let request = HttpRequest<ETHGatewayResponse, Dictionary<String, Any>>(
       url: self.rpc.baseUrl,
       method: "POST",
       body: body,
-      headers: ["Content-Type": "application/json"],
+      headers: headers,
       requestType: HttpRequestType.GatewayRequest
     )
     
@@ -701,22 +724,39 @@ public class PortalProvider {
     // Create the body of the request.
     let body: Dictionary<String, Any> = [
       "method": payload.method,
-      "params": payload.params
+      "params": payload.params.map { (p: ETHTransactionParam) in
+        return [
+          "from": p.from,
+          "to": p.to,
+          "gas": p.gas,
+          "gasPrice": p.gasPrice,
+          "value": p.value,
+          "data": p.data,
+        ]
+      }
     ]
+    
+    var headers: Dictionary<String, String> = [
+      "Content-Type": "application/json"
+    ]
+    
+    if (gatewayUrl.contains("portalhq.io/api/v1/node")) {
+      headers["Authorization"] = "Bearer \(self.apiKey)"
+    }
     
     // Create the request.
     let request = HttpRequest<ETHGatewayResponse, Dictionary<String, Any>>(
       url: self.rpc.baseUrl,
       method: "POST",
       body: body,
-      headers: ["Content-Type": "application/json"],
+      headers: headers,
       requestType: HttpRequestType.GatewayRequest
     )
     
     // Attempt to send the request.
     request.send() { (result: Result<ETHGatewayResponse>) in
       if (result.data != nil) {
-        completion(payload.method, payload.params, Result(data: result.data!))
+        return completion(payload.method, payload.params, Result(data: result.data!))
       } else {
         return completion(payload.method, payload.params, Result(error: result.error!))
       }

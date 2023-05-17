@@ -106,12 +106,16 @@ public class Portal {
   ///   - mpcHost: (optional) Portal's MPC API host.
   public init(
     apiKey: String,
-    gatewayConfig: Dictionary<Int, String>,
     // Optional
     chainId: Int = 5,
     backup: BackupOptions = BackupOptions(portal: PortalStorage()),
     keychain: PortalKeychain = PortalKeychain(),
     isSimulator: Bool = false,
+    gatewayConfig: Dictionary<Int, String> = [
+      1: "https://api.portalhq.io/api/v1/node/1",
+      5: "https://api.portalhq.io/api/v1/node/5",
+      137: "https://api.portalhq.io/api/v1/node/137",
+    ],
     version: String = "v3",
     autoApprove: Bool = false,
     apiHost: String = "api.portalhq.io",
