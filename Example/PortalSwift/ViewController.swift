@@ -8,17 +8,8 @@
 
 import PortalSwift
 
-struct UserResult: Codable {
-  var clientApiKey: String
-  var exchangeUserId: Int
-}
-
 struct SignUpBody: Codable {
   var username: String
-}
-
-struct CipherTextResult: Codable {
-  var cipherText: String
 }
 
 struct ProviderRequest {
@@ -68,6 +59,8 @@ class ViewController: UIViewController {
   public var CUSTODIAN_SERVER_URL: String?
   public var API_URL: String?
   public var MPC_URL: String?
+  public var PortalWrapper: PortalWrapper = PortalSwift_Example.PortalWrapper()
+
   
   override func viewDidLoad() {
     super.viewDidLoad()
@@ -83,7 +76,7 @@ class ViewController: UIViewController {
     guard let ENV: String = infoDictionary["ENV"] as? String else {
       print("Error: Do you have `ENV=$(ENV)` in your info.plist?")
       return  }
-    print("ENV", ENV)
+    print("ENV in the view controller", ENV)
     if (ENV == "prod") {
       CUSTODIAN_SERVER_URL = PROD_CUSTODIAN_SERVER_URL
       API_URL = PROD_API_URL
@@ -118,10 +111,14 @@ class ViewController: UIViewController {
   }
 
   @IBAction func handleSignIn(_ sender: UIButton) {
-    signIn(username: username.text!) { (userResult: UserResult) -> Void in
-      print("✅ handleSignIn(): API key:", userResult.clientApiKey)
-      self.user = userResult
-      self.registerPortal(apiKey: userResult.clientApiKey)
+    PortalWrapper.signIn(username: username.text!) { (result: Result<UserResult>) -> Void in
+      guard (result.error == nil) else {
+        print(" ❌ handleSignIn(): Failed", result.error!)
+        return
+      }
+      print("✅ handleSignIn(): API key:", result.data!.clientApiKey)
+      self.user = result.data!
+      self.registerPortalUi(apiKey: result.data!.clientApiKey)
       self.updateStaticContent()
       
       DispatchQueue.main.async {
@@ -131,10 +128,14 @@ class ViewController: UIViewController {
   }
 
   @IBAction func handleSignup(_ sender: UIButton) {
-    signUp(username: username.text!) { (userResult: UserResult) -> Void in
-      print("✅ handleSignup(): API key:", userResult.clientApiKey)
-      self.user = userResult
-      self.registerPortal(apiKey: userResult.clientApiKey)
+    PortalWrapper.signUp(username: username.text!) { (result: Result<UserResult>) -> Void in
+      guard (result.error == nil) else {
+        print(" ❌ handleSignIn(): Failed", result.error!)
+        return
+      }
+      print("✅ handleSignup(): API key:", result.data!.clientApiKey)
+      self.user = result.data
+      self.registerPortalUi(apiKey: result.data!.clientApiKey)
       self.updateStaticContent()
       
       DispatchQueue.main.async {
@@ -154,15 +155,12 @@ class ViewController: UIViewController {
   }
 
   @IBAction func handleGenerate(_ sender: UIButton!) {
-    portal?.mpc.generate() { (addressResult) -> Void in
-      guard addressResult.error == nil else {
-        print("❌ handleGenerate():", addressResult.error!)
+    PortalWrapper.generate() { (result) -> Void in
+      guard result.error == nil else {
+        print("❌ handleGenerate():", result.error ?? "N/A")
         return
       }
-      
-      print("✅ handleGenerate(): Address:", addressResult.data ?? "N/A")
-      
-      
+      print("✅ handleGenerate(): Address:", result.data ?? "N/A")
       self.updateStaticContent()
       
       DispatchQueue.main.async {
@@ -172,78 +170,29 @@ class ViewController: UIViewController {
         self.recoverButton.isEnabled = true
         self.testButton.isEnabled = true
       }
-    } progress: { status in
-      print("Generate Status: ", status)
     }
   }
+  
 
   @IBAction func handleBackup(_ sender: UIButton!) {
     print("Starting backup...")
-    portal?.mpc.backup(method: BackupMethods.GoogleDrive.rawValue)  { (result: Result<String>) -> Void in
-      if (result.error != nil) {
-        print("❌ handleBackup():",  result.error)
-      } else {
-        let request = HttpRequest<String, [String : String]>(
-          url: self.CUSTODIAN_SERVER_URL! + "/mobile/\(self.user!.exchangeUserId)/cipher-text",
-          method: "POST",
-          body: ["cipherText": result.data!],
-          headers: [:],
-          requestType: HttpRequestType.CustomRequest
-        )
-
-        request.send() { (result: Result<String>) in
-          print("✅ handleBackup(): Successfully sent custodian cipherText")
-        }
+    PortalWrapper.backup(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user!) { (result) -> Void in
+      guard result.error == nil else {
+        print("❌ handleBackup():",  result.error!)
+        return
       }
-    } progress: { status in
-      print("Backup Status: ", status)
+      print("✅ handleBackup(): Successfully sent custodian cipherText")
     }
   }
 
   @IBAction func handleRecover(_ sender: UIButton!) {
-    print("Starting recover...")
-    let request = HttpRequest<CipherTextResult, [String : String]>(
-      url: self.CUSTODIAN_SERVER_URL! + "/mobile/\(self.user!.exchangeUserId)/cipher-text/fetch",
-      method: "GET", body:[:],
-      headers: [:],
-      requestType: HttpRequestType.CustomRequest
-    )
-
-    request.send() { (result: Result<CipherTextResult>) in
+    PortalWrapper.recover(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user!) { (result) -> Void in
       guard result.error == nil else {
         print("❌ handleRecover(): Error fetching cipherText:", result.error!)
         return
       }
-
-      let cipherText = result.data!.cipherText
-
-      self.portal?.mpc.recover(cipherText: cipherText, method: BackupMethods.GoogleDrive.rawValue) { (result: Result<String>) -> Void in
-        guard result.error == nil else {
-          print("❌ handleRecover(): Error fetching cipherText:", result.error)
-          return
-        }
-
-        print("✅ handleRecover(): portal.mpc.recover - cipherText:", result.data!)
-
-        let request = HttpRequest<String, [String : String]>(
-          url: self.CUSTODIAN_SERVER_URL! + "/mobile/\(self.user!.exchangeUserId)/cipher-text",
-          method: "POST",
-          body: ["cipherText": result.data!],
-          headers: [:],
-          requestType: HttpRequestType.CustomRequest
-        )
-
-        request.send() { (result: Result<String>) in
-          if (result.error != nil) {
-            print("❌ handleRecover(): Error sending custodian cipherText:", result.error!)
-          } else {
-            print("✅ handleRecover(): Successfully sent custodian cipherText:", result.data!)
-          }
-        }
-        self.updateStaticContent()
-      } progress: { status in
-        print("Recover Status: ", status)
-      }
+      
+      self.updateStaticContent()
     }
   }
 
@@ -381,60 +330,34 @@ class ViewController: UIViewController {
             print("✅ handleSend(): Result:", result.data!.result)
           }
     }
-  func registerPortal(apiKey: String) -> Void {
+  func registerPortalUi(apiKey: String) -> Void {
     
     do {
       guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
         print("Couldnt load info plist")
         return }
-      guard let ALCHEMY_API_KEY: String = infoDictionary["ALCHEMY_API_KEY"] as? String else {
-        print("Error: Do you have `ALCHEMY_API_KEY=$(ALCHEMY_API_KEY)` in your info.plist?")
-        return  }
       guard let GDRIVE_CLIENT_ID: String = infoDictionary["GDRIVE_CLIENT_ID"] as? String else {
         print("Error: Do you have `GDRIVE_CLIENT_ID=$(GDRIVE_CLIENT_ID)` in your info.plist?")
         return  }
       let backup = BackupOptions(gdrive: GDriveStorage(clientID: GDRIVE_CLIENT_ID, viewController: self))
-      let keychain = PortalKeychain()
-      // Configure the chain.
-      let chainId = 5
-      let chain = "goerli"
-      portal = try Portal(
-        apiKey: apiKey,
-        backup: backup,
-        chainId: chainId,
-        keychain: keychain,
-        gatewayConfig: [
-          chainId: "https://eth-\(chain).g.alchemy.com/v2/\(ALCHEMY_API_KEY)",
-        ],
-        autoApprove: true,
-        apiHost: API_URL!,
-        mpcHost: MPC_URL!
-      )
-      
-      DispatchQueue.main.async {
-        do {
-          self.generateButton.isEnabled = true
-          
-          let address = try self.portal?.keychain.getAddress()
-          let hasAddress = address?.count ?? 0 > 0
-          
-          self.backupButton.isEnabled = hasAddress
-          self.dappBrowserButton.isEnabled = hasAddress
-          self.portalConnectButton.isEnabled = hasAddress
-          self.recoverButton.isEnabled = hasAddress
-          self.testButton.isEnabled = hasAddress
-        } catch {
-          print("Error fetching address: \(error)")
+      PortalWrapper.registerPortal(apiKey: apiKey, backup: backup) { (result) -> Void in
+        DispatchQueue.main.async {
+          do {
+            self.generateButton.isEnabled = true
+            
+            let address = try self.portal?.keychain.getAddress()
+            let hasAddress = address?.count ?? 0 > 0
+            
+            self.backupButton.isEnabled = hasAddress
+            self.dappBrowserButton.isEnabled = hasAddress
+            self.portalConnectButton.isEnabled = hasAddress
+            self.recoverButton.isEnabled = hasAddress
+            self.testButton.isEnabled = hasAddress
+          } catch {
+            print("Error fetching address: \(error)")
+          }
         }
       }
-      
-      _ = portal?.provider.on(event: Events.PortalSigningRequested.rawValue, callback: { [weak self] data in self?.didRequestApproval(data: data)})
-    } catch ProviderInvalidArgumentError.invalidGatewayUrl {
-      print("❌ Error: Invalid Gateway URL")
-    } catch PortalArgumentError.noGatewayConfigForChain(let chainId) {
-      print("❌ Error: No gateway config for chainId: \(chainId)")
-    } catch {
-      print("❌ Error registering portal:", error)
     }
   }
   
@@ -462,42 +385,6 @@ class ViewController: UIViewController {
       view.addSubview(webViewControllerView)
       webViewController.didMove(toParent: self)
     
-  }
-
-  func signIn(username: String, completionHandler: @escaping (UserResult) -> Void) {
-    let request = HttpRequest<UserResult, [String : String]>(
-      url: CUSTODIAN_SERVER_URL! + "/mobile/login",
-      method: "POST",
-      body: ["username": username],
-      headers: ["Content-Type": "application/json"],
-      requestType: HttpRequestType.CustomRequest
-    )
-
-    request.send() { (result: Result<UserResult>) in
-      guard result.error == nil else {
-        print("❌ Error signing in:", result.error!)
-        return
-      }
-      completionHandler(result.data!)
-    }
-  }
-
-  func signUp(username: String, completionHandler: @escaping (UserResult) -> Void) {
-    let request = HttpRequest<UserResult, [String : String]>(
-      url: CUSTODIAN_SERVER_URL! + "/mobile/signup",
-      method: "POST",
-      body: ["username": username],
-      headers: ["Content-Type": "application/json"],
-      requestType: HttpRequestType.CustomRequest
-    )
-
-    request.send() { (result: Result<UserResult>) in
-      guard result.error == nil else {
-        print("❌ Error signing up:", result.error!)
-        return
-      }
-      completionHandler(result.data!)
-    }
   }
 
   func testProviderRequest(method: String, params: [Any], skipLoggingResult: Bool = false, completion: @escaping (Bool) -> Void) {
