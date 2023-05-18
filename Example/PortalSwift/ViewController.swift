@@ -290,6 +290,7 @@ class ViewController: UIViewController {
   }
   func updateStaticContent() {
     populateAddressInformation()
+    retrieveNFTs()
 //     populateEthBalance()
   }
 
@@ -312,6 +313,21 @@ class ViewController: UIViewController {
     let hexInt = Int(hexString, radix: 16)!
     let ethBalance = Double(hexInt) / 1000000000000000000
     return String(ethBalance)
+  }
+  
+  func retrieveNFTs() -> Void {
+    do {
+      try self.portal?.api.getNFTs() { (results) -> Void in
+        guard results.error == nil else {
+          print("❌ Unable to retrieve NFTs", results.error!)
+          return
+        }
+        
+        print("✅ Retrieved NFTs", results.data!)
+      }
+    } catch {
+      print("❌ Unable to retrieve NFTs", error)
+    }
   }
 
   func populateEthBalance() {
