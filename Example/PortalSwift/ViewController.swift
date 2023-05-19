@@ -292,6 +292,7 @@ class ViewController: UIViewController {
     populateAddressInformation()
     retrieveNFTs()
     getTransactions()
+    getBalances()
 //     populateEthBalance()
   }
 
@@ -343,6 +344,21 @@ class ViewController: UIViewController {
       }
     } catch {
       print("❌ Unable to retrieve transactions", error)
+    }
+  }
+  
+  func getBalances() -> Void {
+    do {
+      try self.portal?.api.getBalances() { (results) -> Void in
+        guard results.error == nil else {
+          print("❌ Unable to get balances", results.error!)
+          return
+        }
+        
+        print("✅ Retrieved balances", results.data!)
+      }
+    } catch {
+      print("❌ Unable to retrieve balances", error)
     }
   }
 
