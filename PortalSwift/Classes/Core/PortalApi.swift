@@ -127,6 +127,44 @@ public struct OpenSeaMetadata: Codable {
   public var discordUrl: String?
 }
 
+/// Represents a blockchain transaction
+public struct Transaction: Codable {
+  /// Block number in which the transaction was included
+  public var blockNum: String
+  /// Unique identifier of the transaction
+  public var uniqueId: String
+  /// Hash of the transaction
+  public var hash: String
+  /// Address that initiated the transaction
+  public var from: String
+  /// Address that the transaction was sent to
+  public var to: String
+  /// Value transferred in the transaction
+  public var value: Float
+  /// Token Id of an ERC721 token, if applicable
+  public var erc721TokenId: String?
+  /// Metadata of an ERC1155 token, if applicable
+  public var erc1155Metadata: String?
+  /// Token Id, if applicable
+  public var tokenId: String?
+  /// Type of asset involved in the transaction (e.g., ETH)
+  public var asset: String
+  /// Category of the transaction (e.g., external)
+  public var category: String
+  /// Contract details related to the transaction
+  public var rawContract: RawContract
+}
+
+/// Represents the contract details of a transaction
+public struct RawContract: Codable {
+  /// Value involved in the contract
+  public var value: String
+  /// Address of the contract, if applicable
+  public var address: String?
+  /// Decimal representation of the contract value
+  public var decimal: String
+}
+
 /// The class to interface with Portal's REST API.
 public class PortalApi {
   public var apiHost: String
@@ -205,7 +243,6 @@ public class PortalApi {
   ///   - completion: The callback that contains the list of NFTs.
   /// - Returns: Void.
   public func getNFTs(completion: @escaping (Result<[NFT]>) -> Void) throws -> Void {
-    print("ChainId", chainId)
     try requests.get(
       path: "/api/v1/clients/me/nfts?chainId=\(chainId)",
       headers: [
@@ -213,6 +250,38 @@ public class PortalApi {
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[NFT]>) -> Void in
+      completion(result)
+    }
+  }
+  
+  /// Retrieve a list of Transactions for the client.
+  /// - Parameters:
+  ///   - limit: (Optional) The maximum number of transactions to return.
+  ///   - offset: (Optional) The number of transactions to skip before starting to return.
+  ///   - completion: The callback that contains the list of Transactions.
+  /// - Returns: Void.
+  public func getTransactions(
+    limit: Int? = nil,
+    offset: Int? = nil,
+    completion: @escaping (Result<[Transaction]>) -> Void
+  ) throws -> Void {
+    var path = "/api/v1/clients/me/transactions?chainId=\(chainId)"
+
+    // Append limit and offset parameters if provided
+    if let limit = limit {
+        path += "&limit=\(limit)"
+    }
+    if let offset = offset {
+        path += "&offset=\(offset)"
+    }
+
+    try requests.get(
+      path: path,
+      headers: [
+        "Authorization": String(format: "Bearer %@", apiKey)
+      ],
+      requestType: HttpRequestType.CustomRequest
+    ) { (result: Result<[Transaction]>) -> Void in
       completion(result)
     }
   }
