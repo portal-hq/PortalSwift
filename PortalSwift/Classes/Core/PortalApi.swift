@@ -165,6 +165,17 @@ public struct RawContract: Codable {
   public var decimal: String
 }
 
+/// A representation of a client's balance.
+///
+/// This struct is used to parse the JSON response from the "/api/v1/clients/me/balances" endpoint.
+public struct Balance: Codable {
+  /// The contract address of the token.
+  public var contractAddress: String
+  /// The balance of the token.
+  public var balance: String
+}
+
+
 /// The class to interface with Portal's REST API.
 public class PortalApi {
   public var apiHost: String
@@ -282,6 +293,24 @@ public class PortalApi {
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[Transaction]>) -> Void in
+      completion(result)
+    }
+  }
+  
+  /// Retrieve a list of Balances for the client.
+  /// - Parameters:
+  ///   - completion: The callback that contains the list of Balances.
+  /// - Returns: Void.
+  public func getBalances(
+    completion: @escaping (Result<[Balance]>) -> Void
+  ) throws -> Void {
+    try requests.get(
+      path: "/api/v1/clients/me/balances?chainId=\(chainId)",
+      headers: [
+        "Authorization": String(format: "Bearer %@", apiKey)
+      ],
+      requestType: HttpRequestType.CustomRequest
+    ) { (result: Result<[Balance]>) -> Void in
       completion(result)
     }
   }
