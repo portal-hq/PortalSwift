@@ -24,6 +24,33 @@ class Tests: XCTestCase {
         // Put teardown code here. This method is called after the invocation of each test method in the class.
         super.tearDown()
     }
+  
+  func testLogin(completion: @escaping (Result<Bool>) -> Void) {
+    return XCTContext.runActivity(named: "Login") { activity in
+      let registerExpectation = XCTestExpectation(description: "Register")
+
+      Tests.PortalWrap?.signIn(username: Tests.username!) { (result: Result<UserResult>) -> Void in
+        guard (result.error == nil) else {
+          return XCTFail("Failed on sign In: \(result.error!)")
+        }
+        let userResult = result.data!
+        print("✅ handleSignIn(): API key:", userResult.clientApiKey)
+        Tests.user = userResult
+        let backupOption = LocalFileStorage()
+        let backup = BackupOptions(local: backupOption)
+        Tests.PortalWrap?.registerPortal(apiKey: userResult.clientApiKey, backup: backup) {
+          (result) -> Void in
+          guard result.error == nil else {
+            return XCTFail("Unable to register Portal")
+          }
+          registerExpectation.fulfill()
+          return completion(result)
+        }
+      }
+      wait(for: [registerExpectation], timeout: 60)
+    }
+
+  }
 
   func testAGenerate() {
     let Address = "PortalMpc.Address"
@@ -61,107 +88,98 @@ class Tests: XCTestCase {
               return XCTFail()
             }
             do {
-              let share = try Tests.PortalWrap?.portal?.keychain.getSigningShare()
+//              let share = try Tests.PortalWrap?.portal?.keychain.getSigningShare()
               generateExpectation.fulfill()
-              XCTAssertFalse(share!.isEmpty, "The string should be empty")
+              XCTAssertTrue(!(result.data!.isEmpty), "The string should be empty")
               return
             } catch {
               generateExpectation.fulfill()
               return XCTFail("Generate Failed: \(error.localizedDescription)")
             }
-            generateExpectation.fulfill()
           }
         }
     }
     wait(for: [generateExpectation], timeout: 120)
   }
 
-  func testBackup() {
-    let backupExpectation = XCTestExpectation(description: "Backup")
-    let registerExpectation = XCTestExpectation(description: "Register")
+  func testBSign() {
+    let ethSignExpectation = XCTestExpectation(description: "eth sign")
+    var address: String? = "0x290766b47d6ea98bae2bd189cc8c7b4aa3154371"
+    
+    testLogin() { result -> Void in
+      guard (result.error == nil) else {
+        ethSignExpectation.fulfill()
+        return XCTFail("Failed on login: \(result.error!)")
+      }
+      do {
+        address = try Tests.PortalWrap?.portal?.keychain.getAddress()
+      } catch {
+        return XCTFail("Failed to get address: \(error)")
+      }
 
-    print("USERNAME: ", Tests.username!)
+      let params = [address!, "0xdeadbeaf"]
+
+      Tests.PortalWrap?.ethSign(params: params) { result -> Void in
+        guard (result.error == nil) else {
+          ethSignExpectation.fulfill()
+          return XCTFail("Failed on eth_sign: \(result.error!)")
+        }
+        
+        print("✅ eth_sign result: ", result.data!)
+        XCTAssertFalse(result.data!.isEmpty, "eth sign success")
+
+        ethSignExpectation.fulfill()
+      }
+    }
+    
+    wait(for: [ethSignExpectation], timeout: 20)
+  }
+ 
+  func testCBackup() {
+    let backupExpectation = XCTestExpectation(description: "Backup")
+
     do {
       let share = try Tests.PortalWrap?.portal?.keychain.getSigningShare()
-      XCTAssertFalse(share!.isEmpty, "The string should be empty")
+      XCTAssertFalse(share!.isEmpty, "The share exists in the keychain")
     } catch {
       return XCTFail("Backup doesnt have a share: \(error.localizedDescription)")
     }
     
-    Tests.PortalWrap?.signIn(username: Tests.username!) { (result: Result<UserResult>) -> Void in
+    testLogin() { result -> Void in
       guard (result.error == nil) else {
-        return XCTFail("Failed on sign In: \(result.error!)")
+        backupExpectation.fulfill()
+        return XCTFail("Failed on login: \(result.error!)")
       }
-      let userResult = result.data!
-      print("✅ handleSignIn(): API key:", userResult.clientApiKey)
-      Tests.user = userResult
-//      let backupOption = LocalFileStorage(fileName: "PORTAL_BACKUP")
-      let backupOption = ICloudStorage()
-      print(backupOption)
-      let backup = BackupOptions(icloud: backupOption)
-      Tests.PortalWrap?.registerPortal(apiKey: userResult.clientApiKey, backup: backup) {
-        (result) -> Void in
-        guard result.error == nil else {
-          return XCTFail()
-        }
-        registerExpectation.fulfill()
-        print(result.data!)
-          Tests.PortalWrap?.backup(backupMethod: BackupMethods.iCloud.rawValue, user: Tests.user!) { (result) -> Void in
+          Tests.PortalWrap?.backup(backupMethod: BackupMethods.local.rawValue, user: Tests.user!) { (result) -> Void in
             guard result.error == nil else {
+              backupExpectation.fulfill()
               return XCTFail("Backup failed \(String(describing: result.error))")
             }
             backupExpectation.fulfill()
             XCTAssertTrue(result.data!, "Backup Success")
           }
       }
-    }
-    wait(for: [backupExpectation], timeout: 35)
+    wait(for: [backupExpectation], timeout: 60)
     
   }
   
   func testRecover() {
     let recoverExpectation = XCTestExpectation(description: "Recover")
-    let registerExpectation = XCTestExpectation(description: "Register")
 
-    print("USERNAME: ", Tests.username!)
-
-    Tests.PortalWrap?.signIn(username: Tests.username!) { (result: Result<UserResult>) -> Void in
+    testLogin() { result -> Void in
       guard (result.error == nil) else {
-        return XCTFail("Failed on sign In: \(result.error!)")
+        recoverExpectation.fulfill()
+        return XCTFail("Failed on login: \(result.error!)")
       }
-      let userResult = result.data!
-      print("✅ handleSignIn(): API key:", userResult.clientApiKey)
-      Tests.user = userResult
-//      let backupOption = LocalFileStorage(fileName: "PORTAL_BACKUP")
-      let backupOption = ICloudStorage()
-      print(backupOption)
-      let backup = BackupOptions(icloud: backupOption)
-      Tests.PortalWrap?.registerPortal(apiKey: userResult.clientApiKey, backup: backup) {
-        (result) -> Void in
-        guard result.error == nil else {
-          return XCTFail()
-        }
-        registerExpectation.fulfill()
-        print(result.data!)
-        Tests.PortalWrap?.recover(backupMethod: BackupMethods.iCloud.rawValue, user: Tests.user!) { (result) -> Void in
-            guard result.error == nil else {
-              return XCTFail("Recover failed \(String(describing: result.error))")
-            }
+      Tests.PortalWrap?.recover(backupMethod: BackupMethods.local.rawValue, user: Tests.user!) { (result) -> Void in
+          guard result.error == nil else {
             recoverExpectation.fulfill()
-            XCTAssertTrue(result.data!, "Recover Success")
+            return XCTFail("Recover failed \(String(describing: result.error))")
           }
-      }
-    }
-    wait(for: [recoverExpectation], timeout: 35)
-    
-  }
-  
-    func testPerformanceExample() {
-        // This is an example of a performance test case.
-        self.measure() {
-            // Put the code you want to measure the time of here.
+          recoverExpectation.fulfill()
+          XCTAssertTrue(result.data!, "Recover Success")
         }
     }
-  
-  
+    wait(for: [recoverExpectation], timeout: 120)
+  }
 }

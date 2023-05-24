@@ -107,8 +107,8 @@ class PortalWrapper {
       }
       guard let ALCHEMY_API_KEY: String = infoDictionary["ALCHEMY_API_KEY"] as? String else {
         print("Error: Do you have `ALCHEMY_API_KEY=$(ALCHEMY_API_KEY)` in your info.plist?")
-        return  }
-      print("in register")
+        return
+      }
       let keychain = PortalKeychain()
       // Configure the chain.
       let chainId = 5
@@ -125,8 +125,6 @@ class PortalWrapper {
         apiHost: API_URL!,
         mpcHost: MPC_URL!
       )
-      print("completed register")
-      return completion(Result(data: true))
       _ = portal?.provider.on(event: Events.PortalSigningRequested.rawValue, callback: { [weak self] data in self?.didRequestApproval(data: data)})
     } catch ProviderInvalidArgumentError.invalidGatewayUrl {
       print("❌ Error: Invalid Gateway URL")
@@ -191,9 +189,9 @@ class PortalWrapper {
         print("❌ handleRecover(): Error fetching cipherText:", result.error!)
         return completion(Result(error: result.error!))
       }
-
+      
       let cipherText = result.data!.cipherText
-
+      
       self.portal?.mpc.recover(cipherText: cipherText, method: backupMethod) { (result: Result<String>) -> Void in
         guard result.error == nil else {
           print("❌ handleRecover(): Error fetching cipherText:", result.error!)
@@ -215,17 +213,83 @@ class PortalWrapper {
           } else {
             print("✅ handleRecover(): Successfully sent custodian cipherText:")
             return completion(Result(data: true))
-
+            
           }
         }
       } progress: { status in
         print("Recover Status: ", status)
       }
     }
-
   }
   
+  func ethSign(params: [Any], completion: @escaping (Result<String>) -> Void) {
+    let method = ETHRequestMethods.Sign.rawValue
+    
+    let payload = ETHRequestPayload(
+      method: method,
+      params: params
+    )
+    portal?.provider.request(payload: payload) { (result: Result<RequestCompletionResult>) -> Void in
+      guard (result.error == nil) else {
+          print("❌ Error calling \(method)", "Error:", result.error!)
+          completion(Result(error: result.error!))
+          return
+        }
+      guard ((result.data!.result as! Result<SignerResult>).error == nil) else {
+          print("❌ Error testing signer request:", method, "Error:", (result.data!.result as! Result<SignerResult>).error)
+          completion(Result(error: result.error!))
+          return
+        }
+      if ((result.data!.result as! Result<SignerResult>).data!.signature != nil) {
+        completion(Result(data: (result.data!.result as! Result<SignerResult>).data!.signature!))
+        }
+      }
+  }
   
+//  func ethSend(params: [Any], completion: @escaping (Result<RequestCompletionResult>) -> Void) {
+//    let method = ETHRequestMethods.SendTransaction.rawValue
+//
+//    let payload = ETHRequestPayload(
+//      method: method,
+//      params: params
+//    )
+//    portal?.provider.request(payload: payload) { (result: Result<TransactionCompletionResult>) -> Void in
+//      guard (result.error == nil) else {
+//          print("❌ Error calling \(method)", "Error:", result.error!)
+//        completion(Result(error: result.error!))
+//          return
+//        }
+//      if ((result.data!.result as? SignerResult)?.signature != nil) {
+//          print("✅ Signature for", method,(result.data!.result as! SignerResult).signature!)
+//        completion(Result(data: (result.data!.result as! SignerResult).signature!))
+//        }
+//      }
+//  }
+  
+  func transferFunds(user: UserResult, amount: Double, chainId: Int, address: String, completion: @escaping (Result<String>) -> Void) {
+    let request = HttpRequest<String, [String : Any]>(
+      url: self.CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/transfer",
+      method: "POST",
+      body: [
+        "exchangeUserId": user.exchangeUserId,
+        "amount": amount,
+        "chainId": chainId,
+        "address": address
+    ],
+      headers: ["Content-Type":"application/json"],
+      requestType: HttpRequestType.CustomRequest
+    )
+    
+    request.send() { (result: Result<String>) in
+      if (result.error != nil) {
+        print("❌ transferFunds(): Error sending funds:", result.error!)
+        return completion(Result(error: result.error!))
+      } else {
+        print("✅ transferFunds(): Successfully sent funds!")
+        return completion(Result(data: result.data!))
+      }
+    }
+  }
   
   // HELPERS
   public func getItem(item: String) throws -> String {

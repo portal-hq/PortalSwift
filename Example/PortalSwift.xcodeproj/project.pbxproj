@@ -28,8 +28,6 @@
 		B96417820F7757FB7C9962DE /* Pods_PortalSwift_Tests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4648C35B0F07F04812A2F611 /* Pods_PortalSwift_Tests.framework */; };
 		F97145522A1450ED0034189F /* Portal.swift in Sources */ = {isa = PBXBuildFile; fileRef = F97145512A1450ED0034189F /* Portal.swift */; };
 		F97145532A1450ED0034189F /* Portal.swift in Sources */ = {isa = PBXBuildFile; fileRef = F97145512A1450ED0034189F /* Portal.swift */; };
-		F97145552A14522A0034189F /* LocalFileStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F97145542A14522A0034189F /* LocalFileStorage.swift */; };
-		F97145562A14522A0034189F /* LocalFileStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F97145542A14522A0034189F /* LocalFileStorage.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -76,7 +74,6 @@
 		7EB608D3291EF2F000CF1346 /* PortalSwift.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = PortalSwift.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		E432DE04613E5E5869FDCD55 /* Pods-PortalSwift_Example.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PortalSwift_Example.debug.xcconfig"; path = "Target Support Files/Pods-PortalSwift_Example/Pods-PortalSwift_Example.debug.xcconfig"; sourceTree = "<group>"; };
 		F97145512A1450ED0034189F /* Portal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Portal.swift; sourceTree = "<group>"; };
-		F97145542A14522A0034189F /* LocalFileStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalFileStorage.swift; sourceTree = "<group>"; };
 		F9866E2529E47ED60008A9C3 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -172,7 +169,6 @@
 				607FACDE1AFB9204008FA782 /* LaunchScreen.xib */,
 				607FACD31AFB9204008FA782 /* Supporting Files */,
 				F97145512A1450ED0034189F /* Portal.swift */,
-				F97145542A14522A0034189F /* LocalFileStorage.swift */,
 			);
 			name = "Example for PortalSwift";
 			path = PortalSwift;
@@ -452,7 +448,6 @@
 				F97145522A1450ED0034189F /* Portal.swift in Sources */,
 				607FACD81AFB9204008FA782 /* ViewController.swift in Sources */,
 				607FACD61AFB9204008FA782 /* AppDelegate.swift in Sources */,
-				F97145552A14522A0034189F /* LocalFileStorage.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -471,7 +466,6 @@
 				47323B55293A9BE80029B69E /* StorageTests.swift in Sources */,
 				47323B61293A9C770029B69E /* PortalMpcTests.swift in Sources */,
 				607FACEC1AFB9204008FA782 /* Tests.swift in Sources */,
-				F97145562A14522A0034189F /* LocalFileStorage.swift in Sources */,
 				47323B4D293A9BA20029B69E /* HttpRequesterTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

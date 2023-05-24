@@ -31,8 +31,6 @@ struct ProviderAddressRequest {
 }
 
 class ViewController: UIViewController {
-  public var portal: Portal?
-  public var eth_estimate: String?
   // Static information
   @IBOutlet weak var addressInformation: UITextView!
   @IBOutlet weak var ethBalanceInformation: UITextView!
@@ -60,6 +58,8 @@ class ViewController: UIViewController {
   public var API_URL: String?
   public var MPC_URL: String?
   public var PortalWrapper: PortalWrapper = PortalSwift_Example.PortalWrapper()
+  public var portal: Portal?
+  public var eth_estimate: String?
 
   
   override func viewDidLoad() {
@@ -120,6 +120,7 @@ class ViewController: UIViewController {
       self.user = result.data!
       self.registerPortalUi(apiKey: result.data!.clientApiKey)
       self.updateStaticContent()
+      self.portal = self.PortalWrapper.portal
       
       DispatchQueue.main.async {
         self.logoutButton.isEnabled = true
@@ -137,7 +138,8 @@ class ViewController: UIViewController {
       self.user = result.data
       self.registerPortalUi(apiKey: result.data!.clientApiKey)
       self.updateStaticContent()
-      
+      self.portal = self.PortalWrapper.portal
+
       DispatchQueue.main.async {
         self.logoutButton.isEnabled = true
       }
@@ -244,7 +246,7 @@ class ViewController: UIViewController {
 
   func populateAddressInformation() {
     do {
-      let address = try portal?.keychain.getAddress()
+      let address = try PortalWrapper.portal?.keychain.getAddress()
       DispatchQueue.main.async {
         self.addressInformation.text = "Address: \(address ?? "N/A")"
       }
@@ -330,6 +332,7 @@ class ViewController: UIViewController {
             print("✅ handleSend(): Result:", result.data!.result)
           }
     }
+
   func registerPortalUi(apiKey: String) -> Void {
     
     do {
@@ -368,13 +371,13 @@ class ViewController: UIViewController {
   func onError(result: Result<Any>) -> Void {
     print("PortalWebviewError:", result.error!, "Description:", result.error!.localizedDescription)
     guard result.error == nil else {
-               print("❌ Error in PortalWebviewError:", result.error)
-               return
-             }
-             guard ((result.data! as AnyObject).result as! Result<Any>).error == nil else {
-               print("❌ Error in PortalWebviewError:", ((result.data as! AnyObject).result as! Result<Any>))
-             return
-           }
+       print("❌ Error in PortalWebviewError:", result.error)
+       return
+    }
+    guard ((result.data! as AnyObject).result as! Result<Any>).error == nil else {
+      print("❌ Error in PortalWebviewError:", ((result.data as! AnyObject).result as! Result<Any>))
+      return
+    }
   }
 
   func injectWebView() {
