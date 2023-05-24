@@ -1,8 +1,7 @@
 name: Run Swift Tests
 
 on:
-  push:
-    branches: [rami/integration-tests]
+  workflow_dispatch:
 
 jobs:
   test:
