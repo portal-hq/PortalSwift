@@ -7,12 +7,12 @@
 
 import Foundation
 
-struct Quote {
+public struct Quote: Codable {
   var cost: Double
   var transaction: ETHTransactionParam
 }
 
-struct QuoteArgs: Codable {
+public struct QuoteArgs: Codable {
   // Required
   var buyToken: String
   var sellToken: String
@@ -46,167 +46,91 @@ struct QuoteArgs: Codable {
     self.sellToken = sellToken
     self.sellAmount = sellAmount
   }
-}
-
-struct QuoteOrder: Codable {
-  var makerToken: String
-  var takerToken: String
-  var makerAmount: String
-  var takerAmount: String
-  var fillData: QuoteOrderFillData
-  var source: String
-  var sourcePathId: String
-  var type: Int
-}
-
-struct QuoteOrderFillData: Codable {
-  var tokenAddressPath: [String]
-  var router: String
-}
-
-struct QuoteResponse: Codable {
-  var allowanceTarget: String
-  var buyAmount: String
-  var buyTokenAddress: String
-  var buyTokenToEthRate: String
-  var chainId: String
-  var data: String
-  var estimatedGas: String
-  var estimatedPriceImpact: String
-  var gas: String
-  var gasPrice: String
-  var guaranteedPrice: String
-  var minimumProtocolFee: String
-  var orders: [QuoteOrder]
-  var price: String
-  var protocolFee: String
-  var sellAmount: String
-  var sellTokenAddress: String
-  var sellTokenToEthRate: String
-  var sources: [QuoteSource]
-  var to: String
-  var value: String
-}
-
-struct QuoteSource: Codable {
-  var name: String
-  var proportion: String
-}
-
-struct SourcesResponse: Codable {
-  var records: [String]
-}
-
-class PortalSwaps {
-  private var portal: Portal
-  private var domain: String = "api.0x.org"
   
-  init(portal: Portal) {
+  public func toDictionary() -> [String:Any] {
+    var dictionary: [String:Any] = [
+      // Always required
+      "buyToken": self.buyToken,
+      "sellToken": self.sellToken,
+    ]
+    
+    // Either buyAmount or sellAmount MUST be set for the quote to return a usable value
+    if (self.buyAmount != nil) {
+      dictionary["buyAmount"] = self.buyAmount
+    }
+    
+    if (self.sellAmount != nil) {
+      dictionary["sellAmount"] = self.sellAmount
+    }
+    
+    // The rest of these are truly optional
+    if (self.affiliateAddress != nil) {
+      dictionary["affiliateAddress"] = self.affiliateAddress
+    }
+    if (self.buyTokenPercentageFee != nil) {
+      dictionary["buyTokenPercentageFee"] = self.buyTokenPercentageFee
+    }
+    if (self.enableSlippageProtection != nil) {
+      dictionary["enableSlippageProtection"] = self.enableSlippageProtection
+    }
+    if (self.excludedSources != nil) {
+      dictionary["excludedSources"] = self.excludedSources
+    }
+    if (self.feeRecipient != nil) {
+      dictionary["feeRecipient"] = self.feeRecipient
+    }
+    if (self.gasPrice != nil) {
+      dictionary["gasPrice"] = self.gasPrice
+    }
+    if (self.includedSources != nil) {
+      dictionary["includedSources"] = self.includedSources
+    }
+    if (self.intentOnFilling != nil) {
+      dictionary["intentOnFilling"] = self.intentOnFilling
+    }
+    if (self.priceImpactProtectionPercentage != nil) {
+      dictionary["priceImpactProtectionPercentage"] = self.priceImpactProtectionPercentage
+    }
+    if (self.skipValidation != nil) {
+      dictionary["skipValidation"] = self.skipValidation
+    }
+    if (self.slippagePercentage != nil) {
+      dictionary["slippagePercentage"] = self.slippagePercentage
+    }
+    if (self.takerAddress != nil) {
+      dictionary["takerAddress"] = self.takerAddress
+    }
+    
+    return dictionary
+  }
+}
+
+public class PortalSwaps {
+  private var apiKey: String
+  private var portal: Portal
+  
+  init(apiKey: String, portal: Portal) {
+    self.apiKey = apiKey
     self.portal = portal
   }
   
-  public func execute(
-    payload: ETHTransactionPayload,
-    completion: @escaping (Result<TransactionCompletionResult>) -> Void
-  ) {
-      portal.provider.request(payload: payload) { result in
-        if (result.error != nil) {
-          completion(Result(error: result.error!))
-        }
-        
-        completion(Result(data: result.data!))
-      }
-  }
-  
-  public func getQuote(args: [String:Any], completion: @escaping (Result<Quote>) -> Void) {
+  public func getQuote(args: QuoteArgs, completion: @escaping (Result<Quote>) -> Void) {
     do {
-      let address = try portal.keychain.getAddress()
-      
-      let host = buildHostForChain()
-      let qs = try serializeObject(args)
-      let request = HttpRequest<QuoteResponse, [String:String]>(
-        url: "https://\(host)/swap/v1/quote?\(qs)",
-        method: "GET",
-        body: [:],
-        headers: [:],
-        requestType: HttpRequestType.CustomRequest
-      )
-      
-      request.send() { result in
-        if (result.error != nil) {
-          return completion(Result(error: result.error!))
-        }
-        
-        let response = result.data!
-        
-        let transaction = ETHTransactionParam(
-          from: address,
-          to: response.to,
-          gas: EthRequestUtils.numberToHexString(number: Double(response.gas)!), // Convert to hex
-          gasPrice: EthRequestUtils.numberToHexString(number: Double(response.gasPrice)!), // Convert to hex
-          value: EthRequestUtils.numberToHexString(number: Double(response.value)!), // Convert to hex
-          data: response.data
-        )
-        
-        let quote = Quote(
-          cost: Double(response.guaranteedPrice)!,
-          transaction: transaction
-        )
-        
-        completion(Result(data: quote))
+      try portal.api.getQuote(apiKey, args) { result in
+        completion(result)
       }
     } catch {
       completion(Result(error: error))
     }
   }
   
-  public func getSources(completion: @escaping(Result<[String]>) -> Void) -> Void {
-    let host = buildHostForChain()
-    
-    let request = HttpRequest<SourcesResponse, [String:Any]>(
-      url: "https://\(host)/swap/v1/sources",
-      method: "GET",
-      body: [:],
-      headers: [:],
-      requestType: HttpRequestType.CustomRequest
-    )
-    
-    request.send() { result in
-      if (result.error != nil) {
-        return completion(Result(error: result.error!))
-      }
-      
-      let response = result.data!
-      
-      completion(Result(data: response.records))
-    }
-  }
-  
-  private func buildHostForChain() -> String {
-    let chain = ChainUtils.getChainNameForId(portal.chainId)
-    
-    if (chain != nil && chain != "mainnet") {
-      return "\(chain!).\(domain)"
-    }
-    
-    return domain
-  }
-  
-  private func serializeObject(_ args: [String: Any]) throws -> String {
+  public func getSources(completion: @escaping(Result<[String:String]>) -> Void) -> Void {
     do {
-      let address = try portal.keychain.getAddress()
-      
-      var pairs: [String] = []
-      
-      for (key, value) in args {
-        pairs.append("\(key)=\(value)")
+      try portal.api.getSources(swapsApiKey: apiKey) { result in
+        completion(result)
       }
-      
-      pairs.append("affiliateAddress=\(address)")
-      
-      return pairs.joined(separator: "&")
     } catch {
-      throw error
+      completion(Result(error: error))
     }
   }
 }

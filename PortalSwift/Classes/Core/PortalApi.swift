@@ -55,6 +55,7 @@ public struct ContractNetwork: Codable {
 public class PortalApi {
   public var apiHost: String
   public var apiKey: String
+  public var portal: Portal
   public var requests: HttpRequester
   
   /// Create an instance of a PortalApi class.
@@ -64,10 +65,12 @@ public class PortalApi {
   init(
     apiKey: String,
     apiHost: String = "api.portalhq.io",
+    portal: Portal,
     mockRequests: Bool = false
   ) {
     self.apiKey = apiKey
     self.apiHost = String(format:"https://%@", apiHost)
+    self.portal = portal
     self.requests = mockRequests ? MockHttpRequester(baseUrl: self.apiHost) : HttpRequester(baseUrl: self.apiHost)
   }
   
@@ -101,6 +104,46 @@ public class PortalApi {
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[Dapp]>) -> Void in
+      completion(result)
+    }
+  }
+  
+  public func getQuote(
+    _ swapsApiKey: String,
+    _ args: QuoteArgs,
+    completion: @escaping (Result<Quote>) -> Void
+  ) throws -> Void {
+    // Build the request body
+    var body = args.toDictionary()
+    // Append Portal-provided values
+    body["apiKey"] = swapsApiKey
+    body["chainId"] = portal.chainId
+    
+    // Make the request
+    try requests.post(
+      path: "/api/v1/swaps/sources",
+      body: body,
+      headers: [
+        "Authorization": "Bearer \(apiKey)"
+      ],
+      requestType: HttpRequestType.CustomRequest
+    ) { (result: Result<Quote>) -> Void in
+      completion(result)
+    }
+  }
+  
+  public func getSources(swapsApiKey: String, completion: @escaping (Result<[String:String]>) -> Void) throws -> Void {
+    try requests.post(
+      path: "/api/v1/swaps/sources",
+      body: [
+        "apiKey": swapsApiKey,
+        "chainId": portal.chainId,
+      ],
+      headers: [
+        "Authorization": "Bearer \(apiKey)"
+      ],
+      requestType: HttpRequestType.CustomRequest
+    ) { (result: Result<[String:String]>) -> Void in
       completion(result)
     }
   }
