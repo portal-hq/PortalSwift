@@ -246,7 +246,7 @@ class ViewController: UIViewController {
 
   func populateAddressInformation() {
     do {
-      let address = try PortalWrapper.portal?.keychain.getAddress()
+      let address = try portal?.keychain.getAddress()
       DispatchQueue.main.async {
         self.addressInformation.text = "Address: \(address ?? "N/A")"
       }
