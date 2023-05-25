@@ -185,12 +185,11 @@
 		607FACE81AFB9204008FA782 /* Tests */ = {
 			isa = PBXGroup;
 			children = (
-				F921AB0129CE16210063305E /* Integration Tests */,
+				F97145592A1F6C830034189F /* e2e */,
 				47323B45293A9B200029B69E /* Core */,
 				47323B48293A9B5F0029B69E /* Provider */,
 				47323B46293A9B340029B69E /* Storage */,
 				47323B49293A9B710029B69E /* Utils */,
-				607FACEB1AFB9204008FA782 /* Tests.swift */,
 				607FACE91AFB9204008FA782 /* Supporting Files */,
 			);
 			path = Tests;
@@ -235,11 +234,12 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		F921AB0129CE16210063305E /* Integration Tests */ = {
+		F97145592A1F6C830034189F /* e2e */ = {
 			isa = PBXGroup;
 			children = (
+				607FACEB1AFB9204008FA782 /* Tests.swift */,
 			);
-			path = "Integration Tests";
+			path = e2e;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
