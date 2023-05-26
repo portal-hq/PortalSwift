@@ -134,7 +134,7 @@ public class Portal {
     }
     
     // Initialize the Portal API
-    let api = PortalApi(apiKey: apiKey, apiHost: apiHost)
+    let api = PortalApi(address: self.address, apiKey: apiKey, chainId: chainId, apiHost: apiHost)
     self.api = api
     
     // Ensure storage adapters have access to the Portal API
@@ -183,6 +183,7 @@ public class Portal {
       self.address = address!
       
       provider.setAddress(value: address!)
+      api.address = address!
     }
   }
   
@@ -204,6 +205,9 @@ public class Portal {
       // Update the Provider
       provider.chainId = to
       provider.rpc = HttpRequester(baseUrl: gatewayUrl)
+      
+      // Update the API instance
+      api.chainId = to
     }
   }
 }

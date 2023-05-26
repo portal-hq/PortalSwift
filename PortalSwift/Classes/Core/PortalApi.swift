@@ -53,9 +53,10 @@ public struct ContractNetwork: Codable {
 
 /// The class to interface with Portal's REST API.
 public class PortalApi {
+  public var address: String
   public var apiHost: String
   public var apiKey: String
-  public var portal: Portal
+  public var chainId: Int
   public var requests: HttpRequester
   
   /// Create an instance of a PortalApi class.
@@ -63,14 +64,16 @@ public class PortalApi {
   ///   - apiKey: The Client API key. You can create one using Portal's REST API.
   ///   - apiHost: (optional) The Portal API hostname.
   init(
+    address: String,
     apiKey: String,
+    chainId: Int,
     apiHost: String = "api.portalhq.io",
-    portal: Portal,
     mockRequests: Bool = false
   ) {
+    self.address = address
     self.apiKey = apiKey
     self.apiHost = String(format:"https://%@", apiHost)
-    self.portal = portal
+    self.chainId = chainId
     self.requests = mockRequests ? MockHttpRequester(baseUrl: self.apiHost) : HttpRequester(baseUrl: self.apiHost)
   }
   
@@ -116,8 +119,9 @@ public class PortalApi {
     // Build the request body
     var body = args.toDictionary()
     // Append Portal-provided values
+    body["address"] = address
     body["apiKey"] = swapsApiKey
-    body["chainId"] = portal.chainId
+    body["chainId"] = chainId
     
     // Make the request
     try requests.post(
@@ -137,7 +141,7 @@ public class PortalApi {
       path: "/api/v1/swaps/sources",
       body: [
         "apiKey": swapsApiKey,
-        "chainId": portal.chainId,
+        "chainId": chainId,
       ],
       headers: [
         "Authorization": "Bearer \(apiKey)"
