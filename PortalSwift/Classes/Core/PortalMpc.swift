@@ -295,6 +295,17 @@ public class PortalMpc {
         } progress: { status in
           progress?(status)
         }
+      } else if (method == BackupMethods.local.rawValue) {
+        print("Running backup using Local Fiel Storage! 🎉")
+        self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
+          if (backupResult.error != nil) {
+            return completion(Result(error: backupResult.error!))
+          }
+          progress?(MpcStatus(status: MpcStatuses.done, done: true))
+          completion(backupResult)
+        } progress: { status in
+          progress?(status)
+        }
       } else {
         return completion(Result(error: MpcError.unsupportedStorageMethod))
       }
