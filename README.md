@@ -1,5 +1,7 @@
 # PortalSwift
 
+[![Run Swift Tests](https://github.com/portal-hq/PortalSwift/actions/workflows/test.yml/badge.svg)](https://github.com/portal-hq/PortalSwift/actions/workflows/test.yml)
+
 ## Example
 
 To run the example project, clone the repo, and from the Example directory run `pod install`.
