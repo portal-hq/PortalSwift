@@ -51,26 +51,155 @@ public struct ContractNetwork: Codable {
   public var name: String
 }
 
+/// Represents an NFT smart contract.
+public struct NFTContract: Codable {
+  public var address: String
+}
+
+/// Represents an NFT owned by the client.
+public struct NFT: Codable {
+  public var contract: NFTContract
+  public var id: TokenId
+  public var balance: String
+  public var title: String
+  public var description: String
+  public var tokenUri: TokenUri
+  public var media: [Media]
+  public var metadata: Metadata
+  public var timeLastUpdated: String
+  public var contractMetadata: ContractMetadata
+}
+
+/// Represents the id of an NFT.
+public struct TokenId: Codable {
+  public var tokenId: String
+  public var tokenMetadata: TokenMetadata
+}
+
+/// Represents the metadata of an NFT's id.
+public struct TokenMetadata: Codable {
+  public var tokenType: String
+}
+
+/// Represents the URI of an NFT.
+public struct TokenUri: Codable {
+  public var gateway: String
+  public var raw: String
+}
+
+/// Represents the media of an NFT.
+public struct Media: Codable {
+  public var gateway: String
+  public var thumbnail: String
+  public var raw: String
+  public var format: String
+  public var bytes: Int
+}
+
+/// Represents the metadata of an NFT.
+public struct Metadata: Codable {
+  public var name: String
+  public var description: String
+  public var image: String
+  public var external_url: String?
+}
+
+/// Represents the contract metadata of an NFT.
+public struct ContractMetadata: Codable {
+  public var name: String
+  public var symbol: String
+  public var tokenType: String
+  public var contractDeployer: String
+  public var deployedBlockNumber: Int
+  public var openSea: OpenSeaMetadata?
+}
+
+/// Represents the OpenSea metadata of an NFT.
+public struct OpenSeaMetadata: Codable {
+  public var collectionName: String
+  public var safelistRequestStatus: String
+  public var imageUrl: String?
+  public var description: String
+  public var externalUrl: String
+  public var lastIngestedAt: String
+  public var floorPrice: Float?
+  public var twitterUsername: String?
+  public var discordUrl: String?
+}
+
+/// Represents a blockchain transaction
+public struct Transaction: Codable {
+  /// Block number in which the transaction was included
+  public var blockNum: String
+  /// Unique identifier of the transaction
+  public var uniqueId: String
+  /// Hash of the transaction
+  public var hash: String
+  /// Address that initiated the transaction
+  public var from: String
+  /// Address that the transaction was sent to
+  public var to: String
+  /// Value transferred in the transaction
+  public var value: Float
+  /// Token Id of an ERC721 token, if applicable
+  public var erc721TokenId: String?
+  /// Metadata of an ERC1155 token, if applicable
+  public var erc1155Metadata: String?
+  /// Token Id, if applicable
+  public var tokenId: String?
+  /// Type of asset involved in the transaction (e.g., ETH)
+  public var asset: String
+  /// Category of the transaction (e.g., external)
+  public var category: String
+  /// Contract details related to the transaction
+  public var rawContract: RawContract
+}
+
+/// Represents the contract details of a transaction
+public struct RawContract: Codable {
+  /// Value involved in the contract
+  public var value: String
+  /// Address of the contract, if applicable
+  public var address: String?
+  /// Decimal representation of the contract value
+  public var decimal: String
+}
+
+/// A representation of a client's balance.
+///
+/// This struct is used to parse the JSON response from the "/api/v1/clients/me/balances" endpoint.
+public struct Balance: Codable {
+  /// The contract address of the token.
+  public var contractAddress: String
+  /// The balance of the token.
+  public var balance: String
+}
+
+
 /// The class to interface with Portal's REST API.
 public class PortalApi {
   public var apiHost: String
   public var apiKey: String
   public var portal: Portal
+  public var chainId: String
   public var requests: HttpRequester
   
   /// Create an instance of a PortalApi class.
   /// - Parameters:
   ///   - apiKey: The Client API key. You can create one using Portal's REST API.
   ///   - apiHost: (optional) The Portal API hostname.
+  ///   - chainId: The chain ID of the EVM network.
   init(
     apiKey: String,
     apiHost: String = "api.portalhq.io",
     portal: Portal,
+    chainId: Int = 1,
     mockRequests: Bool = false
   ) {
     self.apiKey = apiKey
     self.apiHost = String(format:"https://%@", apiHost)
     self.portal = portal
+    self.chainId = String(chainId)
     self.requests = mockRequests ? MockHttpRequester(baseUrl: self.apiHost) : HttpRequester(baseUrl: self.apiHost)
   }
   
@@ -159,6 +288,72 @@ public class PortalApi {
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[ContractNetwork]>) -> Void in
+      completion(result)
+    }
+  }
+  
+  /// Retrieve a list of NFTs for the client.
+  /// - Parameters:
+  ///   - completion: The callback that contains the list of NFTs.
+  /// - Returns: Void.
+  public func getNFTs(completion: @escaping (Result<[NFT]>) -> Void) throws -> Void {
+    try requests.get(
+      path: "/api/v1/clients/me/nfts?chainId=\(chainId)",
+      headers: [
+        "Authorization": String(format: "Bearer %@", apiKey)
+      ],
+      requestType: HttpRequestType.CustomRequest
+    ) { (result: Result<[NFT]>) -> Void in
+      completion(result)
+    }
+  }
+  
+  /// Retrieve a list of Transactions for the client.
+  /// - Parameters:
+  ///   - limit: (Optional) The maximum number of transactions to return.
+  ///   - offset: (Optional) The number of transactions to skip before starting to return.
+  ///   - completion: The callback that contains the list of Transactions.
+  /// - Returns: Void.
+  public func getTransactions(
+    limit: Int? = nil,
+    offset: Int? = nil,
+    completion: @escaping (Result<[Transaction]>) -> Void
+  ) throws -> Void {
+    var path = "/api/v1/clients/me/transactions?chainId=\(chainId)"
+
+    // Append limit and offset parameters if provided
+    if let limit = limit {
+        path += "&limit=\(limit)"
+    }
+    if let offset = offset {
+        path += "&offset=\(offset)"
+    }
+
+    try requests.get(
+      path: path,
+      headers: [
+        "Authorization": String(format: "Bearer %@", apiKey)
+      ],
+      requestType: HttpRequestType.CustomRequest
+    ) { (result: Result<[Transaction]>) -> Void in
+      completion(result)
+    }
+  }
+  
+  /// Retrieve a list of Balances for the client.
+  /// - Parameters:
+  ///   - completion: The callback that contains the list of Balances.
+  /// - Returns: Void.
+  public func getBalances(
+    completion: @escaping (Result<[Balance]>) -> Void
+  ) throws -> Void {
+    try requests.get(
+      path: "/api/v1/clients/me/balances?chainId=\(chainId)",
+      headers: [
+        "Authorization": String(format: "Bearer %@", apiKey)
+      ],
+      requestType: HttpRequestType.CustomRequest
+    ) { (result: Result<[Balance]>) -> Void in
       completion(result)
     }
   }

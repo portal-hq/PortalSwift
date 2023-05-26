@@ -279,6 +279,7 @@
 		F6ECE9BA3A701970A5695938A7C3EB9E /* hr.lproj in Resources */ = {isa = PBXBuildFile; fileRef = DD7E6F43E378FFD4312DA4F2B8A69497 /* hr.lproj */; };
 		F8473F19A98E8C04DA797F91A71F8443 /* GIDGoogleUser.m in Sources */ = {isa = PBXBuildFile; fileRef = 244B79D9C54809E7C7B199C1489AD49A /* GIDGoogleUser.m */; };
 		F950D208FA4D412081B58F83807785A4 /* OIDRegistrationResponse.h in Headers */ = {isa = PBXBuildFile; fileRef = 735E5E1EFE968E115DDDBF274A8E6738 /* OIDRegistrationResponse.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		F97145582A14A22D0034189F /* LocalFileStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F97145572A14A22D0034189F /* LocalFileStorage.swift */; };
 		FA57677851302C0F13C69A459895DCEF /* NSBundle+GID3PAdditions.h in Headers */ = {isa = PBXBuildFile; fileRef = D0B13CB8E2380B3D8153DE8AC1D00E0D /* NSBundle+GID3PAdditions.h */; settings = {ATTRIBUTES = (Project, ); }; };
 		FDE948CC3A35F70EAEB413E5DE09C5ED /* OIDRegistrationResponse.m in Sources */ = {isa = PBXBuildFile; fileRef = 5E4FF6B9D7034165F3B7C9954D0E5198 /* OIDRegistrationResponse.m */; };
 		FF8307B7346F4D3BA13C11AECFE6EDD0 /* FBSnapshotTestCase.h in Headers */ = {isa = PBXBuildFile; fileRef = 5FB244297A44C83F4676DE48C59A5F66 /* FBSnapshotTestCase.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -715,6 +716,7 @@
 		F607FEE5E1F7F224610D77D0582D2449 /* OIDResponseTypes.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = OIDResponseTypes.m; path = Source/AppAuthCore/OIDResponseTypes.m; sourceTree = "<group>"; };
 		F787A922FCA2B2453D62B91E0D238CE4 /* FoundationSecurity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FoundationSecurity.swift; path = Sources/Security/FoundationSecurity.swift; sourceTree = "<group>"; };
 		F8D7EA35E60B3E6DFB4917E429D6576A /* UIImage+Snapshot.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = "UIImage+Snapshot.h"; path = "FBSnapshotTestCase/Categories/UIImage+Snapshot.h"; sourceTree = "<group>"; };
+		F97145572A14A22D0034189F /* LocalFileStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalFileStorage.swift; sourceTree = "<group>"; };
 		F99591EE4A6FA4AB69D613692D72A6E9 /* StringHTTPHandler.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = StringHTTPHandler.swift; path = Sources/Framer/StringHTTPHandler.swift; sourceTree = "<group>"; };
 		FB2029C322BD7676E2AC19A8C0E82B25 /* MockPortalApi.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MockPortalApi.swift; sourceTree = "<group>"; };
 		FB367A379C63040F8B0480CF9465B2C0 /* GTMKeychain.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = GTMKeychain.h; path = GTMAppAuth/Sources/Public/GTMAppAuth/GTMKeychain.h; sourceTree = "<group>"; };
@@ -1508,6 +1510,7 @@
 				A3D302B942C4BD70A97EC1A0C3666D8C /* ICloudStorage.swift */,
 				4D52571F1DE7D08F1839788DEC75D508 /* Storage.swift */,
 				4CA7DDD3960928557B68513D614663E7 /* GDrive */,
+				F97145572A14A22D0034189F /* LocalFileStorage.swift */,
 			);
 			name = Storage;
 			path = PortalSwift/Classes/Storage;
@@ -2236,6 +2239,7 @@
 				6B6046FA016A9A560FA7F93B68923A6E /* PortalMpc.swift in Sources */,
 				98775FC8CC9B9A5E72B490FB0B0E4E3E /* PortalMpcError.swift in Sources */,
 				67575CF013D6E74853C7F91ABCDBB085 /* PortalProvider.swift in Sources */,
+				F97145582A14A22D0034189F /* LocalFileStorage.swift in Sources */,
 				92E6F60448970D4B78A9830377B25F25 /* PortalSwift-dummy.m in Sources */,
 				122EB308F9F38236A9A694FB614CCAFD /* PortalWebView.swift in Sources */,
 				E3BE62C524CA8244229C4446FC830DCF /* Result.swift in Sources */,

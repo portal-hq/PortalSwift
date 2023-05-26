@@ -427,6 +427,16 @@ public class PortalMpc {
       } progress: { status in
         progress?(status)
       }
+    } else if (method == BackupMethods.local.rawValue) {
+      executeRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
+        if (recoveryResult.error != nil) {
+          return completion(Result(error: recoveryResult.error!))
+        }
+        progress?(MpcStatus(status: MpcStatuses.done, done: true))
+        completion(Result(data: recoveryResult.data!))
+      } progress: { status in
+        progress?(status)
+      }
     } else {
       completion(Result(error: MpcError.unsupportedStorageMethod))
     }

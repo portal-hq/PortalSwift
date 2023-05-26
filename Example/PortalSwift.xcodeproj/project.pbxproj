@@ -26,6 +26,8 @@
 		7E7F4C002A002D7F00756B6A /* ConnectViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E7F4BFF2A002D7F00756B6A /* ConnectViewController.swift */; };
 		A9147DADD1E43490C26F8829 /* Pods_PortalSwift_Example.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 29723E6FD45D32C23A9F4F69 /* Pods_PortalSwift_Example.framework */; };
 		B96417820F7757FB7C9962DE /* Pods_PortalSwift_Tests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4648C35B0F07F04812A2F611 /* Pods_PortalSwift_Tests.framework */; };
+		F97145522A1450ED0034189F /* Portal.swift in Sources */ = {isa = PBXBuildFile; fileRef = F97145512A1450ED0034189F /* Portal.swift */; };
+		F97145532A1450ED0034189F /* Portal.swift in Sources */ = {isa = PBXBuildFile; fileRef = F97145512A1450ED0034189F /* Portal.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -71,6 +73,7 @@
 		7E7F4BFF2A002D7F00756B6A /* ConnectViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectViewController.swift; sourceTree = "<group>"; };
 		7EB608D3291EF2F000CF1346 /* PortalSwift.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = PortalSwift.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		E432DE04613E5E5869FDCD55 /* Pods-PortalSwift_Example.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PortalSwift_Example.debug.xcconfig"; path = "Target Support Files/Pods-PortalSwift_Example/Pods-PortalSwift_Example.debug.xcconfig"; sourceTree = "<group>"; };
+		F97145512A1450ED0034189F /* Portal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Portal.swift; sourceTree = "<group>"; };
 		F9866E2529E47ED60008A9C3 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -165,6 +168,7 @@
 				607FACDC1AFB9204008FA782 /* Images.xcassets */,
 				607FACDE1AFB9204008FA782 /* LaunchScreen.xib */,
 				607FACD31AFB9204008FA782 /* Supporting Files */,
+				F97145512A1450ED0034189F /* Portal.swift */,
 			);
 			name = "Example for PortalSwift";
 			path = PortalSwift;
@@ -181,12 +185,11 @@
 		607FACE81AFB9204008FA782 /* Tests */ = {
 			isa = PBXGroup;
 			children = (
-				F921AB0129CE16210063305E /* Integration Tests */,
+				F97145592A1F6C830034189F /* e2e */,
 				47323B45293A9B200029B69E /* Core */,
 				47323B48293A9B5F0029B69E /* Provider */,
 				47323B46293A9B340029B69E /* Storage */,
 				47323B49293A9B710029B69E /* Utils */,
-				607FACEB1AFB9204008FA782 /* Tests.swift */,
 				607FACE91AFB9204008FA782 /* Supporting Files */,
 			);
 			path = Tests;
@@ -231,11 +234,12 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		F921AB0129CE16210063305E /* Integration Tests */ = {
+		F97145592A1F6C830034189F /* e2e */ = {
 			isa = PBXGroup;
 			children = (
+				607FACEB1AFB9204008FA782 /* Tests.swift */,
 			);
-			path = "Integration Tests";
+			path = e2e;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -441,6 +445,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7E7F4C002A002D7F00756B6A /* ConnectViewController.swift in Sources */,
+				F97145522A1450ED0034189F /* Portal.swift in Sources */,
 				607FACD81AFB9204008FA782 /* ViewController.swift in Sources */,
 				607FACD61AFB9204008FA782 /* AppDelegate.swift in Sources */,
 			);
@@ -455,6 +460,7 @@
 				47323B53293A9BD90029B69E /* ICloudStorageTests.swift in Sources */,
 				47323B59293A9C0B0029B69E /* MpcSignerTests.swift in Sources */,
 				47323B5D293A9C610029B69E /* PortalApiTests.swift in Sources */,
+				F97145532A1450ED0034189F /* Portal.swift in Sources */,
 				47323B4F293A9BB40029B69E /* HttpRequestTests.swift in Sources */,
 				47323B57293A9BFD0029B69E /* PortalProviderTests.swift in Sources */,
 				47323B55293A9BE80029B69E /* StorageTests.swift in Sources */,

@@ -11,12 +11,14 @@ import Foundation
 public enum BackupMethods: String {
   case GoogleDrive = "gdrive"
   case iCloud = "icloud"
+  case local = "local"
 }
 
 /// A struct with the backup options (gdrive and/or icloud) initialized.
 public struct BackupOptions {
   public var gdrive: GDriveStorage?
   public var icloud: ICloudStorage?
+  public var local: Storage?
   
   /// Create the backup options for PortalSwift.
   /// - Parameter gdrive: The instance of GDriveStorage to use for backup.
@@ -28,6 +30,10 @@ public struct BackupOptions {
   /// - Parameter icloud: The instance of ICloudStorage to use for backup.
   public init(icloud: ICloudStorage) {
     self.icloud = icloud
+  }
+  
+  public init(local: Storage) {
+    self.local = local
   }
   
   /// Create the backup options for PortalSwift.
@@ -44,6 +50,8 @@ public struct BackupOptions {
       return self.gdrive
     case BackupMethods.iCloud.rawValue:
       return self.icloud
+    case BackupMethods.local.rawValue:
+      return self.local
     default:
       return nil
     }
@@ -134,7 +142,7 @@ public class Portal {
     }
     
     // Initialize the Portal API
-    let api = PortalApi(apiKey: apiKey, apiHost: apiHost)
+    let api = PortalApi(apiKey: apiKey, apiHost: apiHost, chainId: chainId)
     self.api = api
     
     // Ensure storage adapters have access to the Portal API
