@@ -178,9 +178,10 @@ public struct Balance: Codable {
 
 /// The class to interface with Portal's REST API.
 public class PortalApi {
+  public var address: String
   public var apiHost: String
   public var apiKey: String
-  public var chainId: String
+  public var chainId: Int
   public var requests: HttpRequester
   
   /// Create an instance of a PortalApi class.
@@ -189,14 +190,16 @@ public class PortalApi {
   ///   - apiHost: (optional) The Portal API hostname.
   ///   - chainId: The chain ID of the EVM network.
   init(
+    address: String,
     apiKey: String,
+    chainId: Int,
     apiHost: String = "api.portalhq.io",
-    chainId: Int = 1,
     mockRequests: Bool = false
   ) {
+    self.address = address
     self.apiKey = apiKey
     self.apiHost = String(format:"https://%@", apiHost)
-    self.chainId = String(chainId)
+    self.chainId = chainId
     self.requests = mockRequests ? MockHttpRequester(baseUrl: self.apiHost) : HttpRequester(baseUrl: self.apiHost)
   }
   
@@ -230,6 +233,47 @@ public class PortalApi {
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[Dapp]>) -> Void in
+      completion(result)
+    }
+  }
+  
+  public func getQuote(
+    _ swapsApiKey: String,
+    _ args: QuoteArgs,
+    completion: @escaping (Result<Quote>) -> Void
+  ) throws -> Void {
+    // Build the request body
+    var body = args.toDictionary()
+    // Append Portal-provided values
+    body["address"] = address
+    body["apiKey"] = swapsApiKey
+    body["chainId"] = chainId
+    
+    // Make the request
+    try requests.post(
+      path: "/api/v1/swaps/sources",
+      body: body,
+      headers: [
+        "Authorization": "Bearer \(apiKey)"
+      ],
+      requestType: HttpRequestType.CustomRequest
+    ) { (result: Result<Quote>) -> Void in
+      completion(result)
+    }
+  }
+  
+  public func getSources(swapsApiKey: String, completion: @escaping (Result<[String:String]>) -> Void) throws -> Void {
+    try requests.post(
+      path: "/api/v1/swaps/sources",
+      body: [
+        "apiKey": swapsApiKey,
+        "chainId": chainId,
+      ],
+      headers: [
+        "Authorization": "Bearer \(apiKey)"
+      ],
+      requestType: HttpRequestType.CustomRequest
+    ) { (result: Result<[String:String]>) -> Void in
       completion(result)
     }
   }

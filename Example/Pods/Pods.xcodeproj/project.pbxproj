@@ -144,6 +144,9 @@
 		7A6888EF4D69608167457B15555A5FB2 /* OIDEndSessionResponse.m in Sources */ = {isa = PBXBuildFile; fileRef = CF0D22600EFB8675C6A6A40D5C499657 /* OIDEndSessionResponse.m */; };
 		7B8662965A406B52E017499708C29093 /* GIDMDMPasscodeState.h in Headers */ = {isa = PBXBuildFile; fileRef = D26A7CDA5A345ED123F224F858FF423A /* GIDMDMPasscodeState.h */; settings = {ATTRIBUTES = (Project, ); }; };
 		7C67CBD15D9B5D0B7769B2F469478332 /* FBSnapshotTestCase.m in Sources */ = {isa = PBXBuildFile; fileRef = EDE864ECC1E67F6A8D50CA0EB95FE26B /* FBSnapshotTestCase.m */; };
+		7E3D94702A09B88B00A2C6CE /* PortalSwaps.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E3D946F2A09B88B00A2C6CE /* PortalSwaps.swift */; };
+		7E3D94722A09BE1600A2C6CE /* EthRequests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E3D94712A09BE1600A2C6CE /* EthRequests.swift */; };
+		7E3D94742A09BF4300A2C6CE /* Chains.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E3D94732A09BF4300A2C6CE /* Chains.swift */; };
 		7ECA1AE07A77457A0CA3EC39ED873274 /* LocalAuthentication.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 833AAF9E2791D276B133EB166B930F7E /* LocalAuthentication.framework */; };
 		7EE778A344760AE59C88733C4B9DB4DB /* id.lproj in Resources */ = {isa = PBXBuildFile; fileRef = F5A03386547D51B36741E15F8444BA61 /* id.lproj */; };
 		7F6E015D616C80C1FDC9C2EBAACD8BF4 /* OIDEndSessionRequest.m in Sources */ = {isa = PBXBuildFile; fileRef = 599E3D46C58E1FA0CBEDB7BB8C6329E2 /* OIDEndSessionRequest.m */; };
@@ -559,6 +562,9 @@
 		7D2237B82C24F29D8E00B84A35CD9B23 /* MpcSigner.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MpcSigner.swift; sourceTree = "<group>"; };
 		7D8662EFB4FAC42189A609FFAC578053 /* OIDFieldMapping.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = OIDFieldMapping.h; path = Source/AppAuthCore/OIDFieldMapping.h; sourceTree = "<group>"; };
 		7E3750AD99F728616332AE37CAA945C9 /* GIDProfileData_Private.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = GIDProfileData_Private.h; path = GoogleSignIn/Sources/GIDProfileData_Private.h; sourceTree = "<group>"; };
+		7E3D946F2A09B88B00A2C6CE /* PortalSwaps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalSwaps.swift; sourceTree = "<group>"; };
+		7E3D94712A09BE1600A2C6CE /* EthRequests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EthRequests.swift; sourceTree = "<group>"; };
+		7E3D94732A09BF4300A2C6CE /* Chains.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chains.swift; sourceTree = "<group>"; };
 		80E67469BC6004EA71E9BD8B3F8E77BB /* GIDGoogleUser.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = GIDGoogleUser.h; path = GoogleSignIn/Sources/Public/GoogleSignIn/GIDGoogleUser.h; sourceTree = "<group>"; };
 		811CEB43B04769236309DA25AD25BDA5 /* OIDAuthorizationResponse.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = OIDAuthorizationResponse.m; path = Source/AppAuthCore/OIDAuthorizationResponse.m; sourceTree = "<group>"; };
 		82647BC974D393A00E4ECAAB81753040 /* OIDTokenUtilities.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = OIDTokenUtilities.m; path = Source/AppAuthCore/OIDTokenUtilities.m; sourceTree = "<group>"; };
@@ -1165,6 +1171,8 @@
 				C05D0E6F29D57C7DF82D5B48ABDD31DF /* Result.swift */,
 				1225ED2B3B90E19314AC2B7820FF632F /* WebSocketClient.swift */,
 				B85178DD9FF24165137670E36919591A /* Errors */,
+				7E3D94712A09BE1600A2C6CE /* EthRequests.swift */,
+				7E3D94732A09BF4300A2C6CE /* Chains.swift */,
 			);
 			name = Utils;
 			path = PortalSwift/Classes/Utils;
@@ -1283,6 +1291,15 @@
 			path = "../Target Support Files/FBSnapshotTestCase";
 			sourceTree = "<group>";
 		};
+		7E3D946E2A09B87800A2C6CE /* Swaps */ = {
+			isa = PBXGroup;
+			children = (
+				7E3D946F2A09B88B00A2C6CE /* PortalSwaps.swift */,
+			);
+			name = Swaps;
+			path = PortalSwift/Classes/Swaps;
+			sourceTree = "<group>";
+		};
 		80C22866435240C820DAEBFCEBA3939C /* Provider */ = {
 			isa = PBXGroup;
 			children = (
@@ -1329,6 +1346,7 @@
 				80C22866435240C820DAEBFCEBA3939C /* Provider */,
 				E1387A5016C830383307ACF6446D32C4 /* Storage */,
 				61F229B1228628A702CCDA67AC61321E /* Support Files */,
+				7E3D946E2A09B87800A2C6CE /* Swaps */,
 				5427D1469D436C57E2001CDB63C03C10 /* Utils */,
 			);
 			name = PortalSwift;
@@ -2196,11 +2214,13 @@
 				3D8FB1C92F12BA70099E471E96CA80C7 /* HttpRequest.swift in Sources */,
 				CF8E0292393D09B0448C959174374B0B /* HttpRequester.swift in Sources */,
 				7966698710A320716E5FE1E8929B993B /* ICloudStorage.swift in Sources */,
+				7E3D94702A09B88B00A2C6CE /* PortalSwaps.swift in Sources */,
 				5925B567D0E019A34E23F27991926135 /* MobileStorageAdapter.swift in Sources */,
 				A1ADAAD208C8B6BC0BC7CE71F7041FD6 /* MockGDriveStorage.swift in Sources */,
 				633F3E7754F66B63A67BAE586CB8D472 /* MockHttpRequest.swift in Sources */,
 				D3786D74148973EA96F083A5C457587B /* MockHttpRequester.swift in Sources */,
 				BA79994F79E7D0E2C543E32C5F7D4A17 /* MockICloudStorage.swift in Sources */,
+				7E3D94722A09BE1600A2C6CE /* EthRequests.swift in Sources */,
 				10F72F88DA4E691BCDB9254F3E32D5D0 /* MockPortal.swift in Sources */,
 				62CCD3A445110A0F735D04A806A37ECA /* MockPortalApi.swift in Sources */,
 				A8D25D7A221FCBD6DD62433A1D9D6685 /* MockPortalKeychain.swift in Sources */,
@@ -2214,6 +2234,7 @@
 				CD2E967B140A791DBEC3AA28BB3ED40A /* PortalError.swift in Sources */,
 				F229E6CD0ABFFC2573DF5A26BA522BE1 /* PortalErrorCodes.swift in Sources */,
 				8C73D1F1B388B13E2EF5CBA3C917492B /* PortalErrorCodeTypes.swift in Sources */,
+				7E3D94742A09BF4300A2C6CE /* Chains.swift in Sources */,
 				E6035E3DD8AF34719A333C58A10AB6DA /* PortalKeychain.swift in Sources */,
 				6B6046FA016A9A560FA7F93B68923A6E /* PortalMpc.swift in Sources */,
 				98775FC8CC9B9A5E72B490FB0B0E4E3E /* PortalMpcError.swift in Sources */,
