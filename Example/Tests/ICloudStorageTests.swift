@@ -14,7 +14,7 @@ final class ICloudStorageTests: XCTestCase {
 
   override func setUpWithError() throws {
     storage = ICloudStorage()
-    storage?.api = MockPortalApi(apiKey: "")
+    storage?.api = MockPortalApi(address:"", apiKey: "", chainId: 5)
   }
 
   override func tearDownWithError() throws {

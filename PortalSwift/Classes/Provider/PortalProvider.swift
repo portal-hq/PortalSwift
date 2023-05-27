@@ -259,6 +259,11 @@ public struct RegisteredEventHandler {
 
 /// The result of a request.
 public struct RequestCompletionResult {
+  public init(method: String, params: [Any], result: Any){
+    self.method = method
+    self.params = params
+    self.result = result
+  }
   public var method: String
   public var params: [Any]
   public var result: Any
@@ -462,6 +467,9 @@ public class PortalProvider {
       }
     } else if (isSignerMethod) {
       handleSigningRequest(payload: payload) { (result: Result<SignerResult>) -> Void in
+        guard result.error == nil else {
+          return completion(Result(error: result.error!))
+        }
         return completion(Result(data: RequestCompletionResult(method: payload.method, params: payload.params, result: result)))
       }
     } else {
@@ -498,7 +506,6 @@ public class PortalProvider {
         }
         return completion(Result(data: TransactionCompletionResult(method: payload.method, params: payload.params, result: result)))
       }
-      
     } else {
       return completion(Result(error: ProviderRpcError.unsupportedMethod))
     }
