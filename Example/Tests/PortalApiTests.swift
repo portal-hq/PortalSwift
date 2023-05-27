@@ -13,7 +13,7 @@ final class PortalApiTests: XCTestCase {
   var api: PortalApi?
 
   override func setUpWithError() throws {
-    api = PortalApi(apiKey: "test", apiHost: "api.portalhq.io", mockRequests: true)
+    api = PortalApi(address: "", apiKey: "test", chainId: 5, apiHost: "api.portalhq.io", mockRequests: true)
   }
 
   override func tearDownWithError() throws {

@@ -13,7 +13,7 @@ final class PortalMpcTests: XCTestCase {
   var mpc: PortalMpc?
 
   override func setUpWithError() throws {
-    mpc = MockPortalMpc(apiKey: "test", chainId: 5, keychain: MockPortalKeychain(), storage: BackupOptions(icloud: MockICloudStorage()), gatewayUrl: "testurl", api: MockPortalApi(apiKey: "test"))
+    mpc = MockPortalMpc(apiKey: "test", chainId: 5, keychain: MockPortalKeychain(), storage: BackupOptions(icloud: MockICloudStorage()), gatewayUrl: "testurl", api: MockPortalApi(address: "", apiKey: "test", chainId: 5))
   }
 
   override func tearDownWithError() throws {
