@@ -10,7 +10,13 @@ Possible Types of changes include:
 - Fixed
 - Security
 
-## [Unreleased]
+## 0.2.3 - 2023-05-26
+### Added
+- Extension to `portal.api`: `getNFT`, `getTransactions`, `getBalances`
+- 0x Swap integration
+
+### Fixed
+- Missing error check
 
 ## 0.1.9 - 2023-04-21
 
