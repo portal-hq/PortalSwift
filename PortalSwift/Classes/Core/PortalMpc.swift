@@ -334,7 +334,7 @@ public class PortalMpc {
         
         // Call the MPC service to generate a new wallet.
         progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
-        let response = ClientGenerate(apiKey, mpcHost, version)
+        let response = ClientGenerate(self.apiKey, self.mpcHost, self.version)
         
         // Parse the share
         progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
@@ -358,7 +358,7 @@ public class PortalMpc {
           
           progress?(MpcStatus(status: MpcStatuses.storingShare, done: false))
           
-          keychain.setSigningShare(signingShare: mpcShareString) { result in
+          self.keychain.setSigningShare(signingShare: mpcShareString) { result in
             // Handle errors
             if result.error != nil {
               return completion(Result(error: result.error!))
@@ -368,15 +368,27 @@ public class PortalMpc {
             self.address = address
             
             
-            keychain.setAddress(address: address ) { result in
+            self.keychain.setAddress(address: address ) { result in
               // Handle errors
               if result.error != nil {
                 return completion(Result(error: result.error!))
               }
-              progress?(MpcStatus(status: MpcStatuses.done, done: true))
               
-              // Return the address.
-              return completion(Result(data: address))
+              do {
+                try self.api.storedClientSigningShare() { result in
+                  // Handle errors
+                  if result.error != nil {
+                    return completion(Result(error: result.error!))
+                  }
+
+                  progress?(MpcStatus(status: MpcStatuses.done, done: true))
+                  
+                  // Return the address.
+                  return completion(Result(data: address))
+                }
+              } catch {
+                return completion(Result(error: error))
+              }
             }
           }
         } catch {
@@ -690,7 +702,7 @@ public class PortalMpc {
   /// - Returns: The new signing share.
   private func recoverSigning(
     backupShare: String,
-    completion: (Result<MpcShare>) -> Void,
+    completion: @escaping (Result<MpcShare>) -> Void,
     progress: ((MpcStatus) -> Void)? = nil
   ) -> Void {
     do {
@@ -721,14 +733,25 @@ public class PortalMpc {
           return completion(Result(error: result.error!))
         }
         
-        keychain.setSigningShare(signingShare: shareString!) { result in
+        self.keychain.setSigningShare(signingShare: shareString!) { result in
           // Handle errors
           if result.error != nil {
             return completion(Result(error: result.error!))
           }
           
-          // Return the new signing share.
-          return completion(Result(data: rotateResult.data!.dkgResult))
+          do {
+            try self.api.storedClientSigningShare() { result in
+              // Handle errors
+              if result.error != nil {
+                return completion(Result(error: result.error!))
+              }
+              
+              // Return the new signing share.
+              return completion(Result(data: rotateResult.data!.dkgResult))
+            }
+          } catch {
+            return completion(Result(error: error))
+          }
         }
       }
     } catch {

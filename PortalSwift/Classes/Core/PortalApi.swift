@@ -358,4 +358,22 @@ public class PortalApi {
       completion(result)
     }
   }
+  
+  /// Updates the client's wallet state to be stored on the client.
+  /// - Parameter completion: The callback that contains the response status.
+  /// - Returns: Void.
+  public func storedClientSigningShare(
+    completion: @escaping (Result<String>) -> Void
+  ) throws -> Void {
+    try requests.put(
+        path: "/api/v1/clients/me/wallet/stored-on-client",
+        body: [:],
+        headers: [
+          "Authorization": String(format: "Bearer %@", apiKey)
+        ],
+        requestType: HttpRequestType.CustomRequest
+    ) { (result: Result<String>) -> Void in
+      completion(result)
+    }
+  }
 }
