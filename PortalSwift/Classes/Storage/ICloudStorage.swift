@@ -16,6 +16,7 @@ public class ICloudStorage: Storage {
     case notSignedIntoICloud(String)
     case unableToDeriveKey(String)
     case unableToRetrieveClient(String)
+    case failedValidateOperations(String)
     case unknownError
   }
 
@@ -46,17 +47,9 @@ public class ICloudStorage: Storage {
         return
       }
 
-      // Check if we have access to iCloud.
-      self.checkAvailability() { (statusResult: Result<Any>) -> Void in
-        if (statusResult.error != nil) {
-          completion(Result(error: statusResult.error!))
-          return
-        }
-
-        // Read from iCloud.
-        NSUbiquitousKeyValueStore.default.synchronize()
-        completion(Result(data: NSUbiquitousKeyValueStore.default.string(forKey: result.data!) ?? ""))
-      }
+      // Read from iCloud.
+      NSUbiquitousKeyValueStore.default.synchronize()
+      completion(Result(data: NSUbiquitousKeyValueStore.default.string(forKey: result.data!) ?? ""))
     }
   }
 
@@ -73,19 +66,11 @@ public class ICloudStorage: Storage {
         return
       }
 
-      // Check if we have access to iCloud.
-      self.checkAvailability() { (statusResult: Result<Any>) -> Void in
-        if (statusResult.error != nil) {
-          completion(Result(error: statusResult.error!))
-          return
-        }
-
-        // Write to iCloud.
-        NSUbiquitousKeyValueStore.default.synchronize()
-        NSUbiquitousKeyValueStore.default.set(privateKey, forKey: result.data!)
-        NSUbiquitousKeyValueStore.default.synchronize()
-        completion(Result(data: true))
-      }
+      // Write to iCloud.
+      NSUbiquitousKeyValueStore.default.synchronize()
+      NSUbiquitousKeyValueStore.default.set(privateKey, forKey: result.data!)
+      NSUbiquitousKeyValueStore.default.synchronize()
+      completion(Result(data: true))
     }
   }
 
@@ -100,61 +85,70 @@ public class ICloudStorage: Storage {
         return
       }
 
-      // Check if we have access to iCloud.
-      self.checkAvailability() { (statusResult: Result<Any>) -> Void in
-        if (statusResult.error != nil) {
-          completion(Result(error: statusResult.error!))
-          return
-        }
-
-        // Delete from iCloud.
-        NSUbiquitousKeyValueStore.default.synchronize()
-        NSUbiquitousKeyValueStore.default.removeObject(forKey: result.data!)
-        NSUbiquitousKeyValueStore.default.synchronize()
-        completion(Result(data: true))
-      }
-    }
-  }
-
-  /// Checks if the user is signed into iCloud and has iCloud Key-Value Storage enabled.
-  /// - Returns: An ICloudStatus.
-  public func getAvailability() -> String {
-    // Check ubiquityIdentityToken from FileManager to see if the user is signed in.
-    if FileManager.default.ubiquityIdentityToken == nil {
-      return ICloudStatus.notSignedIn.rawValue
-    }
-
-    // Skip the other checks if we are on a simulator.
-    if isSimulator {
-      print("""
-
-⚠️ iCloud key-value storage does not synchronize on some iOS simulator versions.
-
-If you test recovery by uninstalling your app on an iOS simulator and reinstalling your app on a different device, recovery can fail.
-We highly recommend using real devices to test the recovery process.
-
-""")
-      return ICloudStatus.available.rawValue
-    }
-
-    // Check if the user has iCloud Key-Value Storage enabled.
-    if NSUbiquitousKeyValueStore.default.synchronize() == false {
-      return ICloudStatus.noAccess.rawValue
-    }
-
-    return ICloudStatus.available.rawValue
-  }
-
-  public func checkAvailability(completion: @escaping (Result<Any>) -> Void) -> Void {
-    let status = getAvailability()
-
-    if status == ICloudStatus.noAccess.rawValue {
-      completion(Result(error: ICloudStorageError.noAccessToICloud("No access to iCloud")))
-    } else if status == ICloudStatus.notSignedIn.rawValue {
-      completion(Result(error: ICloudStorageError.notSignedIntoICloud("Not signed into iCloud")))
-    } else {
+      // Delete from iCloud.
+      NSUbiquitousKeyValueStore.default.synchronize()
+      NSUbiquitousKeyValueStore.default.removeObject(forKey: result.data!)
+      NSUbiquitousKeyValueStore.default.synchronize()
       completion(Result(data: true))
     }
+  }
+
+  /// Checks the availability and functionality of the iCloud key-value store.
+  ///
+  /// This method tests the iCloud key-value store by performing a sequence of write, read, and delete operations using a test key and value.
+  /// It is designed to verify that all basic operations can be successfully performed on the user's iCloud key-value store.
+  ///
+  /// Specifically, the method:
+  /// 1. Writes a test value to the store using a test key.
+  /// 2. Attempts to read the written test value from the store using the test key.
+  /// 3. If the read is successful and returns the correct test value, it proceeds to delete the test value from the store using the test key.
+  /// 4. Finally, it checks if the deletion was successful by attempting to read the test value again. If the read returns `nil`, it concludes that the test sequence was successful.
+  ///
+  /// The method uses a `Result<Bool>` type to inform the caller of the outcome. If all operations were successful, it returns `Result(data: true)`.
+  /// If any operation fails, it returns a `Result` with an error detailing the type of failure, either `ICloudStorageError.failedToRead` or `ICloudStorageError.failedToDelete`.
+  ///
+  /// - Parameter callback: A closure that takes a `Result<Bool>` as its parameter and returns `Void`.
+  public func validateOperations(callback: @escaping (Result<Bool>) -> Void) {
+    let testKey = "portal_test"
+    let testValue = "test_value"
+
+    rawWrite(key: testKey, value: testValue)
+    
+    if let readValue = rawRead(key: testKey), readValue == testValue {
+      rawDelete(key: testKey)
+      if rawRead(key: testKey) == nil {
+        // Availability check succeeded.
+        callback(Result(data: true))
+      } else {
+        callback(Result(error: ICloudStorageError.failedValidateOperations("Failed to delete test data")))
+      }
+    } else {
+      callback(Result(error: ICloudStorageError.failedValidateOperations("Failed to read/write test data")))
+    }
+  }
+  
+  /// Reads the value stored in iCloud's key-value store with the given key.
+  /// - Parameter key: The key to read the value from.
+  /// - Returns: The value associated with the key, or nil if the key was not found.
+  private func rawRead(key: String) -> String? {
+    NSUbiquitousKeyValueStore.default.synchronize()
+    return NSUbiquitousKeyValueStore.default.string(forKey: key)
+  }
+
+  /// Writes a value to iCloud's key-value store.
+  /// - Parameters:
+  ///   - key: The key to associate with the value.
+  ///   - value: The value to write to iCloud's key-value store.
+  private func rawWrite(key: String, value: String) {
+    NSUbiquitousKeyValueStore.default.set(value, forKey: key)
+    NSUbiquitousKeyValueStore.default.synchronize()
+  }
+
+  /// Deletes the value associated with a key in iCloud's key-value store.
+  /// - Parameter key: The key to remove along with its associated value.
+  private func rawDelete(key: String) {
+    NSUbiquitousKeyValueStore.default.removeObject(forKey: key)
+    NSUbiquitousKeyValueStore.default.synchronize()
   }
 
   private func getKey(completion: @escaping (Result<String>) -> Void) -> Void {

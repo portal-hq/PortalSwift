@@ -244,76 +244,6 @@ public class PortalMpc {
     return self.address!
   }
   
-  /// Creates a backup share, encrypts it, and stores the private key in cloud storage.
-  /// - Parameters:
-  ///   - method: Either gdrive or icloud.
-  ///   - completion: The callback which includes the cipherText of the backed up share.
-  public func backup(method: BackupMethods.RawValue, completion: @escaping (Result<String>) -> Void, progress:  ((MpcStatus) -> Void)? = nil) -> Void {
-    if version != "v3" {
-      return completion(Result(error: MpcError.backupNoLongerSupported(message: "[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = v3`.")))
-    }
-    
-    do {
-      // Obtain the signing share.
-      let signingShare = try keychain.getSigningShare()
-      progress?(MpcStatus(status: MpcStatuses.readingShare, done: false))
-      
-      // Derive the storage and throw an error if none was provided.
-      let storage = self.storage[method] as? Storage
-      if (storage == nil) {
-        return completion(Result(error: MpcError.unsupportedStorageMethod))
-      }
-      
-      // Check if we are authenticated with iCloud or throw an error if we are not.
-      if (method == BackupMethods.iCloud.rawValue) {
-        (storage as! ICloudStorage).checkAvailability { (result: Result<Any>) -> Void in
-          if (result.error != nil) {
-            print("❌ iCloud is not available:")
-            print(result)
-            return completion(Result(error: result.error!))
-          } else {
-            print("Running backup since iCloud is available! 🎉")
-            self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
-              if (backupResult.error != nil) {
-                return completion(Result(error: backupResult.error!))
-              }
-              progress?(MpcStatus(status: MpcStatuses.done, done: true))
-              completion(backupResult)
-            } progress: { status in
-              progress?(status)
-            }
-          }
-        }
-      } else if (method == BackupMethods.GoogleDrive.rawValue) {
-        print("Running backup since Google Drive is available! 🎉")
-        self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
-          if (backupResult.error != nil) {
-            return completion(Result(error: backupResult.error!))
-          }
-          progress?(MpcStatus(status: MpcStatuses.done, done: true))
-          completion(backupResult)
-        } progress: { status in
-          progress?(status)
-        }
-      } else if (method == BackupMethods.local.rawValue) {
-        print("Running backup using Local Fiel Storage! 🎉")
-        self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
-          if (backupResult.error != nil) {
-            return completion(Result(error: backupResult.error!))
-          }
-          progress?(MpcStatus(status: MpcStatuses.done, done: true))
-          completion(backupResult)
-        } progress: { status in
-          progress?(status)
-        }
-      } else {
-        return completion(Result(error: MpcError.unsupportedStorageMethod))
-      }
-    } catch {
-      return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: "Backup failed")))
-    }
-  }
-  
   /// Generates a MPC wallet and signing share for a client.
   /// - Returns: The address of the newly created MPC wallet.
   public func generate(completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)? = nil) -> Void {
@@ -386,6 +316,87 @@ public class PortalMpc {
     }
   }
   
+  /// Creates a backup share, encrypts it, and stores the private key in cloud storage.
+  /// - Parameters:
+  ///   - method: Either gdrive or icloud.
+  ///   - completion: The callback which includes the cipherText of the backed up share.
+  public func backup(method: BackupMethods.RawValue, completion: @escaping (Result<String>) -> Void, progress:  ((MpcStatus) -> Void)? = nil) -> Void {
+    if version != "v3" {
+      return completion(Result(error: MpcError.backupNoLongerSupported(message: "[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = v3`.")))
+    }
+    
+    do {
+      // Obtain the signing share.
+      let signingShare = try keychain.getSigningShare()
+      progress?(MpcStatus(status: MpcStatuses.readingShare, done: false))
+      
+      // Derive the storage and throw an error if none was provided.
+      let storage = self.storage[method] as? Storage
+      print(self.storage)
+      if (storage == nil) {
+        return completion(Result(error: MpcError.unsupportedStorageMethod))
+      }
+      
+      // Check if we are authenticated with iCloud or throw an error if we are not.
+      if (method == BackupMethods.iCloud.rawValue) {
+        print("Validating iCloud Storage is available...")
+        (storage as! ICloudStorage).validateOperations { (result: Result<Bool>) -> Void in
+          if (result.error != nil) {
+            print("❌ iCloud Storage is not available:")
+            print(result)
+            return completion(Result(error: result.error!))
+          }
+
+          print("iCloud Storage is available, starting backup...")
+          self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
+            if (backupResult.error != nil) {
+              return completion(Result(error: backupResult.error!))
+            }
+            progress?(MpcStatus(status: MpcStatuses.done, done: true))
+            completion(backupResult)
+          } progress: { status in
+            progress?(status)
+          }
+        }
+      } else if (method == BackupMethods.GoogleDrive.rawValue) {
+        print("Validating Google Drive Storage is available...")
+        (storage as! GDriveStorage).validateOperations { (result: Result<Bool>) -> Void in
+          if (result.error != nil) {
+            print("❌ Google Drive Storage is not available:")
+            print(result)
+            return completion(Result(error: result.error!))
+          }
+          
+          print("Google Drive Storage is available, starting backup...")
+          self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
+            if (backupResult.error != nil) {
+              return completion(Result(error: backupResult.error!))
+            }
+            progress?(MpcStatus(status: MpcStatuses.done, done: true))
+            completion(backupResult)
+          } progress: { status in
+            progress?(status)
+          }
+        }
+      } else if (method == BackupMethods.local.rawValue) {
+        print("Starting backup...")
+        self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
+          if (backupResult.error != nil) {
+            return completion(Result(error: backupResult.error!))
+          }
+          progress?(MpcStatus(status: MpcStatuses.done, done: true))
+          completion(backupResult)
+        } progress: { status in
+          progress?(status)
+        }
+      } else {
+        return completion(Result(error: MpcError.unsupportedStorageMethod))
+      }
+    } catch {
+      return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: "Backup failed")))
+    }
+  }
+  
   /// Uses the backup share to create a new signing share and a new backup share, encrypts the new backup share, and stores the private key in storage.
   /// - Parameters:
   ///   - cipherText: the cipherText of the backup share (should be passed in from the custodian).
@@ -408,35 +419,46 @@ public class PortalMpc {
     }
     
     if (method == BackupMethods.iCloud.rawValue) {
-      (storage as! ICloudStorage).checkAvailability { (result: Result<Any>) -> Void in
+      print("Validating iCloud Storage is available...")
+      (storage as! ICloudStorage).validateOperations { (result: Result<Bool>) -> Void in
         if (result.error != nil) {
-          print("❌ iCloud is not available:")
+          print("❌ iCloud Storage is not available:")
           print(result)
           return completion(Result(error: result.error!))
-        } else {
-          print("Running recovery since iCloud is available! 🎉")
-          // Call the MPC service to get the backup share.
-          self.executeRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
-            if (recoveryResult.error != nil) {
-              completion(Result(error: recoveryResult.error!))
-              return
-            }
-            progress?(MpcStatus(status: MpcStatuses.done, done: true))
-            completion(Result(data: recoveryResult.data!))
-          } progress: { status in
-            progress?(status)
+        }
+
+        print("iCloud Storage is available, starting recovery...")
+        // Call the MPC service to get the backup share.
+        self.executeRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
+          if (recoveryResult.error != nil) {
+            completion(Result(error: recoveryResult.error!))
+            return
           }
+          progress?(MpcStatus(status: MpcStatuses.done, done: true))
+          completion(Result(data: recoveryResult.data!))
+        } progress: { status in
+          progress?(status)
         }
       }
     } else if (method == BackupMethods.GoogleDrive.rawValue) {
-      executeRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
-        if (recoveryResult.error != nil) {
-          return completion(Result(error: recoveryResult.error!))
+      print("Validating Google Drive Storage is available...")
+      (storage as! GDriveStorage).validateOperations { (result: Result<Bool>) -> Void in
+        if (result.error != nil) {
+          print("❌ Google Drive is not available:")
+          print(result)
+          return completion(Result(error: result.error!))
         }
-        progress?(MpcStatus(status: MpcStatuses.done, done: true))
-        completion(Result(data: recoveryResult.data!))
-      } progress: { status in
-        progress?(status)
+        
+        print("Google Drive Storage is available, starting recovery...")
+        self.executeRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
+          if (recoveryResult.error != nil) {
+            return completion(Result(error: recoveryResult.error!))
+          }
+          progress?(MpcStatus(status: MpcStatuses.done, done: true))
+          completion(Result(data: recoveryResult.data!))
+        } progress: { status in
+          progress?(status)
+        }
       }
     } else if (method == BackupMethods.local.rawValue) {
       executeRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
