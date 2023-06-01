@@ -147,6 +147,7 @@
 		7E3D94702A09B88B00A2C6CE /* PortalSwaps.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E3D946F2A09B88B00A2C6CE /* PortalSwaps.swift */; };
 		7E3D94722A09BE1600A2C6CE /* EthRequests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E3D94712A09BE1600A2C6CE /* EthRequests.swift */; };
 		7E3D94742A09BF4300A2C6CE /* Chains.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E3D94732A09BF4300A2C6CE /* Chains.swift */; };
+		7EAA90062A291EA000773241 /* CurrencyConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EAA90052A291EA000773241 /* CurrencyConverter.swift */; };
 		7ECA1AE07A77457A0CA3EC39ED873274 /* LocalAuthentication.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 833AAF9E2791D276B133EB166B930F7E /* LocalAuthentication.framework */; };
 		7EE778A344760AE59C88733C4B9DB4DB /* id.lproj in Resources */ = {isa = PBXBuildFile; fileRef = F5A03386547D51B36741E15F8444BA61 /* id.lproj */; };
 		7F6E015D616C80C1FDC9C2EBAACD8BF4 /* OIDEndSessionRequest.m in Sources */ = {isa = PBXBuildFile; fileRef = 599E3D46C58E1FA0CBEDB7BB8C6329E2 /* OIDEndSessionRequest.m */; };
@@ -565,6 +566,7 @@
 		7E3D946F2A09B88B00A2C6CE /* PortalSwaps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalSwaps.swift; sourceTree = "<group>"; };
 		7E3D94712A09BE1600A2C6CE /* EthRequests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EthRequests.swift; sourceTree = "<group>"; };
 		7E3D94732A09BF4300A2C6CE /* Chains.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chains.swift; sourceTree = "<group>"; };
+		7EAA90052A291EA000773241 /* CurrencyConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurrencyConverter.swift; sourceTree = "<group>"; };
 		80E67469BC6004EA71E9BD8B3F8E77BB /* GIDGoogleUser.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = GIDGoogleUser.h; path = GoogleSignIn/Sources/Public/GoogleSignIn/GIDGoogleUser.h; sourceTree = "<group>"; };
 		811CEB43B04769236309DA25AD25BDA5 /* OIDAuthorizationResponse.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = OIDAuthorizationResponse.m; path = Source/AppAuthCore/OIDAuthorizationResponse.m; sourceTree = "<group>"; };
 		82647BC974D393A00E4ECAAB81753040 /* OIDTokenUtilities.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = OIDTokenUtilities.m; path = Source/AppAuthCore/OIDTokenUtilities.m; sourceTree = "<group>"; };
@@ -1166,6 +1168,7 @@
 		5427D1469D436C57E2001CDB63C03C10 /* Utils */ = {
 			isa = PBXGroup;
 			children = (
+				7EAA90002A291D8900773241 /* Currency */,
 				CF5107A5A8FE4FB58696048206AAD082 /* HttpRequest.swift */,
 				944F6D19E31EB7F47BBC016A2D7A3176 /* HttpRequester.swift */,
 				C05D0E6F29D57C7DF82D5B48ABDD31DF /* Result.swift */,
@@ -1298,6 +1301,14 @@
 			);
 			name = Swaps;
 			path = PortalSwift/Classes/Swaps;
+			sourceTree = "<group>";
+		};
+		7EAA90002A291D8900773241 /* Currency */ = {
+			isa = PBXGroup;
+			children = (
+				7EAA90052A291EA000773241 /* CurrencyConverter.swift */,
+			);
+			path = Currency;
 			sourceTree = "<group>";
 		};
 		80C22866435240C820DAEBFCEBA3939C /* Provider */ = {
@@ -2234,6 +2245,7 @@
 				CD2E967B140A791DBEC3AA28BB3ED40A /* PortalError.swift in Sources */,
 				F229E6CD0ABFFC2573DF5A26BA522BE1 /* PortalErrorCodes.swift in Sources */,
 				8C73D1F1B388B13E2EF5CBA3C917492B /* PortalErrorCodeTypes.swift in Sources */,
+				7EAA90062A291EA000773241 /* CurrencyConverter.swift in Sources */,
 				7E3D94742A09BF4300A2C6CE /* Chains.swift in Sources */,
 				E6035E3DD8AF34719A333C58A10AB6DA /* PortalKeychain.swift in Sources */,
 				6B6046FA016A9A560FA7F93B68923A6E /* PortalMpc.swift in Sources */,
