@@ -329,29 +329,72 @@ public class PortalMpc {
       return completion(Result(error: MpcError.backupNoLongerSupported(message: "[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = v3`.")))
     }
     
-    do {
-      // Obtain the signing share.
-      let signingShare = try keychain.getSigningShare()
-      progress?(MpcStatus(status: MpcStatuses.readingShare, done: false))
-      
-      // Derive the storage and throw an error if none was provided.
-      let storage = self.storage[method] as? Storage
-      print(self.storage)
-      if (storage == nil) {
-        return completion(Result(error: MpcError.unsupportedStorageMethod))
+    // Test the Keychain before generating.
+    print("Validating Keychain is available...")
+    keychain.validateOperations() { result in
+      // Handle errors
+      if result.error != nil {
+        print("❌ Keychain is not available:")
+        return completion(Result(error: result.error!))
       }
       
-      // Check if we are authenticated with iCloud or throw an error if we are not.
-      if (method == BackupMethods.iCloud.rawValue) {
-        print("Validating iCloud Storage is available...")
-        (storage as! ICloudStorage).validateOperations { (result: Result<Bool>) -> Void in
-          if (result.error != nil) {
-            print("❌ iCloud Storage is not available:")
-            print(result)
-            return completion(Result(error: result.error!))
+      print("Keychain is available, starting backup...")
+      
+      do {
+        // Obtain the signing share.
+        let signingShare = try keychain.getSigningShare()
+        progress?(MpcStatus(status: MpcStatuses.readingShare, done: false))
+        
+        // Derive the storage and throw an error if none was provided.
+        let storage = self.storage[method] as? Storage
+        print(self.storage)
+        if (storage == nil) {
+          return completion(Result(error: MpcError.unsupportedStorageMethod))
+        }
+        
+        // Check if we are authenticated with iCloud or throw an error if we are not.
+        if (method == BackupMethods.iCloud.rawValue) {
+          print("Validating iCloud Storage is available...")
+          (storage as! ICloudStorage).validateOperations { (result: Result<Bool>) -> Void in
+            if (result.error != nil) {
+              print("❌ iCloud Storage is not available:")
+              print(result)
+              return completion(Result(error: result.error!))
+            }
+            
+            print("iCloud Storage is available, starting backup...")
+            self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
+              if (backupResult.error != nil) {
+                return completion(Result(error: backupResult.error!))
+              }
+              progress?(MpcStatus(status: MpcStatuses.done, done: true))
+              completion(backupResult)
+            } progress: { status in
+              progress?(status)
+            }
           }
-
-          print("iCloud Storage is available, starting backup...")
+        } else if (method == BackupMethods.GoogleDrive.rawValue) {
+          print("Validating Google Drive Storage is available...")
+          (storage as! GDriveStorage).validateOperations { (result: Result<Bool>) -> Void in
+            if (result.error != nil) {
+              print("❌ Google Drive Storage is not available:")
+              print(result)
+              return completion(Result(error: result.error!))
+            }
+            
+            print("Google Drive Storage is available, starting backup...")
+            self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
+              if (backupResult.error != nil) {
+                return completion(Result(error: backupResult.error!))
+              }
+              progress?(MpcStatus(status: MpcStatuses.done, done: true))
+              completion(backupResult)
+            } progress: { status in
+              progress?(status)
+            }
+          }
+        } else if (method == BackupMethods.local.rawValue) {
+          print("Starting backup...")
           self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
             if (backupResult.error != nil) {
               return completion(Result(error: backupResult.error!))
@@ -361,43 +404,12 @@ public class PortalMpc {
           } progress: { status in
             progress?(status)
           }
+        } else {
+          return completion(Result(error: MpcError.unsupportedStorageMethod))
         }
-      } else if (method == BackupMethods.GoogleDrive.rawValue) {
-        print("Validating Google Drive Storage is available...")
-        (storage as! GDriveStorage).validateOperations { (result: Result<Bool>) -> Void in
-          if (result.error != nil) {
-            print("❌ Google Drive Storage is not available:")
-            print(result)
-            return completion(Result(error: result.error!))
-          }
-          
-          print("Google Drive Storage is available, starting backup...")
-          self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
-            if (backupResult.error != nil) {
-              return completion(Result(error: backupResult.error!))
-            }
-            progress?(MpcStatus(status: MpcStatuses.done, done: true))
-            completion(backupResult)
-          } progress: { status in
-            progress?(status)
-          }
-        }
-      } else if (method == BackupMethods.local.rawValue) {
-        print("Starting backup...")
-        self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
-          if (backupResult.error != nil) {
-            return completion(Result(error: backupResult.error!))
-          }
-          progress?(MpcStatus(status: MpcStatuses.done, done: true))
-          completion(backupResult)
-        } progress: { status in
-          progress?(status)
-        }
-      } else {
-        return completion(Result(error: MpcError.unsupportedStorageMethod))
+      } catch {
+        return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: "Backup failed")))
       }
-    } catch {
-      return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: "Backup failed")))
     }
   }
   
