@@ -10,6 +10,13 @@ Possible Types of changes include:
 - Fixed
 - Security
 
+## 0.2.4 - 2023-06-02
+### Added
+- Improved error messaging
+
+### Security
+- Internal mpc binary improvement
+
 ## 0.2.3 - 2023-05-26
 ### Added
 - Extension to `portal.api`: `getNFT`, `getTransactions`, `getBalances`
