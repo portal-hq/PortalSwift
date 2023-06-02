@@ -256,11 +256,15 @@ public class PortalMpc {
       }
       
       // Test the Keychain before generating.
-      keychain.testSetItem() { result in
+      print("Validating Keychain is available...")
+      keychain.validateOperations() { result in
         // Handle errors
         if result.error != nil {
+          print("❌ Keychain is not available:")
           return completion(Result(error: result.error!))
         }
+        
+        print("Keychain is available, starting generate...")
         
         // Call the MPC service to generate a new wallet.
         progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
@@ -582,12 +586,16 @@ public class PortalMpc {
     progress?(MpcStatus(status: MpcStatuses.readingShare, done: false))
     
     // Test keychain before we start.
-    keychain.testSetItem() { result in
+    print("Validating Keychain is available...")
+    keychain.validateOperations() { result in
       // Handle errors
       if result.error != nil {
+        print("❌ Keychain is not available:")
         return completion(Result(error: result.error!))
       }
       
+      print("Keychain is available, continuing recovery...")
+
       self.getBackupShare(cipherText: cipherText, method: method) { (result: Result<String>) -> Void in
         // Throw if there was an error getting the backup share.
         guard result.error == nil else {
