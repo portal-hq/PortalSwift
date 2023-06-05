@@ -80,9 +80,10 @@ public class PortalKeychain: MobileStorageAdapter {
   }
   
   /// Tests `setItem` in the client's keychain.
-  public func testSetItem(completion: @escaping (Result<OSStatus>) -> Void) {
-    let testKey = "answer"
-    setItem(key: testKey, value: "42") { [weak self] result in
+  public func validateOperations(completion: (Result<OSStatus>) -> Void) {
+    let testKey = "portal_test"
+    let testValue = "test_value"
+    setItem(key: testKey, value: testValue) { [weak self] result in
       // Handle errors.
       guard result.error == nil else {
         return completion(Result(error: result.error!))

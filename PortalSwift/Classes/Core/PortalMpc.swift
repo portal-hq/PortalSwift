@@ -326,11 +326,15 @@ public class PortalMpc {
       }
       
       // Test the Keychain before generating.
-      keychain.testSetItem() { result in
+      print("Validating Keychain is available...")
+      keychain.validateOperations() { result in
         // Handle errors
         if result.error != nil {
+          print("❌ Keychain is not available:")
           return completion(Result(error: result.error!))
         }
+        
+        print("Keychain is available, starting generate...")
         
         // Call the MPC service to generate a new wallet.
         progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
