@@ -200,7 +200,7 @@ public class PortalMpc {
     api: PortalApi,
     isSimulator: Bool = false,
     mpcHost: String = "mpc.portalhq.io",
-    version: String = "v3"
+    version: String = "v4"
   ) {
     // Basic setup
     self.apiKey = apiKey
@@ -249,8 +249,8 @@ public class PortalMpc {
   ///   - method: Either gdrive or icloud.
   ///   - completion: The callback which includes the cipherText of the backed up share.
   public func backup(method: BackupMethods.RawValue, completion: @escaping (Result<String>) -> Void, progress:  ((MpcStatus) -> Void)? = nil) -> Void {
-    if version != "v3" {
-      return completion(Result(error: MpcError.backupNoLongerSupported(message: "[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = v3`.")))
+    if version != "v4" {
+      return completion(Result(error: MpcError.backupNoLongerSupported(message: "[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = v4`.")))
     }
     
     do {
@@ -318,9 +318,9 @@ public class PortalMpc {
   /// - Returns: The address of the newly created MPC wallet.
   public func generate(completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)? = nil) -> Void {
     DispatchQueue.global(qos: .background).async { [self] in
-      if version != "v3" {
+      if version != "v4" {
         let result = Result<String>(error: MpcError.generateNoLongerSupported(
-          message: "[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = v3`."
+          message: "[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = v4`."
         ))
         completion(result)
       }
@@ -397,8 +397,8 @@ public class PortalMpc {
     completion: @escaping (Result<String>) -> Void,
     progress: ( (MpcStatus) -> Void)? = nil
   ) -> Void {
-    if version != "v3" {
-      return completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v3`.")))
+    if version != "v4" {
+      return completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v4`.")))
     }
     
     // Derive the storage and throw an error if none was provided.
