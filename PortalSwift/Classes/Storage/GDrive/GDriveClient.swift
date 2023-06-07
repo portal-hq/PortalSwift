@@ -203,6 +203,73 @@ class GDriveClient {
       }
     }
   }
+  
+  public func validateOperations(callback: @escaping (Result<Bool>) -> Void) {
+    let mockFileName = "portal_test.txt"
+    let mockContent = "test_value"
+
+    auth.getAccessToken() { accessToken in
+      if let error = accessToken.error {
+        callback(Result(error: error))
+        return
+      }
+
+      guard let accessToken = accessToken.data, !accessToken.isEmpty else {
+        callback(Result(error: GDriveStorageError.unknownError))
+        return
+      }
+
+      // Write
+      do {
+        try self.write(filename: mockFileName, content: mockContent) { writeResult in
+          if let error = writeResult.error {
+            callback(Result(error: error))
+            return
+          }
+
+          // Read
+          do {
+            try self.getIdForFilename(filename: mockFileName) { fileIdResult in
+              if let error = fileIdResult.error {
+                callback(Result(error: error))
+                return
+              }
+
+              guard let fileId = fileIdResult.data else {
+                callback(Result(error: GDriveStorageError.unknownError))
+                return
+              }
+
+              self.read(id: fileId) { readResult in
+                if let error = readResult.error {
+                  callback(Result(error: error))
+                  return
+                }
+
+                guard let readData = readResult.data, readData == mockContent else {
+                  callback(Result(error: GDriveStorageError.unknownError))
+                  return
+                }
+
+                // Delete
+                self.delete(id: fileId) { deleteResult in
+                  if let error = deleteResult.error {
+                    callback(Result(error: error))
+                  } else {
+                    callback(Result(data: true))
+                  }
+                }
+              }
+            }
+          } catch {
+            callback(Result(error: error))
+          }
+        }
+      } catch {
+        callback(Result(error: error))
+      }
+    }
+  }
 
   private func buildMultipartFormData(content: String, metadata: GDriveFileMetadata) throws -> String {
     let metadataJSON = try JSONEncoder().encode(metadata)

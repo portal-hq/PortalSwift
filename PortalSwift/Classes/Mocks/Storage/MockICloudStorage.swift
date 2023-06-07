@@ -20,8 +20,4 @@ public class MockICloudStorage: ICloudStorage {
   public override func delete(completion: @escaping (Result<Bool>) -> Void) -> Void {
     completion(Result(data: true))
   }
-
-  public override func getAvailability() -> String {
-    return ICloudStatus.available.rawValue
-  }
 }

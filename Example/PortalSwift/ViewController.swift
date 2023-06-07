@@ -174,11 +174,11 @@ class ViewController: UIViewController {
       }
     }
   }
-  
 
   @IBAction func handleBackup(_ sender: UIButton!) {
     print("Starting backup...")
-    PortalWrapper.backup(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user!) { (result) -> Void in
+    // PortalWrapper.backup(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user!) { (result) -> Void in
+    PortalWrapper.backup(backupMethod: BackupMethods.iCloud.rawValue, user: self.user!) { (result) -> Void in
       guard result.error == nil else {
         print("❌ handleBackup():",  result.error!)
         return
@@ -188,7 +188,8 @@ class ViewController: UIViewController {
   }
 
   @IBAction func handleRecover(_ sender: UIButton!) {
-    PortalWrapper.recover(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user!) { (result) -> Void in
+    // PortalWrapper.recover(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user!) { (result) -> Void in
+    PortalWrapper.recover(backupMethod: BackupMethods.iCloud.rawValue, user: self.user!) { (result) -> Void in
       guard result.error == nil else {
         print("❌ handleRecover(): Error fetching cipherText:", result.error!)
         return
@@ -384,13 +385,14 @@ class ViewController: UIViewController {
   func registerPortalUi(apiKey: String) -> Void {
     
     do {
-      guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
-        print("Couldnt load info plist")
-        return }
-      guard let GDRIVE_CLIENT_ID: String = infoDictionary["GDRIVE_CLIENT_ID"] as? String else {
-        print("Error: Do you have `GDRIVE_CLIENT_ID=$(GDRIVE_CLIENT_ID)` in your info.plist?")
-        return  }
-      let backup = BackupOptions(gdrive: GDriveStorage(clientID: GDRIVE_CLIENT_ID, viewController: self))
+      //      guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
+      //        print("Couldnt load info plist")
+      //        return }
+      //      guard let GDRIVE_CLIENT_ID: String = infoDictionary["GDRIVE_CLIENT_ID"] as? String else {
+      //        print("Error: Do you have `GDRIVE_CLIENT_ID=$(GDRIVE_CLIENT_ID)` in your info.plist?")
+      //        return  }
+      //      let backup = BackupOptions(gdrive: GDriveStorage(clientID: GDRIVE_CLIENT_ID, viewController: self))
+      let backup = BackupOptions(icloud: ICloudStorage())
       PortalWrapper.registerPortal(apiKey: apiKey, backup: backup) { (result) -> Void in
         DispatchQueue.main.async {
           do {
