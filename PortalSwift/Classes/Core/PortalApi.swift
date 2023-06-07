@@ -210,7 +210,7 @@ public class PortalApi {
     try requests.get(
       path: "/api/v1/clients/me",
       headers: [
-        "Authorization": String(format: "Bearer %@", apiKey)
+        "Authorization": "Bearer \(apiKey)"
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<Client>) -> Void in
@@ -229,7 +229,7 @@ public class PortalApi {
     try requests.get(
       path: "/api/v1/config/dapps",
       headers: [
-        "Authorization": String(format: "Bearer %@", apiKey)
+        "Authorization": "Bearer \(apiKey)"
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[Dapp]>) -> Void in
@@ -285,7 +285,7 @@ public class PortalApi {
     try requests.get(
       path: "/api/v1/config/networks",
       headers: [
-        "Authorization": String(format: "Bearer %@", apiKey)
+        "Authorization": "Bearer \(apiKey)"
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[ContractNetwork]>) -> Void in
@@ -301,7 +301,7 @@ public class PortalApi {
     try requests.get(
       path: "/api/v1/clients/me/nfts?chainId=\(chainId)",
       headers: [
-        "Authorization": String(format: "Bearer %@", apiKey)
+        "Authorization": "Bearer \(apiKey)"
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[NFT]>) -> Void in
@@ -333,7 +333,7 @@ public class PortalApi {
     try requests.get(
       path: path,
       headers: [
-        "Authorization": String(format: "Bearer %@", apiKey)
+        "Authorization": "Bearer \(apiKey)"
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[Transaction]>) -> Void in
@@ -351,7 +351,7 @@ public class PortalApi {
     try requests.get(
       path: "/api/v1/clients/me/balances?chainId=\(chainId)",
       headers: [
-        "Authorization": String(format: "Bearer %@", apiKey)
+        "Authorization": "Bearer \(apiKey)"
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[Balance]>) -> Void in
@@ -369,7 +369,7 @@ public class PortalApi {
         path: "/api/v1/clients/me/wallet/stored-on-client",
         body: [:],
         headers: [
-          "Authorization": String(format: "Bearer %@", apiKey)
+          "Authorization": "Bearer \(apiKey)"
         ],
         requestType: HttpRequestType.CustomRequest
     ) { (result: Result<String>) -> Void in
@@ -378,16 +378,19 @@ public class PortalApi {
   }
   
   /// Updates the client's wallet backup state to have successfully stored the client backup share with the custodian.
-  /// - Parameter completion: The callback that contains the response status.
+  /// - Parameters:
+  ///   - success: Boolean indicating whether the storage operation failed.
+  ///   - completion: The callback that contains the response status.
   /// - Returns: Void.
   public func storedClientBackupShare(
+    success: Bool,
     completion: @escaping (Result<String>) -> Void
   ) throws -> Void {
     try requests.put(
         path: "/api/v1/clients/me/wallet/stored-client-backup-share",
-        body: [:],
+        body: ["success": success],
         headers: [
-          "Authorization": String(format: "Bearer %@", apiKey)
+          "Authorization": "Bearer \(apiKey)"
         ],
         requestType: HttpRequestType.CustomRequest
     ) { (result: Result<String>) -> Void in

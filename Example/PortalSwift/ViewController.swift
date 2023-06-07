@@ -192,10 +192,33 @@ class ViewController: UIViewController {
     PortalWrapper.recover(backupMethod: BackupMethods.iCloud.rawValue, user: self.user!) { (result) -> Void in
       guard result.error == nil else {
         print("❌ handleRecover(): Error fetching cipherText:", result.error!)
+        do {
+          try self.PortalWrapper.portal!.api.storedClientBackupShare(success: false) { result in
+            guard result.error == nil else {
+              print("❌ handleRecover(): Error notifying Portal that backup share was not stored.")
+              return
+            }
+
+            return
+          }
+        } catch {
+          print("❌ handleRecover(): Error notifying Portal that backup share was not stored.")
+        }
         return
       }
       
-      self.updateStaticContent()
+      do {
+        try self.PortalWrapper.portal!.api.storedClientBackupShare(success: true) { result in
+          guard result.error == nil else {
+            print("❌ handleRecover(): Error notifying Portal that backup share was stored.")
+            return
+          }
+
+          self.updateStaticContent()
+        }
+      } catch {
+        print("❌ handleRecover(): Error notifying Portal that backup share was stored.")
+      }
     }
   }
 
@@ -228,6 +251,7 @@ class ViewController: UIViewController {
     deleteKeychain()
     updateStaticContent()
   }
+
   func deleteKeychain() {
     do {
       print("Here is the keychain address: ", try portal?.keychain.getAddress() ?? "")
@@ -240,6 +264,7 @@ class ViewController: UIViewController {
 
     }
   }
+
   func updateStaticContent() {
     populateAddressInformation()
     retrieveNFTs()
