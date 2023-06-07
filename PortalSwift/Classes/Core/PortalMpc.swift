@@ -668,12 +668,14 @@ public class PortalMpc {
         
         self.recoverBackup(signingShare: result.data!) { backupResult in
           if backupResult.error != nil {
+            print("Signing shares were successfully recovered. Try running backup again.")
             return completion(Result(error: backupResult.error!))
           }
           
           self.encryptShare(mpcShare: backupResult.data!) { encryptedResult in
             // Handle errors
             if encryptedResult.error != nil {
+              print("Signing shares were successfully recovered. Try running backup again.")
               return completion(Result(error: encryptedResult.error!))
             }
             
@@ -683,6 +685,7 @@ public class PortalMpc {
             storage.write(privateKey: encryptedResult.data!.key) { (result: Result<Bool>) -> Void in
               // Throw an error if we can't write to storage.
               if !result.data! {
+                print("Signing shares were successfully recovered. Try running backup again.")
                 return completion(Result(error: result.error!))
               }
               
