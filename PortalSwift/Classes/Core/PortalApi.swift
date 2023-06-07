@@ -376,4 +376,22 @@ public class PortalApi {
       completion(result)
     }
   }
+  
+  /// Updates the client's wallet backup state to have successfully stored the client backup share with the custodian.
+  /// - Parameter completion: The callback that contains the response status.
+  /// - Returns: Void.
+  public func storedClientBackupShare(
+    completion: @escaping (Result<String>) -> Void
+  ) throws -> Void {
+    try requests.put(
+        path: "/api/v1/clients/me/wallet/stored-client-backup-share",
+        body: [:],
+        headers: [
+          "Authorization": String(format: "Bearer %@", apiKey)
+        ],
+        requestType: HttpRequestType.CustomRequest
+    ) { (result: Result<String>) -> Void in
+      completion(result)
+    }
+  }
 }
