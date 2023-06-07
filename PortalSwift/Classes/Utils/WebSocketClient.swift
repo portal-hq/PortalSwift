@@ -22,6 +22,27 @@ struct ConnectData: Codable {
   let topic: String?
 }
 
+struct ConnectedData: Codable {
+  let active: Bool
+  let expiry: Int32?
+  let peerMetadata: PeerMetadata
+  let relay: ProtocolOptions?
+  let topic: String?
+}
+
+struct ApprovedV1Data: Codable {
+  let address: String
+  let chainId: String
+  let payloadId: String
+}
+
+struct ConnectedV1Data: Codable {
+  let address: String
+  let chainId: String
+  let payloadId: String
+  let connected: Bool
+}
+
 struct ConnectV1Data: Codable {
   let id: Int
   let jsonrpc: String
@@ -127,6 +148,16 @@ struct WebSocketConnectedMessage: Codable {
 
 struct WebSocketConnectedV1Message: Codable {
   var event: String = "connected"
+  let data: ConnectedV1Data
+}
+
+struct WebSocketDappSessionRequestMessage: Codable {
+  var event: String = "portal_dappSessionRequest"
+  let data: ConnectData
+}
+
+struct WebSocketDappSessionRequestV1Message: Codable {
+  var event: String = "portal_dappSessionRequest"
   let data: ConnectV1Data
 }
 
@@ -172,8 +203,9 @@ enum WebSocketRequestData: Codable {
 
 struct EventHandlers {
   var close: [() -> Void]
+  var dapp_session_requested: [(ConnectV1Data) -> Void]
   var connected: [(ConnectData) -> Void]
-  var connectedV1: [(ConnectV1Data) -> Void]
+  var connectedV1: [(ConnectedV1Data) -> Void]
   var disconnect: [(DisconnectData) -> Void]
   var session_request: [(SessionRequestData) -> Void]
   var session_request_address: [(SessionRequestAddressData) -> Void]
@@ -181,6 +213,7 @@ struct EventHandlers {
   
   init() {
     close = []
+    dapp_session_requested = []
     connected = []
     connectedV1 = []
     disconnect = []
@@ -342,7 +375,15 @@ class WebSocketClient : Starscream.WebSocketDelegate {
                   emit(payload.event, payload.data)
                   return
                 } catch {
-                  print("[WebSocketClient] Error when processing incoming data: \(error)")
+                  print("[WebSocketClient] Unable to parse message as WebSocketDisconnectMessage, attempting WebSocketDappSessionRequestV1Message...")
+                  do {
+                    let payload = try JSONDecoder().decode(WebSocketDappSessionRequestV1Message.self, from: data)
+                    print("[WebSocketClient] Received message: \(payload)")
+                    emit(payload.event, payload.data)
+                    return
+                  } catch {
+                    print("[WebSocketClient] Error when processing incoming data: \(error)")
+                  }
                 }
               }
             }
@@ -386,7 +427,7 @@ class WebSocketClient : Starscream.WebSocketDelegate {
     }
   }
   
-  func emit(_ event: String, _ data: ConnectV1Data) {
+  func emit(_ event: String, _ data: ConnectedV1Data) {
     // Get the list of event handlers for this event
     let eventHandlers = events.connectedV1
     
@@ -471,6 +512,23 @@ class WebSocketClient : Starscream.WebSocketDelegate {
     }
   }
   
+  func emit(_ event: String, _ data: ConnectV1Data) {
+    // Get the list of event handlers for this event
+    let eventHandlers = events.dapp_session_requested
+    
+    // Ensure there's something to invoke
+    if (eventHandlers.count > 0) {
+      // Loop through the event handlers
+      for handler in eventHandlers {
+        // Invoke the handler
+        handler(data)
+      }
+    } else {
+      // Ignore the event
+      print("[PortalConnect] No registered event handlers for \(event). Ignoring...")
+    }
+  }
+  
   func on(_ event: String, _ handler: @escaping () -> Void) {
     // Add event handler to the list
     events.close.append(handler)
@@ -481,9 +539,14 @@ class WebSocketClient : Starscream.WebSocketDelegate {
     events.connected.append(handler)
   }
   
-  func on(_ event: String, _ handler: @escaping (ConnectV1Data) -> Void) {
+  func on(_ event: String, _ handler: @escaping (ConnectedV1Data) -> Void) {
     // Add event handler to the list
     events.connectedV1.append(handler)
+  }
+  
+  func on(_ event: String, _ handler: @escaping (ConnectV1Data) -> Void) {
+    // Add event handler to the list
+    events.dapp_session_requested.append(handler)
   }
   
   func on(_ event: String, _ handler: @escaping (DisconnectData) -> Void) {

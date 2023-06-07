@@ -12,6 +12,16 @@ struct SignatureReceivedMessage: Codable {
   let data: SignatureReceivedData
 }
 
+struct DappSessionRequestApprovedMessage: Codable {
+  let event: String
+  let data: ApprovedV1Data
+}
+
+struct DappSessionRequestRejectedMessage: Codable {
+  let event: String
+  let data: ApprovedV1Data
+}
+
 struct SignatureReceivedData: Codable {
   let topic: String
   let transactionHash: String
@@ -22,6 +32,7 @@ public class PortalConnect {
   private var client: WebSocketClient
   private var connected: Bool = false
   private var portal: Portal
+  private var address: String
   
   public init(_ portal: Portal, _ webSocketServer: String = "connect.portalhq.io") {
     // Set up webSocketClient
@@ -32,10 +43,13 @@ public class PortalConnect {
     )
     
     self.portal = portal
+    self.address = portal.mpc.getAddress()
+
   }
   
   public func connect(_ uri: String) {
     client.on("close", handleClose)
+    client.on("portal_dappSessionRequested", handleDappSessionRequestedV1)
     client.on("connected", handleConnected)
     client.on("connectedV1", handleConnectedV1)
     client.on("disconnected", handleDisconnected)
@@ -45,6 +59,36 @@ public class PortalConnect {
     
     client.connect(uri: uri)
   }
+  func handleDappSessionRequestedV1(data: ConnectV1Data) {
+    print("recieved event portal_dappSessionRequested")
+    _ = portal.provider.once(event: Events.PortalDappSessionApproved.rawValue, callback: { [self] approved in
+      // If the approved event is fired
+      let event = DappSessionRequestApprovedMessage(event: "portal_dappSessionApproved", data: ApprovedV1Data(address: self.address, chainId: String(portal.chainId), payloadId: String(data.id)))
+      
+      do {
+        let message = try JSONEncoder().encode(event)
+        
+        self.client.send(message)
+      } catch {
+        print("[PortalConnect] Error encoding DappSessionRequestApprovedMessage: \(error)")
+      }
+    }).once(event: Events.PortalDappSessionRejected.rawValue, callback: { [self] approved in
+      // If the approved event is fired
+      print("rejected")
+      let event = DappSessionRequestRejectedMessage(event: "portal_dappSessionRejected", data: ApprovedV1Data(address: self.address, chainId: String(portal.chainId), payloadId: String(data.id)))
+      
+      do {
+        let message = try JSONEncoder().encode(event)
+        
+        self.client.send(message)
+      } catch {
+        print("[PortalConnect] Error encoding DappSessionRequestRejectedMessage: \(error)")
+      }
+      
+    })
+    _ = portal.provider.emit(event: Events.PortalDappSessionRequested.rawValue, data: data)
+      
+    }
   
   func handleClose() {
     connected = false
@@ -55,7 +99,7 @@ public class PortalConnect {
     connected = true
   }
   
-  func handleConnectedV1(data: ConnectV1Data) {
+  func handleConnectedV1(data: ConnectedV1Data) {
     connected = true
   }
   
@@ -78,7 +122,7 @@ public class PortalConnect {
         return
       }
       
-      print("[PortalConnect] Signing result: \(result.data)")
+      print("[PortalConnect] Signing result: \(String(describing: result.data))")
       
       let signature = ((result.data as! RequestCompletionResult).result as! Result<SignerResult>).data!.signature!
       
@@ -109,6 +153,8 @@ public class PortalConnect {
       data.topic
     )
       
+    _ = portal.provider.emit(event: Events.PortalSigningRequested.rawValue , data: [])
+    
     handleProviderRequest(method: method, params: params) { result in
       if (result.error != nil) {
         print("[PortalConnect] \(result.error!)")

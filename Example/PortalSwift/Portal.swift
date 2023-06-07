@@ -114,7 +114,7 @@ class PortalWrapper {
       let chainId = 5
       let chain = "goerli"
       portal = try Portal(
-        apiKey: apiKey,
+        apiKey: "f09ace22-7333-4543-9649-730e559e8685",
         backup: backup,
         chainId: chainId,
         keychain: keychain,
@@ -122,10 +122,12 @@ class PortalWrapper {
           chainId: "https://eth-\(chain).g.alchemy.com/v2/\(ALCHEMY_API_KEY)",
         ],
         autoApprove: true,
-        apiHost: API_URL!,
-        mpcHost: MPC_URL!
+        apiHost: "localhost:3001",
+        mpcHost: "localhost:3002"
       )
       _ = portal?.provider.on(event: Events.PortalSigningRequested.rawValue, callback: { [weak self] data in self?.didRequestApproval(data: data)})
+      
+      _ = portal?.provider.on(event: Events.PortalDappSessionRequested.rawValue, callback: { [weak self] data in self?.didRequestApprovalDapps(data: data)})
     } catch ProviderInvalidArgumentError.invalidGatewayUrl {
       print("❌ Error: Invalid Gateway URL")
     } catch PortalArgumentError.noGatewayConfigForChain(let chainId) {
@@ -138,6 +140,10 @@ class PortalWrapper {
   
   func didRequestApproval(data: Any) -> Void {
     _ = portal?.provider.emit(event: Events.PortalSigningApproved.rawValue, data: data)
+  }
+  
+  func didRequestApprovalDapps(data: Any) -> Void {
+    _ = portal?.provider.emit(event: Events.PortalDappSessionRejected.rawValue, data: data)
   }
   
   

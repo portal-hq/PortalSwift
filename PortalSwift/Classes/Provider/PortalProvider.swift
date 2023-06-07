@@ -25,6 +25,9 @@ public enum Events: String {
   case PortalSigningApproved = "portal_signingApproved"
   case PortalSigningRejected = "portal_signingRejected"
   case PortalSigningRequested = "portal_signingRequested"
+  case PortalDappSessionRequested = "portal_dappSessionRequested"
+  case PortalDappSessionApproved = "portal_dappSessionApproved"
+  case PortalDappSessionRejected = "portal_dappSessionRejected"
 }
 
 /// All available provider methods.

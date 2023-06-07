@@ -25,7 +25,7 @@ class ConnectViewController: UIViewController {
     super.viewDidLoad()
     
     connectButton.isEnabled = false
-    connect = PortalConnect(portal!)
+    connect = PortalConnect(portal!, "localhost:3003")
   }
   
   @IBAction func connectPressed() {
