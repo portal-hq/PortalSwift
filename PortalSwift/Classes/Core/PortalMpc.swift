@@ -788,8 +788,19 @@ public class PortalMpc {
             return completion(Result(error: result.error!))
           }
           
-          // Return the new signing share.
-          return completion(Result(data: rotateResult.data!.dkgResult))
+          do {
+            try self.api.storedClientSigningShare() { result in
+              // Handle errors
+              if result.error != nil {
+                return completion(Result(error: result.error!))
+              }
+              
+              // Return the new signing share.
+              return completion(Result(data: rotateResult.data!.dkgResult))
+            }
+          } catch {
+            return completion(Result(error: error))
+          }
         }
       }
     } catch {
