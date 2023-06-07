@@ -360,18 +360,27 @@ public class PortalApi {
   }
   
   /// Updates the client's wallet state to be stored on the client.
-  /// - Parameter completion: The callback that contains the response status.
+  /// - Parameters:
+  ///   - recoverSigning: Optional boolean indicating whether it's from recover signing. If not nil, it's included as a query parameter in the URL.
+  ///   - completion: The callback that contains the response status.
   /// - Returns: Void.
   public func storedClientSigningShare(
+    recoverSigning: Bool? = nil,
     completion: @escaping (Result<String>) -> Void
   ) throws -> Void {
+    var path = "/api/v1/clients/me/wallet/stored-on-client"
+    
+    if let recoverSigning = recoverSigning {
+      path += "?fromRecoverSigning=\(recoverSigning)"
+    }
+    
     try requests.put(
-        path: "/api/v1/clients/me/wallet/stored-on-client",
-        body: [:],
-        headers: [
-          "Authorization": "Bearer \(apiKey)"
-        ],
-        requestType: HttpRequestType.CustomRequest
+      path: path,
+      body: [:],
+      headers: [
+        "Authorization": "Bearer \(apiKey)"
+      ],
+      requestType: HttpRequestType.CustomRequest
     ) { (result: Result<String>) -> Void in
       completion(result)
     }

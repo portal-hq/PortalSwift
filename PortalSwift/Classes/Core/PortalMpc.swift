@@ -816,7 +816,7 @@ public class PortalMpc {
           }
           
           do {
-            try self.api.storedClientSigningShare() { result in
+            try self.api.storedClientSigningShare(recoverSigning: true) { result in
               // Handle errors
               if result.error != nil {
                 return completion(Result(error: result.error!))
