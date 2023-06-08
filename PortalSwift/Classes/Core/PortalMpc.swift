@@ -290,7 +290,8 @@ public class PortalMpc {
             }
 
             progress?(MpcStatus(status: MpcStatuses.done, done: true))
-            completion(backupResult)
+            self.isWalletModificationInProgress = false
+            return completion(backupResult)
           } progress: { status in
             progress?(status)
           }
@@ -314,7 +315,7 @@ public class PortalMpc {
 
             progress?(MpcStatus(status: MpcStatuses.done, done: true))
             self.isWalletModificationInProgress = false
-            completion(backupResult)
+            return completion(backupResult)
           } progress: { status in
             progress?(status)
           }
@@ -328,7 +329,7 @@ public class PortalMpc {
           }
           progress?(MpcStatus(status: MpcStatuses.done, done: true))
           self.isWalletModificationInProgress = false
-          completion(backupResult)
+          return completion(backupResult)
         } progress: { status in
           progress?(status)
         }
@@ -488,6 +489,7 @@ public class PortalMpc {
           if (result.error != nil) {
             print("❌ iCloud Storage is not available:")
             print(result)
+            self.isWalletModificationInProgress = false
             return completion(Result(error: result.error!))
           }
           print("iCloud Storage is available, continuing...")
@@ -500,7 +502,7 @@ public class PortalMpc {
             }
             progress?(MpcStatus(status: MpcStatuses.done, done: true))
             self.isWalletModificationInProgress = false
-            completion(Result(data: recoveryResult.data!))
+            return completion(Result(data: recoveryResult.data!))
           } progress: { status in
             progress?(status)
           }
@@ -523,7 +525,7 @@ public class PortalMpc {
             }
             progress?(MpcStatus(status: MpcStatuses.done, done: true))
             self.isWalletModificationInProgress = false
-            completion(Result(data: recoveryResult.data!))
+            return completion(Result(data: recoveryResult.data!))
           } progress: { status in
             progress?(status)
           }
@@ -536,13 +538,13 @@ public class PortalMpc {
           }
           progress?(MpcStatus(status: MpcStatuses.done, done: true))
           self.isWalletModificationInProgress = false
-          completion(Result(data: recoveryResult.data!))
+          return completion(Result(data: recoveryResult.data!))
         } progress: { status in
           progress?(status)
         }
       } else {
         self.isWalletModificationInProgress = false
-        completion(Result(error: MpcError.unsupportedStorageMethod))
+        return completion(Result(error: MpcError.unsupportedStorageMethod))
       }
     }
   }
