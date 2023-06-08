@@ -180,10 +180,37 @@ class ViewController: UIViewController {
     // PortalWrapper.backup(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user!) { (result) -> Void in
     PortalWrapper.backup(backupMethod: BackupMethods.iCloud.rawValue, user: self.user!) { (result) -> Void in
       guard result.error == nil else {
-        print("❌ handleBackup():",  result.error!)
-        return
-      }
-      print("✅ handleBackup(): Successfully sent custodian cipherText")
+          print("❌ handleBackup():",  result.error!)
+          
+          do {
+            try self.PortalWrapper.portal!.api.storedClientBackupShare(success: false) { result in
+              guard result.error == nil else {
+
+                print("❌ handleBackup(): Error notifying Portal that backup share was not stored.")
+                return
+              }
+
+              return
+            }
+          } catch {
+            print("❌ handleBackup(): Error notifying Portal that backup share was not stored.")
+          }
+          return
+        }
+        
+        do {
+          try self.PortalWrapper.portal!.api.storedClientBackupShare(success: true) { result in
+            guard result.error == nil else {
+              print("❌ handleBackup(): Error notifying Portal that backup share was stored.")
+              return
+            }
+
+            self.updateStaticContent()
+            print("✅ handleBackup(): Successfully sent custodian cipherText")
+          }
+        } catch {
+          print("❌ handleBackup(): Error notifying Portal that backup share was stored.")
+        }
     }
   }
 
@@ -215,6 +242,7 @@ class ViewController: UIViewController {
           }
 
           self.updateStaticContent()
+          print("✅ handleRecover(): Successfully recovered")
         }
       } catch {
         print("❌ handleRecover(): Error notifying Portal that backup share was stored.")
