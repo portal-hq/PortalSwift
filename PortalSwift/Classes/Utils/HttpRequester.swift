@@ -80,4 +80,26 @@ public class HttpRequester {
       completion(result)
     }
   }
+  
+  func put<T: Codable>(
+    path: String,
+    body: Dictionary<String, Any>?,
+    headers: Dictionary<String, String>,
+    requestType: HttpRequestType,
+    completion: @escaping (Result<T>) -> Void
+  ) throws -> Void {
+    // Create the request.
+    let request = HttpRequest<T, Dictionary<String, Any>?>(
+      url: String(format:"%@%@", self.baseUrl, path),
+      method: "PUT",
+      body: body,
+      headers: headers,
+      requestType: requestType
+    )
+
+    // Attempt to send the request.
+    request.send() { (result: Result<T>) -> Void in
+      completion(result)
+    }
+  }
 }

@@ -33,14 +33,13 @@ public class PortalKeychain: MobileStorageAdapter {
   /// - Returns: The client's signing share.
   override public func getSigningShare() throws -> String {
     return try getItem(item: SigningShare)
-    
   }
   
   /// Sets the address in the client's keychain.
   /// - Parameter address: The public address of the client's wallet.
-  override public func setAddress(
+  public func setAddress(
     address: String,
-    completion: (Result<OSStatus>) -> Void
+    completion: @escaping (Result<OSStatus>) -> Void
   ) {
     setItem(key: Address, value: address) { result in
       // Handle errors
@@ -54,9 +53,9 @@ public class PortalKeychain: MobileStorageAdapter {
   
   /// Sets the signing share in the client's keychain.
   /// - Parameter signingShare: A dkg object.
-  override public func setSigningShare(
+  public func setSigningShare(
     signingShare: String,
-    completion: (Result<OSStatus>) -> Void
+    completion: @escaping (Result<OSStatus>) -> Void
   ) -> Void {
     setItem(key: SigningShare, value: signingShare) { result in
       // Handle errors
@@ -81,9 +80,11 @@ public class PortalKeychain: MobileStorageAdapter {
   }
   
   /// Tests `setItem` in the client's keychain.
-  public func testSetItem(completion: (Result<OSStatus>) -> Void) {
-    let testKey = "answer"
-    setItem(key: testKey, value: "42") { [weak self] result in
+  public func validateOperations(completion: @escaping (Result<OSStatus>) -> Void) {
+    let testKey = "portal_test"
+    let testValue = "test_value"
+
+    setItem(key: testKey, value: testValue) { result in
       // Handle errors.
       guard result.error == nil else {
         return completion(Result(error: result.error!))
@@ -91,7 +92,7 @@ public class PortalKeychain: MobileStorageAdapter {
       
       do {
         // Delete the key that was created.
-        try self?.deleteItem(key: testKey)
+        try self.deleteItem(key: testKey)
         return completion(Result(data: result.data!))
       } catch {
         return completion(Result(error: error))
@@ -130,7 +131,7 @@ public class PortalKeychain: MobileStorageAdapter {
   private func setItem(
     key: String,
     value: String,
-    completion: (Result<OSStatus>) -> Void
+    completion: @escaping (Result<OSStatus>) -> Void
   ) -> Void {
     do {
       // Construct the query to set the keychain item.

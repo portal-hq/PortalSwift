@@ -133,28 +133,26 @@ public enum MpcStatuses: String {
   case storingShare = "Storing share"
 }
 
-
-
-
 /// A list of errors MPC can throw.
 public enum MpcError: Error {
   case backupNoLongerSupported(message: String)
+  case failedToGetBackupFromStorage
   case generateNoLongerSupported(message: String)
-  case recoverNoLongerSupported(message: String)
   case noSigningSharePresent
+  case recoverNoLongerSupported(message: String)
   case signingRecoveryError(message: String)
+  case unableToAuthenticate
+  case unableToDecodeShare
+  case unableToRetrieveClient(String)
+  case unableToWriteToKeychain
   case unexpectedErrorOnBackup(message: String)
   case unexpectedErrorOnDecrypt(message: String)
   case unexpectedErrorOnEncrypt(message: String)
   case unexpectedErrorOnGenerate(message: String)
   case unexpectedErrorOnRecoverBackup(message: String)
   case unexpectedErrorOnSign(message: String)
-  case unableToRetrieveClient(String)
-  case unableToDecodeShare
-  case unableToAuthenticate
-  case unableToWriteToKeychain
   case unsupportedStorageMethod
-  case failedToGetBackupFromStorage
+  case walletModificationAlreadyInProgress
 }
 
 /// A list of errors RSA can throw.
@@ -181,6 +179,7 @@ public class PortalMpc {
   private var version: String
   private var rsaHeader = "-----BEGIN RSA KEY-----\n"
   private var rsaFooter = "\n-----END RSA KEY-----"
+  private var isWalletModificationInProgress: Bool = false
   
   /// Create an instance of Portal's MPC service.
   /// - Parameters:
@@ -200,7 +199,7 @@ public class PortalMpc {
     api: PortalApi,
     isSimulator: Bool = false,
     mpcHost: String = "mpc.portalhq.io",
-    version: String = "v3"
+    version: String = "v4"
   ) {
     // Basic setup
     self.apiKey = apiKey
@@ -249,9 +248,16 @@ public class PortalMpc {
   ///   - method: Either gdrive or icloud.
   ///   - completion: The callback which includes the cipherText of the backed up share.
   public func backup(method: BackupMethods.RawValue, completion: @escaping (Result<String>) -> Void, progress:  ((MpcStatus) -> Void)? = nil) -> Void {
-    if version != "v3" {
-      return completion(Result(error: MpcError.backupNoLongerSupported(message: "[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = v3`.")))
+    if version != "v4" {
+      return completion(Result(error: MpcError.backupNoLongerSupported(message: "[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = v4`.")))
     }
+    
+    guard !isWalletModificationInProgress else {
+      print("❌ A wallet modification operation is already in progress.")
+      return completion(Result(error: MpcError.walletModificationAlreadyInProgress))
+    }
+
+    self.isWalletModificationInProgress = true
     
     do {
       // Obtain the signing share.
@@ -261,55 +267,77 @@ public class PortalMpc {
       // Derive the storage and throw an error if none was provided.
       let storage = self.storage[method] as? Storage
       if (storage == nil) {
+        self.isWalletModificationInProgress = false
         return completion(Result(error: MpcError.unsupportedStorageMethod))
       }
       
       // Check if we are authenticated with iCloud or throw an error if we are not.
       if (method == BackupMethods.iCloud.rawValue) {
-        (storage as! ICloudStorage).checkAvailability { (result: Result<Any>) -> Void in
+        print("Validating iCloud Storage is available...")
+        (storage as! ICloudStorage).validateOperations() { (result: Result<Bool>) -> Void in
           if (result.error != nil) {
-            print("❌ iCloud is not available:")
+            print("❌ iCloud Storage is not available:")
             print(result)
+            self.isWalletModificationInProgress = false
             return completion(Result(error: result.error!))
-          } else {
-            print("Running backup since iCloud is available! 🎉")
-            self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
-              if (backupResult.error != nil) {
-                return completion(Result(error: backupResult.error!))
-              }
-              progress?(MpcStatus(status: MpcStatuses.done, done: true))
-              completion(backupResult)
-            } progress: { status in
-              progress?(status)
+          }
+          print("iCloud Storage is available, continuing...")
+
+          self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
+            if (backupResult.error != nil) {
+              self.isWalletModificationInProgress = false
+              return completion(Result(error: backupResult.error!))
             }
+
+            progress?(MpcStatus(status: MpcStatuses.done, done: true))
+            completion(backupResult)
+          } progress: { status in
+            progress?(status)
           }
         }
       } else if (method == BackupMethods.GoogleDrive.rawValue) {
-        print("Running backup since Google Drive is available! 🎉")
-        self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
-          if (backupResult.error != nil) {
-            return completion(Result(error: backupResult.error!))
+        print("Validating Google Drive Storage is available...")
+        (storage as! GDriveStorage).validateOperations { (result: Result<Bool>) -> Void in
+          if (result.error != nil) {
+            print("❌ Google Drive Storage is not available:")
+            print(result)
+            self.isWalletModificationInProgress = false
+            return completion(Result(error: result.error!))
           }
-          progress?(MpcStatus(status: MpcStatuses.done, done: true))
-          completion(backupResult)
-        } progress: { status in
-          progress?(status)
+          print("Google Drive Storage is available, starting backup...")
+          
+          self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
+            if (backupResult.error != nil) {
+              self.isWalletModificationInProgress = false
+              return completion(Result(error: backupResult.error!))
+            }
+
+            progress?(MpcStatus(status: MpcStatuses.done, done: true))
+            self.isWalletModificationInProgress = false
+            completion(backupResult)
+          } progress: { status in
+            progress?(status)
+          }
         }
       } else if (method == BackupMethods.local.rawValue) {
-        print("Running backup using Local Fiel Storage! 🎉")
+        print("Starting backup...")
         self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
           if (backupResult.error != nil) {
+            self.isWalletModificationInProgress = false
             return completion(Result(error: backupResult.error!))
           }
           progress?(MpcStatus(status: MpcStatuses.done, done: true))
+          self.isWalletModificationInProgress = false
           completion(backupResult)
         } progress: { status in
           progress?(status)
         }
       } else {
+        self.isWalletModificationInProgress = false
         return completion(Result(error: MpcError.unsupportedStorageMethod))
       }
     } catch {
+      self.isWalletModificationInProgress = false
       return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: "Backup failed")))
     }
   }
@@ -318,33 +346,44 @@ public class PortalMpc {
   /// - Returns: The address of the newly created MPC wallet.
   public func generate(completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)? = nil) -> Void {
     DispatchQueue.global(qos: .background).async { [self] in
-      if version != "v3" {
+      if version != "v4" {
         let result = Result<String>(error: MpcError.generateNoLongerSupported(
-          message: "[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = v3`."
+          message: "[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = v4`."
         ))
         completion(result)
       }
       
-      // Test the Keychain before generating.
-      keychain.testSetItem() { result in
+      guard !isWalletModificationInProgress else {
+        print("❌ A wallet modification operation is already in progress.")
+        return completion(Result(error: MpcError.walletModificationAlreadyInProgress))
+      }
+
+      self.isWalletModificationInProgress = true
+      
+      print("Validating Keychain is available...")
+      keychain.validateOperations() { result in
         // Handle errors
         if result.error != nil {
+          print("❌ Keychain is not available:")
+          self.isWalletModificationInProgress = false
           return completion(Result(error: result.error!))
         }
-        
-        // Call the MPC service to generate a new wallet.
-        progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
-        let response = ClientGenerate(apiKey, mpcHost, version)
-        
-        // Parse the share
-        progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
-        let jsonData = response.data(using: .utf8)!
-        
+        print("Keychain is available, continuing...")
+
         do {
+          // Call the MPC service to generate a new wallet.
+          progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
+          let response = ClientGenerate(self.apiKey, self.mpcHost, self.version)
+          
+          // Parse the share
+          progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
+          let jsonData = response.data(using: .utf8)!
+
           let generateResult: GenerateResult = try JSONDecoder().decode(GenerateResult.self, from: jsonData)
 
           // Throw if there was an error generating the wallet.
           guard generateResult.error.code == 0 else {
+            self.isWalletModificationInProgress = false
             return completion(Result(error: PortalMpcError(generateResult.error)))
           }
           
@@ -358,9 +397,10 @@ public class PortalMpc {
           
           progress?(MpcStatus(status: MpcStatuses.storingShare, done: false))
           
-          keychain.setSigningShare(signingShare: mpcShareString) { result in
+          self.keychain.setSigningShare(signingShare: mpcShareString) { result in
             // Handle errors
             if result.error != nil {
+              self.isWalletModificationInProgress = false
               return completion(Result(error: result.error!))
             }
             
@@ -368,18 +408,35 @@ public class PortalMpc {
             self.address = address
             
             
-            keychain.setAddress(address: address ) { result in
+            self.keychain.setAddress(address: address ) { result in
               // Handle errors
               if result.error != nil {
+                self.isWalletModificationInProgress = false
                 return completion(Result(error: result.error!))
               }
-              progress?(MpcStatus(status: MpcStatuses.done, done: true))
               
-              // Return the address.
-              return completion(Result(data: address))
+              do {
+                try self.api.storedClientSigningShare() { result in
+                  // Handle errors
+                  if result.error != nil {
+                    self.isWalletModificationInProgress = false
+                    return completion(Result(error: result.error!))
+                  }
+
+                  progress?(MpcStatus(status: MpcStatuses.done, done: true))
+                  
+                  // Return the address.
+                  self.isWalletModificationInProgress = false
+                  return completion(Result(data: address))
+                }
+              } catch {
+                self.isWalletModificationInProgress = false
+                return completion(Result(error: error))
+              }
             }
           }
         } catch {
+          self.isWalletModificationInProgress = false
           return completion(Result(error: error))
         }
       }
@@ -397,59 +454,96 @@ public class PortalMpc {
     completion: @escaping (Result<String>) -> Void,
     progress: ( (MpcStatus) -> Void)? = nil
   ) -> Void {
-    if version != "v3" {
-      return completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v3`.")))
+    if version != "v4" {
+      return completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v4`.")))
     }
     
+    guard !isWalletModificationInProgress else {
+      print("❌ A wallet modification operation is already in progress.")
+      return completion(Result(error: MpcError.walletModificationAlreadyInProgress))
+    }
+
+    self.isWalletModificationInProgress = true
+
     // Derive the storage and throw an error if none was provided.
     let storage = self.storage[method] as? Storage
     if (storage == nil) {
+      self.isWalletModificationInProgress = false
       return completion(Result(error: MpcError.unsupportedStorageMethod))
     }
     
-    if (method == BackupMethods.iCloud.rawValue) {
-      (storage as! ICloudStorage).checkAvailability { (result: Result<Any>) -> Void in
-        if (result.error != nil) {
-          print("❌ iCloud is not available:")
-          print(result)
-          return completion(Result(error: result.error!))
-        } else {
-          print("Running recovery since iCloud is available! 🎉")
+    print("Validating Keychain is available...")
+    keychain.validateOperations() { result in
+      // Handle errors
+      if result.error != nil {
+        print("❌ Keychain is not available:")
+        self.isWalletModificationInProgress = false
+        return completion(Result(error: result.error!))
+      }
+      print("Keychain is available, continuing...")
+      
+      if (method == BackupMethods.iCloud.rawValue) {
+        print("Validating iCloud Storage is available...")
+        (storage as! ICloudStorage).validateOperations { (result: Result<Bool>) -> Void in
+          if (result.error != nil) {
+            print("❌ iCloud Storage is not available:")
+            print(result)
+            return completion(Result(error: result.error!))
+          }
+          print("iCloud Storage is available, continuing...")
+          
           // Call the MPC service to get the backup share.
           self.executeRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
             if (recoveryResult.error != nil) {
-              completion(Result(error: recoveryResult.error!))
-              return
+              self.isWalletModificationInProgress = false
+              return completion(Result(error: recoveryResult.error!))
             }
             progress?(MpcStatus(status: MpcStatuses.done, done: true))
+            self.isWalletModificationInProgress = false
             completion(Result(data: recoveryResult.data!))
           } progress: { status in
             progress?(status)
           }
         }
-      }
-    } else if (method == BackupMethods.GoogleDrive.rawValue) {
-      executeRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
-        if (recoveryResult.error != nil) {
-          return completion(Result(error: recoveryResult.error!))
+      } else if (method == BackupMethods.GoogleDrive.rawValue) {
+        print("Validating Google Drive Storage is available...")
+        (storage as! GDriveStorage).validateOperations { (result: Result<Bool>) -> Void in
+          if (result.error != nil) {
+            print("❌ Google Drive Storage is not available:")
+            print(result)
+            self.isWalletModificationInProgress = false
+            return completion(Result(error: result.error!))
+          }
+          print("Google Drive Storage is available, starting backup...")
+          
+          self.executeRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
+            if (recoveryResult.error != nil) {
+              self.isWalletModificationInProgress = false
+              return completion(Result(error: recoveryResult.error!))
+            }
+            progress?(MpcStatus(status: MpcStatuses.done, done: true))
+            self.isWalletModificationInProgress = false
+            completion(Result(data: recoveryResult.data!))
+          } progress: { status in
+            progress?(status)
+          }
         }
-        progress?(MpcStatus(status: MpcStatuses.done, done: true))
-        completion(Result(data: recoveryResult.data!))
-      } progress: { status in
-        progress?(status)
-      }
-    } else if (method == BackupMethods.local.rawValue) {
-      executeRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
-        if (recoveryResult.error != nil) {
-          return completion(Result(error: recoveryResult.error!))
+      } else if (method == BackupMethods.local.rawValue) {
+        self.executeRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
+          if (recoveryResult.error != nil) {
+            self.isWalletModificationInProgress = false
+            return completion(Result(error: recoveryResult.error!))
+          }
+          progress?(MpcStatus(status: MpcStatuses.done, done: true))
+          self.isWalletModificationInProgress = false
+          completion(Result(data: recoveryResult.data!))
+        } progress: { status in
+          progress?(status)
         }
-        progress?(MpcStatus(status: MpcStatuses.done, done: true))
-        completion(Result(data: recoveryResult.data!))
-      } progress: { status in
-        progress?(status)
+      } else {
+        self.isWalletModificationInProgress = false
+        completion(Result(error: MpcError.unsupportedStorageMethod))
       }
-    } else {
-      completion(Result(error: MpcError.unsupportedStorageMethod))
     }
   }
   
@@ -558,53 +652,45 @@ public class PortalMpc {
       progress: ((MpcStatus) -> Void)? = nil
   ) -> Void {
     progress?(MpcStatus(status: MpcStatuses.readingShare, done: false))
-    
-    // Test keychain before we start.
-    keychain.testSetItem() { result in
-      // Handle errors
-      if result.error != nil {
+    self.getBackupShare(cipherText: cipherText, method: method) { (result: Result<String>) -> Void in
+      // Throw if there was an error getting the backup share.
+      guard result.error == nil else {
         return completion(Result(error: result.error!))
       }
       
-      self.getBackupShare(cipherText: cipherText, method: method) { (result: Result<String>) -> Void in
-        // Throw if there was an error getting the backup share.
-        guard result.error == nil else {
-          return completion(Result(error: result.error!))
+      progress?(MpcStatus(status: MpcStatuses.recoveringSigningShare, done: false))
+      self.recoverSigning(backupShare: result.data!) { signingResult in
+        if (signingResult.error != nil) {
+          return completion(Result(error: signingResult.error!))
         }
         
-        progress?(MpcStatus(status: MpcStatuses.recoveringSigningShare, done: false))
-        self.recoverSigning(backupShare: result.data!) { signingResult in
-          if (signingResult.error != nil) {
-            return completion(Result(error: signingResult.error!))
+        progress?(MpcStatus(status: MpcStatuses.recoveringBackupShare, done: false))
+        
+        self.recoverBackup(signingShare: result.data!) { backupResult in
+          if backupResult.error != nil {
+            print("Signing shares were successfully recovered. Try running backup again.")
+            return completion(Result(error: backupResult.error!))
           }
           
-          progress?(MpcStatus(status: MpcStatuses.recoveringBackupShare, done: false))
-          
-          self.recoverBackup(signingShare: result.data!) { backupResult in
-            if backupResult.error != nil {
-              return completion(Result(error: backupResult.error!))
+          self.encryptShare(mpcShare: backupResult.data!) { encryptedResult in
+            // Handle errors
+            if encryptedResult.error != nil {
+              print("Signing shares were successfully recovered. Try running backup again.")
+              return completion(Result(error: encryptedResult.error!))
             }
             
-            self.encryptShare(mpcShare: backupResult.data!) { encryptedResult in
-              // Handle errors
-              if encryptedResult.error != nil {
-                return completion(Result(error: encryptedResult.error!))
+            // Attempt to write the encrypted share to storage.
+            progress?(MpcStatus(status: MpcStatuses.storingShare, done: false))
+            
+            storage.write(privateKey: encryptedResult.data!.key) { (result: Result<Bool>) -> Void in
+              // Throw an error if we can't write to storage.
+              if !result.data! {
+                print("Signing shares were successfully recovered. Try running backup again.")
+                return completion(Result(error: result.error!))
               }
               
-              // Attempt to write the encrypted share to storage.
-              progress?(MpcStatus(status: MpcStatuses.storingShare, done: false))
-              
-              storage.write(privateKey: encryptedResult.data!.key) { (result: Result<Bool>) -> Void in
-                // Throw an error if we can't write to storage.
-                if !result.data! {
-                  return completion(Result(error: result.error!))
-                }
-                
-                // Return the cipherText.
-                return completion(Result(data: encryptedResult.data!.cipherText))
-              }
-            } progress: { status in
-              progress?(status)
+              // Return the cipherText.
+              return completion(Result(data: encryptedResult.data!.cipherText))
             }
           } progress: { status in
             progress?(status)
@@ -615,6 +701,8 @@ public class PortalMpc {
       } progress: { status in
         progress?(status)
       }
+    } progress: { status in
+      progress?(status)
     }
   }
   
@@ -690,7 +778,7 @@ public class PortalMpc {
   /// - Returns: The new signing share.
   private func recoverSigning(
     backupShare: String,
-    completion: (Result<MpcShare>) -> Void,
+    completion: @escaping (Result<MpcShare>) -> Void,
     progress: ((MpcStatus) -> Void)? = nil
   ) -> Void {
     do {
@@ -721,14 +809,25 @@ public class PortalMpc {
           return completion(Result(error: result.error!))
         }
         
-        keychain.setSigningShare(signingShare: shareString!) { result in
+        self.keychain.setSigningShare(signingShare: shareString!) { result in
           // Handle errors
           if result.error != nil {
             return completion(Result(error: result.error!))
           }
           
-          // Return the new signing share.
-          return completion(Result(data: rotateResult.data!.dkgResult))
+          do {
+            try self.api.storedClientSigningShare(recoverSigning: true) { result in
+              // Handle errors
+              if result.error != nil {
+                return completion(Result(error: result.error!))
+              }
+              
+              // Return the new signing share.
+              return completion(Result(data: rotateResult.data!.dkgResult))
+            }
+          } catch {
+            return completion(Result(error: error))
+          }
         }
       }
     } catch {
