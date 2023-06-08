@@ -747,7 +747,7 @@ public class PortalMpc {
   ///   - signingShare: The signing share as a string.
   /// - Returns: The backup share.
   private func recoverBackup(
-    signingShare: String,
+    clientBackupShare: String,
     completion: (Result<MpcShare>) -> Void,
     progress: ((MpcStatus) -> Void)? = nil
   ) -> Void {
@@ -755,7 +755,7 @@ public class PortalMpc {
       progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
 
       // Call the MPC service to recover the backup share.
-      let result = ClientRecoverBackup(apiKey, mpcHost, signingShare, version)
+      let result = ClientRecoverBackup(apiKey, mpcHost, clientBackupShare, version)
       
       progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
       let rotateResult: RotateResult  = try JSONDecoder().decode(RotateResult.self, from: result.data(using: .utf8)!)
