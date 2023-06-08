@@ -666,7 +666,7 @@ public class PortalMpc {
         
         progress?(MpcStatus(status: MpcStatuses.recoveringBackupShare, done: false))
         
-        self.recoverBackup(signingShare: result.data!) { backupResult in
+        self.recoverBackup(clientBackupShare: result.data!) { backupResult in
           if backupResult.error != nil {
             print("Signing shares were successfully recovered. Try running backup again.")
             return completion(Result(error: backupResult.error!))
