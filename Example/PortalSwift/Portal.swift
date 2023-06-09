@@ -114,7 +114,7 @@ class PortalWrapper {
       let chainId = 5
       let chain = "goerli"
       portal = try Portal(
-        apiKey: "f09ace22-7333-4543-9649-730e559e8685",
+        apiKey: "02e8c09d-fa4d-407d-a3f7-68bb17dea748",
         backup: backup,
         chainId: chainId,
         keychain: keychain,
@@ -128,6 +128,9 @@ class PortalWrapper {
       _ = portal?.provider.on(event: Events.PortalSigningRequested.rawValue, callback: { [weak self] data in self?.didRequestApproval(data: data)})
       
       _ = portal?.provider.on(event: Events.PortalDappSessionRequested.rawValue, callback: { [weak self] data in self?.didRequestApprovalDapps(data: data)})
+      
+      _ = portal?.provider.on(event: Events.PortalDappSessionRequestedV1.rawValue, callback: { [weak self] data in
+        self?.didRequestApprovalDappsV1(data: data)})
     } catch ProviderInvalidArgumentError.invalidGatewayUrl {
       print("❌ Error: Invalid Gateway URL")
     } catch PortalArgumentError.noGatewayConfigForChain(let chainId) {
@@ -143,7 +146,10 @@ class PortalWrapper {
   }
   
   func didRequestApprovalDapps(data: Any) -> Void {
-    _ = portal?.provider.emit(event: Events.PortalDappSessionRejected.rawValue, data: data)
+    _ = portal?.provider.emit(event: Events.PortalDappSessionApproved.rawValue, data: data)
+  }
+  func didRequestApprovalDappsV1(data: Any) -> Void {
+    _ = portal?.provider.emit(event: Events.PortalDappSessionApprovedV1.rawValue, data: data)
   }
   
   

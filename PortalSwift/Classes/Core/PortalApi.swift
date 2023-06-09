@@ -65,7 +65,7 @@ public struct NFT: Codable {
   public var description: String
   public var tokenUri: TokenUri
   public var media: [Media]
-  public var metadata: Metadata
+  public var metadata: NFTMetadata
   public var timeLastUpdated: String
   public var contractMetadata: ContractMetadata
 }
@@ -97,7 +97,7 @@ public struct Media: Codable {
 }
 
 /// Represents the metadata of an NFT.
-public struct Metadata: Codable {
+public struct NFTMetadata: Codable {
   public var name: String
   public var description: String
   public var image: String

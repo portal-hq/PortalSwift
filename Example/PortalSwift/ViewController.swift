@@ -411,11 +411,6 @@ class ViewController: UIViewController {
       }
     }
   }
-  
-  func didRequestApproval(data: Any) -> Void {
-    _ = portal?.provider.emit(event: Events.PortalSigningApproved.rawValue, data: data)
-    _ = portal?.provider.emit(event: Events.PortalSigningApproved.rawValue, data: data)
-  }
 
   func onError(result: Result<Any>) -> Void {
     print("PortalWebviewError:", result.error!, "Description:", result.error!.localizedDescription)

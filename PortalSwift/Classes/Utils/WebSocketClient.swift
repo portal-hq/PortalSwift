@@ -8,203 +8,11 @@
 import Foundation
 import Starscream
 
-struct ConnectRequestData: Codable {
-  let address: String
-  let chainId: Int
-  let uri: String
-}
-
-struct ConnectData: Codable {
-  let active: Bool
-  let expiry: Int32?
-  let peerMetadata: PeerMetadata
-  let relay: ProtocolOptions?
-  let topic: String?
-}
-
-struct ConnectedData: Codable {
-  let active: Bool
-  let expiry: Int32?
-  let peerMetadata: PeerMetadata
-  let relay: ProtocolOptions?
-  let topic: String?
-}
-
-struct ApprovedV1Data: Codable {
-  let address: String
-  let chainId: String
-  let payloadId: String
-}
-
-struct ConnectedV1Data: Codable {
-  let address: String
-  let chainId: String
-  let payloadId: String
-  let connected: Bool
-}
-
-struct ConnectV1Data: Codable {
-  let id: Int
-  let jsonrpc: String
-  let method: String
-  let params: [ConnectV1Params]
-}
-
-struct ConnectV1Params: Codable {
-  let peerId: String
-  let peerMeta: PeerMetadata
-  let chainId: Int
-}
-
-struct DisconnectData: Codable {
-  let id: Int
-  let topic: String
-}
-
-struct PeerMetadata: Codable {
-  let name: String
-  let description: String
-  let url: String
-  let icons: [String]
-}
-
-struct ProtocolOptions: Codable {
-  let `protocol`: String
-  let data: String?
-}
-
-struct ProviderRequestAddressData: Codable {
-  let method: String
-  let params: [ETHAddressParam]
-}
-
-struct ProviderRequestTransactionData: Codable {
-  let method: String
-  let params: [ETHTransactionParam]
-}
-
-struct ProviderRequestData: Codable {
-  let method: String
-  let params: [String]
-}
-
-struct ProviderRequestParams: Codable {
-  let chainId: Int?
-  let request: ProviderRequestData
-}
-
-struct ProviderRequestTransactionParams: Codable {
-  let chainId: Int?
-  let request: ProviderRequestTransactionData
-}
-
-struct ProviderRequestAddressParams: Codable {
-  let chainId: Int?
-  let request: ProviderRequestAddressData
-}
-
-struct ProviderRequestPayload: Codable {
-  let event: String
-  let data: ProviderRequestData
-}
-
-struct ProviderRequestTransactionPayload: Codable {
-  let event: String
-  let data: ProviderRequestTransactionData
-}
-
-struct ProviderRequestAddressPayload: Codable {
-  let event: String
-  let data: ProviderRequestAddressData
-}
-
-struct SessionRequestData: Codable {
-  let id: Int
-  let params: ProviderRequestParams
-  let topic: String
-}
-
-struct SessionRequestTransactionData: Codable {
-  let id: Int
-  let params: ProviderRequestTransactionParams
-  let topic: String
-}
-
-struct SessionRequestAddressData: Codable {
-  let id: Int
-  let params: ProviderRequestAddressParams
-  let topic: String
-}
-
-struct WebSocketMessage: Codable {
-  let event: String
-  let data: WebSocketMessageData?
-}
-
-struct WebSocketConnectedMessage: Codable {
-  var event: String = "connected"
-  let data: ConnectData
-}
-
-struct WebSocketConnectedV1Message: Codable {
-  var event: String = "connected"
-  let data: ConnectedV1Data
-}
-
-struct WebSocketDappSessionRequestMessage: Codable {
-  var event: String = "portal_dappSessionRequest"
-  let data: ConnectData
-}
-
-struct WebSocketDappSessionRequestV1Message: Codable {
-  var event: String = "portal_dappSessionRequest"
-  let data: ConnectV1Data
-}
-
-struct WebSocketDisconnectMessage: Codable {
-  var event: String = "disconnect"
-  let data: DisconnectData
-}
-
-struct WebSocketSessionRequestMessage: Codable {
-  var event: String = "session_request"
-  let data: SessionRequestData
-}
-
-struct WebSocketSessionRequestAddressMessage: Codable {
-  var event: String = "session_request"
-  let data: SessionRequestAddressData
-}
-
-struct WebSocketSessionRequestTransactionMessage: Codable {
-  var event: String = "session_request"
-  let data: SessionRequestTransactionData
-}
-
-struct WebSocketRequest: Codable {
-  let event: String
-  let data: WebSocketRequestData?
-}
-
-struct WebSocketConnectRequest: Codable {
-  let event: String
-  let data: ConnectRequestData
-}
-
-enum WebSocketMessageData: Codable {
-  case connectData(data: ConnectData)
-  case disconnectData(data: DisconnectData)
-  case sessionRequestData(data: SessionRequestData)
-}
-
-enum WebSocketRequestData: Codable {
-  case connect(data: ConnectRequestData)
-}
-
 struct EventHandlers {
   var close: [() -> Void]
-  var dapp_session_requested: [(ConnectV1Data) -> Void]
-  var connected: [(ConnectData) -> Void]
+  var dapp_session_requested: [(ConnectData) -> Void]
+  var dapp_session_requestedV1: [(ConnectV1Data) -> Void]
+  var connected: [(ConnectedData) -> Void]
   var connectedV1: [(ConnectedV1Data) -> Void]
   var disconnect: [(DisconnectData) -> Void]
   var session_request: [(SessionRequestData) -> Void]
@@ -214,6 +22,7 @@ struct EventHandlers {
   init() {
     close = []
     dapp_session_requested = []
+    dapp_session_requestedV1 = []
     connected = []
     connectedV1 = []
     disconnect = []
@@ -336,53 +145,61 @@ class WebSocketClient : Starscream.WebSocketDelegate {
     } catch {
       print(error)
       do {
-        let payload = try JSONDecoder().decode(WebSocketSessionRequestAddressMessage.self, from: data)
+        let payload = try JSONDecoder().decode(WebSocketDappSessionRequestV1Message.self, from: data)
         print("[WebSocketClient] Received message: \(payload)")
         emit(payload.event, payload.data)
         return
       } catch {
-        print("[WebSocketClient] Unable to parse message as WebSocketSessionRequestMessage, attempting WebSocketSessionRequestAddressMessage...")
+        print("[WebSocketClient] Unable to parse message as WebSocketDappSessionRequestV1Message, attempting WebSocketDappSessionRequestMessage...")
         do {
-          let payload = try JSONDecoder().decode(WebSocketSessionRequestAddressMessage.self, from: data)
+          let payload = try JSONDecoder().decode(WebSocketDappSessionRequestMessage.self, from: data)
           print("[WebSocketClient] Received message: \(payload)")
           emit(payload.event, payload.data)
           return
         } catch {
-          print("[WebSocketClient] Unable to parse message as WebSocketSessionRequestAddressMessage, attempting WebSocketSessionRequestTransactionMessage...")
+          print("[WebSocketClient] Unable to parse message as WebSocketDappSessionRequestMessage, attempting WebSocketSessionRequestAddressMessage...")
           do {
-            let payload = try JSONDecoder().decode(WebSocketSessionRequestTransactionMessage.self, from: data)
+            let payload = try JSONDecoder().decode(WebSocketSessionRequestAddressMessage.self, from: data)
             print("[WebSocketClient] Received message: \(payload)")
             emit(payload.event, payload.data)
             return
           } catch {
+            print("[WebSocketClient] Unable to parse message as WebSocketSessionRequestMessage, attempting WebSocketSessionRequestAddressMessage...")
             do {
-              let payload = try JSONDecoder().decode(WebSocketConnectedMessage.self, from: data)
+              let payload = try JSONDecoder().decode(WebSocketSessionRequestAddressMessage.self, from: data)
               print("[WebSocketClient] Received message: \(payload)")
               emit(payload.event, payload.data)
               return
             } catch {
+              print("[WebSocketClient] Unable to parse message as WebSocketSessionRequestAddressMessage, attempting WebSocketSessionRequestTransactionMessage...")
               do {
-                print("[WebSocketClient] Unable to parse message as WebSocketConnectedMessage, attempting WebSocketConnectedV1Message...")
-                let payload = try JSONDecoder().decode(WebSocketConnectedV1Message.self, from: data)
+                let payload = try JSONDecoder().decode(WebSocketSessionRequestTransactionMessage.self, from: data)
                 print("[WebSocketClient] Received message: \(payload)")
                 emit(payload.event, payload.data)
                 return
               } catch {
-                print("[WebSocketClient] Unable to parse message as WebSocketConnectedV1Message, attempting WebSocketDisconnectMessage...")
                 do {
-                  let payload = try JSONDecoder().decode(WebSocketDisconnectMessage.self, from: data)
+                  let payload = try JSONDecoder().decode(WebSocketConnectedMessage.self, from: data)
                   print("[WebSocketClient] Received message: \(payload)")
                   emit(payload.event, payload.data)
                   return
                 } catch {
-                  print("[WebSocketClient] Unable to parse message as WebSocketDisconnectMessage, attempting WebSocketDappSessionRequestV1Message...")
                   do {
-                    let payload = try JSONDecoder().decode(WebSocketDappSessionRequestV1Message.self, from: data)
+                    print("[WebSocketClient] Unable to parse message as WebSocketConnectedMessage, attempting WebSocketConnectedV1Message...")
+                    let payload = try JSONDecoder().decode(WebSocketConnectedV1Message.self, from: data)
                     print("[WebSocketClient] Received message: \(payload)")
                     emit(payload.event, payload.data)
                     return
                   } catch {
-                    print("[WebSocketClient] Error when processing incoming data: \(error)")
+                    print("[WebSocketClient] Unable to parse message as WebSocketConnectedV1Message, attempting WebSocketDisconnectMessage...")
+                    do {
+                      let payload = try JSONDecoder().decode(WebSocketDisconnectMessage.self, from: data)
+                      print("[WebSocketClient] Received message: \(payload)")
+                      emit(payload.event, payload.data)
+                      return
+                    } catch {
+                          print("[WebSocketClient] Error when processing incoming data: \(error)")
+                    }
                   }
                 }
               }
@@ -412,7 +229,41 @@ class WebSocketClient : Starscream.WebSocketDelegate {
   
   func emit(_ event: String, _ data: ConnectData) {
     // Get the list of event handlers for this event
+    let eventHandlers = events.dapp_session_requested
+    
+    // Ensure there's something to invoke
+    if (eventHandlers.count > 0) {
+      // Loop through the event handlers
+      for handler in eventHandlers {
+        // Invoke the handler
+        handler(data)
+      }
+    } else {
+      // Ignore the event
+      print("[PortalConnect] No registered event handlers for \(event). Ignoring...")
+    }
+  }
+  
+  func emit(_ event: String, _ data: ConnectedData) {
+    // Get the list of event handlers for this event
     let eventHandlers = events.connected
+    
+    // Ensure there's something to invoke
+    if (eventHandlers.count > 0) {
+      // Loop through the event handlers
+      for handler in eventHandlers {
+        // Invoke the handler
+        handler(data)
+      }
+    } else {
+      // Ignore the event
+      print("[PortalConnect] No registered event handlers for \(event). Ignoring...")
+    }
+  }
+  
+  func emit(_ event: String, _ data: ConnectV1Data) {
+    // Get the list of event handlers for this event
+    let eventHandlers = events.dapp_session_requestedV1
     
     // Ensure there's something to invoke
     if (eventHandlers.count > 0) {
@@ -469,6 +320,7 @@ class WebSocketClient : Starscream.WebSocketDelegate {
     if (eventHandlers.count > 0) {
       // Loop through the event handlers
       for handler in eventHandlers {
+        print("[WebsocketClient] data: \(handler)")
         // Invoke the handler
         handler(data)
       }
@@ -512,29 +364,17 @@ class WebSocketClient : Starscream.WebSocketDelegate {
     }
   }
   
-  func emit(_ event: String, _ data: ConnectV1Data) {
-    // Get the list of event handlers for this event
-    let eventHandlers = events.dapp_session_requested
-    
-    // Ensure there's something to invoke
-    if (eventHandlers.count > 0) {
-      // Loop through the event handlers
-      for handler in eventHandlers {
-        // Invoke the handler
-        handler(data)
-      }
-    } else {
-      // Ignore the event
-      print("[PortalConnect] No registered event handlers for \(event). Ignoring...")
-    }
-  }
-  
-  func on(_ event: String, _ handler: @escaping () -> Void) {
-    // Add event handler to the list
-    events.close.append(handler)
-  }
-  
   func on(_ event: String, _ handler: @escaping (ConnectData) -> Void) {
+    // Add event handler to the list
+    events.dapp_session_requested.append(handler)
+  }
+  
+  func on(_ event: String, _ handler: @escaping (ConnectV1Data) -> Void) {
+    // Add event handler to the list
+    events.dapp_session_requestedV1.append(handler)
+  }
+  
+  func on(_ event: String, _ handler: @escaping (ConnectedData) -> Void) {
     // Add event handler to the list
     events.connected.append(handler)
   }
@@ -544,9 +384,9 @@ class WebSocketClient : Starscream.WebSocketDelegate {
     events.connectedV1.append(handler)
   }
   
-  func on(_ event: String, _ handler: @escaping (ConnectV1Data) -> Void) {
+  func on(_ event: String, _ handler: @escaping () -> Void) {
     // Add event handler to the list
-    events.dapp_session_requested.append(handler)
+    events.close.append(handler)
   }
   
   func on(_ event: String, _ handler: @escaping (DisconnectData) -> Void) {

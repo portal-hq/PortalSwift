@@ -280,6 +280,7 @@
 		F8473F19A98E8C04DA797F91A71F8443 /* GIDGoogleUser.m in Sources */ = {isa = PBXBuildFile; fileRef = 244B79D9C54809E7C7B199C1489AD49A /* GIDGoogleUser.m */; };
 		F950D208FA4D412081B58F83807785A4 /* OIDRegistrationResponse.h in Headers */ = {isa = PBXBuildFile; fileRef = 735E5E1EFE968E115DDDBF274A8E6738 /* OIDRegistrationResponse.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		F97145582A14A22D0034189F /* LocalFileStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F97145572A14A22D0034189F /* LocalFileStorage.swift */; };
+		F9995B742A3381F600CD900A /* WebsocketMessageTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9995B732A3381F600CD900A /* WebsocketMessageTypes.swift */; };
 		FA57677851302C0F13C69A459895DCEF /* NSBundle+GID3PAdditions.h in Headers */ = {isa = PBXBuildFile; fileRef = D0B13CB8E2380B3D8153DE8AC1D00E0D /* NSBundle+GID3PAdditions.h */; settings = {ATTRIBUTES = (Project, ); }; };
 		FDE948CC3A35F70EAEB413E5DE09C5ED /* OIDRegistrationResponse.m in Sources */ = {isa = PBXBuildFile; fileRef = 5E4FF6B9D7034165F3B7C9954D0E5198 /* OIDRegistrationResponse.m */; };
 		FF8307B7346F4D3BA13C11AECFE6EDD0 /* FBSnapshotTestCase.h in Headers */ = {isa = PBXBuildFile; fileRef = 5FB244297A44C83F4676DE48C59A5F66 /* FBSnapshotTestCase.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -718,6 +719,7 @@
 		F8D7EA35E60B3E6DFB4917E429D6576A /* UIImage+Snapshot.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = "UIImage+Snapshot.h"; path = "FBSnapshotTestCase/Categories/UIImage+Snapshot.h"; sourceTree = "<group>"; };
 		F97145572A14A22D0034189F /* LocalFileStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalFileStorage.swift; sourceTree = "<group>"; };
 		F99591EE4A6FA4AB69D613692D72A6E9 /* StringHTTPHandler.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = StringHTTPHandler.swift; path = Sources/Framer/StringHTTPHandler.swift; sourceTree = "<group>"; };
+		F9995B732A3381F600CD900A /* WebsocketMessageTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebsocketMessageTypes.swift; sourceTree = "<group>"; };
 		FB2029C322BD7676E2AC19A8C0E82B25 /* MockPortalApi.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MockPortalApi.swift; sourceTree = "<group>"; };
 		FB367A379C63040F8B0480CF9465B2C0 /* GTMKeychain.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = GTMKeychain.h; path = GTMAppAuth/Sources/Public/GTMAppAuth/GTMKeychain.h; sourceTree = "<group>"; };
 		FBD710D5EDF47A2758A8683A38EBD5CE /* Starscream-umbrella.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "Starscream-umbrella.h"; sourceTree = "<group>"; };
@@ -1173,6 +1175,7 @@
 				B85178DD9FF24165137670E36919591A /* Errors */,
 				7E3D94712A09BE1600A2C6CE /* EthRequests.swift */,
 				7E3D94732A09BF4300A2C6CE /* Chains.swift */,
+				F9995B732A3381F600CD900A /* WebsocketMessageTypes.swift */,
 			);
 			name = Utils;
 			path = PortalSwift/Classes/Utils;
@@ -2209,6 +2212,7 @@
 			files = (
 				E2400D5131EE681F2AD4F5FB15B584C9 /* Constants.swift in Sources */,
 				6225A62E75807E3B0A13FEEBA9189F42 /* GDriveClient.swift in Sources */,
+				F9995B742A3381F600CD900A /* WebsocketMessageTypes.swift in Sources */,
 				D864FAEB3A54197F06807F1FCB204118 /* GDriveStorage.swift in Sources */,
 				80FBDF0584623F2AC7EC81AE6B8FE62E /* GoogleAuth.swift in Sources */,
 				3D8FB1C92F12BA70099E471E96CA80C7 /* HttpRequest.swift in Sources */,
