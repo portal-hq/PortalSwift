@@ -107,7 +107,10 @@ public class GDriveStorage: Storage {
       completion(result)
     }
   }
-        
+
+  public func validateOperations(callback: @escaping (Result<Bool>) -> Void) {
+    drive.validateOperations(callback: callback)
+  }
   
   private func getFilename(callback: @escaping (Result<String>) -> Void) -> Void {
     if (api == nil) {
