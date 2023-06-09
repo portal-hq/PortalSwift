@@ -27,7 +27,7 @@ class MpcSigner {
   init (
     keychain: PortalKeychain,
     mpcUrl: String = "mpc.portalhq.io",
-    version: String = "v3"
+    version: String = "v4"
   ) {
     self.keychain = keychain
     self.mpcUrl = mpcUrl
