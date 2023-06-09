@@ -114,7 +114,7 @@ public class Portal {
     gatewayConfig: Dictionary<Int, String>,
     // Optional
     isSimulator: Bool = false,
-    version: String = "v3",
+    version: String = "v4",
     autoApprove: Bool = false,
     apiHost: String = "api.portalhq.io",
     mpcHost: String = "mpc.portalhq.io",
@@ -131,8 +131,8 @@ public class Portal {
     self.autoApprove = autoApprove
     self.isSimulator = isSimulator
     
-    if (version != "v3") {
-      throw PortalArgumentError.versionNoLongerSupported(message: "MPC Version is not supported. Only version 'v3' is currently supported.")
+    if (version != "v4") {
+      throw PortalArgumentError.versionNoLongerSupported(message: "MPC Version is not supported. Only version 'v4' is currently supported.")
     }
     
     self.version = version
