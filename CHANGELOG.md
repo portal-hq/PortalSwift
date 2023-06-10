@@ -10,6 +10,22 @@ Possible Types of changes include:
 - Fixed
 - Security
 
+## 1.0.0 - 2023-06-09
+### Added
+- validation checks for Keychain before running generate and recover.
+- validation checks for the selected backup method before running backup and recover.
+- `portal.api.storedClientBackupShare`.
+- `portal.api.storedClientSigningShare`.
+- wallet modification in-progress checks before running generate, backup, and recover.
+
+### Changed
+- Bump from v3 to v4 for default MPC version in classes.
+- `portal.mpc.generate` & `portal.mpc.recover` use `portal.api.storedClientSigningShare` when keychain completes storage 
+
+### Removed
+- `getAvailability` from icloud storage
+
+
 ## 0.2.4 - 2023-06-02
 ### Added
 - Improved error messaging
