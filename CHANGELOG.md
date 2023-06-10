@@ -13,7 +13,6 @@ Possible Types of changes include:
 ## 1.0.0 - 2023-06-09
 ### Added
 - `portal.keychain.validateOperations`: Checks if you can write, read, and delete from keychain.
-- `portal.storage.validateOperations`: Checks if you can write, read, and delete from cloud storage.
 - validation checks for Keychain before running generate and recover.
 - validation checks for the selected backup method before running backup and recover.
 - `portal.api.storedClientBackupShare`.
