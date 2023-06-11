@@ -20,6 +20,7 @@ Possible Types of changes include:
 ### Fixed
 - Improves support for delivery of signatures to dApps through Portal Connect
 - Improves support for delivery of signing rejections to dApps through Portal Connect
+- Improved stability support for WebSocket connections in Portal Connect, including automatic reconnection on timeouts and WebSocket failures
 
 
 ## 1.0.0 - 2023-06-09
