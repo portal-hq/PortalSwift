@@ -65,7 +65,7 @@ public struct NFT: Codable {
   public var description: String
   public var tokenUri: TokenUri
   public var media: [Media]
-  public var metadata: Metadata
+  public var metadata: NFTMetadata
   public var timeLastUpdated: String
   public var contractMetadata: ContractMetadata
 }
@@ -97,7 +97,7 @@ public struct Media: Codable {
 }
 
 /// Represents the metadata of an NFT.
-public struct Metadata: Codable {
+public struct NFTMetadata: Codable {
   public var name: String
   public var description: String
   public var image: String
@@ -198,7 +198,7 @@ public class PortalApi {
   ) {
     self.address = address
     self.apiKey = apiKey
-    self.apiHost = String(format:"https://%@", apiHost)
+    self.apiHost = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
     self.chainId = chainId
     self.requests = mockRequests ? MockHttpRequester(baseUrl: self.apiHost) : HttpRequester(baseUrl: self.apiHost)
   }
