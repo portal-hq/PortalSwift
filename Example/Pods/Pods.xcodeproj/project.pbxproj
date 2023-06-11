@@ -278,6 +278,7 @@
 		F93CA948C919A79ACE463F634DDC3F4B /* PortalKeychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25AE45DADE0DD5A257129B0708C1C2DB /* PortalKeychain.swift */; };
 		F950D208FA4D412081B58F83807785A4 /* OIDRegistrationResponse.h in Headers */ = {isa = PBXBuildFile; fileRef = 735E5E1EFE968E115DDDBF274A8E6738 /* OIDRegistrationResponse.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		F95700193C25305C04CCB28781148CF9 /* GTMSessionFetcher.m in Sources */ = {isa = PBXBuildFile; fileRef = 9A88DB4FCA470E6AD15D81938ABAAA3F /* GTMSessionFetcher.m */; };
+		F9995B762A34037800CD900A /* WebsocketMessageTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9995B752A34037800CD900A /* WebsocketMessageTypes.swift */; };
 		FA57677851302C0F13C69A459895DCEF /* NSBundle+GID3PAdditions.h in Headers */ = {isa = PBXBuildFile; fileRef = D0B13CB8E2380B3D8153DE8AC1D00E0D /* NSBundle+GID3PAdditions.h */; settings = {ATTRIBUTES = (Project, ); }; };
 		FC4D25C8F2BEE5225F07D567757543AF /* WSEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B6B7A0CF4B560F54C3513F6637CCA41 /* WSEngine.swift */; };
 		FDE948CC3A35F70EAEB413E5DE09C5ED /* OIDRegistrationResponse.m in Sources */ = {isa = PBXBuildFile; fileRef = 5E4FF6B9D7034165F3B7C9954D0E5198 /* OIDRegistrationResponse.m */; };
@@ -717,6 +718,7 @@
 		F787A922FCA2B2453D62B91E0D238CE4 /* FoundationSecurity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FoundationSecurity.swift; path = Sources/Security/FoundationSecurity.swift; sourceTree = "<group>"; };
 		F8D7EA35E60B3E6DFB4917E429D6576A /* UIImage+Snapshot.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = "UIImage+Snapshot.h"; path = "FBSnapshotTestCase/Categories/UIImage+Snapshot.h"; sourceTree = "<group>"; };
 		F99591EE4A6FA4AB69D613692D72A6E9 /* StringHTTPHandler.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = StringHTTPHandler.swift; path = Sources/Framer/StringHTTPHandler.swift; sourceTree = "<group>"; };
+		F9995B752A34037800CD900A /* WebsocketMessageTypes.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WebsocketMessageTypes.swift; sourceTree = "<group>"; };
 		FB367A379C63040F8B0480CF9465B2C0 /* GTMKeychain.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = GTMKeychain.h; path = GTMAppAuth/Sources/Public/GTMAppAuth/GTMKeychain.h; sourceTree = "<group>"; };
 		FB580BC0EF1D4510D99F8A3CAE8DBA2C /* PortalConnect.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PortalConnect.swift; sourceTree = "<group>"; };
 		FBD710D5EDF47A2758A8683A38EBD5CE /* Starscream-umbrella.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "Starscream-umbrella.h"; sourceTree = "<group>"; };
@@ -967,6 +969,7 @@
 		2819DCB9C3A6FA46223A2E021F4FAAB6 /* Utils */ = {
 			isa = PBXGroup;
 			children = (
+				F9995B752A34037800CD900A /* WebsocketMessageTypes.swift */,
 				30EDE14BD9632228CAE5FC9FAA16CE16 /* Chains.swift */,
 				9BEB689EE1F13A09E786F4C41416A65C /* EthRequests.swift */,
 				4128329DE7B5CE6E7F6D7D8C5837B3D4 /* HttpRequest.swift */,
@@ -2174,6 +2177,7 @@
 			files = (
 				8A2A339B73DAD5DCD8B632E64CCD1EA8 /* Chains.swift in Sources */,
 				9372C7D85FE4CDAA8738C913E773E3AA /* Constants.swift in Sources */,
+				F9995B762A34037800CD900A /* WebsocketMessageTypes.swift in Sources */,
 				ECF8D1413E46DA7D314BCD0B3879445D /* EthRequests.swift in Sources */,
 				BD04D07D8BA5CF88436EC4FCE59F85EC /* GDriveClient.swift in Sources */,
 				D7482BF8D4C97C5C46BD44053D9FC02A /* GDriveStorage.swift in Sources */,
