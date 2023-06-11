@@ -87,17 +87,17 @@ class ViewController: UIViewController {
       MPC_URL = STAGING_MPC_URL
     }
     
-    DispatchQueue.main.async {
-      self.backupButton.isEnabled = false
-      self.dappBrowserButton.isEnabled = false
-      self.generateButton.isEnabled = false
-      self.logoutButton.isEnabled = false
-      self.portalConnectButton.isEnabled = false
-      self.recoverButton.isEnabled = false
-      self.signInButton.isEnabled = false
-      self.signUpButton.isEnabled = false
-      self.testButton.isEnabled = false
-    }
+//    DispatchQueue.main.async {
+//      self.backupButton.isEnabled = false
+//      self.dappBrowserButton.isEnabled = false
+//      self.generateButton.isEnabled = false
+//      self.logoutButton.isEnabled = false
+//      self.portalConnectButton.isEnabled = false
+//      self.recoverButton.isEnabled = false
+//      self.signInButton.isEnabled = false
+//      self.signUpButton.isEnabled = false
+//      self.testButton.isEnabled = false
+//    }
   }
 
   override func didReceiveMemoryWarning() {
@@ -465,10 +465,6 @@ class ViewController: UIViewController {
         }
       }
     }
-  }
-  
-  func didRequestApproval(data: Any) -> Void {
-    _ = portal?.provider.emit(event: Events.PortalSigningApproved.rawValue, data: data)
   }
 
   func onError(result: Result<Any>) -> Void {

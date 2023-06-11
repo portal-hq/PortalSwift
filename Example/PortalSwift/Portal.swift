@@ -126,6 +126,7 @@ class PortalWrapper {
         mpcHost: MPC_URL!
       )
       _ = portal?.provider.on(event: Events.PortalSigningRequested.rawValue, callback: { [weak self] data in self?.didRequestApproval(data: data)})
+      
     } catch ProviderInvalidArgumentError.invalidGatewayUrl {
       print("❌ Error: Invalid Gateway URL")
     } catch PortalArgumentError.noGatewayConfigForChain(let chainId) {
@@ -139,7 +140,6 @@ class PortalWrapper {
   func didRequestApproval(data: Any) -> Void {
     _ = portal?.provider.emit(event: Events.PortalSigningApproved.rawValue, data: data)
   }
-  
   
   func generate(completion: @escaping (Result<String>) -> Void) -> Void  {
     portal?.mpc.generate() { (addressResult) -> Void in
