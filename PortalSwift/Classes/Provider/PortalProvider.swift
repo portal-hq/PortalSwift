@@ -25,6 +25,15 @@ public enum Events: String {
   case PortalSigningApproved = "portal_signingApproved"
   case PortalSigningRejected = "portal_signingRejected"
   case PortalSigningRequested = "portal_signingRequested"
+  // Walletconnect V2
+  case PortalDappSessionRequested = "portal_dappSessionRequested"
+  case PortalDappSessionApproved = "portal_dappSessionApproved"
+  case PortalDappSessionRejected = "portal_dappSessionRejected"
+  // Walletconnect V1
+  case PortalDappSessionRequestedV1 = "portal_dappSessionRequestedV1"
+  case PortalDappSessionApprovedV1 = "portal_dappSessionApprovedV1"
+  case PortalDappSessionRejectedV1 = "portal_dappSessionRejectedV1"
+  
 }
 
 /// All available provider methods.
@@ -371,7 +380,7 @@ public class PortalProvider {
           try registeredEventHandler.handler(data)
         }
       } catch {
-        print("Error invoking registered handlers", error)
+        print("[Portal] Error invoking registered handlers", error)
       }
       
       // Remove once instances
@@ -592,7 +601,6 @@ public class PortalProvider {
       return completion(Result(error: error))
     }
     
-    return completion(Result(data: true))
   }
   
   private func getApproval(
@@ -739,26 +747,27 @@ public class PortalProvider {
       guard result.error == nil else {
         return completion(Result(error: result.error!))
       }
-      if (!(result.data!)) {
+      if (result.data != true) {
         return completion(Result(error: ProviderSigningError.userDeclinedApproval))
-      }
-      
-      self.mpcQueue.async {
-        // This code will be executed in a background thread
-        var signResult = SignerResult()
-        do {
-          signResult = try self.signer.sign(
-            payload: payload,
-            provider: self
-          )
-          // When the work is done, call the completion handler
-          DispatchQueue.main.async {
-            return completion(Result(data: signResult))
-          }
+      } else {
 
-        } catch {
-          DispatchQueue.main.async {
-            return completion(Result(error: error))
+        self.mpcQueue.async {
+          // This code will be executed in a background thread
+          var signResult = SignerResult()
+          do {
+            signResult = try self.signer.sign(
+              payload: payload,
+              provider: self
+            )
+            // When the work is done, call the completion handler
+            DispatchQueue.main.async {
+              return completion(Result(data: signResult))
+            }
+
+          } catch {
+            DispatchQueue.main.async {
+              return completion(Result(error: error))
+            }
           }
         }
       }
@@ -776,28 +785,28 @@ public class PortalProvider {
       
       if (!result.data!) {
         return completion(Result(error: ProviderSigningError.userDeclinedApproval))
-      }
-      self.mpcQueue.async {
-        // This code will be executed in a background thread
-        var signResult = SignerResult()
-        do {
-        signResult = try self.signer.sign(
-            payload: payload,
-            provider: self
-          )
-          // When the work is done, call the completion handler
-          DispatchQueue.main.async {
-            return completion(Result(data: signResult.signature))
+      } else {
+        self.mpcQueue.async {
+          // This code will be executed in a background thread
+          var signResult = SignerResult()
+          do {
+          signResult = try self.signer.sign(
+              payload: payload,
+              provider: self
+            )
+            // When the work is done, call the completion handler
+            DispatchQueue.main.async {
+              return completion(Result(data: signResult.signature))
+            }
+          } catch {
+            DispatchQueue.main.async {
+              return completion(Result(error: error))
+            }
           }
-        } catch {
-          DispatchQueue.main.async {
-            return completion(Result(error: error))
-          }
-        }
 
+        }
       }
     }
-
   }
   
   private func removeOnce(registeredEventHandler: RegisteredEventHandler) -> Bool {

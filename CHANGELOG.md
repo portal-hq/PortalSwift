@@ -10,6 +10,19 @@ Possible Types of changes include:
 - Fixed
 - Security
 
+## 1.0.1 2023-06-11
+### Added
+- Adds support for `connect.on('portal_dappSessionRequested', eventHandler)` event handlers to manage approval flows for Portal Connect sessions
+- Adds support for `connect.on('portal_dappSessionRequestedV1', eventHandler)` event handlers to manage approval flows for Portal Connect sessions
+- Adds support for `connect.emit('portal_dappSessionApproved', data)` event emitting to approve Portal Connect sessions
+- Adds support for `connect.emit('portal_dappSessionRejected', data)` event emitting to reject Portal Connect sessions
+
+### Fixed
+- Improves support for delivery of signatures to dApps through Portal Connect
+- Improves support for delivery of signing rejections to dApps through Portal Connect
+- Improved stability support for WebSocket connections in Portal Connect, including automatic reconnection on timeouts and WebSocket failures
+
+
 ## 1.0.0 - 2023-06-09
 ### Added
 - `portal.keychain.validateOperations`: Checks if you can write, read, and delete from keychain.
