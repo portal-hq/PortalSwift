@@ -122,8 +122,8 @@ class PortalWrapper {
           chainId: "https://eth-\(chain).g.alchemy.com/v2/\(ALCHEMY_API_KEY)",
         ],
         autoApprove: true,
-        apiHost: API_URL,
-        mpcHost: MPC_URL
+        apiHost: API_URL!,
+        mpcHost: MPC_URL!
       )
       _ = portal?.provider.on(event: Events.PortalSigningRequested.rawValue, callback: { [weak self] data in self?.didRequestApproval(data: data)})
       
