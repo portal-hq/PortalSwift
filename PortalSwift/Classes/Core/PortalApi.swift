@@ -198,7 +198,7 @@ public class PortalApi {
   ) {
     self.address = address
     self.apiKey = apiKey
-    self.apiHost = String(format:"https://%@", apiHost)
+    self.apiHost = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
     self.chainId = chainId
     self.requests = mockRequests ? MockHttpRequester(baseUrl: self.apiHost) : HttpRequester(baseUrl: self.apiHost)
   }

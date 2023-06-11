@@ -85,9 +85,12 @@ class WebSocketClient : Starscream.WebSocketDelegate {
       case .binary(let data):
         handleData(data)
         break
-      case .ping(_):
+      case .ping(let data):
+        print("Received ping, sending pong")
+        client.write(pong: data!)  // Responding to the ping here
         break
       case .pong(_):
+        print("Received pong")
         break
       case .viabilityChanged(_):
         break
@@ -97,7 +100,6 @@ class WebSocketClient : Starscream.WebSocketDelegate {
         isConnected = false
         break
       case .error(let error):
-        isConnected = false
         handleError(error)
         break
       }
@@ -216,7 +218,12 @@ class WebSocketClient : Starscream.WebSocketDelegate {
   }
   
   func handleError(_ error: (any Error)?) {
+    isConnected = false
     print("[WebSocketClient] Received error: \(String(describing: error))")
+    // This error needs to match
+    if (error?.localizedDescription == "Connection reset by peer") {
+      connect(uri: uri!)
+    }
   }
   
   func handleText(_ text: String) {
@@ -320,7 +327,7 @@ class WebSocketClient : Starscream.WebSocketDelegate {
     if (eventHandlers.count > 0) {
       // Loop through the event handlers
       for handler in eventHandlers {
-        print("[WebsocketClient] data: \(handler)")
+        print("[WebsocketClient] data: \(String(describing: handler))")
         // Invoke the handler
         handler(data)
       }

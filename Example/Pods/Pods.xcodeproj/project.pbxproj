@@ -277,9 +277,8 @@
 		F92E0DA244F3A12FD69DBD00451EDEF6 /* zh_TW.lproj in Resources */ = {isa = PBXBuildFile; fileRef = 1B9113E101EEE077BC09CE3D3DBC9D78 /* zh_TW.lproj */; };
 		F93CA948C919A79ACE463F634DDC3F4B /* PortalKeychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25AE45DADE0DD5A257129B0708C1C2DB /* PortalKeychain.swift */; };
 		F950D208FA4D412081B58F83807785A4 /* OIDRegistrationResponse.h in Headers */ = {isa = PBXBuildFile; fileRef = 735E5E1EFE968E115DDDBF274A8E6738 /* OIDRegistrationResponse.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		F97145582A14A22D0034189F /* LocalFileStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F97145572A14A22D0034189F /* LocalFileStorage.swift */; };
-		F9995B742A3381F600CD900A /* WebsocketMessageTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9995B732A3381F600CD900A /* WebsocketMessageTypes.swift */; };
 		F95700193C25305C04CCB28781148CF9 /* GTMSessionFetcher.m in Sources */ = {isa = PBXBuildFile; fileRef = 9A88DB4FCA470E6AD15D81938ABAAA3F /* GTMSessionFetcher.m */; };
+		F9995B762A34037800CD900A /* WebsocketMessageTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9995B752A34037800CD900A /* WebsocketMessageTypes.swift */; };
 		FA57677851302C0F13C69A459895DCEF /* NSBundle+GID3PAdditions.h in Headers */ = {isa = PBXBuildFile; fileRef = D0B13CB8E2380B3D8153DE8AC1D00E0D /* NSBundle+GID3PAdditions.h */; settings = {ATTRIBUTES = (Project, ); }; };
 		FC4D25C8F2BEE5225F07D567757543AF /* WSEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B6B7A0CF4B560F54C3513F6637CCA41 /* WSEngine.swift */; };
 		FDE948CC3A35F70EAEB413E5DE09C5ED /* OIDRegistrationResponse.m in Sources */ = {isa = PBXBuildFile; fileRef = 5E4FF6B9D7034165F3B7C9954D0E5198 /* OIDRegistrationResponse.m */; };
@@ -719,8 +718,7 @@
 		F787A922FCA2B2453D62B91E0D238CE4 /* FoundationSecurity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FoundationSecurity.swift; path = Sources/Security/FoundationSecurity.swift; sourceTree = "<group>"; };
 		F8D7EA35E60B3E6DFB4917E429D6576A /* UIImage+Snapshot.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = "UIImage+Snapshot.h"; path = "FBSnapshotTestCase/Categories/UIImage+Snapshot.h"; sourceTree = "<group>"; };
 		F99591EE4A6FA4AB69D613692D72A6E9 /* StringHTTPHandler.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = StringHTTPHandler.swift; path = Sources/Framer/StringHTTPHandler.swift; sourceTree = "<group>"; };
-		F9995B732A3381F600CD900A /* WebsocketMessageTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebsocketMessageTypes.swift; sourceTree = "<group>"; };
-		FB2029C322BD7676E2AC19A8C0E82B25 /* MockPortalApi.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MockPortalApi.swift; sourceTree = "<group>"; };
+		F9995B752A34037800CD900A /* WebsocketMessageTypes.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WebsocketMessageTypes.swift; sourceTree = "<group>"; };
 		FB367A379C63040F8B0480CF9465B2C0 /* GTMKeychain.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = GTMKeychain.h; path = GTMAppAuth/Sources/Public/GTMAppAuth/GTMKeychain.h; sourceTree = "<group>"; };
 		FB580BC0EF1D4510D99F8A3CAE8DBA2C /* PortalConnect.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PortalConnect.swift; sourceTree = "<group>"; };
 		FBD710D5EDF47A2758A8683A38EBD5CE /* Starscream-umbrella.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "Starscream-umbrella.h"; sourceTree = "<group>"; };
@@ -971,6 +969,7 @@
 		2819DCB9C3A6FA46223A2E021F4FAAB6 /* Utils */ = {
 			isa = PBXGroup;
 			children = (
+				F9995B752A34037800CD900A /* WebsocketMessageTypes.swift */,
 				30EDE14BD9632228CAE5FC9FAA16CE16 /* Chains.swift */,
 				9BEB689EE1F13A09E786F4C41416A65C /* EthRequests.swift */,
 				4128329DE7B5CE6E7F6D7D8C5837B3D4 /* HttpRequest.swift */,
@@ -1218,14 +1217,6 @@
 		524D200A1619A36E112B2B84406F51C7 /* Provider */ = {
 			isa = PBXGroup;
 			children = (
-				CF5107A5A8FE4FB58696048206AAD082 /* HttpRequest.swift */,
-				944F6D19E31EB7F47BBC016A2D7A3176 /* HttpRequester.swift */,
-				C05D0E6F29D57C7DF82D5B48ABDD31DF /* Result.swift */,
-				1225ED2B3B90E19314AC2B7820FF632F /* WebSocketClient.swift */,
-				B85178DD9FF24165137670E36919591A /* Errors */,
-				7E3D94712A09BE1600A2C6CE /* EthRequests.swift */,
-				7E3D94732A09BF4300A2C6CE /* Chains.swift */,
-				F9995B732A3381F600CD900A /* WebsocketMessageTypes.swift */,
 				1AF68E91C1A7AA74B3D65D853D35EAD7 /* MpcSigner.swift */,
 				297B08FF8D0F6B9F91C16988B04A1622 /* PortalProvider.swift */,
 			);
@@ -2168,52 +2159,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		87653D90F4A8EADA562FB7D469E48BCB /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				E2400D5131EE681F2AD4F5FB15B584C9 /* Constants.swift in Sources */,
-				6225A62E75807E3B0A13FEEBA9189F42 /* GDriveClient.swift in Sources */,
-				F9995B742A3381F600CD900A /* WebsocketMessageTypes.swift in Sources */,
-				D864FAEB3A54197F06807F1FCB204118 /* GDriveStorage.swift in Sources */,
-				80FBDF0584623F2AC7EC81AE6B8FE62E /* GoogleAuth.swift in Sources */,
-				3D8FB1C92F12BA70099E471E96CA80C7 /* HttpRequest.swift in Sources */,
-				CF8E0292393D09B0448C959174374B0B /* HttpRequester.swift in Sources */,
-				7966698710A320716E5FE1E8929B993B /* ICloudStorage.swift in Sources */,
-				7E3D94702A09B88B00A2C6CE /* PortalSwaps.swift in Sources */,
-				5925B567D0E019A34E23F27991926135 /* MobileStorageAdapter.swift in Sources */,
-				A1ADAAD208C8B6BC0BC7CE71F7041FD6 /* MockGDriveStorage.swift in Sources */,
-				633F3E7754F66B63A67BAE586CB8D472 /* MockHttpRequest.swift in Sources */,
-				D3786D74148973EA96F083A5C457587B /* MockHttpRequester.swift in Sources */,
-				BA79994F79E7D0E2C543E32C5F7D4A17 /* MockICloudStorage.swift in Sources */,
-				7E3D94722A09BE1600A2C6CE /* EthRequests.swift in Sources */,
-				10F72F88DA4E691BCDB9254F3E32D5D0 /* MockPortal.swift in Sources */,
-				62CCD3A445110A0F735D04A806A37ECA /* MockPortalApi.swift in Sources */,
-				A8D25D7A221FCBD6DD62433A1D9D6685 /* MockPortalKeychain.swift in Sources */,
-				399079912A33A402FF12017EC98522DB /* MockPortalMpc.swift in Sources */,
-				EE24DEE9BC2E6917865FC3A186C1E197 /* MockPortalProvider.swift in Sources */,
-				03CFB133A839D4D0DB5B2D1B483D89C6 /* MockStorage.swift in Sources */,
-				96A888040A44F0D807D6B75E3D920119 /* MpcSigner.swift in Sources */,
-				A21DBD7CECF4623D522C848E2D8448B6 /* Portal.swift in Sources */,
-				CBFE65A7999BAFB948B08684C8A5D256 /* PortalApi.swift in Sources */,
-				3FF04CDBF1BA3FAD256C8FAA7A2E218C /* PortalConnect.swift in Sources */,
-				CD2E967B140A791DBEC3AA28BB3ED40A /* PortalError.swift in Sources */,
-				F229E6CD0ABFFC2573DF5A26BA522BE1 /* PortalErrorCodes.swift in Sources */,
-				8C73D1F1B388B13E2EF5CBA3C917492B /* PortalErrorCodeTypes.swift in Sources */,
-				7E3D94742A09BF4300A2C6CE /* Chains.swift in Sources */,
-				E6035E3DD8AF34719A333C58A10AB6DA /* PortalKeychain.swift in Sources */,
-				6B6046FA016A9A560FA7F93B68923A6E /* PortalMpc.swift in Sources */,
-				98775FC8CC9B9A5E72B490FB0B0E4E3E /* PortalMpcError.swift in Sources */,
-				67575CF013D6E74853C7F91ABCDBB085 /* PortalProvider.swift in Sources */,
-				F97145582A14A22D0034189F /* LocalFileStorage.swift in Sources */,
-				92E6F60448970D4B78A9830377B25F25 /* PortalSwift-dummy.m in Sources */,
-				122EB308F9F38236A9A694FB614CCAFD /* PortalWebView.swift in Sources */,
-				E3BE62C524CA8244229C4446FC830DCF /* Result.swift in Sources */,
-				E98B2B0AA3638DE045131EFD3494B1A0 /* Storage.swift in Sources */,
-				CCFB1FF2455488066F734956EBD1063E /* WebSocketClient.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		892AB60EF9089CFFAB9EC9C56DF04956 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -2232,6 +2177,7 @@
 			files = (
 				8A2A339B73DAD5DCD8B632E64CCD1EA8 /* Chains.swift in Sources */,
 				9372C7D85FE4CDAA8738C913E773E3AA /* Constants.swift in Sources */,
+				F9995B762A34037800CD900A /* WebsocketMessageTypes.swift in Sources */,
 				ECF8D1413E46DA7D314BCD0B3879445D /* EthRequests.swift in Sources */,
 				BD04D07D8BA5CF88436EC4FCE59F85EC /* GDriveClient.swift in Sources */,
 				D7482BF8D4C97C5C46BD44053D9FC02A /* GDriveStorage.swift in Sources */,
