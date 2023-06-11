@@ -40,6 +40,14 @@ public class PortalConnect {
     client.connect(uri: uri)
   }
   
+  public func on(event: Events.RawValue, callback: @escaping (_ data: Any) -> Void) {
+    _ = portal.provider.on(event: event, callback: callback)
+  }
+  
+  public func emit(event: Events.RawValue, data: Any) {
+    _ = portal.provider.emit(event: event, data: data)
+  }
+  
   func handleDappSessionRequested(data: ConnectData) {
     print("recieved event portal_dappSessionRequested")
     _ = portal.provider.once(event: Events.PortalDappSessionApproved.rawValue, callback: { [self] approved in

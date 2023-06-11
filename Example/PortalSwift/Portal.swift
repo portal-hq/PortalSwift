@@ -127,10 +127,6 @@ class PortalWrapper {
       )
       _ = portal?.provider.on(event: Events.PortalSigningRequested.rawValue, callback: { [weak self] data in self?.didRequestApproval(data: data)})
       
-      _ = portal?.provider.on(event: Events.PortalDappSessionRequested.rawValue, callback: { [weak self] data in self?.didRequestApprovalDapps(data: data)})
-      
-      _ = portal?.provider.on(event: Events.PortalDappSessionRequestedV1.rawValue, callback: { [weak self] data in
-        self?.didRequestApprovalDappsV1(data: data)})
     } catch ProviderInvalidArgumentError.invalidGatewayUrl {
       print("❌ Error: Invalid Gateway URL")
     } catch PortalArgumentError.noGatewayConfigForChain(let chainId) {
@@ -144,14 +140,6 @@ class PortalWrapper {
   func didRequestApproval(data: Any) -> Void {
     _ = portal?.provider.emit(event: Events.PortalSigningApproved.rawValue, data: data)
   }
-  
-  func didRequestApprovalDapps(data: Any) -> Void {
-    _ = portal?.provider.emit(event: Events.PortalDappSessionApproved.rawValue, data: data)
-  }
-  func didRequestApprovalDappsV1(data: Any) -> Void {
-    _ = portal?.provider.emit(event: Events.PortalDappSessionApprovedV1.rawValue, data: data)
-  }
-  
   
   func generate(completion: @escaping (Result<String>) -> Void) -> Void  {
     portal?.mpc.generate() { (addressResult) -> Void in
