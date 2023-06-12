@@ -37,7 +37,7 @@ class ConnectViewController: UIViewController {
     let CONNECT_URL = ENV == "prod" ? PROD_CONNECT_SERVER_URL : STAGING_CONNECT_SERVER_URL
 
     connectButton.isEnabled = false
-    connect = PortalConnect(portal!)
+    connect = PortalConnect(portal!, CONNECT_URL)
     _ = portal?.provider.on(event: Events.PortalDappSessionRequested.rawValue, callback: { [weak self] data in
       print("Event \(Events.PortalDappSessionRequested.rawValue) recieved for v2")
       self?.didRequestApprovalDapps(data: data)})
