@@ -8,294 +8,272 @@
 import Foundation
 
 // Both
-struct WebSocketMessage: Codable {
-  let event: String
-  let data: WebSocketMessageData?
+public struct WebSocketMessage: Codable {
+  public let event: String
+  public let data: WebSocketMessageData?
 }
 
-enum WebSocketMessageData: Codable {
+public enum WebSocketMessageData: Codable {
   case connectData(data: ConnectData)
   case disconnectData(data: DisconnectData)
   case sessionRequestData(data: SessionRequestData)
 }
 
-enum WebSocketRequestData: Codable {
+public enum WebSocketRequestData: Codable {
   case connect(data: ConnectRequestData)
 }
 
-struct ConnectRequestData: Codable {
-  let address: String
-  let chainId: Int
-  let uri: String
+public struct ConnectRequestData: Codable {
+  public let address: String
+  public let chainId: Int
+  public let uri: String
 }
 
-struct WebSocketConnectedMessage: Codable {
-  var event: String = "connected"
-  let data: ConnectedData
-}
-struct ConnectedData: Codable {
-  let id: String
-  let topic: String
-  let params: Pairing
+public struct WebSocketConnectedMessage: Codable {
+  public var event: String = "connected"
+  public let data: ConnectedData
 }
 
-struct Pairing: Codable {
-  let active: Bool
-  let expiry: Int32?
-  let peerMetadata: PeerMetadata
-  let relay: ProtocolOptions?
-  let topic: String?
+public struct ConnectedData: Codable {
+  public let id: String
+  public let topic: String
+  public let params: Pairing
 }
 
-struct WebSocketConnectedV1Message: Codable {
-  var event: String = "connected"
-  let data: ConnectedV1Data
+public struct Pairing: Codable {
+  public let active: Bool
+  public let expiry: Int32?
+  public let peerMetadata: PeerMetadata
+  public let relay: ProtocolOptions?
+  public let topic: String?
 }
 
-struct ConnectedV1Data: Codable {
-  let id: String
-  let topic: String
-  let params: PeerMetadata
+public struct WebSocketConnectedV1Message: Codable {
+  public var event: String = "connected"
+  public let data: ConnectedV1Data
 }
 
-struct WebSocketDappSessionRequestMessage: Codable {
-  var event: String = "portal_dappSessionRequest"
-  let data: ConnectData
+public struct ConnectedV1Data: Codable {
+  public let id: String
+  public let topic: String
+  public let params: PeerMetadata
 }
 
-struct ConnectData: Codable {
-  let id: String
-  let topic: String
-  let params: SessionProposal
+public struct WebSocketDappSessionRequestMessage: Codable {
+  public var event: String = "portal_dappSessionRequested"
+  public let data: ConnectData
 }
 
-struct WebSocketDappSessionRequestV1Message: Codable {
-  var event: String = "portal_dappSessionRequestV1"
-  let data: ConnectV1Data
+public struct ConnectData: Codable {
+  public  let id: String
+  public let topic: String
+  public let params: SessionProposal
 }
 
-struct ConnectV1Data: Codable {
-  let id: String
-  let topic: String
-  let params: ConnectV1Params
+public struct WebSocketDappSessionRequestV1Message: Codable {
+  public var event: String = "portal_dappSessionRequestedV1"
+  public let data: ConnectV1Data
 }
 
-struct WebSocketDisconnectMessage: Codable {
-  var event: String = "disconnect"
-  let data: DisconnectData
+public struct ConnectV1Data: Codable {
+  public let id: String
+  public let topic: String
+  public let params: PeerMetadata
 }
 
-struct WebSocketSessionRequestMessage: Codable {
-  var event: String = "session_request"
-  let data: SessionRequestData
+public struct WebSocketDisconnectMessage: Codable {
+  public var event: String = "disconnect"
+  public let data: DisconnectData
 }
 
-struct WebSocketSessionRequestAddressMessage: Codable {
-  var event: String = "session_request"
-  let data: SessionRequestAddressData
+public struct WebSocketSessionRequestMessage: Codable {
+  public var event: String = "session_request"
+  public let data: SessionRequestData
 }
 
-struct WebSocketSessionRequestTransactionMessage: Codable {
-  var event: String = "session_request"
-  let data: SessionRequestTransactionData
+public struct WebSocketSessionRequestAddressMessage: Codable {
+  public var event: String = "session_request"
+  public let data: SessionRequestAddressData
 }
 
-struct WebSocketRequest: Codable {
-  let event: String
-  let data: WebSocketRequestData?
+public struct WebSocketSessionRequestTransactionMessage: Codable {
+  public var event: String = "session_request"
+  public let data: SessionRequestTransactionData
 }
 
-struct WebSocketConnectRequest: Codable {
-  let event: String
-  let data: ConnectRequestData
+public struct WebSocketRequest: Codable {
+  public let event: String
+  public let data: WebSocketRequestData?
+}
+
+public struct WebSocketConnectRequest: Codable {
+  public let event: String
+  public let data: ConnectRequestData
 }
 
 // Responses
 
-struct SignatureReceivedMessage: Codable {
-  let event: String
-  let data: SignatureReceivedData
+public struct SignatureReceivedMessage: Codable {
+  public let event: String
+  public let data: SignatureReceivedData
 }
 
-struct DappSessionResponseMessage: Codable {
-  let event: String
-  let data: SessionResponseData
+public struct DappSessionResponseMessage: Codable {
+  public let event: String
+  public let data: SessionResponseData
 }
 
-struct DappSessionResponseV1Message: Codable {
-  let event: String
-  let data: SessionResponseV1Data
+public struct DappSessionResponseV1Message: Codable {
+  public let event: String
+  public let data: SessionResponseV1Data
 }
 
-struct SignatureReceivedData: Codable {
-  let topic: String
-  let transactionHash: String
-  let transactionId: String
+public struct SignatureReceivedData: Codable {
+  public let topic: String
+  public let transactionHash: String
+  public let transactionId: String
 }
 
 // Specific Types for v1 or v2
 
 // V2
 
-struct SessionProposal: Codable {
-    let id: Int
-    let params: Params
+public struct SessionProposal: Codable {
+  public let id: Int
+  public let params: Params
 }
 
-struct Params: Codable {
-    let id: Int
-    let pairingTopic: String
-    let expiry: Int
-    let requiredNamespaces: Namespaces
-    let optionalNamespaces: Namespaces
-    let relays: [Relay]
-    let proposer: Proposer
+public struct Params: Codable {
+  public let id: Int
+  public let pairingTopic: String
+  public let expiry: Int
+  public let requiredNamespaces: Namespaces
+  public let optionalNamespaces: Namespaces
+  public let relays: [Relay]
+  public let proposer: Proposer
 }
 
-struct Namespaces: Codable {
-    let eip155: Eip155
+public struct Namespaces: Codable {
+  public let eip155: Eip155
 }
 
-struct Eip155: Codable {
-    let chains: [String]
-    let methods: [String]
-    let events: [String]
-    let rpcMap: [String: String]
+public struct Eip155: Codable {
+  public let chains: [String]
+  public let methods: [String]
+  public let events: [String]
+  public let rpcMap: [String: String]
 }
 
-struct Relay: Codable {
-  let `protocol`: String
+public struct Relay: Codable {
+  public let `protocol`: String
 }
 
-struct Proposer: Codable {
-    let publicKey: String
-    let metadata: Metadata
+public struct Proposer: Codable {
+  public let publicKey: String
+  public let metadata: Metadata
 }
 
-struct Metadata: Codable {
-    let description: String
-    let url: String
-    let icons: [String]
-    let name: String
+public struct Metadata: Codable {
+  public let description: String
+  public let url: String
+  public let icons: [String]
+  public let name: String
 }
 
-struct SessionResponseData: Codable {
-  let id: String
-  let topic: String
-  let address: String
-  let chainId: String
-  let params: SessionProposal?
+public struct SessionResponseData: Codable {
+  public let id: String
+  public let topic: String
+  public let address: String
+  public let chainId: String
+  public let params: SessionProposal?
 }
 
-struct SessionResponseV1Data: Codable {
-  let id: String
-  let topic: String
-  let address: String
-  let chainId: String
+public struct SessionResponseV1Data: Codable {
+  public let id: String
+  public let topic: String
+  public let address: String
+  public let chainId: String
 }
 
 
 // V1
-struct ConnectV1Params: Codable {
-  let id: Int
-  let jsonrpc: String
-  let method: String
-  let params: [PyaloadV1Request]
+public struct PeerMetadata: Codable {
+  public let name: String
+  public let description: String
+  public let url: String
+  public let icons: [String]
 }
 
-struct PyaloadV1Request: Codable {
-  let peerId: String
-  let peerMeta: PeerMetadata
-  let chainId: Int
+public struct DisconnectData: Codable {
+  public let id: String
+  public let topic: String
 }
 
-struct PeerMetadata: Codable {
-  let name: String
-  let description: String
-  let url: String
-  let icons: [String]
+public struct ProtocolOptions: Codable {
+  public let `protocol`: String
+  public let data: String?
 }
 
-//struct ConnectedV1Data: Codable {
-//  let address: String
-//  let chainId: String
-//  let payloadId: String
-//  let connected: Bool
-//}
-
-
-struct DisconnectData: Codable {
-  let id: String
-  let topic: String
+public struct ProviderRequestAddressData: Codable {
+  public let method: String
+  public let params: [ETHAddressParam]
 }
 
-
-
-struct ProtocolOptions: Codable {
-  let `protocol`: String
-  let data: String?
+public struct ProviderRequestTransactionData: Codable {
+  public let method: String
+  public let params: [ETHTransactionParam]
 }
 
-struct ProviderRequestAddressData: Codable {
-  let method: String
-  let params: [ETHAddressParam]
+public struct ProviderRequestData: Codable {
+  public let method: String
+  public let params: [String]
 }
 
-struct ProviderRequestTransactionData: Codable {
-  let method: String
-  let params: [ETHTransactionParam]
+public struct ProviderRequestParams: Codable {
+  public let chainId: Int?
+  public let request: ProviderRequestData
 }
 
-struct ProviderRequestData: Codable {
-  let method: String
-  let params: [String]
+public struct ProviderRequestTransactionParams: Codable {
+  public let chainId: Int?
+  public let request: ProviderRequestTransactionData
 }
 
-struct ProviderRequestParams: Codable {
-  let chainId: Int?
-  let request: ProviderRequestData
+public struct ProviderRequestAddressParams: Codable {
+  public let chainId: Int?
+  public let request: ProviderRequestAddressData
 }
 
-struct ProviderRequestTransactionParams: Codable {
-  let chainId: Int?
-  let request: ProviderRequestTransactionData
+public struct ProviderRequestPayload: Codable {
+  public let event: String
+  public let data: ProviderRequestData
 }
 
-struct ProviderRequestAddressParams: Codable {
-  let chainId: Int?
-  let request: ProviderRequestAddressData
+public struct ProviderRequestTransactionPayload: Codable {
+  public let event: String
+  public let data: ProviderRequestTransactionData
 }
 
-struct ProviderRequestPayload: Codable {
-  let event: String
-  let data: ProviderRequestData
+public struct ProviderRequestAddressPayload: Codable {
+  public let event: String
+  public let data: ProviderRequestAddressData
 }
 
-struct ProviderRequestTransactionPayload: Codable {
-  let event: String
-  let data: ProviderRequestTransactionData
+public struct SessionRequestData: Codable {
+  public let id: String
+  public let params: ProviderRequestParams
+  public let topic: String
 }
 
-struct ProviderRequestAddressPayload: Codable {
-  let event: String
-  let data: ProviderRequestAddressData
+public struct SessionRequestTransactionData: Codable {
+  public let id: String
+  public let params: ProviderRequestTransactionParams
+  public let topic: String
 }
 
-struct SessionRequestData: Codable {
-  let id: String
-  let params: ProviderRequestParams
-  let topic: String
-}
-
-struct SessionRequestTransactionData: Codable {
-  let id: String
-  let params: ProviderRequestTransactionParams
-  let topic: String
-}
-
-struct SessionRequestAddressData: Codable {
-  let id: String
-  let params: ProviderRequestAddressParams
-  let topic: String
+public struct SessionRequestAddressData: Codable {
+  public let id: String
+  public let params: ProviderRequestAddressParams
+  public let topic: String
 }
 
