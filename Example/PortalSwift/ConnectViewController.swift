@@ -37,19 +37,49 @@ class ConnectViewController: UIViewController {
     let CONNECT_URL = ENV == "prod" ? PROD_CONNECT_SERVER_URL : STAGING_CONNECT_SERVER_URL
 
     connectButton.isEnabled = false
-    connect = PortalConnect(portal!, CONNECT_URL)
-    _ = portal?.provider.on(event: Events.PortalDappSessionRequested.rawValue, callback: { [weak self] data in self?.didRequestApprovalDapps(data: data)})
+    connect = PortalConnect(portal!)
+    _ = portal?.provider.on(event: Events.PortalDappSessionRequested.rawValue, callback: { [weak self] data in
+      print("Event \(Events.PortalDappSessionRequested.rawValue) recieved for v2")
+      self?.didRequestApprovalDapps(data: data)})
     
     _ = portal?.provider.on(event: Events.PortalDappSessionRequestedV1.rawValue, callback: { [weak self] data in
+      print("Event \(Events.PortalDappSessionRequested.rawValue) recieved for v1")
       self?.didRequestApprovalDappsV1(data: data)})
   }
   
   func didRequestApprovalDapps(data: Any) -> Void {
+    print("Emitting Dapp Session Approval for v2..")
+    if let connectData = data as? ConnectData {
+        // Now you can work with the parsed ConnectV1Data object
+        print(connectData.id)
+        print(connectData.topic)
+        print(connectData.params)
+
+        // You can emit the event with the parsed ConnectV1Data object
+        _ = connect?.emit(event: Events.PortalDappSessionApprovedV1.rawValue, data: connectData)
+    } else {
+        print("Invalid data type. Expected ConnectV1Data.")
+    }
     _ = connect?.emit(event: Events.PortalDappSessionApproved.rawValue, data: data)
   }
-  func didRequestApprovalDappsV1(data: Any) -> Void {
-    _ = connect?.emit(event: Events.PortalDappSessionApprovedV1.rawValue, data: data)
+
+  func didRequestApprovalDappsV1(data: Any) {
+      print("Emitting Dapp Session Approval for v1..")
+
+      if let connectData = data as? ConnectV1Data {
+          // Now you can work with the parsed ConnectV1Data object
+          print(connectData.id)
+          print(connectData.topic)
+          print(connectData.params)
+
+          // You can emit the event with the parsed ConnectV1Data object
+          _ = connect?.emit(event: Events.PortalDappSessionApprovedV1.rawValue, data: connectData)
+      } else {
+          print("Invalid data type. Expected ConnectV1Data.")
+      }
   }
+
+
   
   @IBAction func connectPressed() {
     print("Connect button pressed...")

@@ -8,6 +8,9 @@
 import Foundation
 import Starscream
 
+enum WebSocketTypeErrors: Error {
+  case MismatchedTypeMessage
+}
 struct EventHandlers {
   var close: [() -> Void]
   var dapp_session_requested: [(ConnectData) -> Void]
@@ -149,6 +152,9 @@ class WebSocketClient : Starscream.WebSocketDelegate {
       do {
         let payload = try JSONDecoder().decode(WebSocketDappSessionRequestV1Message.self, from: data)
         print("[WebSocketClient] Received message: \(payload)")
+        if (payload.event != "portal_dappSessionRequestedV1" ) {
+          throw WebSocketTypeErrors.MismatchedTypeMessage
+        }
         emit(payload.event, payload.data)
         return
       } catch {
@@ -156,6 +162,9 @@ class WebSocketClient : Starscream.WebSocketDelegate {
         do {
           let payload = try JSONDecoder().decode(WebSocketDappSessionRequestMessage.self, from: data)
           print("[WebSocketClient] Received message: \(payload)")
+          if (payload.event != "portal_dappSessionRequested" ) {
+            throw WebSocketTypeErrors.MismatchedTypeMessage
+          }
           emit(payload.event, payload.data)
           return
         } catch {
@@ -183,6 +192,9 @@ class WebSocketClient : Starscream.WebSocketDelegate {
                 do {
                   let payload = try JSONDecoder().decode(WebSocketConnectedMessage.self, from: data)
                   print("[WebSocketClient] Received message: \(payload)")
+                  if (payload.event != "connected" ) {
+                    throw WebSocketTypeErrors.MismatchedTypeMessage
+                  }
                   emit(payload.event, payload.data)
                   return
                 } catch {
@@ -190,6 +202,9 @@ class WebSocketClient : Starscream.WebSocketDelegate {
                     print("[WebSocketClient] Unable to parse message as WebSocketConnectedMessage, attempting WebSocketConnectedV1Message...")
                     let payload = try JSONDecoder().decode(WebSocketConnectedV1Message.self, from: data)
                     print("[WebSocketClient] Received message: \(payload)")
+                    if (payload.event != "connected" ) {
+                      throw WebSocketTypeErrors.MismatchedTypeMessage
+                    }
                     emit(payload.event, payload.data)
                     return
                   } catch {
