@@ -50,15 +50,15 @@ class ConnectViewController: UIViewController {
   func didRequestApprovalDapps(data: Any) -> Void {
     print("Emitting Dapp Session Approval for v2..")
     if let connectData = data as? ConnectData {
-        // Now you can work with the parsed ConnectV1Data object
+        // Now you can work with the parsed ConnectData object
         print(connectData.id)
         print(connectData.topic)
         print(connectData.params)
 
-        // You can emit the event with the parsed ConnectV1Data object
+        // You can emit the event with the parsed ConnectData object
         _ = connect?.emit(event: Events.PortalDappSessionApprovedV1.rawValue, data: connectData)
     } else {
-        print("Invalid data type. Expected ConnectV1Data.")
+        print("Invalid data type. Expected ConnectData.")
     }
     _ = connect?.emit(event: Events.PortalDappSessionApproved.rawValue, data: data)
   }
