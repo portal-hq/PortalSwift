@@ -115,15 +115,18 @@ public class PortalConnect {
   
   func handleConnected(data: ConnectData) {
     connected = true
+    _ = portal.provider.emit(event: Events.Connect.rawValue, data: data)
   }
   
   func handleConnectedV1(data: ConnectedV1Data) {
     connected = true
+    _ = portal.provider.emit(event: Events.Connect.rawValue, data: data)
   }
   
   func handleDisconnected(data: DisconnectData) {
     connected = false
     client.close()
+    _ = portal.provider.emit(event: Events.Disconnect.rawValue, data: data)
   }
   
   func handleSessionRequest(data: SessionRequestData) {

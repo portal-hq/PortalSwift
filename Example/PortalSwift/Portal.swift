@@ -126,6 +126,11 @@ class PortalWrapper {
         mpcHost: MPC_URL!
       )
       _ = portal?.provider.on(event: Events.PortalSigningRequested.rawValue, callback: { [weak self] data in self?.didRequestApproval(data: data)})
+      _ = portal?.provider.once(event: Events.PortalSignatureReceived.rawValue) { (data: Any) in
+        let result = data as! RequestCompletionResult
+        
+        print("[ViewController] portal_signatureReceived: \(result)")
+      }
       
     } catch ProviderInvalidArgumentError.invalidGatewayUrl {
       print("❌ Error: Invalid Gateway URL")
