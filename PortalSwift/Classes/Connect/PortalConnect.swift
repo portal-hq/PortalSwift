@@ -42,6 +42,7 @@ public class PortalConnect {
     client.on("connected", handleConnected)
     client.on("connectedV1", handleConnectedV1)
     client.on("disconnected", handleDisconnected)
+    client.on("error", handleError)
     client.on("session_request", handleSessionRequest)
     client.on("session_request_address", handleSessionRequestAddress)
     client.on("session_request_transaction", handleSessionRequestTransaction)
@@ -168,6 +169,10 @@ public class PortalConnect {
     connected = false
     client.close()
     _ = portal.provider.emit(event: Events.Disconnect.rawValue, data: data)
+  }
+  
+  func handleError(data: ErrorData) {
+    _ = portal.provider.emit(event: Events.ConnectError.rawValue, data: data)
   }
   
   func handleSessionRequest(data: SessionRequestData) {

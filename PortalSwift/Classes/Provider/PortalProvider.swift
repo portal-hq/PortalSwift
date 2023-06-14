@@ -21,6 +21,7 @@ public enum Chains: Int {
 public enum Events: String {
   case ChainChanged = "chainChanged"
   case Connect = "connect"
+  case ConnectError = "portal_connectError"
   case Disconnect = "disconnect"
   case PortalSignatureReceived = "portal_signatureReceived"
   case PortalSigningApproved = "portal_signingApproved"

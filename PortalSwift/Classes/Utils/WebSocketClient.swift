@@ -18,6 +18,7 @@ struct EventHandlers {
   var connected: [(ConnectedData) -> Void]
   var connectedV1: [(ConnectedV1Data) -> Void]
   var disconnect: [(DisconnectData) -> Void]
+  var error: [(ErrorData) -> Void]
   var session_request: [(SessionRequestData) -> Void]
   var session_request_address: [(SessionRequestAddressData) -> Void]
   var session_request_transaction: [(SessionRequestTransactionData) -> Void]
@@ -239,6 +240,10 @@ class WebSocketClient : Starscream.WebSocketDelegate {
     // This error needs to match
     if (error?.localizedDescription == "Connection reset by peer") {
       connect(uri: uri!)
+    } else if (error != nil && error?.localizedDescription != nil) {
+      emit("error", ErrorData(message: error!.localizedDescription))
+    } else {
+      emit("error", ErrorData(message: "An unknown error occurred."))
     }
   }
   
@@ -333,6 +338,23 @@ class WebSocketClient : Starscream.WebSocketDelegate {
       // Ignore the event
       print("[PortalConnect] No registered event handlers for \(event). Ignoring...")
     }
+  }
+  
+  func emit(_ event: String, _ data: ErrorData) {
+    let eventHandlers = events.error
+    
+    // Ensure there's something to invoke
+    if (eventHandlers.count  > 0) {
+      // Loop through the event handlers
+      for handler in eventHandlers {
+        // Invoke the handler
+        handler(data)
+      }
+    } else {
+      // Ignore the event
+      print("[PortalConnect] No registered event handlers for \(event). Ignoring...")
+    }
+
   }
   
   func emit(_ event: String, _ data: SessionRequestData) {
