@@ -822,7 +822,7 @@ public class PortalProvider {
             )
             // When the work is done, call the completion handler
             DispatchQueue.main.async {
-              return completion(Result(data: signResult.signature))
+              return completion(Result(data: signResult.signature!))
             }
           } catch {
             DispatchQueue.main.async {
