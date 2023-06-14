@@ -121,7 +121,7 @@ class PortalWrapper {
         gatewayConfig: [
           chainId: "https://eth-\(chain).g.alchemy.com/v2/\(ALCHEMY_API_KEY)",
         ],
-        autoApprove: true,
+        autoApprove: false,
         apiHost: API_URL!,
         mpcHost: MPC_URL!
       )

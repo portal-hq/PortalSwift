@@ -33,6 +33,7 @@ struct EventHandlers {
     session_request = []
     session_request_address = []
     session_request_transaction = []
+    error = []
   }
 }
 
@@ -452,6 +453,11 @@ class WebSocketClient : Starscream.WebSocketDelegate {
   func on(_ event: String, _ handler: @escaping (SessionRequestTransactionData) -> Void) {
     // Add event handler to the list
     events.session_request_transaction.append(handler)
+  }
+  
+  func on(_ event: String, _ handler: @escaping (ErrorData) -> Void) {
+    // Add event handler to the list
+    events.error.append(handler)
   }
   
   func send(_ message: String) {
