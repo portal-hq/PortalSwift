@@ -38,13 +38,27 @@ class ConnectViewController: UIViewController {
 
     connectButton.isEnabled = false
     connect = PortalConnect(portal!, CONNECT_URL)
-    _ = portal?.provider.on(event: Events.PortalDappSessionRequested.rawValue, callback: { [weak self] data in
+    
+    connect?.on(event: Events.PortalDappSessionRequested.rawValue, callback: { [weak self] data in
       print("Event \(Events.PortalDappSessionRequested.rawValue) recieved for v2")
       self?.didRequestApprovalDapps(data: data)})
     
-    _ = portal?.provider.on(event: Events.PortalDappSessionRequestedV1.rawValue, callback: { [weak self] data in
+    connect?.on(event: Events.PortalDappSessionRequestedV1.rawValue, callback: { [weak self] data in
       print("Event \(Events.PortalDappSessionRequested.rawValue) recieved for v1")
       self?.didRequestApprovalDappsV1(data: data)})
+    
+    connect?.on(event: Events.PortalSignatureReceived.rawValue) { (data: Any) in
+      let result = data as! RequestCompletionResult
+      print("[ConnectViewController] ✅ Received signature \(result)")
+    }
+    
+    connect?.on(event: Events.Connect.rawValue) { (data: Any) in
+      print("[ConnectViewController] ✅ Connected! \(data)")
+    }
+    
+    connect?.on(event: Events.Disconnect.rawValue) { (data: Any) in
+      print("[ConnectViewController] 🛑 Disconnected \(data)")
+    }
   }
   
   func didRequestApprovalDapps(data: Any) -> Void {

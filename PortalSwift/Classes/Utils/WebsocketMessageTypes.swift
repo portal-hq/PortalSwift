@@ -40,6 +40,10 @@ public struct ConnectedData: Codable {
   public let params: Pairing
 }
 
+public struct ErrorData: Codable {
+  public let message: String
+}
+
 public struct Pairing: Codable {
   public let active: Bool
   public let expiry: Int32?

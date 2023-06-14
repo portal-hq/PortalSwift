@@ -218,4 +218,9 @@ public class Portal {
       api.chainId = to
     }
   }
+  
+  public func updateAutoApprove(value: Bool) {
+    autoApprove = value
+    provider.autoApprove = value
+  }
 }
