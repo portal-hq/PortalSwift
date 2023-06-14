@@ -56,9 +56,12 @@ class WebSocketClient : Starscream.WebSocketDelegate {
     // Create the WebSocket to be connected on demand
     // - this WebSocket does not actually connect until
     //   the `connect` function is called
-    print("[WebSocketClient] Creating WebSocket client with headers: \(String(describing: request.allHTTPHeaderFields))")
     socket = Starscream.WebSocket(request: request)
     socket.delegate = self
+  }
+  
+  func resetEventBus() {
+    events = EventHandlers()
   }
   
   func close() {
@@ -112,10 +115,8 @@ class WebSocketClient : Starscream.WebSocketDelegate {
     // Set the connection state
     isConnected = true
     
-    print("[WebSocketClient] Connected to proxy service.")
-    
     do {
-      print("[WebSocketClient] Sending connect message...")
+      print("[WebSocketClient] Connected to proxy service. Sending connect message...")
       
       let address = try portal.keychain.getAddress()
       // Build the WebSocketRequest
