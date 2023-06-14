@@ -135,6 +135,7 @@ public enum MpcStatuses: String {
 
 /// A list of errors MPC can throw.
 public enum MpcError: Error {
+  case addressNotFound(message: String)
   case backupNoLongerSupported(message: String)
   case failedToGetBackupFromStorage
   case generateNoLongerSupported(message: String)
@@ -240,7 +241,11 @@ public class PortalMpc {
   }
   
   public func getAddress() -> String {
-    return self.address!
+    do {
+      return try self.keychain.getAddress()
+    } catch {
+      return ""
+    }
   }
   
   /// Creates a backup share, encrypts it, and stores the private key in cloud storage.
@@ -816,6 +821,8 @@ public class PortalMpc {
           if result.error != nil {
             return completion(Result(error: result.error!))
           }
+          
+          self.address = rotateResult.data!.address
           
           do {
             try self.api.storedClientSigningShare(recoverSigning: true) { result in
