@@ -21,7 +21,9 @@ public enum Chains: Int {
 public enum Events: String {
   case ChainChanged = "chainChanged"
   case Connect = "connect"
+  case ConnectError = "portal_connectError"
   case Disconnect = "disconnect"
+  case PortalSignatureReceived = "portal_signatureReceived"
   case PortalSigningApproved = "portal_signingApproved"
   case PortalSigningRejected = "portal_signingRejected"
   case PortalSigningRequested = "portal_signingRequested"
@@ -294,6 +296,7 @@ public struct AddressCompletionResult {
 
 /// Portal's EVM blockchain provider.
 public class PortalProvider {
+  public var autoApprove: Bool = false
   public var chainId: Chains.RawValue
   public var gatewayUrl: String
   public var portal: HttpRequester
@@ -302,7 +305,6 @@ public class PortalProvider {
   private var apiKey: String = "NO_API_KEY_PROVIDED"
   private var apiUrl: String = "https://api.portalhq.io"
   private var alchemyId: String = ""
-  private var autoApprove: Bool = false
   private var events: Dictionary<Events.RawValue, [RegisteredEventHandler]> = [:]
   private var httpHost: String = "https://api.portalhq.io"
   private var infuraId: String = ""
@@ -479,6 +481,18 @@ public class PortalProvider {
         guard result.error == nil else {
           return completion(Result(error: result.error!))
         }
+        
+        // Trigger `portal_signatureReceived` event
+        _ = self.emit(
+          event: Events.PortalSignatureReceived.rawValue,
+          data: RequestCompletionResult(
+            method: payload.method,
+            params: payload.params,
+            result: result
+          )
+        )
+        
+        // Trigger completion handler
         return completion(Result(data: RequestCompletionResult(method: payload.method, params: payload.params, result: result)))
       }
     } else {
@@ -513,6 +527,18 @@ public class PortalProvider {
         guard result.error == nil else {
           return completion(Result(error: result.error!))
         }
+        
+        // Trigger `portal_signatureReceived` event
+        _ = self.emit(
+          event: Events.PortalSignatureReceived.rawValue,
+          data: RequestCompletionResult(
+            method: payload.method,
+            params: payload.params,
+            result: result
+          )
+        )
+        
+        // Trigger completion handler
         return completion(Result(data: TransactionCompletionResult(method: payload.method, params: payload.params, result: result)))
       }
     } else {
@@ -796,7 +822,7 @@ public class PortalProvider {
             )
             // When the work is done, call the completion handler
             DispatchQueue.main.async {
-              return completion(Result(data: signResult.signature))
+              return completion(Result(data: signResult.signature!))
             }
           } catch {
             DispatchQueue.main.async {

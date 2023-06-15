@@ -42,6 +42,7 @@ class ViewController: UIViewController {
   @IBOutlet weak var logoutButton: UIButton!
   @IBOutlet weak var portalConnectButton: UIButton!
   @IBOutlet weak var recoverButton: UIButton!
+  @IBOutlet weak var signButton: UIButton!
   @IBOutlet weak var signInButton: UIButton!
   @IBOutlet weak var signUpButton: UIButton!
   @IBOutlet weak var testButton: UIButton!
@@ -412,6 +413,27 @@ class ViewController: UIViewController {
             }
         }
     }
+  
+  @IBAction func handleSign() {
+    do {
+      let address = try portal?.keychain.getAddress()
+      
+      let payload = ETHRequestPayload(
+        method: ETHRequestMethods.PersonalSign.rawValue,
+        params: [address!, "0xdeadbeef"]
+      )
+      
+      portal?.provider.request(payload: payload) {
+        (result: Result<RequestCompletionResult>) in
+        guard result.error == nil else {
+            print("❌ Error estimating gas:", result.error!)
+            return
+        }
+      }
+    } catch {
+      print("[ViewController] handleSign(): unable to read address from keychain")
+    }
+  }
     
     func sendTransaction (ethEstimate: String) {
         let payload = ETHTransactionPayload(
