@@ -215,6 +215,9 @@ class WebSocketClient : Starscream.WebSocketDelegate {
                     do {
                       let payload = try JSONDecoder().decode(WebSocketDisconnectMessage.self, from: data)
                       print("[WebSocketClient] Received message: \(payload)")
+                      if (payload.event != "disconnect" ) {
+                        throw WebSocketTypeErrors.MismatchedTypeMessage
+                      }
                       emit(payload.event, payload.data)
                       return
                     } catch {
@@ -236,10 +239,12 @@ class WebSocketClient : Starscream.WebSocketDelegate {
   }
   
   func handleError(_ error: (any Error)?) {
-    isConnected = false
+    
     print("[WebSocketClient] Received error: \(String(describing: error))")
     // This error needs to match
-    if (error?.localizedDescription == "Connection reset by peer") {
+    if let error = error, error.localizedDescription == "POSIXErrorCode(rawValue: 54): Connection reset by peer" && isConnected {
+      print("Connection reset by peer")
+      isConnected = false
       connect(uri: uri!)
     } else if (error != nil && error?.localizedDescription != nil) {
       emit("error", ErrorData(message: error!.localizedDescription))
