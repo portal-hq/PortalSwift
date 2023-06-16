@@ -12,6 +12,7 @@ public class PortalConnect {
   private var connected: Bool = false
   private var portal: Portal
   private var address: String?
+  private var providerHandlers: [Events.RawValue]
   
   public init(
     _ portal: Portal,
@@ -26,6 +27,7 @@ public class PortalConnect {
     
     self.portal = portal
     self.address = portal.mpc.getAddress()
+    self.providerHandlers = []
     
     guard self.address != nil else {
       print("[PortalConnect] ⚠️ Address not found in Keychain. This may cause some features not to work as expected.")
@@ -51,11 +53,18 @@ public class PortalConnect {
   }
   
   public func on(event: Events.RawValue, callback: @escaping (_ data: Any) -> Void) {
+    self.providerHandlers.append(event)
     _ = portal.provider.on(event: event, callback: callback)
   }
   
   public func emit(event: Events.RawValue, data: Any) {
     _ = portal.provider.emit(event: event, data: data)
+  }
+  
+  public func resetEvents() {
+    self.providerHandlers.forEach { event in
+      _ = self.portal.provider.removeListener(event: event)
+    }
   }
   
   func handleDappSessionRequested(data: ConnectData) {
@@ -183,7 +192,7 @@ public class PortalConnect {
       data.topic
     )
   
-    _ = portal.provider.on(event: Events.PortalSigningRejected.rawValue) { approved in
+    _ = portal.provider.once(event: Events.PortalSigningRejected.rawValue) { approved in
       let event = SignatureReceivedMessage(
         event: "portal_signatureRejected",
         data: SignatureReceivedData(
@@ -235,7 +244,7 @@ public class PortalConnect {
       data.topic
     )
     
-    _ = portal.provider.on(event: Events.PortalSigningRejected.rawValue) { approved in
+    _ = portal.provider.once(event: Events.PortalSigningRejected.rawValue) { approved in
       let event = SignatureReceivedMessage(
         event: "portal_signatureRejected",
         data: SignatureReceivedData(
@@ -286,7 +295,7 @@ public class PortalConnect {
       data.topic
     )
     
-    _ = portal.provider.on(event: Events.PortalSigningRejected.rawValue) { approved in
+    _ = portal.provider.once(event: Events.PortalSigningRejected.rawValue) { approved in
       let event = SignatureReceivedMessage(
         event: "portal_signatureRejected",
         data: SignatureReceivedData(
