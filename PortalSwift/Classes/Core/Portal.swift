@@ -178,6 +178,16 @@ public class Portal {
       mpcHost: mpcHost,
       version: version
     )
+    
+    do {
+      try self.api.getClient() { result in
+        if (result.data?.id != nil) {
+          self.keychain.clientId = result.data!.id
+        }
+      }
+    } catch {
+      print("[Portal] Unable to fetch client on initialization.")
+    }
   }
   
   /// Set the address on the instance and update the Provider address
