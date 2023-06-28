@@ -35,11 +35,15 @@ class PortalWrapper {
   
   init () {
     let PROD_CUSTODIAN_SERVER_URL = "https://portalex-mpc.portalhq.io"
-    let STAGING_CUSTODIAN_SERVER_URL = "https://staging-portalex-mpc-service.onrender.com"
     let PROD_API_URL = "api.portalhq.io"
     let PROD_MPC_URL = "mpc.portalhq.io"
+    
+    let STAGING_CUSTODIAN_SERVER_URL = "https://staging-portalex-mpc-service.onrender.com"
     let STAGING_API_URL = "api-staging.portalhq.io"
     let STAGING_MPC_URL = "mpc-staging.portalhq.io"
+    
+    let LOCAL_API_URL = "localhost:3001"
+    let LOCAL_MPC_URL = "localhost:3002"
     guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
       print("Couldnt load info plist")
       return }
@@ -51,10 +55,14 @@ class PortalWrapper {
       CUSTODIAN_SERVER_URL = PROD_CUSTODIAN_SERVER_URL
       API_URL = PROD_API_URL
       MPC_URL = PROD_MPC_URL
-    } else {
+    } else if (ENV == "staging") {
       CUSTODIAN_SERVER_URL = STAGING_CUSTODIAN_SERVER_URL
       API_URL = STAGING_API_URL
       MPC_URL = STAGING_MPC_URL
+    } else if (ENV == "local") {
+      CUSTODIAN_SERVER_URL = STAGING_CUSTODIAN_SERVER_URL
+      API_URL = LOCAL_API_URL
+      MPC_URL = LOCAL_MPC_URL
     }
   }
   
