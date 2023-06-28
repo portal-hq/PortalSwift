@@ -34,11 +34,12 @@ class ConnectViewController: UIViewController {
     
     let PROD_CONNECT_SERVER_URL = "connect.portalhq.io"
     let STAGING_CONNECT_SERVER_URL = "connect-staging.portalhq.io"
-    let CONNECT_URL = ENV == "prod" ? PROD_CONNECT_SERVER_URL : STAGING_CONNECT_SERVER_URL
+    let LOCAL_CONNECT_SERVER_URL = "localhost:3003"
+    let CONNECT_URL = ENV == "prod" ? PROD_CONNECT_SERVER_URL : ENV == "staging" ? STAGING_CONNECT_SERVER_URL : LOCAL_CONNECT_SERVER_URL
 
     connectButton.isEnabled = false
     connect = PortalConnect(portal!, CONNECT_URL)
-    
+        
     connect?.on(event: Events.PortalDappSessionRequested.rawValue, callback: { [weak self] data in
       print("Event \(Events.PortalDappSessionRequested.rawValue) recieved for v2")
       self?.didRequestApprovalDapps(data: data)})
@@ -59,6 +60,12 @@ class ConnectViewController: UIViewController {
     connect?.on(event: Events.Disconnect.rawValue) { (data: Any) in
       print("[ConnectViewController] 🛑 Disconnected \(data)")
     }
+  }
+  
+  override func viewDidDisappear(_ animated: Bool) {
+    print("resetting event listeners")
+    connect?.resetEvents()
+    connect = nil
   }
   
   func didRequestApprovalDapps(data: Any) -> Void {
