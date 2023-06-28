@@ -11,28 +11,27 @@ import Foundation
 public class PortalKeychain: MobileStorageAdapter {
   let deprecatedAddressKey = "PortalMpc.Address"
   let deprecatedShareKey = "PortalMpc.DkgResult"
-  var clientId: String?
+  public var clientId: String?
   
   enum KeychainError: Error {
     case ItemNotFound(item: String)
     case ItemAlreadyExists(item: String)
     case unexpectedItemData(item: String)
     case unhandledError(status: OSStatus)
-    case clientIdNotInitialized
+    case clientIdNotSetYet
     case keychainUnavailableOrNoPasscode(status: OSStatus)
   }
   
   /// Creates an instance of PortalKeychain.
   override public init() {}
-  
+
   /// Retrieve the address stored in the client's keychain.
   /// - Returns: The client's address.
   override public func getAddress() throws -> String {
     let clientId = try getClientId()
     
     do {
-      let value = try getItem(item: "\(clientId).address")
-      return value
+      return try getItem(item: "\(clientId).address")
     } catch {
       // Fallback to deprecated key.
       return try getItem(item: deprecatedAddressKey)
@@ -45,8 +44,7 @@ public class PortalKeychain: MobileStorageAdapter {
     let clientId = try getClientId()
 
     do {
-      let value = try getItem(item: "\(clientId).share")
-      return value
+      return try getItem(item: "\(clientId).share")
     } catch {
       // Fallback to deprecated key.
       return try getItem(item: deprecatedShareKey)
@@ -260,9 +258,9 @@ public class PortalKeychain: MobileStorageAdapter {
   
   private func getClientId() throws -> String {
     if clientId == nil {
-      throw KeychainError.clientIdNotInitialized
+      throw KeychainError.clientIdNotSetYet
     }
     
-    return self.clientId!
+    return clientId!
   }
 }

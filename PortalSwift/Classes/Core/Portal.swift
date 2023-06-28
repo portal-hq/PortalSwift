@@ -85,14 +85,18 @@ public class Portal {
   public var api: PortalApi
   public var apiKey: String
   public var backup: BackupOptions
+  public var client: Client?
   public var chainId: Int
   public var autoApprove: Bool
+  public var isReady: Bool = false
   public var isSimulator: Bool
   public var keychain: PortalKeychain
   public var mpc: PortalMpc
   public var provider: PortalProvider
   public var gatewayConfig: Dictionary<Int, String>
   public var version: String
+  
+  private var onReady: (() -> Void)?
   
   /// Create a Portal instance.
   /// - Parameters:
@@ -106,6 +110,7 @@ public class Portal {
   ///   - apiHost: (optional) Portal's API host.
   ///   - autoApprove: (optional) Auto-approve transactions.
   ///   - mpcHost: (optional) Portal's MPC API host.
+  ///   - onReady: (optional) A callback for when Portal is ready.
   public init(
     apiKey: String,
     backup: BackupOptions,
@@ -118,7 +123,8 @@ public class Portal {
     autoApprove: Bool = false,
     apiHost: String = "api.portalhq.io",
     mpcHost: String = "mpc.portalhq.io",
-    address: String = ""
+    address: String = "",
+    onReady: (() -> Void)? = nil
   ) throws {
     // Basic setup
     self.apiKey = apiKey
@@ -130,6 +136,7 @@ public class Portal {
     // Other stuff
     self.autoApprove = autoApprove
     self.isSimulator = isSimulator
+    self.onReady = onReady
     
     if (version != "v4") {
       throw PortalArgumentError.versionNoLongerSupported(message: "MPC Version is not supported. Only version 'v4' is currently supported.")
@@ -161,6 +168,7 @@ public class Portal {
       apiKey: apiKey,
       chainId: chainId,
       gatewayUrl: gatewayUrl,
+      keychain: keychain,
       autoApprove: autoApprove,
       mpcHost: mpcHost,
       version: version
@@ -178,16 +186,9 @@ public class Portal {
       mpcHost: mpcHost,
       version: version
     )
-    
-    do {
-      try self.api.getClient() { result in
-        if (result.data?.id != nil) {
-          self.keychain.clientId = result.data!.id
-        }
-      }
-    } catch {
-      print("[Portal] Unable to fetch client on initialization.")
-    }
+
+    // Retry 3 times in case of failure
+    self.getClientWithRetry(attemptsLeft: 3)
   }
   
   /// Set the address on the instance and update the Provider address
@@ -232,5 +233,44 @@ public class Portal {
   public func updateAutoApprove(value: Bool) {
     autoApprove = value
     provider.autoApprove = value
+  }
+  
+  private func getClientWithRetry(attemptsLeft: Int, delay: Double = 1.0) {
+    guard attemptsLeft > 0 else {
+      print("[Portal] All retry attempts to fetch client have been exhausted.")
+      return
+    }
+
+    do {
+      try self.api.getClient() { result in
+        if let client = result.data, let clientId = result.data?.id {
+          // Set the client.
+          self.client = client
+
+          // Set the keychain's clientId.
+          self.keychain.clientId = clientId
+          
+          // Set isReady to true and fire off onReady if provided.
+          self.isReady = true
+          self.onReady?()
+        } else {
+          // Double the delay for the next retry.
+          let nextDelay = delay * 2
+
+          print("[Portal] Unable to fetch client, retrying in \(nextDelay) seconds...")
+          DispatchQueue.main.asyncAfter(deadline: .now() + nextDelay) {
+            self.getClientWithRetry(attemptsLeft: attemptsLeft - 1, delay: nextDelay)
+          }
+        }
+      }
+    } catch {
+      // Double the delay for the next retry.
+      let nextDelay = delay * 2
+
+      print("[Portal] Network error on initialization, retrying in \(nextDelay) seconds...")
+      DispatchQueue.main.asyncAfter(deadline: .now() + nextDelay) {
+        self.getClientWithRetry(attemptsLeft: attemptsLeft - 1, delay: nextDelay)
+      }
+    }
   }
 }

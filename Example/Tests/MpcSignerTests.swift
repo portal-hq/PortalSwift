@@ -23,6 +23,7 @@ final class MpcSignerTests: XCTestCase {
         apiKey: "API_KEY",
         chainId: Chains.Goerli.rawValue,
         gatewayUrl: "https://eth-goerli.g.alchemy.com/v2/API_KEY",
+        keychain: MockPortalKeychain(),
         autoApprove: true
       )
     } catch {
