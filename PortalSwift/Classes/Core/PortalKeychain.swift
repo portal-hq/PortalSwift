@@ -9,9 +9,10 @@ import Foundation
 
 /// The main interface for Portal to securely store the client's signing share.
 public class PortalKeychain: MobileStorageAdapter {
+  public var clientId: String?
+
   let deprecatedAddressKey = "PortalMpc.Address"
   let deprecatedShareKey = "PortalMpc.DkgResult"
-  public var clientId: String?
   
   enum KeychainError: Error {
     case ItemNotFound(item: String)

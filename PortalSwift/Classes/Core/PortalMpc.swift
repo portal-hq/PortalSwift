@@ -80,6 +80,12 @@ private struct EncryptResult: Codable {
   public var error: PortalError
 }
 
+/// The response from fetching the client.
+public struct ClientResult: Codable {
+  public var data: Client?
+  public var error: PortalError
+}
+
 /// The data for GenerateResult.
 public struct GenerateData: Codable {
   public var address: String
