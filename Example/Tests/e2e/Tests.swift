@@ -14,7 +14,7 @@ class Tests: XCTestCase {
   
   override class func setUp() {
       super.setUp()
-      username = randomString(length: 15)
+      username = "Sb5U00bIuQS5rv1" // randomString(length: 15)
       print("USERNAME: ", username!)
       PortalWrap = PortalWrapper()
     }

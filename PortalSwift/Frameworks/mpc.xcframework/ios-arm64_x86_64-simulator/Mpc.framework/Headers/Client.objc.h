@@ -41,7 +41,7 @@
 - (nonnull instancetype)init;
 // skipped field DecryptResult.Data with unsupported type: github.com/portal-hq/mpc/client.DecryptData
 
-// skipped field DecryptResult.Error with unsupported type: *github.com/portal-hq/mpc/crypto/utils.PortalError
+// skipped field DecryptResult.Error with unsupported type: github.com/portal-hq/errorcodes.Payload
 
 @end
 
@@ -63,7 +63,7 @@
 - (nonnull instancetype)init;
 // skipped field EncryptResult.Data with unsupported type: github.com/portal-hq/mpc/client.EncryptData
 
-// skipped field EncryptResult.Error with unsupported type: *github.com/portal-hq/mpc/crypto/utils.PortalError
+// skipped field EncryptResult.Error with unsupported type: github.com/portal-hq/errorcodes.Payload
 
 @end
 
@@ -86,7 +86,7 @@
 - (nonnull instancetype)init;
 // skipped field GenerateResult.Data with unsupported type: github.com/portal-hq/mpc/client.GenerateData
 
-// skipped field GenerateResult.Error with unsupported type: *github.com/portal-hq/mpc/crypto/utils.PortalError
+// skipped field GenerateResult.Error with unsupported type: github.com/portal-hq/errorcodes.Payload
 
 @end
 
@@ -118,7 +118,7 @@
 - (nonnull instancetype)init;
 // skipped field ReshareResult.Data with unsupported type: github.com/portal-hq/mpc/client.ReshareData
 
-// skipped field ReshareResult.Error with unsupported type: *github.com/portal-hq/mpc/crypto/utils.PortalError
+// skipped field ReshareResult.Error with unsupported type: github.com/portal-hq/errorcodes.Payload
 
 @end
 
@@ -148,7 +148,7 @@
 - (nonnull instancetype)initWithRef:(_Nonnull id)ref;
 - (nonnull instancetype)init;
 @property (nonatomic) NSString* _Nonnull data;
-// skipped field SigningResult.Error with unsupported type: *github.com/portal-hq/mpc/crypto/utils.PortalError
+// skipped field SigningResult.Error with unsupported type: github.com/portal-hq/errorcodes.Payload
 
 @end
 

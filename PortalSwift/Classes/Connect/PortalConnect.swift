@@ -7,23 +7,17 @@
 
 import Foundation
 
-struct SignatureReceivedMessage: Codable {
-  let event: String
-  let data: SignatureReceivedData
-}
-
-struct SignatureReceivedData: Codable {
-  let topic: String
-  let transactionHash: String
-  let transactionId: Int
-}
-
 public class PortalConnect {
   private var client: WebSocketClient
   private var connected: Bool = false
   private var portal: Portal
+  private var address: String?
+  private var providerHandlers: [Events.RawValue]
   
-  public init(_ portal: Portal, _ webSocketServer: String = "connect.portalhq.io") {
+  public init(
+    _ portal: Portal,
+    _ webSocketServer: String = "connect.portalhq.io"
+  ) {
     // Set up webSocketClient
     let connectionString = webSocketServer.starts(with: "localhost") ? "ws://\(webSocketServer)" : "wss://\(webSocketServer)"
     client = WebSocketClient(
@@ -32,18 +26,145 @@ public class PortalConnect {
     )
     
     self.portal = portal
+    self.address = portal.mpc.getAddress()
+    self.providerHandlers = []
+    
+    guard self.address != nil else {
+      print("[PortalConnect] ⚠️ Address not found in Keychain. This may cause some features not to work as expected.")
+      return
+    }
   }
   
   public func connect(_ uri: String) {
+    client.resetEventBus()
+    
     client.on("close", handleClose)
+    client.on("portal_dappSessionRequested", handleDappSessionRequested)
+    client.on("portal_dappSessionRequestedV1", handleDappSessionRequestedV1)
     client.on("connected", handleConnected)
     client.on("connectedV1", handleConnectedV1)
     client.on("disconnected", handleDisconnected)
+    client.on("error", handleError)
     client.on("session_request", handleSessionRequest)
     client.on("session_request_address", handleSessionRequestAddress)
     client.on("session_request_transaction", handleSessionRequestTransaction)
     
     client.connect(uri: uri)
+  }
+  
+  public func on(event: Events.RawValue, callback: @escaping (_ data: Any) -> Void) {
+    self.providerHandlers.append(event)
+    _ = portal.provider.on(event: event, callback: callback)
+  }
+  
+  public func emit(event: Events.RawValue, data: Any) {
+    _ = portal.provider.emit(event: event, data: data)
+  }
+  
+  public func resetEvents() {
+    self.providerHandlers.forEach { event in
+      _ = self.portal.provider.removeListener(event: event)
+    }
+  }
+  
+  func handleDappSessionRequested(data: ConnectData) {
+    _ = portal.provider.once(event: Events.PortalDappSessionApproved.rawValue) { [weak self] approved in
+      guard let self = self else { return }
+
+      // If the approved event is fired
+      let event = DappSessionResponseMessage(
+        event: "portal_dappSessionApproved",
+        data: SessionResponseData(
+          id: data.id,
+          topic: data.topic,
+          address: self.address!,
+          chainId: String(portal.chainId),
+          params: data.params
+        )
+      )
+      
+      do {
+        let message = try JSONEncoder().encode(event)
+        
+        self.client.send(message)
+      } catch {
+        print("[PortalConnect] Error encoding DappSessionRequestApprovedMessage: \(error)")
+      }
+    }
+    
+    _ = portal.provider.once(event: Events.PortalDappSessionRejected.rawValue) { [weak self] approved in
+      guard let self = self else { return }
+        
+      // If the approved event is fired
+      let event = DappSessionResponseMessage(
+        event: "portal_dappSessionRejected",
+        data: SessionResponseData(
+          id: data.id,
+          topic: data.topic,
+          address: self.address!,
+          chainId: String(portal.chainId),
+          params: data.params
+        )
+      )
+      
+      do {
+        let message = try JSONEncoder().encode(event)
+        self.client.send(message)
+      } catch {
+        print("[PortalConnect] Error encoding DappSessionRequestRejectedMessage: \(error)")
+      }
+      
+    }
+    
+    _ = portal.provider.emit(event: Events.PortalDappSessionRequested.rawValue, data: data)
+  }
+  
+  func handleDappSessionRequestedV1(data: ConnectV1Data) {
+    _ = portal.provider.once(event: Events.PortalDappSessionApprovedV1.rawValue) { [weak self] approved in
+      guard let self = self else { return }
+        
+      // If the approved event is fired
+      let event = DappSessionResponseV1Message(
+        event: "portal_dappSessionApproved",
+        data: SessionResponseV1Data(
+          id: data.id,
+          topic: data.topic,
+          address: self.address!,
+          chainId: String(portal.chainId)
+        )
+      )
+      
+      do {
+        let message = try JSONEncoder().encode(event)
+        self.client.send(message)
+      } catch {
+        print("[PortalConnect] Error encoding DappSessionRequestApprovedMessage: \(error)")
+      }
+    }
+    
+    _ = portal.provider.once(event: Events.PortalDappSessionRejectedV1.rawValue) { [weak self] approved in
+      guard let self = self else { return }
+        
+      // If the approved event is fired
+      let event = DappSessionResponseV1Message(
+        event: "portal_dappSessionRejected",
+        data: SessionResponseV1Data(
+          id: data.id,
+          topic: data.topic,
+          address: self.address!,
+          chainId: String(portal.chainId)
+        )
+      )
+      
+      do {
+        let message = try JSONEncoder().encode(event)
+        self.client.send(message)
+      } catch {
+        print("[PortalConnect] Error encoding DappSessionRequestRejectedMessage: \(error)")
+      }
+    }
+    
+    _ = portal.provider.emit(event: Events.PortalDappSessionRequestedV1.rawValue, data: data)
   }
   
   func handleClose() {
@@ -53,15 +174,22 @@ public class PortalConnect {
   
   func handleConnected(data: ConnectData) {
     connected = true
+    _ = portal.provider.emit(event: Events.Connect.rawValue, data: data)
   }
   
-  func handleConnectedV1(data: ConnectV1Data) {
+  func handleConnectedV1(data: ConnectedV1Data) {
     connected = true
+    _ = portal.provider.emit(event: Events.Connect.rawValue, data: data)
   }
   
   func handleDisconnected(data: DisconnectData) {
     connected = false
     client.close()
+    _ = portal.provider.emit(event: Events.Disconnect.rawValue, data: data)
+  }
+  
+  func handleError(data: ErrorData) {
+    _ = portal.provider.emit(event: Events.ConnectError.rawValue, data: data)
   }
   
   func handleSessionRequest(data: SessionRequestData) {
@@ -71,14 +199,34 @@ public class PortalConnect {
       data.params.request.params,
       data.topic
     )
+  
+    _ = portal.provider.once(event: Events.PortalSigningRejected.rawValue) { [weak self] approved in
+      guard let self = self else { return }
+        
+      let event = SignatureReceivedMessage(
+        event: "portal_signatureRejected",
+        data: SignatureReceivedData(
+          topic: topic,
+          transactionHash: "",
+          transactionId: id
+        )
+      )
       
-    handleProviderRequest(method: method, params: params) { result in
+      do {
+        let message = try JSONEncoder().encode(event)
+        self.client.send(message)
+      } catch {
+        print("[PortalConnect] Error encoding SignatureReceivedMessage: \(error)")
+      }
+    }
+    
+    handleProviderRequest(method: method, params: params) { [weak self] result in
+      guard let self = self else { return }
+        
       if (result.error != nil) {
         print("[PortalConnect] \(result.error!)")
         return
       }
-      
-      print("[PortalConnect] Signing result: \(result.data)")
       
       let signature = ((result.data as! RequestCompletionResult).result as! Result<SignerResult>).data!.signature!
       
@@ -93,7 +241,6 @@ public class PortalConnect {
       
       do {
         let message = try JSONEncoder().encode(event)
-        
         self.client.send(message)
       } catch {
         print("[PortalConnect] Error encoding SignatureReceivedMessage: \(error)")
@@ -108,8 +255,30 @@ public class PortalConnect {
       data.params.request.params,
       data.topic
     )
+    
+    _ = portal.provider.once(event: Events.PortalSigningRejected.rawValue) { [weak self] approved in
+      guard let self = self else { return }
+        
+      let event = SignatureReceivedMessage(
+        event: "portal_signatureRejected",
+        data: SignatureReceivedData(
+          topic: topic,
+          transactionHash: "",
+          transactionId: id
+        )
+      )
       
-    handleProviderRequest(method: method, params: params) { result in
+      do {
+        let message = try JSONEncoder().encode(event)
+        self.client.send(message)
+      } catch {
+        print("[PortalConnect] Error encoding SignatureReceivedMessage: \(error)")
+      }
+    }
+    
+    handleProviderRequest(method: method, params: params) { [weak self] result in
+      guard let self = self else { return }
+        
       if (result.error != nil) {
         print("[PortalConnect] \(result.error!)")
         return
@@ -127,7 +296,6 @@ public class PortalConnect {
       
       do {
         let message = try JSONEncoder().encode(event)
-        
         self.client.send(message)
       } catch {
         print("[PortalConnect] Error encoding SignatureReceivedMessage: \(error)")
@@ -142,19 +310,41 @@ public class PortalConnect {
       data.params.request.params,
       data.topic
     )
+    
+    _ = portal.provider.once(event: Events.PortalSigningRejected.rawValue) { [weak self] approved in
+      guard let self = self else { return }
+        
+      let event = SignatureReceivedMessage(
+        event: "portal_signatureRejected",
+        data: SignatureReceivedData(
+          topic: topic,
+          transactionHash: "",
+          transactionId: id
+        )
+      )
       
-    handleProviderRequest(method: method, params: params) { result in
+      do {
+        let message = try JSONEncoder().encode(event)
+        self.client.send(message)
+      } catch {
+        print("[PortalConnect] Error encoding SignatureReceivedMessage: \(error)")
+      }
+    }
+      
+    handleProviderRequest(method: method, params: params) { [weak self] result in
+      guard let self = self else { return }
+        
       if (result.error != nil) {
         print("[PortalConnect] \(result.error!)")
         return
       }
       
-      let signature = ((result.data as! RequestCompletionResult).result as! Result<SignerResult>).data!.signature!
+      let txHash = result.data as! String
       let event = SignatureReceivedMessage(
         event: "signatureReceived",
         data: SignatureReceivedData(
           topic: topic,
-          transactionHash: signature,
+          transactionHash: txHash,
           transactionId: id
         )
       )
@@ -179,11 +369,11 @@ public class PortalConnect {
   }
   
   private func handleProviderRequest(method: String, params: [ETHTransactionParam], completion: @escaping (Result<Any>) -> Void) {
-    portal.provider.request(payload: ETHTransactionPayload(method: method, params: params)) { result in
+    portal.provider.request(payload: ETHTransactionPayload(method: method, params: params)) { (result: Result<TransactionCompletionResult>) in
       guard result.error == nil else {
         return completion(Result(error: result.error!))
       }
-      completion(Result(data: result.data!))
+      completion(Result(data: (result.data!.result as! Result<Any>).data as! String))
     }
   }
   

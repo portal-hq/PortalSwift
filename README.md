@@ -2,9 +2,7 @@
 
 [![Run Swift Tests](https://github.com/portal-hq/PortalSwift/actions/workflows/test.yml/badge.svg)](https://github.com/portal-hq/PortalSwift/actions/workflows/test.yml)
 
-## Example
-
-To run the example project, clone the repo, and from the Example directory run `pod install`.
+# Install
 
 ## Set up
 
@@ -24,13 +22,23 @@ GDRIVE_CLIENT_ID = GDRIVE_CLIENT_ID
 ENV = prod // staging
 ```
 
-> If you want to switch to point to staging. Change the ENV variable in your Secrets.xcconfig to be staging.
+> If you want to switch to point to staging. Change the ENV variable in your Secrets.xcconfig to be `staging`.
 
 The info plist and main debug configuration file is already configured to import these values directly into the app.
+
+## Running the Example App locally
+
+To run the example project, clone the repo, and from the Example directory run `pod install`.
+
+```
+cd Example
+pod install
+```
 
 ## Next Steps
 
 Follow our docs [here](https://docs.portalhq.io/swift-pod/portalswift) to get started!
+
 
 # Release the SDK
 
@@ -39,3 +47,4 @@ Follow our docs [here](https://docs.portalhq.io/swift-pod/portalswift) to get st
 - Go to Actions
 - Input the most recent version we are updating to into the input for version
 - Check slack for any release errors or the actions console
+

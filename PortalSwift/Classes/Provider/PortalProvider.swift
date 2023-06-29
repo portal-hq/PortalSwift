@@ -21,10 +21,21 @@ public enum Chains: Int {
 public enum Events: String {
   case ChainChanged = "chainChanged"
   case Connect = "connect"
+  case ConnectError = "portal_connectError"
   case Disconnect = "disconnect"
+  case PortalSignatureReceived = "portal_signatureReceived"
   case PortalSigningApproved = "portal_signingApproved"
   case PortalSigningRejected = "portal_signingRejected"
   case PortalSigningRequested = "portal_signingRequested"
+  // Walletconnect V2
+  case PortalDappSessionRequested = "portal_dappSessionRequested"
+  case PortalDappSessionApproved = "portal_dappSessionApproved"
+  case PortalDappSessionRejected = "portal_dappSessionRejected"
+  // Walletconnect V1
+  case PortalDappSessionRequestedV1 = "portal_dappSessionRequestedV1"
+  case PortalDappSessionApprovedV1 = "portal_dappSessionApprovedV1"
+  case PortalDappSessionRejectedV1 = "portal_dappSessionRejectedV1"
+  
 }
 
 /// All available provider methods.
@@ -285,22 +296,23 @@ public struct AddressCompletionResult {
 
 /// Portal's EVM blockchain provider.
 public class PortalProvider {
+  public var autoApprove: Bool = false
   public var chainId: Chains.RawValue
   public var gatewayUrl: String
+  public var keychain: PortalKeychain
   public var portal: HttpRequester
   public var rpc: HttpRequester
   
   private var apiKey: String = "NO_API_KEY_PROVIDED"
   private var apiUrl: String = "https://api.portalhq.io"
   private var alchemyId: String = ""
-  private var autoApprove: Bool = false
   private var events: Dictionary<Events.RawValue, [RegisteredEventHandler]> = [:]
   private var httpHost: String = "https://api.portalhq.io"
   private var infuraId: String = ""
   private var signer: MpcSigner
   private var address: String = ""
   private var mpcHost: String = "mpc.portalhq.io"
-  private var version: String = "v3"
+  private var version: String = "v4"
   private var mpcQueue: DispatchQueue
   
   private var walletMethods: [ETHRequestMethods.RawValue] = [
@@ -323,15 +335,17 @@ public class PortalProvider {
     apiKey: String,
     chainId: Chains.RawValue,
     gatewayUrl: String,
+    keychain: PortalKeychain,
     apiHost: String = "api.portalhq.io",
     autoApprove: Bool,
     mpcHost: String = "mpc.portalhq.io",
-    version: String = "v3"
+    version: String = "v4"
   ) throws {
     // User-defined instance variables
     self.apiKey = apiKey
     self.chainId = chainId
     self.gatewayUrl = gatewayUrl
+    self.keychain = keychain
     self.autoApprove = autoApprove
     self.rpc = HttpRequester(baseUrl: gatewayUrl)
     self.mpcHost = mpcHost
@@ -345,7 +359,7 @@ public class PortalProvider {
     }
     
     self.portal = HttpRequester(baseUrl: String(format: "https://%@", apiHost))
-    self.signer = MpcSigner(keychain: PortalKeychain(), mpcUrl: self.mpcHost, version: version)
+    self.signer = MpcSigner(keychain: keychain, mpcUrl: self.mpcHost, version: version)
     // Create a serial dispatch queue with a unique label
     self.mpcQueue =  DispatchQueue.global(qos: .background)
     self.dispatchConnect()
@@ -371,7 +385,7 @@ public class PortalProvider {
           try registeredEventHandler.handler(data)
         }
       } catch {
-        print("Error invoking registered handlers", error)
+        print("[Portal] Error invoking registered handlers", error)
       }
       
       // Remove once instances
@@ -470,6 +484,18 @@ public class PortalProvider {
         guard result.error == nil else {
           return completion(Result(error: result.error!))
         }
+        
+        // Trigger `portal_signatureReceived` event
+        _ = self.emit(
+          event: Events.PortalSignatureReceived.rawValue,
+          data: RequestCompletionResult(
+            method: payload.method,
+            params: payload.params,
+            result: result
+          )
+        )
+        
+        // Trigger completion handler
         return completion(Result(data: RequestCompletionResult(method: payload.method, params: payload.params, result: result)))
       }
     } else {
@@ -504,6 +530,18 @@ public class PortalProvider {
         guard result.error == nil else {
           return completion(Result(error: result.error!))
         }
+        
+        // Trigger `portal_signatureReceived` event
+        _ = self.emit(
+          event: Events.PortalSignatureReceived.rawValue,
+          data: RequestCompletionResult(
+            method: payload.method,
+            params: payload.params,
+            result: result
+          )
+        )
+        
+        // Trigger completion handler
         return completion(Result(data: TransactionCompletionResult(method: payload.method, params: payload.params, result: result)))
       }
     } else {
@@ -592,7 +630,6 @@ public class PortalProvider {
       return completion(Result(error: error))
     }
     
-    return completion(Result(data: true))
   }
   
   private func getApproval(
@@ -739,26 +776,27 @@ public class PortalProvider {
       guard result.error == nil else {
         return completion(Result(error: result.error!))
       }
-      if (!(result.data!)) {
+      if (result.data != true) {
         return completion(Result(error: ProviderSigningError.userDeclinedApproval))
-      }
-      
-      self.mpcQueue.async {
-        // This code will be executed in a background thread
-        var signResult = SignerResult()
-        do {
-          signResult = try self.signer.sign(
-            payload: payload,
-            provider: self
-          )
-          // When the work is done, call the completion handler
-          DispatchQueue.main.async {
-            return completion(Result(data: signResult))
-          }
+      } else {
 
-        } catch {
-          DispatchQueue.main.async {
-            return completion(Result(error: error))
+        self.mpcQueue.async {
+          // This code will be executed in a background thread
+          var signResult = SignerResult()
+          do {
+            signResult = try self.signer.sign(
+              payload: payload,
+              provider: self
+            )
+            // When the work is done, call the completion handler
+            DispatchQueue.main.async {
+              return completion(Result(data: signResult))
+            }
+
+          } catch {
+            DispatchQueue.main.async {
+              return completion(Result(error: error))
+            }
           }
         }
       }
@@ -776,28 +814,28 @@ public class PortalProvider {
       
       if (!result.data!) {
         return completion(Result(error: ProviderSigningError.userDeclinedApproval))
-      }
-      self.mpcQueue.async {
-        // This code will be executed in a background thread
-        var signResult = SignerResult()
-        do {
-        signResult = try self.signer.sign(
-            payload: payload,
-            provider: self
-          )
-          // When the work is done, call the completion handler
-          DispatchQueue.main.async {
-            return completion(Result(data: signResult.signature))
+      } else {
+        self.mpcQueue.async {
+          // This code will be executed in a background thread
+          var signResult = SignerResult()
+          do {
+          signResult = try self.signer.sign(
+              payload: payload,
+              provider: self
+            )
+            // When the work is done, call the completion handler
+            DispatchQueue.main.async {
+              return completion(Result(data: signResult.signature!))
+            }
+          } catch {
+            DispatchQueue.main.async {
+              return completion(Result(error: error))
+            }
           }
-        } catch {
-          DispatchQueue.main.async {
-            return completion(Result(error: error))
-          }
-        }
 
+        }
       }
     }
-
   }
   
   private func removeOnce(registeredEventHandler: RegisteredEventHandler) -> Bool {

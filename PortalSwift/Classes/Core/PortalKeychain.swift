@@ -9,40 +9,63 @@ import Foundation
 
 /// The main interface for Portal to securely store the client's signing share.
 public class PortalKeychain: MobileStorageAdapter {
-  let Address = "PortalMpc.Address"
-  let SigningShare = "PortalMpc.DkgResult"
+  let deprecatedAddressKey = "PortalMpc.Address"
+  let deprecatedShareKey = "PortalMpc.DkgResult"
+  public var clientId: String?
   
   enum KeychainError: Error {
     case ItemNotFound(item: String)
     case ItemAlreadyExists(item: String)
     case unexpectedItemData(item: String)
     case unhandledError(status: OSStatus)
+    case clientIdNotSetYet
     case keychainUnavailableOrNoPasscode(status: OSStatus)
   }
   
   /// Creates an instance of PortalKeychain.
   override public init() {}
-  
+
   /// Retrieve the address stored in the client's keychain.
   /// - Returns: The client's address.
   override public func getAddress() throws -> String {
-    return try getItem(item: Address)
+    let clientId = try getClientId()
+    
+    do {
+      return try getItem(item: "\(clientId).address")
+    } catch {
+      // Fallback to deprecated key.
+      return try getItem(item: deprecatedAddressKey)
+    }
   }
   
   /// Retrieve the signing share stored in the client's keychain.
   /// - Returns: The client's signing share.
   override public func getSigningShare() throws -> String {
-    return try getItem(item: SigningShare)
-    
+    let clientId = try getClientId()
+
+    do {
+      return try getItem(item: "\(clientId).share")
+    } catch {
+      // Fallback to deprecated key.
+      return try getItem(item: deprecatedShareKey)
+    }
   }
   
   /// Sets the address in the client's keychain.
   /// - Parameter address: The public address of the client's wallet.
-  override public func setAddress(
+  public func setAddress(
     address: String,
-    completion: (Result<OSStatus>) -> Void
+    completion: @escaping (Result<OSStatus>) -> Void
   ) {
-    setItem(key: Address, value: address) { result in
+    var clientId: String
+    do {
+      clientId = try getClientId()
+    } catch {
+      completion(Result(error: error))
+      return
+    }
+
+    setItem(key: "\(clientId).address", value: address) { result in
       // Handle errors
       guard result.error == nil else {
         return completion(Result(error: result.error!))
@@ -54,11 +77,19 @@ public class PortalKeychain: MobileStorageAdapter {
   
   /// Sets the signing share in the client's keychain.
   /// - Parameter signingShare: A dkg object.
-  override public func setSigningShare(
+  public func setSigningShare(
     signingShare: String,
-    completion: (Result<OSStatus>) -> Void
+    completion: @escaping (Result<OSStatus>) -> Void
   ) -> Void {
-    setItem(key: SigningShare, value: signingShare) { result in
+    var clientId: String
+    do {
+      clientId = try getClientId()
+    } catch {
+      completion(Result(error: error))
+      return
+    }
+
+    setItem(key: "\(clientId).share", value: signingShare) { result in
       // Handle errors
       guard result.error == nil else {
         return completion(Result(error: result.error!))
@@ -71,19 +102,42 @@ public class PortalKeychain: MobileStorageAdapter {
   /// Deletes the address stored in the client's keychain.
   /// - Returns: The client's address.
   override public func deleteAddress() throws {
-    try deleteItem(key: Address)
+    let clientId = try getClientId()
+    
+    do {
+      try deleteItem(key: "\(clientId).address")
+    } catch {
+      // Fallback to deprecated key.
+      try deleteItem(key: deprecatedAddressKey)
+    }
   }
   
   /// Deletes the signing share stored in the client's keychain.
   /// - Returns: The client's signing share.
   override public func deleteSigningShare() throws {
-    try deleteItem(key: SigningShare)
+    let clientId = try getClientId()
+    
+    do {
+      try deleteItem(key: "\(clientId).address")
+    } catch {
+      // Fallback to deprecated key.
+      try deleteItem(key: deprecatedAddressKey)
+    }
   }
   
   /// Tests `setItem` in the client's keychain.
-  public func testSetItem(completion: (Result<OSStatus>) -> Void) {
-    let testKey = "answer"
-    setItem(key: testKey, value: "42") { [weak self] result in
+  public func validateOperations(completion: @escaping (Result<OSStatus>) -> Void) {
+    do {
+      let _ = try getClientId()
+    } catch {
+      completion(Result(error: error))
+      return
+    }
+
+    let testKey = "portal_test"
+    let testValue = "test_value"
+
+    setItem(key: testKey, value: testValue) { result in
       // Handle errors.
       guard result.error == nil else {
         return completion(Result(error: result.error!))
@@ -91,7 +145,7 @@ public class PortalKeychain: MobileStorageAdapter {
       
       do {
         // Delete the key that was created.
-        try self?.deleteItem(key: testKey)
+        try self.deleteItem(key: testKey)
         return completion(Result(data: result.data!))
       } catch {
         return completion(Result(error: error))
@@ -130,7 +184,7 @@ public class PortalKeychain: MobileStorageAdapter {
   private func setItem(
     key: String,
     value: String,
-    completion: (Result<OSStatus>) -> Void
+    completion: @escaping (Result<OSStatus>) -> Void
   ) -> Void {
     do {
       // Construct the query to set the keychain item.
@@ -200,5 +254,13 @@ public class PortalKeychain: MobileStorageAdapter {
     
     let status = SecItemDelete(query as CFDictionary)
     guard status == errSecSuccess || status == errSecItemNotFound else { throw KeychainError.unhandledError(status: status) }
+  }
+  
+  private func getClientId() throws -> String {
+    if clientId == nil {
+      throw KeychainError.clientIdNotSetYet
+    }
+    
+    return clientId!
   }
 }

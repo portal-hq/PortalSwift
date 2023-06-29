@@ -23,10 +23,84 @@ class ConnectViewController: UIViewController {
   
   override func viewDidLoad() {
     super.viewDidLoad()
+    guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
+      print("Error loading env vars in connect")
+      return
+    }
+    guard let ENV: String = infoDictionary["ENV"] as? String else {
+      print("Error: Do you have `ENV=$(ENV)` in your info.plist?")
+      return
+    }
     
+    let PROD_CONNECT_SERVER_URL = "connect.portalhq.io"
+    let STAGING_CONNECT_SERVER_URL = "connect-staging.portalhq.io"
+    let LOCAL_CONNECT_SERVER_URL = "localhost:3003"
+    let CONNECT_URL = ENV == "prod" ? PROD_CONNECT_SERVER_URL : ENV == "staging" ? STAGING_CONNECT_SERVER_URL : LOCAL_CONNECT_SERVER_URL
+
     connectButton.isEnabled = false
-    connect = PortalConnect(portal!)
+    connect = PortalConnect(portal!, CONNECT_URL)
+        
+    connect?.on(event: Events.PortalDappSessionRequested.rawValue, callback: { [weak self] data in
+      print("Event \(Events.PortalDappSessionRequested.rawValue) recieved for v2")
+      self?.didRequestApprovalDapps(data: data)})
+    
+    connect?.on(event: Events.PortalDappSessionRequestedV1.rawValue, callback: { [weak self] data in
+      print("Event \(Events.PortalDappSessionRequested.rawValue) recieved for v1")
+      self?.didRequestApprovalDappsV1(data: data)})
+    
+    connect?.on(event: Events.PortalSignatureReceived.rawValue) { (data: Any) in
+      let result = data as! RequestCompletionResult
+      print("[ConnectViewController] ✅ Received signature \(result)")
+    }
+    
+    connect?.on(event: Events.Connect.rawValue) { (data: Any) in
+      print("[ConnectViewController] ✅ Connected! \(data)")
+    }
+    
+    connect?.on(event: Events.Disconnect.rawValue) { (data: Any) in
+      print("[ConnectViewController] 🛑 Disconnected \(data)")
+    }
   }
+  
+  override func viewDidDisappear(_ animated: Bool) {
+    print("resetting event listeners")
+    connect?.resetEvents()
+    connect = nil
+  }
+  
+  func didRequestApprovalDapps(data: Any) -> Void {
+    print("Emitting Dapp Session Approval for v2..")
+    if let connectData = data as? ConnectData {
+        // Now you can work with the parsed ConnectData object
+        print(connectData.id)
+        print(connectData.topic)
+        print(connectData.params)
+
+        // You can emit the event with the parsed ConnectData object
+        _ = connect?.emit(event: Events.PortalDappSessionApprovedV1.rawValue, data: connectData)
+    } else {
+        print("Invalid data type. Expected ConnectData.")
+    }
+    _ = connect?.emit(event: Events.PortalDappSessionApproved.rawValue, data: data)
+  }
+
+  func didRequestApprovalDappsV1(data: Any) {
+      print("Emitting Dapp Session Approval for v1..")
+
+      if let connectData = data as? ConnectV1Data {
+          // Now you can work with the parsed ConnectV1Data object
+          print(connectData.id)
+          print(connectData.topic)
+          print(connectData.params)
+
+          // You can emit the event with the parsed ConnectV1Data object
+          _ = connect?.emit(event: Events.PortalDappSessionApprovedV1.rawValue, data: connectData)
+      } else {
+          print("Invalid data type. Expected ConnectV1Data.")
+      }
+  }
+
+
   
   @IBAction func connectPressed() {
     print("Connect button pressed...")

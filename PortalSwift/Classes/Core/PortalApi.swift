@@ -65,7 +65,7 @@ public struct NFT: Codable {
   public var description: String
   public var tokenUri: TokenUri
   public var media: [Media]
-  public var metadata: Metadata
+  public var metadata: NFTMetadata
   public var timeLastUpdated: String
   public var contractMetadata: ContractMetadata
 }
@@ -97,7 +97,7 @@ public struct Media: Codable {
 }
 
 /// Represents the metadata of an NFT.
-public struct Metadata: Codable {
+public struct NFTMetadata: Codable {
   public var name: String
   public var description: String
   public var image: String
@@ -198,7 +198,7 @@ public class PortalApi {
   ) {
     self.address = address
     self.apiKey = apiKey
-    self.apiHost = String(format:"https://%@", apiHost)
+    self.apiHost = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
     self.chainId = chainId
     self.requests = mockRequests ? MockHttpRequester(baseUrl: self.apiHost) : HttpRequester(baseUrl: self.apiHost)
   }
@@ -210,7 +210,7 @@ public class PortalApi {
     try requests.get(
       path: "/api/v1/clients/me",
       headers: [
-        "Authorization": String(format: "Bearer %@", apiKey)
+        "Authorization": "Bearer \(apiKey)"
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<Client>) -> Void in
@@ -229,7 +229,7 @@ public class PortalApi {
     try requests.get(
       path: "/api/v1/config/dapps",
       headers: [
-        "Authorization": String(format: "Bearer %@", apiKey)
+        "Authorization": "Bearer \(apiKey)"
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[Dapp]>) -> Void in
@@ -285,7 +285,7 @@ public class PortalApi {
     try requests.get(
       path: "/api/v1/config/networks",
       headers: [
-        "Authorization": String(format: "Bearer %@", apiKey)
+        "Authorization": "Bearer \(apiKey)"
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[ContractNetwork]>) -> Void in
@@ -301,7 +301,7 @@ public class PortalApi {
     try requests.get(
       path: "/api/v1/clients/me/nfts?chainId=\(chainId)",
       headers: [
-        "Authorization": String(format: "Bearer %@", apiKey)
+        "Authorization": "Bearer \(apiKey)"
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[NFT]>) -> Void in
@@ -333,7 +333,7 @@ public class PortalApi {
     try requests.get(
       path: path,
       headers: [
-        "Authorization": String(format: "Bearer %@", apiKey)
+        "Authorization": "Bearer \(apiKey)"
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[Transaction]>) -> Void in
@@ -351,10 +351,58 @@ public class PortalApi {
     try requests.get(
       path: "/api/v1/clients/me/balances?chainId=\(chainId)",
       headers: [
-        "Authorization": String(format: "Bearer %@", apiKey)
+        "Authorization": "Bearer \(apiKey)"
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[Balance]>) -> Void in
+      completion(result)
+    }
+  }
+  
+  /// Updates the client's wallet state to be stored on the client.
+  /// - Parameters:
+  ///   - recoverSigning: Optional boolean indicating whether it's from recover signing. If not nil, it's included as a query parameter in the URL.
+  ///   - completion: The callback that contains the response status.
+  /// - Returns: Void.
+  public func storedClientSigningShare(
+    recoverSigning: Bool? = nil,
+    completion: @escaping (Result<String>) -> Void
+  ) throws -> Void {
+    var path = "/api/v1/clients/me/wallet/stored-on-client"
+    
+    if let recoverSigning = recoverSigning {
+      path += "?fromRecoverSigning=\(recoverSigning)"
+    }
+    
+    try requests.put(
+      path: path,
+      body: [:],
+      headers: [
+        "Authorization": "Bearer \(apiKey)"
+      ],
+      requestType: HttpRequestType.CustomRequest
+    ) { (result: Result<String>) -> Void in
+      completion(result)
+    }
+  }
+  
+  /// Updates the client's wallet backup state to have successfully stored the client backup share with the custodian.
+  /// - Parameters:
+  ///   - success: Boolean indicating whether the storage operation failed.
+  ///   - completion: The callback that contains the response status.
+  /// - Returns: Void.
+  public func storedClientBackupShare(
+    success: Bool,
+    completion: @escaping (Result<String>) -> Void
+  ) throws -> Void {
+    try requests.put(
+        path: "/api/v1/clients/me/wallet/stored-client-backup-share",
+        body: ["success": success],
+        headers: [
+          "Authorization": "Bearer \(apiKey)"
+        ],
+        requestType: HttpRequestType.CustomRequest
+    ) { (result: Result<String>) -> Void in
       completion(result)
     }
   }
