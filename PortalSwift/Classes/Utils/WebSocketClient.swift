@@ -243,7 +243,7 @@ class WebSocketClient : Starscream.WebSocketDelegate {
     print("[WebSocketClient] Received error: \(String(describing: error))")
     // This error needs to match
     if let error = error, error.localizedDescription == "POSIXErrorCode(rawValue: 54): Connection reset by peer" && isConnected {
-      print("Connection reset by peer")
+      print("Connection reset by peer. Attempting reconnect...")
       isConnected = false
       connect(uri: uri!)
     } else if (error != nil && error?.localizedDescription != nil) {
