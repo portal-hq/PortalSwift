@@ -18,6 +18,7 @@ final class PortalProviderTests: XCTestCase {
       apiKey: "test",
       chainId: 5,
       gatewayUrl: "test",
+      keychain: MockPortalKeychain(),
       apiHost: "test",
       autoApprove: true
     )

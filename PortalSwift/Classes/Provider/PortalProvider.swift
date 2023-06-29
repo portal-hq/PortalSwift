@@ -299,6 +299,7 @@ public class PortalProvider {
   public var autoApprove: Bool = false
   public var chainId: Chains.RawValue
   public var gatewayUrl: String
+  public var keychain: PortalKeychain
   public var portal: HttpRequester
   public var rpc: HttpRequester
   
@@ -334,6 +335,7 @@ public class PortalProvider {
     apiKey: String,
     chainId: Chains.RawValue,
     gatewayUrl: String,
+    keychain: PortalKeychain,
     apiHost: String = "api.portalhq.io",
     autoApprove: Bool,
     mpcHost: String = "mpc.portalhq.io",
@@ -343,6 +345,7 @@ public class PortalProvider {
     self.apiKey = apiKey
     self.chainId = chainId
     self.gatewayUrl = gatewayUrl
+    self.keychain = keychain
     self.autoApprove = autoApprove
     self.rpc = HttpRequester(baseUrl: gatewayUrl)
     self.mpcHost = mpcHost
@@ -356,7 +359,7 @@ public class PortalProvider {
     }
     
     self.portal = HttpRequester(baseUrl: String(format: "https://%@", apiHost))
-    self.signer = MpcSigner(keychain: PortalKeychain(), mpcUrl: self.mpcHost, version: version)
+    self.signer = MpcSigner(keychain: keychain, mpcUrl: self.mpcHost, version: version)
     // Create a serial dispatch queue with a unique label
     self.mpcQueue =  DispatchQueue.global(qos: .background)
     self.dispatchConnect()
