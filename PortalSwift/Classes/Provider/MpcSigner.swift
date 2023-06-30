@@ -54,7 +54,7 @@ class MpcSigner {
       // Obtain the sign result.
       let signingShare = try keychain.getSigningShare()
       let formattedParams = try formatParams(payload: payload)
-      let clientSignResult = ClientSign(
+      let clientSignResult = MobileSign(
         provider.getApiKey(),
         self.mpcUrl,
         signingShare,
@@ -93,7 +93,7 @@ class MpcSigner {
     
     var clientSignResult = mockClientSignResult
     if (!mockClientSign) {
-      clientSignResult = ClientSign(
+      clientSignResult = MobileSign(
         provider.getApiKey(),
         mpcUrl,
         signingShare,

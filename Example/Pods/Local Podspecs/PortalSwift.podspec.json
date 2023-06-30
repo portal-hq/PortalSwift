@@ -1,6 +1,6 @@
 {
   "name": "PortalSwift",
-  "version": "0.2.4",
+  "version": "1.0.4",
   "summary": "Portal's native Swift implementation",
   "description": "Portal's native Swift implementation",
   "homepage": "https://portalhq.io",
@@ -10,7 +10,7 @@
   "authors": "Portal Labs, Inc.",
   "source": {
     "git": "https://github.com/portal-hq/PortalSwift.git",
-    "tag": "0.2.4"
+    "tag": "1.0.4"
   },
   "platforms": {
     "ios": "13.0"
