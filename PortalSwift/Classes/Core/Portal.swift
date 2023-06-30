@@ -134,7 +134,7 @@ public class Portal {
     self.backup = backup
     self.chainId = chainId
     self.gatewayConfig = gatewayConfig
-    self.client = try self.getClient()
+    self.client = try Portal.getClient(apiHost, apiKey)
     keychain.clientId = self.client?.id
     self.keychain = keychain
     
@@ -238,12 +238,12 @@ public class Portal {
     provider.autoApprove = value
   }
   
-  private func getClient() throws -> Client {
+  private static func getClient(_ apiHost: String, _ apiKey: String) throws -> Client {
     // Create URL.
     let apiUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
     
     // Call the MPC service to retrieve the client.
-    let response = ClientGetClient("\(apiUrl)/api/v1/clients/me", self.apiKey)
+    let response = MobileGetMe("\(apiUrl)/api/v1/clients/me", apiKey)
     
     // Parse the client.
     let jsonData = response.data(using: .utf8)!
