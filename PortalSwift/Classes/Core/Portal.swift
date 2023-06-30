@@ -91,15 +91,12 @@ public class Portal {
   public var client: Client?
   public var chainId: Int
   public var autoApprove: Bool
-  public var isReady: Bool = false
   public var isSimulator: Bool
   public var keychain: PortalKeychain
   public var mpc: PortalMpc
   public var provider: PortalProvider
   public var gatewayConfig: Dictionary<Int, String>
   public var version: String
-  
-  private var onReady: (() -> Void)?
   
   /// Create a Portal instance.
   /// - Parameters:
@@ -113,7 +110,6 @@ public class Portal {
   ///   - apiHost: (optional) Portal's API host.
   ///   - autoApprove: (optional) Auto-approve transactions.
   ///   - mpcHost: (optional) Portal's MPC API host.
-  ///   - onReady: (optional) A callback for when Portal is ready.
   public init(
     apiKey: String,
     backup: BackupOptions,
@@ -126,8 +122,7 @@ public class Portal {
     autoApprove: Bool = false,
     apiHost: String = "api.portalhq.io",
     mpcHost: String = "mpc.portalhq.io",
-    address: String = "",
-    onReady: (() -> Void)? = nil
+    address: String = ""
   ) throws {
     // Basic setup
     self.apiKey = apiKey
@@ -141,7 +136,6 @@ public class Portal {
     // Other stuff
     self.autoApprove = autoApprove
     self.isSimulator = isSimulator
-    self.onReady = onReady
     self.apiHost = apiHost
     
     if (version != "v4") {
