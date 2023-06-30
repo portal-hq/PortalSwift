@@ -78,7 +78,7 @@ public class PortalConnect {
           id: data.id,
           topic: data.topic,
           address: self.address!,
-          chainId: String(portal.chainId),
+          chainId: String(self.portal.chainId),
           params: data.params
         )
       )
@@ -102,7 +102,7 @@ public class PortalConnect {
           id: data.id,
           topic: data.topic,
           address: self.address!,
-          chainId: String(portal.chainId),
+          chainId: String(self.portal.chainId),
           params: data.params
         )
       )
@@ -130,7 +130,7 @@ public class PortalConnect {
           id: data.id,
           topic: data.topic,
           address: self.address!,
-          chainId: String(portal.chainId)
+          chainId: String(self.portal.chainId)
         )
       )
       
@@ -152,7 +152,7 @@ public class PortalConnect {
           id: data.id,
           topic: data.topic,
           address: self.address!,
-          chainId: String(portal.chainId)
+          chainId: String(self.portal.chainId)
         )
       )
       
