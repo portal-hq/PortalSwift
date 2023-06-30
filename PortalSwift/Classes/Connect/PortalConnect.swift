@@ -68,7 +68,9 @@ public class PortalConnect {
   }
   
   func handleDappSessionRequested(data: ConnectData) {
-    _ = portal.provider.once(event: Events.PortalDappSessionApproved.rawValue) { [self] approved in
+    _ = portal.provider.once(event: Events.PortalDappSessionApproved.rawValue) { [weak self] approved in
+      guard let self = self else { return }
+
       // If the approved event is fired
       let event = DappSessionResponseMessage(
         event: "portal_dappSessionApproved",
@@ -76,7 +78,7 @@ public class PortalConnect {
           id: data.id,
           topic: data.topic,
           address: self.address!,
-          chainId: String(portal.chainId),
+          chainId: String(self.portal.chainId),
           params: data.params
         )
       )
@@ -90,7 +92,9 @@ public class PortalConnect {
       }
     }
     
-    _ = portal.provider.once(event: Events.PortalDappSessionRejected.rawValue) { [self] approved in
+    _ = portal.provider.once(event: Events.PortalDappSessionRejected.rawValue) { [weak self] approved in
+      guard let self = self else { return }
+        
       // If the approved event is fired
       let event = DappSessionResponseMessage(
         event: "portal_dappSessionRejected",
@@ -98,7 +102,7 @@ public class PortalConnect {
           id: data.id,
           topic: data.topic,
           address: self.address!,
-          chainId: String(portal.chainId),
+          chainId: String(self.portal.chainId),
           params: data.params
         )
       )
@@ -116,7 +120,9 @@ public class PortalConnect {
   }
   
   func handleDappSessionRequestedV1(data: ConnectV1Data) {
-    _ = portal.provider.once(event: Events.PortalDappSessionApprovedV1.rawValue) { [self] approved in
+    _ = portal.provider.once(event: Events.PortalDappSessionApprovedV1.rawValue) { [weak self] approved in
+      guard let self = self else { return }
+        
       // If the approved event is fired
       let event = DappSessionResponseV1Message(
         event: "portal_dappSessionApproved",
@@ -124,7 +130,7 @@ public class PortalConnect {
           id: data.id,
           topic: data.topic,
           address: self.address!,
-          chainId: String(portal.chainId)
+          chainId: String(self.portal.chainId)
         )
       )
       
@@ -136,7 +142,9 @@ public class PortalConnect {
       }
     }
     
-    _ = portal.provider.once(event: Events.PortalDappSessionRejectedV1.rawValue) { [self] approved in
+    _ = portal.provider.once(event: Events.PortalDappSessionRejectedV1.rawValue) { [weak self] approved in
+      guard let self = self else { return }
+        
       // If the approved event is fired
       let event = DappSessionResponseV1Message(
         event: "portal_dappSessionRejected",
@@ -144,7 +152,7 @@ public class PortalConnect {
           id: data.id,
           topic: data.topic,
           address: self.address!,
-          chainId: String(portal.chainId)
+          chainId: String(self.portal.chainId)
         )
       )
       
@@ -192,7 +200,9 @@ public class PortalConnect {
       data.topic
     )
   
-    _ = portal.provider.once(event: Events.PortalSigningRejected.rawValue) { approved in
+    _ = portal.provider.once(event: Events.PortalSigningRejected.rawValue) { [weak self] approved in
+      guard let self = self else { return }
+        
       let event = SignatureReceivedMessage(
         event: "portal_signatureRejected",
         data: SignatureReceivedData(
@@ -210,7 +220,9 @@ public class PortalConnect {
       }
     }
     
-    handleProviderRequest(method: method, params: params) { result in
+    handleProviderRequest(method: method, params: params) { [weak self] result in
+      guard let self = self else { return }
+        
       if (result.error != nil) {
         print("[PortalConnect] \(result.error!)")
         return
@@ -244,7 +256,9 @@ public class PortalConnect {
       data.topic
     )
     
-    _ = portal.provider.once(event: Events.PortalSigningRejected.rawValue) { approved in
+    _ = portal.provider.once(event: Events.PortalSigningRejected.rawValue) { [weak self] approved in
+      guard let self = self else { return }
+        
       let event = SignatureReceivedMessage(
         event: "portal_signatureRejected",
         data: SignatureReceivedData(
@@ -262,7 +276,9 @@ public class PortalConnect {
       }
     }
     
-    handleProviderRequest(method: method, params: params) { result in
+    handleProviderRequest(method: method, params: params) { [weak self] result in
+      guard let self = self else { return }
+        
       if (result.error != nil) {
         print("[PortalConnect] \(result.error!)")
         return
@@ -295,7 +311,9 @@ public class PortalConnect {
       data.topic
     )
     
-    _ = portal.provider.once(event: Events.PortalSigningRejected.rawValue) { approved in
+    _ = portal.provider.once(event: Events.PortalSigningRejected.rawValue) { [weak self] approved in
+      guard let self = self else { return }
+        
       let event = SignatureReceivedMessage(
         event: "portal_signatureRejected",
         data: SignatureReceivedData(
@@ -313,7 +331,9 @@ public class PortalConnect {
       }
     }
       
-    handleProviderRequest(method: method, params: params) { result in
+    handleProviderRequest(method: method, params: params) { [weak self] result in
+      guard let self = self else { return }
+        
       if (result.error != nil) {
         print("[PortalConnect] \(result.error!)")
         return

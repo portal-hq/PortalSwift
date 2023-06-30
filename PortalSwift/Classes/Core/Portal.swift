@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Mpc
 
 /// The list of backup methods for PortalSwift.
 public enum BackupMethods: String {
@@ -63,6 +64,7 @@ public enum PortalArgumentError: Error {
   case invalidGatewayConfig
   case noGatewayConfigForChain(chainId: Int)
   case versionNoLongerSupported(message: String)
+  case unableToGetClient
 }
 
 /// Determines the appropriate Gateway URL to use for the current chainId
@@ -83,8 +85,10 @@ private func getGatewayUrl(gatewayConfig: Dictionary<Int, String>, chainId: Int)
 public class Portal {
   public var address: String = ""
   public var api: PortalApi
+  public var apiHost: String
   public var apiKey: String
   public var backup: BackupOptions
+  public var client: Client?
   public var chainId: Int
   public var autoApprove: Bool
   public var isSimulator: Bool
@@ -125,11 +129,14 @@ public class Portal {
     self.backup = backup
     self.chainId = chainId
     self.gatewayConfig = gatewayConfig
+    self.client = try Portal.getClient(apiHost, apiKey)
+    keychain.clientId = self.client?.id
     self.keychain = keychain
     
     // Other stuff
     self.autoApprove = autoApprove
     self.isSimulator = isSimulator
+    self.apiHost = apiHost
     
     if (version != "v4") {
       throw PortalArgumentError.versionNoLongerSupported(message: "MPC Version is not supported. Only version 'v4' is currently supported.")
@@ -161,6 +168,7 @@ public class Portal {
       apiKey: apiKey,
       chainId: chainId,
       gatewayUrl: gatewayUrl,
+      keychain: keychain,
       autoApprove: autoApprove,
       mpcHost: mpcHost,
       version: version
@@ -222,5 +230,27 @@ public class Portal {
   public func updateAutoApprove(value: Bool) {
     autoApprove = value
     provider.autoApprove = value
+  }
+  
+  private static func getClient(_ apiHost: String, _ apiKey: String) throws -> Client {
+    // Create URL.
+    let apiUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
+    
+    // Call the MPC service to retrieve the client.
+    let response = MobileGetMe("\(apiUrl)/api/v1/clients/me", apiKey)
+    
+    // Parse the client.
+    let jsonData = response.data(using: .utf8)!
+    let clientResult: ClientResult = try JSONDecoder().decode(ClientResult.self, from: jsonData)
+    
+    guard clientResult.error.code == 0 else {
+      throw PortalMpcError(clientResult.error)
+    }
+    
+    guard let client = clientResult.data else {
+      throw PortalArgumentError.unableToGetClient
+    }
+    
+    return client
   }
 }
