@@ -434,6 +434,8 @@ class ViewController: UIViewController {
             print("❌ Error estimating gas:", result.error!)
             return
         }
+        
+        print("✅ handleSign(): Successfully signed:", result.data!)
       }
     } catch {
       print("[ViewController] handleSign(): unable to read address from keychain")
