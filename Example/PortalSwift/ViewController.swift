@@ -112,6 +112,8 @@ class ViewController: UIViewController {
   }
 
   @IBAction func handleSignIn(_ sender: UIButton) {
+    print("signIn", PortalWrapper, PortalWrapper.signIn)
+    
     PortalWrapper.signIn(username: username.text!) { (result: Result<UserResult>) -> Void in
       guard (result.error == nil) else {
         print(" ❌ handleSignIn(): Failed", result.error!)
@@ -120,8 +122,8 @@ class ViewController: UIViewController {
       print("✅ handleSignIn(): API key:", result.data!.clientApiKey)
       self.user = result.data!
       self.registerPortalUi(apiKey: result.data!.clientApiKey)
-      self.updateStaticContent()
       self.portal = self.PortalWrapper.portal
+      self.updateStaticContent()
       
       DispatchQueue.main.async {
         self.logoutButton.isEnabled = true
@@ -130,6 +132,7 @@ class ViewController: UIViewController {
   }
 
   @IBAction func handleSignup(_ sender: UIButton) {
+    print("signUp", PortalWrapper, PortalWrapper.signUp)
     PortalWrapper.signUp(username: username.text!) { (result: Result<UserResult>) -> Void in
       guard (result.error == nil) else {
         print(" ❌ handleSignIn(): Failed", result.error!)
@@ -138,9 +141,9 @@ class ViewController: UIViewController {
       print("✅ handleSignup(): API key:", result.data!.clientApiKey)
       self.user = result.data
       self.registerPortalUi(apiKey: result.data!.clientApiKey)
-      self.updateStaticContent()
       self.portal = self.PortalWrapper.portal
-
+      self.updateStaticContent()
+      
       DispatchQueue.main.async {
         self.logoutButton.isEnabled = true
       }
@@ -305,6 +308,8 @@ class ViewController: UIViewController {
   func populateAddressInformation() {
     do {
       let address = try portal?.keychain.getAddress()
+      print("Address", address)
+      
       DispatchQueue.main.async {
         self.addressInformation.text = "Address: \(address ?? "N/A")"
       }

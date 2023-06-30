@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Mpc
 
 /// The list of backup methods for PortalSwift.
 public enum BackupMethods: String {
@@ -63,6 +64,7 @@ public enum PortalArgumentError: Error {
   case invalidGatewayConfig
   case noGatewayConfigForChain(chainId: Int)
   case versionNoLongerSupported(message: String)
+  case unableToGetClient
 }
 
 /// Determines the appropriate Gateway URL to use for the current chainId
@@ -83,6 +85,7 @@ private func getGatewayUrl(gatewayConfig: Dictionary<Int, String>, chainId: Int)
 public class Portal {
   public var address: String = ""
   public var api: PortalApi
+  public var apiHost: String
   public var apiKey: String
   public var backup: BackupOptions
   public var client: Client?
@@ -131,12 +134,15 @@ public class Portal {
     self.backup = backup
     self.chainId = chainId
     self.gatewayConfig = gatewayConfig
+    self.client = try Portal.getClient(apiHost, apiKey)
+    keychain.clientId = self.client?.id
     self.keychain = keychain
     
     // Other stuff
     self.autoApprove = autoApprove
     self.isSimulator = isSimulator
     self.onReady = onReady
+    self.apiHost = apiHost
     
     if (version != "v4") {
       throw PortalArgumentError.versionNoLongerSupported(message: "MPC Version is not supported. Only version 'v4' is currently supported.")
@@ -186,9 +192,6 @@ public class Portal {
       mpcHost: mpcHost,
       version: version
     )
-
-    // Retry 3 times in case of failure
-    self.getClientWithRetry(attemptsLeft: 3)
   }
   
   /// Set the address on the instance and update the Provider address
@@ -235,42 +238,25 @@ public class Portal {
     provider.autoApprove = value
   }
   
-  private func getClientWithRetry(attemptsLeft: Int, delay: Double = 1.0) {
-    guard attemptsLeft > 0 else {
-      print("[Portal] All retry attempts to fetch client have been exhausted.")
-      return
+  private static func getClient(_ apiHost: String, _ apiKey: String) throws -> Client {
+    // Create URL.
+    let apiUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
+    
+    // Call the MPC service to retrieve the client.
+    let response = MobileGetMe("\(apiUrl)/api/v1/clients/me", apiKey)
+    
+    // Parse the client.
+    let jsonData = response.data(using: .utf8)!
+    let clientResult: ClientResult = try JSONDecoder().decode(ClientResult.self, from: jsonData)
+    
+    guard clientResult.error.code == 0 else {
+      throw PortalMpcError(clientResult.error)
     }
-
-    do {
-      try self.api.getClient() { result in
-        if let client = result.data, let clientId = result.data?.id {
-          // Set the client.
-          self.client = client
-
-          // Set the keychain's clientId.
-          self.keychain.clientId = clientId
-          
-          // Set isReady to true and fire off onReady if provided.
-          self.isReady = true
-          self.onReady?()
-        } else {
-          // Double the delay for the next retry.
-          let nextDelay = delay * 2
-
-          print("[Portal] Unable to fetch client, retrying in \(nextDelay) seconds...")
-          DispatchQueue.main.asyncAfter(deadline: .now() + nextDelay) {
-            self.getClientWithRetry(attemptsLeft: attemptsLeft - 1, delay: nextDelay)
-          }
-        }
-      }
-    } catch {
-      // Double the delay for the next retry.
-      let nextDelay = delay * 2
-
-      print("[Portal] Network error on initialization, retrying in \(nextDelay) seconds...")
-      DispatchQueue.main.asyncAfter(deadline: .now() + nextDelay) {
-        self.getClientWithRetry(attemptsLeft: attemptsLeft - 1, delay: nextDelay)
-      }
+    
+    guard let client = clientResult.data else {
+      throw PortalArgumentError.unableToGetClient
     }
+    
+    return client
   }
 }
