@@ -172,7 +172,7 @@ public class PortalConnect {
     client.close()
   }
   
-  func handleConnected(data: ConnectData) {
+  func handleConnected(data: ConnectedData) {
     connected = true
     _ = portal.provider.emit(event: Events.Connect.rawValue, data: data)
   }
