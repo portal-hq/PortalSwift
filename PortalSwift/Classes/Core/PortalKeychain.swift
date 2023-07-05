@@ -34,21 +34,17 @@ public class PortalKeychain: MobileStorageAdapter {
     var address: String
     
     do {
-      print("[PortalKeychain] Checking if there exists an address")
       address = try getItem(item: addressKey)
     } catch KeychainError.ItemNotFound(item: addressKey) {
       do {
         // Fallback to deprecated key.
-        print("[PortalKeychain] Checking if there exists a deprecated address")
         address = try getItem(item: deprecatedAddressKey)
       } catch KeychainError.ItemNotFound(item: deprecatedAddressKey) {
         // Throw original item not found error.
-        print("[PortalKeychain] No address found")
         throw KeychainError.ItemNotFound(item: addressKey)
       }
     }
-    
-    print("[PortalKeychain] Found address: \(address)")
+
     return address
   }
   
@@ -60,21 +56,17 @@ public class PortalKeychain: MobileStorageAdapter {
     var share: String
 
     do {
-      print("[PortalKeychain] Checking if there exists a signing share")
       share = try getItem(item: shareKey)
     } catch KeychainError.ItemNotFound(item: shareKey) {
       do {
         // Fallback to deprecated key.
-        print("[PortalKeychain] Checking if there exists a deprecated signing share")
         share = try getItem(item: deprecatedShareKey)
       } catch KeychainError.ItemNotFound(item: deprecatedShareKey) {
         // Throw original item not found error.
-        print("[PortalKeychain] No share found")
         throw KeychainError.ItemNotFound(item: shareKey)
       }
     }
-    
-    print("[PortalKeychain] Found share")
+
     return share
   }
   
@@ -134,12 +126,8 @@ public class PortalKeychain: MobileStorageAdapter {
     let clientId = try getClientId()
     let addressKey = "\(clientId).address"
 
-    print("[PortalKeychain] Attempting to delete address")
     try deleteItem(key: addressKey)
-    print("[PortalKeychain] Deleted address")
-    print("[PortalKeychain] Attempting to delete deprecated address")
     try deleteItem(key: deprecatedAddressKey)
-    print("[PortalKeychain] Deleted deprecated address")
   }
   
   /// Deletes the signing share stored in the client's keychain.
@@ -148,12 +136,8 @@ public class PortalKeychain: MobileStorageAdapter {
     let clientId = try getClientId()
     let shareKey = "\(clientId).share"
 
-    print("[PortalKeychain] Attempting to delete signing share")
     try deleteItem(key: shareKey)
-    print("[PortalKeychain] Deleted signing share")
-    print("[PortalKeychain] Attempting to delete deprecated signing share")
     try deleteItem(key: deprecatedShareKey)
-    print("[PortalKeychain] Deleted deprecated signing share")
   }
   
   /// Tests `setItem` in the client's keychain.
