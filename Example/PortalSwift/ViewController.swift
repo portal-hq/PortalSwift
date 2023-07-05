@@ -286,14 +286,11 @@ class ViewController: UIViewController {
 
   func deleteKeychain() {
     do {
-      print("Here is the keychain address: ", try portal?.keychain.getAddress() ?? "")
       try portal?.keychain.deleteAddress()
       try portal?.keychain.deleteSigningShare()
-      
-      print("Now its gone: ", try portal?.keychain.getAddress() ?? "")
+      print("✅ Deleted keychain")
     } catch {
-      print(" ✅  Deleted keychain:", error)
-
+      print("❌ Delete keychain error:", error)
     }
   }
 
