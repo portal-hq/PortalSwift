@@ -844,6 +844,6 @@ public class PortalProvider {
   
   private func dispatchConnect() -> Void {
     let hexChainId = String(format:"%02x", chainId)
-    _ = emit(event: Events.Connect.rawValue, data: ["chaindId": hexChainId])
+    _ = emit(event: Events.Connect.rawValue, data: ["chainId": hexChainId])
   }
 }
