@@ -44,32 +44,32 @@ class ConnectViewController: UIViewController {
     connect = PortalConnect(portal!, CONNECT_URL)
     connect2 = PortalConnect(portal!, CONNECT_URL)
     
-    initPortalConnect(portalConnect: connect!, button: connectButton)
-    initPortalConnect(portalConnect: connect2!, button: connectButton2)
+      initPortalConnect(portalConnect: connect!, button: connectButton, label: "connect1")
+      initPortalConnect(portalConnect: connect2!, button: connectButton2, label: "connect2")
   }
   
-  func initPortalConnect(portalConnect: PortalConnect, button: UIButton) {
+    func initPortalConnect(portalConnect: PortalConnect, button: UIButton, label: String) {
     button.isEnabled = false
         
     portalConnect.on(event: Events.PortalDappSessionRequested.rawValue, callback: { [weak self] data in
-      print("Event \(Events.PortalDappSessionRequested.rawValue) recieved for v2")
+      print("Event \(Events.PortalDappSessionRequested.rawValue) recieved for v2 on \(label)")
       self?.didRequestApprovalDapps(portalConnect: portalConnect, data: data)})
     
     portalConnect.on(event: Events.PortalDappSessionRequestedV1.rawValue, callback: { [weak self] data in
-      print("Event \(Events.PortalDappSessionRequested.rawValue) recieved for v1")
+      print("Event \(Events.PortalDappSessionRequested.rawValue) recieved for v1 on \(label)")
       self?.didRequestApprovalDappsV1(portalConnect: portalConnect, data: data)})
     
     portalConnect.on(event: Events.PortalSignatureReceived.rawValue) { (data: Any) in
       let result = data as! RequestCompletionResult
-      print("[ConnectViewController] ✅ Received signature \(result)")
+      print("[ConnectViewController] ✅ Received signature \(result) on \(label)")
     }
     
     portalConnect.on(event: Events.Connect.rawValue) { (data: Any) in
-      print("[ConnectViewController] ✅ Connected! \(data)")
+      print("[ConnectViewController] ✅ Connected! \(data) on \(label)")
     }
     
     portalConnect.on(event: Events.Disconnect.rawValue) { (data: Any) in
-      print("[ConnectViewController] 🛑 Disconnected \(data)")
+      print("[ConnectViewController] 🛑 Disconnected \(data) on \(label)")
     }
   }
   
