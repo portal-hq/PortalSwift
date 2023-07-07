@@ -37,14 +37,16 @@ public class MockPortalProvider: PortalProvider {
 
   public override func request(
     payload: ETHRequestPayload,
-    completion: @escaping (Result<RequestCompletionResult>) -> Void
+    completion: @escaping (Result<RequestCompletionResult>) -> Void,
+    connect: PortalConnect? = nil
   ) -> Void {
     completion(
       Result(
         data: RequestCompletionResult(
           method: payload.method,
           params: payload.params,
-          result: "result"
+          result: "result",
+          id: "testId"
         )
       )
     )
@@ -52,14 +54,16 @@ public class MockPortalProvider: PortalProvider {
 
   public override func request(
     payload: ETHTransactionPayload,
-    completion: @escaping (Result<TransactionCompletionResult>) -> Void
+    completion: @escaping (Result<TransactionCompletionResult>) -> Void,
+    connect: PortalConnect? = nil
   ) -> Void {
     completion(
       Result(
         data: TransactionCompletionResult(
           method: payload.method,
           params: payload.params,
-          result: "result"
+          result: "result",
+          id: "testId"
         )
       )
     )
@@ -67,14 +71,16 @@ public class MockPortalProvider: PortalProvider {
 
   public override func request(
     payload: ETHAddressPayload,
-    completion: @escaping (Result<AddressCompletionResult>) -> Void
+    completion: @escaping (Result<AddressCompletionResult>) -> Void,
+    connect: PortalConnect? = nil
   ) -> Void {
     completion(
       Result(
         data: AddressCompletionResult(
           method: payload.method,
           params: payload.params,
-          result: "result"
+          result: "result",
+          id: "testId"
         )
       )
     )

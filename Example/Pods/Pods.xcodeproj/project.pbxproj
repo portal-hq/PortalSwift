@@ -129,6 +129,7 @@
 		608DEEB38C6B137DBC9A71197CBFD19D /* OIDRegistrationRequest.m in Sources */ = {isa = PBXBuildFile; fileRef = 5884FBEDD4476F60E3BF3329783A5B55 /* OIDRegistrationRequest.m */; };
 		6264526D8F9C1ACEF1013E5A724FD971 /* OIDAuthState.h in Headers */ = {isa = PBXBuildFile; fileRef = 1F1221DEEA16F9FBDA65E19FDEA26654 /* OIDAuthState.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		62FD9E9E1FC71409BD272A937EED926E /* Server.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BE23B75A1223BE4991F549F10A58122 /* Server.swift */; };
+		63DB7B982A563E7400F9D0E3 /* EventBus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63DB7B972A563E7400F9D0E3 /* EventBus.swift */; };
 		640CCE9C3A28AA3CA15510899F9140EE /* FBSnapshotTestCasePlatform.h in Headers */ = {isa = PBXBuildFile; fileRef = FD0F0E45DBE493500EEF42D316AFF4D7 /* FBSnapshotTestCasePlatform.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		64BC39E045C7E99063F138A036CC7497 /* GIDSignInButton.h in Headers */ = {isa = PBXBuildFile; fileRef = 8B3DFFFCAEADD331757387DD4E360E8B /* GIDSignInButton.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		676AD319ADD01A7155529B799B390095 /* GIDSignIn.h in Headers */ = {isa = PBXBuildFile; fileRef = 9C4B78796A6279623E5202D817FD7E3C /* GIDSignIn.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -527,6 +528,7 @@
 		6226A3E588CD3C896969852A7EBDC033 /* Starscream-dummy.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = "Starscream-dummy.m"; sourceTree = "<group>"; };
 		62EF648E049AACF8D35DC877FB416FF6 /* OIDClientMetadataParameters.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = OIDClientMetadataParameters.h; path = Source/AppAuthCore/OIDClientMetadataParameters.h; sourceTree = "<group>"; };
 		62F3F8210C81362352247067D4CB88DE /* GIDCallbackQueue.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = GIDCallbackQueue.h; path = GoogleSignIn/Sources/GIDCallbackQueue.h; sourceTree = "<group>"; };
+		63DB7B972A563E7400F9D0E3 /* EventBus.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = EventBus.swift; sourceTree = "<group>"; };
 		64573E97A55E7BBAC32E0610B2681040 /* GIDSignIn.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = GIDSignIn.m; path = GoogleSignIn/Sources/GIDSignIn.m; sourceTree = "<group>"; };
 		6490947238086CA7A127456E4148D871 /* GoogleAuth.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoogleAuth.swift; sourceTree = "<group>"; };
 		65D4211E5B5FF544CED9273D3C766A81 /* OIDFieldMapping.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = OIDFieldMapping.m; path = Source/AppAuthCore/OIDFieldMapping.m; sourceTree = "<group>"; };
@@ -1319,6 +1321,7 @@
 		866E13A9633E9353D39FEB0C0F47227A /* Utils */ = {
 			isa = PBXGroup;
 			children = (
+				63DB7B972A563E7400F9D0E3 /* EventBus.swift */,
 				9E87194D5479F5FDCF7B18129E214C6F /* Chains.swift */,
 				EB2EE0AFA321E750A6CFF7573CCD1951 /* EthRequests.swift */,
 				41F5F98210DCC84B6EF7348511514965 /* HttpRequest.swift */,
@@ -2121,6 +2124,7 @@
 				A0088DC62F2D965EAE9D4C9302E09950 /* MockHttpRequester.swift in Sources */,
 				4FF23EDB3DAE34199D61C0A7EC3A84A2 /* MockICloudStorage.swift in Sources */,
 				5847C2D67F38AE42604B0C291429343A /* MockPortal.swift in Sources */,
+				63DB7B982A563E7400F9D0E3 /* EventBus.swift in Sources */,
 				86CB86D7AA659962D7EE9BDAB9A7A488 /* MockPortalApi.swift in Sources */,
 				24B50135224F42AF557360A6BBD9EFA3 /* MockPortalKeychain.swift in Sources */,
 				21E76F42A0822B617452453C02752539 /* MockPortalMpc.swift in Sources */,
