@@ -182,7 +182,7 @@ public class PortalConnect: EventBus {
     client.close()
   }
   
-  func handleConnected(data: ConnectData) {
+  func handleConnected(data: ConnectedData) {
     connected = true
     emit(event: Events.Connect.rawValue, data: data)
   }
