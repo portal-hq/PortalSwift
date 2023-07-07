@@ -109,6 +109,11 @@ class ViewController: UIViewController {
     if let connectViewController = segue.destination as? ConnectViewController {
       connectViewController.portal = self.portal
     }
+    
+    if let webViewController = segue.destination as? WebViewController {
+      webViewController.portal = self.portal
+      webViewController.url = self.url.text
+    }
   }
 
   @IBAction func handleSignIn(_ sender: UIButton) {
@@ -273,10 +278,6 @@ class ViewController: UIViewController {
     testTransactionRequests()
 //    testAddressRequests()
     print("====================\n[FINISHED] Testing provider methods\n====================\n")
-  }
-
-  @IBAction func handleWebview(_ sender: UIButton) {
-    injectWebView()
   }
 
   @IBAction func handleDeleteKeychain(_ sender: Any) {
@@ -491,28 +492,6 @@ class ViewController: UIViewController {
         }
       }
     }
-  }
-
-  func onError(result: Result<Any>) -> Void {
-    print("PortalWebviewError:", result.error!, "Description:", result.error!.localizedDescription)
-    guard result.error == nil else {
-       print("❌ Error in PortalWebviewError:", result.error)
-       return
-    }
-    guard ((result.data! as AnyObject).result as! Result<Any>).error == nil else {
-      print("❌ Error in PortalWebviewError:", ((result.data as! AnyObject).result as! Result<Any>))
-      return
-    }
-  }
-
-  func injectWebView() {
-    let webViewController = PortalWebView(portal: portal!, url: URL(string: url.text!)!, onError: onError)
-    // Install the WebViewController as a child view controller.
-      addChild(webViewController)
-      let webViewControllerView = webViewController.view!
-      view.addSubview(webViewControllerView)
-      webViewController.didMove(toParent: self)
-    
   }
 
   func testProviderRequest(method: String, params: [Any], skipLoggingResult: Bool = false, completion: @escaping (Bool) -> Void) {
