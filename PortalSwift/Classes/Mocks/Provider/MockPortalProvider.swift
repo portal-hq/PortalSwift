@@ -44,7 +44,8 @@ public class MockPortalProvider: PortalProvider {
         data: RequestCompletionResult(
           method: payload.method,
           params: payload.params,
-          result: "result"
+          result: "result",
+          id: "testId"
         )
       )
     )
@@ -59,7 +60,8 @@ public class MockPortalProvider: PortalProvider {
         data: TransactionCompletionResult(
           method: payload.method,
           params: payload.params,
-          result: "result"
+          result: "result",
+          id: "testId"
         )
       )
     )
@@ -74,7 +76,8 @@ public class MockPortalProvider: PortalProvider {
         data: AddressCompletionResult(
           method: payload.method,
           params: payload.params,
-          result: "result"
+          result: "result",
+          id: "testId"
         )
       )
     )

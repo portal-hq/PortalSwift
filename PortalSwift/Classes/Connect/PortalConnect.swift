@@ -18,7 +18,7 @@ public var signMethods: [ETHRequestMethods.RawValue] = [
 ]
 
 public class PortalConnect: EventBus {
-  public var client: WebSocketClient
+  private var client: WebSocketClient
   private var connected: Bool = false
   private var portal: Portal
   private var address: String?
