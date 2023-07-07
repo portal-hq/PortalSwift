@@ -656,18 +656,22 @@ public class PortalProvider {
     
     // Bind to signing approval callbacks
     let _ = on(event: Events.PortalSigningApproved.rawValue, callback: { approved in
-      let approvedPayload = approved as! ETHRequestPayload
-      
-      if (approvedPayload.id == payload.id) {
-        // If the approved event is fired
-        return completion(Result(data: true))
+      if (approved is ETHRequestPayload ) {
+        let approvedPayload = approved as! ETHRequestPayload
+     
+        if (approvedPayload.id == payload.id) {
+          // If the approved event is fired
+          return completion(Result(data: true))
+        }
       }
     }).on(event: Events.PortalSigningRejected.rawValue, callback: { approved in
-      let rejectedPayload = approved as! ETHRequestPayload
-      
-      if (rejectedPayload.id == payload.id) {
-        // If the rejected event is fired
-        return completion(Result(data: false))
+      if (approved is ETHRequestPayload ) {
+        let rejectedPayload = approved as! ETHRequestPayload
+        
+        if (rejectedPayload.id == payload.id) {
+          // If the rejected event is fired
+          return completion(Result(data: false))
+        }
       }
     })
     
@@ -706,18 +710,22 @@ public class PortalProvider {
     
     // Bind to signing approval callbacks
     let _ = on(event: Events.PortalSigningApproved.rawValue, callback: { approved in
-      let approvedPayload = approved as! ETHTransactionPayload
-      
-      if (approvedPayload.id == payload.id) {
-        // If the approved event is fired
-        return completion(Result(data: true))
+      if (approved is ETHTransactionPayload ) {
+        let approvedPayload = approved as! ETHTransactionPayload
+        
+        if (approvedPayload.id == payload.id) {
+          // If the approved event is fired
+          return completion(Result(data: true))
+        }
       }
     }).on(event: Events.PortalSigningRejected.rawValue, callback: { approved in
-      let rejectedPayload = approved as! ETHTransactionPayload
-      
-      if (rejectedPayload.id == payload.id) {
-        // If the rejected event is fired
-        return completion(Result(data: false))
+      if (approved is ETHTransactionPayload ) {
+        let rejectedPayload = approved as! ETHTransactionPayload
+        
+        if (rejectedPayload.id == payload.id) {
+          // If the rejected event is fired
+          return completion(Result(data: false))
+        }
       }
     })
     
