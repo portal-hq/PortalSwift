@@ -186,7 +186,7 @@
                                     <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 </buttonConfiguration>
                                 <connections>
-                                    <action selector="handleWebview:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="nyZ-th-qvt"/>
+                                    <segue destination="R0A-w7-x9S" kind="presentation" id="KNX-4g-hU6"/>
                                 </connections>
                             </button>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" restorationIdentifier="portalConnectButton" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Oix-QY-d5L">
@@ -241,6 +241,24 @@
                 <placeholder placeholderIdentifier="IBFirstResponder" id="x5A-6p-PRh" sceneMemberID="firstResponder"/>
             </objects>
             <point key="canvasLocation" x="93.599999999999994" y="-2.2488755622188905"/>
+        </scene>
+        <!--Web View Controller-->
+        <scene sceneID="AeA-zC-7Sc">
+            <objects>
+                <viewController id="R0A-w7-x9S" customClass="WebViewController" customModule="PortalSwift_Example" customModuleProvider="target" sceneMemberID="viewController">
+                    <layoutGuides>
+                        <viewControllerLayoutGuide type="top" id="fSO-SS-BfH"/>
+                        <viewControllerLayoutGuide type="bottom" id="fg1-21-qPe"/>
+                    </layoutGuides>
+                    <view key="view" contentMode="scaleToFill" id="nlo-mi-rPp">
+                        <rect key="frame" x="0.0" y="0.0" width="375" height="647"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                    </view>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="KVY-F6-Tah" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="94" y="717"/>
         </scene>
         <!--Connect View Controller-->
         <scene sceneID="94S-6a-j1d">
