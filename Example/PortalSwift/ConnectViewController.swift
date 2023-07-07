@@ -14,12 +14,12 @@ class ConnectViewController: UIViewController {
   private var connect2: PortalConnect?
   
   // UI Elements
-  @IBOutlet weak var connectButton: UIButton!
-  @IBOutlet weak var connectMessage: UITextView!
-  @IBOutlet weak var addressTextInput: UITextField!
-  @IBOutlet weak var connectButton2: UIButton!
-  @IBOutlet weak var connectMessage2: UITextView!
-  @IBOutlet weak var addressTextInput2: UITextField!
+  @IBOutlet var connectButton: UIButton!
+  @IBOutlet var connectMessage: UITextView!
+  @IBOutlet var addressTextInput: UITextField!
+  @IBOutlet var connectButton2: UIButton!
+  @IBOutlet var connectMessage2: UITextView!
+  @IBOutlet var addressTextInput2: UITextField!
   
   required init?(coder: NSCoder) {
     super.init(coder: coder)
@@ -44,32 +44,42 @@ class ConnectViewController: UIViewController {
     connect = PortalConnect(portal!, CONNECT_URL)
     connect2 = PortalConnect(portal!, CONNECT_URL)
     
-    initPortalConnect(portalConnect: connect!, button: connectButton)
-    initPortalConnect(portalConnect: connect2!, button: connectButton2)
+    initPortalConnect(portalConnect: connect!, button: connectButton, label: "connect1")
+    initPortalConnect(portalConnect: connect2!, button: connectButton2, label: "connect2", autoApprove: false)
   }
   
-  func initPortalConnect(portalConnect: PortalConnect, button: UIButton) {
+  func initPortalConnect(portalConnect: PortalConnect, button: UIButton, label: String, autoApprove: Bool = true) {
     button.isEnabled = false
         
     portalConnect.on(event: Events.PortalDappSessionRequested.rawValue, callback: { [weak self] data in
-      print("Event \(Events.PortalDappSessionRequested.rawValue) recieved for v2")
-      self?.didRequestApprovalDapps(portalConnect: portalConnect, data: data)})
+      print("Event \(Events.PortalDappSessionRequested.rawValue) recieved for v2 on \(label)")
+      self?.didRequestApprovalDapps(portalConnect: portalConnect, data: data)
+    })
     
     portalConnect.on(event: Events.PortalDappSessionRequestedV1.rawValue, callback: { [weak self] data in
-      print("Event \(Events.PortalDappSessionRequested.rawValue) recieved for v1")
-      self?.didRequestApprovalDappsV1(portalConnect: portalConnect, data: data)})
+      print("Event \(Events.PortalDappSessionRequested.rawValue) recieved for v1 on \(label)")
+      self?.didRequestApprovalDappsV1(portalConnect: portalConnect, data: data)
+    })
     
     portalConnect.on(event: Events.PortalSignatureReceived.rawValue) { (data: Any) in
       let result = data as! RequestCompletionResult
-      print("[ConnectViewController] ✅ Received signature \(result)")
+      print("[ConnectViewController] ✅ Received signature \(result) on \(label)")
     }
     
     portalConnect.on(event: Events.Connect.rawValue) { (data: Any) in
-      print("[ConnectViewController] ✅ Connected! \(data)")
+      print("[ConnectViewController] ✅ Connected! \(data) on \(label)")
     }
     
     portalConnect.on(event: Events.Disconnect.rawValue) { (data: Any) in
-      print("[ConnectViewController] 🛑 Disconnected \(data)")
+      print("[ConnectViewController] 🛑 Disconnected \(data) on \(label)")
+    }
+      
+    portalConnect.on(event: Events.PortalSigningRequested.rawValue) { (data: Any) in
+      if autoApprove {
+        portalConnect.emit(event: Events.PortalSigningApproved.rawValue, data: data)
+      } else {
+        portalConnect.emit(event: Events.PortalSigningRejected.rawValue, data: data)
+      }
     }
   }
   
@@ -81,36 +91,36 @@ class ConnectViewController: UIViewController {
     connect2 = nil
   }
   
-  func didRequestApprovalDapps(portalConnect: PortalConnect, data: Any) -> Void {
+  func didRequestApprovalDapps(portalConnect: PortalConnect, data: Any) {
     print("Emitting Dapp Session Approval for v2..")
     if let connectData = data as? ConnectData {
-        // Now you can work with the parsed ConnectData object
-        print(connectData.id)
-        print(connectData.topic)
-        print(connectData.params)
+      // Now you can work with the parsed ConnectData object
+      print(connectData.id)
+      print(connectData.topic)
+      print(connectData.params)
 
-        // You can emit the event with the parsed ConnectData object
+      // You can emit the event with the parsed ConnectData object
       portalConnect.emit(event: Events.PortalDappSessionApprovedV1.rawValue, data: connectData)
     } else {
-        print("Invalid data type. Expected ConnectData.")
+      print("Invalid data type. Expected ConnectData.")
     }
     portalConnect.emit(event: Events.PortalDappSessionApproved.rawValue, data: data)
   }
 
   func didRequestApprovalDappsV1(portalConnect: PortalConnect, data: Any) {
-      print("Emitting Dapp Session Approval for v1..")
+    print("Emitting Dapp Session Approval for v1..")
 
-      if let connectData = data as? ConnectV1Data {
-          // Now you can work with the parsed ConnectV1Data object
-          print(connectData.id)
-          print(connectData.topic)
-          print(connectData.params)
+    if let connectData = data as? ConnectV1Data {
+      // Now you can work with the parsed ConnectV1Data object
+      print(connectData.id)
+      print(connectData.topic)
+      print(connectData.params)
 
-          // You can emit the event with the parsed ConnectV1Data object
-          portalConnect.emit(event: Events.PortalDappSessionApprovedV1.rawValue, data: connectData)
-      } else {
-          print("Invalid data type. Expected ConnectV1Data.")
-      }
+      // You can emit the event with the parsed ConnectV1Data object
+      portalConnect.emit(event: Events.PortalDappSessionApprovedV1.rawValue, data: connectData)
+    } else {
+      print("Invalid data type. Expected ConnectV1Data.")
+    }
   }
   
   @IBAction func connectPressed() {
@@ -132,8 +142,8 @@ class ConnectViewController: UIViewController {
     
     connectButton.isEnabled =
       uri != nil
-      && uri?.isEmpty == false
-      && uri?.starts(with: "wc:") == true
+        && uri?.isEmpty == false
+        && uri?.starts(with: "wc:") == true
   }
   
   @IBAction func uri2Changed(_ sender: Any) {
@@ -141,7 +151,7 @@ class ConnectViewController: UIViewController {
     
     connectButton2.isEnabled =
       uri != nil
-      && uri?.isEmpty == false
-      && uri?.starts(with: "wc:") == true
+        && uri?.isEmpty == false
+        && uri?.starts(with: "wc:") == true
   }
 }
