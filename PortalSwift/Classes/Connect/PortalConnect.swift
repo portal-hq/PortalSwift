@@ -7,12 +7,21 @@
 
 import Foundation
 
-public class PortalConnect {
+/// A list of JSON-RPC signing methods.
+public var signMethods: [ETHRequestMethods.RawValue] = [
+  ETHRequestMethods.PersonalSign.rawValue,
+  ETHRequestMethods.SendTransaction.rawValue,
+  ETHRequestMethods.Sign.rawValue,
+  ETHRequestMethods.SignTransaction.rawValue,
+  ETHRequestMethods.SignTypedDataV3.rawValue,
+  ETHRequestMethods.SignTypedDataV4.rawValue
+]
+
+public class PortalConnect: EventBus {
   private var client: WebSocketClient
   private var connected: Bool = false
   private var portal: Portal
   private var address: String?
-  private var providerHandlers: [Events.RawValue]
   
   public init(
     _ portal: Portal,
@@ -26,12 +35,29 @@ public class PortalConnect {
     )
     
     self.portal = portal
-    self.address = portal.mpc.getAddress()
-    self.providerHandlers = []
+    address = portal.mpc.getAddress()
     
-    guard self.address != nil else {
+    super.init(label: "PortalConnect")
+    
+    guard address != nil else {
       print("[PortalConnect] ⚠️ Address not found in Keychain. This may cause some features not to work as expected.")
       return
+    }
+    
+    // Fired by the Provider
+    
+    on(event: Events.PortalConnectSigningRequested.rawValue) { payload in
+      self.emit(event: Events.PortalSigningRequested.rawValue, data: payload)
+    }
+    
+    // Fired by SDK Consumers
+    
+    on(event: Events.PortalSigningApproved.rawValue) { payload in
+      _ = self.portal.provider.emit(event: Events.PortalSigningApproved.rawValue, data: payload)
+    }
+    
+    on(event: Events.PortalSigningRejected.rawValue) { payload in
+      _ = self.portal.provider.emit(event: Events.PortalSigningRejected.rawValue, data: payload)
     }
   }
   
@@ -52,23 +78,8 @@ public class PortalConnect {
     client.connect(uri: uri)
   }
   
-  public func on(event: Events.RawValue, callback: @escaping (_ data: Any) -> Void) {
-    self.providerHandlers.append(event)
-    _ = portal.provider.on(event: event, callback: callback)
-  }
-  
-  public func emit(event: Events.RawValue, data: Any) {
-    _ = portal.provider.emit(event: event, data: data)
-  }
-  
-  public func resetEvents() {
-    self.providerHandlers.forEach { event in
-      _ = self.portal.provider.removeListener(event: event)
-    }
-  }
-  
   func handleDappSessionRequested(data: ConnectData) {
-    _ = portal.provider.once(event: Events.PortalDappSessionApproved.rawValue) { [weak self] approved in
+    once(event: Events.PortalDappSessionApproved.rawValue) { [weak self] _ in
       guard let self = self else { return }
 
       // If the approved event is fired
@@ -92,7 +103,7 @@ public class PortalConnect {
       }
     }
     
-    _ = portal.provider.once(event: Events.PortalDappSessionRejected.rawValue) { [weak self] approved in
+    once(event: Events.PortalDappSessionRejected.rawValue) { [weak self] _ in
       guard let self = self else { return }
         
       // If the approved event is fired
@@ -113,14 +124,13 @@ public class PortalConnect {
       } catch {
         print("[PortalConnect] Error encoding DappSessionRequestRejectedMessage: \(error)")
       }
-      
     }
     
-    _ = portal.provider.emit(event: Events.PortalDappSessionRequested.rawValue, data: data)
+    emit(event: Events.PortalDappSessionRequested.rawValue, data: data)
   }
   
   func handleDappSessionRequestedV1(data: ConnectV1Data) {
-    _ = portal.provider.once(event: Events.PortalDappSessionApprovedV1.rawValue) { [weak self] approved in
+    _ = once(event: Events.PortalDappSessionApprovedV1.rawValue) { [weak self] _ in
       guard let self = self else { return }
         
       // If the approved event is fired
@@ -142,7 +152,7 @@ public class PortalConnect {
       }
     }
     
-    _ = portal.provider.once(event: Events.PortalDappSessionRejectedV1.rawValue) { [weak self] approved in
+    once(event: Events.PortalDappSessionRejectedV1.rawValue) { [weak self] _ in
       guard let self = self else { return }
         
       // If the approved event is fired
@@ -164,7 +174,7 @@ public class PortalConnect {
       }
     }
     
-    _ = portal.provider.emit(event: Events.PortalDappSessionRequestedV1.rawValue, data: data)
+    emit(event: Events.PortalDappSessionRequestedV1.rawValue, data: data)
   }
   
   func handleClose() {
@@ -172,24 +182,24 @@ public class PortalConnect {
     client.close()
   }
   
-  func handleConnected(data: ConnectData) {
+  func handleConnected(data: ConnectedData) {
     connected = true
-    _ = portal.provider.emit(event: Events.Connect.rawValue, data: data)
+    emit(event: Events.Connect.rawValue, data: data)
   }
   
   func handleConnectedV1(data: ConnectedV1Data) {
     connected = true
-    _ = portal.provider.emit(event: Events.Connect.rawValue, data: data)
+    emit(event: Events.Connect.rawValue, data: data)
   }
   
   func handleDisconnected(data: DisconnectData) {
     connected = false
     client.close()
-    _ = portal.provider.emit(event: Events.Disconnect.rawValue, data: data)
+    emit(event: Events.Disconnect.rawValue, data: data)
   }
   
   func handleError(data: ErrorData) {
-    _ = portal.provider.emit(event: Events.ConnectError.rawValue, data: data)
+    emit(event: Events.ConnectError.rawValue, data: data)
   }
   
   func handleSessionRequest(data: SessionRequestData) {
@@ -200,7 +210,7 @@ public class PortalConnect {
       data.topic
     )
   
-    _ = portal.provider.once(event: Events.PortalSigningRejected.rawValue) { [weak self] approved in
+    on(event: Events.PortalSigningRejected.rawValue) { [weak self] _ in
       guard let self = self else { return }
         
       let event = SignatureReceivedMessage(
@@ -222,8 +232,8 @@ public class PortalConnect {
     
     handleProviderRequest(method: method, params: params) { [weak self] result in
       guard let self = self else { return }
-        
-      if (result.error != nil) {
+
+      if result.error != nil {
         print("[PortalConnect] \(result.error!)")
         return
       }
@@ -242,6 +252,11 @@ public class PortalConnect {
       do {
         let message = try JSONEncoder().encode(event)
         self.client.send(message)
+        
+        // emit the PortalSignatureReceived event on the PortalConnect EventBus as a convenience
+        if signMethods.contains(method) {
+          self.emit(event: Events.PortalSignatureReceived.rawValue, data: result.data!)
+        }
       } catch {
         print("[PortalConnect] Error encoding SignatureReceivedMessage: \(error)")
       }
@@ -256,7 +271,7 @@ public class PortalConnect {
       data.topic
     )
     
-    _ = portal.provider.once(event: Events.PortalSigningRejected.rawValue) { [weak self] approved in
+    on(event: Events.PortalSigningRejected.rawValue) { [weak self] _ in
       guard let self = self else { return }
         
       let event = SignatureReceivedMessage(
@@ -279,7 +294,7 @@ public class PortalConnect {
     handleProviderRequest(method: method, params: params) { [weak self] result in
       guard let self = self else { return }
         
-      if (result.error != nil) {
+      if result.error != nil {
         print("[PortalConnect] \(result.error!)")
         return
       }
@@ -297,6 +312,11 @@ public class PortalConnect {
       do {
         let message = try JSONEncoder().encode(event)
         self.client.send(message)
+        
+        // emit the PortalSignatureReceived event on the PortalConnect EventBus as a convenience
+        if signMethods.contains(method) {
+          self.emit(event: Events.PortalSignatureReceived.rawValue, data: result.data!)
+        }
       } catch {
         print("[PortalConnect] Error encoding SignatureReceivedMessage: \(error)")
       }
@@ -311,7 +331,7 @@ public class PortalConnect {
       data.topic
     )
     
-    _ = portal.provider.once(event: Events.PortalSigningRejected.rawValue) { [weak self] approved in
+    on(event: Events.PortalSigningRejected.rawValue) { [weak self] _ in
       guard let self = self else { return }
         
       let event = SignatureReceivedMessage(
@@ -334,7 +354,7 @@ public class PortalConnect {
     handleProviderRequest(method: method, params: params) { [weak self] result in
       guard let self = self else { return }
         
-      if (result.error != nil) {
+      if result.error != nil {
         print("[PortalConnect] \(result.error!)")
         return
       }
@@ -353,6 +373,11 @@ public class PortalConnect {
         let message = try JSONEncoder().encode(event)
         
         self.client.send(message)
+        
+        // emit the PortalSignatureReceived event on the PortalConnect EventBus as a convenience
+        if signMethods.contains(method) {
+          self.emit(event: Events.PortalSignatureReceived.rawValue, data: result.data!)
+        }
       } catch {
         print("[PortalConnect] Error encoding SignatureReceivedMessage: \(error)")
       }
@@ -360,7 +385,7 @@ public class PortalConnect {
   }
   
   private func handleProviderRequest(method: String, params: [ETHAddressParam], completion: @escaping (Result<Any>) -> Void) {
-    portal.provider.request(payload: ETHAddressPayload(method: method, params: params)) { result in
+    portal.provider.request(payload: ETHAddressPayload(method: method, params: params), connect: self) { result in
       guard result.error == nil else {
         return completion(Result(error: result.error!))
       }
@@ -369,7 +394,7 @@ public class PortalConnect {
   }
   
   private func handleProviderRequest(method: String, params: [ETHTransactionParam], completion: @escaping (Result<Any>) -> Void) {
-    portal.provider.request(payload: ETHTransactionPayload(method: method, params: params)) { (result: Result<TransactionCompletionResult>) in
+    portal.provider.request(payload: ETHTransactionPayload(method: method, params: params), connect: self) { (result: Result<TransactionCompletionResult>) in
       guard result.error == nil else {
         return completion(Result(error: result.error!))
       }
@@ -378,7 +403,7 @@ public class PortalConnect {
   }
   
   private func handleProviderRequest(method: String, params: [Any], completion: @escaping (Result<Any>) -> Void) {
-    portal.provider.request(payload: ETHRequestPayload(method: method, params: params)) { result in
+    portal.provider.request(payload: ETHRequestPayload(method: method, params: params), connect: self) { result in
       guard result.error == nil else {
         return completion(Result(error: result.error!))
       }
