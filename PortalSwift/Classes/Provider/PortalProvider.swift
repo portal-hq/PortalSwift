@@ -26,6 +26,7 @@ public enum Events: String {
   case PortalSignatureReceived = "portal_signatureReceived"
   case PortalSigningApproved = "portal_signingApproved"
   case PortalSigningRejected = "portal_signingRejected"
+  case PortalConnectSigningRequested = "portalConnect_signingRequested"
   case PortalSigningRequested = "portal_signingRequested"
   // Walletconnect V2
   case PortalDappSessionRequested = "portal_dappSessionRequested"
@@ -491,7 +492,8 @@ public class PortalProvider {
   /// - Returns: Void
   public func request(
     payload: ETHRequestPayload,
-    completion: @escaping (Result<RequestCompletionResult>) -> Void
+    completion: @escaping (Result<RequestCompletionResult>) -> Void,
+    connect: PortalConnect? = nil
   ) -> Void {
     let isSignerMethod = signerMethods.contains(payload.method)
     let id = UUID().uuidString
@@ -499,7 +501,7 @@ public class PortalProvider {
     let payloadWithId = ETHRequestPayload(method: payload.method, params: payload.params, id: id)
     
     if (!isSignerMethod && !payloadWithId.method.starts(with: "wallet_")) {
-      handleGatewayRequest(payload: payloadWithId) { (method: String, params: [Any], result: Result<Any>, id: String) -> Void in
+      handleGatewayRequest(payload: payloadWithId, connect: connect) { (method: String, params: [Any], result: Result<Any>, id: String) -> Void in
         if (id == payloadWithId.id) {
           if (result.data != nil) {
             return completion(Result(data: RequestCompletionResult(method: method, params: params, result: result.data!, id: id)))
@@ -509,7 +511,7 @@ public class PortalProvider {
         }
       }
     } else if (isSignerMethod) {
-      handleSigningRequest(payload: payloadWithId) { (result: Result<SignerResult>, id: String) -> Void in
+      handleSigningRequest(payload: payloadWithId, connect: connect) { (result: Result<SignerResult>, id: String) -> Void in
         if (id == payloadWithId.id) {
           guard result.error == nil else {
             return completion(Result(error: result.error!))
@@ -542,7 +544,8 @@ public class PortalProvider {
   /// - Returns: Void
   public func request(
     payload: ETHTransactionPayload,
-    completion: @escaping (Result<TransactionCompletionResult>) -> Void
+    completion: @escaping (Result<TransactionCompletionResult>) -> Void,
+    connect: PortalConnect? = nil
   ) -> Void {
     let isSignerMethod = signerMethods.contains(payload.method)
     let id = UUID().uuidString
@@ -550,35 +553,39 @@ public class PortalProvider {
     let payloadWithId = ETHTransactionPayload(method: payload.method, params: payload.params, id: id)
     
     if (!isSignerMethod && !payloadWithId.method.starts(with: "wallet_")) {
-      handleGatewayRequest(payload: payloadWithId) {
-        (method: String, params: [ETHTransactionParam], result: Result<Any>) -> Void in
-        guard result.error == nil else {
-          return completion(Result(error: result.error!))
-          
-        }
-        if (result.data != nil) {
-          return completion(Result(data: TransactionCompletionResult(method: method, params: params, result: result.data!, id: payloadWithId.id!)))
+      handleGatewayRequest(payload: payloadWithId, connect: connect) {
+        (method: String, params: [ETHTransactionParam], result: Result<Any>, id: String) -> Void in
+        if (id == payloadWithId.id) {
+          guard result.error == nil else {
+            return completion(Result(error: result.error!))
+            
+          }
+          if (result.data != nil) {
+            return completion(Result(data: TransactionCompletionResult(method: method, params: params, result: result.data!, id: payloadWithId.id!)))
+          }
         }
       }
     } else if (isSignerMethod) {
-      handleSigningRequest(payload: payloadWithId) { (result: Result<Any>) -> Void in
-        guard result.error == nil else {
-          return completion(Result(error: result.error!))
-        }
-        
-        // Trigger `portal_signatureReceived` event
-        _ = self.emit(
-          event: Events.PortalSignatureReceived.rawValue,
-          data: RequestCompletionResult(
-            method: payloadWithId.method,
-            params: payloadWithId.params,
-            result: result,
-            id: payloadWithId.id!
+      handleSigningRequest(payload: payloadWithId, connect: connect) { (result: Result<Any>, id: String) -> Void in
+        if (id == payloadWithId.id) {
+          guard result.error == nil else {
+            return completion(Result(error: result.error!))
+          }
+          
+          // Trigger `portal_signatureReceived` event
+          _ = self.emit(
+            event: Events.PortalSignatureReceived.rawValue,
+            data: RequestCompletionResult(
+              method: payloadWithId.method,
+              params: payloadWithId.params,
+              result: result,
+              id: payloadWithId.id!
+            )
           )
-        )
-        
-        // Trigger completion handler
-        return completion(Result(data: TransactionCompletionResult(method: payloadWithId.method, params: payloadWithId.params, result: result, id: payloadWithId.id!)))
+          
+          // Trigger completion handler
+          return completion(Result(data: TransactionCompletionResult(method: payloadWithId.method, params: payloadWithId.params, result: result, id: payloadWithId.id!)))
+        }
       }
     } else {
       return completion(Result(error: ProviderRpcError.unsupportedMethod))
@@ -594,7 +601,8 @@ public class PortalProvider {
   /// - Returns: Void
   public func request(
     payload: ETHAddressPayload,
-    completion: @escaping (Result<AddressCompletionResult>) -> Void
+    completion: @escaping (Result<AddressCompletionResult>) -> Void,
+    connect: PortalConnect? = nil
   ) -> Void {
     let isSignerMethod = signerMethods.contains(payload.method)
     let id = UUID().uuidString
@@ -602,7 +610,7 @@ public class PortalProvider {
     let payloadWithId = ETHAddressPayload(method: payload.method, params: payload.params, id: id)
     
     if (!isSignerMethod && !payloadWithId.method.starts(with: "wallet_")) {
-      handleGatewayRequest(payload: payloadWithId) {
+      handleGatewayRequest(payload: payloadWithId, connect: connect) {
         (method: String, params: [ETHAddressParam], result: Result<Any>, id: String) -> Void in
         if (id == payloadWithId.id) {
           if (result.data != nil) {
@@ -637,7 +645,8 @@ public class PortalProvider {
   // ------ Private Functions
   private func getApproval(
     payload: ETHRequestPayload,
-    completion: @escaping (Result<Bool>) -> Void
+    completion: @escaping (Result<Bool>) -> Void,
+    connect: PortalConnect? = nil
   ) -> Void {
     if (autoApprove) {
       return completion(Result(data: true))
@@ -654,36 +663,40 @@ public class PortalProvider {
         return completion(Result(data: true))
       }
     }).on(event: Events.PortalSigningRejected.rawValue, callback: { approved in
-      let approvedPayload = approved as! ETHRequestPayload
+      let rejectedPayload = approved as! ETHRequestPayload
       
-      if (approvedPayload.id == payload.id) {
+      if (rejectedPayload.id == payload.id) {
         // If the rejected event is fired
         return completion(Result(data: false))
       }
     })
     
-    // Execute event handlers
-    let handlers = events[Events.PortalSigningRequested.rawValue]
-    
-    // Fail if there are no handlers
-    if handlers == nil || handlers!.isEmpty {
-      return completion(Result(data: false))
-    }
-    
-    do {
-      // Loop over the event handlers
-      for eventHandler in handlers! {
-        try eventHandler.handler(payload)
+    if (connect != nil) {
+      connect!.emit(event: Events.PortalConnectSigningRequested.rawValue, data: payload)
+    } else {
+      // Execute event handlers
+      let handlers = events[Events.PortalSigningRequested.rawValue]
+      
+      // Fail if there are no handlers
+      if handlers == nil || handlers!.isEmpty {
+        return completion(Result(data: false))
       }
-    } catch {
-      return completion(Result(error: error))
+      
+      do {
+        // Loop over the event handlers
+        for eventHandler in handlers! {
+          try eventHandler.handler(payload)
+        }
+      } catch {
+        return completion(Result(error: error))
+      }
     }
-    
   }
   
   private func getApproval(
     payload: ETHTransactionPayload,
-    completion: @escaping (Result<Bool>) -> Void
+    completion: @escaping (Result<Bool>) -> Void,
+    connect: PortalConnect? = nil
   ) -> Void {
     if (autoApprove) {
       return completion(Result(data: true))
@@ -700,35 +713,40 @@ public class PortalProvider {
         return completion(Result(data: true))
       }
     }).on(event: Events.PortalSigningRejected.rawValue, callback: { approved in
-      let approvedPayload = approved as! ETHTransactionPayload
+      let rejectedPayload = approved as! ETHTransactionPayload
       
-      if (approvedPayload.id == payload.id) {
+      if (rejectedPayload.id == payload.id) {
         // If the rejected event is fired
         return completion(Result(data: false))
       }
     })
     
-    // Execute event handlers
-    let handlers = events[Events.PortalSigningRequested.rawValue]
-    
-    // Fail if there are no handlers
-    if handlers == nil || handlers!.isEmpty {
-      return completion(Result(data: false))
-    }
-    
-    do {
-      // Loop over the event handlers
-      for eventHandler in handlers! {
-        try eventHandler.handler(payload)
+    if (connect != nil) {
+      connect!.emit(event: Events.PortalConnectSigningRequested.rawValue, data: payload)
+    } else {
+      // Execute event handlers
+      let handlers = events[Events.PortalSigningRequested.rawValue]
+      
+      // Fail if there are no handlers
+      if handlers == nil || handlers!.isEmpty {
+        return completion(Result(data: false))
       }
-    } catch {
-      return completion(Result(error: error))
+      
+      do {
+        // Loop over the event handlers
+        for eventHandler in handlers! {
+          try eventHandler.handler(payload)
+        }
+      } catch {
+        return completion(Result(error: error))
+      }
     }
   }
   
   private func handleGatewayRequest(
     payload: ETHTransactionPayload,
-    completion: @escaping (String, [ETHTransactionParam], Result<Any>) -> Void
+    completion: @escaping (String, [ETHTransactionParam], Result<Any>, String) -> Void,
+    connect: PortalConnect? = nil
   ) -> Void {
     // Create the body of the request.
     let body: Dictionary<String, Any> = [
@@ -757,16 +775,17 @@ public class PortalProvider {
     // Attempt to send the request.
     request.send() { (result: Result<ETHGatewayResponse>) in
       if (result.data != nil) {
-        return completion(payload.method, payload.params, Result(data: result.data!))
+        return completion(payload.method, payload.params, Result(data: result.data!), payload.id!)
       } else {
-        return completion(payload.method, payload.params, Result(error: result.error!))
+        return completion(payload.method, payload.params, Result(error: result.error!), payload.id!)
       }
     }
   }
   
   private func handleGatewayRequest(
     payload: ETHAddressPayload,
-    completion: @escaping (String, [ETHAddressParam], Result<Any>, String) -> Void
+    completion: @escaping (String, [ETHAddressParam], Result<Any>, String) -> Void,
+    connect: PortalConnect? = nil
   ) -> Void {
     // Create the body of the request.
     let body: Dictionary<String, Any> = [
@@ -797,7 +816,8 @@ public class PortalProvider {
   
   private func handleGatewayRequest(
     payload: ETHRequestPayload,
-    completion: @escaping (String, [Any], Result<Any>, String) -> Void
+    completion: @escaping (String, [Any], Result<Any>, String) -> Void,
+    connect: PortalConnect? = nil
   ) -> Void {
     // Create the body of the request.
     let body: Dictionary<String, Any> = [
@@ -827,9 +847,10 @@ public class PortalProvider {
   
   private func handleSigningRequest(
     payload: ETHRequestPayload,
-    completion: @escaping (Result<SignerResult>, String) -> Void
+    completion: @escaping (Result<SignerResult>, String) -> Void,
+    connect: PortalConnect? = nil
   ) -> Void {
-    getApproval(payload: payload) { result in
+    getApproval(payload: payload, connect: connect) { result in
       guard result.error == nil else {
         return completion(Result(error: result.error!), payload.id!)
       }
@@ -862,15 +883,16 @@ public class PortalProvider {
   
   private func handleSigningRequest(
     payload: ETHTransactionPayload,
-    completion: @escaping (Result<Any>) -> Void
+    completion: @escaping (Result<Any>, String) -> Void,
+    connect: PortalConnect? = nil
   ) -> Void {
-    getApproval(payload: payload) { result in
+    getApproval(payload: payload, connect: connect) { result in
       guard result.error == nil else {
-        return completion(Result(error: result.error!))
+        return completion(Result(error: result.error!), payload.id!)
       }
       
       if (!result.data!) {
-        return completion(Result(error: ProviderSigningError.userDeclinedApproval))
+        return completion(Result(error: ProviderSigningError.userDeclinedApproval), payload.id!)
       } else {
         self.mpcQueue.async {
           // This code will be executed in a background thread
@@ -882,11 +904,11 @@ public class PortalProvider {
             )
             // When the work is done, call the completion handler
             DispatchQueue.main.async {
-              return completion(Result(data: signResult.signature!))
+              return completion(Result(data: signResult.signature!), payload.id!)
             }
           } catch {
             DispatchQueue.main.async {
-              return completion(Result(error: error))
+              return completion(Result(error: error), payload.id!)
             }
           }
 
