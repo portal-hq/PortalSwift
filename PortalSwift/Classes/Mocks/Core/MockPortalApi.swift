@@ -8,35 +8,35 @@
 import Foundation
 
 public class MockPortalApi: PortalApi {
-  public var client: Client?
-  public var dapps: [Dapp]?
-  public var networks: [ContractNetwork]?
+    public var client: Client?
+    public var dapps: [Dapp]?
+    public var networks: [ContractNetwork]?
 
-  public override func getClient(completion: @escaping (Result<Client>) -> Void) -> Void {
-    // Make an instance of Client.
-    let client = Client(
-      id: "fakeClientID",
-      address: mockAddress,
-      clientApiKey: "clientApiKey",
-      custodian: Custodian(
-        id: "fakeCustodianID",
-        name: "name"
-      )
-    )
+    override public func getClient(completion: @escaping (Result<Client>) -> Void) {
+        // Make an instance of Client.
+        let client = Client(
+            id: "fakeClientID",
+            address: mockAddress,
+            clientApiKey: "clientApiKey",
+            custodian: Custodian(
+                id: "fakeCustodianID",
+                name: "name"
+            )
+        )
 
-    // Call the completion handler.
-    completion(Result(data: client))
-  }
-
-  public override func getEnabledDapps(completion: @escaping (Result<[Dapp]>) -> Void) -> Void {
-    if let dapps = dapps {
-      completion(Result(data: dapps))
+        // Call the completion handler.
+        completion(Result(data: client))
     }
-  }
 
-  public override func getSupportedNetworks(completion: @escaping (Result<[ContractNetwork]>) -> Void) -> Void {
-    if let networks = networks {
-      completion(Result(data: networks))
+    override public func getEnabledDapps(completion: @escaping (Result<[Dapp]>) -> Void) {
+        if let dapps = dapps {
+            completion(Result(data: dapps))
+        }
     }
-  }
+
+    override public func getSupportedNetworks(completion: @escaping (Result<[ContractNetwork]>) -> Void) {
+        if let networks = networks {
+            completion(Result(data: networks))
+        }
+    }
 }

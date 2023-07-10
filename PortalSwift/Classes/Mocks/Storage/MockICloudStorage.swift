@@ -9,15 +9,15 @@
 import Foundation
 
 public class MockICloudStorage: ICloudStorage {
-  public override func read(completion: @escaping (Result<String>) -> Void) -> Void {
-    completion(Result(data: mockBackupShare))
-  }
+    override public func read(completion: @escaping (Result<String>) -> Void) {
+        completion(Result(data: mockBackupShare))
+    }
 
-  public override func write(privateKey: String, completion: @escaping (Result<Bool>) -> Void) -> Void {
-    completion(Result(data: true))
-  }
+    override public func write(privateKey _: String, completion: @escaping (Result<Bool>) -> Void) {
+        completion(Result(data: true))
+    }
 
-  public override func delete(completion: @escaping (Result<Bool>) -> Void) -> Void {
-    completion(Result(data: true))
-  }
+    override public func delete(completion: @escaping (Result<Bool>) -> Void) {
+        completion(Result(data: true))
+    }
 }

@@ -9,20 +9,20 @@
 import Foundation
 
 public class MockHttpRequester: HttpRequester {
-  public func get(
-    path: String,
-    headers: Dictionary<String, String>,
-    completion: @escaping (Result<String>) -> Void
-  ) throws -> Void {
-    completion(Result(data: mockBackupShare))
-  }
+    public func get(
+        path _: String,
+        headers _: [String: String],
+        completion: @escaping (Result<String>) -> Void
+    ) throws {
+        completion(Result(data: mockBackupShare))
+    }
 
-  public func post(
-    path: String,
-    body: Dictionary<String, Any>,
-    headers: Dictionary<String, String>,
-    completion: @escaping (Result<String>) -> Void
-  ) throws -> Void {
-    completion(Result(data: mockBackupShare))
-  }
+    public func post(
+        path _: String,
+        body _: [String: Any],
+        headers _: [String: String],
+        completion: @escaping (Result<String>) -> Void
+    ) throws {
+        completion(Result(data: mockBackupShare))
+    }
 }
