@@ -223,6 +223,7 @@
                         <outlet property="addressInformation" destination="0fE-Dt-jQE" id="FgG-eb-2eu"/>
                         <outlet property="backupButton" destination="ErE-g3-dsZ" id="gep-cG-Yf0"/>
                         <outlet property="dappBrowserButton" destination="qcu-G8-SAB" id="A5q-1k-dxD"/>
+                        <outlet property="deleteKeychainButton" destination="QJh-Gs-d32" id="0PG-E6-YO9"/>
                         <outlet property="ethBalanceInformation" destination="XWB-hw-iZv" id="c0l-fG-eWb"/>
                         <outlet property="generateButton" destination="PLS-JE-WGU" id="i8N-R8-wtj"/>
                         <outlet property="logoutButton" destination="nDW-CF-6N1" id="Ke0-ny-I4Y"/>
@@ -294,7 +295,7 @@
                                 </connections>
                             </button>
                             <textField opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="248" fixedFrame="YES" restorationIdentifier="address-text-2" contentHorizontalAlignment="left" contentVerticalAlignment="center" borderStyle="roundedRect" placeholder="Enter another WalletConnect URI" textAlignment="natural" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="aPI-NR-DZw">
-                                <rect key="frame" x="16" y="353" width="343" height="34"/>
+                                <rect key="frame" x="16" y="378" width="343" height="34"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <fontDescription key="fontDescription" type="system" pointSize="14"/>
                                 <textInputTraits key="textInputTraits"/>
@@ -302,8 +303,50 @@
                                     <action selector="uri2Changed:" destination="7fk-LF-non" eventType="editingDidEnd" id="4IJ-kf-Dik"/>
                                 </connections>
                             </textField>
-                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" restorationIdentifier="connect-button-2" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="ul6-LP-MXt">
-                                <rect key="frame" x="16" y="395" width="343" height="35"/>
+                            <textView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" fixedFrame="YES" restorationIdentifier="connect-message-2" textAlignment="natural" translatesAutoresizingMaskIntoConstraints="NO" id="kQr-f4-kUv">
+                                <rect key="frame" x="16" y="506" width="343" height="65"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                                <color key="textColor" systemColor="labelColor"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="14"/>
+                                <textInputTraits key="textInputTraits" autocapitalizationType="sentences"/>
+                            </textView>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="1Zv-86-0u8">
+                                <rect key="frame" x="16" y="263" width="343" height="35"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <state key="normal" title="Button"/>
+                                <buttonConfiguration key="configuration" style="filled" title="Disconnect from dApp 1">
+                                    <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
+                                    <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                </buttonConfiguration>
+                                <connections>
+                                    <action selector="connectPressed" destination="7fk-LF-non" eventType="touchUpInside" id="hZz-IE-3s0"/>
+                                    <action selector="disconnectPressed" destination="7fk-LF-non" eventType="touchUpInside" id="wvw-ye-ixy"/>
+                                </connections>
+                            </button>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="E8b-d1-lbA">
+                                <rect key="frame" x="16" y="463" width="343" height="35"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <state key="normal" title="Button"/>
+                                <buttonConfiguration key="configuration" style="filled" title="Disconnect from dApp 2">
+                                    <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
+                                    <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                </buttonConfiguration>
+                                <connections>
+                                    <action selector="connectPressed" destination="7fk-LF-non" eventType="touchUpInside" id="L5d-zz-ZU7"/>
+                                    <action selector="disconnectPressed2" destination="7fk-LF-non" eventType="touchUpInside" id="eNL-fL-m2x"/>
+                                </connections>
+                            </button>
+                            <textView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" fixedFrame="YES" restorationIdentifier="connection" textAlignment="natural" translatesAutoresizingMaskIntoConstraints="NO" id="A21-NP-6vy">
+                                <rect key="frame" x="16" y="306" width="343" height="53"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                                <color key="textColor" systemColor="labelColor"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="14"/>
+                                <textInputTraits key="textInputTraits" autocapitalizationType="sentences"/>
+                            </textView>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="F2r-Gr-msZ">
+                                <rect key="frame" x="16" y="420" width="343" height="35"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <state key="normal" title="Button"/>
                                 <buttonConfiguration key="configuration" style="filled" title="Connect to dApp 2">
@@ -311,25 +354,10 @@
                                     <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 </buttonConfiguration>
                                 <connections>
-                                    <action selector="connect2Pressed" destination="7fk-LF-non" eventType="touchUpInside" id="Mtj-5p-ZfX"/>
+                                    <action selector="connect2Pressed" destination="7fk-LF-non" eventType="touchUpInside" id="zJD-kW-v61"/>
+                                    <action selector="connectPressed" destination="7fk-LF-non" eventType="touchUpInside" id="UHg-FG-ue1"/>
                                 </connections>
                             </button>
-                            <textView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" fixedFrame="YES" restorationIdentifier="connection" textAlignment="natural" translatesAutoresizingMaskIntoConstraints="NO" id="A21-NP-6vy">
-                                <rect key="frame" x="16" y="263" width="343" height="73"/>
-                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                <color key="backgroundColor" systemColor="systemBackgroundColor"/>
-                                <color key="textColor" systemColor="labelColor"/>
-                                <fontDescription key="fontDescription" type="system" pointSize="14"/>
-                                <textInputTraits key="textInputTraits" autocapitalizationType="sentences"/>
-                            </textView>
-                            <textView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" fixedFrame="YES" restorationIdentifier="connect-message-2" textAlignment="natural" translatesAutoresizingMaskIntoConstraints="NO" id="kQr-f4-kUv">
-                                <rect key="frame" x="16" y="426" width="343" height="73"/>
-                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                <color key="backgroundColor" systemColor="systemBackgroundColor"/>
-                                <color key="textColor" systemColor="labelColor"/>
-                                <fontDescription key="fontDescription" type="system" pointSize="14"/>
-                                <textInputTraits key="textInputTraits" autocapitalizationType="sentences"/>
-                            </textView>
                         </subviews>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                     </view>
@@ -337,9 +365,11 @@
                         <outlet property="addressTextInput" destination="xEv-Ac-DYF" id="88M-H0-RU1"/>
                         <outlet property="addressTextInput2" destination="aPI-NR-DZw" id="kkj-nO-0AV"/>
                         <outlet property="connectButton" destination="Xyb-ta-tdQ" id="kIP-YV-aqE"/>
-                        <outlet property="connectButton2" destination="ul6-LP-MXt" id="AeK-AH-6Zr"/>
+                        <outlet property="connectButton2" destination="F2r-Gr-msZ" id="BBe-kd-4BZ"/>
                         <outlet property="connectMessage" destination="A21-NP-6vy" id="7wQ-fi-ddK"/>
                         <outlet property="connectMessage2" destination="kQr-f4-kUv" id="SHA-MD-epa"/>
+                        <outlet property="disconnectButton" destination="1Zv-86-0u8" id="hmW-iD-jkp"/>
+                        <outlet property="disconnectButton2" destination="E8b-d1-lbA" id="yjE-5x-WUd"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="KzE-SA-JBs" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>

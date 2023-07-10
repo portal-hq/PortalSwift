@@ -16,9 +16,11 @@ class ConnectViewController: UIViewController {
   // UI Elements
   @IBOutlet var connectButton: UIButton!
   @IBOutlet var connectMessage: UITextView!
+  @IBOutlet var disconnectButton: UIButton!
   @IBOutlet var addressTextInput: UITextField!
   @IBOutlet var connectButton2: UIButton!
   @IBOutlet var connectMessage2: UITextView!
+  @IBOutlet var disconnectButton2: UIButton!
   @IBOutlet var addressTextInput2: UITextField!
 
   required init?(coder: NSCoder) {
@@ -27,6 +29,12 @@ class ConnectViewController: UIViewController {
 
   override func viewDidLoad() {
     super.viewDidLoad()
+
+    connectButton.isEnabled = false
+    connectButton2.isEnabled = false
+    disconnectButton.isEnabled = false
+    disconnectButton2.isEnabled = false
+
     guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
       print("Error loading env vars in connect")
       return
@@ -68,10 +76,27 @@ class ConnectViewController: UIViewController {
 
     portalConnect.on(event: Events.Connect.rawValue) { (data: Any) in
       print("[ConnectViewController] ✅ Connected! \(data) on \(label)")
+
+      if label == "connect1" {
+        self.connectButton.isEnabled = false
+        self.disconnectButton.isEnabled = true
+      } else {
+        self.connectButton2.isEnabled = false
+        self.disconnectButton.isEnabled = true
+      }
     }
 
     portalConnect.on(event: Events.Disconnect.rawValue) { (data: Any) in
       print("[ConnectViewController] 🛑 Disconnected \(data) on \(label)")
+      if label == "connect1" {
+        self.connectButton.isEnabled = false
+        self.disconnectButton.isEnabled = false
+        self.addressTextInput.text = ""
+      } else {
+        self.connectButton2.isEnabled = false
+        self.disconnectButton2.isEnabled = false
+        self.addressTextInput2.text = ""
+      }
     }
 
     portalConnect.on(event: Events.PortalSigningRequested.rawValue) { (data: Any) in
@@ -85,10 +110,13 @@ class ConnectViewController: UIViewController {
 
   override func viewDidDisappear(_: Bool) {
     print("resetting event listeners")
-    connect?.resetEvents()
     connect = nil
-    connect2?.resetEvents()
     connect2 = nil
+  }
+
+  override func viewWillDisappear(_: Bool) {
+    connect?.viewWillDisappear()
+    connect2?.viewWillDisappear()
   }
 
   func didRequestApprovalDapps(portalConnect: PortalConnect, data: Any) {
@@ -135,6 +163,16 @@ class ConnectViewController: UIViewController {
     let uri = addressTextInput2.text
     print("Attempting to connect to \(uri!) using \(connect2!)")
     connect2?.connect(uri!)
+  }
+
+  @IBAction func disconnectPressed() {
+    print("Disconnecting from connect1...")
+    connect?.disconnect(true)
+  }
+
+  @IBAction func disconnectPressed2() {
+    print("Disconnecting from connect2...")
+    connect2?.disconnect(true)
   }
 
   @IBAction func uriChanged(_: Any) {
