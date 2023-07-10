@@ -46,6 +46,7 @@ class ViewController: UIViewController {
   @IBOutlet var signInButton: UIButton!
   @IBOutlet var signUpButton: UIButton!
   @IBOutlet var testButton: UIButton!
+  @IBOutlet var deleteKeychainButton: UIButton!
 
   // Send form
   @IBOutlet public var sendAddress: UITextField!
@@ -88,17 +89,18 @@ class ViewController: UIViewController {
       MPC_URL = STAGING_MPC_URL
     }
 
-//    DispatchQueue.main.async {
-//      self.backupButton.isEnabled = false
-//      self.dappBrowserButton.isEnabled = false
-//      self.generateButton.isEnabled = false
-//      self.logoutButton.isEnabled = false
-//      self.portalConnectButton.isEnabled = false
-//      self.recoverButton.isEnabled = false
-//      self.signInButton.isEnabled = false
-//      self.signUpButton.isEnabled = false
-//      self.testButton.isEnabled = false
-//    }
+    DispatchQueue.main.async {
+      self.backupButton.isEnabled = false
+      self.dappBrowserButton.isEnabled = false
+      self.generateButton.isEnabled = false
+      self.logoutButton.isEnabled = false
+      self.portalConnectButton.isEnabled = false
+      self.recoverButton.isEnabled = false
+      self.signInButton.isEnabled = false
+      self.signUpButton.isEnabled = false
+      self.testButton.isEnabled = false
+      self.deleteKeychainButton.isEnabled = false
+    }
   }
 
   override func didReceiveMemoryWarning() {
@@ -180,6 +182,7 @@ class ViewController: UIViewController {
         self.portalConnectButton.isEnabled = true
         self.recoverButton.isEnabled = true
         self.testButton.isEnabled = true
+        self.deleteKeychainButton.isEnabled = true
       }
     }
   }
@@ -480,6 +483,7 @@ class ViewController: UIViewController {
             self.portalConnectButton.isEnabled = hasAddress
             self.recoverButton.isEnabled = hasAddress
             self.testButton.isEnabled = hasAddress
+            self.deleteKeychainButton.isEnabled = hasAddress
           } catch {
             print("Error fetching address: \(error)")
           }
