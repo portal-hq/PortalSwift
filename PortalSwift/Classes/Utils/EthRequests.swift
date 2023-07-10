@@ -14,11 +14,11 @@ class EthRequestUtils {
         var byteArray = [UInt8](repeating: 0, count: totalBytes)
 
         // Loop over the resulting array
-        for i in 0..<totalBytes {
+        for i in 0 ..< totalBytes {
             // Get the byte at the current index
             let start = hexString.index(hexString.startIndex, offsetBy: i * 2)
             let end = hexString.index(start, offsetBy: 2)
-            let substring = hexString[start..<end].lowercased()
+            let substring = hexString[start ..< end].lowercased()
 
             // Get the integer matching the current byte and assign it to the array
             if let byte = UInt8(substring, radix: 16) {
@@ -37,9 +37,9 @@ class EthRequestUtils {
             fatalError("Invalid hexBalance")
         }
 
-        let balance = (balanceNumber / 1e18) * 100000
+        let balance = (balanceNumber / 1e18) * 100_000
 
-        return (balance * 100000).rounded(.toNearestOrAwayFromZero) / 100000
+        return (balance * 100_000).rounded(.toNearestOrAwayFromZero) / 100_000
     }
 
     func hexStringToString(hexInput: String) -> String {
@@ -48,7 +48,7 @@ class EthRequestUtils {
 
         // Create an array of characters
         let stringArray = byteArray.map { charCode -> String in
-            return String(Character(UnicodeScalar(Int(charCode))!))
+            String(Character(UnicodeScalar(Int(charCode))!))
         }
 
         // Join the array of characters

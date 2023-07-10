@@ -9,15 +9,15 @@
 import Foundation
 
 public class MockPortalKeychain: PortalKeychain {
-  public override func getAddress() throws -> String {
-    return mockAddress
-  }
+    override public func getAddress() throws -> String {
+        return mockAddress
+    }
 
-  public override func getSigningShare() throws -> String {
-    return mockSigningShare
-  }
-  
-  public override func setAddress(address: String, completion: (Result<OSStatus>) -> Void) -> Void {}
-  
-  public override func setSigningShare(signingShare: String, completion: (Result<OSStatus>) -> Void) -> Void {}
+    override public func getSigningShare() throws -> String {
+        return mockSigningShare
+    }
+
+    override public func setAddress(address _: String, completion _: (Result<OSStatus>) -> Void) {}
+
+    override public func setSigningShare(signingShare _: String, completion _: (Result<OSStatus>) -> Void) {}
 }
