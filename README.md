@@ -6,10 +6,10 @@
 
 ## Set up
 
-Ensure you have the Swift formatter CLI installed (`swiftformat`). If you're using brew, you can run:
+Ensure you have the pre-commit hooks set up. Run the following command:
 
 ```
-brew install swiftformat
+sh ./scripts/register-hooks.sh
 ```
 
 Create an xcConfig file.
