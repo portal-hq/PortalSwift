@@ -6,6 +6,12 @@
 
 ## Set up
 
+Ensure you have the Swift formatter CLI installed (`swiftformat`). If you're using brew, you can run:
+
+```
+brew install swiftformat
+```
+
 Create an xcConfig file.
 
 1. Add new file to PortalSwift by right clicking on PortalSwift and clicking add new file
