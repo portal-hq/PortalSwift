@@ -644,7 +644,7 @@ public class PortalProvider {
   ) {
     if autoApprove {
       return completion(Result(data: true))
-    } else if events[Events.PortalSigningRequested.rawValue] == nil {
+    } else if connect == nil, events[Events.PortalSigningRequested.rawValue] == nil {
       return completion(Result(error: ProviderSigningError.noBindingForSigningApprovalFound))
     }
 
@@ -698,7 +698,7 @@ public class PortalProvider {
   ) {
     if autoApprove {
       return completion(Result(data: true))
-    } else if events[Events.PortalSigningRequested.rawValue] == nil {
+    } else if connect == nil, events[Events.PortalSigningRequested.rawValue] == nil {
       return completion(Result(error: ProviderSigningError.noBindingForSigningApprovalFound))
     }
 
