@@ -6,6 +6,12 @@
 
 ## Set up
 
+Ensure you have the pre-commit hooks set up. Run the following command:
+
+```
+sh ./scripts/register-hooks.sh
+```
+
 Create an xcConfig file.
 
 1. Add new file to PortalSwift by right clicking on PortalSwift and clicking add new file
