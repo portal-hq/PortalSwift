@@ -8,6 +8,6 @@
 import Foundation
 
 public class PortalError: Codable {
-    public var code: Int
-    public var message: String
+  public var code: Int
+  public var message: String
 }
