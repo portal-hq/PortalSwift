@@ -43,8 +43,9 @@ jobs:
               -xcconfig Secrets.xcconfig \
               build test | xcpretty -r junit --output test-results.xml
           cat test-results.xml 
-          passed_tests=$(xmlstarlet sel -t -v "count(//testcase[not(@failure)])" test-results.xml)
-          failed_tests=$(xmlstarlet sel -t -v "count(//testcase[@failure])" test-results.xml)
+
+          passed_tests=$(xmlstarlet sel -t -v "count(//testcase[not(failure)])" test-results.xml) 
+          failed_tests=$(xmlstarlet sel -t -v "count(//testcase[failure])" test-results.xml)
           echo "Passed tests: $passed_tests"
           echo "Failed tests: $failed_tests"
 
