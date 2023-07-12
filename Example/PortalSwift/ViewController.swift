@@ -30,7 +30,7 @@ struct ProviderAddressRequest {
   var skipLoggingResult: Bool
 }
 
-class ViewController: UIViewController {
+class ViewController: UIViewController, PortalDelegate {
   // Static information
   @IBOutlet var addressInformation: UITextView!
   @IBOutlet var ethBalanceInformation: UITextView!
@@ -61,6 +61,14 @@ class ViewController: UIViewController {
   public var PortalWrapper: PortalWrapper = PortalSwift_Example.PortalWrapper()
   public var portal: Portal?
   public var eth_estimate: String?
+
+  func didReceiveSigningRequest(_ data: Any) {
+    _ = portal?.provider.emit(.PortalSigningApproved, data: data)
+  }
+
+  func didReceiveSigningResult(_ data: RequestCompletionResult) {
+    print("[ViewController] Received signature via delegate method: \(data)")
+  }
 
   override func viewDidLoad() {
     super.viewDidLoad()
@@ -130,6 +138,7 @@ class ViewController: UIViewController {
       self.user = result.data!
       self.registerPortalUi(apiKey: result.data!.clientApiKey)
       self.portal = self.PortalWrapper.portal
+      self.portal?.delegate = self
       self.updateStaticContent()
 
       DispatchQueue.main.async {

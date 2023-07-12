@@ -311,6 +311,7 @@ public struct AddressCompletionResult {
 public class PortalProvider {
   public var autoApprove: Bool = false
   public var chainId: Chains.RawValue
+  public var delegate: PortalDelegate?
   public var gatewayUrl: String
   public var keychain: PortalKeychain
   public var portal: HttpRequester
@@ -550,15 +551,14 @@ public class PortalProvider {
           }
 
           // Trigger `portal_signatureReceived` event
-          _ = self.emit(
-            .PortalSignatureReceived,
-            data: RequestCompletionResult(
-              method: payloadWithId.method,
-              params: payloadWithId.params,
-              result: result,
-              id: id
-            )
+          let data = RequestCompletionResult(
+            method: payloadWithId.method,
+            params: payloadWithId.params,
+            result: result,
+            id: id
           )
+          _ = self.emit(.PortalSignatureReceived, data: data)
+          self.delegate?.didReceiveSigningResult(data)
 
           // Trigger completion handler
           return completion(Result(data: RequestCompletionResult(method: payloadWithId.method, params: payloadWithId.params, result: result, id: id)))
@@ -604,15 +604,14 @@ public class PortalProvider {
           }
 
           // Trigger `portal_signatureReceived` event
-          _ = self.emit(
-            .PortalSignatureReceived,
-            data: RequestCompletionResult(
-              method: payloadWithId.method,
-              params: payloadWithId.params,
-              result: result,
-              id: payloadWithId.id!
-            )
+          let data = RequestCompletionResult(
+            method: payloadWithId.method,
+            params: payloadWithId.params,
+            result: result,
+            id: payloadWithId.id!
           )
+          _ = self.emit(.PortalSignatureReceived, data: data)
+          self.delegate?.didReceiveSigningResult(data)
 
           // Trigger completion handler
           return completion(Result(data: TransactionCompletionResult(method: payloadWithId.method, params: payloadWithId.params, result: result, id: payloadWithId.id!)))
@@ -679,7 +678,7 @@ public class PortalProvider {
   ) {
     if autoApprove {
       return completion(Result(data: true))
-    } else if connect == nil, events[Events.PortalSigningRequested.rawValue] == nil {
+    } else if connect == nil, events[Events.PortalSigningRequested.rawValue] == nil, delegate == nil {
       return completion(Result(error: ProviderSigningError.noBindingForSigningApprovalFound))
     }
 
@@ -708,6 +707,8 @@ public class PortalProvider {
     if connect != nil {
       connect!.emit(.ConnectSigningRequested, data: payload)
     } else {
+      delegate?.didReceiveSigningRequest(payload)
+
       // Execute event handlers
       let handlers = events[Events.PortalSigningRequested.rawValue]
 
@@ -734,7 +735,7 @@ public class PortalProvider {
   ) {
     if autoApprove {
       return completion(Result(data: true))
-    } else if connect == nil, events[Events.PortalSigningRequested.rawValue] == nil {
+    } else if connect == nil, events[Events.PortalSigningRequested.rawValue] == nil, delegate == nil {
       return completion(Result(error: ProviderSigningError.noBindingForSigningApprovalFound))
     }
 
@@ -763,6 +764,8 @@ public class PortalProvider {
     if connect != nil {
       connect!.emit(.ConnectSigningRequested, data: payload)
     } else {
+      delegate?.didReceiveSigningRequest(payload)
+
       // Execute event handlers
       let handlers = events[Events.PortalSigningRequested.rawValue]
 

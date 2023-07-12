@@ -8,6 +8,17 @@
 import Foundation
 import Mpc
 
+public protocol PortalDelegate {
+  func didReceiveSigningRequest(_ data: Any)
+  func didReceiveSigningResult(_ data: RequestCompletionResult)
+}
+
+extension PortalDelegate {
+  func didReceiveSigningResult(_ data: RequestCompletionResult) {
+    print("[Portal] Received signing result with no delegate method found. \(data)")
+  }
+}
+
 /// The list of backup methods for PortalSwift.
 public enum BackupMethods: String {
   case GoogleDrive = "gdrive"
@@ -97,6 +108,18 @@ public class Portal {
   public var provider: PortalProvider
   public var gatewayConfig: [Int: String]
   public var version: String
+
+  private var _delegate: PortalDelegate?
+  public var delegate: PortalDelegate? {
+    get {
+      return _delegate
+    }
+
+    set(delegate) {
+      _delegate = delegate
+      provider.delegate = delegate
+    }
+  }
 
   /// Create a Portal instance.
   /// - Parameters:

@@ -14,7 +14,7 @@ public protocol PortalConnectDelegate {
   func didError(_ data: ErrorData)
   func didReceiveDappSessionRequest(_ data: ConnectData)
   func didReceiveSigningRequest(_ data: Any)
-  func didReceiveSigningResult(_ result: Any)
+  func didReceiveSigningResult(_ result: RequestCompletionResult)
 }
 
 extension PortalConnectDelegate {
