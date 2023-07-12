@@ -67,7 +67,7 @@ public class ConnectEventBus {
     }
   }
 
-  public func emit(_ event: ConnectEvents.RawValue, data: Any) {
+  public func emit(_ event: String, data: Any) {
     guard let eventEnum = ConnectEvents(rawValue: event) else {
       print("Received unrecognized event \(event). Ignoring...")
       return
