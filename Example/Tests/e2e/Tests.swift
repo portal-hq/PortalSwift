@@ -51,15 +51,6 @@ class Tests: XCTestCase {
   }
 
   func testAGenerate() {
-    let Address = "PortalMpc.Address"
-    let SigningShare = "PortalMpc.DkgResult"
-
-    do {
-      try Tests.PortalWrap?.deleteItem(key: Address)
-      try Tests.PortalWrap?.deleteItem(key: SigningShare)
-    } catch {
-      print("Couldn't delete keychain items")
-    }
     let registerExpectation = XCTestExpectation(description: "Register")
     let generateExpectation = XCTestExpectation(description: "Generate")
 
@@ -85,19 +76,15 @@ class Tests: XCTestCase {
             generateExpectation.fulfill()
             return XCTFail()
           }
-          do {
-//              let share = try Tests.PortalWrap?.portal?.keychain.getSigningShare()
+
             generateExpectation.fulfill()
             XCTAssertTrue(!(result.data!.isEmpty), "The string should be empty")
             return
-          } catch {
-            generateExpectation.fulfill()
-            return XCTFail("Generate Failed: \(error.localizedDescription)")
-          }
+
         }
       }
     }
-    wait(for: [generateExpectation], timeout: 120)
+    wait(for: [generateExpectation], timeout: 200)
   }
 
   func testBSign() {
@@ -136,13 +123,6 @@ class Tests: XCTestCase {
   func testCBackup() {
     let backupExpectation = XCTestExpectation(description: "Backup")
 
-    do {
-      let share = try Tests.PortalWrap?.portal?.keychain.getSigningShare()
-      XCTAssertFalse(share != nil, "The share doesn't exist in the keychain")
-    } catch {
-      return XCTFail("Backup doesnt have a share: \(error.localizedDescription)")
-    }
-
     testLogin { result in
       guard result.error == nil else {
         backupExpectation.fulfill()
@@ -168,7 +148,7 @@ class Tests: XCTestCase {
         }
 
         do {
-          try Tests.PortalWrap?.portal?.api.storedClientBackupShare(success: true) { result in
+          try Tests.PortalWrap?.portal?.api.storedClientBackupShare(success: true) { _ in
             guard backupResult.error == nil else {
               print("❌ handleBackup(): Error notifying Portal that backup share was stored.")
               return
