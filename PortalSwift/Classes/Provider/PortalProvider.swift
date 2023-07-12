@@ -385,11 +385,11 @@ public class PortalProvider {
   ///   - event: The event to be emitted.
   ///   - data: The data to pass to registered event handlers.
   /// - Returns: The Portal Provider instance.
-  public func emit(event: Events.RawValue, data: Any) -> PortalProvider {
-    let registeredEventHandlers = events[event]
+  public func emit(_ event: Events, data: Any) -> PortalProvider {
+    let registeredEventHandlers = events[event.rawValue]
 
     if registeredEventHandlers == nil {
-      print(String(format: "[Portal] Could not find any bindings for event '%@'. Ignoring...", event))
+      print(String(format: "[Portal] Could not find any bindings for event '%@'. Ignoring...", event.rawValue))
       return self
     } else {
       // Invoke all registered handlers for the event
@@ -402,10 +402,19 @@ public class PortalProvider {
       }
 
       // Remove once instances
-      events[event] = registeredEventHandlers?.filter(removeOnce)
+      events[event.rawValue] = registeredEventHandlers?.filter(removeOnce)
 
       return self
     }
+  }
+
+  public func emit(event: Events.RawValue, data: Any) -> PortalProvider {
+    guard let eventEnum = Events(rawValue: event) else {
+      print("[PortalProvider] Received unrecognized event \(event). Ignoring...")
+      return self
+    }
+
+    return emit(eventEnum, data: data)
   }
 
   /// Retrieves the API key.
@@ -414,29 +423,38 @@ public class PortalProvider {
     return apiKey
   }
 
-  public func emit(_ event: Events, data: Any) {
-    _ = emit(event: event.rawValue, data: data)
-  }
-
   /// Registers a callback for an event.
   /// - Parameters:
   ///   - event: The event to register a callback.
   ///   - callback: The function to be invoked whenever the event fires.
   /// - Returns: The Portal Provider instance.
+
   public func on(
-    event: Events.RawValue,
+    _ event: Events,
     callback: @escaping (_ data: Any) -> Void
   ) -> PortalProvider {
-    if events[event] == nil {
-      events[event] = []
+    if events[event.rawValue] == nil {
+      events[event.rawValue] = []
     }
 
-    events[event]?.append(RegisteredEventHandler(
+    events[event.rawValue]?.append(RegisteredEventHandler(
       handler: callback,
       once: false
     ))
 
     return self
+  }
+
+  public func on(
+    event: Events.RawValue,
+    callback: @escaping (_ data: Any) -> Void
+  ) -> PortalProvider {
+    guard let eventEnum = Events(rawValue: event) else {
+      print("[PortalProvider] Received unrecognized event \(event). Ignoring...")
+      return self
+    }
+
+    return on(eventEnum, callback: callback)
   }
 
   /// Registers a callback for an event. Deletes the registered callback after it's fired once.
@@ -445,14 +463,14 @@ public class PortalProvider {
   ///   - callback: The function to be invoked whenever the event fires.
   /// - Returns: The Portal Provider instance.
   public func once(
-    event: Events.RawValue,
+    _ event: Events,
     callback: @escaping (_ data: Any) throws -> Void
   ) -> PortalProvider {
-    if events[event] == nil {
-      events[event] = []
+    if events[event.rawValue] == nil {
+      events[event.rawValue] = []
     }
 
-    events[event]?.append(RegisteredEventHandler(
+    events[event.rawValue]?.append(RegisteredEventHandler(
       handler: callback,
       once: true
     ))
@@ -460,20 +478,43 @@ public class PortalProvider {
     return self
   }
 
+  public func once(
+    event: Events.RawValue,
+    callback: @escaping (_ data: Any) throws -> Void
+  ) -> PortalProvider {
+    guard let eventEnum = Events(rawValue: event) else {
+      print("[PortalProvider] Received unrecognized event \(event). Ignoring...")
+      return self
+    }
+
+    return once(eventEnum, callback: callback)
+  }
+
   /// Removes the callback for the specified event.
   /// - Parameters:
   ///   - event: A specific event from the list of Events.
   /// - Returns: An instance of Portal Provider.
   public func removeListener(
-    event: Events.RawValue
+    _ event: Events
   ) -> PortalProvider {
-    if events[event] == nil {
-      print(String(format: "[Portal] Could not find any bindings for event '%@'. Ignoring...", event))
+    if events[event.rawValue] == nil {
+      print(String(format: "[Portal] Could not find any bindings for event '%@'. Ignoring...", event.rawValue))
     }
 
-    events[event] = nil
+    events[event.rawValue] = nil
 
     return self
+  }
+
+  public func removeListener(
+    event: Events.RawValue
+  ) -> PortalProvider {
+    guard let eventEnum = Events(rawValue: event) else {
+      print("[PortalProvider] Received unrecognized event \(event). Ignoring...")
+      return self
+    }
+
+    return removeListener(eventEnum)
   }
 
   /// Makes a request.
@@ -510,7 +551,7 @@ public class PortalProvider {
 
           // Trigger `portal_signatureReceived` event
           _ = self.emit(
-            event: Events.PortalSignatureReceived.rawValue,
+            .PortalSignatureReceived,
             data: RequestCompletionResult(
               method: payloadWithId.method,
               params: payloadWithId.params,
@@ -564,7 +605,7 @@ public class PortalProvider {
 
           // Trigger `portal_signatureReceived` event
           _ = self.emit(
-            event: Events.PortalSignatureReceived.rawValue,
+            .PortalSignatureReceived,
             data: RequestCompletionResult(
               method: payloadWithId.method,
               params: payloadWithId.params,
@@ -626,7 +667,7 @@ public class PortalProvider {
   public func setChainId(value: Int) -> PortalProvider {
     chainId = value
     let hexChainId = String(format: "%02x", value)
-    let provider = emit(event: Events.ChainChanged.rawValue, data: ["chainId": hexChainId])
+    let provider = emit(.ChainChanged, data: ["chainId": hexChainId])
     return provider
   }
 
@@ -643,7 +684,7 @@ public class PortalProvider {
     }
 
     // Bind to signing approval callbacks
-    _ = on(event: Events.PortalSigningApproved.rawValue, callback: { approved in
+    _ = on(.PortalSigningApproved, callback: { approved in
       if approved is ETHRequestPayload {
         let approvedPayload = approved as! ETHRequestPayload
 
@@ -652,7 +693,7 @@ public class PortalProvider {
           return completion(Result(data: true))
         }
       }
-    }).on(event: Events.PortalSigningRejected.rawValue, callback: { rejected in
+    }).on(.PortalSigningRejected, callback: { rejected in
       print("[PortalProvider] Received signing rejection for payload \(rejected)")
       if rejected is ETHRequestPayload {
         let rejectedPayload = rejected as! ETHRequestPayload
@@ -698,7 +739,7 @@ public class PortalProvider {
     }
 
     // Bind to signing approval callbacks
-    _ = on(event: Events.PortalSigningApproved.rawValue, callback: { approved in
+    _ = on(.PortalSigningApproved, callback: { approved in
       if approved is ETHTransactionPayload {
         let approvedPayload = approved as! ETHTransactionPayload
 
@@ -707,7 +748,7 @@ public class PortalProvider {
           return completion(Result(data: true))
         }
       }
-    }).on(event: Events.PortalSigningRejected.rawValue, callback: { rejected in
+    }).on(.PortalSigningRejected, callback: { rejected in
       print("[PortalProvider] Received signing rejection for payload \(rejected)")
       if rejected is ETHTransactionPayload {
         let rejectedPayload = rejected as! ETHTransactionPayload
@@ -918,6 +959,6 @@ public class PortalProvider {
 
   private func dispatchConnect() {
     let hexChainId = String(format: "%02x", chainId)
-    _ = emit(event: Events.Connect.rawValue, data: ["chainId": hexChainId])
+    _ = emit(.Connect, data: ["chainId": hexChainId])
   }
 }
