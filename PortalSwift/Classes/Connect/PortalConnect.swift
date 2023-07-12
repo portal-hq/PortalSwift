@@ -7,6 +7,38 @@
 
 import Foundation
 
+public protocol PortalConnectDelegate {
+  func didClose()
+  func didConnect(_ data: ConnectedData)
+  func didDisconnect(_ data: DisconnectData)
+  func didError(_ data: ErrorData)
+  func didReceiveDappSessionRequest(_ data: ConnectData)
+  func didReceiveSigningRequest(_ data: Any)
+  func didReceiveSigningResult(_ result: Result<SignResult>)
+}
+
+extension PortalConnectDelegate {
+  func didClose() {
+    print("[PortalConnect] Closed with no delegate method found.")
+  }
+
+  func didConnect(_: ConnectedData) {
+    print("[PortalConnect] Connected with no delegate method found.")
+  }
+
+  func didDisconnect(_ data: DisconnectData) {
+    print("[PortalConnect] Disconnected with no delegate method found. Data: \(data)")
+  }
+
+  func didError(_ data: ErrorData) {
+    print("[PortalConnect] Errored with no delegate method found. \(data)")
+  }
+
+  func didReceiveSigningResult(_ result: Result<SignResult>) {
+    print("[PortalConnect] Received signature with no delegate method found. Result: \(result)")
+  }
+}
+
 /// A list of JSON-RPC signing methods.
 public var signMethods: [ETHRequestMethods.RawValue] = [
   ETHRequestMethods.PersonalSign.rawValue,
@@ -18,6 +50,8 @@ public var signMethods: [ETHRequestMethods.RawValue] = [
 ]
 
 public class PortalConnect: EventBus {
+  public var delegate: PortalConnectDelegate?
+
   private var address: String?
   private var client: WebSocketClient
   private var connected: Bool = false
@@ -48,7 +82,11 @@ public class PortalConnect: EventBus {
     // Fired by the Provider
 
     on(event: Events.PortalConnectSigningRequested.rawValue) { payload in
-      self.emit(event: Events.PortalSigningRequested.rawValue, data: payload)
+      if self.delegate != nil {
+        self.delegate?.didReceiveSigningRequest(payload)
+      } else {
+        self.emit(event: Events.PortalSigningRequested.rawValue, data: payload)
+      }
     }
 
     // Fired by SDK Consumers
@@ -135,6 +173,7 @@ public class PortalConnect: EventBus {
       }
     }
 
+    delegate?.didReceiveDappSessionRequest(data)
     emit(event: Events.PortalDappSessionRequested.rawValue, data: data)
   }
 
@@ -192,6 +231,8 @@ public class PortalConnect: EventBus {
     client.topic = nil
 
     client.close()
+
+    delegate?.didClose()
   }
 
   func handleConnected(data: ConnectedData) {
@@ -199,6 +240,7 @@ public class PortalConnect: EventBus {
     topic = data.topic
     client.topic = data.topic
 
+    delegate?.didConnect(data)
     emit(event: Events.Connect.rawValue, data: data)
   }
 
@@ -216,10 +258,13 @@ public class PortalConnect: EventBus {
     client.topic = nil
 
     client.close()
+
+    delegate?.didDisconnect(data)
     emit(event: Events.Disconnect.rawValue, data: data)
   }
 
   func handleError(data: ErrorData) {
+    delegate?.didError(data)
     emit(event: Events.ConnectError.rawValue, data: data)
   }
 
