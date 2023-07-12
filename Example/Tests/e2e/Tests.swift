@@ -30,6 +30,7 @@ class Tests: XCTestCase {
 
       Tests.PortalWrap?.signIn(username: Tests.username!) { (result: Result<UserResult>) in
         guard result.error == nil else {
+          registerExpectation.fulfill()
           return XCTFail("Failed on sign In: \(result.error!)")
         }
         let userResult = result.data!
@@ -40,6 +41,7 @@ class Tests: XCTestCase {
         Tests.PortalWrap?.registerPortal(apiKey: userResult.clientApiKey, backup: backup) {
           result in
           guard result.error == nil else {
+            registerExpectation.fulfill()
             return XCTFail("Unable to register Portal")
           }
           registerExpectation.fulfill()
@@ -77,10 +79,8 @@ class Tests: XCTestCase {
             return XCTFail()
           }
 
-            generateExpectation.fulfill()
-            XCTAssertTrue(!(result.data!.isEmpty), "The string should be empty")
-            return
-
+          generateExpectation.fulfill()
+          XCTAssertTrue(!(result.data!.isEmpty), "The string should be empty")
         }
       }
     }
