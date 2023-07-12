@@ -3,7 +3,7 @@ name: Run Swift Tests
 on:
   pull_request:
     branches:
-      - release-candidate
+      - main
   workflow_dispatch:
     inputs:
       env:
@@ -53,7 +53,7 @@ jobs:
               build test | xcpretty -r junit --output test-results.xml
           cat test-results.xml 
           du -sh ~/Library/Developer/Xcode/DerivedData/
-          
+
           passed_tests=$(xmlstarlet sel -t -v "count(//testcase[not(failure)])" test-results.xml) 
           failed_tests=$(xmlstarlet sel -t -v "count(//testcase[failure])" test-results.xml)
           echo "Passed tests: $passed_tests"
