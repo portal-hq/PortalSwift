@@ -1,7 +1,16 @@
 name: Run Swift Tests
 
 on:
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
+    inputs:
+      env:
+        description: 'Environment to run tests against: prod or staging'
+        type: string
+        required: false
+        default: 'prod'
 
 jobs:
   test:
@@ -11,6 +20,23 @@ jobs:
       - uses: actions/checkout@v2
         with:
           path: main
+
+      - name: Cache CocoaPods dependencies
+        uses: actions/cache@v2
+        with:
+          path: Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+        
+
+      - name: Build Secrets file
+        run: |
+          cd ${{ github.workspace }}/main/Example
+          echo "ENV = ${{ inputs.env }}" > Secrets.xcconfig
+          echo "ALCHEMY_API_KEY = ${{ secrets.ALCHEMY_API_KEY }}" >> Secrets.xcconfig
+          echo "REVERSE_URL = ${{ secrets.REVERSE_URL }}" >> Secrets.xcconfig
+          echo "GDRIVE_CLIENT_ID = ${{ secrets.GDRIVE_CLIENT_ID }}" >> Secrets.xcconfig
 
       - name: Build and Test
         run: |
@@ -23,10 +49,12 @@ jobs:
               -scheme PortalSwift-Example \
               -destination 'platform=iOS Simulator,name=iPhone 14 Pro,OS=16.2' \
               -only-testing:PortalSwift_Tests/Tests \
+              -xcconfig Secrets.xcconfig \
               build test | xcpretty -r junit --output test-results.xml
           cat test-results.xml 
-          passed_tests=$(xmlstarlet sel -t -v "count(//testcase[not(@failure)])" test-results.xml)
-          failed_tests=$(xmlstarlet sel -t -v "count(//testcase[@failure])" test-results.xml)
+          echo "Test results:"
+          passed_tests=$(xmlstarlet sel -t -v "count(//testcase[not(failure)])" test-results.xml) 
+          failed_tests=$(xmlstarlet sel -t -v "count(//testcase[failure])" test-results.xml)
           echo "Passed tests: $passed_tests"
           echo "Failed tests: $failed_tests"
 
