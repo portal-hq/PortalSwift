@@ -7,8 +7,32 @@
 
 import Foundation
 
-public class EventBus {
-  private var events: [Events.RawValue: [RegisteredEventHandler]] = [:]
+public enum ConnectEvents: String {
+  case ChainChanged = "chainChanged"
+  case Close = "close"
+  case Connect = "connect"
+  case Connected = "connected"
+  case ConnectError = "portal_connectError"
+  case Disconnect = "disconnect"
+  case Disconnected = "disconnected"
+  case Error = "error"
+  case SignatureReceived = "portal_signatureReceived"
+  case SigningApproved = "portal_signingApproved"
+  case SigningRejected = "portal_signingRejected"
+  case ConnectSigningRequested = "portalConnect_signingRequested"
+  case SigningRequested = "portal_signingRequested"
+
+  // Walletconnect V2
+  case DappSessionRequested = "portal_dappSessionRequested"
+  case DappSessionApproved = "portal_dappSessionApproved"
+  case DappSessionRejected = "portal_dappSessionRejected"
+  case SessionRequest = "session_request"
+  case SessionRequestAddress = "session_request_address"
+  case SessionRequestTransaction = "session_request_transaction"
+}
+
+public class ConnectEventBus {
+  private var events: [ConnectEvents.RawValue: [RegisteredEventHandler]] = [:]
   private var label: String
 
   public init(label: String) {
@@ -20,11 +44,11 @@ public class EventBus {
   ///   - event: The event to be emitted.
   ///   - data: The data to pass to registered event handlers.
   /// - Returns: The Portal Provider instance.
-  public func emit(event: Events.RawValue, data: Any) {
-    let registeredEventHandlers = events[event]
+  public func emit(_ event: ConnectEvents, data: Any) {
+    let registeredEventHandlers = events[event.rawValue]
 
     if registeredEventHandlers == nil {
-      print(String(format: "[\(label)] Could not find any bindings for event '%@'. Ignoring...", event))
+      print(String(format: "[\(label)] Could not find any bindings for event '%@'. Ignoring...", event.rawValue))
       return
     } else {
       // Invoke all registered handlers for the event
@@ -37,10 +61,19 @@ public class EventBus {
       }
 
       // Remove once instances
-      events[event] = registeredEventHandlers?.filter(removeOnce)
+      events[event.rawValue] = registeredEventHandlers?.filter(removeOnce)
 
       return
     }
+  }
+
+  public func emit(_ event: ConnectEvents.RawValue, data: Any) {
+    guard let eventEnum = ConnectEvents(rawValue: event) else {
+      print("Received unrecognized event \(event). Ignoring...")
+      return
+    }
+
+    emit(eventEnum, data: data)
   }
 
   /// Registers a callback for an event.
@@ -49,14 +82,14 @@ public class EventBus {
   ///   - callback: The function to be invoked whenever the event fires.
   /// - Returns: The Portal Provider instance.
   public func on(
-    event: Events.RawValue,
+    _ event: ConnectEvents,
     callback: @escaping (_ data: Any) -> Void
   ) {
-    if events[event] == nil {
-      events[event] = []
+    if events[event.rawValue] == nil {
+      events[event.rawValue] = []
     }
 
-    events[event]?.append(RegisteredEventHandler(
+    events[event.rawValue]?.append(RegisteredEventHandler(
       handler: callback,
       once: false
     ))
@@ -68,14 +101,14 @@ public class EventBus {
   ///   - callback: The function to be invoked whenever the event fires.
   /// - Returns: The Portal Provider instance.
   public func once(
-    event: Events.RawValue,
+    _ event: ConnectEvents,
     callback: @escaping (_ data: Any) throws -> Void
   ) {
-    if events[event] == nil {
-      events[event] = []
+    if events[event.rawValue] == nil {
+      events[event.rawValue] = []
     }
 
-    events[event]?.append(RegisteredEventHandler(
+    events[event.rawValue]?.append(RegisteredEventHandler(
       handler: callback,
       once: true
     ))
@@ -86,27 +119,27 @@ public class EventBus {
   ///   - event: A specific event from the list of Events.
   /// - Returns: An instance of Portal Provider.
   public func removeListener(
-    event: Events.RawValue
+    _ event: ConnectEvents
   ) {
-    if events[event] == nil {
-      print(String(format: "[\(label)] Could not find any bindings for event '%@'. Ignoring...", event))
+    if events[event.rawValue] == nil {
+      print(String(format: "[\(label)] Could not find any bindings for event '%@'. Ignoring...", event.rawValue))
     }
 
-    events[event] = nil
+    events[event.rawValue] = nil
   }
 
   /// Removes the specified event handler.
   /// - Parameters:
   ///   - registeredEventHandler: A specific RegisteredEventHandler.
   /// - Returns: A boolean determining whether the RegisteredEventHandler existed or not.
-  private func removeOnce(registeredEventHandler: RegisteredEventHandler) -> Bool {
+  private func removeOnce(_ registeredEventHandler: RegisteredEventHandler) -> Bool {
     return !registeredEventHandler.once
   }
 
   /// Removes all event handlers.
   public func resetEvents() {
     events.forEach { event, _ in
-      _ = self.removeListener(event: event)
+      self.removeListener(ConnectEvents(rawValue: event)!)
     }
   }
 }

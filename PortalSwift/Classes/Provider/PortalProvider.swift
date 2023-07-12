@@ -20,21 +20,11 @@ public enum Chains: Int {
 public enum Events: String {
   case ChainChanged = "chainChanged"
   case Connect = "connect"
-  case ConnectError = "portal_connectError"
-  case Disconnect = "disconnect"
   case PortalSignatureReceived = "portal_signatureReceived"
   case PortalSigningApproved = "portal_signingApproved"
   case PortalSigningRejected = "portal_signingRejected"
   case PortalConnectSigningRequested = "portalConnect_signingRequested"
   case PortalSigningRequested = "portal_signingRequested"
-  // Walletconnect V2
-  case PortalDappSessionRequested = "portal_dappSessionRequested"
-  case PortalDappSessionApproved = "portal_dappSessionApproved"
-  case PortalDappSessionRejected = "portal_dappSessionRejected"
-  // Walletconnect V1
-  case PortalDappSessionRequestedV1 = "portal_dappSessionRequestedV1"
-  case PortalDappSessionApprovedV1 = "portal_dappSessionApprovedV1"
-  case PortalDappSessionRejectedV1 = "portal_dappSessionRejectedV1"
 }
 
 /// All available provider methods.
@@ -424,6 +414,10 @@ public class PortalProvider {
     return apiKey
   }
 
+  public func emit(_ event: Events, data: Any) {
+    _ = emit(event: event.rawValue, data: data)
+  }
+
   /// Registers a callback for an event.
   /// - Parameters:
   ///   - event: The event to register a callback.
@@ -658,9 +652,10 @@ public class PortalProvider {
           return completion(Result(data: true))
         }
       }
-    }).on(event: Events.PortalSigningRejected.rawValue, callback: { approved in
-      if approved is ETHRequestPayload {
-        let rejectedPayload = approved as! ETHRequestPayload
+    }).on(event: Events.PortalSigningRejected.rawValue, callback: { rejected in
+      print("[PortalProvider] Received signing rejection for payload \(rejected)")
+      if rejected is ETHRequestPayload {
+        let rejectedPayload = rejected as! ETHRequestPayload
 
         if rejectedPayload.id == payload.id {
           // If the rejected event is fired
@@ -670,7 +665,7 @@ public class PortalProvider {
     })
 
     if connect != nil {
-      connect!.emit(event: Events.PortalConnectSigningRequested.rawValue, data: payload)
+      connect!.emit(.ConnectSigningRequested, data: payload)
     } else {
       // Execute event handlers
       let handlers = events[Events.PortalSigningRequested.rawValue]
@@ -712,9 +707,10 @@ public class PortalProvider {
           return completion(Result(data: true))
         }
       }
-    }).on(event: Events.PortalSigningRejected.rawValue, callback: { approved in
-      if approved is ETHTransactionPayload {
-        let rejectedPayload = approved as! ETHTransactionPayload
+    }).on(event: Events.PortalSigningRejected.rawValue, callback: { rejected in
+      print("[PortalProvider] Received signing rejection for payload \(rejected)")
+      if rejected is ETHTransactionPayload {
+        let rejectedPayload = rejected as! ETHTransactionPayload
 
         if rejectedPayload.id == payload.id {
           // If the rejected event is fired
@@ -724,7 +720,7 @@ public class PortalProvider {
     })
 
     if connect != nil {
-      connect!.emit(event: Events.PortalConnectSigningRequested.rawValue, data: payload)
+      connect!.emit(.ConnectSigningRequested, data: payload)
     } else {
       // Execute event handlers
       let handlers = events[Events.PortalSigningRequested.rawValue]

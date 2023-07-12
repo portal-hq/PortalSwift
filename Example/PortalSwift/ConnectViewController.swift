@@ -59,22 +59,17 @@ class ConnectViewController: UIViewController {
   func initPortalConnect(portalConnect: PortalConnect, button: UIButton, label: String, autoApprove: Bool = true) {
     button.isEnabled = false
 
-    portalConnect.on(event: Events.PortalDappSessionRequested.rawValue, callback: { [weak self] data in
-      print("Event \(Events.PortalDappSessionRequested.rawValue) recieved for v2 on \(label)")
+    portalConnect.on(.DappSessionRequested, callback: { [weak self] data in
+      print("Event \(ConnectEvents.DappSessionRequested.rawValue) recieved for v2 on \(label)")
       self?.didRequestApprovalDapps(portalConnect: portalConnect, data: data)
     })
 
-    portalConnect.on(event: Events.PortalDappSessionRequestedV1.rawValue, callback: { [weak self] data in
-      print("Event \(Events.PortalDappSessionRequested.rawValue) recieved for v1 on \(label)")
-      self?.didRequestApprovalDappsV1(portalConnect: portalConnect, data: data)
-    })
-
-    portalConnect.on(event: Events.PortalSignatureReceived.rawValue) { (data: Any) in
+    portalConnect.on(.SignatureReceived) { (data: Any) in
       let result = data as! RequestCompletionResult
       print("[ConnectViewController] ✅ Received signature \(result) on \(label)")
     }
 
-    portalConnect.on(event: Events.Connect.rawValue) { (data: Any) in
+    portalConnect.on(.Connect) { (data: Any) in
       print("[ConnectViewController] ✅ Connected! \(data) on \(label)")
 
       if label == "connect1" {
@@ -86,7 +81,7 @@ class ConnectViewController: UIViewController {
       }
     }
 
-    portalConnect.on(event: Events.Disconnect.rawValue) { (data: Any) in
+    portalConnect.on(.Disconnect) { (data: Any) in
       print("[ConnectViewController] 🛑 Disconnected \(data) on \(label)")
       if label == "connect1" {
         self.connectButton.isEnabled = false
@@ -99,11 +94,13 @@ class ConnectViewController: UIViewController {
       }
     }
 
-    portalConnect.on(event: Events.PortalSigningRequested.rawValue) { (data: Any) in
+    portalConnect.on(.SigningRequested) { (data: Any) in
       if autoApprove {
-        portalConnect.emit(event: Events.PortalSigningApproved.rawValue, data: data)
+        print("Sending signing approval on \(label) for data \(data)")
+        portalConnect.emit(.SigningApproved, data: data)
       } else {
-        portalConnect.emit(event: Events.PortalSigningRejected.rawValue, data: data)
+        print("Sending signing rejection on \(label) for data \(data)")
+        portalConnect.emit(.SigningRejected, data: data)
       }
     }
   }
@@ -121,34 +118,7 @@ class ConnectViewController: UIViewController {
 
   func didRequestApprovalDapps(portalConnect: PortalConnect, data: Any) {
     print("Emitting Dapp Session Approval for v2..")
-    if let connectData = data as? ConnectData {
-      // Now you can work with the parsed ConnectData object
-      print(connectData.id)
-      print(connectData.topic)
-      print(connectData.params)
-
-      // You can emit the event with the parsed ConnectData object
-      portalConnect.emit(event: Events.PortalDappSessionApprovedV1.rawValue, data: connectData)
-    } else {
-      print("Invalid data type. Expected ConnectData.")
-    }
-    portalConnect.emit(event: Events.PortalDappSessionApproved.rawValue, data: data)
-  }
-
-  func didRequestApprovalDappsV1(portalConnect: PortalConnect, data: Any) {
-    print("Emitting Dapp Session Approval for v1..")
-
-    if let connectData = data as? ConnectV1Data {
-      // Now you can work with the parsed ConnectV1Data object
-      print(connectData.id)
-      print(connectData.topic)
-      print(connectData.params)
-
-      // You can emit the event with the parsed ConnectV1Data object
-      portalConnect.emit(event: Events.PortalDappSessionApprovedV1.rawValue, data: connectData)
-    } else {
-      print("Invalid data type. Expected ConnectV1Data.")
-    }
+    portalConnect.emit(.DappSessionApproved, data: data)
   }
 
   @IBAction func connectPressed() {

@@ -8,15 +8,9 @@
 import Foundation
 
 // Both
-public struct WebSocketMessage: Codable {
+public struct WebSocketMessage {
   public let event: String
-  public let data: WebSocketMessageData?
-}
-
-public enum WebSocketMessageData: Codable {
-  case connectData(data: ConnectData)
-  case disconnectData(data: DisconnectData)
-  case sessionRequestData(data: SessionRequestData)
+  public let data: Any?
 }
 
 public enum WebSocketRequestData: Codable {
