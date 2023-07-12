@@ -1,2 +1,21 @@
 #!/bin/bash
 git-format-staged --formatter "swiftformat stdin --stdinpath '{}'" "*.swift"
+
+set -e # stop the script if any command fails
+
+# Run the tests
+xcodebuild \
+    -workspace Example/PortalSwift.xcworkspace \
+    -scheme PortalSwift-Example \
+    -destination 'platform=iOS Simulator,name=iPhone 14 Pro,OS=16.2' \
+    -only-testing:PortalSwift_Tests/Tests \
+    -xcconfig Example/Secrets.xcconfig \
+    build test | xcpretty -c
+
+# Check the exit status of the xcodebuild command
+if [ $? -eq 0 ]; then
+    echo "Tests passed. Proceeding with commit."
+else
+    echo "Tests failed. Aborting commit."
+    exit 1
+fi
