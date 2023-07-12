@@ -1,6 +1,9 @@
 name: Run Swift Tests
 
 on:
+  pull_request:
+    branches:
+      - release-candidate
   workflow_dispatch:
 
 jobs:
