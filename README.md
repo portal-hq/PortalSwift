@@ -54,3 +54,13 @@ Follow our docs [here](https://docs.portalhq.io/swift-pod/portalswift) to get st
 - Input the most recent version we are updating to into the input for version
 - Check slack for any release errors or the actions console
 
+
+# Tests
+
+## Automated Tests
+
+## Structure
+The `Portal.swift` file houses most of the implementation for portal. That file is then used by the `ViewController.swift` and the `Tests.swift`. The `ViewController.swift`  is for running the UI and the `Tests.swift` is for running the automated tests.
+
+## Commit Hook
+The commit hook will only print the last 9 lines of the tests, showing passed or failed test. If you encounter a failure here, run the tests from Xcode to see the logs of the test. 
