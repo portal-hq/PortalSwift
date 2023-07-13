@@ -38,11 +38,11 @@ struct EventHandlers {
   }
 }
 
-class WebSocketClient: Starscream.WebSocketDelegate {
+public class WebSocketClient: Starscream.WebSocketDelegate {
+  public var isConnected = false
   public var topic: String?
 
   private var events = EventHandlers()
-  private var isConnected = false
   private var portal: Portal
   private var webSocketServer: String
   private let socket: Starscream.WebSocket

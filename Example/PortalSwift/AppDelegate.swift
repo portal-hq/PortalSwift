@@ -6,11 +6,19 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
+import PortalSwift
 import UIKit
+
+protocol PortalExampleAppDelegate {
+  var connect: PortalConnect? { get set }
+  var connect2: PortalConnect? { get set }
+}
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
   var window: UIWindow?
+  var connect: PortalConnect?
+  var connect2: PortalConnect?
 
   func application(_: UIApplication, didFinishLaunchingWithOptions _: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
     // Override point for customization after application launch.
@@ -33,6 +41,33 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
   func applicationDidBecomeActive(_: UIApplication) {
     // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
+
+    if
+      connect != nil
+      && ((connect?.connected) != nil)
+      && connect?.client != nil
+      && connect?.client.isConnected != nil
+      && !(connect?.client.isConnected)!
+      && connect?.uri != nil
+    {
+      let uri = connect?.uri ?? nil
+      if uri != nil {
+        connect?.connect(uri! as String)
+      }
+    }
+
+    if
+      connect2 != nil
+      && ((connect2?.connected) != nil)
+      && connect2?.client != nil
+      && connect2?.client.isConnected != nil
+      && !(connect2?.client.isConnected)!
+    {
+      let uri = connect2?.uri ?? nil
+      if uri != nil {
+        connect?.connect(uri! as String)
+      }
+    }
   }
 
   func applicationWillTerminate(_: UIApplication) {

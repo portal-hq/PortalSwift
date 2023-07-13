@@ -18,9 +18,11 @@ public var signMethods: [ETHRequestMethods.RawValue] = [
 ]
 
 public class PortalConnect: EventBus {
+  public var client: WebSocketClient
+  public var connected: Bool = false
+  public var uri: String?
+
   private var address: String?
-  private var client: WebSocketClient
-  private var connected: Bool = false
   private var portal: Portal
   private var topic: String?
 
@@ -67,6 +69,8 @@ public class PortalConnect: EventBus {
   }
 
   public func connect(_ uri: String) {
+    self.uri = uri
+
     client.resetEventBus()
 
     client.on("close", handleClose)
