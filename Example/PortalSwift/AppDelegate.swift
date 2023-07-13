@@ -15,7 +15,7 @@ protocol PortalExampleAppDelegate {
 }
 
 @UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate {
+class AppDelegate: UIResponder, UIApplicationDelegate, PortalExampleAppDelegate {
   var window: UIWindow?
   var connect: PortalConnect?
   var connect2: PortalConnect?

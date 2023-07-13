@@ -9,6 +9,7 @@ import PortalSwift
 
 class ConnectViewController: UIViewController {
   public var portal: Portal?
+  public var app: PortalExampleAppDelegate = UIApplication.shared.delegate as! PortalExampleAppDelegate
 
   private var connect: PortalConnect?
   private var connect2: PortalConnect?
@@ -51,6 +52,9 @@ class ConnectViewController: UIViewController {
 
     connect = PortalConnect(portal!, CONNECT_URL)
     connect2 = PortalConnect(portal!, CONNECT_URL)
+
+    app.connect = connect
+    app.connect2 = connect2
 
     initPortalConnect(portalConnect: connect!, button: connectButton, label: "connect1")
     initPortalConnect(portalConnect: connect2!, button: connectButton2, label: "connect2", autoApprove: false)
