@@ -6,10 +6,13 @@ class Tests: XCTestCase {
   static var user: UserResult?
   static var username: String?
   static var PortalWrap: PortalWrapper?
+  static var testAGenerateSucceeded = false
 
   static func randomString(length: Int) -> String {
     let letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    return String((0 ..< length).map { _ in letters.randomElement()! })
+    let randomPart = String((0 ..< length).map { _ in letters.randomElement()! })
+    let timestamp = String(Int(Date().timeIntervalSince1970))
+    return randomPart + timestamp
   }
 
   override class func setUp() {
@@ -58,7 +61,10 @@ class Tests: XCTestCase {
 
     Tests.PortalWrap?.signUp(username: Tests.username!) { (result: Result<UserResult>) in
       guard result.error == nil else {
-        return XCTFail("Failed on sign up: \(result.error!)")
+        XCTFail("Failed on sign up: \(result.error!)")
+        registerExpectation.fulfill()
+        generateExpectation.fulfill()
+        return
       }
       let userResult = result.data!
       print("✅ handleSignup(): API key:", userResult.clientApiKey)
@@ -69,7 +75,9 @@ class Tests: XCTestCase {
       Tests.PortalWrap?.registerPortal(apiKey: userResult.clientApiKey, backup: backup) {
         result in
         guard result.error == nil else {
-          return XCTFail()
+          registerExpectation.fulfill()
+          generateExpectation.fulfill()
+          return XCTFail("Unable to register Portal")
         }
         registerExpectation.fulfill()
         print(result.data!)
@@ -78,8 +86,9 @@ class Tests: XCTestCase {
             generateExpectation.fulfill()
             return XCTFail()
           }
-
+          Tests.testAGenerateSucceeded = true
           generateExpectation.fulfill()
+
           XCTAssertTrue(!(result.data!.isEmpty), "The string should be empty")
         }
       }
@@ -88,6 +97,11 @@ class Tests: XCTestCase {
   }
 
   func testBSign() {
+    if !Tests.testAGenerateSucceeded {
+      XCTFail("Failing fast - Generate test failed to complete successfully")
+      return
+    }
+
     let ethSignExpectation = XCTestExpectation(description: "eth sign")
     var address: String? = "0x290766b47d6ea98bae2bd189cc8c7b4aa3154371"
 
@@ -117,10 +131,15 @@ class Tests: XCTestCase {
       }
     }
 
-    wait(for: [ethSignExpectation], timeout: 20)
+    wait(for: [ethSignExpectation], timeout: 30)
   }
 
   func testCBackup() {
+    if !Tests.testAGenerateSucceeded {
+      XCTFail("Failing fast - Generate test failed to complete successfully")
+      return
+    }
+
     let backupExpectation = XCTestExpectation(description: "Backup")
 
     self.testLogin { result in
@@ -166,6 +185,10 @@ class Tests: XCTestCase {
   }
 
   func testRecover() {
+    if !Tests.testAGenerateSucceeded {
+      XCTFail("Failing fast - Generate test failed to complete successfully")
+      return
+    }
     let recoverExpectation = XCTestExpectation(description: "Recover")
 
     self.testLogin { result in
