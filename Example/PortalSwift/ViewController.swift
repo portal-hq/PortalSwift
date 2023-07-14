@@ -285,8 +285,8 @@ class ViewController: UIViewController {
 
   func deleteKeychain() {
     do {
-      try portal?.keychain.deleteAddress()
-      try portal?.keychain.deleteSigningShare()
+      try portal?.deleteAddress()
+      try portal?.deleteSigningShare()
       print("✅ Deleted keychain")
     } catch {
       print("❌ Delete keychain error:", error)
@@ -303,7 +303,7 @@ class ViewController: UIViewController {
 
   func populateAddressInformation() {
     do {
-      let address = try portal?.keychain.getAddress()
+      let address = portal?.address
       print("Address", address)
 
       DispatchQueue.main.async {
@@ -371,7 +371,7 @@ class ViewController: UIViewController {
 
   func populateEthBalance() {
     do {
-      let address = try portal?.keychain.getAddress()
+      let address = portal?.address
       guard address != nil else {
         print("❌ populateEthBalance(): Error getting address")
         return
@@ -417,7 +417,7 @@ class ViewController: UIViewController {
 
   @IBAction func handleSign() {
     do {
-      let address = try portal?.keychain.getAddress()
+      let address = try portal?.address
 
       let payload = ETHRequestPayload(
         method: ETHRequestMethods.PersonalSign.rawValue,
@@ -441,7 +441,7 @@ class ViewController: UIViewController {
   func sendTransaction(ethEstimate: String) {
     let payload = ETHTransactionPayload(
       method: ETHRequestMethods.SendTransaction.rawValue,
-      params: [ETHTransactionParam(from: portal!.mpc.getAddress(), to: sendAddress.text!, gas: ethEstimate, gasPrice: ethEstimate, value: "0x10", data: "")]
+      params: [ETHTransactionParam(from: portal!.address!, to: sendAddress.text!, gas: ethEstimate, gasPrice: ethEstimate, value: "0x10", data: "")]
       // Test EIP-1559 Transactions with these params
       // params: [ETHTransactionParam(from: portal!.mpc.getAddress(), to: sendAddress.text!,  gas:"0x5208", value: "0x10", data: "", maxPriorityFeePerGas: ethEstimate, maxFeePerGas: ethEstimate)]
     )
@@ -475,7 +475,7 @@ class ViewController: UIViewController {
           do {
             self.generateButton.isEnabled = true
 
-            let address = try self.portal?.keychain.getAddress()
+            let address = try self.portal?.address
             let hasAddress = address?.count ?? 0 > 0
 
             self.backupButton.isEnabled = hasAddress
@@ -579,7 +579,7 @@ class ViewController: UIViewController {
   func testSignerRequests() {
     print("Testing Signer Methods:\n")
     do {
-      let fromAddress = try portal?.keychain.getAddress()
+      let fromAddress = try portal?.address
       guard fromAddress != nil else {
         print("❌ Error testing signer provider requests: address is nil")
         return
@@ -629,7 +629,7 @@ class ViewController: UIViewController {
   func testOtherRequests() {
     print("\nTesting Other Requests:\n")
     do {
-      let fromAddress = try portal?.keychain.getAddress()
+      let fromAddress = try portal?.address
       guard fromAddress != nil else {
         print("❌ Error testing other provider requests: address is nil")
         return
@@ -671,7 +671,7 @@ class ViewController: UIViewController {
   func testTransactionRequests() {
     print("\nTesting Transaction Requests:\n")
     do {
-      let fromAddress = try portal?.keychain.getAddress()
+      let fromAddress = try portal?.address
       let toAddress = "0x4cd042bba0da4b3f37ea36e8a2737dce2ed70db7"
       let fakeTransaction = ETHTransactionParam(
         from: fromAddress!,
@@ -714,7 +714,7 @@ class ViewController: UIViewController {
     ]
 
     do {
-      let address = try portal?.keychain.getAddress()
+      let address = try portal?.address
       guard address != nil else {
         print("❌ testUnsupportedSignerRequests(): Error getting address")
         return

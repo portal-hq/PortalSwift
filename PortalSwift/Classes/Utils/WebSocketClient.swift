@@ -52,20 +52,22 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   public var topic: String?
   public var connectState: ConnectState = .disconnected
 
+  private var apiKey: String
+  private var connect: PortalConnect
   private var events = EventHandlers()
-  private var portal: Portal
   private var webSocketServer: String
   private let socket: Starscream.WebSocket
   private var uri: String?
 
-  init(portal: Portal, webSocketServer: String = "connect.portalhq.io") {
-    self.portal = portal
+  init(apiKey: String, connect: PortalConnect, webSocketServer: String = "connect.portalhq.io") {
+    self.apiKey = apiKey
+    self.connect = connect
     self.webSocketServer = webSocketServer
 
     // Create a new URLRequest instance
     var request = URLRequest(url: URL(string: webSocketServer)!)
     request.timeoutInterval = 5
-    request.setValue("Bearer \(portal.apiKey)", forHTTPHeaderField: "Authorization")
+    request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
 
     // Create the WebSocket to be connected on demand
     // - this WebSocket does not actually connect until
@@ -158,13 +160,16 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
     do {
       print("[WebSocketClient] Connected to proxy service. Sending connect message...")
 
-      let address = try portal.keychain.getAddress()
+      guard let address = connect.address else {
+        print("[WebSocketClient] No address found in keychain. Ignoring connect event...")
+        return
+      }
       // Build the WebSocketRequest
       let request = WebSocketConnectRequest(
         event: "connect",
         data: ConnectRequestData(
           address: address,
-          chainId: portal.chainId,
+          chainId: connect.chainId,
           uri: uri!
         )
       )
