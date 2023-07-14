@@ -12,6 +12,13 @@ enum WebSocketTypeErrors: Error {
   case MismatchedTypeMessage
 }
 
+public enum ConnectState {
+  case connected
+  case connecting
+  case disconnected
+  case disconnecting
+}
+
 struct EventHandlers {
   var close: [() -> Void]
   var dapp_session_requested: [(ConnectData) -> Void]
@@ -38,24 +45,30 @@ struct EventHandlers {
   }
 }
 
-class WebSocketClient: Starscream.WebSocketDelegate {
-  public var topic: String?
+public class WebSocketClient: Starscream.WebSocketDelegate {
+  public var isConnected: Bool {
+    return connectState == .connected || connectState == .connecting
+  }
 
+  public var topic: String?
+  public var connectState: ConnectState = .disconnected
+
+  private var apiKey: String
+  private var connect: PortalConnect
   private var events = EventHandlers()
-  private var isConnected = false
-  private var portal: Portal
   private var webSocketServer: String
   private let socket: Starscream.WebSocket
   private var uri: String?
 
-  init(portal: Portal, webSocketServer: String = "connect.portalhq.io") {
-    self.portal = portal
+  init(apiKey: String, connect: PortalConnect, webSocketServer: String = "connect.portalhq.io") {
+    self.apiKey = apiKey
+    self.connect = connect
     self.webSocketServer = webSocketServer
 
     // Create a new URLRequest instance
     var request = URLRequest(url: URL(string: webSocketServer)!)
     request.timeoutInterval = 5
-    request.setValue("Bearer \(portal.apiKey)", forHTTPHeaderField: "Authorization")
+    request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
 
     // Create the WebSocket to be connected on demand
     // - this WebSocket does not actually connect until
@@ -69,6 +82,7 @@ class WebSocketClient: Starscream.WebSocketDelegate {
       isConnected == false,
       "[WebSocketClient] sendFinalMessageAndDisconnect must be called before deallocating the WebSocketManager"
     )
+    connectState = .disconnected
   }
 
   func resetEventBus() {
@@ -76,17 +90,22 @@ class WebSocketClient: Starscream.WebSocketDelegate {
   }
 
   func close() {
+    connectState = .disconnected
     socket.disconnect(closeCode: 1000)
   }
 
   func connect(uri: String) {
+    connectState = .connecting
     self.uri = uri
 
     print("[WebSocketClient] Connecting to proxy...")
+    connectState = .connecting
     socket.connect()
   }
 
   func disconnect(_ userInitiated: Bool = false) {
+    connectState = .disconnecting
+
     do {
       print("[WebSocketClient] Disconnecting from proxy...")
 
@@ -105,12 +124,13 @@ class WebSocketClient: Starscream.WebSocketDelegate {
 
       // Send the message
       socket.write(string: message)
+      connectState = .disconnected
     } catch {
       print("[WebSocketClient] Error encoding outbound message. Could not disconnect.")
     }
   }
 
-  func didReceive(event: Starscream.WebSocketEvent, client: Starscream.WebSocket) {
+  public func didReceive(event: Starscream.WebSocketEvent, client: Starscream.WebSocket) {
     print("[WebSocketClient] Received event: \(event)")
     // Handle incoming messages
     switch event {
@@ -132,7 +152,7 @@ class WebSocketClient: Starscream.WebSocketDelegate {
     case .reconnectSuggested:
       break
     case .cancelled:
-      isConnected = false
+      connectState = .disconnected
     case let .error(error):
       handleError(error)
     }
@@ -140,18 +160,21 @@ class WebSocketClient: Starscream.WebSocketDelegate {
 
   func handleConnect() {
     // Set the connection state
-    isConnected = true
+    connectState = .connecting
 
     do {
       print("[WebSocketClient] Connected to proxy service. Sending connect message...")
 
-      let address = try portal.keychain.getAddress()
+      guard let address = connect.address else {
+        print("[WebSocketClient] No address found in keychain. Ignoring connect event...")
+        return
+      }
       // Build the WebSocketRequest
       let request = WebSocketConnectRequest(
         event: "connect",
         data: ConnectRequestData(
           address: address,
-          chainId: portal.chainId,
+          chainId: connect.chainId,
           uri: uri!
         )
       )
@@ -223,6 +246,7 @@ class WebSocketClient: Starscream.WebSocketDelegate {
                   if payload.event != "connected" {
                     throw WebSocketTypeErrors.MismatchedTypeMessage
                   }
+                  connectState = .connected
                   emit(payload.event, payload.data)
                   return
                 } catch {
@@ -233,6 +257,7 @@ class WebSocketClient: Starscream.WebSocketDelegate {
                     if payload.event != "connected" {
                       throw WebSocketTypeErrors.MismatchedTypeMessage
                     }
+                    connectState = .connected
                     emit(payload.event, payload.data)
                     return
                   } catch {
@@ -259,7 +284,7 @@ class WebSocketClient: Starscream.WebSocketDelegate {
   }
 
   func handleDisconnect(_ reason: String, _ code: UInt16) {
-    isConnected = false
+    connectState = .disconnected
     print("[WebSocketClient] Websocket is disconnected: \(reason) with code: \(code)")
   }
 
@@ -268,11 +293,14 @@ class WebSocketClient: Starscream.WebSocketDelegate {
     // This error needs to match
     if let error = error, error.localizedDescription == "POSIXErrorCode(rawValue: 54): Connection reset by peer" && isConnected {
       print("Connection reset by peer. Attempting reconnect...")
-      isConnected = false
+      connectState = .disconnected
       connect(uri: uri!)
+      connectState = .connecting
     } else if error != nil && error?.localizedDescription != nil {
+      connectState = .disconnected
       emit("error", ErrorData(message: error!.localizedDescription))
     } else {
+      connectState = .disconnected
       emit("error", ErrorData(message: "An unknown error occurred."))
     }
   }
@@ -498,6 +526,8 @@ class WebSocketClient: Starscream.WebSocketDelegate {
   }
 
   func sendFinalMessageAndDisconnect() {
+    connectState = .disconnecting
+
     do {
       print("[WebSocketClient] Sending final message before deallocation...")
 
@@ -518,7 +548,7 @@ class WebSocketClient: Starscream.WebSocketDelegate {
         print("[WebSocketClient] Final message sent! Disconnecting...")
         // Close the connection
         self.socket.disconnect()
-        self.isConnected = false
+        self.connectState = .disconnected
       }
     } catch {
       print("[WebSocketClient] Unable to encode disconnect message. Failed to disconnect.")

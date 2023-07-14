@@ -8,6 +8,309 @@
 import Foundation
 import Mpc
 
+/// The main Portal class.
+public class Portal {
+  public var address: String? {
+    do {
+      return try keychain.getAddress()
+    } catch {
+      return nil
+    }
+  }
+
+  public var chainId: Int {
+    return provider.chainId
+  }
+
+  public let api: PortalApi
+  public let apiKey: String
+  public let autoApprove: Bool
+  public let backup: BackupOptions
+  public var client: Client?
+  public let gatewayConfig: [Int: String]
+  public let keychain: PortalKeychain
+  public let mpc: PortalMpc
+  public let provider: PortalProvider
+
+  private let apiHost: String
+  private let mpcHost: String
+  private let version: String
+
+  /// Create a Portal instance.
+  /// - Parameters:
+  ///   - apiKey: The Client API key. You can obtain this through Portal's REST API.
+  ///   - backup: The backup options to use.
+  ///   - chainId: The chainId you want the provider to use.
+  ///   - keychain: An instance of PortalKeychain.
+  ///   - gatewayConfig: A dictionary of chainIds (keys) and gateway URLs (values).
+  ///   - isSimulator: (optional) Whether you are testing on the iOS simulator or not.
+  ///   - address: (optional) An address.
+  ///   - apiHost: (optional) Portal's API host.
+  ///   - autoApprove: (optional) Auto-approve transactions.
+  ///   - mpcHost: (optional) Portal's MPC API host.
+  public init(
+    apiKey: String,
+    backup: BackupOptions,
+    chainId: Int,
+    keychain: PortalKeychain,
+    gatewayConfig: [Int: String],
+    // Optional
+    isSimulator: Bool = false,
+    version: String = "v4",
+    autoApprove: Bool = false,
+    apiHost: String = "api.portalhq.io",
+    mpcHost: String = "mpc.portalhq.io"
+  ) throws {
+    // Basic setup
+    self.apiHost = apiHost
+    self.apiKey = apiKey
+    self.autoApprove = autoApprove
+    self.backup = backup
+    self.gatewayConfig = gatewayConfig
+    client = try Portal.getClient(apiHost, apiKey)
+    keychain.clientId = client?.id
+    self.keychain = keychain
+    self.mpcHost = mpcHost
+    self.version = version
+
+    if version != "v4" {
+      throw PortalArgumentError.versionNoLongerSupported(message: "MPC Version is not supported. Only version 'v4' is currently supported.")
+    }
+
+    // Initialize the PortalProvider
+    provider = try PortalProvider(
+      apiKey: apiKey,
+      chainId: chainId,
+      gatewayConfig: gatewayConfig,
+      keychain: keychain,
+      autoApprove: autoApprove,
+      apiHost: apiHost,
+      mpcHost: mpcHost,
+      version: version
+    )
+
+    // Initialize the Portal API
+    let api = PortalApi(apiKey: apiKey, apiHost: apiHost, provider: provider)
+    self.api = api
+
+    // Ensure storage adapters have access to the Portal API
+    if backup.gdrive != nil {
+      backup.gdrive?.api = api
+    }
+    if backup.icloud != nil {
+      backup.icloud?.api = api
+    }
+
+    // Initialize Mpc
+    mpc = PortalMpc(
+      apiKey: apiKey,
+      api: api,
+      keychain: keychain,
+      storage: backup,
+      isSimulator: isSimulator,
+      host: mpcHost,
+      version: version
+    )
+  }
+
+  /**********************************
+   * Wallet Helper Methods
+   **********************************/
+
+  public func backupWallet(
+    method: BackupMethods.RawValue,
+    completion: @escaping (Result<String>) -> Void,
+    progress: ((MpcStatus) -> Void)? = nil
+  ) {
+    mpc.backup(method: method, completion: completion, progress: progress)
+  }
+
+  public func createWallet(
+    completion: @escaping (Result<String>) -> Void,
+    progress: ((MpcStatus) -> Void)? = nil
+  ) {
+    mpc.generate(completion: completion, progress: progress)
+  }
+
+  public func recoverWallet(
+    cipherText: String,
+    method: BackupMethods.RawValue,
+    completion: @escaping (Result<String>) -> Void,
+    progress: ((MpcStatus) -> Void)? = nil
+  ) {
+    mpc.recover(cipherText: cipherText, method: method, completion: completion, progress: progress)
+  }
+
+  /**********************************
+   * Provider Helper Methods
+   **********************************/
+
+  public func emit(_ event: Events.RawValue, data: Any) {
+    _ = provider.emit(event: event, data: data)
+  }
+
+  public func ethSendTransaction(
+    transaction: ETHTransactionParam,
+    completion: @escaping (Result<TransactionCompletionResult>) -> Void
+  ) {
+    provider.request(payload: ETHTransactionPayload(
+      method: ETHRequestMethods.SendTransaction.rawValue,
+      params: [transaction]
+    ), completion: completion)
+  }
+
+  public func ethSign(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void) {
+    guard let address = provider.address else {
+      completion(Result(error: PortalProviderError.noAddress))
+      return
+    }
+
+    provider.request(payload: ETHRequestPayload(
+      method: ETHRequestMethods.Sign.rawValue,
+      params: [
+        address,
+        message,
+      ]
+    ), completion: completion)
+  }
+
+  public func ethSignTransaction(
+    transaction: ETHTransactionParam,
+    completion: @escaping (Result<TransactionCompletionResult>) -> Void
+  ) {
+    provider.request(payload: ETHTransactionPayload(
+      method: ETHRequestMethods.SignTransaction.rawValue,
+      params: [transaction]
+    ), completion: completion)
+  }
+
+  public func ethSignTypedData(
+    transaction: String,
+    completion: @escaping (Result<RequestCompletionResult>) -> Void
+  ) {
+    guard let address = provider.address else {
+      completion(Result(error: PortalProviderError.noAddress))
+      return
+    }
+
+    provider.request(payload: ETHRequestPayload(
+      method: ETHRequestMethods.SendTransaction.rawValue,
+      params: [address, transaction]
+    ), completion: completion)
+  }
+
+  public func on(event: Events.RawValue, callback: @escaping (Any) -> Void) {
+    _ = provider.on(event: event, callback: callback)
+  }
+
+  public func once(event: Events.RawValue, callback: @escaping (Any) -> Void) {
+    _ = provider.once(event: event, callback: callback)
+  }
+
+  public func personalSign(
+    message: String,
+    completion: @escaping (Result<RequestCompletionResult>) -> Void
+  ) {
+    guard let address = provider.address else {
+      completion(Result(error: PortalProviderError.noAddress))
+      return
+    }
+
+    provider.request(payload: ETHRequestPayload(
+      method: ETHRequestMethods.PersonalSign.rawValue,
+      params: [
+        message,
+        address,
+      ]
+    ), completion: completion)
+  }
+
+  public func request(
+    method: ETHRequestMethods.RawValue,
+    params: [Any],
+    completion: @escaping (Result<RequestCompletionResult>) -> Void
+  ) {
+    provider.request(payload: ETHRequestPayload(
+      method: method,
+      params: params
+    ), completion: completion)
+  }
+
+  /// Set the chainId on the instance and update MPC and Provider chainId
+  /// - Parameters:
+  ///   - to: The chainId to use for processing wallet transactions
+  /// - Returns: Void
+  public func setChainId(to: Int) throws {
+    _ = try provider.setChainId(value: to)
+  }
+
+  /****************************************
+   * Keychain Helper Methods
+   ****************************************/
+
+  public func deleteAddress() throws {
+    try keychain.deleteAddress()
+  }
+
+  public func deleteSigningShare() throws {
+    try keychain.deleteSigningShare()
+  }
+
+  /****************************************
+   * Portal Connect Helper Methods
+   ****************************************/
+
+  public func createPortalConnectInstance(
+    webSocketServer: String = "connect.portalhq.io"
+  ) throws -> PortalConnect {
+    return try PortalConnect(
+      apiKey,
+      provider.chainId,
+      keychain,
+      gatewayConfig,
+      webSocketServer,
+      autoApprove,
+      apiHost,
+      mpcHost,
+      version
+    )
+  }
+
+  /****************************************
+   * Private Methods
+   ****************************************/
+
+  private static func getClient(_ apiHost: String, _ apiKey: String) throws -> Client {
+    // Create URL.
+    let apiUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
+
+    // Call the MPC service to retrieve the client.
+    let response = MobileGetMe("\(apiUrl)/api/v1/clients/me", apiKey)
+
+    // Parse the client.
+    let jsonData = response.data(using: .utf8)!
+    let clientResult: ClientResult = try JSONDecoder().decode(ClientResult.self, from: jsonData)
+
+    guard clientResult.error.code == 0 else {
+      throw PortalMpcError(clientResult.error)
+    }
+
+    guard let client = clientResult.data else {
+      throw PortalArgumentError.unableToGetClient
+    }
+
+    return client
+  }
+}
+
+/*****************************************
+ * Supporting Enums & Structs
+ *****************************************/
+
+enum PortalProviderError: Error {
+  case noAddress
+}
+
 /// The list of backup methods for PortalSwift.
 public enum BackupMethods: String {
   case GoogleDrive = "gdrive"
@@ -65,192 +368,4 @@ public enum PortalArgumentError: Error {
   case noGatewayConfigForChain(chainId: Int)
   case versionNoLongerSupported(message: String)
   case unableToGetClient
-}
-
-/// Determines the appropriate Gateway URL to use for the current chainId
-/// - Parameters:
-///   - gatewayConfig: A dictionary of chainIds (keys) and gateway URLs (values).
-///   - chainId: The chainId we should use, such as 5 (Goerli).
-/// - Throws: PortalArgumentError.noGatewayConfigForChain with the chainId.
-/// - Returns: The URL to be used for Gateway requests.
-private func getGatewayUrl(gatewayConfig: [Int: String], chainId: Int) throws -> String {
-  if gatewayConfig[chainId] == nil {
-    throw PortalArgumentError.noGatewayConfigForChain(chainId: chainId)
-  }
-
-  return gatewayConfig[chainId]!
-}
-
-/// The main Portal class.
-public class Portal {
-  public var address: String = ""
-  public var api: PortalApi
-  public var apiHost: String
-  public var apiKey: String
-  public var backup: BackupOptions
-  public var client: Client?
-  public var chainId: Int
-  public var autoApprove: Bool
-  public var isSimulator: Bool
-  public var keychain: PortalKeychain
-  public var mpc: PortalMpc
-  public var provider: PortalProvider
-  public var gatewayConfig: [Int: String]
-  public var version: String
-
-  /// Create a Portal instance.
-  /// - Parameters:
-  ///   - apiKey: The Client API key. You can obtain this through Portal's REST API.
-  ///   - backup: The backup options to use.
-  ///   - chainId: The chainId you want the provider to use.
-  ///   - keychain: An instance of PortalKeychain.
-  ///   - gatewayConfig: A dictionary of chainIds (keys) and gateway URLs (values).
-  ///   - isSimulator: (optional) Whether you are testing on the iOS simulator or not.
-  ///   - address: (optional) An address.
-  ///   - apiHost: (optional) Portal's API host.
-  ///   - autoApprove: (optional) Auto-approve transactions.
-  ///   - mpcHost: (optional) Portal's MPC API host.
-  public init(
-    apiKey: String,
-    backup: BackupOptions,
-    chainId: Int,
-    keychain: PortalKeychain,
-    gatewayConfig: [Int: String],
-    // Optional
-    isSimulator: Bool = false,
-    version: String = "v4",
-    autoApprove: Bool = false,
-    apiHost: String = "api.portalhq.io",
-    mpcHost: String = "mpc.portalhq.io",
-    address: String = ""
-  ) throws {
-    // Basic setup
-    self.apiKey = apiKey
-    self.backup = backup
-    self.chainId = chainId
-    self.gatewayConfig = gatewayConfig
-    client = try Portal.getClient(apiHost, apiKey)
-    keychain.clientId = client?.id
-    self.keychain = keychain
-
-    // Other stuff
-    self.autoApprove = autoApprove
-    self.isSimulator = isSimulator
-    self.apiHost = apiHost
-
-    if version != "v4" {
-      throw PortalArgumentError.versionNoLongerSupported(message: "MPC Version is not supported. Only version 'v4' is currently supported.")
-    }
-
-    self.version = version
-
-    if !address.isEmpty {
-      self.address = address
-    }
-
-    // Initialize the Portal API
-    let api = PortalApi(address: self.address, apiKey: apiKey, chainId: chainId, apiHost: apiHost)
-    self.api = api
-
-    // Ensure storage adapters have access to the Portal API
-    if backup.gdrive != nil {
-      backup.gdrive?.api = api
-    }
-    if backup.icloud != nil {
-      backup.icloud?.api = api
-    }
-
-    // Determine the Gateway URL for the current chain
-    let gatewayUrl = try getGatewayUrl(gatewayConfig: gatewayConfig, chainId: chainId)
-
-    // Initialize the PortalProvider
-    provider = try PortalProvider(
-      apiKey: apiKey,
-      chainId: chainId,
-      gatewayUrl: gatewayUrl,
-      keychain: keychain,
-      autoApprove: autoApprove,
-      mpcHost: mpcHost,
-      version: version
-    )
-
-    // Initialize Mpc
-    mpc = PortalMpc(
-      apiKey: apiKey,
-      chainId: chainId,
-      keychain: keychain,
-      storage: backup,
-      gatewayUrl: gatewayUrl,
-      api: self.api,
-      isSimulator: isSimulator,
-      mpcHost: mpcHost,
-      version: version
-    )
-  }
-
-  /// Set the address on the instance and update the Provider address
-  /// - Parameters:
-  ///   - to: The address to be used for wallet transactions
-  /// - Returns: Void
-  public func setAddress(to: String?) {
-    let address = to != nil ? to : mpc.getAddress()
-
-    if address != nil {
-      self.address = address!
-
-      provider.setAddress(value: address!)
-      api.address = address!
-    }
-  }
-
-  /// Set the chainId on the instance and update MPC and Provider chainId
-  /// - Parameters:
-  ///   - to: The chainId to use for processing wallet transactions
-  /// - Returns: Void
-  public func setChainId(to: Int) throws {
-    if chainId != to {
-      chainId = to
-
-      // Get a fresh gatewayUrl
-      let gatewayUrl = try getGatewayUrl(gatewayConfig: gatewayConfig, chainId: chainId)
-
-      // Update MPC
-      mpc.setChainId(chainId: to)
-      mpc.setGatewayUrl(gatewayUrl: gatewayUrl)
-
-      // Update the Provider
-      provider.chainId = to
-      provider.rpc = HttpRequester(baseUrl: gatewayUrl)
-
-      // Update the API instance
-      api.chainId = to
-    }
-  }
-
-  public func updateAutoApprove(value: Bool) {
-    autoApprove = value
-    provider.autoApprove = value
-  }
-
-  private static func getClient(_ apiHost: String, _ apiKey: String) throws -> Client {
-    // Create URL.
-    let apiUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
-
-    // Call the MPC service to retrieve the client.
-    let response = MobileGetMe("\(apiUrl)/api/v1/clients/me", apiKey)
-
-    // Parse the client.
-    let jsonData = response.data(using: .utf8)!
-    let clientResult: ClientResult = try JSONDecoder().decode(ClientResult.self, from: jsonData)
-
-    guard clientResult.error.code == 0 else {
-      throw PortalMpcError(clientResult.error)
-    }
-
-    guard let client = clientResult.data else {
-      throw PortalArgumentError.unableToGetClient
-    }
-
-    return client
-  }
 }

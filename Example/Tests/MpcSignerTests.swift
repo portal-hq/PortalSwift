@@ -6,8 +6,8 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
-import XCTest
 @testable import PortalSwift
+import XCTest
 
 final class MpcSignerTests: XCTestCase {
   var keychain: PortalKeychain?
@@ -17,12 +17,12 @@ final class MpcSignerTests: XCTestCase {
   override func setUpWithError() throws {
     do {
       keychain = MockPortalKeychain()
-      keychain!.setSigningShare(signingShare: mockSigningShare) { result in }
-      signer = MpcSigner(keychain: keychain!)
+      keychain!.setSigningShare(signingShare: mockSigningShare) { _ in }
+      signer = MpcSigner(apiKey: "API_KEY", keychain: keychain!)
       provider = try MockPortalProvider(
         apiKey: "API_KEY",
         chainId: Chains.Goerli.rawValue,
-        gatewayUrl: "https://eth-goerli.g.alchemy.com/v2/API_KEY",
+        gatewayConfig: [Chains.Goerli.rawValue: "https://eth-goerli.g.alchemy.com/v2/API_KEY"],
         keychain: MockPortalKeychain(),
         autoApprove: true
       )

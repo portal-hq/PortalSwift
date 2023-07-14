@@ -6,14 +6,32 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
-import XCTest
 @testable import PortalSwift
+import XCTest
 
 final class PortalMpcTests: XCTestCase {
   var mpc: PortalMpc?
 
   override func setUpWithError() throws {
-    mpc = MockPortalMpc(apiKey: "test", chainId: 5, keychain: MockPortalKeychain(), storage: BackupOptions(icloud: MockICloudStorage()), gatewayUrl: "testurl", api: MockPortalApi(address: "", apiKey: "test", chainId: 5))
+    let provider = try MockPortalProvider(
+      apiKey: "API_KEY",
+      chainId: 5,
+      gatewayConfig: [5: "https://example.com"],
+      keychain: MockPortalKeychain(),
+      autoApprove: true
+    )
+
+    mpc = MockPortalMpc(
+      apiKey: "test",
+      api: MockPortalApi(
+        apiKey: "test",
+        apiHost: "test",
+        provider: provider,
+        mockRequests: true
+      ),
+      keychain: MockPortalKeychain(),
+      storage: BackupOptions(icloud: MockICloudStorage())
+    )
   }
 
   override func tearDownWithError() throws {
@@ -30,7 +48,7 @@ final class PortalMpcTests: XCTestCase {
   }
 
   func testGenerate() throws {
-    mpc?.generate() { addressResult in
+    mpc?.generate { addressResult in
       XCTAssert(addressResult.data == mockAddress)
     }
   }
