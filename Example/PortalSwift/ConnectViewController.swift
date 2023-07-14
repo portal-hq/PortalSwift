@@ -53,7 +53,7 @@ class ConnectViewController: UIViewController {
     do {
       connect = try portal!.createPortalConnectInstance(webSocketServer: CONNECT_URL)
       connect2 = try portal!.createPortalConnectInstance(webSocketServer: CONNECT_URL)
-      
+
       app.connect = connect
       app.connect2 = connect2
 
@@ -90,7 +90,7 @@ class ConnectViewController: UIViewController {
         self.disconnectButton.isEnabled = true
       } else {
         self.connectButton2.isEnabled = false
-        self.disconnectButton.isEnabled = true
+        self.disconnectButton2.isEnabled = true
       }
     }
 
@@ -169,6 +169,9 @@ class ConnectViewController: UIViewController {
   @IBAction func connect2Pressed() {
     print("Connect button pressed...")
     let uri = addressTextInput2.text
+
+    print("URI2 Text: \(uri)")
+
     print("Attempting to connect to \(uri!) using \(connect2!)")
     connect2?.connect(uri!)
   }
