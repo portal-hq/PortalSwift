@@ -74,7 +74,7 @@ class ConnectViewController: UIViewController {
     })
 
     portalConnect.on(event: Events.PortalSignatureReceived.rawValue) { (data: Any) in
-      let result = data as! RequestCompletionResult
+      let result = data
       print("[ConnectViewController] ✅ Received signature \(result) on \(label)")
     }
 

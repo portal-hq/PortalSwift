@@ -25,6 +25,9 @@ public class PortalConnect: EventBus {
   private var address: String?
   private var portal: Portal
   private var topic: String?
+  public var connectState: ConnectState {
+    return client.connectState
+  }
 
   public init(
     _ portal: Portal,
@@ -69,6 +72,14 @@ public class PortalConnect: EventBus {
   }
 
   public func connect(_ uri: String) {
+    switch connectState {
+    case .connecting, .connected:
+      print("Connection is already in progress or established.")
+      return
+    case .disconnected:
+      break
+    }
+
     self.uri = uri
 
     client.resetEventBus()

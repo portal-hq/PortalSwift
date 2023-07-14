@@ -12,6 +12,12 @@ enum WebSocketTypeErrors: Error {
   case MismatchedTypeMessage
 }
 
+public enum ConnectState {
+  case disconnected
+  case connecting
+  case connected
+}
+
 struct EventHandlers {
   var close: [() -> Void]
   var dapp_session_requested: [(ConnectData) -> Void]
@@ -39,8 +45,12 @@ struct EventHandlers {
 }
 
 public class WebSocketClient: Starscream.WebSocketDelegate {
-  public var isConnected = false
+  public var isConnected: Bool {
+    return connectState == .connected
+  }
+
   public var topic: String?
+  public var connectState: ConnectState = .disconnected
 
   private var events = EventHandlers()
   private var portal: Portal
@@ -69,6 +79,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
       isConnected == false,
       "[WebSocketClient] sendFinalMessageAndDisconnect must be called before deallocating the WebSocketManager"
     )
+    connectState = .disconnected
   }
 
   func resetEventBus() {
@@ -76,6 +87,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   }
 
   func close() {
+    connectState = .disconnected
     socket.disconnect(closeCode: 1000)
   }
 
@@ -83,6 +95,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
     self.uri = uri
 
     print("[WebSocketClient] Connecting to proxy...")
+    connectState = .connecting
     socket.connect()
   }
 
@@ -110,7 +123,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
     }
   }
 
-  func didReceive(event: Starscream.WebSocketEvent, client: Starscream.WebSocket) {
+  public func didReceive(event: Starscream.WebSocketEvent, client: Starscream.WebSocket) {
     print("[WebSocketClient] Received event: \(event)")
     // Handle incoming messages
     switch event {
@@ -132,7 +145,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
     case .reconnectSuggested:
       break
     case .cancelled:
-      isConnected = false
+      connectState = .disconnected
     case let .error(error):
       handleError(error)
     }
@@ -140,7 +153,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
 
   func handleConnect() {
     // Set the connection state
-    isConnected = true
+    connectState = .connecting
 
     do {
       print("[WebSocketClient] Connected to proxy service. Sending connect message...")
@@ -223,6 +236,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
                   if payload.event != "connected" {
                     throw WebSocketTypeErrors.MismatchedTypeMessage
                   }
+                  connectState = .connected
                   emit(payload.event, payload.data)
                   return
                 } catch {
@@ -233,6 +247,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
                     if payload.event != "connected" {
                       throw WebSocketTypeErrors.MismatchedTypeMessage
                     }
+                    connectState = .connected
                     emit(payload.event, payload.data)
                     return
                   } catch {
@@ -259,7 +274,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   }
 
   func handleDisconnect(_ reason: String, _ code: UInt16) {
-    isConnected = false
+    connectState = .disconnected
     print("[WebSocketClient] Websocket is disconnected: \(reason) with code: \(code)")
   }
 
@@ -268,11 +283,14 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
     // This error needs to match
     if let error = error, error.localizedDescription == "POSIXErrorCode(rawValue: 54): Connection reset by peer" && isConnected {
       print("Connection reset by peer. Attempting reconnect...")
-      isConnected = false
+      connectState = .disconnected
       connect(uri: uri!)
+      connectState = .connecting
     } else if error != nil && error?.localizedDescription != nil {
+      connectState = .disconnected
       emit("error", ErrorData(message: error!.localizedDescription))
     } else {
+      connectState = .disconnected
       emit("error", ErrorData(message: "An unknown error occurred."))
     }
   }
@@ -518,7 +536,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
         print("[WebSocketClient] Final message sent! Disconnecting...")
         // Close the connection
         self.socket.disconnect()
-        self.isConnected = false
+        self.connectState = .disconnected
       }
     } catch {
       print("[WebSocketClient] Unable to encode disconnect message. Failed to disconnect.")
