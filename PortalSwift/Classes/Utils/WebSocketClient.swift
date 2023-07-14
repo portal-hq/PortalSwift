@@ -13,9 +13,10 @@ enum WebSocketTypeErrors: Error {
 }
 
 public enum ConnectState {
-  case disconnected
-  case connecting
   case connected
+  case connecting
+  case disconnected
+  case disconnecting
 }
 
 struct EventHandlers {
@@ -46,7 +47,7 @@ struct EventHandlers {
 
 public class WebSocketClient: Starscream.WebSocketDelegate {
   public var isConnected: Bool {
-    return connectState == .connected
+    return connectState == .connected || connectState == .connecting
   }
 
   public var topic: String?
@@ -94,6 +95,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   }
 
   func connect(uri: String) {
+    connectState = .connecting
     self.uri = uri
 
     print("[WebSocketClient] Connecting to proxy...")
@@ -102,6 +104,8 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   }
 
   func disconnect(_ userInitiated: Bool = false) {
+    connectState = .disconnecting
+
     do {
       print("[WebSocketClient] Disconnecting from proxy...")
 
@@ -120,6 +124,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
 
       // Send the message
       socket.write(string: message)
+      connectState = .disconnected
     } catch {
       print("[WebSocketClient] Error encoding outbound message. Could not disconnect.")
     }
@@ -521,6 +526,8 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   }
 
   func sendFinalMessageAndDisconnect() {
+    connectState = .disconnecting
+
     do {
       print("[WebSocketClient] Sending final message before deallocation...")
 
