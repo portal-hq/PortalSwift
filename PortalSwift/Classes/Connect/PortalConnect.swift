@@ -26,17 +26,17 @@ public class PortalConnect: EventBus {
     return provider.chainId
   }
 
+  public var connected: Bool {
+    return client?.isConnected ?? false
+  }
+
   public var client: WebSocketClient? = nil
-  public var connected: Bool = false
   public var uri: String?
 
   private let apiKey: String
   private let webSocketServer: String
   private let provider: PortalProvider
   private var topic: String?
-  public var connectState: ConnectState {
-    return client.connectState
-  }
 
   public init(
     _ apiKey: String,
@@ -100,20 +100,12 @@ public class PortalConnect: EventBus {
 
   public func connect(_ uri: String) {
     if connected && uri == self.uri {
-      print("[PortalConnect] Client is already connected or connecting to URI. Ignoring request to connect...")
+      print("[PortalConnect] Connection is already in progress or established. Ignoring request to connect...")
       return
     }
 
     if client == nil {
       client = WebSocketClient(apiKey: apiKey, connect: self, webSocketServer: webSocketServer)
-    }
-
-    switch connectState {
-    case .connecting, .connected:
-      print("Connection is already in progress or established.")
-      return
-    case .disconnected:
-      break
     }
 
     self.uri = uri
@@ -238,7 +230,6 @@ public class PortalConnect: EventBus {
   }
 
   func handleClose() {
-    connected = false
     topic = nil
     client?.topic = nil
 
@@ -246,7 +237,6 @@ public class PortalConnect: EventBus {
   }
 
   func handleConnected(data: ConnectedData) {
-    connected = true
     topic = data.topic
     client?.topic = data.topic
 
@@ -254,7 +244,6 @@ public class PortalConnect: EventBus {
   }
 
   func handleConnectedV1(data: ConnectedV1Data) {
-    connected = true
     topic = data.topic
     client?.topic = data.topic
 
@@ -262,7 +251,6 @@ public class PortalConnect: EventBus {
   }
 
   func handleDisconnected(data: DisconnectData) {
-    connected = false
     topic = nil
     client?.topic = nil
 
