@@ -99,10 +99,15 @@ public class PortalConnect: EventBus {
   }
 
   public func connect(_ uri: String) {
+    if connected && uri == self.uri {
+      print("[PortalConnect] Client is already connected or connecting to URI. Ignoring request to connect...")
+      return
+    }
+
     if client == nil {
       client = WebSocketClient(apiKey: apiKey, connect: self, webSocketServer: webSocketServer)
     }
-      
+
     switch connectState {
     case .connecting, .connected:
       print("Connection is already in progress or established.")
