@@ -141,7 +141,7 @@ public class PortalConnect: EventBus {
           id: data.id,
           topic: data.topic,
           address: self.address!,
-          chainId: String(chainId),
+          chainId: String(self.chainId),
           params: data.params
         )
       )
@@ -165,7 +165,7 @@ public class PortalConnect: EventBus {
           id: data.id,
           topic: data.topic,
           address: self.address!,
-          chainId: String(chainId),
+          chainId: String(self.chainId),
           params: data.params
         )
       )
@@ -192,7 +192,7 @@ public class PortalConnect: EventBus {
           id: data.id,
           topic: data.topic,
           address: self.address!,
-          chainId: String(chainId)
+          chainId: String(self.chainId)
         )
       )
 
@@ -214,7 +214,7 @@ public class PortalConnect: EventBus {
           id: data.id,
           topic: data.topic,
           address: self.address!,
-          chainId: String(chainId)
+          chainId: String(self.chainId)
         )
       )
 
