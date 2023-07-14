@@ -18,29 +18,58 @@ public var signMethods: [ETHRequestMethods.RawValue] = [
 ]
 
 public class PortalConnect: EventBus {
-  public var client: WebSocketClient
+  public var address: String? {
+    return provider.address
+  }
+
+  public var chainId: Int {
+    return provider.chainId
+  }
+
+  public var client: WebSocketClient? = nil
   public var connected: Bool = false
   public var uri: String?
 
-  private var address: String?
-  private var portal: Portal
+  private let apiKey: String
+  private let webSocketServer: String
+  private let provider: PortalProvider
   private var topic: String?
 
   public init(
-    _ portal: Portal,
-    _ webSocketServer: String = "connect.portalhq.io"
-  ) {
+    _ apiKey: String,
+    _ chainId: Int,
+    _ keychain: PortalKeychain,
+    _ gatewayConfig: [Int: String],
+    _ webSocketServer: String = "connect.portalhq.io",
+    _ autoApprove: Bool = false,
+    _ apiHost: String = "api.portalhq.io",
+    _ mpcHost: String = "mpc.portalhq.io",
+    _ version: String = "v4"
+  ) throws {
+    self.apiKey = apiKey
+    self.webSocketServer = webSocketServer
+
+    // Initialize the PortalProvider
+    provider = try PortalProvider(
+      apiKey: apiKey,
+      chainId: chainId,
+      gatewayConfig: gatewayConfig,
+      keychain: keychain,
+      autoApprove: autoApprove,
+      apiHost: apiHost,
+      mpcHost: mpcHost,
+      version: version
+    )
+
+    super.init(label: "PortalConnect")
+
     // Set up webSocketClient
     let connectionString = webSocketServer.starts(with: "localhost") ? "ws://\(webSocketServer)" : "wss://\(webSocketServer)"
     client = WebSocketClient(
-      portal: portal,
+      apiKey: apiKey,
+      connect: self,
       webSocketServer: connectionString
     )
-
-    self.portal = portal
-    address = portal.mpc.getAddress()
-
-    super.init(label: "PortalConnect")
 
     guard address != nil else {
       print("[PortalConnect] ⚠️ Address not found in Keychain. This may cause some features not to work as expected.")
@@ -48,47 +77,49 @@ public class PortalConnect: EventBus {
     }
 
     // Fired by the Provider
-
     on(event: Events.PortalConnectSigningRequested.rawValue) { payload in
       self.emit(event: Events.PortalSigningRequested.rawValue, data: payload)
     }
 
     // Fired by SDK Consumers
-
     on(event: Events.PortalSigningApproved.rawValue) { payload in
-      _ = self.portal.provider.emit(event: Events.PortalSigningApproved.rawValue, data: payload)
+      _ = self.provider.emit(event: Events.PortalSigningApproved.rawValue, data: payload)
     }
 
     on(event: Events.PortalSigningRejected.rawValue) { payload in
-      _ = self.portal.provider.emit(event: Events.PortalSigningRejected.rawValue, data: payload)
+      _ = self.provider.emit(event: Events.PortalSigningRejected.rawValue, data: payload)
     }
   }
 
   deinit {
-    client.sendFinalMessageAndDisconnect()
+    client?.sendFinalMessageAndDisconnect()
   }
 
   public func connect(_ uri: String) {
+    if client == nil {
+      client = WebSocketClient(apiKey: apiKey, connect: self, webSocketServer: webSocketServer)
+    }
+
     self.uri = uri
 
-    client.resetEventBus()
+    client?.resetEventBus()
 
-    client.on("close", handleClose)
-    client.on("portal_dappSessionRequested", handleDappSessionRequested)
-    client.on("portal_dappSessionRequestedV1", handleDappSessionRequestedV1)
-    client.on("connected", handleConnected)
-    client.on("connectedV1", handleConnectedV1)
-    client.on("disconnected", handleDisconnected)
-    client.on("error", handleError)
-    client.on("session_request", handleSessionRequest)
-    client.on("session_request_address", handleSessionRequestAddress)
-    client.on("session_request_transaction", handleSessionRequestTransaction)
+    client?.on("close", handleClose)
+    client?.on("portal_dappSessionRequested", handleDappSessionRequested)
+    client?.on("portal_dappSessionRequestedV1", handleDappSessionRequestedV1)
+    client?.on("connected", handleConnected)
+    client?.on("connectedV1", handleConnectedV1)
+    client?.on("disconnected", handleDisconnected)
+    client?.on("error", handleError)
+    client?.on("session_request", handleSessionRequest)
+    client?.on("session_request_address", handleSessionRequestAddress)
+    client?.on("session_request_transaction", handleSessionRequestTransaction)
 
-    client.connect(uri: uri)
+    client?.connect(uri: uri)
   }
 
   public func disconnect(_ userInitiated: Bool = false) {
-    client.disconnect(userInitiated)
+    client?.disconnect(userInitiated)
   }
 
   func handleDappSessionRequested(data: ConnectData) {
@@ -102,7 +133,7 @@ public class PortalConnect: EventBus {
           id: data.id,
           topic: data.topic,
           address: self.address!,
-          chainId: String(self.portal.chainId),
+          chainId: String(chainId),
           params: data.params
         )
       )
@@ -110,7 +141,7 @@ public class PortalConnect: EventBus {
       do {
         let message = try JSONEncoder().encode(event)
 
-        self.client.send(message)
+        self.client?.send(message)
       } catch {
         print("[PortalConnect] Error encoding DappSessionRequestApprovedMessage: \(error)")
       }
@@ -126,14 +157,14 @@ public class PortalConnect: EventBus {
           id: data.id,
           topic: data.topic,
           address: self.address!,
-          chainId: String(self.portal.chainId),
+          chainId: String(chainId),
           params: data.params
         )
       )
 
       do {
         let message = try JSONEncoder().encode(event)
-        self.client.send(message)
+        self.client?.send(message)
       } catch {
         print("[PortalConnect] Error encoding DappSessionRequestRejectedMessage: \(error)")
       }
@@ -153,13 +184,13 @@ public class PortalConnect: EventBus {
           id: data.id,
           topic: data.topic,
           address: self.address!,
-          chainId: String(self.portal.chainId)
+          chainId: String(chainId)
         )
       )
 
       do {
         let message = try JSONEncoder().encode(event)
-        self.client.send(message)
+        self.client?.send(message)
       } catch {
         print("[PortalConnect] Error encoding DappSessionRequestApprovedMessage: \(error)")
       }
@@ -175,13 +206,13 @@ public class PortalConnect: EventBus {
           id: data.id,
           topic: data.topic,
           address: self.address!,
-          chainId: String(self.portal.chainId)
+          chainId: String(chainId)
         )
       )
 
       do {
         let message = try JSONEncoder().encode(event)
-        self.client.send(message)
+        self.client?.send(message)
       } catch {
         print("[PortalConnect] Error encoding DappSessionRequestRejectedMessage: \(error)")
       }
@@ -193,15 +224,15 @@ public class PortalConnect: EventBus {
   func handleClose() {
     connected = false
     topic = nil
-    client.topic = nil
+    client?.topic = nil
 
-    client.close()
+    client?.close()
   }
 
   func handleConnected(data: ConnectedData) {
     connected = true
     topic = data.topic
-    client.topic = data.topic
+    client?.topic = data.topic
 
     emit(event: Events.Connect.rawValue, data: data)
   }
@@ -209,7 +240,7 @@ public class PortalConnect: EventBus {
   func handleConnectedV1(data: ConnectedV1Data) {
     connected = true
     topic = data.topic
-    client.topic = data.topic
+    client?.topic = data.topic
 
     emit(event: Events.Connect.rawValue, data: data)
   }
@@ -217,9 +248,9 @@ public class PortalConnect: EventBus {
   func handleDisconnected(data: DisconnectData) {
     connected = false
     topic = nil
-    client.topic = nil
+    client?.topic = nil
 
-    client.close()
+    client?.close()
     emit(event: Events.Disconnect.rawValue, data: data)
   }
 
@@ -249,7 +280,7 @@ public class PortalConnect: EventBus {
 
       do {
         let message = try JSONEncoder().encode(event)
-        self.client.send(message)
+        self.client?.send(message)
       } catch {
         print("[PortalConnect] Error encoding SignatureReceivedMessage: \(error)")
       }
@@ -276,7 +307,7 @@ public class PortalConnect: EventBus {
 
       do {
         let message = try JSONEncoder().encode(event)
-        self.client.send(message)
+        self.client?.send(message)
 
         // emit the PortalSignatureReceived event on the PortalConnect EventBus as a convenience
         if signMethods.contains(method) {
@@ -310,7 +341,7 @@ public class PortalConnect: EventBus {
 
       do {
         let message = try JSONEncoder().encode(event)
-        self.client.send(message)
+        self.client?.send(message)
       } catch {
         print("[PortalConnect] Error encoding SignatureReceivedMessage: \(error)")
       }
@@ -336,7 +367,7 @@ public class PortalConnect: EventBus {
 
       do {
         let message = try JSONEncoder().encode(event)
-        self.client.send(message)
+        self.client?.send(message)
 
         // emit the PortalSignatureReceived event on the PortalConnect EventBus as a convenience
         if signMethods.contains(method) {
@@ -370,7 +401,7 @@ public class PortalConnect: EventBus {
 
       do {
         let message = try JSONEncoder().encode(event)
-        self.client.send(message)
+        self.client?.send(message)
       } catch {
         print("[PortalConnect] Error encoding SignatureReceivedMessage: \(error)")
       }
@@ -397,7 +428,7 @@ public class PortalConnect: EventBus {
       do {
         let message = try JSONEncoder().encode(event)
 
-        self.client.send(message)
+        self.client?.send(message)
 
         // emit the PortalSignatureReceived event on the PortalConnect EventBus as a convenience
         if signMethods.contains(method) {
@@ -410,11 +441,11 @@ public class PortalConnect: EventBus {
   }
 
   public func viewWillDisappear() {
-    client.sendFinalMessageAndDisconnect()
+    client?.sendFinalMessageAndDisconnect()
   }
 
   private func handleProviderRequest(method: String, params: [ETHAddressParam], completion: @escaping (Result<Any>) -> Void) {
-    portal.provider.request(payload: ETHAddressPayload(method: method, params: params), connect: self) { result in
+    provider.request(payload: ETHAddressPayload(method: method, params: params), connect: self) { result in
       guard result.error == nil else {
         return completion(Result(error: result.error!))
       }
@@ -423,7 +454,7 @@ public class PortalConnect: EventBus {
   }
 
   private func handleProviderRequest(method: String, params: [ETHTransactionParam], completion: @escaping (Result<Any>) -> Void) {
-    portal.provider.request(payload: ETHTransactionPayload(method: method, params: params), connect: self) { (result: Result<TransactionCompletionResult>) in
+    provider.request(payload: ETHTransactionPayload(method: method, params: params), connect: self) { (result: Result<TransactionCompletionResult>) in
       guard result.error == nil else {
         return completion(Result(error: result.error!))
       }
@@ -432,7 +463,7 @@ public class PortalConnect: EventBus {
   }
 
   private func handleProviderRequest(method: String, params: [Any], completion: @escaping (Result<Any>) -> Void) {
-    portal.provider.request(payload: ETHRequestPayload(method: method, params: params), connect: self) { result in
+    provider.request(payload: ETHRequestPayload(method: method, params: params), connect: self) { result in
       guard result.error == nil else {
         return completion(Result(error: result.error!))
       }

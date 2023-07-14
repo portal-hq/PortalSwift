@@ -6,15 +6,17 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
-import XCTest
 @testable import PortalSwift
+import XCTest
 
 final class ICloudStorageTests: XCTestCase {
   var storage: ICloudStorage?
 
   override func setUpWithError() throws {
+    let provider = try MockPortalProvider(apiKey: "", chainId: 5, gatewayConfig: [5: "https://example.com"], keychain: MockPortalKeychain(), autoApprove: true)
+
     storage = ICloudStorage()
-    storage?.api = MockPortalApi(address:"", apiKey: "", chainId: 5)
+    storage?.api = MockPortalApi(apiKey: "", apiHost: "", provider: provider)
   }
 
   override func tearDownWithError() throws {
@@ -25,18 +27,18 @@ final class ICloudStorageTests: XCTestCase {
     let expectation = XCTestExpectation(description: "Delete")
     let privateKey = "privateKey"
 
-    storage!.write(privateKey: privateKey) { (result: Result<Bool>) -> Void in
-      if (result.error != nil) {
+    storage!.write(privateKey: privateKey) { (result: Result<Bool>) in
+      if result.error != nil {
         XCTFail("Failed to write private key to storage. Make sure you are signed into iCloud on your simulator before running tests.")
       }
 
-      self.storage!.read() { (result: Result<String>) -> Void in
+      self.storage!.read { (result: Result<String>) in
         XCTAssert(result.data! == privateKey)
 
-        self.storage!.delete() { (result: Result<Bool>) -> Void in
+        self.storage!.delete { (result: Result<Bool>) in
           XCTAssert(result.data! == true)
 
-          self.storage!.read() { (result: Result<String>) -> Void in
+          self.storage!.read { (result: Result<String>) in
             XCTAssert(result.data! == "")
             expectation.fulfill()
           }
@@ -50,7 +52,7 @@ final class ICloudStorageTests: XCTestCase {
   func testRead() throws {
     let expectation = XCTestExpectation(description: "Read")
 
-    storage!.read() { (result: Result<String>) -> Void in
+    storage!.read { (result: Result<String>) in
       XCTAssert(result.data! == "")
       expectation.fulfill()
     }
@@ -62,10 +64,10 @@ final class ICloudStorageTests: XCTestCase {
     let expectation = XCTestExpectation(description: "Write")
     let privateKey = "privateKey"
 
-    storage!.write(privateKey: privateKey) { (result: Result<Bool>) -> Void in
+    storage!.write(privateKey: privateKey) { (result: Result<Bool>) in
       XCTAssert(result.data! == true)
 
-      self.storage!.read() { (result: Result<String>) -> Void in
+      self.storage!.read { (result: Result<String>) in
         XCTAssert(result.data! == privateKey)
         expectation.fulfill()
       }

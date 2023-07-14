@@ -50,14 +50,18 @@ class ConnectViewController: UIViewController {
     let LOCAL_CONNECT_SERVER_URL = "localhost:3003"
     let CONNECT_URL = ENV == "prod" ? PROD_CONNECT_SERVER_URL : ENV == "staging" ? STAGING_CONNECT_SERVER_URL : LOCAL_CONNECT_SERVER_URL
 
-    connect = PortalConnect(portal!, CONNECT_URL)
-    connect2 = PortalConnect(portal!, CONNECT_URL)
+    do {
+      connect = try portal!.createPortalConnectInstance(webSocketServer: CONNECT_URL)
+      connect2 = try portal!.createPortalConnectInstance(webSocketServer: CONNECT_URL)
 
-    app.connect = connect
-    app.connect2 = connect2
+      app.connect = connect
+      app.connect2 = connect2
 
-    initPortalConnect(portalConnect: connect!, button: connectButton, label: "connect1")
-    initPortalConnect(portalConnect: connect2!, button: connectButton2, label: "connect2", autoApprove: false)
+      initPortalConnect(portalConnect: connect!, button: connectButton, label: "connect1")
+      initPortalConnect(portalConnect: connect2!, button: connectButton2, label: "connect2", autoApprove: false)
+    } catch {
+      print("[ConnectViewController] Unable to create PortalConnect instances \(error)")
+    }
   }
 
   func initPortalConnect(portalConnect: PortalConnect, button: UIButton, label: String, autoApprove: Bool = true) {

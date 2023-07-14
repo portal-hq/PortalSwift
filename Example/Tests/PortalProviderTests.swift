@@ -6,8 +6,8 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
-import XCTest
 @testable import PortalSwift
+import XCTest
 
 final class PortalProviderTests: XCTestCase {
   var provider: PortalProvider?
@@ -17,10 +17,10 @@ final class PortalProviderTests: XCTestCase {
     provider = try PortalProvider(
       apiKey: "test",
       chainId: 5,
-      gatewayUrl: "test",
+      gatewayConfig: [5: "test"],
       keychain: MockPortalKeychain(),
-      apiHost: "test",
-      autoApprove: true
+      autoApprove: true,
+      apiHost: "test"
     )
   }
 
@@ -54,7 +54,7 @@ final class PortalProviderTests: XCTestCase {
   }
 
   func testGetApiKey() throws {
-    let apiKey = provider!.getApiKey()
+    let apiKey = provider!.apiKey
     XCTAssertEqual(apiKey, "test")
   }
 
@@ -97,7 +97,7 @@ final class PortalProviderTests: XCTestCase {
     let expectation = XCTestExpectation(description: "testEmit")
 
     // Listen for the event.
-    let _ = provider!.on(event: "test-remove", callback: { data in
+    let _ = provider!.on(event: "test-remove", callback: { _ in
       // Expect not to be called.
       XCTFail()
     })
@@ -126,13 +126,8 @@ final class PortalProviderTests: XCTestCase {
     wait(for: [expectation], timeout: 5.0)
   }
 
-  func testSetAddress() throws {
-    let _ = provider!.setAddress(value: "test")
-    XCTAssert(true)
-  }
-
   func testSetChainId() throws {
-    let _ = provider!.setChainId(value: 5)
+    let _ = try provider!.setChainId(value: 5)
     XCTAssertEqual(provider!.chainId, 5)
   }
 }

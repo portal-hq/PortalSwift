@@ -46,8 +46,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate, PortalExampleAppDelegate 
       connect != nil
       && ((connect?.connected) != nil)
       && connect?.client != nil
-      && connect?.client.isConnected != nil
-      && !(connect?.client.isConnected)!
+      && connect?.client?.isConnected != nil
+      && !(connect?.client?.isConnected)!
       && connect?.uri != nil
     {
       let uri = connect?.uri ?? nil
@@ -60,8 +60,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate, PortalExampleAppDelegate 
       connect2 != nil
       && ((connect2?.connected) != nil)
       && connect2?.client != nil
-      && connect2?.client.isConnected != nil
-      && !(connect2?.client.isConnected)!
+      && connect2?.client?.isConnected != nil
+      && !(connect2?.client?.isConnected)!
     {
       let uri = connect2?.uri ?? nil
       if uri != nil {

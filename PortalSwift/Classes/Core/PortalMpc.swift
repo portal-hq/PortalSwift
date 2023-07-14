@@ -173,19 +173,32 @@ public enum RsaError: Error {
 
 /// The main interface with Portal's MPC service.
 public class PortalMpc {
-  private var address: String?
-  private var apiKey: String
-  private var chainId: Int
-  private var mpcHost: String
-  private var isSimulator: Bool
-  private var keychain: PortalKeychain
-  private var gatewayUrl: String
-  private var portal: Portal?
-  private var storage: BackupOptions
-  private var api: PortalApi
-  private var version: String
-  private var rsaHeader = "-----BEGIN RSA KEY-----\n"
-  private var rsaFooter = "\n-----END RSA KEY-----"
+  private var address: String? {
+    do {
+      return try keychain.getAddress()
+    } catch {
+      return nil
+    }
+  }
+
+  private let api: PortalApi
+  private let apiKey: String
+  private let host: String
+  private let isSimulator: Bool
+  private let keychain: PortalKeychain
+  private var signingShare: String? {
+    do {
+      return try keychain.getSigningShare()
+    } catch {
+      return nil
+    }
+  }
+
+  private let storage: BackupOptions
+  private let version: String
+
+  private let rsaHeader = "-----BEGIN RSA KEY-----\n"
+  private let rsaFooter = "\n-----END RSA KEY-----"
   private var isWalletModificationInProgress: Bool = false
 
   /// Create an instance of Portal's MPC service.
@@ -199,59 +212,27 @@ public class PortalMpc {
   ///   - mpcHost: The hostname for Portal's MPC service.
   public init(
     apiKey: String,
-    chainId: Int,
+    api: PortalApi,
     keychain: PortalKeychain,
     storage: BackupOptions,
-    gatewayUrl: String,
-    api: PortalApi,
     isSimulator: Bool = false,
-    mpcHost: String = "mpc.portalhq.io",
+    host: String = "mpc.portalhq.io",
     version: String = "v4"
   ) {
     // Basic setup
+    self.api = api
     self.apiKey = apiKey
-    self.chainId = chainId
-    self.gatewayUrl = gatewayUrl
+    self.host = host
     self.keychain = keychain
     self.storage = storage
-    self.api = api
     self.version = version
 
     // Other stuff
     self.isSimulator = isSimulator
-    self.mpcHost = mpcHost
-
-    // Attempt to get the address
-    do {
-      address = try self.keychain.getAddress()
-    } catch {
-      address = nil
-    }
-  }
-
-  // Setters
-  public func setAddress(address: String) {
-    self.address = address
   }
 
   public func getBinaryVersion() -> String {
     return MobileGetVersion()
-  }
-
-  public func setChainId(chainId: Int) {
-    self.chainId = chainId
-  }
-
-  public func setGatewayUrl(gatewayUrl: String) {
-    self.gatewayUrl = gatewayUrl
-  }
-
-  public func getAddress() -> String {
-    do {
-      return try keychain.getAddress()
-    } catch {
-      return ""
-    }
   }
 
   /// Creates a backup share, encrypts it, and stores the private key in cloud storage.
@@ -385,7 +366,7 @@ public class PortalMpc {
         do {
           // Call the MPC service to generate a new wallet.
           progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
-          let response = MobileGenerate(self.apiKey, self.mpcHost, self.version)
+          let response = MobileGenerate(self.apiKey, self.host, self.version)
 
           // Parse the share
           progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
@@ -415,9 +396,6 @@ public class PortalMpc {
               self.isWalletModificationInProgress = false
               return completion(Result(error: result.error!))
             }
-
-            // Assign the address to the class.
-            self.address = address
 
             self.keychain.setAddress(address: address) { result in
               // Handle errors
@@ -613,7 +591,7 @@ public class PortalMpc {
       // Call the MPC service to generate a backup share.
       progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
 
-      let response = MobileBackup(apiKey, mpcHost, signingShare, version)
+      let response = MobileBackup(apiKey, host, signingShare, version)
 
       // Parse the backup share.
       progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
@@ -767,7 +745,7 @@ public class PortalMpc {
       progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
 
       // Call the MPC service to recover the backup share.
-      let result = MobileRecoverBackup(apiKey, mpcHost, clientBackupShare, version)
+      let result = MobileRecoverBackup(apiKey, host, clientBackupShare, version)
 
       progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
       let rotateResult: RotateResult = try JSONDecoder().decode(RotateResult.self, from: result.data(using: .utf8)!)
@@ -796,7 +774,7 @@ public class PortalMpc {
     do {
       progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
       // Call the MPC service to recover the signing share.
-      let result = MobileRecoverSigning(apiKey, mpcHost, backupShare, version)
+      let result = MobileRecoverSigning(apiKey, host, backupShare, version)
 
       progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
       let rotateResult = try JSONDecoder().decode(RotateResult.self, from: result.data(using: .utf8)!)
@@ -826,8 +804,6 @@ public class PortalMpc {
           if result.error != nil {
             return completion(Result(error: result.error!))
           }
-
-          self.address = rotateResult.data!.address
 
           do {
             try self.api.storedClientSigningShare(recoverSigning: true) { result in
