@@ -6,11 +6,19 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
+import PortalSwift
 import UIKit
 
+protocol PortalExampleAppDelegate {
+  var connect: PortalConnect? { get set }
+  var connect2: PortalConnect? { get set }
+}
+
 @UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate {
+class AppDelegate: UIResponder, UIApplicationDelegate, PortalExampleAppDelegate {
   var window: UIWindow?
+  var connect: PortalConnect?
+  var connect2: PortalConnect?
 
   func application(_: UIApplication, didFinishLaunchingWithOptions _: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
     // Override point for customization after application launch.
@@ -25,6 +33,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
   func applicationDidEnterBackground(_: UIApplication) {
     // Use this method to release shared resources, save user data, invalidate timers, and store enough application state information to restore your application to its current state in case it is terminated later.
     // If your application supports background execution, this method is called instead of applicationWillTerminate: when the user quits.
+    print("application entered background...")
   }
 
   func applicationWillEnterForeground(_: UIApplication) {
@@ -33,6 +42,26 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
   func applicationDidBecomeActive(_: UIApplication) {
     // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
+    print("Application is now active...")
+    if
+      connect != nil
+    {
+      print("reconnecting connect 1...")
+      let uri = connect?.uri ?? nil
+      if uri != nil {
+        connect?.connect(uri! as String)
+      }
+    }
+
+    if
+      connect2 != nil
+    {
+      print("reconnecting connect 2...")
+      let uri = connect2?.uri ?? nil
+      if uri != nil {
+        connect2?.connect(uri! as String)
+      }
+    }
   }
 
   func applicationWillTerminate(_: UIApplication) {

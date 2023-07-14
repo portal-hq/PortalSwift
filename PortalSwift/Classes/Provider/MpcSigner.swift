@@ -19,16 +19,26 @@ public struct SignerResult: Codable {
 }
 
 class MpcSigner {
-  public var address: String?
-  public var keychain: PortalKeychain
-  private var mpcUrl: String
-  private var version: String
+  private var address: String? {
+    do {
+      return try keychain.getAddress()
+    } catch {
+      return nil
+    }
+  }
+
+  private let apiKey: String
+  private let keychain: PortalKeychain
+  private let mpcUrl: String
+  private let version: String
 
   init(
+    apiKey: String,
     keychain: PortalKeychain,
     mpcUrl: String = "mpc.portalhq.io",
     version: String = "v4"
   ) {
+    self.apiKey = apiKey
     self.keychain = keychain
     self.mpcUrl = mpcUrl
     self.version = version
@@ -55,7 +65,7 @@ class MpcSigner {
       let signingShare = try keychain.getSigningShare()
       let formattedParams = try formatParams(payload: payload)
       let clientSignResult = MobileSign(
-        provider.getApiKey(),
+        apiKey,
         mpcUrl,
         signingShare,
         payload.method,
@@ -94,7 +104,7 @@ class MpcSigner {
     var clientSignResult = mockClientSignResult
     if !mockClientSign {
       clientSignResult = MobileSign(
-        provider.getApiKey(),
+        apiKey,
         mpcUrl,
         signingShare,
         payload.method,
