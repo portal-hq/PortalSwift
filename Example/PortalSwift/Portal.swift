@@ -157,7 +157,7 @@ class PortalWrapper {
   }
 
   func generate(completion: @escaping (Result<String>) -> Void) {
-    portal?.mpc.generate { addressResult in
+    portal?.createWallet { addressResult in
       guard addressResult.error == nil else {
         return completion(Result(error: addressResult.error!))
       }
@@ -169,7 +169,7 @@ class PortalWrapper {
   }
 
   func backup(backupMethod: BackupMethods.RawValue, user: UserResult, completion: @escaping (Result<Bool>) -> Void) {
-    portal?.mpc.backup(method: backupMethod) { (result: Result<String>) in
+    portal?.backupWallet(method: backupMethod) { (result: Result<String>) in
       guard result.error == nil else {
         return completion(Result(error: result.error!))
       }
@@ -206,7 +206,7 @@ class PortalWrapper {
 
       let cipherText = result.data!.cipherText
 
-      self.portal?.mpc.recover(cipherText: cipherText, method: backupMethod) { (result: Result<String>) in
+      self.portal?.recoverWallet(cipherText: cipherText, method: backupMethod) { (result: Result<String>) in
         guard result.error == nil else {
           print("❌ handleRecover(): Error fetching cipherText:", result.error!)
           return completion(Result(error: result.error!))

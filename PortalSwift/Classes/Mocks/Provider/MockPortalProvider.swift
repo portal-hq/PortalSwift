@@ -13,10 +13,6 @@ public class MockPortalProvider: PortalProvider {
     return self
   }
 
-  override public func getApiKey() -> String {
-    return "mockApiKey"
-  }
-
   override public func on(
     event _: Events.RawValue,
     callback _: @escaping (_ data: Any) -> Void
@@ -85,8 +81,6 @@ public class MockPortalProvider: PortalProvider {
       )
     )
   }
-
-  override public func setAddress(value _: String) {}
 
   override public func setChainId(value _: Int) -> PortalProvider {
     return self
