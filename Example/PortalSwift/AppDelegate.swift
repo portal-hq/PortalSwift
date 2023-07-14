@@ -33,6 +33,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, PortalExampleAppDelegate 
   func applicationDidEnterBackground(_: UIApplication) {
     // Use this method to release shared resources, save user data, invalidate timers, and store enough application state information to restore your application to its current state in case it is terminated later.
     // If your application supports background execution, this method is called instead of applicationWillTerminate: when the user quits.
+    print("application entered background...")
   }
 
   func applicationWillEnterForeground(_: UIApplication) {
@@ -41,15 +42,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate, PortalExampleAppDelegate 
 
   func applicationDidBecomeActive(_: UIApplication) {
     // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
-
+    print("Application is now active...")
     if
       connect != nil
-      && ((connect?.connected) != nil)
-      && connect?.client != nil
-      && connect?.client?.isConnected != nil
-      && !(connect?.client?.isConnected)!
-      && connect?.uri != nil
     {
+      print("reconnecting connect 1...")
       let uri = connect?.uri ?? nil
       if uri != nil {
         connect?.connect(uri! as String)
@@ -58,14 +55,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate, PortalExampleAppDelegate 
 
     if
       connect2 != nil
-      && ((connect2?.connected) != nil)
-      && connect2?.client != nil
-      && connect2?.client?.isConnected != nil
-      && !(connect2?.client?.isConnected)!
     {
+      print("reconnecting connect 2...")
       let uri = connect2?.uri ?? nil
       if uri != nil {
-        connect?.connect(uri! as String)
+        connect2?.connect(uri! as String)
       }
     }
   }

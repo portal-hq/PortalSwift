@@ -53,7 +53,7 @@ class ConnectViewController: UIViewController {
     do {
       connect = try portal!.createPortalConnectInstance(webSocketServer: CONNECT_URL)
       connect2 = try portal!.createPortalConnectInstance(webSocketServer: CONNECT_URL)
-
+      
       app.connect = connect
       app.connect2 = connect2
 
@@ -78,7 +78,7 @@ class ConnectViewController: UIViewController {
     })
 
     portalConnect.on(event: Events.PortalSignatureReceived.rawValue) { (data: Any) in
-      let result = data as! RequestCompletionResult
+      let result = data
       print("[ConnectViewController] ✅ Received signature \(result) on \(label)")
     }
 

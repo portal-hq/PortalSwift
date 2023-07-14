@@ -34,6 +34,9 @@ public class PortalConnect: EventBus {
   private let webSocketServer: String
   private let provider: PortalProvider
   private var topic: String?
+  public var connectState: ConnectState {
+    return client.connectState
+  }
 
   public init(
     _ apiKey: String,
@@ -98,6 +101,14 @@ public class PortalConnect: EventBus {
   public func connect(_ uri: String) {
     if client == nil {
       client = WebSocketClient(apiKey: apiKey, connect: self, webSocketServer: webSocketServer)
+    }
+      
+    switch connectState {
+    case .connecting, .connected:
+      print("Connection is already in progress or established.")
+      return
+    case .disconnected:
+      break
     }
 
     self.uri = uri
