@@ -7,7 +7,7 @@
 
 import PortalSwift
 
-class ConnectViewController: UIViewController {
+class ConnectViewController: UIViewController, UITextFieldDelegate {
   public var portal: Portal?
   public var app: PortalExampleAppDelegate = UIApplication.shared.delegate as! PortalExampleAppDelegate
 
@@ -31,10 +31,13 @@ class ConnectViewController: UIViewController {
   override func viewDidLoad() {
     super.viewDidLoad()
 
-    connectButton.isEnabled = false
-    connectButton2.isEnabled = false
-    disconnectButton.isEnabled = false
-    disconnectButton2.isEnabled = false
+    self.addressTextInput.delegate = self
+    self.addressTextInput2.delegate = self
+
+    self.connectButton.isEnabled = false
+    self.connectButton2.isEnabled = false
+    self.disconnectButton.isEnabled = false
+    self.disconnectButton2.isEnabled = false
 
     guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
       print("Error loading env vars in connect")
@@ -51,17 +54,23 @@ class ConnectViewController: UIViewController {
     let CONNECT_URL = ENV == "prod" ? PROD_CONNECT_SERVER_URL : ENV == "staging" ? STAGING_CONNECT_SERVER_URL : LOCAL_CONNECT_SERVER_URL
 
     do {
-      connect = try portal!.createPortalConnectInstance(webSocketServer: CONNECT_URL)
-      connect2 = try portal!.createPortalConnectInstance(webSocketServer: CONNECT_URL)
+      self.connect = try self.portal!.createPortalConnectInstance(webSocketServer: CONNECT_URL)
+      self.connect2 = try self.portal!.createPortalConnectInstance(webSocketServer: CONNECT_URL)
 
-      app.connect = connect
-      app.connect2 = connect2
+      self.app.connect = self.connect
+      self.app.connect2 = self.connect2
 
-      initPortalConnect(portalConnect: connect!, button: connectButton, label: "connect1")
-      initPortalConnect(portalConnect: connect2!, button: connectButton2, label: "connect2", autoApprove: false)
+      self.initPortalConnect(portalConnect: self.connect!, button: self.connectButton, label: "connect1")
+      self.initPortalConnect(portalConnect: self.connect2!, button: self.connectButton2, label: "connect2", autoApprove: false)
     } catch {
       print("[ConnectViewController] Unable to create PortalConnect instances \(error)")
     }
+  }
+
+  func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+    textField.resignFirstResponder()
+    textField.endEditing(true)
+    return true
   }
 
   func initPortalConnect(portalConnect: PortalConnect, button: UIButton, label: String, autoApprove: Bool = true) {
@@ -111,20 +120,20 @@ class ConnectViewController: UIViewController {
       if autoApprove {
         portalConnect.emit(event: Events.PortalSigningApproved.rawValue, data: data)
       } else {
-        portalConnect.emit(event: Events.PortalSigningRejected.rawValue, data: data)
+        portalConnect.emit(event: Events.PortalSigningApproved.rawValue, data: data)
       }
     }
   }
 
   override func viewDidDisappear(_: Bool) {
     print("resetting event listeners")
-    connect = nil
-    connect2 = nil
+    self.connect = nil
+    self.connect2 = nil
   }
 
   override func viewWillDisappear(_: Bool) {
-    connect?.viewWillDisappear()
-    connect2?.viewWillDisappear()
+    self.connect?.viewWillDisappear()
+    self.connect2?.viewWillDisappear()
   }
 
   func didRequestApprovalDapps(portalConnect: PortalConnect, data: Any) {
@@ -161,44 +170,44 @@ class ConnectViewController: UIViewController {
 
   @IBAction func connectPressed() {
     print("Connect button pressed...")
-    let uri = addressTextInput.text
-    print("Attempting to connect to \(uri!) using \(connect!)")
-    connect?.connect(uri!)
+    let uri = self.addressTextInput.text
+    print("Attempting to connect to \(uri!) using \(self.connect!)")
+    self.connect?.connect(uri!)
   }
 
   @IBAction func connect2Pressed() {
     print("Connect button pressed...")
-    let uri = addressTextInput2.text
+    let uri = self.addressTextInput2.text
 
     print("URI2 Text: \(uri)")
 
-    print("Attempting to connect to \(uri!) using \(connect2!)")
-    connect2?.connect(uri!)
+    print("Attempting to connect to \(uri!) using \(self.connect2!)")
+    self.connect2?.connect(uri!)
   }
 
   @IBAction func disconnectPressed() {
     print("Disconnecting from connect1...")
-    connect?.disconnect(true)
+    self.connect?.disconnect(true)
   }
 
   @IBAction func disconnectPressed2() {
     print("Disconnecting from connect2...")
-    connect2?.disconnect(true)
+    self.connect2?.disconnect(true)
   }
 
   @IBAction func uriChanged(_: Any) {
-    let uri = addressTextInput.text
+    let uri = self.addressTextInput.text
 
-    connectButton.isEnabled =
+    self.connectButton.isEnabled =
       uri != nil
         && uri?.isEmpty == false
         && uri?.starts(with: "wc:") == true
   }
 
   @IBAction func uri2Changed(_: Any) {
-    let uri = addressTextInput2.text
+    let uri = self.addressTextInput2.text
 
-    connectButton2.isEnabled =
+    self.connectButton2.isEnabled =
       uri != nil
         && uri?.isEmpty == false
         && uri?.starts(with: "wc:") == true

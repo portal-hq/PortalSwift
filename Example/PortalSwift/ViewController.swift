@@ -30,7 +30,7 @@ struct ProviderAddressRequest {
   var skipLoggingResult: Bool
 }
 
-class ViewController: UIViewController {
+class ViewController: UIViewController, UITextFieldDelegate {
   // Static information
   @IBOutlet var addressInformation: UITextView!
   @IBOutlet var ethBalanceInformation: UITextView!
@@ -64,6 +64,11 @@ class ViewController: UIViewController {
 
   override func viewDidLoad() {
     super.viewDidLoad()
+
+    self.username.delegate = self
+    self.sendAddress.delegate = self
+    self.url.delegate = self
+
     let PROD_CUSTODIAN_SERVER_URL = "https://portalex-mpc.portalhq.io"
     let STAGING_CUSTODIAN_SERVER_URL = "https://staging-portalex-mpc-service.onrender.com"
     let PROD_API_URL = "api.portalhq.io"
@@ -80,13 +85,13 @@ class ViewController: UIViewController {
     }
     print("ENV in the view controller", ENV)
     if ENV == "prod" {
-      CUSTODIAN_SERVER_URL = PROD_CUSTODIAN_SERVER_URL
-      API_URL = PROD_API_URL
-      MPC_URL = PROD_MPC_URL
+      self.CUSTODIAN_SERVER_URL = PROD_CUSTODIAN_SERVER_URL
+      self.API_URL = PROD_API_URL
+      self.MPC_URL = PROD_MPC_URL
     } else {
-      CUSTODIAN_SERVER_URL = STAGING_CUSTODIAN_SERVER_URL
-      API_URL = STAGING_API_URL
-      MPC_URL = STAGING_MPC_URL
+      self.CUSTODIAN_SERVER_URL = STAGING_CUSTODIAN_SERVER_URL
+      self.API_URL = STAGING_API_URL
+      self.MPC_URL = STAGING_MPC_URL
     }
 
     DispatchQueue.main.async {
@@ -103,25 +108,32 @@ class ViewController: UIViewController {
     }
   }
 
+  func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+    textField.resignFirstResponder()
+    textField.endEditing(true)
+
+    return true
+  }
+
   override func didReceiveMemoryWarning() {
     super.didReceiveMemoryWarning()
   }
 
   override func prepare(for segue: UIStoryboardSegue, sender _: Any?) {
     if let connectViewController = segue.destination as? ConnectViewController {
-      connectViewController.portal = portal
+      connectViewController.portal = self.portal
     }
 
     if let webViewController = segue.destination as? WebViewController {
-      webViewController.portal = portal
-      webViewController.url = url.text
+      webViewController.portal = self.portal
+      webViewController.url = self.url.text
     }
   }
 
   @IBAction func handleSignIn(_: UIButton) {
-    print("signIn", PortalWrapper, PortalWrapper.signIn)
+    print("signIn", self.PortalWrapper, self.PortalWrapper.signIn)
 
-    PortalWrapper.signIn(username: username.text!) { (result: Result<UserResult>) in
+    self.PortalWrapper.signIn(username: self.username.text!) { (result: Result<UserResult>) in
       guard result.error == nil else {
         print(" ❌ handleSignIn(): Failed", result.error!)
         return
@@ -139,8 +151,8 @@ class ViewController: UIViewController {
   }
 
   @IBAction func handleSignup(_: UIButton) {
-    print("signUp", PortalWrapper, PortalWrapper.signUp)
-    PortalWrapper.signUp(username: username.text!) { (result: Result<UserResult>) in
+    print("signUp", self.PortalWrapper, self.PortalWrapper.signUp)
+    self.PortalWrapper.signUp(username: self.username.text!) { (result: Result<UserResult>) in
       guard result.error == nil else {
         print(" ❌ handleSignIn(): Failed", result.error!)
         return
@@ -158,9 +170,9 @@ class ViewController: UIViewController {
   }
 
   @IBAction func handleSignOut(_: UIButton) {
-    user = nil
-    addressInformation.text = "Address: N/A"
-    ethBalanceInformation.text = "ETH Balance: N/A"
+    self.user = nil
+    self.addressInformation.text = "Address: N/A"
+    self.ethBalanceInformation.text = "ETH Balance: N/A"
 
     DispatchQueue.main.async {
       self.logoutButton.isEnabled = false
@@ -168,7 +180,7 @@ class ViewController: UIViewController {
   }
 
   @IBAction func handleGenerate(_: UIButton!) {
-    PortalWrapper.generate { result in
+    self.PortalWrapper.generate { result in
       guard result.error == nil else {
         print("❌ handleGenerate():", result.error ?? "N/A")
         return
@@ -190,7 +202,7 @@ class ViewController: UIViewController {
   @IBAction func handleBackup(_: UIButton!) {
     print("Starting backup...")
     // PortalWrapper.backup(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user!) { (result) -> Void in
-    PortalWrapper.backup(backupMethod: BackupMethods.iCloud.rawValue, user: user!) { result in
+    self.PortalWrapper.backup(backupMethod: BackupMethods.iCloud.rawValue, user: self.user!) { result in
       guard result.error == nil else {
         print("❌ handleBackup():", result.error!)
 
@@ -225,7 +237,7 @@ class ViewController: UIViewController {
 
   @IBAction func handleRecover(_: UIButton!) {
     // PortalWrapper.recover(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user!) { (result) -> Void in
-    PortalWrapper.recover(backupMethod: BackupMethods.iCloud.rawValue, user: user!) { result in
+    self.PortalWrapper.recover(backupMethod: BackupMethods.iCloud.rawValue, user: self.user!) { result in
       guard result.error == nil else {
         print("❌ handleRecover(): Error fetching cipherText:", result.error!)
         do {
@@ -258,35 +270,35 @@ class ViewController: UIViewController {
   }
 
   @IBAction func sendPressed(_: UIButton!) {
-    handleSend()
+    self.handleSend()
   }
 
   @IBAction func usernameChanged(_: Any) {
-    let hasUsername = username.text?.count ?? 0 > 3
+    let hasUsername = self.username.text?.count ?? 0 > 3
 
-    signInButton.isEnabled = hasUsername
-    signUpButton.isEnabled = hasUsername
+    self.signInButton.isEnabled = hasUsername
+    self.signUpButton.isEnabled = hasUsername
   }
 
   @IBAction func testProviderRequests(_: UIButton!) {
     print("\n====================\nTesting provider methods\n====================")
-    testSignerRequests()
+    self.testSignerRequests()
     // testWalletRequests()
-    testOtherRequests()
-    testTransactionRequests()
+    self.testOtherRequests()
+    self.testTransactionRequests()
 //    testAddressRequests()
     print("====================\n[FINISHED] Testing provider methods\n====================\n")
   }
 
   @IBAction func handleDeleteKeychain(_: Any) {
-    deleteKeychain()
-    updateStaticContent()
+    self.deleteKeychain()
+    self.updateStaticContent()
   }
 
   func deleteKeychain() {
     do {
-      try portal?.deleteAddress()
-      try portal?.deleteSigningShare()
+      try self.portal?.deleteAddress()
+      try self.portal?.deleteSigningShare()
       print("✅ Deleted keychain")
     } catch {
       print("❌ Delete keychain error:", error)
@@ -294,16 +306,16 @@ class ViewController: UIViewController {
   }
 
   func updateStaticContent() {
-    populateAddressInformation()
-    retrieveNFTs()
-    getTransactions()
-    getBalances()
+    self.populateAddressInformation()
+    self.retrieveNFTs()
+    self.getTransactions()
+    self.getBalances()
 //     populateEthBalance()
   }
 
   func populateAddressInformation() {
     do {
-      let address = portal?.address
+      let address = self.portal?.address
       print("Address", address)
 
       DispatchQueue.main.async {
@@ -326,7 +338,7 @@ class ViewController: UIViewController {
 
   func retrieveNFTs() {
     do {
-      try portal?.api.getNFTs { results in
+      try self.portal?.api.getNFTs { results in
         guard results.error == nil else {
           print("❌ Unable to retrieve NFTs", results.error!)
           return
@@ -341,7 +353,7 @@ class ViewController: UIViewController {
 
   func getTransactions() {
     do {
-      try portal?.api.getTransactions { results in
+      try self.portal?.api.getTransactions { results in
         guard results.error == nil else {
           print("❌ Unable to get transactions", results.error!)
           return
@@ -356,7 +368,7 @@ class ViewController: UIViewController {
 
   func getBalances() {
     do {
-      try portal?.api.getBalances { results in
+      try self.portal?.api.getBalances { results in
         guard results.error == nil else {
           print("❌ Unable to get balances", results.error!)
           return
@@ -371,7 +383,7 @@ class ViewController: UIViewController {
 
   func populateEthBalance() {
     do {
-      let address = portal?.address
+      let address = self.portal?.address
       guard address != nil else {
         print("❌ populateEthBalance(): Error getting address")
         return
@@ -380,7 +392,7 @@ class ViewController: UIViewController {
         method: ETHRequestMethods.GetBalance.rawValue,
         params: [address!, "latest"]
       )
-      portal?.provider.request(payload: payload) {
+      self.portal?.provider.request(payload: payload) {
         (result: Result<RequestCompletionResult>) in
         guard result.error == nil else {
           print("❌ Error getting ETH balance:", result.error!)
@@ -402,7 +414,7 @@ class ViewController: UIViewController {
       method: ETHRequestMethods.GasPrice.rawValue,
       params: []
     )
-    portal?.provider.request(payload: payload) {
+    self.portal?.provider.request(payload: payload) {
       (result: Result<TransactionCompletionResult>) in
       guard result.error == nil else {
         print("❌ Error estimating gas:", result.error!)
@@ -424,7 +436,7 @@ class ViewController: UIViewController {
         params: [address!, "0xdeadbeef"]
       )
 
-      portal?.provider.request(payload: payload) {
+      self.portal?.provider.request(payload: payload) {
         (result: Result<RequestCompletionResult>) in
         guard result.error == nil else {
           print("❌ Error estimating gas:", result.error!)
@@ -441,12 +453,12 @@ class ViewController: UIViewController {
   func sendTransaction(ethEstimate: String) {
     let payload = ETHTransactionPayload(
       method: ETHRequestMethods.SendTransaction.rawValue,
-      params: [ETHTransactionParam(from: portal!.address!, to: sendAddress.text!, gas: ethEstimate, gasPrice: ethEstimate, value: "0x10", data: "")]
+      params: [ETHTransactionParam(from: self.portal!.address!, to: self.sendAddress.text!, gas: ethEstimate, gasPrice: ethEstimate, value: "0x10", data: "")]
       // Test EIP-1559 Transactions with these params
       // params: [ETHTransactionParam(from: portal!.mpc.getAddress(), to: sendAddress.text!,  gas:"0x5208", value: "0x10", data: "", maxPriorityFeePerGas: ethEstimate, maxFeePerGas: ethEstimate)]
     )
 
-    portal?.provider.request(payload: payload) {
+    self.portal?.provider.request(payload: payload) {
       (result: Result<TransactionCompletionResult>) in
       guard result.error == nil else {
         print("❌ Error sending transaction:", result.error!)
@@ -470,7 +482,7 @@ class ViewController: UIViewController {
       //        return  }
       //      let backup = BackupOptions(gdrive: GDriveStorage(clientID: GDRIVE_CLIENT_ID, viewController: self))
       let backup = BackupOptions(icloud: ICloudStorage())
-      PortalWrapper.registerPortal(apiKey: apiKey, backup: backup) { _ in
+      self.PortalWrapper.registerPortal(apiKey: apiKey, backup: backup) { _ in
         DispatchQueue.main.async {
           do {
             self.generateButton.isEnabled = true
@@ -499,7 +511,7 @@ class ViewController: UIViewController {
     )
 
     print("Starting to test method ", method, "...")
-    portal?.provider.request(payload: payload) { (result: Result<RequestCompletionResult>) in
+    self.portal?.provider.request(payload: payload) { (result: Result<RequestCompletionResult>) in
       guard result.error == nil else {
         print("❌ Error testing provider request:", method, "Error:", result.error!)
         completion(false)
@@ -536,7 +548,7 @@ class ViewController: UIViewController {
     )
 
     print("Starting to test method ", method, "...")
-    portal?.provider.request(payload: payload) { (result: Result<TransactionCompletionResult>) in
+    self.portal?.provider.request(payload: payload) { (result: Result<TransactionCompletionResult>) in
       guard result.error == nil else {
         print("❌ Error testing provider transaction request:", method, result.error!)
         completion(false)
@@ -560,7 +572,7 @@ class ViewController: UIViewController {
     )
 
     print("Starting to test method ", method, "...")
-    portal?.provider.request(payload: payload) { (result: Result<AddressCompletionResult>) in
+    self.portal?.provider.request(payload: payload) { (result: Result<AddressCompletionResult>) in
       guard result.error == nil else {
         print("❌ Error testing provider request:", method, result.error!)
         return
@@ -592,7 +604,7 @@ class ViewController: UIViewController {
       ]
 
       for request in signerRequests {
-        testProviderRequest(method: request.method, params: request.params) { (_: Bool) in
+        self.testProviderRequest(method: request.method, params: request.params) { (_: Bool) in
           // Do something
         }
       }
@@ -620,7 +632,7 @@ class ViewController: UIViewController {
     ]
 
     for request in walletRequests {
-      testProviderRequest(method: request.method, params: request.params) { (_: Bool) in
+      self.testProviderRequest(method: request.method, params: request.params) { (_: Bool) in
         // Do something
       }
     }
@@ -658,7 +670,7 @@ class ViewController: UIViewController {
       ]
 
       for request in otherRequests {
-        testProviderRequest(method: request.method, params: request.params) { (_: Bool) in
+        self.testProviderRequest(method: request.method, params: request.params) { (_: Bool) in
           // Do something
         }
       }
@@ -692,7 +704,7 @@ class ViewController: UIViewController {
       ]
 
       for request in requests {
-        testProviderTransactionRequest(method: request.method, params: request.params) { (_: Bool) in
+        self.testProviderTransactionRequest(method: request.method, params: request.params) { (_: Bool) in
           // Do something
         }
       }
@@ -704,7 +716,7 @@ class ViewController: UIViewController {
 
   func testUnsupportedRequests() {
     print("\nTesting Unsupported Methods:\n")
-    testUnsupportedSignerRequests()
+    self.testUnsupportedSignerRequests()
   }
 
   func testUnsupportedSignerRequests() {
@@ -720,7 +732,7 @@ class ViewController: UIViewController {
         return
       }
       for method in unsupportedSignerMethods {
-        testProviderRequest(method: method, params: [address!]) { (_: Bool) in
+        self.testProviderRequest(method: method, params: [address!]) { (_: Bool) in
           // Do something
         }
       }
