@@ -11,7 +11,7 @@ import Foundation
 public class PortalProvider {
   public var address: String? {
     do {
-      return try keychain.getAddress()
+      return try self.keychain.getAddress()
     } catch {
       return nil
     }
@@ -27,6 +27,8 @@ public class PortalProvider {
   private let gatewayConfig: [Int: String]
   private var keychain: PortalKeychain
   private var mpcQueue: DispatchQueue
+  private var processedRequestIds: [String] = []
+  private var processedSignatureIds: [String] = []
   private var portalApi: HttpRequester
   private let signer: MpcSigner
 
@@ -65,18 +67,18 @@ public class PortalProvider {
 
     // Other instance variables
     let apiUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
-    portalApi = HttpRequester(baseUrl: apiUrl)
+    self.portalApi = HttpRequester(baseUrl: apiUrl)
 
-    signer = MpcSigner(apiKey: apiKey, keychain: keychain, mpcUrl: mpcHost, version: version)
+    self.signer = MpcSigner(apiKey: apiKey, keychain: keychain, mpcUrl: mpcHost, version: version)
     // Create a serial dispatch queue with a unique label
-    mpcQueue = DispatchQueue.global(qos: .background)
+    self.mpcQueue = DispatchQueue.global(qos: .background)
 
     do {
-      gatewayUrl = try PortalProvider.getGatewayUrl(gatewayConfig: gatewayConfig, chainId: chainId)
-      gateway = HttpRequester(baseUrl: gatewayUrl)
+      self.gatewayUrl = try PortalProvider.getGatewayUrl(gatewayConfig: gatewayConfig, chainId: chainId)
+      self.gateway = HttpRequester(baseUrl: self.gatewayUrl)
     }
 
-    dispatchConnect()
+    self.dispatchConnect()
   }
 
   // ------ Public Functions
@@ -87,7 +89,7 @@ public class PortalProvider {
   ///   - data: The data to pass to registered event handlers.
   /// - Returns: The Portal Provider instance.
   public func emit(event: Events.RawValue, data: Any) -> PortalProvider {
-    let registeredEventHandlers = events[event]
+    let registeredEventHandlers = self.events[event]
 
     if registeredEventHandlers == nil {
       print(String(format: "[Portal] Could not find any bindings for event '%@'. Ignoring...", event))
@@ -103,7 +105,7 @@ public class PortalProvider {
       }
 
       // Remove once instances
-      events[event] = registeredEventHandlers?.filter(removeOnce)
+      self.events[event] = registeredEventHandlers?.filter(self.removeOnce)
 
       return self
     }
@@ -118,11 +120,11 @@ public class PortalProvider {
     event: Events.RawValue,
     callback: @escaping (_ data: Any) -> Void
   ) -> PortalProvider {
-    if events[event] == nil {
-      events[event] = []
+    if self.events[event] == nil {
+      self.events[event] = []
     }
 
-    events[event]?.append(RegisteredEventHandler(
+    self.events[event]?.append(RegisteredEventHandler(
       handler: callback,
       once: false
     ))
@@ -139,11 +141,11 @@ public class PortalProvider {
     event: Events.RawValue,
     callback: @escaping (_ data: Any) throws -> Void
   ) -> PortalProvider {
-    if events[event] == nil {
-      events[event] = []
+    if self.events[event] == nil {
+      self.events[event] = []
     }
 
-    events[event]?.append(RegisteredEventHandler(
+    self.events[event]?.append(RegisteredEventHandler(
       handler: callback,
       once: true
     ))
@@ -158,11 +160,11 @@ public class PortalProvider {
   public func removeListener(
     event: Events.RawValue
   ) -> PortalProvider {
-    if events[event] == nil {
+    if self.events[event] == nil {
       print(String(format: "[Portal] Could not find any bindings for event '%@'. Ignoring...", event))
     }
 
-    events[event] = nil
+    self.events[event] = nil
 
     return self
   }
@@ -183,8 +185,10 @@ public class PortalProvider {
     let payloadWithId = ETHRequestPayload(method: payload.method, params: payload.params, id: id)
 
     if !isSignerMethod, !payloadWithId.method.starts(with: "wallet_") {
-      handleGatewayRequest(payload: payloadWithId, connect: connect) { (method: String, params: [Any], result: Result<Any>, id: String) in
-        if id == payloadWithId.id {
+      self.handleGatewayRequest(payload: payloadWithId, connect: connect) { (method: String, params: [Any], result: Result<Any>, id: String) in
+        if id == payloadWithId.id, !self.processedSignatureIds.contains(id) {
+          self.processedSignatureIds.append(id)
+
           if result.data != nil {
             return completion(Result(data: RequestCompletionResult(method: method, params: params, result: result.data!, id: id)))
           } else {
@@ -193,8 +197,10 @@ public class PortalProvider {
         }
       }
     } else if isSignerMethod {
-      handleSigningRequest(payload: payloadWithId, connect: connect) { (result: Result<SignerResult>, id: String) in
-        if id == payloadWithId.id {
+      self.handleSigningRequest(payload: payloadWithId, connect: connect) { (result: Result<SignerResult>, id: String) in
+        if id == payloadWithId.id, !self.processedSignatureIds.contains(id) {
+          self.processedSignatureIds.append(id)
+
           guard result.error == nil else {
             return completion(Result(error: result.error!))
           }
@@ -235,9 +241,11 @@ public class PortalProvider {
     let payloadWithId = ETHTransactionPayload(method: payload.method, params: payload.params, id: id)
 
     if !isSignerMethod, !payloadWithId.method.starts(with: "wallet_") {
-      handleGatewayRequest(payload: payloadWithId, connect: connect) {
+      self.handleGatewayRequest(payload: payloadWithId, connect: connect) {
         (method: String, params: [ETHTransactionParam], result: Result<Any>, id: String) in
-        if id == payloadWithId.id {
+        if id == payloadWithId.id, !self.processedSignatureIds.contains(id) {
+          self.processedSignatureIds.append(id)
+
           guard result.error == nil else {
             return completion(Result(error: result.error!))
           }
@@ -247,8 +255,10 @@ public class PortalProvider {
         }
       }
     } else if isSignerMethod {
-      handleSigningRequest(payload: payloadWithId, connect: connect) { (result: Result<Any>, id: String) in
-        if id == payloadWithId.id {
+      self.handleSigningRequest(payload: payloadWithId, connect: connect) { (result: Result<Any>, id: String) in
+        if id == payloadWithId.id, !self.processedSignatureIds.contains(id) {
+          self.processedSignatureIds.append(id)
+
           guard result.error == nil else {
             return completion(Result(error: result.error!))
           }
@@ -289,9 +299,11 @@ public class PortalProvider {
     let payloadWithId = ETHAddressPayload(method: payload.method, params: payload.params, id: id)
 
     if !isSignerMethod, !payloadWithId.method.starts(with: "wallet_") {
-      handleGatewayRequest(payload: payloadWithId, connect: connect) {
+      self.handleGatewayRequest(payload: payloadWithId, connect: connect) {
         (method: String, params: [ETHAddressParam], result: Result<Any>, id: String) in
-        if id == payloadWithId.id {
+        if id == payloadWithId.id, !self.processedSignatureIds.contains(id) {
+          self.processedSignatureIds.append(id)
+
           if result.data != nil {
             return completion(Result(data: AddressCompletionResult(method: method, params: params, result: result.data!, id: id)))
           } else {
@@ -308,14 +320,14 @@ public class PortalProvider {
   /// - Parameter value: The chainId.
   /// - Returns: An instance of Portal Provider.
   public func setChainId(value: Int) throws -> PortalProvider {
-    chainId = value
+    self.chainId = value
     let hexChainId = String(format: "%02x", value)
 
-    let provider = emit(event: Events.ChainChanged.rawValue, data: ["chainId": hexChainId])
+    let provider = self.emit(event: Events.ChainChanged.rawValue, data: ["chainId": hexChainId])
 
     do {
-      let gatewayUrl = try PortalProvider.getGatewayUrl(gatewayConfig: gatewayConfig, chainId: value)
-      gateway = HttpRequester(baseUrl: gatewayUrl)
+      let gatewayUrl = try PortalProvider.getGatewayUrl(gatewayConfig: self.gatewayConfig, chainId: value)
+      self.gateway = HttpRequester(baseUrl: gatewayUrl)
     } catch {
       throw ProviderInvalidArgumentError.invalidGatewayUrl
     }
@@ -328,18 +340,20 @@ public class PortalProvider {
     completion: @escaping (Result<Bool>) -> Void,
     connect: PortalConnect? = nil
   ) {
-    if autoApprove {
+    if self.autoApprove {
       return completion(Result(data: true))
-    } else if connect == nil, events[Events.PortalSigningRequested.rawValue] == nil {
+    } else if connect == nil, self.events[Events.PortalSigningRequested.rawValue] == nil {
       return completion(Result(error: ProviderSigningError.noBindingForSigningApprovalFound))
     }
 
     // Bind to signing approval callbacks
-    _ = on(event: Events.PortalSigningApproved.rawValue, callback: { approved in
+    _ = self.on(event: Events.PortalSigningApproved.rawValue, callback: { approved in
       if approved is ETHRequestPayload {
         let approvedPayload = approved as! ETHRequestPayload
 
-        if approvedPayload.id == payload.id {
+        if approvedPayload.id == payload.id, !self.processedRequestIds.contains(payload.id!) {
+          self.processedRequestIds.append(payload.id!)
+
           // If the approved event is fired
           return completion(Result(data: true))
         }
@@ -348,7 +362,8 @@ public class PortalProvider {
       if approved is ETHRequestPayload {
         let rejectedPayload = approved as! ETHRequestPayload
 
-        if rejectedPayload.id == payload.id {
+        if rejectedPayload.id == payload.id, !self.processedRequestIds.contains(payload.id!) {
+          self.processedRequestIds.append(payload.id!)
           // If the rejected event is fired
           return completion(Result(data: false))
         }
@@ -359,7 +374,7 @@ public class PortalProvider {
       connect!.emit(event: Events.PortalConnectSigningRequested.rawValue, data: payload)
     } else {
       // Execute event handlers
-      let handlers = events[Events.PortalSigningRequested.rawValue]
+      let handlers = self.events[Events.PortalSigningRequested.rawValue]
 
       // Fail if there are no handlers
       if handlers == nil || handlers!.isEmpty {
@@ -382,18 +397,19 @@ public class PortalProvider {
     completion: @escaping (Result<Bool>) -> Void,
     connect: PortalConnect? = nil
   ) {
-    if autoApprove {
+    if self.autoApprove {
       return completion(Result(data: true))
-    } else if connect == nil, events[Events.PortalSigningRequested.rawValue] == nil {
+    } else if connect == nil, self.events[Events.PortalSigningRequested.rawValue] == nil {
       return completion(Result(error: ProviderSigningError.noBindingForSigningApprovalFound))
     }
 
     // Bind to signing approval callbacks
-    _ = on(event: Events.PortalSigningApproved.rawValue, callback: { approved in
+    _ = self.on(event: Events.PortalSigningApproved.rawValue, callback: { approved in
       if approved is ETHTransactionPayload {
         let approvedPayload = approved as! ETHTransactionPayload
 
-        if approvedPayload.id == payload.id {
+        if approvedPayload.id == payload.id, !self.processedRequestIds.contains(payload.id!) {
+          self.processedRequestIds.append(payload.id!)
           // If the approved event is fired
           return completion(Result(data: true))
         }
@@ -402,7 +418,8 @@ public class PortalProvider {
       if approved is ETHTransactionPayload {
         let rejectedPayload = approved as! ETHTransactionPayload
 
-        if rejectedPayload.id == payload.id {
+        if rejectedPayload.id == payload.id, !self.processedRequestIds.contains(payload.id!) {
+          self.processedRequestIds.append(payload.id!)
           // If the rejected event is fired
           return completion(Result(data: false))
         }
@@ -413,7 +430,7 @@ public class PortalProvider {
       connect!.emit(event: Events.PortalConnectSigningRequested.rawValue, data: payload)
     } else {
       // Execute event handlers
-      let handlers = events[Events.PortalSigningRequested.rawValue]
+      let handlers = self.events[Events.PortalSigningRequested.rawValue]
 
       // Fail if there are no handlers
       if handlers == nil || handlers!.isEmpty {
@@ -452,7 +469,7 @@ public class PortalProvider {
     ]
 
     do {
-      try gateway.post(
+      try self.gateway.post(
         path: "/",
         body: body,
         headers: ["Content-Type": "application/json"],
@@ -483,7 +500,7 @@ public class PortalProvider {
     ]
 
     do {
-      try gateway.post(
+      try self.gateway.post(
         path: "/",
         body: body,
         headers: ["Content-Type": "application/json"],
@@ -512,7 +529,7 @@ public class PortalProvider {
     ]
 
     do {
-      try gateway.post(
+      try self.gateway.post(
         path: "/",
         body: body,
         headers: ["Content-Type": "application/json"],
@@ -534,7 +551,7 @@ public class PortalProvider {
     completion: @escaping (Result<SignerResult>, String) -> Void,
     connect: PortalConnect? = nil
   ) {
-    getApproval(payload: payload, connect: connect) { result in
+    self.getApproval(payload: payload, connect: connect) { result in
       guard result.error == nil else {
         return completion(Result(error: result.error!), payload.id!)
       }
@@ -569,7 +586,7 @@ public class PortalProvider {
     completion: @escaping (Result<Any>, String) -> Void,
     connect: PortalConnect? = nil
   ) {
-    getApproval(payload: payload, connect: connect) { result in
+    self.getApproval(payload: payload, connect: connect) { result in
       guard result.error == nil else {
         return completion(Result(error: result.error!), payload.id!)
       }
@@ -605,7 +622,7 @@ public class PortalProvider {
 
   private func dispatchConnect() {
     let hexChainId = String(format: "%02x", chainId)
-    _ = emit(event: Events.Connect.rawValue, data: ["chainId": hexChainId])
+    _ = self.emit(event: Events.Connect.rawValue, data: ["chainId": hexChainId])
   }
 
   /// Determines the appropriate Gateway URL to use for the current chainId
