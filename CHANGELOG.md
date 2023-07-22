@@ -10,6 +10,11 @@ Possible Types of changes include:
 - Fixed
 - Security
 
+## 1.1.2 2023-06-11
+### Fixed
+- Multiple event listeners firing for a single `signingRequest`
+    - Only firing event handlers for that specific request and removing handlers for events that have already been fired
+
 ## 1.0.1 2023-06-11
 ### Added
 - Adds support for `connect.on('portal_dappSessionRequested', eventHandler)` event handlers to manage approval flows for Portal Connect sessions
