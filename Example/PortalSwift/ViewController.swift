@@ -47,6 +47,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var signUpButton: UIButton!
   @IBOutlet var testButton: UIButton!
   @IBOutlet var deleteKeychainButton: UIButton!
+  @IBOutlet var testNFTsTrxsBalancesButton: UIButton!
 
   // Send form
   @IBOutlet public var sendAddress: UITextField!
@@ -101,10 +102,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
       self.logoutButton.isEnabled = false
       self.portalConnectButton.isEnabled = false
       self.recoverButton.isEnabled = false
+      self.signButton.isEnabled = false
       self.signInButton.isEnabled = false
       self.signUpButton.isEnabled = false
       self.testButton.isEnabled = false
       self.deleteKeychainButton.isEnabled = false
+      self.testNFTsTrxsBalancesButton.isEnabled = false
+      self.sendButton.isEnabled = false
     }
   }
 
@@ -142,7 +146,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       self.user = result.data!
       self.registerPortalUi(apiKey: result.data!.clientApiKey)
       self.portal = self.PortalWrapper.portal
-      self.updateStaticContent()
+      self.populateAddressInformation()
 
       DispatchQueue.main.async {
         self.logoutButton.isEnabled = true
@@ -161,7 +165,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       self.user = result.data
       self.registerPortalUi(apiKey: result.data!.clientApiKey)
       self.portal = self.PortalWrapper.portal
-      self.updateStaticContent()
+      self.populateAddressInformation()
 
       DispatchQueue.main.async {
         self.logoutButton.isEnabled = true
@@ -186,7 +190,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         return
       }
       print("✅ handleGenerate(): Address:", result.data ?? "N/A")
-      self.updateStaticContent()
+      self.populateAddressInformation()
 
       DispatchQueue.main.async {
         self.backupButton.isEnabled = true
@@ -194,7 +198,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.portalConnectButton.isEnabled = true
         self.recoverButton.isEnabled = true
         self.testButton.isEnabled = true
+        self.signButton.isEnabled = true
         self.deleteKeychainButton.isEnabled = true
+        self.testNFTsTrxsBalancesButton.isEnabled = true
+        self.sendButton.isEnabled = true
       }
     }
   }
@@ -226,7 +233,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
             return
           }
 
-          self.updateStaticContent()
+          self.populateAddressInformation()
           print("✅ handleBackup(): Successfully sent custodian cipherText")
         }
       } catch {
@@ -260,7 +267,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
             return
           }
 
-          self.updateStaticContent()
+          self.populateAddressInformation()
           print("✅ handleRecover(): Successfully recovered")
         }
       } catch {
@@ -292,7 +299,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   @IBAction func handleDeleteKeychain(_: Any) {
     self.deleteKeychain()
-    self.updateStaticContent()
+    self.populateAddressInformation()
   }
 
   func deleteKeychain() {
@@ -305,12 +312,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  func updateStaticContent() {
-    self.populateAddressInformation()
+  @IBAction func fetchNFTsAndTrxsAndBalances() {
     self.retrieveNFTs()
     self.getTransactions()
     self.getBalances()
-//     populateEthBalance()
   }
 
   func populateAddressInformation() {
@@ -495,7 +500,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
             self.portalConnectButton.isEnabled = hasAddress
             self.recoverButton.isEnabled = hasAddress
             self.testButton.isEnabled = hasAddress
+            self.signButton.isEnabled = hasAddress
             self.deleteKeychainButton.isEnabled = hasAddress
+            self.testNFTsTrxsBalancesButton.isEnabled = hasAddress
+            self.sendButton.isEnabled = hasAddress
           } catch {
             print("Error fetching address: \(error)")
           }
