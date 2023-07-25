@@ -143,7 +143,10 @@ public enum MpcStatuses: String {
 public enum MpcError: Error {
   case addressNotFound(message: String)
   case backupNoLongerSupported(message: String)
+  case failedToEncryptClientBackupShare(error: any Error)
   case failedToGetBackupFromStorage
+  case failedToRecoverBackup(error: any Error)
+  case failedToStoreClientBackupShareKey(error: any Error)
   case generateNoLongerSupported(message: String)
   case noSigningSharePresent
   case recoverNoLongerSupported(message: String)
@@ -175,7 +178,7 @@ public enum RsaError: Error {
 public class PortalMpc {
   private var address: String? {
     do {
-      return try keychain.getAddress()
+      return try self.keychain.getAddress()
     } catch {
       return nil
     }
@@ -188,7 +191,7 @@ public class PortalMpc {
   private let keychain: PortalKeychain
   private var signingShare: String? {
     do {
-      return try keychain.getSigningShare()
+      return try self.keychain.getSigningShare()
     } catch {
       return nil
     }
@@ -240,16 +243,16 @@ public class PortalMpc {
   ///   - method: Either gdrive or icloud.
   ///   - completion: The callback which includes the cipherText of the backed up share.
   public func backup(method: BackupMethods.RawValue, completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)? = nil) {
-    if version != "v4" {
+    if self.version != "v4" {
       return completion(Result(error: MpcError.backupNoLongerSupported(message: "[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = v4`.")))
     }
 
-    guard !isWalletModificationInProgress else {
+    guard !self.isWalletModificationInProgress else {
       print("❌ A wallet modification operation is already in progress.")
       return completion(Result(error: MpcError.walletModificationAlreadyInProgress))
     }
 
-    isWalletModificationInProgress = true
+    self.isWalletModificationInProgress = true
 
     do {
       // Obtain the signing share.
@@ -259,7 +262,7 @@ public class PortalMpc {
       // Derive the storage and throw an error if none was provided.
       let storage = self.storage[method] as? Storage
       if storage == nil {
-        isWalletModificationInProgress = false
+        self.isWalletModificationInProgress = false
         return completion(Result(error: MpcError.unsupportedStorageMethod))
       }
 
@@ -314,7 +317,7 @@ public class PortalMpc {
         }
       } else if method == BackupMethods.local.rawValue {
         print("Starting backup...")
-        executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
+        self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
           if backupResult.error != nil {
             self.isWalletModificationInProgress = false
             return completion(Result(error: backupResult.error!))
@@ -326,11 +329,11 @@ public class PortalMpc {
           progress?(status)
         }
       } else {
-        isWalletModificationInProgress = false
+        self.isWalletModificationInProgress = false
         return completion(Result(error: MpcError.unsupportedStorageMethod))
       }
     } catch {
-      isWalletModificationInProgress = false
+      self.isWalletModificationInProgress = false
       return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: "Backup failed")))
     }
   }
@@ -339,14 +342,14 @@ public class PortalMpc {
   /// - Returns: The address of the newly created MPC wallet.
   public func generate(completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)? = nil) {
     DispatchQueue.global(qos: .background).async { [self] in
-      if version != "v4" {
+      if self.version != "v4" {
         let result = Result<String>(error: MpcError.generateNoLongerSupported(
           message: "[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = v4`."
         ))
         completion(result)
       }
 
-      guard !isWalletModificationInProgress else {
+      guard !self.isWalletModificationInProgress else {
         print("❌ A wallet modification operation is already in progress.")
         return completion(Result(error: MpcError.walletModificationAlreadyInProgress))
       }
@@ -354,7 +357,7 @@ public class PortalMpc {
       self.isWalletModificationInProgress = true
 
       print("Validating Keychain is available...")
-      keychain.validateOperations { result in
+      self.keychain.validateOperations { result in
         // Handle errors
         if result.error != nil {
           print("❌ Keychain is not available:")
@@ -443,26 +446,26 @@ public class PortalMpc {
     completion: @escaping (Result<String>) -> Void,
     progress: ((MpcStatus) -> Void)? = nil
   ) {
-    if version != "v4" {
+    if self.version != "v4" {
       return completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v4`.")))
     }
 
-    guard !isWalletModificationInProgress else {
+    guard !self.isWalletModificationInProgress else {
       print("❌ A wallet modification operation is already in progress.")
       return completion(Result(error: MpcError.walletModificationAlreadyInProgress))
     }
 
-    isWalletModificationInProgress = true
+    self.isWalletModificationInProgress = true
 
     // Derive the storage and throw an error if none was provided.
     let storage = self.storage[method] as? Storage
     if storage == nil {
-      isWalletModificationInProgress = false
+      self.isWalletModificationInProgress = false
       return completion(Result(error: MpcError.unsupportedStorageMethod))
     }
 
     print("Validating Keychain is available...")
-    keychain.validateOperations { result in
+    self.keychain.validateOperations { result in
       // Handle errors
       if result.error != nil {
         print("❌ Keychain is not available:")
@@ -608,7 +611,7 @@ public class PortalMpc {
       let backupShare = rotateResult.data!.dkgResult
 
       // Encrypt the backup share.
-      encryptShare(mpcShare: backupShare) { encryptedResult in
+      self.encryptShare(mpcShare: backupShare) { encryptedResult in
         if encryptedResult.error != nil {
           return completion(Result(error: encryptedResult.error!))
         }
@@ -642,7 +645,7 @@ public class PortalMpc {
     progress: ((MpcStatus) -> Void)? = nil
   ) {
     progress?(MpcStatus(status: MpcStatuses.readingShare, done: false))
-    getBackupShare(cipherText: cipherText, method: method) { (result: Result<String>) in
+    self.getBackupShare(cipherText: cipherText, method: method) { (result: Result<String>) in
       // Throw if there was an error getting the backup share.
       guard result.error == nil else {
         return completion(Result(error: result.error!))
@@ -658,15 +661,17 @@ public class PortalMpc {
 
         self.recoverBackup(clientBackupShare: result.data!) { backupResult in
           if backupResult.error != nil {
-            print("Signing shares were successfully recovered. Try running backup again.")
-            return completion(Result(error: backupResult.error!))
+            print("Signing shares were successfully replaced, but backup shares were not refreshed. Try running backup again with your new signing shares.")
+            print("Raw error: ", backupResult.error!)
+            return completion(Result(error: MpcError.failedToRecoverBackup(error: backupResult.error!)))
           }
 
           self.encryptShare(mpcShare: backupResult.data!) { encryptedResult in
             // Handle errors
             if encryptedResult.error != nil {
-              print("Signing shares were successfully recovered. Try running backup again.")
-              return completion(Result(error: encryptedResult.error!))
+              print("Signing shares were successfully replaced, but backup shares were not refreshed. Try running backup again with your new signing shares.")
+              print("Raw error: ", encryptedResult.error!)
+              return completion(Result(error: MpcError.failedToEncryptClientBackupShare(error: encryptedResult.error!)))
             }
 
             // Attempt to write the encrypted share to storage.
@@ -675,8 +680,9 @@ public class PortalMpc {
             storage.write(privateKey: encryptedResult.data!.key) { (result: Result<Bool>) in
               // Throw an error if we can't write to storage.
               if !result.data! {
-                print("Signing shares were successfully recovered. Try running backup again.")
-                return completion(Result(error: result.error!))
+                print("Signing shares were successfully replaced, but backup shares were not refreshed. Try running backup again with your new signing shares.")
+                print("Raw error: ", result.error!)
+                return completion(Result(error: MpcError.failedToStoreClientBackupShareKey(error: result.error!)))
               }
 
               // Return the cipherText.
@@ -793,7 +799,7 @@ public class PortalMpc {
       let encodedShare = try JSONEncoder().encode(rotateResult.data!.dkgResult)
       let shareString = String(data: encodedShare, encoding: .utf8)
 
-      keychain.setAddress(address: rotateResult.data!.address) { result in
+      self.keychain.setAddress(address: rotateResult.data!.address) { result in
         // Handle errors
         if result.error != nil {
           return completion(Result(error: result.error!))
