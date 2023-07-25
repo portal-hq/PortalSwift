@@ -20,7 +20,7 @@ public class ICloudStorage: Storage {
     case unknownError
   }
 
-  enum ICloudStatus: String {
+  public enum ICloudStatus: String {
     case available
     case notSignedIn
     case noAccess
