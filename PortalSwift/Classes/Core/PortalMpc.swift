@@ -143,10 +143,10 @@ public enum MpcStatuses: String {
 public enum MpcError: Error {
   case addressNotFound(message: String)
   case backupNoLongerSupported(message: String)
-  case failedToEncryptClientBackupShare(error: any Error)
+  case failedToEncryptClientBackupShare
   case failedToGetBackupFromStorage
-  case failedToRecoverBackup(error: any Error)
-  case failedToStoreClientBackupShareKey(error: any Error)
+  case failedToRecoverBackup
+  case failedToStoreClientBackupShareKey
   case generateNoLongerSupported(message: String)
   case noSigningSharePresent
   case recoverNoLongerSupported(message: String)
@@ -663,7 +663,7 @@ public class PortalMpc {
           if backupResult.error != nil {
             print("Signing shares were successfully replaced, but backup shares were not refreshed. Try running backup again with your new signing shares.")
             print("Raw error: ", backupResult.error!)
-            return completion(Result(error: MpcError.failedToRecoverBackup(error: backupResult.error!)))
+            return completion(Result(error: MpcError.failedToRecoverBackup))
           }
 
           self.encryptShare(mpcShare: backupResult.data!) { encryptedResult in
@@ -671,7 +671,7 @@ public class PortalMpc {
             if encryptedResult.error != nil {
               print("Signing shares were successfully replaced, but backup shares were not refreshed. Try running backup again with your new signing shares.")
               print("Raw error: ", encryptedResult.error!)
-              return completion(Result(error: MpcError.failedToEncryptClientBackupShare(error: encryptedResult.error!)))
+              return completion(Result(error: MpcError.failedToEncryptClientBackupShare))
             }
 
             // Attempt to write the encrypted share to storage.
@@ -682,7 +682,7 @@ public class PortalMpc {
               if !result.data! {
                 print("Signing shares were successfully replaced, but backup shares were not refreshed. Try running backup again with your new signing shares.")
                 print("Raw error: ", result.error!)
-                return completion(Result(error: MpcError.failedToStoreClientBackupShareKey(error: result.error!)))
+                return completion(Result(error: MpcError.failedToStoreClientBackupShareKey))
               }
 
               // Return the cipherText.
