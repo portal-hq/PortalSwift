@@ -10,7 +10,7 @@ import Foundation
 
 /// A storage class that uses iCloud's key-value store to store/retrieve private keys.
 public class ICloudStorage: Storage {
-  enum ICloudStorageError: Error {
+  public enum ICloudStorageError: Error {
     case noAPIKeyProvided(String)
     case noAccessToICloud(String)
     case notSignedIntoICloud(String)
@@ -20,7 +20,7 @@ public class ICloudStorage: Storage {
     case unknownError
   }
 
-  enum ICloudStatus: String {
+  public enum ICloudStatus: String {
     case available
     case notSignedIn
     case noAccess
@@ -40,7 +40,7 @@ public class ICloudStorage: Storage {
   /// - Parameter completion: Resolves as a Result which can include the private key stored in iCloud's key-value store.
   /// - Returns: Void
   override public func read(completion: @escaping (Result<String>) -> Void) {
-    getKey { (result: Result<String>) in
+    self.getKey { (result: Result<String>) in
       // Escape early if we can't get the key.
       if result.error != nil {
         completion(Result(error: result.error!))
@@ -59,7 +59,7 @@ public class ICloudStorage: Storage {
   ///   - completion: Resolves as a Result<Bool>.
   /// - Returns: Void
   override public func write(privateKey: String, completion: @escaping (Result<Bool>) -> Void) {
-    getKey { (result: Result<String>) in
+    self.getKey { (result: Result<String>) in
       // Escape early if we can't get the key.
       if result.error != nil {
         completion(Result(error: result.error!))
@@ -78,7 +78,7 @@ public class ICloudStorage: Storage {
   /// - Parameter completion: Resolves as a Result<Bool>.
   /// - Returns: Void
   override public func delete(completion: @escaping (Result<Bool>) -> Void) {
-    getKey { (result: Result<String>) in
+    self.getKey { (result: Result<String>) in
       // Escape early if we can't get the key.
       if result.error != nil {
         completion(Result(error: result.error!))
@@ -112,11 +112,11 @@ public class ICloudStorage: Storage {
     let testKey = "portal_test"
     let testValue = "test_value"
 
-    rawWrite(key: testKey, value: testValue)
+    self.rawWrite(key: testKey, value: testValue)
 
     if let readValue = rawRead(key: testKey), readValue == testValue {
-      rawDelete(key: testKey)
-      if rawRead(key: testKey) == nil {
+      self.rawDelete(key: testKey)
+      if self.rawRead(key: testKey) == nil {
         // Availability check succeeded.
         callback(Result(data: true))
       } else {
@@ -152,18 +152,18 @@ public class ICloudStorage: Storage {
   }
 
   private func getKey(completion: @escaping (Result<String>) -> Void) {
-    if key.count > 0 {
-      completion(Result(data: key))
+    if self.key.count > 0 {
+      completion(Result(data: self.key))
       return
     }
 
-    if api == nil {
+    if self.api == nil {
       completion(Result(error: ICloudStorageError.noAPIKeyProvided("No API key provided")))
       return
     }
 
     do {
-      try api!.getClient { (result: Result<Client>) in
+      try self.api!.getClient { (result: Result<Client>) in
         if result.error != nil {
           completion(Result(error: result.error!))
           return
