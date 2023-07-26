@@ -685,7 +685,7 @@ public class PortalMpc {
 
             storage.write(privateKey: encryptedResult.data!.key) { (result: Result<Bool>) in
               // Throw an error if we can't write to storage.
-              if !result.data! {
+              guard let data = result.data else {
                 print("Signing shares were successfully replaced, but backup shares were not refreshed. Try running backup again with your new signing shares.")
                 if let error = result.error {
                   return completion(Result(error: MpcError.failedToStoreClientBackupShareKey(message: error.localizedDescription)))
