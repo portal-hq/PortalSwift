@@ -143,10 +143,10 @@ public enum MpcStatuses: String {
 public enum MpcError: Error {
   case addressNotFound(message: String)
   case backupNoLongerSupported(message: String)
-  case failedToEncryptClientBackupShare
+  case failedToEncryptClientBackupShare(message: String)
   case failedToGetBackupFromStorage
-  case failedToRecoverBackup
-  case failedToStoreClientBackupShareKey
+  case failedToRecoverBackup(message: String)
+  case failedToStoreClientBackupShareKey(message: String)
   case generateNoLongerSupported(message: String)
   case noSigningSharePresent
   case recoverNoLongerSupported(message: String)
@@ -662,16 +662,22 @@ public class PortalMpc {
         self.recoverBackup(clientBackupShare: result.data!) { backupResult in
           if backupResult.error != nil {
             print("Signing shares were successfully replaced, but backup shares were not refreshed. Try running backup again with your new signing shares.")
-            print("Raw error: ", backupResult.error!)
-            return completion(Result(error: MpcError.failedToRecoverBackup))
+            if let error = backupResult.error {
+              return completion(Result(error: MpcError.failedToRecoverBackup(message: error.localizedDescription)))
+            } else {
+              return completion(Result(error: MpcError.failedToRecoverBackup(message: "")))
+            }
           }
 
           self.encryptShare(mpcShare: backupResult.data!) { encryptedResult in
             // Handle errors
             if encryptedResult.error != nil {
               print("Signing shares were successfully replaced, but backup shares were not refreshed. Try running backup again with your new signing shares.")
-              print("Raw error: ", encryptedResult.error!)
-              return completion(Result(error: MpcError.failedToEncryptClientBackupShare))
+              if let error = encryptedResult.error {
+                return completion(Result(error: MpcError.failedToEncryptClientBackupShare(message: error.localizedDescription)))
+              } else {
+                return completion(Result(error: MpcError.failedToEncryptClientBackupShare(message: "")))
+              }
             }
 
             // Attempt to write the encrypted share to storage.
@@ -681,8 +687,11 @@ public class PortalMpc {
               // Throw an error if we can't write to storage.
               if !result.data! {
                 print("Signing shares were successfully replaced, but backup shares were not refreshed. Try running backup again with your new signing shares.")
-                print("Raw error: ", result.error!)
-                return completion(Result(error: MpcError.failedToStoreClientBackupShareKey))
+                if let error = result.error {
+                  return completion(Result(error: MpcError.failedToStoreClientBackupShareKey(message: error.localizedDescription)))
+                } else {
+                  return completion(Result(error: MpcError.failedToStoreClientBackupShareKey(message: "")))
+                }
               }
 
               // Return the cipherText.
