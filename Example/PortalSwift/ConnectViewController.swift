@@ -23,8 +23,10 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var connectMessage2: UITextView!
   @IBOutlet var disconnectButton2: UIButton!
   @IBOutlet var addressTextInput2: UITextField!
-  @IBOutlet var switchChainPolyButton: UIButton!
-  @IBOutlet var switchChainEthButton: UIButton!
+  @IBOutlet var PolygonMainnetButton: UIButton!
+  @IBOutlet var EthMainnetButton: UIButton!
+  @IBOutlet var GoerliButton: UIButton!
+  @IBOutlet var MumbaiButton: UIButton!
 
   required init?(coder: NSCoder) {
     super.init(coder: coder)
@@ -171,7 +173,7 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  @IBAction func switchChainPolyPressed(_: Any) {
+  @IBAction func PolyMainPressed(_: Any) {
     do {
       if self.connect!.connected {
         try self.connect?.setChainId(value: 137)
@@ -184,13 +186,39 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  @IBAction func switchChainEthPressed(_: Any) {
+  @IBAction func GoerliPressed(_: Any) {
     do {
       if self.connect!.connected {
         try self.connect?.setChainId(value: 5)
       }
       if self.connect2!.connected {
         try self.connect2?.setChainId(value: 5)
+      }
+    } catch {
+      print("Error in switching chains: \(error)")
+    }
+  }
+
+  @IBAction func EthMainnetPressed(_: Any) {
+    do {
+      if self.connect!.connected {
+        try self.connect?.setChainId(value: 1)
+      }
+      if self.connect2!.connected {
+        try self.connect2?.setChainId(value: 1)
+      }
+    } catch {
+      print("Error in switching chains: \(error)")
+    }
+  }
+
+  @IBAction func MumbaiPressed(_: Any) {
+    do {
+      if self.connect!.connected {
+        try self.connect?.setChainId(value: 80001)
+      }
+      if self.connect2!.connected {
+        try self.connect2?.setChainId(value: 80001)
       }
     } catch {
       print("Error in switching chains: \(error)")
