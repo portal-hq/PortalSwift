@@ -319,7 +319,7 @@ public class PortalProvider {
   /// Sets the EVM network chainId.
   /// - Parameter value: The chainId.
   /// - Returns: An instance of Portal Provider.
-  public func setChainId(value: Int) throws -> PortalProvider {
+  public func setChainId(value: Int, connect: PortalConnect? = nil) throws -> PortalProvider {
     self.chainId = value
     let hexChainId = String(format: "%02x", value)
 
@@ -330,6 +330,11 @@ public class PortalProvider {
       self.gateway = HttpRequester(baseUrl: gatewayUrl)
     } catch {
       throw ProviderInvalidArgumentError.invalidGatewayUrl
+    }
+    self.chainId = value
+
+    if connect != nil {
+      connect?.emit(event: Events.PortalConnectChainChanged.rawValue, data: value)
     }
     return provider
   }
@@ -656,6 +661,7 @@ public enum Chains: Int {
 /// The provider events that can be listened to.
 public enum Events: String {
   case ChainChanged = "chainChanged"
+  case PortalConnectChainChanged = "portalConnect_chainChanged"
   case Connect = "connect"
   case ConnectError = "portal_connectError"
   case Disconnect = "disconnect"

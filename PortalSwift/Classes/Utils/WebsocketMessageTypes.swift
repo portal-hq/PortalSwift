@@ -132,6 +132,11 @@ public struct SignatureReceivedMessage: Codable {
   public let data: SignatureReceivedData
 }
 
+public struct ChainChangedMessage: Codable {
+  public let event: String
+  public let data: ChainChangedData
+}
+
 public struct DappSessionResponseMessage: Codable {
   public let event: String
   public let data: SessionResponseData
@@ -146,6 +151,12 @@ public struct SignatureReceivedData: Codable {
   public let topic: String
   public let transactionHash: String
   public let transactionId: String
+}
+
+public struct ChainChangedData: Codable {
+  public let topic: String?
+  public let uri: String?
+  public let chainId: String
 }
 
 // Specific Types for v1 or v2
