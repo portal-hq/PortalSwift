@@ -54,17 +54,17 @@ class PortalWrapper {
     }
     print("ENV", ENV)
     if ENV == "prod" {
-      CUSTODIAN_SERVER_URL = PROD_CUSTODIAN_SERVER_URL
-      API_URL = PROD_API_URL
-      MPC_URL = PROD_MPC_URL
+      self.CUSTODIAN_SERVER_URL = PROD_CUSTODIAN_SERVER_URL
+      self.API_URL = PROD_API_URL
+      self.MPC_URL = PROD_MPC_URL
     } else if ENV == "staging" {
-      CUSTODIAN_SERVER_URL = STAGING_CUSTODIAN_SERVER_URL
-      API_URL = STAGING_API_URL
-      MPC_URL = STAGING_MPC_URL
+      self.CUSTODIAN_SERVER_URL = STAGING_CUSTODIAN_SERVER_URL
+      self.API_URL = STAGING_API_URL
+      self.MPC_URL = STAGING_MPC_URL
     } else if ENV == "local" {
-      CUSTODIAN_SERVER_URL = STAGING_CUSTODIAN_SERVER_URL
-      API_URL = LOCAL_API_URL
-      MPC_URL = LOCAL_MPC_URL
+      self.CUSTODIAN_SERVER_URL = STAGING_CUSTODIAN_SERVER_URL
+      self.API_URL = LOCAL_API_URL
+      self.MPC_URL = LOCAL_MPC_URL
     }
   }
 
@@ -121,21 +121,21 @@ class PortalWrapper {
       // Configure the chain.
       let chainId = 5
       let chain = "goerli"
-      portal = try Portal(
+      self.portal = try Portal(
         apiKey: apiKey,
         backup: backup,
         chainId: chainId,
         keychain: keychain,
         gatewayConfig: [
-          chainId: "https://eth-\(chain).g.alchemy.com/v2/\(ALCHEMY_API_KEY)",
+          chainId: "https://eth-\(chain).g.alchemy.com/v2/\(ALCHEMY_API_KEY)", 1: "https://eth-mainnet.g.alchemy.com/v2/\(ALCHEMY_API_KEY)", 80001: "https://polygon-mumbai.g.alchemy.com/v2/\(ALCHEMY_API_KEY)", 137: "https://polygon-mainnet.g.alchemy.com/v2/\(ALCHEMY_API_KEY)",
         ],
         autoApprove: false,
-        apiHost: API_URL!,
-        mpcHost: MPC_URL!
+        apiHost: self.API_URL!,
+        mpcHost: self.MPC_URL!
       )
 
-      _ = portal?.provider.on(event: Events.PortalSigningRequested.rawValue, callback: { [weak self] data in self?.didRequestApproval(data: data) })
-      _ = portal?.provider.once(event: Events.PortalSignatureReceived.rawValue) { (data: Any) in
+      _ = self.portal?.provider.on(event: Events.PortalSigningRequested.rawValue, callback: { [weak self] data in self?.didRequestApproval(data: data) })
+      _ = self.portal?.provider.once(event: Events.PortalSignatureReceived.rawValue) { (data: Any) in
         let result = data as! RequestCompletionResult
 
         print("[ViewController] portal_signatureReceived: \(result)")
@@ -153,11 +153,11 @@ class PortalWrapper {
   }
 
   func didRequestApproval(data: Any) {
-    _ = portal?.provider.emit(event: Events.PortalSigningApproved.rawValue, data: data)
+    _ = self.portal?.provider.emit(event: Events.PortalSigningApproved.rawValue, data: data)
   }
 
   func generate(completion: @escaping (Result<String>) -> Void) {
-    portal?.createWallet { addressResult in
+    self.portal?.createWallet { addressResult in
       guard addressResult.error == nil else {
         return completion(Result(error: addressResult.error!))
       }
@@ -169,7 +169,7 @@ class PortalWrapper {
   }
 
   func backup(backupMethod: BackupMethods.RawValue, user: UserResult, completion: @escaping (Result<Bool>) -> Void) {
-    portal?.backupWallet(method: backupMethod) { (result: Result<String>) in
+    self.portal?.backupWallet(method: backupMethod) { (result: Result<String>) in
       guard result.error == nil else {
         return completion(Result(error: result.error!))
       }
@@ -242,7 +242,7 @@ class PortalWrapper {
       method: method,
       params: params
     )
-    portal?.provider.request(payload: payload) { (result: Result<RequestCompletionResult>) in
+    self.portal?.provider.request(payload: payload) { (result: Result<RequestCompletionResult>) in
       guard result.error == nil else {
         print("❌ Error calling \(method)", "Error:", result.error!)
         completion(Result(error: result.error!))
@@ -353,7 +353,7 @@ class PortalWrapper {
 
       // Throw if the status is not successful.
       if status == errSecDuplicateItem {
-        try updateItem(key: key, value: value)
+        try self.updateItem(key: key, value: value)
         return completion(Result(data: status))
       }
       guard status != errSecNotAvailable else {

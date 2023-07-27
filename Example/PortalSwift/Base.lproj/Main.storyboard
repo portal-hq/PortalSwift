@@ -370,6 +370,24 @@
                                     <action selector="connect2Pressed" destination="7fk-LF-non" eventType="touchUpInside" id="j4I-Lx-Pxm"/>
                                 </connections>
                             </button>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="15d-vL-Ghe">
+                                <rect key="frame" x="196" y="82" width="120" height="74"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <state key="normal" title="Button"/>
+                                <buttonConfiguration key="configuration" style="filled" title="Switch ETH"/>
+                                <connections>
+                                    <action selector="switchChainEthPressed:" destination="7fk-LF-non" eventType="touchUpInside" id="h4y-pJ-bxN"/>
+                                </connections>
+                            </button>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="8ux-wF-WHh">
+                                <rect key="frame" x="32" y="82" width="103" height="74"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <state key="normal" title="Button"/>
+                                <buttonConfiguration key="configuration" style="filled" title="Switch Polygon"/>
+                                <connections>
+                                    <action selector="switchChainPolyPressed:" destination="7fk-LF-non" eventType="touchUpInside" id="gnn-LH-eBi"/>
+                                </connections>
+                            </button>
                         </subviews>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                     </view>
@@ -382,6 +400,8 @@
                         <outlet property="connectMessage2" destination="kQr-f4-kUv" id="SHA-MD-epa"/>
                         <outlet property="disconnectButton" destination="1Zv-86-0u8" id="hmW-iD-jkp"/>
                         <outlet property="disconnectButton2" destination="E8b-d1-lbA" id="yjE-5x-WUd"/>
+                        <outlet property="switchChainEthButton" destination="15d-vL-Ghe" id="qOg-Hp-gHg"/>
+                        <outlet property="switchChainPolyButton" destination="8ux-wF-WHh" id="eHV-aS-I6c"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="KzE-SA-JBs" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
