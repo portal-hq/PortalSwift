@@ -12,14 +12,14 @@ import Mpc
 public class Portal {
   public var address: String? {
     do {
-      return try keychain.getAddress()
+      return try self.keychain.getAddress()
     } catch {
       return nil
     }
   }
 
   public var chainId: Int {
-    return provider.chainId
+    return self.provider.chainId
   }
 
   public let api: PortalApi
@@ -67,8 +67,8 @@ public class Portal {
     self.autoApprove = autoApprove
     self.backup = backup
     self.gatewayConfig = gatewayConfig
-    client = try Portal.getClient(apiHost, apiKey)
-    keychain.clientId = client?.id
+    self.client = try Portal.getClient(apiHost, apiKey)
+    keychain.clientId = self.client?.id
     self.keychain = keychain
     self.mpcHost = mpcHost
     self.version = version
@@ -78,7 +78,7 @@ public class Portal {
     }
 
     // Initialize the PortalProvider
-    provider = try PortalProvider(
+    self.provider = try PortalProvider(
       apiKey: apiKey,
       chainId: chainId,
       gatewayConfig: gatewayConfig,
@@ -102,7 +102,7 @@ public class Portal {
     }
 
     // Initialize Mpc
-    mpc = PortalMpc(
+    self.mpc = PortalMpc(
       apiKey: apiKey,
       api: api,
       keychain: keychain,
@@ -122,14 +122,14 @@ public class Portal {
     completion: @escaping (Result<String>) -> Void,
     progress: ((MpcStatus) -> Void)? = nil
   ) {
-    mpc.backup(method: method, completion: completion, progress: progress)
+    self.mpc.backup(method: method, completion: completion, progress: progress)
   }
 
   public func createWallet(
     completion: @escaping (Result<String>) -> Void,
     progress: ((MpcStatus) -> Void)? = nil
   ) {
-    mpc.generate(completion: completion, progress: progress)
+    self.mpc.generate(completion: completion, progress: progress)
   }
 
   public func recoverWallet(
@@ -138,7 +138,7 @@ public class Portal {
     completion: @escaping (Result<String>) -> Void,
     progress: ((MpcStatus) -> Void)? = nil
   ) {
-    mpc.recover(cipherText: cipherText, method: method, completion: completion, progress: progress)
+    self.mpc.recover(cipherText: cipherText, method: method, completion: completion, progress: progress)
   }
 
   /**********************************
@@ -146,14 +146,14 @@ public class Portal {
    **********************************/
 
   public func emit(_ event: Events.RawValue, data: Any) {
-    _ = provider.emit(event: event, data: data)
+    _ = self.provider.emit(event: event, data: data)
   }
 
   public func ethSendTransaction(
     transaction: ETHTransactionParam,
     completion: @escaping (Result<TransactionCompletionResult>) -> Void
   ) {
-    provider.request(payload: ETHTransactionPayload(
+    self.provider.request(payload: ETHTransactionPayload(
       method: ETHRequestMethods.SendTransaction.rawValue,
       params: [transaction]
     ), completion: completion)
@@ -165,7 +165,7 @@ public class Portal {
       return
     }
 
-    provider.request(payload: ETHRequestPayload(
+    self.provider.request(payload: ETHRequestPayload(
       method: ETHRequestMethods.Sign.rawValue,
       params: [
         address,
@@ -178,7 +178,7 @@ public class Portal {
     transaction: ETHTransactionParam,
     completion: @escaping (Result<TransactionCompletionResult>) -> Void
   ) {
-    provider.request(payload: ETHTransactionPayload(
+    self.provider.request(payload: ETHTransactionPayload(
       method: ETHRequestMethods.SignTransaction.rawValue,
       params: [transaction]
     ), completion: completion)
@@ -193,18 +193,18 @@ public class Portal {
       return
     }
 
-    provider.request(payload: ETHRequestPayload(
+    self.provider.request(payload: ETHRequestPayload(
       method: ETHRequestMethods.SendTransaction.rawValue,
       params: [address, transaction]
     ), completion: completion)
   }
 
   public func on(event: Events.RawValue, callback: @escaping (Any) -> Void) {
-    _ = provider.on(event: event, callback: callback)
+    _ = self.provider.on(event: event, callback: callback)
   }
 
   public func once(event: Events.RawValue, callback: @escaping (Any) -> Void) {
-    _ = provider.once(event: event, callback: callback)
+    _ = self.provider.once(event: event, callback: callback)
   }
 
   public func personalSign(
@@ -216,7 +216,7 @@ public class Portal {
       return
     }
 
-    provider.request(payload: ETHRequestPayload(
+    self.provider.request(payload: ETHRequestPayload(
       method: ETHRequestMethods.PersonalSign.rawValue,
       params: [
         message,
@@ -230,7 +230,7 @@ public class Portal {
     params: [Any],
     completion: @escaping (Result<RequestCompletionResult>) -> Void
   ) {
-    provider.request(payload: ETHRequestPayload(
+    self.provider.request(payload: ETHRequestPayload(
       method: method,
       params: params
     ), completion: completion)
@@ -241,7 +241,7 @@ public class Portal {
   ///   - to: The chainId to use for processing wallet transactions
   /// - Returns: Void
   public func setChainId(to: Int) throws {
-    _ = try provider.setChainId(value: to)
+    _ = try self.provider.setChainId(value: to)
   }
 
   /****************************************
@@ -249,11 +249,11 @@ public class Portal {
    ****************************************/
 
   public func deleteAddress() throws {
-    try keychain.deleteAddress()
+    try self.keychain.deleteAddress()
   }
 
   public func deleteSigningShare() throws {
-    try keychain.deleteSigningShare()
+    try self.keychain.deleteSigningShare()
   }
 
   /****************************************
@@ -264,15 +264,15 @@ public class Portal {
     webSocketServer: String = "connect.portalhq.io"
   ) throws -> PortalConnect {
     return try PortalConnect(
-      apiKey,
-      provider.chainId,
-      keychain,
-      gatewayConfig,
+      self.apiKey,
+      self.provider.chainId,
+      self.keychain,
+      self.gatewayConfig,
       webSocketServer,
-      autoApprove,
-      apiHost,
-      mpcHost,
-      version
+      self.autoApprove,
+      self.apiHost,
+      self.mpcHost,
+      self.version
     )
   }
 
@@ -351,11 +351,11 @@ public struct BackupOptions {
   subscript(key: String) -> Any? {
     switch key {
     case BackupMethods.GoogleDrive.rawValue:
-      return gdrive
+      return self.gdrive
     case BackupMethods.iCloud.rawValue:
-      return icloud
+      return self.icloud
     case BackupMethods.local.rawValue:
-      return local
+      return self.local
     default:
       return nil
     }

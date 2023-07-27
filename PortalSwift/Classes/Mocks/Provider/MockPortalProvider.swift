@@ -82,7 +82,7 @@ public class MockPortalProvider: PortalProvider {
     )
   }
 
-  override public func setChainId(value _: Int) -> PortalProvider {
+  override public func setChainId(value _: Int, connect _: PortalConnect? = nil) -> PortalProvider {
     return self
   }
 }
