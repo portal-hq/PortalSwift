@@ -15,19 +15,19 @@ final class ICloudStorageTests: XCTestCase {
   override func setUpWithError() throws {
     let provider = try MockPortalProvider(apiKey: "", chainId: 5, gatewayConfig: [5: "https://example.com"], keychain: MockPortalKeychain(), autoApprove: true)
 
-    storage = ICloudStorage()
-    storage?.api = MockPortalApi(apiKey: "", apiHost: "", provider: provider)
+    self.storage = ICloudStorage()
+    self.storage?.api = MockPortalApi(apiKey: "", apiHost: "", provider: provider)
   }
 
   override func tearDownWithError() throws {
-    storage = nil
+    self.storage = nil
   }
 
   func testDelete() throws {
     let expectation = XCTestExpectation(description: "Delete")
     let privateKey = "privateKey"
 
-    storage!.write(privateKey: privateKey) { (result: Result<Bool>) in
+    self.storage!.write(privateKey: privateKey) { (result: Result<Bool>) in
       if result.error != nil {
         XCTFail("Failed to write private key to storage. Make sure you are signed into iCloud on your simulator before running tests.")
       }
@@ -52,7 +52,7 @@ final class ICloudStorageTests: XCTestCase {
   func testRead() throws {
     let expectation = XCTestExpectation(description: "Read")
 
-    storage!.read { (result: Result<String>) in
+    self.storage!.read { (result: Result<String>) in
       XCTAssert(result.data! == "")
       expectation.fulfill()
     }
@@ -64,7 +64,7 @@ final class ICloudStorageTests: XCTestCase {
     let expectation = XCTestExpectation(description: "Write")
     let privateKey = "privateKey"
 
-    storage!.write(privateKey: privateKey) { (result: Result<Bool>) in
+    self.storage!.write(privateKey: privateKey) { (result: Result<Bool>) in
       XCTAssert(result.data! == true)
 
       self.storage!.read { (result: Result<String>) in

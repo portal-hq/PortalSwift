@@ -59,7 +59,7 @@ public class HttpRequest<T: Codable, U> {
     self.headers = headers
     self.method = method
     self.url = url
-    isString = false
+    self.isString = false
     self.requestType = requestType
   }
 
@@ -171,24 +171,24 @@ public class HttpRequest<T: Codable, U> {
       var request = URLRequest(url: url!)
 
       // Set the request method of the request
-      request.httpMethod = method
+      request.httpMethod = self.method
 
       // Add request headers as defined in the constructor
-      for (key, value) in headers {
+      for (key, value) in self.headers {
         request.setValue(value, forHTTPHeaderField: key)
       }
 
       // If no Content-Type header was provided, set one.
-      if headers["Content-Type"] == nil {
+      if self.headers["Content-Type"] == nil {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
       }
 
       // Set the request body to the string literal of the Dictionary
-      if headers["Content-Type"] != nil && (headers["Content-Type"]!).contains("multipart") {
+      if self.headers["Content-Type"] != nil && (self.headers["Content-Type"]!).contains("multipart") {
         let rawBody = (body as! [String: Any])["rawBody"] as! String
         request.httpBody = rawBody.data(using: .utf8)
-      } else if method != "GET" && method != "DELETE" && body != nil {
-        request.httpBody = try JSONSerialization.data(withJSONObject: body!, options: [])
+      } else if self.method != "GET" && self.method != "DELETE" && self.body != nil {
+        request.httpBody = try JSONSerialization.data(withJSONObject: self.body!, options: [])
       } else {
         request.httpBody = nil
       }

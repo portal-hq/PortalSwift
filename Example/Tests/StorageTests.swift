@@ -6,36 +6,36 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
-import XCTest
 @testable import PortalSwift
+import XCTest
 
 final class StorageTests: XCTestCase {
   var storage: Storage?
 
   override func setUpWithError() throws {
     // Put setup code here. This method is called before the invocation of each test method in the class.
-    storage = Storage()
+    self.storage = Storage()
   }
 
   override func tearDownWithError() throws {
     // Put teardown code here. This method is called after the invocation of each test method in the class.
-    storage = nil
+    self.storage = nil
   }
 
   func testDelete() {
-    storage!.delete() { result in
+    self.storage!.delete { result in
       XCTAssert(result.error != nil)
     }
   }
 
   func testRead() {
-    storage!.read() { result in
+    self.storage!.read { result in
       XCTAssert(result.error != nil)
     }
   }
 
   func testWrite() {
-    storage!.write(privateKey: "test") { result in
+    self.storage!.write(privateKey: "test") { result in
       XCTAssert(result.error != nil)
     }
   }

@@ -52,7 +52,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     self.onError = onError
     super.init(nibName: nil, bundle: nil)
 
-    webView = {
+    self.webView = {
       let contentController = WKUserContentController()
 
       contentController.add(self, name: "WebViewControllerMessageHandler")
@@ -73,14 +73,14 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   /// When the view loads, add the web view as a subview. Also add default configuration values for the web view.
   override public func viewDidLoad() {
     super.viewDidLoad()
-    view.addSubview(webView)
+    view.addSubview(self.webView)
 
-    webView.translatesAutoresizingMaskIntoConstraints = false
+    self.webView.translatesAutoresizingMaskIntoConstraints = false
     NSLayoutConstraint.activate([
-      webView.topAnchor.constraint(equalTo: view.topAnchor),
-      webView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-      webView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-      webView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+      self.webView.topAnchor.constraint(equalTo: view.topAnchor),
+      self.webView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+      self.webView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+      self.webView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
     ])
   }
 
@@ -88,12 +88,12 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   /// - Parameter animated: Determines if the view will be animated when appearing or not.
   override public func viewWillAppear(_ animated: Bool) {
     super.viewWillAppear(animated)
-    if !webViewContentIsLoaded {
+    if !self.webViewContentIsLoaded {
       let request = URLRequest(url: url)
 
-      webView.load(request)
+      self.webView.load(request)
 
-      webViewContentIsLoaded = true
+      self.webViewContentIsLoaded = true
     }
   }
 
@@ -105,7 +105,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       javascript = "//# sourceURL=\(sourceURL).js\n" + javascript
     }
 
-    webView.evaluateJavaScript(javascript) { _, error in
+    self.webView.evaluateJavaScript(javascript) { _, error in
       completion?(error?.localizedDescription)
     }
   }
@@ -120,16 +120,16 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       return
     }
 
-    let javascript = injectPortal(
+    let javascript = self.injectPortal(
       address: address,
-      apiKey: portal.apiKey,
-      chainId: String(portal.chainId),
-      gatewayConfig: portal.gatewayConfig[portal.chainId]!,
-      autoApprove: portal.autoApprove,
+      apiKey: self.portal.apiKey,
+      chainId: String(self.portal.chainId),
+      gatewayConfig: self.portal.gatewayConfig[self.portal.chainId]!,
+      autoApprove: self.portal.autoApprove,
       enableMpc: true
     )
 
-    evaluateJavascript(javascript, sourceURL: "portal_sign")
+    self.evaluateJavascript(javascript, sourceURL: "portal_sign")
   }
 
   /// The controller used to handle messages to and from the web view.
@@ -143,15 +143,15 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       switch portalMessageBody.type as String {
       case "portal_sign":
         if TransactionMethods.contains(portalMessageBody.data.method) {
-          try handlePortalSignTransaction(method: portalMessageBody.data.method, params: portalMessageBody.data.params)
+          try self.handlePortalSignTransaction(method: portalMessageBody.data.method, params: portalMessageBody.data.params)
         } else {
-          handlePortalSign(method: portalMessageBody.data.method, params: portalMessageBody.data.params)
+          self.handlePortalSign(method: portalMessageBody.data.method, params: portalMessageBody.data.params)
         }
       default:
-        onError(Result(error: WebViewControllerErrors.unknownMessageType(type: portalMessageBody.type)))
+        self.onError(Result(error: WebViewControllerErrors.unknownMessageType(type: portalMessageBody.type)))
       }
     } catch {
-      onError(Result(error: error))
+      self.onError(Result(error: error))
     }
   }
 
@@ -174,9 +174,9 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     // Perform a long-running task
     let payload = ETHRequestPayload(method: method, params: params)
     if signerMethods.contains(method) {
-      portal.provider.request(payload: payload, completion: signerRequestCompletion)
+      self.portal.provider.request(payload: payload, completion: self.signerRequestCompletion)
     } else {
-      portal.provider.request(payload: payload, completion: gatewayRequestCompletion)
+      self.portal.provider.request(payload: payload, completion: self.gatewayRequestCompletion)
     }
   }
 
@@ -209,15 +209,15 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     let payload = ETHTransactionPayload(method: method, params: [transactionParam])
 
     if signerMethods.contains(method) {
-      portal.provider.request(payload: payload, completion: signerTransactionRequestCompletion)
+      self.portal.provider.request(payload: payload, completion: self.signerTransactionRequestCompletion)
     } else {
-      portal.provider.request(payload: payload, completion: gatewayTransactionRequestCompletion)
+      self.portal.provider.request(payload: payload, completion: self.gatewayTransactionRequestCompletion)
     }
   }
 
   private func signerTransactionRequestCompletion(result: Result<TransactionCompletionResult>) {
     guard result.error == nil else {
-      onError(Result(error: result.error!))
+      self.onError(Result(error: result.error!))
       return
     }
     let signature = (result.data!.result as! Result<Any>).data
@@ -235,12 +235,12 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       },
       "signature": signature!,
     ]
-    postMessage(payload: payload)
+    self.postMessage(payload: payload)
   }
 
   private func gatewayTransactionRequestCompletion(result: Result<TransactionCompletionResult>) {
     guard result.error == nil else {
-      onError(Result(error: result.error!))
+      self.onError(Result(error: result.error!))
       return
     }
     let payload: [String: Any] = [
@@ -257,13 +257,13 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       },
       "signature": result.data!.result,
     ]
-    postMessage(payload: payload)
+    self.postMessage(payload: payload)
   }
 
   private func signerRequestCompletion(result: Result<RequestCompletionResult>) {
     let response = result.data!.result as! Result<SignerResult>
     guard response.error == nil else {
-      onError(Result(error: response.error!))
+      self.onError(Result(error: response.error!))
       return
     }
     let payload: [String: Any] = [
@@ -271,12 +271,12 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       "params": result.data!.params,
       "signature": response.data!.signature!,
     ]
-    postMessage(payload: payload)
+    self.postMessage(payload: payload)
   }
 
   private func gatewayRequestCompletion(result: Result<RequestCompletionResult>) {
     guard result.error == nil else {
-      onError(Result(error: result.error!))
+      self.onError(Result(error: result.error!))
       return
     }
     let payload: [String: Any] = [
@@ -284,7 +284,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       "params": result.data!.params,
       "signature": result.data!.result,
     ]
-    postMessage(payload: payload)
+    self.postMessage(payload: payload)
   }
 
   private func postMessage(payload: [String: Any]) {
@@ -292,9 +292,9 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       let data = try JSONSerialization.data(withJSONObject: payload, options: .prettyPrinted)
       let dataString = String(data: data, encoding: .utf8)
       let javascript = "window.postMessage(JSON.stringify({ type: 'portal_signatureReceived', data: \(dataString!) }));"
-      evaluateJavascript(javascript, sourceURL: "portal_sign")
+      self.evaluateJavascript(javascript, sourceURL: "portal_sign")
     } catch {
-      onError(Result(error: error))
+      self.onError(Result(error: error))
     }
   }
 
