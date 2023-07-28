@@ -20,7 +20,13 @@ final class PortalApiTests: XCTestCase {
       keychain: MockPortalKeychain(),
       autoApprove: true
     )
-    self.api = PortalApi(apiKey: "test", apiHost: "api.portalhq.io", provider: provider, mockRequests: true)
+    self.api = PortalApi(
+      apiKey: "test",
+      apiHost: "api.portalhq.io",
+      provider: provider,
+      backup: BackupOptions(icloud: ICloudStorage()),
+      mockRequests: true
+    )
   }
 
   override func tearDownWithError() throws {

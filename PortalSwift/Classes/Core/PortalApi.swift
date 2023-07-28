@@ -12,6 +12,7 @@ public class PortalApi {
   private var apiKey: String
   private var provider: PortalProvider
   private var requests: HttpRequester
+  private var backup: BackupOptions
 
   private var address: String? {
     return self.provider.address
@@ -26,14 +27,17 @@ public class PortalApi {
   ///   - apiKey: The Client API key. You can create one using Portal's REST API.
   ///   - apiHost: (optional) The Portal API hostname.
   ///   - provider: The PortalProvider instance to use for stateful Provider info (chainId, address)
+  ///   - backup: The backup options that the Portal instance is using.
   init(
     apiKey: String,
     apiHost: String = "api.portalhq.io",
     provider: PortalProvider,
+    backup: BackupOptions,
     mockRequests: Bool = false
   ) {
     self.apiKey = apiKey
     self.provider = provider
+    self.backup = backup
 
     let baseUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
     self.requests = mockRequests ? MockHttpRequester(baseUrl: baseUrl) : HttpRequester(baseUrl: baseUrl)
@@ -233,7 +237,10 @@ public class PortalApi {
   ) throws {
     try self.requests.put(
       path: "/api/v1/clients/me/wallet/stored-client-backup-share",
-      body: ["success": success],
+      body: [
+        "backupMethod": self.backup.activeBackupMethod,
+        "success": success,
+      ],
       headers: [
         "Authorization": "Bearer \(self.apiKey)",
       ],

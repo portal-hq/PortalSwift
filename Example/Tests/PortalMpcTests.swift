@@ -27,6 +27,7 @@ final class PortalMpcTests: XCTestCase {
         apiKey: "test",
         apiHost: "test",
         provider: provider,
+        backup: BackupOptions(icloud: ICloudStorage()),
         mockRequests: true
       ),
       keychain: MockPortalKeychain(),

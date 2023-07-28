@@ -90,7 +90,7 @@ public class Portal {
     )
 
     // Initialize the Portal API
-    let api = PortalApi(apiKey: apiKey, apiHost: apiHost, provider: provider)
+    let api = PortalApi(apiKey: apiKey, apiHost: apiHost, provider: provider, backup: backup)
     self.api = api
 
     // Ensure storage adapters have access to the Portal API
@@ -346,6 +346,16 @@ public struct BackupOptions {
   public init(gdrive: GDriveStorage, icloud: ICloudStorage) {
     self.gdrive = gdrive
     self.icloud = icloud
+  }
+
+  public var activeBackupMethod: String {
+    if self.gdrive != nil {
+      return BackupMethods.GoogleDrive.rawValue
+    } else if self.icloud != nil {
+      return BackupMethods.iCloud.rawValue
+    } else {
+      return "CUSTOM"
+    }
   }
 
   subscript(key: String) -> Any? {
