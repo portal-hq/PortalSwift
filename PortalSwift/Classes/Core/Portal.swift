@@ -350,9 +350,9 @@ public struct BackupOptions {
 
   public var activeBackupMethod: String {
     if self.gdrive != nil {
-      return BackupMethods.GoogleDrive.rawValue
+      return "GDRIVE"
     } else if self.icloud != nil {
-      return BackupMethods.iCloud.rawValue
+      return "ICLOUD"
     } else {
       return "CUSTOM"
     }
