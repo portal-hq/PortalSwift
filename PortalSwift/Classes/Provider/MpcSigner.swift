@@ -21,7 +21,7 @@ public struct SignerResult: Codable {
 class MpcSigner {
   private var address: String? {
     do {
-      return try keychain.getAddress()
+      return try self.keychain.getAddress()
     } catch {
       return nil
     }
@@ -72,7 +72,7 @@ class MpcSigner {
         formattedParams,
         provider.gatewayUrl,
         String(provider.chainId),
-        version
+        self.version
       )
 
       // Attempt to decode the sign result.
@@ -104,14 +104,14 @@ class MpcSigner {
     var clientSignResult = mockClientSignResult
     if !mockClientSign {
       clientSignResult = MobileSign(
-        apiKey,
-        mpcUrl,
+        self.apiKey,
+        self.mpcUrl,
         signingShare,
         payload.method,
         formattedParams,
         provider.gatewayUrl,
         String(provider.chainId),
-        version
+        self.version
       )
     }
 

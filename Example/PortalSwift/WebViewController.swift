@@ -16,7 +16,7 @@ class WebViewController: UIViewController {
   override func viewDidLoad() {
     super.viewDidLoad()
 
-    if portal != nil && url != nil {
+    if self.portal != nil && self.url != nil {
       let webViewController = PortalWebView(portal: portal!, url: URL(string: url!)!, onError: onError)
       // Install the WebViewController as a child view controller.
       addChild(webViewController)
