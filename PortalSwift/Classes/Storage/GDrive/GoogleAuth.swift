@@ -19,15 +19,15 @@ class GoogleAuth {
   private var view: UIViewController
 
   init(config: GIDConfiguration, view: UIViewController) {
-    auth = GIDSignIn.sharedInstance
+    self.auth = GIDSignIn.sharedInstance
     self.config = config
     self.view = view
   }
 
   func getAccessToken(callback: @escaping (Result<String>) -> Void) {
-    if hasPreviousSignIn() {
+    if self.hasPreviousSignIn() {
       // Attempt to sign in silently
-      restorePreviousSignIn { result in
+      self.restorePreviousSignIn { result in
         if result.error != nil {
           // Handle error
           callback(Result(error: result.error!))
@@ -38,7 +38,7 @@ class GoogleAuth {
       }
     } else {
       // User has not signed in before, prompt for sign-in
-      signIn { result in
+      self.signIn { result in
         if result.error != nil {
           // Handle error
           callback(Result(error: result.error!))
@@ -51,15 +51,15 @@ class GoogleAuth {
   }
 
   func getCurrentUser() -> GIDGoogleUser? {
-    return auth.currentUser
+    return self.auth.currentUser
   }
 
   func hasPreviousSignIn() -> Bool {
-    return auth.hasPreviousSignIn()
+    return self.auth.hasPreviousSignIn()
   }
 
   func restorePreviousSignIn(callback: @escaping (Result<GIDGoogleUser>) -> Void) {
-    auth.restorePreviousSignIn { user, error in
+    self.auth.restorePreviousSignIn { user, error in
       if error != nil {
         // Handle error
         callback(Result(error: error!))
@@ -71,7 +71,7 @@ class GoogleAuth {
   }
 
   func signIn(callback: @escaping (Result<GIDGoogleUser>) -> Void) {
-    auth.signIn(with: config, presenting: view) {
+    self.auth.signIn(with: self.config, presenting: self.view) {
       user, error in
       if error != nil {
         callback(Result(error: error! as Error))
@@ -83,6 +83,6 @@ class GoogleAuth {
   }
 
   func signOut() {
-    auth.signOut()
+    self.auth.signOut()
   }
 }

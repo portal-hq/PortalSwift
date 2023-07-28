@@ -21,7 +21,7 @@ final class PortalMpcTests: XCTestCase {
       autoApprove: true
     )
 
-    mpc = MockPortalMpc(
+    self.mpc = MockPortalMpc(
       apiKey: "test",
       api: MockPortalApi(
         apiKey: "test",
@@ -35,12 +35,12 @@ final class PortalMpcTests: XCTestCase {
   }
 
   override func tearDownWithError() throws {
-    mpc = nil
+    self.mpc = nil
   }
 
   func testBackup() throws {
     let expectation = XCTestExpectation(description: "Backup")
-    mpc?.backup(method: BackupMethods.iCloud.rawValue) { result in
+    self.mpc?.backup(method: BackupMethods.iCloud.rawValue) { result in
       XCTAssert(result.data! as String == mockBackupShare)
       expectation.fulfill()
     }
@@ -48,14 +48,14 @@ final class PortalMpcTests: XCTestCase {
   }
 
   func testGenerate() throws {
-    mpc?.generate { addressResult in
+    self.mpc?.generate { addressResult in
       XCTAssert(addressResult.data == mockAddress)
     }
   }
 
   func testRecover() throws {
     let expectation = XCTestExpectation(description: "Recover")
-    mpc?.recover(cipherText: "test", method: BackupMethods.iCloud.rawValue) { result in
+    self.mpc?.recover(cipherText: "test", method: BackupMethods.iCloud.rawValue) { result in
       XCTAssert(result.data! as String == mockBackupShare)
       expectation.fulfill()
     }

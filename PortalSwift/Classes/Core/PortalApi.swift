@@ -14,11 +14,11 @@ public class PortalApi {
   private var requests: HttpRequester
 
   private var address: String? {
-    return provider.address
+    return self.provider.address
   }
 
   private var chainId: Int {
-    return provider.chainId
+    return self.provider.chainId
   }
 
   /// Create an instance of a PortalApi class.
@@ -36,17 +36,17 @@ public class PortalApi {
     self.provider = provider
 
     let baseUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
-    requests = mockRequests ? MockHttpRequester(baseUrl: baseUrl) : HttpRequester(baseUrl: baseUrl)
+    self.requests = mockRequests ? MockHttpRequester(baseUrl: baseUrl) : HttpRequester(baseUrl: baseUrl)
   }
 
   /// Retrieve the client by API key.
   /// - Parameter completion: The callback that contains the Client.
   /// - Returns: Void.
   public func getClient(completion: @escaping (Result<Client>) -> Void) throws {
-    try requests.get(
+    try self.requests.get(
       path: "/api/v1/clients/me",
       headers: [
-        "Authorization": "Bearer \(apiKey)",
+        "Authorization": "Bearer \(self.apiKey)",
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<Client>) in
@@ -62,10 +62,10 @@ public class PortalApi {
   /// - Parameter completion: The callback that contains the list of Dapps.
   /// - Returns: Void.
   public func getEnabledDapps(completion: @escaping (Result<[Dapp]>) -> Void) throws {
-    try requests.get(
+    try self.requests.get(
       path: "/api/v1/config/dapps",
       headers: [
-        "Authorization": "Bearer \(apiKey)",
+        "Authorization": "Bearer \(self.apiKey)",
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[Dapp]>) in
@@ -81,16 +81,16 @@ public class PortalApi {
     // Build the request body
     var body = args.toDictionary()
     // Append Portal-provided values
-    body["address"] = address
+    body["address"] = self.address
     body["apiKey"] = swapsApiKey
-    body["chainId"] = chainId
+    body["chainId"] = self.chainId
 
     // Make the request
-    try requests.post(
+    try self.requests.post(
       path: "/api/v1/swaps/sources",
       body: body,
       headers: [
-        "Authorization": "Bearer \(apiKey)",
+        "Authorization": "Bearer \(self.apiKey)",
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<Quote>) in
@@ -99,14 +99,14 @@ public class PortalApi {
   }
 
   public func getSources(swapsApiKey: String, completion: @escaping (Result<[String: String]>) -> Void) throws {
-    try requests.post(
+    try self.requests.post(
       path: "/api/v1/swaps/sources",
       body: [
         "apiKey": swapsApiKey,
-        "chainId": chainId,
+        "chainId": self.chainId,
       ],
       headers: [
-        "Authorization": "Bearer \(apiKey)",
+        "Authorization": "Bearer \(self.apiKey)",
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[String: String]>) in
@@ -118,10 +118,10 @@ public class PortalApi {
   /// - Parameter completion: The callback that contains the list of Networks.
   /// - Returns: Void.
   public func getSupportedNetworks(completion: @escaping (Result<[ContractNetwork]>) -> Void) throws {
-    try requests.get(
+    try self.requests.get(
       path: "/api/v1/config/networks",
       headers: [
-        "Authorization": "Bearer \(apiKey)",
+        "Authorization": "Bearer \(self.apiKey)",
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[ContractNetwork]>) in
@@ -134,10 +134,10 @@ public class PortalApi {
   ///   - completion: The callback that contains the list of NFTs.
   /// - Returns: Void.
   public func getNFTs(completion: @escaping (Result<[NFT]>) -> Void) throws {
-    try requests.get(
-      path: "/api/v1/clients/me/nfts?chainId=\(chainId)",
+    try self.requests.get(
+      path: "/api/v1/clients/me/nfts?chainId=\(self.chainId)",
       headers: [
-        "Authorization": "Bearer \(apiKey)",
+        "Authorization": "Bearer \(self.apiKey)",
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[NFT]>) in
@@ -166,10 +166,10 @@ public class PortalApi {
       path += "&offset=\(offset)"
     }
 
-    try requests.get(
+    try self.requests.get(
       path: path,
       headers: [
-        "Authorization": "Bearer \(apiKey)",
+        "Authorization": "Bearer \(self.apiKey)",
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[Transaction]>) in
@@ -184,10 +184,10 @@ public class PortalApi {
   public func getBalances(
     completion: @escaping (Result<[Balance]>) -> Void
   ) throws {
-    try requests.get(
-      path: "/api/v1/clients/me/balances?chainId=\(chainId)",
+    try self.requests.get(
+      path: "/api/v1/clients/me/balances?chainId=\(self.chainId)",
       headers: [
-        "Authorization": "Bearer \(apiKey)",
+        "Authorization": "Bearer \(self.apiKey)",
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[Balance]>) in
@@ -210,11 +210,11 @@ public class PortalApi {
       path += "?fromRecoverSigning=\(recoverSigning)"
     }
 
-    try requests.put(
+    try self.requests.put(
       path: path,
       body: [:],
       headers: [
-        "Authorization": "Bearer \(apiKey)",
+        "Authorization": "Bearer \(self.apiKey)",
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<String>) in
@@ -231,11 +231,11 @@ public class PortalApi {
     success: Bool,
     completion: @escaping (Result<String>) -> Void
   ) throws {
-    try requests.put(
+    try self.requests.put(
       path: "/api/v1/clients/me/wallet/stored-client-backup-share",
       body: ["success": success],
       headers: [
-        "Authorization": "Bearer \(apiKey)",
+        "Authorization": "Bearer \(self.apiKey)",
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<String>) in

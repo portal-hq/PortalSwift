@@ -6,14 +6,14 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
-import XCTest
 @testable import PortalSwift
+import XCTest
 
 final class HttpRequesterTests: XCTestCase {
   var requester: HttpRequester?
 
   override func setUpWithError() throws {
-    requester = HttpRequester(baseUrl: "https://www.portalhq.io")
+    self.requester = HttpRequester(baseUrl: "https://www.portalhq.io")
   }
 
   func testHttpRequester() throws {
@@ -23,7 +23,7 @@ final class HttpRequesterTests: XCTestCase {
       path: "/",
       headers: [:],
       requestType: HttpRequestType.CustomRequest
-    ) { (result: Result<String>) -> Void in
+    ) { (_: Result<String>) in
       expectation.fulfill()
     }
 
@@ -38,7 +38,7 @@ final class HttpRequesterTests: XCTestCase {
       body: ["test": "test"],
       headers: [:],
       requestType: HttpRequestType.CustomRequest
-    ) { (result: Result<String>) -> Void in
+    ) { (_: Result<String>) in
       expectation.fulfill()
     }
 

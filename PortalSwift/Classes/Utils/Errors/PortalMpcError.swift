@@ -12,15 +12,15 @@ public class PortalMpcError: LocalizedError, CustomStringConvertible {
   public var message: String
 
   init(_ error: PortalError) {
-    code = error.code
-    message = error.message
+    self.code = error.code
+    self.message = error.message
   }
 
   public var errorDescription: String {
-    return "PortalMpcError -code: \(code) -message: \(message)"
+    return "PortalMpcError -code: \(self.code) -message: \(self.message)"
   }
 
   public var description: String {
-    return errorDescription
+    return self.errorDescription
   }
 }

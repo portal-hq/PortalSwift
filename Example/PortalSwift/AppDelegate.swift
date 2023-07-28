@@ -44,22 +44,22 @@ class AppDelegate: UIResponder, UIApplicationDelegate, PortalExampleAppDelegate 
     // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
     print("Application is now active...")
     if
-      connect != nil
+      self.connect != nil
     {
       print("reconnecting connect 1...")
-      let uri = connect?.uri ?? nil
+      let uri = self.connect?.uri ?? nil
       if uri != nil {
-        connect?.connect(uri! as String)
+        self.connect?.connect(uri! as String)
       }
     }
 
     if
-      connect2 != nil
+      self.connect2 != nil
     {
       print("reconnecting connect 2...")
-      let uri = connect2?.uri ?? nil
+      let uri = self.connect2?.uri ?? nil
       if uri != nil {
-        connect2?.connect(uri! as String)
+        self.connect2?.connect(uri! as String)
       }
     }
   }

@@ -6,25 +6,24 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
-import XCTest
 @testable import PortalSwift
+import XCTest
 
 final class HttpRequestTests: XCTestCase {
   func testHttpRequest() {
     let expectation = XCTestExpectation(description: "Request")
 
     // Create the request.
-    let request = HttpRequest<String, Dictionary<String, Any>>(
+    let request = HttpRequest<String, [String: Any]>(
       url: "https://www.portalhq.io",
       method: "GET",
       body: [:],
       headers: [:],
       requestType: HttpRequestType.CustomRequest
-
     )
 
     // Attempt to send the request.
-    request.send() { (result: Result<String>) -> Void in
+    request.send { (_: Result<String>) in
       expectation.fulfill()
     }
 
@@ -35,7 +34,7 @@ final class HttpRequestTests: XCTestCase {
     let expectation = XCTestExpectation(description: "Request")
 
     // Create the request.
-    let request = HttpRequest<String, Dictionary<String, Any>>(
+    let request = HttpRequest<String, [String: Any]>(
       url: "https://www.portalhq.io",
       method: "POST",
       body: ["test": "test"],
@@ -44,7 +43,7 @@ final class HttpRequestTests: XCTestCase {
     )
 
     // Attempt to send the request.
-    request.send() { (result: Result<String>) -> Void in
+    request.send { (_: Result<String>) in
       expectation.fulfill()
     }
 
@@ -55,7 +54,7 @@ final class HttpRequestTests: XCTestCase {
     let expectation = XCTestExpectation(description: "Request")
 
     // Create the request.
-    let request = HttpRequest<String, Dictionary<String, Any>>(
+    let request = HttpRequest<String, [String: Any]>(
       url: "https://www.portalhq.io",
       method: "GET",
       body: [:],
@@ -65,7 +64,7 @@ final class HttpRequestTests: XCTestCase {
     )
 
     // Attempt to send the request.
-    request.send() { (result: Result<String>) -> Void in
+    request.send { (_: Result<String>) in
       expectation.fulfill()
     }
 
