@@ -44,7 +44,7 @@ class EthRequestUtils {
 
   func hexStringToString(hexInput: String) -> String {
     // Get the proper hex string
-    let byteArray = hexStringToByteArray(hexString: hexInput.replacingOccurrences(of: "0x", with: ""))
+    let byteArray = self.hexStringToByteArray(hexString: hexInput.replacingOccurrences(of: "0x", with: ""))
 
     // Create an array of characters
     let stringArray = byteArray.map { charCode -> String in

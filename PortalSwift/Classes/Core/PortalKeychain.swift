@@ -34,12 +34,12 @@ public class PortalKeychain: MobileStorageAdapter {
     var address: String
 
     do {
-      address = try getItem(item: addressKey)
+      address = try self.getItem(item: addressKey)
     } catch KeychainError.ItemNotFound(item: addressKey) {
       do {
         // Fallback to deprecated key.
-        address = try getItem(item: deprecatedAddressKey)
-      } catch KeychainError.ItemNotFound(item: deprecatedAddressKey) {
+        address = try self.getItem(item: self.deprecatedAddressKey)
+      } catch KeychainError.ItemNotFound(item: self.deprecatedAddressKey) {
         // Throw original item not found error.
         throw KeychainError.ItemNotFound(item: addressKey)
       }
@@ -56,12 +56,12 @@ public class PortalKeychain: MobileStorageAdapter {
     var share: String
 
     do {
-      share = try getItem(item: shareKey)
+      share = try self.getItem(item: shareKey)
     } catch KeychainError.ItemNotFound(item: shareKey) {
       do {
         // Fallback to deprecated key.
-        share = try getItem(item: deprecatedShareKey)
-      } catch KeychainError.ItemNotFound(item: deprecatedShareKey) {
+        share = try self.getItem(item: self.deprecatedShareKey)
+      } catch KeychainError.ItemNotFound(item: self.deprecatedShareKey) {
         // Throw original item not found error.
         throw KeychainError.ItemNotFound(item: shareKey)
       }
@@ -78,14 +78,14 @@ public class PortalKeychain: MobileStorageAdapter {
   ) {
     var clientId: String
     do {
-      clientId = try getClientId()
+      clientId = try self.getClientId()
     } catch {
       completion(Result(error: error))
       return
     }
     let addressKey = "\(clientId).address"
 
-    setItem(key: addressKey, value: address) { result in
+    self.setItem(key: addressKey, value: address) { result in
       // Handle errors
       guard result.error == nil else {
         return completion(Result(error: result.error!))
@@ -103,14 +103,14 @@ public class PortalKeychain: MobileStorageAdapter {
   ) {
     var clientId: String
     do {
-      clientId = try getClientId()
+      clientId = try self.getClientId()
     } catch {
       completion(Result(error: error))
       return
     }
     let shareKey = "\(clientId).share"
 
-    setItem(key: shareKey, value: signingShare) { result in
+    self.setItem(key: shareKey, value: signingShare) { result in
       // Handle errors
       guard result.error == nil else {
         return completion(Result(error: result.error!))
@@ -152,7 +152,7 @@ public class PortalKeychain: MobileStorageAdapter {
     let testKey = "portal_test"
     let testValue = "test_value"
 
-    setItem(key: testKey, value: testValue) { result in
+    self.setItem(key: testKey, value: testValue) { result in
       // Handle errors.
       guard result.error == nil else {
         return completion(Result(error: result.error!))
@@ -216,7 +216,7 @@ public class PortalKeychain: MobileStorageAdapter {
 
       // Throw if the status is not successful.
       if status == errSecDuplicateItem {
-        try updateItem(key: key, value: value)
+        try self.updateItem(key: key, value: value)
         return completion(Result(data: status))
       }
       guard status != errSecNotAvailable else {
@@ -272,10 +272,10 @@ public class PortalKeychain: MobileStorageAdapter {
   }
 
   private func getClientId() throws -> String {
-    if clientId == nil {
+    if self.clientId == nil {
       throw KeychainError.clientIdNotSetYet
     }
 
-    return clientId!
+    return self.clientId!
   }
 }

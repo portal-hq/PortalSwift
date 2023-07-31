@@ -514,20 +514,20 @@ class CurrencyConverter {
     _ countryCode: String = "US",
     completion: @escaping (Result<Double>) -> Any?
   ) {
-    let country = countryCodes[countryCode]
+    let country = self.countryCodes[countryCode]
     if country == nil {
       _ = completion(Result(error: CurrencyConverterError.invalidCountryCode))
       return
     }
 
-    let currency = currencyCodes[country!]
+    let currency = self.currencyCodes[country!]
     if currency == nil {
       _ = completion(Result(error: CurrencyConverterError.invalidCountryCode))
       return
     }
 
     do {
-      try requester.get(
+      try self.requester.get(
         path: "?fsym=\(currency!)&tsyms=\(to)",
         headers: [:],
         requestType: HttpRequestType.CustomRequest
@@ -573,20 +573,20 @@ class CurrencyConverter {
     _ countryCode: String = "US",
     completion: @escaping (Result<Double>) -> Any?
   ) {
-    let country = countryCodes[countryCode]
+    let country = self.countryCodes[countryCode]
     if country == nil {
       _ = completion(Result(error: CurrencyConverterError.invalidCountryCode))
       return
     }
 
-    let currency = currencyCodes[country!]
+    let currency = self.currencyCodes[country!]
     if currency == nil {
       _ = completion(Result(error: CurrencyConverterError.invalidCountryCode))
       return
     }
 
     do {
-      try requester.get(
+      try self.requester.get(
         path: "?fsym=\(from)&tsyms=\(currency!)",
         headers: [:],
         requestType: HttpRequestType.CustomRequest

@@ -19,10 +19,10 @@ class ChainUtils {
   ]
 
   public static func getChainIdForName(_ chainName: String) -> Int? {
-    return chainNameToId[chainName]
+    return self.chainNameToId[chainName]
   }
 
   public static func getChainNameForId(_ chainId: Int) -> String? {
-    return chainIdToName[chainId]
+    return self.chainIdToName[chainId]
   }
 }

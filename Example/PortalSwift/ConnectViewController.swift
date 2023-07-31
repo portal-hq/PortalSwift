@@ -13,7 +13,7 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
 
   private var connect: PortalConnect?
   private var connect2: PortalConnect?
-
+  private var chains: [Int]?
   // UI Elements
   @IBOutlet var connectButton: UIButton!
   @IBOutlet var connectMessage: UITextView!
@@ -23,6 +23,10 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var connectMessage2: UITextView!
   @IBOutlet var disconnectButton2: UIButton!
   @IBOutlet var addressTextInput2: UITextField!
+  @IBOutlet var PolygonMainnetButton: UIButton!
+  @IBOutlet var EthMainnetButton: UIButton!
+  @IBOutlet var GoerliButton: UIButton!
+  @IBOutlet var MumbaiButton: UIButton!
 
   required init?(coder: NSCoder) {
     super.init(coder: coder)
@@ -56,6 +60,7 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
     do {
       self.connect = try self.portal!.createPortalConnectInstance(webSocketServer: CONNECT_URL)
       self.connect2 = try self.portal!.createPortalConnectInstance(webSocketServer: CONNECT_URL)
+      self.chains = Array((self.portal?.gatewayConfig.keys)!)
 
       self.app.connect = self.connect
       self.app.connect2 = self.connect2
@@ -165,6 +170,58 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
       portalConnect.emit(event: Events.PortalDappSessionApprovedV1.rawValue, data: connectData)
     } else {
       print("Invalid data type. Expected ConnectV1Data.")
+    }
+  }
+
+  @IBAction func PolyMainPressed(_: Any) {
+    do {
+      if self.connect!.connected {
+        try self.connect?.setChainId(value: 137)
+      }
+      if self.connect2!.connected {
+        try self.connect2?.setChainId(value: 137)
+      }
+    } catch {
+      print("Error in switching chains: \(error)")
+    }
+  }
+
+  @IBAction func GoerliPressed(_: Any) {
+    do {
+      if self.connect!.connected {
+        try self.connect?.setChainId(value: 5)
+      }
+      if self.connect2!.connected {
+        try self.connect2?.setChainId(value: 5)
+      }
+    } catch {
+      print("Error in switching chains: \(error)")
+    }
+  }
+
+  @IBAction func EthMainnetPressed(_: Any) {
+    do {
+      if self.connect!.connected {
+        try self.connect?.setChainId(value: 1)
+      }
+      if self.connect2!.connected {
+        try self.connect2?.setChainId(value: 1)
+      }
+    } catch {
+      print("Error in switching chains: \(error)")
+    }
+  }
+
+  @IBAction func MumbaiPressed(_: Any) {
+    do {
+      if self.connect!.connected {
+        try self.connect?.setChainId(value: 80001)
+      }
+      if self.connect2!.connected {
+        try self.connect2?.setChainId(value: 80001)
+      }
+    } catch {
+      print("Error in switching chains: \(error)")
     }
   }
 

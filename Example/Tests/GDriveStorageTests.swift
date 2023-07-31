@@ -6,8 +6,8 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
-import XCTest
 @testable import PortalSwift
+import XCTest
 
 final class GDriveStorageTests: XCTestCase {
   func testExample() {

@@ -16,10 +16,10 @@ final class MpcSignerTests: XCTestCase {
 
   override func setUpWithError() throws {
     do {
-      keychain = MockPortalKeychain()
-      keychain!.setSigningShare(signingShare: mockSigningShare) { _ in }
-      signer = MpcSigner(apiKey: "API_KEY", keychain: keychain!)
-      provider = try MockPortalProvider(
+      self.keychain = MockPortalKeychain()
+      self.keychain!.setSigningShare(signingShare: mockSigningShare) { _ in }
+      self.signer = MpcSigner(apiKey: "API_KEY", keychain: self.keychain!)
+      self.provider = try MockPortalProvider(
         apiKey: "API_KEY",
         chainId: Chains.Goerli.rawValue,
         gatewayConfig: [Chains.Goerli.rawValue: "https://eth-goerli.g.alchemy.com/v2/API_KEY"],
@@ -32,9 +32,9 @@ final class MpcSignerTests: XCTestCase {
   }
 
   override func tearDownWithError() throws {
-    keychain = nil
-    signer = nil
-    provider = nil
+    self.keychain = nil
+    self.signer = nil
+    self.provider = nil
   }
 
   func testETHRequestPayloadSign() throws {
@@ -43,7 +43,7 @@ final class MpcSignerTests: XCTestCase {
       params: []
     )
 
-    let result: SignerResult = try signer?.sign(payload: payload, provider: provider!) as! SignerResult
+    let result: SignerResult = try signer?.sign(payload: payload, provider: self.provider!) as! SignerResult
     let accounts = result.accounts
     XCTAssert(accounts?.first == mockAddress)
   }
@@ -63,7 +63,7 @@ final class MpcSignerTests: XCTestCase {
       params: [fakeTransaction]
     )
 
-    let result = try signer?.sign(payload: payload, provider: provider!, mockClientSign: true)
+    let result = try signer?.sign(payload: payload, provider: self.provider!, mockClientSign: true)
     XCTAssert(result?.signature == mockSignature)
   }
 }

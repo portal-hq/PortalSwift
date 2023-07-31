@@ -55,50 +55,50 @@ public struct QuoteArgs: Codable {
     ]
 
     // Either buyAmount or sellAmount MUST be set for the quote to return a usable value
-    if buyAmount != nil {
-      dictionary["buyAmount"] = buyAmount
+    if self.buyAmount != nil {
+      dictionary["buyAmount"] = self.buyAmount
     }
 
-    if sellAmount != nil {
-      dictionary["sellAmount"] = sellAmount
+    if self.sellAmount != nil {
+      dictionary["sellAmount"] = self.sellAmount
     }
 
     // The rest of these are truly optional
-    if affiliateAddress != nil {
-      dictionary["affiliateAddress"] = affiliateAddress
+    if self.affiliateAddress != nil {
+      dictionary["affiliateAddress"] = self.affiliateAddress
     }
-    if buyTokenPercentageFee != nil {
-      dictionary["buyTokenPercentageFee"] = buyTokenPercentageFee
+    if self.buyTokenPercentageFee != nil {
+      dictionary["buyTokenPercentageFee"] = self.buyTokenPercentageFee
     }
-    if enableSlippageProtection != nil {
-      dictionary["enableSlippageProtection"] = enableSlippageProtection
+    if self.enableSlippageProtection != nil {
+      dictionary["enableSlippageProtection"] = self.enableSlippageProtection
     }
-    if excludedSources != nil {
-      dictionary["excludedSources"] = excludedSources
+    if self.excludedSources != nil {
+      dictionary["excludedSources"] = self.excludedSources
     }
-    if feeRecipient != nil {
-      dictionary["feeRecipient"] = feeRecipient
+    if self.feeRecipient != nil {
+      dictionary["feeRecipient"] = self.feeRecipient
     }
-    if gasPrice != nil {
-      dictionary["gasPrice"] = gasPrice
+    if self.gasPrice != nil {
+      dictionary["gasPrice"] = self.gasPrice
     }
-    if includedSources != nil {
-      dictionary["includedSources"] = includedSources
+    if self.includedSources != nil {
+      dictionary["includedSources"] = self.includedSources
     }
-    if intentOnFilling != nil {
-      dictionary["intentOnFilling"] = intentOnFilling
+    if self.intentOnFilling != nil {
+      dictionary["intentOnFilling"] = self.intentOnFilling
     }
-    if priceImpactProtectionPercentage != nil {
-      dictionary["priceImpactProtectionPercentage"] = priceImpactProtectionPercentage
+    if self.priceImpactProtectionPercentage != nil {
+      dictionary["priceImpactProtectionPercentage"] = self.priceImpactProtectionPercentage
     }
-    if skipValidation != nil {
-      dictionary["skipValidation"] = skipValidation
+    if self.skipValidation != nil {
+      dictionary["skipValidation"] = self.skipValidation
     }
-    if slippagePercentage != nil {
-      dictionary["slippagePercentage"] = slippagePercentage
+    if self.slippagePercentage != nil {
+      dictionary["slippagePercentage"] = self.slippagePercentage
     }
-    if takerAddress != nil {
-      dictionary["takerAddress"] = takerAddress
+    if self.takerAddress != nil {
+      dictionary["takerAddress"] = self.takerAddress
     }
 
     return dictionary
@@ -116,7 +116,7 @@ public class PortalSwaps {
 
   public func getQuote(args: QuoteArgs, completion: @escaping (Result<Quote>) -> Void) {
     do {
-      try portal.api.getQuote(apiKey, args) { result in
+      try self.portal.api.getQuote(self.apiKey, args) { result in
         completion(result)
       }
     } catch {
@@ -126,7 +126,7 @@ public class PortalSwaps {
 
   public func getSources(completion: @escaping (Result<[String: String]>) -> Void) {
     do {
-      try portal.api.getSources(swapsApiKey: apiKey) { result in
+      try self.portal.api.getSources(swapsApiKey: self.apiKey) { result in
         completion(result)
       }
     } catch {

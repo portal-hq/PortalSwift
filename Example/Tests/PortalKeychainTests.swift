@@ -6,30 +6,30 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
-import XCTest
 import PortalSwift
+import XCTest
 
 final class PortalKeychainTests: XCTestCase {
   var keychain: PortalKeychain?
 
   override func setUpWithError() throws {
     // Put setup code here. This method is called before the invocation of each test method in the class.
-    keychain = PortalKeychain()
+    self.keychain = PortalKeychain()
   }
 
   override func tearDownWithError() throws {
     // Put teardown code here. This method is called after the invocation of each test method in the class.
-    keychain = nil
+    self.keychain = nil
   }
 
   func testShare() {
-    keychain!.setSigningShare(signingShare: "TestSigningShare") { result in }
-    XCTAssert(try keychain!.getSigningShare() == "TestSigningShare", "Signing Share should equal what we stored.")
+    self.keychain!.setSigningShare(signingShare: "TestSigningShare") { _ in }
+    XCTAssert(try self.keychain!.getSigningShare() == "TestSigningShare", "Signing Share should equal what we stored.")
   }
 
   func testAddress() {
-    keychain!.setAddress(address: "0xhahashdfasAJHAFKJ") { result in }
+    self.keychain!.setAddress(address: "0xhahashdfasAJHAFKJ") { _ in }
 
-    XCTAssert(try keychain!.getAddress() == "0xhahashdfasAJHAFKJ", "Address should equal what we stored.")
+    XCTAssert(try self.keychain!.getAddress() == "0xhahashdfasAJHAFKJ", "Address should equal what we stored.")
   }
 }

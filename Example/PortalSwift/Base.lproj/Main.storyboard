@@ -370,10 +370,57 @@
                                     <action selector="connect2Pressed" destination="7fk-LF-non" eventType="touchUpInside" id="j4I-Lx-Pxm"/>
                                 </connections>
                             </button>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="15d-vL-Ghe">
+                                <rect key="frame" x="115" y="62" width="91" height="48"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <state key="normal" title="Button"/>
+                                <buttonConfiguration key="configuration" style="filled" title="Eth mainnet"/>
+                                <connections>
+                                    <action selector="EthMainnetPressed:" destination="7fk-LF-non" eventType="touchUpInside" id="sq3-D2-eXp"/>
+                                </connections>
+                            </button>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="2at-6a-APP">
+                                <rect key="frame" x="223" y="62" width="75" height="48"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <state key="normal" title="Button"/>
+                                <buttonConfiguration key="configuration" style="filled" title="Goerli"/>
+                                <connections>
+                                    <action selector="GoerliPressed:" destination="7fk-LF-non" eventType="touchUpInside" id="9fk-RW-DRO"/>
+                                </connections>
+                            </button>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="Switch Chain" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="2DD-qY-dEP">
+                                <rect key="frame" x="128" y="27" width="100" height="21"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                                <nil key="textColor"/>
+                                <nil key="highlightedColor"/>
+                            </label>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="NAq-3e-gkr">
+                                <rect key="frame" x="19" y="118" width="86" height="48"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <state key="normal" title="Button"/>
+                                <buttonConfiguration key="configuration" style="filled" title="Mumbai"/>
+                                <connections>
+                                    <action selector="MumbaiPressed:" destination="7fk-LF-non" eventType="touchUpInside" id="iZQ-m7-GCk"/>
+                                </connections>
+                            </button>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="kMQ-14-dCv">
+                                <rect key="frame" x="19" y="62" width="91" height="48"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <state key="normal" title="Button"/>
+                                <buttonConfiguration key="configuration" style="filled" title="Polygon mainnet"/>
+                                <connections>
+                                    <action selector="PolyMainPressed:" destination="7fk-LF-non" eventType="touchUpInside" id="kLQ-Jm-zv4"/>
+                                </connections>
+                            </button>
                         </subviews>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                     </view>
                     <connections>
+                        <outlet property="EthMainnetButton" destination="15d-vL-Ghe" id="U1l-Db-X6w"/>
+                        <outlet property="GoerliButton" destination="2at-6a-APP" id="Lhe-WC-nF1"/>
+                        <outlet property="MumbaiButton" destination="NAq-3e-gkr" id="f2E-j4-R1Z"/>
+                        <outlet property="PolygonMainnetButton" destination="kMQ-14-dCv" id="2c3-C5-QsZ"/>
                         <outlet property="addressTextInput" destination="xEv-Ac-DYF" id="88M-H0-RU1"/>
                         <outlet property="addressTextInput2" destination="aPI-NR-DZw" id="kkj-nO-0AV"/>
                         <outlet property="connectButton" destination="Xyb-ta-tdQ" id="kIP-YV-aqE"/>
