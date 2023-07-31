@@ -25,7 +25,7 @@ public class LocalFileStorage: Storage {
 
   /// Deletes an item in storage.
   override public func delete(completion: @escaping (Result<Bool>) -> Void) {
-    let fileURL = getDocumentsDirectory().appendingPathComponent(fileName)
+    let fileURL = self.getDocumentsDirectory().appendingPathComponent(self.fileName)
 
     do {
       try FileManager.default.removeItem(at: fileURL)
@@ -37,7 +37,7 @@ public class LocalFileStorage: Storage {
 
   /// Reads an item from storage.
   override public func read(completion: @escaping (Result<String>) -> Void) {
-    let fileURL = getDocumentsDirectory().appendingPathComponent(fileName)
+    let fileURL = self.getDocumentsDirectory().appendingPathComponent(self.fileName)
 
     do {
       let content = try String(contentsOf: fileURL)
@@ -49,7 +49,7 @@ public class LocalFileStorage: Storage {
 
   /// Writes an item to storage.
   override public func write(privateKey content: String, completion: @escaping (Result<Bool>) -> Void) {
-    let fileURL = getDocumentsDirectory().appendingPathComponent(fileName)
+    let fileURL = self.getDocumentsDirectory().appendingPathComponent(self.fileName)
 
     do {
       try content.write(to: fileURL, atomically: true, encoding: .utf8)

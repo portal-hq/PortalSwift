@@ -24,11 +24,11 @@ public class GDriveStorage: Storage {
   private var separator: String = ""
 
   public init(clientID: String, viewController: UIViewController) {
-    drive = GDriveClient(clientId: clientID, view: viewController)
+    self.drive = GDriveClient(clientId: clientID, view: viewController)
   }
 
   override public func delete(completion: @escaping (Result<Bool>) -> Void) {
-    getFilename { filename in
+    self.getFilename { filename in
       if filename.error != nil {
         completion(Result(data: false, error: filename.error!))
         return
@@ -52,7 +52,7 @@ public class GDriveStorage: Storage {
   }
 
   override public func read(completion: @escaping (Result<String>) -> Void) {
-    getFilename { filename in
+    self.getFilename { filename in
       if filename.error != nil {
         completion(Result(error: filename.error!))
         return
@@ -81,7 +81,7 @@ public class GDriveStorage: Storage {
   }
 
   override public func write(privateKey: String, completion: @escaping (Result<Bool>) -> Void) {
-    getFilename { filename in
+    self.getFilename { filename in
       if filename.error != nil {
         completion(Result(data: false, error: filename.error!))
         return
@@ -103,24 +103,24 @@ public class GDriveStorage: Storage {
   }
 
   public func signIn(completion: @escaping (Result<GIDGoogleUser>) -> Void) {
-    drive.auth.signIn { result in
+    self.drive.auth.signIn { result in
       completion(result)
     }
   }
 
   public func validateOperations(callback: @escaping (Result<Bool>) -> Void) {
-    drive.validateOperations(callback: callback)
+    self.drive.validateOperations(callback: callback)
   }
 
   private func getFilename(callback: @escaping (Result<String>) -> Void) {
-    if api == nil {
+    if self.api == nil {
       callback(Result(error: GDriveStorageError.portalApiNotConfigured))
       return
     }
 
     do {
-      if filename == nil || filename!.count < 1 {
-        try api!.getClient { client in
+      if self.filename == nil || self.filename!.count < 1 {
+        try self.api!.getClient { client in
           if client.error != nil {
             callback(Result(error: client.error!))
             return
@@ -138,7 +138,7 @@ public class GDriveStorage: Storage {
           callback(Result(data: self.filename!))
         }
       } else {
-        callback(Result(data: filename!))
+        callback(Result(data: self.filename!))
       }
     } catch {
       callback(Result(error: error))

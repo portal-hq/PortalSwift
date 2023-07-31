@@ -21,10 +21,10 @@ public class EventBus {
   ///   - data: The data to pass to registered event handlers.
   /// - Returns: The Portal Provider instance.
   public func emit(event: Events.RawValue, data: Any) {
-    let registeredEventHandlers = events[event]
+    let registeredEventHandlers = self.events[event]
 
     if registeredEventHandlers == nil {
-      print(String(format: "[\(label)] Could not find any bindings for event '%@'. Ignoring...", event))
+      print(String(format: "[\(self.label)] Could not find any bindings for event '%@'. Ignoring...", event))
       return
     } else {
       // Invoke all registered handlers for the event
@@ -33,11 +33,11 @@ public class EventBus {
           try registeredEventHandler.handler(data)
         }
       } catch {
-        print("[\(label)] Error invoking registered handlers", error)
+        print("[\(self.label)] Error invoking registered handlers", error)
       }
 
       // Remove once instances
-      events[event] = registeredEventHandlers?.filter(removeOnce)
+      self.events[event] = registeredEventHandlers?.filter(self.removeOnce)
 
       return
     }
@@ -52,11 +52,11 @@ public class EventBus {
     event: Events.RawValue,
     callback: @escaping (_ data: Any) -> Void
   ) {
-    if events[event] == nil {
-      events[event] = []
+    if self.events[event] == nil {
+      self.events[event] = []
     }
 
-    events[event]?.append(RegisteredEventHandler(
+    self.events[event]?.append(RegisteredEventHandler(
       handler: callback,
       once: false
     ))
@@ -71,11 +71,11 @@ public class EventBus {
     event: Events.RawValue,
     callback: @escaping (_ data: Any) throws -> Void
   ) {
-    if events[event] == nil {
-      events[event] = []
+    if self.events[event] == nil {
+      self.events[event] = []
     }
 
-    events[event]?.append(RegisteredEventHandler(
+    self.events[event]?.append(RegisteredEventHandler(
       handler: callback,
       once: true
     ))
@@ -88,11 +88,11 @@ public class EventBus {
   public func removeListener(
     event: Events.RawValue
   ) {
-    if events[event] == nil {
-      print(String(format: "[\(label)] Could not find any bindings for event '%@'. Ignoring...", event))
+    if self.events[event] == nil {
+      print(String(format: "[\(self.label)] Could not find any bindings for event '%@'. Ignoring...", event))
     }
 
-    events[event] = nil
+    self.events[event] = nil
   }
 
   /// Removes the specified event handler.
@@ -105,7 +105,7 @@ public class EventBus {
 
   /// Removes all event handlers.
   public func resetEvents() {
-    events.forEach { event, _ in
+    self.events.forEach { event, _ in
       _ = self.removeListener(event: event)
     }
   }

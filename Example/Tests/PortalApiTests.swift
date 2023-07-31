@@ -20,11 +20,11 @@ final class PortalApiTests: XCTestCase {
       keychain: MockPortalKeychain(),
       autoApprove: true
     )
-    api = PortalApi(apiKey: "test", apiHost: "api.portalhq.io", provider: provider, mockRequests: true)
+    self.api = PortalApi(apiKey: "test", apiHost: "api.portalhq.io", provider: provider, mockRequests: true)
   }
 
   override func tearDownWithError() throws {
-    api = nil
+    self.api = nil
   }
 
   func testGetClient() throws {

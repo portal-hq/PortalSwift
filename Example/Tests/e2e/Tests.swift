@@ -14,9 +14,9 @@ class Tests: XCTestCase {
 
   override class func setUp() {
     super.setUp()
-    username = randomString(length: 15)
-    print("USERNAME: ", username!)
-    PortalWrap = PortalWrapper()
+    self.username = self.randomString(length: 15)
+    print("USERNAME: ", self.username!)
+    self.PortalWrap = PortalWrapper()
   }
 
   override func tearDown() {
@@ -91,7 +91,7 @@ class Tests: XCTestCase {
     let ethSignExpectation = XCTestExpectation(description: "eth sign")
     var address: String? = "0x290766b47d6ea98bae2bd189cc8c7b4aa3154371"
 
-    testLogin { result in
+    self.testLogin { result in
       guard result.error == nil else {
         ethSignExpectation.fulfill()
         return XCTFail("Failed on login: \(result.error!)")
@@ -123,7 +123,7 @@ class Tests: XCTestCase {
   func testCBackup() {
     let backupExpectation = XCTestExpectation(description: "Backup")
 
-    testLogin { result in
+    self.testLogin { result in
       guard result.error == nil else {
         backupExpectation.fulfill()
         return XCTFail("Failed on login: \(result.error!)")
@@ -168,7 +168,7 @@ class Tests: XCTestCase {
   func testRecover() {
     let recoverExpectation = XCTestExpectation(description: "Recover")
 
-    testLogin { result in
+    self.testLogin { result in
       guard result.error == nil else {
         recoverExpectation.fulfill()
         return XCTFail("Failed on login: \(result.error!)")

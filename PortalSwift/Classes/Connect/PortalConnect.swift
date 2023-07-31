@@ -19,15 +19,19 @@ public var signMethods: [ETHRequestMethods.RawValue] = [
 
 public class PortalConnect: EventBus {
   public var address: String? {
-    return provider.address
+    return self.provider.address
   }
 
   public var chainId: Int {
-    return provider.chainId
+    return self.provider.chainId
+  }
+
+  public func setChainId(value: Int) throws {
+    _ = try self.provider.setChainId(value: value, connect: self)
   }
 
   public var connected: Bool {
-    return client?.isConnected ?? false
+    return self.client?.isConnected ?? false
   }
 
   public var client: WebSocketClient? = nil
@@ -53,7 +57,7 @@ public class PortalConnect: EventBus {
     self.webSocketServer = webSocketServer
 
     // Initialize the PortalProvider
-    provider = try PortalProvider(
+    self.provider = try PortalProvider(
       apiKey: apiKey,
       chainId: chainId,
       gatewayConfig: gatewayConfig,
@@ -68,13 +72,13 @@ public class PortalConnect: EventBus {
 
     // Set up webSocketClient
     let connectionString = webSocketServer.starts(with: "localhost") ? "ws://\(webSocketServer)" : "wss://\(webSocketServer)"
-    client = WebSocketClient(
+    self.client = WebSocketClient(
       apiKey: apiKey,
       connect: self,
       webSocketServer: connectionString
     )
 
-    guard address != nil else {
+    guard self.address != nil else {
       print("[PortalConnect] ⚠️ Address not found in Keychain. This may cause some features not to work as expected.")
       return
     }
@@ -82,6 +86,26 @@ public class PortalConnect: EventBus {
     // Fired by the Provider
     on(event: Events.PortalConnectSigningRequested.rawValue) { payload in
       self.emit(event: Events.PortalSigningRequested.rawValue, data: payload)
+    }
+
+    on(event: Events.PortalConnectChainChanged.rawValue) { payload in
+      print("In the handler \(String(describing: self.topic))")
+
+      let event = ChainChangedMessage(
+        event: "portal_chainChanged",
+        data: ChainChangedData(
+          topic: self.topic,
+          uri: self.uri,
+          chainId: String(payload as! Int)
+        )
+      )
+      do {
+        let message = try JSONEncoder().encode(event)
+
+        self.client?.send(message)
+      } catch {
+        print("[PortalConnect] Error encoding PortalChainChanged: \(error)")
+      }
     }
 
     // Fired by SDK Consumers
@@ -99,35 +123,35 @@ public class PortalConnect: EventBus {
   }
 
   public func connect(_ uri: String) {
-    if connected && uri == self.uri {
+    if self.connected && uri == self.uri {
       print("[PortalConnect] Connection is already in progress or established. Ignoring request to connect...")
       return
     }
 
-    if client == nil {
-      client = WebSocketClient(apiKey: apiKey, connect: self, webSocketServer: webSocketServer)
+    if self.client == nil {
+      self.client = WebSocketClient(apiKey: self.apiKey, connect: self, webSocketServer: self.webSocketServer)
     }
 
     self.uri = uri
 
-    client?.resetEventBus()
+    self.client?.resetEventBus()
 
-    client?.on("close", handleClose)
-    client?.on("portal_dappSessionRequested", handleDappSessionRequested)
-    client?.on("portal_dappSessionRequestedV1", handleDappSessionRequestedV1)
-    client?.on("connected", handleConnected)
-    client?.on("connectedV1", handleConnectedV1)
-    client?.on("disconnected", handleDisconnected)
-    client?.on("error", handleError)
-    client?.on("session_request", handleSessionRequest)
-    client?.on("session_request_address", handleSessionRequestAddress)
-    client?.on("session_request_transaction", handleSessionRequestTransaction)
+    self.client?.on("close", self.handleClose)
+    self.client?.on("portal_dappSessionRequested", self.handleDappSessionRequested)
+    self.client?.on("portal_dappSessionRequestedV1", self.handleDappSessionRequestedV1)
+    self.client?.on("connected", self.handleConnected)
+    self.client?.on("connectedV1", self.handleConnectedV1)
+    self.client?.on("disconnected", self.handleDisconnected)
+    self.client?.on("error", self.handleError)
+    self.client?.on("session_request", self.handleSessionRequest)
+    self.client?.on("session_request_address", self.handleSessionRequestAddress)
+    self.client?.on("session_request_transaction", self.handleSessionRequestTransaction)
 
-    client?.connect(uri: uri)
+    self.client?.connect(uri: uri)
   }
 
   public func disconnect(_ userInitiated: Bool = false) {
-    client?.disconnect(userInitiated)
+    self.client?.disconnect(userInitiated)
   }
 
   func handleDappSessionRequested(data: ConnectData) {
@@ -230,31 +254,33 @@ public class PortalConnect: EventBus {
   }
 
   func handleClose() {
-    topic = nil
-    client?.topic = nil
+    self.topic = nil
+    self.client?.topic = nil
 
-    client?.close()
+    self.client?.close()
   }
 
   func handleConnected(data: ConnectedData) {
-    topic = data.topic
-    client?.topic = data.topic
+    print("Topic being set to: \(data.topic)")
+    self.topic = data.topic
+    self.client?.topic = data.topic
+    print("Topic set to: \(self.topic)")
 
     emit(event: Events.Connect.rawValue, data: data)
   }
 
   func handleConnectedV1(data: ConnectedV1Data) {
-    topic = data.topic
-    client?.topic = data.topic
+    self.topic = data.topic
+    self.client?.topic = data.topic
 
     emit(event: Events.Connect.rawValue, data: data)
   }
 
   func handleDisconnected(data: DisconnectData) {
-    topic = nil
-    client?.topic = nil
+    self.topic = nil
+    self.client?.topic = nil
 
-    client?.close()
+    self.client?.close()
     emit(event: Events.Disconnect.rawValue, data: data)
   }
 
@@ -290,7 +316,7 @@ public class PortalConnect: EventBus {
       }
     }
 
-    handleProviderRequest(method: method, params: params) { [weak self] result in
+    self.handleProviderRequest(method: method, params: params) { [weak self] result in
       guard let self = self else { return }
 
       if result.error != nil {
@@ -351,7 +377,7 @@ public class PortalConnect: EventBus {
       }
     }
 
-    handleProviderRequest(method: method, params: params) { [weak self] result in
+    self.handleProviderRequest(method: method, params: params) { [weak self] result in
       guard let self = self else { return }
 
       if result.error != nil {
@@ -411,7 +437,7 @@ public class PortalConnect: EventBus {
       }
     }
 
-    handleProviderRequest(method: method, params: params) { [weak self] result in
+    self.handleProviderRequest(method: method, params: params) { [weak self] result in
       guard let self = self else { return }
 
       if result.error != nil {
@@ -445,11 +471,11 @@ public class PortalConnect: EventBus {
   }
 
   public func viewWillDisappear() {
-    client?.sendFinalMessageAndDisconnect()
+    self.client?.sendFinalMessageAndDisconnect()
   }
 
   private func handleProviderRequest(method: String, params: [ETHAddressParam], completion: @escaping (Result<Any>) -> Void) {
-    provider.request(payload: ETHAddressPayload(method: method, params: params), connect: self) { result in
+    self.provider.request(payload: ETHAddressPayload(method: method, params: params), connect: self) { result in
       guard result.error == nil else {
         return completion(Result(error: result.error!))
       }
@@ -458,7 +484,7 @@ public class PortalConnect: EventBus {
   }
 
   private func handleProviderRequest(method: String, params: [ETHTransactionParam], completion: @escaping (Result<Any>) -> Void) {
-    provider.request(payload: ETHTransactionPayload(method: method, params: params), connect: self) { (result: Result<TransactionCompletionResult>) in
+    self.provider.request(payload: ETHTransactionPayload(method: method, params: params), connect: self) { (result: Result<TransactionCompletionResult>) in
       guard result.error == nil else {
         return completion(Result(error: result.error!))
       }
@@ -467,7 +493,7 @@ public class PortalConnect: EventBus {
   }
 
   private func handleProviderRequest(method: String, params: [Any], completion: @escaping (Result<Any>) -> Void) {
-    provider.request(payload: ETHRequestPayload(method: method, params: params), connect: self) { result in
+    self.provider.request(payload: ETHRequestPayload(method: method, params: params), connect: self) { result in
       guard result.error == nil else {
         return completion(Result(error: result.error!))
       }
