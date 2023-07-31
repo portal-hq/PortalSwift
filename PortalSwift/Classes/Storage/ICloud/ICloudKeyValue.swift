@@ -1,16 +1,16 @@
 //
-//  ICloudStorage.swift
+//  ICloudKeyValue.swift
+//  PortalSwift
 //
-//  Created by Portal Labs, Inc.
-//  Copyright © 2022 Portal Labs, Inc. All rights reserved.
+//  Created by Kelson Adams on 7/31/23.
 //
 
 import CommonCrypto
 import Foundation
 
 /// A storage class that uses iCloud's key-value store to store/retrieve private keys.
-public class ICloudStorage: Storage {
-  public enum ICloudStorageError: Error {
+public class ICloudKeyValue: Storage {
+  enum ICloudKeyValueError: Error {
     case noAPIKeyProvided(String)
     case noAccessToICloud(String)
     case notSignedIntoICloud(String)
@@ -20,7 +20,7 @@ public class ICloudStorage: Storage {
     case unknownError
   }
 
-  public enum ICloudStatus: String {
+  enum ICloudKeyValueStatus: String {
     case available
     case notSignedIn
     case noAccess
@@ -33,8 +33,12 @@ public class ICloudStorage: Storage {
 
   private let isSimulator = TARGET_OS_SIMULATOR != 0
 
-  /// Initializes a new ICloudStorage instance.
-  override public init() {}
+  /// Initializes a new ICloudKeyValue instance.
+  public init(api: PortalApi?, key: String) {
+    self.api = api
+    self.key = key
+    super.init()
+  }
 
   /// Reads the private key stored in iCloud's key-value store.
   /// - Parameter completion: Resolves as a Result which can include the private key stored in iCloud's key-value store.
@@ -93,64 +97,6 @@ public class ICloudStorage: Storage {
     }
   }
 
-  /// Checks the availability and functionality of the iCloud key-value store.
-  ///
-  /// This method tests the iCloud key-value store by performing a sequence of write, read, and delete operations using a test key and value.
-  /// It is designed to verify that all basic operations can be successfully performed on the user's iCloud key-value store.
-  ///
-  /// Specifically, the method:
-  /// 1. Writes a test value to the store using a test key.
-  /// 2. Attempts to read the written test value from the store using the test key.
-  /// 3. If the read is successful and returns the correct test value, it proceeds to delete the test value from the store using the test key.
-  /// 4. Finally, it checks if the deletion was successful by attempting to read the test value again. If the read returns `nil`, it concludes that the test sequence was successful.
-  ///
-  /// The method uses a `Result<Bool>` type to inform the caller of the outcome. If all operations were successful, it returns `Result(data: true)`.
-  /// If any operation fails, it returns a `Result` with an error detailing the type of failure, either `ICloudStorageError.failedToRead` or `ICloudStorageError.failedToDelete`.
-  ///
-  /// - Parameter callback: A closure that takes a `Result<Bool>` as its parameter and returns `Void`.
-  public func validateOperations(callback: @escaping (Result<Bool>) -> Void) {
-    let testKey = "portal_test"
-    let testValue = "test_value"
-
-    self.rawWrite(key: testKey, value: testValue)
-
-    if let readValue = rawRead(key: testKey), readValue == testValue {
-      self.rawDelete(key: testKey)
-      if self.rawRead(key: testKey) == nil {
-        // Availability check succeeded.
-        callback(Result(data: true))
-      } else {
-        callback(Result(error: ICloudStorageError.failedValidateOperations("Failed to delete test data")))
-      }
-    } else {
-      callback(Result(error: ICloudStorageError.failedValidateOperations("Failed to read/write test data")))
-    }
-  }
-
-  /// Reads the value stored in iCloud's key-value store with the given key.
-  /// - Parameter key: The key to read the value from.
-  /// - Returns: The value associated with the key, or nil if the key was not found.
-  private func rawRead(key: String) -> String? {
-    NSUbiquitousKeyValueStore.default.synchronize()
-    return NSUbiquitousKeyValueStore.default.string(forKey: key)
-  }
-
-  /// Writes a value to iCloud's key-value store.
-  /// - Parameters:
-  ///   - key: The key to associate with the value.
-  ///   - value: The value to write to iCloud's key-value store.
-  private func rawWrite(key: String, value: String) {
-    NSUbiquitousKeyValueStore.default.set(value, forKey: key)
-    NSUbiquitousKeyValueStore.default.synchronize()
-  }
-
-  /// Deletes the value associated with a key in iCloud's key-value store.
-  /// - Parameter key: The key to remove along with its associated value.
-  private func rawDelete(key: String) {
-    NSUbiquitousKeyValueStore.default.removeObject(forKey: key)
-    NSUbiquitousKeyValueStore.default.synchronize()
-  }
-
   private func getKey(completion: @escaping (Result<String>) -> Void) {
     if self.key.count > 0 {
       completion(Result(data: self.key))
@@ -158,7 +104,7 @@ public class ICloudStorage: Storage {
     }
 
     if self.api == nil {
-      completion(Result(error: ICloudStorageError.noAPIKeyProvided("No API key provided")))
+      completion(Result(error: ICloudKeyValueError.noAPIKeyProvided("No API key provided")))
       return
     }
 
@@ -172,12 +118,12 @@ public class ICloudStorage: Storage {
         completion(Result(data: key))
       }
     } catch {
-      completion(Result(error: ICloudStorageError.unableToRetrieveClient("Unable to retrieve client from API")))
+      completion(Result(error: ICloudKeyValueError.unableToRetrieveClient("Unable to retrieve client from API")))
     }
   }
 
   private func createKey(client: Client) -> String {
-    return ICloudStorage.hash("\(client.custodian.id)\(client.id)")
+    return ICloudKeyValue.hash("\(client.custodian.id)\(client.id)")
   }
 
   private static func hash(_ str: String) -> String {
