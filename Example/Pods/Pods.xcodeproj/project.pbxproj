@@ -1538,10 +1538,10 @@
 		F8794D159DA75446A24FE1182CEB9B77 /* Storage */ = {
 			isa = PBXGroup;
 			children = (
-				47726B262A7862DE0006D325 /* ICloud */,
 				0723F29BE94D7C624AD196CE8CE1E01E /* LocalFileStorage.swift */,
 				17A3AB7303AEF4656D97AFED7B384E71 /* Storage.swift */,
 				189622C7A33AFC1E73E142B7F379D3B2 /* GDrive */,
+				47726B262A7862DE0006D325 /* ICloud */,
 			);
 			name = Storage;
 			path = PortalSwift/Classes/Storage;

@@ -13,11 +13,10 @@ public class ICloudStorage: Storage {
   private var keyValueStorage: ICloudKeyValue
   private var documentStorage: ICloudDocuments
 
-  public init(api: PortalApi?, key: String) {
-    self.api = api
+  public init(key: String) {
     self.key = key
-    self.keyValueStorage = ICloudKeyValue(api: api, key: key)
-    self.documentStorage = ICloudDocuments(api: api, key: key)
+    self.keyValueStorage = ICloudKeyValue(api: self.api, key: key)
+    self.documentStorage = ICloudDocuments(api: self.api, key: key)
     super.init()
   }
 
