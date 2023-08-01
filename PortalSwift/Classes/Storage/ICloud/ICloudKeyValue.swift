@@ -11,7 +11,7 @@ import Foundation
 /// A storage class that uses iCloud's key-value store to store/retrieve private keys.
 public class ICloudKeyValue: Storage {
   enum ICloudKeyValueError: Error {
-    case noAPIKeyProvided(String)
+    case noAPIProvided(String)
     case noAccessToICloud(String)
     case notSignedIntoICloud(String)
     case unableToDeriveKey(String)
@@ -28,15 +28,12 @@ public class ICloudKeyValue: Storage {
 
   /// The Portal API instance to retrieve the client's and custodian's IDs.
   public var api: PortalApi?
-  /// The key used to store the private key in iCloud.
-  public var key: String = ""
 
   private let isSimulator = TARGET_OS_SIMULATOR != 0
 
   /// Initializes a new ICloudKeyValue instance.
-  public init(api: PortalApi?, key: String) {
+  public init(api: PortalApi?) {
     self.api = api
-    self.key = key
     super.init()
   }
 
@@ -98,13 +95,8 @@ public class ICloudKeyValue: Storage {
   }
 
   private func getKey(completion: @escaping (Result<String>) -> Void) {
-    if self.key.count > 0 {
-      completion(Result(data: self.key))
-      return
-    }
-
     if self.api == nil {
-      completion(Result(error: ICloudKeyValueError.noAPIKeyProvided("No API key provided")))
+      completion(Result(error: ICloudKeyValueError.noAPIProvided("No API provided")))
       return
     }
 
@@ -114,15 +106,15 @@ public class ICloudKeyValue: Storage {
           completion(Result(error: result.error!))
           return
         }
-        let key = self.createKey(client: result.data!)
-        completion(Result(data: key))
+        let label = self.createLabel(client: result.data!)
+        completion(Result(data: label))
       }
     } catch {
       completion(Result(error: ICloudKeyValueError.unableToRetrieveClient("Unable to retrieve client from API")))
     }
   }
 
-  private func createKey(client: Client) -> String {
+  private func createLabel(client: Client) -> String {
     return ICloudKeyValue.hash("\(client.custodian.id)\(client.id)")
   }
 

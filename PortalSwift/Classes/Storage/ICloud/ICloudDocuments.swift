@@ -8,44 +8,12 @@
 import CommonCrypto
 import Foundation
 
-enum iCloudStorageError: Error, LocalizedError {
-  case noAPIKeyProvided
-  case unableToRetrieveClient
-  case noUbiquityContainer
-  case writeError
-  case readError
-  case deleteError
-  case validationMismatch
-
-  var errorDescription: String? {
-    switch self {
-    case .noAPIKeyProvided:
-      return "No API Key provided"
-    case .unableToRetrieveClient:
-      return "Unable to retrieve client from API"
-    case .noUbiquityContainer:
-      return "No ubiquity container found"
-    case .writeError:
-      return "There was an error while writing to iCloud"
-    case .readError:
-      return "There was an error while reading from iCloud"
-    case .deleteError:
-      return "There was an error while deleting from iCloud"
-    case .validationMismatch:
-      return "Validation mismatch: Written and read content do not match in validateOperations"
-    }
-  }
-}
-
 public class ICloudDocuments: Storage {
   /// The Portal API instance to retrieve the client's and custodian's IDs.
   public var api: PortalApi?
-  /// The key used to store the private key in iCloud.
-  public var key: String = ""
 
-  public init(api: PortalApi?, key: String) {
+  public init(api: PortalApi?) {
     self.api = api
-    self.key = key
     super.init()
   }
 
@@ -58,7 +26,7 @@ public class ICloudDocuments: Storage {
   private var testUbiquityContainerURL: URL? {
     return FileManager.default.url(forUbiquityContainerIdentifier: nil)?
       .appendingPathComponent("Documents")
-      .appendingPathComponent("_PORTAL_TEST_TEMP")
+      .appendingPathComponent("_PORTAL_TEST_TEMP_")
   }
 
   override public func write(privateKey: String, completion: @escaping (Result<Bool>) -> Void) {
@@ -95,7 +63,7 @@ public class ICloudDocuments: Storage {
   }
 
   public func validateOperations(callback: @escaping (Result<Bool>) -> Void) {
-    let fileName = "test_file"
+    let fileName = "test_file.txt"
     let fileContent = "This is a test"
 
     self.rawWrite(filename: fileName, content: fileContent, inTestFolder: true) { writeResult in
@@ -137,8 +105,48 @@ public class ICloudDocuments: Storage {
 
     DispatchQueue.global().async {
       do {
+        // Create the directory if it does not exist yet.
+        try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true, attributes: nil)
+
         try content.write(to: fileURL, atomically: true, encoding: .utf8)
-        completion(Result(data: true))
+
+        #if targetEnvironment(simulator)
+          print("On SIMULATOR, skipping check to confirm file was stored on iCloud servers...")
+          completion(Result(data: true))
+        #else
+          // Create NSMetadataQuery and register notification.
+          let query = NSMetadataQuery()
+          query.predicate = NSPredicate(format: "%K == %@", NSMetadataItemURLKey, fileURL as CVarArg)
+          query.valueListAttributes = [NSMetadataUbiquitousItemIsUploadedKey]
+          let observer = NotificationCenter.default.addObserver(forName: .NSMetadataQueryDidFinishGathering, object: query, queue: OperationQueue.main) { _ in
+            query.stop()
+            NotificationCenter.default.removeObserver(self, name: .NSMetadataQueryDidFinishGathering, object: query)
+
+            if let metadataItem = query.results as? [NSMetadataItem],
+               let attributeValue = metadataItem.first?.value(forAttribute: NSMetadataUbiquitousItemIsUploadedKey) as? NSNumber,
+               attributeValue.boolValue
+            {
+              completion(Result(data: true))
+              return
+            } else {
+              completion(Result(error: iCloudStorageError.uploadError))
+              return
+            }
+          }
+
+          query.start()
+
+          // Timeout if we never get confirmation of the file being stored in iCloud's servers.
+          let timeoutInSeconds: Int = 10
+          DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(timeoutInSeconds)) {
+            if query.isStarted {
+              query.stop()
+              NotificationCenter.default.removeObserver(observer)
+              completion(Result(error: iCloudStorageError.uploadError))
+              return
+            }
+          }
+        #endif
       } catch {
         print(error)
         completion(Result(error: iCloudStorageError.writeError))
@@ -156,6 +164,13 @@ public class ICloudDocuments: Storage {
     let fileURL = folderURL.appendingPathComponent(filename)
 
     DispatchQueue.global().async {
+      // Check if the file exists
+      let fileManager = FileManager.default
+      if !fileManager.fileExists(atPath: fileURL.path) {
+        completion(Result(error: iCloudStorageError.fileDoesNotExist))
+        return
+      }
+
       do {
         let content = try String(contentsOf: fileURL)
         completion(Result(data: content))
@@ -187,13 +202,8 @@ public class ICloudDocuments: Storage {
   }
 
   private func getFilename(completion: @escaping (Result<String>) -> Void) {
-    if self.key.count > 0 {
-      completion(Result(data: self.key))
-      return
-    }
-
     if self.api == nil {
-      completion(Result(error: iCloudStorageError.noAPIKeyProvided))
+      completion(Result(error: iCloudStorageError.noAPIProvided))
       return
     }
 
@@ -212,7 +222,7 @@ public class ICloudDocuments: Storage {
   }
 
   private func createFilename(client: Client) -> String {
-    return ICloudDocuments.hash("\(client.custodian.id)\(client.id).txt")
+    return "\(ICloudDocuments.hash("\(client.custodian.id)\(client.id)")).txt"
   }
 
   private static func hash(_ str: String) -> String {

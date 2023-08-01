@@ -7,16 +7,55 @@
 
 import Foundation
 
+enum iCloudStorageError: Error, LocalizedError {
+  case noAPIProvided
+  case unableToRetrieveClient
+  case noUbiquityContainer
+  case fileDoesNotExist
+  case writeError
+  case readError
+  case deleteError
+  case validationMismatch
+  case uploadError
+
+  var errorDescription: String? {
+    switch self {
+    case .noAPIProvided:
+      return "No API provided"
+    case .unableToRetrieveClient:
+      return "Unable to retrieve client from API"
+    case .noUbiquityContainer:
+      return "No ubiquity container found"
+    case .fileDoesNotExist:
+      return "File does not exist"
+    case .writeError:
+      return "There was an error while writing to iCloud"
+    case .readError:
+      return "There was an error while reading from iCloud"
+    case .deleteError:
+      return "There was an error while deleting from iCloud"
+    case .validationMismatch:
+      return "Validation mismatch: Written and read content do not match in validateOperations"
+    case .uploadError:
+      return "There was an error while writing to iCloud"
+    }
+  }
+}
+
 public class ICloudStorage: Storage {
-  public var api: PortalApi?
-  public var key: String = ""
+  public var api: PortalApi? {
+    didSet {
+      self.keyValueStorage.api = self.api
+      self.documentStorage.api = self.api
+    }
+  }
+
   private var keyValueStorage: ICloudKeyValue
   private var documentStorage: ICloudDocuments
 
-  public init(key: String) {
-    self.key = key
-    self.keyValueStorage = ICloudKeyValue(api: self.api, key: key)
-    self.documentStorage = ICloudDocuments(api: self.api, key: key)
+  override public init() {
+    self.keyValueStorage = ICloudKeyValue(api: self.api)
+    self.documentStorage = ICloudDocuments(api: self.api)
     super.init()
   }
 
@@ -35,8 +74,11 @@ public class ICloudStorage: Storage {
   public func migrateKeyValueDataToDocuments(completion: @escaping (Result<Bool>) -> Void) {
     self.documentStorage.read { (readDocumentResult: Result<String>) in
       if let readDocumentError = readDocumentResult.error {
-        completion(Result(error: readDocumentError))
-        return
+        // Ignore the error if the file does not exist.
+        if let storageError = readDocumentError as? iCloudStorageError, storageError != .fileDoesNotExist {
+          completion(Result(error: readDocumentError))
+          return
+        }
       }
 
       // If there is already data in documentStorage, no need to migrate.
@@ -73,38 +115,36 @@ public class ICloudStorage: Storage {
   }
 
   public func validateOperations(callback: @escaping (Result<Bool>) -> Void) {
-    // Perform data migration before validating operations
-    self.migrateKeyValueDataToDocuments { (migrationResult: Result<Bool>) in
-      if let migrationError = migrationResult.error {
-        callback(Result(error: migrationError))
+    let testFileName = "portal_test.txt"
+    let testFileContent = "test_content"
+
+    self.documentStorage.rawWrite(filename: testFileName, content: testFileContent, inTestFolder: true) { writeResult in
+      if let writeError = writeResult.error {
+        callback(Result(error: writeError))
         return
       }
 
-      // If the migration is successful, proceed with validating operations
-      let testFileName = "portal_test.txt"
-      let testFileContent = "test_content"
-
-      self.documentStorage.rawWrite(filename: testFileName, content: testFileContent, inTestFolder: true) { writeResult in
-        if let writeError = writeResult.error {
-          callback(Result(error: writeError))
+      self.documentStorage.rawRead(filename: testFileName, fromTestFolder: true) { readResult in
+        if let readError = readResult.error {
+          callback(Result(error: readError))
           return
         }
 
-        self.documentStorage.rawRead(filename: testFileName, fromTestFolder: true) { readResult in
-          if let readError = readResult.error {
-            callback(Result(error: readError))
-            return
-          }
+        if readResult.data != testFileContent {
+          callback(Result(error: iCloudStorageError.validationMismatch))
+          return
+        }
 
-          if readResult.data != testFileContent {
-            callback(Result(error: iCloudStorageError.validationMismatch))
-            return
-          }
-
-          self.documentStorage.rawDelete(filename: testFileName, fromTestFolder: true) { deleteResult in
-            if let deleteError = deleteResult.error {
-              callback(Result(error: deleteError))
-            } else {
+        self.documentStorage.rawDelete(filename: testFileName, fromTestFolder: true) { deleteResult in
+          if let deleteError = deleteResult.error {
+            callback(Result(error: deleteError))
+          } else {
+            // Perform data migration if we have access to iCloud Documents.
+            self.migrateKeyValueDataToDocuments { (migrationResult: Result<Bool>) in
+              if let migrationError = migrationResult.error {
+                callback(Result(error: migrationError))
+                return
+              }
               callback(Result(data: true))
             }
           }
