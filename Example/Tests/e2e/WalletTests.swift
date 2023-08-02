@@ -2,7 +2,7 @@ import PortalSwift
 @testable import PortalSwift_Example
 import XCTest
 
-class Tests: XCTestCase {
+class WalletTests: XCTestCase {
   static var user: UserResult?
   static var username: String?
   static var PortalWrap: PortalWrapper?
@@ -31,17 +31,17 @@ class Tests: XCTestCase {
     return XCTContext.runActivity(named: "Login") { _ in
       let registerExpectation = XCTestExpectation(description: "Register")
 
-      Tests.PortalWrap?.signIn(username: Tests.username!) { (result: Result<UserResult>) in
+      WalletTests.PortalWrap?.signIn(username: WalletTests.username!) { (result: Result<UserResult>) in
         guard result.error == nil else {
           registerExpectation.fulfill()
           return XCTFail("Failed on sign In: \(result.error!)")
         }
         let userResult = result.data!
         print("✅ handleSignIn(): API key:", userResult.clientApiKey)
-        Tests.user = userResult
+        WalletTests.user = userResult
         let backupOption = LocalFileStorage()
         let backup = BackupOptions(local: backupOption)
-        Tests.PortalWrap?.registerPortal(apiKey: userResult.clientApiKey, backup: backup) {
+        WalletTests.PortalWrap?.registerPortal(apiKey: userResult.clientApiKey, backup: backup) {
           result in
           guard result.error == nil else {
             registerExpectation.fulfill()
@@ -59,20 +59,19 @@ class Tests: XCTestCase {
     let registerExpectation = XCTestExpectation(description: "Register")
     let generateExpectation = XCTestExpectation(description: "Generate")
 
-    Tests.PortalWrap?.signUp(username: Tests.username!) { (result: Result<UserResult>) in
+    WalletTests.PortalWrap?.signUp(username: WalletTests.username!) { (result: Result<UserResult>) in
       guard result.error == nil else {
         XCTFail("Failed on sign up: \(result.error!)")
-        registerExpectation.fulfill()
         generateExpectation.fulfill()
         return
       }
       let userResult = result.data!
       print("✅ handleSignup(): API key:", userResult.clientApiKey)
-      Tests.user = userResult
+      WalletTests.user = userResult
       let backupOption = LocalFileStorage(fileName: "PORTAL_BACKUP")
       let backup = BackupOptions(local: backupOption)
       print("registering portal")
-      Tests.PortalWrap?.registerPortal(apiKey: userResult.clientApiKey, backup: backup) {
+      WalletTests.PortalWrap?.registerPortal(apiKey: userResult.clientApiKey, backup: backup) {
         result in
         guard result.error == nil else {
           registerExpectation.fulfill()
@@ -81,12 +80,12 @@ class Tests: XCTestCase {
         }
         registerExpectation.fulfill()
         print(result.data!)
-        Tests.PortalWrap?.generate { result in
+        WalletTests.PortalWrap?.generate { result in
           guard result.error == nil else {
             generateExpectation.fulfill()
             return XCTFail()
           }
-          Tests.testAGenerateSucceeded = true
+          WalletTests.testAGenerateSucceeded = true
           generateExpectation.fulfill()
 
           XCTAssertTrue(!(result.data!.isEmpty), "The string should be empty")
@@ -97,7 +96,7 @@ class Tests: XCTestCase {
   }
 
   func testBSign() {
-    if !Tests.testAGenerateSucceeded {
+    if !WalletTests.testAGenerateSucceeded {
       XCTFail("Failing fast - Generate test failed to complete successfully")
       return
     }
@@ -110,24 +109,28 @@ class Tests: XCTestCase {
         ethSignExpectation.fulfill()
         return XCTFail("Failed on login: \(result.error!)")
       }
-      do {
-        address = try Tests.PortalWrap?.portal?.keychain.getAddress()
-      } catch {
-        return XCTFail("Failed to get address: \(error)")
-      }
-
-      let params = [address!, "0xdeadbeaf"]
-
-      Tests.PortalWrap?.ethSign(params: params) { result in
-        guard result.error == nil else {
-          ethSignExpectation.fulfill()
-          return XCTFail("Failed on eth_sign: \(result.error!)")
+      if let portal = WalletTests.PortalWrap?.portal {
+        do {
+          address = try portal.keychain.getAddress()
+        } catch {
+          return XCTFail("Failed to get address: \(error)")
         }
 
-        print("✅ eth_sign result: ", result.data!)
-        XCTAssertFalse(result.data!.isEmpty, "eth sign success")
+        let params = [address!, "0xdeadbeaf"]
 
-        ethSignExpectation.fulfill()
+        WalletTests.PortalWrap?.ethSign(params: params) { result in
+          guard result.error == nil else {
+            ethSignExpectation.fulfill()
+            return XCTFail("Failed on eth_sign: \(result.error!)")
+          }
+
+          print("✅ eth_sign result: ", result.data!)
+          XCTAssertFalse(result.data!.isEmpty, "eth sign success")
+
+          ethSignExpectation.fulfill()
+        }
+      } else {
+        return XCTFail("Failed to register portal object.")
       }
     }
 
@@ -135,7 +138,7 @@ class Tests: XCTestCase {
   }
 
   func testCBackup() {
-    if !Tests.testAGenerateSucceeded {
+    if !WalletTests.testAGenerateSucceeded {
       XCTFail("Failing fast - Generate test failed to complete successfully")
       return
     }
@@ -147,12 +150,12 @@ class Tests: XCTestCase {
         backupExpectation.fulfill()
         return XCTFail("Failed on login: \(result.error!)")
       }
-      Tests.PortalWrap?.backup(backupMethod: BackupMethods.local.rawValue, user: Tests.user!) { backupResult in
+      WalletTests.PortalWrap?.backup(backupMethod: BackupMethods.local.rawValue, user: WalletTests.user!) { backupResult in
         guard backupResult.error == nil else {
           print("❌ handleBackup():", result.error!)
 
           do {
-            try Tests.PortalWrap?.portal?.api.storedClientBackupShare(success: false) { result in
+            try WalletTests.PortalWrap?.portal?.api.storedClientBackupShare(success: false) { result in
               guard result.error == nil else {
                 backupExpectation.fulfill()
                 return XCTFail("Backup failed \(String(describing: result.error))")
@@ -167,7 +170,7 @@ class Tests: XCTestCase {
         }
 
         do {
-          try Tests.PortalWrap?.portal?.api.storedClientBackupShare(success: true) { _ in
+          try WalletTests.PortalWrap?.portal?.api.storedClientBackupShare(success: true) { _ in
             guard backupResult.error == nil else {
               print("❌ handleBackup(): Error notifying Portal that backup share was stored.")
               return
@@ -185,7 +188,7 @@ class Tests: XCTestCase {
   }
 
   func testRecover() {
-    if !Tests.testAGenerateSucceeded {
+    if !WalletTests.testAGenerateSucceeded {
       XCTFail("Failing fast - Generate test failed to complete successfully")
       return
     }
@@ -196,7 +199,7 @@ class Tests: XCTestCase {
         recoverExpectation.fulfill()
         return XCTFail("Failed on login: \(result.error!)")
       }
-      Tests.PortalWrap?.recover(backupMethod: BackupMethods.local.rawValue, user: Tests.user!) { result in
+      WalletTests.PortalWrap?.recover(backupMethod: BackupMethods.local.rawValue, user: WalletTests.user!) { result in
         guard result.error == nil else {
           recoverExpectation.fulfill()
           return XCTFail("Recover failed \(String(describing: result.error))")
