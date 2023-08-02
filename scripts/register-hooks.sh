@@ -10,8 +10,6 @@ if [ -z "$(which swiftformat)" ]; then
   brew install swiftformat
 fi
 
-gem install xcpretty
-
 echo "Moving to project root..."
 scriptDir=$(dirname -- "$(readlink -f -- "$BASH_SOURCE")")
 
