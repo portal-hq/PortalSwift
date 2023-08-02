@@ -1,4 +1,2 @@
 #!/bin/bash
 git-format-staged --formatter "swiftformat stdin --stdinpath '{}'" "*.swift"
-
-set -e # stop the script if any command fails
