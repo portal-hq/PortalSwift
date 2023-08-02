@@ -2,11 +2,3 @@
 git-format-staged --formatter "swiftformat stdin --stdinpath '{}'" "*.swift"
 
 set -e # stop the script if any command fails
-
-# Check the exit status of the xcodebuild command
-if [ $? -eq 0 ]; then
-    echo "Tests passed. Proceeding with commit."
-else
-    echo "Tests failed. Aborting commit."
-    exit 1
-fi
