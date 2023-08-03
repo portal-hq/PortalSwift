@@ -35,6 +35,7 @@ public class Portal {
   private let apiHost: String
   private let mpcHost: String
   private let version: String
+  private var isMock: Bool = false
 
   /// Create a Portal instance.
   /// - Parameters:
@@ -59,7 +60,8 @@ public class Portal {
     version: String = "v4",
     autoApprove: Bool = false,
     apiHost: String = "api.portalhq.io",
-    mpcHost: String = "mpc.portalhq.io"
+    mpcHost: String = "mpc.portalhq.io",
+    isMock: Bool = false
   ) throws {
     // Basic setup
     self.apiHost = apiHost
@@ -72,6 +74,7 @@ public class Portal {
     self.keychain = keychain
     self.mpcHost = mpcHost
     self.version = version
+    self.isMock = isMock
 
     if version != "v4" {
       throw PortalArgumentError.versionNoLongerSupported(message: "MPC Version is not supported. Only version 'v4' is currently supported.")
@@ -90,7 +93,7 @@ public class Portal {
     )
 
     // Initialize the Portal API
-    let api = PortalApi(apiKey: apiKey, apiHost: apiHost, provider: provider)
+    let api = self.isMock ? MockPortalApi(apiKey: apiKey, provider: self.provider) : PortalApi(apiKey: apiKey, apiHost: apiHost, provider: self.provider)
     self.api = api
 
     // Ensure storage adapters have access to the Portal API
@@ -109,7 +112,8 @@ public class Portal {
       storage: backup,
       isSimulator: isSimulator,
       host: mpcHost,
-      version: version
+      version: version,
+      isMock: isMock
     )
   }
 
