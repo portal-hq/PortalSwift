@@ -9,171 +9,6 @@ import Foundation
 import Mpc
 import Security
 
-/// A MPC share that includes a variable number of fields, depending on the MPC version being used
-/// GG18 shares will only contain: bks, pubkey, and share
-/// CGGMP shares will contain all fields except: pubkey.
-public struct MpcShare: Codable {
-  public var share: String
-  public var allY: PartialPublicKey?
-  public var bks: Berkhoffs?
-  public var p: String
-  public var partialPubkey: PartialPublicKey?
-  public var pederson: Pedersons?
-  public var q: String
-  public var ssid: String
-  public var clientId: String
-  public var pubkey: PublicKey?
-}
-
-/// In the bks dictionary for an MPC share, Berkhoff is the value.
-public struct Berkhoff: Codable {
-  public var X: String
-  public var Rank: Int
-}
-
-/// A partial public key for client and server (x, y)
-public struct PartialPublicKey: Codable {
-  public var client: PublicKey?
-  public var server: PublicKey?
-}
-
-/// A berhkoff coefficient mapping for client and server (x, rank)
-public struct Berkhoffs: Codable {
-  public var client: Berkhoff?
-  public var server: Berkhoff?
-}
-
-public struct Pederson: Codable {
-  public var n: String?
-  public var s: String?
-  public var t: String?
-}
-
-public struct Pedersons: Codable {
-  public var client: Pederson?
-  public var server: Pederson?
-}
-
-/// A public key's coordinates (x, y).
-public struct PublicKey: Codable {
-  public var X: String?
-  public var Y: String?
-}
-
-private struct DecryptResult: Codable {
-  public var data: DecryptData?
-  public var error: PortalError
-}
-
-private struct DecryptData: Codable {
-  public var plaintext: String
-}
-
-/// The response from encrypting.
-private struct EncryptData: Codable {
-  public var key: String
-  public var cipherText: String
-}
-
-private struct EncryptResult: Codable {
-  public var data: EncryptData?
-  public var error: PortalError
-}
-
-/// The response from fetching the client.
-public struct ClientResult: Codable {
-  public var data: Client?
-  public var error: PortalError
-}
-
-/// The data for GenerateResult.
-public struct GenerateData: Codable {
-  public var address: String
-  public var dkgResult: MpcShare?
-}
-
-/// The response from generating.
-private struct GenerateResult: Codable {
-  public var data: GenerateData?
-  public var error: PortalError
-}
-
-/// The data for RotateResult.
-public struct RotateData: Codable {
-  public var address: String
-  public var dkgResult: MpcShare
-}
-
-/// The response from rotating.
-private struct RotateResult: Codable {
-  public var data: RotateData?
-  public var error: PortalError
-}
-
-/// The data for SignResult.
-public struct SignData: Codable {
-  public var R: String
-  public var S: String
-}
-
-/// The response from signing.
-public struct SignResult: Codable {
-  public var data: String?
-  public var error: PortalError
-}
-
-public struct MpcStatus {
-  public var status: MpcStatuses
-  public var done: Bool
-}
-
-public enum MpcStatuses: String {
-  case decryptingShare = "Decrypting share"
-  case done = "Done"
-  case encryptingShare = "Encrypting share"
-  case generatingShare = "Generating share"
-  case parsingShare = "Parsing share"
-  case readingShare = "Reading share"
-  case recoveringBackupShare = "Recovering backup share"
-  case recoveringSigningShare = "Recovering signing share"
-  case storingShare = "Storing share"
-}
-
-/// A list of errors MPC can throw.
-public enum MpcError: Error {
-  case addressNotFound(message: String)
-  case backupNoLongerSupported(message: String)
-  case failedToEncryptClientBackupShare(message: String)
-  case failedToGetBackupFromStorage
-  case failedToRecoverBackup(message: String)
-  case failedToStoreClientBackupShareKey(message: String)
-  case generateNoLongerSupported(message: String)
-  case noSigningSharePresent
-  case recoverNoLongerSupported(message: String)
-  case signingRecoveryError(message: String)
-  case unableToAuthenticate
-  case unableToDecodeShare
-  case unableToRetrieveClient(String)
-  case unableToWriteToKeychain
-  case unexpectedErrorOnBackup(message: String)
-  case unexpectedErrorOnDecrypt(message: String)
-  case unexpectedErrorOnEncrypt(message: String)
-  case unexpectedErrorOnGenerate(message: String)
-  case unexpectedErrorOnRecoverBackup(message: String)
-  case unexpectedErrorOnSign(message: String)
-  case unsupportedStorageMethod
-  case walletModificationAlreadyInProgress
-}
-
-/// A list of errors RSA can throw.
-public enum RsaError: Error {
-  case unableToCreatePrivateKey(message: String)
-  case incompatibleKeyWithAlgorithm
-  case dataIsTooLongForKey
-  case unableToGetPublicKey
-  case incorrectCipherTextFormat
-}
-
 /// The main interface with Portal's MPC service.
 public class PortalMpc {
   private var address: String? {
@@ -184,6 +19,7 @@ public class PortalMpc {
     }
   }
 
+  private let mobile: Mobile
   private let api: PortalApi
   private let apiKey: String
   private let host: String
@@ -203,6 +39,7 @@ public class PortalMpc {
   private let rsaHeader = "-----BEGIN RSA KEY-----\n"
   private let rsaFooter = "\n-----END RSA KEY-----"
   private var isWalletModificationInProgress: Bool = false
+  private var isMock: Bool = false
 
   /// Create an instance of Portal's MPC service.
   /// - Parameters:
@@ -220,7 +57,8 @@ public class PortalMpc {
     storage: BackupOptions,
     isSimulator: Bool = false,
     host: String = "mpc.portalhq.io",
-    version: String = "v4"
+    version: String = "v4",
+    isMock: Bool = false
   ) {
     // Basic setup
     self.api = api
@@ -229,13 +67,15 @@ public class PortalMpc {
     self.keychain = keychain
     self.storage = storage
     self.version = version
+    self.isMock = isMock
+    self.mobile = self.isMock ? MockMobileWrapper() : MobileWrapper()
 
     // Other stuff
     self.isSimulator = isSimulator
   }
 
   public func getBinaryVersion() -> String {
-    return MobileGetVersion()
+    return self.mobile.MobileGetVersion()
   }
 
   /// Creates a backup share, encrypts it, and stores the private key in cloud storage.
@@ -369,7 +209,7 @@ public class PortalMpc {
         do {
           // Call the MPC service to generate a new wallet.
           progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
-          let response = MobileGenerate(self.apiKey, self.host, self.version)
+          let response = self.mobile.MobileGenerate(self.apiKey, self.host, self.version)
 
           // Parse the share
           progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
@@ -542,7 +382,7 @@ public class PortalMpc {
 
   private func decryptShare(cipherText: String, privateKey: String, progress: ((MpcStatus) -> Void)? = nil) throws -> String {
     progress?(MpcStatus(status: MpcStatuses.decryptingShare, done: false))
-    let result = MobileDecrypt(privateKey, cipherText)
+    let result = self.mobile.MobileDecrypt(privateKey, cipherText)
 
     progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
     let jsonResult = result.data(using: .utf8)!
@@ -570,7 +410,7 @@ public class PortalMpc {
       let mpcShareData = try JSONEncoder().encode(mpcShare)
       let mpcShareString = String(data: mpcShareData, encoding: .utf8)!
 
-      let result = MobileEncrypt(mpcShareString)
+      let result = self.mobile.MobileEncrypt(mpcShareString)
       let jsonResult = result.data(using: .utf8)!
       let encryptResult: EncryptResult = try JSONDecoder().decode(EncryptResult.self, from: jsonResult)
 
@@ -594,11 +434,10 @@ public class PortalMpc {
       // Call the MPC service to generate a backup share.
       progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
 
-      let response = MobileBackup(apiKey, host, signingShare, version)
+      let response = self.mobile.MobileBackup(self.apiKey, self.host, signingShare, self.version)
 
       // Parse the backup share.
       progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
-
       let jsonData = response.data(using: .utf8)!
       let rotateResult: RotateResult = try JSONDecoder().decode(RotateResult.self, from: jsonData)
 
@@ -760,7 +599,7 @@ public class PortalMpc {
       progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
 
       // Call the MPC service to recover the backup share.
-      let result = MobileRecoverBackup(apiKey, host, clientBackupShare, version)
+      let result = self.mobile.MobileRecoverBackup(self.apiKey, self.host, clientBackupShare, self.version)
 
       progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
       let rotateResult: RotateResult = try JSONDecoder().decode(RotateResult.self, from: result.data(using: .utf8)!)
@@ -789,7 +628,7 @@ public class PortalMpc {
     do {
       progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
       // Call the MPC service to recover the signing share.
-      let result = MobileRecoverSigning(apiKey, host, backupShare, version)
+      let result = self.mobile.MobileRecoverSigning(self.apiKey, self.host, backupShare, self.version)
 
       progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
       let rotateResult = try JSONDecoder().decode(RotateResult.self, from: result.data(using: .utf8)!)
@@ -855,4 +694,171 @@ public class PortalMpc {
 
     return shareJson
   }
+}
+
+// DATA TYPES
+
+/// A MPC share that includes a variable number of fields, depending on the MPC version being used
+/// GG18 shares will only contain: bks, pubkey, and share
+/// CGGMP shares will contain all fields except: pubkey.
+public struct MpcShare: Codable {
+  public var share: String
+  public var allY: PartialPublicKey?
+  public var bks: Berkhoffs?
+  public var p: String
+  public var partialPubkey: PartialPublicKey?
+  public var pederson: Pedersons?
+  public var q: String
+  public var ssid: String
+  public var clientId: String
+  public var pubkey: PublicKey?
+}
+
+/// In the bks dictionary for an MPC share, Berkhoff is the value.
+public struct Berkhoff: Codable {
+  public var X: String
+  public var Rank: Int
+}
+
+/// A partial public key for client and server (x, y)
+public struct PartialPublicKey: Codable {
+  public var client: PublicKey?
+  public var server: PublicKey?
+}
+
+/// A berhkoff coefficient mapping for client and server (x, rank)
+public struct Berkhoffs: Codable {
+  public var client: Berkhoff?
+  public var server: Berkhoff?
+}
+
+public struct Pederson: Codable {
+  public var n: String?
+  public var s: String?
+  public var t: String?
+}
+
+public struct Pedersons: Codable {
+  public var client: Pederson?
+  public var server: Pederson?
+}
+
+/// A public key's coordinates (x, y).
+public struct PublicKey: Codable {
+  public var X: String?
+  public var Y: String?
+}
+
+private struct DecryptResult: Codable {
+  public var data: DecryptData?
+  public var error: PortalError
+}
+
+private struct DecryptData: Codable {
+  public var plaintext: String
+}
+
+/// The response from encrypting.
+private struct EncryptData: Codable {
+  public var key: String
+  public var cipherText: String
+}
+
+private struct EncryptResult: Codable {
+  public var data: EncryptData?
+  public var error: PortalError
+}
+
+/// The response from fetching the client.
+public struct ClientResult: Codable {
+  public var data: Client?
+  public var error: PortalError
+}
+
+/// The data for GenerateResult.
+public struct GenerateData: Codable {
+  public var address: String
+  public var dkgResult: MpcShare?
+}
+
+/// The response from generating.
+private struct GenerateResult: Codable {
+  public var data: GenerateData?
+  public var error: PortalError
+}
+
+/// The data for RotateResult.
+public struct RotateData: Codable {
+  public var address: String
+  public var dkgResult: MpcShare
+}
+
+/// The response from rotating.
+private struct RotateResult: Codable {
+  public var data: RotateData?
+  public var error: PortalError
+}
+
+/// The data for SignResult.
+public struct SignData: Codable {
+  public var R: String
+  public var S: String
+}
+
+/// The response from signing.
+public struct SignResult: Codable {
+  public var data: String?
+  public var error: PortalError
+}
+
+public struct MpcStatus {
+  public var status: MpcStatuses
+  public var done: Bool
+}
+
+public enum MpcStatuses: String {
+  case decryptingShare = "Decrypting share"
+  case done = "Done"
+  case encryptingShare = "Encrypting share"
+  case generatingShare = "Generating share"
+  case parsingShare = "Parsing share"
+  case readingShare = "Reading share"
+  case recoveringBackupShare = "Recovering backup share"
+  case recoveringSigningShare = "Recovering signing share"
+  case storingShare = "Storing share"
+}
+
+/// A list of errors MPC can throw.
+public enum MpcError: Error {
+  case addressNotFound(message: String)
+  case backupNoLongerSupported(message: String)
+  case failedToEncryptClientBackupShare(message: String)
+  case failedToGetBackupFromStorage
+  case failedToRecoverBackup(message: String)
+  case failedToStoreClientBackupShareKey(message: String)
+  case generateNoLongerSupported(message: String)
+  case noSigningSharePresent
+  case recoverNoLongerSupported(message: String)
+  case signingRecoveryError(message: String)
+  case unableToAuthenticate
+  case unableToDecodeShare
+  case unableToRetrieveClient(String)
+  case unableToWriteToKeychain
+  case unexpectedErrorOnBackup(message: String)
+  case unexpectedErrorOnDecrypt(message: String)
+  case unexpectedErrorOnEncrypt(message: String)
+  case unexpectedErrorOnGenerate(message: String)
+  case unexpectedErrorOnRecoverBackup(message: String)
+  case unexpectedErrorOnSign(message: String)
+  case unsupportedStorageMethod
+  case walletModificationAlreadyInProgress
+}
+
+/// A list of errors RSA can throw.
+public enum RsaError: Error {
+  case unableToCreatePrivateKey(message: String)
+  case incompatibleKeyWithAlgorithm
+  case dataIsTooLongForKey
+  case unableToGetPublicKey
+  case incorrectCipherTextFormat
 }
