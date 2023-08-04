@@ -10,12 +10,12 @@ import PortalSwift
 import XCTest
 
 final class PortalKeychainTests: XCTestCase {
-  var keychain: PortalKeychain! // Implicitly unwrapped optional
+  var keychain: PortalKeychain!
 
   override func setUpWithError() throws {
     // Put setup code here. This method is called before the invocation of each test method in the class.
     self.keychain = PortalKeychain()
-    self.keychain.clientId = "test-client-id"
+    self.keychain.clientId = mockClientId
   }
 
   override func tearDownWithError() throws {

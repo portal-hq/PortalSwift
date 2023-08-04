@@ -15,21 +15,21 @@ final class PortalMpcTests: XCTestCase {
 
   override func setUpWithError() throws {
     let keychain = MockPortalKeychain()
-    keychain.clientId = "test-client-id"
+    keychain.clientId = mockClientId
 
     self.provider = try MockPortalProvider(
-      apiKey: "API_KEY",
+      apiKey: mockApiKey,
       chainId: 5,
-      gatewayConfig: [5: "https://example.com"],
+      gatewayConfig: [5: mockHost],
       keychain: keychain,
       autoApprove: true
     )
 
     self.mpc = PortalMpc(
-      apiKey: "test",
+      apiKey: mockApiKey,
       api: MockPortalApi(
-        apiKey: "test",
-        apiHost: "test",
+        apiKey: mockApiKey,
+        apiHost: mockHost,
         provider: self.provider,
         mockRequests: true
       ),
@@ -67,15 +67,15 @@ final class PortalMpcTests: XCTestCase {
 
   func testBackupGdrive() throws {
     self.mpc = PortalMpc(
-      apiKey: "test",
+      apiKey: mockApiKey,
       api: MockPortalApi(
-        apiKey: "test",
-        apiHost: "test",
+        apiKey: mockApiKey,
+        apiHost: mockHost,
         provider: self.provider,
         mockRequests: true
       ),
       keychain: MockPortalKeychain(),
-      storage: BackupOptions(gdrive: MockGDriveStorage(clientID: "client-id", viewController: UIViewController())),
+      storage: BackupOptions(gdrive: MockGDriveStorage(clientID: mockClientId, viewController: UIViewController())),
       mobile: MockMobileWrapper()
     )
     let expectation = XCTestExpectation(description: "Backup")

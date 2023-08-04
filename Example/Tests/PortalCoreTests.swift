@@ -14,34 +14,34 @@ final class PortalCoreTests: XCTestCase {
   override func setUpWithError() throws {
     // Put setup code here. This method is called before the invocation of each test method in the class.
     let keychain = MockPortalKeychain()
-    keychain.clientId = mockClentId
+    keychain.clientId = mockClientId
 
     let mobile = MockMobileWrapper()
 
     let provider = try MockPortalProvider(
-      apiKey: "API_KEY",
+      apiKey: mockApiKey,
       chainId: 5,
-      gatewayConfig: [5: "https://example.com"],
+      gatewayConfig: [5: mockHost],
       keychain: keychain,
       autoApprove: true
     )
 
     let api = MockPortalApi(
-      apiKey: "test",
-      apiHost: "test",
+      apiKey: mockApiKey,
+      apiHost: mockHost,
       provider: provider,
       mockRequests: true
     )
 
     let mpc = PortalMpc(
-      apiKey: "test",
+      apiKey: mockApiKey,
       api: api,
       keychain: keychain,
       storage: BackupOptions(icloud: MockICloudStorage()),
       mobile: mobile
     )
 
-    self.portal = try Portal(apiKey: "test", backup: BackupOptions(icloud: MockICloudStorage()), chainId: 5, keychain: keychain, gatewayConfig: [5: "gatewayUrl"], mpc: mpc, api: api, binary: mobile)
+    self.portal = try Portal(apiKey: mockApiKey, backup: BackupOptions(icloud: MockICloudStorage()), chainId: 5, keychain: keychain, gatewayConfig: [5: mockHost], mpc: mpc, api: api, binary: mobile)
   }
 
   override func tearDownWithError() throws {
