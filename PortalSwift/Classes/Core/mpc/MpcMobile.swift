@@ -9,7 +9,7 @@ import Foundation
 import Mpc
 
 class MobileWrapper: Mobile {
-  func MobileGenerate(_ apiKey: String, _ host: String, _ version: String) -> String {
+  public func MobileGenerate(_ apiKey: String, _ host: String, _ version: String) -> String {
     return Mpc.MobileGenerate(apiKey, host, version)
   }
 

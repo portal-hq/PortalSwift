@@ -14,13 +14,13 @@ final class PortalApiTests: XCTestCase {
 
   override func setUpWithError() throws {
     let provider = try MockPortalProvider(
-      apiKey: "API_KEY",
+      apiKey: mockApiKey,
       chainId: 5,
-      gatewayConfig: [5: "https://example.com"],
+      gatewayConfig: [5: mockHost],
       keychain: MockPortalKeychain(),
       autoApprove: true
     )
-    self.api = PortalApi(apiKey: "test", apiHost: "api.portalhq.io", provider: provider, mockRequests: true)
+    self.api = PortalApi(apiKey: mockApiKey, apiHost: mockHost, provider: provider, mockRequests: true)
   }
 
   override func tearDownWithError() throws {
