@@ -69,7 +69,7 @@ public class Portal {
     self.autoApprove = autoApprove
     self.backup = backup
     self.gatewayConfig = gatewayConfig
-    self.client = try Portal.getClient(apiHost, apiKey)
+    self.client = try Portal.getClient(apiHost, apiKey, isMock)
     keychain.clientId = self.client?.id
     self.keychain = keychain
     self.mpcHost = mpcHost
@@ -284,12 +284,12 @@ public class Portal {
    * Private Methods
    ****************************************/
 
-  private static func getClient(_ apiHost: String, _ apiKey: String) throws -> Client {
+  private static func getClient(_ apiHost: String, _ apiKey: String, _ isMock: Bool) throws -> Client {
     // Create URL.
     let apiUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
 
     // Call the MPC service to retrieve the client.
-    let response = MobileGetMe("\(apiUrl)/api/v1/clients/me", apiKey)
+    let response = isMock ? MockMobileWrapper().MobileGetMe("\(apiUrl)/api/v1/clients/me", apiKey) : Mpc.MobileGetMe("\(apiUrl)/api/v1/clients/me", apiKey)
 
     // Parse the client.
     let jsonData = response.data(using: .utf8)!

@@ -17,7 +17,19 @@ public class MockPortalKeychain: PortalKeychain {
     return mockSigningShare
   }
 
-  override public func setAddress(address _: String, completion _: (Result<OSStatus>) -> Void) {}
+  override public func deleteAddress() throws {}
 
-  override public func setSigningShare(signingShare _: String, completion _: (Result<OSStatus>) -> Void) {}
+  override public func deleteSigningShare() throws {}
+
+  override public func setAddress(address _: String, completion: (Result<OSStatus>) -> Void) {
+    return completion(Result(data: OSStatus(1)))
+  }
+
+  override public func setSigningShare(signingShare _: String, completion: (Result<OSStatus>) -> Void) {
+    return completion(Result(data: OSStatus(1)))
+  }
+
+  override public func validateOperations(completion: @escaping (Result<OSStatus>) -> Void) {
+    return completion(Result(data: OSStatus(1)))
+  }
 }

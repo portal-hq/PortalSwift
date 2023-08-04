@@ -14,7 +14,7 @@ public class PortalKeychain: MobileStorageAdapter {
   let deprecatedAddressKey = "PortalMpc.Address"
   let deprecatedShareKey = "PortalMpc.DkgResult"
 
-  enum KeychainError: Error {
+  public enum KeychainError: Error, Equatable {
     case ItemNotFound(item: String)
     case ItemAlreadyExists(item: String)
     case unexpectedItemData(item: String)
@@ -121,7 +121,6 @@ public class PortalKeychain: MobileStorageAdapter {
   }
 
   /// Deletes the address stored in the client's keychain.
-  /// - Returns: The client's address.
   override public func deleteAddress() throws {
     let clientId = try getClientId()
     let addressKey = "\(clientId).address"
@@ -131,7 +130,6 @@ public class PortalKeychain: MobileStorageAdapter {
   }
 
   /// Deletes the signing share stored in the client's keychain.
-  /// - Returns: The client's signing share.
   override public func deleteSigningShare() throws {
     let clientId = try getClientId()
     let shareKey = "\(clientId).share"
