@@ -123,14 +123,14 @@ public class Portal {
   ///   - chainId: The chainId you want the provider to use.
   ///   - keychain: An instance of PortalKeychain.
   ///   - gatewayConfig: A dictionary of chainIds (keys) and gateway URLs (values).
+  ///   - mpc:  Portal's mpc class
+  ///   - api:  Portal's api class
+  ///   - binary: Portal's mpc binary class
   ///   - isSimulator: (optional) Whether you are testing on the iOS simulator or not.
   ///   - address: (optional) An address.
   ///   - apiHost: (optional) Portal's API host.
   ///   - autoApprove: (optional) Auto-approve transactions.
   ///   - mpcHost: (optional) Portal's MPC API host.
-  ///   - mpc: (optional) Portal's mpc class
-  ///   - api: (optional) Portal's api class
-  ///   - binary: (optional) Portal's mpc binary class
 
   public init(
     apiKey: String,
@@ -144,9 +144,9 @@ public class Portal {
     autoApprove: Bool = false,
     apiHost: String = "api.portalhq.io",
     mpcHost: String = "mpc.portalhq.io",
-    mpc: PortalMpc? = nil,
-    api: PortalApi? = nil,
-    binary: Mobile? = nil
+    mpc: PortalMpc?,
+    api: PortalApi?,
+    binary: Mobile?
   ) throws {
     // Basic setup
     self.apiHost = apiHost
