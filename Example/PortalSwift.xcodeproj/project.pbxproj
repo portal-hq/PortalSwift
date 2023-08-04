@@ -30,6 +30,7 @@
 		B96417820F7757FB7C9962DE /* Pods_PortalSwift_Tests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4648C35B0F07F04812A2F611 /* Pods_PortalSwift_Tests.framework */; };
 		F97145522A1450ED0034189F /* Portal.swift in Sources */ = {isa = PBXBuildFile; fileRef = F97145512A1450ED0034189F /* Portal.swift */; };
 		F97145532A1450ED0034189F /* Portal.swift in Sources */ = {isa = PBXBuildFile; fileRef = F97145512A1450ED0034189F /* Portal.swift */; };
+		F9F5B5082A7D39C700580FB9 /* PortalCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9F5B5072A7D39C700580FB9 /* PortalCoreTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -78,6 +79,7 @@
 		7EB608D3291EF2F000CF1346 /* PortalSwift.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = PortalSwift.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		E432DE04613E5E5869FDCD55 /* Pods-PortalSwift_Example.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PortalSwift_Example.debug.xcconfig"; path = "Target Support Files/Pods-PortalSwift_Example/Pods-PortalSwift_Example.debug.xcconfig"; sourceTree = "<group>"; };
 		F97145512A1450ED0034189F /* Portal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Portal.swift; sourceTree = "<group>"; };
+		F9F5B5072A7D39C700580FB9 /* PortalCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalCoreTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -106,6 +108,7 @@
 				47323B5C293A9C610029B69E /* PortalApiTests.swift */,
 				47323B5E293A9C6B0029B69E /* PortalKeychainTests.swift */,
 				47323B60293A9C770029B69E /* PortalMpcTests.swift */,
+				F9F5B5072A7D39C700580FB9 /* PortalCoreTests.swift */,
 			);
 			name = Core;
 			sourceTree = "<group>";
@@ -466,6 +469,7 @@
 				47323B53293A9BD90029B69E /* ICloudStorageTests.swift in Sources */,
 				47323B59293A9C0B0029B69E /* MpcSignerTests.swift in Sources */,
 				47323B5D293A9C610029B69E /* PortalApiTests.swift in Sources */,
+				F9F5B5082A7D39C700580FB9 /* PortalCoreTests.swift in Sources */,
 				F97145532A1450ED0034189F /* Portal.swift in Sources */,
 				47323B4F293A9BB40029B69E /* HttpRequestTests.swift in Sources */,
 				47323B57293A9BFD0029B69E /* PortalProviderTests.swift in Sources */,

@@ -9,6 +9,10 @@
 import Foundation
 
 public class MockGDriveStorage: GDriveStorage {
+  override public init(clientID: String, viewController: UIViewController) {
+    super.init(clientID: clientID, viewController: viewController)
+  }
+
   override public func delete(completion: @escaping (Result<Bool>) -> Void) {
     completion(Result(data: true))
   }
