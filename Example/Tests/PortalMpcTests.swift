@@ -35,7 +35,7 @@ final class PortalMpcTests: XCTestCase {
       ),
       keychain: keychain,
       storage: BackupOptions(icloud: MockICloudStorage()),
-      isMock: true
+      mobile: MockMobileWrapper()
     )
   }
 
@@ -76,7 +76,7 @@ final class PortalMpcTests: XCTestCase {
       ),
       keychain: MockPortalKeychain(),
       storage: BackupOptions(gdrive: MockGDriveStorage(clientID: "client-id", viewController: UIViewController())),
-      isMock: true
+      mobile: MockMobileWrapper()
     )
     let expectation = XCTestExpectation(description: "Backup")
     var encounteredStatuses: Set<MpcStatuses> = []

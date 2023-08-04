@@ -58,7 +58,7 @@ public class PortalMpc {
     isSimulator: Bool = false,
     host: String = "mpc.portalhq.io",
     version: String = "v4",
-    isMock: Bool = false
+    mobile: Mobile
   ) {
     // Basic setup
     self.api = api
@@ -67,8 +67,7 @@ public class PortalMpc {
     self.keychain = keychain
     self.storage = storage
     self.version = version
-    self.isMock = isMock
-    self.mobile = self.isMock ? MockMobileWrapper() : MobileWrapper()
+    self.mobile = mobile
 
     // Other stuff
     self.isSimulator = isSimulator

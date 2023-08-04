@@ -22,20 +22,21 @@ public class Portal {
     return self.provider.chainId
   }
 
-  public let api: PortalApi
   public let apiKey: String
   public let autoApprove: Bool
   public let backup: BackupOptions
   public var client: Client?
   public let gatewayConfig: [Int: String]
   public let keychain: PortalKeychain
+  public let api: PortalApi
   public let mpc: PortalMpc
+  private let binary: Mobile
+
   public let provider: PortalProvider
 
   private let apiHost: String
   private let mpcHost: String
   private let version: String
-  private var isMock: Bool = false
 
   /// Create a Portal instance.
   /// - Parameters:
@@ -60,21 +61,20 @@ public class Portal {
     version: String = "v4",
     autoApprove: Bool = false,
     apiHost: String = "api.portalhq.io",
-    mpcHost: String = "mpc.portalhq.io",
-    isMock: Bool = false
+    mpcHost: String = "mpc.portalhq.io"
   ) throws {
     // Basic setup
+    self.binary = MobileWrapper()
     self.apiHost = apiHost
     self.apiKey = apiKey
     self.autoApprove = autoApprove
     self.backup = backup
     self.gatewayConfig = gatewayConfig
-    self.client = try Portal.getClient(apiHost, apiKey, isMock)
+    self.client = try Portal.getClient(apiHost, apiKey, self.binary)
     keychain.clientId = self.client?.id
     self.keychain = keychain
     self.mpcHost = mpcHost
     self.version = version
-    self.isMock = isMock
 
     if version != "v4" {
       throw PortalArgumentError.versionNoLongerSupported(message: "MPC Version is not supported. Only version 'v4' is currently supported.")
@@ -93,8 +93,92 @@ public class Portal {
     )
 
     // Initialize the Portal API
-    let api = self.isMock ? MockPortalApi(apiKey: apiKey, provider: self.provider) : PortalApi(apiKey: apiKey, apiHost: apiHost, provider: self.provider)
-    self.api = api
+    self.api = PortalApi(apiKey: apiKey, apiHost: apiHost, provider: self.provider)
+
+    // Ensure storage adapters have access to the Portal API
+    if backup.gdrive != nil {
+      backup.gdrive?.api = self.api
+    }
+    if backup.icloud != nil {
+      backup.icloud?.api = self.api
+    }
+
+    // Initialize Mpc
+    self.mpc = PortalMpc(
+      apiKey: apiKey,
+      api: self.api,
+      keychain: keychain,
+      storage: backup,
+      isSimulator: isSimulator,
+      host: mpcHost,
+      version: version,
+      mobile: self.binary
+    )
+  }
+
+  /// Create a Portal instance.
+  /// - Parameters:
+  ///   - apiKey: The Client API key. You can obtain this through Portal's REST API.
+  ///   - backup: The backup options to use.
+  ///   - chainId: The chainId you want the provider to use.
+  ///   - keychain: An instance of PortalKeychain.
+  ///   - gatewayConfig: A dictionary of chainIds (keys) and gateway URLs (values).
+  ///   - isSimulator: (optional) Whether you are testing on the iOS simulator or not.
+  ///   - address: (optional) An address.
+  ///   - apiHost: (optional) Portal's API host.
+  ///   - autoApprove: (optional) Auto-approve transactions.
+  ///   - mpcHost: (optional) Portal's MPC API host.
+  ///   - mpc: (optional) Portal's mpc class
+  ///   - api: (optional) Portal's api class
+  ///   - binary: (optional) Portal's mpc binary class
+
+  public init(
+    apiKey: String,
+    backup: BackupOptions,
+    chainId: Int,
+    keychain: PortalKeychain,
+    gatewayConfig: [Int: String],
+    // Optional
+    isSimulator: Bool = false,
+    version: String = "v4",
+    autoApprove: Bool = false,
+    apiHost: String = "api.portalhq.io",
+    mpcHost: String = "mpc.portalhq.io",
+    mpc: PortalMpc? = nil,
+    api: PortalApi? = nil,
+    binary: Mobile? = nil
+  ) throws {
+    // Basic setup
+    self.apiHost = apiHost
+    self.apiKey = apiKey
+    self.autoApprove = autoApprove
+    self.backup = backup
+    self.gatewayConfig = gatewayConfig
+    self.binary = binary ?? MobileWrapper()
+    self.client = try Portal.getClient(apiHost, apiKey, self.binary)
+    keychain.clientId = self.client?.id
+    self.keychain = keychain
+    self.mpcHost = mpcHost
+    self.version = version
+
+    if version != "v4" {
+      throw PortalArgumentError.versionNoLongerSupported(message: "MPC Version is not supported. Only version 'v4' is currently supported.")
+    }
+
+    // Initialize the PortalProvider
+    self.provider = try PortalProvider(
+      apiKey: apiKey,
+      chainId: chainId,
+      gatewayConfig: gatewayConfig,
+      keychain: keychain,
+      autoApprove: autoApprove,
+      apiHost: apiHost,
+      mpcHost: mpcHost,
+      version: version
+    )
+
+    // Initialize the Portal API
+    self.api = api ?? PortalApi(apiKey: apiKey, apiHost: apiHost, provider: self.provider)
 
     // Ensure storage adapters have access to the Portal API
     if backup.gdrive != nil {
@@ -105,15 +189,15 @@ public class Portal {
     }
 
     // Initialize Mpc
-    self.mpc = PortalMpc(
+    self.mpc = mpc ?? PortalMpc(
       apiKey: apiKey,
-      api: api,
+      api: self.api,
       keychain: keychain,
       storage: backup,
       isSimulator: isSimulator,
       host: mpcHost,
       version: version,
-      isMock: isMock
+      mobile: self.binary
     )
   }
 
@@ -284,12 +368,12 @@ public class Portal {
    * Private Methods
    ****************************************/
 
-  private static func getClient(_ apiHost: String, _ apiKey: String, _ isMock: Bool) throws -> Client {
+  private static func getClient(_ apiHost: String, _ apiKey: String, _ mobile: Mobile) throws -> Client {
     // Create URL.
     let apiUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
 
     // Call the MPC service to retrieve the client.
-    let response = isMock ? MockMobileWrapper().MobileGetMe("\(apiUrl)/api/v1/clients/me", apiKey) : Mpc.MobileGetMe("\(apiUrl)/api/v1/clients/me", apiKey)
+    let response = mobile.MobileGetMe("\(apiUrl)/api/v1/clients/me", apiKey)
 
     // Parse the client.
     let jsonData = response.data(using: .utf8)!
