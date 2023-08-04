@@ -1,7 +1,5 @@
 # PortalSwift
 
-[![Run Swift Tests](https://github.com/portal-hq/PortalSwift/actions/workflows/test.yml/badge.svg)](https://github.com/portal-hq/PortalSwift/actions/workflows/test.yml)
-
 # Install
 
 ## Set up
