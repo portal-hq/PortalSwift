@@ -7,7 +7,6 @@
 
 import Foundation
 
-// Only for the methods that directly affect the wallet methods for now
 public protocol Mobile {
   func MobileGenerate(_ apiKey: String, _ host: String, _ version: String) -> String
 
