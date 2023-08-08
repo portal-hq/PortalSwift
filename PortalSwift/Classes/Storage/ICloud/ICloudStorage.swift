@@ -1,10 +1,4 @@
-//
-//  ICloudStorage.swift
-//  PortalSwift
-//
-//  Created by Kelson Adams on 7/31/23.
-//
-
+import CloudKit
 import Foundation
 
 enum iCloudStorageError: Error, LocalizedError {
@@ -17,6 +11,8 @@ enum iCloudStorageError: Error, LocalizedError {
   case deleteError
   case validationMismatch
   case uploadError
+  case modelNotFound
+  case validationFailed
 
   var errorDescription: String? {
     switch self {
@@ -38,6 +34,10 @@ enum iCloudStorageError: Error, LocalizedError {
       return "Validation mismatch: Written and read content do not match in validateOperations"
     case .uploadError:
       return "There was an error while writing to iCloud"
+    case .modelNotFound:
+      return "The model 'PortalBackupKey' was not found in CloudKit with properties 'clientIdentifier' and 'decryptionKey'."
+    case .validationFailed:
+      return "Unable to validate all CloudKit CRUD operations."
     }
   }
 }
@@ -46,33 +46,33 @@ public class ICloudStorage: Storage {
   public var api: PortalApi? {
     didSet {
       self.keyValueStorage.api = self.api
-      self.documentStorage.api = self.api
+      self.cloudKitStorage.api = self.api
     }
   }
 
   private var keyValueStorage: ICloudKeyValue
-  private var documentStorage: ICloudDocuments
+  private var cloudKitStorage: CloudKitStorage
 
   override public init() {
     self.keyValueStorage = ICloudKeyValue(api: self.api)
-    self.documentStorage = ICloudDocuments(api: self.api)
+    self.cloudKitStorage = CloudKitStorage(api: self.api)
     super.init()
   }
 
   override public func read(completion: @escaping (Result<String>) -> Void) {
-    self.documentStorage.read(completion: completion)
+    self.cloudKitStorage.read(completion: completion)
   }
 
   override public func write(privateKey: String, completion: @escaping (Result<Bool>) -> Void) {
-    self.documentStorage.write(privateKey: privateKey, completion: completion)
+    self.cloudKitStorage.write(privateKey: privateKey, completion: completion)
   }
 
   override public func delete(completion: @escaping (Result<Bool>) -> Void) {
-    self.documentStorage.delete(completion: completion)
+    self.cloudKitStorage.delete(completion: completion)
   }
 
   public func migrateKeyValueDataToDocuments(completion: @escaping (Result<Bool>) -> Void) {
-    self.documentStorage.read { (readDocumentResult: Result<String>) in
+    self.cloudKitStorage.read { (readDocumentResult: Result<String>) in
       if let readDocumentError = readDocumentResult.error {
         // Ignore the error if the file does not exist.
         if let storageError = readDocumentError as? iCloudStorageError, storageError != .fileDoesNotExist {
@@ -114,40 +114,33 @@ public class ICloudStorage: Storage {
     }
   }
 
-  public func validateOperations(callback: @escaping (Result<Bool>) -> Void) {
-    let testFileName = "portal_test.txt"
-    let testFileContent = "test_content"
+  public func validateOperations(completion: @escaping (Result<Bool>) -> Void) {
+    let testId = "portal_test_id"
+    let testValue = "test_value"
 
-    self.documentStorage.rawWrite(filename: testFileName, content: testFileContent, inTestFolder: true) { writeResult in
-      if let writeError = writeResult.error {
-        callback(Result(error: writeError))
-        return
+    self.cloudKitStorage.rawWrite(id: testId, data: testValue) { writeResult in
+      // Handle errors.
+      guard writeResult.error == nil else {
+        return completion(Result(error: writeResult.error!))
       }
 
-      self.documentStorage.rawRead(filename: testFileName, fromTestFolder: true) { readResult in
-        if let readError = readResult.error {
-          callback(Result(error: readError))
-          return
+      self.cloudKitStorage.rawRead(id: testId) { readResult in
+        // Handle errors.
+        guard readResult.error == nil else {
+          return completion(Result(error: readResult.error!))
         }
 
-        if readResult.data != testFileContent {
-          callback(Result(error: iCloudStorageError.validationMismatch))
-          return
-        }
-
-        self.documentStorage.rawDelete(filename: testFileName, fromTestFolder: true) { deleteResult in
-          if let deleteError = deleteResult.error {
-            callback(Result(error: deleteError))
-          } else {
-            // Perform data migration if we have access to iCloud Documents.
-            self.migrateKeyValueDataToDocuments { (migrationResult: Result<Bool>) in
-              if let migrationError = migrationResult.error {
-                callback(Result(error: migrationError))
-                return
-              }
-              callback(Result(data: true))
+        if readResult.data == testValue {
+          self.cloudKitStorage.rawDelete(id: testId) { deleteResult in
+            // Handle errors.
+            guard deleteResult.error == nil else {
+              return completion(Result(error: deleteResult.error!))
             }
+
+            return completion(Result(data: true))
           }
+        } else {
+          return completion(Result(error: iCloudStorageError.validationFailed))
         }
       }
     }

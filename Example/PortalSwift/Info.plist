@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>ALCHEMY_API_KEY</key>
+	<string>$(ALCHEMY_API_KEY)</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleExecutable</key>
@@ -31,10 +33,12 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>ENV</key>
+	<string>$(ENV)</string>
+	<key>GDRIVE_CLIENT_ID</key>
+	<string>$(GDRIVE_CLIENT_ID)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<key>ALCHEMY_API_KEY</key>
-	<string>$(ALCHEMY_API_KEY)</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -50,10 +54,6 @@
 	<array>
 		<string>armv7</string>
 	</array>
-	<key>GDRIVE_CLIENT_ID</key>
-	<string>$(GDRIVE_CLIENT_ID)</string>
-	<key>ENV</key>
-	<string>$(ENV)</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

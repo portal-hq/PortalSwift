@@ -93,8 +93,8 @@
 		468CEC1F1ED6564685600D76F289F8CB /* AppAuthCore.h in Headers */ = {isa = PBXBuildFile; fileRef = CD9857EC9CE88A72431749EACA1B68AE /* AppAuthCore.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		47410143C6FC4CE127EF8EF916A5D3D4 /* GIDAuthentication.m in Sources */ = {isa = PBXBuildFile; fileRef = 465ADDC8547DD2BF13E017EFD3B02B6E /* GIDAuthentication.m */; };
 		47726B282A78630A0006D325 /* ICloudStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47726B272A78630A0006D325 /* ICloudStorage.swift */; };
-		47726B2A2A7863500006D325 /* ICloudDocuments.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47726B292A7863500006D325 /* ICloudDocuments.swift */; };
 		47726B2C2A7863810006D325 /* ICloudKeyValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47726B2B2A7863810006D325 /* ICloudKeyValue.swift */; };
+		47FD34E32A82D8CB00284BED /* CloudKitStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47FD34E22A82D8CB00284BED /* CloudKitStorage.swift */; };
 		4816ED359D1CCB98A1C010564EE02C2F /* SafariServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1BD78ACE6B123923D8420D771D862F51 /* SafariServices.framework */; };
 		4845BF5ED5999291320D49E88162F62A /* OIDError.h in Headers */ = {isa = PBXBuildFile; fileRef = C2A40C9ED624B86C85EDA2C442BF2806 /* OIDError.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		485813F00592B039FE4D1F7236926216 /* Pods-PortalSwift_Example-dummy.m in Sources */ = {isa = PBXBuildFile; fileRef = DE03189B0B0FCCC0EF00BB0FDCD736C0 /* Pods-PortalSwift_Example-dummy.m */; };
@@ -497,9 +497,9 @@
 		458F189603398690315F6E12C9C53DEB /* AppAuth-prefix.pch */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "AppAuth-prefix.pch"; sourceTree = "<group>"; };
 		465ADDC8547DD2BF13E017EFD3B02B6E /* GIDAuthentication.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = GIDAuthentication.m; path = GoogleSignIn/Sources/GIDAuthentication.m; sourceTree = "<group>"; };
 		47726B272A78630A0006D325 /* ICloudStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ICloudStorage.swift; sourceTree = "<group>"; };
-		47726B292A7863500006D325 /* ICloudDocuments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ICloudDocuments.swift; sourceTree = "<group>"; };
 		47726B2B2A7863810006D325 /* ICloudKeyValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ICloudKeyValue.swift; sourceTree = "<group>"; };
 		47D6A37202A47B926976A03F5909D5D8 /* WebSocket.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WebSocket.swift; path = Sources/Starscream/WebSocket.swift; sourceTree = "<group>"; };
+		47FD34E22A82D8CB00284BED /* CloudKitStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKitStorage.swift; sourceTree = "<group>"; };
 		481A5BBD345ACAA63A85911BE6AA760D /* UIImage+Snapshot.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = "UIImage+Snapshot.m"; path = "FBSnapshotTestCase/Categories/UIImage+Snapshot.m"; sourceTree = "<group>"; };
 		490B12433D549EE30DB181F98DB0848B /* GIDProfileData.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = GIDProfileData.h; path = GoogleSignIn/Sources/Public/GoogleSignIn/GIDProfileData.h; sourceTree = "<group>"; };
 		4946A9B70F3884F05CEAD1DA6C03811D /* GTMKeychain.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = GTMKeychain.m; path = GTMAppAuth/Sources/GTMKeychain.m; sourceTree = "<group>"; };
@@ -1197,8 +1197,8 @@
 			isa = PBXGroup;
 			children = (
 				47726B272A78630A0006D325 /* ICloudStorage.swift */,
-				47726B292A7863500006D325 /* ICloudDocuments.swift */,
 				47726B2B2A7863810006D325 /* ICloudKeyValue.swift */,
+				47FD34E22A82D8CB00284BED /* CloudKitStorage.swift */,
 			);
 			path = ICloud;
 			sourceTree = "<group>";
@@ -2138,6 +2138,7 @@
 				4ED3EA65A2EB449428995F5711E975CE /* LocalFileStorage.swift in Sources */,
 				F8F6022C71FB7A1231DF9C437E49AD6D /* MobileStorageAdapter.swift in Sources */,
 				18245415976CCCA7A755042E43FE6103 /* MockGDriveStorage.swift in Sources */,
+				47FD34E32A82D8CB00284BED /* CloudKitStorage.swift in Sources */,
 				47726B282A78630A0006D325 /* ICloudStorage.swift in Sources */,
 				25D0E07B46651AE0CC4009FF28AECCEF /* MockHttpRequest.swift in Sources */,
 				A0088DC62F2D965EAE9D4C9302E09950 /* MockHttpRequester.swift in Sources */,
@@ -2149,7 +2150,6 @@
 				47726B2C2A7863810006D325 /* ICloudKeyValue.swift in Sources */,
 				21E76F42A0822B617452453C02752539 /* MockPortalMpc.swift in Sources */,
 				B19E3BB14565460A016FBF94E13A5D32 /* MockPortalProvider.swift in Sources */,
-				47726B2A2A7863500006D325 /* ICloudDocuments.swift in Sources */,
 				0AA0744517B8268A3C4307AD890C81BE /* MockStorage.swift in Sources */,
 				3F33483485151A19A79BDFA2A935A91B /* MpcSigner.swift in Sources */,
 				0137C858B8DB0F267E1863BA85E16DD4 /* Portal.swift in Sources */,
