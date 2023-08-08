@@ -8,9 +8,9 @@ public class CloudKitStorage: Storage {
 
   private var container: CKContainer
 
-  public init(api: PortalApi?) {
+  public init(api: PortalApi?, containerIdentifier: String) {
     self.api = api
-    self.container = CKContainer(identifier: "iCloud.io.portalhq.demo")
+    self.container = CKContainer(identifier: containerIdentifier)
     self.privateDB = self.container.privateCloudDatabase
     super.init()
   }

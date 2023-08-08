@@ -486,7 +486,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       //        print("Error: Do you have `GDRIVE_CLIENT_ID=$(GDRIVE_CLIENT_ID)` in your info.plist?")
       //        return  }
       //      let backup = BackupOptions(gdrive: GDriveStorage(clientID: GDRIVE_CLIENT_ID, viewController: self))
-      let backup = BackupOptions(icloud: ICloudStorage())
+      let backup = BackupOptions(icloud: ICloudStorage(containerIdentifier: "iCloud.io.portalhq.demo"))
       self.PortalWrapper.registerPortal(apiKey: apiKey, backup: backup) { _ in
         DispatchQueue.main.async {
           do {

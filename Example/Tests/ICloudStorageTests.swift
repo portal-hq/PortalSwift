@@ -15,7 +15,7 @@ final class ICloudStorageTests: XCTestCase {
   override func setUpWithError() throws {
     let provider = try MockPortalProvider(apiKey: "", chainId: 5, gatewayConfig: [5: "https://example.com"], keychain: MockPortalKeychain(), autoApprove: true)
 
-    self.storage = ICloudStorage()
+    self.storage = ICloudStorage(containerIdentifier: "iCloud.io.portalhq.demo")
     self.storage?.api = MockPortalApi(apiKey: "", apiHost: "", provider: provider)
   }
 

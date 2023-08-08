@@ -30,7 +30,7 @@ final class PortalMpcTests: XCTestCase {
         mockRequests: true
       ),
       keychain: MockPortalKeychain(),
-      storage: BackupOptions(icloud: MockICloudStorage())
+      storage: BackupOptions(icloud: MockICloudStorage(containerIdentifier: "iCloud.io.portalhq.demo"))
     )
   }
 

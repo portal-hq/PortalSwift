@@ -53,9 +53,9 @@ public class ICloudStorage: Storage {
   private var keyValueStorage: ICloudKeyValue
   private var cloudKitStorage: CloudKitStorage
 
-  override public init() {
+  public init(containerIdentifier: String) {
     self.keyValueStorage = ICloudKeyValue(api: self.api)
-    self.cloudKitStorage = CloudKitStorage(api: self.api)
+    self.cloudKitStorage = CloudKitStorage(api: self.api, containerIdentifier: containerIdentifier)
     super.init()
   }
 
