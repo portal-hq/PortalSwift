@@ -222,6 +222,27 @@ public class PortalApi {
     }
   }
 
+  /// Updates the client's wallet backup state to have successfully stored the client backup share key in the client's storage (e.g. gdrive, icloud, etc).
+  /// - Parameters:
+  ///   - backupMethod: One of: "ICLOUD", "GDRIVE", or "CUSTOM".
+  ///   - completion: The callback that contains the response status.
+  /// - Returns: Void.
+  public func storedClientBackupShareKey(
+    backupMethod: String,
+    completion: @escaping (Result<String>) -> Void
+  ) throws {
+    try self.requests.put(
+      path: "/api/v1/clients/me/wallet/stored-client-backup-share-key",
+      body: ["backupMethod": backupMethod],
+      headers: [
+        "Authorization": "Bearer \(self.apiKey)",
+      ],
+      requestType: HttpRequestType.CustomRequest
+    ) { (result: Result<String>) in
+      completion(result)
+    }
+  }
+
   /// Updates the client's wallet backup state to have successfully stored the client backup share with the custodian.
   /// - Parameters:
   ///   - success: Boolean indicating whether the storage operation failed.
