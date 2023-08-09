@@ -117,7 +117,7 @@ public class PortalMpc {
           }
           print("iCloud Storage is available, continuing...")
 
-          self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
+          self.executeBackup(storage: storage!, signingShare: signingShare, backupMethod: method) { backupResult in
             if backupResult.error != nil {
               self.isWalletModificationInProgress = false
               return completion(Result(error: backupResult.error!))
@@ -141,7 +141,7 @@ public class PortalMpc {
           }
           print("Google Drive Storage is available, starting backup...")
 
-          self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
+          self.executeBackup(storage: storage!, signingShare: signingShare, backupMethod: method) { backupResult in
             if backupResult.error != nil {
               self.isWalletModificationInProgress = false
               return completion(Result(error: backupResult.error!))
@@ -156,7 +156,7 @@ public class PortalMpc {
         }
       } else if method == BackupMethods.local.rawValue {
         print("Starting backup...")
-        self.executeBackup(storage: storage!, signingShare: signingShare) { backupResult in
+        self.executeBackup(storage: storage!, signingShare: signingShare, backupMethod: method) { backupResult in
           if backupResult.error != nil {
             self.isWalletModificationInProgress = false
             return completion(Result(error: backupResult.error!))
@@ -426,6 +426,7 @@ public class PortalMpc {
   private func executeBackup(
     storage: Storage,
     signingShare: String,
+    backupMethod: BackupMethods.RawValue,
     completion: @escaping (Result<String>) -> Void,
     progress: ((MpcStatus) -> Void)? = nil
   ) {
@@ -463,8 +464,22 @@ public class PortalMpc {
             return completion(Result(error: result.error!))
           }
 
-          // Return the cipherText.
-          return completion(Result(data: encryptedResult.data!.cipherText))
+          do {
+            // Call api to update backup method + update backup status to `STORED_CLIENT_BACKUP_SHARE_KEY`.
+            let formattedBackupMethod = self.formatBackupMethod(backupMethod: backupMethod)
+            try self.api.storedClientBackupShareKey(backupMethod: formattedBackupMethod) { (result: Result<String>) in
+              // Throw an error if we can't update the backup status + save the backup method.
+              if result.error != nil {
+                return completion(Result(error: result.error!))
+              }
+
+              // Return the cipherText.
+              return completion(Result(data: encryptedResult.data!.cipherText))
+            }
+          } catch {
+            print("Backup Failed: ", error)
+            return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: "Backup failed")))
+          }
         }
       } progress: { status in
         progress?(status)
@@ -532,8 +547,27 @@ public class PortalMpc {
                 }
               }
 
-              // Return the cipherText.
-              return completion(Result(data: encryptedResult.data!.cipherText))
+              do {
+                // Call api to update backup method + update backup status to `STORED_CLIENT_BACKUP_SHARE_KEY`.
+                let formattedBackupMethod = self.formatBackupMethod(backupMethod: method)
+                try self.api.storedClientBackupShareKey(backupMethod: formattedBackupMethod) { (result: Result<String>) in
+                  // Throw an error if we can't update the backup status + save the backup method.
+                  if result.error != nil {
+                    print("Signing shares were successfully replaced, but backup shares were not refreshed. Try running backup again with your new signing shares.")
+                    if let error = result.error {
+                      return completion(Result(error: MpcError.failedToStoreClientBackupShareKey(message: error.localizedDescription)))
+                    } else {
+                      return completion(Result(error: MpcError.failedToStoreClientBackupShareKey(message: "")))
+                    }
+                  }
+
+                  // Return the cipherText.
+                  return completion(Result(data: encryptedResult.data!.cipherText))
+                }
+              } catch {
+                print("Signing shares were successfully replaced, but backup shares were not refreshed. Try running backup again with your new signing shares.")
+                return completion(Result(error: MpcError.failedToStoreClientBackupShareKey(message: "")))
+              }
             }
           } progress: { status in
             progress?(status)
@@ -692,6 +726,17 @@ public class PortalMpc {
     }
 
     return shareJson
+  }
+
+  private func formatBackupMethod(backupMethod: BackupMethods.RawValue) -> String {
+    switch backupMethod {
+    case BackupMethods.GoogleDrive.rawValue:
+      return "GDRIVE"
+    case BackupMethods.iCloud.rawValue:
+      return "ICLOUD"
+    default:
+      return "CUSTOM"
+    }
   }
 }
 
