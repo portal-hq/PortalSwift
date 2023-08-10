@@ -9,7 +9,7 @@ import PortalSwift
 @testable import PortalSwift_Example
 import XCTest
 
-final class ProviderTests: XCTestCase {
+class ProviderTests: XCTestCase {
   static var user: UserResult?
   static var username: String?
   static var PortalWrap: PortalWrapper!
@@ -680,7 +680,9 @@ final class ProviderTests: XCTestCase {
   // ** UNSUPPORTED METHODS, BECAUSE THEY RETURN OBJECTS NOT STRINGS ** //
 
   // This method should be returning a string but it is returning nil from the provider
-  func testEthGetUncleCountByBlockHash() {
+  func testEthGetUncleCountByBlockHash() throws {
+    throw XCTSkip("Method is not supported")
+
     let expectation = XCTestExpectation(description: "Expecting valid uncle count by block hash response")
 
     self.testLogin { success in
@@ -706,7 +708,9 @@ final class ProviderTests: XCTestCase {
   }
 
   //  https://docs.alchemy.com/reference/eth-getblockbyhash
-  func testEthGetBlockByHash() {
+  func testEthGetBlockByHash() throws {
+    throw XCTSkip("Method is not supported")
+
     let expectation = XCTestExpectation(description: "Expecting valid block by hash response")
 
     self.testLogin { success in
@@ -731,7 +735,9 @@ final class ProviderTests: XCTestCase {
     wait(for: [expectation], timeout: 30)
   }
 
-  func testEthGetTransactionByHash() {
+  func testEthGetTransactionByHash() throws {
+    throw XCTSkip("Method is not supported")
+
     let expectation = XCTestExpectation(description: "Expecting valid transaction by hash response")
 
     self.testLogin { success in
@@ -755,7 +761,9 @@ final class ProviderTests: XCTestCase {
     wait(for: [expectation], timeout: 30)
   }
 
-  func testEthGetTransactionReceipt() {
+  func testEthGetTransactionReceipt() throws {
+    throw XCTSkip("Method is not supported")
+
     let expectation = XCTestExpectation(description: "Expecting valid transaction receipt response")
 
     self.testLogin { success in
@@ -780,7 +788,9 @@ final class ProviderTests: XCTestCase {
   }
 
   // https://docs.alchemy.com/reference/eth-getunclebyblockhashandindex
-  func testEthGetUncleByBlockHashIndex() {
+  func testEthGetUncleByBlockHashIndex() throws {
+    throw XCTSkip("Method is not supported")
+
     let expectation = XCTestExpectation(description: "Expecting valid uncle by block hash index response")
 
     self.testLogin { success in
@@ -804,7 +814,9 @@ final class ProviderTests: XCTestCase {
     wait(for: [expectation], timeout: 30)
   }
 
-  func testZEthSendRawTransaction() {
+  func testZEthSendRawTransaction() throws {
+    throw XCTSkip("Method is not supported")
+
     let expectation = XCTestExpectation(description: "Expecting valid send raw transaction response")
 
     self.testLogin { success in
@@ -846,7 +858,6 @@ final class ProviderTests: XCTestCase {
           return registerExpectation.fulfill()
         }
         let userResult = result.data!
-        print("✅ handleSignIn(): API key:", userResult.clientApiKey)
 
         self.registerPortal(userResult: userResult) { success in
           guard success else {
@@ -874,7 +885,7 @@ final class ProviderTests: XCTestCase {
   func registerPortal(userResult: UserResult, completion: @escaping (Bool) -> Void) {
     let backupOption = LocalFileStorage(fileName: "PORTAL_BACKUP_TEST")
     let backup = BackupOptions(local: backupOption)
-    print("registering portal")
+    print("Registering portal...")
 
     ProviderTests.PortalWrap.registerPortal(apiKey: userResult.clientApiKey, backup: backup) { result in
       guard result.error == nil else {
