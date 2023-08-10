@@ -9,19 +9,19 @@ import Foundation
 import Mpc
 
 class MockMobileWrapper: Mobile {
-  func MobileGenerate(_: String, _: String, _: String) -> String {
+  func MobileGenerate(_: String, _: String, _: String, _: String) -> String {
     return mockDataResult
   }
 
-  func MobileBackup(_: String, _: String, _: String, _: String) -> String {
+  func MobileBackup(_: String, _: String, _: String, _: String, _: String) -> String {
     return mockDataResult
   }
 
-  func MobileRecoverSigning(_: String, _: String, _: String, _: String) -> String {
+  func MobileRecoverSigning(_: String, _: String, _: String, _: String, _: String) -> String {
     return mockDataResult
   }
 
-  func MobileRecoverBackup(_: String, _: String, _: String, _: String) -> String {
+  func MobileRecoverBackup(_: String, _: String, _: String, _: String, _: String) -> String {
     return mockDataResult
   }
 

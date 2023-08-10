@@ -23,6 +23,7 @@ public class PortalMpc {
   private let api: PortalApi
   private let apiKey: String
   private let host: String
+    private let apiHost: String
   private let isSimulator: Bool
   private let keychain: PortalKeychain
   private var signingShare: String? {
@@ -49,6 +50,7 @@ public class PortalMpc {
   ///   - storage: An instance of BackupOptions.
   ///   - gatewayUrl: The Gateway URL to use.
   ///   - isSimulator: (optional) Whether or not we are on an iOS simulator.
+///    - apiHost: The hostname for Portal's API service.
   ///   - mpcHost: The hostname for Portal's MPC service.
   public init(
     apiKey: String,
@@ -58,7 +60,8 @@ public class PortalMpc {
     isSimulator: Bool = false,
     host: String = "mpc.portalhq.io",
     version: String = "v4",
-    mobile: Mobile
+    mobile: Mobile,
+    apiHost: String = "http://api.portalhq.io"
   ) {
     // Basic setup
     self.api = api
@@ -68,6 +71,7 @@ public class PortalMpc {
     self.storage = storage
     self.version = version
     self.mobile = mobile
+    self.apiHost = apiHost
 
     // Other stuff
     self.isSimulator = isSimulator
@@ -208,7 +212,7 @@ public class PortalMpc {
         do {
           // Call the MPC service to generate a new wallet.
           progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
-          let response = self.mobile.MobileGenerate(self.apiKey, self.host, self.version)
+            let response = self.mobile.MobileGenerate(self.apiKey, self.host, self.version, self.apiHost)
 
           // Parse the share
           progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
@@ -434,7 +438,7 @@ public class PortalMpc {
       // Call the MPC service to generate a backup share.
       progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
 
-      let response = self.mobile.MobileBackup(self.apiKey, self.host, signingShare, self.version)
+        let response = self.mobile.MobileBackup(self.apiKey, self.host, signingShare, self.version, self.apiHost)
 
       // Parse the backup share.
       progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
@@ -632,7 +636,7 @@ public class PortalMpc {
       progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
 
       // Call the MPC service to recover the backup share.
-      let result = self.mobile.MobileRecoverBackup(self.apiKey, self.host, clientBackupShare, self.version)
+        let result = self.mobile.MobileRecoverBackup(self.apiKey, self.host, clientBackupShare, self.version, self.apiHost)
 
       progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
       let rotateResult: RotateResult = try JSONDecoder().decode(RotateResult.self, from: result.data(using: .utf8)!)
@@ -661,7 +665,7 @@ public class PortalMpc {
     do {
       progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
       // Call the MPC service to recover the signing share.
-      let result = self.mobile.MobileRecoverSigning(self.apiKey, self.host, backupShare, self.version)
+      let result = self.mobile.MobileRecoverSigning(self.apiKey, self.host, backupShare, self.version, self.apiHost)
 
       progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
       let rotateResult = try JSONDecoder().decode(RotateResult.self, from: result.data(using: .utf8)!)
