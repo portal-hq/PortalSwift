@@ -8,13 +8,13 @@
 import Foundation
 
 public protocol Mobile {
-  func MobileGenerate(_ apiKey: String, _ host: String, _ version: String) -> String
+  func MobileGenerate(_ apiKey: String, _ host: String, _ version: String, _ apiHost: String) -> String
 
-  func MobileBackup(_ apiKey: String, _ host: String, _ signingShare: String, _ version: String) -> String
+  func MobileBackup(_ apiKey: String, _ host: String, _ signingShare: String, _ version: String, _ apiHost: String) -> String
 
-  func MobileRecoverSigning(_ apiKey: String, _ host: String, _ signingShare: String, _ version: String) -> String
+  func MobileRecoverSigning(_ apiKey: String, _ host: String, _ signingShare: String, _ version: String, _ apiHost: String) -> String
 
-  func MobileRecoverBackup(_ apiKey: String, _ host: String, _ signingShare: String, _ version: String) -> String
+  func MobileRecoverBackup(_ apiKey: String, _ host: String, _ signingShare: String, _ version: String, _ apiHost: String) -> String
 
   func MobileDecrypt(_ key: String, _ dkgCipherText: String) -> String
 

@@ -112,7 +112,8 @@ public class Portal {
       isSimulator: isSimulator,
       host: mpcHost,
       version: version,
-      mobile: self.binary
+      mobile: self.binary,
+      apiHost: self.apiHost
     )
   }
 
