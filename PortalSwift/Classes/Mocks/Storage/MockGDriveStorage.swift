@@ -24,4 +24,8 @@ public class MockGDriveStorage: GDriveStorage {
   override public func write(privateKey _: String, completion: @escaping (Result<Bool>) -> Void) {
     completion(Result(data: true))
   }
+
+  override public func validateOperations(callback: @escaping (Result<Bool>) -> Void) {
+    callback(Result(data: true))
+  }
 }

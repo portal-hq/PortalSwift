@@ -287,6 +287,19 @@ public class Portal {
     ), completion: completion)
   }
 
+  public func ethGetBalance(
+    completion: @escaping (Result<RequestCompletionResult>) -> Void
+  ) {
+    guard let address = provider.address else {
+      completion(Result(error: PortalProviderError.noAddress))
+      return
+    }
+    self.provider.request(payload: ETHRequestPayload(
+      method: ETHRequestMethods.GetBalance.rawValue,
+      params: [address, "latest"]
+    ), completion: completion)
+  }
+
   public func on(event: Events.RawValue, callback: @escaping (Any) -> Void) {
     _ = self.provider.on(event: event, callback: callback)
   }
