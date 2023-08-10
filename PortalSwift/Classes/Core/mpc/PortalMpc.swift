@@ -61,7 +61,7 @@ public class PortalMpc {
     host: String = "mpc.portalhq.io",
     version: String = "v4",
     mobile: Mobile,
-    apiHost: String = "http://api.portalhq.io"
+    apiHost: String = "api.portalhq.io"
   ) {
     // Basic setup
     self.api = api
@@ -71,7 +71,7 @@ public class PortalMpc {
     self.storage = storage
     self.version = version
     self.mobile = mobile
-    self.apiHost = apiHost
+    self.apiHost = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
 
     // Other stuff
     self.isSimulator = isSimulator
