@@ -287,10 +287,10 @@ class PortalWrapper {
 
     request.send { (result: Result<String>) in
       if result.error != nil {
-        print("❌ transferFunds(): Error sending funds:", result.error!)
+        print("transferFunds(): Error sending funds:", result.error!)
         return completion(Result(error: result.error!))
       } else {
-        print("✅ transferFunds(): Successfully sent funds!")
+        print("transferFunds(): Successfully sent funds!")
         return completion(Result(data: result.data!))
       }
     }
