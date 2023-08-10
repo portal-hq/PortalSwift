@@ -64,4 +64,14 @@ public class MockPortalApi: PortalApi {
     }
     completion(mockResponse)
   }
+
+  // Mocking the storedClientBackupShare function
+  override public func storedClientBackupShareKey(
+    backupMethod _: String,
+    completion: @escaping (Result<String>) -> Void
+  ) throws {
+    // Mock response based on the success parameter
+    let mockResponse = Result(data: "Backup share key successfully stored")
+    completion(mockResponse)
+  }
 }
