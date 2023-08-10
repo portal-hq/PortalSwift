@@ -9,20 +9,20 @@ import Foundation
 import Mpc
 
 class MobileWrapper: Mobile {
-  public func MobileGenerate(_ apiKey: String, _ host: String, _ version: String) -> String {
-    return Mpc.MobileGenerate(apiKey, host, version)
+  public func MobileGenerate(_ apiKey: String, _ host: String, _ version: String, _ apiHost: String) -> String {
+    return Mpc.MobileGenerate(apiKey, host, version, apiHost)
   }
 
-  func MobileBackup(_ apiKey: String, _ host: String, _ signingShare: String, _ version: String) -> String {
-    return Mpc.MobileBackup(apiKey, host, signingShare, version)
+  func MobileBackup(_ apiKey: String, _ host: String, _ signingShare: String, _ version: String, _ apiHost: String) -> String {
+    return Mpc.MobileBackup(apiKey, host, signingShare, version, apiHost)
   }
 
-  func MobileRecoverSigning(_ apiKey: String, _ host: String, _ signingShare: String, _ version: String) -> String {
-    return Mpc.MobileRecoverSigning(apiKey, host, signingShare, version)
+  func MobileRecoverSigning(_ apiKey: String, _ host: String, _ signingShare: String, _ version: String, _ apiHost: String) -> String {
+    return Mpc.MobileRecoverSigning(apiKey, host, signingShare, version, apiHost)
   }
 
-  func MobileRecoverBackup(_ apiKey: String, _ host: String, _ signingShare: String, _ version: String) -> String {
-    return Mpc.MobileRecoverBackup(apiKey, host, signingShare, version)
+  func MobileRecoverBackup(_ apiKey: String, _ host: String, _ signingShare: String, _ version: String, _ apiHost: String) -> String {
+    return Mpc.MobileRecoverBackup(apiKey, host, signingShare, version, apiHost)
   }
 
   func MobileDecrypt(_ key: String, _ dkgCipherText: String) -> String {
