@@ -62,21 +62,21 @@
 
 @end
 
-FOUNDATION_EXPORT NSString* _Nonnull MobileBackup(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable version);
+FOUNDATION_EXPORT NSString* _Nonnull MobileBackup(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable version, NSString* _Nullable apiAddr);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileDecrypt(NSString* _Nullable key, NSString* _Nullable dkgCipherText);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileEncrypt(NSString* _Nullable value);
 
-FOUNDATION_EXPORT NSString* _Nonnull MobileGenerate(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable version);
+FOUNDATION_EXPORT NSString* _Nonnull MobileGenerate(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable version, NSString* _Nullable apiAddr);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileGetMe(NSString* _Nullable url, NSString* _Nullable token);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileGetVersion(void);
 
-FOUNDATION_EXPORT NSString* _Nonnull MobileRecoverBackup(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable version);
+FOUNDATION_EXPORT NSString* _Nonnull MobileRecoverBackup(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable version, NSString* _Nullable apiAddr);
 
-FOUNDATION_EXPORT NSString* _Nonnull MobileRecoverSigning(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable version);
+FOUNDATION_EXPORT NSString* _Nonnull MobileRecoverSigning(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable version, NSString* _Nullable apiAddr);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileSign(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable method, NSString* _Nullable params, NSString* _Nullable rpcURL, NSString* _Nullable chainId, NSString* _Nullable version);
 

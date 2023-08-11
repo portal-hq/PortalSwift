@@ -188,7 +188,6 @@ public class PortalProvider {
       self.handleGatewayRequest(payload: payloadWithId, connect: connect) { (method: String, params: [Any], result: Result<Any>, id: String) in
         if id == payloadWithId.id, !self.processedSignatureIds.contains(id) {
           self.processedSignatureIds.append(id)
-
           if result.data != nil {
             return completion(Result(data: RequestCompletionResult(method: method, params: params, result: result.data!, id: id)))
           } else {
@@ -913,7 +912,6 @@ public var TransactionMethods: [ETHRequestMethods.RawValue] = [
 /// A list of JSON-RPC signing methods.
 public var signerMethods: [ETHRequestMethods.RawValue] = [
   ETHRequestMethods.Accounts.rawValue,
-  ETHRequestMethods.ChainId.rawValue,
   ETHRequestMethods.PersonalSign.rawValue,
   ETHRequestMethods.RequestAccounts.rawValue,
   ETHRequestMethods.SendTransaction.rawValue,

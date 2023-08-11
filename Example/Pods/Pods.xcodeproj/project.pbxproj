@@ -283,6 +283,9 @@
 		F8473F19A98E8C04DA797F91A71F8443 /* GIDGoogleUser.m in Sources */ = {isa = PBXBuildFile; fileRef = 244B79D9C54809E7C7B199C1489AD49A /* GIDGoogleUser.m */; };
 		F8F6022C71FB7A1231DF9C437E49AD6D /* MobileStorageAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2761658E33E1FF4F34BF0ED3995E5F9B /* MobileStorageAdapter.swift */; };
 		F950D208FA4D412081B58F83807785A4 /* OIDRegistrationResponse.h in Headers */ = {isa = PBXBuildFile; fileRef = 735E5E1EFE968E115DDDBF274A8E6738 /* OIDRegistrationResponse.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		F9F5B4FB2A7AE6D400580FB9 /* MpcMobileProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9F5B4FA2A7AE6D400580FB9 /* MpcMobileProtocol.swift */; };
+		F9F5B4FF2A7AF5CC00580FB9 /* MockMpcMobile.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9F5B4FE2A7AF5CC00580FB9 /* MockMpcMobile.swift */; };
+		F9F5B5012A7AFB5400580FB9 /* MpcMobile.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9F5B5002A7AFB5400580FB9 /* MpcMobile.swift */; };
 		FA57677851302C0F13C69A459895DCEF /* NSBundle+GID3PAdditions.h in Headers */ = {isa = PBXBuildFile; fileRef = D0B13CB8E2380B3D8153DE8AC1D00E0D /* NSBundle+GID3PAdditions.h */; settings = {ATTRIBUTES = (Project, ); }; };
 		FDE948CC3A35F70EAEB413E5DE09C5ED /* OIDRegistrationResponse.m in Sources */ = {isa = PBXBuildFile; fileRef = 5E4FF6B9D7034165F3B7C9954D0E5198 /* OIDRegistrationResponse.m */; };
 		FF8307B7346F4D3BA13C11AECFE6EDD0 /* FBSnapshotTestCase.h in Headers */ = {isa = PBXBuildFile; fileRef = 5FB244297A44C83F4676DE48C59A5F66 /* FBSnapshotTestCase.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -723,6 +726,9 @@
 		F787A922FCA2B2453D62B91E0D238CE4 /* FoundationSecurity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FoundationSecurity.swift; path = Sources/Security/FoundationSecurity.swift; sourceTree = "<group>"; };
 		F8D7EA35E60B3E6DFB4917E429D6576A /* UIImage+Snapshot.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = "UIImage+Snapshot.h"; path = "FBSnapshotTestCase/Categories/UIImage+Snapshot.h"; sourceTree = "<group>"; };
 		F99591EE4A6FA4AB69D613692D72A6E9 /* StringHTTPHandler.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = StringHTTPHandler.swift; path = Sources/Framer/StringHTTPHandler.swift; sourceTree = "<group>"; };
+		F9F5B4FA2A7AE6D400580FB9 /* MpcMobileProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MpcMobileProtocol.swift; sourceTree = "<group>"; };
+		F9F5B4FE2A7AF5CC00580FB9 /* MockMpcMobile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockMpcMobile.swift; sourceTree = "<group>"; };
+		F9F5B5002A7AFB5400580FB9 /* MpcMobile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MpcMobile.swift; sourceTree = "<group>"; };
 		FB367A379C63040F8B0480CF9465B2C0 /* GTMKeychain.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = GTMKeychain.h; path = GTMAppAuth/Sources/Public/GTMAppAuth/GTMKeychain.h; sourceTree = "<group>"; };
 		FB58853884632665EB71D77D09F3A453 /* Constants.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 		FBD710D5EDF47A2758A8683A38EBD5CE /* Starscream-umbrella.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "Starscream-umbrella.h"; sourceTree = "<group>"; };
@@ -968,7 +974,7 @@
 				4E19F03D7F59F0CC6D86AEA101A05A17 /* MockPortal.swift */,
 				FDE88DC5C6E4E26713BB62B5297FFE03 /* MockPortalApi.swift */,
 				07D282CEFA881E97DEB1DFEB03DF065C /* MockPortalKeychain.swift */,
-				EE65BFCCF2D2ABD30BD4E972574F8F51 /* MockPortalMpc.swift */,
+				F9F5B4FD2A7AF5B400580FB9 /* MockMpc */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -1222,11 +1228,11 @@
 		547E26910E1AC1276C9D7D40B7D5C15B /* Core */ = {
 			isa = PBXGroup;
 			children = (
+				F9F5B4F92A7AE6B900580FB9 /* mpc */,
 				2761658E33E1FF4F34BF0ED3995E5F9B /* MobileStorageAdapter.swift */,
 				7CACA39F807F9581A6E6F4EE31C25019 /* Portal.swift */,
 				6ACF3CDC0D62CCB2DC7D3AD3CE518AE2 /* PortalApi.swift */,
 				0690982254724488E10DCD8FDA1663DD /* PortalKeychain.swift */,
-				344E5AC26E5D06EDD621A6BD7DD3A66A /* PortalMpc.swift */,
 			);
 			name = Core;
 			path = PortalSwift/Classes/Core;
@@ -1540,6 +1546,25 @@
 			);
 			name = Swaps;
 			path = PortalSwift/Classes/Swaps;
+			sourceTree = "<group>";
+		};
+		F9F5B4F92A7AE6B900580FB9 /* mpc */ = {
+			isa = PBXGroup;
+			children = (
+				344E5AC26E5D06EDD621A6BD7DD3A66A /* PortalMpc.swift */,
+				F9F5B4FA2A7AE6D400580FB9 /* MpcMobileProtocol.swift */,
+				F9F5B5002A7AFB5400580FB9 /* MpcMobile.swift */,
+			);
+			path = mpc;
+			sourceTree = "<group>";
+		};
+		F9F5B4FD2A7AF5B400580FB9 /* MockMpc */ = {
+			isa = PBXGroup;
+			children = (
+				EE65BFCCF2D2ABD30BD4E972574F8F51 /* MockPortalMpc.swift */,
+				F9F5B4FE2A7AF5CC00580FB9 /* MockMpcMobile.swift */,
+			);
+			path = MockMpc;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -2116,6 +2141,7 @@
 				8AEB3E7E023CC41B19ADF3DB917F4807 /* Constants.swift in Sources */,
 				2A94EA47FBAFFC9B24B3EA4C5B25F3AE /* CurrencyConverter.swift in Sources */,
 				C692F76A75EB86ADB88EEE6C7EDA0985 /* EthRequests.swift in Sources */,
+				F9F5B4FB2A7AE6D400580FB9 /* MpcMobileProtocol.swift in Sources */,
 				F585FC7950C7D2A2CCF10DB0AF36C616 /* GDriveClient.swift in Sources */,
 				1570D93A09E60FA9F0CE25239E87497E /* GDriveStorage.swift in Sources */,
 				320BDE037AD21EDA8914E6F488EE371D /* GoogleAuth.swift in Sources */,
@@ -2135,6 +2161,7 @@
 				21E76F42A0822B617452453C02752539 /* MockPortalMpc.swift in Sources */,
 				B19E3BB14565460A016FBF94E13A5D32 /* MockPortalProvider.swift in Sources */,
 				0AA0744517B8268A3C4307AD890C81BE /* MockStorage.swift in Sources */,
+				F9F5B4FF2A7AF5CC00580FB9 /* MockMpcMobile.swift in Sources */,
 				3F33483485151A19A79BDFA2A935A91B /* MpcSigner.swift in Sources */,
 				0137C858B8DB0F267E1863BA85E16DD4 /* Portal.swift in Sources */,
 				CFD2D681A17C2B95342B33611FA5C5E6 /* PortalApi.swift in Sources */,
@@ -2144,6 +2171,7 @@
 				3622D4E0978FBE3242B8019D70CB94D2 /* PortalErrorCodeTypes.swift in Sources */,
 				AEFAA7020167CD858BE9C7F397F8C735 /* PortalKeychain.swift in Sources */,
 				2C636C8AC4255672669AB8BBD86847D1 /* PortalMpc.swift in Sources */,
+				F9F5B5012A7AFB5400580FB9 /* MpcMobile.swift in Sources */,
 				7A4788AEB3613F2EB1FE13F80A83E01A /* PortalMpcError.swift in Sources */,
 				738FE2E06BD5DF80125EC3BE5884AC59 /* PortalProvider.swift in Sources */,
 				CD518EA8A3006E2016AAF811F346F3B4 /* PortalSwaps.swift in Sources */,

@@ -20,4 +20,8 @@ public class MockICloudStorage: ICloudStorage {
   override public func delete(completion: @escaping (Result<Bool>) -> Void) {
     completion(Result(data: true))
   }
+
+  override public func validateOperations(callback: @escaping (Result<Bool>) -> Void) {
+    callback(Result(data: true))
+  }
 }
