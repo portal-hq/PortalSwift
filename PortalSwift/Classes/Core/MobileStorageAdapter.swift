@@ -20,13 +20,13 @@ public class MobileStorageAdapter {
 
   /// Sets the address in the client's keychain.
   /// - Parameter address: The public address of the client's wallet.
-  public func setAddress(address _: String, completion _: (Result<OSStatus>) -> Void) {
+  public func setAddress(address _: String, completion _: @escaping (Result<OSStatus>) -> Void) {
     fatalError("Subclass must override setAddress()")
   }
 
   /// Sets the signing share in the client's keychain.
   /// - Parameter signingShare: A dkg object.
-  public func setSigningShare(signingShare _: String, completion _: (Result<OSStatus>) -> Void) {
+  public func setSigningShare(signingShare _: String, completion _: @escaping (Result<OSStatus>) -> Void) {
     fatalError("Subclass must override setSigningShare()")
   }
 
@@ -39,6 +39,11 @@ public class MobileStorageAdapter {
   /// Deletes the signing share stored in the client's keychain.
   /// - Returns: The client's signing share.
   public func deleteSigningShare() throws {
+    fatalError("Subclass must override deleteSigningShare()")
+  }
+
+  /// Tests `setItem` in the client's keychain.
+  public func validateOperations(completion _: @escaping (Result<OSStatus>) -> Void) {
     fatalError("Subclass must override deleteSigningShare()")
   }
 }

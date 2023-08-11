@@ -13,30 +13,18 @@ public class MockPortalApi: PortalApi {
   public var networks: [ContractNetwork]?
 
   override public func getClient(completion: @escaping (Result<Client>) -> Void) {
-    // Make an instance of Client.
-    let client = Client(
-      id: "fakeClientID",
-      address: mockAddress,
-      clientApiKey: "clientApiKey",
-      custodian: Custodian(
-        id: "fakeCustodianID",
-        name: "name"
-      )
-    )
-
-    // Call the completion handler.
-    completion(Result(data: client))
+    return completion(Result(data: mockClient))
   }
 
   override public func getEnabledDapps(completion: @escaping (Result<[Dapp]>) -> Void) {
     if let dapps = dapps {
-      completion(Result(data: dapps))
+      return completion(Result(data: dapps))
     }
   }
 
   override public func getSupportedNetworks(completion: @escaping (Result<[ContractNetwork]>) -> Void) {
     if let networks = networks {
-      completion(Result(data: networks))
+      return completion(Result(data: networks))
     }
   }
 
@@ -47,7 +35,7 @@ public class MockPortalApi: PortalApi {
   ) throws {
     // Mock response with data
     let mockResponse = Result(data: "Mock signing share response")
-    completion(mockResponse)
+    return completion(mockResponse)
   }
 
   // Mocking the storedClientBackupShare function
@@ -62,7 +50,7 @@ public class MockPortalApi: PortalApi {
     } else {
       mockResponse = Result(error: NSError(domain: "MockError", code: 0, userInfo: nil))
     }
-    completion(mockResponse)
+    return completion(mockResponse)
   }
 
   // Mocking the storedClientBackupShare function
@@ -72,6 +60,6 @@ public class MockPortalApi: PortalApi {
   ) throws {
     // Mock response based on the success parameter
     let mockResponse = Result(data: "Backup share key successfully stored")
-    completion(mockResponse)
+    return completion(mockResponse)
   }
 }

@@ -3,7 +3,7 @@ use_frameworks!
 platform :ios, '13.0'
 
 target 'PortalSwift_Example' do
-  pod 'PortalSwift', :path => '../'
+  pod 'PortalSwift', :path => '../', :testspecs => ['UnitTests', 'KeychainTests']
   pod 'GoogleSignIn', '~> 6.2'
 
   target 'PortalSwift_Tests' do

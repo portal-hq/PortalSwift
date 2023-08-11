@@ -5,7 +5,6 @@
 //  Created by Portal Labs, Inc.
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
-
 @testable import PortalSwift
 import XCTest
 
@@ -30,7 +29,8 @@ final class PortalApiTests: XCTestCase {
   func testGetClient() throws {
     let expectation = XCTestExpectation(description: "Get client")
     try api?.getClient { result in
-      XCTAssert(result.data as! String == mockBackupShare)
+      print(result)
+      XCTAssert(result.data == mockClient)
       expectation.fulfill()
     }
     wait(for: [expectation], timeout: 5.0)
@@ -39,7 +39,7 @@ final class PortalApiTests: XCTestCase {
   func testGetEnabledDapps() throws {
     let expectation = XCTestExpectation(description: "Get enabled dapps")
     try api?.getEnabledDapps { result in
-      XCTAssert(result.data as! String == mockBackupShare)
+      XCTAssert(result.data as? String == mockBackupShare)
       expectation.fulfill()
     }
     wait(for: [expectation], timeout: 5.0)
@@ -48,7 +48,7 @@ final class PortalApiTests: XCTestCase {
   func testGetSupportedNetworks() throws {
     let expectation = XCTestExpectation(description: "Get supported networks")
     try api?.getSupportedNetworks { result in
-      XCTAssert(result.data as! String == mockBackupShare)
+      XCTAssert(result.data as? String == mockBackupShare)
       expectation.fulfill()
     }
     wait(for: [expectation], timeout: 5.0)

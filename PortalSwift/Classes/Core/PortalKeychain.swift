@@ -72,7 +72,7 @@ public class PortalKeychain: MobileStorageAdapter {
 
   /// Sets the address in the client's keychain.
   /// - Parameter address: The public address of the client's wallet.
-  public func setAddress(
+  override public func setAddress(
     address: String,
     completion: @escaping (Result<OSStatus>) -> Void
   ) {
@@ -97,7 +97,7 @@ public class PortalKeychain: MobileStorageAdapter {
 
   /// Sets the signing share in the client's keychain.
   /// - Parameter signingShare: A dkg object.
-  public func setSigningShare(
+  override public func setSigningShare(
     signingShare: String,
     completion: @escaping (Result<OSStatus>) -> Void
   ) {
@@ -139,7 +139,7 @@ public class PortalKeychain: MobileStorageAdapter {
   }
 
   /// Tests `setItem` in the client's keychain.
-  public func validateOperations(completion: @escaping (Result<OSStatus>) -> Void) {
+  override public func validateOperations(completion: @escaping (Result<OSStatus>) -> Void) {
     do {
       let _ = try getClientId()
     } catch {

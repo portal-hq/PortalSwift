@@ -7,16 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		47323B4D293A9BA20029B69E /* HttpRequesterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47323B4C293A9BA20029B69E /* HttpRequesterTests.swift */; };
-		47323B4F293A9BB40029B69E /* HttpRequestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47323B4E293A9BB40029B69E /* HttpRequestTests.swift */; };
-		47323B51293A9BCB0029B69E /* GDriveStorageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47323B50293A9BCB0029B69E /* GDriveStorageTests.swift */; };
-		47323B53293A9BD90029B69E /* ICloudStorageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47323B52293A9BD90029B69E /* ICloudStorageTests.swift */; };
-		47323B55293A9BE80029B69E /* StorageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47323B54293A9BE80029B69E /* StorageTests.swift */; };
-		47323B57293A9BFD0029B69E /* PortalProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47323B56293A9BFD0029B69E /* PortalProviderTests.swift */; };
-		47323B59293A9C0B0029B69E /* MpcSignerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47323B58293A9C0B0029B69E /* MpcSignerTests.swift */; };
-		47323B5D293A9C610029B69E /* PortalApiTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47323B5C293A9C610029B69E /* PortalApiTests.swift */; };
-		47323B5F293A9C6B0029B69E /* PortalKeychainTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47323B5E293A9C6B0029B69E /* PortalKeychainTests.swift */; };
-		47323B61293A9C770029B69E /* PortalMpcTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47323B60293A9C770029B69E /* PortalMpcTests.swift */; };
 		607FACD61AFB9204008FA782 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FACD51AFB9204008FA782 /* AppDelegate.swift */; };
 		607FACD81AFB9204008FA782 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FACD71AFB9204008FA782 /* ViewController.swift */; };
 		607FACDB1AFB9204008FA782 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 607FACD91AFB9204008FA782 /* Main.storyboard */; };
@@ -31,7 +21,6 @@
 		F915F34E2A8195E70014C25B /* ProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F915F34D2A8195E70014C25B /* ProviderTests.swift */; };
 		F97145522A1450ED0034189F /* Portal.swift in Sources */ = {isa = PBXBuildFile; fileRef = F97145512A1450ED0034189F /* Portal.swift */; };
 		F97145532A1450ED0034189F /* Portal.swift in Sources */ = {isa = PBXBuildFile; fileRef = F97145512A1450ED0034189F /* Portal.swift */; };
-		F9F5B5082A7D39C700580FB9 /* PortalCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9F5B5072A7D39C700580FB9 /* PortalCoreTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -52,16 +41,6 @@
 		359FCB6C7A51B84D8283B50D /* README.md */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = net.daringfireball.markdown; name = README.md; path = ../README.md; sourceTree = "<group>"; };
 		37221617F625AA0FF0DB854C /* Pods-PortalSwift_Tests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PortalSwift_Tests.debug.xcconfig"; path = "Target Support Files/Pods-PortalSwift_Tests/Pods-PortalSwift_Tests.debug.xcconfig"; sourceTree = "<group>"; };
 		4648C35B0F07F04812A2F611 /* Pods_PortalSwift_Tests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PortalSwift_Tests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		47323B4C293A9BA20029B69E /* HttpRequesterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HttpRequesterTests.swift; sourceTree = "<group>"; };
-		47323B4E293A9BB40029B69E /* HttpRequestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HttpRequestTests.swift; sourceTree = "<group>"; };
-		47323B50293A9BCB0029B69E /* GDriveStorageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GDriveStorageTests.swift; sourceTree = "<group>"; };
-		47323B52293A9BD90029B69E /* ICloudStorageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ICloudStorageTests.swift; sourceTree = "<group>"; };
-		47323B54293A9BE80029B69E /* StorageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageTests.swift; sourceTree = "<group>"; };
-		47323B56293A9BFD0029B69E /* PortalProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalProviderTests.swift; sourceTree = "<group>"; };
-		47323B58293A9C0B0029B69E /* MpcSignerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MpcSignerTests.swift; sourceTree = "<group>"; };
-		47323B5C293A9C610029B69E /* PortalApiTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalApiTests.swift; sourceTree = "<group>"; };
-		47323B5E293A9C6B0029B69E /* PortalKeychainTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalKeychainTests.swift; sourceTree = "<group>"; };
-		47323B60293A9C770029B69E /* PortalMpcTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalMpcTests.swift; sourceTree = "<group>"; };
 		4766B0CF292304BB0072C85E /* PortalSwift_Example.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PortalSwift_Example.entitlements; sourceTree = "<group>"; };
 		57121DAE6093704B6C653083 /* Pods-PortalSwift_Example.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PortalSwift_Example.release.xcconfig"; path = "Target Support Files/Pods-PortalSwift_Example/Pods-PortalSwift_Example.release.xcconfig"; sourceTree = "<group>"; };
 		607FACD01AFB9204008FA782 /* PortalSwift_Example.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PortalSwift_Example.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -81,7 +60,6 @@
 		E432DE04613E5E5869FDCD55 /* Pods-PortalSwift_Example.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PortalSwift_Example.debug.xcconfig"; path = "Target Support Files/Pods-PortalSwift_Example/Pods-PortalSwift_Example.debug.xcconfig"; sourceTree = "<group>"; };
 		F915F34D2A8195E70014C25B /* ProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderTests.swift; sourceTree = "<group>"; };
 		F97145512A1450ED0034189F /* Portal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Portal.swift; sourceTree = "<group>"; };
-		F9F5B5072A7D39C700580FB9 /* PortalCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalCoreTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -104,45 +82,6 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		47323B45293A9B200029B69E /* Core */ = {
-			isa = PBXGroup;
-			children = (
-				47323B5C293A9C610029B69E /* PortalApiTests.swift */,
-				47323B5E293A9C6B0029B69E /* PortalKeychainTests.swift */,
-				47323B60293A9C770029B69E /* PortalMpcTests.swift */,
-				F9F5B5072A7D39C700580FB9 /* PortalCoreTests.swift */,
-			);
-			name = Core;
-			sourceTree = "<group>";
-		};
-		47323B46293A9B340029B69E /* Storage */ = {
-			isa = PBXGroup;
-			children = (
-				47323B50293A9BCB0029B69E /* GDriveStorageTests.swift */,
-				47323B52293A9BD90029B69E /* ICloudStorageTests.swift */,
-				47323B54293A9BE80029B69E /* StorageTests.swift */,
-			);
-			name = Storage;
-			sourceTree = "<group>";
-		};
-		47323B48293A9B5F0029B69E /* Provider */ = {
-			isa = PBXGroup;
-			children = (
-				47323B56293A9BFD0029B69E /* PortalProviderTests.swift */,
-				47323B58293A9C0B0029B69E /* MpcSignerTests.swift */,
-			);
-			name = Provider;
-			sourceTree = "<group>";
-		};
-		47323B49293A9B710029B69E /* Utils */ = {
-			isa = PBXGroup;
-			children = (
-				47323B4E293A9BB40029B69E /* HttpRequestTests.swift */,
-				47323B4C293A9BA20029B69E /* HttpRequesterTests.swift */,
-			);
-			name = Utils;
-			sourceTree = "<group>";
-		};
 		607FACC71AFB9204008FA782 = {
 			isa = PBXGroup;
 			children = (
@@ -195,10 +134,6 @@
 			isa = PBXGroup;
 			children = (
 				F97145592A1F6C830034189F /* e2e */,
-				47323B45293A9B200029B69E /* Core */,
-				47323B48293A9B5F0029B69E /* Provider */,
-				47323B46293A9B340029B69E /* Storage */,
-				47323B49293A9B710029B69E /* Utils */,
 				607FACE91AFB9204008FA782 /* Supporting Files */,
 			);
 			path = Tests;
@@ -468,19 +403,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				F915F34E2A8195E70014C25B /* ProviderTests.swift in Sources */,
-				47323B51293A9BCB0029B69E /* GDriveStorageTests.swift in Sources */,
-				47323B5F293A9C6B0029B69E /* PortalKeychainTests.swift in Sources */,
-				47323B53293A9BD90029B69E /* ICloudStorageTests.swift in Sources */,
-				47323B59293A9C0B0029B69E /* MpcSignerTests.swift in Sources */,
-				47323B5D293A9C610029B69E /* PortalApiTests.swift in Sources */,
-				F9F5B5082A7D39C700580FB9 /* PortalCoreTests.swift in Sources */,
 				F97145532A1450ED0034189F /* Portal.swift in Sources */,
-				47323B4F293A9BB40029B69E /* HttpRequestTests.swift in Sources */,
-				47323B57293A9BFD0029B69E /* PortalProviderTests.swift in Sources */,
-				47323B55293A9BE80029B69E /* StorageTests.swift in Sources */,
-				47323B61293A9C770029B69E /* PortalMpcTests.swift in Sources */,
 				607FACEC1AFB9204008FA782 /* WalletTests.swift in Sources */,
-				47323B4D293A9BA20029B69E /* HttpRequesterTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -564,7 +488,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				INFOPLIST_FILE = "${PROJECT_DIR}/Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
@@ -615,7 +539,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				INFOPLIST_FILE = "${PROJECT_DIR}/Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";

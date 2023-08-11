@@ -35,9 +35,9 @@
 		1EAAC86A1556E98DD4135C7AA62705A3 /* Pods-FBSnapshotTestCase.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = "Pods-FBSnapshotTestCase.release.xcconfig"; sourceTree = "<group>"; };
 		28656242D0891611802CE0DA /* Pods_Pods_PortalSwift.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Pods_PortalSwift.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		2936E0221E306776C9A690F3 /* Pods-Pods-PortalSwift.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pods-PortalSwift.release.xcconfig"; path = "Target Support Files/Pods-Pods-PortalSwift/Pods-Pods-PortalSwift.release.xcconfig"; sourceTree = "<group>"; };
-		2E249E62F99E14C30B5FC00BD40FF6BF /* Pods-Pods-PortalSwift_Example */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; name = "Pods-Pods-PortalSwift_Example"; path = Pods_Pods_PortalSwift_Example.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		2E249E62F99E14C30B5FC00BD40FF6BF /* Pods_Pods_PortalSwift_Example.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Pods_PortalSwift_Example.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		3463270A174340750328331352D028EF /* Pods-Pods-PortalSwift_Example.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = "Pods-Pods-PortalSwift_Example.release.xcconfig"; sourceTree = "<group>"; };
-		3715E29BC6DA361999BE63735A61D713 /* Pods-Pods-PortalSwift_Tests */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; name = "Pods-Pods-PortalSwift_Tests"; path = Pods_Pods_PortalSwift_Tests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		3715E29BC6DA361999BE63735A61D713 /* Pods_Pods_PortalSwift_Tests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Pods_PortalSwift_Tests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		47654F548869830828B1E992C4E4312F /* Pods-FBSnapshotTestCase-umbrella.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "Pods-FBSnapshotTestCase-umbrella.h"; sourceTree = "<group>"; };
 		4A28034A601263641E6E16B935888160 /* Pods-Pods-PortalSwift_Tests-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "Pods-Pods-PortalSwift_Tests-Info.plist"; sourceTree = "<group>"; };
 		4CE8006CEA975AE54CA16D2D87794FFC /* Pods-PortalSwift-PortalSwiftTests.modulemap */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.module; path = "Pods-PortalSwift-PortalSwiftTests.modulemap"; sourceTree = "<group>"; };
@@ -48,16 +48,16 @@
 		63BE89759511405F2547F51F6BB7F8E1 /* Pods-PortalSwift-dummy.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = "Pods-PortalSwift-dummy.m"; sourceTree = "<group>"; };
 		652C182EE0F8DFA901ACC7635480CDEE /* Pods-Pods-PortalSwift_Tests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = "Pods-Pods-PortalSwift_Tests.debug.xcconfig"; sourceTree = "<group>"; };
 		658948D57669108CAD3CCDFBA0F7D2FA /* Pods-PortalSwift-PortalSwiftTests-acknowledgements.markdown */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = "Pods-PortalSwift-PortalSwiftTests-acknowledgements.markdown"; sourceTree = "<group>"; };
-		706FF60FA134C240CF69D56FE7E815F0 /* Pods-PortalSwift */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; name = "Pods-PortalSwift"; path = Pods_PortalSwift.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		706FF60FA134C240CF69D56FE7E815F0 /* Pods_PortalSwift.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PortalSwift.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		73010CC983E3809BECEE5348DA1BB8C6 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS14.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		778855891060101B0B48EDB75F2B7856 /* Pods-PortalSwift-umbrella.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "Pods-PortalSwift-umbrella.h"; sourceTree = "<group>"; };
 		78FB4B463599A82B5D1DF1D5D6013498 /* Pods-PortalSwift.modulemap */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.module; path = "Pods-PortalSwift.modulemap"; sourceTree = "<group>"; };
-		79CB1627ED878FFD4521BB13C3C21226 /* Pods-PortalSwift-PortalSwiftTests */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; name = "Pods-PortalSwift-PortalSwiftTests"; path = Pods_PortalSwift_PortalSwiftTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		79CB1627ED878FFD4521BB13C3C21226 /* Pods_PortalSwift_PortalSwiftTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_PortalSwift_PortalSwiftTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		8D437E404FCF07F9D5C471D448D6C43F /* Pods-PortalSwift-PortalSwiftTests-dummy.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = "Pods-PortalSwift-PortalSwiftTests-dummy.m"; sourceTree = "<group>"; };
-		90BF2A8B6FB5FB1E326478D17AA59100 /* Pods-FBSnapshotTestCase */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; name = "Pods-FBSnapshotTestCase"; path = Pods_FBSnapshotTestCase.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		90BF2A8B6FB5FB1E326478D17AA59100 /* Pods_FBSnapshotTestCase.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_FBSnapshotTestCase.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		9330A7AC1A606F220C6FDD6DC7DD425B /* Pods-Pods-PortalSwift_Example-dummy.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = "Pods-Pods-PortalSwift_Example-dummy.m"; sourceTree = "<group>"; };
 		9756154D21643C6B73579712 /* Pods-Pods-PortalSwift.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pods-PortalSwift.debug.xcconfig"; path = "Target Support Files/Pods-Pods-PortalSwift/Pods-Pods-PortalSwift.debug.xcconfig"; sourceTree = "<group>"; };
-		9D940727FF8FB9C785EB98E56350EF41 /* Podfile */ = {isa = PBXFileReference; explicitFileType = text.script.ruby; includeInIndex = 1; indentWidth = 2; lastKnownFileType = text; name = Podfile; path = ../Podfile; sourceTree = SOURCE_ROOT; tabWidth = 2; xcLanguageSpecificationIdentifier = xcode.lang.ruby; };
+		9D940727FF8FB9C785EB98E56350EF41 /* Podfile */ = {isa = PBXFileReference; explicitFileType = text.script.ruby; includeInIndex = 1; indentWidth = 2; name = Podfile; path = ../Podfile; sourceTree = SOURCE_ROOT; tabWidth = 2; xcLanguageSpecificationIdentifier = xcode.lang.ruby; };
 		9FCDF58578B1D78BAF62B3442C036F31 /* Pods-Pods-PortalSwift_Example-acknowledgements.markdown */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = "Pods-Pods-PortalSwift_Example-acknowledgements.markdown"; sourceTree = "<group>"; };
 		A51B2A1A50CF53D77F4FCF7C343A33DF /* Pods-FBSnapshotTestCase-acknowledgements.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "Pods-FBSnapshotTestCase-acknowledgements.plist"; sourceTree = "<group>"; };
 		AEC151436D0EEC66FB453EDF3834E0D9 /* Pods-PortalSwift-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "Pods-PortalSwift-Info.plist"; sourceTree = "<group>"; };
@@ -152,11 +152,11 @@
 		5613046A0EB995AB26EE2B27726221B7 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				90BF2A8B6FB5FB1E326478D17AA59100 /* Pods-FBSnapshotTestCase */,
-				2E249E62F99E14C30B5FC00BD40FF6BF /* Pods-Pods-PortalSwift_Example */,
-				3715E29BC6DA361999BE63735A61D713 /* Pods-Pods-PortalSwift_Tests */,
-				706FF60FA134C240CF69D56FE7E815F0 /* Pods-PortalSwift */,
-				79CB1627ED878FFD4521BB13C3C21226 /* Pods-PortalSwift-PortalSwiftTests */,
+				90BF2A8B6FB5FB1E326478D17AA59100 /* Pods_FBSnapshotTestCase.framework */,
+				2E249E62F99E14C30B5FC00BD40FF6BF /* Pods_Pods_PortalSwift_Example.framework */,
+				3715E29BC6DA361999BE63735A61D713 /* Pods_Pods_PortalSwift_Tests.framework */,
+				706FF60FA134C240CF69D56FE7E815F0 /* Pods_PortalSwift.framework */,
+				79CB1627ED878FFD4521BB13C3C21226 /* Pods_PortalSwift_PortalSwiftTests.framework */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -326,7 +326,7 @@
 			);
 			name = "Pods-Pods-PortalSwift_Tests";
 			productName = Pods_Pods_PortalSwift_Tests;
-			productReference = 3715E29BC6DA361999BE63735A61D713 /* Pods-Pods-PortalSwift_Tests */;
+			productReference = 3715E29BC6DA361999BE63735A61D713 /* Pods_Pods_PortalSwift_Tests.framework */;
 			productType = "com.apple.product-type.framework";
 		};
 		18F4267C094329584FF9DD195A849FA0 /* Pods-PortalSwift */ = {
@@ -345,7 +345,7 @@
 			);
 			name = "Pods-PortalSwift";
 			productName = Pods_PortalSwift;
-			productReference = 706FF60FA134C240CF69D56FE7E815F0 /* Pods-PortalSwift */;
+			productReference = 706FF60FA134C240CF69D56FE7E815F0 /* Pods_PortalSwift.framework */;
 			productType = "com.apple.product-type.framework";
 		};
 		48EF316AE4C1712EBF2FAE5C7C065B70 /* Pods-PortalSwift-PortalSwiftTests */ = {
@@ -363,7 +363,7 @@
 			);
 			name = "Pods-PortalSwift-PortalSwiftTests";
 			productName = Pods_PortalSwift_PortalSwiftTests;
-			productReference = 79CB1627ED878FFD4521BB13C3C21226 /* Pods-PortalSwift-PortalSwiftTests */;
+			productReference = 79CB1627ED878FFD4521BB13C3C21226 /* Pods_PortalSwift_PortalSwiftTests.framework */;
 			productType = "com.apple.product-type.framework";
 		};
 		66B148FB49925026BC1A3BC40262BDD2 /* Pods-Pods-PortalSwift_Example */ = {
@@ -381,7 +381,7 @@
 			);
 			name = "Pods-Pods-PortalSwift_Example";
 			productName = Pods_Pods_PortalSwift_Example;
-			productReference = 2E249E62F99E14C30B5FC00BD40FF6BF /* Pods-Pods-PortalSwift_Example */;
+			productReference = 2E249E62F99E14C30B5FC00BD40FF6BF /* Pods_Pods_PortalSwift_Example.framework */;
 			productType = "com.apple.product-type.framework";
 		};
 		E4724295718443542A1DB2E49F719F7F /* Pods-FBSnapshotTestCase */ = {
@@ -399,7 +399,7 @@
 			);
 			name = "Pods-FBSnapshotTestCase";
 			productName = Pods_FBSnapshotTestCase;
-			productReference = 90BF2A8B6FB5FB1E326478D17AA59100 /* Pods-FBSnapshotTestCase */;
+			productReference = 90BF2A8B6FB5FB1E326478D17AA59100 /* Pods_FBSnapshotTestCase.framework */;
 			productType = "com.apple.product-type.framework";
 		};
 /* End PBXNativeTarget section */
@@ -556,7 +556,7 @@
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				INFOPLIST_FILE = "Target Support Files/Pods-Pods-PortalSwift_Example/Pods-Pods-PortalSwift_Example-Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -592,7 +592,7 @@
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				INFOPLIST_FILE = "Target Support Files/Pods-PortalSwift/Pods-PortalSwift-Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -628,7 +628,7 @@
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				INFOPLIST_FILE = "Target Support Files/Pods-PortalSwift/Pods-PortalSwift-Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -700,7 +700,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -728,7 +728,7 @@
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				INFOPLIST_FILE = "Target Support Files/Pods-Pods-PortalSwift_Tests/Pods-Pods-PortalSwift_Tests-Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -765,7 +765,7 @@
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				INFOPLIST_FILE = "Target Support Files/Pods-PortalSwift-PortalSwiftTests/Pods-PortalSwift-PortalSwiftTests-Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -801,7 +801,7 @@
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				INFOPLIST_FILE = "Target Support Files/Pods-FBSnapshotTestCase/Pods-FBSnapshotTestCase-Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -837,7 +837,7 @@
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				INFOPLIST_FILE = "Target Support Files/Pods-FBSnapshotTestCase/Pods-FBSnapshotTestCase-Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -875,7 +875,7 @@
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				INFOPLIST_FILE = "Target Support Files/Pods-Pods-PortalSwift_Tests/Pods-Pods-PortalSwift_Tests-Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -912,7 +912,7 @@
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				INFOPLIST_FILE = "Target Support Files/Pods-Pods-PortalSwift_Example/Pods-Pods-PortalSwift_Example-Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -949,7 +949,7 @@
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				INFOPLIST_FILE = "Target Support Files/Pods-PortalSwift-PortalSwiftTests/Pods-PortalSwift-PortalSwiftTests-Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1024,7 +1024,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

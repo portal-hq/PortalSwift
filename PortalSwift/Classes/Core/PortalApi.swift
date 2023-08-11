@@ -270,7 +270,7 @@ public class PortalApi {
  **********************************/
 
 /// A client from the Portal API.
-public struct Client: Codable {
+public struct Client: Codable, Equatable {
   public var id: String
   public var address: String
   public var clientApiKey: String
@@ -286,7 +286,7 @@ public struct Contract: Codable {
 }
 
 /// A custodian that belongs to a Client.
-public struct Custodian: Codable {
+public struct Custodian: Codable, Equatable {
   public var id: String
   public var name: String
 }

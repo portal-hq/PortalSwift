@@ -5,7 +5,6 @@
 //  Created by Portal Labs, Inc.
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
-
 @testable import PortalSwift
 import XCTest
 
@@ -26,14 +25,13 @@ final class ICloudStorageTests: XCTestCase {
   func testDelete() throws {
     let expectation = XCTestExpectation(description: "Delete")
     let privateKey = "privateKey"
-
     self.storage!.write(privateKey: privateKey) { (result: Result<Bool>) in
       if result.error != nil {
         XCTFail("Failed to write private key to storage. Make sure you are signed into iCloud on your simulator before running tests.")
       }
-
-      self.storage!.read { (result: Result<String>) in
-        XCTAssert(result.data! == privateKey)
+      self.storage!.read { (readResult: Result<String>) in
+        print(readResult)
+        XCTAssert(readResult.data! == privateKey)
 
         self.storage!.delete { (result: Result<Bool>) in
           XCTAssert(result.data! == true)

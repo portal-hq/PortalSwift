@@ -18,4 +18,22 @@ Pod::Spec.new do |s|
 
   s.dependency "GoogleSignIn", "~> 6.2"
   s.dependency "Starscream"
+
+    s.test_spec 'UnitTests' do |test_spec|
+      test_spec.requires_app_host = false
+      test_spec.source_files = 'UnitTests/**/*.{h,m,swift}'
+      test_spec.exclude_files = 'UnitTests/Core/PortalKeychainTests.swift'
+      # If your tests have any resources like images, xibs, etc.
+      # test_spec.resource_bundles = { 'MyLibTests' => ['PortalSwift/Tests/**/*.{xib,storyboard,xcassets,png,jpg}'] }
+
+    end
+
+    s.test_spec 'KeychainTests' do |test_spec|
+      test_spec.requires_app_host = true
+      test_spec.source_files = 'UnitTests/Core/PortalKeychainTests.swift'
+      # If your tests have any resources like images, xibs, etc.
+      # test_spec.resource_bundles = { 'MyLibTests' => ['PortalSwift/Tests/**/*.{xib,storyboard,xcassets,png,jpg}'] }
+
+    end
+
 end

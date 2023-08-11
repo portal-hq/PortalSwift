@@ -6,7 +6,7 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
-import PortalSwift
+@testable import PortalSwift
 import XCTest
 
 final class PortalKeychainTests: XCTestCase {

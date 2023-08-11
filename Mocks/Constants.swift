@@ -17,6 +17,8 @@ public let mockGDriveFileContents = "test-gdrive-private-key"
 public let mockGDriveFolderId = "test-gdrive-folder-id"
 public let mockCiphertext = "someCipherText"
 public let mockClientId = "test-client-id"
+public let mockCustodianId = "test-custodian-id"
+public let mockCustodianName = "test-name"
 public let mockApiKey = "test-api-key"
 public let mockHost = "example.com"
 
@@ -28,10 +30,20 @@ public let mockDecryptResult = "{\"data\":{\"plaintext\":\"signingShareObject\"}
 
 public let mockEncryptResult = "{\"data\":{\"key\":\"someKey\",\"cipherText\":\"\(mockCiphertext)\"},\"error\":{\"code\":0,\"message\":\"\"}}"
 
-public let mockClientResult = "{\"data\":{\"id\":\"\(mockClientId)\",\"address\":\"\(mockAddress)\",\"clientApiKey\":\"\(mockApiKey)\",\"custodian\":{\"id\":\"someCustodianId\",\"name\":\"someCustodianName\"}},\"error\":{\"code\":0,\"message\":\"\"}}"
+public let mockClientResult = "{\"data\":{\"id\":\"\(mockClientId)\",\"address\":\"\(mockAddress)\",\"clientApiKey\":\"\(mockApiKey)\",\"custodian\":{\"id\":\"\(mockCustodianId)\",\"name\":\"someCustodianName\"}},\"error\":{\"code\":0,\"message\":\"\"}}"
 
 public let backupProgressCallbacks: Set<MpcStatuses> = [.readingShare, .generatingShare, .parsingShare, .encryptingShare, .storingShare, .done]
 
 public let generateProgressCallbacks: Set<MpcStatuses> = [.generatingShare, .parsingShare, .storingShare, .done]
 
 public let recoverProgressCallbacks: [MpcStatuses] = [.readingShare, .decryptingShare, .parsingShare, .recoveringSigningShare, .generatingShare, .parsingShare, .storingShare, .recoveringBackupShare, .generatingShare, .parsingShare, .encryptingShare, .storingShare, .done]
+
+public let mockClient = Client(
+  id: mockClientId,
+  address: mockAddress,
+  clientApiKey: mockApiKey,
+  custodian: Custodian(
+    id: mockCustodianId,
+    name: mockCustodianName
+  )
+)
