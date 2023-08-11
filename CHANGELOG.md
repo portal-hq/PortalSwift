@@ -10,6 +10,18 @@ Possible Types of changes include:
 - Fixed
 - Security
 
+## 1.1.6 2023-08-11
+
+### Added
+
+- Request using `portal.api.storedClientBackupShareKey` on `backup` and `recover` following successfully saving the client backup share encryption key to the user's backup method.
+- Added unit tests for wallet safeguarding.
+- Added e2e tests for the provider.
+
+### Changed
+
+- Updated MPC binary.
+
 ## 1.1.2 2023-06-11
 ### Fixed
 - Multiple event listeners firing for a single `signingRequest`
@@ -39,7 +51,7 @@ Possible Types of changes include:
 
 ### Changed
 - Bump from v3 to v4 for default MPC version in classes.
-- `portal.mpc.generate` & `portal.mpc.recover` use `portal.api.storedClientSigningShare` when keychain completes storage 
+- `portal.mpc.generate` & `portal.mpc.recover` use `portal.api.storedClientSigningShare` when keychain completes storage
 
 ### Removed
 - `getAvailability` from icloud storage
