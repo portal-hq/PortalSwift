@@ -22,14 +22,16 @@
 		607FACDB1AFB9204008FA782 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 607FACD91AFB9204008FA782 /* Main.storyboard */; };
 		607FACDD1AFB9204008FA782 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 607FACDC1AFB9204008FA782 /* Images.xcassets */; };
 		607FACE01AFB9204008FA782 /* LaunchScreen.xib in Resources */ = {isa = PBXBuildFile; fileRef = 607FACDE1AFB9204008FA782 /* LaunchScreen.xib */; };
-		607FACEC1AFB9204008FA782 /* Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FACEB1AFB9204008FA782 /* Tests.swift */; };
+		607FACEC1AFB9204008FA782 /* WalletTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FACEB1AFB9204008FA782 /* WalletTests.swift */; };
 		7E130EDB2A4B9D4800CB17C3 /* Secrets.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 7E130EDA2A4B9D4800CB17C3 /* Secrets.xcconfig */; };
 		7E4B874E2A58BFFB003A8DB5 /* WebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4B874D2A58BFFB003A8DB5 /* WebViewController.swift */; };
 		7E7F4C002A002D7F00756B6A /* ConnectViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E7F4BFF2A002D7F00756B6A /* ConnectViewController.swift */; };
 		A9147DADD1E43490C26F8829 /* Pods_PortalSwift_Example.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 29723E6FD45D32C23A9F4F69 /* Pods_PortalSwift_Example.framework */; };
 		B96417820F7757FB7C9962DE /* Pods_PortalSwift_Tests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4648C35B0F07F04812A2F611 /* Pods_PortalSwift_Tests.framework */; };
+		F915F34E2A8195E70014C25B /* ProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F915F34D2A8195E70014C25B /* ProviderTests.swift */; };
 		F97145522A1450ED0034189F /* Portal.swift in Sources */ = {isa = PBXBuildFile; fileRef = F97145512A1450ED0034189F /* Portal.swift */; };
 		F97145532A1450ED0034189F /* Portal.swift in Sources */ = {isa = PBXBuildFile; fileRef = F97145512A1450ED0034189F /* Portal.swift */; };
+		F9F5B5082A7D39C700580FB9 /* PortalCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9F5B5072A7D39C700580FB9 /* PortalCoreTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -71,13 +73,15 @@
 		607FACDF1AFB9204008FA782 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/LaunchScreen.xib; sourceTree = "<group>"; };
 		607FACE51AFB9204008FA782 /* PortalSwift_Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PortalSwift_Tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		607FACEA1AFB9204008FA782 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		607FACEB1AFB9204008FA782 /* Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests.swift; sourceTree = "<group>"; };
+		607FACEB1AFB9204008FA782 /* WalletTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalletTests.swift; sourceTree = "<group>"; };
 		7E130EDA2A4B9D4800CB17C3 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 		7E4B874D2A58BFFB003A8DB5 /* WebViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewController.swift; sourceTree = "<group>"; };
 		7E7F4BFF2A002D7F00756B6A /* ConnectViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectViewController.swift; sourceTree = "<group>"; };
 		7EB608D3291EF2F000CF1346 /* PortalSwift.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = PortalSwift.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		E432DE04613E5E5869FDCD55 /* Pods-PortalSwift_Example.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PortalSwift_Example.debug.xcconfig"; path = "Target Support Files/Pods-PortalSwift_Example/Pods-PortalSwift_Example.debug.xcconfig"; sourceTree = "<group>"; };
+		F915F34D2A8195E70014C25B /* ProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderTests.swift; sourceTree = "<group>"; };
 		F97145512A1450ED0034189F /* Portal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Portal.swift; sourceTree = "<group>"; };
+		F9F5B5072A7D39C700580FB9 /* PortalCoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalCoreTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -106,6 +110,7 @@
 				47323B5C293A9C610029B69E /* PortalApiTests.swift */,
 				47323B5E293A9C6B0029B69E /* PortalKeychainTests.swift */,
 				47323B60293A9C770029B69E /* PortalMpcTests.swift */,
+				F9F5B5072A7D39C700580FB9 /* PortalCoreTests.swift */,
 			);
 			name = Core;
 			sourceTree = "<group>";
@@ -241,7 +246,8 @@
 		F97145592A1F6C830034189F /* e2e */ = {
 			isa = PBXGroup;
 			children = (
-				607FACEB1AFB9204008FA782 /* Tests.swift */,
+				607FACEB1AFB9204008FA782 /* WalletTests.swift */,
+				F915F34D2A8195E70014C25B /* ProviderTests.swift */,
 			);
 			path = e2e;
 			sourceTree = "<group>";
@@ -461,17 +467,19 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F915F34E2A8195E70014C25B /* ProviderTests.swift in Sources */,
 				47323B51293A9BCB0029B69E /* GDriveStorageTests.swift in Sources */,
 				47323B5F293A9C6B0029B69E /* PortalKeychainTests.swift in Sources */,
 				47323B53293A9BD90029B69E /* ICloudStorageTests.swift in Sources */,
 				47323B59293A9C0B0029B69E /* MpcSignerTests.swift in Sources */,
 				47323B5D293A9C610029B69E /* PortalApiTests.swift in Sources */,
+				F9F5B5082A7D39C700580FB9 /* PortalCoreTests.swift in Sources */,
 				F97145532A1450ED0034189F /* Portal.swift in Sources */,
 				47323B4F293A9BB40029B69E /* HttpRequestTests.swift in Sources */,
 				47323B57293A9BFD0029B69E /* PortalProviderTests.swift in Sources */,
 				47323B55293A9BE80029B69E /* StorageTests.swift in Sources */,
 				47323B61293A9C770029B69E /* PortalMpcTests.swift in Sources */,
-				607FACEC1AFB9204008FA782 /* Tests.swift in Sources */,
+				607FACEC1AFB9204008FA782 /* WalletTests.swift in Sources */,
 				47323B4D293A9BA20029B69E /* HttpRequesterTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

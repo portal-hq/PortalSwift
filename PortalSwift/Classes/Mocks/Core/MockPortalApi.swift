@@ -39,4 +39,39 @@ public class MockPortalApi: PortalApi {
       completion(Result(data: networks))
     }
   }
+
+  // Mocking the storedClientSigningShare function
+  override public func storedClientSigningShare(
+    recoverSigning _: Bool? = nil,
+    completion: @escaping (Result<String>) -> Void
+  ) throws {
+    // Mock response with data
+    let mockResponse = Result(data: "Mock signing share response")
+    completion(mockResponse)
+  }
+
+  // Mocking the storedClientBackupShare function
+  override public func storedClientBackupShare(
+    success: Bool,
+    completion: @escaping (Result<String>) -> Void
+  ) throws {
+    // Mock response based on the success parameter
+    let mockResponse: Result<String>
+    if success {
+      mockResponse = Result(data: "Backup share successfully stored")
+    } else {
+      mockResponse = Result(error: NSError(domain: "MockError", code: 0, userInfo: nil))
+    }
+    completion(mockResponse)
+  }
+
+  // Mocking the storedClientBackupShare function
+  override public func storedClientBackupShareKey(
+    backupMethod _: String,
+    completion: @escaping (Result<String>) -> Void
+  ) throws {
+    // Mock response based on the success parameter
+    let mockResponse = Result(data: "Backup share key successfully stored")
+    completion(mockResponse)
+  }
 }
