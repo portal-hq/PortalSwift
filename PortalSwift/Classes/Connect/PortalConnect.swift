@@ -89,8 +89,6 @@ public class PortalConnect: EventBus {
     }
 
     on(event: Events.PortalConnectChainChanged.rawValue) { payload in
-      print("In the handler \(String(describing: self.topic))")
-
       let event = ChainChangedMessage(
         event: "portal_chainChanged",
         data: ChainChangedData(
@@ -262,10 +260,8 @@ public class PortalConnect: EventBus {
   }
 
   func handleConnected(data: ConnectedData) {
-    print("Topic being set to: \(data.topic)")
     self.topic = data.topic
     self.client?.topic = data.topic
-    print("Topic set to: \(self.topic)")
 
     emit(event: Events.Connect.rawValue, data: data)
   }
