@@ -91,6 +91,14 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
       self?.didRequestApprovalDappsV1(portalConnect: portalConnect, data: data)
     })
 
+    portalConnect.on(event: Events.ConnectError.rawValue, callback: { data in
+      if let errorData = data as? ErrorData {
+        print("Event \(Events.ConnectError.rawValue) recieved on \(label). Error: \(errorData.message)")
+      } else {
+        print("Event \(Events.ConnectError.rawValue) recieved on \(label). Error: \(data)")
+      }
+    })
+
     portalConnect.on(event: Events.PortalSignatureReceived.rawValue) { (data: Any) in
       let result = data
       print("[ConnectViewController] ✅ Received signature \(result) on \(label)")
@@ -174,52 +182,38 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
   }
 
   @IBAction func PolyMainPressed(_: Any) {
-    do {
-      if self.connect!.connected {
-        try self.connect?.setChainId(value: 137)
-      }
-      if self.connect2!.connected {
-        try self.connect2?.setChainId(value: 137)
-      }
-    } catch {
-      print("Error in switching chains: \(error)")
-    }
+    self.changeChainId(chainId: 137)
   }
 
   @IBAction func GoerliPressed(_: Any) {
-    do {
-      if self.connect!.connected {
-        try self.connect?.setChainId(value: 5)
-      }
-      if self.connect2!.connected {
-        try self.connect2?.setChainId(value: 5)
-      }
-    } catch {
-      print("Error in switching chains: \(error)")
-    }
+    self.changeChainId(chainId: 5)
   }
 
   @IBAction func EthMainnetPressed(_: Any) {
-    do {
-      if self.connect!.connected {
-        try self.connect?.setChainId(value: 1)
-      }
-      if self.connect2!.connected {
-        try self.connect2?.setChainId(value: 1)
-      }
-    } catch {
-      print("Error in switching chains: \(error)")
-    }
+    self.changeChainId(chainId: 1)
   }
 
   @IBAction func MumbaiPressed(_: Any) {
+    self.changeChainId(chainId: 80001)
+  }
+
+  func changeChainId(chainId: Int) {
+    self.connect?.once(event: Events.ChainChanged.rawValue) { data in
+      print("chain changed to \(data)")
+    }
+    self.connect2?.once(event: Events.ChainChanged.rawValue) { data in
+      print("chain changed to \(data)")
+    }
+    self.portal?.once(event: Events.ChainChanged.rawValue) { data in
+      print("chain changed to \(data)")
+    }
     do {
-      if self.connect!.connected {
-        try self.connect?.setChainId(value: 80001)
-      }
-      if self.connect2!.connected {
-        try self.connect2?.setChainId(value: 80001)
-      }
+      try self.portal?.setChainId(to: chainId)
+
+      try self.connect?.setChainId(value: chainId)
+
+      try self.connect2?.setChainId(value: chainId)
+
     } catch {
       print("Error in switching chains: \(error)")
     }
