@@ -18,4 +18,9 @@ Pod::Spec.new do |s|
 
   s.dependency "GoogleSignIn", "~> 6.2"
   s.dependency "Starscream"
+
+  s.test_spec 'Tests' do |test_spec|
+    test_spec.requires_app_host = true
+    test_spec.source_files = 'UnitTests/**/*.{h,m,swift}'
+  end
 end
