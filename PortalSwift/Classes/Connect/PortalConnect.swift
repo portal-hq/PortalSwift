@@ -143,6 +143,7 @@ public class PortalConnect: EventBus {
     self.client?.on("connectedV1", self.handleConnectedV1)
     self.client?.on("disconnected", self.handleDisconnected)
     self.client?.on("error", self.handleError)
+    self.client?.on("portal_connectError", self.handleError)
     self.client?.on("session_request", self.handleSessionRequest)
     self.client?.on("session_request_address", self.handleSessionRequestAddress)
     self.client?.on("session_request_transaction", self.handleSessionRequestTransaction)

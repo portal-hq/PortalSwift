@@ -91,6 +91,11 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
       self?.didRequestApprovalDappsV1(portalConnect: portalConnect, data: data)
     })
 
+    portalConnect.on(event: Events.ConnectError.rawValue, callback: { [weak self] data in
+      print("Event \(Events.ConnectError.rawValue) recieved on \(label)")
+      self?.didRequestApprovalDappsV1(portalConnect: portalConnect, data: data)
+    })
+
     portalConnect.on(event: Events.PortalSignatureReceived.rawValue) { (data: Any) in
       let result = data
       print("[ConnectViewController] ✅ Received signature \(result) on \(label)")
