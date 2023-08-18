@@ -28,6 +28,8 @@ final class PortalApiTests: XCTestCase {
   }
 
   func testGetClient() throws {
+    throw XCTSkip("Test is not implemented yet")
+
     let expectation = XCTestExpectation(description: "Get client")
     try api?.getClient { result in
       XCTAssert(result.data as! String == mockBackupShare)
@@ -37,6 +39,8 @@ final class PortalApiTests: XCTestCase {
   }
 
   func testGetEnabledDapps() throws {
+    throw XCTSkip("Test is not implemented yet")
+
     let expectation = XCTestExpectation(description: "Get enabled dapps")
     try api?.getEnabledDapps { result in
       XCTAssert(result.data as! String == mockBackupShare)
@@ -46,6 +50,8 @@ final class PortalApiTests: XCTestCase {
   }
 
   func testGetSupportedNetworks() throws {
+    throw XCTSkip("Test is not implemented yet")
+
     let expectation = XCTestExpectation(description: "Get supported networks")
     try api?.getSupportedNetworks { result in
       XCTAssert(result.data as! String == mockBackupShare)

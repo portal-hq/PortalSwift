@@ -18,7 +18,10 @@ PODS:
     - AppAuth/Core (~> 1.6)
     - GTMSessionFetcher/Core (< 3.0, >= 1.5)
   - GTMSessionFetcher/Core (2.1.0)
-  - PortalSwift (1.0.4):
+  - PortalSwift (1.1.6):
+    - GoogleSignIn (~> 6.2)
+    - Starscream
+  - PortalSwift/Tests (1.1.6):
     - GoogleSignIn (~> 6.2)
     - Starscream
   - Starscream (4.0.4)
@@ -27,6 +30,7 @@ DEPENDENCIES:
   - FBSnapshotTestCase (~> 2.1.4)
   - GoogleSignIn (~> 6.2)
   - PortalSwift (from `../`)
+  - PortalSwift/Tests (from `../`)
 
 SPEC REPOS:
   trunk:
@@ -47,9 +51,9 @@ SPEC CHECKSUMS:
   GoogleSignIn: 5651ce3a61e56ca864160e79b484cd9ed3f49b7a
   GTMAppAuth: 0ff230db599948a9ad7470ca667337803b3fc4dd
   GTMSessionFetcher: ffbb25ec00ebcb5201adab0a56d808f6f1902d9f
-  PortalSwift: 9e2d12ff8a81f1d787d2b99cc5ec017151b526cf
+  PortalSwift: a5816cb1f79787b4d12de7dd566b13f556759312
   Starscream: 5178aed56b316f13fa3bc55694e583d35dd414d9
 
-PODFILE CHECKSUM: 48aeedeb325c291491138f47c838c4488b46974d
+PODFILE CHECKSUM: 6b71f59db2b0a170d576e68ef083ac5f74ae8062
 
-COCOAPODS: 1.11.3
+COCOAPODS: 1.12.1
