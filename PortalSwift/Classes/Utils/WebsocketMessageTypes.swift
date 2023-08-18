@@ -100,6 +100,11 @@ public struct WebSocketDisconnectRequest: Codable {
   public let data: DisconnectRequestData
 }
 
+public struct WebSocketErrorMessage: Codable {
+  public var event: String = "portal_connectError"
+  public let data: ErrorData
+}
+
 public struct WebSocketSessionRequestMessage: Codable {
   public var event: String = "session_request"
   public let data: SessionRequestData
@@ -173,9 +178,10 @@ public struct Params: Codable {
   public let pairingTopic: String
   public let expiry: Int
   public let requiredNamespaces: Namespaces
-  public let optionalNamespaces: Namespaces
+  public let optionalNamespaces: OptionalNamespaces?
   public let relays: [Relay]
   public let proposer: Proposer
+  public let verifyContext: VerifyContext?
 }
 
 public struct Namespaces: Codable {
@@ -187,6 +193,17 @@ public struct Eip155: Codable {
   public let methods: [String]
   public let events: [String]
   public let rpcMap: [String: String]
+}
+
+public struct OptionalNamespaces: Codable {
+  public let eip155: OptionalEip155?
+}
+
+public struct OptionalEip155: Codable {
+  public let chains: [String]?
+  public let methods: [String]?
+  public let events: [String]?
+  public let rpcMap: [String: String]?
 }
 
 public struct Relay: Codable {
@@ -203,6 +220,16 @@ public struct Metadata: Codable {
   public let url: String
   public let icons: [String]
   public let name: String
+}
+
+public struct VerifyContext: Codable {
+  public let verified: Verified
+}
+
+public struct Verified: Codable {
+  public let verifyUrl: String
+  public let validation: String
+  public let origin: String
 }
 
 public struct SessionResponseData: Codable {

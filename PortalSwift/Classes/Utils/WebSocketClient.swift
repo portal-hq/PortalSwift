@@ -30,6 +30,7 @@ struct EventHandlers {
   var session_request: [(SessionRequestData) -> Void]
   var session_request_address: [(SessionRequestAddressData) -> Void]
   var session_request_transaction: [(SessionRequestTransactionData) -> Void]
+  var portal_connect_error: [(ErrorData) -> Void]
 
   init() {
     self.close = []
@@ -42,6 +43,7 @@ struct EventHandlers {
     self.session_request_address = []
     self.session_request_transaction = []
     self.error = []
+    self.portal_connect_error = []
   }
 }
 
@@ -271,7 +273,18 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
                       self.emit(payload.event, payload.data)
                       return
                     } catch {
-                      print("[WebSocketClient] Error when processing incoming data: \(error)")
+                      print("[WebSocketClient] Unable to parse message as WebSocketDisconnectMessage, attempting WebSocketErrorMessage...")
+                      do {
+                        let payload = try JSONDecoder().decode(WebSocketErrorMessage.self, from: data)
+                        print("[WebSocketClient] Received message: \(payload)")
+                        if payload.event != "portal_connectError" {
+                          throw WebSocketTypeErrors.MismatchedTypeMessage
+                        }
+                        self.emit(payload.event, payload.data)
+                        return
+                      } catch {
+                        print("[WebSocketClient] Error when processing incoming data: \(error)")
+                      }
                     }
                   }
                 }
@@ -399,7 +412,10 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   }
 
   func emit(_ event: String, _ data: ErrorData) {
-    let eventHandlers = self.events.error
+    var eventHandlers = self.events.error
+    if event == "portal_connectError" {
+      eventHandlers = self.events.portal_connect_error
+    }
 
     // Ensure there's something to invoke
     if eventHandlers.count > 0 {
@@ -511,9 +527,13 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
     self.events.session_request_transaction.append(handler)
   }
 
-  func on(_: String, _ handler: @escaping (ErrorData) -> Void) {
+  func on(_ event: String, _ handler: @escaping (ErrorData) -> Void) {
     // Add event handler to the list
-    self.events.error.append(handler)
+    if event == "error" {
+      self.events.error.append(handler)
+    } else if event == "portal_connectError" {
+      self.events.portal_connect_error.append(handler)
+    }
   }
 
   func send(_ message: String) {

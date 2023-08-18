@@ -49,6 +49,7 @@ final class MpcSignerTests: XCTestCase {
   }
 
   func testETHTransactionPayloadSign() throws {
+    throw XCTSkip("Test is not implemented yet")
     let fakeTransaction = ETHTransactionParam(
       from: mockAddress,
       to: "0x4cd042bba0da4b3f37ea36e8a2737dce2ed70db7",

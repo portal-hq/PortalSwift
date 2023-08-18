@@ -81,6 +81,44 @@ public class PortalProvider {
     self.dispatchConnect()
   }
 
+  /// Creates an instance of PortalProvider.
+  /// - Parameters:
+  ///   - apiKey: The client API key. You can obtain this via Portal's REST API.
+  ///   - chainId: The ID of the EVM network you are using.
+  ///   - gatewayUrl: The gateway URL, such as Infura or Alchemy.
+  ///   - apiHost: The hostname of the API to use.
+  ///   - autoApprove: Auto approves all transactions.
+  public init(
+    apiKey: String,
+    chainId: Chains.RawValue,
+    gatewayConfig: [Int: String],
+    keychain: PortalKeychain,
+    autoApprove: Bool,
+    gateway: HttpRequester,
+    apiHost: String = "api.portalhq.io",
+    mpcHost: String = "mpc.portalhq.io",
+    version: String = "v4"
+  ) throws {
+    // User-defined instance variables
+    self.apiKey = apiKey
+    self.chainId = chainId
+    self.gatewayConfig = gatewayConfig
+    self.keychain = keychain
+    self.autoApprove = autoApprove
+    self.gateway = gateway
+    self.gatewayUrl = gateway.baseUrl
+
+    // Other instance variables
+    let apiUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
+    self.portalApi = HttpRequester(baseUrl: apiUrl)
+
+    self.signer = MpcSigner(apiKey: apiKey, keychain: keychain, mpcUrl: mpcHost, version: version)
+    // Create a serial dispatch queue with a unique label
+    self.mpcQueue = DispatchQueue.global(qos: .background)
+
+    self.dispatchConnect()
+  }
+
   // ------ Public Functions
 
   /// Emits an event from the provider to registered event handlers.
