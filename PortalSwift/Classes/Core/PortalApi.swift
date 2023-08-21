@@ -478,7 +478,7 @@ public struct SimulatedTransactionChange: Codable {
   public var assetType: String? = nil
   public var changeType: String? = nil
   public var contractAddress: String? = nil
-  public var decimals: String? = nil
+  public var decimals: Int? = nil
   public var from: String? = nil
   public var name: String? = nil
   public var rawAmount: String? = nil
