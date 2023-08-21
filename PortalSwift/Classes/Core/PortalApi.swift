@@ -207,23 +207,17 @@ public class PortalApi {
   ///   - completion: The callback that contains transaction simulation response.
   /// - Returns: Void.
   public func simulateTransaction(
-    to: String,
-    value: String? = nil,
-    data: String? = nil,
-    maxFeePerGas: String? = nil,
-    maxPriorityFeePerGas: String? = nil,
-    gas: String? = nil,
-    gasPrice: String? = nil,
+    transaction: SimulateTransactionParam,
     completion: @escaping (Result<SimulatedTransaction>) -> Void
   ) throws {
-    var requestBody: [String: String] = ["to": to]
+    var requestBody: [String: String] = ["to": transaction.to]
 
-    if let value = value { requestBody["value"] = value }
-    if let data = data { requestBody["data"] = data }
-    if let maxFeePerGas = maxFeePerGas { requestBody["maxFeePerGas"] = maxFeePerGas }
-    if let maxPriorityFeePerGas = maxPriorityFeePerGas { requestBody["maxPriorityFeePerGas"] = maxPriorityFeePerGas }
-    if let gas = gas { requestBody["gas"] = gas }
-    if let gasPrice = gasPrice { requestBody["gasPrice"] = gasPrice }
+    if let value = transaction.value { requestBody["value"] = transaction.value }
+    if let data = transaction.data { requestBody["data"] = transaction.data }
+    if let maxFeePerGas = transaction.maxFeePerGas { requestBody["maxFeePerGas"] = transaction.maxFeePerGas }
+    if let maxPriorityFeePerGas = transaction.maxPriorityFeePerGas { requestBody["maxPriorityFeePerGas"] = transaction.maxPriorityFeePerGas }
+    if let gas = transaction.gas { requestBody["gas"] = transaction.gas }
+    if let gasPrice = transaction.gasPrice { requestBody["gasPrice"] = transaction.gasPrice }
 
     try self.requests.post(
       path: "/api/v1/clients/me/simulate-transaction?chainId=\(self.chainId)",
@@ -495,6 +489,16 @@ public struct SimulatedTransactionChange: Codable {
 
 public struct SimulatedTransactionError: Codable {
   public var message: String
+}
+
+public struct SimulateTransactionParam: Codable {
+  public var to: String
+  public var value: String? = nil
+  public var data: String? = nil
+  public var maxFeePerGas: String? = nil
+  public var maxPriorityFeePerGas: String? = nil
+  public var gas: String? = nil
+  public var gasPrice: String? = nil
 }
 
 public struct SimulatedTransaction: Codable {
