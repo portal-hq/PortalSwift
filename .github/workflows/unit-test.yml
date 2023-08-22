@@ -1,0 +1,31 @@
+name: Run Swift Unit Tests
+
+on:
+  push:
+    branches:
+      - rami/unit-test-codecov
+  workflow_dispatch:
+    inputs:
+      env:
+        description: "Environment to run tests against: prod or staging"
+        type: string
+        required: false
+        default: "prod"
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          path: main
+
+      - name: Run Tests
+        run: |
+          cd ${{ github.workspace }}/main/Example
+          xcodebuild -scheme PortalSwift-Unit-Tests -workspace PortalSwift.xcworkspace test -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 14 Pro,OS=16.4' -testPlan PortalSwift-Unit-Tests
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v1.2.1
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
