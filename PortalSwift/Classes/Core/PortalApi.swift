@@ -484,7 +484,7 @@ public struct SimulatedTransactionChange: Codable {
   public var rawAmount: String? = nil
   public var symbol: String? = nil
   public var to: String? = nil
-  public var tokenId: String? = nil
+  public var tokenId: Int? = nil
 }
 
 public struct SimulatedTransactionError: Codable {
