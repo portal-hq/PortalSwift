@@ -7,19 +7,28 @@ on:
   workflow_dispatch:
     inputs:
       env:
-        description: "Environment to run tests against: prod or staging"
+        description: 'Environment to run tests against: prod or staging'
         type: string
         required: false
-        default: "prod"
+        default: 'prod'
 
 jobs:
-  e2e-test:
+  test:
     runs-on: macos-latest
 
     steps:
       - uses: actions/checkout@v2
         with:
           path: main
+
+      - name: Cache CocoaPods dependencies
+        uses: actions/cache@v2
+        with:
+          path: Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+        
 
       - name: Build Secrets file
         run: |

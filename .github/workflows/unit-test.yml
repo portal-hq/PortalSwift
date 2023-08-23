@@ -20,6 +20,14 @@ jobs:
         with:
           path: main
 
+      - name: Cache Xcode Derived Data
+        uses: actions/cache@v2
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData
+          key: ${{ runner.os }}-derived-data-${{ hashFiles('**/*.xcodeproj', '**/*.xcworkspace', '**/*.swift', '**/*.h', '**/*.m') }}
+          restore-keys: |
+            ${{ runner.os }}-derived-data-
+
       - name: Run Tests
         run: |
           cd ${{ github.workspace }}/main/Example
