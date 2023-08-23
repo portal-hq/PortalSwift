@@ -1,0 +1,30 @@
+name: Run Swift Unit Tests
+
+on: [push, workflow_dispatch]
+
+jobs:
+  test:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          path: main
+
+      - name: Cache Xcode Derived Data
+        uses: actions/cache@v2
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData
+          key: ${{ runner.os }}-derived-data-${{ hashFiles('**/*.xcodeproj', '**/*.xcworkspace', '**/*.swift', '**/*.h', '**/*.m') }}
+          restore-keys: |
+            ${{ runner.os }}-derived-data-
+
+      - name: Run Tests
+        run: |
+          cd ${{ github.workspace }}/main/Example
+          xcodebuild -scheme PortalSwift-Unit-Tests -workspace PortalSwift.xcworkspace test -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 14 Pro,OS=16.2' -testPlan PortalSwift-Unit-Tests
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v1.2.1
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
