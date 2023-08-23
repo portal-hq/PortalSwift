@@ -474,17 +474,17 @@ public struct Balance: Codable {
 }
 
 public struct SimulatedTransactionChange: Codable {
-  public var amount: String? = nil
-  public var assetType: String? = nil
-  public var changeType: String? = nil
-  public var contractAddress: String? = nil
-  public var decimals: Int? = nil
-  public var from: String? = nil
-  public var name: String? = nil
-  public var rawAmount: String? = nil
-  public var symbol: String? = nil
-  public var to: String? = nil
-  public var tokenId: Int? = nil
+  public var amount: String?
+  public var assetType: String?
+  public var changeType: String?
+  public var contractAddress: String?
+  public var decimals: Int?
+  public var from: String?
+  public var name: String?
+  public var rawAmount: String?
+  public var symbol: String?
+  public var to: String?
+  public var tokenId: Int?
 }
 
 public struct SimulatedTransactionError: Codable {
@@ -493,17 +493,35 @@ public struct SimulatedTransactionError: Codable {
 
 public struct SimulateTransactionParam: Codable {
   public var to: String
-  public var value: String? = nil
-  public var data: String? = nil
-  public var maxFeePerGas: String? = nil
-  public var maxPriorityFeePerGas: String? = nil
-  public var gas: String? = nil
-  public var gasPrice: String? = nil
+  public var value: String?
+  public var data: String?
+  public var maxFeePerGas: String?
+  public var maxPriorityFeePerGas: String?
+  public var gas: String?
+  public var gasPrice: String?
+
+  public init(
+    to: String,
+    value: String? = nil,
+    data: String? = nil,
+    maxFeePerGas: String? = nil,
+    maxPriorityFeePerGas: String? = nil,
+    gas: String? = nil,
+    gasPrice: String? = nil
+  ) {
+    self.to = to
+    self.value = value
+    self.data = data
+    self.maxFeePerGas = maxFeePerGas
+    self.maxPriorityFeePerGas = maxPriorityFeePerGas
+    self.gas = gas
+    self.gasPrice = gasPrice
+  }
 }
 
 public struct SimulatedTransaction: Codable {
   public var changes: [SimulatedTransactionChange]
   public var gasUsed: String? = nil
-  public var error: SimulatedTransactionError
-  public var requestError: SimulatedTransactionError
+  public var error: SimulatedTransactionError?
+  public var requestError: SimulatedTransactionError?
 }
