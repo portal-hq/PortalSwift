@@ -1,16 +1,7 @@
 name: Run Swift Unit Tests
 
-on:
-  push:
-    branches:
-      - rami/unit-test-codecov
-  workflow_dispatch:
-    inputs:
-      env:
-        description: "Environment to run tests against: prod or staging"
-        type: string
-        required: false
-        default: "prod"
+on: [push, workflow_dispatch]
+
 jobs:
   test:
     runs-on: macos-latest
