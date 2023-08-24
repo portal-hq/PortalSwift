@@ -195,6 +195,42 @@ public class PortalApi {
     }
   }
 
+  /// Simulates a transaction for the client.
+  /// - Parameters:
+  ///   - to: The recipient address.
+  ///   - value: (Optional) The transacton "value" parameter.
+  ///   - data: (Optional) The transacton "data" parameter.
+  ///   - maxFeePerGas: (Optional) The transacton "maxFeePerGas" parameter.
+  ///   - maxPriorityFeePerGas: (Optional) The transacton "maxPriorityFeePerGas" parameter.
+  ///   - gas: (Optional) The transacton "gas" parameter.
+  ///   - gasPrice: (Optional) The transacton "gasPrice" parameter.
+  ///   - completion: The callback that contains transaction simulation response.
+  /// - Returns: Void.
+  public func simulateTransaction(
+    transaction: SimulateTransactionParam,
+    completion: @escaping (Result<SimulatedTransaction>) -> Void
+  ) throws {
+    var requestBody: [String: String] = ["to": transaction.to]
+
+    if let value = transaction.value { requestBody["value"] = transaction.value }
+    if let data = transaction.data { requestBody["data"] = transaction.data }
+    if let maxFeePerGas = transaction.maxFeePerGas { requestBody["maxFeePerGas"] = transaction.maxFeePerGas }
+    if let maxPriorityFeePerGas = transaction.maxPriorityFeePerGas { requestBody["maxPriorityFeePerGas"] = transaction.maxPriorityFeePerGas }
+    if let gas = transaction.gas { requestBody["gas"] = transaction.gas }
+    if let gasPrice = transaction.gasPrice { requestBody["gasPrice"] = transaction.gasPrice }
+
+    try self.requests.post(
+      path: "/api/v1/clients/me/simulate-transaction?chainId=\(self.chainId)",
+      body: requestBody,
+      headers: [
+        "Authorization": "Bearer \(self.apiKey)",
+      ],
+      requestType: HttpRequestType.CustomRequest
+    ) { (result: Result<SimulatedTransaction>) in
+      completion(result)
+    }
+  }
+
   /// Updates the client's wallet state to be stored on the client.
   /// - Parameters:
   ///   - recoverSigning: Optional boolean indicating whether it's from recover signing. If not nil, it's included as a query parameter in the URL.
@@ -435,4 +471,57 @@ public struct Balance: Codable {
   public var contractAddress: String
   /// The balance of the token.
   public var balance: String
+}
+
+public struct SimulatedTransactionChange: Codable {
+  public var amount: String?
+  public var assetType: String?
+  public var changeType: String?
+  public var contractAddress: String?
+  public var decimals: Int?
+  public var from: String?
+  public var name: String?
+  public var rawAmount: String?
+  public var symbol: String?
+  public var to: String?
+  public var tokenId: Int?
+}
+
+public struct SimulatedTransactionError: Codable {
+  public var message: String
+}
+
+public struct SimulateTransactionParam: Codable {
+  public var to: String
+  public var value: String?
+  public var data: String?
+  public var maxFeePerGas: String?
+  public var maxPriorityFeePerGas: String?
+  public var gas: String?
+  public var gasPrice: String?
+
+  public init(
+    to: String,
+    value: String? = nil,
+    data: String? = nil,
+    maxFeePerGas: String? = nil,
+    maxPriorityFeePerGas: String? = nil,
+    gas: String? = nil,
+    gasPrice: String? = nil
+  ) {
+    self.to = to
+    self.value = value
+    self.data = data
+    self.maxFeePerGas = maxFeePerGas
+    self.maxPriorityFeePerGas = maxPriorityFeePerGas
+    self.gas = gas
+    self.gasPrice = gasPrice
+  }
+}
+
+public struct SimulatedTransaction: Codable {
+  public var changes: [SimulatedTransactionChange]
+  public var gasUsed: String? = nil
+  public var error: SimulatedTransactionError?
+  public var requestError: SimulatedTransactionError?
 }
