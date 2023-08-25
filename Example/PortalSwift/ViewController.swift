@@ -47,7 +47,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var signUpButton: UIButton!
   @IBOutlet var testButton: UIButton!
   @IBOutlet var deleteKeychainButton: UIButton!
-  @IBOutlet var testNFTsTrxsBalancesButton: UIButton!
+  @IBOutlet var testNFTsTrxsBalancesSimTrxButton: UIButton!
 
   // Send form
   @IBOutlet public var sendAddress: UITextField!
@@ -107,7 +107,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       self.signUpButton.isEnabled = false
       self.testButton.isEnabled = false
       self.deleteKeychainButton.isEnabled = false
-      self.testNFTsTrxsBalancesButton.isEnabled = false
+      self.testNFTsTrxsBalancesSimTrxButton.isEnabled = false
       self.sendButton.isEnabled = false
     }
   }
@@ -200,7 +200,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.testButton.isEnabled = true
         self.signButton.isEnabled = true
         self.deleteKeychainButton.isEnabled = true
-        self.testNFTsTrxsBalancesButton.isEnabled = true
+        self.testNFTsTrxsBalancesSimTrxButton.isEnabled = true
         self.sendButton.isEnabled = true
       }
     }
@@ -312,10 +312,11 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  @IBAction func fetchNFTsAndTrxsAndBalances() {
+  @IBAction func fetchNFTsTrxsBalancesAndSimTrx() {
     self.retrieveNFTs()
     self.getTransactions()
     self.getBalances()
+    self.simulateTransaction()
   }
 
   func populateAddressInformation() {
@@ -380,6 +381,46 @@ class ViewController: UIViewController, UITextFieldDelegate {
         }
 
         print("✅ Retrieved balances", results.data!)
+      }
+    } catch {
+      print("❌ Unable to retrieve balances", error)
+    }
+  }
+
+  func simulateTransaction() {
+    do {
+      print("Simulating transaction...")
+
+      // First, create a transaction.
+      let transaction = SimulateTransactionParam(
+        to: "0x5596D66388555273eF90163f5e7314C8CE14F73c", // The recipient address.
+        value: "0x10DE4A2A" // The value to be sent in Wei.
+      )
+
+      // Next, simulate the transaction.
+      try portal?.api.simulateTransaction(transaction: transaction) {
+        (result: Result<SimulatedTransaction>) in
+
+        // Check for general errors.
+        if let error = result.error {
+          print("❌ Error simulating transaction:", error)
+          return
+        }
+
+        // Safely unwrap the simulated result.
+        guard let simulatedResult = result.data else {
+          print("❌ Unexpected error: result data is nil.")
+          return
+        }
+
+        // Finally, you can handle or display the simulation results as needed.
+        if let requestError = simulatedResult.requestError {
+          print("❌ Request error:", requestError.message)
+        } else if let error = simulatedResult.error {
+          print("✅ Transaction will have error:", error.message)
+        } else {
+          print("✅ Simulated transaction changes:", simulatedResult.changes)
+        }
       }
     } catch {
       print("❌ Unable to retrieve balances", error)
@@ -502,7 +543,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
             self.testButton.isEnabled = hasAddress
             self.signButton.isEnabled = hasAddress
             self.deleteKeychainButton.isEnabled = hasAddress
-            self.testNFTsTrxsBalancesButton.isEnabled = hasAddress
+            self.testNFTsTrxsBalancesSimTrxButton.isEnabled = hasAddress
             self.sendButton.isEnabled = hasAddress
           } catch {
             print("Error fetching address: \(error)")
