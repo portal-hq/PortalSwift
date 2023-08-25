@@ -206,13 +206,13 @@
                                 <rect key="frame" x="17" y="648" width="342" height="35"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <state key="normal" title="Button"/>
-                                <buttonConfiguration key="configuration" style="filled" title="NFTs, Trxs, + Balances">
+                                <buttonConfiguration key="configuration" style="filled" title="NFTs, Trxs, Balances, Sim trx">
                                     <backgroundConfiguration key="background"/>
                                     <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
                                     <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 </buttonConfiguration>
                                 <connections>
-                                    <action selector="fetchNFTsAndTrxsAndBalances" destination="vXZ-lx-hvc" eventType="touchUpInside" id="QIN-fx-x7c"/>
+                                    <action selector="fetchNFTsTrxsBalancesAndSimTrx" destination="vXZ-lx-hvc" eventType="touchUpInside" id="auR-Sl-e1k"/>
                                 </connections>
                             </button>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="NGV-LW-69G">
@@ -247,7 +247,7 @@
                         <outlet property="signInButton" destination="Ojs-ji-UfQ" id="c9X-B9-99T"/>
                         <outlet property="signUpButton" destination="um8-uX-tq6" id="b5D-14-Cen"/>
                         <outlet property="testButton" destination="jgr-2k-ChE" id="Iwz-Qk-mgO"/>
-                        <outlet property="testNFTsTrxsBalancesButton" destination="zxl-zt-jSZ" id="Ges-6t-8md"/>
+                        <outlet property="testNFTsTrxsBalancesSimTrxButton" destination="zxl-zt-jSZ" id="sQP-08-jvX"/>
                         <outlet property="url" destination="5Yb-DH-Pnv" id="kdn-BV-aGw"/>
                         <outlet property="username" destination="Ysr-eH-5f6" id="lgr-mF-HfE"/>
                     </connections>

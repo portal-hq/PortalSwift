@@ -10,6 +10,10 @@ Possible Types of changes include:
 - Fixed
 - Security
 
+## 1.1.8 2023-08-25
+
+- Adds support for transaction simulation
+
 ## 1.1.7 2023-08-18
 
 ### Fixed
