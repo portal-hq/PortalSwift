@@ -23,4 +23,6 @@ public protocol Mobile {
   func MobileGetMe(_ url: String, _ token: String) -> String
 
   func MobileGetVersion() -> String
+
+  func MobileSign(_ apiKey: String?, _ host: String?, _ signingShare: String?, _ method: String?, _ params: String?, _ rpcURL: String?, _ chainId: String?, _ version: String?) -> String
 }

@@ -297,6 +297,7 @@
 		F89754123E8B78E5F1018543E7C64DC5 /* id.lproj in Resources */ = {isa = PBXBuildFile; fileRef = F5A03386547D51B36741E15F8444BA61 /* id.lproj */; };
 		F950D208FA4D412081B58F83807785A4 /* OIDRegistrationResponse.h in Headers */ = {isa = PBXBuildFile; fileRef = 735E5E1EFE968E115DDDBF274A8E6738 /* OIDRegistrationResponse.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		F99428C62A9559A5006F057C /* mpc.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = D7EC8E0A24286C65A00CCF251EBAB1A9 /* mpc.xcframework */; };
+		F99428C82A98FCC2006F057C /* MockMpcMobileErrors.swift in Sources */ = {isa = PBXBuildFile; fileRef = F99428C72A98FCC2006F057C /* MockMpcMobileErrors.swift */; };
 		FA57677851302C0F13C69A459895DCEF /* NSBundle+GID3PAdditions.h in Headers */ = {isa = PBXBuildFile; fileRef = D0B13CB8E2380B3D8153DE8AC1D00E0D /* NSBundle+GID3PAdditions.h */; settings = {ATTRIBUTES = (Project, ); }; };
 		FABB42882E4AB935C9693B4AB6CCBDCA /* GTMSessionFetcher.m in Sources */ = {isa = PBXBuildFile; fileRef = 9A88DB4FCA470E6AD15D81938ABAAA3F /* GTMSessionFetcher.m */; };
 		FAE2932DE2F2C5F0B8B435B9804976BC /* GTMSessionFetcherLogging.h in Headers */ = {isa = PBXBuildFile; fileRef = C8A0D0D14EDE20BA743AA1640547330C /* GTMSessionFetcherLogging.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -779,6 +780,7 @@
 		F787A922FCA2B2453D62B91E0D238CE4 /* FoundationSecurity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FoundationSecurity.swift; path = Sources/Security/FoundationSecurity.swift; sourceTree = "<group>"; };
 		F8D7EA35E60B3E6DFB4917E429D6576A /* UIImage+Snapshot.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = "UIImage+Snapshot.h"; path = "FBSnapshotTestCase/Categories/UIImage+Snapshot.h"; sourceTree = "<group>"; };
 		F8FAFD8374FB6F6957B7CDAD191A61AB /* PortalSwift-Unit-Tests-prefix.pch */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "PortalSwift-Unit-Tests-prefix.pch"; sourceTree = "<group>"; };
+		F99428C72A98FCC2006F057C /* MockMpcMobileErrors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockMpcMobileErrors.swift; sourceTree = "<group>"; };
 		F99591EE4A6FA4AB69D613692D72A6E9 /* StringHTTPHandler.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = StringHTTPHandler.swift; path = Sources/Framer/StringHTTPHandler.swift; sourceTree = "<group>"; };
 		FB367A379C63040F8B0480CF9465B2C0 /* GTMKeychain.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = GTMKeychain.h; path = GTMAppAuth/Sources/Public/GTMAppAuth/GTMKeychain.h; sourceTree = "<group>"; };
 		FB6100D479E7EBBD7EF326CF27357FA5 /* GDriveStorageTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GDriveStorageTests.swift; sourceTree = "<group>"; };
@@ -1539,6 +1541,7 @@
 			children = (
 				F577F585C66448D76ABFDE8323D5D8E4 /* MockMpcMobile.swift */,
 				38BE476FCFA8B3A31EB4D68ED4D09424 /* MockPortalMpc.swift */,
+				F99428C72A98FCC2006F057C /* MockMpcMobileErrors.swift */,
 			);
 			path = MockMpc;
 			sourceTree = "<group>";
@@ -2468,6 +2471,7 @@
 				A1E04D3EFF0631768A9AADF8B71711E2 /* MpcSigner.swift in Sources */,
 				24FDE01D901287BF4F47B1C2D3DDDC61 /* Portal.swift in Sources */,
 				6AD1CC85E16E85EC2A1C6528A873E8AE /* PortalApi.swift in Sources */,
+				F99428C82A98FCC2006F057C /* MockMpcMobileErrors.swift in Sources */,
 				F165116A9659CC2ED2A1C40D9A6A3FFA /* PortalConnect.swift in Sources */,
 				7354710C5080AE5482CB97729DD2FDBA /* PortalError.swift in Sources */,
 				BA3D05E8248BC1A09A5BFEECF3885AD9 /* PortalErrorCodes.swift in Sources */,
