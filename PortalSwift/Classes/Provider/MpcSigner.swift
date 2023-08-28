@@ -18,19 +18,17 @@ public struct SignerResult: Codable {
   public var accounts: [String]?
 }
 
-class MpcSigner {
-  private var address: String? {
-    do {
-      return try self.keychain.getAddress()
-    } catch {
-      return nil
-    }
-  }
+enum MpcSignerErrors: Error {
+  case NoParamsForTransaction
+  case NoParamsForSignRequest
+}
 
+class MpcSigner {
   private let apiKey: String
   private let keychain: PortalKeychain
   private let mpcUrl: String
   private let version: String
+  private let binary: Mobile
 
   init(
     apiKey: String,
@@ -42,6 +40,21 @@ class MpcSigner {
     self.keychain = keychain
     self.mpcUrl = mpcUrl
     self.version = version
+    self.binary = MobileWrapper()
+  }
+
+  init(
+    apiKey: String,
+    keychain: PortalKeychain,
+    mpcUrl: String = "mpc.portalhq.io",
+    version: String = "v4",
+    binary: Mobile?
+  ) {
+    self.apiKey = apiKey
+    self.keychain = keychain
+    self.mpcUrl = mpcUrl
+    self.version = version
+    self.binary = binary ?? MobileWrapper()
   }
 
   /// Signs a standard ETH request.
@@ -64,9 +77,10 @@ class MpcSigner {
       // Obtain the sign result.
       let signingShare = try keychain.getSigningShare()
       let formattedParams = try formatParams(payload: payload)
-      let clientSignResult = MobileSign(
-        apiKey,
-        mpcUrl,
+
+      let clientSignResult = self.binary.MobileSign(
+        self.apiKey,
+        self.mpcUrl,
         signingShare,
         payload.method,
         formattedParams,
@@ -94,26 +108,22 @@ class MpcSigner {
   /// - Returns: A SignerResult.
   public func sign(
     payload: ETHTransactionPayload,
-    provider: PortalProvider,
-    mockClientSign: Bool = false
+    provider: PortalProvider
   ) throws -> SignerResult {
     // Obtain the sign result.
     let signingShare = try keychain.getSigningShare()
     let formattedParams = try formatParams(payload: payload)
 
-    var clientSignResult = mockClientSignResult
-    if !mockClientSign {
-      clientSignResult = MobileSign(
-        self.apiKey,
-        self.mpcUrl,
-        signingShare,
-        payload.method,
-        formattedParams,
-        provider.gatewayUrl,
-        String(provider.chainId),
-        self.version
-      )
-    }
+    let clientSignResult = self.binary.MobileSign(
+      self.apiKey,
+      self.mpcUrl,
+      signingShare,
+      payload.method,
+      formattedParams,
+      provider.gatewayUrl,
+      String(provider.chainId),
+      self.version
+    )
 
     // Attempt to decode the sign result.
     let jsonData = clientSignResult.data(using: .utf8)!
@@ -128,7 +138,7 @@ class MpcSigner {
 
   private func formatParams(payload: ETHRequestPayload) throws -> String {
     if payload.params.count == 0 {
-      return ""
+      throw MpcSignerErrors.NoParamsForSignRequest
     }
 
     let json: Data = try JSONSerialization.data(withJSONObject: payload.params, options: .prettyPrinted)
@@ -137,7 +147,7 @@ class MpcSigner {
 
   private func formatParams(payload: ETHTransactionPayload) throws -> String {
     if payload.params.count == 0 {
-      return ""
+      throw MpcSignerErrors.NoParamsForTransaction
     }
 
     let formattedPayload = payload.params.first!

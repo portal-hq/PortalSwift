@@ -40,4 +40,8 @@ class MobileWrapper: Mobile {
   func MobileGetVersion() -> String {
     return Mpc.MobileGetVersion()
   }
+
+  func MobileSign(_ apiKey: String?, _ host: String?, _ signingShare: String?, _ method: String?, _ params: String?, _ rpcURL: String?, _ chainId: String?, _ version: String?) -> String {
+    Mpc.MobileSign(apiKey, host, signingShare, method, params, rpcURL, chainId, version)
+  }
 }
