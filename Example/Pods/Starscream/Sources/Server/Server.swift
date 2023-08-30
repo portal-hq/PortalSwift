@@ -23,34 +23,32 @@
 import Foundation
 
 public enum ConnectionEvent {
-    case connected([String: String])
-    case disconnected(String, UInt16)
-    case text(String)
-    case binary(Data)
-    case pong(Data?)
-    case ping(Data?)
-    case error(Error)
+  case connected([String: String])
+  case disconnected(String, UInt16)
+  case text(String)
+  case binary(Data)
+  case pong(Data?)
+  case ping(Data?)
+  case error(Error)
 }
 
 public protocol Connection {
-    func write(data: Data, opcode: FrameOpCode)
+  func write(data: Data, opcode: FrameOpCode)
 }
 
-public protocol ConnectionDelegate: class {
-    func didReceive(event: ServerEvent)
+public protocol ConnectionDelegate: AnyObject {
+  func didReceive(event: ServerEvent)
 }
 
 public enum ServerEvent {
-    case connected(Connection, [String: String])
-    case disconnected(Connection, String, UInt16)
-    case text(Connection, String)
-    case binary(Connection, Data)
-    case pong(Connection, Data?)
-    case ping(Connection, Data?)
+  case connected(Connection, [String: String])
+  case disconnected(Connection, String, UInt16)
+  case text(Connection, String)
+  case binary(Connection, Data)
+  case pong(Connection, Data?)
+  case ping(Connection, Data?)
 }
 
 public protocol Server {
-    func start(address: String, port: UInt16) -> Error?
+  func start(address: String, port: UInt16) -> Error?
 }
-
-

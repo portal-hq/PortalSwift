@@ -23,23 +23,23 @@
 import Foundation
 
 public enum SecurityErrorCode: UInt16 {
-    case acceptFailed = 1
-    case pinningFailed = 2
+  case acceptFailed = 1
+  case pinningFailed = 2
 }
 
 public enum PinningState {
-    case success
-    case failed(CFError?)
+  case success
+  case failed(CFError?)
 }
 
 // CertificatePinning protocol provides an interface for Transports to handle Certificate
 // or Public Key Pinning.
-public protocol CertificatePinning: class {
-    func evaluateTrust(trust: SecTrust, domain: String?, completion: ((PinningState) -> ()))
+public protocol CertificatePinning: AnyObject {
+  func evaluateTrust(trust: SecTrust, domain: String?, completion: (PinningState) -> Void)
 }
 
 // validates the "Sec-WebSocket-Accept" header as defined 1.3 of the RFC 6455
 // https://tools.ietf.org/html/rfc6455#section-1.3
-public protocol HeaderValidator: class {
-    func validate(headers: [String: String], key: String) -> Error?
+public protocol HeaderValidator: AnyObject {
+  func validate(headers: [String: String], key: String) -> Error?
 }
