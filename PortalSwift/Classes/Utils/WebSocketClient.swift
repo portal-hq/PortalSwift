@@ -322,8 +322,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
 
   func handleError(_ error: (any Error)?) {
     print("[WebSocketClient] Received error: \(String(describing: error))")
-    print(error!.localizedDescription)
-    print(self.isConnected)
+
     // This error needs to match
     if let error = error, error.localizedDescription == "The operation couldn’t be completed. Connection reset by peer" && isConnected {
       print("Connection reset by peer. Attempting reconnect...")
@@ -334,11 +333,13 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
     } else if error != nil && error?.localizedDescription != nil {
       self.connectState = .disconnected
       self.pingTimer?.invalidate()
+
       self.emit("error", ErrorData(message: error!.localizedDescription))
       self.socket.disconnect(closeCode: 1000)
     } else {
       self.connectState = .disconnected
       self.pingTimer?.invalidate()
+
       self.emit("error", ErrorData(message: "An unknown error occurred."))
       self.socket.disconnect(closeCode: 1000)
     }
