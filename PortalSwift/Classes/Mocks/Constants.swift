@@ -41,4 +41,6 @@ public let backupProgressCallbacks: Set<MpcStatuses> = [.readingShare, .generati
 
 public let generateProgressCallbacks: Set<MpcStatuses> = [.generatingShare, .parsingShare, .storingShare, .done]
 
-public let recoverProgressCallbacks: [MpcStatuses] = [.readingShare, .decryptingShare, .parsingShare, .recoveringSigningShare, .generatingShare, .parsingShare, .storingShare, .recoveringBackupShare, .generatingShare, .parsingShare, .encryptingShare, .storingShare, .done]
+public let recoverProgressCallbacks: [MpcStatuses] = [.readingShare, .decryptingShare, .parsingShare, .recoveringSigningShare, .generatingShare, .parsingShare, .storingShare, .done]
+
+public let legacyRecoverProgressCallbacks: [MpcStatuses] = [.readingShare, .decryptingShare, .parsingShare, .recoveringSigningShare, .generatingShare, .parsingShare, .storingShare, .recoveringBackupShare, .generatingShare, .parsingShare, .encryptingShare, .storingShare, .done]
