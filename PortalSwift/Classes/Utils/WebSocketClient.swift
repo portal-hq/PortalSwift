@@ -135,7 +135,10 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   }
 
   public func didReceive(event: Starscream.WebSocketEvent, client _: Starscream.WebSocketClient) {
-    print("[WebSocketClient] Received event: \(event)")
+    if case .pong = event {} // Do nothing for pong
+    else {
+      print("[WebSocketClient] Received event: \(event)")
+    }
     // Handle incoming messages
     switch event {
     case .connected:
@@ -213,14 +216,11 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
     do {
       // JSON decode the incoming message
       let payload = try JSONDecoder().decode(WebSocketSessionRequestMessage.self, from: data)
-      print("[WebSocketClient] Received message: \(payload)")
       self.emit(payload.event, payload.data)
       return
     } catch {
-      print(error)
       do {
         let payload = try JSONDecoder().decode(WebSocketDappSessionRequestV1Message.self, from: data)
-        print("[WebSocketClient] Received message: \(payload)")
         if payload.event != "portal_dappSessionRequestedV1" {
           throw WebSocketTypeErrors.MismatchedTypeMessage
         }
@@ -230,7 +230,6 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
         print("[WebSocketClient] Unable to parse message as WebSocketDappSessionRequestV1Message, attempting WebSocketDappSessionRequestMessage...")
         do {
           let payload = try JSONDecoder().decode(WebSocketDappSessionRequestMessage.self, from: data)
-          print("[WebSocketClient] Received message: \(payload)")
           if payload.event != "portal_dappSessionRequested" {
             throw WebSocketTypeErrors.MismatchedTypeMessage
           }
@@ -240,27 +239,23 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
           print("[WebSocketClient] Unable to parse message as WebSocketDappSessionRequestMessage, attempting WebSocketSessionRequestAddressMessage...")
           do {
             let payload = try JSONDecoder().decode(WebSocketSessionRequestAddressMessage.self, from: data)
-            print("[WebSocketClient] Received message: \(payload)")
             self.emit(payload.event, payload.data)
             return
           } catch {
             print("[WebSocketClient] Unable to parse message as WebSocketSessionRequestMessage, attempting WebSocketSessionRequestAddressMessage...")
             do {
               let payload = try JSONDecoder().decode(WebSocketSessionRequestAddressMessage.self, from: data)
-              print("[WebSocketClient] Received message: \(payload)")
               self.emit(payload.event, payload.data)
               return
             } catch {
               print("[WebSocketClient] Unable to parse message as WebSocketSessionRequestAddressMessage, attempting WebSocketSessionRequestTransactionMessage...")
               do {
                 let payload = try JSONDecoder().decode(WebSocketSessionRequestTransactionMessage.self, from: data)
-                print("[WebSocketClient] Received message: \(payload)")
                 self.emit(payload.event, payload.data)
                 return
               } catch {
                 do {
                   let payload = try JSONDecoder().decode(WebSocketConnectedMessage.self, from: data)
-                  print("[WebSocketClient] Received message: \(payload)")
                   if payload.event != "connected" {
                     throw WebSocketTypeErrors.MismatchedTypeMessage
                   }
@@ -271,7 +266,6 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
                   do {
                     print("[WebSocketClient] Unable to parse message as WebSocketConnectedMessage, attempting WebSocketConnectedV1Message...")
                     let payload = try JSONDecoder().decode(WebSocketConnectedV1Message.self, from: data)
-                    print("[WebSocketClient] Received message: \(payload)")
                     if payload.event != "connected" {
                       throw WebSocketTypeErrors.MismatchedTypeMessage
                     }
@@ -282,7 +276,6 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
                     print("[WebSocketClient] Unable to parse message as WebSocketConnectedV1Message, attempting WebSocketDisconnectMessage...")
                     do {
                       let payload = try JSONDecoder().decode(WebSocketDisconnectMessage.self, from: data)
-                      print("[WebSocketClient] Received message: \(payload)")
                       if payload.event != "disconnect" {
                         throw WebSocketTypeErrors.MismatchedTypeMessage
                       }
@@ -293,7 +286,6 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
                       print("[WebSocketClient] Unable to parse message as WebSocketDisconnectMessage, attempting WebSocketErrorMessage...")
                       do {
                         let payload = try JSONDecoder().decode(WebSocketErrorMessage.self, from: data)
-                        print("[WebSocketClient] Received message: \(payload)")
                         if payload.event != "portal_connectError" {
                           throw WebSocketTypeErrors.MismatchedTypeMessage
                         }
