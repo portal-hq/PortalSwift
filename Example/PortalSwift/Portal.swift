@@ -182,7 +182,7 @@ class PortalWrapper {
   }
 
   func recover(backupMethod: BackupMethods.RawValue, user: UserResult, completion: @escaping (Result<Bool>) -> Void) {
-    print("Starting recover...")
+    print("[PortalWrapper] Starting recover...")
     let request = HttpRequest<CipherTextResult, [String: String]>(
       url: CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/cipher-text/fetch",
       method: "GET", body: [:],
@@ -192,7 +192,7 @@ class PortalWrapper {
 
     request.send { (result: Result<CipherTextResult>) in
       guard result.error == nil else {
-        print("❌ handleRecover(): Error fetching cipherText:", result.error!)
+        print("❌ [PortalWrapper] handleRecover(): Error fetching cipherText:", result.error!)
         return completion(Result(error: result.error!))
       }
 
@@ -200,7 +200,38 @@ class PortalWrapper {
 
       self.portal?.recoverWallet(cipherText: cipherText, method: backupMethod) { (result: Result<String>) in
         guard result.error == nil else {
-          print("❌ handleRecover(): Error fetching cipherText:", result.error!)
+          print("❌ [PortalWrapper] handleRecover(): Error recovering wallet:", result.error!)
+          return completion(Result(error: result.error!))
+        }
+
+        print("✅ [PortalWrapper] handleRecover(): Successfully recovered signing shares")
+        return completion(Result(data: true))
+      } progress: { status in
+        print("[PortalWrapper] Recover Status: ", status)
+      }
+    }
+  }
+
+  func legacyRecover(backupMethod: BackupMethods.RawValue, user: UserResult, completion: @escaping (Result<Bool>) -> Void) {
+    print("[PortalWrapper] Starting legacy recover...")
+    let request = HttpRequest<CipherTextResult, [String: String]>(
+      url: CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/cipher-text/fetch",
+      method: "GET", body: [:],
+      headers: [:],
+      requestType: HttpRequestType.CustomRequest
+    )
+
+    request.send { (result: Result<CipherTextResult>) in
+      guard result.error == nil else {
+        print("❌ [PortalWrapper] handleLegacyRecover(): Error fetching cipherText:", result.error!)
+        return completion(Result(error: result.error!))
+      }
+
+      let cipherText = result.data!.cipherText
+
+      self.portal?.legacyRecoverWallet(cipherText: cipherText, method: backupMethod) { (result: Result<String>) in
+        guard result.error == nil else {
+          print("❌ [PortalWrapper] handleLegacyRecover(): Error fetching cipherText:", result.error!)
           return completion(Result(error: result.error!))
         }
 
@@ -214,15 +245,15 @@ class PortalWrapper {
 
         request.send { (result: Result<String>) in
           if result.error != nil {
-            print("❌ handleRecover(): Error sending custodian cipherText:", result.error!)
+            print("❌ [PortalWrapper] handleLegacyRecover(): Error sending custodian cipherText:", result.error!)
             return completion(Result(error: result.error!))
           } else {
-            print("✅ handleRecover(): Successfully sent custodian cipherText:")
+            print("✅ [PortalWrapper] handleLegacyRecover(): Successfully sent custodian cipherText:")
             return completion(Result(data: true))
           }
         }
       } progress: { status in
-        print("Recover Status: ", status)
+        print("[PortalWrapper] Recover Status: ", status)
       }
     }
   }
