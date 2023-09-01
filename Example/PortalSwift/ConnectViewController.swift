@@ -153,8 +153,6 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
     print("Emitting Dapp Session Approval for v2..")
     if let connectData = data as? ConnectData {
       // Now you can work with the parsed ConnectData object
-      print(connectData.id)
-      print(connectData.topic)
       print(connectData.params)
 
       // You can emit the event with the parsed ConnectData object
@@ -170,8 +168,6 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
 
     if let connectData = data as? ConnectV1Data {
       // Now you can work with the parsed ConnectV1Data object
-      print(connectData.id)
-      print(connectData.topic)
       print(connectData.params)
 
       // You can emit the event with the parsed ConnectV1Data object
