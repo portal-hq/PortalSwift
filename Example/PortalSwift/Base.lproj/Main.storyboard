@@ -24,7 +24,7 @@
                                 <rect key="frame" x="16" y="296" width="343" height="35"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <state key="normal" title="Button"/>
-                                <buttonConfiguration key="configuration" style="filled" title="Backup Wallet">
+                                <buttonConfiguration key="configuration" style="filled" title="Backup">
                                     <backgroundConfiguration key="background"/>
                                     <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
                                     <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
@@ -34,10 +34,10 @@
                                 </connections>
                             </button>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="J4p-Hr-lwd">
-                                <rect key="frame" x="16" y="339" width="343" height="35"/>
+                                <rect key="frame" x="16" y="339" width="153" height="35"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <state key="normal" title="Button"/>
-                                <buttonConfiguration key="configuration" style="filled" title="Recover Wallet">
+                                <buttonConfiguration key="configuration" style="filled" title="Recover">
                                     <backgroundConfiguration key="background"/>
                                     <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
                                     <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
@@ -82,7 +82,7 @@
                                 <rect key="frame" x="16" y="253" width="343" height="35"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <state key="normal" title="Button"/>
-                                <buttonConfiguration key="configuration" style="filled" title="Generate Wallet">
+                                <buttonConfiguration key="configuration" style="filled" title="Generate">
                                     <backgroundConfiguration key="background"/>
                                     <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
                                     <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
@@ -228,6 +228,19 @@
                                     <action selector="handleSign" destination="vXZ-lx-hvc" eventType="touchUpInside" id="esz-nG-srg"/>
                                 </connections>
                             </button>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="off-uY-zA3">
+                                <rect key="frame" x="210" y="339" width="149" height="35"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <state key="normal" title="Button"/>
+                                <buttonConfiguration key="configuration" style="filled" title="Legacy Recover">
+                                    <backgroundConfiguration key="background"/>
+                                    <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
+                                    <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                </buttonConfiguration>
+                                <connections>
+                                    <action selector="handleLegacyRecover:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="0HD-Qe-Ets"/>
+                                </connections>
+                            </button>
                         </subviews>
                         <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                     </view>
@@ -238,6 +251,7 @@
                         <outlet property="deleteKeychainButton" destination="QJh-Gs-d32" id="0PG-E6-YO9"/>
                         <outlet property="ethBalanceInformation" destination="XWB-hw-iZv" id="c0l-fG-eWb"/>
                         <outlet property="generateButton" destination="PLS-JE-WGU" id="i8N-R8-wtj"/>
+                        <outlet property="legacyRecoverButton" destination="off-uY-zA3" id="def-e2-JZt"/>
                         <outlet property="logoutButton" destination="nDW-CF-6N1" id="Ke0-ny-I4Y"/>
                         <outlet property="portalConnectButton" destination="Oix-QY-d5L" id="ggO-uw-BBj"/>
                         <outlet property="recoverButton" destination="J4p-Hr-lwd" id="Um1-lC-X9R"/>

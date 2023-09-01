@@ -1,14 +1,14 @@
 //
-//  MockMpcMobile.swift
+//  MockMpcMobileErrors.swift
 //  PortalSwift
 //
-//  Created by Rami Shahatit on 8/2/23.
+//  Created by Rami Shahatit on 8/25/23.
 //
 
 import Foundation
 import Mpc
 
-class MockMobileWrapper: Mobile {
+class MockMobileErrorWrapper: Mobile {
   func MobileGenerate(_: String, _: String, _: String, _: String) -> String {
     return mockDataResult
   }
@@ -42,6 +42,6 @@ class MockMobileWrapper: Mobile {
   }
 
   func MobileSign(_: String?, _: String?, _: String?, _: String?, _: String?, _: String?, _: String?, _: String?) -> String {
-    return mockClientSignResult
+    return mockClientSignResultWithError
   }
 }

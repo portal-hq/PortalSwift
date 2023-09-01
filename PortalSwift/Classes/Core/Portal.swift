@@ -230,6 +230,15 @@ public class Portal {
     self.mpc.recover(cipherText: cipherText, method: method, completion: completion, progress: progress)
   }
 
+  public func legacyRecoverWallet(
+    cipherText: String,
+    method: BackupMethods.RawValue,
+    completion: @escaping (Result<String>) -> Void,
+    progress: ((MpcStatus) -> Void)? = nil
+  ) {
+    self.mpc.legacyRecover(cipherText: cipherText, method: method, completion: completion, progress: progress)
+  }
+
   /**********************************
    * Provider Helper Methods
    **********************************/

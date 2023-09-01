@@ -42,6 +42,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var logoutButton: UIButton!
   @IBOutlet var portalConnectButton: UIButton!
   @IBOutlet var recoverButton: UIButton!
+  @IBOutlet var legacyRecoverButton: UIButton!
   @IBOutlet var signButton: UIButton!
   @IBOutlet var signInButton: UIButton!
   @IBOutlet var signUpButton: UIButton!
@@ -102,6 +103,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       self.logoutButton.isEnabled = false
       self.portalConnectButton.isEnabled = false
       self.recoverButton.isEnabled = false
+      self.legacyRecoverButton.isEnabled = false
       self.signButton.isEnabled = false
       self.signInButton.isEnabled = false
       self.signUpButton.isEnabled = false
@@ -197,6 +199,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.dappBrowserButton.isEnabled = true
         self.portalConnectButton.isEnabled = true
         self.recoverButton.isEnabled = true
+        self.legacyRecoverButton.isEnabled = true
         self.testButton.isEnabled = true
         self.signButton.isEnabled = true
         self.deleteKeychainButton.isEnabled = true
@@ -246,16 +249,29 @@ class ViewController: UIViewController, UITextFieldDelegate {
     // PortalWrapper.recover(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user!) { (result) -> Void in
     self.PortalWrapper.recover(backupMethod: BackupMethods.iCloud.rawValue, user: self.user!) { result in
       guard result.error == nil else {
-        print("❌ handleRecover(): Error fetching cipherText:", result.error!)
+        print("❌ handleRecover(): Error recovering wallet:", result.error!)
+        return
+      }
+
+      self.populateAddressInformation()
+      print("✅ handleRecover(): Successfully recovered signing shares")
+    }
+  }
+
+  @IBAction func handleLegacyRecover(_: UIButton!) {
+    // PortalWrapper.legacyRecover(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user!) { (result) -> Void in
+    self.PortalWrapper.legacyRecover(backupMethod: BackupMethods.iCloud.rawValue, user: self.user!) { result in
+      guard result.error == nil else {
+        print("❌ handleLegacyRecover(): Error fetching cipherText:", result.error!)
         do {
           try self.PortalWrapper.portal!.api.storedClientBackupShare(success: false) { result in
             guard result.error == nil else {
-              print("❌ handleRecover(): Error notifying Portal that backup share was not stored.")
+              print("❌ handleLegacyRecover(): Error notifying Portal that backup share was not stored.")
               return
             }
           }
         } catch {
-          print("❌ handleRecover(): Error notifying Portal that backup share was not stored.")
+          print("❌ handleLegacyRecover(): Error notifying Portal that backup share was not stored.")
         }
         return
       }
@@ -263,15 +279,15 @@ class ViewController: UIViewController, UITextFieldDelegate {
       do {
         try self.PortalWrapper.portal!.api.storedClientBackupShare(success: true) { result in
           guard result.error == nil else {
-            print("❌ handleRecover(): Error notifying Portal that backup share was stored.")
+            print("❌ handleLegacyRecover(): Error notifying Portal that backup share was stored.")
             return
           }
 
           self.populateAddressInformation()
-          print("✅ handleRecover(): Successfully recovered")
+          print("✅ handleLegacyRecover(): Successfully recovered")
         }
       } catch {
-        print("❌ handleRecover(): Error notifying Portal that backup share was stored.")
+        print("❌ handleLegacyRecover(): Error notifying Portal that backup share was stored.")
       }
     }
   }
@@ -540,6 +556,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
             self.dappBrowserButton.isEnabled = hasAddress
             self.portalConnectButton.isEnabled = hasAddress
             self.recoverButton.isEnabled = hasAddress
+            self.legacyRecoverButton.isEnabled = hasAddress
             self.testButton.isEnabled = hasAddress
             self.signButton.isEnabled = hasAddress
             self.deleteKeychainButton.isEnabled = hasAddress

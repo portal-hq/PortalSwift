@@ -1,7 +1,5 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////
 //
-//////////////////////////////////////////////////////////////////////////////////////////////////
-//
 //  Transport.swift
 //  Starscream
 //
@@ -25,31 +23,41 @@
 import Foundation
 
 public enum ConnectionState {
-    case connected
-    case waiting
-    case cancelled
-    case failed(Error?)
-    
-    //the viability (connection status) of the connection has updated
-    //e.g. connection is down, connection came back up, etc
-    case viability(Bool)
-    
-    //the connection has upgrade to wifi from cellular.
-    //you should consider reconnecting to take advantage of this
-    case shouldReconnect(Bool)
-    
-    //the connection receive data
-    case receive(Data)
+  /// Ready connections can send and receive data
+  case connected
+
+  /// Waiting connections have not yet been started, or do not have a viable network
+  case waiting
+
+  /// Cancelled connections have been invalidated by the client and will send no more events
+  case cancelled
+
+  /// Failed connections are disconnected and can no longer send or receive data
+  case failed(Error?)
+
+  /// Viability (connection status) of the connection has updated
+  /// e.g. connection is down, connection came back up, etc.
+  case viability(Bool)
+
+  /// Connection ca be upgraded to wifi from cellular.
+  /// You should consider reconnecting to take advantage of this.
+  case shouldReconnect(Bool)
+
+  /// Received data
+  case receive(Data)
+
+  /// Remote peer has closed the network connection.
+  case peerClosed
 }
 
-public protocol TransportEventClient: class {
-    func connectionChanged(state: ConnectionState)
+public protocol TransportEventClient: AnyObject {
+  func connectionChanged(state: ConnectionState)
 }
 
-public protocol Transport: class {
-    func register(delegate: TransportEventClient)
-    func connect(url: URL, timeout: Double, certificatePinning: CertificatePinning?)
-    func disconnect()
-    func write(data: Data, completion: @escaping ((Error?) -> ()))
-    var usingTLS: Bool { get }
+public protocol Transport: AnyObject {
+  func register(delegate: TransportEventClient)
+  func connect(url: URL, timeout: Double, certificatePinning: CertificatePinning?)
+  func disconnect()
+  func write(data: Data, completion: @escaping ((Error?) -> Void))
+  var usingTLS: Bool { get }
 }

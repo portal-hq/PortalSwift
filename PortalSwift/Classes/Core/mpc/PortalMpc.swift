@@ -278,11 +278,11 @@ public class PortalMpc {
     }
   }
 
-  /// Uses the backup share to create a new signing share and a new backup share, encrypts the new backup share, and stores the private key in storage.
+  /// Uses the backup share to create a new signing share.
   /// - Parameters:
   ///   - cipherText: the cipherText of the backup share (should be passed in from the custodian).
   ///   - method: The specific backup storage option.
-  ///   - completion: The callback which includes the cipherText of the new backup share.
+  ///   - completion: The callback which includes the wallet's address.
   public func recover(
     cipherText: String,
     method: BackupMethods.RawValue,
@@ -366,6 +366,112 @@ public class PortalMpc {
         }
       } else if method == BackupMethods.local.rawValue {
         self.executeRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
+          if recoveryResult.error != nil {
+            self.isWalletModificationInProgress = false
+            return completion(Result(error: recoveryResult.error!))
+          }
+          progress?(MpcStatus(status: MpcStatuses.done, done: true))
+          self.isWalletModificationInProgress = false
+          return completion(Result(data: recoveryResult.data!))
+        } progress: { status in
+          progress?(status)
+        }
+      } else {
+        self.isWalletModificationInProgress = false
+        return completion(Result(error: MpcError.unsupportedStorageMethod))
+      }
+    }
+  }
+
+  /// Uses the backup share to create a new signing share and a new backup share, encrypts the new backup share, and stores the private key in storage.
+  /// - Parameters:
+  ///   - cipherText: the cipherText of the backup share (should be passed in from the custodian).
+  ///   - method: The specific backup storage option.
+  ///   - completion: The callback which includes the cipherText of the new backup share.
+  @available(*, deprecated, renamed: "recover")
+  public func legacyRecover(
+    cipherText: String,
+    method: BackupMethods.RawValue,
+    completion: @escaping (Result<String>) -> Void,
+    progress: ((MpcStatus) -> Void)? = nil
+  ) {
+    if self.version != "v4" {
+      return completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v4`.")))
+    }
+
+    guard !self.isWalletModificationInProgress else {
+      print("❌ A wallet modification operation is already in progress.")
+      return completion(Result(error: MpcError.walletModificationAlreadyInProgress))
+    }
+
+    self.isWalletModificationInProgress = true
+
+    // Derive the storage and throw an error if none was provided.
+    let storage = self.storage[method] as? Storage
+    if storage == nil {
+      self.isWalletModificationInProgress = false
+      return completion(Result(error: MpcError.unsupportedStorageMethod))
+    }
+
+    print("Validating Keychain is available...")
+    self.keychain.validateOperations { result in
+      // Handle errors
+      if result.error != nil {
+        print("❌ Keychain is not available:")
+        self.isWalletModificationInProgress = false
+        return completion(Result(error: result.error!))
+      }
+      print("Keychain is available, continuing...")
+
+      if method == BackupMethods.iCloud.rawValue {
+        print("Validating iCloud Storage is available...")
+        (storage as! ICloudStorage).validateOperations { (result: Result<Bool>) in
+          if result.error != nil {
+            print("❌ iCloud Storage is not available:")
+            print(result)
+            self.isWalletModificationInProgress = false
+            return completion(Result(error: result.error!))
+          }
+          print("iCloud Storage is available, continuing...")
+
+          // Call the MPC service to get the backup share.
+          self.executeLegacyRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
+            if recoveryResult.error != nil {
+              self.isWalletModificationInProgress = false
+              return completion(Result(error: recoveryResult.error!))
+            }
+            progress?(MpcStatus(status: MpcStatuses.done, done: true))
+            self.isWalletModificationInProgress = false
+            return completion(Result(data: recoveryResult.data!))
+          } progress: { status in
+            progress?(status)
+          }
+        }
+      } else if method == BackupMethods.GoogleDrive.rawValue {
+        print("Validating Google Drive Storage is available...")
+        (storage as! GDriveStorage).validateOperations { (result: Result<Bool>) in
+          if result.error != nil {
+            print("❌ Google Drive Storage is not available:")
+            print(result)
+            self.isWalletModificationInProgress = false
+            return completion(Result(error: result.error!))
+          }
+          print("Google Drive Storage is available, starting backup...")
+
+          self.executeLegacyRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
+            if recoveryResult.error != nil {
+              self.isWalletModificationInProgress = false
+              return completion(Result(error: recoveryResult.error!))
+            }
+            progress?(MpcStatus(status: MpcStatuses.done, done: true))
+            self.isWalletModificationInProgress = false
+            return completion(Result(data: recoveryResult.data!))
+          } progress: { status in
+            progress?(status)
+          }
+        }
+      } else if method == BackupMethods.local.rawValue {
+        self.executeLegacyRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
           if recoveryResult.error != nil {
             self.isWalletModificationInProgress = false
             return completion(Result(error: recoveryResult.error!))
@@ -495,6 +601,40 @@ public class PortalMpc {
   }
 
   private func executeRecovery(
+    storage _: Storage,
+    method: BackupMethods.RawValue,
+    cipherText: String,
+    completion: @escaping (Result<String>) -> Void,
+    progress: ((MpcStatus) -> Void)? = nil
+  ) {
+    progress?(MpcStatus(status: MpcStatuses.readingShare, done: false))
+    self.getBackupShare(cipherText: cipherText, method: method) { (result: Result<String>) in
+      // Throw if there was an error getting the backup share.
+      guard result.error == nil else {
+        return completion(Result(error: result.error!))
+      }
+
+      progress?(MpcStatus(status: MpcStatuses.recoveringSigningShare, done: false))
+      self.recoverSigning(backupShare: result.data!) { signingResult in
+        if signingResult.error != nil {
+          return completion(Result(error: signingResult.error!))
+        }
+
+        // Throw if address is nil.
+        guard let unwrappedAddress = self.address else {
+          return completion(Result(error: MpcError.unwrappingAddress))
+        }
+
+        return completion(Result(data: unwrappedAddress))
+      } progress: { status in
+        progress?(status)
+      }
+    } progress: { status in
+      progress?(status)
+    }
+  }
+
+  private func executeLegacyRecovery(
     storage: Storage,
     method: BackupMethods.RawValue,
     cipherText: String,
@@ -899,6 +1039,7 @@ public enum MpcError: Error {
   case unexpectedErrorOnRecoverBackup(message: String)
   case unexpectedErrorOnSign(message: String)
   case unsupportedStorageMethod
+  case unwrappingAddress
   case walletModificationAlreadyInProgress
 }
 
