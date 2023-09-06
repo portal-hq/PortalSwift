@@ -364,6 +364,7 @@ public class PortalProvider {
 
     do {
       let gatewayUrl = try PortalProvider.getGatewayUrl(gatewayConfig: self.gatewayConfig, chainId: value)
+      self.gatewayUrl = gatewayUrl
       self.gateway = HttpRequester(baseUrl: gatewayUrl)
     } catch {
       throw ProviderInvalidArgumentError.invalidGatewayUrl
@@ -518,9 +519,9 @@ public class PortalProvider {
         requestType: HttpRequestType.GatewayRequest
       ) { (result: Result<ETHGatewayResponse>) in
         if result.data != nil {
-          return completion(payload.method, payload.params, Result(data: result.data!), payload.id!)
+          completion(payload.method, payload.params, Result(data: result.data!), payload.id!)
         } else {
-          return completion(payload.method, payload.params, Result(error: result.error!), payload.id!)
+          completion(payload.method, payload.params, Result(error: result.error!), payload.id!)
         }
       }
     } catch {
@@ -549,9 +550,9 @@ public class PortalProvider {
         requestType: HttpRequestType.GatewayRequest
       ) { (result: Result<ETHGatewayResponse>) in
         if result.data != nil {
-          return completion(payload.method, payload.params, Result(data: result.data!), payload.id!)
+          completion(payload.method, payload.params, Result(data: result.data!), payload.id!)
         } else {
-          return completion(payload.method, payload.params, Result(error: result.error!), payload.id!)
+          completion(payload.method, payload.params, Result(error: result.error!), payload.id!)
         }
       }
     } catch {
@@ -578,9 +579,9 @@ public class PortalProvider {
         requestType: HttpRequestType.GatewayRequest
       ) { (result: Result<ETHGatewayResponse>) in
         if result.data != nil {
-          return completion(payload.method, payload.params, Result(data: result.data!), payload.id!)
+          completion(payload.method, payload.params, Result(data: result.data!), payload.id!)
         } else {
-          return completion(payload.method, payload.params, Result(error: result.error!), payload.id!)
+          completion(payload.method, payload.params, Result(error: result.error!), payload.id!)
         }
       }
     } catch {
@@ -659,7 +660,7 @@ public class PortalProvider {
   }
 
   private func removeOnce(registeredEventHandler: RegisteredEventHandler) -> Bool {
-    return !registeredEventHandler.once
+    !registeredEventHandler.once
   }
 
   private func dispatchConnect() {
