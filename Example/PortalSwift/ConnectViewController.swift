@@ -93,7 +93,7 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
 
     portalConnect.on(event: Events.ConnectError.rawValue, callback: { data in
       if let errorData = data as? ErrorData {
-        print("Event \(Events.ConnectError.rawValue) recieved on \(label). Error: \(errorData.message)")
+        print("Event \(Events.ConnectError.rawValue) recieved on \(label). Error: \(errorData.params.message) Code: \(errorData.params.code)")
       } else {
         print("Event \(Events.ConnectError.rawValue) recieved on \(label). Error: \(data)")
       }
@@ -151,16 +151,19 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
 
   func didRequestApprovalDapps(portalConnect: PortalConnect, data: Any) {
     print("Emitting Dapp Session Approval for v2..")
-    if let connectData = data as? ConnectData {
+    if var connectData = data as? ConnectData {
       // Now you can work with the parsed ConnectData object
-      print(connectData.params)
+//      print(connectData.params)
+      let chainsToAdd = self.portal!.gatewayConfig.keys.map { "eip155:\($0)" }
+
+      connectData.params.params.requiredNamespaces.eip155.chains.append(contentsOf: chainsToAdd)
 
       // You can emit the event with the parsed ConnectData object
-      portalConnect.emit(event: Events.PortalDappSessionApprovedV1.rawValue, data: connectData)
+      portalConnect.emit(event: Events.PortalDappSessionApproved.rawValue, data: connectData)
     } else {
       print("Invalid data type. Expected ConnectData.")
     }
-    portalConnect.emit(event: Events.PortalDappSessionApproved.rawValue, data: data)
+//    portalConnect.emit(event: Events.PortalDappSessionApproved.rawValue, data: data)
   }
 
   func didRequestApprovalDappsV1(portalConnect: PortalConnect, data: Any) {

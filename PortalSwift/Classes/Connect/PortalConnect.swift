@@ -140,7 +140,7 @@ public class PortalConnect: EventBus {
     self.client?.on("connected", self.handleConnected)
     self.client?.on("connectedV1", self.handleConnectedV1)
     self.client?.on("disconnected", self.handleDisconnected)
-    self.client?.on("error", self.handleError)
+    self.client?.on("error", self.handleConnectError)
     self.client?.on("portal_connectError", self.handleError)
     self.client?.on("session_request", self.handleSessionRequest)
     self.client?.on("session_request_address", self.handleSessionRequestAddress)
@@ -154,18 +154,22 @@ public class PortalConnect: EventBus {
   }
 
   func handleDappSessionRequested(data: ConnectData) {
-    once(event: Events.PortalDappSessionApproved.rawValue) { [weak self] _ in
+    once(event: Events.PortalDappSessionApproved.rawValue) { [weak self] data in
       guard let self = self else { return }
-
+      guard let connectData = data as? ConnectData else {
+        print("[PortalConnect] Received data is not of type ConnectData")
+        return
+      }
+      print("About to send to server", data)
       // If the approved event is fired
       let event = DappSessionResponseMessage(
         event: "portal_dappSessionApproved",
         data: SessionResponseData(
-          id: data.id,
-          topic: data.topic,
+          id: connectData.id,
+          topic: connectData.topic,
           address: self.address!,
           chainId: String(self.chainId),
-          params: data.params
+          params: connectData.params
         )
       )
 
@@ -178,18 +182,22 @@ public class PortalConnect: EventBus {
       }
     }
 
-    once(event: Events.PortalDappSessionRejected.rawValue) { [weak self] _ in
+    once(event: Events.PortalDappSessionRejected.rawValue) { [weak self] data in
       guard let self = self else { return }
+      guard let connectData = data as? ConnectData else {
+        print("[PortalConnect] Received data is not of type ConnectData")
+        return
+      }
 
       // If the approved event is fired
       let event = DappSessionResponseMessage(
         event: "portal_dappSessionRejected",
         data: SessionResponseData(
-          id: data.id,
-          topic: data.topic,
+          id: connectData.id,
+          topic: connectData.topic,
           address: self.address!,
           chainId: String(self.chainId),
-          params: data.params
+          params: connectData.params
         )
       )
 
@@ -285,12 +293,18 @@ public class PortalConnect: EventBus {
     emit(event: Events.ConnectError.rawValue, data: data)
   }
 
+  func handleConnectError(data: ConnectError) {
+    var errorData = ErrorData(id: "0", topic: self.topic ?? "0", params: data)
+    emit(event: Events.ConnectError.rawValue, data: data)
+  }
+
   func handleSessionRequest(data: SessionRequestData) {
-    let (id, method, params, topic) = (
+    let (id, method, params, topic, chainId) = (
       data.id,
       data.params.request.method,
       data.params.request.params,
-      data.topic
+      data.topic,
+      data.params.chainId
     )
 
     on(event: Events.PortalSigningRejected.rawValue) { [weak self] _ in
