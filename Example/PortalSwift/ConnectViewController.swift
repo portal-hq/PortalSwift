@@ -152,25 +152,20 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
   func didRequestApprovalDapps(portalConnect: PortalConnect, data: Any) {
     print("Emitting Dapp Session Approval for v2..")
     if var connectData = data as? ConnectData {
-      // Now you can work with the parsed ConnectData object
-//      print(connectData.params)
       var newConnectData = portalConnect.addChainsToProposal(data: connectData)
 
       portalConnect.emit(event: Events.PortalDappSessionApproved.rawValue, data: newConnectData)
     } else {
       print("Invalid data type. Expected ConnectData.")
     }
-//    portalConnect.emit(event: Events.PortalDappSessionApproved.rawValue, data: data)
   }
 
   func didRequestApprovalDappsV1(portalConnect: PortalConnect, data: Any) {
     print("Emitting Dapp Session Approval for v1..")
 
     if let connectData = data as? ConnectV1Data {
-      // Now you can work with the parsed ConnectV1Data object
       print(connectData.params)
 
-      // You can emit the event with the parsed ConnectV1Data object
       portalConnect.emit(event: Events.PortalDappSessionApprovedV1.rawValue, data: connectData)
     } else {
       print("Invalid data type. Expected ConnectV1Data.")
