@@ -41,6 +41,7 @@ public class PortalConnect: EventBus {
   private let webSocketServer: String
   private let provider: PortalProvider
   private var topic: String?
+  private var gatewayConfig: [Int: String]
 
   public init(
     _ apiKey: String,
@@ -55,7 +56,7 @@ public class PortalConnect: EventBus {
   ) throws {
     self.apiKey = apiKey
     self.webSocketServer = webSocketServer
-
+    self.gatewayConfig = gatewayConfig
     // Initialize the PortalProvider
     self.provider = try PortalProvider(
       apiKey: apiKey,
@@ -140,7 +141,7 @@ public class PortalConnect: EventBus {
     self.client?.on("connected", self.handleConnected)
     self.client?.on("connectedV1", self.handleConnectedV1)
     self.client?.on("disconnected", self.handleDisconnected)
-    self.client?.on("error", self.handleError)
+    self.client?.on("error", self.handleConnectError)
     self.client?.on("portal_connectError", self.handleError)
     self.client?.on("session_request", self.handleSessionRequest)
     self.client?.on("session_request_address", self.handleSessionRequestAddress)
@@ -153,19 +154,60 @@ public class PortalConnect: EventBus {
     self.client?.disconnect(userInitiated)
   }
 
-  func handleDappSessionRequested(data: ConnectData) {
-    once(event: Events.PortalDappSessionApproved.rawValue) { [weak self] _ in
-      guard let self = self else { return }
+  public func addChainsToProposal(data: ConnectData) -> ConnectData {
+    let chainsToAdd = self.gatewayConfig.keys.map { "eip155:\($0)" }
 
+    // Convert existing chains and chainsToAdd to sets
+    let existingChainsSet = Set(data.params.params.requiredNamespaces.eip155.chains)
+    let chainsToAddSet = Set(chainsToAdd)
+
+    // Merge the two sets and convert back to an array
+    let newChains = Array(existingChainsSet.union(chainsToAddSet))
+
+    // Create a new Eip155 instance with the updated chains
+    let newEip155 = Eip155(chains: newChains,
+                           methods: data.params.params.requiredNamespaces.eip155.methods,
+                           events: data.params.params.requiredNamespaces.eip155.events,
+                           rpcMap: data.params.params.requiredNamespaces.eip155.rpcMap)
+
+    // Create a new Namespaces instance with the updated Eip155
+    let newNamespaces = Namespaces(eip155: newEip155)
+
+    // Create a new Params instance with the updated Namespaces
+    let newParams = Params(id: data.params.id,
+                           pairingTopic: data.params.params.pairingTopic,
+                           expiry: data.params.params.expiry,
+                           requiredNamespaces: newNamespaces,
+                           optionalNamespaces: data.params.params.optionalNamespaces,
+                           relays: data.params.params.relays,
+                           proposer: data.params.params.proposer, verifyContext: data.params.params.verifyContext)
+
+    let newProposal = SessionProposal(id: data.params.id, params: newParams)
+    // Create a new ConnectData instance with the updated Params
+    let newConnectData = ConnectData(id: data.id,
+                                     topic: data.topic,
+                                     params: newProposal)
+
+    return newConnectData
+  }
+
+  func handleDappSessionRequested(data: ConnectData) {
+    once(event: Events.PortalDappSessionApproved.rawValue) { [weak self] callbackData in
+      guard let self = self else { return }
+      guard let connectData = callbackData as? ConnectData else {
+        print("[PortalConnect] Received data is not of type ConnectData")
+        self.emit(event: Events.ConnectError.rawValue, data: ErrorData(id: data.id, topic: data.topic, params: ConnectError(message: "Received data is not of type ConnectData", code: 504)))
+        return
+      }
       // If the approved event is fired
       let event = DappSessionResponseMessage(
         event: "portal_dappSessionApproved",
         data: SessionResponseData(
-          id: data.id,
-          topic: data.topic,
+          id: connectData.id,
+          topic: connectData.topic,
           address: self.address!,
           chainId: String(self.chainId),
-          params: data.params
+          params: connectData.params
         )
       )
 
@@ -178,18 +220,23 @@ public class PortalConnect: EventBus {
       }
     }
 
-    once(event: Events.PortalDappSessionRejected.rawValue) { [weak self] _ in
+    once(event: Events.PortalDappSessionRejected.rawValue) { [weak self] callbackData in
       guard let self = self else { return }
+      guard let connectData = callbackData as? ConnectData else {
+        print("[PortalConnect] Received data is not of type ConnectData")
+        self.emit(event: Events.ConnectError.rawValue, data: ErrorData(id: data.id, topic: data.topic, params: ConnectError(message: "Received data is not of type ConnectData", code: 504)))
+        return
+      }
 
       // If the approved event is fired
       let event = DappSessionResponseMessage(
         event: "portal_dappSessionRejected",
         data: SessionResponseData(
-          id: data.id,
-          topic: data.topic,
+          id: connectData.id,
+          topic: connectData.topic,
           address: self.address!,
           chainId: String(self.chainId),
-          params: data.params
+          params: connectData.params
         )
       )
 
@@ -285,12 +332,18 @@ public class PortalConnect: EventBus {
     emit(event: Events.ConnectError.rawValue, data: data)
   }
 
+  func handleConnectError(data: ConnectError) {
+    var errorData = ErrorData(id: "0", topic: self.topic ?? "0", params: data)
+    emit(event: Events.ConnectError.rawValue, data: errorData)
+  }
+
   func handleSessionRequest(data: SessionRequestData) {
-    let (id, method, params, topic) = (
+    let (id, method, params, topic, chainId) = (
       data.id,
       data.params.request.method,
       data.params.request.params,
-      data.topic
+      data.topic,
+      data.params.chainId
     )
 
     on(event: Events.PortalSigningRejected.rawValue) { [weak self] _ in
