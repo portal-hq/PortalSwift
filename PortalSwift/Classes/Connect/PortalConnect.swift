@@ -192,11 +192,11 @@ public class PortalConnect: EventBus {
   }
 
   func handleDappSessionRequested(data: ConnectData) {
-    once(event: Events.PortalDappSessionApproved.rawValue) { [weak self] data in
+    once(event: Events.PortalDappSessionApproved.rawValue) { [weak self] callbackData in
       guard let self = self else { return }
-      guard let connectData = data as? ConnectData else {
+      guard let connectData = callbackData as? ConnectData else {
         print("[PortalConnect] Received data is not of type ConnectData")
-        self.emit(event: Events.ConnectError.rawValue, data: ErrorData(id: "0", topic: "0", params: ConnectError(message: "Received data is not of type ConnectData", code: 504)))
+        self.emit(event: Events.ConnectError.rawValue, data: ErrorData(id: data.id, topic: data.topic, params: ConnectError(message: "Received data is not of type ConnectData", code: 504)))
         return
       }
       // If the approved event is fired
@@ -220,11 +220,11 @@ public class PortalConnect: EventBus {
       }
     }
 
-    once(event: Events.PortalDappSessionRejected.rawValue) { [weak self] data in
+    once(event: Events.PortalDappSessionRejected.rawValue) { [weak self] callbackData in
       guard let self = self else { return }
-      guard let connectData = data as? ConnectData else {
+      guard let connectData = callbackData as? ConnectData else {
         print("[PortalConnect] Received data is not of type ConnectData")
-        self.emit(event: Events.ConnectError.rawValue, data: ErrorData(id: "0", topic: "0", params: ConnectError(message: "Received data is not of type ConnectData", code: 504)))
+        self.emit(event: Events.ConnectError.rawValue, data: ErrorData(id: data.id, topic: data.topic, params: ConnectError(message: "Received data is not of type ConnectData", code: 504)))
         return
       }
 
