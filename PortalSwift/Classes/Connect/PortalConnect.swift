@@ -41,6 +41,7 @@ public class PortalConnect: EventBus {
   private let webSocketServer: String
   private let provider: PortalProvider
   private var topic: String?
+  private var gatewayConfig: [Int: String]
 
   public init(
     _ apiKey: String,
@@ -55,7 +56,7 @@ public class PortalConnect: EventBus {
   ) throws {
     self.apiKey = apiKey
     self.webSocketServer = webSocketServer
-
+    self.gatewayConfig = gatewayConfig
     // Initialize the PortalProvider
     self.provider = try PortalProvider(
       apiKey: apiKey,
@@ -153,6 +154,43 @@ public class PortalConnect: EventBus {
     self.client?.disconnect(userInitiated)
   }
 
+  public func addChainsToProposal(data: ConnectData) -> ConnectData {
+    let chainsToAdd = self.gatewayConfig.keys.map { "eip155:\($0)" }
+
+    // Convert existing chains and chainsToAdd to sets
+    let existingChainsSet = Set(data.params.params.requiredNamespaces.eip155.chains)
+    let chainsToAddSet = Set(chainsToAdd)
+
+    // Merge the two sets and convert back to an array
+    let newChains = Array(existingChainsSet.union(chainsToAddSet))
+
+    // Create a new Eip155 instance with the updated chains
+    let newEip155 = Eip155(chains: newChains,
+                           methods: data.params.params.requiredNamespaces.eip155.methods,
+                           events: data.params.params.requiredNamespaces.eip155.events,
+                           rpcMap: data.params.params.requiredNamespaces.eip155.rpcMap)
+
+    // Create a new Namespaces instance with the updated Eip155
+    let newNamespaces = Namespaces(eip155: newEip155)
+
+    // Create a new Params instance with the updated Namespaces
+    let newParams = Params(id: data.params.id,
+                           pairingTopic: data.params.params.pairingTopic,
+                           expiry: data.params.params.expiry,
+                           requiredNamespaces: newNamespaces,
+                           optionalNamespaces: data.params.params.optionalNamespaces,
+                           relays: data.params.params.relays,
+                           proposer: data.params.params.proposer, verifyContext: data.params.params.verifyContext)
+
+    let newProposal = SessionProposal(id: data.params.id, params: newParams)
+    // Create a new ConnectData instance with the updated Params
+    let newConnectData = ConnectData(id: data.id,
+                                     topic: data.topic,
+                                     params: newProposal)
+
+    return newConnectData
+  }
+
   func handleDappSessionRequested(data: ConnectData) {
     once(event: Events.PortalDappSessionApproved.rawValue) { [weak self] data in
       guard let self = self else { return }
@@ -160,7 +198,6 @@ public class PortalConnect: EventBus {
         print("[PortalConnect] Received data is not of type ConnectData")
         return
       }
-      print("About to send to server", data)
       // If the approved event is fired
       let event = DappSessionResponseMessage(
         event: "portal_dappSessionApproved",
@@ -295,7 +332,7 @@ public class PortalConnect: EventBus {
 
   func handleConnectError(data: ConnectError) {
     var errorData = ErrorData(id: "0", topic: self.topic ?? "0", params: data)
-    emit(event: Events.ConnectError.rawValue, data: data)
+    emit(event: Events.ConnectError.rawValue, data: errorData)
   }
 
   func handleSessionRequest(data: SessionRequestData) {

@@ -154,12 +154,9 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
     if var connectData = data as? ConnectData {
       // Now you can work with the parsed ConnectData object
 //      print(connectData.params)
-      let chainsToAdd = self.portal!.gatewayConfig.keys.map { "eip155:\($0)" }
+      var newConnectData = portalConnect.addChainsToProposal(data: connectData)
 
-      connectData.params.params.requiredNamespaces.eip155.chains.append(contentsOf: chainsToAdd)
-
-      // You can emit the event with the parsed ConnectData object
-      portalConnect.emit(event: Events.PortalDappSessionApproved.rawValue, data: connectData)
+      portalConnect.emit(event: Events.PortalDappSessionApproved.rawValue, data: newConnectData)
     } else {
       print("Invalid data type. Expected ConnectData.")
     }
