@@ -364,6 +364,7 @@ public class PortalProvider {
 
     do {
       let gatewayUrl = try PortalProvider.getGatewayUrl(gatewayConfig: self.gatewayConfig, chainId: value)
+      self.gatewayUrl = gatewayUrl
       self.gateway = HttpRequester(baseUrl: gatewayUrl)
     } catch {
       throw ProviderInvalidArgumentError.invalidGatewayUrl
