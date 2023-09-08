@@ -196,6 +196,7 @@ public class PortalConnect: EventBus {
       guard let self = self else { return }
       guard let connectData = data as? ConnectData else {
         print("[PortalConnect] Received data is not of type ConnectData")
+        self.emit(event: Events.ConnectError.rawValue, data: ErrorData(id: "0", topic: "0", params: ConnectError(message: "Received data is not of type ConnectData", code: 504)))
         return
       }
       // If the approved event is fired
@@ -223,6 +224,7 @@ public class PortalConnect: EventBus {
       guard let self = self else { return }
       guard let connectData = data as? ConnectData else {
         print("[PortalConnect] Received data is not of type ConnectData")
+        self.emit(event: Events.ConnectError.rawValue, data: ErrorData(id: "0", topic: "0", params: ConnectError(message: "Received data is not of type ConnectData", code: 504)))
         return
       }
 
