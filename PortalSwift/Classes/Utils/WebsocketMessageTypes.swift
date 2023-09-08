@@ -46,7 +46,14 @@ public struct ConnectedData: Codable {
 }
 
 public struct ErrorData: Codable {
+  public let id: String
+  public let topic: String
+  public let params: ConnectError
+}
+
+public struct ConnectError: Codable {
   public let message: String
+  public let code: Int
 }
 
 public struct Pairing: Codable {
@@ -76,7 +83,7 @@ public struct WebSocketDappSessionRequestMessage: Codable {
 public struct ConnectData: Codable {
   public let id: String
   public let topic: String
-  public let params: SessionProposal
+  public var params: SessionProposal
 }
 
 public struct WebSocketDappSessionRequestV1Message: Codable {
@@ -169,41 +176,41 @@ public struct ChainChangedData: Codable {
 // V2
 
 public struct SessionProposal: Codable {
-  public let id: Int
-  public let params: Params
+  public var id: Int
+  public var params: Params
 }
 
 public struct Params: Codable {
   public let id: Int
   public let pairingTopic: String
   public let expiry: Int
-  public let requiredNamespaces: Namespaces
-  public let optionalNamespaces: OptionalNamespaces?
+  public var requiredNamespaces: Namespaces
+  public var optionalNamespaces: OptionalNamespaces?
   public let relays: [Relay]
   public let proposer: Proposer
   public let verifyContext: VerifyContext?
 }
 
 public struct Namespaces: Codable {
-  public let eip155: Eip155
+  public var eip155: Eip155
 }
 
 public struct Eip155: Codable {
-  public let chains: [String]
-  public let methods: [String]
-  public let events: [String]
-  public let rpcMap: [String: String]
+  public var chains: [String]
+  public var methods: [String]
+  public var events: [String]
+  public var rpcMap: [String: String]?
 }
 
 public struct OptionalNamespaces: Codable {
-  public let eip155: OptionalEip155?
+  public var eip155: OptionalEip155?
 }
 
 public struct OptionalEip155: Codable {
-  public let chains: [String]?
-  public let methods: [String]?
-  public let events: [String]?
-  public let rpcMap: [String: String]?
+  public var chains: [String]?
+  public var methods: [String]?
+  public var events: [String]?
+  public var rpcMap: [String: String]?
 }
 
 public struct Relay: Codable {
