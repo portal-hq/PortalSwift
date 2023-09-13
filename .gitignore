@@ -38,3 +38,6 @@ GoogleService-info.plist
 
 ## Env vars:
 Secrets.xcconfig
+
+## SPM
+portal-swift-spm
