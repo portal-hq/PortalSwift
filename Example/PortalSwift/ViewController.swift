@@ -546,25 +546,21 @@ class ViewController: UIViewController, UITextFieldDelegate {
       let backup = BackupOptions(icloud: ICloudStorage())
       self.PortalWrapper.registerPortal(apiKey: apiKey, backup: backup) { _ in
         DispatchQueue.main.async {
-          do {
-            self.generateButton.isEnabled = true
+          self.generateButton.isEnabled = true
 
-            let address = try self.portal?.address
-            let hasAddress = address?.count ?? 0 > 0
+          let address = self.portal?.address
+          let hasAddress = address?.count ?? 0 > 0
 
-            self.backupButton.isEnabled = hasAddress
-            self.dappBrowserButton.isEnabled = hasAddress
-            self.portalConnectButton.isEnabled = hasAddress
-            self.recoverButton.isEnabled = hasAddress
-            self.legacyRecoverButton.isEnabled = hasAddress
-            self.testButton.isEnabled = hasAddress
-            self.signButton.isEnabled = hasAddress
-            self.deleteKeychainButton.isEnabled = hasAddress
-            self.testNFTsTrxsBalancesSimTrxButton.isEnabled = hasAddress
-            self.sendButton.isEnabled = hasAddress
-          } catch {
-            print("Error fetching address: \(error)")
-          }
+          self.backupButton.isEnabled = hasAddress
+          self.dappBrowserButton.isEnabled = hasAddress
+          self.portalConnectButton.isEnabled = hasAddress
+          self.recoverButton.isEnabled = hasAddress
+          self.legacyRecoverButton.isEnabled = hasAddress
+          self.testButton.isEnabled = hasAddress
+          self.signButton.isEnabled = hasAddress
+          self.deleteKeychainButton.isEnabled = hasAddress
+          self.testNFTsTrxsBalancesSimTrxButton.isEnabled = hasAddress
+          self.sendButton.isEnabled = hasAddress
         }
       }
     }
@@ -583,6 +579,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         completion(false)
         return
       }
+
       if signerMethods.contains(method) {
         guard (result.data!.result as! Result<SignerResult>).error == nil else {
           print("❌ Error testing signer request:", method, "Error:", (result.data!.result as! Result<SignerResult>).error)
@@ -713,26 +710,26 @@ class ViewController: UIViewController, UITextFieldDelegate {
         return
       }
       let otherRequests = [
-        ProviderRequest(method: ETHRequestMethods.BlockNumber.rawValue, params: [], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.GasPrice.rawValue, params: [], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.GetBalance.rawValue, params: [fromAddress!, "latest"], skipLoggingResult: false),
+        //        ProviderRequest(method: ETHRequestMethods.BlockNumber.rawValue, params: [], skipLoggingResult: false),
+//        ProviderRequest(method: ETHRequestMethods.GasPrice.rawValue, params: [], skipLoggingResult: false),
+//        ProviderRequest(method: ETHRequestMethods.GetBalance.rawValue, params: [fromAddress!, "latest"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetBlockByHash.rawValue, params: ["0xdc0818cf78f21a8e70579cb46a43643f78291264dda342ae31049421c82d21ae", false], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.GetBlockTransactionCountByNumber.rawValue, params: ["latest"], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.GetCode.rawValue, params: [fromAddress!, "latest"], skipLoggingResult: false),
+//        ProviderRequest(method: ETHRequestMethods.GetBlockTransactionCountByNumber.rawValue, params: ["latest"], skipLoggingResult: false),
+//        ProviderRequest(method: ETHRequestMethods.GetCode.rawValue, params: [fromAddress!, "latest"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetTransactionByHash.rawValue, params: ["0x88df016429689c079f3b2f6ad39fa052532c56795b733da78a91ebe6a713944b"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetTransactionCount.rawValue, params: [fromAddress!, "latest"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetTransactionReceipt.rawValue, params: ["0x88df016429689c079f3b2f6ad39fa052532c56795b733da78a91ebe6a713944b"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetUncleByBlockHashIndex.rawValue, params: ["0xc6ef2fc5426d6ad6fd9e2a26abeab0aa2411b7ab17f30a99d3cb96aed1d1055b", "0x0"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetUncleCountByBlockHash.rawValue, params: ["0xc6ef2fc5426d6ad6fd9e2a26abeab0aa2411b7ab17f30a99d3cb96aed1d1055b"], skipLoggingResult: false),
         ProviderRequest(method: ETHRequestMethods.GetUncleCountByBlockNumber.rawValue, params: ["latest"], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.NetVersion.rawValue, params: [], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.NewBlockFilter.rawValue, params: [], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.NewPendingTransactionFilter.rawValue, params: [], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.ProtocolVersion.rawValue, params: [], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.SendRawTransaction.rawValue, params: ["0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675"], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.Web3ClientVersion.rawValue, params: [], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.Web3Sha3.rawValue, params: ["0x68656c6c6f20776f726c64"], skipLoggingResult: false),
-        ProviderRequest(method: ETHRequestMethods.GetStorageAt.rawValue, params: [fromAddress, "0x0", "latest"], skipLoggingResult: false),
+//        ProviderRequest(method: ETHRequestMethods.NetVersion.rawValue, params: [], skipLoggingResult: false),
+//        ProviderRequest(method: ETHRequestMethods.NewBlockFilter.rawValue, params: [], skipLoggingResult: false),
+//        ProviderRequest(method: ETHRequestMethods.NewPendingTransactionFilter.rawValue, params: [], skipLoggingResult: false),
+//        ProviderRequest(method: ETHRequestMethods.ProtocolVersion.rawValue, params: [], skipLoggingResult: false),
+//        ProviderRequest(method: ETHRequestMethods.SendRawTransaction.rawValue, params: ["0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675"], skipLoggingResult: false),
+//        ProviderRequest(method: ETHRequestMethods.Web3ClientVersion.rawValue, params: [], skipLoggingResult: false),
+//        ProviderRequest(method: ETHRequestMethods.Web3Sha3.rawValue, params: ["0x68656c6c6f20776f726c64"], skipLoggingResult: false),
+//        ProviderRequest(method: ETHRequestMethods.GetStorageAt.rawValue, params: [fromAddress, "0x0", "latest"], skipLoggingResult: false),
       ]
 
       for request in otherRequests {

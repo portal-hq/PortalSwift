@@ -23,7 +23,7 @@ class ProviderTests: XCTestCase {
 
   override class func setUp() {
     super.setUp()
-    self.username = self.randomString(length: 15)
+    self.username = "test-ios-prod" // self.randomString(length: 15)
     print("username: ", self.username!)
     self.PortalWrap = PortalWrapper()
   }
@@ -43,7 +43,7 @@ class ProviderTests: XCTestCase {
         return expectation.fulfill()
       }
 
-      self.registerPortal(userResult: userResult) { success in
+      self.registerPortal(userResult: userResult, chainId: 5) { success in
         guard success else {
           XCTFail("Failed on registering portal")
           return expectation.fulfill()
@@ -406,7 +406,7 @@ class ProviderTests: XCTestCase {
         return expectation.fulfill()
       }
 
-      self.performRequest(method: ETHRequestMethods.NewBlockFilter.rawValue, params: []) { result in
+      self.performRequest(method: ETHRequestMethods.GetNewBlockFilter.rawValue, params: []) { result in
         guard result.error == nil, let filter = (result.data?.result as? ETHGatewayResponse)?.result else {
           XCTFail("Error testing provider request: \(String(describing: result.error))")
           return expectation.fulfill()
@@ -677,12 +677,7 @@ class ProviderTests: XCTestCase {
     wait(for: [expectation], timeout: 30)
   }
 
-  // ** UNSUPPORTED METHODS, BECAUSE THEY RETURN OBJECTS NOT STRINGS ** //
-
-  // This method should be returning a string but it is returning nil from the provider
   func testEthGetUncleCountByBlockHash() throws {
-    throw XCTSkip("Method is not supported")
-
     let expectation = XCTestExpectation(description: "Expecting valid uncle count by block hash response")
 
     self.testLogin { success in
@@ -691,15 +686,14 @@ class ProviderTests: XCTestCase {
         return expectation.fulfill()
       }
 
-      self.performRequest(method: ETHRequestMethods.GetUncleCountByBlockHash.rawValue, params: ["0xe76d777791f48b5995d20789183514f4aa8bbf09e357383e9a44fae025c6c50a"]) { result in
+      self.performRequest(method: ETHRequestMethods.GetUncleCountByBlockHash.rawValue, params: ["0xaf51bce39fdbcd20680567d1b862bf0bc1fa50f18bef1d53ed0ec93969a92142"]) { result in
         guard result.error == nil, let count = (result.data?.result as? ETHGatewayResponse)?.result else {
           XCTFail("Error testing provider request: \(String(describing: result.error))")
           return expectation.fulfill()
         }
 
-        print("Gateway response for eth_getUncleCountByBlockHash \(String(describing: count))")
-        XCTAssert(!count.isEmpty, "Uncle count by block hash should not be empty")
-        XCTAssert(count.starts(with: "0x"), "Uncle count should be a hexadecimal")
+        XCTAssert(!count.isEmpty, "should not be empty")
+        XCTAssert(count.starts(with: "0x"), "should be a hexadecimal")
         expectation.fulfill()
       }
     }
@@ -708,9 +702,7 @@ class ProviderTests: XCTestCase {
   }
 
   //  https://docs.alchemy.com/reference/eth-getblockbyhash
-  func testEthGetBlockByHash() throws {
-    throw XCTSkip("Method is not supported")
-
+  func testEthGetBlockByHashFalse() throws {
     let expectation = XCTestExpectation(description: "Expecting valid block by hash response")
 
     self.testLogin { success in
@@ -719,15 +711,37 @@ class ProviderTests: XCTestCase {
         return expectation.fulfill()
       }
 
-      let hash = "0x92fc42b9642023f2ee2e88094df80ce87e15d91afa812fef383e6e5cd96e2ed3"
-      self.performRequest(method: ETHRequestMethods.GetBlockByHash.rawValue, params: [hash, false]) { result in
-        guard result.error == nil, let response = (result.data?.result as? ETHGatewayResponse)?.result else {
+      self.performRequest(method: ETHRequestMethods.GetBlockByHash.rawValue, params: ["0xd7584069bdf57823e17c26b56e96e24ff55d95fabf069bf5c427cd963385790b", false]) { result in
+        guard result.error == nil, let response = (result.data?.result as? BlockDataResponseFalse)?.result else {
           XCTFail("Error testing provider request: \(String(describing: result.error))")
           return expectation.fulfill()
         }
 
-        print("Gateway response for eth_getBlockByHash \(String(describing: response))")
-        // Additional assertions based on expected response
+        XCTAssert(response.hash.starts(with: "0x"), "should be a hexadecimal")
+        expectation.fulfill()
+      }
+    }
+
+    wait(for: [expectation], timeout: 30)
+  }
+
+  //  https://docs.alchemy.com/reference/eth-getblockbyhash
+  func testEthGetBlockByHashTrue() throws {
+    let expectation = XCTestExpectation(description: "Expecting valid block by hash response")
+
+    self.testLogin { success in
+      guard success else {
+        XCTFail("Failed on login")
+        return expectation.fulfill()
+      }
+
+      self.performRequest(method: ETHRequestMethods.GetBlockByHash.rawValue, params: ["0xd7584069bdf57823e17c26b56e96e24ff55d95fabf069bf5c427cd963385790b", true]) { result in
+        guard result.error == nil, let response = (result.data?.result as? BlockDataResponseTrue)?.result else {
+          XCTFail("Error testing provider request: \(String(describing: result.error))")
+          return expectation.fulfill()
+        }
+
+        XCTAssert(response.hash.starts(with: "0x"), "should be a hexadecimal")
         expectation.fulfill()
       }
     }
@@ -736,8 +750,6 @@ class ProviderTests: XCTestCase {
   }
 
   func testEthGetTransactionByHash() throws {
-    throw XCTSkip("Method is not supported")
-
     let expectation = XCTestExpectation(description: "Expecting valid transaction by hash response")
 
     self.testLogin { success in
@@ -746,14 +758,13 @@ class ProviderTests: XCTestCase {
         return expectation.fulfill()
       }
 
-      self.performRequest(method: ETHRequestMethods.GetTransactionByHash.rawValue, params: ["0x88df016429689c079f3b2f6ad39fa052532c56795b733da78a91ebe6a713944b"]) { result in
-        guard result.error == nil, let hexValue = (result.data?.result as? ETHGatewayResponse)?.result else {
+      self.performRequest(method: ETHRequestMethods.GetTransactionByHash.rawValue, params: ["0x9be59c4a52a5f5f53a5169e074954fa0a398dc467515bcfe187dbc9603fcc8ba"]) { result in
+        guard result.error == nil, let transaction = (result.data?.result as? EthTransactionResponse)?.result else {
           XCTFail("Error testing provider request: \(String(describing: result.error))")
           return expectation.fulfill()
         }
 
-        print("Gateway response for eth_getTransactionByHash \(String(describing: hexValue))")
-        XCTAssert(!hexValue.isEmpty, "Transaction by hash should not be empty")
+        XCTAssert(transaction.blockHash.starts(with: "0x"), "Block hash should be a hexadecimal")
         expectation.fulfill()
       }
     }
@@ -762,8 +773,6 @@ class ProviderTests: XCTestCase {
   }
 
   func testEthGetTransactionReceipt() throws {
-    throw XCTSkip("Method is not supported")
-
     let expectation = XCTestExpectation(description: "Expecting valid transaction receipt response")
 
     self.testLogin { success in
@@ -772,14 +781,13 @@ class ProviderTests: XCTestCase {
         return expectation.fulfill()
       }
 
-      self.performRequest(method: ETHRequestMethods.GetTransactionReceipt.rawValue, params: ["0x88df016429689c079f3b2f6ad39fa052532c56795b733da78a91ebe6a713944b"]) { result in
-        guard result.error == nil, let receipt = (result.data?.result as? ETHGatewayResponse)?.result else {
+      self.performRequest(method: ETHRequestMethods.GetTransactionReceipt.rawValue, params: ["0x9be59c4a52a5f5f53a5169e074954fa0a398dc467515bcfe187dbc9603fcc8ba"]) { result in
+        guard result.error == nil, let receipt = (result.data?.result as? EthTransactionResponse)?.result else {
           XCTFail("Error testing provider request: \(String(describing: result.error))")
           return expectation.fulfill()
         }
 
-        print("Gateway response for eth_getTransactionReceipt \(String(describing: receipt))")
-        XCTAssert(!receipt.isEmpty, "Transaction receipt should not be empty")
+        XCTAssert(receipt.blockHash.starts(with: "0x"), "Uncle count should be a hexadecimal")
         expectation.fulfill()
       }
     }
@@ -789,24 +797,21 @@ class ProviderTests: XCTestCase {
 
   // https://docs.alchemy.com/reference/eth-getunclebyblockhashandindex
   func testEthGetUncleByBlockHashIndex() throws {
-    throw XCTSkip("Method is not supported")
-
     let expectation = XCTestExpectation(description: "Expecting valid uncle by block hash index response")
 
-    self.testLogin { success in
+    self.testLogin(chainId: 1) { success in
       guard success else {
         XCTFail("Failed on login")
         return expectation.fulfill()
       }
 
-      self.performRequest(method: ETHRequestMethods.GetUncleByBlockHashIndex.rawValue, params: ["0xc6ef2fc5426d6ad6fd9e2a26abeab0aa2411b7ab17f30a99d3cb96aed1d1055b", "0x0"]) { result in
-        guard result.error == nil, let uncle = (result.data?.result as? ETHGatewayResponse)?.result else {
+      self.performRequest(method: ETHRequestMethods.GetUncleByBlockHashIndex.rawValue, params: ["0x4e216c95f527e9ba0f1161a1c4609b893302c704f05a520da8141ca91878f63e", "0x0"]) { result in
+        guard result.error == nil, let uncle = (result.data?.result as? BlockDataResponseFalse)?.result else {
           XCTFail("Error testing provider request: \(String(describing: result.error))")
           return expectation.fulfill()
         }
 
-        print("Gateway response for eth_getUncleByBlockHashIndex \(String(describing: uncle))")
-        XCTAssert(!uncle.isEmpty, "Uncle by block hash index should not be empty")
+        XCTAssert(!uncle.hash.isEmpty, "should not be empty")
         expectation.fulfill()
       }
     }
@@ -814,6 +819,282 @@ class ProviderTests: XCTestCase {
     wait(for: [expectation], timeout: 30)
   }
 
+  func testEthGetUncleByBlockNumberIndex() throws {
+    let expectation = XCTestExpectation(description: "Expecting valid uncle by block number index response")
+
+    self.testLogin(chainId: 1) { success in
+      guard success else {
+        XCTFail("Failed on login")
+        return expectation.fulfill()
+      }
+
+      self.performRequest(method: ETHRequestMethods.GetUncleByBlockNumberAndIndex.rawValue, params: ["0xed14e5", "0x0"]) { result in
+        guard result.error == nil, let uncle = (result.data?.result as? BlockDataResponseFalse)?.result else {
+          XCTFail("Error testing provider request: \(String(describing: result.error))")
+          return expectation.fulfill()
+        }
+
+        XCTAssert(uncle.hash == "0xf4af15465ca81e65866c6e64cbc446b735a06fb2118dda69a7c21d4ab0b1e217", "should be this hex value")
+        expectation.fulfill()
+      }
+    }
+
+    wait(for: [expectation], timeout: 30)
+  }
+
+  func testEthGetTransactionBlockNumberIndex() throws {
+    let expectation = XCTestExpectation(description: "Expecting valid uncle by block number index response")
+
+    self.testLogin(chainId: 1) { success in
+      guard success else {
+        XCTFail("Failed on login")
+        return expectation.fulfill()
+      }
+
+      self.performRequest(method: ETHRequestMethods.GetTransactionByBlockNumberAndIndex.rawValue, params: ["0x93d4c9", "0x0"]) { result in
+        guard result.error == nil, let tx = (result.data?.result as? EthTransactionResponse)?.result else {
+          XCTFail("Error testing provider request: \(String(describing: result.error))")
+          return expectation.fulfill()
+        }
+
+        XCTAssert(tx.blockHash == "0xdc7c42745bc7daf1173e86f43f261de9ba5bbeab6b2b3ef8e616a95568f83813", "should be this hex value")
+
+        expectation.fulfill()
+      }
+    }
+
+    wait(for: [expectation], timeout: 30)
+  }
+
+  func testEthGetTransactionBlockHashIndex() throws {
+    let expectation = XCTestExpectation(description: "Expecting valid uncle by block number index response")
+
+    self.testLogin(chainId: 5) { success in
+      guard success else {
+        XCTFail("Failed on login")
+        return expectation.fulfill()
+      }
+
+      self.performRequest(method: ETHRequestMethods.GetTransactionByBlockHashAndIndex.rawValue, params: ["0xb250fbf3a184e99ecf963776f7f7300185c66aa14d751863598622559d39f183", "0x0"]) { result in
+        guard result.error == nil, let tx = (result.data?.result as? EthTransactionResponse)?.result else {
+          XCTFail("Error testing provider request: \(String(describing: result.error))")
+          return expectation.fulfill()
+        }
+
+        XCTAssert(tx.blockNumber == "0x93d506", "should be this hex value")
+
+        expectation.fulfill()
+      }
+    }
+
+    wait(for: [expectation], timeout: 30)
+  }
+
+  func testEthGetBlockTransactionCountHash() throws {
+    let expectation = XCTestExpectation(description: "Expecting valid uncle by block number index response")
+
+    self.testLogin(chainId: 5) { success in
+      guard success else {
+        XCTFail("Failed on login")
+        return expectation.fulfill()
+      }
+
+      self.performRequest(method: ETHRequestMethods.GetBlockTransactionCountByHash.rawValue, params: ["0xb250fbf3a184e99ecf963776f7f7300185c66aa14d751863598622559d39f183"]) { result in
+        guard result.error == nil, let count = (result.data?.result as? ETHGatewayResponse)?.result else {
+          XCTFail("Error testing provider request: \(String(describing: result.error))")
+          return expectation.fulfill()
+        }
+
+        XCTAssert(count == "0x4e", "should be this hex value")
+
+        expectation.fulfill()
+      }
+    }
+
+    wait(for: [expectation], timeout: 30)
+  }
+
+  func testEthGetLogs() throws {
+    let expectation = XCTestExpectation(description: "Expecting valid uncle by block number index response")
+
+    self.testLogin(chainId: 5) { success in
+      guard success else {
+        XCTFail("Failed on login")
+        return expectation.fulfill()
+      }
+
+      self.performRequest(method: ETHRequestMethods.GetLogs.rawValue, params: [["blockHash": "0xb250fbf3a184e99ecf963776f7f7300185c66aa14d751863598622559d39f183"]]) { result in
+        guard result.error == nil, let logs = (result.data?.result as? LogsResponse)?.result else {
+          XCTFail("Error testing provider request: \(String(describing: result.error))")
+          return expectation.fulfill()
+        }
+
+        XCTAssert(!logs.isEmpty, "should not be empty")
+
+        expectation.fulfill()
+      }
+    }
+
+    wait(for: [expectation], timeout: 30)
+  }
+
+  func testEthGetFilterLogs() throws {
+    let expectation = XCTestExpectation(description: "Expecting valid uncle by block number index response")
+
+    self.testLogin(chainId: 1) { success in
+      guard success else {
+        XCTFail("Failed on login")
+        return expectation.fulfill()
+      }
+
+      self.performRequest(method: ETHRequestMethods.NewFilter.rawValue, params: [["fromBlock": "latest"]]) { result in
+        guard result.error == nil, let filter = (result.data?.result as? ETHGatewayResponse)?.result else {
+          XCTFail("Error testing provider request: \(String(describing: result.error))")
+          return expectation.fulfill()
+        }
+
+        self.performRequest(method: ETHRequestMethods.GetFilterLogs.rawValue, params: [filter]) { result in
+          guard result.error == nil, let logs = (result.data?.result as? LogsResponse)?.result else {
+            XCTFail("Error testing provider request: \(String(describing: result.error))")
+            return expectation.fulfill()
+          }
+
+          XCTAssert((logs[0].blockHash?.starts(with: "0x")) != nil, "Block has should exist")
+          expectation.fulfill()
+        }
+      }
+    }
+
+    wait(for: [expectation], timeout: 30)
+  }
+
+  func testEthGetFilterChanges() throws {
+    let expectation = XCTestExpectation(description: "Expecting valid uncle by block number index response")
+
+    self.testLogin(chainId: 1) { success in
+      guard success else {
+        XCTFail("Failed on login")
+        return expectation.fulfill()
+      }
+
+      self.performRequest(method: ETHRequestMethods.NewFilter.rawValue, params: [["fromBlock": "latest"]]) { result in
+        guard result.error == nil, let filter = (result.data?.result as? ETHGatewayResponse)?.result else {
+          XCTFail("Error testing provider request: \(String(describing: result.error))")
+          return expectation.fulfill()
+        }
+        sleep(7) // there is a delay between creating the filter and the chain knowing about the filter
+        self.performRequest(method: ETHRequestMethods.GetFilterChanges.rawValue, params: [filter]) { result in
+          guard result.error == nil, let logs = (result.data?.result as? LogsResponse)?.result else {
+            XCTFail("Error testing provider request: \(String(describing: result.error))")
+            return expectation.fulfill()
+          }
+
+          XCTAssert((logs[0].blockHash?.starts(with: "0x")) != nil, "Block has should exist")
+          expectation.fulfill()
+        }
+      }
+    }
+
+    wait(for: [expectation], timeout: 30)
+  }
+
+  func testNewFilter() throws {
+    let expectation = XCTestExpectation(description: "Expecting valid uncle by block number index response")
+
+    self.testLogin(chainId: 5) { success in
+      guard success else {
+        XCTFail("Failed on login")
+        return expectation.fulfill()
+      }
+
+      self.performRequest(method: ETHRequestMethods.NewFilter.rawValue, params: [["fromBlock": "0xb250fbf3a184e99ecf963776f7f7300185c66aa14d751863598622559d39f183"]]) { result in
+        guard result.error == nil, let logs = (result.data?.result as? ETHGatewayResponse)?.result else {
+          XCTFail("Error testing provider request: \(String(describing: result.error))")
+          return expectation.fulfill()
+        }
+
+        XCTAssert(!logs.isEmpty, "Listening should be a boolean")
+
+        expectation.fulfill()
+      }
+    }
+
+    wait(for: [expectation], timeout: 30)
+  }
+
+  func testUninstallFilter() throws {
+    let expectation = XCTestExpectation(description: "Expecting valid uncle by block number index response")
+
+    self.testLogin(chainId: 5) { success in
+      guard success else {
+        XCTFail("Failed on login")
+        return expectation.fulfill()
+      }
+
+      self.performRequest(method: ETHRequestMethods.UninstallFilter.rawValue, params: ["0xaac31129c9a0e5e5b48006633058ae2f"]) { result in
+        guard result.error == nil, let response = (result.data?.result as? EthBoolResponse)?.result else {
+          XCTFail("Error testing provider request: \(String(describing: result.error))")
+          return expectation.fulfill()
+        }
+
+        XCTAssert(response is Bool, "Uninstall response should be a boolean")
+
+        expectation.fulfill()
+      }
+    }
+
+    wait(for: [expectation], timeout: 30)
+  }
+
+  func testEthGetBlockNumberFalse() throws {
+    let expectation = XCTestExpectation(description: "Expecting valid uncle by block number index response")
+
+    self.testLogin(chainId: 5) { success in
+      guard success else {
+        XCTFail("Failed on login")
+        return expectation.fulfill()
+      }
+
+      self.performRequest(method: ETHRequestMethods.GetBlockByNumber.rawValue, params: ["latest", false]) { result in
+        guard result.error == nil, let block = (result.data?.result as? BlockDataResponseFalse)?.result else {
+          XCTFail("Error testing provider request: \(String(describing: result.error))")
+          return expectation.fulfill()
+        }
+
+        XCTAssert(!block.hash.isEmpty, "should not be empty")
+
+        expectation.fulfill()
+      }
+    }
+
+    wait(for: [expectation], timeout: 30)
+  }
+
+  func testEthGetBlockNumberTrue() throws {
+    let expectation = XCTestExpectation(description: "Expecting valid uncle by block number index response")
+
+    self.testLogin(chainId: 5) { success in
+      guard success else {
+        XCTFail("Failed on login")
+        return expectation.fulfill()
+      }
+
+      self.performRequest(method: ETHRequestMethods.GetBlockByNumber.rawValue, params: ["latest", true]) { result in
+        guard result.error == nil, let block = (result.data?.result as? BlockDataResponseTrue)?.result else {
+          XCTFail("Error testing provider request: \(String(describing: result.error))")
+          return expectation.fulfill()
+        }
+
+        XCTAssert(!block.hash.isEmpty, "should not be empty")
+
+        expectation.fulfill()
+      }
+    }
+
+    wait(for: [expectation], timeout: 30)
+  }
+
+  // ** UNSUPPORTED METHODS, BECAUSE THEY RETURN OBJECTS NOT STRINGS ** //
   func testZEthSendRawTransaction() throws {
     throw XCTSkip("Method is not supported")
 
@@ -848,7 +1129,7 @@ class ProviderTests: XCTestCase {
     case portalObjectNil
   }
 
-  func testLogin(completion: @escaping (Bool) -> Void) {
+  func testLogin(chainId: Int = 5, completion: @escaping (Bool) -> Void) {
     return XCTContext.runActivity(named: "Login") { _ in
       let registerExpectation = XCTestExpectation(description: "Register")
 
@@ -859,7 +1140,7 @@ class ProviderTests: XCTestCase {
         }
         let userResult = result.data!
 
-        self.registerPortal(userResult: userResult) { success in
+        self.registerPortal(userResult: userResult, chainId: chainId) { success in
           guard success else {
             XCTFail("Failed on registering portal: \(result.error!)")
             return registerExpectation.fulfill()
@@ -882,12 +1163,12 @@ class ProviderTests: XCTestCase {
     return userResult
   }
 
-  func registerPortal(userResult: UserResult, completion: @escaping (Bool) -> Void) {
+  func registerPortal(userResult: UserResult, chainId: Int, completion: @escaping (Bool) -> Void) {
     let backupOption = LocalFileStorage(fileName: "PORTAL_BACKUP_TEST")
     let backup = BackupOptions(local: backupOption)
     print("Registering portal...")
 
-    ProviderTests.PortalWrap.registerPortal(apiKey: userResult.clientApiKey, backup: backup) { result in
+    ProviderTests.PortalWrap.registerPortal(apiKey: userResult.clientApiKey, backup: backup, chainId: chainId) { result in
       guard result.error == nil else {
         XCTFail("Unable to register Portal")
         completion(false)
