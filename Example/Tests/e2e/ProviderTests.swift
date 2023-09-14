@@ -23,7 +23,7 @@ class ProviderTests: XCTestCase {
 
   override class func setUp() {
     super.setUp()
-    self.username = "test-ios-prod" // self.randomString(length: 15)
+    self.username = self.randomString(length: 15)
     print("username: ", self.username!)
     self.PortalWrap = PortalWrapper()
   }

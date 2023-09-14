@@ -275,7 +275,7 @@ final class PortalProviderTests: XCTestCase {
   func testEthNewBlockFilter() {
     let expectation = XCTestExpectation(description: "Expecting valid new block filter response")
 
-    self.performRequest(method: ETHRequestMethods.NewBlockFilter.rawValue, params: []) { result in
+    self.performRequest(method: ETHRequestMethods.GetNewBlockFilter.rawValue, params: []) { result in
       guard result.error == nil, let filter = (result.data?.result as? ETHGatewayResponse)?.result else {
         XCTFail("Error testing provider request: \(String(describing: result.error))")
         return expectation.fulfill()

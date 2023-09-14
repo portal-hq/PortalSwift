@@ -366,7 +366,7 @@ public class PortalConnect: EventBus {
       }
     }
 
-    self.handleProviderRequest(method: method, params: params) { [weak self] result in
+    self.handleProviderRequest(method: method, params: params, chainId: chainId ?? self.chainId) { [weak self] result in
       guard let self = self else { return }
 
       if result.error != nil {
@@ -400,11 +400,12 @@ public class PortalConnect: EventBus {
   }
 
   func handleSessionRequestAddress(data: SessionRequestAddressData) {
-    let (id, method, params, topic) = (
+    let (id, method, params, topic, chainId) = (
       data.id,
       data.params.request.method,
       data.params.request.params,
-      data.topic
+      data.topic,
+      data.params.chainId
     )
 
     on(event: Events.PortalSigningRejected.rawValue) { [weak self] _ in
@@ -427,7 +428,7 @@ public class PortalConnect: EventBus {
       }
     }
 
-    self.handleProviderRequest(method: method, params: params) { [weak self] result in
+    self.handleProviderRequest(method: method, params: params, chainId: chainId ?? self.chainId) { [weak self] result in
       guard let self = self else { return }
 
       if result.error != nil {
@@ -460,11 +461,12 @@ public class PortalConnect: EventBus {
   }
 
   func handleSessionRequestTransaction(data: SessionRequestTransactionData) {
-    let (id, method, params, topic) = (
+    let (id, method, params, topic, chainId) = (
       data.id,
       data.params.request.method,
       data.params.request.params,
-      data.topic
+      data.topic,
+      data.params.chainId
     )
 
     on(event: Events.PortalSigningRejected.rawValue) { [weak self] _ in
@@ -487,7 +489,7 @@ public class PortalConnect: EventBus {
       }
     }
 
-    self.handleProviderRequest(method: method, params: params) { [weak self] result in
+    self.handleProviderRequest(method: method, params: params, chainId: chainId ?? self.chainId) { [weak self] result in
       guard let self = self else { return }
 
       if result.error != nil {
@@ -524,8 +526,8 @@ public class PortalConnect: EventBus {
     self.client?.sendFinalMessageAndDisconnect()
   }
 
-  private func handleProviderRequest(method: String, params: [ETHAddressParam], completion: @escaping (Result<Any>) -> Void) {
-    self.provider.request(payload: ETHAddressPayload(method: method, params: params), connect: self) { result in
+  private func handleProviderRequest(method: String, params: [ETHAddressParam], chainId: Int, completion: @escaping (Result<Any>) -> Void) {
+    self.provider.request(payload: ETHAddressPayload(method: method, params: params, chainId: chainId), connect: self) { result in
       guard result.error == nil else {
         return completion(Result(error: result.error!))
       }
@@ -533,8 +535,8 @@ public class PortalConnect: EventBus {
     }
   }
 
-  private func handleProviderRequest(method: String, params: [ETHTransactionParam], completion: @escaping (Result<Any>) -> Void) {
-    self.provider.request(payload: ETHTransactionPayload(method: method, params: params), connect: self) { (result: Result<TransactionCompletionResult>) in
+  private func handleProviderRequest(method: String, params: [ETHTransactionParam], chainId: Int, completion: @escaping (Result<Any>) -> Void) {
+    self.provider.request(payload: ETHTransactionPayload(method: method, params: params, chainId: chainId), connect: self) { (result: Result<TransactionCompletionResult>) in
       guard result.error == nil else {
         return completion(Result(error: result.error!))
       }
@@ -542,8 +544,8 @@ public class PortalConnect: EventBus {
     }
   }
 
-  private func handleProviderRequest(method: String, params: [Any], completion: @escaping (Result<Any>) -> Void) {
-    self.provider.request(payload: ETHRequestPayload(method: method, params: params), connect: self) { result in
+  private func handleProviderRequest(method: String, params: [Any], chainId: Int, completion: @escaping (Result<Any>) -> Void) {
+    self.provider.request(payload: ETHRequestPayload(method: method, params: params, chainId: chainId), connect: self) { result in
       guard result.error == nil else {
         return completion(Result(error: result.error!))
       }
