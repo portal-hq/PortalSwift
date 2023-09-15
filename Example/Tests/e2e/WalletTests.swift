@@ -27,7 +27,7 @@ class WalletTests: XCTestCase {
     super.tearDown()
   }
 
-  func testLogin(completion: @escaping (Result<Bool>) -> Void) {
+  func testLogin(chainId _: Int = 5, completion: @escaping (Result<Bool>) -> Void) {
     return XCTContext.runActivity(named: "Login") { _ in
       let registerExpectation = XCTestExpectation(description: "Register")
 
@@ -71,7 +71,7 @@ class WalletTests: XCTestCase {
       let backupOption = LocalFileStorage(fileName: "PORTAL_BACKUP")
       let backup = BackupOptions(local: backupOption)
       print("registering portal")
-      WalletTests.PortalWrap.registerPortal(apiKey: userResult.clientApiKey, backup: backup) {
+      WalletTests.PortalWrap.registerPortal(apiKey: userResult.clientApiKey, backup: backup, chainId: 5) {
         result in
         guard result.error == nil else {
           registerExpectation.fulfill()
@@ -209,5 +209,47 @@ class WalletTests: XCTestCase {
       }
     }
     wait(for: [recoverExpectation], timeout: 120)
+  }
+  
+  func testZSign() {
+    if !WalletTests.testAGenerateSucceeded {
+      XCTFail("Failing fast - Generate test failed to complete successfully")
+      return
+    }
+
+    let ethSignExpectation = XCTestExpectation(description: "eth sign")
+    var address: String? = "0x290766b47d6ea98bae2bd189cc8c7b4aa3154371"
+
+    self.testLogin { result in
+      guard result.error == nil else {
+        ethSignExpectation.fulfill()
+        return XCTFail("Failed on login: \(result.error!)")
+      }
+      if let portal = WalletTests.PortalWrap.portal {
+        do {
+          address = try portal.keychain.getAddress()
+        } catch {
+          return XCTFail("Failed to get address: \(error)")
+        }
+
+        let params = [address!, "0xdeadbeaf"]
+
+        WalletTests.PortalWrap.ethSign(params: params) { result in
+          guard result.error == nil else {
+            ethSignExpectation.fulfill()
+            return XCTFail("Failed on eth_sign: \(result.error!)")
+          }
+
+          print("✅ eth_sign result: ", result.data!)
+          XCTAssertFalse(result.data!.isEmpty, "eth sign success")
+
+          ethSignExpectation.fulfill()
+        }
+      } else {
+        return XCTFail("Failed to register portal object.")
+      }
+    }
+
+    wait(for: [ethSignExpectation], timeout: 30)
   }
 }
