@@ -59,7 +59,6 @@ final class HttpRequestTests: XCTestCase {
       method: "GET",
       body: [:],
       headers: [:],
-      isString: true,
       requestType: HttpRequestType.CustomRequest
     )
 

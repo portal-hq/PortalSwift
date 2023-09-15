@@ -546,25 +546,21 @@ class ViewController: UIViewController, UITextFieldDelegate {
       let backup = BackupOptions(icloud: ICloudStorage())
       self.PortalWrapper.registerPortal(apiKey: apiKey, backup: backup) { _ in
         DispatchQueue.main.async {
-          do {
-            self.generateButton.isEnabled = true
+          self.generateButton.isEnabled = true
 
-            let address = try self.portal?.address
-            let hasAddress = address?.count ?? 0 > 0
+          let address = self.portal?.address
+          let hasAddress = address?.count ?? 0 > 0
 
-            self.backupButton.isEnabled = hasAddress
-            self.dappBrowserButton.isEnabled = hasAddress
-            self.portalConnectButton.isEnabled = hasAddress
-            self.recoverButton.isEnabled = hasAddress
-            self.legacyRecoverButton.isEnabled = hasAddress
-            self.testButton.isEnabled = hasAddress
-            self.signButton.isEnabled = hasAddress
-            self.deleteKeychainButton.isEnabled = hasAddress
-            self.testNFTsTrxsBalancesSimTrxButton.isEnabled = hasAddress
-            self.sendButton.isEnabled = hasAddress
-          } catch {
-            print("Error fetching address: \(error)")
-          }
+          self.backupButton.isEnabled = hasAddress
+          self.dappBrowserButton.isEnabled = hasAddress
+          self.portalConnectButton.isEnabled = hasAddress
+          self.recoverButton.isEnabled = hasAddress
+          self.legacyRecoverButton.isEnabled = hasAddress
+          self.testButton.isEnabled = hasAddress
+          self.signButton.isEnabled = hasAddress
+          self.deleteKeychainButton.isEnabled = hasAddress
+          self.testNFTsTrxsBalancesSimTrxButton.isEnabled = hasAddress
+          self.sendButton.isEnabled = hasAddress
         }
       }
     }
@@ -583,6 +579,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         completion(false)
         return
       }
+
       if signerMethods.contains(method) {
         guard (result.data!.result as! Result<SignerResult>).error == nil else {
           print("❌ Error testing signer request:", method, "Error:", (result.data!.result as! Result<SignerResult>).error)

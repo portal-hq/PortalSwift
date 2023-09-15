@@ -220,7 +220,7 @@ public class PortalProvider {
     let isSignerMethod = signerMethods.contains(payload.method)
     let id = UUID().uuidString
 
-    let payloadWithId = ETHRequestPayload(method: payload.method, params: payload.params, id: id)
+    let payloadWithId = ETHRequestPayload(method: payload.method, params: payload.params, id: id, chainId: payload.chainId ?? self.chainId)
 
     if !isSignerMethod, !payloadWithId.method.starts(with: "wallet_") {
       self.handleGatewayRequest(payload: payloadWithId, connect: connect) { (method: String, params: [Any], result: Result<Any>, id: String) in
@@ -275,7 +275,7 @@ public class PortalProvider {
     let isSignerMethod = signerMethods.contains(payload.method)
     let id = UUID().uuidString
 
-    let payloadWithId = ETHTransactionPayload(method: payload.method, params: payload.params, id: id)
+    let payloadWithId = ETHTransactionPayload(method: payload.method, params: payload.params, id: id, chainId: payload.chainId ?? self.chainId)
 
     if !isSignerMethod, !payloadWithId.method.starts(with: "wallet_") {
       self.handleGatewayRequest(payload: payloadWithId, connect: connect) {
@@ -333,7 +333,7 @@ public class PortalProvider {
     let isSignerMethod = signerMethods.contains(payload.method)
     let id = UUID().uuidString
 
-    let payloadWithId = ETHAddressPayload(method: payload.method, params: payload.params, id: id)
+    let payloadWithId = ETHAddressPayload(method: payload.method, params: payload.params, id: id, chainId: payload.chainId ?? self.chainId)
 
     if !isSignerMethod, !payloadWithId.method.starts(with: "wallet_") {
       self.handleGatewayRequest(payload: payloadWithId, connect: connect) {
@@ -572,16 +572,88 @@ public class PortalProvider {
     ]
 
     do {
-      try self.gateway.post(
-        path: "/",
-        body: body,
-        headers: ["Content-Type": "application/json"],
-        requestType: HttpRequestType.GatewayRequest
-      ) { (result: Result<ETHGatewayResponse>) in
-        if result.data != nil {
-          completion(payload.method, payload.params, Result(data: result.data!), payload.id!)
+      switch payload.method {
+      case ETHRequestMethods.GetBlockByHash.rawValue, ETHRequestMethods.GetUncleByBlockHashIndex.rawValue, ETHRequestMethods.GetUncleByBlockNumberAndIndex.rawValue, ETHRequestMethods.GetBlockByNumber.rawValue:
+        if let params = payload.params as? [Any], params.count > 1, let elementAtIndex1 = params[1] as? Bool, elementAtIndex1 {
+          // The element at index 1 is a Bool and evaluates to true
+          try self.gateway.post(
+            path: "/",
+            body: body,
+            headers: ["Content-Type": "application/json"],
+            requestType: HttpRequestType.GatewayRequest
+          ) { (result: Result<BlockDataResponseTrue>) in
+            if result.data != nil {
+              completion(payload.method, payload.params, Result(data: result.data!), payload.id!)
+            } else {
+              completion(payload.method, payload.params, Result(error: result.error!), payload.id!)
+            }
+          }
         } else {
-          completion(payload.method, payload.params, Result(error: result.error!), payload.id!)
+          try self.gateway.post(
+            path: "/",
+            body: body,
+            headers: ["Content-Type": "application/json"],
+            requestType: HttpRequestType.GatewayRequest
+          ) { (result: Result<BlockDataResponseFalse>) in
+            if result.data != nil {
+              completion(payload.method, payload.params, Result(data: result.data!), payload.id!)
+            } else {
+              completion(payload.method, payload.params, Result(error: result.error!), payload.id!)
+            }
+          }
+        }
+      case ETHRequestMethods.GetTransactionReceipt.rawValue, ETHRequestMethods.GetTransactionByHash.rawValue, ETHRequestMethods.GetTransactionByBlockNumberAndIndex.rawValue,
+           ETHRequestMethods.GetTransactionByBlockHashAndIndex.rawValue:
+        try self.gateway.post(
+          path: "/",
+          body: body,
+          headers: ["Content-Type": "application/json"],
+          requestType: HttpRequestType.GatewayRequest
+        ) { (result: Result<EthTransactionResponse>) in
+          if result.data != nil {
+            completion(payload.method, payload.params, Result(data: result.data!), payload.id!)
+          } else {
+            completion(payload.method, payload.params, Result(error: result.error!), payload.id!)
+          }
+        }
+      case ETHRequestMethods.NetListening.rawValue, ETHRequestMethods.UninstallFilter.rawValue:
+        try self.gateway.post(
+          path: "/",
+          body: body,
+          headers: ["Content-Type": "application/json"],
+          requestType: HttpRequestType.GatewayRequest
+        ) { (result: Result<EthBoolResponse>) in
+          if result.data != nil {
+            completion(payload.method, payload.params, Result(data: result.data!), payload.id!)
+          } else {
+            completion(payload.method, payload.params, Result(error: result.error!), payload.id!)
+          }
+        }
+      case ETHRequestMethods.GetLogs.rawValue, ETHRequestMethods.GetFilterLogs.rawValue, ETHRequestMethods.GetFilterChanges.rawValue:
+        try self.gateway.post(
+          path: "/",
+          body: body,
+          headers: ["Content-Type": "application/json"],
+          requestType: HttpRequestType.GatewayRequest
+        ) { (result: Result<LogsResponse>) in
+          if result.data != nil {
+            completion(payload.method, payload.params, Result(data: result.data!), payload.id!)
+          } else {
+            completion(payload.method, payload.params, Result(error: result.error!), payload.id!)
+          }
+        }
+      default:
+        try self.gateway.post(
+          path: "/",
+          body: body,
+          headers: ["Content-Type": "application/json"],
+          requestType: HttpRequestType.GatewayRequest
+        ) { (result: Result<ETHGatewayResponse>) in
+          if result.data != nil {
+            completion(payload.method, payload.params, Result(data: result.data!), payload.id!)
+          } else {
+            completion(payload.method, payload.params, Result(error: result.error!), payload.id!)
+          }
         }
       }
     } catch {
@@ -728,17 +800,11 @@ public enum ETHRequestMethods: String {
   case EstimateGas = "eth_estimateGas"
   case GasPrice = "eth_gasPrice"
   case GetBalance = "eth_getBalance"
-  case GetBlockByHash = "eth_getBlockByHash"
   case GetBlockTransactionCountByNumber = "eth_getBlockTransactionCountByNumber"
   case GetCode = "eth_getCode"
   case GetStorageAt = "eth_getStorageAt"
-  case GetTransactionByHash = "eth_getTransactionByHash"
   case GetTransactionCount = "eth_getTransactionCount"
-  case GetTransactionReceipt = "eth_getTransactionReceipt"
-  case GetUncleByBlockHashIndex = "eth_getUncleByBlockHashAndIndex"
-  case GetUncleCountByBlockHash = "eth_getUncleCountByBlockHash"
   case GetUncleCountByBlockNumber = "eth_getUncleCountByBlockNumber"
-  case NewBlockFilter = "eth_newBlockFilter"
   case NewPendingTransactionFilter = "eth_newPendingTransactionFilter"
   case PersonalSign = "personal_sign"
   case ProtocolVersion = "eth_protocolVersion"
@@ -750,17 +816,23 @@ public enum ETHRequestMethods: String {
   case SignTypedDataV3 = "eth_signTypedData_v3"
   case SignTypedDataV4 = "eth_signTypedData_v4"
 
-  //  case UninstallFilter = "eth_uninstallFilter"
-  //  case NewFilter = "eth_newFilter"
-  //  case GetTransactionByBlockNumberAndIndex = "eth_getTransactionByBlockNumberAndIndex"
-  //  case GetLogs = "eth_getLogs"
-  //  case GetBlockByNumber = "eth_getBlockByNumber"
-  //  case GetFilterLogs = "eth_getFilterLogs"
-  //  case GetBlockTransactionCountByHash = "eth_getBlockTransactionCountByHash"
-  //  case NetListening = "net_listening"
-  //  case GetTransactionByBlockHashAndIndex = "eth_getTransactionByBlockHashAndIndex"
-  //  case GetFilterLogs = "eth_getFilterLogs"
-  //  case GetUncleByBlockNumberAndIndex = "eth_getUncleByBlockNumberAndIndex"
+  case GetBlockByHash = "eth_getBlockByHash"
+  case GetTransactionByHash = "eth_getTransactionByHash"
+  case GetTransactionReceipt = "eth_getTransactionReceipt"
+  case GetUncleByBlockHashIndex = "eth_getUncleByBlockHashAndIndex"
+  case GetUncleCountByBlockHash = "eth_getUncleCountByBlockHash"
+  case GetTransactionByBlockNumberAndIndex = "eth_getTransactionByBlockNumberAndIndex"
+  case GetBlockByNumber = "eth_getBlockByNumber"
+  case GetBlockTransactionCountByHash = "eth_getBlockTransactionCountByHash"
+  case NetListening = "net_listening"
+  case GetTransactionByBlockHashAndIndex = "eth_getTransactionByBlockHashAndIndex"
+  case GetUncleByBlockNumberAndIndex = "eth_getUncleByBlockNumberAndIndex"
+  case GetLogs = "eth_getLogs"
+  case UninstallFilter = "eth_uninstallFilter"
+  case NewFilter = "eth_newFilter"
+  case GetFilterLogs = "eth_getFilterLogs"
+  case GetNewBlockFilter = "eth_newBlockFilter"
+  case GetFilterChanges = "eth_getFilterChanges"
 
   // Wallet Methods (MetaMask stuff)
   case WalletAddEthereumChain = "wallet_addEthereumChain"
@@ -805,6 +877,7 @@ public struct ETHRequestPayload {
   public var method: ETHRequestMethods.RawValue
   public var params: [Any]
   public var signature: String?
+  public var chainId: Int?
 
   public init(method: ETHRequestMethods.RawValue, params: [Any]) {
     self.method = method
@@ -821,6 +894,19 @@ public struct ETHRequestPayload {
     self.method = method
     self.params = params
     self.id = id
+  }
+
+  public init(method: ETHRequestMethods.RawValue, params: [Any], id: String, chainId: Int) {
+    self.method = method
+    self.params = params
+    self.id = id
+    self.chainId = chainId
+  }
+
+  public init(method: ETHRequestMethods.RawValue, params: [Any], chainId: Int) {
+    self.method = method
+    self.params = params
+    self.chainId = chainId
   }
 }
 
@@ -899,6 +985,7 @@ public struct ETHTransactionPayload: Codable {
   public var id: String?
   public var method: ETHRequestMethods.RawValue
   public var params: [ETHTransactionParam]
+  public var chainId: Int? = nil
 
   public init(method: ETHRequestMethods.RawValue, params: [ETHTransactionParam]) {
     self.method = method
@@ -909,6 +996,19 @@ public struct ETHTransactionPayload: Codable {
     self.method = method
     self.params = params
     self.id = id
+  }
+
+  public init(method: ETHRequestMethods.RawValue, params: [ETHTransactionParam], id: String, chainId: Int) {
+    self.method = method
+    self.params = params
+    self.id = id
+    self.chainId = chainId
+  }
+
+  public init(method: ETHRequestMethods.RawValue, params: [ETHTransactionParam], chainId: Int) {
+    self.method = method
+    self.params = params
+    self.chainId = chainId
   }
 }
 
@@ -926,6 +1026,7 @@ public struct ETHAddressPayload: Codable {
   public var id: String?
   public var method: ETHRequestMethods.RawValue
   public var params: [ETHAddressParam]
+  public var chainId: Int? = nil
 
   public init(method: ETHRequestMethods.RawValue, params: [ETHAddressParam]) {
     self.method = method
@@ -936,6 +1037,19 @@ public struct ETHAddressPayload: Codable {
     self.method = method
     self.params = params
     self.id = id
+  }
+
+  public init(method: ETHRequestMethods.RawValue, params: [ETHAddressParam], id: String, chainId: Int) {
+    self.method = method
+    self.params = params
+    self.id = id
+    self.chainId = chainId
+  }
+
+  public init(method: ETHRequestMethods.RawValue, params: [ETHAddressParam], chainId: Int) {
+    self.method = method
+    self.params = params
+    self.chainId = chainId
   }
 }
 
@@ -995,4 +1109,139 @@ public struct AddressCompletionResult {
   public var params: [ETHAddressParam]
   public var result: Any
   public var id: String
+}
+
+// The specific return types for the 17 methods from the gateway that don't return strings
+public struct BlockDataResponseFalse: Codable {
+  public var jsonrpc: String = "2.0"
+  public var id: Int?
+  public var result: BlockData?
+  public var error: ETHGatewayErrorResponse?
+}
+
+public struct BlockData: Codable {
+  public var number: String
+  public var hash: String
+  public var transactions: [String]?
+  public var difficulty: String
+  public var extraData: String
+  public var gasLimit: String
+  public var gasUsed: String
+  public var logsBloom: String
+  public var miner: String
+  public var mixHash: String
+  public var nonce: String
+  public var parentHash: String
+  public var receiptsRoot: String
+  public var sha3Uncles: String
+  public var size: String
+  public var stateRoot: String
+  public var timestamp: String
+  public var totalDifficulty: String?
+  public var transactionsRoot: String
+  public var uncles: [String]
+  public var baseFeePerGas: String?
+}
+
+public struct BlockDataResponseTrue: Codable {
+  public var jsonrpc: String = "2.0"
+  public var id: Int?
+  public var result: BlockDataTrue?
+  public var error: ETHGatewayErrorResponse?
+}
+
+public struct EthTransactionResponse: Codable {
+  public var jsonrpc: String = "2.0"
+  public var id: Int?
+  public var result: TransactionData?
+  public var error: ETHGatewayErrorResponse?
+}
+
+public struct EthBoolResponse: Codable {
+  public var jsonrpc: String = "2.0"
+  public var id: Int?
+  public var result: Bool?
+  public var error: ETHGatewayErrorResponse?
+}
+
+public struct BlockDataTrue: Codable {
+  public let number: String
+  public let hash: String
+  public let transactions: [TransactionData]
+  public let difficulty: String
+  public let extraData: String
+  public let gasLimit: String
+  public let gasUsed: String
+  public let logsBloom: String
+  public let miner: String
+  public let mixHash: String
+  public let nonce: String
+  public let parentHash: String
+  public let receiptsRoot: String
+  public let sha3Uncles: String
+  public let size: String
+  public let stateRoot: String
+  public let timestamp: String
+  public let totalDifficulty: String
+  public let transactionsRoot: String
+  public let uncles: [String]
+  public let baseFeePerGas: String
+  public let withdrawalsRoot: String
+  public let withdrawals: [Withdrawal]
+}
+
+public struct TransactionData: Codable {
+  public let blockHash: String
+  public let blockNumber: String
+  public let hash: String?
+  public let chainId: String?
+  public let from: String
+  public let gas: String?
+  public let gasPrice: String?
+  public let input: String?
+  public let nonce: String?
+  public let r: String?
+  public let s: String?
+  public let to: String?
+  public let transactionIndex: String
+  public let type: String
+  public let v: String?
+  public let value: String?
+  public let accessList: [String]?
+  public let maxFeePerGas: String?
+  public let maxPriorityFeePerGas: String?
+  public let transactionHash: String?
+  public let logs: [Log]?
+  public let contractAddress: String?
+  public let effectiveGasPrice: String?
+  public let cumulativeGasUsed: String?
+  public let gasUsed: String?
+  public let logsBloom: String?
+  public let status: String?
+}
+
+public struct Log: Codable {
+  public let transactionHash: String?
+  public let address: String?
+  public let blockHash: String?
+  public let blockNumber: String?
+  public let data: String?
+  public let logIndex: String?
+  public let removed: Bool?
+  public let topics: [String]?
+  public let transactionIndex: String?
+}
+
+public struct Withdrawal: Codable {
+  public let address: String
+  public let amount: String
+  public let index: String
+  public let validatorIndex: String
+}
+
+public struct LogsResponse: Codable {
+  public var jsonrpc: String = "2.0"
+  public var id: Int?
+  public var result: [Log]?
+  public var error: ETHGatewayErrorResponse?
 }

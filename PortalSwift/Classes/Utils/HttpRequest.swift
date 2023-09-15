@@ -12,34 +12,32 @@ public enum HttpRequestType {
   case CustomRequest
 }
 
-private enum HttpError: Error {
+public enum HttpRequestError: Error {
   case clientError(String)
   case httpError(String)
   case internalServerError(String)
   case nilResponseError
   case unknownError(String)
-}
-
-private enum GatewayError: Error {
   case gatewayError(response: ETHGatewayErrorResponse, status: String)
 }
 
-extension GatewayError: CustomStringConvertible {
+extension HttpRequestError: CustomStringConvertible {
   public var description: String {
     switch self {
     case let .gatewayError(response, status):
       return "HTTP Gateway Error -status: \(status) -code: \(response.code) -message: \(response.message)"
+    default:
+      return "\(self)"
     }
   }
 }
 
 /// A class for making HTTP requests.
-public class HttpRequest<T: Codable, U> {
-  private var body: U?
+public class HttpRequest<T: Codable, BodyType> {
+  private var body: BodyType?
   private var headers: [String: String]
   private var method: String
   private var url: String
-  private var isString: Bool
   private var requestType: HttpRequestType
 
   /// Creates an instance of HttpRequest.
@@ -51,7 +49,7 @@ public class HttpRequest<T: Codable, U> {
   public init(
     url: String,
     method: String,
-    body: U?,
+    body: BodyType?,
     headers: [String: String],
     requestType: HttpRequestType
   ) {
@@ -59,30 +57,6 @@ public class HttpRequest<T: Codable, U> {
     self.headers = headers
     self.method = method
     self.url = url
-    self.isString = false
-    self.requestType = requestType
-  }
-
-  /// Creates an instance of HttpRequest.
-  /// - Parameters:
-  ///   - url: The URL to make a request to.
-  ///   - method: The HTTP method to use.
-  ///   - body: The body of a type you specify.
-  ///   - headers: The HTTP headers.
-  ///   - isString: If we should convert the response to a string.
-  public init(
-    url: String,
-    method: String,
-    body: U?,
-    headers: [String: String],
-    isString: Bool,
-    requestType: HttpRequestType
-  ) {
-    self.body = body
-    self.headers = headers
-    self.method = method
-    self.url = url
-    self.isString = isString
     self.requestType = requestType
   }
 
@@ -99,14 +73,14 @@ public class HttpRequest<T: Codable, U> {
         do {
           // Handle errors
           if error != nil {
-            return completion(Result<T>(error: HttpError.unknownError(error!.localizedDescription)))
+            return completion(Result<T>(error: HttpRequestError.unknownError(error!.localizedDescription)))
           }
 
           // Parse the response and return the properly typed data
           let httpResponse = response as? HTTPURLResponse
 
           if httpResponse == nil {
-            return completion(Result(error: HttpError.nilResponseError))
+            return completion(Result(error: HttpRequestError.nilResponseError))
           }
 
           // Process the response object
@@ -114,10 +88,13 @@ public class HttpRequest<T: Codable, U> {
             return completion(Result(data: "OK" as! T))
           } else if httpResponse!.statusCode >= 200, httpResponse!.statusCode < 300 {
             var typedData: T
-
             // Decode the response into the appropriate type
             if T.self == String.self {
               typedData = String(data: data!, encoding: .utf8) as! T
+            } else if T.self == [String: Any].self {
+              typedData = self.dataToDictionary(data!) as! T
+            } else if T.self == [Any].self {
+              typedData = self.dataToArray(data!) as! T
             } else {
               typedData = try JSONDecoder().decode(T.self, from: data!)
             }
@@ -131,12 +108,16 @@ public class HttpRequest<T: Codable, U> {
               // Decode the response into the appropriate type
               if T.self == String.self {
                 typedData = String(data: data!, encoding: .utf8) as! T
+              } else if T.self == [String: Any].self {
+                typedData = self.dataToDictionary(data!) as! T
+              } else if T.self == [Any].self {
+                typedData = self.dataToArray(data!) as! T
               } else {
                 typedData = try JSONDecoder().decode(T.self, from: data!)
               }
-              return completion(Result(error: GatewayError.gatewayError(response: (typedData as! ETHGatewayResponse).error!, status: String(httpResponse!.statusCode))))
+              return completion(Result(error: HttpRequestError.gatewayError(response: (typedData as! ETHGatewayResponse).error!, status: String(httpResponse!.statusCode))))
             }
-            return completion(Result(error: HttpError.internalServerError(httpResponse!.description)))
+            return completion(Result(error: HttpRequestError.internalServerError(httpResponse!.description)))
           } else if httpResponse!.statusCode >= 400 {
             if self.requestType == HttpRequestType.GatewayRequest {
               var typedData: T
@@ -144,14 +125,18 @@ public class HttpRequest<T: Codable, U> {
               // Decode the response into the appropriate type
               if T.self == String.self {
                 typedData = String(data: data!, encoding: .utf8) as! T
+              } else if T.self == [String: Any].self {
+                typedData = self.dataToDictionary(data!) as! T
+              } else if T.self == [Any].self {
+                typedData = self.dataToArray(data!) as! T
               } else {
                 typedData = try JSONDecoder().decode(T.self, from: data!)
               }
-              return completion(Result(error: GatewayError.gatewayError(response: (typedData as! ETHGatewayResponse).error!, status: String(httpResponse!.statusCode))))
+              return completion(Result(error: HttpRequestError.gatewayError(response: (typedData as? ETHGatewayResponse)?.error! ?? ETHGatewayErrorResponse(code: 32602, message: "Unknown Error"), status: String(httpResponse!.statusCode))))
             }
-            return completion(Result(error: HttpError.clientError(httpResponse!.description)))
+            return completion(Result(error: HttpRequestError.clientError(httpResponse!.description)))
           } else {
-            return completion(Result(error: HttpError.internalServerError(httpResponse!.description)))
+            return completion(Result(error: HttpRequestError.internalServerError(httpResponse!.description)))
           }
         } catch {
           return completion(Result(error: error))
@@ -195,5 +180,13 @@ public class HttpRequest<T: Codable, U> {
 
       return request
     }
+  }
+
+  private func dataToDictionary(_ data: Data) -> [String: Any]? {
+    try? JSONSerialization.jsonObject(with: data, options: .mutableContainers) as? [String: Any]
+  }
+
+  private func dataToArray(_ data: Data) -> [Any]? {
+    try? JSONSerialization.jsonObject(with: data, options: .mutableContainers) as? [Any]
   }
 }
