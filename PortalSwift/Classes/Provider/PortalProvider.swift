@@ -220,7 +220,7 @@ public class PortalProvider {
     let isSignerMethod = signerMethods.contains(payload.method)
     let id = UUID().uuidString
 
-    let payloadWithId = ETHRequestPayload(method: payload.method, params: payload.params, id: id)
+    let payloadWithId = ETHRequestPayload(method: payload.method, params: payload.params, id: id, chainId: payload.chainId ?? self.chainId)
 
     if !isSignerMethod, !payloadWithId.method.starts(with: "wallet_") {
       self.handleGatewayRequest(payload: payloadWithId, connect: connect) { (method: String, params: [Any], result: Result<Any>, id: String) in
@@ -275,7 +275,7 @@ public class PortalProvider {
     let isSignerMethod = signerMethods.contains(payload.method)
     let id = UUID().uuidString
 
-    let payloadWithId = ETHTransactionPayload(method: payload.method, params: payload.params, id: id)
+    let payloadWithId = ETHTransactionPayload(method: payload.method, params: payload.params, id: id, chainId: payload.chainId ?? self.chainId)
 
     if !isSignerMethod, !payloadWithId.method.starts(with: "wallet_") {
       self.handleGatewayRequest(payload: payloadWithId, connect: connect) {
@@ -333,7 +333,7 @@ public class PortalProvider {
     let isSignerMethod = signerMethods.contains(payload.method)
     let id = UUID().uuidString
 
-    let payloadWithId = ETHAddressPayload(method: payload.method, params: payload.params, id: id)
+    let payloadWithId = ETHAddressPayload(method: payload.method, params: payload.params, id: id, chainId: payload.chainId ?? self.chainId)
 
     if !isSignerMethod, !payloadWithId.method.starts(with: "wallet_") {
       self.handleGatewayRequest(payload: payloadWithId, connect: connect) {
@@ -805,6 +805,7 @@ public struct ETHRequestPayload {
   public var method: ETHRequestMethods.RawValue
   public var params: [Any]
   public var signature: String?
+  public var chainId: Int?
 
   public init(method: ETHRequestMethods.RawValue, params: [Any]) {
     self.method = method
@@ -821,6 +822,19 @@ public struct ETHRequestPayload {
     self.method = method
     self.params = params
     self.id = id
+  }
+
+  public init(method: ETHRequestMethods.RawValue, params: [Any], id: String, chainId: Int) {
+    self.method = method
+    self.params = params
+    self.id = id
+    self.chainId = chainId
+  }
+
+  public init(method: ETHRequestMethods.RawValue, params: [Any], chainId: Int) {
+    self.method = method
+    self.params = params
+    self.chainId = chainId
   }
 }
 
@@ -899,6 +913,7 @@ public struct ETHTransactionPayload: Codable {
   public var id: String?
   public var method: ETHRequestMethods.RawValue
   public var params: [ETHTransactionParam]
+  public var chainId: Int? = nil
 
   public init(method: ETHRequestMethods.RawValue, params: [ETHTransactionParam]) {
     self.method = method
@@ -909,6 +924,19 @@ public struct ETHTransactionPayload: Codable {
     self.method = method
     self.params = params
     self.id = id
+  }
+
+  public init(method: ETHRequestMethods.RawValue, params: [ETHTransactionParam], id: String, chainId: Int) {
+    self.method = method
+    self.params = params
+    self.id = id
+    self.chainId = chainId
+  }
+
+  public init(method: ETHRequestMethods.RawValue, params: [ETHTransactionParam], chainId: Int) {
+    self.method = method
+    self.params = params
+    self.chainId = chainId
   }
 }
 
@@ -926,6 +954,7 @@ public struct ETHAddressPayload: Codable {
   public var id: String?
   public var method: ETHRequestMethods.RawValue
   public var params: [ETHAddressParam]
+  public var chainId: Int? = nil
 
   public init(method: ETHRequestMethods.RawValue, params: [ETHAddressParam]) {
     self.method = method
@@ -936,6 +965,19 @@ public struct ETHAddressPayload: Codable {
     self.method = method
     self.params = params
     self.id = id
+  }
+
+  public init(method: ETHRequestMethods.RawValue, params: [ETHAddressParam], id: String, chainId: Int) {
+    self.method = method
+    self.params = params
+    self.id = id
+    self.chainId = chainId
+  }
+
+  public init(method: ETHRequestMethods.RawValue, params: [ETHAddressParam], chainId: Int) {
+    self.method = method
+    self.params = params
+    self.chainId = chainId
   }
 }
 
