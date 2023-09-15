@@ -131,6 +131,7 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
 
     portalConnect.on(event: Events.PortalSigningRequested.rawValue) { (data: Any) in
       print("Chain ID: ", (data as? ETHRequestPayload)?.chainId)
+      print("Chain ID: ", (data as? ETHTransactionPayload)?.chainId)
       if autoApprove {
         portalConnect.emit(event: Events.PortalSigningApproved.rawValue, data: data)
       } else {
