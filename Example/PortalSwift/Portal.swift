@@ -100,7 +100,7 @@ class PortalWrapper {
     case cantLoadInfoPlist
   }
 
-  func registerPortal(apiKey: String, backup: BackupOptions, completion: @escaping (Result<Bool>) -> Void) {
+  func registerPortal(apiKey: String, backup: BackupOptions, chainId: Int = 5, completion: @escaping (Result<Bool>) -> Void) {
     do {
       guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
         return completion(Result(error: PortalWrapperError.cantLoadInfoPlist))
@@ -111,21 +111,18 @@ class PortalWrapper {
       }
       let keychain = PortalKeychain()
       // Configure the chain.
-      let chainId = 5
-      let chain = "goerli"
       self.portal = try Portal(
         apiKey: apiKey,
         backup: backup,
         chainId: chainId,
         keychain: keychain,
         gatewayConfig: [
-          chainId: "https://eth-\(chain).g.alchemy.com/v2/\(ALCHEMY_API_KEY)", 1: "https://eth-mainnet.g.alchemy.com/v2/\(ALCHEMY_API_KEY)", 80001: "https://polygon-mumbai.g.alchemy.com/v2/\(ALCHEMY_API_KEY)", 137: "https://polygon-mainnet.g.alchemy.com/v2/\(ALCHEMY_API_KEY)",
+          5: "https://eth-goerli.g.alchemy.com/v2/\(ALCHEMY_API_KEY)", 1: "https://eth-mainnet.g.alchemy.com/v2/\(ALCHEMY_API_KEY)", 80001: "https://polygon-mumbai.g.alchemy.com/v2/\(ALCHEMY_API_KEY)", 137: "https://polygon-mainnet.g.alchemy.com/v2/\(ALCHEMY_API_KEY)",
         ],
         autoApprove: false,
         apiHost: self.API_URL!,
         mpcHost: self.MPC_URL!
       )
-
       _ = self.portal?.provider.on(event: Events.PortalSigningRequested.rawValue, callback: { [weak self] data in self?.didRequestApproval(data: data) })
       _ = self.portal?.provider.once(event: Events.PortalSignatureReceived.rawValue) { (data: Any) in
         let result = data as! RequestCompletionResult
