@@ -470,7 +470,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
     if eventHandlers.count > 0 {
       // Loop through the event handlers
       for handler in eventHandlers {
-        print("[WebsocketClient] data: \(String(describing: handler))")
+        print("[WebsocketClient] data: \(String(describing: data))")
         // Invoke the handler
         handler(data)
       }
