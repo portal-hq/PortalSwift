@@ -366,7 +366,8 @@ public class PortalConnect: EventBus {
       }
     }
 
-    self.handleProviderRequest(method: method, params: params, chainId: chainId ?? self.chainId) { [weak self] result in
+    let newChainId = chainId ?? self.chainId // use the default chain when there is no chainId sent from Wallet Connect
+    self.handleProviderRequest(method: method, params: params, chainId: newChainId) { [weak self] result in
       guard let self = self else { return }
 
       if result.error != nil {
@@ -428,7 +429,8 @@ public class PortalConnect: EventBus {
       }
     }
 
-    self.handleProviderRequest(method: method, params: params, chainId: chainId ?? self.chainId) { [weak self] result in
+    let newChainId = chainId ?? self.chainId // use the default chain when there is no chainId sent from Wallet Connect
+    self.handleProviderRequest(method: method, params: params, chainId: newChainId) { [weak self] result in
       guard let self = self else { return }
 
       if result.error != nil {
@@ -489,7 +491,8 @@ public class PortalConnect: EventBus {
       }
     }
 
-    self.handleProviderRequest(method: method, params: params, chainId: chainId ?? self.chainId) { [weak self] result in
+    let newChainId = chainId ?? self.chainId // use the default chain when there is no chainId sent from Wallet Connect
+    self.handleProviderRequest(method: method, params: params, chainId: newChainId) { [weak self] result in
       guard let self = self else { return }
 
       if result.error != nil {
