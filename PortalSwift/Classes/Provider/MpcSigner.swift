@@ -29,6 +29,7 @@ class MpcSigner {
   private let mpcUrl: String
   private let version: String
   private let binary: Mobile
+  private let mpcMetadata = MpcMetadata(clientPlatform: "NATIVE_IOS")
 
   init(
     apiKey: String,
@@ -86,7 +87,8 @@ class MpcSigner {
         formattedParams,
         provider.gatewayUrl,
         String(provider.chainId),
-        self.version
+        self.version,
+        self.mpcMetadata
       )
 
       // Attempt to decode the sign result.
@@ -122,7 +124,8 @@ class MpcSigner {
       formattedParams,
       provider.gatewayUrl,
       String(provider.chainId),
-      self.version
+      self.version,
+      self.mpcMetadata
     )
 
     // Attempt to decode the sign result.

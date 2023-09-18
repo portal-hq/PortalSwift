@@ -41,6 +41,7 @@ public class PortalMpc {
   private let rsaFooter = "\n-----END RSA KEY-----"
   private var isWalletModificationInProgress: Bool = false
   private var isMock: Bool = false
+  private let mpcMetadata = MpcMetadata(clientPlatform: "NATIVE_IOS")
 
   /// Create an instance of Portal's MPC service.
   /// - Parameters:
@@ -212,7 +213,7 @@ public class PortalMpc {
         do {
           // Call the MPC service to generate a new wallet.
           progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
-          let response = self.mobile.MobileGenerate(self.apiKey, self.host, self.version, self.apiHost)
+          let response = self.mobile.MobileGenerate(self.apiKey, self.host, self.version, self.apiHost, self.mpcMetadata)
 
           // Parse the share
           progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
@@ -544,7 +545,7 @@ public class PortalMpc {
       // Call the MPC service to generate a backup share.
       progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
 
-      let response = self.mobile.MobileBackup(self.apiKey, self.host, signingShare, self.version, self.apiHost)
+      let response = self.mobile.MobileBackup(self.apiKey, self.host, signingShare, self.version, self.apiHost, self.mpcMetadata)
 
       // Parse the backup share.
       progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
@@ -776,7 +777,7 @@ public class PortalMpc {
       progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
 
       // Call the MPC service to recover the backup share.
-      let result = self.mobile.MobileRecoverBackup(self.apiKey, self.host, clientBackupShare, self.version, self.apiHost)
+      let result = self.mobile.MobileRecoverBackup(self.apiKey, self.host, clientBackupShare, self.version, self.apiHost, self.mpcMetadata)
 
       progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
       let rotateResult: RotateResult = try JSONDecoder().decode(RotateResult.self, from: result.data(using: .utf8)!)
@@ -805,7 +806,7 @@ public class PortalMpc {
     do {
       progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
       // Call the MPC service to recover the signing share.
-      let result = self.mobile.MobileRecoverSigning(self.apiKey, self.host, backupShare, self.version, self.apiHost)
+      let result = self.mobile.MobileRecoverSigning(self.apiKey, self.host, backupShare, self.version, self.apiHost, self.mpcMetadata)
 
       progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
       let rotateResult = try JSONDecoder().decode(RotateResult.self, from: result.data(using: .utf8)!)
