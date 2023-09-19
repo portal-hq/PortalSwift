@@ -13,10 +13,10 @@ cp -R PortalSwift/Classes portal-swift-spm/Sources/PortalSwift
 cp -R PortalSwift/Frameworks portal-swift-spm/Sources/PortalSwift
 
 echo "Copying package file..."
-cp PortalSwift/Package.swift portal-swift-spm/
+cp Package.swift portal-swift-spm/
 
 echo "Moving to package directory..."
 cd portal-swift-spm
 
 echo "Building package..."
-xcodebuild -scheme PortalSwift
+xcodebuild -scheme PortalSwift -sdk iphoneos -destination 'platform=iOS Simulator,name=iPhone 14,OS=16.4'

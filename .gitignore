@@ -41,3 +41,5 @@ Secrets.xcconfig
 
 ## SPM
 portal-swift-spm
+.build
+Package.resolved
