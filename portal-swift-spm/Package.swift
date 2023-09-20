@@ -19,7 +19,7 @@ let package = Package(
     // .package(url: /* package url */, from: "1.0.0"),
     .package(
       url: "https://github.com/google/GoogleSignIn-iOS.git",
-      from: "6.2.3"
+      from: "6.2.4"
     ),
     .package(
       url: "https://github.com/daltoniam/Starscream.git",
@@ -31,7 +31,7 @@ let package = Package(
     // Targets can depend on other targets in this package, and on products in packages this package depends on.
     .target(
       name: "PortalSwift",
-      dependencies: ["Mpc"]
+      dependencies: ["Mpc", .product(name: "GoogleSignIn", package: "GoogleSignIn-iOS"), .product(name: "Starscream", package: "Starscream")]
     ),
     .binaryTarget(
       name: "Mpc",

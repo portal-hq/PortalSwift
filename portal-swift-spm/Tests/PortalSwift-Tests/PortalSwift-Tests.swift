@@ -17,6 +17,7 @@ final class PortalSwift_Tests: XCTestCase {
     // This is an example of a functional test case.
     // Use XCTAssert and related functions to verify your tests produce the correct
     // results.
+    let expectation = expectation(description: "wait for generate")
     let backup = BackupOptions(icloud: ICloudStorage())
     let keychain = PortalKeychain()
     let portal = try PortalSwift.Portal(
@@ -27,7 +28,6 @@ final class PortalSwift_Tests: XCTestCase {
       gatewayConfig: [
         5: "https://eth-goerli.g.alchemy.com/v2/53va-QZAS8TnaBH3-oBHqcNJtIlygLi-",
       ],
-      version: "v1",
       autoApprove: true
     )
     portal.createWallet { addressResult in
@@ -35,11 +35,13 @@ final class PortalSwift_Tests: XCTestCase {
         print(addressResult.error)
         return
       }
+      expectation.fulfill()
       print(addressResult.data)
 
     } progress: { status in
       print("Generate Status: ", status)
     }
+    wait(for: [expectation])
 
     XCTAssertEqual(portal.chainId, 5)
   }
