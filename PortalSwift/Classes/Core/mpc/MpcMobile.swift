@@ -9,20 +9,20 @@ import Foundation
 import Mpc
 
 class MobileWrapper: Mobile {
-  public func MobileGenerate(_ apiKey: String, _ host: String, _ version: String, _ apiHost: String, _ metadata: MpcMetadata) -> String {
-    return Mpc.MobileGenerate(apiKey, host, version, apiHost, metadata)
+  public func MobileGenerate(_ apiKey: String, _ host: String, _ apiHost: String, _ metadata: String) -> String {
+    return Mpc.MobileGenerate(apiKey, host, apiHost, metadata)
   }
 
-  func MobileBackup(_ apiKey: String, _ host: String, _ signingShare: String, _ version: String, _ apiHost: String, _ metadata: MpcMetadata) -> String {
-    return Mpc.MobileBackup(apiKey, host, signingShare, version, apiHost, metadata)
+  func MobileBackup(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String {
+    return Mpc.MobileBackup(apiKey, host, signingShare, apiHost, metadata)
   }
 
-  func MobileRecoverSigning(_ apiKey: String, _ host: String, _ signingShare: String, _ version: String, _ apiHost: String, _ metadata: MpcMetadata) -> String {
-    return Mpc.MobileRecoverSigning(apiKey, host, signingShare, version, apiHost, metadata)
+  func MobileRecoverSigning(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String {
+    return Mpc.MobileRecoverSigning(apiKey, host, signingShare, apiHost, metadata)
   }
 
-  func MobileRecoverBackup(_ apiKey: String, _ host: String, _ signingShare: String, _ version: String, _ apiHost: String, _ metadata: MpcMetadata) -> String {
-    return Mpc.MobileRecoverBackup(apiKey, host, signingShare, version, apiHost, metadata)
+  func MobileRecoverBackup(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String {
+    return Mpc.MobileRecoverBackup(apiKey, host, signingShare, apiHost, metadata)
   }
 
   func MobileDecrypt(_ key: String, _ dkgCipherText: String) -> String {
@@ -33,15 +33,15 @@ class MobileWrapper: Mobile {
     return Mpc.MobileEncrypt(value)
   }
 
-  func MobileGetMe(_ url: String, _ token: String, _ metadata: MpcMetadata) -> String {
-    return Mpc.MobileGetMe(url, token, metadata)
+  func MobileGetMe(_ url: String, _ token: String) -> String {
+    return Mpc.MobileGetMe(url, token)
   }
 
   func MobileGetVersion() -> String {
     return Mpc.MobileGetVersion()
   }
 
-  func MobileSign(_ apiKey: String?, _ host: String?, _ signingShare: String?, _ method: String?, _ params: String?, _ rpcURL: String?, _ chainId: String?, _ version: String?, _ metadata: MpcMetadata?) -> String {
-    Mpc.MobileSign(apiKey, host, signingShare, method, params, rpcURL, chainId, version, metadata)
+  func MobileSign(_ apiKey: String?, _ host: String?, _ signingShare: String?, _ method: String?, _ params: String?, _ rpcURL: String?, _ chainId: String?, _ metadata: String?) -> String {
+    Mpc.MobileSign(apiKey, host, signingShare, method, params, rpcURL, chainId, metadata)
   }
 }

@@ -9,19 +9,19 @@ import Foundation
 import Mpc
 
 class MockMobileWrapper: Mobile {
-  func MobileGenerate(_: String, _: String, _: String, _: String, _: MpcMetadata) -> String {
+  func MobileGenerate(_: String, _: String, _: String, _: String) -> String {
     return mockDataResult
   }
 
-  func MobileBackup(_: String, _: String, _: String, _: String, _: String, _: MpcMetadata) -> String {
+  func MobileBackup(_: String, _: String, _: String, _: String, _: String) -> String {
     return mockDataResult
   }
 
-  func MobileRecoverSigning(_: String, _: String, _: String, _: String, _: String, _: MpcMetadata) -> String {
+  func MobileRecoverSigning(_: String, _: String, _: String, _: String, _: String) -> String {
     return mockDataResult
   }
 
-  func MobileRecoverBackup(_: String, _: String, _: String, _: String, _: String, _: MpcMetadata) -> String {
+  func MobileRecoverBackup(_: String, _: String, _: String, _: String, _: String) -> String {
     return mockDataResult
   }
 
@@ -33,7 +33,7 @@ class MockMobileWrapper: Mobile {
     return mockEncryptResult
   }
 
-  func MobileGetMe(_: String, _: String, _: MpcMetadata) -> String {
+  func MobileGetMe(_: String, _: String) -> String {
     return mockClientResult
   }
 
@@ -41,7 +41,7 @@ class MockMobileWrapper: Mobile {
     return "4.0.1"
   }
 
-  func MobileSign(_: String?, _: String?, _: String?, _: String?, _: String?, _: String?, _: String?, _: String?, _: MpcMetadata?) -> String {
+  func MobileSign(_: String?, _: String?, _: String?, _: String?, _: String?, _: String?, _: String?, _: String?) -> String {
     return mockClientSignResult
   }
 }

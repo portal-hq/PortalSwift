@@ -41,7 +41,7 @@ public class PortalMpc {
   private let rsaFooter = "\n-----END RSA KEY-----"
   private var isWalletModificationInProgress: Bool = false
   private var isMock: Bool = false
-  private let mpcMetadata = MpcMetadata(clientPlatform: "NATIVE_IOS")
+  private let mpcMetadata: MpcMetadata
 
   /// Create an instance of Portal's MPC service.
   /// - Parameters:
@@ -76,6 +76,7 @@ public class PortalMpc {
 
     // Other stuff
     self.isSimulator = isSimulator
+    self.mpcMetadata = MpcMetadata(clientPlatform: "NATIVE_IOS", mpcServerVersion: self.version)
   }
 
   public func getBinaryVersion() -> String {
@@ -211,9 +212,12 @@ public class PortalMpc {
         print("Keychain is available, continuing...")
 
         do {
+          // Stringify the MPC metadata.
+          let mpcMetadataString = self.mpcMetadata.jsonString() ?? ""
+
           // Call the MPC service to generate a new wallet.
           progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
-          let response = self.mobile.MobileGenerate(self.apiKey, self.host, self.version, self.apiHost, self.mpcMetadata)
+          let response = self.mobile.MobileGenerate(self.apiKey, self.host, self.apiHost, mpcMetadataString)
 
           // Parse the share
           progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
@@ -542,10 +546,12 @@ public class PortalMpc {
     progress: ((MpcStatus) -> Void)? = nil
   ) {
     do {
+      // Stringify the MPC metadata.
+      let mpcMetadataString = self.mpcMetadata.jsonString() ?? ""
+
       // Call the MPC service to generate a backup share.
       progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
-
-      let response = self.mobile.MobileBackup(self.apiKey, self.host, signingShare, self.version, self.apiHost, self.mpcMetadata)
+      let response = self.mobile.MobileBackup(self.apiKey, self.host, signingShare, self.apiHost, mpcMetadataString)
 
       // Parse the backup share.
       progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
@@ -774,10 +780,12 @@ public class PortalMpc {
     progress: ((MpcStatus) -> Void)? = nil
   ) {
     do {
-      progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
+      // Stringify the MPC metadata.
+      let mpcMetadataString = self.mpcMetadata.jsonString() ?? ""
 
       // Call the MPC service to recover the backup share.
-      let result = self.mobile.MobileRecoverBackup(self.apiKey, self.host, clientBackupShare, self.version, self.apiHost, self.mpcMetadata)
+      progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
+      let result = self.mobile.MobileRecoverBackup(self.apiKey, self.host, clientBackupShare, self.apiHost, mpcMetadataString)
 
       progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
       let rotateResult: RotateResult = try JSONDecoder().decode(RotateResult.self, from: result.data(using: .utf8)!)
@@ -804,9 +812,12 @@ public class PortalMpc {
     progress: ((MpcStatus) -> Void)? = nil
   ) {
     do {
-      progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
+      // Stringify the MPC metadata.
+      let mpcMetadataString = self.mpcMetadata.jsonString() ?? ""
+
       // Call the MPC service to recover the signing share.
-      let result = self.mobile.MobileRecoverSigning(self.apiKey, self.host, backupShare, self.version, self.apiHost, self.mpcMetadata)
+      progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
+      let result = self.mobile.MobileRecoverSigning(self.apiKey, self.host, backupShare, self.apiHost, mpcMetadataString)
 
       progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
       let rotateResult = try JSONDecoder().decode(RotateResult.self, from: result.data(using: .utf8)!)

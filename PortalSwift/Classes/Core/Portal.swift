@@ -396,7 +396,7 @@ public class Portal {
     let apiUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
 
     // Call the MPC service to retrieve the client.
-    let response = mobile.MobileGetMe("\(apiUrl)/api/v1/clients/me", apiKey, MpcMetadata(clientPlatform: "NATIVE_IOS"))
+    let response = mobile.MobileGetMe("\(apiUrl)/api/v1/clients/me", apiKey)
 
     // Parse the client.
     let jsonData = response.data(using: .utf8)!
