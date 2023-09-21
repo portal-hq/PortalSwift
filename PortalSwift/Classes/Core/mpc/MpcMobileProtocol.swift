@@ -1,5 +1,5 @@
 //
-//  MpcMobile.swift
+//  MpcMobileProtocol.swift
 //  PortalSwift
 //
 //  Created by Rami Shahatit on 8/2/23.
@@ -7,14 +7,29 @@
 
 import Foundation
 
+public struct MpcMetadata: Codable {
+  var clientPlatform: String
+  var mpcServerVersion: String
+}
+
+extension MpcMetadata {
+  func jsonString() -> String? {
+    let encoder = JSONEncoder()
+    if let jsonData = try? encoder.encode(self) {
+      return String(data: jsonData, encoding: .utf8)
+    }
+    return nil
+  }
+}
+
 public protocol Mobile {
-  func MobileGenerate(_ apiKey: String, _ host: String, _ version: String, _ apiHost: String) -> String
+  func MobileGenerate(_ apiKey: String, _ host: String, _ apiHost: String, _ metadata: String) -> String
 
-  func MobileBackup(_ apiKey: String, _ host: String, _ signingShare: String, _ version: String, _ apiHost: String) -> String
+  func MobileBackup(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String
 
-  func MobileRecoverSigning(_ apiKey: String, _ host: String, _ signingShare: String, _ version: String, _ apiHost: String) -> String
+  func MobileRecoverSigning(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String
 
-  func MobileRecoverBackup(_ apiKey: String, _ host: String, _ signingShare: String, _ version: String, _ apiHost: String) -> String
+  func MobileRecoverBackup(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String
 
   func MobileDecrypt(_ key: String, _ dkgCipherText: String) -> String
 
@@ -24,5 +39,5 @@ public protocol Mobile {
 
   func MobileGetVersion() -> String
 
-  func MobileSign(_ apiKey: String?, _ host: String?, _ signingShare: String?, _ method: String?, _ params: String?, _ rpcURL: String?, _ chainId: String?, _ version: String?) -> String
+  func MobileSign(_ apiKey: String?, _ host: String?, _ signingShare: String?, _ method: String?, _ params: String?, _ rpcURL: String?, _ chainId: String?, _ metadata: String?) -> String
 }

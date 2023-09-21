@@ -210,7 +210,7 @@ class WalletTests: XCTestCase {
     }
     wait(for: [recoverExpectation], timeout: 120)
   }
-  
+
   func testZSign() {
     if !WalletTests.testAGenerateSucceeded {
       XCTFail("Failing fast - Generate test failed to complete successfully")
