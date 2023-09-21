@@ -1,5 +1,5 @@
 //
-//  MPCSigner.swift
+//  MpcSigner.swift
 //
 //  Created by Portal Labs, Inc.
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
@@ -29,6 +29,7 @@ class MpcSigner {
   private let mpcUrl: String
   private let version: String
   private let binary: Mobile
+  private var mpcMetadata: MpcMetadata
 
   init(
     apiKey: String,
@@ -41,6 +42,7 @@ class MpcSigner {
     self.mpcUrl = mpcUrl
     self.version = version
     self.binary = MobileWrapper()
+    self.mpcMetadata = MpcMetadata(clientPlatform: "NATIVE_IOS", mpcServerVersion: self.version)
   }
 
   init(
@@ -55,6 +57,7 @@ class MpcSigner {
     self.mpcUrl = mpcUrl
     self.version = version
     self.binary = binary ?? MobileWrapper()
+    self.mpcMetadata = MpcMetadata(clientPlatform: "NATIVE_IOS", mpcServerVersion: self.version)
   }
 
   /// Signs a standard ETH request.
@@ -78,6 +81,9 @@ class MpcSigner {
       let signingShare = try keychain.getSigningShare()
       let formattedParams = try formatParams(payload: payload)
 
+      // Stringify the MPC metadata.
+      let mpcMetadataString = self.mpcMetadata.jsonString() ?? ""
+
       let clientSignResult = self.binary.MobileSign(
         self.apiKey,
         self.mpcUrl,
@@ -86,7 +92,7 @@ class MpcSigner {
         formattedParams,
         provider.gatewayUrl,
         String(provider.chainId),
-        self.version
+        mpcMetadataString
       )
 
       // Attempt to decode the sign result.
@@ -114,6 +120,9 @@ class MpcSigner {
     let signingShare = try keychain.getSigningShare()
     let formattedParams = try formatParams(payload: payload)
 
+    // Stringify the MPC metadata.
+    let mpcMetadataString = self.mpcMetadata.jsonString() ?? ""
+
     let clientSignResult = self.binary.MobileSign(
       self.apiKey,
       self.mpcUrl,
@@ -122,7 +131,7 @@ class MpcSigner {
       formattedParams,
       provider.gatewayUrl,
       String(provider.chainId),
-      self.version
+      mpcMetadataString
     )
 
     // Attempt to decode the sign result.
