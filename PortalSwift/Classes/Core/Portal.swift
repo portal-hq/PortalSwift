@@ -115,6 +115,14 @@ public class Portal {
       mobile: self.binary,
       apiHost: self.apiHost
     )
+
+    // Capture analytics.
+    do {
+      try self.api.identify { _ in }
+      self.api.track(event: MetricsEvents.portalInitialized.rawValue, properties: [:])
+    } catch {
+      // Do nothing.
+    }
   }
 
   /// Create a Portal instance.
@@ -200,6 +208,14 @@ public class Portal {
       version: version,
       mobile: self.binary
     )
+
+    // Capture analytics.
+    do {
+      try self.api.identify { _ in }
+      self.api.track(event: MetricsEvents.portalInitialized.rawValue, properties: [:])
+    } catch {
+      // Do nothing.
+    }
   }
 
   /**********************************
