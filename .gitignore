@@ -41,3 +41,5 @@ Secrets.xcconfig
 
 ## SPM
 .build
+portal-swift-spm
+.swiftpm

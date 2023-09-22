@@ -19,4 +19,5 @@ echo "Moving to package directory..."
 cd portal-swift-spm
 
 echo "Building package..."
-xcodebuild -scheme PortalSwift -sdk iphoneos -destination 'platform=iOS Simulator,name=iPhone 14,OS=16.4'
+# swift build -Xswiftc "-sdk" -Xswiftc "`xcrun --sdk iphonesimulator --show-sdk-path`" -Xswiftc "-target" -Xswiftc "x86_64-apple-ios14.0-simulator"
+# xcodebuild -scheme PortalSwift -sdk iphoneos -destination 'platform=iOS Simulator,name=iPhone 14,OS=16.4'
