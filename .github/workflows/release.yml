@@ -70,7 +70,39 @@ jobs:
           git commit -m "Bump version to ${{ env.NEW_VERSION }}"
           git push
 
-      - name: Tag with new version
+      - name: Build Spm package
+        run: |
+          cd ${{ github.workspace }}/main
+          chmod +x ./scripts/build-spm.sh
+          sh ./scripts/build-spm.sh
+
+      # Portal SWIFT SPM REPO
+      - name: Checkout spm repo
+        uses: actions/checkout@v3
+        with:
+          repository: "portal-hq/PortalSwiftSpm"
+          token: ${{ secrets.GH_PAT }}
+          path: spm
+      
+      - name: Overwrite spm package into the PortalSwiftSpm repo
+        run: | 
+           rsync -av ${{ github.workspace }}/main/portal-swift-spm/ ${{ github.workspace }}/spm/
+           git config --local user.name "portal-release-bot"
+           git config --local user.email "release-bot@portalhq.io"
+           git add -A
+           git commit -m "Releasing version ${{ env.NEW_VERSION }}"
+           git push origin main --force 
+      
+      - name: Tag SPM with new version
+        run: |
+          cd ${{ github.workspace }}/spm
+          git config --local user.name "portal-release-bot"
+          git config --local user.email "release-bot@portalhq.io"
+
+          git tag -a ${{ env.NEW_VERSION }} -m "Version ${{ env.NEW_VERSION }}"
+          git push origin ${{ env.NEW_VERSION }}    
+
+      - name: Tag CocoaPods with new version
         run: |
           cd ${{ github.workspace }}/main
           git config --local user.name "portal-release-bot"
