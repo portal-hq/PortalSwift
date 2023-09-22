@@ -6,6 +6,7 @@
 //
 
 import PortalSwift
+import UIKit
 
 class ConnectViewController: UIViewController, UITextFieldDelegate {
   public var portal: Portal?

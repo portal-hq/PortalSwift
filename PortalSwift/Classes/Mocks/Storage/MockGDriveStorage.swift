@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import UIKit
 
 public class MockGDriveStorage: GDriveStorage {
   override public init(clientID: String, viewController: UIViewController) {

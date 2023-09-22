@@ -12,22 +12,23 @@ public enum HttpRequestType {
   case CustomRequest
 }
 
-public enum HttpRequestError: Error {
+private enum HttpError: Error {
   case clientError(String)
   case httpError(String)
   case internalServerError(String)
   case nilResponseError
   case unknownError(String)
+}
+
+private enum GatewayError: Error {
   case gatewayError(response: ETHGatewayErrorResponse, status: String)
 }
 
-extension HttpRequestError: CustomStringConvertible {
+extension GatewayError: CustomStringConvertible {
   public var description: String {
     switch self {
     case let .gatewayError(response, status):
       return "HTTP Gateway Error -status: \(status) -code: \(response.code) -message: \(response.message)"
-    default:
-      return "\(self)"
     }
   }
 }
@@ -73,14 +74,14 @@ public class HttpRequest<T: Codable, BodyType> {
         do {
           // Handle errors
           if error != nil {
-            return completion(Result<T>(error: HttpRequestError.unknownError(error!.localizedDescription)))
+            return completion(Result<T>(error: HttpError.unknownError(error!.localizedDescription)))
           }
 
           // Parse the response and return the properly typed data
           let httpResponse = response as? HTTPURLResponse
 
           if httpResponse == nil {
-            return completion(Result(error: HttpRequestError.nilResponseError))
+            return completion(Result(error: HttpError.nilResponseError))
           }
 
           // Process the response object
@@ -115,9 +116,9 @@ public class HttpRequest<T: Codable, BodyType> {
               } else {
                 typedData = try JSONDecoder().decode(T.self, from: data!)
               }
-              return completion(Result(error: HttpRequestError.gatewayError(response: (typedData as! ETHGatewayResponse).error!, status: String(httpResponse!.statusCode))))
+              return completion(Result(error: GatewayError.gatewayError(response: (typedData as! ETHGatewayResponse).error!, status: String(httpResponse!.statusCode))))
             }
-            return completion(Result(error: HttpRequestError.internalServerError(httpResponse!.description)))
+            return completion(Result(error: HttpError.internalServerError(httpResponse!.description)))
           } else if httpResponse!.statusCode >= 400 {
             if self.requestType == HttpRequestType.GatewayRequest {
               var typedData: T
@@ -132,11 +133,11 @@ public class HttpRequest<T: Codable, BodyType> {
               } else {
                 typedData = try JSONDecoder().decode(T.self, from: data!)
               }
-              return completion(Result(error: HttpRequestError.gatewayError(response: (typedData as? ETHGatewayResponse)?.error! ?? ETHGatewayErrorResponse(code: 32602, message: "Unknown Error"), status: String(httpResponse!.statusCode))))
+              return completion(Result(error: GatewayError.gatewayError(response: (typedData as? ETHGatewayResponse)?.error! ?? ETHGatewayErrorResponse(code: 32602, message: "Unknown Error"), status: String(httpResponse!.statusCode))))
             }
-            return completion(Result(error: HttpRequestError.clientError(httpResponse!.description)))
+            return completion(Result(error: HttpError.clientError(httpResponse!.description)))
           } else {
-            return completion(Result(error: HttpRequestError.internalServerError(httpResponse!.description)))
+            return completion(Result(error: HttpError.internalServerError(httpResponse!.description)))
           }
         } catch {
           return completion(Result(error: error))

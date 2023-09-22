@@ -55,6 +55,8 @@ public class PortalApi {
       } else if result.data != nil {
         completion(Result<Client>(data: result.data!))
       }
+
+      self.track(event: MetricsEvents.getClient.rawValue, properties: ["path": "/api/v1/clients/me"])
     }
   }
 
@@ -70,6 +72,8 @@ public class PortalApi {
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[Dapp]>) in
       completion(result)
+
+      self.track(event: MetricsEvents.getEnabledDapps.rawValue, properties: ["path": "/api/v1/config/dapps"])
     }
   }
 
@@ -87,7 +91,7 @@ public class PortalApi {
 
     // Make the request
     try self.requests.post(
-      path: "/api/v1/swaps/sources",
+      path: "/api/v1/swaps/quote",
       body: body,
       headers: [
         "Authorization": "Bearer \(self.apiKey)",
@@ -95,6 +99,8 @@ public class PortalApi {
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<Quote>) in
       completion(result)
+
+      self.track(event: MetricsEvents.getQuote.rawValue, properties: ["path": "/api/v1/swaps/quote"])
     }
   }
 
@@ -111,6 +117,8 @@ public class PortalApi {
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[String: String]>) in
       completion(result)
+
+      self.track(event: MetricsEvents.getSources.rawValue, properties: ["path": "/api/v1/swaps/sources"])
     }
   }
 
@@ -126,6 +134,8 @@ public class PortalApi {
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[ContractNetwork]>) in
       completion(result)
+
+      self.track(event: MetricsEvents.getNetworks.rawValue, properties: ["path": "/api/v1/config/networks"])
     }
   }
 
@@ -142,6 +152,8 @@ public class PortalApi {
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[NFT]>) in
       completion(result)
+
+      self.track(event: MetricsEvents.getNFTs.rawValue, properties: ["path": "/api/v1/clients/me/nfts"])
     }
   }
 
@@ -174,6 +186,8 @@ public class PortalApi {
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[Transaction]>) in
       completion(result)
+
+      self.track(event: MetricsEvents.getTransactions.rawValue, properties: ["path": "/api/v1/clients/me/transactions"])
     }
   }
 
@@ -192,6 +206,8 @@ public class PortalApi {
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[Balance]>) in
       completion(result)
+
+      self.track(event: MetricsEvents.getBalances.rawValue, properties: ["path": "/api/v1/clients/me/balances"])
     }
   }
 
@@ -228,6 +244,8 @@ public class PortalApi {
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<SimulatedTransaction>) in
       completion(result)
+
+      self.track(event: MetricsEvents.simulateTransaction.rawValue, properties: ["path": "/api/v1/clients/me/simulate-transaction"])
     }
   }
 
@@ -255,6 +273,8 @@ public class PortalApi {
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<String>) in
       completion(result)
+
+      self.track(event: MetricsEvents.storedClientSigningShare.rawValue, properties: ["path": path])
     }
   }
 
@@ -276,6 +296,8 @@ public class PortalApi {
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<String>) in
       completion(result)
+
+      self.track(event: MetricsEvents.storedClientBackupShareKey.rawValue, properties: ["path": "/api/v1/clients/me/wallet/stored-client-backup-share-key"])
     }
   }
 
@@ -297,6 +319,43 @@ public class PortalApi {
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<String>) in
       completion(result)
+
+      self.track(event: MetricsEvents.storedClientBackupShare.rawValue, properties: ["path": "/api/v1/clients/me/wallet/stored-client-backup-share"])
+    }
+  }
+
+  public func identify(traits: [String: Any] = [:], completion: @escaping (Result<MetricsResponse>) -> Void) throws {
+    let body: [String: Any] = [
+      "traits": traits,
+    ]
+
+    try self.requests.post(
+      path: "/api/v1/analytics/identify",
+      body: body,
+      headers: ["Authorization": "Bearer \(self.apiKey)"],
+      requestType: HttpRequestType.CustomRequest
+    ) { (result: Result<MetricsResponse>) in
+      completion(result)
+    }
+  }
+
+  func track(event: String, properties: [String: Any], completion: ((Result<MetricsResponse>) -> Void)? = nil) {
+    let body: [String: Any] = [
+      "event": event,
+      "properties": properties,
+    ]
+
+    do {
+      try self.requests.post(
+        path: "/api/v1/analytics/track",
+        body: body,
+        headers: ["Authorization": "Bearer \(self.apiKey)"],
+        requestType: HttpRequestType.CustomRequest
+      ) { (result: Result<MetricsResponse>) in
+        completion?(result)
+      }
+    } catch {
+      print("Failed to track event")
     }
   }
 }
@@ -524,4 +583,30 @@ public struct SimulatedTransaction: Codable {
   public var gasUsed: String? = nil
   public var error: SimulatedTransactionError?
   public var requestError: SimulatedTransactionError?
+}
+
+public struct MetricsResponse: Codable {
+  public var status: Bool
+}
+
+public enum MetricsEvents: String {
+  case portalInitialized = "Portal Initialized"
+  case transactionSigned = "Transaction Signed"
+  case walletBackedUp = "Wallet Backed Up"
+  case walletCreated = "Wallet Created"
+  case walletRecovered = "Wallet Recovered"
+
+  // API Method events
+  case getClient = "Get Client"
+  case getEnabledDapps = "Get Enabled Dapps"
+  case getNetworks = "Get Networks"
+  case getQuote = "Get Quote"
+  case getSources = "Get Sources"
+  case getNFTs = "Get NFTs"
+  case getTransactions = "Get Transactions"
+  case getBalances = "Get Balances"
+  case simulateTransaction = "Simulate Transaction"
+  case storedClientSigningShare = "Stored Client Signing Share"
+  case storedClientBackupShareKey = "Stored Client Backup Share Key"
+  case storedClientBackupShare = "Stored Client Backup Share"
 }
