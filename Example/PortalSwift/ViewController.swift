@@ -7,6 +7,7 @@
 //
 
 import PortalSwift
+import UIKit
 
 struct SignUpBody: Codable {
   var username: String
