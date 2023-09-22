@@ -87,6 +87,7 @@ jobs:
       - name: Overwrite spm package into the PortalSwiftSpm repo
         run: |
           rsync -av ${{ github.workspace }}/main/portal-swift-spm/ ${{ github.workspace }}/spm/
+          cd ${{ github.workspace }}/spm
           git config --local user.name "portal-release-bot"
           git config --local user.email "release-bot@portalhq.io"
           git add -A
