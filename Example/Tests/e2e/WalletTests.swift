@@ -225,28 +225,77 @@ class WalletTests: XCTestCase {
         ethSignExpectation.fulfill()
         return XCTFail("Failed on login: \(result.error!)")
       }
-      if let portal = WalletTests.PortalWrap.portal {
-        do {
-          address = try portal.keychain.getAddress()
-        } catch {
-          return XCTFail("Failed to get address: \(error)")
-        }
 
-        let params = [address!, "0xdeadbeaf"]
-
-        WalletTests.PortalWrap.ethSign(params: params) { result in
-          guard result.error == nil else {
-            ethSignExpectation.fulfill()
-            return XCTFail("Failed on eth_sign: \(result.error!)")
-          }
-
-          print("✅ eth_sign result: ", result.data!)
-          XCTAssertFalse(result.data!.isEmpty, "eth sign success")
-
+      WalletTests.PortalWrap.portal?.ethSign(message: "0xdeadbeaf") { result in
+        guard result.error == nil else {
           ethSignExpectation.fulfill()
+          return XCTFail("Failed on eth_sign: \(result.error!)")
         }
-      } else {
-        return XCTFail("Failed to register portal object.")
+
+        print("✅ eth_sign result: ", result.data!)
+        XCTAssertFalse((result.data!.result as! Result<SignerResult>).data!.signature!.isEmpty, "eth sign success")
+
+        ethSignExpectation.fulfill()
+      }
+    }
+
+    wait(for: [ethSignExpectation], timeout: 30)
+  }
+
+  func testZSignTypedDataV3() {
+    if !WalletTests.testAGenerateSucceeded {
+      XCTFail("Failing fast - Generate test failed to complete successfully")
+      return
+    }
+
+    let ethSignExpectation = XCTestExpectation(description: "eth signTypedData")
+
+    self.testLogin { result in
+      guard result.error == nil else {
+        ethSignExpectation.fulfill()
+        return XCTFail("Failed on login: \(result.error!)")
+      }
+
+      WalletTests.PortalWrap.portal?.ethSignTypedDataV3(message: mockSignedTypeDataMessage) { result in
+        guard result.error == nil else {
+          ethSignExpectation.fulfill()
+          return XCTFail("Failed on eth_sign: \(result.error!)")
+        }
+
+        print("✅ eth_sign result: ", result.data!)
+        XCTAssertFalse((result.data!.result as! Result<SignerResult>).data!.signature!.isEmpty, "eth sign success")
+
+        ethSignExpectation.fulfill()
+      }
+    }
+
+    wait(for: [ethSignExpectation], timeout: 30)
+  }
+
+  func testZSignTypedDataV4() {
+    if !WalletTests.testAGenerateSucceeded {
+      XCTFail("Failing fast - Generate test failed to complete successfully")
+      return
+    }
+
+    let ethSignExpectation = XCTestExpectation(description: "eth signTypedData")
+
+    self.testLogin { result in
+      guard result.error == nil else {
+        ethSignExpectation.fulfill()
+        return XCTFail("Failed on login: \(result.error!)")
+      }
+
+      WalletTests.PortalWrap.portal?.ethSignTypedData(message: mockSignedTypeDataMessage) { result in
+        guard result.error == nil else {
+          ethSignExpectation.fulfill()
+          return XCTFail("Failed on eth_sign: \(result.error!)")
+        }
+
+        print("✅ eth_sign result: ", result.data!)
+        XCTAssertFalse((result.data!.result as! Result<SignerResult>).data!.signature!.isEmpty, "eth sign success")
+
+        ethSignExpectation.fulfill()
       }
     }
 
