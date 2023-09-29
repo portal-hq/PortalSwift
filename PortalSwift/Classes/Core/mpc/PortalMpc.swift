@@ -36,6 +36,7 @@ public class PortalMpc {
 
   private let storage: BackupOptions
   private let version: String
+  private let featureFlags: FeatureFlags?
 
   private let rsaHeader = "-----BEGIN RSA KEY-----\n"
   private let rsaFooter = "\n-----END RSA KEY-----"
@@ -44,15 +45,6 @@ public class PortalMpc {
   private let mpcMetadata: MpcMetadata
 
   /// Create an instance of Portal's MPC service.
-  /// - Parameters:
-  ///   - apiKey: A Client API key.
-  ///   - chainId: A specific EVM network.
-  ///   - keychain: An instance of PortalKeychain.
-  ///   - storage: An instance of BackupOptions.
-  ///   - gatewayUrl: The Gateway URL to use.
-  ///   - isSimulator: (optional) Whether or not we are on an iOS simulator.
-  ///    - apiHost: The hostname for Portal's API service.
-  ///   - mpcHost: The hostname for Portal's MPC service.
   public init(
     apiKey: String,
     api: PortalApi,
@@ -62,7 +54,8 @@ public class PortalMpc {
     host: String = "mpc.portalhq.io",
     version: String = "v4",
     mobile: Mobile,
-    apiHost: String = "api.portalhq.io"
+    apiHost: String = "api.portalhq.io",
+    featureFlags: FeatureFlags? = nil
   ) {
     // Basic setup
     self.api = api
@@ -75,8 +68,13 @@ public class PortalMpc {
     self.apiHost = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
 
     // Other stuff
+    self.featureFlags = featureFlags
     self.isSimulator = isSimulator
-    self.mpcMetadata = MpcMetadata(clientPlatform: "NATIVE_IOS", mpcServerVersion: self.version)
+    self.mpcMetadata = MpcMetadata(
+      clientPlatform: "NATIVE_IOS",
+      mpcServerVersion: self.version,
+      optimized: featureFlags?.optimized ?? false
+    )
   }
 
   public func getBinaryVersion() -> String {

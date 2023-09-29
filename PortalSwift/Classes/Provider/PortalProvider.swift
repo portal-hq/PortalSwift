@@ -31,6 +31,7 @@ public class PortalProvider {
   private var processedSignatureIds: [String] = []
   private var portalApi: HttpRequester
   private let signer: MpcSigner
+  private let featureFlags: FeatureFlags?
 
   private var walletMethods: [ETHRequestMethods.RawValue] = [
     ETHRequestMethods.WalletAddEthereumChain.rawValue,
@@ -56,7 +57,8 @@ public class PortalProvider {
     autoApprove: Bool,
     apiHost: String = "api.portalhq.io",
     mpcHost: String = "mpc.portalhq.io",
-    version: String = "v4"
+    version: String = "v4",
+    featureFlags: FeatureFlags? = nil
   ) throws {
     // User-defined instance variables
     self.apiKey = apiKey
@@ -68,8 +70,9 @@ public class PortalProvider {
     // Other instance variables
     let apiUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
     self.portalApi = HttpRequester(baseUrl: apiUrl)
+    self.featureFlags = featureFlags
 
-    self.signer = MpcSigner(apiKey: apiKey, keychain: keychain, mpcUrl: mpcHost, version: version)
+    self.signer = MpcSigner(apiKey: apiKey, keychain: keychain, mpcUrl: mpcHost, version: version, featureFlags: featureFlags)
     // Create a serial dispatch queue with a unique label
     self.mpcQueue = DispatchQueue.global(qos: .background)
 
@@ -97,7 +100,8 @@ public class PortalProvider {
     gateway: HttpRequester,
     apiHost: String = "api.portalhq.io",
     mpcHost: String = "mpc.portalhq.io",
-    version: String = "v4"
+    version: String = "v4",
+    featureFlags: FeatureFlags? = nil
   ) throws {
     // User-defined instance variables
     self.apiKey = apiKey
@@ -107,12 +111,13 @@ public class PortalProvider {
     self.autoApprove = autoApprove
     self.gateway = gateway
     self.gatewayUrl = gateway.baseUrl
+    self.featureFlags = featureFlags
 
     // Other instance variables
     let apiUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
     self.portalApi = HttpRequester(baseUrl: apiUrl)
 
-    self.signer = MpcSigner(apiKey: apiKey, keychain: keychain, mpcUrl: mpcHost, version: version)
+    self.signer = MpcSigner(apiKey: apiKey, keychain: keychain, mpcUrl: mpcHost, version: version, featureFlags: featureFlags)
     // Create a serial dispatch queue with a unique label
     self.mpcQueue = DispatchQueue.global(qos: .background)
 
