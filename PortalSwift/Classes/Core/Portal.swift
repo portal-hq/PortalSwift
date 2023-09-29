@@ -117,7 +117,8 @@ public class Portal {
       host: mpcHost,
       version: version,
       mobile: self.binary,
-      apiHost: self.apiHost
+      apiHost: self.apiHost,
+      featureFlags: self.featureFlags
     )
 
     // Capture analytics.
@@ -497,7 +498,11 @@ public struct BackupOptions {
 }
 
 public struct FeatureFlags {
-  var optimized: Bool
+  public var optimized: Bool
+
+  public init(optimized: Bool) {
+    self.optimized = optimized
+  }
 }
 
 /// Gateway URL errors.
