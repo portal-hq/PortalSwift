@@ -31,6 +31,7 @@ public class Portal {
   public let api: PortalApi
   public let mpc: PortalMpc
   private let binary: Mobile
+  private let featureFlags: FeatureFlags?
 
   public let provider: PortalProvider
 
@@ -61,7 +62,8 @@ public class Portal {
     version: String = "v4",
     autoApprove: Bool = false,
     apiHost: String = "api.portalhq.io",
-    mpcHost: String = "mpc.portalhq.io"
+    mpcHost: String = "mpc.portalhq.io",
+    featureFlags: FeatureFlags? = nil
   ) throws {
     // Basic setup
     self.binary = MobileWrapper()
@@ -75,6 +77,7 @@ public class Portal {
     self.keychain = keychain
     self.mpcHost = mpcHost
     self.version = version
+    self.featureFlags = featureFlags
 
     if version != "v4" {
       throw PortalArgumentError.versionNoLongerSupported(message: "MPC Version is not supported. Only version 'v4' is currently supported.")
@@ -89,7 +92,8 @@ public class Portal {
       autoApprove: autoApprove,
       apiHost: apiHost,
       mpcHost: mpcHost,
-      version: version
+      version: version,
+      featureFlags: self.featureFlags
     )
 
     // Initialize the Portal API
@@ -113,7 +117,8 @@ public class Portal {
       host: mpcHost,
       version: version,
       mobile: self.binary,
-      apiHost: self.apiHost
+      apiHost: self.apiHost,
+      featureFlags: self.featureFlags
     )
 
     // Capture analytics.
@@ -155,7 +160,8 @@ public class Portal {
     mpcHost: String = "mpc.portalhq.io",
     mpc: PortalMpc?,
     api: PortalApi?,
-    binary: Mobile?
+    binary: Mobile?,
+    featureFlags: FeatureFlags? = nil
   ) throws {
     // Basic setup
     self.apiHost = apiHost
@@ -169,6 +175,7 @@ public class Portal {
     self.keychain = keychain
     self.mpcHost = mpcHost
     self.version = version
+    self.featureFlags = featureFlags
 
     if version != "v4" {
       throw PortalArgumentError.versionNoLongerSupported(message: "MPC Version is not supported. Only version 'v4' is currently supported.")
@@ -183,7 +190,8 @@ public class Portal {
       autoApprove: autoApprove,
       apiHost: apiHost,
       mpcHost: mpcHost,
-      version: version
+      version: version,
+      featureFlags: featureFlags
     )
 
     // Initialize the Portal API
@@ -486,6 +494,14 @@ public struct BackupOptions {
     default:
       return nil
     }
+  }
+}
+
+public struct FeatureFlags {
+  public var optimized: Bool
+
+  public init(optimized: Bool) {
+    self.optimized = optimized
   }
 }
 

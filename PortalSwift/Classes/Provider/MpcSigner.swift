@@ -28,6 +28,7 @@ class MpcSigner {
   private let keychain: PortalKeychain
   private let mpcUrl: String
   private let version: String
+  private let featureFlags: FeatureFlags?
   private let binary: Mobile
   private var mpcMetadata: MpcMetadata
 
@@ -35,14 +36,20 @@ class MpcSigner {
     apiKey: String,
     keychain: PortalKeychain,
     mpcUrl: String = "mpc.portalhq.io",
-    version: String = "v4"
+    version: String = "v4",
+    featureFlags: FeatureFlags? = nil
   ) {
     self.apiKey = apiKey
     self.keychain = keychain
     self.mpcUrl = mpcUrl
     self.version = version
+    self.featureFlags = featureFlags
     self.binary = MobileWrapper()
-    self.mpcMetadata = MpcMetadata(clientPlatform: "NATIVE_IOS", mpcServerVersion: self.version)
+    self.mpcMetadata = MpcMetadata(
+      clientPlatform: "NATIVE_IOS",
+      mpcServerVersion: self.version,
+      optimized: featureFlags?.optimized ?? false
+    )
   }
 
   init(
@@ -50,14 +57,20 @@ class MpcSigner {
     keychain: PortalKeychain,
     mpcUrl: String = "mpc.portalhq.io",
     version: String = "v4",
+    featureFlags: FeatureFlags? = nil,
     binary: Mobile?
   ) {
     self.apiKey = apiKey
     self.keychain = keychain
     self.mpcUrl = mpcUrl
     self.version = version
+    self.featureFlags = featureFlags
     self.binary = binary ?? MobileWrapper()
-    self.mpcMetadata = MpcMetadata(clientPlatform: "NATIVE_IOS", mpcServerVersion: self.version)
+    self.mpcMetadata = MpcMetadata(
+      clientPlatform: "NATIVE_IOS",
+      mpcServerVersion: self.version,
+      optimized: featureFlags?.optimized ?? false
+    )
   }
 
   /// Signs a standard ETH request.

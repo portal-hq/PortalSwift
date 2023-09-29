@@ -545,7 +545,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       //        return  }
       //      let backup = BackupOptions(gdrive: GDriveStorage(clientID: GDRIVE_CLIENT_ID, viewController: self))
       let backup = BackupOptions(icloud: ICloudStorage())
-      self.PortalWrapper.registerPortal(apiKey: apiKey, backup: backup) { _ in
+      self.PortalWrapper.registerPortal(apiKey: apiKey, backup: backup, optimized: true) { _ in
         DispatchQueue.main.async {
           self.generateButton.isEnabled = true
 
