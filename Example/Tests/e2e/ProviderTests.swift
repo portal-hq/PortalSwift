@@ -626,6 +626,32 @@ class ProviderTests: XCTestCase {
     wait(for: [expectation], timeout: 30)
   }
 
+  func testEthSignTypedDataV4() {
+    let expectation = XCTestExpectation(description: "Expecting valid signature from eth sign typed data")
+
+    self.testLogin { success in
+      guard success, let fromAddress = ProviderTests.PortalWrap.portal?.address else {
+        XCTFail("Failed on login or address is nil")
+        return expectation.fulfill()
+      }
+
+      self.performRequest(method: ETHRequestMethods.SignTypedDataV4.rawValue, params: [fromAddress, mockSignedTypeDataMessage]) { result in
+
+        guard (result.data!.result as! Result<SignerResult>).error == nil, let signature = (result.data!.result as! Result<SignerResult>).data!.signature else {
+          XCTFail("Error testing provider request: \(String(describing: (result.data!.result as! Result<SignerResult>).error))")
+          return expectation.fulfill()
+        }
+
+        print("MPC Signer response for eth_signTypedDataV4 \(String(describing: signature))")
+        XCTAssert(!signature.isEmpty, "eth_signTypedDataV4 should not be empty")
+        XCTAssert(signature.starts(with: "0x"), "eth_signTypedDataV4 should return a signature in hexademical")
+        expectation.fulfill()
+      }
+    }
+
+    wait(for: [expectation], timeout: 30)
+  }
+
   func testEthPersonalSign() {
     let expectation = XCTestExpectation(description: "Expecting valid signature from personal_sign")
 
