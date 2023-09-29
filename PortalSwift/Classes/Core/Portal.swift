@@ -321,7 +321,7 @@ public class Portal {
     ), completion: completion)
   }
 
-  public func ethSignTypedDataV4(
+  public func ethSignTypedData(
     message: String,
     completion: @escaping (Result<RequestCompletionResult>) -> Void
   ) {

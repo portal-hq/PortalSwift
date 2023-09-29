@@ -286,7 +286,7 @@ class WalletTests: XCTestCase {
         return XCTFail("Failed on login: \(result.error!)")
       }
 
-      WalletTests.PortalWrap.portal?.ethSignTypedDataV4(message: mockSignedTypeDataMessage) { result in
+      WalletTests.PortalWrap.portal?.ethSignTypedData(message: mockSignedTypeDataMessage) { result in
         guard result.error == nil else {
           ethSignExpectation.fulfill()
           return XCTFail("Failed on eth_sign: \(result.error!)")
