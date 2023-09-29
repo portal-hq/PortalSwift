@@ -306,8 +306,8 @@ public class Portal {
     ), completion: completion)
   }
 
-  public func ethSignTypedData(
-    transaction: String,
+  public func ethSignTypedDataV3(
+    message: String,
     completion: @escaping (Result<RequestCompletionResult>) -> Void
   ) {
     guard let address = provider.address else {
@@ -316,8 +316,23 @@ public class Portal {
     }
 
     self.provider.request(payload: ETHRequestPayload(
-      method: ETHRequestMethods.SendTransaction.rawValue,
-      params: [address, transaction]
+      method: ETHRequestMethods.SignTypedDataV3.rawValue,
+      params: [address, message]
+    ), completion: completion)
+  }
+
+  public func ethSignTypedData(
+    message: String,
+    completion: @escaping (Result<RequestCompletionResult>) -> Void
+  ) {
+    guard let address = provider.address else {
+      completion(Result(error: PortalProviderError.noAddress))
+      return
+    }
+
+    self.provider.request(payload: ETHRequestPayload(
+      method: ETHRequestMethods.SignTypedDataV4.rawValue,
+      params: [address, message]
     ), completion: completion)
   }
 
