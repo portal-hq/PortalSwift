@@ -100,7 +100,7 @@ class PortalWrapper {
     case cantLoadInfoPlist
   }
 
-  func registerPortal(apiKey: String, backup: BackupOptions, chainId: Int = 5, completion: @escaping (Result<Bool>) -> Void) {
+  func registerPortal(apiKey: String, backup: BackupOptions, chainId: Int = 5, optimized: Bool = false, completion: @escaping (Result<Bool>) -> Void) {
     do {
       guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
         return completion(Result(error: PortalWrapperError.cantLoadInfoPlist))
@@ -121,7 +121,8 @@ class PortalWrapper {
         ],
         autoApprove: false,
         apiHost: self.API_URL!,
-        mpcHost: self.MPC_URL!
+        mpcHost: self.MPC_URL!,
+        featureFlags: FeatureFlags(optimized: optimized)
       )
       _ = self.portal?.provider.on(event: Events.PortalSigningRequested.rawValue, callback: { [weak self] data in self?.didRequestApproval(data: data) })
       _ = self.portal?.provider.once(event: Events.PortalSignatureReceived.rawValue) { (data: Any) in

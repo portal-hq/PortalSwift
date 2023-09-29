@@ -10,6 +10,7 @@ import Foundation
 public struct MpcMetadata: Codable {
   var clientPlatform: String
   var mpcServerVersion: String
+  var optimized: Bool
 }
 
 extension MpcMetadata {
