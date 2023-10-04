@@ -17,7 +17,6 @@ public class MockPortalApi: PortalApi {
     let client = Client(
       id: "fakeClientID",
       address: mockAddress,
-      clientApiKey: "clientApiKey",
       custodian: Custodian(
         id: "fakeCustodianID",
         name: "name"
