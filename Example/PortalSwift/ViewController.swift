@@ -576,29 +576,40 @@ class ViewController: UIViewController, UITextFieldDelegate {
     print("Starting to test method ", method, "...")
     self.portal?.provider.request(payload: payload) { (result: Result<RequestCompletionResult>) in
       guard result.error == nil else {
-        print("❌ Error testing provider request:", method, "Error:", result.error!)
+        print("❌ Error testing provider request:", method, "Error:", result.error ?? "Unknown error")
+        completion(false)
+        return
+      }
+
+      guard let responseData = result.data else {
+        print("❌ No data in response for method:", method)
         completion(false)
         return
       }
 
       if signerMethods.contains(method) {
-        guard (result.data!.result as! Result<SignerResult>).error == nil else {
-          print("❌ Error testing signer request:", method, "Error:", (result.data!.result as! Result<SignerResult>).error)
+        guard let signerResult = responseData.result as? Result<SignerResult>, signerResult.error == nil else {
+          print("❌ Error testing signer request:", method, "Error:", (responseData.result as? Result<SignerResult>)?.error ?? "Unknown error")
           completion(false)
           return
         }
-        if (result.data!.result as! Result<SignerResult>).data!.signature != nil {
-          print("✅ Signature for", method, (result.data!.result as! Result<SignerResult>).data!.signature)
+
+        if let signature = signerResult.data?.signature {
+          print("✅ Signature for", method, signature)
+        } else if let accounts = signerResult.data?.accounts {
+          print("✅ Accounts for", method, accounts)
         } else {
-          print("✅ Accounts for", method, (result.data!.result as! Result<SignerResult>).data!.accounts)
+          print("❌ No signature or accounts for method:", method)
+          completion(false)
+          return
         }
       } else {
-        guard (result.data!.result as! ETHGatewayResponse).error == nil else {
-          print("❌ Error testing provider request:", method, "Error:", (result.data!.result as! ETHGatewayResponse).error)
+        guard let ethResponse = responseData.result as? ETHGatewayResponse, ethResponse.error == nil else {
+          print("❌ Error testing provider request:", method, "Error:", (responseData.result as? ETHGatewayResponse)?.error ?? "Unknown error")
           completion(false)
           return
         }
-        print("✅ Gateway response for", method, (result.data!.result as! ETHGatewayResponse).result)
+        print("✅ Gateway response for", method, ethResponse.result)
       }
 
       completion(true)
