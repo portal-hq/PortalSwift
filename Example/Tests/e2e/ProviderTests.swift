@@ -663,14 +663,18 @@ class ProviderTests: XCTestCase {
 
       self.performRequest(method: ETHRequestMethods.PersonalSign.rawValue, params: ["0xdeadbeaf", fromAddress]) { result in
 
-        guard (result.data!.result as! Result<SignerResult>).error == nil, let signature = (result.data!.result as! Result<SignerResult>).data!.signature else {
-          XCTFail("Error testing provider request: \(String(describing: (result.data!.result as! Result<SignerResult>).error))")
+        guard let resultData = result.data,
+              let signerResult = resultData.result as? Result<SignerResult>,
+              signerResult.error == nil,
+              let signature = signerResult.data?.signature
+        else {
+          XCTFail("Error testing provider request: \(String(describing: (result.data?.result as? Result<SignerResult>)?.error))")
           return expectation.fulfill()
         }
 
         print("MPC Signer response for personal_sign \(String(describing: signature))")
         XCTAssert(!signature.isEmpty, "personal_sign should not be empty")
-        XCTAssert(signature.starts(with: "0x"), "personal_sign should return a signature in hexademical")
+        XCTAssert(signature.starts(with: "0x"), "personal_sign should return a signature in hexadecimal")
         expectation.fulfill()
       }
     }

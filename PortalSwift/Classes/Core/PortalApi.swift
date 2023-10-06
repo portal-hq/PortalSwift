@@ -368,8 +368,9 @@ public class PortalApi {
 public struct Client: Codable {
   public var id: String
   public var address: String
-  public var clientApiKey: String
   public var custodian: Custodian
+  public var signingStatus: String? = nil
+  public var backupStatus: String? = nil
 }
 
 /// A contract that belongs to a Dapp.
