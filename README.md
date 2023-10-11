@@ -169,3 +169,13 @@ A full list of rules can be found [here](https://github.com/nicklockwood/SwiftFo
 
 The configuration for `SwiftLint` can be found in the `.swiftlint.yml` file.
 This linter is only used for prohibiting force unwrapping and force casting (SwiftFormat does not support throwing linting errors for these rules).
+
+If you want to run the linters without utilizing the pre-commit hook, you can run the following command:
+
+```
+swiftformat .
+```
+
+```
+swiftlint --config .swiftlint.yml
+```
