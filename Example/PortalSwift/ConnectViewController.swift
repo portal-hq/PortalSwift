@@ -59,8 +59,8 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
     let CONNECT_URL = ENV == "prod" ? PROD_CONNECT_SERVER_URL : ENV == "staging" ? STAGING_CONNECT_SERVER_URL : LOCAL_CONNECT_SERVER_URL
 
     do {
-      self.connect = try self.portal!.createPortalConnectInstance(webSocketServer: CONNECT_URL)
-      self.connect2 = try self.portal!.createPortalConnectInstance(webSocketServer: CONNECT_URL)
+      self.connect = try self.portal?.createPortalConnectInstance(webSocketServer: CONNECT_URL)
+      self.connect2 = try self.portal?.createPortalConnectInstance(webSocketServer: CONNECT_URL)
       self.chains = Array((self.portal?.gatewayConfig.keys)!)
 
       self.app.connect = self.connect

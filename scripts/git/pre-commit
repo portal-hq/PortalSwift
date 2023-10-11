@@ -1,2 +1,14 @@
 #!/bin/bash
-git-format-staged --formatter "swiftformat stdin --stdinpath '{}'" "*.swift"
+# Run swiftformat if installed.
+if which swiftformat >/dev/null; then
+  swiftformat .
+else
+  echo "warning: SwiftFormat not installed, install it with brew install swiftformat"
+fi
+
+# Run swiftlint if installed.
+if which swiftlint >/dev/null; then
+  swiftlint --config .swiftlint.yml
+else
+  echo "warning: SwiftLint not installed, install it with brew install swiftlint"
+fi
