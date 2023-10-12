@@ -563,7 +563,8 @@ class ProviderTests: XCTestCase {
 
       self.performRequest(method: ETHRequestMethods.RequestAccounts.rawValue, params: []) { result in
         guard let responseData = result.data,
-              let resultData = responseData.result as? Result<SignerResult> else {
+              let resultData = responseData.result as? Result<SignerResult>
+        else {
           XCTFail("Failed to cast response data")
           return expectation.fulfill()
         }
@@ -587,7 +588,7 @@ class ProviderTests: XCTestCase {
 
     wait(for: [expectation], timeout: 30)
   }
-  
+
   func testEthAccounts() {
     let expectation = XCTestExpectation(description: "Expecting valid accounts response")
 
@@ -599,7 +600,8 @@ class ProviderTests: XCTestCase {
 
       self.performRequest(method: ETHRequestMethods.Accounts.rawValue, params: []) { result in
         guard let responseData = result.data,
-              let resultData = responseData.result as? Result<SignerResult> else {
+              let resultData = responseData.result as? Result<SignerResult>
+        else {
           XCTFail("Failed to cast response data")
           return expectation.fulfill()
         }
@@ -635,7 +637,8 @@ class ProviderTests: XCTestCase {
 
       self.performRequest(method: ETHRequestMethods.Sign.rawValue, params: [fromAddress, "0xdeadbeaf"]) { result in
         guard let responseData = result.data,
-              let resultData = responseData.result as? Result<SignerResult> else {
+              let resultData = responseData.result as? Result<SignerResult>
+        else {
           XCTFail("Failed to cast response data")
           return expectation.fulfill()
         }
@@ -671,7 +674,8 @@ class ProviderTests: XCTestCase {
 
       self.performRequest(method: ETHRequestMethods.SignTypedDataV4.rawValue, params: [fromAddress, mockSignedTypeDataMessage]) { result in
         guard let responseData = result.data,
-              let resultData = responseData.result as? Result<SignerResult> else {
+              let resultData = responseData.result as? Result<SignerResult>
+        else {
           XCTFail("Failed to cast response data")
           return expectation.fulfill()
         }
@@ -1286,7 +1290,8 @@ class ProviderTests: XCTestCase {
 
       // Safely unwrap and downcast
       guard let ethGatewayResponse = balanceResult.data?.result as? ETHGatewayResponse,
-            let hexBalance = ethGatewayResponse.result else {
+            let hexBalance = ethGatewayResponse.result
+      else {
         XCTFail("Failed to cast or balance is nil")
         completion(Result(error: ProviderTestErrors.ErrorGettingBalance))
         return

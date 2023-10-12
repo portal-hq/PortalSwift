@@ -840,7 +840,7 @@ public class PortalMpc {
 
       let encodedShare = try JSONEncoder().encode(dkgResult)
       let shareString = String(data: encodedShare, encoding: .utf8)
-      
+
       guard let address = rotateResult.data?.address else {
         return completion(Result(error: JSONParseError.jsonDecodingFailed))
       }
@@ -863,7 +863,7 @@ public class PortalMpc {
               if let error = result.error {
                 return completion(Result(error: error))
               }
-              
+
               guard let dkgResult = rotateResult.data?.dkgResult else {
                 return completion(Result(error: MpcError.unableToWriteToKeychain))
               }

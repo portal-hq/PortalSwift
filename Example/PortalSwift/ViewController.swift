@@ -460,18 +460,18 @@ class ViewController: UIViewController, UITextFieldDelegate {
       print("❌ populateEthBalance(): Error getting address")
       return
     }
-    
+
     let payload = ETHRequestPayload(
       method: ETHRequestMethods.GetBalance.rawValue,
       params: [address, "latest"]
     )
-    
+
     self.portal?.provider.request(payload: payload) { (result: Result<RequestCompletionResult>) in
       if let error = result.error {
         print("❌ Error getting ETH balance:", error)
         return
       }
-      
+
       if let res = result.data?.result as? ETHGatewayResponse {
         print("✅ Balance result:", res.result ?? "")
         DispatchQueue.main.async {
@@ -496,10 +496,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
 
       guard let ethEstimate = (result.data?.result as? ETHGatewayResponse)?.result else {
-        print("❌ Error estimating gas. Unable to parse result:", result )
+        print("❌ Error estimating gas. Unable to parse result:", result)
         return
       }
-      
+
       self.sendTransaction(ethEstimate: ethEstimate)
     }
   }

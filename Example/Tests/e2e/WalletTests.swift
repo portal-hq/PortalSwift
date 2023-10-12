@@ -92,7 +92,7 @@ class WalletTests: XCTestCase {
           WalletTests.testAGenerateSucceeded = true
           generateExpectation.fulfill()
 
-          XCTAssertTrue(((result.data?.isEmpty) != nil), "The string should be empty")
+          XCTAssertTrue((result.data?.isEmpty) != nil, "The string should be empty")
         }
       }
     }
@@ -129,7 +129,7 @@ class WalletTests: XCTestCase {
           }
 
           print("✅ eth_sign result: ", result.data ?? "")
-          XCTAssertFalse(((result.data?.isEmpty) != nil), "eth sign success")
+          XCTAssertFalse((result.data?.isEmpty) != nil, "eth sign success")
 
           ethSignExpectation.fulfill()
         }
@@ -154,12 +154,12 @@ class WalletTests: XCTestCase {
         backupExpectation.fulfill()
         return XCTFail("Failed on login: \(String(describing: result.error))")
       }
-      
+
       guard let user = WalletTests.user else {
         backupExpectation.fulfill()
         return XCTFail("Failed on login: \(String(describing: result.error))")
       }
-      
+
       WalletTests.PortalWrap?.backup(backupMethod: BackupMethods.local.rawValue, user: user) { backupResult in
         guard backupResult.error == nil else {
           print("❌ handleBackup():", result.error ?? "")
@@ -186,7 +186,7 @@ class WalletTests: XCTestCase {
               return
             }
             backupExpectation.fulfill()
-            XCTAssertTrue((backupResult.data != nil), "Backup Success")
+            XCTAssertTrue(backupResult.data != nil, "Backup Success")
             print("✅ Backup: Successfully sent custodian cipherText")
           }
         } catch {
@@ -203,7 +203,7 @@ class WalletTests: XCTestCase {
       return
     }
     let recoverExpectation = XCTestExpectation(description: "Recover")
-    
+
     guard let user = WalletTests.user else {
       recoverExpectation.fulfill()
       return XCTFail("Failed on login")
@@ -220,7 +220,7 @@ class WalletTests: XCTestCase {
           return XCTFail("Recover failed \(String(describing: result.error))")
         }
         recoverExpectation.fulfill()
-        return XCTAssertTrue((result.data != nil), "Recover Success")
+        return XCTAssertTrue(result.data != nil, "Recover Success")
       }
     }
     wait(for: [recoverExpectation], timeout: 120)
@@ -251,7 +251,7 @@ class WalletTests: XCTestCase {
           ethSignExpectation.fulfill()
           return XCTFail("Failed on eth_sign: Unable to parse result.data.result")
         }
-        
+
         guard let signature = response.data?.signature else {
           ethSignExpectation.fulfill()
           return XCTFail("Failed on eth_sign: Unable to derive signature from result.data.result")
@@ -291,7 +291,7 @@ class WalletTests: XCTestCase {
           ethSignExpectation.fulfill()
           return XCTFail("Failed on eth_sign: Unable to parse result.data.result")
         }
-        
+
         guard let signature = response.data?.signature else {
           ethSignExpectation.fulfill()
           return XCTFail("Failed on eth_sign: Unable to derive signature from result.data.result")
@@ -331,7 +331,7 @@ class WalletTests: XCTestCase {
           ethSignExpectation.fulfill()
           return XCTFail("Failed on eth_sign: Unable to parse result.data.result")
         }
-        
+
         guard let signature = response.data?.signature else {
           ethSignExpectation.fulfill()
           return XCTFail("Failed on eth_sign: Unable to derive signature from result.data.result")

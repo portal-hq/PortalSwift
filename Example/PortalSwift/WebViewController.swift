@@ -40,11 +40,12 @@ class WebViewController: UIViewController {
     }
 
     guard let dataAsAnyObject = result.data as? AnyObject,
-          let nestedResult = dataAsAnyObject.result as? Result<Any> else {
+          let nestedResult = dataAsAnyObject.result as? Result<Any>
+    else {
       print("❌ Unable to cast result data")
       return
     }
-    
+
     if let nestedError = nestedResult.error {
       print("❌ Error in nested PortalWebviewError:", nestedError)
       return

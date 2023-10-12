@@ -61,7 +61,7 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
     do {
       self.connect = try self.portal?.createPortalConnectInstance(webSocketServer: CONNECT_URL)
       self.connect2 = try self.portal?.createPortalConnectInstance(webSocketServer: CONNECT_URL)
-      
+
       if let keys = self.portal?.gatewayConfig.keys {
         self.chains = Array(keys)
       }
@@ -73,7 +73,8 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
         let unwrappedConnect = self.connect,
         let unwrappedConnect2 = self.connect2,
         let unwrappedConnectButton = self.connectButton,
-        let unwrappedConnectButton2 = self.connectButton2 {
+        let unwrappedConnectButton2 = self.connectButton2
+      {
         self.initPortalConnect(portalConnect: unwrappedConnect, button: unwrappedConnectButton, label: "connect1")
         self.initPortalConnect(portalConnect: unwrappedConnect2, button: unwrappedConnectButton2, label: "connect2", autoApprove: false)
       }
