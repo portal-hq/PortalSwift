@@ -10,7 +10,7 @@ class WalletTests: XCTestCase {
 
   static func randomString(length: Int) -> String {
     let letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    let randomPart = String((0 ..< length).map { _ in letters.randomElement()! })
+    let randomPart = String((0 ..< length).map { _ in letters.randomElement() ?? "a" })
     let timestamp = String(Int(Date().timeIntervalSince1970))
     return randomPart + timestamp
   }
@@ -34,7 +34,7 @@ class WalletTests: XCTestCase {
       WalletTests.PortalWrap?.signIn(username: WalletTests.username ?? "") { (result: Result<UserResult>) in
         guard result.error == nil else {
           registerExpectation.fulfill()
-          return XCTFail("Failed on sign in: \(result.error!)")
+          return XCTFail("Failed on sign in: \(String(describing: result.error))")
         }
         guard let userResult = result.data else {
           return XCTFail("Failed on sign in: UserResult unable to be unpacked")
@@ -111,7 +111,7 @@ class WalletTests: XCTestCase {
     self.testLogin { result in
       guard result.error == nil else {
         ethSignExpectation.fulfill()
-        return XCTFail("Failed on login: \(result.error!)")
+        return XCTFail("Failed on login: \(String(describing: result.error))")
       }
       if let portal = WalletTests.PortalWrap?.portal {
         do {
@@ -128,7 +128,7 @@ class WalletTests: XCTestCase {
             return XCTFail("Failed on eth_sign: \(String(describing: result.error))")
           }
 
-          print("✅ eth_sign result: ", result.data!)
+          print("✅ eth_sign result: ", result.data ?? "")
           XCTAssertFalse(((result.data?.isEmpty) != nil), "eth sign success")
 
           ethSignExpectation.fulfill()
@@ -162,7 +162,7 @@ class WalletTests: XCTestCase {
       
       WalletTests.PortalWrap?.backup(backupMethod: BackupMethods.local.rawValue, user: user) { backupResult in
         guard backupResult.error == nil else {
-          print("❌ handleBackup():", result.error!)
+          print("❌ handleBackup():", result.error ?? "")
 
           do {
             try WalletTests.PortalWrap?.portal?.api.storedClientBackupShare(success: false) { result in
@@ -212,7 +212,7 @@ class WalletTests: XCTestCase {
     self.testLogin { result in
       guard result.error == nil else {
         recoverExpectation.fulfill()
-        return XCTFail("Failed on login: \(result.error!)")
+        return XCTFail("Failed on login: \(String(describing: result.error))")
       }
       WalletTests.PortalWrap?.recover(backupMethod: BackupMethods.local.rawValue, user: user) { result in
         guard result.error == nil else {
@@ -220,7 +220,7 @@ class WalletTests: XCTestCase {
           return XCTFail("Recover failed \(String(describing: result.error))")
         }
         recoverExpectation.fulfill()
-        return XCTAssertTrue(result.data!, "Recover Success")
+        return XCTAssertTrue((result.data != nil), "Recover Success")
       }
     }
     wait(for: [recoverExpectation], timeout: 120)
@@ -317,7 +317,7 @@ class WalletTests: XCTestCase {
     self.testLogin { result in
       guard result.error == nil else {
         ethSignExpectation.fulfill()
-        return XCTFail("Failed on login: \(result.error!)")
+        return XCTFail("Failed on login: \(String(describing: result.error))")
       }
 
       WalletTests.PortalWrap?.portal?.ethSignTypedData(message: mockSignedTypeDataMessage) { result in

@@ -17,23 +17,36 @@ class WebViewController: UIViewController {
     super.viewDidLoad()
 
     if self.portal != nil && self.url != nil {
-      let webViewController = PortalWebView(portal: portal!, url: URL(string: url!)!, onError: onError)
+      guard let url = URL(string: url ?? "") else {
+        print("WebViewController error: URL could not be derived.")
+        return
+      }
+      let webViewController = PortalWebView(portal: portal, url: url, onError: onError)
       // Install the WebViewController as a child view controller.
       addChild(webViewController)
-      let webViewControllerView = webViewController.view!
+      guard let webViewControllerView = webViewController.view else {
+        print("WebViewController error: webViewController.view could not be derived.")
+        return
+      }
       view.addSubview(webViewControllerView)
       webViewController.didMove(toParent: self)
     }
   }
 
   func onError(result: Result<Any>) {
-    print("PortalWebviewError:", result.error!, "Description:", result.error!.localizedDescription)
-    guard result.error == nil else {
-      print("❌ Error in PortalWebviewError:", result.error)
+    if let error = result.error {
+      print("PortalWebviewError:", error, "Description:", error.localizedDescription)
       return
     }
-    guard ((result.data! as AnyObject).result as! Result<Any>).error == nil else {
-      print("❌ Error in PortalWebviewError:", (result.data as! AnyObject).result as! Result<Any>)
+
+    guard let dataAsAnyObject = result.data as? AnyObject,
+          let nestedResult = dataAsAnyObject.result as? Result<Any> else {
+      print("❌ Unable to cast result data")
+      return
+    }
+    
+    if let nestedError = nestedResult.error {
+      print("❌ Error in nested PortalWebviewError:", nestedError)
       return
     }
   }
