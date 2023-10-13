@@ -48,6 +48,7 @@
 @property (nonatomic) NSString* _Nonnull clientAPIKey;
 // skipped field GetMeResponse.Custodian with unsupported type: github.com/portal-hq/mpc/client/mobile.Custodian
 
+@property (nonatomic) NSString* _Nonnull signingStatus;
 @end
 
 @interface MobileGetMeResult : NSObject <goSeqRefInterface> {
