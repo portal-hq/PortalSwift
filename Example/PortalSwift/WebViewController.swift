@@ -16,6 +16,11 @@ class WebViewController: UIViewController {
   override func viewDidLoad() {
     super.viewDidLoad()
 
+    guard let portal = self.portal else {
+      print("No self.portal found")
+      return
+    }
+
     if self.portal != nil && self.url != nil {
       guard let url = URL(string: url ?? "") else {
         print("WebViewController error: URL could not be derived.")
