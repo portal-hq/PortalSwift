@@ -1,9 +1,10 @@
 # The full list of SwiftFormat rules can be found at: https://github.com/nicklockwood/SwiftFormat/blob/main/Rules.md
 
 # Sets default indent to 2 spaces
-
 --indent 2
 
 # Ensures that the `self` keyword is always present when required
-
 --self insert
+
+# Exclude specified directories from formatting
+--exclude Pods,Example/Pods

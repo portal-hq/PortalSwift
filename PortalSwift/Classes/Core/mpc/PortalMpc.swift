@@ -161,9 +161,9 @@ public class PortalMpc {
       } else if method == BackupMethods.local.rawValue {
         print("Starting backup...")
         self.executeBackup(storage: storage!, signingShare: signingShare, backupMethod: method) { backupResult in
-          if backupResult.error != nil {
+          if let error = backupResult.error {
             self.isWalletModificationInProgress = false
-            return completion(Result(error: backupResult.error!))
+            return completion(Result(error: error))
           }
           progress?(MpcStatus(status: MpcStatuses.done, done: true))
           self.isWalletModificationInProgress = false
@@ -202,10 +202,10 @@ public class PortalMpc {
       print("Validating Keychain is available...")
       self.keychain.validateOperations { result in
         // Handle errors
-        if result.error != nil {
+        if let error = result.error {
           print("❌ Keychain is not available:")
           self.isWalletModificationInProgress = false
-          return completion(Result(error: result.error!))
+          return completion(Result(error: error))
         }
         print("Keychain is available, continuing...")
 
@@ -219,7 +219,10 @@ public class PortalMpc {
 
           // Parse the share
           progress?(MpcStatus(status: MpcStatuses.parsingShare, done: false))
-          let jsonData = response.data(using: .utf8)!
+          guard let jsonData = response.data(using: .utf8) else {
+            self.isWalletModificationInProgress = false
+            return completion(Result(error: JSONParseError.stringToDataConversionFailed))
+          }
 
           let generateResult: GenerateResult = try JSONDecoder().decode(GenerateResult.self, from: jsonData)
 
@@ -831,30 +834,42 @@ public class PortalMpc {
 
       // Store the signing share in the keychain.
       progress?(MpcStatus(status: MpcStatuses.storingShare, done: false))
-      let encodedShare = try JSONEncoder().encode(rotateResult.data!.dkgResult)
+      guard let dkgResult = rotateResult.data?.dkgResult else {
+        return completion(Result(error: JSONParseError.jsonDecodingFailed))
+      }
+
+      let encodedShare = try JSONEncoder().encode(dkgResult)
       let shareString = String(data: encodedShare, encoding: .utf8)
 
-      self.keychain.setAddress(address: rotateResult.data!.address) { result in
+      guard let address = rotateResult.data?.address else {
+        return completion(Result(error: JSONParseError.jsonDecodingFailed))
+      }
+
+      self.keychain.setAddress(address: address) { result in
         // Handle errors
-        if result.error != nil {
-          return completion(Result(error: result.error!))
+        if let error = result.error {
+          return completion(Result(error: error))
         }
 
         self.keychain.setSigningShare(signingShare: shareString!) { result in
           // Handle errors
-          if result.error != nil {
-            return completion(Result(error: result.error!))
+          if let error = result.error {
+            return completion(Result(error: error))
           }
 
           do {
             try self.api.storedClientSigningShare(recoverSigning: true) { result in
               // Handle errors
-              if result.error != nil {
-                return completion(Result(error: result.error!))
+              if let error = result.error {
+                return completion(Result(error: error))
+              }
+
+              guard let dkgResult = rotateResult.data?.dkgResult else {
+                return completion(Result(error: MpcError.unableToWriteToKeychain))
               }
 
               // Return the new signing share.
-              return completion(Result(data: rotateResult.data!.dkgResult))
+              return completion(Result(data: dkgResult))
             }
           } catch {
             return completion(Result(error: error))
@@ -873,7 +888,9 @@ public class PortalMpc {
   private func JSONParseShare(shareString: String) throws -> MpcShare {
     var shareJson: MpcShare
     do {
-      let jsonString = shareString.data(using: .utf8)!
+      guard let jsonString = shareString.data(using: .utf8) else {
+        throw JSONParseError.stringToDataConversionFailed
+      }
       shareJson = try JSONDecoder().decode(MpcShare.self, from: jsonString)
     } catch {
       throw MpcError.unableToDecodeShare
@@ -1060,4 +1077,9 @@ public enum RsaError: Error {
   case dataIsTooLongForKey
   case unableToGetPublicKey
   case incorrectCipherTextFormat
+}
+
+public enum JSONParseError: Error {
+  case stringToDataConversionFailed
+  case jsonDecodingFailed
 }
