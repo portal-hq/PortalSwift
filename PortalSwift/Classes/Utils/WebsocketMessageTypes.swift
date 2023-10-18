@@ -192,13 +192,13 @@ public struct Params: Codable {
 }
 
 public struct Namespaces: Codable {
-  public var eip155: Eip155
+  public var eip155: Eip155?
 }
 
 public struct Eip155: Codable {
-  public var chains: [String]
-  public var methods: [String]
-  public var events: [String]
+  public var chains: [String]?
+  public var methods: [String]?
+  public var events: [String]?
   public var rpcMap: [String: String]?
 }
 
