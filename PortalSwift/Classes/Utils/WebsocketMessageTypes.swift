@@ -192,7 +192,7 @@ public struct Params: Codable {
 }
 
 public struct Namespaces: Codable {
-  public var eip155: Eip155
+  public var eip155: Eip155?
 }
 
 public struct Eip155: Codable {

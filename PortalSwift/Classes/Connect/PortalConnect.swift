@@ -158,7 +158,7 @@ public class PortalConnect: EventBus {
     let chainsToAdd = self.gatewayConfig.keys.map { "eip155:\($0)" }
 
     // Convert existing chains and chainsToAdd to sets
-    let existingChainsSet = Set(data.params.params.requiredNamespaces.eip155.chains)
+    let existingChainsSet = Set<String>(data.params.params.requiredNamespaces.eip155?.chains ?? [])
     let chainsToAddSet = Set(chainsToAdd)
 
     // Merge the two sets and convert back to an array
@@ -166,9 +166,9 @@ public class PortalConnect: EventBus {
 
     // Create a new Eip155 instance with the updated chains
     let newEip155 = Eip155(chains: newChains,
-                           methods: data.params.params.requiredNamespaces.eip155.methods,
-                           events: data.params.params.requiredNamespaces.eip155.events,
-                           rpcMap: data.params.params.requiredNamespaces.eip155.rpcMap)
+                           methods: data.params.params.requiredNamespaces.eip155?.methods,
+                           events: data.params.params.requiredNamespaces.eip155?.events,
+                           rpcMap: data.params.params.requiredNamespaces.eip155?.rpcMap)
 
     // Create a new Namespaces instance with the updated Eip155
     let newNamespaces = Namespaces(eip155: newEip155)
