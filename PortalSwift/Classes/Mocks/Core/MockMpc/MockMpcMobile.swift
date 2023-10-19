@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import Mpc
 
 class MockMobileWrapper: Mobile {
   func MobileGenerate(_: String, _: String, _: String, _: String) -> String {
