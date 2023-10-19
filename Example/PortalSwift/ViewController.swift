@@ -210,62 +210,106 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  @IBAction func handleBackup(_: UIButton!) {
-    print("Starting backup...")
-    guard let user = self.user else {
-      print("❌ handleBackup(): Unable to derive the user.")
-      return
+  // Call this function whenever you want to prompt the user for a PIN
+  func requestPassword(completion: @escaping (String?) -> Void) {
+    let alertController = UIAlertController(title: "Enter Password", message: nil, preferredStyle: .alert)
+
+    // Add text field for PIN input
+    alertController.addTextField { textField in
+      textField.placeholder = "PASSWORD"
+      textField.isSecureTextEntry = true
+      textField.keyboardType = .numberPad
     }
 
-    // PortalWrapper.backup(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user!) { (result) -> Void in
-    self.PortalWrapper.backup(backupMethod: BackupMethods.iCloud.rawValue, user: user) { result in
-      guard result.error == nil else {
-        print("❌ handleBackup():", result.error ?? "")
+    // Submit action
+    let submitAction = UIAlertAction(title: "Submit", style: .default) { _ in
+      let password = alertController.textFields?.first?.text
+      completion(password)
+    }
+    alertController.addAction(submitAction)
 
-        do {
-          try self.PortalWrapper.portal?.api.storedClientBackupShare(success: false) { result in
-            guard result.error == nil else {
-              print("❌ handleBackup(): Error notifying Portal that backup share was not stored.")
-              return
-            }
-          }
-        } catch {
-          print("❌ handleBackup(): Error notifying Portal that backup share was not stored.")
-        }
+    // Cancel action
+    let cancelAction = UIAlertAction(title: "Cancel", style: .cancel) { _ in
+      completion(nil)
+    }
+    alertController.addAction(cancelAction)
+
+    // Present the alert controller
+    self.present(alertController, animated: true, completion: nil)
+  }
+
+  @IBAction func handleBackup(_: UIButton!) {
+    print("Starting backup...")
+    self.requestPassword { password in
+      guard let enteredPassword = password, !enteredPassword.isEmpty else {
+        // Handle case where no PIN was entered or the operation was canceled
         return
       }
-
+      print("Entered Password:", enteredPassword)
       do {
-        try self.PortalWrapper.portal?.api.storedClientBackupShare(success: true) { result in
+        let backupConfigs = try BackupConfigs(passwordStorage: PasswordStorageConfig(password: enteredPassword))
+
+        // PortalWrapper.backup(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user!) { (result) -> Void in
+        self.PortalWrapper.backup(backupMethod: BackupMethods.Password.rawValue, user: self.user!, backupConfigs: backupConfigs) { result in
           guard result.error == nil else {
-            print("❌ handleBackup(): Error notifying Portal that backup share was stored.")
+            print("❌ handleBackup():", result.error!)
+
+            do {
+              try self.PortalWrapper.portal!.api.storedClientBackupShare(success: false) { result in
+                guard result.error == nil else {
+                  print("❌ handleBackup(): Error notifying Portal that backup share was not stored.")
+                  return
+                }
+              }
+            } catch {
+              print("❌ handleBackup(): Error notifying Portal that backup share was not stored.")
+            }
             return
           }
 
-          self.populateAddressInformation()
-          print("✅ handleBackup(): Successfully sent custodian cipherText.")
+          do {
+            try self.PortalWrapper.portal!.api.storedClientBackupShare(success: true) { result in
+              guard result.error == nil else {
+                print("❌ handleBackup(): Error notifying Portal that backup share was stored.")
+                return
+              }
+
+              self.populateAddressInformation()
+              print("✅ handleBackup(): Successfully sent custodian cipherText")
+            }
+          } catch {
+            print("❌ handleBackup(): Error notifying Portal that backup share was stored.")
+          }
         }
       } catch {
-        print("❌ handleBackup(): Error notifying Portal that backup share was stored.")
+        print(error)
       }
     }
   }
 
   @IBAction func handleRecover(_: UIButton!) {
-    guard let user = self.user else {
-      print("❌ handleRecover(): Unable to derive the user.")
-      return
-    }
-
-    // PortalWrapper.recover(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user) { (result) -> Void in
-    self.PortalWrapper.recover(backupMethod: BackupMethods.iCloud.rawValue, user: user) { result in
-      guard result.error == nil else {
-        print("❌ handleRecover(): Error recovering wallet:", result.error ?? "")
+    // PortalWrapper.recover(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user!) { (result) -> Void in
+    self.requestPassword { password in
+      guard let enteredPassword = password, !enteredPassword.isEmpty else {
+        // Handle case where no PIN was entered or the operation was canceled
         return
       }
+      print("Entered Password:", enteredPassword)
+      do {
+        let backupConfigs = try BackupConfigs(passwordStorage: PasswordStorageConfig(password: enteredPassword))
 
-      self.populateAddressInformation()
-      print("✅ handleRecover(): Successfully recovered signing shares.")
+        self.PortalWrapper.recover(backupMethod: BackupMethods.Password.rawValue, user: self.user!, backupConfigs: backupConfigs) { result in
+          guard result.error == nil else {
+            print("❌ handleRecover(): Error recovering wallet:", result.error!)
+            return
+          }
+
+          self.populateAddressInformation()
+          print("✅ handleRecover(): Successfully recovered signing shares")
+        }
+      } catch {
+        print(error)
+      }
     }
   }
 
@@ -547,14 +591,15 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   func registerPortalUi(apiKey: String) {
     do {
-      //      guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
-      //        print("Couldnt load info plist")
-      //        return }
-      //      guard let GDRIVE_CLIENT_ID: String = infoDictionary["GDRIVE_CLIENT_ID"] as? String else {
-      //        print("Error: Do you have `GDRIVE_CLIENT_ID=$(GDRIVE_CLIENT_ID)` in your info.plist?")
-      //        return  }
-      //      let backup = BackupOptions(gdrive: GDriveStorage(clientID: GDRIVE_CLIENT_ID, viewController: self))
-      let backup = BackupOptions(icloud: ICloudStorage())
+//            guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
+//              print("Couldnt load info plist")
+//              return }
+//            guard let GDRIVE_CLIENT_ID: String = infoDictionary["GDRIVE_CLIENT_ID"] as? String else {
+//              print("Error: Do you have `GDRIVE_CLIENT_ID=$(GDRIVE_CLIENT_ID)` in your info.plist?")
+//              return  }
+      let backup = BackupOptions(passwordStorage: PasswordStorage())
+//            let backup = BackupOptions(gdrive: GDriveStorage(clientID: GDRIVE_CLIENT_ID, viewController: self))
+//      let backup = BackupOptions(icloud: ICloudStorage())
       self.PortalWrapper.registerPortal(apiKey: apiKey, backup: backup, optimized: true) { _ in
         DispatchQueue.main.async {
           self.generateButton?.isEnabled = true
