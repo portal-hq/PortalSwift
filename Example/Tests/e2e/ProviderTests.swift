@@ -16,7 +16,7 @@ class ProviderTests: XCTestCase {
 
   static func randomString(length: Int) -> String {
     let letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    let randomPart = String((0 ..< length).map { _ in letters.randomElement()! })
+    let randomPart = String((0 ..< length).map { _ in letters.randomElement() ?? "a" })
     let timestamp = String(Int(Date().timeIntervalSince1970))
     return randomPart + timestamp
   }
@@ -24,7 +24,7 @@ class ProviderTests: XCTestCase {
   override class func setUp() {
     super.setUp()
     self.username = self.randomString(length: 15)
-    print("username: ", self.username!)
+    print("Username: ", self.username ?? "")
     self.PortalWrap = PortalWrapper()
   }
 
@@ -37,7 +37,7 @@ class ProviderTests: XCTestCase {
   func testARegister() {
     let expectation = XCTestExpectation(description: "Complete registration, generation, and funding")
 
-    ProviderTests.PortalWrap.signUp(username: ProviderTests.username!) { result in
+    ProviderTests.PortalWrap.signUp(username: ProviderTests.username ?? "") { result in
       guard let userResult = self.handleSignUp(result: result) else {
         XCTFail("Failed on sign up")
         return expectation.fulfill()
@@ -79,7 +79,12 @@ class ProviderTests: XCTestCase {
             expectation.fulfill()
             return
           }
-          XCTAssert(result.data! > 0, "Ether balance is greater than 0")
+          guard let data = result.data else {
+            XCTFail("Failed deriving data from result")
+            expectation.fulfill()
+            return
+          }
+          XCTAssert(data > 0, "Ether balance is greater than 0")
           expectation.fulfill()
         }
       }
@@ -557,9 +562,20 @@ class ProviderTests: XCTestCase {
       }
 
       self.performRequest(method: ETHRequestMethods.RequestAccounts.rawValue, params: []) { result in
+        guard let responseData = result.data,
+              let resultData = responseData.result as? Result<SignerResult>
+        else {
+          XCTFail("Failed to cast response data")
+          return expectation.fulfill()
+        }
 
-        guard (result.data!.result as! Result<SignerResult>).error == nil, let accounts = (result.data!.result as! Result<SignerResult>).data!.accounts else {
-          XCTFail("Error testing provider request: \(String(describing: (result.data!.result as! Result<SignerResult>).error))")
+        if let error = resultData.error {
+          XCTFail("Error testing provider request: \(String(describing: error))")
+          return expectation.fulfill()
+        }
+
+        guard let accounts = resultData.data?.accounts else {
+          XCTFail("Accounts are nil")
           return expectation.fulfill()
         }
 
@@ -583,9 +599,20 @@ class ProviderTests: XCTestCase {
       }
 
       self.performRequest(method: ETHRequestMethods.Accounts.rawValue, params: []) { result in
+        guard let responseData = result.data,
+              let resultData = responseData.result as? Result<SignerResult>
+        else {
+          XCTFail("Failed to cast response data")
+          return expectation.fulfill()
+        }
 
-        guard (result.data!.result as! Result<SignerResult>).error == nil, let accounts = (result.data!.result as! Result<SignerResult>).data!.accounts else {
-          XCTFail("Error testing provider request: \(String(describing: (result.data!.result as! Result<SignerResult>).error))")
+        if let error = resultData.error {
+          XCTFail("Error testing provider request: \(String(describing: error))")
+          return expectation.fulfill()
+        }
+
+        guard let accounts = resultData.data?.accounts else {
+          XCTFail("Accounts are nil")
           return expectation.fulfill()
         }
 
@@ -599,7 +626,6 @@ class ProviderTests: XCTestCase {
     wait(for: [expectation], timeout: 30)
   }
 
-  // ** Signer Methods ** //
   func testEthSign() {
     let expectation = XCTestExpectation(description: "Expecting valid signature from eth sign")
 
@@ -610,15 +636,26 @@ class ProviderTests: XCTestCase {
       }
 
       self.performRequest(method: ETHRequestMethods.Sign.rawValue, params: [fromAddress, "0xdeadbeaf"]) { result in
+        guard let responseData = result.data,
+              let resultData = responseData.result as? Result<SignerResult>
+        else {
+          XCTFail("Failed to cast response data")
+          return expectation.fulfill()
+        }
 
-        guard (result.data!.result as! Result<SignerResult>).error == nil, let signature = (result.data!.result as! Result<SignerResult>).data!.signature else {
-          XCTFail("Error testing provider request: \(String(describing: (result.data!.result as! Result<SignerResult>).error))")
+        if let error = resultData.error {
+          XCTFail("Error testing provider request: \(String(describing: error))")
+          return expectation.fulfill()
+        }
+
+        guard let signature = resultData.data?.signature else {
+          XCTFail("Signature is nil")
           return expectation.fulfill()
         }
 
         print("MPC Signer response for eth_sign \(String(describing: signature))")
         XCTAssert(!signature.isEmpty, "eth_sign should not be empty")
-        XCTAssert(signature.starts(with: "0x"), "eth_sign should return a signature in hexademical")
+        XCTAssert(signature.starts(with: "0x"), "eth_sign should return a signature in hexadecimal")
         expectation.fulfill()
       }
     }
@@ -636,15 +673,26 @@ class ProviderTests: XCTestCase {
       }
 
       self.performRequest(method: ETHRequestMethods.SignTypedDataV4.rawValue, params: [fromAddress, mockSignedTypeDataMessage]) { result in
+        guard let responseData = result.data,
+              let resultData = responseData.result as? Result<SignerResult>
+        else {
+          XCTFail("Failed to cast response data")
+          return expectation.fulfill()
+        }
 
-        guard (result.data!.result as! Result<SignerResult>).error == nil, let signature = (result.data!.result as! Result<SignerResult>).data!.signature else {
-          XCTFail("Error testing provider request: \(String(describing: (result.data!.result as! Result<SignerResult>).error))")
+        if let error = resultData.error {
+          XCTFail("Error testing provider request: \(String(describing: error))")
+          return expectation.fulfill()
+        }
+
+        guard let signature = resultData.data?.signature else {
+          XCTFail("Signature is nil")
           return expectation.fulfill()
         }
 
         print("MPC Signer response for eth_signTypedDataV4 \(String(describing: signature))")
         XCTAssert(!signature.isEmpty, "eth_signTypedDataV4 should not be empty")
-        XCTAssert(signature.starts(with: "0x"), "eth_signTypedDataV4 should return a signature in hexademical")
+        XCTAssert(signature.starts(with: "0x"), "eth_signTypedDataV4 should return a signature in hexadecimal")
         expectation.fulfill()
       }
     }
@@ -1163,16 +1211,19 @@ class ProviderTests: XCTestCase {
     return XCTContext.runActivity(named: "Login") { _ in
       let registerExpectation = XCTestExpectation(description: "Register")
 
-      ProviderTests.PortalWrap?.signIn(username: ProviderTests.username!) { (result: Result<UserResult>) in
+      ProviderTests.PortalWrap?.signIn(username: ProviderTests.username ?? "") { (result: Result<UserResult>) in
         guard result.error == nil else {
-          XCTFail("Failed on sign In: \(result.error!)")
+          XCTFail("Failed on sign In: \(String(describing: result.error))")
           return registerExpectation.fulfill()
         }
-        let userResult = result.data!
+        guard let userResult = result.data else {
+          XCTFail("Failed to unwrap result.data")
+          return registerExpectation.fulfill()
+        }
 
         self.registerPortal(userResult: userResult, chainId: chainId) { success in
           guard success else {
-            XCTFail("Failed on registering portal: \(result.error!)")
+            XCTFail("Failed on registering portal: \(String(describing: result.error))")
             return registerExpectation.fulfill()
           }
 
@@ -1186,7 +1237,7 @@ class ProviderTests: XCTestCase {
 
   func handleSignUp(result: Result<UserResult>) -> UserResult? {
     guard result.error == nil, let userResult = result.data else {
-      XCTFail("Failed on sign up: \(result.error!)")
+      XCTFail("Failed on sign up: \(String(describing: result.error))")
       return nil
     }
     ProviderTests.user = userResult
@@ -1198,7 +1249,7 @@ class ProviderTests: XCTestCase {
     let backup = BackupOptions(local: backupOption)
     print("Registering portal...")
 
-    ProviderTests.PortalWrap.registerPortal(apiKey: userResult.clientApiKey, backup: backup, chainId: chainId) { result in
+    ProviderTests.PortalWrap.registerPortal(apiKey: userResult.clientApiKey, backup: backup, chainId: chainId, optimized: true) { result in
       guard result.error == nil else {
         XCTFail("Unable to register Portal")
         completion(false)
@@ -1230,13 +1281,22 @@ class ProviderTests: XCTestCase {
 
   func getBalanceWithRetries(tryCount: Int, completion: @escaping (Result<Decimal>) -> Void) {
     ProviderTests.PortalWrap.portal?.ethGetBalance { balanceResult in
+      // Check for error
       guard balanceResult.error == nil else {
         XCTFail("Could not check balance")
         completion(Result(error: ProviderTestErrors.ErrorGettingBalance))
         return
       }
 
-      let hexBalance = (balanceResult.data!.result as! ETHGatewayResponse).result!
+      // Safely unwrap and downcast
+      guard let ethGatewayResponse = balanceResult.data?.result as? ETHGatewayResponse,
+            let hexBalance = ethGatewayResponse.result
+      else {
+        XCTFail("Failed to cast or balance is nil")
+        completion(Result(error: ProviderTestErrors.ErrorGettingBalance))
+        return
+      }
+
       let balanceHexWithoutPrefix = String(hexBalance.dropFirst(2))
 
       if let weiValue = UInt64(balanceHexWithoutPrefix, radix: 16), weiValue > 0 {
@@ -1283,7 +1343,7 @@ class ProviderTests: XCTestCase {
       defer { completion() }
 
       guard result.error == nil else {
-        return XCTFail("Failed on eth_sendTransation: \(result.error!)")
+        return XCTFail("Failed on eth_sendTransation: \(String(describing: result.error))")
       }
 
       if let resultObject = (result.data?.result as? Result<Any>) {
@@ -1313,7 +1373,7 @@ class ProviderTests: XCTestCase {
       defer { completion() }
 
       guard result.error == nil else {
-        return XCTFail("Failed on eth_signTransation: \(result.error!)")
+        return XCTFail("Failed on eth_signTransation: \(String(describing: result.error))")
       }
 
       if let resultObject = (result.data?.result as? Result<Any>) {

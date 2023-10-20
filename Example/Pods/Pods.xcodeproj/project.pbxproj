@@ -295,6 +295,7 @@
 		F80C60A6D0322DC023E0211E06F53A10 /* sv.lproj in Resources */ = {isa = PBXBuildFile; fileRef = 1F79538A8B9ED1E865D2DFC0E653E8BA /* sv.lproj */; };
 		F82454C6DDDAF666D44D9518F76FE851 /* Storage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225994DFE946B2BDD8AB33CAE07B0C9F /* Storage.swift */; };
 		F8473F19A98E8C04DA797F91A71F8443 /* GIDGoogleUser.m in Sources */ = {isa = PBXBuildFile; fileRef = 244B79D9C54809E7C7B199C1489AD49A /* GIDGoogleUser.m */; };
+		F918986E2ACDFB9500F6CD79 /* PasswordStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F918986D2ACDFB9500F6CD79 /* PasswordStorage.swift */; };
 		F950D208FA4D412081B58F83807785A4 /* OIDRegistrationResponse.h in Headers */ = {isa = PBXBuildFile; fileRef = 735E5E1EFE968E115DDDBF274A8E6738 /* OIDRegistrationResponse.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		F98373D48C531C9435A1F48C719BA8DB /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FE947C8327827834EA203888AB6B5205 /* Foundation.framework */; };
 		FA57677851302C0F13C69A459895DCEF /* NSBundle+GID3PAdditions.h in Headers */ = {isa = PBXBuildFile; fileRef = D0B13CB8E2380B3D8153DE8AC1D00E0D /* NSBundle+GID3PAdditions.h */; settings = {ATTRIBUTES = (Project, ); }; };
@@ -780,6 +781,7 @@
 		F787A922FCA2B2453D62B91E0D238CE4 /* FoundationSecurity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FoundationSecurity.swift; path = Sources/Security/FoundationSecurity.swift; sourceTree = "<group>"; };
 		F8D7EA35E60B3E6DFB4917E429D6576A /* UIImage+Snapshot.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = "UIImage+Snapshot.h"; path = "FBSnapshotTestCase/Categories/UIImage+Snapshot.h"; sourceTree = "<group>"; };
 		F8FAFD8374FB6F6957B7CDAD191A61AB /* PortalSwift-Unit-Tests-prefix.pch */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "PortalSwift-Unit-Tests-prefix.pch"; sourceTree = "<group>"; };
+		F918986D2ACDFB9500F6CD79 /* PasswordStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordStorage.swift; sourceTree = "<group>"; };
 		F99591EE4A6FA4AB69D613692D72A6E9 /* StringHTTPHandler.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = StringHTTPHandler.swift; path = Sources/Framer/StringHTTPHandler.swift; sourceTree = "<group>"; };
 		FB367A379C63040F8B0480CF9465B2C0 /* GTMKeychain.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = GTMKeychain.h; path = GTMAppAuth/Sources/Public/GTMAppAuth/GTMKeychain.h; sourceTree = "<group>"; };
 		FB6100D479E7EBBD7EF326CF27357FA5 /* GDriveStorageTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GDriveStorageTests.swift; sourceTree = "<group>"; };
@@ -1282,6 +1284,7 @@
 				CCDDF2A5D1D2918EE00573996BFD3C07 /* LocalFileStorage.swift */,
 				225994DFE946B2BDD8AB33CAE07B0C9F /* Storage.swift */,
 				A98BCD2DB674A62373AFF88DB2DC1293 /* GDrive */,
+				F918986D2ACDFB9500F6CD79 /* PasswordStorage.swift */,
 			);
 			name = Storage;
 			path = PortalSwift/Classes/Storage;
@@ -2470,6 +2473,7 @@
 				F82454C6DDDAF666D44D9518F76FE851 /* Storage.swift in Sources */,
 				A9FD6CC135FBAB4609A35B7B2788DAF4 /* WebSocketClient.swift in Sources */,
 				555BF34CE3739195E03592BD7842E95D /* WebsocketMessageTypes.swift in Sources */,
+				F918986E2ACDFB9500F6CD79 /* PasswordStorage.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

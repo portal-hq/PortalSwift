@@ -35,6 +35,8 @@ public let mockDecryptResult = "{\"data\":{\"plaintext\":\"signingShareObject\"}
 
 public let mockEncryptResult = "{\"data\":{\"key\":\"someKey\",\"cipherText\":\"\(mockCiphertext)\"},\"error\":{\"code\":0,\"message\":\"\"}}"
 
+public let mockEncryptWithPasswordResult = "{\"data\":{\"cipherText\":\"\(mockCiphertext)\"},\"error\":{\"code\":0,\"message\":\"\"}}"
+
 public let mockClientResult = "{\"data\":{\"id\":\"\(mockClientId)\",\"address\":\"\(mockAddress)\",\"clientApiKey\":\"\(mockApiKey)\",\"custodian\":{\"id\":\"someCustodianId\",\"name\":\"someCustodianName\"}},\"error\":{\"code\":0,\"message\":\"\"}}"
 
 public let backupProgressCallbacks: Set<MpcStatuses> = [.readingShare, .generatingShare, .parsingShare, .encryptingShare, .storingShare, .done]

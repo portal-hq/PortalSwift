@@ -10,24 +10,24 @@ import UIKit
 
 class ConnectViewController: UIViewController, UITextFieldDelegate {
   public var portal: Portal?
-  public var app: PortalExampleAppDelegate = UIApplication.shared.delegate as! PortalExampleAppDelegate
+  public var app: PortalExampleAppDelegate? = UIApplication.shared.delegate as? PortalExampleAppDelegate
 
   private var connect: PortalConnect?
   private var connect2: PortalConnect?
   private var chains: [Int]?
   // UI Elements
-  @IBOutlet var connectButton: UIButton!
-  @IBOutlet var connectMessage: UITextView!
-  @IBOutlet var disconnectButton: UIButton!
-  @IBOutlet var addressTextInput: UITextField!
-  @IBOutlet var connectButton2: UIButton!
-  @IBOutlet var connectMessage2: UITextView!
-  @IBOutlet var disconnectButton2: UIButton!
-  @IBOutlet var addressTextInput2: UITextField!
-  @IBOutlet var PolygonMainnetButton: UIButton!
-  @IBOutlet var EthMainnetButton: UIButton!
-  @IBOutlet var GoerliButton: UIButton!
-  @IBOutlet var MumbaiButton: UIButton!
+  @IBOutlet var connectButton: UIButton?
+  @IBOutlet var connectMessage: UITextView?
+  @IBOutlet var disconnectButton: UIButton?
+  @IBOutlet var addressTextInput: UITextField?
+  @IBOutlet var connectButton2: UIButton?
+  @IBOutlet var connectMessage2: UITextView?
+  @IBOutlet var disconnectButton2: UIButton?
+  @IBOutlet var addressTextInput2: UITextField?
+  @IBOutlet var PolygonMainnetButton: UIButton?
+  @IBOutlet var EthMainnetButton: UIButton?
+  @IBOutlet var GoerliButton: UIButton?
+  @IBOutlet var MumbaiButton: UIButton?
 
   required init?(coder: NSCoder) {
     super.init(coder: coder)
@@ -36,13 +36,13 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
   override func viewDidLoad() {
     super.viewDidLoad()
 
-    self.addressTextInput.delegate = self
-    self.addressTextInput2.delegate = self
+    self.addressTextInput?.delegate = self
+    self.addressTextInput2?.delegate = self
 
-    self.connectButton.isEnabled = false
-    self.connectButton2.isEnabled = false
-    self.disconnectButton.isEnabled = false
-    self.disconnectButton2.isEnabled = false
+    self.connectButton?.isEnabled = false
+    self.connectButton2?.isEnabled = false
+    self.disconnectButton?.isEnabled = false
+    self.disconnectButton2?.isEnabled = false
 
     guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
       print("Error loading env vars in connect")
@@ -59,15 +59,25 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
     let CONNECT_URL = ENV == "prod" ? PROD_CONNECT_SERVER_URL : ENV == "staging" ? STAGING_CONNECT_SERVER_URL : LOCAL_CONNECT_SERVER_URL
 
     do {
-      self.connect = try self.portal!.createPortalConnectInstance(webSocketServer: CONNECT_URL)
-      self.connect2 = try self.portal!.createPortalConnectInstance(webSocketServer: CONNECT_URL)
-      self.chains = Array((self.portal?.gatewayConfig.keys)!)
+      self.connect = try self.portal?.createPortalConnectInstance(webSocketServer: CONNECT_URL)
+      self.connect2 = try self.portal?.createPortalConnectInstance(webSocketServer: CONNECT_URL)
 
-      self.app.connect = self.connect
-      self.app.connect2 = self.connect2
+      if let keys = self.portal?.gatewayConfig.keys {
+        self.chains = Array(keys)
+      }
 
-      self.initPortalConnect(portalConnect: self.connect!, button: self.connectButton, label: "connect1")
-      self.initPortalConnect(portalConnect: self.connect2!, button: self.connectButton2, label: "connect2", autoApprove: false)
+      self.app?.connect = self.connect
+      self.app?.connect2 = self.connect2
+
+      if
+        let unwrappedConnect = self.connect,
+        let unwrappedConnect2 = self.connect2,
+        let unwrappedConnectButton = self.connectButton,
+        let unwrappedConnectButton2 = self.connectButton2
+      {
+        self.initPortalConnect(portalConnect: unwrappedConnect, button: unwrappedConnectButton, label: "connect1")
+        self.initPortalConnect(portalConnect: unwrappedConnect2, button: unwrappedConnectButton2, label: "connect2", autoApprove: false)
+      }
     } catch {
       print("[ConnectViewController] Unable to create PortalConnect instances \(error)")
     }
@@ -109,29 +119,29 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
       print("[ConnectViewController] ✅ Connected! \(data) on \(label)")
 
       if label == "connect1" {
-        self.connectButton.isEnabled = false
-        self.disconnectButton.isEnabled = true
+        self.connectButton?.isEnabled = false
+        self.disconnectButton?.isEnabled = true
       } else {
-        self.connectButton2.isEnabled = false
-        self.disconnectButton2.isEnabled = true
+        self.connectButton2?.isEnabled = false
+        self.disconnectButton2?.isEnabled = true
       }
     }
 
     portalConnect.on(event: Events.Disconnect.rawValue) { (data: Any) in
       print("[ConnectViewController] 🛑 Disconnected \(data) on \(label)")
       if label == "connect1" {
-        self.connectButton.isEnabled = false
-        self.disconnectButton.isEnabled = false
-        self.addressTextInput.text = ""
+        self.connectButton?.isEnabled = false
+        self.disconnectButton?.isEnabled = false
+        self.addressTextInput?.text = ""
       } else {
-        self.connectButton2.isEnabled = false
-        self.disconnectButton2.isEnabled = false
-        self.addressTextInput2.text = ""
+        self.connectButton2?.isEnabled = false
+        self.disconnectButton2?.isEnabled = false
+        self.addressTextInput2?.text = ""
       }
     }
 
     portalConnect.on(event: Events.PortalSigningRequested.rawValue) { (data: Any) in
-      print("Chain ID: ", (data as? ETHRequestPayload)?.chainId)
+      print("Chain ID: ", (data as? ETHRequestPayload)?.chainId ?? "")
       if autoApprove {
         portalConnect.emit(event: Events.PortalSigningApproved.rawValue, data: data)
       } else {
@@ -214,19 +224,19 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
 
   @IBAction func connectPressed() {
     print("Connect button pressed...")
-    let uri = self.addressTextInput.text
-    print("Attempting to connect to \(uri!) using \(self.connect!)")
-    self.connect?.connect(uri!)
+    let uri = self.addressTextInput?.text
+    print("Attempting to connect to \(uri ?? "") using \(self.connect)")
+    self.connect?.connect(uri ?? "")
   }
 
   @IBAction func connect2Pressed() {
     print("Connect button pressed...")
-    let uri = self.addressTextInput2.text
+    let uri = self.addressTextInput2?.text
 
-    print("URI2 Text: \(uri)")
+    print("URI2 Text: \(uri ?? "")")
 
-    print("Attempting to connect to \(uri!) using \(self.connect2!)")
-    self.connect2?.connect(uri!)
+    print("Attempting to connect to \(uri ?? "") using \(self.connect2)")
+    self.connect2?.connect(uri ?? "")
   }
 
   @IBAction func disconnectPressed() {
@@ -240,18 +250,18 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
   }
 
   @IBAction func uriChanged(_: Any) {
-    let uri = self.addressTextInput.text
+    let uri = self.addressTextInput?.text
 
-    self.connectButton.isEnabled =
+    self.connectButton?.isEnabled =
       uri != nil
         && uri?.isEmpty == false
         && uri?.starts(with: "wc:") == true
   }
 
   @IBAction func uri2Changed(_: Any) {
-    let uri = self.addressTextInput2.text
+    let uri = self.addressTextInput2?.text
 
-    self.connectButton2.isEnabled =
+    self.connectButton2?.isEnabled =
       uri != nil
         && uri?.isEmpty == false
         && uri?.starts(with: "wc:") == true

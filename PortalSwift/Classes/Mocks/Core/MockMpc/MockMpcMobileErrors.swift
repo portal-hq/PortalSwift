@@ -25,6 +25,14 @@ class MockMobileErrorWrapper: Mobile {
     return mockDataResult
   }
 
+  func MobileEncryptWithPassword(data _: String, password _: String) -> String {
+    return mockEncryptWithPasswordResult
+  }
+
+  func MobileDecryptWithPassword(_: String, _: String) -> String {
+    return mockDecryptResult
+  }
+
   func MobileDecrypt(_: String, _: String) -> String {
     return mockDecryptResult
   }

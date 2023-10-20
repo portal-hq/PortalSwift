@@ -129,23 +129,15 @@ public class PortalConnect: EventBus {
 
     if self.client == nil {
       self.client = WebSocketClient(apiKey: self.apiKey, connect: self, webSocketServer: self.webSocketServer)
+    } else {
+      self.unbindClientEvents()
     }
 
     self.uri = uri
 
     self.client?.resetEventBus()
 
-    self.client?.on("close", self.handleClose)
-    self.client?.on("portal_dappSessionRequested", self.handleDappSessionRequested)
-    self.client?.on("portal_dappSessionRequestedV1", self.handleDappSessionRequestedV1)
-    self.client?.on("connected", self.handleConnected)
-    self.client?.on("connectedV1", self.handleConnectedV1)
-    self.client?.on("disconnected", self.handleDisconnected)
-    self.client?.on("error", self.handleConnectError)
-    self.client?.on("portal_connectError", self.handleError)
-    self.client?.on("session_request", self.handleSessionRequest)
-    self.client?.on("session_request_address", self.handleSessionRequestAddress)
-    self.client?.on("session_request_transaction", self.handleSessionRequestTransaction)
+    self.bindClientEvents()
 
     self.client?.connect(uri: uri)
   }
@@ -158,7 +150,7 @@ public class PortalConnect: EventBus {
     let chainsToAdd = self.gatewayConfig.keys.map { "eip155:\($0)" }
 
     // Convert existing chains and chainsToAdd to sets
-    let existingChainsSet = Set(data.params.params.requiredNamespaces.eip155.chains)
+    let existingChainsSet = Set<String>(data.params.params.requiredNamespaces.eip155?.chains ?? [])
     let chainsToAddSet = Set(chainsToAdd)
 
     // Merge the two sets and convert back to an array
@@ -166,9 +158,9 @@ public class PortalConnect: EventBus {
 
     // Create a new Eip155 instance with the updated chains
     let newEip155 = Eip155(chains: newChains,
-                           methods: data.params.params.requiredNamespaces.eip155.methods,
-                           events: data.params.params.requiredNamespaces.eip155.events,
-                           rpcMap: data.params.params.requiredNamespaces.eip155.rpcMap)
+                           methods: data.params.params.requiredNamespaces.eip155?.methods ?? [],
+                           events: data.params.params.requiredNamespaces.eip155?.events ?? [],
+                           rpcMap: data.params.params.requiredNamespaces.eip155?.rpcMap ?? [:])
 
     // Create a new Namespaces instance with the updated Eip155
     let newNamespaces = Namespaces(eip155: newEip155)
@@ -527,6 +519,34 @@ public class PortalConnect: EventBus {
 
   public func viewWillDisappear() {
     self.client?.sendFinalMessageAndDisconnect()
+  }
+
+  private func unbindClientEvents() {
+    self.client?.off("close")
+    self.client?.off("portal_dappSessionRequested")
+    self.client?.off("portal_dappSessionRequestedV1")
+    self.client?.off("connected")
+    self.client?.off("connectedV1")
+    self.client?.off("disconnected")
+    self.client?.off("error")
+    self.client?.off("portal_connectError")
+    self.client?.off("session_request")
+    self.client?.off("session_request_address")
+    self.client?.off("session_request_transaction")
+  }
+
+  private func bindClientEvents() {
+    self.client?.on("close", self.handleClose)
+    self.client?.on("portal_dappSessionRequested", self.handleDappSessionRequested)
+    self.client?.on("portal_dappSessionRequestedV1", self.handleDappSessionRequestedV1)
+    self.client?.on("connected", self.handleConnected)
+    self.client?.on("connectedV1", self.handleConnectedV1)
+    self.client?.on("disconnected", self.handleDisconnected)
+    self.client?.on("error", self.handleConnectError)
+    self.client?.on("portal_connectError", self.handleError)
+    self.client?.on("session_request", self.handleSessionRequest)
+    self.client?.on("session_request_address", self.handleSessionRequestAddress)
+    self.client?.on("session_request_transaction", self.handleSessionRequestTransaction)
   }
 
   private func handleProviderRequest(method: String, params: [ETHAddressParam], chainId: Int, completion: @escaping (Result<Any>) -> Void) {

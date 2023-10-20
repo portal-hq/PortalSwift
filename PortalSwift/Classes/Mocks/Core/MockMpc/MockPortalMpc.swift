@@ -8,7 +8,7 @@
 import Foundation
 
 public class MockPortalMpc: PortalMpc {
-  override public func backup(method _: BackupMethods.RawValue, completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)? = nil) {
+  override public func backup(method _: BackupMethods.RawValue, backupConfigs _: BackupConfigs? = nil, completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)? = nil) {
     completion(Result(data: mockBackupShare))
     progress?(MpcStatus(status: MpcStatuses.done, done: true))
   }
@@ -18,7 +18,7 @@ public class MockPortalMpc: PortalMpc {
     progress?(MpcStatus(status: MpcStatuses.done, done: true))
   }
 
-  override public func recover(cipherText _: String, method _: BackupMethods.RawValue, completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)? = nil) {
+  override public func recover(cipherText _: String, method _: BackupMethods.RawValue, backupConfigs _: BackupConfigs? = nil, completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)? = nil) {
     completion(Result(data: mockBackupShare))
     progress?(MpcStatus(status: MpcStatuses.done, done: true))
   }
