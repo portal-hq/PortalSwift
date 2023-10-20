@@ -569,6 +569,35 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
     self.events.error.append(handler)
   }
 
+  func off(_ event: String) {
+    switch event {
+    case "close":
+      self.events.close = []
+    case "connected":
+      self.events.connected = []
+    case "connectedV1":
+      self.events.connectedV1 = []
+    case "portal_dappSessionRequested":
+      self.events.dapp_session_requested = []
+    case "portal_dappSessionRequestedV1":
+      self.events.dapp_session_requestedV1 = []
+    case "disconnected":
+      self.events.disconnect = []
+    case "error":
+      self.events.error = []
+    case "portal_connectError":
+      self.events.portal_connect_error = []
+    case "session_request":
+      self.events.session_request = []
+    case "session_request_address":
+      self.events.session_request_address = []
+    case "session_request_transaction":
+      self.events.session_request_transaction = []
+    default:
+      break
+    }
+  }
+
   func send(_ message: String) {
     print("[WebSocketClient] Sending message: \(message)")
     self.socket.write(string: message)
