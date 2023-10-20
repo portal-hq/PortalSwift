@@ -45,7 +45,7 @@
 - (nonnull instancetype)init;
 @property (nonatomic) NSString* _Nonnull id_;
 @property (nonatomic) NSString* _Nonnull address;
-@property (nonatomic) NSString* _Nonnull clientAPIKey;
+@property (nonatomic) NSString* _Nonnull backupStatus;
 // skipped field GetMeResponse.Custodian with unsupported type: github.com/portal-hq/mpc/client/mobile.Custodian
 
 @property (nonatomic) NSString* _Nonnull signingStatus;
@@ -67,7 +67,11 @@ FOUNDATION_EXPORT NSString* _Nonnull MobileBackup(NSString* _Nullable clientAPIK
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileDecrypt(NSString* _Nullable key, NSString* _Nullable dkgCipherText);
 
+FOUNDATION_EXPORT NSString* _Nonnull MobileDecryptWithPassword(NSString* _Nullable password, NSString* _Nullable dkgCipherText);
+
 FOUNDATION_EXPORT NSString* _Nonnull MobileEncrypt(NSString* _Nullable value);
+
+FOUNDATION_EXPORT NSString* _Nonnull MobileEncryptWithPassword(NSString* _Nullable value, NSString* _Nullable password);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileGenerate(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
 
