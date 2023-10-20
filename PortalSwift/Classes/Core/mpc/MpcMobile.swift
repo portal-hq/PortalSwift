@@ -29,8 +29,16 @@ class MobileWrapper: Mobile {
     return Mpc.MobileDecrypt(key, dkgCipherText)
   }
 
+  func MobileDecryptWithPassword(_ key: String, _ dkgCipherText: String) -> String {
+    return Mpc.MobileDecryptWithPassword(key, dkgCipherText)
+  }
+
   func MobileEncrypt(_ value: String) -> String {
     return Mpc.MobileEncrypt(value)
+  }
+
+  func MobileEncryptWithPassword(data value: String, password: String) -> String {
+    return Mpc.MobileEncryptWithPassword(value, password)
   }
 
   func MobileGetMe(_ url: String, _ token: String) -> String {
