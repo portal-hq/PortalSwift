@@ -158,8 +158,8 @@ class PortalWrapper {
     }
   }
 
-  func backup(backupMethod: BackupMethods.RawValue, user: UserResult, completion: @escaping (Result<Bool>) -> Void) {
-    self.portal?.backupWallet(method: backupMethod) { (result: Result<String>) in
+  func backup(backupMethod: BackupMethods.RawValue, user: UserResult, backupConfigs: BackupConfigs? = nil, completion: @escaping (Result<Bool>) -> Void) {
+    self.portal?.backupWallet(method: backupMethod, backupConfigs: backupConfigs) { (result: Result<String>) in
       guard result.error == nil else {
         return completion(Result(error: result.error!))
       }
@@ -179,7 +179,7 @@ class PortalWrapper {
     }
   }
 
-  func recover(backupMethod: BackupMethods.RawValue, user: UserResult, completion: @escaping (Result<Bool>) -> Void) {
+  func recover(backupMethod: BackupMethods.RawValue, user: UserResult, backupConfigs: BackupConfigs? = nil, completion: @escaping (Result<Bool>) -> Void) {
     print("[PortalWrapper] Starting recover...")
     let request = HttpRequest<CipherTextResult, [String: String]>(
       url: CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/cipher-text/fetch",
@@ -196,7 +196,7 @@ class PortalWrapper {
 
       let cipherText = result.data!.cipherText
 
-      self.portal?.recoverWallet(cipherText: cipherText, method: backupMethod) { (result: Result<String>) in
+      self.portal?.recoverWallet(cipherText: cipherText, method: backupMethod, backupConfigs: backupConfigs) { (result: Result<String>) in
         guard result.error == nil else {
           print("❌ [PortalWrapper] handleRecover(): Error recovering wallet:", result.error!)
           return completion(Result(error: result.error!))

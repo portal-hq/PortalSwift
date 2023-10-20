@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import Mpc
 
 class MockMobileWrapper: Mobile {
   func MobileGenerate(_: String, _: String, _: String, _: String) -> String {
@@ -23,6 +22,14 @@ class MockMobileWrapper: Mobile {
 
   func MobileRecoverBackup(_: String, _: String, _: String, _: String, _: String) -> String {
     return mockDataResult
+  }
+
+  func MobileEncryptWithPassword(data _: String, password _: String) -> String {
+    return mockEncryptWithPasswordResult
+  }
+
+  func MobileDecryptWithPassword(_: String, _: String) -> String {
+    return mockDecryptResult
   }
 
   func MobileDecrypt(_: String, _: String) -> String {
