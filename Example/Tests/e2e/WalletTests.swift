@@ -5,7 +5,7 @@ import XCTest
 class WalletTests: XCTestCase {
   static var user: UserResult?
   static var username: String?
-  static var PortalWrap: PortalWrapper?
+  static var PortalWrap: PortalWrapper!
   static var testAGenerateSucceeded = false
 
   static func randomString(length: Int) -> String {
@@ -31,7 +31,7 @@ class WalletTests: XCTestCase {
     return XCTContext.runActivity(named: "Login") { _ in
       let registerExpectation = XCTestExpectation(description: "Register")
 
-      WalletTests.PortalWrap?.signIn(username: WalletTests.username ?? "") { (result: Result<UserResult>) in
+      WalletTests.PortalWrap.signIn(username: WalletTests.username ?? "") { (result: Result<UserResult>) in
         guard result.error == nil else {
           registerExpectation.fulfill()
           return XCTFail("Failed on sign in: \(String(describing: result.error))")
@@ -43,7 +43,7 @@ class WalletTests: XCTestCase {
         WalletTests.user = userResult
         let backupOption = LocalFileStorage()
         let backup = BackupOptions(local: backupOption)
-        WalletTests.PortalWrap?.registerPortal(apiKey: userResult.clientApiKey, backup: backup) {
+        WalletTests.PortalWrap.registerPortal(apiKey: userResult.clientApiKey, backup: backup) {
           result in
           guard result.error == nil else {
             registerExpectation.fulfill()
@@ -61,7 +61,7 @@ class WalletTests: XCTestCase {
     let registerExpectation = XCTestExpectation(description: "Register")
     let generateExpectation = XCTestExpectation(description: "Generate")
 
-    WalletTests.PortalWrap?.signUp(username: WalletTests.username ?? "") { (result: Result<UserResult>) in
+    WalletTests.PortalWrap.signUp(username: WalletTests.username ?? "") { (result: Result<UserResult>) in
       guard result.error == nil else {
         XCTFail("Failed on sign up: \(String(describing: result.error))")
         generateExpectation.fulfill()
@@ -84,7 +84,7 @@ class WalletTests: XCTestCase {
         }
         registerExpectation.fulfill()
         print(result.data ?? "")
-        WalletTests.PortalWrap?.generate { result in
+        WalletTests.PortalWrap.generate { result in
           guard result.error == nil else {
             generateExpectation.fulfill()
             return XCTFail()
@@ -113,7 +113,7 @@ class WalletTests: XCTestCase {
         ethSignExpectation.fulfill()
         return XCTFail("Failed on login: \(String(describing: result.error))")
       }
-      if let portal = WalletTests.PortalWrap?.portal {
+      if let portal = WalletTests.PortalWrap.portal {
         do {
           address = try portal.keychain.getAddress()
         } catch {
@@ -122,14 +122,14 @@ class WalletTests: XCTestCase {
 
         let params = [address ?? "", "0xdeadbeaf"]
 
-        WalletTests.PortalWrap?.ethSign(params: params) { result in
+        WalletTests.PortalWrap.ethSign(params: params) { result in
           guard result.error == nil else {
             ethSignExpectation.fulfill()
             return XCTFail("Failed on eth_sign: \(String(describing: result.error))")
           }
 
           print("✅ eth_sign result: ", result.data ?? "")
-          XCTAssertFalse((result.data?.isEmpty) != nil, "eth sign success")
+          XCTAssertFalse(result.data!.isEmpty, "eth sign success")
 
           ethSignExpectation.fulfill()
         }
@@ -160,12 +160,12 @@ class WalletTests: XCTestCase {
         return XCTFail("Failed on login: \(String(describing: result.error))")
       }
 
-      WalletTests.PortalWrap?.backup(backupMethod: BackupMethods.local.rawValue, user: user) { backupResult in
+      WalletTests.PortalWrap.backup(backupMethod: BackupMethods.local.rawValue, user: user) { backupResult in
         guard backupResult.error == nil else {
           print("❌ handleBackup():", result.error ?? "")
 
           do {
-            try WalletTests.PortalWrap?.portal?.api.storedClientBackupShare(success: false) { result in
+            try WalletTests.PortalWrap.portal?.api.storedClientBackupShare(success: false) { result in
               guard result.error == nil else {
                 backupExpectation.fulfill()
                 return XCTFail("Backup failed \(String(describing: result.error))")
@@ -180,7 +180,7 @@ class WalletTests: XCTestCase {
         }
 
         do {
-          try WalletTests.PortalWrap?.portal?.api.storedClientBackupShare(success: true) { _ in
+          try WalletTests.PortalWrap.portal?.api.storedClientBackupShare(success: true) { _ in
             guard backupResult.error == nil else {
               print("❌ handleBackup(): Error notifying Portal that backup share was stored.")
               return
@@ -214,7 +214,7 @@ class WalletTests: XCTestCase {
         recoverExpectation.fulfill()
         return XCTFail("Failed on login: \(String(describing: result.error))")
       }
-      WalletTests.PortalWrap?.recover(backupMethod: BackupMethods.local.rawValue, user: user) { result in
+      WalletTests.PortalWrap.recover(backupMethod: BackupMethods.local.rawValue, user: user) { result in
         guard result.error == nil else {
           recoverExpectation.fulfill()
           return XCTFail("Recover failed \(String(describing: result.error))")
@@ -240,7 +240,7 @@ class WalletTests: XCTestCase {
         return XCTFail("Failed on login: \(String(describing: result.error))")
       }
 
-      WalletTests.PortalWrap?.portal?.ethSign(message: "0xdeadbeaf") { result in
+      WalletTests.PortalWrap.portal?.ethSign(message: "0xdeadbeaf") { result in
         guard result.error == nil else {
           ethSignExpectation.fulfill()
           return XCTFail("Failed on eth_sign: \(String(describing: result.error))")
@@ -280,7 +280,7 @@ class WalletTests: XCTestCase {
         return XCTFail("Failed on login: \(String(describing: result.error))")
       }
 
-      WalletTests.PortalWrap?.portal?.ethSignTypedDataV3(message: mockSignedTypeDataMessage) { result in
+      WalletTests.PortalWrap.portal?.ethSignTypedDataV3(message: mockSignedTypeDataMessage) { result in
         guard result.error == nil else {
           ethSignExpectation.fulfill()
           return XCTFail("Failed on eth_sign: \(String(describing: result.error))")
@@ -320,7 +320,7 @@ class WalletTests: XCTestCase {
         return XCTFail("Failed on login: \(String(describing: result.error))")
       }
 
-      WalletTests.PortalWrap?.portal?.ethSignTypedData(message: mockSignedTypeDataMessage) { result in
+      WalletTests.PortalWrap.portal?.ethSignTypedData(message: mockSignedTypeDataMessage) { result in
         guard result.error == nil else {
           ethSignExpectation.fulfill()
           return XCTFail("Failed on eth_sign: \(String(describing: result.error))")
