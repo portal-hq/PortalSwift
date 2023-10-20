@@ -10,6 +10,11 @@ if [ -z "$(which swiftformat)" ]; then
   brew install swiftformat
 fi
 
+if [ -z "$(which swiftlint)" ]; then
+  echo "Installing 'swiftlint'..."
+  brew install swiftlint
+fi
+
 echo "Moving to project root..."
 scriptDir=$(dirname -- "$(readlink -f -- "$BASH_SOURCE")")
 

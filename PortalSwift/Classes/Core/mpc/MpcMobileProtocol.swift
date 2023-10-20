@@ -36,6 +36,10 @@ public protocol Mobile {
 
   func MobileEncrypt(_ value: String) -> String
 
+  func MobileEncryptWithPassword(data value: String, password: String) -> String
+
+  func MobileDecryptWithPassword(_ key: String, _ dkgCipherText: String) -> String
+
   func MobileGetMe(_ url: String, _ token: String) -> String
 
   func MobileGetVersion() -> String

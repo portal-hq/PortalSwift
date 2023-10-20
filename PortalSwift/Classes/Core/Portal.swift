@@ -232,10 +232,11 @@ public class Portal {
 
   public func backupWallet(
     method: BackupMethods.RawValue,
+    backupConfigs: BackupConfigs? = nil,
     completion: @escaping (Result<String>) -> Void,
     progress: ((MpcStatus) -> Void)? = nil
   ) {
-    self.mpc.backup(method: method, completion: completion, progress: progress)
+    self.mpc.backup(method: method, backupConfigs: backupConfigs, completion: completion, progress: progress)
   }
 
   public func createWallet(
@@ -248,10 +249,11 @@ public class Portal {
   public func recoverWallet(
     cipherText: String,
     method: BackupMethods.RawValue,
+    backupConfigs: BackupConfigs? = nil,
     completion: @escaping (Result<String>) -> Void,
     progress: ((MpcStatus) -> Void)? = nil
   ) {
-    self.mpc.recover(cipherText: cipherText, method: method, completion: completion, progress: progress)
+    self.mpc.recover(cipherText: cipherText, method: method, backupConfigs: backupConfigs, completion: completion, progress: progress)
   }
 
   public func legacyRecoverWallet(
@@ -466,12 +468,37 @@ public enum BackupMethods: String {
   case GoogleDrive = "gdrive"
   case iCloud = "icloud"
   case local
+  case Password = "password"
+}
+
+public struct BackupConfigs {
+  public var passwordStorage: PasswordStorageConfig?
+
+  public init(passwordStorage: PasswordStorageConfig? = nil) {
+    self.passwordStorage = passwordStorage
+  }
+}
+
+public struct PasswordStorageConfig {
+  public var password: String
+
+  public enum PasswordStorageError: Error {
+    case invalidLength
+  }
+
+  public init(password: String) throws {
+    if password.count < 4 {
+      throw PasswordStorageError.invalidLength
+    }
+    self.password = password
+  }
 }
 
 /// A struct with the backup options (gdrive and/or icloud) initialized.
 public struct BackupOptions {
   public var gdrive: GDriveStorage?
   public var icloud: ICloudStorage?
+  public var passwordStorage: PasswordStorage?
   public var local: Storage?
 
   /// Create the backup options for PortalSwift.
@@ -490,12 +517,17 @@ public struct BackupOptions {
     self.local = local
   }
 
+  public init(passwordStorage: PasswordStorage) {
+    self.passwordStorage = passwordStorage
+  }
+
   /// Create the backup options for PortalSwift.
   /// - Parameter gdrive: The instance of GDriveStorage to use for backup.
   /// - Parameter icloud: The instance of ICloudStorage to use for backup.
-  public init(gdrive: GDriveStorage, icloud: ICloudStorage) {
+  public init(gdrive: GDriveStorage, icloud: ICloudStorage, passwordStorage: PasswordStorage) {
     self.gdrive = gdrive
     self.icloud = icloud
+    self.passwordStorage = passwordStorage
   }
 
   subscript(key: String) -> Any? {
@@ -506,6 +538,8 @@ public struct BackupOptions {
       return self.icloud
     case BackupMethods.local.rawValue:
       return self.local
+    case BackupMethods.Password.rawValue:
+      return self.passwordStorage
     default:
       return nil
     }
