@@ -161,22 +161,41 @@ public class PortalApi {
   /// - Parameters:
   ///   - limit: (Optional) The maximum number of transactions to return.
   ///   - offset: (Optional) The number of transactions to skip before starting to return.
+  ///   - order: (Optional) Order in which to return the transactions.
+  ///   - chainId: (Optional) ID of the chain to retrieve transactions from. Defaults to `self.chainId` if not provided.
   ///   - completion: The callback that contains the list of Transactions.
   /// - Returns: Void.
   public func getTransactions(
     limit: Int? = nil,
     offset: Int? = nil,
+    order: GetTransactionsOrder? = nil,
+    chainId: Int? = nil,
     completion: @escaping (Result<[Transaction]>) -> Void
   ) throws {
-    var path = "/api/v1/clients/me/transactions?chainId=\(chainId)"
+    var path = "/api/v1/clients/me/transactions"
 
-    // Append limit and offset parameters if provided
+    // Start building query parameters
+    var queryParams: [String] = []
+
+    // Use provided chainId or default to self.chainId
+    let effectiveChainId = chainId ?? self.chainId
+    queryParams.append("chainId=\(effectiveChainId)")
+
     if let limit = limit {
-      path += "&limit=\(limit)"
+      queryParams.append("limit=\(limit)")
     }
     if let offset = offset {
-      path += "&offset=\(offset)"
+      queryParams.append("offset=\(offset)")
     }
+    if let order = order {
+      queryParams.append("order=\(order)")
+    }
+    
+    // Add the combined query parameters to the path
+    if !queryParams.isEmpty {
+      path += "?" + queryParams.joined(separator: "&")
+    }
+    print("path:", path)
 
     try self.requests.get(
       path: path,
@@ -186,8 +205,7 @@ public class PortalApi {
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<[Transaction]>) in
       completion(result)
-
-      self.track(event: MetricsEvents.getTransactions.rawValue, properties: ["path": "/api/v1/clients/me/transactions"])
+      self.track(event: MetricsEvents.getTransactions.rawValue, properties: ["path": path])
     }
   }
 
@@ -487,6 +505,13 @@ public struct OpenSeaMetadata: Codable {
 
 /// Represents a blockchain transaction
 public struct Transaction: Codable {
+  
+  /// Represents metadata associated with a Transaction
+  public struct Metadata: Codable {
+    /// Timestamp of the block in which the transaction was included (in ISO format)
+    public var blockTimestamp: String
+  }
+
   /// Block number in which the transaction was included
   public var blockNum: String
   /// Unique identifier of the transaction
@@ -511,6 +536,10 @@ public struct Transaction: Codable {
   public var category: String
   /// Contract details related to the transaction
   public var rawContract: RawContract
+  /// Metadata associated with the transaction
+  public var metadata: Metadata
+  /// ID of the chain associated with the transaction
+  public var chainId: Int
 }
 
 /// Represents the contract details of a transaction
@@ -610,4 +639,9 @@ public enum MetricsEvents: String {
   case storedClientSigningShare = "Stored Client Signing Share"
   case storedClientBackupShareKey = "Stored Client Backup Share Key"
   case storedClientBackupShare = "Stored Client Backup Share"
+}
+
+public enum GetTransactionsOrder: String {
+  case asc
+  case desc
 }
