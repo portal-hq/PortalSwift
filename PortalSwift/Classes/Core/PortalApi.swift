@@ -190,7 +190,7 @@ public class PortalApi {
     if let order = order {
       queryParams.append("order=\(order)")
     }
-    
+
     // Add the combined query parameters to the path
     if !queryParams.isEmpty {
       path += "?" + queryParams.joined(separator: "&")
@@ -505,7 +505,6 @@ public struct OpenSeaMetadata: Codable {
 
 /// Represents a blockchain transaction
 public struct Transaction: Codable {
-  
   /// Represents metadata associated with a Transaction
   public struct Metadata: Codable {
     /// Timestamp of the block in which the transaction was included (in ISO format)
