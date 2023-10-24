@@ -431,7 +431,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   func getTransactions() {
     do {
-      try self.portal?.api.getTransactions { results in
+      try self.portal?.api.getTransactions(limit: 100, offset: 0, order: GetTransactionsOrder.asc, chainId: 5) { results in
         guard results.error == nil else {
           print("❌ Unable to get transactions", results.error ?? "")
           return
