@@ -59,7 +59,7 @@ public class Portal {
     gatewayConfig: [Int: String],
     // Optional
     isSimulator: Bool = false,
-    version: String = "v4",
+    version: String = "v5",
     autoApprove: Bool = false,
     apiHost: String = "api.portalhq.io",
     mpcHost: String = "mpc.portalhq.io",
@@ -79,8 +79,8 @@ public class Portal {
     self.version = version
     self.featureFlags = featureFlags
 
-    if version != "v4" {
-      throw PortalArgumentError.versionNoLongerSupported(message: "MPC Version is not supported. Only version 'v4' is currently supported.")
+    if version != "v5" {
+      throw PortalArgumentError.versionNoLongerSupported(message: "MPC Version is not supported. Only version 'v5' is currently supported.")
     }
 
     // Initialize the PortalProvider
@@ -154,7 +154,7 @@ public class Portal {
     gatewayConfig: [Int: String],
     // Optional
     isSimulator: Bool = false,
-    version: String = "v4",
+    version: String = "v5",
     autoApprove: Bool = false,
     apiHost: String = "api.portalhq.io",
     mpcHost: String = "mpc.portalhq.io",
@@ -177,8 +177,8 @@ public class Portal {
     self.version = version
     self.featureFlags = featureFlags
 
-    if version != "v4" {
-      throw PortalArgumentError.versionNoLongerSupported(message: "MPC Version is not supported. Only version 'v4' is currently supported.")
+    if version != "v5" {
+      throw PortalArgumentError.versionNoLongerSupported(message: "MPC Version is not supported. Only version 'v5' is currently supported.")
     }
 
     // Initialize the PortalProvider
@@ -256,6 +256,7 @@ public class Portal {
     self.mpc.recover(cipherText: cipherText, method: method, backupConfigs: backupConfigs, completion: completion, progress: progress)
   }
 
+  @available(*, deprecated, renamed: "recoverWallet")
   public func legacyRecoverWallet(
     cipherText: String,
     method: BackupMethods.RawValue,
@@ -263,6 +264,16 @@ public class Portal {
     progress: ((MpcStatus) -> Void)? = nil
   ) {
     self.mpc.legacyRecover(cipherText: cipherText, method: method, completion: completion, progress: progress)
+  }
+  
+  public func provisionWallet(
+    cipherText: String,
+    method: BackupMethods.RawValue,
+    backupConfigs: BackupConfigs? = nil,
+    completion: @escaping (Result<String>) -> Void,
+    progress: ((MpcStatus) -> Void)? = nil
+  ) {
+    self.recoverWallet(cipherText: cipherText, method: method, backupConfigs: backupConfigs, completion: completion, progress: progress)
   }
 
   /**********************************

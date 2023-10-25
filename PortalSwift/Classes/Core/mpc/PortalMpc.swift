@@ -52,7 +52,7 @@ public class PortalMpc {
     storage: BackupOptions,
     isSimulator: Bool = false,
     host: String = "mpc.portalhq.io",
-    version: String = "v4",
+    version: String = "v5",
     mobile: Mobile,
     apiHost: String = "api.portalhq.io",
     featureFlags: FeatureFlags? = nil
@@ -91,8 +91,8 @@ public class PortalMpc {
     completion: @escaping (Result<String>) -> Void,
     progress: ((MpcStatus) -> Void)? = nil
   ) {
-    if self.version != "v4" {
-      return completion(Result(error: MpcError.backupNoLongerSupported(message: "[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = v4`.")))
+    if self.version != "v5" {
+      return completion(Result(error: MpcError.backupNoLongerSupported(message: "[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = v5`.")))
     }
 
     guard !self.isWalletModificationInProgress else {
@@ -202,9 +202,9 @@ public class PortalMpc {
   /// - Returns: The address of the newly created MPC wallet.
   public func generate(completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)? = nil) {
     DispatchQueue.global(qos: .background).async { [self] in
-      if self.version != "v4" {
+      if self.version != "v5" {
         let result = Result<String>(error: MpcError.generateNoLongerSupported(
-          message: "[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = v4`."
+          message: "[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = v5`."
         ))
         completion(result)
       }
@@ -313,8 +313,8 @@ public class PortalMpc {
     completion: @escaping (Result<String>) -> Void,
     progress: ((MpcStatus) -> Void)? = nil
   ) {
-    if self.version != "v4" {
-      return completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v4`.")))
+    if self.version != "v5" {
+      return completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v5`.")))
     }
 
     guard !self.isWalletModificationInProgress else {
@@ -419,8 +419,8 @@ public class PortalMpc {
     completion: @escaping (Result<String>) -> Void,
     progress: ((MpcStatus) -> Void)? = nil
   ) {
-    if self.version != "v4" {
-      return completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v4`.")))
+    if self.version != "v5" {
+      return completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v5`.")))
     }
 
     guard !self.isWalletModificationInProgress else {
