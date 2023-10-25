@@ -8,6 +8,7 @@
 import Foundation
 
 public struct Quote: Codable {
+  var allowanceTarget: String
   var cost: Double
   var transaction: ETHTransactionParam
 }
