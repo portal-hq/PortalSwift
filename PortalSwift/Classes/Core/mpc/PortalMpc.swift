@@ -1058,16 +1058,17 @@ public class PortalMpc {
 /// GG18 shares will only contain: bks, pubkey, and share
 /// CGGMP shares will contain all fields except: pubkey.
 public struct MpcShare: Codable {
-  public var share: String
   public var allY: PartialPublicKey?
   public var bks: Berkhoffs?
+  public var clientId: String
   public var p: String
   public var partialPubkey: PartialPublicKey?
   public var pederson: Pedersons?
-  public var q: String
-  public var ssid: String
-  public var clientId: String
   public var pubkey: PublicKey?
+  public var q: String
+  public var share: String
+  public var signingSharePairId: String?
+  public var ssid: String
 }
 
 /// In the bks dictionary for an MPC share, Berkhoff is the value.
