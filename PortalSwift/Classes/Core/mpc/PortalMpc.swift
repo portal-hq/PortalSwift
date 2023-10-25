@@ -272,9 +272,12 @@ public class PortalMpc {
                 self.isWalletModificationInProgress = false
                 return completion(Result(error: result.error!))
               }
+              guard let signingSharePairId = mpcShare?.signingSharePairId else {
+                return completion(Result(error: ReadSigningSharePairIdError.noSigningSharePairIdFound))
+              }
 
               do {
-                try self.api.storedClientSigningShare { result in
+                try self.api.storedClientSigningShare(signingSharePairId: signingSharePairId) { result in
                   // Handle errors
                   if result.error != nil {
                     self.isWalletModificationInProgress = false
@@ -995,9 +998,12 @@ public class PortalMpc {
           if let error = result.error {
             return completion(Result(error: error))
           }
+          guard let signingSharePairId = dkgResult.signingSharePairId else {
+            return completion(Result(error: ReadSigningSharePairIdError.noSigningSharePairIdFound))
+          }
 
           do {
-            try self.api.storedClientSigningShare(recoverSigning: true) { result in
+            try self.api.storedClientSigningShare(signingSharePairId: signingSharePairId) { result in
               // Handle errors
               if let error = result.error {
                 return completion(Result(error: error))
@@ -1234,4 +1240,8 @@ public enum RsaError: Error {
 public enum JSONParseError: Error {
   case stringToDataConversionFailed
   case jsonDecodingFailed
+}
+
+public enum ReadSigningSharePairIdError: Error {
+  case noSigningSharePairIdFound
 }
