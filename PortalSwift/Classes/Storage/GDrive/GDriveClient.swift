@@ -219,6 +219,19 @@ class GDriveClient {
         return
       }
 
+      let account = self.auth.getCurrentUser()
+
+      guard let account = account else {
+        callback(Result(error: GDriveClientError.userNotAuthenticated))
+        return
+      }
+
+      let grantedScopes = account.grantedScopes ?? []
+      if !grantedScopes.contains("https://www.googleapis.com/auth/drive.file") {
+        callback(Result(error: GDriveClientError.userNotAuthenticated))
+        return
+      }
+
       // Write
       do {
         try self.write(filename: mockFileName, content: mockContent) { writeResult in
