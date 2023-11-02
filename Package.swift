@@ -31,11 +31,15 @@ let package = Package(
     // Targets can depend on other targets in this package, and on products in packages this package depends on.
     .target(
       name: "PortalSwift",
-      dependencies: ["Mpc", .product(name: "GoogleSignIn", package: "GoogleSignIn-iOS"), .product(name: "Starscream", package: "Starscream")]
+      dependencies: [
+        "Mpc",
+        .product(name: "GoogleSignIn", package: "GoogleSignIn-iOS"),
+        .product(name: "Starscream", package: "Starscream")
+      ]
     ),
     .binaryTarget(
       name: "Mpc",
-      path: "./Sources/PortalSwift/Frameworks/Mpc.xcframework"
+      path: "./Sources/PortalSwift/Frameworks/mpc.xcframework"
     ),
   ]
 )

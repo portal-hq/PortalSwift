@@ -11,16 +11,16 @@ Pod::Spec.new do |s|
   s.source           = { :git => 'https://github.com/portal-hq/PortalSwift.git', :tag => s.version.to_s }
 
   s.ios.deployment_target = '13.0'
-  s.vendored_frameworks = "PortalSwift/Frameworks/mpc.xcframework"
+  s.vendored_frameworks = "Sources/Frameworks/mpc.xcframework"
 
 
-  s.source_files = 'PortalSwift/Classes/**/*'
+  s.source_files = 'Sources/PortalSwift/**/*'
 
   s.dependency "GoogleSignIn", "~> 6.2"
   s.dependency "Starscream", "~> 4.0.6"
 
   s.test_spec 'Tests' do |test_spec|
     test_spec.requires_app_host = true
-    test_spec.source_files = 'UnitTests/**/*.{h,m,swift}'
+    test_spec.source_files = 'Tests/**/*.{h,m,swift}'
   end
 end
