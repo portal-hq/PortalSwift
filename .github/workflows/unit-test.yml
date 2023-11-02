@@ -21,7 +21,7 @@ jobs:
 
       - name: Run Tests
         run: |
-          xcodebuild -scheme Unit\ Tests -workspace PortalSwift.xcworkspace test -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 14 Pro,OS=16.2' -testPlan PortalSwift-Unit-Tests
+          xcodebuild -scheme Unit\ Tests -workspace PortalSwift.xcworkspace test -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 14 Pro,OS=16.2' -testPlan Unit\ Tests
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1.2.1
