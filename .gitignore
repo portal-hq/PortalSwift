@@ -38,3 +38,5 @@ GoogleService-info.plist
 
 ## Env vars:
 Secrets.xcconfig
+
+.build/
