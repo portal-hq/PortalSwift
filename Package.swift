@@ -34,12 +34,12 @@ let package = Package(
       dependencies: [
         "Mpc",
         .product(name: "GoogleSignIn", package: "GoogleSignIn-iOS"),
-        .product(name: "Starscream", package: "Starscream")
+        .product(name: "Starscream", package: "Starscream"),
       ]
     ),
     .binaryTarget(
       name: "Mpc",
-      path: "./Sources/PortalSwift/Frameworks/mpc.xcframework"
+      path: "./Sources/PortalSwift/Frameworks/Mpc.xcframework"
     ),
   ]
 )

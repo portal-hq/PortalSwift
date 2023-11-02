@@ -11,7 +11,7 @@ Pod::Spec.new do |s|
   s.source           = { :git => 'https://github.com/portal-hq/PortalSwift.git', :tag => s.version.to_s }
 
   s.ios.deployment_target = '13.0'
-  s.vendored_frameworks = "Sources/Frameworks/mpc.xcframework"
+  s.vendored_frameworks = "Sources/Frameworks/Mpc.xcframework"
 
 
   s.source_files = 'Sources/PortalSwift/**/*'
