@@ -1,0 +1,4 @@
+module GTMSessionFetcherFull {
+    umbrella "/Users/blakewilliams/development/portal/PortalSwift/.build/checkouts/gtm-session-fetcher/Sources/Full/Public"
+    export *
+}

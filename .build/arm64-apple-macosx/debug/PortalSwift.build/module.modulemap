@@ -1,0 +1,4 @@
+module PortalSwift {
+    header "/Users/blakewilliams/development/portal/PortalSwift/.build/arm64-apple-macosx/debug/PortalSwift.build/PortalSwift-Swift.h"
+    requires objc
+}

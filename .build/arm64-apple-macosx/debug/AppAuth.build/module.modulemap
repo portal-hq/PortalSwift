@@ -1,0 +1,4 @@
+module AppAuth {
+    umbrella "/Users/blakewilliams/development/portal/PortalSwift/.build/checkouts/AppAuth-iOS/Source/AppAuth"
+    export *
+}

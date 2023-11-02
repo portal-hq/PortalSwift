@@ -14,10 +14,9 @@
 		607FACDD1AFB9204008FA782 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 607FACDC1AFB9204008FA782 /* Images.xcassets */; };
 		607FACE01AFB9204008FA782 /* LaunchScreen.xib in Resources */ = {isa = PBXBuildFile; fileRef = 607FACDE1AFB9204008FA782 /* LaunchScreen.xib */; };
 		607FACEC1AFB9204008FA782 /* WalletTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FACEB1AFB9204008FA782 /* WalletTests.swift */; };
+		7E1198842AF42E2B00FF2638 /* Secrets.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 7E1198832AF42E2B00FF2638 /* Secrets.xcconfig */; };
 		7E4B874E2A58BFFB003A8DB5 /* WebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4B874D2A58BFFB003A8DB5 /* WebViewController.swift */; };
 		7E7F4C002A002D7F00756B6A /* ConnectViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E7F4BFF2A002D7F00756B6A /* ConnectViewController.swift */; };
-		7EA1E6972AF42A18001178A3 /* Secrets.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 7EA1E6962AF42A18001178A3 /* Secrets.xcconfig */; };
-		7EA1E6982AF42A18001178A3 /* Secrets.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 7EA1E6962AF42A18001178A3 /* Secrets.xcconfig */; };
 		81C924307978091DBEEB7841 /* Pods_Cocoapods_E2E_Tests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 59EC3F54FBD1FE8E6DD7CD57 /* Pods_Cocoapods_E2E_Tests.framework */; };
 		F915F34E2A8195E70014C25B /* ProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F915F34D2A8195E70014C25B /* ProviderTests.swift */; };
 		F95EA8282AE1440F00A31827 /* PasswordWalletTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F95EA8272AE1440F00A31827 /* PasswordWalletTests.swift */; };
@@ -50,10 +49,10 @@
 		607FACE51AFB9204008FA782 /* Cocoapods E2E Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Cocoapods E2E Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		607FACEA1AFB9204008FA782 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		607FACEB1AFB9204008FA782 /* WalletTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalletTests.swift; sourceTree = "<group>"; };
+		7E1198832AF42E2B00FF2638 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 		7E4B874D2A58BFFB003A8DB5 /* WebViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewController.swift; sourceTree = "<group>"; };
 		7E65BFFB2AF321A400ACA0CE /* Cocoapods Example.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = "Cocoapods Example.entitlements"; sourceTree = "<group>"; };
 		7E7F4BFF2A002D7F00756B6A /* ConnectViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectViewController.swift; sourceTree = "<group>"; };
-		7EA1E6962AF42A18001178A3 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 		7EB608D3291EF2F000CF1346 /* PortalSwift.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = PortalSwift.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		87EB59B6C56C171640CEC112 /* Pods-Cocoapods Example.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Cocoapods Example.release.xcconfig"; path = "Target Support Files/Pods-Cocoapods Example/Pods-Cocoapods Example.release.xcconfig"; sourceTree = "<group>"; };
 		D91C633EC4117296F79F91D7 /* Pods-Cocoapods E2E Tests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Cocoapods E2E Tests.debug.xcconfig"; path = "Target Support Files/Pods-Cocoapods E2E Tests/Pods-Cocoapods E2E Tests.debug.xcconfig"; sourceTree = "<group>"; };
@@ -87,7 +86,7 @@
 		607FACC71AFB9204008FA782 = {
 			isa = PBXGroup;
 			children = (
-				7EA1E6962AF42A18001178A3 /* Secrets.xcconfig */,
+				7E1198832AF42E2B00FF2638 /* Secrets.xcconfig */,
 				7E65BFFB2AF321A400ACA0CE /* Cocoapods Example.entitlements */,
 				607FACF51AFB993E008FA782 /* Podspec Metadata */,
 				607FACD21AFB9204008FA782 /* Cocoapods Example */,
@@ -279,7 +278,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7EA1E6972AF42A18001178A3 /* Secrets.xcconfig in Resources */,
+				7E1198842AF42E2B00FF2638 /* Secrets.xcconfig in Resources */,
 				607FACDB1AFB9204008FA782 /* Main.storyboard in Resources */,
 				607FACE01AFB9204008FA782 /* LaunchScreen.xib in Resources */,
 				607FACDD1AFB9204008FA782 /* Images.xcassets in Resources */,
@@ -290,7 +289,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7EA1E6982AF42A18001178A3 /* Secrets.xcconfig in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -1,0 +1,4 @@
+module AppAuthTV {
+    umbrella "/Users/blakewilliams/development/portal/PortalSwift/.build/checkouts/AppAuth-iOS/Source/AppAuthTV"
+    export *
+}

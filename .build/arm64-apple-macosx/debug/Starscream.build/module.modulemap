@@ -1,0 +1,4 @@
+module Starscream {
+    header "/Users/blakewilliams/development/portal/PortalSwift/.build/arm64-apple-macosx/debug/Starscream.build/Starscream-Swift.h"
+    requires objc
+}

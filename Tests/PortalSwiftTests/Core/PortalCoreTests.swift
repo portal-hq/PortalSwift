@@ -9,7 +9,7 @@
 @testable import PortalSwift
 import XCTest
 
-final class PortalCoreTests: XCTestCase {
+final class PortalTests: XCTestCase {
   var portal: Portal!
   override func setUpWithError() throws {
     // Put setup code here. This method is called before the invocation of each test method in the class.

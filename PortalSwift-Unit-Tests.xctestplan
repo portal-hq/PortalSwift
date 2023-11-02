@@ -14,7 +14,7 @@
   "testTargets" : [
     {
       "target" : {
-        "containerPath" : "container:Pods.xcodeproj",
+        "containerPath" : "container:Pods\/Pods.xcodeproj",
         "identifier" : "136F98CDC49A4A849BA6EB68684BFE22",
         "name" : "PortalSwift-Unit-Tests"
       }
