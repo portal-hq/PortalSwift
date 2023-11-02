@@ -514,7 +514,7 @@
 		366D4A1A9BE7F22D30C3F5C8B75C45D3 /* Constants.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 		367DF94475CB58FA300719CC7C21934F /* NativeEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NativeEngine.swift; path = Sources/Engine/NativeEngine.swift; sourceTree = "<group>"; };
 		385CAC5408429FF6A438695E53654B27 /* SwiftSupport.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SwiftSupport.swift; path = FBSnapshotTestCase/SwiftSupport.swift; sourceTree = "<group>"; };
-		39DEE8A92AF19FBA9BFCA61C414638C5 /* PortalSwift-Unit-Tests */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = "PortalSwift-Unit-Tests"; path = "PortalSwift-Unit-Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		39DEE8A92AF19FBA9BFCA61C414638C5 /* PortalSwift-Unit-Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "PortalSwift-Unit-Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		3A9E90DCE138F359CBF7D9B41A02CF80 /* OIDExternalUserAgent.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = OIDExternalUserAgent.h; path = Source/AppAuthCore/OIDExternalUserAgent.h; sourceTree = "<group>"; };
 		3AB1C8C3679839D09D1B1CC07C427BA3 /* OIDAuthorizationService+IOS.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = "OIDAuthorizationService+IOS.h"; path = "Source/AppAuth/iOS/OIDAuthorizationService+IOS.h"; sourceTree = "<group>"; };
 		3B5DBAA70E5D3E212D00300F1FC5E7C2 /* GIDGoogleUser_Private.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = GIDGoogleUser_Private.h; path = GoogleSignIn/Sources/GIDGoogleUser_Private.h; sourceTree = "<group>"; };
@@ -956,7 +956,7 @@
 				1AC7558CB83AD5D671DDC51B5E0F577E /* Pods-Cocoapods E2E Tests */,
 				8DD613EEB03176BA15AF8FB9FEF4A909 /* Pods_Cocoapods_Example.framework */,
 				C7611A86025E44D1B60E33479491176A /* PortalSwift */,
-				39DEE8A92AF19FBA9BFCA61C414638C5 /* PortalSwift-Unit-Tests */,
+				39DEE8A92AF19FBA9BFCA61C414638C5 /* PortalSwift-Unit-Tests.xctest */,
 				891B2270823847ED23F2ECFC28F935EC /* Starscream */,
 			);
 			name = Products;
@@ -1871,9 +1871,9 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
-		136F98CDC49A4A849BA6EB68684BFE22 /* PortalSwift-Unit-Tests */ = {
+		136F98CDC49A4A849BA6EB68684BFE22 /* Unit Tests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 7DFD0C41AAB75F0D1D37AD44A69B2F30 /* Build configuration list for PBXNativeTarget "PortalSwift-Unit-Tests" */;
+			buildConfigurationList = 7DFD0C41AAB75F0D1D37AD44A69B2F30 /* Build configuration list for PBXNativeTarget "Unit Tests" */;
 			buildPhases = (
 				459C0CBE0FAEDCF155632A94FE2DBF3C /* Sources */,
 				A4286727F1454635483A1DCDD6263452 /* Frameworks */,
@@ -1887,9 +1887,9 @@
 				C60B7BF8EB633261AB8E6C00A4417711 /* PBXTargetDependency */,
 				08717D733426FE501AE9F30042F67C86 /* PBXTargetDependency */,
 			);
-			name = "PortalSwift-Unit-Tests";
+			name = "Unit Tests";
 			productName = "PortalSwift-Unit-Tests";
-			productReference = 39DEE8A92AF19FBA9BFCA61C414638C5 /* PortalSwift-Unit-Tests */;
+			productReference = 39DEE8A92AF19FBA9BFCA61C414638C5 /* PortalSwift-Unit-Tests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 		47FA4701869EF3CF8724B515FBBCAA4A /* AppHost-PortalSwift-Unit-Tests */ = {
@@ -2179,7 +2179,7 @@
 				C10F0786513BD2BD0858CB520CDEFF25 /* Pods-Cocoapods E2E Tests */,
 				8E6174C7AC64660017CDFECA7DF47885 /* Pods-Cocoapods Example */,
 				B0DDCCEB9D84D2C04909388977473FC2 /* PortalSwift */,
-				136F98CDC49A4A849BA6EB68684BFE22 /* PortalSwift-Unit-Tests */,
+				136F98CDC49A4A849BA6EB68684BFE22 /* Unit Tests */,
 				9B78EE4AF6AE03E79D88886319853FF7 /* Starscream */,
 			);
 		};
@@ -3465,6 +3465,7 @@
 				GCC_PREFIX_HEADER = "Target Support Files/PortalSwift/PortalSwift-Unit-Tests-prefix.pch";
 				INFOPLIST_FILE = "Target Support Files/PortalSwift/PortalSwift-Unit-Tests-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "io.portalhq.ios.Unit-Tests";
 				PRODUCT_NAME = "PortalSwift-Unit-Tests";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) ";
@@ -3593,6 +3594,7 @@
 				GCC_PREFIX_HEADER = "Target Support Files/PortalSwift/PortalSwift-Unit-Tests-prefix.pch";
 				INFOPLIST_FILE = "Target Support Files/PortalSwift/PortalSwift-Unit-Tests-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "io.portalhq.ios.Unit-Tests";
 				PRODUCT_NAME = "PortalSwift-Unit-Tests";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) ";
@@ -3667,7 +3669,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		7DFD0C41AAB75F0D1D37AD44A69B2F30 /* Build configuration list for PBXNativeTarget "PortalSwift-Unit-Tests" */ = {
+		7DFD0C41AAB75F0D1D37AD44A69B2F30 /* Build configuration list for PBXNativeTarget "Unit Tests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				F618C4B69872C84188E62F81A920304A /* Debug */,
