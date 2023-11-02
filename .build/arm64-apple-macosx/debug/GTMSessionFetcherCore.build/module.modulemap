@@ -1,4 +1,0 @@
-module GTMSessionFetcherCore {
-    umbrella "/Users/blakewilliams/development/portal/PortalSwift/.build/checkouts/gtm-session-fetcher/Sources/Core/Public"
-    export *
-}

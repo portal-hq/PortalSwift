@@ -1,4 +1,0 @@
-module GoogleSignIn {
-    umbrella header "/Users/blakewilliams/development/portal/PortalSwift/.build/checkouts/GoogleSignIn-iOS/GoogleSignIn/Sources/Public/GoogleSignIn/GoogleSignIn.h"
-    export *
-}

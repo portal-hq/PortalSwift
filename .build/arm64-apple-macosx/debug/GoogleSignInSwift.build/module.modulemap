@@ -1,4 +1,0 @@
-module GoogleSignInSwift {
-    header "/Users/blakewilliams/development/portal/PortalSwift/.build/arm64-apple-macosx/debug/GoogleSignInSwift.build/GoogleSignInSwift-Swift.h"
-    requires objc
-}

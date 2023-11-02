@@ -1,4 +1,0 @@
-module GTMSessionFetcherLogView {
-    umbrella "/Users/blakewilliams/development/portal/PortalSwift/.build/checkouts/gtm-session-fetcher/Sources/LogView/Public"
-    export *
-}
