@@ -1,0 +1,8 @@
+framework module "Mpc" {
+	header "ref.h"
+    header "Mobile.objc.h"
+    header "Universe.objc.h"
+    header "Mpc.h"
+
+    export *
+}
