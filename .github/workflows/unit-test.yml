@@ -21,7 +21,6 @@ jobs:
 
       - name: Run Tests
         run: |
-          cd ${{ github.workspace }}/main/Cocoapods\ Example
           xcodebuild -scheme Unit\ Tests -workspace PortalSwift.xcworkspace test -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 14 Pro,OS=16.2' -testPlan PortalSwift-Unit-Tests
 
       - name: Upload coverage to Codecov
