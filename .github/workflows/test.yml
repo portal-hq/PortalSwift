@@ -7,10 +7,10 @@ on:
   workflow_dispatch:
     inputs:
       env:
-        description: 'Environment to run tests against: prod or staging'
+        description: "Environment to run tests against: prod or staging"
         type: string
         required: false
-        default: 'prod'
+        default: "prod"
 
 jobs:
   test:
@@ -28,11 +28,10 @@ jobs:
           key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
           restore-keys: |
             ${{ runner.os }}-pods-
-        
 
       - name: Build Secrets file
         run: |
-          cd ${{ github.workspace }}/main/Example
+          cd ${{ github.workspace }}/main/Cocoapods\ Example
           echo "ENV = ${{ inputs.env }}" > Secrets.xcconfig
           echo "ALCHEMY_API_KEY = ${{ secrets.ALCHEMY_API_KEY }}" >> Secrets.xcconfig
           echo "REVERSE_URL = ${{ secrets.REVERSE_URL }}" >> Secrets.xcconfig
@@ -40,13 +39,13 @@ jobs:
 
       - name: Build and Test
         run: |
-          cd ${{ github.workspace }}/main/Example
+          cd ${{ github.workspace }}/main/Cocoapods\ Example
           gem install xcpretty
           brew install xmlstarlet
 
           xcodebuild \
               -workspace PortalSwift.xcworkspace \
-              -scheme PortalSwift-Example \
+              -scheme Cocoapods\ Example \
               -destination 'platform=iOS Simulator,name=iPhone 14 Pro,OS=16.2' \
               -only-testing:PortalSwift_Tests/Tests \
               -xcconfig Secrets.xcconfig \
