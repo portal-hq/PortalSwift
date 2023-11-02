@@ -643,7 +643,7 @@
 		8B3DFFFCAEADD331757387DD4E360E8B /* GIDSignInButton.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = GIDSignInButton.h; path = GoogleSignIn/Sources/Public/GoogleSignIn/GIDSignInButton.h; sourceTree = "<group>"; };
 		8B4EDD2B623F11F70257416F1C6D84ED /* AppAuth-dummy.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = "AppAuth-dummy.m"; sourceTree = "<group>"; };
 		8CE8745983CED855E632B316AB3E5A8D /* OIDErrorUtilities.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = OIDErrorUtilities.m; path = Source/AppAuthCore/OIDErrorUtilities.m; sourceTree = "<group>"; };
-		8DD613EEB03176BA15AF8FB9FEF4A909 /* Pods-Cocoapods Example */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; name = "Pods-Cocoapods Example"; path = Pods_Cocoapods_Example.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		8DD613EEB03176BA15AF8FB9FEF4A909 /* Pods_Cocoapods_Example.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Cocoapods_Example.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		8E234E4569557BA39369F293A876ED9B /* PortalProviderTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PortalProviderTests.swift; sourceTree = "<group>"; };
 		8E2BDAA8B4FC90F0E7141A039993B913 /* FrameCollector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FrameCollector.swift; path = Sources/Framer/FrameCollector.swift; sourceTree = "<group>"; };
 		8E7C338F4C8F1A46B88497A2F32C1003 /* fr.lproj */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; name = fr.lproj; path = GoogleSignIn/Sources/Strings/fr.lproj; sourceTree = "<group>"; };
@@ -954,7 +954,7 @@
 				6FD122EA0AB9AB2A8FFA5F676C795DF0 /* GTMAppAuth */,
 				C1998E0D8085221AD87F89B614C10E52 /* GTMSessionFetcher */,
 				1AC7558CB83AD5D671DDC51B5E0F577E /* Pods-Cocoapods E2E Tests */,
-				8DD613EEB03176BA15AF8FB9FEF4A909 /* Pods-Cocoapods Example */,
+				8DD613EEB03176BA15AF8FB9FEF4A909 /* Pods_Cocoapods_Example.framework */,
 				C7611A86025E44D1B60E33479491176A /* PortalSwift */,
 				39DEE8A92AF19FBA9BFCA61C414638C5 /* PortalSwift-Unit-Tests */,
 				891B2270823847ED23F2ECFC28F935EC /* Starscream */,
@@ -1985,7 +1985,7 @@
 			);
 			name = "Pods-Cocoapods Example";
 			productName = Pods_Cocoapods_Example;
-			productReference = 8DD613EEB03176BA15AF8FB9FEF4A909 /* Pods-Cocoapods Example */;
+			productReference = 8DD613EEB03176BA15AF8FB9FEF4A909 /* Pods_Cocoapods_Example.framework */;
 			productType = "com.apple.product-type.framework";
 		};
 		98A98149697C80CEF8D5772791E92E66 /* FBSnapshotTestCase */ = {
@@ -2111,8 +2111,8 @@
 		BFDFE7DC352907FC980B868725387E98 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastSwiftUpdateCheck = 1500;
-				LastUpgradeCheck = 1500;
+				LastSwiftUpdateCheck = 1300;
+				LastUpgradeCheck = 1300;
 				TargetAttributes = {
 					136F98CDC49A4A849BA6EB68684BFE22 = {
 						TestTargetID = 47FA4701869EF3CF8724B515FBBCAA4A;
