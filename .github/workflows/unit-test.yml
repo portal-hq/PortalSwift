@@ -22,10 +22,7 @@ jobs:
       - name: Run Tests
         run: |
           cd ${{ github.workspace }}/main/
-          xcodebuild -scheme Unit\ Tests \ 
-          -workspace PortalSwift.xcworkspace \ 
-          test -sdk iphonesimulator \
-          -destination 'platform=iOS Simulator,name=iPhone 14 Pro,OS=16.2'
+          xcodebuild -scheme Unit\ Tests -workspace PortalSwift.xcworkspace test -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 14 Pro,OS=16.2'
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1.2.1

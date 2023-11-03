@@ -16,10 +16,10 @@
 		7E1A4FD62AF469F900A6F7A5 /* SPM E2E Tests.xctestplan in Resources */ = {isa = PBXBuildFile; fileRef = 7E1A4FD52AF469F900A6F7A5 /* SPM E2E Tests.xctestplan */; };
 		7E1A4FD72AF469F900A6F7A5 /* SPM E2E Tests.xctestplan in Resources */ = {isa = PBXBuildFile; fileRef = 7E1A4FD52AF469F900A6F7A5 /* SPM E2E Tests.xctestplan */; };
 		7E1A4FDB2AF46A1B00A6F7A5 /* PortalSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 7E1A4FDA2AF46A1B00A6F7A5 /* PortalSwift */; };
-		7E1A4FDD2AF46D1D00A6F7A5 /* Secrets.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 7E1A4FDC2AF46D1D00A6F7A5 /* Secrets.xcconfig */; };
-		7E1A4FDE2AF46D1D00A6F7A5 /* Secrets.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 7E1A4FDC2AF46D1D00A6F7A5 /* Secrets.xcconfig */; };
 		7E4B874E2A58BFFB003A8DB5 /* WebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4B874D2A58BFFB003A8DB5 /* WebViewController.swift */; };
 		7E7F4C002A002D7F00756B6A /* ConnectViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E7F4BFF2A002D7F00756B6A /* ConnectViewController.swift */; };
+		7EDEB9F72AF4ACC9005E8C7F /* Secrets.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 7EDEB9F62AF4ACC9005E8C7F /* Secrets.xcconfig */; };
+		7EDEB9F82AF4ACC9005E8C7F /* Secrets.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 7EDEB9F62AF4ACC9005E8C7F /* Secrets.xcconfig */; };
 		F915F34E2A8195E70014C25B /* ProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F915F34D2A8195E70014C25B /* ProviderTests.swift */; };
 		F95EA8282AE1440F00A31827 /* PasswordWalletTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F95EA8272AE1440F00A31827 /* PasswordWalletTests.swift */; };
 		F97145522A1450ED0034189F /* Portal.swift in Sources */ = {isa = PBXBuildFile; fileRef = F97145512A1450ED0034189F /* Portal.swift */; };
@@ -49,10 +49,10 @@
 		607FACEB1AFB9204008FA782 /* WalletTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalletTests.swift; sourceTree = "<group>"; };
 		7E1A4FD52AF469F900A6F7A5 /* SPM E2E Tests.xctestplan */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "SPM E2E Tests.xctestplan"; sourceTree = "<group>"; };
 		7E1A4FD82AF46A0A00A6F7A5 /* SPM Example.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = "SPM Example.entitlements"; sourceTree = "<group>"; };
-		7E1A4FDC2AF46D1D00A6F7A5 /* Secrets.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 		7E4B874D2A58BFFB003A8DB5 /* WebViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewController.swift; sourceTree = "<group>"; };
 		7E7F4BFF2A002D7F00756B6A /* ConnectViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectViewController.swift; sourceTree = "<group>"; };
 		7EB608D3291EF2F000CF1346 /* PortalSwift.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = PortalSwift.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		7EDEB9F62AF4ACC9005E8C7F /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 		F915F34D2A8195E70014C25B /* ProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderTests.swift; sourceTree = "<group>"; };
 		F95EA8272AE1440F00A31827 /* PasswordWalletTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordWalletTests.swift; sourceTree = "<group>"; };
 		F97145512A1450ED0034189F /* Portal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Portal.swift; sourceTree = "<group>"; };
@@ -80,9 +80,9 @@
 		607FACC71AFB9204008FA782 = {
 			isa = PBXGroup;
 			children = (
+				7EDEB9F62AF4ACC9005E8C7F /* Secrets.xcconfig */,
 				7E1A4FD52AF469F900A6F7A5 /* SPM E2E Tests.xctestplan */,
 				7E1A4FD82AF46A0A00A6F7A5 /* SPM Example.entitlements */,
-				7E1A4FDC2AF46D1D00A6F7A5 /* Secrets.xcconfig */,
 				607FACD21AFB9204008FA782 /* SPM Example */,
 				607FACE81AFB9204008FA782 /* Tests */,
 				607FACD11AFB9204008FA782 /* Products */,
@@ -254,7 +254,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				607FACDB1AFB9204008FA782 /* Main.storyboard in Resources */,
-				7E1A4FDD2AF46D1D00A6F7A5 /* Secrets.xcconfig in Resources */,
+				7EDEB9F72AF4ACC9005E8C7F /* Secrets.xcconfig in Resources */,
 				607FACE01AFB9204008FA782 /* LaunchScreen.xib in Resources */,
 				7E1A4FD62AF469F900A6F7A5 /* SPM E2E Tests.xctestplan in Resources */,
 				607FACDD1AFB9204008FA782 /* Images.xcassets in Resources */,
@@ -265,7 +265,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7E1A4FDE2AF46D1D00A6F7A5 /* Secrets.xcconfig in Resources */,
+				7EDEB9F82AF4ACC9005E8C7F /* Secrets.xcconfig in Resources */,
 				7E1A4FD72AF469F900A6F7A5 /* SPM E2E Tests.xctestplan in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -371,7 +371,6 @@
 /* Begin XCBuildConfiguration section */
 		607FACED1AFB9204008FA782 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 7E1A4FDC2AF46D1D00A6F7A5 /* Secrets.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
@@ -431,7 +430,6 @@
 		};
 		607FACEE1AFB9204008FA782 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 7E1A4FDC2AF46D1D00A6F7A5 /* Secrets.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
@@ -485,7 +483,6 @@
 		};
 		607FACF01AFB9204008FA782 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 7E1A4FDC2AF46D1D00A6F7A5 /* Secrets.xcconfig */;
 			buildSettings = {
 				"ARCHS[sdk=iphonesimulator*]" = "$(ARCHS_STANDARD)";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -510,7 +507,6 @@
 		};
 		607FACF11AFB9204008FA782 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 7E1A4FDC2AF46D1D00A6F7A5 /* Secrets.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "SPM Example.entitlements";
@@ -535,7 +531,6 @@
 		};
 		607FACF31AFB9204008FA782 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 7E1A4FDC2AF46D1D00A6F7A5 /* Secrets.xcconfig */;
 			buildSettings = {
 				DEVELOPMENT_TEAM = WTQ4Q66FY6;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -564,7 +559,6 @@
 		};
 		607FACF41AFB9204008FA782 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 7E1A4FDC2AF46D1D00A6F7A5 /* Secrets.xcconfig */;
 			buildSettings = {
 				DEVELOPMENT_TEAM = WTQ4Q66FY6;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
