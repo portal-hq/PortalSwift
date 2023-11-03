@@ -52,7 +52,7 @@ public class PortalMpc {
     storage: BackupOptions,
     isSimulator: Bool = false,
     host: String = "mpc.portalhq.io",
-    version: String = "v4",
+    version: String = "v5",
     mobile: Mobile,
     apiHost: String = "api.portalhq.io",
     featureFlags: FeatureFlags? = nil
@@ -91,8 +91,8 @@ public class PortalMpc {
     completion: @escaping (Result<String>) -> Void,
     progress: ((MpcStatus) -> Void)? = nil
   ) {
-    if self.version != "v4" {
-      return completion(Result(error: MpcError.backupNoLongerSupported(message: "[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = v4`.")))
+    if self.version != "v5" {
+      return completion(Result(error: MpcError.backupNoLongerSupported(message: "[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = v5`.")))
     }
 
     guard !self.isWalletModificationInProgress else {
@@ -202,9 +202,9 @@ public class PortalMpc {
   /// - Returns: The address of the newly created MPC wallet.
   public func generate(completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)? = nil) {
     DispatchQueue.global(qos: .background).async { [self] in
-      if self.version != "v4" {
+      if self.version != "v5" {
         let result = Result<String>(error: MpcError.generateNoLongerSupported(
-          message: "[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = v4`."
+          message: "[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = v5`."
         ))
         completion(result)
       }
@@ -272,9 +272,12 @@ public class PortalMpc {
                 self.isWalletModificationInProgress = false
                 return completion(Result(error: result.error!))
               }
+              guard let signingSharePairId = mpcShare?.signingSharePairId else {
+                return completion(Result(error: ReadSigningSharePairIdError.noSigningSharePairIdFound))
+              }
 
               do {
-                try self.api.storedClientSigningShare { result in
+                try self.api.storedClientSigningShare(signingSharePairId: signingSharePairId) { result in
                   // Handle errors
                   if result.error != nil {
                     self.isWalletModificationInProgress = false
@@ -313,8 +316,8 @@ public class PortalMpc {
     completion: @escaping (Result<String>) -> Void,
     progress: ((MpcStatus) -> Void)? = nil
   ) {
-    if self.version != "v4" {
-      return completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v4`.")))
+    if self.version != "v5" {
+      return completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v5`.")))
     }
 
     guard !self.isWalletModificationInProgress else {
@@ -419,8 +422,8 @@ public class PortalMpc {
     completion: @escaping (Result<String>) -> Void,
     progress: ((MpcStatus) -> Void)? = nil
   ) {
-    if self.version != "v4" {
-      return completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v4`.")))
+    if self.version != "v5" {
+      return completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v5`.")))
     }
 
     guard !self.isWalletModificationInProgress else {
@@ -995,9 +998,12 @@ public class PortalMpc {
           if let error = result.error {
             return completion(Result(error: error))
           }
+          guard let signingSharePairId = dkgResult.signingSharePairId else {
+            return completion(Result(error: ReadSigningSharePairIdError.noSigningSharePairIdFound))
+          }
 
           do {
-            try self.api.storedClientSigningShare(recoverSigning: true) { result in
+            try self.api.storedClientSigningShare(signingSharePairId: signingSharePairId) { result in
               // Handle errors
               if let error = result.error {
                 return completion(Result(error: error))
@@ -1058,16 +1064,17 @@ public class PortalMpc {
 /// GG18 shares will only contain: bks, pubkey, and share
 /// CGGMP shares will contain all fields except: pubkey.
 public struct MpcShare: Codable {
-  public var share: String
   public var allY: PartialPublicKey?
   public var bks: Berkhoffs?
+  public var clientId: String
   public var p: String
   public var partialPubkey: PartialPublicKey?
   public var pederson: Pedersons?
-  public var q: String
-  public var ssid: String
-  public var clientId: String
   public var pubkey: PublicKey?
+  public var q: String
+  public var share: String
+  public var signingSharePairId: String?
+  public var ssid: String
 }
 
 /// In the bks dictionary for an MPC share, Berkhoff is the value.
@@ -1233,4 +1240,8 @@ public enum RsaError: Error {
 public enum JSONParseError: Error {
   case stringToDataConversionFailed
   case jsonDecodingFailed
+}
+
+public enum ReadSigningSharePairIdError: Error {
+  case noSigningSharePairIdFound
 }
