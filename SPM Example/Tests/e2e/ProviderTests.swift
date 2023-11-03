@@ -5,7 +5,7 @@
 //  Created by Rami Shahatit on 8/7/23.
 //  Copyright © 2023 CocoaPods. All rights reserved.
 //
-@testable import Cocoapods_Example
+@testable import SPM_Example
 import PortalSwift
 import XCTest
 

@@ -1,4 +1,4 @@
-@testable import Cocoapods_Example
+@testable import SPM_Example
 import PortalSwift
 import XCTest
 
