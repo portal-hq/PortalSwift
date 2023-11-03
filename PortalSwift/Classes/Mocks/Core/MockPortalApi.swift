@@ -41,7 +41,7 @@ public class MockPortalApi: PortalApi {
 
   // Mocking the storedClientSigningShare function
   override public func storedClientSigningShare(
-    recoverSigning _: Bool? = nil,
+    signingSharePairId _: String,
     completion: @escaping (Result<String>) -> Void
   ) throws {
     // Mock response with data

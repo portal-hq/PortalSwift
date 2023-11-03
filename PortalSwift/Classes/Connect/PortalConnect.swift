@@ -52,7 +52,7 @@ public class PortalConnect: EventBus {
     _ autoApprove: Bool = false,
     _ apiHost: String = "api.portalhq.io",
     _ mpcHost: String = "mpc.portalhq.io",
-    _ version: String = "v4"
+    _ version: String = "v5"
   ) throws {
     self.apiKey = apiKey
     self.webSocketServer = webSocketServer
