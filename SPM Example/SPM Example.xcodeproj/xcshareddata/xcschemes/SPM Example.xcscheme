@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
    LastUpgradeVersion = "1500"
-   version = "1.3">
+   version = "1.7">
    <BuildAction
       parallelizeBuildables = "YES"
       buildImplicitDependencies = "YES">
@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "607FACCF1AFB9204008FA782"
-               BuildableName = "Cocoapods Example.app"
-               BlueprintName = "Cocoapods Example"
-               ReferencedContainer = "container:Cocoapods Example.xcodeproj">
+               BuildableName = "SPM Example.app"
+               BlueprintName = "SPM Example"
+               ReferencedContainer = "container:SPM Example.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -27,17 +27,16 @@
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES"
-      enableThreadSanitizer = "YES">
+      shouldAutocreateTestPlan = "YES">
       <Testables>
          <TestableReference
-            skipped = "NO"
-            parallelizable = "YES">
+            skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "7E1A4F732AF4661A00A6F7A5"
-               BuildableName = "Cocoapods Example Tests.xctest"
-               BlueprintName = "Cocoapods Example Tests"
-               ReferencedContainer = "container:Cocoapods Example.xcodeproj">
+               BlueprintIdentifier = "607FACE41AFB9204008FA782"
+               BuildableName = "SPM E2E Tests.xctest"
+               BlueprintName = "SPM E2E Tests"
+               ReferencedContainer = "container:SPM Example.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -57,9 +56,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "607FACCF1AFB9204008FA782"
-            BuildableName = "Cocoapods Example.app"
-            BlueprintName = "Cocoapods Example"
-            ReferencedContainer = "container:Cocoapods Example.xcodeproj">
+            BuildableName = "SPM Example.app"
+            BlueprintName = "SPM Example"
+            ReferencedContainer = "container:SPM Example.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -69,15 +68,16 @@
       savedToolIdentifier = ""
       useCustomWorkingDirectory = "NO"
       debugDocumentVersioning = "YES">
-      <MacroExpansion>
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "607FACCF1AFB9204008FA782"
-            BuildableName = "Cocoapods Example.app"
-            BlueprintName = "Cocoapods Example"
-            ReferencedContainer = "container:Cocoapods Example.xcodeproj">
+            BuildableName = "SPM Example.app"
+            BlueprintName = "SPM Example"
+            ReferencedContainer = "container:SPM Example.xcodeproj">
          </BuildableReference>
-      </MacroExpansion>
+      </BuildableProductRunnable>
    </ProfileAction>
    <AnalyzeAction
       buildConfiguration = "Debug">

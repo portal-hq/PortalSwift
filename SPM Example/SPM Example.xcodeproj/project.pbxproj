@@ -3,21 +3,23 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 54;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		4F48B452A6F92A26E749C757 /* Pods_Cocoapods_Example.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 14FBAD70D7F66199A46551EC /* Pods_Cocoapods_Example.framework */; };
 		607FACD61AFB9204008FA782 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FACD51AFB9204008FA782 /* AppDelegate.swift */; };
 		607FACD81AFB9204008FA782 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FACD71AFB9204008FA782 /* ViewController.swift */; };
 		607FACDB1AFB9204008FA782 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 607FACD91AFB9204008FA782 /* Main.storyboard */; };
 		607FACDD1AFB9204008FA782 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 607FACDC1AFB9204008FA782 /* Images.xcassets */; };
 		607FACE01AFB9204008FA782 /* LaunchScreen.xib in Resources */ = {isa = PBXBuildFile; fileRef = 607FACDE1AFB9204008FA782 /* LaunchScreen.xib */; };
 		607FACEC1AFB9204008FA782 /* WalletTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FACEB1AFB9204008FA782 /* WalletTests.swift */; };
-		7E1198842AF42E2B00FF2638 /* Secrets.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 7E1198832AF42E2B00FF2638 /* Secrets.xcconfig */; };
+		7E1A4FD62AF469F900A6F7A5 /* SPM E2E Tests.xctestplan in Resources */ = {isa = PBXBuildFile; fileRef = 7E1A4FD52AF469F900A6F7A5 /* SPM E2E Tests.xctestplan */; };
+		7E1A4FD72AF469F900A6F7A5 /* SPM E2E Tests.xctestplan in Resources */ = {isa = PBXBuildFile; fileRef = 7E1A4FD52AF469F900A6F7A5 /* SPM E2E Tests.xctestplan */; };
+		7E1A4FDB2AF46A1B00A6F7A5 /* PortalSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 7E1A4FDA2AF46A1B00A6F7A5 /* PortalSwift */; };
+		7E1A4FDD2AF46D1D00A6F7A5 /* Secrets.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 7E1A4FDC2AF46D1D00A6F7A5 /* Secrets.xcconfig */; };
+		7E1A4FDE2AF46D1D00A6F7A5 /* Secrets.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 7E1A4FDC2AF46D1D00A6F7A5 /* Secrets.xcconfig */; };
 		7E4B874E2A58BFFB003A8DB5 /* WebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4B874D2A58BFFB003A8DB5 /* WebViewController.swift */; };
 		7E7F4C002A002D7F00756B6A /* ConnectViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E7F4BFF2A002D7F00756B6A /* ConnectViewController.swift */; };
-		81C924307978091DBEEB7841 /* Pods_Cocoapods_E2E_Tests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 59EC3F54FBD1FE8E6DD7CD57 /* Pods_Cocoapods_E2E_Tests.framework */; };
 		F915F34E2A8195E70014C25B /* ProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F915F34D2A8195E70014C25B /* ProviderTests.swift */; };
 		F95EA8282AE1440F00A31827 /* PasswordWalletTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F95EA8272AE1440F00A31827 /* PasswordWalletTests.swift */; };
 		F97145522A1450ED0034189F /* Portal.swift in Sources */ = {isa = PBXBuildFile; fileRef = F97145512A1450ED0034189F /* Portal.swift */; };
@@ -35,30 +37,22 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		14C9B56D52E11ACC5411EE2F /* PortalSwift.podspec */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; name = PortalSwift.podspec; path = ../PortalSwift.podspec; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.ruby; };
-		14FBAD70D7F66199A46551EC /* Pods_Cocoapods_Example.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Cocoapods_Example.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		359FCB6C7A51B84D8283B50D /* README.md */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = net.daringfireball.markdown; name = README.md; path = ../README.md; sourceTree = "<group>"; };
-		59EC3F54FBD1FE8E6DD7CD57 /* Pods_Cocoapods_E2E_Tests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Cocoapods_E2E_Tests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		607FACD01AFB9204008FA782 /* Cocoapods Example.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Cocoapods Example.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		607FACD01AFB9204008FA782 /* SPM Example.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "SPM Example.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		607FACD41AFB9204008FA782 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		607FACD51AFB9204008FA782 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		607FACD71AFB9204008FA782 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
 		607FACDA1AFB9204008FA782 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		607FACDC1AFB9204008FA782 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		607FACDF1AFB9204008FA782 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/LaunchScreen.xib; sourceTree = "<group>"; };
-		607FACE51AFB9204008FA782 /* Cocoapods E2E Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Cocoapods E2E Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		607FACE51AFB9204008FA782 /* SPM E2E Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "SPM E2E Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		607FACEA1AFB9204008FA782 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		607FACEB1AFB9204008FA782 /* WalletTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalletTests.swift; sourceTree = "<group>"; };
-		7E1198832AF42E2B00FF2638 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
-		7E1A4F6F2AF4652C00A6F7A5 /* Cocoapods E2E Tests.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Cocoapods E2E Tests.xctestplan"; sourceTree = "<group>"; };
+		7E1A4FD52AF469F900A6F7A5 /* SPM E2E Tests.xctestplan */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "SPM E2E Tests.xctestplan"; sourceTree = "<group>"; };
+		7E1A4FD82AF46A0A00A6F7A5 /* SPM Example.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = "SPM Example.entitlements"; sourceTree = "<group>"; };
+		7E1A4FDC2AF46D1D00A6F7A5 /* Secrets.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 		7E4B874D2A58BFFB003A8DB5 /* WebViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewController.swift; sourceTree = "<group>"; };
-		7E65BFFB2AF321A400ACA0CE /* Cocoapods Example.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = "Cocoapods Example.entitlements"; sourceTree = "<group>"; };
 		7E7F4BFF2A002D7F00756B6A /* ConnectViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectViewController.swift; sourceTree = "<group>"; };
 		7EB608D3291EF2F000CF1346 /* PortalSwift.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = PortalSwift.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		87EB59B6C56C171640CEC112 /* Pods-Cocoapods Example.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Cocoapods Example.release.xcconfig"; path = "Target Support Files/Pods-Cocoapods Example/Pods-Cocoapods Example.release.xcconfig"; sourceTree = "<group>"; };
-		D91C633EC4117296F79F91D7 /* Pods-Cocoapods E2E Tests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Cocoapods E2E Tests.debug.xcconfig"; path = "Target Support Files/Pods-Cocoapods E2E Tests/Pods-Cocoapods E2E Tests.debug.xcconfig"; sourceTree = "<group>"; };
-		EA379B97B96DEADB79CF7A5A /* Pods-Cocoapods E2E Tests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Cocoapods E2E Tests.release.xcconfig"; path = "Target Support Files/Pods-Cocoapods E2E Tests/Pods-Cocoapods E2E Tests.release.xcconfig"; sourceTree = "<group>"; };
-		ECD3F1A686F3F9C18B3D7041 /* Pods-Cocoapods Example.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Cocoapods Example.debug.xcconfig"; path = "Target Support Files/Pods-Cocoapods Example/Pods-Cocoapods Example.debug.xcconfig"; sourceTree = "<group>"; };
 		F915F34D2A8195E70014C25B /* ProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderTests.swift; sourceTree = "<group>"; };
 		F95EA8272AE1440F00A31827 /* PasswordWalletTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordWalletTests.swift; sourceTree = "<group>"; };
 		F97145512A1450ED0034189F /* Portal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Portal.swift; sourceTree = "<group>"; };
@@ -69,7 +63,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4F48B452A6F92A26E749C757 /* Pods_Cocoapods_Example.framework in Frameworks */,
+				7E1A4FDB2AF46A1B00A6F7A5 /* PortalSwift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -77,7 +71,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				81C924307978091DBEEB7841 /* Pods_Cocoapods_E2E_Tests.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -87,14 +80,12 @@
 		607FACC71AFB9204008FA782 = {
 			isa = PBXGroup;
 			children = (
-				7E1A4F6F2AF4652C00A6F7A5 /* Cocoapods E2E Tests.xctestplan */,
-				7E1198832AF42E2B00FF2638 /* Secrets.xcconfig */,
-				7E65BFFB2AF321A400ACA0CE /* Cocoapods Example.entitlements */,
-				607FACF51AFB993E008FA782 /* Podspec Metadata */,
-				607FACD21AFB9204008FA782 /* Cocoapods Example */,
+				7E1A4FD52AF469F900A6F7A5 /* SPM E2E Tests.xctestplan */,
+				7E1A4FD82AF46A0A00A6F7A5 /* SPM Example.entitlements */,
+				7E1A4FDC2AF46D1D00A6F7A5 /* Secrets.xcconfig */,
+				607FACD21AFB9204008FA782 /* SPM Example */,
 				607FACE81AFB9204008FA782 /* Tests */,
 				607FACD11AFB9204008FA782 /* Products */,
-				7C36FC3DB0438C694E7A971C /* Pods */,
 				984F47A8E526CC82C36C391B /* Frameworks */,
 			);
 			sourceTree = "<group>";
@@ -102,13 +93,13 @@
 		607FACD11AFB9204008FA782 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				607FACD01AFB9204008FA782 /* Cocoapods Example.app */,
-				607FACE51AFB9204008FA782 /* Cocoapods E2E Tests.xctest */,
+				607FACD01AFB9204008FA782 /* SPM Example.app */,
+				607FACE51AFB9204008FA782 /* SPM E2E Tests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		607FACD21AFB9204008FA782 /* Cocoapods Example */ = {
+		607FACD21AFB9204008FA782 /* SPM Example */ = {
 			isa = PBXGroup;
 			children = (
 				607FACD51AFB9204008FA782 /* AppDelegate.swift */,
@@ -121,7 +112,7 @@
 				607FACD31AFB9204008FA782 /* Supporting Files */,
 				F97145512A1450ED0034189F /* Portal.swift */,
 			);
-			name = "Cocoapods Example";
+			name = "SPM Example";
 			path = PortalSwift;
 			sourceTree = "<group>";
 		};
@@ -150,32 +141,10 @@
 			name = "Supporting Files";
 			sourceTree = "<group>";
 		};
-		607FACF51AFB993E008FA782 /* Podspec Metadata */ = {
-			isa = PBXGroup;
-			children = (
-				14C9B56D52E11ACC5411EE2F /* PortalSwift.podspec */,
-				359FCB6C7A51B84D8283B50D /* README.md */,
-			);
-			name = "Podspec Metadata";
-			sourceTree = "<group>";
-		};
-		7C36FC3DB0438C694E7A971C /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				D91C633EC4117296F79F91D7 /* Pods-Cocoapods E2E Tests.debug.xcconfig */,
-				EA379B97B96DEADB79CF7A5A /* Pods-Cocoapods E2E Tests.release.xcconfig */,
-				ECD3F1A686F3F9C18B3D7041 /* Pods-Cocoapods Example.debug.xcconfig */,
-				87EB59B6C56C171640CEC112 /* Pods-Cocoapods Example.release.xcconfig */,
-			);
-			path = Pods;
-			sourceTree = "<group>";
-		};
 		984F47A8E526CC82C36C391B /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				7EB608D3291EF2F000CF1346 /* PortalSwift.framework */,
-				59EC3F54FBD1FE8E6DD7CD57 /* Pods_Cocoapods_E2E_Tests.framework */,
-				14FBAD70D7F66199A46551EC /* Pods_Cocoapods_Example.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -193,28 +162,29 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		607FACCF1AFB9204008FA782 /* Cocoapods Example */ = {
+		607FACCF1AFB9204008FA782 /* SPM Example */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 607FACEF1AFB9204008FA782 /* Build configuration list for PBXNativeTarget "Cocoapods Example" */;
+			buildConfigurationList = 607FACEF1AFB9204008FA782 /* Build configuration list for PBXNativeTarget "SPM Example" */;
 			buildPhases = (
-				64B69654946248786F344FC6 /* [CP] Check Pods Manifest.lock */,
 				607FACCC1AFB9204008FA782 /* Sources */,
 				607FACCD1AFB9204008FA782 /* Frameworks */,
 				607FACCE1AFB9204008FA782 /* Resources */,
-				74EDBF631ADF7D38385EFEFF /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
-			name = "Cocoapods Example";
+			name = "SPM Example";
+			packageProductDependencies = (
+				7E1A4FDA2AF46A1B00A6F7A5 /* PortalSwift */,
+			);
 			productName = PortalSwift;
-			productReference = 607FACD01AFB9204008FA782 /* Cocoapods Example.app */;
+			productReference = 607FACD01AFB9204008FA782 /* SPM Example.app */;
 			productType = "com.apple.product-type.application";
 		};
-		607FACE41AFB9204008FA782 /* Cocoapods E2E Tests */ = {
+		607FACE41AFB9204008FA782 /* SPM E2E Tests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 607FACF21AFB9204008FA782 /* Build configuration list for PBXNativeTarget "Cocoapods E2E Tests" */;
+			buildConfigurationList = 607FACF21AFB9204008FA782 /* Build configuration list for PBXNativeTarget "SPM E2E Tests" */;
 			buildPhases = (
 				BFDC6ABA7008C5C62076E90C /* [CP] Check Pods Manifest.lock */,
 				607FACE11AFB9204008FA782 /* Sources */,
@@ -227,9 +197,9 @@
 			dependencies = (
 				607FACE71AFB9204008FA782 /* PBXTargetDependency */,
 			);
-			name = "Cocoapods E2E Tests";
+			name = "SPM E2E Tests";
 			productName = Tests;
-			productReference = 607FACE51AFB9204008FA782 /* Cocoapods E2E Tests.xctest */;
+			productReference = 607FACE51AFB9204008FA782 /* SPM E2E Tests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
@@ -256,7 +226,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 607FACCB1AFB9204008FA782 /* Build configuration list for PBXProject "Cocoapods Example" */;
+			buildConfigurationList = 607FACCB1AFB9204008FA782 /* Build configuration list for PBXProject "SPM Example" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -265,12 +235,15 @@
 				Base,
 			);
 			mainGroup = 607FACC71AFB9204008FA782;
+			packageReferences = (
+				7E1A4FD92AF46A1B00A6F7A5 /* XCLocalSwiftPackageReference ".." */,
+			);
 			productRefGroup = 607FACD11AFB9204008FA782 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				607FACCF1AFB9204008FA782 /* Cocoapods Example */,
-				607FACE41AFB9204008FA782 /* Cocoapods E2E Tests */,
+				607FACCF1AFB9204008FA782 /* SPM Example */,
+				607FACE41AFB9204008FA782 /* SPM E2E Tests */,
 			);
 		};
 /* End PBXProject section */
@@ -280,9 +253,10 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7E1198842AF42E2B00FF2638 /* Secrets.xcconfig in Resources */,
 				607FACDB1AFB9204008FA782 /* Main.storyboard in Resources */,
+				7E1A4FDD2AF46D1D00A6F7A5 /* Secrets.xcconfig in Resources */,
 				607FACE01AFB9204008FA782 /* LaunchScreen.xib in Resources */,
+				7E1A4FD62AF469F900A6F7A5 /* SPM E2E Tests.xctestplan in Resources */,
 				607FACDD1AFB9204008FA782 /* Images.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -291,62 +265,14 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7E1A4FDE2AF46D1D00A6F7A5 /* Secrets.xcconfig in Resources */,
+				7E1A4FD72AF469F900A6F7A5 /* SPM E2E Tests.xctestplan in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		64B69654946248786F344FC6 /* [CP] Check Pods Manifest.lock */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
-				"${PODS_ROOT}/Manifest.lock",
-			);
-			name = "[CP] Check Pods Manifest.lock";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-Cocoapods Example-checkManifestLockResult.txt",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-		74EDBF631ADF7D38385EFEFF /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Cocoapods Example/Pods-Cocoapods Example-frameworks.sh",
-				"${BUILT_PRODUCTS_DIR}/AppAuth/AppAuth.framework",
-				"${BUILT_PRODUCTS_DIR}/GTMAppAuth/GTMAppAuth.framework",
-				"${BUILT_PRODUCTS_DIR}/GTMSessionFetcher/GTMSessionFetcher.framework",
-				"${BUILT_PRODUCTS_DIR}/GoogleSignIn/GoogleSignIn.framework",
-				"${BUILT_PRODUCTS_DIR}/PortalSwift/PortalSwift.framework",
-				"${BUILT_PRODUCTS_DIR}/Starscream/Starscream.framework",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/AppAuth.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/GTMAppAuth.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/GTMSessionFetcher.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/GoogleSignIn.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/PortalSwift.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Starscream.framework",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Cocoapods Example/Pods-Cocoapods Example-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
 		BC92FFD52D3E33D31E844AD7 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -418,7 +344,7 @@
 /* Begin PBXTargetDependency section */
 		607FACE71AFB9204008FA782 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 607FACCF1AFB9204008FA782 /* Cocoapods Example */;
+			target = 607FACCF1AFB9204008FA782 /* SPM Example */;
 			targetProxy = 607FACE61AFB9204008FA782 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -445,6 +371,7 @@
 /* Begin XCBuildConfiguration section */
 		607FACED1AFB9204008FA782 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 7E1A4FDC2AF46D1D00A6F7A5 /* Secrets.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
@@ -504,6 +431,7 @@
 		};
 		607FACEE1AFB9204008FA782 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 7E1A4FDC2AF46D1D00A6F7A5 /* Secrets.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
@@ -557,11 +485,11 @@
 		};
 		607FACF01AFB9204008FA782 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = ECD3F1A686F3F9C18B3D7041 /* Pods-Cocoapods Example.debug.xcconfig */;
+			baseConfigurationReference = 7E1A4FDC2AF46D1D00A6F7A5 /* Secrets.xcconfig */;
 			buildSettings = {
 				"ARCHS[sdk=iphonesimulator*]" = "$(ARCHS_STANDARD)";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = "Cocoapods Example.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "SPM Example.entitlements";
 				DEVELOPMENT_TEAM = WTQ4Q66FY6;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_OPTIMIZATION_LEVEL = z;
@@ -572,7 +500,7 @@
 					"@executable_path/Frameworks",
 				);
 				MODULE_NAME = ExampleApp;
-				PRODUCT_BUNDLE_IDENTIFIER = "org.cocoapods.demo.$(PRODUCT_NAME:rfc1034identifier)";
+				PRODUCT_BUNDLE_IDENTIFIER = "io.portalhq.ios.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Osize";
 				SWIFT_SWIFT3_OBJC_INFERENCE = Default;
@@ -582,10 +510,10 @@
 		};
 		607FACF11AFB9204008FA782 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 87EB59B6C56C171640CEC112 /* Pods-Cocoapods Example.release.xcconfig */;
+			baseConfigurationReference = 7E1A4FDC2AF46D1D00A6F7A5 /* Secrets.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = "Cocoapods Example.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "SPM Example.entitlements";
 				DEVELOPMENT_TEAM = WTQ4Q66FY6;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_OPTIMIZATION_LEVEL = z;
@@ -597,7 +525,7 @@
 				);
 				LLVM_LTO = YES_THIN;
 				MODULE_NAME = ExampleApp;
-				PRODUCT_BUNDLE_IDENTIFIER = "org.cocoapods.demo.$(PRODUCT_NAME:rfc1034identifier)";
+				PRODUCT_BUNDLE_IDENTIFIER = "io.portalhq.ios.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Osize";
 				SWIFT_SWIFT3_OBJC_INFERENCE = Default;
@@ -607,7 +535,7 @@
 		};
 		607FACF31AFB9204008FA782 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = D91C633EC4117296F79F91D7 /* Pods-Cocoapods E2E Tests.debug.xcconfig */;
+			baseConfigurationReference = 7E1A4FDC2AF46D1D00A6F7A5 /* Secrets.xcconfig */;
 			buildSettings = {
 				DEVELOPMENT_TEAM = WTQ4Q66FY6;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -630,13 +558,13 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_SWIFT3_OBJC_INFERENCE = Default;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Cocoapods Example.app/Cocoapods_Example";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SPM Example.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SPM Example";
 			};
 			name = Debug;
 		};
 		607FACF41AFB9204008FA782 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = EA379B97B96DEADB79CF7A5A /* Pods-Cocoapods E2E Tests.release.xcconfig */;
+			baseConfigurationReference = 7E1A4FDC2AF46D1D00A6F7A5 /* Secrets.xcconfig */;
 			buildSettings = {
 				DEVELOPMENT_TEAM = WTQ4Q66FY6;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -655,14 +583,14 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_SWIFT3_OBJC_INFERENCE = Default;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Cocoapods Example.app/Cocoapods_Example";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SPM Example.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SPM Example";
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		607FACCB1AFB9204008FA782 /* Build configuration list for PBXProject "Cocoapods Example" */ = {
+		607FACCB1AFB9204008FA782 /* Build configuration list for PBXProject "SPM Example" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				607FACED1AFB9204008FA782 /* Debug */,
@@ -671,7 +599,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		607FACEF1AFB9204008FA782 /* Build configuration list for PBXNativeTarget "Cocoapods Example" */ = {
+		607FACEF1AFB9204008FA782 /* Build configuration list for PBXNativeTarget "SPM Example" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				607FACF01AFB9204008FA782 /* Debug */,
@@ -680,7 +608,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		607FACF21AFB9204008FA782 /* Build configuration list for PBXNativeTarget "Cocoapods E2E Tests" */ = {
+		607FACF21AFB9204008FA782 /* Build configuration list for PBXNativeTarget "SPM E2E Tests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				607FACF31AFB9204008FA782 /* Debug */,
@@ -690,6 +618,20 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		7E1A4FD92AF46A1B00A6F7A5 /* XCLocalSwiftPackageReference ".." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ..;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		7E1A4FDA2AF46A1B00A6F7A5 /* PortalSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PortalSwift;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 607FACC81AFB9204008FA782 /* Project object */;
 }

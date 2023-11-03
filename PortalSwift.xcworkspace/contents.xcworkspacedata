@@ -2,7 +2,7 @@
 <Workspace
    version = "1.0">
    <FileRef
-      location = "group:Unit Tests.xctestplan">
+      location = "group:SPM Example/SPM Example.xcodeproj">
    </FileRef>
    <FileRef
       location = "group:Cocoapods Example/Cocoapods Example.xcodeproj">
@@ -14,7 +14,13 @@
       location = "container:"
       name = "Packages">
       <FileRef
+         location = "group:Unit Tests.xctestplan">
+      </FileRef>
+      <FileRef
          location = "group:">
       </FileRef>
    </Group>
+   <FileRef
+      location = "group:Unit Tests.xctestplan">
+   </FileRef>
 </Workspace>
