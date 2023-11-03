@@ -43,6 +43,8 @@ To create a new instance of `Portal` within your app, import `PortalSwift` and i
 ```swift
 import PortalSwift
 
+// This example shows backing up with a Password/PIN code.
+// We also support backing up with Google Drive and iCloud
 let backup = BackupOptions(passwordStorage: PasswordStorage())
 
 let portal = try Portal(
