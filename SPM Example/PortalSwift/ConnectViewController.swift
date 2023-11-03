@@ -163,8 +163,8 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
 
   func didRequestApprovalDapps(portalConnect: PortalConnect, data: Any) {
     print("Emitting Dapp Session Approval for v2..")
-    if var connectData = data as? ConnectData {
-      var newConnectData = portalConnect.addChainsToProposal(data: connectData)
+    if let connectData = data as? ConnectData {
+      let newConnectData = portalConnect.addChainsToProposal(data: connectData)
 
       portalConnect.emit(event: Events.PortalDappSessionApproved.rawValue, data: newConnectData)
     } else {
@@ -225,7 +225,7 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
   @IBAction func connectPressed() {
     print("Connect button pressed...")
     let uri = self.addressTextInput?.text
-    print("Attempting to connect to \(uri ?? "") using \(self.connect)")
+    print("Attempting to connect to \(uri ?? "") using \(String(describing: self.connect))")
     self.connect?.connect(uri ?? "")
   }
 
@@ -235,7 +235,7 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
 
     print("URI2 Text: \(uri ?? "")")
 
-    print("Attempting to connect to \(uri ?? "") using \(self.connect2)")
+    print("Attempting to connect to \(uri ?? "") using \(String(describing: self.connect2))")
     self.connect2?.connect(uri ?? "")
   }
 

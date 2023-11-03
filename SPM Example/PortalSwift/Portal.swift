@@ -36,9 +36,7 @@ class PortalWrapper {
     let LOCAL_API_URL = "localhost:3001"
     let LOCAL_MPC_URL = "localhost:3002"
 
-    print("Environment: ", ProcessInfo.processInfo.environment)
-
-    guard let ENV: String = ProcessInfo.processInfo.environment["ENV"] else {
+    guard let ENV: String = Bundle.main.infoDictionary?["ENV"] as? String else {
       print("Error: Do you have `ENV=$(ENV)` in your info.plist?")
       return
     }
@@ -100,7 +98,7 @@ class PortalWrapper {
 
   func registerPortal(apiKey: String, backup: BackupOptions, chainId: Int = 5, optimized: Bool = false, completion: @escaping (Result<Bool>) -> Void) {
     do {
-      guard let ALCHEMY_API_KEY: String = ProcessInfo.processInfo.environment["ALCHEMY_API_KEY"] else {
+      guard let ALCHEMY_API_KEY: String = Bundle.main.infoDictionary?["ALCHEMY_API_KEY"] as? String else {
         print("Error: Do you have `ALCHEMY_API_KEY=$(ALCHEMY_API_KEY)` in your info.plist?")
         return
       }

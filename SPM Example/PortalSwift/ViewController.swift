@@ -68,8 +68,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
   override func viewDidLoad() {
     super.viewDidLoad()
 
-    print("PortalWrapper: ", self.PortalWrapper)
-
     self.username?.delegate = self
     self.sendAddress?.delegate = self
     self.url?.delegate = self
@@ -81,7 +79,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     let STAGING_API_URL = "api-staging.portalhq.io"
     let STAGING_MPC_URL = "mpc-staging.portalhq.io"
 
-    guard let ENV: String = ProcessInfo.processInfo.environment["ENV"] else {
+    guard let ENV: String = Bundle.main.infoDictionary?["ENV"] as? String else {
       print("Error: Do you have `ENV=$(ENV)` in your info.plist?")
       return
     }
@@ -590,7 +588,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   func registerPortalUi(apiKey: String) {
     do {
-//            guard let GDRIVE_CLIENT_ID: String = ProcessInfo.processInfo.environment["GDRIVE_CLIENT_ID"] else {
+//            guard let GDRIVE_CLIENT_ID: String = Bundle.main.infoDictionary?["GDRIVE_CLIENT_ID"] as String else {
 //              print("Error: Do you have `GDRIVE_CLIENT_ID=$(GDRIVE_CLIENT_ID)` in your info.plist?")
 //              return  }
       let backup = BackupOptions(passwordStorage: PasswordStorage())
