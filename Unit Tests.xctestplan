@@ -13,9 +13,7 @@
   },
   "testTargets" : [
     {
-      "skippedTests" : [
-        "PortalTests"
-      ],
+      "parallelizable" : true,
       "target" : {
         "containerPath" : "container:Pods.xcodeproj",
         "identifier" : "136F98CDC49A4A849BA6EB68684BFE22",
