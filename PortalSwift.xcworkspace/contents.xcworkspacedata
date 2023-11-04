@@ -26,4 +26,7 @@
    <FileRef
       location = "group:/Users/blakewilliams/development/portal/PortalSwift/SPM Example/SPM E2E Tests.xctestplan">
    </FileRef>
+   <FileRef
+      location = "group:Unit Tests.xctestplan">
+   </FileRef>
 </Workspace>

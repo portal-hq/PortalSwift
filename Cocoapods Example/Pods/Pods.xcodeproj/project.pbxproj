@@ -233,7 +233,6 @@
 		BF04353582E4FC4B0D849D5CDE370E0D /* sk.lproj in Resources */ = {isa = PBXBuildFile; fileRef = F1C089B1D3C48782A2B4AC18FD10A19E /* sk.lproj */; };
 		BF33CE2D075DADC74035F23AE1737EEB /* Pods-Cocoapods E2E Tests-dummy.m in Sources */ = {isa = PBXBuildFile; fileRef = 5FCEDAD48ACBACA271575AC94E7BAE21 /* Pods-Cocoapods E2E Tests-dummy.m */; };
 		BF34B73462E9DE86DAF106C63B32791D /* CurrencyConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C140430AC1DEE090BF39706B5B3E119 /* CurrencyConverter.swift */; };
-		BF351654A674481DD10F715461DCD724 /* PortalTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FE5CA4925EF95FCC6F6B4C669E43FB2 /* PortalTests.swift */; };
 		BFFDB2CC26E3EC998AA1DB9F59ACCACD /* GTMSessionFetcherService.h in Headers */ = {isa = PBXBuildFile; fileRef = C19A682976B0A807E7441360A5599E72 /* GTMSessionFetcherService.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		C0F0C5B4176EE61756A2F383D2176CEA /* Pods-Cocoapods E2E Tests-umbrella.h in Headers */ = {isa = PBXBuildFile; fileRef = B2CC7737336D843A21011DF89253C11A /* Pods-Cocoapods E2E Tests-umbrella.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		C1891825149C72763548421A1EFC6967 /* MpcSignerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B55BEC45FB1535F500C987505A99005 /* MpcSignerTests.swift */; };
@@ -462,7 +461,6 @@
 		09AFEFD19168E940260D91F89ABBE0E1 /* GTMSessionFetcher-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "GTMSessionFetcher-Info.plist"; sourceTree = "<group>"; };
 		0BF3F60A1113C177AE782120D02C89B3 /* MockStorage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MockStorage.swift; sourceTree = "<group>"; };
 		0DFFA4C5C04595777D3663C38D244375 /* Pods-Cocoapods E2E Tests-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "Pods-Cocoapods E2E Tests-Info.plist"; sourceTree = "<group>"; };
-		0FE5CA4925EF95FCC6F6B4C669E43FB2 /* PortalTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PortalTests.swift; path = Tests/PortalSwiftTests/PortalTests.swift; sourceTree = "<group>"; };
 		101B235DA4C815CFD2006AC65F6D277F /* Chains.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Chains.swift; sourceTree = "<group>"; };
 		11206214A2CF29BAD836830FEC7D8B1F /* OIDTokenRequest.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = OIDTokenRequest.m; path = Source/AppAuthCore/OIDTokenRequest.m; sourceTree = "<group>"; };
 		1260225DB5EA81EDC35EA3D4361027F1 /* GTMAppAuthFetcherAuthorization+Keychain.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = "GTMAppAuthFetcherAuthorization+Keychain.h"; path = "GTMAppAuth/Sources/Public/GTMAppAuth/GTMAppAuthFetcherAuthorization+Keychain.h"; sourceTree = "<group>"; };
@@ -995,7 +993,6 @@
 		1155BCD752AB69FFFA7CBD3F91EC3CA0 /* Tests */ = {
 			isa = PBXGroup;
 			children = (
-				0FE5CA4925EF95FCC6F6B4C669E43FB2 /* PortalTests.swift */,
 				EDEA1E10AC08430EAFDA5A9C9E73AFAC /* Core */,
 				959869729147C104DEF42E60A0752B4C /* Provider */,
 				94922CB25E55388612ABFBFB0A4CB2E7 /* Storage */,
@@ -2433,7 +2430,6 @@
 				C5830DB9DBE10546C766666CE917ABE4 /* PortalKeychainTests.swift in Sources */,
 				A453A2C8561C3BBC8DC381F5FC00557D /* PortalMpcTests.swift in Sources */,
 				BC2421587BB97AB9E07B95AE069747BC /* PortalProviderTests.swift in Sources */,
-				BF351654A674481DD10F715461DCD724 /* PortalTests.swift in Sources */,
 				85E29DBAD35FD9CA94462EA63B2CB2E7 /* StorageTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

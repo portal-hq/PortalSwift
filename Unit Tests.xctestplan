@@ -1,7 +1,7 @@
 {
   "configurations" : [
     {
-      "id" : "7D2610E1-BFBF-47F6-961C-56FEA676B23D",
+      "id" : "16CE13D8-9DCE-423F-8738-388D6BB41347",
       "name" : "Test Scheme Action",
       "options" : {
 
@@ -9,15 +9,19 @@
     }
   ],
   "defaultOptions" : {
-
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:Pods.xcodeproj",
+      "identifier" : "47FA4701869EF3CF8724B515FBBCAA4A",
+      "name" : "AppHost-PortalSwift-Unit-Tests"
+    }
   },
   "testTargets" : [
     {
       "skippedTests" : [
-        "PortalCoreTests"
+        "PortalTests"
       ],
       "target" : {
-        "containerPath" : "container:..\/Cocoapods Example\/Pods\/Pods.xcodeproj",
+        "containerPath" : "container:Pods.xcodeproj",
         "identifier" : "136F98CDC49A4A849BA6EB68684BFE22",
         "name" : "Unit Tests"
       }
