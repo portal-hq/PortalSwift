@@ -256,6 +256,7 @@ public class Portal {
     self.mpc.recover(cipherText: cipherText, method: method, backupConfigs: backupConfigs, completion: completion, progress: progress)
   }
 
+  @available(*, deprecated, renamed: "recoverWallet")
   public func legacyRecoverWallet(
     cipherText: String,
     method: BackupMethods.RawValue,
@@ -274,6 +275,16 @@ public class Portal {
     ) {
       self.recoverWallet(cipherText: cipherText, method: method, backupConfigs: backupConfigs, completion: completion, progress: progress)
     }
+
+  public func provisionWallet(
+    cipherText: String,
+    method: BackupMethods.RawValue,
+    backupConfigs: BackupConfigs? = nil,
+    completion: @escaping (Result<String>) -> Void,
+    progress: ((MpcStatus) -> Void)? = nil
+  ) {
+    self.recoverWallet(cipherText: cipherText, method: method, backupConfigs: backupConfigs, completion: completion, progress: progress)
+  }
 
   /**********************************
    * Provider Helper Methods
