@@ -1,7 +1,7 @@
 {
   "configurations" : [
     {
-      "id" : "16CE13D8-9DCE-423F-8738-388D6BB41347",
+      "id" : "115C13C6-CDBD-4212-9D22-89D30A7CE4F2",
       "name" : "Test Scheme Action",
       "options" : {
 
@@ -9,11 +9,7 @@
     }
   ],
   "defaultOptions" : {
-    "targetForVariableExpansion" : {
-      "containerPath" : "container:Pods.xcodeproj",
-      "identifier" : "47FA4701869EF3CF8724B515FBBCAA4A",
-      "name" : "AppHost-PortalSwift-Unit-Tests"
-    }
+    "testTimeoutsEnabled" : true
   },
   "testTargets" : [
     {
