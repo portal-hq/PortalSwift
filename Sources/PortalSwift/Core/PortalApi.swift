@@ -246,12 +246,14 @@ public class PortalApi {
   ) throws {
     var requestBody: [String: String] = ["to": transaction.to]
 
-    if let value = transaction.value { requestBody["value"] = transaction.value }
-    if let data = transaction.data { requestBody["data"] = transaction.data }
-    if let maxFeePerGas = transaction.maxFeePerGas { requestBody["maxFeePerGas"] = transaction.maxFeePerGas }
-    if let maxPriorityFeePerGas = transaction.maxPriorityFeePerGas { requestBody["maxPriorityFeePerGas"] = transaction.maxPriorityFeePerGas }
-    if let gas = transaction.gas { requestBody["gas"] = transaction.gas }
-    if let gasPrice = transaction.gasPrice { requestBody["gasPrice"] = transaction.gasPrice }
+    if let value = transaction.value { requestBody["value"] = value }
+    if let data = transaction.data { requestBody["data"] = data }
+    if let maxFeePerGas = transaction.maxFeePerGas { requestBody["maxFeePerGas"] = maxFeePerGas }
+    if let maxPriorityFeePerGas = transaction.maxPriorityFeePerGas {
+      requestBody["maxPriorityFeePerGas"] = maxPriorityFeePerGas
+    }
+    if let gas = transaction.gas { requestBody["gas"] = gas }
+    if let gasPrice = transaction.gasPrice { requestBody["gasPrice"] = gasPrice }
 
     try self.requests.post(
       path: "/api/v1/clients/me/simulate-transaction?chainId=\(self.chainId)",
@@ -269,22 +271,20 @@ public class PortalApi {
 
   /// Updates the client's wallet state to be stored on the client.
   /// - Parameters:
-  ///   - recoverSigning: Optional boolean indicating whether it's from recover signing. If not nil, it's included as a query parameter in the URL.
+  ///   - signingSharePairId: The ID related to the signing share pair.
   ///   - completion: The callback that contains the response status.
   /// - Returns: Void.
   public func storedClientSigningShare(
-    recoverSigning: Bool? = nil,
+    signingSharePairId: String,
     completion: @escaping (Result<String>) -> Void
   ) throws {
-    var path = "/api/v1/clients/me/wallet/stored-on-client"
+    let path = "/api/v2/clients/me/wallet/stored-on-client"
 
-    if let recoverSigning = recoverSigning {
-      path += "?fromRecoverSigning=\(recoverSigning)"
-    }
+    let requestBody: [String: Any] = ["signingSharePairId": signingSharePairId]
 
     try self.requests.put(
       path: path,
-      body: [:],
+      body: requestBody,
       headers: [
         "Authorization": "Bearer \(self.apiKey)",
       ],
