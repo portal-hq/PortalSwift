@@ -13,8 +13,11 @@
   },
   "testTargets" : [
     {
+      "skippedTests" : [
+        "PortalCoreTests"
+      ],
       "target" : {
-        "containerPath" : "container:Pods\/Pods.xcodeproj",
+        "containerPath" : "container:..\/Cocoapods Example\/Pods\/Pods.xcodeproj",
         "identifier" : "136F98CDC49A4A849BA6EB68684BFE22",
         "name" : "Unit Tests"
       }
