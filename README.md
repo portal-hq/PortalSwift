@@ -1,6 +1,6 @@
 # PortalSwift
 
-Portal's MPC SDK for iOS.
+Portal's SDK for iOS.
 
 Full documentation and Guides are available in the [Portal Docs](https://docs.portalhq.io/sdk/native-ios).
 
