@@ -1,3 +1,5 @@
-ignore: 
- - "main/Example"
- - "main/PortalSwift/Classes/Mocks"
+ignore:
+  - "main/Cocoapods Example"
+  - "main/SPM Example"
+  - "main/Sources/PortalSwift/Classes/Mocks"
+  - "main/Pods"

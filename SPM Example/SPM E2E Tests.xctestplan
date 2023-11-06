@@ -1,0 +1,24 @@
+{
+  "configurations" : [
+    {
+      "id" : "AC8D42AF-C2AD-4190-B105-7AF6EA2B15B9",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : false
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:SPM Example.xcodeproj",
+        "identifier" : "607FACE41AFB9204008FA782",
+        "name" : "SPM E2E Tests"
+      }
+    }
+  ],
+  "version" : 1
+}
