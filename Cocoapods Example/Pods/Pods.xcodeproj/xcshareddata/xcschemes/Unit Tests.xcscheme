@@ -24,7 +24,7 @@
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "136F98CDC49A4A849BA6EB68684BFE22"
                BuildableName = "PortalSwift-Unit-Tests.xctest"
-               BlueprintName = "PortalSwift-Unit-Tests"
+               BlueprintName = "Unit Tests"
                ReferencedContainer = "container:Pods.xcodeproj">
             </BuildableReference>
             <SkippedTests>
@@ -62,15 +62,6 @@
       savedToolIdentifier = ""
       useCustomWorkingDirectory = "NO"
       debugDocumentVersioning = "YES">
-      <MacroExpansion>
-         <BuildableReference
-            BuildableIdentifier = "primary"
-            BlueprintIdentifier = "47FA4701869EF3CF8724B515FBBCAA4A"
-            BuildableName = "AppHost-PortalSwift-Unit-Tests.app"
-            BlueprintName = "AppHost-PortalSwift-Unit-Tests"
-            ReferencedContainer = "container:Pods.xcodeproj">
-         </BuildableReference>
-      </MacroExpansion>
    </ProfileAction>
    <AnalyzeAction
       buildConfiguration = "Debug">
