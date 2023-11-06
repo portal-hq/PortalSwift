@@ -1,6 +1,0 @@
-framework module Pods_Pods_PortalSwift {
-  umbrella header "Pods-Pods-PortalSwift-umbrella.h"
-
-  export *
-  module * { export * }
-}

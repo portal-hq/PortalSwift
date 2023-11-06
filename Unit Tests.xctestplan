@@ -1,0 +1,24 @@
+{
+  "configurations" : [
+    {
+      "id" : "115C13C6-CDBD-4212-9D22-89D30A7CE4F2",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "testTimeoutsEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:Pods.xcodeproj",
+        "identifier" : "136F98CDC49A4A849BA6EB68684BFE22",
+        "name" : "Unit Tests"
+      }
+    }
+  ],
+  "version" : 1
+}
