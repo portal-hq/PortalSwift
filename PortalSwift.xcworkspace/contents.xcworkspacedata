@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workspace
+   version = "1.0">
+   <FileRef
+      location = "group:SPM Example/SPM Example.xcodeproj">
+   </FileRef>
+   <FileRef
+      location = "group:Cocoapods Example/Cocoapods Example.xcodeproj">
+   </FileRef>
+   <FileRef
+      location = "group:Cocoapods Example/Pods/Pods.xcodeproj">
+   </FileRef>
+   <Group
+      location = "container:"
+      name = "Packages">
+      <FileRef
+         location = "group:Unit Tests.xctestplan">
+      </FileRef>
+      <FileRef
+         location = "group:">
+      </FileRef>
+   </Group>
+   <FileRef
+      location = "group:/Users/blakewilliams/development/portal/PortalSwift/SPM Example/SPM E2E Tests.xctestplan">
+   </FileRef>
+   <FileRef
+      location = "group:Unit Tests.xctestplan">
+   </FileRef>
+</Workspace>
