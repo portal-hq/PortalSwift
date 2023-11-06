@@ -30,13 +30,12 @@
       enableThreadSanitizer = "YES">
       <Testables>
          <TestableReference
-            skipped = "NO"
-            parallelizable = "YES">
+            skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "7E1A4F732AF4661A00A6F7A5"
-               BuildableName = "Cocoapods Example Tests.xctest"
-               BlueprintName = "Cocoapods Example Tests"
+               BlueprintIdentifier = "607FACE41AFB9204008FA782"
+               BuildableName = "Cocoapods E2E Tests.xctest"
+               BlueprintName = "Cocoapods E2E Tests"
                ReferencedContainer = "container:Cocoapods Example.xcodeproj">
             </BuildableReference>
          </TestableReference>
