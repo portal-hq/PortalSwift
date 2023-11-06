@@ -31,7 +31,7 @@ dependencies: [
 To integrate `PortalSwift` into your Xcode project using Cocoapods, add the following to your `Podfile`:
 
 ```ruby
-pod 'PortalSwift', '~> 2.0.11'
+pod 'PortalSwift', :git => 'https://github.com/portal-hq/PortalSwift'
 ```
 
 Then run `pod install`.
