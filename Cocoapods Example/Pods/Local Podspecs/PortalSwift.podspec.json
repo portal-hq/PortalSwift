@@ -1,6 +1,6 @@
 {
   "name": "PortalSwift",
-  "version": "2.0.9",
+  "version": "2.0.10",
   "summary": "Portal's native Swift implementation",
   "description": "Portal's native Swift implementation",
   "homepage": "https://portalhq.io",
@@ -10,12 +10,12 @@
   "authors": "Portal Labs, Inc.",
   "source": {
     "git": "https://github.com/portal-hq/PortalSwift.git",
-    "tag": "2.0.9"
+    "tag": "2.0.10"
   },
   "platforms": {
     "ios": "13.0"
   },
-  "vendored_frameworks": "Sources/Frameworks/mpc.xcframework",
+  "vendored_frameworks": "Sources/Frameworks/Mpc.xcframework",
   "source_files": "Sources/PortalSwift/**/*",
   "dependencies": {
     "GoogleSignIn": [

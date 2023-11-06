@@ -18,10 +18,10 @@ PODS:
     - AppAuth/Core (~> 1.6)
     - GTMSessionFetcher/Core (< 3.0, >= 1.5)
   - GTMSessionFetcher/Core (2.3.0)
-  - PortalSwift (2.0.9):
+  - PortalSwift (2.0.10):
     - GoogleSignIn (~> 6.2)
     - Starscream (~> 4.0.6)
-  - PortalSwift/Tests (2.0.9):
+  - PortalSwift/Tests (2.0.10):
     - GoogleSignIn (~> 6.2)
     - Starscream (~> 4.0.6)
   - Starscream (4.0.6)
@@ -51,7 +51,7 @@ SPEC CHECKSUMS:
   GoogleSignIn: 5651ce3a61e56ca864160e79b484cd9ed3f49b7a
   GTMAppAuth: 0ff230db599948a9ad7470ca667337803b3fc4dd
   GTMSessionFetcher: 3a63d75eecd6aa32c2fc79f578064e1214dfdec2
-  PortalSwift: e8eaee1591985338d6c123c64d4c66c25b071879
+  PortalSwift: a3bd73559f1792262d111e154e96ac460891499e
   Starscream: fb2c4510bebf908c62bd383bcf05e673720e91fd
 
 PODFILE CHECKSUM: 97f3056847d1356ef9e25893f2f9aa01f90762d6
