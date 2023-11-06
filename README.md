@@ -129,3 +129,7 @@ portal.ethSendTransaction(transaction) { (signatureResult) -> Void in
 ```
 
 For more info on signing a transaction, see the [Portal Docs](https://docs.portalhq.io/sdk/native-ios/signing-a-transaction).
+
+# Get a demo
+
+Want to integrate Web3 into your app? Visit our site to [learn more](https://portalhq.io), or reach out to Portal to [get a demo](https://www.portalhq.io/book-demo).
