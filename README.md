@@ -12,7 +12,7 @@ Depending on the needs of your project, you can follow the instructions below to
 
 ## Swift Package Manager
 
-To integrate `PortalSwift` into your Xcode project using Swift Package Manager, in XCode, select `File` -> `Swift Packages` -> `Add Package Dependency` and search for `PortalSwift` or enter the following URL of this repository.
+To integrate `PortalSwift` into your Xcode project using Swift Package Manager, in XCode, select `File` -> `Swift Packages` -> `Add Package Dependency` and search for `PortalSwift` or enter the URL of this repository (https://github.com/portal-hq/PortalSwift).
 
 This will add PortalSwift as a dependency in your project.
 
