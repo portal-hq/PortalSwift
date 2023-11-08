@@ -19,7 +19,7 @@ public class Portal {
   }
 
   public var chainId: Int {
-    return self.provider.chainId
+    self.provider.chainId
   }
 
   public let apiKey: String
@@ -230,12 +230,43 @@ public class Portal {
    * Wallet Helper Methods
    **********************************/
 
+  public func hasWallet() throws -> Bool {
+    do {
+      let client = try Portal.getClient(self.apiHost, self.apiKey, self.binary)
+
+      return client.address != "" && client.signingStatus == "STORED_CLIENT"
+    }
+  }
+
+  public func walletIsBackedUp() throws -> Bool {
+    do {
+      let client = try Portal.getClient(self.apiHost, self.apiKey, self.binary)
+
+      return client.backupStatus == "STORED_CLIENT_BACKUP_SHARE"
+    }
+  }
+
+  public func walletIsOnDevice() -> Bool {
+    self.address != nil &&
+      self.address != ""
+  }
+
   public func backupWallet(
     method: BackupMethods.RawValue,
     backupConfigs: BackupConfigs? = nil,
     completion: @escaping (Result<String>) -> Void,
     progress: ((MpcStatus) -> Void)? = nil
   ) {
+    do {
+      if try !self.hasWallet() {
+        completion(Result(error: WalletErrors.walletDoesNotExist))
+        return
+      }
+    } catch {
+      completion(Result(error: error))
+      return
+    }
+
     self.mpc.backup(method: method, backupConfigs: backupConfigs, completion: completion, progress: progress)
   }
 
@@ -243,6 +274,16 @@ public class Portal {
     completion: @escaping (Result<String>) -> Void,
     progress: ((MpcStatus) -> Void)? = nil
   ) {
+    do {
+      if try (self.hasWallet()) {
+        completion(Result(error: WalletErrors.walletAlreadyExists))
+        return
+      }
+    } catch {
+      completion(Result(error: error))
+      return
+    }
+
     self.mpc.generate(completion: completion, progress: progress)
   }
 
@@ -253,6 +294,19 @@ public class Portal {
     completion: @escaping (Result<String>) -> Void,
     progress: ((MpcStatus) -> Void)? = nil
   ) {
+    do {
+      if try !self.hasWallet() {
+        completion(Result(error: WalletErrors.walletDoesNotExist))
+        return
+      } else if try !self.walletIsBackedUp() {
+        completion(Result(error: WalletErrors.walletNotBackedUp))
+        return
+      }
+    } catch {
+      completion(Result(error: error))
+      return
+    }
+
     self.mpc.recover(cipherText: cipherText, method: method, backupConfigs: backupConfigs, completion: completion, progress: progress)
   }
 
@@ -273,6 +327,19 @@ public class Portal {
     completion: @escaping (Result<String>) -> Void,
     progress: ((MpcStatus) -> Void)? = nil
   ) {
+    do {
+      if try !self.hasWallet() {
+        completion(Result(error: WalletErrors.walletDoesNotExist))
+        return
+      } else if try !self.walletIsBackedUp() {
+        completion(Result(error: WalletErrors.walletNotBackedUp))
+        return
+      }
+    } catch {
+      completion(Result(error: error))
+      return
+    }
+
     self.recoverWallet(cipherText: cipherText, method: method, backupConfigs: backupConfigs, completion: completion, progress: progress)
   }
 
@@ -426,7 +493,7 @@ public class Portal {
   public func createPortalConnectInstance(
     webSocketServer: String = "connect.portalhq.io"
   ) throws -> PortalConnect {
-    return try PortalConnect(
+    try PortalConnect(
       self.apiKey,
       self.provider.chainId,
       self.keychain,
@@ -544,15 +611,15 @@ public struct BackupOptions {
   subscript(key: String) -> Any? {
     switch key {
     case BackupMethods.GoogleDrive.rawValue:
-      return self.gdrive
+      self.gdrive
     case BackupMethods.iCloud.rawValue:
-      return self.icloud
+      self.icloud
     case BackupMethods.local.rawValue:
-      return self.local
+      self.local
     case BackupMethods.Password.rawValue:
-      return self.passwordStorage
+      self.passwordStorage
     default:
-      return nil
+      nil
     }
   }
 }
@@ -571,4 +638,12 @@ public enum PortalArgumentError: Error {
   case noGatewayConfigForChain(chainId: Int)
   case versionNoLongerSupported(message: String)
   case unableToGetClient
+}
+
+/// Wallet Status Errors
+public enum WalletErrors: Error {
+  case walletAlreadyExists
+  case walletDoesNotExist
+  case walletNotBackedUp
+  case walletNotOnDevice
 }
