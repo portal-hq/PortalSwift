@@ -272,7 +272,7 @@ public class PortalMpc {
                 self.isWalletModificationInProgress = false
                 return completion(Result(error: result.error!))
               }
-              
+
               guard let signingSharePairId = mpcShare?.signingSharePairId else {
                 return completion(Result(error: ReadSigningSharePairIdError.noSigningSharePairIdFound))
               }
@@ -999,7 +999,7 @@ public class PortalMpc {
           if let error = result.error {
             return completion(Result(error: error))
           }
-          
+
           guard let signingSharePairId = dkgResult.signingSharePairId else {
             return completion(Result(error: ReadSigningSharePairIdError.noSigningSharePairIdFound))
           }

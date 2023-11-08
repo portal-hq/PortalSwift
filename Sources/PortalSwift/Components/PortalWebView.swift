@@ -60,14 +60,10 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       let configuration = WKWebViewConfiguration()
       configuration.userContentController = contentController
       configuration.websiteDataStore = WKWebsiteDataStore.default() // Allows for data persistence across sessions
-      
+
       let webView = WKWebView(frame: .zero, configuration: configuration)
       webView.scrollView.bounces = false
       webView.navigationDelegate = self
-      
-      if #available(iOS 16.4, *) {
-        webView.isInspectable = true
-      }
 
       return webView
     }()

@@ -1,5 +1,5 @@
-@testable import SPM_Example
 import PortalSwift
+@testable import SPM_Example
 import XCTest
 
 class PasswordWalletTests: XCTestCase {

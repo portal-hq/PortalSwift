@@ -67,7 +67,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   override func viewDidLoad() {
     super.viewDidLoad()
-    
+
     print("PortalWrapper: ", self.PortalWrapper)
 
     self.username?.delegate = self
