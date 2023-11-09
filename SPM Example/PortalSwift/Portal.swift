@@ -54,8 +54,8 @@ class PortalWrapper {
       self.API_URL = LOCAL_API_URL
       self.MPC_URL = LOCAL_MPC_URL
     }
-    
-    print("CUSTODIAN_SERVER_URL", CUSTODIAN_SERVER_URL)
+
+    print("CUSTODIAN_SERVER_URL", self.CUSTODIAN_SERVER_URL)
   }
 
   func signIn(username: String, completion: @escaping (Result<UserResult>) -> Void) {
