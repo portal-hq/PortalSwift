@@ -5,8 +5,8 @@
 //  Created by Rami Shahatit on 8/7/23.
 //  Copyright © 2023 CocoaPods. All rights reserved.
 //
-@testable import SPM_Example
 import PortalSwift
+@testable import SPM_Example
 import XCTest
 
 class ProviderTests: XCTestCase {
