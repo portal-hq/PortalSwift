@@ -1,6 +1,6 @@
 # PortalSwift
 
-Portal's MPC SDK for iOS.
+Portal's SDK for iOS.
 
 Full documentation and Guides are available in the [Portal Docs](https://docs.portalhq.io/sdk/native-ios).
 
@@ -12,7 +12,7 @@ Depending on the needs of your project, you can follow the instructions below to
 
 ## Swift Package Manager
 
-To integrate `PortalSwift` into your Xcode project using Swift Package Manager, in XCode, select `File` -> `Swift Packages` -> `Add Package Dependency` and search for `PortalSwift` or enter the following URL of this repository.
+To integrate `PortalSwift` into your Xcode project using Swift Package Manager, in XCode, select `File` -> `Swift Packages` -> `Add Package Dependency` and search for `PortalSwift` or enter the URL of this repository (https://github.com/portal-hq/PortalSwift).
 
 This will add PortalSwift as a dependency in your project.
 
@@ -31,7 +31,7 @@ dependencies: [
 To integrate `PortalSwift` into your Xcode project using Cocoapods, add the following to your `Podfile`:
 
 ```ruby
-pod 'PortalSwift', '~> 2.0.9'
+pod 'PortalSwift', :git => 'https://github.com/portal-hq/PortalSwift'
 ```
 
 Then run `pod install`.
@@ -129,3 +129,7 @@ portal.ethSendTransaction(transaction) { (signatureResult) -> Void in
 ```
 
 For more info on signing a transaction, see the [Portal Docs](https://docs.portalhq.io/sdk/native-ios/signing-a-transaction).
+
+# Learn more about Portal
+
+Want to integrate Web3 into your app? Visit our site to [learn more](https://portalhq.io), or reach out to Portal to [get a demo](https://www.portalhq.io/book-demo).
