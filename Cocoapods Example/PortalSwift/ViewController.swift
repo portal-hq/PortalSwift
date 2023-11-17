@@ -570,7 +570,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   func sendTransaction(ethEstimate: String) {
     let payload = ETHTransactionPayload(
       method: ETHRequestMethods.SendTransaction.rawValue,
-      params: [ETHTransactionParam(from: self.portal?.address ?? "", to: self.sendAddress?.text ?? "", gas: ethEstimate, gasPrice: ethEstimate, value: "0x10", data: "")]
+      params: [ETHTransactionParam(from: self.portal?.address ?? "", to: self.sendAddress?.text ?? "", gasPrice: ethEstimate, value: "0x10", data: "")]
       // Test EIP-1559 Transactions with these params
       // params: [ETHTransactionParam(from: portal?.mpc.getAddress(), to: sendAddress.text!,  gas:"0x5208", value: "0x10", data: "", maxPriorityFeePerGas: ethEstimate, maxFeePerGas: ethEstimate)]
     )

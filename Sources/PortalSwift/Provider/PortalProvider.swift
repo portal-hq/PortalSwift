@@ -925,9 +925,9 @@ public struct ETHTransactionParam: Codable {
   public var maxFeePerGas: String?
   public var value: String?
   public var data: String?
-  public var nonce: String?
+  public var nonce: String? = nil
 
-  public init(from: String, to: String, gas: String, gasPrice: String, value: String, data: String, nonce: String?) {
+  public init(from: String, to: String, gas: String, gasPrice: String, value: String, data: String, nonce: String? = nil) {
     self.from = from
     self.to = to
     self.gas = gas
@@ -936,6 +936,14 @@ public struct ETHTransactionParam: Codable {
     self.data = data
     self.nonce = nonce
   }
+    public init(from: String, to: String, gasPrice: String, value: String, data: String, nonce: String? = nil) {
+      self.from = from
+      self.to = to
+      self.gasPrice = gasPrice
+      self.value = value
+      self.data = data
+      self.nonce = nonce
+    }
 
   public init(from: String, to: String, value: String, data: String) {
     self.from = from
@@ -962,7 +970,7 @@ public struct ETHTransactionParam: Codable {
   }
 
   // Below is the variation for EIP-1559
-  public init(from: String, to: String, gas: String, value: String, data: String, maxPriorityFeePerGas: String?, maxFeePerGas: String?, nonce: String?) {
+  public init(from: String, to: String, gas: String, value: String, data: String, maxPriorityFeePerGas: String?, maxFeePerGas: String?, nonce: String? = nil) {
     self.from = from
     self.to = to
     self.gas = gas
