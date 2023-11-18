@@ -35,8 +35,8 @@ enum WebViewControllerErrors: Error {
 
 /// A controller that allows you to create Portal's web view.
 public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessageHandler {
-  private var webView: WKWebView!
-  private var webViewContentIsLoaded = false
+  public var webView: WKWebView!
+  public var webViewContentIsLoaded = false
   private var portal: Portal
   private var url: URL
   private var onError: (Result<Any>) -> Void
