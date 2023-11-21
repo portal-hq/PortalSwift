@@ -37,9 +37,11 @@ enum WebViewControllerErrors: Error {
 public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessageHandler {
   public var webView: WKWebView!
   public var webViewContentIsLoaded = false
+
   private var portal: Portal
   private var url: URL
   private var onError: (Result<Any>) -> Void
+  private var onLoad: (() -> Void)?
 
   /// The constructor for Portal's WebViewController.
   /// - Parameters:
@@ -50,6 +52,38 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     self.portal = portal
     self.url = url
     self.onError = onError
+
+    super.init(nibName: nil, bundle: nil)
+
+    self.webView = {
+      let contentController = WKUserContentController()
+
+      contentController.add(self, name: "WebViewControllerMessageHandler")
+
+      let configuration = WKWebViewConfiguration()
+      configuration.userContentController = contentController
+      configuration.websiteDataStore = WKWebsiteDataStore.default() // Allows for data persistence across sessions
+
+      let webView = WKWebView(frame: .zero, configuration: configuration)
+      webView.scrollView.bounces = false
+      webView.navigationDelegate = self
+
+      return webView
+    }()
+  }
+  
+  /// The constructor for Portal's WebViewController.
+  /// - Parameters:
+  ///   - portal: Your Portal instance.
+  ///   - url: The URL the web view should start at.
+  ///   - onError: An error handler in case the web view throws errors.
+  ///   - onLoad: A handler that fires when the web view is finished loading.
+  public init(portal: Portal, url: URL, onError: @escaping (Result<Any>) -> Void, onLoad: @escaping () -> Void) {
+    self.portal = portal
+    self.url = url
+    self.onError = onError
+    self.onLoad = onLoad
+
     super.init(nibName: nil, bundle: nil)
 
     self.webView = {
@@ -132,6 +166,8 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     )
 
     self.evaluateJavascript(javascript, sourceURL: "portal_sign")
+    
+    self.onLoad?()
   }
 
   /// The controller used to handle messages to and from the web view.
