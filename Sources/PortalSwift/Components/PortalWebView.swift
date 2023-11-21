@@ -71,7 +71,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       return webView
     }()
   }
-  
+
   /// The constructor for Portal's WebViewController.
   /// - Parameters:
   ///   - portal: Your Portal instance.
@@ -166,7 +166,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     )
 
     self.evaluateJavascript(javascript, sourceURL: "portal_sign")
-    
+
     self.onLoad?()
   }
 

@@ -41,7 +41,7 @@ class WebViewController: UIViewController {
       webViewController.didMove(toParent: self)
     }
   }
-  
+
   func onLoad() {
     print("✅ PortalWebView loaded")
   }
