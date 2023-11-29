@@ -2,8 +2,8 @@
 //  LocalFileStorage.swift
 //  PortalSwift
 //
-//  Created by Rami Shahatit on 5/16/23.
-//  Copyright © 2023 CocoaPods. All rights reserved.
+//  Created by Portal Labs, Inc.
+//  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
 import Foundation

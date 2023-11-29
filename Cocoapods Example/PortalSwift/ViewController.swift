@@ -598,6 +598,16 @@ class ViewController: UIViewController, UITextFieldDelegate {
 //              print("Error: Do you have `GDRIVE_CLIENT_ID=$(GDRIVE_CLIENT_ID)` in your info.plist?")
 //              return  }
       let backup = BackupOptions(passwordStorage: PasswordStorage())
+      let challenge = Data("A".utf8)
+      print("PASSKEYS")
+      let passkey = PasskeyStorage(clientId: "", viewController: self)
+      passkey.write(privateKey: "Yoyo") { result in
+        print("PASSKEYSs")
+        print(result)
+      }
+      let auth = PasskeyManager()
+      let userId = Data("a".utf8)
+
 //            let backup = BackupOptions(gdrive: GDriveStorage(clientID: GDRIVE_CLIENT_ID, viewController: self))
 //      let backup = BackupOptions(icloud: ICloudStorage())
       self.PortalWrapper.registerPortal(apiKey: apiKey, backup: backup, optimized: true) { _ in

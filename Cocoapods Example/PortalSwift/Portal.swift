@@ -109,6 +109,7 @@ class PortalWrapper {
         return
       }
       let keychain = PortalKeychain()
+
       // Configure the chain.
       self.portal = try Portal(
         apiKey: apiKey,
