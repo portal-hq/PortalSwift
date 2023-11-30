@@ -69,6 +69,16 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       webView.scrollView.bounces = false
       webView.navigationDelegate = self
 
+      // Enable debugging the webview in Safari.
+      // #if directive used  to start a conditional compilation block.
+      #if canImport(UIKit)
+        #if targetEnvironment(simulator)
+          if #available(iOS 16.4, *) {
+              webView.isInspectable = true
+          }
+        #endif
+      #endif
+
       return webView
     }()
   }
