@@ -936,14 +936,15 @@ public struct ETHTransactionParam: Codable {
     self.data = data
     self.nonce = nonce
   }
-    public init(from: String, to: String, gasPrice: String, value: String, data: String, nonce: String? = nil) {
-      self.from = from
-      self.to = to
-      self.gasPrice = gasPrice
-      self.value = value
-      self.data = data
-      self.nonce = nonce
-    }
+
+  public init(from: String, to: String, gasPrice: String, value: String, data: String, nonce: String? = nil) {
+    self.from = from
+    self.to = to
+    self.gasPrice = gasPrice
+    self.value = value
+    self.data = data
+    self.nonce = nonce
+  }
 
   public init(from: String, to: String, value: String, data: String) {
     self.from = from
