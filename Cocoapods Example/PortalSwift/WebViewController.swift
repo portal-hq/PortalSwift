@@ -26,16 +26,24 @@ class WebViewController: UIViewController {
         print("WebViewController error: URL could not be derived.")
         return
       }
-      let webViewController = PortalWebView(portal: portal, url: url, onError: onError)
+
+      let webViewController = PortalWebView(portal: portal, url: url, onError: onError, onLoad: onLoad)
+
       // Install the WebViewController as a child view controller.
       addChild(webViewController)
+
       guard let webViewControllerView = webViewController.view else {
         print("WebViewController error: webViewController.view could not be derived.")
         return
       }
+
       view.addSubview(webViewControllerView)
       webViewController.didMove(toParent: self)
     }
+  }
+
+  func onLoad() {
+    print("✅ PortalWebView loaded")
   }
 
   func onError(result: Result<Any>) {
