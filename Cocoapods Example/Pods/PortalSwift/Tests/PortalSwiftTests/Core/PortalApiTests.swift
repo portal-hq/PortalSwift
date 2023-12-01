@@ -15,8 +15,8 @@ final class PortalApiTests: XCTestCase {
   override func setUpWithError() throws {
     let provider = try MockPortalProvider(
       apiKey: mockApiKey,
-      chainId: 11155111,
-      gatewayConfig: [11155111: mockHost],
+      chainId: 11_155_111,
+      gatewayConfig: [11_155_111: mockHost],
       keychain: MockPortalKeychain(),
       autoApprove: true
     )

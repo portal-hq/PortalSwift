@@ -770,7 +770,7 @@ public enum Chains: Int {
   case Ropsten = 3
   case Rinkeby = 4
   case Goerli = 5
-  case Sepolia = 11155111
+  case Sepolia = 11_155_111
   case Kovan = 42
 }
 

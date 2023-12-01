@@ -16,8 +16,8 @@ final class PortalProviderTests: XCTestCase {
     // Put setup code here. This method is called before the invocation of each test method in the class.
     self.provider = try PortalProvider(
       apiKey: mockApiKey,
-      chainId: 11155111,
-      gatewayConfig: [11155111: mockHost],
+      chainId: 11_155_111,
+      gatewayConfig: [11_155_111: mockHost],
       keychain: MockPortalKeychain(),
       autoApprove: true,
       gateway: MockHttpRequester(baseUrl: mockHost)
@@ -392,8 +392,8 @@ final class PortalProviderTests: XCTestCase {
   }
 
   func testSetChainId() throws {
-    let _ = try provider!.setChainId(value: 11155111)
-    XCTAssertEqual(self.provider!.chainId, 11155111)
+    let _ = try provider!.setChainId(value: 11_155_111)
+    XCTAssertEqual(self.provider!.chainId, 11_155_111)
   }
 
   func performRequest(method: String, params: [Any], completion: @escaping (Result<RequestCompletionResult>) -> Void) {

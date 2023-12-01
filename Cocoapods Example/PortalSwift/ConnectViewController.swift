@@ -189,7 +189,7 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
   }
 
   @IBAction func SepoliaPressed(_: Any) {
-    self.changeChainId(chainId: 11155111)
+    self.changeChainId(chainId: 11_155_111)
   }
 
   @IBAction func EthMainnetPressed(_: Any) {

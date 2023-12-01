@@ -20,8 +20,8 @@ final class PortalCoreTests: XCTestCase {
 
     let provider = try MockPortalProvider(
       apiKey: mockApiKey,
-      chainId: 11155111,
-      gatewayConfig: [11155111: mockHost],
+      chainId: 11_155_111,
+      gatewayConfig: [11_155_111: mockHost],
       keychain: keychain,
       autoApprove: true
     )
@@ -41,7 +41,7 @@ final class PortalCoreTests: XCTestCase {
       mobile: mobile
     )
 
-    self.portal = try Portal(apiKey: mockApiKey, backup: BackupOptions(icloud: MockICloudStorage()), chainId: 11155111, keychain: keychain, gatewayConfig: [11155111: mockHost], mpc: mpc, api: api, binary: mobile)
+    self.portal = try Portal(apiKey: mockApiKey, backup: BackupOptions(icloud: MockICloudStorage()), chainId: 11_155_111, keychain: keychain, gatewayConfig: [11_155_111: mockHost], mpc: mpc, api: api, binary: mobile)
   }
 
   override func tearDownWithError() throws {

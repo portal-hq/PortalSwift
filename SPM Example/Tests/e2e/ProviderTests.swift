@@ -43,7 +43,7 @@ class ProviderTests: XCTestCase {
         return expectation.fulfill()
       }
 
-      self.registerPortal(userResult: userResult, chainId: 11155111) { success in
+      self.registerPortal(userResult: userResult, chainId: 11_155_111) { success in
         guard success else {
           XCTFail("Failed on registering portal")
           return expectation.fulfill()
@@ -947,7 +947,7 @@ class ProviderTests: XCTestCase {
   func testEthGetTransactionBlockHashIndex() throws {
     let expectation = XCTestExpectation(description: "Expecting valid uncle by block number index response")
 
-    self.testLogin(chainId: 11155111) { success in
+    self.testLogin(chainId: 11_155_111) { success in
       guard success else {
         XCTFail("Failed on login")
         return expectation.fulfill()
@@ -971,7 +971,7 @@ class ProviderTests: XCTestCase {
   func testEthGetBlockTransactionCountHash() throws {
     let expectation = XCTestExpectation(description: "Expecting valid uncle by block number index response")
 
-    self.testLogin(chainId: 11155111) { success in
+    self.testLogin(chainId: 11_155_111) { success in
       guard success else {
         XCTFail("Failed on login")
         return expectation.fulfill()
@@ -995,7 +995,7 @@ class ProviderTests: XCTestCase {
   func testEthGetLogs() throws {
     let expectation = XCTestExpectation(description: "Expecting valid uncle by block number index response")
 
-    self.testLogin(chainId: 11155111) { success in
+    self.testLogin(chainId: 11_155_111) { success in
       guard success else {
         XCTFail("Failed on login")
         return expectation.fulfill()
@@ -1079,7 +1079,7 @@ class ProviderTests: XCTestCase {
   func testNewFilter() throws {
     let expectation = XCTestExpectation(description: "Expecting valid uncle by block number index response")
 
-    self.testLogin(chainId: 11155111) { success in
+    self.testLogin(chainId: 11_155_111) { success in
       guard success else {
         XCTFail("Failed on login")
         return expectation.fulfill()
@@ -1103,7 +1103,7 @@ class ProviderTests: XCTestCase {
   func testUninstallFilter() throws {
     let expectation = XCTestExpectation(description: "Expecting valid uncle by block number index response")
 
-    self.testLogin(chainId: 11155111) { success in
+    self.testLogin(chainId: 11_155_111) { success in
       guard success else {
         XCTFail("Failed on login")
         return expectation.fulfill()
@@ -1127,7 +1127,7 @@ class ProviderTests: XCTestCase {
   func testEthGetBlockNumberFalse() throws {
     let expectation = XCTestExpectation(description: "Expecting valid uncle by block number index response")
 
-    self.testLogin(chainId: 11155111) { success in
+    self.testLogin(chainId: 11_155_111) { success in
       guard success else {
         XCTFail("Failed on login")
         return expectation.fulfill()
@@ -1151,7 +1151,7 @@ class ProviderTests: XCTestCase {
   func testEthGetBlockNumberTrue() throws {
     let expectation = XCTestExpectation(description: "Expecting valid uncle by block number index response")
 
-    self.testLogin(chainId: 11155111) { success in
+    self.testLogin(chainId: 11_155_111) { success in
       guard success else {
         XCTFail("Failed on login")
         return expectation.fulfill()
@@ -1207,7 +1207,7 @@ class ProviderTests: XCTestCase {
     case portalObjectNil
   }
 
-  func testLogin(chainId: Int = 11155111, completion: @escaping (Bool) -> Void) {
+  func testLogin(chainId: Int = 11_155_111, completion: @escaping (Bool) -> Void) {
     XCTContext.runActivity(named: "Login") { _ in
       let registerExpectation = XCTestExpectation(description: "Register")
 
@@ -1266,7 +1266,7 @@ class ProviderTests: XCTestCase {
         return completion(false)
       }
       XCTAssertTrue(!address.isEmpty, "The address should not be empty")
-      let sepoliaChainId = 11155111
+      let sepoliaChainId = 11_155_111
 
       ProviderTests.PortalWrap.transferFunds(user: userResult, amount: 0.01, chainId: sepoliaChainId, address: address) { fundResult in
         guard fundResult.error == nil else {
