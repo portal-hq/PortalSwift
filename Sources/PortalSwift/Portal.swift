@@ -283,6 +283,38 @@ public class Portal {
   public func emit(_ event: Events.RawValue, data: Any) {
     _ = self.provider.emit(event: event, data: data)
   }
+  
+  public func ethEstimateGas(
+    transaction: ETHTransactionParam,
+    completion: @escaping(Result<RequestCompletionResult>) -> Void
+  ) {
+    self.provider.request(payload: ETHRequestPayload(
+      method: ETHRequestMethods.EstimateGas.rawValue,
+      params: [transaction]
+    ), completion: completion)
+  }
+  
+  public func ethGasPrice(
+    completion: @escaping(Result<RequestCompletionResult>) -> Void
+  ) {
+    self.provider.request(payload: ETHRequestPayload(
+      method: ETHRequestMethods.GasPrice.rawValue,
+      params: []
+    ), completion: completion)
+  }
+  
+  public func ethGetBalance(
+    completion: @escaping (Result<RequestCompletionResult>) -> Void
+  ) {
+    guard let address = provider.address else {
+      completion(Result(error: PortalProviderError.noAddress))
+      return
+    }
+    self.provider.request(payload: ETHRequestPayload(
+      method: ETHRequestMethods.GetBalance.rawValue,
+      params: [address, "latest"]
+    ), completion: completion)
+  }
 
   public func ethSendTransaction(
     transaction: ETHTransactionParam,
@@ -346,19 +378,6 @@ public class Portal {
     self.provider.request(payload: ETHRequestPayload(
       method: ETHRequestMethods.SignTypedDataV4.rawValue,
       params: [address, message]
-    ), completion: completion)
-  }
-
-  public func ethGetBalance(
-    completion: @escaping (Result<RequestCompletionResult>) -> Void
-  ) {
-    guard let address = provider.address else {
-      completion(Result(error: PortalProviderError.noAddress))
-      return
-    }
-    self.provider.request(payload: ETHRequestPayload(
-      method: ETHRequestMethods.GetBalance.rawValue,
-      params: [address, "latest"]
     ), completion: completion)
   }
 
