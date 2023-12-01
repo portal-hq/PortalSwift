@@ -17,16 +17,16 @@ class WebViewController: UIViewController {
 
   override func viewDidLoad() {
     super.viewDidLoad()
-    
+
     // Initialize the activity indicator and add it to the view
-    activityIndicator = UIActivityIndicatorView(style: .large)
-    activityIndicator.color = UIColor(hex: "#3e71f8")
-    activityIndicator.translatesAutoresizingMaskIntoConstraints = false
-    view.addSubview(activityIndicator)
+    self.activityIndicator = UIActivityIndicatorView(style: .large)
+    self.activityIndicator.color = UIColor(hex: "#3e71f8")
+    self.activityIndicator.translatesAutoresizingMaskIntoConstraints = false
+    view.addSubview(self.activityIndicator)
 
     NSLayoutConstraint.activate([
-      activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-      activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+      self.activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+      self.activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
     ])
 
     guard let portal = self.portal else {
@@ -60,22 +60,22 @@ class WebViewController: UIViewController {
       webViewController.didMove(toParent: self)
     }
   }
-  
+
   // Ensure the activity indicator is always centered, even after layout changes
   override func viewDidLayoutSubviews() {
     super.viewDidLayoutSubviews()
-    activityIndicator.center = view.center
+    self.activityIndicator.center = view.center
   }
 
   func onPageStart() {
     print("🔄 PortalWebView: Page loading started")
-    activityIndicator.startAnimating()
-    view.bringSubviewToFront(activityIndicator)
+    self.activityIndicator.startAnimating()
+    view.bringSubviewToFront(self.activityIndicator)
   }
-  
+
   func onPageComplete() {
     print("✅ PortalWebView: Page loading completed")
-    activityIndicator.stopAnimating()
+    self.activityIndicator.stopAnimating()
   }
 
   func onError(result: Result<Any>) {
