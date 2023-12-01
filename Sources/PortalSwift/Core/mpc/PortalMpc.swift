@@ -78,7 +78,7 @@ public class PortalMpc {
   }
 
   public func getBinaryVersion() -> String {
-    return self.mobile.MobileGetVersion()
+    self.mobile.MobileGetVersion()
   }
 
   /// Creates a backup share, encrypts it, and stores the private key in cloud storage.
@@ -132,6 +132,15 @@ public class PortalMpc {
             }
 
             progress?(MpcStatus(status: MpcStatuses.done, done: true))
+
+            // Capture analytics.
+            do {
+              try self.api.identify { _ in }
+              self.api.track(event: MetricsEvents.walletBackedUp.rawValue, properties: [:])
+            } catch {
+              // Do nothing.
+            }
+
             self.isWalletModificationInProgress = false
             return completion(backupResult)
           } progress: { status in
@@ -194,6 +203,15 @@ public class PortalMpc {
     }
 
     progress?(MpcStatus(status: MpcStatuses.done, done: true))
+
+    // Capture analytics.
+    do {
+      try self.api.identify { _ in }
+      self.api.track(event: MetricsEvents.walletBackedUp.rawValue, properties: [:])
+    } catch {
+      // Do nothing.
+    }
+
     self.isWalletModificationInProgress = false
     return completion(result)
   }
@@ -287,6 +305,14 @@ public class PortalMpc {
 
                   progress?(MpcStatus(status: MpcStatuses.done, done: true))
 
+                  // Capture analytics.
+                  do {
+                    try self.api.identify { _ in }
+                    self.api.track(event: MetricsEvents.walletCreated.rawValue, properties: [:])
+                  } catch {
+                    // Do nothing.
+                  }
+
                   // Return the address.
                   self.isWalletModificationInProgress = false
                   return completion(Result(data: address))
@@ -363,6 +389,15 @@ public class PortalMpc {
               return completion(Result(error: recoveryResult.error!))
             }
             progress?(MpcStatus(status: MpcStatuses.done, done: true))
+
+            // Capture analytics.
+            do {
+              try self.api.identify { _ in }
+              self.api.track(event: MetricsEvents.walletRecovered.rawValue, properties: [:])
+            } catch {
+              // Do nothing.
+            }
+
             self.isWalletModificationInProgress = false
             return completion(Result(data: recoveryResult.data!))
           } progress: { status in
@@ -386,6 +421,15 @@ public class PortalMpc {
               return completion(Result(error: recoveryResult.error!))
             }
             progress?(MpcStatus(status: MpcStatuses.done, done: true))
+
+            // Capture analytics.
+            do {
+              try self.api.identify { _ in }
+              self.api.track(event: MetricsEvents.walletRecovered.rawValue, properties: [:])
+            } catch {
+              // Do nothing.
+            }
+
             self.isWalletModificationInProgress = false
             return completion(Result(data: recoveryResult.data!))
           } progress: { status in
@@ -399,6 +443,15 @@ public class PortalMpc {
             return completion(Result(error: recoveryResult.error!))
           }
           progress?(MpcStatus(status: MpcStatuses.done, done: true))
+
+          // Capture analytics.
+          do {
+            try self.api.identify { _ in }
+            self.api.track(event: MetricsEvents.walletRecovered.rawValue, properties: [:])
+          } catch {
+            // Do nothing.
+          }
+
           self.isWalletModificationInProgress = false
           return completion(Result(data: recoveryResult.data!))
         } progress: { status in
