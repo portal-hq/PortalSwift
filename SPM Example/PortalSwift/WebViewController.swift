@@ -13,21 +13,29 @@ class WebViewController: UIViewController {
   public var portal: Portal?
   public var url: String?
 
+  private var activityIndicator: UIActivityIndicatorView!
+
   override func viewDidLoad() {
     super.viewDidLoad()
+
+    // Initialize the activity indicator and add it to the view
+    self.activityIndicator = UIActivityIndicatorView(style: .large)
+    self.activityIndicator.color = UIColor(hex: "#3e71f8")
+    self.activityIndicator.translatesAutoresizingMaskIntoConstraints = false
+    view.addSubview(self.activityIndicator)
 
     guard let portal = self.portal else {
       print("No self.portal found")
       return
     }
 
-    if self.portal != nil && self.url != nil {
+    if self.portal != nil, self.url != nil {
       guard let url = URL(string: url ?? "") else {
         print("WebViewController error: URL could not be derived.")
         return
       }
 
-      let webViewController = PortalWebView(portal: portal, url: url, onError: onError, onLoad: onLoad)
+      let webViewController = PortalWebView(portal: portal, url: url, onError: onError, onPageStart: onPageStart, onPageComplete: onPageComplete)
 
       // Install the WebViewController as a child view controller.
       addChild(webViewController)
@@ -42,8 +50,15 @@ class WebViewController: UIViewController {
     }
   }
 
-  func onLoad() {
-    print("✅ PortalWebView loaded")
+  func onPageStart() {
+    print("🔄 PortalWebView: Page loading started")
+    self.activityIndicator.startAnimating()
+    view.bringSubviewToFront(self.activityIndicator)
+  }
+
+  func onPageComplete() {
+    print("✅ PortalWebView: Page loading completed")
+    self.activityIndicator.stopAnimating()
   }
 
   func onError(result: Result<Any>) {
@@ -63,5 +78,23 @@ class WebViewController: UIViewController {
       print("❌ Error in nested PortalWebviewError:", nestedError)
       return
     }
+  }
+}
+
+// UIColor extension to handle hex color strings
+extension UIColor {
+  convenience init(hex: String) {
+    var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+    hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
+
+    var rgb: UInt64 = 0
+    Scanner(string: hexSanitized).scanHexInt64(&rgb)
+
+    let red = CGFloat((rgb & 0xFF0000) >> 16) / 255.0
+    let green = CGFloat((rgb & 0x00FF00) >> 8) / 255.0
+    let blue = CGFloat(rgb & 0x0000FF) / 255.0
+    let alpha = CGFloat(1.0)
+
+    self.init(red: red, green: green, blue: blue, alpha: alpha)
   }
 }
