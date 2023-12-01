@@ -37,9 +37,12 @@ enum WebViewControllerErrors: Error {
 public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessageHandler {
   public var webView: WKWebView!
   public var webViewContentIsLoaded = false
+
   private var portal: Portal
   private var url: URL
   private var onError: (Result<Any>) -> Void
+  private var onPageStart: (() -> Void)?
+  private var onPageComplete: (() -> Void)?
 
   /// The constructor for Portal's WebViewController.
   /// - Parameters:
@@ -50,8 +53,42 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     self.portal = portal
     self.url = url
     self.onError = onError
+
     super.init(nibName: nil, bundle: nil)
 
+    self.webView = {
+      let contentController = WKUserContentController()
+
+      contentController.add(self, name: "WebViewControllerMessageHandler")
+
+      let configuration = WKWebViewConfiguration()
+      configuration.userContentController = contentController
+      configuration.websiteDataStore = WKWebsiteDataStore.default() // Allows for data persistence across sessions
+
+      let webView = WKWebView(frame: .zero, configuration: configuration)
+      webView.scrollView.bounces = false
+      webView.navigationDelegate = self
+
+      return webView
+    }()
+  }
+
+  /// The constructor for Portal's WebViewController.
+  /// - Parameters:
+  ///   - portal: Your Portal instance.
+  ///   - url: The URL the web view should start at.
+  ///   - onError: An error handler in case the web view throws errors.
+  ///   - onPageStart: A handler that fires when the web view is starting to load a page.
+  ///   - onPageComplete: A handler that fires when the web view has finished loading a page.
+  public init(portal: Portal, url: URL, onError: @escaping (Result<Any>) -> Void, onPageStart: @escaping () -> Void, onPageComplete: @escaping () -> Void) {
+    self.portal = portal
+    self.url = url
+    self.onError = onError
+    self.onPageStart = onPageStart
+    self.onPageComplete = onPageComplete
+
+    super.init(nibName: nil, bundle: nil)
+    
     self.webView = {
       let contentController = WKUserContentController()
 
@@ -112,10 +149,18 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     }
   }
 
-  /// Injects Portal into the web view.
+  /// Called when the web view starts loading a new page.
   /// - Parameters:
-  ///   - webView: The WKWebView instance.
-  ///   - navigation: The WKNavigation instance.
+  ///   - webView: The WKWebView instance that started loading.
+  ///   - navigation: The navigation information associated with the event.
+  public func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+    self.onPageStart?()
+  }
+
+  /// Called when the web view finishes loading a page. It injects the Portal script into the web view.
+  /// - Parameters:
+  ///   - webView: The WKWebView instance that finished loading.
+  ///   - navigation: The navigation information associated with the event.
   public func webView(_: WKWebView, didFinish _: WKNavigation!) {
     guard let address = portal.address else {
       print("[PortalWebView] No address found for user. Cannot inject provider into web page.")
@@ -132,6 +177,8 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     )
 
     self.evaluateJavascript(javascript, sourceURL: "portal_sign")
+
+    self.onPageComplete?()
   }
 
   /// The controller used to handle messages to and from the web view.
