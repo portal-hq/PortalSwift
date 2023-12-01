@@ -1102,13 +1102,13 @@ public class PortalMpc {
   private func formatBackupMethod(backupMethod: BackupMethods.RawValue) -> String {
     switch backupMethod {
     case BackupMethods.GoogleDrive.rawValue:
-      "GDRIVE"
+      return "GDRIVE"
     case BackupMethods.iCloud.rawValue:
-      "ICLOUD"
+      return "ICLOUD"
     case BackupMethods.Password.rawValue:
-      "PASSWORD"
+      return "PASSWORD"
     default:
-      "CUSTOM"
+      return "CUSTOM"
     }
   }
 }
