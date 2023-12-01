@@ -55,12 +55,11 @@ public class MockPortalApi: PortalApi {
     completion: @escaping (Result<String>) -> Void
   ) throws {
     // Mock response based on the success parameter
-    let mockResponse: Result<String> = if success {
-      Result(data: "Backup share successfully stored")
+    if success {
+      completion(Result(data: "Backup share successfully stored"))
     } else {
-      Result(error: NSError(domain: "MockError", code: 0, userInfo: nil))
+      completion(Result(error: NSError(domain: "MockError", code: 0, userInfo: nil)))
     }
-    completion(mockResponse)
   }
 
   // Mocking the storedClientBackupShare function
