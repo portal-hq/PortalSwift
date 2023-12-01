@@ -26,7 +26,7 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var addressTextInput2: UITextField?
   @IBOutlet var PolygonMainnetButton: UIButton?
   @IBOutlet var EthMainnetButton: UIButton?
-  @IBOutlet var GoerliButton: UIButton?
+  @IBOutlet var SepoliaButton: UIButton?
   @IBOutlet var MumbaiButton: UIButton?
 
   required init?(coder: NSCoder) {
@@ -188,8 +188,8 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
     self.changeChainId(chainId: 137)
   }
 
-  @IBAction func GoerliPressed(_: Any) {
-    self.changeChainId(chainId: 5)
+  @IBAction func SepoliaPressed(_: Any) {
+    self.changeChainId(chainId: 11155111)
   }
 
   @IBAction func EthMainnetPressed(_: Any) {

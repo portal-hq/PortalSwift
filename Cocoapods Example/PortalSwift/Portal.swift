@@ -99,7 +99,7 @@ class PortalWrapper {
     case cantLoadInfoPlist
   }
 
-  func registerPortal(apiKey: String, backup: BackupOptions, chainId: Int = 5, optimized: Bool = false, completion: @escaping (Result<Bool>) -> Void) {
+  func registerPortal(apiKey: String, backup: BackupOptions, chainId: Int = 11155111, optimized: Bool = false, completion: @escaping (Result<Bool>) -> Void) {
     do {
       guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
         return completion(Result(error: PortalWrapperError.cantLoadInfoPlist))
@@ -116,7 +116,7 @@ class PortalWrapper {
         chainId: chainId,
         keychain: keychain,
         gatewayConfig: [
-          5: "https://eth-goerli.g.alchemy.com/v2/\(ALCHEMY_API_KEY)", 1: "https://eth-mainnet.g.alchemy.com/v2/\(ALCHEMY_API_KEY)", 80001: "https://polygon-mumbai.g.alchemy.com/v2/\(ALCHEMY_API_KEY)", 137: "https://polygon-mainnet.g.alchemy.com/v2/\(ALCHEMY_API_KEY)",
+          11155111: "https://eth-sepolia.g.alchemy.com/v2/\(ALCHEMY_API_KEY)", 1: "https://eth-mainnet.g.alchemy.com/v2/\(ALCHEMY_API_KEY)", 80001: "https://polygon-mumbai.g.alchemy.com/v2/\(ALCHEMY_API_KEY)", 137: "https://polygon-mainnet.g.alchemy.com/v2/\(ALCHEMY_API_KEY)",
         ],
         autoApprove: false,
         apiHost: self.API_URL!,

@@ -420,7 +420,7 @@ public struct DappImage: Codable {
   public var filename: String
 }
 
-/// A contract network. For example, chainId 5 is the Goerli network.
+/// A contract network. For example, chainId 11155111 is the Sepolia network.
 public struct ContractNetwork: Codable {
   public var id: String
   public var chainId: String

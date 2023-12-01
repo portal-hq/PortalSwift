@@ -27,7 +27,7 @@ class WalletTests: XCTestCase {
     super.tearDown()
   }
 
-  func testLogin(chainId _: Int = 5, completion: @escaping (Result<Bool>) -> Void) {
+  func testLogin(chainId _: Int = 11155111, completion: @escaping (Result<Bool>) -> Void) {
     XCTContext.runActivity(named: "Login") { _ in
       let registerExpectation = XCTestExpectation(description: "Register")
 
@@ -75,7 +75,7 @@ class WalletTests: XCTestCase {
       let backupOption = LocalFileStorage(fileName: "PORTAL_BACKUP")
       let backup = BackupOptions(local: backupOption)
       print("registering portal")
-      WalletTests.PortalWrap.registerPortal(apiKey: userResult.clientApiKey, backup: backup, chainId: 5, optimized: true) {
+      WalletTests.PortalWrap.registerPortal(apiKey: userResult.clientApiKey, backup: backup, chainId: 11155111, optimized: true) {
         result in
         guard result.error == nil else {
           registerExpectation.fulfill()

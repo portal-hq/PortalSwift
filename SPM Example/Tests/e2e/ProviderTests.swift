@@ -43,7 +43,7 @@ class ProviderTests: XCTestCase {
         return expectation.fulfill()
       }
 
-      self.registerPortal(userResult: userResult, chainId: 5) { success in
+      self.registerPortal(userResult: userResult, chainId: 11155111) { success in
         guard success else {
           XCTFail("Failed on registering portal")
           return expectation.fulfill()
@@ -393,7 +393,7 @@ class ProviderTests: XCTestCase {
 
         print("Gateway response for eth_netVersion \(String(describing: version))")
         XCTAssert(!version.isEmpty, "Net version (chain id) should not be empty")
-        XCTAssert(version == "5", "Net version (chain id) should be empty 5 for goerli")
+        XCTAssert(version == "11155111", "Net version (chain id) should be empty 11155111 for Sepolia")
 
         expectation.fulfill()
       }
@@ -947,7 +947,7 @@ class ProviderTests: XCTestCase {
   func testEthGetTransactionBlockHashIndex() throws {
     let expectation = XCTestExpectation(description: "Expecting valid uncle by block number index response")
 
-    self.testLogin(chainId: 5) { success in
+    self.testLogin(chainId: 11155111) { success in
       guard success else {
         XCTFail("Failed on login")
         return expectation.fulfill()
@@ -971,7 +971,7 @@ class ProviderTests: XCTestCase {
   func testEthGetBlockTransactionCountHash() throws {
     let expectation = XCTestExpectation(description: "Expecting valid uncle by block number index response")
 
-    self.testLogin(chainId: 5) { success in
+    self.testLogin(chainId: 11155111) { success in
       guard success else {
         XCTFail("Failed on login")
         return expectation.fulfill()
@@ -995,7 +995,7 @@ class ProviderTests: XCTestCase {
   func testEthGetLogs() throws {
     let expectation = XCTestExpectation(description: "Expecting valid uncle by block number index response")
 
-    self.testLogin(chainId: 5) { success in
+    self.testLogin(chainId: 11155111) { success in
       guard success else {
         XCTFail("Failed on login")
         return expectation.fulfill()
@@ -1079,7 +1079,7 @@ class ProviderTests: XCTestCase {
   func testNewFilter() throws {
     let expectation = XCTestExpectation(description: "Expecting valid uncle by block number index response")
 
-    self.testLogin(chainId: 5) { success in
+    self.testLogin(chainId: 11155111) { success in
       guard success else {
         XCTFail("Failed on login")
         return expectation.fulfill()
@@ -1103,7 +1103,7 @@ class ProviderTests: XCTestCase {
   func testUninstallFilter() throws {
     let expectation = XCTestExpectation(description: "Expecting valid uncle by block number index response")
 
-    self.testLogin(chainId: 5) { success in
+    self.testLogin(chainId: 11155111) { success in
       guard success else {
         XCTFail("Failed on login")
         return expectation.fulfill()
@@ -1127,7 +1127,7 @@ class ProviderTests: XCTestCase {
   func testEthGetBlockNumberFalse() throws {
     let expectation = XCTestExpectation(description: "Expecting valid uncle by block number index response")
 
-    self.testLogin(chainId: 5) { success in
+    self.testLogin(chainId: 11155111) { success in
       guard success else {
         XCTFail("Failed on login")
         return expectation.fulfill()
@@ -1151,7 +1151,7 @@ class ProviderTests: XCTestCase {
   func testEthGetBlockNumberTrue() throws {
     let expectation = XCTestExpectation(description: "Expecting valid uncle by block number index response")
 
-    self.testLogin(chainId: 5) { success in
+    self.testLogin(chainId: 11155111) { success in
       guard success else {
         XCTFail("Failed on login")
         return expectation.fulfill()
@@ -1207,7 +1207,7 @@ class ProviderTests: XCTestCase {
     case portalObjectNil
   }
 
-  func testLogin(chainId: Int = 5, completion: @escaping (Bool) -> Void) {
+  func testLogin(chainId: Int = 11155111, completion: @escaping (Bool) -> Void) {
     XCTContext.runActivity(named: "Login") { _ in
       let registerExpectation = XCTestExpectation(description: "Register")
 
@@ -1266,9 +1266,9 @@ class ProviderTests: XCTestCase {
         return completion(false)
       }
       XCTAssertTrue(!address.isEmpty, "The address should not be empty")
-      let goerliChain = 5
+      let sepoliaChainId = 11155111
 
-      ProviderTests.PortalWrap.transferFunds(user: userResult, amount: 0.01, chainId: goerliChain, address: address) { fundResult in
+      ProviderTests.PortalWrap.transferFunds(user: userResult, amount: 0.01, chainId: sepoliaChainId, address: address) { fundResult in
         guard fundResult.error == nil else {
           XCTFail("Could not fund wallet with test eth")
           return completion(false)
