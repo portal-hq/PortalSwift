@@ -13,8 +13,21 @@ class WebViewController: UIViewController {
   public var portal: Portal?
   public var url: String?
 
+  private var activityIndicator: UIActivityIndicatorView!
+
   override func viewDidLoad() {
     super.viewDidLoad()
+    
+    // Initialize the activity indicator and add it to the view
+    activityIndicator = UIActivityIndicatorView(style: .large)
+    activityIndicator.color = UIColor(hex: "#3e71f8")
+    activityIndicator.translatesAutoresizingMaskIntoConstraints = false
+    view.addSubview(activityIndicator)
+
+    NSLayoutConstraint.activate([
+      activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+      activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+    ])
 
     guard let portal = self.portal else {
       print("No self.portal found")
@@ -27,7 +40,13 @@ class WebViewController: UIViewController {
         return
       }
 
-      let webViewController = PortalWebView(portal: portal, url: url, onError: onError, onLoad: onLoad)
+      let webViewController = PortalWebView(
+        portal: portal,
+        url: url,
+        onError: onError,
+        onPageStart: onPageStart,
+        onPageComplete: onPageComplete
+      )
 
       // Install the WebViewController as a child view controller.
       addChild(webViewController)
@@ -41,9 +60,22 @@ class WebViewController: UIViewController {
       webViewController.didMove(toParent: self)
     }
   }
+  
+  // Ensure the activity indicator is always centered, even after layout changes
+  override func viewDidLayoutSubviews() {
+    super.viewDidLayoutSubviews()
+    activityIndicator.center = view.center
+  }
 
-  func onLoad() {
-    print("✅ PortalWebView loaded")
+  func onPageStart() {
+    print("🔄 PortalWebView: Page loading started")
+    activityIndicator.startAnimating()
+    view.bringSubviewToFront(activityIndicator)
+  }
+  
+  func onPageComplete() {
+    print("✅ PortalWebView: Page loading completed")
+    activityIndicator.stopAnimating()
   }
 
   func onError(result: Result<Any>) {
@@ -63,5 +95,23 @@ class WebViewController: UIViewController {
       print("❌ Error in nested PortalWebviewError:", nestedError)
       return
     }
+  }
+}
+
+// UIColor extension to handle hex color strings
+extension UIColor {
+  convenience init(hex: String) {
+    var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+    hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
+
+    var rgb: UInt64 = 0
+    Scanner(string: hexSanitized).scanHexInt64(&rgb)
+
+    let red = CGFloat((rgb & 0xFF0000) >> 16) / 255.0
+    let green = CGFloat((rgb & 0x00FF00) >> 8) / 255.0
+    let blue = CGFloat(rgb & 0x0000FF) / 255.0
+    let alpha = CGFloat(1.0)
+
+    self.init(red: red, green: green, blue: blue, alpha: alpha)
   }
 }
