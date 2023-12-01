@@ -58,7 +58,7 @@ public class MockPortalApi: PortalApi {
     if success {
       completion(Result(data: "Backup share successfully stored"))
     } else {
-      completion(Result(error: NSError(domain: "MockError", code: 0, userInfo: nil)))
+      completion(Result<String>(error: NSError(domain: "MockError", code: 0, userInfo: nil)))
     }
   }
 
