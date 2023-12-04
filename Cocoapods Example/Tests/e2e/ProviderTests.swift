@@ -393,7 +393,7 @@ class ProviderTests: XCTestCase {
 
         print("Gateway response for eth_netVersion \(String(describing: version))")
         XCTAssert(!version.isEmpty, "Net version (chain id) should not be empty")
-        XCTAssert(version == "11155111", "Net version (chain id) should be empty 11155111 for Sepolia")
+        XCTAssert(version == "11155111", "Net version (chain id) should be 11155111 for Sepolia")
 
         expectation.fulfill()
       }
