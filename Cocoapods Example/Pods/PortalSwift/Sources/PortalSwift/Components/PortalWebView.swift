@@ -74,7 +74,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       #if canImport(UIKit)
         #if targetEnvironment(simulator)
           if #available(iOS 16.4, *) {
-              webView.isInspectable = true
+            webView.isInspectable = true
           }
         #endif
       #endif
