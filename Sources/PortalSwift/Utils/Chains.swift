@@ -11,11 +11,13 @@ class ChainUtils {
   private static let chainIdToName: [Int: String] = [
     1: "mainnet",
     5: "goerli",
+    11_155_111: "sepolia",
   ]
 
   private static let chainNameToId: [String: Int] = [
     "mainnet": 1,
     "goerli": 5,
+    "sepolia": 11_155_111,
   ]
 
   public static func getChainIdForName(_ chainName: String) -> Int? {

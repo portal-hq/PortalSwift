@@ -88,7 +88,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     self.onPageComplete = onPageComplete
 
     super.init(nibName: nil, bundle: nil)
-    
+
     self.webView = {
       let contentController = WKUserContentController()
 
@@ -153,7 +153,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   /// - Parameters:
   ///   - webView: The WKWebView instance that started loading.
   ///   - navigation: The navigation information associated with the event.
-  public func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+  public func webView(_: WKWebView, didStartProvisionalNavigation _: WKNavigation!) {
     self.onPageStart?()
   }
 
