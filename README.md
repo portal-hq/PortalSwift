@@ -55,7 +55,7 @@ let portal = try Portal(
   gatewayConfig: [
     // This Gateway Config will dependent on the chains you want to support
     1: "NODE_URL_FOR_MAINNET",
-    5: "NODE_URL_FOR_GOERLI",
+    11155111: "NODE_URL_FOR_SEPOLIA",
     137: "NODE_URL_FOR_POLYGON_MAINNET",
     80001: "NODE_URL_FOR_POLYGON_MUMBAI",
   ],
