@@ -8,8 +8,9 @@
 
 import PortalSwift
 import SwiftUI
+import WebKit
 
-class WebViewController: UIViewController {
+class WebViewController: UIViewController, PortalWebViewDelegate {
   public var portal: Portal?
   public var url: String?
 
@@ -47,6 +48,7 @@ class WebViewController: UIViewController {
         onPageStart: onPageStart,
         onPageComplete: onPageComplete
       )
+      webViewController.delegate = self
 
       // Install the WebViewController as a child view controller.
       addChild(webViewController)
@@ -95,6 +97,11 @@ class WebViewController: UIViewController {
       print("❌ Error in nested PortalWebviewError:", nestedError)
       return
     }
+  }
+  
+  public func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+    print("✅ Delegate method fired!", webView, navigationAction, decisionHandler)
+    decisionHandler(.allow)
   }
 }
 

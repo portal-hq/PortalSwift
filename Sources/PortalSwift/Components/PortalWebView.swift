@@ -35,6 +35,7 @@ enum WebViewControllerErrors: Error {
 
 /// A controller that allows you to create Portal's web view.
 public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessageHandler {
+  public var delegate: PortalWebViewDelegate?
   public var webView: WKWebView!
   public var webViewContentIsLoaded = false
 
@@ -159,12 +160,20 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       completion?(error?.localizedDescription)
     }
   }
+  
+  public func webView(
+    _ webView: WKWebView,
+    decidePolicyFor navigationAction: WKNavigationAction,
+    decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+  ) {
+    self.delegate?.webView(webView, decidePolicyFor: navigationAction, decisionHandler: decisionHandler)
+  }
 
   /// Called when the web view starts loading a new page.
   /// - Parameters:
   ///   - webView: The WKWebView instance that started loading.
   ///   - navigation: The navigation information associated with the event.
-  public func webView(_: WKWebView, didStartProvisionalNavigation _: WKNavigation!) {
+  public func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
     self.onPageStart?()
   }
 
@@ -172,7 +181,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   /// - Parameters:
   ///   - webView: The WKWebView instance that finished loading.
   ///   - navigation: The navigation information associated with the event.
-  public func webView(_: WKWebView, didFinish _: WKNavigation!) {
+  public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
     guard let address = portal.address else {
       print("[PortalWebView] No address found for user. Cannot inject provider into web page.")
       return
@@ -191,6 +200,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
 
     self.onPageComplete?()
   }
+  
 
   /// The controller used to handle messages to and from the web view.
   /// - Parameters:
