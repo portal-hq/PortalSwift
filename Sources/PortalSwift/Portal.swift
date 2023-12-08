@@ -133,7 +133,7 @@ public class Portal {
     }
   }
 
-  /// Create a Portal instance.
+  /// Create a Portal instance. This initializer is used by unit tests and mocks.
   /// - Parameters:
   ///   - apiKey: The Client API key. You can obtain this through Portal's REST API.
   ///   - backup: The backup options to use.
