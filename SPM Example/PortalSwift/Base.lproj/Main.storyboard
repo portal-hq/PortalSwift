@@ -190,7 +190,7 @@
                                 </connections>
                             </button>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" restorationIdentifier="portalConnectButton" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Oix-QY-d5L">
-                                <rect key="frame" x="17" y="603" width="342" height="35"/>
+                                <rect key="frame" x="17" y="603" width="152" height="35"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <state key="normal" title="Button"/>
                                 <buttonConfiguration key="configuration" style="filled" title="Portal Connect">
@@ -239,6 +239,16 @@
                                 </buttonConfiguration>
                                 <connections>
                                     <action selector="handleLegacyRecover:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="0HD-Qe-Ets"/>
+                                </connections>
+                            </button>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="jpZ-X5-eUU">
+                                <rect key="frame" x="210" y="602" width="149" height="35"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <color key="tintColor" white="0.0" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                <state key="normal" title="Button"/>
+                                <buttonConfiguration key="configuration" style="filled" title="Send UNI"/>
+                                <connections>
+                                    <action selector="sendERC20Token" destination="vXZ-lx-hvc" eventType="touchUpInside" id="i4w-uu-wPs"/>
                                 </connections>
                             </button>
                         </subviews>
