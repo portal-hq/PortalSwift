@@ -9,7 +9,7 @@
 import Foundation
 
 public class MockPortal: Portal {
-  public override init(
+  override public init(
     apiKey: String,
     backup: BackupOptions,
     chainId: Int,
@@ -22,7 +22,7 @@ public class MockPortal: Portal {
     apiHost: String = "api.portalhq.io",
     mpcHost: String = "mpc.portalhq.io",
     featureFlags: FeatureFlags? = nil,
-    isMocked: Bool = true
+    isMocked _: Bool = true
   ) throws {
     let provider = try MockPortalProvider(
       apiKey: apiKey,
@@ -31,8 +31,8 @@ public class MockPortal: Portal {
       keychain: keychain,
       autoApprove: autoApprove
     )
-    
-    let api =  MockPortalApi(
+
+    let api = MockPortalApi(
       apiKey: apiKey,
       apiHost: apiHost,
       provider: provider

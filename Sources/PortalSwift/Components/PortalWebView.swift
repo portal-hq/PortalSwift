@@ -160,7 +160,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       completion?(error?.localizedDescription)
     }
   }
-  
+
   public func webView(
     _ webView: WKWebView,
     decidePolicyFor navigationAction: WKNavigationAction,
@@ -173,7 +173,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   /// - Parameters:
   ///   - webView: The WKWebView instance that started loading.
   ///   - navigation: The navigation information associated with the event.
-  public func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+  public func webView(_: WKWebView, didStartProvisionalNavigation _: WKNavigation!) {
     self.onPageStart?()
   }
 
@@ -181,7 +181,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   /// - Parameters:
   ///   - webView: The WKWebView instance that finished loading.
   ///   - navigation: The navigation information associated with the event.
-  public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+  public func webView(_: WKWebView, didFinish _: WKNavigation!) {
     guard let address = portal.address else {
       print("[PortalWebView] No address found for user. Cannot inject provider into web page.")
       return
@@ -200,7 +200,6 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
 
     self.onPageComplete?()
   }
-  
 
   /// The controller used to handle messages to and from the web view.
   /// - Parameters:

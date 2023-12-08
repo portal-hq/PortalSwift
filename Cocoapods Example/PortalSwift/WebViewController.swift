@@ -98,7 +98,7 @@ class WebViewController: UIViewController, PortalWebViewDelegate {
       return
     }
   }
-  
+
   public func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
     print("✅ Delegate method fired!", webView, navigationAction, decisionHandler)
     decisionHandler(.allow)

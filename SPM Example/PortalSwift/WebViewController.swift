@@ -43,7 +43,7 @@ class WebViewController: UIViewController, PortalWebViewDelegate {
         onPageStart: onPageStart,
         onPageComplete: onPageComplete
       )
-      
+
       webViewController.delegate = self
 
       // Install the WebViewController as a child view controller.
@@ -88,7 +88,7 @@ class WebViewController: UIViewController, PortalWebViewDelegate {
       return
     }
   }
-  
+
   public func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
     print("✅ Delegate method fired!", webView, navigationAction, decisionHandler)
     decisionHandler(.allow)

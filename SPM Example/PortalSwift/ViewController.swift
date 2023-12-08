@@ -571,7 +571,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBAction func sendERC20Token() {
     let tokenAddress = "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984"
     let toAddress = "0xdFd8302f44727A6348F702fF7B594f127dE3A902"
-    
+
     // Get the Gateway URL from the Portal Provider
     guard let gatewayUrl = portal?.provider.gatewayUrl else {
       return
@@ -601,7 +601,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         type: GenericERC20Contract.self,
         address: tokenContractAddress
       )
-      
+
       web3.eth.getTransactionCount(
         address: senderAddress,
         block: .latest
@@ -610,10 +610,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
           print("Error fetching nonce")
           return
         }
-        
+
         // Generate the transaction for Portal to execute
         guard let tx = contract
-          .transfer(to: receiverAddress, value: 10000000000)
+          .transfer(to: receiverAddress, value: 10_000_000_000)
           .createTransaction(
             nonce: nonce, // Here you'd want to provide the actual nonce for this transaction
             gasPrice: EthereumQuantity(quantity: 21.gwei),
@@ -631,7 +631,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
           // Probably throw an error here
           return
         }
-        
+
         // Send the transaction
         self.portal?.ethSendTransaction(transaction: ETHTransactionParam(
           from: address,
