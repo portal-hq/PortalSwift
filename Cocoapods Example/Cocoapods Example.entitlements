@@ -4,7 +4,7 @@
 <dict>
 	<key>com.apple.developer.associated-domains</key>
 	<array>
-		<string>webcredentials:c2c4-2600-4041-550c-1b00-45c9-8525-9b76-ca37.ngrok-free.app</string>
+		<string>webcredentials:553a-107-179-20-166.ngrok-free.app?mode=developer</string>
 	</array>
 	<key>com.apple.developer.icloud-container-identifiers</key>
 	<array/>

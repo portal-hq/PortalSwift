@@ -13,24 +13,28 @@ public enum PasskeyStorageError: Error {
   case fileNotFound
   case writeError
   case readError
+  case noApiKey
 }
 
 @available(iOS 16.0, *)
 public class PasskeyStorage: Storage {
-  private var api: HttpRequester
-  private var auth: PasskeyManager
+  public var client: Client?
+  public var apiKey: String?
+  private var passkeyApi: HttpRequester
+  private var auth: PasskeyAuth
   private var viewController: UIViewController
-  private var baseUrl: String = "https://c2c4-2600-4041-550c-1b00-45c9-8525-9b76-ca37.ngrok-free.app"
+  private var relyingParty: String = "trustless.portalhq.io"
+  private var sessionId: String?
 
-  private var clientId: String
+  deinit {
+    print("PasskeyStorage is being deallocated")
+  }
 
-  var fileName: String = "PORTAL_BACKUP_SHARE"
-
-  public init(clientId: String, viewController: UIViewController) {
-    self.clientId = clientId
+  public init(viewController: UIViewController, relyingParty: String? = "trustless.portalhq.io") {
     self.viewController = viewController
-    self.auth = PasskeyManager()
-    self.api = HttpRequester(baseUrl: self.baseUrl)
+    self.auth = PasskeyAuth(domain: relyingParty)
+    self.relyingParty = "https://" + (relyingParty ?? "trustless.portalhq.io")
+    self.passkeyApi = HttpRequester(baseUrl: self.relyingParty)
     super.init()
   }
 
@@ -45,28 +49,64 @@ public class PasskeyStorage: Storage {
   /// - Parameter completion: Resolves as a Result<String>, which includes the value from storage for the specified key.
   /// - Returns: Void
   override public func read(completion: @escaping (Result<String>) -> Void) {
-    do {
-      try self.api.get(
-        path: "/begin-login",
-        headers: [
-          "Accept": "application/json",
-          "Content-Type": "application/json",
-        ],
-        requestType: HttpRequestType.CustomRequest
+    // Set the completion handler
+    self.auth.authorizationCompletion = { [weak self] response in
+      guard self != nil else { return }
 
-      ) { [self] (result: Result<WebAuthnRequest>) in
-        if result.error != nil {
-          completion(Result(error: result.error!))
-          return
+      if let assertion = response, let apiKey = self?.apiKey, let sessionId = self?.sessionId {
+        // Send attestation data to the server
+        do {
+          try self?.passkeyApi.post(
+            path: "/passkeys/finish-login/read",
+            body: ["assertion": assertion, "sessionId": sessionId],
+            headers: [
+              "Accept": "application/json",
+              "Content-Type": "application/json",
+              "Authorization": "Bearer \(apiKey)",
+            ],
+            requestType: HttpRequestType.CustomRequest
+
+          ) { (result: Result<PasskeyLoginReadResponse>) in
+            if result.error != nil {
+              completion(Result(error: result.error!))
+              return
+            }
+
+            return completion(Result(data: result.data!.encryptionKey))
+          }
+        } catch {
+          completion(Result(error: error))
         }
-        let challenge = Data((result.data?.challenge.utf8)!)
-        let userId = Data((result.data?.user.id.utf8)!)
+      } else {
+        // Handle error or no data scenario
+      }
+    }
+    do {
+      if let apiKey = self.apiKey {
+        try self.passkeyApi.get(
+          path: "/passkeys/begin-login",
+          headers: [
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Authorization": "Bearer \(apiKey)",
+          ],
+          requestType: HttpRequestType.CustomRequest
+        ) { [self] (result: Result<WebAuthnAuthenticationOption>) in
+          if result.error != nil {
+            completion(Result(error: result.error!))
+            return
+          }
 
-        DispatchQueue.main.async { [self] in
-          if let window = self.viewController.view.window {
-            self.auth.signInWith(anchor: window, challenge: challenge, preferImmediatelyAvailableCredentials: true)
+          self.sessionId = result.data?.sessionId
+
+          DispatchQueue.main.async { [self] in
+            if let window = self.viewController.view.window, let options = result.data?.options {
+              self.auth.signInWith(anchor: window, options: options, preferImmediatelyAvailableCredentials: true)
+            }
           }
         }
+      } else {
+        completion(Result(error: PasskeyStorageError.noApiKey))
       }
     } catch {
       completion(Result(error: error))
@@ -74,73 +114,213 @@ public class PasskeyStorage: Storage {
   }
 
   /// Writes an item to storage.
+  /// Writes an item to storage.
   /// - Parameter completion: Resolves as a Result<Bool>.
   /// - Returns: Void
-  override public func write(privateKey _: String, completion: @escaping (Result<Bool>) -> Void) {
-    // Get challenge from server
-    do {
-      try self.api.get(
-        path: "/begin-registration",
-        headers: [
-          "Accept": "application/json",
-          "Content-Type": "application/json",
-        ],
-        requestType: HttpRequestType.CustomRequest
+  override public func write(privateKey: String, completion: @escaping (Result<Bool>) -> Void) {
+    // TODO: handle edge case of running backup back to back. Need to repull backup status of client before this check.
+    if let backupStatus = self.client?.backupStatus, backupStatus == ClientBackupStatus.StoredCustodian.rawValue {
+      // Set the completion handler
+      self.auth.authorizationCompletion = { [weak self] response in
+        guard self != nil else { return }
 
-      ) { [self] (result: Result<WebAuthnRequest>) in
-        if result.error != nil {
-          completion(Result(error: result.error!))
-          return
-        }
-        let challenge = Data((result.data?.challenge.utf8)!)
-        let userId = Data((result.data?.user.id.utf8)!)
-        print("challenge", challenge, "user id", userId)
-        DispatchQueue.main.async { [self] in
-          print("executing")
-          if let window = self.viewController.view.window {
-            self.auth.signUpWith(userName: "rami", userId: userId, challenge: challenge, anchor: window)
+        if let assertion = response {
+          // Send attestation data to the server
+          do {
+            if let apiKey = self?.apiKey, let sessionId = self?.sessionId {
+              try self?.passkeyApi.post(
+                path: "/passkeys/finish-login/write",
+                body: ["encryptionKey": privateKey, "assertion": assertion, "sessionId": sessionId],
+                headers: [
+                  "Accept": "application/json",
+                  "Content-Type": "application/json",
+                  "Authorization": "Bearer \(apiKey)",
+                ],
+                requestType: HttpRequestType.CustomRequest
+
+              ) { (result: Result<String>) in
+                if result.error != nil {
+                  completion(Result(error: result.error!))
+                  return
+                }
+                return completion(Result(data: true))
+              }
+            } else {
+              completion(Result(error: PasskeyStorageError.noApiKey))
+            }
+          } catch {
+            completion(Result(error: error))
           }
+        } else {
+          // Handle error or no data scenario
         }
       }
-    } catch {
-      completion(Result(error: error))
+      // Start login
+      do {
+        if let apiKey = self.apiKey {
+          try self.passkeyApi.get(
+            path: "/passkeys/begin-login",
+            headers: [
+              "Accept": "application/json",
+              "Content-Type": "application/json",
+              "Authorization": "Bearer \(apiKey)",
+            ],
+            requestType: HttpRequestType.CustomRequest
+
+          ) { [self] (result: Result<WebAuthnAuthenticationOption>) in
+            if result.error != nil {
+              completion(Result(error: result.error!))
+              return
+            }
+
+            self.sessionId = result.data?.sessionId
+
+            DispatchQueue.main.async { [self] in
+              if let window = self.viewController.view.window, let options = result.data?.options {
+                self.auth.signInWith(anchor: window, options: options, preferImmediatelyAvailableCredentials: true)
+              }
+            }
+          }
+        } else {
+          completion(Result(error: PasskeyStorageError.noApiKey))
+        }
+      } catch {
+        completion(Result(error: error))
+      }
+    } else {
+      self.auth.registrationCompletion = { [self] response in
+        if let attestation = response, let apiKey = self.apiKey {
+          do {
+            // TODO: make sure we dont finalize registration if this call isnt successful.
+            try self.passkeyApi.post(
+              path: "/passkeys/finish-registration",
+              body: ["Attestation": attestation, "SessionId": self.sessionId!, "EncryptionKey": privateKey],
+              headers: [
+                "Content-Type": "application/json",
+                "Authorization": "Bearer \(apiKey)",
+              ],
+              requestType: HttpRequestType.CustomRequest
+
+            ) { (result: Result<String>) in
+              if result.error != nil {
+                completion(Result(error: result.error!))
+                return
+              }
+              return completion(Result(data: true))
+            }
+          } catch {
+            completion(Result(error: error))
+          }
+        } else {
+          // Handle error or no data scenario
+        }
+      }
+      // Start registration
+
+      do {
+        if let apiKey = self.apiKey {
+          try self.passkeyApi.get(
+            path: "/passkeys/begin-registration",
+            headers: [
+              "Accept": "application/json",
+              "Content-Type": "application/json",
+              "Authorization": "Bearer \(apiKey)",
+            ],
+            requestType: HttpRequestType.CustomRequest
+
+          ) { [self] (result: Result<WebAuthnRegistrationOptions>) in
+            if result.error != nil {
+              completion(Result(error: result.error!))
+              return
+            }
+            self.sessionId = result.data?.sessionId
+
+            DispatchQueue.main.async { [self] in
+              if let window = self.viewController.view.window, let options = result.data?.options {
+                self.auth.signUpWith(options: options, anchor: window)
+              }
+            }
+          }
+        } else {
+          completion(Result(error: PasskeyStorageError.noApiKey))
+        }
+      } catch {
+        completion(Result(error: error))
+      }
     }
   }
 }
 
-struct WebAuthnRequest: Codable {
-  let challenge: String
-  let rp: RP
-  let user: User
-  let pubKeyCredParams: [PubKeyCredParam]
-  let timeout: Int
-  let attestation: String
-  let excludeCredentials: [String]
-  let authenticatorSelection: AuthenticatorSelection
-  let extensions: Extensions
+struct PasskeyLoginReadResponse: Codable {
+  let encryptionKey: String
 }
 
-struct RP: Codable {
+struct WebAuthnRegistrationOptions: Codable {
+  let options: RegistrationOptions
+  let sessionId: String
+}
+
+struct RegistrationOptions: Codable {
+  let publicKey: PublicKeyOptions
+}
+
+struct PublicKeyOptions: Codable {
+  let rp: RelyingParty
+  let user: User
+  let challenge: String
+  let pubKeyCredParams: [CredentialParameter]?
+  let timeout: Int
+  let authenticatorSelection: AuthenticatorSelection?
+  let attestation: String?
+}
+
+struct RelyingParty: Codable {
   let name: String
   let id: String
 }
 
 struct User: Codable {
-  let id: String
   let name: String
   let displayName: String
+  let id: String
 }
 
-struct PubKeyCredParam: Codable {
-  let alg: Int
-  let type: String
+struct CredentialParameter: Codable {
+  let type: String?
+  let alg: Int?
 }
 
 struct AuthenticatorSelection: Codable {
-  let residentKey: String
-  let requireResidentKey: Bool
+  let authenticatorAttachment: String?
+  let requireResidentKey: Bool?
+  let residentKey: String?
+  let userVerification: String?
 }
 
-struct Extensions: Codable {
-  let credProps: Bool
+struct WebAuthnAuthenticationOption: Codable {
+  let options: AuthenticationOptions
+  let sessionId: String
+}
+
+struct AuthenticationOptions: Codable {
+  let publicKey: PublicKey
+
+  struct PublicKey: Codable {
+    let challenge: String
+    let timeout: Int
+    let rpId: String
+    let allowCredentials: [Credential]
+    let userVerification: String
+  }
+
+  struct Credential: Codable {
+    let type: String
+    let id: String?
+  }
+}
+
+/// The list of backup statuses for a client
+public enum ClientBackupStatus: String {
+  case StoredClient = "STORED_CLIENT_BACKUP_SHARE"
+  case StoredCustodian = "STORED_CUSTODIAN_BACKUP_SHARE"
 }

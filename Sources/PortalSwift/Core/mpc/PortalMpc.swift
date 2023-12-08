@@ -164,6 +164,16 @@ public class PortalMpc {
             progress?(status)
           }
         }
+      } else if method == BackupMethods.Passkey.rawValue {
+        print("Validating Passkey Storage is available...")
+        // @TODO add a validation method for passkeys
+        print("Passkey Storage is available, starting backup...")
+
+        self.executeBackup(storage: storage, signingShare: signingShare, backupMethod: method) { backupResult in
+          self.handleExecuteBackupCompletion(result: backupResult, progress: progress, completion: completion)
+        } progress: { status in
+          progress?(status)
+        }
       } else if method == BackupMethods.Password.rawValue {
         print("Starting Password Storage...")
         // This is validating that password is set before running backup.
@@ -436,6 +446,22 @@ public class PortalMpc {
             progress?(status)
           }
         }
+      } else if method == BackupMethods.Passkey.rawValue {
+        print("Validating Passkey Storage is available...")
+        // @TODO add a validation method for passkeys
+        print("Passkey Storage is available, starting recovery...")
+        self.executeRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
+          if recoveryResult.error != nil {
+            self.isWalletModificationInProgress = false
+            return completion(Result(error: recoveryResult.error!))
+          }
+          progress?(MpcStatus(status: MpcStatuses.done, done: true))
+          self.isWalletModificationInProgress = false
+          return completion(Result(data: recoveryResult.data!))
+        } progress: { status in
+          progress?(status)
+        }
+
       } else if method == BackupMethods.local.rawValue || method == BackupMethods.Password.rawValue {
         self.executeRecovery(storage: storage!, method: method, backupConfigs: backupConfigs, cipherText: cipherText) { recoveryResult in
           if recoveryResult.error != nil {
@@ -951,6 +977,7 @@ public class PortalMpc {
       storage.read { (result: Result<String>) in
         // If the private key was not found, return an error.
         guard let privateKey = result.data else {
+          print(result.error)
           return completion(Result(error: MpcError.failedToGetBackupFromStorage))
         }
 

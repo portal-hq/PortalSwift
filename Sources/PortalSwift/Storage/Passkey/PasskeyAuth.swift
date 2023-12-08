@@ -7,20 +7,51 @@
 
 import AuthenticationServices
 import os
-import SwiftUI
+import UIKit
 
 @available(iOS 16.0, *)
-public class PasskeyManager: NSObject, ASAuthorizationControllerPresentationContextProviding, ASAuthorizationControllerDelegate {
+public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContextProviding, ASAuthorizationControllerDelegate {
+  // Current active UI Window to present passkey modal too
   var authenticationAnchor: ASPresentationAnchor?
+  // These need to be sent back to the server as part of the registration and authentication ceremonies
   var attestation: String?
   var assertion: String?
-  private var domain = "c2c4-2600-4041-550c-1b00-45c9-8525-9b76-ca37.ngrok-free.app"
-  override public init() {}
+  // The domain of our relying party server.
+  private var domain = "trustless.portalhq.io"
+  var authorizationCompletion: AuthorizationCompletion?
+  var registrationCompletion: RegistrationCompletion?
+  deinit {
+    print("PasskeyAuth is being deallocated")
+  }
 
-  public func signUpWith(userName: String, userId: Data, challenge: Data, anchor: ASPresentationAnchor) {
+  init(domain: String? = "trustless.portalhq.io") {
+    self.domain = domain ?? "trustless.portalhq.io"
+  }
+
+  /// Signs a user up using passkeys to the relying party domain
+  /// - Parameters:
+  ///   - userName: username harded coded as "Backup"
+  ///   - userId: UserId from the 'begin/registration' endpoint
+  ///   - challenge: Data object to sign to verify passkey registration
+  ///   - anchor: window of current UI
+  func signUpWith(options: RegistrationOptions, anchor: ASPresentationAnchor) {
     self.authenticationAnchor = anchor
     let publicKeyCredentialProvider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: domain)
-    let registrationRequest = publicKeyCredentialProvider.createCredentialRegistrationRequest(challenge: challenge, name: userName, userID: userId)
+
+    let challenge = options.publicKey.challenge.decodeBase64Url()!
+    let userId = Data(options.publicKey.user.id.utf8)
+    let username = options.publicKey.user.displayName
+
+    let registrationRequest = publicKeyCredentialProvider.createCredentialRegistrationRequest(challenge: challenge, name: username, userID: userId)
+
+    if let attestation = options.publicKey.attestation {
+      registrationRequest.attestationPreference = ASAuthorizationPublicKeyCredentialAttestationKind(rawValue: attestation)
+    }
+
+    // Check if the webapp requires user verification (see https://docs.hanko.io/guides/userverification)
+    if let userVerification = options.publicKey.authenticatorSelection?.userVerification {
+      registrationRequest.userVerificationPreference = ASAuthorizationPublicKeyCredentialUserVerificationPreference(rawValue: userVerification)
+    }
 
     // ASAuthorizationSecurityKeyPublicKeyCredentialRegistrationRequests here.
     let authController = ASAuthorizationController(authorizationRequests: [registrationRequest])
@@ -29,17 +60,15 @@ public class PasskeyManager: NSObject, ASAuthorizationControllerPresentationCont
     authController.performRequests()
   }
 
-  public func signInWith(anchor _: ASPresentationAnchor, challenge: Data, preferImmediatelyAvailableCredentials: Bool) {
-//    UIApplication.shared.authenticationAnchor = anchor
+  func signInWith(anchor: ASPresentationAnchor, options: AuthenticationOptions, preferImmediatelyAvailableCredentials: Bool) {
+    self.authenticationAnchor = anchor
     let publicKeyCredentialProvider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: domain)
+    let challenge = options.publicKey.challenge.decodeBase64Url()!
+
     let assertionRequest = publicKeyCredentialProvider.createCredentialAssertionRequest(challenge: challenge)
 
-    // Also allow the user to use a saved password, if they have one.
-    let passwordCredentialProvider = ASAuthorizationPasswordProvider()
-    let passwordRequest = passwordCredentialProvider.createRequest()
-
     // Pass in any mix of supported sign-in request types.
-    let authController = ASAuthorizationController(authorizationRequests: [assertionRequest, passwordRequest])
+    let authController = ASAuthorizationController(authorizationRequests: [assertionRequest])
     authController.delegate = self
     authController.presentationContextProvider = self
 
@@ -47,7 +76,6 @@ public class PasskeyManager: NSObject, ASAuthorizationControllerPresentationCont
       // If credentials are available, presents a modal sign-in sheet.
       // If there are no locally saved credentials, no UI appears and
       // the system passes ASAuthorizationError.Code.canceled to call
-      // `AccountManager.authorizationController(controller:didCompleteWithError:)`.
       authController.performRequests(options: .preferImmediatelyAvailableCredentials)
     } else {
       // If credentials are available, presents a modal sign-in sheet.
@@ -73,8 +101,6 @@ public class PasskeyManager: NSObject, ASAuthorizationControllerPresentationCont
       // Note: The userInfo dictionary contains useful information.
       logger.error("Error: \((error as NSError).userInfo)")
     }
-
-//    Alert.generic(viewController: controller, message: "Sign up", error: error as NSError)
   }
 
   public func presentationAnchor(for _: ASAuthorizationController) -> ASPresentationAnchor {
@@ -92,19 +118,20 @@ public class PasskeyManager: NSObject, ASAuthorizationControllerPresentationCont
       let credentialID = credentialRegistration.credentialID
 
       // Build the attestaion object
-      let payload = ["rawId": credentialID.base64EncodedString(), // Base64
+      let payload = ["rawId": credentialID.toBase64Url(), // Base64
                      "id": self.base64URLEncode(credentialRegistration.credentialID), // Base64URL
-                     "authenticatorAttachment": "platform", // Optional parameter
+                     "authenticatorAttachment": "cross-platform", // Optional parameter
                      "clientExtensionResults": [String: Any](), // Optional parameter
                      "type": "public-key",
                      "response": [
-                       "attestationObject": attestationObject.base64EncodedString(),
-                       "clientDataJSON": clientDataJSON.base64EncodedString(),
+                       "attestationObject": attestationObject.toBase64Url(),
+                       "clientDataJSON": clientDataJSON.toBase64Url(),
                      ]] as [String: Any]
 
       if let payloadJSONData = try? JSONSerialization.data(withJSONObject: payload, options: .fragmentsAllowed) {
         guard let payloadJSONText = String(data: payloadJSONData, encoding: .utf8) else { return }
         self.attestation = payloadJSONText
+        self.registrationCompletion!(self.attestation)
       }
 
     case let credentialAssertion as ASAuthorizationPlatformPublicKeyCredentialAssertion:
@@ -125,27 +152,23 @@ public class PasskeyManager: NSObject, ASAuthorizationControllerPresentationCont
       let clientDataJSON = credentialAssertion.rawClientDataJSON
       let credentialId = credentialAssertion.credentialID
 
-      let payload = ["rawId": credentialId.base64EncodedString(), // Base64
+      let payload = ["rawId": credentialId.toBase64Url(), // Base64
                      "id": self.base64URLEncode(credentialId), // Binary
-                     "authenticatorAttachment": "platform", // Optional
+                     "authenticatorAttachment": "cross-platform", // Optional
                      "clientExtensionResults": [String: Any](), // Optional
                      "type": "public-key",
                      "response": [
-                       "clientDataJSON": clientDataJSON.base64EncodedString(),
-                       "authenticatorData": authenticatorData.base64EncodedString(),
-                       "signature": signature.base64EncodedString(),
+                       "clientDataJSON": clientDataJSON.toBase64Url(),
+                       "authenticatorData": authenticatorData.toBase64Url(),
+                       "signature": signature.toBase64Url(),
                        "userHandle": self.base64URLEncode(userID),
                      ]] as [String: Any]
 
       if let payloadJSONData = try? JSONSerialization.data(withJSONObject: payload, options: .fragmentsAllowed) {
         guard let payloadJSONText = String(data: payloadJSONData, encoding: .utf8) else { return }
         self.assertion = payloadJSONText
+        self.authorizationCompletion!(self.assertion)
       }
-
-    case let passwordCredential as ASPasswordCredential:
-      logger.log("A password was provided: \(passwordCredential)")
-      // Handle a case user choose to identify with password instead of passkeys
-      // Verify the username and password with your service
 
     default:
       fatalError("Received unknown authorization type.")
@@ -161,3 +184,25 @@ public class PasskeyManager: NSObject, ASAuthorizationControllerPresentationCont
     return base64URL
   }
 }
+
+extension String {
+  func decodeBase64Url() -> Data? {
+    var base64 = self
+      .replacingOccurrences(of: "-", with: "+")
+      .replacingOccurrences(of: "_", with: "/")
+    if base64.count % 4 != 0 {
+      base64.append(String(repeating: "=", count: 4 - base64.count % 4))
+    }
+    return Data(base64Encoded: base64)
+  }
+}
+
+extension Data {
+  func toBase64Url() -> String {
+    return self.base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
+  }
+}
+
+public typealias AuthorizationCompletion = (_ assertion: String?) -> Void
+
+public typealias RegistrationCompletion = (_ attestation: String?) -> Void

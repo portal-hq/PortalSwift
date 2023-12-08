@@ -64,6 +64,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   public var PortalWrapper: PortalWrapper = Cocoapods_Example.PortalWrapper()
   public var portal: Portal?
   public var eth_estimate: String?
+  public var passkey: PasskeyStorage?
 
   override func viewDidLoad() {
     super.viewDidLoad()
@@ -240,77 +241,82 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   @IBAction func handleBackup(_: UIButton!) {
     print("Starting backup...")
-    self.requestPassword { password in
-      guard let enteredPassword = password, !enteredPassword.isEmpty else {
-        // Handle case where no PIN was entered or the operation was canceled
-        return
-      }
-      print("Entered Password:", enteredPassword)
-      do {
-        let backupConfigs = try BackupConfigs(passwordStorage: PasswordStorageConfig(password: enteredPassword))
 
-        // PortalWrapper.backup(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user!) { (result) -> Void in
-        self.PortalWrapper.backup(backupMethod: BackupMethods.Password.rawValue, user: self.user!, backupConfigs: backupConfigs) { result in
-          guard result.error == nil else {
-            print("❌ handleBackup():", result.error!)
+//    self.passkey!.write(privateKey: "Yoyo") { result in
+//      print(result)
+//    }
+//    self.requestPassword { password in
+//      guard let enteredPassword = password, !enteredPassword.isEmpty else {
+//        // Handle case where no PIN was entered or the operation was canceled
+//        return
+//      }
+//      print("Entered Password:", enteredPassword)
+    do {
+      let backupConfigs = try BackupConfigs(passwordStorage: PasswordStorageConfig(password: "enteredPassword"))
 
-            do {
-              try self.PortalWrapper.portal!.api.storedClientBackupShare(success: false) { result in
-                guard result.error == nil else {
-                  print("❌ handleBackup(): Error notifying Portal that backup share was not stored.")
-                  return
-                }
-              }
-            } catch {
-              print("❌ handleBackup(): Error notifying Portal that backup share was not stored.")
-            }
-            return
-          }
+      // PortalWrapper.backup(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user!) { (result) -> Void in
+      self.PortalWrapper.backup(backupMethod: BackupMethods.Passkey.rawValue, user: self.user!, backupConfigs: backupConfigs) { result in
+        guard result.error == nil else {
+          print("❌ handleBackup():", result.error!)
 
           do {
-            try self.PortalWrapper.portal!.api.storedClientBackupShare(success: true) { result in
+            try self.PortalWrapper.portal!.api.storedClientBackupShare(success: false) { result in
               guard result.error == nil else {
-                print("❌ handleBackup(): Error notifying Portal that backup share was stored.")
+                print("❌ handleBackup(): Error notifying Portal that backup share was not stored.")
                 return
               }
-
-              self.populateAddressInformation()
-              print("✅ handleBackup(): Successfully sent custodian cipherText")
             }
           } catch {
-            print("❌ handleBackup(): Error notifying Portal that backup share was stored.")
+            print("❌ handleBackup(): Error notifying Portal that backup share was not stored.")
           }
+          return
         }
-      } catch {
-        print(error)
+
+        do {
+          try self.PortalWrapper.portal!.api.storedClientBackupShare(success: true) { result in
+            guard result.error == nil else {
+              print("❌ handleBackup(): Error notifying Portal that backup share was stored.")
+              return
+            }
+
+            self.populateAddressInformation()
+            print("✅ handleBackup(): Successfully sent custodian cipherText")
+          }
+        } catch {
+          print("❌ handleBackup(): Error notifying Portal that backup share was stored.")
+        }
       }
+    } catch {
+      print(error)
     }
+//    }
   }
 
   @IBAction func handleRecover(_: UIButton!) {
     // PortalWrapper.recover(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user!) { (result) -> Void in
-    self.requestPassword { password in
-      guard let enteredPassword = password, !enteredPassword.isEmpty else {
-        // Handle case where no PIN was entered or the operation was canceled
-        return
-      }
-      print("Entered Password:", enteredPassword)
-      do {
-        let backupConfigs = try BackupConfigs(passwordStorage: PasswordStorageConfig(password: enteredPassword))
+//    self.requestPassword { password in
+//      guard let enteredPassword = password, !enteredPassword.isEmpty else {
+//        // Handle case where no PIN was entered or the operation was canceled
+//        return
+//      }
+//      print("Entered Password:", enteredPassword)
 
-        self.PortalWrapper.recover(backupMethod: BackupMethods.Password.rawValue, user: self.user!, backupConfigs: backupConfigs) { result in
-          guard result.error == nil else {
-            print("❌ handleRecover(): Error recovering wallet:", result.error!)
-            return
-          }
+    do {
+      let backupConfigs = try BackupConfigs(passwordStorage: PasswordStorageConfig(password: "enteredPassword"))
 
-          self.populateAddressInformation()
-          print("✅ handleRecover(): Successfully recovered signing shares")
+      self.PortalWrapper.recover(backupMethod: BackupMethods.Passkey.rawValue, user: self.user!, backupConfigs: backupConfigs) { result in
+        guard result.error == nil else {
+          print("❌ handleRecover(): Error recovering wallet:", result.error!)
+          return
         }
-      } catch {
-        print(error)
+
+        self.populateAddressInformation()
+        print("✅ handleRecover(): Successfully recovered signing shares")
       }
+    } catch {
+      print(error)
     }
+//    }
   }
 
   @IBAction func handleLegacyRecover(_: UIButton) {
@@ -597,16 +603,9 @@ class ViewController: UIViewController, UITextFieldDelegate {
 //            guard let GDRIVE_CLIENT_ID: String = infoDictionary["GDRIVE_CLIENT_ID"] as? String else {
 //              print("Error: Do you have `GDRIVE_CLIENT_ID=$(GDRIVE_CLIENT_ID)` in your info.plist?")
 //              return  }
-      let backup = BackupOptions(passwordStorage: PasswordStorage())
-      let challenge = Data("A".utf8)
-      print("PASSKEYS")
-      let passkey = PasskeyStorage(clientId: "", viewController: self)
-      passkey.write(privateKey: "Yoyo") { result in
-        print("PASSKEYSs")
-        print(result)
-      }
-      let auth = PasskeyManager()
-      let userId = Data("a".utf8)
+      self.passkey = PasskeyStorage(viewController: self, relyingParty: "553a-107-179-20-166.ngrok-free.app")
+
+      let backup = BackupOptions(passwordStorage: PasswordStorage(), passkeyStorage: self.passkey)
 
 //            let backup = BackupOptions(gdrive: GDriveStorage(clientID: GDRIVE_CLIENT_ID, viewController: self))
 //      let backup = BackupOptions(icloud: ICloudStorage())
