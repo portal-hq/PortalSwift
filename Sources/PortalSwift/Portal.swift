@@ -27,6 +27,7 @@ public class Portal {
   public let backup: BackupOptions
   public var client: Client?
   public let gatewayConfig: [Int: String]
+  public let isMocked: Bool
   public let keychain: PortalKeychain
   public let api: PortalApi
   public let mpc: PortalMpc
@@ -63,17 +64,19 @@ public class Portal {
     autoApprove: Bool = false,
     apiHost: String = "api.portalhq.io",
     mpcHost: String = "mpc.portalhq.io",
-    featureFlags: FeatureFlags? = nil
+    featureFlags: FeatureFlags? = nil,
+    isMocked: Bool = false
   ) throws {
     // Basic setup
-    self.binary = MobileWrapper()
+    self.binary = isMocked ? MockMobileWrapper() : MobileWrapper()
     self.apiHost = apiHost
     self.apiKey = apiKey
     self.autoApprove = autoApprove
     self.backup = backup
     self.gatewayConfig = gatewayConfig
-    self.client = try Portal.getClient(apiHost, apiKey, self.binary)
+    self.client = try Portal.getClient(apiHost, apiKey, self.binary, isMocked: isMocked)
     keychain.clientId = self.client?.id
+    self.isMocked = isMocked
     self.keychain = keychain
     self.mpcHost = mpcHost
     self.version = version
@@ -93,7 +96,7 @@ public class Portal {
       apiHost: apiHost,
       mpcHost: mpcHost,
       version: version,
-      featureFlags: self.featureFlags
+      featureFlags: featureFlags
     )
 
     // Initialize the Portal API
@@ -161,7 +164,8 @@ public class Portal {
     mpc: PortalMpc?,
     api: PortalApi?,
     binary: Mobile?,
-    featureFlags: FeatureFlags? = nil
+    featureFlags: FeatureFlags? = nil,
+    isMocked: Bool = false
   ) throws {
     // Basic setup
     self.apiHost = apiHost
@@ -170,8 +174,9 @@ public class Portal {
     self.backup = backup
     self.gatewayConfig = gatewayConfig
     self.binary = binary ?? MobileWrapper()
-    self.client = try Portal.getClient(apiHost, apiKey, self.binary)
+    self.client = try Portal.getClient(apiHost, apiKey, self.binary, isMocked: isMocked)
     keychain.clientId = self.client?.id
+    self.isMocked = isMocked
     self.keychain = keychain
     self.mpcHost = mpcHost
     self.version = version
@@ -182,17 +187,29 @@ public class Portal {
     }
 
     // Initialize the PortalProvider
-    self.provider = try PortalProvider(
-      apiKey: apiKey,
-      chainId: chainId,
-      gatewayConfig: gatewayConfig,
-      keychain: keychain,
-      autoApprove: autoApprove,
-      apiHost: apiHost,
-      mpcHost: mpcHost,
-      version: version,
-      featureFlags: featureFlags
-    )
+    self.provider = isMocked 
+      ? try MockPortalProvider(
+        apiKey: apiKey,
+        chainId: chainId,
+        gatewayConfig: gatewayConfig,
+        keychain: keychain,
+        autoApprove: autoApprove,
+        apiHost: apiHost,
+        mpcHost: mpcHost,
+        version: version,
+        featureFlags: featureFlags
+      )
+      : try PortalProvider(
+        apiKey: apiKey,
+        chainId: chainId,
+        gatewayConfig: gatewayConfig,
+        keychain: keychain,
+        autoApprove: autoApprove,
+        apiHost: apiHost,
+        mpcHost: mpcHost,
+        version: version,
+        featureFlags: featureFlags
+      )
 
     // Initialize the Portal API
     self.api = api ?? PortalApi(apiKey: apiKey, apiHost: apiHost, provider: self.provider)
@@ -443,12 +460,12 @@ public class Portal {
    * Private Methods
    ****************************************/
 
-  private static func getClient(_ apiHost: String, _ apiKey: String, _ mobile: Mobile) throws -> Client {
+  private static func getClient(_ apiHost: String, _ apiKey: String, _ mobile: Mobile, isMocked: Bool) throws -> Client {
     // Create URL.
     let apiUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
 
     // Call the MPC service to retrieve the client.
-    let response = mobile.MobileGetMe("\(apiUrl)/api/v1/clients/me", apiKey)
+    let response = isMocked ? mockClientResult : mobile.MobileGetMe("\(apiUrl)/api/v1/clients/me", apiKey)
 
     // Parse the client.
     let jsonData = response.data(using: .utf8)!
