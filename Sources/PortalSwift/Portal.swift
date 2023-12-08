@@ -187,7 +187,7 @@ public class Portal {
     }
 
     // Initialize the PortalProvider
-    self.provider = isMocked 
+    self.provider = isMocked
       ? try MockPortalProvider(
         apiKey: apiKey,
         chainId: chainId,
