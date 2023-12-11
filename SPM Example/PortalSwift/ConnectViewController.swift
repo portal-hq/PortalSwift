@@ -9,6 +9,7 @@ import PortalSwift
 import UIKit
 
 class ConnectViewController: UIViewController, UITextFieldDelegate, PortalConnectDelegate {
+  // Delegate methods
   func portalProvider(_: PortalProvider, didConnect chainId: Int) {
     print("[ConnectViewController] ✅ Connected on chainId: \(chainId)")
   }
@@ -22,7 +23,7 @@ class ConnectViewController: UIViewController, UITextFieldDelegate, PortalConnec
   }
 
   func portalConnect(_: PortalConnect, didReceiveError errorData: ErrorData) {
-    print("Event \(Events.ConnectError.rawValue) recieved. Error: \(errorData.params.message) Code: \(errorData.params.code)")
+    print("❌ Error: \(errorData.params.message) Code: \(errorData.params.code)")
   }
 
   func portalProvider(
@@ -41,6 +42,7 @@ class ConnectViewController: UIViewController, UITextFieldDelegate, PortalConnec
     approved = true
   }
 
+  // Other stuff
   public var portal: Portal?
   public var app: PortalExampleAppDelegate? = UIApplication.shared.delegate as? PortalExampleAppDelegate
 
