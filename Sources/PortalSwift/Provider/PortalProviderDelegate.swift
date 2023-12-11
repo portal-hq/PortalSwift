@@ -26,7 +26,7 @@ public protocol PortalProviderDelegate {
 
   func portalProvider(
     _: PortalProvider,
-    didReceiveResult signature: SignerResult?,
+    didReceiveResult signature: Any?,
     forPayload: ETHTransactionPayload
   )
 
