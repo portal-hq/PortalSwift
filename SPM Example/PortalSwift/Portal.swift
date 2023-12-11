@@ -21,17 +21,19 @@ struct CipherTextResult: Codable {
 class PortalWrapper: PortalProviderDelegate {
   func portalProvider(
     _: PortalSwift.PortalProvider,
-    didReceiveSigningRequest _: PortalSwift.ETHTransactionPayload,
+    didReceiveSigningRequest payload: ETHTransactionPayload,
     approved: inout Bool
   ) {
+    print("✅ Approving signing request for payload: \(payload)")
     approved = true
   }
 
   func portalProvider(
     _: PortalSwift.PortalProvider,
-    didReceiveSigningRequest _: PortalSwift.ETHRequestPayload,
+    didReceiveSigningRequest payload: ETHRequestPayload,
     approved: inout Bool
   ) {
+    print("✅ Approving signing request for payload: \(payload)")
     approved = true
   }
 
@@ -71,7 +73,7 @@ class PortalWrapper: PortalProviderDelegate {
       self.MPC_URL = LOCAL_MPC_URL
     }
 
-    print("CUSTODIAN_SERVER_URL", self.CUSTODIAN_SERVER_URL)
+    print("CUSTODIAN_SERVER_URL", self.CUSTODIAN_SERVER_URL as Any)
   }
 
   func signIn(username: String, completion: @escaping (Result<UserResult>) -> Void) {

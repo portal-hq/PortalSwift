@@ -9,27 +9,35 @@ import PortalSwift
 import UIKit
 
 class ConnectViewController: UIViewController, UITextFieldDelegate, PortalConnectDelegate {
-  func portalProvider(_: PortalProvider, didConnect: Int) {
-    let chainId = didConnect
-
+  func portalProvider(_: PortalProvider, didConnect chainId: Int) {
     print("[ConnectViewController] ✅ Connected on chainId: \(chainId)")
   }
 
-  func portalConnect(_: PortalConnect, didReceiveDappSessionRequest _: PortalSwift.ConnectData, approved: inout Bool) {
+  func portalConnect(
+    _: PortalConnect,
+    didReceiveDappSessionRequest _: ConnectData,
+    approved: inout Bool
+  ) {
     approved = true
   }
 
-  func portalConnect(_: PortalConnect, didReceiveError: ErrorData) {
-    let errorData = didReceiveError
-
+  func portalConnect(_: PortalConnect, didReceiveError errorData: ErrorData) {
     print("Event \(Events.ConnectError.rawValue) recieved. Error: \(errorData.params.message) Code: \(errorData.params.code)")
   }
 
-  func portalProvider(_: PortalSwift.PortalProvider, didReceiveSigningRequest _: PortalSwift.ETHRequestPayload, approved: inout Bool) {
+  func portalProvider(
+    _: PortalProvider,
+    didReceiveSigningRequest _: ETHRequestPayload,
+    approved: inout Bool
+  ) {
     approved = true
   }
 
-  func portalProvider(_: PortalSwift.PortalProvider, didReceiveSigningRequest _: PortalSwift.ETHTransactionPayload, approved: inout Bool) {
+  func portalProvider(
+    _: PortalProvider,
+    didReceiveSigningRequest _: ETHTransactionPayload,
+    approved: inout Bool
+  ) {
     approved = true
   }
 
