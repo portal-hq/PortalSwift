@@ -8,7 +8,31 @@
 import PortalSwift
 import UIKit
 
-class ConnectViewController: UIViewController, UITextFieldDelegate {
+class ConnectViewController: UIViewController, UITextFieldDelegate, PortalConnectDelegate {
+  func portalProvider(_: PortalProvider, didConnect: Int) {
+    let chainId = didConnect
+
+    print("[ConnectViewController] ✅ Connected on chainId: \(chainId)")
+  }
+
+  func portalConnect(_: PortalConnect, didReceiveDappSessionRequest _: PortalSwift.ConnectData, approved: inout Bool) {
+    approved = true
+  }
+
+  func portalConnect(_: PortalConnect, didReceiveError: ErrorData) {
+    let errorData = didReceiveError
+
+    print("Event \(Events.ConnectError.rawValue) recieved. Error: \(errorData.params.message) Code: \(errorData.params.code)")
+  }
+
+  func portalProvider(_: PortalSwift.PortalProvider, didReceiveSigningRequest _: PortalSwift.ETHRequestPayload, approved: inout Bool) {
+    approved = true
+  }
+
+  func portalProvider(_: PortalSwift.PortalProvider, didReceiveSigningRequest _: PortalSwift.ETHTransactionPayload, approved: inout Bool) {
+    approved = true
+  }
+
   public var portal: Portal?
   public var app: PortalExampleAppDelegate? = UIApplication.shared.delegate as? PortalExampleAppDelegate
 
@@ -89,65 +113,62 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
     return true
   }
 
-  func initPortalConnect(portalConnect: PortalConnect, button: UIButton, label: String, autoApprove: Bool = true) {
+  func initPortalConnect(portalConnect: PortalConnect, button: UIButton, label _: String, autoApprove _: Bool = true) {
     button.isEnabled = false
 
-    portalConnect.on(event: Events.PortalDappSessionRequested.rawValue, callback: { [weak self] data in
-      print("Event \(Events.PortalDappSessionRequested.rawValue) recieved for v2 on \(label)")
-      self?.didRequestApprovalDapps(portalConnect: portalConnect, data: data)
-    })
+    portalConnect.portalConnectDelegate = self
 
-    portalConnect.on(event: Events.PortalDappSessionRequestedV1.rawValue, callback: { [weak self] data in
-      print("Event \(Events.PortalDappSessionRequested.rawValue) recieved for v1 on \(label)")
-      self?.didRequestApprovalDappsV1(portalConnect: portalConnect, data: data)
-    })
-
-    portalConnect.on(event: Events.ConnectError.rawValue, callback: { data in
-      if let errorData = data as? ErrorData {
-        print("Event \(Events.ConnectError.rawValue) recieved on \(label). Error: \(errorData.params.message) Code: \(errorData.params.code)")
-      } else {
-        print("Event \(Events.ConnectError.rawValue) recieved on \(label). Error: \(data)")
-      }
-    })
-
-    portalConnect.on(event: Events.PortalSignatureReceived.rawValue) { (data: Any) in
-      let result = data
-      print("[ConnectViewController] ✅ Received signature \(result) on \(label)")
-    }
-
-    portalConnect.on(event: Events.Connect.rawValue) { (data: Any) in
-      print("[ConnectViewController] ✅ Connected! \(data) on \(label)")
-
-      if label == "connect1" {
-        self.connectButton?.isEnabled = false
-        self.disconnectButton?.isEnabled = true
-      } else {
-        self.connectButton2?.isEnabled = false
-        self.disconnectButton2?.isEnabled = true
-      }
-    }
-
-    portalConnect.on(event: Events.Disconnect.rawValue) { (data: Any) in
-      print("[ConnectViewController] 🛑 Disconnected \(data) on \(label)")
-      if label == "connect1" {
-        self.connectButton?.isEnabled = false
-        self.disconnectButton?.isEnabled = false
-        self.addressTextInput?.text = ""
-      } else {
-        self.connectButton2?.isEnabled = false
-        self.disconnectButton2?.isEnabled = false
-        self.addressTextInput2?.text = ""
-      }
-    }
-
-    portalConnect.on(event: Events.PortalSigningRequested.rawValue) { (data: Any) in
-      print("Chain ID: ", (data as? ETHRequestPayload)?.chainId ?? "")
-      if autoApprove {
-        portalConnect.emit(event: Events.PortalSigningApproved.rawValue, data: data)
-      } else {
-        portalConnect.emit(event: Events.PortalSigningApproved.rawValue, data: data)
-      }
-    }
+//    portalConnect.on(event: Events.PortalDappSessionRequested.rawValue, callback: { [weak self] data in
+//      print("Event \(Events.PortalDappSessionRequested.rawValue) recieved for v2 on \(label)")
+//      self?.didRequestApprovalDapps(portalConnect: portalConnect, data: data)
+//    })
+//
+//    portalConnect.on(event: Events.ConnectError.rawValue, callback: { data in
+//      if let errorData = data as? ErrorData {
+//        print("Event \(Events.ConnectError.rawValue) recieved on \(label). Error: \(errorData.params.message) Code: \(errorData.params.code)")
+//      } else {
+//        print("Event \(Events.ConnectError.rawValue) recieved on \(label). Error: \(data)")
+//      }
+//    })
+//
+//    portalConnect.on(event: Events.PortalSignatureReceived.rawValue) { (data: Any) in
+//      let result = data
+//      print("[ConnectViewController] ✅ Received signature \(result) on \(label)")
+//    }
+//
+//    portalConnect.on(event: Events.Connect.rawValue) { (data: Any) in
+//      print("[ConnectViewController] ✅ Connected! \(data) on \(label)")
+//
+//      if label == "connect1" {
+//        self.connectButton?.isEnabled = false
+//        self.disconnectButton?.isEnabled = true
+//      } else {
+//        self.connectButton2?.isEnabled = false
+//        self.disconnectButton2?.isEnabled = true
+//      }
+//    }
+//
+//    portalConnect.on(event: Events.Disconnect.rawValue) { (data: Any) in
+//      print("[ConnectViewController] 🛑 Disconnected \(data) on \(label)")
+//      if label == "connect1" {
+//        self.connectButton?.isEnabled = false
+//        self.disconnectButton?.isEnabled = false
+//        self.addressTextInput?.text = ""
+//      } else {
+//        self.connectButton2?.isEnabled = false
+//        self.disconnectButton2?.isEnabled = false
+//        self.addressTextInput2?.text = ""
+//      }
+//    }
+//
+//    portalConnect.on(event: Events.PortalSigningRequested.rawValue) { (data: Any) in
+//      print("Chain ID: ", (data as? ETHRequestPayload)?.chainId ?? "")
+//      if autoApprove {
+//        portalConnect.emit(event: Events.PortalSigningApproved.rawValue, data: data)
+//      } else {
+//        portalConnect.emit(event: Events.PortalSigningApproved.rawValue, data: data)
+//      }
+//    }
   }
 
   override func viewDidDisappear(_: Bool) {

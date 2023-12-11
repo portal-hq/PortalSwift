@@ -18,6 +18,7 @@ public var signMethods: [ETHRequestMethods.RawValue] = [
 ]
 
 public class PortalConnect: EventBus {
+  private var _delegate: PortalConnectDelegate? = nil
   public var address: String? {
     return self.provider.address
   }
@@ -35,6 +36,17 @@ public class PortalConnect: EventBus {
   }
 
   public var client: WebSocketClient? = nil
+  public var portalConnectDelegate: PortalConnectDelegate? {
+    get {
+      return self._delegate
+    }
+
+    set(delegate) {
+      self._delegate = delegate
+      self.provider.portalProviderDelegate = delegate
+    }
+  }
+
   public var uri: String?
 
   private let apiKey: String
@@ -184,6 +196,34 @@ public class PortalConnect: EventBus {
   }
 
   func handleDappSessionRequested(data: ConnectData) {
+    if self.portalConnectDelegate != nil {
+      var approved = false
+
+      self.portalConnectDelegate!.portalConnect(self, didReceiveDappSessionRequest: data, approved: &approved)
+
+      do {
+        let event = approved ? "portal_dappSessionApproved" : "portal_dappSessionRejected"
+        let message = try JSONEncoder().encode(DappSessionResponseMessage(
+          event: event,
+          data: SessionResponseData(
+            id: data.id,
+            topic: data.topic,
+            address: self.address!,
+            chainId: String(self.chainId),
+            params: data.params
+          )
+        ))
+
+        self.client?.send(message)
+      } catch {
+        print("[PortalConnect] Error encoding DappSessionRequestApprovedMessage: \(error)")
+      }
+    } else {
+      self.handleDappSessionRequestedWithEventBus(data: data)
+    }
+  }
+
+  func handleDappSessionRequestedWithEventBus(data: ConnectData) {
     once(event: Events.PortalDappSessionApproved.rawValue) { [weak self] callbackData in
       guard let self = self else { return }
       guard let connectData = callbackData as? ConnectData else {
@@ -243,52 +283,8 @@ public class PortalConnect: EventBus {
     emit(event: Events.PortalDappSessionRequested.rawValue, data: data)
   }
 
-  func handleDappSessionRequestedV1(data: ConnectV1Data) {
-    once(event: Events.PortalDappSessionApprovedV1.rawValue) { [weak self] _ in
-      guard let self = self else { return }
-
-      // If the approved event is fired
-      let event = DappSessionResponseV1Message(
-        event: "portal_dappSessionApproved",
-        data: SessionResponseV1Data(
-          id: data.id,
-          topic: data.topic,
-          address: self.address!,
-          chainId: String(self.chainId)
-        )
-      )
-
-      do {
-        let message = try JSONEncoder().encode(event)
-        self.client?.send(message)
-      } catch {
-        print("[PortalConnect] Error encoding DappSessionRequestApprovedMessage: \(error)")
-      }
-    }
-
-    once(event: Events.PortalDappSessionRejectedV1.rawValue) { [weak self] _ in
-      guard let self = self else { return }
-
-      // If the approved event is fired
-      let event = DappSessionResponseV1Message(
-        event: "portal_dappSessionRejected",
-        data: SessionResponseV1Data(
-          id: data.id,
-          topic: data.topic,
-          address: self.address!,
-          chainId: String(self.chainId)
-        )
-      )
-
-      do {
-        let message = try JSONEncoder().encode(event)
-        self.client?.send(message)
-      } catch {
-        print("[PortalConnect] Error encoding DappSessionRequestRejectedMessage: \(error)")
-      }
-    }
-
-    emit(event: Events.PortalDappSessionRequestedV1.rawValue, data: data)
+  func handleDappSessionRequestedV1(data _: ConnectV1Data) {
+    // Updating to a no-op
   }
 
   func handleClose() {

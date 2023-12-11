@@ -39,6 +39,16 @@ public class Portal {
   private let mpcHost: String
   private let version: String
 
+  public var portalProviderDelegate: PortalProviderDelegate? {
+    get {
+      return self.provider.portalProviderDelegate
+    }
+
+    set(delegate) {
+      self.provider.portalProviderDelegate = delegate
+    }
+  }
+
   /// Create a Portal instance.
   /// - Parameters:
   ///   - apiKey: The Client API key. You can obtain this through Portal's REST API.

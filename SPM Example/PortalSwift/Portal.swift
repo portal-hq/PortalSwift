@@ -18,7 +18,23 @@ struct CipherTextResult: Codable {
   var cipherText: String
 }
 
-class PortalWrapper {
+class PortalWrapper: PortalProviderDelegate {
+  func portalProvider(
+    _: PortalSwift.PortalProvider,
+    didReceiveSigningRequest _: PortalSwift.ETHTransactionPayload,
+    approved: inout Bool
+  ) {
+    approved = true
+  }
+
+  func portalProvider(
+    _: PortalSwift.PortalProvider,
+    didReceiveSigningRequest _: PortalSwift.ETHRequestPayload,
+    approved: inout Bool
+  ) {
+    approved = true
+  }
+
   public var portal: Portal?
   public var CUSTODIAN_SERVER_URL: String?
   public var API_URL: String?
@@ -119,12 +135,15 @@ class PortalWrapper {
         mpcHost: self.MPC_URL!,
         featureFlags: FeatureFlags(optimized: optimized)
       )
-      _ = self.portal?.provider.on(event: Events.PortalSigningRequested.rawValue, callback: { [weak self] data in self?.didRequestApproval(data: data) })
-      _ = self.portal?.provider.once(event: Events.PortalSignatureReceived.rawValue) { (data: Any) in
-        let result = data as! RequestCompletionResult
 
-        print("[ViewController] portal_signatureReceived: \(result)")
-      }
+      self.portal?.portalProviderDelegate = self
+
+//      _ = self.portal?.provider.on(event: Events.PortalSigningRequested.rawValue, callback: { [weak self] data in self?.didRequestApproval(data: data) })
+//      _ = self.portal?.provider.once(event: Events.PortalSignatureReceived.rawValue) { (data: Any) in
+//        let result = data as! RequestCompletionResult
+//
+//        print("[ViewController] portal_signatureReceived: \(result)")
+//      }
 
       print("[ViewController] Portal initialized")
     } catch ProviderInvalidArgumentError.invalidGatewayUrl {

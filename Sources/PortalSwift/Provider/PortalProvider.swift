@@ -20,6 +20,7 @@ public class PortalProvider {
   public let apiKey: String
   public let autoApprove: Bool
   public var chainId: Chains.RawValue
+  public var portalProviderDelegate: PortalProviderDelegate?
   public var gatewayUrl: String
 
   private var events: [Events.RawValue: [RegisteredEventHandler]] = [:]
@@ -390,7 +391,53 @@ public class PortalProvider {
   ) {
     if self.autoApprove {
       return completion(Result(data: true))
-    } else if connect == nil, self.events[Events.PortalSigningRequested.rawValue] == nil {
+    }
+
+    if self.portalProviderDelegate != nil {
+      var approved = false
+
+      self.portalProviderDelegate!.portalProvider(
+        self,
+        didReceiveSigningRequest: payload,
+        approved: &approved
+      )
+
+      return completion(Result(data: approved))
+    } else {
+      self.getApprovalFromEventBus(payload: payload, completion: completion, connect: connect)
+    }
+  }
+
+  private func getApproval(
+    payload: ETHTransactionPayload,
+    completion: @escaping (Result<Bool>) -> Void,
+    connect: PortalConnect? = nil
+  ) {
+    if self.autoApprove {
+      return completion(Result(data: true))
+    }
+
+    if self.portalProviderDelegate != nil {
+      var approved = false
+
+      self.portalProviderDelegate!.portalProvider(
+        self,
+        didReceiveSigningRequest: payload,
+        approved: &approved
+      )
+
+      return completion(Result(data: approved))
+    } else {
+      self.getApprovalFromEventBus(payload: payload, completion: completion, connect: connect)
+    }
+  }
+
+  private func getApprovalFromEventBus(
+    payload: ETHRequestPayload,
+    completion: @escaping (Result<Bool>) -> Void,
+    connect: PortalConnect? = nil
+  ) {
+    if connect == nil, self.events[Events.PortalSigningRequested.rawValue] == nil {
       return completion(Result(error: ProviderSigningError.noBindingForSigningApprovalFound))
     }
 
@@ -440,14 +487,12 @@ public class PortalProvider {
     }
   }
 
-  private func getApproval(
+  private func getApprovalFromEventBus(
     payload: ETHTransactionPayload,
     completion: @escaping (Result<Bool>) -> Void,
     connect: PortalConnect? = nil
   ) {
-    if self.autoApprove {
-      return completion(Result(data: true))
-    } else if connect == nil, self.events[Events.PortalSigningRequested.rawValue] == nil {
+    if connect == nil, self.events[Events.PortalSigningRequested.rawValue] == nil {
       return completion(Result(error: ProviderSigningError.noBindingForSigningApprovalFound))
     }
 
