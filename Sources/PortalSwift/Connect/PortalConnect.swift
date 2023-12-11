@@ -317,12 +317,21 @@ public class PortalConnect: EventBus {
   }
 
   func handleError(data: ErrorData) {
-    emit(event: Events.ConnectError.rawValue, data: data)
+    if self.portalConnectDelegate != nil {
+      self.portalConnectDelegate?.portalConnect(self, didReceiveError: data)
+    } else {
+      emit(event: Events.ConnectError.rawValue, data: data)
+    }
   }
 
   func handleConnectError(data: ConnectError) {
-    var errorData = ErrorData(id: "0", topic: self.topic ?? "0", params: data)
-    emit(event: Events.ConnectError.rawValue, data: errorData)
+    let errorData = ErrorData(id: "0", topic: self.topic ?? "0", params: data)
+
+    if self.portalConnectDelegate != nil {
+      self.portalConnectDelegate?.portalConnect(self, didReceiveError: errorData)
+    } else {
+      emit(event: Events.ConnectError.rawValue, data: errorData)
+    }
   }
 
   func handleSessionRequest(data: SessionRequestData) {

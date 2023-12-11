@@ -18,7 +18,7 @@ public protocol PortalConnectDelegate: PortalProviderDelegate {
    * Called when an error is triggered on the PortalConnect instance
    * - Optional
    */
-  func portalConnect(_ connect: PortalConnect, didReceiveError: ConnectError)
+  func portalConnect(_ connect: PortalConnect, didReceiveError: ErrorData)
 
   /**
    * Called when a dApp requests a session
