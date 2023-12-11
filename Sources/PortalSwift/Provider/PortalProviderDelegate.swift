@@ -22,6 +22,14 @@ public protocol PortalProviderDelegate {
    */
   func portalProvider(_ provider: PortalProvider, didConnect: Int)
 
+  func portalProvider(_: PortalProvider, didReceiveResult result: SignerResult?, forPayload: ETHRequestPayload)
+
+  func portalProvider(
+    _: PortalProvider,
+    didReceiveResult signature: SignerResult?,
+    forPayload: ETHTransactionPayload
+  )
+
   /**
    * Called when the provider receives a request to sign
    * - Required
@@ -47,6 +55,18 @@ public extension PortalProviderDelegate {
   }
 
   func portalProvider(_: PortalProvider, didConnect _: Int) {
+    // Defaults to a no-op
+  }
+
+  func portalProvider(_: PortalProvider, didReceiveResult _: SignerResult?, forPayload _: ETHRequestPayload) {
+    // Defaults to a no-op
+  }
+
+  func portalProvider(
+    _: PortalProvider,
+    didReceiveResult _: Any?,
+    forPayload _: ETHTransactionPayload
+  ) {
     // Defaults to a no-op
   }
 }

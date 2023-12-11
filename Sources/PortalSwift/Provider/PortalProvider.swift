@@ -249,15 +249,23 @@ public class PortalProvider {
           }
 
           // Trigger `portal_signatureReceived` event
-          _ = self.emit(
-            event: Events.PortalSignatureReceived.rawValue,
-            data: RequestCompletionResult(
-              method: payloadWithId.method,
-              params: payloadWithId.params,
-              result: result,
-              id: id
+          if self.portalProviderDelegate != nil {
+            self.portalProviderDelegate?.portalProvider(
+              self,
+              didReceiveResult: result.data,
+              forPayload: payloadWithId
             )
-          )
+          } else {
+            _ = self.emit(
+              event: Events.PortalSignatureReceived.rawValue,
+              data: RequestCompletionResult(
+                method: payloadWithId.method,
+                params: payloadWithId.params,
+                result: result,
+                id: id
+              )
+            )
+          }
 
           // Trigger completion handler
           return completion(Result(data: RequestCompletionResult(method: payloadWithId.method, params: payloadWithId.params, result: result, id: id)))
@@ -307,15 +315,23 @@ public class PortalProvider {
           }
 
           // Trigger `portal_signatureReceived` event
-          _ = self.emit(
-            event: Events.PortalSignatureReceived.rawValue,
-            data: RequestCompletionResult(
-              method: payloadWithId.method,
-              params: payloadWithId.params,
-              result: result,
-              id: payloadWithId.id!
+          if self.portalProviderDelegate != nil {
+            self.portalProviderDelegate?.portalProvider(
+              self,
+              didReceiveResult: result.data,
+              forPayload: payloadWithId
             )
-          )
+          } else {
+            _ = self.emit(
+              event: Events.PortalSignatureReceived.rawValue,
+              data: TransactionCompletionResult(
+                method: payloadWithId.method,
+                params: payloadWithId.params,
+                result: result,
+                id: id
+              )
+            )
+          }
 
           // Trigger completion handler
           return completion(Result(data: TransactionCompletionResult(method: payloadWithId.method, params: payloadWithId.params, result: result, id: payloadWithId.id!)))
