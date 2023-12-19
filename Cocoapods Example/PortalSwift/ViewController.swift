@@ -67,9 +67,21 @@ class ViewController: UIViewController, UITextFieldDelegate {
   public var eth_estimate: String?
   public var passkey: PasskeyStorage?
 
+  @IBOutlet var scrollView: UIScrollView!
   override func viewDidLoad() {
     super.viewDidLoad()
+    var totalHeight: CGFloat = 0
 
+    // Add up the height of all subviews
+    for subview in self.scrollView.subviews {
+      totalHeight += subview.frame.size.height + 5
+      // Consider adding any vertical spacing between subviews if applicable
+    }
+
+    self.scrollView.contentSize = CGSize(width: self.scrollView.frame.size.width, height: totalHeight)
+
+    self.scrollView.showsVerticalScrollIndicator = true
+    self.scrollView.showsHorizontalScrollIndicator = false
     self.username?.delegate = self
     self.sendAddress?.delegate = self
     self.url?.delegate = self
