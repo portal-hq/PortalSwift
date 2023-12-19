@@ -740,7 +740,6 @@ public class PortalMpc {
     do {
       // Call api to update backup method + update backup status to `STORED_CLIENT_BACKUP_SHARE_KEY`.
       let formattedBackupMethod = self.formatBackupMethod(backupMethod: backupMethod)
-      print(formattedBackupMethod)
       try self.api.storedClientBackupShareKey(backupMethod: formattedBackupMethod) { (apiResult: Result<String>) in
         // Throw an error if we can't update the backup status + save the backup method.
         if let error = apiResult.error {

@@ -61,6 +61,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   public var CUSTODIAN_SERVER_URL: String?
   public var API_URL: String?
   public var MPC_URL: String?
+  public var RP_URL: String?
   public var PortalWrapper: PortalWrapper = Cocoapods_Example.PortalWrapper()
   public var portal: Portal?
   public var eth_estimate: String?
@@ -79,6 +80,9 @@ class ViewController: UIViewController, UITextFieldDelegate {
     let PROD_MPC_URL = "mpc.portalhq.io"
     let STAGING_API_URL = "api-staging.portalhq.io"
     let STAGING_MPC_URL = "mpc-staging.portalhq.io"
+    let PROD_RELYING_PARTY_URL = "backup.portalhq.io"
+    let STAGING_RELYING_PARTY_URL = "backup-staging.portalhq.io"
+
     guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
       print("Couldnt load info plist")
       return
@@ -92,10 +96,12 @@ class ViewController: UIViewController, UITextFieldDelegate {
       self.CUSTODIAN_SERVER_URL = PROD_CUSTODIAN_SERVER_URL
       self.API_URL = PROD_API_URL
       self.MPC_URL = PROD_MPC_URL
+      self.RP_URL = PROD_RELYING_PARTY_URL
     } else {
       self.CUSTODIAN_SERVER_URL = STAGING_CUSTODIAN_SERVER_URL
       self.API_URL = STAGING_API_URL
       self.MPC_URL = STAGING_MPC_URL
+      self.RP_URL = STAGING_RELYING_PARTY_URL
     }
 
     DispatchQueue.main.async {
@@ -242,9 +248,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBAction func handleBackup(_: UIButton!) {
     print("Starting backup...")
 
-//    self.passkey!.write(privateKey: "Yoyo") { result in
-//      print(result)
-//    }
 //    self.requestPassword { password in
 //      guard let enteredPassword = password, !enteredPassword.isEmpty else {
 //        // Handle case where no PIN was entered or the operation was canceled
@@ -603,8 +606,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 //            guard let GDRIVE_CLIENT_ID: String = infoDictionary["GDRIVE_CLIENT_ID"] as? String else {
 //              print("Error: Do you have `GDRIVE_CLIENT_ID=$(GDRIVE_CLIENT_ID)` in your info.plist?")
 //              return  }
-      self.passkey = PasskeyStorage(viewController: self, relyingParty: "553a-107-179-20-166.ngrok-free.app")
-
+      self.passkey = PasskeyStorage(viewController: self, relyingParty: self.RP_URL)
       let backup = BackupOptions(passwordStorage: PasswordStorage(), passkeyStorage: self.passkey)
 
 //            let backup = BackupOptions(gdrive: GDriveStorage(clientID: GDRIVE_CLIENT_ID, viewController: self))

@@ -109,10 +109,10 @@ public class Portal {
     if backup.icloud != nil {
       backup.icloud?.api = self.api
     }
-    print(backup)
+
     if #available(iOS 16, *) {
       if backup.passkeyStorage != nil {
-        backup.passkeyStorage?.client = self.client
+        backup.passkeyStorage?.portalApi = self.api
         backup.passkeyStorage?.apiKey = self.apiKey
       }
     }
@@ -228,12 +228,11 @@ public class Portal {
     if backup.icloud != nil {
       backup.icloud?.api = api
     }
-    print(backup)
+
     if #available(iOS 16, *) {
       if backup.passkeyStorage != nil {
-        backup.passkeyStorage?.client = self.client
+        backup.passkeyStorage?.portalApi = self.api
         backup.passkeyStorage?.apiKey = self.apiKey
-        print(backup.passkeyStorage?.apiKey!)
       }
     }
 

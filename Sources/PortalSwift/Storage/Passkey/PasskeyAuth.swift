@@ -17,15 +17,15 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
   var attestation: String?
   var assertion: String?
   // The domain of our relying party server.
-  private var domain = "trustless.portalhq.io"
+  private var domain = "backup.portalhq.io"
   var authorizationCompletion: AuthorizationCompletion?
   var registrationCompletion: RegistrationCompletion?
   deinit {
     print("PasskeyAuth is being deallocated")
   }
 
-  init(domain: String? = "trustless.portalhq.io") {
-    self.domain = domain ?? "trustless.portalhq.io"
+  init(domain: String? = "backup.portalhq.io") {
+    self.domain = domain ?? "backup.portalhq.io"
   }
 
   /// Signs a user up using passkeys to the relying party domain
@@ -89,6 +89,7 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
     let logger = Logger()
     guard let authorizationError = error as? ASAuthorizationError else {
       logger.error("Unexpected authorization error: \(error.localizedDescription)")
+      self.authorizationCompletion! (Result(error: error))
       return
     }
 
@@ -96,10 +97,20 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
       // Either the system doesn't find any credentials and the request ends silently, or the user cancels the request.
       // This is a good time to show a traditional login form, or ask the user to create an account.
       logger.log("Request canceled.")
+      if self.authorizationCompletion != nil {
+        self.authorizationCompletion!(Result(error: authorizationError))
+      } else if self.registrationCompletion != nil {
+        self.registrationCompletion!(Result(error: authorizationError))
+      }
     } else {
       // Another ASAuthorization error.
       // Note: The userInfo dictionary contains useful information.
       logger.error("Error: \((error as NSError).userInfo)")
+      if self.authorizationCompletion != nil {
+        self.authorizationCompletion!(Result(error: error as NSError))
+      } else if self.registrationCompletion != nil {
+        self.registrationCompletion!(Result(error: error as NSError))
+      }
     }
   }
 
@@ -111,7 +122,7 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
     let logger = Logger()
     switch authorization.credential {
     case let credentialRegistration as ASAuthorizationPlatformPublicKeyCredentialRegistration:
-      logger.log("A new passkey was registered: \(credentialRegistration)")
+      logger.log("A new passkey was registered")
 
       guard let attestationObject = credentialRegistration.rawAttestationObject else { return }
       let clientDataJSON = credentialRegistration.rawClientDataJSON
@@ -131,23 +142,25 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
       if let payloadJSONData = try? JSONSerialization.data(withJSONObject: payload, options: .fragmentsAllowed) {
         guard let payloadJSONText = String(data: payloadJSONData, encoding: .utf8) else { return }
         self.attestation = payloadJSONText
-        self.registrationCompletion!(self.attestation)
+        if let attestation = self.attestation {
+          self.registrationCompletion?(Result(data: attestation))
+        } else {
+          // TODO: make error more specific
+          self.registrationCompletion?(Result(error: PasskeyStorageError.writeError))
+        }
       }
 
     case let credentialAssertion as ASAuthorizationPlatformPublicKeyCredentialAssertion:
-      logger.log("A passkey was used to sign in: \(credentialAssertion)")
+      logger.log("A passkey was used to sign in")
 
       guard let signature = credentialAssertion.signature else {
-        print("Missing signature")
-        return
+        return self.authorizationCompletion!(Result(error: PasskeyAuthError.MissingSignature))
       }
       guard let authenticatorData = credentialAssertion.rawAuthenticatorData else {
-        print("Missing authenticatorData")
-        return
+        return self.authorizationCompletion!(Result(error: PasskeyAuthError.MissingAuthenticatorData))
       }
       guard let userID = credentialAssertion.userID else {
-        print("Missing userID")
-        return
+        return self.authorizationCompletion!(Result(error: PasskeyAuthError.MissingAuthenticatorData))
       }
       let clientDataJSON = credentialAssertion.rawClientDataJSON
       let credentialId = credentialAssertion.credentialID
@@ -167,11 +180,16 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
       if let payloadJSONData = try? JSONSerialization.data(withJSONObject: payload, options: .fragmentsAllowed) {
         guard let payloadJSONText = String(data: payloadJSONData, encoding: .utf8) else { return }
         self.assertion = payloadJSONText
-        self.authorizationCompletion!(self.assertion)
+        if let assertion = self.assertion {
+          self.authorizationCompletion?(Result(data: assertion))
+        } else {
+          // TODO: make error more specific
+          self.authorizationCompletion?(Result(error: PasskeyStorageError.writeError))
+        }
       }
 
     default:
-      fatalError("Received unknown authorization type.")
+      self.authorizationCompletion!(Result(error: PasskeyAuthError.ReceivedUnknownAuthorizationType))
     }
   }
 
@@ -203,6 +221,13 @@ extension Data {
   }
 }
 
-public typealias AuthorizationCompletion = (_ assertion: String?) -> Void
+public typealias AuthorizationCompletion = (_ result: Result<String>) -> Void
 
-public typealias RegistrationCompletion = (_ attestation: String?) -> Void
+public typealias RegistrationCompletion = (_ result: Result<String>) -> Void
+
+public enum PasskeyAuthError: Error {
+  case MissingSignature
+  case MissingAuthenticatorData
+  case MissingUserID
+  case ReceivedUnknownAuthorizationType
+}
