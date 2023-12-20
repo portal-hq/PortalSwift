@@ -37,19 +37,27 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var ethBalanceInformation: UITextView?
 
   // Buttons
-  @IBOutlet var backupButton: UIButton?
   @IBOutlet var dappBrowserButton: UIButton?
   @IBOutlet var generateButton: UIButton?
   @IBOutlet var logoutButton: UIButton?
   @IBOutlet var portalConnectButton: UIButton?
-  @IBOutlet var recoverButton: UIButton?
-  @IBOutlet var legacyRecoverButton: UIButton?
+
   @IBOutlet var signButton: UIButton?
   @IBOutlet var signInButton: UIButton?
   @IBOutlet var signUpButton: UIButton?
   @IBOutlet var testButton: UIButton?
   @IBOutlet var deleteKeychainButton: UIButton?
   @IBOutlet var testNFTsTrxsBalancesSimTrxButton: UIButton?
+
+  @IBOutlet var passkeyBackupButton: UIButton?
+  @IBOutlet var passkeyRecoverButton: UIButton?
+  @IBOutlet var passwordBackupButton: UIButton!
+  @IBOutlet var passwordRecoverButton: UIButton!
+  @IBOutlet var gdriveBackupButton: UIButton!
+  @IBOutlet var gdriveRecoverButton: UIButton!
+  @IBOutlet var iCloudBackupButton: UIButton!
+  @IBOutlet var iCloudRecoverButton: UIButton!
+  @IBOutlet var legacyRecoverButton: UIButton?
 
   // Send form
   @IBOutlet public var sendAddress: UITextField?
@@ -67,6 +75,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   public var eth_estimate: String?
   public var passkey: PasskeyStorage?
 
+  // Set up the scroll view
   @IBOutlet var scrollView: UIScrollView!
   override func viewDidLoad() {
     super.viewDidLoad()
@@ -108,7 +117,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       self.CUSTODIAN_SERVER_URL = PROD_CUSTODIAN_SERVER_URL
       self.API_URL = PROD_API_URL
       self.MPC_URL = PROD_MPC_URL
-      self.RP_URL = PROD_RELYING_PARTY_URL
+      self.RP_URL = STAGING_RELYING_PARTY_URL
     } else {
       self.CUSTODIAN_SERVER_URL = STAGING_CUSTODIAN_SERVER_URL
       self.API_URL = STAGING_API_URL
@@ -117,17 +126,23 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
 
     DispatchQueue.main.async {
-      self.backupButton?.isEnabled = false
       self.dappBrowserButton?.isEnabled = false
       self.generateButton?.isEnabled = false
       self.logoutButton?.isEnabled = false
       self.portalConnectButton?.isEnabled = false
-      self.recoverButton?.isEnabled = false
       self.legacyRecoverButton?.isEnabled = false
       self.signButton?.isEnabled = false
       self.signInButton?.isEnabled = false
       self.signUpButton?.isEnabled = false
       self.testButton?.isEnabled = false
+      self.passkeyBackupButton?.isEnabled = false
+      self.passkeyRecoverButton?.isEnabled = false
+      self.passwordBackupButton?.isEnabled = false
+      self.passwordRecoverButton?.isEnabled = false
+      self.gdriveBackupButton?.isEnabled = false
+      self.gdriveRecoverButton?.isEnabled = false
+      self.iCloudBackupButton?.isEnabled = false
+      self.iCloudRecoverButton?.isEnabled = false
       self.deleteKeychainButton?.isEnabled = false
       self.testNFTsTrxsBalancesSimTrxButton?.isEnabled = false
       self.sendButton?.isEnabled = false
@@ -215,16 +230,22 @@ class ViewController: UIViewController, UITextFieldDelegate {
       self.populateAddressInformation()
 
       DispatchQueue.main.async {
-        self.backupButton?.isEnabled = true
         self.dappBrowserButton?.isEnabled = true
         self.portalConnectButton?.isEnabled = true
-        self.recoverButton?.isEnabled = true
         self.legacyRecoverButton?.isEnabled = true
         self.testButton?.isEnabled = true
         self.signButton?.isEnabled = true
         self.deleteKeychainButton?.isEnabled = true
         self.testNFTsTrxsBalancesSimTrxButton?.isEnabled = true
         self.sendButton?.isEnabled = true
+        self.passkeyBackupButton?.isEnabled = true
+        self.passkeyRecoverButton?.isEnabled = true
+        self.passwordBackupButton?.isEnabled = true
+        self.passwordRecoverButton?.isEnabled = true
+        self.gdriveBackupButton?.isEnabled = true
+        self.gdriveRecoverButton?.isEnabled = true
+        self.iCloudBackupButton?.isEnabled = true
+        self.iCloudRecoverButton?.isEnabled = true
       }
     }
   }
@@ -257,81 +278,139 @@ class ViewController: UIViewController, UITextFieldDelegate {
     self.present(alertController, animated: true, completion: nil)
   }
 
-  @IBAction func handleBackup(_: UIButton!) {
-    print("Starting backup...")
-
-//    self.requestPassword { password in
-//      guard let enteredPassword = password, !enteredPassword.isEmpty else {
-//        // Handle case where no PIN was entered or the operation was canceled
-//        return
-//      }
-//      print("Entered Password:", enteredPassword)
-    do {
-      let backupConfigs = try BackupConfigs(passwordStorage: PasswordStorageConfig(password: "enteredPassword"))
-
-      // PortalWrapper.backup(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user!) { (result) -> Void in
-      self.PortalWrapper.backup(backupMethod: BackupMethods.Passkey.rawValue, user: self.user!, backupConfigs: backupConfigs) { result in
-        guard result.error == nil else {
-          print("❌ handleBackup():", result.error!)
-
-          do {
-            try self.PortalWrapper.portal!.api.storedClientBackupShare(success: false) { result in
-              guard result.error == nil else {
-                print("❌ handleBackup(): Error notifying Portal that backup share was not stored.")
-                return
-              }
-            }
-          } catch {
-            print("❌ handleBackup(): Error notifying Portal that backup share was not stored.")
-          }
-          return
-        }
-
-        do {
-          try self.PortalWrapper.portal!.api.storedClientBackupShare(success: true) { result in
-            guard result.error == nil else {
-              print("❌ handleBackup(): Error notifying Portal that backup share was stored.")
-              return
-            }
-
-            self.populateAddressInformation()
-            print("✅ handleBackup(): Successfully sent custodian cipherText")
-          }
-        } catch {
-          print("❌ handleBackup(): Error notifying Portal that backup share was stored.")
-        }
+  @IBAction func handlePasskeyBackup(_: UIButton!) {
+    print("Starting Passkey backup...")
+    self.PortalWrapper.backup(backupMethod: BackupMethods.Passkey.rawValue, user: self.user!) { result in
+      guard result.error == nil else {
+        print("❌ handlePasskeyBackup():", result.error!)
+        return
       }
-    } catch {
-      print(error)
+      self.populateAddressInformation()
+      print("✅ handlePasskeyBackup(): Successfully sent custodian cipherText")
     }
-//    }
   }
 
-  @IBAction func handleRecover(_: UIButton!) {
-    // PortalWrapper.recover(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user!) { (result) -> Void in
-//    self.requestPassword { password in
-//      guard let enteredPassword = password, !enteredPassword.isEmpty else {
-//        // Handle case where no PIN was entered or the operation was canceled
-//        return
-//      }
-//      print("Entered Password:", enteredPassword)
+  @IBAction func handlePasskeyRecover(_: UIButton!) {
+    print("Starting Passkey recover...")
 
-    do {
-      let backupConfigs = try BackupConfigs(passwordStorage: PasswordStorageConfig(password: "enteredPassword"))
-
-      self.PortalWrapper.recover(backupMethod: BackupMethods.Passkey.rawValue, user: self.user!, backupConfigs: backupConfigs) { result in
-        guard result.error == nil else {
-          print("❌ handleRecover(): Error recovering wallet:", result.error!)
-          return
-        }
-
-        self.populateAddressInformation()
-        print("✅ handleRecover(): Successfully recovered signing shares")
+    self.PortalWrapper.recover(backupMethod: BackupMethods.Passkey.rawValue, user: self.user!) { result in
+      guard result.error == nil else {
+        print("❌ handlePasskeyRecover(): Error recovering wallet:", result.error!)
+        return
       }
-    } catch {
-      print(error)
+
+      self.populateAddressInformation()
+      print("✅ handlePasskeyRecover(): Successfully recovered signing shares")
     }
-//    }
+  }
+
+  @IBAction func handlePasswordBackup(_: UIButton!) {
+    print("Starting Password backup...")
+
+    self.requestPassword { password in
+      guard let enteredPassword = password, !enteredPassword.isEmpty else {
+        // Handle case where no PIN was entered or the operation was canceled
+        return
+      }
+      print("Entered Password:", enteredPassword)
+      do {
+        let backupConfigs = try BackupConfigs(passwordStorage: PasswordStorageConfig(password: enteredPassword))
+
+        self.PortalWrapper.backup(backupMethod: BackupMethods.Password.rawValue, user: self.user!, backupConfigs: backupConfigs) { result in
+          guard result.error == nil else {
+            print("❌ handlePasswordBackup():", result.error!)
+            return
+          }
+          self.populateAddressInformation()
+          print("✅ handlePasswordBackup(): Successfully sent custodian cipherText")
+        }
+      } catch {
+        print(error)
+      }
+    }
+  }
+
+  @IBAction func handlePasswordRecover(_: UIButton!) {
+    print("Starting Password Recover...")
+
+    self.requestPassword { password in
+      guard let enteredPassword = password, !enteredPassword.isEmpty else {
+        // Handle case where no PIN was entered or the operation was canceled
+        print("User canceled pin request")
+        return
+      }
+      print("Entered Password:", enteredPassword)
+
+      do {
+        let backupConfigs = try BackupConfigs(passwordStorage: PasswordStorageConfig(password: enteredPassword))
+
+        self.PortalWrapper.recover(backupMethod: BackupMethods.Password.rawValue, user: self.user!, backupConfigs: backupConfigs) { result in
+          guard result.error == nil else {
+            print("❌ handlePasswordRecover(): Error recovering wallet:", result.error!)
+            return
+          }
+
+          self.populateAddressInformation()
+          print("✅ handlePasswordRecover(): Successfully recovered signing shares")
+        }
+      } catch {
+        print(error)
+      }
+    }
+  }
+
+  @IBAction func handleGdriveBackup(_: UIButton!) {
+    print("Starting Gdrive backup...")
+
+    self.PortalWrapper.backup(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user!) { result in
+      guard result.error == nil else {
+        print("❌ handleGdriveBackup():", result.error!)
+        return
+      }
+      self.populateAddressInformation()
+      print("✅ handleGdriveBackup(): Successfully sent custodian cipherText")
+    }
+  }
+
+  @IBAction func handleGdriveRecover(_: UIButton!) {
+    print("Starting Gdrive Recover...")
+
+    self.PortalWrapper.recover(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user!) { result in
+      guard result.error == nil else {
+        print("❌ handleGdriveRecover(): Error recovering wallet:", result.error!)
+        return
+      }
+
+      self.populateAddressInformation()
+      print("✅ handleGdriveRecover(): Successfully recovered signing shares")
+    }
+  }
+
+  @IBAction func handleiCloudBackup(_: UIButton!) {
+    print("Starting iCloud backup...")
+
+    self.PortalWrapper.backup(backupMethod: BackupMethods.iCloud.rawValue, user: self.user!) { result in
+      guard result.error == nil else {
+        print("❌ handleiCloudBackup():", result.error!)
+        return
+      }
+      self.populateAddressInformation()
+      print("✅ handleiCloudBackup(): Successfully sent custodian cipherText")
+    }
+  }
+
+  @IBAction func handleiCloudRecover(_: UIButton!) {
+    print("Starting iCloud Recover...")
+
+    self.PortalWrapper.recover(backupMethod: BackupMethods.iCloud.rawValue, user: self.user!) { result in
+      guard result.error == nil else {
+        print("❌ handleiCloudRecover(): Error recovering wallet:", result.error!)
+        return
+      }
+
+      self.populateAddressInformation()
+      print("✅ handleiCloudRecover(): Successfully recovered signing shares")
+    }
   }
 
   @IBAction func handleLegacyRecover(_: UIButton) {
@@ -612,17 +691,17 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   func registerPortalUi(apiKey: String) {
     do {
-//            guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
-//              print("Couldnt load info plist")
-//              return }
-//            guard let GDRIVE_CLIENT_ID: String = infoDictionary["GDRIVE_CLIENT_ID"] as? String else {
-//              print("Error: Do you have `GDRIVE_CLIENT_ID=$(GDRIVE_CLIENT_ID)` in your info.plist?")
-//              return  }
+      guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
+        print("Couldnt load info plist")
+        return
+      }
+      guard let GDRIVE_CLIENT_ID: String = infoDictionary["GDRIVE_CLIENT_ID"] as? String else {
+        print("Error: Do you have `GDRIVE_CLIENT_ID=$(GDRIVE_CLIENT_ID)` in your info.plist?")
+        return
+      }
       self.passkey = PasskeyStorage(viewController: self, relyingParty: self.RP_URL)
-      let backup = BackupOptions(passwordStorage: PasswordStorage(), passkeyStorage: self.passkey)
+      let backup = BackupOptions(gdrive: GDriveStorage(clientID: GDRIVE_CLIENT_ID, viewController: self), icloud: ICloudStorage(), passwordStorage: PasswordStorage(), passkeyStorage: self.passkey)
 
-//            let backup = BackupOptions(gdrive: GDriveStorage(clientID: GDRIVE_CLIENT_ID, viewController: self))
-//      let backup = BackupOptions(icloud: ICloudStorage())
       self.PortalWrapper.registerPortal(apiKey: apiKey, backup: backup, optimized: true) { _ in
         DispatchQueue.main.async {
           self.generateButton?.isEnabled = true
@@ -630,11 +709,17 @@ class ViewController: UIViewController, UITextFieldDelegate {
           let address = self.portal?.address
           let hasAddress = address?.count ?? 0 > 0
 
-          self.backupButton?.isEnabled = hasAddress
+          self.passkeyBackupButton?.isEnabled = hasAddress
           self.dappBrowserButton?.isEnabled = hasAddress
           self.portalConnectButton?.isEnabled = hasAddress
-          self.recoverButton?.isEnabled = hasAddress
+          self.passkeyRecoverButton?.isEnabled = hasAddress
           self.legacyRecoverButton?.isEnabled = hasAddress
+          self.passwordBackupButton?.isEnabled = hasAddress
+          self.passwordRecoverButton?.isEnabled = hasAddress
+          self.gdriveBackupButton?.isEnabled = hasAddress
+          self.gdriveRecoverButton?.isEnabled = hasAddress
+          self.iCloudBackupButton?.isEnabled = hasAddress
+          self.iCloudRecoverButton?.isEnabled = hasAddress
           self.testButton?.isEnabled = hasAddress
           self.signButton?.isEnabled = hasAddress
           self.deleteKeychainButton?.isEnabled = hasAddress
