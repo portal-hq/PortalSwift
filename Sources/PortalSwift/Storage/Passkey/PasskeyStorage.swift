@@ -200,7 +200,7 @@ public class PasskeyStorage: Storage {
       do {
         try self.passkeyApi.post(
           path: "/passkeys/finish-registration",
-          body: ["Attestation": attestation, "SessionId": sessionId, "EncryptionKey": privateKey],
+          body: ["attestation": attestation, "sessionId": sessionId, "encryptionKey": privateKey],
           headers: [
             "Content-Type": "application/json",
             "Authorization": "Bearer \(apiKey)",
