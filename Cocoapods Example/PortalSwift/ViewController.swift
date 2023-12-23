@@ -130,19 +130,14 @@ class ViewController: UIViewController, UITextFieldDelegate {
       self.generateButton?.isEnabled = false
       self.logoutButton?.isEnabled = false
       self.portalConnectButton?.isEnabled = false
-      self.legacyRecoverButton?.isEnabled = false
       self.signButton?.isEnabled = false
       self.signInButton?.isEnabled = false
       self.signUpButton?.isEnabled = false
       self.testButton?.isEnabled = false
       self.passkeyBackupButton?.isEnabled = false
-      self.passkeyRecoverButton?.isEnabled = false
       self.passwordBackupButton?.isEnabled = false
-      self.passwordRecoverButton?.isEnabled = false
       self.gdriveBackupButton?.isEnabled = false
-      self.gdriveRecoverButton?.isEnabled = false
       self.iCloudBackupButton?.isEnabled = false
-      self.iCloudRecoverButton?.isEnabled = false
       self.deleteKeychainButton?.isEnabled = false
       self.testNFTsTrxsBalancesSimTrxButton?.isEnabled = false
       self.sendButton?.isEnabled = false
@@ -712,10 +707,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.passkeyBackupButton?.isEnabled = hasAddress
           self.dappBrowserButton?.isEnabled = hasAddress
           self.portalConnectButton?.isEnabled = hasAddress
-          self.passkeyRecoverButton?.isEnabled = hasAddress
-          self.legacyRecoverButton?.isEnabled = hasAddress
-          self.passwordBackupButton?.isEnabled = hasAddress
-          self.passwordRecoverButton?.isEnabled = hasAddress
+
           self.gdriveBackupButton?.isEnabled = hasAddress
           self.gdriveRecoverButton?.isEnabled = hasAddress
           self.iCloudBackupButton?.isEnabled = hasAddress

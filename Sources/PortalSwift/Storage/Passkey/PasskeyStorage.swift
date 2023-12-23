@@ -97,7 +97,7 @@ public class PasskeyStorage: Storage {
     if let apiKey = self.apiKey {
       do {
         try self.passkeyApi.get(
-          path: "/passkeys/me",
+          path: "/passkeys/status",
           headers: [
             "Accept": "application/json",
             "Content-Type": "application/json",

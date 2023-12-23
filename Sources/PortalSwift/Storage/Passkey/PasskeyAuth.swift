@@ -129,10 +129,10 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
       let credentialID = credentialRegistration.credentialID
 
       // Build the attestaion object
-      let payload = ["rawId": credentialID.toBase64Url(), // Base64
-                     "id": self.base64URLEncode(credentialRegistration.credentialID), // Base64URL
-                     "authenticatorAttachment": "cross-platform", // Optional parameter
-                     "clientExtensionResults": [String: Any](), // Optional parameter
+      let payload = ["rawId": credentialID.toBase64Url(),
+                     "id": credentialID.toBase64Url(),
+                     "authenticatorAttachment": "cross-platform",
+                     "clientExtensionResults": [String: Any](),
                      "type": "public-key",
                      "response": [
                        "attestationObject": attestationObject.toBase64Url(),
@@ -165,16 +165,16 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
       let clientDataJSON = credentialAssertion.rawClientDataJSON
       let credentialId = credentialAssertion.credentialID
 
-      let payload = ["rawId": credentialId.toBase64Url(), // Base64
-                     "id": self.base64URLEncode(credentialId), // Binary
-                     "authenticatorAttachment": "cross-platform", // Optional
-                     "clientExtensionResults": [String: Any](), // Optional
+      let payload = ["rawId": credentialId.toBase64Url(),
+                     "id": credentialId.toBase64Url(),
+                     "authenticatorAttachment": "cross-platform",
+                     "clientExtensionResults": [String: Any](),
                      "type": "public-key",
                      "response": [
                        "clientDataJSON": clientDataJSON.toBase64Url(),
                        "authenticatorData": authenticatorData.toBase64Url(),
                        "signature": signature.toBase64Url(),
-                       "userHandle": self.base64URLEncode(userID),
+                       "userHandle": String(data: userID, encoding: .utf8),
                      ]] as [String: Any]
 
       if let payloadJSONData = try? JSONSerialization.data(withJSONObject: payload, options: .fragmentsAllowed) {
