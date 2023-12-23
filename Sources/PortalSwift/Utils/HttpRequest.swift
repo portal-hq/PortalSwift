@@ -118,7 +118,7 @@ public class HttpRequest<T: Codable, BodyType> {
               }
               return completion(Result(error: GatewayError.gatewayError(response: (typedData as! ETHGatewayResponse).error!, status: String(httpResponse!.statusCode))))
             }
-            return completion(Result(error: HttpError.internalServerError(httpResponse!.description)))
+            return completion(Result(error: HttpError.internalServerError("Status: \(httpResponse!.statusCode) " + String(data: data!, encoding: .utf8)!)))
           } else if httpResponse!.statusCode >= 400 {
             if self.requestType == HttpRequestType.GatewayRequest {
               var typedData: T
@@ -135,9 +135,9 @@ public class HttpRequest<T: Codable, BodyType> {
               }
               return completion(Result(error: GatewayError.gatewayError(response: (typedData as? ETHGatewayResponse)?.error! ?? ETHGatewayErrorResponse(code: 32602, message: "Unknown Error"), status: String(httpResponse!.statusCode))))
             }
-            return completion(Result(error: HttpError.clientError(httpResponse!.description)))
+            return completion(Result(error: HttpError.clientError("Status: \(httpResponse!.statusCode) " + String(data: data!, encoding: .utf8)!)))
           } else {
-            return completion(Result(error: HttpError.internalServerError(httpResponse!.description)))
+            return completion(Result(error: HttpError.internalServerError("Status: \(httpResponse!.statusCode) " + String(data: data!, encoding: .utf8)!)))
           }
         } catch {
           return completion(Result(error: error))

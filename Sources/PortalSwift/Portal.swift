@@ -110,6 +110,13 @@ public class Portal {
       backup.icloud?.api = self.api
     }
 
+    if #available(iOS 16, *) {
+      if backup.passkeyStorage != nil {
+        backup.passkeyStorage?.portalApi = self.api
+        backup.passkeyStorage?.apiKey = self.apiKey
+      }
+    }
+
     // Initialize Mpc
     self.mpc = PortalMpc(
       apiKey: apiKey,
@@ -220,6 +227,13 @@ public class Portal {
     }
     if backup.icloud != nil {
       backup.icloud?.api = api
+    }
+
+    if #available(iOS 16, *) {
+      if backup.passkeyStorage != nil {
+        backup.passkeyStorage?.portalApi = self.api
+        backup.passkeyStorage?.apiKey = self.apiKey
+      }
     }
 
     // Initialize Mpc
@@ -516,6 +530,7 @@ public enum BackupMethods: String {
   case iCloud = "icloud"
   case local
   case Password = "password"
+  case Passkey = "passkey"
 }
 
 public struct BackupConfigs {
@@ -547,6 +562,34 @@ public struct BackupOptions {
   public var icloud: ICloudStorage?
   public var passwordStorage: PasswordStorage?
   public var local: Storage?
+
+  public var _passkeyStorage: Any?
+
+  @available(iOS 16, *)
+  var passkeyStorage: PasskeyStorage? {
+    get { return self._passkeyStorage as? PasskeyStorage }
+    set { self._passkeyStorage = newValue }
+  }
+
+  /// Create the backup options for PortalSwift.
+  /// - Parameter gdrive: The instance of GDriveStorage to use for backup.
+  /// - Parameter icloud: The instance of ICloudStorage to use for backup.
+  @available(iOS 16, *)
+  public init(gdrive: GDriveStorage? = nil, icloud: ICloudStorage? = nil, passwordStorage: PasswordStorage? = nil, passkeyStorage: PasskeyStorage? = nil) {
+    self.gdrive = gdrive
+    self.icloud = icloud
+    self.passwordStorage = passwordStorage
+    self.passkeyStorage = passkeyStorage
+  }
+
+  /// Create the backup options for PortalSwift.
+  /// - Parameter gdrive: The instance of GDriveStorage to use for backup.
+  /// - Parameter icloud: The instance of ICloudStorage to use for backup.
+  public init(gdrive: GDriveStorage? = nil, icloud: ICloudStorage? = nil, passwordStorage: PasswordStorage? = nil) {
+    self.gdrive = gdrive
+    self.icloud = icloud
+    self.passwordStorage = passwordStorage
+  }
 
   /// Create the backup options for PortalSwift.
   /// - Parameter gdrive: The instance of GDriveStorage to use for backup.
@@ -587,6 +630,8 @@ public struct BackupOptions {
       return self.local
     case BackupMethods.Password.rawValue:
       return self.passwordStorage
+    case BackupMethods.Passkey.rawValue:
+      return self._passkeyStorage
     default:
       return nil
     }
