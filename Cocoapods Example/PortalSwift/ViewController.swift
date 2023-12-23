@@ -117,7 +117,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       self.CUSTODIAN_SERVER_URL = PROD_CUSTODIAN_SERVER_URL
       self.API_URL = PROD_API_URL
       self.MPC_URL = PROD_MPC_URL
-      self.RP_URL = STAGING_RELYING_PARTY_URL
+      self.RP_URL = PROD_RELYING_PARTY_URL
     } else {
       self.CUSTODIAN_SERVER_URL = STAGING_CUSTODIAN_SERVER_URL
       self.API_URL = STAGING_API_URL

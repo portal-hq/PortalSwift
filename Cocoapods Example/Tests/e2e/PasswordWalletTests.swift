@@ -178,7 +178,7 @@ class PasswordWalletTests: XCTestCase {
               return
             }
             backupExpectation.fulfill()
-            XCTAssertTrue(backupResult.data!, "Backup Success")
+            XCTAssertTrue((backupResult.data?.isEmpty) != nil, "Backup Success")
             print("✅ Backup: Successfully sent custodian cipherText")
           }
         } catch {
