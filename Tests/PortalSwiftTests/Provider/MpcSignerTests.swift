@@ -20,8 +20,8 @@ final class MpcSignerTests: XCTestCase {
     self.signer = MpcSigner(apiKey: mockApiKey, keychain: self.keychain, binary: MockMobileWrapper())
     self.provider = try PortalProvider(
       apiKey: mockApiKey,
-      chainId: 5,
-      gatewayConfig: [5: mockHost],
+      chainId: 11_155_111,
+      gatewayConfig: [11_155_111: mockHost],
       keychain: MockPortalKeychain(),
       autoApprove: true,
       gateway: MockHttpRequester(baseUrl: mockHost)

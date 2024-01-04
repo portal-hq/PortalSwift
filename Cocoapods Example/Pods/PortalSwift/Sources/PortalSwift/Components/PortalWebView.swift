@@ -69,6 +69,17 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       webView.scrollView.bounces = false
       webView.navigationDelegate = self
 
+      // Enable debugging the webview in Safari.
+      // #if directive used  to start a conditional compilation block.
+      // @WARNING: Uncomment this section to enable debugging in Safari.
+//      #if canImport(UIKit)
+//        #if targetEnvironment(simulator)
+//          if #available(iOS 16.4, *) {
+//            webView.isInspectable = true
+//          }
+//        #endif
+//      #endif
+
       return webView
     }()
   }
@@ -88,7 +99,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     self.onPageComplete = onPageComplete
 
     super.init(nibName: nil, bundle: nil)
-    
+
     self.webView = {
       let contentController = WKUserContentController()
 
@@ -153,7 +164,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   /// - Parameters:
   ///   - webView: The WKWebView instance that started loading.
   ///   - navigation: The navigation information associated with the event.
-  public func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+  public func webView(_: WKWebView, didStartProvisionalNavigation _: WKNavigation!) {
     self.onPageStart?()
   }
 

@@ -299,6 +299,8 @@
 		F8473F19A98E8C04DA797F91A71F8443 /* GIDGoogleUser.m in Sources */ = {isa = PBXBuildFile; fileRef = 244B79D9C54809E7C7B199C1489AD49A /* GIDGoogleUser.m */; };
 		F905DCE5230D62B6E207837E03ECCAF7 /* StringHTTPHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = F99591EE4A6FA4AB69D613692D72A6E9 /* StringHTTPHandler.swift */; };
 		F950D208FA4D412081B58F83807785A4 /* OIDRegistrationResponse.h in Headers */ = {isa = PBXBuildFile; fileRef = 735E5E1EFE968E115DDDBF274A8E6738 /* OIDRegistrationResponse.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		F9A4B4EF2AFC523900704485 /* PasskeyAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9A4B4EE2AFC523900704485 /* PasskeyAuth.swift */; };
+		F9A4B4F22AFD1BA900704485 /* PasskeyStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9A4B4F12AFD1BA900704485 /* PasskeyStorage.swift */; };
 		FA57677851302C0F13C69A459895DCEF /* NSBundle+GID3PAdditions.h in Headers */ = {isa = PBXBuildFile; fileRef = D0B13CB8E2380B3D8153DE8AC1D00E0D /* NSBundle+GID3PAdditions.h */; settings = {ATTRIBUTES = (Project, ); }; };
 		FA6B81B334513889F198F604F33C60F8 /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D85E9F0FEC45411E6CA2A8DBB2E56161 /* Security.framework */; };
 		FAF63FD335E3BB21EEAD330CC2ED7AC9 /* Storage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FDC993B26CD7374BFD71BDC28535357 /* Storage.swift */; };
@@ -659,7 +661,7 @@
 		9A88DB4FCA470E6AD15D81938ABAAA3F /* GTMSessionFetcher.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = GTMSessionFetcher.m; path = Sources/Core/GTMSessionFetcher.m; sourceTree = "<group>"; };
 		9BF14209A5C7E103C24DB24BF1BDF418 /* ja.lproj */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; name = ja.lproj; path = GoogleSignIn/Sources/Strings/ja.lproj; sourceTree = "<group>"; };
 		9C4B78796A6279623E5202D817FD7E3C /* GIDSignIn.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = GIDSignIn.h; path = GoogleSignIn/Sources/Public/GoogleSignIn/GIDSignIn.h; sourceTree = "<group>"; };
-		9D940727FF8FB9C785EB98E56350EF41 /* Podfile */ = {isa = PBXFileReference; explicitFileType = text.script.ruby; includeInIndex = 1; indentWidth = 2; name = Podfile; path = ../Podfile; sourceTree = SOURCE_ROOT; tabWidth = 2; xcLanguageSpecificationIdentifier = xcode.lang.ruby; };
+		9D940727FF8FB9C785EB98E56350EF41 /* Podfile */ = {isa = PBXFileReference; explicitFileType = text.script.ruby; includeInIndex = 1; indentWidth = 2; name = Podfile; path = ../Podfile; sourceTree = SOURCE_ROOT; tabWidth = 2; };
 		9E21787AC01965F085364086C0F180CD /* MpcSigner.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MpcSigner.swift; sourceTree = "<group>"; };
 		9F6899A9FE7692B4408239C373B75175 /* PortalCoreTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PortalCoreTests.swift; sourceTree = "<group>"; };
 		A064E78AC90D3C6AC6783F34541F223F /* FBSnapshotTestCase.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = FBSnapshotTestCase.release.xcconfig; sourceTree = "<group>"; };
@@ -787,6 +789,8 @@
 		F79A27A26746AE26196CABD8B2732B79 /* GDriveClient.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GDriveClient.swift; sourceTree = "<group>"; };
 		F8D7EA35E60B3E6DFB4917E429D6576A /* UIImage+Snapshot.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = "UIImage+Snapshot.h"; path = "FBSnapshotTestCase/Categories/UIImage+Snapshot.h"; sourceTree = "<group>"; };
 		F99591EE4A6FA4AB69D613692D72A6E9 /* StringHTTPHandler.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = StringHTTPHandler.swift; path = Sources/Framer/StringHTTPHandler.swift; sourceTree = "<group>"; };
+		F9A4B4EE2AFC523900704485 /* PasskeyAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasskeyAuth.swift; sourceTree = "<group>"; };
+		F9A4B4F12AFD1BA900704485 /* PasskeyStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasskeyStorage.swift; sourceTree = "<group>"; };
 		F9D608FD96C402B85C1EE1F5B7963280 /* AppHost-PortalSwift-Unit-Tests-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; name = "AppHost-PortalSwift-Unit-Tests-Info.plist"; path = "Cocoapods Example/Pods/AppHost-PortalSwift-Unit-Tests/AppHost-PortalSwift-Unit-Tests-Info.plist"; sourceTree = "<group>"; };
 		FB367A379C63040F8B0480CF9465B2C0 /* GTMKeychain.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = GTMKeychain.h; path = GTMAppAuth/Sources/Public/GTMAppAuth/GTMKeychain.h; sourceTree = "<group>"; };
 		FBD710D5EDF47A2758A8683A38EBD5CE /* Starscream-umbrella.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "Starscream-umbrella.h"; sourceTree = "<group>"; };
@@ -1459,6 +1463,7 @@
 		8A66FFBFFF6F62D4B710981537339AD2 /* Storage */ = {
 			isa = PBXGroup;
 			children = (
+				F9A4B4F02AFD1B9500704485 /* Passkey */,
 				D2D492FF128C31E233A26BF4D7D6722B /* ICloudStorage.swift */,
 				808CDF5B25EE92B6142641D53F4E3EF2 /* LocalFileStorage.swift */,
 				86289513292A8A3623A8DB144F4FD545 /* PasswordStorage.swift */,
@@ -1694,6 +1699,15 @@
 				6974734F83FBB2AA4F0AB98438BDCCE9 /* Pods-Cocoapods Example */,
 			);
 			name = "Targets Support Files";
+			sourceTree = "<group>";
+		};
+		F9A4B4F02AFD1B9500704485 /* Passkey */ = {
+			isa = PBXGroup;
+			children = (
+				F9A4B4EE2AFC523900704485 /* PasskeyAuth.swift */,
+				F9A4B4F12AFD1BA900704485 /* PasskeyStorage.swift */,
+			);
+			path = Passkey;
 			sourceTree = "<group>";
 		};
 		FACA82494398422542A7105834AA89E2 /* Storage */ = {
@@ -2574,10 +2588,12 @@
 				11478DF0BD5A4420BF80520AE8798A5F /* MockMpcMobile.swift in Sources */,
 				916CBB130A9ED000FCE5BD753249E709 /* MockMpcMobileErrors.swift in Sources */,
 				9BDA081FECE99C4B89B3A5EC51FCBE0E /* MockPortal.swift in Sources */,
+				F9A4B4F22AFD1BA900704485 /* PasskeyStorage.swift in Sources */,
 				626DBC647CE8AB86F13C7E6772D32998 /* MockPortalApi.swift in Sources */,
 				A781CD804D0399CAC5DA80C0C670422C /* MockPortalKeychain.swift in Sources */,
 				4F56E0BB9445B6FB4BC615C46F41B26B /* MockPortalMpc.swift in Sources */,
 				1668B8211BF156D49B94B82A6F3C8EFB /* MockPortalProvider.swift in Sources */,
+				F9A4B4EF2AFC523900704485 /* PasskeyAuth.swift in Sources */,
 				756FC9F0D3DCD0B4D2ACDE24CAB95CA1 /* MockStorage.swift in Sources */,
 				175169EB272D3B02B366E6A208AB2E15 /* MpcMobile.swift in Sources */,
 				8197B2DB788F74B10624C50B1E11217A /* MpcMobileProtocol.swift in Sources */,
@@ -3045,14 +3061,14 @@
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = YES;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
-				"CODE_SIGN_IDENTITY[sdk=watchos*]" = "";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = WTQ4Q66FY6;
 				GCC_PREFIX_HEADER = "Target Support Files/PortalSwift/PortalSwift-Unit-Tests-prefix.pch";
 				INFOPLIST_FILE = "Target Support Files/PortalSwift/PortalSwift-Unit-Tests-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				PRODUCT_NAME = "PortalSwift-Unit-Tests";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) ";
 				SWIFT_VERSION = 5.0;
@@ -3103,14 +3119,14 @@
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = YES;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
-				"CODE_SIGN_IDENTITY[sdk=watchos*]" = "";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = WTQ4Q66FY6;
 				GCC_PREFIX_HEADER = "Target Support Files/PortalSwift/PortalSwift-Unit-Tests-prefix.pch";
 				INFOPLIST_FILE = "Target Support Files/PortalSwift/PortalSwift-Unit-Tests-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				PRODUCT_NAME = "PortalSwift-Unit-Tests";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) ";
 				SWIFT_VERSION = 5.0;

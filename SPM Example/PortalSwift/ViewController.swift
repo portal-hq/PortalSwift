@@ -8,6 +8,8 @@
 
 import PortalSwift
 import UIKit
+import Web3
+import Web3ContractABI
 
 struct SignUpBody: Codable {
   var username: String
@@ -430,7 +432,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   func getTransactions() {
     do {
-      try self.portal?.api.getTransactions(limit: 100, offset: 0, order: GetTransactionsOrder.asc, chainId: 5) { results in
+      try self.portal?.api.getTransactions(limit: 100, offset: 0, order: GetTransactionsOrder.asc, chainId: 11_155_111) { results in
         guard results.error == nil else {
           print("❌ Unable to get transactions", results.error ?? "")
           return
@@ -563,6 +565,88 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
 
       print("✅ handleSign(): Successfully signed:", result.data ?? "")
+    }
+  }
+
+  @IBAction func sendERC20Token() {
+    let tokenAddress = "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984"
+    let toAddress = "0xdFd8302f44727A6348F702fF7B594f127dE3A902"
+
+    // Get the Gateway URL from the Portal Provider
+    guard let gatewayUrl = portal?.provider.gatewayUrl else {
+      return
+    }
+
+    // Ensure the Portal Address is set
+    guard let address = portal?.address else {
+      // Probably throw an error here
+      return
+    }
+
+    // Initialize Web3
+    let web3 = Web3(rpcURL: gatewayUrl)
+
+    do {
+      // Transform the receiver address
+      let receiverAddress = try EthereumAddress(hex: toAddress, eip55: false) // eip55 is dependent on the wallet receiving funds
+
+      // Transfor the sender address
+      let senderAddress = try EthereumAddress(hex: address, eip55: false) // eip55 will be false for Portal MPC Wallets
+
+      // Transform the token address
+      let tokenContractAddress = try EthereumAddress(hex: tokenAddress, eip55: true) // eip55 will be true for Token Contracts
+
+      // Initialize the token contract
+      let contract = web3.eth.Contract(
+        type: GenericERC20Contract.self,
+        address: tokenContractAddress
+      )
+
+      web3.eth.getTransactionCount(
+        address: senderAddress,
+        block: .latest
+      ) { response in
+        guard let nonce = response.result else {
+          print("Error fetching nonce")
+          return
+        }
+
+        // Generate the transaction for Portal to execute
+        guard let tx = contract
+          .transfer(to: receiverAddress, value: 10_000_000_000)
+          .createTransaction(
+            nonce: nonce, // Here you'd want to provide the actual nonce for this transaction
+            gasPrice: EthereumQuantity(quantity: 21.gwei),
+            maxFeePerGas: nil,
+            maxPriorityFeePerGas: nil,
+            gasLimit: 100_000,
+            from: senderAddress,
+            value: 0,
+            accessList: [:],
+            transactionType: .legacy
+          ) else { return }
+
+        // Ensure gasPrice was properly set
+        guard let gasPrice = tx.gasPrice?.hex() else {
+          // Probably throw an error here
+          return
+        }
+
+        // Send the transaction
+        self.portal?.ethSendTransaction(transaction: ETHTransactionParam(
+          from: address,
+          to: tokenAddress,
+          gasPrice: gasPrice,
+          value: "0x0",
+          data: tx.data.hex(),
+          nonce: tx.nonce?.hex()
+        )) { (result: Result<TransactionCompletionResult>) in
+          // Handle result of submitting transaction
+          print("Result: ", result)
+        }
+      }
+    } catch {
+      // Handle errors
     }
   }
 
