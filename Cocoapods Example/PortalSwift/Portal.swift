@@ -99,7 +99,7 @@ class PortalWrapper {
     case cantLoadInfoPlist
   }
 
-  func registerPortal(apiKey: String, backup: BackupOptions, chainId: Int = 5, optimized: Bool = false, completion: @escaping (Result<Bool>) -> Void) {
+  func registerPortal(apiKey: String, backup: BackupOptions, chainId: Int = 11_155_111, optimized: Bool = false, completion: @escaping (Result<Bool>) -> Void) {
     do {
       guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
         return completion(Result(error: PortalWrapperError.cantLoadInfoPlist))
@@ -109,6 +109,7 @@ class PortalWrapper {
         return
       }
       let keychain = PortalKeychain()
+
       // Configure the chain.
       self.portal = try Portal(
         apiKey: apiKey,
@@ -116,7 +117,7 @@ class PortalWrapper {
         chainId: chainId,
         keychain: keychain,
         gatewayConfig: [
-          5: "https://eth-goerli.g.alchemy.com/v2/\(ALCHEMY_API_KEY)", 1: "https://eth-mainnet.g.alchemy.com/v2/\(ALCHEMY_API_KEY)", 80001: "https://polygon-mumbai.g.alchemy.com/v2/\(ALCHEMY_API_KEY)", 137: "https://polygon-mainnet.g.alchemy.com/v2/\(ALCHEMY_API_KEY)",
+          11_155_111: "https://eth-sepolia.g.alchemy.com/v2/\(ALCHEMY_API_KEY)", 1: "https://eth-mainnet.g.alchemy.com/v2/\(ALCHEMY_API_KEY)", 80001: "https://polygon-mumbai.g.alchemy.com/v2/\(ALCHEMY_API_KEY)", 137: "https://polygon-mainnet.g.alchemy.com/v2/\(ALCHEMY_API_KEY)",
         ],
         autoApprove: false,
         apiHost: self.API_URL!,
@@ -157,10 +158,21 @@ class PortalWrapper {
     }
   }
 
-  func backup(backupMethod: BackupMethods.RawValue, user: UserResult, backupConfigs: BackupConfigs? = nil, completion: @escaping (Result<Bool>) -> Void) {
+  func backup(backupMethod: BackupMethods.RawValue, user: UserResult, backupConfigs: BackupConfigs? = nil, completion: @escaping (Result<String>) -> Void) {
     self.portal?.backupWallet(method: backupMethod, backupConfigs: backupConfigs) { (result: Result<String>) in
       guard result.error == nil else {
-        return completion(Result(error: result.error!))
+        do {
+          try self.portal?.api.storedClientBackupShare(success: false) { result in
+            guard result.error == nil else {
+              print("❌ handleBackup(): Error notifying Portal that backup share was not stored.")
+              return completion(Result(error: result.error!))
+            }
+          }
+        } catch {
+          print("❌ handleBackup(): Error notifying Portal that backup share was not stored.")
+          return completion(Result(error: error))
+        }
+        return completion(result)
       }
       let request = HttpRequest<String, [String: String]>(
         url: self.CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/cipher-text",
@@ -171,7 +183,17 @@ class PortalWrapper {
       )
 
       request.send { (_: Result<String>) in
-        completion(Result(data: true))
+        do {
+          try self.portal!.api.storedClientBackupShare(success: true) { result in
+            guard result.error == nil else {
+              print("❌ handleBackup(): Error notifying Portal that backup share was stored.")
+              return completion(result)
+            }
+            completion(result)
+          }
+        } catch {
+          print("❌ handleBackup(): Error notifying Portal that backup share was stored.")
+        }
       }
     } progress: { status in
       print("Backup Status: ", status)

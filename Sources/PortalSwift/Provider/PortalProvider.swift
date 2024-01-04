@@ -748,7 +748,7 @@ public class PortalProvider {
   /// Determines the appropriate Gateway URL to use for the current chainId
   /// - Parameters:
   ///   - gatewayConfig: A dictionary of chainIds (keys) and gateway URLs (values).
-  ///   - chainId: The chainId we should use, such as 5 (Goerli).
+  ///   - chainId: The chainId we should use, such as 11155111 (Sepolia).
   /// - Throws: PortalArgumentError.noGatewayConfigForChain with the chainId.
   /// - Returns: The URL to be used for Gateway requests.
   static func getGatewayUrl(gatewayConfig: [Int: String], chainId: Int) throws -> String {
@@ -770,6 +770,7 @@ public enum Chains: Int {
   case Ropsten = 3
   case Rinkeby = 4
   case Goerli = 5
+  case Sepolia = 11_155_111
   case Kovan = 42
 }
 

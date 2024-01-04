@@ -28,13 +28,13 @@ public class MockPortalApi: PortalApi {
   }
 
   override public func getEnabledDapps(completion: @escaping (Result<[Dapp]>) -> Void) {
-    if let dapps = dapps {
+    if let dapps {
       completion(Result(data: dapps))
     }
   }
 
   override public func getSupportedNetworks(completion: @escaping (Result<[ContractNetwork]>) -> Void) {
-    if let networks = networks {
+    if let networks {
       completion(Result(data: networks))
     }
   }
@@ -55,13 +55,11 @@ public class MockPortalApi: PortalApi {
     completion: @escaping (Result<String>) -> Void
   ) throws {
     // Mock response based on the success parameter
-    let mockResponse: Result<String>
     if success {
-      mockResponse = Result(data: "Backup share successfully stored")
+      completion(Result(data: "Backup share successfully stored"))
     } else {
-      mockResponse = Result(error: NSError(domain: "MockError", code: 0, userInfo: nil))
+      completion(Result<String>(error: NSError(domain: "MockError", code: 0, userInfo: nil)))
     }
-    completion(mockResponse)
   }
 
   // Mocking the storedClientBackupShare function
@@ -71,6 +69,21 @@ public class MockPortalApi: PortalApi {
   ) throws {
     // Mock response based on the success parameter
     let mockResponse = Result(data: "Backup share key successfully stored")
+    completion(mockResponse)
+  }
+
+  override public func identify(traits _: [String: Any] = [:], completion: @escaping (Result<MetricsResponse>) -> Void) throws {
+    let mockResponse = Result(data: MetricsResponse(status: true))
+
+    completion(mockResponse)
+  }
+
+  override public func track(event _: String, properties _: [String: Any], completion: ((Result<MetricsResponse>) -> Void)? = nil) {
+    let mockResponse = Result(data: MetricsResponse(status: true))
+    guard let completion else {
+      return
+    }
+
     completion(mockResponse)
   }
 }

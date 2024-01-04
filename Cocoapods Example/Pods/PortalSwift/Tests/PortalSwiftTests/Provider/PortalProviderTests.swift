@@ -16,8 +16,8 @@ final class PortalProviderTests: XCTestCase {
     // Put setup code here. This method is called before the invocation of each test method in the class.
     self.provider = try PortalProvider(
       apiKey: mockApiKey,
-      chainId: 5,
-      gatewayConfig: [5: mockHost],
+      chainId: 11_155_111,
+      gatewayConfig: [11_155_111: mockHost],
       keychain: MockPortalKeychain(),
       autoApprove: true,
       gateway: MockHttpRequester(baseUrl: mockHost)
@@ -264,7 +264,7 @@ final class PortalProviderTests: XCTestCase {
       }
 
       XCTAssert(!version.isEmpty, "Net version (chain id) should not be empty")
-      XCTAssert(version == "5", "Net version (chain id) should be empty 5 for goerli")
+      XCTAssert(version == "11155111", "Net version (chain id) should be 11155111 for Sepolia")
 
       expectation.fulfill()
     }

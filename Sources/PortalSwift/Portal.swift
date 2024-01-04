@@ -27,6 +27,7 @@ public class Portal {
   public let backup: BackupOptions
   public var client: Client?
   public let gatewayConfig: [Int: String]
+  public let isMocked: Bool
   public let keychain: PortalKeychain
   public let api: PortalApi
   public let mpc: PortalMpc
@@ -63,17 +64,19 @@ public class Portal {
     autoApprove: Bool = false,
     apiHost: String = "api.portalhq.io",
     mpcHost: String = "mpc.portalhq.io",
-    featureFlags: FeatureFlags? = nil
+    featureFlags: FeatureFlags? = nil,
+    isMocked: Bool = false
   ) throws {
     // Basic setup
-    self.binary = MobileWrapper()
+    self.binary = isMocked ? MockMobileWrapper() : MobileWrapper()
     self.apiHost = apiHost
     self.apiKey = apiKey
     self.autoApprove = autoApprove
     self.backup = backup
     self.gatewayConfig = gatewayConfig
-    self.client = try Portal.getClient(apiHost, apiKey, self.binary)
+    self.client = try Portal.getClient(apiHost, apiKey, self.binary, isMocked: isMocked)
     keychain.clientId = self.client?.id
+    self.isMocked = isMocked
     self.keychain = keychain
     self.mpcHost = mpcHost
     self.version = version
@@ -93,7 +96,7 @@ public class Portal {
       apiHost: apiHost,
       mpcHost: mpcHost,
       version: version,
-      featureFlags: self.featureFlags
+      featureFlags: featureFlags
     )
 
     // Initialize the Portal API
@@ -105,6 +108,13 @@ public class Portal {
     }
     if backup.icloud != nil {
       backup.icloud?.api = self.api
+    }
+
+    if #available(iOS 16, *) {
+      if backup.passkeyStorage != nil {
+        backup.passkeyStorage?.portalApi = self.api
+        backup.passkeyStorage?.apiKey = self.apiKey
+      }
     }
 
     // Initialize Mpc
@@ -130,7 +140,7 @@ public class Portal {
     }
   }
 
-  /// Create a Portal instance.
+  /// Create a Portal instance. This initializer is used by unit tests and mocks.
   /// - Parameters:
   ///   - apiKey: The Client API key. You can obtain this through Portal's REST API.
   ///   - backup: The backup options to use.
@@ -161,7 +171,8 @@ public class Portal {
     mpc: PortalMpc?,
     api: PortalApi?,
     binary: Mobile?,
-    featureFlags: FeatureFlags? = nil
+    featureFlags: FeatureFlags? = nil,
+    isMocked: Bool = false
   ) throws {
     // Basic setup
     self.apiHost = apiHost
@@ -170,8 +181,9 @@ public class Portal {
     self.backup = backup
     self.gatewayConfig = gatewayConfig
     self.binary = binary ?? MobileWrapper()
-    self.client = try Portal.getClient(apiHost, apiKey, self.binary)
+    self.client = try Portal.getClient(apiHost, apiKey, self.binary, isMocked: isMocked)
     keychain.clientId = self.client?.id
+    self.isMocked = isMocked
     self.keychain = keychain
     self.mpcHost = mpcHost
     self.version = version
@@ -182,17 +194,29 @@ public class Portal {
     }
 
     // Initialize the PortalProvider
-    self.provider = try PortalProvider(
-      apiKey: apiKey,
-      chainId: chainId,
-      gatewayConfig: gatewayConfig,
-      keychain: keychain,
-      autoApprove: autoApprove,
-      apiHost: apiHost,
-      mpcHost: mpcHost,
-      version: version,
-      featureFlags: featureFlags
-    )
+    self.provider = isMocked
+      ? try MockPortalProvider(
+        apiKey: apiKey,
+        chainId: chainId,
+        gatewayConfig: gatewayConfig,
+        keychain: keychain,
+        autoApprove: autoApprove,
+        apiHost: apiHost,
+        mpcHost: mpcHost,
+        version: version,
+        featureFlags: featureFlags
+      )
+      : try PortalProvider(
+        apiKey: apiKey,
+        chainId: chainId,
+        gatewayConfig: gatewayConfig,
+        keychain: keychain,
+        autoApprove: autoApprove,
+        apiHost: apiHost,
+        mpcHost: mpcHost,
+        version: version,
+        featureFlags: featureFlags
+      )
 
     // Initialize the Portal API
     self.api = api ?? PortalApi(apiKey: apiKey, apiHost: apiHost, provider: self.provider)
@@ -203,6 +227,13 @@ public class Portal {
     }
     if backup.icloud != nil {
       backup.icloud?.api = api
+    }
+
+    if #available(iOS 16, *) {
+      if backup.passkeyStorage != nil {
+        backup.passkeyStorage?.portalApi = self.api
+        backup.passkeyStorage?.apiKey = self.apiKey
+      }
     }
 
     // Initialize Mpc
@@ -284,6 +315,38 @@ public class Portal {
     _ = self.provider.emit(event: event, data: data)
   }
 
+  public func ethEstimateGas(
+    transaction: ETHTransactionParam,
+    completion: @escaping (Result<RequestCompletionResult>) -> Void
+  ) {
+    self.provider.request(payload: ETHRequestPayload(
+      method: ETHRequestMethods.EstimateGas.rawValue,
+      params: [transaction]
+    ), completion: completion)
+  }
+
+  public func ethGasPrice(
+    completion: @escaping (Result<RequestCompletionResult>) -> Void
+  ) {
+    self.provider.request(payload: ETHRequestPayload(
+      method: ETHRequestMethods.GasPrice.rawValue,
+      params: []
+    ), completion: completion)
+  }
+
+  public func ethGetBalance(
+    completion: @escaping (Result<RequestCompletionResult>) -> Void
+  ) {
+    guard let address = provider.address else {
+      completion(Result(error: PortalProviderError.noAddress))
+      return
+    }
+    self.provider.request(payload: ETHRequestPayload(
+      method: ETHRequestMethods.GetBalance.rawValue,
+      params: [address, "latest"]
+    ), completion: completion)
+  }
+
   public func ethSendTransaction(
     transaction: ETHTransactionParam,
     completion: @escaping (Result<TransactionCompletionResult>) -> Void
@@ -346,19 +409,6 @@ public class Portal {
     self.provider.request(payload: ETHRequestPayload(
       method: ETHRequestMethods.SignTypedDataV4.rawValue,
       params: [address, message]
-    ), completion: completion)
-  }
-
-  public func ethGetBalance(
-    completion: @escaping (Result<RequestCompletionResult>) -> Void
-  ) {
-    guard let address = provider.address else {
-      completion(Result(error: PortalProviderError.noAddress))
-      return
-    }
-    self.provider.request(payload: ETHRequestPayload(
-      method: ETHRequestMethods.GetBalance.rawValue,
-      params: [address, "latest"]
     ), completion: completion)
   }
 
@@ -443,12 +493,12 @@ public class Portal {
    * Private Methods
    ****************************************/
 
-  private static func getClient(_ apiHost: String, _ apiKey: String, _ mobile: Mobile) throws -> Client {
+  private static func getClient(_ apiHost: String, _ apiKey: String, _ mobile: Mobile, isMocked: Bool) throws -> Client {
     // Create URL.
     let apiUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
 
     // Call the MPC service to retrieve the client.
-    let response = mobile.MobileGetMe("\(apiUrl)/api/v1/clients/me", apiKey)
+    let response = isMocked ? mockClientResult : mobile.MobileGetMe("\(apiUrl)/api/v1/clients/me", apiKey)
 
     // Parse the client.
     let jsonData = response.data(using: .utf8)!
@@ -480,6 +530,7 @@ public enum BackupMethods: String {
   case iCloud = "icloud"
   case local
   case Password = "password"
+  case Passkey = "passkey"
 }
 
 public struct BackupConfigs {
@@ -511,6 +562,34 @@ public struct BackupOptions {
   public var icloud: ICloudStorage?
   public var passwordStorage: PasswordStorage?
   public var local: Storage?
+
+  public var _passkeyStorage: Any?
+
+  @available(iOS 16, *)
+  var passkeyStorage: PasskeyStorage? {
+    get { return self._passkeyStorage as? PasskeyStorage }
+    set { self._passkeyStorage = newValue }
+  }
+
+  /// Create the backup options for PortalSwift.
+  /// - Parameter gdrive: The instance of GDriveStorage to use for backup.
+  /// - Parameter icloud: The instance of ICloudStorage to use for backup.
+  @available(iOS 16, *)
+  public init(gdrive: GDriveStorage? = nil, icloud: ICloudStorage? = nil, passwordStorage: PasswordStorage? = nil, passkeyStorage: PasskeyStorage? = nil) {
+    self.gdrive = gdrive
+    self.icloud = icloud
+    self.passwordStorage = passwordStorage
+    self.passkeyStorage = passkeyStorage
+  }
+
+  /// Create the backup options for PortalSwift.
+  /// - Parameter gdrive: The instance of GDriveStorage to use for backup.
+  /// - Parameter icloud: The instance of ICloudStorage to use for backup.
+  public init(gdrive: GDriveStorage? = nil, icloud: ICloudStorage? = nil, passwordStorage: PasswordStorage? = nil) {
+    self.gdrive = gdrive
+    self.icloud = icloud
+    self.passwordStorage = passwordStorage
+  }
 
   /// Create the backup options for PortalSwift.
   /// - Parameter gdrive: The instance of GDriveStorage to use for backup.
@@ -551,6 +630,8 @@ public struct BackupOptions {
       return self.local
     case BackupMethods.Password.rawValue:
       return self.passwordStorage
+    case BackupMethods.Passkey.rawValue:
+      return self._passkeyStorage
     default:
       return nil
     }

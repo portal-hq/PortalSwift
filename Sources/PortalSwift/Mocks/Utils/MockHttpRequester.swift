@@ -71,7 +71,7 @@ public class MockHttpRequester: HttpRequester {
       completion(Result(data: mockResponse as! T))
 
     case "net_version":
-      let mockResponse = ETHGatewayResponse(jsonrpc: "2.0", result: "5")
+      let mockResponse = ETHGatewayResponse(jsonrpc: "2.0", result: "11155111")
       completion(Result(data: mockResponse as! T))
 
     case "eth_newBlockFilter":
