@@ -705,6 +705,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
           let hasAddress = address?.count ?? 0 > 0
 
           self.passkeyBackupButton?.isEnabled = hasAddress
+          self.passwordBackupButton?.isEnabled = hasAddress
           self.dappBrowserButton?.isEnabled = hasAddress
           self.portalConnectButton?.isEnabled = hasAddress
 
