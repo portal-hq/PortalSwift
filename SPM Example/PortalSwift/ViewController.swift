@@ -8,8 +8,6 @@
 
 import PortalSwift
 import UIKit
-import Web3
-import Web3ContractABI
 
 struct SignUpBody: Codable {
   var username: String
@@ -33,25 +31,34 @@ struct ProviderAddressRequest {
   var skipLoggingResult: Bool
 }
 
+@available(iOS 16.0, *)
 class ViewController: UIViewController, UITextFieldDelegate {
   // Static information
   @IBOutlet var addressInformation: UITextView?
   @IBOutlet var ethBalanceInformation: UITextView?
 
   // Buttons
-  @IBOutlet var backupButton: UIButton?
   @IBOutlet var dappBrowserButton: UIButton?
   @IBOutlet var generateButton: UIButton?
   @IBOutlet var logoutButton: UIButton?
   @IBOutlet var portalConnectButton: UIButton?
-  @IBOutlet var recoverButton: UIButton?
-  @IBOutlet var legacyRecoverButton: UIButton?
+
   @IBOutlet var signButton: UIButton?
   @IBOutlet var signInButton: UIButton?
   @IBOutlet var signUpButton: UIButton?
   @IBOutlet var testButton: UIButton?
   @IBOutlet var deleteKeychainButton: UIButton?
   @IBOutlet var testNFTsTrxsBalancesSimTrxButton: UIButton?
+
+  @IBOutlet var passkeyBackupButton: UIButton?
+  @IBOutlet var passkeyRecoverButton: UIButton?
+  @IBOutlet var passwordBackupButton: UIButton!
+  @IBOutlet var passwordRecoverButton: UIButton!
+  @IBOutlet var gdriveBackupButton: UIButton!
+  @IBOutlet var gdriveRecoverButton: UIButton!
+  @IBOutlet var iCloudBackupButton: UIButton!
+  @IBOutlet var iCloudRecoverButton: UIButton!
+  @IBOutlet var legacyRecoverButton: UIButton?
 
   // Send form
   @IBOutlet public var sendAddress: UITextField?
@@ -63,15 +70,28 @@ class ViewController: UIViewController, UITextFieldDelegate {
   public var CUSTODIAN_SERVER_URL: String?
   public var API_URL: String?
   public var MPC_URL: String?
+  public var RP_URL: String?
   public var PortalWrapper: PortalWrapper = SPM_Example.PortalWrapper()
   public var portal: Portal?
   public var eth_estimate: String?
+  public var passkey: PasskeyStorage?
 
+  // Set up the scroll view
+  @IBOutlet var scrollView: UIScrollView!
   override func viewDidLoad() {
     super.viewDidLoad()
+    var totalHeight: CGFloat = 0
 
-    print("PortalWrapper: ", self.PortalWrapper)
+    // Add up the height of all subviews
+    for subview in self.scrollView.subviews {
+      totalHeight += subview.frame.size.height + 5
+      // Consider adding any vertical spacing between subviews if applicable
+    }
 
+    self.scrollView.contentSize = CGSize(width: self.scrollView.frame.size.width, height: totalHeight)
+
+    self.scrollView.showsVerticalScrollIndicator = true
+    self.scrollView.showsHorizontalScrollIndicator = false
     self.username?.delegate = self
     self.sendAddress?.delegate = self
     self.url?.delegate = self
@@ -82,8 +102,14 @@ class ViewController: UIViewController, UITextFieldDelegate {
     let PROD_MPC_URL = "mpc.portalhq.io"
     let STAGING_API_URL = "api-staging.portalhq.io"
     let STAGING_MPC_URL = "mpc-staging.portalhq.io"
+    let PROD_RELYING_PARTY_URL = "backup.portalhq.io"
+    let STAGING_RELYING_PARTY_URL = "backup-staging.portalhq.io"
 
-    guard let ENV: String = Bundle.main.infoDictionary?["ENV"] as? String else {
+    guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
+      print("Couldnt load info plist")
+      return
+    }
+    guard let ENV: String = infoDictionary["ENV"] as? String else {
       print("Error: Do you have `ENV=$(ENV)` in your info.plist?")
       return
     }
@@ -92,24 +118,27 @@ class ViewController: UIViewController, UITextFieldDelegate {
       self.CUSTODIAN_SERVER_URL = PROD_CUSTODIAN_SERVER_URL
       self.API_URL = PROD_API_URL
       self.MPC_URL = PROD_MPC_URL
+      self.RP_URL = PROD_RELYING_PARTY_URL
     } else {
       self.CUSTODIAN_SERVER_URL = STAGING_CUSTODIAN_SERVER_URL
       self.API_URL = STAGING_API_URL
       self.MPC_URL = STAGING_MPC_URL
+      self.RP_URL = STAGING_RELYING_PARTY_URL
     }
 
     DispatchQueue.main.async {
-      self.backupButton?.isEnabled = false
       self.dappBrowserButton?.isEnabled = false
       self.generateButton?.isEnabled = false
       self.logoutButton?.isEnabled = false
       self.portalConnectButton?.isEnabled = false
-      self.recoverButton?.isEnabled = false
-      self.legacyRecoverButton?.isEnabled = false
       self.signButton?.isEnabled = false
       self.signInButton?.isEnabled = false
       self.signUpButton?.isEnabled = false
       self.testButton?.isEnabled = false
+      self.passkeyBackupButton?.isEnabled = false
+      self.passwordBackupButton?.isEnabled = false
+      self.gdriveBackupButton?.isEnabled = false
+      self.iCloudBackupButton?.isEnabled = false
       self.deleteKeychainButton?.isEnabled = false
       self.testNFTsTrxsBalancesSimTrxButton?.isEnabled = false
       self.sendButton?.isEnabled = false
@@ -197,16 +226,22 @@ class ViewController: UIViewController, UITextFieldDelegate {
       self.populateAddressInformation()
 
       DispatchQueue.main.async {
-        self.backupButton?.isEnabled = true
         self.dappBrowserButton?.isEnabled = true
         self.portalConnectButton?.isEnabled = true
-        self.recoverButton?.isEnabled = true
         self.legacyRecoverButton?.isEnabled = true
         self.testButton?.isEnabled = true
         self.signButton?.isEnabled = true
         self.deleteKeychainButton?.isEnabled = true
         self.testNFTsTrxsBalancesSimTrxButton?.isEnabled = true
         self.sendButton?.isEnabled = true
+        self.passkeyBackupButton?.isEnabled = true
+        self.passkeyRecoverButton?.isEnabled = true
+        self.passwordBackupButton?.isEnabled = true
+        self.passwordRecoverButton?.isEnabled = true
+        self.gdriveBackupButton?.isEnabled = true
+        self.gdriveRecoverButton?.isEnabled = true
+        self.iCloudBackupButton?.isEnabled = true
+        self.iCloudRecoverButton?.isEnabled = true
       }
     }
   }
@@ -239,8 +274,35 @@ class ViewController: UIViewController, UITextFieldDelegate {
     self.present(alertController, animated: true, completion: nil)
   }
 
-  @IBAction func handleBackup(_: UIButton!) {
-    print("Starting backup...")
+  @IBAction func handlePasskeyBackup(_: UIButton!) {
+    print("Starting Passkey backup...")
+    self.PortalWrapper.backup(backupMethod: BackupMethods.Passkey.rawValue, user: self.user!) { result in
+      guard result.error == nil else {
+        print("❌ handlePasskeyBackup():", result.error!)
+        return
+      }
+      self.populateAddressInformation()
+      print("✅ handlePasskeyBackup(): Successfully sent custodian cipherText")
+    }
+  }
+
+  @IBAction func handlePasskeyRecover(_: UIButton!) {
+    print("Starting Passkey recover...")
+
+    self.PortalWrapper.recover(backupMethod: BackupMethods.Passkey.rawValue, user: self.user!) { result in
+      guard result.error == nil else {
+        print("❌ handlePasskeyRecover(): Error recovering wallet:", result.error!)
+        return
+      }
+
+      self.populateAddressInformation()
+      print("✅ handlePasskeyRecover(): Successfully recovered signing shares")
+    }
+  }
+
+  @IBAction func handlePasswordBackup(_: UIButton!) {
+    print("Starting Password backup...")
+
     self.requestPassword { password in
       guard let enteredPassword = password, !enteredPassword.isEmpty else {
         // Handle case where no PIN was entered or the operation was canceled
@@ -250,37 +312,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
       do {
         let backupConfigs = try BackupConfigs(passwordStorage: PasswordStorageConfig(password: enteredPassword))
 
-        // PortalWrapper.backup(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user!) { (result) -> Void in
         self.PortalWrapper.backup(backupMethod: BackupMethods.Password.rawValue, user: self.user!, backupConfigs: backupConfigs) { result in
           guard result.error == nil else {
-            print("❌ handleBackup():", result.error!)
-
-            do {
-              try self.PortalWrapper.portal!.api.storedClientBackupShare(success: false) { result in
-                guard result.error == nil else {
-                  print("❌ handleBackup(): Error notifying Portal that backup share was not stored.")
-                  return
-                }
-              }
-            } catch {
-              print("❌ handleBackup(): Error notifying Portal that backup share was not stored.")
-            }
+            print("❌ handlePasswordBackup():", result.error!)
             return
           }
-
-          do {
-            try self.PortalWrapper.portal!.api.storedClientBackupShare(success: true) { result in
-              guard result.error == nil else {
-                print("❌ handleBackup(): Error notifying Portal that backup share was stored.")
-                return
-              }
-
-              self.populateAddressInformation()
-              print("✅ handleBackup(): Successfully sent custodian cipherText")
-            }
-          } catch {
-            print("❌ handleBackup(): Error notifying Portal that backup share was stored.")
-          }
+          self.populateAddressInformation()
+          print("✅ handlePasswordBackup(): Successfully sent custodian cipherText")
         }
       } catch {
         print(error)
@@ -288,29 +326,86 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  @IBAction func handleRecover(_: UIButton!) {
-    // PortalWrapper.recover(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user!) { (result) -> Void in
+  @IBAction func handlePasswordRecover(_: UIButton!) {
+    print("Starting Password Recover...")
+
     self.requestPassword { password in
       guard let enteredPassword = password, !enteredPassword.isEmpty else {
         // Handle case where no PIN was entered or the operation was canceled
+        print("User canceled pin request")
         return
       }
       print("Entered Password:", enteredPassword)
+
       do {
         let backupConfigs = try BackupConfigs(passwordStorage: PasswordStorageConfig(password: enteredPassword))
 
         self.PortalWrapper.recover(backupMethod: BackupMethods.Password.rawValue, user: self.user!, backupConfigs: backupConfigs) { result in
           guard result.error == nil else {
-            print("❌ handleRecover(): Error recovering wallet:", result.error!)
+            print("❌ handlePasswordRecover(): Error recovering wallet:", result.error!)
             return
           }
 
           self.populateAddressInformation()
-          print("✅ handleRecover(): Successfully recovered signing shares")
+          print("✅ handlePasswordRecover(): Successfully recovered signing shares")
         }
       } catch {
         print(error)
       }
+    }
+  }
+
+  @IBAction func handleGdriveBackup(_: UIButton!) {
+    print("Starting Gdrive backup...")
+
+    self.PortalWrapper.backup(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user!) { result in
+      guard result.error == nil else {
+        print("❌ handleGdriveBackup():", result.error!)
+        return
+      }
+      self.populateAddressInformation()
+      print("✅ handleGdriveBackup(): Successfully sent custodian cipherText")
+    }
+  }
+
+  @IBAction func handleGdriveRecover(_: UIButton!) {
+    print("Starting Gdrive Recover...")
+
+    self.PortalWrapper.recover(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user!) { result in
+      guard result.error == nil else {
+        print("❌ handleGdriveRecover(): Error recovering wallet:", result.error!)
+        return
+      }
+
+      self.populateAddressInformation()
+      print("✅ handleGdriveRecover(): Successfully recovered signing shares")
+    }
+  }
+
+  @IBAction func handleiCloudBackup(_: UIButton!) {
+    print("Starting iCloud backup...")
+
+    self.PortalWrapper.backup(backupMethod: BackupMethods.iCloud.rawValue, user: self.user!) { result in
+      guard result.error == nil else {
+        print("❌ handleiCloudBackup():", result.error!)
+        return
+      }
+      self.populateAddressInformation()
+      print("✅ handleiCloudBackup(): Successfully sent custodian cipherText")
+    }
+  }
+
+  @IBAction func handleiCloudRecover(_: UIButton!) {
+    print("Starting iCloud Recover...")
+
+    self.PortalWrapper.recover(backupMethod: BackupMethods.iCloud.rawValue, user: self.user!) { result in
+      guard result.error == nil else {
+        print("❌ handleiCloudRecover(): Error recovering wallet:", result.error!)
+        return
+      }
+
+      self.populateAddressInformation()
+      print("✅ handleiCloudRecover(): Successfully recovered signing shares")
     }
   }
 
@@ -568,92 +663,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  @IBAction func sendERC20Token() {
-    let tokenAddress = "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984"
-    let toAddress = "0xdFd8302f44727A6348F702fF7B594f127dE3A902"
-
-    // Get the Gateway URL from the Portal Provider
-    guard let gatewayUrl = portal?.provider.gatewayUrl else {
-      return
-    }
-
-    // Ensure the Portal Address is set
-    guard let address = portal?.address else {
-      // Probably throw an error here
-      return
-    }
-
-    // Initialize Web3
-    let web3 = Web3(rpcURL: gatewayUrl)
-
-    do {
-      // Transform the receiver address
-      let receiverAddress = try EthereumAddress(hex: toAddress, eip55: false) // eip55 is dependent on the wallet receiving funds
-
-      // Transfor the sender address
-      let senderAddress = try EthereumAddress(hex: address, eip55: false) // eip55 will be false for Portal MPC Wallets
-
-      // Transform the token address
-      let tokenContractAddress = try EthereumAddress(hex: tokenAddress, eip55: true) // eip55 will be true for Token Contracts
-
-      // Initialize the token contract
-      let contract = web3.eth.Contract(
-        type: GenericERC20Contract.self,
-        address: tokenContractAddress
-      )
-
-      web3.eth.getTransactionCount(
-        address: senderAddress,
-        block: .latest
-      ) { response in
-        guard let nonce = response.result else {
-          print("Error fetching nonce")
-          return
-        }
-
-        // Generate the transaction for Portal to execute
-        guard let tx = contract
-          .transfer(to: receiverAddress, value: 10_000_000_000)
-          .createTransaction(
-            nonce: nonce, // Here you'd want to provide the actual nonce for this transaction
-            gasPrice: EthereumQuantity(quantity: 21.gwei),
-            maxFeePerGas: nil,
-            maxPriorityFeePerGas: nil,
-            gasLimit: 100_000,
-            from: senderAddress,
-            value: 0,
-            accessList: [:],
-            transactionType: .legacy
-          ) else { return }
-
-        // Ensure gasPrice was properly set
-        guard let gasPrice = tx.gasPrice?.hex() else {
-          // Probably throw an error here
-          return
-        }
-
-        // Send the transaction
-        self.portal?.ethSendTransaction(transaction: ETHTransactionParam(
-          from: address,
-          to: tokenAddress,
-          gasPrice: gasPrice,
-          value: "0x0",
-          data: tx.data.hex(),
-          nonce: tx.nonce?.hex()
-        )) { (result: Result<TransactionCompletionResult>) in
-          // Handle result of submitting transaction
-          print("Result: ", result)
-        }
-      }
-    } catch {
-      // Handle errors
-    }
-  }
-
   func sendTransaction(ethEstimate: String) {
     let payload = ETHTransactionPayload(
       method: ETHRequestMethods.SendTransaction.rawValue,
-      params: [ETHTransactionParam(from: self.portal?.address ?? "", to: self.sendAddress?.text ?? "", gas: ethEstimate, gasPrice: ethEstimate, value: "0x10", data: "")]
+      params: [ETHTransactionParam(from: self.portal?.address ?? "", to: self.sendAddress?.text ?? "", gasPrice: ethEstimate, value: "0x10", data: "")]
       // Test EIP-1559 Transactions with these params
       // params: [ETHTransactionParam(from: portal?.mpc.getAddress(), to: sendAddress.text!,  gas:"0x5208", value: "0x10", data: "", maxPriorityFeePerGas: ethEstimate, maxFeePerGas: ethEstimate)]
     )
@@ -674,12 +687,17 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   func registerPortalUi(apiKey: String) {
     do {
-//            guard let GDRIVE_CLIENT_ID: String = Bundle.main.infoDictionary?["GDRIVE_CLIENT_ID"] as String else {
-//              print("Error: Do you have `GDRIVE_CLIENT_ID=$(GDRIVE_CLIENT_ID)` in your info.plist?")
-//              return  }
-      let backup = BackupOptions(passwordStorage: PasswordStorage())
-//            let backup = BackupOptions(gdrive: GDriveStorage(clientID: GDRIVE_CLIENT_ID, viewController: self))
-//      let backup = BackupOptions(icloud: ICloudStorage())
+      guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
+        print("Couldnt load info plist")
+        return
+      }
+      guard let GDRIVE_CLIENT_ID: String = infoDictionary["GDRIVE_CLIENT_ID"] as? String else {
+        print("Error: Do you have `GDRIVE_CLIENT_ID=$(GDRIVE_CLIENT_ID)` in your info.plist?")
+        return
+      }
+      self.passkey = PasskeyStorage(viewController: self, relyingParty: self.RP_URL)
+      let backup = BackupOptions(gdrive: GDriveStorage(clientID: GDRIVE_CLIENT_ID, viewController: self), icloud: ICloudStorage(), passwordStorage: PasswordStorage(), passkeyStorage: self.passkey)
+
       self.PortalWrapper.registerPortal(apiKey: apiKey, backup: backup, optimized: true) { _ in
         DispatchQueue.main.async {
           self.generateButton?.isEnabled = true
@@ -687,11 +705,15 @@ class ViewController: UIViewController, UITextFieldDelegate {
           let address = self.portal?.address
           let hasAddress = address?.count ?? 0 > 0
 
-          self.backupButton?.isEnabled = hasAddress
+          self.passkeyBackupButton?.isEnabled = hasAddress
+          self.passwordBackupButton?.isEnabled = hasAddress
           self.dappBrowserButton?.isEnabled = hasAddress
           self.portalConnectButton?.isEnabled = hasAddress
-          self.recoverButton?.isEnabled = hasAddress
-          self.legacyRecoverButton?.isEnabled = hasAddress
+
+          self.gdriveBackupButton?.isEnabled = hasAddress
+          self.gdriveRecoverButton?.isEnabled = hasAddress
+          self.iCloudBackupButton?.isEnabled = hasAddress
+          self.iCloudRecoverButton?.isEnabled = hasAddress
           self.testButton?.isEnabled = hasAddress
           self.signButton?.isEnabled = hasAddress
           self.deleteKeychainButton?.isEnabled = hasAddress
