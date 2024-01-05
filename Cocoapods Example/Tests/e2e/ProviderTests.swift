@@ -747,7 +747,7 @@ class ProviderTests: XCTestCase {
 
         print("Gateway response for eth_chainId \(String(describing: chainId))")
         XCTAssert(!chainId.isEmpty, "ChainId at should not be empty")
-        XCTAssert(chainId == "0x5", "ChainId should return chainId 0x5")
+        XCTAssert(chainId == "0xaa36a7", "ChainId should return chainId 0xaa36a7")
         expectation.fulfill()
       }
     }
