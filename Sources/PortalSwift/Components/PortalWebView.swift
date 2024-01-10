@@ -86,6 +86,29 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     }
     self.webView = initWebView(address: address)
   }
+  
+  /// The constructor for Portal's WebViewController.
+  /// - Parameters:
+  ///   - portal: Your Portal instance.
+  ///   - url: The URL the web view should start at.
+  ///   - onError: An error handler in case the web view throws errors.
+  ///   - onPageStart: A handler that fires when the web view is starting to load a page.
+  ///   - onPageComplete: A handler that fires when the web view has finished loading a page.
+  public init(portal: Portal, url: URL, persistSessionData: Bool, onError: @escaping (Result<Any>) -> Void, onPageStart: @escaping () -> Void, onPageComplete: @escaping () -> Void) {
+    self.portal = portal
+    self.url = url
+    self.onError = onError
+    self.onPageStart = onPageStart
+    self.onPageComplete = onPageComplete
+
+    super.init(nibName: nil, bundle: nil)
+    
+    guard let address = portal.address else {
+      print("[PortalWebView] No address found for user. Cannot inject provider into web page.")
+      return
+    }
+    self.webView = initWebView(address: address, persistSessionData: persistSessionData)
+  }
 
   @available(*, unavailable)
   required init?(coder _: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -117,7 +140,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     }
   }
   
-  private func initWebView(address: String) -> WKWebView {
+  private func initWebView(address: String, persistSessionData: Bool = false) -> WKWebView {
     return {
       // build WKUserScript
       let scriptSource = self.injectPortal(
@@ -140,7 +163,9 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       configuration.userContentController = contentController
 
       // Allows for data persistence across sessions
-      // configuration.websiteDataStore = WKWebsiteDataStore.default()
+      if persistSessionData {
+       configuration.websiteDataStore = WKWebsiteDataStore.default()
+      }
 
       let webView = WKWebView(frame: .zero, configuration: configuration)
       webView.scrollView.bounces = false
