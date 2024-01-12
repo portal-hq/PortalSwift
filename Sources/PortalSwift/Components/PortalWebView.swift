@@ -7,7 +7,6 @@
 
 import UIKit
 import WebKit
-//import SwiftUI
 
 /// The expected response from portal.provider.request
 public struct PortalProviderResponse: Codable {
