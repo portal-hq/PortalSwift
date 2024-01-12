@@ -44,7 +44,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   private var onError: (Result<Any>) -> Void
   private var onPageStart: (() -> Void)?
   private var onPageComplete: (() -> Void)?
-    
+
   /// The constructor for Portal's WebViewController.
   /// - Parameters:
   ///   - portal: Your Portal instance.
@@ -61,7 +61,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       print("[PortalWebView] No address found for user. Cannot inject provider into web page.")
       return
     }
-    self.webView = initWebView(address: address)
+    self.webView = self.initWebView(address: address)
   }
 
   /// The constructor for Portal's WebViewController.
@@ -79,14 +79,14 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     self.onPageComplete = onPageComplete
 
     super.init(nibName: nil, bundle: nil)
-    
+
     guard let address = portal.address else {
       print("[PortalWebView] No address found for user. Cannot inject provider into web page.")
       return
     }
-    self.webView = initWebView(address: address)
+    self.webView = self.initWebView(address: address)
   }
-  
+
   /// The constructor for Portal's WebViewController.
   /// - Parameters:
   ///   - portal: Your Portal instance.
@@ -103,12 +103,12 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     self.onPageComplete = onPageComplete
 
     super.init(nibName: nil, bundle: nil)
-    
+
     guard let address = portal.address else {
       print("[PortalWebView] No address found for user. Cannot inject provider into web page.")
       return
     }
-    self.webView = initWebView(address: address, persistSessionData: persistSessionData)
+    self.webView = self.initWebView(address: address, persistSessionData: persistSessionData)
   }
 
   @available(*, unavailable)
@@ -127,7 +127,6 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       self.webView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
     ])
   }
-  
 
   /// When the view will appear, load the web view to the url.
   /// - Parameter animated: Determines if the view will be animated when appearing or not.
@@ -141,8 +140,8 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       self.webViewContentIsLoaded = true
     }
   }
-  
-  private func initWebView(address: String, persistSessionData: Bool = false, debugEnabled: Bool = false) -> WKWebView {
+
+  private func initWebView(address: String, persistSessionData: Bool = false, debugEnabled _: Bool = false) -> WKWebView {
     return {
       // build WKUserScript
       let scriptSource = self.injectPortal(
@@ -154,7 +153,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
         enableMpc: true
       )
       let script = WKUserScript(source: scriptSource, injectionTime: .atDocumentStart, forMainFrameOnly: true)
-      
+
       // build the WekUserContentController
       let contentController = WKUserContentController()
       contentController.addUserScript(script)
@@ -166,14 +165,13 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
 
       // Allows for data persistence across sessions
       if persistSessionData {
-       configuration.websiteDataStore = WKWebsiteDataStore.default()
+        configuration.websiteDataStore = WKWebsiteDataStore.default()
       }
 
       let webView = WKWebView(frame: .zero, configuration: configuration)
       webView.scrollView.bounces = false
       webView.navigationDelegate = self
       webView.uiDelegate = self
-
 
       // Enable debugging the webview in Safari.
       // #if directive used  to start a conditional compilation block.
@@ -226,17 +224,18 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   public func webView(_: WKWebView, didFinish _: WKNavigation!) {
     self.onPageComplete?()
   }
-  
+
   /// Called when a new tab is opened.
-  public func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
-          if navigationAction.targetFrame == nil {
-              webView.load(navigationAction.request)
-            
-              // open in Safari
-              // UIApplication.shared.open(navigationAction.request.url!, options: [:])
-          }
-          return nil
-      }
+  public func webView(_ webView: WKWebView, createWebViewWith _: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures _: WKWindowFeatures) -> WKWebView? {
+    if navigationAction.targetFrame == nil {
+      webView.load(navigationAction.request)
+
+      // if we instead wanted to open a new tab in Safari instead
+      // of the current WebView we can use this line
+      // UIApplication.shared.open(navigationAction.request.url!, options: [:])
+    }
+    return nil
+  }
 
   /// The controller used to handle messages to and from the web view.
   /// - Parameters:
