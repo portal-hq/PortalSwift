@@ -356,7 +356,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     let payload: [String: Any] = [
       "method": requestData.method,
       "params": requestData.params,
-      "signature": signature
+      "signature": signature,
     ]
     self.postMessage(payload: payload)
   }
