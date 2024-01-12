@@ -333,6 +333,11 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   }
 
   private func signerRequestCompletion(result: Result<RequestCompletionResult>) {
+    guard result.error == nil else {
+      self.onError(Result(error: result.error!))
+      return
+    }
+
     guard let requestData = result.data else {
       self.onError(Result(error: WebViewControllerErrors.dataNilError))
       return
