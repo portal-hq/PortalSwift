@@ -31,6 +31,9 @@ enum WebViewControllerErrors: Error {
   case unparseableMessage
   case MissingFieldsForEIP1559Transation
   case unknownMessageType(type: String)
+  case dataNilError
+  case invalidResponseType
+  case signatureNilError
 }
 
 /// A controller that allows you to create Portal's web view.
@@ -321,10 +324,11 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   }
 
   private func signerTransactionRequestCompletion(result: Result<TransactionCompletionResult>) {
-    guard result.error == nil else {
-      self.onError(Result(error: result.error!))
+    if let error = result.error {
+      self.onError(Result(error: error))
       return
     }
+
     let signature = (result.data!.result as! Result<Any>).data
     let payload: [String: Any] = [
       "method": result.data!.method,
@@ -344,10 +348,11 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   }
 
   private func gatewayTransactionRequestCompletion(result: Result<TransactionCompletionResult>) {
-    guard result.error == nil else {
-      self.onError(Result(error: result.error!))
+    if let error = result.error {
+      self.onError(Result(error: error))
       return
     }
+
     let payload: [String: Any] = [
       "method": result.data!.method,
       "params": result.data!.params.map { p in
@@ -366,24 +371,45 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   }
 
   private func signerRequestCompletion(result: Result<RequestCompletionResult>) {
-    let response = result.data!.result as! Result<SignerResult>
-    guard response.error == nil else {
-      self.onError(Result(error: response.error!))
+    if let error = result.error {
+      self.onError(Result(error: error))
       return
     }
+
+    guard let requestData = result.data else {
+      self.onError(Result(error: WebViewControllerErrors.dataNilError))
+      return
+    }
+
+    guard let response = requestData.result as? Result<SignerResult> else {
+      self.onError(Result(error: WebViewControllerErrors.invalidResponseType))
+      return
+    }
+
+    if let error = response.error {
+      self.onError(Result(error: error))
+      return
+    }
+
+    guard let signature = response.data?.signature else {
+      self.onError(Result(error: WebViewControllerErrors.signatureNilError))
+      return
+    }
+
     let payload: [String: Any] = [
-      "method": result.data!.method,
-      "params": result.data!.params,
-      "signature": response.data!.signature!,
+      "method": requestData.method,
+      "params": requestData.params,
+      "signature": signature,
     ]
     self.postMessage(payload: payload)
   }
 
   private func gatewayRequestCompletion(result: Result<RequestCompletionResult>) {
-    guard result.error == nil else {
-      self.onError(Result(error: result.error!))
+    if let error = result.error {
+      self.onError(Result(error: error))
       return
     }
+
     let payload: [String: Any] = [
       "method": result.data!.method,
       "params": result.data!.params,
