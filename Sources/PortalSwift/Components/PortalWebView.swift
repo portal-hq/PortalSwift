@@ -7,6 +7,7 @@
 
 import UIKit
 import WebKit
+//import SwiftUI
 
 /// The expected response from portal.provider.request
 public struct PortalProviderResponse: Codable {
@@ -34,7 +35,7 @@ enum WebViewControllerErrors: Error {
 }
 
 /// A controller that allows you to create Portal's web view.
-public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessageHandler {
+public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessageHandler, WKUIDelegate {
   public var delegate: PortalWebViewDelegate?
   public var webView: WKWebView!
   public var webViewContentIsLoaded = false
@@ -44,7 +45,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   private var onError: (Result<Any>) -> Void
   private var onPageStart: (() -> Void)?
   private var onPageComplete: (() -> Void)?
-
+    
   /// The constructor for Portal's WebViewController.
   /// - Parameters:
   ///   - portal: Your Portal instance.
@@ -126,6 +127,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       self.webView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
     ])
   }
+  
 
   /// When the view will appear, load the web view to the url.
   /// - Parameter animated: Determines if the view will be animated when appearing or not.
@@ -170,6 +172,8 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       let webView = WKWebView(frame: .zero, configuration: configuration)
       webView.scrollView.bounces = false
       webView.navigationDelegate = self
+      webView.uiDelegate = self
+
 
       // Enable debugging the webview in Safari.
       // #if directive used  to start a conditional compilation block.
@@ -215,18 +219,24 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     self.onPageStart?()
   }
 
-  /// Called when the web view finishes loading a page. It injects the Portal script into the web view.
+  /// Called when the web view finishes loading a page.
   /// - Parameters:
   ///   - webView: The WKWebView instance that finished loading.
   ///   - navigation: The navigation information associated with the event.
   public func webView(_: WKWebView, didFinish _: WKNavigation!) {
-
-
-//
-//    self.evaluateJavascript(javascript, sourceURL: "portal_sign")
-
     self.onPageComplete?()
   }
+  
+  /// Called when a new tab is opened.
+  public func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
+          if navigationAction.targetFrame == nil {
+              webView.load(navigationAction.request)
+            
+              // open in Safari
+              // UIApplication.shared.open(navigationAction.request.url!, options: [:])
+          }
+          return nil
+      }
 
   /// The controller used to handle messages to and from the web view.
   /// - Parameters:
