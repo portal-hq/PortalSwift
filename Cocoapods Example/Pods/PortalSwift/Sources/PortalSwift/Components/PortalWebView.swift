@@ -31,6 +31,9 @@ enum WebViewControllerErrors: Error {
   case unparseableMessage
   case MissingFieldsForEIP1559Transation
   case unknownMessageType(type: String)
+  case dataNilError
+  case invalidResponseType
+  case signatureNilError
 }
 
 /// A controller that allows you to create Portal's web view.
@@ -321,15 +324,30 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   }
 
   private func signerRequestCompletion(result: Result<RequestCompletionResult>) {
-    let response = result.data!.result as! Result<SignerResult>
+    guard let requestData = result.data else {
+      self.onError(Result(error: WebViewControllerErrors.dataNilError))
+      return
+    }
+
+    guard let response = requestData.result as? Result<SignerResult> else {
+      self.onError(Result(error: WebViewControllerErrors.invalidResponseType))
+      return
+    }
+
     guard response.error == nil else {
       self.onError(Result(error: response.error!))
       return
     }
+
+    guard let signature = response.data?.signature else {
+      self.onError(Result(error: WebViewControllerErrors.signatureNilError))
+      return
+    }
+
     let payload: [String: Any] = [
-      "method": result.data!.method,
-      "params": result.data!.params,
-      "signature": response.data!.signature!,
+      "method": requestData.method,
+      "params": requestData.params,
+      "signature": signature
     ]
     self.postMessage(payload: payload)
   }
