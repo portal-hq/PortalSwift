@@ -288,10 +288,11 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   }
 
   private func signerTransactionRequestCompletion(result: Result<TransactionCompletionResult>) {
-    guard result.error == nil else {
-      self.onError(Result(error: result.error!))
+    if let error = result.error {
+      self.onError(Result(error: error))
       return
     }
+
     let signature = (result.data!.result as! Result<Any>).data
     let payload: [String: Any] = [
       "method": result.data!.method,
@@ -311,10 +312,11 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   }
 
   private func gatewayTransactionRequestCompletion(result: Result<TransactionCompletionResult>) {
-    guard result.error == nil else {
-      self.onError(Result(error: result.error!))
+    if let error = result.error {
+      self.onError(Result(error: error))
       return
     }
+
     let payload: [String: Any] = [
       "method": result.data!.method,
       "params": result.data!.params.map { p in
@@ -333,8 +335,8 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   }
 
   private func signerRequestCompletion(result: Result<RequestCompletionResult>) {
-    guard result.error == nil else {
-      self.onError(Result(error: result.error!))
+    if let error = result.error {
+      self.onError(Result(error: error))
       return
     }
 
@@ -348,8 +350,8 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       return
     }
 
-    guard response.error == nil else {
-      self.onError(Result(error: response.error!))
+    if let error = response.error {
+      self.onError(Result(error: error))
       return
     }
 
@@ -367,10 +369,11 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   }
 
   private func gatewayRequestCompletion(result: Result<RequestCompletionResult>) {
-    guard result.error == nil else {
-      self.onError(Result(error: result.error!))
+    if let error = result.error {
+      self.onError(Result(error: error))
       return
     }
+
     let payload: [String: Any] = [
       "method": result.data!.method,
       "params": result.data!.params,
