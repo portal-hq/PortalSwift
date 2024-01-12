@@ -91,6 +91,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   /// - Parameters:
   ///   - portal: Your Portal instance.
   ///   - url: The URL the web view should start at.
+  ///   - persistSessionData: Will persist browser session data (localstorage, cookies, etc...) when enabled.
   ///   - onError: An error handler in case the web view throws errors.
   ///   - onPageStart: A handler that fires when the web view is starting to load a page.
   ///   - onPageComplete: A handler that fires when the web view has finished loading a page.
@@ -141,7 +142,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     }
   }
   
-  private func initWebView(address: String, persistSessionData: Bool = false) -> WKWebView {
+  private func initWebView(address: String, persistSessionData: Bool = false, debugEnabled: Bool = false) -> WKWebView {
     return {
       // build WKUserScript
       let scriptSource = self.injectPortal(
@@ -177,13 +178,13 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       // Enable debugging the webview in Safari.
       // #if directive used  to start a conditional compilation block.
       // @WARNING: Uncomment this section to enable debugging in Safari.
-      // #if canImport(UIKit)
-      //   #if targetEnvironment(simulator)
-      //     if #available(iOS 16.4, *) {
-      //       webView.isInspectable = true
-      //     }
-      //   #endif
-      // #endif
+//       #if canImport(UIKit)
+//         #if targetEnvironment(simulator)
+//           if #available(iOS 16.4, *) {
+//             webView.isInspectable = true
+//           }
+//         #endif
+//       #endif
 
       return webView
     }()
