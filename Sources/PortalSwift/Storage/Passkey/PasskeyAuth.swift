@@ -1,5 +1,5 @@
 //
-//  PasskeyStorage.swift
+//  PasskeyAuth.swift
 //  PortalSwift
 //
 //  Created by Portal Labs, Inc.
