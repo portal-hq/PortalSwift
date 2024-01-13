@@ -36,6 +36,7 @@ public let mockDecryptResult = "{\"data\":{\"plaintext\":\"signingShareObject\"}
 public let mockEncryptResult = "{\"data\":{\"key\":\"someKey\",\"cipherText\":\"\(mockCiphertext)\"},\"error\":{\"code\":0,\"message\":\"\"}}"
 
 public let mockEncryptWithPasswordResult = "{\"data\":{\"cipherText\":\"\(mockCiphertext)\"},\"error\":{\"code\":0,\"message\":\"\"}}"
+public let mockEjectWalletAndDiscontinueMPC = "{\"privateKey\":\"099cabf8c65c81e629d59e72f04a549aafa531329e25685a5b8762b926597209\",\"error\":{\"code\":0,\"message\":\"\"}}"
 
 public let mockClientResult = "{\"data\":{\"id\":\"\(mockClientId)\",\"address\":\"\(mockAddress)\",\"clientApiKey\":\"\(mockApiKey)\",\"custodian\":{\"id\":\"someCustodianId\",\"name\":\"someCustodianName\"}},\"error\":{\"code\":0,\"message\":\"\"}}"
 
