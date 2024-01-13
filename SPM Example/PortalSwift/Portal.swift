@@ -98,7 +98,7 @@ class PortalWrapper {
     case cantLoadInfoPlist
   }
 
-  func registerPortal(apiKey: String, backup: BackupOptions, chainId: Int = 11_155_111, optimized: Bool = false, completion: @escaping (Result<Bool>) -> Void) {
+  func registerPortal(apiKey: String, backup: BackupOptions, chainId: Int = 5, optimized: Bool = false, completion: @escaping (Result<Bool>) -> Void) {
     do {
       guard let ALCHEMY_API_KEY: String = Bundle.main.infoDictionary?["ALCHEMY_API_KEY"] as? String else {
         print("Error: Do you have `ALCHEMY_API_KEY=$(ALCHEMY_API_KEY)` in your info.plist?")
@@ -112,7 +112,7 @@ class PortalWrapper {
         chainId: chainId,
         keychain: keychain,
         gatewayConfig: [
-          11_155_111: "https://eth-sepolia.g.alchemy.com/v2/\(ALCHEMY_API_KEY)", 1: "https://eth-mainnet.g.alchemy.com/v2/\(ALCHEMY_API_KEY)", 80001: "https://polygon-mumbai.g.alchemy.com/v2/\(ALCHEMY_API_KEY)", 137: "https://polygon-mainnet.g.alchemy.com/v2/\(ALCHEMY_API_KEY)",
+          11_155_111: "https://eth-sepolia.g.alchemy.com/v2/\(ALCHEMY_API_KEY)", 5: "https://eth-goerli.g.alchemy.com/v2/\(ALCHEMY_API_KEY)", 1: "https://eth-mainnet.g.alchemy.com/v2/\(ALCHEMY_API_KEY)", 80001: "https://polygon-mumbai.g.alchemy.com/v2/\(ALCHEMY_API_KEY)", 137: "https://polygon-mainnet.g.alchemy.com/v2/\(ALCHEMY_API_KEY)",
         ],
         autoApprove: false,
         apiHost: self.API_URL!,
