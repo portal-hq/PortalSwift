@@ -368,9 +368,20 @@ public class PortalMpc {
                 print("Here is the client backup share")
                 print(clientBackupShare)
                 // Call eject with clientBackupShare and orShare
-                var privateKey = self.mobile.MobileEjectWalletAndDiscontinueMPC(clientBackupShare, orgShare)
-                // Call completion on result
-                completion(Result (data: privateKey))
+                let privateKey = self.mobile.MobileEjectWalletAndDiscontinueMPC(clientBackupShare, orgShare)
+                // Call API backend to set the client as ejected
+                let request = HttpRequest<String, [String: String]>(
+                  url: self.apiHost + "/api/v1/clients/eject",
+                  method: "POST",
+                  body: [:],
+                  headers: ["Authorization": "Bearer \(self.apiKey)"],
+                  requestType: HttpRequestType.CustomRequest
+                )
+                request.send { (result: Result<String>) in
+                    print("Notified portal of ejection")
+                    // Call completion on result
+                    completion(Result (data: privateKey))
+                }
             }
         }
     }

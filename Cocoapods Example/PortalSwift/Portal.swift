@@ -223,10 +223,6 @@ class PortalWrapper {
 
             let cipherText = result.data!.cipherText
             
-            print("----------------")
-            print(cipherText)
-            print("------------------")
-            
             // Setup request to get org-share
             let requestOrgShare = HttpRequest<OrgShareResult, [String: String]>(
               url: self.CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/org-share/fetch",
@@ -242,9 +238,6 @@ class PortalWrapper {
                 }
 
                 let orgShare = result.data!.orgShare
-                print("----------------")
-                print(orgShare)
-                print("------------------")
                 
                 self.portal?.EjectWalletAndDiscontinueMPC(cipherText: cipherText, method: backupMethod, orgShare: orgShare) { (result: Result<String>) in
                         guard result.error == nil else {
@@ -252,7 +245,7 @@ class PortalWrapper {
                           return completion(Result(error: result.error!))
                         }
                     //
-                    print("✅ [PortalWrapper] handleEject(): Successfully ejected wallet: \(result.data!)")
+                    print("✅ [PortalWrapper] handleEject(): Successfully ejected wallet with private key \(result.data!)")
                     return completion(result)
                 }
             }
