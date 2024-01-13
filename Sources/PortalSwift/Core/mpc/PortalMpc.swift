@@ -340,7 +340,42 @@ public class PortalMpc {
       }
     }
   }
+    
+    /// Uses the org and client backup shares to return the private key
+    ///  - Parameters:
+    ///    - cipherText: the cipherText of the client's backup share
+    ///    - method: The specific backup storage option.
+    ///    - orgShare: the stringified version of the organization's backup share
+    public func EjectWalletAndDiscontinueMPC(
+        cipherText: String,
+        method: BackupMethods.RawValue,
+        backupConfigs: BackupConfigs? = nil,
+        orgShare: String,
+        completion: @escaping (Result<String>) -> Void
+    ) {
+        if self.version != "v5" {
+            completion(Result (error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v5`.")))
+        }
 
+        self.getBackupShare(cipherText: cipherText, method: method) { (result: Result<String>) in
+            guard result.error == nil else {
+                print("Oh no! An error!")
+                completion(Result (error: result.error!))
+                return
+            }
+            print("Starting eject")
+            if let clientBackupShare = result.data{
+                print("Here is the client backup share")
+                print(clientBackupShare)
+                // Call eject with clientBackupShare and orShare
+                var privateKey = self.mobile.MobileEjectWalletAndDiscontinueMPC(clientBackupShare, orgShare)
+                // Call completion on result
+                completion(Result (data: privateKey))
+            }
+        }
+    }
+
+    
   /// Uses the backup share to create a new signing share.
   /// - Parameters:
   ///   - cipherText: the cipherText of the backup share (should be passed in from the custodian).
