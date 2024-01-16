@@ -359,14 +359,10 @@ public class PortalMpc {
 
         self.getBackupShare(cipherText: cipherText, method: method) { (result: Result<String>) in
             guard result.error == nil else {
-                print("Oh no! An error!")
                 completion(Result (error: result.error!))
                 return
             }
-            print("Starting eject")
             if let clientBackupShare = result.data{
-                print("Here is the client backup share")
-                print(clientBackupShare)
                 // Call eject with clientBackupShare and orShare
                 let privateKey = self.mobile.MobileEjectWalletAndDiscontinueMPC(clientBackupShare, orgShare)
                 // Call API backend to set the client as ejected
