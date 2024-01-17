@@ -211,16 +211,17 @@ class PortalWrapper {
                     return completion(Result(error: result.error!))
                 }
 
-                let orgShare = result.data!.orgShare
-                
-                self.portal?.EjectWalletAndDiscontinueMPC(cipherText: cipherText, method: backupMethod, orgShare: orgShare) { (result: Result<String>) in
-                        guard result.error == nil else {
-                          print("❌ [PortalWrapper] handleEject(): Error ejecting wallet:", result.error!)
-                          return completion(Result(error: result.error!))
-                        }
-                    //
-                    print("✅ [PortalWrapper] handleEject(): Successfully ejected wallet with private key \(result.data!)")
-                    return completion(result)
+                if let data = result.data {
+                    let orgShare = data.orgShare
+                    self.portal?.EjectWalletAndDiscontinueMPC(cipherText: cipherText, method: backupMethod, orgShare: orgShare) { (result: Result<String>) in
+                            guard result.error == nil else {
+                              print("❌ [PortalWrapper] handleEject(): Error ejecting wallet:", result.error!)
+                              return completion(Result(error: result.error!))
+                            }
+                        //
+                        print("✅ [PortalWrapper] handleEject(): Successfully ejected wallet with private key \(result.data!)")
+                        return completion(result)
+                    }
                 }
             }
           }
