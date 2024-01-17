@@ -209,7 +209,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
     
     @IBAction func handleEject(_: UIButton) {
-      print("Hello from the eject button")
         self.PortalWrapper.eject(backupMethod: BackupMethods.iCloud.rawValue, user: self.user!) { result in
             print(result.data!)
         }
