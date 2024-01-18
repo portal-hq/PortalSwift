@@ -213,7 +213,7 @@ class PortalWrapper {
 
                 if let data = result.data {
                     let orgShare = data.orgShare
-                    self.portal?.EjectWalletAndDiscontinueMPC(cipherText: cipherText, method: backupMethod, orgShare: orgShare) { (result: Result<String>) in
+                    self.portal?.ejectPrivateKey(clientBackupCiphertext: cipherText, method: backupMethod, orgBackupShare: orgShare) { (result: Result<String>) in
                             guard result.error == nil else {
                               print("❌ [PortalWrapper] handleEject(): Error ejecting wallet:", result.error!)
                               return completion(Result(error: result.error!))
