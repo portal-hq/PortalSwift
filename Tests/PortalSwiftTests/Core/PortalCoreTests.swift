@@ -115,7 +115,7 @@ final class PortalCoreTests: XCTestCase {
     func testEjectWallet() {
       let expectation = XCTestExpectation(description: "Eject")
         
-        self.portal.EjectWalletAndDiscontinueMPC(cipherText: mockCiphertext, method: BackupMethods.iCloud.rawValue, orgShare: "someOrgShare"){ result in
+        self.portal.ejectPrivateKey(clientBackupCiphertext: mockCiphertext, method: BackupMethods.iCloud.rawValue, orgBackupShare: "someOrgShare"){ result in
             guard result.error == nil else {
               XCTFail("Failure: \(String(describing: result.error))")
               expectation.fulfill()
