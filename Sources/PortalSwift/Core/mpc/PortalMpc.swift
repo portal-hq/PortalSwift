@@ -393,7 +393,6 @@ public class PortalMpc {
                             completion(Result (error: result.error!))
                             return
                         }
-                        print("Notified portal of ejection")
                         // Call completion on result
                         completion(Result (data: privateKey))
                     }
