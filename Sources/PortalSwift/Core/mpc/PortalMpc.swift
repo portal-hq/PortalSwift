@@ -381,20 +381,19 @@ public class PortalMpc {
                     let privateKey = ejectResult.privateKey
                 
                     // Call API backend to set the client as ejected
-                    let request = HttpRequest<String, [String: String]>(
-                        url: self.apiHost + "/api/v1/clients/eject",
-                        method: "POST",
-                        body: [:],
-                        headers: ["Authorization": "Bearer \(self.apiKey)"],
-                        requestType: HttpRequestType.CustomRequest
-                    )
-                    request.send { (result: Result<String>) in
-                        guard result.error == nil else {
-                            completion(Result (error: result.error!))
-                            return
+                    do {
+                      try self.api.ejectClient() { (apiResult: Result<String>) in
+                        // Throw an error if we can't update the client's ejectedAt.
+                        if let error = apiResult.error {
+                          return completion(Result(error: error))
                         }
-                        // Call completion on result
-                        completion(Result (data: privateKey))
+
+                        // Return the privateKey.
+                        return completion(Result(data: privateKey))
+                      }
+                    } catch {
+     
+                      return completion(Result(error: error))
                     }
                 }catch {
                     return completion(Result(error: error))
