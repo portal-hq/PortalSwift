@@ -363,21 +363,43 @@ public class PortalMpc {
                 return
             }
             if let clientBackupShare = result.data{
-                // Call eject with clientBackupShare and orShare
-                let privateKey = self.mobile.MobileEjectWalletAndDiscontinueMPC(clientBackupShare, orgShare)
-                // Call API backend to set the client as ejected
-                let request = HttpRequest<String, [String: String]>(
-                  url: self.apiHost + "/api/v1/clients/eject",
-                  method: "POST",
-                  body: [:],
-                  headers: ["Authorization": "Bearer \(self.apiKey)"],
-                  requestType: HttpRequestType.CustomRequest
-                )
-                request.send { (result: Result<String>) in
-                    print("Notified portal of ejection")
-                    // Call completion on result
-                    completion(Result (data: privateKey))
-                }
+                do {
+                    // Call eject with clientBackupShare and orShare
+                    let response = self.mobile.MobileEjectWalletAndDiscontinueMPC(clientBackupShare, orgShare)
+                    guard let jsonData = response.data(using: .utf8) else {
+                        return completion(Result(error: JSONParseError.stringToDataConversionFailed))
+                    }
+                    
+                    let ejectResult: EjectResult = try JSONDecoder().decode(EjectResult.self, from: jsonData)
+                    
+                    // Throw if there was an error generating the wallet.
+                    guard ejectResult.error.code == 0 else {
+                        return completion(Result(error: PortalMpcError(ejectResult.error)))
+                    }
+                    
+                    // Set the client's private key.
+                    let privateKey = ejectResult.privateKey
+                
+                    // Call API backend to set the client as ejected
+                    let request = HttpRequest<String, [String: String]>(
+                        url: self.apiHost + "/api/v1/clients/eject",
+                        method: "POST",
+                        body: [:],
+                        headers: ["Authorization": "Bearer \(self.apiKey)"],
+                        requestType: HttpRequestType.CustomRequest
+                    )
+                    request.send { (result: Result<String>) in
+                        guard result.error == nil else {
+                            completion(Result (error: result.error!))
+                            return
+                        }
+                        print("Notified portal of ejection")
+                        // Call completion on result
+                        completion(Result (data: privateKey))
+                    }
+                }catch {
+                    return completion(Result(error: error))
+                  }
             }
         }
     }
@@ -1268,6 +1290,12 @@ private struct EncryptResult: Codable {
 /// The response from fetching the client.
 public struct ClientResult: Codable {
   public var data: Client?
+  public var error: PortalError
+}
+
+/// The response from fetching the client.
+public struct EjectResult: Codable {
+  public var privateKey: String
   public var error: PortalError
 }
 
