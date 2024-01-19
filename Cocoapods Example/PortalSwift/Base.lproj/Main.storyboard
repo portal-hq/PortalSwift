@@ -319,6 +319,19 @@
                                     <action selector="handleiCloudBackup:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="Vuc-z0-bcS"/>
                                 </connections>
                             </button>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" restorationIdentifier="ejectButton" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="SOW-7h-5vR">
+                                <rect key="frame" x="16" y="853" width="342" height="35"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <state key="normal" title="Button"/>
+                                <buttonConfiguration key="configuration" style="filled" title="Eject Wallet">
+                                    <backgroundConfiguration key="background"/>
+                                    <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
+                                    <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                </buttonConfiguration>
+                                <connections>
+                                    <action selector="handleEject:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="ggV-kH-0hp"/>
+                                </connections>
+                            </button>
                         </subviews>
                         <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <viewLayoutGuide key="contentLayoutGuide" id="5tB-b5-TOm"/>
@@ -329,6 +342,7 @@
                         <outlet property="addressInformation" destination="0fE-Dt-jQE" id="FgG-eb-2eu"/>
                         <outlet property="dappBrowserButton" destination="qcu-G8-SAB" id="A5q-1k-dxD"/>
                         <outlet property="deleteKeychainButton" destination="QJh-Gs-d32" id="0PG-E6-YO9"/>
+                        <outlet property="ejectButton" destination="SOW-7h-5vR" id="OQq-T0-8F8"/>
                         <outlet property="ethBalanceInformation" destination="XWB-hw-iZv" id="c0l-fG-eWb"/>
                         <outlet property="gdriveBackupButton" destination="lLZ-mD-dI6" id="3SK-rF-L3q"/>
                         <outlet property="gdriveRecoverButton" destination="3y7-ol-I6C" id="vse-tw-obk"/>
