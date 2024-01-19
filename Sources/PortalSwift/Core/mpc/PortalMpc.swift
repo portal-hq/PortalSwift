@@ -346,18 +346,18 @@ public class PortalMpc {
     ///    - cipherText: the cipherText of the client's backup share
     ///    - method: The specific backup storage option.
     ///    - orgShare: the stringified version of the organization's backup share
-    public func EjectWalletAndDiscontinueMPC(
-        cipherText: String,
+    public func ejectPrivateKey(
+        clientBackupCiphertext: String,
         method: BackupMethods.RawValue,
         backupConfigs: BackupConfigs? = nil,
-        orgShare: String,
+        orgBackupShare: String,
         completion: @escaping (Result<String>) -> Void
     ) {
         if self.version != "v5" {
             completion(Result (error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v5`.")))
         }
 
-        self.getBackupShare(cipherText: cipherText, method: method) { (result: Result<String>) in
+        self.getBackupShare(cipherText: clientBackupCiphertext, method: method) { (result: Result<String>) in
             guard result.error == nil else {
                 completion(Result (error: result.error!))
                 return
@@ -365,7 +365,7 @@ public class PortalMpc {
             if let clientBackupShare = result.data{
                 do {
                     // Call eject with clientBackupShare and orShare
-                    let response = self.mobile.MobileEjectWalletAndDiscontinueMPC(clientBackupShare, orgShare)
+                    let response = self.mobile.MobileEjectWalletAndDiscontinueMPC(clientBackupShare, orgBackupShare)
                     guard let jsonData = response.data(using: .utf8) else {
                         return completion(Result(error: JSONParseError.stringToDataConversionFailed))
                     }
@@ -381,20 +381,19 @@ public class PortalMpc {
                     let privateKey = ejectResult.privateKey
                 
                     // Call API backend to set the client as ejected
-                    let request = HttpRequest<String, [String: String]>(
-                        url: self.apiHost + "/api/v1/clients/eject",
-                        method: "POST",
-                        body: [:],
-                        headers: ["Authorization": "Bearer \(self.apiKey)"],
-                        requestType: HttpRequestType.CustomRequest
-                    )
-                    request.send { (result: Result<String>) in
-                        guard result.error == nil else {
-                            completion(Result (error: result.error!))
-                            return
+                    do {
+                      try self.api.ejectClient() { (apiResult: Result<String>) in
+                        // Throw an error if we can't update the client's ejectedAt.
+                        if let error = apiResult.error {
+                          return completion(Result(error: error))
                         }
-                        // Call completion on result
-                        completion(Result (data: privateKey))
+
+                        // Return the privateKey.
+                        return completion(Result(data: privateKey))
+                      }
+                    } catch {
+     
+                      return completion(Result(error: error))
                     }
                 }catch {
                     return completion(Result(error: error))
