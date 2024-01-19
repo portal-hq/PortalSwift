@@ -49,7 +49,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var testButton: UIButton?
   @IBOutlet var deleteKeychainButton: UIButton?
   @IBOutlet var testNFTsTrxsBalancesSimTrxButton: UIButton?
-  @IBOutlet var ejectButton: UIButton?
 
   @IBOutlet var passkeyBackupButton: UIButton?
   @IBOutlet var passkeyRecoverButton: UIButton?
@@ -142,7 +141,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
       self.iCloudBackupButton?.isEnabled = false
       self.deleteKeychainButton?.isEnabled = false
       self.testNFTsTrxsBalancesSimTrxButton?.isEnabled = false
-      self.ejectButton?.isEnabled = false
       self.sendButton?.isEnabled = false
     }
   }
@@ -207,12 +205,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
     }
   }
-    
-    @IBAction func handleEject(_: UIButton) {
-        self.PortalWrapper.eject(backupMethod: BackupMethods.iCloud.rawValue, user: self.user!) { result in
-            print(result.data!)
-        }
-    }
 
   @IBAction func handleSignOut(_: UIButton) {
     self.user = nil
@@ -241,7 +233,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.signButton?.isEnabled = true
         self.deleteKeychainButton?.isEnabled = true
         self.testNFTsTrxsBalancesSimTrxButton?.isEnabled = true
-        self.ejectButton?.isEnabled = true
         self.sendButton?.isEnabled = true
         self.passkeyBackupButton?.isEnabled = true
         self.passkeyRecoverButton?.isEnabled = true
@@ -727,7 +718,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.signButton?.isEnabled = hasAddress
           self.deleteKeychainButton?.isEnabled = hasAddress
           self.testNFTsTrxsBalancesSimTrxButton?.isEnabled = hasAddress
-          self.ejectButton?.isEnabled = hasAddress
           self.sendButton?.isEnabled = hasAddress
         }
       }
