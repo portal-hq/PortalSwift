@@ -52,8 +52,4 @@ class MockMobileErrorWrapper: Mobile {
   func MobileSign(_: String?, _: String?, _: String?, _: String?, _: String?, _: String?, _: String?, _: String?) -> String {
     return mockClientSignResultWithError
   }
-    
-    func MobileEjectWalletAndDiscontinueMPC(_: String, _: String) -> String {
-        return mockEjectWalletAndDiscontinueMPC
-    }
 }
