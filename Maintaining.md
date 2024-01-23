@@ -16,14 +16,19 @@ Create an xcConfig file.
 2. Search for configuration file
 3. Call the new configuration file "Secrets"
 4. Add both example and test as targets
-5. Add `#include? "Secrets.xcconfig"` to the Pods directory within the `Pods-PortalSwift_Example.debug.xcconfig` file
-6. Add these variables:
+5. Add these variables:
 
 ```
 ALCHEMY_API_KEY = ALCHEMY_API_KEY
 REVERSE_URL = REVERSE_URL
 GDRIVE_CLIENT_ID = GDRIVE_CLIENT_ID
 ENV = prod // staging
+```
+
+6. Add the following to the top of your Secrets.xcconfig file:
+
+```
+#include "Pods/Target Support Files/Pods-Cocoapods Example/Pods-Cocoapods Example.debug.xcconfig"
 ```
 
 > If you want to switch to point to staging. Change the ENV variable in your Secrets.xcconfig to be `staging`.
