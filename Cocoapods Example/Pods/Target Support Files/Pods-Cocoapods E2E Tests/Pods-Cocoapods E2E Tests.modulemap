@@ -1,6 +1,0 @@
-framework module Pods_Cocoapods_E2E_Tests {
-  umbrella header "Pods-Cocoapods E2E Tests-umbrella.h"
-
-  export *
-  module * { export * }
-}
