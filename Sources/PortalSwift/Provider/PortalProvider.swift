@@ -218,29 +218,53 @@ public class PortalProvider {
   ///   - completion: Resolves with a Result.
   /// - Returns: Void
   public func request(
-    payload: ETHRequestPayload,
+    payload: EthPayload,
+    completion: @escaping (Result<RequestCompletionResult>) -> Void,
+    connect _: PortalConnect? = nil
+  ) {
+    let id = UUID().uuidString
+    var payloadWithId: EthRequestPayload
+
+    if let payload = payload as? EthAddressPayload {
+      payloadWithId = EthRequestPayload(method: payload.method, params: payload.params, id: id, chainId: payload.chainId ?? self.chainId)
+    } else if let payload = payload as? EthRequestPayload {
+      payloadWithId = EthRequestPayload(method: payload.method, params: payload.params, id: id, chainId: payload.chainId ?? self.chainId)
+    } else if let payload = payload as? EthTransactionPayload {
+      payloadWithId = EthRequestPayload(method: payload.method, params: payload.params, id: id, chainId: payload.chainId ?? self.chainId)
+    } else {
+      return completion(Result(error: ProviderRpcError.unsupportedPayload))
+    }
+
+    self.handleRequestPayload(id: id, payload: payloadWithId, completion: completion)
+  }
+
+  private func handleRequestPayload(
+    id: String,
+    payload: EthRequestPayload,
     completion: @escaping (Result<RequestCompletionResult>) -> Void,
     connect: PortalConnect? = nil
   ) {
     let isSignerMethod = signerMethods.contains(payload.method)
-    let id = UUID().uuidString
 
-    let payloadWithId = ETHRequestPayload(method: payload.method, params: payload.params, id: id, chainId: payload.chainId ?? self.chainId)
-
-    if !isSignerMethod, !payloadWithId.method.starts(with: "wallet_") {
-      self.handleGatewayRequest(payload: payloadWithId, connect: connect) { (method: String, params: [Any], result: Result<Any>, id: String) in
-        if id == payloadWithId.id, !self.processedSignatureIds.contains(id) {
+    if !isSignerMethod, !payload.method.starts(with: "wallet_") {
+      self.handleGatewayRequest(payload: payload, connect: connect) { (method: String, params: [Any], result: Result<Any>, id: String) in
+        if id == payload.id, !self.processedSignatureIds.contains(id) {
           self.processedSignatureIds.append(id)
           if result.data != nil {
-            return completion(Result(data: RequestCompletionResult(method: method, params: params, result: result.data!, id: id)))
+            return completion(Result(data: RequestCompletionResult(
+              method: method,
+              params: params,
+              result: result.data!,
+              id: id
+            )))
           } else {
             return completion(Result(error: result.error!))
           }
         }
       }
     } else if isSignerMethod {
-      self.handleSigningRequest(payload: payloadWithId, connect: connect) { (result: Result<SignerResult>, id: String) in
-        if id == payloadWithId.id, !self.processedSignatureIds.contains(id) {
+      self.handleSigningRequest(payload: payload, connect: connect) { (result: Result<SignerResult>, id: String) in
+        if id == payload.id, !self.processedSignatureIds.contains(id) {
           self.processedSignatureIds.append(id)
 
           guard result.error == nil else {
@@ -251,106 +275,20 @@ public class PortalProvider {
           _ = self.emit(
             event: Events.PortalSignatureReceived.rawValue,
             data: RequestCompletionResult(
-              method: payloadWithId.method,
-              params: payloadWithId.params,
+              method: payload.method,
+              params: payload.params,
               result: result,
               id: id
             )
           )
 
           // Trigger completion handler
-          return completion(Result(data: RequestCompletionResult(method: payloadWithId.method, params: payloadWithId.params, result: result, id: id)))
-        }
-      }
-    } else {
-      return completion(Result(error: ProviderRpcError.unsupportedMethod))
-    }
-  }
-
-  /// Makes a request.
-  /// - Parameters:
-  ///   - payload: A transaction payload.
-  ///   - completion: Resolves with a Result.
-  /// - Returns: Void
-  public func request(
-    payload: ETHTransactionPayload,
-    completion: @escaping (Result<TransactionCompletionResult>) -> Void,
-    connect: PortalConnect? = nil
-  ) {
-    let isSignerMethod = signerMethods.contains(payload.method)
-    let id = UUID().uuidString
-
-    let payloadWithId = ETHTransactionPayload(method: payload.method, params: payload.params, id: id, chainId: payload.chainId ?? self.chainId)
-
-    if !isSignerMethod, !payloadWithId.method.starts(with: "wallet_") {
-      self.handleGatewayRequest(payload: payloadWithId, connect: connect) {
-        (method: String, params: [ETHTransactionParam], result: Result<Any>, id: String) in
-        if id == payloadWithId.id, !self.processedSignatureIds.contains(id) {
-          self.processedSignatureIds.append(id)
-
-          guard result.error == nil else {
-            return completion(Result(error: result.error!))
-          }
-          if result.data != nil {
-            return completion(Result(data: TransactionCompletionResult(method: method, params: params, result: result.data!, id: payloadWithId.id!)))
-          }
-        }
-      }
-    } else if isSignerMethod {
-      self.handleSigningRequest(payload: payloadWithId, connect: connect) { (result: Result<Any>, id: String) in
-        if id == payloadWithId.id, !self.processedSignatureIds.contains(id) {
-          self.processedSignatureIds.append(id)
-
-          guard result.error == nil else {
-            return completion(Result(error: result.error!))
-          }
-
-          // Trigger `portal_signatureReceived` event
-          _ = self.emit(
-            event: Events.PortalSignatureReceived.rawValue,
-            data: RequestCompletionResult(
-              method: payloadWithId.method,
-              params: payloadWithId.params,
-              result: result,
-              id: payloadWithId.id!
-            )
-          )
-
-          // Trigger completion handler
-          return completion(Result(data: TransactionCompletionResult(method: payloadWithId.method, params: payloadWithId.params, result: result, id: payloadWithId.id!)))
-        }
-      }
-    } else {
-      return completion(Result(error: ProviderRpcError.unsupportedMethod))
-    }
-  }
-
-  /// Makes a request.
-  /// - Parameters:
-  ///   - payload: An address payload.
-  ///   - completion: Resolves with a Result.
-  /// - Returns: Void
-  public func request(
-    payload: ETHAddressPayload,
-    completion: @escaping (Result<AddressCompletionResult>) -> Void,
-    connect: PortalConnect? = nil
-  ) {
-    let isSignerMethod = signerMethods.contains(payload.method)
-    let id = UUID().uuidString
-
-    let payloadWithId = ETHAddressPayload(method: payload.method, params: payload.params, id: id, chainId: payload.chainId ?? self.chainId)
-
-    if !isSignerMethod, !payloadWithId.method.starts(with: "wallet_") {
-      self.handleGatewayRequest(payload: payloadWithId, connect: connect) {
-        (method: String, params: [ETHAddressParam], result: Result<Any>, id: String) in
-        if id == payloadWithId.id, !self.processedSignatureIds.contains(id) {
-          self.processedSignatureIds.append(id)
-
-          if result.data != nil {
-            return completion(Result(data: AddressCompletionResult(method: method, params: params, result: result.data!, id: id)))
-          } else {
-            return completion(Result(error: result.error!))
-          }
+          return completion(Result(data: RequestCompletionResult(
+            method: payload.method,
+            params: payload.params,
+            result: result,
+            id: id
+          )))
         }
       }
     } else {
@@ -384,7 +322,7 @@ public class PortalProvider {
 
   // ------ Private Functions
   private func getApproval(
-    payload: ETHRequestPayload,
+    payload: EthRequestPayload,
     completion: @escaping (Result<Bool>) -> Void,
     connect: PortalConnect? = nil
   ) {
@@ -396,8 +334,8 @@ public class PortalProvider {
 
     // Bind to signing approval callbacks
     _ = self.on(event: Events.PortalSigningApproved.rawValue, callback: { approved in
-      if approved is ETHRequestPayload {
-        let approvedPayload = approved as! ETHRequestPayload
+      if approved is EthRequestPayload {
+        let approvedPayload = approved as! EthRequestPayload
 
         if approvedPayload.id == payload.id, !self.processedRequestIds.contains(payload.id!) {
           self.processedRequestIds.append(payload.id!)
@@ -407,64 +345,8 @@ public class PortalProvider {
         }
       }
     }).on(event: Events.PortalSigningRejected.rawValue, callback: { approved in
-      if approved is ETHRequestPayload {
-        let rejectedPayload = approved as! ETHRequestPayload
-
-        if rejectedPayload.id == payload.id, !self.processedRequestIds.contains(payload.id!) {
-          self.processedRequestIds.append(payload.id!)
-          // If the rejected event is fired
-          return completion(Result(data: false))
-        }
-      }
-    })
-
-    if connect != nil {
-      connect!.emit(event: Events.PortalConnectSigningRequested.rawValue, data: payload)
-    } else {
-      // Execute event handlers
-      let handlers = self.events[Events.PortalSigningRequested.rawValue]
-
-      // Fail if there are no handlers
-      if handlers == nil || handlers!.isEmpty {
-        return completion(Result(data: false))
-      }
-
-      do {
-        // Loop over the event handlers
-        for eventHandler in handlers! {
-          try eventHandler.handler(payload)
-        }
-      } catch {
-        return completion(Result(error: error))
-      }
-    }
-  }
-
-  private func getApproval(
-    payload: ETHTransactionPayload,
-    completion: @escaping (Result<Bool>) -> Void,
-    connect: PortalConnect? = nil
-  ) {
-    if self.autoApprove {
-      return completion(Result(data: true))
-    } else if connect == nil, self.events[Events.PortalSigningRequested.rawValue] == nil {
-      return completion(Result(error: ProviderSigningError.noBindingForSigningApprovalFound))
-    }
-
-    // Bind to signing approval callbacks
-    _ = self.on(event: Events.PortalSigningApproved.rawValue, callback: { approved in
-      if approved is ETHTransactionPayload {
-        let approvedPayload = approved as! ETHTransactionPayload
-
-        if approvedPayload.id == payload.id, !self.processedRequestIds.contains(payload.id!) {
-          self.processedRequestIds.append(payload.id!)
-          // If the approved event is fired
-          return completion(Result(data: true))
-        }
-      }
-    }).on(event: Events.PortalSigningRejected.rawValue, callback: { approved in
-      if approved is ETHTransactionPayload {
-        let rejectedPayload = approved as! ETHTransactionPayload
+      if approved is EthRequestPayload {
+        let rejectedPayload = approved as! EthRequestPayload
 
         if rejectedPayload.id == payload.id, !self.processedRequestIds.contains(payload.id!) {
           self.processedRequestIds.append(payload.id!)
@@ -497,14 +379,14 @@ public class PortalProvider {
   }
 
   private func handleGatewayRequest(
-    payload: ETHTransactionPayload,
-    completion: @escaping (String, [ETHTransactionParam], Result<Any>, String) -> Void,
+    payload: EthTransactionPayload,
+    completion: @escaping (String, [EthTransactionParam], Result<Any>, String) -> Void,
     connect _: PortalConnect? = nil
   ) {
     // Create the body of the request.
     let body: [String: Any] = [
       "method": payload.method,
-      "params": payload.params.map { (p: ETHTransactionParam) in
+      "params": payload.params.map { (p: EthTransactionParam) in
         [
           "from": p.from,
           "to": p.to,
@@ -535,14 +417,14 @@ public class PortalProvider {
   }
 
   private func handleGatewayRequest(
-    payload: ETHAddressPayload,
-    completion: @escaping (String, [ETHAddressParam], Result<Any>, String) -> Void,
+    payload: EthAddressPayload,
+    completion: @escaping (String, [EthAddressParam], Result<Any>, String) -> Void,
     connect _: PortalConnect? = nil
   ) {
     // Create the body of the request.
     let body: [String: Any] = [
       "method": payload.method,
-      "params": payload.params.map { (p: ETHAddressParam) in
+      "params": payload.params.map { (p: EthAddressParam) in
         ["address": p.address]
       },
     ]
@@ -566,7 +448,7 @@ public class PortalProvider {
   }
 
   private func handleGatewayRequest(
-    payload: ETHRequestPayload,
+    payload: EthRequestPayload,
     completion: @escaping (String, [Any], Result<Any>, String) -> Void,
     connect _: PortalConnect? = nil
   ) {
@@ -667,7 +549,7 @@ public class PortalProvider {
   }
 
   private func handleSigningRequest(
-    payload: ETHRequestPayload,
+    payload: EthRequestPayload,
     completion: @escaping (Result<SignerResult>, String) -> Void,
     connect: PortalConnect? = nil
   ) {
@@ -702,7 +584,7 @@ public class PortalProvider {
   }
 
   private func handleSigningRequest(
-    payload: ETHTransactionPayload,
+    payload: EthTransactionPayload,
     completion: @escaping (Result<Any>, String) -> Void,
     connect: PortalConnect? = nil
   ) {
@@ -867,6 +749,7 @@ public enum ProviderRpcError: Error {
   case disconnected
   case unauthorized
   case unsupportedMethod
+  case unsupportedPayload
   case userRejectedRequest
 }
 
@@ -875,113 +758,6 @@ public enum ProviderSigningError: Error {
   case noBindingForSigningApprovalFound
   case userDeclinedApproval
   case walletRequestRejected
-}
-
-/// An ETH request payload where params is of type [Any].
-public struct ETHRequestPayload {
-  public var id: String?
-  public var method: ETHRequestMethods.RawValue
-  public var params: [Any]
-  public var signature: String?
-  public var chainId: Int?
-
-  public init(method: ETHRequestMethods.RawValue, params: [Any]) {
-    self.method = method
-    self.params = params
-  }
-
-  public init(method: ETHRequestMethods.RawValue, params: [Any], signature: String) {
-    self.method = method
-    self.params = params
-    self.signature = signature
-  }
-
-  public init(method: ETHRequestMethods.RawValue, params: [Any], id: String) {
-    self.method = method
-    self.params = params
-    self.id = id
-  }
-
-  public init(method: ETHRequestMethods.RawValue, params: [Any], id: String, chainId: Int) {
-    self.method = method
-    self.params = params
-    self.id = id
-    self.chainId = chainId
-  }
-
-  public init(method: ETHRequestMethods.RawValue, params: [Any], chainId: Int) {
-    self.method = method
-    self.params = params
-    self.chainId = chainId
-  }
-}
-
-/// A param within ETHTransactionPayload.params.
-public struct ETHTransactionParam: Codable {
-  public var from: String
-  public var to: String
-  public var gas: String?
-  public var gasPrice: String?
-  public var maxPriorityFeePerGas: String?
-  public var maxFeePerGas: String?
-  public var value: String?
-  public var data: String?
-  public var nonce: String? = nil
-
-  public init(from: String, to: String, gas: String, gasPrice: String, value: String, data: String, nonce: String? = nil) {
-    self.from = from
-    self.to = to
-    self.gas = gas
-    self.gasPrice = gasPrice
-    self.value = value
-    self.data = data
-    self.nonce = nonce
-  }
-
-  public init(from: String, to: String, gasPrice: String, value: String, data: String, nonce: String? = nil) {
-    self.from = from
-    self.to = to
-    self.gasPrice = gasPrice
-    self.value = value
-    self.data = data
-    self.nonce = nonce
-  }
-
-  public init(from: String, to: String, value: String, data: String) {
-    self.from = from
-    self.to = to
-    self.value = value
-    self.data = data
-  }
-
-  public init(from: String, to: String) {
-    self.from = from
-    self.to = to
-  }
-
-  public init(from: String, to: String, value: String) {
-    self.from = from
-    self.to = to
-    self.value = value
-  }
-
-  public init(from: String, to: String, data: String) {
-    self.from = from
-    self.to = to
-    self.data = data
-  }
-
-  // Below is the variation for EIP-1559
-  public init(from: String, to: String, gas: String, value: String, data: String, maxPriorityFeePerGas: String?, maxFeePerGas: String?, nonce: String? = nil) {
-    self.from = from
-    self.to = to
-    self.gas = gas
-    self.value = value
-    self.data = data
-    self.maxPriorityFeePerGas = maxPriorityFeePerGas
-    self.maxFeePerGas = maxFeePerGas
-    self.nonce = nonce
-  }
 }
 
 /// An error response from Gateway.
@@ -996,79 +772,6 @@ public struct ETHGatewayResponse: Codable {
   public var id: Int?
   public var result: String?
   public var error: ETHGatewayErrorResponse?
-}
-
-/// The payload for a transaction request.
-public struct ETHTransactionPayload: Codable {
-  public var id: String?
-  public var method: ETHRequestMethods.RawValue
-  public var params: [ETHTransactionParam]
-  public var chainId: Int? = nil
-
-  public init(method: ETHRequestMethods.RawValue, params: [ETHTransactionParam]) {
-    self.method = method
-    self.params = params
-  }
-
-  public init(method: ETHRequestMethods.RawValue, params: [ETHTransactionParam], id: String) {
-    self.method = method
-    self.params = params
-    self.id = id
-  }
-
-  public init(method: ETHRequestMethods.RawValue, params: [ETHTransactionParam], id: String, chainId: Int) {
-    self.method = method
-    self.params = params
-    self.id = id
-    self.chainId = chainId
-  }
-
-  public init(method: ETHRequestMethods.RawValue, params: [ETHTransactionParam], chainId: Int) {
-    self.method = method
-    self.params = params
-    self.chainId = chainId
-  }
-}
-
-/// A param within ETHAddressPayload.params.
-public struct ETHAddressParam: Codable {
-  public var address: String
-
-  public init(address: String) {
-    self.address = address
-  }
-}
-
-/// The payload for an address request.
-public struct ETHAddressPayload: Codable {
-  public var id: String?
-  public var method: ETHRequestMethods.RawValue
-  public var params: [ETHAddressParam]
-  public var chainId: Int? = nil
-
-  public init(method: ETHRequestMethods.RawValue, params: [ETHAddressParam]) {
-    self.method = method
-    self.params = params
-  }
-
-  public init(method: ETHRequestMethods.RawValue, params: [ETHAddressParam], id: String) {
-    self.method = method
-    self.params = params
-    self.id = id
-  }
-
-  public init(method: ETHRequestMethods.RawValue, params: [ETHAddressParam], id: String, chainId: Int) {
-    self.method = method
-    self.params = params
-    self.id = id
-    self.chainId = chainId
-  }
-
-  public init(method: ETHRequestMethods.RawValue, params: [ETHAddressParam], chainId: Int) {
-    self.method = method
-    self.params = params
-    self.chainId = chainId
-  }
 }
 
 /// A list of JSON-RPC transaction methods.
@@ -1116,7 +819,7 @@ public struct RequestCompletionResult {
 /// The result of a transaction request.
 public struct TransactionCompletionResult {
   public var method: String
-  public var params: [ETHTransactionParam]
+  public var params: [EthTransactionParam]
   public var result: Any
   public var id: String
 }
@@ -1124,7 +827,7 @@ public struct TransactionCompletionResult {
 /// The result of an address request.
 public struct AddressCompletionResult {
   public var method: String
-  public var params: [ETHAddressParam]
+  public var params: [EthAddressParam]
   public var result: Any
   public var id: String
 }
@@ -1262,4 +965,142 @@ public struct LogsResponse: Codable {
   public var id: Int?
   public var result: [Log]?
   public var error: ETHGatewayErrorResponse?
+}
+
+public protocol EthPayload {
+  var id: String? { get set }
+  var method: ETHRequestMethods.RawValue { get set }
+  var signature: String? { get set }
+  var chainId: Int? { get set }
+}
+
+public struct EthAddressPayload: EthPayload, Codable {
+  public var id: String?
+  public var method: ETHRequestMethods.RawValue
+  public var params: [EthAddressParam]
+  public var signature: String?
+  public var chainId: Int?
+}
+
+public struct EthAddressParam: Codable {
+  public var address: String
+
+  public init(address: String) {
+    self.address = address
+  }
+}
+
+/// An ETH request payload where params is of type [Any].
+public struct EthRequestPayload: EthPayload {
+  public var id: String?
+  public var method: ETHRequestMethods.RawValue
+  public var params: [Any]
+  public var signature: String?
+  public var chainId: Int?
+
+  public init(method: ETHRequestMethods.RawValue, params: [Any]) {
+    self.method = method
+    self.params = params
+  }
+
+  public init(method: ETHRequestMethods.RawValue, params: [Any], signature: String) {
+    self.method = method
+    self.params = params
+    self.signature = signature
+  }
+
+  public init(method: ETHRequestMethods.RawValue, params: [Any], id: String) {
+    self.method = method
+    self.params = params
+    self.id = id
+  }
+
+  public init(method: ETHRequestMethods.RawValue, params: [Any], id: String, chainId: Int) {
+    self.method = method
+    self.params = params
+    self.id = id
+    self.chainId = chainId
+  }
+
+  public init(method: ETHRequestMethods.RawValue, params: [Any], chainId: Int) {
+    self.method = method
+    self.params = params
+    self.chainId = chainId
+  }
+}
+
+public struct EthTransactionPayload: EthPayload, Codable {
+  public var id: String?
+  public var method: ETHRequestMethods.RawValue
+  public var params: [EthTransactionParam]
+  public var signature: String?
+  public var chainId: Int?
+}
+
+/// A param within ETHTransactionPayload.params.
+public struct EthTransactionParam: Codable {
+  public var from: String
+  public var to: String
+  public var gas: String?
+  public var gasPrice: String?
+  public var maxPriorityFeePerGas: String?
+  public var maxFeePerGas: String?
+  public var value: String?
+  public var data: String?
+  public var nonce: String? = nil
+
+  public init(from: String, to: String, gas: String, gasPrice: String, value: String, data: String, nonce: String? = nil) {
+    self.from = from
+    self.to = to
+    self.gas = gas
+    self.gasPrice = gasPrice
+    self.value = value
+    self.data = data
+    self.nonce = nonce
+  }
+
+  public init(from: String, to: String, gasPrice: String, value: String, data: String, nonce: String? = nil) {
+    self.from = from
+    self.to = to
+    self.gasPrice = gasPrice
+    self.value = value
+    self.data = data
+    self.nonce = nonce
+  }
+
+  public init(from: String, to: String, value: String, data: String) {
+    self.from = from
+    self.to = to
+    self.value = value
+    self.data = data
+  }
+
+  public init(from: String, to: String) {
+    self.from = from
+    self.to = to
+  }
+
+  public init(from: String, to: String, value: String) {
+    self.from = from
+    self.to = to
+    self.value = value
+  }
+
+  public init(from: String, to: String, data: String) {
+    self.from = from
+    self.to = to
+    self.data = data
+  }
+
+  // Below is the variation for EIP-1559
+  public init(from: String, to: String, gas: String, value: String, data: String, maxPriorityFeePerGas: String?, maxFeePerGas: String?, nonce: String? = nil) {
+    self.from = from
+    self.to = to
+    self.gas = gas
+    self.value = value
+    self.data = data
+    self.maxPriorityFeePerGas = maxPriorityFeePerGas
+    self.maxFeePerGas = maxFeePerGas
+    self.nonce = nonce
+  }
 }
