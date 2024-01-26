@@ -225,6 +225,32 @@ public class PortalProvider {
     let isSignerMethod = signerMethods.contains(payload.method)
     let id = UUID().uuidString
 
+    // Handle changing chains
+    if payload.method == ETHRequestMethods.WalletSwitchEthereumChain.rawValue {
+      let param = payload.params[0] as! [String: String]
+
+      if let chainId = UInt8(param["chainId"]!.replacingOccurrences(of: "0x", with: ""), radix: 16) {
+        do {
+          _ = try self.setChainId(value: Int(chainId), connect: connect)
+
+          let completionResult = RequestCompletionResult(
+            method: payload.method,
+            params: payload.params,
+            result: "null",
+            id: ""
+          )
+
+          _ = self.emit(event: Events.PortalSignatureReceived.rawValue, data: completionResult)
+
+          return completion(Result(data: completionResult))
+        } catch {
+          return completion(Result(error: error))
+        }
+      } else {
+        return completion(Result(error: ProviderRpcError.unsupportedMethod))
+      }
+    }
+
     let payloadWithId = ETHRequestPayload(method: payload.method, params: payload.params, id: id, chainId: payload.chainId ?? self.chainId)
 
     if !isSignerMethod, !payloadWithId.method.starts(with: "wallet_") {
@@ -914,6 +940,15 @@ public struct ETHRequestPayload {
     self.params = params
     self.chainId = chainId
   }
+}
+
+public struct ETHChainParam: Codable {
+  public var chainId: String
+}
+
+public struct ETHChainPayload: Codable {
+  public var method: ETHRequestMethods.RawValue
+  public var params: [ETHChainParam]
 }
 
 /// A param within ETHTransactionPayload.params.
