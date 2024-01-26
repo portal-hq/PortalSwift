@@ -1,6 +1,0 @@
-framework module PortalSwift {
-  umbrella header "PortalSwift-umbrella.h"
-
-  export *
-  module * { export * }
-}
