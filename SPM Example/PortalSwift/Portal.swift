@@ -153,7 +153,7 @@ class PortalWrapper {
     }
   }
 
-  func backup(backupMethod: BackupMethods.RawValue, user: UserResult, backupConfigs: BackupConfigs? = nil, completion: @escaping (Result<Bool>) -> Void) {
+  func backup(backupMethod: BackupMethods.RawValue, user: UserResult, backupConfigs: BackupConfigs? = nil, completion: @escaping (Result<String>) -> Void) {
     self.portal?.backupWallet(method: backupMethod, backupConfigs: backupConfigs) { (result: Result<String>) in
       guard result.error == nil else {
         return completion(Result(error: result.error!))
@@ -167,7 +167,17 @@ class PortalWrapper {
       )
 
       request.send { (_: Result<String>) in
-        completion(Result(data: true))
+        do {
+          try self.portal!.api.storedClientBackupShare(success: true) { result in
+            guard result.error == nil else {
+              print("❌ handleBackup(): Error notifying Portal that backup share was stored.")
+              return completion(result)
+            }
+            completion(result)
+          }
+        } catch {
+          print("❌ handleBackup(): Error notifying Portal that backup share was stored.")
+        }
       }
     } progress: { status in
       print("Backup Status: ", status)
