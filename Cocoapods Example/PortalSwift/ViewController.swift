@@ -206,12 +206,12 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
     }
   }
-    
-    @IBAction func handleEject(_: UIButton) {
-        self.PortalWrapper.eject(backupMethod: BackupMethods.iCloud.rawValue, user: self.user!) { result in
-            print(result.data!)
-        }
+
+  @IBAction func handleEject(_: UIButton) {
+    self.PortalWrapper.eject(backupMethod: BackupMethods.iCloud.rawValue, user: self.user!) { result in
+      print(result.data!)
     }
+  }
 
   @IBAction func handleSignOut(_: UIButton) {
     self.user = nil

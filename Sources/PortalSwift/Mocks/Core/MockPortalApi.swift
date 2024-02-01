@@ -71,13 +71,13 @@ public class MockPortalApi: PortalApi {
     let mockResponse = Result(data: "Backup share key successfully stored")
     completion(mockResponse)
   }
-    
-    // Mocking the ejectClient function
-    override public func ejectClient(completion: @escaping (Result<String>) -> Void) throws {
-      // Mock response based on the success parameter
-      let mockResponse = Result(data: "")
-      completion(mockResponse)
-    }
+
+  // Mocking the ejectClient function
+  override public func ejectClient(completion: @escaping (Result<String>) -> Void) throws {
+    // Mock response based on the success parameter
+    let mockResponse = Result(data: "")
+    completion(mockResponse)
+  }
 
   override public func identify(traits _: [String: Any] = [:], completion: @escaping (Result<MetricsResponse>) -> Void) throws {
     let mockResponse = Result(data: MetricsResponse(status: true))
