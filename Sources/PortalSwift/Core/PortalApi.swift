@@ -318,21 +318,21 @@ public class PortalApi {
       self.track(event: MetricsEvents.storedClientBackupShareKey.rawValue, properties: ["path": "/api/v1/clients/me/wallet/stored-client-backup-share-key"])
     }
   }
-    
-    /// Updates the client's ejectedAt status.
-    /// - Parameters:
-    ///   - completion: The callback that contains the response status.
-    /// - Returns: Void.
-    public func ejectClient(completion: @escaping (Result<String>) -> Void) throws {
-      try self.requests.post(
-        path: "/api/v1/clients/eject",
-        body: [:],
-        headers: ["Authorization": "Bearer \(self.apiKey)"],
-        requestType: HttpRequestType.CustomRequest
-      ) { (result: Result<String>) in
-        completion(result)
-      }
+
+  /// Updates the client's ejectedAt status.
+  /// - Parameters:
+  ///   - completion: The callback that contains the response status.
+  /// - Returns: Void.
+  public func ejectClient(completion: @escaping (Result<String>) -> Void) throws {
+    try self.requests.post(
+      path: "/api/v1/clients/eject",
+      body: [:],
+      headers: ["Authorization": "Bearer \(self.apiKey)"],
+      requestType: HttpRequestType.CustomRequest
+    ) { (result: Result<String>) in
+      completion(result)
     }
+  }
 
   /// Updates the client's wallet backup state to have successfully stored the client backup share with the custodian.
   /// - Parameters:
