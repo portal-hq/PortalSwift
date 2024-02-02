@@ -287,6 +287,16 @@ public class Portal {
     self.mpc.recover(cipherText: cipherText, method: method, backupConfigs: backupConfigs, completion: completion, progress: progress)
   }
 
+  public func ejectPrivateKey(
+    clientBackupCiphertext: String,
+    method: BackupMethods.RawValue,
+    backupConfigs: BackupConfigs? = nil,
+    orgBackupShare: String,
+    completion: @escaping (Result<String>) -> Void
+  ) {
+    self.mpc.ejectPrivateKey(clientBackupCiphertext: clientBackupCiphertext, method: method, backupConfigs: backupConfigs, orgBackupShare: orgBackupShare, completion: completion)
+  }
+
   @available(*, deprecated, renamed: "recoverWallet")
   public func legacyRecoverWallet(
     cipherText: String,
