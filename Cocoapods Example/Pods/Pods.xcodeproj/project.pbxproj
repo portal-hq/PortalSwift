@@ -154,6 +154,7 @@
 		7C67CBD15D9B5D0B7769B2F469478332 /* FBSnapshotTestCase.m in Sources */ = {isa = PBXBuildFile; fileRef = EDE864ECC1E67F6A8D50CA0EB95FE26B /* FBSnapshotTestCase.m */; };
 		7DE2731ABF0A9B3DB57426EEB17BC1A8 /* NativeEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 367DF94475CB58FA300719CC7C21934F /* NativeEngine.swift */; };
 		7E7005D62B223FDB00534246 /* PortalWebViewDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E7005D52B223FDB00534246 /* PortalWebViewDelegate.swift */; };
+		7E8FF16F2B69A5EB006CDB1A /* PortalInjectionScript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E8FF16E2B69A5EA006CDB1A /* PortalInjectionScript.swift */; };
 		7ECA1AE07A77457A0CA3EC39ED873274 /* LocalAuthentication.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 833AAF9E2791D276B133EB166B930F7E /* LocalAuthentication.framework */; };
 		7F6E015D616C80C1FDC9C2EBAACD8BF4 /* OIDEndSessionRequest.m in Sources */ = {isa = PBXBuildFile; fileRef = 599E3D46C58E1FA0CBEDB7BB8C6329E2 /* OIDEndSessionRequest.m */; };
 		7F719C2169F73F0AC6450A1CF23B4D29 /* Portal.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0BB6330A40B5EC391482872BDE28550 /* Portal.swift */; };
@@ -621,6 +622,7 @@
 		7D8662EFB4FAC42189A609FFAC578053 /* OIDFieldMapping.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = OIDFieldMapping.h; path = Source/AppAuthCore/OIDFieldMapping.h; sourceTree = "<group>"; };
 		7E3750AD99F728616332AE37CAA945C9 /* GIDProfileData_Private.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = GIDProfileData_Private.h; path = GoogleSignIn/Sources/GIDProfileData_Private.h; sourceTree = "<group>"; };
 		7E7005D52B223FDB00534246 /* PortalWebViewDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortalWebViewDelegate.swift; sourceTree = "<group>"; };
+		7E8FF16E2B69A5EA006CDB1A /* PortalInjectionScript.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalInjectionScript.swift; sourceTree = "<group>"; };
 		7F72CEDA4AB1253CFEDA8319A60F1934 /* MockMpcMobileErrors.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MockMpcMobileErrors.swift; sourceTree = "<group>"; };
 		808CDF5B25EE92B6142641D53F4E3EF2 /* LocalFileStorage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LocalFileStorage.swift; sourceTree = "<group>"; };
 		80E67469BC6004EA71E9BD8B3F8E77BB /* GIDGoogleUser.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = GIDGoogleUser.h; path = GoogleSignIn/Sources/Public/GoogleSignIn/GIDGoogleUser.h; sourceTree = "<group>"; };
@@ -1252,6 +1254,7 @@
 		497DD9A3523108516EFDEB04D6A0B109 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				7E8FF16E2B69A5EA006CDB1A /* PortalInjectionScript.swift */,
 				192A62AED4237CCEED4562F343F997DF /* PortalWebView.swift */,
 				7E7005D52B223FDB00534246 /* PortalWebViewDelegate.swift */,
 			);
@@ -2590,6 +2593,7 @@
 				9BDA081FECE99C4B89B3A5EC51FCBE0E /* MockPortal.swift in Sources */,
 				F9A4B4F22AFD1BA900704485 /* PasskeyStorage.swift in Sources */,
 				626DBC647CE8AB86F13C7E6772D32998 /* MockPortalApi.swift in Sources */,
+				7E8FF16F2B69A5EB006CDB1A /* PortalInjectionScript.swift in Sources */,
 				A781CD804D0399CAC5DA80C0C670422C /* MockPortalKeychain.swift in Sources */,
 				4F56E0BB9445B6FB4BC615C46F41B26B /* MockPortalMpc.swift in Sources */,
 				1668B8211BF156D49B94B82A6F3C8EFB /* MockPortalProvider.swift in Sources */,

@@ -22,4 +22,8 @@ public class MockPortalMpc: PortalMpc {
     completion(Result(data: mockBackupShare))
     progress?(MpcStatus(status: MpcStatuses.done, done: true))
   }
+
+  override public func ejectPrivateKey(clientBackupCiphertext _: String, method _: BackupMethods.RawValue, backupConfigs _: BackupConfigs? = nil, orgBackupShare _: String, completion: @escaping (Result<String>) -> Void) {
+    completion(Result(data: mockPrivateKey))
+  }
 }

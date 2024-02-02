@@ -78,6 +78,23 @@ class WebViewController: UIViewController, PortalWebViewDelegate {
   func onPageComplete() {
     print("✅ PortalWebView: Page loading completed")
     self.activityIndicator.stopAnimating()
+
+    /*********************************************
+     * For testing chain changing from Provider
+     *********************************************/
+
+//    DispatchQueue.global(qos: .background).async {
+//      Thread.sleep(forTimeInterval: 5.0)
+//      print("Changing chains to \(1)")
+//
+//      DispatchQueue.main.async {
+//        do {
+//          try self.portal?.setChainId(to: 1)
+//        } catch {
+//            print("Unable to sleep. Not changing chains.")
+//        }
+//      }
+//    }
   }
 
   func onError(result: Result<Any>) {

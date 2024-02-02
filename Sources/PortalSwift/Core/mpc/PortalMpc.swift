@@ -341,6 +341,66 @@ public class PortalMpc {
     }
   }
 
+  /// Uses the org and client backup shares to return the private key
+  ///  - Parameters:
+  ///    - cipherText: the cipherText of the client's backup share
+  ///    - method: The specific backup storage option.
+  ///    - orgShare: the stringified version of the organization's backup share
+  public func ejectPrivateKey(
+    clientBackupCiphertext: String,
+    method: BackupMethods.RawValue,
+    backupConfigs _: BackupConfigs? = nil,
+    orgBackupShare: String,
+    completion: @escaping (Result<String>) -> Void
+  ) {
+    if self.version != "v5" {
+      completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v5`.")))
+    }
+
+    self.getBackupShare(cipherText: clientBackupCiphertext, method: method) { (result: Result<String>) in
+      guard result.error == nil else {
+        completion(Result(error: result.error!))
+        return
+      }
+      if let clientBackupShare = result.data {
+        do {
+          // Call eject with clientBackupShare and orShare
+          let response = self.mobile.MobileEjectWalletAndDiscontinueMPC(clientBackupShare, orgBackupShare)
+          guard let jsonData = response.data(using: .utf8) else {
+            return completion(Result(error: JSONParseError.stringToDataConversionFailed))
+          }
+
+          let ejectResult: EjectResult = try JSONDecoder().decode(EjectResult.self, from: jsonData)
+
+          // Throw if there was an error generating the wallet.
+          guard ejectResult.error.code == 0 else {
+            return completion(Result(error: PortalMpcError(ejectResult.error)))
+          }
+
+          // Set the client's private key.
+          let privateKey = ejectResult.privateKey
+
+          // Call API backend to set the client as ejected
+          do {
+            try self.api.ejectClient { (apiResult: Result<String>) in
+              // Throw an error if we can't update the client's ejectedAt.
+              if let error = apiResult.error {
+                return completion(Result(error: error))
+              }
+
+              // Return the privateKey.
+              return completion(Result(data: privateKey))
+            }
+          } catch {
+            return completion(Result(error: error))
+          }
+        } catch {
+          return completion(Result(error: error))
+        }
+      }
+    }
+  }
+
   /// Uses the backup share to create a new signing share.
   /// - Parameters:
   ///   - cipherText: the cipherText of the backup share (should be passed in from the custodian).
@@ -1226,6 +1286,12 @@ private struct EncryptResult: Codable {
 /// The response from fetching the client.
 public struct ClientResult: Codable {
   public var data: Client?
+  public var error: PortalError
+}
+
+/// The response from fetching the client.
+public struct EjectResult: Codable {
+  public var privateKey: String
   public var error: PortalError
 }
 
