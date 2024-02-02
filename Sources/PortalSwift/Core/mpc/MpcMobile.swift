@@ -52,4 +52,8 @@ class MobileWrapper: Mobile {
   func MobileSign(_ apiKey: String?, _ host: String?, _ signingShare: String?, _ method: String?, _ params: String?, _ rpcURL: String?, _ chainId: String?, _ metadata: String?) -> String {
     Mpc.MobileSign(apiKey, host, signingShare, method, params, rpcURL, chainId, metadata)
   }
+
+  func MobileEjectWalletAndDiscontinueMPC(_ clientDkgCipherText: String, _ serverDkgCipherText: String) -> String {
+    return Mpc.MobileEjectWalletAndDiscontinueMPC(clientDkgCipherText, serverDkgCipherText)
+  }
 }
