@@ -112,6 +112,22 @@ final class PortalCoreTests: XCTestCase {
     XCTAssertEqual(encounteredStatuses, recoverProgressCallbacks, "All expected statuses should be encountered")
   }
 
+  func testEjectWallet() {
+    let expectation = XCTestExpectation(description: "Eject")
+
+    self.portal.ejectPrivateKey(clientBackupCiphertext: mockCiphertext, method: BackupMethods.iCloud.rawValue, orgBackupShare: "someOrgShare") { result in
+      guard result.error == nil else {
+        XCTFail("Failure: \(String(describing: result.error))")
+        expectation.fulfill()
+        return
+      }
+
+      XCTAssertEqual(result.data!, "099cabf8c65c81e629d59e72f04a549aafa531329e25685a5b8762b926597209", "Unexpected private key")
+      expectation.fulfill()
+    }
+    wait(for: [expectation], timeout: 5.0)
+  }
+
   func testLegacyRecoverWallet() {
     let expectation = XCTestExpectation(description: "Legacy Recover")
     var encounteredStatuses: [MpcStatuses] = []
