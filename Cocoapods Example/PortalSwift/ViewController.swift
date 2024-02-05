@@ -100,10 +100,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
     let STAGING_CUSTODIAN_SERVER_URL = "https://staging-portalex-mpc-service.onrender.com"
     let PROD_API_URL = "api.portalhq.io"
     let PROD_MPC_URL = "mpc.portalhq.io"
-    let STAGING_API_URL = "api-staging.portalhq.io"
-    let STAGING_MPC_URL = "mpc-staging.portalhq.io"
+    let STAGING_API_URL = "api.portalhq.dev"
+    let STAGING_MPC_URL = "mpc.portalhq.dev"
     let PROD_RELYING_PARTY_URL = "backup.portalhq.io"
-    let STAGING_RELYING_PARTY_URL = "backup-staging.portalhq.io"
+    let STAGING_RELYING_PARTY_URL = "backup.portalhq.dev"
 
     guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
       print("Couldnt load info plist")
