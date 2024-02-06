@@ -34,8 +34,8 @@ class PortalWrapper {
     let PROD_MPC_URL = "mpc.portalhq.io"
 
     let STAGING_CUSTODIAN_SERVER_URL = "https://staging-portalex-mpc-service.onrender.com"
-    let STAGING_API_URL = "api-staging.portalhq.io"
-    let STAGING_MPC_URL = "mpc-staging.portalhq.io"
+    let STAGING_API_URL = "api.portalhq.dev"
+    let STAGING_MPC_URL = "mpc.portalhq.dev"
 
     let LOCAL_API_URL = "localhost:3001"
     let LOCAL_MPC_URL = "localhost:3002"

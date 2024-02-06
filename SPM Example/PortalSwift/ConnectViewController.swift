@@ -54,7 +54,7 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
     }
 
     let PROD_CONNECT_SERVER_URL = "connect.portalhq.io"
-    let STAGING_CONNECT_SERVER_URL = "connect-staging.portalhq.io"
+    let STAGING_CONNECT_SERVER_URL = "connect.portalhq.dev"
     let LOCAL_CONNECT_SERVER_URL = "localhost:3003"
     let CONNECT_URL = ENV == "prod" ? PROD_CONNECT_SERVER_URL : ENV == "staging" ? STAGING_CONNECT_SERVER_URL : LOCAL_CONNECT_SERVER_URL
 
