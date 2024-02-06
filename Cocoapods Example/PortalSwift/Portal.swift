@@ -165,30 +165,20 @@ class PortalWrapper {
   func backup(backupMethod: BackupMethods.RawValue, user: UserResult, backupConfigs: BackupConfigs? = nil, completion: @escaping (Result<String>) -> Void) {
     self.portal?.backupWallet(method: backupMethod, backupConfigs: backupConfigs) { (result: Result<String>) in
       guard result.error == nil else {
-        do {
-          try self.portal?.api.storedClientBackupShare(success: false) { result in
-            guard result.error == nil else {
-              print("❌ handleBackup(): Error notifying Portal that backup share was not stored.")
-              return completion(Result(error: result.error!))
-            }
-          }
-        } catch {
-          print("❌ handleBackup(): Error notifying Portal that backup share was not stored.")
-          return completion(Result(error: error))
-        }
+        print("❌ backup(): Error backing up wallet", result.error)
         return completion(result)
       }
       let request = HttpRequest<String, [String: String]>(
         url: self.CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/cipher-text",
         method: "POST",
-        body: ["cipherText": result.data!],
+        body: ["cipherText": result.data!, "backupMethod": backupMethod],
         headers: [:],
         requestType: HttpRequestType.CustomRequest
       )
 
       request.send { (_: Result<String>) in
         do {
-          try self.portal!.api.storedClientBackupShare(success: true) { result in
+          try self.portal!.api.storedClientBackupShare(success: true, backupMethod: backupMethod) { result in
             guard result.error == nil else {
               print("❌ handleBackup(): Error notifying Portal that backup share was stored.")
               return completion(result)
@@ -255,7 +245,8 @@ class PortalWrapper {
   func recover(backupMethod: BackupMethods.RawValue, user: UserResult, backupConfigs: BackupConfigs? = nil, completion: @escaping (Result<Bool>) -> Void) {
     print("[PortalWrapper] Starting recover...")
     let request = HttpRequest<CipherTextResult, [String: String]>(
-      url: CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/cipher-text/fetch",
+      // url: CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/cipher-text/fetch?backupMethod=\(backupMethod)", // Use this to fetch v6+ client backup share.
+      url: CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/cipher-text/fetch", // Use this to fetch pre-v6 client backup share.
       method: "GET", body: [:],
       headers: [:],
       requestType: HttpRequestType.CustomRequest
@@ -286,7 +277,7 @@ class PortalWrapper {
   func legacyRecover(backupMethod: BackupMethods.RawValue, user: UserResult, completion: @escaping (Result<Bool>) -> Void) {
     print("[PortalWrapper] Starting legacy recover...")
     let request = HttpRequest<CipherTextResult, [String: String]>(
-      url: CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/cipher-text/fetch",
+      url: CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/cipher-text/fetch?backupMethod=\(backupMethod)",
       method: "GET", body: [:],
       headers: [:],
       requestType: HttpRequestType.CustomRequest
@@ -309,7 +300,7 @@ class PortalWrapper {
         let request = HttpRequest<String, [String: String]>(
           url: self.CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/cipher-text",
           method: "POST",
-          body: ["cipherText": result.data!],
+          body: ["cipherText": result.data!, "backupMethod": backupMethod],
           headers: [:],
           requestType: HttpRequestType.CustomRequest
         )
