@@ -245,8 +245,7 @@ class PortalWrapper {
   func recover(backupMethod: BackupMethods.RawValue, user: UserResult, backupConfigs: BackupConfigs? = nil, completion: @escaping (Result<Bool>) -> Void) {
     print("[PortalWrapper] Starting recover...")
     let request = HttpRequest<CipherTextResult, [String: String]>(
-      // url: CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/cipher-text/fetch?backupMethod=\(backupMethod)", // Use this to fetch v6+ client backup share.
-      url: CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/cipher-text/fetch", // Use this to fetch pre-v6 client backup share.
+      url: CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/cipher-text/fetch?backupMethod=\(backupMethod)", // Use this to fetch v6+ client backup share.
       method: "GET", body: [:],
       headers: [:],
       requestType: HttpRequestType.CustomRequest
