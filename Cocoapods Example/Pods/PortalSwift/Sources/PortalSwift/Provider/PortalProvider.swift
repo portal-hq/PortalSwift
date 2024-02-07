@@ -57,7 +57,7 @@ public class PortalProvider {
     autoApprove: Bool,
     apiHost: String = "api.portalhq.io",
     mpcHost: String = "mpc.portalhq.io",
-    version: String = "v5",
+    version: String = "v6",
     featureFlags: FeatureFlags? = nil
   ) throws {
     // User-defined instance variables
@@ -100,7 +100,7 @@ public class PortalProvider {
     gateway: HttpRequester,
     apiHost: String = "api.portalhq.io",
     mpcHost: String = "mpc.portalhq.io",
-    version: String = "v5",
+    version: String = "v6",
     featureFlags: FeatureFlags? = nil
   ) throws {
     // User-defined instance variables
