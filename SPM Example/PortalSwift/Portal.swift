@@ -39,8 +39,11 @@ class PortalWrapper {
 
     let LOCAL_API_URL = "localhost:3001"
     let LOCAL_MPC_URL = "localhost:3002"
-
-    guard let ENV: String = Bundle.main.infoDictionary?["ENV"] as? String else {
+    guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
+      print("Couldnt load info plist")
+      return
+    }
+    guard let ENV: String = infoDictionary["ENV"] as? String else {
       print("Error: Do you have `ENV=$(ENV)` in your info.plist?")
       return
     }
@@ -58,8 +61,6 @@ class PortalWrapper {
       self.API_URL = LOCAL_API_URL
       self.MPC_URL = LOCAL_MPC_URL
     }
-
-    print("CUSTODIAN_SERVER_URL", self.CUSTODIAN_SERVER_URL)
   }
 
   func signIn(username: String, completion: @escaping (Result<UserResult>) -> Void) {
@@ -102,13 +103,17 @@ class PortalWrapper {
     case cantLoadInfoPlist
   }
 
-  func registerPortal(apiKey: String, backup: BackupOptions, chainId: Int = 5, optimized: Bool = false, completion: @escaping (Result<Bool>) -> Void) {
+  func registerPortal(apiKey: String, backup: BackupOptions, chainId: Int = 11_155_111, optimized: Bool = false, completion: @escaping (Result<Bool>) -> Void) {
     do {
-      guard let ALCHEMY_API_KEY: String = Bundle.main.infoDictionary?["ALCHEMY_API_KEY"] as? String else {
+      guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
+        return completion(Result(error: PortalWrapperError.cantLoadInfoPlist))
+      }
+      guard let ALCHEMY_API_KEY: String = infoDictionary["ALCHEMY_API_KEY"] as? String else {
         print("Error: Do you have `ALCHEMY_API_KEY=$(ALCHEMY_API_KEY)` in your info.plist?")
         return
       }
       let keychain = PortalKeychain()
+
       // Configure the chain.
       self.portal = try Portal(
         apiKey: apiKey,
@@ -160,19 +165,20 @@ class PortalWrapper {
   func backup(backupMethod: BackupMethods.RawValue, user: UserResult, backupConfigs: BackupConfigs? = nil, completion: @escaping (Result<String>) -> Void) {
     self.portal?.backupWallet(method: backupMethod, backupConfigs: backupConfigs) { (result: Result<String>) in
       guard result.error == nil else {
-        return completion(Result(error: result.error!))
+        print("❌ backup(): Error backing up wallet", result.error)
+        return completion(result)
       }
       let request = HttpRequest<String, [String: String]>(
         url: self.CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/cipher-text",
         method: "POST",
-        body: ["cipherText": result.data!],
+        body: ["cipherText": result.data!, "backupMethod": backupMethod],
         headers: [:],
         requestType: HttpRequestType.CustomRequest
       )
 
       request.send { (_: Result<String>) in
         do {
-          try self.portal!.api.storedClientBackupShare(success: true) { result in
+          try self.portal!.api.storedClientBackupShare(success: true, backupMethod: backupMethod) { result in
             guard result.error == nil else {
               print("❌ handleBackup(): Error notifying Portal that backup share was stored.")
               return completion(result)
@@ -239,7 +245,7 @@ class PortalWrapper {
   func recover(backupMethod: BackupMethods.RawValue, user: UserResult, backupConfigs: BackupConfigs? = nil, completion: @escaping (Result<Bool>) -> Void) {
     print("[PortalWrapper] Starting recover...")
     let request = HttpRequest<CipherTextResult, [String: String]>(
-      url: CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/cipher-text/fetch",
+      url: CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/cipher-text/fetch?backupMethod=\(backupMethod)",
       method: "GET", body: [:],
       headers: [:],
       requestType: HttpRequestType.CustomRequest
@@ -270,7 +276,7 @@ class PortalWrapper {
   func legacyRecover(backupMethod: BackupMethods.RawValue, user: UserResult, completion: @escaping (Result<Bool>) -> Void) {
     print("[PortalWrapper] Starting legacy recover...")
     let request = HttpRequest<CipherTextResult, [String: String]>(
-      url: CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/cipher-text/fetch",
+      url: CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/cipher-text/fetch?backupMethod=\(backupMethod)",
       method: "GET", body: [:],
       headers: [:],
       requestType: HttpRequestType.CustomRequest
@@ -293,7 +299,7 @@ class PortalWrapper {
         let request = HttpRequest<String, [String: String]>(
           url: self.CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/cipher-text",
           method: "POST",
-          body: ["cipherText": result.data!],
+          body: ["cipherText": result.data!, "backupMethod": backupMethod],
           headers: [:],
           requestType: HttpRequestType.CustomRequest
         )

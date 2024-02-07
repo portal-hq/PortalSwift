@@ -428,7 +428,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       guard result.error == nil else {
         print("❌ handleLegacyRecover(): Error fetching cipherText:", result.error ?? "")
         do {
-          try self.PortalWrapper.portal?.api.storedClientBackupShare(success: false) { result in
+          try self.PortalWrapper.portal?.api.storedClientBackupShare(success: false, backupMethod: BackupMethods.iCloud.rawValue) { result in
             guard result.error == nil else {
               print("❌ handleLegacyRecover(): Error notifying Portal that backup share was not stored.")
               return
@@ -441,7 +441,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
 
       do {
-        try self.PortalWrapper.portal?.api.storedClientBackupShare(success: true) { result in
+        try self.PortalWrapper.portal?.api.storedClientBackupShare(success: true, backupMethod: BackupMethods.iCloud.rawValue) { result in
           guard result.error == nil else {
             print("❌ handleLegacyRecover(): Error notifying Portal that backup share was stored.")
             return
@@ -497,6 +497,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     self.getTransactions()
     self.getBalances()
     self.simulateTransaction()
+    self.getBackupShareMetadata()
   }
 
   func populateAddressInformation() {
@@ -545,6 +546,21 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
     } catch {
       print("❌ Unable to retrieve transactions", error)
+    }
+  }
+
+  func getBackupShareMetadata() {
+    do {
+      try self.portal?.api.getBackupShareMetadata { results in
+        guard results.error == nil else {
+          print("❌ Unable to get backup share pairs", results.error ?? "")
+          return
+        }
+
+        print("✅ Retrieved backup share pairs", results.data ?? "")
+      }
+    } catch {
+      print("❌ Unable to retrieve backup share pairs", error)
     }
   }
 

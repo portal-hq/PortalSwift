@@ -17,7 +17,7 @@ public class MockPortal: Portal {
     gatewayConfig: [Int: String],
     // Optional
     isSimulator: Bool = false,
-    version: String = "v5",
+    version: String = "v6",
     autoApprove: Bool = false,
     apiHost: String = "api.portalhq.io",
     mpcHost: String = "mpc.portalhq.io",

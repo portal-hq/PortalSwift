@@ -52,6 +52,7 @@ public class MockPortalApi: PortalApi {
   // Mocking the storedClientBackupShare function
   override public func storedClientBackupShare(
     success: Bool,
+    backupMethod _: BackupMethods.RawValue,
     completion: @escaping (Result<String>) -> Void
   ) throws {
     // Mock response based on the success parameter
@@ -64,7 +65,8 @@ public class MockPortalApi: PortalApi {
 
   // Mocking the storedClientBackupShare function
   override public func storedClientBackupShareKey(
-    backupMethod _: String,
+    success _: Bool,
+    backupMethod _: BackupMethods.RawValue,
     completion: @escaping (Result<String>) -> Void
   ) throws {
     // Mock response based on the success parameter
