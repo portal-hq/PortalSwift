@@ -1,10 +1,11 @@
 included:
   - PortalSwift
-  - Example
+  - Cocoapods Example
+  - SPM Example
 
 excluded:
   - Pods
-  - Example/Pods
+  - Cocoapods Example/Pods
 
 only_rules:
   - force_unwrapping
