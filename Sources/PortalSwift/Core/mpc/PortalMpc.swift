@@ -353,8 +353,8 @@ public class PortalMpc {
     orgBackupShare: String,
     completion: @escaping (Result<String>) -> Void
   ) {
-    if self.version != "v5" {
-      completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v5`.")))
+    if self.version != "v6" {
+      completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v6`.")))
     }
 
     self.getBackupShare(cipherText: clientBackupCiphertext, method: method) { (result: Result<String>) in
