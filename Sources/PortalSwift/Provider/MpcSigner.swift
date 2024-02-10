@@ -36,7 +36,7 @@ class MpcSigner {
     apiKey: String,
     keychain: PortalKeychain,
     mpcUrl: String = "mpc.portalhq.io",
-    version: String = "v5",
+    version: String = "v6",
     featureFlags: FeatureFlags? = nil
   ) {
     self.apiKey = apiKey
@@ -56,7 +56,7 @@ class MpcSigner {
     apiKey: String,
     keychain: PortalKeychain,
     mpcUrl: String = "mpc.portalhq.io",
-    version: String = "v5",
+    version: String = "v6",
     featureFlags: FeatureFlags? = nil,
     binary: Mobile?
   ) {

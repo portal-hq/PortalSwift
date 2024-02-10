@@ -298,16 +298,19 @@ public class PortalApi {
 
   /// Updates the client's wallet backup state to have successfully stored the client backup share key in the client's storage (e.g. gdrive, icloud, etc).
   /// - Parameters:
-  ///   - backupMethod: One of: "ICLOUD", "GDRIVE", or "CUSTOM".
+  ///   - success: Boolean indicating whether the storage operation failed.
+  ///   - backupMethod: The `BackupMethod` used to create the  backup share.
   ///   - completion: The callback that contains the response status.
   /// - Returns: Void.
   public func storedClientBackupShareKey(
-    backupMethod: String,
+    success: Bool,
+    backupMethod: BackupMethods.RawValue,
     completion: @escaping (Result<String>) -> Void
   ) throws {
+    let body = ["success": success, "backupMethod": "\(backupMethod)"] as [String: Any]
     try self.requests.put(
-      path: "/api/v1/clients/me/wallet/stored-client-backup-share-key",
-      body: ["backupMethod": backupMethod],
+      path: "/api/v2/clients/me/wallet/stored-client-backup-share-key",
+      body: body,
       headers: [
         "Authorization": "Bearer \(self.apiKey)",
       ],
@@ -315,22 +318,25 @@ public class PortalApi {
     ) { (result: Result<String>) in
       completion(result)
 
-      self.track(event: MetricsEvents.storedClientBackupShareKey.rawValue, properties: ["path": "/api/v1/clients/me/wallet/stored-client-backup-share-key"])
+      self.track(event: MetricsEvents.storedClientBackupShareKey.rawValue, properties: ["path": "/api/v2/clients/me/wallet/stored-client-backup-share-key"])
     }
   }
 
   /// Updates the client's wallet backup state to have successfully stored the client backup share with the custodian.
   /// - Parameters:
   ///   - success: Boolean indicating whether the storage operation failed.
+  ///   - backupSharePairId: The `backupSharePairId` on the share.
   ///   - completion: The callback that contains the response status.
   /// - Returns: Void.
   public func storedClientBackupShare(
     success: Bool,
+    backupMethod: BackupMethods.RawValue,
     completion: @escaping (Result<String>) -> Void
   ) throws {
+    let body = ["success": success, "backupMethod": "\(backupMethod)"] as [String: Any]
     try self.requests.put(
-      path: "/api/v1/clients/me/wallet/stored-client-backup-share",
-      body: ["success": success],
+      path: "/api/v2/clients/me/wallet/stored-client-backup-share",
+      body: body,
       headers: [
         "Authorization": "Bearer \(self.apiKey)",
       ],
@@ -338,7 +344,24 @@ public class PortalApi {
     ) { (result: Result<String>) in
       completion(result)
 
-      self.track(event: MetricsEvents.storedClientBackupShare.rawValue, properties: ["path": "/api/v1/clients/me/wallet/stored-client-backup-share"])
+      self.track(event: MetricsEvents.storedClientBackupShare.rawValue, properties: ["path": "/api/v2/clients/me/wallet/stored-client-backup-share"])
+    }
+  }
+
+  /// Retrieve a list of backup share pairs' details for the client.
+  /// - Parameter completion: The callback that contains the list of BackupSharePairs' details.
+  /// - Returns: Void.
+  public func getBackupShareMetadata(completion: @escaping (Result<[BackupSharePair]>) -> Void) throws {
+    try self.requests.get(
+      path: "/api/v1/clients/me/backup-share-pairs",
+      headers: [
+        "Authorization": "Bearer \(self.apiKey)",
+      ],
+      requestType: HttpRequestType.CustomRequest
+    ) { (result: Result<[BackupSharePair]>) in
+      completion(result)
+
+      self.track(event: MetricsEvents.getBackupShareMetadata.rawValue, properties: ["path": "/api/v1/clients/me/backup-share-pairs"])
     }
   }
 
@@ -626,6 +649,7 @@ public enum MetricsEvents: String {
   case walletRecovered = "Wallet Recovered"
 
   // API Method events
+  case getBackupShareMetadata = "Get Backup Share Metadata"
   case getClient = "Get Client"
   case getEnabledDapps = "Get Enabled Dapps"
   case getNetworks = "Get Networks"
@@ -643,4 +667,11 @@ public enum MetricsEvents: String {
 public enum GetTransactionsOrder: String {
   case asc
   case desc
+}
+
+public struct BackupSharePair: Codable {
+  public var backupMethod: String
+  public var createdAt: String
+  public var id: String
+  public var status: String
 }

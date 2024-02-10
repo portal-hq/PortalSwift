@@ -1062,8 +1062,8 @@ class ProviderTests: XCTestCase {
         }
         sleep(7) // there is a delay between creating the filter and the chain knowing about the filter
         self.performRequest(method: ETHRequestMethods.GetFilterChanges.rawValue, params: [filter]) { result in
-          guard result.error == nil, let logs = (result.data?.result as? LogsResponse)?.result else {
-            XCTFail("Error testing provider request: \(String(describing: result.error))")
+          guard result.error == nil, let logs = (result.data?.result as? LogsResponse)?.result, !logs.isEmpty else {
+            XCTFail("Error testing provider request or no logs found: \(String(describing: result.error))")
             return expectation.fulfill()
           }
 

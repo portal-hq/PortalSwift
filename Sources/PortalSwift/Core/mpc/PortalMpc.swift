@@ -42,7 +42,7 @@ public class PortalMpc {
   private let rsaFooter = "\n-----END RSA KEY-----"
   private var isWalletModificationInProgress: Bool = false
   private var isMock: Bool = false
-  private let mpcMetadata: MpcMetadata
+  private var mpcMetadata: MpcMetadata
 
   /// Create an instance of Portal's MPC service.
   public init(
@@ -52,7 +52,7 @@ public class PortalMpc {
     storage: BackupOptions,
     isSimulator: Bool = false,
     host: String = "mpc.portalhq.io",
-    version: String = "v5",
+    version: String = "v6",
     mobile: Mobile,
     apiHost: String = "api.portalhq.io",
     featureFlags: FeatureFlags? = nil
@@ -91,8 +91,8 @@ public class PortalMpc {
     completion: @escaping (Result<String>) -> Void,
     progress: ((MpcStatus) -> Void)? = nil
   ) {
-    if self.version != "v5" {
-      return completion(Result(error: MpcError.backupNoLongerSupported(message: "[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = v5`.")))
+    if self.version != "v6" {
+      return completion(Result(error: MpcError.backupNoLongerSupported(message: "[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = v6`.")))
     }
 
     guard !self.isWalletModificationInProgress else {
@@ -230,9 +230,9 @@ public class PortalMpc {
   /// - Returns: The address of the newly created MPC wallet.
   public func generate(completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)? = nil) {
     DispatchQueue.global(qos: .background).async { [self] in
-      if self.version != "v5" {
+      if self.version != "v6" {
         let result = Result<String>(error: MpcError.generateNoLongerSupported(
-          message: "[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = v5`."
+          message: "[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = v6`."
         ))
         completion(result)
       }
@@ -353,8 +353,8 @@ public class PortalMpc {
     orgBackupShare: String,
     completion: @escaping (Result<String>) -> Void
   ) {
-    if self.version != "v5" {
-      completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v5`.")))
+    if self.version != "v6" {
+      completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v6`.")))
     }
 
     self.getBackupShare(cipherText: clientBackupCiphertext, method: method) { (result: Result<String>) in
@@ -413,8 +413,8 @@ public class PortalMpc {
     completion: @escaping (Result<String>) -> Void,
     progress: ((MpcStatus) -> Void)? = nil
   ) {
-    if self.version != "v5" {
-      return completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v5`.")))
+    if self.version != "v6" {
+      return completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v6`.")))
     }
 
     guard !self.isWalletModificationInProgress else {
@@ -562,8 +562,8 @@ public class PortalMpc {
     completion: @escaping (Result<String>) -> Void,
     progress: ((MpcStatus) -> Void)? = nil
   ) {
-    if self.version != "v5" {
-      return completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v5`.")))
+    if self.version != "v6" {
+      return completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v6`.")))
     }
 
     guard !self.isWalletModificationInProgress else {
@@ -742,6 +742,9 @@ public class PortalMpc {
     progress: ((MpcStatus) -> Void)? = nil
   ) {
     do {
+      // Add the backup method.
+      self.mpcMetadata.backupMethod = backupMethod
+
       // Stringify the MPC metadata.
       let mpcMetadataString = self.mpcMetadata.jsonString() ?? ""
 
@@ -775,7 +778,7 @@ public class PortalMpc {
       } else {
         // Encrypt the backup share.
         self.encryptShare(mpcShare: backupShare) { encryptedResult in
-          self.handleEncryptedShareCompletion(encryptedResult: encryptedResult, storage: storage, backupMethod: backupMethod, progress: progress, completion: completion)
+          self.handleEncryptedShareCompletion(encryptedResult: encryptedResult, storage: storage, backupMethod: backupMethod, backupSharePairId: backupShare.backupSharePairId!, progress: progress, completion: completion)
         } progress: { status in
           progress?(status)
         }
@@ -798,9 +801,8 @@ public class PortalMpc {
     }
 
     do {
-      // Call api to update backup method + update backup status to `STORED_CLIENT_BACKUP_SHARE_KEY`.
-      let formattedBackupMethod = self.formatBackupMethod(backupMethod: backupMethod)
-      try self.api.storedClientBackupShareKey(backupMethod: formattedBackupMethod) { (apiResult: Result<String>) in
+      // Call api to update backup status to `STORED_CLIENT_BACKUP_SHARE_KEY`.
+      try self.api.storedClientBackupShareKey(success: true, backupMethod: backupMethod) { (apiResult: Result<String>) in
         // Throw an error if we can't update the backup status + save the backup method.
         if let error = apiResult.error {
           return completion(Result(error: error))
@@ -830,9 +832,8 @@ public class PortalMpc {
     progress?(MpcStatus(status: MpcStatuses.storingShare, done: false))
 
     do {
-      // Call api to update backup method + update backup status to `STORED_CLIENT_BACKUP_SHARE_KEY`.
-      let formattedBackupMethod = self.formatBackupMethod(backupMethod: backupMethod)
-      try self.api.storedClientBackupShareKey(backupMethod: formattedBackupMethod) { (apiResult: Result<String>) in
+      // Call api to update backup status to `STORED_CLIENT_BACKUP_SHARE_KEY`.
+      try self.api.storedClientBackupShareKey(success: true, backupMethod: backupMethod) { (apiResult: Result<String>) in
         // Throw an error if we can't update the backup status + save the backup method.
         if let error = apiResult.error {
           return completion(Result(error: error))
@@ -853,6 +854,7 @@ public class PortalMpc {
     encryptedResult: Result<EncryptData>,
     storage: Storage,
     backupMethod: BackupMethods.RawValue,
+    backupSharePairId _: String,
     progress: ((MpcStatus) -> Void)?,
     completion: @escaping (Result<String>) -> Void
   ) {
@@ -929,7 +931,7 @@ public class PortalMpc {
 
         progress?(MpcStatus(status: MpcStatuses.recoveringBackupShare, done: false))
 
-        self.recoverBackup(clientBackupShare: result.data!) { backupResult in
+        self.recoverBackup(clientBackupShare: result.data!, backupMethod: method) { backupResult in
           if backupResult.error != nil {
             print("Signing shares were successfully replaced, but backup shares were not refreshed. Try running backup again with your new signing shares.")
             if let error = backupResult.error {
@@ -965,9 +967,8 @@ public class PortalMpc {
               }
 
               do {
-                // Call api to update backup method + update backup status to `STORED_CLIENT_BACKUP_SHARE_KEY`.
-                let formattedBackupMethod = self.formatBackupMethod(backupMethod: method)
-                try self.api.storedClientBackupShareKey(backupMethod: formattedBackupMethod) { (result: Result<String>) in
+                // Call api to update backup status to `STORED_CLIENT_BACKUP_SHARE_KEY`.
+                try self.api.storedClientBackupShareKey(success: true, backupMethod: method) { (_: Result<String>) in
                   // Throw an error if we can't update the backup status + save the backup method.
                   if result.error != nil {
                     print("Signing shares were successfully replaced, but backup shares were not refreshed. Try running backup again with your new signing shares.")
@@ -1036,7 +1037,6 @@ public class PortalMpc {
       storage.read { (result: Result<String>) in
         // If the private key was not found, return an error.
         guard let privateKey = result.data else {
-          print(result.error)
           return completion(Result(error: MpcError.failedToGetBackupFromStorage))
         }
 
@@ -1055,14 +1055,18 @@ public class PortalMpc {
 
   /// Uses the signing share to create a new backup share and returns that share in JSON format.
   /// - Parameter
-  ///   - signingShare: The signing share as a string.
+  ///   - clientBackupShare: The signing share as a string.
   /// - Returns: The backup share.
   private func recoverBackup(
     clientBackupShare: String,
+    backupMethod: BackupMethods.RawValue,
     completion: (Result<MpcShare>) -> Void,
     progress: ((MpcStatus) -> Void)? = nil
   ) {
     do {
+      // Add the backup method.
+      self.mpcMetadata.backupMethod = backupMethod
+
       // Stringify the MPC metadata.
       let mpcMetadataString = self.mpcMetadata.jsonString() ?? ""
 
@@ -1206,6 +1210,7 @@ public class PortalMpc {
 /// CGGMP shares will contain all fields except: pubkey.
 public struct MpcShare: Codable {
   public var allY: PartialPublicKey?
+  public var backupSharePairId: String?
   public var bks: Berkhoffs?
   public var clientId: String
   public var p: String
