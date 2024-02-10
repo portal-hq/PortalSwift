@@ -59,7 +59,7 @@ public class Portal {
     gatewayConfig: [Int: String],
     // Optional
     isSimulator: Bool = false,
-    version: String = "v5",
+    version: String = "v6",
     autoApprove: Bool = false,
     apiHost: String = "api.portalhq.io",
     mpcHost: String = "mpc.portalhq.io",
@@ -79,8 +79,8 @@ public class Portal {
     self.version = version
     self.featureFlags = featureFlags
 
-    if version != "v5" {
-      throw PortalArgumentError.versionNoLongerSupported(message: "MPC Version is not supported. Only version 'v5' is currently supported.")
+    if version != "v6" {
+      throw PortalArgumentError.versionNoLongerSupported(message: "MPC Version is not supported. Only version 'v6' is currently supported.")
     }
 
     // Initialize the PortalProvider
@@ -154,7 +154,7 @@ public class Portal {
     gatewayConfig: [Int: String],
     // Optional
     isSimulator: Bool = false,
-    version: String = "v5",
+    version: String = "v6",
     autoApprove: Bool = false,
     apiHost: String = "api.portalhq.io",
     mpcHost: String = "mpc.portalhq.io",
@@ -177,8 +177,8 @@ public class Portal {
     self.version = version
     self.featureFlags = featureFlags
 
-    if version != "v5" {
-      throw PortalArgumentError.versionNoLongerSupported(message: "MPC Version is not supported. Only version 'v5' is currently supported.")
+    if version != "v6" {
+      throw PortalArgumentError.versionNoLongerSupported(message: "MPC Version is not supported. Only version 'v6' is currently supported.")
     }
 
     // Initialize the PortalProvider

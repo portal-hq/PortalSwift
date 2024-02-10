@@ -157,7 +157,7 @@ class PasswordWalletTests: XCTestCase {
           print("❌ handleBackup():", result.error!)
 
           do {
-            try PasswordWalletTests.PortalWrap.portal?.api.storedClientBackupShare(success: false) { result in
+            try PasswordWalletTests.PortalWrap.portal?.api.storedClientBackupShare(success: false, backupMethod: BackupMethods.Password.rawValue) { result in
               guard result.error == nil else {
                 backupExpectation.fulfill()
                 return XCTFail("Backup failed \(String(describing: result.error))")
@@ -172,7 +172,7 @@ class PasswordWalletTests: XCTestCase {
         }
 
         do {
-          try PasswordWalletTests.PortalWrap.portal?.api.storedClientBackupShare(success: true) { _ in
+          try PasswordWalletTests.PortalWrap.portal?.api.storedClientBackupShare(success: true, backupMethod: BackupMethods.Password.rawValue) { _ in
             guard backupResult.error == nil else {
               print("❌ handleBackup(): Error notifying Portal that backup share was stored.")
               return
