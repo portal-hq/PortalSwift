@@ -719,7 +719,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         print("Error: Do you have `GDRIVE_CLIENT_ID=$(GDRIVE_CLIENT_ID)` in your info.plist?")
         return
       }
-      self.passkey = PasskeyStorage(viewController: self, relyingParty: "portalhq.dev", webAuthnHost: self.RP_URL)
+      self.passkey = PasskeyStorage(viewController: self, relyingParty: "portalhq.io", webAuthnHost: self.RP_URL)
       let backup = BackupOptions(gdrive: GDriveStorage(clientID: GDRIVE_CLIENT_ID, viewController: self), icloud: ICloudStorage(), passwordStorage: PasswordStorage(), passkeyStorage: self.passkey)
 
       self.PortalWrapper.registerPortal(apiKey: apiKey, backup: backup, optimized: true) { _ in
