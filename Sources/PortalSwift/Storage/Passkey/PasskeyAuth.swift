@@ -17,15 +17,15 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
   var attestation: String?
   var assertion: String?
   // The domain of our relying party server.
-  private var domain = "backup.portalhq.io"
+  private var domain: String
   var authorizationCompletion: AuthorizationCompletion?
   var registrationCompletion: RegistrationCompletion?
   deinit {
     print("PasskeyAuth is being deallocated")
   }
 
-  init(domain: String? = "backup.portalhq.io") {
-    self.domain = domain ?? "backup.portalhq.io"
+  init(domain: String = "portalhq.io") {
+    self.domain = domain
   }
 
   /// Signs a user up using passkeys to the relying party domain
@@ -131,7 +131,6 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
       // Build the attestaion object
       let payload = ["rawId": credentialID.toBase64Url(),
                      "id": credentialID.toBase64Url(),
-                     "authenticatorAttachment": "cross-platform",
                      "clientExtensionResults": [String: Any](),
                      "type": "public-key",
                      "response": [
@@ -167,7 +166,6 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
 
       let payload = ["rawId": credentialId.toBase64Url(),
                      "id": credentialId.toBase64Url(),
-                     "authenticatorAttachment": "cross-platform",
                      "clientExtensionResults": [String: Any](),
                      "type": "public-key",
                      "response": [

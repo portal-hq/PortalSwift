@@ -26,18 +26,20 @@ public class PasskeyStorage: Storage {
   private var passkeyApi: HttpRequester
   private var auth: PasskeyAuth
   private var viewController: UIViewController
-  private var relyingParty: String = "backup.portalhq.io"
+  private var relyingParty: String
+  private var webAuthnHost: String
   private var sessionId: String?
 
   deinit {
     print("PasskeyStorage is being deallocated")
   }
 
-  public init(viewController: UIViewController, relyingParty: String? = "backup.portalhq.io") {
+  public init(viewController: UIViewController, relyingParty: String? = "portalhq.io", webAuthnHost: String? = "backup.web.portalhq.io") {
     self.viewController = viewController
-    self.auth = PasskeyAuth(domain: relyingParty)
-    self.relyingParty = "https://" + (relyingParty ?? "backup.portalhq.io")
-    self.passkeyApi = HttpRequester(baseUrl: self.relyingParty)
+    self.relyingParty = relyingParty ?? "portalhq.io"
+    self.auth = PasskeyAuth(domain: self.relyingParty)
+    self.webAuthnHost = "https://" + (webAuthnHost ?? "backup.web.portalhq.io")
+    self.passkeyApi = HttpRequester(baseUrl: self.webAuthnHost)
     super.init()
   }
 
@@ -60,8 +62,9 @@ public class PasskeyStorage: Storage {
 
     do {
       if let apiKey = self.apiKey {
-        try self.passkeyApi.get(
+        try self.passkeyApi.post(
           path: "/passkeys/begin-login",
+          body: ["relyingParty": self.relyingParty],
           headers: [
             "Accept": "application/json",
             "Content-Type": "application/json",
@@ -119,8 +122,9 @@ public class PasskeyStorage: Storage {
 
             // Start login
             do {
-              try self.passkeyApi.get(
+              try self.passkeyApi.post(
                 path: "/passkeys/begin-login",
+                body: ["relyingParty": self.relyingParty],
                 headers: [
                   "Accept": "application/json",
                   "Content-Type": "application/json",
@@ -151,8 +155,9 @@ public class PasskeyStorage: Storage {
               self.handleFinishRegistrationCompletion(result: result, privateKey: privateKey, completion: completion)
             }
             do {
-              try self.passkeyApi.get(
+              try self.passkeyApi.post(
                 path: "/passkeys/begin-registration",
+                body: ["relyingParty": self.relyingParty],
                 headers: [
                   "Accept": "application/json",
                   "Content-Type": "application/json",
@@ -201,7 +206,7 @@ public class PasskeyStorage: Storage {
       do {
         try self.passkeyApi.post(
           path: "/passkeys/finish-registration",
-          body: ["attestation": attestation, "sessionId": sessionId, "encryptionKey": privateKey],
+          body: ["attestation": attestation, "sessionId": sessionId, "encryptionKey": privateKey, "relyingParty": self.relyingParty],
           headers: [
             "Content-Type": "application/json",
             "Authorization": "Bearer \(apiKey)",
@@ -236,7 +241,7 @@ public class PasskeyStorage: Storage {
       do {
         try self.passkeyApi.post(
           path: "/passkeys/finish-login/read",
-          body: ["assertion": assertion, "sessionId": sessionId],
+          body: ["assertion": assertion, "sessionId": sessionId, "relyingParty": self.relyingParty],
           headers: [
             "Accept": "application/json",
             "Content-Type": "application/json",
@@ -273,7 +278,7 @@ public class PasskeyStorage: Storage {
       if let apiKey = self.apiKey, let sessionId = self.sessionId, let assertion = result.data {
         try self.passkeyApi.post(
           path: "/passkeys/finish-login/write",
-          body: ["encryptionKey": privateKey, "assertion": assertion, "sessionId": sessionId],
+          body: ["encryptionKey": privateKey, "assertion": assertion, "sessionId": sessionId, "relyingParty": self.relyingParty],
           headers: [
             "Accept": "application/json",
             "Content-Type": "application/json",
