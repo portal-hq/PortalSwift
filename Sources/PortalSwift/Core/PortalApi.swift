@@ -706,9 +706,21 @@ public struct BackupSharePair: Codable {
   public var backupMethod: String
   public var createdAt: String
   public var id: String
+  public var status: Status
+
+  public enum Status: String, Codable {
+    case completed
+    case incomplete
+  }
 }
 
 public struct SigningSharePair: Codable {
   public var createdAt: String
   public var id: String
+  public var status: Status
+
+  public enum Status: String, Codable {
+    case completed
+    case incomplete
+  }
 }
