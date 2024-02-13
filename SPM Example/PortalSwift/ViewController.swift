@@ -498,7 +498,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     self.getTransactions()
     self.getBalances()
     self.simulateTransaction()
-    self.getBackupShareMetadata()
+    self.getShareMetadata()
   }
 
   func populateAddressInformation() {
@@ -550,7 +550,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  func getBackupShareMetadata() {
+  func getShareMetadata() {
     do {
       try self.portal?.api.getBackupShareMetadata { results in
         guard results.error == nil else {
@@ -562,6 +562,19 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
     } catch {
       print("❌ Unable to retrieve backup share pairs", error)
+    }
+
+    do {
+      try self.portal?.api.getSigningShareMetadata { results in
+        guard results.error == nil else {
+          print("❌ Unable to get signing share pairs", results.error ?? "")
+          return
+        }
+
+        print("✅ Retrieved signing share pairs", results.data ?? "")
+      }
+    } catch {
+      print("❌ Unable to retrieve signing share pairs", error)
     }
   }
 
