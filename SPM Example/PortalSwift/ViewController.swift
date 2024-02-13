@@ -563,7 +563,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     } catch {
       print("❌ Unable to retrieve backup share pairs", error)
     }
-    
+
     do {
       try self.portal?.api.getSigningShareMetadata { results in
         guard results.error == nil else {
