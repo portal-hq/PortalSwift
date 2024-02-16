@@ -498,7 +498,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     self.getTransactions()
     self.getBalances()
     self.simulateTransaction()
-    self.getBackupShareMetadata()
+    self.getShareMetadata()
   }
 
   func populateAddressInformation() {
@@ -550,7 +550,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  func getBackupShareMetadata() {
+  func getShareMetadata() {
     do {
       try self.portal?.api.getBackupShareMetadata { results in
         guard results.error == nil else {
@@ -562,6 +562,19 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
     } catch {
       print("❌ Unable to retrieve backup share pairs", error)
+    }
+
+    do {
+      try self.portal?.api.getSigningShareMetadata { results in
+        guard results.error == nil else {
+          print("❌ Unable to get signing share pairs", results.error ?? "")
+          return
+        }
+
+        print("✅ Retrieved signing share pairs", results.data ?? "")
+      }
+    } catch {
+      print("❌ Unable to retrieve signing share pairs", error)
     }
   }
 
@@ -720,7 +733,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         print("Error: Do you have `GDRIVE_CLIENT_ID=$(GDRIVE_CLIENT_ID)` in your info.plist?")
         return
       }
-      self.passkey = PasskeyStorage(viewController: self, relyingParty: self.RP_URL)
+      self.passkey = PasskeyStorage(viewController: self, relyingParty: "portalhq.io", webAuthnHost: self.RP_URL)
       let backup = BackupOptions(gdrive: GDriveStorage(clientID: GDRIVE_CLIENT_ID, viewController: self), icloud: ICloudStorage(), passwordStorage: PasswordStorage(), passkeyStorage: self.passkey)
 
       self.PortalWrapper.registerPortal(apiKey: apiKey, backup: backup, optimized: true) { _ in

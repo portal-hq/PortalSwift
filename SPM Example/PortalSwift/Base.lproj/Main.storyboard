@@ -21,7 +21,7 @@
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                         <subviews>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="WxW-BK-2tM">
-                                <rect key="frame" x="204" y="343" width="163" height="36"/>
+                                <rect key="frame" x="202" y="343" width="163" height="36"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <state key="normal" title="Button"/>
                                 <buttonConfiguration key="configuration" style="filled" title="Passkey Recover">
@@ -303,17 +303,17 @@
                                     <action selector="handleiCloudBackup:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="GiF-k4-ADi"/>
                                 </connections>
                             </button>
-                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="qJ9-JL-IHL">
-                                <rect key="frame" x="18" y="299" width="159" height="36"/>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="4Nx-Pl-Jpk">
+                                <rect key="frame" x="12" y="343" width="159" height="36"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <state key="normal" title="Button"/>
-                                <buttonConfiguration key="configuration" style="filled" title="Password Backup">
+                                <buttonConfiguration key="configuration" style="filled" title="Passkey Backup">
                                     <backgroundConfiguration key="background"/>
                                     <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
                                     <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 </buttonConfiguration>
                                 <connections>
-                                    <action selector="handlePasswordBackup:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="MmP-Ue-OHx"/>
+                                    <action selector="handlePasskeyBackup:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="zcl-QY-onk"/>
                                 </connections>
                             </button>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" restorationIdentifier="ejectButton" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="xhu-mS-abX">
@@ -327,6 +327,19 @@
                                 </buttonConfiguration>
                                 <connections>
                                     <action selector="handleEject:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="66w-5g-4dz"/>
+                                </connections>
+                            </button>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="qJ9-JL-IHL">
+                                <rect key="frame" x="10" y="299" width="159" height="36"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <state key="normal" title="Button"/>
+                                <buttonConfiguration key="configuration" style="filled" title="Password Backup">
+                                    <backgroundConfiguration key="background"/>
+                                    <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
+                                    <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                </buttonConfiguration>
+                                <connections>
+                                    <action selector="handlePasswordBackup:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="MmP-Ue-OHx"/>
                                 </connections>
                             </button>
                         </subviews>
@@ -346,7 +359,7 @@
                         <outlet property="iCloudRecoverButton" destination="tfT-Wz-ED4" id="h73-P1-2h2"/>
                         <outlet property="legacyRecoverButton" destination="3PE-dM-WlJ" id="S3Y-Ev-9Zf"/>
                         <outlet property="logoutButton" destination="nDW-CF-6N1" id="Ke0-ny-I4Y"/>
-                        <outlet property="passkeyBackupButton" destination="510-m6-DFc" id="J0p-1z-IEP"/>
+                        <outlet property="passkeyBackupButton" destination="4Nx-Pl-Jpk" id="fnc-e3-S4s"/>
                         <outlet property="passkeyRecoverButton" destination="WxW-BK-2tM" id="Aqd-89-4Ay"/>
                         <outlet property="passwordBackupButton" destination="qJ9-JL-IHL" id="4YG-wF-Naj"/>
                         <outlet property="passwordRecoverButton" destination="e3a-WD-Rlx" id="1rg-cD-ovX"/>

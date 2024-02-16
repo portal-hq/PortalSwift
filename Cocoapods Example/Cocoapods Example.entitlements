@@ -4,11 +4,10 @@
 <dict>
 	<key>com.apple.developer.associated-domains</key>
 	<array>
-		<string>webcredentials:backup.portalhq.dev?mode=developer</string>
-		<string>webcredentials:backup.portalhq.io?mode=developer</string>
-		<string>webcredentials:1372-2603-8001-4d40-bd6-f9ce-40ef-e4d9-6bf8.ngrok-free.app?mode=developer</string>
-		<string>webcredentials:1372-2603-8001-4d40-bd6-f9ce-40ef-e4d9-6bf8.ngrok-free.app?mode=developer</string>
+		<string>webcredentials:backup.portalhq.dev</string>
 		<string>webcredentials:backup.web.portalhq.io</string>
+		<string>webcredentials:portalhq.io</string>
+		<string>webcredentials:portalhq.dev</string>
 	</array>
 	<key>com.apple.developer.icloud-container-identifiers</key>
 	<array/>
