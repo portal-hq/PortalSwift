@@ -10,6 +10,7 @@ import Foundation
 public struct MpcMetadata: Codable {
   var backupMethod: BackupMethods.RawValue?
   var clientPlatform: String
+  var isMultiBackupEnabled: Bool
   var mpcServerVersion: String
   var optimized: Bool
 }
