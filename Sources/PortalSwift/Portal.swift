@@ -650,12 +650,12 @@ public struct BackupOptions {
 }
 
 public struct FeatureFlags {
-  public var isMultiBackupEnabled: Bool
+  public var isMultiBackupEnabled: Bool?
   public var optimized: Bool
 
-  public init(isMultiBackupEnabled: Bool, optimized: Bool) {
-    self.isMultiBackupEnabled = isMultiBackupEnabled
+  public init(optimized: Bool, isMultiBackupEnabled: Bool?) {
     self.optimized = optimized
+    self.isMultiBackupEnabled = isMultiBackupEnabled
   }
 }
 

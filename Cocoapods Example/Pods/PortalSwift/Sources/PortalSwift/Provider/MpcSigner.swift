@@ -47,7 +47,7 @@ class MpcSigner {
     self.binary = MobileWrapper()
     self.mpcMetadata = MpcMetadata(
       clientPlatform: "NATIVE_IOS",
-      isMultiBackupEnabled: featureFlags?.isMultiBackupEnabled ?? true,
+      isMultiBackupEnabled: featureFlags?.isMultiBackupEnabled,
       mpcServerVersion: self.version,
       optimized: featureFlags?.optimized ?? false
     )
@@ -69,7 +69,7 @@ class MpcSigner {
     self.binary = binary ?? MobileWrapper()
     self.mpcMetadata = MpcMetadata(
       clientPlatform: "NATIVE_IOS",
-      isMultiBackupEnabled: featureFlags?.isMultiBackupEnabled ?? true,
+      isMultiBackupEnabled: featureFlags?.isMultiBackupEnabled,
       mpcServerVersion: self.version,
       optimized: featureFlags?.optimized ?? false
     )
