@@ -13,7 +13,7 @@ class MockMobileWrapper: Mobile {
   }
 
   func MobileBackup(_: String, _: String, _: String, _: String, _: String) -> String {
-    return mockDataResult
+    return mockBackupResult
   }
 
   func MobileRecoverSigning(_: String, _: String, _: String, _: String, _: String) -> String {
