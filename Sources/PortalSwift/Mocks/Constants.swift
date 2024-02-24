@@ -9,7 +9,7 @@
 import Foundation
 
 public let mockAddress = "0x73574d2355"
-public let mockBackupShare = "test-backup-share"
+public let mockBackupShare = "{\"backupSharePairId\":\"value\"}"
 public let mockBackupPath = "test-backup-path"
 public let mockCloudBackupPath = "test-cloud-backup-path"
 public let mockGDriveFileId = "test-gdrive-file-id"
@@ -32,6 +32,8 @@ public let mockClientSignResult = "{\"data\":\"54cdc8c44437159f524268bdf257d8874
 public let mockClientSignResultWithError = "{\"data\":\"\",\"error\":{\"code\":108,\"message\":\"This error is thrown if there is an issue completing the signing process.\"}}"
 public let mockSignature = "54cdc8c44437159f524268bdf257d88743eb550def55171f9418c5abd9a994467aa000b3213e6cc1ae950b31631450faffbac7319c7ec096898314d1f289646900"
 public let mockDataResult = "{\"data\":{\"address\":\"\(mockAddress)\",\"dkgResult\":{\"signingSharePairId\":\"signingSharePairId\",\"share\":\"shareValue\",\"allY\":{\"client\":{\"X\":\"clientX\",\"Y\":\"clientY\"},\"server\":{\"X\":\"serverX\",\"Y\":\"serverY\"}},\"bks\":{\"client\":{\"X\":\"clientX\",\"Rank\":0},\"server\":{\"X\":\"serverX\",\"Rank\":0}},\"p\":\"pValue\",\"partialPubkey\":{\"client\":{\"X\":\"clientX\",\"Y\":\"clientY\"},\"server\":{\"X\":\"serverX\",\"Y\":\"serverY\"}},\"pederson\":{\"client\":{\"n\":\"nValue\",\"s\":\"sValue\",\"t\":\"tValue\"},\"server\":{\"n\":\"nValue\",\"s\":\"sValue\",\"t\":\"tValue\"}},\"q\":\"qValue\",\"ssid\":\"ssidValue\",\"clientId\":\"clientIdValue\",\"pubkey\":{\"X\":\"pubkeyX\",\"Y\":\"pubkeyY\"}}},\"error\":{\"code\":0,\"message\":\"\"}}"
+
+public let mockBackupResult = "{\"data\":{\"address\":\"\(mockAddress)\",\"dkgResult\":{\"backupSharePairId\":\"backupSharePairId\",\"share\":\"shareValue\",\"allY\":{\"client\":{\"X\":\"clientX\",\"Y\":\"clientY\"},\"server\":{\"X\":\"serverX\",\"Y\":\"serverY\"}},\"bks\":{\"client\":{\"X\":\"clientX\",\"Rank\":0},\"server\":{\"X\":\"serverX\",\"Rank\":0}},\"p\":\"pValue\",\"partialPubkey\":{\"client\":{\"X\":\"clientX\",\"Y\":\"clientY\"},\"server\":{\"X\":\"serverX\",\"Y\":\"serverY\"}},\"pederson\":{\"client\":{\"n\":\"nValue\",\"s\":\"sValue\",\"t\":\"tValue\"},\"server\":{\"n\":\"nValue\",\"s\":\"sValue\",\"t\":\"tValue\"}},\"q\":\"qValue\",\"ssid\":\"ssidValue\",\"clientId\":\"clientIdValue\",\"pubkey\":{\"X\":\"pubkeyX\",\"Y\":\"pubkeyY\"}}},\"error\":{\"code\":0,\"message\":\"\"}}"
 public let mockDecryptResult = "{\"data\":{\"plaintext\":\"signingShareObject\"},\"error\":{\"code\":0,\"message\":\"\"}}"
 
 public let mockEncryptResult = "{\"data\":{\"key\":\"someKey\",\"cipherText\":\"\(mockCiphertext)\"},\"error\":{\"code\":0,\"message\":\"\"}}"
