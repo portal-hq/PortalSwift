@@ -17,11 +17,11 @@ class MockMobileWrapper: Mobile {
   }
 
   func MobileRecoverSigning(_: String, _: String, _: String, _: String, _: String) -> String {
-    return mockBackupResult
+    return mockDataResult
   }
 
   func MobileRecoverBackup(_: String, _: String, _: String, _: String, _: String) -> String {
-    return mockBackupResult
+    return mockDataResult
   }
 
   func MobileEncryptWithPassword(data _: String, password _: String) -> String {
