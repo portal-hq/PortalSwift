@@ -735,7 +735,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       self.passkey = PasskeyStorage(viewController: self, relyingParty: "portalhq.io", webAuthnHost: self.RP_URL)
       let backup = BackupOptions(gdrive: GDriveStorage(clientID: GDRIVE_CLIENT_ID, viewController: self), icloud: ICloudStorage(), passwordStorage: PasswordStorage(), passkeyStorage: self.passkey)
 
-      self.PortalWrapper.registerPortal(apiKey: apiKey, backup: backup, optimized: true) { _ in
+      self.PortalWrapper.registerPortal(apiKey: apiKey, backup: backup, optimized: true, isMultiBackupEnabled: true) { _ in
         DispatchQueue.main.async {
           self.generateButton?.isEnabled = true
 
