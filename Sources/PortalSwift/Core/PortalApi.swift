@@ -39,7 +39,7 @@ public class PortalApi {
 
     let baseUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
     self.requests = mockRequests ? MockHttpRequester(baseUrl: baseUrl) : HttpRequester(baseUrl: baseUrl)
-    
+
     self.featureFlags = featureFlags
   }
 
