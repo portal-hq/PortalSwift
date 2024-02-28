@@ -100,7 +100,7 @@ public class Portal {
     )
 
     // Initialize the Portal API
-    self.api = PortalApi(apiKey: apiKey, apiHost: apiHost, provider: self.provider)
+    self.api = PortalApi(apiKey: apiKey, apiHost: apiHost, provider: self.provider, featureFlags: self.featureFlags)
 
     // Ensure storage adapters have access to the Portal API
     if backup.gdrive != nil {
