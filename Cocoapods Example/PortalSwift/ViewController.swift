@@ -97,8 +97,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     self.url?.delegate = self
 
     let PROD_CUSTODIAN_SERVER_URL = "https://portalex-mpc.portalhq.io"
-    // let STAGING_CUSTODIAN_SERVER_URL = "https://staging-portalex-mpc-service.onrender.com"
-    let STAGING_CUSTODIAN_SERVER_URL = "https://staging-portalex-legacy.onrender.com"
+    let STAGING_CUSTODIAN_SERVER_URL = "https://staging-portalex-mpc-service.onrender.com"
     let PROD_API_URL = "api.portalhq.io"
     let PROD_MPC_URL = "mpc.portalhq.io"
     let STAGING_API_URL = "api.portalhq.dev"
