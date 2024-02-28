@@ -408,7 +408,6 @@ public class PortalApi {
   /// - Parameter completion: The callback that contains the list of SigningSharePairs' details.
   /// - Returns: Void.
   public func getSigningShareMetadata(completion: @escaping (Result<[SigningSharePair]>) -> Void) throws {
-    print("test")
     try self.requests.get(
       path: "/api/v1/clients/me/signing-share-pairs",
       headers: [
