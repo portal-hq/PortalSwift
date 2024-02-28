@@ -12,6 +12,7 @@ public class PortalApi {
   private var apiKey: String
   private var provider: PortalProvider
   private var requests: HttpRequester
+  private let featureFlags: FeatureFlags?
 
   private var address: String? {
     return self.provider.address
@@ -30,13 +31,16 @@ public class PortalApi {
     apiKey: String,
     apiHost: String = "api.portalhq.io",
     provider: PortalProvider,
-    mockRequests: Bool = false
+    mockRequests: Bool = false,
+    featureFlags: FeatureFlags? = nil
   ) {
     self.apiKey = apiKey
     self.provider = provider
 
     let baseUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
     self.requests = mockRequests ? MockHttpRequester(baseUrl: baseUrl) : HttpRequester(baseUrl: baseUrl)
+
+    self.featureFlags = featureFlags
   }
 
   /// Retrieve the client by API key.
@@ -307,7 +311,17 @@ public class PortalApi {
     backupMethod: BackupMethods.RawValue,
     completion: @escaping (Result<String>) -> Void
   ) throws {
-    let body = ["success": success, "backupMethod": "\(backupMethod)"] as [String: Any]
+    // Start with a dictionary containing the always-present keys
+    var body: [String: Any] = [
+      "backupMethod": "\(backupMethod)",
+      "success": success,
+    ]
+
+    // Conditionally add isMultiBackupEnabled if it's not nil
+    if let isMultiBackupEnabled = self.featureFlags?.isMultiBackupEnabled {
+      body["isMultiBackupEnabled"] = isMultiBackupEnabled
+    }
+
     try self.requests.put(
       path: "/api/v2/clients/me/wallet/stored-client-backup-share-key",
       body: body,
@@ -348,7 +362,17 @@ public class PortalApi {
     backupMethod: BackupMethods.RawValue,
     completion: @escaping (Result<String>) -> Void
   ) throws {
-    let body = ["success": success, "backupMethod": "\(backupMethod)"] as [String: Any]
+    // Start with a dictionary containing the always-present keys
+    var body: [String: Any] = [
+      "backupMethod": "\(backupMethod)",
+      "success": success,
+    ]
+
+    // Conditionally add isMultiBackupEnabled if it's not nil
+    if let isMultiBackupEnabled = self.featureFlags?.isMultiBackupEnabled {
+      body["isMultiBackupEnabled"] = isMultiBackupEnabled
+    }
+
     try self.requests.put(
       path: "/api/v2/clients/me/wallet/stored-client-backup-share",
       body: body,
