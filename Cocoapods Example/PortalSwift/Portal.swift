@@ -18,6 +18,10 @@ struct CipherTextResult: Codable {
   var cipherText: String
 }
 
+struct OrgShareResult: Codable {
+  var orgShare: String
+}
+
 class PortalWrapper {
   public var portal: Portal?
   public var CUSTODIAN_SERVER_URL: String?
@@ -197,6 +201,54 @@ class PortalWrapper {
       }
     } progress: { status in
       print("Backup Status: ", status)
+    }
+  }
+
+  func eject(backupMethod: BackupMethods.RawValue, user: UserResult, backupConfigs _: BackupConfigs? = nil, completion: @escaping (Result<String>) -> Void) {
+    print("[PortalWrapper] Starting eject...")
+    // Setup request to get ciphert-text
+    let request = HttpRequest<CipherTextResult, [String: String]>(
+      url: CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/cipher-text/fetch",
+      method: "GET", body: [:],
+      headers: [:],
+      requestType: HttpRequestType.CustomRequest
+    )
+
+    request.send { (result: Result<CipherTextResult>) in
+      guard result.error == nil else {
+        print("❌ [PortalWrapper] handleEject(): Error fetching cipherText:", result.error!)
+        return completion(Result(error: result.error!))
+      }
+
+      let cipherText = result.data!.cipherText
+
+      // Setup request to get org-share
+      let requestOrgShare = HttpRequest<OrgShareResult, [String: String]>(
+        url: self.CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/org-share/fetch",
+        method: "GET", body: [:],
+        headers: [:],
+        requestType: HttpRequestType.CustomRequest
+      )
+
+      requestOrgShare.send { (result: Result<OrgShareResult>) in
+        guard result.error == nil else {
+          print("❌ [PortalWrapper] handleEject(): Error fetching orgShare:", result.error!)
+          return completion(Result(error: result.error!))
+        }
+
+        if let data = result.data {
+          let orgShare = data.orgShare
+          self.portal?.ejectPrivateKey(clientBackupCiphertext: cipherText, method: backupMethod, orgBackupShare: orgShare) { (result: Result<String>) in
+            guard result.error == nil else {
+              print("❌ [PortalWrapper] handleEject(): Error ejecting wallet:", result.error!)
+              return completion(Result(error: result.error!))
+            }
+            //
+            print("✅ [PortalWrapper] handleEject(): Successfully ejected wallet with private key \(result.data!)")
+            return completion(result)
+          }
+        }
+      }
     }
   }
 

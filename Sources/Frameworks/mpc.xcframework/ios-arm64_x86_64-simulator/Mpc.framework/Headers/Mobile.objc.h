@@ -12,6 +12,7 @@
 
 
 @class MobileCustodian;
+@class MobileEjectResult;
 @class MobileGetMeErrorType;
 @class MobileGetMeResponse;
 @class MobileGetMeResult;
@@ -24,6 +25,17 @@
 - (nonnull instancetype)init;
 @property (nonatomic) NSString* _Nonnull id_;
 @property (nonatomic) NSString* _Nonnull name;
+@end
+
+@interface MobileEjectResult : NSObject <goSeqRefInterface> {
+}
+@property(strong, readonly) _Nonnull id _ref;
+
+- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
+- (nonnull instancetype)init;
+@property (nonatomic) NSString* _Nonnull privateKey;
+// skipped field EjectResult.Error with unsupported type: github.com/portal-hq/mpc/errorcodes.Payload
+
 @end
 
 @interface MobileGetMeErrorType : NSObject <goSeqRefInterface> {
@@ -65,9 +77,14 @@
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileBackup(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
 
+// skipped function CreateEjectResult with unsupported parameter or return types
+
+
 FOUNDATION_EXPORT NSString* _Nonnull MobileDecrypt(NSString* _Nullable key, NSString* _Nullable dkgCipherText);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileDecryptWithPassword(NSString* _Nullable password, NSString* _Nullable dkgCipherText);
+
+FOUNDATION_EXPORT NSString* _Nonnull MobileEjectWalletAndDiscontinueMPC(NSString* _Nullable clientDkgResult, NSString* _Nullable serverDkgResult);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileEncrypt(NSString* _Nullable value);
 

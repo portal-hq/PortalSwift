@@ -215,6 +215,32 @@ class PasswordWalletTests: XCTestCase {
     wait(for: [recoverExpectation], timeout: 120)
   }
 
+  func testEject() {
+    if !PasswordWalletTests.testAGenerateSucceeded {
+      XCTFail("Failing fast - Generate test failed to complete successfully")
+      return
+    }
+    let ejectExpectation = XCTestExpectation(description: "Eject")
+
+    self.testLogin { result in
+      guard result.error == nil else {
+        ejectExpectation.fulfill()
+        return XCTFail("Failed on login: \(result.error!)")
+      }
+      let backupConfigs = try! BackupConfigs(passwordStorage: PasswordStorageConfig(password: "12345"))
+
+      PasswordWalletTests.PortalWrap.eject(backupMethod: BackupMethods.Password.rawValue, user: PasswordWalletTests.user!, backupConfigs: backupConfigs) { result in
+        guard result.error == nil else {
+          ejectExpectation.fulfill()
+          return XCTFail("Eject failed \(String(describing: result.error))")
+        }
+        ejectExpectation.fulfill()
+        return XCTAssertFalse(result.data!.isEmpty, "Eject Success")
+      }
+    }
+    wait(for: [ejectExpectation], timeout: 120)
+  }
+
   func testZSign() {
     if !PasswordWalletTests.testAGenerateSucceeded {
       XCTFail("Failing fast - Generate test failed to complete successfully")
