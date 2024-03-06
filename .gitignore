@@ -41,4 +41,3 @@ Secrets.xcconfig
 
 .build/
 .swiftpm/
-Package.resolved
