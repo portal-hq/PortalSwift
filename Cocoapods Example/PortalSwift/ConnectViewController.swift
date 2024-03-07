@@ -97,11 +97,6 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
       self?.didRequestApprovalDapps(portalConnect: portalConnect, data: data)
     })
 
-    portalConnect.on(event: Events.PortalDappSessionRequestedV1.rawValue, callback: { [weak self] data in
-      print("Event \(Events.PortalDappSessionRequested.rawValue) recieved for v1 on \(label)")
-      self?.didRequestApprovalDappsV1(portalConnect: portalConnect, data: data)
-    })
-
     portalConnect.on(event: Events.ConnectError.rawValue, callback: { data in
       if let errorData = data as? ErrorData {
         print("Event \(Events.ConnectError.rawValue) recieved on \(label). Error: \(errorData.params.message) Code: \(errorData.params.code)")
@@ -169,18 +164,6 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
       portalConnect.emit(event: Events.PortalDappSessionApproved.rawValue, data: newConnectData)
     } else {
       print("Invalid data type. Expected ConnectData.")
-    }
-  }
-
-  func didRequestApprovalDappsV1(portalConnect: PortalConnect, data: Any) {
-    print("Emitting Dapp Session Approval for v1..")
-
-    if let connectData = data as? ConnectV1Data {
-      print(connectData.params)
-
-      portalConnect.emit(event: Events.PortalDappSessionApprovedV1.rawValue, data: connectData)
-    } else {
-      print("Invalid data type. Expected ConnectV1Data.")
     }
   }
 
