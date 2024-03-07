@@ -11,11 +11,44 @@
 #include "Universe.objc.h"
 
 
+@class MobileCggmpBackup;
 @class MobileCustodian;
 @class MobileEjectResult;
 @class MobileGetMeErrorType;
 @class MobileGetMeResponse;
 @class MobileGetMeResult;
+
+@interface MobileCggmpBackup : NSObject <goSeqRefInterface> {
+}
+@property(strong, readonly) _Nonnull id _ref;
+
+- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
+- (nonnull instancetype)init;
+@property (nonatomic) NSString* _Nonnull clientId;
+@property (nonatomic) NSString* _Nonnull custodianId;
+@property (nonatomic) NSString* _Nonnull x;
+@property (nonatomic) NSString* _Nonnull y;
+@property (nonatomic) NSString* _Nonnull clientBk;
+@property (nonatomic) NSString* _Nonnull serverBk;
+@property (nonatomic) NSString* _Nonnull share;
+@property (nonatomic) NSString* _Nonnull clientPartialPubKey_x;
+@property (nonatomic) NSString* _Nonnull clientPartialPubKey_y;
+@property (nonatomic) NSString* _Nonnull serverPartialPubKey_x;
+@property (nonatomic) NSString* _Nonnull serverPartialPubKey_y;
+@property (nonatomic) NSString* _Nonnull yClient_x;
+@property (nonatomic) NSString* _Nonnull yClient_y;
+@property (nonatomic) NSString* _Nonnull yServer_x;
+@property (nonatomic) NSString* _Nonnull yServer_y;
+@property (nonatomic) NSString* _Nonnull pailler_p;
+@property (nonatomic) NSString* _Nonnull pailler_q;
+@property (nonatomic) NSString* _Nonnull ssid;
+@property (nonatomic) NSString* _Nonnull pedersenClient_n;
+@property (nonatomic) NSString* _Nonnull pedersenClient_s;
+@property (nonatomic) NSString* _Nonnull pedersenClient_t;
+@property (nonatomic) NSString* _Nonnull pedersenServer_n;
+@property (nonatomic) NSString* _Nonnull pedersenServer_s;
+@property (nonatomic) NSString* _Nonnull pedersenServer_t;
+@end
 
 @interface MobileCustodian : NSObject <goSeqRefInterface> {
 }
