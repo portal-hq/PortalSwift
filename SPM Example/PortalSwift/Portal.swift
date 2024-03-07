@@ -198,7 +198,7 @@ class PortalWrapper {
     print("[PortalWrapper] Starting eject...")
     // Setup request to get ciphert-text
     let request = HttpRequest<CipherTextResult, [String: String]>(
-      url: CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/cipher-text/fetch",
+      url: CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/cipher-text/fetch?backupMethod=\(backupMethod)",
       method: "GET", body: [:],
       headers: [:],
       requestType: HttpRequestType.CustomRequest
@@ -214,7 +214,7 @@ class PortalWrapper {
 
       // Setup request to get org-share
       let requestOrgShare = HttpRequest<OrgShareResult, [String: String]>(
-        url: self.CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/org-share/fetch",
+        url: self.CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/org-share/fetch?backupMethod=\(backupMethod)",
         method: "GET", body: [:],
         headers: [:],
         requestType: HttpRequestType.CustomRequest
