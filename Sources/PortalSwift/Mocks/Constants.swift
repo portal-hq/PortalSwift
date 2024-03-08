@@ -49,7 +49,5 @@ public let generateProgressCallbacks: Set<MpcStatuses> = [.generatingShare, .par
 
 public let recoverProgressCallbacks: [MpcStatuses] = [.readingShare, .decryptingShare, .parsingShare, .recoveringSigningShare, .generatingShare, .parsingShare, .storingShare, .done]
 
-public let legacyRecoverProgressCallbacks: [MpcStatuses] = [.readingShare, .decryptingShare, .parsingShare, .recoveringSigningShare, .generatingShare, .parsingShare, .storingShare, .recoveringBackupShare, .generatingShare, .parsingShare, .encryptingShare, .storingShare, .done]
-
 public let mockSignedTypeDataMessage =
   "{\"types\":{\"PermitSingle\":[{\"name\":\"details\",\"type\":\"PermitDetails\"},{\"name\":\"spender\",\"type\":\"address\"},{\"name\":\"sigDeadline\",\"type\":\"uint256\"}],\"PermitDetails\":[{\"name\":\"token\",\"type\":\"address\"},{\"name\":\"amount\",\"type\":\"uint160\"},{\"name\":\"expiration\",\"type\":\"uint48\"},{\"name\":\"nonce\",\"type\":\"uint48\"}],\"EIP712Domain\":[{\"name\":\"name\",\"type\":\"string\"},{\"name\":\"chainId\",\"type\":\"uint256\"},{\"name\":\"verifyingContract\",\"type\":\"address\"}]},\"domain\":{\"name\":\"Permit2\",\"chainId\":\"5\",\"verifyingContract\":\"0x000000000022d473030f116ddee9f6b43ac78ba3\"},\"primaryType\":\"PermitSingle\",\"message\":{\"details\":{\"token\":\"0x1f9840a85d5af5bf1d1762f925bdaddc4201f984\",\"amount\":\"1461501637330902918203684832716283019655932542975\",\"expiration\":\"1685053478\",\"nonce\":\"0\"},\"spender\":\"0x4648a43b2c14da09fdf82b161150d3f634f40491\",\"sigDeadline\":\"1682463278\"}}"
