@@ -59,6 +59,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var gdriveRecoverButton: UIButton!
   @IBOutlet var iCloudBackupButton: UIButton!
   @IBOutlet var iCloudRecoverButton: UIButton!
+  @IBOutlet var legacyRecoverButton: UIButton?
 
   // Send form
   @IBOutlet public var sendAddress: UITextField?
@@ -235,6 +236,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       DispatchQueue.main.async {
         self.dappBrowserButton?.isEnabled = true
         self.portalConnectButton?.isEnabled = true
+        self.legacyRecoverButton?.isEnabled = true
         self.testButton?.isEnabled = true
         self.signButton?.isEnabled = true
         self.deleteKeychainButton?.isEnabled = true
@@ -413,6 +415,45 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
       self.populateAddressInformation()
       print("✅ handleiCloudRecover(): Successfully recovered signing shares")
+    }
+  }
+
+  @IBAction func handleLegacyRecover(_: UIButton) {
+    guard let user = self.user else {
+      print("❌ handleLegacyRecover(): Unable to derive the user.")
+      return
+    }
+
+    // PortalWrapper.legacyRecover(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user) { (result) -> Void in
+    self.PortalWrapper.legacyRecover(backupMethod: BackupMethods.iCloud.rawValue, user: user) { result in
+      guard result.error == nil else {
+        print("❌ handleLegacyRecover(): Error fetching cipherText:", result.error ?? "")
+        do {
+          try self.PortalWrapper.portal?.api.storedClientBackupShare(success: false, backupMethod: BackupMethods.iCloud.rawValue) { result in
+            guard result.error == nil else {
+              print("❌ handleLegacyRecover(): Error notifying Portal that backup share was not stored.")
+              return
+            }
+          }
+        } catch {
+          print("❌ handleLegacyRecover(): Error notifying Portal that backup share was not stored.")
+        }
+        return
+      }
+
+      do {
+        try self.PortalWrapper.portal?.api.storedClientBackupShare(success: true, backupMethod: BackupMethods.iCloud.rawValue) { result in
+          guard result.error == nil else {
+            print("❌ handleLegacyRecover(): Error notifying Portal that backup share was stored.")
+            return
+          }
+
+          self.populateAddressInformation()
+          print("✅ handleLegacyRecover(): Successfully recovered.")
+        }
+      } catch {
+        print("❌ handleLegacyRecover(): Error notifying Portal that backup share was stored.")
+      }
     }
   }
 

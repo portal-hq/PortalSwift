@@ -127,4 +127,26 @@ final class PortalCoreTests: XCTestCase {
     }
     wait(for: [expectation], timeout: 5.0)
   }
+
+  func testLegacyRecoverWallet() {
+    let expectation = XCTestExpectation(description: "Legacy Recover")
+    var encounteredStatuses: [MpcStatuses] = []
+
+    self.portal.legacyRecoverWallet(cipherText: mockCiphertext, method: BackupMethods.iCloud.rawValue) { result in
+      guard result.error == nil else {
+        XCTFail("Failure: \(String(describing: result.error))")
+        expectation.fulfill()
+        return
+      }
+
+      XCTAssert(result.data! as String == mockCiphertext, "Recover should return cipherText")
+      expectation.fulfill()
+    } progress: { MpcStatus in
+      let status = MpcStatus.status
+      encounteredStatuses.append(status)
+    }
+    wait(for: [expectation], timeout: 5.0)
+
+    XCTAssertEqual(encounteredStatuses, legacyRecoverProgressCallbacks, "All expected statuses should be encountered")
+  }
 }
