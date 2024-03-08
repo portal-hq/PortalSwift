@@ -243,54 +243,6 @@ public class PortalConnect: EventBus {
     emit(event: Events.PortalDappSessionRequested.rawValue, data: data)
   }
 
-  func handleDappSessionRequestedV1(data: ConnectV1Data) {
-    once(event: Events.PortalDappSessionApprovedV1.rawValue) { [weak self] _ in
-      guard let self = self else { return }
-
-      // If the approved event is fired
-      let event = DappSessionResponseV1Message(
-        event: "portal_dappSessionApproved",
-        data: SessionResponseV1Data(
-          id: data.id,
-          topic: data.topic,
-          address: self.address!,
-          chainId: String(self.chainId)
-        )
-      )
-
-      do {
-        let message = try JSONEncoder().encode(event)
-        self.client?.send(message)
-      } catch {
-        print("[PortalConnect] Error encoding DappSessionRequestApprovedMessage: \(error)")
-      }
-    }
-
-    once(event: Events.PortalDappSessionRejectedV1.rawValue) { [weak self] _ in
-      guard let self = self else { return }
-
-      // If the approved event is fired
-      let event = DappSessionResponseV1Message(
-        event: "portal_dappSessionRejected",
-        data: SessionResponseV1Data(
-          id: data.id,
-          topic: data.topic,
-          address: self.address!,
-          chainId: String(self.chainId)
-        )
-      )
-
-      do {
-        let message = try JSONEncoder().encode(event)
-        self.client?.send(message)
-      } catch {
-        print("[PortalConnect] Error encoding DappSessionRequestRejectedMessage: \(error)")
-      }
-    }
-
-    emit(event: Events.PortalDappSessionRequestedV1.rawValue, data: data)
-  }
-
   func handleClose() {
     self.topic = nil
     self.client?.topic = nil
@@ -299,13 +251,6 @@ public class PortalConnect: EventBus {
   }
 
   func handleConnected(data: ConnectedData) {
-    self.topic = data.topic
-    self.client?.topic = data.topic
-
-    emit(event: Events.Connect.rawValue, data: data)
-  }
-
-  func handleConnectedV1(data: ConnectedV1Data) {
     self.topic = data.topic
     self.client?.topic = data.topic
 
@@ -524,9 +469,7 @@ public class PortalConnect: EventBus {
   private func unbindClientEvents() {
     self.client?.off("close")
     self.client?.off("portal_dappSessionRequested")
-    self.client?.off("portal_dappSessionRequestedV1")
     self.client?.off("connected")
-    self.client?.off("connectedV1")
     self.client?.off("disconnected")
     self.client?.off("error")
     self.client?.off("portal_connectError")
@@ -538,9 +481,7 @@ public class PortalConnect: EventBus {
   private func bindClientEvents() {
     self.client?.on("close", self.handleClose)
     self.client?.on("portal_dappSessionRequested", self.handleDappSessionRequested)
-    self.client?.on("portal_dappSessionRequestedV1", self.handleDappSessionRequestedV1)
     self.client?.on("connected", self.handleConnected)
-    self.client?.on("connectedV1", self.handleConnectedV1)
     self.client?.on("disconnected", self.handleDisconnected)
     self.client?.on("error", self.handleConnectError)
     self.client?.on("portal_connectError", self.handleError)

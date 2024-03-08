@@ -22,9 +22,7 @@ public enum ConnectState {
 struct EventHandlers {
   var close: [() -> Void]
   var dapp_session_requested: [(ConnectData) -> Void]
-  var dapp_session_requestedV1: [(ConnectV1Data) -> Void]
   var connected: [(ConnectedData) -> Void]
-  var connectedV1: [(ConnectedV1Data) -> Void]
   var disconnect: [(DisconnectData) -> Void]
   var error: [(ConnectError) -> Void]
   var session_request: [(SessionRequestData) -> Void]
@@ -35,9 +33,7 @@ struct EventHandlers {
   init() {
     self.close = []
     self.dapp_session_requested = []
-    self.dapp_session_requestedV1 = []
     self.connected = []
-    self.connectedV1 = []
     self.disconnect = []
     self.session_request = []
     self.session_request_address = []
@@ -220,81 +216,60 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
       return
     } catch {
       do {
-        let payload = try JSONDecoder().decode(WebSocketDappSessionRequestV1Message.self, from: data)
-        if payload.event != "portal_dappSessionRequestedV1" {
+        let payload = try JSONDecoder().decode(WebSocketDappSessionRequestMessage.self, from: data)
+        if payload.event != "portal_dappSessionRequested" {
           throw WebSocketTypeErrors.MismatchedTypeMessage
         }
         self.emit(payload.event, payload.data)
         return
       } catch {
-        print("[WebSocketClient] Unable to parse message as WebSocketDappSessionRequestV1Message, attempting WebSocketDappSessionRequestMessage...")
+        print("[WebSocketClient] Unable to parse message as WebSocketDappSessionRequestMessage, attempting WebSocketSessionRequestAddressMessage...")
         do {
-          let payload = try JSONDecoder().decode(WebSocketDappSessionRequestMessage.self, from: data)
-          if payload.event != "portal_dappSessionRequested" {
-            throw WebSocketTypeErrors.MismatchedTypeMessage
-          }
+          let payload = try JSONDecoder().decode(WebSocketSessionRequestAddressMessage.self, from: data)
           self.emit(payload.event, payload.data)
           return
         } catch {
-          print("[WebSocketClient] Unable to parse message as WebSocketDappSessionRequestMessage, attempting WebSocketSessionRequestAddressMessage...")
+          print("[WebSocketClient] Unable to parse message as WebSocketSessionRequestMessage, attempting WebSocketSessionRequestAddressMessage...")
           do {
             let payload = try JSONDecoder().decode(WebSocketSessionRequestAddressMessage.self, from: data)
             self.emit(payload.event, payload.data)
             return
           } catch {
-            print("[WebSocketClient] Unable to parse message as WebSocketSessionRequestMessage, attempting WebSocketSessionRequestAddressMessage...")
+            print("[WebSocketClient] Unable to parse message as WebSocketSessionRequestAddressMessage, attempting WebSocketSessionRequestTransactionMessage...")
             do {
-              let payload = try JSONDecoder().decode(WebSocketSessionRequestAddressMessage.self, from: data)
+              let payload = try JSONDecoder().decode(WebSocketSessionRequestTransactionMessage.self, from: data)
               self.emit(payload.event, payload.data)
               return
             } catch {
-              print("[WebSocketClient] Unable to parse message as WebSocketSessionRequestAddressMessage, attempting WebSocketSessionRequestTransactionMessage...")
               do {
-                let payload = try JSONDecoder().decode(WebSocketSessionRequestTransactionMessage.self, from: data)
+                let payload = try JSONDecoder().decode(WebSocketConnectedMessage.self, from: data)
+                if payload.event != "connected" {
+                  throw WebSocketTypeErrors.MismatchedTypeMessage
+                }
+                self.connectState = .connected
                 self.emit(payload.event, payload.data)
                 return
               } catch {
+                print("[WebSocketClient] Unable to parse message as WebSocketConnectedMessage, attempting WebSocketDisconnectMessage...")
                 do {
-                  let payload = try JSONDecoder().decode(WebSocketConnectedMessage.self, from: data)
-                  if payload.event != "connected" {
+                  let payload = try JSONDecoder().decode(WebSocketDisconnectMessage.self, from: data)
+                  if payload.event != "disconnect" {
                     throw WebSocketTypeErrors.MismatchedTypeMessage
                   }
-                  self.connectState = .connected
+                  self.connectState = .disconnected
                   self.emit(payload.event, payload.data)
                   return
                 } catch {
+                  print("[WebSocketClient] Unable to parse message as WebSocketDisconnectMessage, attempting WebSocketErrorMessage...")
                   do {
-                    print("[WebSocketClient] Unable to parse message as WebSocketConnectedMessage, attempting WebSocketConnectedV1Message...")
-                    let payload = try JSONDecoder().decode(WebSocketConnectedV1Message.self, from: data)
-                    if payload.event != "connected" {
+                    let payload = try JSONDecoder().decode(WebSocketErrorMessage.self, from: data)
+                    if payload.event != "portal_connectError" {
                       throw WebSocketTypeErrors.MismatchedTypeMessage
                     }
-                    self.connectState = .connected
                     self.emit(payload.event, payload.data)
                     return
                   } catch {
-                    print("[WebSocketClient] Unable to parse message as WebSocketConnectedV1Message, attempting WebSocketDisconnectMessage...")
-                    do {
-                      let payload = try JSONDecoder().decode(WebSocketDisconnectMessage.self, from: data)
-                      if payload.event != "disconnect" {
-                        throw WebSocketTypeErrors.MismatchedTypeMessage
-                      }
-                      self.connectState = .disconnected
-                      self.emit(payload.event, payload.data)
-                      return
-                    } catch {
-                      print("[WebSocketClient] Unable to parse message as WebSocketDisconnectMessage, attempting WebSocketErrorMessage...")
-                      do {
-                        let payload = try JSONDecoder().decode(WebSocketErrorMessage.self, from: data)
-                        if payload.event != "portal_connectError" {
-                          throw WebSocketTypeErrors.MismatchedTypeMessage
-                        }
-                        self.emit(payload.event, payload.data)
-                        return
-                      } catch {
-                        print("[WebSocketClient] Error when processing incoming data: \(error)")
-                      }
-                    }
+                    print("[WebSocketClient] Error when processing incoming data: \(error)")
                   }
                 }
               }
@@ -365,40 +340,6 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   func emit(_ event: String, _ data: ConnectedData) {
     // Get the list of event handlers for this event
     let eventHandlers = self.events.connected
-
-    // Ensure there's something to invoke
-    if eventHandlers.count > 0 {
-      // Loop through the event handlers
-      for handler in eventHandlers {
-        // Invoke the handler
-        handler(data)
-      }
-    } else {
-      // Ignore the event
-      print("[PortalConnect] No registered event handlers for \(event). Ignoring...")
-    }
-  }
-
-  func emit(_ event: String, _ data: ConnectV1Data) {
-    // Get the list of event handlers for this event
-    let eventHandlers = self.events.dapp_session_requestedV1
-
-    // Ensure there's something to invoke
-    if eventHandlers.count > 0 {
-      // Loop through the event handlers
-      for handler in eventHandlers {
-        // Invoke the handler
-        handler(data)
-      }
-    } else {
-      // Ignore the event
-      print("[PortalConnect] No registered event handlers for \(event). Ignoring...")
-    }
-  }
-
-  func emit(_ event: String, _ data: ConnectedV1Data) {
-    // Get the list of event handlers for this event
-    let eventHandlers = self.events.connectedV1
 
     // Ensure there's something to invoke
     if eventHandlers.count > 0 {
@@ -519,19 +460,9 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
     self.events.dapp_session_requested.append(handler)
   }
 
-  func on(_: String, _ handler: @escaping (ConnectV1Data) -> Void) {
-    // Add event handler to the list
-    self.events.dapp_session_requestedV1.append(handler)
-  }
-
   func on(_: String, _ handler: @escaping (ConnectedData) -> Void) {
     // Add event handler to the list
     self.events.connected.append(handler)
-  }
-
-  func on(_: String, _ handler: @escaping (ConnectedV1Data) -> Void) {
-    // Add event handler to the list
-    self.events.connectedV1.append(handler)
   }
 
   func on(_: String, _ handler: @escaping () -> Void) {
@@ -575,12 +506,8 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
       self.events.close = []
     case "connected":
       self.events.connected = []
-    case "connectedV1":
-      self.events.connectedV1 = []
     case "portal_dappSessionRequested":
       self.events.dapp_session_requested = []
-    case "portal_dappSessionRequestedV1":
-      self.events.dapp_session_requestedV1 = []
     case "disconnected":
       self.events.disconnect = []
     case "error":
