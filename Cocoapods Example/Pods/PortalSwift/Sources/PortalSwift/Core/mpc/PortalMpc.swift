@@ -491,6 +491,112 @@ public class PortalMpc {
     }
   }
 
+  /// Uses the backup share to create a new signing share and a new backup share, encrypts the new backup share, and stores the private key in storage.
+  /// - Parameters:
+  ///   - cipherText: the cipherText of the backup share (should be passed in from the custodian).
+  ///   - method: The specific backup storage option.
+  ///   - completion: The callback which includes the cipherText of the new backup share.
+  @available(*, deprecated, renamed: "recover")
+  public func legacyRecover(
+    cipherText: String,
+    method: BackupMethods.RawValue,
+    completion: @escaping (Result<String>) -> Void,
+    progress: ((MpcStatus) -> Void)? = nil
+  ) {
+    if self.version != "v6" {
+      return completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v6`.")))
+    }
+
+    guard !self.isWalletModificationInProgress else {
+      print("❌ A wallet modification operation is already in progress.")
+      return completion(Result(error: MpcError.walletModificationAlreadyInProgress))
+    }
+
+    self.isWalletModificationInProgress = true
+
+    // Derive the storage and throw an error if none was provided.
+    let storage = self.storage[method] as? Storage
+    if storage == nil {
+      self.isWalletModificationInProgress = false
+      return completion(Result(error: MpcError.unsupportedStorageMethod))
+    }
+
+    print("Validating Keychain is available...")
+    self.keychain.validateOperations { result in
+      // Handle errors
+      if result.error != nil {
+        print("❌ Keychain is not available:")
+        self.isWalletModificationInProgress = false
+        return completion(Result(error: result.error!))
+      }
+      print("Keychain is available, continuing...")
+
+      if method == BackupMethods.iCloud.rawValue {
+        print("Validating iCloud Storage is available...")
+        (storage as! ICloudStorage).validateOperations { (result: Result<Bool>) in
+          if result.error != nil {
+            print("❌ iCloud Storage is not available:")
+            print(result)
+            self.isWalletModificationInProgress = false
+            return completion(Result(error: result.error!))
+          }
+          print("iCloud Storage is available, continuing...")
+
+          // Call the MPC service to get the backup share.
+          self.executeLegacyRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
+            if recoveryResult.error != nil {
+              self.isWalletModificationInProgress = false
+              return completion(Result(error: recoveryResult.error!))
+            }
+            progress?(MpcStatus(status: MpcStatuses.done, done: true))
+            self.isWalletModificationInProgress = false
+            return completion(Result(data: recoveryResult.data!))
+          } progress: { status in
+            progress?(status)
+          }
+        }
+      } else if method == BackupMethods.GoogleDrive.rawValue {
+        print("Validating Google Drive Storage is available...")
+        (storage as! GDriveStorage).validateOperations { (result: Result<Bool>) in
+          if result.error != nil {
+            print("❌ Google Drive Storage is not available:")
+            print(result)
+            self.isWalletModificationInProgress = false
+            return completion(Result(error: result.error!))
+          }
+          print("Google Drive Storage is available, starting backup...")
+
+          self.executeLegacyRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
+            if recoveryResult.error != nil {
+              self.isWalletModificationInProgress = false
+              return completion(Result(error: recoveryResult.error!))
+            }
+            progress?(MpcStatus(status: MpcStatuses.done, done: true))
+            self.isWalletModificationInProgress = false
+            return completion(Result(data: recoveryResult.data!))
+          } progress: { status in
+            progress?(status)
+          }
+        }
+      } else if method == BackupMethods.local.rawValue {
+        self.executeLegacyRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
+          if recoveryResult.error != nil {
+            self.isWalletModificationInProgress = false
+            return completion(Result(error: recoveryResult.error!))
+          }
+          progress?(MpcStatus(status: MpcStatuses.done, done: true))
+          self.isWalletModificationInProgress = false
+          return completion(Result(data: recoveryResult.data!))
+        } progress: { status in
+          progress?(status)
+        }
+      } else {
+        self.isWalletModificationInProgress = false
+        return completion(Result(error: MpcError.unsupportedStorageMethod))
+      }
+    }
+  }
+
   private func decryptShare(cipherText: String, privateKey: String, method: BackupMethods.RawValue, progress: ((MpcStatus) -> Void)? = nil) throws -> String {
     progress?(MpcStatus(status: MpcStatuses.decryptingShare, done: false))
     let result = method == BackupMethods.Password.rawValue ? self.mobile.MobileDecryptWithPassword(privateKey, cipherText) : self.mobile.MobileDecrypt(privateKey, cipherText)
@@ -735,6 +841,98 @@ public class PortalMpc {
         }
 
         return completion(Result(data: unwrappedAddress))
+      } progress: { status in
+        progress?(status)
+      }
+    } progress: { status in
+      progress?(status)
+    }
+  }
+
+  private func executeLegacyRecovery(
+    storage: Storage,
+    method: BackupMethods.RawValue,
+    cipherText: String,
+    completion: @escaping (Result<String>) -> Void,
+    progress: ((MpcStatus) -> Void)? = nil
+  ) {
+    progress?(MpcStatus(status: MpcStatuses.readingShare, done: false))
+    self.getBackupShare(cipherText: cipherText, method: method) { (result: Result<String>) in
+      // Throw if there was an error getting the backup share.
+      guard result.error == nil else {
+        return completion(Result(error: result.error!))
+      }
+
+      progress?(MpcStatus(status: MpcStatuses.recoveringSigningShare, done: false))
+      self.recoverSigning(backupShare: result.data!) { signingResult in
+        if signingResult.error != nil {
+          return completion(Result(error: signingResult.error!))
+        }
+
+        progress?(MpcStatus(status: MpcStatuses.recoveringBackupShare, done: false))
+
+        self.recoverBackup(clientBackupShare: result.data!, backupMethod: method) { backupResult in
+          if backupResult.error != nil {
+            print("Signing shares were successfully replaced, but backup shares were not refreshed. Try running backup again with your new signing shares.")
+            if let error = backupResult.error {
+              return completion(Result(error: MpcError.failedToRecoverBackup(message: error.localizedDescription)))
+            } else {
+              return completion(Result(error: MpcError.failedToRecoverBackup(message: "")))
+            }
+          }
+
+          self.encryptShare(mpcShare: backupResult.data!) { encryptedResult in
+            // Handle errors
+            if encryptedResult.error != nil {
+              print("Signing shares were successfully replaced, but backup shares were not refreshed. Try running backup again with your new signing shares.")
+              if let error = encryptedResult.error {
+                return completion(Result(error: MpcError.failedToEncryptClientBackupShare(message: error.localizedDescription)))
+              } else {
+                return completion(Result(error: MpcError.failedToEncryptClientBackupShare(message: "")))
+              }
+            }
+
+            // Attempt to write the encrypted share to storage.
+            progress?(MpcStatus(status: MpcStatuses.storingShare, done: false))
+
+            storage.write(privateKey: encryptedResult.data!.key) { (result: Result<Bool>) in
+              // Throw an error if we can't write to storage.
+              guard result.data != nil else {
+                print("Signing shares were successfully replaced, but backup shares were not refreshed. Try running backup again with your new signing shares.")
+                if let error = result.error {
+                  return completion(Result(error: MpcError.failedToStoreClientBackupShareKey(message: error.localizedDescription)))
+                } else {
+                  return completion(Result(error: MpcError.failedToStoreClientBackupShareKey(message: "")))
+                }
+              }
+
+              do {
+                // Call api to update backup status to `STORED_CLIENT_BACKUP_SHARE_KEY`.
+                try self.api.storedClientBackupShareKey(success: true, backupMethod: method) { (_: Result<String>) in
+                  // Throw an error if we can't update the backup status + save the backup method.
+                  if result.error != nil {
+                    print("Signing shares were successfully replaced, but backup shares were not refreshed. Try running backup again with your new signing shares.")
+                    if let error = result.error {
+                      return completion(Result(error: MpcError.failedToStoreClientBackupShareKey(message: error.localizedDescription)))
+                    } else {
+                      return completion(Result(error: MpcError.failedToStoreClientBackupShareKey(message: "")))
+                    }
+                  }
+
+                  // Return the cipherText.
+                  return completion(Result(data: encryptedResult.data!.cipherText))
+                }
+              } catch {
+                print("Signing shares were successfully replaced, but backup shares were not refreshed. Try running backup again with your new signing shares.")
+                return completion(Result(error: MpcError.failedToStoreClientBackupShareKey(message: "")))
+              }
+            }
+          } progress: { status in
+            progress?(status)
+          }
+        } progress: { status in
+          progress?(status)
+        }
       } progress: { status in
         progress?(status)
       }

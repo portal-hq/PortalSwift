@@ -273,6 +273,52 @@ class PortalWrapper {
     }
   }
 
+  func legacyRecover(backupMethod: BackupMethods.RawValue, user: UserResult, completion: @escaping (Result<Bool>) -> Void) {
+    print("[PortalWrapper] Starting legacy recover...")
+    let request = HttpRequest<CipherTextResult, [String: String]>(
+      url: CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/cipher-text/fetch?backupMethod=\(backupMethod)",
+      method: "GET", body: [:],
+      headers: [:],
+      requestType: HttpRequestType.CustomRequest
+    )
+
+    request.send { (result: Result<CipherTextResult>) in
+      guard result.error == nil else {
+        print("❌ [PortalWrapper] handleLegacyRecover(): Error fetching cipherText:", result.error!)
+        return completion(Result(error: result.error!))
+      }
+
+      let cipherText = result.data!.cipherText
+
+      self.portal?.legacyRecoverWallet(cipherText: cipherText, method: backupMethod) { (result: Result<String>) in
+        guard result.error == nil else {
+          print("❌ [PortalWrapper] handleLegacyRecover(): Error fetching cipherText:", result.error!)
+          return completion(Result(error: result.error!))
+        }
+
+        let request = HttpRequest<String, [String: String]>(
+          url: self.CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/cipher-text",
+          method: "POST",
+          body: ["cipherText": result.data!, "backupMethod": backupMethod],
+          headers: [:],
+          requestType: HttpRequestType.CustomRequest
+        )
+
+        request.send { (result: Result<String>) in
+          if result.error != nil {
+            print("❌ [PortalWrapper] handleLegacyRecover(): Error sending custodian cipherText:", result.error!)
+            return completion(Result(error: result.error!))
+          } else {
+            print("✅ [PortalWrapper] handleLegacyRecover(): Successfully sent custodian cipherText:")
+            return completion(Result(data: true))
+          }
+        }
+      } progress: { status in
+        print("[PortalWrapper] Recover Status: ", status)
+      }
+    }
+  }
+
   func ethSign(params: [Any], completion: @escaping (Result<String>) -> Void) {
     let method = ETHRequestMethods.Sign.rawValue
 
