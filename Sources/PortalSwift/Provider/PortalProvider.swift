@@ -816,6 +816,10 @@ public enum Events: String {
   case PortalDappSessionRequested = "portal_dappSessionRequested"
   case PortalDappSessionApproved = "portal_dappSessionApproved"
   case PortalDappSessionRejected = "portal_dappSessionRejected"
+  // Walletconnect V1
+  case PortalDappSessionRequestedV1 = "portal_dappSessionRequestedV1"
+  case PortalDappSessionApprovedV1 = "portal_dappSessionApprovedV1"
+  case PortalDappSessionRejectedV1 = "portal_dappSessionRejectedV1"
 }
 
 /// All available provider methods.
