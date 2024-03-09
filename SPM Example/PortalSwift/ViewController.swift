@@ -8,6 +8,8 @@
 
 import PortalSwift
 import UIKit
+import Web3
+import Web3ContractABI
 
 struct SignUpBody: Codable {
   var username: String
@@ -661,24 +663,83 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
   func sendTransaction(ethEstimate: String) {
-    let payload = ETHTransactionPayload(
-      method: ETHRequestMethods.SendTransaction.rawValue,
-      params: [ETHTransactionParam(from: self.portal?.address ?? "", to: self.sendAddress?.text ?? "", gasPrice: ethEstimate, value: "0x10", data: "")]
-      // Test EIP-1559 Transactions with these params
-      // params: [ETHTransactionParam(from: portal?.mpc.getAddress(), to: sendAddress.text!,  gas:"0x5208", value: "0x10", data: "", maxPriorityFeePerGas: ethEstimate, maxFeePerGas: ethEstimate)]
-    )
+    // Get the Gateway URL from the Portal Provider
+    guard let gatewayUrl = portal?.provider.gatewayUrl else {
+      // Add application logic to handle this scenario
+      return
+    }
+    // Get the Portal Wallet address
+    guard let address = portal?.address else {
+      // Add application logic to handle this scenario
+      return
+    }
 
-    self.portal?.provider.request(payload: payload) {
-      (result: Result<TransactionCompletionResult>) in
-      guard result.error == nil else {
-        print("❌ Error sending transaction:", result.error ?? "")
+    do {
+      let receiverAddress = try EthereumAddress(hex: "0xdFd8302f44727A6348F702fF7B594f127dE3A902", eip55: false) // eip55 is dependent on the wallet receiving funds
+
+      // Transfor the sender address
+      let senderAddress = try EthereumAddress(hex: address, eip55: false) // eip55 will be false for Portal MPC Wallets
+
+      // Transform the token address
+      // USDC polygon mumbai 0x9999f7Fea5938fD3b1E26A12c3f2fb024e194f97
+      // USDC polygon mainnet 0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359
+      let tokenContractAddress = try EthereumAddress(hex: "0x0FA8781a83E46826621b3BC094Ea2A0212e71B23", eip55: true) // eip55 will be true for Token Contracts
+
+      let web3 = Web3(rpcURL: gatewayUrl)
+
+      let weiConversionFactor = 1e6
+      let valueInWei = BigUInt(0.01 * weiConversionFactor)
+      print(valueInWei)
+      let value = EthereumQuantity(quantity: valueInWei.eth)
+      // Get an instance of the UNI Contract to generate transactions
+      let contract = web3.eth.Contract(
+        type: GenericERC20Contract.self,
+        address: tokenContractAddress // USDC token address
+      )
+
+      // Generate the ERC20 transaction using the UNI Contract
+      guard let tx = contract
+        .transfer(
+          // eip55 is dependent on the wallet receiving funds
+          to: receiverAddress,
+          value: valueInWei
+        )
+        .createTransaction(
+          nonce: 0, // Here you'd want to provide the actual nonce for this transaction
+          gasPrice: EthereumQuantity(quantity: 21.gwei),
+          maxFeePerGas: nil,
+          maxPriorityFeePerGas: nil,
+          gasLimit: 100_000,
+          // eip55 will be false for Portal MPC Wallets
+          from: senderAddress,
+          value: 0,
+          accessList: [:],
+          transactionType: .legacy
+        )
+      else {
+        // Add application logic to handle this scenario
+        print("XXXX no good")
         return
       }
-      guard (result.data?.result as? Result<Any>)?.error == nil else {
-        print("❌ Error sending transaction:", (result.data?.result as AnyObject).error as Any)
-        return
+      print("BIG INT VALUE 0.01:", BigUInt(0.01))
+      print("BIG INT VALUE 1:", BigUInt(1))
+      // Send the transaction
+      self.portal?.ethSendTransaction(transaction: ETHTransactionParam(
+        from: address,
+        to: "0x0FA8781a83E46826621b3BC094Ea2A0212e71B23",
+        gasPrice: ethEstimate,
+        value: "0x0",
+        data: tx.data.hex(),
+        nonce: tx.nonce?.hex()
+      )) { (result: Result<TransactionCompletionResult>) in
+        // Handle result of sending the transaction
+        print("ERROR SENDING TX:", result.error)
+
+        print("✅ handleSend(): Result:", result.data?.result ?? "")
       }
-      print("✅ handleSend(): Result:", result.data?.result ?? "")
+
+    } catch {
+      print("❌ Error sending transaction:", error)
     }
   }
 

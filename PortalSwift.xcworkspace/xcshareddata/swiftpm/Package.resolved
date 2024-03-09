@@ -158,8 +158,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Boilertalk/Web3.swift",
       "state" : {
-        "revision" : "808d6c70daa10186d0084f44b3dfa2b8d4c88789",
-        "version" : "0.8.4"
+        "revision" : "9c362d2288175ea3ed00f4ec22b3b45833a080d2",
+        "version" : "0.8.7"
       }
     },
     {

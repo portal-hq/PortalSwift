@@ -8,6 +8,7 @@
 
 import Foundation
 import PortalSwift
+import Web3
 
 struct UserResult: Codable {
   var clientApiKey: String
@@ -85,7 +86,7 @@ class PortalWrapper {
     let request = HttpRequest<UserResult, [String: String]>(
       url: CUSTODIAN_SERVER_URL! + "/mobile/signup",
       method: "POST",
-      body: ["username": username],
+      body: ["username": username, "isAccountAbstracted": "true"],
       headers: ["Content-Type": "application/json"],
       requestType: HttpRequestType.CustomRequest
     )
