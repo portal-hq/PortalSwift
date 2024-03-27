@@ -1,3 +1,10 @@
+public typealias PortalMpcGenerateResponse = [String: PortalMpcGeneratedShare]
+
+public struct PortalMpcGeneratedShare: Codable {
+  public let id: String
+  public let share: String
+}
+
 /// A MPC share that includes a variable number of fields, depending on the MPC version being used
 /// GG18 shares will only contain: bks, pubkey, and share
 /// CGGMP shares will contain all fields except: pubkey.
