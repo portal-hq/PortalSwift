@@ -35,8 +35,8 @@ public struct ClientResponseMetadata: Codable {
 }
 
 public struct ClientResponseMetadataNamespaces: Codable {
-  public let SECP256K1: ClientResponseNamespaceMetadataItem?
-  public let ED25519: ClientResponseNamespaceMetadataItem?
+  public let eip155: ClientResponseNamespaceMetadataItem?
+  public let solana: ClientResponseNamespaceMetadataItem?
 }
 
 public struct ClientResponseNamespaceMetadataItem: Codable {
