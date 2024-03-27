@@ -16,10 +16,7 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
 
   // Current active UI Window to present passkey modal too
   var authenticationAnchor: ASPresentationAnchor?
-  var authorizationCompletion: AuthorizationCompletion?
   var continuation: CheckedContinuation<String, Error>?
-
-  var registrationCompletion: RegistrationCompletion?
 
   // The domain of our relying party server.
   private var domain: String
@@ -39,8 +36,7 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
   ///   - userId: UserId from the 'begin/registration' endpoint
   ///   - challenge: Data object to sign to verify passkey registration
   ///   - anchor: window of current UI
-  func signUpWith(options: RegistrationOptions, anchor: ASPresentationAnchor) {
-    self.authenticationAnchor = anchor
+  func signUpWith(_ options: RegistrationOptions) {
     let publicKeyCredentialProvider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: domain)
 
     let challenge = options.publicKey.challenge.decodeBase64Url()!
@@ -65,8 +61,7 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
     authController.performRequests()
   }
 
-  func signInWith(anchor: ASPresentationAnchor, options: AuthenticationOptions, preferImmediatelyAvailableCredentials: Bool) {
-    self.authenticationAnchor = anchor
+  func signInWith(_ options: AuthenticationOptions, preferImmediatelyAvailableCredentials: Bool) {
     let publicKeyCredentialProvider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: domain)
     let challenge = options.publicKey.challenge.decodeBase64Url()!
 
@@ -93,11 +88,7 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
   public func authorizationController(controller _: ASAuthorizationController, didCompleteWithError error: Error) {
     guard let authorizationError = error as? ASAuthorizationError else {
       self.logger.error("Unexpected authorization error: \(error.localizedDescription)")
-      if self.authorizationCompletion != nil {
-        self.authorizationCompletion! (Result(error: error))
-      } else if self.continuation != nil {
-        self.continuation?.resume(throwing: error)
-      }
+      self.continuation?.resume(throwing: error)
       return
     }
 
@@ -105,24 +96,12 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
       // Either the system doesn't find any credentials and the request ends silently, or the user cancels the request.
       // This is a good time to show a traditional login form, or ask the user to create an account.
       self.logger.log("Request canceled.")
-      if self.authorizationCompletion != nil {
-        self.authorizationCompletion!(Result(error: authorizationError))
-      } else if self.registrationCompletion != nil {
-        self.registrationCompletion!(Result(error: authorizationError))
-      } else if self.continuation != nil {
-        self.continuation?.resume(throwing: authorizationError)
-      }
+      self.continuation?.resume(throwing: authorizationError)
     } else {
       // Another ASAuthorization error.
       // Note: The userInfo dictionary contains useful information.
       self.logger.error("Error: \((error as NSError).userInfo)")
-      if self.authorizationCompletion != nil {
-        self.authorizationCompletion!(Result(error: error as NSError))
-      } else if self.registrationCompletion != nil {
-        self.registrationCompletion!(Result(error: error as NSError))
-      } else if self.continuation != nil {
-        self.continuation?.resume(throwing: error as NSError)
-      }
+      self.continuation?.resume(throwing: error as NSError)
     }
   }
 
@@ -137,11 +116,7 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
     case let credentialAssertion as ASAuthorizationPlatformPublicKeyCredentialAssertion:
       self.handleCredentialAssertion(credentialAssertion)
     default:
-      if self.authorizationCompletion != nil {
-        self.authorizationCompletion!(Result(error: PasskeyAuthError.ReceivedUnknownAuthorizationType))
-      } else if self.continuation != nil {
-        self.continuation?.resume(throwing: PasskeyAuthError.ReceivedUnknownAuthorizationType)
-      }
+      self.continuation?.resume(throwing: PasskeyAuthError.ReceivedUnknownAuthorizationType)
     }
   }
 
@@ -151,27 +126,15 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
     self.logger.log("A passkey was used to sign in")
 
     guard let signature = assertion.signature else {
-      if self.authorizationCompletion != nil {
-        self.authorizationCompletion!(Result(error: PasskeyAuthError.MissingSignature))
-      } else if self.continuation != nil {
-        self.continuation?.resume(throwing: PasskeyAuthError.MissingSignature)
-      }
+      self.continuation?.resume(throwing: PasskeyAuthError.MissingSignature)
       return
     }
     guard let authenticatorData = assertion.rawAuthenticatorData else {
-      if self.authorizationCompletion != nil {
-        self.authorizationCompletion!(Result(error: PasskeyAuthError.MissingAuthenticatorData))
-      } else if self.continuation != nil {
-        self.continuation?.resume(throwing: PasskeyAuthError.MissingAuthenticatorData)
-      }
+      self.continuation?.resume(throwing: PasskeyAuthError.MissingAuthenticatorData)
       return
     }
     guard let userID = assertion.userID else {
-      if self.authorizationCompletion != nil {
-        self.authorizationCompletion!(Result(error: PasskeyAuthError.MissingAuthenticatorData))
-      } else if self.continuation != nil {
-        self.continuation?.resume(throwing: PasskeyAuthError.MissingAuthenticatorData)
-      }
+      self.continuation?.resume(throwing: PasskeyAuthError.MissingAuthenticatorData)
       return
     }
     let clientDataJSON = assertion.rawClientDataJSON
@@ -192,18 +155,10 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
       guard let payloadJSONText = String(data: payloadJSONData, encoding: .utf8) else { return }
       self.assertion = payloadJSONText
       if let assertion = self.assertion {
-        if self.authorizationCompletion != nil {
-          self.authorizationCompletion?(Result(data: assertion))
-        } else if self.continuation != nil {
-          self.continuation?.resume(returning: assertion)
-        }
+        self.continuation?.resume(returning: assertion)
       } else {
         // TODO: make error more specific
-        if self.authorizationCompletion != nil {
-          self.authorizationCompletion?(Result(error: PasskeyStorageError.writeError))
-        } else if self.continuation != nil {
-          self.continuation?.resume(throwing: PasskeyStorageError.writeError)
-        }
+        self.continuation?.resume(throwing: PasskeyStorageError.writeError)
       }
     }
   }
@@ -230,18 +185,10 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
       self.attestation = payloadJSONText
 
       if let attestation = self.attestation {
-        if self.registrationCompletion != nil {
-          self.registrationCompletion?(Result(data: attestation))
-        } else if self.continuation != nil {
-          self.continuation?.resume(returning: attestation)
-        }
+        self.continuation?.resume(returning: attestation)
       } else {
         // TODO: make error more specific
-        if self.registrationCompletion != nil {
-          self.registrationCompletion?(Result(error: PasskeyStorageError.writeError))
-        } else if self.continuation != nil {
-          self.continuation?.resume(throwing: PasskeyStorageError.writeError)
-        }
+        self.continuation?.resume(throwing: PasskeyStorageError.writeError)
       }
     }
   }

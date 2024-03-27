@@ -529,7 +529,7 @@ enum PortalProviderError: Error, Equatable {
 }
 
 /// The list of backup methods for PortalSwift.
-public enum BackupMethods: String {
+public enum BackupMethods: String, Codable {
   case GoogleDrive = "GDRIVE"
   case iCloud = "ICLOUD"
   case local = "CUSTOM"
@@ -553,10 +553,6 @@ public enum PortalArgumentError: Error {
 public enum PortalCurve: String, Codable {
   case ED25519
   case SECP256K1
-
-  init?(fromString: String) {
-    self.init(rawValue: fromString)
-  }
 }
 
 public enum PortalNamespace: String, Codable {
@@ -565,19 +561,11 @@ public enum PortalNamespace: String, Codable {
 }
 
 public enum PortalSharePairStatus: String, Codable {
-  case complete
+  case completed
   case incomplete
-
-  init?(fromString: String) {
-    self.init(rawValue: fromString)
-  }
 }
 
 public enum PortalSharePairType: String, Codable {
   case backup
   case signing
-
-  init?(fromString: String) {
-    self.init(rawValue: fromString)
-  }
 }

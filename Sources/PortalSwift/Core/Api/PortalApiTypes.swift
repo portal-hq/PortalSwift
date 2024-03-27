@@ -1,12 +1,23 @@
+// There's a weird bug with Swift decoding preventing this more convenient version from working.
+// Will need to research more and try to bring this in.
+// public typealias ClientResponseMetadataNamespaces = [PortalNamespace: ClientResponseNamespaceMetadataItem]
+
 public struct ClientResponse: Codable {
   public let id: String
-  public let address: String
-  public let backupStatus: String?
   public let custodian: ClientResponseCustodian
+  public let createdAt: String
+  public let environment: ClientResponseEnvironment
   public let ejectedAt: String?
   public let isAccountAbstracted: Bool
   public let metadata: ClientResponseMetadata
   public let wallets: [ClientResponseWallet]
+}
+
+public struct ClientResponseBackupSharePair: Codable {
+  public let backupMethod: BackupMethods
+  public let createdAt: String
+  public let id: String
+  public let status: PortalSharePairStatus
 }
 
 public struct ClientResponseCustodian: Codable {
@@ -14,12 +25,22 @@ public struct ClientResponseCustodian: Codable {
   public let name: String
 }
 
+public struct ClientResponseEnvironment: Codable {
+  public let id: String
+  public let name: String
+}
+
 public struct ClientResponseMetadata: Codable {
-  public let namespaces: [PortalNamespace: ClientResponseNamespaceMetadataItem]
+  public let namespaces: ClientResponseMetadataNamespaces
+}
+
+public struct ClientResponseMetadataNamespaces: Codable {
+  public let SECP256K1: ClientResponseNamespaceMetadataItem?
+  public let ED25519: ClientResponseNamespaceMetadataItem?
 }
 
 public struct ClientResponseNamespaceMetadataItem: Codable {
-  public let address: String?
+  public let address: String
   public let curve: PortalCurve
 }
 
@@ -33,7 +54,7 @@ public struct ClientResponseWallet: Codable {
   public let id: String
   public let createdAt: String
 
-  public let backupSharePairs: [ClientResponseSharePair]
+  public let backupSharePairs: [ClientResponseBackupSharePair]
   public let curve: PortalCurve
   public let publicKey: String
   public let signingSharePairs: [ClientResponseSharePair]

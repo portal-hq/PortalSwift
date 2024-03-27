@@ -152,28 +152,18 @@ public class ICloudStorage: Storage, PortalStorage {
    * Deprecated functions
    *******************************************/
 
-  @available(*, deprecated, renamed: "createKey", message: "Please use the ClientResponse-based createKey() function.")
-  private func createKey(client: Client) -> String {
-    return ICloudStorage.hash("\(client.custodian.id)\(client.id)")
-  }
-
   /// Deletes the private key stored in iCloud's key-value store.
   /// - Parameter completion: Resolves as a Result<Bool>.
   /// - Returns: Void
   @available(*, deprecated, renamed: "delete", message: "Please use the async/await implementation of delete().")
   override public func delete(completion: @escaping (Result<Bool>) -> Void) {
-    self.getKey { (result: Result<String>) in
-      // Escape early if we can't get the key.
-      if result.error != nil {
-        completion(Result(error: result.error!))
-        return
+    async {
+      do {
+        let success = try await delete()
+        completion(Result(data: success))
+      } catch {
+        completion(Result(error: error))
       }
-
-      // Delete from iCloud.
-      NSUbiquitousKeyValueStore.default.synchronize()
-      NSUbiquitousKeyValueStore.default.removeObject(forKey: result.data!)
-      NSUbiquitousKeyValueStore.default.synchronize()
-      completion(Result(data: true))
     }
   }
 
@@ -182,16 +172,13 @@ public class ICloudStorage: Storage, PortalStorage {
   /// - Returns: Void
   @available(*, deprecated, renamed: "read", message: "Please use the async/await implementation of read().")
   override public func read(completion: @escaping (Result<String>) -> Void) {
-    self.getKey { (result: Result<String>) in
-      // Escape early if we can't get the key.
-      if result.error != nil {
-        completion(Result(error: result.error!))
-        return
+    async {
+      do {
+        let value = try await read()
+        completion(Result(data: value))
+      } catch {
+        completion(Result(error: error))
       }
-
-      // Read from iCloud.
-      NSUbiquitousKeyValueStore.default.synchronize()
-      completion(Result(data: NSUbiquitousKeyValueStore.default.string(forKey: result.data!) ?? ""))
     }
   }
 
@@ -202,18 +189,13 @@ public class ICloudStorage: Storage, PortalStorage {
   /// - Returns: Void
   @available(*, deprecated, renamed: "write", message: "Please use the async/await implementation of write().")
   override public func write(privateKey: String, completion: @escaping (Result<Bool>) -> Void) {
-    self.getKey { (result: Result<String>) in
-      // Escape early if we can't get the key.
-      if result.error != nil {
-        completion(Result(error: result.error!))
-        return
+    async {
+      do {
+        let success = try await write(privateKey)
+        completion(Result(data: success))
+      } catch {
+        completion(Result(error: error))
       }
-
-      // Write to iCloud.
-      NSUbiquitousKeyValueStore.default.synchronize()
-      NSUbiquitousKeyValueStore.default.set(privateKey, forKey: result.data!)
-      NSUbiquitousKeyValueStore.default.synchronize()
-      completion(Result(data: true))
     }
   }
 
@@ -249,32 +231,6 @@ public class ICloudStorage: Storage, PortalStorage {
       }
     } else {
       callback(Result(error: ICloudStorageError.failedValidateOperations("Failed to read/write test data")))
-    }
-  }
-
-  @available(*, deprecated, renamed: "key", message: "Please use the async `key` property.")
-  private func getKey(completion: @escaping (Result<String>) -> Void) {
-    if self.key.count > 0 {
-      completion(Result(data: self.key))
-      return
-    }
-
-    if self.api == nil {
-      completion(Result(error: ICloudStorageError.noAPIKeyProvided("No API key provided")))
-      return
-    }
-
-    do {
-      try self.api!.getClient { (result: Result<Client>) in
-        if result.error != nil {
-          completion(Result(error: result.error!))
-          return
-        }
-        let key = self.createKey(client: result.data!)
-        completion(Result(data: key))
-      }
-    } catch {
-      completion(Result(error: ICloudStorageError.unableToRetrieveClient("Unable to retrieve client from API")))
     }
   }
 }

@@ -86,77 +86,11 @@ class GoogleAuth {
       }
     }
 
-    if let user = auth.currentUser {
-      return user
-    }
-
-    throw GoogleAuthError.noUserFound
+    return user
   }
 
   func signOut() {
     self.auth.signOut()
-  }
-
-  /*******************************************
-   * Deprecated functions
-   *******************************************/
-
-  @available(*, deprecated, renamed: "getAccessToken", message: "Please use the async/await implementation of getAccessToken().")
-  func getAccessToken(callback: @escaping (Result<String>) -> Void) {
-    if self.hasPreviousSignIn() {
-      // Attempt to sign in silently
-      self.restorePreviousSignIn { result in
-        if result.error != nil {
-          // Handle error
-          callback(Result(error: result.error!))
-        } else if let user = result.data {
-          // Handle successful sign-in
-          callback(Result(data: user.authentication.accessToken))
-        }
-      }
-    } else {
-      // User has not signed in before, prompt for sign-in
-      self.signIn { result in
-        if result.error != nil {
-          // Handle error
-          callback(Result(error: result.error!))
-        } else if let user = result.data {
-          // Handle successful sign-in
-          callback(Result(data: user.authentication.accessToken))
-        }
-      }
-    }
-  }
-
-  @available(*, deprecated, renamed: "restorePreviousSignIn", message: "Please use the async/await implementation of restorePreviousSignIn().")
-  func restorePreviousSignIn(callback: @escaping (Result<GIDGoogleUser>) -> Void) {
-    self.auth.restorePreviousSignIn { user, error in
-      if error != nil {
-        // Handle error
-        callback(Result(error: error!))
-      } else if let user {
-        // Handle successful sign-in
-        callback(Result(data: user))
-      }
-    }
-  }
-
-  @available(*, deprecated, renamed: "signIn", message: "Please use the async/await implementation of signIn().")
-  func signIn(callback: @escaping (Result<GIDGoogleUser>) -> Void) {
-    guard let view = self.view else {
-      return callback(Result(
-        error: GoogleAuthError.viewMustBeProvidedAtInitialization("When using deprecated completion handler implementations of Portal, a value must be provided for `viewController` on initialization of GDriveStorage.")
-      ))
-    }
-    self.auth.signIn(with: self.config, presenting: view) {
-      user, error in
-      if error != nil {
-        callback(Result(error: error! as Error))
-      } else {
-        self.auth.addScopes(["https://www.googleapis.com/auth/drive.file"], presenting: view)
-        callback(Result(data: user!))
-      }
-    }
   }
 }
 
