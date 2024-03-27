@@ -8,7 +8,6 @@
 import Foundation
 
 public class MockPortalApi: PortalApi {
-  public var client: Client?
   public var dapps: [Dapp]?
   public var networks: [ContractNetwork]?
 

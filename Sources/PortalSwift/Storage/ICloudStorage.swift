@@ -9,7 +9,7 @@ import CommonCrypto
 import Foundation
 
 /// A storage class that uses iCloud's key-value store to store/retrieve private keys.
-public class ICloudStorage: Storage {
+public class ICloudStorage: Storage, PortalStorage {
   public enum ICloudStorageError: Error {
     case noAPIKeyProvided(String)
     case noAccessToICloud(String)
@@ -36,79 +36,41 @@ public class ICloudStorage: Storage {
   /// Initializes a new ICloudStorage instance.
   override public init() {}
 
-  /// Reads the private key stored in iCloud's key-value store.
-  /// - Parameter completion: Resolves as a Result which can include the private key stored in iCloud's key-value store.
-  /// - Returns: Void
-  override public func read(completion: @escaping (Result<String>) -> Void) {
-    self.getKey { (result: Result<String>) in
-      // Escape early if we can't get the key.
-      if result.error != nil {
-        completion(Result(error: result.error!))
-        return
-      }
+  /*******************************************
+   * Public functions
+   *******************************************/
 
-      // Read from iCloud.
-      NSUbiquitousKeyValueStore.default.synchronize()
-      completion(Result(data: NSUbiquitousKeyValueStore.default.string(forKey: result.data!) ?? ""))
-    }
+  public func delete() async throws -> Bool {
+    let key = try await getKey()
+
+    // Delete from iCloud.
+    NSUbiquitousKeyValueStore.default.synchronize()
+    NSUbiquitousKeyValueStore.default.removeObject(forKey: key)
+    NSUbiquitousKeyValueStore.default.synchronize()
+
+    return true
   }
 
-  /// Writes the private key to iCloud's key-value store.
-  /// - Parameters:
-  ///   - privateKey: The private key to write to iCloud's key-value store.
-  ///   - completion: Resolves as a Result<Bool>.
-  /// - Returns: Void
-  override public func write(privateKey: String, completion: @escaping (Result<Bool>) -> Void) {
-    self.getKey { (result: Result<String>) in
-      // Escape early if we can't get the key.
-      if result.error != nil {
-        completion(Result(error: result.error!))
-        return
-      }
+  public func read() async throws -> String {
+    let key = try await getKey()
 
-      // Write to iCloud.
-      NSUbiquitousKeyValueStore.default.synchronize()
-      NSUbiquitousKeyValueStore.default.set(privateKey, forKey: result.data!)
-      NSUbiquitousKeyValueStore.default.synchronize()
-      completion(Result(data: true))
-    }
+    // Read from iCloud.
+    NSUbiquitousKeyValueStore.default.synchronize()
+    return NSUbiquitousKeyValueStore.default.string(forKey: key) ?? ""
   }
 
-  /// Deletes the private key stored in iCloud's key-value store.
-  /// - Parameter completion: Resolves as a Result<Bool>.
-  /// - Returns: Void
-  override public func delete(completion: @escaping (Result<Bool>) -> Void) {
-    self.getKey { (result: Result<String>) in
-      // Escape early if we can't get the key.
-      if result.error != nil {
-        completion(Result(error: result.error!))
-        return
-      }
+  public func write(_ value: String) async throws -> Bool {
+    let key = try await getKey()
 
-      // Delete from iCloud.
-      NSUbiquitousKeyValueStore.default.synchronize()
-      NSUbiquitousKeyValueStore.default.removeObject(forKey: result.data!)
-      NSUbiquitousKeyValueStore.default.synchronize()
-      completion(Result(data: true))
-    }
+    // Write to iCloud.
+    NSUbiquitousKeyValueStore.default.synchronize()
+    NSUbiquitousKeyValueStore.default.set(value, forKey: key)
+    NSUbiquitousKeyValueStore.default.synchronize()
+
+    return true
   }
 
-  /// Checks the availability and functionality of the iCloud key-value store.
-  ///
-  /// This method tests the iCloud key-value store by performing a sequence of write, read, and delete operations using a test key and value.
-  /// It is designed to verify that all basic operations can be successfully performed on the user's iCloud key-value store.
-  ///
-  /// Specifically, the method:
-  /// 1. Writes a test value to the store using a test key.
-  /// 2. Attempts to read the written test value from the store using the test key.
-  /// 3. If the read is successful and returns the correct test value, it proceeds to delete the test value from the store using the test key.
-  /// 4. Finally, it checks if the deletion was successful by attempting to read the test value again. If the read returns `nil`, it concludes that the test sequence was successful.
-  ///
-  /// The method uses a `Result<Bool>` type to inform the caller of the outcome. If all operations were successful, it returns `Result(data: true)`.
-  /// If any operation fails, it returns a `Result` with an error detailing the type of failure, either `ICloudStorageError.failedToRead` or `ICloudStorageError.failedToDelete`.
-  ///
-  /// - Parameter callback: A closure that takes a `Result<Bool>` as its parameter and returns `Void`.
-  public func validateOperations(callback: @escaping (Result<Bool>) -> Void) {
+  public func validateOperations() async throws -> Bool {
     let testKey = "portal_test"
     let testValue = "test_value"
 
@@ -118,13 +80,39 @@ public class ICloudStorage: Storage {
       self.rawDelete(key: testKey)
       if self.rawRead(key: testKey) == nil {
         // Availability check succeeded.
-        callback(Result(data: true))
+        return true
       } else {
-        callback(Result(error: ICloudStorageError.failedValidateOperations("Failed to delete test data")))
+        throw ICloudStorageError.failedValidateOperations("Failed to delete test data")
       }
     } else {
-      callback(Result(error: ICloudStorageError.failedValidateOperations("Failed to read/write test data")))
+      throw ICloudStorageError.failedValidateOperations("Failed to read/write test data")
     }
+  }
+
+  /*******************************************
+   * Private functions
+   *******************************************/
+
+  private func createKey(_ client: ClientResponse) -> String {
+    return ICloudStorage.hash("\(client.custodian.id)\(client.id)")
+  }
+
+  private func getKey() async throws -> String {
+    if key.count > 0 {
+      return key
+    }
+
+    if self.api == nil {
+      throw ICloudStorageError.noAPIKeyProvided("No API key provided")
+    }
+
+    guard let clientResponse = await api!.client else {
+      throw ICloudStorageError.unableToRetrieveClient("Unable to retrieve client from PortalApi.")
+    }
+
+    let key = self.createKey(clientResponse)
+
+    return key
   }
 
   /// Reads the value stored in iCloud's key-value store with the given key.
@@ -151,6 +139,120 @@ public class ICloudStorage: Storage {
     NSUbiquitousKeyValueStore.default.synchronize()
   }
 
+  private static func hash(_ str: String) -> String {
+    let data = str.data(using: .utf8)!
+    var digest = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
+    data.withUnsafeBytes {
+      _ = CC_SHA256($0.baseAddress, CC_LONG(data.count), &digest)
+    }
+    return Data(digest).map { String(format: "%02hhx", $0) }.joined()
+  }
+
+  /*******************************************
+   * Deprecated functions
+   *******************************************/
+
+  @available(*, deprecated, renamed: "createKey", message: "Please use the ClientResponse-based createKey() function.")
+  private func createKey(client: Client) -> String {
+    return ICloudStorage.hash("\(client.custodian.id)\(client.id)")
+  }
+
+  /// Deletes the private key stored in iCloud's key-value store.
+  /// - Parameter completion: Resolves as a Result<Bool>.
+  /// - Returns: Void
+  @available(*, deprecated, renamed: "delete", message: "Please use the async/await implementation of delete().")
+  override public func delete(completion: @escaping (Result<Bool>) -> Void) {
+    self.getKey { (result: Result<String>) in
+      // Escape early if we can't get the key.
+      if result.error != nil {
+        completion(Result(error: result.error!))
+        return
+      }
+
+      // Delete from iCloud.
+      NSUbiquitousKeyValueStore.default.synchronize()
+      NSUbiquitousKeyValueStore.default.removeObject(forKey: result.data!)
+      NSUbiquitousKeyValueStore.default.synchronize()
+      completion(Result(data: true))
+    }
+  }
+
+  /// Reads the private key stored in iCloud's key-value store.
+  /// - Parameter completion: Resolves as a Result which can include the private key stored in iCloud's key-value store.
+  /// - Returns: Void
+  @available(*, deprecated, renamed: "read", message: "Please use the async/await implementation of read().")
+  override public func read(completion: @escaping (Result<String>) -> Void) {
+    self.getKey { (result: Result<String>) in
+      // Escape early if we can't get the key.
+      if result.error != nil {
+        completion(Result(error: result.error!))
+        return
+      }
+
+      // Read from iCloud.
+      NSUbiquitousKeyValueStore.default.synchronize()
+      completion(Result(data: NSUbiquitousKeyValueStore.default.string(forKey: result.data!) ?? ""))
+    }
+  }
+
+  /// Writes the private key to iCloud's key-value store.
+  /// - Parameters:
+  ///   - privateKey: The private key to write to iCloud's key-value store.
+  ///   - completion: Resolves as a Result<Bool>.
+  /// - Returns: Void
+  @available(*, deprecated, renamed: "write", message: "Please use the async/await implementation of write().")
+  override public func write(privateKey: String, completion: @escaping (Result<Bool>) -> Void) {
+    self.getKey { (result: Result<String>) in
+      // Escape early if we can't get the key.
+      if result.error != nil {
+        completion(Result(error: result.error!))
+        return
+      }
+
+      // Write to iCloud.
+      NSUbiquitousKeyValueStore.default.synchronize()
+      NSUbiquitousKeyValueStore.default.set(privateKey, forKey: result.data!)
+      NSUbiquitousKeyValueStore.default.synchronize()
+      completion(Result(data: true))
+    }
+  }
+
+  /// Checks the availability and functionality of the iCloud key-value store.
+  ///
+  /// This method tests the iCloud key-value store by performing a sequence of write, read, and delete operations using a test key and value.
+  /// It is designed to verify that all basic operations can be successfully performed on the user's iCloud key-value store.
+  ///
+  /// Specifically, the method:
+  /// 1. Writes a test value to the store using a test key.
+  /// 2. Attempts to read the written test value from the store using the test key.
+  /// 3. If the read is successful and returns the correct test value, it proceeds to delete the test value from the store using the test key.
+  /// 4. Finally, it checks if the deletion was successful by attempting to read the test value again. If the read returns `nil`, it concludes that the test sequence was successful.
+  ///
+  /// The method uses a `Result<Bool>` type to inform the caller of the outcome. If all operations were successful, it returns `Result(data: true)`.
+  /// If any operation fails, it returns a `Result` with an error detailing the type of failure, either `ICloudStorageError.failedToRead` or `ICloudStorageError.failedToDelete`.
+  ///
+  /// - Parameter callback: A closure that takes a `Result<Bool>` as its parameter and returns `Void`.
+  @available(*, deprecated, renamed: "validateOperations", message: "Please use the async/await implementation of validateOperations().")
+  public func validateOperations(callback: @escaping (Result<Bool>) -> Void) {
+    let testKey = "portal_test"
+    let testValue = "test_value"
+
+    self.rawWrite(key: testKey, value: testValue)
+
+    if let readValue = rawRead(key: testKey), readValue == testValue {
+      self.rawDelete(key: testKey)
+      if self.rawRead(key: testKey) == nil {
+        // Availability check succeeded.
+        callback(Result(data: true))
+      } else {
+        callback(Result(error: ICloudStorageError.failedValidateOperations("Failed to delete test data")))
+      }
+    } else {
+      callback(Result(error: ICloudStorageError.failedValidateOperations("Failed to read/write test data")))
+    }
+  }
+
+  @available(*, deprecated, renamed: "key", message: "Please use the async `key` property.")
   private func getKey(completion: @escaping (Result<String>) -> Void) {
     if self.key.count > 0 {
       completion(Result(data: self.key))
@@ -174,18 +276,5 @@ public class ICloudStorage: Storage {
     } catch {
       completion(Result(error: ICloudStorageError.unableToRetrieveClient("Unable to retrieve client from API")))
     }
-  }
-
-  private func createKey(client: Client) -> String {
-    return ICloudStorage.hash("\(client.custodian.id)\(client.id)")
-  }
-
-  private static func hash(_ str: String) -> String {
-    let data = str.data(using: .utf8)!
-    var digest = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
-    data.withUnsafeBytes {
-      _ = CC_SHA256($0.baseAddress, CC_LONG(data.count), &digest)
-    }
-    return Data(digest).map { String(format: "%02hhx", $0) }.joined()
   }
 }

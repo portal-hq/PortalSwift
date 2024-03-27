@@ -15,13 +15,72 @@ public enum LocalFileStorageError: Error {
   case readError
 }
 
-public class LocalFileStorage: Storage {
+public class LocalFileStorage: Storage, PortalStorage {
   var fileName: String = "PORTAL_BACKUP_SHARE"
 
   public init(fileName: String = "PORTAL_BACKUP_SHARE") {
     self.fileName = fileName
     super.init()
   }
+
+  /*******************************************
+   * Public functions
+   *******************************************/
+
+  /// Deletes an item in storage.
+  public func delete() async throws -> Bool {
+    let fileURL = self.getDocumentsDirectory().appendingPathComponent(self.fileName)
+
+    do {
+      try FileManager.default.removeItem(at: fileURL)
+      return true
+    } catch {
+      throw LocalFileStorageError.fileNotFound
+    }
+  }
+
+  /// Reads an item from storage.
+  public func read() async throws -> String {
+    let fileURL = self.getDocumentsDirectory().appendingPathComponent(self.fileName)
+
+    do {
+      let content = try String(contentsOf: fileURL)
+      return content
+    } catch {
+      throw LocalFileStorageError.readError
+    }
+  }
+
+  public func validateOperations() async throws -> Bool {
+    return true
+  }
+
+  /// Writes an item to storage.
+  public func write(_ value: String) async throws -> Bool {
+    let fileURL = self.getDocumentsDirectory().appendingPathComponent(self.fileName)
+
+    do {
+      try value.write(to: fileURL, atomically: true, encoding: .utf8)
+
+      return true
+    } catch {
+      throw LocalFileStorageError.writeError
+    }
+  }
+
+  /*******************************************
+   * Private functions
+   *******************************************/
+
+  /// Get the documents directory for the app.
+  private func getDocumentsDirectory() -> URL {
+    let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+    return paths[0]
+  }
+
+  /*******************************************
+   * Deprecated functions
+   *******************************************/
 
   /// Deletes an item in storage.
   override public func delete(completion: @escaping (Result<Bool>) -> Void) {
@@ -57,11 +116,5 @@ public class LocalFileStorage: Storage {
     } catch {
       completion(Result(error: LocalFileStorageError.writeError))
     }
-  }
-
-  /// Get the documents directory for the app.
-  private func getDocumentsDirectory() -> URL {
-    let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
-    return paths[0]
   }
 }

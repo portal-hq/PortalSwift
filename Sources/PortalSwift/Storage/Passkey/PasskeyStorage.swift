@@ -6,29 +6,28 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
+import AuthenticationServices
 import Foundation
 import UIKit
 
-public enum PasskeyStorageError: Error {
-  case mustExtendStorageClass
-  case fileNotFound
-  case writeError
-  case readError
-  case noApiKey
-  case unableToRetrieveClient
-}
-
 @available(iOS 16.0, *)
-public class PasskeyStorage: Storage {
-  public var portalApi: PortalApi?
-  public var client: Client?
+public class PasskeyStorage: Storage, PortalStorage {
+  public var anchor: ASPresentationAnchor? {
+    get { return self.auth.authenticationAnchor }
+    set(anchor) { self.auth.authenticationAnchor = anchor }
+  }
+
   public var apiKey: String?
-  private var passkeyApi: HttpRequester
+  public var client: Client?
+  public var portalApi: PortalApi?
+
   private var auth: PasskeyAuth
-  private var viewController: UIViewController
+  private let decoder = JSONDecoder()
+  private var passkeyApi: HttpRequester
   private var relyingParty: String
-  private var webAuthnHost: String
   private var sessionId: String?
+  private var viewController: UIViewController
+  private var webAuthnHost: String
 
   deinit {
     print("PasskeyStorage is being deallocated")
@@ -43,9 +42,175 @@ public class PasskeyStorage: Storage {
     super.init()
   }
 
+  /*******************************************
+   * Public functions
+   *******************************************/
+
+  public func delete() async throws -> Bool {
+    throw StorageError.mustExtendStorageClass
+  }
+
+  public func read() async throws -> String {
+    guard let apiKey = self.apiKey else {
+      throw PasskeyStorageError.noApiKey
+    }
+
+    if let url = URL(string: "\(webAuthnHost)/passkeys/begin-login?curve=secp256k1") {
+      let payload = ["relyingParty": relyingParty]
+      let data = try await PortalRequests.post(url, withBearerToken: apiKey, andPayload: payload)
+      let result = try decoder.decode(WebAuthnAuthenticationOption.self, from: data)
+
+      self.sessionId = result.sessionId
+
+      let assertion = try await withCheckedThrowingContinuation { [weak self] continuation in
+        self?.auth.continuation = continuation
+
+        DispatchQueue.main.async { [self] in
+          if let window = self?.viewController.view.window {
+            self?.auth.signInWith(anchor: window, options: result.options, preferImmediatelyAvailableCredentials: true)
+          }
+        }
+      }
+
+      return try await self.handleFinishLoginRead(assertion)
+    }
+
+    throw URLError(.badURL)
+  }
+
+  public func validateOperations() async throws -> Bool {
+    return true
+  }
+
+  public func write(_ value: String) async throws -> Bool {
+    let passkeyStatus = try await getPasskeyStatus()
+    if passkeyStatus == .RegisteredWithCredential {
+      let authenticationOption = try await beginLogin()
+      self.sessionId = authenticationOption.sessionId
+
+      let assertion = try await withCheckedThrowingContinuation { [weak self] continuation in
+        self?.auth.continuation = continuation
+
+        DispatchQueue.main.async { [self] in
+          if let window = self?.viewController.view.window {
+            self?.auth.signInWith(anchor: window, options: authenticationOption.options, preferImmediatelyAvailableCredentials: true)
+          }
+        }
+      }
+
+      return try await self.handleFinishLoginWrite(assertion, withValue: value)
+    } else {
+      let registrationOption = try await beginRegistration()
+
+      let assertion = try await withCheckedThrowingContinuation { [weak self] continuation in
+        self?.auth.continuation = continuation
+
+        DispatchQueue.main.async { [self] in
+          if let window = self?.viewController.view.window {
+            self?.auth.signUpWith(options: registrationOption.options, anchor: window)
+          }
+        }
+      }
+
+      return try await self.handleFinishLoginWrite(assertion, withValue: value)
+    }
+  }
+
+  /*******************************************
+   * Private functions
+   *******************************************/
+
+  private func beginLogin() async throws -> WebAuthnAuthenticationOption {
+    guard let apiKey = self.apiKey else {
+      throw PasskeyStorageError.noApiKey
+    }
+
+    if let url = URL(string: "\(webAuthnHost)/passkeys/begin-login") {
+      let data = try await PortalRequests.post(url, withBearerToken: apiKey)
+    }
+
+    throw URLError(.badURL)
+  }
+
+  private func beginRegistration() async throws -> WebAuthnRegistrationOptions {
+    guard let apiKey = self.apiKey else {
+      throw PasskeyStorageError.noApiKey
+    }
+
+    if let url = URL(string: "\(webAuthnHost)/passkeys/begin-registration") {}
+
+    throw URLError(.badURL)
+  }
+
+  private func getPasskeyStatus() async throws -> PasskeyStatus {
+    guard let apiKey = self.apiKey else {
+      throw PasskeyStorageError.noApiKey
+    }
+
+    if let url = URL(string: "\(webAuthnHost)/passkeys/status") {
+      let data = try await PortalRequests.get(url, withBearerToken: apiKey)
+      let statusResponse = try decoder.decode(PasskeyStatusResponse.self, from: data)
+
+      return statusResponse.status
+    }
+
+    throw URLError(.badURL)
+  }
+
+  private func handleFinishLoginRead(_ assertion: String) async throws -> String {
+    guard let apiKey = self.apiKey, let sessionId = self.sessionId else {
+      throw PasskeyStorageError.readError
+    }
+
+    if let url = URL(string: "\(webAuthnHost)/passkeys/finish-login/read") {
+      let payload = ["assertion": assertion, "sessionId": sessionId, "relyingParty": relyingParty]
+      let data = try await PortalRequests.post(url, withBearerToken: apiKey, andPayload: payload)
+      let loginReadResponse = try decoder.decode(PasskeyLoginReadResponse.self, from: data)
+
+      return loginReadResponse.encryptionKey
+    }
+
+    throw URLError(.badURL)
+  }
+
+  func handleFinishLoginWrite(_ assertion: String, withValue: String) async throws -> Bool {
+    guard let apiKey = self.apiKey, let sessionId = self.sessionId else {
+      throw PasskeyStorageError.writeError
+    }
+
+    if let url = URL(string: "\(webAuthnHost)/passkeys/finish-login/write") {
+      let payload = ["encryptionKey": withValue, "assertion": assertion, "sessionId": sessionId, "relyingParty": relyingParty]
+      let _ = try await PortalRequests.post(url, withBearerToken: apiKey, andPayload: payload)
+
+      return true
+    }
+
+    throw URLError(.badURL)
+  }
+
+  func handleFinishRegistrationCompletion(_ attestation: String, withPrivateKey: String) async throws -> Bool {
+    guard let apiKey = self.apiKey, let sessionId = self.sessionId else {
+      throw PasskeyStorageError.writeError
+    }
+
+    if let url = URL(string: "\(webAuthnHost)/passkeys/finish-registration") {
+      let payload = ["attestation": attestation, "sessionId": sessionId, "encryptionKey": withPrivateKey, "relyingParty": relyingParty]
+      let _ = try await PortalRequests.post(url, withBearerToken: apiKey, andPayload: payload)
+
+      return true
+    }
+
+    throw URLError(.badURL)
+  }
+
+  /*******************************************
+   * Deprecated functions
+   *******************************************/
+
   /// Deletes an item in storage.
   /// - Parameter completion: Resolves as a Result<Bool>.
   /// - Returns: Void
+  @available(*, deprecated, renamed: "delete", message: "Please use the async/await implementation of delete().")
   override public func delete(completion: @escaping (Result<Bool>) -> Void) {
     completion(Result(error: StorageError.mustExtendStorageClass))
   }
@@ -53,6 +218,7 @@ public class PasskeyStorage: Storage {
   /// Reads an item from storage.
   /// - Parameter completion: Resolves as a Result<String>, which includes the value from storage for the specified key.
   /// - Returns: Void
+  @available(*, deprecated, renamed: "read", message: "Please use the async/await implementation of read().")
   override public func read(completion: @escaping (Result<String>) -> Void) {
     // Set the completion handler for when user completes passkey auth
     self.auth.authorizationCompletion = { [weak self] result in
@@ -63,7 +229,7 @@ public class PasskeyStorage: Storage {
     do {
       if let apiKey = self.apiKey {
         try self.passkeyApi.post(
-          path: "/passkeys/begin-login",
+          path: "/passkeys/begin-login?curve=secp256k1",
           body: ["relyingParty": self.relyingParty],
           headers: [
             "Accept": "application/json",
@@ -97,6 +263,7 @@ public class PasskeyStorage: Storage {
   /// Writes an item to storage.
   /// - Parameter completion: Resolves as a Result<Bool>.
   /// - Returns: Void
+  @available(*, deprecated, renamed: "write", message: "Please use the async/await implementation of write().")
   override public func write(privateKey: String, completion: @escaping (Result<Bool>) -> Void) {
     if let apiKey = self.apiKey {
       do {
@@ -113,7 +280,7 @@ public class PasskeyStorage: Storage {
           if result.error != nil {
             return completion(Result(error: result.error!))
           }
-          if let passkeyStatus = result.data?.status, passkeyStatus == PasskeyStatus.RegisteredWithCredential.rawValue {
+          if let passkeyStatus = result.data?.status, passkeyStatus == .RegisteredWithCredential {
             // Set the completion handler for when user completes passkey auth
             self.auth.authorizationCompletion = { [weak self] result in
               guard self != nil else { return }
@@ -192,6 +359,7 @@ public class PasskeyStorage: Storage {
   }
 
   // Completion Handlers
+  @available(*, deprecated, renamed: "handleFinishRegistrationCompletion", message: "Please use the async/await implementation of handleFinishRegistrationCompletion().")
   func handleFinishRegistrationCompletion(result: Result<String>, privateKey: String, completion: @escaping (Result<Bool>) -> Void) {
     guard result.error == nil else {
       if let error = result.error {
@@ -227,6 +395,7 @@ public class PasskeyStorage: Storage {
     }
   }
 
+  @available(*, deprecated, renamed: "handleFinishLoginReadCompletion", message: "Please use the async/await implementation of handleFinishLoginReadCompletion().")
   func handleFinishLoginReadCompletion(result: Result<String>, completion: @escaping (Result<String>) -> Void) {
     guard result.error == nil else {
       if let error = result.error {
@@ -264,6 +433,7 @@ public class PasskeyStorage: Storage {
     }
   }
 
+  @available(*, deprecated, renamed: "handleFinishLoginWrite", message: "Please use the async/await implementation of handleFinishLoginWrite().")
   func handleFinishLoginWrite(result: Result<String>, privateKey: String, completion: @escaping (Result<Bool>) -> Void) {
     guard result.error == nil else {
       if let error = result.error {
@@ -299,99 +469,20 @@ public class PasskeyStorage: Storage {
       return completion(Result(error: error))
     }
   }
-
-  private func getPasskeyStatus(completion: @escaping (Result<String>) -> Void) {
-    guard let portalApi = self.portalApi else {
-      return completion(Result(error: PasskeyStorageError.noApiKey))
-    }
-
-    do {
-      try portalApi.getClient { (result: Result<Client>) in
-        if result.error != nil {
-          return completion(Result(error: result.error!))
-        }
-      }
-    } catch {
-      return completion(Result(error: PasskeyStorageError.unableToRetrieveClient))
-    }
-  }
 }
 
-struct PasskeyLoginReadResponse: Codable {
-  let encryptionKey: String
-}
-
-struct WebAuthnRegistrationOptions: Codable {
-  let options: RegistrationOptions
-  let sessionId: String
-}
-
-struct RegistrationOptions: Codable {
-  let publicKey: PublicKeyOptions
-}
-
-struct PublicKeyOptions: Codable {
-  let rp: RelyingParty
-  let user: User
-  let challenge: String
-  let pubKeyCredParams: [CredentialParameter]?
-  let timeout: Int
-  let authenticatorSelection: AuthenticatorSelection?
-  let attestation: String?
-}
-
-struct RelyingParty: Codable {
-  let name: String
-  let id: String
-}
-
-struct User: Codable {
-  let name: String
-  let displayName: String
-  let id: String
-}
-
-struct CredentialParameter: Codable {
-  let type: String?
-  let alg: Int?
-}
-
-struct AuthenticatorSelection: Codable {
-  let authenticatorAttachment: String?
-  let requireResidentKey: Bool?
-  let residentKey: String?
-  let userVerification: String?
-}
-
-struct WebAuthnAuthenticationOption: Codable {
-  let options: AuthenticationOptions
-  let sessionId: String
-}
-
-struct AuthenticationOptions: Codable {
-  let publicKey: PublicKey
-
-  struct PublicKey: Codable {
-    let challenge: String
-    let timeout: Int
-    let rpId: String
-    let allowCredentials: [Credential]
-    let userVerification: String
-  }
-
-  struct Credential: Codable {
-    let type: String
-    let id: String?
-  }
+public enum PasskeyStorageError: Error {
+  case mustExtendStorageClass
+  case fileNotFound
+  case writeError
+  case readError
+  case noApiKey
+  case unableToRetrieveClient
 }
 
 /// The list of backup statuses for a client
-public enum PasskeyStatus: String {
+public enum PasskeyStatus: String, Codable {
   case NotRegistered = "not registered"
   case Registered = "registered"
   case RegisteredWithCredential = "registered with credential"
-}
-
-struct PasskeyStatusResponse: Codable {
-  let status: String
 }

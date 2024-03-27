@@ -19,7 +19,7 @@ public class Portal {
   }
 
   public var chainId: Int {
-    return self.provider.chainId
+    self.provider.chainId
   }
 
   public let apiKey: String
@@ -476,7 +476,7 @@ public class Portal {
   public func createPortalConnectInstance(
     webSocketServer: String = "connect.portalhq.io"
   ) throws -> PortalConnect {
-    return try PortalConnect(
+    try PortalConnect(
       self.apiKey,
       self.provider.chainId,
       self.keychain,
@@ -520,8 +520,12 @@ public class Portal {
  * Supporting Enums & Structs
  *****************************************/
 
-enum PortalProviderError: Error {
+enum PortalProviderError: Error, Equatable {
+  case invalidChainId(_ message: String)
+  case invalidRpcResponse
   case noAddress
+  case noRpcUrlFoundForChainId(_ message: String)
+  case unsupportedRequestMethod(_ message: String)
 }
 
 /// The list of backup methods for PortalSwift.
@@ -532,120 +536,9 @@ public enum BackupMethods: String {
   case Password = "PASSWORD"
   case Passkey = "PASSKEY"
   case Unknown = "UNKNOWN"
-}
 
-public struct BackupConfigs {
-  public var passwordStorage: PasswordStorageConfig?
-
-  public init(passwordStorage: PasswordStorageConfig? = nil) {
-    self.passwordStorage = passwordStorage
-  }
-}
-
-public struct PasswordStorageConfig {
-  public var password: String
-
-  public enum PasswordStorageError: Error {
-    case invalidLength
-  }
-
-  public init(password: String) throws {
-    if password.count < 4 {
-      throw PasswordStorageError.invalidLength
-    }
-    self.password = password
-  }
-}
-
-/// A struct with the backup options (gdrive and/or icloud) initialized.
-public struct BackupOptions {
-  public var gdrive: GDriveStorage?
-  public var icloud: ICloudStorage?
-  public var passwordStorage: PasswordStorage?
-  public var local: Storage?
-
-  public var _passkeyStorage: Any?
-
-  @available(iOS 16, *)
-  var passkeyStorage: PasskeyStorage? {
-    get { return self._passkeyStorage as? PasskeyStorage }
-    set { self._passkeyStorage = newValue }
-  }
-
-  /// Create the backup options for PortalSwift.
-  /// - Parameter gdrive: The instance of GDriveStorage to use for backup.
-  /// - Parameter icloud: The instance of ICloudStorage to use for backup.
-  @available(iOS 16, *)
-  public init(gdrive: GDriveStorage? = nil, icloud: ICloudStorage? = nil, passwordStorage: PasswordStorage? = nil, passkeyStorage: PasskeyStorage? = nil) {
-    self.gdrive = gdrive
-    self.icloud = icloud
-    self.passwordStorage = passwordStorage
-    self.passkeyStorage = passkeyStorage
-  }
-
-  /// Create the backup options for PortalSwift.
-  /// - Parameter gdrive: The instance of GDriveStorage to use for backup.
-  /// - Parameter icloud: The instance of ICloudStorage to use for backup.
-  public init(gdrive: GDriveStorage? = nil, icloud: ICloudStorage? = nil, passwordStorage: PasswordStorage? = nil) {
-    self.gdrive = gdrive
-    self.icloud = icloud
-    self.passwordStorage = passwordStorage
-  }
-
-  /// Create the backup options for PortalSwift.
-  /// - Parameter gdrive: The instance of GDriveStorage to use for backup.
-  public init(gdrive: GDriveStorage) {
-    self.gdrive = gdrive
-  }
-
-  /// Create the backup options for PortalSwift.
-  /// - Parameter icloud: The instance of ICloudStorage to use for backup.
-  public init(icloud: ICloudStorage) {
-    self.icloud = icloud
-  }
-
-  public init(local: Storage) {
-    self.local = local
-  }
-
-  public init(passwordStorage: PasswordStorage) {
-    self.passwordStorage = passwordStorage
-  }
-
-  /// Create the backup options for PortalSwift.
-  /// - Parameter gdrive: The instance of GDriveStorage to use for backup.
-  /// - Parameter icloud: The instance of ICloudStorage to use for backup.
-  public init(gdrive: GDriveStorage, icloud: ICloudStorage, passwordStorage: PasswordStorage) {
-    self.gdrive = gdrive
-    self.icloud = icloud
-    self.passwordStorage = passwordStorage
-  }
-
-  subscript(key: String) -> Any? {
-    switch key {
-    case BackupMethods.GoogleDrive.rawValue:
-      return self.gdrive
-    case BackupMethods.iCloud.rawValue:
-      return self.icloud
-    case BackupMethods.local.rawValue:
-      return self.local
-    case BackupMethods.Password.rawValue:
-      return self.passwordStorage
-    case BackupMethods.Passkey.rawValue:
-      return self._passkeyStorage
-    default:
-      return nil
-    }
-  }
-}
-
-public struct FeatureFlags {
-  public var optimized: Bool
-  public var isMultiBackupEnabled: Bool?
-
-  public init(optimized: Bool, isMultiBackupEnabled: Bool? = nil) {
-    self.optimized = optimized
-    self.isMultiBackupEnabled = isMultiBackupEnabled
+  init?(fromString: String) {
+    self.init(rawValue: fromString)
   }
 }
 
@@ -655,4 +548,36 @@ public enum PortalArgumentError: Error {
   case noGatewayConfigForChain(chainId: Int)
   case versionNoLongerSupported(message: String)
   case unableToGetClient
+}
+
+public enum PortalCurve: String, Codable {
+  case ED25519
+  case SECP256K1
+
+  init?(fromString: String) {
+    self.init(rawValue: fromString)
+  }
+}
+
+public enum PortalNamespace: String, Codable {
+  case eip155
+  case solana
+}
+
+public enum PortalSharePairStatus: String, Codable {
+  case complete
+  case incomplete
+
+  init?(fromString: String) {
+    self.init(rawValue: fromString)
+  }
+}
+
+public enum PortalSharePairType: String, Codable {
+  case backup
+  case signing
+
+  init?(fromString: String) {
+    self.init(rawValue: fromString)
+  }
 }
