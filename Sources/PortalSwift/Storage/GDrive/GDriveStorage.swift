@@ -80,6 +80,8 @@ public class GDriveStorage: Storage, PortalStorage {
 
       let name = GDriveStorage.hash("\(client.custodian.id)\(client.id)")
       self.filename = "\(name).txt"
+
+      print("Filename: \(self.filename ?? "")")
     }
 
     return self.filename!
@@ -100,23 +102,10 @@ public class GDriveStorage: Storage, PortalStorage {
 
   @available(*, deprecated, renamed: "delete", message: "Please use the async/await implementation of delete().")
   override public func delete(completion: @escaping (Result<Bool>) -> Void) {
-    self.getFilename { filename in
-      if filename.error != nil {
-        completion(Result(data: false, error: filename.error!))
-        return
-      }
-
+    async {
       do {
-        try self.drive.getIdForFilename(filename: filename.data!) { fileId in
-          if fileId.error != nil {
-            completion(Result(data: false, error: fileId.error!))
-            return
-          }
-
-          self.drive.delete(id: fileId.data!) { deleteResult in
-            completion(deleteResult)
-          }
-        }
+        let success = try await delete()
+        completion(Result(data: success))
       } catch {
         completion(Result(error: error))
       }
@@ -125,28 +114,10 @@ public class GDriveStorage: Storage, PortalStorage {
 
   @available(*, deprecated, renamed: "read", message: "Please use the async/await implementation of read().")
   override public func read(completion: @escaping (Result<String>) -> Void) {
-    self.getFilename { filename in
-      if filename.error != nil {
-        completion(Result(error: filename.error!))
-        return
-      }
-
+    async {
       do {
-        try self.drive.getIdForFilename(filename: filename.data!) { fileId in
-          if fileId.error != nil {
-            completion(Result(error: fileId.error!))
-            return
-          }
-
-          self.drive.read(id: fileId.data!) { content in
-            if content.error != nil {
-              completion(Result(error: content.error!))
-              return
-            }
-
-            completion(Result(data: content.data!))
-          }
-        }
+        let value = try await read()
+        completion(Result(data: value))
       } catch {
         completion(Result(error: error))
       }
@@ -155,70 +126,37 @@ public class GDriveStorage: Storage, PortalStorage {
 
   @available(*, deprecated, renamed: "write", message: "Please use the async/await implementation of write().")
   override public func write(privateKey: String, completion: @escaping (Result<Bool>) -> Void) {
-    self.getFilename { filename in
-      if filename.error != nil {
-        completion(Result(data: false, error: filename.error!))
-        return
-      }
-
+    async {
       do {
-        try self.drive.write(filename: filename.data!, content: privateKey) { writeResult in
-          if writeResult.error != nil {
-            completion(Result(data: false, error: writeResult.error!))
-            return
-          }
-
-          completion(Result(data: true))
-        }
+        let success = try await write(privateKey)
+        completion(Result(data: success))
       } catch {
-        completion(Result(data: false, error: error))
+        completion(Result(error: error))
       }
     }
   }
 
   @available(*, deprecated, renamed: "signIn", message: "Please use the async/await implementation of signIn().")
   public func signIn(completion: @escaping (Result<GIDGoogleUser>) -> Void) {
-    self.drive.auth.signIn { result in
-      completion(result)
+    async {
+      do {
+        let user = try await drive.auth.signIn()
+        completion(Result(data: user))
+      } catch {
+        completion(Result(error: error))
+      }
     }
   }
 
   @available(*, deprecated, renamed: "validateOperations", message: "Please use the async/await implementation of validateOperations().")
   public func validateOperations(callback: @escaping (Result<Bool>) -> Void) {
-    self.drive.validateOperations(callback: callback)
-  }
-
-  @available(*, deprecated, renamed: "getFilename", message: "Please use the async/await implementation of getFilename().")
-  private func getFilename(callback: @escaping (Result<String>) -> Void) {
-    if self.api == nil {
-      callback(Result(error: GDriveStorageError.portalApiNotConfigured))
-      return
-    }
-
-    do {
-      if self.filename == nil || self.filename!.count < 1 {
-        try self.api!.getClient { client in
-          if client.error != nil {
-            callback(Result(error: client.error!))
-            return
-          } else if client.data == nil {
-            callback(Result(error: GDriveStorageError.unableToFetchClientData))
-            return
-          }
-
-          let name = GDriveStorage.hash(
-            "\(client.data!.custodian.id)\(client.data!.id)"
-          )
-
-          self.filename = "\(name).txt"
-
-          callback(Result(data: self.filename!))
-        }
-      } else {
-        callback(Result(data: self.filename!))
+    async {
+      do {
+        let success = try await drive.validateOperations()
+        callback(Result(data: success))
+      } catch {
+        callback(Result(error: error))
       }
-    } catch {
-      callback(Result(error: error))
     }
   }
 }

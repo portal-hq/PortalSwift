@@ -19,11 +19,11 @@ public class PortalApi {
   private let featureFlags: FeatureFlags?
 
   private var address: String? {
-    return self.provider.address
+    self.provider.address
   }
 
   private var chainId: Int {
-    return self.provider.chainId
+    self.provider.chainId
   }
 
   public var client: ClientResponse? {
@@ -70,7 +70,9 @@ public class PortalApi {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/eject") {
       do {
         let data = try await PortalRequests.get(url, withBearerToken: self.apiKey)
-        let ejectResponse = try decoder.decode(String.self, from: data)
+        guard let ejectResponse = String(data: data, encoding: .utf8) else {
+          throw PortalApiError.unableToReadStringResponse
+        }
 
         return ejectResponse
       } catch {
@@ -103,14 +105,19 @@ public class PortalApi {
   /// Retrieve the client by API key.
   /// - Returns: ClientResponse
   public func getClient() async throws -> ClientResponse {
+    self.logger.debug("getClient URL: \(self.baseUrl)/api/v3/clients/me")
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me") {
       do {
-        let data = try await PortalRequests.get(url)
+        let data = try await PortalRequests.get(url, withBearerToken: self.apiKey)
+
+        self.logger.debug("Data: \(String(data: data, encoding: .utf8) ?? "")")
+
         let clientResponse = try decoder.decode(ClientResponse.self, from: data)
+
+        self.logger.debug("Client: \(clientResponse)")
 
         return clientResponse
       } catch {
-        self.logger.error("PortalApi.getClient() - Unable to fetch client: \(error.localizedDescription)")
         throw error
       }
     }
@@ -162,13 +169,13 @@ public class PortalApi {
 
     var queryParams: [String] = []
 
-    if let limit = limit {
+    if let limit {
       queryParams.append("limit=\(limit)")
     }
-    if let offset = offset {
+    if let offset {
       queryParams.append("offset=\(offset)")
     }
-    if let order = order {
+    if let order {
       queryParams.append("order=\(order)")
     }
 
@@ -404,13 +411,13 @@ public class PortalApi {
     let effectiveChainId = chainId ?? self.chainId
     queryParams.append("chainId=\(effectiveChainId)")
 
-    if let limit = limit {
+    if let limit {
       queryParams.append("limit=\(limit)")
     }
-    if let offset = offset {
+    if let offset {
       queryParams.append("offset=\(offset)")
     }
-    if let order = order {
+    if let order {
       queryParams.append("order=\(order)")
     }
 
@@ -674,6 +681,10 @@ public class PortalApi {
       print("Failed to track event")
     }
   }
+}
+
+public enum PortalApiError: Error, Equatable {
+  case unableToReadStringResponse
 }
 
 public enum SharePairUpdateStatus: String, Codable {
