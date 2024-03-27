@@ -188,7 +188,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
   @IBAction func handleSignup(_: UIButton) {
-    print("signUp", self.PortalWrapper, self.PortalWrapper.signUp)
+    print("signUp", self.PortalWrapper, self.PortalWrapper.signUp, self.username?.text)
     self.PortalWrapper.signUp(username: self.username?.text ?? "") { (result: Result<UserResult>) in
       guard result.error == nil else {
         print(" ❌ handleSignIn(): Failed", result.error ?? "")

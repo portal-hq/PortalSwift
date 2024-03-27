@@ -9,7 +9,11 @@ import Foundation
 
 /// The class to interface with Portal's REST API.
 public class PortalApi {
+  private var _client: ClientResponse?
   private var apiKey: String
+  private var baseUrl: String
+  private let decoder = JSONDecoder()
+  private let logger = PortalLogger()
   private var provider: PortalProvider
   private var requests: HttpRequester
   private let featureFlags: FeatureFlags?
@@ -20,6 +24,21 @@ public class PortalApi {
 
   private var chainId: Int {
     return self.provider.chainId
+  }
+
+  public var client: ClientResponse? {
+    get async {
+      if self._client == nil {
+        do {
+          self._client = try await self.getClient()
+        } catch {
+          self.logger.error("PortalApi.client - Error getting client: \(error.localizedDescription)")
+          return nil
+        }
+      }
+
+      return self._client
+    }
   }
 
   /// Create an instance of a PortalApi class.
@@ -37,11 +56,211 @@ public class PortalApi {
     self.apiKey = apiKey
     self.provider = provider
 
-    let baseUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
-    self.requests = mockRequests ? MockHttpRequester(baseUrl: baseUrl) : HttpRequester(baseUrl: baseUrl)
+    self.baseUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
+    self.requests = mockRequests ? MockHttpRequester(baseUrl: self.baseUrl) : HttpRequester(baseUrl: self.baseUrl)
 
     self.featureFlags = featureFlags
   }
+
+  /*******************************************
+   * Public functions
+   *******************************************/
+
+  public func eject(_: String) async throws -> String {
+    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/eject") {
+      do {
+        let data = try await PortalRequests.get(url, withBearerToken: self.apiKey)
+        let ejectResponse = try decoder.decode(String.self, from: data)
+
+        return ejectResponse
+      } catch {
+        self.logger.error("PortalApi.getBalances() - Unable to eject: \(error.localizedDescription)")
+        throw error
+      }
+    }
+
+    self.logger.error("PortalApi.eject() - Unable to build request URL.")
+    throw URLError(.badURL)
+  }
+
+  public func getBalances(_ chainId: String) async throws -> [FetchedBalance] {
+    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/balances?chainId=\(chainId)") {
+      do {
+        let data = try await PortalRequests.get(url, withBearerToken: self.apiKey)
+        let balancesResponse = try decoder.decode([FetchedBalance].self, from: data)
+
+        return balancesResponse
+      } catch {
+        self.logger.error("PortalApi.getBalances() - Unable to get balanaces: \(error.localizedDescription)")
+        throw error
+      }
+    }
+
+    self.logger.error("PortalApi.getBalances() - Unable to build request URL.")
+    throw URLError(.badURL)
+  }
+
+  /// Retrieve the client by API key.
+  /// - Returns: ClientResponse
+  public func getClient() async throws -> ClientResponse {
+    if let url = URL(string: "\(baseUrl)/api/v3/clients/me") {
+      do {
+        let data = try await PortalRequests.get(url)
+        let clientResponse = try decoder.decode(ClientResponse.self, from: data)
+
+        return clientResponse
+      } catch {
+        self.logger.error("PortalApi.getClient() - Unable to fetch client: \(error.localizedDescription)")
+        throw error
+      }
+    }
+
+    throw URLError(.badURL)
+  }
+
+  public func getNFTs(_ chainId: String) async throws -> [FetchedNFT] {
+    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/nfts?chainId=\(chainId)") {
+      do {
+        let data = try await PortalRequests.get(url, withBearerToken: self.apiKey)
+        let nfts = try decoder.decode([FetchedNFT].self, from: data)
+
+        return nfts
+      } catch {
+        self.logger.error("PortalApi.getNFTs() - Unable to fetch NFTs: \(error.localizedDescription)")
+        throw error
+      }
+    }
+
+    self.logger.error("PortalApi.getNFTs() - Unable to build request URL.")
+    throw URLError(.badURL)
+  }
+
+  public func getSharePairs(_ type: PortalSharePairType, walletId: String) async throws -> [FetchedSharePair] {
+    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/wallets/\(walletId)/\(type)-share-pairs") {
+      do {
+        let data = try await PortalRequests.get(url, withBearerToken: self.apiKey)
+        let sharePairs = try decoder.decode([FetchedSharePair].self, from: data)
+
+        return sharePairs
+      } catch {
+        self.logger.error("PortalApi.getSharePairs() - Unable to fetch \(type) share pairs: \(error.localizedDescription)")
+        throw error
+      }
+    }
+
+    self.logger.error("PortalApi.getSharePairs() - Unable to build request URL.")
+    throw URLError(.badURL)
+  }
+
+  public func getTransactions(
+    _ chainId: String,
+    limit: Int? = nil,
+    offset: Int? = nil,
+    order: TransactionOrder? = nil
+  ) async throws -> [FetchedTransaction] {
+    var requestUrlString = "\(baseUrl)/api/v3/clients/me/transactions?chainId=\(chainId)"
+
+    var queryParams: [String] = []
+
+    if let limit = limit {
+      queryParams.append("limit=\(limit)")
+    }
+    if let offset = offset {
+      queryParams.append("offset=\(offset)")
+    }
+    if let order = order {
+      queryParams.append("order=\(order)")
+    }
+
+    // Add the combined query parameters to the path
+    if !queryParams.isEmpty {
+      requestUrlString += "?" + queryParams.joined(separator: "&")
+    }
+
+    if let url = URL(string: requestUrlString) {
+      do {
+        let data = try await PortalRequests.get(url, withBearerToken: self.apiKey)
+        let transactions = try decoder.decode([FetchedTransaction].self, from: data)
+
+        return transactions
+      } catch {
+        self.logger.error("PortalApi.getTransactions() - Unable to fetch transactions: \(error.localizedDescription)")
+        throw error
+      }
+    }
+
+    self.logger.error("PortalApi.getTransactions() - Unable to build request URL.")
+    throw URLError(.badURL)
+  }
+
+  public func refreshClient() async throws {
+    do {
+      self._client = try await self.getClient()
+
+      return
+    } catch {
+      self.logger.error("PortalApi.refreshClient() - Unable to refresh user: \(error.localizedDescription)")
+      throw error
+    }
+  }
+
+  /// Simulates a transaction for the client.
+  /// - Parameters:
+  ///   - to: The recipient address.
+  ///   - value: (Optional) The transacton "value" parameter.
+  ///   - data: (Optional) The transacton "data" parameter.
+  ///   - maxFeePerGas: (Optional) The transacton "maxFeePerGas" parameter.
+  ///   - maxPriorityFeePerGas: (Optional) The transacton "maxPriorityFeePerGas" parameter.
+  ///   - gas: (Optional) The transacton "gas" parameter.
+  ///   - gasPrice: (Optional) The transacton "gasPrice" parameter.
+  ///   - completion: The callback that contains transaction simulation response.
+  /// - Returns: Void.
+  public func simulateTransaction(_ transaction: AnyEncodable, withChainId _: String) async throws -> SimulatedTransaction {
+    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/simulate-transaction?chainId=\(chainId)") {
+      do {
+        let data = try await PortalRequests.post(url, withBearerToken: self.apiKey, andPayload: transaction)
+        let simulatedTransaction = try decoder.decode(SimulatedTransaction.self, from: data)
+
+        return simulatedTransaction
+      } catch {
+        self.logger.error("PortalApi.simulateTransaction() - Unable to simulate transaction: \(error.localizedDescription)")
+      }
+    }
+
+    self.logger.error("PortalApi.simulateTransaction() - Unable to build request URL.")
+    throw URLError(.badURL)
+  }
+
+  public func updateShareStatus(
+    _ type: PortalSharePairType,
+    status: SharePairUpdateStatus,
+    sharePairIds: [String]
+  ) async throws -> ShareStatusUpdateResponse {
+    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/\(type)-share-pairs/") {
+      do {
+        let payload = ShareStatusUpdateRequest(
+          backupSharePairIds: type == .backup ? sharePairIds : nil,
+          signingSharePairIds: type == .signing ? sharePairIds : nil,
+          status: status
+        )
+
+        let data = try await PortalRequests.patch(url, withBearerToken: self.apiKey, andPayload: payload)
+        let updateResponse = try decoder.decode(ShareStatusUpdateResponse.self, from: data)
+
+        return updateResponse
+      } catch {
+        self.logger.error("PortalApi.updateShareStatus() - Unable to update share status: \(error.localizedDescription)")
+        throw error
+      }
+    }
+
+    self.logger.error("PortalApi.updateShareStatus() - Unable to build request URL.")
+    throw URLError(.badURL)
+  }
+
+  /*******************************************
+   * Deprecated functions
+   *******************************************/
 
   /// Retrieve the client by API key.
   /// - Parameter completion: The callback that contains the Client.
@@ -457,294 +676,17 @@ public class PortalApi {
   }
 }
 
-/**********************************
- * Supporting Structs
- **********************************/
-
-/// A client from the Portal API.
-public struct Client: Codable {
-  public var id: String
-  public var address: String
-  public var custodian: Custodian
-  public var signingStatus: String? = nil
-  public var backupStatus: String? = nil
+public enum SharePairUpdateStatus: String, Codable {
+  case STORED_CLIENT
+  case STORED_CLIENT_BACKUP_SHARE
+  case STORED_CLIENT_BACKUP_SHARE_KEY
 }
 
-/// A contract that belongs to a Dapp.
-public struct Contract: Codable {
-  public var id: String
-  public var contractAddress: String
-  public var clientUrl: String
-  public var network: ContractNetwork
-}
+public enum TransactionOrder: String, Codable {
+  case ASC
+  case DESC
 
-/// A custodian that belongs to a Client.
-public struct Custodian: Codable {
-  public var id: String
-  public var name: String
-}
-
-/// A Dapp that has many Contracts.
-public struct Dapp: Codable {
-  public var id: String
-  public var contracts: [Contract]
-  public var image: DappImage
-  public var name: String
-}
-
-/// A Dapp's profile image.
-public struct DappImage: Codable {
-  public var id: String
-  public var data: String
-  public var filename: String
-}
-
-/// A contract network. For example, chainId 11155111 is the Sepolia network.
-public struct ContractNetwork: Codable {
-  public var id: String
-  public var chainId: String
-  public var name: String
-}
-
-/// Represents an NFT smart contract.
-public struct NFTContract: Codable {
-  public var address: String
-}
-
-/// Represents an NFT owned by the client.
-public struct NFT: Codable {
-  public var contract: NFTContract
-  public var id: TokenId
-  public var balance: String
-  public var title: String
-  public var description: String
-  public var tokenUri: TokenUri
-  public var media: [Media]
-  public var metadata: NFTMetadata
-  public var timeLastUpdated: String
-  public var contractMetadata: ContractMetadata
-}
-
-/// Represents the id of an NFT.
-public struct TokenId: Codable {
-  public var tokenId: String
-  public var tokenMetadata: TokenMetadata
-}
-
-/// Represents the metadata of an NFT's id.
-public struct TokenMetadata: Codable {
-  public var tokenType: String
-}
-
-/// Represents the URI of an NFT.
-public struct TokenUri: Codable {
-  public var gateway: String
-  public var raw: String
-}
-
-/// Represents the media of an NFT.
-public struct Media: Codable {
-  public var gateway: String
-  public var thumbnail: String
-  public var raw: String
-  public var format: String
-  public var bytes: Int
-}
-
-/// Represents the metadata of an NFT.
-public struct NFTMetadata: Codable {
-  public var name: String
-  public var description: String
-  public var image: String
-  public var external_url: String?
-}
-
-/// Represents the contract metadata of an NFT.
-public struct ContractMetadata: Codable {
-  public var name: String
-  public var symbol: String
-  public var tokenType: String
-  public var contractDeployer: String
-  public var deployedBlockNumber: Int
-  public var openSea: OpenSeaMetadata?
-}
-
-/// Represents the OpenSea metadata of an NFT.
-public struct OpenSeaMetadata: Codable {
-  public var collectionName: String
-  public var safelistRequestStatus: String
-  public var imageUrl: String?
-  public var description: String
-  public var externalUrl: String
-  public var lastIngestedAt: String
-  public var floorPrice: Float?
-  public var twitterUsername: String?
-  public var discordUrl: String?
-}
-
-/// Represents a blockchain transaction
-public struct Transaction: Codable {
-  /// Represents metadata associated with a Transaction
-  public struct Metadata: Codable {
-    /// Timestamp of the block in which the transaction was included (in ISO format)
-    public var blockTimestamp: String
-  }
-
-  /// Block number in which the transaction was included
-  public var blockNum: String
-  /// Unique identifier of the transaction
-  public var uniqueId: String
-  /// Hash of the transaction
-  public var hash: String
-  /// Address that initiated the transaction
-  public var from: String
-  /// Address that the transaction was sent to
-  public var to: String
-  /// Value transferred in the transaction
-  public var value: Float
-  /// Token Id of an ERC721 token, if applicable
-  public var erc721TokenId: String?
-  /// Metadata of an ERC1155 token, if applicable
-  public var erc1155Metadata: String?
-  /// Token Id, if applicable
-  public var tokenId: String?
-  /// Type of asset involved in the transaction (e.g., ETH)
-  public var asset: String
-  /// Category of the transaction (e.g., external)
-  public var category: String
-  /// Contract details related to the transaction
-  public var rawContract: RawContract
-  /// Metadata associated with the transaction
-  public var metadata: Metadata
-  /// ID of the chain associated with the transaction
-  public var chainId: Int
-}
-
-/// Represents the contract details of a transaction
-public struct RawContract: Codable {
-  /// Value involved in the contract
-  public var value: String
-  /// Address of the contract, if applicable
-  public var address: String?
-  /// Decimal representation of the contract value
-  public var decimal: String
-}
-
-/// A representation of a client's balance.
-///
-/// This struct is used to parse the JSON response from the "/api/v1/clients/me/balances" endpoint.
-public struct Balance: Codable {
-  /// The contract address of the token.
-  public var contractAddress: String
-  /// The balance of the token.
-  public var balance: String
-}
-
-public struct SimulatedTransactionChange: Codable {
-  public var amount: String?
-  public var assetType: String?
-  public var changeType: String?
-  public var contractAddress: String?
-  public var decimals: Int?
-  public var from: String?
-  public var name: String?
-  public var rawAmount: String?
-  public var symbol: String?
-  public var to: String?
-  public var tokenId: Int?
-}
-
-public struct SimulatedTransactionError: Codable {
-  public var message: String
-}
-
-public struct SimulateTransactionParam: Codable {
-  public var to: String
-  public var value: String?
-  public var data: String?
-  public var maxFeePerGas: String?
-  public var maxPriorityFeePerGas: String?
-  public var gas: String?
-  public var gasPrice: String?
-
-  public init(
-    to: String,
-    value: String? = nil,
-    data: String? = nil,
-    maxFeePerGas: String? = nil,
-    maxPriorityFeePerGas: String? = nil,
-    gas: String? = nil,
-    gasPrice: String? = nil
-  ) {
-    self.to = to
-    self.value = value
-    self.data = data
-    self.maxFeePerGas = maxFeePerGas
-    self.maxPriorityFeePerGas = maxPriorityFeePerGas
-    self.gas = gas
-    self.gasPrice = gasPrice
-  }
-}
-
-public struct SimulatedTransaction: Codable {
-  public var changes: [SimulatedTransactionChange]
-  public var gasUsed: String? = nil
-  public var error: SimulatedTransactionError?
-  public var requestError: SimulatedTransactionError?
-}
-
-public struct MetricsResponse: Codable {
-  public var status: Bool
-}
-
-public enum MetricsEvents: String {
-  case portalInitialized = "Portal Initialized"
-  case transactionSigned = "Transaction Signed"
-  case walletBackedUp = "Wallet Backed Up"
-  case walletCreated = "Wallet Created"
-  case walletRecovered = "Wallet Recovered"
-
-  // API Method events
-  case getBackupShareMetadata = "Get Backup Share Metadata"
-  case getBalances = "Get Balances"
-  case getClient = "Get Client"
-  case getEnabledDapps = "Get Enabled Dapps"
-  case getNFTs = "Get NFTs"
-  case getNetworks = "Get Networks"
-  case getQuote = "Get Quote"
-  case getSigningShareMetadata = "Get Signing Share Metadata"
-  case getSources = "Get Sources"
-  case getTransactions = "Get Transactions"
-  case simulateTransaction = "Simulate Transaction"
-  case storedClientBackupShare = "Stored Client Backup Share"
-  case storedClientBackupShareKey = "Stored Client Backup Share Key"
-  case storedClientSigningShare = "Stored Client Signing Share"
-}
-
-public enum GetTransactionsOrder: String {
-  case asc
-  case desc
-}
-
-public struct BackupSharePair: Codable {
-  public var backupMethod: String
-  public var createdAt: String
-  public var id: String
-  public var status: Status
-
-  public enum Status: String, Codable {
-    case completed
-    case incomplete
-  }
-}
-
-public struct SigningSharePair: Codable {
-  public var createdAt: String
-  public var id: String
-  public var status: Status
-
-  public enum Status: String, Codable {
-    case completed
-    case incomplete
+  init?(_ fromString: String) {
+    self.init(rawValue: fromString)
   }
 }

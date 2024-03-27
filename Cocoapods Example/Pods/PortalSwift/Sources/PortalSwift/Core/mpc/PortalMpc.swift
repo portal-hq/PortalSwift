@@ -930,19 +930,6 @@ public class PortalMpc {
 
     return shareJson
   }
-
-  private func formatBackupMethod(backupMethod: BackupMethods.RawValue) -> String {
-    switch backupMethod {
-    case BackupMethods.GoogleDrive.rawValue:
-      return "GDRIVE"
-    case BackupMethods.iCloud.rawValue:
-      return "ICLOUD"
-    case BackupMethods.Password.rawValue:
-      return "PASSWORD"
-    default:
-      return "CUSTOM"
-    }
-  }
 }
 
 // DATA TYPES
