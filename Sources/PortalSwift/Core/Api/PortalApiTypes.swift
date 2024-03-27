@@ -438,6 +438,11 @@ public struct MetricsResponse: Codable {
   public var status: Bool
 }
 
+public struct MetricsTrackRequest: Encodable {
+  public let event: String
+  public let properties: [String: AnyEncodable]
+}
+
 public enum MetricsEvents: String {
   case portalInitialized = "Portal Initialized"
   case transactionSigned = "Transaction Signed"

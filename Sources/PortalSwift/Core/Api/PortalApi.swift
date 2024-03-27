@@ -200,6 +200,17 @@ public class PortalApi {
     throw URLError(.badURL)
   }
 
+  public func identify(_ traits: [String: AnyEncodable] = [:]) async throws -> MetricsResponse {
+    if let url = URL(string: "\(baseUrl)/api/v1/analytics/identify") {
+      let data = try await PortalRequests.post(url, withBearerToken: self.apiKey, andPayload: ["traits": traits])
+      let response = try decoder.decode(MetricsResponse.self, from: data)
+
+      return response
+    }
+
+    throw URLError(.badURL)
+  }
+
   public func refreshClient() async throws {
     do {
       self._client = try await self.getClient()
@@ -238,6 +249,21 @@ public class PortalApi {
     throw URLError(.badURL)
   }
 
+  func track(_ event: String, withProperties: [String: AnyEncodable]) async throws -> MetricsResponse {
+    if let url = URL(string: "\(baseUrl)/api/v1/analytics/track") {
+      let payload = MetricsTrackRequest(
+        event: event,
+        properties: withProperties
+      )
+      let data = try await PortalRequests.post(url, withBearerToken: self.apiKey, andPayload: payload)
+      let response = try decoder.decode(MetricsResponse.self, from: data)
+
+      return response
+    }
+
+    throw URLError(.badURL)
+  }
+
   public func updateShareStatus(
     _ type: PortalSharePairType,
     status: SharePairUpdateStatus,
@@ -272,38 +298,14 @@ public class PortalApi {
   /// Retrieve the client by API key.
   /// - Parameter completion: The callback that contains the Client.
   /// - Returns: Void.
-  public func getClient(completion: @escaping (Result<Client>) -> Void) throws {
-    try self.requests.get(
-      path: "/api/v1/clients/me",
-      headers: [
-        "Authorization": "Bearer \(self.apiKey)",
-      ],
-      requestType: HttpRequestType.CustomRequest
-    ) { (result: Result<Client>) in
-      if result.error != nil {
-        completion(Result<Client>(error: result.error!))
-      } else if result.data != nil {
-        completion(Result<Client>(data: result.data!))
+  public func getClient(completion: @escaping (Result<ClientResponse>) -> Void) throws {
+    Task.init {
+      do {
+        let client = try await getClient()
+        completion(Result(data: client))
+      } catch {
+        completion(Result(error: error))
       }
-
-      self.track(event: MetricsEvents.getClient.rawValue, properties: ["path": "/api/v1/clients/me"])
-    }
-  }
-
-  /// Retrieve a list of enabled dapps for the client.
-  /// - Parameter completion: The callback that contains the list of Dapps.
-  /// - Returns: Void.
-  public func getEnabledDapps(completion: @escaping (Result<[Dapp]>) -> Void) throws {
-    try self.requests.get(
-      path: "/api/v1/config/dapps",
-      headers: [
-        "Authorization": "Bearer \(self.apiKey)",
-      ],
-      requestType: HttpRequestType.CustomRequest
-    ) { (result: Result<[Dapp]>) in
-      completion(result)
-
-      self.track(event: MetricsEvents.getEnabledDapps.rawValue, properties: ["path": "/api/v1/config/dapps"])
     }
   }
 
@@ -647,38 +649,27 @@ public class PortalApi {
     }
   }
 
-  public func identify(traits: [String: Any] = [:], completion: @escaping (Result<MetricsResponse>) -> Void) throws {
-    let body: [String: Any] = [
-      "traits": traits,
-    ]
-
-    try self.requests.post(
-      path: "/api/v1/analytics/identify",
-      body: body,
-      headers: ["Authorization": "Bearer \(self.apiKey)"],
-      requestType: HttpRequestType.CustomRequest
-    ) { (result: Result<MetricsResponse>) in
-      completion(result)
+  public func identify(traits: [String: String] = [:], completion: ((Result<MetricsResponse>) -> Void)? = nil) throws {
+    Task.init {
+      do {
+        let transformedTraits: [String: AnyEncodable] = traits.mapValues { AnyEncodable($0) }
+        let response = try await identify(transformedTraits)
+        completion?(Result(data: response))
+      } catch {
+        completion?(Result(error: error))
+      }
     }
   }
 
-  func track(event: String, properties: [String: Any], completion: ((Result<MetricsResponse>) -> Void)? = nil) {
-    let body: [String: Any] = [
-      "event": event,
-      "properties": properties,
-    ]
-
-    do {
-      try self.requests.post(
-        path: "/api/v1/analytics/track",
-        body: body,
-        headers: ["Authorization": "Bearer \(self.apiKey)"],
-        requestType: HttpRequestType.CustomRequest
-      ) { (result: Result<MetricsResponse>) in
-        completion?(result)
+  func track(event: String, properties: [String: String], completion: ((Result<MetricsResponse>) -> Void)? = nil) {
+    Task.init {
+      do {
+        let transformedProperties = properties.mapValues { AnyEncodable($0) }
+        let response = try await track(event, withProperties: transformedProperties)
+        completion?(Result(data: response))
+      } catch {
+        completion?(Result(error: error))
       }
-    } catch {
-      print("Failed to track event")
     }
   }
 }
