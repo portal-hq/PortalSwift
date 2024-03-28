@@ -66,10 +66,10 @@ public class PortalApi {
    * Public functions
    *******************************************/
 
-  public func eject(_: String) async throws -> String {
+  public func eject() async throws -> String {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/eject") {
       do {
-        let data = try await PortalRequests.get(url, withBearerToken: self.apiKey)
+        let data = try await PortalRequests.post(url, withBearerToken: self.apiKey)
         guard let ejectResponse = String(data: data, encoding: .utf8) else {
           throw PortalApiError.unableToReadStringResponse
         }
@@ -125,6 +125,24 @@ public class PortalApi {
     throw URLError(.badURL)
   }
 
+  public func getQuote(_ swapsApiKey: String, withArgs: QuoteArgs) async throws -> Quote {
+    if let url = URL(string: "\(baseUrl)/api/v1/swaps/quote") {
+      // Build the request body
+      var body = withArgs.toDictionary()
+      // Append Portal-provided values
+      body["address"] = AnyEncodable(self.address)
+      body["apiKey"] = AnyEncodable(swapsApiKey)
+      body["chainId"] = AnyEncodable(self.chainId)
+
+      let data = try await PortalRequests.post(url, withBearerToken: self.apiKey, andPayload: body)
+      let response = try decoder.decode(Quote.self, from: data)
+
+      return response
+    }
+
+    throw URLError(.badURL)
+  }
+
   public func getNFTs(_ chainId: String) async throws -> [FetchedNFT] {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/nfts?chainId=\(chainId)") {
       do {
@@ -156,6 +174,18 @@ public class PortalApi {
     }
 
     self.logger.error("PortalApi.getSharePairs() - Unable to build request URL.")
+    throw URLError(.badURL)
+  }
+
+  public func getSources(_ swapsApiKey: String, forChainId: String) async throws -> [String: String] {
+    if let url = URL(string: "\(baseUrl)/api/v1/swaps/sources") {
+      let payload = ["apiKey": swapsApiKey, "chainId": forChainId]
+      let data = try await PortalRequests.post(url, withBearerToken: self.apiKey, andPayload: payload)
+      let response = try decoder.decode([String: String].self, from: data)
+
+      return response
+    }
+
     throw URLError(.badURL)
   }
 
@@ -298,6 +328,7 @@ public class PortalApi {
   /// Retrieve the client by API key.
   /// - Parameter completion: The callback that contains the Client.
   /// - Returns: Void.
+  @available(*, deprecated, renamed: "getClient", message: "Please use the async/await implementation of getClient().")
   public func getClient(completion: @escaping (Result<ClientResponse>) -> Void) throws {
     Task.init {
       do {
@@ -309,65 +340,31 @@ public class PortalApi {
     }
   }
 
+  @available(*, deprecated, renamed: "getQuote", message: "Please use the async/await implementation of getQuote().")
   public func getQuote(
     _ swapsApiKey: String,
     _ args: QuoteArgs,
     completion: @escaping (Result<Quote>) -> Void
   ) throws {
-    // Build the request body
-    var body = args.toDictionary()
-    // Append Portal-provided values
-    body["address"] = self.address
-    body["apiKey"] = swapsApiKey
-    body["chainId"] = self.chainId
-
-    // Make the request
-    try self.requests.post(
-      path: "/api/v1/swaps/quote",
-      body: body,
-      headers: [
-        "Authorization": "Bearer \(self.apiKey)",
-      ],
-      requestType: HttpRequestType.CustomRequest
-    ) { (result: Result<Quote>) in
-      completion(result)
-
-      self.track(event: MetricsEvents.getQuote.rawValue, properties: ["path": "/api/v1/swaps/quote"])
+    Task {
+      do {
+        let response = try await getQuote(swapsApiKey, withArgs: args)
+        completion(Result(data: response))
+      } catch {
+        completion(Result(error: error))
+      }
     }
   }
 
+  @available(*, deprecated, renamed: "getSources", message: "Please use the async/await implementation of getSources().")
   public func getSources(swapsApiKey: String, completion: @escaping (Result<[String: String]>) -> Void) throws {
-    try self.requests.post(
-      path: "/api/v1/swaps/sources",
-      body: [
-        "apiKey": swapsApiKey,
-        "chainId": self.chainId,
-      ],
-      headers: [
-        "Authorization": "Bearer \(self.apiKey)",
-      ],
-      requestType: HttpRequestType.CustomRequest
-    ) { (result: Result<[String: String]>) in
-      completion(result)
-
-      self.track(event: MetricsEvents.getSources.rawValue, properties: ["path": "/api/v1/swaps/sources"])
-    }
-  }
-
-  /// Retrieves a list of supported networks.
-  /// - Parameter completion: The callback that contains the list of Networks.
-  /// - Returns: Void.
-  public func getSupportedNetworks(completion: @escaping (Result<[ContractNetwork]>) -> Void) throws {
-    try self.requests.get(
-      path: "/api/v1/config/networks",
-      headers: [
-        "Authorization": "Bearer \(self.apiKey)",
-      ],
-      requestType: HttpRequestType.CustomRequest
-    ) { (result: Result<[ContractNetwork]>) in
-      completion(result)
-
-      self.track(event: MetricsEvents.getNetworks.rawValue, properties: ["path": "/api/v1/config/networks"])
+    Task {
+      do {
+        let response = try await getSources(swapsApiKey, forChainId: "eip155:\(self.chainId)")
+        completion(Result(data: response))
+      } catch {
+        completion(Result(error: error))
+      }
     }
   }
 
@@ -375,17 +372,15 @@ public class PortalApi {
   /// - Parameters:
   ///   - completion: The callback that contains the list of NFTs.
   /// - Returns: Void.
-  public func getNFTs(completion: @escaping (Result<[NFT]>) -> Void) throws {
-    try self.requests.get(
-      path: "/api/v1/clients/me/nfts?chainId=\(self.chainId)",
-      headers: [
-        "Authorization": "Bearer \(self.apiKey)",
-      ],
-      requestType: HttpRequestType.CustomRequest
-    ) { (result: Result<[NFT]>) in
-      completion(result)
-
-      self.track(event: MetricsEvents.getNFTs.rawValue, properties: ["path": "/api/v1/clients/me/nfts"])
+  @available(*, deprecated, renamed: "getNFTs", message: "Please use the async/await implementation of getNFTs().")
+  public func getNFTs(completion: @escaping (Result<[FetchedNFT]>) -> Void) throws {
+    Task {
+      do {
+        let response = try await getNFTs("eip155:\(self.chainId)")
+        completion(Result(data: response))
+      } catch {
+        completion(Result(error: error))
+      }
     }
   }
 
@@ -397,47 +392,21 @@ public class PortalApi {
   ///   - chainId: (Optional) ID of the chain to retrieve transactions from. Defaults to `self.chainId` if not provided.
   ///   - completion: The callback that contains the list of Transactions.
   /// - Returns: Void.
+  @available(*, deprecated, renamed: "getTransactions", message: "Please use the async/await implementation of getTransactions().")
   public func getTransactions(
     limit: Int? = nil,
     offset: Int? = nil,
-    order: GetTransactionsOrder? = nil,
+    order: TransactionOrder? = nil,
     chainId: Int? = nil,
-    completion: @escaping (Result<[Transaction]>) -> Void
+    completion: @escaping (Result<[FetchedTransaction]>) -> Void
   ) throws {
-    var path = "/api/v1/clients/me/transactions"
-
-    // Start building query parameters
-    var queryParams: [String] = []
-
-    // Use provided chainId or default to self.chainId
-    let effectiveChainId = chainId ?? self.chainId
-    queryParams.append("chainId=\(effectiveChainId)")
-
-    if let limit {
-      queryParams.append("limit=\(limit)")
-    }
-    if let offset {
-      queryParams.append("offset=\(offset)")
-    }
-    if let order {
-      queryParams.append("order=\(order)")
-    }
-
-    // Add the combined query parameters to the path
-    if !queryParams.isEmpty {
-      path += "?" + queryParams.joined(separator: "&")
-    }
-    print("path:", path)
-
-    try self.requests.get(
-      path: path,
-      headers: [
-        "Authorization": "Bearer \(self.apiKey)",
-      ],
-      requestType: HttpRequestType.CustomRequest
-    ) { (result: Result<[Transaction]>) in
-      completion(result)
-      self.track(event: MetricsEvents.getTransactions.rawValue, properties: ["path": path])
+    Task {
+      do {
+        let response = try await getTransactions("eip155:\(chainId ?? self.chainId)", limit: limit, offset: offset, order: order)
+        completion(Result(data: response))
+      } catch {
+        completion(Result(error: error))
+      }
     }
   }
 
@@ -445,6 +414,7 @@ public class PortalApi {
   /// - Parameters:
   ///   - completion: The callback that contains the list of Balances.
   /// - Returns: Void.
+  @available(*, deprecated, renamed: "getBalances", message: "Please use the async/await implementation of getBalances().")
   public func getBalances(
     completion: @escaping (Result<[Balance]>) -> Void
   ) throws {
@@ -472,32 +442,18 @@ public class PortalApi {
   ///   - gasPrice: (Optional) The transacton "gasPrice" parameter.
   ///   - completion: The callback that contains transaction simulation response.
   /// - Returns: Void.
+  @available(*, deprecated, renamed: "simulateTransaction", message: "Please use the async/await implementation of simulateTransaction().")
   public func simulateTransaction(
-    transaction: SimulateTransactionParam,
+    transaction: AnyEncodable,
     completion: @escaping (Result<SimulatedTransaction>) -> Void
   ) throws {
-    var requestBody: [String: String] = ["to": transaction.to]
-
-    if let value = transaction.value { requestBody["value"] = value }
-    if let data = transaction.data { requestBody["data"] = data }
-    if let maxFeePerGas = transaction.maxFeePerGas { requestBody["maxFeePerGas"] = maxFeePerGas }
-    if let maxPriorityFeePerGas = transaction.maxPriorityFeePerGas {
-      requestBody["maxPriorityFeePerGas"] = maxPriorityFeePerGas
-    }
-    if let gas = transaction.gas { requestBody["gas"] = gas }
-    if let gasPrice = transaction.gasPrice { requestBody["gasPrice"] = gasPrice }
-
-    try self.requests.post(
-      path: "/api/v1/clients/me/simulate-transaction?chainId=\(self.chainId)",
-      body: requestBody,
-      headers: [
-        "Authorization": "Bearer \(self.apiKey)",
-      ],
-      requestType: HttpRequestType.CustomRequest
-    ) { (result: Result<SimulatedTransaction>) in
-      completion(result)
-
-      self.track(event: MetricsEvents.simulateTransaction.rawValue, properties: ["path": "/api/v1/clients/me/simulate-transaction"])
+    Task {
+      do {
+        let response = try await simulateTransaction(transaction, withChainId: "eip155:\(self.chainId)")
+        completion(Result(data: response))
+      } catch {
+        completion(Result(error: error))
+      }
     }
   }
 
@@ -506,6 +462,7 @@ public class PortalApi {
   ///   - signingSharePairId: The ID related to the signing share pair.
   ///   - completion: The callback that contains the response status.
   /// - Returns: Void.
+  @available(*, deprecated, renamed: "updateShareStatus", message: "Please use the async/await implementation of updateShareStatus().")
   public func storedClientSigningShare(
     signingSharePairId: String,
     completion: @escaping (Result<String>) -> Void
@@ -534,6 +491,7 @@ public class PortalApi {
   ///   - backupMethod: The `BackupMethod` used to create the  backup share.
   ///   - completion: The callback that contains the response status.
   /// - Returns: Void.
+  @available(*, deprecated, renamed: "updateShareStatus", message: "Please use the async/await implementation of updateShareStatus().")
   public func storedClientBackupShareKey(
     success: Bool,
     backupMethod: BackupMethods.RawValue,
@@ -568,14 +526,15 @@ public class PortalApi {
   /// - Parameters:
   ///   - completion: The callback that contains the response status.
   /// - Returns: Void.
+  @available(*, deprecated, renamed: "eject", message: "Please use the async/await implementation of eject().")
   public func ejectClient(completion: @escaping (Result<String>) -> Void) throws {
-    try self.requests.post(
-      path: "/api/v1/clients/eject",
-      body: [:],
-      headers: ["Authorization": "Bearer \(self.apiKey)"],
-      requestType: HttpRequestType.CustomRequest
-    ) { (result: Result<String>) in
-      completion(result)
+    Task {
+      do {
+        let response = try await eject()
+        completion(Result(data: response))
+      } catch {
+        completion(Result(error: error))
+      }
     }
   }
 
@@ -585,6 +544,7 @@ public class PortalApi {
   ///   - backupSharePairId: The `backupSharePairId` on the share.
   ///   - completion: The callback that contains the response status.
   /// - Returns: Void.
+  @available(*, deprecated, renamed: "updateShareStatus", message: "Please use the async/await implementation of updateShareStatus().")
   public func storedClientBackupShare(
     success: Bool,
     backupMethod: BackupMethods.RawValue,
@@ -618,34 +578,30 @@ public class PortalApi {
   /// Retrieve a list of backup share pairs' details for the client.
   /// - Parameter completion: The callback that contains the list of BackupSharePairs' details.
   /// - Returns: Void.
-  public func getBackupShareMetadata(completion: @escaping (Result<[BackupSharePair]>) -> Void) throws {
-    try self.requests.get(
-      path: "/api/v1/clients/me/backup-share-pairs",
-      headers: [
-        "Authorization": "Bearer \(self.apiKey)",
-      ],
-      requestType: HttpRequestType.CustomRequest
-    ) { (result: Result<[BackupSharePair]>) in
-      completion(result)
-
-      self.track(event: MetricsEvents.getBackupShareMetadata.rawValue, properties: ["path": "/api/v1/clients/me/backup-share-pairs"])
+  @available(*, deprecated, renamed: "getSharePairs", message: "Please use the async/await implementation of getSharePairs().")
+  public func getBackupShareMetadata(completion: @escaping (Result<[FetchedSharePair]>) -> Void) throws {
+    Task {
+      do {
+        let response = try await getSharePairs(.backup, walletId: "")
+        completion(Result(data: response))
+      } catch {
+        completion(Result(error: error))
+      }
     }
   }
 
   /// Retrieve a list of signing share pairs' details for the client.
   /// - Parameter completion: The callback that contains the list of SigningSharePairs' details.
   /// - Returns: Void.
-  public func getSigningShareMetadata(completion: @escaping (Result<[SigningSharePair]>) -> Void) throws {
-    try self.requests.get(
-      path: "/api/v1/clients/me/signing-share-pairs",
-      headers: [
-        "Authorization": "Bearer \(self.apiKey)",
-      ],
-      requestType: HttpRequestType.CustomRequest
-    ) { (result: Result<[SigningSharePair]>) in
-      completion(result)
-
-      self.track(event: MetricsEvents.getSigningShareMetadata.rawValue, properties: ["path": "/api/v1/clients/me/signing-share-pairs"])
+  @available(*, deprecated, renamed: "getSharePairs", message: "Please use the async/await implementation of getSharePairs().")
+  public func getSigningShareMetadata(completion: @escaping (Result<[FetchedSharePair]>) -> Void) throws {
+    Task {
+      do {
+        let response = try await getSharePairs(.signing, walletId: "")
+        completion(Result(data: response))
+      } catch {
+        completion(Result(error: error))
+      }
     }
   }
 

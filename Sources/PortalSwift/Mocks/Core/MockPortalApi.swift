@@ -11,33 +11,6 @@ public class MockPortalApi: PortalApi {
   public var dapps: [Dapp]?
   public var networks: [ContractNetwork]?
 
-  override public func getClient(completion: @escaping (Result<Client>) -> Void) {
-    // Make an instance of Client.
-    let client = Client(
-      id: "fakeClientID",
-      address: mockAddress,
-      custodian: Custodian(
-        id: "fakeCustodianID",
-        name: "name"
-      )
-    )
-
-    // Call the completion handler.
-    completion(Result(data: client))
-  }
-
-  override public func getEnabledDapps(completion: @escaping (Result<[Dapp]>) -> Void) {
-    if let dapps {
-      completion(Result(data: dapps))
-    }
-  }
-
-  override public func getSupportedNetworks(completion: @escaping (Result<[ContractNetwork]>) -> Void) {
-    if let networks {
-      completion(Result(data: networks))
-    }
-  }
-
   // Mocking the storedClientSigningShare function
   override public func storedClientSigningShare(
     signingSharePairId _: String,
@@ -80,13 +53,17 @@ public class MockPortalApi: PortalApi {
     completion(mockResponse)
   }
 
-  override public func identify(traits _: [String: Any] = [:], completion: @escaping (Result<MetricsResponse>) -> Void) throws {
+  override public func identify(traits _: [String: String] = [:], completion: ((Result<MetricsResponse>) -> Void)? = nil) throws {
     let mockResponse = Result(data: MetricsResponse(status: true))
+
+    guard let completion else {
+      return
+    }
 
     completion(mockResponse)
   }
 
-  override public func track(event _: String, properties _: [String: Any], completion: ((Result<MetricsResponse>) -> Void)? = nil) {
+  override public func track(event _: String, properties _: [String: String], completion: ((Result<MetricsResponse>) -> Void)? = nil) {
     let mockResponse = Result(data: MetricsResponse(status: true))
     guard let completion else {
       return
@@ -95,3 +72,5 @@ public class MockPortalApi: PortalApi {
     completion(mockResponse)
   }
 }
+
+public let mockApi = MockPortalApi(apiKey: mockApiKey, provider: mockProvider)
