@@ -111,7 +111,7 @@ public class PortalKeychain {
     return share.share
   }
 
-  private func getShares() async throws -> PortalKeychainClientShares {
+  public func getShares() async throws -> PortalKeychainClientShares {
     guard let clientId = await client?.id else {
       throw KeychainError.clientNotFound
     }

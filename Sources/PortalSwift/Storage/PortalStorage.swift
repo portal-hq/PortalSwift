@@ -39,7 +39,9 @@ open class Storage {
 }
 
 public protocol PortalStorage {
+  func decrypt(_ value: String) async throws -> String
   func delete() async throws -> Bool
+  func encrypt(_ value: String) async throws -> EncryptData
   func read() async throws -> String
   func validateOperations() async throws -> Bool
   func write(_ value: String) async throws -> Bool
