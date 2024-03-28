@@ -9,18 +9,50 @@ import Foundation
 
 /// The main interface for Portal to securely store the client's signing share.
 public class PortalKeychain {
+  public enum KeychainError: Error, Equatable {
+    case clientNotFound
+    case clientIdNotSetYet
+    case itemNotFound(item: String)
+    case itemAlreadyExists(item: String)
+    case keychainUnavailableOrNoPasscode(status: OSStatus)
+    case noAddressForNamespace(_ namespace: PortalNamespace)
+    case noWalletForNamespace(_ namespace: PortalNamespace)
+    case noWalletsFound
+    case shareNotFoundForCurve(_ curve: PortalCurve)
+    case unableToEncodeKeychainData
+    case unexpectedItemData(item: String)
+    case unhandledError(status: OSStatus)
+    case unsupportedNamespace(_ chainId: String)
+  }
+
+  public var api: PortalApi? {
+    get { return self._api }
+    set(api) {
+      self._api = api
+
+      //  Load the metadata as soon as the api is set
+      if let api = _api {
+        Task {
+          do {
+            try await self.loadMetadata()
+          } catch {}
+        }
+      }
+    }
+  }
+
   public var clientId: String?
 
   let deprecatedAddressKey = "PortalMpc.Address"
   let deprecatedShareKey = "PortalMpc.DkgResult"
 
+  private var _api: PortalApi?
   private var client: ClientResponse? {
     get async {
-      await self.api.client
+      await self.api?.client
     }
   }
 
-  private let api: PortalApi
   private let decoder = JSONDecoder()
   private let encoder = JSONEncoder()
   private var metadata: PortalKeychainMetadata?
@@ -28,15 +60,7 @@ public class PortalKeychain {
   private let sharesKey = ".shares"
 
   /// Creates an instance of PortalKeychain.
-  init(api: PortalApi) {
-    self.api = api
-
-    Task {
-      do {
-        try await self.loadMetadata()
-      } catch {}
-    }
-  }
+  init() {}
 
   /*******************************************
    * Public functions
@@ -464,20 +488,4 @@ public class PortalKeychain {
 
     return self.clientId!
   }
-}
-
-public enum KeychainError: Error, Equatable {
-  case clientNotFound
-  case clientIdNotSetYet
-  case itemNotFound(item: String)
-  case itemAlreadyExists(item: String)
-  case keychainUnavailableOrNoPasscode(status: OSStatus)
-  case noAddressForNamespace(_ namespace: PortalNamespace)
-  case noWalletForNamespace(_ namespace: PortalNamespace)
-  case noWalletsFound
-  case shareNotFoundForCurve(_ curve: PortalCurve)
-  case unableToEncodeKeychainData
-  case unexpectedItemData(item: String)
-  case unhandledError(status: OSStatus)
-  case unsupportedNamespace(_ chainId: String)
 }

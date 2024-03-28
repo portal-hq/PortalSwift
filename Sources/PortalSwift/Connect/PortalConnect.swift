@@ -270,7 +270,7 @@ public class PortalConnect: EventBus {
   }
 
   func handleConnectError(data: ConnectError) {
-    var errorData = ErrorData(id: "0", topic: self.topic ?? "0", params: data)
+    let errorData = ErrorData(id: "0", topic: self.topic ?? "0", params: data)
     emit(event: Events.ConnectError.rawValue, data: errorData)
   }
 
