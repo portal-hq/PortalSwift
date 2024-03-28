@@ -555,7 +555,7 @@
 		};
 		607FACF01AFB9204008FA782 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = ECD3F1A686F3F9C18B3D7041 /* Pods-Cocoapods Example.debug.xcconfig */;
+			baseConfigurationReference = 429213102B51C4D8005B80B6 /* Secrets.xcconfig */;
 			buildSettings = {
 				"ARCHS[sdk=iphonesimulator*]" = "$(ARCHS_STANDARD)";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -580,7 +580,7 @@
 		};
 		607FACF11AFB9204008FA782 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 87EB59B6C56C171640CEC112 /* Pods-Cocoapods Example.release.xcconfig */;
+			baseConfigurationReference = 429213102B51C4D8005B80B6 /* Secrets.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "Cocoapods Example.entitlements";
@@ -605,7 +605,7 @@
 		};
 		607FACF31AFB9204008FA782 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = D91C633EC4117296F79F91D7 /* Pods-Cocoapods E2E Tests.debug.xcconfig */;
+			baseConfigurationReference = 429213102B51C4D8005B80B6 /* Secrets.xcconfig */;
 			buildSettings = {
 				DEVELOPMENT_TEAM = WTQ4Q66FY6;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -634,7 +634,7 @@
 		};
 		607FACF41AFB9204008FA782 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = EA379B97B96DEADB79CF7A5A /* Pods-Cocoapods E2E Tests.release.xcconfig */;
+			baseConfigurationReference = 429213102B51C4D8005B80B6 /* Secrets.xcconfig */;
 			buildSettings = {
 				DEVELOPMENT_TEAM = WTQ4Q66FY6;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;

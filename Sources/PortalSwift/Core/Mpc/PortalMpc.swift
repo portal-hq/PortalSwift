@@ -19,13 +19,6 @@ public class PortalMpc {
     }
   }
 
-  private let mobile: Mobile
-  private let api: PortalApi
-  private let apiKey: String
-  private let host: String
-  private let apiHost: String
-  private let isSimulator: Bool
-  private let keychain: PortalKeychain
   private var signingShare: String? {
     do {
       return try self.keychain.getSigningShare()
@@ -34,9 +27,18 @@ public class PortalMpc {
     }
   }
 
+  private let api: PortalApi
+  private let apiHost: String
+  private let apiKey: String
+  private let decoder = JSONDecoder()
+  private let encoder = JSONEncoder()
+  private let featureFlags: FeatureFlags?
+  private let host: String
+  private let isSimulator: Bool
+  private let keychain: PortalKeychain
+  private let mobile: Mobile
   private let storage: BackupOptions
   private let version: String
-  private let featureFlags: FeatureFlags?
 
   private let rsaHeader = "-----BEGIN RSA KEY-----\n"
   private let rsaFooter = "\n-----END RSA KEY-----"
@@ -82,10 +84,198 @@ public class PortalMpc {
     self.mobile.MobileGetVersion()
   }
 
+  /*******************************************
+   * Public functions
+   *******************************************/
+
   /// Creates a backup share, encrypts it, and stores the private key in cloud storage.
   /// - Parameters:
   ///   - method: Either gdrive or icloud.
   ///   - completion: The callback which includes the cipherText of the backed up share.
+  public func backup(
+    _ method: BackupMethods,
+    withProgressCallback: ((MpcStatus) -> Void)? = nil
+  ) async throws -> String {
+    if self.version != "v6" {
+      throw MpcError.backupNoLongerSupported("[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = \"v6\"`.")
+    }
+
+    guard !self.isWalletModificationInProgress else {
+      throw MpcError.walletModificationAlreadyInProgress
+    }
+
+    self.isWalletModificationInProgress = true
+
+    do {
+      // Obtain the signing share.
+      let shares = try await keychain.getShares()
+      withProgressCallback?(MpcStatus(status: .readingShare, done: false))
+
+      // Derive the storage and throw an error if none was provided.
+      guard let storage = self.storage[method.rawValue] as? PortalStorage else {
+        throw MpcError.unsupportedStorageMethod
+      }
+      guard try await storage.validateOperations() else {
+        throw MpcError.unexpectedErrorOnBackup("Could not validate operations.")
+      }
+
+      // Generate both backup shares in parallel
+      let generateResponse = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<PortalMpcGenerateResponse, Error>) in
+        Task {
+          var generateResponse: PortalMpcGenerateResponse = [:]
+
+          // Run both backups in parallel
+          if let ed25519SigningShare = shares[PortalCurve.ED25519.rawValue] {
+            do {
+              async let mpcShare = try getBackupShare(.ED25519, withMethod: method, andSigningShare: ed25519SigningShare.share)
+
+              withProgressCallback?(MpcStatus(status: .parsingShare, done: false))
+              let shareData = try encoder.encode(await mpcShare)
+              guard let shareString = String(data: shareData, encoding: .utf8) else {
+                throw MpcError.unexpectedErrorOnBackup("Unable to stringify ED25519 share.")
+              }
+
+              generateResponse["ED25519"] = try await PortalMpcGeneratedShare(
+                id: mpcShare.backupSharePairId ?? "",
+                share: shareString
+              )
+            } catch {
+              continuation.resume(throwing: error)
+              return
+            }
+          }
+          if let secp256k1SigningShare = shares[PortalCurve.SECP256K1.rawValue] {
+            do {
+              async let mpcShare = try getBackupShare(.SECP256K1, withMethod: method, andSigningShare: secp256k1SigningShare.share)
+
+              withProgressCallback?(MpcStatus(status: .parsingShare, done: false))
+              let shareData = try encoder.encode(await mpcShare)
+              guard let shareString = String(data: shareData, encoding: .utf8) else {
+                throw MpcError.unexpectedErrorOnBackup("Unable to stringify SECP256K1 share.")
+              }
+
+              generateResponse["SECP256K1"] = try await PortalMpcGeneratedShare(
+                id: mpcShare.backupSharePairId ?? "",
+                share: shareString
+              )
+            } catch {
+              continuation.resume(throwing: error)
+            }
+          }
+
+          continuation.resume(returning: generateResponse)
+        }
+      }
+
+      let responseData = try encoder.encode(generateResponse)
+      guard let responseString = String(data: responseData, encoding: .utf8) else {
+        throw MpcError.unexpectedErrorOnBackup("Unable to stringify into GenerateResponse")
+      }
+
+      withProgressCallback?(MpcStatus(status: .encryptingShare, done: false))
+      let encryptResult = try await storage.encrypt(responseString)
+
+      withProgressCallback?(MpcStatus(status: .storingShare, done: false))
+      let success = try await storage.write(encryptResult.key)
+      if !success {
+        throw MpcError.unexpectedErrorOnBackup("Unable to write encryption key.")
+      }
+
+      withProgressCallback?(MpcStatus(status: .done, done: true))
+      self.isWalletModificationInProgress = false
+      return encryptResult.cipherText
+    } catch {
+      self.isWalletModificationInProgress = false
+      throw error
+    }
+  }
+
+  private func generate(withProgressCallback: ((MpcStatus) -> Void)? = nil) async throws {
+    if self.version != "v6" {
+      throw MpcError.backupNoLongerSupported("[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = \"v6\"`.")
+    }
+
+    guard !self.isWalletModificationInProgress else {
+      throw MpcError.walletModificationAlreadyInProgress
+    }
+
+    self.isWalletModificationInProgress = true
+
+    // Generate both backup shares in parallel
+    let generateResponse = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<PortalMpcGenerateResponse, Error>) in
+      Task {
+        var generateResponse: PortalMpcGenerateResponse = [:]
+
+        async let ed2551MmpcShare = try getSigningShare(.ED25519, withProgressCallback: withProgressCallback)
+        async let secp256K1Share = try getSigningShare(.SECP256K1, withProgressCallback: withProgressCallback)
+
+        let ed25519ShareData = try encoder.encode(await ed2551MmpcShare)
+        guard let ed25519ShareString = String(data: ed25519ShareData, encoding: .utf8) else {
+          throw MpcError.unexpectedErrorOnBackup("Unable to stringify ED25519 share.")
+        }
+
+        generateResponse["ED25519"] = try await PortalMpcGeneratedShare(
+          id: mpcShare.backupSharePairId ?? "",
+          share: shareString
+        )
+
+        continuation.resume(returning: generateResponse)
+      }
+    }
+  }
+
+  /*******************************************
+   * Private functions
+   *******************************************/
+
+  private func getBackupShare(
+    _: PortalCurve,
+    withMethod _: BackupMethods,
+    andSigningShare: String,
+    progress: ((MpcStatus) -> Void)? = nil
+  ) async throws -> MpcShare {
+    // Call the MPC service to generate a backup share.
+    progress?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
+
+    let mpcShare = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<MpcShare, Error>) in
+      do {
+        // Stringify the MPC metadata.
+        let mpcMetadataString = self.mpcMetadata.jsonString() ?? ""
+        let response = self.mobile.MobileBackup(self.apiKey, self.host, andSigningShare, self.apiHost, mpcMetadataString)
+
+        // Parse the backup share.
+        let jsonData = response.data(using: .utf8)!
+        let rotateResult: RotateResult = try JSONDecoder().decode(RotateResult.self, from: jsonData)
+
+        // Throw if there is an error getting the backup share.
+        guard rotateResult.error.code == 0 else {
+          continuation.resume(throwing: PortalMpcError(rotateResult.error))
+          return
+        }
+
+        // Attach the backup share to the signing share JSON.
+        let backupShare = rotateResult.data!.dkgResult
+
+        continuation.resume(returning: backupShare)
+      } catch {
+        continuation.resume(throwing: error)
+      }
+    }
+
+    return mpcShare
+  }
+
+  private func getSigningShare(_: PortalCurve, withProgressCallback _: ((MpcStatus) -> Void)? = nil) async throws -> MpcShare {}
+
+  /*******************************************
+   * Deprecated functions
+   *******************************************/
+
+  /// Creates a backup share, encrypts it, and stores the private key in cloud storage.
+  /// - Parameters:
+  ///   - method: Either gdrive or icloud.
+  ///   - completion: The callback which includes the cipherText of the backed up share.
+  @available(*, deprecated, renamed: "backup", message: "Please use the async/await implementation of backup().")
   public func backup(
     method: BackupMethods.RawValue,
     backupConfigs: BackupConfigs? = nil,
@@ -93,7 +283,7 @@ public class PortalMpc {
     progress: ((MpcStatus) -> Void)? = nil
   ) {
     if self.version != "v6" {
-      return completion(Result(error: MpcError.backupNoLongerSupported(message: "[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = v6`.")))
+      return completion(Result(error: MpcError.backupNoLongerSupported("[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = v6`.")))
     }
 
     guard !self.isWalletModificationInProgress else {
@@ -199,7 +389,7 @@ public class PortalMpc {
       }
     } catch {
       self.isWalletModificationInProgress = false
-      return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: "Backup failed")))
+      return completion(Result(error: MpcError.unexpectedErrorOnBackup("Backup failed")))
     }
   }
 
@@ -229,11 +419,12 @@ public class PortalMpc {
 
   /// Generates a MPC wallet and signing share for a client.
   /// - Returns: The address of the newly created MPC wallet.
+  @available(*, deprecated, renamed: "backup", message: "Please use the async/await implementation of generate().")
   public func generate(completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)? = nil) {
     DispatchQueue.global(qos: .background).async { [self] in
       if self.version != "v6" {
         let result = Result<String>(error: MpcError.generateNoLongerSupported(
-          message: "[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = v6`."
+          "[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = v6`."
         ))
         completion(result)
       }
@@ -347,6 +538,7 @@ public class PortalMpc {
   ///    - cipherText: the cipherText of the client's backup share
   ///    - method: The specific backup storage option.
   ///    - orgShare: the stringified version of the organization's backup share
+  @available(*, deprecated, renamed: "ejectPrivateKey", message: "Please use the async/await implementation of ejectPrivateKey().")
   public func ejectPrivateKey(
     clientBackupCiphertext: String,
     method: BackupMethods.RawValue,
@@ -355,7 +547,7 @@ public class PortalMpc {
     completion: @escaping (Result<String>) -> Void
   ) {
     if self.version != "v6" {
-      completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v6`.")))
+      completion(Result(error: MpcError.recoverNoLongerSupported("[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v6`.")))
     }
 
     self.getBackupShare(cipherText: clientBackupCiphertext, method: method) { (result: Result<String>) in
@@ -407,6 +599,7 @@ public class PortalMpc {
   ///   - cipherText: the cipherText of the backup share (should be passed in from the custodian).
   ///   - method: The specific backup storage option.
   ///   - completion: The callback which includes the wallet's address.
+  @available(*, deprecated, renamed: "recover", message: "Please use the async/await implementation of recover().")
   public func recover(
     cipherText: String,
     method: BackupMethods.RawValue,
@@ -415,7 +608,7 @@ public class PortalMpc {
     progress: ((MpcStatus) -> Void)? = nil
   ) {
     if self.version != "v6" {
-      return completion(Result(error: MpcError.recoverNoLongerSupported(message: "[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v6`.")))
+      return completion(Result(error: MpcError.recoverNoLongerSupported("[PortalMpc] Recover is no longer supported for this version of MPC. Please use `version = v6`.")))
     }
 
     guard !self.isWalletModificationInProgress else {
@@ -571,6 +764,7 @@ public class PortalMpc {
   /// - Parameter
   ///   - mpcShare: The share to encrypt.
   /// - Returns: The cipherText and the private key.
+  @available(*, deprecated, renamed: "storage.encrypt", message: "Please use storage.encrypt() to encrypt shares.")
   private func encryptShare(
     mpcShare: MpcShare,
     completion: (Result<EncryptData>) -> Void,
@@ -599,6 +793,7 @@ public class PortalMpc {
   /// - Parameter
   ///   - mpcShare: The share to encrypt.
   /// - Returns: The cipherText and the private key.
+  @available(*, deprecated, renamed: "storage.encrypt", message: "Please use storage.encrypt() to encrypt shares.")
   private func encryptShareWithPassword(
     mpcShare: MpcShare,
     password: String,
@@ -609,12 +804,12 @@ public class PortalMpc {
       progress?(MpcStatus(status: MpcStatuses.encryptingShare, done: false))
       let mpcShareData = try JSONEncoder().encode(mpcShare)
       guard let mpcShareString = String(data: mpcShareData, encoding: .utf8) else {
-        throw MpcError.unexpectedErrorOnEncrypt(message: "Failed to convert mpc share data to string")
+        throw MpcError.unexpectedErrorOnEncrypt("Failed to convert mpc share data to string")
       }
 
       let result = self.mobile.MobileEncryptWithPassword(data: mpcShareString, password: password)
       guard let jsonResult = result.data(using: .utf8) else {
-        throw MpcError.unexpectedErrorOnEncrypt(message: "Failed to convert encrypted string to data")
+        throw MpcError.unexpectedErrorOnEncrypt("Failed to convert encrypted string to data")
       }
       let encryptResult: EncryptResultWithPassword = try JSONDecoder().decode(EncryptResultWithPassword.self, from: jsonResult)
 
@@ -680,10 +875,11 @@ public class PortalMpc {
       }
     } catch {
       print("Backup Failed: ", error)
-      return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: "Backup failed")))
+      return completion(Result(error: MpcError.unexpectedErrorOnBackup("Backup failed")))
     }
   }
 
+  @available(*, deprecated, renamed: "removed", message: "Please use storage.encrypt() to encrypt shares.")
   private func handleStorageWriteCompletion(
     result: Result<Bool>,
     encryptedData: EncryptData,
@@ -708,10 +904,11 @@ public class PortalMpc {
       }
     } catch {
       print("Backup Failed: ", error)
-      return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: "Backup failed")))
+      return completion(Result(error: MpcError.unexpectedErrorOnBackup("Backup failed")))
     }
   }
 
+  @available(*, deprecated, renamed: "removed", message: "This functionality is no longer supported.")
   private func handleEncryptedShareWithPasswordCompletion(
     encryptedResult: Result<EncryptDataWithPassword>,
     storage _: Storage,
@@ -734,14 +931,14 @@ public class PortalMpc {
           return completion(Result(error: error))
         }
         guard let cipherText = encryptedResult.data?.cipherText else {
-          return completion(Result(error: MpcError.unexpectedErrorOnEncrypt(message: "Unknown Error")))
+          return completion(Result(error: MpcError.unexpectedErrorOnEncrypt("Unknown Error")))
         }
         // Return the cipherText.
         return completion(Result(data: cipherText))
       }
     } catch {
       print("Backup Failed: ", error)
-      return completion(Result(error: MpcError.unexpectedErrorOnBackup(message: "Backup failed")))
+      return completion(Result(error: MpcError.unexpectedErrorOnBackup("Backup failed")))
     }
   }
 
@@ -761,7 +958,7 @@ public class PortalMpc {
     progress?(MpcStatus(status: MpcStatuses.storingShare, done: false))
 
     guard let encryptedData = encryptedResult.data else {
-      return completion(Result(error: MpcError.unexpectedErrorOnEncrypt(message: "Unknown Error")))
+      return completion(Result(error: MpcError.unexpectedErrorOnEncrypt("Unknown Error")))
     }
 
     storage.write(privateKey: encryptedData.key) { (result: Result<Bool>) in
@@ -769,6 +966,7 @@ public class PortalMpc {
     }
   }
 
+  @available(*, deprecated, renamed: "executeRecovery", message: "Please use the async/await implementation of executeRecovery().")
   private func executeRecovery(
     storage _: Storage,
     method: BackupMethods.RawValue,
@@ -809,6 +1007,7 @@ public class PortalMpc {
   ///   - cipherText: The cipherText of the backup share.
   ///   - method: The storage method.
   ///   - completion: The completion handler that includes the backup share string.
+  @available(*, deprecated, renamed: "getBackupShare", message: "Please use the async/await implementation of getBackupShare().")
   private func getBackupShare(
     cipherText: String,
     method: BackupMethods.RawValue,
@@ -860,6 +1059,7 @@ public class PortalMpc {
   /// - Parameter
   ///   - clientBackupShare: The signing share as a string.
   /// - Returns: The backup share.
+  @available(*, deprecated, renamed: "recoverBackup", message: "Please use the async/await implementation of recoverBackup().")
   private func recoverBackup(
     clientBackupShare: String,
     backupMethod: BackupMethods.RawValue,
@@ -896,6 +1096,7 @@ public class PortalMpc {
   /// - Parameter
   ///   - backupShare: The backup share.
   /// - Returns: The new signing share.
+  @available(*, deprecated, renamed: "recoverSigning", message: "Please use the async/await implementation of recoverSigning().")
   private func recoverSigning(
     backupShare: String,
     completion: @escaping (Result<MpcShare>) -> Void,
@@ -918,7 +1119,7 @@ public class PortalMpc {
       }
 
       if rotateResult.data == nil {
-        return completion(Result(error: MpcError.signingRecoveryError(message: "Could not read recovery data")))
+        return completion(Result(error: MpcError.signingRecoveryError("Could not read recovery data")))
       }
 
       // Store the signing share in the keychain.
@@ -991,157 +1192,6 @@ public class PortalMpc {
 
     return shareJson
   }
-
-  private func formatBackupMethod(backupMethod: BackupMethods.RawValue) -> String {
-    switch backupMethod {
-    case BackupMethods.GoogleDrive.rawValue:
-      return "GDRIVE"
-    case BackupMethods.iCloud.rawValue:
-      return "ICLOUD"
-    case BackupMethods.Password.rawValue:
-      return "PASSWORD"
-    default:
-      return "CUSTOM"
-    }
-  }
-}
-
-// DATA TYPES
-
-/// A MPC share that includes a variable number of fields, depending on the MPC version being used
-/// GG18 shares will only contain: bks, pubkey, and share
-/// CGGMP shares will contain all fields except: pubkey.
-public struct MpcShare: Codable {
-  public var allY: PartialPublicKey?
-  public var backupSharePairId: String?
-  public var bks: Berkhoffs?
-  public var clientId: String
-  public var p: String
-  public var partialPubkey: PartialPublicKey?
-  public var pederson: Pedersons?
-  public var pubkey: PublicKey?
-  public var q: String
-  public var share: String
-  public var signingSharePairId: String?
-  public var ssid: String
-}
-
-/// In the bks dictionary for an MPC share, Berkhoff is the value.
-public struct Berkhoff: Codable {
-  public var X: String
-  public var Rank: Int
-}
-
-/// A partial public key for client and server (x, y)
-public struct PartialPublicKey: Codable {
-  public var client: PublicKey?
-  public var server: PublicKey?
-}
-
-/// A berhkoff coefficient mapping for client and server (x, rank)
-public struct Berkhoffs: Codable {
-  public var client: Berkhoff?
-  public var server: Berkhoff?
-}
-
-public struct Pederson: Codable {
-  public var n: String?
-  public var s: String?
-  public var t: String?
-}
-
-public struct Pedersons: Codable {
-  public var client: Pederson?
-  public var server: Pederson?
-}
-
-/// A public key's coordinates (x, y).
-public struct PublicKey: Codable {
-  public var X: String?
-  public var Y: String?
-}
-
-private struct DecryptResult: Codable {
-  public var data: DecryptData?
-  public var error: PortalError
-}
-
-private struct DecryptData: Codable {
-  public var plaintext: String
-}
-
-/// The response from encrypting.
-private struct EncryptDataWithPassword: Codable {
-  public var cipherText: String
-}
-
-private struct EncryptResultWithPassword: Codable {
-  public var data: EncryptDataWithPassword?
-  public var error: PortalError
-}
-
-/// The response from encrypting.
-private struct EncryptData: Codable {
-  public var key: String
-  public var cipherText: String
-}
-
-private struct EncryptResult: Codable {
-  public var data: EncryptData?
-  public var error: PortalError
-}
-
-/// The response from fetching the client.
-public struct ClientResult: Codable {
-  public var data: Client?
-  public var error: PortalError
-}
-
-/// The response from fetching the client.
-public struct EjectResult: Codable {
-  public var privateKey: String
-  public var error: PortalError
-}
-
-/// The data for GenerateResult.
-public struct GenerateData: Codable {
-  public var address: String
-  public var dkgResult: MpcShare?
-}
-
-/// The response from generating.
-private struct GenerateResult: Codable {
-  public var data: GenerateData?
-  public var error: PortalError
-}
-
-/// The data for RotateResult.
-public struct RotateData: Codable {
-  public var address: String
-  public var dkgResult: MpcShare
-}
-
-/// The response from rotating.
-private struct RotateResult: Codable {
-  public var data: RotateData?
-  public var error: PortalError
-}
-
-/// The data for SignResult.
-public struct SignData: Codable {
-  public var R: String
-  public var S: String
-}
-
-/// The response from signing.
-public struct SignResult: Codable {
-  public var data: String?
-  public var error: PortalError
-}
-
-public struct MpcStatus {
-  public var status: MpcStatuses
-  public var done: Bool
 }
 
 public enum MpcStatuses: String {
@@ -1158,26 +1208,27 @@ public enum MpcStatuses: String {
 
 /// A list of errors MPC can throw.
 public enum MpcError: Error {
-  case addressNotFound(message: String)
-  case backupNoLongerSupported(message: String)
-  case failedToEncryptClientBackupShare(message: String)
+  case addressNotFound(_ message: String)
+  case backupNoLongerSupported(_ message: String)
+  case failedToEncryptClientBackupShare(_ message: String)
   case failedToGetBackupFromStorage
-  case failedToRecoverBackup(message: String)
-  case failedToStoreClientBackupShareKey(message: String)
-  case generateNoLongerSupported(message: String)
+  case failedToRecoverBackup(_ message: String)
+  case failedToStoreClientBackupShareKey(_ message: String)
+  case failedToValidateBackupMethod
+  case generateNoLongerSupported(_ message: String)
   case noSigningSharePresent
-  case recoverNoLongerSupported(message: String)
-  case signingRecoveryError(message: String)
+  case recoverNoLongerSupported(_ message: String)
+  case signingRecoveryError(_ message: String)
   case unableToAuthenticate
   case unableToDecodeShare
   case unableToRetrieveClient(String)
   case unableToWriteToKeychain
-  case unexpectedErrorOnBackup(message: String)
-  case unexpectedErrorOnDecrypt(message: String)
-  case unexpectedErrorOnEncrypt(message: String)
-  case unexpectedErrorOnGenerate(message: String)
-  case unexpectedErrorOnRecoverBackup(message: String)
-  case unexpectedErrorOnSign(message: String)
+  case unexpectedErrorOnBackup(_ message: String)
+  case unexpectedErrorOnDecrypt(_ message: String)
+  case unexpectedErrorOnEncrypt(_ message: String)
+  case unexpectedErrorOnGenerate(_ message: String)
+  case unexpectedErrorOnRecoverBackup(_ message: String)
+  case unexpectedErrorOnSign(_ message: String)
   case unsupportedStorageMethod
   case unwrappingAddress
   case walletModificationAlreadyInProgress

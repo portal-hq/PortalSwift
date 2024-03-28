@@ -11,13 +11,13 @@ import XCTest
 
 final class MpcSignerTests: XCTestCase {
   var keychain: PortalKeychain!
-  var signer: MpcSigner!
+  var signer: PortalMpcSigner!
   var provider: PortalProvider!
 
   override func setUpWithError() throws {
     self.keychain = MockPortalKeychain()
     self.keychain.setSigningShare(signingShare: mockSigningShare) { _ in }
-    self.signer = MpcSigner(apiKey: mockApiKey, keychain: self.keychain, binary: MockMobileWrapper())
+    self.signer = PortalMpcSigner(apiKey: mockApiKey, keychain: self.keychain, binary: MockMobileWrapper())
     self.provider = try PortalProvider(
       apiKey: mockApiKey,
       chainId: 11_155_111,
@@ -119,7 +119,7 @@ final class MpcSignerTests: XCTestCase {
 
   func testEthSignWithParamsError() throws {
     // Override the signer with a instance of the binary that returns an error object.
-    self.signer = MpcSigner(apiKey: mockApiKey, keychain: self.keychain, binary: MockMobileErrorWrapper())
+    self.signer = PortalMpcSigner(apiKey: mockApiKey, keychain: self.keychain, binary: MockMobileErrorWrapper())
 
     let payload = ETHRequestPayload(
       method: ETHRequestMethods.Sign.rawValue, params: [mockAddress, "0xdeadbeaf"]
@@ -130,7 +130,7 @@ final class MpcSignerTests: XCTestCase {
 
   func testEthSendTransactionWithGasError() throws {
     // Override the signer with a instance of the binary that returns an error object.
-    self.signer = MpcSigner(apiKey: mockApiKey, keychain: self.keychain, binary: MockMobileErrorWrapper())
+    self.signer = PortalMpcSigner(apiKey: mockApiKey, keychain: self.keychain, binary: MockMobileErrorWrapper())
 
     let fakeTransaction = ETHTransactionParam(
       from: mockAddress,
