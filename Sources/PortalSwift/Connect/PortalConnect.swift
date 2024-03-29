@@ -22,7 +22,7 @@ public class PortalConnect: EventBus {
     return self.provider.address
   }
 
-  public var chainId: Int {
+  public var chainId: Int? {
     return self.provider.chainId
   }
 
@@ -41,13 +41,13 @@ public class PortalConnect: EventBus {
   private let webSocketServer: String
   private let provider: PortalProvider
   private var topic: String?
-  private var gatewayConfig: [Int: String]
+  private var rpcConfig: [String: String]
 
   public init(
     _ apiKey: String,
-    _ chainId: Int,
+    _: Int,
     _ keychain: PortalKeychain,
-    _ gatewayConfig: [Int: String],
+    _ rpcConfig: [String: String],
     _ webSocketServer: String = "connect.portalhq.io",
     _ autoApprove: Bool = false,
     _ apiHost: String = "api.portalhq.io",
@@ -56,12 +56,12 @@ public class PortalConnect: EventBus {
   ) throws {
     self.apiKey = apiKey
     self.webSocketServer = webSocketServer
-    self.gatewayConfig = gatewayConfig
+    self.rpcConfig = rpcConfig
+
     // Initialize the PortalProvider
     self.provider = try PortalProvider(
       apiKey: apiKey,
-      chainId: chainId,
-      gatewayConfig: gatewayConfig,
+      rpcConfig: rpcConfig,
       keychain: keychain,
       autoApprove: autoApprove,
       apiHost: apiHost,
@@ -117,6 +117,37 @@ public class PortalConnect: EventBus {
     }
   }
 
+  @available(*, deprecated, renamed: "PortalConnect", message: "Please use the chain agnostic implementation of PortalConnect using a CAIP-2 based rpcConfig instead of the [Int: String] gateway config.")
+  public convenience init(
+    _ apiKey: String,
+    _ chainId: Int,
+    _ keychain: PortalKeychain,
+    _ gatewayConfig: [Int: String],
+    _ webSocketServer: String = "connect.portalhq.io",
+    _ autoApprove: Bool = false,
+    _ apiHost: String = "api.portalhq.io",
+    _ mpcHost: String = "mpc.portalhq.io",
+    _ version: String = "v6"
+  ) throws {
+    //  Handle the legacy use case of using Ethereum references as keys
+    let rpcConfig: [String: String] = Dictionary(gatewayConfig.map { key, value in
+      let newKey = "eip155:\(key)"
+      return (newKey, value)
+    }, uniquingKeysWith: { first, _ in first })
+
+    try self.init(
+      apiKey,
+      chainId,
+      keychain,
+      rpcConfig,
+      webSocketServer,
+      autoApprove,
+      apiHost,
+      mpcHost,
+      version
+    )
+  }
+
   deinit {
     client?.sendFinalMessageAndDisconnect()
   }
@@ -147,7 +178,7 @@ public class PortalConnect: EventBus {
   }
 
   public func addChainsToProposal(data: ConnectData) -> ConnectData {
-    let chainsToAdd = self.gatewayConfig.keys.map { "eip155:\($0)" }
+    let chainsToAdd = self.rpcConfig.keys
 
     // Convert existing chains and chainsToAdd to sets
     let existingChainsSet = Set<String>(data.params.params.requiredNamespaces.eip155?.chains ?? [])
@@ -198,7 +229,7 @@ public class PortalConnect: EventBus {
           id: connectData.id,
           topic: connectData.topic,
           address: self.address!,
-          chainId: String(self.chainId),
+          chainId: String(self.chainId ?? 11_155_111),
           params: connectData.params
         )
       )
@@ -227,7 +258,7 @@ public class PortalConnect: EventBus {
           id: connectData.id,
           topic: connectData.topic,
           address: self.address!,
-          chainId: String(self.chainId),
+          chainId: String(self.chainId ?? 11_155_111),
           params: connectData.params
         )
       )
@@ -303,7 +334,7 @@ public class PortalConnect: EventBus {
       }
     }
 
-    let newChainId = chainId ?? self.chainId // use the default chain when there is no chainId sent from Wallet Connect
+    let newChainId = chainId ?? self.chainId ?? 11_155_111 // use the default chain when there is no chainId sent from Wallet Connect
     self.handleProviderRequest(method: method, params: params, chainId: newChainId) { [weak self] result in
       guard let self = self else { return }
 
@@ -366,7 +397,7 @@ public class PortalConnect: EventBus {
       }
     }
 
-    let newChainId = chainId ?? self.chainId // use the default chain when there is no chainId sent from Wallet Connect
+    let newChainId = chainId ?? self.chainId ?? 11_155_111 // use the default chain when there is no chainId sent from Wallet Connect
     self.handleProviderRequest(method: method, params: params, chainId: newChainId) { [weak self] result in
       guard let self = self else { return }
 
@@ -428,7 +459,7 @@ public class PortalConnect: EventBus {
       }
     }
 
-    let newChainId = chainId ?? self.chainId // use the default chain when there is no chainId sent from Wallet Connect
+    let newChainId = chainId ?? self.chainId ?? 11_155_111 // use the default chain when there is no chainId sent from Wallet Connect
     self.handleProviderRequest(method: method, params: params, chainId: newChainId) { [weak self] result in
       guard let self = self else { return }
 
@@ -509,11 +540,18 @@ public class PortalConnect: EventBus {
   }
 
   private func handleProviderRequest(method: String, params: [Any], chainId: Int, completion: @escaping (Result<Any>) -> Void) {
-    self.provider.request(payload: ETHRequestPayload(method: method, params: params, chainId: chainId), connect: self) { result in
-      guard result.error == nil else {
-        return completion(Result(error: result.error!))
+    do {
+      let encodedParams = try params.map { param in
+        try AnyEncodable(param)
       }
-      completion(Result(data: result.data!))
+      self.provider.request(payload: ETHRequestPayload(method: method, params: encodedParams, chainId: chainId), connect: self) { result in
+        guard result.error == nil else {
+          return completion(Result(error: result.error!))
+        }
+        completion(Result(data: result.data!))
+      }
+    } catch {
+      completion(Result(error: error))
     }
   }
 }

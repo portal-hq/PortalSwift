@@ -13,12 +13,47 @@ public enum PasswordStorageError: Error {
 
 /// Responsible for CRUD actions for items in the specified storage.
 public class PasswordStorage: Storage, PortalStorage {
+  public var api: PortalApi?
+  public var password: String?
+
+  public func decrypt(_ value: String, withKey: String) async throws -> String {
+    let decryptedValue = try await PortalEncryption.decrypt(value, withPassword: withKey)
+
+    return decryptedValue
+  }
+
   public func delete() async throws -> Bool {
     return true
   }
 
+  public func encrypt(_ value: String) async throws -> EncryptData {
+    do {
+      guard let password = self.password else {
+        throw PasswordStorageError.passwordMissing("Please set the password before running backup using `portal.setPassword()`.")
+      }
+
+      let cipherText = try await PortalEncryption.encrypt(value, withPassword: password)
+
+      self.password = nil
+
+      return EncryptData(
+        key: password,
+        cipherText: cipherText
+      )
+    } catch {
+      self.password = nil
+      throw error
+    }
+  }
+
   public func read() async throws -> String {
-    return ""
+    guard let password = self.password else {
+      throw PasswordStorageError.passwordMissing("Please set the password before running recover.")
+    }
+
+    self.password = nil
+
+    return password
   }
 
   public func validateOperations() async throws -> Bool {

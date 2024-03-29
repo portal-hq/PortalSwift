@@ -190,7 +190,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
         event: "connect",
         data: ConnectRequestData(
           address: address,
-          chainId: connect.chainId,
+          chainId: connect.chainId ?? 11_155_111,
           uri: self.uri!
         )
       )

@@ -1,3 +1,8 @@
+public struct PortalMpcBackupResponse {
+  public let cipherText: String
+  public let shareIds: [String]
+}
+
 public typealias PortalMpcGenerateResponse = [String: PortalMpcGeneratedShare]
 
 public struct PortalMpcGeneratedShare: Codable {
@@ -114,8 +119,7 @@ struct GenerateResult: Codable {
 
 /// The data for RotateResult.
 public struct RotateData: Codable {
-  public var address: String
-  public var dkgResult: MpcShare
+  public var share: MpcShare
 }
 
 /// The response from rotating.

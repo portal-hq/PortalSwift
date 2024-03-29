@@ -16,6 +16,7 @@ public class PortalKeychain {
     case itemAlreadyExists(item: String)
     case keychainUnavailableOrNoPasscode(status: OSStatus)
     case noAddressForNamespace(_ namespace: PortalNamespace)
+    case noAddressesFound
     case noWalletForNamespace(_ namespace: PortalNamespace)
     case noWalletsFound
     case shareNotFoundForCurve(_ curve: PortalCurve)
@@ -26,7 +27,7 @@ public class PortalKeychain {
   }
 
   public var api: PortalApi? {
-    get { return self._api }
+    get { self._api }
     set(api) {
       self._api = api
 
@@ -42,51 +43,68 @@ public class PortalKeychain {
   }
 
   public var clientId: String?
+  public var legacyAddress: String?
+  public var metadata: PortalKeychainMetadata?
 
+  let basKey = "PortalMpc"
   let deprecatedAddressKey = "PortalMpc.Address"
   let deprecatedShareKey = "PortalMpc.DkgResult"
 
   private var _api: PortalApi?
   private var client: ClientResponse? {
-    get async {
-      await self.api?.client
+    get async throws {
+      return try await self.api?.client
     }
   }
 
   private let decoder = JSONDecoder()
   private let encoder = JSONEncoder()
-  private var metadata: PortalKeychainMetadata?
-  private let metadataKey = ".metadata"
-  private let sharesKey = ".shares"
+  private let logger = PortalLogger()
+  private let metadataKey = "metadata"
+  private let sharesKey = "shares"
 
-  /// Creates an instance of PortalKeychain.
-  init() {}
+  public init() {}
 
   /*******************************************
    * Public functions
    *******************************************/
 
-  public func getAddress(_ chainId: String) async throws -> String {
+  public func getAddress(_ chainId: String) async throws -> String? {
     let namespaceString = chainId.split(separator: ":").map(String.init)[0]
     guard let namespace = PortalNamespace(rawValue: namespaceString) else {
+      self.logger.error("PortalKeychain.getAddress() - Unsupported namespace: \(namespaceString)")
       throw KeychainError.unsupportedNamespace(chainId)
     }
 
     let metadata = try await getMetadata()
     guard let address = metadata.addresses?[namespace] else {
+      self.logger.error("PortalKeychain.getAddress() - No address found for namespace: \(namespaceString)")
       throw KeychainError.noAddressForNamespace(namespace)
     }
 
-    return address!
+    return address
+  }
+
+  public func getAddresses() async throws -> [PortalNamespace: String?] {
+    let metadata = try await getMetadata()
+    guard let addresses = metadata.addresses else {
+      self.logger.error("PortalKeychain.getAddresses() - No addresses found")
+      throw KeychainError.noAddressesFound
+    }
+
+    return addresses
   }
 
   private func getMetadata() async throws -> PortalKeychainClientMetadata {
-    guard let clientId = await client?.id else {
+    guard let client = try await client else {
+      self.logger.error("PortalKeychain.getMetadata() - Client not found")
       throw KeychainError.clientNotFound
     }
 
-    let value = try getItem("\(clientId).\(metadataKey)")
+    let clientId = client.id
+    let value = try getItem("\(basKey).\(clientId).\(metadataKey)")
     guard let data = value.data(using: .utf8) else {
+      self.logger.error("PortalKeychain.getMetadata() - Unable to encode keychain data")
       throw KeychainError.unableToEncodeKeychainData
     }
     let metadata = try decoder.decode(PortalKeychainClientMetadata.self, from: data)
@@ -97,14 +115,17 @@ public class PortalKeychain {
   public func getShare(_ chainId: String) async throws -> String {
     let namespaceString = chainId.split(separator: ":").map(String.init)[0]
     guard let namespace = PortalNamespace(rawValue: namespaceString) else {
+      self.logger.error("PortalKeychain.getShare() - Unsupported namespace from chainId: \(chainId)")
       throw KeychainError.unsupportedNamespace(chainId)
     }
     guard let curve = metadata?.namespaces[namespace] else {
+      self.logger.error("PortalKeychain.getShare() - Unsupported namespace from chainId: \(chainId)")
       throw KeychainError.unsupportedNamespace(chainId)
     }
 
     let shares = try await getShares()
     guard let share = shares[curve.rawValue] else {
+      self.logger.error("PortalKeychain.getShare() - No share found for curve: \(curve.rawValue)")
       throw KeychainError.shareNotFoundForCurve(curve)
     }
 
@@ -112,12 +133,15 @@ public class PortalKeychain {
   }
 
   public func getShares() async throws -> PortalKeychainClientShares {
-    guard let clientId = await client?.id else {
+    guard let client = try await client else {
+      self.logger.error("PortalKeychain.getShares() - Client not found")
       throw KeychainError.clientNotFound
     }
 
-    let value = try getItem("\(clientId).\(sharesKey)")
+    let clientId = client.id
+    let value = try getItem("\(basKey).\(clientId).\(sharesKey)")
     guard let data = value.data(using: .utf8) else {
+      self.logger.error("PortalKeychain.getShares() - Unable to encode keychain data")
       throw KeychainError.unableToEncodeKeychainData
     }
     let shares = try decoder.decode(PortalKeychainClientShares.self, from: data)
@@ -126,74 +150,94 @@ public class PortalKeychain {
   }
 
   public func loadMetadata() async throws {
-    if let client = await api.client {
-      // Load the curve map into memory
-      var metadata = PortalKeychainMetadata(
-        namespaces: [:]
-      )
-      if let eip155Curve = client.metadata.namespaces.eip155?.curve {
-        metadata.namespaces[.eip155] = eip155Curve
-      }
-      if let solanaCurve = client.metadata.namespaces.solana?.curve {
-        metadata.namespaces[.solana] = solanaCurve
-      }
-
-      // Build the client's wallet metadata
-      var wallets: [PortalCurve: PortalKeychainClientMetadataWallet] = [:]
-      for wallet in client.wallets {
-        wallets[wallet.curve] = PortalKeychainClientMetadataWallet(
-          id: wallet.id,
-          curve: wallet.curve,
-          publicKey: wallet.publicKey,
-          backupShares: wallet.backupSharePairs.map { share in
-            PortalKeychainClientMetadataWalletBackupShare(
-              backupMethod: share.backupMethod,
-              createdAt: share.createdAt,
-              id: share.id,
-              status: share.status
-            )
-          },
-          signingShares: wallet.signingSharePairs.map { share in
-            PortalKeychainClientMetadataWalletShare(
-              createdAt: share.createdAt,
-              id: share.id,
-              status: share.status
-            )
-          }
-        )
-      }
-
-      // Build the client's metadata
-      let clientMetadata = PortalKeychainClientMetadata(
-        id: client.id,
-        addresses: [
-          .eip155: client.metadata.namespaces.eip155?.address,
-          .solana: client.metadata.namespaces.solana?.address,
-        ],
-        custodian: client.custodian,
-        wallets: wallets
-      )
-
-      // Write the metadata to the keychain
-      try await self.setMetadata(clientMetadata)
+    self.logger.debug("PortalKeychain.loadMetadata() - Loading metadata...")
+    guard let client = try await self.client else {
+      throw KeychainError.clientNotFound
+    }
+    // Load the curve map into memory
+    var metadata = PortalKeychainMetadata(
+      namespaces: [:]
+    )
+    if let eip155Curve = client.metadata.namespaces.eip155?.curve {
+      metadata.namespaces[.eip155] = eip155Curve
+    }
+    if let solanaCurve = client.metadata.namespaces.solana?.curve {
+      metadata.namespaces[.solana] = solanaCurve
     }
 
-    throw KeychainError.clientNotFound
+    // Build the client's wallet metadata
+    var wallets: [PortalCurve: PortalKeychainClientMetadataWallet] = [:]
+    for wallet in client.wallets {
+      wallets[wallet.curve] = PortalKeychainClientMetadataWallet(
+        id: wallet.id,
+        curve: wallet.curve,
+        publicKey: wallet.publicKey,
+        backupShares: wallet.backupSharePairs.map { share in
+          PortalKeychainClientMetadataWalletBackupShare(
+            backupMethod: share.backupMethod,
+            createdAt: share.createdAt,
+            id: share.id,
+            status: share.status
+          )
+        },
+        signingShares: wallet.signingSharePairs.map { share in
+          PortalKeychainClientMetadataWalletShare(
+            createdAt: share.createdAt,
+            id: share.id,
+            status: share.status
+          )
+        }
+      )
+    }
+
+    // Build the client's metadata
+    let clientMetadata = PortalKeychainClientMetadata(
+      id: client.id,
+      addresses: [
+        .eip155: client.metadata.namespaces.eip155?.address,
+        .solana: client.metadata.namespaces.solana?.address,
+      ],
+      custodian: client.custodian,
+      wallets: wallets
+    )
+
+    // TODO: Remove this when we go fully async and chain agnostic
+    self.legacyAddress = client.metadata.namespaces.eip155?.address
+    self.clientId = client.id
+
+    // Write the metadata to the keychain
+    try await self.setMetadata(clientMetadata)
   }
 
   public func setMetadata(_ withData: PortalKeychainClientMetadata) async throws {
-    guard let clientId = await client?.id else {
+    guard let client = try await client else {
+      self.logger.error("PortalKeychain.setMetadata() - Client not found")
       throw KeychainError.clientNotFound
     }
+    let clientId = client.id
     let data = try encoder.encode(withData)
     guard let value = String(data: data, encoding: .utf8) else {
+      self.logger.error("PortalKeychain.setMetadata() - Unable to encode keychain data")
       throw KeychainError.unableToEncodeKeychainData
     }
 
-    try await self.setItem("\(clientId).\(self.metadataKey)", withValue: value)
+    try self.updateItem("\(self.basKey).\(clientId).\(self.metadataKey)", withValue: value)
   }
 
-  public func setShares(_: [String: PortalMpcGeneratedShare]) async throws {}
+  public func setShares(_ withData: [String: PortalMpcGeneratedShare]) async throws {
+    guard let client = try await client else {
+      self.logger.error("PortalKeychain.setShares() - Client not found")
+      throw KeychainError.clientNotFound
+    }
+    let clientId = client.id
+    let data = try encoder.encode(withData)
+    guard let value = String(data: data, encoding: .utf8) else {
+      self.logger.error("PortalKeychain.setShares() - Unable to encode keychain data.")
+      throw KeychainError.unableToEncodeKeychainData
+    }
+
+    try self.updateItem("\(self.basKey).\(clientId).\(self.sharesKey)", withValue: value)
+  }
 
   /*******************************************
    * Private functions
@@ -207,7 +251,10 @@ public class PortalKeychain {
     ]
 
     let status = SecItemDelete(query as CFDictionary)
-    guard status == errSecSuccess || status == errSecItemNotFound else { throw KeychainError.unhandledError(status: status) }
+    guard status == errSecSuccess || status == errSecItemNotFound else {
+      self.logger.error("PortalKeychain.updateItem() - Unhandled error: \(status)")
+      throw KeychainError.unhandledError(status: status)
+    }
   }
 
   private func getItem(_ item: String) throws -> String {
@@ -232,13 +279,14 @@ public class PortalKeychain {
     guard let itemData = keychainItem as? Data,
           let itemString = String(data: itemData, encoding: String.Encoding.utf8)
     else {
+      self.logger.error("PortalKeychain.getItem() - Unexpected item: \(item)")
       throw KeychainError.unexpectedItemData(item: item)
     }
 
     return itemString
   }
 
-  private func setItem(_ key: String, withValue: String) async throws {
+  private func setItem(_ key: String, withValue: String) throws {
     // Construct the query to set the keychain item.
     let query: [String: AnyObject] = [
       kSecAttrService as String: "PortalMpc.\(key)" as AnyObject,
@@ -257,39 +305,52 @@ public class PortalKeychain {
     }
 
     guard status != errSecNotAvailable else {
+      self.logger.error("PortalKeychain.updateItem() - Keychain unavailable: \(status)")
       throw KeychainError.keychainUnavailableOrNoPasscode(status: status)
     }
     guard status == errSecSuccess else {
+      self.logger.error("PortalKeychain.updateItem() - Unhandled error: \(status)")
       throw KeychainError.unhandledError(status: status)
     }
   }
 
   private func updateItem(_ key: String, withValue: String) throws {
-    // Construct the query to update the keychain item.
-    let query: [String: AnyObject] = [
-      kSecAttrService as String: "PortalMpc.\(key)" as AnyObject,
-      kSecAttrAccount as String: key as AnyObject,
-      kSecClass as String: kSecClassGenericPassword,
-    ]
+    do {
+      // Construct the query to update the keychain item.
+      let query: [String: AnyObject] = [
+        kSecAttrService as String: "PortalMpc.\(key)" as AnyObject,
+        kSecAttrAccount as String: key as AnyObject,
+        kSecClass as String: kSecClassGenericPassword,
+      ]
 
-    // Construct the attributes to update the keychain item.
-    let attributes: [String: AnyObject] = [
-      kSecAttrAccessible as String: kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly as AnyObject,
-      kSecValueData as String: withValue.data(using: String.Encoding.utf8) as AnyObject,
-    ]
+      // Construct the attributes to update the keychain item.
+      let attributes: [String: AnyObject] = [
+        kSecAttrAccessible as String: kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly as AnyObject,
+        kSecValueData as String: withValue.data(using: String.Encoding.utf8) as AnyObject,
+      ]
 
-    // Try to update the keychain item that matches the query.
-    let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+      // Try to update the keychain item that matches the query.
+      let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
 
-    // Throw if the status is not successful.
-    guard status != errSecItemNotFound else {
-      throw KeychainError.itemNotFound(item: key)
-    }
-    guard status != errSecNotAvailable else {
-      throw KeychainError.keychainUnavailableOrNoPasscode(status: status)
-    }
-    guard status == errSecSuccess else {
-      throw KeychainError.unhandledError(status: status)
+      // Throw if the status is not successful.
+      guard status != errSecItemNotFound else {
+        throw KeychainError.itemNotFound(item: key)
+      }
+      guard status != errSecNotAvailable else {
+        self.logger.error("PortalKeychain.updateItem() - Keychain unavailable: \(status)")
+        throw KeychainError.keychainUnavailableOrNoPasscode(status: status)
+      }
+      guard status == errSecSuccess else {
+        self.logger.error("PortalKeychain.updateItem() - Unhandled error: \(status)")
+        throw KeychainError.unhandledError(status: status)
+      }
+    } catch {
+      if case KeychainError.itemNotFound = error {
+        self.logger.debug("PortalKeychain.updateItem() - No existing item. Attempting to set item: \(key)")
+        try self.setItem(key, withValue: withValue)
+      } else {
+        throw error
+      }
     }
   }
 

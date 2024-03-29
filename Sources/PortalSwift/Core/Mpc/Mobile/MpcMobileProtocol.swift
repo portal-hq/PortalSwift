@@ -10,27 +10,47 @@ import Foundation
 public struct MpcMetadata: Codable {
   var backupMethod: BackupMethods.RawValue?
   var clientPlatform: String
+  var curve: PortalCurve?
   var isMultiBackupEnabled: Bool? = nil
   var mpcServerVersion: String
   var optimized: Bool
 }
 
 extension MpcMetadata {
-  func jsonString() -> String? {
+  func jsonString() throws -> String {
     let encoder = JSONEncoder()
-    if let jsonData = try? encoder.encode(self) {
-      return String(data: jsonData, encoding: .utf8)
+    let jsonData = try encoder.encode(self)
+
+    guard let jsonString = String(data: jsonData, encoding: .utf8) else {
+      throw MpcMetadataError.unableToEncodeJsonString
     }
-    return nil
+
+    return jsonString
   }
+}
+
+public enum MpcMetadataError: Error, Equatable {
+  case unableToEncodeJsonString
 }
 
 public protocol Mobile {
   func MobileGenerate(_ apiKey: String, _ host: String, _ apiHost: String, _ metadata: String) -> String
 
+  func MobileGenerateEd25519(_ apiKey: String, _ host: String, _ apiHost: String, _ metadata: String) -> String
+
+  func MobileGenerateSecp256k1(_ apiKey: String, _ host: String, _ apiHost: String, _ metadata: String) -> String
+
   func MobileBackup(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String
 
+  func MobileBackupEd25519(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String
+
+  func MobileBackupSecp256k1(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String
+
   func MobileRecoverSigning(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String
+
+  func MobileRecoverSigningEd25519(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String
+
+  func MobileRecoverSigningSecp256k1(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String
 
   func MobileRecoverBackup(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String
 

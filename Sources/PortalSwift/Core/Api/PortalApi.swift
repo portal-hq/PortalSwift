@@ -14,29 +14,24 @@ public class PortalApi {
   private var baseUrl: String
   private let decoder = JSONDecoder()
   private let logger = PortalLogger()
-  private var provider: PortalProvider
+  private var provider: PortalProvider?
   private var requests: HttpRequester
   private let featureFlags: FeatureFlags?
 
   private var address: String? {
-    self.provider.address
+    self.provider?.address
   }
 
-  private var chainId: Int {
-    self.provider.chainId
+  private var chainId: Int? {
+    self.provider?.chainId
   }
 
   public var client: ClientResponse? {
-    get async {
+    get async throws {
       if self._client == nil {
-        do {
-          self._client = try await self.getClient()
-        } catch {
-          self.logger.error("PortalApi.client - Error getting client: \(error.localizedDescription)")
-          return nil
-        }
+        self.logger.debug("PortalApi.client - Attempting to fetch...")
+        self._client = try await self.getClient()
       }
-
       return self._client
     }
   }
@@ -49,7 +44,7 @@ public class PortalApi {
   init(
     apiKey: String,
     apiHost: String = "api.portalhq.io",
-    provider: PortalProvider,
+    provider: PortalProvider? = nil,
     mockRequests: Bool = false,
     featureFlags: FeatureFlags? = nil
   ) {
@@ -105,16 +100,10 @@ public class PortalApi {
   /// Retrieve the client by API key.
   /// - Returns: ClientResponse
   public func getClient() async throws -> ClientResponse {
-    self.logger.debug("getClient URL: \(self.baseUrl)/api/v3/clients/me")
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me") {
       do {
         let data = try await PortalRequests.get(url, withBearerToken: self.apiKey)
-
-        self.logger.debug("Data: \(String(data: data, encoding: .utf8) ?? "")")
-
         let clientResponse = try decoder.decode(ClientResponse.self, from: data)
-
-        self.logger.debug("Client: \(clientResponse)")
 
         return clientResponse
       } catch {
@@ -247,7 +236,7 @@ public class PortalApi {
 
       return
     } catch {
-      self.logger.error("PortalApi.refreshClient() - Unable to refresh user: \(error.localizedDescription)")
+      self.logger.error("PortalApi.refreshClient() - Unable to refresh client: \(error.localizedDescription)")
       throw error
     }
   }
@@ -298,8 +287,8 @@ public class PortalApi {
     _ type: PortalSharePairType,
     status: SharePairUpdateStatus,
     sharePairIds: [String]
-  ) async throws -> ShareStatusUpdateResponse {
-    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/\(type)-share-pairs/") {
+  ) async throws {
+    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/\(type.rawValue)-share-pairs/") {
       do {
         let payload = ShareStatusUpdateRequest(
           backupSharePairIds: type == .backup ? sharePairIds : nil,
@@ -307,10 +296,9 @@ public class PortalApi {
           status: status
         )
 
-        let data = try await PortalRequests.patch(url, withBearerToken: self.apiKey, andPayload: payload)
-        let updateResponse = try decoder.decode(ShareStatusUpdateResponse.self, from: data)
+        _ = try await PortalRequests.patch(url, withBearerToken: self.apiKey, andPayload: payload)
 
-        return updateResponse
+        return
       } catch {
         self.logger.error("PortalApi.updateShareStatus() - Unable to update share status: \(error.localizedDescription)")
         throw error
@@ -360,7 +348,7 @@ public class PortalApi {
   public func getSources(swapsApiKey: String, completion: @escaping (Result<[String: String]>) -> Void) throws {
     Task {
       do {
-        let response = try await getSources(swapsApiKey, forChainId: "eip155:\(self.chainId)")
+        let response = try await getSources(swapsApiKey, forChainId: "eip155:\(self.chainId ?? 1)")
         completion(Result(data: response))
       } catch {
         completion(Result(error: error))
@@ -376,7 +364,7 @@ public class PortalApi {
   public func getNFTs(completion: @escaping (Result<[FetchedNFT]>) -> Void) throws {
     Task {
       do {
-        let response = try await getNFTs("eip155:\(self.chainId)")
+        let response = try await getNFTs("eip155:\(self.chainId ?? 1)")
         completion(Result(data: response))
       } catch {
         completion(Result(error: error))
@@ -402,7 +390,7 @@ public class PortalApi {
   ) throws {
     Task {
       do {
-        let response = try await getTransactions("eip155:\(chainId ?? self.chainId)", limit: limit, offset: offset, order: order)
+        let response = try await getTransactions("eip155:\(chainId ?? self.chainId ?? 1)", limit: limit, offset: offset, order: order)
         completion(Result(data: response))
       } catch {
         completion(Result(error: error))
@@ -419,7 +407,7 @@ public class PortalApi {
     completion: @escaping (Result<[Balance]>) -> Void
   ) throws {
     try self.requests.get(
-      path: "/api/v1/clients/me/balances?chainId=\(self.chainId)",
+      path: "/api/v1/clients/me/balances?chainId=\(self.chainId ?? 1)",
       headers: [
         "Authorization": "Bearer \(self.apiKey)",
       ],
@@ -449,7 +437,7 @@ public class PortalApi {
   ) throws {
     Task {
       do {
-        let response = try await simulateTransaction(transaction, withChainId: "eip155:\(self.chainId)")
+        let response = try await simulateTransaction(transaction, withChainId: "eip155:\(self.chainId ?? 1)")
         completion(Result(data: response))
       } catch {
         completion(Result(error: error))

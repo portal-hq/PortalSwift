@@ -74,7 +74,7 @@ public class GDriveStorage: Storage, PortalStorage {
     }
 
     if self.filename == nil || self.filename == "" {
-      guard let client = await api.client else {
+      guard let client = try await api.client else {
         throw GDriveStorageError.unableToGetClient
       }
 

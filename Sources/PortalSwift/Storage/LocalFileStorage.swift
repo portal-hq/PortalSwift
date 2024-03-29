@@ -16,6 +16,7 @@ public enum LocalFileStorageError: Error {
 }
 
 public class LocalFileStorage: Storage, PortalStorage {
+  public var api: PortalApi?
   var fileName: String = "PORTAL_BACKUP_SHARE"
 
   public init(fileName: String = "PORTAL_BACKUP_SHARE") {

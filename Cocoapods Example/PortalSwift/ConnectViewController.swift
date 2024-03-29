@@ -62,8 +62,10 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
       self.connect = try self.portal?.createPortalConnectInstance(webSocketServer: CONNECT_URL)
       self.connect2 = try self.portal?.createPortalConnectInstance(webSocketServer: CONNECT_URL)
 
-      if let keys = self.portal?.gatewayConfig.keys {
-        self.chains = Array(keys)
+      if let keys = self.portal?.rpcConfig.keys {
+        self.chains = Array(keys).map { key in
+          Int(key.split(separator: ":")[1]) ?? 1_111_511
+        }
       }
 
       self.app?.connect = self.connect

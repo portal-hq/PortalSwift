@@ -26,7 +26,7 @@ public struct PortalKeychainClientMetadataWalletShare: Codable {
   public let status: PortalSharePairStatus
 }
 
-typealias PortalKeychainClientShares = PortalMpcGenerateResponse
+public typealias PortalKeychainClientShares = PortalMpcGenerateResponse
 
 public struct PortalKeychainMetadata {
   public var namespaces: [PortalNamespace: PortalCurve]
