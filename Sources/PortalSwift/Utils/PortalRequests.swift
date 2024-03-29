@@ -13,7 +13,7 @@ public enum PortalRequests {
     request.addValue("application/json", forHTTPHeaderField: "Content-Type")
 
     // Send the request
-    let (data, response) = try await URLSession.shared.data(for: request)
+    let (data, response) = try await getURLSession().data(for: request)
 
     // Check the reponse status
     guard let httpResponse = response as? HTTPURLResponse else {
@@ -41,7 +41,7 @@ public enum PortalRequests {
     request.httpMethod = "GET"
 
     // Send the request
-    let (data, response) = try await URLSession.shared.data(for: request)
+    let (data, response) = try await getURLSession().data(for: request)
 
     // Check the reponse status
     guard let httpResponse = response as? HTTPURLResponse else {
@@ -72,7 +72,7 @@ public enum PortalRequests {
     request.httpBody = try JSONEncoder().encode(andPayload)
 
     // Send the request
-    let (data, response) = try await URLSession.shared.data(for: request)
+    let (data, response) = try await getURLSession().data(for: request)
 
     // Check the reponse status
     guard let httpResponse = response as? HTTPURLResponse else {
@@ -105,7 +105,7 @@ public enum PortalRequests {
     }
 
     // Send the request
-    let (data, response) = try await URLSession.shared.data(for: request)
+    let (data, response) = try await getURLSession().data(for: request)
 
     // Check the reponse status
     guard let httpResponse = response as? HTTPURLResponse else {
@@ -134,7 +134,7 @@ public enum PortalRequests {
     request.httpMethod = "POST"
     request.httpBody = andPayload.data(using: .utf8)
 
-    let (data, response) = try await URLSession.shared.data(for: request)
+    let (data, response) = try await getURLSession().data(for: request)
 
     // Check the reponse status
     guard let httpResponse = response as? HTTPURLResponse else {
@@ -156,6 +156,14 @@ public enum PortalRequests {
     } else {
       return PortalRequestsError.internalServerError("\(response.statusCode) - \(statusText)")
     }
+  }
+
+  private static func getURLSession() -> URLSession {
+    var configuration = URLSessionConfiguration.default
+    configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+    configuration.urlCache = URLCache(memoryCapacity: 0, diskCapacity: 0, diskPath: nil)
+
+    return URLSession(configuration: configuration)
   }
 }
 

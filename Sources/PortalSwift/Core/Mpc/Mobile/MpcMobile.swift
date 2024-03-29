@@ -9,20 +9,44 @@ import Foundation
 import Mpc
 
 class MobileWrapper: Mobile {
-  public func MobileGenerate(_ apiKey: String, _ host: String, _ apiHost: String, _ metadata: String) -> String {
+  func MobileGenerate(_ apiKey: String, _ host: String, _ apiHost: String, _ metadata: String) -> String {
     return Mpc.MobileGenerate(apiKey, host, apiHost, metadata)
+  }
+
+  func MobileGenerateEd25519(_ apiKey: String, _ host: String, _ apiHost: String, _ metadata: String) -> String {
+    return Mpc.MobileGenerateEd25519(apiKey, host, apiHost, metadata)
+  }
+
+  func MobileGenerateSecp256k1(_ apiKey: String, _ host: String, _ apiHost: String, _ metadata: String) -> String {
+    return Mpc.MobileGenerateSecp256k1(apiKey, host, apiHost, metadata)
   }
 
   func MobileBackup(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String {
     return Mpc.MobileBackup(apiKey, host, signingShare, apiHost, metadata)
   }
 
-  func MobileRecoverSigning(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String {
-    return Mpc.MobileRecoverSigning(apiKey, host, signingShare, apiHost, metadata)
+  func MobileBackupEd25519(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String {
+    return Mpc.MobileBackupEd25519(apiKey, host, signingShare, apiHost, metadata)
+  }
+
+  func MobileBackupSecp256k1(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String {
+    return Mpc.MobileBackupSecp256k1(apiKey, host, signingShare, apiHost, metadata)
   }
 
   func MobileRecoverBackup(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String {
     return Mpc.MobileRecoverBackup(apiKey, host, signingShare, apiHost, metadata)
+  }
+
+  func MobileRecoverSigning(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String {
+    return Mpc.MobileRecoverSigning(apiKey, host, signingShare, apiHost, metadata)
+  }
+
+  func MobileRecoverSigningEd25519(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String {
+    return Mpc.MobileRecoverSigningEd25519(apiKey, host, signingShare, apiHost, metadata)
+  }
+
+  func MobileRecoverSigningSecp256k1(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String {
+    return Mpc.MobileRecoverSigningSecp256k1(apiKey, host, signingShare, apiHost, metadata)
   }
 
   func MobileDecrypt(_ key: String, _ dkgCipherText: String) -> String {

@@ -9,6 +9,30 @@ import Foundation
 import Mpc
 
 class MockMobileErrorWrapper: Mobile {
+  func MobileGenerateEd25519(_: String, _: String, _: String, _: String) -> String {
+    return mockDataResult
+  }
+
+  func MobileGenerateSecp256k1(_: String, _: String, _: String, _: String) -> String {
+    return mockDataResult
+  }
+
+  func MobileBackupEd25519(_: String, _: String, _: String, _: String, _: String) -> String {
+    return mockBackupResult
+  }
+
+  func MobileBackupSecp256k1(_: String, _: String, _: String, _: String, _: String) -> String {
+    return mockBackupResult
+  }
+
+  func MobileRecoverSigningEd25519(_: String, _: String, _: String, _: String, _: String) -> String {
+    return mockDataResult
+  }
+
+  func MobileRecoverSigningSecp256k1(_: String, _: String, _: String, _: String, _: String) -> String {
+    return mockDataResult
+  }
+
   func MobileGenerate(_: String, _: String, _: String, _: String) -> String {
     return mockDataResult
   }

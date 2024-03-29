@@ -1,13 +1,29 @@
 public struct AnyEncodable: Encodable {
   let value: Encodable
 
-  init(_ value: Encodable) {
+  public init(_ value: Encodable) {
     self.value = value
+  }
+
+  public init(_ value: Any) throws {
+    guard let encodableValue = value as? Encodable else {
+      throw AnyEncodableError.typeNotEncodable(type(of: value))
+    }
+    self.value = encodableValue
   }
 
   public func encode(to encoder: Encoder) throws {
     try self.value.encode(to: encoder)
   }
+}
+
+public enum AnyEncodableError: Error {
+  case typeNotEncodable(Any.Type)
+}
+
+public struct PortalBackupWalletResponse {
+  public let cipherText: String
+  public let storageCallback: () async throws -> Void
 }
 
 /*********************************************

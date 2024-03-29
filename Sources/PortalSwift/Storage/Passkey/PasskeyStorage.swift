@@ -17,6 +17,8 @@ public class PasskeyStorage: Storage, PortalStorage {
     set(anchor) { self.auth.authenticationAnchor = anchor }
   }
 
+  public var api: PortalApi?
+
   public var apiKey: String?
   public var client: Client?
   public var portalApi: PortalApi?
@@ -27,19 +29,30 @@ public class PasskeyStorage: Storage, PortalStorage {
   private var passkeyApi: HttpRequester
   private var relyingParty: String
   private var sessionId: String?
-  private var viewController: UIViewController
   private var webAuthnHost: String
 
   deinit {
     print("PasskeyStorage is being deallocated")
   }
 
-  public init(viewController: UIViewController, relyingParty: String? = "portalhq.io", webAuthnHost: String? = "backup.web.portalhq.io") {
-    self.viewController = viewController
+  public init(relyingParty: String? = "portalhq.io", webAuthnHost: String? = "backup.web.portalhq.io") {
     self.relyingParty = relyingParty ?? "portalhq.io"
     self.auth = PasskeyAuth(domain: self.relyingParty)
     self.webAuthnHost = "https://" + (webAuthnHost ?? "backup.web.portalhq.io")
     self.passkeyApi = HttpRequester(baseUrl: self.webAuthnHost)
+  }
+
+  @available(*, deprecated, renamed: "PortalStorage", message: "Please use the new initialization patter excluding your viewController.")
+  public init(viewController: UIViewController? = nil, relyingParty: String? = "portalhq.io", webAuthnHost: String? = "backup.web.portalhq.io") {
+    self.relyingParty = relyingParty ?? "portalhq.io"
+    self.auth = PasskeyAuth(domain: self.relyingParty)
+    self.webAuthnHost = "https://" + (webAuthnHost ?? "backup.web.portalhq.io")
+    self.passkeyApi = HttpRequester(baseUrl: self.webAuthnHost)
+
+    if let view = viewController {
+      self.auth.authenticationAnchor = view.view.window
+    }
+
     super.init()
   }
 
@@ -67,8 +80,7 @@ public class PasskeyStorage: Storage, PortalStorage {
         self?.auth.continuation = continuation
 
         DispatchQueue.main.async { [self] in
-          if let window = self?.viewController.view.window {
-            self?.auth.authenticationAnchor = window
+          if let authenticationAnchor = self?.auth.authenticationAnchor {
             self?.auth.signInWith(result.options, preferImmediatelyAvailableCredentials: true)
           }
         }
@@ -94,8 +106,7 @@ public class PasskeyStorage: Storage, PortalStorage {
         self?.auth.continuation = continuation
 
         DispatchQueue.main.async { [self] in
-          if let window = self?.viewController.view.window {
-            self?.auth.authenticationAnchor = window
+          if let authenticationAnchor = self?.auth.authenticationAnchor {
             self?.auth.signInWith(authenticationOption.options, preferImmediatelyAvailableCredentials: true)
           }
         }
@@ -110,8 +121,7 @@ public class PasskeyStorage: Storage, PortalStorage {
         self?.auth.continuation = continuation
 
         DispatchQueue.main.async { [self] in
-          if let window = self?.viewController.view.window {
-            self?.auth.authenticationAnchor = window
+          if let authenticationAnchor = self?.auth.authenticationAnchor {
             self?.auth.signUpWith(registrationOption.options)
           }
         }

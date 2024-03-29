@@ -171,8 +171,8 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       let scriptSource = self.injectPortal(
         address: address,
         apiKey: self.portal.apiKey,
-        chainId: String(self.portal.chainId),
-        gatewayConfig: self.portal.gatewayConfig[self.portal.chainId]!,
+        chainId: String(self.portal.chainId ?? 11_155_111),
+        gatewayConfig: self.portal.rpcConfig["eip155:\(self.portal.chainId)"]!,
         autoApprove: self.portal.autoApprove,
         enableMpc: true
       )
@@ -274,7 +274,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
         if TransactionMethods.contains(portalMessageBody.data.method) {
           try self.handlePortalSignTransaction(method: portalMessageBody.data.method, params: portalMessageBody.data.params)
         } else {
-          self.handlePortalSign(method: portalMessageBody.data.method, params: portalMessageBody.data.params)
+          try self.handlePortalSign(method: portalMessageBody.data.method, params: portalMessageBody.data.params)
         }
       default:
         self.onError(Result(error: WebViewControllerErrors.unknownMessageType(type: portalMessageBody.type)))
@@ -299,9 +299,12 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     return PortalMessageBody(data: PortalMessageBodyData(method: method, params: params), type: type)
   }
 
-  private func handlePortalSign(method: String, params: [Any]) {
+  private func handlePortalSign(method: String, params: [Any]) throws {
     // Perform a long-running task
-    let payload = ETHRequestPayload(method: method, params: params)
+    let encodedParams = try params.map { param in
+      try AnyEncodable(param)
+    }
+    let payload = ETHRequestPayload(method: method, params: encodedParams)
     if signerMethods.contains(method) {
       self.portal.provider.request(payload: payload, completion: self.signerRequestCompletion)
     } else {

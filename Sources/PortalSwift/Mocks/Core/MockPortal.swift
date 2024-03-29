@@ -11,23 +11,28 @@ import Foundation
 public class MockPortal: Portal {
   override public init(
     apiKey: String,
-    backup: BackupOptions,
-    chainId: Int,
+    backup _: BackupOptions,
+    chainId _: Int,
     keychain: PortalKeychain,
     gatewayConfig: [Int: String],
     // Optional
-    isSimulator: Bool = false,
-    version: String = "v6",
+    isSimulator _: Bool = false,
+    version _: String = "v6",
     autoApprove: Bool = false,
     apiHost: String = "api.portalhq.io",
-    mpcHost: String = "mpc.portalhq.io",
-    featureFlags: FeatureFlags? = nil,
+    mpcHost _: String = "mpc.portalhq.io",
+    featureFlags _: FeatureFlags? = nil,
     isMocked _: Bool = true
   ) throws {
+    //  Handle the legacy use case of using Ethereum references as keys
+    let rpcConfig: [String: String] = Dictionary(gatewayConfig.map { key, value in
+      let newKey = "eip155:\(key)"
+      return (newKey, value)
+    }, uniquingKeysWith: { first, _ in first })
+
     let provider = try MockPortalProvider(
       apiKey: apiKey,
-      chainId: chainId,
-      gatewayConfig: gatewayConfig,
+      rpcConfig: rpcConfig,
       keychain: keychain,
       autoApprove: autoApprove
     )
@@ -39,21 +44,8 @@ public class MockPortal: Portal {
     )
 
     try super.init(
-      apiKey: apiKey,
-      backup: backup,
-      chainId: chainId,
-      keychain: keychain,
-      gatewayConfig: gatewayConfig,
-      isSimulator: isSimulator,
-      version: version,
-      autoApprove: autoApprove,
-      apiHost: apiHost,
-      mpcHost: mpcHost,
-      mpc: MockPortalMpc(apiKey: apiKey, api: api, keychain: keychain, storage: backup, mobile: MockMobileWrapper()),
-      api: api,
-      binary: MockMobileWrapper(),
-      featureFlags: featureFlags,
-      isMocked: true
+      apiKey,
+      withRpcConfig: rpcConfig
     )
   }
 }

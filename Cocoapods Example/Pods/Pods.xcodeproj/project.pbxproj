@@ -258,10 +258,10 @@
 		46EB2E00002BE0 /* PortalErrorCodes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EB2E00000D70 /* PortalErrorCodes.swift */; };
 		46EB2E00002BF0 /* PortalErrorCodeTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EB2E00000D80 /* PortalErrorCodeTypes.swift */; };
 		46EB2E00002C00 /* PortalMpcError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EB2E00000D90 /* PortalMpcError.swift */; };
-		46EB2E00002C10 /* EthRequests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EB2E00000DA0 /* EthRequests.swift */; };
-		46EB2E00002C20 /* EventBus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EB2E00000DB0 /* EventBus.swift */; };
-		46EB2E00002C30 /* HttpRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EB2E00000DC0 /* HttpRequest.swift */; };
-		46EB2E00002C40 /* HttpRequester.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EB2E00000DD0 /* HttpRequester.swift */; };
+		46EB2E00002C10 /* EventBus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EB2E00000DA0 /* EventBus.swift */; };
+		46EB2E00002C20 /* HttpRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EB2E00000DB0 /* HttpRequest.swift */; };
+		46EB2E00002C30 /* HttpRequester.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EB2E00000DC0 /* HttpRequester.swift */; };
+		46EB2E00002C40 /* PortalEncryption.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EB2E00000DD0 /* PortalEncryption.swift */; };
 		46EB2E00002C50 /* PortalLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EB2E00000DE0 /* PortalLogger.swift */; };
 		46EB2E00002C60 /* PortalRequests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EB2E00000DF0 /* PortalRequests.swift */; };
 		46EB2E00002C70 /* Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46EB2E00000E00 /* Result.swift */; };
@@ -631,10 +631,10 @@
 		46EB2E00000D70 /* PortalErrorCodes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PortalErrorCodes.swift; sourceTree = "<group>"; };
 		46EB2E00000D80 /* PortalErrorCodeTypes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PortalErrorCodeTypes.swift; sourceTree = "<group>"; };
 		46EB2E00000D90 /* PortalMpcError.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PortalMpcError.swift; sourceTree = "<group>"; };
-		46EB2E00000DA0 /* EthRequests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EthRequests.swift; sourceTree = "<group>"; };
-		46EB2E00000DB0 /* EventBus.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EventBus.swift; sourceTree = "<group>"; };
-		46EB2E00000DC0 /* HttpRequest.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HttpRequest.swift; sourceTree = "<group>"; };
-		46EB2E00000DD0 /* HttpRequester.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HttpRequester.swift; sourceTree = "<group>"; };
+		46EB2E00000DA0 /* EventBus.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EventBus.swift; sourceTree = "<group>"; };
+		46EB2E00000DB0 /* HttpRequest.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HttpRequest.swift; sourceTree = "<group>"; };
+		46EB2E00000DC0 /* HttpRequester.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HttpRequester.swift; sourceTree = "<group>"; };
+		46EB2E00000DD0 /* PortalEncryption.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PortalEncryption.swift; sourceTree = "<group>"; };
 		46EB2E00000DE0 /* PortalLogger.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PortalLogger.swift; sourceTree = "<group>"; };
 		46EB2E00000DF0 /* PortalRequests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PortalRequests.swift; sourceTree = "<group>"; };
 		46EB2E00000E00 /* Result.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Result.swift; sourceTree = "<group>"; };
@@ -1463,10 +1463,10 @@
 			isa = PBXGroup;
 			children = (
 				46EB2E00000D20 /* Chains.swift */,
-				46EB2E00000DA0 /* EthRequests.swift */,
-				46EB2E00000DB0 /* EventBus.swift */,
-				46EB2E00000DC0 /* HttpRequest.swift */,
-				46EB2E00000DD0 /* HttpRequester.swift */,
+				46EB2E00000DA0 /* EventBus.swift */,
+				46EB2E00000DB0 /* HttpRequest.swift */,
+				46EB2E00000DC0 /* HttpRequester.swift */,
+				46EB2E00000DD0 /* PortalEncryption.swift */,
 				46EB2E00000DE0 /* PortalLogger.swift */,
 				46EB2E00000DF0 /* PortalRequests.swift */,
 				46EB2E00000E00 /* Result.swift */,
@@ -2589,14 +2589,13 @@
 				46EB2E00002BB0 /* Chains.swift in Sources */,
 				46EB2E000029B0 /* Constants.swift in Sources */,
 				46EB2E00002BC0 /* CurrencyConverter.swift in Sources */,
-				46EB2E00002C10 /* EthRequests.swift in Sources */,
-				46EB2E00002C20 /* EventBus.swift in Sources */,
+				46EB2E00002C10 /* EventBus.swift in Sources */,
 				46EB2E00002AF0 /* GDriveClient.swift in Sources */,
 				46EB2E00002B00 /* GDriveStorage.swift in Sources */,
 				46EB2E00002B10 /* GDriveStorageTypes.swift in Sources */,
 				46EB2E00002B20 /* GoogleAuth.swift in Sources */,
-				46EB2E00002C30 /* HttpRequest.swift in Sources */,
-				46EB2E00002C40 /* HttpRequester.swift in Sources */,
+				46EB2E00002C20 /* HttpRequest.swift in Sources */,
+				46EB2E00002C30 /* HttpRequester.swift in Sources */,
 				46EB2E00002B30 /* ICloudStorage.swift in Sources */,
 				46EB2E00002B40 /* LocalFileStorage.swift in Sources */,
 				46EB2E00002960 /* MobileStorageAdapter.swift in Sources */,
@@ -2623,6 +2622,7 @@
 				46EB2E00002920 /* PortalApi.swift in Sources */,
 				46EB2E00002930 /* PortalApiTypes.swift in Sources */,
 				46EB2E00002910 /* PortalConnect.swift in Sources */,
+				46EB2E00002C40 /* PortalEncryption.swift in Sources */,
 				46EB2E00002BD0 /* PortalError.swift in Sources */,
 				46EB2E00002BE0 /* PortalErrorCodes.swift in Sources */,
 				46EB2E00002BF0 /* PortalErrorCodeTypes.swift in Sources */,

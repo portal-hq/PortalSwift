@@ -106,7 +106,7 @@ public class ICloudStorage: Storage, PortalStorage {
       throw ICloudStorageError.noAPIKeyProvided("No API key provided")
     }
 
-    guard let clientResponse = await api!.client else {
+    guard let clientResponse = try await api!.client else {
       throw ICloudStorageError.unableToRetrieveClient("Unable to retrieve client from PortalApi.")
     }
 
@@ -157,7 +157,7 @@ public class ICloudStorage: Storage, PortalStorage {
   /// - Returns: Void
   @available(*, deprecated, renamed: "delete", message: "Please use the async/await implementation of delete().")
   override public func delete(completion: @escaping (Result<Bool>) -> Void) {
-    async {
+    Task {
       do {
         let success = try await delete()
         completion(Result(data: success))
@@ -172,7 +172,7 @@ public class ICloudStorage: Storage, PortalStorage {
   /// - Returns: Void
   @available(*, deprecated, renamed: "read", message: "Please use the async/await implementation of read().")
   override public func read(completion: @escaping (Result<String>) -> Void) {
-    async {
+    Task {
       do {
         let value = try await read()
         completion(Result(data: value))
@@ -189,7 +189,7 @@ public class ICloudStorage: Storage, PortalStorage {
   /// - Returns: Void
   @available(*, deprecated, renamed: "write", message: "Please use the async/await implementation of write().")
   override public func write(privateKey: String, completion: @escaping (Result<Bool>) -> Void) {
-    async {
+    Task {
       do {
         let success = try await write(privateKey)
         completion(Result(data: success))

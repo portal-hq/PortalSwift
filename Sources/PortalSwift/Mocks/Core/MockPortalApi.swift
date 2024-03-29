@@ -73,4 +73,4 @@ public class MockPortalApi: PortalApi {
   }
 }
 
-public let mockApi = MockPortalApi(apiKey: mockApiKey, provider: mockProvider)
+public let mockApi = MockPortalApi(apiKey: mockApiKey)

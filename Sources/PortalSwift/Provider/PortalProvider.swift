@@ -19,20 +19,19 @@ public class PortalProvider {
 
   public let apiKey: String
   public let autoApprove: Bool
-  public var chainId: Chains.RawValue
+  public var chainId: Chains.RawValue?
   public var delegate: PortalProviderDelegate?
-  public var gatewayUrl: String
+  public var gatewayUrl: String?
 
   private let decoder = JSONDecoder()
   private var events: [Events.RawValue: [RegisteredEventHandler]] = [:]
-  private var gateway: HttpRequester
-  private let gatewayConfig: [Int: String]
   private var keychain: PortalKeychain
   private let logger = PortalLogger()
   private var mpcQueue: DispatchQueue
   private var processedRequestIds: [String] = []
   private var processedSignatureIds: [String] = []
   private var portalApi: HttpRequester
+  private let rpcConfig: [String: String]
   private let signer: PortalMpcSigner
   private let featureFlags: FeatureFlags?
 
@@ -54,8 +53,7 @@ public class PortalProvider {
   ///   - autoApprove: Auto approves all transactions.
   public init(
     apiKey: String,
-    chainId: Chains.RawValue,
-    gatewayConfig: [Int: String],
+    rpcConfig: [String: String],
     keychain: PortalKeychain,
     autoApprove: Bool,
     apiHost: String = "api.portalhq.io",
@@ -65,60 +63,14 @@ public class PortalProvider {
   ) throws {
     // User-defined instance variables
     self.apiKey = apiKey
-    self.chainId = chainId
-    self.gatewayConfig = gatewayConfig
-    self.keychain = keychain
     self.autoApprove = autoApprove
+    self.keychain = keychain
+    self.rpcConfig = rpcConfig
 
     // Other instance variables
     let apiUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
     self.portalApi = HttpRequester(baseUrl: apiUrl)
     self.featureFlags = featureFlags
-
-    self.signer = PortalMpcSigner(apiKey: apiKey, keychain: keychain, mpcUrl: mpcHost, version: version, featureFlags: featureFlags)
-    // Create a serial dispatch queue with a unique label
-    self.mpcQueue = DispatchQueue.global(qos: .background)
-
-    do {
-      self.gatewayUrl = try PortalProvider.getGatewayUrl(gatewayConfig: gatewayConfig, chainId: chainId)
-      self.gateway = HttpRequester(baseUrl: self.gatewayUrl)
-    }
-
-    self.dispatchConnect()
-  }
-
-  /// Creates an instance of PortalProvider.
-  /// - Parameters:
-  ///   - apiKey: The client API key. You can obtain this via Portal's REST API.
-  ///   - chainId: The ID of the EVM network you are using.
-  ///   - gatewayUrl: The gateway URL, such as Infura or Alchemy.
-  ///   - apiHost: The hostname of the API to use.
-  ///   - autoApprove: Auto approves all transactions.
-  public init(
-    apiKey: String,
-    chainId: Chains.RawValue,
-    gatewayConfig: [Int: String],
-    keychain: PortalKeychain,
-    autoApprove: Bool,
-    gateway: HttpRequester,
-    apiHost: String = "api.portalhq.io",
-    mpcHost: String = "mpc.portalhq.io",
-    version: String = "v6",
-    featureFlags: FeatureFlags? = nil
-  ) throws {
-    // User-defined instance variables
-    self.apiKey = apiKey
-    self.chainId = chainId
-    self.gatewayConfig = gatewayConfig
-    self.keychain = keychain
-    self.autoApprove = autoApprove
-    self.gateway = gateway
-    self.gatewayUrl = gateway.baseUrl
-    self.featureFlags = featureFlags
-
-    // Other instance variables
-    let apiUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
-    self.portalApi = HttpRequester(baseUrl: apiUrl)
 
     self.signer = PortalMpcSigner(apiKey: apiKey, keychain: keychain, mpcUrl: mpcHost, version: version, featureFlags: featureFlags)
     // Create a serial dispatch queue with a unique label
@@ -140,7 +92,7 @@ public class PortalProvider {
     let registeredEventHandlers = self.events[event]
 
     if registeredEventHandlers == nil {
-      self.logger.debug(String(format: "PortalProvider.emit() - Could not find any bindings for event '%@'. Ignoring...", event))
+      self.logger.info(String(format: "PortalProvider.emit() - Could not find any bindings for event '%@'. Ignoring...", event))
       return self
     } else {
       // Invoke all registered handlers for the event
@@ -149,7 +101,7 @@ public class PortalProvider {
           try registeredEventHandler.handler(data)
         }
       } catch {
-        self.logger.debug("PortalProvider.emit() - Error invoking registered handlers: \(error.localizedDescription)")
+        self.logger.info("PortalProvider.emit() - Error invoking registered handlers: \(error.localizedDescription)")
       }
 
       // Remove once instances
@@ -206,7 +158,7 @@ public class PortalProvider {
     event: Events.RawValue
   ) -> PortalProvider {
     if self.events[event] == nil {
-      self.logger.debug(String(format: "[Portal] Could not find any bindings for event '%@'. Ignoring...", event))
+      self.logger.info(String(format: "[Portal] Could not find any bindings for event '%@'. Ignoring...", event))
     }
 
     self.events[event] = nil
@@ -257,8 +209,10 @@ public class PortalProvider {
    *******************************************/
 
   private func dispatchConnect() {
-    let hexChainId = String(format: "%02x", chainId)
-    _ = self.emit(event: Events.Connect.rawValue, data: ["chainId": hexChainId])
+    if let chainId = chainId {
+      let hexChainId = String(format: "%02x", chainId)
+      _ = self.emit(event: Events.Connect.rawValue, data: ["chainId": hexChainId])
+    }
   }
 
   private func getApproval(_: String, forPayload: PortalProviderRequestWithId) async throws -> Bool {
@@ -310,32 +264,20 @@ public class PortalProvider {
   }
 
   private func getRpcUrl(_ chainId: String) throws -> String {
-    let chainIdParts = chainId.split(separator: ":").map(String.init)
-    if let integerChainId = Int(chainIdParts[1]) {
-      guard let rpcUrl = gatewayConfig[integerChainId] else {
-        throw PortalProviderError.noRpcUrlFoundForChainId(chainId)
-      }
-
-      return rpcUrl
+    guard let rpcUrl = rpcConfig[chainId] else {
+      throw PortalProviderError.noRpcUrlFoundForChainId(chainId)
     }
 
-    throw PortalProviderError.invalidChainId(chainId)
+    return rpcUrl
+  }
+
+  @available(*, deprecated, renamed: "getRpcUrl", message: "Please use the chain agnostic implementation of getRpcUrl()")
+  private func getRpcUrl(_ chainId: Int) throws -> String {
+    return try self.getRpcUrl("eip155:\(chainId)")
   }
 
   private func handleRpcRequest(_ chainId: String, withMethod: PortalRequestMethod, andParams: [AnyEncodable]?) async throws -> PortalProviderResult {
-    let chainIdParts = chainId.split(separator: ":").map(String.init)
-    var rpcUrl: String?
-    if let integerChainId = Int(chainIdParts[1]) {
-      do {
-        rpcUrl = try PortalProvider.getGatewayUrl(gatewayConfig: self.gatewayConfig, chainId: integerChainId)
-      } catch {
-        throw PortalProviderError.noRpcUrlFoundForChainId(chainId)
-      }
-    }
-
-    guard let rpcUrl = rpcUrl else {
-      throw PortalProviderError.noRpcUrlFoundForChainId(chainId)
-    }
+    let rpcUrl = try getRpcUrl(chainId)
 
     if let url = URL(string: rpcUrl) {
       let payload = PortalProviderRpcRequest(
@@ -400,11 +342,13 @@ public class PortalProvider {
     let rpcUrl = try getRpcUrl(onChainId)
     let payload = PortalSignRequest(method: withPayload.method, params: withPayload.params)
     let signResult = try await withCheckedThrowingContinuation { continuation in
-      do {
-        let result = try self.signer.sign(onChainId, withPayload: payload, andRpcUrl: rpcUrl)
-        continuation.resume(returning: result)
-      } catch {
-        continuation.resume(throwing: error)
+      Task {
+        do {
+          let result = try await self.signer.sign(onChainId, withPayload: payload, andRpcUrl: rpcUrl)
+          continuation.resume(returning: result)
+        } catch {
+          continuation.resume(throwing: error)
+        }
       }
     }
 
@@ -428,76 +372,22 @@ public class PortalProvider {
   public func request(
     payload: ETHRequestPayload,
     completion: @escaping (Result<RequestCompletionResult>) -> Void,
-    connect: PortalConnect? = nil
+    connect _: PortalConnect? = nil
   ) {
-    let isSignerMethod = signerMethods.contains(payload.method)
-    let id = UUID().uuidString
-
-    // Handle changing chains
-    if payload.method == ETHRequestMethods.WalletSwitchEthereumChain.rawValue {
-      let param = payload.params[0] as! [String: String]
-
-      if let chainId = UInt8(param["chainId"]!.replacingOccurrences(of: "0x", with: ""), radix: 16) {
-        do {
-          _ = try self.setChainId(value: Int(chainId), connect: connect)
-
-          let completionResult = RequestCompletionResult(
-            method: payload.method,
-            params: payload.params,
-            result: "null",
-            id: ""
-          )
-
-          _ = self.emit(event: Events.PortalSignatureReceived.rawValue, data: completionResult)
-
-          return completion(Result(data: completionResult))
-        } catch {
-          return completion(Result(error: error))
+    Task {
+      do {
+        guard let method = PortalRequestMethod(rawValue: payload.method) else {
+          throw PortalProviderError.unsupportedRequestMethod(payload.method)
         }
-      } else {
-        return completion(Result(error: ProviderRpcError.unsupportedMethod))
-      }
-    }
-
-    let payloadWithId = ETHRequestPayload(method: payload.method, params: payload.params, id: id, chainId: payload.chainId ?? self.chainId)
-
-    if !isSignerMethod, !payloadWithId.method.starts(with: "wallet_") {
-      self.handleGatewayRequest(payload: payloadWithId, connect: connect) { (method: String, params: [Any], result: Result<Any>, id: String) in
-        if id == payloadWithId.id, !self.processedSignatureIds.contains(id) {
-          self.processedSignatureIds.append(id)
-          if result.data != nil {
-            return completion(Result(data: RequestCompletionResult(method: method, params: params, result: result.data!, id: id)))
-          } else {
-            return completion(Result(error: result.error!))
-          }
+        let params = try payload.params.map { param in
+          try AnyEncodable(param)
         }
+        let response = try await request("eip155:\(self.chainId ?? 11_155_111)", withMethod: method, andParams: params)
+
+        completion(Result(data: RequestCompletionResult(method: payload.method, params: payload.params, result: response.result, id: payload.id!)))
+      } catch {
+        completion(Result(error: error))
       }
-    } else if isSignerMethod {
-      self.handleSigningRequest(payload: payloadWithId, connect: connect) { (result: Result<SignerResult>, id: String) in
-        if id == payloadWithId.id, !self.processedSignatureIds.contains(id) {
-          self.processedSignatureIds.append(id)
-
-          guard result.error == nil else {
-            return completion(Result(error: result.error!))
-          }
-
-          // Trigger `portal_signatureReceived` event
-          _ = self.emit(
-            event: Events.PortalSignatureReceived.rawValue,
-            data: RequestCompletionResult(
-              method: payloadWithId.method,
-              params: payloadWithId.params,
-              result: result,
-              id: id
-            )
-          )
-
-          // Trigger completion handler
-          return completion(Result(data: RequestCompletionResult(method: payloadWithId.method, params: payloadWithId.params, result: result, id: id)))
-        }
-      }
-    } else {
-      return completion(Result(error: ProviderRpcError.unsupportedMethod))
     }
   }
 
@@ -510,53 +400,22 @@ public class PortalProvider {
   public func request(
     payload: ETHTransactionPayload,
     completion: @escaping (Result<TransactionCompletionResult>) -> Void,
-    connect: PortalConnect? = nil
+    connect _: PortalConnect? = nil
   ) {
-    let isSignerMethod = signerMethods.contains(payload.method)
-    let id = UUID().uuidString
-
-    let payloadWithId = ETHTransactionPayload(method: payload.method, params: payload.params, id: id, chainId: payload.chainId ?? self.chainId)
-
-    if !isSignerMethod, !payloadWithId.method.starts(with: "wallet_") {
-      self.handleGatewayRequest(payload: payloadWithId, connect: connect) {
-        (method: String, params: [ETHTransactionParam], result: Result<Any>, id: String) in
-        if id == payloadWithId.id, !self.processedSignatureIds.contains(id) {
-          self.processedSignatureIds.append(id)
-
-          guard result.error == nil else {
-            return completion(Result(error: result.error!))
-          }
-          if result.data != nil {
-            return completion(Result(data: TransactionCompletionResult(method: method, params: params, result: result.data!, id: payloadWithId.id!)))
-          }
+    Task {
+      do {
+        guard let method = PortalRequestMethod(rawValue: payload.method) else {
+          throw PortalProviderError.unsupportedRequestMethod(payload.method)
         }
-      }
-    } else if isSignerMethod {
-      self.handleSigningRequest(payload: payloadWithId, connect: connect) { (result: Result<Any>, id: String) in
-        if id == payloadWithId.id, !self.processedSignatureIds.contains(id) {
-          self.processedSignatureIds.append(id)
-
-          guard result.error == nil else {
-            return completion(Result(error: result.error!))
-          }
-
-          // Trigger `portal_signatureReceived` event
-          _ = self.emit(
-            event: Events.PortalSignatureReceived.rawValue,
-            data: RequestCompletionResult(
-              method: payloadWithId.method,
-              params: payloadWithId.params,
-              result: result,
-              id: payloadWithId.id!
-            )
-          )
-
-          // Trigger completion handler
-          return completion(Result(data: TransactionCompletionResult(method: payloadWithId.method, params: payloadWithId.params, result: result, id: payloadWithId.id!)))
+        let params = payload.params.map { param in
+          AnyEncodable(param)
         }
+        let response = try await request("eip155:\(self.chainId ?? 11_155_111)", withMethod: method, andParams: params)
+
+        completion(Result(data: TransactionCompletionResult(method: payload.method, params: payload.params, result: response.result, id: payload.id!)))
+      } catch {
+        completion(Result(error: error))
       }
-    } else {
-      return completion(Result(error: ProviderRpcError.unsupportedMethod))
     }
   }
 
@@ -569,28 +428,22 @@ public class PortalProvider {
   public func request(
     payload: ETHAddressPayload,
     completion: @escaping (Result<AddressCompletionResult>) -> Void,
-    connect: PortalConnect? = nil
+    connect _: PortalConnect? = nil
   ) {
-    let isSignerMethod = signerMethods.contains(payload.method)
-    let id = UUID().uuidString
-
-    let payloadWithId = ETHAddressPayload(method: payload.method, params: payload.params, id: id, chainId: payload.chainId ?? self.chainId)
-
-    if !isSignerMethod, !payloadWithId.method.starts(with: "wallet_") {
-      self.handleGatewayRequest(payload: payloadWithId, connect: connect) {
-        (method: String, params: [ETHAddressParam], result: Result<Any>, id: String) in
-        if id == payloadWithId.id, !self.processedSignatureIds.contains(id) {
-          self.processedSignatureIds.append(id)
-
-          if result.data != nil {
-            return completion(Result(data: AddressCompletionResult(method: method, params: params, result: result.data!, id: id)))
-          } else {
-            return completion(Result(error: result.error!))
-          }
+    Task {
+      do {
+        guard let method = PortalRequestMethod(rawValue: payload.method) else {
+          throw PortalProviderError.unsupportedRequestMethod(payload.method)
         }
+        let params = payload.params.map { param in
+          AnyEncodable(param)
+        }
+        let response = try await request("eip155:\(self.chainId ?? 11_155_111)", withMethod: method, andParams: params)
+
+        completion(Result(data: AddressCompletionResult(method: payload.method, params: payload.params, result: response.result, id: payload.id!)))
+      } catch {
+        completion(Result(error: error))
       }
-    } else {
-      return completion(Result(error: ProviderRpcError.unsupportedMethod))
     }
   }
 
@@ -605,9 +458,8 @@ public class PortalProvider {
     let provider = self.emit(event: Events.ChainChanged.rawValue, data: ["chainId": hexChainId])
 
     do {
-      let gatewayUrl = try PortalProvider.getGatewayUrl(gatewayConfig: self.gatewayConfig, chainId: value)
+      let gatewayUrl = try getRpcUrl(value)
       self.gatewayUrl = gatewayUrl
-      self.gateway = HttpRequester(baseUrl: gatewayUrl)
     } catch {
       throw ProviderInvalidArgumentError.invalidGatewayUrl
     }
@@ -735,257 +587,13 @@ public class PortalProvider {
     }
   }
 
-  @available(*, deprecated, renamed: "handleGatewayRequest", message: "Please use the async/await implementation of handleGatewayRequest().")
-  private func handleGatewayRequest(
-    payload: ETHTransactionPayload,
-    completion: @escaping (String, [ETHTransactionParam], Result<Any>, String) -> Void,
-    connect _: PortalConnect? = nil
-  ) {
-    // Create the body of the request.
-    let body: [String: Any] = [
-      "method": payload.method,
-      "params": payload.params.map { (p: ETHTransactionParam) in
-        [
-          "from": p.from,
-          "to": p.to,
-          "gas": p.gas,
-          "gasPrice": p.gasPrice,
-          "value": p.value,
-          "data": p.data,
-        ]
-      },
-    ]
-
-    do {
-      try self.gateway.post(
-        path: "/",
-        body: body,
-        headers: ["Content-Type": "application/json"],
-        requestType: HttpRequestType.GatewayRequest
-      ) { (result: Result<ETHGatewayResponse>) in
-        if result.data != nil {
-          completion(payload.method, payload.params, Result(data: result.data!), payload.id!)
-        } else {
-          completion(payload.method, payload.params, Result(error: result.error!), payload.id!)
-        }
-      }
-    } catch {
-      completion(payload.method, payload.params, Result(error: error), payload.id!)
-    }
-  }
-
-  @available(*, deprecated, renamed: "handleGatewayRequest", message: "Please use the async/await implementation of handleGatewayRequest().")
-  private func handleGatewayRequest(
-    payload: ETHAddressPayload,
-    completion: @escaping (String, [ETHAddressParam], Result<Any>, String) -> Void,
-    connect _: PortalConnect? = nil
-  ) {
-    // Create the body of the request.
-    let body: [String: Any] = [
-      "method": payload.method,
-      "params": payload.params.map { (p: ETHAddressParam) in
-        ["address": p.address]
-      },
-    ]
-
-    do {
-      try self.gateway.post(
-        path: "/",
-        body: body,
-        headers: ["Content-Type": "application/json"],
-        requestType: HttpRequestType.GatewayRequest
-      ) { (result: Result<ETHGatewayResponse>) in
-        if result.data != nil {
-          completion(payload.method, payload.params, Result(data: result.data!), payload.id!)
-        } else {
-          completion(payload.method, payload.params, Result(error: result.error!), payload.id!)
-        }
-      }
-    } catch {
-      completion(payload.method, payload.params, Result(error: error), payload.id!)
-    }
-  }
-
-  @available(*, deprecated, renamed: "handleGatewayRequest", message: "Please use the async/await implementation of handleGatewayRequest().")
-  private func handleGatewayRequest(
-    payload: ETHRequestPayload,
-    completion: @escaping (String, [Any], Result<Any>, String) -> Void,
-    connect _: PortalConnect? = nil
-  ) {
-    // Create the body of the request.
-    let body: [String: Any] = [
-      "method": payload.method,
-      "params": payload.params,
-    ]
-
-    do {
-      switch payload.method {
-      case ETHRequestMethods.GetBlockByHash.rawValue, ETHRequestMethods.GetUncleByBlockHashIndex.rawValue, ETHRequestMethods.GetUncleByBlockNumberAndIndex.rawValue, ETHRequestMethods.GetBlockByNumber.rawValue:
-        if let params = payload.params as? [Any], params.count > 1, let elementAtIndex1 = params[1] as? Bool, elementAtIndex1 {
-          // The element at index 1 is a Bool and evaluates to true
-          try self.gateway.post(
-            path: "/",
-            body: body,
-            headers: ["Content-Type": "application/json"],
-            requestType: HttpRequestType.GatewayRequest
-          ) { (result: Result<BlockDataResponseTrue>) in
-            if result.data != nil {
-              completion(payload.method, payload.params, Result(data: result.data!), payload.id!)
-            } else {
-              completion(payload.method, payload.params, Result(error: result.error!), payload.id!)
-            }
-          }
-        } else {
-          try self.gateway.post(
-            path: "/",
-            body: body,
-            headers: ["Content-Type": "application/json"],
-            requestType: HttpRequestType.GatewayRequest
-          ) { (result: Result<BlockDataResponseFalse>) in
-            if result.data != nil {
-              completion(payload.method, payload.params, Result(data: result.data!), payload.id!)
-            } else {
-              completion(payload.method, payload.params, Result(error: result.error!), payload.id!)
-            }
-          }
-        }
-      case ETHRequestMethods.GetTransactionReceipt.rawValue, ETHRequestMethods.GetTransactionByHash.rawValue, ETHRequestMethods.GetTransactionByBlockNumberAndIndex.rawValue,
-           ETHRequestMethods.GetTransactionByBlockHashAndIndex.rawValue:
-        try self.gateway.post(
-          path: "/",
-          body: body,
-          headers: ["Content-Type": "application/json"],
-          requestType: HttpRequestType.GatewayRequest
-        ) { (result: Result<EthTransactionResponse>) in
-          if result.data != nil {
-            completion(payload.method, payload.params, Result(data: result.data!), payload.id!)
-          } else {
-            completion(payload.method, payload.params, Result(error: result.error!), payload.id!)
-          }
-        }
-      case ETHRequestMethods.NetListening.rawValue, ETHRequestMethods.UninstallFilter.rawValue:
-        try self.gateway.post(
-          path: "/",
-          body: body,
-          headers: ["Content-Type": "application/json"],
-          requestType: HttpRequestType.GatewayRequest
-        ) { (result: Result<EthBoolResponse>) in
-          if result.data != nil {
-            completion(payload.method, payload.params, Result(data: result.data!), payload.id!)
-          } else {
-            completion(payload.method, payload.params, Result(error: result.error!), payload.id!)
-          }
-        }
-      case ETHRequestMethods.GetLogs.rawValue, ETHRequestMethods.GetFilterLogs.rawValue, ETHRequestMethods.GetFilterChanges.rawValue:
-        try self.gateway.post(
-          path: "/",
-          body: body,
-          headers: ["Content-Type": "application/json"],
-          requestType: HttpRequestType.GatewayRequest
-        ) { (result: Result<LogsResponse>) in
-          if result.data != nil {
-            completion(payload.method, payload.params, Result(data: result.data!), payload.id!)
-          } else {
-            completion(payload.method, payload.params, Result(error: result.error!), payload.id!)
-          }
-        }
-      default:
-        try self.gateway.post(
-          path: "/",
-          body: body,
-          headers: ["Content-Type": "application/json"],
-          requestType: HttpRequestType.GatewayRequest
-        ) { (result: Result<ETHGatewayResponse>) in
-          if result.data != nil {
-            completion(payload.method, payload.params, Result(data: result.data!), payload.id!)
-          } else {
-            completion(payload.method, payload.params, Result(error: result.error!), payload.id!)
-          }
-        }
-      }
-    } catch {
-      completion(payload.method, payload.params, Result(error: error), payload.id!)
-    }
-  }
-
-  @available(*, deprecated, renamed: "handleSignRequest", message: "Please use the async/await implementation of handleSignRequest().")
-  private func handleSigningRequest(
-    payload: ETHRequestPayload,
-    completion: @escaping (Result<SignerResult>, String) -> Void,
-    connect: PortalConnect? = nil
-  ) {
-    self.getApproval(payload: payload, connect: connect) { result in
-      guard result.error == nil else {
-        return completion(Result(error: result.error!), payload.id!)
-      }
-      if result.data != true {
-        return completion(Result(error: ProviderSigningError.userDeclinedApproval), payload.id!)
-      } else {
-        self.mpcQueue.async {
-          // This code will be executed in a background thread
-          var signResult = SignerResult()
-          do {
-            signResult = try self.signer.sign(
-              payload: payload,
-              provider: self
-            )
-            // When the work is done, call the completion handler
-            DispatchQueue.main.async {
-              completion(Result(data: signResult), payload.id!)
-            }
-
-          } catch {
-            DispatchQueue.main.async {
-              completion(Result(error: error), payload.id!)
-            }
-          }
-        }
-      }
-    }
-  }
-
-  @available(*, deprecated, renamed: "handleSignRequest", message: "Please use the async/await implementation of handleSignRequest().")
-  private func handleSigningRequest(
-    payload: ETHTransactionPayload,
-    completion: @escaping (Result<Any>, String) -> Void,
-    connect: PortalConnect? = nil
-  ) {
-    self.getApproval(payload: payload, connect: connect) { result in
-      guard result.error == nil else {
-        return completion(Result(error: result.error!), payload.id!)
-      }
-
-      if !result.data! {
-        return completion(Result(error: ProviderSigningError.userDeclinedApproval), payload.id!)
-      } else {
-        self.mpcQueue.async {
-          // This code will be executed in a background thread
-          var signResult = SignerResult()
-          do {
-            signResult = try self.signer.sign(
-              payload: payload,
-              provider: self
-            )
-            // When the work is done, call the completion handler
-            DispatchQueue.main.async {
-              completion(Result(data: signResult.signature!), payload.id!)
-            }
-          } catch {
-            DispatchQueue.main.async {
-              completion(Result(error: error), payload.id!)
-            }
-          }
-        }
-      }
-    }
-  }
-
   /// Determines the appropriate Gateway URL to use for the current chainId
   /// - Parameters:
   ///   - gatewayConfig: A dictionary of chainIds (keys) and gateway URLs (values).
   ///   - chainId: The chainId we should use, such as 11155111 (Sepolia).
   /// - Throws: PortalArgumentError.noGatewayConfigForChain with the chainId.
   /// - Returns: The URL to be used for Gateway requests.
+  @available(*, deprecated, renamed: "PortalProvider.getRpcUrl", message: "Please use the instance method getRpcUrl()")
   static func getGatewayUrl(gatewayConfig: [Int: String], chainId: Int) throws -> String {
     if gatewayConfig[chainId] == nil {
       throw PortalArgumentError.noGatewayConfigForChain(chainId: chainId)
@@ -1175,31 +783,31 @@ public struct ETHRequestPayload {
   public var signature: String?
   public var chainId: Int?
 
-  public init(method: ETHRequestMethods.RawValue, params: [Any]) {
+  public init(method: ETHRequestMethods.RawValue, params: [Encodable]) {
     self.method = method
     self.params = params
   }
 
-  public init(method: ETHRequestMethods.RawValue, params: [Any], signature: String) {
+  public init(method: ETHRequestMethods.RawValue, params: [Encodable], signature: String) {
     self.method = method
     self.params = params
     self.signature = signature
   }
 
-  public init(method: ETHRequestMethods.RawValue, params: [Any], id: String) {
+  public init(method: ETHRequestMethods.RawValue, params: [Encodable], id: String) {
     self.method = method
     self.params = params
     self.id = id
   }
 
-  public init(method: ETHRequestMethods.RawValue, params: [Any], id: String, chainId: Int) {
+  public init(method: ETHRequestMethods.RawValue, params: [Encodable], id: String, chainId: Int) {
     self.method = method
     self.params = params
     self.id = id
     self.chainId = chainId
   }
 
-  public init(method: ETHRequestMethods.RawValue, params: [Any], chainId: Int) {
+  public init(method: ETHRequestMethods.RawValue, params: [Encodable], chainId: Int) {
     self.method = method
     self.params = params
     self.chainId = chainId

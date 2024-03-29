@@ -274,26 +274,33 @@ class PortalWrapper {
   }
 
   func ethSign(params: [Any], completion: @escaping (Result<String>) -> Void) {
-    let method = ETHRequestMethods.Sign.rawValue
+    do {
+      let method = ETHRequestMethods.Sign.rawValue
 
-    let payload = ETHRequestPayload(
-      method: method,
-      params: params
-    )
-    self.portal?.provider.request(payload: payload) { (result: Result<RequestCompletionResult>) in
-      guard result.error == nil else {
-        print("❌ Error calling \(method)", "Error:", result.error!)
-        completion(Result(error: result.error!))
-        return
+      let encodedParams = try params.map { param in
+        try AnyEncodable(param)
       }
-      guard (result.data!.result as! Result<SignerResult>).error == nil else {
-        print("❌ Error testing signer request:", method, "Error:", (result.data!.result as! Result<SignerResult>).error)
-        completion(Result(error: result.error!))
-        return
+      let payload = ETHRequestPayload(
+        method: method,
+        params: encodedParams
+      )
+      self.portal?.provider.request(payload: payload) { (result: Result<RequestCompletionResult>) in
+        guard result.error == nil else {
+          print("❌ Error calling \(method)", "Error:", result.error!)
+          completion(Result(error: result.error!))
+          return
+        }
+        guard (result.data!.result as! Result<SignerResult>).error == nil else {
+          print("❌ Error testing signer request:", method, "Error:", (result.data!.result as! Result<SignerResult>).error)
+          completion(Result(error: result.error!))
+          return
+        }
+        if (result.data!.result as! Result<SignerResult>).data!.signature != nil {
+          completion(Result(data: (result.data!.result as! Result<SignerResult>).data!.signature!))
+        }
       }
-      if (result.data!.result as! Result<SignerResult>).data!.signature != nil {
-        completion(Result(data: (result.data!.result as! Result<SignerResult>).data!.signature!))
-      }
+    } catch {
+      completion(Result(error: error))
     }
   }
 
