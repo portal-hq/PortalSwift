@@ -382,7 +382,7 @@ public class PortalMpc {
             guard let decryptedData = decryptedString.data(using: .utf8) else {
               throw MpcError.unexpectedErrorOnRecover("Unable to parse decrypted data.")
             }
-            let backupResponse = try decoder.decode(PortalMpcGenerateResponse.self, from: decryptedData)
+            let backupResponse = try await parseRecoveryInput(data: decryptedData)
 
             var recoverResponse: PortalMpcGenerateResponse = [:]
             if let ed25519Share = backupResponse[PortalCurve.ED25519.rawValue] {
@@ -398,7 +398,17 @@ public class PortalMpc {
                 id: ed25519MpcShare.signingSharePairId ?? "",
                 share: shareString
               )
-            } // In the future, we'll want to figure out if we can generate the other wallet at this point
+            } else {
+              let ed25519MpcShare = try await self.getSigningShare(.ED25519)
+              let ed25519ShareData = try self.encoder.encode(ed25519MpcShare)
+              guard let ed25519ShareString = String(data: ed25519ShareData, encoding: .utf8) else {
+                throw MpcError.unexpectedErrorOnBackup("Unable to stringify ED25519 share.")
+              }
+              recoverResponse["ED25519"] = PortalMpcGeneratedShare(
+                id: ed25519MpcShare.signingSharePairId ?? "",
+                share: ed25519ShareString
+              )
+            }
 
             if let secp256k1Share = backupResponse[PortalCurve.SECP256K1.rawValue] {
               async let secp256k1MpcShare = try recoverSigningShare(.SECP256K1, withMethod: method, andBackupShare: secp256k1Share.share)
@@ -574,6 +584,26 @@ public class PortalMpc {
     }
 
     return mpcShare
+  }
+
+  private func parseRecoveryInput(data: Data) async throws -> PortalMpcGenerateResponse {
+    do {
+      return try self.decoder.decode(PortalMpcGenerateResponse.self, from: data)
+    } catch {
+      // If the backup isn't in the new format, try to get it in the old format and convert to the new format
+      let mpcShare = try decoder.decode(MpcShare.self, from: data)
+      guard let shareString = String(data: data, encoding: .utf8) else {
+        throw MpcError.unableToDecodeShare
+      }
+      var backupShares: PortalMpcGenerateResponse = [:]
+
+      backupShares["SECP256K1"] = PortalMpcGeneratedShare(
+        id: mpcShare.backupSharePairId ?? "",
+        share: shareString
+      )
+
+      return backupShares
+    }
   }
 
   private func recoverSigningShare(_ forCurve: PortalCurve, withMethod _: BackupMethods, andBackupShare: String) async throws -> MpcShare {
