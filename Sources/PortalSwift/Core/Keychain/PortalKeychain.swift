@@ -76,7 +76,7 @@ public class PortalKeychain {
       throw KeychainError.clientNotFound
     }
     let clientId = client.id
-    try self.deleteItem("\(self.baseKey).\(clientId).\(self.sharesKey)")
+    try self.deleteItem("\(clientId).\(self.sharesKey)")
   }
 
   public func getAddress(_ forChainId: String) async throws -> String? {
@@ -102,7 +102,7 @@ public class PortalKeychain {
       let clientId = client.id
       do {
         // Before multi-wallet support was added
-        let address = try getItem("\(baseKey).\(clientId).address")
+        let address = try getItem("\(clientId).address")
         return address
       } catch KeychainError.itemNotFound(_) {
         self.logger.debug("PortalKeychain.getAddress() - Attempting to read from even older legacy address data...")
@@ -132,7 +132,7 @@ public class PortalKeychain {
       let clientId = client.id
       do {
         // Before multi-wallet support was added
-        let address = try getItem("\(baseKey).\(clientId).address")
+        let address = try getItem("\(clientId).address")
         let addresses: [PortalNamespace: String?] = [
           .eip155: address,
         ]
@@ -157,7 +157,7 @@ public class PortalKeychain {
     }
 
     let clientId = client.id
-    let value = try getItem("\(baseKey).\(clientId).\(metadataKey)")
+    let value = try getItem("\(clientId).\(metadataKey)")
     guard let data = value.data(using: .utf8) else {
       self.logger.error("PortalKeychain.getMetadata() - Unable to encode keychain data")
       throw KeychainError.unableToEncodeKeychainData
@@ -197,7 +197,7 @@ public class PortalKeychain {
 
       do {
         // Before multi-wallet support was added
-        let signingShareValue = try getItem("\(baseKey).\(clientId).share")
+        let signingShareValue = try getItem("\(clientId).share")
         return signingShareValue
       } catch KeychainError.itemNotFound(_) {
         // Handle even older legacy Keychain data
@@ -217,7 +217,7 @@ public class PortalKeychain {
     let clientId = client.id
 
     do {
-      let value = try getItem("\(baseKey).\(clientId).\(sharesKey)")
+      let value = try getItem("\(clientId).\(sharesKey)")
 
       guard let data = value.data(using: .utf8) else {
         self.logger.error("PortalKeychain.getShares() - Unable to decode keychain data")
@@ -230,8 +230,10 @@ public class PortalKeychain {
       self.logger.debug("PortalKeychain.getShares() - Attempting to read from legacy share data...")
       // Handle backward compatibility with legacy Keychain data
       do {
+        print("🚨 Reading from '\(clientId).share'")
+
         // Before multi-wallet support was added
-        let signingShareValue = try getItem("\(baseKey).\(clientId).share")
+        let signingShareValue = try getItem("\(clientId).share")
         guard let data = signingShareValue.data(using: .utf8) else {
           self.logger.error("PortalKeychain.getShares() - Unable to decode legacy keychain data")
           throw KeychainError.unableToEncodeKeychainData
@@ -334,7 +336,7 @@ public class PortalKeychain {
       throw KeychainError.unableToEncodeKeychainData
     }
 
-    try self.updateItem("\(self.baseKey).\(clientId).\(self.metadataKey)", withValue: value)
+    try self.updateItem("\(clientId).\(self.metadataKey)", withValue: value)
   }
 
   public func setShares(_ withData: [String: PortalMpcGeneratedShare]) async throws {
@@ -349,7 +351,7 @@ public class PortalKeychain {
       throw KeychainError.unableToEncodeKeychainData
     }
 
-    try self.updateItem("\(self.baseKey).\(clientId).\(self.sharesKey)", withValue: value)
+    try self.updateItem("\(clientId).\(self.sharesKey)", withValue: value)
   }
 
   /*******************************************
@@ -375,7 +377,7 @@ public class PortalKeychain {
     let query: [String: Any] = [
       kSecClass as String: kSecClassGenericPassword,
       kSecAttrAccount as String: item,
-      kSecAttrService as String: "PortalMpc.\(item)",
+      kSecAttrService as String: "\(self.baseKey).\(item)",
       kSecMatchLimit as String: kSecMatchLimitOne,
       kSecReturnData as String: true,
     ]
@@ -402,7 +404,7 @@ public class PortalKeychain {
   private func setItem(_ key: String, withValue: String) throws {
     // Construct the query to set the keychain item.
     let query: [String: AnyObject] = [
-      kSecAttrService as String: "PortalMpc.\(key)" as AnyObject,
+      kSecAttrService as String: "\(self.baseKey).\(key)" as AnyObject,
       kSecAttrAccount as String: key as AnyObject,
       kSecClass as String: kSecClassGenericPassword,
       kSecAttrAccessible as String: kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly as AnyObject,
@@ -431,7 +433,7 @@ public class PortalKeychain {
     do {
       // Construct the query to update the keychain item.
       let query: [String: AnyObject] = [
-        kSecAttrService as String: "PortalMpc.\(key)" as AnyObject,
+        kSecAttrService as String: "\(self.baseKey).\(key)" as AnyObject,
         kSecAttrAccount as String: key as AnyObject,
         kSecClass as String: kSecClassGenericPassword,
       ]
