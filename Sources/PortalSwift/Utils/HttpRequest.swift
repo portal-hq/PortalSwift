@@ -21,7 +21,7 @@ private enum HttpError: Error {
 }
 
 private enum GatewayError: Error {
-  case gatewayError(response: ETHGatewayErrorResponse, status: String)
+  case gatewayError(response: PortalProviderRpcResponseError, status: String)
 }
 
 extension GatewayError: CustomStringConvertible {
@@ -116,7 +116,14 @@ public class HttpRequest<T: Codable, BodyType> {
               } else {
                 typedData = try JSONDecoder().decode(T.self, from: data!)
               }
-              return completion(Result(error: GatewayError.gatewayError(response: (typedData as! ETHGatewayResponse).error!, status: String(httpResponse!.statusCode))))
+              return completion(
+                Result(
+                  error: GatewayError.gatewayError(
+                    response: typedData as! PortalProviderRpcResponseError,
+                    status: String(httpResponse!.statusCode)
+                  )
+                )
+              )
             }
             return completion(Result(error: HttpError.internalServerError("Status: \(httpResponse!.statusCode) " + String(data: data!, encoding: .utf8)!)))
           } else if httpResponse!.statusCode >= 400 {
@@ -133,7 +140,14 @@ public class HttpRequest<T: Codable, BodyType> {
               } else {
                 typedData = try JSONDecoder().decode(T.self, from: data!)
               }
-              return completion(Result(error: GatewayError.gatewayError(response: (typedData as? ETHGatewayResponse)?.error! ?? ETHGatewayErrorResponse(code: 32602, message: "Unknown Error"), status: String(httpResponse!.statusCode))))
+              return completion(
+                Result(
+                  error: GatewayError.gatewayError(
+                    response: (typedData as? PortalProviderRpcResponseError) ?? PortalProviderRpcResponseError(code: 32602, message: "Unknown Error"),
+                    status: String(httpResponse!.statusCode)
+                  )
+                )
+              )
             }
             return completion(Result(error: HttpError.clientError("Status: \(httpResponse!.statusCode) " + String(data: data!, encoding: .utf8)!)))
           } else {

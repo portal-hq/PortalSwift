@@ -1,21 +1,15 @@
 //
-//  MockGDriveStorage.swift
-//  PortalSwift
+//  File.swift
 //
-//  Created by Portal Labs, Inc.
-//  Copyright © 2022 Portal Labs, Inc. All rights reserved.
+//
+//  Created by Blake Williams on 3/30/24.
 //
 
 import Foundation
-import UIKit
 
-public class MockGDriveStorage: GDriveStorage {
-  override public init(clientID: String? = nil, viewController: UIViewController? = nil) {
-    super.init(clientID: clientID, viewController: viewController)
-  }
-
+class MockPasswordStorage: PasswordStorage {
   // Async decrypt implementation
-  public func decrypt(_: String, withKey _: String) async throws -> String {
+  override public func decrypt(_: String, withKey _: String) async throws -> String {
     return mockDecryptResult
   }
 
@@ -52,9 +46,5 @@ public class MockGDriveStorage: GDriveStorage {
   // Completion write implementation
   override public func write(privateKey _: String, completion: @escaping (Result<Bool>) -> Void) {
     completion(Result(data: true))
-  }
-
-  override public func validateOperations(callback: @escaping (Result<Bool>) -> Void) {
-    callback(Result(data: true))
   }
 }

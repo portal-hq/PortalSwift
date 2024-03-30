@@ -11,6 +11,7 @@ import XCTest
 
 final class PortalCoreTests: XCTestCase {
   var portal: Portal!
+
   override func setUpWithError() throws {
     // Put setup code here. This method is called before the invocation of each test method in the class.
     let keychain = MockPortalKeychain()
@@ -19,10 +20,8 @@ final class PortalCoreTests: XCTestCase {
     let mobile = MockMobileWrapper()
 
     let provider = try MockPortalProvider(
-      apiKey: mockApiKey,
-      chainId: 11_155_111,
-      gatewayConfig: [11_155_111: mockHost],
-      keychain: keychain,
+      mockApiKey,
+      withRpcConfig: ["eip155:11155111": mockHost],
       autoApprove: true
     )
 

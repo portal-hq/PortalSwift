@@ -29,7 +29,6 @@ public class PortalApi {
   public var client: ClientResponse? {
     get async throws {
       if self._client == nil {
-        self.logger.debug("PortalApi.client - Attempting to fetch...")
         self._client = try await self.getClient()
       }
       return self._client
@@ -384,13 +383,14 @@ public class PortalApi {
   public func getTransactions(
     limit: Int? = nil,
     offset: Int? = nil,
-    order: TransactionOrder? = nil,
+    order: GetTransactionsOrder? = nil,
     chainId: Int? = nil,
     completion: @escaping (Result<[FetchedTransaction]>) -> Void
   ) throws {
     Task {
       do {
-        let response = try await getTransactions("eip155:\(chainId ?? self.chainId ?? 1)", limit: limit, offset: offset, order: order)
+        let transactionsOrder = order == .asc ? TransactionOrder.ASC : TransactionOrder.DESC
+        let response = try await getTransactions("eip155:\(chainId ?? self.chainId ?? 1)", limit: limit, offset: offset, order: transactionsOrder)
         completion(Result(data: response))
       } catch {
         completion(Result(error: error))
@@ -432,81 +432,17 @@ public class PortalApi {
   /// - Returns: Void.
   @available(*, deprecated, renamed: "simulateTransaction", message: "Please use the async/await implementation of simulateTransaction().")
   public func simulateTransaction(
-    transaction: AnyEncodable,
+    transaction: SimulateTransactionParam,
     completion: @escaping (Result<SimulatedTransaction>) -> Void
   ) throws {
     Task {
       do {
-        let response = try await simulateTransaction(transaction, withChainId: "eip155:\(self.chainId ?? 1)")
+        let simulateTransactionParam = AnyEncodable(transaction)
+        let response = try await simulateTransaction(simulateTransactionParam, withChainId: "eip155:\(self.chainId ?? 1)")
         completion(Result(data: response))
       } catch {
         completion(Result(error: error))
       }
-    }
-  }
-
-  /// Updates the client's wallet state to be stored on the client.
-  /// - Parameters:
-  ///   - signingSharePairId: The ID related to the signing share pair.
-  ///   - completion: The callback that contains the response status.
-  /// - Returns: Void.
-  @available(*, deprecated, renamed: "updateShareStatus", message: "Please use the async/await implementation of updateShareStatus().")
-  public func storedClientSigningShare(
-    signingSharePairId: String,
-    completion: @escaping (Result<String>) -> Void
-  ) throws {
-    let path = "/api/v2/clients/me/wallet/stored-on-client"
-
-    let requestBody: [String: Any] = ["signingSharePairId": signingSharePairId]
-
-    try self.requests.put(
-      path: path,
-      body: requestBody,
-      headers: [
-        "Authorization": "Bearer \(self.apiKey)",
-      ],
-      requestType: HttpRequestType.CustomRequest
-    ) { (result: Result<String>) in
-      completion(result)
-
-      self.track(event: MetricsEvents.storedClientSigningShare.rawValue, properties: ["path": path])
-    }
-  }
-
-  /// Updates the client's wallet backup state to have successfully stored the client backup share key in the client's storage (e.g. gdrive, icloud, etc).
-  /// - Parameters:
-  ///   - success: Boolean indicating whether the storage operation failed.
-  ///   - backupMethod: The `BackupMethod` used to create the  backup share.
-  ///   - completion: The callback that contains the response status.
-  /// - Returns: Void.
-  @available(*, deprecated, renamed: "updateShareStatus", message: "Please use the async/await implementation of updateShareStatus().")
-  public func storedClientBackupShareKey(
-    success: Bool,
-    backupMethod: BackupMethods.RawValue,
-    completion: @escaping (Result<String>) -> Void
-  ) throws {
-    // Start with a dictionary containing the always-present keys
-    var body: [String: Any] = [
-      "backupMethod": "\(backupMethod)",
-      "success": success,
-    ]
-
-    // Conditionally add isMultiBackupEnabled if it's not nil
-    if let isMultiBackupEnabled = self.featureFlags?.isMultiBackupEnabled {
-      body["isMultiBackupEnabled"] = isMultiBackupEnabled
-    }
-
-    try self.requests.put(
-      path: "/api/v2/clients/me/wallet/stored-client-backup-share-key",
-      body: body,
-      headers: [
-        "Authorization": "Bearer \(self.apiKey)",
-      ],
-      requestType: HttpRequestType.CustomRequest
-    ) { (result: Result<String>) in
-      completion(result)
-
-      self.track(event: MetricsEvents.storedClientBackupShareKey.rawValue, properties: ["path": "/api/v2/clients/me/wallet/stored-client-backup-share-key"])
     }
   }
 
@@ -593,18 +529,6 @@ public class PortalApi {
     }
   }
 
-  public func identify(traits: [String: String] = [:], completion: ((Result<MetricsResponse>) -> Void)? = nil) throws {
-    Task.init {
-      do {
-        let transformedTraits: [String: AnyEncodable] = traits.mapValues { AnyEncodable($0) }
-        let response = try await identify(transformedTraits)
-        completion?(Result(data: response))
-      } catch {
-        completion?(Result(error: error))
-      }
-    }
-  }
-
   func track(event: String, properties: [String: String], completion: ((Result<MetricsResponse>) -> Void)? = nil) {
     Task.init {
       do {
@@ -631,8 +555,4 @@ public enum SharePairUpdateStatus: String, Codable {
 public enum TransactionOrder: String, Codable {
   case ASC
   case DESC
-
-  init?(_ fromString: String) {
-    self.init(rawValue: fromString)
-  }
 }

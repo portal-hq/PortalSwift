@@ -53,8 +53,8 @@ public class PortalMpc {
     apiKey: String,
     api: PortalApi,
     keychain: PortalKeychain,
-    isSimulator: Bool = false,
     host: String = "mpc.portalhq.io",
+    isSimulator: Bool = false,
     version: String = "v6",
     mobile: Mobile,
     apiHost: String = "api.portalhq.io",
@@ -184,8 +184,7 @@ public class PortalMpc {
 
       // Update the share statuses
       let shareIds = generateResponse.values.map { share in
-        self.logger.debug("PortalMpc.backup() - Adding share ID: \(share.id)")
-        return share.id
+        share.id
       }
       try await self.api.updateShareStatus(.backup, status: .STORED_CLIENT_BACKUP_SHARE_KEY, sharePairIds: shareIds)
 
@@ -237,7 +236,7 @@ public class PortalMpc {
       )
     }
 
-    let addresses = try await withCheckedThrowingContinuation { continuation in
+    let privateKeys = try await withCheckedThrowingContinuation { continuation in
       let response = generateResponse
       Task {
         do {
@@ -257,6 +256,7 @@ public class PortalMpc {
             _ = try await self.api.eject()
 
             continuation.resume(returning: addresses)
+            return
           }
 
           continuation.resume(returning: addresses)
@@ -266,11 +266,11 @@ public class PortalMpc {
       }
     }
 
-    guard let eip155Address = addresses[.eip155] else {
+    guard let eip155PrivateKey = privateKeys[.eip155] else {
       throw MpcError.unexpectedErrorOnEject("Unable to find address in addresses map.")
     }
 
-    return eip155Address
+    return eip155PrivateKey
   }
 
   public func generate(withProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> [PortalNamespace: String?] {
@@ -293,28 +293,30 @@ public class PortalMpc {
 
             var generateResponse: PortalMpcGenerateResponse = [:]
 
-            async let ed25519MpcShare = try self.getSigningShare(.ED25519)
-            async let secp256K1MpcShare = try self.getSigningShare(.SECP256K1)
+            async let ed25519Generate = try self.getSigningShare(.ED25519)
+            async let secp256k1Generate = try self.getSigningShare(.SECP256K1)
+
+            let (ed25519MpcShare, secp256k1MpcShare) = try await (ed25519Generate, secp256k1Generate)
 
             withProgressCallback?(MpcStatus(status: .parsingShare, done: false))
 
             // Parse ED25519 Share
-            let ed25519ShareData = try self.encoder.encode(await ed25519MpcShare)
+            let ed25519ShareData = try self.encoder.encode(ed25519MpcShare)
             guard let ed25519ShareString = String(data: ed25519ShareData, encoding: .utf8) else {
               throw MpcError.unexpectedErrorOnBackup("Unable to stringify ED25519 share.")
             }
-            generateResponse["ED25519"] = try await PortalMpcGeneratedShare(
+            generateResponse["ED25519"] = PortalMpcGeneratedShare(
               id: ed25519MpcShare.signingSharePairId ?? "",
               share: ed25519ShareString
             )
 
             // Parse SECP256K1 Share
-            let secp256k1ShareData = try self.encoder.encode(await secp256K1MpcShare)
+            let secp256k1ShareData = try self.encoder.encode(secp256k1MpcShare)
             guard let secp256k1ShareString = String(data: secp256k1ShareData, encoding: .utf8) else {
               throw MpcError.unexpectedErrorOnBackup("Unable to stringify ED25519 share.")
             }
-            generateResponse["SECP256K1"] = try await PortalMpcGeneratedShare(
-              id: secp256K1MpcShare.signingSharePairId ?? "",
+            generateResponse["SECP256K1"] = PortalMpcGeneratedShare(
+              id: secp256k1MpcShare.signingSharePairId ?? "",
               share: secp256k1ShareString
             )
 
@@ -370,7 +372,7 @@ public class PortalMpc {
     }
 
     do {
-      let generateResponse = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<PortalMpcGenerateResponse, Error>) in
+      let recoverResponse = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<PortalMpcGenerateResponse, Error>) in
         Task {
           do {
             usingProgressCallback?(MpcStatus(status: .decryptingShare, done: false))
@@ -382,7 +384,7 @@ public class PortalMpc {
             }
             let backupResponse = try decoder.decode(PortalMpcGenerateResponse.self, from: decryptedData)
 
-            var generateResponse: PortalMpcGenerateResponse = [:]
+            var recoverResponse: PortalMpcGenerateResponse = [:]
             if let ed25519Share = backupResponse[PortalCurve.ED25519.rawValue] {
               //  The share's already been backed up, recover it
               async let ed25519MpcShare = try recoverSigningShare(.ED25519, withMethod: method, andBackupShare: ed25519Share.share)
@@ -392,8 +394,8 @@ public class PortalMpc {
                 throw MpcError.unexpectedErrorOnBackup("Unable to stringify ED25519 share.")
               }
 
-              generateResponse["ED25519"] = try await PortalMpcGeneratedShare(
-                id: ed25519MpcShare.backupSharePairId ?? "",
+              recoverResponse["ED25519"] = try await PortalMpcGeneratedShare(
+                id: ed25519MpcShare.signingSharePairId ?? "",
                 share: shareString
               )
             } // In the future, we'll want to figure out if we can generate the other wallet at this point
@@ -406,11 +408,13 @@ public class PortalMpc {
                 throw MpcError.unexpectedErrorOnBackup("Unable to stringify SECP256K1 share.")
               }
 
-              generateResponse["SECP256K1"] = try await PortalMpcGeneratedShare(
-                id: secp256k1MpcShare.backupSharePairId ?? "",
+              recoverResponse["SECP256K1"] = try await PortalMpcGeneratedShare(
+                id: secp256k1MpcShare.signingSharePairId ?? "",
                 share: shareString
               )
             }
+
+            continuation.resume(returning: recoverResponse)
           } catch {
             continuation.resume(throwing: error)
           }
@@ -418,12 +422,13 @@ public class PortalMpc {
       }
 
       usingProgressCallback?(MpcStatus(status: .storingShare, done: false))
-      try await self.keychain.setShares(generateResponse)
+      try await self.keychain.setShares(recoverResponse)
 
       // Update share statuses
-      let shareIds: [String] = generateResponse.values.map { share in
+      let shareIds: [String] = recoverResponse.values.map { share in
         share.id
       }
+
       try await self.api.updateShareStatus(.signing, status: .STORED_CLIENT, sharePairIds: shareIds)
 
       // Reset the metadata in the Keychain
@@ -449,13 +454,40 @@ public class PortalMpc {
     self.backupOptions[method] = storage
   }
 
+  public func setGDriveConfiguration(clientId: String, folderName: String) throws {
+    guard let storage = backupOptions[.GoogleDrive] as? GDriveStorage else {
+      throw MpcError.backupMethodNotRegistered("PortalMpc.setGDriveConfig() - Could not find an instance of `GDriveStorage`. Please use `portal.registerBackupMethod()`")
+    }
+
+    storage.clientId = clientId
+    storage.folder = folderName
+  }
+
+  public func setGDriveView(_ view: UIViewController) throws {
+    guard let storage = backupOptions[.GoogleDrive] as? GDriveStorage else {
+      throw MpcError.backupMethodNotRegistered("PortalMpc.setGDriveView() - Could not find an instance of `GDriveStorage`. Please use `portal.registerBackupMethod()`")
+    }
+
+    storage.view = view
+  }
+
   @available(iOS 16, *)
   public func setPasskeyAuthenticationAnchor(_ anchor: ASPresentationAnchor) throws {
     guard let storage = backupOptions[.Passkey] as? PasskeyStorage else {
-      throw MpcError.backupMethodNotRegistered("Could not find an instance of `PasskeyStorage`. Please use `portal.registerBackupMethod()`")
+      throw MpcError.backupMethodNotRegistered("PortalMpc.setPasskeyAuthenticationAnchor() - Could not find an instance of `PasskeyStorage`. Please use `portal.registerBackupMethod()`")
     }
 
     storage.anchor = anchor
+  }
+
+  @available(iOS 16, *)
+  public func setPasskeyConfiguration(relyingParty: String, webAuthnHost: String) throws {
+    guard let storage = backupOptions[.Passkey] as? PasskeyStorage else {
+      throw MpcError.backupMethodNotRegistered("PortalMpc.setPasskeyConfiguration() - Could not find an instance of `PasskeyStorage`. Please use `portal.registerBackupMethod()`")
+    }
+
+    storage.relyingParty = relyingParty
+    storage.webAuthnHost = webAuthnHost
   }
 
   public func setPassword(_ value: String) throws {
@@ -714,6 +746,7 @@ public enum MpcError: Error {
   case signingRecoveryError(_ message: String)
   case unableToAuthenticate
   case unableToDecodeShare
+  case unableToEjectWallet(String)
   case unableToRetrieveClient(String)
   case unableToWriteToKeychain
   case unexpectedErrorOnBackup(_ message: String)

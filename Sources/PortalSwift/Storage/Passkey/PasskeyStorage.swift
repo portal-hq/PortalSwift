@@ -22,14 +22,14 @@ public class PasskeyStorage: Storage, PortalStorage {
   public var apiKey: String?
   public var client: Client?
   public var portalApi: PortalApi?
+  public var relyingParty: String
+  public var webAuthnHost: String
 
   private var auth: PasskeyAuth
   private let decoder = JSONDecoder()
   private let logger = PortalLogger()
   private var passkeyApi: HttpRequester
-  private var relyingParty: String
   private var sessionId: String?
-  private var webAuthnHost: String
 
   deinit {
     print("PasskeyStorage is being deallocated")

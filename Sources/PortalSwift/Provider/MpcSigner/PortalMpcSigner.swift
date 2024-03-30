@@ -8,7 +8,7 @@
 import Foundation
 import Mpc
 
-class PortalMpcSigner {
+public class PortalMpcSigner {
   private let apiKey: String
   private let keychain: PortalKeychain
   private let mpcUrl: String
@@ -60,51 +60,61 @@ class PortalMpcSigner {
     )
   }
 
-  public func sign(_ chainId: String, withPayload: PortalSignRequest, andRpcUrl: String) async throws -> SignerResult {
+  public func sign(
+    _ chainId: String,
+    withPayload: PortalSignRequest,
+    andRpcUrl: String,
+    usingBlockchain: PortalBlockchain
+  ) async throws -> String {
+    var mpcMetadata = self.mpcMetadata
+    mpcMetadata.curve = usingBlockchain.curve
+    mpcMetadata.chainId = chainId
+
     guard let address = try await keychain.getAddress(chainId) else {
       throw PortalKeychain.KeychainError.noAddressesFound
     }
-    switch withPayload.method {
-    case .eth_accounts, .eth_requestAccounts:
-      return SignerResult(accounts: [address])
-    default:
-      let signingShare = try await keychain.getShare(chainId)
-      let json = try JSONEncoder().encode(withPayload.params)
-      guard let params = String(data: json, encoding: .utf8) else {
-        throw PortalMpcSignerError.unableToEncodeParams
-      }
-
-      let mpcMetadataString = try self.mpcMetadata.jsonString()
-      let clientSignResult = self.binary.MobileSign(
-        self.apiKey,
-        self.mpcUrl,
-        signingShare,
-        withPayload.method.rawValue,
-        params,
-        andRpcUrl,
-        chainId,
-        mpcMetadataString
-      )
-
-      // Attempt to decode the sign result.
-      guard let data = clientSignResult.data(using: .utf8) else {
-        throw PortalMpcSignerError.unableToParseSignResponse
-      }
-
-      let signResult: SignResult = try JSONDecoder().decode(SignResult.self, from: data)
-      guard signResult.error.code == 0 else {
-        throw PortalMpcError(signResult.error)
-      }
-
-      // Return the sign result.
-      return SignerResult(signature: signResult.data!)
+    let signingShare = try await keychain.getShare(chainId)
+    let json = try JSONEncoder().encode(withPayload.params)
+    guard let params = String(data: json, encoding: .utf8) else {
+      throw PortalMpcSignerError.unableToEncodeParams
     }
+
+    let mpcMetadataString = try mpcMetadata.jsonString()
+    let clientSignResult = self.binary.MobileSign(
+      self.apiKey,
+      self.mpcUrl,
+      signingShare,
+      withPayload.method.rawValue,
+      params,
+      andRpcUrl,
+      chainId,
+      mpcMetadataString
+    )
+
+    // Attempt to decode the sign result.
+    guard let data = clientSignResult.data(using: .utf8) else {
+      throw PortalMpcSignerError.unableToParseSignResponse
+    }
+
+    let signResult: SignResult = try JSONDecoder().decode(SignResult.self, from: data)
+    guard signResult.error.code == 0 else {
+      throw PortalMpcError(signResult.error)
+    }
+    guard let signature = signResult.data else {
+      throw PortalMpcSignerError.noSignatureFoundInSignResult
+    }
+
+    // Return the sign result.
+    return signature
   }
 }
 
 enum PortalMpcSignerError: Error, Equatable {
+  case noCurveFoundForNamespace(String)
+  case noNamespaceFoundForChainId(String)
   case noParamsForTransaction
   case noParamsForSignRequest
+  case noSignatureFoundInSignResult
   case unableToEncodeParams
   case unableToParseSignResponse
 }

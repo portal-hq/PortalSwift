@@ -9,6 +9,7 @@ import Foundation
 import GoogleSignIn
 
 public enum GDriveClientError: Error {
+  case authenticationNotInitialized(String)
   case fileContentMismatch
   case noFileFound
   case unableToBuildGDriveQuery
@@ -16,29 +17,63 @@ public enum GDriveClientError: Error {
   case unableToReadFileContents
   case unableToWriteToGDrive
   case userNotAuthenticated
+  case viewNotInitialized(String)
 }
 
 class GDriveClient {
+  public var auth: GoogleAuth?
+  public var clientId: String? {
+    get { return self._clientId }
+    set(clientId) {
+      self._clientId = clientId
+
+      if let clientId = clientId, let view = view {
+        self.auth = GoogleAuth(config: GIDConfiguration(clientID: clientId), view: view)
+      }
+    }
+  }
+
+  public var folder: String
+  public var view: UIViewController? {
+    get { return self._view }
+    set(view) {
+      self._view = view
+
+      if let clientId = clientId, let view = view {
+        self.auth = GoogleAuth(config: GIDConfiguration(clientID: clientId), view: view)
+      }
+    }
+  }
+
+  private var _clientId: String?
+  private var _view: UIViewController?
   private var api: HttpRequester
-  public var auth: GoogleAuth
   private var baseUrl: String = "https://www.googleapis.com"
   private var boundary: String = "portal-backup-share"
-  private var clientId: String
   private let decoder = JSONDecoder()
-  private var folder: String
+  private let logger = PortalLogger()
 
   init(
-    clientId: String,
+    clientId: String? = nil,
     view: UIViewController? = nil,
-    folder: String = "_PORTAL_MPC_DO_NOT_DELETE_"
+    folder: String? = "_PORTAL_MPC_DO_NOT_DELETE_"
   ) {
     self.api = HttpRequester(baseUrl: self.baseUrl)
-    self.auth = GoogleAuth(config: GIDConfiguration(clientID: clientId), view: view)
-    self.clientId = clientId
-    self.folder = folder
+    self._clientId = clientId
+    self.folder = folder ?? "_PORTAL_MPC_DO_NOT_DELETE_"
+    self._view = view
+
+    if let clientId = _clientId, let view = _view {
+      self.auth = GoogleAuth(config: GIDConfiguration(clientID: clientId), view: view)
+    }
   }
 
   public func delete(_ id: String) async throws -> Bool {
+    guard let auth = auth else {
+      self.logger.error("GDriveClient.delete() - Authentication not initialized. GDrive config has not been set yet.")
+      throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfiguration() to configure GoogleDrive")
+    }
+
     let accessToken = await auth.getAccessToken()
     if accessToken.isEmpty {
       throw GDriveClientError.userNotAuthenticated
@@ -52,11 +87,21 @@ class GDriveClient {
     throw URLError(.badURL)
   }
 
-  private func getAccessToken() async -> String {
-    return await self.auth.getAccessToken()
+  private func getAccessToken() async throws -> String {
+    guard let auth = auth else {
+      self.logger.error("GDriveClient.getAccessToken() - Authentication not initialized. GDrive config has not been set yet.")
+      throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfiguration() to configure GoogleDrive")
+    }
+
+    return await auth.getAccessToken()
   }
 
   public func getIdForFilename(_ filename: String) async throws -> String {
+    guard let auth = auth else {
+      self.logger.error("GDriveClient.getIdForFilename() - Authentication not initialized. GDrive config has not been set yet.")
+      throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfig() to configure GoogleDrive")
+    }
+
     let accessToken = await auth.getAccessToken()
     if accessToken.isEmpty {
       throw GDriveClientError.userNotAuthenticated
@@ -82,6 +127,11 @@ class GDriveClient {
   }
 
   public func read(_ id: String) async throws -> String {
+    guard let auth = auth else {
+      self.logger.error("GDriveClient.read() - Authentication not initialized. GDrive config has not been set yet.")
+      throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfig() to configure GoogleDrive")
+    }
+
     let accessToken = await auth.getAccessToken()
     if accessToken.isEmpty {
       throw GDriveClientError.userNotAuthenticated
@@ -101,6 +151,11 @@ class GDriveClient {
   }
 
   public func validateOperations() async throws -> Bool {
+    guard let auth = auth else {
+      self.logger.error("GDriveClient.validateOperations() - Authentication not initialized. GDrive config has not been set yet.")
+      throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfig() to configure GoogleDrive")
+    }
+
     let mockFileName = "portal_test.txt"
     let mockContent = "test_value"
     let accessToken = await auth.getAccessToken()
@@ -124,6 +179,11 @@ class GDriveClient {
   }
 
   public func write(_ filename: String, withContent: String) async throws -> Bool {
+    guard let auth = auth else {
+      self.logger.error("GDriveClient.write() - Authentication not initialized. GDrive config has not been set yet.")
+      throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfig() to configure GoogleDrive")
+    }
+
     let accessToken = await auth.getAccessToken()
     if accessToken.isEmpty {
       throw GDriveClientError.userNotAuthenticated
@@ -146,6 +206,11 @@ class GDriveClient {
   }
 
   private func createFolder() async throws -> GDriveFile {
+    guard let auth = auth else {
+      self.logger.error("GDriveClient.createFolder() - Authentication not initialized. GDrive config has not been set yet.")
+      throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfig() to configure GoogleDrive")
+    }
+
     let accessToken = await auth.getAccessToken()
 
     if let url = URL(string: "\(baseUrl)/drive/v3/files?ignoreDefaultVisibility=true") {
@@ -164,6 +229,11 @@ class GDriveClient {
   }
 
   private func getOrCreateFolder() async throws -> GDriveFile {
+    guard let auth = auth else {
+      self.logger.error("GDriveClient.getOrCreateFolder() - Authentication not initialized. GDrive config has not been set yet.")
+      throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfig() to configure GoogleDrive")
+    }
+
     let accessToken = await auth.getAccessToken()
     if accessToken.isEmpty {
       throw GDriveClientError.userNotAuthenticated

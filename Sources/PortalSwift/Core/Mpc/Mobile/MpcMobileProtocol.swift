@@ -9,6 +9,7 @@ import Foundation
 
 public struct MpcMetadata: Codable {
   var backupMethod: BackupMethods.RawValue?
+  var chainId: String?
   var clientPlatform: String
   var curve: PortalCurve?
   var isMultiBackupEnabled: Bool? = nil

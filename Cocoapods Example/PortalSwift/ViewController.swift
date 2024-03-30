@@ -495,7 +495,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   func getTransactions() {
     do {
-      try self.portal?.api.getTransactions(limit: 100, offset: 0, order: .ASC, chainId: 11_155_111) { results in
+      try self.portal?.api.getTransactions(limit: 100, offset: 0, order: GetTransactionsOrder.asc, chainId: 11_155_111) { results in
         guard results.error == nil else {
           print("❌ Unable to get transactions", results.error ?? "")
           return
@@ -562,7 +562,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       )
 
       // Next, simulate the transaction.
-      try portal?.api.simulateTransaction(transaction: AnyEncodable(transaction)) {
+      try portal?.api.simulateTransaction(transaction: transaction) {
         (result: Result<SimulatedTransaction>) in
 
         // Check for general errors.
@@ -734,6 +734,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       print("Starting to test method ", method, "...")
       self.portal?.provider.request(payload: payload) { (result: Result<RequestCompletionResult>) in
         guard result.error == nil else {
+          print("🚨 Error is not nil: ", result.error)
           print("❌ Error testing provider request:", method, "Error:", result.error ?? "Unknown error")
           completion(false)
           return
@@ -754,8 +755,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
           if let signature = signerResult.data?.signature {
             print("✅ Signature for", method, signature)
-          } else if let accounts = signerResult.data?.accounts {
-            print("✅ Accounts for", method, accounts)
           } else {
             print("❌ No signature or accounts for method:", method)
             completion(false)
