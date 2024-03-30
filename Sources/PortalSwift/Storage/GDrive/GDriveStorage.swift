@@ -13,20 +13,31 @@ import GoogleSignIn
 public class GDriveStorage: Storage, PortalStorage {
   public var accessToken: String?
   public var api: PortalApi?
-  private var drive: GDriveClient
-  private var filename: String?
-  private var separator: String = ""
+  public var clientId: String? {
+    get { return self.drive.clientId }
+    set(clientId) { self.drive.clientId = clientId }
+  }
+
+  public var folder: String {
+    get { return self.drive.folder }
+    set(folder) { self.drive.folder = folder }
+  }
 
   public var view: UIViewController? {
     get {
-      return self.drive.auth.view
+      return self.drive.view
     }
     set(view) {
-      self.drive.auth.view = view
+      self.drive.view = view
     }
   }
 
-  public init(clientID: String, viewController: UIViewController? = nil) {
+  private var drive: GDriveClient
+  private var filename: String?
+  private var logger = PortalLogger()
+  private var separator: String = ""
+
+  public init(clientID: String? = nil, viewController: UIViewController? = nil) {
     self.drive = GDriveClient(clientId: clientID, view: viewController)
   }
 
@@ -51,7 +62,12 @@ public class GDriveStorage: Storage, PortalStorage {
   }
 
   public func signIn() async throws -> GIDGoogleUser {
-    return try await self.drive.auth.signIn()
+    guard let auth = drive.auth else {
+      self.logger.debug("GDriveStorage.signIn() - ❌ Authentication not initialized. GDrive config has not been set yet.")
+      throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfiguration() to configure GoogleDrive")
+    }
+
+    return try await auth.signIn()
   }
 
   public func validateOperations() async throws -> Bool {
@@ -140,7 +156,7 @@ public class GDriveStorage: Storage, PortalStorage {
   public func signIn(completion: @escaping (Result<GIDGoogleUser>) -> Void) {
     async {
       do {
-        let user = try await drive.auth.signIn()
+        let user = try await signIn()
         completion(Result(data: user))
       } catch {
         completion(Result(error: error))
@@ -152,7 +168,7 @@ public class GDriveStorage: Storage, PortalStorage {
   public func validateOperations(callback: @escaping (Result<Bool>) -> Void) {
     async {
       do {
-        let success = try await drive.validateOperations()
+        let success = try await validateOperations()
         callback(Result(data: success))
       } catch {
         callback(Result(error: error))

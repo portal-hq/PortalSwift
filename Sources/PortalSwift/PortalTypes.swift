@@ -21,6 +21,8 @@ public enum AnyEncodableError: Error {
   case typeNotEncodable(Any.Type)
 }
 
+public typealias PortalCreateWalletResponse = (ethereum: String?, solana: String?)
+
 public struct PortalBackupWalletResponse {
   public let cipherText: String
   public let storageCallback: () async throws -> Void
@@ -68,7 +70,7 @@ public struct BackupOptions {
   public var gdrive: GDriveStorage?
   public var icloud: ICloudStorage?
   public var passwordStorage: PasswordStorage?
-  public var local: Storage?
+  public var local: LocalFileStorage?
 
   public var _passkeyStorage: Any?
 
@@ -110,7 +112,7 @@ public struct BackupOptions {
     self.icloud = icloud
   }
 
-  public init(local: Storage) {
+  public init(local: LocalFileStorage) {
     self.local = local
   }
 

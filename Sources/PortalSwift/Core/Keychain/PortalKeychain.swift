@@ -9,6 +9,8 @@ import Foundation
 
 /// The main interface for Portal to securely store the client's signing share.
 public class PortalKeychain {
+  public static var metadata: PortalKeychainMetadata?
+
   public enum KeychainError: Error, Equatable {
     case clientNotFound
     case clientIdNotSetYet
@@ -32,7 +34,7 @@ public class PortalKeychain {
       self._api = api
 
       //  Load the metadata as soon as the api is set
-      if let api = _api {
+      if let _ = _api {
         Task {
           do {
             try await self.loadMetadata()
@@ -44,9 +46,8 @@ public class PortalKeychain {
 
   public var clientId: String?
   public var legacyAddress: String?
-  public var metadata: PortalKeychainMetadata?
 
-  let basKey = "PortalMpc"
+  let baseKey = "PortalMpc"
   let deprecatedAddressKey = "PortalMpc.Address"
   let deprecatedShareKey = "PortalMpc.DkgResult"
 
@@ -69,30 +70,84 @@ public class PortalKeychain {
    * Public functions
    *******************************************/
 
-  public func getAddress(_ chainId: String) async throws -> String? {
-    let namespaceString = chainId.split(separator: ":").map(String.init)[0]
-    guard let namespace = PortalNamespace(rawValue: namespaceString) else {
-      self.logger.error("PortalKeychain.getAddress() - Unsupported namespace: \(namespaceString)")
-      throw KeychainError.unsupportedNamespace(chainId)
+  public func deleteShares() async throws {
+    guard let client = try await client else {
+      self.logger.error("PortalKeychain.deleteShares() - Client not found")
+      throw KeychainError.clientNotFound
+    }
+    let clientId = client.id
+    try self.deleteItem("\(self.baseKey).\(clientId).\(self.sharesKey)")
+  }
+
+  public func getAddress(_ forChainId: String) async throws -> String? {
+    guard let blockchain = try? PortalBlockchain(fromChainId: forChainId) else {
+      self.logger.error("PortalKeychain.getAddress() - ❌ Unsupported chainId received: \(forChainId)")
+      throw KeychainError.unsupportedNamespace(forChainId)
     }
 
-    let metadata = try await getMetadata()
-    guard let address = metadata.addresses?[namespace] else {
-      self.logger.error("PortalKeychain.getAddress() - No address found for namespace: \(namespaceString)")
-      throw KeychainError.noAddressForNamespace(namespace)
+    do {
+      let metadata = try await getMetadata()
+      guard let address = metadata.addresses?[blockchain.namespace] else {
+        self.logger.error("PortalKeychain.getAddress() - No address found for namespace: \(blockchain.namespace.rawValue)")
+        throw KeychainError.noAddressForNamespace(blockchain.namespace)
+      }
+      return address
+    } catch {
+      self.logger.debug("PortalKeychain.getAddress() - Attempting to read from legacy address data...")
+      // Handle backward compatibility with legacy Keychain data
+      guard let client = try await client else {
+        self.logger.error("PortalKeychain.getAddress() - Client not found")
+        throw KeychainError.clientNotFound
+      }
+      let clientId = client.id
+      do {
+        // Before multi-wallet support was added
+        let address = try getItem("\(baseKey).\(clientId).address")
+        return address
+      } catch KeychainError.itemNotFound(_) {
+        self.logger.debug("PortalKeychain.getAddress() - Attempting to read from even older legacy address data...")
+        // Handle even older legacy backward compatinility with deprecated Keychain data
+        // - Before clientId was added to the Keychain key
+        let address = try self.getItem(self.deprecatedAddressKey)
+        return address
+      }
     }
-
-    return address
   }
 
   public func getAddresses() async throws -> [PortalNamespace: String?] {
-    let metadata = try await getMetadata()
-    guard let addresses = metadata.addresses else {
-      self.logger.error("PortalKeychain.getAddresses() - No addresses found")
-      throw KeychainError.noAddressesFound
+    do {
+      let metadata = try await getMetadata()
+      if let addresses = metadata.addresses {
+        return addresses
+      } else {
+        throw KeychainError.itemNotFound(item: "metadata")
+      }
+    } catch KeychainError.itemNotFound(_) {
+      self.logger.debug("PortalKeychain.getAddresses() - Attempting to read from legacy address data...")
+      // Handle backward compatibility with legacy Keychain data
+      guard let client = try await client else {
+        self.logger.error("PortalKeychain.getAddresses() - Client not found")
+        throw KeychainError.clientNotFound
+      }
+      let clientId = client.id
+      do {
+        // Before multi-wallet support was added
+        let address = try getItem("\(baseKey).\(clientId).address")
+        let addresses: [PortalNamespace: String?] = [
+          .eip155: address,
+        ]
+        return addresses
+      } catch KeychainError.itemNotFound(_) {
+        self.logger.debug("PortalKeychain.getAddresses() - Attempting to read from even older legacy address data...")
+        // Handle even older legacy backward compatinility with deprecated Keychain data
+        // - Before clientId was added to the Keychain key
+        let address = try self.getItem(self.deprecatedAddressKey)
+        let addresses: [PortalNamespace: String?] = [
+          .eip155: address,
+        ]
+        return addresses
+      }
     }
-
-    return addresses
   }
 
   private func getMetadata() async throws -> PortalKeychainClientMetadata {
@@ -102,7 +157,7 @@ public class PortalKeychain {
     }
 
     let clientId = client.id
-    let value = try getItem("\(basKey).\(clientId).\(metadataKey)")
+    let value = try getItem("\(baseKey).\(clientId).\(metadataKey)")
     guard let data = value.data(using: .utf8) else {
       self.logger.error("PortalKeychain.getMetadata() - Unable to encode keychain data")
       throw KeychainError.unableToEncodeKeychainData
@@ -112,24 +167,45 @@ public class PortalKeychain {
     return metadata
   }
 
-  public func getShare(_ chainId: String) async throws -> String {
-    let namespaceString = chainId.split(separator: ":").map(String.init)[0]
-    guard let namespace = PortalNamespace(rawValue: namespaceString) else {
-      self.logger.error("PortalKeychain.getShare() - Unsupported namespace from chainId: \(chainId)")
-      throw KeychainError.unsupportedNamespace(chainId)
-    }
-    guard let curve = metadata?.namespaces[namespace] else {
-      self.logger.error("PortalKeychain.getShare() - Unsupported namespace from chainId: \(chainId)")
-      throw KeychainError.unsupportedNamespace(chainId)
+  public func getShare(_ forChainId: String) async throws -> String {
+    guard let blockchain = try? PortalBlockchain(fromChainId: forChainId) else {
+      self.logger.error("PortalKeychain.getAddress() - ❌ Unsupported chainId received: \(forChainId)")
+      throw KeychainError.unsupportedNamespace(forChainId)
     }
 
-    let shares = try await getShares()
-    guard let share = shares[curve.rawValue] else {
-      self.logger.error("PortalKeychain.getShare() - No share found for curve: \(curve.rawValue)")
-      throw KeychainError.shareNotFoundForCurve(curve)
-    }
+    do {
+      let shares = try await getShares()
+      guard let share = shares[blockchain.curve.rawValue] else {
+        self.logger.error("PortalKeychain.getShare() - No share found for curve: \(blockchain.curve.rawValue)")
+        throw KeychainError.shareNotFoundForCurve(blockchain.curve)
+      }
 
-    return share.share
+      return share.share
+    } catch KeychainError.itemNotFound(_) {
+      // We only want to do backward compatibility checks for the
+      // SECP256K1 curve, since that's all that is relevant to
+      // pre-multi-wallet support
+      guard blockchain.curve == .SECP256K1 else {
+        throw KeychainError.noWalletForNamespace(blockchain.namespace)
+      }
+      // Handle backward compatibility for legacy Keychain data
+      guard let client = try await client else {
+        self.logger.error("PortalKeychain.getShare() - Client not found")
+        throw KeychainError.clientNotFound
+      }
+      let clientId = client.id
+
+      do {
+        // Before multi-wallet support was added
+        let signingShareValue = try getItem("\(baseKey).\(clientId).share")
+        return signingShareValue
+      } catch KeychainError.itemNotFound(_) {
+        // Handle even older legacy Keychain data
+        // - Before clientId was added to the Keychain key
+        let share = try self.getItem(self.deprecatedShareKey)
+        return share
+      }
+    }
   }
 
   public func getShares() async throws -> PortalKeychainClientShares {
@@ -139,14 +215,49 @@ public class PortalKeychain {
     }
 
     let clientId = client.id
-    let value = try getItem("\(basKey).\(clientId).\(sharesKey)")
-    guard let data = value.data(using: .utf8) else {
-      self.logger.error("PortalKeychain.getShares() - Unable to encode keychain data")
-      throw KeychainError.unableToEncodeKeychainData
-    }
-    let shares = try decoder.decode(PortalKeychainClientShares.self, from: data)
 
-    return shares
+    do {
+      let value = try getItem("\(baseKey).\(clientId).\(sharesKey)")
+
+      guard let data = value.data(using: .utf8) else {
+        self.logger.error("PortalKeychain.getShares() - Unable to decode keychain data")
+        throw KeychainError.unableToEncodeKeychainData
+      }
+      let shares = try decoder.decode(PortalKeychainClientShares.self, from: data)
+
+      return shares
+    } catch KeychainError.itemNotFound(_) {
+      self.logger.debug("PortalKeychain.getShares() - Attempting to read from legacy share data...")
+      // Handle backward compatibility with legacy Keychain data
+      do {
+        // Before multi-wallet support was added
+        let signingShareValue = try getItem("\(baseKey).\(clientId).share")
+        guard let data = signingShareValue.data(using: .utf8) else {
+          self.logger.error("PortalKeychain.getShares() - Unable to decode legacy keychain data")
+          throw KeychainError.unableToEncodeKeychainData
+        }
+        let share = try decoder.decode(MpcShare.self, from: data)
+        let generateResponse: PortalMpcGenerateResponse = [
+          "SECP256K1": PortalMpcGeneratedShare(
+            id: share.signingSharePairId ?? "",
+            share: signingShareValue
+          ),
+        ]
+        return generateResponse
+      } catch KeychainError.itemNotFound(_) {
+        self.logger.debug("PortalKeychain.getShares() - Attempting to read from even older legacy share data...")
+        // Handle even older legacy Keychain data
+        // - Before clientId was added to the Keychain key
+        let share = try self.getItem(self.deprecatedShareKey)
+        let generateResponse: PortalMpcGenerateResponse = [
+          "SECP256K1": PortalMpcGeneratedShare(
+            id: "",
+            share: share
+          ),
+        ]
+        return generateResponse
+      }
+    }
   }
 
   public func loadMetadata() async throws {
@@ -164,6 +275,8 @@ public class PortalKeychain {
     if let solanaCurve = client.metadata.namespaces.solana?.curve {
       metadata.namespaces[.solana] = solanaCurve
     }
+
+    PortalKeychain.metadata = metadata
 
     // Build the client's wallet metadata
     var wallets: [PortalCurve: PortalKeychainClientMetadataWallet] = [:]
@@ -221,7 +334,7 @@ public class PortalKeychain {
       throw KeychainError.unableToEncodeKeychainData
     }
 
-    try self.updateItem("\(self.basKey).\(clientId).\(self.metadataKey)", withValue: value)
+    try self.updateItem("\(self.baseKey).\(clientId).\(self.metadataKey)", withValue: value)
   }
 
   public func setShares(_ withData: [String: PortalMpcGeneratedShare]) async throws {
@@ -236,7 +349,7 @@ public class PortalKeychain {
       throw KeychainError.unableToEncodeKeychainData
     }
 
-    try self.updateItem("\(self.basKey).\(clientId).\(self.sharesKey)", withValue: value)
+    try self.updateItem("\(self.baseKey).\(clientId).\(self.sharesKey)", withValue: value)
   }
 
   /*******************************************
@@ -383,7 +496,7 @@ public class PortalKeychain {
 
   /// Retrieve the signing share stored in the client's keychain.
   /// - Returns: The client's signing share.
-  @available(*, deprecated, renamed: "getShares", message: "Please use the async implementation of getShares().")
+  @available(*, deprecated, renamed: "getShares", message: "Please use the async implementation of getShares() or getShare(forChainId).")
   public func getSigningShare() throws -> String {
     let clientId = try getClientId()
     let shareKey = "\(clientId).share"

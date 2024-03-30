@@ -11,8 +11,15 @@ import Mpc
 
 /// The main Portal class.
 public class Portal {
+  @available(*, deprecated, renamed: "addresses", message: "Please use the async getter for `addresses`")
   public var address: String? {
     return self.keychain.legacyAddress
+  }
+
+  public var addresses: [PortalNamespace: String?] {
+    get async throws {
+      return try await self.keychain.getAddresses()
+    }
   }
 
   public var client: ClientResponse? {
@@ -26,17 +33,17 @@ public class Portal {
   public let api: PortalApi
   public let apiKey: String
   public let autoApprove: Bool
-  public var backup: BackupOptions?
-  public let isMocked: Bool
-  public let keychain: PortalKeychain
-  public let mpc: PortalMpc
-  public var rpcConfig: [String: String]
-  private let binary: Mobile
-  private let featureFlags: FeatureFlags?
-
+  public var gatewayConfig: [Int: String] = [:]
   public let provider: PortalProvider
+  public var rpcConfig: [String: String]
 
   private let apiHost: String
+  private var backup: BackupOptions?
+  private let binary: Mobile
+  private let featureFlags: FeatureFlags?
+  private let isMocked: Bool
+  private let keychain: PortalKeychain
+  private let mpc: PortalMpc
   private let mpcHost: String
   private let version: String
 
@@ -71,45 +78,81 @@ public class Portal {
     self.binary = isMocked ? MockMobileWrapper() : MobileWrapper()
     self.featureFlags = featureFlags
     self.isMocked = isMocked
+    self.keychain = isMocked ? MockPortalKeychain() : PortalKeychain()
     self.mpcHost = mpcHost
     self.rpcConfig = withRpcConfig
     self.version = version
 
     // Creating this as a variable first so it's usable to
     // fetch the client in the Task at the end of the initializer
-    let api = PortalApi(apiKey: apiKey, apiHost: apiHost)
-
+    let api = isMocked
+      ? MockPortalApi(apiKey: apiKey, apiHost: apiHost)
+      : PortalApi(apiKey: apiKey, apiHost: apiHost)
     self.api = api
-    self.keychain = PortalKeychain()
-    self.mpc = PortalMpc(apiKey: apiKey, api: self.api, keychain: self.keychain, mobile: MobileWrapper())
-    self.provider = try PortalProvider(
-      apiKey: apiKey,
-      rpcConfig: withRpcConfig,
-      keychain: self.keychain,
-      autoApprove: autoApprove,
-      apiHost: apiHost,
-      mpcHost: mpcHost,
-      featureFlags: featureFlags
-    )
+    self.keychain.api = api
+
+    self.mpc = isMocked
+      ? MockPortalMpc(apiKey: apiKey, api: self.api, keychain: self.keychain, mobile: MockMobileWrapper())
+      : PortalMpc(apiKey: apiKey, api: self.api, keychain: self.keychain, host: mpcHost, mobile: MobileWrapper())
+    self.provider = isMocked
+      ? try MockPortalProvider(
+        apiKey: apiKey,
+        rpcConfig: withRpcConfig,
+        keychain: self.keychain,
+        autoApprove: autoApprove,
+        apiHost: apiHost,
+        mpcHost: mpcHost,
+        featureFlags: featureFlags
+      )
+      : try PortalProvider(
+        apiKey: apiKey,
+        rpcConfig: withRpcConfig,
+        keychain: self.keychain,
+        autoApprove: autoApprove,
+        apiHost: apiHost,
+        mpcHost: mpcHost,
+        featureFlags: featureFlags
+      )
 
     // Initialize with PasskeyStorage by default
     if #available(iOS 16, *) {
-      self.mpc.registerBackupMethod(.Passkey, withStorage: PasskeyStorage())
+      self.mpc.registerBackupMethod(
+        .Passkey,
+        withStorage: isMocked ? MockPasskeyStorage() : PasskeyStorage()
+      )
     }
     // Initialize with PasswordStorage by default
-    self.mpc.registerBackupMethod(.Password, withStorage: PasswordStorage())
+    self.mpc.registerBackupMethod(
+      .Password,
+      withStorage: isMocked ? MockPasswordStorage() : PasswordStorage()
+    )
     // Initialize with iCloudStorage by default
-    self.mpc.registerBackupMethod(.iCloud, withStorage: ICloudStorage())
+    self.mpc.registerBackupMethod(
+      .iCloud,
+      withStorage: isMocked ? MockICloudStorage() : ICloudStorage()
+    )
+    // Initialize with GDrive by default
+    self.mpc.registerBackupMethod(
+      .GoogleDrive,
+      withStorage: isMocked ? MockGDriveStorage() : GDriveStorage()
+    )
+    // Initialize with LocalFileStorage by default
+    self.mpc.registerBackupMethod(
+      .local,
+      withStorage: isMocked ? MockLocalFileStorage() : LocalFileStorage()
+    )
 
-    // Capture analytics.
+    // Capture metrics.
     Task {
-      do {
-        if let client = try await api.client {
-          _ = try await api.identify(["clientId": AnyEncodable(client.id)])
-          _ = try await api.track(MetricsEvents.portalInitialized.rawValue, withProperties: [:])
-        }
-      } catch {
-        // Do nothing to prevent failing from metrics.
+      if let client = try? await api.client {
+        _ = try? await api.identify([
+          "id": AnyEncodable(client.id),
+          "custodianId": AnyEncodable(client.custodian.id),
+        ])
+        _ = try? await api.track(
+          MetricsEvents.portalInitialized.rawValue,
+          withProperties: [:]
+        )
       }
     }
   }
@@ -136,6 +179,7 @@ public class Portal {
     self.apiKey = apiKey
     self.autoApprove = autoApprove
     self.backup = backup
+    self.gatewayConfig = gatewayConfig
     self.isMocked = isMocked
     self.keychain = keychain
     self.mpcHost = mpcHost
@@ -182,14 +226,17 @@ public class Portal {
       semaphore.signal()
     }
     semaphore.wait()
+    // End legacy GetClient() implementation
+
+    print("Portal initializer done!")
 
     // Initialize Mpc
     self.mpc = PortalMpc(
       apiKey: apiKey,
       api: self.api,
       keychain: keychain,
-      isSimulator: isSimulator,
       host: mpcHost,
+      isSimulator: isSimulator,
       version: version,
       mobile: self.binary,
       apiHost: self.apiHost,
@@ -203,6 +250,9 @@ public class Portal {
     if let iCloud = backup.icloud {
       self.mpc.registerBackupMethod(.iCloud, withStorage: iCloud)
     }
+    if let local = backup.local {
+      self.mpc.registerBackupMethod(.local, withStorage: local)
+    }
     if let passwords = backup.passwordStorage {
       self.mpc.registerBackupMethod(.Password, withStorage: passwords)
     }
@@ -215,13 +265,9 @@ public class Portal {
 
     // Capture analytics.
     Task {
-      do {
-        if let client = try await api.client {
-          _ = try await api.identify(["clientId": AnyEncodable(client.id)])
-          _ = try await api.track(MetricsEvents.portalInitialized.rawValue, withProperties: [:])
-        }
-      } catch {
-        // Do nothing to prevent failing from metrics.
+      if let client = try? await api.client {
+        _ = try? await api.identify(["id": AnyEncodable(client.id), "custodianId": AnyEncodable(client.custodian.id)])
+        _ = try? await api.track(MetricsEvents.portalInitialized.rawValue, withProperties: [:])
       }
     }
   }
@@ -266,6 +312,7 @@ public class Portal {
     self.apiKey = apiKey
     self.autoApprove = autoApprove
     self.binary = binary ?? MobileWrapper()
+    self.gatewayConfig = gatewayConfig
     self.isMocked = isMocked
     self.keychain = keychain
     self.mpcHost = mpcHost
@@ -322,14 +369,17 @@ public class Portal {
       semaphore.signal()
     }
     semaphore.wait()
+    // End legacy GetClient() implementation
+
+    print("Portal initializer done!")
 
     // Initialize Mpc
     self.mpc = mpc ?? PortalMpc(
       apiKey: apiKey,
       api: self.api,
       keychain: keychain,
-      isSimulator: isSimulator,
       host: mpcHost,
+      isSimulator: isSimulator,
       version: version,
       mobile: self.binary
     )
@@ -339,6 +389,9 @@ public class Portal {
     }
     if let iCloud = backup.icloud {
       self.mpc.registerBackupMethod(.iCloud, withStorage: iCloud)
+    }
+    if let local = backup.local {
+      self.mpc.registerBackupMethod(.local, withStorage: local)
     }
     if let passwords = backup.passwordStorage {
       self.mpc.registerBackupMethod(.Password, withStorage: passwords)
@@ -352,13 +405,9 @@ public class Portal {
 
     // Capture analytics.
     Task {
-      do {
-        if let client = try await api.client {
-          _ = try await api.identify(["clientId": AnyEncodable(client.id)])
-          _ = try await api.track(MetricsEvents.portalInitialized.rawValue, withProperties: [:])
-        }
-      } catch {
-        // Do nothing to prevent failing from metrics.
+      if let client = try? await api.client {
+        _ = try? await api.identify(["id": AnyEncodable(client.id), "custodianId": AnyEncodable(client.custodian.id)])
+        _ = try? await api.track(MetricsEvents.portalInitialized.rawValue, withProperties: [:])
       }
     }
   }
@@ -368,6 +417,92 @@ public class Portal {
    **********************************/
 
   // Primitive helpers
+
+  public func registerBackupMethod(_ method: BackupMethods, withStorage: PortalStorage) {
+    self.mpc.registerBackupMethod(method, withStorage: withStorage)
+  }
+
+  public func setGDriveConfiguration(clientId: String, folderName: String = "_PORTAL_MPC_DO_NOT_DELETE_") throws {
+    try self.mpc.setGDriveConfiguration(clientId: clientId, folderName: folderName)
+  }
+
+  public func setGDriveView(_ view: UIViewController) throws {
+    try self.mpc.setGDriveView(view)
+  }
+
+  @available(iOS 16, *)
+  public func setPasskeyAuthenticationAnchor(_ anchor: ASPresentationAnchor) throws {
+    try self.mpc.setPasskeyAuthenticationAnchor(anchor)
+  }
+
+  @available(iOS 16, *)
+  public func setPasskeyConfiguration(relyingParty: String, webAuthnHost: String) throws {
+    try self.mpc.setPasskeyConfiguration(relyingParty: relyingParty, webAuthnHost: webAuthnHost)
+  }
+
+  public func setPassword(_ value: String) throws {
+    try self.mpc.setPassword(value)
+  }
+
+  // Wallet management helpers
+
+  public func backupWallet(
+    _ method: BackupMethods,
+    usingProgressCallback: ((MpcStatus) -> Void)? = nil
+  ) async throws -> (cipherText: String, storageCallback: () async throws -> Void) {
+    // Run backup
+    let response = try await mpc.backup(method, usingProgressCallback: usingProgressCallback)
+
+    // Build the storage callback
+    let storageCallback: () async throws -> Void = {
+      try await self.api.updateShareStatus(
+        .backup,
+        status: .STORED_CLIENT_BACKUP_SHARE,
+        sharePairIds: response.shareIds
+      )
+      try await self.api.refreshClient()
+      try await self.keychain.loadMetadata()
+    }
+
+    return (
+      cipherText: response.cipherText,
+      storageCallback: storageCallback
+    )
+  }
+
+  public func createWallet(usingProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> PortalCreateWalletResponse {
+    let addresses = try await mpc.generate(withProgressCallback: usingProgressCallback)
+
+    return PortalCreateWalletResponse(
+      ethereum: addresses[.eip155] ?? nil,
+      solana: addresses[.solana] ?? nil
+    )
+  }
+
+  public func eject(_ method: BackupMethods, withCipherText: String, andOrganizationBackupShare: String) async throws -> String {
+    let privateKey = try await mpc.eject(method, withCipherText: withCipherText, andOrganizationBackupShare: andOrganizationBackupShare)
+
+    return privateKey
+  }
+
+  public func recoverWallet(
+    _ method: BackupMethods,
+    withCipherText: String,
+    usingProgressCallback: ((MpcStatus) -> Void)? = nil
+  ) async throws -> PortalCreateWalletResponse {
+    let addresses = try await mpc.recover(method, withCipherText: withCipherText, usingProgressCallback: usingProgressCallback)
+
+    return PortalCreateWalletResponse(
+      ethereum: addresses[.eip155] ?? nil,
+      solana: addresses[.solana] ?? nil
+    )
+  }
+
+  // Keychain helpers
+
+  public func deleteShares() async throws {
+    try await self.keychain.deleteShares()
+  }
 
   public func getAddress(_ forChainId: String) async -> String? {
     do {
@@ -379,13 +514,37 @@ public class Portal {
     }
   }
 
-  @available(iOS 16, *)
-  public func setPasskeyAuthenticationAnchor(_ anchor: ASPresentationAnchor) throws {
-    try self.mpc.setPasskeyAuthenticationAnchor(anchor)
+  public func getAddresses() async throws -> [PortalNamespace: String?] {
+    return try await self.keychain.getAddresses()
   }
 
-  public func setPassword(_ value: String) throws {
-    try self.mpc.setPassword(value)
+  // Provider helpers
+
+  public func emit(_ event: Events.RawValue, data: Any) {
+    _ = self.provider.emit(event: event, data: data)
+  }
+
+  public func on(event: Events.RawValue, callback: @escaping (Any) -> Void) {
+    _ = self.provider.on(event: event, callback: callback)
+  }
+
+  public func once(event: Events.RawValue, callback: @escaping (Any) -> Void) {
+    _ = self.provider.once(event: event, callback: callback)
+  }
+
+  public func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any]) async throws -> PortalProviderResult {
+    let params = try andParams.map { param in
+      try AnyEncodable(param)
+    }
+    return try await self.provider.request(chainId, withMethod: withMethod, andParams: params)
+  }
+
+  public func request(_ chainId: String, withMethod: String, andParams: [Any]) async throws -> PortalProviderResult {
+    guard let method = PortalRequestMethod(rawValue: withMethod) else {
+      throw PortalProviderError.unsupportedRequestMethod(withMethod)
+    }
+
+    return try await self.request(chainId, withMethod: method, andParams: andParams)
   }
 
   // Wallet lifecycle helpers
@@ -395,7 +554,7 @@ public class Portal {
       // Filter by chainId if one is provided
       if let chainId = forChainId {
         let chainIdParts = chainId.split(separator: ":").map(String.init)
-        guard let namespace = PortalNamespace(rawValue: chainIdParts[0]), let curve = keychain.metadata?.namespaces[namespace] else {
+        guard let namespace = PortalNamespace(rawValue: chainIdParts[0]), let curve = PortalKeychain.metadata?.namespaces[namespace] else {
           throw PortalClassError.unsupportedChainId(chainId)
         }
         let curveWallet = client.wallets.first { wallet in
@@ -433,7 +592,7 @@ public class Portal {
       // Filter by chainId if one is provided
       if let chainId = forChainId {
         let chainIdParts = chainId.split(separator: ":").map(String.init)
-        if let namespace = PortalNamespace(rawValue: chainIdParts[0]), let curve = keychain.metadata?.namespaces[namespace] {
+        if let namespace = PortalNamespace(rawValue: chainIdParts[0]), let curve = PortalKeychain.metadata?.namespaces[namespace] {
           let curveWallet = client.wallets.first { wallet in
             wallet.curve == curve
           }
@@ -467,7 +626,7 @@ public class Portal {
       // Filter by chainId if one is provided
       if let chainId = forChainId {
         let chainIdParts = chainId.split(separator: ":").map(String.init)
-        if let namespace = PortalNamespace(rawValue: chainIdParts[0]), let curve = keychain.metadata?.namespaces[namespace] {
+        if let namespace = PortalNamespace(rawValue: chainIdParts[0]), let curve = PortalKeychain.metadata?.namespaces[namespace] {
           let curveWallet = client.wallets.first { wallet in
             wallet.curve == curve
           }
@@ -497,25 +656,29 @@ public class Portal {
   }
 
   public func isWalletOnDevice(_ forChainId: String? = nil) async throws -> Bool {
-    let shares = try await keychain.getShares()
-    // Filter by chainId if one is provided
-    if let chainId = forChainId {
-      let chainIdParts = chainId.split(separator: ":").map(String.init)
-      guard let namespace = PortalNamespace(rawValue: chainIdParts[0]), let curve = keychain.metadata?.namespaces[namespace] else {
-        throw PortalClassError.unsupportedChainId(chainId)
-      }
+    do {
+      let shares = try await keychain.getShares()
+      // Filter by chainId if one is provided
+      if let chainId = forChainId {
+        let chainIdParts = chainId.split(separator: ":").map(String.init)
+        guard let namespace = PortalNamespace(rawValue: chainIdParts[0]), let curve = PortalKeychain.metadata?.namespaces[namespace] else {
+          throw PortalClassError.unsupportedChainId(chainId)
+        }
 
-      if let _ = shares[curve.rawValue] {
-        return true
-      }
+        if let _ = shares[curve.rawValue] {
+          return true
+        }
 
+        return false
+      } else {
+        let validShare = shares.values.first { share in
+          !share.id.isEmpty
+        }
+
+        return validShare != nil
+      }
+    } catch {
       return false
-    } else {
-      let validShare = shares.values.first { share in
-        !share.id.isEmpty
-      }
-
-      return validShare != nil
     }
   }
 
@@ -525,62 +688,116 @@ public class Portal {
     return availableRecoveryMethods.count > 0
   }
 
-  // Wallet management
+  // Api helpers
 
-  public func backupWallet(
-    _ method: BackupMethods,
-    usingProgressCallback: ((MpcStatus) -> Void)? = nil
-  ) async throws -> PortalBackupWalletResponse {
-    // Run backup
-    let response = try await mpc.backup(method, usingProgressCallback: usingProgressCallback)
+  public func getBalances(_ chainId: String) async throws -> [FetchedBalance] {
+    return try await self.api.getBalances(chainId)
+  }
 
-    // Build the storage callback
-    let storageCallback: () async throws -> Void = {
-      try await self.api.updateShareStatus(
-        .backup,
-        status: .STORED_CLIENT_BACKUP_SHARE,
-        sharePairIds: response.shareIds
-      )
+  public func getBackupShares(_ chainId: String? = nil) async throws -> [FetchedSharePair] {
+    guard let client = try await client else {
+      throw PortalClassError.clientNotAvailable
     }
 
-    return PortalBackupWalletResponse(
-      cipherText: response.cipherText,
-      storageCallback: storageCallback
-    )
+    // Handle specific chainId
+    if let chainId = chainId {
+      let namespaceString = chainId.split(separator: ":").map(String.init)[0]
+      guard let namespace = PortalNamespace(rawValue: namespaceString) else {
+        throw PortalClassError.unsupportedChainId(chainId)
+      }
+      guard let curve = PortalKeychain.metadata?.namespaces[namespace] else {
+        throw PortalClassError.unsupportedChainId(chainId)
+      }
+      let wallet = client.wallets.first { wallet in
+        wallet.curve == curve
+      }
+      guard let wallet = wallet else {
+        throw PortalClassError.noWalletFoundForChain(chainId)
+      }
+
+      return try await self.api.getSharePairs(.backup, walletId: wallet.id)
+    }
+
+    let walletIds = client.wallets.map { $0.id }
+    var sharePairGroups: [[FetchedSharePair]] = []
+    try await withThrowingTaskGroup(of: [FetchedSharePair].self) { group in
+      for id in walletIds {
+        group.addTask {
+          try await self.api.getSharePairs(.backup, walletId: id)
+        }
+      }
+
+      // Collect results as tasks complete
+      for try await sharePairs in group {
+        sharePairGroups.append(sharePairs)
+      }
+    }
+
+    return sharePairGroups.flatMap { $0 }
   }
 
-  public func createWallet(usingProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> [PortalNamespace: String?] {
-    let addresses = try await mpc.generate(withProgressCallback: usingProgressCallback)
-
-    return addresses
+  public func getNFTs(_ chainId: String) async throws -> [FetchedNFT] {
+    return try await self.api.getNFTs(chainId)
   }
 
-  public func eject(_ method: BackupMethods, withCipherText: String, andOrganizationBackupShare: String) async throws -> String {
-    let privateKey = try await mpc.eject(method, withCipherText: withCipherText, andOrganizationBackupShare: andOrganizationBackupShare)
+  public func getSigningShares(_ chainId: String? = nil) async throws -> [FetchedSharePair] {
+    guard let client = try await client else {
+      throw PortalClassError.clientNotAvailable
+    }
 
-    return privateKey
+    // Handle specific chainId
+    if let chainId = chainId {
+      let namespaceString = chainId.split(separator: ":").map(String.init)[0]
+      guard let namespace = PortalNamespace(rawValue: namespaceString) else {
+        throw PortalClassError.unsupportedChainId(chainId)
+      }
+      guard let curve = PortalKeychain.metadata?.namespaces[namespace] else {
+        throw PortalClassError.unsupportedChainId(chainId)
+      }
+      let wallet = client.wallets.first { wallet in
+        wallet.curve == curve
+      }
+      guard let wallet = wallet else {
+        throw PortalClassError.noWalletFoundForChain(chainId)
+      }
+
+      return try await self.api.getSharePairs(.signing, walletId: wallet.id)
+    }
+
+    let walletIds = client.wallets.map { $0.id }
+    var sharePairGroups: [[FetchedSharePair]] = []
+    try await withThrowingTaskGroup(of: [FetchedSharePair].self) { group in
+      for id in walletIds {
+        group.addTask {
+          try await self.api.getSharePairs(.signing, walletId: id)
+        }
+      }
+
+      // Collect results as tasks complete
+      for try await sharePairs in group {
+        sharePairGroups.append(sharePairs)
+      }
+    }
+
+    return sharePairGroups.flatMap { $0 }
   }
 
-  public func recoverWallet(
-    _ method: BackupMethods,
-    withCipherText: String,
-    usingProgressCallback: ((MpcStatus) -> Void)? = nil
-  ) async throws -> [PortalNamespace: String?] {
-    let addresses = try await mpc.recover(method, withCipherText: withCipherText, usingProgressCallback: usingProgressCallback)
-
-    return addresses
+  public func getTransactions(
+    _ chainId: String,
+    limit: Int? = nil,
+    offset: Int? = nil,
+    order: TransactionOrder? = nil
+  ) async throws -> [FetchedTransaction] {
+    return try await self.api.getTransactions(chainId, limit: limit, offset: offset, order: order)
   }
 
-  public func registerBackupMethod(_ method: BackupMethods, withStorage: PortalStorage) {
-    self.mpc.registerBackupMethod(method, withStorage: withStorage)
+  public func simulateTransaction(_ chainId: String, from: Any) async throws -> SimulatedTransaction {
+    let transaction = try AnyEncodable(from)
+    return try await self.api.simulateTransaction(transaction, withChainId: chainId)
   }
 
   /**********************************
    * Deprecated functions
-   **********************************/
-
-  /**********************************
-   * Wallet Helper Methods
    **********************************/
 
   @available(*, deprecated, renamed: "backupWallet", message: "Please use the async implamentation of backupWallet()")
@@ -631,14 +848,6 @@ public class Portal {
     progress: ((MpcStatus) -> Void)? = nil
   ) {
     self.recoverWallet(cipherText: cipherText, method: method, backupConfigs: backupConfigs, completion: completion, progress: progress)
-  }
-
-  /**********************************
-   * Provider Helper Methods
-   **********************************/
-
-  public func emit(_ event: Events.RawValue, data: Any) {
-    _ = self.provider.emit(event: event, data: data)
   }
 
   public func ethEstimateGas(
@@ -738,14 +947,6 @@ public class Portal {
     ), completion: completion)
   }
 
-  public func on(event: Events.RawValue, callback: @escaping (Any) -> Void) {
-    _ = self.provider.on(event: event, callback: callback)
-  }
-
-  public func once(event: Events.RawValue, callback: @escaping (Any) -> Void) {
-    _ = self.provider.once(event: event, callback: callback)
-  }
-
   public func personalSign(
     message: String,
     completion: @escaping (Result<RequestCompletionResult>) -> Void
@@ -786,6 +987,7 @@ public class Portal {
   /// - Parameters:
   ///   - to: The chainId to use for processing wallet transactions
   /// - Returns: Void
+  @available(*, deprecated, renamed: "REMOVED", message: "The PortalProvider class will be chain agnostic very soon. Please update to the chainId-specific implementations of all Provider helper methods as this function will be removed in the future.")
   public func setChainId(to: Int) throws {
     _ = try self.provider.setChainId(value: to)
   }
@@ -794,10 +996,12 @@ public class Portal {
    * Keychain Helper Methods
    ****************************************/
 
+  @available(*, deprecated, renamed: "REMOVED", message: "The PortalKeychain now manages metadata internally based on Portal's server state. This function will be removed in the future.")
   public func deleteAddress() throws {
     try self.keychain.deleteAddress()
   }
 
+  @available(*, deprecated, renamed: "deleteShares", message: "The Portal SDK is now multi-wallet. Please update to the multi-wallet-compatible deleteShares() as this function will be removed in the future.")
   public func deleteSigningShare() throws {
     try self.keychain.deleteSigningShare()
   }
@@ -839,6 +1043,7 @@ enum PortalProviderError: Error, Equatable {
   case invalidRpcResponse
   case noAddress
   case noRpcUrlFoundForChainId(_ message: String)
+  case noSignatureFoundInSignResult
   case unableToEncodeParams
   case unsupportedRequestMethod(_ message: String)
 }

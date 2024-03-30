@@ -173,21 +173,34 @@ public class PortalProvider {
   ///   - andParams: An array of parameters for the request (either RPC parameters or a transaction if signing)
   /// - Returns: PortalProviderResult
   public func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [AnyEncodable]?) async throws -> PortalProviderResult {
-    let isSignerMethod = signerMethods.contains(withMethod.rawValue)
+    let blockchain = try PortalBlockchain(fromChainId: chainId)
+    guard blockchain.isMethodSupported(withMethod) else {
+      throw PortalProviderError.unsupportedRequestMethod(withMethod.rawValue)
+    }
+
     let id = UUID().uuidString
 
-    if withMethod == .wallet_switchEthereumChain {
-      return PortalProviderResult(result: "null")
+    // This switch is here to handle methods that should be
+    // resolved by the provider directly before passing the
+    // request on to RPC or the signer.
+    //
+    // The default behavior is to use the `PortalBlockchain`
+    // instance to determine if the method should be signed
+    // or not.
+    switch withMethod {
+    case .eth_accounts, .eth_requestAccounts:
+      let address = try await keychain.getAddress(chainId)
+      return PortalProviderResult(id: id, result: [address])
+    case .wallet_switchEthereumChain:
+      return PortalProviderResult(id: id, result: "null")
+    default:
+      if blockchain.shouldMethodBeSigned(withMethod) {
+        let payload = PortalProviderRequestWithId(id: id, method: withMethod, params: andParams)
+        return try await self.handleSignRequest(chainId, withPayload: payload, forId: id, onBlockchain: blockchain)
+      } else {
+        return try await self.handleRpcRequest(chainId, withMethod: withMethod, andParams: andParams, forId: id)
+      }
     }
-
-    if !isSignerMethod && !withMethod.rawValue.starts(with: "wallet_") {
-      return try await self.handleRpcRequest(chainId, withMethod: withMethod, andParams: andParams)
-    } else if isSignerMethod {
-      let payload = PortalProviderRequestWithId(id: id, method: withMethod, params: andParams)
-      return try await self.handleSignRequest(chainId, withPayload: payload)
-    }
-
-    throw ProviderRpcError.unsupportedMethod
   }
 
   /// Makes a request.
@@ -276,7 +289,12 @@ public class PortalProvider {
     return try self.getRpcUrl("eip155:\(chainId)")
   }
 
-  private func handleRpcRequest(_ chainId: String, withMethod: PortalRequestMethod, andParams: [AnyEncodable]?) async throws -> PortalProviderResult {
+  private func handleRpcRequest(
+    _ chainId: String,
+    withMethod: PortalRequestMethod,
+    andParams: [AnyEncodable]?,
+    forId: String
+  ) async throws -> PortalProviderResult {
     let rpcUrl = try getRpcUrl(chainId)
 
     if let url = URL(string: rpcUrl) {
@@ -287,64 +305,74 @@ public class PortalProvider {
         params: andParams
       )
       let data = try await PortalRequests.post(url, withBearerToken: nil, andPayload: payload)
-      let response = try decoder.decode(PortalProviderRpcResponse.self, from: data)
 
       switch withMethod {
       case .eth_getBlockByHash, .eth_getBlockByNumber, .eth_getUncleByBlockHashAndIndex, .eth_getUncleByBlockNumberAndIndex:
         if let params = andParams, params.count > 1, let elementAtIndex1 = andParams?[1] as? Bool, elementAtIndex1 {
           let rpcResponse = try decoder.decode(BlockDataResponseTrue.self, from: data)
-          guard let result = rpcResponse.result else {
-            throw PortalProviderError.invalidRpcResponse
+          if let rpcError = rpcResponse.error {
+            throw PortalRpcError(rpcError)
           }
-          return PortalProviderResult(result: result)
+          return PortalProviderResult(id: forId, result: rpcResponse)
         } else {
           let rpcResponse = try decoder.decode(BlockDataResponseFalse.self, from: data)
-          guard let result = rpcResponse.result else {
-            throw PortalProviderError.invalidRpcResponse
+          if let rpcError = rpcResponse.error {
+            throw PortalRpcError(rpcError)
           }
-          return PortalProviderResult(result: result)
+          return PortalProviderResult(id: forId, result: rpcResponse)
         }
       case .eth_getTransactionByBlockHashAndIndex, .eth_getTransactionByBlockNumberAndIndex, .eth_getTransactionByHash, .eth_getTransactionReceipt:
         let rpcResponse = try decoder.decode(EthTransactionResponse.self, from: data)
-        guard let result = rpcResponse.result else {
-          throw PortalProviderError.invalidRpcResponse
+        if let rpcError = rpcResponse.error {
+          throw PortalRpcError(rpcError)
         }
-        return PortalProviderResult(result: result)
+        return PortalProviderResult(id: forId, result: rpcResponse)
       case .eth_uninstallFilter, .net_listening:
         let rpcResponse = try decoder.decode(PortalProviderRpcBoolResponse.self, from: data)
-        guard let result = rpcResponse.result else {
-          throw PortalProviderError.invalidRpcResponse
+        if let rpcError = rpcResponse.error {
+          throw PortalRpcError(rpcError)
         }
-        return PortalProviderResult(result: result)
+        return PortalProviderResult(id: forId, result: rpcResponse)
       case .eth_getFilterChanges, .eth_getFilterLogs, .eth_getLogs:
         let rpcResponse = try decoder.decode(LogsResponse.self, from: data)
-        guard let result = rpcResponse.result else {
-          throw PortalProviderError.invalidRpcResponse
+        if let rpcError = rpcResponse.error {
+          throw PortalRpcError(rpcError)
         }
-        return PortalProviderResult(result: result)
+        return PortalProviderResult(id: forId, result: rpcResponse)
       default:
         let rpcResponse = try decoder.decode(PortalProviderRpcResponse.self, from: data)
-        guard let result = rpcResponse.result else {
-          throw PortalProviderError.invalidRpcResponse
+        if let rpcError = rpcResponse.error {
+          throw PortalRpcError(rpcError)
         }
-        return PortalProviderResult(result: result)
+        return PortalProviderResult(id: forId, result: rpcResponse)
       }
     }
 
     throw URLError(.badURL)
   }
 
-  private func handleSignRequest(_ onChainId: String, withPayload: PortalProviderRequestWithId) async throws -> PortalProviderResult {
+  private func handleSignRequest(
+    _ onChainId: String,
+    withPayload: PortalProviderRequestWithId,
+    forId _: String,
+    onBlockchain: PortalBlockchain
+  ) async throws -> PortalProviderResult {
     guard try await self.getApproval(onChainId, forPayload: withPayload) else {
       throw ProviderSigningError.userDeclinedApproval
     }
 
     let rpcUrl = try getRpcUrl(onChainId)
     let payload = PortalSignRequest(method: withPayload.method, params: withPayload.params)
-    let signResult = try await withCheckedThrowingContinuation { continuation in
+
+    let signature = try await withCheckedThrowingContinuation { continuation in
       Task {
         do {
-          let result = try await self.signer.sign(onChainId, withPayload: payload, andRpcUrl: rpcUrl)
+          let result = try await self.signer.sign(
+            onChainId,
+            withPayload: payload,
+            andRpcUrl: rpcUrl,
+            usingBlockchain: onBlockchain
+          )
           continuation.resume(returning: result)
         } catch {
           continuation.resume(throwing: error)
@@ -352,7 +380,7 @@ public class PortalProvider {
       }
     }
 
-    return PortalProviderResult(result: signResult)
+    return PortalProviderResult(id: withPayload.id, result: signature)
   }
 
   private func removeOnce(registeredEventHandler: RegisteredEventHandler) -> Bool {
@@ -376,15 +404,22 @@ public class PortalProvider {
   ) {
     Task {
       do {
+        let chainId = "eip155:\(self.chainId ?? 11_155_111)"
+
         guard let method = PortalRequestMethod(rawValue: payload.method) else {
           throw PortalProviderError.unsupportedRequestMethod(payload.method)
         }
         let params = try payload.params.map { param in
           try AnyEncodable(param)
         }
-        let response = try await request("eip155:\(self.chainId ?? 11_155_111)", withMethod: method, andParams: params)
+        let response = try await request(chainId, withMethod: method, andParams: params)
 
-        completion(Result(data: RequestCompletionResult(method: payload.method, params: payload.params, result: response.result, id: payload.id!)))
+        completion(Result(data: RequestCompletionResult(
+          method: payload.method,
+          params: payload.params,
+          result: response.result,
+          id: response.id
+        )))
       } catch {
         completion(Result(error: error))
       }
@@ -412,7 +447,7 @@ public class PortalProvider {
         }
         let response = try await request("eip155:\(self.chainId ?? 11_155_111)", withMethod: method, andParams: params)
 
-        completion(Result(data: TransactionCompletionResult(method: payload.method, params: payload.params, result: response.result, id: payload.id!)))
+        completion(Result(data: TransactionCompletionResult(method: payload.method, params: payload.params, result: response.result, id: response.id)))
       } catch {
         completion(Result(error: error))
       }
@@ -440,7 +475,7 @@ public class PortalProvider {
         }
         let response = try await request("eip155:\(self.chainId ?? 11_155_111)", withMethod: method, andParams: params)
 
-        completion(Result(data: AddressCompletionResult(method: payload.method, params: payload.params, result: response.result, id: payload.id!)))
+        completion(Result(data: AddressCompletionResult(method: payload.method, params: payload.params, result: response.result, id: response.id)))
       } catch {
         completion(Result(error: error))
       }
@@ -775,209 +810,6 @@ public enum ProviderSigningError: Error {
   case walletRequestRejected
 }
 
-/// An ETH request payload where params is of type [Any].
-public struct ETHRequestPayload {
-  public var id: String?
-  public var method: ETHRequestMethods.RawValue
-  public var params: [Any]
-  public var signature: String?
-  public var chainId: Int?
-
-  public init(method: ETHRequestMethods.RawValue, params: [Encodable]) {
-    self.method = method
-    self.params = params
-  }
-
-  public init(method: ETHRequestMethods.RawValue, params: [Encodable], signature: String) {
-    self.method = method
-    self.params = params
-    self.signature = signature
-  }
-
-  public init(method: ETHRequestMethods.RawValue, params: [Encodable], id: String) {
-    self.method = method
-    self.params = params
-    self.id = id
-  }
-
-  public init(method: ETHRequestMethods.RawValue, params: [Encodable], id: String, chainId: Int) {
-    self.method = method
-    self.params = params
-    self.id = id
-    self.chainId = chainId
-  }
-
-  public init(method: ETHRequestMethods.RawValue, params: [Encodable], chainId: Int) {
-    self.method = method
-    self.params = params
-    self.chainId = chainId
-  }
-}
-
-public struct ETHChainParam: Codable {
-  public var chainId: String
-}
-
-public struct ETHChainPayload: Codable {
-  public var method: ETHRequestMethods.RawValue
-  public var params: [ETHChainParam]
-}
-
-/// A param within ETHTransactionPayload.params.
-public struct ETHTransactionParam: Codable {
-  public var from: String
-  public var to: String
-  public var gas: String?
-  public var gasPrice: String?
-  public var maxPriorityFeePerGas: String?
-  public var maxFeePerGas: String?
-  public var value: String?
-  public var data: String?
-  public var nonce: String? = nil
-
-  public init(from: String, to: String, gas: String, gasPrice: String, value: String, data: String, nonce: String? = nil) {
-    self.from = from
-    self.to = to
-    self.gas = gas
-    self.gasPrice = gasPrice
-    self.value = value
-    self.data = data
-    self.nonce = nonce
-  }
-
-  public init(from: String, to: String, gasPrice: String, value: String, data: String, nonce: String? = nil) {
-    self.from = from
-    self.to = to
-    self.gasPrice = gasPrice
-    self.value = value
-    self.data = data
-    self.nonce = nonce
-  }
-
-  public init(from: String, to: String, value: String, data: String) {
-    self.from = from
-    self.to = to
-    self.value = value
-    self.data = data
-  }
-
-  public init(from: String, to: String) {
-    self.from = from
-    self.to = to
-  }
-
-  public init(from: String, to: String, value: String) {
-    self.from = from
-    self.to = to
-    self.value = value
-  }
-
-  public init(from: String, to: String, data: String) {
-    self.from = from
-    self.to = to
-    self.data = data
-  }
-
-  // Below is the variation for EIP-1559
-  public init(from: String, to: String, gas: String, value: String, data: String, maxPriorityFeePerGas: String?, maxFeePerGas: String?, nonce: String? = nil) {
-    self.from = from
-    self.to = to
-    self.gas = gas
-    self.value = value
-    self.data = data
-    self.maxPriorityFeePerGas = maxPriorityFeePerGas
-    self.maxFeePerGas = maxFeePerGas
-    self.nonce = nonce
-  }
-}
-
-/// An error response from Gateway.
-public struct ETHGatewayErrorResponse: Codable {
-  public var code: Int
-  public var message: String
-}
-
-/// A response from Gateway.
-public struct ETHGatewayResponse: Codable {
-  public var jsonrpc: String = "2.0"
-  public var id: Int?
-  public var result: String?
-  public var error: ETHGatewayErrorResponse?
-}
-
-/// The payload for a transaction request.
-public struct ETHTransactionPayload: Codable {
-  public var id: String?
-  public var method: ETHRequestMethods.RawValue
-  public var params: [ETHTransactionParam]
-  public var chainId: Int? = nil
-
-  public init(method: ETHRequestMethods.RawValue, params: [ETHTransactionParam]) {
-    self.method = method
-    self.params = params
-  }
-
-  public init(method: ETHRequestMethods.RawValue, params: [ETHTransactionParam], id: String) {
-    self.method = method
-    self.params = params
-    self.id = id
-  }
-
-  public init(method: ETHRequestMethods.RawValue, params: [ETHTransactionParam], id: String, chainId: Int) {
-    self.method = method
-    self.params = params
-    self.id = id
-    self.chainId = chainId
-  }
-
-  public init(method: ETHRequestMethods.RawValue, params: [ETHTransactionParam], chainId: Int) {
-    self.method = method
-    self.params = params
-    self.chainId = chainId
-  }
-}
-
-/// A param within ETHAddressPayload.params.
-public struct ETHAddressParam: Codable {
-  public var address: String
-
-  public init(address: String) {
-    self.address = address
-  }
-}
-
-/// The payload for an address request.
-public struct ETHAddressPayload: Codable {
-  public var id: String?
-  public var method: ETHRequestMethods.RawValue
-  public var params: [ETHAddressParam]
-  public var chainId: Int? = nil
-
-  public init(method: ETHRequestMethods.RawValue, params: [ETHAddressParam]) {
-    self.method = method
-    self.params = params
-  }
-
-  public init(method: ETHRequestMethods.RawValue, params: [ETHAddressParam], id: String) {
-    self.method = method
-    self.params = params
-    self.id = id
-  }
-
-  public init(method: ETHRequestMethods.RawValue, params: [ETHAddressParam], id: String, chainId: Int) {
-    self.method = method
-    self.params = params
-    self.id = id
-    self.chainId = chainId
-  }
-
-  public init(method: ETHRequestMethods.RawValue, params: [ETHAddressParam], chainId: Int) {
-    self.method = method
-    self.params = params
-    self.chainId = chainId
-  }
-}
-
 /// A list of JSON-RPC transaction methods.
 public var TransactionMethods: [ETHRequestMethods.RawValue] = [
   ETHRequestMethods.Call.rawValue, // string
@@ -989,184 +821,10 @@ public var TransactionMethods: [ETHRequestMethods.RawValue] = [
 
 /// A list of JSON-RPC signing methods.
 public var signerMethods: [ETHRequestMethods.RawValue] = [
-  ETHRequestMethods.Accounts.rawValue,
   ETHRequestMethods.PersonalSign.rawValue,
-  ETHRequestMethods.RequestAccounts.rawValue,
   ETHRequestMethods.SendTransaction.rawValue,
   ETHRequestMethods.Sign.rawValue,
   ETHRequestMethods.SignTransaction.rawValue,
   ETHRequestMethods.SignTypedDataV3.rawValue,
   ETHRequestMethods.SignTypedDataV4.rawValue,
 ]
-
-/// A registered event handler.
-public struct RegisteredEventHandler {
-  var handler: (_ data: Any) throws -> Void
-  var once: Bool
-}
-
-/// The result of a request.
-public struct RequestCompletionResult {
-  public init(method: String, params: [Any]?, result: Any, id: String) {
-    self.method = method
-    self.params = params
-    self.result = result
-    self.id = id
-  }
-
-  public var method: String
-  public var params: [Any]?
-  public var result: Any
-  public var id: String
-}
-
-/// The result of a transaction request.
-public struct TransactionCompletionResult {
-  public var method: String
-  public var params: [ETHTransactionParam]
-  public var result: Any
-  public var id: String
-}
-
-/// The result of an address request.
-public struct AddressCompletionResult {
-  public var method: String
-  public var params: [ETHAddressParam]
-  public var result: Any
-  public var id: String
-}
-
-// The specific return types for the 17 methods from the gateway that don't return strings
-public struct BlockDataResponseFalse: Codable {
-  public var jsonrpc: String = "2.0"
-  public var id: Int?
-  public var result: BlockData?
-  public var error: ETHGatewayErrorResponse?
-}
-
-public struct BlockData: Codable {
-  public var number: String
-  public var hash: String
-  public var transactions: [String]?
-  public var difficulty: String
-  public var extraData: String
-  public var gasLimit: String
-  public var gasUsed: String
-  public var logsBloom: String
-  public var miner: String
-  public var mixHash: String
-  public var nonce: String
-  public var parentHash: String
-  public var receiptsRoot: String
-  public var sha3Uncles: String
-  public var size: String
-  public var stateRoot: String
-  public var timestamp: String
-  public var totalDifficulty: String?
-  public var transactionsRoot: String
-  public var uncles: [String]
-  public var baseFeePerGas: String?
-}
-
-public struct BlockDataResponseTrue: Codable {
-  public var jsonrpc: String = "2.0"
-  public var id: Int?
-  public var result: BlockDataTrue?
-  public var error: ETHGatewayErrorResponse?
-}
-
-public struct EthTransactionResponse: Codable {
-  public var jsonrpc: String = "2.0"
-  public var id: Int?
-  public var result: TransactionData?
-  public var error: ETHGatewayErrorResponse?
-}
-
-public struct EthBoolResponse: Codable {
-  public var jsonrpc: String = "2.0"
-  public var id: Int?
-  public var result: Bool?
-  public var error: ETHGatewayErrorResponse?
-}
-
-public struct BlockDataTrue: Codable {
-  public let number: String
-  public let hash: String
-  public let transactions: [TransactionData]
-  public let difficulty: String
-  public let extraData: String
-  public let gasLimit: String
-  public let gasUsed: String
-  public let logsBloom: String
-  public let miner: String
-  public let mixHash: String
-  public let nonce: String
-  public let parentHash: String
-  public let receiptsRoot: String
-  public let sha3Uncles: String
-  public let size: String
-  public let stateRoot: String
-  public let timestamp: String
-  public let totalDifficulty: String
-  public let transactionsRoot: String
-  public let uncles: [String]
-  public let baseFeePerGas: String
-  public let withdrawalsRoot: String
-  public let withdrawals: [Withdrawal]
-}
-
-public struct TransactionData: Codable {
-  public let blockHash: String
-  public let blockNumber: String
-  public let hash: String?
-  public let chainId: String?
-  public let from: String
-  public let gas: String?
-  public let gasPrice: String?
-  public let input: String?
-  public let nonce: String?
-  public let r: String?
-  public let s: String?
-  public let to: String?
-  public let transactionIndex: String
-  public let type: String
-  public let v: String?
-  public let value: String?
-  public let accessList: [String]?
-  public let maxFeePerGas: String?
-  public let maxPriorityFeePerGas: String?
-  public let transactionHash: String?
-  public let logs: [Log]?
-  public let contractAddress: String?
-  public let effectiveGasPrice: String?
-  public let cumulativeGasUsed: String?
-  public let gasUsed: String?
-  public let logsBloom: String?
-  public let status: String?
-}
-
-public struct Log: Codable {
-  public let transactionHash: String?
-  public let address: String?
-  public let blockHash: String?
-  public let blockNumber: String?
-  public let data: String?
-  public let logIndex: String?
-  public let removed: Bool?
-  public let topics: [String]?
-  public let transactionIndex: String?
-}
-
-public struct Withdrawal: Codable {
-  public let address: String
-  public let amount: String
-  public let index: String
-  public let validatorIndex: String
-}
-
-public struct LogsResponse: Codable {
-  public var jsonrpc: String = "2.0"
-  public var id: Int?
-  public var result: [Log]?
-  public var error: ETHGatewayErrorResponse?
-}

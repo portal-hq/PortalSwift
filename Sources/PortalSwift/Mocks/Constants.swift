@@ -9,6 +9,7 @@
 import Foundation
 
 public let mockAddress = "0x73574d2355"
+public let mockEip155Address = "0x73574d2355"
 public let mockBackupShare = "{\"backupSharePairId\":\"value\"}"
 public let mockBackupPath = "test-backup-path"
 public let mockCloudBackupPath = "test-cloud-backup-path"

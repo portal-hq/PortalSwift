@@ -129,7 +129,7 @@ class PortalWrapper {
         featureFlags: FeatureFlags(optimized: optimized, isMultiBackupEnabled: isMultiBackupEnabled)
       )
       _ = self.portal?.provider.on(event: Events.PortalSigningRequested.rawValue, callback: { [weak self] data in self?.didRequestApproval(data: data) })
-      _ = self.portal?.provider.once(event: Events.PortalSignatureReceived.rawValue) { (data: Any) in
+      _ = self.portal?.provider.on(event: Events.PortalSignatureReceived.rawValue) { (data: Any) in
         let result = data as! RequestCompletionResult
 
         print("[ViewController] portal_signatureReceived: \(result)")
@@ -276,6 +276,8 @@ class PortalWrapper {
   func ethSign(params: [Any], completion: @escaping (Result<String>) -> Void) {
     do {
       let method = ETHRequestMethods.Sign.rawValue
+
+      print("Portal.ethSign() - params: \(params)")
 
       let encodedParams = try params.map { param in
         try AnyEncodable(param)

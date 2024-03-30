@@ -11,16 +11,6 @@ public class MockPortalApi: PortalApi {
   public var dapps: [Dapp]?
   public var networks: [ContractNetwork]?
 
-  // Mocking the storedClientSigningShare function
-  override public func storedClientSigningShare(
-    signingSharePairId _: String,
-    completion: @escaping (Result<String>) -> Void
-  ) throws {
-    // Mock response with data
-    let mockResponse = Result(data: "Mock signing share response")
-    completion(mockResponse)
-  }
-
   // Mocking the storedClientBackupShare function
   override public func storedClientBackupShare(
     success: Bool,
@@ -35,31 +25,10 @@ public class MockPortalApi: PortalApi {
     }
   }
 
-  // Mocking the storedClientBackupShare function
-  override public func storedClientBackupShareKey(
-    success _: Bool,
-    backupMethod _: BackupMethods.RawValue,
-    completion: @escaping (Result<String>) -> Void
-  ) throws {
-    // Mock response based on the success parameter
-    let mockResponse = Result(data: "Backup share key successfully stored")
-    completion(mockResponse)
-  }
-
   // Mocking the ejectClient function
   override public func ejectClient(completion: @escaping (Result<String>) -> Void) throws {
     // Mock response based on the success parameter
     let mockResponse = Result(data: "")
-    completion(mockResponse)
-  }
-
-  override public func identify(traits _: [String: String] = [:], completion: ((Result<MetricsResponse>) -> Void)? = nil) throws {
-    let mockResponse = Result(data: MetricsResponse(status: true))
-
-    guard let completion else {
-      return
-    }
-
     completion(mockResponse)
   }
 
