@@ -1,5 +1,11 @@
 ignore:
+  - "main/.swiftspm"
   - "main/Cocoapods Example"
   - "main/SPM Example"
-  - "main/Sources/PortalSwift/Classes/Mocks"
+  - "main/Sources/Frameworks"
+  - "main/Sources/PortalSwift/Mocks"
   - "main/Pods"
+  - "main/Pods.xcworkspace"
+  - "main/PortalSwift.xcworkspace"
+  - "main/Tests"
+  - "main/*Types.swift"
