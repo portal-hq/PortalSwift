@@ -11,8 +11,10 @@ enum MockMobileWrapperError: Error {
   case unableToEncodeData
 }
 
-class MockMobileWrapper: Mobile {
-  func MobileGenerateEd25519(_: String, _: String, _: String, _: String) async -> String {
+public class MockMobileWrapper: Mobile {
+  public init() {}
+
+  public func MobileGenerateEd25519(_: String, _: String, _: String, _: String) async -> String {
     let result = await withCheckedContinuation { continuation in
       do {
         try continuation.resume(returning: MockConstants.mockRotateResult)
@@ -23,7 +25,7 @@ class MockMobileWrapper: Mobile {
     return result
   }
 
-  func MobileGenerateSecp256k1(_: String, _: String, _: String, _: String) async -> String {
+  public func MobileGenerateSecp256k1(_: String, _: String, _: String, _: String) async -> String {
     let result = await withCheckedContinuation { continuation in
       do {
         try continuation.resume(returning: MockConstants.mockRotateResult)
@@ -34,7 +36,7 @@ class MockMobileWrapper: Mobile {
     return result
   }
 
-  func MobileBackupEd25519(_: String, _: String, _: String, _: String, _: String) async -> String {
+  public func MobileBackupEd25519(_: String, _: String, _: String, _: String, _: String) async -> String {
     let result = await withCheckedContinuation { continuation in
       do {
         try continuation.resume(returning: MockConstants.mockRotateResult)
@@ -45,7 +47,7 @@ class MockMobileWrapper: Mobile {
     return result
   }
 
-  func MobileBackupSecp256k1(_: String, _: String, _: String, _: String, _: String) async -> String {
+  public func MobileBackupSecp256k1(_: String, _: String, _: String, _: String, _: String) async -> String {
     let result = await withCheckedContinuation { continuation in
       do {
         try continuation.resume(returning: MockConstants.mockRotateResult)
@@ -56,7 +58,7 @@ class MockMobileWrapper: Mobile {
     return result
   }
 
-  func MobileRecoverSigningEd25519(_: String, _: String, _: String, _: String, _: String) async -> String {
+  public func MobileRecoverSigningEd25519(_: String, _: String, _: String, _: String, _: String) async -> String {
     let result = await withCheckedContinuation { continuation in
       do {
         try continuation.resume(returning: MockConstants.mockRotateResult)
@@ -67,7 +69,7 @@ class MockMobileWrapper: Mobile {
     return result
   }
 
-  func MobileRecoverSigningSecp256k1(_: String, _: String, _: String, _: String, _: String) async -> String {
+  public func MobileRecoverSigningSecp256k1(_: String, _: String, _: String, _: String, _: String) async -> String {
     let result = await withCheckedContinuation { continuation in
       do {
         try continuation.resume(returning: MockConstants.mockRotateResult)
@@ -78,7 +80,7 @@ class MockMobileWrapper: Mobile {
     return result
   }
 
-  func MobileGenerate(_: String, _: String, _: String, _: String) async -> String {
+  public func MobileGenerate(_: String, _: String, _: String, _: String) async -> String {
     let result = await withCheckedContinuation { continuation in
       do {
         try continuation.resume(returning: MockConstants.mockRotateResult)
@@ -89,7 +91,7 @@ class MockMobileWrapper: Mobile {
     return result
   }
 
-  func MobileBackup(_: String, _: String, _: String, _: String, _: String) async -> String {
+  public func MobileBackup(_: String, _: String, _: String, _: String, _: String) async -> String {
     let result = await withCheckedContinuation { continuation in
       do {
         try continuation.resume(returning: MockConstants.mockRotateResult)
@@ -100,7 +102,7 @@ class MockMobileWrapper: Mobile {
     return result
   }
 
-  func MobileRecoverSigning(_: String, _: String, _: String, _: String, _: String) async -> String {
+  public func MobileRecoverSigning(_: String, _: String, _: String, _: String, _: String) async -> String {
     let result = await withCheckedContinuation { continuation in
       do {
         try continuation.resume(returning: MockConstants.mockRotateResult)
@@ -111,7 +113,7 @@ class MockMobileWrapper: Mobile {
     return result
   }
 
-  func MobileRecoverBackup(_: String, _: String, _: String, _: String, _: String) async -> String {
+  public func MobileRecoverBackup(_: String, _: String, _: String, _: String, _: String) async -> String {
     let result = await withCheckedContinuation { continuation in
       do {
         try continuation.resume(returning: MockConstants.mockRotateResult)
@@ -122,35 +124,35 @@ class MockMobileWrapper: Mobile {
     return result
   }
 
-  func MobileEncryptWithPassword(data _: String, password _: String) async -> String {
+  public func MobileEncryptWithPassword(data _: String, password _: String) async -> String {
     let result = await withCheckedContinuation { continuation in
       continuation.resume(returning: MockConstants.mockEncryptWithPasswordResult)
     }
     return result
   }
 
-  func MobileDecryptWithPassword(_: String, _: String) async -> String {
+  public func MobileDecryptWithPassword(_: String, _: String) async -> String {
     let result = await withCheckedContinuation { continuation in
       continuation.resume(returning: MockConstants.mockDecryptResult)
     }
     return result
   }
 
-  func MobileDecrypt(_: String, _: String) async -> String {
+  public func MobileDecrypt(_: String, _: String) async -> String {
     let result = await withCheckedContinuation { continuation in
       continuation.resume(returning: MockConstants.mockDecryptResult)
     }
     return result
   }
 
-  func MobileEncrypt(_: String) async -> String {
+  public func MobileEncrypt(_: String) async -> String {
     let result = await withCheckedContinuation { continuation in
       continuation.resume(returning: MockConstants.mockEncryptResult)
     }
     return result
   }
 
-  func MobileGetMe(_: String, _: String) -> String {
+  public func MobileGetMe(_: String, _: String) -> String {
     do {
       let clientResponse = MockConstants.mockClient
       let clientResponseData = try JSONEncoder().encode(clientResponse)
@@ -164,18 +166,18 @@ class MockMobileWrapper: Mobile {
     }
   }
 
-  func MobileGetVersion() -> String {
+  public func MobileGetVersion() -> String {
     return "4.0.1"
   }
 
-  func MobileSign(_: String?, _: String?, _: String?, _ method: String?, _: String?, _: String?, _: String?, _: String?) -> String {
+  public func MobileSign(_: String?, _: String?, _: String?, _ method: String?, _: String?, _: String?, _: String?, _: String?) -> String {
     if method == PortalRequestMethod.eth_sendTransaction.rawValue {
       return MockConstants.mockTransactionHashResponse
     }
     return MockConstants.mockSignatureResponse
   }
 
-  func MobileEjectWalletAndDiscontinueMPC(_: String, _: String) -> String {
+  public func MobileEjectWalletAndDiscontinueMPC(_: String, _: String) -> String {
     return MockConstants.mockEip155EjectResponse
   }
 }

@@ -493,6 +493,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 429213112B51C578005B80B6 /* Secrets.xcconfig */;
 			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
 				DEVELOPMENT_TEAM = WTQ4Q66FY6;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				FRAMEWORK_SEARCH_PATHS = (
@@ -504,7 +505,7 @@
 					"$(inherited)",
 				);
 				INFOPLIST_FILE = Tests/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -514,7 +515,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_SWIFT3_OBJC_INFERENCE = Default;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SPM Example.app/SPM Example";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SPM Example.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SPM Example";
 			};
 			name = Debug;
 		};
@@ -522,6 +523,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 429213112B51C578005B80B6 /* Secrets.xcconfig */;
 			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
 				DEVELOPMENT_TEAM = WTQ4Q66FY6;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				FRAMEWORK_SEARCH_PATHS = (
@@ -529,7 +531,7 @@
 					"$(inherited)",
 				);
 				INFOPLIST_FILE = Tests/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -539,7 +541,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_SWIFT3_OBJC_INFERENCE = Default;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SPM Example.app/SPM Example";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SPM Example.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SPM Example";
 			};
 			name = Release;
 		};

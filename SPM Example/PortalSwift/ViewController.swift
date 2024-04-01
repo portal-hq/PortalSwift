@@ -148,7 +148,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
    * Portal functions
    ***********************************************/
 
-  func backup(_ userId: String, withMethod: BackupMethods) async throws -> String {
+  public func backup(_ userId: String, withMethod: BackupMethods) async throws -> String {
     guard let portal = portal else {
       self.logger.error("ViewController.backup() - Portal not initialized. Please call registerPortal().")
       throw PortalExampleAppError.portalNotInitialized()
@@ -182,7 +182,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     return result
   }
 
-  func deleteKeychain() async {
+  public func deleteKeychain() async {
     do {
       guard let portal = portal else {
         self.logger.error("ViewController.deleteKeychain() - Portal not initialized. Please call registerPortal().")
@@ -198,7 +198,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  func eject(_ withBackupMethod: BackupMethods) async throws -> String {
+  public func eject(_ withBackupMethod: BackupMethods) async throws -> String {
     guard let portal = portal else {
       self.logger.error("ViewController.eject() - ❌ Portal not initialized. Please call registerPortal().")
       throw PortalExampleAppError.portalNotInitialized()
@@ -236,7 +236,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     return privateKey
   }
 
-  func generate() async throws -> PortalCreateWalletResponse {
+  public func generate() async throws -> PortalCreateWalletResponse {
     guard let portal = portal else {
       self.logger.error("PortalWrapper.generate() - Portal not initialized. Please call registerPortal().")
       throw PortalExampleAppError.portalNotInitialized()
@@ -255,7 +255,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     return true
   }
 
-  private func getGasPrice(_ chainId: String) async throws {
+  public func getGasPrice(_ chainId: String) async throws {
     guard let portal = portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
@@ -267,14 +267,14 @@ class ViewController: UIViewController, UITextFieldDelegate {
 //    return gasPriceResponse.result
   }
 
-  private func getNFTs(_ chainId: String) async throws -> [FetchedNFT] {
+  public func getNFTs(_ chainId: String) async throws -> [FetchedNFT] {
     guard let portal = portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
     return try await portal.getNFTs(chainId)
   }
 
-  func getShareMetadata() async throws -> Bool {
+  public func getShareMetadata() async throws -> Bool {
     guard let portal = portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
@@ -287,14 +287,14 @@ class ViewController: UIViewController, UITextFieldDelegate {
     return true
   }
 
-  func getTransactions(_ chainId: String) async throws -> [FetchedTransaction] {
+  public func getTransactions(_ chainId: String) async throws -> [FetchedTransaction] {
     guard let portal = portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
     return try await portal.getTransactions(chainId)
   }
 
-  func recover(_ userId: String, withBackupMethod: BackupMethods) async throws -> PortalCreateWalletResponse {
+  public func recover(_ userId: String, withBackupMethod: BackupMethods) async throws -> PortalCreateWalletResponse {
     guard let portal = portal else {
       self.logger.error("ViewController.recover() - Portal not initialized. Please call registerPortal().")
       throw PortalExampleAppError.portalNotInitialized()
@@ -315,7 +315,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  private func sendTransaction() async throws -> String {
+  public func sendTransaction() async throws -> String {
     guard let portal = portal else {
       self.logger.error("ViewController.sendTransaction() - ❌ Portal not initialized.")
       throw PortalExampleAppError.portalNotInitialized()
@@ -346,7 +346,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     return transactionHash
   }
 
-  private func simulateTransaction(_ chainId: String, transaction: Any) async throws -> SimulatedTransaction {
+  public func simulateTransaction(_ chainId: String, transaction: Any) async throws -> SimulatedTransaction {
     guard let portal = portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
@@ -354,7 +354,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     return try await portal.simulateTransaction(chainId, from: transaction)
   }
 
-  private func testProviderRequest(
+  public func testProviderRequest(
     _ method: PortalRequestMethod,
     params: [Any]
   ) async throws -> Bool {
@@ -392,7 +392,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  private func testOtherRequests() async throws {
+  public func testOtherRequests() async throws {
     let chainId = "eip155:11155111"
 
     guard let portal = portal else {
@@ -432,7 +432,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  private func testSignerRequests() async throws {
+  public func testSignerRequests() async throws {
     let chainId = "eip155:11155111"
 
     guard let portal = portal else {
@@ -461,7 +461,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  private func testTransactionRequests() async throws {
+  public func testTransactionRequests() async throws {
     let chainId = "eip155:11155111"
     guard let portal = portal else {
       throw PortalExampleAppError.portalNotInitialized()
@@ -489,7 +489,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  private func testWalletRequests() async throws {
+  public func testWalletRequests() async throws {
     print("\nTesting Wallet Methods:\n")
     let walletRequests = [
       // https://docs.metamask.io/guide/rpc-api.html#wallet-addethereumchain
@@ -515,7 +515,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
    * Custodian functions
    ***********************************************/
 
-  private func signIn(_ username: String) async throws -> UserResult {
+  public func signIn(_ username: String) async throws -> UserResult {
     do {
       guard let config = self.config else {
         throw PortalExampleAppError.configurationNotSet()
@@ -537,7 +537,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  private func signUp(_ username: String) async throws -> UserResult {
+  public func signUp(_ username: String) async throws -> UserResult {
     do {
       guard let config = self.config else {
         throw PortalExampleAppError.configurationNotSet()
@@ -563,7 +563,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
    * Setup functions
    ***********************************************/
 
-  private func loadApplicationConfig() {
+  public func loadApplicationConfig() {
     do {
       guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
         self.logger.error("PortalWrapper.init - Couldnt load info.plist dictionary.")
@@ -616,7 +616,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  private func parseETHBalanceHex(hex: String) -> String {
+  public func parseETHBalanceHex(hex: String) -> String {
     let hexString = hex.replacingOccurrences(of: "0x", with: "")
     guard let hexInt = Int(hexString, radix: 16) else {
       print("Unable to parse ETH balance hex")
@@ -626,7 +626,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     return String(ethBalance)
   }
 
-  private func prepareUIComponents() {
+  public func prepareUIComponents() {
     // Set up UI Components
     var totalHeight: CGFloat = 0
 
@@ -665,7 +665,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     view.bringSubviewToFront(self.activityIndicator)
   }
 
-  private func populateEthBalance() async throws {
+  public func populateEthBalance() async throws {
     guard let portal = portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
@@ -685,7 +685,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  private func registerPortal() async throws -> Portal {
+  public func registerPortal() async throws -> Portal {
     do {
       guard let config = self.config else {
         throw PortalExampleAppError.configurationNotSet()
@@ -740,7 +740,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
   // Call this function whenever you want to prompt the user for a PIN
-  private func requestPassword() async -> String? {
+  public func requestPassword() async -> String? {
     let password = await withCheckedContinuation { continuation in
       let alertController = UIAlertController(title: "Enter Password", message: nil, preferredStyle: .alert)
 
