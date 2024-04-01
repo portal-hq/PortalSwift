@@ -39,7 +39,7 @@ let package = Package(
     ),
     .binaryTarget(
       name: "Mpc",
-      path: "Sources/Frameworks/Mpc.xcframework"
+      path: "Sources/Frameworks/mpc.xcframework"
     ),
     .testTarget(
       name: "PortalSwiftTests",
