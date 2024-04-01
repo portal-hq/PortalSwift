@@ -13,6 +13,7 @@ public class PortalApi {
   private var apiKey: String
   private var baseUrl: String
   private let decoder = JSONDecoder()
+  private let isMocked: Bool
   private let logger = PortalLogger()
   private var provider: PortalProvider?
   private var requests: HttpRequester
@@ -40,20 +41,19 @@ public class PortalApi {
   ///   - apiKey: The Client API key. You can create one using Portal's REST API.
   ///   - apiHost: (optional) The Portal API hostname.
   ///   - provider: The PortalProvider instance to use for stateful Provider info (chainId, address)
-  init(
+  public init(
     apiKey: String,
     apiHost: String = "api.portalhq.io",
     provider: PortalProvider? = nil,
-    mockRequests: Bool = false,
-    featureFlags: FeatureFlags? = nil
+    featureFlags: FeatureFlags? = nil,
+    isMocked: Bool = false
   ) {
     self.apiKey = apiKey
-    self.provider = provider
-
     self.baseUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
-    self.requests = mockRequests ? MockHttpRequester(baseUrl: self.baseUrl) : HttpRequester(baseUrl: self.baseUrl)
-
     self.featureFlags = featureFlags
+    self.isMocked = isMocked
+    self.provider = provider
+    self.requests = isMocked ? MockHttpRequester(baseUrl: self.baseUrl) : HttpRequester(baseUrl: self.baseUrl)
   }
 
   /*******************************************
@@ -63,7 +63,7 @@ public class PortalApi {
   public func eject() async throws -> String {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/eject") {
       do {
-        let data = try await PortalRequests.post(url, withBearerToken: self.apiKey)
+        let data = try await post(url, withBearerToken: self.apiKey)
         guard let ejectResponse = String(data: data, encoding: .utf8) else {
           throw PortalApiError.unableToReadStringResponse
         }
@@ -82,7 +82,7 @@ public class PortalApi {
   public func getBalances(_ chainId: String) async throws -> [FetchedBalance] {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/balances?chainId=\(chainId)") {
       do {
-        let data = try await PortalRequests.get(url, withBearerToken: self.apiKey)
+        let data = try await get(url, withBearerToken: self.apiKey)
         let balancesResponse = try decoder.decode([FetchedBalance].self, from: data)
 
         return balancesResponse
@@ -101,7 +101,7 @@ public class PortalApi {
   public func getClient() async throws -> ClientResponse {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me") {
       do {
-        let data = try await PortalRequests.get(url, withBearerToken: self.apiKey)
+        let data = try await get(url, withBearerToken: self.apiKey)
         let clientResponse = try decoder.decode(ClientResponse.self, from: data)
 
         return clientResponse
@@ -122,7 +122,7 @@ public class PortalApi {
       body["apiKey"] = AnyEncodable(swapsApiKey)
       body["chainId"] = AnyEncodable(self.chainId)
 
-      let data = try await PortalRequests.post(url, withBearerToken: self.apiKey, andPayload: body)
+      let data = try await post(url, withBearerToken: self.apiKey, andPayload: body)
       let response = try decoder.decode(Quote.self, from: data)
 
       return response
@@ -134,7 +134,7 @@ public class PortalApi {
   public func getNFTs(_ chainId: String) async throws -> [FetchedNFT] {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/nfts?chainId=\(chainId)") {
       do {
-        let data = try await PortalRequests.get(url, withBearerToken: self.apiKey)
+        let data = try await get(url, withBearerToken: self.apiKey)
         let nfts = try decoder.decode([FetchedNFT].self, from: data)
 
         return nfts
@@ -151,7 +151,7 @@ public class PortalApi {
   public func getSharePairs(_ type: PortalSharePairType, walletId: String) async throws -> [FetchedSharePair] {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/wallets/\(walletId)/\(type)-share-pairs") {
       do {
-        let data = try await PortalRequests.get(url, withBearerToken: self.apiKey)
+        let data = try await get(url, withBearerToken: self.apiKey)
         let sharePairs = try decoder.decode([FetchedSharePair].self, from: data)
 
         return sharePairs
@@ -168,7 +168,7 @@ public class PortalApi {
   public func getSources(_ swapsApiKey: String, forChainId: String) async throws -> [String: String] {
     if let url = URL(string: "\(baseUrl)/api/v1/swaps/sources") {
       let payload = ["apiKey": swapsApiKey, "chainId": forChainId]
-      let data = try await PortalRequests.post(url, withBearerToken: self.apiKey, andPayload: payload)
+      let data = try await post(url, withBearerToken: self.apiKey, andPayload: payload)
       let response = try decoder.decode([String: String].self, from: data)
 
       return response
@@ -204,7 +204,7 @@ public class PortalApi {
 
     if let url = URL(string: requestUrlString) {
       do {
-        let data = try await PortalRequests.get(url, withBearerToken: self.apiKey)
+        let data = try await get(url, withBearerToken: self.apiKey)
         let transactions = try decoder.decode([FetchedTransaction].self, from: data)
 
         return transactions
@@ -220,7 +220,7 @@ public class PortalApi {
 
   public func identify(_ traits: [String: AnyEncodable] = [:]) async throws -> MetricsResponse {
     if let url = URL(string: "\(baseUrl)/api/v1/analytics/identify") {
-      let data = try await PortalRequests.post(url, withBearerToken: self.apiKey, andPayload: ["traits": traits])
+      let data = try await post(url, withBearerToken: self.apiKey, andPayload: ["traits": traits])
       let response = try decoder.decode(MetricsResponse.self, from: data)
 
       return response
@@ -251,10 +251,11 @@ public class PortalApi {
   ///   - gasPrice: (Optional) The transacton "gasPrice" parameter.
   ///   - completion: The callback that contains transaction simulation response.
   /// - Returns: Void.
-  public func simulateTransaction(_ transaction: AnyEncodable, withChainId _: String) async throws -> SimulatedTransaction {
-    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/simulate-transaction?chainId=\(chainId)") {
+  public func simulateTransaction(_ transaction: Any, withChainId: String) async throws -> SimulatedTransaction {
+    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/simulate-transaction?chainId=\(withChainId)") {
       do {
-        let data = try await PortalRequests.post(url, withBearerToken: self.apiKey, andPayload: transaction)
+        let transformedTransaction = try AnyEncodable(transaction)
+        let data = try await post(url, withBearerToken: self.apiKey, andPayload: transformedTransaction)
         let simulatedTransaction = try decoder.decode(SimulatedTransaction.self, from: data)
 
         return simulatedTransaction
@@ -273,7 +274,7 @@ public class PortalApi {
         event: event,
         properties: withProperties
       )
-      let data = try await PortalRequests.post(url, withBearerToken: self.apiKey, andPayload: payload)
+      let data = try await post(url, withBearerToken: self.apiKey, andPayload: payload)
       let response = try decoder.decode(MetricsResponse.self, from: data)
 
       return response
@@ -295,7 +296,7 @@ public class PortalApi {
           status: status
         )
 
-        _ = try await PortalRequests.patch(url, withBearerToken: self.apiKey, andPayload: payload)
+        _ = try await self.patch(url, withBearerToken: self.apiKey, andPayload: payload)
 
         return
       } catch {
@@ -306,6 +307,28 @@ public class PortalApi {
 
     self.logger.error("PortalApi.updateShareStatus() - Unable to build request URL.")
     throw URLError(.badURL)
+  }
+
+  /*******************************************
+   * Private functions
+   *******************************************/
+
+  private func get(_ url: URL, withBearerToken: String? = nil) async throws -> Data {
+    return self.isMocked
+      ? try await MockPortalRequests.get(url, withBearerToken: withBearerToken)
+      : try await PortalRequests.get(url, withBearerToken: withBearerToken)
+  }
+
+  private func patch(_ url: URL, withBearerToken: String? = nil, andPayload: Encodable) async throws -> Data {
+    return self.isMocked
+      ? try await MockPortalRequests.patch(url, withBearerToken: withBearerToken, andPayload: andPayload)
+      : try await PortalRequests.patch(url, withBearerToken: withBearerToken, andPayload: andPayload)
+  }
+
+  private func post(_ url: URL, withBearerToken: String? = nil, andPayload: Encodable? = nil) async throws -> Data {
+    return self.isMocked
+      ? try await MockPortalRequests.post(url, withBearerToken: withBearerToken, andPayload: andPayload)
+      : try await PortalRequests.post(url, withBearerToken: withBearerToken, andPayload: andPayload)
   }
 
   /*******************************************
@@ -495,7 +518,10 @@ public class PortalApi {
     ) { (result: Result<String>) in
       completion(result)
 
-      self.track(event: MetricsEvents.storedClientBackupShare.rawValue, properties: ["path": "/api/v2/clients/me/wallet/stored-client-backup-share"])
+      self.track(
+        event: MetricsEvents.storedClientBackupShare.rawValue,
+        properties: ["path": "/api/v2/clients/me/wallet/stored-client-backup-share"]
+      )
     }
   }
 
@@ -506,7 +532,10 @@ public class PortalApi {
   public func getBackupShareMetadata(completion: @escaping (Result<[FetchedSharePair]>) -> Void) throws {
     Task {
       do {
-        let response = try await getSharePairs(.backup, walletId: "")
+        let walletId = try await client?.wallets.first { wallet in
+          wallet.curve == .SECP256K1
+        }?.id
+        let response = try await getSharePairs(.backup, walletId: walletId ?? "NO-WALLET-ID-FOUND")
         completion(Result(data: response))
       } catch {
         completion(Result(error: error))
@@ -521,7 +550,10 @@ public class PortalApi {
   public func getSigningShareMetadata(completion: @escaping (Result<[FetchedSharePair]>) -> Void) throws {
     Task {
       do {
-        let response = try await getSharePairs(.signing, walletId: "")
+        let walletId = try await client?.wallets.first { wallet in
+          wallet.curve == .SECP256K1
+        }?.id
+        let response = try await getSharePairs(.signing, walletId: walletId ?? "NO-WALLET-ID-FOUND")
         completion(Result(data: response))
       } catch {
         completion(Result(error: error))

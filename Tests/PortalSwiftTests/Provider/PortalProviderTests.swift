@@ -15,12 +15,10 @@ final class PortalProviderTests: XCTestCase {
   override func setUpWithError() throws {
     // Put setup code here. This method is called before the invocation of each test method in the class.
     self.provider = try PortalProvider(
-      apiKey: mockApiKey,
-      chainId: 11_155_111,
-      gatewayConfig: [11_155_111: mockHost],
+      apiKey: MockConstants.mockApiKey,
+      rpcConfig: ["eip155:11155111": MockConstants.mockHost],
       keychain: MockPortalKeychain(),
-      autoApprove: true,
-      gateway: MockHttpRequester(baseUrl: mockHost)
+      autoApprove: true
     )
   }
 
@@ -55,7 +53,7 @@ final class PortalProviderTests: XCTestCase {
 
   func testGetApiKey() throws {
     let apiKey = self.provider!.apiKey
-    XCTAssertEqual(apiKey, mockApiKey)
+    XCTAssertEqual(apiKey, MockConstants.mockApiKey)
   }
 
   func testOn() throws {
@@ -118,7 +116,7 @@ final class PortalProviderTests: XCTestCase {
   func testEthEstimateGas() {
     let expectation = XCTestExpectation(description: "Expecting valid estimate of gas")
 
-    self.performRequest(method: ETHRequestMethods.EstimateGas.rawValue, params: [mockTransaction, "latest"]) { result in
+    self.performRequest(method: ETHRequestMethods.EstimateGas.rawValue, params: [MockConstants.mockEip155Transaction, "latest"]) { result in
       guard result.error == nil, let hexValue = (result.data?.result as? ETHGatewayResponse)?.result else {
         XCTFail("Error testing provider request: \(String(describing: result.error))")
         return expectation.fulfill()
@@ -170,7 +168,7 @@ final class PortalProviderTests: XCTestCase {
   func testEthCall() {
     let expectation = XCTestExpectation(description: "Expecting valid call response")
 
-    self.performRequest(method: ETHRequestMethods.Call.rawValue, params: [mockTransaction, "latest"]) { result in
+    self.performRequest(method: ETHRequestMethods.Call.rawValue, params: [MockConstants.mockEip155Transaction, "latest"]) { result in
       guard result.error == nil, let hexValue = (result.data?.result as? ETHGatewayResponse)?.result else {
         XCTFail("Error testing provider request: \(String(describing: result.error))")
         return expectation.fulfill()
@@ -188,7 +186,7 @@ final class PortalProviderTests: XCTestCase {
   func testEthGetBalance() {
     let expectation = XCTestExpectation(description: "Expecting valid balance response")
 
-    self.performRequest(method: ETHRequestMethods.GetBalance.rawValue, params: [mockAddress, "latest"]) { result in
+    self.performRequest(method: ETHRequestMethods.GetBalance.rawValue, params: [MockConstants.mockEip155Address, "latest"]) { result in
       guard result.error == nil, let hexValue = (result.data?.result as? ETHGatewayResponse)?.result else {
         XCTFail("Error testing provider request: \(String(describing: result.error))")
         return expectation.fulfill()
@@ -205,7 +203,7 @@ final class PortalProviderTests: XCTestCase {
   func testEthGetCode() {
     let expectation = XCTestExpectation(description: "Expecting valid code response")
 
-    self.performRequest(method: ETHRequestMethods.GetCode.rawValue, params: [mockAddress, "latest"]) { result in
+    self.performRequest(method: ETHRequestMethods.GetCode.rawValue, params: [MockConstants.mockEip155Address, "latest"]) { result in
       guard result.error == nil, let hexValue = (result.data?.result as? ETHGatewayResponse)?.result else {
         XCTFail("Error testing provider request: \(String(describing: result.error))")
         return expectation.fulfill()
@@ -222,7 +220,7 @@ final class PortalProviderTests: XCTestCase {
   func testEthGetTransactionCount() {
     let expectation = XCTestExpectation(description: "Expecting valid transaction count response")
 
-    self.performRequest(method: ETHRequestMethods.GetTransactionCount.rawValue, params: [mockAddress, "latest"]) { result in
+    self.performRequest(method: ETHRequestMethods.GetTransactionCount.rawValue, params: [MockConstants.mockEip155Address, "latest"]) { result in
       guard result.error == nil, let hexValue = (result.data?.result as? ETHGatewayResponse)?.result else {
         XCTFail("Error testing provider request: \(String(describing: result.error))")
         return expectation.fulfill()
@@ -360,7 +358,7 @@ final class PortalProviderTests: XCTestCase {
   func testEthGetStorageAt() {
     let expectation = XCTestExpectation(description: "Expecting valid get storage response")
 
-    self.performRequest(method: ETHRequestMethods.GetStorageAt.rawValue, params: [mockAddress, "0x0", "latest"]) { result in
+    self.performRequest(method: ETHRequestMethods.GetStorageAt.rawValue, params: [MockConstants.mockEip155Address, "0x0", "latest"]) { result in
       guard result.error == nil, let storage = (result.data?.result as? ETHGatewayResponse)?.result else {
         XCTFail("Error testing provider request: \(String(describing: result.error))")
         return expectation.fulfill()

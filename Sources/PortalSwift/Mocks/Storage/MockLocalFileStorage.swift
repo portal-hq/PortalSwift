@@ -10,7 +10,7 @@ import Foundation
 class MockLocalFileStorage: LocalFileStorage {
   // Async decrypt implementation
   public func decrypt(_: String, withKey _: String) async throws -> String {
-    return mockDecryptResult
+    return try await MockConstants.mockMpcShareString
   }
 
   // Async delete implementation
@@ -24,18 +24,18 @@ class MockLocalFileStorage: LocalFileStorage {
   }
 
   // Async encrypt implementation
-  public func encrypt(_: String) async throws -> String {
-    return mockEncryptResult
+  public func encrypt(_: String) async throws -> EncryptData {
+    return MockConstants.mockEncryptData
   }
 
   // Async read implementation
   override public func read() async throws -> String {
-    return mockBackupShare
+    return MockConstants.mockEncryptionKey
   }
 
   // Completion read implementation
   override public func read(completion: @escaping (Result<String>) -> Void) {
-    completion(Result(data: mockBackupShare))
+    completion(Result(data: MockConstants.mockEncryptionKey))
   }
 
   // Async write implementation

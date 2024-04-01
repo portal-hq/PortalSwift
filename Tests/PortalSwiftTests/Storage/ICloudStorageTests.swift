@@ -10,72 +10,43 @@
 import XCTest
 
 final class ICloudStorageTests: XCTestCase {
-  var storage: ICloudStorage?
+  var storage = ICloudStorage(isMocked: true)
 
   override func setUpWithError() throws {
-    let provider = try MockPortalProvider(apiKey: "", chainId: 11_155_111, gatewayConfig: [11_155_111: "https://example.com"], keychain: MockPortalKeychain(), autoApprove: true)
-
-    self.storage = ICloudStorage()
-    self.storage?.api = MockPortalApi(apiKey: "", apiHost: "", provider: provider)
+    self.storage.api = PortalApi(apiKey: MockConstants.mockApiKey, isMocked: true)
   }
 
-  override func tearDownWithError() throws {
-    self.storage = nil
+  override func tearDownWithError() throws {}
+
+  func testDelete() async throws {
+    let expectation = XCTestExpectation(description: "ICloudStorage.delete()")
+    let success = try await storage.delete()
+    XCTAssertTrue(success)
+    expectation.fulfill()
+    await fulfillment(of: [expectation], timeout: 5.0)
   }
 
-  func testDelete() throws {
-    throw XCTSkip("We need to mock icloud")
-    let expectation = XCTestExpectation(description: "Delete")
-    let privateKey = "privateKey"
-
-    self.storage!.write(privateKey: privateKey) { (result: Result<Bool>) in
-      if result.error != nil {
-        XCTFail("Failed to write private key to storage. Make sure you are signed into iCloud on your simulator before running tests.")
-      }
-
-      self.storage!.read { (result: Result<String>) in
-        XCTAssert(result.data! == privateKey)
-
-        self.storage!.delete { (result: Result<Bool>) in
-          XCTAssert(result.data! == true)
-
-          self.storage!.read { (result: Result<String>) in
-            XCTAssert(result.data! == "")
-            expectation.fulfill()
-          }
-        }
-      }
-    }
-
-    wait(for: [expectation], timeout: 5.0)
+  func testRead() async throws {
+    let expectation = XCTestExpectation(description: "ICloudStorage.read()")
+    let result = try await storage.read()
+    XCTAssertEqual(result, MockConstants.mockEncryptionKey)
+    expectation.fulfill()
+    await fulfillment(of: [expectation], timeout: 5.0)
   }
 
-  func testRead() throws {
-    let expectation = XCTestExpectation(description: "Read")
-
-    self.storage!.read { (result: Result<String>) in
-      XCTAssert(result.data! == "")
-      expectation.fulfill()
-    }
-
-    wait(for: [expectation], timeout: 5.0)
+  func testValidateOperations() async throws {
+    let expectation = XCTestExpectation(description: "ICloudStorage.write()")
+    let success = try await storage.validateOperations()
+    XCTAssertTrue(success)
+    expectation.fulfill()
+    await fulfillment(of: [expectation], timeout: 5.0)
   }
 
-  func testWrite() throws {
-    throw XCTSkip("We need to mock icloud")
-    let expectation = XCTestExpectation(description: "Write")
-    let privateKey = "privateKey"
-
-    self.storage!.write(privateKey: privateKey) { (result: Result<Bool>) in
-      XCTAssert(result.data! == true)
-
-      self.storage!.read { (result: Result<String>) in
-        print(result)
-        XCTAssert(result.data! == privateKey)
-        expectation.fulfill()
-      }
-    }
-
-    wait(for: [expectation], timeout: 5.0)
+  func testWrite() async throws {
+    let expectation = XCTestExpectation(description: "ICloudStorage.write()")
+    let success = try await storage.write(MockConstants.mockEncryptionKey)
+    XCTAssertTrue(success)
+    expectation.fulfill()
+    await fulfillment(of: [expectation], timeout: 5.0)
   }
 }

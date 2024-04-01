@@ -34,6 +34,7 @@ extension GatewayError: CustomStringConvertible {
 }
 
 /// A class for making HTTP requests.
+@available(*, deprecated, renamed: "PortalRequests", message: "Please use the async implementation of PortalRequests")
 public class HttpRequest<T: Codable, BodyType> {
   private var body: BodyType?
   private var headers: [String: String]

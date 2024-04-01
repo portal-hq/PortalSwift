@@ -1,33 +1,26 @@
 //
-//  GDriveStorageTests.swift
-//  PortalSwift_Tests
+//  PasskeyStorageTests.swift
 //
-//  Created by Portal Labs, Inc.
-//  Copyright © 2022 Portal Labs, Inc. All rights reserved.
+//
+//  Created by Blake Williams on 3/31/24.
 //
 
 @testable import PortalSwift
 import XCTest
 
-final class GDriveStorageTests: XCTestCase {
-  var storage = GDriveStorage(isMocked: true)
+@available(iOS 16, *)
+final class PasskeyStorageTests: XCTestCase {
+  let storage = PasskeyStorage(isMocked: true)
 
   override func setUpWithError() throws {
+    self.storage.apiKey = MockConstants.mockApiKey
     self.storage.api = PortalApi(apiKey: MockConstants.mockApiKey, isMocked: true)
   }
 
   override func tearDownWithError() throws {}
 
-  func testDelete() async throws {
-    let expectation = XCTestExpectation(description: "GDriveStorage.write(value)")
-    let success = try await storage.delete()
-    XCTAssertTrue(success)
-    expectation.fulfill()
-    await fulfillment(of: [expectation], timeout: 5.0)
-  }
-
   func testRead() async throws {
-    let expectation = XCTestExpectation(description: "GDriveStorage.write(value)")
+    let expectation = XCTestExpectation(description: "PasskeyStorage.write(value)")
     let result = try await storage.read()
     XCTAssertEqual(result, MockConstants.mockEncryptionKey)
     expectation.fulfill()
@@ -35,7 +28,7 @@ final class GDriveStorageTests: XCTestCase {
   }
 
   func testSignIn() async throws {
-    let expectation = XCTestExpectation(description: "GDriveStorage.write(value)")
+    let expectation = XCTestExpectation(description: "PasskeyStorage.write(value)")
 
     expectation.fulfill()
     await fulfillment(of: [expectation], timeout: 5.0)
@@ -44,7 +37,7 @@ final class GDriveStorageTests: XCTestCase {
   func testValidateOperations() async throws {}
 
   func testWrite() async throws {
-    let expectation = XCTestExpectation(description: "GDriveStorage.write(value)")
+    let expectation = XCTestExpectation(description: "PasskeyStorage.write(value)")
     let success = try await storage.write(MockConstants.mockEncryptionKey)
     XCTAssertTrue(success)
     expectation.fulfill()

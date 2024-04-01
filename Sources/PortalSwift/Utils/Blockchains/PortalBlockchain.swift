@@ -11,6 +11,10 @@ public class PortalBlockchain {
   static let mainnetReferences: [PortalNamespace: String] = [
     .eip155: "1",
   ]
+  static let namespaceCurves: [PortalNamespace: PortalCurve] = [
+    .eip155: .SECP256K1,
+    .solana: .ED25519,
+  ]
   static let namespaceSignerMethods: [PortalNamespace: [PortalRequestMethod]] = [
     .eip155: [
       .eth_sendTransaction,
@@ -38,7 +42,7 @@ public class PortalBlockchain {
     guard let namespace = PortalNamespace(rawValue: namespaceString) else {
       throw PortalBlockchainError.noSupportedNamespaceForChainId(fromChainId)
     }
-    guard let curve = PortalKeychain.metadata?.namespaces[namespace] else {
+    guard let curve = PortalBlockchain.namespaceCurves[namespace] else {
       throw PortalBlockchainError.noSupportedCurveForChainId(fromChainId)
     }
 

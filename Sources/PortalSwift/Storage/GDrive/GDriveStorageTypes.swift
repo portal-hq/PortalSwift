@@ -1,8 +1,10 @@
+import GoogleSignIn
+
 struct GDriveDeleteResponse: Codable {
   let kind: String
 }
 
-struct GDriveFile: Codable {
+public struct GDriveFile: Codable {
   let kind: String
   let id: String
   let name: String

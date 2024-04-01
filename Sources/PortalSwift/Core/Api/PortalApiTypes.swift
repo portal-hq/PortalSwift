@@ -2,7 +2,7 @@
 // Will need to research more and try to bring this in.
 // public typealias ClientResponseMetadataNamespaces = [PortalNamespace: ClientResponseNamespaceMetadataItem]
 
-public struct ClientResponse: Codable {
+public struct ClientResponse: Codable, Equatable {
   public let id: String
   public let custodian: ClientResponseCustodian
   public let createdAt: String
@@ -11,46 +11,50 @@ public struct ClientResponse: Codable {
   public let isAccountAbstracted: Bool
   public let metadata: ClientResponseMetadata
   public let wallets: [ClientResponseWallet]
+
+  public static func == (lhs: ClientResponse, rhs: ClientResponse) -> Bool {
+    return lhs.id == rhs.id && lhs.custodian.id == rhs.custodian.id && lhs.createdAt == rhs.createdAt && lhs.environment.id == rhs.environment.id && lhs.ejectedAt == rhs.ejectedAt && lhs.isAccountAbstracted == rhs.isAccountAbstracted && lhs.metadata.namespaces.eip155?.address == rhs.metadata.namespaces.eip155?.address && lhs.metadata.namespaces.solana?.address == rhs.metadata.namespaces.solana?.address && lhs.wallets[0].backupSharePairs[0].backupMethod == rhs.wallets[0].backupSharePairs[0].backupMethod
+  }
 }
 
-public struct ClientResponseBackupSharePair: Codable {
+public struct ClientResponseBackupSharePair: Codable, Equatable {
   public let backupMethod: BackupMethods
   public let createdAt: String
   public let id: String
   public let status: PortalSharePairStatus
 }
 
-public struct ClientResponseCustodian: Codable {
+public struct ClientResponseCustodian: Codable, Equatable {
   public let id: String
   public let name: String
 }
 
-public struct ClientResponseEnvironment: Codable {
+public struct ClientResponseEnvironment: Codable, Equatable {
   public let id: String
   public let name: String
 }
 
-public struct ClientResponseMetadata: Codable {
+public struct ClientResponseMetadata: Codable, Equatable {
   public let namespaces: ClientResponseMetadataNamespaces
 }
 
-public struct ClientResponseMetadataNamespaces: Codable {
+public struct ClientResponseMetadataNamespaces: Codable, Equatable {
   public let eip155: ClientResponseNamespaceMetadataItem?
   public let solana: ClientResponseNamespaceMetadataItem?
 }
 
-public struct ClientResponseNamespaceMetadataItem: Codable {
+public struct ClientResponseNamespaceMetadataItem: Codable, Equatable {
   public let address: String
   public let curve: PortalCurve
 }
 
-public struct ClientResponseSharePair: Codable {
+public struct ClientResponseSharePair: Codable, Equatable {
   public let id: String
   public let createdAt: String
   public let status: PortalSharePairStatus
 }
 
-public struct ClientResponseWallet: Codable {
+public struct ClientResponseWallet: Codable, Equatable {
   public let id: String
   public let createdAt: String
 
@@ -60,14 +64,14 @@ public struct ClientResponseWallet: Codable {
   public let signingSharePairs: [ClientResponseSharePair]
 }
 
-public struct FetchedBalance: Codable {
+public struct FetchedBalance: Codable, Equatable {
   /// The contract address of the token.
   public var contractAddress: String
   /// The balance of the token.
   public var balance: String
 }
 
-public struct FetchedNFT: Codable {
+public struct FetchedNFT: Codable, Equatable {
   public var contract: FetchedNFTContract
   public var id: FetchedNFTTokenId
   public var balance: String
@@ -80,11 +84,11 @@ public struct FetchedNFT: Codable {
   public var contractMetadata: FetchedNFTContractMetadata
 }
 
-public struct FetchedNFTContract: Codable {
+public struct FetchedNFTContract: Codable, Equatable {
   public var address: String
 }
 
-public struct FetchedNFTContractMetadata: Codable {
+public struct FetchedNFTContractMetadata: Codable, Equatable {
   public var name: String
   public var symbol: String
   public var tokenType: String
@@ -93,7 +97,7 @@ public struct FetchedNFTContractMetadata: Codable {
   public var openSea: FetchedNFTContractOpenSeaMetadata?
 }
 
-public struct FetchedNFTContractOpenSeaMetadata: Codable {
+public struct FetchedNFTContractOpenSeaMetadata: Codable, Equatable {
   public var collectionName: String
   public var safelistRequestStatus: String
   public var imageUrl: String?
@@ -105,24 +109,24 @@ public struct FetchedNFTContractOpenSeaMetadata: Codable {
   public var discordUrl: String?
 }
 
-public struct FetchedNFTTokenId: Codable {
+public struct FetchedNFTTokenId: Codable, Equatable {
   public var tokenId: String
   public var tokenMetadata: FetchedNFTTokenMetadata
 }
 
 /// Represents the metadata of an NFT's id.
-public struct FetchedNFTTokenMetadata: Codable {
+public struct FetchedNFTTokenMetadata: Codable, Equatable {
   public var tokenType: String
 }
 
 /// Represents the URI of an NFT.
-public struct FetchedNFTTokenUri: Codable {
+public struct FetchedNFTTokenUri: Codable, Equatable {
   public var gateway: String
   public var raw: String
 }
 
 /// Represents the media of an NFT.
-public struct FetchedNFTMedia: Codable {
+public struct FetchedNFTMedia: Codable, Equatable {
   public var gateway: String
   public var thumbnail: String
   public var raw: String
@@ -131,22 +135,22 @@ public struct FetchedNFTMedia: Codable {
 }
 
 /// Represents the metadata of an NFT.
-public struct FetchedNFTMetadata: Codable {
+public struct FetchedNFTMetadata: Codable, Equatable {
   public var name: String
   public var description: String
   public var image: String
   public var external_url: String?
 }
 
-public struct FetchedSharePair: Codable {
+public struct FetchedSharePair: Codable, Equatable {
   public let id: String
   public let createdAt: String
   public let status: PortalSharePairStatus
 }
 
-public struct FetchedTransaction: Codable {
+public struct FetchedTransaction: Codable, Equatable {
   /// Represents metadata associated with a Transaction
-  public struct FetchedTransactionMetadata: Codable {
+  public struct FetchedTransactionMetadata: Codable, Equatable {
     /// Timestamp of the block in which the transaction was included (in ISO format)
     public var blockTimestamp: String
   }
@@ -181,7 +185,7 @@ public struct FetchedTransaction: Codable {
   public var chainId: Int
 }
 
-public struct FetchedTransactionRawContract: Codable {
+public struct FetchedTransactionRawContract: Codable, Equatable {
   /// Value involved in the contract
   public var value: String
   /// Address of the contract, if applicable
@@ -190,13 +194,13 @@ public struct FetchedTransactionRawContract: Codable {
   public var decimal: String
 }
 
-public struct ShareStatusUpdateRequest: Codable {
+public struct ShareStatusUpdateRequest: Codable, Equatable {
   public let backupSharePairIds: [String]?
   public let signingSharePairIds: [String]?
   public let status: SharePairUpdateStatus
 }
 
-public struct ShareStatusUpdateResponse: Codable {}
+public struct ShareStatusUpdateResponse: Codable, Equatable {}
 
 /*******************************
  * Deprecated functions

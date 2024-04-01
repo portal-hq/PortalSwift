@@ -10,13 +10,13 @@ import Foundation
 import UIKit
 
 public class MockGDriveStorage: GDriveStorage {
-  override public init(clientID: String? = nil, viewController: UIViewController? = nil) {
-    super.init(clientID: clientID, viewController: viewController)
+  override public init(clientID: String? = nil, viewController: UIViewController? = nil, isMocked: Bool = true) {
+    super.init(clientID: clientID, viewController: viewController, isMocked: isMocked)
   }
 
   // Async decrypt implementation
   public func decrypt(_: String, withKey _: String) async throws -> String {
-    return mockDecryptResult
+    return try MockConstants.mockMpcShareString
   }
 
   // Async delete implementation
@@ -24,24 +24,14 @@ public class MockGDriveStorage: GDriveStorage {
     return true
   }
 
-  // Completion delete implementation
-  override public func delete(completion: @escaping (Result<Bool>) -> Void) {
-    completion(Result(data: true))
-  }
-
   // Async encrypt implementation
-  public func encrypt(_: String) async throws -> String {
-    return mockEncryptResult
+  public func encrypt(_: String) async throws -> EncryptData {
+    return MockConstants.mockEncryptData
   }
 
   // Async read implementation
   override public func read() async throws -> String {
-    return mockBackupShare
-  }
-
-  // Completion read implementation
-  override public func read(completion: @escaping (Result<String>) -> Void) {
-    completion(Result(data: mockBackupShare))
+    return MockConstants.mockEncryptionKey
   }
 
   // Async write implementation
@@ -49,12 +39,7 @@ public class MockGDriveStorage: GDriveStorage {
     return true
   }
 
-  // Completion write implementation
-  override public func write(privateKey _: String, completion: @escaping (Result<Bool>) -> Void) {
-    completion(Result(data: true))
-  }
-
-  override public func validateOperations(callback: @escaping (Result<Bool>) -> Void) {
-    callback(Result(data: true))
+  override public func validateOperations() async throws -> Bool {
+    return true
   }
 }

@@ -7,7 +7,7 @@
 
 import Foundation
 
-public class PortalError: Codable {
+public struct PortalError: Codable {
   public var code: Int
   public var message: String
 }

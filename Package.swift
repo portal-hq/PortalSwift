@@ -41,5 +41,9 @@ let package = Package(
       name: "Mpc",
       path: "Sources/Frameworks/Mpc.xcframework"
     ),
+    .testTarget(
+      name: "PortalSwiftTests",
+      dependencies: ["Mpc", "PortalSwift"]
+    ),
   ]
 )

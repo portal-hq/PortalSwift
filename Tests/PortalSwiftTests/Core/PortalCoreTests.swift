@@ -15,32 +15,32 @@ final class PortalCoreTests: XCTestCase {
   override func setUpWithError() throws {
     // Put setup code here. This method is called before the invocation of each test method in the class.
     let keychain = MockPortalKeychain()
-    keychain.clientId = mockClientId
+    keychain.clientId = MockConstants.mockClientId
 
     let mobile = MockMobileWrapper()
 
     let provider = try MockPortalProvider(
-      mockApiKey,
-      withRpcConfig: ["eip155:11155111": mockHost],
+      apiKey: MockConstants.mockApiKey,
+      rpcConfig: ["eip155:11155111": MockConstants.mockHost],
+      keychain: keychain,
       autoApprove: true
     )
 
     let api = MockPortalApi(
-      apiKey: mockApiKey,
-      apiHost: mockHost,
+      apiKey: MockConstants.mockApiKey,
+      apiHost: MockConstants.mockHost,
       provider: provider,
-      mockRequests: true
+      isMocked: true
     )
 
     let mpc = PortalMpc(
-      apiKey: mockApiKey,
+      apiKey: MockConstants.mockApiKey,
       api: api,
       keychain: keychain,
-      storage: BackupOptions(icloud: MockICloudStorage()),
       mobile: mobile
     )
 
-    self.portal = try Portal(apiKey: mockApiKey, backup: BackupOptions(icloud: MockICloudStorage()), chainId: 11_155_111, keychain: keychain, gatewayConfig: [11_155_111: mockHost], mpc: mpc, api: api, binary: mobile)
+    self.portal = try Portal(apiKey: MockConstants.mockApiKey, backup: BackupOptions(icloud: MockICloudStorage()), chainId: 11_155_111, keychain: keychain, gatewayConfig: [11_155_111: MockConstants.mockHost], mpc: mpc, api: api, binary: mobile)
   }
 
   override func tearDownWithError() throws {
@@ -57,14 +57,14 @@ final class PortalCoreTests: XCTestCase {
         expectation.fulfill()
         return
       }
-      XCTAssert(addressResult.data == mockAddress)
+      XCTAssert(addressResult.data == MockConstants.mockEip155Address)
       expectation.fulfill()
     } progress: { MpcStatus in
       let status = MpcStatus.status
       encounteredStatuses.insert(status)
     }
     wait(for: [expectation], timeout: 5.0)
-    XCTAssertEqual(encounteredStatuses, generateProgressCallbacks, "All expected statuses should be encountered")
+    XCTAssertEqual(encounteredStatuses, MockConstants.generateProgressCallbacks, "All expected statuses should be encountered")
   }
 
   func testBackupWallet() {
@@ -78,7 +78,7 @@ final class PortalCoreTests: XCTestCase {
         return
       }
 
-      XCTAssert(result.data! as String == mockCiphertext, "Backup should return cipherText")
+      XCTAssert(result.data! as String == MockConstants.mockCiphertext, "Backup should return cipherText")
       expectation.fulfill()
     } progress: { MpcStatus in
       let status = MpcStatus.status
@@ -86,21 +86,21 @@ final class PortalCoreTests: XCTestCase {
     }
     wait(for: [expectation], timeout: 5.0)
 
-    XCTAssertEqual(encounteredStatuses, backupProgressCallbacks, "All expected statuses should be encountered")
+    XCTAssertEqual(encounteredStatuses, MockConstants.backupProgressCallbacks, "All expected statuses should be encountered")
   }
 
   func testRecoverWallet() {
     let expectation = XCTestExpectation(description: "Recover")
     var encounteredStatuses: [MpcStatuses] = []
 
-    self.portal.recoverWallet(cipherText: mockCiphertext, method: BackupMethods.iCloud.rawValue) { result in
+    self.portal.recoverWallet(cipherText: MockConstants.mockCiphertext, method: BackupMethods.iCloud.rawValue) { result in
       guard result.error == nil else {
         XCTFail("Failure: \(String(describing: result.error))")
         expectation.fulfill()
         return
       }
 
-      XCTAssert(result.data! as String == mockAddress, "Recover should return address")
+      XCTAssert(result.data! as String == MockConstants.mockEip155Address, "Recover should return address")
       expectation.fulfill()
     } progress: { MpcStatus in
       let status = MpcStatus.status
@@ -108,13 +108,13 @@ final class PortalCoreTests: XCTestCase {
     }
     wait(for: [expectation], timeout: 5.0)
 
-    XCTAssertEqual(encounteredStatuses, recoverProgressCallbacks, "All expected statuses should be encountered")
+    XCTAssertEqual(encounteredStatuses, MockConstants.recoverProgressCallbacks, "All expected statuses should be encountered")
   }
 
   func testEjectWallet() {
     let expectation = XCTestExpectation(description: "Eject")
 
-    self.portal.ejectPrivateKey(clientBackupCiphertext: mockCiphertext, method: BackupMethods.iCloud.rawValue, orgBackupShare: "someOrgShare") { result in
+    self.portal.ejectPrivateKey(clientBackupCiphertext: MockConstants.mockCiphertext, method: BackupMethods.iCloud.rawValue, orgBackupShare: "someOrgShare") { result in
       guard result.error == nil else {
         XCTFail("Failure: \(String(describing: result.error))")
         expectation.fulfill()

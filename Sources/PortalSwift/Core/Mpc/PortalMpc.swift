@@ -243,7 +243,7 @@ public class PortalMpc {
           var addresses: [PortalNamespace: String] = [:]
 
           if let secp256k1Share = response["SECP256K1"] {
-            let ejectResponse = self.mobile.MobileEjectWalletAndDiscontinueMPC(secp256k1Share.share, andOrganizationBackupShare)
+            let ejectResponse = await self.mobile.MobileEjectWalletAndDiscontinueMPC(secp256k1Share.share, andOrganizationBackupShare)
             guard let jsonData = ejectResponse.data(using: .utf8) else {
               throw JSONParseError.stringToDataConversionFailed
             }
@@ -518,33 +518,35 @@ public class PortalMpc {
     andSigningShare: String
   ) async throws -> MpcShare {
     let mpcShare = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<MpcShare, Error>) in
-      do {
-        // Stringify the MPC metadata.
-        var metadata = self.mpcMetadata
-        metadata.curve = forCurve
-        metadata.backupMethod = withMethod.rawValue
-        let mpcMetadataString = try metadata.jsonString()
+      Task {
+        do {
+          // Stringify the MPC metadata.
+          var metadata = self.mpcMetadata
+          metadata.curve = forCurve
+          metadata.backupMethod = withMethod.rawValue
+          let mpcMetadataString = try metadata.jsonString()
 
-        let response = forCurve == .ED25519
-          ? self.mobile.MobileBackupEd25519(self.apiKey, self.host, andSigningShare, self.apiHost, mpcMetadataString)
-          : self.mobile.MobileBackupSecp256k1(self.apiKey, self.host, andSigningShare, self.apiHost, mpcMetadataString)
+          let response = forCurve == .ED25519
+            ? await self.mobile.MobileBackupEd25519(self.apiKey, self.host, andSigningShare, self.apiHost, mpcMetadataString)
+            : await self.mobile.MobileBackupSecp256k1(self.apiKey, self.host, andSigningShare, self.apiHost, mpcMetadataString)
 
-        // Parse the backup share.
-        let jsonData = response.data(using: .utf8)!
-        let rotateResult: RotateResult = try JSONDecoder().decode(RotateResult.self, from: jsonData)
+          // Parse the backup share.
+          let jsonData = response.data(using: .utf8)!
+          let rotateResult: RotateResult = try JSONDecoder().decode(RotateResult.self, from: jsonData)
 
-        // Throw if there is an error getting the backup share.
-        guard rotateResult.error.code == 0 else {
-          continuation.resume(throwing: PortalMpcError(rotateResult.error))
-          return
+          // Throw if there is an error getting the backup share.
+          guard rotateResult.error.code == 0 else {
+            continuation.resume(throwing: PortalMpcError(rotateResult.error))
+            return
+          }
+
+          // Attach the backup share to the signing share JSON.
+          let backupShare = rotateResult.data!.share
+
+          continuation.resume(returning: backupShare)
+        } catch {
+          continuation.resume(throwing: error)
         }
-
-        // Attach the backup share to the signing share JSON.
-        let backupShare = rotateResult.data!.share
-
-        continuation.resume(returning: backupShare)
-      } catch {
-        continuation.resume(throwing: error)
       }
     }
 
@@ -553,33 +555,35 @@ public class PortalMpc {
 
   private func getSigningShare(_ forCurve: PortalCurve) async throws -> MpcShare {
     let mpcShare = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<MpcShare, Error>) in
-      do {
-        // Stringify the MPC metadata.
-        var metadata = self.mpcMetadata
-        metadata.curve = forCurve
+      Task {
+        do {
+          // Stringify the MPC metadata.
+          var metadata = self.mpcMetadata
+          metadata.curve = forCurve
 
-        let mpcMetadataString = try metadata.jsonString()
-        let response = forCurve == .ED25519
-          ? self.mobile.MobileGenerateEd25519(self.apiKey, self.host, self.apiHost, mpcMetadataString)
-          : self.mobile.MobileGenerateSecp256k1(self.apiKey, self.host, self.apiHost, mpcMetadataString)
+          let mpcMetadataString = try metadata.jsonString()
+          let response = forCurve == .ED25519
+            ? await self.mobile.MobileGenerateEd25519(self.apiKey, self.host, self.apiHost, mpcMetadataString)
+            : await self.mobile.MobileGenerateSecp256k1(self.apiKey, self.host, self.apiHost, mpcMetadataString)
 
-        // Parse the backup share.
-        let jsonData = response.data(using: .utf8)!
-        let rotateResult: RotateResult = try JSONDecoder().decode(RotateResult.self, from: jsonData)
+          // Parse the backup share.
+          let jsonData = response.data(using: .utf8)!
+          let rotateResult: RotateResult = try JSONDecoder().decode(RotateResult.self, from: jsonData)
 
-        // Throw if there is an error getting the backup share.
-        guard rotateResult.error.code == 0 else {
-          self.logger.error("Error generating \(forCurve.rawValue) share: \(rotateResult.error.message)")
-          continuation.resume(throwing: PortalMpcError(rotateResult.error))
-          return
+          // Throw if there is an error getting the backup share.
+          guard rotateResult.error.code == 0 else {
+            self.logger.error("Error generating \(forCurve.rawValue) share: \(rotateResult.error.message)")
+            continuation.resume(throwing: PortalMpcError(rotateResult.error))
+            return
+          }
+
+          let signingShare = rotateResult.data!.share
+
+          continuation.resume(returning: signingShare)
+        } catch {
+          self.logger.error("Error generating \(forCurve.rawValue) share: \(error.localizedDescription)")
+          continuation.resume(throwing: error)
         }
-
-        let signingShare = rotateResult.data!.share
-
-        continuation.resume(returning: signingShare)
-      } catch {
-        self.logger.error("Error generating \(forCurve.rawValue) share: \(error.localizedDescription)")
-        continuation.resume(throwing: error)
       }
     }
 
@@ -608,31 +612,33 @@ public class PortalMpc {
 
   private func recoverSigningShare(_ forCurve: PortalCurve, withMethod _: BackupMethods, andBackupShare: String) async throws -> MpcShare {
     let mpcShare = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<MpcShare, Error>) in
-      do {
-        // Stringify the MPC metadata.
-        var metadata = self.mpcMetadata
-        metadata.curve = forCurve
-        let mpcMetadataString = try metadata.jsonString()
+      Task {
+        do {
+          // Stringify the MPC metadata.
+          var metadata = self.mpcMetadata
+          metadata.curve = forCurve
+          let mpcMetadataString = try metadata.jsonString()
 
-        let response = forCurve == .ED25519
-          ? self.mobile.MobileRecoverSigningEd25519(self.apiKey, self.host, andBackupShare, self.apiHost, mpcMetadataString)
-          : self.mobile.MobileRecoverSigningSecp256k1(self.apiKey, self.host, andBackupShare, self.apiHost, mpcMetadataString)
+          let response = forCurve == .ED25519
+            ? await self.mobile.MobileRecoverSigningEd25519(self.apiKey, self.host, andBackupShare, self.apiHost, mpcMetadataString)
+            : await self.mobile.MobileRecoverSigningSecp256k1(self.apiKey, self.host, andBackupShare, self.apiHost, mpcMetadataString)
 
-        // Parse the backup share.
-        let jsonData = response.data(using: .utf8)!
-        let rotateResult: RotateResult = try JSONDecoder().decode(RotateResult.self, from: jsonData)
+          // Parse the backup share.
+          let jsonData = response.data(using: .utf8)!
+          let rotateResult: RotateResult = try JSONDecoder().decode(RotateResult.self, from: jsonData)
 
-        // Throw if there is an error getting the backup share.
-        guard rotateResult.error.code == 0 else {
-          continuation.resume(throwing: PortalMpcError(rotateResult.error))
-          return
+          // Throw if there is an error getting the backup share.
+          guard rotateResult.error.code == 0 else {
+            continuation.resume(throwing: PortalMpcError(rotateResult.error))
+            return
+          }
+
+          let signingShare = rotateResult.data!.share
+
+          continuation.resume(returning: signingShare)
+        } catch {
+          continuation.resume(throwing: error)
         }
-
-        let signingShare = rotateResult.data!.share
-
-        continuation.resume(returning: signingShare)
-      } catch {
-        continuation.resume(throwing: error)
       }
     }
 

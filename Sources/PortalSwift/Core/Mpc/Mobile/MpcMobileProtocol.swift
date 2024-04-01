@@ -35,39 +35,39 @@ public enum MpcMetadataError: Error, Equatable {
 }
 
 public protocol Mobile {
-  func MobileGenerate(_ apiKey: String, _ host: String, _ apiHost: String, _ metadata: String) -> String
+  func MobileGenerate(_ apiKey: String, _ host: String, _ apiHost: String, _ metadata: String) async -> String
 
-  func MobileGenerateEd25519(_ apiKey: String, _ host: String, _ apiHost: String, _ metadata: String) -> String
+  func MobileGenerateEd25519(_ apiKey: String, _ host: String, _ apiHost: String, _ metadata: String) async -> String
 
-  func MobileGenerateSecp256k1(_ apiKey: String, _ host: String, _ apiHost: String, _ metadata: String) -> String
+  func MobileGenerateSecp256k1(_ apiKey: String, _ host: String, _ apiHost: String, _ metadata: String) async -> String
 
-  func MobileBackup(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String
+  func MobileBackup(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) async -> String
 
-  func MobileBackupEd25519(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String
+  func MobileBackupEd25519(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) async -> String
 
-  func MobileBackupSecp256k1(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String
+  func MobileBackupSecp256k1(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) async -> String
 
-  func MobileRecoverSigning(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String
+  func MobileRecoverSigning(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) async -> String
 
-  func MobileRecoverSigningEd25519(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String
+  func MobileRecoverSigningEd25519(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) async -> String
 
-  func MobileRecoverSigningSecp256k1(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String
+  func MobileRecoverSigningSecp256k1(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) async -> String
 
-  func MobileRecoverBackup(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String
+  func MobileRecoverBackup(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) async -> String
 
-  func MobileDecrypt(_ key: String, _ dkgCipherText: String) -> String
+  func MobileDecrypt(_ key: String, _ dkgCipherText: String) async -> String
 
-  func MobileEncrypt(_ value: String) -> String
+  func MobileEncrypt(_ value: String) async -> String
 
-  func MobileEncryptWithPassword(data value: String, password: String) -> String
+  func MobileEncryptWithPassword(data value: String, password: String) async -> String
 
-  func MobileDecryptWithPassword(_ key: String, _ dkgCipherText: String) -> String
+  func MobileDecryptWithPassword(_ key: String, _ dkgCipherText: String) async -> String
 
   func MobileGetMe(_ url: String, _ token: String) -> String
 
   func MobileGetVersion() -> String
 
-  func MobileSign(_ apiKey: String?, _ host: String?, _ signingShare: String?, _ method: String?, _ params: String?, _ rpcURL: String?, _ chainId: String?, _ metadata: String?) -> String
+  func MobileSign(_ apiKey: String?, _ host: String?, _ signingShare: String?, _ method: String?, _ params: String?, _ rpcURL: String?, _ chainId: String?, _ metadata: String?) async -> String
 
-  func MobileEjectWalletAndDiscontinueMPC(_ clientDkgCipherText: String, _ serverDkgCipherText: String) -> String
+  func MobileEjectWalletAndDiscontinueMPC(_ clientDkgCipherText: String, _ serverDkgCipherText: String) async -> String
 }

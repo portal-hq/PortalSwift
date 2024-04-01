@@ -9,7 +9,7 @@ import Foundation
 import GoogleSignIn
 import UIKit
 
-class GoogleAuth {
+public class GoogleAuth {
   public var auth: GIDSignIn
   public var config: GIDConfiguration
   public var view: UIViewController?

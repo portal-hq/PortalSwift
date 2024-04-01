@@ -10,7 +10,7 @@ import Foundation
 class MockPasswordStorage: PasswordStorage {
   // Async decrypt implementation
   override public func decrypt(_: String, withKey _: String) async throws -> String {
-    return mockDecryptResult
+    return try MockConstants.mockMpcShareString
   }
 
   // Async delete implementation
@@ -18,24 +18,14 @@ class MockPasswordStorage: PasswordStorage {
     return true
   }
 
-  // Completion delete implementation
-  override public func delete(completion: @escaping (Result<Bool>) -> Void) {
-    completion(Result(data: true))
-  }
-
   // Async encrypt implementation
-  public func encrypt(_: String) async throws -> String {
-    return mockEncryptResult
+  override public func encrypt(_: String) async throws -> EncryptData {
+    return MockConstants.mockEncryptData
   }
 
   // Async read implementation
   override public func read() async throws -> String {
-    return mockBackupShare
-  }
-
-  // Completion read implementation
-  override public func read(completion: @escaping (Result<String>) -> Void) {
-    completion(Result(data: mockBackupShare))
+    return MockConstants.mockEncryptionKey
   }
 
   // Async write implementation
@@ -43,8 +33,7 @@ class MockPasswordStorage: PasswordStorage {
     return true
   }
 
-  // Completion write implementation
-  override public func write(privateKey _: String, completion: @escaping (Result<Bool>) -> Void) {
-    completion(Result(data: true))
+  override public func validateOperations() async throws -> Bool {
+    return true
   }
 }

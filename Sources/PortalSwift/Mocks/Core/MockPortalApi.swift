@@ -42,4 +42,4 @@ public class MockPortalApi: PortalApi {
   }
 }
 
-public let mockApi = MockPortalApi(apiKey: mockApiKey)
+public let mockApi = MockPortalApi(apiKey: MockConstants.mockApiKey)

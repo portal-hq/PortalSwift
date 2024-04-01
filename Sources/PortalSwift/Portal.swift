@@ -213,7 +213,9 @@ public class Portal {
     self.provider.chainId = chainId
 
     // Initialize the Portal API
-    let api = PortalApi(apiKey: apiKey, apiHost: apiHost, provider: self.provider, featureFlags: self.featureFlags)
+    let api = isMocked
+      ? MockPortalApi(apiKey: apiKey, apiHost: apiHost, provider: self.provider, featureFlags: self.featureFlags)
+      : PortalApi(apiKey: apiKey, apiHost: apiHost, provider: self.provider, featureFlags: self.featureFlags)
     self.api = api
     keychain.api = api
 
@@ -356,7 +358,10 @@ public class Portal {
     self.provider.chainId = chainId
 
     // Initialize the Portal API
-    let api = api ?? PortalApi(apiKey: apiKey, apiHost: apiHost, provider: self.provider)
+    let api = api ?? (isMocked
+      ? MockPortalApi(apiKey: apiKey, apiHost: apiHost, provider: self.provider)
+      : PortalApi(apiKey: apiKey, apiHost: apiHost, provider: self.provider)
+    )
     self.api = api
     keychain.api = api
 
