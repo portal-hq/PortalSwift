@@ -1,7 +1,9 @@
 import Foundation
 
-public enum PortalRequests {
-  public static func delete(_ from: URL, withBearerToken: String? = nil) async throws -> Data {
+public class PortalRequests {
+  public init() {}
+
+  public func delete(_ from: URL, withBearerToken: String? = nil) async throws -> Data {
     var request = URLRequest(url: from)
 
     // Add required request headers
@@ -20,13 +22,13 @@ public enum PortalRequests {
       throw PortalRequestsError.couldNotParseHttpResponse
     }
     guard httpResponse.statusCode < 300 else {
-      throw PortalRequests.buildError(httpResponse, withData: data)
+      throw self.buildError(httpResponse, withData: data)
     }
 
     return data
   }
 
-  public static func get(_ from: URL, withBearerToken: String? = nil) async throws -> Data {
+  public func get(_ from: URL, withBearerToken: String? = nil) async throws -> Data {
     var request = URLRequest(url: from)
 
     // Add required request headers
@@ -48,7 +50,7 @@ public enum PortalRequests {
       throw PortalRequestsError.couldNotParseHttpResponse
     }
     guard httpResponse.statusCode < 300 else {
-      throw PortalRequests.buildError(httpResponse, withData: data)
+      throw self.buildError(httpResponse, withData: data)
     }
 
     let logger = PortalLogger()
@@ -56,7 +58,7 @@ public enum PortalRequests {
     return data
   }
 
-  public static func patch(_ from: URL, withBearerToken: String? = nil, andPayload: Encodable) async throws -> Data {
+  public func patch(_ from: URL, withBearerToken: String? = nil, andPayload: Encodable) async throws -> Data {
     var request = URLRequest(url: from)
 
     // Add required request headers
@@ -79,13 +81,13 @@ public enum PortalRequests {
       throw PortalRequestsError.couldNotParseHttpResponse
     }
     guard httpResponse.statusCode < 300 else {
-      throw PortalRequests.buildError(httpResponse, withData: data)
+      throw self.buildError(httpResponse, withData: data)
     }
 
     return data
   }
 
-  public static func post(_ from: URL, withBearerToken: String? = nil, andPayload: Encodable? = nil) async throws -> Data {
+  public func post(_ from: URL, withBearerToken: String? = nil, andPayload: Encodable? = nil) async throws -> Data {
     var request = URLRequest(url: from)
 
     // Add required request headers
@@ -112,13 +114,13 @@ public enum PortalRequests {
       throw PortalRequestsError.couldNotParseHttpResponse
     }
     guard httpResponse.statusCode < 300 else {
-      throw PortalRequests.buildError(httpResponse, withData: data)
+      throw self.buildError(httpResponse, withData: data)
     }
 
     return data
   }
 
-  public static func postMultiPartData(
+  public func postMultiPartData(
     _ from: URL,
     withBearerToken: String,
     andPayload: String,
@@ -141,13 +143,13 @@ public enum PortalRequests {
       throw PortalRequestsError.couldNotParseHttpResponse
     }
     guard httpResponse.statusCode < 300 else {
-      throw PortalRequests.buildError(httpResponse, withData: data)
+      throw self.buildError(httpResponse, withData: data)
     }
 
     return data
   }
 
-  private static func buildError(_ response: HTTPURLResponse, withData: Data) -> Error {
+  private func buildError(_ response: HTTPURLResponse, withData: Data) -> Error {
     let statusText = String(data: withData, encoding: .utf8) ?? ""
     if response.statusCode < 400 {
       return PortalRequestsError.redirectError("\(response.statusCode) - \(statusText)")
@@ -158,7 +160,7 @@ public enum PortalRequests {
     }
   }
 
-  private static func getURLSession() -> URLSession {
+  private func getURLSession() -> URLSession {
     var configuration = URLSessionConfiguration.default
     configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
     configuration.urlCache = URLCache(memoryCapacity: 0, diskCapacity: 0, diskPath: nil)

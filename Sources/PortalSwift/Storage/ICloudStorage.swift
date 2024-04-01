@@ -31,14 +31,18 @@ public class ICloudStorage: Storage, PortalStorage {
   /// The key used to store the private key in iCloud.
   public var key: String = ""
 
-  private let isMocked: Bool
+  public let encryption: PortalEncryption
+
   private let isSimulator = TARGET_OS_SIMULATOR != 0
   private let storage: PortalKeyValueStore
 
   /// Initializes a new ICloudStorage instance.
-  public init(isMocked: Bool = false) {
-    self.isMocked = isMocked
-    self.storage = isMocked ? MockPortalKeyValueStore() : PortalKeyValueStore()
+  public init(
+    encryption: PortalEncryption? = nil,
+    keyValueStore: PortalKeyValueStore? = nil
+  ) {
+    self.encryption = encryption ?? PortalEncryption()
+    self.storage = keyValueStore ?? PortalKeyValueStore()
   }
 
   /*******************************************
@@ -61,23 +65,15 @@ public class ICloudStorage: Storage, PortalStorage {
   }
 
   public func validateOperations() async throws -> Bool {
-    if self.isMocked {
-      return true
-    }
-
     let testKey = "portal_test"
     let testValue = "test_value"
 
-    self.rawWrite(key: testKey, value: testValue)
+    _ = self.storage.write(testKey, value: testValue)
 
-    if let readValue = rawRead(key: testKey), readValue == testValue {
-      self.rawDelete(key: testKey)
-      if self.rawRead(key: testKey) == nil {
-        // Availability check succeeded.
-        return true
-      } else {
-        throw ICloudStorageError.failedValidateOperations("Failed to delete test data")
-      }
+    let readValue = self.storage.read(testKey)
+    if readValue == testValue {
+      _ = self.storage.delete(testKey)
+      return true
     } else {
       throw ICloudStorageError.failedValidateOperations("Failed to read/write test data")
     }

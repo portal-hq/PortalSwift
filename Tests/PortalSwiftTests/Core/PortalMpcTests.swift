@@ -14,7 +14,7 @@ final class PortalMpcTests: XCTestCase {
   override func setUpWithError() throws {
     self.mpc = PortalMpc(
       apiKey: MockConstants.mockApiKey,
-      api: PortalApi(apiKey: MockConstants.mockApiKey, isMocked: true),
+      api: PortalApi(apiKey: MockConstants.mockApiKey, requests: MockPortalRequests()),
       keychain: MockPortalKeychain(),
       mobile: MockMobileWrapper()
     )

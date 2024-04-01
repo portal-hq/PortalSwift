@@ -21,38 +21,50 @@ public class PasskeyStorage: Storage, PortalStorage {
 
   public var apiKey: String?
   public var client: Client?
+  public let encryption: PortalEncryption
   public var portalApi: PortalApi?
   public var relyingParty: String
   public var webAuthnHost: String
 
   private var auth: PasskeyAuth
   private let decoder = JSONDecoder()
-  private let isMocked: Bool
   private let logger = PortalLogger()
   private var passkeyApi: HttpRequester
+  private let requests: PortalRequests
   private var sessionId: String?
 
   deinit {
     print("PasskeyStorage is being deallocated")
   }
 
-  public init(relyingParty: String? = "portalhq.io", webAuthnHost: String? = "backup.web.portalhq.io", isMocked: Bool = false) {
+  public init(
+    relyingParty: String? = "portalhq.io",
+    webAuthnHost: String? = "backup.web.portalhq.io",
+    auth: PasskeyAuth? = nil,
+    encryption: PortalEncryption? = nil,
+    requests: PortalRequests? = nil
+  ) {
     self.relyingParty = relyingParty ?? "portalhq.io"
-    self.auth = isMocked
-      ? MockPasskeyAuth(domain: self.relyingParty)
-      : PasskeyAuth(domain: self.relyingParty)
-    self.isMocked = isMocked
+    self.auth = auth ?? PasskeyAuth(domain: self.relyingParty)
+    self.encryption = encryption ?? PortalEncryption()
+    self.requests = requests ?? PortalRequests()
     self.webAuthnHost = "https://" + (webAuthnHost ?? "backup.web.portalhq.io")
     self.passkeyApi = HttpRequester(baseUrl: self.webAuthnHost)
   }
 
   @available(*, deprecated, renamed: "PortalStorage", message: "Please use the new initialization patter excluding your viewController.")
-  public init(viewController: UIViewController? = nil, relyingParty: String? = "portalhq.io", webAuthnHost: String? = "backup.web.portalhq.io", isMocked: Bool = false) {
+  public init(
+    viewController: UIViewController? = nil,
+    relyingParty: String? = "portalhq.io",
+    webAuthnHost: String? = "backup.web.portalhq.io",
+    auth: PasskeyAuth? = nil,
+    encryption: PortalEncryption? = nil,
+    requests: PortalRequests? = nil
+  ) {
     self.relyingParty = relyingParty ?? "portalhq.io"
-    self.auth = isMocked
-      ? MockPasskeyAuth(domain: self.relyingParty)
-      : PasskeyAuth(domain: self.relyingParty)
-    self.isMocked = isMocked
+    self.auth = auth ?? PasskeyAuth(domain: self.relyingParty)
+    self.encryption = encryption ?? PortalEncryption()
+    self.requests = requests ?? PortalRequests()
     self.webAuthnHost = "https://" + (webAuthnHost ?? "backup.web.portalhq.io")
     self.passkeyApi = HttpRequester(baseUrl: self.webAuthnHost)
 
@@ -78,9 +90,7 @@ public class PasskeyStorage: Storage, PortalStorage {
 
     if let url = URL(string: "\(webAuthnHost)/passkeys/begin-login") {
       let payload = ["relyingParty": relyingParty]
-      let data = self.isMocked
-        ? try await MockPortalRequests.post(url, withBearerToken: apiKey, andPayload: payload)
-        : try await PortalRequests.post(url, withBearerToken: apiKey, andPayload: payload)
+      let data = try await requests.post(url, withBearerToken: apiKey, andPayload: payload)
       let result = try decoder.decode(WebAuthnAuthenticationOption.self, from: data)
 
       self.sessionId = result.sessionId
@@ -151,9 +161,7 @@ public class PasskeyStorage: Storage, PortalStorage {
 
     self.logger.log("Login URL: \(self.webAuthnHost)/passkeys/begin-login")
     if let url = URL(string: "\(webAuthnHost)/passkeys/begin-login") {
-      let data = self.isMocked
-        ? try await MockPortalRequests.post(url, withBearerToken: apiKey, andPayload: ["relyingParty": self.relyingParty])
-        : try await PortalRequests.post(url, withBearerToken: apiKey, andPayload: ["relyingParty": self.relyingParty])
+      let data = try await requests.post(url, withBearerToken: apiKey, andPayload: ["relyingParty": self.relyingParty])
       let authenticationOption = try decoder.decode(WebAuthnAuthenticationOption.self, from: data)
 
       return authenticationOption
@@ -169,9 +177,7 @@ public class PasskeyStorage: Storage, PortalStorage {
 
     self.logger.info("Registration URL: \(self.webAuthnHost)/passkeys/begin-registration")
     if let url = URL(string: "\(webAuthnHost)/passkeys/begin-registration") {
-      let data = self.isMocked
-        ? try await MockPortalRequests.post(url, withBearerToken: apiKey, andPayload: ["relyingParty": self.relyingParty])
-        : try await PortalRequests.post(url, withBearerToken: apiKey, andPayload: ["relyingParty": self.relyingParty])
+      let data = try await requests.post(url, withBearerToken: apiKey, andPayload: ["relyingParty": self.relyingParty])
       let registrationOption = try decoder.decode(WebAuthnRegistrationOptions.self, from: data)
 
       return registrationOption
@@ -187,9 +193,7 @@ public class PasskeyStorage: Storage, PortalStorage {
 
     self.logger.info("Status URL: \(self.webAuthnHost)/passkeys/status")
     if let url = URL(string: "\(webAuthnHost)/passkeys/status") {
-      let data = self.isMocked
-        ? try await MockPortalRequests.get(url, withBearerToken: apiKey)
-        : try await PortalRequests.get(url, withBearerToken: apiKey)
+      let data = try await requests.get(url, withBearerToken: apiKey)
       let statusResponse = try decoder.decode(PasskeyStatusResponse.self, from: data)
 
       return statusResponse.status
@@ -205,9 +209,7 @@ public class PasskeyStorage: Storage, PortalStorage {
 
     if let url = URL(string: "\(webAuthnHost)/passkeys/finish-login/read") {
       let payload = ["assertion": assertion, "sessionId": sessionId, "relyingParty": relyingParty]
-      let data = self.isMocked
-        ? try await MockPortalRequests.post(url, withBearerToken: apiKey, andPayload: payload)
-        : try await PortalRequests.post(url, withBearerToken: apiKey, andPayload: payload)
+      let data = try await requests.post(url, withBearerToken: apiKey, andPayload: payload)
       let loginReadResponse = try decoder.decode(PasskeyLoginReadResponse.self, from: data)
 
       return loginReadResponse.encryptionKey
@@ -223,9 +225,7 @@ public class PasskeyStorage: Storage, PortalStorage {
 
     if let url = URL(string: "\(webAuthnHost)/passkeys/finish-login/write") {
       let payload = ["encryptionKey": withValue, "assertion": assertion, "sessionId": sessionId, "relyingParty": relyingParty]
-      let _ = self.isMocked
-        ? try await MockPortalRequests.post(url, withBearerToken: apiKey, andPayload: payload)
-        : try await PortalRequests.post(url, withBearerToken: apiKey, andPayload: payload)
+      let _ = try await requests.post(url, withBearerToken: apiKey, andPayload: payload)
 
       return true
     }
@@ -240,7 +240,7 @@ public class PasskeyStorage: Storage, PortalStorage {
 
     if let url = URL(string: "\(webAuthnHost)/passkeys/finish-registration") {
       let payload = ["attestation": attestation, "sessionId": sessionId, "encryptionKey": withPrivateKey, "relyingParty": relyingParty]
-      let _ = try await PortalRequests.post(url, withBearerToken: apiKey, andPayload: payload)
+      let _ = try await requests.post(url, withBearerToken: apiKey, andPayload: payload)
 
       return true
     }

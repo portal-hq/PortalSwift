@@ -22,29 +22,8 @@ public class PortalMpcSigner {
     keychain: PortalKeychain,
     mpcUrl: String = "mpc.portalhq.io",
     version: String = "v6",
-    featureFlags: FeatureFlags? = nil
-  ) {
-    self.apiKey = apiKey
-    self.keychain = keychain
-    self.mpcUrl = mpcUrl
-    self.version = version
-    self.featureFlags = featureFlags
-    self.binary = MobileWrapper()
-    self.mpcMetadata = MpcMetadata(
-      clientPlatform: "NATIVE_IOS",
-      isMultiBackupEnabled: featureFlags?.isMultiBackupEnabled,
-      mpcServerVersion: self.version,
-      optimized: featureFlags?.optimized ?? false
-    )
-  }
-
-  init(
-    apiKey: String,
-    keychain: PortalKeychain,
-    mpcUrl: String = "mpc.portalhq.io",
-    version: String = "v6",
     featureFlags: FeatureFlags? = nil,
-    binary: Mobile?
+    binary: Mobile? = nil
   ) {
     self.apiKey = apiKey
     self.keychain = keychain

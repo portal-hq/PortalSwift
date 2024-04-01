@@ -10,13 +10,13 @@ import PortalSwift
 import XCTest
 
 final class PortalKeychainTests: XCTestCase {
-  var keychain: PortalKeychain = .init(isMocked: true)
+  var keychain: PortalKeychain = .init(keychainAccess: MockPortalKeychainAccess())
 
   override func setUpWithError() throws {
     self.keychain.api = PortalApi(
       apiKey: MockConstants.mockApiKey,
       apiHost: MockConstants.mockHost,
-      isMocked: true
+      requests: MockPortalRequests()
     )
   }
 

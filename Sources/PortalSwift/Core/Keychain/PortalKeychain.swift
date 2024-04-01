@@ -65,8 +65,8 @@ public class PortalKeychain {
   private let metadataKey = "metadata"
   private let sharesKey = "shares"
 
-  public init(isMocked: Bool = false) {
-    self.keychain = isMocked ? MockPortalKeychainAccess() : PortalKeychainAccess()
+  public init(keychainAccess: PortalKeychainAccess? = nil) {
+    self.keychain = keychainAccess ?? PortalKeychainAccess()
   }
 
   /*******************************************

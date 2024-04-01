@@ -10,7 +10,7 @@ import GoogleSignIn
 import XCTest
 
 final class GDriveClientTests: XCTestCase {
-  var client: GDriveClient = .init(isMocked: true)
+  var client: GDriveClient = .init(requests: MockPortalRequests())
 
   override func setUpWithError() throws {
     self.client.auth = MockGoogleAuth(config: GIDConfiguration(clientID: MockConstants.mockGDriveClientId))

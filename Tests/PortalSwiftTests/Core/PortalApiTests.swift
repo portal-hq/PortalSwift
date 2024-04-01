@@ -10,20 +10,19 @@
 import XCTest
 
 final class PortalApiTests: XCTestCase {
-  var api: PortalApi = .init(apiKey: MockConstants.mockApiKey, apiHost: MockConstants.mockHost, isMocked: true)
+  var api: PortalApi = .init(apiKey: MockConstants.mockApiKey, apiHost: MockConstants.mockHost, requests: MockPortalRequests())
 
   override func setUpWithError() throws {
-    self.api = PortalApi(apiKey: MockConstants.mockApiKey, apiHost: MockConstants.mockHost, isMocked: true)
+    self.api = PortalApi(apiKey: MockConstants.mockApiKey, apiHost: MockConstants.mockHost, requests: MockPortalRequests())
   }
 
   override func tearDownWithError() throws {}
 
   func testEject() async throws {
-    throw XCTSkip()
     let expectation = XCTestExpectation(description: "PortalApi.eject()")
     let ejectResponse = try await api.eject()
     print("⚠️ Eject response:", ejectResponse)
-    XCTAssert(ejectResponse == MockConstants.mockEjectResponse)
+    XCTAssertEqual(ejectResponse, MockConstants.mockEjectResponse)
     expectation.fulfill()
     await fulfillment(of: [expectation], timeout: 5.0)
   }
@@ -99,9 +98,9 @@ final class PortalApiTests: XCTestCase {
   }
 
   func testSimulateTransaction() async throws {
-    throw XCTSkip()
     let expectation = XCTestExpectation(description: "PortalApi.simulateTransaction()")
-    let simulatedTransaction = try await api.simulateTransaction([:], withChainId: "eip155:11155111")
+    let transaction = AnyEncodable([:] as [String: String])
+    let simulatedTransaction = try await api.simulateTransaction(transaction, withChainId: "eip155:11155111")
     XCTAssert(simulatedTransaction.changes.count == MockConstants.mockSimulatedTransaction.changes.count)
     expectation.fulfill()
     await fulfillment(of: [expectation], timeout: 5.0)

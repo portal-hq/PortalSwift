@@ -7,7 +7,7 @@
 
 import Foundation
 
-class PortalKeychainAccess {
+public class PortalKeychainAccess {
   private let baseKey = "PortalMpc"
   private let logger = PortalLogger()
 

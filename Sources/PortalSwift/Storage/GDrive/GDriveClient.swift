@@ -51,20 +51,21 @@ public class GDriveClient {
   private var baseUrl: String = "https://www.googleapis.com"
   private var boundary: String = "portal-backup-share"
   private let decoder = JSONDecoder()
-  private let isMocked: Bool
   private let logger = PortalLogger()
+  private let requests: PortalRequests
 
   init(
     clientId: String? = nil,
     view: UIViewController? = nil,
     folder: String? = "_PORTAL_MPC_DO_NOT_DELETE_",
-    isMocked: Bool = false
+    requests: PortalRequests? = nil
   ) {
-    self.api = HttpRequester(baseUrl: self.baseUrl)
     self._clientId = clientId
-    self.folder = folder ?? "_PORTAL_MPC_DO_NOT_DELETE_"
-    self.isMocked = isMocked
     self._view = view
+
+    self.api = HttpRequester(baseUrl: self.baseUrl)
+    self.folder = folder ?? "_PORTAL_MPC_DO_NOT_DELETE_"
+    self.requests = requests ?? PortalRequests()
 
     if let clientId = _clientId, let view = _view {
       self.auth = GoogleAuth(config: GIDConfiguration(clientID: clientId), view: view)
@@ -83,9 +84,7 @@ public class GDriveClient {
     }
 
     if let url = URL(string: "\(baseUrl)/drive/v3/files/\(id)") {
-      let _ = self.isMocked
-        ? try await MockPortalRequests.delete(url, withBearerToken: accessToken)
-        : try await PortalRequests.delete(url, withBearerToken: accessToken)
+      let _ = try await requests.delete(url, withBearerToken: accessToken)
       return true
     }
 
@@ -118,9 +117,7 @@ public class GDriveClient {
     }
 
     if let url = URL(string: "\(baseUrl)/drive/v3/files?corpora=user&q=\(query)") {
-      let data = self.isMocked
-        ? try await MockPortalRequests.get(url, withBearerToken: accessToken)
-        : try await PortalRequests.get(url, withBearerToken: accessToken)
+      let data = try await requests.get(url, withBearerToken: accessToken)
       let filesListResponse = try decoder.decode(GDriveFilesListResponse.self, from: data)
 
       if filesListResponse.files.count > 0 {
@@ -145,9 +142,7 @@ public class GDriveClient {
     }
 
     if let url = URL(string: "\(baseUrl)/drive/v3/files/\(id)?alt=media") {
-      let data = self.isMocked
-        ? try await MockPortalRequests.get(url, withBearerToken: accessToken)
-        : try await PortalRequests.get(url, withBearerToken: accessToken)
+      let data = try await requests.get(url, withBearerToken: accessToken)
 
       guard let fileContents = String(data: data, encoding: .utf8) else {
         throw GDriveClientError.unableToReadFileContents
@@ -228,9 +223,7 @@ public class GDriveClient {
         name: self.folder,
         parents: ["root"]
       )
-      let data = self.isMocked
-        ? try await MockPortalRequests.post(url, withBearerToken: accessToken, andPayload: payload)
-        : try await PortalRequests.post(url, withBearerToken: accessToken, andPayload: payload)
+      let data = try await requests.post(url, withBearerToken: accessToken, andPayload: payload)
       let file = try decoder.decode(GDriveFile.self, from: data)
 
       return file
@@ -255,9 +248,7 @@ public class GDriveClient {
     }
 
     if let url = URL(string: "\(baseUrl)/drive/v3/files?q=\(query)") {
-      let data = self.isMocked
-        ? try await MockPortalRequests.get(url, withBearerToken: accessToken)
-        : try await PortalRequests.get(url, withBearerToken: accessToken)
+      let data = try await requests.get(url, withBearerToken: accessToken)
       let filesListResponse = try decoder.decode(GDriveFilesListResponse.self, from: data)
 
       if filesListResponse.files.count > 0 {
@@ -282,19 +273,12 @@ public class GDriveClient {
         withMetadata: metadata
       )
 
-      let data = self.isMocked
-        ? try await MockPortalRequests.postMultiPartData(
-          url,
-          withBearerToken: andAccessToken,
-          andPayload: body,
-          usingBoundary: self.boundary
-        )
-        : try await PortalRequests.postMultiPartData(
-          url,
-          withBearerToken: andAccessToken,
-          andPayload: body,
-          usingBoundary: self.boundary
-        )
+      let data = try await requests.postMultiPartData(
+        url,
+        withBearerToken: andAccessToken,
+        andPayload: body,
+        usingBoundary: self.boundary
+      )
       let file = try decoder.decode(GDriveFile.self, from: data)
 
       return file.id

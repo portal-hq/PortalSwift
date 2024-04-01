@@ -10,10 +10,10 @@
 import XCTest
 
 final class GDriveStorageTests: XCTestCase {
-  var storage = GDriveStorage(isMocked: true)
+  var storage = GDriveStorage(encryption: MockPortalEncryption(), driveClient: MockGDriveClient())
 
   override func setUpWithError() throws {
-    self.storage.api = PortalApi(apiKey: MockConstants.mockApiKey, isMocked: true)
+    self.storage.api = PortalApi(apiKey: MockConstants.mockApiKey, requests: MockPortalRequests())
   }
 
   override func tearDownWithError() throws {}

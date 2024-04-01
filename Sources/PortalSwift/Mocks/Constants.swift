@@ -235,6 +235,7 @@ public enum MockConstants {
   public static let mockPasskeyStatus = PasskeyStatusResponse(status: .RegisteredWithCredential)
   public static let mockProviderRequestId = "test-provider-request-id"
   public static let mockPublicKey = "{\"X\":\"test-public-key-x\",\"Y\":\"test-public-key-y\"}"
+  public static let mockRpcResponse = PortalProviderRpcResponse(jsonrpc: "2.0", id: 0, result: "test")
   public static let mockSECP256K1KeychainWallet = PortalKeychainClientMetadataWallet(
     id: mockMpcShareId,
     curve: .SECP256K1,

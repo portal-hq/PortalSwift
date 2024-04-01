@@ -18,6 +18,7 @@ public class GDriveStorage: Storage, PortalStorage {
     set(clientId) { self.drive.clientId = clientId }
   }
 
+  public let encryption: PortalEncryption
   public var folder: String {
     get { return self.drive.folder }
     set(folder) { self.drive.folder = folder }
@@ -37,10 +38,14 @@ public class GDriveStorage: Storage, PortalStorage {
   private var logger = PortalLogger()
   private var separator: String = ""
 
-  public init(clientID: String? = nil, viewController: UIViewController? = nil, isMocked: Bool = false) {
-    self.drive = isMocked
-      ? MockGDriveClient(clientId: clientID, view: viewController)
-      : GDriveClient(clientId: clientID, view: viewController)
+  public init(
+    clientID: String? = nil,
+    viewController: UIViewController? = nil,
+    encryption: PortalEncryption? = nil,
+    driveClient: GDriveClient? = nil
+  ) {
+    self.drive = driveClient ?? GDriveClient(clientId: clientID, view: viewController)
+    self.encryption = encryption ?? PortalEncryption()
   }
 
   /*******************************************
