@@ -40,6 +40,7 @@ open class Storage {
 
 public protocol PortalStorage {
   var api: PortalApi? { get set }
+  var encryption: PortalEncryption { get }
 
   func decrypt(_ value: String, withKey: String) async throws -> String
   func delete() async throws -> Bool
@@ -51,10 +52,10 @@ public protocol PortalStorage {
 
 public extension PortalStorage {
   func decrypt(_ value: String, withKey: String) async throws -> String {
-    return try await PortalEncryption.decrypt(value, withPrivateKey: withKey)
+    return try await encryption.decrypt(value, withPrivateKey: withKey)
   }
 
   func encrypt(_ value: String) async throws -> EncryptData {
-    return try await PortalEncryption.encrypt(value)
+    return try await encryption.encrypt(value)
   }
 }

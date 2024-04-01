@@ -41,7 +41,6 @@ public class Portal {
   private var backup: BackupOptions?
   private let binary: Mobile
   private let featureFlags: FeatureFlags?
-  private let isMocked: Bool
   private let keychain: PortalKeychain
   private let mpc: PortalMpc
   private let mpcHost: String
@@ -66,7 +65,13 @@ public class Portal {
     version: String = "v6",
     apiHost: String = "api.portalhq.io",
     mpcHost: String = "mpc.portalhq.io",
-    isMocked: Bool = false
+    api: PortalApi? = nil,
+    binary: Mobile? = nil,
+    gDrive: GDriveStorage? = nil,
+    iCloud: ICloudStorage? = nil,
+    keychain: PortalKeychain? = nil,
+    mpc: PortalMpc? = nil,
+    passwords: PasswordStorage? = nil
   ) throws {
     if version != "v6" {
       throw PortalArgumentError.versionNoLongerSupported(message: "MPC Version is not supported. Only version 'v6' is currently supported.")
@@ -75,71 +80,56 @@ public class Portal {
     self.apiHost = apiHost
     self.apiKey = apiKey
     self.autoApprove = autoApprove
-    self.binary = isMocked ? MockMobileWrapper() : MobileWrapper()
+    self.binary = binary ?? MobileWrapper()
     self.featureFlags = featureFlags
-    self.isMocked = isMocked
-    self.keychain = isMocked ? MockPortalKeychain() : PortalKeychain()
+    self.keychain = keychain ?? PortalKeychain()
     self.mpcHost = mpcHost
     self.rpcConfig = withRpcConfig
     self.version = version
 
     // Creating this as a variable first so it's usable to
     // fetch the client in the Task at the end of the initializer
-    let api = isMocked
-      ? MockPortalApi(apiKey: apiKey, apiHost: apiHost)
-      : PortalApi(apiKey: apiKey, apiHost: apiHost)
+    let api = api ?? PortalApi(apiKey: apiKey, apiHost: apiHost)
     self.api = api
     self.keychain.api = api
 
-    self.mpc = isMocked
-      ? MockPortalMpc(apiKey: apiKey, api: self.api, keychain: self.keychain, mobile: MockMobileWrapper())
-      : PortalMpc(apiKey: apiKey, api: self.api, keychain: self.keychain, host: mpcHost, mobile: MobileWrapper())
-    self.provider = isMocked
-      ? try MockPortalProvider(
-        apiKey: apiKey,
-        rpcConfig: withRpcConfig,
-        keychain: self.keychain,
-        autoApprove: autoApprove,
-        apiHost: apiHost,
-        mpcHost: mpcHost,
-        featureFlags: featureFlags
-      )
-      : try PortalProvider(
-        apiKey: apiKey,
-        rpcConfig: withRpcConfig,
-        keychain: self.keychain,
-        autoApprove: autoApprove,
-        apiHost: apiHost,
-        mpcHost: mpcHost,
-        featureFlags: featureFlags
-      )
+    self.mpc = mpc ?? PortalMpc(apiKey: apiKey, api: self.api, keychain: self.keychain, host: mpcHost, mobile: self.binary)
+    self.provider = try PortalProvider(
+      apiKey: apiKey,
+      rpcConfig: withRpcConfig,
+      keychain: self.keychain,
+      autoApprove: autoApprove,
+      apiHost: apiHost,
+      mpcHost: mpcHost,
+      featureFlags: featureFlags
+    )
 
     // Initialize with PasskeyStorage by default
     if #available(iOS 16, *) {
       self.mpc.registerBackupMethod(
         .Passkey,
-        withStorage: isMocked ? MockPasskeyStorage() : PasskeyStorage()
+        withStorage: PasskeyStorage()
       )
     }
     // Initialize with PasswordStorage by default
     self.mpc.registerBackupMethod(
       .Password,
-      withStorage: isMocked ? MockPasswordStorage() : PasswordStorage()
+      withStorage: passwords ?? PasswordStorage()
     )
     // Initialize with iCloudStorage by default
     self.mpc.registerBackupMethod(
       .iCloud,
-      withStorage: isMocked ? MockICloudStorage() : ICloudStorage()
+      withStorage: iCloud ?? ICloudStorage()
     )
     // Initialize with GDrive by default
     self.mpc.registerBackupMethod(
       .GoogleDrive,
-      withStorage: isMocked ? MockGDriveStorage() : GDriveStorage()
+      withStorage: gDrive ?? GDriveStorage()
     )
     // Initialize with LocalFileStorage by default
     self.mpc.registerBackupMethod(
       .local,
-      withStorage: isMocked ? MockLocalFileStorage() : LocalFileStorage()
+      withStorage: LocalFileStorage()
     )
 
     // Capture metrics.
@@ -170,17 +160,15 @@ public class Portal {
     autoApprove: Bool = false,
     apiHost: String = "api.portalhq.io",
     mpcHost: String = "mpc.portalhq.io",
-    featureFlags: FeatureFlags? = nil,
-    isMocked: Bool = false
+    featureFlags: FeatureFlags? = nil
   ) throws {
     // Basic setup
-    self.binary = isMocked ? MockMobileWrapper() : MobileWrapper()
+    self.binary = MobileWrapper()
     self.apiHost = apiHost
     self.apiKey = apiKey
     self.autoApprove = autoApprove
     self.backup = backup
     self.gatewayConfig = gatewayConfig
-    self.isMocked = isMocked
     self.keychain = keychain
     self.mpcHost = mpcHost
     self.version = version
@@ -213,9 +201,7 @@ public class Portal {
     self.provider.chainId = chainId
 
     // Initialize the Portal API
-    let api = isMocked
-      ? MockPortalApi(apiKey: apiKey, apiHost: apiHost, provider: self.provider, featureFlags: self.featureFlags)
-      : PortalApi(apiKey: apiKey, apiHost: apiHost, provider: self.provider, featureFlags: self.featureFlags)
+    let api = PortalApi(apiKey: apiKey, apiHost: apiHost, provider: self.provider, featureFlags: self.featureFlags)
     self.api = api
     keychain.api = api
 
@@ -262,149 +248,6 @@ public class Portal {
       if let passkeys = backup.passkeyStorage {
         passkeys.apiKey = apiKey
         mpc.registerBackupMethod(.Passkey, withStorage: passkeys)
-      }
-    }
-
-    // Capture analytics.
-    Task {
-      if let client = try? await api.client {
-        _ = try? await api.identify(["id": AnyEncodable(client.id), "custodianId": AnyEncodable(client.custodian.id)])
-        _ = try? await api.track(MetricsEvents.portalInitialized.rawValue, withProperties: [:])
-      }
-    }
-  }
-
-  /// Create a Portal instance. This initializer is used by unit tests and mocks.
-  /// - Parameters:
-  ///   - apiKey: The Client API key. You can obtain this through Portal's REST API.
-  ///   - backup: The backup options to use.
-  ///   - chainId: The chainId you want the provider to use.
-  ///   - keychain: An instance of PortalKeychain.
-  ///   - gatewayConfig: A dictionary of chainIds (keys) and gateway URLs (values).
-  ///   - mpc:  Portal's mpc class
-  ///   - api:  Portal's api class
-  ///   - binary: Portal's mpc binary class
-  ///   - isSimulator: (optional) Whether you are testing on the iOS simulator or not.
-  ///   - address: (optional) An address.
-  ///   - apiHost: (optional) Portal's API host.
-  ///   - autoApprove: (optional) Auto-approve transactions.
-  ///   - mpcHost: (optional) Portal's MPC API host.
-
-  @available(*, deprecated, renamed: "Portal", message: "We've updated our constructor to be more streamlined and support multiple wallets. Please see the migration guide at https://docs.portalhq.io/resources/migrating-from-v3-to-v4/")
-  public init(
-    apiKey: String,
-    backup: BackupOptions,
-    chainId: Int,
-    keychain: PortalKeychain,
-    gatewayConfig: [Int: String],
-    // Optional
-    isSimulator: Bool = false,
-    version: String = "v6",
-    autoApprove: Bool = false,
-    apiHost: String = "api.portalhq.io",
-    mpcHost: String = "mpc.portalhq.io",
-    mpc: PortalMpc?,
-    api: PortalApi?,
-    binary: Mobile?,
-    featureFlags: FeatureFlags? = nil,
-    isMocked: Bool = false
-  ) throws {
-    // Basic setup
-    self.apiHost = apiHost
-    self.apiKey = apiKey
-    self.autoApprove = autoApprove
-    self.binary = binary ?? MobileWrapper()
-    self.gatewayConfig = gatewayConfig
-    self.isMocked = isMocked
-    self.keychain = keychain
-    self.mpcHost = mpcHost
-    self.version = version
-    self.featureFlags = featureFlags
-
-    if version != "v6" {
-      throw PortalArgumentError.versionNoLongerSupported(message: "MPC Version is not supported. Only version 'v6' is currently supported.")
-    }
-
-    //  Handle the legacy use case of using Ethereum references as keys
-    let rpcConfig: [String: String] = Dictionary(gatewayConfig.map { key, value in
-      let newKey = "eip155:\(key)"
-      return (newKey, value)
-    }, uniquingKeysWith: { first, _ in first })
-    self.rpcConfig = rpcConfig
-
-    // Initialize the PortalProvider
-    self.provider = isMocked
-      ? try MockPortalProvider(
-        apiKey: apiKey,
-        rpcConfig: rpcConfig,
-        keychain: keychain,
-        autoApprove: autoApprove,
-        apiHost: apiHost,
-        mpcHost: mpcHost,
-        version: version,
-        featureFlags: featureFlags
-      )
-      : try PortalProvider(
-        apiKey: apiKey,
-        rpcConfig: rpcConfig,
-        keychain: keychain,
-        autoApprove: autoApprove,
-        apiHost: apiHost,
-        mpcHost: mpcHost,
-        version: version,
-        featureFlags: featureFlags
-      )
-
-    self.provider.chainId = chainId
-
-    // Initialize the Portal API
-    let api = api ?? (isMocked
-      ? MockPortalApi(apiKey: apiKey, apiHost: apiHost, provider: self.provider)
-      : PortalApi(apiKey: apiKey, apiHost: apiHost, provider: self.provider)
-    )
-    self.api = api
-    keychain.api = api
-
-    // This is to mimic the blocking behavior of the legacy GetClient() implementation
-    // It ensures address information is available at the completion of the initialization
-    let semaphore = DispatchSemaphore(value: 0)
-    Task {
-      // Load client metadata
-      try await keychain.loadMetadata()
-      semaphore.signal()
-    }
-    semaphore.wait()
-    // End legacy GetClient() implementation
-
-    print("Portal initializer done!")
-
-    // Initialize Mpc
-    self.mpc = mpc ?? PortalMpc(
-      apiKey: apiKey,
-      api: self.api,
-      keychain: keychain,
-      host: mpcHost,
-      isSimulator: isSimulator,
-      version: version,
-      mobile: self.binary
-    )
-
-    if let gDrive = backup.gdrive {
-      self.mpc.registerBackupMethod(.GoogleDrive, withStorage: gDrive)
-    }
-    if let iCloud = backup.icloud {
-      self.mpc.registerBackupMethod(.iCloud, withStorage: iCloud)
-    }
-    if let local = backup.local {
-      self.mpc.registerBackupMethod(.local, withStorage: local)
-    }
-    if let passwords = backup.passwordStorage {
-      self.mpc.registerBackupMethod(.Password, withStorage: passwords)
-    }
-    if #available(iOS 16, *) {
-      if let passkeys = backup.passkeyStorage {
-        passkeys.apiKey = apiKey
-        self.mpc.registerBackupMethod(.Passkey, withStorage: passkeys)
       }
     }
 

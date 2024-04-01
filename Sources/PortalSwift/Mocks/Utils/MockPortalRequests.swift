@@ -7,10 +7,10 @@
 
 import Foundation
 
-public enum MockPortalRequests {
-  private static let encoder = JSONEncoder()
+public class MockPortalRequests: PortalRequests {
+  private let encoder = JSONEncoder()
 
-  public static func delete(_ url: URL, withBearerToken _: String? = nil) async throws -> Data {
+  override public func delete(_ url: URL, withBearerToken _: String? = nil) async throws -> Data {
     switch url.path {
     default:
       guard let mockNullData = "null".data(using: .utf8) else {
@@ -20,7 +20,7 @@ public enum MockPortalRequests {
     }
   }
 
-  public static func get(_ url: URL, withBearerToken _: String? = nil) async throws -> Data {
+  override public func get(_ url: URL, withBearerToken _: String? = nil) async throws -> Data {
     switch url.path {
     case "/api/v3/clients/me":
       let mockClientData = try encoder.encode(MockConstants.mockClient)
@@ -61,7 +61,7 @@ public enum MockPortalRequests {
     }
   }
 
-  public static func patch(_ url: URL, withBearerToken _: String? = nil, andPayload _: Encodable) async throws -> Data {
+  override public func patch(_ url: URL, withBearerToken _: String? = nil, andPayload _: Encodable) async throws -> Data {
     switch url.path {
     case "/api/v3/clients/me/backup-share-pairs/", "/api/v3/clients/me/signing-share-pairs/":
       guard let mockTrueData = "true".data(using: .utf8) else {
@@ -76,13 +76,15 @@ public enum MockPortalRequests {
     }
   }
 
-  public static func post(_ url: URL, withBearerToken _: String? = nil, andPayload _: Encodable? = nil) async throws -> Data {
+  override public func post(_ url: URL, withBearerToken _: String? = nil, andPayload _: Encodable? = nil) async throws -> Data {
     switch url.path {
     case "/api/v1/analytics/identify", "/api/v1/analytics/track":
       let mockMetricsResponseData = try encoder.encode(MockConstants.mockMetricsResponse)
       return mockMetricsResponseData
     case "/api/v3/clients/me/eject":
-      let mockEjectData = try encoder.encode(MockConstants.mockEjectResponse)
+      guard let mockEjectData = MockConstants.mockEjectResponse.data(using: .utf8) else {
+        throw PortalRequestsError.couldNotParseHttpResponse
+      }
       return mockEjectData
     case "/api/v3/clients/me/simulate-transaction":
       let mockSimulateTransactionData = try encoder.encode(MockConstants.mockSimulatedTransaction)
@@ -104,6 +106,9 @@ public enum MockPortalRequests {
     case "/passkeys/finish-login/read":
       let mockReadData = try encoder.encode(MockConstants.mockPasskeyReadResponse)
       return mockReadData
+    case "/test-rpc":
+      let mockRpcData = try encoder.encode(MockConstants.mockRpcResponse)
+      return mockRpcData
     default:
       guard let mockNullData = "null".data(using: .utf8) else {
         throw PortalRequestsError.couldNotParseHttpResponse
@@ -112,7 +117,7 @@ public enum MockPortalRequests {
     }
   }
 
-  public static func postMultiPartData(
+  override public func postMultiPartData(
     _: URL,
     withBearerToken _: String,
     andPayload _: String,

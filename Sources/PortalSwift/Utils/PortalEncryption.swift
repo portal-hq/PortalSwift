@@ -1,20 +1,22 @@
 import Foundation
 import Mpc
 
-public enum PortalEncryption {
-  public static let decoder = JSONDecoder()
-  private static let mobile = MobileWrapper()
+public class PortalEncryption {
+  public let decoder = JSONDecoder()
+  private let mobile = MobileWrapper()
 
-  public static func decrypt(_ value: String, withPrivateKey: String) async throws -> String {
+  public init() {}
+
+  public func decrypt(_ value: String, withPrivateKey: String) async throws -> String {
     let decryptedValue = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<String, Error>) in
       Task {
         do {
-          let decryptedValue = await PortalEncryption.mobile.MobileDecrypt(withPrivateKey, value)
+          let decryptedValue = await mobile.MobileDecrypt(withPrivateKey, value)
           guard let decryptedData = decryptedValue.data(using: .utf8) else {
             continuation.resume(throwing: MpcError.unexpectedErrorOnDecrypt("Unable to parse decryption result."))
             return
           }
-          let decryptResult = try PortalEncryption.decoder.decode(DecryptResult.self, from: decryptedData)
+          let decryptResult = try decoder.decode(DecryptResult.self, from: decryptedData)
 
           if decryptResult.error.code > 0 {
             continuation.resume(throwing: PortalMpcError(decryptResult.error))
@@ -36,16 +38,16 @@ public enum PortalEncryption {
     return decryptedValue
   }
 
-  public static func decrypt(_ value: String, withPassword: String) async throws -> String {
+  public func decrypt(_ value: String, withPassword: String) async throws -> String {
     let decryptedValue = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<String, Error>) in
       Task {
         do {
-          let decryptedValue = await PortalEncryption.mobile.MobileDecryptWithPassword(withPassword, value)
+          let decryptedValue = await mobile.MobileDecryptWithPassword(withPassword, value)
           guard let decryptedData = decryptedValue.data(using: .utf8) else {
             continuation.resume(throwing: MpcError.unexpectedErrorOnDecrypt("Unable to parse decryption result."))
             return
           }
-          let decryptResult = try PortalEncryption.decoder.decode(DecryptResult.self, from: decryptedData)
+          let decryptResult = try decoder.decode(DecryptResult.self, from: decryptedData)
 
           if decryptResult.error.code > 0 {
             continuation.resume(throwing: PortalMpcError(decryptResult.error))
@@ -67,16 +69,16 @@ public enum PortalEncryption {
     return decryptedValue
   }
 
-  public static func encrypt(_ value: String) async throws -> EncryptData {
+  public func encrypt(_ value: String) async throws -> EncryptData {
     let encryptData = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<EncryptData, Error>) in
       Task {
         do {
-          let encryptedValue = await PortalEncryption.mobile.MobileEncrypt(value)
+          let encryptedValue = await mobile.MobileEncrypt(value)
           guard let encryptedData = encryptedValue.data(using: .utf8) else {
             continuation.resume(throwing: MpcError.unexpectedErrorOnDecrypt("Unable to parse encryption result."))
             return
           }
-          let encryptResult = try PortalEncryption.decoder.decode(EncryptResult.self, from: encryptedData)
+          let encryptResult = try decoder.decode(EncryptResult.self, from: encryptedData)
 
           if encryptResult.error.code > 0 {
             continuation.resume(throwing: PortalMpcError(encryptResult.error))
@@ -98,16 +100,16 @@ public enum PortalEncryption {
     return encryptData
   }
 
-  public static func encrypt(_ value: String, withPassword: String) async throws -> String {
+  public func encrypt(_ value: String, withPassword: String) async throws -> String {
     let encryptData = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<String, Error>) in
       Task {
         do {
-          let encryptedValue = await PortalEncryption.mobile.MobileEncryptWithPassword(data: value, password: withPassword)
+          let encryptedValue = await mobile.MobileEncryptWithPassword(data: value, password: withPassword)
           guard let encryptedData = encryptedValue.data(using: .utf8) else {
             continuation.resume(throwing: MpcError.unexpectedErrorOnDecrypt("Unable to parse encryption result."))
             return
           }
-          let encryptResult = try PortalEncryption.decoder.decode(EncryptResultWithPassword.self, from: encryptedData)
+          let encryptResult = try decoder.decode(EncryptResultWithPassword.self, from: encryptedData)
 
           if encryptResult.error.code > 0 {
             continuation.resume(throwing: PortalMpcError(encryptResult.error))
@@ -128,4 +130,8 @@ public enum PortalEncryption {
 
     return encryptData
   }
+}
+
+public enum PortalEncryptionError: Error {
+  case unableToEncodeData
 }

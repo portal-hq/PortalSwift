@@ -7,8 +7,10 @@
 
 import Foundation
 
-class MockPortalKeychainAccess: PortalKeychainAccess {
+public class MockPortalKeychainAccess: PortalKeychainAccess {
   private let encoder = JSONEncoder()
+
+  override public init() {}
 
   override public func addItem(_: String, value _: String) throws {}
 

@@ -105,6 +105,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   private let decoder = JSONDecoder()
   private let logger = Logger()
+  private let requests = PortalRequests()
 
   // Set up the scroll view
   @IBOutlet var scrollView: UIScrollView!
@@ -170,7 +171,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       "cipherText": cipherText,
     ]
 
-    let resultData = try await PortalRequests.post(url, withBearerToken: nil, andPayload: payload)
+    let resultData = try await requests.post(url, andPayload: payload)
     guard let result = String(data: resultData, encoding: .utf8) else {
       self.logger.error("ViewController.backup() - Unable to parse response from cipherText storage request to custodian.")
       throw PortalExampleAppError.couldNotParseCustodianResponse()
@@ -215,7 +216,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     ) else {
       throw URLError(.badURL)
     }
-    let cipherTextData = try await PortalRequests.get(cipherTextUrl)
+    let cipherTextData = try await requests.get(cipherTextUrl)
     let cipherTextResponse = try decoder.decode(CipherTextResult.self, from: cipherTextData)
 
     guard let organizationBackupShareUrl = URL(
@@ -223,7 +224,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     ) else {
       throw URLError(.badURL)
     }
-    let organizationBackupShareData = try await PortalRequests.get(organizationBackupShareUrl)
+    let organizationBackupShareData = try await requests.get(organizationBackupShareUrl)
     let organizationBackupShareResponse = try decoder.decode(OrgShareResult.self, from: organizationBackupShareData)
 
     let privateKey = try await portal.eject(
@@ -305,7 +306,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     guard let url = URL(string: "\(config.custodianServerUrl)/mobile/\(userId)/cipher-text/fetch?backupMethod=\(withBackupMethod.rawValue)") else {
       throw URLError(.badURL)
     }
-    let data = try await PortalRequests.get(url)
+    let data = try await requests.get(url)
     let response = try decoder.decode(CipherTextResult.self, from: data)
     let cipherText = response.cipherText
 
@@ -522,7 +523,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       if let url = URL(string: "\(config.custodianServerUrl)/mobile/login") {
         let payload = ["username": username]
 
-        let data = try await PortalRequests.post(url, withBearerToken: nil, andPayload: payload)
+        let data = try await requests.post(url, andPayload: payload)
         let user = try decoder.decode(UserResult.self, from: data)
 
         self.user = user
@@ -544,7 +545,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       if let url = URL(string: "\(config.custodianServerUrl)/mobile/signup") {
         let payload = ["username": username]
 
-        let data = try await PortalRequests.post(url, withBearerToken: nil, andPayload: payload)
+        let data = try await requests.post(url, andPayload: payload)
         let user = try decoder.decode(UserResult.self, from: data)
 
         self.user = user

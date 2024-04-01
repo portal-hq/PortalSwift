@@ -10,10 +10,10 @@
 import XCTest
 
 final class ICloudStorageTests: XCTestCase {
-  var storage = ICloudStorage(isMocked: true)
+  var storage = ICloudStorage(encryption: MockPortalEncryption(), keyValueStore: MockPortalKeyValueStore())
 
   override func setUpWithError() throws {
-    self.storage.api = PortalApi(apiKey: MockConstants.mockApiKey, isMocked: true)
+    self.storage.api = PortalApi(apiKey: MockConstants.mockApiKey, requests: MockPortalRequests())
   }
 
   override func tearDownWithError() throws {}
@@ -30,14 +30,6 @@ final class ICloudStorageTests: XCTestCase {
     let expectation = XCTestExpectation(description: "ICloudStorage.read()")
     let result = try await storage.read()
     XCTAssertEqual(result, MockConstants.mockEncryptionKey)
-    expectation.fulfill()
-    await fulfillment(of: [expectation], timeout: 5.0)
-  }
-
-  func testValidateOperations() async throws {
-    let expectation = XCTestExpectation(description: "ICloudStorage.write()")
-    let success = try await storage.validateOperations()
-    XCTAssertTrue(success)
     expectation.fulfill()
     await fulfillment(of: [expectation], timeout: 5.0)
   }

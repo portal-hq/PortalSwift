@@ -7,7 +7,9 @@
 
 import Foundation
 
-class PortalKeyValueStore {
+public class PortalKeyValueStore {
+  public init() {}
+
   public func delete(_ key: String) -> Bool {
     // Delete from iCloud.
     NSUbiquitousKeyValueStore.default.synchronize()

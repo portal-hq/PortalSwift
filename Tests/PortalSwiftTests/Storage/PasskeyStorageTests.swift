@@ -5,16 +5,18 @@
 //  Created by Blake Williams on 3/31/24.
 //
 
+import AuthenticationServices
 @testable import PortalSwift
 import XCTest
 
 @available(iOS 16, *)
 final class PasskeyStorageTests: XCTestCase {
-  let storage = PasskeyStorage(isMocked: true)
+  let storage = PasskeyStorage(auth: MockPasskeyAuth(), encryption: MockPortalEncryption(), requests: MockPortalRequests())
 
   override func setUpWithError() throws {
     self.storage.apiKey = MockConstants.mockApiKey
-    self.storage.api = PortalApi(apiKey: MockConstants.mockApiKey, isMocked: true)
+    self.storage.api = PortalApi(apiKey: MockConstants.mockApiKey, requests: MockPortalRequests())
+    self.storage.anchor = MockAuthenticationAnchor()
   }
 
   override func tearDownWithError() throws {}

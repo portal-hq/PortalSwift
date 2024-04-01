@@ -31,6 +31,7 @@ public class PortalProvider {
   private var processedRequestIds: [String] = []
   private var processedSignatureIds: [String] = []
   private var portalApi: HttpRequester
+  private let requests: PortalRequests
   private let rpcConfig: [String: String]
   private let signer: PortalMpcSigner
   private let featureFlags: FeatureFlags?
@@ -59,7 +60,9 @@ public class PortalProvider {
     apiHost: String = "api.portalhq.io",
     mpcHost: String = "mpc.portalhq.io",
     version: String = "v6",
-    featureFlags: FeatureFlags? = nil
+    featureFlags: FeatureFlags? = nil,
+    requests: PortalRequests? = nil,
+    signer: PortalMpcSigner? = nil
   ) throws {
     // User-defined instance variables
     self.apiKey = apiKey
@@ -71,8 +74,14 @@ public class PortalProvider {
     let apiUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
     self.portalApi = HttpRequester(baseUrl: apiUrl)
     self.featureFlags = featureFlags
-
-    self.signer = PortalMpcSigner(apiKey: apiKey, keychain: keychain, mpcUrl: mpcHost, version: version, featureFlags: featureFlags)
+    self.requests = requests ?? PortalRequests()
+    self.signer = signer ?? PortalMpcSigner(
+      apiKey: apiKey,
+      keychain: keychain,
+      mpcUrl: mpcHost,
+      version: version,
+      featureFlags: featureFlags
+    )
     // Create a serial dispatch queue with a unique label
     self.mpcQueue = DispatchQueue.global(qos: .background)
 
@@ -199,13 +208,10 @@ public class PortalProvider {
     case .wallet_switchEthereumChain:
       return PortalProviderResult(id: id, result: "null")
     default:
-      print("⚠️ Checking request for method: \(withMethod.rawValue)")
       if blockchain.shouldMethodBeSigned(withMethod) {
-        print("⚠️ Dispatching request to signer for method: \(withMethod.rawValue)")
         let payload = PortalProviderRequestWithId(id: id, method: withMethod, params: andParams)
         return try await self.handleSignRequest(chainId, withPayload: payload, forId: id, onBlockchain: blockchain, connect: connect)
       } else {
-        print("⚠️ Dispatching request to RPC for method: \(withMethod.rawValue)")
         return try await self.handleRpcRequest(chainId, withMethod: withMethod, andParams: andParams, forId: id)
       }
     }
@@ -305,7 +311,7 @@ public class PortalProvider {
         method: withMethod,
         params: andParams
       )
-      let data = try await PortalRequests.post(url, withBearerToken: nil, andPayload: payload)
+      let data = try await requests.post(url, withBearerToken: nil, andPayload: payload)
 
       switch withMethod {
       case .eth_getBlockByHash, .eth_getBlockByNumber, .eth_getUncleByBlockHashAndIndex, .eth_getUncleByBlockNumberAndIndex:

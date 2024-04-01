@@ -10,10 +10,15 @@ import Foundation
 public class MockPortalMpcSigner: PortalMpcSigner {
   override public func sign(
     _: String,
-    withPayload _: PortalSignRequest,
+    withPayload: PortalSignRequest,
     andRpcUrl _: String,
     usingBlockchain _: PortalBlockchain
   ) async throws -> String {
-    return MockConstants.mockSignResult
+    switch withPayload.method {
+    case .eth_sendTransaction, .eth_sendRawTransaction:
+      return MockConstants.mockTransactionHash
+    default:
+      return MockConstants.mockSignature
+    }
   }
 }

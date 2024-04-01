@@ -9,7 +9,7 @@
 @testable import PortalSwift
 import XCTest
 
-final class MpcSignerTests: XCTestCase {
+final class PortalMpcSignerTests: XCTestCase {
   var blockchain: PortalBlockchain?
   var signer: PortalMpcSigner = .init(
     apiKey: MockConstants.mockApiKey,

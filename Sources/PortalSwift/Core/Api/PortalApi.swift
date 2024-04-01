@@ -13,10 +13,10 @@ public class PortalApi {
   private var apiKey: String
   private var baseUrl: String
   private let decoder = JSONDecoder()
-  private let isMocked: Bool
+  private var httpRequests: HttpRequester
   private let logger = PortalLogger()
   private var provider: PortalProvider?
-  private var requests: HttpRequester
+  private let requests: PortalRequests
   private let featureFlags: FeatureFlags?
 
   private var address: String? {
@@ -46,14 +46,14 @@ public class PortalApi {
     apiHost: String = "api.portalhq.io",
     provider: PortalProvider? = nil,
     featureFlags: FeatureFlags? = nil,
-    isMocked: Bool = false
+    requests: PortalRequests? = nil
   ) {
     self.apiKey = apiKey
     self.baseUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
     self.featureFlags = featureFlags
-    self.isMocked = isMocked
     self.provider = provider
-    self.requests = isMocked ? MockHttpRequester(baseUrl: self.baseUrl) : HttpRequester(baseUrl: self.baseUrl)
+    self.requests = requests ?? PortalRequests()
+    self.httpRequests = HttpRequester(baseUrl: self.baseUrl)
   }
 
   /*******************************************
@@ -252,7 +252,10 @@ public class PortalApi {
   ///   - completion: The callback that contains transaction simulation response.
   /// - Returns: Void.
   public func simulateTransaction(_ transaction: Any, withChainId: String) async throws -> SimulatedTransaction {
-    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/simulate-transaction?chainId=\(withChainId)") {
+    guard let chainId = withChainId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+      throw PortalApiError.unableToEncodeData
+    }
+    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/simulate-transaction?chainId=\(chainId)") {
       do {
         let transformedTransaction = try AnyEncodable(transaction)
         let data = try await post(url, withBearerToken: self.apiKey, andPayload: transformedTransaction)
@@ -261,6 +264,7 @@ public class PortalApi {
         return simulatedTransaction
       } catch {
         self.logger.error("PortalApi.simulateTransaction() - Unable to simulate transaction: \(error.localizedDescription)")
+        throw error
       }
     }
 
@@ -314,21 +318,15 @@ public class PortalApi {
    *******************************************/
 
   private func get(_ url: URL, withBearerToken: String? = nil) async throws -> Data {
-    return self.isMocked
-      ? try await MockPortalRequests.get(url, withBearerToken: withBearerToken)
-      : try await PortalRequests.get(url, withBearerToken: withBearerToken)
+    return try await self.requests.get(url, withBearerToken: withBearerToken)
   }
 
   private func patch(_ url: URL, withBearerToken: String? = nil, andPayload: Encodable) async throws -> Data {
-    return self.isMocked
-      ? try await MockPortalRequests.patch(url, withBearerToken: withBearerToken, andPayload: andPayload)
-      : try await PortalRequests.patch(url, withBearerToken: withBearerToken, andPayload: andPayload)
+    return try await self.requests.patch(url, withBearerToken: withBearerToken, andPayload: andPayload)
   }
 
   private func post(_ url: URL, withBearerToken: String? = nil, andPayload: Encodable? = nil) async throws -> Data {
-    return self.isMocked
-      ? try await MockPortalRequests.post(url, withBearerToken: withBearerToken, andPayload: andPayload)
-      : try await PortalRequests.post(url, withBearerToken: withBearerToken, andPayload: andPayload)
+    return try await self.requests.post(url, withBearerToken: withBearerToken, andPayload: andPayload)
   }
 
   /*******************************************
@@ -429,7 +427,7 @@ public class PortalApi {
   public func getBalances(
     completion: @escaping (Result<[Balance]>) -> Void
   ) throws {
-    try self.requests.get(
+    try self.httpRequests.get(
       path: "/api/v1/clients/me/balances?chainId=\(self.chainId ?? 1)",
       headers: [
         "Authorization": "Bearer \(self.apiKey)",
@@ -508,7 +506,7 @@ public class PortalApi {
       body["isMultiBackupEnabled"] = isMultiBackupEnabled
     }
 
-    try self.requests.put(
+    try self.httpRequests.put(
       path: "/api/v2/clients/me/wallet/stored-client-backup-share",
       body: body,
       headers: [
@@ -575,6 +573,7 @@ public class PortalApi {
 }
 
 public enum PortalApiError: Error, Equatable {
+  case unableToEncodeData
   case unableToReadStringResponse
 }
 
