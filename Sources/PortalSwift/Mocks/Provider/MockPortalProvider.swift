@@ -32,54 +32,30 @@ public class MockPortalProvider: PortalProvider {
   }
 
   override public func request(
-    payload: ETHRequestPayload,
-    completion: @escaping (Result<RequestCompletionResult>) -> Void,
+    _: String,
+    withMethod: PortalRequestMethod,
+    andParams _: [AnyEncodable]? = [],
     connect _: PortalConnect? = nil
-  ) {
-    completion(
-      Result(
-        data: RequestCompletionResult(
-          method: payload.method,
-          params: payload.params,
-          result: "result",
-          id: "testId"
-        )
+  ) async throws -> PortalProviderResult {
+    switch withMethod {
+    case .eth_accounts, .eth_requestAccounts:
+      return PortalProviderResult(
+        id: MockConstants.mockProviderRequestId,
+        result: [MockConstants.mockEip155Address]
       )
-    )
-  }
-
-  override public func request(
-    payload: ETHTransactionPayload,
-    completion: @escaping (Result<TransactionCompletionResult>) -> Void,
-    connect _: PortalConnect? = nil
-  ) {
-    completion(
-      Result(
-        data: TransactionCompletionResult(
-          method: payload.method,
-          params: payload.params,
-          result: "result",
-          id: "testId"
-        )
+    case .eth_sendTransaction, .eth_sendRawTransaction:
+      return PortalProviderResult(
+        id: MockConstants.mockProviderRequestId,
+        result: MockConstants.mockTransactionHash
       )
-    )
-  }
-
-  override public func request(
-    payload: ETHAddressPayload,
-    completion: @escaping (Result<AddressCompletionResult>) -> Void,
-    connect _: PortalConnect? = nil
-  ) {
-    completion(
-      Result(
-        data: AddressCompletionResult(
-          method: payload.method,
-          params: payload.params,
-          result: "result",
-          id: "testId"
-        )
+    case .eth_sign, .eth_signTransaction, .eth_signTypedData_v3, .eth_signTypedData_v4, .personal_sign:
+      return PortalProviderResult(
+        id: MockConstants.mockProviderRequestId,
+        result: MockConstants.mockSignature
       )
-    )
+    default:
+      throw PortalProviderError.unsupportedRequestMethod(withMethod.rawValue)
+    }
   }
 
   override public func setChainId(value _: Int, connect _: PortalConnect? = nil) -> PortalProvider {

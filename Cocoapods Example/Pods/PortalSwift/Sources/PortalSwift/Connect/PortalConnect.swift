@@ -38,10 +38,11 @@ public class PortalConnect: EventBus {
   public var uri: String?
 
   private let apiKey: String
-  private let webSocketServer: String
+  private var gatewayConfig: [Int: String]
+  private let logger = PortalLogger()
   private let provider: PortalProvider
   private var topic: String?
-  private var gatewayConfig: [Int: String]
+  private let webSocketServer: String
 
   public init(
     _ apiKey: String,
@@ -79,6 +80,7 @@ public class PortalConnect: EventBus {
       webSocketServer: connectionString
     )
 
+    // TODO: Convert this to using `async PortalKeychain.getAddress(chainId)`
     guard self.address != nil else {
       print("[PortalConnect] ⚠️ Address not found in Keychain. This may cause some features not to work as expected.")
       return
@@ -90,6 +92,11 @@ public class PortalConnect: EventBus {
     }
 
     on(event: Events.PortalConnectChainChanged.rawValue) { payload in
+      guard let chainId = payload as Int else {
+        self.logger.error("PortalConnect.on('portal_chainChanged') - Invalid argument for method: \(String(describing: payload))")
+        return
+      }
+      self.chainId = chainId
       let event = ChainChangedMessage(
         event: "portal_chainChanged",
         data: ChainChangedData(
@@ -100,7 +107,6 @@ public class PortalConnect: EventBus {
       )
       do {
         let message = try JSONEncoder().encode(event)
-
         self.client?.send(message)
       } catch {
         print("[PortalConnect] Error encoding PortalChainChanged: \(error)")
@@ -550,29 +556,63 @@ public class PortalConnect: EventBus {
   }
 
   private func handleProviderRequest(method: String, params: [ETHAddressParam], chainId: Int, completion: @escaping (Result<Any>) -> Void) {
-    self.provider.request(payload: ETHAddressPayload(method: method, params: params, chainId: chainId), connect: self) { result in
-      guard result.error == nil else {
-        return completion(Result(error: result.error!))
+    Task {
+      do {
+        guard let requestMethod = PortalRequestMethod(rawValue: method) else {
+          self.logger.error("PortalConnect.handleProviderRequest() - Unsupported request method received: \(method)")
+          return
+        }
+
+        let chainId = "eip155:\(chainId)"
+        let encodedParams = try params.map { param in try AnyEncodable(param) }
+        let providerResponse = try await self.provider.request(chainId, withMethod: requestMethod, andParams: encodedParams)
+
+        completion(Result(data: providerResponse.result))
+      } catch {
+        completion(Result(error: error))
       }
-      completion(Result(data: result.data!))
     }
   }
 
   private func handleProviderRequest(method: String, params: [ETHTransactionParam], chainId: Int, completion: @escaping (Result<Any>) -> Void) {
-    self.provider.request(payload: ETHTransactionPayload(method: method, params: params, chainId: chainId), connect: self) { (result: Result<TransactionCompletionResult>) in
-      guard result.error == nil else {
-        return completion(Result(error: result.error!))
+    Task {
+      do {
+        guard let requestMethod = PortalRequestMethod(rawValue: method) else {
+          self.logger.error("PortalConnect.handleProviderRequest() - Unsupported request method received: \(method)")
+          return
+        }
+
+        let chainId = "eip155:\(chainId)"
+        let encodedParams = try params.map { param in try AnyEncodable(param) }
+        let providerResponse = try await self.provider.request(chainId, withMethod: requestMethod, andParams: encodedParams)
+
+        completion(Result(data: providerResponse.result))
+      } catch {
+        completion(Result(error: error))
       }
-      completion(Result(data: (result.data!.result as! Result<Any>).data as! String))
     }
   }
 
   private func handleProviderRequest(method: String, params: [Any], chainId: Int, completion: @escaping (Result<Any>) -> Void) {
-    self.provider.request(payload: ETHRequestPayload(method: method, params: params, chainId: chainId), connect: self) { result in
-      guard result.error == nil else {
-        return completion(Result(error: result.error!))
+    Task {
+      do {
+        guard let requestMethod = PortalRequestMethod(rawValue: method) else {
+          self.logger.error("PortalConnect.handleProviderRequest() - Unsupported request method received: \(method)")
+          return
+        }
+
+        let chainId = "eip155:\(chainId)"
+        let encodedParams = try params.map { param in try AnyEncodable(param) }
+        let providerResponse = try await self.provider.request(chainId, withMethod: requestMethod, andParams: encodedParams)
+
+        completion(Result(data: providerResponse.result))
+      } catch {
+        completion(Result(error: error))
       }
-      completion(Result(data: result.data!))
     }
   }
+}
+
+enum PortalConnectError: Error {
+  case invalidArgumentForMethod(String, String)
 }

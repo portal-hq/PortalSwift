@@ -60,11 +60,14 @@ public class PortalKeychain {
 
   private let decoder = JSONDecoder()
   private let encoder = JSONEncoder()
+  private let keychain: PortalKeychainAccess
   private let logger = PortalLogger()
   private let metadataKey = "metadata"
   private let sharesKey = "shares"
 
-  public init() {}
+  public init(isMocked: Bool = false) {
+    self.keychain = isMocked ? MockPortalKeychainAccess() : PortalKeychainAccess()
+  }
 
   /*******************************************
    * Public functions
@@ -76,7 +79,7 @@ public class PortalKeychain {
       throw KeychainError.clientNotFound
     }
     let clientId = client.id
-    try self.deleteItem("\(clientId).\(self.sharesKey)")
+    try self.keychain.deleteItem("\(clientId).\(self.sharesKey)")
   }
 
   public func getAddress(_ forChainId: String) async throws -> String? {
@@ -102,13 +105,13 @@ public class PortalKeychain {
       let clientId = client.id
       do {
         // Before multi-wallet support was added
-        let address = try getItem("\(clientId).address")
+        let address = try keychain.getItem("\(clientId).address")
         return address
       } catch KeychainError.itemNotFound(_) {
         self.logger.debug("PortalKeychain.getAddress() - Attempting to read from even older legacy address data...")
         // Handle even older legacy backward compatinility with deprecated Keychain data
         // - Before clientId was added to the Keychain key
-        let address = try self.getItem(self.deprecatedAddressKey)
+        let address = try keychain.getItem(self.deprecatedAddressKey)
         return address
       }
     }
@@ -132,7 +135,7 @@ public class PortalKeychain {
       let clientId = client.id
       do {
         // Before multi-wallet support was added
-        let address = try getItem("\(clientId).address")
+        let address = try keychain.getItem("\(clientId).address")
         let addresses: [PortalNamespace: String?] = [
           .eip155: address,
         ]
@@ -141,7 +144,7 @@ public class PortalKeychain {
         self.logger.debug("PortalKeychain.getAddresses() - Attempting to read from even older legacy address data...")
         // Handle even older legacy backward compatinility with deprecated Keychain data
         // - Before clientId was added to the Keychain key
-        let address = try self.getItem(self.deprecatedAddressKey)
+        let address = try keychain.getItem(self.deprecatedAddressKey)
         let addresses: [PortalNamespace: String?] = [
           .eip155: address,
         ]
@@ -150,7 +153,7 @@ public class PortalKeychain {
     }
   }
 
-  private func getMetadata() async throws -> PortalKeychainClientMetadata {
+  public func getMetadata() async throws -> PortalKeychainClientMetadata {
     guard let client = try await client else {
       self.logger.error("PortalKeychain.getMetadata() - Client not found")
       throw KeychainError.clientNotFound
@@ -197,12 +200,12 @@ public class PortalKeychain {
 
       do {
         // Before multi-wallet support was added
-        let signingShareValue = try getItem("\(clientId).share")
+        let signingShareValue = try keychain.getItem("\(clientId).share")
         return signingShareValue
       } catch KeychainError.itemNotFound(_) {
         // Handle even older legacy Keychain data
         // - Before clientId was added to the Keychain key
-        let share = try self.getItem(self.deprecatedShareKey)
+        let share = try keychain.getItem(self.deprecatedShareKey)
         return share
       }
     }
@@ -217,7 +220,7 @@ public class PortalKeychain {
     let clientId = client.id
 
     do {
-      let value = try getItem("\(clientId).\(sharesKey)")
+      let value = try keychain.getItem("\(clientId).\(self.sharesKey)")
 
       guard let data = value.data(using: .utf8) else {
         self.logger.error("PortalKeychain.getShares() - Unable to decode keychain data")
@@ -230,10 +233,8 @@ public class PortalKeychain {
       self.logger.debug("PortalKeychain.getShares() - Attempting to read from legacy share data...")
       // Handle backward compatibility with legacy Keychain data
       do {
-        print("🚨 Reading from '\(clientId).share'")
-
         // Before multi-wallet support was added
-        let signingShareValue = try getItem("\(clientId).share")
+        let signingShareValue = try keychain.getItem("\(clientId).share")
         guard let data = signingShareValue.data(using: .utf8) else {
           self.logger.error("PortalKeychain.getShares() - Unable to decode legacy keychain data")
           throw KeychainError.unableToEncodeKeychainData
@@ -250,7 +251,7 @@ public class PortalKeychain {
         self.logger.debug("PortalKeychain.getShares() - Attempting to read from even older legacy share data...")
         // Handle even older legacy Keychain data
         // - Before clientId was added to the Keychain key
-        let share = try self.getItem(self.deprecatedShareKey)
+        let share = try keychain.getItem(self.deprecatedShareKey)
         let generateResponse: PortalMpcGenerateResponse = [
           "SECP256K1": PortalMpcGeneratedShare(
             id: "",
@@ -336,7 +337,7 @@ public class PortalKeychain {
       throw KeychainError.unableToEncodeKeychainData
     }
 
-    try self.updateItem("\(clientId).\(self.metadataKey)", withValue: value)
+    try self.keychain.updateItem("\(clientId).\(self.metadataKey)", value: value)
   }
 
   public func setShares(_ withData: [String: PortalMpcGeneratedShare]) async throws {
@@ -351,7 +352,7 @@ public class PortalKeychain {
       throw KeychainError.unableToEncodeKeychainData
     }
 
-    try self.updateItem("\(clientId).\(self.sharesKey)", withValue: value)
+    try self.keychain.updateItem("\(clientId).\(self.sharesKey)", value: value)
   }
 
   /*******************************************
@@ -359,114 +360,19 @@ public class PortalKeychain {
    *******************************************/
 
   private func deleteItem(_ key: String) throws {
-    let query: [String: AnyObject] = [
-      kSecAttrService as String: "PortalMpc.\(key)" as AnyObject,
-      kSecAttrAccount as String: key as AnyObject,
-      kSecClass as String: kSecClassGenericPassword,
-    ]
-
-    let status = SecItemDelete(query as CFDictionary)
-    guard status == errSecSuccess || status == errSecItemNotFound else {
-      self.logger.error("PortalKeychain.updateItem() - Unhandled error: \(status)")
-      throw KeychainError.unhandledError(status: status)
-    }
+    try self.keychain.deleteItem(key)
   }
 
-  private func getItem(_ item: String) throws -> String {
-    // Construct the query to retrieve the keychain item.
-    let query: [String: Any] = [
-      kSecClass as String: kSecClassGenericPassword,
-      kSecAttrAccount as String: item,
-      kSecAttrService as String: "\(self.baseKey).\(item)",
-      kSecMatchLimit as String: kSecMatchLimitOne,
-      kSecReturnData as String: true,
-    ]
-
-    // Try to retrieve the keychain item that matches the query.
-    var keychainItem: CFTypeRef?
-    let status = SecItemCopyMatching(query as CFDictionary, &keychainItem)
-
-    // Throw if the status is not successful.
-    guard status != errSecItemNotFound else { throw KeychainError.itemNotFound(item: item) }
-    guard status == errSecSuccess else { throw KeychainError.unhandledError(status: status) }
-
-    // Attempt to format the keychain item as a string.
-    guard let itemData = keychainItem as? Data,
-          let itemString = String(data: itemData, encoding: String.Encoding.utf8)
-    else {
-      self.logger.error("PortalKeychain.getItem() - Unexpected item: \(item)")
-      throw KeychainError.unexpectedItemData(item: item)
-    }
-
-    return itemString
+  private func getItem(_ key: String) throws -> String {
+    return try self.keychain.getItem(key)
   }
 
   private func setItem(_ key: String, withValue: String) throws {
-    // Construct the query to set the keychain item.
-    let query: [String: AnyObject] = [
-      kSecAttrService as String: "\(self.baseKey).\(key)" as AnyObject,
-      kSecAttrAccount as String: key as AnyObject,
-      kSecClass as String: kSecClassGenericPassword,
-      kSecAttrAccessible as String: kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly as AnyObject,
-      kSecValueData as String: withValue.data(using: String.Encoding.utf8) as AnyObject,
-    ]
-
-    // Try to set the keychain item that matches the query.
-    let status = SecItemAdd(query as CFDictionary, nil)
-
-    // Throw if the status is not successful.
-    if status == errSecDuplicateItem {
-      try self.updateItem(key, withValue: withValue)
-    }
-
-    guard status != errSecNotAvailable else {
-      self.logger.error("PortalKeychain.updateItem() - Keychain unavailable: \(status)")
-      throw KeychainError.keychainUnavailableOrNoPasscode(status: status)
-    }
-    guard status == errSecSuccess else {
-      self.logger.error("PortalKeychain.updateItem() - Unhandled error: \(status)")
-      throw KeychainError.unhandledError(status: status)
-    }
+    try self.keychain.addItem(key, value: withValue)
   }
 
   private func updateItem(_ key: String, withValue: String) throws {
-    do {
-      // Construct the query to update the keychain item.
-      let query: [String: AnyObject] = [
-        kSecAttrService as String: "\(self.baseKey).\(key)" as AnyObject,
-        kSecAttrAccount as String: key as AnyObject,
-        kSecClass as String: kSecClassGenericPassword,
-      ]
-
-      // Construct the attributes to update the keychain item.
-      let attributes: [String: AnyObject] = [
-        kSecAttrAccessible as String: kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly as AnyObject,
-        kSecValueData as String: withValue.data(using: String.Encoding.utf8) as AnyObject,
-      ]
-
-      // Try to update the keychain item that matches the query.
-      let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
-
-      // Throw if the status is not successful.
-      guard status != errSecItemNotFound else {
-        throw KeychainError.itemNotFound(item: key)
-      }
-      guard status != errSecNotAvailable else {
-        self.logger.error("PortalKeychain.updateItem() - Keychain unavailable: \(status)")
-        throw KeychainError.keychainUnavailableOrNoPasscode(status: status)
-      }
-      guard status == errSecSuccess else {
-        self.logger.error("PortalKeychain.updateItem() - Unhandled error: \(status)")
-        throw KeychainError.unhandledError(status: status)
-      }
-    } catch {
-      if case KeychainError.itemNotFound = error {
-        self.logger.debug("PortalKeychain.updateItem() - No existing item. Attempting to set item: \(key)")
-        try self.setItem(key, withValue: withValue)
-      } else {
-        throw error
-      }
-    }
+    try self.keychain.updateItem(key, value: withValue)
   }
 
   /*******************************************

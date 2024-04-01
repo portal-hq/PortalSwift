@@ -9,12 +9,57 @@
 import Foundation
 
 public class MockPortalKeychain: PortalKeychain {
+  override public func deleteShares() async throws {}
+
+  override public func getAddress(_ forChainId: String) async throws -> String? {
+    if forChainId.starts(with: "eip155") {
+      return MockConstants.mockEip155Address
+    } else if forChainId.starts(with: "solana") {
+      return MockConstants.mockSolanaAddress
+    }
+
+    throw PortalKeychain.KeychainError.unsupportedNamespace(forChainId)
+  }
+
+  override public func getAddresses() async throws -> [PortalNamespace: String?] {
+    return [
+      .eip155: MockConstants.mockEip155Address,
+      .solana: MockConstants.mockSolanaAddress,
+    ]
+  }
+
+  override public func getMetadata() async throws -> PortalKeychainClientMetadata {
+    return MockConstants.mockKeychainClientMetadata
+  }
+
+  override public func getShare(_ forChainId: String) async throws -> String {
+    if forChainId.starts(with: "eip155") {
+      return try MockConstants.mockMpcShareString
+    } else if forChainId.starts(with: "solana") {
+      return try MockConstants.mockMpcShareString
+    }
+
+    throw PortalKeychain.KeychainError.unsupportedNamespace(forChainId)
+  }
+
+  override public func getShares() async throws -> PortalKeychainClientShares {
+    return try await MockConstants.mockGenerateResponse
+  }
+
+  override public func loadMetadata() async throws {}
+
+  override public func setMetadata(_: PortalKeychainClientMetadata) async throws {}
+
+  override public func setShares(_: [String: PortalMpcGeneratedShare]) async throws {}
+
+  // Deprecated functions
+
   override public func getAddress() throws -> String {
-    return mockAddress
+    return MockConstants.mockEip155Address
   }
 
   override public func getSigningShare() throws -> String {
-    return mockSigningShare
+    return try MockConstants.mockMpcShareString
   }
 
   override public func deleteAddress() throws {}

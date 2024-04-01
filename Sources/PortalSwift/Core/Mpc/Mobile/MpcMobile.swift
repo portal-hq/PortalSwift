@@ -9,60 +9,187 @@ import Foundation
 import Mpc
 
 class MobileWrapper: Mobile {
-  func MobileGenerate(_ apiKey: String, _ host: String, _ apiHost: String, _ metadata: String) -> String {
-    return Mpc.MobileGenerate(apiKey, host, apiHost, metadata)
+  func MobileGenerate(
+    _ apiKey: String,
+    _ host: String,
+    _ apiHost: String,
+    _ metadata: String
+  ) async -> String {
+    let result = await withCheckedContinuation { continuation in
+      let generateResponse = Mpc.MobileGenerate(apiKey, host, apiHost, metadata)
+      continuation.resume(returning: generateResponse)
+    }
+
+    return result
   }
 
-  func MobileGenerateEd25519(_ apiKey: String, _ host: String, _ apiHost: String, _ metadata: String) -> String {
-    return Mpc.MobileGenerateEd25519(apiKey, host, apiHost, metadata)
+  func MobileGenerateEd25519(
+    _ apiKey: String,
+    _ host: String,
+    _ apiHost: String,
+    _ metadata: String
+  ) async -> String {
+    let result = await withCheckedContinuation { continuation in
+      let generateResponse = Mpc.MobileGenerateEd25519(apiKey, host, apiHost, metadata)
+      continuation.resume(returning: generateResponse)
+    }
+
+    return result
   }
 
-  func MobileGenerateSecp256k1(_ apiKey: String, _ host: String, _ apiHost: String, _ metadata: String) -> String {
-    return Mpc.MobileGenerateSecp256k1(apiKey, host, apiHost, metadata)
+  func MobileGenerateSecp256k1(
+    _ apiKey: String,
+    _ host: String,
+    _ apiHost: String,
+    _ metadata: String
+  ) async -> String {
+    let result = await withCheckedContinuation { continuation in
+      let generateResponse = Mpc.MobileGenerateSecp256k1(apiKey, host, apiHost, metadata)
+      continuation.resume(returning: generateResponse)
+    }
+
+    return result
   }
 
-  func MobileBackup(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String {
-    return Mpc.MobileBackup(apiKey, host, signingShare, apiHost, metadata)
+  func MobileBackup(
+    _ apiKey: String,
+    _ host: String,
+    _ signingShare: String,
+    _ apiHost: String,
+    _ metadata: String
+  ) async -> String {
+    let result = await withCheckedContinuation { continuation in
+      let backupResponse = Mpc.MobileBackup(apiKey, host, signingShare, apiHost, metadata)
+      continuation.resume(returning: backupResponse)
+    }
+
+    return result
   }
 
-  func MobileBackupEd25519(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String {
-    return Mpc.MobileBackupEd25519(apiKey, host, signingShare, apiHost, metadata)
+  func MobileBackupEd25519(
+    _ apiKey: String,
+    _ host: String,
+    _ signingShare: String,
+    _ apiHost: String,
+    _ metadata: String
+  ) async -> String {
+    let result = await withCheckedContinuation { continuation in
+      let backupResponse = Mpc.MobileBackupEd25519(apiKey, host, signingShare, apiHost, metadata)
+      continuation.resume(returning: backupResponse)
+    }
+
+    return result
   }
 
-  func MobileBackupSecp256k1(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String {
-    return Mpc.MobileBackupSecp256k1(apiKey, host, signingShare, apiHost, metadata)
+  func MobileBackupSecp256k1(
+    _ apiKey: String,
+    _ host: String,
+    _ signingShare: String,
+    _ apiHost: String,
+    _ metadata: String
+  ) async -> String {
+    let result = await withCheckedContinuation { continuation in
+      let backupResponse = Mpc.MobileBackupSecp256k1(apiKey, host, signingShare, apiHost, metadata)
+      continuation.resume(returning: backupResponse)
+    }
+
+    return result
   }
 
-  func MobileRecoverBackup(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String {
-    return Mpc.MobileRecoverBackup(apiKey, host, signingShare, apiHost, metadata)
+  func MobileRecoverBackup(
+    _ apiKey: String,
+    _ host: String,
+    _ signingShare: String,
+    _ apiHost: String,
+    _ metadata: String
+  ) async -> String {
+    let result = await withCheckedContinuation { continuation in
+      let recoverResponse = Mpc.MobileRecoverBackup(apiKey, host, signingShare, apiHost, metadata)
+      continuation.resume(returning: recoverResponse)
+    }
+
+    return result
   }
 
-  func MobileRecoverSigning(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String {
-    return Mpc.MobileRecoverSigning(apiKey, host, signingShare, apiHost, metadata)
+  func MobileRecoverSigning(
+    _ apiKey: String,
+    _ host: String,
+    _ signingShare: String,
+    _ apiHost: String,
+    _ metadata: String
+  ) async -> String {
+    let result = await withCheckedContinuation { continuation in
+      let recoverResponse = Mpc.MobileRecoverSigning(apiKey, host, signingShare, apiHost, metadata)
+      continuation.resume(returning: recoverResponse)
+    }
+
+    return result
   }
 
-  func MobileRecoverSigningEd25519(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String {
-    return Mpc.MobileRecoverSigningEd25519(apiKey, host, signingShare, apiHost, metadata)
+  func MobileRecoverSigningEd25519(
+    _ apiKey: String,
+    _ host: String,
+    _ signingShare: String,
+    _ apiHost: String,
+    _ metadata: String
+  ) async -> String {
+    let result = await withCheckedContinuation { continuation in
+      let recoverResponse = Mpc.MobileRecoverSigningEd25519(apiKey, host, signingShare, apiHost, metadata)
+      continuation.resume(returning: recoverResponse)
+    }
+
+    return result
   }
 
-  func MobileRecoverSigningSecp256k1(_ apiKey: String, _ host: String, _ signingShare: String, _ apiHost: String, _ metadata: String) -> String {
-    return Mpc.MobileRecoverSigningSecp256k1(apiKey, host, signingShare, apiHost, metadata)
+  func MobileRecoverSigningSecp256k1(
+    _ apiKey: String,
+    _ host: String,
+    _ signingShare: String,
+    _ apiHost: String,
+    _ metadata: String
+  ) async -> String {
+    let result = await withCheckedContinuation { continuation in
+      let recoverResponse = Mpc.MobileRecoverSigningSecp256k1(apiKey, host, signingShare, apiHost, metadata)
+      continuation.resume(returning: recoverResponse)
+    }
+
+    return result
   }
 
-  func MobileDecrypt(_ key: String, _ dkgCipherText: String) -> String {
-    return Mpc.MobileDecrypt(key, dkgCipherText)
+  func MobileDecrypt(_ key: String, _ dkgCipherText: String) async -> String {
+    let result = await withCheckedContinuation { continuation in
+      let decryptResponse = Mpc.MobileDecrypt(key, dkgCipherText)
+      continuation.resume(returning: decryptResponse)
+    }
+
+    return result
   }
 
-  func MobileDecryptWithPassword(_ key: String, _ dkgCipherText: String) -> String {
-    return Mpc.MobileDecryptWithPassword(key, dkgCipherText)
+  func MobileDecryptWithPassword(_ key: String, _ dkgCipherText: String) async -> String {
+    let result = await withCheckedContinuation { continuation in
+      let decryptResponse = Mpc.MobileDecryptWithPassword(key, dkgCipherText)
+      continuation.resume(returning: decryptResponse)
+    }
+
+    return result
   }
 
-  func MobileEncrypt(_ value: String) -> String {
-    return Mpc.MobileEncrypt(value)
+  func MobileEncrypt(_ value: String) async -> String {
+    let result = await withCheckedContinuation { continuation in
+      let encryptResponse = Mpc.MobileEncrypt(value)
+      continuation.resume(returning: encryptResponse)
+    }
+
+    return result
   }
 
-  func MobileEncryptWithPassword(data value: String, password: String) -> String {
-    return Mpc.MobileEncryptWithPassword(value, password)
+  func MobileEncryptWithPassword(data value: String, password: String) async -> String {
+    let result = await withCheckedContinuation { continuation in
+      let encryptResponse = Mpc.MobileEncryptWithPassword(value, password)
+      continuation.resume(returning: encryptResponse)
+    }
+
+    return result
   }
 
   func MobileGetMe(_ url: String, _ token: String) -> String {
@@ -73,11 +200,30 @@ class MobileWrapper: Mobile {
     return Mpc.MobileGetVersion()
   }
 
-  func MobileSign(_ apiKey: String?, _ host: String?, _ signingShare: String?, _ method: String?, _ params: String?, _ rpcURL: String?, _ chainId: String?, _ metadata: String?) -> String {
-    Mpc.MobileSign(apiKey, host, signingShare, method, params, rpcURL, chainId, metadata)
+  func MobileSign(
+    _ apiKey: String?,
+    _ host: String?,
+    _ signingShare: String?,
+    _ method: String?,
+    _ params: String?,
+    _ rpcURL: String?,
+    _ chainId: String?,
+    _ metadata: String?
+  ) async -> String {
+    let result = await withCheckedContinuation { continuation in
+      let signResponse = Mpc.MobileSign(apiKey, host, signingShare, method, params, rpcURL, chainId, metadata)
+      continuation.resume(returning: signResponse)
+    }
+
+    return result
   }
 
-  func MobileEjectWalletAndDiscontinueMPC(_ clientDkgCipherText: String, _ serverDkgCipherText: String) -> String {
-    return Mpc.MobileEjectWalletAndDiscontinueMPC(clientDkgCipherText, serverDkgCipherText)
+  func MobileEjectWalletAndDiscontinueMPC(_ clientDkgCipherText: String, _ serverDkgCipherText: String) async -> String {
+    let result = await withCheckedContinuation { continuation in
+      let ejectResponse = Mpc.MobileEjectWalletAndDiscontinueMPC(clientDkgCipherText, serverDkgCipherText)
+      continuation.resume(returning: ejectResponse)
+    }
+
+    return result
   }
 }

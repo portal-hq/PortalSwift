@@ -12,13 +12,7 @@
     "testTimeoutsEnabled" : true
   },
   "testTargets" : [
-    {
-      "target" : {
-        "containerPath" : "container:Pods.xcodeproj",
-        "identifier" : "136F98CDC49A4A849BA6EB68684BFE22",
-        "name" : "Unit Tests"
-      }
-    }
+
   ],
   "version" : 1
 }

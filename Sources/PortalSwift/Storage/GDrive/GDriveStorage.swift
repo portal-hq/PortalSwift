@@ -37,8 +37,10 @@ public class GDriveStorage: Storage, PortalStorage {
   private var logger = PortalLogger()
   private var separator: String = ""
 
-  public init(clientID: String? = nil, viewController: UIViewController? = nil) {
-    self.drive = GDriveClient(clientId: clientID, view: viewController)
+  public init(clientID: String? = nil, viewController: UIViewController? = nil, isMocked: Bool = false) {
+    self.drive = isMocked
+      ? MockGDriveClient(clientId: clientID, view: viewController)
+      : GDriveClient(clientId: clientID, view: viewController)
   }
 
   /*******************************************

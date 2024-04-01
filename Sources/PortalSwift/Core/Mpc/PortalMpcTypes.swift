@@ -5,15 +5,19 @@ public struct PortalMpcBackupResponse {
 
 public typealias PortalMpcGenerateResponse = [String: PortalMpcGeneratedShare]
 
-public struct PortalMpcGeneratedShare: Codable {
+public struct PortalMpcGeneratedShare: Codable, Equatable {
   public let id: String
   public let share: String
+
+  public static func == (lhs: PortalMpcGeneratedShare, rhs: PortalMpcGeneratedShare) -> Bool {
+    return lhs.id == rhs.id && lhs.share == rhs.share
+  }
 }
 
 /// A MPC share that includes a variable number of fields, depending on the MPC version being used
 /// GG18 shares will only contain: bks, pubkey, and share
 /// CGGMP shares will contain all fields except: pubkey.
-public struct MpcShare: Codable {
+public struct MpcShare: Codable, Equatable {
   public var allY: PartialPublicKey?
   public var backupSharePairId: String?
   public var bks: Berkhoffs?
@@ -26,6 +30,10 @@ public struct MpcShare: Codable {
   public var share: String
   public var signingSharePairId: String?
   public var ssid: String
+
+  public static func == (lhs: MpcShare, rhs: MpcShare) -> Bool {
+    return lhs.signingSharePairId == rhs.signingSharePairId && lhs.backupSharePairId == rhs.backupSharePairId && lhs.share == rhs.share
+  }
 }
 
 /// In the bks dictionary for an MPC share, Berkhoff is the value.

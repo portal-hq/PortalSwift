@@ -166,50 +166,53 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   }
 
   private func initWebView(address: String, persistSessionData: Bool = false, debugEnabled _: Bool = false) -> WKWebView {
-    {
-      // build WKUserScript
-      let scriptSource = self.injectPortal(
-        address: address,
-        apiKey: self.portal.apiKey,
-        chainId: String(self.portal.chainId ?? 11_155_111),
-        gatewayConfig: self.portal.rpcConfig["eip155:\(self.portal.chainId)"]!,
-        autoApprove: self.portal.autoApprove,
-        enableMpc: true
-      )
-      let script = WKUserScript(source: scriptSource, injectionTime: .atDocumentStart, forMainFrameOnly: true)
+    let gatewayConfig: [Int: String] = Dictionary(portal.rpcConfig.map { key, value in
+      let chainIdParts = key.split(separator: ":").map(String.init)
+      let newKey = Int(chainIdParts[1]) ?? 1
+      return (newKey, value)
+    }, uniquingKeysWith: { first, _ in first })
+    // build WKUserScript
+    let scriptSource = self.injectPortal(
+      address: address,
+      apiKey: self.portal.apiKey,
+      chainId: String(self.portal.chainId ?? 11_155_111),
+      gatewayConfig: gatewayConfig[self.portal.chainId ?? 111_155_111] ?? "",
+      autoApprove: self.portal.autoApprove,
+      enableMpc: true
+    )
+    let script = WKUserScript(source: scriptSource, injectionTime: .atDocumentStart, forMainFrameOnly: true)
 
-      // build the WekUserContentController
-      let contentController = WKUserContentController()
-      contentController.addUserScript(script)
-      contentController.add(self, name: "WebViewControllerMessageHandler")
+    // build the WekUserContentController
+    let contentController = WKUserContentController()
+    contentController.addUserScript(script)
+    contentController.add(self, name: "WebViewControllerMessageHandler")
 
-      // build the WKWebViewConfiguration
-      let configuration = WKWebViewConfiguration()
-      configuration.userContentController = contentController
+    // build the WKWebViewConfiguration
+    let configuration = WKWebViewConfiguration()
+    configuration.userContentController = contentController
 
-      // Allows for data persistence across sessions
-      if persistSessionData {
-        configuration.websiteDataStore = WKWebsiteDataStore.default()
-      }
+    // Allows for data persistence across sessions
+    if persistSessionData {
+      configuration.websiteDataStore = WKWebsiteDataStore.default()
+    }
 
-      let webView = WKWebView(frame: .zero, configuration: configuration)
-      webView.scrollView.bounces = false
-      webView.navigationDelegate = self
-      webView.uiDelegate = self
+    let webView = WKWebView(frame: .zero, configuration: configuration)
+    webView.scrollView.bounces = false
+    webView.navigationDelegate = self
+    webView.uiDelegate = self
 
-      // Enable debugging the webview in Safari.
-      // #if directive used  to start a conditional compilation block.
-      // @WARNING: Uncomment this section to enable debugging in Safari.
-//      #if canImport(UIKit)
-//        #if targetEnvironment(simulator)
-//          if #available(iOS 16.4, *) {
-//            webView.isInspectable = true
-//          }
-//        #endif
-//      #endif
+    // Enable debugging the webview in Safari.
+    // #if directive used  to start a conditional compilation block.
+    // @WARNING: Uncomment this section to enable debugging in Safari.
+    //      #if canImport(UIKit)
+    //        #if targetEnvironment(simulator)
+    //          if #available(iOS 16.4, *) {
+    //            webView.isInspectable = true
+    //          }
+    //        #endif
+    //      #endif
 
-      return webView
-    }()
+    return webView
   }
 
   private func evaluateJavascript(_ javascript: String, sourceURL: String? = nil, completion: ((_ error: String?) -> Void)? = nil) {
@@ -469,4 +472,8 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   private func injectPortal(address: String, apiKey: String, chainId: String, gatewayConfig: String, autoApprove _: Bool = false, enableMpc: Bool = false) -> String {
     "window.portalAddress = \"\(address)\";window.portalApiKey = \"\(apiKey)\";window.portalAutoApprove = true;window.portalChainId = \"\(chainId)\";window.portalGatewayConfig = \"\(gatewayConfig)\";window.portalMPCEnabled = \"\(String(enableMpc))\";\(PortalInjectionScript.SCRIPT as Any)true;"
   }
+}
+
+enum PortalWebViewError: Error {
+  case unexpectedError(String)
 }

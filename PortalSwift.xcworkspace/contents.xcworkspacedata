@@ -14,9 +14,6 @@
       location = "container:"
       name = "Packages">
       <FileRef
-         location = "group:Unit Tests.xctestplan">
-      </FileRef>
-      <FileRef
          location = "group:">
       </FileRef>
    </Group>

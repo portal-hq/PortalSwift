@@ -10,6 +10,8 @@ import Foundation
 
 public class MockHttpRequest: HttpRequest<String, Any> {
   override public func send(completion: @escaping (Result<String>) -> Void) {
-    completion(Result(data: mockBackupShare))
+    Task {
+      try completion(Result(data: await MockConstants.mockMpcShareString))
+    }
   }
 }

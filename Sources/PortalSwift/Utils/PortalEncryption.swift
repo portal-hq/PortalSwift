@@ -9,7 +9,7 @@ public enum PortalEncryption {
     let decryptedValue = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<String, Error>) in
       Task {
         do {
-          let decryptedValue = PortalEncryption.mobile.MobileDecrypt(withPrivateKey, value)
+          let decryptedValue = await PortalEncryption.mobile.MobileDecrypt(withPrivateKey, value)
           guard let decryptedData = decryptedValue.data(using: .utf8) else {
             continuation.resume(throwing: MpcError.unexpectedErrorOnDecrypt("Unable to parse decryption result."))
             return
@@ -40,7 +40,7 @@ public enum PortalEncryption {
     let decryptedValue = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<String, Error>) in
       Task {
         do {
-          let decryptedValue = PortalEncryption.mobile.MobileDecryptWithPassword(withPassword, value)
+          let decryptedValue = await PortalEncryption.mobile.MobileDecryptWithPassword(withPassword, value)
           guard let decryptedData = decryptedValue.data(using: .utf8) else {
             continuation.resume(throwing: MpcError.unexpectedErrorOnDecrypt("Unable to parse decryption result."))
             return
@@ -71,7 +71,7 @@ public enum PortalEncryption {
     let encryptData = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<EncryptData, Error>) in
       Task {
         do {
-          let encryptedValue = PortalEncryption.mobile.MobileEncrypt(value)
+          let encryptedValue = await PortalEncryption.mobile.MobileEncrypt(value)
           guard let encryptedData = encryptedValue.data(using: .utf8) else {
             continuation.resume(throwing: MpcError.unexpectedErrorOnDecrypt("Unable to parse encryption result."))
             return
@@ -102,7 +102,7 @@ public enum PortalEncryption {
     let encryptData = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<String, Error>) in
       Task {
         do {
-          let encryptedValue = PortalEncryption.mobile.MobileEncryptWithPassword(data: value, password: withPassword)
+          let encryptedValue = await PortalEncryption.mobile.MobileEncryptWithPassword(data: value, password: withPassword)
           guard let encryptedData = encryptedValue.data(using: .utf8) else {
             continuation.resume(throwing: MpcError.unexpectedErrorOnDecrypt("Unable to parse encryption result."))
             return

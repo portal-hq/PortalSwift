@@ -70,17 +70,15 @@ public class PortalMpcSigner {
     mpcMetadata.curve = usingBlockchain.curve
     mpcMetadata.chainId = chainId
 
-    guard let address = try await keychain.getAddress(chainId) else {
-      throw PortalKeychain.KeychainError.noAddressesFound
-    }
     let signingShare = try await keychain.getShare(chainId)
     let json = try JSONEncoder().encode(withPayload.params)
     guard let params = String(data: json, encoding: .utf8) else {
       throw PortalMpcSignerError.unableToEncodeParams
     }
-
     let mpcMetadataString = try mpcMetadata.jsonString()
-    let clientSignResult = self.binary.MobileSign(
+
+    print("🚧 Starting MPC sign...")
+    let clientSignResult = await self.binary.MobileSign(
       self.apiKey,
       self.mpcUrl,
       signingShare,
@@ -91,6 +89,7 @@ public class PortalMpcSigner {
       mpcMetadataString
     )
 
+    print("✅ Finished MPC sign...")
     // Attempt to decode the sign result.
     guard let data = clientSignResult.data(using: .utf8) else {
       throw PortalMpcSignerError.unableToParseSignResponse

@@ -31,10 +31,15 @@ public class ICloudStorage: Storage, PortalStorage {
   /// The key used to store the private key in iCloud.
   public var key: String = ""
 
+  private let isMocked: Bool
   private let isSimulator = TARGET_OS_SIMULATOR != 0
+  private let storage: PortalKeyValueStore
 
   /// Initializes a new ICloudStorage instance.
-  override public init() {}
+  public init(isMocked: Bool = false) {
+    self.isMocked = isMocked
+    self.storage = isMocked ? MockPortalKeyValueStore() : PortalKeyValueStore()
+  }
 
   /*******************************************
    * Public functions
@@ -42,35 +47,24 @@ public class ICloudStorage: Storage, PortalStorage {
 
   public func delete() async throws -> Bool {
     let key = try await getKey()
-
-    // Delete from iCloud.
-    NSUbiquitousKeyValueStore.default.synchronize()
-    NSUbiquitousKeyValueStore.default.removeObject(forKey: key)
-    NSUbiquitousKeyValueStore.default.synchronize()
-
-    return true
+    return self.storage.delete(key)
   }
 
   public func read() async throws -> String {
     let key = try await getKey()
-
-    // Read from iCloud.
-    NSUbiquitousKeyValueStore.default.synchronize()
-    return NSUbiquitousKeyValueStore.default.string(forKey: key) ?? ""
+    return self.storage.read(key)
   }
 
   public func write(_ value: String) async throws -> Bool {
     let key = try await getKey()
-
-    // Write to iCloud.
-    NSUbiquitousKeyValueStore.default.synchronize()
-    NSUbiquitousKeyValueStore.default.set(value, forKey: key)
-    NSUbiquitousKeyValueStore.default.synchronize()
-
-    return true
+    return self.storage.write(key, value: value)
   }
 
   public func validateOperations() async throws -> Bool {
+    if self.isMocked {
+      return true
+    }
+
     let testKey = "portal_test"
     let testValue = "test_value"
 
@@ -139,7 +133,7 @@ public class ICloudStorage: Storage, PortalStorage {
     NSUbiquitousKeyValueStore.default.synchronize()
   }
 
-  private static func hash(_ str: String) -> String {
+  public static func hash(_ str: String) -> String {
     let data = str.data(using: .utf8)!
     var digest = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
     data.withUnsafeBytes {

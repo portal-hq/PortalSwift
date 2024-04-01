@@ -92,7 +92,7 @@ public class PortalProvider {
     let registeredEventHandlers = self.events[event]
 
     if registeredEventHandlers == nil {
-      self.logger.info(String(format: "PortalProvider.emit() - Could not find any bindings for event '%@'. Ignoring...", event))
+      self.logger.info(String(format: "PortalProvider.emit() - ⚠️ Could not find any bindings for event '%@'. Ignoring...", event))
       return self
     } else {
       // Invoke all registered handlers for the event
@@ -101,7 +101,7 @@ public class PortalProvider {
           try registeredEventHandler.handler(data)
         }
       } catch {
-        self.logger.info("PortalProvider.emit() - Error invoking registered handlers: \(error.localizedDescription)")
+        self.logger.info("PortalProvider.emit() - 🚨 Error invoking registered handlers: \(error.localizedDescription)")
       }
 
       // Remove once instances
@@ -172,7 +172,12 @@ public class PortalProvider {
   ///   - withMethod: A member of the PortalRequestMethod enum
   ///   - andParams: An array of parameters for the request (either RPC parameters or a transaction if signing)
   /// - Returns: PortalProviderResult
-  public func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [AnyEncodable]?) async throws -> PortalProviderResult {
+  public func request(
+    _ chainId: String,
+    withMethod: PortalRequestMethod,
+    andParams: [AnyEncodable]? = [],
+    connect: PortalConnect? = nil
+  ) async throws -> PortalProviderResult {
     let blockchain = try PortalBlockchain(fromChainId: chainId)
     guard blockchain.isMethodSupported(withMethod) else {
       throw PortalProviderError.unsupportedRequestMethod(withMethod.rawValue)
@@ -194,10 +199,13 @@ public class PortalProvider {
     case .wallet_switchEthereumChain:
       return PortalProviderResult(id: id, result: "null")
     default:
+      print("⚠️ Checking request for method: \(withMethod.rawValue)")
       if blockchain.shouldMethodBeSigned(withMethod) {
+        print("⚠️ Dispatching request to signer for method: \(withMethod.rawValue)")
         let payload = PortalProviderRequestWithId(id: id, method: withMethod, params: andParams)
-        return try await self.handleSignRequest(chainId, withPayload: payload, forId: id, onBlockchain: blockchain)
+        return try await self.handleSignRequest(chainId, withPayload: payload, forId: id, onBlockchain: blockchain, connect: connect)
       } else {
+        print("⚠️ Dispatching request to RPC for method: \(withMethod.rawValue)")
         return try await self.handleRpcRequest(chainId, withMethod: withMethod, andParams: andParams, forId: id)
       }
     }
@@ -209,7 +217,12 @@ public class PortalProvider {
   ///   - withMethod: The string literal of your RPC method
   ///   - andParams: An array of parameters for the request (either RPC parameters or a transaction if signing)
   /// - Returns: PortalProviderResult
-  public func request(_ chainId: String, withMethod: String, andParams: [AnyEncodable]?) async throws -> PortalProviderResult {
+  public func request(
+    _ chainId: String,
+    withMethod: String,
+    andParams: [AnyEncodable]? = [],
+    connect _: PortalConnect? = nil
+  ) async throws -> PortalProviderResult {
     guard let method = PortalRequestMethod(rawValue: withMethod) else {
       throw PortalProviderError.unsupportedRequestMethod("Received a request with unsupported method: \(withMethod)")
     }
@@ -228,12 +241,15 @@ public class PortalProvider {
     }
   }
 
-  private func getApproval(_: String, forPayload: PortalProviderRequestWithId) async throws -> Bool {
+  private func getApproval(_: String, forPayload: PortalProviderRequestWithId, connect: PortalConnect? = nil) async throws -> Bool {
     if self.autoApprove {
       return true
     }
+    if connect == nil && self.events[Events.PortalSigningRequested.rawValue] == nil {
+      throw ProviderSigningError.noBindingForSigningApprovalFound
+    }
 
-    return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Bool, Error>) in
+    return try await withCheckedThrowingContinuation { [self] (continuation: CheckedContinuation<Bool, Error>) in
       _ = self.on(event: Events.PortalSigningApproved.rawValue, callback: { approved in
         if approved is PortalProviderRequestWithId {
           let approvedPayload = approved as! PortalProviderRequestWithId
@@ -257,22 +273,7 @@ public class PortalProvider {
         }
       })
 
-      // Execute event handlers
-      let handlers = self.events[Events.PortalSigningRequested.rawValue]
-
-      // Fail if there are no handlers
-      if handlers == nil || handlers!.isEmpty {
-        continuation.resume(returning: false)
-      }
-
-      do {
-        // Loop over the event handlers
-        for eventHandler in handlers! {
-          try eventHandler.handler(forPayload)
-        }
-      } catch {
-        continuation.resume(throwing: error)
-      }
+      _ = self.emit(event: Events.PortalSigningRequested.rawValue, data: forPayload)
     }
   }
 
@@ -355,30 +356,23 @@ public class PortalProvider {
     _ onChainId: String,
     withPayload: PortalProviderRequestWithId,
     forId _: String,
-    onBlockchain: PortalBlockchain
+    onBlockchain: PortalBlockchain,
+    connect: PortalConnect? = nil
   ) async throws -> PortalProviderResult {
-    guard try await self.getApproval(onChainId, forPayload: withPayload) else {
+    guard try await self.getApproval(onChainId, forPayload: withPayload, connect: connect) else {
       throw ProviderSigningError.userDeclinedApproval
     }
 
     let rpcUrl = try getRpcUrl(onChainId)
     let payload = PortalSignRequest(method: withPayload.method, params: withPayload.params)
 
-    let signature = try await withCheckedThrowingContinuation { continuation in
-      Task {
-        do {
-          let result = try await self.signer.sign(
-            onChainId,
-            withPayload: payload,
-            andRpcUrl: rpcUrl,
-            usingBlockchain: onBlockchain
-          )
-          continuation.resume(returning: result)
-        } catch {
-          continuation.resume(throwing: error)
-        }
-      }
-    }
+    print("🚨 Requesting signature from signer...")
+    let signature = try await self.signer.sign(
+      onChainId,
+      withPayload: payload,
+      andRpcUrl: rpcUrl,
+      usingBlockchain: onBlockchain
+    )
 
     return PortalProviderResult(id: withPayload.id, result: signature)
   }
