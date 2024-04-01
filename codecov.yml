@@ -8,4 +8,5 @@ ignore:
   - "main/Pods.xcworkspace"
   - "main/PortalSwift.xcworkspace"
   - "main/Tests"
-  - "main/*Types.swift"
+  - "*Types.swift"
+  - "*.xcframework"
