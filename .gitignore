@@ -40,4 +40,4 @@ GoogleService-info.plist
 Secrets.xcconfig
 
 .build/
-.swiftpm/
+xcuserdata/
