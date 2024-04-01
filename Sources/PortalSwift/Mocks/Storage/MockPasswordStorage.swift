@@ -7,7 +7,9 @@
 
 import Foundation
 
-class MockPasswordStorage: PasswordStorage {
+public class MockPasswordStorage: PasswordStorage {
+  public init() {}
+
   // Async decrypt implementation
   override public func decrypt(_: String, withKey _: String) async throws -> String {
     return try MockConstants.mockMpcShareString
