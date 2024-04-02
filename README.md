@@ -68,14 +68,19 @@ let (ethereum, solana) = try await portal.createWallet() { createStatus in
 }
 
 print("Ethereum Address: ", ethereum)
-print("Solana Address: ", solana
+print("Solana Address: ", solana)
 ```
 
 For more info on creating a wallet, see the [Portal Docs](https://docs.portalhq.io/sdk/native-ios/creating-a-wallet).
 
 ## Signing an Ethereum transaction
 
-To send a transaction using your new `Portal` instance, call the `request(method, params)` method.
+To send a transaction using your new `Portal` instance, call the `request(chainId, method, params)` method.
+
+- `chainId` is the CAIP-2 Blockchain ID of the network you'd like to send the transaction on
+- `withMethod` is the method you'd like to call on the network. This should be a member of the `PortalRequestMethods` enum
+- `andParams` is an array of parameters required for the method you're calling
+  - For transactions, this should be an array of dictionaries containing the transaction details
 
 ```swift
 let transaction: [String: String] = [
@@ -84,7 +89,7 @@ let transaction: [String: String] = [
   "value": "HEX_ENCODED_VALUE_IN_WEI",
 ]
 
-let transactionHash = try await portal.request(.eth_sendTransaction, withParams: [transaction])
+let signature = try await portal.request("eip155:11155111", withMethod: .eth_signTransaction, andParams: [transaction])
 ```
 
 For more info on signing a transaction, see the [Portal Docs](https://docs.portalhq.io/sdk/native-ios/signing-a-transaction).
@@ -100,7 +105,7 @@ let transaction: [String: String] = [
   "value": "HEX_ENCODED_VALUE_IN_WEI",
 ]
 
-let transactionHash = try await portal.request(.eth_signTransaction, [transaction])
+let transactionHash = try await portal.request("eip155:11155111", withMethod: .eth_sendTransaction, andParams: [transaction])
 ```
 
 # Backing up your wallet
