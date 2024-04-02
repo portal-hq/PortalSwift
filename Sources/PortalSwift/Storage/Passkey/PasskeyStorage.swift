@@ -247,49 +247,6 @@ public class PasskeyStorage: Storage, PortalStorage {
 
     throw URLError(.badURL)
   }
-
-  /*******************************************
-   * Deprecated functions
-   *******************************************/
-
-  /// Deletes an item in storage.
-  /// - Parameter completion: Resolves as a Result<Bool>.
-  /// - Returns: Void
-  @available(*, deprecated, renamed: "delete", message: "Please use the async/await implementation of delete().")
-  override public func delete(completion: @escaping (Result<Bool>) -> Void) {
-    completion(Result(error: StorageError.mustExtendStorageClass))
-  }
-
-  /// Reads an item from storage.
-  /// - Parameter completion: Resolves as a Result<String>, which includes the value from storage for the specified key.
-  /// - Returns: Void
-  @available(*, deprecated, renamed: "read", message: "Please use the async/await implementation of read().")
-  override public func read(completion: @escaping (Result<String>) -> Void) {
-    async {
-      do {
-        let value = try await self.read()
-        completion(Result(data: value))
-      } catch {
-        completion(Result(error: error))
-      }
-    }
-  }
-
-  /// Writes an item to storage.
-  /// Writes an item to storage.
-  /// - Parameter completion: Resolves as a Result<Bool>.
-  /// - Returns: Void
-  @available(*, deprecated, renamed: "write", message: "Please use the async/await implementation of write().")
-  override public func write(privateKey: String, completion: @escaping (Result<Bool>) -> Void) {
-    async {
-      do {
-        let success = try await self.write(privateKey)
-        completion(Result(data: success))
-      } catch {
-        completion(Result(error: error))
-      }
-    }
-  }
 }
 
 public enum PasskeyStorageError: Error {
