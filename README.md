@@ -56,7 +56,7 @@ let portal = try Portal(
 
 For more info on the basic usage of the `Portal` class and its initialization parameters, see the [Portal Docs](https://docs.portalhq.io/sdk/native-ios).
 
-## Creating a wallet
+# Creating a wallet
 
 To create a wallet using your new `Portal` instance, call the `createWallet` method. This function returns a tuple `(ethereum, solana)` containing the string literals for the addresses of your newly created wallets.
 
