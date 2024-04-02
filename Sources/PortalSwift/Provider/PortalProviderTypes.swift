@@ -57,14 +57,14 @@ public struct PortalProviderRpcBoolResponse: Codable {
   public var error: PortalProviderRpcResponseError?
 }
 
-public struct PortalProviderRpcResponse: Codable {
+public struct PortalProviderRpcResponse: Codable, Equatable {
   public var jsonrpc: String
   public var id: Int?
   public var result: String?
   public var error: PortalProviderRpcResponseError?
 }
 
-public struct PortalProviderRpcResponseError: Codable {
+public struct PortalProviderRpcResponseError: Codable, Equatable {
   public var code: Int
   public var message: String
 }

@@ -18,7 +18,7 @@ public class PortalProvider {
   }
 
   public let apiKey: String
-  public let autoApprove: Bool
+  public var autoApprove: Bool
   public var chainId: Chains.RawValue?
   public var delegate: PortalProviderDelegate?
   public var gatewayUrl: String?
@@ -376,8 +376,6 @@ public class PortalProvider {
     let rpcUrl = try getRpcUrl(onChainId)
     let payload = PortalSignRequest(method: withPayload.method, params: withPayload.params)
 
-    print("🚨 Requesting signature from signer...")
-    print("\(payload.method), \(payload.params)")
     let signature = try await self.signer.sign(
       onChainId,
       withPayload: payload,
@@ -509,137 +507,6 @@ public class PortalProvider {
       connect?.emit(event: Events.PortalConnectChainChanged.rawValue, data: value)
     }
     return provider
-  }
-
-  // ------ Private Functions
-  @available(*, deprecated, renamed: "getApproval", message: "Please use the async/await implementation of getApproval().")
-  private func getApproval(
-    payload: ETHRequestPayload,
-    completion: @escaping (Result<Bool>) -> Void,
-    connect: PortalConnect? = nil
-  ) {
-    if self.autoApprove {
-      return completion(Result(data: true))
-    } else if connect == nil, self.events[Events.PortalSigningRequested.rawValue] == nil {
-      return completion(Result(error: ProviderSigningError.noBindingForSigningApprovalFound))
-    }
-
-    // Bind to signing approval callbacks
-    _ = self.on(event: Events.PortalSigningApproved.rawValue, callback: { approved in
-      if approved is ETHRequestPayload {
-        let approvedPayload = approved as! ETHRequestPayload
-
-        if approvedPayload.id == payload.id, !self.processedRequestIds.contains(payload.id!) {
-          self.processedRequestIds.append(payload.id!)
-
-          // If the approved event is fired
-          return completion(Result(data: true))
-        }
-      }
-    }).on(event: Events.PortalSigningRejected.rawValue, callback: { approved in
-      if approved is ETHRequestPayload {
-        let rejectedPayload = approved as! ETHRequestPayload
-
-        if rejectedPayload.id == payload.id, !self.processedRequestIds.contains(payload.id!) {
-          self.processedRequestIds.append(payload.id!)
-          // If the rejected event is fired
-          return completion(Result(data: false))
-        }
-      }
-    })
-
-    if connect != nil {
-      connect!.emit(event: Events.PortalConnectSigningRequested.rawValue, data: payload)
-    } else {
-      // Execute event handlers
-      let handlers = self.events[Events.PortalSigningRequested.rawValue]
-
-      // Fail if there are no handlers
-      if handlers == nil || handlers!.isEmpty {
-        return completion(Result(data: false))
-      }
-
-      do {
-        // Loop over the event handlers
-        for eventHandler in handlers! {
-          try eventHandler.handler(payload)
-        }
-      } catch {
-        return completion(Result(error: error))
-      }
-    }
-  }
-
-  @available(*, deprecated, renamed: "getApproval", message: "Please use the async/await implementation of getApproval().")
-  private func getApproval(
-    payload: ETHTransactionPayload,
-    completion: @escaping (Result<Bool>) -> Void,
-    connect: PortalConnect? = nil
-  ) {
-    if self.autoApprove {
-      return completion(Result(data: true))
-    } else if connect == nil, self.events[Events.PortalSigningRequested.rawValue] == nil {
-      return completion(Result(error: ProviderSigningError.noBindingForSigningApprovalFound))
-    }
-
-    // Bind to signing approval callbacks
-    _ = self.on(event: Events.PortalSigningApproved.rawValue, callback: { approved in
-      if approved is ETHTransactionPayload {
-        let approvedPayload = approved as! ETHTransactionPayload
-
-        if approvedPayload.id == payload.id, !self.processedRequestIds.contains(payload.id!) {
-          self.processedRequestIds.append(payload.id!)
-          // If the approved event is fired
-          return completion(Result(data: true))
-        }
-      }
-    }).on(event: Events.PortalSigningRejected.rawValue, callback: { approved in
-      if approved is ETHTransactionPayload {
-        let rejectedPayload = approved as! ETHTransactionPayload
-
-        if rejectedPayload.id == payload.id, !self.processedRequestIds.contains(payload.id!) {
-          self.processedRequestIds.append(payload.id!)
-          // If the rejected event is fired
-          return completion(Result(data: false))
-        }
-      }
-    })
-
-    if connect != nil {
-      connect!.emit(event: Events.PortalConnectSigningRequested.rawValue, data: payload)
-    } else {
-      // Execute event handlers
-      let handlers = self.events[Events.PortalSigningRequested.rawValue]
-
-      // Fail if there are no handlers
-      if handlers == nil || handlers!.isEmpty {
-        return completion(Result(data: false))
-      }
-
-      do {
-        // Loop over the event handlers
-        for eventHandler in handlers! {
-          try eventHandler.handler(payload)
-        }
-      } catch {
-        return completion(Result(error: error))
-      }
-    }
-  }
-
-  /// Determines the appropriate Gateway URL to use for the current chainId
-  /// - Parameters:
-  ///   - gatewayConfig: A dictionary of chainIds (keys) and gateway URLs (values).
-  ///   - chainId: The chainId we should use, such as 11155111 (Sepolia).
-  /// - Throws: PortalArgumentError.noGatewayConfigForChain with the chainId.
-  /// - Returns: The URL to be used for Gateway requests.
-  @available(*, deprecated, renamed: "PortalProvider.getRpcUrl", message: "Please use the instance method getRpcUrl()")
-  static func getGatewayUrl(gatewayConfig: [Int: String], chainId: Int) throws -> String {
-    if gatewayConfig[chainId] == nil {
-      throw PortalArgumentError.noGatewayConfigForChain(chainId: chainId)
-    }
-
-    return gatewayConfig[chainId]!
   }
 }
 
