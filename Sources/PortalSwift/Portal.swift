@@ -13,17 +13,17 @@ import Mpc
 public class Portal {
   @available(*, deprecated, renamed: "addresses", message: "Please use the async getter for `addresses`")
   public var address: String? {
-    return self.keychain.legacyAddress
+    self.keychain.legacyAddress
   }
 
   public var addresses: [PortalNamespace: String?] {
     get async throws {
-      return try await self.keychain.getAddresses()
+      try await self.keychain.getAddresses()
     }
   }
 
   public var client: ClientResponse? {
-    get async throws { return try await self.api.client }
+    get async throws { try await self.api.client }
   }
 
   public var chainId: Int? {
@@ -363,7 +363,7 @@ public class Portal {
   }
 
   public func getAddresses() async throws -> [PortalNamespace: String?] {
-    return try await self.keychain.getAddresses()
+    try await self.keychain.getAddresses()
   }
 
   // Provider helpers
@@ -539,7 +539,7 @@ public class Portal {
   // Api helpers
 
   public func getBalances(_ chainId: String) async throws -> [FetchedBalance] {
-    return try await self.api.getBalances(chainId)
+    try await self.api.getBalances(chainId)
   }
 
   public func getBackupShares(_ chainId: String? = nil) async throws -> [FetchedSharePair] {
@@ -548,7 +548,7 @@ public class Portal {
     }
 
     // Handle specific chainId
-    if let chainId = chainId {
+    if let chainId {
       let namespaceString = chainId.split(separator: ":").map(String.init)[0]
       guard let namespace = PortalNamespace(rawValue: namespaceString) else {
         throw PortalClassError.unsupportedChainId(chainId)
@@ -559,14 +559,14 @@ public class Portal {
       let wallet = client.wallets.first { wallet in
         wallet.curve == curve
       }
-      guard let wallet = wallet else {
+      guard let wallet else {
         throw PortalClassError.noWalletFoundForChain(chainId)
       }
 
       return try await self.api.getSharePairs(.backup, walletId: wallet.id)
     }
 
-    let walletIds = client.wallets.map { $0.id }
+    let walletIds = client.wallets.map(\.id)
     var sharePairGroups: [[FetchedSharePair]] = []
     try await withThrowingTaskGroup(of: [FetchedSharePair].self) { group in
       for id in walletIds {
@@ -585,7 +585,7 @@ public class Portal {
   }
 
   public func getNFTs(_ chainId: String) async throws -> [FetchedNFT] {
-    return try await self.api.getNFTs(chainId)
+    try await self.api.getNFTs(chainId)
   }
 
   public func getSigningShares(_ chainId: String? = nil) async throws -> [FetchedSharePair] {
@@ -594,7 +594,7 @@ public class Portal {
     }
 
     // Handle specific chainId
-    if let chainId = chainId {
+    if let chainId {
       let namespaceString = chainId.split(separator: ":").map(String.init)[0]
       guard let namespace = PortalNamespace(rawValue: namespaceString) else {
         throw PortalClassError.unsupportedChainId(chainId)
@@ -605,14 +605,14 @@ public class Portal {
       let wallet = client.wallets.first { wallet in
         wallet.curve == curve
       }
-      guard let wallet = wallet else {
+      guard let wallet else {
         throw PortalClassError.noWalletFoundForChain(chainId)
       }
 
       return try await self.api.getSharePairs(.signing, walletId: wallet.id)
     }
 
-    let walletIds = client.wallets.map { $0.id }
+    let walletIds = client.wallets.map(\.id)
     var sharePairGroups: [[FetchedSharePair]] = []
     try await withThrowingTaskGroup(of: [FetchedSharePair].self) { group in
       for id in walletIds {
@@ -636,7 +636,7 @@ public class Portal {
     offset: Int? = nil,
     order: TransactionOrder? = nil
   ) async throws -> [FetchedTransaction] {
-    return try await self.api.getTransactions(chainId, limit: limit, offset: offset, order: order)
+    try await self.api.getTransactions(chainId, limit: limit, offset: offset, order: order)
   }
 
   public func simulateTransaction(_ chainId: String, from: Any) async throws -> SimulatedTransaction {
