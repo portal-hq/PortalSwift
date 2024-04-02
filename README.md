@@ -161,7 +161,7 @@ try await storageCallback()
 
 ### Passkey-specific requirements
 
-Before calling `backupWallet(.Passkey)`, you must set a Authentication Anchor using the `portal.setPasskeyAuthenticationAnchor(ancho)` method.
+Before calling `backupWallet(.Passkey)`, you must set a Authentication Anchor using the `portal.setPasskeyAuthenticationAnchor(anchor)` method.
 
 - `anchor` is an instance conforming to the `ASPresentationAnchor` protocol. This will be used to present the passkey authentication view controller.
 
