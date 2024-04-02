@@ -18,10 +18,36 @@ final class ICloudStorageTests: XCTestCase {
 
   override func tearDownWithError() throws {}
 
+  func testDecrypt() async throws {
+    let expectation = XCTestExpectation(description: "PasswordStorage.write(value)")
+    let mockGenerateResponse = try MockConstants.mockGenerateResponse
+    let decryptResult = try await storage.decrypt(MockConstants.mockCiphertext, withKey: MockConstants.mockEncryptionKey)
+    guard let decryptedData = decryptResult.data(using: .utf8) else {
+      throw PasswordStorageError.unableToEncodeData
+    }
+    let generateResponse = try JSONDecoder().decode(PortalMpcGenerateResponse.self, from: decryptedData)
+    XCTAssertEqual(generateResponse["ED25519"]?.id, mockGenerateResponse["ED25519"]?.id)
+    XCTAssertEqual(generateResponse["SECP256K1"]?.id, mockGenerateResponse["SECP256K1"]?.id)
+    expectation.fulfill()
+    await fulfillment(of: [expectation], timeout: 5.0)
+  }
+
   func testDelete() async throws {
     let expectation = XCTestExpectation(description: "ICloudStorage.delete()")
     let success = try await storage.delete()
     XCTAssertTrue(success)
+    expectation.fulfill()
+    await fulfillment(of: [expectation], timeout: 5.0)
+  }
+
+  func testEncrypt() async throws {
+    let expectation = XCTestExpectation(description: "PasswordStorage.write(value)")
+    let shareData = try JSONEncoder().encode(MockConstants.mockWalletSigningShare)
+    guard let shareString = String(data: shareData, encoding: .utf8) else {
+      throw PasswordStorageError.unableToEncodeData
+    }
+    let encryptedData = try await storage.encrypt(shareString)
+    XCTAssertEqual(encryptedData, MockConstants.mockEncryptData)
     expectation.fulfill()
     await fulfillment(of: [expectation], timeout: 5.0)
   }
