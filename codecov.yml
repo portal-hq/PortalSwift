@@ -6,7 +6,7 @@ ignore:
   - "**/PasskeyAuth.swift"
   - "**/PortalStorage.swift"
   - "**/Tests"
-  - "main/Sources/PortalSwift//Utils"
+  - "main/Sources/PortalSwift/Utils"
   - "**/*Types.swift"
   - "**/*.xcframework"
   - "**/*.framework"
