@@ -28,11 +28,10 @@ public enum MockConstants {
     .storingShare,
     .done,
   ]
-  public static let recoverProgressCallbacks: [MpcStatuses] = [
+  public static let recoverProgressCallbacks: Set<MpcStatuses> = [
     .readingShare,
     .decryptingShare,
     .parsingShare,
-    .recoveringSigningShare,
     .generatingShare,
     .parsingShare,
     .storingShare,
@@ -49,7 +48,8 @@ public enum MockConstants {
     id: "test-custodian-id",
     name: "test-custodian-name"
   )
-  public static let mockDecryptResult = "{\"data\":{\"plaintext\":\"signingShareObject\"},\"error\":{\"code\":0,\"message\":\"\"}}"
+  public static let mockDecryptResult = "{\"data\":{\"plaintext\":\"\(mockDecryptedShare)\"},\"error\":{\"code\":0,\"message\":\"\"}}"
+  public static let mockDecryptedShare = "test-decrypted-share"
   public static let mockED25519KeychainWallet = PortalKeychainClientMetadataWallet(
     id: mockMpcShareId,
     curve: .ED25519,
@@ -76,7 +76,7 @@ public enum MockConstants {
   ]
   public static let mockEjectResponse = "test-eject-response"
   public static let mockEncryptData = EncryptData(key: mockEncryptionKey, cipherText: mockCiphertext)
-  public static let mockEncryptResult = "{\"data\":{\"key\":\"someKey\",\"cipherText\":\"\(mockCiphertext)\"},\"error\":{\"code\":0,\"message\":\"\"}}"
+  public static let mockEncryptResult = "{\"data\":{\"key\":\"\(mockEncryptionKey)\",\"cipherText\":\"\(mockCiphertext)\"},\"error\":{\"code\":0,\"message\":\"\"}}"
 
   public static let mockEncryptWithPasswordResult = "{\"data\":{\"cipherText\":\"\(mockCiphertext)\"},\"error\":{\"code\":0,\"message\":\"\"}}"
   public static let mockEncryptionKey = "test-encryption-key"

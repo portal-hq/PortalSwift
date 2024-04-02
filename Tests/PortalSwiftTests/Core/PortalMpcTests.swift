@@ -43,6 +43,31 @@ final class PortalMpcTests: XCTestCase {
     await fulfillment(of: [expectation], timeout: 5.0)
   }
 
+  func testBackupCompletion() throws {
+    let expectation = XCTestExpectation(description: "Backup")
+    try mpc?.setPassword(MockConstants.mockEncryptionKey)
+    var encounteredStatuses: Set<MpcStatuses> = []
+    self.mpc?.backup(method: BackupMethods.Password.rawValue) { result in
+      guard result.error == nil else {
+        XCTFail("Failure: \(String(describing: result.error))")
+        expectation.fulfill()
+        return
+      }
+      guard let cipherText = result.data else {
+        XCTFail("Unable to parse cipherText")
+        expectation.fulfill()
+        return
+      }
+      XCTAssertEqual(cipherText, MockConstants.mockCiphertext)
+      expectation.fulfill()
+    } progress: { MpcStatus in
+      let status = MpcStatus.status
+      encounteredStatuses.insert(status)
+    }
+    wait(for: [expectation], timeout: 5.0)
+    XCTAssertEqual(encounteredStatuses, MockConstants.backupProgressCallbacks)
+  }
+
   func testEject() throws {}
 
   func testGenerate() async throws {
@@ -55,6 +80,29 @@ final class PortalMpcTests: XCTestCase {
     await fulfillment(of: [expectation], timeout: 5.0)
   }
 
+  func testGenerateCompletion() throws {
+    let expectation = XCTestExpectation(description: "Generate")
+    var encounteredStatuses: Set<MpcStatuses> = []
+    self.mpc?.generate { addressResult in
+      guard addressResult.error == nil else {
+        XCTFail("Failure: \(String(describing: addressResult.error))")
+        expectation.fulfill()
+        return
+      }
+      guard let address = addressResult.data else {
+        XCTFail("Unable to parse address")
+        return
+      }
+      XCTAssertEqual(address, MockConstants.mockEip155Address)
+      expectation.fulfill()
+    } progress: { MpcStatus in
+      let status = MpcStatus.status
+      encounteredStatuses.insert(status)
+    }
+    wait(for: [expectation], timeout: 5.0)
+    XCTAssertEqual(encounteredStatuses, MockConstants.generateProgressCallbacks)
+  }
+
   func testRecover() async throws {
     let expectation = XCTestExpectation(description: "PortalMpc.recover()")
     let recoverResponse = try await mpc?.generate()
@@ -63,5 +111,29 @@ final class PortalMpcTests: XCTestCase {
     XCTAssertEqual(recoverResponse?[.solana], MockConstants.mockSolanaAddress)
     expectation.fulfill()
     await fulfillment(of: [expectation], timeout: 5.0)
+  }
+
+  func testRecoverCompletion() throws {
+    let expectation = XCTestExpectation(description: "Recover")
+    try mpc?.setPassword(MockConstants.mockEncryptionKey)
+    var encounteredStatuses: Set<MpcStatuses> = Set()
+    self.mpc?.recover(cipherText: MockConstants.mockCiphertext, method: BackupMethods.Password.rawValue) { result in
+      guard result.error == nil else {
+        XCTFail("Failure: \(String(describing: result.error))")
+        expectation.fulfill()
+        return
+      }
+      guard let address = result.data else {
+        XCTFail("Unable to parse addresses")
+        return
+      }
+      XCTAssertEqual(address, MockConstants.mockEip155Address)
+      expectation.fulfill()
+    } progress: { MpcStatus in
+      let status = MpcStatus.status
+      encounteredStatuses.insert(status)
+    }
+    wait(for: [expectation], timeout: 5.0)
+    XCTAssertEqual(encounteredStatuses, MockConstants.recoverProgressCallbacks)
   }
 }

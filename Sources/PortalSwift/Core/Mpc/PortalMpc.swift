@@ -80,10 +80,6 @@ public class PortalMpc {
     )
   }
 
-  public func getBinaryVersion() -> String {
-    self.mobile.MobileGetVersion()
-  }
-
   /*******************************************
    * Public functions
    *******************************************/
@@ -131,7 +127,7 @@ public class PortalMpc {
               async let mpcShare = try getBackupShare(.ED25519, withMethod: method, andSigningShare: ed25519SigningShare.share)
 
               usingProgressCallback?(MpcStatus(status: .parsingShare, done: false))
-              let shareData = try encoder.encode(await mpcShare)
+              let shareData = try await encoder.encode(mpcShare)
               guard let shareString = String(data: shareData, encoding: .utf8) else {
                 throw MpcError.unexpectedErrorOnBackup("Unable to stringify ED25519 share.")
               }
@@ -150,7 +146,7 @@ public class PortalMpc {
               async let mpcShare = try getBackupShare(.SECP256K1, withMethod: method, andSigningShare: secp256k1SigningShare.share)
 
               usingProgressCallback?(MpcStatus(status: .parsingShare, done: false))
-              let shareData = try encoder.encode(await mpcShare)
+              let shareData = await try encoder.encode(mpcShare)
               guard let shareString = String(data: shareData, encoding: .utf8) else {
                 throw MpcError.unexpectedErrorOnBackup("Unable to stringify SECP256K1 share.")
               }
@@ -375,21 +371,24 @@ public class PortalMpc {
       let recoverResponse = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<PortalMpcGenerateResponse, Error>) in
         Task {
           do {
-            usingProgressCallback?(MpcStatus(status: .decryptingShare, done: false))
+            usingProgressCallback?(MpcStatus(status: .readingShare, done: false))
             let decryptionKey = try await storage.read()
 
+            usingProgressCallback?(MpcStatus(status: .decryptingShare, done: false))
             let decryptedString = try await storage.decrypt(withCipherText, withKey: decryptionKey)
             guard let decryptedData = decryptedString.data(using: .utf8) else {
               throw MpcError.unexpectedErrorOnRecover("Unable to parse decrypted data.")
             }
+            usingProgressCallback?(MpcStatus(status: .parsingShare, done: false))
             let backupResponse = try await parseRecoveryInput(data: decryptedData)
 
+            usingProgressCallback?(MpcStatus(status: .generatingShare, done: false))
             var recoverResponse: PortalMpcGenerateResponse = [:]
             if let ed25519Share = backupResponse[PortalCurve.ED25519.rawValue] {
               //  The share's already been backed up, recover it
               async let ed25519MpcShare = try recoverSigningShare(.ED25519, withMethod: method, andBackupShare: ed25519Share.share)
 
-              let shareData = try encoder.encode(await ed25519MpcShare)
+              let shareData = await try encoder.encode(ed25519MpcShare)
               guard let shareString = String(data: shareData, encoding: .utf8) else {
                 throw MpcError.unexpectedErrorOnBackup("Unable to stringify ED25519 share.")
               }
@@ -413,7 +412,7 @@ public class PortalMpc {
             if let secp256k1Share = backupResponse[PortalCurve.SECP256K1.rawValue] {
               async let secp256k1MpcShare = try recoverSigningShare(.SECP256K1, withMethod: method, andBackupShare: secp256k1Share.share)
 
-              let shareData = try encoder.encode(await secp256k1MpcShare)
+              let shareData = await try encoder.encode(secp256k1MpcShare)
               guard let shareString = String(data: shareData, encoding: .utf8) else {
                 throw MpcError.unexpectedErrorOnBackup("Unable to stringify SECP256K1 share.")
               }

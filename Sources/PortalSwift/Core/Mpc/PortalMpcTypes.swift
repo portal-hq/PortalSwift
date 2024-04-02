@@ -91,7 +91,7 @@ struct EncryptResultWithPassword: Codable {
 }
 
 /// The response from encrypting.
-public struct EncryptData: Codable {
+public struct EncryptData: Codable, Equatable {
   public var key: String
   public var cipherText: String
 }
