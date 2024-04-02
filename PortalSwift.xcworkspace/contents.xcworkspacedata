@@ -8,6 +8,9 @@
       location = "group:Cocoapods Example/Cocoapods Example.xcodeproj">
    </FileRef>
    <FileRef
+      location = "group:Cocoapods Example/Pods/Pods.xcodeproj">
+   </FileRef>
+   <FileRef
       location = "container:">
    </FileRef>
 </Workspace>
