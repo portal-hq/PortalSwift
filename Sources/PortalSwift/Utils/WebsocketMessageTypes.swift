@@ -64,17 +64,6 @@ public struct Pairing: Codable {
   public let topic: String?
 }
 
-public struct WebSocketConnectedV1Message: Codable {
-  public var event: String = "connected"
-  public let data: ConnectedV1Data
-}
-
-public struct ConnectedV1Data: Codable {
-  public let id: String
-  public let topic: String
-  public let params: PeerMetadata
-}
-
 public struct WebSocketDappSessionRequestMessage: Codable {
   public var event: String = "portal_dappSessionRequested"
   public let data: ConnectData
@@ -84,17 +73,6 @@ public struct ConnectData: Codable {
   public let id: String
   public let topic: String
   public var params: SessionProposal
-}
-
-public struct WebSocketDappSessionRequestV1Message: Codable {
-  public var event: String = "portal_dappSessionRequestedV1"
-  public let data: ConnectV1Data
-}
-
-public struct ConnectV1Data: Codable {
-  public let id: String
-  public let topic: String
-  public let params: PeerMetadata
 }
 
 public struct WebSocketDisconnectMessage: Codable {
@@ -154,11 +132,6 @@ public struct DappSessionResponseMessage: Codable {
   public let data: SessionResponseData
 }
 
-public struct DappSessionResponseV1Message: Codable {
-  public let event: String
-  public let data: SessionResponseV1Data
-}
-
 public struct SignatureReceivedData: Codable {
   public let topic: String
   public let transactionHash: String
@@ -170,8 +143,6 @@ public struct ChainChangedData: Codable {
   public let uri: String?
   public let chainId: String
 }
-
-// Specific Types for v1 or v2
 
 // V2
 
@@ -245,13 +216,6 @@ public struct SessionResponseData: Codable {
   public let address: String
   public let chainId: String
   public let params: SessionProposal?
-}
-
-public struct SessionResponseV1Data: Codable {
-  public let id: String
-  public let topic: String
-  public let address: String
-  public let chainId: String
 }
 
 // V1

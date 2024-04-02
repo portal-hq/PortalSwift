@@ -279,7 +279,11 @@ public class PortalProvider {
         }
       })
 
-      _ = self.emit(event: Events.PortalSigningRequested.rawValue, data: forPayload)
+      if connect != nil {
+        _ = connect?.emit(event: Events.PortalSigningRequested.rawValue, data: forPayload)
+      } else {
+        _ = self.emit(event: Events.PortalSigningRequested.rawValue, data: forPayload)
+      }
     }
   }
 
@@ -373,6 +377,7 @@ public class PortalProvider {
     let payload = PortalSignRequest(method: withPayload.method, params: withPayload.params)
 
     print("🚨 Requesting signature from signer...")
+    print("\(payload.method), \(payload.params)")
     let signature = try await self.signer.sign(
       onChainId,
       withPayload: payload,

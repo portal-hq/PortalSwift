@@ -50,7 +50,9 @@ public class PortalMpcSigner {
     mpcMetadata.chainId = chainId
 
     let signingShare = try await keychain.getShare(chainId)
-    let json = try JSONEncoder().encode(withPayload.params)
+    let params = self.prepareParams(withPayload.method, rawParams: withPayload.params)
+
+    let json = try JSONEncoder().encode(params)
     guard let params = String(data: json, encoding: .utf8) else {
       throw PortalMpcSignerError.unableToEncodeParams
     }
@@ -84,6 +86,19 @@ public class PortalMpcSigner {
 
     // Return the sign result.
     return signature
+  }
+
+  func prepareParams(_ method: PortalRequestMethod, rawParams: [AnyEncodable]?) -> AnyEncodable? {
+    guard let params = rawParams else {
+      return AnyEncodable(rawParams)
+    }
+
+    switch method {
+    case .eth_sendTransaction, .eth_sendRawTransaction, .eth_signTransaction:
+      return params[0]
+    default:
+      return AnyEncodable(params)
+    }
   }
 }
 
