@@ -4,6 +4,8 @@ ignore:
   - "**/SPM Example"
   - "**/Sources/Frameworks"
   - "**/Sources/PortalSwift/Mocks"
+  - "**/Sources/PortalSwift/Storage/GDrive/GoogleAuth.swift"
+  - "**/Sources/PortalSwift/Utils"
   - "**/Pods"
   - "**/Pods.xcworkspace"
   - "**/PortalSwift.xcworkspace"

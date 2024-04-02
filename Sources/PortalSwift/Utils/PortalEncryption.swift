@@ -3,9 +3,11 @@ import Mpc
 
 public class PortalEncryption {
   public let decoder = JSONDecoder()
-  private let mobile = MobileWrapper()
+  private let mobile: Mobile
 
-  public init() {}
+  public init(binary: Mobile? = nil) {
+    self.mobile = binary ?? MobileWrapper()
+  }
 
   public func decrypt(_ value: String, withPrivateKey: String) async throws -> String {
     let decryptedValue = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<String, Error>) in
