@@ -9,6 +9,7 @@ import Foundation
 
 public enum PasswordStorageError: Error {
   case passwordMissing(String)
+  case unableToEncodeData
 }
 
 /// Responsible for CRUD actions for items in the specified storage.
