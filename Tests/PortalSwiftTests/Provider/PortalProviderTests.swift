@@ -21,10 +21,21 @@ final class PortalProviderTests: XCTestCase {
       requests: MockPortalRequests(),
       signer: MockPortalMpcSigner(apiKey: MockConstants.mockApiKey, keychain: MockPortalKeychain())
     )
+
+    self.provider.on(event: Events.PortalSigningRequested.rawValue) { data in
+      self.provider.emit(event: Events.PortalSigningApproved.rawValue, data: data)
+    }
   }
 
   override func tearDownWithError() throws {
     self.provider = nil
+  }
+
+  func testAddress() throws {
+    let expectation = XCTestExpectation(description: "PortalProvider.address")
+    let address = self.provider.address
+    XCTAssertEqual(address, MockConstants.mockEip155Address)
+    expectation.fulfill()
   }
 
   func testEmit() throws {
@@ -117,6 +128,43 @@ final class PortalProviderTests: XCTestCase {
     await fulfillment(of: [expectation], timeout: 5.0)
   }
 
+  func testSendTransactionWithStringMethod() async throws {
+    let expectation = XCTestExpectation(description: "PortalProvider.request(.eth_sendTransaction)")
+    let transaction = AnyEncodable([:] as [String: String])
+    let result = try await provider.request(
+      "eip155:11155111",
+      withMethod: PortalRequestMethod.eth_sendTransaction.rawValue,
+      andParams: [transaction]
+    )
+    guard let transactionHash = result.result as? String else {
+      throw PortalProviderError.invalidRpcResponse
+    }
+    XCTAssertEqual(transactionHash, MockConstants.mockTransactionHash)
+    expectation.fulfill()
+    await fulfillment(of: [expectation], timeout: 5.0)
+  }
+
+  func testSignAddressRequestCompletion() throws {
+    let expectation = XCTestExpectation(description: "PortalProvider.request(pauload, completion)")
+    let payload = ETHAddressPayload(
+      method: PortalRequestMethod.eth_getBalance.rawValue,
+      params: [ETHAddressParam(address: MockConstants.mockEip155Address)]
+    )
+    self.provider.request(payload: payload) { result in
+      guard let transactionResult = result.data else {
+        XCTFail()
+        return
+      }
+      guard let response = transactionResult.result as? PortalProviderRpcResponse else {
+        XCTFail()
+        return
+      }
+      XCTAssertEqual(response, MockConstants.mockRpcResponse)
+      expectation.fulfill()
+    }
+    wait(for: [expectation], timeout: 5.0)
+  }
+
   func testSignMessageRequest() async throws {
     let expectation = XCTestExpectation(description: "PortalProvider.request(.eth_sign)")
     let params = [MockConstants.mockEip155Address, "test"].map { AnyEncodable($0) }
@@ -129,6 +177,20 @@ final class PortalProviderTests: XCTestCase {
     await fulfillment(of: [expectation], timeout: 5.0)
   }
 
+  func testSignMessageRequestWithApproval() async throws {
+    let expectation = XCTestExpectation(description: "PortalProvider.request(.eth_sign)")
+    self.provider.autoApprove = false
+    let params = [MockConstants.mockEip155Address, "test"].map { AnyEncodable($0) }
+    let result = try await provider.request("eip155:11155111", withMethod: .eth_sign, andParams: params)
+    guard let signature = result.result as? String else {
+      throw PortalProviderError.invalidRpcResponse
+    }
+    XCTAssertEqual(signature, MockConstants.mockSignature)
+    expectation.fulfill()
+    await fulfillment(of: [expectation], timeout: 5.0)
+    self.provider.autoApprove = true
+  }
+
   func testSignTransactionRequest() async throws {
     let expectation = XCTestExpectation(description: "PortalProvider.request(.eth_signTransaction)")
     let transaction = AnyEncodable([:] as [String: String])
@@ -139,5 +201,49 @@ final class PortalProviderTests: XCTestCase {
     XCTAssertEqual(signature, MockConstants.mockSignature)
     expectation.fulfill()
     await fulfillment(of: [expectation], timeout: 5.0)
+  }
+
+  func testSignTransactionRequestCompletion() throws {
+    let expectation = XCTestExpectation(description: "PortalProvider.request(pauload, completion)")
+    let payload = ETHTransactionPayload(
+      method: PortalRequestMethod.eth_signTransaction.rawValue,
+      params: [ETHTransactionParam(from: MockConstants.mockEip155Address, to: MockConstants.mockEip155Address, gas: "test-gas", gasPrice: "test-gas-price", value: "test-transaction-value", data: "")]
+    )
+    self.provider.request(payload: payload) { result in
+      guard let transactionResult = result.data else {
+        XCTFail()
+        return
+      }
+      guard let signature = transactionResult.result as? String else {
+        XCTFail()
+        return
+      }
+      XCTAssertEqual(signature, MockConstants.mockSignature)
+      expectation.fulfill()
+    }
+    wait(for: [expectation], timeout: 5.0)
+  }
+
+  func testSignTransactionRequestCompletionWithApproval() throws {
+    let expectation = XCTestExpectation(description: "PortalProvider.request(pauload, completion)")
+    self.provider.autoApprove = false
+    let payload = ETHTransactionPayload(
+      method: PortalRequestMethod.eth_signTransaction.rawValue,
+      params: [ETHTransactionParam(from: MockConstants.mockEip155Address, to: MockConstants.mockEip155Address, gas: "test-gas", gasPrice: "test-gas-price", value: "test-transaction-value", data: "")]
+    )
+    self.provider.request(payload: payload) { result in
+      guard let transactionResult = result.data else {
+        XCTFail()
+        return
+      }
+      guard let signature = transactionResult.result as? String else {
+        XCTFail()
+        return
+      }
+      XCTAssertEqual(signature, MockConstants.mockSignature)
+      expectation.fulfill()
+      self.provider.autoApprove = true
+    }
+    wait(for: [expectation], timeout: 5.0)
   }
 }

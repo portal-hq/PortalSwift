@@ -94,7 +94,7 @@ public class PortalMpcSigner {
     }
 
     switch method {
-    case .eth_sendTransaction, .eth_sendRawTransaction, .eth_signTransaction:
+    case .eth_sendTransaction, .eth_signTransaction:
       return params[0]
     default:
       return AnyEncodable(params)
