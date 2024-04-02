@@ -166,7 +166,7 @@ Before calling `backupWallet(.Passkey)`, you must set a Authentication Anchor us
 - `anchor` is an instance conforming to the `ASPresentationAnchor` protocol. This will be used to present the passkey authentication view controller.
 
 ```swift
-try portal.setPasskeyAuthenticationAnchor(anchor: self.view.window!)
+try portal.setPasskeyAuthenticationAnchor(anchor: self.view.window)
 let (cipherText, storageCallback) = try await portal.backupWallet(.Passkey) { backupStatus in
   print("Backup Status: ", backupStatus)
 }
