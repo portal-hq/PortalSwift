@@ -786,87 +786,92 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
   private func updateUIComponents() {
-    self.startLoading()
     DispatchQueue.main.async {
       Task {
-        if let addressInformation = self.addressInformation {
-          addressInformation.text = try? await self.portal?.addresses[.eip155] ?? "N/A"
+        do {
+          if let addressInformation = self.addressInformation {
+            addressInformation.text = try? await self.portal?.addresses[.eip155] ?? "N/A"
+          }
+
+          let availableRecoveryMethods = try await self.portal?.availableRecoveryMethods() ?? []
+          let walletExists = try await self.portal?.doesWalletExist() ?? false
+          let isWalletOnDevice = try await self.portal?.isWalletOnDevice() ?? false
+
+          let username = self.username?.text ?? ""
+
+          // Auth buttons
+          self.logoutButton?.isEnabled = self.user != nil
+          self.logoutButton?.isHidden = self.user == nil
+          self.signInButton?.isEnabled = !username.isEmpty
+          self.signInButton?.isHidden = self.user != nil
+          self.signUpButton?.isEnabled = !username.isEmpty
+          self.signUpButton?.isHidden = self.user != nil
+
+          // Generate buttons
+          self.generateButton?.isEnabled = !walletExists
+          self.generateButton?.isHidden = self.portal == nil
+          if let generateButton = self.generateButton {
+            generateButton.setTitle(walletExists ? "Wallet already exists" : "Create Wallet", for: .normal)
+          }
+
+          // dApp connection buttons
+          self.dappBrowserButton?.isEnabled = walletExists && isWalletOnDevice
+          self.dappBrowserButton?.isHidden = !walletExists || !isWalletOnDevice
+          self.portalConnectButton?.isEnabled = walletExists && isWalletOnDevice
+          self.portalConnectButton?.isHidden = !walletExists || !isWalletOnDevice
+
+          // Backup buttons
+          self.gdriveBackupButton?.isEnabled = walletExists && isWalletOnDevice
+          self.gdriveBackupButton?.isHidden = !walletExists || !isWalletOnDevice
+          self.iCloudBackupButton?.isEnabled = walletExists && isWalletOnDevice
+          self.iCloudBackupButton?.isHidden = !walletExists || !isWalletOnDevice
+          self.passkeyBackupButton?.isEnabled = walletExists && isWalletOnDevice
+          self.passkeyBackupButton?.isHidden = !walletExists || !isWalletOnDevice
+          self.passwordBackupButton?.isEnabled = walletExists && isWalletOnDevice
+          self.passwordBackupButton?.isHidden = !walletExists || !isWalletOnDevice
+
+          // Recover buttons
+          self.gdriveRecoverButton?.isEnabled = true // availableRecoveryMethods.contains(.GoogleDrive)
+          self.gdriveRecoverButton?.isHidden = false // !walletExists
+          self.iCloudRecoverButton?.isEnabled = availableRecoveryMethods.contains(.iCloud)
+          self.iCloudRecoverButton?.isHidden = !walletExists
+          self.passkeyRecoverButton?.isEnabled = availableRecoveryMethods.contains(.Passkey)
+          self.passkeyRecoverButton?.isHidden = !walletExists
+          self.passwordRecoverButton?.isEnabled = availableRecoveryMethods.contains(.Password)
+          self.passwordRecoverButton?.isHidden = !walletExists
+
+          // Signing buttons
+          self.signButton?.isEnabled = walletExists && isWalletOnDevice
+          self.signButton?.isHidden = !walletExists || !isWalletOnDevice
+          self.sendButton?.isEnabled = walletExists && isWalletOnDevice
+          self.sendButton?.isHidden = !walletExists || !isWalletOnDevice
+          self.sendUniButton?.isEnabled = walletExists && isWalletOnDevice
+          self.sendUniButton?.isHidden = !walletExists || !isWalletOnDevice
+
+          // Other management buttons
+          self.deleteKeychainButton?.isEnabled = walletExists && isWalletOnDevice
+          self.deleteKeychainButton?.isHidden = !walletExists || !isWalletOnDevice
+          self.ejectButton?.isEnabled = availableRecoveryMethods.count > 0
+          self.ejectButton?.isHidden = availableRecoveryMethods.count == 0
+
+          // Portal test functions
+          self.testButton?.isEnabled = walletExists && isWalletOnDevice
+          self.testButton?.isHidden = !walletExists || !isWalletOnDevice
+          self.testNFTsTrxsBalancesSimTrxButton?.isEnabled = walletExists && isWalletOnDevice
+          self.testNFTsTrxsBalancesSimTrxButton?.isHidden = !walletExists || !isWalletOnDevice
+
+          // Text components
+          self.addressInformation?.isHidden = !walletExists || !isWalletOnDevice
+          self.ethBalanceInformation?.isHidden = !walletExists || !isWalletOnDevice
+          self.sendAddress?.isHidden = !walletExists || !isWalletOnDevice
+          self.url?.isHidden = !walletExists || !isWalletOnDevice
+
+          self.logger.debug("ViewController.updateUIComponents() - ✅ Ending loading")
+
+          self.stopLoading()
+        } catch {
+          self.logger.error("ViewController.UpdateUIComponents() - ❌ Failed to update UI Components: \(error)")
         }
-
-        let availableRecoveryMethods = try await self.portal?.availableRecoveryMethods() ?? []
-        let walletExists = try await self.portal?.doesWalletExist() ?? false
-        let isWalletOnDevice = try await self.portal?.isWalletOnDevice() ?? false
-
-        let username = self.username?.text ?? ""
-
-        // Auth buttons
-        self.logoutButton?.isEnabled = self.user != nil
-        self.logoutButton?.isHidden = self.user == nil
-        self.signInButton?.isEnabled = !username.isEmpty
-        self.signInButton?.isHidden = self.user != nil
-        self.signUpButton?.isEnabled = !username.isEmpty
-        self.signUpButton?.isHidden = self.user != nil
-
-        // Generate buttons
-        self.generateButton?.isEnabled = !walletExists
-        self.generateButton?.isHidden = self.portal == nil
-        if let generateButton = self.generateButton {
-          generateButton.setTitle(walletExists ? "Wallet already exists" : "Create Wallet", for: .normal)
-        }
-
-        // dApp connection buttons
-        self.dappBrowserButton?.isEnabled = walletExists && isWalletOnDevice
-        self.dappBrowserButton?.isHidden = !walletExists || !isWalletOnDevice
-        self.portalConnectButton?.isEnabled = walletExists && isWalletOnDevice
-        self.portalConnectButton?.isHidden = !walletExists || !isWalletOnDevice
-
-        // Backup buttons
-        self.gdriveBackupButton?.isEnabled = walletExists && isWalletOnDevice
-        self.gdriveBackupButton?.isHidden = !walletExists || !isWalletOnDevice
-        self.iCloudBackupButton?.isEnabled = walletExists && isWalletOnDevice
-        self.iCloudBackupButton?.isHidden = !walletExists || !isWalletOnDevice
-        self.passkeyBackupButton?.isEnabled = walletExists && isWalletOnDevice
-        self.passkeyBackupButton?.isHidden = !walletExists || !isWalletOnDevice
-        self.passwordBackupButton?.isEnabled = walletExists && isWalletOnDevice
-        self.passwordBackupButton?.isHidden = !walletExists || !isWalletOnDevice
-
-        // Recover buttons
-        self.gdriveRecoverButton?.isEnabled = availableRecoveryMethods.contains(.GoogleDrive)
-        self.gdriveRecoverButton?.isHidden = !walletExists
-        self.iCloudRecoverButton?.isEnabled = availableRecoveryMethods.contains(.iCloud)
-        self.iCloudRecoverButton?.isHidden = !walletExists
-        self.passkeyRecoverButton?.isEnabled = availableRecoveryMethods.contains(.Passkey)
-        self.passkeyRecoverButton?.isHidden = !walletExists
-        self.passwordRecoverButton?.isEnabled = availableRecoveryMethods.contains(.Password)
-        self.passwordRecoverButton?.isHidden = !walletExists
-
-        // Signing buttons
-        self.signButton?.isEnabled = walletExists && isWalletOnDevice
-        self.signButton?.isHidden = !walletExists || !isWalletOnDevice
-        self.sendButton?.isEnabled = walletExists && isWalletOnDevice
-        self.sendButton?.isHidden = !walletExists || !isWalletOnDevice
-        self.sendUniButton?.isEnabled = walletExists && isWalletOnDevice
-        self.sendUniButton?.isHidden = !walletExists || !isWalletOnDevice
-
-        // Other management buttons
-        self.deleteKeychainButton?.isEnabled = walletExists && isWalletOnDevice
-        self.deleteKeychainButton?.isHidden = !walletExists || !isWalletOnDevice
-        self.ejectButton?.isEnabled = availableRecoveryMethods.count > 0
-        self.ejectButton?.isHidden = availableRecoveryMethods.count == 0
-
-        // Portal test functions
-        self.testButton?.isEnabled = walletExists && isWalletOnDevice
-        self.testButton?.isHidden = !walletExists || !isWalletOnDevice
-        self.testNFTsTrxsBalancesSimTrxButton?.isEnabled = walletExists && isWalletOnDevice
-        self.testNFTsTrxsBalancesSimTrxButton?.isHidden = !walletExists || !isWalletOnDevice
-
-        // Text components
-        self.addressInformation?.isHidden = !walletExists || !isWalletOnDevice
-        self.ethBalanceInformation?.isHidden = !walletExists || !isWalletOnDevice
-        self.sendAddress?.isHidden = !walletExists || !isWalletOnDevice
-        self.url?.isHidden = !walletExists || !isWalletOnDevice
-
-        self.stopLoading()
       }
     }
   }
@@ -889,6 +894,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.logger.debug("ViewController.handleSignIn() - ✅ Signed in! User clientApiKey: \(user.clientApiKey)")
 
         self.portal = try await self.registerPortal()
+        self.logger.debug("ViewController.handleSignIn() - ✅ Initialized. Updating UI Components.")
         self.updateUIComponents()
       } catch {
         self.stopLoading()
@@ -1061,7 +1067,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         }
         self.startLoading()
         self.logger.debug("ViewController.handleiCloudRecover() - Starting recover...")
-        let (ethereum, _) = try await recover(String(user.exchangeUserId), withBackupMethod: .GoogleDrive)
+        let (ethereum, _) = try await recover(String(user.exchangeUserId), withBackupMethod: .iCloud)
         guard let address = ethereum else {
           self.logger.error("ViewController.handleiCloudRecover() - ❌ Wallet was recovered, but no address was found.")
           throw PortalExampleAppError.addressNotFound()
