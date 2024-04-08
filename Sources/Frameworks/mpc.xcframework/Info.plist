@@ -6,7 +6,21 @@
 	<array>
 		<dict>
 			<key>BinaryPath</key>
-			<string>Mpc.framework/Versions/A/Mpc</string>
+			<string>Mpc.framework/Mpc</string>
+			<key>LibraryIdentifier</key>
+			<string>ios-arm64</string>
+			<key>LibraryPath</key>
+			<string>Mpc.framework</string>
+			<key>SupportedArchitectures</key>
+			<array>
+				<string>arm64</string>
+			</array>
+			<key>SupportedPlatform</key>
+			<string>ios</string>
+		</dict>
+		<dict>
+			<key>BinaryPath</key>
+			<string>Mpc.framework/Mpc</string>
 			<key>LibraryIdentifier</key>
 			<string>ios-arm64_x86_64-simulator</string>
 			<key>LibraryPath</key>
