@@ -110,6 +110,10 @@
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileBackup(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
 
+FOUNDATION_EXPORT NSString* _Nonnull MobileBackupEd25519(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
+
+FOUNDATION_EXPORT NSString* _Nonnull MobileBackupSecp256k1(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
+
 // skipped function CreateEjectResult with unsupported parameter or return types
 
 
@@ -125,13 +129,25 @@ FOUNDATION_EXPORT NSString* _Nonnull MobileEncryptWithPassword(NSString* _Nullab
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileGenerate(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
 
+FOUNDATION_EXPORT NSString* _Nonnull MobileGenerateEd25519(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
+
+FOUNDATION_EXPORT NSString* _Nonnull MobileGenerateSecp256k1(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
+
 FOUNDATION_EXPORT NSString* _Nonnull MobileGetMe(NSString* _Nullable url, NSString* _Nullable token);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileGetVersion(void);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileRecoverBackup(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
 
+FOUNDATION_EXPORT NSString* _Nonnull MobileRecoverBackupEd25519(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
+
+FOUNDATION_EXPORT NSString* _Nonnull MobileRecoverBackupSecp256k1(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
+
 FOUNDATION_EXPORT NSString* _Nonnull MobileRecoverSigning(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
+
+FOUNDATION_EXPORT NSString* _Nonnull MobileRecoverSigningEd25519(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
+
+FOUNDATION_EXPORT NSString* _Nonnull MobileRecoverSigningSecp256k1(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileSign(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable method, NSString* _Nullable params, NSString* _Nullable rpcURL, NSString* _Nullable chainId, NSString* _Nullable metadataStr);
 
