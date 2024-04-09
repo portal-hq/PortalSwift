@@ -1,17 +1,18 @@
 //
-//  MockICloudStorage.swift
-//  PortalSwift
+//  File.swift
 //
-//  Created by Portal Labs, Inc.
-//  Copyright © 2022 Portal Labs, Inc. All rights reserved.
+//
+//  Created by Blake Williams on 3/30/24.
 //
 
 import Foundation
 
-public class MockICloudStorage: ICloudStorage {
+public class MockPasswordStorage: PasswordStorage {
+  public init() {}
+
   // Async decrypt implementation
-  public func decrypt(_: String, withKey _: String) async throws -> String {
-    return try await MockConstants.mockMpcShareString
+  override public func decrypt(_: String, withKey _: String) async throws -> String {
+    return try MockConstants.mockMpcShareString
   }
 
   // Async delete implementation
@@ -20,13 +21,13 @@ public class MockICloudStorage: ICloudStorage {
   }
 
   // Async encrypt implementation
-  public func encrypt(_: String) async throws -> EncryptData {
+  override public func encrypt(_: String) async throws -> EncryptData {
     return MockConstants.mockEncryptData
   }
 
   // Async read implementation
   override public func read() async throws -> String {
-    return try MockConstants.mockMpcShareString
+    return MockConstants.mockEncryptionKey
   }
 
   // Async write implementation
