@@ -9,14 +9,24 @@
     }
   ],
   "defaultOptions" : {
+    "codeCoverage" : {
+      "targets" : [
+        {
+          "containerPath" : "container:",
+          "identifier" : "PortalSwift",
+          "name" : "PortalSwift"
+        }
+      ]
+    },
     "testTimeoutsEnabled" : true
   },
   "testTargets" : [
     {
+      "parallelizable" : true,
       "target" : {
-        "containerPath" : "container:Pods.xcodeproj",
-        "identifier" : "136F98CDC49A4A849BA6EB68684BFE22",
-        "name" : "Unit Tests"
+        "containerPath" : "container:",
+        "identifier" : "PortalSwiftTests",
+        "name" : "PortalSwiftTests"
       }
     }
   ],
