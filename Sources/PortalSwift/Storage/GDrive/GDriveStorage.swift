@@ -10,139 +10,104 @@ import Foundation
 
 import GoogleSignIn
 
-public enum GDriveStorageError: Error {
-  case portalApiNotConfigured
-  case unableToFetchClientData
-  case unknownError
-}
-
-public class GDriveStorage: Storage {
+public class GDriveStorage: Storage, PortalStorage {
   public var accessToken: String?
   public var api: PortalApi?
+  public var clientId: String? {
+    get { return self.drive.clientId }
+    set(clientId) { self.drive.clientId = clientId }
+  }
+
+  public let encryption: PortalEncryption
+  public var folder: String {
+    get { return self.drive.folder }
+    set(folder) { self.drive.folder = folder }
+  }
+
+  public var view: UIViewController? {
+    get {
+      return self.drive.view
+    }
+    set(view) {
+      self.drive.view = view
+    }
+  }
+
   private var drive: GDriveClient
   private var filename: String?
+  private var logger = PortalLogger()
   private var separator: String = ""
 
-  public init(clientID: String, viewController: UIViewController) {
-    self.drive = GDriveClient(clientId: clientID, view: viewController)
+  public init(
+    clientID: String? = nil,
+    viewController: UIViewController? = nil,
+    encryption: PortalEncryption? = nil,
+    driveClient: GDriveClient? = nil
+  ) {
+    self.drive = driveClient ?? GDriveClient(clientId: clientID, view: viewController)
+    self.encryption = encryption ?? PortalEncryption()
   }
 
-  override public func delete(completion: @escaping (Result<Bool>) -> Void) {
-    self.getFilename { filename in
-      if filename.error != nil {
-        completion(Result(data: false, error: filename.error!))
-        return
-      }
+  /*******************************************
+   * Public functions
+   *******************************************/
 
-      do {
-        try self.drive.getIdForFilename(filename: filename.data!) { fileId in
-          if fileId.error != nil {
-            completion(Result(data: false, error: fileId.error!))
-            return
-          }
+  public func delete() async throws -> Bool {
+    let filename = try await getFilename()
+    let fileId = try await drive.getIdForFilename(filename)
 
-          self.drive.delete(id: fileId.data!) { deleteResult in
-            completion(deleteResult)
-          }
-        }
-      } catch {
-        completion(Result(error: error))
-      }
-    }
+    return try await self.drive.delete(fileId)
   }
 
-  override public func read(completion: @escaping (Result<String>) -> Void) {
-    self.getFilename { filename in
-      if filename.error != nil {
-        completion(Result(error: filename.error!))
-        return
-      }
+  public func read() async throws -> String {
+    let filename = try await getFilename()
+    let fileId = try await drive.getIdForFilename(filename)
 
-      do {
-        try self.drive.getIdForFilename(filename: filename.data!) { fileId in
-          if fileId.error != nil {
-            completion(Result(error: fileId.error!))
-            return
-          }
+    let fileContents = try await drive.read(fileId)
 
-          self.drive.read(id: fileId.data!) { content in
-            if content.error != nil {
-              completion(Result(error: content.error!))
-              return
-            }
-
-            completion(Result(data: content.data!))
-          }
-        }
-      } catch {
-        completion(Result(error: error))
-      }
-    }
+    return fileContents
   }
 
-  override public func write(privateKey: String, completion: @escaping (Result<Bool>) -> Void) {
-    self.getFilename { filename in
-      if filename.error != nil {
-        completion(Result(data: false, error: filename.error!))
-        return
-      }
-
-      do {
-        try self.drive.write(filename: filename.data!, content: privateKey) { writeResult in
-          if writeResult.error != nil {
-            completion(Result(data: false, error: writeResult.error!))
-            return
-          }
-
-          completion(Result(data: true))
-        }
-      } catch {
-        completion(Result(data: false, error: error))
-      }
+  public func signIn() async throws -> GIDGoogleUser {
+    guard let auth = drive.auth else {
+      self.logger.debug("GDriveStorage.signIn() - ❌ Authentication not initialized. GDrive config has not been set yet.")
+      throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfiguration() to configure GoogleDrive")
     }
+
+    return try await auth.signIn()
   }
 
-  public func signIn(completion: @escaping (Result<GIDGoogleUser>) -> Void) {
-    self.drive.auth.signIn { result in
-      completion(result)
-    }
+  public func validateOperations() async throws -> Bool {
+    return try await self.drive.validateOperations()
   }
 
-  public func validateOperations(callback: @escaping (Result<Bool>) -> Void) {
-    self.drive.validateOperations(callback: callback)
+  public func write(_ value: String) async throws -> Bool {
+    let filename = try await getFilename()
+
+    return try await self.drive.write(filename, withContent: value)
   }
 
-  private func getFilename(callback: @escaping (Result<String>) -> Void) {
-    if self.api == nil {
-      callback(Result(error: GDriveStorageError.portalApiNotConfigured))
-      return
+  /*******************************************
+   * Private functions
+   *******************************************/
+
+  private func getFilename() async throws -> String {
+    guard let api = self.api else {
+      throw GDriveStorageError.portalApiNotConfigured
     }
 
-    do {
-      if self.filename == nil || self.filename!.count < 1 {
-        try self.api!.getClient { client in
-          if client.error != nil {
-            callback(Result(error: client.error!))
-            return
-          } else if client.data == nil {
-            callback(Result(error: GDriveStorageError.unableToFetchClientData))
-            return
-          }
-
-          let name = GDriveStorage.hash(
-            "\(client.data!.custodian.id)\(client.data!.id)"
-          )
-
-          self.filename = "\(name).txt"
-
-          callback(Result(data: self.filename!))
-        }
-      } else {
-        callback(Result(data: self.filename!))
+    if self.filename == nil || self.filename == "" {
+      guard let client = try await api.client else {
+        throw GDriveStorageError.unableToGetClient
       }
-    } catch {
-      callback(Result(error: error))
+
+      let name = GDriveStorage.hash("\(client.custodian.id)\(client.id)")
+      self.filename = "\(name).txt"
+
+      print("Filename: \(self.filename ?? "")")
     }
+
+    return self.filename!
   }
 
   private static func hash(_ str: String) -> String {
@@ -153,4 +118,11 @@ public class GDriveStorage: Storage {
     }
     return Data(digest).map { String(format: "%02hhx", $0) }.joined()
   }
+}
+
+public enum GDriveStorageError: Error, Equatable {
+  case portalApiNotConfigured
+  case unableToFetchClientData
+  case unableToGetClient
+  case unknownError
 }

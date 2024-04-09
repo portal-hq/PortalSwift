@@ -8,271 +8,287 @@
 import Foundation
 import GoogleSignIn
 
-struct GDriveDeleteResponse: Codable {
-  let kind: String
-}
-
-struct GDriveFile: Codable {
-  let kind: String
-  let id: String
-  let name: String
-  let mimeType: String
-}
-
-struct GDriveFolderMetadata: Codable {
-  let mimeType: String
-  let name: String
-  let parents: [String]
-}
-
-struct GDriveFileMetadata: Codable {
-  let name: String
-  let parents: [String]
-}
-
-struct GDriveFilesListResponse: Codable {
-  let kind: String
-  let incompleteSearch: Bool
-  let files: [GDriveFile]
-}
-
 public enum GDriveClientError: Error {
+  case authenticationNotInitialized(String)
+  case fileContentMismatch
+  case noFileFound
+  case unableToBuildGDriveQuery
+  case unableToDeleteFromGDrive
+  case unableToReadFileContents
+  case unableToWriteToGDrive
   case userNotAuthenticated
+  case viewNotInitialized(String)
 }
 
-private struct NoFileFoundError: Error {}
+public class GDriveClient {
+  public var auth: GoogleAuth?
+  public var clientId: String? {
+    get { return self._clientId }
+    set(clientId) {
+      self._clientId = clientId
 
-class GDriveClient {
+      if let clientId = clientId, let view = view {
+        self.auth = GoogleAuth(config: GIDConfiguration(clientID: clientId), view: view)
+      }
+    }
+  }
+
+  public var folder: String
+  public var view: UIViewController? {
+    get { return self._view }
+    set(view) {
+      self._view = view
+
+      if let clientId = clientId, let view = view {
+        self.auth = GoogleAuth(config: GIDConfiguration(clientID: clientId), view: view)
+      }
+    }
+  }
+
+  private var _clientId: String?
+  private var _view: UIViewController?
   private var api: HttpRequester
-  public var auth: GoogleAuth
   private var baseUrl: String = "https://www.googleapis.com"
   private var boundary: String = "portal-backup-share"
-  private var clientId: String
-  private var folder: String
+  private let decoder = JSONDecoder()
+  private let logger = PortalLogger()
+  private let requests: PortalRequests
 
   init(
-    clientId: String,
-    view: UIViewController,
-    folder: String = "_PORTAL_MPC_DO_NOT_DELETE_"
+    clientId: String? = nil,
+    view: UIViewController? = nil,
+    folder: String? = "_PORTAL_MPC_DO_NOT_DELETE_",
+    requests: PortalRequests? = nil
   ) {
+    self._clientId = clientId
+    self._view = view
+
     self.api = HttpRequester(baseUrl: self.baseUrl)
-    self.auth = GoogleAuth(config: GIDConfiguration(clientID: clientId), view: view)
-    self.clientId = clientId
-    self.folder = folder
-  }
+    self.folder = folder ?? "_PORTAL_MPC_DO_NOT_DELETE_"
+    self.requests = requests ?? PortalRequests()
 
-  public func delete(id: String, callback: @escaping (Result<Bool>) -> Void) {
-    self.auth.getAccessToken { accessToken in
-      if accessToken.error != nil {
-        callback(Result(error: accessToken.error!))
-        return
-      } else if accessToken.data == "" {
-        callback(Result(error: GDriveClientError.userNotAuthenticated))
-        return
-      }
-
-      do {
-        try self.api.delete(
-          path: "/drive/v3/files/\(id)",
-          headers: ["Authorization": "Bearer \(accessToken.data!)"],
-          requestType: HttpRequestType.CustomRequest
-        ) { (result: Result<String>) in
-          if result.error != nil {
-            callback(Result(error: result.error!))
-            return
-          }
-
-          callback(Result(data: true))
-        }
-      } catch {
-        callback(Result(error: error))
-      }
+    if let clientId = _clientId, let view = _view {
+      self.auth = GoogleAuth(config: GIDConfiguration(clientID: clientId), view: view)
     }
   }
 
-  private func getAccessToken(callback: @escaping (Result<String>) -> Void) {
-    self.auth.getAccessToken { accessToken in
-      callback(accessToken)
+  public func delete(_ id: String) async throws -> Bool {
+    guard let auth = auth else {
+      self.logger.error("GDriveClient.delete() - Authentication not initialized. GDrive config has not been set yet.")
+      throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfiguration() to configure GoogleDrive")
     }
+
+    let accessToken = await auth.getAccessToken()
+    if accessToken.isEmpty {
+      throw GDriveClientError.userNotAuthenticated
+    }
+
+    if let url = URL(string: "\(baseUrl)/drive/v3/files/\(id)") {
+      let _ = try await requests.delete(url, withBearerToken: accessToken)
+      return true
+    }
+
+    throw URLError(.badURL)
   }
 
-  public func getIdForFilename(filename: String, callback: @escaping (Result<String>) -> Void) throws {
-    self.auth.getAccessToken { accessToken in
-      let query = "name='\(filename)'".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
-      do {
-        try self.api.get(
-          path: "/drive/v3/files?corpora=user&q=\(query!)",
-          headers: [
-            "Accept": "application/json",
-            "Authorization": "Bearer \(accessToken.data!)",
-            "Content-Type": "application/json",
-          ],
-          requestType: HttpRequestType.CustomRequest
-
-        ) { (result: Result<GDriveFilesListResponse>) in
-          if result.error != nil {
-            callback(Result(error: result.error!))
-            return
-          }
-
-          if result.data!.files.count > 0 {
-            callback(Result(data: result.data!.files[0].id))
-            return
-          }
-
-          callback(Result(error: NoFileFoundError()))
-        }
-      } catch {
-        callback(Result(error: error))
-      }
+  public func getAccessToken() async throws -> String {
+    guard let auth = auth else {
+      self.logger.error("GDriveClient.getAccessToken() - Authentication not initialized. GDrive config has not been set yet.")
+      throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfiguration() to configure GoogleDrive")
     }
+
+    return await auth.getAccessToken()
   }
 
-  public func read(id: String, callback: @escaping (Result<String>) -> Void) {
-    self.auth.getAccessToken { accessToken in
-      do {
-        try self.api.get(
-          path: "/drive/v3/files/\(id)?alt=media",
-          headers: [
-            "Accept": "application/json",
-            "Authorization": "Bearer \(accessToken.data!)",
-            "Content-Type": "application/json",
-          ],
-          requestType: HttpRequestType.CustomRequest
-
-        ) { (result: Result<String>) in
-          if result.error != nil {
-            callback(Result(error: result.error!))
-            return
-          }
-
-          callback(result)
-        }
-      } catch {
-        callback(Result(error: error))
-      }
+  public func getIdForFilename(_ filename: String) async throws -> String {
+    guard let auth = auth else {
+      self.logger.error("GDriveClient.getIdForFilename() - Authentication not initialized. GDrive config has not been set yet.")
+      throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfig() to configure GoogleDrive")
     }
+
+    let accessToken = await auth.getAccessToken()
+    if accessToken.isEmpty {
+      throw GDriveClientError.userNotAuthenticated
+    }
+
+    let query = "name='\(filename)'".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
+    guard let query = query else {
+      throw GDriveClientError.unableToBuildGDriveQuery
+    }
+
+    if let url = URL(string: "\(baseUrl)/drive/v3/files?corpora=user&q=\(query)") {
+      let data = try await requests.get(url, withBearerToken: accessToken)
+      let filesListResponse = try decoder.decode(GDriveFilesListResponse.self, from: data)
+
+      if filesListResponse.files.count > 0 {
+        return filesListResponse.files[0].id
+      }
+
+      throw GDriveClientError.noFileFound
+    }
+
+    throw URLError(.badURL)
   }
 
-  public func write(filename: String, content: String, callback: @escaping (Result<String>) -> Void) throws {
-    self.auth.getAccessToken { accessToken in
-      if accessToken.error != nil {
-        callback(Result(error: accessToken.error!))
-        return
-      }
-
-      // Delete existing file
-      do {
-        try self.getIdForFilename(filename: filename) { (fileId: Result<String>) in
-          if fileId.error != nil {
-            if fileId.error is NoFileFoundError {
-              print("[Portal.GDriveStorage] No existing file found. Skipping delete.")
-              do {
-                try self.writeFile(filename: filename, content: content, accessToken: accessToken.data!) { result in
-                  callback(result)
-                }
-                return
-              } catch {
-                callback(Result(error: error))
-                return
-              }
-            } else {
-              callback(Result(error: fileId.error!))
-              return
-            }
-          }
-
-          let existingFileId = fileId.data!
-          self.delete(id: existingFileId) { result in
-            if result.error != nil {
-              callback(Result(error: result.error!))
-              return
-            }
-
-            do {
-              try self.writeFile(filename: filename, content: content, accessToken: accessToken.data!) { (result: Result<String>) in
-                callback(result)
-              }
-            } catch {
-              callback(Result(error: error))
-            }
-          }
-        }
-      } catch {
-        callback(Result(error: error))
-      }
+  public func read(_ id: String) async throws -> String {
+    guard let auth = auth else {
+      self.logger.error("GDriveClient.read() - Authentication not initialized. GDrive config has not been set yet.")
+      throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfig() to configure GoogleDrive")
     }
+
+    let accessToken = await auth.getAccessToken()
+    if accessToken.isEmpty {
+      throw GDriveClientError.userNotAuthenticated
+    }
+
+    if let url = URL(string: "\(baseUrl)/drive/v3/files/\(id)?alt=media") {
+      let data = try await requests.get(url, withBearerToken: accessToken)
+
+      guard let fileContents = String(data: data, encoding: .utf8) else {
+        throw GDriveClientError.unableToReadFileContents
+      }
+
+      return fileContents
+    }
+
+    throw URLError(.badURL)
   }
 
-  public func validateOperations(callback: @escaping (Result<Bool>) -> Void) {
+  public func validateOperations() async throws -> Bool {
+    guard let auth = auth else {
+      self.logger.error("GDriveClient.validateOperations() - Authentication not initialized. GDrive config has not been set yet.")
+      throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfig() to configure GoogleDrive")
+    }
+
     let mockFileName = "portal_test.txt"
     let mockContent = "test_value"
+    let accessToken = await auth.getAccessToken()
 
-    self.auth.getAccessToken { accessToken in
-      if let error = accessToken.error {
-        callback(Result(error: error))
-        return
+    if accessToken.isEmpty {
+      throw GDriveClientError.userNotAuthenticated
+    }
+
+    guard try await self.write(mockFileName, withContent: mockContent) else {
+      throw GDriveClientError.unableToWriteToGDrive
+    }
+
+    let fileId = try await getIdForFilename(mockFileName)
+
+    let fileContents = try await read(fileId)
+    guard fileContents == mockContent else {
+      throw GDriveClientError.fileContentMismatch
+    }
+
+    return try await self.delete(fileId)
+  }
+
+  public func write(_ filename: String, withContent: String) async throws -> Bool {
+    guard let auth = auth else {
+      self.logger.error("GDriveClient.write() - Authentication not initialized. GDrive config has not been set yet.")
+      throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfig() to configure GoogleDrive")
+    }
+
+    let accessToken = await auth.getAccessToken()
+    if accessToken.isEmpty {
+      throw GDriveClientError.userNotAuthenticated
+    }
+
+    do {
+      let existingFileId = try await getIdForFilename(filename)
+      guard try await self.delete(existingFileId) else {
+        throw GDriveClientError.unableToDeleteFromGDrive
       }
 
-      guard let accessToken = accessToken.data, !accessToken.isEmpty else {
-        callback(Result(error: GDriveStorageError.unknownError))
-        return
-      }
+      let fileId = try await writeFile(filename, withContent: withContent, andAccessToken: accessToken)
 
-      // Write
-      do {
-        try self.write(filename: mockFileName, content: mockContent) { writeResult in
-          if let error = writeResult.error {
-            callback(Result(error: error))
-            return
-          }
+      return !fileId.isEmpty
+    } catch {
+      let fileId = try await writeFile(filename, withContent: withContent, andAccessToken: accessToken)
 
-          // Read
-          do {
-            try self.getIdForFilename(filename: mockFileName) { fileIdResult in
-              if let error = fileIdResult.error {
-                callback(Result(error: error))
-                return
-              }
-
-              guard let fileId = fileIdResult.data else {
-                callback(Result(error: GDriveStorageError.unknownError))
-                return
-              }
-
-              self.read(id: fileId) { readResult in
-                if let error = readResult.error {
-                  callback(Result(error: error))
-                  return
-                }
-
-                guard let readData = readResult.data, readData == mockContent else {
-                  callback(Result(error: GDriveStorageError.unknownError))
-                  return
-                }
-
-                // Delete
-                self.delete(id: fileId) { deleteResult in
-                  if let error = deleteResult.error {
-                    callback(Result(error: error))
-                  } else {
-                    callback(Result(data: true))
-                  }
-                }
-              }
-            }
-          } catch {
-            callback(Result(error: error))
-          }
-        }
-      } catch {
-        callback(Result(error: error))
-      }
+      return !fileId.isEmpty
     }
   }
 
-  private func buildMultipartFormData(content: String, metadata: GDriveFileMetadata) throws -> String {
-    let metadataJSON = try JSONEncoder().encode(metadata)
+  private func createFolder() async throws -> GDriveFile {
+    guard let auth = auth else {
+      self.logger.error("GDriveClient.createFolder() - Authentication not initialized. GDrive config has not been set yet.")
+      throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfig() to configure GoogleDrive")
+    }
+
+    let accessToken = await auth.getAccessToken()
+
+    if let url = URL(string: "\(baseUrl)/drive/v3/files?ignoreDefaultVisibility=true") {
+      let payload = GDriveFolderMetadata(
+        mimeType: "application/vnd.google-apps.folder",
+        name: self.folder,
+        parents: ["root"]
+      )
+      let data = try await requests.post(url, withBearerToken: accessToken, andPayload: payload)
+      let file = try decoder.decode(GDriveFile.self, from: data)
+
+      return file
+    }
+
+    throw URLError(.badURL)
+  }
+
+  private func getOrCreateFolder() async throws -> GDriveFile {
+    guard let auth = auth else {
+      self.logger.error("GDriveClient.getOrCreateFolder() - Authentication not initialized. GDrive config has not been set yet.")
+      throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfig() to configure GoogleDrive")
+    }
+
+    let accessToken = await auth.getAccessToken()
+    if accessToken.isEmpty {
+      throw GDriveClientError.userNotAuthenticated
+    }
+
+    guard let query = "name='\(folder)'".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+      throw GDriveClientError.unableToBuildGDriveQuery
+    }
+
+    if let url = URL(string: "\(baseUrl)/drive/v3/files?q=\(query)") {
+      let data = try await requests.get(url, withBearerToken: accessToken)
+      let filesListResponse = try decoder.decode(GDriveFilesListResponse.self, from: data)
+
+      if filesListResponse.files.count > 0 {
+        return filesListResponse.files[0]
+      }
+
+      let folder = try await createFolder()
+
+      return folder
+    }
+
+    throw URLError(.badURL)
+  }
+
+  private func writeFile(_ filename: String, withContent: String, andAccessToken: String) async throws -> String {
+    let folder = try await getOrCreateFolder()
+
+    if let url = URL(string: "\(baseUrl)/upload/drive/v3/files?ignoreDefaultVisibility=true&uploadType=multipart") {
+      let metadata = GDriveFileMetadata(name: filename, parents: [folder.id])
+      let body = try self.buildMultipartFormData(
+        withContent,
+        withMetadata: metadata
+      )
+
+      let data = try await requests.postMultiPartData(
+        url,
+        withBearerToken: andAccessToken,
+        andPayload: body,
+        usingBoundary: self.boundary
+      )
+      let file = try decoder.decode(GDriveFile.self, from: data)
+
+      return file.id
+    }
+
+    throw URLError(.badURL)
+  }
+
+  private func buildMultipartFormData(_ content: String, withMetadata: GDriveFileMetadata) throws -> String {
+    let metadataJSON = try JSONEncoder().encode(withMetadata)
     let metadataString = String(data: metadataJSON, encoding: .utf8)!
     let body = [
       "--\(boundary)\n",
@@ -285,127 +301,5 @@ class GDriveClient {
     ]
 
     return body.joined(separator: "")
-  }
-
-  private func createFolder(callback: @escaping (Result<GDriveFile>) -> Void) throws {
-    self.auth.getAccessToken { accessToken in
-      if accessToken.error != nil {
-        callback(Result(error: accessToken.error!))
-        return
-      }
-
-      do {
-        let body = GDriveFolderMetadata(
-          mimeType: "application/vnd.google-apps.folder",
-          name: self.folder,
-          parents: ["root"]
-        )
-        let bodyData = try JSONEncoder().encode(body)
-        let bodyString = String(data: bodyData, encoding: .utf8)!
-
-        try self.api.post(
-          path: "/drive/v3/files?ignoreDefaultVisibility=true",
-          body: [
-            "name": body.name,
-            "mimeType": body.mimeType,
-            "parents": body.parents,
-          ],
-          headers: [
-            "Accept": "application/json",
-            "Authorization": "Bearer \(accessToken.data!)",
-            "Content-Type": "application/json",
-            "Content-Length": String(bodyString.count),
-          ],
-          requestType: HttpRequestType.CustomRequest
-
-        ) { (_: Result<GDriveFile>) in
-        }
-      } catch {
-        callback(Result(error: error))
-      }
-    }
-  }
-
-  private func getOrCreateFolder(callback: @escaping (Result<GDriveFile>) -> Void) {
-    self.auth.getAccessToken { accessToken in
-      if accessToken.error != nil {
-        callback(Result(error: accessToken.error!))
-        return
-      }
-
-      do {
-        let query = "name='\(self.folder)'".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
-        try self.api.get(
-          path: "/drive/v3/files?q=\(query!)",
-          headers: [
-            "Accept": "application/json",
-            "Authorization": "Bearer \(accessToken.data!)",
-            "Content-Type": "application/json",
-          ],
-          requestType: HttpRequestType.CustomRequest
-
-        ) { (result: Result<GDriveFilesListResponse>) in
-          if result.error != nil {
-            callback(Result(error: result.error!))
-            return
-          }
-
-          do {
-            if result.data!.files.count > 0 {
-              callback(Result(data: result.data!.files[0]))
-            } else {
-              try self.createFolder { createdFolder in
-                callback(createdFolder)
-              }
-            }
-          } catch {
-            callback(Result(error: error))
-          }
-        }
-      } catch {
-        callback(Result(error: error))
-      }
-    }
-  }
-
-  private func writeFile(filename: String, content: String, accessToken: String, callback: @escaping (Result<String>) -> Void) throws {
-    self.getOrCreateFolder { folder in
-      if folder.error != nil {
-        callback(Result(error: folder.error!))
-        return
-      }
-
-      do {
-        let metadata = GDriveFileMetadata(
-          name: filename,
-          parents: [folder.data!.id]
-        )
-
-        let body = try self.buildMultipartFormData(
-          content: content,
-          metadata: metadata
-        )
-
-        try self.api.post(
-          path: "/upload/drive/v3/files?ignoreDefaultVisibility=true&uploadType=multipart",
-          body: ["rawBody": body],
-          headers: [
-            "Authorization": "Bearer \(accessToken)",
-            "Content-Type": "multipart/related; boundary=\(self.boundary)",
-          ],
-          requestType: HttpRequestType.CustomRequest
-
-        ) { (result: Result<GDriveFile>) in
-          if result.error != nil {
-            callback(Result(error: result.error!))
-            return
-          }
-
-          callback(Result(data: result.data!.id))
-        }
-      } catch {
-        callback(Result(error: error))
-      }
-    }
   }
 }
