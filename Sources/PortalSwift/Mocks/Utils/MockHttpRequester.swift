@@ -14,7 +14,9 @@ public class MockHttpRequester: HttpRequester {
     headers _: [String: String],
     completion: @escaping (Result<String>) -> Void
   ) throws {
-    completion(Result(data: mockBackupShare))
+    Task {
+      try completion(Result(data: await MockConstants.mockMpcShareString))
+    }
   }
 
   override func post<T: Codable>(

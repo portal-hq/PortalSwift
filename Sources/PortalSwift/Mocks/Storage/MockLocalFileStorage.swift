@@ -1,14 +1,13 @@
 //
-//  MockICloudStorage.swift
-//  PortalSwift
+//  File.swift
 //
-//  Created by Portal Labs, Inc.
-//  Copyright © 2022 Portal Labs, Inc. All rights reserved.
+//
+//  Created by Blake Williams on 3/30/24.
 //
 
 import Foundation
 
-public class MockICloudStorage: ICloudStorage {
+class MockLocalFileStorage: LocalFileStorage {
   // Async decrypt implementation
   public func decrypt(_: String, withKey _: String) async throws -> String {
     return try await MockConstants.mockMpcShareString
@@ -19,6 +18,11 @@ public class MockICloudStorage: ICloudStorage {
     return true
   }
 
+  // Completion delete implementation
+  override public func delete(completion: @escaping (Result<Bool>) -> Void) {
+    completion(Result(data: true))
+  }
+
   // Async encrypt implementation
   public func encrypt(_: String) async throws -> EncryptData {
     return MockConstants.mockEncryptData
@@ -26,7 +30,12 @@ public class MockICloudStorage: ICloudStorage {
 
   // Async read implementation
   override public func read() async throws -> String {
-    return try MockConstants.mockMpcShareString
+    return MockConstants.mockEncryptionKey
+  }
+
+  // Completion read implementation
+  override public func read(completion: @escaping (Result<String>) -> Void) {
+    completion(Result(data: MockConstants.mockEncryptionKey))
   }
 
   // Async write implementation
@@ -34,7 +43,8 @@ public class MockICloudStorage: ICloudStorage {
     return true
   }
 
-  override public func validateOperations() async throws -> Bool {
-    return true
+  // Completion write implementation
+  override public func write(privateKey _: String, completion: @escaping (Result<Bool>) -> Void) {
+    completion(Result(data: true))
   }
 }

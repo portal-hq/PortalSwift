@@ -10,23 +10,36 @@ import Foundation
 import UIKit
 
 public class MockGDriveStorage: GDriveStorage {
-  override public init(clientID: String, viewController: UIViewController) {
-    super.init(clientID: clientID, viewController: viewController)
+  public init(clientID: String? = nil, viewController: UIViewController? = nil) {
+    super.init(clientID: clientID, viewController: viewController, encryption: MockPortalEncryption())
   }
 
-  override public func delete(completion: @escaping (Result<Bool>) -> Void) {
-    completion(Result(data: true))
+  // Async decrypt implementation
+  public func decrypt(_: String, withKey _: String) async throws -> String {
+    return try MockConstants.mockMpcShareString
   }
 
-  override public func read(completion: @escaping (Result<String>) -> Void) {
-    completion(Result(data: mockBackupShare))
+  // Async delete implementation
+  override public func delete() async throws -> Bool {
+    return true
   }
 
-  override public func write(privateKey _: String, completion: @escaping (Result<Bool>) -> Void) {
-    completion(Result(data: true))
+  // Async encrypt implementation
+  public func encrypt(_: String) async throws -> EncryptData {
+    return MockConstants.mockEncryptData
   }
 
-  override public func validateOperations(callback: @escaping (Result<Bool>) -> Void) {
-    callback(Result(data: true))
+  // Async read implementation
+  override public func read() async throws -> String {
+    return MockConstants.mockEncryptionKey
+  }
+
+  // Async write implementation
+  override public func write(_: String) async throws -> Bool {
+    return true
+  }
+
+  override public func validateOperations() async throws -> Bool {
+    return true
   }
 }

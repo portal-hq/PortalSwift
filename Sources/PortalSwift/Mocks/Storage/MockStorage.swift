@@ -14,7 +14,7 @@ public class MockStorage: Storage {
   }
 
   override public func read(completion: @escaping (Result<String>) -> Void) {
-    completion(Result(data: mockBackupShare))
+    completion(Result(data: MockConstants.mockEncryptionKey))
   }
 
   override public func write(privateKey _: String, completion: @escaping (Result<Bool>) -> Void) {
