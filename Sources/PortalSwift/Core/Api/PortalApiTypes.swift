@@ -6,14 +6,14 @@ public struct ClientResponse: Codable, Equatable {
   public let id: String
   public let custodian: ClientResponseCustodian
   public let createdAt: String
-  public let environment: ClientResponseEnvironment
+  public let environment: ClientResponseEnvironment?
   public let ejectedAt: String?
   public let isAccountAbstracted: Bool
   public let metadata: ClientResponseMetadata
   public let wallets: [ClientResponseWallet]
 
   public static func == (lhs: ClientResponse, rhs: ClientResponse) -> Bool {
-    return lhs.id == rhs.id && lhs.custodian.id == rhs.custodian.id && lhs.createdAt == rhs.createdAt && lhs.environment.id == rhs.environment.id && lhs.ejectedAt == rhs.ejectedAt && lhs.isAccountAbstracted == rhs.isAccountAbstracted && lhs.metadata.namespaces.eip155?.address == rhs.metadata.namespaces.eip155?.address && lhs.metadata.namespaces.solana?.address == rhs.metadata.namespaces.solana?.address && lhs.wallets[0].backupSharePairs[0].backupMethod == rhs.wallets[0].backupSharePairs[0].backupMethod
+    return lhs.id == rhs.id && lhs.custodian.id == rhs.custodian.id && lhs.createdAt == rhs.createdAt && lhs.environment?.id == rhs.environment?.id && lhs.ejectedAt == rhs.ejectedAt && lhs.isAccountAbstracted == rhs.isAccountAbstracted && lhs.metadata.namespaces.eip155?.address == rhs.metadata.namespaces.eip155?.address && lhs.metadata.namespaces.solana?.address == rhs.metadata.namespaces.solana?.address && lhs.wallets[0].backupSharePairs[0].backupMethod == rhs.wallets[0].backupSharePairs[0].backupMethod
   }
 }
 

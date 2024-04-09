@@ -149,11 +149,11 @@ class ViewController: UIViewController, UITextFieldDelegate {
    ***********************************************/
 
   public func backup(_ userId: String, withMethod: BackupMethods) async throws -> String {
-    guard let portal = portal else {
+    guard let portal else {
       self.logger.error("ViewController.backup() - Portal not initialized. Please call registerPortal().")
       throw PortalExampleAppError.portalNotInitialized()
     }
-    guard let config = config else {
+    guard let config else {
       self.logger.error("ViewController.backup() - Application configuration not set.")
       throw PortalExampleAppError.configurationNotSet()
     }
@@ -184,7 +184,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   public func deleteKeychain() async {
     do {
-      guard let portal = portal else {
+      guard let portal else {
         self.logger.error("ViewController.deleteKeychain() - Portal not initialized. Please call registerPortal().")
         throw PortalExampleAppError.portalNotInitialized()
       }
@@ -199,15 +199,15 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
   public func eject(_ withBackupMethod: BackupMethods) async throws -> String {
-    guard let portal = portal else {
+    guard let portal else {
       self.logger.error("ViewController.eject() - ❌ Portal not initialized. Please call registerPortal().")
       throw PortalExampleAppError.portalNotInitialized()
     }
-    guard let user = user else {
+    guard let user else {
       self.logger.error("ViewController.eject() - ❌ User not logged in.")
       throw PortalExampleAppError.userNotLoggedIn()
     }
-    guard let config = config else {
+    guard let config else {
       self.logger.error("ViewController.recover() - ❌ Application configuration not set.")
       throw PortalExampleAppError.configurationNotSet()
     }
@@ -237,7 +237,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
   public func generate() async throws -> PortalCreateWalletResponse {
-    guard let portal = portal else {
+    guard let portal else {
       self.logger.error("PortalWrapper.generate() - Portal not initialized. Please call registerPortal().")
       throw PortalExampleAppError.portalNotInitialized()
     }
@@ -246,7 +246,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
   func getBalances() async throws -> Bool {
-    guard let portal = portal else {
+    guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
     let chainId = "eip155:11155111"
@@ -256,7 +256,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
   public func getGasPrice(_ chainId: String) async throws {
-    guard let portal = portal else {
+    guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
 
@@ -268,14 +268,14 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
   public func getNFTs(_ chainId: String) async throws -> [FetchedNFT] {
-    guard let portal = portal else {
+    guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
     return try await portal.getNFTs(chainId)
   }
 
   public func getShareMetadata() async throws -> Bool {
-    guard let portal = portal else {
+    guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
     let backupShares = try await portal.getBackupShares()
@@ -288,18 +288,18 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
   public func getTransactions(_ chainId: String) async throws -> [FetchedTransaction] {
-    guard let portal = portal else {
+    guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
     return try await portal.getTransactions(chainId)
   }
 
   public func recover(_ userId: String, withBackupMethod: BackupMethods) async throws -> PortalCreateWalletResponse {
-    guard let portal = portal else {
+    guard let portal else {
       self.logger.error("ViewController.recover() - Portal not initialized. Please call registerPortal().")
       throw PortalExampleAppError.portalNotInitialized()
     }
-    guard let config = config else {
+    guard let config else {
       self.logger.error("ViewController.recover() - Application configuration not set.")
       throw PortalExampleAppError.configurationNotSet()
     }
@@ -316,7 +316,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
   public func sendTransaction() async throws -> String {
-    guard let portal = portal else {
+    guard let portal else {
       self.logger.error("ViewController.sendTransaction() - ❌ Portal not initialized.")
       throw PortalExampleAppError.portalNotInitialized()
     }
@@ -347,7 +347,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
   public func simulateTransaction(_ chainId: String, transaction: Any) async throws -> SimulatedTransaction {
-    guard let portal = portal else {
+    guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
 
@@ -395,7 +395,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   public func testOtherRequests() async throws {
     let chainId = "eip155:11155111"
 
-    guard let portal = portal else {
+    guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
     guard let address = await portal.getAddress(chainId) else {
@@ -435,7 +435,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   public func testSignerRequests() async throws {
     let chainId = "eip155:11155111"
 
-    guard let portal = portal else {
+    guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
     guard let address = await portal.getAddress(chainId) else {
@@ -463,7 +463,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   public func testTransactionRequests() async throws {
     let chainId = "eip155:11155111"
-    guard let portal = portal else {
+    guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
     guard let address = await portal.getAddress(chainId) else {
@@ -666,7 +666,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
   public func populateEthBalance() async throws {
-    guard let portal = portal else {
+    guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
 
@@ -690,7 +690,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       guard let config = self.config else {
         throw PortalExampleAppError.configurationNotSet()
       }
-      guard let user = user else {
+      guard let user else {
         throw PortalExampleAppError.userNotLoggedIn()
       }
 
@@ -831,8 +831,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.passwordBackupButton?.isHidden = !walletExists || !isWalletOnDevice
 
           // Recover buttons
-          self.gdriveRecoverButton?.isEnabled = true // availableRecoveryMethods.contains(.GoogleDrive)
-          self.gdriveRecoverButton?.isHidden = false // !walletExists
+          self.gdriveRecoverButton?.isEnabled = availableRecoveryMethods.contains(.GoogleDrive)
+          self.gdriveRecoverButton?.isHidden = !walletExists
           self.iCloudRecoverButton?.isEnabled = availableRecoveryMethods.contains(.iCloud)
           self.iCloudRecoverButton?.isHidden = !walletExists
           self.passkeyRecoverButton?.isEnabled = availableRecoveryMethods.contains(.Passkey)
@@ -941,7 +941,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   @IBAction func handleDeleteKeychain(_: Any) {
     Task {
-      guard let portal = portal else {
+      guard let portal else {
         throw PortalExampleAppError.portalNotInitialized()
       }
 
@@ -996,7 +996,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         guard let portal = self.portal else {
           throw PortalExampleAppError.portalNotInitialized()
         }
-        guard let user = user else {
+        guard let user else {
           throw PortalExampleAppError.userNotLoggedIn()
         }
         self.startLoading()
@@ -1015,7 +1015,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBAction func handleGdriveRecover(_: UIButton!) {
     Task {
       do {
-        guard let user = user else {
+        guard let user else {
           throw PortalExampleAppError.userNotLoggedIn()
         }
         self.startLoading()
@@ -1044,7 +1044,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBAction func handleiCloudBackup(_: UIButton!) {
     Task {
       do {
-        guard let user = user else {
+        guard let user else {
           throw PortalExampleAppError.userNotLoggedIn()
         }
         self.startLoading()
@@ -1062,7 +1062,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBAction func handleiCloudRecover(_: UIButton!) {
     Task {
       do {
-        guard let user = user else {
+        guard let user else {
           throw PortalExampleAppError.userNotLoggedIn()
         }
         self.startLoading()
@@ -1171,7 +1171,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.logger.error("ViewController.handlePasswordRecover() - ❌ No password set by user. Recovery will not take place.")
           return
         }
-        guard let user = user else {
+        guard let user else {
           throw PortalExampleAppError.userNotLoggedIn()
         }
         self.startLoading()
@@ -1280,7 +1280,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       do {
         let chainId = "eip155:11155111"
 
-        guard let portal = portal else {
+        guard let portal else {
           self.logger.error("ViewController.handlSign() - ❌ Portal not initialized")
           throw PortalExampleAppError.portalNotInitialized()
         }
