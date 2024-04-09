@@ -38,6 +38,7 @@ enum WebViewControllerErrors: Error {
 
 /// A controller that allows you to create Portal's web view.
 public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessageHandler, WKUIDelegate {
+  public var chainId: Int
   public var delegate: PortalWebViewDelegate?
   public var webView: WKWebView!
   public var webViewContentIsLoaded = false
@@ -54,6 +55,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   ///   - url: The URL the web view should start at.
   ///   - onError: An error handler in case the web view throws errors.
   public init(portal: Portal, url: URL, onError: @escaping (Result<Any>) -> Void) {
+    self.chainId = portal.chainId ?? 11_155_111
     self.portal = portal
     self.url = url
     self.onError = onError
@@ -64,8 +66,12 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       print("[PortalWebView] No address found for user. Cannot inject provider into web page.")
       return
     }
-    self.webView = self.initWebView(address: address)
-    self.bindPortalEvents(portal: portal)
+    do {
+      self.webView = try self.initWebView(address: address)
+      self.bindPortalEvents(portal: portal)
+    } catch {
+      print("Error initializing WebView: ❌ \(error.localizedDescription)")
+    }
   }
 
   /// The constructor for Portal's WebViewController.
@@ -76,6 +82,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   ///   - onPageStart: A handler that fires when the web view is starting to load a page.
   ///   - onPageComplete: A handler that fires when the web view has finished loading a page.
   public init(portal: Portal, url: URL, onError: @escaping (Result<Any>) -> Void, onPageStart: @escaping () -> Void, onPageComplete: @escaping () -> Void) {
+    self.chainId = portal.chainId ?? 11_155_111
     self.portal = portal
     self.url = url
     self.onError = onError
@@ -88,8 +95,12 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       print("[PortalWebView] No address found for user. Cannot inject provider into web page.")
       return
     }
-    self.webView = self.initWebView(address: address)
-    self.bindPortalEvents(portal: portal)
+    do {
+      self.webView = try self.initWebView(address: address)
+      self.bindPortalEvents(portal: portal)
+    } catch {
+      print("Error initializing WebView: ❌ \(error.localizedDescription)")
+    }
   }
 
   /// The constructor for Portal's WebViewController.
@@ -101,6 +112,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   ///   - onPageStart: A handler that fires when the web view is starting to load a page.
   ///   - onPageComplete: A handler that fires when the web view has finished loading a page.
   public init(portal: Portal, url: URL, persistSessionData: Bool, onError: @escaping (Result<Any>) -> Void, onPageStart: @escaping () -> Void, onPageComplete: @escaping () -> Void) {
+    self.chainId = portal.chainId ?? 11_155_111
     self.portal = portal
     self.url = url
     self.onError = onError
@@ -113,8 +125,12 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       print("[PortalWebView] No address found for user. Cannot inject provider into web page.")
       return
     }
-    self.webView = self.initWebView(address: address, persistSessionData: persistSessionData)
-    self.bindPortalEvents(portal: portal)
+    do {
+      self.webView = try self.initWebView(address: address, persistSessionData: persistSessionData)
+      self.bindPortalEvents(portal: portal)
+    } catch {
+      print("Error initializing WebView: ❌ \(error.localizedDescription)")
+    }
   }
 
   @available(*, unavailable)
@@ -132,6 +148,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
           let javascript = """
             window.postMessage(JSON.stringify({ type: 'portal_chainChanged', data: { chainId: \(chainId) } }));
           """
+          self.chainId = chainId
           self.evaluateJavascript(javascript)
         }
       }
@@ -165,18 +182,25 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     }
   }
 
-  private func initWebView(address: String, persistSessionData: Bool = false, debugEnabled _: Bool = false) -> WKWebView {
+  private func initWebView(address: String, persistSessionData: Bool = false, debugEnabled _: Bool = false) throws -> WKWebView {
     let gatewayConfig: [Int: String] = Dictionary(portal.rpcConfig.map { key, value in
       let chainIdParts = key.split(separator: ":").map(String.init)
       let newKey = Int(chainIdParts[1]) ?? 1
       return (newKey, value)
     }, uniquingKeysWith: { first, _ in first })
+
+    print("WebView GatewayConfig:", gatewayConfig)
+
+    guard let rpcUrl = gatewayConfig[chainId] else {
+      throw PortalWebViewError.unexpectedError("❌ No rpc url found for chainId: \(self.chainId)")
+    }
+
     // build WKUserScript
     let scriptSource = self.injectPortal(
       address: address,
       apiKey: self.portal.apiKey,
       chainId: String(self.portal.chainId ?? 11_155_111),
-      gatewayConfig: gatewayConfig[self.portal.chainId ?? 111_155_111] ?? "",
+      gatewayConfig: rpcUrl,
       autoApprove: self.portal.autoApprove,
       enableMpc: true
     )
@@ -476,4 +500,8 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
 
 enum PortalWebViewError: Error {
   case unexpectedError(String)
+}
+
+struct WalletSwitchEthereumChainParam {
+  let chainId: Int
 }
