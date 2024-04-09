@@ -6,20 +6,22 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 
 import AuthenticationServices
-import os
 import UIKit
 
 @available(iOS 16.0, *)
 public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContextProviding, ASAuthorizationControllerDelegate {
+  // These need to be sent back to the server as part of the registration and authentication ceremonies
+  var assertion: String?
+  var attestation: String?
+
   // Current active UI Window to present passkey modal too
   var authenticationAnchor: ASPresentationAnchor?
-  // These need to be sent back to the server as part of the registration and authentication ceremonies
-  var attestation: String?
-  var assertion: String?
+  var continuation: CheckedContinuation<String, Error>?
+
   // The domain of our relying party server.
   private var domain: String
-  var authorizationCompletion: AuthorizationCompletion?
-  var registrationCompletion: RegistrationCompletion?
+  private let logger = PortalLogger()
+
   deinit {
     print("PasskeyAuth is being deallocated")
   }
@@ -34,8 +36,7 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
   ///   - userId: UserId from the 'begin/registration' endpoint
   ///   - challenge: Data object to sign to verify passkey registration
   ///   - anchor: window of current UI
-  func signUpWith(options: RegistrationOptions, anchor: ASPresentationAnchor) {
-    self.authenticationAnchor = anchor
+  func signUpWith(_ options: RegistrationOptions) {
     let publicKeyCredentialProvider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: domain)
 
     let challenge = options.publicKey.challenge.decodeBase64Url()!
@@ -60,8 +61,7 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
     authController.performRequests()
   }
 
-  func signInWith(anchor: ASPresentationAnchor, options: AuthenticationOptions, preferImmediatelyAvailableCredentials: Bool) {
-    self.authenticationAnchor = anchor
+  func signInWith(_ options: AuthenticationOptions, preferImmediatelyAvailableCredentials: Bool) {
     let publicKeyCredentialProvider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: domain)
     let challenge = options.publicKey.challenge.decodeBase64Url()!
 
@@ -86,31 +86,22 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
   }
 
   public func authorizationController(controller _: ASAuthorizationController, didCompleteWithError error: Error) {
-    let logger = Logger()
     guard let authorizationError = error as? ASAuthorizationError else {
-      logger.error("Unexpected authorization error: \(error.localizedDescription)")
-      self.authorizationCompletion! (Result(error: error))
+      self.logger.error("Unexpected authorization error: \(error.localizedDescription)")
+      self.continuation?.resume(throwing: error)
       return
     }
 
     if authorizationError.code == .canceled {
       // Either the system doesn't find any credentials and the request ends silently, or the user cancels the request.
       // This is a good time to show a traditional login form, or ask the user to create an account.
-      logger.log("Request canceled.")
-      if self.authorizationCompletion != nil {
-        self.authorizationCompletion!(Result(error: authorizationError))
-      } else if self.registrationCompletion != nil {
-        self.registrationCompletion!(Result(error: authorizationError))
-      }
+      self.logger.log("Request canceled.")
+      self.continuation?.resume(throwing: authorizationError)
     } else {
       // Another ASAuthorization error.
       // Note: The userInfo dictionary contains useful information.
-      logger.error("Error: \((error as NSError).userInfo)")
-      if self.authorizationCompletion != nil {
-        self.authorizationCompletion!(Result(error: error as NSError))
-      } else if self.registrationCompletion != nil {
-        self.registrationCompletion!(Result(error: error as NSError))
-      }
+      self.logger.error("Error: \((error as NSError).userInfo)")
+      self.continuation?.resume(throwing: error as NSError)
     }
   }
 
@@ -119,79 +110,90 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
   }
 
   public func authorizationController(controller _: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
-    let logger = Logger()
     switch authorization.credential {
     case let credentialRegistration as ASAuthorizationPlatformPublicKeyCredentialRegistration:
-      logger.log("A new passkey was registered")
-
-      guard let attestationObject = credentialRegistration.rawAttestationObject else { return }
-      let clientDataJSON = credentialRegistration.rawClientDataJSON
-      let credentialID = credentialRegistration.credentialID
-
-      // Build the attestaion object
-      let payload = ["rawId": credentialID.toBase64Url(),
-                     "id": credentialID.toBase64Url(),
-                     "clientExtensionResults": [String: Any](),
-                     "type": "public-key",
-                     "response": [
-                       "attestationObject": attestationObject.toBase64Url(),
-                       "clientDataJSON": clientDataJSON.toBase64Url(),
-                     ]] as [String: Any]
-
-      if let payloadJSONData = try? JSONSerialization.data(withJSONObject: payload, options: .fragmentsAllowed) {
-        guard let payloadJSONText = String(data: payloadJSONData, encoding: .utf8) else { return }
-        self.attestation = payloadJSONText
-        if let attestation = self.attestation {
-          self.registrationCompletion?(Result(data: attestation))
-        } else {
-          // TODO: make error more specific
-          self.registrationCompletion?(Result(error: PasskeyStorageError.writeError))
-        }
-      }
-
+      self.handleCredentialRegistration(credentialRegistration)
     case let credentialAssertion as ASAuthorizationPlatformPublicKeyCredentialAssertion:
-      logger.log("A passkey was used to sign in")
-
-      guard let signature = credentialAssertion.signature else {
-        return self.authorizationCompletion!(Result(error: PasskeyAuthError.MissingSignature))
-      }
-      guard let authenticatorData = credentialAssertion.rawAuthenticatorData else {
-        return self.authorizationCompletion!(Result(error: PasskeyAuthError.MissingAuthenticatorData))
-      }
-      guard let userID = credentialAssertion.userID else {
-        return self.authorizationCompletion!(Result(error: PasskeyAuthError.MissingAuthenticatorData))
-      }
-      let clientDataJSON = credentialAssertion.rawClientDataJSON
-      let credentialId = credentialAssertion.credentialID
-
-      let payload = ["rawId": credentialId.toBase64Url(),
-                     "id": credentialId.toBase64Url(),
-                     "clientExtensionResults": [String: Any](),
-                     "type": "public-key",
-                     "response": [
-                       "clientDataJSON": clientDataJSON.toBase64Url(),
-                       "authenticatorData": authenticatorData.toBase64Url(),
-                       "signature": signature.toBase64Url(),
-                       "userHandle": String(data: userID, encoding: .utf8),
-                     ]] as [String: Any]
-
-      if let payloadJSONData = try? JSONSerialization.data(withJSONObject: payload, options: .fragmentsAllowed) {
-        guard let payloadJSONText = String(data: payloadJSONData, encoding: .utf8) else { return }
-        self.assertion = payloadJSONText
-        if let assertion = self.assertion {
-          self.authorizationCompletion?(Result(data: assertion))
-        } else {
-          // TODO: make error more specific
-          self.authorizationCompletion?(Result(error: PasskeyStorageError.writeError))
-        }
-      }
-
+      self.handleCredentialAssertion(credentialAssertion)
     default:
-      self.authorizationCompletion!(Result(error: PasskeyAuthError.ReceivedUnknownAuthorizationType))
+      self.continuation?.resume(throwing: PasskeyAuthError.ReceivedUnknownAuthorizationType)
     }
   }
 
-  func base64URLEncode(_ data: Data) -> String {
+  // Private functions
+
+  private func handleCredentialAssertion(_ assertion: ASAuthorizationPlatformPublicKeyCredentialAssertion) {
+    self.logger.log("A passkey was used to sign in")
+
+    guard let signature = assertion.signature else {
+      self.continuation?.resume(throwing: PasskeyAuthError.MissingSignature)
+      return
+    }
+    guard let authenticatorData = assertion.rawAuthenticatorData else {
+      self.continuation?.resume(throwing: PasskeyAuthError.MissingAuthenticatorData)
+      return
+    }
+    guard let userID = assertion.userID else {
+      self.continuation?.resume(throwing: PasskeyAuthError.MissingAuthenticatorData)
+      return
+    }
+    let clientDataJSON = assertion.rawClientDataJSON
+    let credentialId = assertion.credentialID
+
+    let payload = ["rawId": credentialId.toBase64Url(),
+                   "id": credentialId.toBase64Url(),
+                   "clientExtensionResults": [String: Any](),
+                   "type": "public-key",
+                   "response": [
+                     "clientDataJSON": clientDataJSON.toBase64Url(),
+                     "authenticatorData": authenticatorData.toBase64Url(),
+                     "signature": signature.toBase64Url(),
+                     "userHandle": String(data: userID, encoding: .utf8),
+                   ]] as [String: Any]
+
+    if let payloadJSONData = try? JSONSerialization.data(withJSONObject: payload, options: .fragmentsAllowed) {
+      guard let payloadJSONText = String(data: payloadJSONData, encoding: .utf8) else { return }
+      self.assertion = payloadJSONText
+      if let assertion = self.assertion {
+        self.continuation?.resume(returning: assertion)
+      } else {
+        // TODO: make error more specific
+        self.continuation?.resume(throwing: PasskeyStorageError.writeError)
+      }
+    }
+  }
+
+  private func handleCredentialRegistration(_ registration: ASAuthorizationPlatformPublicKeyCredentialRegistration) {
+    self.logger.log("A new passkey was registered")
+
+    guard let attestationObject = registration.rawAttestationObject else { return }
+    let clientDataJSON = registration.rawClientDataJSON
+    let credentialID = registration.credentialID
+
+    // Build the attestaion object
+    let payload = ["rawId": credentialID.toBase64Url(),
+                   "id": credentialID.toBase64Url(),
+                   "clientExtensionResults": [String: Any](),
+                   "type": "public-key",
+                   "response": [
+                     "attestationObject": attestationObject.toBase64Url(),
+                     "clientDataJSON": clientDataJSON.toBase64Url(),
+                   ]] as [String: Any]
+
+    if let payloadJSONData = try? JSONSerialization.data(withJSONObject: payload, options: .fragmentsAllowed) {
+      guard let payloadJSONText = String(data: payloadJSONData, encoding: .utf8) else { return }
+      self.attestation = payloadJSONText
+
+      if let attestation = self.attestation {
+        self.continuation?.resume(returning: attestation)
+      } else {
+        // TODO: make error more specific
+        self.continuation?.resume(throwing: PasskeyStorageError.writeError)
+      }
+    }
+  }
+
+  private func base64URLEncode(_ data: Data) -> String {
     let base64 = data.base64EncodedString()
     let base64URL = base64
       .replacingOccurrences(of: "+", with: "-")
