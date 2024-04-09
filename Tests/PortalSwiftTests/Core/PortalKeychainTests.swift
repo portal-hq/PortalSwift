@@ -10,44 +10,83 @@ import PortalSwift
 import XCTest
 
 final class PortalKeychainTests: XCTestCase {
-  var keychain: PortalKeychain!
+  var keychain: PortalKeychain = .init(keychainAccess: MockPortalKeychainAccess())
 
   override func setUpWithError() throws {
-    // Put setup code here. This method is called before the invocation of each test method in the class.
-    self.keychain = PortalKeychain()
-    self.keychain.clientId = mockClientId
+    self.keychain.api = PortalApi(
+      apiKey: MockConstants.mockApiKey,
+      apiHost: MockConstants.mockHost,
+      requests: MockPortalRequests()
+    )
   }
 
-  override func tearDownWithError() throws {
-    // Put teardown code here. This method is called after the invocation of each test method in the class.
-    self.keychain = nil
+  override func tearDownWithError() throws {}
+
+  func testGetAddress() async throws {
+    let expectation = XCTestExpectation(description: "PortalKeychain.getAddress(forChainId)")
+    let eip155Address = try await keychain.getAddress("eip155:11155111")
+    let solanaAddress = try await keychain.getAddress("solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z")
+    XCTAssert(eip155Address == MockConstants.mockEip155Address)
+    XCTAssert(solanaAddress == MockConstants.mockSolanaAddress)
+    expectation.fulfill()
+    await fulfillment(of: [expectation], timeout: 5.0)
   }
 
-  func testShare() {
-    self.keychain.setSigningShare(signingShare: "TestSigningShare") { _ in }
-    XCTAssert(try self.keychain.getSigningShare() == "TestSigningShare", "Signing Share should equal what we stored.")
+  func testGetAddresses() async throws {
+    let expectation = XCTestExpectation(description: "PortalKeychain.getAddresses()")
+    let addresses = try await keychain.getAddresses()
+    XCTAssert(addresses[.eip155] == MockConstants.mockEip155Address)
+    XCTAssert(addresses[.solana] == MockConstants.mockSolanaAddress)
+    expectation.fulfill()
+    await fulfillment(of: [expectation], timeout: 5.0)
   }
 
-  func testAddress() {
-    self.keychain.setAddress(address: "0xhahashdfasAJHAFKJ") { _ in }
-    XCTAssert(try self.keychain.getAddress() == "0xhahashdfasAJHAFKJ", "Address should equal what we stored.")
+  func testGetMetadata() async throws {
+    let expectation = XCTestExpectation(description: "PortalKeychain.getMetadata()")
+    let metadata = try await keychain.getMetadata()
+    XCTAssert(metadata.id == MockConstants.mockKeychainClientMetadata.id)
+    XCTAssert(metadata.addresses == MockConstants.mockKeychainClientMetadata.addresses)
+    expectation.fulfill()
+    await fulfillment(of: [expectation], timeout: 5.0)
   }
 
-  func testDeleteAddress() {
-    self.keychain.setAddress(address: "0xhahashdfasAJHAFKJ") { _ in }
-    XCTAssertNoThrow(try self.keychain.deleteAddress(), "Delete address should not throw an error.")
-    XCTAssertThrowsError(try self.keychain.getAddress()) { error in
-      let expectedError = PortalKeychain.KeychainError.ItemNotFound(item: "test-client-id.address")
-      XCTAssert(expectedError == error as? PortalKeychain.KeychainError, "ItemNotFound error should throw")
+  func testGetShare() async throws {
+    let expectation = XCTestExpectation(description: "PortalKeychain.getShare(forChainId)")
+    let mockMpcShareString = try MockConstants.mockMpcShareString
+    let shareResult = try await keychain.getShare("eip155:11155111")
+
+    guard let shareData = shareResult.data(using: .utf8),
+          let mockShareData = mockMpcShareString.data(using: .utf8),
+          let share = try? JSONDecoder().decode(MpcShare.self, from: shareData),
+          let mockShare = try? JSONDecoder().decode(MpcShare.self, from: mockShareData)
+    else {
+      throw PortalKeychain.KeychainError.unableToEncodeKeychainData
     }
+
+    XCTAssertEqual(share, mockShare)
+    expectation.fulfill()
+    await fulfillment(of: [expectation], timeout: 5.0)
   }
 
-  func testDeleteSigningShare() {
-    self.keychain.setSigningShare(signingShare: "TestSigningShare") { _ in }
-    XCTAssertNoThrow(try self.keychain.deleteSigningShare(), "Delete signing share should not throw an error.")
-    XCTAssertThrowsError(try self.keychain.getSigningShare()) { error in
-      let expectedError = PortalKeychain.KeychainError.ItemNotFound(item: "test-client-id.share")
-      XCTAssert(expectedError == error as? PortalKeychain.KeychainError, "ItemNotFound error should throw")
+  func testGetShares() async throws {
+    let expectation = XCTestExpectation(description: "PortalKeychain.getShares()")
+    let mockGeneratedShare = try MockConstants.mockGeneratedShare
+    let shares = try await keychain.getShares()
+    guard let secp256k1Share = shares["SECP256K1"] else {
+      throw PortalKeychain.KeychainError.itemNotFound(item: "share")
     }
+    guard let shareData = secp256k1Share.share.data(using: .utf8),
+          let mockShareData = mockGeneratedShare.share.data(using: .utf8),
+          let share = try? JSONDecoder().decode(MpcShare.self, from: shareData),
+          let mockShare = try? JSONDecoder().decode(MpcShare.self, from: mockShareData)
+    else {
+      throw PortalKeychain.KeychainError.unableToEncodeKeychainData
+    }
+    XCTAssert(shares.count > 0)
+    XCTAssertEqual(secp256k1Share.id, mockGeneratedShare.id)
+    XCTAssertEqual(share, mockShare)
+    expectation.fulfill()
+
+    await fulfillment(of: [expectation], timeout: 5.0)
   }
 }
