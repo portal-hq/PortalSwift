@@ -204,13 +204,13 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     // Enable debugging the webview in Safari.
     // #if directive used  to start a conditional compilation block.
     // @WARNING: Uncomment this section to enable debugging in Safari.
-    //      #if canImport(UIKit)
-    //        #if targetEnvironment(simulator)
-    //          if #available(iOS 16.4, *) {
-    //            webView.isInspectable = true
-    //          }
-    //        #endif
-    //      #endif
+    #if canImport(UIKit)
+      #if targetEnvironment(simulator)
+        if #available(iOS 16.4, *) {
+          webView.isInspectable = true
+        }
+      #endif
+    #endif
 
     return webView
   }
@@ -470,7 +470,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   }
 
   private func injectPortal(address: String, apiKey: String, chainId: String, gatewayConfig: String, autoApprove _: Bool = false, enableMpc: Bool = false) -> String {
-    "window.portalAddress = \"\(address)\";window.portalApiKey = \"\(apiKey)\";window.portalAutoApprove = true;window.portalChainId = \"\(chainId)\";window.portalGatewayConfig = \"\(gatewayConfig)\";window.portalMPCEnabled = \"\(String(enableMpc))\";\(PortalInjectionScript.SCRIPT as Any)true;"
+    "window.portalAddress='\(address)';window.portalApiKey='\(apiKey)';window.portalAutoApprove=true;window.portalChainId='\(chainId)';window.portalGatewayConfig='\(gatewayConfig)';window.portalMPCEnabled='\(String(enableMpc))';\(PortalInjectionScript.SCRIPT)true"
   }
 }
 
