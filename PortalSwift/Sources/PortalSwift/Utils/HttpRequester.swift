@@ -8,6 +8,7 @@
 import Foundation
 
 /// A class for making HTTP requests.
+@available(*, deprecated, renamed: "PortalRequests", message: "Please use the async implementation of PortalRequests")
 public class HttpRequester {
   var baseUrl: String
 
