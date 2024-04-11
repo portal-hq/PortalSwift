@@ -14,13 +14,12 @@
 		607FACE01AFB9204008FA782 /* LaunchScreen.xib in Resources */ = {isa = PBXBuildFile; fileRef = 607FACDE1AFB9204008FA782 /* LaunchScreen.xib */; };
 		607FACEC1AFB9204008FA782 /* WalletTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FACEB1AFB9204008FA782 /* WalletTests.swift */; };
 		7E1A4FDB2AF46A1B00A6F7A5 /* PortalSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 7E1A4FDA2AF46A1B00A6F7A5 /* PortalSwift */; };
+		7E4579F32BC85D6700D71835 /* PortalSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 7E4579F22BC85D6700D71835 /* PortalSwift */; };
 		7E4B874E2A58BFFB003A8DB5 /* WebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4B874D2A58BFFB003A8DB5 /* WebViewController.swift */; };
 		7E7F4C002A002D7F00756B6A /* ConnectViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E7F4BFF2A002D7F00756B6A /* ConnectViewController.swift */; };
 		7EDEB9FC2AF59EC3005E8C7F /* PortalSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 7EDEB9FB2AF59EC3005E8C7F /* PortalSwift */; };
 		F915F34E2A8195E70014C25B /* ProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F915F34D2A8195E70014C25B /* ProviderTests.swift */; };
 		F95EA8282AE1440F00A31827 /* PasswordWalletTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F95EA8272AE1440F00A31827 /* PasswordWalletTests.swift */; };
-		F97145522A1450ED0034189F /* Portal.swift in Sources */ = {isa = PBXBuildFile; fileRef = F97145512A1450ED0034189F /* Portal.swift */; };
-		F97145532A1450ED0034189F /* Portal.swift in Sources */ = {isa = PBXBuildFile; fileRef = F97145512A1450ED0034189F /* Portal.swift */; };
 		F9AAB9EC2BC5999700512886 /* Web3 in Frameworks */ = {isa = PBXBuildFile; productRef = F9AAB9EB2BC5999700512886 /* Web3 */; };
 		F9AAB9EE2BC5999700512886 /* Web3ContractABI in Frameworks */ = {isa = PBXBuildFile; productRef = F9AAB9ED2BC5999700512886 /* Web3ContractABI */; };
 		F9AAB9F02BC5999700512886 /* Web3PromiseKit in Frameworks */ = {isa = PBXBuildFile; productRef = F9AAB9EF2BC5999700512886 /* Web3PromiseKit */; };
@@ -52,6 +51,7 @@
 		7E4B874D2A58BFFB003A8DB5 /* WebViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewController.swift; sourceTree = "<group>"; };
 		7E7F4BFF2A002D7F00756B6A /* ConnectViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectViewController.swift; sourceTree = "<group>"; };
 		7EB608D3291EF2F000CF1346 /* PortalSwift.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = PortalSwift.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		7EBF73492BC84FBD0077FD03 /* PortalSwift.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = PortalSwift.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		7EDEB9FA2AF59DFE005E8C7F /* SPM E2E Tests.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; name = "SPM E2E Tests.xctestplan"; path = "/Users/blakewilliams/development/portal/PortalSwift/SPM Example/SPM E2E Tests.xctestplan"; sourceTree = "<absolute>"; };
 		F915F34D2A8195E70014C25B /* ProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderTests.swift; sourceTree = "<group>"; };
 		F95EA8272AE1440F00A31827 /* PasswordWalletTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordWalletTests.swift; sourceTree = "<group>"; };
@@ -62,6 +62,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7E4579F32BC85D6700D71835 /* PortalSwift in Frameworks */,
 				F9AAB9EE2BC5999700512886 /* Web3ContractABI in Frameworks */,
 				7E1A4FDB2AF46A1B00A6F7A5 /* PortalSwift in Frameworks */,
 				F9AAB9F02BC5999700512886 /* Web3PromiseKit in Frameworks */,
@@ -146,6 +147,7 @@
 		984F47A8E526CC82C36C391B /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				7EBF73492BC84FBD0077FD03 /* PortalSwift.framework */,
 				7EB608D3291EF2F000CF1346 /* PortalSwift.framework */,
 			);
 			name = Frameworks;
@@ -182,6 +184,7 @@
 				F9AAB9EB2BC5999700512886 /* Web3 */,
 				F9AAB9ED2BC5999700512886 /* Web3ContractABI */,
 				F9AAB9EF2BC5999700512886 /* Web3PromiseKit */,
+				7E4579F22BC85D6700D71835 /* PortalSwift */,
 			);
 			productName = PortalSwift;
 			productReference = 607FACD01AFB9204008FA782 /* SPM Example.app */;
@@ -242,8 +245,8 @@
 			);
 			mainGroup = 607FACC71AFB9204008FA782;
 			packageReferences = (
-				7E1A4FD92AF46A1B00A6F7A5 /* XCLocalSwiftPackageReference ".." */,
 				F9AAB9EA2BC5999700512886 /* XCRemoteSwiftPackageReference "Web3" */,
+				7E4579F12BC85D6700D71835 /* XCLocalSwiftPackageReference "../PortalSwift" */,
 			);
 			productRefGroup = 607FACD11AFB9204008FA782 /* Products */;
 			projectDirPath = "";
@@ -580,9 +583,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		7E1A4FD92AF46A1B00A6F7A5 /* XCLocalSwiftPackageReference ".." */ = {
+		7E4579F12BC85D6700D71835 /* XCLocalSwiftPackageReference "../PortalSwift" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ..;
+			relativePath = ../PortalSwift;
 		};
 /* End XCLocalSwiftPackageReference section */
 
@@ -599,6 +602,10 @@
 
 /* Begin XCSwiftPackageProductDependency section */
 		7E1A4FDA2AF46A1B00A6F7A5 /* PortalSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PortalSwift;
+		};
+		7E4579F22BC85D6700D71835 /* PortalSwift */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PortalSwift;
 		};
