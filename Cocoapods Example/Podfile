@@ -5,6 +5,8 @@ platform :ios, '13.0'
 project './Cocoapods Example.xcodeproj'
 workspace '../PortalSwift.xcworkspace'
 
+install! 'cocoapods', :deterministic_uuids => false
+
 target 'Cocoapods Example' do
   pod 'PortalSwift', :path => '../', :testspecs => ['Tests']
   pod 'GoogleSignIn', '~> 6.2'
