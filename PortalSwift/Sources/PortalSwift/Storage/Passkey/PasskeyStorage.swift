@@ -52,7 +52,7 @@ public class PasskeyStorage: Storage, PortalStorage {
     self.passkeyApi = HttpRequester(baseUrl: self.webAuthnHost)
   }
 
-  @available(*, deprecated, renamed: "PortalStorage", message: "Please use the new initialization patter excluding your viewController.")
+  @available(*, deprecated, renamed: "PortalStorage", message: "Please use the new initialization pattern excluding your viewController.")
   public init(
     viewController: UIViewController? = nil,
     relyingParty: String? = "portalhq.io",
