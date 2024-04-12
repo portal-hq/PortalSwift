@@ -52,7 +52,7 @@ public class PasskeyStorage: Storage, PortalStorage {
     self.passkeyApi = HttpRequester(baseUrl: self.webAuthnHost)
   }
 
-  @available(*, deprecated, renamed: "PortalStorage", message: "Please use the new initialization patter excluding your viewController.")
+  @available(*, deprecated, renamed: "PortalStorage", message: "Please use the new initialization pattern excluding your viewController.")
   public init(
     viewController: UIViewController? = nil,
     relyingParty: String? = "portalhq.io",
@@ -159,7 +159,6 @@ public class PasskeyStorage: Storage, PortalStorage {
       throw PasskeyStorageError.noApiKey
     }
 
-    self.logger.log("Login URL: \(self.webAuthnHost)/passkeys/begin-login")
     if let url = URL(string: "\(webAuthnHost)/passkeys/begin-login") {
       let data = try await requests.post(url, withBearerToken: apiKey, andPayload: ["relyingParty": self.relyingParty])
       let authenticationOption = try decoder.decode(WebAuthnAuthenticationOption.self, from: data)
@@ -175,7 +174,6 @@ public class PasskeyStorage: Storage, PortalStorage {
       throw PasskeyStorageError.noApiKey
     }
 
-    self.logger.info("Registration URL: \(self.webAuthnHost)/passkeys/begin-registration")
     if let url = URL(string: "\(webAuthnHost)/passkeys/begin-registration") {
       let data = try await requests.post(url, withBearerToken: apiKey, andPayload: ["relyingParty": self.relyingParty])
       let registrationOption = try decoder.decode(WebAuthnRegistrationOptions.self, from: data)
@@ -191,7 +189,6 @@ public class PasskeyStorage: Storage, PortalStorage {
       throw PasskeyStorageError.noApiKey
     }
 
-    self.logger.info("Status URL: \(self.webAuthnHost)/passkeys/status")
     if let url = URL(string: "\(webAuthnHost)/passkeys/status") {
       let data = try await requests.get(url, withBearerToken: apiKey)
       let statusResponse = try decoder.decode(PasskeyStatusResponse.self, from: data)
