@@ -159,7 +159,6 @@ public class PasskeyStorage: Storage, PortalStorage {
       throw PasskeyStorageError.noApiKey
     }
 
-    self.logger.log("Login URL: \(self.webAuthnHost)/passkeys/begin-login")
     if let url = URL(string: "\(webAuthnHost)/passkeys/begin-login") {
       let data = try await requests.post(url, withBearerToken: apiKey, andPayload: ["relyingParty": self.relyingParty])
       let authenticationOption = try decoder.decode(WebAuthnAuthenticationOption.self, from: data)
