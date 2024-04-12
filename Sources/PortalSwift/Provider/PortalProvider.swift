@@ -229,22 +229,26 @@ public class PortalProvider {
     if payload.method == ETHRequestMethods.WalletSwitchEthereumChain.rawValue {
       let param = payload.params[0] as! [String: String]
 
-      if let chainId = UInt8(param["chainId"]!.replacingOccurrences(of: "0x", with: ""), radix: 16) {
-        do {
-          _ = try self.setChainId(value: Int(chainId), connect: connect)
+      if let chainIdString = param["chainId"]?.replacingOccurrences(of: "0x", with: "") {
+        if let chainId = Int(chainIdString, radix: 16) {
+          do {
+            _ = try self.setChainId(value: Int(chainId), connect: connect)
 
-          let completionResult = RequestCompletionResult(
-            method: payload.method,
-            params: payload.params,
-            result: "null",
-            id: ""
-          )
+            let completionResult = RequestCompletionResult(
+              method: payload.method,
+              params: payload.params,
+              result: "null",
+              id: ""
+            )
 
-          _ = self.emit(event: Events.PortalSignatureReceived.rawValue, data: completionResult)
+            _ = self.emit(event: Events.PortalSignatureReceived.rawValue, data: completionResult)
 
-          return completion(Result(data: completionResult))
-        } catch {
-          return completion(Result(error: error))
+            return completion(Result(data: completionResult))
+          } catch {
+            return completion(Result(error: error))
+          }
+        } else {
+          return completion(Result(error: ProviderRpcError.unsupportedMethod))
         }
       } else {
         return completion(Result(error: ProviderRpcError.unsupportedMethod))
