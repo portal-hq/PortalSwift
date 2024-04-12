@@ -142,11 +142,11 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       if let data = data as? [String: String] {
         print("Chain changed is parseable. \(data)")
 
-        let chainId = Int(UInt8(data["chainId"] ?? "0", radix: 16) ?? 0)
-        if chainId > 0 {
+        let chainIdString = data["chainId"] ?? "0" // Get the string value, defaulting to "0" if nil
+        if let chainIdInt = Int(chainIdString, radix: 16) {
           print("Sending postMessage to WebView...")
           let javascript = """
-            window.postMessage(JSON.stringify({ type: 'portal_chainChanged', data: { chainId: \(chainId) } }));
+            window.postMessage(JSON.stringify({ type: 'portal_chainChanged', data: { chainId: \(chainIdInt) } }));
           """
           self.chainId = chainId
           self.evaluateJavascript(javascript)
