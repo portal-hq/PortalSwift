@@ -6,33 +6,37 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
+import os.log
 import PortalSwift
 import UIKit
+
+struct UserResult: Codable {
+  var clientApiKey: String
+  var exchangeUserId: Int
+}
+
+struct CipherTextResult: Codable {
+  var cipherText: String
+}
+
+struct OrgShareResult: Codable {
+  var orgShare: String
+}
 
 struct SignUpBody: Codable {
   var username: String
 }
 
 struct ProviderRequest {
-  var method: String
+  var method: PortalRequestMethod
   var params: [Any]
-  var skipLoggingResult: Bool
-}
-
-struct ProviderTransactionRequest {
-  var method: String
-  var params: [ETHTransactionParam]
-  var skipLoggingResult: Bool
-}
-
-struct ProviderAddressRequest {
-  var method: String
-  var params: [ETHAddressParam]
-  var skipLoggingResult: Bool
 }
 
 @available(iOS 16.0, *)
 class ViewController: UIViewController, UITextFieldDelegate {
+  var activityIndicator: UIActivityIndicatorView!
+  var overlayView: UIView!
+
   // Static information
   @IBOutlet var addressInformation: UITextView?
   @IBOutlet var ethBalanceInformation: UITextView?
@@ -63,87 +67,59 @@ class ViewController: UIViewController, UITextFieldDelegate {
   // Send form
   @IBOutlet public var sendAddress: UITextField?
   @IBOutlet public var sendButton: UIButton?
+  @IBOutlet public var sendUniButton: UIButton?
   @IBOutlet public var username: UITextField?
   @IBOutlet public var url: UITextField?
 
   public var user: UserResult?
-  public var CUSTODIAN_SERVER_URL: String?
-  public var API_URL: String?
-  public var MPC_URL: String?
-  public var RP_URL: String?
-  public var PortalWrapper: PortalWrapper = SPM_Example.PortalWrapper()
-  public var portal: Portal?
-  public var eth_estimate: String?
-  public var passkey: PasskeyStorage?
+
+  private var config: ApplicationConfiguration? {
+    get {
+      if let appDelegate = UIApplication.shared.delegate as? PortalExampleAppDelegate {
+        return appDelegate.config
+      }
+
+      return nil
+    }
+    set(config) {
+      if var appDelegate = UIApplication.shared.delegate as? PortalExampleAppDelegate {
+        appDelegate.config = config
+      }
+    }
+  }
+
+  private var portal: Portal? {
+    get {
+      if let appDelegate = UIApplication.shared.delegate as? PortalExampleAppDelegate {
+        return appDelegate.portal
+      }
+
+      return nil
+    }
+    set(portal) {
+      if var appDelegate = UIApplication.shared.delegate as? PortalExampleAppDelegate {
+        appDelegate.portal = portal
+      }
+    }
+  }
+
+  private let decoder = JSONDecoder()
+  private let logger = Logger()
+  private let requests = PortalRequests()
 
   // Set up the scroll view
   @IBOutlet var scrollView: UIScrollView!
   override func viewDidLoad() {
     super.viewDidLoad()
-    var totalHeight: CGFloat = 0
 
-    // Add up the height of all subviews
-    for subview in self.scrollView.subviews {
-      totalHeight += subview.frame.size.height + 5
-      // Consider adding any vertical spacing between subviews if applicable
-    }
+    // Set up application using Secrets.xcconfig
+    self.loadApplicationConfig()
 
-    self.scrollView.contentSize = CGSize(width: self.scrollView.frame.size.width, height: totalHeight)
+    // Set up UI components
+    self.prepareUIComponents()
 
-    self.scrollView.showsVerticalScrollIndicator = true
-    self.scrollView.showsHorizontalScrollIndicator = false
-    self.username?.delegate = self
-    self.sendAddress?.delegate = self
-    self.url?.delegate = self
-
-    let PROD_CUSTODIAN_SERVER_URL = "https://portalex-mpc.portalhq.io"
-    let STAGING_CUSTODIAN_SERVER_URL = "https://staging-portalex-mpc-service.onrender.com"
-    let PROD_API_URL = "api.portalhq.io"
-    let PROD_MPC_URL = "mpc.portalhq.io"
-    let STAGING_API_URL = "api.portalhq.dev"
-    let STAGING_MPC_URL = "mpc.portalhq.dev"
-    let PROD_RELYING_PARTY_URL = "backup.web.portalhq.io"
-    let STAGING_RELYING_PARTY_URL = "backup.portalhq.dev"
-
-    guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
-      print("Couldnt load info plist")
-      return
-    }
-    guard let ENV: String = infoDictionary["ENV"] as? String else {
-      print("Error: Do you have `ENV=$(ENV)` in your info.plist?")
-      return
-    }
-    print("ENV in the view controller", ENV)
-    if ENV == "prod" {
-      self.CUSTODIAN_SERVER_URL = PROD_CUSTODIAN_SERVER_URL
-      self.API_URL = PROD_API_URL
-      self.MPC_URL = PROD_MPC_URL
-      self.RP_URL = PROD_RELYING_PARTY_URL
-    } else {
-      self.CUSTODIAN_SERVER_URL = STAGING_CUSTODIAN_SERVER_URL
-      self.API_URL = STAGING_API_URL
-      self.MPC_URL = STAGING_MPC_URL
-      self.RP_URL = STAGING_RELYING_PARTY_URL
-    }
-
-    DispatchQueue.main.async {
-      self.dappBrowserButton?.isEnabled = false
-      self.generateButton?.isEnabled = false
-      self.logoutButton?.isEnabled = false
-      self.portalConnectButton?.isEnabled = false
-      self.signButton?.isEnabled = false
-      self.signInButton?.isEnabled = false
-      self.signUpButton?.isEnabled = false
-      self.testButton?.isEnabled = false
-      self.passkeyBackupButton?.isEnabled = false
-      self.passwordBackupButton?.isEnabled = false
-      self.gdriveBackupButton?.isEnabled = false
-      self.iCloudBackupButton?.isEnabled = false
-      self.deleteKeychainButton?.isEnabled = false
-      self.testNFTsTrxsBalancesSimTrxButton?.isEnabled = false
-      self.ejectButton?.isEnabled = false
-      self.sendButton?.isEnabled = false
-    }
+    // Set proper visibility states
+    self.updateUIComponents()
   }
 
   func textFieldShouldReturn(_ textField: UITextField) -> Bool {
@@ -168,48 +144,762 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
+  /***********************************************
+   * Portal functions
+   ***********************************************/
+
+  public func backup(_ userId: String, withMethod: BackupMethods) async throws -> String {
+    guard let portal else {
+      self.logger.error("ViewController.backup() - Portal not initialized. Please call registerPortal().")
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+    guard let config else {
+      self.logger.error("ViewController.backup() - Application configuration not set.")
+      throw PortalExampleAppError.configurationNotSet()
+    }
+
+    self.logger.debug("ViewController.backup() - Starting backup...")
+    let (cipherText, storageCallback) = try await portal.backupWallet(withMethod) { status in
+      self.logger.debug("ViewController.backup() - Backup progress callback with status: \(status.status.rawValue), \(status.done)")
+    }
+
+    guard let url = URL(string: "\(config.custodianServerUrl)/mobile/\(userId)/cipher-text") else {
+      throw URLError(.badURL)
+    }
+    let payload = [
+      "backupMethod": withMethod.rawValue,
+      "cipherText": cipherText,
+    ]
+
+    let resultData = try await requests.post(url, andPayload: payload)
+    guard let result = String(data: resultData, encoding: .utf8) else {
+      self.logger.error("ViewController.backup() - Unable to parse response from cipherText storage request to custodian.")
+      throw PortalExampleAppError.couldNotParseCustodianResponse()
+    }
+
+    try await storageCallback()
+
+    return result
+  }
+
+  public func deleteKeychain() async {
+    do {
+      guard let portal else {
+        self.logger.error("ViewController.deleteKeychain() - Portal not initialized. Please call registerPortal().")
+        throw PortalExampleAppError.portalNotInitialized()
+      }
+
+      try await portal.deleteShares()
+      try portal.deleteAddress()
+      try portal.deleteSigningShare()
+      self.logger.debug("ViewController.deleteKeychain() - ✅ Deleted keychain data")
+    } catch {
+      self.logger.error("ViewController.deleteKeychain() - ❌ Error deleting keychain data: \(error.localizedDescription)")
+    }
+  }
+
+  public func eject(_ withBackupMethod: BackupMethods) async throws -> String {
+    guard let portal else {
+      self.logger.error("ViewController.eject() - ❌ Portal not initialized. Please call registerPortal().")
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+    guard let user else {
+      self.logger.error("ViewController.eject() - ❌ User not logged in.")
+      throw PortalExampleAppError.userNotLoggedIn()
+    }
+    guard let config else {
+      self.logger.error("ViewController.recover() - ❌ Application configuration not set.")
+      throw PortalExampleAppError.configurationNotSet()
+    }
+    guard let cipherTextUrl = URL(
+      string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/cipher-text/fetch?backupMethod=\(withBackupMethod.rawValue)"
+    ) else {
+      throw URLError(.badURL)
+    }
+    let cipherTextData = try await requests.get(cipherTextUrl)
+    let cipherTextResponse = try decoder.decode(CipherTextResult.self, from: cipherTextData)
+
+    guard let organizationBackupShareUrl = URL(
+      string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/org-share/fetch?backupMethod=\(withBackupMethod.rawValue)"
+    ) else {
+      throw URLError(.badURL)
+    }
+    let organizationBackupShareData = try await requests.get(organizationBackupShareUrl)
+    let organizationBackupShareResponse = try decoder.decode(OrgShareResult.self, from: organizationBackupShareData)
+
+    let privateKey = try await portal.eject(
+      withBackupMethod,
+      withCipherText: cipherTextResponse.cipherText,
+      andOrganizationBackupShare: organizationBackupShareResponse.orgShare
+    )
+
+    return privateKey
+  }
+
+  public func generate() async throws -> PortalCreateWalletResponse {
+    guard let portal else {
+      self.logger.error("PortalWrapper.generate() - Portal not initialized. Please call registerPortal().")
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+
+    return try await portal.createWallet()
+  }
+
+  func getBalances() async throws -> Bool {
+    guard let portal else {
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+    let chainId = "eip155:11155111"
+    let balances = try await portal.getBalances(chainId)
+
+    return true
+  }
+
+  public func getGasPrice(_ chainId: String) async throws {
+    guard let portal else {
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+
+    let gasPriceResponse = try await portal.request(chainId, withMethod: .eth_gasPrice, andParams: [])
+
+    print("Gas price response: \(gasPriceResponse)")
+
+//    return gasPriceResponse.result
+  }
+
+  public func getNFTs(_ chainId: String) async throws -> [FetchedNFT] {
+    guard let portal else {
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+    return try await portal.getNFTs(chainId)
+  }
+
+  public func getShareMetadata() async throws -> Bool {
+    guard let portal else {
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+    let backupShares = try await portal.getBackupShares()
+    self.logger.info("ViewController.getShareMetadata() - ✅ Successfully fetched backup shares.")
+
+    let signingShares = try await portal.getSigningShares()
+    self.logger.info("ViewController.getShareMetadata() - ✅ Successfully fetched signing shares.")
+
+    return true
+  }
+
+  public func getTransactions(_ chainId: String) async throws -> [FetchedTransaction] {
+    guard let portal else {
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+    return try await portal.getTransactions(chainId)
+  }
+
+  public func recover(_ userId: String, withBackupMethod: BackupMethods) async throws -> PortalCreateWalletResponse {
+    guard let portal else {
+      self.logger.error("ViewController.recover() - Portal not initialized. Please call registerPortal().")
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+    guard let config else {
+      self.logger.error("ViewController.recover() - Application configuration not set.")
+      throw PortalExampleAppError.configurationNotSet()
+    }
+    guard let url = URL(string: "\(config.custodianServerUrl)/mobile/\(userId)/cipher-text/fetch?backupMethod=\(withBackupMethod.rawValue)") else {
+      throw URLError(.badURL)
+    }
+    let data = try await requests.get(url)
+    let response = try decoder.decode(CipherTextResult.self, from: data)
+    let cipherText = response.cipherText
+
+    return try await portal.recoverWallet(withBackupMethod, withCipherText: cipherText) { status in
+      self.logger.debug("ViewController.recover() - Recover progress callback with status: \(status.status.rawValue), \(status.done)")
+    }
+  }
+
+  public func sendTransaction() async throws -> String {
+    guard let portal else {
+      self.logger.error("ViewController.sendTransaction() - ❌ Portal not initialized.")
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+    let chainId = "eip155:1115511"
+    guard let address = await portal.getAddress(chainId) else {
+      self.logger.error("ViewController.sendTransaction() - ❌ Address not found.")
+      throw PortalExampleAppError.addressNotFound()
+    }
+
+    _ = try await self.getGasPrice(chainId)
+
+    return ""
+
+    let transaction = [
+      "data": "",
+      "from": address,
+      "gasPrice": "ethEstimate",
+      "to": self.sendAddress?.text ?? "",
+      "value": "0x10",
+    ]
+
+    let sendTransactionResponse = try await portal.request(chainId, withMethod: .eth_sendTransaction, andParams: [transaction])
+    guard let transactionHash = sendTransactionResponse.result as? String else {
+      throw PortalExampleAppError.invalidResponseTypeForRequest()
+    }
+
+    return transactionHash
+  }
+
+  public func simulateTransaction(_ chainId: String, transaction: Any) async throws -> SimulatedTransaction {
+    guard let portal else {
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+
+    return try await portal.simulateTransaction(chainId, from: transaction)
+  }
+
+  public func testProviderRequest(
+    _ method: PortalRequestMethod,
+    params: [Any]
+  ) async throws -> Bool {
+    do {
+      guard let portal = self.portal else {
+        throw PortalExampleAppError.portalNotInitialized()
+      }
+      self.logger.info("ViewController.testProviderRequest() - Testing `\(method.rawValue)`...")
+
+      let chainId = "eip155:11155111"
+      let response = try await portal.request(chainId, withMethod: method, andParams: params)
+
+      let result = response.result
+
+      if signerMethods.contains(method.rawValue) {
+        if let signature = result as? String {
+          self.logger.info("ViewController.testProviderRequest() - ✅ Signature for \(method.rawValue): \(signature)")
+          return true
+        } else {
+          self.logger.error("ViewController.testProviderRequest() - ❌ No signature found for method: \(method.rawValue)")
+          return false
+        }
+      } else {
+        guard let rpcResponse = response.result as? PortalProviderRpcResponse else {
+          self.logger.error("ViewController.testProviderRequest() - ❌ Error testing provider `\(method.rawValue)` request: No RPC Response available.")
+          return false
+        }
+
+        self.logger.info("ViewController.testProviderRequest() - ✅ RPC response for `\(method.rawValue)`: \(String(describing: rpcResponse.result))")
+        return true
+      }
+    } catch {
+      self.logger.error("ViewController.testProviderRequest() - ❌ Error executing `\(method.rawValue)` request: \(error.localizedDescription)")
+      return false
+    }
+  }
+
+  public func testOtherRequests() async throws {
+    let chainId = "eip155:11155111"
+
+    guard let portal else {
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+    guard let address = await portal.getAddress(chainId) else {
+      throw PortalExampleAppError.addressNotFound()
+    }
+
+    let otherRequests = [
+      ProviderRequest(method: .eth_accounts, params: []),
+      ProviderRequest(method: .eth_requestAccounts, params: []),
+      ProviderRequest(method: .eth_blockNumber, params: []),
+      ProviderRequest(method: .eth_gasPrice, params: []),
+      ProviderRequest(method: .eth_getBalance, params: [address, "latest"]),
+      ProviderRequest(method: .eth_getBlockByHash, params: ["0xdc0818cf78f21a8e70579cb46a43643f78291264dda342ae31049421c82d21ae", false]),
+      ProviderRequest(method: .eth_getBlockTransactionCountByNumber, params: ["latest"]),
+      ProviderRequest(method: .eth_getCode, params: [address, "latest"]),
+      ProviderRequest(method: .eth_getTransactionByHash, params: ["0x88df016429689c079f3b2f6ad39fa052532c56795b733da78a91ebe6a713944b"]),
+      ProviderRequest(method: .eth_getTransactionCount, params: [address, "latest"]),
+      ProviderRequest(method: .eth_getTransactionReceipt, params: ["0x88df016429689c079f3b2f6ad39fa052532c56795b733da78a91ebe6a713944b"]),
+      ProviderRequest(method: .eth_getUncleByBlockHashAndIndex, params: ["0xc6ef2fc5426d6ad6fd9e2a26abeab0aa2411b7ab17f30a99d3cb96aed1d1055b", "0x0"]),
+      ProviderRequest(method: .eth_getUncleCountByBlockHash, params: ["0xc6ef2fc5426d6ad6fd9e2a26abeab0aa2411b7ab17f30a99d3cb96aed1d1055b"]),
+      ProviderRequest(method: .eth_getUncleCountByBlockNumber, params: ["latest"]),
+      ProviderRequest(method: .net_version, params: []),
+      ProviderRequest(method: .eth_newBlockFilter, params: []),
+      ProviderRequest(method: .eth_newPendingTransactionFilter, params: []),
+      ProviderRequest(method: .eth_protocolVersion, params: []),
+      ProviderRequest(method: .eth_sendRawTransaction, params: ["0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675"]),
+      ProviderRequest(method: .web3_clientVersion, params: []),
+      ProviderRequest(method: .web3_sha3, params: ["0x68656c6c6f20776f726c64"]),
+      ProviderRequest(method: .eth_getStorageAt, params: [address, "0x0", "latest"]),
+    ]
+
+    for request in otherRequests {
+      _ = try await self.testProviderRequest(request.method, params: request.params)
+    }
+  }
+
+  public func testSignerRequests() async throws {
+    let chainId = "eip155:11155111"
+
+    guard let portal else {
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+    guard let address = await portal.getAddress(chainId) else {
+      throw PortalExampleAppError.addressNotFound()
+    }
+
+    let toAddress = "0x4cd042bba0da4b3f37ea36e8a2737dce2ed70db7"
+    let fakeTransaction = [
+      "data": "0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675",
+      "from": address,
+      "to": toAddress,
+      "value": "0x9184e72a",
+    ]
+
+    let signerRequests = [
+      ProviderRequest(method: .eth_sign, params: [address, "0xdeadbeaf"]),
+      ProviderRequest(method: .personal_sign, params: ["0xdeadbeaf", address]),
+      ProviderRequest(method: .eth_signTransaction, params: [fakeTransaction]),
+    ]
+
+    for request in signerRequests {
+      _ = try await self.testProviderRequest(request.method, params: request.params)
+    }
+  }
+
+  public func testTransactionRequests() async throws {
+    let chainId = "eip155:11155111"
+    guard let portal else {
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+    guard let address = await portal.getAddress(chainId) else {
+      throw PortalExampleAppError.addressNotFound()
+    }
+
+    let toAddress = "0x4cd042bba0da4b3f37ea36e8a2737dce2ed70db7"
+    let fakeTransaction = [
+      "data": "0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675",
+      "from": address,
+      "to": toAddress,
+      "value": "0x9184e72a",
+    ]
+    let requests = [
+      ProviderRequest(method: .eth_call, params: [fakeTransaction]),
+      ProviderRequest(method: .eth_estimateGas, params: [fakeTransaction]),
+      ProviderRequest(method: .eth_sendTransaction, params: [fakeTransaction]),
+      ProviderRequest(method: .eth_signTransaction, params: [fakeTransaction]),
+    ]
+
+    for request in requests {
+      _ = try await self.testProviderRequest(request.method, params: request.params)
+    }
+  }
+
+  public func testWalletRequests() async throws {
+    print("\nTesting Wallet Methods:\n")
+    let walletRequests = [
+      // https://docs.metamask.io/guide/rpc-api.html#wallet-addethereumchain
+      ProviderRequest(method: .wallet_addEthereumChain, params: []),
+      // https://docs.metamask.io/guide/rpc-api.html#wallet-getpermissions
+      ProviderRequest(method: .wallet_getPermissions, params: []),
+      // https://docs.metamask.io/guide/rpc-api.html#wallet-registeronboarding
+      ProviderRequest(method: .wallet_registerOnboarding, params: []),
+      // https://docs.metamask.io/guide/rpc-api.html#wallet-requestpermissions
+      ProviderRequest(method: .wallet_requestPermissions, params: []),
+      // https://docs.metamask.io/guide/rpc-api.html#wallet-switchethereumchain
+      ProviderRequest(method: .wallet_switchEthereumChain, params: []),
+      // https://docs.metamask.io/guide/rpc-api.html#wallet-watchasset
+      ProviderRequest(method: .wallet_watchAsset, params: []),
+    ]
+
+    for request in walletRequests {
+      _ = try await self.testProviderRequest(request.method, params: request.params)
+    }
+  }
+
+  /***********************************************
+   * Custodian functions
+   ***********************************************/
+
+  public func signIn(_ username: String) async throws -> UserResult {
+    do {
+      guard let config = self.config else {
+        throw PortalExampleAppError.configurationNotSet()
+      }
+      if let url = URL(string: "\(config.custodianServerUrl)/mobile/login") {
+        let payload = ["username": username]
+
+        let data = try await requests.post(url, andPayload: payload)
+        let user = try decoder.decode(UserResult.self, from: data)
+
+        self.user = user
+        return user
+      }
+
+      throw URLError(.badURL)
+    } catch {
+      self.logger.error("ViewController.signIn() - Unable to sign in: \(error.localizedDescription)")
+      throw error
+    }
+  }
+
+  public func signUp(_ username: String) async throws -> UserResult {
+    do {
+      guard let config = self.config else {
+        throw PortalExampleAppError.configurationNotSet()
+      }
+      if let url = URL(string: "\(config.custodianServerUrl)/mobile/signup") {
+        let payload = ["username": username]
+
+        let data = try await requests.post(url, andPayload: payload)
+        let user = try decoder.decode(UserResult.self, from: data)
+
+        self.user = user
+        return user
+      }
+
+      throw URLError(.badURL)
+    } catch {
+      self.logger.error("ViewController.signUp() - Unable to sign up: \(error.localizedDescription)")
+      throw error
+    }
+  }
+
+  /***********************************************
+   * Setup functions
+   ***********************************************/
+
+  public func loadApplicationConfig() {
+    do {
+      guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
+        self.logger.error("PortalWrapper.init - Couldnt load info.plist dictionary.")
+        throw PortalExampleAppError.cantLoadInfoPlist()
+      }
+      guard let ENV: String = infoDictionary["ENV"] as? String else {
+        self.logger.error("Error: Do you have `ENV=$(ENV)` in your Secrets.xcconfig?")
+        throw PortalExampleAppError.environmentNotSet()
+      }
+      guard let ALCHEMY_API_KEY: String = infoDictionary["ALCHEMY_API_KEY"] as? String else {
+        self.logger.error("Error: Do you have `ALCHEMY_API_KEY=$(ALCHEMY_API_KEY)` in your Secrets.xcconfig?")
+        throw PortalExampleAppError.environmentNotSet()
+      }
+      guard let GOOGLE_CLIENT_ID: String = infoDictionary["GDRIVE_CLIENT_ID"] as? String else {
+        self.logger.error("Error: Do you have `GDRIVE_CLIENT_ID=$(GDRIVE_CLIENT_ID)` in your Secrets.xcconfig?")
+        throw PortalExampleAppError.environmentNotSet()
+      }
+
+      let debugMessage = "ViewController.loadApplicationConfig() - Found environment: \(ENV)"
+      self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
+
+      switch ENV {
+      case "prod", "production":
+        self.config = ApplicationConfiguration(
+          alchemyApiKey: ALCHEMY_API_KEY,
+          apiUrl: "api.portalhq.io",
+          custodianServerUrl: "https://portalex-mpc.portalhq.io",
+          googleClientId: GOOGLE_CLIENT_ID,
+          mpcUrl: "mpc.portalhq.io"
+        )
+      case "stage", "staging":
+        self.config = ApplicationConfiguration(
+          alchemyApiKey: ALCHEMY_API_KEY,
+          apiUrl: "api.portalhq.dev",
+          custodianServerUrl: "https://staging-portalex-mpc-service.onrender.com",
+          googleClientId: GOOGLE_CLIENT_ID,
+          mpcUrl: "mpc.portalhq.dev"
+        )
+      default:
+        self.config = ApplicationConfiguration(
+          alchemyApiKey: ALCHEMY_API_KEY,
+          apiUrl: "localhost:3001",
+          custodianServerUrl: "https://staging-portalex-mpc-service.onrender.com",
+          googleClientId: GOOGLE_CLIENT_ID,
+          mpcUrl: "localhost:3002"
+        )
+      }
+    } catch {
+      self.logger.error("ViewController.loadApplicationConfig() - Error loading application config: \(error.localizedDescription)")
+    }
+  }
+
+  public func parseETHBalanceHex(hex: String) -> String {
+    let hexString = hex.replacingOccurrences(of: "0x", with: "")
+    guard let hexInt = Int(hexString, radix: 16) else {
+      print("Unable to parse ETH balance hex")
+      return ""
+    }
+    let ethBalance = Double(hexInt) / 1_000_000_000_000_000_000
+    return String(ethBalance)
+  }
+
+  public func prepareUIComponents() {
+    // Set up UI Components
+    var totalHeight: CGFloat = 0
+
+    // Add up the height of all subviews
+    for subview in self.scrollView.subviews {
+      totalHeight += subview.frame.size.height + 5
+      // Consider adding any vertical spacing between subviews if applicable
+    }
+
+    self.scrollView.contentSize = CGSize(width: self.scrollView.frame.size.width, height: totalHeight)
+
+    self.scrollView.showsVerticalScrollIndicator = true
+    self.scrollView.showsHorizontalScrollIndicator = false
+    self.username?.delegate = self
+    self.sendAddress?.delegate = self
+    self.url?.delegate = self
+
+    // Initialize the activity indicator
+    self.activityIndicator = UIActivityIndicatorView(style: .large) // or .medium based on your preference
+    self.activityIndicator.hidesWhenStopped = true
+    self.activityIndicator.color = .systemBlue
+    view.addSubview(self.activityIndicator)
+    self.activityIndicator.translatesAutoresizingMaskIntoConstraints = false
+    NSLayoutConstraint.activate([
+      self.activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+      self.activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+    ])
+
+    // Initialize the overlay view
+    self.overlayView = UIView()
+    self.overlayView.backgroundColor = UIColor.black.withAlphaComponent(0.25) // Semi-transparent black
+    self.overlayView.frame = self.view.bounds
+    self.overlayView.isHidden = true
+
+    view.addSubview(self.overlayView)
+    view.bringSubviewToFront(self.activityIndicator)
+  }
+
+  public func populateEthBalance() async throws {
+    guard let portal else {
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+
+    let chainId = "eip155:11155111"
+    guard let address = await portal.getAddress(chainId) else {
+      throw PortalExampleAppError.addressNotFound()
+    }
+
+    let balanceResponse = try await portal.request(chainId, withMethod: .eth_getBalance, andParams: [address, "latest"])
+    guard let balance = balanceResponse.result as? String else {
+      throw PortalExampleAppError.invalidResponseTypeForRequest()
+    }
+
+    DispatchQueue.main.async {
+      self.ethBalanceInformation?.text = "ETH Balance: \(self.parseETHBalanceHex(hex: balance)) ETH"
+    }
+  }
+
+  public func registerPortal() async throws -> Portal {
+    do {
+      guard let config = self.config else {
+        throw PortalExampleAppError.configurationNotSet()
+      }
+      guard let user else {
+        throw PortalExampleAppError.userNotLoggedIn()
+      }
+
+      let infoString = "ViewController.registerPortal() - Registering portal using config: \(config)"
+      self.logger.log(level: .info, "\(infoString, privacy: .public)")
+
+      let portal = try Portal(
+        user.clientApiKey,
+        withRpcConfig: [
+          "eip155:1": "https://eth-mainnet.g.alchemy.com/v2/\(config.alchemyApiKey)",
+          "eip155:5": "https://eth-goerli.g.alchemy.com/v2/\(config.alchemyApiKey)",
+          "eip155:137": "https://polygon-mainnet.g.alchemy.com/v2/\(config.alchemyApiKey)",
+          "eip155:80001": "https://polygon-mumbai.g.alchemy.com/v2/\(config.alchemyApiKey)",
+          "eip155:11155111": "https://eth-sepolia.g.alchemy.com/v2/\(config.alchemyApiKey)",
+        ],
+        autoApprove: false,
+        featureFlags: FeatureFlags(optimized: true, isMultiBackupEnabled: true),
+        apiHost: config.apiUrl,
+        mpcHost: config.mpcUrl
+      )
+
+      try portal.setGDriveConfiguration(clientId: config.googleClientId)
+      try portal.setGDriveView(self)
+
+      self.logger.info("ViewController.registerPortal() - Portal API Key: \(portal.apiKey)")
+
+      portal.on(event: Events.PortalSigningRequested.rawValue, callback: { data in
+        portal.emit(Events.PortalSigningApproved.rawValue, data: data)
+      })
+
+      portal.on(event: Events.PortalSignatureReceived.rawValue) { (data: Any) in
+        let result = data as! RequestCompletionResult
+
+        let debugMessage = "ViewController.registerPortal() - Recived signature: \(result)"
+        self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
+      }
+
+      self.logger.debug("ViewController.registerPortal() - ✅ Portal initialized")
+
+      self.portal = portal
+
+      return portal
+    } catch {
+      print("❌ Error registering portal:", error)
+      throw error
+    }
+  }
+
+  // Call this function whenever you want to prompt the user for a PIN
+  public func requestPassword() async -> String? {
+    let password = await withCheckedContinuation { continuation in
+      let alertController = UIAlertController(title: "Enter Password", message: nil, preferredStyle: .alert)
+
+      // Add text field for PIN input
+      alertController.addTextField { textField in
+        textField.placeholder = "PASSWORD"
+        textField.isSecureTextEntry = true
+        textField.keyboardType = .numberPad
+      }
+
+      // Submit action
+      let submitAction = UIAlertAction(title: "Submit", style: .default) { _ in
+        let password = alertController.textFields?.first?.text
+        continuation.resume(returning: password)
+      }
+      alertController.addAction(submitAction)
+
+      // Cancel action
+      let cancelAction = UIAlertAction(title: "Cancel", style: .cancel) { _ in
+        continuation.resume(returning: nil)
+      }
+      alertController.addAction(cancelAction)
+
+      // Present the alert controller
+      self.present(alertController, animated: true, completion: nil)
+    }
+
+    return password
+  }
+
+  func startLoading() {
+    self.overlayView.isHidden = false
+    self.activityIndicator.startAnimating()
+    // Disable user interaction while loading
+    view.isUserInteractionEnabled = false
+  }
+
+  func stopLoading() {
+    self.overlayView.isHidden = true
+    self.activityIndicator.stopAnimating()
+    // Re-enable user interaction when loading is finished
+    view.isUserInteractionEnabled = true
+  }
+
+  private func updateUIComponents() {
+    DispatchQueue.main.async {
+      Task {
+        do {
+          if let addressInformation = self.addressInformation {
+            addressInformation.text = try? await self.portal?.addresses[.eip155] ?? "N/A"
+          }
+
+          let availableRecoveryMethods = try await self.portal?.availableRecoveryMethods() ?? []
+          let walletExists = try await self.portal?.doesWalletExist() ?? false
+          let isWalletOnDevice = try await self.portal?.isWalletOnDevice() ?? false
+
+          let username = self.username?.text ?? ""
+
+          // Auth buttons
+          self.logoutButton?.isEnabled = self.user != nil
+          self.logoutButton?.isHidden = self.user == nil
+          self.signInButton?.isEnabled = !username.isEmpty
+          self.signInButton?.isHidden = self.user != nil
+          self.signUpButton?.isEnabled = !username.isEmpty
+          self.signUpButton?.isHidden = self.user != nil
+
+          // Generate buttons
+          self.generateButton?.isEnabled = !walletExists
+          self.generateButton?.isHidden = self.portal == nil
+          if let generateButton = self.generateButton {
+            generateButton.setTitle(walletExists ? "Wallet already exists" : "Create Wallet", for: .normal)
+          }
+
+          // dApp connection buttons
+          self.dappBrowserButton?.isEnabled = walletExists && isWalletOnDevice
+          self.dappBrowserButton?.isHidden = !walletExists || !isWalletOnDevice
+          self.portalConnectButton?.isEnabled = walletExists && isWalletOnDevice
+          self.portalConnectButton?.isHidden = !walletExists || !isWalletOnDevice
+
+          // Backup buttons
+          self.gdriveBackupButton?.isEnabled = walletExists && isWalletOnDevice
+          self.gdriveBackupButton?.isHidden = !walletExists || !isWalletOnDevice
+          self.iCloudBackupButton?.isEnabled = walletExists && isWalletOnDevice
+          self.iCloudBackupButton?.isHidden = !walletExists || !isWalletOnDevice
+          self.passkeyBackupButton?.isEnabled = walletExists && isWalletOnDevice
+          self.passkeyBackupButton?.isHidden = !walletExists || !isWalletOnDevice
+          self.passwordBackupButton?.isEnabled = walletExists && isWalletOnDevice
+          self.passwordBackupButton?.isHidden = !walletExists || !isWalletOnDevice
+
+          // Recover buttons
+          self.gdriveRecoverButton?.isEnabled = availableRecoveryMethods.contains(.GoogleDrive)
+          self.gdriveRecoverButton?.isHidden = !walletExists
+          self.iCloudRecoverButton?.isEnabled = availableRecoveryMethods.contains(.iCloud)
+          self.iCloudRecoverButton?.isHidden = !walletExists
+          self.passkeyRecoverButton?.isEnabled = availableRecoveryMethods.contains(.Passkey)
+          self.passkeyRecoverButton?.isHidden = !walletExists
+          self.passwordRecoverButton?.isEnabled = availableRecoveryMethods.contains(.Password)
+          self.passwordRecoverButton?.isHidden = !walletExists
+
+          // Signing buttons
+          self.signButton?.isEnabled = walletExists && isWalletOnDevice
+          self.signButton?.isHidden = !walletExists || !isWalletOnDevice
+          self.sendButton?.isEnabled = walletExists && isWalletOnDevice
+          self.sendButton?.isHidden = !walletExists || !isWalletOnDevice
+          self.sendUniButton?.isEnabled = walletExists && isWalletOnDevice
+          self.sendUniButton?.isHidden = !walletExists || !isWalletOnDevice
+
+          // Other management buttons
+          self.deleteKeychainButton?.isEnabled = walletExists && isWalletOnDevice
+          self.deleteKeychainButton?.isHidden = !walletExists || !isWalletOnDevice
+          self.ejectButton?.isEnabled = availableRecoveryMethods.count > 0
+          self.ejectButton?.isHidden = availableRecoveryMethods.count == 0
+
+          // Portal test functions
+          self.testButton?.isEnabled = walletExists && isWalletOnDevice
+          self.testButton?.isHidden = !walletExists || !isWalletOnDevice
+          self.testNFTsTrxsBalancesSimTrxButton?.isEnabled = walletExists && isWalletOnDevice
+          self.testNFTsTrxsBalancesSimTrxButton?.isHidden = !walletExists || !isWalletOnDevice
+
+          // Text components
+          self.addressInformation?.isHidden = !walletExists || !isWalletOnDevice
+          self.ethBalanceInformation?.isHidden = !walletExists || !isWalletOnDevice
+          self.sendAddress?.isHidden = !walletExists || !isWalletOnDevice
+          self.url?.isHidden = !walletExists || !isWalletOnDevice
+
+          self.logger.debug("ViewController.updateUIComponents() - ✅ Ending loading")
+
+          self.stopLoading()
+        } catch {
+          self.logger.error("ViewController.UpdateUIComponents() - ❌ Failed to update UI Components: \(error)")
+        }
+      }
+    }
+  }
+
+  /***********************************************
+   * UI actions
+   ***********************************************/
+
+  // Custodian actions
+
   @IBAction func handleSignIn(_: UIButton) {
-    print("signIn", self.PortalWrapper, self.PortalWrapper.signIn)
+    Task {
+      do {
+        guard let username = username?.text else {
+          self.logger.error("ViewController.handleSignIn() - Cannot sign in. No username set.")
+          return
+        }
+        self.startLoading()
+        let user = try await signIn(username)
+        self.logger.debug("ViewController.handleSignIn() - ✅ Signed in! User clientApiKey: \(user.clientApiKey)")
 
-    self.PortalWrapper.signIn(username: self.username?.text ?? "") { (result: Result<UserResult>) in
-      guard result.error == nil else {
-        print(" ❌ handleSignIn(): Failed", result.error ?? "")
-        return
+        self.portal = try await self.registerPortal()
+        self.logger.debug("ViewController.handleSignIn() - ✅ Initialized. Updating UI Components.")
+        self.updateUIComponents()
+      } catch {
+        self.stopLoading()
+        self.logger.error("ViewController.handleSignIn() - ❌ Error signing in: \(error.localizedDescription)")
       }
-      print("✅ handleSignIn(): API key:", result.data?.clientApiKey ?? "")
-      self.user = result.data
-      self.registerPortalUi(apiKey: result.data?.clientApiKey ?? "")
-      self.portal = self.PortalWrapper.portal
-      self.populateAddressInformation()
-
-      DispatchQueue.main.async {
-        self.logoutButton?.isEnabled = true
-      }
-    }
-  }
-
-  @IBAction func handleSignup(_: UIButton) {
-    print("signUp", self.PortalWrapper, self.PortalWrapper.signUp)
-    self.PortalWrapper.signUp(username: self.username?.text ?? "") { (result: Result<UserResult>) in
-      guard result.error == nil else {
-        print(" ❌ handleSignIn(): Failed", result.error ?? "")
-        return
-      }
-      print("✅ handleSignup(): API key:", result.data?.clientApiKey ?? "")
-      self.user = result.data
-      self.registerPortalUi(apiKey: result.data?.clientApiKey ?? "")
-      self.portal = self.PortalWrapper.portal
-      self.populateAddressInformation()
-
-      DispatchQueue.main.async {
-        self.logoutButton?.isEnabled = true
-      }
-    }
-  }
-
-  @IBAction func handleEject(_: UIButton) {
-    self.PortalWrapper.eject(backupMethod: BackupMethods.iCloud.rawValue, user: self.user!) { result in
-      print(result.data!)
     }
   }
 
@@ -217,207 +907,351 @@ class ViewController: UIViewController, UITextFieldDelegate {
     self.user = nil
     self.addressInformation?.text = "Address: N/A"
     self.ethBalanceInformation?.text = "ETH Balance: N/A"
+    self.portal = nil
 
     DispatchQueue.main.async {
       self.logoutButton?.isEnabled = false
     }
+
+    self.updateUIComponents()
+  }
+
+  @IBAction func handleSignup(_: UIButton) {
+    Task {
+      do {
+        self.logger.debug("ViewController.handleSignUp() - Attempting sign up...")
+        guard let username = username?.text else {
+          self.logger.error("ViewController.handleSignUp() - Cannot sign up. No username set.")
+          return
+        }
+        self.startLoading()
+        let user = try await signUp(username)
+        self.logger.debug("ViewController.handleSignUp() - ✅ Signed up! User clientApiKey: \(user.clientApiKey)")
+        self.portal = try await self.registerPortal()
+        self.logger.debug("ViewController.handleSignUp() - ✅ Portal initialized!")
+        self.updateUIComponents()
+      } catch {
+        self.stopLoading()
+        self.logger.error("ViewController.handleSignUp() - ❌ Error signing up: \(error.localizedDescription)")
+      }
+    }
+  }
+
+  // Portal wallet actions
+
+  @IBAction func handleDeleteKeychain(_: Any) {
+    Task {
+      guard let portal else {
+        throw PortalExampleAppError.portalNotInitialized()
+      }
+
+      await self.deleteKeychain()
+      guard let address = try await portal.addresses[.eip155] else {
+        DispatchQueue.main.async {
+          if let addressInformation = self.addressInformation {
+            addressInformation.text = "N/A"
+          }
+        }
+        return
+      }
+    }
+  }
+
+  @IBAction func handleEject(_: UIButton) {
+    Task {
+      do {
+        let privateKey = try await eject(.Password)
+
+        self.logger.info("ViewController.handleEject() - ✅ Successfully ejected wallet. Private key: \(privateKey)")
+      } catch {
+        self.stopLoading()
+        self.logger.error("ViewController.handleEject() - Error ejecting wallet: \(error.localizedDescription)")
+      }
+    }
   }
 
   @IBAction func handleGenerate(_: UIButton!) {
-    self.PortalWrapper.generate { result in
-      guard result.error == nil else {
-        print("❌ handleGenerate():", result.error ?? "N/A")
-        return
-      }
-      print("✅ handleGenerate(): Address:", result.data ?? "N/A")
-      self.populateAddressInformation()
-
-      DispatchQueue.main.async {
-        self.dappBrowserButton?.isEnabled = true
-        self.portalConnectButton?.isEnabled = true
-        self.testButton?.isEnabled = true
-        self.signButton?.isEnabled = true
-        self.deleteKeychainButton?.isEnabled = true
-        self.testNFTsTrxsBalancesSimTrxButton?.isEnabled = true
-        self.ejectButton?.isEnabled = true
-        self.sendButton?.isEnabled = true
-        self.passkeyBackupButton?.isEnabled = true
-        self.passkeyRecoverButton?.isEnabled = true
-        self.passwordBackupButton?.isEnabled = true
-        self.passwordRecoverButton?.isEnabled = true
-        self.gdriveBackupButton?.isEnabled = true
-        self.gdriveRecoverButton?.isEnabled = true
-        self.iCloudBackupButton?.isEnabled = true
-        self.iCloudRecoverButton?.isEnabled = true
-      }
-    }
-  }
-
-  // Call this function whenever you want to prompt the user for a PIN
-  func requestPassword(completion: @escaping (String?) -> Void) {
-    let alertController = UIAlertController(title: "Enter Password", message: nil, preferredStyle: .alert)
-
-    // Add text field for PIN input
-    alertController.addTextField { textField in
-      textField.placeholder = "PASSWORD"
-      textField.isSecureTextEntry = true
-      textField.keyboardType = .numberPad
-    }
-
-    // Submit action
-    let submitAction = UIAlertAction(title: "Submit", style: .default) { _ in
-      let password = alertController.textFields?.first?.text
-      completion(password)
-    }
-    alertController.addAction(submitAction)
-
-    // Cancel action
-    let cancelAction = UIAlertAction(title: "Cancel", style: .cancel) { _ in
-      completion(nil)
-    }
-    alertController.addAction(cancelAction)
-
-    // Present the alert controller
-    self.present(alertController, animated: true, completion: nil)
-  }
-
-  @IBAction func handlePasskeyBackup(_: UIButton!) {
-    print("Starting Passkey backup...")
-    self.PortalWrapper.backup(backupMethod: BackupMethods.Passkey.rawValue, user: self.user!) { result in
-      guard result.error == nil else {
-        print("❌ handlePasskeyBackup():", result.error!)
-        return
-      }
-      self.populateAddressInformation()
-      print("✅ handlePasskeyBackup(): Successfully sent custodian cipherText")
-    }
-  }
-
-  @IBAction func handlePasskeyRecover(_: UIButton!) {
-    print("Starting Passkey recover...")
-
-    self.PortalWrapper.recover(backupMethod: BackupMethods.Passkey.rawValue, user: self.user!) { result in
-      guard result.error == nil else {
-        print("❌ handlePasskeyRecover(): Error recovering wallet:", result.error!)
-        return
-      }
-
-      self.populateAddressInformation()
-      print("✅ handlePasskeyRecover(): Successfully recovered signing shares")
-    }
-  }
-
-  @IBAction func handlePasswordBackup(_: UIButton!) {
-    print("Starting Password backup...")
-
-    self.requestPassword { password in
-      guard let enteredPassword = password, !enteredPassword.isEmpty else {
-        // Handle case where no PIN was entered or the operation was canceled
-        return
-      }
-      print("Entered Password:", enteredPassword)
+    Task {
       do {
-        let backupConfigs = try BackupConfigs(passwordStorage: PasswordStorageConfig(password: enteredPassword))
-
-        self.PortalWrapper.backup(backupMethod: BackupMethods.Password.rawValue, user: self.user!, backupConfigs: backupConfigs) { result in
-          guard result.error == nil else {
-            print("❌ handlePasswordBackup():", result.error!)
-            return
-          }
-          self.populateAddressInformation()
-          print("✅ handlePasswordBackup(): Successfully sent custodian cipherText")
+        self.startLoading()
+        let (ethereum, _) = try await generate()
+        guard let address = ethereum else {
+          self.logger.error("ViewController.handleGenerate() - ❌ Wallet was generated, but no address was found.")
+          throw PortalKeychain.KeychainError.noAddressesFound
         }
+        let debugMessage = "ViewController.handleGenerate() - ✅ Wallet successfully created! Address: \(String(describing: address))"
+        self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
+
+        self.updateUIComponents()
       } catch {
-        print(error)
-      }
-    }
-  }
-
-  @IBAction func handlePasswordRecover(_: UIButton!) {
-    print("Starting Password Recover...")
-
-    self.requestPassword { password in
-      guard let enteredPassword = password, !enteredPassword.isEmpty else {
-        // Handle case where no PIN was entered or the operation was canceled
-        print("User canceled pin request")
-        return
-      }
-      print("Entered Password:", enteredPassword)
-
-      do {
-        let backupConfigs = try BackupConfigs(passwordStorage: PasswordStorageConfig(password: enteredPassword))
-
-        self.PortalWrapper.recover(backupMethod: BackupMethods.Password.rawValue, user: self.user!, backupConfigs: backupConfigs) { result in
-          guard result.error == nil else {
-            print("❌ handlePasswordRecover(): Error recovering wallet:", result.error!)
-            return
-          }
-
-          self.populateAddressInformation()
-          print("✅ handlePasswordRecover(): Successfully recovered signing shares")
-        }
-      } catch {
-        print(error)
+        self.stopLoading()
+        self.logger.error("ViewController.handleGenerate() - ❌ Error creating wallet: \(error.localizedDescription)")
       }
     }
   }
 
   @IBAction func handleGdriveBackup(_: UIButton!) {
-    print("Starting Gdrive backup...")
-
-    self.PortalWrapper.backup(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user!) { result in
-      guard result.error == nil else {
-        print("❌ handleGdriveBackup():", result.error!)
-        return
+    Task {
+      do {
+        guard let portal = self.portal else {
+          throw PortalExampleAppError.portalNotInitialized()
+        }
+        guard let user else {
+          throw PortalExampleAppError.userNotLoggedIn()
+        }
+        self.startLoading()
+        try portal.setGDriveView(self)
+        self.logger.debug("ViewController.handleGdriveBackup() - Starting backup...")
+        _ = try await self.backup(String(user.exchangeUserId), withMethod: .GoogleDrive)
+        self.logger.debug("ViewController.handlePasskeyBackup(): ✅ Successfully sent custodian cipherText.")
+        self.updateUIComponents()
+      } catch {
+        self.stopLoading()
+        self.logger.error("ViewController.handleGdriveBackup() - ❌ Error running backup: \(error.localizedDescription)")
       }
-      self.populateAddressInformation()
-      print("✅ handleGdriveBackup(): Successfully sent custodian cipherText")
     }
   }
 
   @IBAction func handleGdriveRecover(_: UIButton!) {
-    print("Starting Gdrive Recover...")
+    Task {
+      do {
+        guard let user else {
+          throw PortalExampleAppError.userNotLoggedIn()
+        }
+        self.startLoading()
+        self.logger.debug("ViewController.handleGdriveRecover() - Starting recover...")
+        let (ethereum, _) = try await recover(String(user.exchangeUserId), withBackupMethod: .GoogleDrive)
+        guard let address = ethereum else {
+          self.logger.error("ViewController.handleGdriveRecover() - ❌ Wallet was recovered, but no address was found.")
+          throw PortalKeychain.KeychainError.noAddressesFound
+        }
+        let debugMessage = "ViewController.handleGdriveRecover() - ✅ Wallet successfully recovered! Address: \(String(describing: address))"
+        self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
 
-    self.PortalWrapper.recover(backupMethod: BackupMethods.GoogleDrive.rawValue, user: self.user!) { result in
-      guard result.error == nil else {
-        print("❌ handleGdriveRecover(): Error recovering wallet:", result.error!)
-        return
+        DispatchQueue.main.async {
+          if let addressInformation = self.addressInformation {
+            addressInformation.text = ethereum
+          }
+        }
+        self.updateUIComponents()
+      } catch {
+        self.stopLoading()
+        self.logger.error("ViewController.handleGdriveRecover() - Error running recover: \(error.localizedDescription)")
       }
-
-      self.populateAddressInformation()
-      print("✅ handleGdriveRecover(): Successfully recovered signing shares")
     }
   }
 
   @IBAction func handleiCloudBackup(_: UIButton!) {
-    print("Starting iCloud backup...")
-
-    self.PortalWrapper.backup(backupMethod: BackupMethods.iCloud.rawValue, user: self.user!) { result in
-      guard result.error == nil else {
-        print("❌ handleiCloudBackup():", result.error!)
-        return
+    Task {
+      do {
+        guard let user else {
+          throw PortalExampleAppError.userNotLoggedIn()
+        }
+        self.startLoading()
+        self.logger.debug("ViewController.handleiCloudBackup() - Starting backup...")
+        _ = try await self.backup(String(user.exchangeUserId), withMethod: .iCloud)
+        self.logger.debug("ViewController.handleiCloudBackup(): ✅ Successfully sent custodian cipherText.")
+        self.updateUIComponents()
+      } catch {
+        self.stopLoading()
+        self.logger.error("ViewController.handleiCloudBackup() - ❌ Error running backup: \(error.localizedDescription)")
       }
-      self.populateAddressInformation()
-      print("✅ handleiCloudBackup(): Successfully sent custodian cipherText")
     }
   }
 
   @IBAction func handleiCloudRecover(_: UIButton!) {
-    print("Starting iCloud Recover...")
+    Task {
+      do {
+        guard let user else {
+          throw PortalExampleAppError.userNotLoggedIn()
+        }
+        self.startLoading()
+        self.logger.debug("ViewController.handleiCloudRecover() - Starting recover...")
+        let (ethereum, _) = try await recover(String(user.exchangeUserId), withBackupMethod: .iCloud)
+        guard let address = ethereum else {
+          self.logger.error("ViewController.handleiCloudRecover() - ❌ Wallet was recovered, but no address was found.")
+          throw PortalExampleAppError.addressNotFound()
+        }
+        let debugMessage = "ViewController.handleiCloudRecover() - ✅ Wallet successfully recovered! Address: \(String(describing: address))"
+        self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
 
-    self.PortalWrapper.recover(backupMethod: BackupMethods.iCloud.rawValue, user: self.user!) { result in
-      guard result.error == nil else {
-        print("❌ handleiCloudRecover(): Error recovering wallet:", result.error!)
+        DispatchQueue.main.async {
+          if let addressInformation = self.addressInformation {
+            addressInformation.text = ethereum
+          }
+        }
+        self.updateUIComponents()
+      } catch {
+        self.stopLoading()
+        self.logger.error("ViewController.handleiCloudRecover() - Error running recover: \(error.localizedDescription)")
+      }
+    }
+  }
+
+  @IBAction func handlePasskeyBackup(_: UIButton!) {
+    Task {
+      do {
+        guard let userId = user?.exchangeUserId else {
+          self.logger.error("ViewController.handlePasskeyBackup() - No userId found. Please login before using Portal.")
+          return
+        }
+        self.startLoading()
+        self.logger.debug("ViewController.handlPasskeyBackup() - Starting backup...")
+        _ = try await self.backup(String(userId), withMethod: .Passkey)
+        self.logger.debug("ViewController.handlePasskeyBackup(): ✅ Successfully sent custodian cipherText.")
+        self.updateUIComponents()
+      } catch {
+        self.stopLoading()
+        self.logger.error("ViewController.handlePasskeyBackup() - Error running backup: \(error.localizedDescription)")
+      }
+    }
+  }
+
+  @IBAction func handlePasskeyRecover(_: UIButton!) {
+    Task {
+      do {
+        guard let userId = user?.exchangeUserId else {
+          self.logger.error("ViewController.handlePasskeyRecover() - No userId found. Please login before using Portal.")
+          return
+        }
+        self.startLoading()
+        self.logger.debug("ViewController.handlPasskeyRecover() - Starting recover...")
+        let (ethereum, _) = try await recover(String(userId), withBackupMethod: .Passkey)
+        guard let address = ethereum else {
+          self.logger.error("ViewController.handleGenerate() - ❌ Wallet was recovered, but no address was found.")
+          throw PortalKeychain.KeychainError.noAddressesFound
+        }
+        let debugMessage = "ViewController.handlePasskeyRecover() - ✅ Wallet successfully recovered! Address: \(String(describing: address))"
+        self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
+        DispatchQueue.main.async {
+          if let addressInformation = self.addressInformation {
+            addressInformation.text = ethereum
+          }
+        }
+        self.updateUIComponents()
+      } catch {
+        self.stopLoading()
+        self.logger.error("ViewController.handlePasskeyBackup() - Error running recover: \(error.localizedDescription)")
+      }
+    }
+  }
+
+  @IBAction func handlePasswordBackup(_: UIButton!) {
+    Task {
+      do {
+        guard let enteredPassword = await requestPassword(), !enteredPassword.isEmpty else {
+          self.logger.error("ViewController.handlePasswordBackup() - ❌ No password set by user. Backup will not take place.")
+          return
+        }
+        guard let userId = user?.exchangeUserId else {
+          self.logger.error("ViewController.handlePasswordBackup() - No userId found. Please login before using Portal.")
+          return
+        }
+        self.startLoading()
+        // Set the Password for backup
+        try self.portal?.setPassword(enteredPassword)
+        self.logger.debug("ViewController.handlPasswordBackup() - Starting backup...")
+        _ = try await self.backup(String(userId), withMethod: .Password)
+        self.logger.debug("ViewController.handlePasskeyBackup(): ✅ Successfully sent custodian cipherText.")
+        self.updateUIComponents()
+      } catch {
+        self.stopLoading()
+        self.logger.error("ViewController.handlePasskeyBackup() - Error running backup: \(error.localizedDescription)")
+      }
+    }
+  }
+
+  @IBAction func handlePasswordRecover(_: UIButton!) {
+    Task {
+      do {
+        guard let portal = self.portal else {
+          throw PortalExampleAppError.portalNotInitialized()
+        }
+        guard let enteredPassword = await requestPassword(), !enteredPassword.isEmpty else {
+          self.logger.error("ViewController.handlePasswordRecover() - ❌ No password set by user. Recovery will not take place.")
+          return
+        }
+        guard let user else {
+          throw PortalExampleAppError.userNotLoggedIn()
+        }
+        self.startLoading()
+        // Set the Password for backup
+        try portal.setPassword(enteredPassword)
+        self.logger.debug("ViewController.handlPasswordRecover() - Starting recover...")
+        let (ethereum, solana) = try await recover(String(user.exchangeUserId), withBackupMethod: .Password)
+        guard let address = ethereum else {
+          self.logger.error("ViewController.handlePasswordRecover() - ❌ Wallet was recovered, but no address was found.")
+          throw PortalKeychain.KeychainError.noAddressesFound
+        }
+        let debugMessage = "ViewController.handlePasskeyRecover() - ✅ Wallet successfully recovered! Address: \(String(describing: address))"
+        self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
+
+        DispatchQueue.main.async {
+          if let addressInformation = self.addressInformation {
+            addressInformation.text = ethereum
+          }
+        }
+        self.updateUIComponents()
+      } catch {
+        self.stopLoading()
+        self.logger.error("ViewController.handlePasskeyBackup() - Error running recover: \(error.localizedDescription)")
+      }
+    }
+  }
+
+  // Portal API actions
+
+  @IBAction func testGetNFTsTrxsBalancesSharesAndSimTrx() {
+    Task {
+      let chainId = "eip155:11155111"
+
+      do {
+        _ = try await self.getBalances()
+        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched balances.")
+      } catch {
+        self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching balances: \(error.localizedDescription)")
         return
       }
-
-      self.populateAddressInformation()
-      print("✅ handleiCloudRecover(): Successfully recovered signing shares")
+      do {
+        _ = try await self.getNFTs(chainId)
+        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched NFTs.")
+      } catch {
+        self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching NFTs: \(error.localizedDescription)")
+        return
+      }
+      do {
+        _ = try await self.getShareMetadata()
+        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched share metadata.")
+      } catch {
+        self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching share metadata: \(error.localizedDescription)")
+      }
+      do {
+        _ = try await self.getTransactions(chainId)
+        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched transactions.")
+      } catch {
+        self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching transactions: \(error.localizedDescription)")
+        return
+      }
+      do {
+        let transaction = []
+        _ = try await self.simulateTransaction(chainId, transaction: transaction)
+        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully simulated transaction.")
+      } catch {
+        self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error simulating transaction: \(error.localizedDescription)")
+        return
+      }
     }
   }
 
   @IBAction func sendPressed(_: UIButton!) {
-    self.handleSend()
+    Task {
+      do {
+        _ = try await self.sendTransaction()
+        self.logger.info("ViewController.handlSend() - ✅ Successfully sent transaction")
+      } catch {
+        self.logger.error("ViewController.handleSend() - ❌ Error sending transaction: \(error.localizedDescription)")
+      }
+    }
   }
 
   @IBAction func usernameChanged(_: Any) {
@@ -428,526 +1262,53 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
   @IBAction func testProviderRequests(_: UIButton) {
-    print("\n====================\nTesting provider methods\n====================")
-    self.testSignerRequests()
-    // testWalletRequests()
-    self.testOtherRequests()
-    self.testTransactionRequests()
-    // testAddressRequests()
-    print("====================\n[FINISHED] Testing provider methods\n====================\n")
-  }
+    Task {
+      do {
+        try await self.testSignerRequests()
+        try await self.testTransactionRequests()
+        try await self.testOtherRequests()
 
-  @IBAction func handleDeleteKeychain(_: Any) {
-    self.deleteKeychain()
-    self.populateAddressInformation()
-  }
-
-  func deleteKeychain() {
-    do {
-      try self.portal?.deleteAddress()
-      try self.portal?.deleteSigningShare()
-      print("✅ Deleted keychain")
-    } catch {
-      print("❌ Delete keychain error:", error)
-    }
-  }
-
-  @IBAction func fetchNFTsTrxsBalancesAndSimTrx() {
-    self.retrieveNFTs()
-    self.getTransactions()
-    self.getBalances()
-    self.simulateTransaction()
-    self.getShareMetadata()
-  }
-
-  func populateAddressInformation() {
-    let address = self.portal?.address
-    print("Address", address ?? "")
-
-    DispatchQueue.main.async {
-      self.addressInformation?.text = "Address: \(address ?? "N/A")"
-    }
-  }
-
-  func parseETHBalanceHex(hex: String) -> String {
-    let hexString = hex.replacingOccurrences(of: "0x", with: "")
-    guard let hexInt = Int(hexString, radix: 16) else {
-      print("Unable to parse ETH balance hex")
-      return ""
-    }
-    let ethBalance = Double(hexInt) / 1_000_000_000_000_000_000
-    return String(ethBalance)
-  }
-
-  func retrieveNFTs() {
-    do {
-      try self.portal?.api.getNFTs { results in
-        guard results.error == nil else {
-          print("❌ Unable to retrieve NFTs", results.error ?? "")
-          return
-        }
-
-        print("✅ Retrieved NFTs", results.data ?? "")
+        self.logger.info("ViewController.testProviderRequests() - ✅ Successfully tested provider requests")
+      } catch {
+        self.logger.error("ViewController.testProviderRequests() - ❌ Error testing transactions: \(error.localizedDescription)")
       }
-    } catch {
-      print("❌ Unable to retrieve NFTs", error)
-    }
-  }
-
-  func getTransactions() {
-    do {
-      try self.portal?.api.getTransactions(limit: 100, offset: 0, order: GetTransactionsOrder.asc, chainId: 11_155_111) { results in
-        guard results.error == nil else {
-          print("❌ Unable to get transactions", results.error ?? "")
-          return
-        }
-
-        print("✅ Retrieved transactions", results.data ?? "")
-      }
-    } catch {
-      print("❌ Unable to retrieve transactions", error)
-    }
-  }
-
-  func getShareMetadata() {
-    do {
-      try self.portal?.api.getBackupShareMetadata { results in
-        guard results.error == nil else {
-          print("❌ Unable to get backup share pairs", results.error ?? "")
-          return
-        }
-
-        print("✅ Retrieved backup share pairs", results.data ?? "")
-      }
-    } catch {
-      print("❌ Unable to retrieve backup share pairs", error)
-    }
-
-    do {
-      try self.portal?.api.getSigningShareMetadata { results in
-        guard results.error == nil else {
-          print("❌ Unable to get signing share pairs", results.error ?? "")
-          return
-        }
-
-        print("✅ Retrieved signing share pairs", results.data ?? "")
-      }
-    } catch {
-      print("❌ Unable to retrieve signing share pairs", error)
-    }
-  }
-
-  func getBalances() {
-    do {
-      try self.portal?.api.getBalances { results in
-        guard results.error == nil else {
-          print("❌ Unable to get balances", results.error ?? "")
-          return
-        }
-
-        print("✅ Retrieved balances", results.data ?? "")
-      }
-    } catch {
-      print("❌ Unable to retrieve balances", error)
-    }
-  }
-
-  func simulateTransaction() {
-    do {
-      print("Simulating transaction...")
-
-      // First, create a transaction.
-      let transaction = SimulateTransactionParam(
-        to: "0x5596D66388555273eF90163f5e7314C8CE14F73c", // The recipient address.
-        value: "0x10DE4A2A" // The value to be sent in Wei.
-      )
-
-      // Next, simulate the transaction.
-      try portal?.api.simulateTransaction(transaction: transaction) {
-        (result: Result<SimulatedTransaction>) in
-
-        // Check for general errors.
-        if let error = result.error {
-          print("❌ Error simulating transaction:", error)
-          return
-        }
-
-        // Safely unwrap the simulated result.
-        guard let simulatedResult = result.data else {
-          print("❌ Unexpected error: result data is nil.")
-          return
-        }
-
-        // Finally, you can handle or display the simulation results as needed.
-        if let requestError = simulatedResult.requestError {
-          print("❌ Request error:", requestError.message)
-        } else if let error = simulatedResult.error {
-          print("✅ Transaction will have error:", error.message)
-        } else {
-          print("✅ Simulated transaction changes:", simulatedResult.changes)
-        }
-      }
-    } catch {
-      print("❌ Unable to retrieve balances", error)
-    }
-  }
-
-  func populateEthBalance() {
-    guard let address = self.portal?.address else {
-      print("❌ populateEthBalance(): Error getting address")
-      return
-    }
-
-    let payload = ETHRequestPayload(
-      method: ETHRequestMethods.GetBalance.rawValue,
-      params: [address, "latest"]
-    )
-
-    self.portal?.provider.request(payload: payload) { (result: Result<RequestCompletionResult>) in
-      if let error = result.error {
-        print("❌ Error getting ETH balance:", error)
-        return
-      }
-
-      if let res = result.data?.result as? ETHGatewayResponse {
-        print("✅ Balance result:", res.result ?? "")
-        DispatchQueue.main.async {
-          self.ethBalanceInformation?.text = "ETH Balance: \(self.parseETHBalanceHex(hex: res.result ?? "")) ETH"
-        }
-      } else {
-        print("❌ Error casting response to ETHGatewayResponse")
-      }
-    }
-  }
-
-  func handleSend() {
-    let payload = ETHTransactionPayload(
-      method: ETHRequestMethods.GasPrice.rawValue,
-      params: []
-    )
-    self.portal?.provider.request(payload: payload) {
-      (result: Result<TransactionCompletionResult>) in
-      guard result.error == nil else {
-        print("❌ Error estimating gas:", result.error ?? "")
-        return
-      }
-
-      guard let ethEstimate = (result.data?.result as? ETHGatewayResponse)?.result else {
-        print("❌ Error estimating gas. Unable to parse result:", result)
-        return
-      }
-
-      self.sendTransaction(ethEstimate: ethEstimate)
     }
   }
 
   @IBAction func handleSign() {
-    let address = self.portal?.address
+    Task {
+      do {
+        let chainId = "eip155:11155111"
 
-    let payload = ETHRequestPayload(
-      method: ETHRequestMethods.PersonalSign.rawValue,
-      params: [address ?? "", "0xdeadbeef"]
-    )
-
-    self.portal?.provider.request(payload: payload) {
-      (result: Result<RequestCompletionResult>) in
-      guard result.error == nil else {
-        print("❌ Error estimating gas:", result.error ?? "")
-        return
-      }
-
-      print("✅ handleSign(): Successfully signed:", result.data ?? "")
-    }
-  }
-
-  func sendTransaction(ethEstimate: String) {
-    let payload = ETHTransactionPayload(
-      method: ETHRequestMethods.SendTransaction.rawValue,
-      params: [ETHTransactionParam(from: self.portal?.address ?? "", to: self.sendAddress?.text ?? "", gasPrice: ethEstimate, value: "0x10", data: "")]
-      // Test EIP-1559 Transactions with these params
-      // params: [ETHTransactionParam(from: portal?.mpc.getAddress(), to: sendAddress.text!,  gas:"0x5208", value: "0x10", data: "", maxPriorityFeePerGas: ethEstimate, maxFeePerGas: ethEstimate)]
-    )
-
-    self.portal?.provider.request(payload: payload) {
-      (result: Result<TransactionCompletionResult>) in
-      guard result.error == nil else {
-        print("❌ Error sending transaction:", result.error ?? "")
-        return
-      }
-      guard (result.data?.result as? Result<Any>)?.error == nil else {
-        print("❌ Error sending transaction:", (result.data?.result as AnyObject).error as Any)
-        return
-      }
-      print("✅ handleSend(): Result:", result.data?.result ?? "")
-    }
-  }
-
-  func registerPortalUi(apiKey: String) {
-    do {
-      guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
-        print("Couldnt load info plist")
-        return
-      }
-      guard let GDRIVE_CLIENT_ID: String = infoDictionary["GDRIVE_CLIENT_ID"] as? String else {
-        print("Error: Do you have `GDRIVE_CLIENT_ID=$(GDRIVE_CLIENT_ID)` in your info.plist?")
-        return
-      }
-      self.passkey = PasskeyStorage(viewController: self, relyingParty: "portalhq.io", webAuthnHost: self.RP_URL)
-      let backup = BackupOptions(gdrive: GDriveStorage(clientID: GDRIVE_CLIENT_ID, viewController: self), icloud: ICloudStorage(), passwordStorage: PasswordStorage(), passkeyStorage: self.passkey)
-
-      self.PortalWrapper.registerPortal(apiKey: apiKey, backup: backup, optimized: true) { _ in
-        DispatchQueue.main.async {
-          self.generateButton?.isEnabled = true
-
-          let address = self.portal?.address
-          let hasAddress = address?.count ?? 0 > 0
-
-          self.passkeyBackupButton?.isEnabled = hasAddress
-          self.passwordBackupButton?.isEnabled = hasAddress
-          self.dappBrowserButton?.isEnabled = hasAddress
-          self.portalConnectButton?.isEnabled = hasAddress
-
-          self.gdriveBackupButton?.isEnabled = hasAddress
-          self.gdriveRecoverButton?.isEnabled = hasAddress
-          self.iCloudBackupButton?.isEnabled = hasAddress
-          self.iCloudRecoverButton?.isEnabled = hasAddress
-          self.testButton?.isEnabled = hasAddress
-          self.signButton?.isEnabled = hasAddress
-          self.deleteKeychainButton?.isEnabled = hasAddress
-          self.testNFTsTrxsBalancesSimTrxButton?.isEnabled = hasAddress
-          self.ejectButton?.isEnabled = hasAddress
-          self.sendButton?.isEnabled = hasAddress
+        guard let portal else {
+          self.logger.error("ViewController.handlSign() - ❌ Portal not initialized")
+          throw PortalExampleAppError.portalNotInitialized()
         }
-      }
-    }
-  }
+        guard let address = await portal.getAddress(chainId) else {
+          self.logger.error("ViewController.handlSign() - ❌ Address not found")
+          throw PortalExampleAppError.addressNotFound()
+        }
 
-  func testProviderRequest(method: String, params: [Any], skipLoggingResult _: Bool = false, completion: @escaping (Bool) -> Void) {
-    let payload = ETHRequestPayload(
-      method: method,
-      params: params
-    )
+        self.startLoading()
+        let params = [address, "0xdeadbeef"]
 
-    print("Starting to test method ", method, "...")
-    self.portal?.provider.request(payload: payload) { (result: Result<RequestCompletionResult>) in
-      guard result.error == nil else {
-        print("❌ Error testing provider request:", method, "Error:", result.error ?? "Unknown error")
-        completion(false)
-        return
-      }
+        self.logger.debug("Params: \(params)")
 
-      guard let responseData = result.data else {
-        print("❌ No data in response for method:", method)
-        completion(false)
-        return
-      }
-
-      if signerMethods.contains(method) {
-        guard let signerResult = responseData.result as? Result<SignerResult>, signerResult.error == nil else {
-          print("❌ Error testing signer request:", method, "Error:", (responseData.result as? Result<SignerResult>)?.error ?? "Unknown error")
-          completion(false)
+        guard let response = try? await portal.request(chainId, withMethod: .eth_sign, andParams: params) else {
+          self.logger.error("ViewController.handlSign() - ❌ Failed to process request")
           return
         }
 
-        if let signature = signerResult.data?.signature {
-          print("✅ Signature for", method, signature)
-        } else if let accounts = signerResult.data?.accounts {
-          print("✅ Accounts for", method, accounts)
-        } else {
-          print("❌ No signature or accounts for method:", method)
-          completion(false)
-          return
+        guard let signature = response.result as? String else {
+          self.logger.error("ViewController.handlSign() - ❌ Invalid response type for request:")
+          print(response.result)
+          throw PortalExampleAppError.invalidResponseTypeForRequest()
         }
-      } else {
-        guard let ethResponse = responseData.result as? ETHGatewayResponse, ethResponse.error == nil else {
-          print("❌ Error testing provider request:", method, "Error:", (responseData.result as? ETHGatewayResponse)?.error ?? "Unknown error")
-          completion(false)
-          return
-        }
-        print("✅ Gateway response for", method, ethResponse.result ?? "")
-      }
-
-      completion(true)
-    }
-  }
-
-  func testProviderTransactionRequest(method: String, params: [ETHTransactionParam], skipLoggingResult: Bool = false, completion: @escaping (Bool) -> Void) {
-    let payload = ETHTransactionPayload(
-      method: method,
-      params: params
-    )
-
-    print("Starting to test method ", method, "...")
-    self.portal?.provider.request(payload: payload) { (result: Result<TransactionCompletionResult>) in
-      guard result.error == nil else {
-        print("❌ Error testing provider transaction request:", method, result.error ?? "")
-        completion(false)
-        return
-      }
-
-      if !skipLoggingResult {
-        print("✅ ", method, "() result:", result.data?.result ?? "")
-      } else {
-        print("✅ ", method, "()")
-      }
-
-      completion(true)
-    }
-  }
-
-  func testProviderAddressRequest(method: String, params: [ETHAddressParam], skipLoggingResult: Bool = false, completion: @escaping (Bool) -> Void) {
-    let payload = ETHAddressPayload(
-      method: method,
-      params: params
-    )
-
-    print("Starting to test method ", method, "...")
-    self.portal?.provider.request(payload: payload) { (result: Result<AddressCompletionResult>) in
-      guard result.error == nil else {
-        print("❌ Error testing provider request:", method, result.error ?? "")
-        return
-      }
-
-      if !skipLoggingResult {
-        print("✅ ", method, "() result:", result.data?.result ?? "")
-      } else {
-        print("✅ ", method, "()")
-      }
-
-      completion(true)
-    }
-  }
-
-  func testSignerRequests() {
-    print("Testing Signer Methods:\n")
-    let fromAddress = self.portal?.address
-    guard fromAddress != nil else {
-      print("❌ Error testing signer provider requests: address is nil")
-      return
-    }
-    let signerRequests = [
-      ProviderRequest(method: ETHRequestMethods.Accounts.rawValue, params: [], skipLoggingResult: false),
-      ProviderRequest(method: ETHRequestMethods.RequestAccounts.rawValue, params: [], skipLoggingResult: false),
-      ProviderRequest(method: ETHRequestMethods.Sign.rawValue, params: [fromAddress ?? "", "0xdeadbeaf"], skipLoggingResult: false),
-      ProviderRequest(method: ETHRequestMethods.PersonalSign.rawValue, params: ["0xdeadbeaf", fromAddress ?? ""], skipLoggingResult: false),
-    ]
-
-    for request in signerRequests {
-      self.testProviderRequest(method: request.method, params: request.params) { (_: Bool) in
-        // Do something
-      }
-    }
-  }
-
-  func testWalletRequests() {
-    print("\nTesting Wallet Methods:\n")
-    let walletRequests = [
-      // https://docs.metamask.io/guide/rpc-api.html#wallet-addethereumchain
-      ProviderRequest(method: ETHRequestMethods.WalletAddEthereumChain.rawValue, params: [], skipLoggingResult: false),
-      // https://docs.metamask.io/guide/rpc-api.html#wallet-getpermissions
-      ProviderRequest(method: ETHRequestMethods.WalletGetPermissions.rawValue, params: [], skipLoggingResult: false),
-      // https://docs.metamask.io/guide/rpc-api.html#wallet-registeronboarding
-      ProviderRequest(method: ETHRequestMethods.WalletRegisterOnboarding.rawValue, params: [], skipLoggingResult: false),
-      // https://docs.metamask.io/guide/rpc-api.html#wallet-requestpermissions
-      ProviderRequest(method: ETHRequestMethods.WalletRequestPermissions.rawValue, params: [], skipLoggingResult: false),
-      // https://docs.metamask.io/guide/rpc-api.html#wallet-switchethereumchain
-      ProviderRequest(method: ETHRequestMethods.WalletSwitchEthereumChain.rawValue, params: [], skipLoggingResult: false),
-      // https://docs.metamask.io/guide/rpc-api.html#wallet-watchasset
-      ProviderRequest(method: ETHRequestMethods.WalletWatchAsset.rawValue, params: [], skipLoggingResult: false),
-    ]
-
-    for request in walletRequests {
-      self.testProviderRequest(method: request.method, params: request.params) { (_: Bool) in
-        // Do something
-      }
-    }
-  }
-
-  func testOtherRequests() {
-    print("\nTesting Other Requests:\n")
-    let fromAddress = self.portal?.address
-    guard fromAddress != nil else {
-      print("❌ Error testing other provider requests: address is nil")
-      return
-    }
-    let otherRequests = [
-      ProviderRequest(method: ETHRequestMethods.BlockNumber.rawValue, params: [], skipLoggingResult: false),
-      ProviderRequest(method: ETHRequestMethods.GasPrice.rawValue, params: [], skipLoggingResult: false),
-      ProviderRequest(method: ETHRequestMethods.GetBalance.rawValue, params: [fromAddress ?? "", "latest"], skipLoggingResult: false),
-      ProviderRequest(method: ETHRequestMethods.GetBlockByHash.rawValue, params: ["0xdc0818cf78f21a8e70579cb46a43643f78291264dda342ae31049421c82d21ae", false], skipLoggingResult: false),
-      ProviderRequest(method: ETHRequestMethods.GetBlockTransactionCountByNumber.rawValue, params: ["latest"], skipLoggingResult: false),
-      ProviderRequest(method: ETHRequestMethods.GetCode.rawValue, params: [fromAddress ?? "", "latest"], skipLoggingResult: false),
-      ProviderRequest(method: ETHRequestMethods.GetTransactionByHash.rawValue, params: ["0x88df016429689c079f3b2f6ad39fa052532c56795b733da78a91ebe6a713944b"], skipLoggingResult: false),
-      ProviderRequest(method: ETHRequestMethods.GetTransactionCount.rawValue, params: [fromAddress ?? "", "latest"], skipLoggingResult: false),
-      ProviderRequest(method: ETHRequestMethods.GetTransactionReceipt.rawValue, params: ["0x88df016429689c079f3b2f6ad39fa052532c56795b733da78a91ebe6a713944b"], skipLoggingResult: false),
-      ProviderRequest(method: ETHRequestMethods.GetUncleByBlockHashIndex.rawValue, params: ["0xc6ef2fc5426d6ad6fd9e2a26abeab0aa2411b7ab17f30a99d3cb96aed1d1055b", "0x0"], skipLoggingResult: false),
-      ProviderRequest(method: ETHRequestMethods.GetUncleCountByBlockHash.rawValue, params: ["0xc6ef2fc5426d6ad6fd9e2a26abeab0aa2411b7ab17f30a99d3cb96aed1d1055b"], skipLoggingResult: false),
-      ProviderRequest(method: ETHRequestMethods.GetUncleCountByBlockNumber.rawValue, params: ["latest"], skipLoggingResult: false),
-      ProviderRequest(method: ETHRequestMethods.NetVersion.rawValue, params: [], skipLoggingResult: false),
-      ProviderRequest(method: ETHRequestMethods.GetNewBlockFilter.rawValue, params: [], skipLoggingResult: false),
-      ProviderRequest(method: ETHRequestMethods.NewPendingTransactionFilter.rawValue, params: [], skipLoggingResult: false),
-      ProviderRequest(method: ETHRequestMethods.ProtocolVersion.rawValue, params: [], skipLoggingResult: false),
-      ProviderRequest(method: ETHRequestMethods.SendRawTransaction.rawValue, params: ["0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675"], skipLoggingResult: false),
-      ProviderRequest(method: ETHRequestMethods.Web3ClientVersion.rawValue, params: [], skipLoggingResult: false),
-      ProviderRequest(method: ETHRequestMethods.Web3Sha3.rawValue, params: ["0x68656c6c6f20776f726c64"], skipLoggingResult: false),
-      ProviderRequest(method: ETHRequestMethods.GetStorageAt.rawValue, params: [fromAddress ?? "", "0x0", "latest"], skipLoggingResult: false),
-    ]
-
-    for request in otherRequests {
-      self.testProviderRequest(method: request.method, params: request.params) { (_: Bool) in
-        // Do something
-      }
-    }
-  }
-
-  func testTransactionRequests() {
-    print("\nTesting Transaction Requests:\n")
-    let fromAddress = self.portal?.address ?? ""
-    let toAddress = "0x4cd042bba0da4b3f37ea36e8a2737dce2ed70db7"
-    let fakeTransaction = ETHTransactionParam(
-      from: fromAddress,
-      to: toAddress,
-      value: "0x9184e72a",
-      data: "0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675"
-    )
-    guard fromAddress != "" else {
-      print("❌ Error testing transaction provider requests: address is nil")
-      return
-    }
-    let requests = [
-      ProviderTransactionRequest(method: ETHRequestMethods.Call.rawValue, params: [fakeTransaction], skipLoggingResult: false),
-      ProviderTransactionRequest(method: ETHRequestMethods.EstimateGas.rawValue, params: [fakeTransaction], skipLoggingResult: false),
-
-      ProviderTransactionRequest(method: ETHRequestMethods.SendTransaction.rawValue, params: [fakeTransaction], skipLoggingResult: false),
-      ProviderTransactionRequest(method: ETHRequestMethods.SignTransaction.rawValue, params: [fakeTransaction], skipLoggingResult: false),
-    ]
-
-    for request in requests {
-      self.testProviderTransactionRequest(method: request.method, params: request.params) { (_: Bool) in
-        // Do something
-      }
-    }
-  }
-
-  func testUnsupportedRequests() {
-    print("\nTesting Unsupported Methods:\n")
-    self.testUnsupportedSignerRequests()
-  }
-
-  func testUnsupportedSignerRequests() {
-    print("\nTesting Unsupported Signer Methods:\n")
-    let unsupportedSignerMethods = [
-      ETHRequestMethods.ChainId.rawValue,
-    ]
-
-    let address = self.portal?.address
-    guard address != nil else {
-      print("❌ testUnsupportedSignerRequests(): Error getting address")
-      return
-    }
-    for method in unsupportedSignerMethods {
-      self.testProviderRequest(method: method, params: [address ?? ""]) { (_: Bool) in
-        // Do something
+        self.logger.info("ViewController.handleSign() - ✅ Successfully signed message: \(signature)")
+        self.stopLoading()
+      } catch {
+        self.stopLoading()
+        self.logger.error("ViewController.handleSign() - ❌ Error signing message: \(error.localizedDescription)")
       }
     }
   }
