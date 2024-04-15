@@ -2,24 +2,37 @@ import PortalSwift
 @testable import SPM_Example
 import XCTest
 
-class PasswordWalletTests: XCTestCase {
-  static var user: UserResult?
-  static var username: String?
-  static var PortalWrap: PortalWrapper!
-  static var testAGenerateSucceeded = false
+@available(iOS 16.0, *)
+final class PasswordWalletTests: XCTestCase {
+  let now = Date().timeIntervalSince1970
+  var portal: Portal!
+  var user: UserResult?
+  var username: String = "test-username"
+  var viewController: ViewController!
 
-  static func randomString(length: Int) -> String {
-    let letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    let randomPart = String((0 ..< length).map { _ in letters.randomElement()! })
-    let timestamp = String(Int(Date().timeIntervalSince1970))
-    return randomPart + timestamp
-  }
+  override func setUpWithError() throws {
+    self.username = "test-username-\(self.now)"
 
-  override class func setUp() {
-    super.setUp()
-    self.username = self.randomString(length: 15)
-    print("username: ", self.username!)
-    self.PortalWrap = PortalWrapper()
+    // Prepare Portal
+    let api = PortalApi(apiKey: MockConstants.mockApiKey, requests: MockPortalRequests())
+    let binary = MockMobileWrapper()
+    let keychain = MockPortalKeychain()
+    self.portal = try Portal(
+      MockConstants.mockApiKey,
+      withRpcConfig: ["eip155:11155111": "https://\(MockConstants.mockHost)/test-rpc"],
+      api: api,
+      binary: binary,
+      gDrive: MockGDriveStorage(),
+      iCloud: MockICloudStorage(),
+      keychain: keychain,
+      mpc: MockPortalMpc(apiKey: MockConstants.mockApiKey, api: api, keychain: keychain, mobile: binary),
+      passwords: MockPasswordStorage()
+    )
+
+    // Prepare the ViewController
+    let storyboard = UIStoryboard(name: "Main", bundle: nil)
+    self.viewController = storyboard.instantiateViewController(withIdentifier: "mainViewController") as? ViewController
+    self.viewController.loadViewIfNeeded()
   }
 
   override func tearDown() {
