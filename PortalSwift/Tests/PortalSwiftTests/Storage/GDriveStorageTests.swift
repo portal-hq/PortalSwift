@@ -19,7 +19,7 @@ final class GDriveStorageTests: XCTestCase {
   override func tearDownWithError() throws {}
 
   func testDecrypt() async throws {
-    let expectation = XCTestExpectation(description: "PasswordStorage.write(value)")
+    let expectation = XCTestExpectation(description: "GDriveStorage.write(value)")
     let mockGenerateResponse = try MockConstants.mockGenerateResponse
     let decryptResult = try await storage.decrypt(MockConstants.mockCiphertext, withKey: MockConstants.mockEncryptionKey)
     guard let decryptedData = decryptResult.data(using: .utf8) else {
