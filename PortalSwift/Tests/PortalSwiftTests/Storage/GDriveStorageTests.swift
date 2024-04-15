@@ -41,7 +41,7 @@ final class GDriveStorageTests: XCTestCase {
   }
 
   func testEncrypt() async throws {
-    let expectation = XCTestExpectation(description: "PasswordStorage.write(value)")
+    let expectation = XCTestExpectation(description: "GDriveStorage.write(value)")
     let shareData = try JSONEncoder().encode(MockConstants.mockWalletSigningShare)
     guard let shareString = String(data: shareData, encoding: .utf8) else {
       throw PasswordStorageError.unableToEncodeData
