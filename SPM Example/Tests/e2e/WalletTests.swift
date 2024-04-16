@@ -41,33 +41,13 @@ final class WalletTests: XCTestCase {
     super.tearDown()
   }
 
-  func testLogin(chainId _: Int = 11_155_111, completion: @escaping (Result<Bool>) -> Void) {
+  func testLogin(chainId _: Int = 11_155_111) throws {
     XCTContext.runActivity(named: "Login") { _ in
       let registerExpectation = XCTestExpectation(description: "Register")
 
-      WalletTests.PortalWrap.signIn(username: WalletTests.username ?? "") { (result: Result<UserResult>) in
-        guard result.error == nil else {
-          registerExpectation.fulfill()
-          return XCTFail("Failed on sign in: \(String(describing: result.error))")
-        }
-        guard let userResult = result.data else {
-          return XCTFail("Failed on sign in: UserResult unable to be unpacked")
-        }
-        print("✅ handleSignIn(): API key:", userResult.clientApiKey)
-        WalletTests.user = userResult
-        let backupOption = LocalFileStorage()
-        let backup = BackupOptions(local: backupOption)
-        WalletTests.PortalWrap.registerPortal(apiKey: userResult.clientApiKey, backup: backup) {
-          result in
-          guard result.error == nil else {
-            registerExpectation.fulfill()
-            return XCTFail("Unable to register Portal")
-          }
-          registerExpectation.fulfill()
-          return completion(result)
-        }
-      }
-      wait(for: [registerExpectation], timeout: 60)
+      let userResult = try await WalletTests.viewController?.signIn(WalletTests.username ?? "")
+      print("✅ handleSignIn(): API key:", userResult.clientApiKey)
+      WalletTests.user = userResult
     }
   }
 
@@ -75,7 +55,8 @@ final class WalletTests: XCTestCase {
     let registerExpectation = XCTestExpectation(description: "Register")
     let generateExpectation = XCTestExpectation(description: "Generate")
 
-    WalletTests.PortalWrap.signUp(username: WalletTests.username ?? "") { (result: Result<UserResult>) in
+    let userResult = try await WalletTests.viewController?.signUp(WalletTests.username ?? "")
+    print("✅ handleSignup(): API key:", userResult.clientApiKey) { (result: Result<UserResult>) in
       guard result.error == nil else {
         XCTFail("Failed on sign up: \(String(describing: result.error))")
         generateExpectation.fulfill()
