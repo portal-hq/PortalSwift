@@ -1210,31 +1210,31 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
       do {
         let erc20Balances = try await self.getBalances()
-        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched balances.")
         print(erc20Balances)
+        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched balances.")
       } catch {
         self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching balances: \(error.localizedDescription)")
         return
       }
       do {
         let nfts = try await self.getNFTs(chainId)
-        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched NFTs.")
         print(nfts)
+        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched NFTs.")
       } catch {
         self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching NFTs: \(error.localizedDescription)")
         return
       }
       do {
         let shares = try await self.getShareMetadata()
-        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched share metadata.")
         print(shares)
+        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched share metadata.")
       } catch {
         self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching share metadata: \(error.localizedDescription)")
       }
       do {
         let transactions = try await self.getTransactions(chainId)
-        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched transactions.")
         print(transactions)
+        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched transactions.")
       } catch {
         self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching transactions: \(error.localizedDescription)")
         return
@@ -1242,15 +1242,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
       do {
         let address = await self.portal?.getAddress(chainId)
         let transaction = [
-          "data": "",
           "from": address,
-          "gasPrice": "ethEstimate",
-          "to": self.sendAddress?.text ?? "",
+          "to": self.sendAddress?.text ?? "0xdFd8302f44727A6348F702fF7B594f127dE3A902",
           "value": "0x10",
         ]
         let simulatedTransaction = try await self.simulateTransaction(chainId, transaction: transaction)
-        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully simulated transaction.")
         print(simulatedTransaction)
+        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully simulated transaction.")
       } catch {
         self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error simulating transaction: \(error.localizedDescription)")
         return
