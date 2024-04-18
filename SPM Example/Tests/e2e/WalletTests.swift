@@ -1,25 +1,39 @@
-import PortalSwift
 @testable import SPM_Example
+
+import PortalSwift
 import XCTest
 
-class WalletTests: XCTestCase {
-  static var user: UserResult?
-  static var username: String?
-  static var PortalWrap: PortalWrapper!
-  static var testAGenerateSucceeded = false
+@available(iOS 16.0, *)
+final class WalletTests: XCTestCase {
+  let now = Date().timeIntervalSince1970
+  var portal: Portal!
+  var user: UserResult?
+  var username: String = "test-username"
+  var viewController: ViewController!
 
-  static func randomString(length: Int) -> String {
-    let letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    let randomPart = String((0 ..< length).map { _ in letters.randomElement() ?? "a" })
-    let timestamp = String(Int(Date().timeIntervalSince1970))
-    return randomPart + timestamp
-  }
+  override func setUpWithError() throws {
+    self.username = "test-username-\(self.now)"
 
-  override class func setUp() {
-    super.setUp()
-    self.username = self.randomString(length: 15)
-    print("Username: ", self.username ?? "")
-    self.PortalWrap = PortalWrapper()
+    // Prepare Portal
+    let api = PortalApi(apiKey: MockConstants.mockApiKey, requests: MockPortalRequests())
+    let binary = MockMobileWrapper()
+    let keychain = MockPortalKeychain()
+    self.portal = try Portal(
+      MockConstants.mockApiKey,
+      withRpcConfig: ["eip155:11155111": "https://\(MockConstants.mockHost)/test-rpc"],
+      api: api,
+      binary: binary,
+      gDrive: MockGDriveStorage(),
+      iCloud: MockICloudStorage(),
+      keychain: keychain,
+      mpc: MockPortalMpc(apiKey: MockConstants.mockApiKey, api: api, keychain: keychain, mobile: binary),
+      passwords: MockPasswordStorage()
+    )
+
+    // Prepare the ViewController
+    let storyboard = UIStoryboard(name: "Main", bundle: nil)
+    self.viewController = storyboard.instantiateViewController(withIdentifier: "mainViewController") as? ViewController
+    self.viewController.loadViewIfNeeded()
   }
 
   override func tearDown() {
@@ -27,33 +41,13 @@ class WalletTests: XCTestCase {
     super.tearDown()
   }
 
-  func testLogin(chainId _: Int = 11_155_111, completion: @escaping (Result<Bool>) -> Void) {
+  func testLogin(chainId _: Int = 11_155_111) throws {
     XCTContext.runActivity(named: "Login") { _ in
       let registerExpectation = XCTestExpectation(description: "Register")
 
-      WalletTests.PortalWrap.signIn(username: WalletTests.username ?? "") { (result: Result<UserResult>) in
-        guard result.error == nil else {
-          registerExpectation.fulfill()
-          return XCTFail("Failed on sign in: \(String(describing: result.error))")
-        }
-        guard let userResult = result.data else {
-          return XCTFail("Failed on sign in: UserResult unable to be unpacked")
-        }
-        print("✅ handleSignIn(): API key:", userResult.clientApiKey)
-        WalletTests.user = userResult
-        let backupOption = LocalFileStorage()
-        let backup = BackupOptions(local: backupOption)
-        WalletTests.PortalWrap.registerPortal(apiKey: userResult.clientApiKey, backup: backup) {
-          result in
-          guard result.error == nil else {
-            registerExpectation.fulfill()
-            return XCTFail("Unable to register Portal")
-          }
-          registerExpectation.fulfill()
-          return completion(result)
-        }
-      }
-      wait(for: [registerExpectation], timeout: 60)
+      let userResult = try await WalletTests.viewController?.signIn(WalletTests.username ?? "")
+      print("✅ handleSignIn(): API key:", userResult.clientApiKey)
+      WalletTests.user = userResult
     }
   }
 
@@ -61,7 +55,8 @@ class WalletTests: XCTestCase {
     let registerExpectation = XCTestExpectation(description: "Register")
     let generateExpectation = XCTestExpectation(description: "Generate")
 
-    WalletTests.PortalWrap.signUp(username: WalletTests.username ?? "") { (result: Result<UserResult>) in
+    let userResult = try await WalletTests.viewController?.signUp(WalletTests.username ?? "")
+    print("✅ handleSignup(): API key:", userResult.clientApiKey) { (result: Result<UserResult>) in
       guard result.error == nil else {
         XCTFail("Failed on sign up: \(String(describing: result.error))")
         generateExpectation.fulfill()
