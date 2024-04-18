@@ -148,7 +148,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
           let javascript = """
             window.postMessage(JSON.stringify({ type: 'portal_chainChanged', data: { chainId: \(chainIdInt) } }));
           """
-          self.chainId = chainId
+          self.chainId = self.chainId
           self.evaluateJavascript(javascript)
         }
       }
