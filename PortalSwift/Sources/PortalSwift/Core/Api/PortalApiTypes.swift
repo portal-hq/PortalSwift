@@ -69,6 +69,8 @@ public struct FetchedBalance: Codable, Equatable {
   public var contractAddress: String
   /// The balance of the token.
   public var balance: String
+  public var name: String?
+  public var symbol: String?
 }
 
 public struct FetchedNFT: Codable, Equatable {
