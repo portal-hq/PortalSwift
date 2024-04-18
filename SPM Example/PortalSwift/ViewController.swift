@@ -697,7 +697,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
       let infoString = "ViewController.registerPortal() - Registering portal using config: \(config)"
       self.logger.log(level: .info, "\(infoString, privacy: .public)")
 
-
       let portal = try Portal(
         user.clientApiKey,
         withRpcConfig: [
@@ -1299,6 +1298,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
         guard let response = try? await portal.request(chainId, withMethod: .eth_sign, andParams: params) else {
           self.logger.error("ViewController.handlSign() - ❌ Failed to process request")
+          self.stopLoading()
           return
         }
 
