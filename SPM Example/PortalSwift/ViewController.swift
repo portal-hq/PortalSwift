@@ -283,7 +283,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
     let signingShares = try await portal.getSigningShares()
     self.logger.info("ViewController.getShareMetadata() - ✅ Successfully fetched signing shares.")
-    
+
     let shares = backupShares + signingShares
     return shares
   }
