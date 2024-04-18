@@ -245,14 +245,14 @@ class ViewController: UIViewController, UITextFieldDelegate {
     return try await portal.createWallet()
   }
 
-  func getBalances() async throws -> Bool {
+  func getBalances() async throws -> [FetchedBalance] {
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
     let chainId = "eip155:11155111"
     let balances = try await portal.getBalances(chainId)
 
-    return true
+    return balances
   }
 
   public func getGasPrice(_ chainId: String) async throws {
@@ -274,7 +274,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     return try await portal.getNFTs(chainId)
   }
 
-  public func getShareMetadata() async throws -> Bool {
+  public func getShareMetadata() async throws -> [FetchedSharePair] {
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
@@ -283,8 +283,9 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
     let signingShares = try await portal.getSigningShares()
     self.logger.info("ViewController.getShareMetadata() - ✅ Successfully fetched signing shares.")
-
-    return true
+    
+    let shares = backupShares + signingShares
+    return shares
   }
 
   public func getTransactions(_ chainId: String) async throws -> [FetchedTransaction] {
@@ -1208,36 +1209,48 @@ class ViewController: UIViewController, UITextFieldDelegate {
       let chainId = "eip155:11155111"
 
       do {
-        _ = try await self.getBalances()
+        let erc20Balances = try await self.getBalances()
         self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched balances.")
+        print(erc20Balances)
       } catch {
         self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching balances: \(error.localizedDescription)")
         return
       }
       do {
-        _ = try await self.getNFTs(chainId)
+        let nfts = try await self.getNFTs(chainId)
         self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched NFTs.")
+        print(nfts)
       } catch {
         self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching NFTs: \(error.localizedDescription)")
         return
       }
       do {
-        _ = try await self.getShareMetadata()
+        let shares = try await self.getShareMetadata()
         self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched share metadata.")
+        print(shares)
       } catch {
         self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching share metadata: \(error.localizedDescription)")
       }
       do {
-        _ = try await self.getTransactions(chainId)
+        let transactions = try await self.getTransactions(chainId)
         self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched transactions.")
+        print(transactions)
       } catch {
         self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching transactions: \(error.localizedDescription)")
         return
       }
       do {
-        let transaction = []
-        _ = try await self.simulateTransaction(chainId, transaction: transaction)
+        let address = await self.portal?.getAddress(chainId)
+        let transaction = [
+          "data": "",
+          "from": address,
+          "gasPrice": "ethEstimate",
+          "to": self.sendAddress?.text ?? "",
+          "value": "0x10",
+        ]
+        let simulatedTransaction = try await self.simulateTransaction(chainId, transaction: transaction)
         self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully simulated transaction.")
+        print(simulatedTransaction)
       } catch {
         self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error simulating transaction: \(error.localizedDescription)")
         return
