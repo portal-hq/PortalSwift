@@ -32,7 +32,8 @@ Carthage/Build
 # Note: if you ignore the Pods directory, make sure to uncomment
 # `pod install` in .travis.yml
 #
-# Pods/
+Cocoapods\ Example/Pods/
+!Cocoapods\ Example/Pods/Pods.xcodeproj
 
 GoogleService-info.plist
 
@@ -40,4 +41,4 @@ GoogleService-info.plist
 Secrets.xcconfig
 
 .build/
-.swiftpm/
+xcuserdata/

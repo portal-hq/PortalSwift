@@ -10,15 +10,41 @@ import PortalSwift
 import UIKit
 
 protocol PortalExampleAppDelegate {
+  var config: ApplicationConfiguration? { get set }
   var connect: PortalConnect? { get set }
   var connect2: PortalConnect? { get set }
+  var portal: Portal? { get set }
+}
+
+public enum PortalExampleAppError: Error {
+  case addressNotFound(_: String = "Address not found")
+  case alchemyKeyNotFound(_: String = "Alchemy API key not found")
+  case cantLoadInfoPlist(_: String = "Can't load info.plist")
+  case configurationNotSet(_: String = "Configuration not set")
+  case couldNotParseCustodianResponse(_: String = "Could not parse custodian response")
+  case custodianServerUrlNotSet(_: String = "Custodian server URL not set")
+  case environmentNotSet(_: String = "Environment not set")
+  case invalidResponseTypeForRequest(_: String = "Invalid response type for request")
+  case portalNotInitialized(_: String = "Portal not initialized")
+  case unexpectedTypeForResult(PortalProviderResult)
+  case userNotLoggedIn(_: String = "User not logged in")
+}
+
+struct ApplicationConfiguration {
+  public let alchemyApiKey: String
+  public let apiUrl: String
+  public let custodianServerUrl: String
+  public let googleClientId: String
+  public let mpcUrl: String
 }
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate, PortalExampleAppDelegate {
   var window: UIWindow?
+  var config: ApplicationConfiguration?
   var connect: PortalConnect?
   var connect2: PortalConnect?
+  var portal: Portal?
 
   func application(_: UIApplication, didFinishLaunchingWithOptions _: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
     // Override point for customization after application launch.
