@@ -697,6 +697,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       let infoString = "ViewController.registerPortal() - Registering portal using config: \(config)"
       self.logger.log(level: .info, "\(infoString, privacy: .public)")
 
+
       let portal = try Portal(
         user.clientApiKey,
         withRpcConfig: [
@@ -714,6 +715,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
       try portal.setGDriveConfiguration(clientId: config.googleClientId)
       try portal.setGDriveView(self)
+      try portal.setPasskeyAuthenticationAnchor(self.view.window!)
+      try portal.setPasskeyConfiguration(relyingParty: "portalhq.dev", webAuthnHost: "backup.portalhq.dev")
 
       self.logger.info("ViewController.registerPortal() - Portal API Key: \(portal.apiKey)")
 

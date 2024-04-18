@@ -459,6 +459,12 @@ public class PortalMpc {
   public func registerBackupMethod(_ method: BackupMethods, withStorage: PortalStorage) {
     var storage = withStorage
     storage.api = self.api
+    
+    if #available(iOS 16, *) {
+      if (method == .Passkey) {
+        (storage as! PasskeyStorage).apiKey = self.apiKey
+      }
+    }
 
     self.backupOptions[method] = storage
   }
@@ -496,7 +502,7 @@ public class PortalMpc {
     }
 
     storage.relyingParty = relyingParty
-    storage.webAuthnHost = webAuthnHost
+    storage.webAuthnHost = "https://" + webAuthnHost
   }
 
   public func setPassword(_ value: String) throws {
