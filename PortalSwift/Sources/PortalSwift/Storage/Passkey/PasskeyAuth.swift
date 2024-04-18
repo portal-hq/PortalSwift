@@ -19,7 +19,8 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
   var continuation: CheckedContinuation<String, Error>?
 
   // The domain of our relying party server.
-  private var domain: String
+  var domain: String
+
   private let logger = PortalLogger()
 
   deinit {

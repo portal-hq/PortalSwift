@@ -26,7 +26,8 @@ public class PasskeyStorage: Storage, PortalStorage {
   public var relyingParty: String
   public var webAuthnHost: String
 
-  private var auth: PasskeyAuth
+  var auth: PasskeyAuth
+
   private let decoder = JSONDecoder()
   private let logger = PortalLogger()
   private var passkeyApi: HttpRequester

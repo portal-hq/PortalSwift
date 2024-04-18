@@ -459,9 +459,9 @@ public class PortalMpc {
   public func registerBackupMethod(_ method: BackupMethods, withStorage: PortalStorage) {
     var storage = withStorage
     storage.api = self.api
-    
+
     if #available(iOS 16, *) {
-      if (method == .Passkey) {
+      if method == .Passkey {
         (storage as! PasskeyStorage).apiKey = self.apiKey
       }
     }
@@ -501,6 +501,7 @@ public class PortalMpc {
       throw MpcError.backupMethodNotRegistered("PortalMpc.setPasskeyConfiguration() - Could not find an instance of `PasskeyStorage`. Please use `portal.registerBackupMethod()`")
     }
 
+    storage.auth.domain = relyingParty
     storage.relyingParty = relyingParty
     storage.webAuthnHost = "https://" + webAuthnHost
   }
