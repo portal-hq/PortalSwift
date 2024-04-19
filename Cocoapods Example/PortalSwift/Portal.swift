@@ -214,7 +214,7 @@ class PortalWrapper {
 
       // Setup request to get org-share
       let requestOrgShare = HttpRequest<OrgShareResult, [String: String]>(
-        url: self.CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/org-share/fetch?backupMethod=\(backupMethod)",
+        url: self.CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/org-share/fetch?backupMethod=\(backupMethod)-SECP256K1",
         method: "GET", body: [:],
         headers: [:],
         requestType: HttpRequestType.CustomRequest
@@ -222,7 +222,6 @@ class PortalWrapper {
 
       requestOrgShare.send { (result: Result<OrgShareResult>) in
         guard result.error == nil else {
-          print("❌ [PortalWrapper] handleEject(): Error fetching orgShare:", result.error!)
           return completion(Result(error: result.error!))
         }
 
@@ -230,11 +229,8 @@ class PortalWrapper {
           let orgShare = data.orgShare
           self.portal?.ejectPrivateKey(clientBackupCiphertext: cipherText, method: backupMethod, orgBackupShare: orgShare) { (result: Result<String>) in
             guard result.error == nil else {
-              print("❌ [PortalWrapper] handleEject(): Error ejecting wallet:", result.error!)
               return completion(Result(error: result.error!))
             }
-            //
-            print("✅ [PortalWrapper] handleEject(): Successfully ejected wallet with private key \(result.data!)")
             return completion(result)
           }
         }
