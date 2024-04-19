@@ -13,4 +13,7 @@
    <FileRef
       location = "container:PortalSwift">
    </FileRef>
+   <FileRef
+      location = "group:Cocoapods Example/Pods/Pods.xcodeproj">
+   </FileRef>
 </Workspace>
