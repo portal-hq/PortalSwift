@@ -16,8 +16,8 @@ Pod::Spec.new do |s|
 
   s.source_files = 'PortalSwift/Sources/PortalSwift/**/*'
 
-  s.dependency "GoogleSignIn", "~> 6.2"
-  s.dependency "Starscream", "~> 4.0.6"
+  s.dependency "GoogleSignIn", "~> 7.1.0"
+  s.dependency "Starscream", "~> 4.0.7"
 
   s.test_spec 'Tests' do |test_spec|
     test_spec.requires_app_host = true
