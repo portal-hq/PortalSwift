@@ -8,12 +8,9 @@
       location = "group:Cocoapods Example/Cocoapods Example.xcodeproj">
    </FileRef>
    <FileRef
-      location = "group:Pods/Pods.xcodeproj">
+      location = "group:Cocoapods Example/Pods/Pods.xcodeproj">
    </FileRef>
    <FileRef
       location = "container:PortalSwift">
-   </FileRef>
-   <FileRef
-      location = "group:Cocoapods Example/Pods/Pods.xcodeproj">
    </FileRef>
 </Workspace>
