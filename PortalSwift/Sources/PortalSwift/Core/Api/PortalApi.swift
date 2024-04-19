@@ -199,7 +199,7 @@ public class PortalApi {
 
     // Add the combined query parameters to the path
     if !queryParams.isEmpty {
-      requestUrlString += "?" + queryParams.joined(separator: "&")
+      requestUrlString += "&" + queryParams.joined(separator: "&")
     }
 
     if let url = URL(string: requestUrlString) {
@@ -425,18 +425,15 @@ public class PortalApi {
   /// - Returns: Void.
   @available(*, deprecated, renamed: "getBalances", message: "Please use the async/await implementation of getBalances().")
   public func getBalances(
-    completion: @escaping (Result<[Balance]>) -> Void
+    completion: @escaping (Result<[FetchedBalance]>) -> Void
   ) throws {
-    try self.httpRequests.get(
-      path: "/api/v1/clients/me/balances?chainId=\(self.chainId ?? 1)",
-      headers: [
-        "Authorization": "Bearer \(self.apiKey)",
-      ],
-      requestType: HttpRequestType.CustomRequest
-    ) { (result: Result<[Balance]>) in
-      completion(result)
-
-      self.track(event: MetricsEvents.getBalances.rawValue, properties: ["path": "/api/v1/clients/me/balances"])
+    Task {
+      do {
+        let response = try await getBalances("eip155:\(self.chainId ?? 1)")
+        completion(Result(data: response))
+      } catch {
+        completion(Result(error: error))
+      }
     }
   }
 

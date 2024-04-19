@@ -389,13 +389,28 @@ public class PortalKeychain {
 
     do {
       address = try self.getItem(addressKey)
-    } catch KeychainError.itemNotFound(item: addressKey) {
+    } catch {
       do {
         // Fallback to deprecated key.
         address = try self.getItem(self.deprecatedAddressKey)
-      } catch KeychainError.itemNotFound(item: self.deprecatedAddressKey) {
-        // Throw original item not found error.
-        throw KeychainError.itemNotFound(item: addressKey)
+      } catch {
+        do {
+          // Fallback to metadata key.
+          let value = try getItem("\(clientId).\(metadataKey)")
+          guard let data = value.data(using: .utf8) else {
+            throw KeychainError.unableToEncodeKeychainData
+          }
+          let metadata = try decoder.decode(PortalKeychainClientMetadata.self, from: data)
+          guard let address = metadata.addresses?[.eip155] else {
+            throw KeychainError.itemNotFound(item: "\(clientId).\(metadataKey)")
+          }
+          guard let address = address else {
+            throw KeychainError.itemNotFound(item: "\(clientId).\(metadataKey)")
+          }
+          return address
+        } catch {
+          throw KeychainError.itemNotFound(item: "\(clientId).\(metadataKey)")
+        }
       }
     }
 
