@@ -25,11 +25,11 @@ public class GoogleAuth {
       if self.hasPreviousSignIn() {
         // Attempt to sign in silently
         let user = try await self.restorePreviousSignIn()
-        return user.authentication.accessToken
+        return user.accessToken.tokenString
       } else {
         // User has not signed in before, prompt for sign-in
         let user = try await self.signIn()
-        return user.authentication.accessToken
+        return user.accessToken.tokenString
       }
     } catch {
       return ""
@@ -69,7 +69,9 @@ public class GoogleAuth {
         return
       }
 
-      self.auth.signIn(with: self.config, presenting: view) { user, error in
+      self.auth.configuration = self.config
+
+      self.auth.signIn(withPresenting: view) { user, error in
         if error != nil {
           continuation.resume(throwing: error! as Error)
           return
@@ -80,9 +82,9 @@ public class GoogleAuth {
           return
         }
 
-        self.auth.addScopes(["https://www.googleapis.com/auth/drive.file"], presenting: view)
+        user.user.addScopes(["https://www.googleapis.com/auth/drive.file"], presenting: view)
 
-        continuation.resume(returning: user)
+        continuation.resume(returning: user.user)
       }
     }
 
