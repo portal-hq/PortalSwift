@@ -208,7 +208,11 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   @IBAction func handleEject(_: UIButton) {
     self.PortalWrapper.eject(backupMethod: BackupMethods.iCloud.rawValue, user: self.user!) { result in
-      print(result.data!)
+      guard result.error == nil else {
+        print("❌ handleEject():", result.error ?? "")
+        return
+      }
+      print("✅ handleEject():", result.data ?? "")
     }
   }
 
