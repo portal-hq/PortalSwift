@@ -5,6 +5,7 @@
 //  Created by Portal Labs, Inc.
 //
 
+import AnyCodable
 import Foundation
 
 /// A list of JSON-RPC signing methods.
@@ -237,7 +238,7 @@ public class PortalConnect: EventBus {
           id: connectData.id,
           topic: connectData.topic,
           address: self.address!,
-          chainId: String(self.chainId ?? 11_155_111),
+          chainId: String(self.chainId),
           params: connectData.params
         )
       )
@@ -266,7 +267,7 @@ public class PortalConnect: EventBus {
           id: connectData.id,
           topic: connectData.topic,
           address: self.address!,
-          chainId: String(self.chainId ?? 11_155_111),
+          chainId: String(self.chainId),
           params: connectData.params
         )
       )
@@ -343,7 +344,7 @@ public class PortalConnect: EventBus {
         }
 
         // use the default chain when there is no chainId sent from Wallet Connect
-        let newChainId = chainId ?? self.chainId ?? 11_155_111
+        let newChainId = chainId ?? self.chainId
         let result = try await self.handleProviderRequest(method: method, params: params, chainId: newChainId)
 
         guard let signature = result as? String else {
@@ -402,7 +403,7 @@ public class PortalConnect: EventBus {
         }
 
         // use the default chain when there is no chainId sent from Wallet Connect
-        let newChainId = chainId ?? self.chainId ?? 11_155_111
+        let newChainId = chainId ?? self.chainId
         let result = try await self.handleProviderRequest(method: method, params: params, chainId: newChainId)
 
         guard let signature = result as? String else {
@@ -463,7 +464,7 @@ public class PortalConnect: EventBus {
         }
 
         // use the default chain when there is no chainId sent from Wallet Connect
-        let newChainId = chainId ?? self.chainId ?? 11_155_111
+        let newChainId = chainId ?? self.chainId
         let response = try await self.handleProviderRequest(method: method, params: params, chainId: newChainId)
 
         guard let transactionHash = response as? String else {
@@ -521,8 +522,8 @@ public class PortalConnect: EventBus {
   }
 
   private func handleProviderRequest(method: String, params: [Any], chainId: Int) async throws -> Any {
-    let encodedParams = try params.map { param in
-      try AnyEncodable(param)
+    let encodedParams = params.map { param in
+      AnyCodable(param)
     }
     guard let method = PortalRequestMethod(rawValue: method) else {
       throw PortalConnectError.unsupportedRequestMethod(method)

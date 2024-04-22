@@ -6,6 +6,7 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
+import AnyCodable
 import Foundation
 
 public class MockPortalProvider: PortalProvider {
@@ -34,7 +35,7 @@ public class MockPortalProvider: PortalProvider {
   override public func request(
     _: String,
     withMethod: PortalRequestMethod,
-    andParams _: [AnyEncodable]? = [],
+    andParams _: [AnyCodable]? = [],
     connect _: PortalConnect? = nil
   ) async throws -> PortalProviderResult {
     switch withMethod {

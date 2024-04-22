@@ -1,3 +1,5 @@
+import AnyCodable
+
 public struct BlockData: Codable {
   public var number: String
   public var hash: String
@@ -37,17 +39,17 @@ public struct BlockDataResponseTrue: Codable {
   public var error: PortalProviderRpcResponseError?
 }
 
-public struct PortalProviderRequestWithId: Encodable {
+public struct PortalProviderRequestWithId: Codable {
   public let id: String
   public let method: PortalRequestMethod
-  public let params: [AnyEncodable]?
+  public let params: [AnyCodable]?
 }
 
-public struct PortalProviderRpcRequest: Encodable {
+public struct PortalProviderRpcRequest: Codable {
   public var id: Int
   public var jsonrpc: String
   public var method: PortalRequestMethod
-  public var params: [AnyEncodable]?
+  public var params: [AnyCodable]?
 }
 
 public struct PortalProviderRpcBoolResponse: Codable {

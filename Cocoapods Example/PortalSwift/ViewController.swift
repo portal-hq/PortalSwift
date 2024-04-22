@@ -6,6 +6,7 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
+import AnyCodable
 import PortalSwift
 import UIKit
 
@@ -727,8 +728,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   func testProviderRequest(method: String, params: [Any], skipLoggingResult _: Bool = false, completion: @escaping (Bool) -> Void) {
     do {
-      let encodedParams = try params.map { param in
-        try AnyEncodable(param)
+      let encodedParams = params.map { param in
+        AnyCodable(param)
       }
       let payload = ETHRequestPayload(
         method: method,

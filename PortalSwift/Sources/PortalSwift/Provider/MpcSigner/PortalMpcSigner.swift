@@ -5,6 +5,7 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
+import AnyCodable
 import Foundation
 import Mpc
 
@@ -50,7 +51,7 @@ public class PortalMpcSigner {
     mpcMetadata.chainId = chainId
 
     let signingShare = try await keychain.getShare(chainId)
-    let params = self.prepareParams(withPayload.method, rawParams: withPayload.params)
+    let params = try self.prepareParams(withPayload.method, params: withPayload.params)
 
     let json = try JSONEncoder().encode(params)
     guard let params = String(data: json, encoding: .utf8) else {
@@ -86,16 +87,15 @@ public class PortalMpcSigner {
     return signature
   }
 
-  func prepareParams(_ method: PortalRequestMethod, rawParams: [AnyEncodable]?) -> AnyEncodable? {
-    guard let params = rawParams else {
-      return AnyEncodable(rawParams)
-    }
-
+  func prepareParams(_ method: PortalRequestMethod, params: [AnyCodable]?) throws -> AnyCodable? {
     switch method {
     case .eth_sendTransaction, .eth_signTransaction:
-      return params[0]
+      guard let params = params?[0] else {
+        throw PortalMpcSignerError.noParamsForSignRequest
+      }
+      return params
     default:
-      return AnyEncodable(params)
+      return AnyCodable(params)
     }
   }
 }

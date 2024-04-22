@@ -61,7 +61,7 @@ public class MockPortalRequests: PortalRequests {
     }
   }
 
-  override public func patch(_ url: URL, withBearerToken _: String? = nil, andPayload _: Encodable) async throws -> Data {
+  override public func patch(_ url: URL, withBearerToken _: String? = nil, andPayload _: Codable) async throws -> Data {
     switch url.path {
     case "/api/v3/clients/me/backup-share-pairs/", "/api/v3/clients/me/signing-share-pairs/":
       guard let mockTrueData = "true".data(using: .utf8) else {
@@ -76,7 +76,7 @@ public class MockPortalRequests: PortalRequests {
     }
   }
 
-  override public func post(_ url: URL, withBearerToken _: String? = nil, andPayload _: Encodable? = nil) async throws -> Data {
+  override public func post(_ url: URL, withBearerToken _: String? = nil, andPayload _: Codable? = nil) async throws -> Data {
     switch url.path {
     case "/api/v1/analytics/identify", "/api/v1/analytics/track":
       let mockMetricsResponseData = try encoder.encode(MockConstants.mockMetricsResponse)

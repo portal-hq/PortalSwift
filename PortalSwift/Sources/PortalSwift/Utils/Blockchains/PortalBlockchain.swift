@@ -56,14 +56,14 @@ public class PortalBlockchain {
   public func isMethodSupported(_ method: PortalRequestMethod) -> Bool {
     switch self.namespace {
     case .eip155:
-      return !method.rawValue.starts(with: "wallet_")
+      !method.rawValue.starts(with: "wallet_") || method == .wallet_switchEthereumChain
     default:
-      return true
+      true
     }
   }
 
   public func shouldMethodBeSigned(_ method: PortalRequestMethod) -> Bool {
-    return self.signerMethods.contains(method)
+    self.signerMethods.contains(method)
   }
 }
 

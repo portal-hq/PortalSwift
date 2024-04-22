@@ -5,6 +5,7 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
+import AnyCodable
 import Foundation
 
 /// Portal's EVM blockchain provider.
@@ -184,7 +185,7 @@ public class PortalProvider {
   public func request(
     _ chainId: String,
     withMethod: PortalRequestMethod,
-    andParams: [AnyEncodable]? = [],
+    andParams: [AnyCodable]? = [],
     connect: PortalConnect? = nil
   ) async throws -> PortalProviderResult {
     let blockchain = try PortalBlockchain(fromChainId: chainId)
@@ -226,7 +227,7 @@ public class PortalProvider {
   public func request(
     _ chainId: String,
     withMethod: String,
-    andParams: [AnyEncodable]? = [],
+    andParams: [AnyCodable]? = [],
     connect _: PortalConnect? = nil
   ) async throws -> PortalProviderResult {
     guard let method = PortalRequestMethod(rawValue: withMethod) else {
@@ -303,7 +304,7 @@ public class PortalProvider {
   private func handleRpcRequest(
     _ chainId: String,
     withMethod: PortalRequestMethod,
-    andParams: [AnyEncodable]?,
+    andParams: [AnyCodable]?,
     forId: String
   ) async throws -> PortalProviderResult {
     let rpcUrl = try getRpcUrl(chainId)
@@ -412,8 +413,8 @@ public class PortalProvider {
         guard let method = PortalRequestMethod(rawValue: payload.method) else {
           throw PortalProviderError.unsupportedRequestMethod(payload.method)
         }
-        let params = try payload.params.map { param in
-          try AnyEncodable(param)
+        let params = payload.params.map { param in
+          AnyCodable(param)
         }
         let response = try await request(chainId, withMethod: method, andParams: params)
 
@@ -446,7 +447,7 @@ public class PortalProvider {
           throw PortalProviderError.unsupportedRequestMethod(payload.method)
         }
         let params = payload.params.map { param in
-          AnyEncodable(param)
+          AnyCodable(param)
         }
         let response = try await request("eip155:\(self.chainId ?? 11_155_111)", withMethod: method, andParams: params)
 
@@ -474,7 +475,7 @@ public class PortalProvider {
           throw PortalProviderError.unsupportedRequestMethod(payload.method)
         }
         let params = payload.params.map { param in
-          AnyEncodable(param)
+          AnyCodable(param)
         }
         let response = try await request("eip155:\(self.chainId ?? 11_155_111)", withMethod: method, andParams: params)
 

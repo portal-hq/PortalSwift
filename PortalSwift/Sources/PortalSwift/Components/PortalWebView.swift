@@ -5,6 +5,7 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
+import AnyCodable
 import UIKit
 import WebKit
 
@@ -43,6 +44,8 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   public var webView: WKWebView!
   public var webViewContentIsLoaded = false
 
+  private let decoder = JSONDecoder()
+  private let encoder = JSONEncoder()
   private var portal: Portal
   private var url: URL
   private var onError: (Result<Any>) -> Void
@@ -247,8 +250,10 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       javascript = "//# sourceURL=\(sourceURL).js\n" + javascript
     }
 
-    self.webView.evaluateJavaScript(javascript) { _, error in
-      completion?(error?.localizedDescription)
+    DispatchQueue.main.async {
+      self.webView.evaluateJavaScript(javascript) { _, error in
+        completion?(error?.localizedDescription)
+      }
     }
   }
 
@@ -328,8 +333,8 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
 
   private func handlePortalSign(method: String, params: [Any]) throws {
     // Perform a long-running task
-    let encodedParams = try params.map { param in
-      try AnyEncodable(param)
+    let encodedParams = params.map { param in
+      AnyCodable(param)
     }
     let payload = ETHRequestPayload(method: method, params: encodedParams)
     if signerMethods.contains(method) {
@@ -394,9 +399,9 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     }
 
     let signature = (result.data!.result as! Result<Any>).data
-    let payload: [String: Any] = [
-      "method": result.data!.method,
-      "params": result.data!.params.map { p in
+    let payload: [String: AnyCodable] = [
+      "method": AnyCodable(result.data!.method),
+      "params": AnyCodable(result.data!.params.map { p in
         [
           "from": p.from,
           "to": p.to,
@@ -405,8 +410,8 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
           "value": p.value,
           "data": p.data,
         ]
-      },
-      "signature": signature!,
+      }),
+      "signature": AnyCodable(signature!),
     ]
     self.postMessage(payload: payload)
   }
@@ -417,9 +422,9 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       return
     }
 
-    let payload: [String: Any] = [
-      "method": result.data!.method,
-      "params": result.data!.params.map { p in
+    let payload: [String: AnyCodable] = [
+      "method": AnyCodable(result.data!.method),
+      "params": AnyCodable(result.data!.params.map { p in
         [
           "from": p.from,
           "to": p.to,
@@ -428,8 +433,8 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
           "value": p.value,
           "data": p.data,
         ]
-      },
-      "signature": result.data!.result,
+      }),
+      "signature": AnyCodable(result.data!.result),
     ]
     self.postMessage(payload: payload)
   }
@@ -460,10 +465,10 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       return
     }
 
-    let payload: [String: Any] = [
-      "method": requestData.method,
-      "params": requestData.params,
-      "signature": signature,
+    let payload: [String: AnyCodable] = [
+      "method": AnyCodable(requestData.method),
+      "params": AnyCodable(requestData.params),
+      "signature": AnyCodable(signature),
     ]
     self.postMessage(payload: payload)
   }
@@ -474,19 +479,22 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       return
     }
 
-    let payload: [String: Any] = [
-      "method": result.data!.method,
-      "params": result.data!.params,
-      "signature": result.data!.result,
+    let payload: [String: AnyCodable] = [
+      "method": AnyCodable(result.data!.method),
+      "params": AnyCodable(result.data!.params),
+      "signature": AnyCodable(result.data!.result),
     ]
     self.postMessage(payload: payload)
   }
 
-  private func postMessage(payload: [String: Any]) {
+  private func postMessage(payload: [String: AnyCodable]) {
     do {
-      let data = try JSONSerialization.data(withJSONObject: payload, options: .prettyPrinted)
+      let data = try encoder.encode(payload)
       let dataString = String(data: data, encoding: .utf8)
       let javascript = "window.postMessage(JSON.stringify({ type: 'portal_signatureReceived', data: \(dataString!) }));"
+
+      print("javascript:", javascript)
+
       self.evaluateJavascript(javascript, sourceURL: "portal_sign")
     } catch {
       self.onError(Result(error: error))

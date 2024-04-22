@@ -5,6 +5,7 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
+import AnyCodable
 import AuthenticationServices
 import Foundation
 import Mpc
@@ -136,8 +137,8 @@ public class Portal {
     Task {
       if let client = try? await api.client {
         _ = try? await api.identify([
-          "id": AnyEncodable(client.id),
-          "custodianId": AnyEncodable(client.custodian.id),
+          "id": AnyCodable(client.id),
+          "custodianId": AnyCodable(client.custodian.id),
         ])
         _ = try? await api.track(
           MetricsEvents.portalInitialized.rawValue,
@@ -254,7 +255,7 @@ public class Portal {
     // Capture analytics.
     Task {
       if let client = try? await api.client {
-        _ = try? await api.identify(["id": AnyEncodable(client.id), "custodianId": AnyEncodable(client.custodian.id)])
+        _ = try? await api.identify(["id": AnyCodable(client.id), "custodianId": AnyCodable(client.custodian.id)])
         _ = try? await api.track(MetricsEvents.portalInitialized.rawValue, withProperties: [:])
       }
     }
@@ -381,8 +382,8 @@ public class Portal {
   }
 
   public func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any]) async throws -> PortalProviderResult {
-    let params = try andParams.map { param in
-      try AnyEncodable(param)
+    let params = andParams.map { param in
+      AnyCodable(param)
     }
     return try await self.provider.request(chainId, withMethod: withMethod, andParams: params)
   }
@@ -640,7 +641,7 @@ public class Portal {
   }
 
   public func simulateTransaction(_ chainId: String, from: Any) async throws -> SimulatedTransaction {
-    let transaction = try AnyEncodable(from)
+    let transaction = AnyCodable(from)
     return try await self.api.simulateTransaction(transaction, withChainId: chainId)
   }
 
@@ -818,17 +819,13 @@ public class Portal {
     params: [Any],
     completion: @escaping (Result<RequestCompletionResult>) -> Void
   ) {
-    do {
-      let encodedParams = try params.map { param in
-        try AnyEncodable(param)
-      }
-      self.provider.request(payload: ETHRequestPayload(
-        method: method,
-        params: encodedParams
-      ), completion: completion)
-    } catch {
-      completion(Result(error: error))
+    let encodedParams = params.map { param in
+      AnyCodable(param)
     }
+    self.provider.request(payload: ETHRequestPayload(
+      method: method,
+      params: encodedParams
+    ), completion: completion)
   }
 
   /// Set the chainId on the instance and update MPC and Provider chainId
