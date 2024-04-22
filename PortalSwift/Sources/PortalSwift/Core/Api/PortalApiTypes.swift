@@ -1,3 +1,5 @@
+import AnyCodable
+
 // There's a weird bug with Swift decoding preventing this more convenient version from working.
 // Will need to research more and try to bring this in.
 // public typealias ClientResponseMetadataNamespaces = [PortalNamespace: ClientResponseNamespaceMetadataItem]
@@ -444,9 +446,9 @@ public struct MetricsResponse: Codable {
   public var status: Bool
 }
 
-public struct MetricsTrackRequest: Encodable {
+public struct MetricsTrackRequest: Codable {
   public let event: String
-  public let properties: [String: AnyEncodable]
+  public let properties: [String: AnyCodable]
 }
 
 public enum MetricsEvents: String {

@@ -25,6 +25,10 @@ let package = Package(
       url: "https://github.com/daltoniam/Starscream.git",
       from: "4.0.7"
     ),
+    .package(
+      url: "https://github.com/Flight-School/AnyCodable.git",
+      from: "0.6.7"
+    ),
   ],
   targets: [
     // Targets are the basic building blocks of a package. A target can define a module or a test suite.
@@ -33,6 +37,7 @@ let package = Package(
       name: "PortalSwift",
       dependencies: [
         "Mpc",
+        .product(name: "AnyCodable", package: "AnyCodable"),
         .product(name: "GoogleSignIn", package: "GoogleSignIn-iOS"),
         .product(name: "Starscream", package: "Starscream"),
       ]

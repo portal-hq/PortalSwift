@@ -1,3 +1,4 @@
+import AnyCodable
 import Foundation
 
 public class PortalRequests {
@@ -58,7 +59,7 @@ public class PortalRequests {
     return data
   }
 
-  public func patch(_ from: URL, withBearerToken: String? = nil, andPayload: Encodable) async throws -> Data {
+  public func patch(_ from: URL, withBearerToken: String? = nil, andPayload: Codable) async throws -> Data {
     var request = URLRequest(url: from)
 
     // Add required request headers
@@ -87,7 +88,7 @@ public class PortalRequests {
     return data
   }
 
-  public func post(_ from: URL, withBearerToken: String? = nil, andPayload: Encodable? = nil) async throws -> Data {
+  public func post(_ from: URL, withBearerToken: String? = nil, andPayload: Codable? = nil) async throws -> Data {
     var request = URLRequest(url: from)
 
     // Add required request headers
@@ -161,7 +162,7 @@ public class PortalRequests {
   }
 
   private func getURLSession() -> URLSession {
-    var configuration = URLSessionConfiguration.default
+    let configuration = URLSessionConfiguration.default
     configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
     configuration.urlCache = URLCache(memoryCapacity: 0, diskCapacity: 0, diskPath: nil)
 

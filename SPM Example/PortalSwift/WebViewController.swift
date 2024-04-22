@@ -13,6 +13,7 @@ import WebKit
 class WebViewController: UIViewController, PortalWebViewDelegate {
   public var portal: Portal?
   public var url: String?
+  public var webViewController: PortalWebView?
 
   private var activityIndicator: UIActivityIndicatorView!
 
@@ -36,13 +37,18 @@ class WebViewController: UIViewController, PortalWebViewDelegate {
         return
       }
 
-      let webViewController = PortalWebView(
+      webViewController = PortalWebView(
         portal: portal,
         url: url,
-        onError: onError,
-        onPageStart: onPageStart,
-        onPageComplete: onPageComplete
+        onError: self.onError,
+        onPageStart: self.onPageStart,
+        onPageComplete: self.onPageComplete
       )
+
+      guard let webViewController = webViewController else {
+        print("Unable to load webViewController")
+        return
+      }
 
       webViewController.delegate = self
 
@@ -57,6 +63,12 @@ class WebViewController: UIViewController, PortalWebViewDelegate {
       view.addSubview(webViewControllerView)
       webViewController.didMove(toParent: self)
     }
+  }
+
+  override func viewDidDisappear(_ animated: Bool) {
+    super.viewDidDisappear(animated)
+
+    self.webViewController = nil
   }
 
   func onPageStart() {

@@ -6,6 +6,7 @@
 //  Copyright © 2023 CocoaPods. All rights reserved.
 //
 
+import AnyCodable
 import Foundation
 import PortalSwift
 
@@ -276,7 +277,7 @@ class PortalWrapper {
       print("Portal.ethSign() - params: \(params)")
 
       let encodedParams = try params.map { param in
-        try AnyEncodable(param)
+        AnyCodable(param)
       }
       let payload = ETHRequestPayload(
         method: method,

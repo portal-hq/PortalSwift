@@ -47,6 +47,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var logoutButton: UIButton?
   @IBOutlet var portalConnectButton: UIButton?
 
+  @IBOutlet var personalSignButton: UIButton?
   @IBOutlet var signButton: UIButton?
   @IBOutlet var signInButton: UIButton?
   @IBOutlet var signUpButton: UIButton?
@@ -846,6 +847,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
           // Signing buttons
           self.signButton?.isEnabled = walletExists && isWalletOnDevice
           self.signButton?.isHidden = !walletExists || !isWalletOnDevice
+          self.personalSignButton?.isEnabled = walletExists && isWalletOnDevice
+          self.personalSignButton?.isHidden = !walletExists || !isWalletOnDevice
           self.sendButton?.isEnabled = walletExists && isWalletOnDevice
           self.sendButton?.isHidden = !walletExists || !isWalletOnDevice
           self.sendUniButton?.isEnabled = walletExists && isWalletOnDevice
@@ -1308,6 +1311,45 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.logger.debug("Params: \(params)")
 
         guard let response = try? await portal.request(chainId, withMethod: .eth_sign, andParams: params) else {
+          self.logger.error("ViewController.handlSign() - ❌ Failed to process request")
+          self.stopLoading()
+          return
+        }
+
+        guard let signature = response.result as? String else {
+          self.logger.error("ViewController.handlSign() - ❌ Invalid response type for request:")
+          print(response.result)
+          throw PortalExampleAppError.invalidResponseTypeForRequest()
+        }
+        self.logger.info("ViewController.handleSign() - ✅ Successfully signed message: \(signature)")
+        self.stopLoading()
+      } catch {
+        self.stopLoading()
+        self.logger.error("ViewController.handleSign() - ❌ Error signing message: \(error.localizedDescription)")
+      }
+    }
+  }
+
+  @IBAction func handlePersonalSign() {
+    Task {
+      do {
+        let chainId = "eip155:11155111"
+
+        guard let portal else {
+          self.logger.error("ViewController.handlSign() - ❌ Portal not initialized")
+          throw PortalExampleAppError.portalNotInitialized()
+        }
+        guard let address = await portal.getAddress(chainId) else {
+          self.logger.error("ViewController.handlSign() - ❌ Address not found")
+          throw PortalExampleAppError.addressNotFound()
+        }
+
+        self.startLoading()
+        let params = ["0xdeadbeef", address]
+
+        self.logger.debug("Params: \(params)")
+
+        guard let response = try? await portal.request(chainId, withMethod: .personal_sign, andParams: params) else {
           self.logger.error("ViewController.handlSign() - ❌ Failed to process request")
           self.stopLoading()
           return

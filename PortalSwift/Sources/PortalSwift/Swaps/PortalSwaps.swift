@@ -5,6 +5,7 @@
 //  Created by Blake Williams on 5/8/23.
 //
 
+import AnyCodable
 import Foundation
 
 public struct Quote: Codable {
@@ -48,58 +49,58 @@ public struct QuoteArgs: Codable {
     self.sellAmount = sellAmount
   }
 
-  public func toDictionary() -> [String: AnyEncodable] {
-    var dictionary: [String: AnyEncodable] = [
+  public func toDictionary() -> [String: AnyCodable] {
+    var dictionary: [String: AnyCodable] = [
       // Always required
-      "buyToken": AnyEncodable(buyToken),
-      "sellToken": AnyEncodable(sellToken),
+      "buyToken": AnyCodable(buyToken),
+      "sellToken": AnyCodable(sellToken),
     ]
 
     // Either buyAmount or sellAmount MUST be set for the quote to return a usable value
     if self.buyAmount != nil {
-      dictionary["buyAmount"] = AnyEncodable(self.buyAmount)
+      dictionary["buyAmount"] = AnyCodable(self.buyAmount)
     }
 
     if self.sellAmount != nil {
-      dictionary["sellAmount"] = AnyEncodable(self.sellAmount)
+      dictionary["sellAmount"] = AnyCodable(self.sellAmount)
     }
 
     // The rest of these are truly optional
     if self.affiliateAddress != nil {
-      dictionary["affiliateAddress"] = AnyEncodable(self.affiliateAddress)
+      dictionary["affiliateAddress"] = AnyCodable(self.affiliateAddress)
     }
     if self.buyTokenPercentageFee != nil {
-      dictionary["buyTokenPercentageFee"] = AnyEncodable(self.buyTokenPercentageFee)
+      dictionary["buyTokenPercentageFee"] = AnyCodable(self.buyTokenPercentageFee)
     }
     if self.enableSlippageProtection != nil {
-      dictionary["enableSlippageProtection"] = AnyEncodable(self.enableSlippageProtection)
+      dictionary["enableSlippageProtection"] = AnyCodable(self.enableSlippageProtection)
     }
     if self.excludedSources != nil {
-      dictionary["excludedSources"] = AnyEncodable(self.excludedSources)
+      dictionary["excludedSources"] = AnyCodable(self.excludedSources)
     }
     if self.feeRecipient != nil {
-      dictionary["feeRecipient"] = AnyEncodable(self.feeRecipient)
+      dictionary["feeRecipient"] = AnyCodable(self.feeRecipient)
     }
     if self.gasPrice != nil {
-      dictionary["gasPrice"] = AnyEncodable(self.gasPrice)
+      dictionary["gasPrice"] = AnyCodable(self.gasPrice)
     }
     if self.includedSources != nil {
-      dictionary["includedSources"] = AnyEncodable(self.includedSources)
+      dictionary["includedSources"] = AnyCodable(self.includedSources)
     }
     if self.intentOnFilling != nil {
-      dictionary["intentOnFilling"] = AnyEncodable(self.intentOnFilling)
+      dictionary["intentOnFilling"] = AnyCodable(self.intentOnFilling)
     }
     if self.priceImpactProtectionPercentage != nil {
-      dictionary["priceImpactProtectionPercentage"] = AnyEncodable(self.priceImpactProtectionPercentage)
+      dictionary["priceImpactProtectionPercentage"] = AnyCodable(self.priceImpactProtectionPercentage)
     }
     if self.skipValidation != nil {
-      dictionary["skipValidation"] = AnyEncodable(self.skipValidation)
+      dictionary["skipValidation"] = AnyCodable(self.skipValidation)
     }
     if self.slippagePercentage != nil {
-      dictionary["slippagePercentage"] = AnyEncodable(self.slippagePercentage)
+      dictionary["slippagePercentage"] = AnyCodable(self.slippagePercentage)
     }
     if self.takerAddress != nil {
-      dictionary["takerAddress"] = AnyEncodable(self.takerAddress)
+      dictionary["takerAddress"] = AnyCodable(self.takerAddress)
     }
 
     return dictionary

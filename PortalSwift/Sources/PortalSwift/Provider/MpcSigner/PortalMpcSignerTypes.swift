@@ -1,11 +1,13 @@
+import AnyCodable
+
 public struct Signature: Codable {
   public var x: String
   public var y: String
 }
 
-public struct PortalSignRequest: Encodable {
+public struct PortalSignRequest: Codable {
   public let method: PortalRequestMethod
-  public let params: [AnyEncodable]?
+  public let params: [AnyCodable]?
 }
 
 public struct SignerResult: Codable {

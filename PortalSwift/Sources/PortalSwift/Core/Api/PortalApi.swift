@@ -5,6 +5,7 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
+import AnyCodable
 import Foundation
 
 /// The class to interface with Portal's REST API.
@@ -118,9 +119,9 @@ public class PortalApi {
       // Build the request body
       var body = withArgs.toDictionary()
       // Append Portal-provided values
-      body["address"] = AnyEncodable(self.address)
-      body["apiKey"] = AnyEncodable(swapsApiKey)
-      body["chainId"] = AnyEncodable(self.chainId)
+      body["address"] = AnyCodable(self.address)
+      body["apiKey"] = AnyCodable(swapsApiKey)
+      body["chainId"] = AnyCodable(self.chainId)
 
       let data = try await post(url, withBearerToken: self.apiKey, andPayload: body)
       let response = try decoder.decode(Quote.self, from: data)
@@ -218,7 +219,7 @@ public class PortalApi {
     throw URLError(.badURL)
   }
 
-  public func identify(_ traits: [String: AnyEncodable] = [:]) async throws -> MetricsResponse {
+  public func identify(_ traits: [String: AnyCodable] = [:]) async throws -> MetricsResponse {
     if let url = URL(string: "\(baseUrl)/api/v1/analytics/identify") {
       let data = try await post(url, withBearerToken: self.apiKey, andPayload: ["traits": traits])
       let response = try decoder.decode(MetricsResponse.self, from: data)
@@ -257,7 +258,7 @@ public class PortalApi {
     }
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/simulate-transaction?chainId=\(chainId)") {
       do {
-        let transformedTransaction = try AnyEncodable(transaction)
+        let transformedTransaction = AnyCodable(transaction)
         let data = try await post(url, withBearerToken: self.apiKey, andPayload: transformedTransaction)
         let simulatedTransaction = try decoder.decode(SimulatedTransaction.self, from: data)
 
@@ -272,7 +273,7 @@ public class PortalApi {
     throw URLError(.badURL)
   }
 
-  func track(_ event: String, withProperties: [String: AnyEncodable]) async throws -> MetricsResponse {
+  func track(_ event: String, withProperties: [String: AnyCodable]) async throws -> MetricsResponse {
     if let url = URL(string: "\(baseUrl)/api/v1/analytics/track") {
       let payload = MetricsTrackRequest(
         event: event,
@@ -321,11 +322,11 @@ public class PortalApi {
     return try await self.requests.get(url, withBearerToken: withBearerToken)
   }
 
-  private func patch(_ url: URL, withBearerToken: String? = nil, andPayload: Encodable) async throws -> Data {
+  private func patch(_ url: URL, withBearerToken: String? = nil, andPayload: Codable) async throws -> Data {
     return try await self.requests.patch(url, withBearerToken: withBearerToken, andPayload: andPayload)
   }
 
-  private func post(_ url: URL, withBearerToken: String? = nil, andPayload: Encodable? = nil) async throws -> Data {
+  private func post(_ url: URL, withBearerToken: String? = nil, andPayload: Codable? = nil) async throws -> Data {
     return try await self.requests.post(url, withBearerToken: withBearerToken, andPayload: andPayload)
   }
 
@@ -455,7 +456,7 @@ public class PortalApi {
   ) throws {
     Task {
       do {
-        let simulateTransactionParam = AnyEncodable(transaction)
+        let simulateTransactionParam = AnyCodable(transaction)
         let response = try await simulateTransaction(simulateTransactionParam, withChainId: "eip155:\(self.chainId ?? 1)")
         completion(Result(data: response))
       } catch {
@@ -559,7 +560,7 @@ public class PortalApi {
   func track(event: String, properties: [String: String], completion: ((Result<MetricsResponse>) -> Void)? = nil) {
     Task.init {
       do {
-        let transformedProperties = properties.mapValues { AnyEncodable($0) }
+        let transformedProperties = properties.mapValues { AnyCodable($0) }
         let response = try await track(event, withProperties: transformedProperties)
         completion?(Result(data: response))
       } catch {
