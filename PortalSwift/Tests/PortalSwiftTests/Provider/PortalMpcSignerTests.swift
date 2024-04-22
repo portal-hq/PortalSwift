@@ -6,6 +6,7 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
+import AnyCodable
 @testable import PortalSwift
 import XCTest
 
@@ -30,7 +31,7 @@ final class PortalMpcSignerTests: XCTestCase {
     guard let blockchain = blockchain else {
       throw PortalMpcSignerError.noCurveFoundForNamespace("eip155:11155111")
     }
-    let signRequest = PortalSignRequest(method: .eth_sendTransaction, params: [AnyEncodable("test-transaction")])
+    let signRequest = PortalSignRequest(method: .eth_sendTransaction, params: [AnyCodable("test-transaction")])
     let response = try await signer.sign(
       "eip155:11155111",
       withPayload: signRequest,
@@ -50,8 +51,8 @@ final class PortalMpcSignerTests: XCTestCase {
     let signRequest = PortalSignRequest(
       method: .eth_sign,
       params: [
-        AnyEncodable(MockConstants.mockEip155Address),
-        AnyEncodable("test-message"),
+        AnyCodable(MockConstants.mockEip155Address),
+        AnyCodable("test-message"),
       ]
     )
     let response = try await signer.sign(
@@ -70,7 +71,7 @@ final class PortalMpcSignerTests: XCTestCase {
     guard let blockchain = blockchain else {
       throw PortalMpcSignerError.noCurveFoundForNamespace("eip155:11155111")
     }
-    let signRequest = PortalSignRequest(method: .eth_signTransaction, params: [AnyEncodable("test-transaction")])
+    let signRequest = PortalSignRequest(method: .eth_signTransaction, params: [AnyCodable("test-transaction")])
     let response = try await signer.sign(
       "eip155:11155111",
       withPayload: signRequest,
