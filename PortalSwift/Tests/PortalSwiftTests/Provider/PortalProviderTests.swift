@@ -6,6 +6,7 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
+import AnyCodable
 @testable import PortalSwift
 import XCTest
 
@@ -118,7 +119,7 @@ final class PortalProviderTests: XCTestCase {
 
   func testSendTransactionRequest() async throws {
     let expectation = XCTestExpectation(description: "PortalProvider.request(.eth_sendTransaction)")
-    let transaction = AnyEncodable([:] as [String: String])
+    let transaction = AnyCodable([:] as [String: String])
     let result = try await provider.request("eip155:11155111", withMethod: .eth_sendTransaction, andParams: [transaction])
     guard let transactionHash = result.result as? String else {
       throw PortalProviderError.invalidRpcResponse
@@ -130,7 +131,7 @@ final class PortalProviderTests: XCTestCase {
 
   func testSendTransactionWithStringMethod() async throws {
     let expectation = XCTestExpectation(description: "PortalProvider.request(.eth_sendTransaction)")
-    let transaction = AnyEncodable([:] as [String: String])
+    let transaction = AnyCodable([:] as [String: String])
     let result = try await provider.request(
       "eip155:11155111",
       withMethod: PortalRequestMethod.eth_sendTransaction.rawValue,
@@ -167,7 +168,7 @@ final class PortalProviderTests: XCTestCase {
 
   func testSignMessageRequest() async throws {
     let expectation = XCTestExpectation(description: "PortalProvider.request(.eth_sign)")
-    let params = [MockConstants.mockEip155Address, "test"].map { AnyEncodable($0) }
+    let params = [MockConstants.mockEip155Address, "test"].map { AnyCodable($0) }
     let result = try await provider.request("eip155:11155111", withMethod: .eth_sign, andParams: params)
     guard let signature = result.result as? String else {
       throw PortalProviderError.invalidRpcResponse
@@ -180,7 +181,7 @@ final class PortalProviderTests: XCTestCase {
   func testSignMessageRequestWithApproval() async throws {
     let expectation = XCTestExpectation(description: "PortalProvider.request(.eth_sign)")
     self.provider.autoApprove = false
-    let params = [MockConstants.mockEip155Address, "test"].map { AnyEncodable($0) }
+    let params = [MockConstants.mockEip155Address, "test"].map { AnyCodable($0) }
     let result = try await provider.request("eip155:11155111", withMethod: .eth_sign, andParams: params)
     guard let signature = result.result as? String else {
       throw PortalProviderError.invalidRpcResponse
@@ -193,7 +194,7 @@ final class PortalProviderTests: XCTestCase {
 
   func testSignTransactionRequest() async throws {
     let expectation = XCTestExpectation(description: "PortalProvider.request(.eth_signTransaction)")
-    let transaction = AnyEncodable([:] as [String: String])
+    let transaction = AnyCodable([:] as [String: String])
     let result = try await provider.request("eip155:11155111", withMethod: .eth_signTransaction, andParams: [transaction])
     guard let signature = result.result as? String else {
       throw PortalProviderError.invalidRpcResponse
