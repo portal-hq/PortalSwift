@@ -447,18 +447,10 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       return
     }
 
-    guard let response = requestData.result as? Result<SignerResult> else {
+    print("🚨 Request data", requestData)
+
+    guard let signature = requestData.result as? String else {
       self.onError(Result(error: WebViewControllerErrors.invalidResponseType))
-      return
-    }
-
-    if let error = response.error {
-      self.onError(Result(error: error))
-      return
-    }
-
-    guard let signature = response.data?.signature else {
-      self.onError(Result(error: WebViewControllerErrors.signatureNilError))
       return
     }
 

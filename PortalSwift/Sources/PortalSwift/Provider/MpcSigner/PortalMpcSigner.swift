@@ -94,6 +94,12 @@ public class PortalMpcSigner {
         throw PortalMpcSignerError.noParamsForSignRequest
       }
       return params
+    case .eth_sign, .personal_sign:
+      guard let count = params?.count, count >= 2 else {
+        throw PortalMpcSignerError.invalidParamsForMethod("\(method.rawValue) - \(String(describing: params))")
+      }
+
+      return AnyCodable([params?[0], params?[1]])
     default:
       return AnyCodable(params)
     }
@@ -101,6 +107,7 @@ public class PortalMpcSigner {
 }
 
 enum PortalMpcSignerError: Error, Equatable {
+  case invalidParamsForMethod(String)
   case noCurveFoundForNamespace(String)
   case noNamespaceFoundForChainId(String)
   case noParamsForTransaction
