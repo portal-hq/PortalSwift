@@ -141,13 +141,9 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
 
   private func bindPortalEvents(portal: Portal) {
     portal.on(event: Events.ChainChanged.rawValue) { data in
-      print("chain changed by Provider. \(data)")
       if let data = data as? [String: String] {
-        print("Chain changed is parseable. \(data)")
-
         let chainIdString = data["chainId"] ?? "0" // Get the string value, defaulting to "0" if nil
         if let chainIdInt = Int(chainIdString, radix: 16) {
-          print("Sending postMessage to WebView...")
           let javascript = """
             window.postMessage(JSON.stringify({ type: 'portal_chainChanged', data: { chainId: \(chainIdInt) } }));
           """
@@ -191,8 +187,6 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       let newKey = Int(chainIdParts[1]) ?? 1
       return (newKey, value)
     }, uniquingKeysWith: { first, _ in first })
-
-    print("WebView GatewayConfig:", gatewayConfig)
 
     guard let rpcUrl = gatewayConfig[chainId] else {
       throw PortalWebViewError.unexpectedError("❌ No rpc url found for chainId: \(self.chainId)")
@@ -398,7 +392,10 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       return
     }
 
-    let signature = (result.data!.result as! Result<Any>).data
+    guard let signature = result.data!.result as? String else {
+      self.onError(Result(error: PortalWebViewError.unexpectedError("Unable to parse signature for request")))
+      return
+    }
     let payload: [String: AnyCodable] = [
       "method": AnyCodable(result.data!.method),
       "params": AnyCodable(result.data!.params.map { p in
@@ -411,7 +408,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
           "data": p.data,
         ]
       }),
-      "signature": AnyCodable(signature!),
+      "signature": AnyCodable(signature),
     ]
     self.postMessage(payload: payload)
   }
@@ -492,8 +489,6 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       let data = try encoder.encode(payload)
       let dataString = String(data: data, encoding: .utf8)
       let javascript = "window.postMessage(JSON.stringify({ type: 'portal_signatureReceived', data: \(dataString!) }));"
-
-      print("javascript:", javascript)
 
       self.evaluateJavascript(javascript, sourceURL: "portal_sign")
     } catch {
