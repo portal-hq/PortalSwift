@@ -33,7 +33,7 @@ class GoogleAuth {
           callback(Result(error: result.error!))
         } else if let user = result.data {
           // Handle successful sign-in
-          callback(Result(data: user.authentication.accessToken))
+          callback(Result(data: user.accessToken.tokenString))
         }
       }
     } else {
@@ -44,7 +44,7 @@ class GoogleAuth {
           callback(Result(error: result.error!))
         } else if let user = result.data {
           // Handle successful sign-in
-          callback(Result(data: user.authentication.accessToken))
+          callback(Result(data: user.accessToken.tokenString))
         }
       }
     }
@@ -71,13 +71,19 @@ class GoogleAuth {
   }
 
   func signIn(callback: @escaping (Result<GIDGoogleUser>) -> Void) {
-    self.auth.signIn(with: self.config, presenting: self.view) {
+    self.auth.signIn(withPresenting: self.view) {
       user, error in
       if error != nil {
         callback(Result(error: error! as Error))
       } else {
-        self.auth.addScopes(["https://www.googleapis.com/auth/drive.file"], presenting: self.view)
-        callback(Result(data: user!))
+        guard let user = user else {
+          callback(Result(error: GoogleAuthError.noUserFound))
+          return
+        }
+
+        user.user.addScopes(["https://www.googleapis.com/auth/drive.file"], presenting: self.view)
+
+        callback(Result(data: user))
       }
     }
   }

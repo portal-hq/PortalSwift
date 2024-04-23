@@ -19,11 +19,11 @@ let package = Package(
     // .package(url: /* package url */, from: "1.0.0"),
     .package(
       url: "https://github.com/google/GoogleSignIn-iOS.git",
-      from: "6.2.4"
+      from: "7.1.0"
     ),
     .package(
       url: "https://github.com/daltoniam/Starscream.git",
-      from: "4.0.6"
+      from: "4.0.7"
     ),
   ],
   targets: [
