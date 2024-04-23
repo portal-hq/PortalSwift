@@ -24,7 +24,7 @@
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "136F98CDC49A4A849BA6EB68684BFE22"
                BuildableName = "PortalSwift-Unit-Tests.xctest"
-               BlueprintName = "Unit Tests"
+               BlueprintName = "PortalSwift-Unit-Tests"
                ReferencedContainer = "container:Pods.xcodeproj">
             </BuildableReference>
             <SkippedTests>

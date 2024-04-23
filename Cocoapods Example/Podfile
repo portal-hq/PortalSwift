@@ -7,7 +7,7 @@ workspace '../PortalSwift.xcworkspace'
 
 target 'Cocoapods Example' do
   pod 'PortalSwift', :path => '../', :testspecs => ['Tests']
-  pod 'GoogleSignIn', '~> 6.2'
+  pod 'GoogleSignIn', '~> 7.1.0'
 
   target 'Cocoapods E2E Tests' do
     inherit! :search_paths

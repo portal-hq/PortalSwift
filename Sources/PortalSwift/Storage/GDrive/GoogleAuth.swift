@@ -33,7 +33,7 @@ class GoogleAuth {
           callback(Result(error: result.error!))
         } else if let user = result.data {
           // Handle successful sign-in
-          callback(Result(data: user.authentication.accessToken))
+          callback(Result(data: user.accessToken.tokenString))
         }
       }
     } else {
@@ -44,18 +44,18 @@ class GoogleAuth {
           callback(Result(error: result.error!))
         } else if let user = result.data {
           // Handle successful sign-in
-          callback(Result(data: user.authentication.accessToken))
+          callback(Result(data: user.accessToken.tokenString))
         }
       }
     }
   }
 
   func getCurrentUser() -> GIDGoogleUser? {
-    return self.auth.currentUser
+    self.auth.currentUser
   }
 
   func hasPreviousSignIn() -> Bool {
-    return self.auth.hasPreviousSignIn()
+    self.auth.hasPreviousSignIn()
   }
 
   func restorePreviousSignIn(callback: @escaping (Result<GIDGoogleUser>) -> Void) {
@@ -63,7 +63,7 @@ class GoogleAuth {
       if error != nil {
         // Handle error
         callback(Result(error: error!))
-      } else if let user = user {
+      } else if let user {
         // Handle successful sign-in
         callback(Result(data: user))
       }
@@ -71,13 +71,21 @@ class GoogleAuth {
   }
 
   func signIn(callback: @escaping (Result<GIDGoogleUser>) -> Void) {
-    self.auth.signIn(with: self.config, presenting: self.view) {
+    self.auth.configuration = self.config
+
+    self.auth.signIn(withPresenting: self.view) {
       user, error in
       if error != nil {
         callback(Result(error: error! as Error))
       } else {
-        self.auth.addScopes(["https://www.googleapis.com/auth/drive.file"], presenting: self.view)
-        callback(Result(data: user!))
+        guard let user else {
+          callback(Result(error: GoogleAuthError.noUserFound))
+          return
+        }
+
+        user.user.addScopes(["https://www.googleapis.com/auth/drive.file"], presenting: self.view)
+
+        callback(Result(data: user.user))
       }
     }
   }
