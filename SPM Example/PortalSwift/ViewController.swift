@@ -221,7 +221,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     let cipherTextResponse = try decoder.decode(CipherTextResult.self, from: cipherTextData)
 
     guard let organizationBackupShareUrl = URL(
-      string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/org-share/fetch?backupMethod=\(withBackupMethod.rawValue)"
+      string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/org-share/fetch?backupMethod=\(withBackupMethod.rawValue)-SECP256K1"
     ) else {
       throw URLError(.badURL)
     }
@@ -966,11 +966,19 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBAction func handleEject(_: UIButton) {
     Task {
       do {
+        guard let enteredPassword = await requestPassword(), !enteredPassword.isEmpty else {
+          self.logger.error("ViewController.handleEject() - ❌ No password set by user. Eject will not take place.")
+          return
+        }
+
+        try self.portal?.setPassword(enteredPassword)
+
         let privateKey = try await eject(.Password)
 
         self.logger.info("ViewController.handleEject() - ✅ Successfully ejected wallet. Private key: \(privateKey)")
       } catch {
         self.stopLoading()
+        print("⚠️", error)
         self.logger.error("ViewController.handleEject() - Error ejecting wallet: \(error.localizedDescription)")
       }
     }
