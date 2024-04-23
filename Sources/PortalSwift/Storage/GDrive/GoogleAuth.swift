@@ -71,6 +71,8 @@ class GoogleAuth {
   }
 
   func signIn(callback: @escaping (Result<GIDGoogleUser>) -> Void) {
+    self.auth.configuration = self.config
+
     self.auth.signIn(withPresenting: self.view) {
       user, error in
       if error != nil {
