@@ -6,6 +6,7 @@
 //  Copyright © 2023 CocoaPods. All rights reserved.
 //
 
+import AnyCodable
 import Foundation
 import PortalSwift
 
@@ -129,7 +130,7 @@ class PortalWrapper {
         featureFlags: FeatureFlags(optimized: optimized, isMultiBackupEnabled: isMultiBackupEnabled)
       )
       _ = self.portal?.provider.on(event: Events.PortalSigningRequested.rawValue, callback: { [weak self] data in self?.didRequestApproval(data: data) })
-      _ = self.portal?.provider.once(event: Events.PortalSignatureReceived.rawValue) { (data: Any) in
+      _ = self.portal?.provider.on(event: Events.PortalSignatureReceived.rawValue) { (data: Any) in
         let result = data as! RequestCompletionResult
 
         print("[ViewController] portal_signatureReceived: \(result)")
@@ -214,7 +215,7 @@ class PortalWrapper {
 
       // Setup request to get org-share
       let requestOrgShare = HttpRequest<OrgShareResult, [String: String]>(
-        url: self.CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/org-share/fetch?backupMethod=\(backupMethod)",
+        url: self.CUSTODIAN_SERVER_URL! + "/mobile/\(user.exchangeUserId)/org-share/fetch?backupMethod=\(backupMethod)-SECP256K1",
         method: "GET", body: [:],
         headers: [:],
         requestType: HttpRequestType.CustomRequest
@@ -222,7 +223,6 @@ class PortalWrapper {
 
       requestOrgShare.send { (result: Result<OrgShareResult>) in
         guard result.error == nil else {
-          print("❌ [PortalWrapper] handleEject(): Error fetching orgShare:", result.error!)
           return completion(Result(error: result.error!))
         }
 
@@ -230,11 +230,8 @@ class PortalWrapper {
           let orgShare = data.orgShare
           self.portal?.ejectPrivateKey(clientBackupCiphertext: cipherText, method: backupMethod, orgBackupShare: orgShare) { (result: Result<String>) in
             guard result.error == nil else {
-              print("❌ [PortalWrapper] handleEject(): Error ejecting wallet:", result.error!)
               return completion(Result(error: result.error!))
             }
-            //
-            print("✅ [PortalWrapper] handleEject(): Successfully ejected wallet with private key \(result.data!)")
             return completion(result)
           }
         }
@@ -274,26 +271,35 @@ class PortalWrapper {
   }
 
   func ethSign(params: [Any], completion: @escaping (Result<String>) -> Void) {
-    let method = ETHRequestMethods.Sign.rawValue
+    do {
+      let method = ETHRequestMethods.Sign.rawValue
 
-    let payload = ETHRequestPayload(
-      method: method,
-      params: params
-    )
-    self.portal?.provider.request(payload: payload) { (result: Result<RequestCompletionResult>) in
-      guard result.error == nil else {
-        print("❌ Error calling \(method)", "Error:", result.error!)
-        completion(Result(error: result.error!))
-        return
+      print("Portal.ethSign() - params: \(params)")
+
+      let encodedParams = try params.map { param in
+        AnyCodable(param)
       }
-      guard (result.data!.result as! Result<SignerResult>).error == nil else {
-        print("❌ Error testing signer request:", method, "Error:", (result.data!.result as! Result<SignerResult>).error)
-        completion(Result(error: result.error!))
-        return
+      let payload = ETHRequestPayload(
+        method: method,
+        params: encodedParams
+      )
+      self.portal?.provider.request(payload: payload) { (result: Result<RequestCompletionResult>) in
+        guard result.error == nil else {
+          print("❌ Error calling \(method)", "Error:", result.error!)
+          completion(Result(error: result.error!))
+          return
+        }
+        guard (result.data!.result as! Result<SignerResult>).error == nil else {
+          print("❌ Error testing signer request:", method, "Error:", (result.data!.result as! Result<SignerResult>).error)
+          completion(Result(error: result.error!))
+          return
+        }
+        if (result.data!.result as! Result<SignerResult>).data!.signature != nil {
+          completion(Result(data: (result.data!.result as! Result<SignerResult>).data!.signature!))
+        }
       }
-      if (result.data!.result as! Result<SignerResult>).data!.signature != nil {
-        completion(Result(data: (result.data!.result as! Result<SignerResult>).data!.signature!))
-      }
+    } catch {
+      completion(Result(error: error))
     }
   }
 

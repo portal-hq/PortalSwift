@@ -6,6 +6,7 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
+import AnyCodable
 import PortalSwift
 import UIKit
 
@@ -188,7 +189,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
   @IBAction func handleSignup(_: UIButton) {
-    print("signUp", self.PortalWrapper, self.PortalWrapper.signUp)
+    print("signUp", self.PortalWrapper, self.PortalWrapper.signUp, self.username?.text)
     self.PortalWrapper.signUp(username: self.username?.text ?? "") { (result: Result<UserResult>) in
       guard result.error == nil else {
         print(" ❌ handleSignIn(): Failed", result.error ?? "")
@@ -208,7 +209,11 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   @IBAction func handleEject(_: UIButton) {
     self.PortalWrapper.eject(backupMethod: BackupMethods.iCloud.rawValue, user: self.user!) { result in
-      print(result.data!)
+      guard result.error == nil else {
+        print("❌ handleEject():", result.error ?? "")
+        return
+      }
+      print("✅ handleEject():", result.data ?? "")
     }
   }
 
@@ -722,51 +727,58 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
   func testProviderRequest(method: String, params: [Any], skipLoggingResult _: Bool = false, completion: @escaping (Bool) -> Void) {
-    let payload = ETHRequestPayload(
-      method: method,
-      params: params
-    )
-
-    print("Starting to test method ", method, "...")
-    self.portal?.provider.request(payload: payload) { (result: Result<RequestCompletionResult>) in
-      guard result.error == nil else {
-        print("❌ Error testing provider request:", method, "Error:", result.error ?? "Unknown error")
-        completion(false)
-        return
+    do {
+      let encodedParams = params.map { param in
+        AnyCodable(param)
       }
+      let payload = ETHRequestPayload(
+        method: method,
+        params: encodedParams
+      )
 
-      guard let responseData = result.data else {
-        print("❌ No data in response for method:", method)
-        completion(false)
-        return
-      }
-
-      if signerMethods.contains(method) {
-        guard let signerResult = responseData.result as? Result<SignerResult>, signerResult.error == nil else {
-          print("❌ Error testing signer request:", method, "Error:", (responseData.result as? Result<SignerResult>)?.error ?? "Unknown error")
+      print("Starting to test method ", method, "...")
+      self.portal?.provider.request(payload: payload) { (result: Result<RequestCompletionResult>) in
+        guard result.error == nil else {
+          print("🚨 Error is not nil: ", result.error)
+          print("❌ Error testing provider request:", method, "Error:", result.error ?? "Unknown error")
           completion(false)
           return
         }
 
-        if let signature = signerResult.data?.signature {
-          print("✅ Signature for", method, signature)
-        } else if let accounts = signerResult.data?.accounts {
-          print("✅ Accounts for", method, accounts)
+        guard let responseData = result.data else {
+          print("❌ No data in response for method:", method)
+          completion(false)
+          return
+        }
+
+        if signerMethods.contains(method) {
+          guard let signerResult = responseData.result as? Result<SignerResult>, signerResult.error == nil else {
+            print("❌ Error testing signer request:", method, "Error:", (responseData.result as? Result<SignerResult>)?.error ?? "Unknown error")
+            completion(false)
+            return
+          }
+
+          if let signature = signerResult.data?.signature {
+            print("✅ Signature for", method, signature)
+          } else {
+            print("❌ No signature or accounts for method:", method)
+            completion(false)
+            return
+          }
         } else {
-          print("❌ No signature or accounts for method:", method)
-          completion(false)
-          return
+          guard let ethResponse = responseData.result as? ETHGatewayResponse, ethResponse.error == nil else {
+            print("❌ Error testing provider request:", method, "Error:", (responseData.result as? ETHGatewayResponse)?.error ?? "Unknown error")
+            completion(false)
+            return
+          }
+          print("✅ Gateway response for", method, ethResponse.result ?? "")
         }
-      } else {
-        guard let ethResponse = responseData.result as? ETHGatewayResponse, ethResponse.error == nil else {
-          print("❌ Error testing provider request:", method, "Error:", (responseData.result as? ETHGatewayResponse)?.error ?? "Unknown error")
-          completion(false)
-          return
-        }
-        print("✅ Gateway response for", method, ethResponse.result ?? "")
-      }
 
-      completion(true)
+        completion(true)
+      }
+    } catch {
+      print("Error during provider request: \(error.localizedDescription)")
+      completion(false)
     }
   }
 

@@ -10,20 +10,7 @@
    <FileRef
       location = "group:Cocoapods Example/Pods/Pods.xcodeproj">
    </FileRef>
-   <Group
-      location = "container:"
-      name = "Packages">
-      <FileRef
-         location = "group:Unit Tests.xctestplan">
-      </FileRef>
-      <FileRef
-         location = "group:">
-      </FileRef>
-   </Group>
    <FileRef
-      location = "group:/Users/blakewilliams/development/portal/PortalSwift/SPM Example/SPM E2E Tests.xctestplan">
-   </FileRef>
-   <FileRef
-      location = "group:Unit Tests.xctestplan">
+      location = "container:PortalSwift">
    </FileRef>
 </Workspace>
