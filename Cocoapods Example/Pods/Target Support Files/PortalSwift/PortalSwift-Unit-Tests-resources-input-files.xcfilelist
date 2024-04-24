@@ -1,6 +1,0 @@
-${PODS_ROOT}/Target Support Files/PortalSwift/PortalSwift-Unit-Tests-resources.sh
-${PODS_CONFIGURATION_BUILD_DIR}/GoogleSignIn/GoogleSignIn.bundle
-${PODS_CONFIGURATION_BUILD_DIR}/AppAuth/AppAuthCore_Privacy.bundle
-${PODS_CONFIGURATION_BUILD_DIR}/GTMAppAuth/GTMAppAuth_Privacy.bundle
-${PODS_CONFIGURATION_BUILD_DIR}/GTMSessionFetcher/GTMSessionFetcher_Core_Privacy.bundle
-${PODS_CONFIGURATION_BUILD_DIR}/Starscream/Starscream_Privacy.bundle

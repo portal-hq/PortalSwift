@@ -5,9 +5,12 @@ platform :ios, '13.0'
 project './Cocoapods Example.xcodeproj'
 workspace '../PortalSwift.xcworkspace'
 
+install! 'cocoapods', :deterministic_uuids => false
+
 target 'Cocoapods Example' do
   pod 'PortalSwift', :path => '../', :testspecs => ['Tests']
   pod 'GoogleSignIn', '~> 7.1.0'
+  pod "AnyCodable-FlightSchool", "~> 0.6.7"
 
   target 'Cocoapods E2E Tests' do
     inherit! :search_paths
