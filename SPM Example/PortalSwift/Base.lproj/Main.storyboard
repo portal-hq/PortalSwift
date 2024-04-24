@@ -272,7 +272,6 @@
                                 </buttonConfiguration>
                                 <connections>
                                     <action selector="handlePersonalSign" destination="vXZ-lx-hvc" eventType="touchUpInside" id="9LW-ff-p7h"/>
-                                    <action selector="handleSign" destination="vXZ-lx-hvc" eventType="touchUpInside" id="KTd-Gf-XyB"/>
                                 </connections>
                             </button>
                             <textField opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="248" fixedFrame="YES" contentHorizontalAlignment="left" contentVerticalAlignment="center" text="https://app.uniswap.org/swap?chain=sepolia" borderStyle="roundedRect" placeholder="URL" textAlignment="center" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="5Yb-DH-Pnv" userLabel="Username">
