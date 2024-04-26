@@ -1,0 +1,59 @@
+{
+  "pins" : [
+    {
+      "identity" : "anycodable",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Flight-School/AnyCodable.git",
+      "state" : {
+        "revision" : "862808b2070cd908cb04f9aafe7de83d35f81b05",
+        "version" : "0.6.7"
+      }
+    },
+    {
+      "identity" : "appauth-ios",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/openid/AppAuth-iOS.git",
+      "state" : {
+        "revision" : "c89ed571ae140f8eb1142735e6e23d7bb8c34cb2",
+        "version" : "1.7.5"
+      }
+    },
+    {
+      "identity" : "googlesignin-ios",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/google/GoogleSignIn-iOS.git",
+      "state" : {
+        "revision" : "a7965d134c5d3567026c523e0a8a583f73b62b0d",
+        "version" : "7.1.0"
+      }
+    },
+    {
+      "identity" : "gtm-session-fetcher",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/google/gtm-session-fetcher.git",
+      "state" : {
+        "revision" : "0382ca27f22fb3494cf657d8dc356dc282cd1193",
+        "version" : "3.4.1"
+      }
+    },
+    {
+      "identity" : "gtmappauth",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/google/GTMAppAuth.git",
+      "state" : {
+        "revision" : "5d7d66f647400952b1758b230e019b07c0b4b22a",
+        "version" : "4.1.1"
+      }
+    },
+    {
+      "identity" : "starscream",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/daltoniam/Starscream.git",
+      "state" : {
+        "revision" : "c6bfd1af48efcc9a9ad203665db12375ba6b145a",
+        "version" : "4.0.8"
+      }
+    }
+  ],
+  "version" : 2
+}
