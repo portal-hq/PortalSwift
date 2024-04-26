@@ -402,14 +402,14 @@ public class PortalKeychain {
           }
           let metadata = try decoder.decode(PortalKeychainClientMetadata.self, from: data)
           guard let address = metadata.addresses?[.eip155] else {
-            throw KeychainError.itemNotFound(item: "\(clientId).\(metadataKey)")
+            throw KeychainError.itemNotFound(item: "\(clientId).\(self.metadataKey)")
           }
           guard let address = address else {
-            throw KeychainError.itemNotFound(item: "\(clientId).\(metadataKey)")
+            throw KeychainError.itemNotFound(item: "\(clientId).\(self.metadataKey)")
           }
           return address
         } catch {
-          throw KeychainError.itemNotFound(item: "\(clientId).\(metadataKey)")
+          throw KeychainError.itemNotFound(item: "\(clientId).\(self.metadataKey)")
         }
       }
     }
