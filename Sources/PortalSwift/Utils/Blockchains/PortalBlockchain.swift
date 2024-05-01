@@ -26,8 +26,10 @@ public class PortalBlockchain {
       .personal_sign,
     ],
     .solana: [
-      .sol_sendTransaction,
-      .sol_simulateTransaction,
+      .sol_signAndConfirmTransaction,
+      .sol_signAndSendTransaction,
+      .sol_signMessage,
+      .sol_signTransaction,
     ],
   ]
 

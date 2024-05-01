@@ -351,6 +351,12 @@ public class PortalProvider {
           throw PortalRpcError(rpcError)
         }
         return PortalProviderResult(id: forId, result: rpcResponse)
+      case .sol_getLatestBlockhash:
+        let rpcResponse = try decoder.decode(SolGetLatestBlockhashResponse.self, from: data)
+        if let rpcError = rpcResponse.error {
+          throw PortalRpcError(rpcError)
+        }
+        return PortalProviderResult(id: forId, result: rpcResponse)
       default:
         let rpcResponse = try decoder.decode(PortalProviderRpcResponse.self, from: data)
         if let rpcError = rpcResponse.error {
@@ -601,7 +607,7 @@ public enum PortalRequestMethod: String, Codable {
   case web3_clientVersion
   case web3_sha3
   
-  // Solana Methods
+  // Solana RPC Methods
   case sol_getAccountInfo = "getAccountInfo"
   case sol_getBalance = "getBalance"
   case sol_getBlock = "getBlock"
@@ -655,6 +661,12 @@ public enum PortalRequestMethod: String, Codable {
   case sol_requestAirdrop = "requestAirdrop"
   case sol_sendTransaction = "sendTransaction"
   case sol_simulateTransaction = "simulateTransaction"
+  
+  // Solana Wallet Methods
+  case sol_signAndConfirmTransaction
+  case sol_signAndSendTransaction
+  case sol_signMessage
+  case sol_signTransaction
 }
 
 /// All available provider methods.

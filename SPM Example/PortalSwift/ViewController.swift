@@ -1564,15 +1564,25 @@ class ViewController: UIViewController, UITextFieldDelegate {
           return
         }
 
-        // Airdrop for testing
-        let airdropParams: [Any] = [AnyCodable(address), AnyCodable(10000000)]
-        let airdropResponse = try await portal.request(chainId, withMethod: .sol_requestAirdrop, andParams: airdropParams)
-//        self.logger.info("Airdrop successful: \(airdropResponse)")
+//        // Airdrop for testing
+//        let airdropParams: [Any] = [AnyCodable(address), AnyCodable(1000)]
+//        let airdropResponse = try await portal.request(chainId, withMethod: .sol_requestAirdrop, andParams: airdropParams)
+//        guard let airdropResResult = airdropResponse.result as? String else {
+//          self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Error getting airdrop")
+//          self.stopLoading()
+//          return
+//        }
+//        self.logger.info("Get airdrop successful: \(airdropResResult)")
 
         // Fetching recent blockhash
+        self.logger.info("ViewController.handleSolanaSendTrx() - Getting latest blockhash")
         let blockhashResponse = try await portal.request(chainId, withMethod: .sol_getLatestBlockhash, andParams: [])
-        let recentBlockhash = blockhashResponse.result as? String ?? ""
-//        self.logger.info("Get most recent blockhash successful: \(blockhashResponse)")
+        guard let blockhashResResult = blockhashResponse.result as? SolGetLatestBlockhashResponse else {
+          self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Error getting most recent blockhash")
+          self.stopLoading()
+          return
+        }
+        self.logger.info("ViewController.handleSolanaSendTrx() - Get most recent blockhash successful: \(blockhashResResult.result.value.blockhash)")
         
         // Prepare the transaction
         let toAddress = "GPsPXxoQA51aTJJkNHtFDFYui5hN5UxcFPnheJEHa5Du"
@@ -1596,7 +1606,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
                 "numReadonlySignedAccounts": 0,
                 "numReadonlyUnsignedAccounts": 1
               ],
-              "recentBlockhash": recentBlockhash,
+              "recentBlockhash": blockhashResResult.result.value.blockhash,
               "instructions": [
                 [
                   "programIdIndex": 2, // Index of the System Program in 'accountKeys'
@@ -1609,14 +1619,18 @@ class ViewController: UIViewController, UITextFieldDelegate {
         ]
 
         // Send the transaction
-        let transactionResponse = try await portal.request(chainId, withMethod: .sol_sendTransaction, andParams: params)
-        let signature = transactionResponse.result
-        self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Successfully signed message")
+        let transactionResponse = try await portal.request(chainId, withMethod: .sol_signAndSendTransaction, andParams: params)
+        guard let transactionResResult = transactionResponse.result as? String else {
+          self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Error with sendTransaction response")
+          self.stopLoading()
+          return
+        }
+        self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Successfully signed message: \(transactionResResult)")
 
         self.stopLoading()
       } catch {
         self.stopLoading()
-        self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Error signing message: \(error)")
+        self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Generic error: \(error)")
       }
     }
   }
