@@ -113,6 +113,16 @@ public class PortalSwaps {
     self.apiKey = apiKey
     self.portal = portal
   }
+  
+  public func getQuote(args: QuoteArgs, forChainId: String, completion: @escaping (Result<Quote>) -> Void) {
+    do {
+      try self.portal.api.getQuote(self.apiKey, args, forChainId) { result in
+        completion(result)
+      }
+    } catch {
+      completion(Result(error: error))
+    }
+  }
 
   public func getQuote(args: QuoteArgs, completion: @escaping (Result<Quote>) -> Void) {
     do {

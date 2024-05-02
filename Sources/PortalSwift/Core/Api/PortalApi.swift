@@ -115,7 +115,9 @@ public class PortalApi {
     throw URLError(.badURL)
   }
 
-  public func getQuote(_ swapsApiKey: String, withArgs: QuoteArgs) async throws -> Quote {
+  public func getQuote(_ swapsApiKey: String, withArgs: QuoteArgs, forChainId: String? = nil) async throws -> Quote {
+    let chainId = forChainId != nil ? forChainId : "eip155:\(self.chainId ?? 1)"
+    
     if let url = URL(string: "\(baseUrl)/api/v3/swaps/quote") {
       // Build the request body
       var body = withArgs.toDictionary()
@@ -123,7 +125,7 @@ public class PortalApi {
       // Append Portal-provided values
       body["address"] = AnyCodable(self.address)
       body["apiKey"] = AnyCodable(swapsApiKey)
-      body["chainId"] = AnyCodable("eip155:\(self.chainId ?? 1)")
+      body["chainId"] = AnyCodable(chainId)
 
       let data = try await post(url, withBearerToken: self.apiKey, andPayload: body)
       let response = try decoder.decode(Quote.self, from: data)
@@ -355,11 +357,12 @@ public class PortalApi {
   public func getQuote(
     _ swapsApiKey: String,
     _ args: QuoteArgs,
+    _ forChainId: String? = nil,
     completion: @escaping (Result<Quote>) -> Void
   ) throws {
     Task {
       do {
-        let response = try await getQuote(swapsApiKey, withArgs: args)
+        let response = try await getQuote(swapsApiKey, withArgs: args, forChainId: forChainId)
         completion(Result(data: response))
       } catch {
         completion(Result(error: error))

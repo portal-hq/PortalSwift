@@ -1389,26 +1389,28 @@ class ViewController: UIViewController, UITextFieldDelegate {
       let swaps = PortalSwaps(apiKey: "6b634597-d4fc-4001-95e6-541de1d69fe8", portal: portal)
       
       swaps.getSources() { result in
-        let sources = result
-        print("sources", sources)
-      }
-      
-      // Get the correct decimal conversion for the UNI smart contract
-      let sellAmount = "1"
-      
-      let quoteArgs = QuoteArgs(
-        buyToken: "UNI",
-        sellToken: "ETH",
-        sellAmount: sellAmount
-      )
-      
-      swaps.getQuote(args: quoteArgs) { result in
-        let quote = result
-        print("quote", quote)
-      }
+        let source = result
+        print("getSources response:", source)
 
-      self.logger.info("ViewController.handleSwaps() - ✅ Successfully called get sources + quotes")
-      self.stopLoading()
+        // Delay the second request by 1 second
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+          let quoteArgs = QuoteArgs(
+            buyToken: "0x68194a729c2450ad26072b3d33adacbcef39d574", // USDC on Sepolia
+            sellToken: "ETH",
+            sellAmount: "1"
+          )
+          
+          let baseSepoliaChainId = "eip155:84532"
+          swaps.getQuote(args: quoteArgs, forChainId: baseSepoliaChainId) { result in
+            let quote = result
+            print("getQuote response:", quote)
+
+            self.logger.info("ViewController.handleSwaps() - ✅ Successfully called get sources + quotes")
+          }
+
+          self.stopLoading()
+        }
+      }
     } catch {
       self.stopLoading()
       self.logger.error("ViewController.handleSwaps() - ❌ Error signing message: \(error.localizedDescription)")
