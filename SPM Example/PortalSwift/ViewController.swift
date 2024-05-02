@@ -1376,4 +1376,42 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
     }
   }
+  
+  func handleSwaps() {
+    do {
+      self.startLoading()
+
+      guard let portal else {
+        self.logger.error("ViewController.handleSwaps() - ❌ Portal not initialized")
+        throw PortalExampleAppError.portalNotInitialized()
+      }
+      
+      let swaps = PortalSwaps(apiKey: "6b634597-d4fc-4001-95e6-541de1d69fe8", portal: portal)
+      
+      swaps.getSources() { result in
+        let sources = result
+        print("sources", sources)
+      }
+      
+      // Get the correct decimal conversion for the UNI smart contract
+      let sellAmount = "1"
+      
+      let quoteArgs = QuoteArgs(
+        buyToken: "UNI",
+        sellToken: "ETH",
+        sellAmount: sellAmount
+      )
+      
+      swaps.getQuote(args: quoteArgs) { result in
+        let quote = result
+        print("quote", quote)
+      }
+
+      self.logger.info("ViewController.handleSwaps() - ✅ Successfully called get sources + quotes")
+      self.stopLoading()
+    } catch {
+      self.stopLoading()
+      self.logger.error("ViewController.handleSwaps() - ❌ Error signing message: \(error.localizedDescription)")
+    }
+  }
 }

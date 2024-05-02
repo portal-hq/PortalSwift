@@ -18,8 +18,8 @@ public struct QuoteArgs: Codable {
   public var sellToken: String
 
   // One of these two is required
-  public var sellAmount: Double?
-  public var buyAmount: Double?
+  public var sellAmount: String?
+  public var buyAmount: String?
 
   // Optional
   public var affiliateAddress: String?
@@ -35,13 +35,13 @@ public struct QuoteArgs: Codable {
   public var slippagePercentage: Double?
   public var takerAddress: String?
 
-  public init(buyToken: String, sellToken: String, buyAmount: Double) {
+  public init(buyToken: String, sellToken: String, buyAmount: String) {
     self.buyToken = buyToken
     self.sellToken = sellToken
     self.buyAmount = buyAmount
   }
 
-  public init(buyToken: String, sellToken: String, sellAmount: Double) {
+  public init(buyToken: String, sellToken: String, sellAmount: String) {
     self.buyToken = buyToken
     self.sellToken = sellToken
     self.sellAmount = sellAmount

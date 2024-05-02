@@ -16,7 +16,6 @@ public class PortalApi {
   private let decoder = JSONDecoder()
   private var httpRequests: HttpRequester
   private let logger = PortalLogger()
-  private var provider: PortalProvider?
   private let requests: PortalRequests
   private let featureFlags: FeatureFlags?
 
@@ -36,6 +35,8 @@ public class PortalApi {
       return self._client
     }
   }
+  
+  public var provider: PortalProvider?
 
   /// Create an instance of a PortalApi class.
   /// - Parameters:
@@ -115,13 +116,14 @@ public class PortalApi {
   }
 
   public func getQuote(_ swapsApiKey: String, withArgs: QuoteArgs) async throws -> Quote {
-    if let url = URL(string: "\(baseUrl)/api/v1/swaps/quote") {
+    if let url = URL(string: "\(baseUrl)/api/v3/swaps/quote") {
       // Build the request body
       var body = withArgs.toDictionary()
+
       // Append Portal-provided values
       body["address"] = AnyCodable(self.address)
       body["apiKey"] = AnyCodable(swapsApiKey)
-      body["chainId"] = AnyCodable(self.chainId)
+      body["chainId"] = AnyCodable("eip155:\(self.chainId ?? 1)")
 
       let data = try await post(url, withBearerToken: self.apiKey, andPayload: body)
       let response = try decoder.decode(Quote.self, from: data)
@@ -167,7 +169,7 @@ public class PortalApi {
   }
 
   public func getSources(_ swapsApiKey: String, forChainId: String) async throws -> [String: String] {
-    if let url = URL(string: "\(baseUrl)/api/v1/swaps/sources") {
+    if let url = URL(string: "\(baseUrl)/api/v3/swaps/sources") {
       let payload = ["apiKey": swapsApiKey, "chainId": forChainId]
       let data = try await post(url, withBearerToken: self.apiKey, andPayload: payload)
       let response = try decoder.decode([String: String].self, from: data)
