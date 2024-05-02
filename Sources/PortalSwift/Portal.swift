@@ -100,9 +100,8 @@ public class Portal {
 
     // Creating this as a variable first so it's usable to
     // fetch the client in the Task at the end of the initializer
-    let api = api ?? PortalApi(apiKey: apiKey, apiHost: apiHost)
+    let api = api ?? PortalApi(apiKey: apiKey, apiHost: apiHost, provider: provider)
     self.api = api
-    self.api.provider = self.provider
     self.keychain.api = api
 
     self.mpc = mpc ?? PortalMpc(apiKey: apiKey, api: self.api, keychain: self.keychain, host: mpcHost, mobile: self.binary)
@@ -206,7 +205,6 @@ public class Portal {
     // Initialize the Portal API
     let api = PortalApi(apiKey: apiKey, apiHost: apiHost, provider: self.provider, featureFlags: self.featureFlags)
     self.api = api
-    self.api.provider = self.provider
     keychain.api = api
 
     // This is to mimic the blocking behavior of the legacy GetClient() implementation
