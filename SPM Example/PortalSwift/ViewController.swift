@@ -1400,8 +1400,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
             sellAmount: "1"
           )
           
-          let baseSepoliaChainId = "eip155:84532"
-          swaps.getQuote(args: quoteArgs, forChainId: baseSepoliaChainId) { result in
+          let customChainId = "eip155:11155111"
+          swaps.getQuote(args: quoteArgs, forChainId: customChainId) { result in
             let quote = result
             print("getQuote response:", quote)
 
