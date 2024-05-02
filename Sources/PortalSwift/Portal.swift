@@ -87,14 +87,7 @@ public class Portal {
     self.mpcHost = mpcHost
     self.rpcConfig = withRpcConfig
     self.version = version
-
-    // Creating this as a variable first so it's usable to
-    // fetch the client in the Task at the end of the initializer
-    let api = api ?? PortalApi(apiKey: apiKey, apiHost: apiHost)
-    self.api = api
-    self.keychain.api = api
-
-    self.mpc = mpc ?? PortalMpc(apiKey: apiKey, api: self.api, keychain: self.keychain, host: mpcHost, mobile: self.binary)
+    
     self.provider = try PortalProvider(
       apiKey: apiKey,
       rpcConfig: withRpcConfig,
@@ -104,6 +97,14 @@ public class Portal {
       mpcHost: mpcHost,
       featureFlags: featureFlags
     )
+
+    // Creating this as a variable first so it's usable to
+    // fetch the client in the Task at the end of the initializer
+    let api = api ?? PortalApi(apiKey: apiKey, apiHost: apiHost, provider: provider)
+    self.api = api
+    self.keychain.api = api
+
+    self.mpc = mpc ?? PortalMpc(apiKey: apiKey, api: self.api, keychain: self.keychain, host: mpcHost, mobile: self.binary)
 
     // Initialize with PasskeyStorage by default
     if #available(iOS 16, *) {

@@ -2,8 +2,6 @@
 //  PortalSwaps.swift
 //  PortalSwift
 //
-//  Created by Blake Williams on 5/8/23.
-//
 
 import AnyCodable
 import Foundation
@@ -16,34 +14,34 @@ public struct Quote: Codable {
 
 public struct QuoteArgs: Codable {
   // Required
-  var buyToken: String
-  var sellToken: String
+  public var buyToken: String
+  public var sellToken: String
 
   // One of these two is required
-  var sellAmount: Double?
-  var buyAmount: Double?
+  public var sellAmount: String?
+  public var buyAmount: String?
 
   // Optional
-  var affiliateAddress: String?
-  var buyTokenPercentageFee: Double?
-  var enableSlippageProtection: Bool?
-  var excludedSources: String?
-  var feeRecipient: String?
-  var gasPrice: Double?
-  var includedSources: String?
-  var intentOnFilling: Bool?
-  var priceImpactProtectionPercentage: Double?
-  var skipValidation: Bool?
-  var slippagePercentage: Double?
-  var takerAddress: String?
+  public var affiliateAddress: String?
+  public var buyTokenPercentageFee: Double?
+  public var enableSlippageProtection: Bool?
+  public var excludedSources: String?
+  public var feeRecipient: String?
+  public var gasPrice: Double?
+  public var includedSources: String?
+  public var intentOnFilling: Bool?
+  public var priceImpactProtectionPercentage: Double?
+  public var skipValidation: Bool?
+  public var slippagePercentage: Double?
+  public var takerAddress: String?
 
-  init(buyToken: String, sellToken: String, buyAmount: Double) {
+  public init(buyToken: String, sellToken: String, buyAmount: String) {
     self.buyToken = buyToken
     self.sellToken = sellToken
     self.buyAmount = buyAmount
   }
 
-  init(buyToken: String, sellToken: String, sellAmount: Double) {
+  public init(buyToken: String, sellToken: String, sellAmount: String) {
     self.buyToken = buyToken
     self.sellToken = sellToken
     self.sellAmount = sellAmount
@@ -111,9 +109,19 @@ public class PortalSwaps {
   private var apiKey: String
   private var portal: Portal
 
-  init(apiKey: String, portal: Portal) {
+  public init(apiKey: String, portal: Portal) {
     self.apiKey = apiKey
     self.portal = portal
+  }
+  
+  public func getQuote(args: QuoteArgs, forChainId: String, completion: @escaping (Result<Quote>) -> Void) {
+    do {
+      try self.portal.api.getQuote(self.apiKey, args, forChainId) { result in
+        completion(result)
+      }
+    } catch {
+      completion(Result(error: error))
+    }
   }
 
   public func getQuote(args: QuoteArgs, completion: @escaping (Result<Quote>) -> Void) {
