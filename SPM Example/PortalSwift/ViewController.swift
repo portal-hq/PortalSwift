@@ -1554,82 +1554,81 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }) { (isCompleted) in
       toastView.removeFromSuperview()
   @IBAction func handleSolanaSendTrx() {
-      Task {
-          do {
-              self.startLoading()
-              
-              // Setup and address retrieval
-            
-              let chainId = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1" // Devnet
-              // let chainId = "solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z" // Testnet
-              guard let portal = self.portal, let fromAddress = await portal.getAddress(chainId) else {
-                  self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Portal or address not initialized/found")
-                  self.stopLoading()
-                  return
-              }
-            
-              let swaps = PortalSwaps(apiKey: "", portal: portal)
+    Task {
+      do {
+        self.startLoading()
+        
+        // Setup and address retrieval
+        let chainId = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1" // Devnet
+        // let chainId = "solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z" // Testnet
+        guard let portal = self.portal, let fromAddress = await portal.getAddress(chainId) else {
+          self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Portal or address not initialized/found")
+          self.stopLoading()
+          return
+        }
+      
+        let swaps = PortalSwaps(apiKey: "", portal: portal)
 
-              // Decode 'from' and 'to' addresses to PublicKey objects
-              guard let fromPublicKeyData = Base58.base58Decode(fromAddress), fromPublicKeyData.count == 32 else {
-                  self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Invalid 'from' address")
-                  self.stopLoading()
-                  return
-              }
-              let fromPublicKey = try PublicKey(string: fromAddress)
+        // Decode 'from' and 'to' addresses to PublicKey objects
+        guard let fromPublicKeyData = Base58.base58Decode(fromAddress), fromPublicKeyData.count == 32 else {
+          self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Invalid 'from' address")
+          self.stopLoading()
+          return
+        }
+        let fromPublicKey = try PublicKey(string: fromAddress)
 
-              let toAddress = "GPsPXxoQA51aTJJkNHtFDFYui5hN5UxcFPnheJEHa5Du"
-              guard let toPublicKeyData = Base58.base58Decode(toAddress), toPublicKeyData.count == 32 else {
-                  self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Invalid 'to' address")
-                  self.stopLoading()
-                  return
-              }
-              let toPublicKey = try PublicKey(string: toAddress)
+        let toAddress = "GPsPXxoQA51aTJJkNHtFDFYui5hN5UxcFPnheJEHa5Du"
+        guard let toPublicKeyData = Base58.base58Decode(toAddress), toPublicKeyData.count == 32 else {
+          self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Invalid 'to' address")
+          self.stopLoading()
+          return
+        }
+        let toPublicKey = try PublicKey(string: toAddress)
 
-              // Fetching recent blockhash
-              self.logger.info("ViewController.handleSolanaSendTrx() - Getting latest blockhash")
-              let blockhashResponse = try await portal.request(chainId, withMethod: .sol_getLatestBlockhash, andParams: [])
-              guard let blockhashResResult = blockhashResponse.result as? SolGetLatestBlockhashResponse else {
-                self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Error getting most recent blockhash")
-                self.stopLoading()
-                return
-              }
-              self.logger.info("ViewController.handleSolanaSendTrx() - Get most recent blockhash successful: \(blockhashResResult.result.value.blockhash)")
+        // Fetching recent blockhash
+        self.logger.info("ViewController.handleSolanaSendTrx() - Getting latest blockhash")
+        let blockhashResponse = try await portal.request(chainId, withMethod: .sol_getLatestBlockhash, andParams: [])
+        guard let blockhashResResult = blockhashResponse.result as? SolGetLatestBlockhashResponse else {
+          self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Error getting most recent blockhash")
+          self.stopLoading()
+          return
+        }
+        self.logger.info("ViewController.handleSolanaSendTrx() - Get most recent blockhash successful: \(blockhashResResult.result.value.blockhash)")
 
-              // Create the transfer instruction
-              let transferInstruction = SystemProgram.transferInstruction(
-                from: fromPublicKey,
-                to: toPublicKey,
-                lamports: 1
-              )
+        // Create the transfer instruction
+        let transferInstruction = SystemProgram.transferInstruction(
+          from: fromPublicKey,
+          to: toPublicKey,
+          lamports: 1
+        )
 
-              // Initialize the transaction
-              var transaction = Transaction(
-                instructions: [transferInstruction],
-                recentBlockhash: blockhashResResult.result.value.blockhash,
-                feePayer: fromPublicKey
-              )
+        // Initialize the transaction
+        var transaction = Transaction(
+          instructions: [transferInstruction],
+          recentBlockhash: blockhashResResult.result.value.blockhash,
+          feePayer: fromPublicKey
+        )
 
-            // Serialize the transaction
-            let serializedTransaction = try transaction.serialize()
-            
-            // Create the transaction
-            let params = [serializedTransaction]
+        // Serialize the transaction
+        let serializedTransaction = try transaction.serialize()
+        
+        // Create the transaction
+        let params = [serializedTransaction]
 
-            // Send the transaction
-            let transactionResponse = try await portal.request(chainId, withMethod: .sol_signAndSendTransaction, andParams: params)
-            guard let transactionResResult = transactionResponse.result as? String else {
-                self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Error with sendTransaction response")
-                self.stopLoading()
-                return
-            }
-            self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Successfully signed message: \(transactionResResult)")
+        // Send the transaction
+        let transactionResponse = try await portal.request(chainId, withMethod: .sol_signAndSendTransaction, andParams: params)
+        guard let transactionResResult = transactionResponse.result as? String else {
+          self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Error with sendTransaction response")
+          self.stopLoading()
+          return
+        }
+        self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Successfully signed message: \(transactionResResult)")
 
-            self.stopLoading()
-          } catch {
-              self.stopLoading()
-              self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Generic error: \(error)")
-          }
+        self.stopLoading()
+      } catch {
+        self.stopLoading()
+        self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Generic error: \(error)")
       }
+    }
   }
 }
