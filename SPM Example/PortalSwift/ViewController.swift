@@ -330,12 +330,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
     _ = try await self.getGasPrice(chainId)
 
-    return ""
-
     let transaction = [
-      "data": "",
       "from": address,
-      "gasPrice": "ethEstimate",
       "to": self.sendAddress?.text ?? "",
       "value": "0x10",
     ]
