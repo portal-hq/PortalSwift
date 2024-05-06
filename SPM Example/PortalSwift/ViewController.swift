@@ -6,12 +6,12 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
-import os.log
-import PortalSwift
-import UIKit
 import AnyCodable
 import Base58Swift
+import os.log
+import PortalSwift
 import SolanaSwift
+import UIKit
 
 struct UserResult: Codable {
   var clientApiKey: String
@@ -1557,7 +1557,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     Task {
       do {
         self.startLoading()
-        
+
         // Setup and address retrieval
         let chainId = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1" // Devnet
         // let chainId = "solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z" // Testnet
@@ -1566,8 +1566,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.stopLoading()
           return
         }
-      
-        let swaps = PortalSwaps(apiKey: "", portal: portal)
 
         // Decode 'from' and 'to' addresses to PublicKey objects
         guard let fromPublicKeyData = Base58.base58Decode(fromAddress), fromPublicKeyData.count == 32 else {
@@ -1608,12 +1606,16 @@ class ViewController: UIViewController, UITextFieldDelegate {
           recentBlockhash: blockhashResResult.result.value.blockhash,
           feePayer: fromPublicKey
         )
+        let message = try transaction.compileMessage()
 
         // Serialize the transaction
-        let serializedTransaction = try transaction.serialize()
-        
+//        let serializedTransaction = try transaction.serialize()
+
         // Create the transaction
-        let params = [serializedTransaction]
+        print(fromAddress)
+        let solParams = SolanaRequest(signatures: nil, message: Message(accountKeys: message.accountKeys, header: message.header, recentBlockhash: blockhashResResult.result.value.blockhash, instructions: message.instructions))
+
+        let params = [solParams]
 
         // Send the transaction
         let transactionResponse = try await portal.request(chainId, withMethod: .sol_signAndSendTransaction, andParams: params)
@@ -1631,4 +1633,28 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
     }
   }
+}
+
+struct Header: Codable {
+  let numRequiredSignatures: Int
+  let numReadonlySignedAccounts: Int
+  let numReadonlyUnsignedAccounts: Int
+}
+
+struct Instruction: Codable {
+  let programIdIndex: Int
+  let accounts: [Int]
+  let data: String
+}
+
+struct Message: Codable {
+  let accountKeys: [SolanaSwift.PublicKey]
+  let header: MessageHeader
+  let recentBlockhash: String
+  let instructions: [CompiledInstruction]
+}
+
+struct SolanaRequest: Codable {
+  let signatures: [String]?
+  let message: Message
 }

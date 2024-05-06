@@ -606,7 +606,7 @@ public enum PortalRequestMethod: String, Codable {
   // Web3 Methods
   case web3_clientVersion
   case web3_sha3
-  
+
   // Solana RPC Methods
   case sol_getAccountInfo = "getAccountInfo"
   case sol_getBalance = "getBalance"
@@ -661,7 +661,7 @@ public enum PortalRequestMethod: String, Codable {
   case sol_requestAirdrop = "requestAirdrop"
   case sol_sendTransaction = "sendTransaction"
   case sol_simulateTransaction = "simulateTransaction"
-  
+
   // Solana Wallet Methods
   case sol_signAndConfirmTransaction
   case sol_signAndSendTransaction
