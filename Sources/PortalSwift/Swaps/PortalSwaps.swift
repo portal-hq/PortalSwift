@@ -7,9 +7,9 @@ import AnyCodable
 import Foundation
 
 public struct Quote: Codable {
-  var allowanceTarget: String
-  var cost: Double
-  var transaction: ETHTransactionParam
+  public var allowanceTarget: String
+  public var cost: Double
+  public var transaction: ETHTransactionParam
 }
 
 public struct QuoteArgs: Codable {
