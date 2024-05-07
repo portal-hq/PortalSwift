@@ -1399,15 +1399,30 @@ class ViewController: UIViewController, UITextFieldDelegate {
           let quoteArgs = QuoteArgs(
             buyToken: "0x68194a729c2450ad26072b3d33adacbcef39d574", // USDC on Sepolia
             sellToken: "ETH",
-            sellAmount: "1"
+            sellAmount: "1000"
           )
           
           let customChainId = "eip155:11155111"
           swaps.getQuote(args: quoteArgs, forChainId: customChainId) { result in
-            let quote = result
-            print("getQuote response:", quote)
+            guard let transaction = result.data?.transaction else {
+              self.logger.error("ViewController.handleSwaps() - ❌ Unable to get quote transaction")
+              self.stopLoading()
+              return
+            }
 
-            self.logger.info("ViewController.handleSwaps() - ✅ Successfully called get sources + quotes")
+            Task {
+              do {
+                let sendTransactionResponse = try await portal.request(customChainId, withMethod: .eth_sendTransaction, andParams: [transaction])
+                print("sendTransactionResponse", sendTransactionResponse)
+                guard let transactionHash = sendTransactionResponse.result as? String else {
+                  throw PortalExampleAppError.invalidResponseTypeForRequest()
+                }
+
+                self.logger.info("ViewController.handleSwaps() - ✅ Successfully called get sources + quotes + submitted trx: \(transactionHash)")
+              } catch {
+                print("Error sending transaction", error)
+              }
+            }
           }
 
           self.stopLoading()
