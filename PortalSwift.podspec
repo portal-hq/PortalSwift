@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'PortalSwift'
-  s.version          = "3.1.2-beta"
+  s.version          = "3.1.3-beta"
   s.summary          = "Portal's native Swift implementation"
 
   s.description      = "Portal's native Swift implementation"
