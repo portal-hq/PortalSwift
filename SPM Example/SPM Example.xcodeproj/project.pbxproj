@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		47FB76622BE2F37200B04264 /* Base58Swift in Frameworks */ = {isa = PBXBuildFile; productRef = 47FB76612BE2F37200B04264 /* Base58Swift */; };
 		607FACD61AFB9204008FA782 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FACD51AFB9204008FA782 /* AppDelegate.swift */; };
 		607FACD81AFB9204008FA782 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FACD71AFB9204008FA782 /* ViewController.swift */; };
 		607FACDB1AFB9204008FA782 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 607FACD91AFB9204008FA782 /* Main.storyboard */; };
@@ -20,7 +19,8 @@
 		7EDEB9FC2AF59EC3005E8C7F /* PortalSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 7EDEB9FB2AF59EC3005E8C7F /* PortalSwift */; };
 		F915F34E2A8195E70014C25B /* ProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F915F34D2A8195E70014C25B /* ProviderTests.swift */; };
 		F95EA8282AE1440F00A31827 /* PasswordWalletTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F95EA8272AE1440F00A31827 /* PasswordWalletTests.swift */; };
-		F966E9592BE453F500143E01 /* SolanaSwift in Frameworks */ = {isa = PBXBuildFile; productRef = F966E9582BE453F500143E01 /* SolanaSwift */; };
+		F975DB8E2BEA726C00E4E5F6 /* SolanaSwift in Frameworks */ = {isa = PBXBuildFile; productRef = F975DB8D2BEA726C00E4E5F6 /* SolanaSwift */; };
+		F975DB912BEA728300E4E5F6 /* Base58Swift in Frameworks */ = {isa = PBXBuildFile; productRef = F975DB902BEA728300E4E5F6 /* Base58Swift */; };
 		F9AAB9EC2BC5999700512886 /* Web3 in Frameworks */ = {isa = PBXBuildFile; productRef = F9AAB9EB2BC5999700512886 /* Web3 */; };
 		F9AAB9EE2BC5999700512886 /* Web3ContractABI in Frameworks */ = {isa = PBXBuildFile; productRef = F9AAB9ED2BC5999700512886 /* Web3ContractABI */; };
 		F9AAB9F02BC5999700512886 /* Web3PromiseKit in Frameworks */ = {isa = PBXBuildFile; productRef = F9AAB9EF2BC5999700512886 /* Web3PromiseKit */; };
@@ -63,11 +63,11 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F966E9592BE453F500143E01 /* SolanaSwift in Frameworks */,
+				F975DB8E2BEA726C00E4E5F6 /* SolanaSwift in Frameworks */,
 				F9AAB9EE2BC5999700512886 /* Web3ContractABI in Frameworks */,
-				47FB76622BE2F37200B04264 /* Base58Swift in Frameworks */,
 				7E1A4FDB2AF46A1B00A6F7A5 /* PortalSwift in Frameworks */,
 				F9AAB9F02BC5999700512886 /* Web3PromiseKit in Frameworks */,
+				F975DB912BEA728300E4E5F6 /* Base58Swift in Frameworks */,
 				F9AAB9EC2BC5999700512886 /* Web3 in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -186,8 +186,8 @@
 				F9AAB9EB2BC5999700512886 /* Web3 */,
 				F9AAB9ED2BC5999700512886 /* Web3ContractABI */,
 				F9AAB9EF2BC5999700512886 /* Web3PromiseKit */,
-				47FB76612BE2F37200B04264 /* Base58Swift */,
-				F966E9582BE453F500143E01 /* SolanaSwift */,
+				F975DB8D2BEA726C00E4E5F6 /* SolanaSwift */,
+				F975DB902BEA728300E4E5F6 /* Base58Swift */,
 			);
 			productName = PortalSwift;
 			productReference = 607FACD01AFB9204008FA782 /* SPM Example.app */;
@@ -250,8 +250,8 @@
 			packageReferences = (
 				F9AAB9EA2BC5999700512886 /* XCRemoteSwiftPackageReference "Web3" */,
 				7E4579F12BC85D6700D71835 /* XCLocalSwiftPackageReference ".." */,
-				47FB76602BE2F37200B04264 /* XCRemoteSwiftPackageReference "Base58Swift" */,
-				F966E9572BE453F500143E01 /* XCRemoteSwiftPackageReference "solana-swift" */,
+				F975DB8C2BEA726C00E4E5F6 /* XCRemoteSwiftPackageReference "solana-swift" */,
+				F975DB8F2BEA728300E4E5F6 /* XCRemoteSwiftPackageReference "Base58Swift" */,
 			);
 			productRefGroup = 607FACD11AFB9204008FA782 /* Products */;
 			projectDirPath = "";
@@ -595,20 +595,20 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		47FB76602BE2F37200B04264 /* XCRemoteSwiftPackageReference "Base58Swift" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/keefertaylor/Base58Swift";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.1.14;
-			};
-		};
-		F966E9572BE453F500143E01 /* XCRemoteSwiftPackageReference "solana-swift" */ = {
+		F975DB8C2BEA726C00E4E5F6 /* XCRemoteSwiftPackageReference "solana-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/p2p-org/solana-swift";
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 5.0.0;
+			};
+		};
+		F975DB8F2BEA728300E4E5F6 /* XCRemoteSwiftPackageReference "Base58Swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/keefertaylor/Base58Swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.1.14;
 			};
 		};
 		F9AAB9EA2BC5999700512886 /* XCRemoteSwiftPackageReference "Web3" */ = {
@@ -622,11 +622,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		47FB76612BE2F37200B04264 /* Base58Swift */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 47FB76602BE2F37200B04264 /* XCRemoteSwiftPackageReference "Base58Swift" */;
-			productName = Base58Swift;
-		};
 		7E1A4FDA2AF46A1B00A6F7A5 /* PortalSwift */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PortalSwift;
@@ -635,10 +630,15 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = PortalSwift;
 		};
-		F966E9582BE453F500143E01 /* SolanaSwift */ = {
+		F975DB8D2BEA726C00E4E5F6 /* SolanaSwift */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = F966E9572BE453F500143E01 /* XCRemoteSwiftPackageReference "solana-swift" */;
+			package = F975DB8C2BEA726C00E4E5F6 /* XCRemoteSwiftPackageReference "solana-swift" */;
 			productName = SolanaSwift;
+		};
+		F975DB902BEA728300E4E5F6 /* Base58Swift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F975DB8F2BEA728300E4E5F6 /* XCRemoteSwiftPackageReference "Base58Swift" */;
+			productName = Base58Swift;
 		};
 		F9AAB9EB2BC5999700512886 /* Web3 */ = {
 			isa = XCSwiftPackageProductDependency;

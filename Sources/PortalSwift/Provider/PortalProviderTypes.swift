@@ -1,4 +1,5 @@
 import AnyCodable
+import Foundation
 
 public struct BlockData: Codable {
   public var number: String
@@ -429,4 +430,62 @@ public struct LogsResponse: Codable {
   public var id: Int?
   public var result: [Log]?
   public var error: PortalProviderRpcResponseError?
+}
+
+public struct Header: Codable {
+  public let numRequiredSignatures: Int
+  public let numReadonlySignedAccounts: Int
+  public let numReadonlyUnsignedAccounts: Int
+}
+
+public struct Instruction: Codable {
+  public let programIdIndex: Int
+  public let accounts: [Int]
+  public let data: String
+
+  public init(from compiledInstruction: PortalSwift.CompiledInstruction) {
+    // Convert UInt8 to Int for programIdIndex
+    self.programIdIndex = Int(compiledInstruction.programIdIndex)
+
+    // Use the `accounts` computed property directly
+    self.accounts = compiledInstruction.accounts
+
+    self.data = PortalSwift.Base58.base58Encode(compiledInstruction.data)
+  }
+}
+
+public struct Message: Codable {
+  public let accountKeys: [String]
+  public let header: Header
+  public let recentBlockhash: String
+  public let instructions: [Instruction]
+}
+
+public struct SolanaRequest: Codable {
+  public let signatures: [String]?
+  public let message: Message
+}
+
+public struct CompiledInstruction: Equatable {
+  public let programIdIndex: UInt8
+  public let keyIndicesCount: [UInt8]
+  public let keyIndices: [UInt8]
+  public let dataLength: [UInt8]
+  public let data: [UInt8]
+
+  public var accounts: [Int] {
+    self.keyIndices.map { x in Int(x) }
+  }
+
+  public var programIdIndexValue: Int {
+    Int(self.programIdIndex)
+  }
+
+  public var serializedData: Data {
+    Data([self.programIdIndex]
+      + self.keyIndicesCount
+      + self.keyIndices
+      + self.dataLength
+      + self.data)
+  }
 }

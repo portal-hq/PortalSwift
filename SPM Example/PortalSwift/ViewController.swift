@@ -1613,7 +1613,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
         // Create the transaction
         print(fromAddress)
-        let solParams = SolanaRequest(signatures: nil, message: Message(accountKeys: message.accountKeys, header: message.header, recentBlockhash: blockhashResResult.result.value.blockhash, instructions: message.instructions))
+
+        let solParams = SolanaRequest(signatures: nil, message: PortalSwift.Message(accountKeys: message.accountKeys.map { $0.base58EncodedString }, header: PortalSwift.Header(numRequiredSignatures: message.header.numRequiredSignatures, numReadonlySignedAccounts: message.header.numReadonlySignedAccounts, numReadonlyUnsignedAccounts: message.header.numReadonlyUnsignedAccounts), recentBlockhash: blockhashResResult.result.value.blockhash, instructions: message.instructions.map { PortalSwift.Instruction(from: $0) }))
 
         let params = [solParams]
 
@@ -1633,28 +1634,4 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
     }
   }
-}
-
-struct Header: Codable {
-  let numRequiredSignatures: Int
-  let numReadonlySignedAccounts: Int
-  let numReadonlyUnsignedAccounts: Int
-}
-
-struct Instruction: Codable {
-  let programIdIndex: Int
-  let accounts: [Int]
-  let data: String
-}
-
-struct Message: Codable {
-  let accountKeys: [SolanaSwift.PublicKey]
-  let header: MessageHeader
-  let recentBlockhash: String
-  let instructions: [CompiledInstruction]
-}
-
-struct SolanaRequest: Codable {
-  let signatures: [String]?
-  let message: Message
 }
