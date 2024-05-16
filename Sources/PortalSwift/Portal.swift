@@ -9,6 +9,7 @@ import AnyCodable
 import AuthenticationServices
 import Foundation
 import Mpc
+import SolanaSwift
 
 /// The main Portal class.
 public class Portal {
@@ -832,6 +833,152 @@ public class Portal {
       method: method,
       params: encodedParams
     ), completion: completion)
+  }
+
+  // Solana Methods
+  public func sendSol(_ lamports: UInt64, to: String, withChainId chainId: String) async throws -> String {
+    guard let fromAddress = try await self.addresses[.solana] else {
+      // Add error
+      return ""
+    }
+    let fromPublicKey = try SolanaSwift.PublicKey(string: fromAddress)
+    let toPublicKey = try SolanaSwift.PublicKey(string: to)
+
+    // Create the transfer instruction
+    let transferInstruction = SystemProgram.transferInstruction(
+      from: fromPublicKey,
+      to: toPublicKey,
+      lamports: lamports
+    )
+
+    // Get the most recent blockhash
+    let blockhashResponse = try await request(chainId, withMethod: .sol_getLatestBlockhash, andParams: [])
+    guard let blockhashResResult = blockhashResponse.result as? SolGetLatestBlockhashResponse else {
+      // Throw an error here
+      return ""
+    }
+
+    // Initialize the transaction
+    let transaction = SolanaSwift.Transaction(
+      instructions: [transferInstruction],
+      recentBlockhash: blockhashResResult.result.value.blockhash,
+      feePayer: fromPublicKey
+    )
+
+    let message = try transaction.compileMessage()
+
+    let solanaRequest = self.createSolanaRequest(solanaMessage: message)
+
+    let txResponse = try await request(chainId, withMethod: .sol_signAndSendTransaction, andParams: [solanaRequest])
+
+    guard let txHash = txResponse.result as? String else {
+      // throw error
+      return ""
+    }
+    return txHash
+  }
+
+  public func createSolanaRequest(solanaMessage message: Message) -> SolanaRequest {
+    let solanaHeader = SolanaHeader(numRequiredSignatures: message.header.numRequiredSignatures, numReadonlySignedAccounts: message.header.numReadonlySignedAccounts, numReadonlyUnsignedAccounts: message.header.numReadonlyUnsignedAccounts)
+
+    let solanaInstructions = message.instructions.map { SolanaInstruction(from: $0) }
+    let accountKeys = message.accountKeys.map { $0.base58EncodedString }
+
+    return SolanaRequest(signatures: nil, message: SolanaMessage(accountKeys: accountKeys, header: solanaHeader, recentBlockhash: message.recentBlockhash, instructions: solanaInstructions))
+  }
+
+  public func sendUSDC(_ lamports: UInt64, to: String, withChainId chainId: String) async throws -> String {
+    guard let fromAddress = try await self.addresses[.solana] else {
+      // Add error
+      return ""
+    }
+    let fromPublicKey = try SolanaSwift.PublicKey(string: fromAddress)
+    let toPublicKey = try SolanaSwift.PublicKey(string: to)
+
+    var usdcMintAddress: String
+    switch chainId {
+    case "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp":
+      print("Mainnet")
+      // Add any additional code for this case
+      usdcMintAddress = "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"
+    case "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1":
+      print("Devnet")
+      // Add any additional code for this case
+      usdcMintAddress = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU"
+
+    case "solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z":
+      print("Testnet")
+      // Add any additional code for this case
+      usdcMintAddress = "FCLD47HdbZU1ovtpJAV9TNDrd6sgNLYPGWftS67kH6e8"
+    default:
+      print("No matching chainId found")
+      return ""
+      // Handle cases where none of the specified chainIds match
+    }
+
+    let usdcMintAddressPublicKey = try SolanaSwift.PublicKey(string: usdcMintAddress)
+
+    let transferInstruction = TokenProgram.transferCheckedInstruction(source: usdcMintAddressPublicKey, mint: usdcMintAddressPublicKey, destination: toPublicKey, owner: fromPublicKey, multiSigners: [], amount: lamports, decimals: 6)
+
+    print("Transfer Instruction: ", transferInstruction)
+
+    // Get the most recent blockhash
+    let blockhashResponse = try await request(chainId, withMethod: .sol_getLatestBlockhash, andParams: [])
+    guard let blockhashResResult = blockhashResponse.result as? SolGetLatestBlockhashResponse else {
+      // Throw an error here
+      return ""
+    }
+
+    let transaction = SolanaSwift.Transaction(
+      instructions: [transferInstruction],
+      recentBlockhash: blockhashResResult.result.value.blockhash,
+      feePayer: fromPublicKey
+    )
+
+    let message = try transaction.compileMessage()
+    print("Transaction Message: ", message)
+    let solanaRequest = self.createSolanaRequest(solanaMessage: message)
+
+    let txResponse = try await request(chainId, withMethod: .sol_signAndSendTransaction, andParams: [solanaRequest])
+
+    guard let txHash = txResponse.result as? String else {
+      // throw error
+      return ""
+    }
+    return txHash
+  }
+
+  public struct SolanaRequest: Codable {
+    public var signatures: [String]?
+    public var message: SolanaMessage
+  }
+
+  // Define the structure for the header of the message
+  public struct SolanaHeader: Codable {
+    public var numRequiredSignatures: Int
+    public var numReadonlySignedAccounts: Int
+    public var numReadonlyUnsignedAccounts: Int
+  }
+
+  // Define the structure for an instruction within the message
+  public struct SolanaInstruction: Codable {
+    public var programIdIndex: UInt8
+    public var accounts: [Int]
+    public var data: String
+
+    public init(from instruction: CompiledInstruction) {
+      self.accounts = instruction.accounts
+      self.data = Base58.base58Encode(instruction.data)
+      self.programIdIndex = instruction.programIdIndex
+    }
+  }
+
+  // Define the main structure of the message
+  public struct SolanaMessage: Codable {
+    public var accountKeys: [String]
+    public var header: SolanaHeader
+    public var recentBlockhash: String
+    public var instructions: [SolanaInstruction]
   }
 
   /// Set the chainId on the instance and update MPC and Provider chainId

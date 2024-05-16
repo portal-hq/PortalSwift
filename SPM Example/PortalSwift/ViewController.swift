@@ -7,10 +7,8 @@
 //
 
 import AnyCodable
-import Base58Swift
 import os.log
 import PortalSwift
-import SolanaSwift
 import UIKit
 
 struct UserResult: Codable {
@@ -1567,65 +1565,82 @@ class ViewController: UIViewController, UITextFieldDelegate {
           return
         }
 
-        // Decode 'from' and 'to' addresses to PublicKey objects
-        guard let fromPublicKeyData = Base58.base58Decode(fromAddress), fromPublicKeyData.count == 32 else {
-          self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Invalid 'from' address")
-          self.stopLoading()
-          return
-        }
-        let fromPublicKey = try PublicKey(string: fromAddress)
+//        // Decode 'from' and 'to' addresses to PublicKey objects
+//        guard let fromPublicKeyData = PortalSwift.Base58.base58Decode(fromAddress), fromPublicKeyData.count == 32 else {
+//          self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Invalid 'from' address")
+//          self.stopLoading()
+//          return
+//        }
+//        let fromPublicKey = try PublicKey(string: fromAddress)
+//
+//        let toAddress = "GPsPXxoQA51aTJJkNHtFDFYui5hN5UxcFPnheJEHa5Du"
+//        guard let toPublicKeyData = PortalSwift.Base58.base58Decode(toAddress), toPublicKeyData.count == 32 else {
+//          self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Invalid 'to' address")
+//          self.stopLoading()
+//          return
+//        }
+//        let toPublicKey = try PortalSwift.SolanaSwift.PublicKey(string: toAddress)
 
-        let toAddress = "GPsPXxoQA51aTJJkNHtFDFYui5hN5UxcFPnheJEHa5Du"
-        guard let toPublicKeyData = Base58.base58Decode(toAddress), toPublicKeyData.count == 32 else {
-          self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Invalid 'to' address")
-          self.stopLoading()
-          return
-        }
-        let toPublicKey = try PublicKey(string: toAddress)
+//        // Fetching recent blockhash
+//        self.logger.info("ViewController.handleSolanaSendTrx() - Getting latest blockhash")
+//        let blockhashResponse = try await portal.request(chainId, withMethod: .sol_getLatestBlockhash, andParams: [])
+//        guard let blockhashResResult = blockhashResponse.result as? SolGetLatestBlockhashResponse else {
+//          self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Error getting most recent blockhash")
+//          self.stopLoading()
+//          return
+//        }
+//        self.logger.info("ViewController.handleSolanaSendTrx() - Get most recent blockhash successful: \(blockhashResResult.result.value.blockhash)")
+//
+//        // Create the transfer instruction
+//        let transferInstruction = SystemProgram.transferInstruction(
+//          from: fromPublicKey,
+//          to: toPublicKey,
+//          lamports: 1
+//        )
+//
+//        // Initialize the transaction
+//        var transaction = Transaction(
+//
+//          instructions: [transferInstruction],
+//          recentBlockhash: blockhashResResult.result.value.blockhash,
+//          feePayer: fromPublicKey
+//        )
+//        print("JSON String of transaction:", transaction.jsonString)
+//
+//        let message = try transaction.compileMessage()
 
-        // Fetching recent blockhash
-        self.logger.info("ViewController.handleSolanaSendTrx() - Getting latest blockhash")
-        let blockhashResponse = try await portal.request(chainId, withMethod: .sol_getLatestBlockhash, andParams: [])
-        guard let blockhashResResult = blockhashResponse.result as? SolGetLatestBlockhashResponse else {
-          self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Error getting most recent blockhash")
-          self.stopLoading()
-          return
-        }
-        self.logger.info("ViewController.handleSolanaSendTrx() - Get most recent blockhash successful: \(blockhashResResult.result.value.blockhash)")
-
-        // Create the transfer instruction
-        let transferInstruction = SystemProgram.transferInstruction(
-          from: fromPublicKey,
-          to: toPublicKey,
-          lamports: 1
-        )
-
-        // Initialize the transaction
-        var transaction = Transaction(
-          instructions: [transferInstruction],
-          recentBlockhash: blockhashResResult.result.value.blockhash,
-          feePayer: fromPublicKey
-        )
-        let message = try transaction.compileMessage()
+//        print("Solana Message: \n", message)
+//        print("Solana message.accountKeys", message.accountKeys)
+//        print("Solana message.header", message.header)
+//        print("Solana message.instructions", message.instructions)
+//        print("Solana message.recentBlockhash", message.recentBlockhash)
 
         // Serialize the transaction
-//        let serializedTransaction = try transaction.serialize()
+//        let serializedMessage = try message.serialize()
+//        print("serialized message printed: ", serializedMessage)
+//        print("Serialized message as string: ", String(data: serializedMessage, encoding: .utf8))
 
+        let txHash = try await portal.sendSol(1, to: "GPsPXxoQA51aTJJkNHtFDFYui5hN5UxcFPnheJEHa5Du", withChainId: chainId)
+
+        let txHashUsdc = try await portal.sendUSDC(1_000_000, to: "GPsPXxoQA51aTJJkNHtFDFYui5hN5UxcFPnheJEHa5Du", withChainId: chainId)
+//        let solParams = SolanaRequest(signatures: nil, message: serializedMessage)
         // Create the transaction
-        print(fromAddress)
+//        print(fromAddress)
+//        let solanaHeader = Header(numRequiredSignatures: message.header.numRequiredSignatures, numReadonlySignedAccounts: message.header.numReadonlySignedAccounts, numReadonlyUnsignedAccounts: message.header.numReadonlyUnsignedAccounts)
 
-        let solParams = SolanaRequest(signatures: nil, message: PortalSwift.Message(accountKeys: message.accountKeys.map { $0.base58EncodedString }, header: PortalSwift.Header(numRequiredSignatures: message.header.numRequiredSignatures, numReadonlySignedAccounts: message.header.numReadonlySignedAccounts, numReadonlyUnsignedAccounts: message.header.numReadonlyUnsignedAccounts), recentBlockhash: blockhashResResult.result.value.blockhash, instructions: message.instructions.map { PortalSwift.Instruction(from: $0) }))
-
-        let params = [solParams]
-
-        // Send the transaction
-        let transactionResponse = try await portal.request(chainId, withMethod: .sol_signAndSendTransaction, andParams: params)
-        guard let transactionResResult = transactionResponse.result as? String else {
-          self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Error with sendTransaction response")
-          self.stopLoading()
-          return
-        }
-        self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Successfully signed message: \(transactionResResult)")
+//        let solanaInstructions = message.instructions.map { PortalSwift.Instruction(from: $0) } */
+//        let solParams = SolanaRequest(signatures: nil, message: PortalSwift.Message(accountKeys: message.accountKeys.map { $0.base58EncodedString }, header: solanaHeader, recentBlockhash: blockhashResResult.result.value.blockhash, instructions: ))
+//
+//        let params = [solParams]
+//
+//        // Send the transaction
+//        let transactionResponse = try await portal.request(chainId, withMethod: .sol_signAndSendTransaction, andParams: params)
+//        guard let transactionResResult = transactionResponse.result as? String else {
+//          self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Error with sendTransaction response")
+//          self.stopLoading()
+//          return
+//        }
+        self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Successfully signed message: SOL: \(txHash) USDC: \(txHashUsdc)")
 
         self.stopLoading()
       } catch {
@@ -1633,5 +1648,15 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Generic error: \(error)")
       }
     }
+  }
+}
+
+public struct SolanaRequest: Encodable {
+  public let signatures: [String]?
+  public let message: Data
+
+  public init(signatures: [String]?, message: Data) {
+    self.signatures = signatures
+    self.message = message
   }
 }

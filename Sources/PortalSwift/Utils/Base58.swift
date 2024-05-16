@@ -47,6 +47,10 @@ public enum Base58 {
     return Array(decodedBytes)
   }
 
+  public static func encode(_ bytes: [UInt8]) -> String {
+    return self.base58Encode(bytes)
+  }
+
   /// Encode the given bytes to a Base58 encoded string.
   /// - Parameter bytes: The bytes to encode.
   /// - Returns: A base58 encoded string representing the given bytes, or nil if encoding failed.
@@ -67,6 +71,10 @@ public enum Base58 {
     // Force unwrap as the given alphabet will always decode to UTF8.
     return String(bytes: answer, encoding: String.Encoding.utf8)!
     // swiftlint:enable force_unwrapping
+  }
+
+  public static func decode(_ input: String) -> [UInt8]? {
+    return self.base58Decode(input)
   }
 
   /// Decode the given base58 encoded string to bytes.
