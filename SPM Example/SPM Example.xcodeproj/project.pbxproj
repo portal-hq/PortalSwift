@@ -13,15 +13,15 @@
 		607FACDD1AFB9204008FA782 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 607FACDC1AFB9204008FA782 /* Images.xcassets */; };
 		607FACE01AFB9204008FA782 /* LaunchScreen.xib in Resources */ = {isa = PBXBuildFile; fileRef = 607FACDE1AFB9204008FA782 /* LaunchScreen.xib */; };
 		607FACEC1AFB9204008FA782 /* WalletTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FACEB1AFB9204008FA782 /* WalletTests.swift */; };
-		7E1A4FDB2AF46A1B00A6F7A5 /* PortalSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 7E1A4FDA2AF46A1B00A6F7A5 /* PortalSwift */; };
 		7E4B874E2A58BFFB003A8DB5 /* WebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4B874D2A58BFFB003A8DB5 /* WebViewController.swift */; };
 		7E7F4C002A002D7F00756B6A /* ConnectViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E7F4BFF2A002D7F00756B6A /* ConnectViewController.swift */; };
 		7EDEB9FC2AF59EC3005E8C7F /* PortalSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 7EDEB9FB2AF59EC3005E8C7F /* PortalSwift */; };
 		F915F34E2A8195E70014C25B /* ProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F915F34D2A8195E70014C25B /* ProviderTests.swift */; };
 		F95EA8282AE1440F00A31827 /* PasswordWalletTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F95EA8272AE1440F00A31827 /* PasswordWalletTests.swift */; };
-		F9AAB9EC2BC5999700512886 /* Web3 in Frameworks */ = {isa = PBXBuildFile; productRef = F9AAB9EB2BC5999700512886 /* Web3 */; };
-		F9AAB9EE2BC5999700512886 /* Web3ContractABI in Frameworks */ = {isa = PBXBuildFile; productRef = F9AAB9ED2BC5999700512886 /* Web3ContractABI */; };
-		F9AAB9F02BC5999700512886 /* Web3PromiseKit in Frameworks */ = {isa = PBXBuildFile; productRef = F9AAB9EF2BC5999700512886 /* Web3PromiseKit */; };
+		F975DB932BEBBED500E4E5F6 /* PortalSwift in Frameworks */ = {isa = PBXBuildFile; productRef = F975DB922BEBBED500E4E5F6 /* PortalSwift */; };
+		F9BF35A22BF8115000BF2862 /* Web3 in Frameworks */ = {isa = PBXBuildFile; productRef = F9BF35A12BF8115000BF2862 /* Web3 */; };
+		F9BF35A42BF8115000BF2862 /* Web3ContractABI in Frameworks */ = {isa = PBXBuildFile; productRef = F9BF35A32BF8115000BF2862 /* Web3ContractABI */; };
+		F9BF35A62BF8115000BF2862 /* Web3PromiseKit in Frameworks */ = {isa = PBXBuildFile; productRef = F9BF35A52BF8115000BF2862 /* Web3PromiseKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -61,10 +61,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F9AAB9EE2BC5999700512886 /* Web3ContractABI in Frameworks */,
-				7E1A4FDB2AF46A1B00A6F7A5 /* PortalSwift in Frameworks */,
-				F9AAB9F02BC5999700512886 /* Web3PromiseKit in Frameworks */,
-				F9AAB9EC2BC5999700512886 /* Web3 in Frameworks */,
+				F9BF35A42BF8115000BF2862 /* Web3ContractABI in Frameworks */,
+				F975DB932BEBBED500E4E5F6 /* PortalSwift in Frameworks */,
+				F9BF35A62BF8115000BF2862 /* Web3PromiseKit in Frameworks */,
+				F9BF35A22BF8115000BF2862 /* Web3 in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -178,10 +178,10 @@
 			);
 			name = "SPM Example";
 			packageProductDependencies = (
-				7E1A4FDA2AF46A1B00A6F7A5 /* PortalSwift */,
-				F9AAB9EB2BC5999700512886 /* Web3 */,
-				F9AAB9ED2BC5999700512886 /* Web3ContractABI */,
-				F9AAB9EF2BC5999700512886 /* Web3PromiseKit */,
+				F975DB922BEBBED500E4E5F6 /* PortalSwift */,
+				F9BF35A12BF8115000BF2862 /* Web3 */,
+				F9BF35A32BF8115000BF2862 /* Web3ContractABI */,
+				F9BF35A52BF8115000BF2862 /* Web3PromiseKit */,
 			);
 			productName = PortalSwift;
 			productReference = 607FACD01AFB9204008FA782 /* SPM Example.app */;
@@ -242,8 +242,8 @@
 			);
 			mainGroup = 607FACC71AFB9204008FA782;
 			packageReferences = (
-				F9AAB9EA2BC5999700512886 /* XCRemoteSwiftPackageReference "Web3" */,
 				7E4579F12BC85D6700D71835 /* XCLocalSwiftPackageReference ".." */,
+				F9BF35A02BF8115000BF2862 /* XCRemoteSwiftPackageReference "Web3" */,
 			);
 			productRefGroup = 607FACD11AFB9204008FA782 /* Products */;
 			projectDirPath = "";
@@ -452,7 +452,7 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_OPTIMIZATION_LEVEL = z;
 				INFOPLIST_FILE = PortalSwift/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -476,7 +476,7 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_OPTIMIZATION_LEVEL = z;
 				INFOPLIST_FILE = PortalSwift/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -587,38 +587,38 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		F9AAB9EA2BC5999700512886 /* XCRemoteSwiftPackageReference "Web3" */ = {
+		F9BF35A02BF8115000BF2862 /* XCRemoteSwiftPackageReference "Web3" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/Boilertalk/Web3.swift";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 0.8.7;
+				minimumVersion = 0.8.8;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		7E1A4FDA2AF46A1B00A6F7A5 /* PortalSwift */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = PortalSwift;
-		};
 		7EDEB9FB2AF59EC3005E8C7F /* PortalSwift */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PortalSwift;
 		};
-		F9AAB9EB2BC5999700512886 /* Web3 */ = {
+		F975DB922BEBBED500E4E5F6 /* PortalSwift */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = F9AAB9EA2BC5999700512886 /* XCRemoteSwiftPackageReference "Web3" */;
+			productName = PortalSwift;
+		};
+		F9BF35A12BF8115000BF2862 /* Web3 */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F9BF35A02BF8115000BF2862 /* XCRemoteSwiftPackageReference "Web3" */;
 			productName = Web3;
 		};
-		F9AAB9ED2BC5999700512886 /* Web3ContractABI */ = {
+		F9BF35A32BF8115000BF2862 /* Web3ContractABI */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = F9AAB9EA2BC5999700512886 /* XCRemoteSwiftPackageReference "Web3" */;
+			package = F9BF35A02BF8115000BF2862 /* XCRemoteSwiftPackageReference "Web3" */;
 			productName = Web3ContractABI;
 		};
-		F9AAB9EF2BC5999700512886 /* Web3PromiseKit */ = {
+		F9BF35A52BF8115000BF2862 /* Web3PromiseKit */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = F9AAB9EA2BC5999700512886 /* XCRemoteSwiftPackageReference "Web3" */;
+			package = F9BF35A02BF8115000BF2862 /* XCRemoteSwiftPackageReference "Web3" */;
 			productName = Web3PromiseKit;
 		};
 /* End XCSwiftPackageProductDependency section */

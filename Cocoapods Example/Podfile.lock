@@ -6,6 +6,7 @@ PODS:
   - AppAuth/Core (1.7.5)
   - AppAuth/ExternalUserAgent (1.7.5):
     - AppAuth/Core
+  - BigInt (5.2.0)
   - FBSnapshotTestCase (2.1.4):
     - FBSnapshotTestCase/SwiftSupport (= 2.1.4)
   - FBSnapshotTestCase/Core (2.1.4)
@@ -19,15 +20,26 @@ PODS:
     - AppAuth/Core (~> 1.7)
     - GTMSessionFetcher/Core (< 4.0, >= 3.3)
   - GTMSessionFetcher/Core (3.4.1)
-  - PortalSwift (3.1.0-beta):
+  - PortalSwift (3.1.3-beta):
     - AnyCodable-FlightSchool (~> 0.6.7)
+    - BigInt (~> 5.0)
     - GoogleSignIn (~> 7.1.0)
+    - SolanaSwift (~> 5.0)
     - Starscream (~> 4.0.7)
-  - PortalSwift/Tests (3.1.0-beta):
+  - PortalSwift/Tests (3.1.3-beta):
     - AnyCodable-FlightSchool (~> 0.6.7)
+    - BigInt (~> 5.0)
     - GoogleSignIn (~> 7.1.0)
+    - SolanaSwift (~> 5.0)
     - Starscream (~> 4.0.7)
+  - secp256k1.swift (0.1.4)
+  - SolanaSwift (5.0.0):
+    - secp256k1.swift (~> 0.1.4)
+    - Task_retrying (~> 2.0.0)
+    - TweetNacl (~> 1.0.2)
   - Starscream (4.0.8)
+  - Task_retrying (2.0.0)
+  - TweetNacl (1.0.2)
 
 DEPENDENCIES:
   - AnyCodable-FlightSchool (~> 0.6.7)
@@ -40,11 +52,16 @@ SPEC REPOS:
   trunk:
     - AnyCodable-FlightSchool
     - AppAuth
+    - BigInt
     - FBSnapshotTestCase
     - GoogleSignIn
     - GTMAppAuth
     - GTMSessionFetcher
+    - secp256k1.swift
+    - SolanaSwift
     - Starscream
+    - Task_retrying
+    - TweetNacl
 
 EXTERNAL SOURCES:
   PortalSwift:
@@ -53,12 +70,17 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   AnyCodable-FlightSchool: 261cbe76757802b17d471b9059b21e6fa5edf57b
   AppAuth: 501c04eda8a8d11f179dbe8637b7a91bb7e5d2fa
+  BigInt: f668a80089607f521586bbe29513d708491ef2f7
   FBSnapshotTestCase: 094f9f314decbabe373b87cc339bea235a63e07a
   GoogleSignIn: d4281ab6cf21542b1cfaff85c191f230b399d2db
   GTMAppAuth: f69bd07d68cd3b766125f7e072c45d7340dea0de
   GTMSessionFetcher: 8000756fc1c19d2e5697b90311f7832d2e33f6cd
-  PortalSwift: 418080f3f88dbc9584cc3a55b45e33377b4ef2e5
+  PortalSwift: d969f3a44440cb7470651e4765483c24f8fe50dd
+  secp256k1.swift: a7e7a214f6db6ce5db32cc6b2b45e5c4dd633634
+  SolanaSwift: 2f0bc365d7bd3dbc15aba806837eb63522c12e5e
   Starscream: 19b5533ddb925208db698f0ac508a100b884a1b9
+  Task_retrying: e7de6ee0c52218fbc3f34491ba84d62d43b2e0f8
+  TweetNacl: 3abf4d1d2082b0114e7a67410e300892448951e6
 
 PODFILE CHECKSUM: 99229afc420496158d349102ae1ae382bfb25002
 
