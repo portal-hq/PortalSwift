@@ -16,8 +16,8 @@ jobs:
       PROVISIONING_PROFILE: io.portalhq.ios.SPM-Example1
       BUNDLE_ID: io.portalhq.ios.SPM-Example
       IPA_NAME: SPMExample.ipa
-      API_URL: https://11mi38nzh1.execute-api.us-east-2.amazonaws.com/v1/uploadFile
-      API_KEY: ***REMOVED***
+      MUUKTEST_API_URL: https://11mi38nzh1.execute-api.us-east-2.amazonaws.com/v1/uploadFile
+      MUUKTEST_API_KEY: ***REMOVED***
 
     steps:
     - name: Checkout repository
@@ -52,16 +52,16 @@ jobs:
     - name: Get upload URL
       id: get_upload_url
       run: |
-        response=$(curl -H --location '${{ env.API_URL }}' \
-          --header 'x-api-key: ${{ env.API_KEY }}' \
+        response=$(curl -H --location '${{ env.MUUKTEST_API_URL }}' \
+          --header 'x-api-key: ${{ env.MUUKTEST_API_KEY }}' \
           --header 'Content-Type:application/json' \
           --data '{"filename": "'${{ env.IPA_NAME }}'"}')
-        echo "response=$response" >> $GITHUB_ENV
         uploadURL=$(echo "$response" | grep -o '"uploadURL": *"[^"]*"' | sed 's/"uploadURL": "//' | sed 's/"$//')
         echo "uploadURL=$uploadURL" >> $GITHUB_ENV
+        echo "::set-output name=uploadURL::$uploadURL"
 
     - name: Upload the app
       run: |
-        curl --location --request PUT ${{ env.uploadURL }} \
+        curl --location --request PUT ${{ steps.get_upload_url.outputs.uploadURL }} \
           --header 'Content-Type: application/octet-stream' \
           --data-binary '@${{ env.EXPORT_PATH }}/SPMExample.ipa'
