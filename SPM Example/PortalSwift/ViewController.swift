@@ -6,6 +6,7 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
+import AnyCodable
 import os.log
 import PortalSwift
 import UIKit
@@ -266,7 +267,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
     print("Gas price response: \(gasPriceResponse)")
 
-//    return gasPriceResponse.result
+    //    return gasPriceResponse.result
   }
 
   public func getNFTs(_ chainId: String) async throws -> [FetchedNFT] {
@@ -704,6 +705,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
           "eip155:137": "https://polygon-mainnet.g.alchemy.com/v2/\(config.alchemyApiKey)",
           "eip155:80001": "https://polygon-mumbai.g.alchemy.com/v2/\(config.alchemyApiKey)",
           "eip155:11155111": "https://eth-sepolia.g.alchemy.com/v2/\(config.alchemyApiKey)",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": "https://solana-mainnet.g.alchemy.com/v2/\(config.alchemyApiKey)",
+          "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": "https://solana-devnet.g.alchemy.com/v2/\(config.alchemyApiKey)",
         ],
         autoApprove: false,
         featureFlags: FeatureFlags(optimized: true, isMultiBackupEnabled: true),
@@ -863,10 +866,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.testNFTsTrxsBalancesSimTrxButton?.isEnabled = walletExists && isWalletOnDevice
           self.testNFTsTrxsBalancesSimTrxButton?.isHidden = !walletExists || !isWalletOnDevice
 
-          //Test Simulate Transactions functions
+          // Test Simulate Transactions functions
           self.testSimulateTransactionButton?.isEnabled = walletExists && isWalletOnDevice
           self.testSimulateTransactionButton?.isHidden = !walletExists || !isWalletOnDevice
-          
+
           // Text components
           self.addressInformation?.isHidden = !walletExists || !isWalletOnDevice
           self.ethBalanceInformation?.isHidden = !walletExists || !isWalletOnDevice
@@ -1297,12 +1300,12 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
     }
   }
-  
+
   @IBAction func testSimulateTxnPressed(_: UIButton!) {
     Task {
       let chainId = "eip155:11155111"
       var toAddress = self.sendAddress?.text ?? "0xdFd8302f44727A6348F702fF7B594f127dE3A902"
-      if toAddress.isEmpty{
+      if toAddress.isEmpty {
         toAddress = "0xdFd8302f44727A6348F702fF7B594f127dE3A902"
       }
       print("to address \(toAddress)")
@@ -1440,7 +1443,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
     }
   }
-  
+
   func handleSwaps() {
     do {
       self.startLoading()
@@ -1449,7 +1452,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.logger.error("ViewController.handleSwaps() - ❌ Portal not initialized")
         throw PortalExampleAppError.portalNotInitialized()
       }
-      
+
       let swapsApiKey = ""
       if swapsApiKey == "" {
         self.logger.error("ViewController.handleSwaps() - ❌ Portal not initialized")
@@ -1457,8 +1460,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
 
       let swaps = PortalSwaps(apiKey: swapsApiKey, portal: portal)
-      
-      swaps.getSources() { result in
+
+      swaps.getSources { result in
         let source = result
         print("getSources response:", source)
 
@@ -1469,7 +1472,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
             sellToken: "ETH",
             sellAmount: "1000"
           )
-          
+
           let customChainId = "eip155:11155111"
           swaps.getQuote(args: quoteArgs, forChainId: customChainId) { result in
             guard let transaction = result.data?.transaction else {
@@ -1501,14 +1504,14 @@ class ViewController: UIViewController, UITextFieldDelegate {
       self.logger.error("ViewController.handleSwaps() - ❌ Error signing message: \(error)")
     }
   }
-  
+
   // Method to display status messages on the UI
   func showToastView(message: String) {
     let bottomConstant: CGFloat = 70.0
     let screenHeight = UIScreen.main.bounds.size.height
     let toastHeight: CGFloat = 40.0
     let yToastView = screenHeight - toastHeight - bottomConstant
-    
+
     // Create ToastView
     let toastView = UIView(frame: CGRect(
       x: 0,
@@ -1518,7 +1521,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     ))
     toastView.backgroundColor = UIColor.black.withAlphaComponent(0.6)
     toastView.clipsToBounds = true
-    
+
     // Create label inside ToastView
     let toastLabel = UILabel(frame: CGRect(
       x: 20,
@@ -1530,24 +1533,50 @@ class ViewController: UIViewController, UITextFieldDelegate {
     toastLabel.textAlignment = .left
     toastLabel.text = message
     toastLabel.numberOfLines = 0
-    
-    toastView.tag = 112233
+
+    toastView.tag = 112_233
     toastView.addSubview(toastLabel)
-    
+
     // Add the toastView on top of previous toastView if exists
-    if let previousToastView = scrollView.subviews.last, previousToastView.tag == 112233 {
+    if let previousToastView = scrollView.subviews.last, previousToastView.tag == 112_233 {
       let previousToastViewY = previousToastView.frame.origin.y
       toastView.frame.origin.y = previousToastViewY - toastHeight
-      scrollView.addSubview(toastView)
+      self.scrollView.addSubview(toastView)
     } else {
-      scrollView.addSubview(toastView)
+      self.scrollView.addSubview(toastView)
     }
-    
+
     // Animate the ToastView
     UIView.animate(withDuration: 0.5, delay: 5.0, options: .curveEaseOut, animations: {
       toastView.alpha = 0.0
-    }) { (isCompleted) in
+    }) { _ in
       toastView.removeFromSuperview()
+    }
+  }
+
+  @IBAction func handleSolanaSendTrx() {
+    Task {
+      do {
+        self.startLoading()
+
+        // Setup and address retrieval
+        let chainId = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1" // Devnet
+        // let chainId = "solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z" // Testnet
+        guard let portal = self.portal, let fromAddress = await portal.getAddress(chainId) else {
+          self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Portal or address not initialized/found")
+          self.stopLoading()
+          return
+        }
+
+        let txHash = try await portal.sendSol(1, to: "GPsPXxoQA51aTJJkNHtFDFYui5hN5UxcFPnheJEHa5Du", withChainId: chainId)
+
+        self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Successfully signed message: SOL: \(txHash)")
+
+        self.stopLoading()
+      } catch {
+        self.stopLoading()
+        self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Generic error: \(error)")
+      }
     }
   }
 }
