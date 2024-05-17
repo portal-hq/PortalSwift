@@ -47,8 +47,8 @@ let portal = try Portal(
   withRpcConfig: [
     "eip155:1": "RPC_URL_FOR_ETHEREUM_MAINNET"
     "eip155:11155111": "RPC_URL_FOR_ETHEREUM_SEPOLIA",
-    "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:7S3P4HxJpyyigGzodYwHtCxZyUQe9JiBMHyRWXArAaKv": "RPC_URL_FOR_SOLANA_MAINNET",
-    "solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z:6LmSRCiu3z6NCSpF19oz1pHXkYkN4jWbj9K1nVELpDkT": "RPC_URL_FOR_SOLANA_TESTNET",
+    "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": "RPC_URL_FOR_SOLANA_MAINNET",
+    "solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z": "RPC_URL_FOR_SOLANA_TESTNET",
   ],
   autoApprove: true, // If you'd like to set up custom approval logic, you can leave this out
 )

@@ -9,6 +9,7 @@
 import os.log
 import PortalSwift
 import UIKit
+import AnyCodable
 
 struct UserResult: Codable {
   var clientApiKey: String
@@ -704,6 +705,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
           "eip155:137": "https://polygon-mainnet.g.alchemy.com/v2/\(config.alchemyApiKey)",
           "eip155:80001": "https://polygon-mumbai.g.alchemy.com/v2/\(config.alchemyApiKey)",
           "eip155:11155111": "https://eth-sepolia.g.alchemy.com/v2/\(config.alchemyApiKey)",
+          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": "https://solana-mainnet.g.alchemy.com/v2/\(config.alchemyApiKey)",
+          "solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z": "https://solana-devnet.g.alchemy.com/v2/\(config.alchemyApiKey)",
         ],
         autoApprove: false,
         featureFlags: FeatureFlags(optimized: true, isMultiBackupEnabled: true),
@@ -1548,6 +1551,73 @@ class ViewController: UIViewController, UITextFieldDelegate {
       toastView.alpha = 0.0
     }) { (isCompleted) in
       toastView.removeFromSuperview()
+  @IBAction func handleSolanaSendTrx() {
+    Task {
+      do {
+        self.startLoading()
+
+        // Setup and address retrieval
+        let chainId = "solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z"
+        guard let portal = self.portal, let address = await portal.getAddress(chainId) else {
+          self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Portal or address not initialized/found")
+          self.stopLoading()
+          return
+        }
+
+        // Airdrop for testing
+        let airdropParams: [Any] = [AnyCodable(address), AnyCodable(10000000)]
+        let airdropResponse = try await portal.request(chainId, withMethod: .sol_requestAirdrop, andParams: airdropParams)
+//        self.logger.info("Airdrop successful: \(airdropResponse)")
+
+        // Fetching recent blockhash
+        let blockhashResponse = try await portal.request(chainId, withMethod: .sol_getLatestBlockhash, andParams: [])
+        let recentBlockhash = blockhashResponse.result as? String ?? ""
+//        self.logger.info("Get most recent blockhash successful: \(blockhashResponse)")
+        
+        // Prepare the transaction
+        let toAddress = "GPsPXxoQA51aTJJkNHtFDFYui5hN5UxcFPnheJEHa5Du"
+        let instructionIndex: UInt8 = 2 // '2' is the index for a transfer instruction
+        var data = Data()
+        data.append(instructionIndex)
+        let lamports: UInt64 = 1
+        data.append(contentsOf: withUnsafeBytes(of: lamports.littleEndian, Array.init))
+
+        let params = [
+          [
+            "signatures": nil,
+            "message": [
+              "accountKeys": [
+                address,
+                toAddress,
+                "11111111111111111111111111111111"
+              ],
+              "header": [
+                "numRequiredSignatures": 1,
+                "numReadonlySignedAccounts": 0,
+                "numReadonlyUnsignedAccounts": 1
+              ],
+              "recentBlockhash": recentBlockhash,
+              "instructions": [
+                [
+                  "programIdIndex": 2, // Index of the System Program in 'accountKeys'
+                  "accounts": [0, 1], // Indices of the sender and receiver in 'accountKeys'
+                  "data": data.base64EncodedString()
+                ]
+              ]
+            ]
+          ]
+        ]
+
+        // Send the transaction
+        let transactionResponse = try await portal.request(chainId, withMethod: .sol_sendTransaction, andParams: params)
+        let signature = transactionResponse.result
+        self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Successfully signed message")
+
+        self.stopLoading()
+      } catch {
+        self.stopLoading()
+        self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Error signing message: \(error)")
+      }
     }
   }
 }
