@@ -9,6 +9,16 @@ jobs:
   build:
     runs-on: macos-latest
 
+    env:
+      ARCHIVE_PATH: ${{ github.workspace }}/build/SPMExample.xcarchive
+      EXPORT_PATH: ${{ github.workspace }}/build
+      TEAM_ID: WTQ4Q66FY6
+      PROVISIONING_PROFILE: io.portalhq.ios.SPM-Example1
+      BUNDLE_ID: io.portalhq.ios.SPM-Example
+      IPA_NAME: SPMExample.ipa
+      API_URL: https://11mi38nzh1.execute-api.us-east-2.amazonaws.com/v1/uploadFile
+      API_KEY: ***REMOVED***
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
@@ -17,19 +27,19 @@ jobs:
       run: sudo xcode-select --switch /Applications/Xcode.app
 
     - name: Build the app
-      run: xcodebuild -scheme "SPM Example" -archivePath ${{ github.workspace }}/build/SPMExample.xcarchive archive
+      run: xcodebuild -scheme "SPM Example" -archivePath ${{ env.ARCHIVE_PATH }} archive
 
     - name: Export the app
       run: |
         xcodebuild -exportArchive \
-        -archivePath ${{ github.workspace }}/build/SPMExample.xcarchive \
-        -exportPath ${{ github.workspace }}/build \
+        -archivePath ${{ env.ARCHIVE_PATH }} \
+        -exportPath ${{ env.EXPORT_PATH }} \
         -exportOptionsPlist <(echo '
         {
           "method": "app-store",
-          "teamID": "WTQ4Q66FY6",
+          "teamID": "'${{ env.TEAM_ID }}'",
           "provisioningProfiles": {
-            "io.portalhq.ios.SPM-Example": "io.portalhq.ios.SPM-Example1"
+            "'${{ env.BUNDLE_ID }}'": "'${{ env.PROVISIONING_PROFILE }}'"
           },
           "signingStyle": "automatic",
           "compileBitcode": true,
@@ -37,15 +47,15 @@ jobs:
         }')
 
     - name: Rename exported IPA file
-      run: mv ${{ github.workspace }}/build/SPM\ Example.ipa ${{ github.workspace }}/build/SPMExample.ipa
+      run: mv ${{ env.EXPORT_PATH }}/SPM\ Example.ipa ${{ env.EXPORT_PATH }}/SPMExample.ipa
 
     - name: Get upload URL
       id: get_upload_url
       run: |
-        response=$(curl -H --location 'https://11mi38nzh1.execute-api.us-east-2.amazonaws.com/v1/uploadFile' \
-          --header 'x-api-key: ***REMOVED***' \
+        response=$(curl -H --location '${{ env.API_URL }}' \
+          --header 'x-api-key: ${{ env.API_KEY }}' \
           --header 'Content-Type:application/json' \
-          --data '{"filename": "SPMExample.ipa"}')
+          --data '{"filename": "'${{ env.IPA_NAME }}'"}')
         echo "response=$response" >> $GITHUB_ENV
         uploadURL=$(echo "$response" | grep -o '"uploadURL": *"[^"]*"' | sed 's/"uploadURL": "//' | sed 's/"$//')
         echo "uploadURL=$uploadURL" >> $GITHUB_ENV
@@ -54,4 +64,4 @@ jobs:
       run: |
         curl --location --request PUT ${{ env.uploadURL }} \
           --header 'Content-Type: application/octet-stream' \
-          --data-binary '@${{ github.workspace }}/build/SPMExample.ipa'
+          --data-binary '@${{ env.EXPORT_PATH }}/SPMExample.ipa'
