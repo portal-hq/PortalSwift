@@ -170,7 +170,7 @@ public struct SolanaInstruction: Codable {
 
   public init(from instruction: SolanaSwift.CompiledInstruction) {
     self.accounts = instruction.accounts
-    self.data = PortalBase58.base58Encode(instruction.data)
+    self.data = SolanaSwift.Base58.encode(instruction.data)
     self.programIdIndex = instruction.programIdIndex
   }
 }

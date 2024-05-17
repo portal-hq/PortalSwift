@@ -19,7 +19,6 @@ Pod::Spec.new do |s|
   s.dependency "GoogleSignIn", "~> 7.1.0"
   s.dependency "Starscream", "~> 4.0.7"
   s.dependency "AnyCodable-FlightSchool", "~> 0.6.7"
-  s.dependency "BigInt", '~> 5.0'
   s.dependency "SolanaSwift", '~> 5.0'
 
   s.test_spec 'Tests' do |test_spec|
