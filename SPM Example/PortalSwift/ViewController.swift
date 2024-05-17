@@ -592,7 +592,9 @@ class ViewController: UIViewController, UITextFieldDelegate {
           apiUrl: "api.portalhq.io",
           custodianServerUrl: "https://portalex-mpc.portalhq.io",
           googleClientId: GOOGLE_CLIENT_ID,
-          mpcUrl: "mpc.portalhq.io"
+          mpcUrl: "mpc.portalhq.io",
+          webAuthnHost: "backup.web.portalhq.io",
+          relyingParty: "portalhq.io"
         )
       case "stage", "staging":
         self.config = ApplicationConfiguration(
@@ -600,7 +602,9 @@ class ViewController: UIViewController, UITextFieldDelegate {
           apiUrl: "api.portalhq.dev",
           custodianServerUrl: "https://staging-portalex-mpc-service.onrender.com",
           googleClientId: GOOGLE_CLIENT_ID,
-          mpcUrl: "mpc.portalhq.dev"
+          mpcUrl: "mpc.portalhq.dev",
+          webAuthnHost: "backup.portalhq.dev",
+          relyingParty: "portalhq.dev"
         )
       default:
         self.config = ApplicationConfiguration(
@@ -608,7 +612,9 @@ class ViewController: UIViewController, UITextFieldDelegate {
           apiUrl: "localhost:3001",
           custodianServerUrl: "https://staging-portalex-mpc-service.onrender.com",
           googleClientId: GOOGLE_CLIENT_ID,
-          mpcUrl: "localhost:3002"
+          mpcUrl: "localhost:3002",
+          webAuthnHost: "backup.portalhq.dev",
+          relyingParty: "portalhq.dev"
         )
       }
     } catch {
@@ -717,7 +723,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       try portal.setGDriveConfiguration(clientId: config.googleClientId)
       try portal.setGDriveView(self)
       try portal.setPasskeyAuthenticationAnchor(self.view.window!)
-      try portal.setPasskeyConfiguration(relyingParty: "portalhq.dev", webAuthnHost: "backup.portalhq.dev")
+      try portal.setPasskeyConfiguration(relyingParty: config.relyingParty, webAuthnHost: config.webAuthnHost)
 
       self.logger.info("ViewController.registerPortal() - Portal API Key: \(portal.apiKey)")
 
