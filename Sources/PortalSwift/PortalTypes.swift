@@ -1,3 +1,5 @@
+import SolanaSwift
+
 public struct AnyEncodable: Encodable {
   let value: Encodable
 
@@ -145,4 +147,38 @@ public struct BackupOptions {
       return nil
     }
   }
+}
+
+// Solana Types
+public struct SolanaRequest: Codable {
+  public var signatures: [String]?
+  public var message: SolanaMessage
+}
+
+// Define the structure for the header of the message
+public struct SolanaHeader: Codable {
+  public var numRequiredSignatures: Int
+  public var numReadonlySignedAccounts: Int
+  public var numReadonlyUnsignedAccounts: Int
+}
+
+// Define the structure for an instruction within the message
+public struct SolanaInstruction: Codable {
+  public var programIdIndex: UInt8
+  public var accounts: [Int]
+  public var data: String
+
+  public init(from instruction: SolanaSwift.CompiledInstruction) {
+    self.accounts = instruction.accounts
+    self.data = Base58.base58Encode(instruction.data)
+    self.programIdIndex = instruction.programIdIndex
+  }
+}
+
+// Define the main structure of the message
+public struct SolanaMessage: Codable {
+  public var accountKeys: [String]
+  public var header: SolanaHeader
+  public var recentBlockhash: String
+  public var instructions: [SolanaInstruction]
 }
