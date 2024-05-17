@@ -12,7 +12,7 @@ import CommonCrypto
 import Foundation
 
 /// A static utility class which provides Base58 encoding and decoding functionality.
-public enum Base58 {
+public enum PortalBase58 {
   /// Length of checksum appended to Base58Check encoded strings.
   private static let checksumLength = 4
 
@@ -26,7 +26,7 @@ public enum Base58 {
   public static func base58CheckEncode(_ bytes: [UInt8]) -> String {
     let checksum = self.calculateChecksum(bytes)
     let checksummedBytes = bytes + checksum
-    return Base58.base58Encode(checksummedBytes)
+    return PortalBase58.base58Encode(checksummedBytes)
   }
 
   /// Decode the given Base58Check encoded string to bytes.

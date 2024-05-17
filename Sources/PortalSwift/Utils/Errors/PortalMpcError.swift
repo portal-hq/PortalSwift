@@ -12,7 +12,6 @@ public class PortalMpcError: LocalizedError, CustomStringConvertible {
   public var message: String
 
   init(_ error: PortalError) {
-    print(error)
     self.code = error.code
     self.message = error.message
   }

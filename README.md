@@ -108,6 +108,14 @@ let transaction: [String: String] = [
 let transactionHash = try await portal.request("eip155:11155111", withMethod: .eth_sendTransaction, andParams: [transaction])
 ```
 
+## Sending a Solana transaction
+
+To send a transaction using your new `Portal` instance, call the `sendSol(lamports, address, chainId)` method.
+
+```swift
+let transactionHash = try await portal.sendSol(1, to: "GPsPXxoQA51aTJJkNHtFDFYui5hN5UxcFPnheJEHa5Du", withChainId: chainId)
+```
+
 # Backing up your wallet
 
 By default, `PortalSwift` will register backup methods for Google Drive, iCloud, Passkeys, and Passwords. Google Drive require additional configuration to successfully back up your wallet.
