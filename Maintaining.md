@@ -16,7 +16,7 @@ Create an xcConfig file.
 2. Search for configuration file
 3. Call the new configuration file "Secrets"
 4. Add both example and test as targets
-5. Add `#include? "Secrets.xcconfig"` to the Pods directory within the `Pods-PortalSwift_Example.debug.xcconfig` file
+5. Add the following line to your `Secrets.xcconfig` file `#include "Pods/Target Support Files/Pods-Cocoapods Example/Pods-Cocoapods Example.debug.xcconfig"`
 6. Add these variables:
 
 ```
