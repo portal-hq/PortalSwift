@@ -17,8 +17,8 @@ jobs:
       BUNDLE_ID: io.portalhq.ios.SPM-Example
       IPA_NAME: SPMExample.ipa
       MUUKTEST_API_URL: https://11mi38nzh1.execute-api.us-east-2.amazonaws.com/v1/uploadFile
-      MUUKTEST_API_KEY: ***REMOVED***
-
+      MUUKTEST_API_KEY:  ${{ secrets.MUUKTEST_API_KEY }}
+      
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
