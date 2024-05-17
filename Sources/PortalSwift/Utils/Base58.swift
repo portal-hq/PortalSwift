@@ -5,8 +5,6 @@
 //  Created by Rami Shahatit on 5/7/24.
 //
 
-// Copyright Keefer Taylor, 2019.
-
 import BigInt
 import CommonCrypto
 import Foundation
