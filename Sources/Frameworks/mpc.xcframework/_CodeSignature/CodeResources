@@ -6,15 +6,15 @@
 	<dict>
 		<key>.DS_Store</key>
 		<data>
-		tZT18MSVeFI7b93tJ6Outazqq/w=
+		UwaBg5eVIL0c8T10ciDy0xxI6YM=
 		</data>
 		<key>ios-arm64/.DS_Store</key>
 		<data>
-		9HAwjy5kN4o5Wpu3tSW2KVfyg2w=
+		OQrOimPIeqp8VF8gw3aRFrp1KZ0=
 		</data>
 		<key>ios-arm64/Mpc.framework/.DS_Store</key>
 		<data>
-		3y++sUAKzaCQmjLBz2v0kvESHgc=
+		RMSnouQVj6LA8f9TLaWl8u4/Lq4=
 		</data>
 		<key>ios-arm64/Mpc.framework/Headers/Mobile.objc.h</key>
 		<data>
@@ -44,9 +44,13 @@
 		<data>
 		Sz5UxgYz7Hfn1QzH05rfcqImNFM=
 		</data>
+		<key>ios-arm64/Mpc.framework/PrivacyInfo.xcprivacy</key>
+		<data>
+		GofFQz7uoMLC8WcXJZGvKZ4r7vE=
+		</data>
 		<key>ios-arm64_x86_64-simulator/.DS_Store</key>
 		<data>
-		9HAwjy5kN4o5Wpu3tSW2KVfyg2w=
+		yQ88UYVB7KzOMQv+vCK8c3J/6tw=
 		</data>
 		<key>ios-arm64_x86_64-simulator/Mpc.framework/.DS_Store</key>
 		<data>
@@ -79,6 +83,10 @@
 		<key>ios-arm64_x86_64-simulator/Mpc.framework/Mpc</key>
 		<data>
 		4fFmk9WxQdf/ag+EPcGeLIMboHU=
+		</data>
+		<key>ios-arm64_x86_64-simulator/Mpc.framework/PrivacyInfo.xcprivacy</key>
+		<data>
+		GofFQz7uoMLC8WcXJZGvKZ4r7vE=
 		</data>
 	</dict>
 	<key>files2</key>
@@ -160,6 +168,17 @@
 			7dZWuoAok01DXeFMDLg9eMLA75ds+ny1gx/LCWEnIyM=
 			</data>
 		</dict>
+		<key>ios-arm64/Mpc.framework/PrivacyInfo.xcprivacy</key>
+		<dict>
+			<key>hash</key>
+			<data>
+			GofFQz7uoMLC8WcXJZGvKZ4r7vE=
+			</data>
+			<key>hash2</key>
+			<data>
+			YLNbxHQw6kpL5gFTWQPvQhMSLkyukLvJqdgVC1FsJ4U=
+			</data>
+		</dict>
 		<key>ios-arm64_x86_64-simulator/Mpc.framework/Headers/Mobile.objc.h</key>
 		<dict>
 			<key>hash</key>
@@ -235,6 +254,17 @@
 			<key>hash2</key>
 			<data>
 			U3rKwQ49yO3REGo/mIUOm4ZvI/naLHoJLrLmG+J2LVs=
+			</data>
+		</dict>
+		<key>ios-arm64_x86_64-simulator/Mpc.framework/PrivacyInfo.xcprivacy</key>
+		<dict>
+			<key>hash</key>
+			<data>
+			GofFQz7uoMLC8WcXJZGvKZ4r7vE=
+			</data>
+			<key>hash2</key>
+			<data>
+			YLNbxHQw6kpL5gFTWQPvQhMSLkyukLvJqdgVC1FsJ4U=
 			</data>
 		</dict>
 	</dict>
