@@ -1,4 +1,5 @@
 import AnyCodable
+import Foundation
 
 public struct BlockData: Codable {
   public var number: String
@@ -69,6 +70,27 @@ public struct PortalProviderRpcResponse: Codable, Equatable {
 public struct PortalProviderRpcResponseError: Codable, Equatable {
   public var code: Int
   public var message: String
+}
+
+public struct SolGetLatestBlockhashContext: Codable, Equatable {
+  public var slot: Int
+}
+
+public struct SolGetLatestBlockhashValue: Codable, Equatable {
+  public var blockhash: String
+  public var lastValidBlockHeight: Int
+}
+
+public struct SolGetLatestBlockhashResult: Codable, Equatable {
+  public var context: SolGetLatestBlockhashContext
+  public var value: SolGetLatestBlockhashValue
+}
+
+public struct SolGetLatestBlockhashResponse: Codable, Equatable {
+  public var jsonrpc: String
+  public var id: Int?
+  public var result: SolGetLatestBlockhashResult
+  public var error: PortalProviderRpcResponseError?
 }
 
 public struct PortalProviderResult {

@@ -36,6 +36,8 @@ struct ApplicationConfiguration {
   public let custodianServerUrl: String
   public let googleClientId: String
   public let mpcUrl: String
+  public let webAuthnHost: String
+  public let relyingParty: String
 }
 
 @UIApplicationMain

@@ -9,6 +9,7 @@ import AnyCodable
 import AuthenticationServices
 import Foundation
 import Mpc
+import SolanaSwift
 
 /// The main Portal class.
 public class Portal {
@@ -382,10 +383,15 @@ public class Portal {
     _ = self.provider.once(event: event, callback: callback)
   }
 
-  public func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any]) async throws -> PortalProviderResult {
+  public func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any]?) async throws -> PortalProviderResult {
+    guard let andParams = andParams else {
+      throw PortalProviderError.invalidRequestParams
+    }
+
     let params = andParams.map { param in
       AnyCodable(param)
     }
+
     return try await self.provider.request(chainId, withMethod: withMethod, andParams: params)
   }
 
@@ -829,6 +835,57 @@ public class Portal {
     ), completion: completion)
   }
 
+  // Solana Methods
+  public func sendSol(_ lamports: UInt64, to: String, withChainId chainId: String) async throws -> String {
+    // Format Solana to and from addresses
+    guard let fromAddress = try await self.addresses[.solana] else {
+      throw MpcError.addressNotFound("No solana address found. Have you run generate or recover? Reach out to portal support.")
+    }
+    let fromPublicKey = try SolanaSwift.PublicKey(string: fromAddress)
+    let toPublicKey = try SolanaSwift.PublicKey(string: to)
+
+    // Create the transfer instruction
+    let transferInstruction = SystemProgram.transferInstruction(
+      from: fromPublicKey,
+      to: toPublicKey,
+      lamports: lamports
+    )
+
+    // Get the most recent blockhash
+    let blockhashResponse = try await request(chainId, withMethod: .sol_getLatestBlockhash, andParams: [])
+    guard let blockhashResResult = blockhashResponse.result as? SolGetLatestBlockhashResponse else {
+      throw PortalSolError.failedToGetLatestBlockhash
+    }
+
+    // Initialize the transaction
+    let transaction = SolanaSwift.Transaction(
+      instructions: [transferInstruction],
+      recentBlockhash: blockhashResResult.result.value.blockhash,
+      feePayer: fromPublicKey
+    )
+
+    // Format the transaction
+    let message = try transaction.compileMessage()
+
+    let solanaRequest = self.createSolanaRequest(solanaMessage: message)
+
+    let txResponse = try await request(chainId, withMethod: .sol_signAndSendTransaction, andParams: [solanaRequest])
+
+    guard let txHash = txResponse.result as? String else {
+      throw PortalSolError.failedToGetTransactionHash
+    }
+    return txHash
+  }
+
+  public func createSolanaRequest(solanaMessage message: Message) -> SolanaRequest {
+    let solanaHeader = SolanaHeader(numRequiredSignatures: message.header.numRequiredSignatures, numReadonlySignedAccounts: message.header.numReadonlySignedAccounts, numReadonlyUnsignedAccounts: message.header.numReadonlyUnsignedAccounts)
+
+    let solanaInstructions = message.instructions.map { SolanaInstruction(from: $0) }
+    let accountKeys = message.accountKeys.map { $0.base58EncodedString }
+
+    return SolanaRequest(signatures: nil, message: SolanaMessage(accountKeys: accountKeys, header: solanaHeader, recentBlockhash: message.recentBlockhash, instructions: solanaInstructions))
+  }
+
   /// Set the chainId on the instance and update MPC and Provider chainId
   /// - Parameters:
   ///   - to: The chainId to use for processing wallet transactions
@@ -934,4 +991,9 @@ public enum PortalSharePairStatus: String, Codable {
 public enum PortalSharePairType: String, Codable {
   case backup
   case signing
+}
+
+public enum PortalSolError: Error {
+  case failedToGetLatestBlockhash
+  case failedToGetTransactionHash
 }
