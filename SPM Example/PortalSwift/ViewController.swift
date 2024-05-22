@@ -724,8 +724,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
       try portal.setGDriveView(self)
       try portal.setPasskeyAuthenticationAnchor(self.view.window!)
       try portal.setPasskeyConfiguration(relyingParty: config.relyingParty, webAuthnHost: config.webAuthnHost)
-      // The apikey is private within the Portal SDK class, so it must not be accessible from outside.
-      //self.logger.info("ViewController.registerPortal() - Portal API Key: \(portal.apiKey)")
+      // The apikey from Portal class is private within the Portal SDK class, so it must not be accessible from outside. We already have the clientApiKey from user
+      self.logger.info("ViewController.registerPortal() - Portal API Key: \(user.clientApiKey)")
 
       portal.on(event: Events.PortalSigningRequested.rawValue, callback: { data in
         portal.emit(Events.PortalSigningApproved.rawValue, data: data)
