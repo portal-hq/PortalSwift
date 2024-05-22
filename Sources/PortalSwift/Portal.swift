@@ -33,7 +33,7 @@ public class Portal {
   }
 
   public let api: PortalApi
-  public let apiKey: String
+  internal let apiKey: String
   public let autoApprove: Bool
   public var gatewayConfig: [Int: String] = [:]
   public let provider: PortalProvider
