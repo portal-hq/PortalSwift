@@ -18,7 +18,7 @@ public class PortalProvider {
     }
   }
 
-  public let apiKey: String
+  private let apiKey: String
   public var autoApprove: Bool
   public var chainId: Chains.RawValue?
   public var delegate: PortalProviderDelegate?
