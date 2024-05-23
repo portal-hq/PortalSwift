@@ -696,7 +696,6 @@ public class Portal {
     self.mpc.ejectPrivateKey(clientBackupCiphertext: clientBackupCiphertext, method: method, backupConfigs: backupConfigs, orgBackupShare: orgBackupShare, completion: completion)
   }
 
-  @available(*, deprecated, renamed: "recoverWallet", message: "Please use the async implementation of recoverWallet()")
   public func provisionWallet(
     cipherText: String,
     method: BackupMethods.RawValue,
@@ -707,7 +706,6 @@ public class Portal {
     self.recoverWallet(cipherText: cipherText, method: method, backupConfigs: backupConfigs, completion: completion, progress: progress)
   }
 
-  @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of request().")
   public func ethEstimateGas(
     transaction: ETHTransactionParam,
     completion: @escaping (Result<RequestCompletionResult>) -> Void
@@ -717,8 +715,7 @@ public class Portal {
       params: [transaction]
     ), completion: completion)
   }
-  
-  @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of PortalProvider request().")
+
   public func ethGasPrice(
     completion: @escaping (Result<RequestCompletionResult>) -> Void
   ) {
@@ -728,7 +725,6 @@ public class Portal {
     ), completion: completion)
   }
 
-  @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of PortalProvider request().")
   public func ethGetBalance(
     completion: @escaping (Result<RequestCompletionResult>) -> Void
   ) {
@@ -742,7 +738,6 @@ public class Portal {
     ), completion: completion)
   }
 
-  @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of PortalProvider request().")
   public func ethSendTransaction(
     transaction: ETHTransactionParam,
     completion: @escaping (Result<TransactionCompletionResult>) -> Void
@@ -753,7 +748,6 @@ public class Portal {
     ), completion: completion)
   }
 
-  @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of PortalProvider request().")
   public func ethSign(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void) {
     guard let address = provider.address else {
       completion(Result(error: PortalProviderError.noAddress))
@@ -769,7 +763,6 @@ public class Portal {
     ), completion: completion)
   }
 
-  @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of PortalProvider request().")
   public func ethSignTransaction(
     transaction: ETHTransactionParam,
     completion: @escaping (Result<TransactionCompletionResult>) -> Void
@@ -780,7 +773,6 @@ public class Portal {
     ), completion: completion)
   }
 
-  @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of PortalProvider request().")
   public func ethSignTypedDataV3(
     message: String,
     completion: @escaping (Result<RequestCompletionResult>) -> Void
@@ -796,7 +788,6 @@ public class Portal {
     ), completion: completion)
   }
 
-  @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of PortalProvider request().")
   public func ethSignTypedData(
     message: String,
     completion: @escaping (Result<RequestCompletionResult>) -> Void
@@ -812,7 +803,6 @@ public class Portal {
     ), completion: completion)
   }
 
-  @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of PortalProvider request().")
   public func personalSign(
     message: String,
     completion: @escaping (Result<RequestCompletionResult>) -> Void
@@ -831,7 +821,6 @@ public class Portal {
     ), completion: completion)
   }
 
-  @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of PortalProvider request().")
   public func request(
     method: ETHRequestMethods.RawValue,
     params: [Any],
