@@ -263,7 +263,7 @@ public class PortalProvider {
 
           if approvedPayload.id == forPayload.id, !self.processedRequestIds.contains(forPayload.id) {
             self.processedRequestIds.append(forPayload.id)
-
+            _ = self.removeListener(event: Events.PortalSigningApproved.rawValue)
             // If the approved event is fired
             continuation.resume(returning: true)
           }
@@ -274,6 +274,7 @@ public class PortalProvider {
 
           if rejectedPayload.id == forPayload.id, !self.processedRequestIds.contains(forPayload.id) {
             self.processedRequestIds.append(forPayload.id)
+            _ = self.removeListener(event: Events.PortalSigningRejected.rawValue)
             // If the rejected event is fired
             continuation.resume(returning: false)
           }
