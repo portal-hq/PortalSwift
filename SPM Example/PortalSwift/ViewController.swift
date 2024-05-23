@@ -57,6 +57,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var deleteKeychainButton: UIButton?
   @IBOutlet var testNFTsTrxsBalancesSimTrxButton: UIButton?
   @IBOutlet var ejectButton: UIButton?
+  @IBOutlet var fundSepoliaButton: UIButton?
 
   @IBOutlet var passkeyBackupButton: UIButton?
   @IBOutlet var passkeyRecoverButton: UIButton?
@@ -865,6 +866,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.deleteKeychainButton?.isHidden = !walletExists || !isWalletOnDevice
           self.ejectButton?.isEnabled = availableRecoveryMethods.count > 0
           self.ejectButton?.isHidden = availableRecoveryMethods.count == 0
+          
+          // Test Add funds to Sepolia
+          self.fundSepoliaButton?.isEnabled = walletExists && isWalletOnDevice
+          self.fundSepoliaButton?.isHidden = !walletExists || !isWalletOnDevice
 
           // Portal test functions
           self.testButton?.isEnabled = walletExists && isWalletOnDevice
@@ -996,6 +1001,74 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.logger.error("ViewController.handleEject() - Error ejecting wallet: \(error)")
         self.showToastView(message: "Error ejecting wallet")
       }
+    }
+  }
+  
+  @IBAction func handleFundSepolia(_: UIButton) {
+    Task {
+      do {
+        self.startLoading()
+        let transactionHash = try await sendSepoliaTransaction()
+        self.logger.info("ViewController.handleFundSepolia() - ✅ Successfully sent transaction")
+        self.showToastView(message: "✅ Successfully sent transaction")
+        self.logger.info("ViewController.handleFundSepolia() - ✅ Transaction Hash: \(transactionHash)")
+        self.stopLoading()
+      } catch {
+        self.stopLoading()
+        self.logger.error("Error sending transaction: \(error)")
+      }
+    }
+  }
+  
+  public func sendSepoliaTransaction() async throws -> String {
+    guard let portal else {
+      logger.error("ViewController.sendSepoliaTransaction() - ❌ Portal not initialized.")
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+    
+    let chainId = "eip155:11155111"
+    guard let address = await portal.getAddress(chainId) else {
+      logger.error("ViewController.sendSepoliaTransaction() - ❌ Address not found.")
+      throw PortalExampleAppError.addressNotFound()
+    }
+    
+    guard let user else {
+      logger.error("ViewController.sendSepoliaTransaction() - ❌ User not logged in.")
+      throw PortalExampleAppError.userNotLoggedIn()
+    }
+    
+    guard let config else {
+      logger.error("ViewController.sendSepoliaTransaction() - ❌ Application configuration not set.")
+      throw PortalExampleAppError.configurationNotSet()
+    }
+    
+    _ = try await getGasPrice(chainId)
+    
+    let configURL = config.custodianServerUrl
+    guard let url = URL(string: "\(configURL)/mobile/\(user.exchangeUserId)/transfer") else {
+      logger.error("ViewController.sendSepoliaTransaction() - ❌ Invalid URL.")
+      throw PortalExampleAppError.custodianServerUrlNotSet()
+    }
+    
+    let payload =
+    [
+      "chainId": "11155111",
+      "address": address,
+      "amount": "0.001"
+    ]
+    
+    do {
+      let data = try await requests.post(url, andPayload: payload)
+      guard let jsonDictionary = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
+            let txnHash = jsonDictionary["txHash"] as? String else {
+        logger.error("ViewController.sendSepoliaTransaction() - ❌ Invalid response type for request.")
+        throw PortalExampleAppError.invalidResponseTypeForRequest()
+      }
+      
+      return txnHash
+    } catch {
+      logger.error("ViewController.sendSepoliaTransaction() - ❌ Error: \(error.localizedDescription)")
+      throw error
     }
   }
 
