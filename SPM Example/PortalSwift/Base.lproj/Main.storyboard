@@ -384,6 +384,14 @@
                                     <action selector="testSimulateTxnPressed:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="QkM-fy-7dz"/>
                                 </connections>
                             </button>
+                            <label hidden="YES" opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="Status" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="OXC-5g-rqF">
+                                <rect key="frame" x="18" y="19" width="347" height="21"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <color key="backgroundColor" white="0.0" alpha="0.59999999999999998" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                                <color key="textColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                <nil key="highlightedColor"/>
+                            </label>
                         </subviews>
                         <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                     </scrollView>
@@ -414,6 +422,7 @@
                         <outlet property="signButton" destination="NGV-LW-69G" id="A0r-h6-x1L"/>
                         <outlet property="signInButton" destination="Ojs-ji-UfQ" id="c9X-B9-99T"/>
                         <outlet property="signUpButton" destination="um8-uX-tq6" id="b5D-14-Cen"/>
+                        <outlet property="statusLabel" destination="OXC-5g-rqF" id="NVs-bf-qi7"/>
                         <outlet property="testButton" destination="jgr-2k-ChE" id="Iwz-Qk-mgO"/>
                         <outlet property="testNFTsTrxsBalancesSimTrxButton" destination="zxl-zt-jSZ" id="sQP-08-jvX"/>
                         <outlet property="testSimulateTransactionButton" destination="Wbq-QP-R48" id="ThW-39-maB"/>
@@ -621,7 +630,7 @@
             <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
         </systemColor>
         <systemColor name="systemPinkColor">
-            <color red="1" green="0.17647058823529413" blue="0.33333333333333331" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+            <color red="1" green="0.1764705882" blue="0.33333333329999998" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </systemColor>
     </resources>
 </document>
