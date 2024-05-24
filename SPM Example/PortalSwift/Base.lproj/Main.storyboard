@@ -17,7 +17,7 @@
                         <viewControllerLayoutGuide type="bottom" id="2fi-mo-0CV"/>
                     </layoutGuides>
                     <scrollView key="view" contentMode="scaleToFill" ambiguous="YES" restorationIdentifier="mainViewController" id="kh9-bI-dsS">
-                        <rect key="frame" x="0.0" y="0.0" width="375" height="970"/>
+                        <rect key="frame" x="0.0" y="0.0" width="375" height="1020"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                         <subviews>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="WxW-BK-2tM">
@@ -320,7 +320,7 @@
                                 </connections>
                             </button>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" restorationIdentifier="nftsTrxsBalancesButton" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="zxl-zt-jSZ">
-                                <rect key="frame" x="16" y="825" width="342" height="35"/>
+                                <rect key="frame" x="16" y="865" width="342" height="35"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <state key="normal" title="Button"/>
                                 <buttonConfiguration key="configuration" style="filled" title="API Methods">
@@ -346,7 +346,7 @@
                                 </connections>
                             </button>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" restorationIdentifier="ejectButton" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="xhu-mS-abX">
-                                <rect key="frame" x="16" y="871" width="342" height="35"/>
+                                <rect key="frame" x="16" y="911" width="342" height="35"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <state key="normal" title="Button"/>
                                 <buttonConfiguration key="configuration" style="filled" title="Eject with Password">
@@ -359,7 +359,7 @@
                                 </connections>
                             </button>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="weH-pZ-F1n">
-                                <rect key="frame" x="16" y="914" width="342" height="41"/>
+                                <rect key="frame" x="16" y="958" width="342" height="41"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <state key="normal" title="Button"/>
                                 <buttonConfiguration key="configuration" style="filled" title="Fund Sepolia Wallet">
@@ -372,7 +372,7 @@
                                 </connections>
                             </button>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Wbq-QP-R48">
-                                <rect key="frame" x="18" y="734" width="343" height="35"/>
+                                <rect key="frame" x="18" y="823" width="343" height="35"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <state key="normal" title="Button"/>
                                 <buttonConfiguration key="configuration" style="filled" title="Test Simulate Transaction">
@@ -395,7 +395,7 @@
                         </subviews>
                         <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                     </scrollView>
-                    <size key="freeformSize" width="375" height="970"/>
+                    <size key="freeformSize" width="375" height="1020"/>
                     <connections>
                         <outlet property="addressInformation" destination="0fE-Dt-jQE" id="FgG-eb-2eu"/>
                         <outlet property="dappBrowserButton" destination="qcu-G8-SAB" id="A5q-1k-dxD"/>
