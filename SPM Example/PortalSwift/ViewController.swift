@@ -1411,8 +1411,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBAction func sendPressed(_: UIButton!) {
     Task {
       do {
-        _ = try await self.sendTransaction()
-        self.logger.info("ViewController.handlSend() - ✅ Successfully sent transaction")
+        let trxHash = try await self.sendTransaction()
+        self.logger.info("ViewController.handlSend() - ✅ Successfully sent transaction Trx Hash: \(trxHash)")
         self.showStatusView(message: "✅ Successfully sent transaction")
       } catch {
         self.logger.error("ViewController.handleSend() - ❌ Error sending transaction: \(error)")
@@ -1436,8 +1436,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
         try await self.testOtherRequests()
 
         self.logger.info("ViewController.testProviderRequests() - ✅ Successfully tested provider requests")
+        self.showStatusView(message: "✅ Successfully tested provider requests")
       } catch {
         self.logger.error("ViewController.testProviderRequests() - ❌ Error testing transactions: \(error)")
+        self.showStatusView(message: "❌ Error testing transactions")
       }
     }
   }
