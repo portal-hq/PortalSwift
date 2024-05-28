@@ -518,7 +518,6 @@
                                     <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 </buttonConfiguration>
                                 <connections>
-                                    <action selector="connectPressed" destination="7fk-LF-non" eventType="touchUpInside" id="hZz-IE-3s0"/>
                                     <action selector="disconnectPressed" destination="7fk-LF-non" eventType="touchUpInside" id="wvw-ye-ixy"/>
                                 </connections>
                             </button>
@@ -531,7 +530,6 @@
                                     <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 </buttonConfiguration>
                                 <connections>
-                                    <action selector="connectPressed" destination="7fk-LF-non" eventType="touchUpInside" id="L5d-zz-ZU7"/>
                                     <action selector="disconnectPressed2" destination="7fk-LF-non" eventType="touchUpInside" id="eNL-fL-m2x"/>
                                 </connections>
                             </button>
@@ -630,7 +628,7 @@
             <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
         </systemColor>
         <systemColor name="systemPinkColor">
-            <color red="1" green="0.1764705882" blue="0.33333333329999998" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+            <color red="1" green="0.17647058823529413" blue="0.33333333333333331" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </systemColor>
     </resources>
 </document>
