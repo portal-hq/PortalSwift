@@ -1590,14 +1590,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
   // Method to display status messages on the UI
   func showStatusView(message: String) {
     statusLabel?.text = message
-    statusLabel?.isHidden = false
-    
-    UIView.animate(withDuration: 0.5, delay: 5.0, options: .curveEaseOut, animations: {
-      self.statusLabel?.alpha = 0
-    }) { _ in
-      self.statusLabel?.isHidden = true
-      self.statusLabel?.alpha = 1
-    }
   }
 
   @IBAction func handleSolanaSendTrx() {
