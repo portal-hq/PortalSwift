@@ -99,26 +99,24 @@ public class PortalProvider {
   ///   - data: The data to pass to registered event handlers.
   /// - Returns: The Portal Provider instance.
   public func emit(event: Events.RawValue, data: Any) -> PortalProvider {
-    let registeredEventHandlers = self.events[event]
-
-    if registeredEventHandlers == nil {
+    guard let registeredEventHandlers = self.events[event] else {
       self.logger.info(String(format: "PortalProvider.emit() - ⚠️ Could not find any bindings for event '%@'. Ignoring...", event))
       return self
-    } else {
-      // Invoke all registered handlers for the event
-      do {
-        for registeredEventHandler in registeredEventHandlers! {
-          try registeredEventHandler.handler(data)
-        }
-      } catch {
-        self.logger.info("PortalProvider.emit() - 🚨 Error invoking registered handlers: \(error.localizedDescription)")
-      }
-
-      // Remove once instances
-      self.events[event] = registeredEventHandlers?.filter(self.removeOnce)
-
-      return self
     }
+    
+    // Invoke all registered handlers for the event
+    do {
+      for registeredEventHandler in registeredEventHandlers {
+        try registeredEventHandler.handler(data)
+      }
+    } catch {
+      self.logger.info("PortalProvider.emit() - 🚨 Error invoking registered handlers: \(error.localizedDescription)")
+    }
+    
+    // Remove once instances
+    self.events[event] = registeredEventHandlers.filter(self.removeOnce)
+    
+    return self
   }
 
   /// Registers a callback for an event.
