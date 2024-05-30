@@ -732,18 +732,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
       portal.on(event: Events.PortalSigningRequested.rawValue, callback: { data in
         portal.emit(Events.PortalSigningApproved.rawValue, data: data)
       })
-      //code to verify decline condition
-//      portal.on(event: Events.PortalSigningRequested.rawValue) { data in
-//        let approved : Bool = false
-//        let passingData = approved ? data : nil
-//          let responseEventName = approved ? Events.PortalSigningApproved : Events.Connect
-//        self.portal!.emit(responseEventName.rawValue,
-//                          data: passingData as Any)
-//        print("check print console")
-//        if !approved{
-//          self.updateUIComponents()
-//        }
-//      }
 
       portal.on(event: Events.PortalSignatureReceived.rawValue) { (data: Any) in
         let result = data as! RequestCompletionResult
