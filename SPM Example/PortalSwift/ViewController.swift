@@ -1413,7 +1413,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       do {
         let trxHash = try await self.sendTransaction()
         self.logger.info("ViewController.handlSend() - ✅ Successfully sent transaction Trx Hash: \(trxHash)")
-        self.showStatusView(message: "✅ Successfully sent transaction")
+        self.showStatusView(message: "✅ Success, Trx Hash: \(trxHash)")
       } catch {
         self.logger.error("ViewController.handleSend() - ❌ Error sending transaction: \(error)")
         self.showStatusView(message: "❌ Error sending transaction")
