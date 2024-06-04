@@ -998,7 +998,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         let privateKey = try await eject(.Password)
 
         self.logger.info("ViewController.handleEject() - ✅ Successfully ejected wallet. Private key: \(privateKey)")
-        self.showStatusView(message: "\(successStatus) Successfully ejected wallet.")
+        self.showStatusView(message: "\(successStatus) Private key: \(privateKey)")
       } catch {
         self.stopLoading()
         print("⚠️", error)
