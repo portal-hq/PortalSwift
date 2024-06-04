@@ -27,12 +27,6 @@ jobs:
       - name: checkout repository
         uses: actions/checkout@v4
 
-      - name: Check permission to export IPA
-        run: |
-          mkdir -p ${{ env.EXPORT_PATH }}/test_export
-          touch ${{ env.EXPORT_PATH }}/test_export/test_file
-          rm -rf ${{ env.EXPORT_PATH }}/test_export
-        continue-on-error: true
         
       - name: Create secret.xcconfig file
         run: |
@@ -75,6 +69,7 @@ jobs:
           cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles          
 
       - name: Build Archive
+        working-directory: PortalSwift/SPM Example
         run: |
           xcodebuild -scheme "${{ env.SCHEME_NAME }}" \
           -archivePath ${{ env.EXPORT_PATH }}/${{ env.IPA_NAME }}.xcarchive \
