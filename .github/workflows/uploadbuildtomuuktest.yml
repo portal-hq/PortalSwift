@@ -81,6 +81,7 @@ jobs:
           -sdk iphoneos \
           -configuration Debug \
           -destination generic/platform=iOS \
+          -allowProvisioningUpdates
           clean archive          
 
       - name: Log files in Before Export IPA folder
