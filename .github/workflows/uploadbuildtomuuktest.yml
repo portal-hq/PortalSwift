@@ -69,7 +69,6 @@ jobs:
           cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles          
 
       - name: Build Archive
-        working-directory: /SPM Example
         run: |
           xcodebuild -scheme "${{ env.SCHEME_NAME }}" \
           -archivePath ${{ env.EXPORT_PATH }}/${{ env.IPA_NAME }}.xcarchive \
