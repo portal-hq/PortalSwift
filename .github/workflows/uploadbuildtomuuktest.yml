@@ -41,6 +41,8 @@ jobs:
           chmod 644 "${{ github.workspace }}/PortalSwift/SPM Example/Secret.xcconfig"
           ls -l "${{ github.workspace }}/PortalSwift/SPM Example/Secret.xcconfig"
       
+      
+      
 
       - name: Install the Apple certificate and provisioning profile
         env:
@@ -81,9 +83,9 @@ jobs:
           -sdk iphoneos \
           -configuration Debug \
           -destination generic/platform=iOS \
-          -xcconfig "${{ github.workspace }}/PortalSwift/SPM Example/Secret.xcconfig" \
+          -xcconfig "${{ github.workspace }}/PortalSwift/PortalSwift/SPM Example/Secret.xcconfig" \
           -allowProvisioningUpdates
-          clean archive        
+          clean archive  
 
       - name: Log files in Before Export IPA folder
         run: |
