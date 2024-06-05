@@ -30,8 +30,8 @@ jobs:
         
       - name: Create secret.xcconfig file
         run: |
-          mkdir -p ${{ env.EXPORT_PATH }}
-          touch ${{ env.EXPORT_PATH }}/secret.xcconfig
+          SECRET_FILE_PATH="${{ github.workspace }}/PortalSwift/SPM Example/secret.xcconfig"
+          touch "$SECRET_FILE_PATH"
           cat <<EOF > ${{ env.EXPORT_PATH }}/secret.xcconfig
           ENV=prod
           ALCHEMY_API_KEY=${{ secrets.ALCHEMY_API_KEY }}
@@ -75,6 +75,7 @@ jobs:
           -sdk iphoneos \
           -configuration Debug \
           -destination generic/platform=iOS \
+          -xcconfig "${{ github.workspace }}/PortalSwift/SPM Example/secret.xcconfig" \
           -allowProvisioningUpdates
           clean archive          
 
