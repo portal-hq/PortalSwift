@@ -30,16 +30,16 @@ jobs:
         
       - name: Create secret.xcconfig file
         run: |
-          mkdir -p "${{ github.workspace }}/PortalSwift/SPM Example"
-          touch "${{ github.workspace }}/PortalSwift/SPM Example/Secret.xcconfig"
-          cat <<EOF > "${{ github.workspace }}/PortalSwift/SPM Example/Secret.xcconfig"
+          mkdir -p "${{ github.workspace }}/SPM Example"
+          touch "${{ github.workspace }}/SPM Example/Secret.xcconfig"
+          cat <<EOF > "${{ github.workspace }}/SPM Example/Secret.xcconfig"
           ENV=prod
           ALCHEMY_API_KEY=${{ secrets.ALCHEMY_API_KEY }}
           REVERSE_URL=${{ secrets.REVERSE_URL }}
           GDRIVE_CLIENT_ID=${{ secrets.REVERSE_URL }}
           EOF
-          chmod 644 "${{ github.workspace }}/PortalSwift/SPM Example/Secret.xcconfig"
-          ls -l "${{ github.workspace }}/PortalSwift/SPM Example/Secret.xcconfig"
+          chmod 644 "${{ github.workspace }}/SPM Example/Secret.xcconfig"
+          ls -l "${{ github.workspace }}/SPM Example/Secret.xcconfig"
       
       
       
