@@ -87,10 +87,11 @@ jobs:
           -xcconfig "${{ github.workspace }}/SPM Example/Secrets.xcconfig" \
           -allowProvisioningUpdates
           
-      - name: Log files in Before Export IPA folder
+      - name: Verify .xcarchive path and content
         run: |
-          ls -l ${{env.EXPORT_PATH}}/${{env.IPA_FOLDER_NAME}}
-          ls -R ${{env.EXPORT_PATH}}/${{env.IPA_FOLDER_NAME}}
+          echo "Contents of the archive directory:"
+          ls -R ${{ env.EXPORT_PATH }}/SPMExample.xcarchive
+        
 
       - name: Export IPA
         env:
