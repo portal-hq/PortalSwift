@@ -30,6 +30,7 @@ jobs:
         
       - name: Create secret.xcconfig file
         run: |
+          mkdir -p "${{ github.workspace }}/PortalSwift/SPM Example"
           SECRET_FILE_PATH="${{ github.workspace }}/PortalSwift/SPM Example/secret.xcconfig"
           touch "$SECRET_FILE_PATH"
           cat <<EOF > ${{ env.EXPORT_PATH }}/secret.xcconfig
