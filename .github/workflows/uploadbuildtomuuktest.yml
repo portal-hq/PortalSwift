@@ -28,18 +28,18 @@ jobs:
         uses: actions/checkout@v4
 
         
-      - name: Create secret.xcconfig file
+      - name: Create Secrets.xcconfig file
         run: |
           mkdir -p "${{ github.workspace }}/SPM Example"
-          touch "${{ github.workspace }}/SPM Example/Secret.xcconfig"
-          cat <<EOF > "${{ github.workspace }}/SPM Example/Secret.xcconfig"
+          touch "${{ github.workspace }}/SPM Example/Secrets.xcconfig"
+          cat <<EOF > "${{ github.workspace }}/SPM Example/Secrets.xcconfig"
           ENV=prod
           ALCHEMY_API_KEY=${{ secrets.ALCHEMY_API_KEY }}
           REVERSE_URL=${{ secrets.REVERSE_URL }}
           GDRIVE_CLIENT_ID=${{ secrets.REVERSE_URL }}
           EOF
-          chmod 644 "${{ github.workspace }}/SPM Example/Secret.xcconfig"
-          ls -l "${{ github.workspace }}/SPM Example/Secret.xcconfig"
+          chmod 644 "${{ github.workspace }}/SPM Example/Secrets.xcconfig"
+          ls -l "${{ github.workspace }}/SPM Example/Secrets.xcconfig"
       
       
       
@@ -76,7 +76,7 @@ jobs:
       - name: Build Archive
         run: |
           echo "Debugging: Checking if the xcconfig file is accessible"
-          cat "${{ github.workspace }}/SPM Example/Secret.xcconfig"
+          cat "${{ github.workspace }}/SPM Example/Secrets.xcconfig"
           echo "Debugging: xcconfig file content displayed above"
           ls -R ${{ github.workspace }}
           xcodebuild -scheme "${{ env.SCHEME_NAME }}" \
@@ -84,7 +84,7 @@ jobs:
           -sdk iphoneos \
           -configuration Debug \
           -destination generic/platform=iOS \
-          -xcconfig "${{ github.workspace }}/SPM Example/Secret.xcconfig" \
+          -xcconfig "${{ github.workspace }}/SPM Example/Secrets.xcconfig" \
           -allowProvisioningUpdates
           clean archive  
 
