@@ -31,15 +31,15 @@ jobs:
       - name: Create secret.xcconfig file
         run: |
           mkdir -p "${{ github.workspace }}/PortalSwift/SPM Example"
-          cat <<EOF > "${{ github.workspace }}/PortalSwift/SPM Example/secret.xcconfig"
+          cat <<EOF > "${{ github.workspace }}/PortalSwift/SPM Example/Secret.xcconfig"
           ENV=prod
           ALCHEMY_API_KEY=${{ secrets.ALCHEMY_API_KEY }}
           REVERSE_URL=${{ secrets.REVERSE_URL }}
           GDRIVE_CLIENT_ID=${{ secrets.REVERSE_URL }}
           EOF
         
-          chmod 644 "${{ github.workspace }}/PortalSwift/SPM Example/secret.xcconfig"
-          ls -l "${{ github.workspace }}/PortalSwift/SPM Example/secret.xcconfig"
+          chmod 644 "${{ github.workspace }}/PortalSwift/SPM Example/Secret.xcconfig"
+          ls -l "${{ github.workspace }}/PortalSwift/SPM Example/Secret.xcconfig"
 
         shell: bash
 
@@ -79,7 +79,7 @@ jobs:
           -sdk iphoneos \
           -configuration Debug \
           -destination generic/platform=iOS \
-          -xcconfig "${{ github.workspace }}/PortalSwift/SPM Example/secret.xcconfig" \
+          -xcconfig "${{ github.workspace }}/PortalSwift/SPM Example/Secret.xcconfig" \
           -allowProvisioningUpdates
           clean archive          
 
