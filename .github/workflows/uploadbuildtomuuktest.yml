@@ -78,15 +78,12 @@ jobs:
           echo "Debugging: Checking if the xcconfig file is accessible"
           cat "${{ github.workspace }}/PortalSwift/SPM Example/Secret.xcconfig"
           echo "Debugging: xcconfig file content displayed above"
-          echo "Debugging: Checking if the xcconfig file is accessible outside spmexample"
-          cat "${{ github.workspace }}/SPM Example/Secret.xcconfig"
-          echo "Debugging: xcconfig file content displayed above2"
           xcodebuild -scheme "${{ env.SCHEME_NAME }}" \
           -archivePath ${{ env.EXPORT_PATH }}/${{ env.IPA_NAME }}.xcarchive \
           -sdk iphoneos \
           -configuration Debug \
           -destination generic/platform=iOS \
-          -xcconfig "${{ github.workspace }}/SPM Example/Secret.xcconfig" \
+          -xcconfig "${{ github.workspace }}/PortalSwift/SPM Example/Secret.xcconfig" \
           -allowProvisioningUpdates
           clean archive          
 
