@@ -86,6 +86,7 @@ jobs:
           -destination generic/platform=iOS \
           -xcconfig "${{ github.workspace }}/SPM Example/Secrets.xcconfig" \
           -allowProvisioningUpdates
+          clean archive
 
       - name: Log files in Before Export IPA folder
         run: |
