@@ -84,7 +84,14 @@ jobs:
           -destination generic/platform=iOS \
           -xcconfig "${{ github.workspace }}/SPM Example/Secrets.xcconfig" \
           -allowProvisioningUpdates
+          echo "Listing all folders"
+          ls -l "${{ env.EXPORT_PATH }}"
         
+      - name: List .xcarchive Folders
+        run: |
+          echo "Listing xcarchive folders"
+          find . -type d -name "*.xcarchive"
+
       - name: Check Archive Path
         run: |
           if [ -d "${{ env.EXPORT_PATH }}/SPM Example.xcarchive" ]; then
@@ -138,3 +145,9 @@ jobs:
           --header 'Content-Type: application/octet-stream' \
           --data-binary @"$IPA_FILE" \
           "${{ steps.get_upload_url.outputs.uploadURL }}"
+
+
+
+
+          /Users/runner/work/PortalSwift/PortalSwift/SPM Example.xcarchive
+          /Users/runner/work/PortalSwift/PortalSwift/SPM Example.xcarchive
