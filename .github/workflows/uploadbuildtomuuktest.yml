@@ -84,8 +84,7 @@ jobs:
           -sdk iphoneos \
           -configuration Debug \
           -destination generic/platform=iOS \
-          -xcconfig "${{ env.EXPORT_PATH }}/SPM Example/Secrets.xcconfig" \
-          # -xcconfig "${{ github.workspace }}/SPM Example/Secrets.xcconfig" \
+          -xcconfig "${{ github.workspace }}/SPM Example/Secrets.xcconfig" \
           -allowProvisioningUpdates
         
 
