@@ -83,6 +83,7 @@ jobs:
           -configuration Debug \
           -destination generic/platform=iOS \
           -xcconfig "${{ github.workspace }}/SPM Example/Secrets.xcconfig" \
+          clean build \
           -allowProvisioningUpdates
           echo "Listing all folders"
           ls -l "${{ env.EXPORT_PATH }}"
