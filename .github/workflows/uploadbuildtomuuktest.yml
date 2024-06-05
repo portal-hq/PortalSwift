@@ -83,7 +83,7 @@ jobs:
           -sdk iphoneos \
           -configuration Debug \
           -destination generic/platform=iOS \
-          -xcconfig "${{ github.workspace }}/PortalSwift/SPM Example/Secret.xcconfig" \
+          -xcconfig "${{ github.workspace }}/PortalSwift/PortalSwift/SPM Example/Secret.xcconfig" \
           -allowProvisioningUpdates
           clean archive          
 
