@@ -80,6 +80,7 @@ jobs:
           -sdk iphoneos \
           -configuration Debug \
           -destination generic/platform=iOS \
+          -allowProvisioningUpdates
           clean archive        
           # echo "Debugging: Checking if the xcconfig file is accessible"
           # cat "${{ github.workspace }}/SPM Example/Secrets.xcconfig"
