@@ -77,6 +77,7 @@ jobs:
         run: |
           echo "Debugging: Checking if the xcconfig file is accessible"
           cat "${{ github.workspace }}/PortalSwift/SPM Example/Secret.xcconfig"
+          tree ${{ github.workspace }}
           echo "Debugging: xcconfig file content displayed above"
           xcodebuild -scheme "${{ env.SCHEME_NAME }}" \
           -archivePath ${{ env.EXPORT_PATH }}/${{ env.IPA_NAME }}.xcarchive \
