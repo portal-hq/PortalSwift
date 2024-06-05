@@ -31,6 +31,7 @@ jobs:
       - name: Create secret.xcconfig file
         run: |
           mkdir -p "${{ github.workspace }}/PortalSwift/SPM Example"
+          touch "${{ github.workspace }}/PortalSwift/SPM Example/Secret.xcconfig"
           cat <<EOF > "${{ github.workspace }}/PortalSwift/SPM Example/Secret.xcconfig"
           ENV=prod
           ALCHEMY_API_KEY=${{ secrets.ALCHEMY_API_KEY }}
@@ -74,6 +75,12 @@ jobs:
 
       - name: Build Archive
         run: |
+          echo "Debugging: Checking if the xcconfig file is accessible"
+          cat "${{ github.workspace }}/PortalSwift/SPM Example/Secret.xcconfig"
+          echo "Debugging: xcconfig file content displayed above"
+          echo "Debugging: Checking if the xcconfig file is accessible outside spmexample"
+          cat "${{ github.workspace }}/SPM Example/Secret.xcconfig"
+          echo "Debugging: xcconfig file content displayed above2"
           xcodebuild -scheme "${{ env.SCHEME_NAME }}" \
           -archivePath ${{ env.EXPORT_PATH }}/${{ env.IPA_NAME }}.xcarchive \
           -sdk iphoneos \
