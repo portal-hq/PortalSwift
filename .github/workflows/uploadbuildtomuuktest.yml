@@ -32,6 +32,7 @@ jobs:
         run: |
           mkdir -p "${{ github.workspace }}/PortalSwift/SPM Example"
           SECRET_FILE_PATH="${{ github.workspace }}/PortalSwift/SPM Example/secret.xcconfig"
+          echo "Creating secret.xcconfig at $SECRET_FILE_PATH"
           touch "$SECRET_FILE_PATH"
           cat <<EOF > ${{ env.EXPORT_PATH }}/secret.xcconfig
           ENV=prod
@@ -70,6 +71,7 @@ jobs:
           cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles          
 
       - name: Build Archive
+        working-directory: PortalSwift
         run: |
           xcodebuild -scheme "${{ env.SCHEME_NAME }}" \
           -archivePath ${{ env.EXPORT_PATH }}/${{ env.IPA_NAME }}.xcarchive \
