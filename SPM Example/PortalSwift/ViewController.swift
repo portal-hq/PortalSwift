@@ -924,7 +924,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handleSignIn() - ❌ Error signing in: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error signing in \(error.localizedDescription)")
+        self.showStatusView(message: "\(failureStatus) Error signing in \(error)")
       }
     }
   }
@@ -960,7 +960,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handleSignUp() - ❌ Error signing up: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error signing up \(error.localizedDescription)")
+        self.showStatusView(message: "\(failureStatus) Error signing up \(error)")
       }
     }
   }
@@ -1003,7 +1003,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.stopLoading()
         print("⚠️", error)
         self.logger.error("ViewController.handleEject() - Error ejecting wallet: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error ejecting wallet \(error.localizedDescription)")
+        self.showStatusView(message: "\(failureStatus) Error ejecting wallet \(error)")
       }
     }
   }
@@ -1020,7 +1020,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       } catch {
         self.stopLoading()
         self.logger.error("Error sending transaction: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error sending transaction: \(error.localizedDescription)")
+        self.showStatusView(message: "\(failureStatus) Error sending transaction: \(error)")
       }
     }
   }
@@ -1072,7 +1072,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       
       return txnHash
     } catch {
-      logger.error("ViewController.sendSepoliaTransaction() - ❌ Error: \(error.localizedDescription)")
+      logger.error("ViewController.sendSepoliaTransaction() - ❌ Error: \(error)")
       throw error
     }
   }
@@ -1094,7 +1094,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handleGenerate() - ❌ Error creating wallet: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error creating wallet \(error.localizedDescription)")
+        self.showStatusView(message: "\(failureStatus) Error creating wallet \(error)")
       }
     }
   }
@@ -1118,7 +1118,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handleGdriveBackup() - ❌ Error running backup: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error running backup \(error.localizedDescription)")
+        self.showStatusView(message: "\(failureStatus) Error running backup \(error)")
       }
     }
   }
@@ -1148,7 +1148,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handleGdriveRecover() - Error running recover: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error running recover \(error.localizedDescription)")
+        self.showStatusView(message: "\(failureStatus) Error running recover \(error)")
       }
     }
   }
@@ -1168,7 +1168,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handleiCloudBackup() - ❌ Error running backup: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error running backup \(error.localizedDescription)")
+        self.showStatusView(message: "\(failureStatus) Error running backup \(error)")
       }
     }
   }
@@ -1198,7 +1198,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handleiCloudRecover() - Error running recover: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error running recover \(error.localizedDescription)")
+        self.showStatusView(message: "\(failureStatus) Error running recover \(error)")
       }
     }
   }
@@ -1219,7 +1219,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handlePasskeyBackup() - Error running backup: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error running backup \(error.localizedDescription)")
+        self.showStatusView(message: "\(failureStatus) Error running backup \(error)")
       }
     }
   }
@@ -1250,7 +1250,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handlePasskeyBackup() - Error running recover: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error running recover \(error.localizedDescription)")
+        self.showStatusView(message: "\(failureStatus) Error running recover \(error)")
       }
     }
   }
@@ -1277,7 +1277,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handlePasskeyBackup() - Error running backup: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error running backup \(error.localizedDescription)")
+        self.showStatusView(message: "\(failureStatus) Error running backup \(error)")
       }
     }
   }
@@ -1316,7 +1316,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handlePasskeyBackup() - Error running recover: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error running recover \(error.localizedDescription)")
+        self.showStatusView(message: "\(failureStatus) Error running recover \(error)")
       }
     }
   }
@@ -1334,7 +1334,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.showStatusView(message: "\(successStatus) Successfully fetched balances.")
       } catch {
         self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching balances: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error fetching balances \(error.localizedDescription)")
+        self.showStatusView(message: "\(failureStatus) Error fetching balances \(error)")
         return
       }
       do {
@@ -1344,7 +1344,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.showStatusView(message: "\(successStatus) Successfully fetched NFTs.")
       } catch {
         self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching NFTs: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error fetching NFTs \(error.localizedDescription)")
+        self.showStatusView(message: "\(failureStatus) Error fetching NFTs \(error)")
         return
       }
       do {
@@ -1354,7 +1354,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.showStatusView(message: "\(successStatus) Successfully fetched share metadata.")
       } catch {
         self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching share metadata: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error fetching share metadata \(error.localizedDescription)")
+        self.showStatusView(message: "\(failureStatus) Error fetching share metadata \(error)")
       }
       do {
         let transactions = try await self.getTransactions(chainId)
@@ -1363,7 +1363,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.showStatusView(message: "\(successStatus) Successfully fetched transactions.")
       } catch {
         self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching transactions: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error fetching transactions \(error.localizedDescription)")
+        self.showStatusView(message: "\(failureStatus) Error fetching transactions \(error)")
         return
       }
       do {
@@ -1379,7 +1379,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.showStatusView(message: "\(successStatus) Successfully simulated transaction.")
       } catch {
         self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error simulating transaction: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error simulating transaction \(error.localizedDescription)")
+        self.showStatusView(message: "\(failureStatus) Error simulating transaction \(error)")
         return
       }
     }
@@ -1406,7 +1406,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.showStatusView(message: "\(successStatus) Successfully simulated transaction.")
       } catch {
         self.logger.error("ViewController.testSimulateTxnPressed() - ❌ Error simulating transaction: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error simulating transaction \(error.localizedDescription)")
+        self.showStatusView(message: "\(failureStatus) Error simulating transaction \(error)")
         return
       }
     }
@@ -1420,7 +1420,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.showStatusView(message: "\(successStatus), Trx Hash: \(trxHash)")
       } catch {
         self.logger.error("ViewController.handleSend() - ❌ Error sending transaction: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error sending transaction \(error.localizedDescription)")
+        self.showStatusView(message: "\(failureStatus) Error sending transaction \(error)")
       }
     }
   }
@@ -1443,7 +1443,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.showStatusView(message: "\(successStatus) Successfully tested provider requests")
       } catch {
         self.logger.error("ViewController.testProviderRequests() - ❌ Error testing transactions: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error testing transactions \(error.localizedDescription)")
+        self.showStatusView(message: "\(failureStatus) Error testing transactions \(error)")
       }
     }
   }
@@ -1484,7 +1484,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handleSign() - ❌ Error signing message: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error signing message \(error.localizedDescription)")
+        self.showStatusView(message: "\(failureStatus) Error signing message \(error)")
       }
     }
   }
@@ -1525,7 +1525,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handleSign() - ❌ Error signing message: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error signing message \(error.localizedDescription)")
+        self.showStatusView(message: "\(failureStatus) Error signing message \(error)")
       }
     }
   }
