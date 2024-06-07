@@ -125,6 +125,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
       self.socket.write(string: message)
       self.connectState = .disconnected
       self.pingTimer?.invalidate()
+      self.handleData(json)
     } catch {
       print("[WebSocketClient] Error encoding outbound message. Could not disconnect.")
     }
