@@ -24,12 +24,12 @@ final class EventBusTest: XCTestCase {
     let expectation = XCTestExpectation(description: "EventBus.emit(event, data)")
     let eventData = "testData"
     
-    eventBus.on(event: "testEvent") { data in
+    eventBus.on(event: Events.Connect.rawValue) { data in
       XCTAssertEqual(data as? String, eventData)
       expectation.fulfill()
     }
     
-    eventBus.emit(event: "testEvent", data: eventData)
+    eventBus.emit(event: Events.Connect.rawValue, data: eventData)
     
     wait(for: [expectation], timeout: 1.0)
   }
@@ -47,12 +47,12 @@ final class EventBusTest: XCTestCase {
     let expectation = XCTestExpectation(description: "EventBus.on(event, callback)")
     let eventData = "testData"
     
-    eventBus.on(event: "testEvent") { data in
+    eventBus.on(event: Events.Connect.rawValue) { data in
       XCTAssertEqual(data as? String, eventData)
       expectation.fulfill()
     }
     
-    eventBus.emit(event: "testEvent", data: eventData)
+    eventBus.emit(event: Events.Connect.rawValue, data: eventData)
     
     wait(for: [expectation], timeout: 1.0)
   }
@@ -61,13 +61,13 @@ final class EventBusTest: XCTestCase {
     let expectation = XCTestExpectation(description: "EventBus.once(event, callback)")
     let eventData = "testData"
     
-    eventBus.once(event: "testEvent") { data in
+    eventBus.once(event: Events.Connect.rawValue) { data in
       XCTAssertEqual(data as? String, eventData)
       expectation.fulfill()
     }
     
-    eventBus.emit(event: "testEvent", data: eventData)
-    eventBus.emit(event: "testEvent", data: eventData)
+    eventBus.emit(event: Events.Connect.rawValue, data: eventData)
+    eventBus.emit(event: Events.Connect.rawValue, data: eventData)
     
     wait(for: [expectation], timeout: 1.0)
   }
@@ -77,12 +77,12 @@ final class EventBusTest: XCTestCase {
     expectation.isInverted = true
     let eventData = "testData"
     
-    eventBus.on(event: "testEvent") { data in
+    eventBus.on(event: Events.Connect.rawValue) { data in
       expectation.fulfill()
     }
     
-    eventBus.removeListener(event: "testEvent")
-    eventBus.emit(event: "testEvent", data: eventData)
+    eventBus.removeListener(event: Events.Connect.rawValue)
+    eventBus.emit(event: Events.Connect.rawValue, data: eventData)
     
     wait(for: [expectation], timeout: 1.0)
   }
@@ -92,17 +92,17 @@ final class EventBusTest: XCTestCase {
     expectation.isInverted = true
     let eventData = "testData"
     
-    eventBus.on(event: "testEvent1") { data in
+    eventBus.on(event: Events.Connect.rawValue) { data in
       expectation.fulfill()
     }
     
-    eventBus.on(event: "testEvent2") { data in
+    eventBus.on(event: Events.Disconnect.rawValue) { data in
       expectation.fulfill()
     }
     
     eventBus.resetEvents()
-    eventBus.emit(event: "testEvent1", data: eventData)
-    eventBus.emit(event: "testEvent2", data: eventData)
+    eventBus.emit(event: Events.Connect.rawValue, data: eventData)
+    eventBus.emit(event: Events.Disconnect.rawValue, data: eventData)
     
     wait(for: [expectation], timeout: 1.0)
   }
