@@ -732,6 +732,7 @@ public enum ETHRequestMethods: String {
 /// A list of errors that can be thrown when instantiating PortalProvider.
 public enum ProviderInvalidArgumentError: Error {
   case invalidGatewayUrl
+  case invalidParamsForSwitchingChain
 }
 
 /// A list of errors that can be thrown when making requests to Gateway.

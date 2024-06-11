@@ -143,23 +143,13 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     portal.on(event: Events.ChainChanged.rawValue) { data in
       if let data = data as? [String: String] {
         let chainIdString = data["chainId"] ?? "0" // Get the string value, defaulting to "0" if nil
-          
-        // Update the chain ID
-        if let chainIdInt = Int(chainIdString, radix: 16) {
-          let javascript = """
-            window.postMessage(JSON.stringify({ type: 'portal_chainChanged', data: { chainId: \(chainIdInt) } }));
-          """
-          self.chainId = self.chainId
-          self.evaluateJavascript(javascript)
+
+        guard let chainId = Int(chainIdString, radix: 16) else {
+          print("[PortalWebView] Invalid chainId provided to `portal_chainChanged` event. Ignoring...")
+          return
         }
-        
-        // Update the RPC URL
-        if let rpcUrl = portal.rpcConfig["eip155:\(chainIdString)"] {
-          let javascript = """
-            window.postMessage(JSON.stringify({ type: 'portal_updateRpcUrl', data: { rpcUrl: '\(rpcUrl)' } }))
-          """
-          self.evaluateJavascript(javascript)
-        }
+
+        self.updateWebViewChain(chainId: chainId)
       }
     }
   }
@@ -341,7 +331,9 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       AnyCodable(param)
     }
     let payload = ETHRequestPayload(method: method, params: encodedParams)
-    if signerMethods.contains(method) {
+    if method == "wallet_switchEthereumChain" {
+      try self.handleWalletSwitchEthereumChain(method: method, params: encodedParams)
+    } else if signerMethods.contains(method) {
       self.portal.provider.request(payload: payload, completion: self.signerRequestCompletion)
     } else {
       self.portal.provider.request(payload: payload, completion: self.gatewayRequestCompletion)
@@ -423,6 +415,42 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     self.postMessage(payload: payload)
   }
 
+  private func handleWalletSwitchEthereumChain(method: String, params: [Any]) throws {
+    guard let params = params[1] as? ChainChangedData else {
+      throw ProviderInvalidArgumentError.invalidParamsForSwitchingChain
+    }
+
+    guard let chainId = Int(params.chainId, radix: 16) else {
+      throw ProviderInvalidArgumentError.invalidParamsForSwitchingChain
+    }
+
+    // Set the chainId locally
+    self.chainId = chainId
+
+    self.updateWebViewChain(chainId: chainId)
+
+    let signatureReceivedJavascript = """
+      window.postMessage(JSON.stringify({ type: 'portal_signatureReceived', data: { method: '\(method)', params: \(params) } }))
+    """
+    self.evaluateJavascript(signatureReceivedJavascript)
+  }
+
+  private func updateWebViewChain(chainId: Int) {
+    // Set the chainId in the WebView
+    let chainChangedJavascript = """
+      window.postMessage(JSON.stringify({ type: 'portal_chainChanged', data: { chainId: \(chainId) } }));
+    """
+    self.evaluateJavascript(chainChangedJavascript)
+
+    // Update the RPC URL
+    if let rpcUrl = portal.rpcConfig["eip155:\(chainId)"] {
+      let updateRpcUrlJavascript = """
+        window.postMessage(JSON.stringify({ type: 'portal_updateRpcUrl', data: { rpcUrl: '\(rpcUrl)' } }))
+      """
+      self.evaluateJavascript(updateRpcUrlJavascript)
+    }
+  }
+
   private func gatewayTransactionRequestCompletion(result: Result<TransactionCompletionResult>) {
     if let error = result.error {
       self.onError(Result(error: error))
@@ -498,7 +526,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     }
   }
 
-  private func injectPortal(address: String, apiKey: String, chainId: String, gatewayConfig: String, autoApprove _: Bool = false, enableMpc: Bool = false) -> String {
+  private func injectPortal(address: String, apiKey _: String, chainId: String, gatewayConfig: String, autoApprove _: Bool = false, enableMpc: Bool = false) -> String {
     "window.portalAddress='\(address)';window.portalAutoApprove=true;window.portalChainId='\(chainId)';window.portalGatewayConfig='\(gatewayConfig)';window.portalMPCEnabled='\(String(enableMpc))';\(PortalInjectionScript.SCRIPT)true"
   }
 }
