@@ -143,11 +143,21 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     portal.on(event: Events.ChainChanged.rawValue) { data in
       if let data = data as? [String: String] {
         let chainIdString = data["chainId"] ?? "0" // Get the string value, defaulting to "0" if nil
+          
+        // Update the chain ID
         if let chainIdInt = Int(chainIdString, radix: 16) {
           let javascript = """
             window.postMessage(JSON.stringify({ type: 'portal_chainChanged', data: { chainId: \(chainIdInt) } }));
           """
           self.chainId = self.chainId
+          self.evaluateJavascript(javascript)
+        }
+        
+        // Update the RPC URL
+        if let rpcUrl = portal.rpcConfig["eip155:\(chainIdString)"] {
+          let javascript = """
+            window.postMessage(JSON.stringify({ type: 'portal_updateRpcUrl', data: { rpcUrl: '\(rpcUrl)' } }))
+          """
           self.evaluateJavascript(javascript)
         }
       }
@@ -489,7 +499,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   }
 
   private func injectPortal(address: String, apiKey: String, chainId: String, gatewayConfig: String, autoApprove _: Bool = false, enableMpc: Bool = false) -> String {
-    "window.portalAddress='\(address)';window.portalApiKey='\(apiKey)';window.portalAutoApprove=true;window.portalChainId='\(chainId)';window.portalGatewayConfig='\(gatewayConfig)';window.portalMPCEnabled='\(String(enableMpc))';\(PortalInjectionScript.SCRIPT)true"
+    "window.portalAddress='\(address)';window.portalAutoApprove=true;window.portalChainId='\(chainId)';window.portalGatewayConfig='\(gatewayConfig)';window.portalMPCEnabled='\(String(enableMpc))';\(PortalInjectionScript.SCRIPT)true"
   }
 }
 
