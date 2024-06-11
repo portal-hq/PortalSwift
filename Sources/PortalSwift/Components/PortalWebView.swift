@@ -299,7 +299,41 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       case "portal_sign":
         if TransactionMethods.contains(portalMessageBody.data.method) {
           try self.handlePortalSignTransaction(method: portalMessageBody.data.method, params: portalMessageBody.data.params)
-        } else {
+        } else if portalMessageBody.data.method == "wallet_switchEthereumChain"{
+          let chainHex = (portalMessageBody.data.params.first as! NSDictionary)["chainId"] as! String
+          let cleanedHexString = chainHex.hasPrefix("0x") ? String(chainHex.dropFirst(2)) : chainHex
+          
+          if let intValue = Int(cleanedHexString, radix: 16) {
+            let newChainId = intValue
+            self.chainId = newChainId
+            var portalMessageBody = PortalMessageBodyData(method: "wallet_switchEthereumChain", params: portalMessageBody.data.params)
+            
+            // Create a modified params array
+            var modifiedParams: [Any] = portalMessageBody.params
+            var newParams: [String: Any] = [:]
+            
+            // Iterate through the params to find the dictionary containing the chainId key
+            for param in portalMessageBody.params {
+              if let paramDict = param as? [String: Any], let _ = paramDict["chainId"] {
+                // Replace the chainId value
+                newParams["chainId"] = chainHex//newChainId
+              }
+            }
+            // Convert the new params dictionary to AnyCodable
+            let params = AnyCodable(newParams)
+            let method = AnyCodable(portalMessageBody.method)
+            let signature = AnyCodable("null")
+            let payload: [String: AnyCodable] = [
+              "method": method,
+              "params": [params],
+              "signature": signature
+            ]
+            self.postMessage(payload: payload)
+          } else {
+            print("Invalid hexadecimal string")
+          }
+        }
+          else {
           try self.handlePortalSign(method: portalMessageBody.data.method, params: portalMessageBody.data.params)
         }
       default:
