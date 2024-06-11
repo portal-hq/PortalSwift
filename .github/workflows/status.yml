@@ -22,3 +22,16 @@ jobs:
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Slack - send success status of release workflow
+        if: ${{ github.event.workflow_run.conclusion == 'success' }}
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          payload: |
+            {
+            "Title": "**Publishing the swift sdk succeeded**",
+            "Body": "The SDK was published successfully. Check the details here: https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}",
+            "Status": "Success"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

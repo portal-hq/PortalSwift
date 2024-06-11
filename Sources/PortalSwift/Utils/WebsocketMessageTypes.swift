@@ -227,7 +227,7 @@ public struct PeerMetadata: Codable {
 }
 
 public struct DisconnectData: Codable {
-  public let id: String
+  public let id: String?
   public let topic: String
 }
 
