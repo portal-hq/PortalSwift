@@ -331,8 +331,11 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       AnyCodable(param)
     }
     let payload = ETHRequestPayload(method: method, params: encodedParams)
+
+    print("🚨 Method: \(method)")
+
     if method == "wallet_switchEthereumChain" {
-      try self.handleWalletSwitchEthereumChain(method: method, params: encodedParams)
+      try self.handleWalletSwitchEthereumChain(method: method, params: params)
     } else if signerMethods.contains(method) {
       self.portal.provider.request(payload: payload, completion: self.signerRequestCompletion)
     } else {
@@ -416,22 +419,30 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   }
 
   private func handleWalletSwitchEthereumChain(method: String, params: [Any]) throws {
-    guard let params = params[1] as? ChainChangedData else {
-      throw ProviderInvalidArgumentError.invalidParamsForSwitchingChain
-    }
+    let encodedParams = try JSONSerialization.data(withJSONObject: params)
+    let params = try decoder.decode([ChainChangedParam].self, from: encodedParams)
 
-    guard let chainId = Int(params.chainId, radix: 16) else {
-      throw ProviderInvalidArgumentError.invalidParamsForSwitchingChain
-    }
+    print("⚠️ Params: \(params)")
+
+    let rawChainId = params[0].chainId
+
+    print("⚠️ Raw Chain ID: \(rawChainId)")
+    let chainId = try parseRawChainId(rawChainId: rawChainId)
+
+    print("⚠️ Chain ID: \(chainId)")
 
     // Set the chainId locally
     self.chainId = chainId
 
     self.updateWebViewChain(chainId: chainId)
 
+    let jsonData = "[{ \"chainId\": \"\(rawChainId)\" }]"
+
     let signatureReceivedJavascript = """
-      window.postMessage(JSON.stringify({ type: 'portal_signatureReceived', data: { method: '\(method)', params: \(params) } }))
+      window.postMessage(JSON.stringify({ type: 'portal_signatureReceived', data: { method: '\(method)', params: \(jsonData) }, signature: "null" }))
     """
+
+    print("⚠️ Signature Received JS: \(signatureReceivedJavascript)")
     self.evaluateJavascript(signatureReceivedJavascript)
   }
 
@@ -472,6 +483,20 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       "signature": AnyCodable(result.data!.result),
     ]
     self.postMessage(payload: payload)
+  }
+
+  private func parseRawChainId(rawChainId: String) throws -> Int {
+    let chainId = if rawChainId.starts(with: "0x") {
+      Int(rawChainId.replacingOccurrences(of: "0x", with: ""), radix: 16)
+    } else {
+      Int(rawChainId)
+    }
+
+    guard let chainId = chainId else {
+      throw ProviderInvalidArgumentError.invalidParamsForSwitchingChain
+    }
+
+    return chainId
   }
 
   private func signerRequestCompletion(result: Result<RequestCompletionResult>) {
@@ -529,6 +554,10 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   private func injectPortal(address: String, apiKey _: String, chainId: String, gatewayConfig: String, autoApprove _: Bool = false, enableMpc: Bool = false) -> String {
     "window.portalAddress='\(address)';window.portalAutoApprove=true;window.portalChainId='\(chainId)';window.portalGatewayConfig='\(gatewayConfig)';window.portalMPCEnabled='\(String(enableMpc))';\(PortalInjectionScript.SCRIPT)true"
   }
+}
+
+public struct ChainChangedParam: Codable {
+  public let chainId: String
 }
 
 enum PortalWebViewError: Error {
