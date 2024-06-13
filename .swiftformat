@@ -3,8 +3,23 @@
 # Sets default indent to 2 spaces
 --indent 2
 
+# Minimum Swift version to support
+--swiftversion 5.5  
+
 # Ensures that the `self` keyword is always present when required
 --self insert
 
 # Exclude specified directories from formatting
 --exclude Pods,Example/Pods
+
+# Disable rules that don't make sense for the project
+--disable redundantSelf, hoistPatternLet  
+
+# Remove unnecessary semicolons
+--semicolons inline  
+
+# Place commas inline with the previous element
+--commas inline  
+
+# Convert closure arguments to trailing closures where applicable
+--trailingClosures  
