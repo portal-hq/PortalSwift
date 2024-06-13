@@ -377,4 +377,29 @@ public enum MockConstants {
       return mockMpcShareString
     }
   }
+  
+  public static var mockConnectData: ConnectData {
+    return ConnectData(id: "test-mock-connect-data-id", topic: "test-mock-connect-data-topic", params: SessionProposal(id: 1, params: Params(id: -1, pairingTopic: "", expiry: 1, requiredNamespaces: Namespaces(), relays: [], proposer: Proposer(publicKey: "", metadata: Metadata(description: "", url: "", icons: [], name: "")), verifyContext: nil)))
+  }
+    
+  public static var mockConnectedData: ConnectedData {
+    return ConnectedData(id: "test-mock-connected-data-id", topic: "test-mock-connected-data-topic", params: Pairing(active: true, expiry: nil, peerMetadata: PeerMetadata(name: "test-mock-connected-data-peer-metadata-name", description: "test-mock-connected-data-peer-metadata-description", url: "test-mock-connected-data-peer-metadata-url", icons: []), relay: nil, topic: "test-mock-connected-data-peer-metadata-topic"))
+  }
+  
+  public static var mockDicConnectedData: DisconnectData {
+    return DisconnectData(id: "test-mock-dis-connected-data-id", topic: "test-mock-dis-connected-data-topic")
+  }
+    
+  public static var mockSessionRequestData: SessionRequestData {
+    return SessionRequestData(id: "test-mock-session-request-data-id", params: ProviderRequestParams(chainId: 11_155_111, request: ProviderRequestData(method: "eth_sign", params: ["0x1234"])), topic: "test-mock-session-request-data-topic")
+  }
+  
+  public static var mockSessionRequestAddressData: SessionRequestAddressData {
+    return SessionRequestAddressData(id: "test-mock-session-request-data-id", params: ProviderRequestAddressParams(chainId: 11_155_111, request: ProviderRequestAddressData(method: "eth_sign", params: [ETHAddressParam(address: mockEip155Address)])), topic: "test-mock-session-request-data-topic")
+  }
+  
+  public static var mockSessionRequestTransactionData: SessionRequestTransactionData {
+    return SessionRequestTransactionData(id: "test-mock-session-request-data-id", params: ProviderRequestTransactionParams(chainId: 11_155_111, request: ProviderRequestTransactionData(method: "eth_sign", params: [ETHTransactionParam(from: mockEip155Address, to: "0xd46e8dd67c5d32be8058bb8eb970870f07244567")])), topic: "test-mock-session-request-data-topic")
+  }
+
 }
