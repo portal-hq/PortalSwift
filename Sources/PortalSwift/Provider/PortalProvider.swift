@@ -125,15 +125,21 @@ public class PortalProvider {
   ///   - callback: The function to be invoked whenever the event fires.
   /// - Returns: The Portal Provider instance.
   public func on(event: Events.RawValue, callback: @escaping (_ data: Any) -> Void) -> PortalProvider {
-    if self.events[event] == nil {
-      self.events[event] = []
+    if var eventHandlers = self.events[event] {
+      // Append the new event handler to the existing array
+      eventHandlers.append(RegisteredEventHandler(
+        handler: callback,
+        once: false
+      ))
+      // Update the events dictionary with the modified array
+      self.events[event] = eventHandlers
+    } else {
+      // If the array doesn't exist, create a new one with the provided event handler
+      self.events[event] = [RegisteredEventHandler(
+        handler: callback,
+        once: false
+      )]
     }
-
-    self.events[event]?.append(RegisteredEventHandler(
-      handler: callback,
-      once: false
-    ))
-
     return self
   }
 
@@ -146,16 +152,22 @@ public class PortalProvider {
     event: Events.RawValue,
     callback: @escaping (_ data: Any) throws -> Void
   ) -> PortalProvider {
-    if self.events[event] == nil {
-      self.events[event] = []
+    if var eventHandlers = self.events[event] {
+      // Append the new event handler to the existing array
+      eventHandlers.append(RegisteredEventHandler(
+        handler: callback,
+        once: false
+      ))
+      // Update the events dictionary with the modified array
+      self.events[event] = eventHandlers
+    } else {
+      // If the array doesn't exist, create a new one with the provided event handler
+      self.events[event] = [RegisteredEventHandler(
+        handler: callback,
+        once: false
+      )]
     }
-
-    self.events[event]?.append(RegisteredEventHandler(
-      handler: callback,
-      once: true
-    ))
-
-    return self
+    return self  
   }
 
   /// Removes the callback for the specified event.
