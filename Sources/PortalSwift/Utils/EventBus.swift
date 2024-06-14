@@ -21,26 +21,21 @@ public class EventBus {
   ///   - data: The data to pass to registered event handlers.
   /// - Returns: The Portal Provider instance.
   public func emit(event: Events.RawValue, data: Any) {
-    let registeredEventHandlers = self.events[event]
-
-    if registeredEventHandlers == nil {
+    guard let registeredEventHandlers = self.events[event] else {
       print(String(format: "[\(self.label)] Could not find any bindings for event '%@'. Ignoring...", event))
       return
-    } else {
-      // Invoke all registered handlers for the event
-      do {
-        for registeredEventHandler in registeredEventHandlers! {
-          try registeredEventHandler.handler(data)
-        }
-      } catch {
-        print("[\(self.label)] Error invoking registered handlers", error)
-      }
-
-      // Remove once instances
-      self.events[event] = registeredEventHandlers?.filter(self.removeOnce)
-
-      return
     }
+    // Invoke all registered handlers for the event
+    do {
+      for registeredEventHandler in registeredEventHandlers {
+        try registeredEventHandler.handler(data)
+      }
+    } catch {
+      print("[\(self.label)] Error invoking registered handlers", error)
+    }
+
+    // Remove once instances
+    self.events[event] = registeredEventHandlers.filter(self.removeOnce)
   }
 
   /// Registers a callback for an event.
@@ -100,7 +95,7 @@ public class EventBus {
   ///   - registeredEventHandler: A specific RegisteredEventHandler.
   /// - Returns: A boolean determining whether the RegisteredEventHandler existed or not.
   private func removeOnce(registeredEventHandler: RegisteredEventHandler) -> Bool {
-    return !registeredEventHandler.once
+    !registeredEventHandler.once
   }
 
   /// Removes all event handlers.

@@ -19,7 +19,7 @@ public class PasskeyStorage: Storage, PortalStorage {
 
   public var api: PortalApi?
 
-  public var apiKey: String?
+  internal var apiKey: String?
   public var client: Client?
   public let encryption: PortalEncryption
   public var portalApi: PortalApi?
