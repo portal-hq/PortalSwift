@@ -33,11 +33,9 @@ public class EventBus {
     } catch {
       print("[\(self.label)] Error invoking registered handlers", error)
     }
-    
+
     // Remove once instances
     self.events[event] = registeredEventHandlers.filter(self.removeOnce)
-    
-    return
   }
 
   /// Registers a callback for an event.
@@ -97,7 +95,7 @@ public class EventBus {
   ///   - registeredEventHandler: A specific RegisteredEventHandler.
   /// - Returns: A boolean determining whether the RegisteredEventHandler existed or not.
   private func removeOnce(registeredEventHandler: RegisteredEventHandler) -> Bool {
-    return !registeredEventHandler.once
+    !registeredEventHandler.once
   }
 
   /// Removes all event handlers.

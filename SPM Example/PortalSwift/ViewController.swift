@@ -41,7 +41,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   // Static information
   @IBOutlet var addressInformation: UITextView?
   @IBOutlet var ethBalanceInformation: UITextView?
-  @IBOutlet var statusLabel : UILabel?
+  @IBOutlet var statusLabel: UILabel?
 
   // Buttons
   @IBOutlet var dappBrowserButton: UIButton?
@@ -111,7 +111,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   private let decoder = JSONDecoder()
   private let logger = Logger()
   private let requests = PortalRequests()
-  
+
   private let successStatus = "✅ Success"
   private let failureStatus = "❌ Failure"
 
@@ -176,7 +176,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
     let payload = [
       "backupMethod": withMethod.rawValue,
-      "cipherText": cipherText,
+      "cipherText": cipherText
     ]
 
     let resultData = try await requests.post(url, andPayload: payload)
@@ -340,7 +340,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     let transaction = [
       "from": address,
       "to": self.sendAddress?.text ?? "",
-      "value": "0x10",
+      "value": "0x10"
     ]
 
     let sendTransactionResponse = try await portal.request(chainId, withMethod: .eth_sendTransaction, andParams: [transaction])
@@ -429,7 +429,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       ProviderRequest(method: .eth_sendRawTransaction, params: ["0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675"]),
       ProviderRequest(method: .web3_clientVersion, params: []),
       ProviderRequest(method: .web3_sha3, params: ["0x68656c6c6f20776f726c64"]),
-      ProviderRequest(method: .eth_getStorageAt, params: [address, "0x0", "latest"]),
+      ProviderRequest(method: .eth_getStorageAt, params: [address, "0x0", "latest"])
     ]
 
     for request in otherRequests {
@@ -452,13 +452,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
       "data": "0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675",
       "from": address,
       "to": toAddress,
-      "value": "0x9184e72a",
+      "value": "0x9184e72a"
     ]
 
     let signerRequests = [
       ProviderRequest(method: .eth_sign, params: [address, "0xdeadbeaf"]),
       ProviderRequest(method: .personal_sign, params: ["0xdeadbeaf", address]),
-      ProviderRequest(method: .eth_signTransaction, params: [fakeTransaction]),
+      ProviderRequest(method: .eth_signTransaction, params: [fakeTransaction])
     ]
 
     for request in signerRequests {
@@ -480,13 +480,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
       "data": "0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675",
       "from": address,
       "to": toAddress,
-      "value": "0x9184e72a",
+      "value": "0x9184e72a"
     ]
     let requests = [
       ProviderRequest(method: .eth_call, params: [fakeTransaction]),
       ProviderRequest(method: .eth_estimateGas, params: [fakeTransaction]),
       ProviderRequest(method: .eth_sendTransaction, params: [fakeTransaction]),
-      ProviderRequest(method: .eth_signTransaction, params: [fakeTransaction]),
+      ProviderRequest(method: .eth_signTransaction, params: [fakeTransaction])
     ]
 
     for request in requests {
@@ -508,7 +508,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       // https://docs.metamask.io/guide/rpc-api.html#wallet-switchethereumchain
       ProviderRequest(method: .wallet_switchEthereumChain, params: []),
       // https://docs.metamask.io/guide/rpc-api.html#wallet-watchasset
-      ProviderRequest(method: .wallet_watchAsset, params: []),
+      ProviderRequest(method: .wallet_watchAsset, params: [])
     ]
 
     for request in walletRequests {
@@ -663,7 +663,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     self.activityIndicator.translatesAutoresizingMaskIntoConstraints = false
     NSLayoutConstraint.activate([
       self.activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-      self.activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+      self.activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor)
     ])
 
     // Initialize the overlay view
@@ -717,7 +717,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
           "eip155:80001": "https://polygon-mumbai.g.alchemy.com/v2/\(config.alchemyApiKey)",
           "eip155:11155111": "https://eth-sepolia.g.alchemy.com/v2/\(config.alchemyApiKey)",
           "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": "https://solana-mainnet.g.alchemy.com/v2/\(config.alchemyApiKey)",
-          "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": "https://solana-devnet.g.alchemy.com/v2/\(config.alchemyApiKey)",
+          "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": "https://solana-devnet.g.alchemy.com/v2/\(config.alchemyApiKey)"
         ],
         autoApprove: false,
         featureFlags: FeatureFlags(optimized: true, isMultiBackupEnabled: true),
@@ -870,7 +870,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.deleteKeychainButton?.isHidden = !walletExists || !isWalletOnDevice
           self.ejectButton?.isEnabled = availableRecoveryMethods.count > 0
           self.ejectButton?.isHidden = availableRecoveryMethods.count == 0
-          
+
           // Test Add funds to Sepolia
           self.fundSepoliaButton?.isEnabled = walletExists && isWalletOnDevice
           self.fundSepoliaButton?.isHidden = !walletExists || !isWalletOnDevice
@@ -1007,7 +1007,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
     }
   }
-  
+
   @IBAction func handleFundSepolia(_: UIButton) {
     Task {
       do {
@@ -1024,52 +1024,53 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
     }
   }
-  
+
   public func sendSepoliaTransaction() async throws -> String {
     guard let portal else {
       logger.error("ViewController.sendSepoliaTransaction() - ❌ Portal not initialized.")
       throw PortalExampleAppError.portalNotInitialized()
     }
-    
+
     let chainId = "eip155:11155111"
     guard let address = await portal.getAddress(chainId) else {
       logger.error("ViewController.sendSepoliaTransaction() - ❌ Address not found.")
       throw PortalExampleAppError.addressNotFound()
     }
-    
+
     guard let user else {
       logger.error("ViewController.sendSepoliaTransaction() - ❌ User not logged in.")
       throw PortalExampleAppError.userNotLoggedIn()
     }
-    
+
     guard let config else {
       logger.error("ViewController.sendSepoliaTransaction() - ❌ Application configuration not set.")
       throw PortalExampleAppError.configurationNotSet()
     }
-    
+
     _ = try await getGasPrice(chainId)
-    
+
     let configURL = config.custodianServerUrl
     guard let url = URL(string: "\(configURL)/mobile/\(user.exchangeUserId)/transfer") else {
       logger.error("ViewController.sendSepoliaTransaction() - ❌ Invalid URL.")
       throw PortalExampleAppError.custodianServerUrlNotSet()
     }
-    
+
     let payload =
-    [
-      "chainId": "11155111",
-      "address": address,
-      "amount": "0.001"
-    ]
-    
+      [
+        "chainId": "11155111",
+        "address": address,
+        "amount": "0.001"
+      ]
+
     do {
       let data = try await requests.post(url, andPayload: payload)
       guard let jsonDictionary = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
-            let txnHash = jsonDictionary["txHash"] as? String else {
+            let txnHash = jsonDictionary["txHash"] as? String
+      else {
         logger.error("ViewController.sendSepoliaTransaction() - ❌ Invalid response type for request.")
         throw PortalExampleAppError.invalidResponseTypeForRequest()
       }
-      
+
       return txnHash
     } catch {
       logger.error("ViewController.sendSepoliaTransaction() - ❌ Error: \(error)")
@@ -1371,7 +1372,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         let transaction = [
           "from": address,
           "to": self.sendAddress?.text ?? "0xdFd8302f44727A6348F702fF7B594f127dE3A902",
-          "value": "0x10",
+          "value": "0x10"
         ]
         let simulatedTransaction = try await self.simulateTransaction(chainId, transaction: transaction)
         print(simulatedTransaction)
@@ -1398,7 +1399,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         let transaction = [
           "from": address,
           "to": toAddress,
-          "value": "0x10",
+          "value": "0x10"
         ]
         let simulatedTransaction = try await self.simulateTransaction(chainId, transaction: transaction)
         print(simulatedTransaction)
