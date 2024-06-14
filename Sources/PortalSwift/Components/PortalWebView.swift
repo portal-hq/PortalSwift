@@ -459,8 +459,8 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     }
   }
 
-  private func injectPortal(address: String, apiKey: String, chainId: String, gatewayConfig: String, autoApprove _: Bool = false, enableMpc: Bool = false) -> String {
-    "window.portalAddress = \"\(address)\";window.portalApiKey = \"\(apiKey)\";window.portalAutoApprove = true;window.portalChainId = \"\(chainId)\";window.portalGatewayConfig = \"\(gatewayConfig)\";window.portalMPCEnabled = \"\(String(enableMpc))\";\(PortalInjectionScript.SCRIPT as Any)true;"
+  private func injectPortal(address: String, apiKey _: String, chainId: String, gatewayConfig: String, autoApprove _: Bool = false, enableMpc: Bool = false) -> String {
+    "window.portalAddress = \"\(address)\";window.portalAutoApprove = true;window.portalChainId = \"\(chainId)\";window.portalGatewayConfig = \"\(gatewayConfig)\";window.portalMPCEnabled = \"\(String(enableMpc))\";\(PortalInjectionScript.SCRIPT as Any)true;"
   }
 
   private func updateWebViewChain(chainId: Int) {
