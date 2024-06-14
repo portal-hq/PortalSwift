@@ -88,7 +88,7 @@ public class Portal {
     self.mpcHost = mpcHost
     self.rpcConfig = withRpcConfig
     self.version = version
-    
+
     self.provider = try PortalProvider(
       apiKey: apiKey,
       rpcConfig: withRpcConfig,
@@ -140,7 +140,7 @@ public class Portal {
       if let client = try? await api.client {
         _ = try? await api.identify([
           "id": AnyCodable(client.id),
-          "custodianId": AnyCodable(client.custodian.id),
+          "custodianId": AnyCodable(client.custodian.id)
         ])
         _ = try? await api.track(
           MetricsEvents.portalInitialized.rawValue,
@@ -758,7 +758,7 @@ public class Portal {
       method: ETHRequestMethods.Sign.rawValue,
       params: [
         address,
-        message,
+        message
       ]
     ), completion: completion)
   }
@@ -816,7 +816,7 @@ public class Portal {
       method: ETHRequestMethods.PersonalSign.rawValue,
       params: [
         message,
-        address,
+        address
       ]
     ), completion: completion)
   }
@@ -881,7 +881,7 @@ public class Portal {
     let solanaHeader = SolanaHeader(numRequiredSignatures: message.header.numRequiredSignatures, numReadonlySignedAccounts: message.header.numReadonlySignedAccounts, numReadonlyUnsignedAccounts: message.header.numReadonlyUnsignedAccounts)
 
     let solanaInstructions = message.instructions.map { SolanaInstruction(from: $0) }
-    let accountKeys = message.accountKeys.map { $0.base58EncodedString }
+    let accountKeys = message.accountKeys.map(\.base58EncodedString)
 
     return SolanaRequest(signatures: nil, message: SolanaMessage(accountKeys: accountKeys, header: solanaHeader, recentBlockhash: message.recentBlockhash, instructions: solanaInstructions))
   }

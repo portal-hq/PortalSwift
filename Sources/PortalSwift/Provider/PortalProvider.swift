@@ -43,7 +43,7 @@ public class PortalProvider {
     ETHRequestMethods.WalletRegisterOnboarding.rawValue,
     ETHRequestMethods.WalletRequestPermissions.rawValue,
     ETHRequestMethods.WalletSwitchEthereumChain.rawValue,
-    ETHRequestMethods.WalletWatchAsset.rawValue,
+    ETHRequestMethods.WalletWatchAsset.rawValue
   ]
 
   /// Creates an instance of PortalProvider.
@@ -103,7 +103,7 @@ public class PortalProvider {
       self.logger.info(String(format: "PortalProvider.emit() - ⚠️ Could not find any bindings for event '%@'. Ignoring...", event))
       return self
     }
-    
+
     // Invoke all registered handlers for the event
     do {
       for registeredEventHandler in registeredEventHandlers {
@@ -112,10 +112,10 @@ public class PortalProvider {
     } catch {
       self.logger.info("PortalProvider.emit() - 🚨 Error invoking registered handlers: \(error.localizedDescription)")
     }
-    
+
     // Remove once instances
     self.events[event] = registeredEventHandlers.filter(self.removeOnce)
-    
+
     return self
   }
 
@@ -167,7 +167,7 @@ public class PortalProvider {
         once: false
       )]
     }
-    return self  
+    return self
   }
 
   /// Removes the callback for the specified event.
@@ -262,7 +262,7 @@ public class PortalProvider {
     if self.autoApprove {
       return true
     }
-    if connect == nil && self.events[Events.PortalSigningRequested.rawValue] == nil {
+    if connect == nil, self.events[Events.PortalSigningRequested.rawValue] == nil {
       throw ProviderSigningError.noBindingForSigningApprovalFound
     }
 
@@ -309,7 +309,7 @@ public class PortalProvider {
 
   @available(*, deprecated, renamed: "getRpcUrl", message: "Please use the chain agnostic implementation of getRpcUrl()")
   private func getRpcUrl(_ chainId: Int) throws -> String {
-    return try self.getRpcUrl("eip155:\(chainId)")
+    try self.getRpcUrl("eip155:\(chainId)")
   }
 
   private func handleRpcRequest(
@@ -743,6 +743,7 @@ public enum ETHRequestMethods: String {
 /// A list of errors that can be thrown when instantiating PortalProvider.
 public enum ProviderInvalidArgumentError: Error {
   case invalidGatewayUrl
+  case invalidParamsForSwitchingChain
 }
 
 /// A list of errors that can be thrown when making requests to Gateway.
@@ -767,7 +768,7 @@ public var TransactionMethods: [ETHRequestMethods.RawValue] = [
   ETHRequestMethods.EstimateGas.rawValue, // string
   ETHRequestMethods.GetStorageAt.rawValue, // data
   ETHRequestMethods.SendTransaction.rawValue,
-  ETHRequestMethods.SignTransaction.rawValue,
+  ETHRequestMethods.SignTransaction.rawValue
 ]
 
 /// A list of JSON-RPC signing methods.
@@ -777,5 +778,5 @@ public var signerMethods: [ETHRequestMethods.RawValue] = [
   ETHRequestMethods.Sign.rawValue,
   ETHRequestMethods.SignTransaction.rawValue,
   ETHRequestMethods.SignTypedDataV3.rawValue,
-  ETHRequestMethods.SignTypedDataV4.rawValue,
+  ETHRequestMethods.SignTypedDataV4.rawValue
 ]

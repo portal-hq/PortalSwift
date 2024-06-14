@@ -1,6 +1,6 @@
 //
 //  MockWebSocketClient.swift
-//  
+//
 //
 //  Created by Portal Labs on 12/06/2024.
 //
@@ -12,9 +12,9 @@ class MockWebSocketClient: WebSocketClient {
   var onSend: ((Data) -> Void)?
   var uri: String?
   override var isConnected: Bool {
-    return mockConnectState == .connected || mockConnectState == .connecting
+    mockConnectState == .connected || mockConnectState == .connecting
   }
-  
+
   override func connect(uri: String) {
     self.uri = uri
     self.mockConnectState = .connecting
@@ -23,21 +23,19 @@ class MockWebSocketClient: WebSocketClient {
       self.onConnect?()
     }
   }
-  
-  override func disconnect(_ userInitiated: Bool = false) {
+
+  override func disconnect(_: Bool = false) {
     self.mockConnectState = .disconnected
   }
-  
+
   override func sendFinalMessageAndDisconnect() {
     self.mockConnectState = .disconnecting
     DispatchQueue.global().asyncAfter(deadline: .now() + 1) {
       self.mockConnectState = .disconnected
     }
   }
-  
+
   override func send(_ data: Data) {
     self.onSend?(data)
   }
-  
 }
-
