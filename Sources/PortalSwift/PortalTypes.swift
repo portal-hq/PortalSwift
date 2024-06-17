@@ -35,11 +35,9 @@ public struct PortalBackupWalletResponse {
  *********************************************/
 
 public struct FeatureFlags {
-  public var optimized: Bool
   public var isMultiBackupEnabled: Bool?
 
-  public init(optimized: Bool, isMultiBackupEnabled: Bool? = nil) {
-    self.optimized = optimized
+  public init(isMultiBackupEnabled: Bool? = nil) {
     self.isMultiBackupEnabled = isMultiBackupEnabled
   }
 }
