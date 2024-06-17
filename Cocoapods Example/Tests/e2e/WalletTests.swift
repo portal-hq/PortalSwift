@@ -75,7 +75,7 @@ class WalletTests: XCTestCase {
 //      let backupOption = LocalFileStorage(fileName: "PORTAL_BACKUP")
 //      let backup = BackupOptions(local: backupOption)
 //      print("registering portal")
-//      WalletTests.PortalWrap.registerPortal(apiKey: userResult.clientApiKey, backup: backup, chainId: 11_155_111, optimized: true) {
+//      WalletTests.PortalWrap.registerPortal(apiKey: userResult.clientApiKey, backup: backup, chainId: 11_155_111) {
 //        result in
 //        guard result.error == nil else {
 //          registerExpectation.fulfill()
