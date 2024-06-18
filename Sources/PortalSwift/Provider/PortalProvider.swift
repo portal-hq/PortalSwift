@@ -43,7 +43,7 @@ public class PortalProvider {
     ETHRequestMethods.WalletRegisterOnboarding.rawValue,
     ETHRequestMethods.WalletRequestPermissions.rawValue,
     ETHRequestMethods.WalletSwitchEthereumChain.rawValue,
-    ETHRequestMethods.WalletWatchAsset.rawValue,
+    ETHRequestMethods.WalletWatchAsset.rawValue
   ]
 
   /// Creates an instance of PortalProvider.
@@ -103,7 +103,7 @@ public class PortalProvider {
       self.logger.info(String(format: "PortalProvider.emit() - ⚠️ Could not find any bindings for event '%@'. Ignoring...", event))
       return self
     }
-    
+
     // Invoke all registered handlers for the event
     do {
       for registeredEventHandler in registeredEventHandlers {
@@ -112,10 +112,10 @@ public class PortalProvider {
     } catch {
       self.logger.info("PortalProvider.emit() - 🚨 Error invoking registered handlers: \(error.localizedDescription)")
     }
-    
+
     // Remove once instances
     self.events[event] = registeredEventHandlers.filter(self.removeOnce)
-    
+
     return self
   }
 
@@ -125,15 +125,21 @@ public class PortalProvider {
   ///   - callback: The function to be invoked whenever the event fires.
   /// - Returns: The Portal Provider instance.
   public func on(event: Events.RawValue, callback: @escaping (_ data: Any) -> Void) -> PortalProvider {
-    if self.events[event] == nil {
-      self.events[event] = []
+    if var eventHandlers = self.events[event] {
+      // Append the new event handler to the existing array
+      eventHandlers.append(RegisteredEventHandler(
+        handler: callback,
+        once: false
+      ))
+      // Update the events dictionary with the modified array
+      self.events[event] = eventHandlers
+    } else {
+      // If the array doesn't exist, create a new one with the provided event handler
+      self.events[event] = [RegisteredEventHandler(
+        handler: callback,
+        once: false
+      )]
     }
-
-    self.events[event]?.append(RegisteredEventHandler(
-      handler: callback,
-      once: false
-    ))
-
     return self
   }
 
@@ -146,15 +152,21 @@ public class PortalProvider {
     event: Events.RawValue,
     callback: @escaping (_ data: Any) throws -> Void
   ) -> PortalProvider {
-    if self.events[event] == nil {
-      self.events[event] = []
+    if var eventHandlers = self.events[event] {
+      // Append the new event handler to the existing array
+      eventHandlers.append(RegisteredEventHandler(
+        handler: callback,
+        once: false
+      ))
+      // Update the events dictionary with the modified array
+      self.events[event] = eventHandlers
+    } else {
+      // If the array doesn't exist, create a new one with the provided event handler
+      self.events[event] = [RegisteredEventHandler(
+        handler: callback,
+        once: false
+      )]
     }
-
-    self.events[event]?.append(RegisteredEventHandler(
-      handler: callback,
-      once: true
-    ))
-
     return self
   }
 
@@ -250,7 +262,7 @@ public class PortalProvider {
     if self.autoApprove {
       return true
     }
-    if connect == nil && self.events[Events.PortalSigningRequested.rawValue] == nil {
+    if connect == nil, self.events[Events.PortalSigningRequested.rawValue] == nil {
       throw ProviderSigningError.noBindingForSigningApprovalFound
     }
 
@@ -297,7 +309,7 @@ public class PortalProvider {
 
   @available(*, deprecated, renamed: "getRpcUrl", message: "Please use the chain agnostic implementation of getRpcUrl()")
   private func getRpcUrl(_ chainId: Int) throws -> String {
-    return try self.getRpcUrl("eip155:\(chainId)")
+    try self.getRpcUrl("eip155:\(chainId)")
   }
 
   private func handleRpcRequest(
@@ -731,6 +743,7 @@ public enum ETHRequestMethods: String {
 /// A list of errors that can be thrown when instantiating PortalProvider.
 public enum ProviderInvalidArgumentError: Error {
   case invalidGatewayUrl
+  case invalidParamsForSwitchingChain
 }
 
 /// A list of errors that can be thrown when making requests to Gateway.
@@ -755,7 +768,7 @@ public var TransactionMethods: [ETHRequestMethods.RawValue] = [
   ETHRequestMethods.EstimateGas.rawValue, // string
   ETHRequestMethods.GetStorageAt.rawValue, // data
   ETHRequestMethods.SendTransaction.rawValue,
-  ETHRequestMethods.SignTransaction.rawValue,
+  ETHRequestMethods.SignTransaction.rawValue
 ]
 
 /// A list of JSON-RPC signing methods.
@@ -765,5 +778,5 @@ public var signerMethods: [ETHRequestMethods.RawValue] = [
   ETHRequestMethods.Sign.rawValue,
   ETHRequestMethods.SignTransaction.rawValue,
   ETHRequestMethods.SignTypedDataV3.rawValue,
-  ETHRequestMethods.SignTypedDataV4.rawValue,
+  ETHRequestMethods.SignTypedDataV4.rawValue
 ]
