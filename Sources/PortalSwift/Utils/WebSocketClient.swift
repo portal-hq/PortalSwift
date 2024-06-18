@@ -45,7 +45,7 @@ struct EventHandlers {
 
 public class WebSocketClient: Starscream.WebSocketDelegate {
   public var isConnected: Bool {
-    return self.connectState == .connected || self.connectState == .connecting
+    self.connectState == .connected || self.connectState == .connecting
   }
 
   public var topic: String?
@@ -253,13 +253,13 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
     print("[WebSocketClient] Received error: \(String(describing: error))")
 
     // This error needs to match
-    if let error = error, error.localizedDescription == "The operation couldn’t be completed. Connection reset by peer" && isConnected {
+    if let error = error, error.localizedDescription == "The operation couldn’t be completed. Connection reset by peer", isConnected {
       print("Connection reset by peer. Attempting reconnect...")
       self.connectState = .disconnected
       self.pingTimer?.invalidate()
       self.connect(uri: self.uri!)
       self.connectState = .connecting
-    } else if error != nil && error?.localizedDescription != nil {
+    } else if error != nil, error?.localizedDescription != nil {
       self.connectState = .disconnected
       self.pingTimer?.invalidate()
 
