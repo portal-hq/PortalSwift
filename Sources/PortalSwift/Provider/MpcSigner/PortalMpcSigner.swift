@@ -35,8 +35,7 @@ public class PortalMpcSigner {
     self.mpcMetadata = MpcMetadata(
       clientPlatform: "NATIVE_IOS",
       isMultiBackupEnabled: featureFlags?.isMultiBackupEnabled,
-      mpcServerVersion: self.version,
-      optimized: featureFlags?.optimized ?? false
+      mpcServerVersion: self.version
     )
   }
 

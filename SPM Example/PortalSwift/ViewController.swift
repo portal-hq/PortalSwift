@@ -720,7 +720,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
           "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": "https://solana-devnet.g.alchemy.com/v2/\(config.alchemyApiKey)"
         ],
         autoApprove: false,
-        featureFlags: FeatureFlags(optimized: true, isMultiBackupEnabled: true),
+        featureFlags: FeatureFlags(isMultiBackupEnabled: true),
         apiHost: config.apiUrl,
         mpcHost: config.mpcUrl
       )
