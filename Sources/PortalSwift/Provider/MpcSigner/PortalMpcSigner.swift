@@ -34,6 +34,7 @@ public class PortalMpcSigner {
     self.binary = binary ?? MobileWrapper()
     self.mpcMetadata = MpcMetadata(
       clientPlatform: "NATIVE_IOS",
+      clientPlatformVersion: SDK_VERSION,
       isMultiBackupEnabled: featureFlags?.isMultiBackupEnabled,
       mpcServerVersion: self.version
     )

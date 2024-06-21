@@ -11,6 +11,7 @@ public struct MpcMetadata: Codable {
   var backupMethod: BackupMethods.RawValue?
   var chainId: String?
   var clientPlatform: String
+  var clientPlatformVersion: String?
   var curve: PortalCurve?
   var isMultiBackupEnabled: Bool? = nil
   var mpcServerVersion: String
