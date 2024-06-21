@@ -1263,7 +1263,7 @@ class ProviderTests: XCTestCase {
 //    let backup = BackupOptions(local: backupOption)
 //    print("Registering portal...")
 //
-//    ProviderTests.PortalWrap.registerPortal(apiKey: userResult.clientApiKey, backup: backup, chainId: chainId, optimized: true) { result in
+//    ProviderTests.PortalWrap.registerPortal(apiKey: userResult.clientApiKey, backup: backup, chainId: chainId) { result in
 //      guard result.error == nil else {
 //        XCTFail("Unable to register Portal")
 //        completion(false)

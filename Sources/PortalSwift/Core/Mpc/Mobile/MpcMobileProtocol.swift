@@ -14,7 +14,7 @@ public struct MpcMetadata: Codable {
   var curve: PortalCurve?
   var isMultiBackupEnabled: Bool? = nil
   var mpcServerVersion: String
-  var optimized: Bool
+  var optimized: Bool = true
 }
 
 extension MpcMetadata {
