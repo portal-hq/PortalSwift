@@ -184,6 +184,10 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
   @IBAction func MumbaiPressed(_: Any) {
     self.changeChainId(chainId: 80001)
   }
+  
+  @IBAction func emitGetSessionRequest(_: Any) {
+    self.connect?.emitGetSessionRequest(requestId: "1719522793940064", topic: "295278e86502280b122937c6a9738875b5d6450d368ad66a2768a586e6590a3f")
+  }
 
   func changeChainId(chainId: Int) {
     self.connect?.once(event: Events.ChainChanged.rawValue) { data in

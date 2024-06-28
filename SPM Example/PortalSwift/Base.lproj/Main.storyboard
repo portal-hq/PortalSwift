@@ -562,6 +562,15 @@
                                     <action selector="EthMainnetPressed:" destination="7fk-LF-non" eventType="touchUpInside" id="sq3-D2-eXp"/>
                                 </connections>
                             </button>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="RCd-cU-IDl">
+                                <rect key="frame" x="222" y="62" width="137" height="48"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <state key="normal" title="Button"/>
+                                <buttonConfiguration key="configuration" style="filled" title="Get Session"/>
+                                <connections>
+                                    <action selector="emitGetSessionRequest:" destination="7fk-LF-non" eventType="touchUpInside" id="SOf-BS-feq"/>
+                                </connections>
+                            </button>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="2at-6a-APP">
                                 <rect key="frame" x="16" y="118" width="101" height="48"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
