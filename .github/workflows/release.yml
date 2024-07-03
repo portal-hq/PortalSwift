@@ -66,6 +66,9 @@ jobs:
           # Print the first 4 lines of the podspec file
           head -n 4 "$PODSPEC_FILE"
 
+          # Update the version file
+          ./scripts/update_version_file.sh ${{ env.NEW_VERSION }}
+
           git add -A
           git commit -m "Bump version to ${{ env.NEW_VERSION }}"
           git push
