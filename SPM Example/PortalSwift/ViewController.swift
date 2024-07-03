@@ -200,8 +200,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
       try await portal.deleteShares()
       try portal.deleteAddress()
       try portal.deleteSigningShare()
+      self.showStatusView(message: "\(successStatus) Deleted keychain data")
       self.logger.debug("ViewController.deleteKeychain() - ✅ Deleted keychain data")
     } catch {
+      self.showStatusView(message: "\(failureStatus) Error deleting keychain data: \(error)")
       self.logger.error("ViewController.deleteKeychain() - ❌ Error deleting keychain data: \(error)")
     }
   }
@@ -970,6 +972,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBAction func handleDeleteKeychain(_: Any) {
     Task {
       guard let portal else {
+        self.showStatusView(message: "\(failureStatus) Error Deleting Keychain - Portal not initialized.")
         throw PortalExampleAppError.portalNotInitialized()
       }
 
