@@ -1,0 +1,36 @@
+name: Linting Check
+
+on:
+  pull_request:
+    branches:
+        - release-candidate
+
+jobs:
+  lint:
+    name: Linting
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Swift
+        uses: fwal/setup-swift@v1
+        with:
+          swift-version: '5.5' # Minimum Swift version to support
+
+      - name: Install SwiftLint
+        run: |
+          brew install swiftlint
+
+      - name: Install SwiftFormat
+        run: |
+          brew install swiftformat
+
+      - name: Run SwiftLint
+        run: |
+          swiftlint
+
+      - name: Run SwiftFormat
+        run: |
+          swiftformat . --config .swiftformat --swiftversion 5.5
