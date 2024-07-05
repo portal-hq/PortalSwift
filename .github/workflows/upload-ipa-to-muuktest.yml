@@ -65,6 +65,13 @@ jobs:
         mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
         cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
 
+    - name: Debug Workspace and Scheme
+      run: |
+        echo "Workspace content:"
+        ls "${{ github.workspace }}/PortalSwift.xcworkspace"
+        echo "Schemes:"
+        xcodebuild -list -workspace "PortalSwift.xcworkspace"
+
     - name: Build IPA
       run: fastlane gym --scheme "${{ env.SCHEME_NAME }}" --workspace "PortalSwift.xcworkspace" --configuration "Debug" --output_directory "${{ env.EXPORT_PATH }}"
 
