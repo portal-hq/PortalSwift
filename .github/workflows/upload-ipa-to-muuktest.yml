@@ -100,7 +100,7 @@ jobs:
         if [ -f "${{ env.EXPORT_PATH }}/${{ env.IPA_NAME }}" ]; then
           echo "IPA file generated successfully."
         else
-          echo "IPA file not generated."
+          echo "IPA file not generated. "
           exit 1
         fi
 
