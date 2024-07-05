@@ -76,7 +76,8 @@ jobs:
       run: |
         set -e
         echo "Building IPA..."
-        fastlane gym --scheme "${{ env.SCHEME_NAME }}" --workspace "PortalSwift.xcworkspace" --configuration "Debug" --output_directory "${{ env.EXPORT_PATH }}" --export_method "ad-hoc" --allowProvisioningUpdates
+        xcodebuild -workspace "PortalSwift.xcworkspace" -scheme "${{ env.SCHEME_NAME }}" -configuration Debug -archivePath "${{ env.EXPORT_PATH }}/archive/PortalSwift.xcarchive" archive -allowProvisioningUpdates
+        xcodebuild -exportArchive -archivePath "${{ env.EXPORT_PATH }}/archive/PortalSwift.xcarchive" -exportOptionsPlist "${{ secrets.EXPORT_OPTIONS_PLIST }}" -exportPath "${{ env.EXPORT_PATH }}" -allowProvisioningUpdates
         if [ $? -ne 0 ]; then
           echo "Build failed."
           exit 1
