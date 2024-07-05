@@ -19,7 +19,7 @@ jobs:
       BUILD_PROVISION_PROFILE_BASE64: ${{secrets.BUILD_PROVISION_PROFILE_BASE64}}
       EXPORT_PATH: ${{ github.workspace }}
       IPA_NAME: SPMExample.ipa
-      SCHEME_NAME: "SPM\ Example"
+      SCHEME_NAME: "SPM Example"
 
     steps:
     - name: Checkout repository
@@ -73,7 +73,12 @@ jobs:
         xcodebuild -list -workspace "PortalSwift.xcworkspace"
 
     - name: Build IPA
-      run: fastlane gym --scheme "${{ env.SCHEME_NAME }}" --workspace "PortalSwift.xcworkspace" --configuration "Debug" --output_directory "${{ env.EXPORT_PATH }}"
+      run: |
+        fastlane gym --scheme "${{ env.SCHEME_NAME }}" --workspace "PortalSwift.xcworkspace" --configuration "Debug" --output_directory "${{ env.EXPORT_PATH }}"
+        if [ $? -ne 0 ]; then
+          echo "Build failed."
+          exit 1
+        fi
 
     - name: Check if IPA is generated
       run: |
