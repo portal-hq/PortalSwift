@@ -72,8 +72,17 @@ jobs:
 
         # apply provisioning profile
         mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-        cp $DEV_PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
-        cp $AD_HOC_PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
+
+        PP_FILES_PATHS=("$DEV_PP_PATH" "$AD_HOC_PP_PATH")
+        for PROVISION in "${PP_FILES_PATHS[@]}"
+        do
+          if [ -f "$PROVISION" ]; then
+            UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' /dev/stdin <<< $(security cms -D -i $PROVISION))
+            cp "$PROVISION" "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.mobileprovision"
+          else
+            echo "File $PROVISION does not exist."
+          fi
+        done
 
     - name: Debug Workspace and Scheme
       run: |
