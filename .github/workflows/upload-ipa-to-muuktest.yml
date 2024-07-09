@@ -78,7 +78,7 @@ jobs:
         xcodebuild -scheme "${{ env.SCHEME_NAME }}" \
           -archivePath $RUNNER_TEMP/PortalSwift.xcarchive \
           -sdk iphoneos \
-          -configuration Debug \
+          -configuration Automation \
           -destination generic/platform=iOS \
           -allowProvisioningUpdates \
           clean archive
