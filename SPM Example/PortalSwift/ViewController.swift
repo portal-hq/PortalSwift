@@ -1390,30 +1390,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  @IBAction func testSimulateTxnPressed(_: UIButton!) {
-    Task {
-      let chainId = "eip155:11155111"
-      let toAddress = (self.sendAddress?.text?.isEmpty ?? true) ? "0xdFd8302f44727A6348F702fF7B594f127dE3A902" : self.sendAddress?.text
-      print("to address \(toAddress)")
-      do {
-        let address = await self.portal?.getAddress(chainId)
-        let transaction = [
-          "from": address,
-          "to": toAddress,
-          "value": "0x10"
-        ]
-        let simulatedTransaction = try await self.simulateTransaction(chainId, transaction: transaction)
-        print(simulatedTransaction)
-        self.logger.info("ViewController.testSimulateTxnPressed() - ✅ Successfully simulated transaction.")
-        self.showStatusView(message: "\(successStatus) Successfully simulated transaction.")
-      } catch {
-        self.logger.error("ViewController.testSimulateTxnPressed() - ❌ Error simulating transaction: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error simulating transaction \(error)")
-        return
-      }
-    }
-  }
-
   @IBAction func sendPressed(_: UIButton!) {
     Task {
       do {
