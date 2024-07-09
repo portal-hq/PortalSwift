@@ -50,8 +50,8 @@ jobs:
         # create variables
         DEV_CERTIFICATE_PATH=$RUNNER_TEMP/dev_certificate.p12
         DIST_CERTIFICATE_PATH=$RUNNER_TEMP/dist_certificate.p12
-        DEV_PP_PATH=$RUNNER_TEMP/dev_pp.mobileprovision
-        AD_HOC_PP_PATH=$RUNNER_TEMP/ad_hoc_pp.mobileprovision
+        DEV_PP_PATH=$RUNNER_TEMP/1e00d1e0-336b-401f-8700-e999810b60c3.mobileprovision
+        AD_HOC_PP_PATH=$RUNNER_TEMP/de6e7304-0207-45b7-bbc5-502801d077ca.mobileprovision
         KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
 
         # import certificate and provisioning profile from secrets
@@ -73,24 +73,9 @@ jobs:
         # apply provisioning profile
         mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
         
-        PP_FILES_PATHS=("$DEV_PP_PATH" "$AD_HOC_PP_PATH")
-        for PROVISION in "${PP_FILES_PATHS[@]}"
-        do
-          if [ -f "$PROVISION" ]; then
-            echo "Processing $PROVISION..."
-            PLIST=$(security cms -D -i "$PROVISION")
-            echo "$PLIST" | /usr/libexec/PlistBuddy -c 'Print' /dev/stdin
-            UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' /dev/stdin <<< "$PLIST")
-            if [ -n "$UUID" ]; then
-              echo "UUID found: $UUID"
-              cp "$PROVISION" "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.mobileprovision"
-            else
-              echo "UUID not found in $PROVISION"
-            fi
-          else
-            echo "File $PROVISION does not exist."
-          fi
-        done
+        cp $DEV_PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
+#        cp $AD_HOC_PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
+
 
 #    - name: Debug Workspace and Scheme
 #      run: |
