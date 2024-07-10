@@ -93,7 +93,7 @@ jobs:
     - name: List Provisioning Profiles after removal
       run: ls ~/Library/MobileDevice/Provisioning\ Profiles || echo "Directory removed"
   
-    -name: Import the Ad-Hoc the provisioning profile
+    - name: Import the Ad-Hoc the provisioning profile
       run: |
         mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
         AD_HOC_PP_PATH=$RUNNER_TEMP/adhoc_pp.mobileprovision
