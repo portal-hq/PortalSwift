@@ -444,68 +444,48 @@ public class PortalMpc {
 
       if method == BackupMethods.iCloud.rawValue {
         print("Validating iCloud Storage is available...")
-        (storage as! ICloudStorage).validateOperations { (result: Result<Bool>) in
-          if result.error != nil {
-            print("❌ iCloud Storage is not available:")
-            print(result)
+        // Call the MPC service to get the backup share.
+        self.executeRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
+          if recoveryResult.error != nil {
             self.isWalletModificationInProgress = false
-            return completion(Result(error: result.error!))
+            return completion(Result(error: recoveryResult.error!))
           }
-          print("iCloud Storage is available, continuing...")
+          progress?(MpcStatus(status: MpcStatuses.done, done: true))
 
-          // Call the MPC service to get the backup share.
-          self.executeRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
-            if recoveryResult.error != nil {
-              self.isWalletModificationInProgress = false
-              return completion(Result(error: recoveryResult.error!))
-            }
-            progress?(MpcStatus(status: MpcStatuses.done, done: true))
-
-            // Capture analytics.
-            do {
-              try self.api.identify { _ in }
-              self.api.track(event: MetricsEvents.walletRecovered.rawValue, properties: [:])
-            } catch {
-              // Do nothing.
-            }
-
-            self.isWalletModificationInProgress = false
-            return completion(Result(data: recoveryResult.data!))
-          } progress: { status in
-            progress?(status)
+          // Capture analytics.
+          do {
+            try self.api.identify { _ in }
+            self.api.track(event: MetricsEvents.walletRecovered.rawValue, properties: [:])
+          } catch {
+            // Do nothing.
           }
+
+          self.isWalletModificationInProgress = false
+          return completion(Result(data: recoveryResult.data!))
+        } progress: { status in
+          progress?(status)
         }
       } else if method == BackupMethods.GoogleDrive.rawValue {
         print("Validating Google Drive Storage is available...")
-        (storage as! GDriveStorage).validateOperations { (result: Result<Bool>) in
-          if result.error != nil {
-            print("❌ Google Drive Storage is not available:")
-            print(result)
+        self.executeRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
+          if recoveryResult.error != nil {
             self.isWalletModificationInProgress = false
-            return completion(Result(error: result.error!))
+            return completion(Result(error: recoveryResult.error!))
           }
-          print("Google Drive Storage is available, starting backup...")
+          progress?(MpcStatus(status: MpcStatuses.done, done: true))
 
-          self.executeRecovery(storage: storage!, method: method, cipherText: cipherText) { recoveryResult in
-            if recoveryResult.error != nil {
-              self.isWalletModificationInProgress = false
-              return completion(Result(error: recoveryResult.error!))
-            }
-            progress?(MpcStatus(status: MpcStatuses.done, done: true))
-
-            // Capture analytics.
-            do {
-              try self.api.identify { _ in }
-              self.api.track(event: MetricsEvents.walletRecovered.rawValue, properties: [:])
-            } catch {
-              // Do nothing.
-            }
-
-            self.isWalletModificationInProgress = false
-            return completion(Result(data: recoveryResult.data!))
-          } progress: { status in
-            progress?(status)
+          // Capture analytics.
+          do {
+            try self.api.identify { _ in }
+            self.api.track(event: MetricsEvents.walletRecovered.rawValue, properties: [:])
+          } catch {
+            // Do nothing.
           }
+
+          self.isWalletModificationInProgress = false
+          return completion(Result(data: recoveryResult.data!))
+        } progress: { status in
+          progress?(status)
         }
       } else if method == BackupMethods.Passkey.rawValue {
         print("Validating Passkey Storage is available...")
