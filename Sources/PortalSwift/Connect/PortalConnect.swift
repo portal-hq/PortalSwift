@@ -182,6 +182,24 @@ public class PortalConnect: EventBus {
 
     return newConnectData
   }
+  
+  public func emitGetSessionRequest(requestId: String, topic: String) {
+    let request = [
+      "event": "portal_getSessionRequest",
+      "data": [
+        "requestId": requestId,
+        "topic": topic,
+      ]
+    ] as [String : Any]
+
+    do {
+      let jsonData = try JSONSerialization.data(withJSONObject: request, options: [])
+      let jsonString = String(data: jsonData, encoding: .utf8)
+      self.client?.send(jsonString ?? "")
+    } catch {
+      print("[PortalConnect] Error serializing JSON for getSessionRequest: \(error)")
+    }
+  }
 
   func handleDappSessionRequested(data: ConnectData) {
     once(event: Events.PortalDappSessionApproved.rawValue) { [weak self] callbackData in

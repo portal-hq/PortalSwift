@@ -817,6 +817,7 @@ public enum Events: String {
   case PortalSigningRejected = "portal_signingRejected"
   case PortalConnectSigningRequested = "portalConnect_signingRequested"
   case PortalSigningRequested = "portal_signingRequested"
+  case PortalGetSessionRequest = "portal_getSessionRequest"
   // Walletconnect V2
   case PortalDappSessionRequested = "portal_dappSessionRequested"
   case PortalDappSessionApproved = "portal_dappSessionApproved"
