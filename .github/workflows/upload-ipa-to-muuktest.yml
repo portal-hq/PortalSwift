@@ -22,6 +22,9 @@ jobs:
       IPA_NAME: "SPM Example.ipa"
       SCHEME_NAME: "SPM Example"
       KEYCHAIN_PASSWORD: ${{secrets.KEYCHAIN_PASSWORD}}
+      DISTRIBUTION_CERTIFICATE_BASE64: ${{secrets.IOS_DISTRIBUTION_CERTIFICATE_BASE64}}
+      DISTRIBUTION_CERTIFICATE_PASSWORD: ${{secrets.IOS_DISTRIBUTION_CERTIFICATE_BASE64_PASSWORD}}
+
 
     steps:
     - name: Checkout repository
@@ -47,11 +50,13 @@ jobs:
       run: |
         # create variables
         CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+        DIST_CERTIFICATE_PATH=$RUNNER_TEMP/dist_certificate.p12
         PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
         KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
 
         # import certificate and provisioning profile from secrets
         echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+        echo -n "$DISTRIBUTION_CERTIFICATE_BASE64" | base64 --decode -o $DIST_CERTIFICATE_PATH
         echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
 
         # create temporary keychain
@@ -61,6 +66,7 @@ jobs:
 
         # import certificate to keychain
         security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+        security import $DIST_CERTIFICATE_PATH -P "$DISTRIBUTION_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
         security list-keychain -d user -s $KEYCHAIN_PATH
 
         # apply provisioning profile
@@ -102,18 +108,6 @@ jobs:
 
     - name: List Provisioning Profiles after adding the Ad Hoc one
       run: ls ~/Library/MobileDevice/Provisioning\ Profiles || echo "Directory removed"
-
-    - name: Add the distribution certificate
-      env:
-        DISTRIBUTION_CERTIFICATE_BASE64: ${{secrets.IOS_DISTRIBUTION_CERTIFICATE_BASE64}}
-        DISTRIBUTION_CERTIFICATE_PASSWORD: ${{secrets.IOS_DISTRIBUTION_CERTIFICATE_BASE64_PASSWORD}}
-      run: |
-        DIST_CERTIFICATE_PATH=$RUNNER_TEMP/dist_certificate.p12
-        echo -n "$DISTRIBUTION_CERTIFICATE_BASE64" | base64 --decode -o $DIST_CERTIFICATE_PATH
-        security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-        security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-        security import $DIST_CERTIFICATE_PATH -P "$DISTRIBUTION_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
-        security list-keychain -d user -s $KEYCHAIN_PATH
 
     - name: Export IPA
       env:
