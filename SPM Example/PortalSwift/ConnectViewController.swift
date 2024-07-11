@@ -29,6 +29,8 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var EthMainnetButton: UIButton?
   @IBOutlet var SepoliaButton: UIButton?
   @IBOutlet var MumbaiButton: UIButton?
+  @IBOutlet var sessionRequestIdInput: UITextField?
+  @IBOutlet var sessionTopicInput: UITextField?
 
   required init?(coder: NSCoder) {
     super.init(coder: coder)
@@ -39,6 +41,8 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
 
     self.addressTextInput?.delegate = self
     self.addressTextInput2?.delegate = self
+    self.sessionRequestIdInput?.delegate = self
+    self.sessionTopicInput?.delegate = self
 
     self.connectButton?.isEnabled = false
     self.connectButton2?.isEnabled = false
@@ -183,6 +187,15 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
 
   @IBAction func MumbaiPressed(_: Any) {
     self.changeChainId(chainId: 80001)
+  }
+  
+  @IBAction func emitGetSessionRequest(_: Any) {
+    guard let requestId = self.sessionRequestIdInput?.text, let topic = self.sessionTopicInput?.text else {
+      print("❌ You must fill in Session Request ID and Session Topic fields")
+      return
+    }
+    
+    self.connect?.emitGetSessionRequest(requestId: requestId, topic: topic)
   }
 
   func changeChainId(chainId: Int) {

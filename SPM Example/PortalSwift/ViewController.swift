@@ -200,8 +200,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
       try await portal.deleteShares()
       try portal.deleteAddress()
       try portal.deleteSigningShare()
+      self.showStatusView(message: "\(successStatus) Deleted keychain data")
       self.logger.debug("ViewController.deleteKeychain() - ✅ Deleted keychain data")
     } catch {
+      self.showStatusView(message: "\(failureStatus) Error deleting keychain data: \(error)")
       self.logger.error("ViewController.deleteKeychain() - ❌ Error deleting keychain data: \(error)")
     }
   }
@@ -720,7 +722,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
           "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": "https://solana-devnet.g.alchemy.com/v2/\(config.alchemyApiKey)"
         ],
         autoApprove: false,
-        featureFlags: FeatureFlags(optimized: true, isMultiBackupEnabled: true),
+        featureFlags: FeatureFlags(isMultiBackupEnabled: true),
         apiHost: config.apiUrl,
         mpcHost: config.mpcUrl
       )
@@ -970,6 +972,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBAction func handleDeleteKeychain(_: Any) {
     Task {
       guard let portal else {
+        self.showStatusView(message: "\(failureStatus) Error Deleting Keychain - Portal not initialized.")
         throw PortalExampleAppError.portalNotInitialized()
       }
 
@@ -1369,9 +1372,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
       do {
         let address = await self.portal?.getAddress(chainId)
+        let toAddress = (self.sendAddress?.text?.isEmpty ?? true) ? "0xdFd8302f44727A6348F702fF7B594f127dE3A902" : self.sendAddress?.text
         let transaction = [
           "from": address,
-          "to": self.sendAddress?.text ?? "0xdFd8302f44727A6348F702fF7B594f127dE3A902",
+          "to": toAddress,
           "value": "0x10"
         ]
         let simulatedTransaction = try await self.simulateTransaction(chainId, transaction: transaction)
@@ -1380,33 +1384,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.showStatusView(message: "\(successStatus) Successfully simulated transaction.")
       } catch {
         self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error simulating transaction: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error simulating transaction \(error)")
-        return
-      }
-    }
-  }
-
-  @IBAction func testSimulateTxnPressed(_: UIButton!) {
-    Task {
-      let chainId = "eip155:11155111"
-      var toAddress = self.sendAddress?.text ?? "0xdFd8302f44727A6348F702fF7B594f127dE3A902"
-      if toAddress.isEmpty {
-        toAddress = "0xdFd8302f44727A6348F702fF7B594f127dE3A902"
-      }
-      print("to address \(toAddress)")
-      do {
-        let address = await self.portal?.getAddress(chainId)
-        let transaction = [
-          "from": address,
-          "to": toAddress,
-          "value": "0x10"
-        ]
-        let simulatedTransaction = try await self.simulateTransaction(chainId, transaction: transaction)
-        print(simulatedTransaction)
-        self.logger.info("ViewController.testSimulateTxnPressed() - ✅ Successfully simulated transaction.")
-        self.showStatusView(message: "\(successStatus) Successfully simulated transaction.")
-      } catch {
-        self.logger.error("ViewController.testSimulateTxnPressed() - ❌ Error simulating transaction: \(error)")
         self.showStatusView(message: "\(failureStatus) Error simulating transaction \(error)")
         return
       }

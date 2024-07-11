@@ -74,9 +74,9 @@ public class PortalMpc {
     self.isSimulator = isSimulator
     self.mpcMetadata = MpcMetadata(
       clientPlatform: "NATIVE_IOS",
+      clientPlatformVersion: SDK_VERSION,
       isMultiBackupEnabled: featureFlags?.isMultiBackupEnabled,
-      mpcServerVersion: self.version,
-      optimized: featureFlags?.optimized ?? false
+      mpcServerVersion: self.version
     )
   }
 
