@@ -25,7 +25,7 @@ jobs:
       IPA_NAME: "SPM Example.ipa"
       # Generic
       MUUKTEST_API_URL: ${{secrets.MUUKTEST_API_URL}}
-      MUUKTEST_API_KEY: ${{secrets.MUUKTEST_API_KEY}}
+      MUUKTEST_API_KEY: ${{secrets.MUUKTEST_API_KEY_IOS}}
       KEYCHAIN_PASSWORD: ${{secrets.KEYCHAIN_PASSWORD}}
       
 
@@ -132,7 +132,7 @@ jobs:
       id: get_upload_url
       run: |
         response=$(curl --location \
-        --header 'x-api-key: ***REMOVED***' \
+        --header 'x-api-key: ${{ env.MUUKTEST_API_KEY }}' \
         --header 'Content-Type:application/json' \
         --data '{"filename": "SPM Example.ipa"}' \
         '${{ env.MUUKTEST_API_URL }}'
