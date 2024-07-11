@@ -127,3 +127,35 @@ jobs:
 
     - name: Delete Secrets.xcconfig
       run: rm "${{ github.workspace }}/SPM Example/Secrets.xcconfig"
+
+    - name: Get upload URL
+        id: get_upload_url
+        run: |
+          response=$(curl --location '${{ env.MUUKTEST_API_URL }}' \
+          --header 'x-api-key: ${{ env.MUUKTEST_API_KEY }}' \
+          --header 'Content-Type: application/json' \
+          --data '{"filename": "${{ env.IPA_NAME }}"}')
+          uploadURL=$(echo "$response" | grep -o '"uploadURL": *"[^"]*"' | sed 's/"uploadURL": "//' | sed 's/"$//')
+          if [ -z "$uploadURL" ]; then
+            echo "Failed to obtain upload URL"
+            exit 1
+          fi
+          echo "uploadURL=$uploadURL" >> $GITHUB_ENV
+          echo "::set-output name=uploadURL::$uploadURL"
+              
+      - name: Log files in after Export IPA folder
+        run: |
+          ls -l ${{env.EXPORT_PATH}}
+
+      - name: Upload the app
+        run: |
+          IPA_FILE="${{ env.EXPORT_PATH }}/SPM Example.ipa"
+          if [ ! -f "$IPA_FILE" ]; then
+            echo "IPA file not found at $IPA_FILE."
+            exit 1
+          fi
+          echo "IPA file found at $IPA_FILE."
+          curl --location --request PUT \
+          --header 'Content-Type: application/octet-stream' \
+          --data-binary @"$IPA_FILE" \
+          "${{ steps.get_upload_url.outputs.uploadURL }}"
