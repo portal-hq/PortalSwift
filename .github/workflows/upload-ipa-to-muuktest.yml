@@ -135,6 +135,9 @@ jobs:
         --header 'x-api-key: ${{ env.MUUKTEST_API_KEY }}' \
         --header 'Content-Type: application/json' \
         --data '{"filename": "${{ env.IPA_NAME }}"}')
+        
+        echo "Response: $response"
+        
         uploadURL=$(echo "$response" | grep -o '"uploadURL": *"[^"]*"' | sed 's/"uploadURL": "//' | sed 's/"$//')
         if [ -z "$uploadURL" ]; then
           echo "Failed to obtain upload URL"
