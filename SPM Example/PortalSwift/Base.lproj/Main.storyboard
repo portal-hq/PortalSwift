@@ -608,6 +608,20 @@
                                 <fontDescription key="fontDescription" type="system" pointSize="14"/>
                                 <textInputTraits key="textInputTraits" returnKeyType="done" enablesReturnKeyAutomatically="YES"/>
                             </textField>
+                            <switch opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" on="YES" translatesAutoresizingMaskIntoConstraints="NO" id="FbZ-av-w23">
+                                <rect key="frame" x="223" y="127" width="49" height="31"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <connections>
+                                    <action selector="autoApproveToggled:" destination="7fk-LF-non" eventType="valueChanged" id="h6V-KB-py6"/>
+                                </connections>
+                            </switch>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="Auto Approve" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="b8Z-JY-LmD">
+                                <rect key="frame" x="276" y="134" width="83" height="16"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="13"/>
+                                <nil key="textColor"/>
+                                <nil key="highlightedColor"/>
+                            </label>
                         </subviews>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                     </scrollView>
@@ -618,6 +632,7 @@
                         <outlet property="SepoliaButton" destination="2at-6a-APP" id="bVn-Sv-haa"/>
                         <outlet property="addressTextInput" destination="xEv-Ac-DYF" id="88M-H0-RU1"/>
                         <outlet property="addressTextInput2" destination="aPI-NR-DZw" id="kkj-nO-0AV"/>
+                        <outlet property="autoApproveToggleButton" destination="FbZ-av-w23" id="dCK-sp-SRN"/>
                         <outlet property="connectButton" destination="Xyb-ta-tdQ" id="kIP-YV-aqE"/>
                         <outlet property="connectButton2" destination="F2r-Gr-msZ" id="BBe-kd-4BZ"/>
                         <outlet property="connectMessage" destination="A21-NP-6vy" id="7wQ-fi-ddK"/>
