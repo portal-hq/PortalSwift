@@ -132,7 +132,7 @@ jobs:
       id: get_upload_url
       run: |
         response=$(curl --location \
-        --header 'x-api-key: ${{ env.MUUKTEST_API_KEY }}' \
+        --header 'x-api-key: 1gj9welVaa9u315ZRZFh2aIZGx3sQ1MI3nGfBhmy' \
         --header 'Content-Type:application/json' \
         --data '{"filename": "SPM Example.ipa"}' \
         '${{ env.MUUKTEST_API_URL }}'
