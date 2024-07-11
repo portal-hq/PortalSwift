@@ -3,8 +3,7 @@ name: Build and Upload iOS ipa to Mukktest
 on:
   push:
     branches:
-      - ahmed-release-candidate
-  workflow_dispatch:
+      - release-candidate
 
 jobs:
   build-and-upload:
