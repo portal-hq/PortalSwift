@@ -1,10 +1,6 @@
 name: Handle Release Status
-on:
-  workflow_dispatch:
-  workflow_run:
-    workflows: ["Publish the sdk"]
-    types:
-      - completed
+
+on: [push, workflow_dispatch]
 
 jobs:
   handle_workflow_status:
