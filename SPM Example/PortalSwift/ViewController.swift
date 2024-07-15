@@ -617,7 +617,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.config = ApplicationConfiguration(
           alchemyApiKey: ALCHEMY_API_KEY,
           apiUrl: "localhost:3001",
-          custodianServerUrl: "https://staging-portalex-mpc-service.onrender.com",
+          custodianServerUrl: "http://localhost:3007",
           googleClientId: GOOGLE_CLIENT_ID,
           mpcUrl: "localhost:3002",
           webAuthnHost: "backup.portalhq.dev",
