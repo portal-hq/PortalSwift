@@ -384,7 +384,11 @@ public class PortalConnect: EventBus {
         )
 
         let message = try JSONEncoder().encode(event)
-        self.client?.send(message)
+        
+        guard let client = self.client else {
+          throw PortalConnectError.noWebSocketClientFound
+        }
+        client.send(message)
 
         // emit the PortalSignatureReceived event on the PortalConnect EventBus as a convenience
         if signMethods.contains(method) {

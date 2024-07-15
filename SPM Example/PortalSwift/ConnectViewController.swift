@@ -119,7 +119,7 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
 
     portalConnect.on(event: Events.Connect.rawValue) { (data: Any) in
       print("[ConnectViewController] ✅ Connected! \(data) on \(label)")
-      self.disconnectLabel?.text = "Disconnected 🛑"
+      self.disconnectLabel?.text = "Connected ✅"
       if label == "connect1" {
         self.connectButton?.isEnabled = false
         self.disconnectButton?.isEnabled = true
@@ -131,7 +131,7 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
 
     portalConnect.on(event: Events.Disconnect.rawValue) { (data: Any) in
       print("[ConnectViewController] 🛑 Disconnected \(data) on \(label)")
-      self.disconnectLabel?.text = "Disconnected ✅"
+      self.disconnectLabel?.text = "Disconnected 🛑"
       if label == "connect1" {
         self.connectButton?.isEnabled = false
         self.disconnectButton?.isEnabled = false
