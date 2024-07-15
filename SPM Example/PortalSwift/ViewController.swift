@@ -689,13 +689,15 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
 
     let balanceResponse = try await portal.request(chainId, withMethod: .eth_getBalance, andParams: [address, "latest"])
-    guard let balance = balanceResponse.result as? String else {
+      guard let balance = balanceResponse.result as? PortalProviderRpcResponse else {
       throw PortalExampleAppError.invalidResponseTypeForRequest()
     }
 
-    DispatchQueue.main.async {
-      self.ethBalanceInformation?.text = "ETH Balance: \(self.parseETHBalanceHex(hex: balance)) ETH"
-    }
+      if let balance = balance.result {
+          DispatchQueue.main.async {
+              self.ethBalanceInformation?.text = "ETH Balance: \(self.parseETHBalanceHex(hex: balance)) ETH"
+          }
+      }
   }
 
   public func registerPortal() async throws -> Portal {
@@ -923,6 +925,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.portal = try await self.registerPortal()
         self.logger.debug("ViewController.handleSignIn() - ✅ Initialized. Updating UI Components.")
         self.updateUIComponents()
+        try await self.populateEthBalance()
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handleSignIn() - ❌ Error signing in: \(error)")
@@ -1019,6 +1022,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.logger.info("ViewController.handleFundSepolia() - ✅ Successfully sent transaction")
         self.showStatusView(message: "\(successStatus) Successfully sent transaction")
         self.logger.info("ViewController.handleFundSepolia() - ✅ Transaction Hash: \(transactionHash)")
+        try await self.populateEthBalance()
         self.stopLoading()
       } catch {
         self.stopLoading()
