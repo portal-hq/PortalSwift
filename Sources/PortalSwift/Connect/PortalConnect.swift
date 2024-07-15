@@ -347,6 +347,10 @@ public class PortalConnect: EventBus {
           data.params.chainId
         )
         print("[handleSessionRequest]", id, topic)
+        
+        guard let client = self.client else {
+          throw PortalConnectError.noWebSocketClientFound
+        }
 
         on(event: Events.PortalSigningRejected.rawValue) { [weak self] _ in
           guard let self = self else { return }
@@ -384,10 +388,7 @@ public class PortalConnect: EventBus {
         )
 
         let message = try JSONEncoder().encode(event)
-        
-        guard let client = self.client else {
-          throw PortalConnectError.noWebSocketClientFound
-        }
+
         client.send(message)
 
         // emit the PortalSignatureReceived event on the PortalConnect EventBus as a convenience
