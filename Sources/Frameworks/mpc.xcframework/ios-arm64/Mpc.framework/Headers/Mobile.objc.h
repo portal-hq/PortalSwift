@@ -123,6 +123,8 @@ FOUNDATION_EXPORT NSString* _Nonnull MobileDecryptWithPassword(NSString* _Nullab
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileEjectWalletAndDiscontinueMPC(NSString* _Nullable clientDkgResult, NSString* _Nullable serverDkgResult);
 
+FOUNDATION_EXPORT NSString* _Nonnull MobileEjectWalletAndDiscontinueMPCEd25519(NSString* _Nullable clientDkgResult, NSString* _Nullable serverDkgResult);
+
 FOUNDATION_EXPORT NSString* _Nonnull MobileEncrypt(NSString* _Nullable value);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileEncryptWithPassword(NSString* _Nullable value, NSString* _Nullable password);
