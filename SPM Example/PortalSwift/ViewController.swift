@@ -78,6 +78,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   public var user: UserResult?
 
+  private var refreshBalanceTimer: Timer?
+
   private var config: ApplicationConfiguration? {
     get {
       if let appDelegate = UIApplication.shared.delegate as? PortalExampleAppDelegate {
@@ -689,13 +691,17 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
 
     let balanceResponse = try await portal.request(chainId, withMethod: .eth_getBalance, andParams: [address, "latest"])
-    guard let balance = balanceResponse.result as? String else {
+      guard let balance = balanceResponse.result as? PortalProviderRpcResponse else {
       throw PortalExampleAppError.invalidResponseTypeForRequest()
     }
 
-    DispatchQueue.main.async {
-      self.ethBalanceInformation?.text = "ETH Balance: \(self.parseETHBalanceHex(hex: balance)) ETH"
-    }
+      if let balanceHex = balance.result {
+          let balance = self.parseETHBalanceHex(hex: balanceHex)
+          print("ETH Balance: \(balance) ETH")
+          DispatchQueue.main.async {
+              self.ethBalanceInformation?.text = "ETH Balance: \(balance) ETH"
+          }
+      }
   }
 
   public func registerPortal() async throws -> Portal {
@@ -806,8 +812,12 @@ class ViewController: UIViewController, UITextFieldDelegate {
     DispatchQueue.main.async {
       Task {
         do {
-          if let addressInformation = self.addressInformation {
-            addressInformation.text = try? await self.portal?.addresses[.eip155] ?? "N/A"
+            self.addressInformation?.text = "N/A"
+          if let address = try await self.portal?.addresses[.eip155] {
+              self.addressInformation?.text = address
+              self.startRefreshBalanceTimer()
+          } else {
+              self.stopRefreshBalanceTimer()
           }
 
           let availableRecoveryMethods = try await self.portal?.availableRecoveryMethods() ?? []
@@ -923,6 +933,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.portal = try await self.registerPortal()
         self.logger.debug("ViewController.handleSignIn() - ✅ Initialized. Updating UI Components.")
         self.updateUIComponents()
+        try await self.populateEthBalance()
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handleSignIn() - ❌ Error signing in: \(error)")
@@ -1019,6 +1030,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.logger.info("ViewController.handleFundSepolia() - ✅ Successfully sent transaction")
         self.showStatusView(message: "\(successStatus) Successfully sent transaction")
         self.logger.info("ViewController.handleFundSepolia() - ✅ Transaction Hash: \(transactionHash)")
+        try await self.populateEthBalance()
         self.stopLoading()
       } catch {
         self.stopLoading()
@@ -1599,4 +1611,26 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
     }
   }
+}
+
+// MARK: - ETH balance refresh
+@available(iOS 16.0, *)
+extension ViewController {
+    private func startRefreshBalanceTimer() {
+        self.refreshBalanceTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] timer in
+            guard let self = self else { return }
+            Task {
+                do {
+                    try await self.populateEthBalance()
+                } catch {
+                    print("Failed to refresh the the ETH balance.")
+                }
+            }
+        }
+        self.refreshBalanceTimer?.fire()
+    }
+
+    private func stopRefreshBalanceTimer() {
+        self.refreshBalanceTimer?.invalidate()
+    }
 }
