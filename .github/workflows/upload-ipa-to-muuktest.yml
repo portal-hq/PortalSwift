@@ -149,3 +149,4 @@ jobs:
         status=$(echo "$response" | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
         echo "Execute Response body: $body"
         echo "Execute Response status: $status"
+
