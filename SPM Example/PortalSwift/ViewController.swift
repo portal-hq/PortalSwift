@@ -813,7 +813,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       Task {
         do {
             self.addressInformation?.text = "N/A"
-          if let address = try await self.portal?.addresses[.eip155] {
+          if let address = try? await self.portal?.addresses[.eip155], address != nil {
               self.addressInformation?.text = address
               self.startRefreshBalanceTimer()
           } else {
@@ -1623,7 +1623,7 @@ extension ViewController {
                 do {
                     try await self.populateEthBalance()
                 } catch {
-                    print("Failed to refresh the the ETH balance.")
+                    print("Failed to refresh the the ETH balance. \(error)")
                 }
             }
         }
