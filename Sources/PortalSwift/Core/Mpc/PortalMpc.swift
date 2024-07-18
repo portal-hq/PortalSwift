@@ -200,7 +200,7 @@ public class PortalMpc {
     }
   }
 
-  public func eject(
+  public func ejectSecp256k1(
     _ method: BackupMethods,
     withCipherText: String,
     andOrganizationBackupShare: String,
@@ -239,7 +239,7 @@ public class PortalMpc {
           var addresses: [PortalNamespace: String] = [:]
 
           if let secp256k1Share = response["SECP256K1"] {
-            let ejectResponse = await self.mobile.MobileEjectWalletAndDiscontinueMPC(secp256k1Share.share, andOrganizationBackupShare)
+            let ejectResponse = await self.mobile.MobileEjectWalletAndDiscontinueMPCSecp265K1(secp256k1Share.share, andOrganizationBackupShare)
             guard let jsonData = ejectResponse.data(using: .utf8) else {
               throw JSONParseError.stringToDataConversionFailed
             }
@@ -263,7 +263,76 @@ public class PortalMpc {
     }
 
     guard let eip155PrivateKey = privateKeys[.eip155] else {
-      throw MpcError.unexpectedErrorOnEject("Unable to find address in addresses map.")
+      throw MpcError.unexpectedErrorOnEject("Unable to find eip155 address in addresses map.")
+    }
+
+    return eip155PrivateKey
+  }  
+    
+    public func ejectEd25519(
+    _ method: BackupMethods,
+    withCipherText: String,
+    andOrganizationBackupShare: String,
+    usingProgressCallback _: ((MpcStatus) -> Void)? = nil
+  ) async throws -> String {
+    if self.version != "v6" {
+      throw MpcError.backupNoLongerSupported("[PortalMpc] Eject is no longer supported for this version of MPC. Please use `version = \"v6\"`.")
+    }
+
+    guard let storage = self.backupOptions[method] else {
+      throw MpcError.unexpectedErrorOnEject("Backup method \(method.rawValue) not registered.")
+    }
+
+    let decryptionKey = try await storage.read()
+
+    let decryptedString = try await storage.decrypt(withCipherText, withKey: decryptionKey)
+    guard let decryptedData = decryptedString.data(using: .utf8) else {
+      throw MpcError.unexpectedErrorOnEject("Unable to convert decrypted data.")
+    }
+
+    var generateResponse: PortalMpcGenerateResponse = [:]
+    do {
+      generateResponse = try self.decoder.decode(PortalMpcGenerateResponse.self, from: decryptedData)
+    } catch {
+      let backupShare = try decoder.decode(MpcShare.self, from: decryptedData)
+      generateResponse["ED25519"] = PortalMpcGeneratedShare(
+        id: backupShare.backupSharePairId ?? "",
+        share: decryptedString
+      )
+    }
+
+    let privateKeys = try await withCheckedThrowingContinuation { continuation in
+      let response = generateResponse
+      Task {
+        do {
+          var addresses: [PortalNamespace: String] = [:]
+
+          if let ed25519Share = response["ED25519"] {
+            let ejectResponse = await self.mobile.MobileEjectWalletAndDiscontinueMPCEd25519(ed25519Share.share, andOrganizationBackupShare)
+            guard let jsonData = ejectResponse.data(using: .utf8) else {
+              throw JSONParseError.stringToDataConversionFailed
+            }
+
+            let ejectResult: EjectResult = try JSONDecoder().decode(EjectResult.self, from: jsonData)
+            let privateKey = ejectResult.privateKey
+
+            addresses[.solana] = privateKey
+
+            _ = try await self.api.eject()
+
+            continuation.resume(returning: addresses)
+            return
+          }
+
+          continuation.resume(returning: addresses)
+        } catch {
+          continuation.resume(throwing: error)
+        }
+      }
+    }
+
+    guard let eip155PrivateKey = privateKeys[.solana] else {
+      throw MpcError.unexpectedErrorOnEject("Unable to find solana address in addresses map.")
     }
 
     return eip155PrivateKey
@@ -699,33 +768,6 @@ public class PortalMpc {
     }
   }
 
-  /// Uses the org and client backup shares to return the private key
-  ///  - Parameters:
-  ///    - cipherText: the cipherText of the client's backup share
-  ///    - method: The specific backup storage option.
-  ///    - orgShare: the stringified version of the organization's backup share
-  @available(*, deprecated, renamed: "ejectPrivateKey", message: "Please use the async/await implementation of ejectPrivateKey().")
-  public func ejectPrivateKey(
-    clientBackupCiphertext: String,
-    method: BackupMethods.RawValue,
-    backupConfigs: BackupConfigs? = nil,
-    orgBackupShare: String,
-    completion: @escaping (Result<String>) -> Void
-  ) {
-    Task {
-      do {
-        let backupMethod = BackupMethods(rawValue: method)!
-        if backupMethod == .Password, let storage = backupOptions[backupMethod] as? PasswordStorage {
-          storage.password = backupConfigs?.passwordStorage?.password
-        }
-        let address = try await eject(backupMethod, withCipherText: clientBackupCiphertext, andOrganizationBackupShare: orgBackupShare)
-
-        completion(Result(data: address))
-      } catch {
-        completion(Result(error: error))
-      }
-    }
-  }
 
   /// Uses the backup share to create a new signing share.
   /// - Parameters:

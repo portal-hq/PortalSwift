@@ -218,12 +218,21 @@ class MobileWrapper: Mobile {
     return result
   }
 
-  func MobileEjectWalletAndDiscontinueMPC(_ clientDkgCipherText: String, _ serverDkgCipherText: String) async -> String {
+  func MobileEjectWalletAndDiscontinueMPCSecp265K1(_ clientBackupShare: String, _ custodianBackupShare: String) async -> String {
     let result = await withCheckedContinuation { continuation in
-      let ejectResponse = Mpc.MobileEjectWalletAndDiscontinueMPC(clientDkgCipherText, serverDkgCipherText)
+      let ejectResponse = Mpc.MobileEjectWalletAndDiscontinueMPC(clientBackupShare, custodianBackupShare)
       continuation.resume(returning: ejectResponse)
     }
 
     return result
   }
+    
+    func MobileEjectWalletAndDiscontinueMPCEd25519(_ clientBackupShare: String, _ custodianBackupShare: String) async -> String {
+      let result = await withCheckedContinuation { continuation in
+        let ejectResponse = Mpc.MobileEjectWalletAndDiscontinueMPCEd25519(clientBackupShare, custodianBackupShare)
+        continuation.resume(returning: ejectResponse)
+      }
+
+      return result
+    }
 }

@@ -57,7 +57,8 @@ public class PasswordStorage: Storage, PortalStorage {
       throw PasswordStorageError.passwordMissing("Please set the password before running recover.")
     }
 
-    self.password = nil
+      // TODO: - check the need for this line.
+//    self.password = nil
 
     return password
   }

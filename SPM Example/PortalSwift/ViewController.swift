@@ -210,7 +210,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  public func eject(_ withBackupMethod: BackupMethods) async throws -> String {
+    public func eject(_ withBackupMethod: BackupMethods) async throws -> EjectedKeys {
     guard let portal else {
       self.logger.error("ViewController.eject() - ❌ Portal not initialized. Please call registerPortal().")
       throw PortalExampleAppError.portalNotInitialized()
@@ -223,29 +223,14 @@ class ViewController: UIViewController, UITextFieldDelegate {
       self.logger.error("ViewController.recover() - ❌ Application configuration not set.")
       throw PortalExampleAppError.configurationNotSet()
     }
-    guard let cipherTextUrl = URL(
-      string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/cipher-text/fetch?backupMethod=\(withBackupMethod.rawValue)"
-    ) else {
-      throw URLError(.badURL)
-    }
-    let cipherTextData = try await requests.get(cipherTextUrl)
-    let cipherTextResponse = try decoder.decode(CipherTextResult.self, from: cipherTextData)
 
-    guard let organizationBackupShareUrl = URL(
-      string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/org-share/fetch?backupMethod=\(withBackupMethod.rawValue)-SECP256K1"
-    ) else {
-      throw URLError(.badURL)
-    }
-    let organizationBackupShareData = try await requests.get(organizationBackupShareUrl)
-    let organizationBackupShareResponse = try decoder.decode(OrgShareResult.self, from: organizationBackupShareData)
-
-    let privateKey = try await portal.eject(
-      withBackupMethod,
-      withCipherText: cipherTextResponse.cipherText,
-      andOrganizationBackupShare: organizationBackupShareResponse.orgShare
+    let result = try await portal.ejectPrivateKeys(
+        withBackupMethod,
+        exchangeUserId: user.exchangeUserId,
+        custodianServerUrl: config.custodianServerUrl
     )
 
-    return privateKey
+    return result
   }
 
   public func generate() async throws -> PortalCreateWalletResponse {
@@ -1007,12 +992,12 @@ class ViewController: UIViewController, UITextFieldDelegate {
           return
         }
 
-        try self.portal?.setPassword(enteredPassword)
+        try self.portal!.setPassword(enteredPassword)
 
-        let privateKey = try await eject(.Password)
+        let ejectedKeys = try await eject(.Password)
 
-        self.logger.info("ViewController.handleEject() - ✅ Successfully ejected wallet. Private key: \(privateKey)")
-        self.showStatusView(message: "\(successStatus) Private key: \(privateKey)")
+          self.logger.info("ViewController.handleEject() - ✅ Successfully ejected wallet. SECP256K1 Private key: \(ejectedKeys.secp256k1Key)\n ED25519 Private key: \(ejectedKeys.ed25519Key)")
+          self.showStatusView(message: "\(successStatus) SECP256K1 Private key: \(ejectedKeys.secp256k1Key)\n ED25519 Private key: \(ejectedKeys.ed25519Key)")
       } catch {
         self.stopLoading()
         print("⚠️", error)
