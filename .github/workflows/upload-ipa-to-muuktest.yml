@@ -133,7 +133,7 @@ jobs:
         response=$(curl -k --location '${{ env.MUUKTEST_MOBILE_ROUTE }}/upload' \
           --form 'os="ios"' \
           --form 'key="${{ env.MUUKTEST_KEY }}"' \
-          --form 'file=@"$IPA_FILE"' \
+          --form "file=@"$IPA_FILE"" \
           --silent --show-error --write-out "HTTPSTATUS:%{http_code}")
         body=$(echo "$response" | sed -e 's/HTTPSTATUS\:.*//g')
         status=$(echo "$response" | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
