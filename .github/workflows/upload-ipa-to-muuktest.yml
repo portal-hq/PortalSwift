@@ -129,7 +129,7 @@ jobs:
 
     - name: Upload the app
       run: |
-        IPA_FILE="${{ env.EXPORT_PATH }}/SPM Example.ipa"
+        IPA_FILE="${{ env.EXPORT_PATH }}/${{ env.IPA_NAME }}"
         response=$(curl -k --location '${{ env.MUUKTEST_MOBILE_ROUTE }}/upload' \
           --form 'os="ios"' \
           --form 'key="${{ env.MUUKTEST_KEY }}"' \
@@ -142,8 +142,7 @@ jobs:
 
     - name: Execute the tests
       run: |
-        IPA_FILE="${{ env.EXPORT_PATH }}/SPM Example.ipa"
-        response=$(curl -X POST ${{ env.MUUKTEST_MOBILE_ROUTE }}/execute -k -d '{"key":"${{ env.MUUKTEST_KEY }}", "os":"ios", "file":"SPM Example.ipa"}' -H "Content-Type: application/json" \
+        response=$(curl -X POST ${{ env.MUUKTEST_MOBILE_ROUTE }}/execute -k -d '{"key":"${{ env.MUUKTEST_KEY }}", "os":"ios", "file":"${{ env.IPA_NAME }}"}' -H "Content-Type: application/json" \
           --silent --show-error --write-out "HTTPSTATUS:%{http_code}")
         body=$(echo "$response" | sed -e 's/HTTPSTATUS\:.*//g')
         status=$(echo "$response" | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
