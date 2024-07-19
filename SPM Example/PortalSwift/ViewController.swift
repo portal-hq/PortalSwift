@@ -992,7 +992,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
           return
         }
 
-        try self.portal!.setPassword(enteredPassword)
+        try self.portal?.setPassword(enteredPassword)
 
         let ejectedKeys = try await eject(.Password)
 
