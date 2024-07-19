@@ -200,11 +200,35 @@ public class PortalMpc {
     }
   }
 
-  public func ejectSecp256k1(
+    func eject(_ method: BackupMethods,
+               with cipherText: String,
+               and organizationBackupShare: [PortalCurve : String]
+    ) async throws -> EjectedKeys {
+        guard let secp256k1OrgShare = organizationBackupShare[.SECP256K1] else {
+            throw MpcError.unexpectedErrorOnEject("SECP256K1 Organization Backup Share is missing.")
+        }
+
+        guard let ed2551OrgShare = organizationBackupShare[.ED25519] else {
+            throw MpcError.unexpectedErrorOnEject("ED25519 Organization Backup Share is missing.")
+        }
+
+        guard let storage = self.backupOptions[method] else {
+          throw MpcError.unexpectedErrorOnEject("Backup method \(method.rawValue) not registered.")
+        }
+
+        let decryptionKey = try await storage.read()
+
+        let secp256k1Key = try await ejectSecp256k1(method, decryptionKey: decryptionKey, withCipherText: cipherText, andOrganizationBackupShare: secp256k1OrgShare)
+        let ed25519Key = try await ejectEd25519(method, decryptionKey: decryptionKey, withCipherText: cipherText, andOrganizationBackupShare: ed2551OrgShare)
+
+        return EjectedKeys(secp256k1Key: secp256k1Key, ed25519Key: ed25519Key)
+    }
+
+  private func ejectSecp256k1(
     _ method: BackupMethods,
+    decryptionKey: String,
     withCipherText: String,
-    andOrganizationBackupShare: String,
-    usingProgressCallback _: ((MpcStatus) -> Void)? = nil
+    andOrganizationBackupShare: String
   ) async throws -> String {
     if self.version != "v6" {
       throw MpcError.backupNoLongerSupported("[PortalMpc] Eject is no longer supported for this version of MPC. Please use `version = \"v6\"`.")
@@ -213,8 +237,6 @@ public class PortalMpc {
     guard let storage = self.backupOptions[method] else {
       throw MpcError.unexpectedErrorOnEject("Backup method \(method.rawValue) not registered.")
     }
-
-    let decryptionKey = try await storage.read()
 
     let decryptedString = try await storage.decrypt(withCipherText, withKey: decryptionKey)
     guard let decryptedData = decryptedString.data(using: .utf8) else {
@@ -267,13 +289,13 @@ public class PortalMpc {
     }
 
     return eip155PrivateKey
-  }  
-    
-    public func ejectEd25519(
+  }
+
+  private func ejectEd25519(
     _ method: BackupMethods,
+    decryptionKey: String,
     withCipherText: String,
-    andOrganizationBackupShare: String,
-    usingProgressCallback _: ((MpcStatus) -> Void)? = nil
+    andOrganizationBackupShare: String
   ) async throws -> String {
     if self.version != "v6" {
       throw MpcError.backupNoLongerSupported("[PortalMpc] Eject is no longer supported for this version of MPC. Please use `version = \"v6\"`.")
@@ -282,8 +304,6 @@ public class PortalMpc {
     guard let storage = self.backupOptions[method] else {
       throw MpcError.unexpectedErrorOnEject("Backup method \(method.rawValue) not registered.")
     }
-
-    let decryptionKey = try await storage.read()
 
     let decryptedString = try await storage.decrypt(withCipherText, withKey: decryptionKey)
     guard let decryptedData = decryptedString.data(using: .utf8) else {

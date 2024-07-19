@@ -20,14 +20,13 @@ public class MockPortalMpc: PortalMpc {
     )
   }
 
-  override public func ejectSecp256k1(
-    _: BackupMethods,
-    withCipherText _: String,
-    andOrganizationBackupShare _: String,
-    usingProgressCallback _: ((MpcStatus) -> Void)? = nil
-  ) async throws -> String {
-    return MockConstants.mockEip155EjectedPrivateKey
-  }
+    override public func eject(
+        _ method: BackupMethods,
+        with cipherText: String,
+        and organizationBackupShare: [PortalCurve : String]
+    ) async throws -> EjectedKeys {
+        return EjectedKeys(secp256k1Key: MockConstants.mockEip155EjectedPrivateKey, ed25519Key: MockConstants.mockSolonaEjectedPrivateKey)
+    }
 
   override public func generate(withProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> [PortalNamespace: String?] {
     withProgressCallback?(MpcStatus(status: .done, done: true))

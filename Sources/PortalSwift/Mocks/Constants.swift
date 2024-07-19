@@ -67,8 +67,9 @@ public enum MockConstants {
   )
   public static let mockEip155Address = "0x73574d235573574d235573574d235573574d2355"
   public static let mockEip155EjectResponse = "{\"privateKey\":\"\(mockEip155EjectedPrivateKey)\",\"error\":{\"code\":0,\"message\":\"\"}}"
-    public static let mockSolonaEjectResponse = "{\"privateKey\":\"\(mockEip155EjectedPrivateKey)\",\"error\":{\"code\":0,\"message\":\"\"}}" // TODO: - review this mock value.
+    public static let mockSolonaEjectResponse = "{\"privateKey\":\"\(mockSolonaEjectedPrivateKey)\",\"error\":{\"code\":0,\"message\":\"\"}}"
   public static let mockEip155EjectedPrivateKey = "099cabf8c65c81e629d59e72f04a549aafa531329e25685a5b8762b926597209"
+  public static let mockSolonaEjectedPrivateKey = "099cabf8c65c81e629d59e72f04a549aafa531329e25685a5b8762b926597209"
   public static let mockEip155Transaction = [
     "from": mockEip155Address,
     "to": "0xd46e8dd67c5d32be8058bb8eb970870f07244567",

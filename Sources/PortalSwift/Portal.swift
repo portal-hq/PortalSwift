@@ -337,10 +337,7 @@ public class Portal {
         let secp256k1OrgShare = try await getOrgShare(custodianServerUrl: custodianServerUrl, exchangeUserId: exchangeUserId, method: method, curve: "SECP256K1").orgShare
         let ed2551OrgShare = try await getOrgShare(custodianServerUrl: custodianServerUrl, exchangeUserId: exchangeUserId, method: method, curve: "ED25519").orgShare
 
-        let secp256k1Key = try await mpc.ejectSecp256k1(method, withCipherText: cipherText, andOrganizationBackupShare: secp256k1OrgShare)
-        let ed25519Key = try await mpc.ejectEd25519(method, withCipherText: cipherText, andOrganizationBackupShare: ed2551OrgShare)
-
-        return EjectedKeys(secp256k1Key: secp256k1Key, ed25519Key: ed25519Key)
+        return try await mpc.eject(method, with: cipherText, and: [.SECP256K1 : secp256k1OrgShare, .ED25519 : ed2551OrgShare])
       }
 
     private func getCipherText(custodianServerUrl: String, exchangeUserId: Int, method: BackupMethods) async throws -> CipherTextResult {
