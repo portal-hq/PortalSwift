@@ -211,27 +211,27 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
     public func eject(_ withBackupMethod: BackupMethods) async throws -> EjectedKeys {
-    guard let portal else {
-      self.logger.error("ViewController.eject() - ❌ Portal not initialized. Please call registerPortal().")
-      throw PortalExampleAppError.portalNotInitialized()
+        guard let portal else {
+            self.logger.error("ViewController.eject() - ❌ Portal not initialized. Please call registerPortal().")
+            throw PortalExampleAppError.portalNotInitialized()
+        }
+        guard let user else {
+            self.logger.error("ViewController.eject() - ❌ User not logged in.")
+            throw PortalExampleAppError.userNotLoggedIn()
+        }
+        guard let config else {
+            self.logger.error("ViewController.recover() - ❌ Application configuration not set.")
+            throw PortalExampleAppError.configurationNotSet()
+        }
+        
+        let result = try await portal.ejectPrivateKeys(
+            withBackupMethod,
+            exchangeUserId: user.exchangeUserId,
+            custodianServerUrl: config.custodianServerUrl
+        )
+        
+        return result
     }
-    guard let user else {
-      self.logger.error("ViewController.eject() - ❌ User not logged in.")
-      throw PortalExampleAppError.userNotLoggedIn()
-    }
-    guard let config else {
-      self.logger.error("ViewController.recover() - ❌ Application configuration not set.")
-      throw PortalExampleAppError.configurationNotSet()
-    }
-
-    let result = try await portal.ejectPrivateKeys(
-        withBackupMethod,
-        exchangeUserId: user.exchangeUserId,
-        custodianServerUrl: config.custodianServerUrl
-    )
-
-    return result
-  }
 
   public func generate() async throws -> PortalCreateWalletResponse {
     guard let portal else {
@@ -984,28 +984,29 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  @IBAction func handleEject(_: UIButton) {
-    Task {
-      do {
-        guard let enteredPassword = await requestPassword(), !enteredPassword.isEmpty else {
-          self.logger.error("ViewController.handleEject() - ❌ No password set by user. Eject will not take place.")
-          return
+    @IBAction func handleEject(_: UIButton) {
+        Task {
+            do {
+                guard let enteredPassword = await requestPassword(), !enteredPassword.isEmpty else {
+                    self.logger.error("ViewController.handleEject() - ❌ No password set by user. Eject will not take place.")
+                    return
+                }
+                self.startLoading()
+                try self.portal?.setPassword(enteredPassword)
+                
+                let ejectedKeys = try await eject(.Password)
+                
+                self.logger.info("ViewController.handleEject() - ✅ Successfully ejected wallet. SECP256K1 Private key: \(ejectedKeys.secp256k1Key)\n ED25519 Private key: \(ejectedKeys.ed25519Key)")
+                self.showStatusView(message: "\(successStatus) SECP256K1 Private key: \(ejectedKeys.secp256k1Key)\n ED25519 Private key: \(ejectedKeys.ed25519Key)")
+                self.stopLoading()
+            } catch {
+                self.stopLoading()
+                print("⚠️", error)
+                self.logger.error("ViewController.handleEject() - Error ejecting wallet: \(error)")
+                self.showStatusView(message: "\(failureStatus) Error ejecting wallet \(error)")
+            }
         }
-
-        try self.portal?.setPassword(enteredPassword)
-
-        let ejectedKeys = try await eject(.Password)
-
-          self.logger.info("ViewController.handleEject() - ✅ Successfully ejected wallet. SECP256K1 Private key: \(ejectedKeys.secp256k1Key)\n ED25519 Private key: \(ejectedKeys.ed25519Key)")
-          self.showStatusView(message: "\(successStatus) SECP256K1 Private key: \(ejectedKeys.secp256k1Key)\n ED25519 Private key: \(ejectedKeys.ed25519Key)")
-      } catch {
-        self.stopLoading()
-        print("⚠️", error)
-        self.logger.error("ViewController.handleEject() - Error ejecting wallet: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error ejecting wallet \(error)")
-      }
     }
-  }
 
   @IBAction func handleFundSepolia(_: UIButton) {
     Task {
