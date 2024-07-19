@@ -140,3 +140,4 @@ jobs:
     - name: Execute the tests
       run: |
         curl -X POST ${{ env.MUUKTEST_MOBILE_ROUTE }}/execute -k -d '{"key":"${{ env.MUUKTEST_KEY }}", "os":"ios", "file":"SPMExample.ipa"}' -H "Content-Type: application/json"
+
