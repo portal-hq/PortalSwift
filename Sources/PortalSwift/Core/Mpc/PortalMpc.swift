@@ -243,22 +243,22 @@ public class PortalMpc {
       throw MpcError.unexpectedErrorOnEject("Unable to convert decrypted data.")
     }
 
-    var generateResponse: PortalMpcGenerateResponse = [:]
+    var clientBackupShare: PortalMpcGenerateResponse = [:]
     do {
-      generateResponse = try self.decoder.decode(PortalMpcGenerateResponse.self, from: decryptedData)
+      clientBackupShare = try self.decoder.decode(PortalMpcGenerateResponse.self, from: decryptedData)
     } catch {
       let backupShare = try decoder.decode(MpcShare.self, from: decryptedData)
-      generateResponse["SECP256K1"] = PortalMpcGeneratedShare(
+      clientBackupShare["SECP256K1"] = PortalMpcGeneratedShare(
         id: backupShare.backupSharePairId ?? "",
         share: decryptedString
       )
     }
 
     let privateKeys = try await withCheckedThrowingContinuation { continuation in
-      let response = generateResponse
+      let response = clientBackupShare
       Task {
         do {
-          var addresses: [PortalNamespace: String] = [:]
+          var privateKeys: [PortalNamespace: String] = [:]
 
           if let secp256k1Share = response["SECP256K1"] {
             let ejectResponse = await self.mobile.MobileEjectWalletAndDiscontinueMPCSecp265K1(secp256k1Share.share, andOrganizationBackupShare)
@@ -269,15 +269,15 @@ public class PortalMpc {
             let ejectResult: EjectResult = try JSONDecoder().decode(EjectResult.self, from: jsonData)
             let privateKey = ejectResult.privateKey
 
-            addresses[.eip155] = privateKey
+            privateKeys[.eip155] = privateKey
 
             _ = try await self.api.eject()
 
-            continuation.resume(returning: addresses)
+            continuation.resume(returning: privateKeys)
             return
           }
 
-          continuation.resume(returning: addresses)
+          continuation.resume(returning: privateKeys)
         } catch {
           continuation.resume(throwing: error)
         }
@@ -310,22 +310,22 @@ public class PortalMpc {
       throw MpcError.unexpectedErrorOnEject("Unable to convert decrypted data.")
     }
 
-    var generateResponse: PortalMpcGenerateResponse = [:]
+    var clientBackupShare: PortalMpcGenerateResponse = [:]
     do {
-      generateResponse = try self.decoder.decode(PortalMpcGenerateResponse.self, from: decryptedData)
+      clientBackupShare = try self.decoder.decode(PortalMpcGenerateResponse.self, from: decryptedData)
     } catch {
       let backupShare = try decoder.decode(MpcShare.self, from: decryptedData)
-      generateResponse["ED25519"] = PortalMpcGeneratedShare(
+      clientBackupShare["ED25519"] = PortalMpcGeneratedShare(
         id: backupShare.backupSharePairId ?? "",
         share: decryptedString
       )
     }
 
     let privateKeys = try await withCheckedThrowingContinuation { continuation in
-      let response = generateResponse
+      let response = clientBackupShare
       Task {
         do {
-          var addresses: [PortalNamespace: String] = [:]
+          var privateKeys: [PortalNamespace: String] = [:]
 
           if let ed25519Share = response["ED25519"] {
             let ejectResponse = await self.mobile.MobileEjectWalletAndDiscontinueMPCEd25519(ed25519Share.share, andOrganizationBackupShare)
@@ -336,15 +336,15 @@ public class PortalMpc {
             let ejectResult: EjectResult = try JSONDecoder().decode(EjectResult.self, from: jsonData)
             let privateKey = ejectResult.privateKey
 
-            addresses[.solana] = privateKey
+            privateKeys[.solana] = privateKey
 
             _ = try await self.api.eject()
 
-            continuation.resume(returning: addresses)
+            continuation.resume(returning: privateKeys)
             return
           }
 
-          continuation.resume(returning: addresses)
+          continuation.resume(returning: privateKeys)
         } catch {
           continuation.resume(throwing: error)
         }
