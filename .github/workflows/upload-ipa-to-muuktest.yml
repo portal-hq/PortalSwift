@@ -124,6 +124,9 @@ jobs:
           exit 1
         fi
 
+    - name: Rename IPA file to remove the space
+      run: mv "${{ env.EXPORT_PATH }}/SPM Example.ipa" "${{ env.EXPORT_PATH }}/SPMExample.ipa"
+
     - name: Delete Secrets.xcconfig
       run: rm "${{ github.workspace }}/SPM Example/Secrets.xcconfig"
 
@@ -132,8 +135,8 @@ jobs:
         curl -k --location '${{ env.MUUKTEST_MOBILE_ROUTE }}/upload' \
           --form 'os="ios"' \
           --form 'key="${{ env.MUUKTEST_KEY }}"' \
-          --form 'file=@"${{ env.EXPORT_PATH }}/${{ env.IPA_NAME }}"'
+          --form 'file=@"${{ env.EXPORT_PATH }}/SPMExample.ipa"'
 
     - name: Execute the tests
       run: |
-        curl -X POST ${{ env.MUUKTEST_MOBILE_ROUTE }}/execute -k -d '{"key":"${{ env.MUUKTEST_KEY }}", "os":"ios", "file":"${{ env.IPA_NAME }}"}' -H "Content-Type: application/json"
+        curl -X POST ${{ env.MUUKTEST_MOBILE_ROUTE }}/execute -k -d '{"key":"${{ env.MUUKTEST_KEY }}", "os":"ios", "file":"SPMExample.ipa"}' -H "Content-Type: application/json"
