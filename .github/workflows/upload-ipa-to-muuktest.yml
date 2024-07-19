@@ -129,16 +129,10 @@ jobs:
 
     - name: Upload the app
       run: |
-        IPA_FILE="${{ env.EXPORT_PATH }}/${{ env.IPA_NAME }}"
-        response=$(curl -k --location '${{ env.MUUKTEST_MOBILE_ROUTE }}/upload' \
+        curl -k --location '${{ env.MUUKTEST_MOBILE_ROUTE }}/upload' \
           --form 'os="ios"' \
           --form 'key="${{ env.MUUKTEST_KEY }}"' \
-          --form "file=@"$IPA_FILE"" \
-          --silent --show-error --write-out "HTTPSTATUS:%{http_code}")
-        body=$(echo "$response" | sed -e 's/HTTPSTATUS\:.*//g')
-        status=$(echo "$response" | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
-        echo "Upload Response body: $body"
-        echo "Upload Response status: $status"
+          --form 'file=@"${{ env.EXPORT_PATH }}/${{ env.IPA_NAME }}"'
 
     - name: Execute the tests
       run: |
