@@ -136,10 +136,4 @@ jobs:
 
     - name: Execute the tests
       run: |
-        response=$(curl -X POST ${{ env.MUUKTEST_MOBILE_ROUTE }}/execute -k -d '{"key":"${{ env.MUUKTEST_KEY }}", "os":"ios", "file":"${{ env.IPA_NAME }}"}' -H "Content-Type: application/json" \
-          --silent --show-error --write-out "HTTPSTATUS:%{http_code}")
-        body=$(echo "$response" | sed -e 's/HTTPSTATUS\:.*//g')
-        status=$(echo "$response" | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
-        echo "Execute Response body: $body"
-        echo "Execute Response status: $status"
-
+        curl -X POST ${{ env.MUUKTEST_MOBILE_ROUTE }}/execute -k -d '{"key":"${{ env.MUUKTEST_KEY }}", "os":"ios", "file":"${{ env.IPA_NAME }}"}' -H "Content-Type: application/json"
