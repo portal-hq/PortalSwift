@@ -590,6 +590,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.logger.error("Error: Do you have `GDRIVE_CLIENT_ID=$(GDRIVE_CLIENT_ID)` in your Secrets.xcconfig?")
         throw PortalExampleAppError.environmentNotSet()
       }
+      guard let BACKUP_WITH_PORTAL: String = infoDictionary["BACKUP_WITH_PORTAL"] as? String else {
+        self.logger.error("Error: Do you have `BACKUP_WITH_PORTAL=$(BACKUP_WITH_PORTAL)` in your Secrets.xcconfig?")
+        throw PortalExampleAppError.environmentNotSet()
+      }
 
       let debugMessage = "ViewController.loadApplicationConfig() - Found environment: \(ENV)"
       self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
@@ -606,10 +610,12 @@ class ViewController: UIViewController, UITextFieldDelegate {
           relyingParty: "portalhq.io"
         )
       case "stage", "staging":
+        let custodianServerUrl = BACKUP_WITH_PORTAL == "true" ? "https://staging-portalex-backup-with-portal.onrender.com" : "https://staging-portalex-mpc-service.onrender.com"
+
         self.config = ApplicationConfiguration(
           alchemyApiKey: ALCHEMY_API_KEY,
           apiUrl: "api.portalhq.dev",
-          custodianServerUrl: "https://staging-portalex-mpc-service.onrender.com",
+          custodianServerUrl: custodianServerUrl,
           googleClientId: GOOGLE_CLIENT_ID,
           mpcUrl: "mpc.portalhq.dev",
           webAuthnHost: "backup.portalhq.dev",
@@ -619,7 +625,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.config = ApplicationConfiguration(
           alchemyApiKey: ALCHEMY_API_KEY,
           apiUrl: "localhost:3001",
-          custodianServerUrl: "http://localhost:3007",
+          custodianServerUrl: "http://localhost:3010",
           googleClientId: GOOGLE_CLIENT_ID,
           mpcUrl: "localhost:3002",
           webAuthnHost: "backup.portalhq.dev",
@@ -691,17 +697,17 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
 
     let balanceResponse = try await portal.request(chainId, withMethod: .eth_getBalance, andParams: [address, "latest"])
-      guard let balance = balanceResponse.result as? PortalProviderRpcResponse else {
+    guard let balance = balanceResponse.result as? PortalProviderRpcResponse else {
       throw PortalExampleAppError.invalidResponseTypeForRequest()
     }
 
-      if let balanceHex = balance.result {
-          let balance = self.parseETHBalanceHex(hex: balanceHex)
-          print("ETH Balance: \(balance) ETH")
-          DispatchQueue.main.async {
-              self.ethBalanceInformation?.text = "ETH Balance: \(balance) ETH"
-          }
+    if let balanceHex = balance.result {
+      let balance = self.parseETHBalanceHex(hex: balanceHex)
+      print("ETH Balance: \(balance) ETH")
+      DispatchQueue.main.async {
+        self.ethBalanceInformation?.text = "ETH Balance: \(balance) ETH"
       }
+    }
   }
 
   public func registerPortal() async throws -> Portal {
@@ -812,12 +818,12 @@ class ViewController: UIViewController, UITextFieldDelegate {
     DispatchQueue.main.async {
       Task {
         do {
-            self.addressInformation?.text = "N/A"
+          self.addressInformation?.text = "N/A"
           if let address = try? await self.portal?.addresses[.eip155], address != nil {
-              self.addressInformation?.text = address
-              self.startRefreshBalanceTimer()
+            self.addressInformation?.text = address
+            self.startRefreshBalanceTimer()
           } else {
-              self.stopRefreshBalanceTimer()
+            self.stopRefreshBalanceTimer()
           }
 
           let availableRecoveryMethods = try await self.portal?.availableRecoveryMethods() ?? []
@@ -1614,23 +1620,24 @@ class ViewController: UIViewController, UITextFieldDelegate {
 }
 
 // MARK: - ETH balance refresh
+
 @available(iOS 16.0, *)
 extension ViewController {
-    private func startRefreshBalanceTimer() {
-        self.refreshBalanceTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] timer in
-            guard let self = self else { return }
-            Task {
-                do {
-                    try await self.populateEthBalance()
-                } catch {
-                    print("Failed to refresh the the ETH balance. \(error)")
-                }
-            }
+  private func startRefreshBalanceTimer() {
+    self.refreshBalanceTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+      guard let self = self else { return }
+      Task {
+        do {
+          try await self.populateEthBalance()
+        } catch {
+          print("Failed to refresh the the ETH balance. \(error)")
         }
-        self.refreshBalanceTimer?.fire()
+      }
     }
+    self.refreshBalanceTimer?.fire()
+  }
 
-    private func stopRefreshBalanceTimer() {
-        self.refreshBalanceTimer?.invalidate()
-    }
+  private func stopRefreshBalanceTimer() {
+    self.refreshBalanceTimer?.invalidate()
+  }
 }
