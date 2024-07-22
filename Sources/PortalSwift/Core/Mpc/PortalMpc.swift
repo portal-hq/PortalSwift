@@ -202,13 +202,13 @@ public class PortalMpc {
 
     func eject(_ method: BackupMethods,
                with cipherText: String,
-               and organizationBackupShare: [PortalCurve : String]
+               and organizationBackupShares: [PortalCurve : String]
     ) async throws -> EjectedKeys {
-        guard let secp256k1OrgShare = organizationBackupShare[.SECP256K1] else {
+        guard let secp256k1OrgShare = organizationBackupShares[.SECP256K1] else {
             throw MpcError.unexpectedErrorOnEject("SECP256K1 Organization Backup Share is missing.")
         }
 
-        guard let ed2551OrgShare = organizationBackupShare[.ED25519] else {
+        guard let ed2551OrgShare = organizationBackupShares[.ED25519] else {
             throw MpcError.unexpectedErrorOnEject("ED25519 Organization Backup Share is missing.")
         }
 

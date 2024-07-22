@@ -330,26 +330,12 @@ public class Portal {
     )
   }
 
-    public func ejectPrivateKeys(_ method: BackupMethods, exchangeUserId: Int, custodianServerUrl: String) async throws -> EjectedKeys {
+    public func ejectPrivateKeys(_ method: BackupMethods,
+                                 withCipherText: String,
+                                 andOrganizationBackupShares: [PortalCurve : String]
+    ) async throws -> EjectedKeys {
         
-        let cipherText = try await getCipherText(custodianServerUrl: custodianServerUrl, exchangeUserId: exchangeUserId, method: method).cipherText
-
-        let secp256k1OrgShare = try await getOrgShare(custodianServerUrl: custodianServerUrl, exchangeUserId: exchangeUserId, method: method, curve: "SECP256K1").orgShare
-        let ed2551OrgShare = try await getOrgShare(custodianServerUrl: custodianServerUrl, exchangeUserId: exchangeUserId, method: method, curve: "ED25519").orgShare
-
-        return try await mpc.eject(method, with: cipherText, and: [.SECP256K1 : secp256k1OrgShare, .ED25519 : ed2551OrgShare])
-      }
-
-    private func getCipherText(custodianServerUrl: String, exchangeUserId: Int, method: BackupMethods) async throws -> CipherTextResult {
-        let requests = PortalRequests()
-        let decoder = JSONDecoder()
-        guard let cipherTextUrl = URL(
-          string: "\(custodianServerUrl)/mobile/\(exchangeUserId)/cipher-text/fetch?backupMethod=\(method.rawValue)"
-        ) else {
-          throw URLError(.badURL)
-        }
-        let cipherTextData = try await requests.get(cipherTextUrl)
-        return try decoder.decode(CipherTextResult.self, from: cipherTextData)
+        return try await mpc.eject(method, with: withCipherText, and: andOrganizationBackupShares)
     }
 
     private func getOrgShare(custodianServerUrl: String, exchangeUserId: Int, method: BackupMethods, curve: String) async throws -> OrgShareResult {

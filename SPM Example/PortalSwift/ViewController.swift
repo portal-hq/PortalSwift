@@ -223,14 +223,38 @@ class ViewController: UIViewController, UITextFieldDelegate {
             self.logger.error("ViewController.recover() - ❌ Application configuration not set.")
             throw PortalExampleAppError.configurationNotSet()
         }
-        
+
+        let cipherText = try await getCipherText(custodianServerUrl: config.custodianServerUrl, exchangeUserId: user.exchangeUserId, method: withBackupMethod).cipherText
+
+        let secp256k1OrgShare = try await getOrgShare(custodianServerUrl: config.custodianServerUrl, exchangeUserId: user.exchangeUserId, method: withBackupMethod, curve: "SECP256K1").orgShare
+        let ed2551OrgShare = try await getOrgShare(custodianServerUrl: config.custodianServerUrl, exchangeUserId: user.exchangeUserId, method: withBackupMethod, curve: "ED25519").orgShare
+
         let result = try await portal.ejectPrivateKeys(
             withBackupMethod,
-            exchangeUserId: user.exchangeUserId,
-            custodianServerUrl: config.custodianServerUrl
-        )
-        
+            withCipherText: cipherText,
+            andOrganizationBackupShares: [.SECP256K1 : secp256k1OrgShare, .ED25519 : ed2551OrgShare])
+
         return result
+    }
+
+    private func getCipherText(custodianServerUrl: String, exchangeUserId: Int, method: BackupMethods) async throws -> CipherTextResult {
+        guard let cipherTextUrl = URL(
+          string: "\(custodianServerUrl)/mobile/\(exchangeUserId)/cipher-text/fetch?backupMethod=\(method.rawValue)"
+        ) else {
+          throw URLError(.badURL)
+        }
+        let cipherTextData = try await requests.get(cipherTextUrl)
+        return try decoder.decode(CipherTextResult.self, from: cipherTextData)
+    }
+
+    private func getOrgShare(custodianServerUrl: String, exchangeUserId: Int, method: BackupMethods, curve: String) async throws -> OrgShareResult {
+        guard let organizationBackupShareUrl = URL(
+          string: "\(custodianServerUrl)/mobile/\(exchangeUserId)/org-share/fetch?backupMethod=\(method.rawValue)-\(curve)"
+        ) else {
+          throw URLError(.badURL)
+        }
+        let organizationBackupShareData = try await requests.get(organizationBackupShareUrl)
+        return try decoder.decode(OrgShareResult.self, from: organizationBackupShareData)
     }
 
   public func generate() async throws -> PortalCreateWalletResponse {
