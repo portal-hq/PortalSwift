@@ -236,8 +236,6 @@ public class PortalKeychain {
         // Before multi-wallet support was added
         let signingShareValue = try keychain.getItem("\(clientId).share")
         
-        print("🚨 Signing Share: \(signingShareValue)")
-        
         guard let data = signingShareValue.data(using: .utf8) else {
           self.logger.error("PortalKeychain.getShares() - Unable to decode legacy keychain data")
           throw KeychainError.unableToEncodeKeychainData
