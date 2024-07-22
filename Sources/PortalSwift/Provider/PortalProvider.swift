@@ -20,7 +20,7 @@ public class PortalProvider {
 
   private let apiKey: String
   public var autoApprove: Bool
-  public var chainId: Chains.RawValue?
+  public var chainId: Int?
   public var delegate: PortalProviderDelegate?
   public var gatewayUrl: String?
 
@@ -531,16 +531,6 @@ public class PortalProvider {
 /**********************************
  * Supporting Structs
  **********************************/
-
-/// A list of EVM networks.
-public enum Chains: Int {
-  case Mainnet = 1
-  case Ropsten = 3
-  case Rinkeby = 4
-  case Goerli = 5
-  case Sepolia = 11_155_111
-  case Kovan = 42
-}
 
 /// The provider events that can be listened to.
 public enum Events: String {
