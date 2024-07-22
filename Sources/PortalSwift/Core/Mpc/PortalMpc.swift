@@ -347,6 +347,19 @@ public class PortalMpc {
       throw error
     }
   }
+  
+  public func recover(
+    _ method: BackupMethods,
+    withCipherText: String,
+    usingProgressCallback: ((MpcStatus) -> Void)? = nil
+  ) async throws -> [PortalNamespace: String?] {
+    return try await recover(
+      method,
+      withCipherText: withCipherText,
+      recoverForward: false,
+      usingProgressCallback: usingProgressCallback
+    )
+  }
 
   public func recover(
     _ method: BackupMethods,
