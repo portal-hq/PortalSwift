@@ -383,12 +383,16 @@ public class PortalMpc {
             let backupResponse = try await parseRecoveryInput(data: decryptedData)
 
             usingProgressCallback?(MpcStatus(status: .generatingShare, done: false))
+            
+            let client = try? await keychain.getMetadata()
+            let hasEd25519Wallet = client?.wallets?[.ED25519] != nil
+
             var recoverResponse: PortalMpcGenerateResponse = [:]
             if let ed25519Share = backupResponse[PortalCurve.ED25519.rawValue] {
               //  The share's already been backed up, recover it
               async let ed25519MpcShare = try recoverSigningShare(.ED25519, withMethod: method, andBackupShare: ed25519Share.share)
 
-              let shareData = await try encoder.encode(ed25519MpcShare)
+              let shareData = try await encoder.encode(ed25519MpcShare)
               guard let shareString = String(data: shareData, encoding: .utf8) else {
                 throw MpcError.unexpectedErrorOnBackup("Unable to stringify ED25519 share.")
               }
@@ -397,7 +401,7 @@ public class PortalMpc {
                 id: ed25519MpcShare.signingSharePairId ?? "",
                 share: shareString
               )
-            } else {
+            } else if !hasEd25519Wallet {
               let ed25519MpcShare = try await self.getSigningShare(.ED25519)
               let ed25519ShareData = try self.encoder.encode(ed25519MpcShare)
               guard let ed25519ShareString = String(data: ed25519ShareData, encoding: .utf8) else {
@@ -412,7 +416,7 @@ public class PortalMpc {
             if let secp256k1Share = backupResponse[PortalCurve.SECP256K1.rawValue] {
               async let secp256k1MpcShare = try recoverSigningShare(.SECP256K1, withMethod: method, andBackupShare: secp256k1Share.share)
 
-              let shareData = await try encoder.encode(secp256k1MpcShare)
+              let shareData = try await encoder.encode(secp256k1MpcShare)
               guard let shareString = String(data: shareData, encoding: .utf8) else {
                 throw MpcError.unexpectedErrorOnBackup("Unable to stringify SECP256K1 share.")
               }
