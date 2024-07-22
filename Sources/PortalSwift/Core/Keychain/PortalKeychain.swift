@@ -221,8 +221,6 @@ public class PortalKeychain {
 
     do {
       let value = try keychain.getItem("\(clientId).\(self.sharesKey)")
-      
-      print("🚨 value: \(value)")
 
       guard let data = value.data(using: .utf8) else {
         self.logger.error("PortalKeychain.getShares() - Unable to decode keychain data")
