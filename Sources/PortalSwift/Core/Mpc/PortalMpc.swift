@@ -351,6 +351,7 @@ public class PortalMpc {
   public func recover(
     _ method: BackupMethods,
     withCipherText: String,
+    recoverForward: Bool = false,
     usingProgressCallback: ((MpcStatus) -> Void)? = nil
   ) async throws -> [PortalNamespace: String?] {
     if self.version != "v6" {
@@ -401,7 +402,7 @@ public class PortalMpc {
                 id: ed25519MpcShare.signingSharePairId ?? "",
                 share: shareString
               )
-            } else if !hasEd25519Wallet {
+            } else if !hasEd25519Wallet && recoverForward {
               let ed25519MpcShare = try await self.getSigningShare(.ED25519)
               let ed25519ShareData = try self.encoder.encode(ed25519MpcShare)
               guard let ed25519ShareString = String(data: ed25519ShareData, encoding: .utf8) else {
