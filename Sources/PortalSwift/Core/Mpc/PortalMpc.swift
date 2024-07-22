@@ -32,6 +32,7 @@ public class PortalMpc {
   private let apiHost: String
   private let apiKey: String
   private var backupOptions: [BackupMethods: PortalStorage] = [:]
+  private var dateFormatter = DateFormatter()
   private let decoder = JSONDecoder()
   private let encoder = JSONEncoder()
   private let featureFlags: FeatureFlags?
@@ -182,6 +183,22 @@ public class PortalMpc {
       let shareIds = generateResponse.values.map { share in
         share.id
       }
+
+      guard let client = try await api.client else {
+        throw MpcError.clientInformationUnavailable
+      }
+
+      if client.environment?.backupWithPortalEnabled ?? false {
+        for share in generateResponse.values {
+          let successful = try await api.storeClientCipherText(share.id, cipherText: encryptResult.cipherText)
+
+          if !successful {
+            self.logger.error("[PortalMpc] Unable to store client cipherText.")
+            throw MpcError.unableToStoreClientCipherText
+          }
+        }
+      }
+
       try await self.api.updateShareStatus(.backup, status: .STORED_CLIENT_BACKUP_SHARE_KEY, sharePairIds: shareIds)
 
       // Refresh the client
@@ -350,11 +367,40 @@ public class PortalMpc {
 
   public func recover(
     _ method: BackupMethods,
-    withCipherText: String,
+    withCipherText: String = "",
     usingProgressCallback: ((MpcStatus) -> Void)? = nil
   ) async throws -> [PortalNamespace: String?] {
     if self.version != "v6" {
       throw MpcError.backupNoLongerSupported("[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = \"v6\"`.")
+    }
+
+    guard let client = try await api.client else {
+      throw MpcError.clientInformationUnavailable
+    }
+
+    var cipherText = withCipherText
+
+    // Fetch the cipherText if necessary
+    if client.environment?.backupWithPortalEnabled ?? false {
+      var backupSharePairId = ""
+
+      for wallet in client.wallets {
+        for backupSharePair in wallet.backupSharePairs {
+          if backupSharePair.status == .completed, backupSharePair.backupMethod == method {
+            backupSharePairId = backupSharePair.id
+          }
+        }
+      }
+
+      if backupSharePairId.isEmpty {
+        throw MpcError.noValidBackupFound
+      }
+
+      cipherText = try await api.getClientCipherText(backupSharePairId)
+    }
+
+    if cipherText.isEmpty {
+      throw MpcError.noBackupCipherTextFound
     }
 
     guard !self.isWalletModificationInProgress else {
@@ -382,13 +428,16 @@ public class PortalMpc {
             usingProgressCallback?(MpcStatus(status: .parsingShare, done: false))
             let backupResponse = try await parseRecoveryInput(data: decryptedData)
 
+            print("⚠️ Backup response: \(backupResponse)")
+
             usingProgressCallback?(MpcStatus(status: .generatingShare, done: false))
             var recoverResponse: PortalMpcGenerateResponse = [:]
             if let ed25519Share = backupResponse[PortalCurve.ED25519.rawValue] {
+              print("⚠️ed25519Share.share: \(ed25519Share.share)")
               //  The share's already been backed up, recover it
               async let ed25519MpcShare = try recoverSigningShare(.ED25519, withMethod: method, andBackupShare: ed25519Share.share)
 
-              let shareData = await try encoder.encode(ed25519MpcShare)
+              let shareData = try await encoder.encode(ed25519MpcShare)
               guard let shareString = String(data: shareData, encoding: .utf8) else {
                 throw MpcError.unexpectedErrorOnBackup("Unable to stringify ED25519 share.")
               }
@@ -530,6 +579,7 @@ public class PortalMpc {
           var metadata = self.mpcMetadata
           metadata.curve = forCurve
           metadata.backupMethod = withMethod.rawValue
+
           let mpcMetadataString = try metadata.jsonString()
 
           let response = forCurve == .ED25519
@@ -616,13 +666,15 @@ public class PortalMpc {
     }
   }
 
-  private func recoverSigningShare(_ forCurve: PortalCurve, withMethod _: BackupMethods, andBackupShare: String) async throws -> MpcShare {
+  private func recoverSigningShare(_ forCurve: PortalCurve, withMethod: BackupMethods, andBackupShare: String) async throws -> MpcShare {
     let mpcShare = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<MpcShare, Error>) in
       Task {
         do {
           // Stringify the MPC metadata.
           var metadata = self.mpcMetadata
           metadata.curve = forCurve
+          metadata.backupMethod = withMethod.rawValue
+
           let mpcMetadataString = try metadata.jsonString()
 
           let response = forCurve == .ED25519
@@ -777,19 +829,23 @@ public enum MpcError: Error {
   case addressNotFound(_ message: String)
   case backupMethodNotRegistered(_ message: String)
   case backupNoLongerSupported(_ message: String)
+  case clientInformationUnavailable
   case failedToEncryptClientBackupShare(_ message: String)
   case failedToGetBackupFromStorage
   case failedToRecoverBackup(_ message: String)
   case failedToStoreClientBackupShareKey(_ message: String)
   case failedToValidateBackupMethod
   case generateNoLongerSupported(_ message: String)
+  case noBackupCipherTextFound
   case noSigningSharePresent
+  case noValidBackupFound
   case recoverNoLongerSupported(_ message: String)
   case signingRecoveryError(_ message: String)
   case unableToAuthenticate
   case unableToDecodeShare
   case unableToEjectWallet(String)
   case unableToRetrieveClient(String)
+  case unableToStoreClientCipherText
   case unableToWriteToKeychain
   case unexpectedErrorOnBackup(_ message: String)
   case unexpectedErrorOnDecrypt(_ message: String)

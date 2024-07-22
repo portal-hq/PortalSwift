@@ -62,6 +62,7 @@ public enum MockConstants {
     createdAt: mockCreatedAt,
     backupSharePairs: [mockWalletBackupShare],
     curve: .ED25519,
+    ejectableUntil: nil,
     publicKey: mockPublicKey,
     signingSharePairs: [mockWalletSigningShare]
   )
@@ -248,6 +249,7 @@ public enum MockConstants {
     createdAt: mockCreatedAt,
     backupSharePairs: [mockWalletBackupShare],
     curve: .SECP256K1,
+    ejectableUntil: nil,
     publicKey: mockPublicKey,
     signingSharePairs: [mockWalletSigningShare]
   )
@@ -284,7 +286,8 @@ public enum MockConstants {
       createdAt: mockCreatedAt,
       environment: ClientResponseEnvironment(
         id: "test-environment-id",
-        name: "test-environment-name"
+        name: "test-environment-name",
+        backupWithPortalEnabled: false
       ),
       ejectedAt: "test-ejected-at",
       isAccountAbstracted: false,
