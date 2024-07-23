@@ -201,26 +201,43 @@ public class PortalMpc {
   }
 
     func ejectPrivateKeys(_ method: BackupMethods,
-               with cipherText: String,
-               and organizationBackupShares: [PortalCurve : String]
+                          with cipherText: String,
+                          and organizationBackupShares: [PortalCurve : String]
     ) async throws -> EjectedKeys {
+        
+        guard let storage = self.backupOptions[method] else {
+            throw MpcError.unexpectedErrorOnEject("Backup method \(method.rawValue) not registered.")
+        }
+        
+        let decryptionKey = try await storage.read()
+        
+        let decryptedString = try await storage.decrypt(cipherText, withKey: decryptionKey)
+        guard let decryptedData = decryptedString.data(using: .utf8) else {
+            throw MpcError.unexpectedErrorOnEject("Unable to convert decrypted data.")
+        }
+        
+        var clientBackupShare: PortalMpcGenerateResponse = [:]
+        do {
+            clientBackupShare = try self.decoder.decode(PortalMpcGenerateResponse.self, from: decryptedData)
+        } catch {
+            
+        }
+        
         guard let secp256k1OrgShare = organizationBackupShares[.SECP256K1] else {
             throw MpcError.unexpectedErrorOnEject("SECP256K1 Organization Backup Share is missing.")
         }
-
-        guard let ed2551OrgShare = organizationBackupShares[.ED25519] else {
+        
+        if clientBackupShare["ED25519"] != nil && organizationBackupShares[.ED25519] == nil {
             throw MpcError.unexpectedErrorOnEject("ED25519 Organization Backup Share is missing.")
         }
-
-        guard let storage = self.backupOptions[method] else {
-          throw MpcError.unexpectedErrorOnEject("Backup method \(method.rawValue) not registered.")
-        }
-
-        let decryptionKey = try await storage.read()
-
+        
         let secp256k1Key = try await ejectSecp256k1(method, decryptionKey: decryptionKey, withCipherText: cipherText, andOrganizationBackupShare: secp256k1OrgShare)
-        let ed25519Key = try await ejectEd25519(method, decryptionKey: decryptionKey, withCipherText: cipherText, andOrganizationBackupShare: ed2551OrgShare)
-
+        
+        var ed25519Key: String? = nil
+        if let ed2551OrgShare = organizationBackupShares[.ED25519] {
+            ed25519Key = try await ejectEd25519(method, decryptionKey: decryptionKey, withCipherText: cipherText, andOrganizationBackupShare: ed2551OrgShare)
+        }
+        
         return EjectedKeys(secp256k1Key: secp256k1Key, ed25519Key: ed25519Key)
     }
 

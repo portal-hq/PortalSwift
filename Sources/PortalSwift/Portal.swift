@@ -1009,7 +1009,8 @@ public enum PortalSolError: Error {
 }
 
 public struct EjectedKeys {
-    public let secp256k1Key, ed25519Key: String
+    public let secp256k1Key: String
+    public let ed25519Key: String?
 }
 
 struct OrgShareResult: Codable {

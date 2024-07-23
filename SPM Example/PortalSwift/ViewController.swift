@@ -1020,8 +1020,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
                 
                 let ejectedKeys = try await eject(.Password)
                 
-                self.logger.info("ViewController.handleEject() - ✅ Successfully ejected wallet. SECP256K1 Private key: \(ejectedKeys.secp256k1Key)\n ED25519 Private key: \(ejectedKeys.ed25519Key)")
-                self.showStatusView(message: "\(successStatus) SECP256K1 Private key: \(ejectedKeys.secp256k1Key)\n ED25519 Private key: \(ejectedKeys.ed25519Key)")
+                self.logger.info("ViewController.handleEject() - ✅ Successfully ejected wallet. SECP256K1 Private key: \(ejectedKeys.secp256k1Key)\n ED25519 Private key: \(ejectedKeys.ed25519Key ?? "")")
+                self.showStatusView(message: "\(successStatus) SECP256K1 Private key: \(ejectedKeys.secp256k1Key)\n ED25519 Private key: \(ejectedKeys.ed25519Key ?? "")")
                 self.stopLoading()
             } catch {
                 self.stopLoading()
