@@ -167,29 +167,39 @@ class ViewController: UIViewController, UITextFieldDelegate {
       self.logger.error("ViewController.backup() - Application configuration not set.")
       throw PortalExampleAppError.configurationNotSet()
     }
+    guard let client = try await portal.client else {
+      self.logger.error("ViewController.backup() - Client unavailable.")
+      throw PortalExampleAppError.clientInformationUnavailable()
+    }
 
     self.logger.debug("ViewController.backup() - Starting backup...")
     let (cipherText, storageCallback) = try await portal.backupWallet(withMethod) { status in
       self.logger.debug("ViewController.backup() - Backup progress callback with status: \(status.status.rawValue), \(status.done)")
     }
 
-    guard let url = URL(string: "\(config.custodianServerUrl)/mobile/\(userId)/cipher-text") else {
-      throw URLError(.badURL)
+    let backupWithPortal = client.environment?.backupWithPortalEnabled ?? false
+    
+    if (!backupWithPortal) {
+      guard let url = URL(string: "\(config.custodianServerUrl)/mobile/\(userId)/cipher-text") else {
+        throw URLError(.badURL)
+      }
+      let payload = [
+        "backupMethod": withMethod.rawValue,
+        "cipherText": cipherText
+      ]
+      
+      let resultData = try await requests.post(url, andPayload: payload)
+      guard let result = String(data: resultData, encoding: .utf8) else {
+        self.logger.error("ViewController.backup() - Unable to parse response from cipherText storage request to custodian.")
+        throw PortalExampleAppError.couldNotParseCustodianResponse()
+      }
+      
+      try await storageCallback()
+      
+      return result
     }
-    let payload = [
-      "backupMethod": withMethod.rawValue,
-      "cipherText": cipherText
-    ]
 
-    let resultData = try await requests.post(url, andPayload: payload)
-    guard let result = String(data: resultData, encoding: .utf8) else {
-      self.logger.error("ViewController.backup() - Unable to parse response from cipherText storage request to custodian.")
-      throw PortalExampleAppError.couldNotParseCustodianResponse()
-    }
-
-    try await storageCallback()
-
-    return result
+    return ""
   }
 
   public func deleteKeychain() async {

@@ -199,8 +199,6 @@ public class PortalMpc {
         }
       }
 
-      try await self.api.updateShareStatus(.backup, status: .STORED_CLIENT_BACKUP_SHARE_KEY, sharePairIds: shareIds)
-
       // Refresh the client
       try await self.api.refreshClient()
       try await self.keychain.loadMetadata()
