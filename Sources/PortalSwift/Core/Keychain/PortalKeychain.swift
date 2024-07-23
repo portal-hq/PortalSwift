@@ -140,7 +140,7 @@ public class PortalKeychain {
           .eip155: address,
         ]
         return addresses
-      } catch KeychainError.itemNotFound(_) {
+      } catch {
         self.logger.debug("PortalKeychain.getAddresses() - Attempting to read from even older legacy address data...")
         // Handle even older legacy backward compatinility with deprecated Keychain data
         // - Before clientId was added to the Keychain key
@@ -184,7 +184,7 @@ public class PortalKeychain {
       }
 
       return share.share
-    } catch KeychainError.itemNotFound(_) {
+    } catch {
       // We only want to do backward compatibility checks for the
       // SECP256K1 curve, since that's all that is relevant to
       // pre-multi-wallet support
@@ -202,7 +202,7 @@ public class PortalKeychain {
         // Before multi-wallet support was added
         let signingShareValue = try keychain.getItem("\(clientId).share")
         return signingShareValue
-      } catch KeychainError.itemNotFound(_) {
+      } catch {
         // Handle even older legacy Keychain data
         // - Before clientId was added to the Keychain key
         let share = try keychain.getItem(self.deprecatedShareKey)
@@ -229,12 +229,13 @@ public class PortalKeychain {
       let shares = try decoder.decode(PortalKeychainClientShares.self, from: data)
 
       return shares
-    } catch KeychainError.itemNotFound(_) {
+    } catch {
       self.logger.debug("PortalKeychain.getShares() - Attempting to read from legacy share data...")
       // Handle backward compatibility with legacy Keychain data
       do {
         // Before multi-wallet support was added
         let signingShareValue = try keychain.getItem("\(clientId).share")
+        
         guard let data = signingShareValue.data(using: .utf8) else {
           self.logger.error("PortalKeychain.getShares() - Unable to decode legacy keychain data")
           throw KeychainError.unableToEncodeKeychainData
@@ -247,7 +248,7 @@ public class PortalKeychain {
           ),
         ]
         return generateResponse
-      } catch KeychainError.itemNotFound(_) {
+      } catch {
         self.logger.debug("PortalKeychain.getShares() - Attempting to read from even older legacy share data...")
         // Handle even older legacy Keychain data
         // - Before clientId was added to the Keychain key
