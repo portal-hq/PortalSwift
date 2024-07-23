@@ -200,7 +200,7 @@ public class PortalMpc {
     }
   }
 
-    func eject(_ method: BackupMethods,
+    func ejectPrivateKeys(_ method: BackupMethods,
                with cipherText: String,
                and organizationBackupShares: [PortalCurve : String]
     ) async throws -> EjectedKeys {
@@ -222,6 +222,25 @@ public class PortalMpc {
         let ed25519Key = try await ejectEd25519(method, decryptionKey: decryptionKey, withCipherText: cipherText, andOrganizationBackupShare: ed2551OrgShare)
 
         return EjectedKeys(secp256k1Key: secp256k1Key, ed25519Key: ed25519Key)
+    }
+
+    @available(*, deprecated, renamed: "ejectPrivateKeys", message: "Please use ejectPrivateKeys() instead.")
+    func eject(
+        _ method: BackupMethods,
+        withCipherText: String,
+        andOrganizationBackupShare: String,
+        usingProgressCallback _: ((MpcStatus) -> Void)? = nil
+    ) async throws -> String {
+
+        guard let storage = self.backupOptions[method] else {
+            throw MpcError.unexpectedErrorOnEject("Backup method \(method.rawValue) not registered.")
+        }
+
+        let decryptionKey = try await storage.read()
+
+        let secp256k1Key = try await ejectSecp256k1(method, decryptionKey: decryptionKey, withCipherText: withCipherText, andOrganizationBackupShare: andOrganizationBackupShare)
+
+        return secp256k1Key
     }
 
   private func ejectSecp256k1(

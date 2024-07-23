@@ -335,7 +335,14 @@ public class Portal {
                                  andOrganizationBackupShares: [PortalCurve : String]
     ) async throws -> EjectedKeys {
         
-        return try await mpc.eject(method, with: withCipherText, and: andOrganizationBackupShares)
+        return try await mpc.ejectPrivateKeys(method, with: withCipherText, and: andOrganizationBackupShares)
+    }
+
+    @available(*, deprecated, renamed: "ejectPrivateKeys", message: "Please use ejectPrivateKeys() instead.")
+    public func eject(_ method: BackupMethods, withCipherText: String, andOrganizationBackupShare: String) async throws -> String {
+      let privateKey = try await mpc.eject(method, withCipherText: withCipherText, andOrganizationBackupShare: andOrganizationBackupShare)
+
+      return privateKey
     }
 
     private func getOrgShare(custodianServerUrl: String, exchangeUserId: Int, method: BackupMethods, curve: String) async throws -> OrgShareResult {

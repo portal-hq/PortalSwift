@@ -20,7 +20,7 @@ public class MockPortalMpc: PortalMpc {
     )
   }
 
-    override public func eject(
+    override public func ejectPrivateKeys(
         _ method: BackupMethods,
         with cipherText: String,
         and organizationBackupShare: [PortalCurve : String]
