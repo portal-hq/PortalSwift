@@ -61,7 +61,6 @@ jobs:
         security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
 
         # import certificate to keychain
-        security import $CERTIFICATE_PATH -P "$DEV_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
         security import $DIST_CERTIFICATE_PATH -P "$DISTRIBUTION_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
         security list-keychain -d user -s $KEYCHAIN_PATH
 
@@ -86,6 +85,7 @@ jobs:
           -configuration Automation-TestFlight \
           -destination generic/platform=iOS \
           -allowProvisioningUpdates \
+          CODE_SIGN_IDENTITY="iPhone Distribution" \
           clean archive
 
     - name: Export IPA
