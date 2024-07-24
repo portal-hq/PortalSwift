@@ -10,6 +10,9 @@ jobs:
     runs-on: macos-latest
 
     env:
+      # Development
+      DEV_CERTIFICATE_BASE64: ${{secrets.IOS_DEVELOPMENT_CERTIFICATE_BASE64}}
+      DEV_CERTIFICATE_PASSWORD: ${{secrets.IOS_DEVELOPMENT_CERTIFICATE_BASE64_PASSWORD}}
       SCHEME_NAME: "SPM Example"
       # Distribution
       DISTRIBUTION_CERTIFICATE_BASE64: ${{secrets.IOS_DISTRIBUTION_CERTIFICATE_BASE64}}
@@ -47,7 +50,8 @@ jobs:
         PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
         KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
 
-        # import certificate and provisioning profile from secrets
+        # import certificate from secrets
+        echo -n "$DEV_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
         echo -n "$DISTRIBUTION_CERTIFICATE_BASE64" | base64 --decode -o $DIST_CERTIFICATE_PATH
 
         # create temporary keychain
