@@ -22,6 +22,7 @@ jobs:
       EXPORT_PATH: ${{ github.workspace }}
       APPLEID_USERNAME: ${{secrets.APPLEID_USERNAME}}
       APPLEID_PASSWORD: ${{secrets.APPLEID_PASSWORD}}
+      TEAM_ID: ${{secrets.TEAM_ID}}
       IPA_NAME: "SPM Example.ipa"
       # Generic
       KEYCHAIN_PASSWORD: ${{secrets.KEYCHAIN_PASSWORD}}
@@ -86,6 +87,7 @@ jobs:
           -destination generic/platform=iOS \
           -allowProvisioningUpdates \
           CODE_SIGN_IDENTITY="iPhone Distribution" \
+          DEVELOPMENT_TEAM="${{ env.TEAM_ID }}" \
           clean archive
 
     - name: Export IPA
