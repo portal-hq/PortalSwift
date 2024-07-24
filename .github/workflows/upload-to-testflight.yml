@@ -86,6 +86,7 @@ jobs:
           -configuration Automation-TestFlight \
           -destination generic/platform=iOS \
           -allowProvisioningUpdates \
+          CODE_SIGN_STYLE=Manual \
           CODE_SIGN_IDENTITY="iPhone Distribution" \
           DEVELOPMENT_TEAM="${{ env.TEAM_ID }}" \
           clean archive
