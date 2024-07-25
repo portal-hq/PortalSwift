@@ -102,6 +102,9 @@ jobs:
           -exportOptionsPlist $EXPORT_OPTS_PATH \
           -exportPath "${{ env.EXPORT_PATH }}" \
           -allowProvisioningUpdates | xcpretty
+          CODE_SIGN_STYLE=Manual \
+          CODE_SIGN_IDENTITY="iPhone Distribution" \
+          DEVELOPMENT_TEAM="${{ env.TEAM_ID }}" \
 
     - name: Check if IPA is generated
       run: |
