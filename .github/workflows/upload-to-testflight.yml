@@ -71,13 +71,6 @@ jobs:
         echo -n "$APPSTORE_PROVISION_PROFILE_BASE64" | base64 --decode -o $APPSTORE_PP_PATH
         cp $APPSTORE_PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
 
-#    - name: Debug Workspace and Scheme
-#      run: |
-#        echo "Workspace content:"
-#        ls "${{ github.workspace }}/PortalSwift.xcworkspace"
-#        echo "Schemes:"
-#        xcodebuild -list -workspace "PortalSwift.xcworkspace"
-
     - name: Build Archive
       run: |
         xcodebuild -scheme "${{ env.SCHEME_NAME }}" \
@@ -101,10 +94,10 @@ jobs:
           -archivePath $RUNNER_TEMP/PortalSwift.xcarchive \
           -exportOptionsPlist $EXPORT_OPTS_PATH \
           -exportPath "${{ env.EXPORT_PATH }}" \
-          -allowProvisioningUpdates | xcpretty
+          -allowProvisioningUpdates \
           CODE_SIGN_STYLE=Manual \
           CODE_SIGN_IDENTITY="iPhone Distribution" \
-          DEVELOPMENT_TEAM="${{ env.TEAM_ID }}" \
+          DEVELOPMENT_TEAM="${{ env.TEAM_ID }}" | xcpretty
 
     - name: Check if IPA is generated
       run: |
