@@ -921,7 +921,7 @@ public class Portal {
       self.provider.chainId ?? 11_155_111,
       self.keychain,
       self.rpcConfig,
-      self.featureFlags,
+      self.featureFlags ?? FeatureFlags(),
       webSocketServer,
       self.autoApprove,
       self.apiHost,
