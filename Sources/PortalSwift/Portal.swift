@@ -101,7 +101,7 @@ public class Portal {
 
     // Creating this as a variable first so it's usable to
     // fetch the client in the Task at the end of the initializer
-    let api = api ?? PortalApi(apiKey: apiKey, apiHost: apiHost, provider: provider)
+    let api = api ?? PortalApi(apiKey: apiKey, apiHost: apiHost, provider: self.provider)
     self.api = api
     self.keychain.api = api
 
@@ -384,7 +384,7 @@ public class Portal {
   }
 
   public func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any]?) async throws -> PortalProviderResult {
-    guard let andParams = andParams else {
+    guard let andParams else {
       throw PortalProviderError.invalidRequestParams
     }
 
@@ -921,6 +921,7 @@ public class Portal {
       self.provider.chainId ?? 11_155_111,
       self.keychain,
       self.rpcConfig,
+      self.featureFlags,
       webSocketServer,
       self.autoApprove,
       self.apiHost,
