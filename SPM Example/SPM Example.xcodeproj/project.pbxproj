@@ -725,6 +725,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
 				DEVELOPMENT_TEAM = WTQ4Q66FY6;
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = WTQ4Q66FY6;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_OPTIMIZATION_LEVEL = z;
 				INFOPLIST_FILE = PortalSwift/Info.plist;
@@ -738,6 +739,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "io.portalhq.ios.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "GitHub Actions SPM Example App Store (TestFlight)";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "GitHub Actions SPM Example App Store (TestFlight)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Osize";
 				SWIFT_SWIFT3_OBJC_INFERENCE = Default;
 				SWIFT_VERSION = 5.0;
