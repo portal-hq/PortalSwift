@@ -15,12 +15,12 @@ public var signMethods: [ETHRequestMethods.RawValue] = [
   ETHRequestMethods.Sign.rawValue,
   ETHRequestMethods.SignTransaction.rawValue,
   ETHRequestMethods.SignTypedDataV3.rawValue,
-  ETHRequestMethods.SignTypedDataV4.rawValue,
+  ETHRequestMethods.SignTypedDataV4.rawValue
 ]
 
 public class PortalConnect: EventBus {
   public var address: String? {
-    return self.provider.address
+    self.provider.address
   }
 
   public var chainId: Int
@@ -31,7 +31,7 @@ public class PortalConnect: EventBus {
   }
 
   public var connected: Bool {
-    return self.client?.isConnected ?? false
+    self.client?.isConnected ?? false
   }
 
   public var client: WebSocketClient? = nil
@@ -49,6 +49,7 @@ public class PortalConnect: EventBus {
     _ chainId: Int,
     _ keychain: PortalKeychain,
     _ rpcConfig: [String: String],
+    _ featureFlags: FeatureFlags?,
     _ webSocketServer: String = "connect.portalhq.io",
     _ autoApprove: Bool = false,
     _ apiHost: String = "api.portalhq.io",
@@ -68,7 +69,8 @@ public class PortalConnect: EventBus {
       autoApprove: autoApprove,
       apiHost: apiHost,
       mpcHost: mpcHost,
-      version: version
+      version: version,
+      featureFlags: featureFlags
     )
 
     super.init(label: "PortalConnect")
@@ -125,6 +127,7 @@ public class PortalConnect: EventBus {
     _ chainId: Int,
     _ keychain: PortalKeychain,
     _ gatewayConfig: [Int: String],
+    _ featureFlags: FeatureFlags?,
     _ webSocketServer: String = "connect.portalhq.io",
     _ autoApprove: Bool = false,
     _ apiHost: String = "api.portalhq.io",
@@ -142,6 +145,7 @@ public class PortalConnect: EventBus {
       chainId,
       keychain,
       rpcConfig,
+      featureFlags,
       webSocketServer,
       autoApprove,
       apiHost,
@@ -157,7 +161,7 @@ public class PortalConnect: EventBus {
   public func connect(_ uri: String) {
     do {
       self.logger.info("⚠️ PortalConnect.connect() - Trying to connect.")
-      if self.connected && uri == self.uri {
+      if self.connected, uri == self.uri {
         self.logger.info("PortalConnect.connect() - Connection is already in progress or established. Ignoring request to connect.")
         return
       }
@@ -222,15 +226,15 @@ public class PortalConnect: EventBus {
 
     return newConnectData
   }
-  
+
   public func emitGetSessionRequest(requestId: String, topic: String) {
     let request = [
       "event": "portal_getSessionRequest",
       "data": [
         "requestId": requestId,
-        "topic": topic,
+        "topic": topic
       ]
-    ] as [String : Any]
+    ] as [String: Any]
 
     do {
       let jsonData = try JSONSerialization.data(withJSONObject: request, options: [])
