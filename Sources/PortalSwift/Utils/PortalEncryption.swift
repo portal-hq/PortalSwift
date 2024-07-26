@@ -33,6 +33,7 @@ public class PortalEncryption {
           continuation.resume(returning: decryptedShare)
         } catch {
           continuation.resume(throwing: error)
+          return
         }
       }
     }
@@ -64,6 +65,7 @@ public class PortalEncryption {
           continuation.resume(returning: decryptedShare)
         } catch {
           continuation.resume(throwing: error)
+          return
         }
       }
     }
@@ -95,6 +97,7 @@ public class PortalEncryption {
           continuation.resume(returning: encryptData)
         } catch {
           continuation.resume(throwing: error)
+          return
         }
       }
     }
@@ -126,6 +129,7 @@ public class PortalEncryption {
           continuation.resume(returning: encryptData.cipherText)
         } catch {
           continuation.resume(throwing: error)
+          return
         }
       }
     }
