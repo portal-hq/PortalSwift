@@ -365,7 +365,8 @@ public class Portal {
     }
 
     return (
-      solanaAddress: result.solanaAddress, cipherText: result.backupResponse.cipherText,
+      solanaAddress: result.solanaAddress, 
+      cipherText: result.backupResponse.cipherText,
       storageCallback: storageCallback
     )
   }
