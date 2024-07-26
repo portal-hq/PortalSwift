@@ -9,6 +9,7 @@
 import AnyCodable
 import os.log
 import PortalSwift
+import SolanaSwift
 import UIKit
 
 struct UserResult: Codable {
@@ -37,19 +38,19 @@ struct ProviderRequest {
 class ViewController: UIViewController, UITextFieldDelegate {
   var activityIndicator: UIActivityIndicatorView!
   var overlayView: UIView!
-
+  
   // Static information
   @IBOutlet var addressInformation: UITextView?
   @IBOutlet var ethBalanceInformation: UITextView?
   @IBOutlet var statusLabel: UILabel?
-
+  
   // Buttons
   @IBOutlet var dappBrowserButton: UIButton?
   @IBOutlet var testSimulateTransactionButton: UIButton?
   @IBOutlet var generateButton: UIButton?
   @IBOutlet var logoutButton: UIButton?
   @IBOutlet var portalConnectButton: UIButton?
-
+  
   @IBOutlet var personalSignButton: UIButton?
   @IBOutlet var signButton: UIButton?
   @IBOutlet var signInButton: UIButton?
@@ -59,7 +60,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var testNFTsTrxsBalancesSimTrxButton: UIButton?
   @IBOutlet var ejectButton: UIButton?
   @IBOutlet var fundSepoliaButton: UIButton?
-
+  
   @IBOutlet var passkeyBackupButton: UIButton?
   @IBOutlet var passkeyRecoverButton: UIButton?
   @IBOutlet var passwordBackupButton: UIButton!
@@ -68,22 +69,22 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var gdriveRecoverButton: UIButton!
   @IBOutlet var iCloudBackupButton: UIButton!
   @IBOutlet var iCloudRecoverButton: UIButton!
-
+  
   // Send form
   @IBOutlet public var sendAddress: UITextField?
   @IBOutlet public var sendButton: UIButton?
   @IBOutlet public var sendUniButton: UIButton?
   @IBOutlet public var username: UITextField?
   @IBOutlet public var url: UITextField?
-
+  
   public var user: UserResult?
-
+  
   private var config: ApplicationConfiguration? {
     get {
       if let appDelegate = UIApplication.shared.delegate as? PortalExampleAppDelegate {
         return appDelegate.config
       }
-
+      
       return nil
     }
     set(config) {
@@ -92,13 +93,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
     }
   }
-
+  
   private var portal: Portal? {
     get {
       if let appDelegate = UIApplication.shared.delegate as? PortalExampleAppDelegate {
         return appDelegate.portal
       }
-
+      
       return nil
     }
     set(portal) {
@@ -107,55 +108,55 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
     }
   }
-
+  
   private let decoder = JSONDecoder()
   private let logger = Logger()
   private let requests = PortalRequests()
-
+  
   private let successStatus = "✅ Success"
   private let failureStatus = "❌ Failure"
-
+  
   // Set up the scroll view
   @IBOutlet var scrollView: UIScrollView!
   override func viewDidLoad() {
     super.viewDidLoad()
-
+    
     // Set up application using Secrets.xcconfig
     self.loadApplicationConfig()
-
+    
     // Set up UI components
     self.prepareUIComponents()
-
+    
     // Set proper visibility states
     self.updateUIComponents()
   }
-
+  
   func textFieldShouldReturn(_ textField: UITextField) -> Bool {
     textField.resignFirstResponder()
     textField.endEditing(true)
-
+    
     return true
   }
-
+  
   override func didReceiveMemoryWarning() {
     super.didReceiveMemoryWarning()
   }
-
+  
   override func prepare(for segue: UIStoryboardSegue, sender _: Any?) {
     if let connectViewController = segue.destination as? ConnectViewController {
       connectViewController.portal = self.portal
     }
-
+    
     if let webViewController = segue.destination as? WebViewController {
       webViewController.portal = self.portal
       webViewController.url = self.url?.text
     }
   }
-
+  
   /***********************************************
    * Portal functions
    ***********************************************/
-
+  
   public func backup(_ userId: String, withMethod: BackupMethods) async throws -> String {
     guard let portal else {
       self.logger.error("ViewController.backup() - Portal not initialized. Please call registerPortal().")
@@ -165,12 +166,12 @@ class ViewController: UIViewController, UITextFieldDelegate {
       self.logger.error("ViewController.backup() - Application configuration not set.")
       throw PortalExampleAppError.configurationNotSet()
     }
-
+    
     self.logger.debug("ViewController.backup() - Starting backup...")
     let (cipherText, storageCallback) = try await portal.backupWallet(withMethod) { status in
       self.logger.debug("ViewController.backup() - Backup progress callback with status: \(status.status.rawValue), \(status.done)")
     }
-
+    
     guard let url = URL(string: "\(config.custodianServerUrl)/mobile/\(userId)/cipher-text") else {
       throw URLError(.badURL)
     }
@@ -178,36 +179,36 @@ class ViewController: UIViewController, UITextFieldDelegate {
       "backupMethod": withMethod.rawValue,
       "cipherText": cipherText
     ]
-
+    
     let resultData = try await requests.post(url, andPayload: payload)
     guard let result = String(data: resultData, encoding: .utf8) else {
       self.logger.error("ViewController.backup() - Unable to parse response from cipherText storage request to custodian.")
       throw PortalExampleAppError.couldNotParseCustodianResponse()
     }
-
+    
     try await storageCallback()
-
+    
     return result
   }
-
+  
   public func deleteKeychain() async {
     do {
       guard let portal else {
         self.logger.error("ViewController.deleteKeychain() - Portal not initialized. Please call registerPortal().")
         throw PortalExampleAppError.portalNotInitialized()
       }
-
+      
       try await portal.deleteShares()
       try portal.deleteAddress()
       try portal.deleteSigningShare()
-      self.showStatusView(message: "\(successStatus) Deleted keychain data")
+      self.showStatusView(message: "\(self.successStatus) Deleted keychain data")
       self.logger.debug("ViewController.deleteKeychain() - ✅ Deleted keychain data")
     } catch {
-      self.showStatusView(message: "\(failureStatus) Error deleting keychain data: \(error)")
+      self.showStatusView(message: "\(self.failureStatus) Error deleting keychain data: \(error)")
       self.logger.error("ViewController.deleteKeychain() - ❌ Error deleting keychain data: \(error)")
     }
   }
-
+  
   public func eject(_ withBackupMethod: BackupMethods) async throws -> String {
     guard let portal else {
       self.logger.error("ViewController.eject() - ❌ Portal not initialized. Please call registerPortal().")
@@ -228,7 +229,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
     let cipherTextData = try await requests.get(cipherTextUrl)
     let cipherTextResponse = try decoder.decode(CipherTextResult.self, from: cipherTextData)
-
+    
     guard let organizationBackupShareUrl = URL(
       string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/org-share/fetch?backupMethod=\(withBackupMethod.rawValue)-SECP256K1"
     ) else {
@@ -236,75 +237,75 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
     let organizationBackupShareData = try await requests.get(organizationBackupShareUrl)
     let organizationBackupShareResponse = try decoder.decode(OrgShareResult.self, from: organizationBackupShareData)
-
+    
     let privateKey = try await portal.eject(
       withBackupMethod,
       withCipherText: cipherTextResponse.cipherText,
       andOrganizationBackupShare: organizationBackupShareResponse.orgShare
     )
-
+    
     return privateKey
   }
-
+  
   public func generate() async throws -> PortalCreateWalletResponse {
     guard let portal else {
       self.logger.error("PortalWrapper.generate() - Portal not initialized. Please call registerPortal().")
       throw PortalExampleAppError.portalNotInitialized()
     }
-
+    
     return try await portal.createWallet()
   }
-
+  
   func getBalances() async throws -> [FetchedBalance] {
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
     let chainId = "eip155:11155111"
     let balances = try await portal.getBalances(chainId)
-
+    
     return balances
   }
-
+  
   public func getGasPrice(_ chainId: String) async throws {
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
-
+    
     let gasPriceResponse = try await portal.request(chainId, withMethod: .eth_gasPrice, andParams: [])
-
+    
     print("Gas price response: \(gasPriceResponse)")
-
+    
     //    return gasPriceResponse.result
   }
-
+  
   public func getNFTs(_ chainId: String) async throws -> [FetchedNFT] {
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
     return try await portal.getNFTs(chainId)
   }
-
+  
   public func getShareMetadata() async throws -> [FetchedSharePair] {
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
     let backupShares = try await portal.getBackupShares()
     self.logger.info("ViewController.getShareMetadata() - ✅ Successfully fetched backup shares.")
-
+    
     let signingShares = try await portal.getSigningShares()
     self.logger.info("ViewController.getShareMetadata() - ✅ Successfully fetched signing shares.")
-
+    
     let shares = backupShares + signingShares
     return shares
   }
-
+  
   public func getTransactions(_ chainId: String) async throws -> [FetchedTransaction] {
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
     return try await portal.getTransactions(chainId)
   }
-
+  
   public func recover(_ userId: String, withBackupMethod: BackupMethods) async throws -> PortalCreateWalletResponse {
     guard let portal else {
       self.logger.error("ViewController.recover() - Portal not initialized. Please call registerPortal().")
@@ -320,12 +321,12 @@ class ViewController: UIViewController, UITextFieldDelegate {
     let data = try await requests.get(url)
     let response = try decoder.decode(CipherTextResult.self, from: data)
     let cipherText = response.cipherText
-
+    
     return try await portal.recoverWallet(withBackupMethod, withCipherText: cipherText) { status in
       self.logger.debug("ViewController.recover() - Recover progress callback with status: \(status.status.rawValue), \(status.done)")
     }
   }
-
+  
   public func sendTransaction() async throws -> String {
     guard let portal else {
       self.logger.error("ViewController.sendTransaction() - ❌ Portal not initialized.")
@@ -336,31 +337,31 @@ class ViewController: UIViewController, UITextFieldDelegate {
       self.logger.error("ViewController.sendTransaction() - ❌ Address not found.")
       throw PortalExampleAppError.addressNotFound()
     }
-
+    
     _ = try await self.getGasPrice(chainId)
-
+    
     let transaction = [
       "from": address,
       "to": self.sendAddress?.text ?? "",
       "value": "0x10"
     ]
-
+    
     let sendTransactionResponse = try await portal.request(chainId, withMethod: .eth_sendTransaction, andParams: [transaction])
     guard let transactionHash = sendTransactionResponse.result as? String else {
       throw PortalExampleAppError.invalidResponseTypeForRequest()
     }
-
+    
     return transactionHash
   }
-
+  
   public func simulateTransaction(_ chainId: String, transaction: Any) async throws -> SimulatedTransaction {
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
-
+    
     return try await portal.simulateTransaction(chainId, from: transaction)
   }
-
+  
   public func testProviderRequest(
     _ method: PortalRequestMethod,
     params: [Any]
@@ -370,12 +371,12 @@ class ViewController: UIViewController, UITextFieldDelegate {
         throw PortalExampleAppError.portalNotInitialized()
       }
       self.logger.info("ViewController.testProviderRequest() - Testing `\(method.rawValue)`...")
-
+      
       let chainId = "eip155:11155111"
       let response = try await portal.request(chainId, withMethod: method, andParams: params)
-
+      
       let result = response.result
-
+      
       if signerMethods.contains(method.rawValue) {
         if let signature = result as? String {
           self.logger.info("ViewController.testProviderRequest() - ✅ Signature for \(method.rawValue): \(signature)")
@@ -389,7 +390,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.logger.error("ViewController.testProviderRequest() - ❌ Error testing provider `\(method.rawValue)` request: No RPC Response available.")
           return false
         }
-
+        
         self.logger.info("ViewController.testProviderRequest() - ✅ RPC response for `\(method.rawValue)`: \(String(describing: rpcResponse.result))")
         return true
       }
@@ -398,17 +399,17 @@ class ViewController: UIViewController, UITextFieldDelegate {
       return false
     }
   }
-
+  
   public func testOtherRequests() async throws {
     let chainId = "eip155:11155111"
-
+    
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
     guard let address = await portal.getAddress(chainId) else {
       throw PortalExampleAppError.addressNotFound()
     }
-
+    
     let otherRequests = [
       ProviderRequest(method: .eth_accounts, params: []),
       ProviderRequest(method: .eth_requestAccounts, params: []),
@@ -433,22 +434,22 @@ class ViewController: UIViewController, UITextFieldDelegate {
       ProviderRequest(method: .web3_sha3, params: ["0x68656c6c6f20776f726c64"]),
       ProviderRequest(method: .eth_getStorageAt, params: [address, "0x0", "latest"])
     ]
-
+    
     for request in otherRequests {
       _ = try await self.testProviderRequest(request.method, params: request.params)
     }
   }
-
+  
   public func testSignerRequests() async throws {
     let chainId = "eip155:11155111"
-
+    
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
     guard let address = await portal.getAddress(chainId) else {
       throw PortalExampleAppError.addressNotFound()
     }
-
+    
     let toAddress = "0x4cd042bba0da4b3f37ea36e8a2737dce2ed70db7"
     let fakeTransaction = [
       "data": "0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675",
@@ -456,18 +457,18 @@ class ViewController: UIViewController, UITextFieldDelegate {
       "to": toAddress,
       "value": "0x9184e72a"
     ]
-
+    
     let signerRequests = [
       ProviderRequest(method: .eth_sign, params: [address, "0xdeadbeaf"]),
       ProviderRequest(method: .personal_sign, params: ["0xdeadbeaf", address]),
       ProviderRequest(method: .eth_signTransaction, params: [fakeTransaction])
     ]
-
+    
     for request in signerRequests {
       _ = try await self.testProviderRequest(request.method, params: request.params)
     }
   }
-
+  
   public func testTransactionRequests() async throws {
     let chainId = "eip155:11155111"
     guard let portal else {
@@ -476,7 +477,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     guard let address = await portal.getAddress(chainId) else {
       throw PortalExampleAppError.addressNotFound()
     }
-
+    
     let toAddress = "0x4cd042bba0da4b3f37ea36e8a2737dce2ed70db7"
     let fakeTransaction = [
       "data": "0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675",
@@ -490,12 +491,12 @@ class ViewController: UIViewController, UITextFieldDelegate {
       ProviderRequest(method: .eth_sendTransaction, params: [fakeTransaction]),
       ProviderRequest(method: .eth_signTransaction, params: [fakeTransaction])
     ]
-
+    
     for request in requests {
       _ = try await self.testProviderRequest(request.method, params: request.params)
     }
   }
-
+  
   public func testWalletRequests() async throws {
     print("\nTesting Wallet Methods:\n")
     let walletRequests = [
@@ -512,16 +513,16 @@ class ViewController: UIViewController, UITextFieldDelegate {
       // https://docs.metamask.io/guide/rpc-api.html#wallet-watchasset
       ProviderRequest(method: .wallet_watchAsset, params: [])
     ]
-
+    
     for request in walletRequests {
       _ = try await self.testProviderRequest(request.method, params: request.params)
     }
   }
-
+  
   /***********************************************
    * Custodian functions
    ***********************************************/
-
+  
   public func signIn(_ username: String) async throws -> UserResult {
     do {
       guard let config = self.config else {
@@ -529,21 +530,21 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
       if let url = URL(string: "\(config.custodianServerUrl)/mobile/login") {
         let payload = ["username": username]
-
+        
         let data = try await requests.post(url, andPayload: payload)
         let user = try decoder.decode(UserResult.self, from: data)
-
+        
         self.user = user
         return user
       }
-
+      
       throw URLError(.badURL)
     } catch {
       self.logger.error("ViewController.signIn() - Unable to sign in: \(error)")
       throw error
     }
   }
-
+  
   public func signUp(_ username: String) async throws -> UserResult {
     do {
       guard let config = self.config else {
@@ -551,25 +552,25 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
       if let url = URL(string: "\(config.custodianServerUrl)/mobile/signup") {
         let payload = ["username": username]
-
+        
         let data = try await requests.post(url, andPayload: payload)
         let user = try decoder.decode(UserResult.self, from: data)
-
+        
         self.user = user
         return user
       }
-
+      
       throw URLError(.badURL)
     } catch {
       self.logger.error("ViewController.signUp() - Unable to sign up: \(error)")
       throw error
     }
   }
-
+  
   /***********************************************
    * Setup functions
    ***********************************************/
-
+  
   public func loadApplicationConfig() {
     do {
       guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
@@ -588,10 +589,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.logger.error("Error: Do you have `GDRIVE_CLIENT_ID=$(GDRIVE_CLIENT_ID)` in your Secrets.xcconfig?")
         throw PortalExampleAppError.environmentNotSet()
       }
-
+      
       let debugMessage = "ViewController.loadApplicationConfig() - Found environment: \(ENV)"
       self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
-
+      
       switch ENV {
       case "prod", "production":
         self.config = ApplicationConfiguration(
@@ -628,7 +629,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       self.logger.error("ViewController.loadApplicationConfig() - Error loading application config: \(error)")
     }
   }
-
+  
   public func parseETHBalanceHex(hex: String) -> String {
     let hexString = hex.replacingOccurrences(of: "0x", with: "")
     guard let hexInt = Int(hexString, radix: 16) else {
@@ -638,25 +639,25 @@ class ViewController: UIViewController, UITextFieldDelegate {
     let ethBalance = Double(hexInt) / 1_000_000_000_000_000_000
     return String(ethBalance)
   }
-
+  
   public func prepareUIComponents() {
     // Set up UI Components
     var totalHeight: CGFloat = 0
-
+    
     // Add up the height of all subviews
     for subview in self.scrollView.subviews {
       totalHeight += subview.frame.size.height + 5
       // Consider adding any vertical spacing between subviews if applicable
     }
-
+    
     self.scrollView.contentSize = CGSize(width: self.scrollView.frame.size.width, height: totalHeight)
-
+    
     self.scrollView.showsVerticalScrollIndicator = true
     self.scrollView.showsHorizontalScrollIndicator = false
     self.username?.delegate = self
     self.sendAddress?.delegate = self
     self.url?.delegate = self
-
+    
     // Initialize the activity indicator
     self.activityIndicator = UIActivityIndicatorView(style: .large) // or .medium based on your preference
     self.activityIndicator.hidesWhenStopped = true
@@ -667,37 +668,37 @@ class ViewController: UIViewController, UITextFieldDelegate {
       self.activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
       self.activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor)
     ])
-
+    
     // Initialize the overlay view
     self.overlayView = UIView()
     self.overlayView.backgroundColor = UIColor.black.withAlphaComponent(0.25) // Semi-transparent black
     self.overlayView.frame = self.view.bounds
     self.overlayView.isHidden = true
-
+    
     view.addSubview(self.overlayView)
     view.bringSubviewToFront(self.activityIndicator)
   }
-
+  
   public func populateEthBalance() async throws {
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
-
+    
     let chainId = "eip155:11155111"
     guard let address = await portal.getAddress(chainId) else {
       throw PortalExampleAppError.addressNotFound()
     }
-
+    
     let balanceResponse = try await portal.request(chainId, withMethod: .eth_getBalance, andParams: [address, "latest"])
     guard let balance = balanceResponse.result as? String else {
       throw PortalExampleAppError.invalidResponseTypeForRequest()
     }
-
+    
     DispatchQueue.main.async {
       self.ethBalanceInformation?.text = "ETH Balance: \(self.parseETHBalanceHex(hex: balance)) ETH"
     }
   }
-
+  
   public func registerPortal() async throws -> Portal {
     do {
       guard let config = self.config else {
@@ -706,10 +707,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
       guard let user else {
         throw PortalExampleAppError.userNotLoggedIn()
       }
-
+      
       let infoString = "ViewController.registerPortal() - Registering portal using config: \(config)"
       self.logger.log(level: .info, "\(infoString, privacy: .public)")
-
+      
       let portal = try Portal(
         user.clientApiKey,
         withRpcConfig: [
@@ -726,82 +727,82 @@ class ViewController: UIViewController, UITextFieldDelegate {
         apiHost: config.apiUrl,
         mpcHost: config.mpcUrl
       )
-
+      
       try portal.setGDriveConfiguration(clientId: config.googleClientId)
       try portal.setGDriveView(self)
       try portal.setPasskeyAuthenticationAnchor(self.view.window!)
       try portal.setPasskeyConfiguration(relyingParty: config.relyingParty, webAuthnHost: config.webAuthnHost)
       // The apikey from Portal class is private within the Portal SDK class, so it must not be accessible from outside. We already have the clientApiKey from user
       self.logger.info("ViewController.registerPortal() - Portal API Key: \(user.clientApiKey)")
-
+      
       portal.on(event: Events.PortalSigningRequested.rawValue, callback: { data in
         portal.emit(Events.PortalSigningApproved.rawValue, data: data)
       })
-
+      
       portal.on(event: Events.PortalSignatureReceived.rawValue) { (data: Any) in
         let result = data as! RequestCompletionResult
-
+        
         let debugMessage = "ViewController.registerPortal() - Recived signature: \(result)"
         self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
       }
-
+      
       self.logger.debug("ViewController.registerPortal() - ✅ Portal initialized")
-
+      
       self.portal = portal
-
+      
       return portal
     } catch {
       print("❌ Error registering portal:", error)
       throw error
     }
   }
-
+  
   // Call this function whenever you want to prompt the user for a PIN
   public func requestPassword() async -> String? {
     let password = await withCheckedContinuation { continuation in
       let alertController = UIAlertController(title: "Enter Password", message: nil, preferredStyle: .alert)
-
+      
       // Add text field for PIN input
       alertController.addTextField { textField in
         textField.placeholder = "PASSWORD"
         textField.isSecureTextEntry = true
         textField.keyboardType = .numberPad
       }
-
+      
       // Submit action
       let submitAction = UIAlertAction(title: "Submit", style: .default) { _ in
         let password = alertController.textFields?.first?.text
         continuation.resume(returning: password)
       }
       alertController.addAction(submitAction)
-
+      
       // Cancel action
       let cancelAction = UIAlertAction(title: "Cancel", style: .cancel) { _ in
         continuation.resume(returning: nil)
       }
       alertController.addAction(cancelAction)
-
+      
       // Present the alert controller
       self.present(alertController, animated: true, completion: nil)
     }
-
+    
     return password
   }
-
+  
   func startLoading() {
     self.overlayView.isHidden = false
     self.activityIndicator.startAnimating()
     // Disable user interaction while loading
     view.isUserInteractionEnabled = false
   }
-
+  
   func stopLoading() {
     self.overlayView.isHidden = true
     self.activityIndicator.stopAnimating()
     // Re-enable user interaction when loading is finished
     view.isUserInteractionEnabled = true
   }
-
+  
   private func updateUIComponents() {
     DispatchQueue.main.async {
       Task {
@@ -809,13 +810,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
           if let addressInformation = self.addressInformation {
             addressInformation.text = try? await self.portal?.addresses[.eip155] ?? "N/A"
           }
-
+          
           let availableRecoveryMethods = try await self.portal?.availableRecoveryMethods() ?? []
           let walletExists = try await self.portal?.doesWalletExist() ?? false
           let isWalletOnDevice = try await self.portal?.isWalletOnDevice() ?? false
-
+          
           let username = self.username?.text ?? ""
-
+          
           // Auth buttons
           self.logoutButton?.isEnabled = self.user != nil
           self.logoutButton?.isHidden = self.user == nil
@@ -823,20 +824,20 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.signInButton?.isHidden = self.user != nil
           self.signUpButton?.isEnabled = !username.isEmpty
           self.signUpButton?.isHidden = self.user != nil
-
+          
           // Generate buttons
           self.generateButton?.isEnabled = !walletExists
           self.generateButton?.isHidden = self.portal == nil
           if let generateButton = self.generateButton {
             generateButton.setTitle(walletExists ? "Wallet already exists" : "Create Wallet", for: .normal)
           }
-
+          
           // dApp connection buttons
           self.dappBrowserButton?.isEnabled = walletExists && isWalletOnDevice
           self.dappBrowserButton?.isHidden = !walletExists || !isWalletOnDevice
           self.portalConnectButton?.isEnabled = walletExists && isWalletOnDevice
           self.portalConnectButton?.isHidden = !walletExists || !isWalletOnDevice
-
+          
           // Backup buttons
           self.gdriveBackupButton?.isEnabled = walletExists && isWalletOnDevice
           self.gdriveBackupButton?.isHidden = !walletExists || !isWalletOnDevice
@@ -846,7 +847,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.passkeyBackupButton?.isHidden = !walletExists || !isWalletOnDevice
           self.passwordBackupButton?.isEnabled = walletExists && isWalletOnDevice
           self.passwordBackupButton?.isHidden = !walletExists || !isWalletOnDevice
-
+          
           // Recover buttons
           self.gdriveRecoverButton?.isEnabled = availableRecoveryMethods.contains(.GoogleDrive)
           self.gdriveRecoverButton?.isHidden = !walletExists
@@ -856,7 +857,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.passkeyRecoverButton?.isHidden = !walletExists
           self.passwordRecoverButton?.isEnabled = availableRecoveryMethods.contains(.Password)
           self.passwordRecoverButton?.isHidden = !walletExists
-
+          
           // Signing buttons
           self.signButton?.isEnabled = walletExists && isWalletOnDevice
           self.signButton?.isHidden = !walletExists || !isWalletOnDevice
@@ -866,35 +867,35 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.sendButton?.isHidden = !walletExists || !isWalletOnDevice
           self.sendUniButton?.isEnabled = walletExists && isWalletOnDevice
           self.sendUniButton?.isHidden = !walletExists || !isWalletOnDevice
-
+          
           // Other management buttons
           self.deleteKeychainButton?.isEnabled = walletExists && isWalletOnDevice
           self.deleteKeychainButton?.isHidden = !walletExists || !isWalletOnDevice
           self.ejectButton?.isEnabled = availableRecoveryMethods.count > 0
           self.ejectButton?.isHidden = availableRecoveryMethods.count == 0
-
+          
           // Test Add funds to Sepolia
           self.fundSepoliaButton?.isEnabled = walletExists && isWalletOnDevice
           self.fundSepoliaButton?.isHidden = !walletExists || !isWalletOnDevice
-
+          
           // Portal test functions
           self.testButton?.isEnabled = walletExists && isWalletOnDevice
           self.testButton?.isHidden = !walletExists || !isWalletOnDevice
           self.testNFTsTrxsBalancesSimTrxButton?.isEnabled = walletExists && isWalletOnDevice
           self.testNFTsTrxsBalancesSimTrxButton?.isHidden = !walletExists || !isWalletOnDevice
-
+          
           // Test Simulate Transactions functions
           self.testSimulateTransactionButton?.isEnabled = walletExists && isWalletOnDevice
           self.testSimulateTransactionButton?.isHidden = !walletExists || !isWalletOnDevice
-
+          
           // Text components
           self.addressInformation?.isHidden = !walletExists || !isWalletOnDevice
           self.ethBalanceInformation?.isHidden = !walletExists || !isWalletOnDevice
           self.sendAddress?.isHidden = !walletExists || !isWalletOnDevice
           self.url?.isHidden = !walletExists || !isWalletOnDevice
-
+          
           self.logger.debug("ViewController.updateUIComponents() - ✅ Ending loading")
-
+          
           self.stopLoading()
         } catch {
           self.logger.error("ViewController.UpdateUIComponents() - ❌ Failed to update UI Components: \(error)")
@@ -902,13 +903,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
     }
   }
-
+  
   /***********************************************
    * UI actions
    ***********************************************/
-
+  
   // Custodian actions
-
+  
   @IBAction func handleSignIn(_: UIButton) {
     Task {
       do {
@@ -919,31 +920,31 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.startLoading()
         let user = try await signIn(username)
         self.logger.debug("ViewController.handleSignIn() - ✅ Signed in! User clientApiKey: \(user.clientApiKey)")
-        self.showStatusView(message: "\(successStatus) Signed in!")
+        self.showStatusView(message: "\(self.successStatus) Signed in!")
         self.portal = try await self.registerPortal()
         self.logger.debug("ViewController.handleSignIn() - ✅ Initialized. Updating UI Components.")
         self.updateUIComponents()
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handleSignIn() - ❌ Error signing in: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error signing in \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error signing in \(error)")
       }
     }
   }
-
+  
   @IBAction func handleSignOut(_: UIButton) {
     self.user = nil
     self.addressInformation?.text = "Address: N/A"
     self.ethBalanceInformation?.text = "ETH Balance: N/A"
     self.portal = nil
-
+    
     DispatchQueue.main.async {
       self.logoutButton?.isEnabled = false
     }
-
+    
     self.updateUIComponents()
   }
-
+  
   @IBAction func handleSignup(_: UIButton) {
     Task {
       do {
@@ -955,27 +956,27 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.startLoading()
         let user = try await signUp(username)
         self.logger.debug("ViewController.handleSignUp() - ✅ Signed up! User clientApiKey: \(user.clientApiKey)")
-        self.showStatusView(message: "\(successStatus) Signed up!")
+        self.showStatusView(message: "\(self.successStatus) Signed up!")
         self.portal = try await self.registerPortal()
         self.logger.debug("ViewController.handleSignUp() - ✅ Portal initialized!")
         self.updateUIComponents()
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handleSignUp() - ❌ Error signing up: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error signing up \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error signing up \(error)")
       }
     }
   }
-
+  
   // Portal wallet actions
-
+  
   @IBAction func handleDeleteKeychain(_: Any) {
     Task {
       guard let portal else {
-        self.showStatusView(message: "\(failureStatus) Error Deleting Keychain - Portal not initialized.")
+        self.showStatusView(message: "\(self.failureStatus) Error Deleting Keychain - Portal not initialized.")
         throw PortalExampleAppError.portalNotInitialized()
       }
-
+      
       await self.deleteKeychain()
       guard let address = try await portal.addresses[.eip155] else {
         DispatchQueue.main.async {
@@ -987,7 +988,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
     }
   }
-
+  
   @IBAction func handleEject(_: UIButton) {
     Task {
       do {
@@ -995,92 +996,92 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.logger.error("ViewController.handleEject() - ❌ No password set by user. Eject will not take place.")
           return
         }
-
+        
         try self.portal?.setPassword(enteredPassword)
-
+        
         let privateKey = try await eject(.Password)
-
+        
         self.logger.info("ViewController.handleEject() - ✅ Successfully ejected wallet. Private key: \(privateKey)")
-        self.showStatusView(message: "\(successStatus) Private key: \(privateKey)")
+        self.showStatusView(message: "\(self.successStatus) Private key: \(privateKey)")
       } catch {
         self.stopLoading()
         print("⚠️", error)
         self.logger.error("ViewController.handleEject() - Error ejecting wallet: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error ejecting wallet \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error ejecting wallet \(error)")
       }
     }
   }
-
+  
   @IBAction func handleFundSepolia(_: UIButton) {
     Task {
       do {
         self.startLoading()
         let transactionHash = try await sendSepoliaTransaction()
         self.logger.info("ViewController.handleFundSepolia() - ✅ Successfully sent transaction")
-        self.showStatusView(message: "\(successStatus) Successfully sent transaction")
+        self.showStatusView(message: "\(self.successStatus) Successfully sent transaction")
         self.logger.info("ViewController.handleFundSepolia() - ✅ Transaction Hash: \(transactionHash)")
         self.stopLoading()
       } catch {
         self.stopLoading()
         self.logger.error("Error sending transaction: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error sending transaction: \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error sending transaction: \(error)")
       }
     }
   }
-
+  
   public func sendSepoliaTransaction() async throws -> String {
     guard let portal else {
-      logger.error("ViewController.sendSepoliaTransaction() - ❌ Portal not initialized.")
+      self.logger.error("ViewController.sendSepoliaTransaction() - ❌ Portal not initialized.")
       throw PortalExampleAppError.portalNotInitialized()
     }
-
+    
     let chainId = "eip155:11155111"
     guard let address = await portal.getAddress(chainId) else {
-      logger.error("ViewController.sendSepoliaTransaction() - ❌ Address not found.")
+      self.logger.error("ViewController.sendSepoliaTransaction() - ❌ Address not found.")
       throw PortalExampleAppError.addressNotFound()
     }
-
+    
     guard let user else {
-      logger.error("ViewController.sendSepoliaTransaction() - ❌ User not logged in.")
+      self.logger.error("ViewController.sendSepoliaTransaction() - ❌ User not logged in.")
       throw PortalExampleAppError.userNotLoggedIn()
     }
-
+    
     guard let config else {
-      logger.error("ViewController.sendSepoliaTransaction() - ❌ Application configuration not set.")
+      self.logger.error("ViewController.sendSepoliaTransaction() - ❌ Application configuration not set.")
       throw PortalExampleAppError.configurationNotSet()
     }
-
-    _ = try await getGasPrice(chainId)
-
+    
+    _ = try await self.getGasPrice(chainId)
+    
     let configURL = config.custodianServerUrl
     guard let url = URL(string: "\(configURL)/mobile/\(user.exchangeUserId)/transfer") else {
-      logger.error("ViewController.sendSepoliaTransaction() - ❌ Invalid URL.")
+      self.logger.error("ViewController.sendSepoliaTransaction() - ❌ Invalid URL.")
       throw PortalExampleAppError.custodianServerUrlNotSet()
     }
-
+    
     let payload =
       [
         "chainId": "11155111",
         "address": address,
         "amount": "0.001"
       ]
-
+    
     do {
       let data = try await requests.post(url, andPayload: payload)
       guard let jsonDictionary = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
             let txnHash = jsonDictionary["txHash"] as? String
       else {
-        logger.error("ViewController.sendSepoliaTransaction() - ❌ Invalid response type for request.")
+        self.logger.error("ViewController.sendSepoliaTransaction() - ❌ Invalid response type for request.")
         throw PortalExampleAppError.invalidResponseTypeForRequest()
       }
-
+      
       return txnHash
     } catch {
-      logger.error("ViewController.sendSepoliaTransaction() - ❌ Error: \(error)")
+      self.logger.error("ViewController.sendSepoliaTransaction() - ❌ Error: \(error)")
       throw error
     }
   }
-
+  
   @IBAction func handleGenerate(_: UIButton!) {
     Task {
       do {
@@ -1088,21 +1089,21 @@ class ViewController: UIViewController, UITextFieldDelegate {
         let (ethereum, _) = try await generate()
         guard let address = ethereum else {
           self.logger.error("ViewController.handleGenerate() - ❌ Wallet was generated, but no address was found.")
-          self.showStatusView(message: "\(failureStatus) Wallet was generated, but no address was found.")
+          self.showStatusView(message: "\(self.failureStatus) Wallet was generated, but no address was found.")
           throw PortalKeychain.KeychainError.noAddressesFound
         }
         let debugMessage = "ViewController.handleGenerate() - ✅ Wallet successfully created! Address: \(String(describing: address))"
         self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
-        self.showStatusView(message: "\(successStatus) Wallet generated")
+        self.showStatusView(message: "\(self.successStatus) Wallet generated")
         self.updateUIComponents()
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handleGenerate() - ❌ Error creating wallet: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error creating wallet \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error creating wallet \(error)")
       }
     }
   }
-
+  
   @IBAction func handleGdriveBackup(_: UIButton!) {
     Task {
       do {
@@ -1117,16 +1118,16 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.logger.debug("ViewController.handleGdriveBackup() - Starting backup...")
         _ = try await self.backup(String(user.exchangeUserId), withMethod: .GoogleDrive)
         self.logger.debug("ViewController.handlePasskeyBackup(): ✅ Successfully sent custodian cipherText.")
-        self.showStatusView(message: "\(successStatus) Successfully sent custodian cipherText.")
+        self.showStatusView(message: "\(self.successStatus) Successfully sent custodian cipherText.")
         self.updateUIComponents()
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handleGdriveBackup() - ❌ Error running backup: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error running backup \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error running backup \(error)")
       }
     }
   }
-
+  
   @IBAction func handleGdriveRecover(_: UIButton!) {
     Task {
       do {
@@ -1142,7 +1143,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         }
         let debugMessage = "ViewController.handleGdriveRecover() - ✅ Wallet successfully recovered! Address: \(String(describing: address))"
         self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
-        self.showStatusView(message: "\(successStatus) Wallet successfully recovered!")
+        self.showStatusView(message: "\(self.successStatus) Wallet successfully recovered!")
         DispatchQueue.main.async {
           if let addressInformation = self.addressInformation {
             addressInformation.text = ethereum
@@ -1152,11 +1153,11 @@ class ViewController: UIViewController, UITextFieldDelegate {
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handleGdriveRecover() - Error running recover: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error running recover \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error running recover \(error)")
       }
     }
   }
-
+  
   @IBAction func handleiCloudBackup(_: UIButton!) {
     Task {
       do {
@@ -1167,16 +1168,16 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.logger.debug("ViewController.handleiCloudBackup() - Starting backup...")
         _ = try await self.backup(String(user.exchangeUserId), withMethod: .iCloud)
         self.logger.debug("ViewController.handleiCloudBackup(): ✅ Successfully sent custodian cipherText.")
-        self.showStatusView(message: "\(successStatus) Successfully sent custodian cipherText.")
+        self.showStatusView(message: "\(self.successStatus) Successfully sent custodian cipherText.")
         self.updateUIComponents()
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handleiCloudBackup() - ❌ Error running backup: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error running backup \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error running backup \(error)")
       }
     }
   }
-
+  
   @IBAction func handleiCloudRecover(_: UIButton!) {
     Task {
       do {
@@ -1192,7 +1193,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         }
         let debugMessage = "ViewController.handleiCloudRecover() - ✅ Wallet successfully recovered! Address: \(String(describing: address))"
         self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
-        self.showStatusView(message: "\(successStatus) Wallet successfully recovered!")
+        self.showStatusView(message: "\(self.successStatus) Wallet successfully recovered!")
         DispatchQueue.main.async {
           if let addressInformation = self.addressInformation {
             addressInformation.text = ethereum
@@ -1202,11 +1203,11 @@ class ViewController: UIViewController, UITextFieldDelegate {
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handleiCloudRecover() - Error running recover: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error running recover \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error running recover \(error)")
       }
     }
   }
-
+  
   @IBAction func handlePasskeyBackup(_: UIButton!) {
     Task {
       do {
@@ -1218,16 +1219,16 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.logger.debug("ViewController.handlPasskeyBackup() - Starting backup...")
         _ = try await self.backup(String(userId), withMethod: .Passkey)
         self.logger.debug("ViewController.handlePasskeyBackup(): ✅ Successfully sent custodian cipherText.")
-        self.showStatusView(message: "\(successStatus) Successfully sent custodian cipherText.")
+        self.showStatusView(message: "\(self.successStatus) Successfully sent custodian cipherText.")
         self.updateUIComponents()
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handlePasskeyBackup() - Error running backup: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error running backup \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error running backup \(error)")
       }
     }
   }
-
+  
   @IBAction func handlePasskeyRecover(_: UIButton!) {
     Task {
       do {
@@ -1244,7 +1245,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         }
         let debugMessage = "ViewController.handlePasskeyRecover() - ✅ Wallet successfully recovered! Address: \(String(describing: address))"
         self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
-        self.showStatusView(message: "\(successStatus) Wallet successfully recovered!")
+        self.showStatusView(message: "\(self.successStatus) Wallet successfully recovered!")
         DispatchQueue.main.async {
           if let addressInformation = self.addressInformation {
             addressInformation.text = ethereum
@@ -1254,11 +1255,11 @@ class ViewController: UIViewController, UITextFieldDelegate {
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handlePasskeyBackup() - Error running recover: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error running recover \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error running recover \(error)")
       }
     }
   }
-
+  
   @IBAction func handlePasswordBackup(_: UIButton!) {
     Task {
       do {
@@ -1276,16 +1277,16 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.logger.debug("ViewController.handlPasswordBackup() - Starting backup...")
         _ = try await self.backup(String(userId), withMethod: .Password)
         self.logger.debug("ViewController.handlePasskeyBackup(): ✅ Successfully sent custodian cipherText.")
-        self.showStatusView(message: "\(successStatus) Successfully sent custodian cipherText.")
+        self.showStatusView(message: "\(self.successStatus) Successfully sent custodian cipherText.")
         self.updateUIComponents()
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handlePasskeyBackup() - Error running backup: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error running backup \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error running backup \(error)")
       }
     }
   }
-
+  
   @IBAction func handlePasswordRecover(_: UIButton!) {
     Task {
       do {
@@ -1310,7 +1311,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         }
         let debugMessage = "ViewController.handlePasskeyRecover() - ✅ Wallet successfully recovered! Address: \(String(describing: address))"
         self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
-        self.showStatusView(message: "\(successStatus) Wallet successfully recovered!")
+        self.showStatusView(message: "\(self.successStatus) Wallet successfully recovered!")
         DispatchQueue.main.async {
           if let addressInformation = self.addressInformation {
             addressInformation.text = ethereum
@@ -1320,54 +1321,54 @@ class ViewController: UIViewController, UITextFieldDelegate {
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handlePasskeyBackup() - Error running recover: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error running recover \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error running recover \(error)")
       }
     }
   }
-
+  
   // Portal API actions
-
+  
   @IBAction func testGetNFTsTrxsBalancesSharesAndSimTrx() {
     Task {
       let chainId = "eip155:11155111"
-
+      
       do {
         let erc20Balances = try await self.getBalances()
         print(erc20Balances)
         self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched balances.")
-        self.showStatusView(message: "\(successStatus) Successfully fetched balances.")
+        self.showStatusView(message: "\(self.successStatus) Successfully fetched balances.")
       } catch {
         self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching balances: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error fetching balances \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error fetching balances \(error)")
         return
       }
       do {
         let nfts = try await self.getNFTs(chainId)
         print(nfts)
         self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched NFTs.")
-        self.showStatusView(message: "\(successStatus) Successfully fetched NFTs.")
+        self.showStatusView(message: "\(self.successStatus) Successfully fetched NFTs.")
       } catch {
         self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching NFTs: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error fetching NFTs \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error fetching NFTs \(error)")
         return
       }
       do {
         let shares = try await self.getShareMetadata()
         print(shares)
         self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched share metadata.")
-        self.showStatusView(message: "\(successStatus) Successfully fetched share metadata.")
+        self.showStatusView(message: "\(self.successStatus) Successfully fetched share metadata.")
       } catch {
         self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching share metadata: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error fetching share metadata \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error fetching share metadata \(error)")
       }
       do {
         let transactions = try await self.getTransactions(chainId)
         print(transactions)
         self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched transactions.")
-        self.showStatusView(message: "\(successStatus) Successfully fetched transactions.")
+        self.showStatusView(message: "\(self.successStatus) Successfully fetched transactions.")
       } catch {
         self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching transactions: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error fetching transactions \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error fetching transactions \(error)")
         return
       }
       do {
@@ -1381,56 +1382,56 @@ class ViewController: UIViewController, UITextFieldDelegate {
         let simulatedTransaction = try await self.simulateTransaction(chainId, transaction: transaction)
         print(simulatedTransaction)
         self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully simulated transaction.")
-        self.showStatusView(message: "\(successStatus) Successfully simulated transaction.")
+        self.showStatusView(message: "\(self.successStatus) Successfully simulated transaction.")
       } catch {
         self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error simulating transaction: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error simulating transaction \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error simulating transaction \(error)")
         return
       }
     }
   }
-
+  
   @IBAction func sendPressed(_: UIButton!) {
     Task {
       do {
         let trxHash = try await self.sendTransaction()
         self.logger.info("ViewController.handlSend() - ✅ Successfully sent transaction Trx Hash: \(trxHash)")
-        self.showStatusView(message: "\(successStatus), Trx Hash: \(trxHash)")
+        self.showStatusView(message: "\(self.successStatus), Trx Hash: \(trxHash)")
       } catch {
         self.logger.error("ViewController.handleSend() - ❌ Error sending transaction: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error sending transaction \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error sending transaction \(error)")
       }
     }
   }
-
+  
   @IBAction func usernameChanged(_: Any) {
     let hasUsername = self.username?.text?.count ?? 0 > 3
-
+    
     self.signInButton?.isEnabled = hasUsername
     self.signUpButton?.isEnabled = hasUsername
   }
-
+  
   @IBAction func testProviderRequests(_: UIButton) {
     Task {
       do {
         try await self.testSignerRequests()
         try await self.testTransactionRequests()
         try await self.testOtherRequests()
-
+        
         self.logger.info("ViewController.testProviderRequests() - ✅ Successfully tested provider requests")
-        self.showStatusView(message: "\(successStatus) Successfully tested provider requests")
+        self.showStatusView(message: "\(self.successStatus) Successfully tested provider requests")
       } catch {
         self.logger.error("ViewController.testProviderRequests() - ❌ Error testing transactions: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error testing transactions \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error testing transactions \(error)")
       }
     }
   }
-
+  
   @IBAction func handleSign() {
     Task {
       do {
         let chainId = "eip155:11155111"
-
+        
         guard let portal else {
           self.logger.error("ViewController.handlSign() - ❌ Portal not initialized")
           throw PortalExampleAppError.portalNotInitialized()
@@ -1439,39 +1440,39 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.logger.error("ViewController.handlSign() - ❌ Address not found")
           throw PortalExampleAppError.addressNotFound()
         }
-
+        
         self.startLoading()
         let params = [address, "0xdeadbeef"]
-
+        
         self.logger.debug("Params: \(params)")
-
+        
         guard let response = try? await portal.request(chainId, withMethod: .eth_sign, andParams: params) else {
           self.logger.error("ViewController.handlSign() - ❌ Failed to process request")
           self.stopLoading()
           return
         }
-
+        
         guard let signature = response.result as? String else {
           self.logger.error("ViewController.handlSign() - ❌ Invalid response type for request:")
           print(response.result)
           throw PortalExampleAppError.invalidResponseTypeForRequest()
         }
         self.logger.info("ViewController.handleSign() - ✅ Successfully signed message: \(signature)")
-        self.showStatusView(message: "\(successStatus) Successfully signed message")
+        self.showStatusView(message: "\(self.successStatus) Successfully signed message")
         self.stopLoading()
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handleSign() - ❌ Error signing message: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error signing message \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error signing message \(error)")
       }
     }
   }
-
+  
   @IBAction func handlePersonalSign() {
     Task {
       do {
         let chainId = "eip155:11155111"
-
+        
         guard let portal else {
           self.logger.error("ViewController.handlSign() - ❌ Portal not initialized")
           throw PortalExampleAppError.portalNotInitialized()
@@ -1480,55 +1481,55 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.logger.error("ViewController.handlSign() - ❌ Address not found")
           throw PortalExampleAppError.addressNotFound()
         }
-
+        
         self.startLoading()
         let params = ["0xdeadbeef", address]
-
+        
         self.logger.debug("Params: \(params)")
-
+        
         guard let response = try? await portal.request(chainId, withMethod: .personal_sign, andParams: params) else {
           self.logger.error("ViewController.handlSign() - ❌ Failed to process request")
           self.stopLoading()
           return
         }
-
+        
         guard let signature = response.result as? String else {
           self.logger.error("ViewController.handlSign() - ❌ Invalid response type for request:")
           print(response.result)
           throw PortalExampleAppError.invalidResponseTypeForRequest()
         }
         self.logger.info("ViewController.handleSign() - ✅ Successfully signed message: \(signature)")
-        self.showStatusView(message: "\(successStatus) Successfully signed message")
+        self.showStatusView(message: "\(self.successStatus) Successfully signed message")
         self.stopLoading()
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handleSign() - ❌ Error signing message: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error signing message \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error signing message \(error)")
       }
     }
   }
-
+  
   func handleSwaps() {
     do {
       self.startLoading()
-
+      
       guard let portal else {
         self.logger.error("ViewController.handleSwaps() - ❌ Portal not initialized")
         throw PortalExampleAppError.portalNotInitialized()
       }
-
+      
       let swapsApiKey = ""
       if swapsApiKey == "" {
         self.logger.error("ViewController.handleSwaps() - ❌ Portal not initialized")
         throw PortalExampleAppError.configurationNotSet("Swaps API Key not set")
       }
-
+      
       let swaps = PortalSwaps(apiKey: swapsApiKey, portal: portal)
-
+      
       swaps.getSources { result in
         let source = result
         print("getSources response:", source)
-
+        
         // Delay the second request by 1 second
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
           let quoteArgs = QuoteArgs(
@@ -1536,7 +1537,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
             sellToken: "ETH",
             sellAmount: "1000"
           )
-
+          
           let customChainId = "eip155:11155111"
           swaps.getQuote(args: quoteArgs, forChainId: customChainId) { result in
             guard let transaction = result.data?.transaction else {
@@ -1544,7 +1545,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
               self.stopLoading()
               return
             }
-
+            
             Task {
               do {
                 let sendTransactionResponse = try await portal.request(customChainId, withMethod: .eth_sendTransaction, andParams: [transaction])
@@ -1552,14 +1553,14 @@ class ViewController: UIViewController, UITextFieldDelegate {
                 guard let transactionHash = sendTransactionResponse.result as? String else {
                   throw PortalExampleAppError.invalidResponseTypeForRequest()
                 }
-
+                
                 self.logger.info("ViewController.handleSwaps() - ✅ Successfully called get sources + quotes + submitted trx: \(transactionHash)")
               } catch {
                 print("Error sending transaction", error)
               }
             }
           }
-
+          
           self.stopLoading()
         }
       }
@@ -1568,17 +1569,17 @@ class ViewController: UIViewController, UITextFieldDelegate {
       self.logger.error("ViewController.handleSwaps() - ❌ Error signing message: \(error)")
     }
   }
-
+  
   // Method to display status messages on the UI
   func showStatusView(message: String) {
-    statusLabel?.text = message
+    self.statusLabel?.text = message
   }
-
-  @IBAction func handleSolanaSendTrx() {
+  
+  @IBAction func handleSolanaSerSendTrx() {
     Task {
       do {
         self.startLoading()
-
+        
         // Setup and address retrieval
         let chainId = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1" // Devnet
         // let chainId = "solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z" // Testnet
@@ -1587,11 +1588,67 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.stopLoading()
           return
         }
-
+        
         let txHash = try await portal.sendSol(1, to: "GPsPXxoQA51aTJJkNHtFDFYui5hN5UxcFPnheJEHa5Du", withChainId: chainId)
-
+        
         self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Successfully signed message: SOL: \(txHash)")
+        
+        self.stopLoading()
+      } catch {
+        self.stopLoading()
+        self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Generic error: \(error)")
+      }
+    }
+  }
+  
+  @IBAction func handleSolanaSendTrx() {
+    Task {
+      do {
+        self.startLoading()
+        
+        // devnet chainId
+        let chainId = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        
+        // Get the solana address
+        guard let portal = self.portal, let fromAddress = await portal.getAddress(chainId) else {
+          self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Portal or address not initialized/found")
+          self.stopLoading()
+          return
+        }
+        
+        // Format the solana address properly
+        let fromPublicKey = try SolanaSwift.PublicKey(string: fromAddress)
+        
+        // Set the address you would like to send to
+        let toPublicKey = try SolanaSwift.PublicKey(string: "2Xc2Z8jKVgSSQaGdCEbspReGbJkWGrEvR6aGmhSZAdjf")
+        
+        // Create the transfer instruction
+        let transferInstruction = SystemProgram.transferInstruction(
+          from: fromPublicKey,
+          to: toPublicKey,
+          lamports: 1
+        )
+        
+        // Get the most recent blockhash
+        let blockhashResponse: PortalProviderResult = try await portal.request(chainId, withMethod: .sol_getLatestBlockhash, andParams: [])
+        guard let blockhashResResult = blockhashResponse.result as? SolGetLatestBlockhashResponse else {
+          throw PortalSolError.failedToGetLatestBlockhash
+        }
+        
+        // Initialize the transaction
+        var transaction = SolanaSwift.Transaction(
+          instructions: [transferInstruction],
+          recentBlockhash: blockhashResResult.result.value.blockhash,
+          feePayer: fromPublicKey
+        )
+        
+        // Format the transaction
+        let tx = try transaction.serialize(requiredAllSignatures: false)
 
+        let txHash: PortalProviderResult = try await portal.request(chainId, withMethod: PortalRequestMethod.sol_signAndSendTransaction, andParams: [tx.base64EncodedString()])
+        
+        self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Successfully signed message: SOL: \(txHash.result as! String)")
+        
         self.stopLoading()
       } catch {
         self.stopLoading()

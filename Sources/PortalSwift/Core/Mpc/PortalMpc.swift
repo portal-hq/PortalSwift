@@ -146,7 +146,7 @@ public class PortalMpc {
               async let mpcShare = try getBackupShare(.SECP256K1, withMethod: method, andSigningShare: secp256k1SigningShare.share)
 
               usingProgressCallback?(MpcStatus(status: .parsingShare, done: false))
-              let shareData = await try encoder.encode(mpcShare)
+              let shareData = try await encoder.encode(mpcShare)
               guard let shareString = String(data: shareData, encoding: .utf8) else {
                 throw MpcError.unexpectedErrorOnBackup("Unable to stringify SECP256K1 share.")
               }

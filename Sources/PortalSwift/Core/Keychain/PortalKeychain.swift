@@ -54,6 +54,7 @@ public class PortalKeychain {
   private var _api: PortalApi?
   private var client: ClientResponse? {
     get async throws {
+      try await print(self.api?.client?.id)
       return try await self.api?.client
     }
   }
