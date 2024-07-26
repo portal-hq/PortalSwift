@@ -101,7 +101,7 @@ public class Portal {
 
     // Creating this as a variable first so it's usable to
     // fetch the client in the Task at the end of the initializer
-    let api = api ?? PortalApi(apiKey: apiKey, apiHost: apiHost, provider: provider)
+    let api = api ?? PortalApi(apiKey: apiKey, apiHost: apiHost, provider: self.provider)
     self.api = api
     self.keychain.api = api
 
@@ -349,27 +349,27 @@ public class Portal {
     )
   }
 
-    public func generateSolanaWalletAndBackupShares(
-      _ method: BackupMethods
-    ) async throws -> (cipherText: String, storageCallback: () async throws -> Void) {
-      // Run generateSolanaWalletAndBackupShares
-      let response = try await mpc.generateSolanaWalletAndBackupShares(backupMethod: method)
+  public func generateSolanaWalletAndBackupShares(
+    _ method: BackupMethods, usingProgressCallback: ((MpcStatus) -> Void)? = nil
+  ) async throws -> (cipherText: String, storageCallback: () async throws -> Void) {
+    // Run generateSolanaWalletAndBackupShares
+    let response = try await mpc.generateSolanaWalletAndBackupShares(backupMethod: method)
 
-      // Build the storage callback
-        // TODO: - validate the `storageCallback`
-      let storageCallback: () async throws -> Void = {
-        try await self.api.updateShareStatus(
-          .backup,
-          status: .STORED_CLIENT,
-          sharePairIds: response.shareIds
-        )
-      }
-
-      return (
-        cipherText: response.cipherText,
-        storageCallback: storageCallback
+    // Build the storage callback
+    // TODO: - validate the `storageCallback`
+    let storageCallback: () async throws -> Void = {
+      try await self.api.updateShareStatus(
+        .backup,
+        status: .STORED_CLIENT,
+        sharePairIds: response.shareIds
       )
     }
+
+    return (
+      cipherText: response.cipherText,
+      storageCallback: storageCallback
+    )
+  }
 
   // Keychain helpers
 
