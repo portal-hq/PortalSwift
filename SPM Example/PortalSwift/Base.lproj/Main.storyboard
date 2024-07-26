@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="32700.99.1234" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" colorMatched="YES" initialViewController="vXZ-lx-hvc">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="22505" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" colorMatched="YES" initialViewController="vXZ-lx-hvc">
     <device id="retina4_7" orientation="portrait" appearance="light"/>
     <dependencies>
         <deployment identifier="iOS"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="22685"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="22504"/>
         <capability name="System colors in document resources" minToolsVersion="11.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
@@ -411,6 +411,7 @@
                         <outlet property="gdriveBackupButton" destination="DaJ-fr-bUt" id="5NR-6g-wxq"/>
                         <outlet property="gdriveRecoverButton" destination="U9U-6p-gAr" id="aUT-iv-Rxw"/>
                         <outlet property="generateButton" destination="PLS-JE-WGU" id="i8N-R8-wtj"/>
+                        <outlet property="generateSolanaAndBackupShares" destination="hXu-Hw-ELP" id="Ct2-Sr-Qwb"/>
                         <outlet property="iCloudBackupButton" destination="xWB-m1-4oV" id="0G3-uD-sY4"/>
                         <outlet property="iCloudRecoverButton" destination="tfT-Wz-ED4" id="h73-P1-2h2"/>
                         <outlet property="logoutButton" destination="nDW-CF-6N1" id="Ke0-ny-I4Y"/>
@@ -670,7 +671,7 @@
             <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
         </systemColor>
         <systemColor name="systemPinkColor">
-            <color red="1" green="0.1764705882" blue="0.33333333329999998" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+            <color red="1" green="0.17647058823529413" blue="0.33333333333333331" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </systemColor>
     </resources>
 </document>

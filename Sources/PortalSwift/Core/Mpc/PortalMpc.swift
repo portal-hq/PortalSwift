@@ -517,10 +517,14 @@ public class PortalMpc {
       try await self.keychain.loadMetadata()
       self.isWalletModificationInProgress = false
 
+      // get the solana address from the Keychain.
       let newAddresses = try await keychain.getAddresses()
+      if let newSolanaAddress = newAddresses[PortalNamespace.solana], let unwrappedNewSolanaAddress = newSolanaAddress {
+        solanaAddress = unwrappedNewSolanaAddress
+      } else {
+        throw MpcError.unexpectedErrorOnGenerate("Unable to get the Solana address from keychain.")
+      }
 
-      // TODO: fix this so we dont return empty string
-      solanaAddress = (newAddresses[PortalNamespace.solana] ?? "") ?? ""
     } catch {
       self.isWalletModificationInProgress = false
       throw error

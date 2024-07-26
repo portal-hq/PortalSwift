@@ -59,7 +59,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var testNFTsTrxsBalancesSimTrxButton: UIButton?
   @IBOutlet var ejectButton: UIButton?
   @IBOutlet var fundSepoliaButton: UIButton?
-
+  @IBOutlet var generateSolanaAndBackupShares: UIButton!
+    
   @IBOutlet var passkeyBackupButton: UIButton?
   @IBOutlet var passkeyRecoverButton: UIButton?
   @IBOutlet var passwordBackupButton: UIButton!
@@ -887,6 +888,9 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.fundSepoliaButton?.isEnabled = walletExists && isWalletOnDevice
           self.fundSepoliaButton?.isHidden = !walletExists || !isWalletOnDevice
 
+          // Test Generate Solana and backup shares
+          self.generateSolanaAndBackupShares.isHidden = self.user == nil
+
           // Portal test functions
           self.testButton?.isEnabled = walletExists && isWalletOnDevice
           self.testButton?.isHidden = !walletExists || !isWalletOnDevice
@@ -1046,8 +1050,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.startLoading()
         self.logger.debug("ViewController.handleGenerateSolanaAndBackupShares() - Starting generate Solana wallet then backup...")
         let result = try await self.portal?.generateSolanaWalletAndBackupShares(.iCloud)
-        self.logger.debug("ViewController.handleGenerateSolanaAndBackupShares(): ✅ Successfully generated Solana wallet and backed up. Solana Address \(result?.solanaAddress ?? "") ")
-        self.showStatusView(message: "\(self.successStatus) Successfully generated Solana wallet and backup.")
+        self.logger.debug("ViewController.handleGenerateSolanaAndBackupShares(): ✅ Successfully generated Solana wallet and backed up. Solana Address: \(result?.solanaAddress ?? "N/A")")
+        self.showStatusView(message: "\(self.successStatus) Successfully generated Solana wallet and backed up. Solana Address: \(result?.solanaAddress ?? "N/A")")
         self.stopLoading()
       } catch {
         self.stopLoading()
