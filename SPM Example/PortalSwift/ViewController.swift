@@ -1045,8 +1045,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
       do {
         self.startLoading()
         self.logger.debug("ViewController.handleGenerateSolanaAndBackupShares() - Starting generate Solana wallet then backup...")
-        _ = try await self.portal?.generateSolanaWalletAndBackupShares(.Password)
-        self.logger.debug("ViewController.handleGenerateSolanaAndBackupShares(): ✅ Successfully generated Solana wallet and backup.")
+        let result = try await self.portal?.generateSolanaWalletAndBackupShares(.iCloud)
+        self.logger.debug("ViewController.handleGenerateSolanaAndBackupShares(): ✅ Successfully generated Solana wallet and backed up. Solana Address \(result?.solanaAddress ?? "") ")
         self.showStatusView(message: "\(self.successStatus) Successfully generated Solana wallet and backup.")
         self.stopLoading()
       } catch {
