@@ -24,7 +24,8 @@ class PortalConnectTest: XCTestCase {
       MockConstants.mockApiKey,
       chainId,
       keychain,
-      ["eip155:11155111": mockURL]
+      ["eip155:11155111": mockURL],
+      FeatureFlags()
     )
 
     mockClient = MockWebSocketClient(apiKey: MockConstants.mockApiKey, connect: portalConnect)
