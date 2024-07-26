@@ -351,22 +351,21 @@ public class Portal {
 
   public func generateSolanaWalletAndBackupShares(
     _ method: BackupMethods, usingProgressCallback: ((MpcStatus) -> Void)? = nil
-  ) async throws -> (cipherText: String, storageCallback: () async throws -> Void) {
+  ) async throws -> (solanaAddress: String, cipherText: String, storageCallback: () async throws -> Void) {
     // Run generateSolanaWalletAndBackupShares
-    let response = try await mpc.generateSolanaWalletAndBackupShares(backupMethod: method)
+    let result = try await mpc.generateSolanaWalletAndBackupShares(backupMethod: method)
 
     // Build the storage callback
-    // TODO: - validate the `storageCallback`
     let storageCallback: () async throws -> Void = {
       try await self.api.updateShareStatus(
         .backup,
-        status: .STORED_CLIENT,
-        sharePairIds: response.shareIds
+        status: .STORED_CLIENT_BACKUP_SHARE,
+        sharePairIds: result.backupResponse.shareIds
       )
     }
 
     return (
-      cipherText: response.cipherText,
+      solanaAddress: result.solanaAddress, cipherText: result.backupResponse.cipherText,
       storageCallback: storageCallback
     )
   }
