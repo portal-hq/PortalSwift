@@ -141,12 +141,12 @@ public class PortalMpc {
               return
             }
           }
-          if let secp256k1SigningShare = shares[PortalCurve.SECP256K1.rawValue] {
+            if let secp256k1SigningShare = shares[PortalCurve.SECP256K1.rawValue]?.share {
             do {
-              async let mpcShare = try getBackupShare(.SECP256K1, withMethod: method, andSigningShare: secp256k1SigningShare.share)
+              async let mpcShare = try getBackupShare(.SECP256K1, withMethod: method, andSigningShare: secp256k1SigningShare)
 
               usingProgressCallback?(MpcStatus(status: .parsingShare, done: false))
-              let shareData = await try encoder.encode(mpcShare)
+              let shareData = try await encoder.encode(mpcShare)
               guard let shareString = String(data: shareData, encoding: .utf8) else {
                 throw MpcError.unexpectedErrorOnBackup("Unable to stringify SECP256K1 share.")
               }
@@ -388,7 +388,7 @@ public class PortalMpc {
               //  The share's already been backed up, recover it
               async let ed25519MpcShare = try recoverSigningShare(.ED25519, withMethod: method, andBackupShare: ed25519Share.share)
 
-              let shareData = await try encoder.encode(ed25519MpcShare)
+              let shareData = try await encoder.encode(ed25519MpcShare)
               guard let shareString = String(data: shareData, encoding: .utf8) else {
                 throw MpcError.unexpectedErrorOnBackup("Unable to stringify ED25519 share.")
               }
@@ -397,22 +397,12 @@ public class PortalMpc {
                 id: ed25519MpcShare.signingSharePairId ?? "",
                 share: shareString
               )
-            } else {
-              let ed25519MpcShare = try await self.getSigningShare(.ED25519)
-              let ed25519ShareData = try self.encoder.encode(ed25519MpcShare)
-              guard let ed25519ShareString = String(data: ed25519ShareData, encoding: .utf8) else {
-                throw MpcError.unexpectedErrorOnBackup("Unable to stringify ED25519 share.")
-              }
-              recoverResponse["ED25519"] = PortalMpcGeneratedShare(
-                id: ed25519MpcShare.signingSharePairId ?? "",
-                share: ed25519ShareString
-              )
             }
 
             if let secp256k1Share = backupResponse[PortalCurve.SECP256K1.rawValue] {
               async let secp256k1MpcShare = try recoverSigningShare(.SECP256K1, withMethod: method, andBackupShare: secp256k1Share.share)
 
-              let shareData = await try encoder.encode(secp256k1MpcShare)
+              let shareData = try await encoder.encode(secp256k1MpcShare)
               guard let shareString = String(data: shareData, encoding: .utf8) else {
                 throw MpcError.unexpectedErrorOnBackup("Unable to stringify SECP256K1 share.")
               }
@@ -455,6 +445,74 @@ public class PortalMpc {
       throw error
     }
   }
+
+    public func generateSolanaWalletAndBackupShares(backupMethod: BackupMethods) async throws -> PortalMpcBackupResponse {
+        // TODO: - check the usage of "self.isWalletModificationInProgress = true" we may need to use it here a well.
+        let addresses = try await keychain.getAddresses()
+        guard addresses[.solana] ?? nil == nil else {
+            throw MpcError.unexpectedErrorOnGenerate("PortalMpc.generateSolanaWalletAndBackupShares() - Could not generate Solana wallet as it already exists.")
+        }
+
+        // Derive the storage and throw an error if none was provided.
+        guard let storage = self.backupOptions[backupMethod] else {
+          throw MpcError.unsupportedStorageMethod
+        }
+
+        guard try await storage.validateOperations() else {
+          throw MpcError.unexpectedErrorOnBackup("Could not validate operations.")
+        }
+
+        // generate the ED25519 share
+        let ed25519MpcShare = try await self.getSigningShare(.ED25519)
+
+        // create a share object to be stored to keychain
+        var generateResponse: PortalMpcGenerateResponse = [:]
+        let ed25519ShareData = try self.encoder.encode(ed25519MpcShare)
+        guard let ed25519ShareString = String(data: ed25519ShareData, encoding: .utf8) else {
+          throw MpcError.unexpectedErrorOnBackup("Unable to stringify ED25519 share.")
+        }
+        generateResponse["ED25519"] = PortalMpcGeneratedShare(
+          id: ed25519MpcShare.signingSharePairId ?? "",
+          share: ed25519ShareString
+        )
+
+        // Update share statuses
+        let shareIds: [String] = generateResponse.values.map { share in
+          share.id
+        }
+
+        // Obtain the signing secpk256k1 share
+        let shares = try await keychain.getShares()
+
+        if let secp256k1SigningShare = shares[PortalCurve.SECP256K1.rawValue] {
+          do {
+            async let mpcShare = try getBackupShare(.SECP256K1, withMethod: backupMethod, andSigningShare: secp256k1SigningShare.share)
+
+            let shareData = try await encoder.encode(mpcShare)
+            guard let shareString = String(data: shareData, encoding: .utf8) else {
+              throw MpcError.unexpectedErrorOnBackup("Unable to stringify SECP256K1 share.")
+            }
+
+            generateResponse["SECP256K1"] = try await PortalMpcGeneratedShare(
+              id: mpcShare.backupSharePairId ?? "",
+              share: shareString
+            )
+          } catch {
+            throw error
+          }
+        }
+
+        // store the shares to keychain
+        try await self.keychain.setShares(generateResponse)
+
+        try await self.keychain.loadMetadata()
+
+        try await self.api.updateShareStatus(.signing, status: .STORED_CLIENT, sharePairIds: shareIds)
+
+        // backup
+        return try await self.backup(backupMethod)
+
+    }
 
   public func registerBackupMethod(_ method: BackupMethods, withStorage: PortalStorage) {
     var storage = withStorage
