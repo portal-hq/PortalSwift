@@ -1040,7 +1040,24 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  public func sendSepoliaTransaction() async throws -> String {
+    @IBAction func handleGenerateSolanaAndBackupShares(_ sender: Any) {
+        Task {
+            do {
+                self.startLoading()
+                self.logger.debug("ViewController.handleGenerateSolanaAndBackupShares() - Starting generate Solana wallet then backup...")
+                _ = try await portal?.generateSolanaWalletAndBackupShares(.Password)
+                self.logger.debug("ViewController.handleGenerateSolanaAndBackupShares(): ✅ Successfully generated Solana wallet and backup.")
+                self.showStatusView(message: "\(successStatus) Successfully generated Solana wallet and backup.")
+                self.stopLoading()
+            } catch {
+                self.stopLoading()
+                self.logger.error("Error generating Solana wallet and backup shares: \(error)")
+                self.showStatusView(message: "\(failureStatus) Error generating Solana wallet and backup shares: \(error)")
+            }
+        }
+    }
+
+    public func sendSepoliaTransaction() async throws -> String {
     guard let portal else {
       logger.error("ViewController.sendSepoliaTransaction() - ❌ Portal not initialized.")
       throw PortalExampleAppError.portalNotInitialized()
