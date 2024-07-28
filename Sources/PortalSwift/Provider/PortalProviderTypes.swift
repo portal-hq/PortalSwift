@@ -104,6 +104,84 @@ public struct RegisteredEventHandler {
   var once: Bool
 }
 
+public struct PortalEthereumAddressRequest {
+  public var chainId: String?
+  public var id: String?
+  public var method: PortalRequestMethod
+  public var params: [String]
+  public var signature: String?
+
+  public init(
+    method: PortalRequestMethod,
+    params: [String],
+    id: String? = nil,
+    chainId: String? = nil,
+    signature: String? = nil
+  ) {
+    self.id = id
+    self.chainId = chainId
+    self.method = method
+    self.params = params
+    self.signature = signature
+  }
+}
+
+public struct PortalEthereumTransactionRequest {
+  public var chainId: String?
+  public var id: String?
+  public var method: PortalRequestMethod
+  public var params: [PortalEthereumTransaction]
+  public var signature: String?
+
+  public init(
+    method: PortalRequestMethod,
+    params: [PortalEthereumTransaction],
+    id: String? = nil,
+    chainId: String? = nil,
+    signature: String? = nil
+  ) {
+    self.id = id
+    self.chainId = chainId
+    self.method = method
+    self.params = params
+    self.signature = signature
+  }
+}
+
+public class PortalEthereumTransaction {
+  public var from: String
+  public var to: String
+  public var gas: String?
+  public var gasPrice: String?
+  public var maxFeePerGas: String?
+  public var maxPriorityFeePerGas: String?
+  public var value: String?
+  public var data: String?
+  public var nonce: String?
+
+  public init(
+    from: String,
+    to: String,
+    data: String? = nil,
+    gas: String? = nil,
+    gasPrice: String? = nil,
+    maxFeePerGas: String? = nil,
+    maxPriorityFeePerGas: String? = nil,
+    nonce: String? = nil,
+    value: String? = nil
+  ) {
+    self.data = data
+    self.gas = gas
+    self.gasPrice = gasPrice
+    self.from = from
+    self.maxFeePerGas = maxFeePerGas
+    self.maxPriorityFeePerGas = maxPriorityFeePerGas
+    self.nonce = nonce
+    self.to = to
+    self.value = value
+  }
+}
+
 // Legacy types
 // Consider removing these when legacy (strongly typed) request methods are removed.
 
