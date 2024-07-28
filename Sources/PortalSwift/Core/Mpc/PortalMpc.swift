@@ -158,6 +158,7 @@ public class PortalMpc {
               )
             } catch {
               continuation.resume(throwing: error)
+              return
             }
           }
 
@@ -273,6 +274,7 @@ public class PortalMpc {
           continuation.resume(returning: addresses)
         } catch {
           continuation.resume(throwing: error)
+          return
         }
       }
     }
@@ -334,6 +336,7 @@ public class PortalMpc {
             continuation.resume(returning: generateResponse)
           } catch {
             continuation.resume(throwing: error)
+            return
           }
         }
       }
@@ -473,6 +476,7 @@ public class PortalMpc {
             continuation.resume(returning: recoverResponse)
           } catch {
             continuation.resume(throwing: error)
+            return
           }
         }
       }
@@ -600,6 +604,7 @@ public class PortalMpc {
           continuation.resume(returning: backupShare)
         } catch {
           continuation.resume(throwing: error)
+          return
         }
       }
     }
@@ -637,6 +642,7 @@ public class PortalMpc {
         } catch {
           self.logger.error("Error generating \(forCurve.rawValue) share: \(error.localizedDescription)")
           continuation.resume(throwing: error)
+          return
         }
       }
     }
@@ -694,6 +700,7 @@ public class PortalMpc {
           continuation.resume(returning: signingShare)
         } catch {
           continuation.resume(throwing: error)
+          return
         }
       }
     }
