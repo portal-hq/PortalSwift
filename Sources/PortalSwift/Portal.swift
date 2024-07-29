@@ -379,8 +379,6 @@ public class Portal {
     _ = self.provider.once(event: event, callback: callback)
   }
 
-  public func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any]?) async throws -> PortalProviderResult {
-    guard let andParams else {
   public func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any]? = []) async throws -> PortalProviderResult {
     guard let andParams = andParams else {
       throw PortalProviderError.invalidRequestParams
