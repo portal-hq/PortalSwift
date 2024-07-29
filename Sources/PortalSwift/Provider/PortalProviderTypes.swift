@@ -104,7 +104,7 @@ public struct RegisteredEventHandler {
   var once: Bool
 }
 
-public struct PortalEthereumAddressRequest {
+public struct PortalEthereumStringRequest {
   public var chainId: String?
   public var id: String?
   public var method: PortalRequestMethod
@@ -148,7 +148,7 @@ public struct PortalEthereumTransactionRequest {
   }
 }
 
-public class PortalEthereumTransaction {
+public struct PortalEthereumTransaction: Codable {
   public var from: String
   public var to: String
   public var gas: String?

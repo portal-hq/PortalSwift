@@ -247,6 +247,106 @@ public class PortalProvider {
     return try await self.request(chainId, withMethod: method, andParams: andParams)
   }
 
+  /// Makes a request.
+  /// - Parameters:
+  ///   - chainId: A CAIP-2 Blockchain ID associated with the request.
+  ///   - withMethod: A member of the PortalRequestMethod enum
+  ///   - andParams: An array of parameters for the request (either RPC parameters or a transaction if signing)
+  /// - Returns: PortalProviderResult
+  public func request(
+    _ chainId: String,
+    withMethod: PortalRequestMethod,
+    andParams: [PortalEthereumTransaction],
+    connect: PortalConnect? = nil
+  ) async throws -> PortalProviderResult {
+    let blockchain = try PortalBlockchain(fromChainId: chainId)
+    guard blockchain.isMethodSupported(withMethod) else {
+      throw PortalProviderError.unsupportedRequestMethod(withMethod.rawValue)
+    }
+
+    let id = UUID().uuidString
+
+    // This switch is here to handle methods that should be
+    // resolved by the provider directly before passing the
+    // request on to RPC or the signer.
+    //
+    // The default behavior is to use the `PortalBlockchain`
+    // instance to determine if the method should be signed
+    // or not.
+    switch withMethod {
+    case .eth_accounts, .eth_requestAccounts:
+      let address = try await keychain.getAddress(chainId)
+      return PortalProviderResult(id: id, result: [address])
+    case .wallet_switchEthereumChain:
+      return PortalProviderResult(id: id, result: "null")
+    default:
+      if blockchain.shouldMethodBeSigned(withMethod) {
+        let payload = PortalEthereumTransactionRequest(
+          method: withMethod,
+          params: andParams,
+          id: id,
+          chainId: chainId
+        )
+        return try await self.handleSignRequest(chainId, withPayload: payload, forId: id, onBlockchain: blockchain, connect: connect)
+      } else {
+        let params = andParams.map { param in
+          AnyCodable(param)
+        }
+        return try await self.handleRpcRequest(chainId, withMethod: withMethod, andParams: params, forId: id)
+      }
+    }
+  }
+
+  /// Makes a request.
+  /// - Parameters:
+  ///   - chainId: A CAIP-2 Blockchain ID associated with the request.
+  ///   - withMethod: A member of the PortalRequestMethod enum
+  ///   - andParams: An array of parameters for the request (either RPC parameters or a transaction if signing)
+  /// - Returns: PortalProviderResult
+  public func request(
+    _ chainId: String,
+    withMethod: PortalRequestMethod,
+    andParams: [String],
+    connect: PortalConnect? = nil
+  ) async throws -> PortalProviderResult {
+    let blockchain = try PortalBlockchain(fromChainId: chainId)
+    guard blockchain.isMethodSupported(withMethod) else {
+      throw PortalProviderError.unsupportedRequestMethod(withMethod.rawValue)
+    }
+
+    let id = UUID().uuidString
+
+    // This switch is here to handle methods that should be
+    // resolved by the provider directly before passing the
+    // request on to RPC or the signer.
+    //
+    // The default behavior is to use the `PortalBlockchain`
+    // instance to determine if the method should be signed
+    // or not.
+    switch withMethod {
+    case .eth_accounts, .eth_requestAccounts:
+      let address = try await keychain.getAddress(chainId)
+      return PortalProviderResult(id: id, result: [address])
+    case .wallet_switchEthereumChain:
+      return PortalProviderResult(id: id, result: "null")
+    default:
+      if blockchain.shouldMethodBeSigned(withMethod) {
+        let payload = PortalEthereumStringRequest(
+          method: withMethod,
+          params: andParams,
+          id: id,
+          chainId: chainId
+        )
+        return try await self.handleSignRequest(chainId, withPayload: payload, forId: id, onBlockchain: blockchain, connect: connect)
+      } else {
+        let params = andParams.map { param in
+          AnyCodable(param)
+        }
+        return try await self.handleRpcRequest(chainId, withMethod: withMethod, andParams: params, forId: id)
+      }
+    }
+  }
+
   /*******************************************
    * Private functions
    *******************************************/
@@ -255,6 +355,98 @@ public class PortalProvider {
     if let chainId = chainId {
       let hexChainId = String(format: "%02x", chainId)
       _ = self.emit(event: Events.Connect.rawValue, data: ["chainId": hexChainId])
+    }
+  }
+
+  private func getApproval(_: String, forPayload: PortalEthereumStringRequest, connect: PortalConnect? = nil) async throws -> Bool {
+    if self.autoApprove {
+      return true
+    }
+
+    if connect == nil, self.events[Events.PortalSigningRequested.rawValue] == nil {
+      throw ProviderSigningError.noBindingForSigningApprovalFound
+    }
+
+    guard let payloadId = forPayload.id else {
+      throw ProviderSigningError.noRequestIdOnPayload
+    }
+
+    return try await withCheckedThrowingContinuation { [self] (continuation: CheckedContinuation<Bool, Error>) in
+      _ = self.on(event: Events.PortalSigningApproved.rawValue, callback: { approved in
+        if approved is PortalProviderRequestWithId {
+          let approvedPayload = approved as! PortalProviderRequestWithId
+
+          if approvedPayload.id == payloadId, !self.processedRequestIds.contains(payloadId) {
+            self.processedRequestIds.append(payloadId)
+            _ = self.removeListener(event: Events.PortalSigningApproved.rawValue)
+            // If the approved event is fired
+            continuation.resume(returning: true)
+          }
+        }
+      }).on(event: Events.PortalSigningRejected.rawValue, callback: { approved in
+        if approved is ETHRequestPayload {
+          let rejectedPayload = approved as! ETHRequestPayload
+
+          if rejectedPayload.id == payloadId, !self.processedRequestIds.contains(payloadId) {
+            self.processedRequestIds.append(payloadId)
+            _ = self.removeListener(event: Events.PortalSigningRejected.rawValue)
+            // If the rejected event is fired
+            continuation.resume(returning: false)
+          }
+        }
+      })
+
+      if connect != nil {
+        _ = connect?.emit(event: Events.PortalSigningRequested.rawValue, data: forPayload)
+      } else {
+        _ = self.emit(event: Events.PortalSigningRequested.rawValue, data: forPayload)
+      }
+    }
+  }
+
+  private func getApproval(_: String, forPayload: PortalEthereumTransactionRequest, connect: PortalConnect? = nil) async throws -> Bool {
+    if self.autoApprove {
+      return true
+    }
+
+    if connect == nil, self.events[Events.PortalSigningRequested.rawValue] == nil {
+      throw ProviderSigningError.noBindingForSigningApprovalFound
+    }
+
+    guard let payloadId = forPayload.id else {
+      throw ProviderSigningError.noRequestIdOnPayload
+    }
+
+    return try await withCheckedThrowingContinuation { [self] (continuation: CheckedContinuation<Bool, Error>) in
+      _ = self.on(event: Events.PortalSigningApproved.rawValue, callback: { approved in
+        if approved is PortalProviderRequestWithId {
+          let approvedPayload = approved as! PortalProviderRequestWithId
+
+          if approvedPayload.id == payloadId, !self.processedRequestIds.contains(payloadId) {
+            self.processedRequestIds.append(payloadId)
+            _ = self.removeListener(event: Events.PortalSigningApproved.rawValue)
+            // If the approved event is fired
+            continuation.resume(returning: true)
+          }
+        }
+      }).on(event: Events.PortalSigningRejected.rawValue, callback: { approved in
+        if approved is ETHRequestPayload {
+          let rejectedPayload = approved as! ETHRequestPayload
+
+          if rejectedPayload.id == payloadId, !self.processedRequestIds.contains(payloadId) {
+            self.processedRequestIds.append(payloadId)
+            _ = self.removeListener(event: Events.PortalSigningRejected.rawValue)
+            // If the rejected event is fired
+            continuation.resume(returning: false)
+          }
+        }
+      })
+
+      if connect != nil {
+        _ = connect?.emit(event: Events.PortalSigningRequested.rawValue, data: forPayload)
+      } else {
+        _ = self.emit(event: Events.PortalSigningRequested.rawValue, data: forPayload)
+      }
     }
   }
 
@@ -402,6 +594,70 @@ public class PortalProvider {
     )
 
     return PortalProviderResult(id: withPayload.id, result: signature)
+  }
+
+  private func handleSignRequest(
+    _ onChainId: String,
+    withPayload: PortalEthereumStringRequest,
+    forId _: String,
+    onBlockchain: PortalBlockchain,
+    connect: PortalConnect? = nil
+  ) async throws -> PortalProviderResult {
+    guard try await self.getApproval(onChainId, forPayload: withPayload, connect: connect) else {
+      throw ProviderSigningError.userDeclinedApproval
+    }
+
+    let rpcUrl = try getRpcUrl(onChainId)
+    let params = withPayload.params.map { param in
+      AnyCodable(param)
+    }
+    let payload = PortalSignRequest(method: withPayload.method, params: params)
+
+    let signature = try await self.signer.sign(
+      onChainId,
+      withPayload: payload,
+      andRpcUrl: rpcUrl,
+      usingBlockchain: onBlockchain
+    )
+
+    guard let payloadId = withPayload.id else {
+      throw ProviderSigningError.noRequestIdOnPayload
+    }
+
+    return PortalProviderResult(id: payloadId, result: signature)
+  }
+
+  private func handleSignRequest(
+    _ onChainId: String,
+    withPayload: PortalEthereumTransactionRequest,
+    forId _: String,
+    onBlockchain: PortalBlockchain,
+    connect: PortalConnect? = nil
+  ) async throws -> PortalProviderResult {
+    guard try await self.getApproval(onChainId, forPayload: withPayload, connect: connect) else {
+      throw ProviderSigningError.userDeclinedApproval
+    }
+
+    guard let payloadId = withPayload.id else {
+      throw ProviderSigningError.noRequestIdOnPayload
+    }
+
+    let rpcUrl = try getRpcUrl(onChainId)
+
+    let params = withPayload.params.map { param in
+      AnyCodable(param)
+    }
+
+    let payload = PortalSignRequest(method: withPayload.method, params: params)
+
+    let signature = try await self.signer.sign(
+      onChainId,
+      withPayload: payload,
+      andRpcUrl: rpcUrl,
+      usingBlockchain: onBlockchain
+    )
+
+    return PortalProviderResult(id: payloadId, result: signature)
   }
 
   private func removeOnce(registeredEventHandler: RegisteredEventHandler) -> Bool {
@@ -749,6 +1005,7 @@ public enum ProviderRpcError: Error {
 /// A list of errors that can be thrown when signing.
 public enum ProviderSigningError: Error {
   case noBindingForSigningApprovalFound
+  case noRequestIdOnPayload
   case userDeclinedApproval
   case walletRequestRejected
 }
