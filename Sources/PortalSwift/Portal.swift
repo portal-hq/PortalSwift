@@ -355,7 +355,7 @@ public class Portal {
     try await self.keychain.deleteShares()
   }
 
-  public func getAddress(_ forChainId: String) async -> String {
+  public func getAddress(_ forChainId: String) async throws -> String {
     let address = try await keychain.getAddress(forChainId)
 
     return address
