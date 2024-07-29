@@ -54,7 +54,7 @@ public class PortalKeychain {
   private var _api: PortalApi?
   private var client: ClientResponse? {
     get async throws {
-      return try await self.api?.client
+      try await self.api?.client
     }
   }
 
@@ -82,7 +82,7 @@ public class PortalKeychain {
     try self.keychain.deleteItem("\(clientId).\(self.sharesKey)")
   }
 
-  public func getAddress(_ forChainId: String) async throws -> String? {
+  public func getAddress(_ forChainId: String) async throws -> String {
     guard let blockchain = try? PortalBlockchain(fromChainId: forChainId) else {
       self.logger.error("PortalKeychain.getAddress() - ❌ Unsupported chainId received: \(forChainId)")
       throw KeychainError.unsupportedNamespace(forChainId)
@@ -94,6 +94,11 @@ public class PortalKeychain {
         self.logger.error("PortalKeychain.getAddress() - No address found for namespace: \(blockchain.namespace.rawValue)")
         throw KeychainError.noAddressForNamespace(blockchain.namespace)
       }
+      guard let address = address else {
+        self.logger.error("PortalKeychain.getAddress() - No address found for namespace: \(blockchain.namespace.rawValue)")
+        throw KeychainError.noAddressForNamespace(blockchain.namespace)
+      }
+
       return address
     } catch {
       self.logger.debug("PortalKeychain.getAddress() - Attempting to read from legacy address data...")
@@ -137,7 +142,7 @@ public class PortalKeychain {
         // Before multi-wallet support was added
         let address = try keychain.getItem("\(clientId).address")
         let addresses: [PortalNamespace: String?] = [
-          .eip155: address,
+          .eip155: address
         ]
         return addresses
       } catch {
@@ -146,7 +151,7 @@ public class PortalKeychain {
         // - Before clientId was added to the Keychain key
         let address = try keychain.getItem(self.deprecatedAddressKey)
         let addresses: [PortalNamespace: String?] = [
-          .eip155: address,
+          .eip155: address
         ]
         return addresses
       }
@@ -235,7 +240,7 @@ public class PortalKeychain {
       do {
         // Before multi-wallet support was added
         let signingShareValue = try keychain.getItem("\(clientId).share")
-        
+
         guard let data = signingShareValue.data(using: .utf8) else {
           self.logger.error("PortalKeychain.getShares() - Unable to decode legacy keychain data")
           throw KeychainError.unableToEncodeKeychainData
@@ -245,7 +250,7 @@ public class PortalKeychain {
           "SECP256K1": PortalMpcGeneratedShare(
             id: share.signingSharePairId ?? "",
             share: signingShareValue
-          ),
+          )
         ]
         return generateResponse
       } catch {
@@ -257,7 +262,7 @@ public class PortalKeychain {
           "SECP256K1": PortalMpcGeneratedShare(
             id: "",
             share: share
-          ),
+          )
         ]
         return generateResponse
       }
@@ -312,7 +317,7 @@ public class PortalKeychain {
       id: client.id,
       addresses: [
         .eip155: client.metadata.namespaces.eip155?.address,
-        .solana: client.metadata.namespaces.solana?.address,
+        .solana: client.metadata.namespaces.solana?.address
       ],
       custodian: client.custodian,
       wallets: wallets
@@ -365,7 +370,7 @@ public class PortalKeychain {
   }
 
   private func getItem(_ key: String) throws -> String {
-    return try self.keychain.getItem(key)
+    try self.keychain.getItem(key)
   }
 
   private func setItem(_ key: String, withValue: String) throws {
@@ -555,7 +560,7 @@ public class PortalKeychain {
         kSecAttrAccount as String: key as AnyObject,
         kSecClass as String: kSecClassGenericPassword,
         kSecAttrAccessible as String: kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly as AnyObject,
-        kSecValueData as String: value.data(using: String.Encoding.utf8) as AnyObject,
+        kSecValueData as String: value.data(using: String.Encoding.utf8) as AnyObject
       ]
 
       // Try to set the keychain item that matches the query.
