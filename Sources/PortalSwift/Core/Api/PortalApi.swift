@@ -119,11 +119,9 @@ public class PortalApi {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/backup-share-pairs/\(backupSharePairId)/cipher-text") {
       do {
         let data = try await get(url, withBearerToken: self.apiKey)
-        guard let cipherText = String(data: data, encoding: .utf8) else {
-          throw PortalApiError.unableToReadStringResponse
-        }
+        let response = try decoder.decode(ClientCipherTextResponse.self, from: data)
 
-        return cipherText
+        return response.cipherText
       } catch {
         throw error
       }
@@ -246,6 +244,17 @@ public class PortalApi {
       let response = try decoder.decode(MetricsResponse.self, from: data)
 
       return response
+    }
+
+    throw URLError(.badURL)
+  }
+
+  public func prepareEject(_ walletId: String, _ backupMethod: BackupMethods) async throws -> String {
+    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/wallets/\(walletId)/prepare-eject") {
+      let data = try await post(url, withBearerToken: self.apiKey, andPayload: ["backupMethod": backupMethod.rawValue])
+      let prepareEjectResponse = try decoder.decode(PrepareEjectResponse.self, from: data)
+
+      return prepareEjectResponse.share
     }
 
     throw URLError(.badURL)

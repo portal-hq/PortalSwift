@@ -330,8 +330,14 @@ public class Portal {
     )
   }
 
-  public func eject(_ method: BackupMethods, withCipherText: String, andOrganizationBackupShare: String) async throws -> String {
+  public func eject(_ method: BackupMethods, withCipherText: String? = nil, andOrganizationBackupShare: String? = nil) async throws -> String {
     let privateKey = try await mpc.eject(method, withCipherText: withCipherText, andOrganizationBackupShare: andOrganizationBackupShare)
+
+    return privateKey
+  }
+
+  public func ejectSolana(_ method: BackupMethods, withCipherText: String? = nil, andOrganizationBackupShare: String? = nil) async throws -> String {
+    let privateKey = try await mpc.ejectSolanaWallet(method, withCipherText: withCipherText, andOrganizationBackupShare: andOrganizationBackupShare)
 
     return privateKey
   }

@@ -4,6 +4,10 @@ import AnyCodable
 // Will need to research more and try to bring this in.
 // public typealias ClientResponseMetadataNamespaces = [PortalNamespace: ClientResponseNamespaceMetadataItem]
 
+public struct ClientCipherTextResponse: Codable {
+  public let cipherText: String
+}
+
 public struct ClientResponse: Codable, Equatable {
   public let id: String
   public let custodian: ClientResponseCustodian
@@ -198,6 +202,10 @@ public struct FetchedTransactionRawContract: Codable, Equatable {
   public var address: String?
   /// Decimal representation of the contract value
   public var decimal: String
+}
+
+public struct PrepareEjectResponse: Codable {
+  public let share: String
 }
 
 public struct ShareStatusUpdateRequest: Codable, Equatable {

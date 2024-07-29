@@ -22,18 +22,27 @@ public class MockPortalMpc: PortalMpc {
 
   override public func eject(
     _: BackupMethods,
-    withCipherText _: String,
-    andOrganizationBackupShare _: String,
+    withCipherText _: String? = nil,
+    andOrganizationBackupShare _: String? = nil,
     usingProgressCallback _: ((MpcStatus) -> Void)? = nil
   ) async throws -> String {
     return MockConstants.mockEip155EjectedPrivateKey
+  }
+
+  override public func ejectSolanaWallet(
+    _: BackupMethods,
+    withCipherText _: String? = nil,
+    andOrganizationBackupShare _: String? = nil,
+    usingProgressCallback _: ((MpcStatus) -> Void)? = nil
+  ) async throws -> String {
+    return MockConstants.mockSolanaPrivateKey
   }
 
   override public func generate(withProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> [PortalNamespace: String?] {
     withProgressCallback?(MpcStatus(status: .done, done: true))
     return [
       .eip155: MockConstants.mockEip155Address,
-      .solana: MockConstants.mockSolanaAddress,
+      .solana: MockConstants.mockSolanaAddress
     ]
   }
 
@@ -45,7 +54,7 @@ public class MockPortalMpc: PortalMpc {
     usingProgressCallback?(MpcStatus(status: .done, done: true))
     return [
       .eip155: MockConstants.mockEip155Address,
-      .solana: MockConstants.mockSolanaAddress,
+      .solana: MockConstants.mockSolanaAddress
     ]
   }
 
