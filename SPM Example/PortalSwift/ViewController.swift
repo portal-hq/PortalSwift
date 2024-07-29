@@ -448,12 +448,23 @@ class ViewController: UIViewController, UITextFieldDelegate {
       self.logger.error("ViewController.recover() - Application configuration not set.")
       throw PortalExampleAppError.configurationNotSet()
     }
-    guard let url = URL(string: "\(config.custodianServerUrl)/mobile/\(userId)/cipher-text/fetch?backupMethod=\(withBackupMethod.rawValue)") else {
-      throw URLError(.badURL)
+
+    var cipherText: String? = nil
+
+    guard let client = try await portal.client else {
+      throw PortalExampleAppError.clientInformationUnavailable("Could not fetch client.")
     }
-    let data = try await requests.get(url)
-    let response = try decoder.decode(CipherTextResult.self, from: data)
-    let cipherText = response.cipherText
+
+    let backupWithPortal = client.environment?.backupWithPortalEnabled ?? false
+
+    if !backupWithPortal {
+      guard let url = URL(string: "\(config.custodianServerUrl)/mobile/\(userId)/cipher-text/fetch?backupMethod=\(withBackupMethod.rawValue)") else {
+        throw URLError(.badURL)
+      }
+      let data = try await requests.get(url)
+      let response = try decoder.decode(CipherTextResult.self, from: data)
+      cipherText = response.cipherText
+    }
 
     return try await portal.recoverWallet(withBackupMethod, withCipherText: cipherText) { status in
       self.logger.debug("ViewController.recover() - Recover progress callback with status: \(status.status.rawValue), \(status.done)")

@@ -344,7 +344,7 @@ public class Portal {
 
   public func recoverWallet(
     _ method: BackupMethods,
-    withCipherText: String,
+    withCipherText: String? = nil,
     usingProgressCallback: ((MpcStatus) -> Void)? = nil
   ) async throws -> PortalCreateWalletResponse {
     let addresses = try await mpc.recover(method, withCipherText: withCipherText, usingProgressCallback: usingProgressCallback)

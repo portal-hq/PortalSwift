@@ -48,7 +48,7 @@ public class MockPortalMpc: PortalMpc {
 
   override public func recover(
     _: BackupMethods,
-    withCipherText _: String,
+    withCipherText _: String? = nil,
     usingProgressCallback: ((MpcStatus) -> Void)? = nil
   ) async throws -> [PortalNamespace: String?] {
     usingProgressCallback?(MpcStatus(status: .done, done: true))

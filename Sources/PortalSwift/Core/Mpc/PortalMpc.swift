@@ -147,7 +147,7 @@ public class PortalMpc {
               async let mpcShare = try getBackupShare(.SECP256K1, withMethod: method, andSigningShare: secp256k1SigningShare.share)
 
               usingProgressCallback?(MpcStatus(status: .parsingShare, done: false))
-              let shareData = await try encoder.encode(mpcShare)
+              let shareData = try await encoder.encode(mpcShare)
               guard let shareString = String(data: shareData, encoding: .utf8) else {
                 throw MpcError.unexpectedErrorOnBackup("Unable to stringify SECP256K1 share.")
               }
@@ -524,7 +524,7 @@ public class PortalMpc {
 
   public func recover(
     _ method: BackupMethods,
-    withCipherText: String = "",
+    withCipherText: String? = nil,
     usingProgressCallback: ((MpcStatus) -> Void)? = nil
   ) async throws -> [PortalNamespace: String?] {
     if self.version != "v6" {
@@ -539,7 +539,7 @@ public class PortalMpc {
 
     // Fetch the cipherText if necessary
     if client.environment?.backupWithPortalEnabled ?? false {
-      var backupSharePairId = ""
+      var backupSharePairId: String?
 
       for wallet in client.wallets {
         for backupSharePair in wallet.backupSharePairs {
@@ -549,14 +549,14 @@ public class PortalMpc {
         }
       }
 
-      if backupSharePairId.isEmpty {
+      guard let backupSharePairId = backupSharePairId else {
         throw MpcError.noValidBackupFound
       }
 
       cipherText = try await api.getClientCipherText(backupSharePairId)
     }
 
-    if cipherText.isEmpty {
+    guard let cipherText = cipherText else {
       throw MpcError.noBackupCipherTextFound
     }
 
@@ -578,19 +578,16 @@ public class PortalMpc {
             let decryptionKey = try await storage.read()
 
             usingProgressCallback?(MpcStatus(status: .decryptingShare, done: false))
-            let decryptedString = try await storage.decrypt(withCipherText, withKey: decryptionKey)
+            let decryptedString = try await storage.decrypt(cipherText, withKey: decryptionKey)
             guard let decryptedData = decryptedString.data(using: .utf8) else {
               throw MpcError.unexpectedErrorOnRecover("Unable to parse decrypted data.")
             }
             usingProgressCallback?(MpcStatus(status: .parsingShare, done: false))
             let backupResponse = try await parseRecoveryInput(data: decryptedData)
 
-            print("⚠️ Backup response: \(backupResponse)")
-
             usingProgressCallback?(MpcStatus(status: .generatingShare, done: false))
             var recoverResponse: PortalMpcGenerateResponse = [:]
             if let ed25519Share = backupResponse[PortalCurve.ED25519.rawValue] {
-              print("⚠️ed25519Share.share: \(ed25519Share.share)")
               //  The share's already been backed up, recover it
               async let ed25519MpcShare = try recoverSigningShare(.ED25519, withMethod: method, andBackupShare: ed25519Share.share)
 
@@ -618,7 +615,7 @@ public class PortalMpc {
             if let secp256k1Share = backupResponse[PortalCurve.SECP256K1.rawValue] {
               async let secp256k1MpcShare = try recoverSigningShare(.SECP256K1, withMethod: method, andBackupShare: secp256k1Share.share)
 
-              let shareData = await try encoder.encode(secp256k1MpcShare)
+              let shareData = try await encoder.encode(secp256k1MpcShare)
               guard let shareString = String(data: shareData, encoding: .utf8) else {
                 throw MpcError.unexpectedErrorOnBackup("Unable to stringify SECP256K1 share.")
               }
