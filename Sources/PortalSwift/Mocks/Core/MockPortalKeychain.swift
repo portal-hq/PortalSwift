@@ -11,7 +11,7 @@ import Foundation
 public class MockPortalKeychain: PortalKeychain {
   override public func deleteShares() async throws {}
 
-  override public func getAddress(_ forChainId: String) async throws -> String? {
+  override public func getAddress(_ forChainId: String) async throws -> String {
     if forChainId.starts(with: "eip155") {
       return MockConstants.mockEip155Address
     } else if forChainId.starts(with: "solana") {
@@ -22,14 +22,14 @@ public class MockPortalKeychain: PortalKeychain {
   }
 
   override public func getAddresses() async throws -> [PortalNamespace: String?] {
-    return [
+    [
       .eip155: MockConstants.mockEip155Address,
-      .solana: MockConstants.mockSolanaAddress,
+      .solana: MockConstants.mockSolanaAddress
     ]
   }
 
   override public func getMetadata() async throws -> PortalKeychainClientMetadata {
-    return MockConstants.mockKeychainClientMetadata
+    MockConstants.mockKeychainClientMetadata
   }
 
   override public func getShare(_ forChainId: String) async throws -> String {
@@ -43,7 +43,7 @@ public class MockPortalKeychain: PortalKeychain {
   }
 
   override public func getShares() async throws -> PortalKeychainClientShares {
-    return try await MockConstants.mockGenerateResponse
+    try await MockConstants.mockGenerateResponse
   }
 
   override public func loadMetadata() async throws {}
@@ -55,11 +55,11 @@ public class MockPortalKeychain: PortalKeychain {
   // Deprecated functions
 
   override public func getAddress() throws -> String {
-    return MockConstants.mockEip155Address
+    MockConstants.mockEip155Address
   }
 
   override public func getSigningShare() throws -> String {
-    return try MockConstants.mockMpcShareString
+    try MockConstants.mockMpcShareString
   }
 
   override public func deleteAddress() throws {}
@@ -67,14 +67,14 @@ public class MockPortalKeychain: PortalKeychain {
   override public func deleteSigningShare() throws {}
 
   override public func setAddress(address _: String, completion: @escaping (Result<OSStatus>) -> Void) {
-    return completion(Result(data: OSStatus(1)))
+    completion(Result(data: OSStatus(1)))
   }
 
   override public func setSigningShare(signingShare _: String, completion: @escaping (Result<OSStatus>) -> Void) {
-    return completion(Result(data: OSStatus(1)))
+    completion(Result(data: OSStatus(1)))
   }
 
   override public func validateOperations(completion: @escaping (Result<OSStatus>) -> Void) {
-    return completion(Result(data: OSStatus(1)))
+    completion(Result(data: OSStatus(1)))
   }
 }
