@@ -1049,10 +1049,9 @@ class ViewController: UIViewController, UITextFieldDelegate {
       do {
         self.startLoading()
         self.logger.debug("ViewController.handleGenerateSolanaAndBackupShares() - Starting generate Solana wallet then backup...")
-        let result = try await self.portal?.generateSolanaWalletAndBackupShares(.iCloud)
-        try await result?.storageCallback()
-        self.logger.debug("ViewController.handleGenerateSolanaAndBackupShares(): ✅ Successfully generated Solana wallet and backed up. Solana Address: \(result?.solanaAddress ?? "N/A")")
-        self.showStatusView(message: "\(self.successStatus) Successfully generated Solana wallet and backed up. Solana Address: \(result?.solanaAddress ?? "N/A")")
+          let result = try await self.generateSolanaWalletAndBackup(withMethod: .iCloud)
+        self.logger.debug("ViewController.handleGenerateSolanaAndBackupShares(): ✅ Successfully generated Solana wallet and backed up. Solana Address: \(result.solanaAddress)")
+        self.showStatusView(message: "\(self.successStatus) Successfully generated Solana wallet and backed up. Solana Address: \(result.solanaAddress)")
         self.updateUIComponents()
         self.stopLoading()
       } catch {
@@ -1063,7 +1062,44 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  public func sendSepoliaTransaction() async throws -> String {
+    private func generateSolanaWalletAndBackup( withMethod: BackupMethods) async throws -> (solanaAddress: String, cipherText: String) {
+        
+        guard let portal else {
+          self.logger.error("ViewController.generateSolanaWalletAndBackup() - Portal not initialized. Please call registerPortal().")
+          throw PortalExampleAppError.portalNotInitialized()
+        }
+
+        guard let config else {
+          self.logger.error("ViewController.generateSolanaWalletAndBackup() - Application configuration not set.")
+          throw PortalExampleAppError.configurationNotSet()
+        }
+
+        guard let user else {
+          throw PortalExampleAppError.userNotLoggedIn()
+        }
+
+        let generateSolanaResult = try await portal.generateSolanaWalletAndBackupShares(.iCloud)
+          
+        guard let url = URL(string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/cipher-text") else {
+          throw URLError(.badURL)
+        }
+        let payload = [
+          "backupMethod": withMethod.rawValue,
+          "cipherText": generateSolanaResult.cipherText
+        ]
+
+        let resultData = try await requests.post(url, andPayload: payload)
+        guard let result = String(data: resultData, encoding: .utf8) else {
+          self.logger.error("ViewController.backup() - Unable to parse response from cipherText storage request to custodian.")
+          throw PortalExampleAppError.couldNotParseCustodianResponse()
+        }
+
+        try await generateSolanaResult.storageCallback()
+
+        return (generateSolanaResult.solanaAddress, generateSolanaResult.cipherText)
+    }
+
+    public func sendSepoliaTransaction() async throws -> String {
     guard let portal else {
       self.logger.error("ViewController.sendSepoliaTransaction() - ❌ Portal not initialized.")
       throw PortalExampleAppError.portalNotInitialized()
