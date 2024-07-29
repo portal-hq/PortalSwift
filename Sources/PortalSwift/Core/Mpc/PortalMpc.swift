@@ -696,9 +696,7 @@ public class PortalMpc {
     Task {
       do {
         _ = try await self.generate(withProgressCallback: progress)
-        guard let address = try await keychain.getAddress("eip155:1") else {
-          throw PortalKeychain.KeychainError.noAddressesFound
-        }
+        let address = try await keychain.getAddress("eip155:1")
         completion(Result(data: address))
       } catch {
         completion(Result(error: error))
@@ -756,9 +754,7 @@ public class PortalMpc {
 
         _ = try await self.recover(backupMethod, withCipherText: cipherText, usingProgressCallback: progress)
 
-        guard let address = try await keychain.getAddress("eip155:1") else {
-          throw PortalKeychain.KeychainError.noAddressesFound
-        }
+        let address = try await keychain.getAddress("eip155:1")
         completion(Result(data: address))
       } catch {
         completion(Result(error: error))
