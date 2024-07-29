@@ -362,6 +362,7 @@ public class Portal {
         status: .STORED_CLIENT_BACKUP_SHARE,
         sharePairIds: result.backupResponse.shareIds
       )
+      try await self.api.refreshClient()
     }
 
     return (

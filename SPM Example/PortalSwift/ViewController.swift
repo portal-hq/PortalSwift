@@ -1050,8 +1050,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.startLoading()
         self.logger.debug("ViewController.handleGenerateSolanaAndBackupShares() - Starting generate Solana wallet then backup...")
         let result = try await self.portal?.generateSolanaWalletAndBackupShares(.iCloud)
+        try await result?.storageCallback()
         self.logger.debug("ViewController.handleGenerateSolanaAndBackupShares(): ✅ Successfully generated Solana wallet and backed up. Solana Address: \(result?.solanaAddress ?? "N/A")")
         self.showStatusView(message: "\(self.successStatus) Successfully generated Solana wallet and backed up. Solana Address: \(result?.solanaAddress ?? "N/A")")
+        self.updateUIComponents()
         self.stopLoading()
       } catch {
         self.stopLoading()
