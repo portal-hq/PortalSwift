@@ -182,6 +182,28 @@ public struct PortalEthereumTransaction: Codable {
   }
 }
 
+public struct PortalSolanaRequest: Codable {
+  public var chainId: String?
+  public var id: String?
+  public var method: PortalRequestMethod
+  public var params: [SolanaRequest]
+  public var signature: String?
+
+  public init(
+    method: PortalRequestMethod,
+    params: [SolanaRequest],
+    id: String? = nil,
+    chainId: String? = nil,
+    signature: String? = nil
+  ) {
+    self.id = id
+    self.chainId = chainId
+    self.method = method
+    self.params = params
+    self.signature = signature
+  }
+}
+
 // Legacy types
 // Consider removing these when legacy (strongly typed) request methods are removed.
 

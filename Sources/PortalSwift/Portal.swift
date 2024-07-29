@@ -383,7 +383,7 @@ public class Portal {
     _ = self.provider.once(event: event, callback: callback)
   }
 
-  public func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any]?) async throws -> PortalProviderResult {
+  public func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any]? = []) async throws -> PortalProviderResult {
     guard let andParams = andParams else {
       throw PortalProviderError.invalidRequestParams
     }
@@ -401,6 +401,18 @@ public class Portal {
     }
 
     return try await self.request(chainId, withMethod: method, andParams: andParams)
+  }
+
+  public func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [PortalEthereumTransaction]) async throws -> PortalProviderResult {
+    try await self.provider.request(chainId, withMethod: withMethod, andParams: andParams)
+  }
+
+  public func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [String]) async throws -> PortalProviderResult {
+    try await self.provider.request(chainId, withMethod: withMethod, andParams: andParams)
+  }
+
+  public func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [SolanaRequest]) async throws -> PortalProviderResult {
+    try await self.provider.request(chainId, withMethod: withMethod, andParams: andParams)
   }
 
   // Wallet lifecycle helpers
@@ -852,7 +864,7 @@ public class Portal {
     )
 
     // Get the most recent blockhash
-    let blockhashResponse = try await request(chainId, withMethod: .sol_getLatestBlockhash, andParams: [])
+    let blockhashResponse = try await request(chainId, withMethod: .sol_getLatestBlockhash)
     guard let blockhashResResult = blockhashResponse.result as? SolGetLatestBlockhashResponse else {
       throw PortalSolError.failedToGetLatestBlockhash
     }
