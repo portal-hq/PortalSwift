@@ -105,7 +105,7 @@ public class Portal {
     self.api = api
     self.keychain.api = api
 
-    self.mpc = mpc ?? PortalMpc(apiKey: apiKey, api: self.api, keychain: self.keychain, host: mpcHost, mobile: self.binary)
+    self.mpc = mpc ?? PortalMpc(apiKey: apiKey, api: self.api, keychain: self.keychain, host: mpcHost, mobile: self.binary, featureFlags: featureFlags)
 
     // Initialize with PasskeyStorage by default
     if #available(iOS 16, *) {

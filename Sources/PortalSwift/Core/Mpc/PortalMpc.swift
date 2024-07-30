@@ -734,7 +734,8 @@ public class PortalMpc {
           var metadata = self.mpcMetadata
           metadata.curve = forCurve
           metadata.backupMethod = withMethod.rawValue
-
+          metadata.isMultiBackupEnabled = featureFlags?.isMultiBackupEnabled
+          
           let mpcMetadataString = try metadata.jsonString()
 
           let response = forCurve == .ED25519
@@ -831,7 +832,8 @@ public class PortalMpc {
           var metadata = self.mpcMetadata
           metadata.curve = forCurve
           metadata.backupMethod = withMethod.rawValue
-
+          metadata.isMultiBackupEnabled = featureFlags?.isMultiBackupEnabled
+          
           let mpcMetadataString = try metadata.jsonString()
 
           let response = forCurve == .ED25519
