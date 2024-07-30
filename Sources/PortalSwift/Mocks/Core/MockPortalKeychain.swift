@@ -46,10 +46,7 @@ public class MockPortalKeychain: PortalKeychain {
     try await MockConstants.mockGenerateResponse
   }
 
-  override public func loadMetadata() async throws {
-    try await super.loadMetadata()
-    self.legacyAddress = try self.getAddress()
-  }
+  override public func loadMetadata() async throws {}
 
   override public func setMetadata(_: PortalKeychainClientMetadata) async throws {}
 
@@ -79,5 +76,12 @@ public class MockPortalKeychain: PortalKeychain {
 
   override public func validateOperations(completion: @escaping (Result<OSStatus>) -> Void) {
     completion(Result(data: OSStatus(1)))
+  }
+}
+
+public class MockPortalKeychainLegacySafe: MockPortalKeychain {
+  override public func loadMetadata() async throws {
+    try await super.loadMetadata()
+    self.legacyAddress = try self.getAddress()
   }
 }
