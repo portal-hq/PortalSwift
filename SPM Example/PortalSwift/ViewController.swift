@@ -1147,12 +1147,12 @@ class ViewController: UIViewController, UITextFieldDelegate {
         }
         self.startLoading()
         self.logger.debug("ViewController.handleGdriveRecover() - Starting recover...")
-        let (ethereum, _) = try await recover(String(user.exchangeUserId), withBackupMethod: .GoogleDrive)
-        guard let address = ethereum else {
-          self.logger.error("ViewController.handleGdriveRecover() - ❌ Wallet was recovered, but no address was found.")
+        let (ethereum, solana) = try await recover(String(user.exchangeUserId), withBackupMethod: .GoogleDrive)
+        guard let ethereum else {
+          self.logger.error("ViewController.handleGdriveRecover() - ❌ Wallet was recovered, but no ETH address was found.")
           throw PortalKeychain.KeychainError.noAddressesFound
         }
-        let debugMessage = "ViewController.handleGdriveRecover() - ✅ Wallet successfully recovered! Address: \(String(describing: address))"
+        let debugMessage = "ViewController.handleGdriveRecover() - ✅ Wallet successfully recovered! ETH address: \(ethereum), Solana address: \(solana ?? "N/A")"
         self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
         self.showStatusView(message: "\(successStatus) Wallet successfully recovered!")
         DispatchQueue.main.async {
@@ -1197,12 +1197,12 @@ class ViewController: UIViewController, UITextFieldDelegate {
         }
         self.startLoading()
         self.logger.debug("ViewController.handleiCloudRecover() - Starting recover...")
-        let (ethereum, _) = try await recover(String(user.exchangeUserId), withBackupMethod: .iCloud)
-        guard let address = ethereum else {
-          self.logger.error("ViewController.handleiCloudRecover() - ❌ Wallet was recovered, but no address was found.")
+        let (ethereum, solana) = try await recover(String(user.exchangeUserId), withBackupMethod: .iCloud)
+        guard let ethereum else {
+          self.logger.error("ViewController.handleiCloudRecover() - ❌ Wallet was recovered, but no ETH address was found.")
           throw PortalExampleAppError.addressNotFound()
         }
-        let debugMessage = "ViewController.handleiCloudRecover() - ✅ Wallet successfully recovered! Address: \(String(describing: address))"
+        let debugMessage = "ViewController.handleiCloudRecover() - ✅ Wallet successfully recovered! ETH address: \(ethereum), Solana address: \(solana ?? "N/A")"
         self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
         self.showStatusView(message: "\(successStatus) Wallet successfully recovered!")
         DispatchQueue.main.async {
@@ -1249,12 +1249,12 @@ class ViewController: UIViewController, UITextFieldDelegate {
         }
         self.startLoading()
         self.logger.debug("ViewController.handlPasskeyRecover() - Starting recover...")
-        let (ethereum, _) = try await recover(String(userId), withBackupMethod: .Passkey)
-        guard let address = ethereum else {
-          self.logger.error("ViewController.handleGenerate() - ❌ Wallet was recovered, but no address was found.")
+        let (ethereum, solana) = try await recover(String(userId), withBackupMethod: .Passkey)
+        guard let ethereum else {
+          self.logger.error("ViewController.handleGenerate() - ❌ Wallet was recovered, but no ETH address was found.")
           throw PortalKeychain.KeychainError.noAddressesFound
         }
-        let debugMessage = "ViewController.handlePasskeyRecover() - ✅ Wallet successfully recovered! Address: \(String(describing: address))"
+        let debugMessage = "ViewController.handlePasskeyRecover() - ✅ Wallet successfully recovered! ETH address: \(ethereum), Solana address: \(solana ?? "N/A")"
         self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
         self.showStatusView(message: "\(successStatus) Wallet successfully recovered!")
         DispatchQueue.main.async {
@@ -1316,11 +1316,11 @@ class ViewController: UIViewController, UITextFieldDelegate {
         try portal.setPassword(enteredPassword)
         self.logger.debug("ViewController.handlPasswordRecover() - Starting recover...")
         let (ethereum, solana) = try await recover(String(user.exchangeUserId), withBackupMethod: .Password)
-        guard let address = ethereum else {
-          self.logger.error("ViewController.handlePasswordRecover() - ❌ Wallet was recovered, but no address was found.")
+        guard let ethereum else {
+          self.logger.error("ViewController.handlePasswordRecover() - ❌ Wallet was recovered, but no ETH address was found.")
           throw PortalKeychain.KeychainError.noAddressesFound
         }
-        let debugMessage = "ViewController.handlePasskeyRecover() - ✅ Wallet successfully recovered! Address: \(String(describing: address))"
+        let debugMessage = "ViewController.handlePasskeyRecover() - ✅ Wallet successfully recovered! ETH address: \(ethereum), Solana address: \(solana ?? "N/A")"
         self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
         self.showStatusView(message: "\(successStatus) Wallet successfully recovered!")
         DispatchQueue.main.async {
