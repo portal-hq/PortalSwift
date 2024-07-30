@@ -534,6 +534,7 @@ public class PortalMpc {
           var metadata = self.mpcMetadata
           metadata.curve = forCurve
           metadata.backupMethod = withMethod.rawValue
+          metadata.isMultiBackupEnabled = featureFlags?.isMultiBackupEnabled
           let mpcMetadataString = try metadata.jsonString()
 
           let response = forCurve == .ED25519
@@ -622,13 +623,15 @@ public class PortalMpc {
     }
   }
 
-  private func recoverSigningShare(_ forCurve: PortalCurve, withMethod _: BackupMethods, andBackupShare: String) async throws -> MpcShare {
+  private func recoverSigningShare(_ forCurve: PortalCurve, withMethod: BackupMethods, andBackupShare: String) async throws -> MpcShare {
     let mpcShare = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<MpcShare, Error>) in
       Task {
         do {
           // Stringify the MPC metadata.
           var metadata = self.mpcMetadata
           metadata.curve = forCurve
+          metadata.backupMethod = withMethod.rawValue
+          metadata.isMultiBackupEnabled = featureFlags?.isMultiBackupEnabled
           let mpcMetadataString = try metadata.jsonString()
 
           let response = forCurve == .ED25519
