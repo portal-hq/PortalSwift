@@ -87,7 +87,7 @@ public class PortalMpcSigner {
     return signature
   }
 
-  func prepareParams(_ method: PortalRequestMethod, params: [AnyCodable]?) throws -> AnyCodable? {
+  func prepareParams(_ method: PortalRequestMethod, params: [AnyCodable]?) throws -> AnyCodable {
     switch method {
     case .eth_sendTransaction, .eth_signTransaction:
       guard let params = params?[0] else {

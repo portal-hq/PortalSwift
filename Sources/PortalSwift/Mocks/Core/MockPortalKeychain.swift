@@ -11,7 +11,7 @@ import Foundation
 public class MockPortalKeychain: PortalKeychain {
   override public func deleteShares() async throws {}
 
-  override public func getAddress(_ forChainId: String) async throws -> String? {
+  override public func getAddress(_ forChainId: String) async throws -> String {
     if forChainId.starts(with: "eip155") {
       return MockConstants.mockEip155Address
     } else if forChainId.starts(with: "solana") {
