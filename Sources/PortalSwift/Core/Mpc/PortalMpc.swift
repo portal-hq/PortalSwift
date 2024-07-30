@@ -450,7 +450,7 @@ public class PortalMpc {
     }
   }
 
-  public func generateSolanaWalletAndBackupShares(backupMethod: BackupMethods, usingProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> (solanaAddress: String, backupResponse: PortalMpcBackupResponse) {
+    private func generateSolanaWallet(callerFuncName: String, usingProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> [PortalNamespace: String?] {
     if self.version != "v6" {
       throw MpcError.backupNoLongerSupported("[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = \"v6\"`.")
     }
@@ -460,21 +460,17 @@ public class PortalMpc {
     }
 
     self.isWalletModificationInProgress = true
-    var solanaAddress: String
+    var newAddresses: [PortalNamespace: String?]
 
     do {
       let addresses = try await keychain.getAddresses()
+
+      guard addresses[.eip155] ?? nil != nil else {
+        throw MpcError.unexpectedErrorOnGenerate("\(callerFuncName) - No eip155 wallet found. Please use createWallet() to generate both eip155 and solana wallets for this client.")
+      }
+
       guard addresses[.solana] ?? nil == nil else {
-        throw MpcError.unexpectedErrorOnGenerate("PortalMpc.generateSolanaWalletAndBackupShares() - Could not generate Solana wallet as it already exists.")
-      }
-
-      // Derive the storage and throw an error if none was provided.
-      guard let storage = self.backupOptions[backupMethod] else {
-        throw MpcError.unsupportedStorageMethod
-      }
-
-      guard try await storage.validateOperations() else {
-        throw MpcError.unexpectedErrorOnBackup("Could not validate operations.")
+        throw MpcError.unexpectedErrorOnGenerate("\(callerFuncName) - Could not generate Solana wallet as it already exists.")
       }
 
       usingProgressCallback?(MpcStatus(status: .generatingShare, done: false))
@@ -517,23 +513,44 @@ public class PortalMpc {
       try await self.keychain.loadMetadata()
       self.isWalletModificationInProgress = false
 
-      // get the solana address from the Keychain.
-      let newAddresses = try await keychain.getAddresses()
-      if let newSolanaAddress = newAddresses[PortalNamespace.solana], let unwrappedNewSolanaAddress = newSolanaAddress {
-        solanaAddress = unwrappedNewSolanaAddress
-      } else {
-        throw MpcError.unexpectedErrorOnGenerate("Unable to get the Solana address from keychain.")
-      }
+      // get addresses from the Keychain.
+      newAddresses = try await keychain.getAddresses()
 
     } catch {
       self.isWalletModificationInProgress = false
       throw error
     }
 
-    // backup
-    let result = try await self.backup(backupMethod, usingProgressCallback: usingProgressCallback)
+    return newAddresses
+  }
 
-    return (solanaAddress, result)
+  /// You should only call this function if you are upgrading from v3 to v4.
+  public func generateSolanaWallet(usingProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> String {
+      let result: [PortalNamespace: String?] = try await generateSolanaWallet(callerFuncName: "PortalMpc.generateSolanaWallet()", usingProgressCallback: usingProgressCallback)
+    if let newSolanaAddress = result[PortalNamespace.solana], let unwrappedNewSolanaAddress = newSolanaAddress {
+      usingProgressCallback?(MpcStatus(status: .done, done: true))
+      return unwrappedNewSolanaAddress
+    } else {
+      throw MpcError.unexpectedErrorOnGenerate("Unable to get the Solana address from keychain.")
+    }
+  }
+
+  /// You should only call this function if you are upgrading from v3 to v4.
+  public func generateSolanaWalletAndBackupShares(backupMethod: BackupMethods, usingProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> (solanaAddress: String, backupResponse: PortalMpcBackupResponse) {
+
+    // generate solana wallet
+    let generateSolonaResult: [PortalNamespace: String?] = try await generateSolanaWallet(callerFuncName: "PortalMpc.generateSolanaWalletAndBackupShares()", usingProgressCallback: usingProgressCallback)
+    var solanaAddress: String
+    if let newSolanaAddress = generateSolonaResult[PortalNamespace.solana], let unwrappedNewSolanaAddress = newSolanaAddress {
+      solanaAddress = unwrappedNewSolanaAddress
+    } else {
+      throw MpcError.unexpectedErrorOnGenerate("Unable to get the Solana address from keychain.")
+    }
+
+    // backup
+    let backupResult = try await self.backup(backupMethod, usingProgressCallback: usingProgressCallback)
+
+    return (solanaAddress, backupResult)
   }
 
   public func registerBackupMethod(_ method: BackupMethods, withStorage: PortalStorage) {

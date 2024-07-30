@@ -330,6 +330,12 @@ public class Portal {
     )
   }
 
+  /// You should only call this function if you are upgrading from v3 to v4.
+  public func createSolanaWallet(usingProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> String {
+    let addresses = try await mpc.generateSolanaWallet(usingProgressCallback: usingProgressCallback)
+    return addresses
+  }
+
   public func eject(_ method: BackupMethods, withCipherText: String, andOrganizationBackupShare: String) async throws -> String {
     let privateKey = try await mpc.eject(method, withCipherText: withCipherText, andOrganizationBackupShare: andOrganizationBackupShare)
 
@@ -349,6 +355,7 @@ public class Portal {
     )
   }
 
+  /// You should only call this function if you are upgrading from v3 to v4.
   public func generateSolanaWalletAndBackupShares(
     _ method: BackupMethods, usingProgressCallback: ((MpcStatus) -> Void)? = nil
   ) async throws -> (solanaAddress: String, cipherText: String, storageCallback: () async throws -> Void) {

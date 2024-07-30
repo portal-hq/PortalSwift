@@ -47,6 +47,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var dappBrowserButton: UIButton?
   @IBOutlet var testSimulateTransactionButton: UIButton?
   @IBOutlet var generateButton: UIButton?
+  @IBOutlet var generateSolanaButton: UIButton!
   @IBOutlet var logoutButton: UIButton?
   @IBOutlet var portalConnectButton: UIButton?
 
@@ -256,6 +257,15 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
 
     return try await portal.createWallet()
+  }
+
+  public func generateSolana() async throws -> String {
+    guard let portal else {
+      self.logger.error("PortalWrapper.generateSolana() - Portal not initialized. Please call registerPortal().")
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+
+    return try await portal.createSolanaWallet()
   }
 
   func getBalances() async throws -> [FetchedBalance] {
@@ -823,6 +833,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
           let availableRecoveryMethods = try await self.portal?.availableRecoveryMethods() ?? []
           let walletExists = try await self.portal?.doesWalletExist() ?? false
+          let solanaWalletExists = try await self.portal?.doesWalletExist("solana") ?? false
           let isWalletOnDevice = try await self.portal?.isWalletOnDevice() ?? false
 
           let username = self.username?.text ?? ""
@@ -840,6 +851,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.generateButton?.isHidden = self.portal == nil
           if let generateButton = self.generateButton {
             generateButton.setTitle(walletExists ? "Wallet already exists" : "Create Wallet", for: .normal)
+          }
+
+          // generate Solana button
+          self.generateSolanaButton.isEnabled = !solanaWalletExists
+          self.generateSolanaButton.isHidden = self.portal == nil
+          if let generateSolanaButton = self.generateSolanaButton {
+            generateSolanaButton.setTitle(solanaWalletExists ? "Solana Wallet already exists" : "Create Solana Wallet", for: .normal)
           }
 
           // dApp connection buttons
@@ -1170,6 +1188,23 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.stopLoading()
         self.logger.error("ViewController.handleGenerate() - ❌ Error creating wallet: \(error)")
         self.showStatusView(message: "\(self.failureStatus) Error creating wallet \(error)")
+      }
+    }
+  }
+
+  @IBAction func handleGenerateSolana(_ sender: Any) {
+    Task {
+      do {
+        self.startLoading()
+        let solanaAddress = try await generateSolana()
+        let debugMessage = "ViewController.handleGenerateSolana() - ✅ Solana wallet successfully created! Address: \(solanaAddress)"
+        self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
+        self.showStatusView(message: "\(self.successStatus) Solana wallet generated")
+        self.updateUIComponents()
+      } catch {
+        self.stopLoading()
+        self.logger.error("ViewController.handleGenerateSolana() - ❌ Error creating Solana wallet: \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error creating Solana wallet \(error)")
       }
     }
   }
