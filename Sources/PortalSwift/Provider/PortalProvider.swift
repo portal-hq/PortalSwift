@@ -220,7 +220,7 @@ public class PortalProvider {
       return PortalProviderResult(id: id, result: "null")
     default:
       if blockchain.shouldMethodBeSigned(withMethod) {
-        let payload = PortalProviderRequestWithId(id: id, method: withMethod, params: andParams)
+        let payload = PortalProviderRequestWithId(id: id, method: withMethod, params: andParams, chainId: chainId)
         return try await self.handleSignRequest(chainId, withPayload: payload, forId: id, onBlockchain: blockchain, connect: connect)
       } else {
         return try await self.handleRpcRequest(chainId, withMethod: withMethod, andParams: andParams, forId: id)
