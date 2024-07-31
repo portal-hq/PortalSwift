@@ -18,7 +18,7 @@ public class PortalKeychainAccess {
       kSecAttrAccount as String: key as AnyObject,
       kSecClass as String: kSecClassGenericPassword,
       kSecAttrAccessible as String: kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly as AnyObject,
-      kSecValueData as String: value.data(using: String.Encoding.utf8) as AnyObject,
+      kSecValueData as String: value.data(using: String.Encoding.utf8) as AnyObject
     ]
 
     // Try to set the keychain item that matches the query.
@@ -43,7 +43,7 @@ public class PortalKeychainAccess {
     let query: [String: AnyObject] = [
       kSecAttrService as String: "\(self.baseKey).\(key)" as AnyObject,
       kSecAttrAccount as String: key as AnyObject,
-      kSecClass as String: kSecClassGenericPassword,
+      kSecClass as String: kSecClassGenericPassword
     ]
 
     let status = SecItemDelete(query as CFDictionary)
@@ -60,7 +60,7 @@ public class PortalKeychainAccess {
       kSecAttrAccount as String: key,
       kSecAttrService as String: "\(self.baseKey).\(key)",
       kSecMatchLimit as String: kSecMatchLimitOne,
-      kSecReturnData as String: true,
+      kSecReturnData as String: true
     ]
 
     // Try to retrieve the keychain item that matches the query.
@@ -88,13 +88,13 @@ public class PortalKeychainAccess {
       let query: [String: AnyObject] = [
         kSecAttrService as String: "\(self.baseKey).\(key)" as AnyObject,
         kSecAttrAccount as String: key as AnyObject,
-        kSecClass as String: kSecClassGenericPassword,
+        kSecClass as String: kSecClassGenericPassword
       ]
 
       // Construct the attributes to update the keychain item.
       let attributes: [String: AnyObject] = [
         kSecAttrAccessible as String: kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly as AnyObject,
-        kSecValueData as String: value.data(using: String.Encoding.utf8) as AnyObject,
+        kSecValueData as String: value.data(using: String.Encoding.utf8) as AnyObject
       ]
 
       // Try to update the keychain item that matches the query.

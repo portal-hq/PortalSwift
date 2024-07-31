@@ -164,7 +164,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       self.webView.topAnchor.constraint(equalTo: view.topAnchor),
       self.webView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
       self.webView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-      self.webView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+      self.webView.trailingAnchor.constraint(equalTo: view.trailingAnchor)
     ])
   }
 
@@ -412,10 +412,10 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
           "gas": p.gas,
           "gasPrice": p.gasPrice,
           "value": p.value,
-          "data": p.data,
+          "data": p.data
         ]
       }),
-      "signature": AnyCodable(signature),
+      "signature": AnyCodable(signature)
     ]
     self.postMessage(payload: payload)
   }
@@ -479,10 +479,10 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
           "gas": p.gas,
           "gasPrice": p.gasPrice,
           "value": p.value,
-          "data": p.data,
+          "data": p.data
         ]
       }),
-      "signature": AnyCodable(result.data!.result),
+      "signature": AnyCodable(result.data!.result)
     ]
     self.postMessage(payload: payload)
   }
@@ -520,7 +520,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     let payload: [String: AnyCodable] = [
       "method": AnyCodable(requestData.method),
       "params": AnyCodable(requestData.params),
-      "signature": AnyCodable(signature),
+      "signature": AnyCodable(signature)
     ]
     self.postMessage(payload: payload)
   }
@@ -534,7 +534,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     let payload: [String: AnyCodable] = [
       "method": AnyCodable(result.data!.method),
       "params": AnyCodable(result.data!.params),
-      "signature": AnyCodable(result.data!.result),
+      "signature": AnyCodable(result.data!.result)
     ]
     self.postMessage(payload: payload)
   }

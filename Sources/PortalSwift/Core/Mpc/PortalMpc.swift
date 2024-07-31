@@ -142,9 +142,9 @@ public class PortalMpc {
               return
             }
           }
-          if let secp256k1SigningShare = shares[PortalCurve.SECP256K1.rawValue] {
+          if let secp256k1SigningShare = shares[PortalCurve.SECP256K1.rawValue]?.share {
             do {
-              async let mpcShare = try getBackupShare(.SECP256K1, withMethod: method, andSigningShare: secp256k1SigningShare.share)
+              async let mpcShare = try getBackupShare(.SECP256K1, withMethod: method, andSigningShare: secp256k1SigningShare)
 
               usingProgressCallback?(MpcStatus(status: .parsingShare, done: false))
               let shareData = try await encoder.encode(mpcShare)
@@ -383,7 +383,7 @@ public class PortalMpc {
             // Parse ED25519 Share
             let ed25519ShareData = try self.encoder.encode(ed25519MpcShare)
             guard let ed25519ShareString = String(data: ed25519ShareData, encoding: .utf8) else {
-              throw MpcError.unexpectedErrorOnBackup("Unable to stringify ED25519 share.")
+              throw MpcError.unexpectedErrorOnGenerate("Unable to stringify ED25519 share.")
             }
             generateResponse["ED25519"] = PortalMpcGeneratedShare(
               id: ed25519MpcShare.signingSharePairId ?? "",
@@ -393,7 +393,7 @@ public class PortalMpc {
             // Parse SECP256K1 Share
             let secp256k1ShareData = try self.encoder.encode(secp256k1MpcShare)
             guard let secp256k1ShareString = String(data: secp256k1ShareData, encoding: .utf8) else {
-              throw MpcError.unexpectedErrorOnBackup("Unable to stringify ED25519 share.")
+              throw MpcError.unexpectedErrorOnGenerate("Unable to stringify ED25519 share.")
             }
             generateResponse["SECP256K1"] = PortalMpcGeneratedShare(
               id: secp256k1MpcShare.signingSharePairId ?? "",
@@ -511,16 +511,6 @@ public class PortalMpc {
                 id: ed25519MpcShare.signingSharePairId ?? "",
                 share: shareString
               )
-            } else {
-              let ed25519MpcShare = try await self.getSigningShare(.ED25519)
-              let ed25519ShareData = try self.encoder.encode(ed25519MpcShare)
-              guard let ed25519ShareString = String(data: ed25519ShareData, encoding: .utf8) else {
-                throw MpcError.unexpectedErrorOnBackup("Unable to stringify ED25519 share.")
-              }
-              recoverResponse["ED25519"] = PortalMpcGeneratedShare(
-                id: ed25519MpcShare.signingSharePairId ?? "",
-                share: ed25519ShareString
-              )
             }
 
             if let secp256k1Share = backupResponse[PortalCurve.SECP256K1.rawValue] {
@@ -569,6 +559,108 @@ public class PortalMpc {
       self.isWalletModificationInProgress = false
       throw error
     }
+  }
+
+  private func generateSolanaWallet(callerFuncName: String, usingProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> [PortalNamespace: String?] {
+    if self.version != "v6" {
+      throw MpcError.backupNoLongerSupported("[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = \"v6\"`.")
+    }
+
+    guard !self.isWalletModificationInProgress else {
+      throw MpcError.walletModificationAlreadyInProgress
+    }
+
+    self.isWalletModificationInProgress = true
+    var newAddresses: [PortalNamespace: String?]
+
+    do {
+      let addresses = try await keychain.getAddresses()
+
+      guard addresses[.eip155] ?? nil != nil else {
+        throw MpcError.unexpectedErrorOnGenerate("\(callerFuncName) - No eip155 wallet found. Please use createWallet() to generate both eip155 and solana wallets for this client.")
+      }
+
+      guard addresses[.solana] ?? nil == nil else {
+        throw MpcError.unexpectedErrorOnGenerate("\(callerFuncName) - Could not generate Solana wallet as it already exists.")
+      }
+
+      usingProgressCallback?(MpcStatus(status: .generatingShare, done: false))
+
+      // generate the ED25519 share
+      let ed25519MpcShare = try await self.getSigningShare(.ED25519)
+
+      // create a share object to be stored to keychain
+      var generateResponse: PortalMpcGenerateResponse = [:]
+
+      usingProgressCallback?(MpcStatus(status: .parsingShare, done: false))
+
+      let ed25519ShareData = try self.encoder.encode(ed25519MpcShare)
+      guard let ed25519ShareString = String(data: ed25519ShareData, encoding: .utf8) else {
+        throw MpcError.unexpectedErrorOnGenerate("Unable to stringify ED25519 share.")
+      }
+      generateResponse["ED25519"] = PortalMpcGeneratedShare(
+        id: ed25519MpcShare.signingSharePairId ?? "",
+        share: ed25519ShareString
+      )
+
+      // Obtain the signing secpk256k1 share
+      let shares = try await keychain.getShares()
+
+      generateResponse["SECP256K1"] = shares["SECP256K1"]
+
+      usingProgressCallback?(MpcStatus(status: .storingShare, done: false))
+
+      // store the shares to keychain
+      try await self.keychain.setShares(generateResponse)
+
+      // Update share statuses
+      let shareIds: [String] = generateResponse.values.map { share in
+        share.id
+      }
+      try await self.api.updateShareStatus(.signing, status: .STORED_CLIENT, sharePairIds: shareIds)
+
+      // Reset the metadata in the Keychain
+      try await self.api.refreshClient()
+      try await self.keychain.loadMetadata()
+      self.isWalletModificationInProgress = false
+
+      // get addresses from the Keychain.
+      newAddresses = try await keychain.getAddresses()
+
+    } catch {
+      self.isWalletModificationInProgress = false
+      throw error
+    }
+
+    return newAddresses
+  }
+
+  /// You should only call this function if you are upgrading from v3 to v4.
+  public func generateSolanaWallet(usingProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> String {
+    let result: [PortalNamespace: String?] = try await generateSolanaWallet(callerFuncName: "PortalMpc.generateSolanaWallet()", usingProgressCallback: usingProgressCallback)
+    if let newSolanaAddress = result[PortalNamespace.solana], let unwrappedNewSolanaAddress = newSolanaAddress {
+      usingProgressCallback?(MpcStatus(status: .done, done: true))
+      return unwrappedNewSolanaAddress
+    } else {
+      throw MpcError.unexpectedErrorOnGenerate("Unable to get the Solana address from keychain.")
+    }
+  }
+
+  /// You should only call this function if you are upgrading from v3 to v4.
+  public func generateSolanaWalletAndBackupShares(backupMethod: BackupMethods, usingProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> (solanaAddress: String, backupResponse: PortalMpcBackupResponse) {
+    // generate solana wallet
+    let generateSolonaResult: [PortalNamespace: String?] = try await generateSolanaWallet(callerFuncName: "PortalMpc.generateSolanaWalletAndBackupShares()", usingProgressCallback: usingProgressCallback)
+    var solanaAddress: String
+    if let newSolanaAddress = generateSolonaResult[PortalNamespace.solana], let unwrappedNewSolanaAddress = newSolanaAddress {
+      solanaAddress = unwrappedNewSolanaAddress
+    } else {
+      throw MpcError.unexpectedErrorOnGenerate("Unable to get the Solana address from keychain.")
+    }
+
+    // backup
+    let backupResult = try await self.backup(backupMethod, usingProgressCallback: usingProgressCallback)
+
+    return (solanaAddress, backupResult)
   }
 
   public func registerBackupMethod(_ method: BackupMethods, withStorage: PortalStorage) {

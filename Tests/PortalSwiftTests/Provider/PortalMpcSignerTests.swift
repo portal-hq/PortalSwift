@@ -52,7 +52,7 @@ final class PortalMpcSignerTests: XCTestCase {
       method: .eth_sign,
       params: [
         AnyCodable(MockConstants.mockEip155Address),
-        AnyCodable("test-message"),
+        AnyCodable("test-message")
       ]
     )
     let response = try await signer.sign(

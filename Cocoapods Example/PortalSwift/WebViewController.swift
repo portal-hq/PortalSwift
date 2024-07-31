@@ -27,7 +27,7 @@ class WebViewController: UIViewController, PortalWebViewDelegate {
 
     NSLayoutConstraint.activate([
       self.activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-      self.activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+      self.activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor)
     ])
 
     guard let portal = self.portal else {

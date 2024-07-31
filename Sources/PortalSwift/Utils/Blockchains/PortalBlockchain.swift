@@ -10,11 +10,11 @@ import Foundation
 public class PortalBlockchain {
   static let mainnetReferences: [PortalNamespace: String] = [
     .eip155: "1",
-    .solana: "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+    .solana: "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
   ]
   static let namespaceCurves: [PortalNamespace: PortalCurve] = [
     .eip155: .SECP256K1,
-    .solana: .ED25519,
+    .solana: .ED25519
   ]
   static let namespaceSignerMethods: [PortalNamespace: [PortalRequestMethod]] = [
     .eip155: [
@@ -23,14 +23,14 @@ public class PortalBlockchain {
       .eth_signTransaction,
       .eth_signTypedData_v3,
       .eth_signTypedData_v4,
-      .personal_sign,
+      .personal_sign
     ],
     .solana: [
       .sol_signAndConfirmTransaction,
       .sol_signAndSendTransaction,
       .sol_signMessage,
-      .sol_signTransaction,
-    ],
+      .sol_signTransaction
+    ]
   ]
 
   public let curve: PortalCurve
