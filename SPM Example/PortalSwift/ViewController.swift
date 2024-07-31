@@ -1289,24 +1289,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  @IBAction func handleGenerateSolanaAndBackupShares(_: Any) {
-    Task {
-      do {
-        self.startLoading()
-        self.logger.debug("ViewController.handleGenerateSolanaAndBackupShares() - Starting generate Solana wallet then backup...")
-        let result = try await self.generateSolanaWalletAndBackup(withMethod: .iCloud)
-        self.logger.debug("ViewController.handleGenerateSolanaAndBackupShares(): ✅ Successfully generated Solana wallet and backed up. Solana Address: \(result.solanaAddress)")
-        self.showStatusView(message: "\(self.successStatus) Successfully generated Solana wallet and backed up. Solana Address: \(result.solanaAddress)")
-        self.updateUIComponents()
-        self.stopLoading()
-      } catch {
-        self.stopLoading()
-        self.logger.error("Error generating Solana wallet and backup shares: \(error)")
-        self.showStatusView(message: "\(self.failureStatus) Error generating Solana wallet and backup shares: \(error)")
-      }
-    }
-  }
-
   private func generateSolanaWalletAndBackup(withMethod: BackupMethods) async throws -> (solanaAddress: String, cipherText: String) {
     guard let portal else {
       self.logger.error("ViewController.generateSolanaWalletAndBackup() - Portal not initialized. Please call registerPortal().")

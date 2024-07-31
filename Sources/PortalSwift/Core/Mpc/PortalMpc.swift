@@ -338,8 +338,6 @@ public class PortalMpc {
       let ejectResult: EjectResult = try decoder.decode(EjectResult.self, from: jsonData)
       let privateKey = ejectResult.privateKey
 
-      print("🚨 Eject Result: \(ejectResult)")
-
       privateKeys[.solana] = privateKey
     }
 
