@@ -183,6 +183,7 @@ public class PortalMpc {
       let shareIds = generateResponse.values.map { share in
         share.id
       }
+      try await self.api.updateShareStatus(.backup, status: .STORED_CLIENT_BACKUP_SHARE_KEY, sharePairIds: shareIds)
 
       guard let client = try await api.client else {
         throw MpcError.clientInformationUnavailable
