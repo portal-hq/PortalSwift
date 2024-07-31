@@ -330,9 +330,11 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
     let encodedParams = params.map { param in
       AnyCodable(param)
     }
-    let payload = ETHRequestPayload(method: method, params: encodedParams)
-
-    print("🚨 Method: \(method)")
+    let payload = ETHRequestPayload(
+      method: method,
+      params: encodedParams,
+      chainId: chainId
+    )
 
     if method == "wallet_switchEthereumChain" {
       try self.handleWalletSwitchEthereumChain(method: method, params: params)
@@ -369,7 +371,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
         data: firstParams["data"]!
       )
     }
-    let payload = ETHTransactionPayload(method: method, params: [transactionParam])
+    let payload = ETHTransactionPayload(method: method, params: [transactionParam], chainId: chainId)
 
     if signerMethods.contains(method) {
       self.portal.provider.request(payload: payload, completion: self.signerTransactionRequestCompletion)
@@ -509,8 +511,6 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
       self.onError(Result(error: WebViewControllerErrors.dataNilError))
       return
     }
-
-    print("🚨 Request data", requestData)
 
     guard let signature = requestData.result as? String else {
       self.onError(Result(error: WebViewControllerErrors.invalidResponseType))
