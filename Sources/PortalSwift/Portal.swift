@@ -333,6 +333,24 @@ public class Portal {
   public func eject(
     _ method: BackupMethods,
     withCipherText: String? = nil,
+    andOrganizationBackupShare: String? = nil
+  ) async throws -> String {
+    let privateKeys = try await mpc.eject(
+      method,
+      withCipherText: withCipherText,
+      andOrganizationBackupShare: andOrganizationBackupShare
+    )
+
+    guard let privateKey = privateKeys[.eip155] else {
+      throw MpcError.unableToEjectWallet("No Ethereum private key found.")
+    }
+
+    return privateKey
+  }
+
+  public func ejectPrivateKeys(
+    _ method: BackupMethods,
+    withCipherText: String? = nil,
     andOrganizationBackupShare: String? = nil,
     andOrganizationSolanaBackupShare: String? = nil
   ) async throws -> [PortalNamespace: String] {

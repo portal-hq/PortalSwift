@@ -279,7 +279,7 @@ public class PortalMpc {
 
       // Conditionally prepare eject for Solana wallets
       if let walletIdEd25519 = walletIdEd25519 {
-        organizationShareEd25519 = try await api.prepareEject(walletIdEd25519, method)
+        organizationShareEd25519 = try? await api.prepareEject(walletIdEd25519, method)
       }
     }
 
@@ -326,7 +326,7 @@ public class PortalMpc {
       privateKeys[.eip155] = privateKey
     }
 
-    if let ed25519Share = response["ED25519"] {
+    if let ed25519Share = response["ED25519"], organizationShareEd25519 != nil {
       guard let organizationShareEd25519 = organizationShareEd25519 else {
         throw MpcError.noOrganizationShareFound("No organization share found for Solana wallet.")
       }
