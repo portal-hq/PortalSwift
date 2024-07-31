@@ -44,9 +44,9 @@ public struct PortalProviderRequestWithId: Codable {
   public let id: String
   public let method: PortalRequestMethod
   public let params: [AnyCodable]?
-  public let chainId: String?
+  public let chainId: String
   
-  init(id: String, method: PortalRequestMethod, params: [AnyCodable]?, chainId: String? = nil) {
+  init(id: String, method: PortalRequestMethod, params: [AnyCodable]? = nil, chainId: String) {
     self.id = id
     self.method = method
     self.params = params

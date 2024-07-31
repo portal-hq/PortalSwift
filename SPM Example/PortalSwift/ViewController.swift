@@ -926,6 +926,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       self.logger.info("ViewController.registerPortal() - Portal API Key: \(user.clientApiKey)")
 
       portal.on(event: Events.PortalSigningRequested.rawValue, callback: { data in
+        print("🚨 Data: \(data)")
         portal.emit(Events.PortalSigningApproved.rawValue, data: data)
       })
 
