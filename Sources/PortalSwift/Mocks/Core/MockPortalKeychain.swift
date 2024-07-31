@@ -78,3 +78,10 @@ public class MockPortalKeychain: PortalKeychain {
     completion(Result(data: OSStatus(1)))
   }
 }
+
+public class MockPortalKeychainLegacySafe: MockPortalKeychain {
+  override public func loadMetadata() async throws {
+    try await super.loadMetadata()
+    self.legacyAddress = try self.getAddress()
+  }
+}

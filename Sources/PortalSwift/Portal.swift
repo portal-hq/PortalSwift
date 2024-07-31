@@ -150,7 +150,7 @@ public class Portal {
     }
   }
 
-  @available(*, deprecated, renamed: "Portal", message: "We've updated our constructor to be more streamlined and support multiple wallets. Please see the migration guide at https://docs.portalhq.io/resources/migrating-from-v3-to-v4/")
+  @available(*, deprecated, renamed: "Portal", message: "We've updated our constructor to be more streamlined and support multiple wallets. Please use the updated constructor.")
   public init(
     apiKey: String,
     backup: BackupOptions,
