@@ -697,7 +697,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
     if let balanceHex = balance.result {
       let balance = self.parseETHBalanceHex(hex: balanceHex)
-      print("ETH Balance: \(balance) ETH")
       DispatchQueue.main.async {
         self.ethBalanceInformation?.text = "ETH Balance: \(balance) ETH"
       }
