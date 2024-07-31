@@ -19,7 +19,7 @@ public struct ClientResponse: Codable, Equatable {
   public let wallets: [ClientResponseWallet]
 
   public static func == (lhs: ClientResponse, rhs: ClientResponse) -> Bool {
-    lhs.id == rhs.id && lhs.custodian.id == rhs.custodian.id && lhs.createdAt == rhs.createdAt && lhs.environment?.id == rhs.environment?.id && lhs.ejectedAt == rhs.ejectedAt && lhs.isAccountAbstracted == rhs.isAccountAbstracted && lhs.metadata.namespaces.eip155?.address == rhs.metadata.namespaces.eip155?.address && lhs.metadata.namespaces.solana?.address == rhs.metadata.namespaces.solana?.address && lhs.wallets[0].backupSharePairs[0].backupMethod == rhs.wallets[0].backupSharePairs[0].backupMethod
+    lhs.id == rhs.id && lhs.custodian.id == rhs.custodian.id && lhs.createdAt == rhs.createdAt && lhs.environment?.id == rhs.environment?.id && lhs.ejectedAt == rhs.ejectedAt && lhs.isAccountAbstracted == rhs.isAccountAbstracted && lhs.metadata.namespaces.eip155?.address == rhs.metadata.namespaces.eip155?.address && lhs.metadata.namespaces.solana?.address == rhs.metadata.namespaces.solana?.address && lhs.wallets.elementsEqual(rhs.wallets, by: { $0.backupSharePairs.elementsEqual($1.backupSharePairs, by: { $0.backupMethod == $1.backupMethod }) })
   }
 }
 
