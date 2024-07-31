@@ -237,8 +237,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
       throw PortalExampleAppError.configurationNotSet()
     }
 
-    var cipherText: String? = nil
-    var organizationShare: String? = nil
+    var cipherText: String?
+    var organizationShare: String?
 
     guard let client = try await portal.client else {
       throw PortalExampleAppError.clientInformationUnavailable("No client found.")
