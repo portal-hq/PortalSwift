@@ -137,7 +137,7 @@ public class PortalKeychain {
         // Before multi-wallet support was added
         let address = try keychain.getItem("\(clientId).address")
         let addresses: [PortalNamespace: String?] = [
-          .eip155: address,
+          .eip155: address
         ]
         return addresses
       } catch {
@@ -146,7 +146,7 @@ public class PortalKeychain {
         // - Before clientId was added to the Keychain key
         let address = try keychain.getItem(self.deprecatedAddressKey)
         let addresses: [PortalNamespace: String?] = [
-          .eip155: address,
+          .eip155: address
         ]
         return addresses
       }
@@ -235,7 +235,7 @@ public class PortalKeychain {
       do {
         // Before multi-wallet support was added
         let signingShareValue = try keychain.getItem("\(clientId).share")
-        
+
         guard let data = signingShareValue.data(using: .utf8) else {
           self.logger.error("PortalKeychain.getShares() - Unable to decode legacy keychain data")
           throw KeychainError.unableToEncodeKeychainData
@@ -245,7 +245,7 @@ public class PortalKeychain {
           "SECP256K1": PortalMpcGeneratedShare(
             id: share.signingSharePairId ?? "",
             share: signingShareValue
-          ),
+          )
         ]
         return generateResponse
       } catch {
@@ -257,7 +257,7 @@ public class PortalKeychain {
           "SECP256K1": PortalMpcGeneratedShare(
             id: "",
             share: share
-          ),
+          )
         ]
         return generateResponse
       }
@@ -312,7 +312,7 @@ public class PortalKeychain {
       id: client.id,
       addresses: [
         .eip155: client.metadata.namespaces.eip155?.address,
-        .solana: client.metadata.namespaces.solana?.address,
+        .solana: client.metadata.namespaces.solana?.address
       ],
       custodian: client.custodian,
       wallets: wallets
@@ -555,7 +555,7 @@ public class PortalKeychain {
         kSecAttrAccount as String: key as AnyObject,
         kSecClass as String: kSecClassGenericPassword,
         kSecAttrAccessible as String: kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly as AnyObject,
-        kSecValueData as String: value.data(using: String.Encoding.utf8) as AnyObject,
+        kSecValueData as String: value.data(using: String.Encoding.utf8) as AnyObject
       ]
 
       // Try to set the keychain item that matches the query.

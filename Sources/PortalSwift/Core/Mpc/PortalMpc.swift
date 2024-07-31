@@ -450,7 +450,7 @@ public class PortalMpc {
     }
   }
 
-    private func generateSolanaWallet(callerFuncName: String, usingProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> [PortalNamespace: String?] {
+  private func generateSolanaWallet(callerFuncName: String, usingProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> [PortalNamespace: String?] {
     if self.version != "v6" {
       throw MpcError.backupNoLongerSupported("[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = \"v6\"`.")
     }
@@ -526,7 +526,7 @@ public class PortalMpc {
 
   /// You should only call this function if you are upgrading from v3 to v4.
   public func generateSolanaWallet(usingProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> String {
-      let result: [PortalNamespace: String?] = try await generateSolanaWallet(callerFuncName: "PortalMpc.generateSolanaWallet()", usingProgressCallback: usingProgressCallback)
+    let result: [PortalNamespace: String?] = try await generateSolanaWallet(callerFuncName: "PortalMpc.generateSolanaWallet()", usingProgressCallback: usingProgressCallback)
     if let newSolanaAddress = result[PortalNamespace.solana], let unwrappedNewSolanaAddress = newSolanaAddress {
       usingProgressCallback?(MpcStatus(status: .done, done: true))
       return unwrappedNewSolanaAddress
@@ -537,7 +537,6 @@ public class PortalMpc {
 
   /// You should only call this function if you are upgrading from v3 to v4.
   public func generateSolanaWalletAndBackupShares(backupMethod: BackupMethods, usingProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> (solanaAddress: String, backupResponse: PortalMpcBackupResponse) {
-
     // generate solana wallet
     let generateSolonaResult: [PortalNamespace: String?] = try await generateSolanaWallet(callerFuncName: "PortalMpc.generateSolanaWalletAndBackupShares()", usingProgressCallback: usingProgressCallback)
     var solanaAddress: String

@@ -258,7 +258,7 @@ class CurrencyConverter {
     "YT": "Mayotte",
     "ZA": "South Africa",
     "ZM": "Zambia",
-    "ZW": "Zimbabwe",
+    "ZW": "Zimbabwe"
   ]
 
   private let currencyCodes: [String: String] = [
@@ -503,7 +503,7 @@ class CurrencyConverter {
     "Western Sahara": "MAD",
     "Yemen": "YER",
     "Zambia": "ZMW",
-    "Zimbabwe": "ZWD",
+    "Zimbabwe": "ZWD"
   ]
 
   private var requester = HttpRequester(baseUrl: "https://min-api.cryptocompare.com/data/price")

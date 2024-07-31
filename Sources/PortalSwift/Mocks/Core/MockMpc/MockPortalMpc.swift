@@ -33,7 +33,7 @@ public class MockPortalMpc: PortalMpc {
     withProgressCallback?(MpcStatus(status: .done, done: true))
     return [
       .eip155: MockConstants.mockEip155Address,
-      .solana: MockConstants.mockSolanaAddress,
+      .solana: MockConstants.mockSolanaAddress
     ]
   }
 
@@ -45,7 +45,7 @@ public class MockPortalMpc: PortalMpc {
     usingProgressCallback?(MpcStatus(status: .done, done: true))
     return [
       .eip155: MockConstants.mockEip155Address,
-      .solana: MockConstants.mockSolanaAddress,
+      .solana: MockConstants.mockSolanaAddress
     ]
   }
 

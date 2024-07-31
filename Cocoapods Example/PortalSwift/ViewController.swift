@@ -840,7 +840,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       ProviderRequest(method: ETHRequestMethods.Accounts.rawValue, params: [], skipLoggingResult: false),
       ProviderRequest(method: ETHRequestMethods.RequestAccounts.rawValue, params: [], skipLoggingResult: false),
       ProviderRequest(method: ETHRequestMethods.Sign.rawValue, params: [fromAddress ?? "", "0xdeadbeaf"], skipLoggingResult: false),
-      ProviderRequest(method: ETHRequestMethods.PersonalSign.rawValue, params: ["0xdeadbeaf", fromAddress ?? ""], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.PersonalSign.rawValue, params: ["0xdeadbeaf", fromAddress ?? ""], skipLoggingResult: false)
     ]
 
     for request in signerRequests {
@@ -864,7 +864,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       // https://docs.metamask.io/guide/rpc-api.html#wallet-switchethereumchain
       ProviderRequest(method: ETHRequestMethods.WalletSwitchEthereumChain.rawValue, params: [], skipLoggingResult: false),
       // https://docs.metamask.io/guide/rpc-api.html#wallet-watchasset
-      ProviderRequest(method: ETHRequestMethods.WalletWatchAsset.rawValue, params: [], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.WalletWatchAsset.rawValue, params: [], skipLoggingResult: false)
     ]
 
     for request in walletRequests {
@@ -901,7 +901,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       ProviderRequest(method: ETHRequestMethods.SendRawTransaction.rawValue, params: ["0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675"], skipLoggingResult: false),
       ProviderRequest(method: ETHRequestMethods.Web3ClientVersion.rawValue, params: [], skipLoggingResult: false),
       ProviderRequest(method: ETHRequestMethods.Web3Sha3.rawValue, params: ["0x68656c6c6f20776f726c64"], skipLoggingResult: false),
-      ProviderRequest(method: ETHRequestMethods.GetStorageAt.rawValue, params: [fromAddress ?? "", "0x0", "latest"], skipLoggingResult: false),
+      ProviderRequest(method: ETHRequestMethods.GetStorageAt.rawValue, params: [fromAddress ?? "", "0x0", "latest"], skipLoggingResult: false)
     ]
 
     for request in otherRequests {
@@ -930,7 +930,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       ProviderTransactionRequest(method: ETHRequestMethods.EstimateGas.rawValue, params: [fakeTransaction], skipLoggingResult: false),
 
       ProviderTransactionRequest(method: ETHRequestMethods.SendTransaction.rawValue, params: [fakeTransaction], skipLoggingResult: false),
-      ProviderTransactionRequest(method: ETHRequestMethods.SignTransaction.rawValue, params: [fakeTransaction], skipLoggingResult: false),
+      ProviderTransactionRequest(method: ETHRequestMethods.SignTransaction.rawValue, params: [fakeTransaction], skipLoggingResult: false)
     ]
 
     for request in requests {
@@ -948,7 +948,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   func testUnsupportedSignerRequests() {
     print("\nTesting Unsupported Signer Methods:\n")
     let unsupportedSignerMethods = [
-      ETHRequestMethods.ChainId.rawValue,
+      ETHRequestMethods.ChainId.rawValue
     ]
 
     let address = self.portal?.address

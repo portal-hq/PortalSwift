@@ -33,7 +33,7 @@ public class Portal {
   }
 
   public let api: PortalApi
-  internal let apiKey: String
+  let apiKey: String
   public let autoApprove: Bool
   public var gatewayConfig: [Int: String] = [:]
   public let provider: PortalProvider
@@ -101,7 +101,7 @@ public class Portal {
 
     // Creating this as a variable first so it's usable to
     // fetch the client in the Task at the end of the initializer
-    let api = api ?? PortalApi(apiKey: apiKey, apiHost: apiHost, provider: self.provider)
+    let api = api ?? PortalApi(apiKey: apiKey, apiHost: apiHost, provider: provider)
     self.api = api
     self.keychain.api = api
 
@@ -357,7 +357,7 @@ public class Portal {
 
   /// You should only call this function if you are upgrading from v3 to v4.
   public func generateSolanaWalletAndBackupShares(
-    _ method: BackupMethods, usingProgressCallback: ((MpcStatus) -> Void)? = nil
+    _ method: BackupMethods, usingProgressCallback _: ((MpcStatus) -> Void)? = nil
   ) async throws -> (solanaAddress: String, cipherText: String, storageCallback: () async throws -> Void) {
     // Run generateSolanaWalletAndBackupShares
     let result = try await mpc.generateSolanaWalletAndBackupShares(backupMethod: method)
@@ -373,7 +373,7 @@ public class Portal {
     }
 
     return (
-      solanaAddress: result.solanaAddress, 
+      solanaAddress: result.solanaAddress,
       cipherText: result.backupResponse.cipherText,
       storageCallback: storageCallback
     )

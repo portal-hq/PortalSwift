@@ -51,7 +51,7 @@ public struct QuoteArgs: Codable {
     var dictionary: [String: AnyCodable] = [
       // Always required
       "buyToken": AnyCodable(buyToken),
-      "sellToken": AnyCodable(sellToken),
+      "sellToken": AnyCodable(sellToken)
     ]
 
     // Either buyAmount or sellAmount MUST be set for the quote to return a usable value
@@ -113,7 +113,7 @@ public class PortalSwaps {
     self.apiKey = apiKey
     self.portal = portal
   }
-  
+
   public func getQuote(args: QuoteArgs, forChainId: String, completion: @escaping (Result<Quote>) -> Void) {
     do {
       try self.portal.api.getQuote(self.apiKey, args, forChainId) { result in
