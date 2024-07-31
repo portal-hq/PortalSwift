@@ -32,7 +32,6 @@ public class PortalMpc {
   private let apiHost: String
   private let apiKey: String
   private var backupOptions: [BackupMethods: PortalStorage] = [:]
-  private var dateFormatter = DateFormatter()
   private let decoder = JSONDecoder()
   private let encoder = JSONEncoder()
   private let featureFlags: FeatureFlags?
