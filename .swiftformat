@@ -8,8 +8,6 @@
 
 # --swiftversion 5.5
 
-# --swiftversion 5.5
-
 # Ensures that the `self` keyword is always present when required
 
 --self insert

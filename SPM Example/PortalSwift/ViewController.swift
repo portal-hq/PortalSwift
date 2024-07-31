@@ -888,7 +888,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
     let balanceResponse = try await portal.request(chainId, withMethod: .eth_getBalance, andParams: [address, "latest"])
     guard let balance = balanceResponse.result as? PortalProviderRpcResponse else {
-    guard let balance = balanceResponse.result as? PortalProviderRpcResponse else {
       throw PortalExampleAppError.invalidResponseTypeForRequest()
     }
 
@@ -1254,29 +1253,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  @IBAction func handleEjectAll(_: UIButton) {
-    Task {
-      do {
-        guard let enteredPassword = await requestPassword(), !enteredPassword.isEmpty else {
-          self.logger.error("ViewController.handleEject() - ❌ No password set by user. Eject will not take place.")
-          return
-        }
-
-        try self.portal?.setPassword(enteredPassword)
-
-        let privateKey = try await ejectAll(.Password)
-
-        self.logger.info("ViewController.handleEject() - ✅ Successfully ejected wallet. Private key: \(privateKey)")
-        self.showStatusView(message: "\(successStatus) Private key: \(privateKey)")
-      } catch {
-        self.stopLoading()
-        print("⚠️", error)
-        self.logger.error("ViewController.handleEject() - Error ejecting wallet: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error ejecting wallet \(error)")
-      }
-    }
-  }
-
   @IBAction func handleFundSepolia(_: UIButton) {
     Task {
       do {
@@ -1291,6 +1267,24 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.stopLoading()
         self.logger.error("Error sending transaction: \(error)")
         self.showStatusView(message: "\(self.failureStatus) Error sending transaction: \(error)")
+      }
+    }
+  }
+
+  @IBAction func handleGenerateSolanaAndBackupShares(_: Any) {
+    Task {
+      do {
+        self.startLoading()
+        self.logger.debug("ViewController.handleGenerateSolanaAndBackupShares() - Starting generate Solana wallet then backup...")
+        let result = try await self.generateSolanaWalletAndBackup(withMethod: .iCloud)
+        self.logger.debug("ViewController.handleGenerateSolanaAndBackupShares(): ✅ Successfully generated Solana wallet and backed up. Solana Address: \(result.solanaAddress)")
+        self.showStatusView(message: "\(self.successStatus) Successfully generated Solana wallet and backed up. Solana Address: \(result.solanaAddress)")
+        self.updateUIComponents()
+        self.stopLoading()
+      } catch {
+        self.stopLoading()
+        self.logger.error("Error generating Solana wallet and backup shares: \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error generating Solana wallet and backup shares: \(error)")
       }
     }
   }
