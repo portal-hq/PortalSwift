@@ -220,14 +220,16 @@ public class PortalMpc {
     _ method: BackupMethods,
     withCipherText: String? = nil,
     andOrganizationBackupShare: String? = nil,
+    andOrganizationSolanaBackupShare: String? = nil,
     usingProgressCallback _: ((MpcStatus) -> Void)? = nil
-  ) async throws -> String {
+  ) async throws -> [PortalNamespace: String] {
     if self.version != "v6" {
       throw MpcError.backupNoLongerSupported("[PortalMpc] Eject is no longer supported for this version of MPC. Please use `version = \"v6\"`.")
     }
 
     var cipherText = withCipherText
     var organizationShare = andOrganizationBackupShare
+    var organizationShareEd25519 = andOrganizationSolanaBackupShare
 
     guard let storage = self.backupOptions[method] else {
       throw MpcError.unexpectedErrorOnEject("Backup method \(method.rawValue) not registered.")
@@ -237,11 +239,13 @@ public class PortalMpc {
       throw MpcError.clientInformationUnavailable
     }
 
-    var backupSharePairId: String? = nil
-    var walletId: String? = nil
+    var backupSharePairId: String?
+    var walletId: String?
+    var walletIdEd25519: String?
 
     for wallet in client.wallets {
       if wallet.curve == .SECP256K1 {
+        // Locate the appropriate wallet for Ethereum
         for backupShare in wallet.backupSharePairs {
           if backupShare.status == .completed, backupShare.backupMethod == method {
             backupSharePairId = backupShare.id
@@ -249,9 +253,18 @@ public class PortalMpc {
             break
           }
         }
+      } else if wallet.curve == .ED25519 {
+        // Locate the appropriate wallet for Solana
+        for backupShare in wallet.backupSharePairs {
+          if backupShare.status == .completed, backupShare.backupMethod == method {
+            walletIdEd25519 = wallet.id
+            break
+          }
+        }
       }
     }
 
+    // Always enforce Ethereum values are present
     guard let backupSharePairId = backupSharePairId else {
       throw MpcError.unableToEjectWallet("No backup share pair found for curve SECP256K1.")
     }
@@ -263,13 +276,19 @@ public class PortalMpc {
     if backupWithPortal {
       cipherText = try await api.getClientCipherText(backupSharePairId)
       organizationShare = try await api.prepareEject(walletId, method)
+
+      // Conditionally prepare eject for Solana wallets
+      if let walletIdEd25519 = walletIdEd25519 {
+        organizationShareEd25519 = try await api.prepareEject(walletIdEd25519, method)
+      }
     }
 
+    // Always enforce Ethereum values are present
     guard let cipherText = cipherText else {
       throw MpcError.noBackupCipherTextFound
     }
     guard let organizationShare = organizationShare else {
-      throw MpcError.noOrganizationShareFound
+      throw MpcError.noOrganizationShareFound("No organization share found for Ethereum wallet.")
     }
 
     let decryptionKey = try await storage.read()
@@ -279,6 +298,7 @@ public class PortalMpc {
       throw MpcError.unexpectedErrorOnEject("Unable to convert decrypted data.")
     }
 
+    // Decode the backup share into the appropriate format
     var generateResponse: PortalMpcGenerateResponse = [:]
     do {
       generateResponse = try self.decoder.decode(PortalMpcGenerateResponse.self, from: decryptedData)
@@ -290,156 +310,47 @@ public class PortalMpc {
       )
     }
 
-    let privateKeys = try await withCheckedThrowingContinuation { continuation in
-      let response = generateResponse
-      Task {
-        do {
-          var addresses: [PortalNamespace: String] = [:]
+    // Get the dictionary of private keys via the `eject` MPC operation
+    var privateKeys: [PortalNamespace: String] = [:]
+    let response = generateResponse
 
-          if let secp256k1Share = response["SECP256K1"] {
-            let ejectResponse = await self.mobile.MobileEjectWalletAndDiscontinueMPC(secp256k1Share.share, organizationShare)
-            guard let jsonData = ejectResponse.data(using: .utf8) else {
-              throw JSONParseError.stringToDataConversionFailed
-            }
-
-            let ejectResult: EjectResult = try JSONDecoder().decode(EjectResult.self, from: jsonData)
-            let privateKey = ejectResult.privateKey
-
-            addresses[.eip155] = privateKey
-
-            _ = try await self.api.eject()
-
-            continuation.resume(returning: addresses)
-            return
-          }
-
-          continuation.resume(returning: addresses)
-        } catch {
-          continuation.resume(throwing: error)
-          return
-        }
+    if let secp256k1Share = response["SECP256K1"] {
+      let ejectResponse = await self.mobile.MobileEjectWalletAndDiscontinueMPC(secp256k1Share.share, organizationShare)
+      guard let jsonData = ejectResponse.data(using: .utf8) else {
+        throw JSONParseError.stringToDataConversionFailed
       }
+
+      let ejectResult: EjectResult = try decoder.decode(EjectResult.self, from: jsonData)
+      let privateKey = ejectResult.privateKey
+
+      privateKeys[.eip155] = privateKey
     }
 
-    guard let eip155PrivateKey = privateKeys[.eip155] else {
-      throw MpcError.unexpectedErrorOnEject("Unable to find address in addresses map.")
-    }
-
-    print("Private Key: \(eip155PrivateKey)")
-
-    return eip155PrivateKey
-  }
-
-  public func ejectSolanaWallet(
-    _ method: BackupMethods,
-    withCipherText: String? = nil,
-    andOrganizationBackupShare: String? = nil,
-    usingProgressCallback _: ((MpcStatus) -> Void)? = nil
-  ) async throws -> String {
-    if self.version != "v6" {
-      throw MpcError.backupNoLongerSupported("[PortalMpc] Eject is no longer supported for this version of MPC. Please use `version = \"v6\"`.")
-    }
-
-    var cipherText = withCipherText
-    var organizationShare = andOrganizationBackupShare
-
-    guard let storage = self.backupOptions[method] else {
-      throw MpcError.unexpectedErrorOnEject("Backup method \(method.rawValue) not registered.")
-    }
-
-    guard let client = try await api.client else {
-      throw MpcError.clientInformationUnavailable
-    }
-
-    var backupSharePairId: String? = nil
-    var walletId: String? = nil
-
-    for wallet in client.wallets {
-      if wallet.curve == .ED25519 {
-        for backupShare in wallet.backupSharePairs {
-          if backupShare.status == .completed, backupShare.backupMethod == method {
-            backupSharePairId = backupShare.id
-            walletId = wallet.id
-            break
-          }
-        }
+    if let ed25519Share = response["ED25519"] {
+      guard let organizationShareEd25519 = organizationShareEd25519 else {
+        throw MpcError.noOrganizationShareFound("No organization share found for Solana wallet.")
       }
-    }
 
-    guard let backupSharePairId = backupSharePairId else {
-      throw MpcError.unableToEjectWallet("No backed up share pair found for curve ED25519.")
-    }
-    guard let walletId = walletId else {
-      throw MpcError.unableToEjectWallet("No backed up wallet found for curve ED25519.")
-    }
-
-    let backupWithPortal = client.environment?.backupWithPortalEnabled ?? false
-    if backupWithPortal {
-      cipherText = try await api.getClientCipherText(backupSharePairId)
-      organizationShare = try await api.prepareEject(walletId, method)
-    }
-
-    guard let cipherText = cipherText else {
-      throw MpcError.noBackupCipherTextFound
-    }
-    guard let organizationShare = organizationShare else {
-      throw MpcError.noOrganizationShareFound
-    }
-
-    let decryptionKey = try await storage.read()
-
-    let decryptedString = try await storage.decrypt(cipherText, withKey: decryptionKey)
-    guard let decryptedData = decryptedString.data(using: .utf8) else {
-      throw MpcError.unexpectedErrorOnEject("Unable to convert decrypted data.")
-    }
-
-    var generateResponse: PortalMpcGenerateResponse = [:]
-    do {
-      generateResponse = try self.decoder.decode(PortalMpcGenerateResponse.self, from: decryptedData)
-    } catch {
-      let backupShare = try decoder.decode(MpcShare.self, from: decryptedData)
-      generateResponse["ED25519"] = PortalMpcGeneratedShare(
-        id: backupShare.backupSharePairId ?? "",
-        share: decryptedString
-      )
-    }
-
-    let privateKeys = try await withCheckedThrowingContinuation { continuation in
-      let response = generateResponse
-      Task {
-        do {
-          var addresses: [PortalNamespace: String] = [:]
-
-          if let ed25519Share = response["ED25519"] {
-            let ejectResponse = await self.mobile.MobileEjectWalletAndDiscontinueMPCEd25519(ed25519Share.share, organizationShare)
-            guard let jsonData = ejectResponse.data(using: .utf8) else {
-              throw JSONParseError.stringToDataConversionFailed
-            }
-
-            let ejectResult: EjectResult = try JSONDecoder().decode(EjectResult.self, from: jsonData)
-            let privateKey = ejectResult.privateKey
-
-            addresses[.solana] = privateKey
-
-            _ = try await self.api.eject()
-
-            continuation.resume(returning: addresses)
-            return
-          }
-
-          continuation.resume(returning: addresses)
-        } catch {
-          continuation.resume(throwing: error)
-          return
-        }
+      let ejectResponse = await self.mobile.MobileEjectWalletAndDiscontinueMPCEd25519(ed25519Share.share, organizationShareEd25519)
+      guard let jsonData = ejectResponse.data(using: .utf8) else {
+        throw JSONParseError.stringToDataConversionFailed
       }
+
+      let ejectResult: EjectResult = try decoder.decode(EjectResult.self, from: jsonData)
+      let privateKey = ejectResult.privateKey
+
+      print("🚨 Eject Result: \(ejectResult)")
+
+      privateKeys[.solana] = privateKey
     }
 
-    guard let solanaPrivateKey = privateKeys[.solana] else {
-      throw MpcError.unexpectedErrorOnEject("Unable to find address in addresses map.")
+    _ = try await self.api.eject()
+
+    guard let _ = privateKeys[.eip155] else {
+      throw MpcError.unexpectedErrorOnEject("Unable to find private key for Ethereum wallet.")
     }
 
-    return solanaPrivateKey
+    return privateKeys
   }
 
   public func generate(withProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> [PortalNamespace: String?] {
@@ -735,7 +646,7 @@ public class PortalMpc {
           metadata.curve = forCurve
           metadata.backupMethod = withMethod.rawValue
           metadata.isMultiBackupEnabled = featureFlags?.isMultiBackupEnabled
-          
+
           let mpcMetadataString = try metadata.jsonString()
 
           let response = forCurve == .ED25519
@@ -833,7 +744,7 @@ public class PortalMpc {
           metadata.curve = forCurve
           metadata.backupMethod = withMethod.rawValue
           metadata.isMultiBackupEnabled = featureFlags?.isMultiBackupEnabled
-          
+
           let mpcMetadataString = try metadata.jsonString()
 
           let response = forCurve == .ED25519
@@ -930,9 +841,13 @@ public class PortalMpc {
         if backupMethod == .Password, let storage = backupOptions[backupMethod] as? PasswordStorage {
           storage.password = backupConfigs?.passwordStorage?.password
         }
-        let address = try await eject(backupMethod, withCipherText: clientBackupCiphertext, andOrganizationBackupShare: orgBackupShare)
+        let addresses = try await eject(backupMethod, withCipherText: clientBackupCiphertext, andOrganizationBackupShare: orgBackupShare)
 
-        completion(Result(data: address))
+        guard let eip155PrivateKey = addresses[.eip155] else {
+          throw MpcError.unableToEjectWallet("No EIP155 private key found.")
+        }
+
+        completion(Result(data: eip155PrivateKey))
       } catch {
         completion(Result(error: error))
       }
@@ -997,7 +912,7 @@ public enum MpcError: Error {
   case failedToValidateBackupMethod
   case generateNoLongerSupported(_ message: String)
   case noBackupCipherTextFound
-  case noOrganizationShareFound
+  case noOrganizationShareFound(_ message: String = "No organization share found.")
   case noSigningSharePresent
   case noValidBackupFound
   case recoverNoLongerSupported(_ message: String)

@@ -24,18 +24,13 @@ public class MockPortalMpc: PortalMpc {
     _: BackupMethods,
     withCipherText _: String? = nil,
     andOrganizationBackupShare _: String? = nil,
+    andOrganizationSolanaBackupShare _: String? = nil,
     usingProgressCallback _: ((MpcStatus) -> Void)? = nil
-  ) async throws -> String {
-    return MockConstants.mockEip155EjectedPrivateKey
-  }
-
-  override public func ejectSolanaWallet(
-    _: BackupMethods,
-    withCipherText _: String? = nil,
-    andOrganizationBackupShare _: String? = nil,
-    usingProgressCallback _: ((MpcStatus) -> Void)? = nil
-  ) async throws -> String {
-    return MockConstants.mockSolanaPrivateKey
+  ) async throws -> [PortalNamespace: String] {
+    return [
+      .eip155: MockConstants.mockEip155EjectedPrivateKey,
+      .solana: MockConstants.mockSolanaPrivateKey
+    ]
   }
 
   override public func generate(withProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> [PortalNamespace: String?] {
