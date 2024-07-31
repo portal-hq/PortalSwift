@@ -4,6 +4,10 @@ import AnyCodable
 // Will need to research more and try to bring this in.
 // public typealias ClientResponseMetadataNamespaces = [PortalNamespace: ClientResponseNamespaceMetadataItem]
 
+public struct ClientCipherTextResponse: Codable {
+  public let cipherText: String
+}
+
 public struct ClientResponse: Codable, Equatable {
   public let id: String
   public let custodian: ClientResponseCustodian
@@ -15,7 +19,7 @@ public struct ClientResponse: Codable, Equatable {
   public let wallets: [ClientResponseWallet]
 
   public static func == (lhs: ClientResponse, rhs: ClientResponse) -> Bool {
-    return lhs.id == rhs.id && lhs.custodian.id == rhs.custodian.id && lhs.createdAt == rhs.createdAt && lhs.environment?.id == rhs.environment?.id && lhs.ejectedAt == rhs.ejectedAt && lhs.isAccountAbstracted == rhs.isAccountAbstracted && lhs.metadata.namespaces.eip155?.address == rhs.metadata.namespaces.eip155?.address && lhs.metadata.namespaces.solana?.address == rhs.metadata.namespaces.solana?.address && lhs.wallets[0].backupSharePairs[0].backupMethod == rhs.wallets[0].backupSharePairs[0].backupMethod
+    lhs.id == rhs.id && lhs.custodian.id == rhs.custodian.id && lhs.createdAt == rhs.createdAt && lhs.environment?.id == rhs.environment?.id && lhs.ejectedAt == rhs.ejectedAt && lhs.isAccountAbstracted == rhs.isAccountAbstracted && lhs.metadata.namespaces.eip155?.address == rhs.metadata.namespaces.eip155?.address && lhs.metadata.namespaces.solana?.address == rhs.metadata.namespaces.solana?.address && lhs.wallets.elementsEqual(rhs.wallets, by: { $0.backupSharePairs.elementsEqual($1.backupSharePairs, by: { $0.backupMethod == $1.backupMethod }) })
   }
 }
 
@@ -34,6 +38,7 @@ public struct ClientResponseCustodian: Codable, Equatable {
 public struct ClientResponseEnvironment: Codable, Equatable {
   public let id: String
   public let name: String
+  public let backupWithPortalEnabled: Bool?
 }
 
 public struct ClientResponseMetadata: Codable, Equatable {
@@ -62,6 +67,7 @@ public struct ClientResponseWallet: Codable, Equatable {
 
   public let backupSharePairs: [ClientResponseBackupSharePair]
   public let curve: PortalCurve
+  public let ejectableUntil: String?
   public let publicKey: String
   public let signingSharePairs: [ClientResponseSharePair]
 }
@@ -196,6 +202,10 @@ public struct FetchedTransactionRawContract: Codable, Equatable {
   public var address: String?
   /// Decimal representation of the contract value
   public var decimal: String
+}
+
+public struct PrepareEjectResponse: Codable {
+  public let share: String
 }
 
 public struct ShareStatusUpdateRequest: Codable, Equatable {

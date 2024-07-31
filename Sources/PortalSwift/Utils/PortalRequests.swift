@@ -23,7 +23,7 @@ public class PortalRequests {
       throw PortalRequestsError.couldNotParseHttpResponse
     }
     guard httpResponse.statusCode < 300 else {
-      throw self.buildError(httpResponse, withData: data)
+      throw self.buildError(httpResponse, withData: data, url: from.absoluteString)
     }
 
     return data
@@ -51,7 +51,7 @@ public class PortalRequests {
       throw PortalRequestsError.couldNotParseHttpResponse
     }
     guard httpResponse.statusCode < 300 else {
-      throw self.buildError(httpResponse, withData: data)
+      throw self.buildError(httpResponse, withData: data, url: from.absoluteString)
     }
 
     let logger = PortalLogger()
@@ -82,7 +82,7 @@ public class PortalRequests {
       throw PortalRequestsError.couldNotParseHttpResponse
     }
     guard httpResponse.statusCode < 300 else {
-      throw self.buildError(httpResponse, withData: data)
+      throw self.buildError(httpResponse, withData: data, url: from.absoluteString)
     }
 
     return data
@@ -115,7 +115,7 @@ public class PortalRequests {
       throw PortalRequestsError.couldNotParseHttpResponse
     }
     guard httpResponse.statusCode < 300 else {
-      throw self.buildError(httpResponse, withData: data)
+      throw self.buildError(httpResponse, withData: data, url: from.absoluteString)
     }
 
     return data
@@ -144,20 +144,20 @@ public class PortalRequests {
       throw PortalRequestsError.couldNotParseHttpResponse
     }
     guard httpResponse.statusCode < 300 else {
-      throw self.buildError(httpResponse, withData: data)
+      throw self.buildError(httpResponse, withData: data, url: from.absoluteString)
     }
 
     return data
   }
 
-  private func buildError(_ response: HTTPURLResponse, withData: Data) -> Error {
+  private func buildError(_ response: HTTPURLResponse, withData: Data, url: String) -> Error {
     let statusText = String(data: withData, encoding: .utf8) ?? ""
     if response.statusCode < 400 {
       return PortalRequestsError.redirectError("\(response.statusCode) - \(statusText)")
     } else if response.statusCode < 500 {
-      return PortalRequestsError.clientError("\(response.statusCode) - \(statusText)")
+      return PortalRequestsError.clientError("\(response.statusCode) - \(statusText)", url: url)
     } else {
-      return PortalRequestsError.internalServerError("\(response.statusCode) - \(statusText)")
+      return PortalRequestsError.internalServerError("\(response.statusCode) - \(statusText)", url: url)
     }
   }
 
@@ -171,8 +171,8 @@ public class PortalRequests {
 }
 
 public enum PortalRequestsError: Error, Equatable {
-  case clientError(_ message: String)
+  case clientError(_ message: String, url: String)
   case couldNotParseHttpResponse
-  case internalServerError(_ message: String)
+  case internalServerError(_ message: String, url: String)
   case redirectError(_ message: String)
 }

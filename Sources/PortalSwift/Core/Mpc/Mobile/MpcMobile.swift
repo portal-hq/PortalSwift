@@ -226,4 +226,13 @@ class MobileWrapper: Mobile {
 
     return result
   }
+
+  func MobileEjectWalletAndDiscontinueMPCEd25519(_ clientDkgCipherText: String, _ serverDkgCipherText: String) async -> String {
+    let result = await withCheckedContinuation { continuation in
+      let ejectResponse = Mpc.MobileEjectWalletAndDiscontinueMPCEd25519(clientDkgCipherText, serverDkgCipherText)
+      continuation.resume(returning: ejectResponse)
+    }
+
+    return result
+  }
 }

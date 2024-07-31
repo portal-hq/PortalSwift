@@ -59,6 +59,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var deleteKeychainButton: UIButton?
   @IBOutlet var testNFTsTrxsBalancesSimTrxButton: UIButton?
   @IBOutlet var ejectButton: UIButton?
+  @IBOutlet var ejectAllButton: UIButton?
   @IBOutlet var fundSepoliaButton: UIButton?
   @IBOutlet var generateSolanaAndBackupShares: UIButton!
 
@@ -169,29 +170,39 @@ class ViewController: UIViewController, UITextFieldDelegate {
       self.logger.error("ViewController.backup() - Application configuration not set.")
       throw PortalExampleAppError.configurationNotSet()
     }
+    guard let client = try await portal.client else {
+      self.logger.error("ViewController.backup() - Client unavailable.")
+      throw PortalExampleAppError.clientInformationUnavailable()
+    }
 
     self.logger.debug("ViewController.backup() - Starting backup...")
     let (cipherText, storageCallback) = try await portal.backupWallet(withMethod) { status in
       self.logger.debug("ViewController.backup() - Backup progress callback with status: \(status.status.rawValue), \(status.done)")
     }
 
-    guard let url = URL(string: "\(config.custodianServerUrl)/mobile/\(userId)/cipher-text") else {
-      throw URLError(.badURL)
+    let backupWithPortal = client.environment?.backupWithPortalEnabled ?? false
+
+    if !backupWithPortal {
+      guard let url = URL(string: "\(config.custodianServerUrl)/mobile/\(userId)/cipher-text") else {
+        throw URLError(.badURL)
+      }
+      let payload = [
+        "backupMethod": withMethod.rawValue,
+        "cipherText": cipherText
+      ]
+
+      let resultData = try await requests.post(url, andPayload: payload)
+      guard let result = String(data: resultData, encoding: .utf8) else {
+        self.logger.error("ViewController.backup() - Unable to parse response from cipherText storage request to custodian.")
+        throw PortalExampleAppError.couldNotParseCustodianResponse()
+      }
+
+      try await storageCallback()
+
+      return result
     }
-    let payload = [
-      "backupMethod": withMethod.rawValue,
-      "cipherText": cipherText
-    ]
 
-    let resultData = try await requests.post(url, andPayload: payload)
-    guard let result = String(data: resultData, encoding: .utf8) else {
-      self.logger.error("ViewController.backup() - Unable to parse response from cipherText storage request to custodian.")
-      throw PortalExampleAppError.couldNotParseCustodianResponse()
-    }
-
-    try await storageCallback()
-
-    return result
+    return ""
   }
 
   public func deleteKeychain() async {
@@ -222,29 +233,184 @@ class ViewController: UIViewController, UITextFieldDelegate {
       throw PortalExampleAppError.userNotLoggedIn()
     }
     guard let config else {
-      self.logger.error("ViewController.recover() - ❌ Application configuration not set.")
+      self.logger.error("ViewController.eject() - ❌ Application configuration not set.")
       throw PortalExampleAppError.configurationNotSet()
     }
-    guard let cipherTextUrl = URL(
-      string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/cipher-text/fetch?backupMethod=\(withBackupMethod.rawValue)"
-    ) else {
-      throw URLError(.badURL)
-    }
-    let cipherTextData = try await requests.get(cipherTextUrl)
-    let cipherTextResponse = try decoder.decode(CipherTextResult.self, from: cipherTextData)
 
-    guard let organizationBackupShareUrl = URL(
-      string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/org-share/fetch?backupMethod=\(withBackupMethod.rawValue)-SECP256K1"
-    ) else {
-      throw URLError(.badURL)
+    var cipherText: String?
+    var organizationShare: String?
+
+    guard let client = try await portal.client else {
+      throw PortalExampleAppError.clientInformationUnavailable("No client found.")
     }
-    let organizationBackupShareData = try await requests.get(organizationBackupShareUrl)
-    let organizationBackupShareResponse = try decoder.decode(OrgShareResult.self, from: organizationBackupShareData)
+
+    let backupWithPortal = client.environment?.backupWithPortalEnabled ?? false
+
+    if !backupWithPortal {
+      guard let cipherTextUrl = URL(
+        string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/cipher-text/fetch?backupMethod=\(withBackupMethod.rawValue)"
+      ) else {
+        throw URLError(.badURL)
+      }
+      let cipherTextData = try await requests.get(cipherTextUrl)
+      let cipherTextResponse = try decoder.decode(CipherTextResult.self, from: cipherTextData)
+
+      cipherText = cipherTextResponse.cipherText
+
+      guard let organizationBackupShareUrl = URL(
+        string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/org-share/fetch?backupMethod=\(withBackupMethod.rawValue)-SECP256K1"
+      ) else {
+        throw URLError(.badURL)
+      }
+      let organizationBackupShareData = try await requests.get(organizationBackupShareUrl)
+      let organizationBackupShareResponse = try decoder.decode(OrgShareResult.self, from: organizationBackupShareData)
+
+      organizationShare = organizationBackupShareResponse.orgShare
+    } else {
+      var walletId: String? = nil
+
+      for wallet in client.wallets {
+        if wallet.curve == .SECP256K1 {
+          for backupSharePair in wallet.backupSharePairs {
+            if backupSharePair.status == .completed, backupSharePair.backupMethod == withBackupMethod {
+              walletId = wallet.id
+              break
+            }
+          }
+        }
+      }
+
+      guard let walletId = walletId else {
+        throw PortalExampleAppError.clientInformationUnavailable("Could not find Ethereum backup share for backup method.")
+      }
+
+      guard let prepareEjectUrl = URL(string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/prepare-eject") else {
+        throw URLError(.badURL)
+      }
+      let prepareEjectData = try await requests.post(prepareEjectUrl, withBearerToken: nil, andPayload: ["walletId": walletId])
+      guard let prepareEjectResponse = String(data: prepareEjectData, encoding: .utf8) else {
+        throw PortalExampleAppError.couldNotParseCustodianResponse("Unable to read prepare eject response.")
+      }
+
+      print("Ethereum Wallet ejectable until \(prepareEjectResponse)")
+    }
 
     let privateKey = try await portal.eject(
       withBackupMethod,
-      withCipherText: cipherTextResponse.cipherText,
-      andOrganizationBackupShare: organizationBackupShareResponse.orgShare
+      withCipherText: cipherText,
+      andOrganizationBackupShare: organizationShare
+    )
+
+    return privateKey
+  }
+
+  public func ejectAll(_ withBackupMethod: BackupMethods) async throws -> [PortalNamespace: String] {
+    guard let portal else {
+      self.logger.error("ViewController.eject() - ❌ Portal not initialized. Please call registerPortal().")
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+    guard let user else {
+      self.logger.error("ViewController.eject() - ❌ User not logged in.")
+      throw PortalExampleAppError.userNotLoggedIn()
+    }
+    guard let config else {
+      self.logger.error("ViewController.eject() - ❌ Application configuration not set.")
+      throw PortalExampleAppError.configurationNotSet()
+    }
+
+    var cipherText: String?
+    var organizationShare: String?
+    var organizationSolanaShare: String? = nil
+
+    guard let client = try await portal.client else {
+      throw PortalExampleAppError.clientInformationUnavailable("No client found.")
+    }
+
+    let backupWithPortal = client.environment?.backupWithPortalEnabled ?? false
+
+    if !backupWithPortal {
+      guard let cipherTextUrl = URL(
+        string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/cipher-text/fetch?backupMethod=\(withBackupMethod.rawValue)"
+      ) else {
+        throw URLError(.badURL)
+      }
+      let cipherTextData = try await requests.get(cipherTextUrl)
+      let cipherTextResponse = try decoder.decode(CipherTextResult.self, from: cipherTextData)
+
+      cipherText = cipherTextResponse.cipherText
+
+      guard let organizationBackupShareUrl = URL(
+        string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/org-share/fetch?backupMethod=\(withBackupMethod.rawValue)-SECP256K1"
+      ) else {
+        throw URLError(.badURL)
+      }
+      let organizationBackupShareData = try await requests.get(organizationBackupShareUrl)
+      let organizationBackupShareResponse = try decoder.decode(OrgShareResult.self, from: organizationBackupShareData)
+
+      organizationShare = organizationBackupShareResponse.orgShare
+
+      guard let organizationSolanaBackupShareUrl = URL(
+        string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/org-share/fetch?backupMethod=\(withBackupMethod.rawValue)-ED25519"
+      ) else {
+        throw URLError(.badURL)
+      }
+      let organizationSolanaBackupShareData = try? await requests.get(organizationSolanaBackupShareUrl)
+      if let organizationSolanaBackupShareData = organizationSolanaBackupShareData {
+        let organizationSolanaBackupShareResponse = try decoder.decode(OrgShareResult.self, from: organizationSolanaBackupShareData)
+
+        organizationSolanaShare = organizationSolanaBackupShareResponse.orgShare
+      }
+    } else {
+      var walletId: String?
+      var walletIdEd25519: String? = nil
+
+      for wallet in client.wallets {
+        if wallet.curve == .SECP256K1 {
+          for backupSharePair in wallet.backupSharePairs {
+            if backupSharePair.status == .completed, backupSharePair.backupMethod == withBackupMethod {
+              walletId = wallet.id
+              break
+            }
+          }
+        } else if wallet.curve == .ED25519 {
+          for backupSharePair in wallet.backupSharePairs {
+            if backupSharePair.status == .completed, backupSharePair.backupMethod == withBackupMethod {
+              walletIdEd25519 = wallet.id
+              break
+            }
+          }
+        }
+      }
+
+      guard let walletId = walletId else {
+        throw PortalExampleAppError.clientInformationUnavailable("Could not find Ethereum backup share for backup method.")
+      }
+
+      guard let prepareEjectUrl = URL(string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/prepare-eject") else {
+        throw URLError(.badURL)
+      }
+      let prepareEjectData = try await requests.post(prepareEjectUrl, withBearerToken: nil, andPayload: ["walletId": walletId])
+      guard let prepareEjectResponse = String(data: prepareEjectData, encoding: .utf8) else {
+        throw PortalExampleAppError.couldNotParseCustodianResponse("Unable to read prepare eject response.")
+      }
+
+      print("Ethereum Wallet ejectable until \(prepareEjectResponse)")
+
+      if let walletIdEd25519 = walletIdEd25519 {
+        let prepareEjectDataEd25519 = try await requests.post(prepareEjectUrl, withBearerToken: nil, andPayload: ["walletId": walletIdEd25519])
+        guard let prepareEjectResponseEd25519 = String(data: prepareEjectDataEd25519, encoding: .utf8) else {
+          throw PortalExampleAppError.couldNotParseCustodianResponse("Unable to read prepare eject response.")
+        }
+
+        print("Solana Wallet ejectable until \(prepareEjectResponseEd25519)")
+      }
+    }
+
+    let privateKey = try await portal.ejectPrivateKeys(
+      withBackupMethod,
+      withCipherText: cipherText,
+      andOrganizationBackupShare: organizationShare,
+      andOrganizationSolanaBackupShare: organizationSolanaShare
     )
 
     return privateKey
@@ -327,12 +493,23 @@ class ViewController: UIViewController, UITextFieldDelegate {
       self.logger.error("ViewController.recover() - Application configuration not set.")
       throw PortalExampleAppError.configurationNotSet()
     }
-    guard let url = URL(string: "\(config.custodianServerUrl)/mobile/\(userId)/cipher-text/fetch?backupMethod=\(withBackupMethod.rawValue)") else {
-      throw URLError(.badURL)
+
+    var cipherText: String? = nil
+
+    guard let client = try await portal.client else {
+      throw PortalExampleAppError.clientInformationUnavailable("Could not fetch client.")
     }
-    let data = try await requests.get(url)
-    let response = try decoder.decode(CipherTextResult.self, from: data)
-    let cipherText = response.cipherText
+
+    let backupWithPortal = client.environment?.backupWithPortalEnabled ?? false
+
+    if !backupWithPortal {
+      guard let url = URL(string: "\(config.custodianServerUrl)/mobile/\(userId)/cipher-text/fetch?backupMethod=\(withBackupMethod.rawValue)") else {
+        throw URLError(.badURL)
+      }
+      let data = try await requests.get(url)
+      let response = try decoder.decode(CipherTextResult.self, from: data)
+      cipherText = response.cipherText
+    }
 
     return try await portal.recoverWallet(withBackupMethod, withCipherText: cipherText) { status in
       self.logger.debug("ViewController.recover() - Recover progress callback with status: \(status.status.rawValue), \(status.done)")
@@ -601,26 +778,34 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.logger.error("Error: Do you have `GDRIVE_CLIENT_ID=$(GDRIVE_CLIENT_ID)` in your Secrets.xcconfig?")
         throw PortalExampleAppError.environmentNotSet()
       }
+      guard let BACKUP_WITH_PORTAL: String = infoDictionary["BACKUP_WITH_PORTAL"] as? String else {
+        self.logger.error("Error: The environment variable `BACKUP_WITH_PORTAL` is not set or is empty. Please ensure that `BACKUP_WITH_PORTAL=true` or `BACKUP_WITH_PORTAL=false` is included in your Secrets.xcconfig file, and that `BACKUP_WITH_PORTAL=$(BACKUP_WITH_PORTAL)` is referenced correctly in your App's info.plist.")
+        throw PortalExampleAppError.environmentNotSet()
+      }
 
       let debugMessage = "ViewController.loadApplicationConfig() - Found environment: \(ENV)"
       self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
 
       switch ENV {
       case "prod", "production":
+        let custodianServerUrl = BACKUP_WITH_PORTAL == "true" ? "https://prod-portalex-backup-with-portal.onrender.com" : "https://portalex-mpc.portalhq.io"
+
         self.config = ApplicationConfiguration(
           alchemyApiKey: ALCHEMY_API_KEY,
           apiUrl: "api.portalhq.io",
-          custodianServerUrl: "https://portalex-mpc.portalhq.io",
+          custodianServerUrl: custodianServerUrl,
           googleClientId: GOOGLE_CLIENT_ID,
           mpcUrl: "mpc.portalhq.io",
           webAuthnHost: "backup.web.portalhq.io",
           relyingParty: "portalhq.io"
         )
       case "stage", "staging":
+        let custodianServerUrl = BACKUP_WITH_PORTAL == "true" ? "https://staging-portalex-backup-with-portal.onrender.com" : "https://staging-portalex-mpc-service.onrender.com"
+
         self.config = ApplicationConfiguration(
           alchemyApiKey: ALCHEMY_API_KEY,
           apiUrl: "api.portalhq.dev",
-          custodianServerUrl: "https://staging-portalex-mpc-service.onrender.com",
+          custodianServerUrl: custodianServerUrl,
           googleClientId: GOOGLE_CLIENT_ID,
           mpcUrl: "mpc.portalhq.dev",
           webAuthnHost: "backup.portalhq.dev",
@@ -630,7 +815,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.config = ApplicationConfiguration(
           alchemyApiKey: ALCHEMY_API_KEY,
           apiUrl: "localhost:3001",
-          custodianServerUrl: "http://localhost:3007",
+          custodianServerUrl: "http://localhost:3010",
           googleClientId: GOOGLE_CLIENT_ID,
           mpcUrl: "localhost:3002",
           webAuthnHost: "backup.portalhq.dev",
@@ -900,6 +1085,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.deleteKeychainButton?.isHidden = !walletExists || !isWalletOnDevice
           self.ejectButton?.isEnabled = availableRecoveryMethods.count > 0
           self.ejectButton?.isHidden = availableRecoveryMethods.count == 0
+          self.ejectAllButton?.isEnabled = availableRecoveryMethods.count > 0
+          self.ejectAllButton?.isHidden = availableRecoveryMethods.count == 0
 
           // Test Add funds to Sepolia
           self.fundSepoliaButton?.isEnabled = walletExists && isWalletOnDevice
@@ -1031,6 +1218,29 @@ class ViewController: UIViewController, UITextFieldDelegate {
         try self.portal?.setPassword(enteredPassword)
 
         let privateKey = try await eject(.Password)
+
+        self.logger.info("ViewController.handleEject() - ✅ Successfully ejected wallet. Private key: \(privateKey)")
+        self.showStatusView(message: "\(self.successStatus) Private key: \(privateKey)")
+      } catch {
+        self.stopLoading()
+        print("⚠️", error)
+        self.logger.error("ViewController.handleEject() - Error ejecting wallet: \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error ejecting wallet \(error)")
+      }
+    }
+  }
+
+  @IBAction func handleEjectAll(_: UIButton) {
+    Task {
+      do {
+        guard let enteredPassword = await requestPassword(), !enteredPassword.isEmpty else {
+          self.logger.error("ViewController.handleEject() - ❌ No password set by user. Eject will not take place.")
+          return
+        }
+
+        try self.portal?.setPassword(enteredPassword)
+
+        let privateKey = try await ejectAll(.Password)
 
         self.logger.info("ViewController.handleEject() - ✅ Successfully ejected wallet. Private key: \(privateKey)")
         self.showStatusView(message: "\(self.successStatus) Private key: \(privateKey)")
