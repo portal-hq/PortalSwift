@@ -177,7 +177,11 @@ public class MockMobileWrapper: Mobile {
     return MockConstants.mockSignatureResponse
   }
 
-  public func MobileEjectWalletAndDiscontinueMPC(_: String, _: String) -> String {
+  public func MobileEjectWalletAndDiscontinueMPCSecp265K1(_: String, _: String) -> String {
     return MockConstants.mockEip155EjectResponse
   }
+
+    public func MobileEjectWalletAndDiscontinueMPCEd25519(_ clientDkgCipherText: String, _ serverDkgCipherText: String) async -> String {
+        return MockConstants.mockSolonaEjectResponse
+    }
 }

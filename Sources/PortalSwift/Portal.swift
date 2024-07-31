@@ -330,11 +330,32 @@ public class Portal {
     )
   }
 
-  public func eject(_ method: BackupMethods, withCipherText: String, andOrganizationBackupShare: String) async throws -> String {
-    let privateKey = try await mpc.eject(method, withCipherText: withCipherText, andOrganizationBackupShare: andOrganizationBackupShare)
+    public func ejectPrivateKeys(_ method: BackupMethods,
+                                 withCipherText: String,
+                                 andOrganizationBackupShares: [PortalCurve : String]
+    ) async throws -> EjectedKeys {
+        
+        return try await mpc.ejectPrivateKeys(method, with: withCipherText, and: andOrganizationBackupShares)
+    }
 
-    return privateKey
-  }
+    @available(*, deprecated, renamed: "ejectPrivateKeys", message: "Please use ejectPrivateKeys() instead.")
+    public func eject(_ method: BackupMethods, withCipherText: String, andOrganizationBackupShare: String) async throws -> String {
+      let privateKey = try await mpc.eject(method, withCipherText: withCipherText, andOrganizationBackupShare: andOrganizationBackupShare)
+
+      return privateKey
+    }
+
+    private func getOrgShare(custodianServerUrl: String, exchangeUserId: Int, method: BackupMethods, curve: String) async throws -> OrgShareResult {
+        let requests = PortalRequests()
+        let decoder = JSONDecoder()
+        guard let organizationBackupShareUrl = URL(
+          string: "\(custodianServerUrl)/mobile/\(exchangeUserId)/org-share/fetch?backupMethod=\(method.rawValue)-\(curve)"
+        ) else {
+          throw URLError(.badURL)
+        }
+        let organizationBackupShareData = try await requests.get(organizationBackupShareUrl)
+        return try decoder.decode(OrgShareResult.self, from: organizationBackupShareData)
+    }
 
   public func recoverWallet(
     _ method: BackupMethods,
@@ -685,17 +706,6 @@ public class Portal {
     self.mpc.recover(cipherText: cipherText, method: method, backupConfigs: backupConfigs, completion: completion, progress: progress)
   }
 
-  @available(*, deprecated, renamed: "eject", message: "Please use the async implementation of eject()")
-  public func ejectPrivateKey(
-    clientBackupCiphertext: String,
-    method: BackupMethods.RawValue,
-    backupConfigs: BackupConfigs? = nil,
-    orgBackupShare: String,
-    completion: @escaping (Result<String>) -> Void
-  ) {
-    self.mpc.ejectPrivateKey(clientBackupCiphertext: clientBackupCiphertext, method: method, backupConfigs: backupConfigs, orgBackupShare: orgBackupShare, completion: completion)
-  }
-
   public func provisionWallet(
     cipherText: String,
     method: BackupMethods.RawValue,
@@ -997,4 +1007,17 @@ public enum PortalSharePairType: String, Codable {
 public enum PortalSolError: Error {
   case failedToGetLatestBlockhash
   case failedToGetTransactionHash
+}
+
+public struct EjectedKeys {
+    public let secp256k1Key: String
+    public let ed25519Key: String?
+}
+
+struct OrgShareResult: Codable {
+  var orgShare: String
+}
+
+struct CipherTextResult: Codable {
+  var cipherText: String
 }

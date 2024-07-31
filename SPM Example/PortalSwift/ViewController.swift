@@ -210,43 +210,52 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  public func eject(_ withBackupMethod: BackupMethods) async throws -> String {
-    guard let portal else {
-      self.logger.error("ViewController.eject() - ❌ Portal not initialized. Please call registerPortal().")
-      throw PortalExampleAppError.portalNotInitialized()
-    }
-    guard let user else {
-      self.logger.error("ViewController.eject() - ❌ User not logged in.")
-      throw PortalExampleAppError.userNotLoggedIn()
-    }
-    guard let config else {
-      self.logger.error("ViewController.recover() - ❌ Application configuration not set.")
-      throw PortalExampleAppError.configurationNotSet()
-    }
-    guard let cipherTextUrl = URL(
-      string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/cipher-text/fetch?backupMethod=\(withBackupMethod.rawValue)"
-    ) else {
-      throw URLError(.badURL)
-    }
-    let cipherTextData = try await requests.get(cipherTextUrl)
-    let cipherTextResponse = try decoder.decode(CipherTextResult.self, from: cipherTextData)
+    public func eject(_ withBackupMethod: BackupMethods) async throws -> EjectedKeys {
+        guard let portal else {
+            self.logger.error("ViewController.eject() - ❌ Portal not initialized. Please call registerPortal().")
+            throw PortalExampleAppError.portalNotInitialized()
+        }
+        guard let user else {
+            self.logger.error("ViewController.eject() - ❌ User not logged in.")
+            throw PortalExampleAppError.userNotLoggedIn()
+        }
+        guard let config else {
+            self.logger.error("ViewController.recover() - ❌ Application configuration not set.")
+            throw PortalExampleAppError.configurationNotSet()
+        }
 
-    guard let organizationBackupShareUrl = URL(
-      string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/org-share/fetch?backupMethod=\(withBackupMethod.rawValue)-SECP256K1"
-    ) else {
-      throw URLError(.badURL)
+        let cipherText = try await getCipherText(custodianServerUrl: config.custodianServerUrl, exchangeUserId: user.exchangeUserId, method: withBackupMethod).cipherText
+
+        let secp256k1OrgShare = try await getOrgShare(custodianServerUrl: config.custodianServerUrl, exchangeUserId: user.exchangeUserId, method: withBackupMethod, curve: "SECP256K1").orgShare
+        let ed2551OrgShare = try await getOrgShare(custodianServerUrl: config.custodianServerUrl, exchangeUserId: user.exchangeUserId, method: withBackupMethod, curve: "ED25519").orgShare
+
+        let result = try await portal.ejectPrivateKeys(
+            withBackupMethod,
+            withCipherText: cipherText,
+            andOrganizationBackupShares: [.SECP256K1 : secp256k1OrgShare, .ED25519 : ed2551OrgShare])
+
+        return result
     }
-    let organizationBackupShareData = try await requests.get(organizationBackupShareUrl)
-    let organizationBackupShareResponse = try decoder.decode(OrgShareResult.self, from: organizationBackupShareData)
 
-    let privateKey = try await portal.eject(
-      withBackupMethod,
-      withCipherText: cipherTextResponse.cipherText,
-      andOrganizationBackupShare: organizationBackupShareResponse.orgShare
-    )
+    private func getCipherText(custodianServerUrl: String, exchangeUserId: Int, method: BackupMethods) async throws -> CipherTextResult {
+        guard let cipherTextUrl = URL(
+          string: "\(custodianServerUrl)/mobile/\(exchangeUserId)/cipher-text/fetch?backupMethod=\(method.rawValue)"
+        ) else {
+          throw URLError(.badURL)
+        }
+        let cipherTextData = try await requests.get(cipherTextUrl)
+        return try decoder.decode(CipherTextResult.self, from: cipherTextData)
+    }
 
-    return privateKey
-  }
+    private func getOrgShare(custodianServerUrl: String, exchangeUserId: Int, method: BackupMethods, curve: String) async throws -> OrgShareResult {
+        guard let organizationBackupShareUrl = URL(
+          string: "\(custodianServerUrl)/mobile/\(exchangeUserId)/org-share/fetch?backupMethod=\(method.rawValue)-\(curve)"
+        ) else {
+          throw URLError(.badURL)
+        }
+        let organizationBackupShareData = try await requests.get(organizationBackupShareUrl)
+        return try decoder.decode(OrgShareResult.self, from: organizationBackupShareData)
+    }
 
   public func generate() async throws -> PortalCreateWalletResponse {
     guard let portal else {
@@ -999,28 +1008,29 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  @IBAction func handleEject(_: UIButton) {
-    Task {
-      do {
-        guard let enteredPassword = await requestPassword(), !enteredPassword.isEmpty else {
-          self.logger.error("ViewController.handleEject() - ❌ No password set by user. Eject will not take place.")
-          return
+    @IBAction func handleEject(_: UIButton) {
+        Task {
+            do {
+                guard let enteredPassword = await requestPassword(), !enteredPassword.isEmpty else {
+                    self.logger.error("ViewController.handleEject() - ❌ No password set by user. Eject will not take place.")
+                    return
+                }
+                self.startLoading()
+                try self.portal?.setPassword(enteredPassword)
+                
+                let ejectedKeys = try await eject(.Password)
+                
+                self.logger.info("ViewController.handleEject() - ✅ Successfully ejected wallet. SECP256K1 Private key: \(ejectedKeys.secp256k1Key)\n ED25519 Private key: \(ejectedKeys.ed25519Key ?? "")")
+                self.showStatusView(message: "\(successStatus) SECP256K1 Private key: \(ejectedKeys.secp256k1Key)\n ED25519 Private key: \(ejectedKeys.ed25519Key ?? "")")
+                self.stopLoading()
+            } catch {
+                self.stopLoading()
+                print("⚠️", error)
+                self.logger.error("ViewController.handleEject() - Error ejecting wallet: \(error)")
+                self.showStatusView(message: "\(failureStatus) Error ejecting wallet \(error)")
+            }
         }
-
-        try self.portal?.setPassword(enteredPassword)
-
-        let privateKey = try await eject(.Password)
-
-        self.logger.info("ViewController.handleEject() - ✅ Successfully ejected wallet. Private key: \(privateKey)")
-        self.showStatusView(message: "\(successStatus) Private key: \(privateKey)")
-      } catch {
-        self.stopLoading()
-        print("⚠️", error)
-        self.logger.error("ViewController.handleEject() - Error ejecting wallet: \(error)")
-        self.showStatusView(message: "\(failureStatus) Error ejecting wallet \(error)")
-      }
     }
-  }
 
   @IBAction func handleFundSepolia(_: UIButton) {
     Task {
