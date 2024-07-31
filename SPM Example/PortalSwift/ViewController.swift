@@ -779,7 +779,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         throw PortalExampleAppError.environmentNotSet()
       }
       guard let BACKUP_WITH_PORTAL: String = infoDictionary["BACKUP_WITH_PORTAL"] as? String else {
-        self.logger.error("Error: Do you have `BACKUP_WITH_PORTAL=$(BACKUP_WITH_PORTAL)` in your Secrets.xcconfig?")
+        self.logger.error("Error: The environment variable `BACKUP_WITH_PORTAL` is not set or is empty. Please ensure that `BACKUP_WITH_PORTAL=true` or `BACKUP_WITH_PORTAL=false` is included in your Secrets.xcconfig file, and that `BACKUP_WITH_PORTAL=$(BACKUP_WITH_PORTAL)` is referenced correctly in your App's info.plist.")
         throw PortalExampleAppError.environmentNotSet()
       }
 
