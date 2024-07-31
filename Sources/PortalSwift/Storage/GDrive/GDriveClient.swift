@@ -297,7 +297,7 @@ public class GDriveClient {
       "--\(boundary)\n",
       "Content-Type: text/plain\n\n",
       "\(content)\n",
-      "--\(boundary)--",
+      "--\(boundary)--"
     ]
 
     return body.joined(separator: "")

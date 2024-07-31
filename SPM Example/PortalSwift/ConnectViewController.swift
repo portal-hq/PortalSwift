@@ -172,7 +172,7 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
       print("Invalid data type. Expected ConnectData.")
     }
   }
-  
+
   func changeChainId(chainId: Int) {
     self.connect?.once(event: Events.ChainChanged.rawValue) { data in
       print("chain changed to \(data)")
@@ -210,16 +210,16 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
   @IBAction func MumbaiPressed(_: Any) {
     self.changeChainId(chainId: 80001)
   }
-  
+
   @IBAction func emitGetSessionRequest(_: Any) {
     guard let requestId = self.sessionRequestIdInput?.text, let topic = self.sessionTopicInput?.text else {
       print("❌ You must fill in Session Request ID and Session Topic fields")
       return
     }
-    
+
     self.connect?.emitGetSessionRequest(requestId: requestId, topic: topic)
   }
-  
+
   @IBAction func autoApproveToggled(_ sender: UISwitch) {
     print("Auto approve toggled: \(sender.isOn)")
   }

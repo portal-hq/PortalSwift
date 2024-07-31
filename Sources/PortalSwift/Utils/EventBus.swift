@@ -100,7 +100,7 @@ public class EventBus {
 
   /// Removes all event handlers.
   public func resetEvents() {
-    self.events.forEach { event, _ in
+    for (event, _) in self.events {
       _ = self.removeListener(event: event)
     }
   }

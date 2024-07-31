@@ -35,7 +35,7 @@ public class PortalApi {
       return self._client
     }
   }
-  
+
   public var provider: PortalProvider?
 
   /// Create an instance of a PortalApi class.
@@ -117,7 +117,7 @@ public class PortalApi {
 
   public func getQuote(_ swapsApiKey: String, withArgs: QuoteArgs, forChainId: String? = nil) async throws -> Quote {
     let chainId = forChainId != nil ? forChainId : "eip155:\(self.chainId ?? 1)"
-    
+
     if let url = URL(string: "\(baseUrl)/api/v3/swaps/quote") {
       // Build the request body
       var body = withArgs.toDictionary()
@@ -501,7 +501,7 @@ public class PortalApi {
     // Start with a dictionary containing the always-present keys
     var body: [String: Any] = [
       "backupMethod": "\(backupMethod)",
-      "success": success,
+      "success": success
     ]
 
     // Conditionally add isMultiBackupEnabled if it's not nil
@@ -513,7 +513,7 @@ public class PortalApi {
       path: "/api/v2/clients/me/wallet/stored-client-backup-share",
       body: body,
       headers: [
-        "Authorization": "Bearer \(self.apiKey)",
+        "Authorization": "Bearer \(self.apiKey)"
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<String>) in

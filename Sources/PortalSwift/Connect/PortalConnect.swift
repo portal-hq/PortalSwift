@@ -347,7 +347,7 @@ public class PortalConnect: EventBus {
           data.params.chainId
         )
         print("[handleSessionRequest]", id, topic)
-        
+
         guard let client = self.client else {
           throw PortalConnectError.noWebSocketClientFound
         }

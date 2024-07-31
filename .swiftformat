@@ -6,7 +6,7 @@
 
 # Minimum Swift version to support
 
-- --swiftversion 5.5
+# --swiftversion 5.5
 
 # Ensures that the `self` keyword is always present when required
 
@@ -18,16 +18,16 @@
 
 # Disable rules that don't make sense for the project
 
-- --disable redundantSelf, hoistPatternLet
+--disable redundantSelf, hoistPatternLet
 
 # Remove unnecessary semicolons
 
-- --semicolons inline
+--semicolons inline
 
 # Place commas inline with the previous element
 
-- --commas inline
+--commas inline
 
 # Convert closure arguments to trailing closures where applicable
 
-- --trailingclosures
+--trailingclosures

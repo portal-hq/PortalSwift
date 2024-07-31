@@ -173,7 +173,7 @@ class ProviderTests: XCTestCase {
         "from": fromAddress,
         "to": "0xd46e8dd67c5d32be8058bb8eb970870f07244567",
         "value": "0x9184e72a",
-        "data": "0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675",
+        "data": "0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675"
       ]
 
       self.performRequest(method: ETHRequestMethods.EstimateGas.rawValue, params: [callData, "latest"]) { result in
@@ -256,7 +256,7 @@ class ProviderTests: XCTestCase {
         "from": fromAddress,
         "to": "0xd46e8dd67c5d32be8058bb8eb970870f07244567",
         "value": "0x9184e72a",
-        "data": "0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675",
+        "data": "0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8eb970870f072445675"
       ]
 
       self.performRequest(method: ETHRequestMethods.Call.rawValue, params: [callData, "latest"]) { result in
