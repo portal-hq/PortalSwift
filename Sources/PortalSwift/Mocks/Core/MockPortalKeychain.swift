@@ -24,7 +24,7 @@ public class MockPortalKeychain: PortalKeychain {
   override public func getAddresses() async throws -> [PortalNamespace: String?] {
     return [
       .eip155: MockConstants.mockEip155Address,
-      .solana: MockConstants.mockSolanaAddress,
+      .solana: MockConstants.mockSolanaAddress
     ]
   }
 

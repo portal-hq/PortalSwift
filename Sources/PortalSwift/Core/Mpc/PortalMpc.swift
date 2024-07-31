@@ -141,12 +141,12 @@ public class PortalMpc {
               return
             }
           }
-          if let secp256k1SigningShare = shares[PortalCurve.SECP256K1.rawValue] {
+          if let secp256k1SigningShare = shares[PortalCurve.SECP256K1.rawValue]?.share {
             do {
-              async let mpcShare = try getBackupShare(.SECP256K1, withMethod: method, andSigningShare: secp256k1SigningShare.share)
+              async let mpcShare = try getBackupShare(.SECP256K1, withMethod: method, andSigningShare: secp256k1SigningShare)
 
               usingProgressCallback?(MpcStatus(status: .parsingShare, done: false))
-              let shareData = await try encoder.encode(mpcShare)
+              let shareData = try await encoder.encode(mpcShare)
               guard let shareString = String(data: shareData, encoding: .utf8) else {
                 throw MpcError.unexpectedErrorOnBackup("Unable to stringify SECP256K1 share.")
               }
@@ -185,6 +185,21 @@ public class PortalMpc {
       }
       try await self.api.updateShareStatus(.backup, status: .STORED_CLIENT_BACKUP_SHARE_KEY, sharePairIds: shareIds)
 
+      guard let client = try await api.client else {
+        throw MpcError.clientInformationUnavailable
+      }
+
+      if client.environment?.backupWithPortalEnabled ?? false {
+        for share in generateResponse.values {
+          let successful = try await api.storeClientCipherText(share.id, cipherText: encryptResult.cipherText)
+
+          if !successful {
+            self.logger.error("[PortalMpc] Unable to store client cipherText.")
+            throw MpcError.unableToStoreClientCipherText
+          }
+        }
+      }
+
       // Refresh the client
       try await self.api.refreshClient()
       try await self.keychain.loadMetadata()
@@ -203,25 +218,87 @@ public class PortalMpc {
 
   public func eject(
     _ method: BackupMethods,
-    withCipherText: String,
-    andOrganizationBackupShare: String,
+    withCipherText: String? = nil,
+    andOrganizationBackupShare: String? = nil,
+    andOrganizationSolanaBackupShare: String? = nil,
     usingProgressCallback _: ((MpcStatus) -> Void)? = nil
-  ) async throws -> String {
+  ) async throws -> [PortalNamespace: String] {
     if self.version != "v6" {
       throw MpcError.backupNoLongerSupported("[PortalMpc] Eject is no longer supported for this version of MPC. Please use `version = \"v6\"`.")
     }
+
+    var cipherText = withCipherText
+    var organizationShare = andOrganizationBackupShare
+    var organizationShareEd25519 = andOrganizationSolanaBackupShare
 
     guard let storage = self.backupOptions[method] else {
       throw MpcError.unexpectedErrorOnEject("Backup method \(method.rawValue) not registered.")
     }
 
+    guard let client = try await api.client else {
+      throw MpcError.clientInformationUnavailable
+    }
+
+    var backupSharePairId: String?
+    var walletId: String?
+    var walletIdEd25519: String?
+
+    for wallet in client.wallets {
+      if wallet.curve == .SECP256K1 {
+        // Locate the appropriate wallet for Ethereum
+        for backupShare in wallet.backupSharePairs {
+          if backupShare.status == .completed, backupShare.backupMethod == method {
+            backupSharePairId = backupShare.id
+            walletId = wallet.id
+            break
+          }
+        }
+      } else if wallet.curve == .ED25519 {
+        // Locate the appropriate wallet for Solana
+        for backupShare in wallet.backupSharePairs {
+          if backupShare.status == .completed, backupShare.backupMethod == method {
+            walletIdEd25519 = wallet.id
+            break
+          }
+        }
+      }
+    }
+
+    // Always enforce Ethereum values are present
+    guard let backupSharePairId = backupSharePairId else {
+      throw MpcError.unableToEjectWallet("No backup share pair found for curve SECP256K1.")
+    }
+    guard let walletId = walletId else {
+      throw MpcError.unableToEjectWallet("No backed up wallet found for curve SECP256K1.")
+    }
+
+    let backupWithPortal = client.environment?.backupWithPortalEnabled ?? false
+    if backupWithPortal {
+      cipherText = try await api.getClientCipherText(backupSharePairId)
+      organizationShare = try await api.prepareEject(walletId, method)
+
+      // Conditionally prepare eject for Solana wallets
+      if let walletIdEd25519 = walletIdEd25519 {
+        organizationShareEd25519 = try? await api.prepareEject(walletIdEd25519, method)
+      }
+    }
+
+    // Always enforce Ethereum values are present
+    guard let cipherText = cipherText else {
+      throw MpcError.noBackupCipherTextFound
+    }
+    guard let organizationShare = organizationShare else {
+      throw MpcError.noOrganizationShareFound("No organization share found for Ethereum wallet.")
+    }
+
     let decryptionKey = try await storage.read()
 
-    let decryptedString = try await storage.decrypt(withCipherText, withKey: decryptionKey)
+    let decryptedString = try await storage.decrypt(cipherText, withKey: decryptionKey)
     guard let decryptedData = decryptedString.data(using: .utf8) else {
       throw MpcError.unexpectedErrorOnEject("Unable to convert decrypted data.")
     }
 
+    // Decode the backup share into the appropriate format
     var generateResponse: PortalMpcGenerateResponse = [:]
     do {
       generateResponse = try self.decoder.decode(PortalMpcGenerateResponse.self, from: decryptedData)
@@ -233,42 +310,45 @@ public class PortalMpc {
       )
     }
 
-    let privateKeys = try await withCheckedThrowingContinuation { continuation in
-      let response = generateResponse
-      Task {
-        do {
-          var addresses: [PortalNamespace: String] = [:]
+    // Get the dictionary of private keys via the `eject` MPC operation
+    var privateKeys: [PortalNamespace: String] = [:]
+    let response = generateResponse
 
-          if let secp256k1Share = response["SECP256K1"] {
-            let ejectResponse = await self.mobile.MobileEjectWalletAndDiscontinueMPC(secp256k1Share.share, andOrganizationBackupShare)
-            guard let jsonData = ejectResponse.data(using: .utf8) else {
-              throw JSONParseError.stringToDataConversionFailed
-            }
-
-            let ejectResult: EjectResult = try JSONDecoder().decode(EjectResult.self, from: jsonData)
-            let privateKey = ejectResult.privateKey
-
-            addresses[.eip155] = privateKey
-
-            _ = try await self.api.eject()
-
-            continuation.resume(returning: addresses)
-            return
-          }
-
-          continuation.resume(returning: addresses)
-        } catch {
-          continuation.resume(throwing: error)
-          return
-        }
+    if let secp256k1Share = response["SECP256K1"] {
+      let ejectResponse = await self.mobile.MobileEjectWalletAndDiscontinueMPC(secp256k1Share.share, organizationShare)
+      guard let jsonData = ejectResponse.data(using: .utf8) else {
+        throw JSONParseError.stringToDataConversionFailed
       }
+
+      let ejectResult: EjectResult = try decoder.decode(EjectResult.self, from: jsonData)
+      let privateKey = ejectResult.privateKey
+
+      privateKeys[.eip155] = privateKey
     }
 
-    guard let eip155PrivateKey = privateKeys[.eip155] else {
-      throw MpcError.unexpectedErrorOnEject("Unable to find address in addresses map.")
+    if let ed25519Share = response["ED25519"], organizationShareEd25519 != nil {
+      guard let organizationShareEd25519 = organizationShareEd25519 else {
+        throw MpcError.noOrganizationShareFound("No organization share found for Solana wallet.")
+      }
+
+      let ejectResponse = await self.mobile.MobileEjectWalletAndDiscontinueMPCEd25519(ed25519Share.share, organizationShareEd25519)
+      guard let jsonData = ejectResponse.data(using: .utf8) else {
+        throw JSONParseError.stringToDataConversionFailed
+      }
+
+      let ejectResult: EjectResult = try decoder.decode(EjectResult.self, from: jsonData)
+      let privateKey = ejectResult.privateKey
+
+      privateKeys[.solana] = privateKey
     }
 
-    return eip155PrivateKey
+    _ = try await self.api.eject()
+
+    guard let _ = privateKeys[.eip155] else {
+      throw MpcError.unexpectedErrorOnEject("Unable to find private key for Ethereum wallet.")
+    }
+
+    return privateKeys
   }
 
   public func generate(withProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> [PortalNamespace: String?] {
@@ -301,7 +381,7 @@ public class PortalMpc {
             // Parse ED25519 Share
             let ed25519ShareData = try self.encoder.encode(ed25519MpcShare)
             guard let ed25519ShareString = String(data: ed25519ShareData, encoding: .utf8) else {
-              throw MpcError.unexpectedErrorOnBackup("Unable to stringify ED25519 share.")
+              throw MpcError.unexpectedErrorOnGenerate("Unable to stringify ED25519 share.")
             }
             generateResponse["ED25519"] = PortalMpcGeneratedShare(
               id: ed25519MpcShare.signingSharePairId ?? "",
@@ -311,7 +391,7 @@ public class PortalMpc {
             // Parse SECP256K1 Share
             let secp256k1ShareData = try self.encoder.encode(secp256k1MpcShare)
             guard let secp256k1ShareString = String(data: secp256k1ShareData, encoding: .utf8) else {
-              throw MpcError.unexpectedErrorOnBackup("Unable to stringify ED25519 share.")
+              throw MpcError.unexpectedErrorOnGenerate("Unable to stringify ED25519 share.")
             }
             generateResponse["SECP256K1"] = PortalMpcGeneratedShare(
               id: secp256k1MpcShare.signingSharePairId ?? "",
@@ -353,11 +433,40 @@ public class PortalMpc {
 
   public func recover(
     _ method: BackupMethods,
-    withCipherText: String,
+    withCipherText: String? = nil,
     usingProgressCallback: ((MpcStatus) -> Void)? = nil
   ) async throws -> [PortalNamespace: String?] {
     if self.version != "v6" {
       throw MpcError.backupNoLongerSupported("[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = \"v6\"`.")
+    }
+
+    guard let client = try await api.client else {
+      throw MpcError.clientInformationUnavailable
+    }
+
+    var cipherText = withCipherText
+
+    // Fetch the cipherText if necessary
+    if client.environment?.backupWithPortalEnabled ?? false {
+      var backupSharePairId: String?
+
+      for wallet in client.wallets {
+        for backupSharePair in wallet.backupSharePairs {
+          if backupSharePair.status == .completed, backupSharePair.backupMethod == method {
+            backupSharePairId = backupSharePair.id
+          }
+        }
+      }
+
+      guard let backupSharePairId = backupSharePairId else {
+        throw MpcError.noValidBackupFound
+      }
+
+      cipherText = try await api.getClientCipherText(backupSharePairId)
+    }
+
+    guard let cipherText = cipherText else {
+      throw MpcError.noBackupCipherTextFound
     }
 
     guard !self.isWalletModificationInProgress else {
@@ -378,7 +487,7 @@ public class PortalMpc {
             let decryptionKey = try await storage.read()
 
             usingProgressCallback?(MpcStatus(status: .decryptingShare, done: false))
-            let decryptedString = try await storage.decrypt(withCipherText, withKey: decryptionKey)
+            let decryptedString = try await storage.decrypt(cipherText, withKey: decryptionKey)
             guard let decryptedData = decryptedString.data(using: .utf8) else {
               throw MpcError.unexpectedErrorOnRecover("Unable to parse decrypted data.")
             }
@@ -391,7 +500,7 @@ public class PortalMpc {
               //  The share's already been backed up, recover it
               async let ed25519MpcShare = try recoverSigningShare(.ED25519, withMethod: method, andBackupShare: ed25519Share.share)
 
-              let shareData = await try encoder.encode(ed25519MpcShare)
+              let shareData = try await encoder.encode(ed25519MpcShare)
               guard let shareString = String(data: shareData, encoding: .utf8) else {
                 throw MpcError.unexpectedErrorOnBackup("Unable to stringify ED25519 share.")
               }
@@ -400,22 +509,12 @@ public class PortalMpc {
                 id: ed25519MpcShare.signingSharePairId ?? "",
                 share: shareString
               )
-            } else {
-              let ed25519MpcShare = try await self.getSigningShare(.ED25519)
-              let ed25519ShareData = try self.encoder.encode(ed25519MpcShare)
-              guard let ed25519ShareString = String(data: ed25519ShareData, encoding: .utf8) else {
-                throw MpcError.unexpectedErrorOnBackup("Unable to stringify ED25519 share.")
-              }
-              recoverResponse["ED25519"] = PortalMpcGeneratedShare(
-                id: ed25519MpcShare.signingSharePairId ?? "",
-                share: ed25519ShareString
-              )
             }
 
             if let secp256k1Share = backupResponse[PortalCurve.SECP256K1.rawValue] {
               async let secp256k1MpcShare = try recoverSigningShare(.SECP256K1, withMethod: method, andBackupShare: secp256k1Share.share)
 
-              let shareData = await try encoder.encode(secp256k1MpcShare)
+              let shareData = try await encoder.encode(secp256k1MpcShare)
               guard let shareString = String(data: shareData, encoding: .utf8) else {
                 throw MpcError.unexpectedErrorOnBackup("Unable to stringify SECP256K1 share.")
               }
@@ -458,6 +557,108 @@ public class PortalMpc {
       self.isWalletModificationInProgress = false
       throw error
     }
+  }
+
+  private func generateSolanaWallet(callerFuncName: String, usingProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> [PortalNamespace: String?] {
+    if self.version != "v6" {
+      throw MpcError.backupNoLongerSupported("[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = \"v6\"`.")
+    }
+
+    guard !self.isWalletModificationInProgress else {
+      throw MpcError.walletModificationAlreadyInProgress
+    }
+
+    self.isWalletModificationInProgress = true
+    var newAddresses: [PortalNamespace: String?]
+
+    do {
+      let addresses = try await keychain.getAddresses()
+
+      guard addresses[.eip155] ?? nil != nil else {
+        throw MpcError.unexpectedErrorOnGenerate("\(callerFuncName) - No eip155 wallet found. Please use createWallet() to generate both eip155 and solana wallets for this client.")
+      }
+
+      guard addresses[.solana] ?? nil == nil else {
+        throw MpcError.unexpectedErrorOnGenerate("\(callerFuncName) - Could not generate Solana wallet as it already exists.")
+      }
+
+      usingProgressCallback?(MpcStatus(status: .generatingShare, done: false))
+
+      // generate the ED25519 share
+      let ed25519MpcShare = try await self.getSigningShare(.ED25519)
+
+      // create a share object to be stored to keychain
+      var generateResponse: PortalMpcGenerateResponse = [:]
+
+      usingProgressCallback?(MpcStatus(status: .parsingShare, done: false))
+
+      let ed25519ShareData = try self.encoder.encode(ed25519MpcShare)
+      guard let ed25519ShareString = String(data: ed25519ShareData, encoding: .utf8) else {
+        throw MpcError.unexpectedErrorOnGenerate("Unable to stringify ED25519 share.")
+      }
+      generateResponse["ED25519"] = PortalMpcGeneratedShare(
+        id: ed25519MpcShare.signingSharePairId ?? "",
+        share: ed25519ShareString
+      )
+
+      // Obtain the signing secpk256k1 share
+      let shares = try await keychain.getShares()
+
+      generateResponse["SECP256K1"] = shares["SECP256K1"]
+
+      usingProgressCallback?(MpcStatus(status: .storingShare, done: false))
+
+      // store the shares to keychain
+      try await self.keychain.setShares(generateResponse)
+
+      // Update share statuses
+      let shareIds: [String] = generateResponse.values.map { share in
+        share.id
+      }
+      try await self.api.updateShareStatus(.signing, status: .STORED_CLIENT, sharePairIds: shareIds)
+
+      // Reset the metadata in the Keychain
+      try await self.api.refreshClient()
+      try await self.keychain.loadMetadata()
+      self.isWalletModificationInProgress = false
+
+      // get addresses from the Keychain.
+      newAddresses = try await keychain.getAddresses()
+
+    } catch {
+      self.isWalletModificationInProgress = false
+      throw error
+    }
+
+    return newAddresses
+  }
+
+  /// You should only call this function if you are upgrading from v3 to v4.
+  public func generateSolanaWallet(usingProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> String {
+    let result: [PortalNamespace: String?] = try await generateSolanaWallet(callerFuncName: "PortalMpc.generateSolanaWallet()", usingProgressCallback: usingProgressCallback)
+    if let newSolanaAddress = result[PortalNamespace.solana], let unwrappedNewSolanaAddress = newSolanaAddress {
+      usingProgressCallback?(MpcStatus(status: .done, done: true))
+      return unwrappedNewSolanaAddress
+    } else {
+      throw MpcError.unexpectedErrorOnGenerate("Unable to get the Solana address from keychain.")
+    }
+  }
+
+  /// You should only call this function if you are upgrading from v3 to v4.
+  public func generateSolanaWalletAndBackupShares(backupMethod: BackupMethods, usingProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> (solanaAddress: String, backupResponse: PortalMpcBackupResponse) {
+    // generate solana wallet
+    let generateSolonaResult: [PortalNamespace: String?] = try await generateSolanaWallet(callerFuncName: "PortalMpc.generateSolanaWalletAndBackupShares()", usingProgressCallback: usingProgressCallback)
+    var solanaAddress: String
+    if let newSolanaAddress = generateSolonaResult[PortalNamespace.solana], let unwrappedNewSolanaAddress = newSolanaAddress {
+      solanaAddress = unwrappedNewSolanaAddress
+    } else {
+      throw MpcError.unexpectedErrorOnGenerate("Unable to get the Solana address from keychain.")
+    }
+
+    // backup
+    let backupResult = try await self.backup(backupMethod, usingProgressCallback: usingProgressCallback)
+
+    return (solanaAddress, backupResult)
   }
 
   public func registerBackupMethod(_ method: BackupMethods, withStorage: PortalStorage) {
@@ -535,6 +736,7 @@ public class PortalMpc {
           metadata.curve = forCurve
           metadata.backupMethod = withMethod.rawValue
           metadata.isMultiBackupEnabled = featureFlags?.isMultiBackupEnabled
+
           let mpcMetadataString = try metadata.jsonString()
 
           let response = forCurve == .ED25519
@@ -632,6 +834,7 @@ public class PortalMpc {
           metadata.curve = forCurve
           metadata.backupMethod = withMethod.rawValue
           metadata.isMultiBackupEnabled = featureFlags?.isMultiBackupEnabled
+
           let mpcMetadataString = try metadata.jsonString()
 
           let response = forCurve == .ED25519
@@ -728,9 +931,13 @@ public class PortalMpc {
         if backupMethod == .Password, let storage = backupOptions[backupMethod] as? PasswordStorage {
           storage.password = backupConfigs?.passwordStorage?.password
         }
-        let address = try await eject(backupMethod, withCipherText: clientBackupCiphertext, andOrganizationBackupShare: orgBackupShare)
+        let addresses = try await eject(backupMethod, withCipherText: clientBackupCiphertext, andOrganizationBackupShare: orgBackupShare)
 
-        completion(Result(data: address))
+        guard let eip155PrivateKey = addresses[.eip155] else {
+          throw MpcError.unableToEjectWallet("No EIP155 private key found.")
+        }
+
+        completion(Result(data: eip155PrivateKey))
       } catch {
         completion(Result(error: error))
       }
@@ -787,19 +994,24 @@ public enum MpcError: Error {
   case addressNotFound(_ message: String)
   case backupMethodNotRegistered(_ message: String)
   case backupNoLongerSupported(_ message: String)
+  case clientInformationUnavailable
   case failedToEncryptClientBackupShare(_ message: String)
   case failedToGetBackupFromStorage
   case failedToRecoverBackup(_ message: String)
   case failedToStoreClientBackupShareKey(_ message: String)
   case failedToValidateBackupMethod
   case generateNoLongerSupported(_ message: String)
+  case noBackupCipherTextFound
+  case noOrganizationShareFound(_ message: String = "No organization share found.")
   case noSigningSharePresent
+  case noValidBackupFound
   case recoverNoLongerSupported(_ message: String)
   case signingRecoveryError(_ message: String)
   case unableToAuthenticate
   case unableToDecodeShare
   case unableToEjectWallet(String)
   case unableToRetrieveClient(String)
+  case unableToStoreClientCipherText
   case unableToWriteToKeychain
   case unexpectedErrorOnBackup(_ message: String)
   case unexpectedErrorOnDecrypt(_ message: String)

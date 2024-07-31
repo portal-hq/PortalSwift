@@ -33,7 +33,7 @@ public class Portal {
   }
 
   public let api: PortalApi
-  internal let apiKey: String
+  let apiKey: String
   public let autoApprove: Bool
   public var gatewayConfig: [Int: String] = [:]
   public let provider: PortalProvider
@@ -330,15 +330,49 @@ public class Portal {
     )
   }
 
-  public func eject(_ method: BackupMethods, withCipherText: String, andOrganizationBackupShare: String) async throws -> String {
-    let privateKey = try await mpc.eject(method, withCipherText: withCipherText, andOrganizationBackupShare: andOrganizationBackupShare)
+  /// You should only call this function if you are upgrading from v3 to v4.
+  public func createSolanaWallet(usingProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> String {
+    let addresses = try await mpc.generateSolanaWallet(usingProgressCallback: usingProgressCallback)
+    return addresses
+  }
+
+  public func eject(
+    _ method: BackupMethods,
+    withCipherText: String? = nil,
+    andOrganizationBackupShare: String? = nil
+  ) async throws -> String {
+    let privateKeys = try await mpc.eject(
+      method,
+      withCipherText: withCipherText,
+      andOrganizationBackupShare: andOrganizationBackupShare
+    )
+
+    guard let privateKey = privateKeys[.eip155] else {
+      throw MpcError.unableToEjectWallet("No Ethereum private key found.")
+    }
 
     return privateKey
   }
 
+  public func ejectPrivateKeys(
+    _ method: BackupMethods,
+    withCipherText: String? = nil,
+    andOrganizationBackupShare: String? = nil,
+    andOrganizationSolanaBackupShare: String? = nil
+  ) async throws -> [PortalNamespace: String] {
+    let privateKeys = try await mpc.eject(
+      method,
+      withCipherText: withCipherText,
+      andOrganizationBackupShare: andOrganizationBackupShare,
+      andOrganizationSolanaBackupShare: andOrganizationSolanaBackupShare
+    )
+
+    return privateKeys
+  }
+
   public func recoverWallet(
     _ method: BackupMethods,
-    withCipherText: String,
+    withCipherText: String? = nil,
     usingProgressCallback: ((MpcStatus) -> Void)? = nil
   ) async throws -> PortalCreateWalletResponse {
     let addresses = try await mpc.recover(method, withCipherText: withCipherText, usingProgressCallback: usingProgressCallback)
@@ -346,6 +380,30 @@ public class Portal {
     return PortalCreateWalletResponse(
       ethereum: addresses[.eip155] ?? nil,
       solana: addresses[.solana] ?? nil
+    )
+  }
+
+  /// You should only call this function if you are upgrading from v3 to v4.
+  public func generateSolanaWalletAndBackupShares(
+    _ method: BackupMethods, usingProgressCallback _: ((MpcStatus) -> Void)? = nil
+  ) async throws -> (solanaAddress: String, cipherText: String, storageCallback: () async throws -> Void) {
+    // Run generateSolanaWalletAndBackupShares
+    let result = try await mpc.generateSolanaWalletAndBackupShares(backupMethod: method)
+
+    // Build the storage callback
+    let storageCallback: () async throws -> Void = {
+      try await self.api.updateShareStatus(
+        .backup,
+        status: .STORED_CLIENT_BACKUP_SHARE,
+        sharePairIds: result.backupResponse.shareIds
+      )
+      try await self.api.refreshClient()
+    }
+
+    return (
+      solanaAddress: result.solanaAddress,
+      cipherText: result.backupResponse.cipherText,
+      storageCallback: storageCallback
     )
   }
 

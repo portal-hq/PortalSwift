@@ -20,6 +20,7 @@ public enum PortalExampleAppError: Error {
   case addressNotFound(_: String = "Address not found")
   case alchemyKeyNotFound(_: String = "Alchemy API key not found")
   case cantLoadInfoPlist(_: String = "Can't load info.plist")
+  case clientInformationUnavailable(_: String = "Client information unavailable")
   case configurationNotSet(_: String = "Configuration not set")
   case couldNotParseCustodianResponse(_: String = "Could not parse custodian response")
   case custodianServerUrlNotSet(_: String = "Custodian server URL not set")

@@ -149,7 +149,7 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
                      "clientDataJSON": clientDataJSON.toBase64Url(),
                      "authenticatorData": authenticatorData.toBase64Url(),
                      "signature": signature.toBase64Url(),
-                     "userHandle": String(data: userID, encoding: .utf8),
+                     "userHandle": String(data: userID, encoding: .utf8)
                    ]] as [String: Any]
 
     if let payloadJSONData = try? JSONSerialization.data(withJSONObject: payload, options: .fragmentsAllowed) {
@@ -178,7 +178,7 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
                    "type": "public-key",
                    "response": [
                      "attestationObject": attestationObject.toBase64Url(),
-                     "clientDataJSON": clientDataJSON.toBase64Url(),
+                     "clientDataJSON": clientDataJSON.toBase64Url()
                    ]] as [String: Any]
 
     if let payloadJSONData = try? JSONSerialization.data(withJSONObject: payload, options: .fragmentsAllowed) {

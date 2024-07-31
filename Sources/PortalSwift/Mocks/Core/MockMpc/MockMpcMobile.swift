@@ -180,4 +180,8 @@ public class MockMobileWrapper: Mobile {
   public func MobileEjectWalletAndDiscontinueMPC(_: String, _: String) -> String {
     return MockConstants.mockEip155EjectResponse
   }
+
+  public func MobileEjectWalletAndDiscontinueMPCEd25519(_: String, _: String) -> String {
+    return MockConstants.mockSolanaEjectResponse
+  }
 }

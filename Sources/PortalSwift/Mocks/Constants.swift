@@ -62,6 +62,7 @@ public enum MockConstants {
     createdAt: mockCreatedAt,
     backupSharePairs: [mockWalletBackupShare],
     curve: .ED25519,
+    ejectableUntil: nil,
     publicKey: mockPublicKey,
     signingSharePairs: [mockWalletSigningShare]
   )
@@ -248,6 +249,7 @@ public enum MockConstants {
     createdAt: mockCreatedAt,
     backupSharePairs: [mockWalletBackupShare],
     curve: .SECP256K1,
+    ejectableUntil: nil,
     publicKey: mockPublicKey,
     signingSharePairs: [mockWalletSigningShare]
   )
@@ -261,6 +263,8 @@ public enum MockConstants {
     changes: []
   )
   public static let mockSolanaAddress = "6LmSRCiu3z6NCSpF19oz1pHXkYkN4jWbj9K1nVELpDkT"
+  public static let mockSolanaEjectResponse = "{\"privateKey\":\"\(mockSolanaPrivateKey)\",\"error\":{\"code\":0,\"message\":\"\"}}"
+  public static let mockSolanaPrivateKey = "099cabf8c65c81e629d59e72f04a549aafa531329e25685a5b8762b926597209"
   public static let mockTransactionHash = "0x926c5168c5646425d5dcf8e3dac7359ddb77e9ff95884393a6a9a8e3de066fc1"
   public static let mockTransactionHashResponse = "{\"data\":\"\(mockTransactionHash)\",\"error\":{\"code\":0,\"message\":\"\"}}"
   public static let mockWalletBackupShare = ClientResponseBackupSharePair(
@@ -284,7 +288,8 @@ public enum MockConstants {
       createdAt: mockCreatedAt,
       environment: ClientResponseEnvironment(
         id: "test-environment-id",
-        name: "test-environment-name"
+        name: "test-environment-name",
+        backupWithPortalEnabled: false
       ),
       ejectedAt: "test-ejected-at",
       isAccountAbstracted: false,

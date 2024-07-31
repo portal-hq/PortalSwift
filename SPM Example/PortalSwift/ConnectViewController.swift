@@ -15,6 +15,7 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
   private var connect: PortalConnect?
   private var connect2: PortalConnect?
   private var chains: [Int]?
+
   // UI Elements
   @IBOutlet var connectButton: UIButton?
   @IBOutlet var connectMessage: UITextView?
@@ -31,6 +32,7 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var MumbaiButton: UIButton?
   @IBOutlet var sessionRequestIdInput: UITextField?
   @IBOutlet var sessionTopicInput: UITextField?
+  @IBOutlet var autoApproveToggleButton: UISwitch?
 
   required init?(coder: NSCoder) {
     super.init(coder: coder)
@@ -81,7 +83,7 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
         let unwrappedConnectButton2 = self.connectButton2
       {
         self.initPortalConnect(portalConnect: unwrappedConnect, button: unwrappedConnectButton, label: "connect1")
-        self.initPortalConnect(portalConnect: unwrappedConnect2, button: unwrappedConnectButton2, label: "connect2", autoApprove: false)
+        self.initPortalConnect(portalConnect: unwrappedConnect2, button: unwrappedConnectButton2, label: "connect2")
       }
     } catch {
       print("[ConnectViewController] Unable to create PortalConnect instances \(error)")
@@ -94,19 +96,19 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
     return true
   }
 
-  func initPortalConnect(portalConnect: PortalConnect, button: UIButton, label: String, autoApprove: Bool = true) {
+  func initPortalConnect(portalConnect: PortalConnect, button: UIButton, label: String) {
     button.isEnabled = false
 
     portalConnect.on(event: Events.PortalDappSessionRequested.rawValue, callback: { [weak self] data in
-      print("Event \(Events.PortalDappSessionRequested.rawValue) recieved for v2 on \(label)")
+      print("Event \(Events.PortalDappSessionRequested.rawValue) received for v2 on \(label)")
       self?.didRequestApprovalDapps(portalConnect: portalConnect, data: data)
     })
 
     portalConnect.on(event: Events.ConnectError.rawValue, callback: { data in
       if let errorData = data as? ErrorData {
-        print("Event \(Events.ConnectError.rawValue) recieved on \(label). Error: \(errorData.params.message) Code: \(errorData.params.code)")
+        print("Event \(Events.ConnectError.rawValue) received on \(label). Error: \(errorData.params.message) Code: \(errorData.params.code)")
       } else {
-        print("Event \(Events.ConnectError.rawValue) recieved on \(label). Error: \(data)")
+        print("Event \(Events.ConnectError.rawValue) received on \(label). Error: \(data)")
       }
     })
 
@@ -117,7 +119,7 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
 
     portalConnect.on(event: Events.Connect.rawValue) { (data: Any) in
       print("[ConnectViewController] ✅ Connected! \(data) on \(label)")
-      self.disconnectLabel?.text = "Disconnected 🛑"
+      self.disconnectLabel?.text = "Connected ✅"
       if label == "connect1" {
         self.connectButton?.isEnabled = false
         self.disconnectButton?.isEnabled = true
@@ -129,7 +131,7 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
 
     portalConnect.on(event: Events.Disconnect.rawValue) { (data: Any) in
       print("[ConnectViewController] 🛑 Disconnected \(data) on \(label)")
-      self.disconnectLabel?.text = "Disconnected ✅"
+      self.disconnectLabel?.text = "Disconnected 🛑"
       if label == "connect1" {
         self.connectButton?.isEnabled = false
         self.disconnectButton?.isEnabled = false
@@ -143,9 +145,7 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
 
     portalConnect.on(event: Events.PortalSigningRequested.rawValue) { (data: Any) in
       print("Chain ID: ", (data as? ETHRequestPayload)?.chainId ?? "")
-      if autoApprove {
-        portalConnect.emit(event: Events.PortalSigningApproved.rawValue, data: data)
-      } else {
+      if self.autoApproveToggleButton?.isOn == true {
         portalConnect.emit(event: Events.PortalSigningApproved.rawValue, data: data)
       }
     }
@@ -173,31 +173,6 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  @IBAction func PolyMainPressed(_: Any) {
-    self.changeChainId(chainId: 137)
-  }
-
-  @IBAction func SepoliaPressed(_: Any) {
-    self.changeChainId(chainId: 11_155_111)
-  }
-
-  @IBAction func EthMainnetPressed(_: Any) {
-    self.changeChainId(chainId: 1)
-  }
-
-  @IBAction func MumbaiPressed(_: Any) {
-    self.changeChainId(chainId: 80001)
-  }
-  
-  @IBAction func emitGetSessionRequest(_: Any) {
-    guard let requestId = self.sessionRequestIdInput?.text, let topic = self.sessionTopicInput?.text else {
-      print("❌ You must fill in Session Request ID and Session Topic fields")
-      return
-    }
-    
-    self.connect?.emitGetSessionRequest(requestId: requestId, topic: topic)
-  }
-
   func changeChainId(chainId: Int) {
     self.connect?.once(event: Events.ChainChanged.rawValue) { data in
       print("chain changed to \(data)")
@@ -218,6 +193,35 @@ class ConnectViewController: UIViewController, UITextFieldDelegate {
     } catch {
       print("Error in switching chains: \(error)")
     }
+  }
+
+  @IBAction func PolyMainPressed(_: Any) {
+    self.changeChainId(chainId: 137)
+  }
+
+  @IBAction func SepoliaPressed(_: Any) {
+    self.changeChainId(chainId: 11_155_111)
+  }
+
+  @IBAction func EthMainnetPressed(_: Any) {
+    self.changeChainId(chainId: 1)
+  }
+
+  @IBAction func MumbaiPressed(_: Any) {
+    self.changeChainId(chainId: 80001)
+  }
+
+  @IBAction func emitGetSessionRequest(_: Any) {
+    guard let requestId = self.sessionRequestIdInput?.text, let topic = self.sessionTopicInput?.text else {
+      print("❌ You must fill in Session Request ID and Session Topic fields")
+      return
+    }
+
+    self.connect?.emitGetSessionRequest(requestId: requestId, topic: topic)
+  }
+
+  @IBAction func autoApproveToggled(_ sender: UISwitch) {
+    print("Auto approve toggled: \(sender.isOn)")
   }
 
   @IBAction func connectPressed() {

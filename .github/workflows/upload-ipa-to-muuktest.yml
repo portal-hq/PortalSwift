@@ -1,0 +1,142 @@
+name: Build and Upload iOS ipa to Mukktest
+
+on:
+  push:
+    branches:
+      - release-candidate
+
+jobs:
+  build-and-upload:
+    runs-on: macos-latest
+
+    env:
+      # Development
+      DEV_CERTIFICATE_BASE64: ${{secrets.IOS_DEVELOPMENT_CERTIFICATE_BASE64}}
+      DEV_CERTIFICATE_PASSWORD: ${{secrets.IOS_DEVELOPMENT_CERTIFICATE_BASE64_PASSWORD}}
+      DEV_PROVISION_PROFILE_BASE64: ${{secrets.DEV_PROVISION_PROFILE_BASE64}}
+      SCHEME_NAME: "SPM Example"
+      # Distribution
+      DISTRIBUTION_CERTIFICATE_BASE64: ${{secrets.IOS_DISTRIBUTION_CERTIFICATE_BASE64}}
+      DISTRIBUTION_CERTIFICATE_PASSWORD: ${{secrets.IOS_DISTRIBUTION_CERTIFICATE_BASE64_PASSWORD}}
+      AD_HOC_PROVISION_PROFILE_BASE64: ${{secrets.AD_HOC_PROVISION_PROFILE_BASE64}}
+      EXPORT_OPTIONS_PLIST: ${{secrets.EXPORT_OPTIONS_PLIST}}
+      EXPORT_PATH: ${{ github.workspace }}
+      IPA_NAME: "SPM Example.ipa"
+      # Generic
+      MUUKTEST_MOBILE_ROUTE: ${{secrets.MUUKTEST_MOBILE_ROUTE}}
+      MUUKTEST_KEY: ${{secrets.MUUKTEST_KEY}}
+      KEYCHAIN_PASSWORD: ${{secrets.KEYCHAIN_PASSWORD}}
+      
+
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Install Fastlane
+      run: gem install fastlane
+
+    - name: Create Secrets.xcconfig file
+      run: |
+        mkdir -p "${{ github.workspace }}/SPM Example"
+        touch "${{ github.workspace }}/SPM Example/Secrets.xcconfig"
+        cat <<EOF > "${{ github.workspace }}/SPM Example/Secrets.xcconfig"
+        ENV=prod
+        ALCHEMY_API_KEY=${{ secrets.ALCHEMY_API_KEY }}
+        REVERSE_URL=${{ secrets.REVERSE_URL }}
+        GDRIVE_CLIENT_ID=${{ secrets.REVERSE_URL }}
+        EOF
+        chmod 644 "${{ github.workspace }}/SPM Example/Secrets.xcconfig"
+        ls -l "${{ github.workspace }}/SPM Example/Secrets.xcconfig"
+
+    - name: Install the Apple certificate and provisioning profile
+      run: |
+        # create variables
+        CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+        DIST_CERTIFICATE_PATH=$RUNNER_TEMP/dist_certificate.p12
+        PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+        KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+        # import certificate and provisioning profile from secrets
+        echo -n "$DEV_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+        echo -n "$DISTRIBUTION_CERTIFICATE_BASE64" | base64 --decode -o $DIST_CERTIFICATE_PATH
+        echo -n "$DEV_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+
+        # create temporary keychain
+        security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+        security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+        # import certificate to keychain
+        security import $CERTIFICATE_PATH -P "$DEV_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+        security import $DIST_CERTIFICATE_PATH -P "$DISTRIBUTION_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+        security list-keychain -d user -s $KEYCHAIN_PATH
+
+        # apply provisioning profile
+        mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+        cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
+
+#    - name: Debug Workspace and Scheme
+#      run: |
+#        echo "Workspace content:"
+#        ls "${{ github.workspace }}/PortalSwift.xcworkspace"
+#        echo "Schemes:"
+#        xcodebuild -list -workspace "PortalSwift.xcworkspace"
+
+    - name: Build Archive
+      run: |
+        xcodebuild -scheme "${{ env.SCHEME_NAME }}" \
+          -archivePath $RUNNER_TEMP/PortalSwift.xcarchive \
+          -sdk iphoneos \
+          -configuration Automation \
+          -destination generic/platform=iOS \
+          -allowProvisioningUpdates \
+          clean archive
+
+    - name: Remove the Dev provisioning profile
+      run: rm -rf "~/Library/MobileDevice/Provisioning\ Profiles"
+  
+    - name: Import the Ad-Hoc the provisioning profile
+      run: |
+        mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+        AD_HOC_PP_PATH=$RUNNER_TEMP/adhoc_pp.mobileprovision
+        echo -n "$AD_HOC_PROVISION_PROFILE_BASE64" | base64 --decode -o $AD_HOC_PP_PATH
+        cp $AD_HOC_PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
+
+    - name: Export IPA
+      env:
+        EXPORT_OPTIONS_PLIST: ${{ secrets.EXPORT_OPTIONS_PLIST }}
+      run: |
+        EXPORT_OPTS_PATH=$RUNNER_TEMP/ExportOptions.plist
+        echo -n "$EXPORT_OPTIONS_PLIST" | base64 --decode -o $EXPORT_OPTS_PATH
+        xcodebuild -verbose -exportArchive \
+          -archivePath $RUNNER_TEMP/PortalSwift.xcarchive \
+          -exportOptionsPlist $EXPORT_OPTS_PATH \
+          -exportPath "${{ env.EXPORT_PATH }}" \
+          -allowProvisioningUpdates
+
+    - name: Check if IPA is generated
+      run: |
+        if [ -f "${{ env.EXPORT_PATH }}/${{ env.IPA_NAME }}" ]; then
+          echo "IPA file generated successfully."
+        else
+          echo "IPA file not generated."
+          exit 1
+        fi
+
+    - name: Rename IPA file to remove the space
+      run: mv "${{ env.EXPORT_PATH }}/SPM Example.ipa" "${{ env.EXPORT_PATH }}/SPMExample.ipa"
+
+    - name: Delete Secrets.xcconfig
+      run: rm "${{ github.workspace }}/SPM Example/Secrets.xcconfig"
+
+    - name: Upload the app
+      run: |
+        curl -k --location '${{ env.MUUKTEST_MOBILE_ROUTE }}/upload' \
+          --form 'os="ios"' \
+          --form 'key="${{ env.MUUKTEST_KEY }}"' \
+          --form 'file=@"${{ env.EXPORT_PATH }}/SPMExample.ipa"'
+
+    - name: Execute the tests
+      run: |
+        curl -X POST ${{ env.MUUKTEST_MOBILE_ROUTE }}/execute -k -d '{"key":"${{ env.MUUKTEST_KEY }}", "os":"ios", "file":"SPMExample.ipa"}' -H "Content-Type: application/json"
