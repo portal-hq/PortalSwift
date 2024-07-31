@@ -318,8 +318,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
       throw PortalExampleAppError.configurationNotSet()
     }
 
-    var cipherText: String? = nil
-    var organizationShare: String? = nil
+    var cipherText: String?
+    var organizationShare: String?
     var organizationSolanaShare: String? = nil
 
     guard let client = try await portal.client else {
