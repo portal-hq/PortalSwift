@@ -1,4 +1,4 @@
 // Version.swift
 import Foundation
 
-let SDK_VERSION = "3.1.11"
+let SDK_VERSION = "3.1.12"
