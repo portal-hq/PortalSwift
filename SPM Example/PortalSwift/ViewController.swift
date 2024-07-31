@@ -361,7 +361,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         organizationSolanaShare = organizationSolanaBackupShareResponse.orgShare
       }
     } else {
-      var walletId: String? = nil
+      var walletId: String?
       var walletIdEd25519: String? = nil
 
       for wallet in client.wallets {
