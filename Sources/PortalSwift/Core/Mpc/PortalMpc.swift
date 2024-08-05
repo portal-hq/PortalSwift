@@ -495,7 +495,10 @@ public class PortalMpc {
             let backupResponse = try await parseRecoveryInput(data: decryptedData)
 
             usingProgressCallback?(MpcStatus(status: .generatingShare, done: false))
-            var recoverResponse: PortalMpcGenerateResponse = try await keychain.getShares() ?? [:]
+            var recoverResponse: PortalMpcGenerateResponse = [:]
+            if let shares = try? await keychain.getShares() {
+              recoverResponse = shares
+            }
             if let ed25519Share = backupResponse[PortalCurve.ED25519.rawValue] {
               //  The share's already been backed up, recover it
               async let ed25519MpcShare = try recoverSigningShare(.ED25519, withMethod: method, andBackupShare: ed25519Share.share)
