@@ -1,3 +1,4 @@
+import Foundation
 public struct PortalMpcBackupResponse {
   public let cipherText: String
   public let shareIds: [String]
@@ -12,6 +13,13 @@ public struct PortalMpcGeneratedShare: Codable, Equatable {
   public static func == (lhs: PortalMpcGeneratedShare, rhs: PortalMpcGeneratedShare) -> Bool {
     return lhs.id == rhs.id && lhs.share == rhs.share
   }
+}
+
+// Cross device compatability types
+public typealias PortalMpcCrossDeviceResponse = [String: PortalMpcCrossDeviceShare]
+
+public struct PortalMpcCrossDeviceShare: Codable, Equatable {
+  public let share: MpcShare
 }
 
 /// A MPC share that includes a variable number of fields, depending on the MPC version being used
@@ -33,6 +41,24 @@ public struct MpcShare: Codable, Equatable {
 
   public static func == (lhs: MpcShare, rhs: MpcShare) -> Bool {
     return lhs.signingSharePairId == rhs.signingSharePairId && lhs.backupSharePairId == rhs.backupSharePairId && lhs.share == rhs.share
+  }
+}
+
+extension MpcShare {
+  func convertToString() -> String {
+    // Convert MpcShare to a JSON string
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = .prettyPrinted // This makes the JSON string readable, you can remove this if you want it compact
+    do {
+      let jsonData = try encoder.encode(self)
+      if let jsonString = String(data: jsonData, encoding: .utf8) {
+        return jsonString
+      } else {
+        return "Conversion to String failed"
+      }
+    } catch {
+      return "Error encoding MpcShare: \(error.localizedDescription)"
+    }
   }
 }
 

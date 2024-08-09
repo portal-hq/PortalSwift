@@ -274,12 +274,12 @@ public class PortalMpc {
 
     let backupWithPortal = client.environment?.backupWithPortalEnabled ?? false
     if backupWithPortal {
-      cipherText = try await api.getClientCipherText(backupSharePairId)
-      organizationShare = try await api.prepareEject(walletId, method)
+      cipherText = try await self.api.getClientCipherText(backupSharePairId)
+      organizationShare = try await self.api.prepareEject(walletId, method)
 
       // Conditionally prepare eject for Solana wallets
       if let walletIdEd25519 = walletIdEd25519 {
-        organizationShareEd25519 = try? await api.prepareEject(walletIdEd25519, method)
+        organizationShareEd25519 = try? await self.api.prepareEject(walletIdEd25519, method)
       }
     }
 
@@ -462,7 +462,7 @@ public class PortalMpc {
         throw MpcError.noValidBackupFound
       }
 
-      cipherText = try await api.getClientCipherText(backupSharePairId)
+      cipherText = try await self.api.getClientCipherText(backupSharePairId)
     }
 
     guard let cipherText = cipherText else {
@@ -626,7 +626,7 @@ public class PortalMpc {
       self.isWalletModificationInProgress = false
 
       // get addresses from the Keychain.
-      newAddresses = try await keychain.getAddresses()
+      newAddresses = try await self.keychain.getAddresses()
 
     } catch {
       self.isWalletModificationInProgress = false
@@ -738,7 +738,7 @@ public class PortalMpc {
           var metadata = self.mpcMetadata
           metadata.curve = forCurve
           metadata.backupMethod = withMethod.rawValue
-          metadata.isMultiBackupEnabled = featureFlags?.isMultiBackupEnabled
+          metadata.isMultiBackupEnabled = self.featureFlags?.isMultiBackupEnabled
 
           let mpcMetadataString = try metadata.jsonString()
 
@@ -810,21 +810,51 @@ public class PortalMpc {
 
   private func parseRecoveryInput(data: Data) async throws -> PortalMpcGenerateResponse {
     do {
+      print(String(data: data, encoding: .utf8))
+      // Attempt to decode directly as PortalMpcGenerateResponse
       return try self.decoder.decode(PortalMpcGenerateResponse.self, from: data)
     } catch {
-      // If the backup isn't in the new format, try to get it in the old format and convert to the new format
-      let mpcShare = try decoder.decode(MpcShare.self, from: data)
-      guard let shareString = String(data: data, encoding: .utf8) else {
-        throw MpcError.unableToDecodeShare
+      // If it fails, try decoding as PortalMpcCrossDeviceResponse
+      print("trying the other way")
+      do {
+        let crossDeviceShare = try self.decoder.decode(PortalMpcCrossDeviceResponse.self, from: data)
+        var backupShares: PortalMpcGenerateResponse = [:]
+
+        // Convert the cross-device shares to the PortalMpcGenerateResponse format
+        if let secp256k1Share = crossDeviceShare["SECP256K1"]?.share.convertToString(),
+           let ed25519Share = crossDeviceShare["ED25519"]?.share.convertToString()
+        {
+          backupShares["SECP256K1"] = PortalMpcGeneratedShare(
+            id: crossDeviceShare["SECP256K1"]?.share.backupSharePairId ?? "",
+            share: secp256k1Share
+          )
+          backupShares["ED25519"] = PortalMpcGeneratedShare(
+            id: crossDeviceShare["ED25519"]?.share.backupSharePairId ?? "",
+            share: ed25519Share
+          )
+
+          return backupShares
+        } else {
+          throw MpcError.unableToDecodeShare // Handle case where conversion fails
+        }
+
+      } catch {
+        // If decoding as PortalMpcCrossDeviceResponse also fails, try decoding as MpcShare
+        let mpcShare = try decoder.decode(MpcShare.self, from: data)
+
+        // Convert mpcShare to string
+        let shareString = mpcShare.convertToString()
+
+        var backupShares: PortalMpcGenerateResponse = [:]
+
+        // Assuming you only have one share to handle in this context
+        backupShares["SECP256K1"] = PortalMpcGeneratedShare(
+          id: mpcShare.backupSharePairId ?? "",
+          share: shareString
+        )
+
+        return backupShares
       }
-      var backupShares: PortalMpcGenerateResponse = [:]
-
-      backupShares["SECP256K1"] = PortalMpcGeneratedShare(
-        id: mpcShare.backupSharePairId ?? "",
-        share: shareString
-      )
-
-      return backupShares
     }
   }
 
@@ -836,7 +866,7 @@ public class PortalMpc {
           var metadata = self.mpcMetadata
           metadata.curve = forCurve
           metadata.backupMethod = withMethod.rawValue
-          metadata.isMultiBackupEnabled = featureFlags?.isMultiBackupEnabled
+          metadata.isMultiBackupEnabled = self.featureFlags?.isMultiBackupEnabled
 
           let mpcMetadataString = try metadata.jsonString()
 
