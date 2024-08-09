@@ -810,12 +810,10 @@ public class PortalMpc {
 
   private func parseRecoveryInput(data: Data) async throws -> PortalMpcGenerateResponse {
     do {
-      print(String(data: data, encoding: .utf8))
       // Attempt to decode directly as PortalMpcGenerateResponse
       return try self.decoder.decode(PortalMpcGenerateResponse.self, from: data)
     } catch {
       // If it fails, try decoding as PortalMpcCrossDeviceResponse
-      print("trying the other way")
       do {
         let crossDeviceShare = try self.decoder.decode(PortalMpcCrossDeviceResponse.self, from: data)
         var backupShares: PortalMpcGenerateResponse = [:]
