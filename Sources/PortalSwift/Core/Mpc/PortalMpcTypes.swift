@@ -1,4 +1,5 @@
 import Foundation
+
 public struct PortalMpcBackupResponse {
   public let cipherText: String
   public let shareIds: [String]

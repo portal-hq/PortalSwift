@@ -816,44 +816,51 @@ public class PortalMpc {
       // If it fails, try decoding as PortalMpcCrossDeviceResponse
       do {
         let crossDeviceShare = try self.decoder.decode(PortalMpcCrossDeviceResponse.self, from: data)
-        var backupShares: PortalMpcGenerateResponse = [:]
-
-        // Convert the cross-device shares to the PortalMpcGenerateResponse format
-        if let secp256k1Share = crossDeviceShare["SECP256K1"]?.share.convertToString(),
-           let ed25519Share = crossDeviceShare["ED25519"]?.share.convertToString()
-        {
-          backupShares["SECP256K1"] = PortalMpcGeneratedShare(
-            id: crossDeviceShare["SECP256K1"]?.share.backupSharePairId ?? "",
-            share: secp256k1Share
-          )
-          backupShares["ED25519"] = PortalMpcGeneratedShare(
-            id: crossDeviceShare["ED25519"]?.share.backupSharePairId ?? "",
-            share: ed25519Share
-          )
-
-          return backupShares
-        } else {
-          throw MpcError.unableToDecodeShare // Handle case where conversion fails
-        }
-
+        return try convertCrossDeviceShare(crossDeviceShare)
       } catch {
         // If decoding as PortalMpcCrossDeviceResponse also fails, try decoding as MpcShare
         let mpcShare = try decoder.decode(MpcShare.self, from: data)
 
-        // Convert mpcShare to string
-        let shareString = mpcShare.convertToString()
-
-        var backupShares: PortalMpcGenerateResponse = [:]
-
-        // Assuming you only have one share to handle in this context
-        backupShares["SECP256K1"] = PortalMpcGeneratedShare(
-          id: mpcShare.backupSharePairId ?? "",
-          share: shareString
-        )
-
-        return backupShares
+        return convertMpcShare(mpcShare)
       }
     }
+  }
+
+  private func convertCrossDeviceShare(_ crossDeviceShare: PortalMpcCrossDeviceResponse) throws -> PortalMpcGenerateResponse {
+    var backupShares: PortalMpcGenerateResponse = [:]
+
+    guard let secp256k1Share = crossDeviceShare["SECP256K1"]?.share.convertToString(),
+          let ed25519Share = crossDeviceShare["ED25519"]?.share.convertToString()
+    else {
+      throw MpcError.unableToDecodeShare // Handle case where conversion fails
+    }
+
+    // Convert the cross-device shares to the PortalMpcGenerateResponse format
+    backupShares["SECP256K1"] = PortalMpcGeneratedShare(
+      id: crossDeviceShare["SECP256K1"]?.share.backupSharePairId ?? "",
+      share: secp256k1Share
+    )
+    backupShares["ED25519"] = PortalMpcGeneratedShare(
+      id: crossDeviceShare["ED25519"]?.share.backupSharePairId ?? "",
+      share: ed25519Share
+    )
+
+    return backupShares
+  }
+
+  private func convertMpcShare(_ mpcShare: MpcShare) -> PortalMpcGenerateResponse {
+    var backupShares: PortalMpcGenerateResponse = [:]
+
+    // Convert mpcShare to string
+    let shareString = mpcShare.convertToString()
+
+    // Assuming you only have one share to handle in this context
+    backupShares["SECP256K1"] = PortalMpcGeneratedShare(
+      id: mpcShare.backupSharePairId ?? "",
+      share: shareString
+    )
+
+    return backupShares
   }
 
   private func recoverSigningShare(_ forCurve: PortalCurve, withMethod: BackupMethods, andBackupShare: String) async throws -> MpcShare {
