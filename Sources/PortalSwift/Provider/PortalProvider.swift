@@ -327,7 +327,11 @@ public class PortalProvider {
         method: withMethod,
         params: andParams
       )
-      let data = try await requests.post(url, withBearerToken: nil, andPayload: payload)
+      let data = try await requests.post(
+        url,
+        withBearerToken: rpcUrl.starts(with: "https://api.portalhq.") ? self.apiKey : nil,
+        andPayload: payload
+      )
 
       switch withMethod {
       case .eth_getBlockByHash, .eth_getBlockByNumber, .eth_getUncleByBlockHashAndIndex, .eth_getUncleByBlockNumberAndIndex:

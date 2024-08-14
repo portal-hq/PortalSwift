@@ -51,7 +51,7 @@ public class Portal {
   /// Create a Portal instance. This initializer is used by unit tests and mocks.
   /// - Parameters:
   ///   - apiKey: The Client API key. You can obtain this through Portal's REST API.
-  ///   - withRpcConfig: A dictionary of CAIP-2 Blockchain IDs (keys) and RPC URLs (values) in `[String:String]` format.
+  ///   - withRpcConfig: (optional) A dictionary of CAIP-2 Blockchain IDs (keys) and RPC URLs (values) in `[String:String]` format.
   ///   - featureFlags: (optional) a set of flags to opt into new or experimental features
   ///   - isSimulator: (optional) Whether you are testing on the iOS simulator or not.
   ///   - autoApprove: (optional) Auto-approve transactions.
@@ -60,7 +60,7 @@ public class Portal {
 
   public init(
     _ apiKey: String,
-    withRpcConfig: [String: String],
+    withRpcConfig: [String: String] = [:],
     // Optional
     autoApprove: Bool = false,
     featureFlags: FeatureFlags? = nil,
@@ -86,12 +86,12 @@ public class Portal {
     self.featureFlags = featureFlags
     self.keychain = keychain ?? PortalKeychain()
     self.mpcHost = mpcHost
-    self.rpcConfig = withRpcConfig
+    self.rpcConfig = withRpcConfig.isEmpty ? Portal.buildDefaultRpcConfig(apiHost) : withRpcConfig
     self.version = version
 
     self.provider = try PortalProvider(
       apiKey: apiKey,
-      rpcConfig: withRpcConfig,
+      rpcConfig: self.rpcConfig,
       keychain: self.keychain,
       autoApprove: autoApprove,
       apiHost: apiHost,
@@ -986,6 +986,19 @@ public class Portal {
       self.mpcHost,
       self.version
     )
+  }
+
+  private static func buildDefaultRpcConfig(_ apiHost: String) -> [String: String] {
+    [
+      "eip155:1": "https://\(apiHost)/rpc/v1/eip155/1", // Ethereum Mainnet
+      "eip155:137": "https://\(apiHost)/rpc/v1/eip155/137", // Polygon Mainnet
+      "eip155:8453": "https://\(apiHost)/rpc/v1/eip155/8453", // Base Mainnet
+      "eip155:80001": "https://\(apiHost)/rpc/v1/eip155/800011", // Polygon Mumbai
+      "eip155:84532": "https://\(apiHost)/rpc/v1/eip155/84532", // Base Testnet
+      "eip155:11155111": "https://\(apiHost)/rpc/v1/eip155/11155111", // Ethereum Sepolia
+      "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": "https://\(apiHost)/rpc/v1/solana/5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", // Solana Mainnet
+      "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": "https://\(apiHost)/rpc/v1/solana/EtWTRABZaYq6iMfeYKouRu166VU2xqa1" // Solana Testnet
+    ]
   }
 }
 
