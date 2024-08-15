@@ -8,7 +8,7 @@
 import AnyCodable
 import Foundation
 
-/// The ClientStorage is just a thread-safe actor to consume the ClientResponse class, we need to refactor that later.
+/// The ThreadSafeClientWrapper is just a thread-safe actor to consume the ClientResponse class, we need to refactor that later.
 private actor ThreadSafeClientWrapper {
   private var _client: ClientResponse?
 
