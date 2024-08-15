@@ -265,29 +265,29 @@ public class PortalMpc {
     }
 
     // Always enforce Ethereum values are present
-    guard let backupSharePairId = backupSharePairId else {
+    guard let backupSharePairId else {
       throw MpcError.unableToEjectWallet("No backup share pair found for curve SECP256K1.")
     }
-    guard let walletId = walletId else {
+    guard let walletId else {
       throw MpcError.unableToEjectWallet("No backed up wallet found for curve SECP256K1.")
     }
 
     let backupWithPortal = client.environment?.backupWithPortalEnabled ?? false
     if backupWithPortal {
-      cipherText = try await api.getClientCipherText(backupSharePairId)
-      organizationShare = try await api.prepareEject(walletId, method)
+      cipherText = try await self.api.getClientCipherText(backupSharePairId)
+      organizationShare = try await self.api.prepareEject(walletId, method)
 
       // Conditionally prepare eject for Solana wallets
-      if let walletIdEd25519 = walletIdEd25519 {
-        organizationShareEd25519 = try? await api.prepareEject(walletIdEd25519, method)
+      if let walletIdEd25519 {
+        organizationShareEd25519 = try? await self.api.prepareEject(walletIdEd25519, method)
       }
     }
 
     // Always enforce Ethereum values are present
-    guard let cipherText = cipherText else {
+    guard let cipherText else {
       throw MpcError.noBackupCipherTextFound
     }
-    guard let organizationShare = organizationShare else {
+    guard let organizationShare else {
       throw MpcError.noOrganizationShareFound("No organization share found for Ethereum wallet.")
     }
 
@@ -321,13 +321,19 @@ public class PortalMpc {
       }
 
       let ejectResult: EjectResult = try decoder.decode(EjectResult.self, from: jsonData)
+
+      // Throw if there is an error getting the privateKey.
+      guard ejectResult.error.code == 0 else {
+        throw PortalMpcError(ejectResult.error)
+      }
+
       let privateKey = ejectResult.privateKey
 
       privateKeys[.eip155] = privateKey
     }
 
     if let ed25519Share = response["ED25519"], organizationShareEd25519 != nil {
-      guard let organizationShareEd25519 = organizationShareEd25519 else {
+      guard let organizationShareEd25519 else {
         throw MpcError.noOrganizationShareFound("No organization share found for Solana wallet.")
       }
 
@@ -337,6 +343,12 @@ public class PortalMpc {
       }
 
       let ejectResult: EjectResult = try decoder.decode(EjectResult.self, from: jsonData)
+
+      // Throw if there is an error getting the privateKey.
+      guard ejectResult.error.code == 0 else {
+        throw PortalMpcError(ejectResult.error)
+      }
+
       let privateKey = ejectResult.privateKey
 
       privateKeys[.solana] = privateKey
@@ -458,14 +470,14 @@ public class PortalMpc {
         }
       }
 
-      guard let backupSharePairId = backupSharePairId else {
+      guard let backupSharePairId else {
         throw MpcError.noValidBackupFound
       }
 
-      cipherText = try await api.getClientCipherText(backupSharePairId)
+      cipherText = try await self.api.getClientCipherText(backupSharePairId)
     }
 
-    guard let cipherText = cipherText else {
+    guard let cipherText else {
       throw MpcError.noBackupCipherTextFound
     }
 
@@ -626,7 +638,7 @@ public class PortalMpc {
       self.isWalletModificationInProgress = false
 
       // get addresses from the Keychain.
-      newAddresses = try await keychain.getAddresses()
+      newAddresses = try await self.keychain.getAddresses()
 
     } catch {
       self.isWalletModificationInProgress = false
@@ -738,7 +750,7 @@ public class PortalMpc {
           var metadata = self.mpcMetadata
           metadata.curve = forCurve
           metadata.backupMethod = withMethod.rawValue
-          metadata.isMultiBackupEnabled = featureFlags?.isMultiBackupEnabled
+          metadata.isMultiBackupEnabled = self.featureFlags?.isMultiBackupEnabled
 
           let mpcMetadataString = try metadata.jsonString()
 
@@ -836,7 +848,7 @@ public class PortalMpc {
           var metadata = self.mpcMetadata
           metadata.curve = forCurve
           metadata.backupMethod = withMethod.rawValue
-          metadata.isMultiBackupEnabled = featureFlags?.isMultiBackupEnabled
+          metadata.isMultiBackupEnabled = self.featureFlags?.isMultiBackupEnabled
 
           let mpcMetadataString = try metadata.jsonString()
 

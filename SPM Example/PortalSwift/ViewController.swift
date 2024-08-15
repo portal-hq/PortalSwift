@@ -280,7 +280,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         }
       }
 
-      guard let walletId = walletId else {
+      guard let walletId else {
         throw PortalExampleAppError.clientInformationUnavailable("Could not find Ethereum backup share for backup method.")
       }
 
@@ -355,7 +355,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         throw URLError(.badURL)
       }
       let organizationSolanaBackupShareData = try? await requests.get(organizationSolanaBackupShareUrl)
-      if let organizationSolanaBackupShareData = organizationSolanaBackupShareData {
+      if let organizationSolanaBackupShareData {
         let organizationSolanaBackupShareResponse = try decoder.decode(OrgShareResult.self, from: organizationSolanaBackupShareData)
 
         organizationSolanaShare = organizationSolanaBackupShareResponse.orgShare
@@ -382,7 +382,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         }
       }
 
-      guard let walletId = walletId else {
+      guard let walletId else {
         throw PortalExampleAppError.clientInformationUnavailable("Could not find Ethereum backup share for backup method.")
       }
 
@@ -396,7 +396,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
       print("Ethereum Wallet ejectable until \(prepareEjectResponse)")
 
-      if let walletIdEd25519 = walletIdEd25519 {
+      if let walletIdEd25519 {
         let prepareEjectDataEd25519 = try await requests.post(prepareEjectUrl, withBearerToken: nil, andPayload: ["walletId": walletIdEd25519])
         guard let prepareEjectResponseEd25519 = String(data: prepareEjectDataEd25519, encoding: .utf8) else {
           throw PortalExampleAppError.couldNotParseCustodianResponse("Unable to read prepare eject response.")
@@ -913,16 +913,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
       let portal = try Portal(
         user.clientApiKey,
-        withRpcConfig: [
-          "eip155:1": "https://eth-mainnet.g.alchemy.com/v2/\(config.alchemyApiKey)",
-          "eip155:5": "https://eth-goerli.g.alchemy.com/v2/\(config.alchemyApiKey)",
-          "eip155:137": "https://polygon-mainnet.g.alchemy.com/v2/\(config.alchemyApiKey)",
-          "eip155:80001": "https://polygon-mumbai.g.alchemy.com/v2/\(config.alchemyApiKey)",
-          "eip155:11155111": "https://eth-sepolia.g.alchemy.com/v2/\(config.alchemyApiKey)",
-          "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": "https://solana-mainnet.g.alchemy.com/v2/\(config.alchemyApiKey)",
-          "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": "https://solana-devnet.g.alchemy.com/v2/\(config.alchemyApiKey)"
-        ],
-        autoApprove: false,
         featureFlags: FeatureFlags(isMultiBackupEnabled: true),
         apiHost: config.apiUrl,
         mpcHost: config.mpcUrl
@@ -1921,7 +1911,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 extension ViewController {
   private func startRefreshBalanceTimer() {
     self.refreshBalanceTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
-      guard let self = self else { return }
+      guard let self else { return }
       Task {
         do {
           try await self.populateEthBalance()

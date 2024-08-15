@@ -38,7 +38,7 @@ enum WebViewControllerErrors: Error {
 }
 
 /// A controller that allows you to create Portal's web view.
-public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessageHandler, WKUIDelegate {
+open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessageHandler, WKUIDelegate {
   public var chainId: Int
   public var delegate: PortalWebViewDelegate?
   public var webView: WKWebView!
@@ -137,7 +137,7 @@ public class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMess
   }
 
   @available(*, unavailable)
-  required init?(coder _: NSCoder) { fatalError("init(coder:) has not been implemented") }
+  required public init?(coder _: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
   private func bindPortalEvents(portal: Portal) {
     portal.on(event: Events.ChainChanged.rawValue) { data in
