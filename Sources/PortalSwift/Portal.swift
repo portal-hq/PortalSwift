@@ -705,14 +705,27 @@ public class Portal {
     try await self.api.getTransactions(chainId, limit: limit, offset: offset, order: order)
   }
 
-  public func simulateTransaction(_ chainId: String, from: Any) async throws -> SimulatedTransaction {
-    let transaction = AnyCodable(from)
-    return try await self.api.simulateTransaction(transaction, withChainId: chainId)
+  public func evaluateTransaction(
+    chainId: String,
+    transaction: EvaluateTransactionParam,
+    operationType: EvaluateTransactionOperationType? = nil
+  ) async throws -> BlockaidValidateTrxRes {
+    return try await api.evaluateTransaction(
+      chainId: chainId,
+      transaction: transaction,
+      operationType: operationType
+    )
   }
 
   /**********************************
    * Deprecated functions
    **********************************/
+
+  @available(*, deprecated, renamed: "evaluateTransaction", message: "Please use evaluateTransaction().")
+  public func simulateTransaction(_ chainId: String, from: Any) async throws -> SimulatedTransaction {
+    let transaction = AnyCodable(from)
+    return try await self.api.simulateTransaction(transaction, withChainId: chainId)
+  }
 
   @available(*, deprecated, renamed: "backupWallet", message: "Please use the async implamentation of backupWallet()")
   public func backupWallet(

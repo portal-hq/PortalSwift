@@ -271,36 +271,42 @@ public class PortalApi {
     }
   }
 
-  /// Simulates a transaction for the client.
+  /// Evaluate a transaction for the client.
   /// - Parameters:
   ///   - to: The recipient address.
-  ///   - value: (Optional) The transacton "value" parameter.
-  ///   - data: (Optional) The transacton "data" parameter.
-  ///   - maxFeePerGas: (Optional) The transacton "maxFeePerGas" parameter.
-  ///   - maxPriorityFeePerGas: (Optional) The transacton "maxPriorityFeePerGas" parameter.
-  ///   - gas: (Optional) The transacton "gas" parameter.
-  ///   - gasPrice: (Optional) The transacton "gasPrice" parameter.
-  ///   - completion: The callback that contains transaction simulation response.
-  /// - Returns: Void.
-  public func simulateTransaction(_ transaction: Any, withChainId: String) async throws -> SimulatedTransaction {
-    guard let chainId = withChainId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+  ///   - value: (Optional) The transaction "value" parameter.
+  ///   - data: (Optional) The transaction "data" parameter.
+  ///   - maxFeePerGas: (Optional) The transaction "maxFeePerGas" parameter.
+  ///   - maxPriorityFeePerGas: (Optional) The transaction "maxPriorityFeePerGas" parameter.
+  ///   - gas: (Optional) The transaction "gas" parameter.
+  ///   - gasPrice: (Optional) The transaction "gasPrice" parameter.
+  /// - Returns: BlockaidValidateTrxRes.
+  public func evaluateTransaction(
+    chainId: String,
+    transaction: EvaluateTransactionParam,
+    operationType: EvaluateTransactionOperationType? = nil
+  ) async throws -> BlockaidValidateTrxRes {
+    guard let chainId = chainId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
       throw PortalApiError.unableToEncodeData
     }
-    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/simulate-transaction?chainId=\(chainId)") {
+    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/evaluate-transaction?chainId=\(chainId)") {
       do {
-        let transformedTransaction = AnyCodable(transaction)
-        let data = try await post(url, withBearerToken: self.apiKey, andPayload: transformedTransaction)
-        let simulatedTransaction = try decoder.decode(SimulatedTransaction.self, from: data)
+        var payload = transaction.toDictionary()
+        if let operationType {
+          payload["operationType"] = operationType.rawValue
+        }
+        let data = try await post(url, withBearerToken: self.apiKey, andPayload: payload)
+        let response = try decoder.decode(BlockaidValidateTrxRes.self, from: data)
 
-        return simulatedTransaction
+        return response
       } catch {
-        self.logger.error("PortalApi.simulateTransaction() - Unable to simulate transaction: \(error.localizedDescription)")
+        self.logger.error("PortalApi.evaluateTransaction() - Unable to evaluate transaction: \(error.localizedDescription)")
         throw error
       }
+    } else {
+      self.logger.error("PortalApi.evaluateTransaction() - Unable to build request URL.")
+      throw URLError(.badURL)
     }
-
-    self.logger.error("PortalApi.simulateTransaction() - Unable to build request URL.")
-    throw URLError(.badURL)
   }
 
   func storeClientCipherText(_ backupSharePairId: String, cipherText: String) async throws -> Bool {
@@ -382,6 +388,38 @@ public class PortalApi {
   /*******************************************
    * Deprecated functions
    *******************************************/
+
+  /// Simulates a transaction for the client.
+  /// - Parameters:
+  ///   - to: The recipient address.
+  ///   - value: (Optional) The transacton "value" parameter.
+  ///   - data: (Optional) The transacton "data" parameter.
+  ///   - maxFeePerGas: (Optional) The transacton "maxFeePerGas" parameter.
+  ///   - maxPriorityFeePerGas: (Optional) The transacton "maxPriorityFeePerGas" parameter.
+  ///   - gas: (Optional) The transacton "gas" parameter.
+  ///   - gasPrice: (Optional) The transacton "gasPrice" parameter.
+  /// - Returns: SimulatedTransaction.
+  @available(*, deprecated, renamed: "evaluateTransaction", message: "Please use evaluateTransaction().")
+  public func simulateTransaction(_ transaction: Any, withChainId: String) async throws -> SimulatedTransaction {
+    guard let chainId = withChainId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+      throw PortalApiError.unableToEncodeData
+    }
+    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/simulate-transaction?chainId=\(chainId)") {
+      do {
+        let transformedTransaction = AnyCodable(transaction)
+        let data = try await post(url, withBearerToken: self.apiKey, andPayload: transformedTransaction)
+        let simulatedTransaction = try decoder.decode(SimulatedTransaction.self, from: data)
+
+        return simulatedTransaction
+      } catch {
+        self.logger.error("PortalApi.simulateTransaction() - Unable to simulate transaction: \(error.localizedDescription)")
+        throw error
+      }
+    }
+
+    self.logger.error("PortalApi.simulateTransaction() - Unable to build request URL.")
+    throw URLError(.badURL)
+  }
 
   /// Retrieve the client by API key.
   /// - Parameter completion: The callback that contains the Client.
