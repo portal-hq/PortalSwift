@@ -8,9 +8,27 @@
 import AnyCodable
 import Foundation
 
+/// The ClientStorage is just a thread-safe actor to consume the ClientResponse class, we need to refactor that later.
+private actor ThreadSafeClientWrapper {
+  private var _client: ClientResponse?
+
+  func getOrCreateClient(creation: @escaping () async throws -> ClientResponse) async throws -> ClientResponse {
+    if let client = _client {
+      return client
+    }
+    let newClient = try await creation()
+    _client = newClient
+    return newClient
+  }
+
+  func set(client: ClientResponse) {
+    _client = client
+  }
+}
+
 /// The class to interface with Portal's REST API.
 public class PortalApi {
-  private var _client: ClientResponse?
+  private let _clientStorage = ThreadSafeClientWrapper()
   private var apiKey: String
   private var baseUrl: String
   private let decoder = JSONDecoder()
@@ -27,12 +45,12 @@ public class PortalApi {
     self.provider?.chainId
   }
 
+
   public var client: ClientResponse? {
     get async throws {
-      if self._client == nil {
-        self._client = try await self.getClient()
+      try await _clientStorage.getOrCreateClient {
+        try await self.getClient()
       }
-      return self._client
     }
   }
 
@@ -262,7 +280,7 @@ public class PortalApi {
 
   public func refreshClient() async throws {
     do {
-      self._client = try await self.getClient()
+      try await _clientStorage.set(client: self.getClient())
 
       return
     } catch {
