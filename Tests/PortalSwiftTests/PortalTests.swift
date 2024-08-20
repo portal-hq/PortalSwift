@@ -23,12 +23,14 @@ class PortalTests: XCTestCase {
       gDrive: MockGDriveStorage(),
       iCloud: MockICloudStorage(),
       keychain: keychain,
-      mpc: MockPortalMpc(apiKey: MockConstants.mockApiKey, api: api, keychain: keychain, mobile: binary),
+      mpc: MockPortalMpc(),
       passwords: MockPasswordStorage()
     )
   }
 
-  override func tearDownWithError() throws {}
+    override func tearDownWithError() throws {
+        self.portal = nil
+    }
 
   func testBackupWallet() async throws {
     let expectation = XCTestExpectation(description: "Portal.backupWallet(backupMethod)")
