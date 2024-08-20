@@ -385,10 +385,10 @@ public class Portal {
 
   /// You should only call this function if you are upgrading from v3 to v4.
   public func generateSolanaWalletAndBackupShares(
-    _ method: BackupMethods, usingProgressCallback _: ((MpcStatus) -> Void)? = nil
+    _ method: BackupMethods, usingProgressCallback: ((MpcStatus) -> Void)? = nil
   ) async throws -> (solanaAddress: String, cipherText: String, storageCallback: () async throws -> Void) {
     // Run generateSolanaWalletAndBackupShares
-    let result = try await mpc.generateSolanaWalletAndBackupShares(backupMethod: method)
+      let result = try await mpc.generateSolanaWalletAndBackupShares(backupMethod: method, usingProgressCallback: usingProgressCallback)
 
     // Build the storage callback
     let storageCallback: () async throws -> Void = {
