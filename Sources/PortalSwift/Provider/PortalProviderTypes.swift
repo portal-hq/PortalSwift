@@ -439,3 +439,54 @@ public struct LogsResponse: Codable {
   public var result: [Log]?
   public var error: PortalProviderRpcResponseError?
 }
+
+public struct PortalRpcResponse<Result: Codable>: Codable {
+    public var jsonrpc: String = "2.0"
+    public var id: Int?
+    public var result: Result?
+    public var error: PortalProviderRpcResponseError?
+}
+
+// MARK: - GetTransactionResult
+public struct GetTransactionResult: Codable {
+    let blockTime: Int?
+    let meta: GetTransactionMeta?
+    let slot: Int?
+    let transaction: GetTransactionTransaction?
+}
+
+// MARK: - GetTransactionMeta
+public struct GetTransactionMeta: Codable {
+    let computeUnitsConsumed: Int?
+    let fee: Int?
+    let logMessages: [String?]?
+    let postBalances: [Int?]?
+    let preBalances: [Int?]?
+
+}
+
+// MARK: - GetTransactionTransaction
+public struct GetTransactionTransaction: Codable {
+    let message: GetTransactionMessage?
+    let signatures: [String?]?
+}
+
+// MARK: - GetTransactionMessage
+public struct GetTransactionMessage: Codable {
+    let accountKeys: [String?]?
+    let header: GetTransactionHeader?
+    let instructions: [GetTransactionInstruction?]?
+    let recentBlockhash: String?
+}
+
+// MARK: - GetTransactionHeader
+public struct GetTransactionHeader: Codable {
+    let numReadonlySignedAccounts, numReadonlyUnsignedAccounts, numRequiredSignatures: Int?
+}
+
+// MARK: - GetTransactionInstruction
+public struct GetTransactionInstruction: Codable {
+    let accounts: [Int?]?
+    let data: String?
+    let programIDIndex: Int?
+}

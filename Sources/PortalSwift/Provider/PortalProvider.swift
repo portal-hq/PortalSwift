@@ -372,6 +372,12 @@ public class PortalProvider {
           throw PortalRpcError(rpcError)
         }
         return PortalProviderResult(id: forId, result: rpcResponse)
+      case .sol_getTransaction:
+          let rpcResponse = try decoder.decode(PortalRpcResponse<GetTransactionResult>.self, from: data)
+        if let rpcError = rpcResponse.error {
+          throw PortalRpcError(rpcError)
+        }
+        return PortalProviderResult(id: forId, result: rpcResponse)
       default:
         let rpcResponse = try decoder.decode(PortalProviderRpcResponse.self, from: data)
         if let rpcError = rpcResponse.error {
