@@ -44,7 +44,7 @@ public class Portal {
   private let binary: Mobile
   private let featureFlags: FeatureFlags?
   private let keychain: PortalKeychain
-  private let mpc: PortalMpc
+  private let mpc: PortalMpcProtocol
   private let mpcHost: String
   private let version: String
 
@@ -72,7 +72,7 @@ public class Portal {
     gDrive: GDriveStorage? = nil,
     iCloud: ICloudStorage? = nil,
     keychain: PortalKeychain? = nil,
-    mpc: PortalMpc? = nil,
+    mpc: PortalMpcProtocol? = nil,
     passwords: PasswordStorage? = nil
   ) throws {
     if version != "v6" {
@@ -344,7 +344,9 @@ public class Portal {
     let privateKeys = try await mpc.eject(
       method,
       withCipherText: withCipherText,
-      andOrganizationBackupShare: andOrganizationBackupShare
+      andOrganizationBackupShare: andOrganizationBackupShare,
+      andOrganizationSolanaBackupShare: nil,
+      usingProgressCallback: nil
     )
 
     guard let privateKey = privateKeys[.eip155] else {
@@ -364,7 +366,8 @@ public class Portal {
       method,
       withCipherText: withCipherText,
       andOrganizationBackupShare: andOrganizationBackupShare,
-      andOrganizationSolanaBackupShare: andOrganizationSolanaBackupShare
+      andOrganizationSolanaBackupShare: andOrganizationSolanaBackupShare, 
+      usingProgressCallback: nil
     )
 
     return privateKeys
