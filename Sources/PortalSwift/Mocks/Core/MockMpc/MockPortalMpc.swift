@@ -8,8 +8,9 @@
 import AuthenticationServices
 import Foundation
 
-public class MockPortalMpc: PortalMpc {
-  override public func backup(
+public class MockPortalMpc: PortalMpcProtocol {
+    
+  public func backup(
     _: BackupMethods,
     usingProgressCallback: ((MpcStatus) -> Void)? = nil
   ) async throws -> PortalMpcBackupResponse {
@@ -20,7 +21,7 @@ public class MockPortalMpc: PortalMpc {
     )
   }
 
-  override public func eject(
+   public func eject(
     _: BackupMethods,
     withCipherText _: String? = nil,
     andOrganizationBackupShare _: String? = nil,
@@ -33,7 +34,7 @@ public class MockPortalMpc: PortalMpc {
     ]
   }
 
-  override public func generate(withProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> [PortalNamespace: String?] {
+   public func generate(withProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> [PortalNamespace: String?] {
     withProgressCallback?(MpcStatus(status: .done, done: true))
     return [
       .eip155: MockConstants.mockEip155Address,
@@ -41,7 +42,7 @@ public class MockPortalMpc: PortalMpc {
     ]
   }
 
-  override public func recover(
+   public func recover(
     _: BackupMethods,
     withCipherText _: String? = nil,
     usingProgressCallback: ((MpcStatus) -> Void)? = nil
@@ -52,16 +53,39 @@ public class MockPortalMpc: PortalMpc {
       .solana: MockConstants.mockSolanaAddress
     ]
   }
+    
+    public func generateSolanaWallet(usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> String {
+        MockConstants.mockSolanaAddress
+    }
+    
+    public func generateSolanaWalletAndBackupShares(backupMethod: BackupMethods, usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> (solanaAddress: String, backupResponse: PortalMpcBackupResponse) {
+        return (
+            solanaAddress: MockConstants.mockSolanaAddress,
+            backupResponse:
+                PortalMpcBackupResponse(
+                    cipherText: MockConstants.mockCiphertext,
+                    shareIds: [MockConstants.mockMpcShareId, MockConstants.mockMpcShareId]
+                )
+        )
+    }
+    
+    public func backup(method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?) { }
+    
+    public func generate(completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?) { }
+    
+    public func ejectPrivateKey(clientBackupCiphertext: String, method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, orgBackupShare: String, completion: @escaping (Result<String>) -> Void) { }
+    
+    public func recover(cipherText: String, method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?) { }
 
-  override public func registerBackupMethod(_: BackupMethods, withStorage _: PortalStorage) {}
+   public func registerBackupMethod(_: BackupMethods, withStorage _: PortalStorage) {}
 
-  override public func setPassword(_: String) throws {}
+   public func setPassword(_: String) throws {}
 
-  override public func setGDriveView(_: UIViewController) throws {}
+   public func setGDriveView(_: UIViewController) throws {}
 
-  override public func setGDriveConfiguration(clientId _: String, folderName _: String) throws {}
+   public func setGDriveConfiguration(clientId _: String, folderName _: String) throws {}
 
-  override public func setPasskeyAuthenticationAnchor(_: ASPresentationAnchor) throws {}
+   public func setPasskeyAuthenticationAnchor(_: ASPresentationAnchor) throws {}
 
-  override public func setPasskeyConfiguration(relyingParty _: String, webAuthnHost _: String) throws {}
+   public func setPasskeyConfiguration(relyingParty _: String, webAuthnHost _: String) throws {}
 }
