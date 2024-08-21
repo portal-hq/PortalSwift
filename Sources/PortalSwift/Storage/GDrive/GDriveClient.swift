@@ -52,13 +52,13 @@ public class GDriveClient {
   private var boundary: String = "portal-backup-share"
   private let decoder = JSONDecoder()
   private let logger = PortalLogger()
-  private let requests: PortalRequests
+  private let requests: PortalRequestsProtocol
 
   init(
     clientId: String? = nil,
     view: UIViewController? = nil,
     folder: String? = "_PORTAL_MPC_DO_NOT_DELETE_",
-    requests: PortalRequests? = nil
+    requests: PortalRequestsProtocol? = nil
   ) {
     self._clientId = clientId
     self._view = view

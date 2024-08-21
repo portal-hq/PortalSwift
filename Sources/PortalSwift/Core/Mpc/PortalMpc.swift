@@ -50,7 +50,7 @@ public class PortalMpc: PortalMpcProtocol {
     }
   }
 
-  private let api: PortalApi
+  private let api: PortalApiProtocol
   private let apiHost: String
   private let apiKey: String
   private var backupOptions: [BackupMethods: PortalStorage] = [:]
@@ -73,7 +73,7 @@ public class PortalMpc: PortalMpcProtocol {
   /// Create an instance of Portal's MPC service.
   public init(
     apiKey: String,
-    api: PortalApi,
+    api: PortalApiProtocol,
     keychain: PortalKeychain,
     host: String = "mpc.portalhq.io",
     isSimulator: Bool = false,
