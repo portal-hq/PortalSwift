@@ -11,26 +11,25 @@ import Mpc
 import Security
 
 public protocol PortalMpcProtocol {
-    func backup(_ method: BackupMethods, usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> PortalMpcBackupResponse
-    func eject(_ method: BackupMethods, withCipherText: String?, andOrganizationBackupShare: String?, andOrganizationSolanaBackupShare: String?, usingProgressCallback _: ((MpcStatus) -> Void)?) async throws -> [PortalNamespace: String]
-    func generate(withProgressCallback: ((MpcStatus) -> Void)?) async throws -> [PortalNamespace: String?]
-    func recover(_ method: BackupMethods, withCipherText: String?, usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> [PortalNamespace: String?]
-    func generateSolanaWallet(usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> String
-    func generateSolanaWalletAndBackupShares(backupMethod: BackupMethods, usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> (solanaAddress: String, backupResponse: PortalMpcBackupResponse)
-    func registerBackupMethod(_ method: BackupMethods, withStorage: PortalStorage)
-    func setGDriveConfiguration(clientId: String, folderName: String) throws
-    func setGDriveView(_ view: UIViewController) throws
-    @available(iOS 16, *)
-    func setPasskeyAuthenticationAnchor(_ anchor: ASPresentationAnchor) throws
-    @available(iOS 16, *)
-    func setPasskeyConfiguration(relyingParty: String, webAuthnHost: String) throws
-    func setPassword(_ value: String) throws
-    // Deprecated functions
-    func backup(method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?)
-    func generate(completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?)
-    func ejectPrivateKey(clientBackupCiphertext: String, method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, orgBackupShare: String, completion: @escaping (Result<String>) -> Void)
-    func recover(cipherText: String, method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?)
-    
+  func backup(_ method: BackupMethods, usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> PortalMpcBackupResponse
+  func eject(_ method: BackupMethods, withCipherText: String?, andOrganizationBackupShare: String?, andOrganizationSolanaBackupShare: String?, usingProgressCallback _: ((MpcStatus) -> Void)?) async throws -> [PortalNamespace: String]
+  func generate(withProgressCallback: ((MpcStatus) -> Void)?) async throws -> [PortalNamespace: String?]
+  func recover(_ method: BackupMethods, withCipherText: String?, usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> [PortalNamespace: String?]
+  func generateSolanaWallet(usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> String
+  func generateSolanaWalletAndBackupShares(backupMethod: BackupMethods, usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> (solanaAddress: String, backupResponse: PortalMpcBackupResponse)
+  func registerBackupMethod(_ method: BackupMethods, withStorage: PortalStorage)
+  func setGDriveConfiguration(clientId: String, folderName: String) throws
+  func setGDriveView(_ view: UIViewController) throws
+  @available(iOS 16, *)
+  func setPasskeyAuthenticationAnchor(_ anchor: ASPresentationAnchor) throws
+  @available(iOS 16, *)
+  func setPasskeyConfiguration(relyingParty: String, webAuthnHost: String) throws
+  func setPassword(_ value: String) throws
+  // Deprecated functions
+  func backup(method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?)
+  func generate(completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?)
+  func ejectPrivateKey(clientBackupCiphertext: String, method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, orgBackupShare: String, completion: @escaping (Result<String>) -> Void)
+  func recover(cipherText: String, method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?)
 }
 
 /// The main interface with Portal's MPC service.
