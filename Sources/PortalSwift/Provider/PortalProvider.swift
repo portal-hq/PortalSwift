@@ -32,7 +32,7 @@ public class PortalProvider {
   private var processedRequestIds: [String] = []
   private var processedSignatureIds: [String] = []
   private var portalApi: HttpRequester
-  private let requests: PortalRequests
+  private let requests: PortalRequestsProtocol
   private let rpcConfig: [String: String]
   private let signer: PortalMpcSigner
   private let featureFlags: FeatureFlags?
@@ -62,7 +62,7 @@ public class PortalProvider {
     mpcHost: String = "mpc.portalhq.io",
     version: String = "v6",
     featureFlags: FeatureFlags? = nil,
-    requests: PortalRequests? = nil,
+    requests: PortalRequestsProtocol? = nil,
     signer: PortalMpcSigner? = nil
   ) throws {
     // User-defined instance variables
