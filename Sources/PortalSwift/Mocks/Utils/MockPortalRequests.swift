@@ -7,10 +7,12 @@
 
 import Foundation
 
-public class MockPortalRequests: PortalRequests {
+public class MockPortalRequests: PortalRequestsProtocol {
   private let encoder = JSONEncoder()
 
-  override public func delete(_ url: URL, withBearerToken _: String? = nil) async throws -> Data {
+    public init() { }
+
+   public func delete(_ url: URL, withBearerToken _: String? = nil) async throws -> Data {
     switch url.path {
     default:
       guard let mockNullData = "null".data(using: .utf8) else {
@@ -20,7 +22,7 @@ public class MockPortalRequests: PortalRequests {
     }
   }
 
-  override public func get(_ url: URL, withBearerToken _: String? = nil) async throws -> Data {
+   public func get(_ url: URL, withBearerToken _: String? = nil) async throws -> Data {
     switch url.path {
     case "/api/v3/clients/me":
       let mockClientData = try encoder.encode(MockConstants.mockClient)
@@ -61,7 +63,7 @@ public class MockPortalRequests: PortalRequests {
     }
   }
 
-  override public func patch(_ url: URL, withBearerToken _: String? = nil, andPayload _: Codable) async throws -> Data {
+   public func patch(_ url: URL, withBearerToken _: String? = nil, andPayload _: Codable) async throws -> Data {
     switch url.path {
     case "/api/v3/clients/me/backup-share-pairs/", "/api/v3/clients/me/signing-share-pairs/":
       guard let mockTrueData = "true".data(using: .utf8) else {
@@ -76,7 +78,7 @@ public class MockPortalRequests: PortalRequests {
     }
   }
 
-  override public func post(_ url: URL, withBearerToken _: String? = nil, andPayload _: Codable? = nil) async throws -> Data {
+   public func post(_ url: URL, withBearerToken _: String? = nil, andPayload _: Codable? = nil) async throws -> Data {
     switch url.path {
     case "/api/v1/analytics/identify", "/api/v1/analytics/track":
       let mockMetricsResponseData = try encoder.encode(MockConstants.mockMetricsResponse)
@@ -117,7 +119,7 @@ public class MockPortalRequests: PortalRequests {
     }
   }
 
-  override public func postMultiPartData(
+   public func postMultiPartData(
     _: URL,
     withBearerToken _: String,
     andPayload _: String,

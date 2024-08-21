@@ -31,8 +31,12 @@ public class ICloudStorage: Storage, PortalStorage {
     case noAccess
   }
 
-  public var api: PortalApi?
   public var mobile: Mobile?
+  /// The Portal API instance to retrieve the client's and custodian's IDs.
+  public var api: PortalApiProtocol?
+  /// The key used to store the private key in iCloud.
+  public var key: String = ""
+
   public let encryption: PortalEncryption
 
   private let isSimulator = TARGET_OS_SIMULATOR != 0

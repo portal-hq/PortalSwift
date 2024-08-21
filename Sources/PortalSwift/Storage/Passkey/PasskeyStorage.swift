@@ -17,12 +17,12 @@ public class PasskeyStorage: Storage, PortalStorage {
     set(anchor) { self.auth.authenticationAnchor = anchor }
   }
 
-  public var api: PortalApi?
+  public var api: PortalApiProtocol?
 
   var apiKey: String?
   public var client: Client?
   public let encryption: PortalEncryption
-  public var portalApi: PortalApi?
+  public var portalApi: PortalApiProtocol?
   public var relyingParty: String
   public var webAuthnHost: String
 
@@ -31,7 +31,7 @@ public class PasskeyStorage: Storage, PortalStorage {
   private let decoder = JSONDecoder()
   private let logger = PortalLogger()
   private var passkeyApi: HttpRequester
-  private let requests: PortalRequests
+  private let requests: PortalRequestsProtocol
   private var sessionId: String?
 
   deinit {
@@ -43,7 +43,7 @@ public class PasskeyStorage: Storage, PortalStorage {
     webAuthnHost: String? = "backup.web.portalhq.io",
     auth: PasskeyAuth? = nil,
     encryption: PortalEncryption? = nil,
-    requests: PortalRequests? = nil
+    requests: PortalRequestsProtocol? = nil
   ) {
     self.relyingParty = relyingParty ?? "portalhq.io"
     self.auth = auth ?? PasskeyAuth(domain: self.relyingParty)
@@ -60,7 +60,7 @@ public class PasskeyStorage: Storage, PortalStorage {
     webAuthnHost: String? = "backup.web.portalhq.io",
     auth: PasskeyAuth? = nil,
     encryption: PortalEncryption? = nil,
-    requests: PortalRequests? = nil
+    requests: PortalRequestsProtocol? = nil
   ) {
     self.relyingParty = relyingParty ?? "portalhq.io"
     self.auth = auth ?? PasskeyAuth(domain: self.relyingParty)
