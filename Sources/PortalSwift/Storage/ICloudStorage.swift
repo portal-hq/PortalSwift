@@ -27,7 +27,7 @@ public class ICloudStorage: Storage, PortalStorage {
   }
 
   /// The Portal API instance to retrieve the client's and custodian's IDs.
-  public var api: PortalApi?
+  public var api: PortalApiProtocol?
   /// The key used to store the private key in iCloud.
   public var key: String = ""
 

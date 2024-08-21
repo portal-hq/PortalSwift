@@ -32,7 +32,7 @@ public class Portal {
     self.provider.chainId
   }
 
-  public let api: PortalApi
+  public let api: PortalApiProtocol
   let apiKey: String
   public let autoApprove: Bool
   public var gatewayConfig: [Int: String] = [:]
@@ -67,7 +67,7 @@ public class Portal {
     version: String = "v6",
     apiHost: String = "api.portalhq.io",
     mpcHost: String = "mpc.portalhq.io",
-    api: PortalApi? = nil,
+    api: PortalApiProtocol? = nil,
     binary: Mobile? = nil,
     gDrive: GDriveStorage? = nil,
     iCloud: ICloudStorage? = nil,
