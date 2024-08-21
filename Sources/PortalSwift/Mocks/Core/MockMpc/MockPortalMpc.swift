@@ -9,7 +9,6 @@ import AuthenticationServices
 import Foundation
 
 public class MockPortalMpc: PortalMpcProtocol {
-    
   public func backup(
     _: BackupMethods,
     usingProgressCallback: ((MpcStatus) -> Void)? = nil
@@ -21,7 +20,7 @@ public class MockPortalMpc: PortalMpcProtocol {
     )
   }
 
-   public func eject(
+  public func eject(
     _: BackupMethods,
     withCipherText _: String? = nil,
     andOrganizationBackupShare _: String? = nil,
@@ -34,7 +33,7 @@ public class MockPortalMpc: PortalMpcProtocol {
     ]
   }
 
-   public func generate(withProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> [PortalNamespace: String?] {
+  public func generate(withProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> [PortalNamespace: String?] {
     withProgressCallback?(MpcStatus(status: .done, done: true))
     return [
       .eip155: MockConstants.mockEip155Address,
@@ -42,7 +41,7 @@ public class MockPortalMpc: PortalMpcProtocol {
     ]
   }
 
-   public func recover(
+  public func recover(
     _: BackupMethods,
     withCipherText _: String? = nil,
     usingProgressCallback: ((MpcStatus) -> Void)? = nil
@@ -53,39 +52,39 @@ public class MockPortalMpc: PortalMpcProtocol {
       .solana: MockConstants.mockSolanaAddress
     ]
   }
-    
-    public func generateSolanaWallet(usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> String {
-        MockConstants.mockSolanaAddress
-    }
-    
-    public func generateSolanaWalletAndBackupShares(backupMethod: BackupMethods, usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> (solanaAddress: String, backupResponse: PortalMpcBackupResponse) {
-        return (
-            solanaAddress: MockConstants.mockSolanaAddress,
-            backupResponse:
-                PortalMpcBackupResponse(
-                    cipherText: MockConstants.mockCiphertext,
-                    shareIds: [MockConstants.mockMpcShareId, MockConstants.mockMpcShareId]
-                )
-        )
-    }
-    
-    public func backup(method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?) { }
-    
-    public func generate(completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?) { }
-    
-    public func ejectPrivateKey(clientBackupCiphertext: String, method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, orgBackupShare: String, completion: @escaping (Result<String>) -> Void) { }
-    
-    public func recover(cipherText: String, method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?) { }
 
-   public func registerBackupMethod(_: BackupMethods, withStorage _: PortalStorage) {}
+  public func generateSolanaWallet(usingProgressCallback _: ((MpcStatus) -> Void)?) async throws -> String {
+    MockConstants.mockSolanaAddress
+  }
 
-   public func setPassword(_: String) throws {}
+  public func generateSolanaWalletAndBackupShares(backupMethod _: BackupMethods, usingProgressCallback _: ((MpcStatus) -> Void)?) async throws -> (solanaAddress: String, backupResponse: PortalMpcBackupResponse) {
+    return (
+      solanaAddress: MockConstants.mockSolanaAddress,
+      backupResponse:
+      PortalMpcBackupResponse(
+        cipherText: MockConstants.mockCiphertext,
+        shareIds: [MockConstants.mockMpcShareId, MockConstants.mockMpcShareId]
+      )
+    )
+  }
 
-   public func setGDriveView(_: UIViewController) throws {}
+  public func backup(method _: BackupMethods.RawValue, backupConfigs _: BackupConfigs?, completion _: @escaping (Result<String>) -> Void, progress _: ((MpcStatus) -> Void)?) {}
 
-   public func setGDriveConfiguration(clientId _: String, folderName _: String) throws {}
+  public func generate(completion _: @escaping (Result<String>) -> Void, progress _: ((MpcStatus) -> Void)?) {}
 
-   public func setPasskeyAuthenticationAnchor(_: ASPresentationAnchor) throws {}
+  public func ejectPrivateKey(clientBackupCiphertext _: String, method _: BackupMethods.RawValue, backupConfigs _: BackupConfigs?, orgBackupShare _: String, completion _: @escaping (Result<String>) -> Void) {}
 
-   public func setPasskeyConfiguration(relyingParty _: String, webAuthnHost _: String) throws {}
+  public func recover(cipherText _: String, method _: BackupMethods.RawValue, backupConfigs _: BackupConfigs?, completion _: @escaping (Result<String>) -> Void, progress _: ((MpcStatus) -> Void)?) {}
+
+  public func registerBackupMethod(_: BackupMethods, withStorage _: PortalStorage) {}
+
+  public func setPassword(_: String) throws {}
+
+  public func setGDriveView(_: UIViewController) throws {}
+
+  public func setGDriveConfiguration(clientId _: String, folderName _: String) throws {}
+
+  public func setPasskeyAuthenticationAnchor(_: ASPresentationAnchor) throws {}
+
+  public func setPasskeyConfiguration(relyingParty _: String, webAuthnHost _: String) throws {}
 }
