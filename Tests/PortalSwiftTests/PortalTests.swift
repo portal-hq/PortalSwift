@@ -10,11 +10,15 @@ import XCTest
 
 class PortalTests: XCTestCase {
   var portal: Portal!
-  override func setUpWithError() throws {
-    let api = PortalApi(apiKey: MockConstants.mockApiKey, requests: MockPortalRequests())
-    let binary = MockMobileWrapper()
-    let keychain = MockPortalKeychain()
+    var api: PortalApi!
+    var binary: MockMobileWrapper!
+    var keychain: MockPortalKeychain!
 
+  override func setUpWithError() throws {
+      api = PortalApi(apiKey: MockConstants.mockApiKey, requests: MockPortalRequests())
+      binary = MockMobileWrapper()
+      keychain = MockPortalKeychain()
+      
     self.portal = try Portal(
       MockConstants.mockApiKey,
       withRpcConfig: ["eip155:11155111": "https://\(MockConstants.mockHost)/test-rpc"],
@@ -58,6 +62,28 @@ class PortalTests: XCTestCase {
     expectation.fulfill()
     await fulfillment(of: [expectation], timeout: 5.0)
   }
+
+    func test_createWallet_will_call_mpc_generate_onlyOneTime() async throws {
+        // given
+        let portalMpcSpy = PortalMpcSpy()
+        self.portal = try Portal(
+          MockConstants.mockApiKey,
+          withRpcConfig: ["eip155:11155111": "https://\(MockConstants.mockHost)/test-rpc"],
+          api: api,
+          binary: binary,
+          gDrive: MockGDriveStorage(),
+          iCloud: MockICloudStorage(),
+          keychain: keychain,
+          mpc: portalMpcSpy,
+          passwords: MockPasswordStorage()
+        )
+
+        // and given
+        _ = try await portal.createWallet()
+
+        // then
+        XCTAssertEqual(portalMpcSpy.generateCallsCount, 1)
+    }
 
   func testRecoverWallet() async throws {
     let expectation = XCTestExpectation(description: "Portal.backupWallet(backupMethod, cipherText)")
