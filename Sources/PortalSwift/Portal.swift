@@ -382,7 +382,7 @@ public class Portal {
       method,
       withCipherText: withCipherText,
       andOrganizationBackupShare: andOrganizationBackupShare,
-      andOrganizationSolanaBackupShare: andOrganizationSolanaBackupShare, 
+      andOrganizationSolanaBackupShare: andOrganizationSolanaBackupShare,
       usingProgressCallback: nil
     )
 
