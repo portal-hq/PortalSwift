@@ -28,9 +28,9 @@ class PortalTests: XCTestCase {
     )
   }
 
-    override func tearDownWithError() throws {
-        self.portal = nil
-    }
+  override func tearDownWithError() throws {
+    self.portal = nil
+  }
 
   func testBackupWallet() async throws {
     let expectation = XCTestExpectation(description: "Portal.backupWallet(backupMethod)")
