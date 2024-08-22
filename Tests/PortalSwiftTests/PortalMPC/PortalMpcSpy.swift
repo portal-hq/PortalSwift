@@ -110,7 +110,7 @@ class PortalMpcSpy: PortalMpcProtocol {
         ejectOrganizationBackupShareParam = andOrganizationBackupShare
         ejectOrganizationSolanaBackupShareParam = andOrganizationSolanaBackupShare
         ejectUsingProgressCallbackParam = usingProgressCallback
-        return [:]
+        return [.eip155 : MockConstants.mockEip155Address]
     }
 
     func generate(withProgressCallback: ((PortalSwift.MpcStatus) -> Void)?) async throws -> [PortalSwift.PortalNamespace : String?] {
