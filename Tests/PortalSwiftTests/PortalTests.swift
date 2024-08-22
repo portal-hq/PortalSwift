@@ -6,6 +6,7 @@
 //
 
 @testable import PortalSwift
+import AnyCodable
 import XCTest
 
 class PortalTests: XCTestCase {
@@ -49,22 +50,7 @@ class PortalTests: XCTestCase {
     await fulfillment(of: [expectation], timeout: 5.0)
   }
 
-  func testRecoverWallet() async throws {
-    let expectation = XCTestExpectation(description: "Portal.backupWallet(backupMethod, cipherText)")
-    var statusUpdates: Set<MpcStatuses> = Set()
-    try portal.setPassword(MockConstants.mockEncryptionKey)
-    let (ethereum, solana) = try await portal.recoverWallet(
-      .Password,
-      withCipherText: MockConstants.mockCiphertext
-    ) { status in
-      statusUpdates.insert(status.status)
-    }
-    XCTAssertEqual(ethereum, MockConstants.mockEip155Address)
-    XCTAssertEqual(solana, MockConstants.mockSolanaAddress)
-    XCTAssertTrue(statusUpdates.count > 0)
-    expectation.fulfill()
-    await fulfillment(of: [expectation], timeout: 5.0)
-  }
+  
 }
 
 // MARK: - Test Helpers
@@ -291,6 +277,63 @@ extension PortalTests {
     }
 }
 
+// MARK: - Recover tests
+extension PortalTests {
+    func testRecoverWallet() async throws {
+      let expectation = XCTestExpectation(description: "Portal.recoverWallet(backupMethod, cipherText)")
+      var statusUpdates: Set<MpcStatuses> = Set()
+      try portal.setPassword(MockConstants.mockEncryptionKey)
+      let (ethereum, solana) = try await portal.recoverWallet(
+        .Password,
+        withCipherText: MockConstants.mockCiphertext
+      ) { status in
+        statusUpdates.insert(status.status)
+      }
+      XCTAssertEqual(ethereum, MockConstants.mockEip155Address)
+      XCTAssertEqual(solana, MockConstants.mockSolanaAddress)
+      XCTAssertTrue(statusUpdates.count > 0)
+      expectation.fulfill()
+      await fulfillment(of: [expectation], timeout: 5.0)
+    }
+
+    func test_recoverWallet_willCall_mpc_recover_onlyOnce() async throws {
+        // given
+        let portalMpcSpy = PortalMpcSpy()
+        try initPortalWithSpy(portalMpc: portalMpcSpy)
+
+        // and given
+        _ = try await portal.recoverWallet(.iCloud)
+        
+        // then
+        XCTAssertEqual(portalMpcSpy.recoverCallsCount, 1)
+    }
+
+    func test_recoverWallet_willCall_mpc_recover_passingCorrectParams() async throws {
+        // given
+        let portalMpcSpy = PortalMpcSpy()
+        try initPortalWithSpy(portalMpc: portalMpcSpy)
+
+        // and given
+        _ = try await portal.recoverWallet(.Password, withCipherText: "123")
+        
+        // then
+        XCTAssertEqual(portalMpcSpy.recoverMethodParam, .Password)
+        XCTAssertEqual(portalMpcSpy.recoverCipherTextParam, "123")
+    }
+
+    func test_provisionWallet_willCall_mpc_recover_onlyOnce() async throws {
+        // given
+        let portalMpcSpy = PortalMpcSpy()
+        try initPortalWithSpy(portalMpc: portalMpcSpy)
+
+        // and given
+        _ = portal.provisionWallet(cipherText: "", method: "ICLOUD", completion: { _ in })
+        
+        // then
+        XCTAssertEqual(portalMpcSpy.recoverWithCompletionCallsCount, 1)
+    }
+}
+
 // MARK: - Eject tests
 extension PortalTests {
     func test_eject_willCall_mpc_eject_onlyOnce() async throws {
@@ -354,5 +397,59 @@ extension PortalTests {
         XCTAssertEqual(portalMpcSpy.ejectCipherTextParam, MockConstants.mockCiphertext)
         XCTAssertEqual(portalMpcSpy.ejectOrganizationBackupShareParam, "123")
         XCTAssertEqual(portalMpcSpy.ejectOrganizationSolanaBackupShareParam, "456")
+    }
+}
+
+// MARK: - Transaction tests
+extension PortalTests {
+    func test_getTransaction_willCall_api_getTransaction_onlyOnce() async throws {
+        // given
+        let portalApiSpy = PortalApiSpy()
+        try initPortalWithSpy(api: portalApiSpy)
+        
+        // and given
+        _ = try await portal.getTransactions("")
+        
+        // then
+        XCTAssertEqual(portalApiSpy.getTransactionsCallsCount, 1)
+    }
+
+    func test_getTransaction_willCall_api_getTransaction_passingCorrectParams() async throws {
+        // given
+        let portalApiSpy = PortalApiSpy()
+        try initPortalWithSpy(api: portalApiSpy)
+        
+        // and given
+        _ = try await portal.getTransactions("12345", limit: 1, offset: 2, order: .ASC)
+        
+        // then
+        XCTAssertEqual(portalApiSpy.getTransactionsChainIdParam, "12345")
+        XCTAssertEqual(portalApiSpy.getTransactionsLimitParam, 1)
+        XCTAssertEqual(portalApiSpy.getTransactionsOffsetParam, 2)
+        XCTAssertEqual(portalApiSpy.getTransactionsOrderParam, .ASC)
+    }
+
+    func test_simulateTransaction_willCall_api_simulateTransaction_onlyOnce() async throws {
+        // given
+        let portalApiSpy = PortalApiSpy()
+        try initPortalWithSpy(api: portalApiSpy)
+        
+        // and given
+        _ = try await portal.simulateTransaction("54321", from: TransactionOrder.DESC)
+        
+        // then
+        XCTAssertEqual(portalApiSpy.simulateTransactionCallsCount, 1)
+    }
+
+    func test_simulateTransaction_willCall_api_simulateTransaction_passingCorrectParams() async throws {
+        // given
+        let portalApiSpy = PortalApiSpy()
+        try initPortalWithSpy(api: portalApiSpy)
+        
+        // and given
+        _ = try await portal.simulateTransaction("54321", from: TransactionOrder.DESC)
+        // then
+        XCTAssertEqual(portalApiSpy.simulateTransactionWithChainIdParam, "54321")
+        XCTAssertEqual((portalApiSpy.simulateTransactionTransactionParam as? AnyCodable)?.value as? TransactionOrder, AnyCodable(TransactionOrder.DESC).value as? TransactionOrder)
     }
 }
