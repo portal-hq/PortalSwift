@@ -36,20 +36,6 @@ class PortalTests: XCTestCase {
     self.portal = nil
   }
 
-  func testBackupWallet() async throws {
-    let expectation = XCTestExpectation(description: "Portal.backupWallet(backupMethod)")
-    var statusUpdates: Set<MpcStatuses> = Set()
-    try portal.setPassword(MockConstants.mockEncryptionKey)
-    let (cipherText, storageCallback) = try await portal.backupWallet(.Password) { status in
-      statusUpdates.insert(status.status)
-    }
-    XCTAssertEqual(cipherText, MockConstants.mockCiphertext)
-    XCTAssertNotNil(storageCallback)
-    XCTAssertTrue(statusUpdates.count > 0)
-    expectation.fulfill()
-    await fulfillment(of: [expectation], timeout: 5.0)
-  }
-
   func testCreateWallet() async throws {
     let expectation = XCTestExpectation(description: "Portal.createWallet()")
     var statusUpdates: Set<MpcStatuses> = Set()
@@ -191,5 +177,182 @@ extension PortalTests {
         // then
         XCTAssertEqual(portalApiSpy.updateShareStatusCallsCount, 1)
         
+    }
+}
+
+// MARK: - Backup tests
+extension PortalTests {
+    func test_registerBackupMethod_willCall_mpc_registerBackupMethod_onlyOnce() async throws {
+        // given
+        let portalMpcSpy = PortalMpcSpy()
+        try initPortalWithSpy(portalMpc: portalMpcSpy)
+
+        // and given
+        // reset the `registerBackupMethodCallsCount` since the Portal init is calling registerBackupMethod to register the default backup methods
+        portalMpcSpy.registerBackupMethodCallsCount = 0
+        
+        // and given
+        portal.registerBackupMethod(.iCloud, withStorage: ICloudStorage())
+
+        // then
+        XCTAssertEqual(portalMpcSpy.registerBackupMethodCallsCount, 1)
+    }
+
+    func test_setGDriveConfiguration_willCall_mpc_setGDriveConfiguration_onlyOnce() async throws {
+        // given
+        let portalMpcSpy = PortalMpcSpy()
+        try initPortalWithSpy(portalMpc: portalMpcSpy)
+
+        // and given
+        try portal.setGDriveConfiguration(clientId: MockConstants.mockClientId)
+
+        // then
+        XCTAssertEqual(portalMpcSpy.setGDriveConfigurationCallsCount, 1)
+    }
+
+    func test_setGDriveView_willCall_mpc_setGDriveView_onlyOnce() async throws {
+        // given
+        let portalMpcSpy = PortalMpcSpy()
+        try initPortalWithSpy(portalMpc: portalMpcSpy)
+
+        // and given
+        try await portal.setGDriveView(UIViewController())
+
+        // then
+        XCTAssertEqual(portalMpcSpy.setGDriveViewCallsCount, 1)
+    }
+
+    @available(iOS 16, *)
+    func test_setPasskeyAuthenticationAnchor_willCall_mpc_setPasskeyAuthenticationAnchor_onlyOnce() async throws {
+        // given
+        let portalMpcSpy = PortalMpcSpy()
+        try initPortalWithSpy(portalMpc: portalMpcSpy)
+
+        // and given
+        try await portal.setPasskeyAuthenticationAnchor(UIWindow())
+
+        // then
+        XCTAssertEqual(portalMpcSpy.setPasskeyAuthenticationAnchorCallsCount, 1)
+    }
+
+    @available(iOS 16, *)
+    func test_setPasskeyConfiguration_willCall_mpc_setPasskeyConfiguration_onlyOnce() async throws {
+        // given
+        let portalMpcSpy = PortalMpcSpy()
+        try initPortalWithSpy(portalMpc: portalMpcSpy)
+
+        // and given
+        try portal.setPasskeyConfiguration(relyingParty: "", webAuthnHost: "")
+
+        // then
+        XCTAssertEqual(portalMpcSpy.setPasskeyConfigurationCallsCount, 1)
+    }
+
+    func test_setPassword_willCall_mpc_setPassword_onlyOnce() async throws {
+        // given
+        let portalMpcSpy = PortalMpcSpy()
+        try initPortalWithSpy(portalMpc: portalMpcSpy)
+
+        // and given
+        try portal.setPassword("")
+
+        // then
+        XCTAssertEqual(portalMpcSpy.setPasswordCallsCount, 1)
+    }
+
+    func testBackupWallet() async throws {
+      let expectation = XCTestExpectation(description: "Portal.backupWallet(backupMethod)")
+      var statusUpdates: Set<MpcStatuses> = Set()
+      try portal.setPassword(MockConstants.mockEncryptionKey)
+      let (cipherText, storageCallback) = try await portal.backupWallet(.Password) { status in
+        statusUpdates.insert(status.status)
+      }
+      XCTAssertEqual(cipherText, MockConstants.mockCiphertext)
+      XCTAssertNotNil(storageCallback)
+      XCTAssertTrue(statusUpdates.count > 0)
+      expectation.fulfill()
+      await fulfillment(of: [expectation], timeout: 5.0)
+    }
+
+    func test_backupWallet_calling_storageCallback_willCall_api_updateShareStatus() async throws {
+        // given
+        let portalApiSpy = PortalApiSpy()
+        try initPortalWithSpy(api: portalApiSpy)
+        
+        // and given
+        let (_, storageCallback) = try await portal.backupWallet(.Password)
+
+        // and given
+        try await storageCallback()
+
+        // then
+        XCTAssertEqual(portalApiSpy.updateShareStatusCallsCount, 1)
+        
+    }
+}
+
+// MARK: - Eject tests
+extension PortalTests {
+    func test_eject_willCall_mpc_eject_onlyOnce() async throws {
+        // given
+        let portalMpcSpy = PortalMpcSpy()
+        try initPortalWithSpy(portalMpc: portalMpcSpy)
+
+        // and given
+        _ = try await portal.eject(.iCloud)
+
+        // then
+        XCTAssertEqual(portalMpcSpy.ejectCallsCount, 1)
+    }
+
+    func test_eject_willCall_mpc_eject_passingCorrectParams() async throws {
+        // given
+        let portalMpcSpy = PortalMpcSpy()
+        try initPortalWithSpy(portalMpc: portalMpcSpy)
+
+        // and given
+        _ = try await portal.eject(
+            .iCloud,
+            withCipherText: MockConstants.mockCiphertext,
+            andOrganizationBackupShare: ""
+        )
+
+        // then
+        XCTAssertEqual(portalMpcSpy.ejectMethodParam, .iCloud)
+        XCTAssertEqual(portalMpcSpy.ejectCipherTextParam, MockConstants.mockCiphertext)
+        XCTAssertEqual(portalMpcSpy.ejectOrganizationBackupShareParam, "")
+        XCTAssertNil(portalMpcSpy.ejectOrganizationSolanaBackupShareParam)
+    }
+
+    func test_ejectPrivateKeys_willCall_mpc_eject_onlyOnce() async throws {
+        // given
+        let portalMpcSpy = PortalMpcSpy()
+        try initPortalWithSpy(portalMpc: portalMpcSpy)
+
+        // and given
+        _ = try await portal.ejectPrivateKeys(.iCloud)
+
+        // then
+        XCTAssertEqual(portalMpcSpy.ejectCallsCount, 1)
+    }
+
+    func test_ejectPrivateKeys_willCall_mpc_eject_passingCorrectParams() async throws {
+        // given
+        let portalMpcSpy = PortalMpcSpy()
+        try initPortalWithSpy(portalMpc: portalMpcSpy)
+
+        // and given
+        _ = try await portal.ejectPrivateKeys(
+            .Passkey,
+            withCipherText: MockConstants.mockCiphertext,
+            andOrganizationBackupShare: "123",
+            andOrganizationSolanaBackupShare: "456"
+        )
+
+        // then
+        XCTAssertEqual(portalMpcSpy.ejectMethodParam, .Passkey)
+        XCTAssertEqual(portalMpcSpy.ejectCipherTextParam, MockConstants.mockCiphertext)
+        XCTAssertEqual(portalMpcSpy.ejectOrganizationBackupShareParam, "123")
+        XCTAssertEqual(portalMpcSpy.ejectOrganizationSolanaBackupShareParam, "456")
     }
 }
