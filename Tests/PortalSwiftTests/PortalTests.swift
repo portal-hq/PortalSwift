@@ -35,21 +35,8 @@ class PortalTests: XCTestCase {
 
   override func tearDownWithError() throws {
     self.portal = nil
+    PortalKeychain.metadata = nil
   }
-
-  func testCreateWallet() async throws {
-    let expectation = XCTestExpectation(description: "Portal.createWallet()")
-    var statusUpdates: Set<MpcStatuses> = Set()
-    let (ethereum, solana) = try await portal.createWallet { status in
-      statusUpdates.insert(status.status)
-    }
-    XCTAssertEqual(ethereum, MockConstants.mockEip155Address)
-    XCTAssertEqual(solana, MockConstants.mockSolanaAddress)
-    XCTAssertTrue(statusUpdates.count > 0)
-    expectation.fulfill()
-    await fulfillment(of: [expectation], timeout: 5.0)
-  }
-
   
 }
 
@@ -76,6 +63,20 @@ extension PortalTests {
 
 // MARK: - Create Wallet tests
 extension PortalTests {
+
+    func testCreateWallet() async throws {
+      let expectation = XCTestExpectation(description: "Portal.createWallet()")
+      var statusUpdates: Set<MpcStatuses> = Set()
+      let (ethereum, solana) = try await portal.createWallet { status in
+        statusUpdates.insert(status.status)
+      }
+      XCTAssertEqual(ethereum, MockConstants.mockEip155Address)
+      XCTAssertEqual(solana, MockConstants.mockSolanaAddress)
+      XCTAssertTrue(statusUpdates.count > 0)
+      expectation.fulfill()
+      await fulfillment(of: [expectation], timeout: 5.0)
+    }
+
     func test_createWallet_will_call_mpc_generate_onlyOneTime() async throws {
         // given
         let portalMpcSpy = PortalMpcSpy()
@@ -548,7 +549,7 @@ extension PortalTests {
         // and given
         do {
             _ = try await portal.request("", withMethod: method, andParams: [])
-            XCTFail("Expected error not thrown when calling Poetal.request passing invalid method.")
+            XCTFail("Expected error not thrown when calling Portal.request passing invalid method.")
         } catch {
             XCTAssertEqual(error as? PortalProviderError, PortalProviderError.unsupportedRequestMethod(method))
         }
@@ -562,8 +563,9 @@ extension PortalTests {
         // and given
         do {
             _ = try await portal.request("", withMethod: .eth_call, andParams: nil)
-            XCTFail("Expected error not thrown when calling Poetal.request passing invalid method.")
+            XCTFail("Expected error not thrown when calling Portal.request passing invalid method.")
         } catch {
+            // then
             XCTAssertEqual(error as? PortalProviderError, PortalProviderError.invalidRequestParams)
         }
     }
@@ -580,5 +582,271 @@ extension PortalTests {
         XCTAssertEqual(portalProviderSpy.requestAsyncMethodChainIdParam, "123")
         XCTAssertEqual(portalProviderSpy.requestAsyncMethodMethodParam, PortalRequestMethod(rawValue: method))
         XCTAssertEqual(portalProviderSpy.requestAsyncMethodParamsParam, ["123", "321"])
+    }
+}
+
+// MARK: - Balance, SigningShare & NFT Tests
+extension PortalTests {
+    func test_getBalance_willCall_api_getBalance_onlyOnce() async throws {
+        // given
+        let portalApiSpy = PortalApiSpy()
+        try initPortalWithSpy(api: portalApiSpy)
+
+        // and given
+        _ = try await portal.getBalances("")
+        
+        // then
+        XCTAssertEqual(portalApiSpy.getBalancesCallsCount, 1)
+    }
+
+    func test_getBalance_willCall_api_getBalance_passingCorrectParams() async throws {
+        // given
+        let portalApiSpy = PortalApiSpy()
+        try initPortalWithSpy(api: portalApiSpy)
+
+        // and given
+        _ = try await portal.getBalances("123")
+        
+        // then
+        XCTAssertEqual(portalApiSpy.getBalancesChainIdParam, "123")
+    }
+
+    func test_getNFTs_willCall_api_getNFTs_onlyOnce() async throws {
+        // given
+        let portalApiSpy = PortalApiSpy()
+        try initPortalWithSpy(api: portalApiSpy)
+
+        // and given
+        _ = try await portal.getNFTs("")
+        
+        // then
+        XCTAssertEqual(portalApiSpy.getNFTsCallsCount, 1)
+    }
+
+    func test_getNFTs_willCall_api_getNFTs_passingCorrectParams() async throws {
+        // given
+        let portalApiSpy = PortalApiSpy()
+        try initPortalWithSpy(api: portalApiSpy)
+
+        // and given
+        _ = try await portal.getNFTs("12345")
+        
+        // then
+        XCTAssertEqual(portalApiSpy.getNFTsChainIdParam, "12345")
+    }
+
+    func test_getSigningShares_willReturn_correctResult_forNilChainId() async throws {
+        // given
+        let signingShare = try await portal.getSigningShares()
+
+        // then
+        XCTAssertEqual(signingShare.count, 2)
+    }
+    
+    func test_getSigningShares_willThrowError_forEIP255ChainId_whenItIsNotExist() async throws {
+        // given
+        let chainId = "eip155:11155111"
+        do {
+            _ = try await portal.getSigningShares(chainId)
+            XCTFail("Expected error not thrown when calling Portal.getSigningShares for unsupported chain.")
+        } catch {
+            // then
+            XCTAssertEqual(error as? PortalClassError, PortalClassError.unsupportedChainId(chainId))
+        }
+    }
+
+    func test_getSigningShares_willReturn_correctResult_forEIP255ChainId_whenItExists() async throws {
+        // given
+        PortalKeychain.metadata = PortalKeychainMetadata( namespaces: [.eip155 : .SECP256K1] )
+
+        // and given
+        let backupShares = try await portal.getSigningShares("eip155:11155111")
+
+        // then
+        XCTAssertEqual(backupShares.count, 1)
+    }
+}
+
+// MARK: - Wallet Lifecycle helpers
+extension PortalTests {
+    func test_availableRecoveryMethods_willReturn_correctResult_forNilChainId() async throws {
+        // given
+        let availableRecoveryMethods = try await portal.availableRecoveryMethods()
+
+        // then
+        XCTAssertEqual(availableRecoveryMethods, [.Password, .Password])
+    }
+
+    func test_availableRecoveryMethods_willReturn_correctResult_forEIP255ChainId() async throws {
+        // given
+        PortalKeychain.metadata = PortalKeychainMetadata( namespaces: [.eip155 : .SECP256K1] )
+       
+        // and given
+        let availableRecoveryMethods = try await portal.availableRecoveryMethods("eip155:11155111")
+
+
+        // then
+        XCTAssertEqual(availableRecoveryMethods, [.Password])
+    }
+
+    func test_availableRecoveryMethods_willThrowError_forUnSupportedChain() async throws {
+        // given
+        PortalKeychain.metadata = PortalKeychainMetadata( namespaces: [.eip155 : .SECP256K1] )
+       
+        // and given
+        let chainId = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        do {
+            _ = try await portal.availableRecoveryMethods(chainId)
+            XCTFail("Expected error not thrown when calling Portal.availableRecoveryMethods for unsupported chain.")
+        } catch {
+            // then
+            XCTAssertEqual(error as? PortalClassError, PortalClassError.unsupportedChainId(chainId))
+        }
+    }
+
+    func test_doesWalletExist_willReturn_correctResult_forNilChainId() async throws {
+        // given
+        let doseWalletExist = try await portal.doesWalletExist()
+
+        // then
+        XCTAssertTrue(doseWalletExist)
+    }
+
+    func test_doesWalletExist_willReturn_correctResult_forEIP255ChainId_whenItIsNotExist() async throws {
+        // given
+        let doseWalletExist = try await portal.doesWalletExist("eip155:11155111")
+
+        // then
+        XCTAssertFalse(doseWalletExist)
+    }
+
+    func test_doesWalletExist_willReturn_correctResult_forEIP255ChainId_whenItExists() async throws {
+        // given
+        PortalKeychain.metadata = PortalKeychainMetadata( namespaces: [.eip155 : .SECP256K1] )
+        
+        // and given
+        let doseWalletExist = try await portal.doesWalletExist("eip155:11155111")
+
+        // then
+        XCTAssertTrue(doseWalletExist)
+    }
+
+    func test_isWalletBackedUp_willReturn_correctResult_forNilChainId() async throws {
+        // given
+        let isWalletBackedUp = try await portal.isWalletBackedUp()
+
+        // then
+        XCTAssertTrue(isWalletBackedUp)
+    }
+
+    func test_isWalletBackedUp_willReturn_correctResult_forEIP255ChainId_whenItIsNotExist() async throws {
+        // given
+        let isWalletBackedUp = try await portal.isWalletBackedUp("eip155:11155111")
+
+        // then
+        XCTAssertFalse(isWalletBackedUp)
+    }
+
+    func test_isWalletBackedUp_willReturn_correctResult_forEIP255ChainId_whenItExists() async throws {
+        // given
+        PortalKeychain.metadata = PortalKeychainMetadata( namespaces: [.eip155 : .SECP256K1] )
+
+        // and given
+        let isWalletBackedUp = try await portal.isWalletBackedUp("eip155:11155111")
+
+        // then
+        XCTAssertTrue(isWalletBackedUp)
+    }
+
+    func test_isWalletOnDevice_willReturn_correctResult_forNilChainId() async throws {
+        // given
+        let isWalletOnDevice = try await portal.isWalletOnDevice()
+
+        // then
+        XCTAssertTrue(isWalletOnDevice)
+    }
+
+    func test_isWalletOnDevice_willReturn_correctResult_forEIP255ChainId_whenItIsNotExist() async throws {
+        // given
+        let isWalletOnDevice = try await portal.isWalletOnDevice("eip155:11155111")
+
+        // then
+        XCTAssertFalse(isWalletOnDevice)
+    }
+
+    func test_isWalletOnDevice_willReturn_correctResult_forEIP255ChainId_whenItExists() async throws {
+        // given
+        PortalKeychain.metadata = PortalKeychainMetadata( namespaces: [.eip155 : .SECP256K1] )
+
+        // and given
+        let isWalletOnDevice = try await portal.isWalletOnDevice("eip155:11155111")
+
+        // then
+        XCTAssertTrue(isWalletOnDevice)
+    }
+
+    // TODO: - test the isWalletOnDevice function with mock keychain
+
+    func test_isWalletRecoverable_willReturn_correctResult_forNilChainId() async throws {
+        // given
+        let isWalletRecoverable = try await portal.isWalletRecoverable()
+
+        // then
+        XCTAssertTrue(isWalletRecoverable)
+    }
+
+    func test_isWalletRecoverable_willThrowError_forEIP255ChainId_whenItIsNotExist() async throws {
+        // given
+        let chainId = "eip155:11155111"
+        do {
+            _ = try await portal.isWalletRecoverable(chainId)
+            XCTFail("Expected error not thrown when calling Portal.isWalletRecoverable for unsupported chain.")
+        } catch {
+            // then
+            XCTAssertEqual(error as? PortalClassError, PortalClassError.unsupportedChainId(chainId))
+        }
+    }
+
+    func test_isWalletRecoverable_willReturn_correctResult_forEIP255ChainId_whenItExists() async throws {
+        // given
+        PortalKeychain.metadata = PortalKeychainMetadata( namespaces: [.eip155 : .SECP256K1] )
+
+        // and given
+        let isWalletRecoverable = try await portal.isWalletRecoverable("eip155:11155111")
+
+        // then
+        XCTAssertTrue(isWalletRecoverable)
+    }
+
+    func test_getBackupShares_willReturn_correctResult_forNilChainId() async throws {
+
+        // given
+        let backupShares = try await portal.getBackupShares()
+
+        // then
+        XCTAssertEqual(backupShares.count, 2)
+    }
+    
+    func test_getBackupShares_willThrowError_forEIP255ChainId_whenItIsNotExist() async throws {
+        // given
+        let chainId = "eip155:11155111"
+        do {
+            _ = try await portal.getBackupShares(chainId)
+            XCTFail("Expected error not thrown when calling Portal.getBackupShares for unsupported chain.")
+        } catch {
+            // then
+            XCTAssertEqual(error as? PortalClassError, PortalClassError.unsupportedChainId(chainId))
+        }
+    }
+
+    func test_getBackupShares_willReturn_correctResult_forEIP255ChainId_whenItExists() async throws {
+        // given
+        PortalKeychain.metadata = PortalKeychainMetadata( namespaces: [.eip155 : .SECP256K1] )
+
+        // and given
+        let backupShares = try await portal.getBackupShares("eip155:11155111")
+
+        // then
+        XCTAssertEqual(backupShares.count, 1)
     }
 }
