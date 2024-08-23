@@ -10,6 +10,8 @@ import Foundation
 @testable import PortalSwift
 
 class PortalProviderSpy: PortalProviderProtocol {
+    var chainId: Int?
+    var address: String?
     
     let mockPortalProvider: PortalProvider!
 
