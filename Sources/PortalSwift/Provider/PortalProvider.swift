@@ -9,6 +9,9 @@ import AnyCodable
 import Foundation
 
 public protocol PortalProviderProtocol {
+    var chainId: Int? { get set }
+    var address: String? { get }
+
     func emit(event: Events.RawValue, data: Any) -> PortalProvider
     func on(event: Events.RawValue, callback: @escaping (_ data: Any) -> Void) -> PortalProvider
     func once(event: Events.RawValue, callback: @escaping (_ data: Any) throws -> Void) -> PortalProvider

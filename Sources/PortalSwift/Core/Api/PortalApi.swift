@@ -69,7 +69,7 @@ public class PortalApi: PortalApiProtocol {
     }
   }
 
-  public var provider: PortalProvider?
+  public var provider: PortalProviderProtocol?
 
   /// Create an instance of a PortalApi class.
   /// - Parameters:
@@ -79,7 +79,7 @@ public class PortalApi: PortalApiProtocol {
   public init(
     apiKey: String,
     apiHost: String = "api.portalhq.io",
-    provider: PortalProvider? = nil,
+    provider: PortalProviderProtocol? = nil,
     featureFlags: FeatureFlags? = nil,
     requests: PortalRequestsProtocol? = nil
   ) {
