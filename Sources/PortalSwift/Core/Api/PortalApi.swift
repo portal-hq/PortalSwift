@@ -139,7 +139,7 @@ public class PortalApi: PortalApiProtocol {
 
         return balancesResponse
       } catch {
-        self.logger.error("PortalApi.getBalances() - Unable to get balanaces: \(error.localizedDescription)")
+        self.logger.error("PortalApi.getBalances() - Unable to get balances: \(error.localizedDescription)")
         throw error
       }
     }
