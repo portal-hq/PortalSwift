@@ -68,6 +68,10 @@ extension PortalTests {
           passwords: MockPasswordStorage()
         )
     }
+
+    func setToPortal(portalProvider: PortalProviderProtocol) {
+        self.portal.provider = portalProvider
+    }
 }
 
 // MARK: - Create Wallet tests
@@ -451,5 +455,130 @@ extension PortalTests {
         // then
         XCTAssertEqual(portalApiSpy.simulateTransactionWithChainIdParam, "54321")
         XCTAssertEqual((portalApiSpy.simulateTransactionTransactionParam as? AnyCodable)?.value as? TransactionOrder, AnyCodable(TransactionOrder.DESC).value as? TransactionOrder)
+    }
+}
+
+// MARK: - Provider helpers tests
+extension PortalTests {
+    func test_emit_willCall_provider_emit_onlyOnce() async throws {
+        // given
+        let portalProviderSpy = PortalProviderSpy()
+        setToPortal(portalProvider: portalProviderSpy)
+
+        // and given
+        portal.emit(Events.Connect.rawValue, data: "")
+
+        XCTAssertEqual(portalProviderSpy.emitCallsCount, 1)
+    }
+
+    func test_emit_willCall_provider_emit_passingCorrectParams() async throws {
+        // given
+        let portalProviderSpy = PortalProviderSpy()
+        setToPortal(portalProvider: portalProviderSpy)
+
+        // and given
+        portal.emit(Events.ChainChanged.rawValue, data: "123")
+
+        XCTAssertEqual(portalProviderSpy.emitEventParam, Events.ChainChanged.rawValue)
+        XCTAssertEqual(portalProviderSpy.emitDataParam as? String, "123")
+    }
+
+    func test_on_willCall_provider_on_onlyOnce() async throws {
+        // given
+        let portalProviderSpy = PortalProviderSpy()
+        setToPortal(portalProvider: portalProviderSpy)
+
+        // and given
+        portal.on(event: Events.PortalSigningRequested.rawValue, callback: { _ in })
+
+        XCTAssertEqual(portalProviderSpy.onCallsCount, 1)
+    }
+
+    func test_on_willCall_provider_on_passingCorrectParams() async throws {
+        // given
+        let portalProviderSpy = PortalProviderSpy()
+        setToPortal(portalProvider: portalProviderSpy)
+
+        // and given
+        portal.on(event: Events.PortalConnectSigningRequested.rawValue, callback: { _ in })
+
+        XCTAssertEqual(portalProviderSpy.onEventParam, Events.PortalConnectSigningRequested.rawValue)
+    }
+
+    func test_once_willCall_provider_once_onlyOnce() async throws {
+        // given
+        let portalProviderSpy = PortalProviderSpy()
+        setToPortal(portalProvider: portalProviderSpy)
+
+        // and given
+        portal.once(event: Events.PortalSignatureReceived.rawValue, callback: { _ in })
+
+        XCTAssertEqual(portalProviderSpy.onceCallsCount, 1)
+    }
+
+    func test_once_willCall_provider_once_passingCorrectParams() async throws {
+        // given
+        let portalProviderSpy = PortalProviderSpy()
+        setToPortal(portalProvider: portalProviderSpy)
+
+        // and given
+        portal.once(event: Events.PortalSigningApproved.rawValue, callback: { _ in })
+
+        XCTAssertEqual(portalProviderSpy.onceEventParam, Events.PortalSigningApproved.rawValue)
+    }
+
+    func test_request_willCall_provider_request_onlyOnce() async throws {
+        // given
+        let portalProviderSpy = PortalProviderSpy()
+        setToPortal(portalProvider: portalProviderSpy)
+
+        // and given
+        _ = try await portal.request("", withMethod: "eth_accounts", andParams: [])
+
+        XCTAssertEqual(portalProviderSpy.requestAsyncMethodCallsCount, 1)
+    }
+
+    func test_request_willThrowCorrectError_WhenPassingWrongMethod() async throws {
+        // given
+        let portalProviderSpy = PortalProviderSpy()
+        setToPortal(portalProvider: portalProviderSpy)
+
+        // and given
+        let method = "wrong method"
+        // and given
+        do {
+            _ = try await portal.request("", withMethod: method, andParams: [])
+            XCTFail("Expected error not thrown when calling Poetal.request passing invalid method.")
+        } catch {
+            XCTAssertEqual(error as? PortalProviderError, PortalProviderError.unsupportedRequestMethod(method))
+        }
+    }
+
+    func test_request_willThrowCorrectError_WhenPassingNilParams() async throws {
+        // given
+        let portalProviderSpy = PortalProviderSpy()
+        setToPortal(portalProvider: portalProviderSpy)
+
+        // and given
+        do {
+            _ = try await portal.request("", withMethod: .eth_call, andParams: nil)
+            XCTFail("Expected error not thrown when calling Poetal.request passing invalid method.")
+        } catch {
+            XCTAssertEqual(error as? PortalProviderError, PortalProviderError.invalidRequestParams)
+        }
+    }
+
+    func test_request_willCall_provider_request_passingCorrectParams() async throws {
+        // given
+        let portalProviderSpy = PortalProviderSpy()
+        setToPortal(portalProvider: portalProviderSpy)
+
+        // and given
+        let method = "eth_accounts"
+        _ = try await portal.request("123", withMethod: method, andParams: ["123", "321"])
+
+        XCTAssertEqual(portalProviderSpy.requestAsyncMethodChainIdParam, "123")
+        XCTAssertEqual(portalProviderSpy.requestAsyncMethodMethodParam, PortalRequestMethod(rawValue: method))
+        XCTAssertEqual(portalProviderSpy.requestAsyncMethodParamsParam, ["123", "321"])
     }
 }
