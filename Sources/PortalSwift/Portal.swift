@@ -469,7 +469,7 @@ public class Portal {
       AnyCodable(param)
     }
 
-      return try await self.provider.request(chainId, withMethod: withMethod, andParams: params, connect: nil)
+    return try await self.provider.request(chainId, withMethod: withMethod, andParams: params, connect: nil)
   }
 
   public func request(_ chainId: String, withMethod: String, andParams: [Any]) async throws -> PortalProviderResult {
@@ -982,7 +982,7 @@ public class Portal {
   /// - Returns: Void
   @available(*, deprecated, renamed: "REMOVED", message: "The PortalProvider class will be chain agnostic very soon. Please update to the chainId-specific implementations of all Provider helper methods as this function will be removed in the future.")
   public func setChainId(to: Int) throws {
-      _ = try self.provider.setChainId(value: to, connect: nil)
+    _ = try self.provider.setChainId(value: to, connect: nil)
   }
 
   /****************************************

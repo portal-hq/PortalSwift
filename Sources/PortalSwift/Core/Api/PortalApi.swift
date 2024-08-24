@@ -9,7 +9,7 @@ import AnyCodable
 import Foundation
 
 public protocol PortalApiProtocol {
-    var client: ClientResponse? { get async throws }
+  var client: ClientResponse? { get async throws }
 
     func eject() async throws -> String
     func getBalances(_ chainId: String) async throws -> [FetchedBalance]
@@ -359,7 +359,7 @@ public class PortalApi: PortalApiProtocol {
     }
   }
 
-    public func storeClientCipherText(_ backupSharePairId: String, cipherText: String) async throws -> Bool {
+  public func storeClientCipherText(_ backupSharePairId: String, cipherText: String) async throws -> Bool {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/backup-share-pairs/\(backupSharePairId)") {
       do {
         let payload = AnyCodable([
