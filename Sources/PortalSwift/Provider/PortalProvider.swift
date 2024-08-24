@@ -9,19 +9,19 @@ import AnyCodable
 import Foundation
 
 public protocol PortalProviderProtocol {
-    var chainId: Int? { get set }
-    var address: String? { get }
+  var chainId: Int? { get set }
+  var address: String? { get }
 
-    func emit(event: Events.RawValue, data: Any) -> PortalProvider
-    func on(event: Events.RawValue, callback: @escaping (_ data: Any) -> Void) -> PortalProvider
-    func once(event: Events.RawValue, callback: @escaping (_ data: Any) throws -> Void) -> PortalProvider
-    func removeListener(event: Events.RawValue) -> PortalProvider
-    func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [AnyCodable]?, connect: PortalConnect?) async throws -> PortalProviderResult
-    func request(_ chainId: String, withMethod: String, andParams: [AnyCodable]?, connect: PortalConnect?) async throws -> PortalProviderResult
-    func request(payload: ETHRequestPayload, completion: @escaping (Result<RequestCompletionResult>) -> Void, connect: PortalConnect?)
-    func request(payload: ETHTransactionPayload, completion: @escaping (Result<TransactionCompletionResult>) -> Void, connect: PortalConnect?)
-    func request(payload: ETHAddressPayload, completion: @escaping (Result<AddressCompletionResult>) -> Void, connect: PortalConnect?)
-    func setChainId(value: Int, connect: PortalConnect?) throws -> PortalProvider
+  func emit(event: Events.RawValue, data: Any) -> PortalProvider
+  func on(event: Events.RawValue, callback: @escaping (_ data: Any) -> Void) -> PortalProvider
+  func once(event: Events.RawValue, callback: @escaping (_ data: Any) throws -> Void) -> PortalProvider
+  func removeListener(event: Events.RawValue) -> PortalProvider
+  func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [AnyCodable]?, connect: PortalConnect?) async throws -> PortalProviderResult
+  func request(_ chainId: String, withMethod: String, andParams: [AnyCodable]?, connect: PortalConnect?) async throws -> PortalProviderResult
+  func request(payload: ETHRequestPayload, completion: @escaping (Result<RequestCompletionResult>) -> Void, connect: PortalConnect?)
+  func request(payload: ETHTransactionPayload, completion: @escaping (Result<TransactionCompletionResult>) -> Void, connect: PortalConnect?)
+  func request(payload: ETHAddressPayload, completion: @escaping (Result<AddressCompletionResult>) -> Void, connect: PortalConnect?)
+  func setChainId(value: Int, connect: PortalConnect?) throws -> PortalProvider
 }
 
 /// Portal's EVM blockchain provider.
@@ -254,7 +254,7 @@ public class PortalProvider: PortalProviderProtocol {
     _ chainId: String,
     withMethod: String,
     andParams: [AnyCodable]? = [],
-    connect: PortalConnect? = nil
+    connect _: PortalConnect? = nil
   ) async throws -> PortalProviderResult {
     guard let method = PortalRequestMethod(rawValue: withMethod) else {
       throw PortalProviderError.unsupportedRequestMethod("Received a request with unsupported method: \(withMethod)")
@@ -447,7 +447,7 @@ public class PortalProvider: PortalProviderProtocol {
   public func request(
     payload: ETHRequestPayload,
     completion: @escaping (Result<RequestCompletionResult>) -> Void,
-    connect: PortalConnect? = nil
+    connect _: PortalConnect? = nil
   ) {
     Task {
       do {
@@ -482,7 +482,7 @@ public class PortalProvider: PortalProviderProtocol {
   public func request(
     payload: ETHTransactionPayload,
     completion: @escaping (Result<TransactionCompletionResult>) -> Void,
-    connect: PortalConnect? = nil
+    connect _: PortalConnect? = nil
   ) {
     Task {
       do {
@@ -510,7 +510,7 @@ public class PortalProvider: PortalProviderProtocol {
   public func request(
     payload: ETHAddressPayload,
     completion: @escaping (Result<AddressCompletionResult>) -> Void,
-    connect: PortalConnect? = nil
+    connect _: PortalConnect? = nil
   ) {
     Task {
       do {
