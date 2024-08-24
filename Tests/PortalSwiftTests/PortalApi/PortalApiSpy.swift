@@ -5,8 +5,8 @@
 //  Created by Ahmed Ragab on 21/08/2024.
 //
 
-import Foundation
 import AnyCodable
+import Foundation
 @testable import PortalSwift
 
 class PortalApiSpy: PortalApiProtocol {
