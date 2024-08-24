@@ -9,40 +9,39 @@ import AnyCodable
 import Foundation
 
 public protocol PortalApiProtocol {
-    var client: ClientResponse? { get async throws }
+  var client: ClientResponse? { get async throws }
 
-    func eject() async throws -> String
-    func getBalances(_ chainId: String) async throws -> [FetchedBalance]
-    func getClient() async throws -> ClientResponse
-    func getClientCipherText(_ backupSharePairId: String) async throws -> String
-    func getQuote(_ swapsApiKey: String, withArgs: QuoteArgs, forChainId: String?) async throws -> Quote
-    func getNFTs(_ chainId: String) async throws -> [FetchedNFT]
-    func getSharePairs(_ type: PortalSharePairType, walletId: String) async throws -> [FetchedSharePair]
-    func getSources(_ swapsApiKey: String, forChainId: String) async throws -> [String: String]
-    func getTransactions(_ chainId: String, limit: Int?, offset: Int?, order: TransactionOrder?) async throws -> [FetchedTransaction]
-    func identify(_ traits: [String: AnyCodable]) async throws -> MetricsResponse
-    func prepareEject(_ walletId: String, _ backupMethod: BackupMethods) async throws -> String
-    func refreshClient() async throws
-    func simulateTransaction(_ transaction: Any, withChainId: String) async throws -> SimulatedTransaction
-    func updateShareStatus(_ type: PortalSharePairType, status: SharePairUpdateStatus, sharePairIds: [String]) async throws
-    func getClient(completion: @escaping (Result<ClientResponse>) -> Void) throws
-    func getQuote(_ swapsApiKey: String, _ args: QuoteArgs, _ forChainId: String?, completion: @escaping (Result<Quote>) -> Void) throws
-    func getSources(swapsApiKey: String, completion: @escaping (Result<[String: String]>) -> Void) throws
-    func getNFTs(completion: @escaping (Result<[FetchedNFT]>) -> Void) throws
-    func getTransactions(limit: Int?, offset: Int?, order: GetTransactionsOrder?, chainId: Int?, completion: @escaping (Result<[FetchedTransaction]>) -> Void) throws
-    func getBalances(completion: @escaping (Result<[FetchedBalance]>) -> Void) throws
-    func simulateTransaction(transaction: SimulateTransactionParam, completion: @escaping (Result<SimulatedTransaction>) -> Void) throws
-    func ejectClient(completion: @escaping (Result<String>) -> Void) throws
-    func storedClientBackupShare(success: Bool, backupMethod: BackupMethods.RawValue, completion: @escaping (Result<String>) -> Void) throws
-    func getBackupShareMetadata(completion: @escaping (Result<[FetchedSharePair]>) -> Void) throws
-    func getSigningShareMetadata(completion: @escaping (Result<[FetchedSharePair]>) -> Void) throws
-    func storeClientCipherText(_ backupSharePairId: String, cipherText: String) async throws -> Bool
-    func track(_ event: String, withProperties: [String: AnyCodable]) async throws -> MetricsResponse
+  func eject() async throws -> String
+  func getBalances(_ chainId: String) async throws -> [FetchedBalance]
+  func getClient() async throws -> ClientResponse
+  func getClientCipherText(_ backupSharePairId: String) async throws -> String
+  func getQuote(_ swapsApiKey: String, withArgs: QuoteArgs, forChainId: String?) async throws -> Quote
+  func getNFTs(_ chainId: String) async throws -> [FetchedNFT]
+  func getSharePairs(_ type: PortalSharePairType, walletId: String) async throws -> [FetchedSharePair]
+  func getSources(_ swapsApiKey: String, forChainId: String) async throws -> [String: String]
+  func getTransactions(_ chainId: String, limit: Int?, offset: Int?, order: TransactionOrder?) async throws -> [FetchedTransaction]
+  func identify(_ traits: [String: AnyCodable]) async throws -> MetricsResponse
+  func prepareEject(_ walletId: String, _ backupMethod: BackupMethods) async throws -> String
+  func refreshClient() async throws
+  func simulateTransaction(_ transaction: Any, withChainId: String) async throws -> SimulatedTransaction
+  func updateShareStatus(_ type: PortalSharePairType, status: SharePairUpdateStatus, sharePairIds: [String]) async throws
+  func getClient(completion: @escaping (Result<ClientResponse>) -> Void) throws
+  func getQuote(_ swapsApiKey: String, _ args: QuoteArgs, _ forChainId: String?, completion: @escaping (Result<Quote>) -> Void) throws
+  func getSources(swapsApiKey: String, completion: @escaping (Result<[String: String]>) -> Void) throws
+  func getNFTs(completion: @escaping (Result<[FetchedNFT]>) -> Void) throws
+  func getTransactions(limit: Int?, offset: Int?, order: GetTransactionsOrder?, chainId: Int?, completion: @escaping (Result<[FetchedTransaction]>) -> Void) throws
+  func getBalances(completion: @escaping (Result<[FetchedBalance]>) -> Void) throws
+  func simulateTransaction(transaction: SimulateTransactionParam, completion: @escaping (Result<SimulatedTransaction>) -> Void) throws
+  func ejectClient(completion: @escaping (Result<String>) -> Void) throws
+  func storedClientBackupShare(success: Bool, backupMethod: BackupMethods.RawValue, completion: @escaping (Result<String>) -> Void) throws
+  func getBackupShareMetadata(completion: @escaping (Result<[FetchedSharePair]>) -> Void) throws
+  func getSigningShareMetadata(completion: @escaping (Result<[FetchedSharePair]>) -> Void) throws
+  func storeClientCipherText(_ backupSharePairId: String, cipherText: String) async throws -> Bool
+  func track(_ event: String, withProperties: [String: AnyCodable]) async throws -> MetricsResponse
 }
 
 /// The class to interface with Portal's REST API.
 public class PortalApi: PortalApiProtocol {
-    
   private var _client: ClientResponse?
   private var apiKey: String
   private var baseUrl: String
@@ -336,7 +335,7 @@ public class PortalApi: PortalApiProtocol {
     throw URLError(.badURL)
   }
 
-    public func storeClientCipherText(_ backupSharePairId: String, cipherText: String) async throws -> Bool {
+  public func storeClientCipherText(_ backupSharePairId: String, cipherText: String) async throws -> Bool {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/backup-share-pairs/\(backupSharePairId)") {
       do {
         let payload = AnyCodable([

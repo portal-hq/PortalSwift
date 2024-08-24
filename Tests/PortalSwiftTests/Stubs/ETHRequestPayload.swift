@@ -9,10 +9,10 @@ import Foundation
 @testable import PortalSwift
 
 extension ETHRequestPayload {
-    static func stub(
-        method: ETHRequestMethods.RawValue = "eth_accounts",
-        params: [Any] = [""]
-    ) -> Self {
-        return ETHRequestPayload(method: method, params: params)
-    }
+  static func stub(
+    method: ETHRequestMethods.RawValue = "eth_accounts",
+    params: [Any] = [""]
+  ) -> Self {
+    return ETHRequestPayload(method: method, params: params)
+  }
 }
