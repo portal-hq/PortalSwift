@@ -6,6 +6,7 @@
 //
 
 @testable import PortalSwift
+@testable import SolanaSwift
 import AnyCodable
 import XCTest
 
@@ -58,6 +59,44 @@ extension PortalTests {
 
     func setToPortal(portalProvider: PortalProviderProtocol) {
         self.portal.provider = portalProvider
+    }
+}
+
+// MARK: - Default RPC config tests
+extension PortalTests {
+    func test_buildDefaultRpcConfig() async throws {
+        let apiHost = "api.portalhq.io"
+        let newPortal = try Portal(
+          MockConstants.mockApiKey,
+          withRpcConfig: [:],
+          apiHost: apiHost,
+          api: api ?? self.api,
+          binary: binary,
+          gDrive: MockGDriveStorage(),
+          iCloud: MockICloudStorage(),
+          keychain: keychain,
+          mpc: MockPortalMpc(),
+          passwords: MockPasswordStorage()
+        )
+
+        XCTAssertEqual(
+            newPortal.rpcConfig,
+            [
+              "eip155:1": "https://\(apiHost)/rpc/v1/eip155/1", // Ethereum Mainnet
+              "eip155:137": "https://\(apiHost)/rpc/v1/eip155/137", // Polygon Mainnet
+              "eip155:8453": "https://\(apiHost)/rpc/v1/eip155/8453", // Base Mainnet
+              "eip155:80001": "https://\(apiHost)/rpc/v1/eip155/800011", // Polygon Mumbai
+              "eip155:84532": "https://\(apiHost)/rpc/v1/eip155/84532", // Base Testnet
+              "eip155:11155111": "https://\(apiHost)/rpc/v1/eip155/11155111", // Ethereum Sepolia
+              "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": "https://\(apiHost)/rpc/v1/solana/5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", // Solana Mainnet
+              "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": "https://\(apiHost)/rpc/v1/solana/EtWTRABZaYq6iMfeYKouRu166VU2xqa1" // Solana Testnet
+            ]
+        )
+    }
+
+    func test_createPortalConnectInstance() async throws {
+        let portalConnect = try portal.createPortalConnectInstance()
+        XCTAssertNotNil(portalConnect)
     }
 }
 
@@ -849,4 +888,391 @@ extension PortalTests {
         // then
         XCTAssertEqual(backupShares.count, 1)
     }
+}
+
+// MARK: - eth tests
+extension PortalTests {
+    func test_ethEstimateGas_willCall_providerRequest_onlyOnce() async throws {
+        // given
+        let portalProviderSpy = PortalProviderSpy()
+        setToPortal(portalProvider: portalProviderSpy)
+
+        // and given
+        portal.ethEstimateGas(transaction: ETHTransactionParam.stub(), completion: { _ in })
+        
+        // then
+        XCTAssertEqual(portalProviderSpy.requestPayloadCompletionCallsCount, 1)
+    }
+
+    func test_ethEstimateGas_willCall_providerRequest_passingCorrectMethodParams() async throws {
+        // given
+        let portalProviderSpy = PortalProviderSpy()
+        setToPortal(portalProvider: portalProviderSpy)
+
+        // and given
+        portal.ethEstimateGas(transaction: ETHTransactionParam.stub(), completion: { _ in })
+        
+        // then
+        XCTAssertEqual(portalProviderSpy.requestPayloadCompletionPayloadParam?.method, ETHRequestMethods.EstimateGas.rawValue)
+    }
+
+    func test_ethGasPrice_willCall_providerRequest_onlyOnce() async throws {
+        // given
+        let portalProviderSpy = PortalProviderSpy()
+        setToPortal(portalProvider: portalProviderSpy)
+
+        // and given
+        portal.ethGasPrice(completion: { _ in })
+        
+        // then
+        XCTAssertEqual(portalProviderSpy.requestPayloadCompletionCallsCount, 1)
+    }
+
+    func test_ethGasPrice_willCall_providerRequest_passingCorrectParams() async throws {
+        // given
+        let portalProviderSpy = PortalProviderSpy()
+        setToPortal(portalProvider: portalProviderSpy)
+
+        // and given
+        portal.ethGasPrice(completion: { _ in })
+        
+        // then
+        XCTAssertEqual(portalProviderSpy.requestPayloadCompletionPayloadParam?.method, ETHRequestMethods.GasPrice.rawValue)
+        XCTAssertEqual(portalProviderSpy.requestPayloadCompletionPayloadParam?.params as? [String], [])
+    }
+
+    func test_ethGetBalance_willCall_providerRequest_onlyOnce() async throws {
+        // given
+        let portalProviderSpy = PortalProviderSpy()
+        portalProviderSpy.address = "dummy_address"
+        setToPortal(portalProvider: portalProviderSpy)
+
+        // and given
+        portal.ethGetBalance(completion: { _ in })
+        
+        // then
+        XCTAssertEqual(portalProviderSpy.requestPayloadCompletionCallsCount, 1)
+    }
+
+    func test_ethGetBalance_willCall_providerRequest_passingCorrectParams() async throws {
+        // given
+        let address = "dummy_address"
+        let portalProviderSpy = PortalProviderSpy()
+        portalProviderSpy.address = address
+        setToPortal(portalProvider: portalProviderSpy)
+
+        // and given
+        portal.ethGetBalance(completion: { _ in })
+        
+        // then
+        XCTAssertEqual(portalProviderSpy.requestPayloadCompletionPayloadParam?.method, ETHRequestMethods.GetBalance.rawValue)
+        XCTAssertEqual(portalProviderSpy.requestPayloadCompletionPayloadParam?.params as? [String], [address, "latest"])
+    }
+
+    func test_ethGetBalance_willComplete_withCorrectError() async throws {
+        // given
+        let expectation = XCTestExpectation(description: "Completion handler invoked")
+        let portalProviderSpy = PortalProviderSpy()
+        setToPortal(portalProvider: portalProviderSpy)
+        var result: Result<RequestCompletionResult>?
+
+        // and given
+        portal.ethGetBalance { response in
+            result = response
+            expectation.fulfill()
+        }
+        
+        // then
+        await fulfillment(of: [expectation], timeout: 5.0)
+        XCTAssertEqual(result?.error as? PortalProviderError, PortalProviderError.noAddress)
+    }
+
+    func test_ethSendTransaction_willCall_providerRequest_onlyOnce() async throws {
+        // given
+        let portalProviderSpy = PortalProviderSpy()
+        setToPortal(portalProvider: portalProviderSpy)
+
+        // and given
+        portal.ethSendTransaction(transaction: ETHTransactionParam.stub(), completion: { _ in })
+        
+        // then
+        XCTAssertEqual(portalProviderSpy.requestTransactionCompletionCallsCount, 1)
+    }
+
+    func test_ethSendTransaction_willCall_providerRequest_passingCorrectParams() async throws {
+        // given
+        let portalProviderSpy = PortalProviderSpy()
+        setToPortal(portalProvider: portalProviderSpy)
+
+        // and given
+        portal.ethSendTransaction(transaction: ETHTransactionParam.stub(), completion: { _ in })
+        
+        // then
+        XCTAssertEqual(portalProviderSpy.requestTransactionCompletionPayloadParam?.method, ETHRequestMethods.SendTransaction.rawValue)
+    }
+
+    func test_ethSign_willCall_providerRequest_onlyOnce() async throws {
+        // given
+        let portalProviderSpy = PortalProviderSpy()
+        portalProviderSpy.address = "dummy_address"
+        setToPortal(portalProvider: portalProviderSpy)
+
+        // and given
+        portal.ethSign(message: "", completion: { _ in })
+        
+        // then
+        XCTAssertEqual(portalProviderSpy.requestPayloadCompletionCallsCount, 1)
+    }
+
+    func test_ethSign_willCall_providerRequest_passingCorrectParams() async throws {
+        // given
+        let address = "dummy_address"
+        let portalProviderSpy = PortalProviderSpy()
+        portalProviderSpy.address = address
+        setToPortal(portalProvider: portalProviderSpy)
+        let message = "dummy_message"
+
+        // and given
+        portal.ethSign(message: message, completion: { _ in })
+        
+        // then
+        XCTAssertEqual(portalProviderSpy.requestPayloadCompletionPayloadParam?.method, ETHRequestMethods.Sign.rawValue)
+        XCTAssertEqual(portalProviderSpy.requestPayloadCompletionPayloadParam?.params as? [String], [address, message])
+    }
+
+    func test_ethSign_willComplete_withCorrectError() async throws {
+        // given
+        let expectation = XCTestExpectation(description: "Completion handler invoked")
+        let portalProviderSpy = PortalProviderSpy()
+        setToPortal(portalProvider: portalProviderSpy)
+        var result: Result<RequestCompletionResult>?
+
+        // and given
+        portal.ethSign(message: "") { response in
+            result = response
+            expectation.fulfill()
+        }
+        
+        // then
+        await fulfillment(of: [expectation], timeout: 5.0)
+        XCTAssertEqual(result?.error as? PortalProviderError, PortalProviderError.noAddress)
+    }
+
+    func test_ethSignTransaction_willCall_providerRequest_onlyOnce() async throws {
+        // given
+        let portalProviderSpy = PortalProviderSpy()
+        setToPortal(portalProvider: portalProviderSpy)
+
+        // and given
+        portal.ethSignTransaction(transaction: ETHTransactionParam.stub(), completion: { _ in })
+        
+        // then
+        XCTAssertEqual(portalProviderSpy.requestTransactionCompletionCallsCount, 1)
+    }
+
+    func test_ethSignTransaction_willCall_providerRequest_passingCorrectParams() async throws {
+        // given
+        let portalProviderSpy = PortalProviderSpy()
+        setToPortal(portalProvider: portalProviderSpy)
+
+        // and given
+        portal.ethSignTransaction(transaction: ETHTransactionParam.stub(), completion: { _ in })
+        
+        // then
+        XCTAssertEqual(portalProviderSpy.requestTransactionCompletionPayloadParam?.method, ETHRequestMethods.SignTransaction.rawValue)
+    }
+
+    func test_ethSignTypedDataV3_willCall_providerRequest_onlyOnce() async throws {
+        // given
+        let portalProviderSpy = PortalProviderSpy()
+        portalProviderSpy.address = "dummy_address"
+        setToPortal(portalProvider: portalProviderSpy)
+
+        // and given
+        portal.ethSignTypedDataV3(message: "", completion: { _ in })
+        
+        // then
+        XCTAssertEqual(portalProviderSpy.requestPayloadCompletionCallsCount, 1)
+    }
+
+    func test_ethSignTypedDataV3_willCall_providerRequest_passingCorrectParams() async throws {
+        // given
+        let address = "dummy_address"
+        let portalProviderSpy = PortalProviderSpy()
+        portalProviderSpy.address = address
+        setToPortal(portalProvider: portalProviderSpy)
+        let message = "dummy_message"
+
+        // and given
+        portal.ethSignTypedDataV3(message: message, completion: { _ in })
+        
+        // then
+        XCTAssertEqual(portalProviderSpy.requestPayloadCompletionPayloadParam?.method, ETHRequestMethods.SignTypedDataV3.rawValue)
+        XCTAssertEqual(portalProviderSpy.requestPayloadCompletionPayloadParam?.params as? [String], [address, message])
+    }
+
+    func test_ethSignTypedDataV3_willComplete_withCorrectError() async throws {
+        // given
+        let expectation = XCTestExpectation(description: "Completion handler invoked")
+        let portalProviderSpy = PortalProviderSpy()
+        setToPortal(portalProvider: portalProviderSpy)
+        var result: Result<RequestCompletionResult>?
+
+        // and given
+        portal.ethSignTypedDataV3(message: "") { response in
+            result = response
+            expectation.fulfill()
+        }
+        
+        // then
+        await fulfillment(of: [expectation], timeout: 5.0)
+        XCTAssertEqual(result?.error as? PortalProviderError, PortalProviderError.noAddress)
+    }
+
+    func test_ethSignTypedData_willCall_providerRequest_onlyOnce() async throws {
+        // given
+        let portalProviderSpy = PortalProviderSpy()
+        portalProviderSpy.address = "dummy_address"
+        setToPortal(portalProvider: portalProviderSpy)
+
+        // and given
+        portal.ethSignTypedData(message: "", completion: { _ in })
+        
+        // then
+        XCTAssertEqual(portalProviderSpy.requestPayloadCompletionCallsCount, 1)
+    }
+
+    func test_ethSignTypedData_willCall_providerRequest_passingCorrectParams() async throws {
+        // given
+        let address = "dummy_address"
+        let portalProviderSpy = PortalProviderSpy()
+        portalProviderSpy.address = address
+        setToPortal(portalProvider: portalProviderSpy)
+        let message = "dummy_message"
+
+        // and given
+        portal.ethSignTypedData(message: message, completion: { _ in })
+        
+        // then
+        XCTAssertEqual(portalProviderSpy.requestPayloadCompletionPayloadParam?.method, ETHRequestMethods.SignTypedDataV4.rawValue)
+        XCTAssertEqual(portalProviderSpy.requestPayloadCompletionPayloadParam?.params as? [String], [address, message])
+    }
+
+    func test_ethSignTypedData_willComplete_withCorrectError() async throws {
+        // given
+        let expectation = XCTestExpectation(description: "Completion handler invoked")
+        let portalProviderSpy = PortalProviderSpy()
+        setToPortal(portalProvider: portalProviderSpy)
+        var result: Result<RequestCompletionResult>?
+
+        // and given
+        portal.ethSignTypedData(message: "") { response in
+            result = response
+            expectation.fulfill()
+        }
+        
+        // then
+        await fulfillment(of: [expectation], timeout: 5.0)
+        XCTAssertEqual(result?.error as? PortalProviderError, PortalProviderError.noAddress)
+    }
+
+    func test_personalSign_willCall_providerRequest_onlyOnce() async throws {
+        // given
+        let portalProviderSpy = PortalProviderSpy()
+        portalProviderSpy.address = "dummy_address"
+        setToPortal(portalProvider: portalProviderSpy)
+
+        // and given
+        portal.personalSign(message: "", completion: { _ in })
+        
+        // then
+        XCTAssertEqual(portalProviderSpy.requestPayloadCompletionCallsCount, 1)
+    }
+
+    func test_personalSign_willCall_providerRequest_passingCorrectParams() async throws {
+        // given
+        let address = "dummy_address"
+        let portalProviderSpy = PortalProviderSpy()
+        portalProviderSpy.address = address
+        setToPortal(portalProvider: portalProviderSpy)
+        let message = "dummy_message"
+
+        // and given
+        portal.personalSign(message: message, completion: { _ in })
+        
+        // then
+        XCTAssertEqual(portalProviderSpy.requestPayloadCompletionPayloadParam?.method, ETHRequestMethods.PersonalSign.rawValue)
+        XCTAssertEqual(portalProviderSpy.requestPayloadCompletionPayloadParam?.params as? [String], [message, address])
+    }
+
+    func test_personalSign_willComplete_withCorrectError() async throws {
+        // given
+        let expectation = XCTestExpectation(description: "Completion handler invoked")
+        let portalProviderSpy = PortalProviderSpy()
+        setToPortal(portalProvider: portalProviderSpy)
+        var result: Result<RequestCompletionResult>?
+
+        // and given
+        portal.personalSign(message: "") { response in
+            result = response
+            expectation.fulfill()
+        }
+        
+        // then
+        await fulfillment(of: [expectation], timeout: 5.0)
+        XCTAssertEqual(result?.error as? PortalProviderError, PortalProviderError.noAddress)
+    }
+
+    func test_request_willCall_providerRequest_onlyOnce() async throws {
+        // given
+        let portalProviderSpy = PortalProviderSpy()
+        setToPortal(portalProvider: portalProviderSpy)
+
+        // and given
+        portal.request(method: "eth_getCode", params: [], completion: { _ in })
+        
+        // then
+        XCTAssertEqual(portalProviderSpy.requestPayloadCompletionCallsCount, 1)
+    }
+
+    func test_request_willCall_providerRequest_passingCorrectParams() async throws {
+        // given
+        let portalProviderSpy = PortalProviderSpy()
+        setToPortal(portalProvider: portalProviderSpy)
+
+        let method = ETHRequestMethods.SendRawTransaction.rawValue
+        // and given
+        portal.request(method: method, params: [], completion: { _ in })
+        
+        // then
+        XCTAssertEqual(portalProviderSpy.requestPayloadCompletionPayloadParam?.method, method)
+    }
+}
+
+// MARK: - Solana tests
+extension PortalTests {
+    func test_sendSol_passingWrongToAddressFormat_willThroughCorrectError() async throws {
+        // given
+        let toAddress = ""
+
+        do {
+            // and given
+            _ = try await portal.sendSol(1, to: toAddress, withChainId: "")
+            XCTFail("Expected error not thrown when calling Portal.sendSol passing invalid to address format.")
+        } catch {
+            // then
+            XCTAssertEqual(error as? PublicKeyError, PublicKeyError.invalidAddress(toAddress))
+        }
+    }
+
+    func test_sendSol() async throws {
+        setToPortal(portalProvider: PortalProviderMock())
+
+        let chainId = "eip155:11155111"
+        let transactionHash = try await portal.sendSol(1, to: "6LmSRCiu3z6NCSpF19oz1pHXkYkN4jWbj9K1nVELpDkT", withChainId: chainId)
+
+        XCTAssertTrue(!transactionHash.isEmpty)
+    }
+
+    // TODO: - to send the `sendSol` function all cases.
 }
