@@ -70,12 +70,12 @@ public class PortalKeychain {
 
   private let decoder = JSONDecoder()
   private let encoder = JSONEncoder()
-  private let keychain: PortalKeychainAccess
-  private let logger = PortalLogger()
+  private let keychain: PortalKeychainAccessProtocol
+  private let logger: PortalLoggerProtocol = PortalLogger()
   private let metadataKey = "metadata"
   private let sharesKey = "shares"
 
-  public init(keychainAccess: PortalKeychainAccess? = nil) {
+  public init(keychainAccess: PortalKeychainAccessProtocol? = nil) {
     self.keychain = keychainAccess ?? PortalKeychainAccess()
   }
 
