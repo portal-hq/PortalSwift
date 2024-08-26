@@ -1,7 +1,14 @@
 import Foundation
 import os.log
 
-class PortalLogger {
+protocol PortalLoggerProtocol {
+    func debug(_ message: String)
+    func error(_ message: String)
+    func info(_ message: String)
+    func log(_ message: String)
+}
+
+class PortalLogger: PortalLoggerProtocol {
   private let logger = OSLog(subsystem: "io.portalhq.ios", category: "General")
 
   func debug(_ message: String) {
