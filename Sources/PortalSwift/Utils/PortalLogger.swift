@@ -2,10 +2,10 @@ import Foundation
 import os.log
 
 protocol PortalLoggerProtocol {
-    func debug(_ message: String)
-    func error(_ message: String)
-    func info(_ message: String)
-    func log(_ message: String)
+  func debug(_ message: String)
+  func error(_ message: String)
+  func info(_ message: String)
+  func log(_ message: String)
 }
 
 class PortalLogger: PortalLoggerProtocol {
