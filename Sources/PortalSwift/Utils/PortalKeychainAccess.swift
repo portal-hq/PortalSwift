@@ -8,10 +8,10 @@
 import Foundation
 
 public protocol PortalKeychainAccessProtocol {
-    func addItem(_ key: String, value: String) throws
-    func deleteItem(_ key: String) throws
-    func getItem(_ key: String) throws -> String
-    func updateItem(_ key: String, value: String) throws
+  func addItem(_ key: String, value: String) throws
+  func deleteItem(_ key: String) throws
+  func getItem(_ key: String) throws -> String
+  func updateItem(_ key: String, value: String) throws
 }
 
 public class PortalKeychainAccess: PortalKeychainAccessProtocol {

@@ -9,14 +9,14 @@ import Foundation
 @testable import PortalSwift
 
 class PortalKeyChainAccessMock: PortalKeychainAccessProtocol {
-    func addItem(_ key: String, value: String) throws { }
+  func addItem(_: String, value _: String) throws {}
 
-    func deleteItem(_ key: String) throws { }
-    
-    var getItemReturnValue: String = ""
-    func getItem(_ key: String) throws -> String {
-        return getItemReturnValue
-    }
-    
-    func updateItem(_ key: String, value: String) throws { }
+  func deleteItem(_: String) throws {}
+
+  var getItemReturnValue: String = ""
+  func getItem(_: String) throws -> String {
+    return getItemReturnValue
+  }
+
+  func updateItem(_: String, value _: String) throws {}
 }
