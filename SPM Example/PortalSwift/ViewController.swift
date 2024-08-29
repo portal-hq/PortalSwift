@@ -456,6 +456,16 @@ class ViewController: UIViewController, UITextFieldDelegate {
     //    return gasPriceResponse.result
   }
 
+  public func testSolGetTransaction(_ chainId: String = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1") async throws {
+    guard let portal else {
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+
+    let result = try await portal.request(chainId, withMethod: .sol_getTransaction, andParams: ["2smd9TtRShhQAQneoeQ2Ezbu62wQ5Jrg4atzW7kU8E98cigDEt5UVv18QRpcGVtinoiH5muMuDj3Ay3veJhF5a1b"])
+
+    print("sol_getTransaction response: \(result)")
+  }
+
   public func getNFTs(_ chainId: String) async throws -> [FetchedNFT] {
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
@@ -1727,6 +1737,15 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error evaluating transaction with operation type: \(operationType.rawValue), Error: \(error)")
           self.showStatusView(message: "\(self.failureStatus) Error evaluating transaction with operation type: \(operationType.rawValue), Error: \(error)")
         }
+      }
+
+      do {
+        try await testSolGetTransaction("solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1")
+        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully executed sol_getTransaction request.")
+        self.showStatusView(message: "\(self.successStatus) Successfully executed sol_getTransaction request.")
+      } catch {
+        self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error executing sol_getTransaction request: \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error executing sol_getTransaction request: \(error)")
       }
     }
   }
