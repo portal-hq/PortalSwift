@@ -512,3 +512,88 @@ public struct SigningSharePair: Codable {
     case incomplete
   }
 }
+
+// MARK: - Evaluate Transaction
+
+// Define the BlockaidResponse struct to model the response data
+public struct BlockaidValidation: Codable {
+  public struct Feature: Codable {
+    let type: String
+    let featureId: String
+    let description: String
+    let address: String?
+  }
+
+  let classification: String?
+  let description: String?
+  let features: [Feature]
+  let reason: String?
+  let resultType: String
+  let status: String
+}
+
+public struct BlockaidAssetDiff: Codable {
+  let asset: [String: AnyCodable]
+  let `in`: [[String: AnyCodable]]
+  let out: [[String: AnyCodable]]
+}
+
+public struct BlockaidSimulation: Codable {
+  let accountAddress: String?
+  let accountSummary: [String: AnyCodable]
+  let addressDetails: [String: AnyCodable]
+  let assetsDiffs: [String: [BlockaidAssetDiff]]
+  let block: Int?
+  let chain: String?
+  let exposures: [String: AnyCodable]
+  let status: String
+  let totalUsdDiff: [String: AnyCodable]
+  let totalUsdExposure: [String: AnyCodable]
+}
+
+public struct BlockaidValidateTrxRes: Codable {
+  let validation: BlockaidValidation?
+  let simulation: BlockaidSimulation?
+  let block: Int?
+  let chain: String
+}
+
+public struct EvaluateTransactionParam {
+  let to: String
+  let value: String?
+  let data: String?
+  let maxFeePerGas: String?
+  let maxPriorityFeePerGas: String?
+  let gas: String?
+  let gasPrice: String?
+
+  public init(to: String, value: String?, data: String?, maxFeePerGas: String?, maxPriorityFeePerGas: String?, gas: String?, gasPrice: String?) {
+    self.to = to
+    self.value = value
+    self.data = data
+    self.maxFeePerGas = maxFeePerGas
+    self.maxPriorityFeePerGas = maxPriorityFeePerGas
+    self.gas = gas
+    self.gasPrice = gasPrice
+  }
+
+  func toDictionary() -> [String: String] {
+    let dict: [String: String?] = [
+      "to": to,
+      "value": value,
+      "data": data,
+      "maxFeePerGas": maxFeePerGas,
+      "maxPriorityFeePerGas": maxPriorityFeePerGas,
+      "gas": gas
+    ]
+
+    // Filter out nil values
+    return dict.compactMapValues { $0 }
+  }
+}
+
+public enum EvaluateTransactionOperationType: String, CaseIterable {
+  case validation
+  case simulation
+  case all
+}

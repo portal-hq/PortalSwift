@@ -456,6 +456,16 @@ class ViewController: UIViewController, UITextFieldDelegate {
     //    return gasPriceResponse.result
   }
 
+  public func testSolGetTransaction(_ chainId: String = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1") async throws {
+    guard let portal else {
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+
+    let result = try await portal.request(chainId, withMethod: .sol_getTransaction, andParams: ["2smd9TtRShhQAQneoeQ2Ezbu62wQ5Jrg4atzW7kU8E98cigDEt5UVv18QRpcGVtinoiH5muMuDj3Ay3veJhF5a1b"])
+
+    print("sol_getTransaction response: \(result)")
+  }
+
   public func getNFTs(_ chainId: String) async throws -> [FetchedNFT] {
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
@@ -549,6 +559,18 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
 
     return try await portal.simulateTransaction(chainId, from: transaction)
+  }
+
+  public func evaluateTransaction(
+    chainId: String,
+    transaction: EvaluateTransactionParam,
+    operationType: EvaluateTransactionOperationType? = nil
+  ) async throws -> BlockaidValidateTrxRes {
+    guard let portal else {
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+
+    return try await portal.evaluateTransaction(chainId: chainId, transaction: transaction, operationType: operationType)
   }
 
   public func testProviderRequest(
@@ -1690,6 +1712,40 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error simulating transaction: \(error)")
         self.showStatusView(message: "\(self.failureStatus) Error simulating transaction \(error)")
         return
+      }
+
+      // evaluate transaction
+      let address = await self.portal?.getAddress(chainId)
+      var toAddress = "0xdFd8302f44727A6348F702fF7B594f127dE3A902"
+      if let sendAddress = self.sendAddress?.text, !sendAddress.isEmpty {
+        toAddress = sendAddress
+      }
+
+      let evaluateTransactionParams = EvaluateTransactionParam(to: toAddress, value: "0x10", data: nil, maxFeePerGas: nil, maxPriorityFeePerGas: nil, gas: nil, gasPrice: nil)
+      for operationType in EvaluateTransactionOperationType.allCases {
+        do {
+          print("Running evaluate transaction with operation type: \(operationType.rawValue)")
+          let result = try await self.evaluateTransaction(
+            chainId: chainId,
+            transaction: evaluateTransactionParams,
+            operationType: operationType
+          )
+          print(result)
+          self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully evaluated transaction with operation type: \(operationType.rawValue).")
+          self.showStatusView(message: "\(self.successStatus) Successfully evaluated transaction with operation type: \(operationType.rawValue).")
+        } catch {
+          self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error evaluating transaction with operation type: \(operationType.rawValue), Error: \(error)")
+          self.showStatusView(message: "\(self.failureStatus) Error evaluating transaction with operation type: \(operationType.rawValue), Error: \(error)")
+        }
+      }
+
+      do {
+        try await testSolGetTransaction("solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1")
+        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully executed sol_getTransaction request.")
+        self.showStatusView(message: "\(self.successStatus) Successfully executed sol_getTransaction request.")
+      } catch {
+        self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error executing sol_getTransaction request: \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error executing sol_getTransaction request: \(error)")
       }
     }
   }

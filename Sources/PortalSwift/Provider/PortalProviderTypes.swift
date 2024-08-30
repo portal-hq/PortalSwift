@@ -1,4 +1,5 @@
 import AnyCodable
+import SolanaSwift
 import Foundation
 
 public struct BlockData: Codable {
@@ -438,4 +439,58 @@ public struct LogsResponse: Codable {
   public var id: Int?
   public var result: [Log]?
   public var error: PortalProviderRpcResponseError?
+}
+
+public struct PortalRpcResponse<Result: Decodable>: Decodable {
+    public var jsonrpc: String = "2.0"
+    public var id: Int?
+    public var result: Result?
+    public var error: PortalProviderRpcResponseError?
+}
+
+// MARK: - GetTransactionResult
+public struct GetTransactionResult: Decodable {
+    public let blockTime: UInt64?
+    public let meta: GetTransactionMeta?
+    public let slot: UInt64?
+    public let transaction: GetTransactionTransaction?
+}
+
+// MARK: - GetTransactionMeta
+public struct GetTransactionMeta: Decodable {
+    public let err: AnyTransactionError?
+    public let fee: UInt64?
+    public let innerInstructions: [InnerInstruction]?
+    public let logMessages: [String?]?
+    public let computeUnitsConsumed: Int?
+    public let postBalances: [UInt64?]?
+    public let postTokenBalances: [TokenBalance]?
+    public let preBalances: [UInt64?]?
+    public let preTokenBalances: [TokenBalance]?
+}
+
+// MARK: - GetTransactionTransaction
+public struct GetTransactionTransaction: Decodable {
+    public let message: GetTransactionMessage?
+    public let signatures: [String?]?
+}
+
+// MARK: - GetTransactionMessage
+public struct GetTransactionMessage: Decodable {
+    public let accountKeys: [String?]?
+    public let header: GetTransactionHeader?
+    public let instructions: [GetTransactionInstruction?]?
+    public let recentBlockhash: String?
+}
+
+// MARK: - GetTransactionHeader
+public struct GetTransactionHeader: Decodable {
+    public let numReadonlySignedAccounts, numReadonlyUnsignedAccounts, numRequiredSignatures: Int?
+}
+
+// MARK: - GetTransactionInstruction
+public struct GetTransactionInstruction: Decodable {
+    public let accounts: [Int?]?
+    public let data: String?
+    public let programIDIndex: Int?
 }
