@@ -9,7 +9,17 @@ import Foundation
 
 /// The main interface for Portal to securely store the client's signing share.
 public class PortalKeychain {
-  public static var metadata: PortalKeychainMetadata?
+  private var _metadata: PortalKeychainMetadata?
+  public var metadata: PortalKeychainMetadata? {
+    get async throws {
+      if let _metadata {
+        return _metadata
+      }
+
+      _metadata = try await loadMetadata()
+      return _metadata
+    }
+  }
 
   public enum KeychainError: Error, Equatable {
     case clientNotFound
@@ -264,7 +274,8 @@ public class PortalKeychain {
     }
   }
 
-  public func loadMetadata() async throws {
+  @discardableResult
+  public func loadMetadata() async throws -> PortalKeychainMetadata {
     self.logger.debug("PortalKeychain.loadMetadata() - Loading metadata...")
     guard let client = try await self.client else {
       throw KeychainError.clientNotFound
@@ -280,7 +291,7 @@ public class PortalKeychain {
       metadata.namespaces[.solana] = solanaCurve
     }
 
-    PortalKeychain.metadata = metadata
+    self._metadata = metadata
 
     // Build the client's wallet metadata
     var wallets: [PortalCurve: PortalKeychainClientMetadataWallet] = [:]
@@ -324,6 +335,7 @@ public class PortalKeychain {
 
     // Write the metadata to the keychain
     try await self.setMetadata(clientMetadata)
+    return metadata
   }
 
   public func setMetadata(_ withData: PortalKeychainClientMetadata) async throws {
