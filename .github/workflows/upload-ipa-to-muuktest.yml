@@ -3,7 +3,7 @@ name: Build and Upload iOS ipa to Mukktest
 on:
   push:
     branches:
-      - release-candidate
+      - ahmed/release-candidate-test
 
 jobs:
   build-and-upload:
@@ -11,8 +11,8 @@ jobs:
 
     env:
       # Development
-      DEV_CERTIFICATE_BASE64: ${{secrets.IOS_DEVELOPMENT_CERTIFICATE_BASE64}}
-      DEV_CERTIFICATE_PASSWORD: ${{secrets.IOS_DEVELOPMENT_CERTIFICATE_BASE64_PASSWORD}}
+      DEV_CERTIFICATE_BASE64: ${{secrets.IOS_DEVELOPMENT_CERTIFICATE_BASE64_LATEST}}
+      DEV_CERTIFICATE_PASSWORD: ${{secrets.IOS_DEVELOPMENT_CERTIFICATE_BASE64_LATEST_PASSWORD}}
       DEV_PROVISION_PROFILE_BASE64: ${{secrets.DEV_PROVISION_PROFILE_BASE64}}
       SCHEME_NAME: "SPM Example"
       # Distribution
