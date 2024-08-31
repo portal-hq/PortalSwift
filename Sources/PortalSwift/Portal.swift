@@ -388,7 +388,7 @@ public class Portal {
     _ method: BackupMethods, usingProgressCallback: ((MpcStatus) -> Void)? = nil
   ) async throws -> (solanaAddress: String, cipherText: String, storageCallback: () async throws -> Void) {
     // Run generateSolanaWalletAndBackupShares
-      let result = try await mpc.generateSolanaWalletAndBackupShares(backupMethod: method, usingProgressCallback: usingProgressCallback)
+    let result = try await mpc.generateSolanaWalletAndBackupShares(backupMethod: method, usingProgressCallback: usingProgressCallback)
 
     // Build the storage callback
     let storageCallback: () async throws -> Void = {
