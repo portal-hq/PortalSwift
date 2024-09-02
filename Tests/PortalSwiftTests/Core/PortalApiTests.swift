@@ -10,8 +10,7 @@
 import XCTest
 
 final class PortalApiTests: XCTestCase {
-
-    private let encoder = JSONEncoder()
+  private let encoder = JSONEncoder()
 
   var api: PortalApi?
 
@@ -20,12 +19,12 @@ final class PortalApiTests: XCTestCase {
   }
 
   override func tearDownWithError() throws {
-      api = nil
+    api = nil
   }
 
   func testGetBackupShareMetadataCompletion() throws {
     let expectation = XCTestExpectation(description: "PortalApi.getBackupShareMetadata(completion)")
-      try api?.getBackupShareMetadata { result in
+    try api?.getBackupShareMetadata { result in
       XCTAssert(result.data?.count ?? 0 > 0)
       XCTAssert(result.data?[0].id == MockConstants.mockFetchedShairPair.id)
       expectation.fulfill()
@@ -35,16 +34,16 @@ final class PortalApiTests: XCTestCase {
 
   func testGetBackupSharePairs() async throws {
     let expectation = XCTestExpectation(description: "PortalApi.getSharePairs(.backup)")
-      let backupSharesResponse = try await api?.getSharePairs(.backup, walletId: MockConstants.mockWalletId)
-      XCTAssert(backupSharesResponse?.count ?? 0 > 0)
-      XCTAssert(backupSharesResponse?[0].id == MockConstants.mockFetchedShairPair.id)
+    let backupSharesResponse = try await api?.getSharePairs(.backup, walletId: MockConstants.mockWalletId)
+    XCTAssert(backupSharesResponse?.count ?? 0 > 0)
+    XCTAssert(backupSharesResponse?[0].id == MockConstants.mockFetchedShairPair.id)
     expectation.fulfill()
     await fulfillment(of: [expectation], timeout: 5.0)
   }
 
   func testGetSigningShareMetadataCompletion() throws {
     let expectation = XCTestExpectation(description: "PortalApi.getSigningShareMetadata(completion)")
-      try api?.getSigningShareMetadata { result in
+    try api?.getSigningShareMetadata { result in
       XCTAssert(result.data?.count ?? 0 > 0)
       XCTAssert(result.data?[0].id == MockConstants.mockFetchedShairPair.id)
       expectation.fulfill()
@@ -55,9 +54,9 @@ final class PortalApiTests: XCTestCase {
   func testGetSigningSharePairs() async throws {
     let expectation = XCTestExpectation(description: "PortalApi.getSharePairs(.signing)")
     let mockSharesResponse = [MockConstants.mockFetchedShairPair]
-      let signingSharesResponse = try await api?.getSharePairs(.signing, walletId: MockConstants.mockWalletId)
+    let signingSharesResponse = try await api?.getSharePairs(.signing, walletId: MockConstants.mockWalletId)
     XCTAssert(signingSharesResponse == mockSharesResponse)
-      XCTAssert(signingSharesResponse?[0].id == MockConstants.mockFetchedShairPair.id)
+    XCTAssert(signingSharesResponse?[0].id == MockConstants.mockFetchedShairPair.id)
     expectation.fulfill()
     await fulfillment(of: [expectation], timeout: 5.0)
   }
@@ -65,8 +64,8 @@ final class PortalApiTests: XCTestCase {
   func testSimulateTransaction() async throws {
     let expectation = XCTestExpectation(description: "PortalApi.simulateTransaction()")
     let transaction = AnyEncodable([:] as [String: String])
-      let simulatedTransaction = try await api?.simulateTransaction(transaction, withChainId: "eip155:11155111")
-      XCTAssert(simulatedTransaction?.changes.count == MockConstants.mockSimulatedTransaction.changes.count)
+    let simulatedTransaction = try await api?.simulateTransaction(transaction, withChainId: "eip155:11155111")
+    XCTAssert(simulatedTransaction?.changes.count == MockConstants.mockSimulatedTransaction.changes.count)
     expectation.fulfill()
     await fulfillment(of: [expectation], timeout: 5.0)
   }
@@ -74,10 +73,10 @@ final class PortalApiTests: XCTestCase {
   func testGetTransactions() async throws {
     let expectation = XCTestExpectation(description: "PortalApi.getTransactions()")
     let mockFetchedTransaction = MockConstants.mockFetchedTransaction
-      let mockTransactionsResponse = try await api?.getTransactions("eip155:11155111")
-      XCTAssert(mockTransactionsResponse?.count ?? 0 > 0)
-      XCTAssert(mockTransactionsResponse?[0].blockNum == mockFetchedTransaction.blockNum)
-      XCTAssert(mockTransactionsResponse?[0].chainId == mockFetchedTransaction.chainId)
+    let mockTransactionsResponse = try await api?.getTransactions("eip155:11155111")
+    XCTAssert(mockTransactionsResponse?.count ?? 0 > 0)
+    XCTAssert(mockTransactionsResponse?[0].blockNum == mockFetchedTransaction.blockNum)
+    XCTAssert(mockTransactionsResponse?[0].chainId == mockFetchedTransaction.chainId)
     expectation.fulfill()
     await fulfillment(of: [expectation], timeout: 5.0)
   }
@@ -85,7 +84,7 @@ final class PortalApiTests: XCTestCase {
   func getGetTransactionsCompletion() throws {
     let expectation = XCTestExpectation(description: "PortalApi.getTransactions(completion)")
     let mockFetchedTransaction = MockConstants.mockFetchedTransaction
-      try self.api?.getTransactions { result in
+    try self.api?.getTransactions { result in
       XCTAssert(result.data?.count ?? 0 > 0)
       XCTAssert(result.data?[0].blockNum == mockFetchedTransaction.blockNum)
       XCTAssert(result.data?[0].chainId == mockFetchedTransaction.chainId)
@@ -96,15 +95,15 @@ final class PortalApiTests: XCTestCase {
 
   func testUpdateBackupShareStatus() async throws {
     let expectation = XCTestExpectation(description: "PortalApi.updateShareStatus(.backup)")
-      try await api?.updateShareStatus(.backup, status: .STORED_CLIENT_BACKUP_SHARE_KEY, sharePairIds: [MockConstants.mockMpcShareId])
-      try await self.api?.updateShareStatus(.backup, status: .STORED_CLIENT_BACKUP_SHARE, sharePairIds: [MockConstants.mockMpcShareId])
+    try await api?.updateShareStatus(.backup, status: .STORED_CLIENT_BACKUP_SHARE_KEY, sharePairIds: [MockConstants.mockMpcShareId])
+    try await self.api?.updateShareStatus(.backup, status: .STORED_CLIENT_BACKUP_SHARE, sharePairIds: [MockConstants.mockMpcShareId])
     expectation.fulfill()
     await fulfillment(of: [expectation], timeout: 5.0)
   }
 
   func testUpdateSigningShareStatus() async throws {
     let expectation = XCTestExpectation(description: "PortalApi.updateShareStatus(.signing)")
-      try await api?.updateShareStatus(.signing, status: .STORED_CLIENT, sharePairIds: [MockConstants.mockMpcShareId])
+    try await api?.updateShareStatus(.signing, status: .STORED_CLIENT, sharePairIds: [MockConstants.mockMpcShareId])
     expectation.fulfill()
     await fulfillment(of: [expectation], timeout: 5.0)
   }
@@ -113,209 +112,205 @@ final class PortalApiTests: XCTestCase {
 // MARK: - Test Helpers
 
 extension PortalApiTests {
-    func initPortalApiWith(
-        apiHost: String = MockConstants.mockHost,
-        requests: PortalRequestsProtocol = MockPortalRequests()
-    ) {
-        self.api = PortalApi(
-            apiKey: MockConstants.mockApiKey,
-            apiHost: apiHost,
-            requests: requests
-        )
-    }
+  func initPortalApiWith(
+    apiHost: String = MockConstants.mockHost,
+    requests: PortalRequestsProtocol = MockPortalRequests()
+  ) {
+    self.api = PortalApi(
+      apiKey: MockConstants.mockApiKey,
+      apiHost: apiHost,
+      requests: requests
+    )
+  }
 }
 
 // MARK: - eject tests
 
 extension PortalApiTests {
+  func testEject() async throws {
+    let expectation = XCTestExpectation(description: "PortalApi.eject()")
+    let ejectResponse = try await api?.eject()
+    print("⚠️ Eject response:", ejectResponse ?? "")
+    XCTAssertEqual(ejectResponse, MockConstants.mockEjectResponse)
+    expectation.fulfill()
+    await fulfillment(of: [expectation], timeout: 5.0)
+  }
 
-    func testEject() async throws {
-      let expectation = XCTestExpectation(description: "PortalApi.eject()")
-        let ejectResponse = try await api?.eject()
-      print("⚠️ Eject response:", ejectResponse ?? "")
-      XCTAssertEqual(ejectResponse, MockConstants.mockEjectResponse)
-      expectation.fulfill()
-      await fulfillment(of: [expectation], timeout: 5.0)
+  func test_eject_willCall_requestPost_onlyOnce() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    initPortalApiWith(requests: portalRequestsSpy)
+
+    // and given
+    _ = try await api?.eject()
+
+    // then
+    XCTAssertEqual(portalRequestsSpy.postCallsCount, 1)
+  }
+
+  func test_eject_willThrowCorrectError_whenRequestPostThrowError() async throws {
+    // given
+    let portalRequestsFailMock = PortalRequestsFailMock()
+    initPortalApiWith(requests: portalRequestsFailMock)
+
+    do {
+      // and given
+      _ = try await api?.eject()
+      XCTFail("Expected error not thrown when calling PortalApi.eject when Request throws error.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? URLError, portalRequestsFailMock.errorToThrow)
     }
-
-    func test_eject_willCall_requestPost_onlyOnce() async throws {
-        // given
-        let portalRequestsSpy = PortalRequestsSpy()
-        initPortalApiWith(requests: portalRequestsSpy)
-
-        // and given
-        _ = try await api?.eject()
-
-        // then
-        XCTAssertEqual(portalRequestsSpy.postCallsCount, 1)
-    }
-
-    func test_eject_willThrowCorrectError_whenRequestPostThrowError() async throws {
-        // given
-        let portalRequestsFailMock = PortalRequestsFailMock()
-        initPortalApiWith(requests: portalRequestsFailMock)
-
-        do {
-            // and given
-            _ = try await api?.eject()
-            XCTFail("Expected error not thrown when calling PortalApi.eject when Request throws error.")
-        } catch {
-            // then
-            XCTAssertEqual(error as? URLError, portalRequestsFailMock.errorToThrow)
-        }
-    }
+  }
 }
 
 // MARK: - getBalances tests
 
 extension PortalApiTests {
+  func testGetBalances() async throws {
+    let expectation = XCTestExpectation(description: "PortalApi.getSharePairs(.backup)")
+    let mockFetchedBalance = MockConstants.mockedFetchedBalance
+    let balancesResponse = try await api?.getBalances("eip155:11155111")
+    XCTAssert(balancesResponse?.count ?? 0 > 0)
+    XCTAssert(balancesResponse?[0].contractAddress == mockFetchedBalance.contractAddress)
+    XCTAssert(balancesResponse?[0].balance == mockFetchedBalance.balance)
+    expectation.fulfill()
+    await fulfillment(of: [expectation], timeout: 5.0)
+  }
 
-    func testGetBalances() async throws {
-      let expectation = XCTestExpectation(description: "PortalApi.getSharePairs(.backup)")
-      let mockFetchedBalance = MockConstants.mockedFetchedBalance
-        let balancesResponse = try await api?.getBalances("eip155:11155111")
-        XCTAssert(balancesResponse?.count ?? 0 > 0)
-        XCTAssert(balancesResponse?[0].contractAddress == mockFetchedBalance.contractAddress)
-        XCTAssert(balancesResponse?[0].balance == mockFetchedBalance.balance)
-      expectation.fulfill()
-      await fulfillment(of: [expectation], timeout: 5.0)
+  func test_getBalances_willCall_requestGet_onlyOnce() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    initPortalApiWith(requests: portalRequestsSpy)
+
+    do {
+      // and given
+      _ = try await api?.getBalances("")
+    } catch {}
+
+    // then
+    XCTAssertEqual(portalRequestsSpy.getCallsCount, 1)
+  }
+
+  func test_getBalances_willThrowCorrectError_whenRequestPostThrowError() async throws {
+    // given
+    let portalRequestsFailMock = PortalRequestsFailMock()
+    initPortalApiWith(requests: portalRequestsFailMock)
+
+    do {
+      // and given
+      _ = try await api?.getBalances("")
+      XCTFail("Expected error not thrown when calling PortalApi.getBalances when Request throws error.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? URLError, portalRequestsFailMock.errorToThrow)
     }
-
-    func test_getBalances_willCall_requestGet_onlyOnce() async throws {
-        // given
-        let portalRequestsSpy = PortalRequestsSpy()
-        initPortalApiWith(requests: portalRequestsSpy)
-
-        do {
-            // and given
-            _ = try await api?.getBalances("")
-        } catch {}
-
-        // then
-        XCTAssertEqual(portalRequestsSpy.getCallsCount, 1)
-    }
-
-    func test_getBalances_willThrowCorrectError_whenRequestPostThrowError() async throws {
-        // given
-        let portalRequestsFailMock = PortalRequestsFailMock()
-        initPortalApiWith(requests: portalRequestsFailMock)
-
-        do {
-            // and given
-            _ = try await api?.getBalances("")
-            XCTFail("Expected error not thrown when calling PortalApi.getBalances when Request throws error.")
-        } catch {
-            // then
-            XCTAssertEqual(error as? URLError, portalRequestsFailMock.errorToThrow)
-        }
-    }
+  }
 }
 
 // MARK: - getClient tests
+
 extension PortalApiTests {
+  func testGetClient() async throws {
+    let expectation = XCTestExpectation(description: "PortalApi.getClient()")
+    let mockClientResponse = MockConstants.mockClient
+    let clientResponse = try await api?.getClient()
+    XCTAssert(!(clientResponse?.id.isEmpty ?? false))
+    XCTAssert(clientResponse?.id == mockClientResponse.id)
+    expectation.fulfill()
+    await fulfillment(of: [expectation], timeout: 5.0)
+  }
 
-    func testGetClient() async throws {
-      let expectation = XCTestExpectation(description: "PortalApi.getClient()")
-      let mockClientResponse = MockConstants.mockClient
-      let clientResponse = try await api?.getClient()
-        XCTAssert(!(clientResponse?.id.isEmpty ?? false))
-      XCTAssert(clientResponse?.id == mockClientResponse.id)
+  func testGetClientCompletion() throws {
+    let expectation = XCTestExpectation(description: "PortalApi.getClient(completion)")
+    let mockClientResponse = MockConstants.mockClient
+    try self.api?.getClient { result in
+      XCTAssert(result.data?.id == mockClientResponse.id)
       expectation.fulfill()
-      await fulfillment(of: [expectation], timeout: 5.0)
     }
+    wait(for: [expectation], timeout: 5.0)
+  }
 
-    func testGetClientCompletion() throws {
-      let expectation = XCTestExpectation(description: "PortalApi.getClient(completion)")
-      let mockClientResponse = MockConstants.mockClient
-        try self.api?.getClient { result in
-        XCTAssert(result.data?.id == mockClientResponse.id)
-        expectation.fulfill()
-      }
-      wait(for: [expectation], timeout: 5.0)
+  func test_getClient_willCall_requestGet_onlyOnce() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    initPortalApiWith(requests: portalRequestsSpy)
+
+    do {
+      // and given
+      _ = try await api?.getClient()
+    } catch {}
+
+    // then
+    XCTAssertEqual(portalRequestsSpy.getCallsCount, 1)
+  }
+
+  func test_getClient_willThrowCorrectError_whenRequestPostThrowError() async throws {
+    // given
+    let portalRequestsFailMock = PortalRequestsFailMock()
+    initPortalApiWith(requests: portalRequestsFailMock)
+
+    do {
+      // and given
+      _ = try await api?.getClient()
+      XCTFail("Expected error not thrown when calling PortalApi.getBalances when Request throws error.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? URLError, portalRequestsFailMock.errorToThrow)
     }
-
-    func test_getClient_willCall_requestGet_onlyOnce() async throws {
-        // given
-        let portalRequestsSpy = PortalRequestsSpy()
-        initPortalApiWith(requests: portalRequestsSpy)
-
-        do {
-            // and given
-            _ = try await api?.getClient()
-        } catch {}
-
-        // then
-        XCTAssertEqual(portalRequestsSpy.getCallsCount, 1)
-    }
-
-    func test_getClient_willThrowCorrectError_whenRequestPostThrowError() async throws {
-        // given
-        let portalRequestsFailMock = PortalRequestsFailMock()
-        initPortalApiWith(requests: portalRequestsFailMock)
-
-        do {
-            // and given
-            _ = try await api?.getClient()
-            XCTFail("Expected error not thrown when calling PortalApi.getBalances when Request throws error.")
-        } catch {
-            // then
-            XCTAssertEqual(error as? URLError, portalRequestsFailMock.errorToThrow)
-        }
-    }
+  }
 }
 
 // MARK: - getClientCipherText tests
+
 extension PortalApiTests {
-    func test_getClientCipherText() async throws {
-        // given
-        let dummyCipherText = "dummy-cipher-text"
-        let dummyCipherTextResponse = try encoder.encode(ClientCipherTextResponse(cipherText: dummyCipherText))
-        let portalRequestMock = PortalRequestsMock()
-        initPortalApiWith(requests: portalRequestMock)
-        portalRequestMock.returnValueData = dummyCipherTextResponse
+  func test_getClientCipherText() async throws {
+    // given
+    let dummyCipherText = "dummy-cipher-text"
+    let dummyCipherTextResponse = try encoder.encode(ClientCipherTextResponse(cipherText: dummyCipherText))
+    let portalRequestMock = PortalRequestsMock()
+    initPortalApiWith(requests: portalRequestMock)
+    portalRequestMock.returnValueData = dummyCipherTextResponse
 
-        // and given
-        let clientCipherText = try await api?.getClientCipherText(MockConstants.mockMpcShareId)
+    // and given
+    let clientCipherText = try await api?.getClientCipherText(MockConstants.mockMpcShareId)
 
-        // then
-        XCTAssertEqual(clientCipherText, dummyCipherText)
+    // then
+    XCTAssertEqual(clientCipherText, dummyCipherText)
+  }
+
+  func test_getClientCipherText_willCall_requestGet_onlyOnce() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    initPortalApiWith(requests: portalRequestsSpy)
+
+    do {
+      // and given
+      _ = try await api?.getClientCipherText("")
+    } catch {}
+
+    // then
+    XCTAssertEqual(portalRequestsSpy.getCallsCount, 1)
+  }
+
+  func test_getClientCipherText_willThrowCorrectError_whenRequestPostThrowError() async throws {
+    // given
+    let portalRequestsFailMock = PortalRequestsFailMock()
+    initPortalApiWith(requests: portalRequestsFailMock)
+
+    do {
+      // and given
+      _ = try await api?.getClientCipherText("")
+      XCTFail("Expected error not thrown when calling PortalApi.getBalances when Request throws error.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? URLError, portalRequestsFailMock.errorToThrow)
     }
-
-    func test_getClientCipherText_willCall_requestGet_onlyOnce() async throws {
-        // given
-        let portalRequestsSpy = PortalRequestsSpy()
-        initPortalApiWith(requests: portalRequestsSpy)
-
-        do {
-            // and given
-            _ = try await api?.getClientCipherText("")
-        } catch {}
-
-        // then
-        XCTAssertEqual(portalRequestsSpy.getCallsCount, 1)
-    }
-
-    func test_getClientCipherText_willThrowCorrectError_whenRequestPostThrowError() async throws {
-        // given
-        let portalRequestsFailMock = PortalRequestsFailMock()
-        initPortalApiWith(requests: portalRequestsFailMock)
-
-        do {
-            // and given
-            _ = try await api?.getClientCipherText("")
-            XCTFail("Expected error not thrown when calling PortalApi.getBalances when Request throws error.")
-        } catch {
-            // then
-            XCTAssertEqual(error as? URLError, portalRequestsFailMock.errorToThrow)
-        }
-    }
+  }
 }
 
 // MARK: - getQuote tests
-extension PortalApiTests {
-    
-}
 
-extension PortalApiTests {
-    
-}
+extension PortalApiTests {}
+
+extension PortalApiTests {}

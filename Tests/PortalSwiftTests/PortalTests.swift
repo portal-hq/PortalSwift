@@ -786,6 +786,19 @@ extension PortalTests {
     XCTAssertTrue(isWalletBackedUp)
   }
 
+  func test_isWalletBackedUp_willReturn_false_forNilChainId_andClientWalletsBackupSharesIsNil() async throws {
+    // given
+    let portalApiMock = PortalApiMock()
+    portalApiMock.client = MockConstants.mockNotBackedUpClient
+    try initPortalWithSpy(api: portalApiMock)
+
+    // and given
+    let isWalletBackedUp = try await portal.isWalletBackedUp()
+
+    // then
+    XCTAssertFalse(isWalletBackedUp)
+  }
+
   func test_isWalletBackedUp_willReturn_correctResult_forEIP255ChainId_whenItIsNotExist() async throws {
     // given
     let isWalletBackedUp = try await portal.isWalletBackedUp("eip155:11155111")

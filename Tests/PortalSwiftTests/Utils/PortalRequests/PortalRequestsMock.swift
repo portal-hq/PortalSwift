@@ -9,41 +9,40 @@ import Foundation
 @testable import PortalSwift
 
 final class PortalRequestsMock: PortalRequestsProtocol {
+  private let encoder = JSONEncoder()
 
-    private let encoder = JSONEncoder()
+  var returnValueData: Data?
+  var returnValueString: String?
 
-    var returnValueData: Data?
-    var returnValueString: String?
+  func delete(_: URL, withBearerToken _: String?) async throws -> Data {
+    return try getReturnValue()
+  }
 
-    func delete(_ from: URL, withBearerToken: String?) async throws -> Data {
-        return try getReturnValue()
-    }
+  func get(_: URL, withBearerToken _: String?) async throws -> Data {
+    return try getReturnValue()
+  }
 
-    func get(_ from: URL, withBearerToken: String?) async throws -> Data {
-        return try getReturnValue()
-    }
+  func patch(_: URL, withBearerToken _: String?, andPayload _: any Codable) async throws -> Data {
+    return try getReturnValue()
+  }
 
-    func patch(_ from: URL, withBearerToken: String?, andPayload: any Codable) async throws -> Data {
-        return try getReturnValue()
-    }
+  func post(_: URL, withBearerToken _: String?, andPayload _: (any Codable)?) async throws -> Data {
+    return try getReturnValue()
+  }
 
-    func post(_ from: URL, withBearerToken: String?, andPayload: (any Codable)?) async throws -> Data {
-        return try getReturnValue()
-    }
-
-    func postMultiPartData(_ from: URL, withBearerToken: String, andPayload: String, usingBoundary: String) async throws -> Data {
-        return try getReturnValue()
-    }
+  func postMultiPartData(_: URL, withBearerToken _: String, andPayload _: String, usingBoundary _: String) async throws -> Data {
+    return try getReturnValue()
+  }
 }
 
 extension PortalRequestsMock {
-    private func getReturnValue() throws -> Data {
-        if let returnValueData {
-            return returnValueData
-        } else if let returnValueString {
-            return try encoder.encode(returnValueString)
-        } else {
-            return Data()
-        }
+  private func getReturnValue() throws -> Data {
+    if let returnValueData {
+      return returnValueData
+    } else if let returnValueString {
+      return try encoder.encode(returnValueString)
+    } else {
+      return Data()
     }
+  }
 }
