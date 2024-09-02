@@ -9,26 +9,25 @@ import Foundation
 @testable import PortalSwift
 
 final class PortalRequestsFailMock: PortalRequestsProtocol {
+  var errorToThrow: URLError = .init(.badURL)
 
-    var errorToThrow: URLError = URLError(.badURL)
+  func delete(_: URL, withBearerToken _: String?) async throws -> Data {
+    throw errorToThrow
+  }
 
-    func delete(_ from: URL, withBearerToken: String?) async throws -> Data {
-        throw errorToThrow
-    }
+  func get(_: URL, withBearerToken _: String?) async throws -> Data {
+    throw errorToThrow
+  }
 
-    func get(_ from: URL, withBearerToken: String?) async throws -> Data {
-        throw errorToThrow
-    }
+  func patch(_: URL, withBearerToken _: String?, andPayload _: any Codable) async throws -> Data {
+    throw errorToThrow
+  }
 
-    func patch(_ from: URL, withBearerToken: String?, andPayload: any Codable) async throws -> Data {
-        throw errorToThrow
-    }
+  func post(_: URL, withBearerToken _: String?, andPayload _: (any Codable)?) async throws -> Data {
+    throw errorToThrow
+  }
 
-    func post(_ from: URL, withBearerToken: String?, andPayload: (any Codable)?) async throws -> Data {
-        throw errorToThrow
-    }
-
-    func postMultiPartData(_ from: URL, withBearerToken: String, andPayload: String, usingBoundary: String) async throws -> Data {
-        throw errorToThrow
-    }
+  func postMultiPartData(_: URL, withBearerToken _: String, andPayload _: String, usingBoundary _: String) async throws -> Data {
+    throw errorToThrow
+  }
 }
