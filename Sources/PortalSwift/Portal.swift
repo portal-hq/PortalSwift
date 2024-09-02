@@ -556,7 +556,7 @@ public class Portal {
         return false
       } else {
         let wallets = client.wallets
-        let shares = client.wallets.map { wallet in
+        let shares = client.wallets.compactMap { wallet in
           wallet.backupSharePairs.first { signingShare in
             signingShare.status == .completed
           }
