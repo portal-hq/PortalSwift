@@ -214,4 +214,9 @@ class PortalApiMock: PortalApiProtocol {
       completion(res)
     }
   }
+
+  var evaluateTransactionReturnValue: BlockaidValidateTrxRes?
+  func evaluateTransaction(chainId _: String, transaction _: EvaluateTransactionParam, operationType _: EvaluateTransactionOperationType?) async throws -> BlockaidValidateTrxRes {
+    return evaluateTransactionReturnValue ?? BlockaidValidateTrxRes.stub()
+  }
 }
