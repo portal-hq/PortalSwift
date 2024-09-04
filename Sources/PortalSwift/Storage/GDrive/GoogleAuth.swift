@@ -82,7 +82,7 @@ public class GoogleAuth {
           return
         }
 
-        user.user.addScopes(["https://www.googleapis.com/auth/drive.file"], presenting: view)
+        user.user.addScopes(["https://www.googleapis.com/auth/drive.file", "https://www.googleapis.com/auth/drive.appdata"], presenting: view)
 
         continuation.resume(returning: user.user)
       }

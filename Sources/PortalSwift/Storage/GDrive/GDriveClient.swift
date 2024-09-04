@@ -116,7 +116,7 @@ public class GDriveClient {
       throw GDriveClientError.unableToBuildGDriveQuery
     }
 
-    if let url = URL(string: "\(baseUrl)/drive/v3/files?corpora=user&q=\(query)") {
+    if let url = URL(string: "\(baseUrl)/drive/v3/files?spaces=appDataFolder&q=\(query)") {
       let data = try await requests.get(url, withBearerToken: accessToken)
       let filesListResponse = try decoder.decode(GDriveFilesListResponse.self, from: data)
 
@@ -247,17 +247,9 @@ public class GDriveClient {
       throw GDriveClientError.unableToBuildGDriveQuery
     }
 
-    if let url = URL(string: "\(baseUrl)/drive/v3/files?q=\(query)") {
+    if let url = URL(string: "\(baseUrl)/drive/v3/files/appDataFolder") {
       let data = try await requests.get(url, withBearerToken: accessToken)
-      let filesListResponse = try decoder.decode(GDriveFilesListResponse.self, from: data)
-
-      if filesListResponse.files.count > 0 {
-        return filesListResponse.files[0]
-      }
-
-      let folder = try await createFolder()
-
-      return folder
+      return try decoder.decode(GDriveFile.self, from: data)
     }
 
     throw URLError(.badURL)
