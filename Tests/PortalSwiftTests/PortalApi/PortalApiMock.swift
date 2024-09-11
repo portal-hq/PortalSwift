@@ -13,7 +13,9 @@ class PortalApiMock: PortalApiProtocol {
   var client: PortalSwift.ClientResponse?
 
   var ejectReturnValue: String?
+  var ejectCallsCount: Int = 0
   func eject() async throws -> String {
+    ejectCallsCount += 1
     return ejectReturnValue ?? ""
   }
 
@@ -28,8 +30,10 @@ class PortalApiMock: PortalApiProtocol {
   }
 
   var getClientCipherTextReturnValue: String?
+  var getClientCipherTextCallsCount: Int = 0
   func getClientCipherText(_: String) async throws -> String {
-    getClientCipherTextReturnValue ?? ""
+    getClientCipherTextCallsCount += 1
+    return getClientCipherTextReturnValue ?? ""
   }
 
   var getQuoteReturnValue: Quote?
@@ -63,7 +67,9 @@ class PortalApiMock: PortalApiProtocol {
   }
 
   var prepareEjectReturnValue: String?
+  var prepareEjectCallsCount: Int = 0
   func prepareEject(_: String, _: PortalSwift.BackupMethods) async throws -> String {
+    prepareEjectCallsCount += 1
     return prepareEjectReturnValue ?? ""
   }
 
@@ -83,7 +89,9 @@ class PortalApiMock: PortalApiProtocol {
   }
 
   var storeClientCipherTextReturnValue: Bool?
+  var storeClientCipherTextCallsCount: Int = 0
   func storeClientCipherText(_: String, cipherText _: String) async throws -> Bool {
+    storeClientCipherTextCallsCount += 1
     return storeClientCipherTextReturnValue ?? false
   }
 

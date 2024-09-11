@@ -42,7 +42,7 @@ public class PortalProvider: PortalProviderProtocol {
 
   private let decoder = JSONDecoder()
   private var events: [Events.RawValue: [RegisteredEventHandler]] = [:]
-  private var keychain: PortalKeychain
+  private var keychain: PortalKeychainProtocol
   private let logger = PortalLogger()
   private var mpcQueue: DispatchQueue
   private var processedRequestIds: [String] = []
@@ -72,7 +72,7 @@ public class PortalProvider: PortalProviderProtocol {
   public init(
     apiKey: String,
     rpcConfig: [String: String],
-    keychain: PortalKeychain,
+    keychain: PortalKeychainProtocol,
     autoApprove: Bool,
     apiHost: String = "api.portalhq.io",
     mpcHost: String = "mpc.portalhq.io",
