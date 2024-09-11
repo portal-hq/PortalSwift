@@ -388,7 +388,7 @@ public class Portal {
     _ method: BackupMethods, usingProgressCallback: ((MpcStatus) -> Void)? = nil
   ) async throws -> (solanaAddress: String, cipherText: String, storageCallback: () async throws -> Void) {
     // Run generateSolanaWalletAndBackupShares
-      let result = try await mpc.generateSolanaWalletAndBackupShares(backupMethod: method, usingProgressCallback: usingProgressCallback)
+    let result = try await mpc.generateSolanaWalletAndBackupShares(backupMethod: method, usingProgressCallback: usingProgressCallback)
 
     // Build the storage callback
     let storageCallback: () async throws -> Void = {
@@ -468,7 +468,7 @@ public class Portal {
       // Filter by chainId if one is provided
       if let chainId = forChainId {
         let chainIdParts = chainId.split(separator: ":").map(String.init)
-        guard let namespace = PortalNamespace(rawValue: chainIdParts[0]), let curve = PortalKeychain.metadata?.namespaces[namespace] else {
+        guard let namespace = PortalNamespace(rawValue: chainIdParts[0]), let curve = try await keychain.metadata?.namespaces[namespace] else {
           throw PortalClassError.unsupportedChainId(chainId)
         }
         let curveWallet = client.wallets.first { wallet in
@@ -506,7 +506,7 @@ public class Portal {
       // Filter by chainId if one is provided
       if let chainId = forChainId {
         let chainIdParts = chainId.split(separator: ":").map(String.init)
-        if let namespace = PortalNamespace(rawValue: chainIdParts[0]), let curve = PortalKeychain.metadata?.namespaces[namespace] {
+        if let namespace = PortalNamespace(rawValue: chainIdParts[0]), let curve = try await keychain.metadata?.namespaces[namespace] {
           let curveWallet = client.wallets.first { wallet in
             wallet.curve == curve
           }
@@ -540,7 +540,7 @@ public class Portal {
       // Filter by chainId if one is provided
       if let chainId = forChainId {
         let chainIdParts = chainId.split(separator: ":").map(String.init)
-        if let namespace = PortalNamespace(rawValue: chainIdParts[0]), let curve = PortalKeychain.metadata?.namespaces[namespace] {
+        if let namespace = PortalNamespace(rawValue: chainIdParts[0]), let curve = try await keychain.metadata?.namespaces[namespace] {
           let curveWallet = client.wallets.first { wallet in
             wallet.curve == curve
           }
@@ -575,7 +575,7 @@ public class Portal {
       // Filter by chainId if one is provided
       if let chainId = forChainId {
         let chainIdParts = chainId.split(separator: ":").map(String.init)
-        guard let namespace = PortalNamespace(rawValue: chainIdParts[0]), let curve = PortalKeychain.metadata?.namespaces[namespace] else {
+        guard let namespace = PortalNamespace(rawValue: chainIdParts[0]), let curve = try await keychain.metadata?.namespaces[namespace] else {
           throw PortalClassError.unsupportedChainId(chainId)
         }
 
@@ -619,7 +619,7 @@ public class Portal {
       guard let namespace = PortalNamespace(rawValue: namespaceString) else {
         throw PortalClassError.unsupportedChainId(chainId)
       }
-      guard let curve = PortalKeychain.metadata?.namespaces[namespace] else {
+      guard let curve = try await keychain.metadata?.namespaces[namespace] else {
         throw PortalClassError.unsupportedChainId(chainId)
       }
       let wallet = client.wallets.first { wallet in
@@ -665,7 +665,7 @@ public class Portal {
       guard let namespace = PortalNamespace(rawValue: namespaceString) else {
         throw PortalClassError.unsupportedChainId(chainId)
       }
-      guard let curve = PortalKeychain.metadata?.namespaces[namespace] else {
+      guard let curve = try await keychain.metadata?.namespaces[namespace] else {
         throw PortalClassError.unsupportedChainId(chainId)
       }
       let wallet = client.wallets.first { wallet in
