@@ -43,7 +43,7 @@ public class Portal {
   private var backup: BackupOptions?
   private let binary: Mobile
   private let featureFlags: FeatureFlags?
-  private let keychain: PortalKeychain
+  private var keychain: PortalKeychainProtocol
   private let mpc: PortalMpcProtocol
   private let mpcHost: String
   private let version: String
@@ -71,7 +71,7 @@ public class Portal {
     binary: Mobile? = nil,
     gDrive: GDriveStorage? = nil,
     iCloud: ICloudStorage? = nil,
-    keychain: PortalKeychain? = nil,
+    keychain: PortalKeychainProtocol? = nil,
     mpc: PortalMpcProtocol? = nil,
     passwords: PasswordStorage? = nil
   ) throws {
@@ -169,7 +169,7 @@ public class Portal {
     apiKey: String,
     backup: BackupOptions,
     chainId: Int,
-    keychain: PortalKeychain,
+    keychain: PortalKeychainProtocol,
     gatewayConfig: [Int: String],
     // Optional
     isSimulator: Bool = false,
@@ -220,7 +220,7 @@ public class Portal {
     // Initialize the Portal API
     let api = PortalApi(apiKey: apiKey, apiHost: apiHost, provider: self.provider, featureFlags: self.featureFlags)
     self.api = api
-    keychain.api = api
+      self.keychain.api = api
 
     // This is to mimic the blocking behavior of the legacy GetClient() implementation
     // It ensures address information is available at the completion of the initialization
