@@ -1,6 +1,6 @@
 import AnyCodable
-import SolanaSwift
 import Foundation
+import SolanaSwift
 
 public struct BlockData: Codable {
   public var number: String
@@ -46,7 +46,7 @@ public struct PortalProviderRequestWithId: Codable {
   public let method: PortalRequestMethod
   public let params: [AnyCodable]?
   public let chainId: String
-  
+
   init(id: String, method: PortalRequestMethod, params: [AnyCodable]? = nil, chainId: String) {
     self.id = id
     self.method = method
@@ -442,55 +442,61 @@ public struct LogsResponse: Codable {
 }
 
 public struct PortalRpcResponse<Result: Decodable>: Decodable {
-    public var jsonrpc: String = "2.0"
-    public var id: Int?
-    public var result: Result?
-    public var error: PortalProviderRpcResponseError?
+  public var jsonrpc: String = "2.0"
+  public var id: Int?
+  public var result: Result?
+  public var error: PortalProviderRpcResponseError?
 }
 
 // MARK: - GetTransactionResult
+
 public struct GetTransactionResult: Decodable {
-    public let blockTime: UInt64?
-    public let meta: GetTransactionMeta?
-    public let slot: UInt64?
-    public let transaction: GetTransactionTransaction?
+  public let blockTime: UInt64?
+  public let meta: GetTransactionMeta?
+  public let slot: UInt64?
+  public let transaction: GetTransactionTransaction?
 }
 
 // MARK: - GetTransactionMeta
+
 public struct GetTransactionMeta: Decodable {
-    public let err: AnyTransactionError?
-    public let fee: UInt64?
-    public let innerInstructions: [InnerInstruction]?
-    public let logMessages: [String?]?
-    public let computeUnitsConsumed: Int?
-    public let postBalances: [UInt64?]?
-    public let postTokenBalances: [TokenBalance]?
-    public let preBalances: [UInt64?]?
-    public let preTokenBalances: [TokenBalance]?
+  public let err: AnyTransactionError?
+  public let fee: UInt64?
+  public let innerInstructions: [InnerInstruction]?
+  public let logMessages: [String?]?
+  public let computeUnitsConsumed: Int?
+  public let postBalances: [UInt64?]?
+  public let postTokenBalances: [TokenBalance]?
+  public let preBalances: [UInt64?]?
+  public let preTokenBalances: [TokenBalance]?
 }
 
 // MARK: - GetTransactionTransaction
+
 public struct GetTransactionTransaction: Decodable {
-    public let message: GetTransactionMessage?
-    public let signatures: [String?]?
+  public let message: GetTransactionMessage?
+  public let signatures: [String?]?
 }
 
 // MARK: - GetTransactionMessage
+
 public struct GetTransactionMessage: Decodable {
-    public let accountKeys: [String?]?
-    public let header: GetTransactionHeader?
-    public let instructions: [GetTransactionInstruction?]?
-    public let recentBlockhash: String?
+  public let accountKeys: [String?]?
+  public let header: GetTransactionHeader?
+  public let instructions: [GetTransactionInstruction?]?
+  public let recentBlockhash: String?
 }
 
 // MARK: - GetTransactionHeader
+
 public struct GetTransactionHeader: Decodable {
-    public let numReadonlySignedAccounts, numReadonlyUnsignedAccounts, numRequiredSignatures: Int?
+  public let numReadonlySignedAccounts, numReadonlyUnsignedAccounts, numRequiredSignatures: Int?
 }
 
 // MARK: - GetTransactionInstruction
+
 public struct GetTransactionInstruction: Decodable {
-    public let accounts: [Int?]?
-    public let data: String?
-    public let programIDIndex: Int?
+  public let accounts: [Int?]?
+  public let data: String?
+  public let programIDIndex: Int?
 }

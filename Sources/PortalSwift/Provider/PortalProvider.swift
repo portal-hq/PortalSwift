@@ -373,7 +373,7 @@ public class PortalProvider {
         }
         return PortalProviderResult(id: forId, result: rpcResponse)
       case .sol_getTransaction:
-          let rpcResponse = try decoder.decode(PortalRpcResponse<GetTransactionResult>.self, from: data)
+        let rpcResponse = try decoder.decode(PortalRpcResponse<GetTransactionResult>.self, from: data)
         if let rpcError = rpcResponse.error {
           throw PortalRpcError(rpcError)
         }

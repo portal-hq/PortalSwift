@@ -137,7 +137,7 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
   }
 
   @available(*, unavailable)
-  required public init?(coder _: NSCoder) { fatalError("init(coder:) has not been implemented") }
+  public required init?(coder _: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
   private func bindPortalEvents(portal: Portal) {
     portal.on(event: Events.ChainChanged.rawValue) { data in
