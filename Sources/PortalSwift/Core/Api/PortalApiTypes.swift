@@ -618,7 +618,7 @@ public struct DetailedInfo: Codable {
 
 public struct Attribute: Codable {
   let traitType, value: String?
-  let displayType: String?
+//  let displayType: String?
 }
 
 // MARK: - ExtendedCollectionInfo
@@ -709,4 +709,53 @@ public struct LastSale: Codable {
 public struct Rarity: Codable {
   let rank: Int?
   let score: Double?
+}
+
+// MARK: - Get Assets by Chain
+
+public struct AssetsResponse: Decodable {
+  let nativeBalance: NativeBalance?
+  let tokenBalances: [TokenBalanceResponse]?
+  let nfts: [Nft]?
+}
+
+public struct NativeBalance: Decodable {
+  let balance: String?
+  let decimals: Int?
+  let name, rawBalance, symbol: String?
+  let metadata: NativeBalanceMetadata?
+}
+
+public struct NativeBalanceMetadata: Decodable {
+  let logo, thumbnail: String?
+}
+
+public struct Nft: Decodable {
+  let nftID, name, description: String?
+  let imageURL: String?
+  let chainID, contractAddress, tokenID: String?
+  let collection: Collection?
+  let lastSale: LastSale?
+  let rarity: Rarity?
+  let floorPrice: NftFloorPrice?
+  let detailedInfo: DetailedInfo?
+}
+
+public struct NftFloorPrice: Decodable {
+  let price: Double?
+  let currency: String?
+}
+
+public struct TokenBalanceResponse: Decodable {
+  let balance: String?
+  let decimals: Int?
+  let name, rawBalance, symbol: String?
+  let metadata: TokenBalanceMetadata?
+}
+
+public struct TokenBalanceMetadata: Decodable {
+  let tokenAddress: String?
+  let verifiedContract: Bool?
+  let totalSupply, rawTotalSupply: String?
+  let percentageRelativeToTotalSupply: Double?
 }

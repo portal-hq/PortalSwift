@@ -627,6 +627,10 @@ public class Portal {
     try await self.api.getBalances(chainId)
   }
 
+  public func getAssets(_ chainId: String) async throws -> AssetsResponse {
+    try await self.api.getAssets(chainId)
+  }
+
   public func getBackupShares(_ chainId: String? = nil) async throws -> [FetchedSharePair] {
     guard let client = try await client else {
       throw PortalClassError.clientNotAvailable

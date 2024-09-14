@@ -446,6 +446,16 @@ class ViewController: UIViewController, UITextFieldDelegate {
     return balances
   }
 
+  func getAssets() async throws -> AssetsResponse {
+    guard let portal else {
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+    let chainId = "eip155:11155111"
+    let assets = try await portal.getAssets(chainId)
+
+    return assets
+  }
+
   public func getGasPrice(_ chainId: String) async throws {
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
@@ -1682,6 +1692,16 @@ class ViewController: UIViewController, UITextFieldDelegate {
       } catch {
         self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching balances: \(error)")
         self.showStatusView(message: "\(self.failureStatus) Error fetching balances \(error)")
+        return
+      }
+      do {
+        let assets = try await self.getAssets()
+        print(assets)
+        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched assets.")
+        self.showStatusView(message: "\(self.successStatus) Successfully fetched assets.")
+      } catch {
+        self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching assets: \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error fetching assets \(error)")
         return
       }
       do {
