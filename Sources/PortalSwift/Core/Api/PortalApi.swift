@@ -132,6 +132,23 @@ public class PortalApi {
     throw URLError(.badURL)
   }
 
+  func getAssets(_ chainId: String) async throws -> AssetsResponse {
+    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)/assets") {
+      do {
+        let data = try await get(url, withBearerToken: self.apiKey)
+        let assets = try decoder.decode(AssetsResponse.self, from: data)
+
+        return assets
+      } catch {
+        self.logger.error("PortalApi.getAssets() - Unable to fetch Assets: \(error.localizedDescription)")
+        throw error
+      }
+    }
+
+    self.logger.error("PortalApi.getNFTs() - Unable to build request URL.")
+    throw URLError(.badURL)
+  }
+
   public func getClientCipherText(_ backupSharePairId: String) async throws -> String {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/backup-share-pairs/\(backupSharePairId)/cipher-text") {
       do {
