@@ -604,29 +604,33 @@ public class Portal {
   }
 
   public func isWalletOnDevice(_ forChainId: String? = nil) async throws -> Bool {
-    do {
-      let shares = try await keychain.getShares()
-      // Filter by chainId if one is provided
-      if let chainId = forChainId {
-        let chainIdParts = chainId.split(separator: ":").map(String.init)
-        guard let namespace = PortalNamespace(rawValue: chainIdParts[0]), let curve = try await keychain.metadata?.namespaces[namespace] else {
-          throw PortalClassError.unsupportedChainId(chainId)
-        }
+    let shares = try await keychain.getShares()
+    // Filter by chainId if one is provided
+    if let chainId = forChainId {
+      let chainIdParts = chainId.split(separator: ":").map(String.init)
 
-        if let _ = shares[curve.rawValue] {
-          return true
-        }
-
-        return false
-      } else {
-        let validShare = shares.values.first { share in
-          !share.id.isEmpty
-        }
-
-        return validShare != nil
+      guard chainIdParts.count > 0
+      else {
+        throw PortalClassError.invalidChainId(chainId)
       }
-    } catch {
+
+      guard let namespace = PortalNamespace(rawValue: chainIdParts[0]),
+            let curve = try await keychain.metadata?.namespaces[namespace]
+      else {
+        throw PortalClassError.unsupportedChainId(chainId)
+      }
+
+      if let _ = shares[curve.rawValue] {
+        return true
+      }
+
       return false
+    } else {
+      let validShare = shares.values.first { share in
+        !share.id.isEmpty
+      }
+
+      return validShare != nil
     }
   }
 
@@ -1071,6 +1075,7 @@ enum PortalClassError: LocalizedError, Equatable {
   case unsupportedChainId(String)
   case cannotCreateWallet
   case cannotRecoverWallet
+  case invalidChainId(String)
 }
 
 enum PortalProviderError: LocalizedError, Equatable {
