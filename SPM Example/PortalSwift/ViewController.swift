@@ -1030,7 +1030,12 @@ class ViewController: UIViewController, UITextFieldDelegate {
           let availableRecoveryMethods = try await self.portal?.availableRecoveryMethods() ?? []
           let walletExists = try await self.portal?.doesWalletExist() ?? false
           let solanaWalletExists = try await self.portal?.doesWalletExist("solana") ?? false
-          let isWalletOnDevice = try await self.portal?.isWalletOnDevice() ?? false
+          var isWalletOnDevice = false
+          do {
+            isWalletOnDevice = try await self.portal?.isWalletOnDevice() ?? false
+          } catch {
+            self.logger.error("ViewController.UpdateUIComponents() - ❌ portal.isWalletOnDevice() failed with: \(error)")
+          }
 
           let username = self.username?.text ?? ""
 
