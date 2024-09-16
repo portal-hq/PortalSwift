@@ -45,7 +45,6 @@ public class PortalApi {
     self.provider?.chainId
   }
 
-
   public var client: ClientResponse? {
     get async throws {
       try await _clientStorage.getOrCreateClient {

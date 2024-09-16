@@ -154,6 +154,8 @@ public class PortalRequests {
     let statusText = String(data: withData, encoding: .utf8) ?? ""
     if response.statusCode < 400 {
       return PortalRequestsError.redirectError("\(response.statusCode) - \(statusText)")
+    } else if response.statusCode == 401 {
+      return PortalRequestsError.unauthorized
     } else if response.statusCode < 500 {
       return PortalRequestsError.clientError("\(response.statusCode) - \(statusText)", url: url)
     } else {
@@ -175,4 +177,5 @@ public enum PortalRequestsError: Error, Equatable {
   case couldNotParseHttpResponse
   case internalServerError(_ message: String, url: String)
   case redirectError(_ message: String)
+  case unauthorized
 }

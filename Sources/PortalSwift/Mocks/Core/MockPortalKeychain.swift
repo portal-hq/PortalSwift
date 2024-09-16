@@ -46,7 +46,11 @@ public class MockPortalKeychain: PortalKeychain {
     return try await MockConstants.mockGenerateResponse
   }
 
-  override public func loadMetadata() async throws {}
+  override public func loadMetadata() async throws -> PortalKeychainMetadata {
+    PortalKeychainMetadata(
+      namespaces: [:]
+    )
+  }
 
   override public func setMetadata(_: PortalKeychainClientMetadata) async throws {}
 
