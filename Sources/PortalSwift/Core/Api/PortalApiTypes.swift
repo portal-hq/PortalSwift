@@ -645,7 +645,7 @@ public struct DetailedInfo: Decodable {
 
 public struct Attribute: Decodable {
   let traitType, value: String?
-//    let displayType: NSNull?
+  let displayType: String?
 }
 
 public struct ExtendedCollectionInfo: Decodable {
@@ -679,7 +679,7 @@ public struct MarketplaceInfoFloorPrice: Decodable {
 
 public struct PaymentToken: Decodable {
   let paymentTokenID, name, symbol: String?
-//    let address: NSNull?
+  let address: String?
   let decimals: Int?
 }
 
