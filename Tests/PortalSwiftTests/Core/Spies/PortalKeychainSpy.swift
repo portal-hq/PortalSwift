@@ -8,7 +8,7 @@
 import Foundation
 @testable import PortalSwift
 
-class PortalKeychainProtocolSpy: PortalKeychainProtocol {
+class PortalKeychainSpy: PortalKeychainProtocol {
     var metadata: PortalSwift.PortalKeychainMetadata?
     var api: PortalApiProtocol?
     var legacyAddress: String?
@@ -32,10 +32,11 @@ class PortalKeychainProtocolSpy: PortalKeychainProtocol {
 
     // MARK: - getAddresses
     private(set) var getAddressesCallCount = 0
+    var getAddressesReturnValue: [PortalNamespace: String?] = [:]
 
     func getAddresses() async throws -> [PortalNamespace: String?] {
         getAddressesCallCount += 1
-        return [:]
+        return getAddressesReturnValue
     }
 
     // MARK: - getMetadata
