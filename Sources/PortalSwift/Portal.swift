@@ -1006,7 +1006,7 @@ public class Portal {
       "eip155:1": "https://\(apiHost)/rpc/v1/eip155/1", // Ethereum Mainnet
       "eip155:137": "https://\(apiHost)/rpc/v1/eip155/137", // Polygon Mainnet
       "eip155:8453": "https://\(apiHost)/rpc/v1/eip155/8453", // Base Mainnet
-      "eip155:80001": "https://\(apiHost)/rpc/v1/eip155/800011", // Polygon Mumbai
+      "eip155:80002": "https://\(apiHost)/rpc/v1/eip155/80002", // Polygon Amoy
       "eip155:84532": "https://\(apiHost)/rpc/v1/eip155/84532", // Base Testnet
       "eip155:11155111": "https://\(apiHost)/rpc/v1/eip155/11155111", // Ethereum Sepolia
       "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": "https://\(apiHost)/rpc/v1/solana/5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", // Solana Mainnet
