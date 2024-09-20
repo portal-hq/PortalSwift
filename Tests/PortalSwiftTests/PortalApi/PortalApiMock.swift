@@ -73,9 +73,9 @@ class PortalApiMock: PortalApiProtocol {
     return prepareEjectReturnValue ?? ""
   }
 
-  var refreshClientCalled = false
+  var refreshClientCallsCount = 0
   func refreshClient() async throws {
-    refreshClientCalled = true
+      refreshClientCallsCount += 1
   }
 
   var simulateTransactionReturnValue: PortalSwift.SimulatedTransaction?
@@ -83,9 +83,13 @@ class PortalApiMock: PortalApiProtocol {
     return simulateTransactionReturnValue ?? SimulatedTransaction(changes: [])
   }
 
-  var updateShareStatusCalled = false
-  func updateShareStatus(_: PortalSwift.PortalSharePairType, status _: PortalSwift.SharePairUpdateStatus, sharePairIds _: [String]) async throws {
-    updateShareStatusCalled = true
+  var updateShareStatusCallsCount = 0
+  var updateShareStatusSharePareTypeParam: PortalSharePairType?
+  var updateShareStatusStatusParam: SharePairUpdateStatus?
+  func updateShareStatus(_ type: PortalSwift.PortalSharePairType, status: PortalSwift.SharePairUpdateStatus, sharePairIds _: [String]) async throws {
+      updateShareStatusSharePareTypeParam = type
+      updateShareStatusStatusParam = status
+      updateShareStatusCallsCount += 1
   }
 
   var storeClientCipherTextReturnValue: Bool?
