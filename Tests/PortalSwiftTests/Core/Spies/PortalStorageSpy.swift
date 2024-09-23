@@ -11,7 +11,7 @@ import Foundation
 public final class PortalStorageSpy: PortalStorage {
     // MARK: - Properties
     public var api: PortalApiProtocol?
-    public var encryption: PortalEncryption = PortalEncryption()
+    public var encryption: PortalEncryptionProtocol = PortalEncryption()
 
     // MARK: - Decrypt Method Spy Properties
     private(set) var decryptCallsCount = 0

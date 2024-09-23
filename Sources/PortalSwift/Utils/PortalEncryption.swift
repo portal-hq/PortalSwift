@@ -1,7 +1,14 @@
 import Foundation
 import Mpc
 
-public class PortalEncryption {
+public protocol PortalEncryptionProtocol {
+    func decrypt(_ value: String, withPrivateKey: String) async throws -> String
+    func decrypt(_ value: String, withPassword: String) async throws -> String
+    func encrypt(_ value: String) async throws -> EncryptData
+    func encrypt(_ value: String, withPassword: String) async throws -> String
+}
+
+public class PortalEncryption: PortalEncryptionProtocol {
   public let decoder = JSONDecoder()
   private let mobile: Mobile
 

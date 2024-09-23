@@ -563,7 +563,7 @@ extension PortalMpcTests {
         )
 
         // and given
-        _ = try await mpc?.eject(.iCloud)
+        _ = try await mpc?.eject(.iCloud, andOrganizationSolanaBackupShare: "")
 
         // then
         XCTAssertEqual(mobileSpy.mobileEjectWalletAndDiscontinueMPCCallsCount, 1)
@@ -584,7 +584,7 @@ extension PortalMpcTests {
         )
 
         // and given
-        _ = try await mpc?.eject(.iCloud)
+        _ = try await mpc?.eject(.iCloud, andOrganizationSolanaBackupShare: "solana org backup share")
 
         // then
         XCTAssertEqual(mobileSpy.mobileEjectWalletAndDiscontinueMPCEd25519CallsCount, 1)

@@ -315,4 +315,26 @@ final class MobileSpy: Mobile {
         mobileEjectWalletAndDiscontinueMPCEd25519ServerDkgCipherTextParam = serverDkgCipherText
         return mobileEjectWalletAndDiscontinueMPCEd25519ReturnValue
     }
+
+    // MARK: - MobileGetCustodianIdClientIdHashes Spy Properties
+    var mobileGetCustodianIdClientIdHashesCallsCount = 0
+    private(set) var mobileGetCustodianIdClientIdHashesCustodianIdClientIdJSONParam: String?
+    var mobileGetCustodianIdClientIdHashesReturnValue: String = UnitTestMockConstants.mockCustodianIdClientIdHashesResponse
+
+    func MobileGetCustodianIdClientIdHashes(_ custodianIdClientIdJSON: String) -> String {
+        mobileGetCustodianIdClientIdHashesCallsCount += 1
+        mobileGetCustodianIdClientIdHashesCustodianIdClientIdJSONParam = custodianIdClientIdJSON
+        return mobileGetCustodianIdClientIdHashesReturnValue
+    }
+
+    // MARK: - MobileFormatShares Spy Properties
+    var mobileFormatSharesCallsCount = 0
+    private(set) var mobileFormatSharesSharesJSONParam: String?
+    var mobileFormatSharesReturnValue: String = UnitTestMockConstants.mockMobileFormatShareResponse
+
+    func MobileFormatShares(_ sharesJSON: String) -> String {
+        mobileFormatSharesCallsCount += 1
+        mobileFormatSharesSharesJSONParam = sharesJSON
+        return mobileFormatSharesReturnValue
+    }
 }
