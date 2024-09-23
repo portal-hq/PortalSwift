@@ -8,9 +8,9 @@
 import Foundation
 
 public protocol PortalKeyValueStoreProtocol {
-    func delete(_ key: String) -> Bool
-    func read(_ key: String) -> String
-    func write(_ key: String, value: String) -> Bool
+  func delete(_ key: String) -> Bool
+  func read(_ key: String) -> String
+  func write(_ key: String, value: String) -> Bool
 }
 
 public class PortalKeyValueStore: PortalKeyValueStoreProtocol {
