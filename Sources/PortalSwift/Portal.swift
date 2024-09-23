@@ -206,7 +206,7 @@ public class Portal {
     // Initialize the Portal API
     let api = PortalApi(apiKey: apiKey, apiHost: apiHost, provider: self.provider, featureFlags: self.featureFlags)
     self.api = api
-      self.keychain.api = api
+    self.keychain.api = api
 
     // This is to mimic the blocking behavior of the legacy GetClient() implementation
     // It ensures address information is available at the completion of the initialization
