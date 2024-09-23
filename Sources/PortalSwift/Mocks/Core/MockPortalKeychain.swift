@@ -9,11 +9,11 @@
 import Foundation
 
 public class MockPortalKeychain: PortalKeychainProtocol {
-    public var metadata: PortalKeychainMetadata?
-    public var api: (any PortalApiProtocol)?
-    
-    public var legacyAddress: String?
-    
+  public var metadata: PortalKeychainMetadata?
+  public var api: (any PortalApiProtocol)?
+
+  public var legacyAddress: String?
+
   public func deleteShares() async throws {}
 
   public func getAddress(_ forChainId: String) async throws -> String? {
