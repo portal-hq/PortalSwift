@@ -18,8 +18,8 @@ public class GDriveStorage: Storage, PortalStorage {
     set(clientId) { self.drive.clientId = clientId }
   }
 
+  public let encryption: PortalEncryptionProtocol
   public var mobile: Mobile?
-  public let encryption: PortalEncryption
   public var folder: String {
     get { return self.drive.folder }
     set(folder) { self.drive.folder = folder }
@@ -44,7 +44,7 @@ public class GDriveStorage: Storage, PortalStorage {
     mobile: Mobile? = nil,
     clientID: String? = nil,
     viewController: UIViewController? = nil,
-    encryption: PortalEncryption? = nil,
+    encryption: PortalEncryptionProtocol? = nil,
     driveClient: GDriveClient? = nil
   ) {
     self.mobile = mobile

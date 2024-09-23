@@ -11,7 +11,7 @@ import Foundation
 class ICloudStorageMock: PortalStorage {
     var api: PortalSwift.PortalApiProtocol? = nil
     
-    var encryption: PortalSwift.PortalEncryption = PortalEncryption()
+    var encryption: PortalSwift.PortalEncryptionProtocol = PortalEncryption()
     
     var deleteReturnValue: Bool = true
     var deleteCallsCount: Int = 0
