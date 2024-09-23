@@ -10,10 +10,10 @@ import Foundation
 
 class PortalStorageMock: PortalStorage {
     var api: PortalApiProtocol?
-    var encryption: PortalEncryption
+    var encryption: PortalEncryptionProtocol
 
     // Initialize with default or injected encryption
-    init(encryption: PortalEncryption = PortalEncryption()) {
+    init(encryption: PortalEncryptionProtocol = PortalEncryption()) {
         self.encryption = encryption
     }
 

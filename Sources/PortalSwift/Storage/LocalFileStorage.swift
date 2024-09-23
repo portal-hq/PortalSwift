@@ -17,10 +17,10 @@ public enum LocalFileStorageError: Error {
 
 public class LocalFileStorage: Storage, PortalStorage {
   public var api: PortalApiProtocol?
-  public let encryption: PortalEncryption
+  public let encryption: PortalEncryptionProtocol
   var fileName: String = "PORTAL_BACKUP_SHARE"
 
-  public init(fileName: String = "PORTAL_BACKUP_SHARE", encryption: PortalEncryption = PortalEncryption()) {
+  public init(fileName: String = "PORTAL_BACKUP_SHARE", encryption: PortalEncryptionProtocol = PortalEncryption()) {
     self.encryption = encryption
     self.fileName = fileName
     super.init()
