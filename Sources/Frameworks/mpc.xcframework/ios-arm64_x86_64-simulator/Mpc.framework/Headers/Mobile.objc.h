@@ -14,9 +14,11 @@
 @class MobileCggmpBackup;
 @class MobileCustodian;
 @class MobileEjectResult;
+@class MobileFormattedShares;
 @class MobileGetMeErrorType;
 @class MobileGetMeResponse;
 @class MobileGetMeResult;
+@class MobileShareData;
 
 @interface MobileCggmpBackup : NSObject <goSeqRefInterface> {
 }
@@ -71,6 +73,19 @@
 
 @end
 
+/**
+ * FormattedShares represents the structure of the formatted shares
+ */
+@interface MobileFormattedShares : NSObject <goSeqRefInterface> {
+}
+@property(strong, readonly) _Nonnull id _ref;
+
+- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
+- (nonnull instancetype)init;
+@property (nonatomic) MobileShareData* _Nullable secP256K1;
+@property (nonatomic) MobileShareData* _Nullable eD25519;
+@end
+
 @interface MobileGetMeErrorType : NSObject <goSeqRefInterface> {
 }
 @property(strong, readonly) _Nonnull id _ref;
@@ -108,6 +123,19 @@
 
 @end
 
+/**
+ * ShareData represents the structure of a single share
+ */
+@interface MobileShareData : NSObject <goSeqRefInterface> {
+}
+@property(strong, readonly) _Nonnull id _ref;
+
+- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
+- (nonnull instancetype)init;
+@property (nonatomic) NSString* _Nonnull id_;
+@property (nonatomic) NSString* _Nonnull share;
+@end
+
 FOUNDATION_EXPORT NSString* _Nonnull MobileBackup(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileBackupEd25519(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
@@ -129,11 +157,18 @@ FOUNDATION_EXPORT NSString* _Nonnull MobileEncrypt(NSString* _Nullable value);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileEncryptWithPassword(NSString* _Nullable value, NSString* _Nullable password);
 
+FOUNDATION_EXPORT NSString* _Nonnull MobileFormatShares(NSString* _Nullable sharesJSON);
+
 FOUNDATION_EXPORT NSString* _Nonnull MobileGenerate(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileGenerateEd25519(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileGenerateSecp256k1(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
+
+/**
+ * GetCustodianIdClientIdHashes returns four different hash variants used for backup storage filenames
+ */
+FOUNDATION_EXPORT NSString* _Nonnull MobileGetCustodianIdClientIdHashes(NSString* _Nullable custodianIdClientIdJSON);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileGetMe(NSString* _Nullable url, NSString* _Nullable token);
 
