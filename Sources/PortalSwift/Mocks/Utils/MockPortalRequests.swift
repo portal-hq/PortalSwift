@@ -22,7 +22,16 @@ public class MockPortalRequests: PortalRequestsProtocol {
     }
   }
 
-  public func get(_ url: URL, withBearerToken _: String? = nil) async throws -> Data {
+  // Tracking variables for `get` function
+  private(set) var getCallsCount = 0
+  private(set) var getFromParam: URL?
+  private(set) var getWithBearerTokenParam: String?
+
+  public func get(_ url: URL, withBearerToken: String? = nil) async throws -> Data {
+    getCallsCount += 1
+    getFromParam = url
+    getWithBearerTokenParam = withBearerToken
+
     switch url.path {
     case "/api/v3/clients/me":
       let mockClientData = try encoder.encode(MockConstants.mockClient)
@@ -78,7 +87,18 @@ public class MockPortalRequests: PortalRequestsProtocol {
     }
   }
 
-  public func post(_ url: URL, withBearerToken _: String? = nil, andPayload _: Codable? = nil) async throws -> Data {
+  // Tracking variables for `post` function
+  private(set) var postCallsCount = 0
+  private(set) var postFromParam: URL?
+  private(set) var postWithBearerTokenParam: String?
+  private(set) var postAndPayloadParam: Codable?
+
+  public func post(_ url: URL, withBearerToken: String? = nil, andPayload: Codable? = nil) async throws -> Data {
+    postCallsCount += 1
+    postFromParam = url
+    postWithBearerTokenParam = withBearerToken
+    postAndPayloadParam = andPayload
+
     switch url.path {
     case "/api/v1/analytics/identify", "/api/v1/analytics/track":
       let mockMetricsResponseData = try encoder.encode(MockConstants.mockMetricsResponse)
