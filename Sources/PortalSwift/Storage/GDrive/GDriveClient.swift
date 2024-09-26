@@ -8,7 +8,7 @@
 import Foundation
 import GoogleSignIn
 
-public enum GDriveClientError: Error {
+public enum GDriveClientError: Error, Equatable {
   case authenticationNotInitialized(String)
   case fileContentMismatch
   case noFileFound
@@ -21,7 +21,20 @@ public enum GDriveClientError: Error {
   case unableToRecoverAnyFiles(errors: [String: Error])
 }
 
-public class GDriveClient {
+public protocol GDriveClientProtocol {
+  var auth: GoogleAuth? { get set }
+  var clientId: String? { get set }
+  var folder: String { get set }
+  var view: UIViewController? { get set }
+  func delete(_ key: String) async throws -> Bool
+  func getAccessToken() async throws -> String
+  func getIdForFilename(_ filename: String) async throws -> String
+  func read(_ id: String) async throws -> String
+  func validateOperations() async throws -> Bool
+  func write(_ filename: String, withContent: String) async throws -> Bool
+}
+
+public class GDriveClient: GDriveClientProtocol {
   public var auth: GoogleAuth?
   public var clientId: String? {
     get { return self._clientId }
@@ -50,7 +63,7 @@ public class GDriveClient {
   private var _view: UIViewController?
   private var api: HttpRequester
   private var baseUrl: String = "https://www.googleapis.com"
-  private var boundary: String = "portal-backup-share"
+  private let boundary: String = "portal-backup-share"
   private let decoder = JSONDecoder()
   private let logger = PortalLogger()
   private let requests: PortalRequestsProtocol
@@ -243,7 +256,7 @@ public class GDriveClient {
     return recoveredFiles
   }
 
-  private func createFolder() async throws -> GDriveFile {
+  func createFolder() async throws -> GDriveFile {
     guard let auth = auth else {
       self.logger.error("GDriveClient.createFolder() - Authentication not initialized. GDrive config has not been set yet.")
       throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfig() to configure GoogleDrive")
@@ -266,7 +279,7 @@ public class GDriveClient {
     throw URLError(.badURL)
   }
 
-  private func getOrCreateFolder() async throws -> GDriveFile {
+  func getOrCreateFolder() async throws -> GDriveFile {
     guard let auth = auth else {
       self.logger.error("GDriveClient.getOrCreateFolder() - Authentication not initialized. GDrive config has not been set yet.")
       throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfig() to configure GoogleDrive")
@@ -297,7 +310,7 @@ public class GDriveClient {
     throw URLError(.badURL)
   }
 
-  private func writeFile(_ filename: String, withContent: String, andAccessToken: String) async throws -> String {
+  func writeFile(_ filename: String, withContent: String, andAccessToken: String) async throws -> String {
     let folder = try await getOrCreateFolder()
 
     if let url = URL(string: "\(baseUrl)/upload/drive/v3/files?ignoreDefaultVisibility=true&uploadType=multipart") {
@@ -321,7 +334,7 @@ public class GDriveClient {
     throw URLError(.badURL)
   }
 
-  private func buildMultipartFormData(_ content: String, withMetadata: GDriveFileMetadata) throws -> String {
+  func buildMultipartFormData(_ content: String, withMetadata: GDriveFileMetadata) throws -> String {
     let metadataJSON = try JSONEncoder().encode(withMetadata)
     let metadataString = String(data: metadataJSON, encoding: .utf8)!
     let body = [

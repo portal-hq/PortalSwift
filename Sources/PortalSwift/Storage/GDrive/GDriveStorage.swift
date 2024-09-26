@@ -34,7 +34,7 @@ public class GDriveStorage: Storage, PortalStorage {
     }
   }
 
-  private var drive: GDriveClient
+  private var drive: GDriveClientProtocol
   private var filename: String?
   private var logger = PortalLogger()
   private var separator: String = ""
@@ -45,7 +45,7 @@ public class GDriveStorage: Storage, PortalStorage {
     clientID: String? = nil,
     viewController: UIViewController? = nil,
     encryption: PortalEncryptionProtocol? = nil,
-    driveClient: GDriveClient? = nil
+    driveClient: GDriveClientProtocol? = nil
   ) {
     self.mobile = mobile
     self.drive = driveClient ?? GDriveClient(clientId: clientID, view: viewController)
