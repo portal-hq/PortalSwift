@@ -33,7 +33,7 @@ public class GDriveStorage: Storage, PortalStorage {
     }
   }
 
-  private var drive: GDriveClient
+  private var drive: GDriveClientProtocol
   private var filename: String?
   private var logger = PortalLogger()
   private var separator: String = ""
@@ -42,7 +42,7 @@ public class GDriveStorage: Storage, PortalStorage {
     clientID: String? = nil,
     viewController: UIViewController? = nil,
     encryption: PortalEncryptionProtocol? = nil,
-    driveClient: GDriveClient? = nil
+    driveClient: GDriveClientProtocol? = nil
   ) {
     self.drive = driveClient ?? GDriveClient(clientId: clientID, view: viewController)
     self.encryption = encryption ?? PortalEncryption()
@@ -91,7 +91,7 @@ public class GDriveStorage: Storage, PortalStorage {
    * Private functions
    *******************************************/
 
-  private func getFilename() async throws -> String {
+  func getFilename() async throws -> String {
     guard let api = self.api else {
       throw GDriveStorageError.portalApiNotConfigured
     }
@@ -110,7 +110,7 @@ public class GDriveStorage: Storage, PortalStorage {
     return self.filename!
   }
 
-  private static func hash(_ str: String) -> String {
+  static func hash(_ str: String) -> String {
     let data = str.data(using: .utf8)!
     var digest = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
     data.withUnsafeBytes {
