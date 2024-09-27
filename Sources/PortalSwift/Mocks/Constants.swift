@@ -66,6 +66,15 @@ public enum MockConstants {
     publicKey: mockPublicKey,
     signingSharePairs: [mockWalletSigningShare]
   )
+  public static let mockED25519NotBackedUpWallet = ClientResponseWallet(
+    id: mockWalletId,
+    createdAt: mockCreatedAt,
+    backupSharePairs: [],
+    curve: .ED25519,
+    ejectableUntil: nil,
+    publicKey: mockPublicKey,
+    signingSharePairs: [mockWalletSigningShare]
+  )
   public static let mockEip155Address = "0x73574d235573574d235573574d235573574d2355"
   public static let mockEip155EjectResponse = "{\"privateKey\":\"\(mockEip155EjectedPrivateKey)\",\"error\":{\"code\":0,\"message\":\"\"}}"
   public static let mockEip155EjectedPrivateKey = "099cabf8c65c81e629d59e72f04a549aafa531329e25685a5b8762b926597209"
@@ -253,6 +262,15 @@ public enum MockConstants {
     publicKey: mockPublicKey,
     signingSharePairs: [mockWalletSigningShare]
   )
+  public static let mockSECP256K1NotBackedUpWallet = ClientResponseWallet(
+    id: mockWalletId,
+    createdAt: mockCreatedAt,
+    backupSharePairs: [],
+    curve: .SECP256K1,
+    ejectableUntil: nil,
+    publicKey: mockPublicKey,
+    signingSharePairs: [mockWalletSigningShare]
+  )
   public static let mockSignResult = "{\"data\":\"\(mockSignature)\",\"error\":{\"code\":0,\"message\":\"\"}}"
   public static let mockSignResultWithError = "{\"data\":\"\",\"error\":{\"code\":108,\"message\":\"This error is thrown if there is an issue completing the signing process.\"}}"
   public static let mockSignTypedDataMessage =
@@ -305,6 +323,34 @@ public enum MockConstants {
       wallets: [
         mockED25519Wallet,
         mockSECP256K1Wallet
+      ]
+    )
+  }
+
+  public static var mockNotBackedUpClient: ClientResponse {
+    ClientResponse(
+      id: mockClientId,
+      custodian: mockCustodian,
+      createdAt: mockCreatedAt,
+      environment: ClientResponseEnvironment(
+        id: "test-environment-id",
+        name: "test-environment-name",
+        backupWithPortalEnabled: false
+      ),
+      ejectedAt: "test-ejected-at",
+      isAccountAbstracted: false,
+      metadata: ClientResponseMetadata(
+        namespaces: ClientResponseMetadataNamespaces(
+          eip155: ClientResponseNamespaceMetadataItem(
+            address: mockEip155Address,
+            curve: .SECP256K1
+          ),
+          solana: nil
+        )
+      ),
+      wallets: [
+        mockED25519NotBackedUpWallet,
+        mockSECP256K1NotBackedUpWallet
       ]
     )
   }
