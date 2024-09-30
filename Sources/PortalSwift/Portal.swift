@@ -32,11 +32,11 @@ public class Portal {
     self.provider.chainId
   }
 
-  public let api: PortalApi
+  public let api: PortalApiProtocol
   let apiKey: String
   public let autoApprove: Bool
   public var gatewayConfig: [Int: String] = [:]
-  public let provider: PortalProvider
+  public var provider: PortalProviderProtocol
   public var rpcConfig: [String: String]
 
   private let apiHost: String
@@ -44,7 +44,7 @@ public class Portal {
   private let binary: Mobile
   private let featureFlags: FeatureFlags?
   private let keychain: PortalKeychain
-  private let mpc: PortalMpc
+  private let mpc: PortalMpcProtocol
   private let mpcHost: String
   private let version: String
 
@@ -67,12 +67,12 @@ public class Portal {
     version: String = "v6",
     apiHost: String = "api.portalhq.io",
     mpcHost: String = "mpc.portalhq.io",
-    api: PortalApi? = nil,
+    api: PortalApiProtocol? = nil,
     binary: Mobile? = nil,
     gDrive: GDriveStorage? = nil,
     iCloud: ICloudStorage? = nil,
     keychain: PortalKeychain? = nil,
-    mpc: PortalMpc? = nil,
+    mpc: PortalMpcProtocol? = nil,
     passwords: PasswordStorage? = nil
   ) throws {
     if version != "v6" {
@@ -344,7 +344,9 @@ public class Portal {
     let privateKeys = try await mpc.eject(
       method,
       withCipherText: withCipherText,
-      andOrganizationBackupShare: andOrganizationBackupShare
+      andOrganizationBackupShare: andOrganizationBackupShare,
+      andOrganizationSolanaBackupShare: nil,
+      usingProgressCallback: nil
     )
 
     guard let privateKey = privateKeys[.eip155] else {
@@ -364,7 +366,8 @@ public class Portal {
       method,
       withCipherText: withCipherText,
       andOrganizationBackupShare: andOrganizationBackupShare,
-      andOrganizationSolanaBackupShare: andOrganizationSolanaBackupShare
+      andOrganizationSolanaBackupShare: andOrganizationSolanaBackupShare,
+      usingProgressCallback: nil
     )
 
     return privateKeys
@@ -450,7 +453,7 @@ public class Portal {
       AnyCodable(param)
     }
 
-    return try await self.provider.request(chainId, withMethod: withMethod, andParams: params)
+    return try await self.provider.request(chainId, withMethod: withMethod, andParams: params, connect: nil)
   }
 
   public func request(_ chainId: String, withMethod: String, andParams: [Any]) async throws -> PortalProviderResult {
@@ -784,7 +787,7 @@ public class Portal {
     self.provider.request(payload: ETHRequestPayload(
       method: ETHRequestMethods.EstimateGas.rawValue,
       params: [transaction]
-    ), completion: completion)
+    ), completion: completion, connect: nil)
   }
 
   public func ethGasPrice(
@@ -793,7 +796,7 @@ public class Portal {
     self.provider.request(payload: ETHRequestPayload(
       method: ETHRequestMethods.GasPrice.rawValue,
       params: []
-    ), completion: completion)
+    ), completion: completion, connect: nil)
   }
 
   public func ethGetBalance(
@@ -806,7 +809,7 @@ public class Portal {
     self.provider.request(payload: ETHRequestPayload(
       method: ETHRequestMethods.GetBalance.rawValue,
       params: [address, "latest"]
-    ), completion: completion)
+    ), completion: completion, connect: nil)
   }
 
   public func ethSendTransaction(
@@ -816,7 +819,7 @@ public class Portal {
     self.provider.request(payload: ETHTransactionPayload(
       method: ETHRequestMethods.SendTransaction.rawValue,
       params: [transaction]
-    ), completion: completion)
+    ), completion: completion, connect: nil)
   }
 
   public func ethSign(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void) {
@@ -831,7 +834,7 @@ public class Portal {
         address,
         message
       ]
-    ), completion: completion)
+    ), completion: completion, connect: nil)
   }
 
   public func ethSignTransaction(
@@ -841,7 +844,7 @@ public class Portal {
     self.provider.request(payload: ETHTransactionPayload(
       method: ETHRequestMethods.SignTransaction.rawValue,
       params: [transaction]
-    ), completion: completion)
+    ), completion: completion, connect: nil)
   }
 
   public func ethSignTypedDataV3(
@@ -856,7 +859,7 @@ public class Portal {
     self.provider.request(payload: ETHRequestPayload(
       method: ETHRequestMethods.SignTypedDataV3.rawValue,
       params: [address, message]
-    ), completion: completion)
+    ), completion: completion, connect: nil)
   }
 
   public func ethSignTypedData(
@@ -871,7 +874,7 @@ public class Portal {
     self.provider.request(payload: ETHRequestPayload(
       method: ETHRequestMethods.SignTypedDataV4.rawValue,
       params: [address, message]
-    ), completion: completion)
+    ), completion: completion, connect: nil)
   }
 
   public func personalSign(
@@ -889,7 +892,7 @@ public class Portal {
         message,
         address
       ]
-    ), completion: completion)
+    ), completion: completion, connect: nil)
   }
 
   public func request(
@@ -903,7 +906,7 @@ public class Portal {
     self.provider.request(payload: ETHRequestPayload(
       method: method,
       params: encodedParams
-    ), completion: completion)
+    ), completion: completion, connect: nil)
   }
 
   // Solana Methods
@@ -963,7 +966,7 @@ public class Portal {
   /// - Returns: Void
   @available(*, deprecated, renamed: "REMOVED", message: "The PortalProvider class will be chain agnostic very soon. Please update to the chainId-specific implementations of all Provider helper methods as this function will be removed in the future.")
   public func setChainId(to: Int) throws {
-    _ = try self.provider.setChainId(value: to)
+    _ = try self.provider.setChainId(value: to, connect: nil)
   }
 
   /****************************************
