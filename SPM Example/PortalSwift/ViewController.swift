@@ -1316,7 +1316,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
       throw PortalExampleAppError.userNotLoggedIn()
     }
 
-    let generateSolanaResult = try await portal.generateSolanaWalletAndBackupShares(.iCloud)
+    let generateSolanaResult = try await portal.generateSolanaWalletAndBackupShares(.iCloud) { _ in
+    }
 
     guard let url = URL(string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/cipher-text") else {
       throw URLError(.badURL)
