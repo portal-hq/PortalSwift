@@ -89,7 +89,7 @@ public class PortalApi {
 
         return ejectResponse
       } catch {
-        self.logger.error("PortalApi.getBalances() - Unable to eject: \(error.localizedDescription)")
+        self.logger.error("PortalApi.eject() - Unable to eject: \(error.localizedDescription)")
         throw error
       }
     }
