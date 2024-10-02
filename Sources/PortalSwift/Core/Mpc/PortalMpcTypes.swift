@@ -14,61 +14,90 @@ public struct PortalMpcGeneratedShare: Codable, Equatable {
   }
 }
 
-/// A MPC share that includes a variable number of fields, depending on the MPC version being used
-/// GG18 shares will only contain: bks, pubkey, and share
-/// CGGMP shares will contain all fields except: pubkey.
+/// A MPC share that includes the share and optionally a backupSharePairId and a signingSharePairId.
 public struct MpcShare: Codable, Equatable {
-  public var allY: PartialPublicKey?
-  public var backupSharePairId: String?
-  public var bks: Berkhoffs?
-  public var clientId: String
-  public var p: String
-  public var partialPubkey: PartialPublicKey?
-  public var pederson: Pederssens?
-  public var pubkey: PublicKey?
-  public var q: String
-  public var share: String
-  public var signingSharePairId: String?
-  public var ssid: String
+  public let clientId: String
+  public let backupSharePairId: String?
+  public let signingSharePairId: String?
+  public let share: String
+  public let ssid: String
+  public let pubkey: PublicKey?
+  public let partialPubkey: PartialPublicKey?
+  public let allY: AllY?
+  public let p: String?
+  public let q: String?
+  public let pederson: Pederson?
+  public let bks: BKS?
+  
+  // Additional fields to handle different SDK formats
+  public let partialPublicKey: PartialPublicKey? // For Kotlin SDK
+  public let partialPubKey: [PublicKey]? // For Web SDK
+  
+  public struct PublicKey: Codable, Equatable {
+    public let X: String
+    public let Y: String
+  }
+  
+  public struct PartialPublicKey: Codable, Equatable {
+    public let client: PublicKey
+    public let server: PublicKey
+  }
+  
+  public struct AllY: Codable, Equatable {
+    public let client: PublicKey
+    public let server: PublicKey
+  }
+  
+  public struct Pederson: Codable, Equatable {
+    public let client: PedersonData
+    public let server: PedersonData
+    
+    public struct PedersonData: Codable, Equatable {
+      public let n: String
+      public let s: String
+      public let t: String
+    }
+  }
+  
+  public struct BKS: Codable, Equatable {
+    public let client: BKSData
+    public let server: BKSData
+    
+    public struct BKSData: Codable, Equatable {
+      public let X: String
+      public let Rank: Int
+    }
+  }
 
   public static func == (lhs: MpcShare, rhs: MpcShare) -> Bool {
-    return lhs.signingSharePairId == rhs.signingSharePairId && lhs.backupSharePairId == rhs.backupSharePairId && lhs.share == rhs.share
+    return lhs.signingSharePairId == rhs.signingSharePairId &&
+           lhs.backupSharePairId == rhs.backupSharePairId &&
+           lhs.share == rhs.share
   }
-}
-
-/// In the bks dictionary for an MPC share, Berkhoff is the value.
-public struct Berkhoff: Codable {
-  public var X: String
-  public var Rank: Int
-}
-
-/// A partial public key for client and server (x, y)
-public struct PartialPublicKey: Codable {
-  public var client: PublicKey?
-  public var server: PublicKey?
-}
-
-/// A berhkoff coefficient mapping for client and server (x, rank)
-public struct Berkhoffs: Codable {
-  public var client: Berkhoff?
-  public var server: Berkhoff?
-}
-
-public struct Pederssen: Codable {
-  public var n: String?
-  public var s: String?
-  public var t: String?
-}
-
-public struct Pederssens: Codable {
-  public var client: Pederssen?
-  public var server: Pederssen?
-}
-
-/// A public key's coordinates (x, y).
-public struct PublicKey: Codable {
-  public var X: String?
-  public var Y: String?
+  
+  // Custom initializer to handle different SDK formats
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    
+    clientId = try container.decodeIfPresent(String.self, forKey: .clientId) ?? ""
+    backupSharePairId = try container.decodeIfPresent(String.self, forKey: .backupSharePairId)
+    signingSharePairId = try container.decodeIfPresent(String.self, forKey: .signingSharePairId)
+    share = try container.decode(String.self, forKey: .share)
+    ssid = try container.decode(String.self, forKey: .ssid)
+    pubkey = try container.decodeIfPresent(PublicKey.self, forKey: .pubkey)
+    partialPubkey = try container.decodeIfPresent(PartialPublicKey.self, forKey: .partialPubkey)
+    allY = try container.decodeIfPresent(AllY.self, forKey: .allY)
+    p = try container.decodeIfPresent(String.self, forKey: .p)
+    q = try container.decodeIfPresent(String.self, forKey: .q)
+    pederson = try container.decodeIfPresent(Pederson.self, forKey: .pederson)
+    bks = try container.decodeIfPresent(BKS.self, forKey: .bks)
+    
+    // Handle Kotlin SDK format
+    partialPublicKey = try container.decodeIfPresent(PartialPublicKey.self, forKey: .partialPublicKey)
+    
+    // Handle Web SDK format
+    partialPubKey = try container.decodeIfPresent([PublicKey].self, forKey: .partialPubKey)
+  }
 }
 
 struct DecryptResult: Codable {

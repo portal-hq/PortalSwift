@@ -17,7 +17,7 @@ public class GDriveStorage: Storage, PortalStorage {
     get { return self.drive.clientId }
     set(clientId) { self.drive.clientId = clientId }
   }
-
+  public var mobile: Mobile?
   public let encryption: PortalEncryption
   public var folder: String {
     get { return self.drive.folder }
@@ -37,13 +37,16 @@ public class GDriveStorage: Storage, PortalStorage {
   private var filename: String?
   private var logger = PortalLogger()
   private var separator: String = ""
+  private var filenameHashes: [String: String]?
 
   public init(
+    mobile: Mobile? = nil,
     clientID: String? = nil,
     viewController: UIViewController? = nil,
     encryption: PortalEncryption? = nil,
     driveClient: GDriveClient? = nil
   ) {
+    self.mobile = mobile
     self.drive = driveClient ?? GDriveClient(clientId: clientID, view: viewController)
     self.encryption = encryption ?? PortalEncryption()
   }
@@ -53,19 +56,49 @@ public class GDriveStorage: Storage, PortalStorage {
    *******************************************/
 
   public func delete() async throws -> Bool {
-    let filename = try await getFilename()
-    let fileId = try await drive.getIdForFilename(filename)
-
-    return try await self.drive.delete(fileId)
+    let hashes = try await getFilenameHashes()
+    
+    for hash in hashes.values {
+      if let fileId = try? await drive.getIdForFilename(hash) {
+        if try await self.drive.delete(fileId) {
+          return true
+        }
+      }
+    }
+    
+    throw GDriveStorageError.unableToDeleteFile
   }
 
   public func read() async throws -> String {
-    let filename = try await getFilename()
-    let fileId = try await drive.getIdForFilename(filename)
+    let hashes = try await getFilenameHashes()
+    
+    do {
+      let recoveredFiles = try await drive.recoverFiles(for: hashes)
+      
+      // Prioritize iOS file if available
+      if let iosContent = recoveredFiles["ios"] {
+        return iosContent
+      }
+      
+      // If iOS file is not available, return content of any recovered file
+      if let anyContent = recoveredFiles.values.first {
+        return anyContent
+      }
+      
+      // This should never happen because recoverFiles throws an error if no files are recovered
+      throw GDriveStorageError.unableToReadFile
+    } catch GDriveClientError.unableToRecoverAnyFiles(let errors) {
+      self.logger.error("GDriveStorage.read() - Unable to recover any files. Errors: \(errors)")
+      throw GDriveStorageError.unableToReadFile
+    } catch {
+      self.logger.error("GDriveStorage.read() - Unexpected error: \(error)")
+      throw GDriveStorageError.unableToReadFile
+    }
+  }
 
-    let fileContents = try await drive.read(fileId)
-
-    return fileContents
+  public func write(_ value: String) async throws -> Bool {
+    let filename = try await getIOSFilename()
+    return try await self.drive.write(filename, withContent: value)
   }
 
   public func signIn() async throws -> GIDGoogleUser {
@@ -81,48 +114,70 @@ public class GDriveStorage: Storage, PortalStorage {
     return try await self.drive.validateOperations()
   }
 
-  public func write(_ value: String) async throws -> Bool {
-    let filename = try await getFilename()
-
-    return try await self.drive.write(filename, withContent: value)
-  }
-
   /*******************************************
    * Private functions
    *******************************************/
+  private func getFilenameHashes() async throws -> [String: String] {
+    if let hashes = self.filenameHashes {
+      return hashes
+    }
 
-  private func getFilename() async throws -> String {
     guard let api = self.api else {
       throw GDriveStorageError.portalApiNotConfigured
     }
 
-    if self.filename == nil || self.filename == "" {
-      guard let client = try await api.client else {
-        throw GDriveStorageError.unableToGetClient
-      }
-
-      let name = GDriveStorage.hash("\(client.custodian.id)\(client.id)")
-      self.filename = "\(name).txt"
-
-      print("Filename: \(self.filename ?? "")")
+    guard let client = try await api.client else {
+      throw GDriveStorageError.unableToGetClient
     }
 
-    return self.filename!
+    let custodianId = client.custodian.id
+    let clientId = client.id
+    self.filenameHashes = try await fetchFileHashes(custodianId: custodianId, clientId: clientId)
+
+    return self.filenameHashes!
   }
 
-  private static func hash(_ str: String) -> String {
-    let data = str.data(using: .utf8)!
-    var digest = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
-    data.withUnsafeBytes {
-      _ = CC_SHA256($0.baseAddress, CC_LONG(data.count), &digest)
+  private func getIOSFilename() async throws -> String {
+    let hashes = try await getFilenameHashes()
+    guard let iosHash = hashes["ios"] else {
+      throw GDriveStorageError.unableToFetchIOSHash
     }
-    return Data(digest).map { String(format: "%02hhx", $0) }.joined()
+    return iosHash
+  }
+
+  private func fetchFileHashes(custodianId: String, clientId: String) async throws -> [String: String] {
+    let input = [
+      "custodianId": custodianId,
+      "clientId": clientId
+    ]
+    
+    guard let mobile = self.mobile else {
+      throw GDriveStorageError.binaryNotConfigured
+    }
+    
+    guard let inputJSON = try? JSONSerialization.data(withJSONObject: input),
+          let inputJSONString = String(data: inputJSON, encoding: .utf8) else {
+      throw GDriveStorageError.unableToFetchClientData
+    }
+    
+    let hashesJSON = mobile.MobileGetCustodianIdClientIdHashes(inputJSONString)
+    
+    guard let hashesData = hashesJSON.data(using: .utf8),
+          let hashes = try? JSONDecoder().decode([String: String].self, from: hashesData) else {
+      throw GDriveStorageError.unableToFetchClientData
+    }
+    
+    return hashes
   }
 }
 
 public enum GDriveStorageError: Error, Equatable {
   case portalApiNotConfigured
+  case binaryNotConfigured
   case unableToFetchClientData
   case unableToGetClient
+  case unableToDeleteFile
+  case unableToReadFile
+  case unableToFetchIOSHash
   case unknownError
 }

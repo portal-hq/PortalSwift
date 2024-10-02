@@ -106,6 +106,24 @@ public class Portal {
     self.keychain.api = api
 
     self.mpc = mpc ?? PortalMpc(apiKey: apiKey, api: self.api, keychain: self.keychain, host: mpcHost, mobile: self.binary, featureFlags: featureFlags)
+    
+    // Handle iCloud storage
+    let iCloudStorage: ICloudStorage
+    if let iCloud = iCloud {
+      iCloud.mobile = self.binary
+      iCloudStorage = iCloud
+    } else {
+      iCloudStorage = ICloudStorage(mobile: self.binary)
+    }
+
+    // Handle GDrive storage
+    let gDriveStorage: GDriveStorage
+    if let gDrive = gDrive {
+      gDrive.mobile = self.binary
+      gDriveStorage = gDrive
+    } else {
+      gDriveStorage = GDriveStorage(mobile: self.binary)
+    }
 
     // Initialize with PasskeyStorage by default
     if #available(iOS 16, *) {
@@ -114,22 +132,18 @@ public class Portal {
         withStorage: PasskeyStorage()
       )
     }
-    // Initialize with PasswordStorage by default
     self.mpc.registerBackupMethod(
       .Password,
       withStorage: passwords ?? PasswordStorage()
     )
-    // Initialize with iCloudStorage by default
     self.mpc.registerBackupMethod(
       .iCloud,
-      withStorage: iCloud ?? ICloudStorage()
+      withStorage: iCloudStorage
     )
-    // Initialize with GDrive by default
     self.mpc.registerBackupMethod(
       .GoogleDrive,
-      withStorage: gDrive ?? GDriveStorage()
+      withStorage: gDriveStorage
     )
-    // Initialize with LocalFileStorage by default
     self.mpc.registerBackupMethod(
       .local,
       withStorage: LocalFileStorage()
