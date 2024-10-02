@@ -14,11 +14,9 @@
 @class MobileCggmpBackup;
 @class MobileCustodian;
 @class MobileEjectResult;
-@class MobileFormattedShares;
 @class MobileGetMeErrorType;
 @class MobileGetMeResponse;
 @class MobileGetMeResult;
-@class MobileShareData;
 
 @interface MobileCggmpBackup : NSObject <goSeqRefInterface> {
 }
@@ -73,19 +71,6 @@
 
 @end
 
-/**
- * FormattedShares represents the structure of the formatted shares
- */
-@interface MobileFormattedShares : NSObject <goSeqRefInterface> {
-}
-@property(strong, readonly) _Nonnull id _ref;
-
-- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
-- (nonnull instancetype)init;
-@property (nonatomic) MobileShareData* _Nullable secP256K1;
-@property (nonatomic) MobileShareData* _Nullable eD25519;
-@end
-
 @interface MobileGetMeErrorType : NSObject <goSeqRefInterface> {
 }
 @property(strong, readonly) _Nonnull id _ref;
@@ -121,19 +106,6 @@
 
 // skipped field GetMeResult.Error with unsupported type: github.com/portal-hq/mpc/client/mobile.GetMeErrorType
 
-@end
-
-/**
- * ShareData represents the structure of a single share
- */
-@interface MobileShareData : NSObject <goSeqRefInterface> {
-}
-@property(strong, readonly) _Nonnull id _ref;
-
-- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
-- (nonnull instancetype)init;
-@property (nonatomic) NSString* _Nonnull id_;
-@property (nonatomic) NSString* _Nonnull share;
 @end
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileBackup(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);

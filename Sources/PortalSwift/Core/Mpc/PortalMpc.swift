@@ -811,8 +811,17 @@ public class PortalMpc {
     }
     
     do {
-      let result = try JSONDecoder().decode(PortalMpcGenerateResponse.self, from: jsonData)
-      return result
+      let result = try JSONDecoder().decode(FormatShareResponse.self, from: jsonData)
+      
+      if let error = result.error {
+        throw MpcError.unexpectedErrorOnRecover("Error formatting shares: \(error.message)")
+      }
+      
+      guard let data = result.data else {
+        throw MpcError.unexpectedErrorOnRecover("No data returned from MobileFormatShares")
+      }
+
+      return data
     } catch {
       print("Error decoding formatted shares: \(error)")
       throw MpcError.unableToDecodeShare

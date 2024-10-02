@@ -3,6 +3,16 @@ public struct PortalMpcBackupResponse {
   public let shareIds: [String]
 }
 
+public struct FormatShareResponse: Codable {
+    let data: PortalMpcGenerateResponse?
+    let error: ErrorDetails?
+}
+
+public struct ErrorDetails: Codable {
+    let id: String
+    let message: String
+}
+
 public typealias PortalMpcGenerateResponse = [String: PortalMpcGeneratedShare]
 
 public struct PortalMpcGeneratedShare: Codable, Equatable {
