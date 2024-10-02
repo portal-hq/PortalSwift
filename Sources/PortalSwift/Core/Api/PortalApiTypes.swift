@@ -102,18 +102,18 @@ public struct FetchedNFTContractMetadata: Codable, Equatable {
   public var name: String
   public var symbol: String
   public var tokenType: String
-  public var contractDeployer: String
-  public var deployedBlockNumber: Int
+  public var contractDeployer: String?
+  public var deployedBlockNumber: Int?
   public var openSea: FetchedNFTContractOpenSeaMetadata?
 }
 
 public struct FetchedNFTContractOpenSeaMetadata: Codable, Equatable {
-  public var collectionName: String
-  public var safelistRequestStatus: String
+  public var collectionName: String?
+  public var safelistRequestStatus: String?
   public var imageUrl: String?
-  public var description: String
-  public var externalUrl: String
-  public var lastIngestedAt: String
+  public var description: String?
+  public var externalUrl: String?
+  public var lastIngestedAt: String?
   public var floorPrice: Float?
   public var twitterUsername: String?
   public var discordUrl: String?
@@ -138,10 +138,10 @@ public struct FetchedNFTTokenUri: Codable, Equatable {
 /// Represents the media of an NFT.
 public struct FetchedNFTMedia: Codable, Equatable {
   public var gateway: String
-  public var thumbnail: String
+  public var thumbnail: String?
   public var raw: String
-  public var format: String
-  public var bytes: Int
+  public var format: String?
+  public var bytes: Int?
 }
 
 /// Represents the metadata of an NFT.
@@ -176,32 +176,37 @@ public struct FetchedTransaction: Codable, Equatable {
   /// Address that the transaction was sent to
   public var to: String
   /// Value transferred in the transaction
-  public var value: Float
+  public var value: Float?
   /// Token Id of an ERC721 token, if applicable
   public var erc721TokenId: String?
   /// Metadata of an ERC1155 token, if applicable
-  public var erc1155Metadata: String?
+  public var erc1155Metadata: [Erc1155Metadata?]?
   /// Token Id, if applicable
   public var tokenId: String?
   /// Type of asset involved in the transaction (e.g., ETH)
-  public var asset: String
+  public var asset: String?
   /// Category of the transaction (e.g., external)
   public var category: String
   /// Contract details related to the transaction
-  public var rawContract: FetchedTransactionRawContract
+  public var rawContract: FetchedTransactionRawContract?
   /// Metadata associated with the transaction
   public var metadata: FetchedTransactionMetadata
   /// ID of the chain associated with the transaction
   public var chainId: Int
 }
 
+public struct Erc1155Metadata: Codable, Equatable {
+    public let tokenId: String?
+    public let value: String?
+}
+
 public struct FetchedTransactionRawContract: Codable, Equatable {
   /// Value involved in the contract
-  public var value: String
+  public var value: String?
   /// Address of the contract, if applicable
   public var address: String?
   /// Decimal representation of the contract value
-  public var decimal: String
+  public var decimal: String?
 }
 
 public struct PrepareEjectResponse: Codable {
