@@ -28,9 +28,6 @@ public class MockPortalRequests: PortalRequests {
     case "/api/v3/clients/me/balances":
       let mockBalancesData = try encoder.encode([MockConstants.mockedFetchedBalance])
       return mockBalancesData
-    case "/api/v3/clients/me/nfts":
-      let mockNFTData = try encoder.encode([MockConstants.mockFetchedNFT])
-      return mockNFTData
     case "/api/v3/clients/me/transactions":
       let mockTransactionData = try encoder.encode([MockConstants.mockFetchedTransaction])
       return mockTransactionData
