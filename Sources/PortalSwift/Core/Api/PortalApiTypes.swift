@@ -102,18 +102,18 @@ public struct FetchedNFTContractMetadata: Codable, Equatable {
   public var name: String
   public var symbol: String
   public var tokenType: String
-  public var contractDeployer: String?
-  public var deployedBlockNumber: Int?
+  public var contractDeployer: String
+  public var deployedBlockNumber: Int
   public var openSea: FetchedNFTContractOpenSeaMetadata?
 }
 
 public struct FetchedNFTContractOpenSeaMetadata: Codable, Equatable {
-  public var collectionName: String?
-  public var safelistRequestStatus: String?
+  public var collectionName: String
+  public var safelistRequestStatus: String
   public var imageUrl: String?
-  public var description: String?
-  public var externalUrl: String?
-  public var lastIngestedAt: String?
+  public var description: String
+  public var externalUrl: String
+  public var lastIngestedAt: String
   public var floorPrice: Float?
   public var twitterUsername: String?
   public var discordUrl: String?
@@ -138,10 +138,10 @@ public struct FetchedNFTTokenUri: Codable, Equatable {
 /// Represents the media of an NFT.
 public struct FetchedNFTMedia: Codable, Equatable {
   public var gateway: String
-  public var thumbnail: String?
+  public var thumbnail: String
   public var raw: String
-  public var format: String?
-  public var bytes: Int?
+  public var format: String
+  public var bytes: Int
 }
 
 /// Represents the metadata of an NFT.
