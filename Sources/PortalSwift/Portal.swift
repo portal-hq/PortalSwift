@@ -794,11 +794,6 @@ public class Portal {
     self.mpc.ejectPrivateKey(clientBackupCiphertext: clientBackupCiphertext, method: method, backupConfigs: backupConfigs, orgBackupShare: orgBackupShare, completion: completion)
   }
 
-  @available(*, deprecated, renamed: "getNftAssets", message: "Please use getNftAssets().")
-  public func getNFTs(_ chainId: String) async throws -> [FetchedNFT] {
-    try await self.api.getNFTs(chainId)
-  }
-
   public func provisionWallet(
     cipherText: String,
     method: BackupMethods.RawValue,

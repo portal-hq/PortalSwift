@@ -545,22 +545,6 @@ public class PortalApi: PortalApiProtocol {
     }
   }
 
-  /// Retrieve a list of NFTs for the client.
-  /// - Parameters:
-  ///   - completion: The callback that contains the list of NFTs.
-  /// - Returns: Void.
-  @available(*, deprecated, renamed: "getNFTs", message: "Please use the async/await implementation of getNFTs().")
-  public func getNFTs(completion: @escaping (Result<[FetchedNFT]>) -> Void) throws {
-    Task {
-      do {
-        let response = try await getNFTs("eip155:\(self.chainId ?? 1)")
-        completion(Result(data: response))
-      } catch {
-        completion(Result(error: error))
-      }
-    }
-  }
-
   /// Retrieve a list of Transactions for the client.
   /// - Parameters:
   ///   - limit: (Optional) The maximum number of transactions to return.
@@ -723,24 +707,6 @@ public class PortalApi: PortalApiProtocol {
         completion(Result(error: error))
       }
     }
-  }
-
-  @available(*, deprecated, renamed: "getNftAssets", message: "Please use getNftAssets().")
-  public func getNFTs(_ chainId: String) async throws -> [FetchedNFT] {
-    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/nfts?chainId=\(chainId)") {
-      do {
-        let data = try await get(url, withBearerToken: self.apiKey)
-        let nfts = try decoder.decode([FetchedNFT].self, from: data)
-
-        return nfts
-      } catch {
-        self.logger.error("PortalApi.getNFTs() - Unable to fetch NFTs: \(error.localizedDescription)")
-        throw error
-      }
-    }
-
-    self.logger.error("PortalApi.getNFTs() - Unable to build request URL.")
-    throw URLError(.badURL)
   }
 
   func track(event: String, properties: [String: String], completion: ((Result<MetricsResponse>) -> Void)? = nil) {
