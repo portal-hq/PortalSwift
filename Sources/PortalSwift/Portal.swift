@@ -669,8 +669,8 @@ public class Portal {
     return sharePairGroups.flatMap { $0 }
   }
 
-  public func getNFTs(_ chainId: String) async throws -> [FetchedNFT] {
-    try await self.api.getNFTs(chainId)
+  public func getNftAssets(_ chainId: String) async throws -> [NftAsset] {
+    try await self.api.getNftAssets(chainId)
   }
 
   public func getSigningShares(_ chainId: String? = nil) async throws -> [FetchedSharePair] {
@@ -792,6 +792,11 @@ public class Portal {
     completion: @escaping (Result<String>) -> Void
   ) {
     self.mpc.ejectPrivateKey(clientBackupCiphertext: clientBackupCiphertext, method: method, backupConfigs: backupConfigs, orgBackupShare: orgBackupShare, completion: completion)
+  }
+
+  @available(*, deprecated, renamed: "getNftAssets", message: "Please use getNftAssets().")
+  public func getNFTs(_ chainId: String) async throws -> [FetchedNFT] {
+    try await self.api.getNFTs(chainId)
   }
 
   public func provisionWallet(

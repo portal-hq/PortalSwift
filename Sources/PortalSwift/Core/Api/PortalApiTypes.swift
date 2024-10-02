@@ -651,3 +651,133 @@ public struct BuildTransactionParam {
     ]
   }
 }
+
+// MARK: - NftAsset
+
+public struct NftAsset: Codable {
+  let nftID, name, description: String?
+  let imageURL: String?
+  let chainID, contractAddress, tokenID: String?
+  let collection: Collection?
+  let lastSale: LastSale?
+  let rarity: Rarity?
+  let floorPrice: NftAssetFloorPrice?
+  let detailedInfo: DetailedInfo?
+}
+
+// MARK: - Collection
+
+public struct Collection: Codable {
+  let name, description: String?
+  let imageURL: String?
+}
+
+// MARK: - DetailedInfo
+
+public struct DetailedInfo: Codable {
+  let ownerCount, tokenCount: Int?
+  let createdDate: String?
+  let attributes: [Attribute]?
+  let owners: [Owner]?
+  let extendedCollectionInfo: ExtendedCollectionInfo?
+  let extendedSaleInfo: ExtendedSaleInfo?
+  let marketplaceInfo: [MarketplaceInfo]?
+  let mediaInfo: MediaInfo?
+}
+
+// MARK: - Attribute
+
+public struct Attribute: Codable {
+  let traitType, value: String?
+  let displayType: String?
+}
+
+// MARK: - ExtendedCollectionInfo
+
+public struct ExtendedCollectionInfo: Codable {
+  let bannerImageURL: String?
+  let externalURL: String?
+  let twitterUsername: String?
+  let discordURL: String?
+  let instagramUsername, mediumUsername: String?
+  let telegramURL: String?
+  let distinctOwnerCount, distinctNftCount, totalQuantity: Int?
+}
+
+// MARK: - ExtendedSaleInfo
+
+public struct ExtendedSaleInfo: Codable {
+  let fromAddress, toAddress: String?
+  let priceUsdCents: Int?
+  let transaction, marketplaceID, marketplaceName: String?
+}
+
+// MARK: - MarketplaceInfo
+
+public struct MarketplaceInfo: Codable {
+  let marketplaceID, marketplaceName, marketplaceCollectionID: String?
+  let nftURL, collectionURL: String?
+  let verified: Bool?
+  let floorPrice: MarketplaceInfoFloorPrice?
+}
+
+// MARK: - MarketplaceInfoFloorPrice
+
+public struct MarketplaceInfoFloorPrice: Codable {
+  let value: Double?
+  let paymentToken: PaymentToken?
+  let valueUsdCents: Int?
+}
+
+// MARK: - PaymentToken
+
+public struct PaymentToken: Codable {
+  let paymentTokenID, name, symbol: String?
+  let address: String?
+  let decimals: Int?
+}
+
+// MARK: - MediaInfo
+
+public struct MediaInfo: Codable {
+  let previews: Previews?
+  let animationURL: String?
+  let backgroundColor: String?
+}
+
+// MARK: - Previews
+
+public struct Previews: Codable {
+  let imageSmallURL, imageMediumURL, imageLargeURL, imageOpengraphURL: String?
+  let blurhash, predominantColor: String?
+}
+
+// MARK: - Owner
+
+public struct Owner: Codable {
+  let ownerAddress: String?
+  let quantity: Int?
+  let firstAcquiredDate, lastAcquiredDate: String?
+}
+
+// MARK: - NftAssetFloorPrice
+
+public struct NftAssetFloorPrice: Codable {
+  let price: Double?
+  let currency: String?
+}
+
+// MARK: - LastSale
+
+public struct LastSale: Codable {
+  let price: Double?
+  let currency: String?
+  let date: String?
+}
+
+// MARK: - Rarity
+
+public struct Rarity: Codable {
+  let rank: Int?
+  let score: Double?
+}
