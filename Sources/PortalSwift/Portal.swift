@@ -717,6 +717,14 @@ public class Portal {
     )
   }
 
+  public func buildEip155Transaction(chainId: String, params: BuildTransactionParam) async throws -> BuildEip115TransactionResponse {
+    return try await api.buildEip155Transaction(chainId: chainId, params: params)
+  }
+
+  public func buildSolanaTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildSolanaTransactionResponse {
+    return try await api.buildSolanaTransaction(chainId: chainId, params: params)
+  }
+
   /**********************************
    * Deprecated functions
    **********************************/
