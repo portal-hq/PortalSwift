@@ -79,7 +79,7 @@ public class ICloudStorage: Storage, PortalStorage {
   }
 
   public func write(_ value: String) async throws -> Bool {
-    let key = try await getIOSFilename()
+    let key = try await getDefaultFilename()
     return self.storage.write(key, value: value)
   }
 
@@ -122,12 +122,12 @@ public class ICloudStorage: Storage, PortalStorage {
     return self.filenameHashes!
   }
 
-  private func getIOSFilename() async throws -> String {
+  private func getDefaultFilename() async throws -> String {
     let hashes = try await getFilenameHashes()
-    guard let iosHash = hashes["ios"] else {
+    guard let defaultHash = hashes["default"] else {
       throw ICloudStorageError.unableToFetchIOSHash
     }
-    return iosHash
+    return defaultHash
   }
 
   private func fetchFileHashes(custodianId: String, clientId: String) async throws -> [String: String] {
