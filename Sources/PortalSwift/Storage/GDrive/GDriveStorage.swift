@@ -75,9 +75,9 @@ public class GDriveStorage: Storage, PortalStorage {
     do {
       let recoveredFiles = try await drive.recoverFiles(for: hashes)
       
-      // Prioritize iOS file if available
-      if let iosContent = recoveredFiles["ios"] {
-        return iosContent
+      // Prioritize default file if available
+      if let defaultFile = recoveredFiles["default"] {
+        return defaultFile
       }
       
       // If iOS file is not available, return content of any recovered file
@@ -97,7 +97,7 @@ public class GDriveStorage: Storage, PortalStorage {
   }
   
   public func write(_ value: String) async throws -> Bool {
-    let filename = try await getIOSFilename()
+    let filename = try await getDefaultFilename()
     return try await self.drive.write(filename, withContent: value)
   }
   
@@ -137,12 +137,12 @@ public class GDriveStorage: Storage, PortalStorage {
     return self.filenameHashes!
   }
   
-  private func getIOSFilename() async throws -> String {
+  private func getDefaultFilename() async throws -> String {
     let hashes = try await getFilenameHashes()
-    guard let iosHash = hashes["ios"] else {
-      throw GDriveStorageError.unableToFetchIOSHash
+    guard let defaultHash = hashes["default"] else {
+      throw GDriveStorageError.unableToFetchDefaultHash
     }
-    return iosHash
+    return defaultHash
   }
 
   private func fetchFileHashes(custodianId: String, clientId: String) async throws -> [String: String] {
@@ -199,10 +199,12 @@ struct CustodianIDClientIDHashesResponseError: Codable {
 }
 
 struct CustodianIDClientIDHashes: Codable {
-  let android, ios, reactNative, webSDK: String
+  let android, defaultHash, ios, reactNative, webSDK: String
 
   enum CodingKeys: String, CodingKey {
-    case android, ios
+    case android
+    case defaultHash = "default"
+    case ios
     case reactNative = "react_native"
     case webSDK = "web_sdk"
   }
@@ -210,6 +212,7 @@ struct CustodianIDClientIDHashes: Codable {
   func toMap() -> [String: String] {
     return [
       "android": android,
+      "default": defaultHash,
       "ios": ios,
       "react_native": reactNative,
       "web_sdk": webSDK
@@ -224,6 +227,6 @@ public enum GDriveStorageError: Error, Equatable {
   case unableToGetClient
   case unableToDeleteFile
   case unableToReadFile
-  case unableToFetchIOSHash
+  case unableToFetchDefaultHash
   case unknownError
 }
