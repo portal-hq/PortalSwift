@@ -148,10 +148,10 @@ public class ICloudStorage: Storage, PortalStorage {
     let hashesJSON = mobile.MobileGetCustodianIdClientIdHashes(inputJSONString)
     
     guard let hashesData = hashesJSON.data(using: .utf8),
-          let hashes = try? JSONDecoder().decode([String: String].self, from: hashesData) else {
+          let hashes = try? JSONDecoder().decode(CustodianIDClientIDHashesResponse.self, from: hashesData) else {
       throw ICloudStorageError.unableToFetchClientData
     }
     
-    return hashes
+    return hashes.data?.toMap() ?? [:]
   }
 }

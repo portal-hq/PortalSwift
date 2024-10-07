@@ -118,7 +118,7 @@ public class GDriveClient {
       throw GDriveClientError.unableToBuildGDriveQuery
     }
 
-    if let url = URL(string: "\(baseUrl)/drive/v3/files?corpora=user&q=\(query)&orderBy=modifiedTime%20desc&pageSize=1&fields=files(id%2C%20name%2C%20createdTime%2C%20modifiedTime)") {
+    if let url = URL(string: "\(baseUrl)/drive/v3/files?corpora=user&q=\(query)&orderBy=modifiedTime%20desc&pageSize=1") {
       let data = try await requests.get(url, withBearerToken: accessToken)
       let filesListResponse = try decoder.decode(GDriveFilesListResponse.self, from: data)
 
