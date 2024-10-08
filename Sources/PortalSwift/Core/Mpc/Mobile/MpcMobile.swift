@@ -235,7 +235,7 @@ class MobileWrapper: Mobile {
 
     return result
   }
-  
+
   func MobileGetCustodianIdClientIdHashes(_ custodianIdClientIdJSON: String) -> String {
     return Mpc.MobileGetCustodianIdClientIdHashes(custodianIdClientIdJSON)
   }

@@ -106,7 +106,7 @@ public class Portal {
     self.keychain.api = api
 
     self.mpc = mpc ?? PortalMpc(apiKey: apiKey, api: self.api, keychain: self.keychain, host: mpcHost, mobile: self.binary, featureFlags: featureFlags)
-    
+
     // Handle iCloud storage
     let iCloudStorage: ICloudStorage
     if let iCloud = iCloud {

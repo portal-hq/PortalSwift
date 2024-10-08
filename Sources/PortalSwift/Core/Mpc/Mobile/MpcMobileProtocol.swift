@@ -73,7 +73,7 @@ public protocol Mobile {
   func MobileEjectWalletAndDiscontinueMPC(_ clientDkgCipherText: String, _ serverDkgCipherText: String) async -> String
 
   func MobileEjectWalletAndDiscontinueMPCEd25519(_ clientDkgCipherText: String, _ serverDkgCipherText: String) async -> String
-  
+
   func MobileGetCustodianIdClientIdHashes(_ custodianIdClientIdJSON: String) -> String
 
   func MobileFormatShares(_ sharesJSON: String) -> String

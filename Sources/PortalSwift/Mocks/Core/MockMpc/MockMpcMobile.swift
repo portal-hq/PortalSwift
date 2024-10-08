@@ -184,8 +184,8 @@ public class MockMobileWrapper: Mobile {
   public func MobileEjectWalletAndDiscontinueMPCEd25519(_: String, _: String) -> String {
     return MockConstants.mockSolanaEjectResponse
   }
-  
-  public func MobileGetCustodianIdClientIdHashes(_ custodianIdClientIdJSON: String) -> String {
+
+  public func MobileGetCustodianIdClientIdHashes(_: String) -> String {
     // Mock implementation
     return """
     {
@@ -197,7 +197,7 @@ public class MockMobileWrapper: Mobile {
     """
   }
 
-  public func MobileFormatShares(_ sharesJSON: String) -> String {
+  public func MobileFormatShares(_: String) -> String {
     // Mock implementation
     return """
     {

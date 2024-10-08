@@ -4,13 +4,13 @@ public struct PortalMpcBackupResponse {
 }
 
 public struct FormatShareResponse: Codable {
-    let data: PortalMpcGenerateResponse?
-    let error: ErrorDetails?
+  let data: PortalMpcGenerateResponse?
+  let error: ErrorDetails?
 }
 
 public struct ErrorDetails: Codable {
-    let id: String
-    let message: String
+  let id: String
+  let message: String
 }
 
 public typealias PortalMpcGenerateResponse = [String: PortalMpcGeneratedShare]
@@ -38,41 +38,41 @@ public struct MpcShare: Codable, Equatable {
   public let q: String?
   public let pederson: Pederson?
   public let bks: BKS?
-  
+
   // Additional fields to handle different SDK formats
   public let partialPublicKey: PartialPublicKey? // For Kotlin SDK
   public let partialPubKey: [PublicKey]? // For Web SDK
-  
+
   public struct PublicKey: Codable, Equatable {
     public let X: String
     public let Y: String
   }
-  
+
   public struct PartialPublicKey: Codable, Equatable {
     public let client: PublicKey
     public let server: PublicKey
   }
-  
+
   public struct AllY: Codable, Equatable {
     public let client: PublicKey
     public let server: PublicKey
   }
-  
+
   public struct Pederson: Codable, Equatable {
     public let client: PedersonData
     public let server: PedersonData
-    
+
     public struct PedersonData: Codable, Equatable {
       public let n: String
       public let s: String
       public let t: String
     }
   }
-  
+
   public struct BKS: Codable, Equatable {
     public let client: BKSData
     public let server: BKSData
-    
+
     public struct BKSData: Codable, Equatable {
       public let X: String
       public let Rank: Int
@@ -81,14 +81,14 @@ public struct MpcShare: Codable, Equatable {
 
   public static func == (lhs: MpcShare, rhs: MpcShare) -> Bool {
     return lhs.signingSharePairId == rhs.signingSharePairId &&
-           lhs.backupSharePairId == rhs.backupSharePairId &&
-           lhs.share == rhs.share
+      lhs.backupSharePairId == rhs.backupSharePairId &&
+      lhs.share == rhs.share
   }
-  
+
   // Custom initializer to handle different SDK formats
   public init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    
+
     clientId = try container.decodeIfPresent(String.self, forKey: .clientId) ?? ""
     backupSharePairId = try container.decodeIfPresent(String.self, forKey: .backupSharePairId)
     signingSharePairId = try container.decodeIfPresent(String.self, forKey: .signingSharePairId)
@@ -101,10 +101,10 @@ public struct MpcShare: Codable, Equatable {
     q = try container.decodeIfPresent(String.self, forKey: .q)
     pederson = try container.decodeIfPresent(Pederson.self, forKey: .pederson)
     bks = try container.decodeIfPresent(BKS.self, forKey: .bks)
-    
+
     // Handle Kotlin SDK format
     partialPublicKey = try container.decodeIfPresent(PartialPublicKey.self, forKey: .partialPublicKey)
-    
+
     // Handle Web SDK format
     partialPubKey = try container.decodeIfPresent([PublicKey].self, forKey: .partialPubKey)
   }

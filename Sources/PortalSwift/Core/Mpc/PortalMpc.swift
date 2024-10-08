@@ -315,7 +315,8 @@ public class PortalMpc {
     }
 
     if let ed25519Share = formattedShares["ED25519"] ?? formattedShares["ed25519"],
-       let organizationShareEd25519 = andOrganizationSolanaBackupShare {
+       let organizationShareEd25519 = andOrganizationSolanaBackupShare
+    {
       let ejectResponse = await self.mobile.MobileEjectWalletAndDiscontinueMPCEd25519(ed25519Share.share, organizationShareEd25519)
       guard let jsonData = ejectResponse.data(using: .utf8) else {
         throw JSONParseError.stringToDataConversionFailed
@@ -805,18 +806,18 @@ public class PortalMpc {
 
   private func formatShares(sharesJSONString: String) async throws -> PortalMpcGenerateResponse {
     let formattedSharesString = self.mobile.MobileFormatShares(sharesJSONString)
-    
+
     guard let jsonData = formattedSharesString.data(using: .utf8) else {
       throw MpcError.unableToDecodeShare
     }
-    
+
     do {
       let result = try JSONDecoder().decode(FormatShareResponse.self, from: jsonData)
-      
+
       if let error = result.error {
         throw MpcError.unexpectedErrorOnRecover("Error formatting shares: \(error.message)")
       }
-      
+
       guard let data = result.data else {
         throw MpcError.unexpectedErrorOnRecover("No data returned from MobileFormatShares")
       }
@@ -826,37 +827,6 @@ public class PortalMpc {
       print("Error decoding formatted shares: \(error)")
       throw MpcError.unableToDecodeShare
     }
-  }
-
-  private func parseNestedStructure(_ jsonShares: [String: [String: Any]]) throws -> PortalMpcGenerateResponse {
-    var backupShares: PortalMpcGenerateResponse = [:]
-    
-    for (curve, curveData) in jsonShares {
-      let uppercasedCurve = curve.uppercased()
-      if let shareData = curveData["share"] {
-        if let shareString = try parseShare(shareData) {
-          // Parse the share string into an MpcShare object
-          if let jsonData = shareString.data(using: .utf8),
-             let mpcShare = try? JSONDecoder().decode(MpcShare.self, from: jsonData) {
-            
-            // Try to get id from curveData, or use signingSharePairId or backupSharePairId from mpcShare
-            let id = (curveData["id"] as? String)?.isEmpty == false ? (curveData["id"] as? String) :
-                     mpcShare.signingSharePairId?.isEmpty == false ? mpcShare.signingSharePairId :
-                     mpcShare.backupSharePairId?.isEmpty == false ? mpcShare.backupSharePairId :
-                     nil
-            
-            // If we have an id, and we already have shareString, so add it to backup shares.
-            if let id = id, !id.isEmpty {
-              backupShares[uppercasedCurve] = PortalMpcGeneratedShare(id: id, share: shareString)
-            }
-
-            // If id is empty, we skip this item
-          }
-        }
-      }
-    }
-    
-    return backupShares
   }
 
   private func parseShare(_ shareData: Any) throws -> String? {
@@ -872,7 +842,8 @@ public class PortalMpc {
   private func parseStringShare(_ shareString: String) throws -> String? {
     // First, try to parse it.
     if let jsonData = shareString.data(using: .utf8),
-       (try? JSONSerialization.jsonObject(with: jsonData)) != nil {
+       (try? JSONSerialization.jsonObject(with: jsonData)) != nil
+    {
       return shareString
     }
 
@@ -884,19 +855,20 @@ public class PortalMpc {
     } else {
       paddedShareString = shareString
     }
-    
+
     if let decodedData = Data(base64Encoded: paddedShareString, options: [.ignoreUnknownCharacters]) {
       // Convert to string and trim null characters
       var decodedString = String(data: decodedData, encoding: .utf8) ?? ""
       decodedString = decodedString.trimmingCharacters(in: CharacterSet(charactersIn: "\u{0000}"))
-      
+
       // Try to parse the decoded and trimmed string as JSON
       if let jsonData = decodedString.data(using: .utf8),
-         (try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]) != nil {
+         (try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]) != nil
+      {
         return decodedString
       }
     }
-    
+
     // If we can't parse it as JSON in either form, return nil
     return nil
   }
@@ -907,13 +879,6 @@ public class PortalMpc {
     // Validate that it can be decoded into an MpcShare
     _ = try JSONDecoder().decode(MpcShare.self, from: shareJsonData)
     return String(data: shareJsonData, encoding: .utf8)
-  }
-
-  private func parseLegacyFlatStructure(_ sharesData: Data) throws -> PortalMpcGenerateResponse {
-    let mpcShare = try JSONDecoder().decode(MpcShare.self, from: sharesData)
-    let shareString = String(data: sharesData, encoding: .utf8)!
-    
-    return ["SECP256K1": PortalMpcGeneratedShare(id: mpcShare.backupSharePairId ?? mpcShare.signingSharePairId ?? "", share: shareString)]
   }
 
   private func recoverSigningShare(_ forCurve: PortalCurve, withMethod: BackupMethods, andBackupShare: String) async throws -> MpcShare {

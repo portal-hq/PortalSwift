@@ -55,26 +55,26 @@ public class ICloudStorage: Storage, PortalStorage {
 
   public func delete() async throws -> Bool {
     let hashes = try await getFilenameHashes()
-    
+
     for hash in hashes.values {
       if self.storage.delete(hash) {
         return true
       }
     }
-    
+
     throw ICloudStorageError.unableToDeleteFile
   }
 
   public func read() async throws -> String {
     let hashes = try await getFilenameHashes()
-    
+
     for hash in hashes.values {
       let value = self.storage.read(hash)
       if !value.isEmpty {
         return value
       }
     }
-    
+
     throw ICloudStorageError.unableToReadFile
   }
 
@@ -101,7 +101,7 @@ public class ICloudStorage: Storage, PortalStorage {
   /****************************
    * Private functions
    *******************************************/
-  
+
   private func getFilenameHashes() async throws -> [String: String] {
     if let hashes = self.filenameHashes {
       return hashes
@@ -135,23 +135,25 @@ public class ICloudStorage: Storage, PortalStorage {
       "custodianId": custodianId,
       "clientId": clientId
     ]
-    
+
     guard let mobile = self.mobile else {
       throw ICloudStorageError.binaryNotConfigured
     }
-    
+
     guard let inputJSON = try? JSONSerialization.data(withJSONObject: input),
-          let inputJSONString = String(data: inputJSON, encoding: .utf8) else {
+          let inputJSONString = String(data: inputJSON, encoding: .utf8)
+    else {
       throw ICloudStorageError.unableToFetchClientData
     }
-    
+
     let hashesJSON = mobile.MobileGetCustodianIdClientIdHashes(inputJSONString)
-    
+
     guard let hashesData = hashesJSON.data(using: .utf8),
-          let hashes = try? JSONDecoder().decode(CustodianIDClientIDHashesResponse.self, from: hashesData) else {
+          let hashes = try? JSONDecoder().decode(CustodianIDClientIDHashesResponse.self, from: hashesData)
+    else {
       throw ICloudStorageError.unableToFetchClientData
     }
-    
+
     return hashes.data?.toMap() ?? [:]
   }
 }

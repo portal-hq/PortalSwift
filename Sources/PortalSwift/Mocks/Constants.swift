@@ -205,10 +205,11 @@ public enum MockConstants {
         ["X": "mock-partial-pub-key-2-x", "Y": "mock-partial-pub-key-2-y"]
       ]
     ]
-    
+
     let jsonData = try! JSONSerialization.data(withJSONObject: mockData, options: [])
     return try! JSONDecoder().decode(MpcShare.self, from: jsonData)
   }()
+
   public static let mockMpcShareId = "test-share-id"
   public static let mockMpcShareShare = "test-mpc-share-share"
   public static let mocMpcShareSsid = "test-mpc-share-ssid"

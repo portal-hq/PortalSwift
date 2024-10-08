@@ -195,13 +195,13 @@ public class GDriveClient {
     if accessToken.isEmpty {
       throw GDriveClientError.userNotAuthenticated
     }
-    
+
     let filenameWithExtension = filename + ".txt"
 
     do {
       let existingFileId = try await getIdForFilename(filename)
       guard try await self.delete(existingFileId) else {
-          throw GDriveClientError.unableToDeleteFromGDrive
+        throw GDriveClientError.unableToDeleteFromGDrive
       }
 
       let fileId = try await writeFile(filenameWithExtension, withContent: withContent, andAccessToken: accessToken)
@@ -213,7 +213,7 @@ public class GDriveClient {
       return !fileId.isEmpty
     }
   }
-  
+
   public func recoverFiles(for hashes: [String: String]) async throws -> [String: String] {
     var recoveredFiles: [String: String] = [:]
     var errors: [String: Error] = [:]

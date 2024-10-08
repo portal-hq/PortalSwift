@@ -17,13 +17,14 @@ public class GDriveStorage: Storage, PortalStorage {
     get { return self.drive.clientId }
     set(clientId) { self.drive.clientId = clientId }
   }
+
   public var mobile: Mobile?
   public let encryption: PortalEncryption
   public var folder: String {
     get { return self.drive.folder }
     set(folder) { self.drive.folder = folder }
   }
-  
+
   public var view: UIViewController? {
     get {
       return self.drive.view
@@ -32,13 +33,13 @@ public class GDriveStorage: Storage, PortalStorage {
       self.drive.view = view
     }
   }
-  
+
   private var drive: GDriveClient
   private var filename: String?
   private var logger = PortalLogger()
   private var separator: String = ""
   private var filenameHashes: [String: String]?
-  
+
   public init(
     mobile: Mobile? = nil,
     clientID: String? = nil,
@@ -50,14 +51,14 @@ public class GDriveStorage: Storage, PortalStorage {
     self.drive = driveClient ?? GDriveClient(clientId: clientID, view: viewController)
     self.encryption = encryption ?? PortalEncryption()
   }
-  
+
   /*******************************************
    * Public functions
    *******************************************/
-  
+
   public func delete() async throws -> Bool {
     let hashes = try await getFilenameHashes()
-    
+
     for hash in hashes.values {
       if let fileId = try? await drive.getIdForFilename(hash) {
         if try await self.drive.delete(fileId) {
@@ -65,26 +66,26 @@ public class GDriveStorage: Storage, PortalStorage {
         }
       }
     }
-    
+
     throw GDriveStorageError.unableToDeleteFile
   }
-  
+
   public func read() async throws -> String {
     let hashes = try await getFilenameHashes()
-    
+
     do {
       let recoveredFiles = try await drive.recoverFiles(for: hashes)
-      
+
       // Prioritize default file if available
       if let defaultFile = recoveredFiles["default"] {
         return defaultFile
       }
-      
+
       // If iOS file is not available, return content of any recovered file
       if let anyContent = recoveredFiles.values.first {
         return anyContent
       }
-      
+
       // This should never happen because recoverFiles throws an error if no files are recovered
       throw GDriveStorageError.unableToReadFile
     } catch GDriveClientError.unableToRecoverAnyFiles(let errors) {
@@ -95,25 +96,25 @@ public class GDriveStorage: Storage, PortalStorage {
       throw GDriveStorageError.unableToReadFile
     }
   }
-  
+
   public func write(_ value: String) async throws -> Bool {
     let filename = try await getDefaultFilename()
     return try await self.drive.write(filename, withContent: value)
   }
-  
+
   public func signIn() async throws -> GIDGoogleUser {
     guard let auth = drive.auth else {
       self.logger.debug("GDriveStorage.signIn() - ❌ Authentication not initialized. GDrive config has not been set yet.")
       throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfiguration() to configure GoogleDrive")
     }
-    
+
     return try await auth.signIn()
   }
-  
+
   public func validateOperations() async throws -> Bool {
     return try await self.drive.validateOperations()
   }
-  
+
   /*******************************************
    * Private functions
    *******************************************/
@@ -121,22 +122,22 @@ public class GDriveStorage: Storage, PortalStorage {
     if let hashes = self.filenameHashes {
       return hashes
     }
-    
+
     guard let api = self.api else {
       throw GDriveStorageError.portalApiNotConfigured
     }
-    
+
     guard let client = try await api.client else {
       throw GDriveStorageError.unableToGetClient
     }
-    
+
     let custodianId = client.custodian.id
     let clientId = client.id
     self.filenameHashes = try await fetchFileHashes(custodianId: custodianId, clientId: clientId)
-    
+
     return self.filenameHashes!
   }
-  
+
   private func getDefaultFilename() async throws -> String {
     let hashes = try await getFilenameHashes()
     guard let defaultHash = hashes["default"] else {
@@ -156,7 +157,8 @@ public class GDriveStorage: Storage, PortalStorage {
     }
 
     guard let inputJSON = try? JSONSerialization.data(withJSONObject: input),
-          let inputJSONString = String(data: inputJSON, encoding: .utf8) else {
+          let inputJSONString = String(data: inputJSON, encoding: .utf8)
+    else {
       throw GDriveStorageError.unableToFetchClientData
     }
 
@@ -208,7 +210,7 @@ struct CustodianIDClientIDHashes: Codable {
     case reactNative = "react_native"
     case webSDK = "web_sdk"
   }
-  
+
   func toMap() -> [String: String] {
     return [
       "android": android,
