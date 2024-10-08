@@ -10,7 +10,7 @@ import Foundation
 import UIKit
 
 public class MockGDriveStorage: GDriveStorage {
-  public init(mobile: Mobile, clientID: String? = nil, viewController: UIViewController? = nil) {
+  public init(mobile: Mobile? = nil, clientID: String? = nil, viewController: UIViewController? = nil) {
     super.init(mobile: mobile, clientID: clientID, viewController: viewController, encryption: MockPortalEncryption())
   }
 
