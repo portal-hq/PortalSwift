@@ -50,7 +50,7 @@ final class PortalRequestsSpy: PortalRequestsProtocol {
   }
 
   // Tracking variables for `post` function
-  private(set) var postCallsCount = 0
+  var postCallsCount = 0
   private(set) var postFromParam: URL?
   private(set) var postWithBearerTokenParam: String?
   private(set) var postAndPayloadParam: Codable?

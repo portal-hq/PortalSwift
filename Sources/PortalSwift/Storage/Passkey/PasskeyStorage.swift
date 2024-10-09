@@ -155,7 +155,7 @@ public class PasskeyStorage: Storage, PortalStorage {
    * Private functions
    *******************************************/
 
-  private func beginLogin() async throws -> WebAuthnAuthenticationOption {
+  func beginLogin() async throws -> WebAuthnAuthenticationOption {
     guard let apiKey = self.apiKey else {
       throw PasskeyStorageError.noApiKey
     }
@@ -170,7 +170,7 @@ public class PasskeyStorage: Storage, PortalStorage {
     throw URLError(.badURL)
   }
 
-  private func beginRegistration() async throws -> WebAuthnRegistrationOptions {
+  func beginRegistration() async throws -> WebAuthnRegistrationOptions {
     guard let apiKey = self.apiKey else {
       throw PasskeyStorageError.noApiKey
     }
@@ -185,7 +185,7 @@ public class PasskeyStorage: Storage, PortalStorage {
     throw URLError(.badURL)
   }
 
-  private func getPasskeyStatus() async throws -> PasskeyStatus {
+  func getPasskeyStatus() async throws -> PasskeyStatus {
     guard let apiKey = self.apiKey else {
       throw PasskeyStorageError.noApiKey
     }
@@ -200,7 +200,7 @@ public class PasskeyStorage: Storage, PortalStorage {
     throw URLError(.badURL)
   }
 
-  private func handleFinishLoginRead(_ assertion: String) async throws -> String {
+  func handleFinishLoginRead(_ assertion: String) async throws -> String {
     guard let apiKey = self.apiKey, let sessionId = self.sessionId else {
       throw PasskeyStorageError.readError
     }
