@@ -190,6 +190,7 @@ public class MockMobileWrapper: Mobile {
     return """
     {
         "android": "123456",
+        "default": "34532234",
         "ios": "abcdef1234567890",
         "react_native": "789012",
         "web_sdk": "345678"
@@ -201,13 +202,15 @@ public class MockMobileWrapper: Mobile {
     // Mock implementation
     return """
     {
-        "SECP256K1": {
-            "id": "mockId1",
-            "share": "mockShare1"
-        },
-        "ED25519": {
-            "id": "mockId2",
-            "share": "mockShare2"
+        "data": {
+            "SECP256K1": {
+                "id": "mockId1",
+                "share": "mockShare1"
+            },
+            "ED25519": {
+                "id": "mockId2",
+                "share": "mockShare2"
+            }
         }
     }
     """
