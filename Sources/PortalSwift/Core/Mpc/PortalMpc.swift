@@ -59,7 +59,7 @@ public class PortalMpc: PortalMpcProtocol {
   private let featureFlags: FeatureFlags?
   private let host: String
   private let isSimulator: Bool
-  private let keychain: PortalKeychain
+  private let keychain: PortalKeychainProtocol
   private let logger = PortalLogger()
   private let mobile: Mobile
   private let version: String
@@ -74,7 +74,7 @@ public class PortalMpc: PortalMpcProtocol {
   public init(
     apiKey: String,
     api: PortalApiProtocol,
-    keychain: PortalKeychain,
+    keychain: PortalKeychainProtocol,
     host: String = "mpc.portalhq.io",
     isSimulator: Bool = false,
     version: String = "v6",
@@ -1027,7 +1027,7 @@ public enum MpcStatuses: String {
 }
 
 /// A list of errors MPC can throw.
-public enum MpcError: Error {
+public enum MpcError: Error, Equatable {
   case addressNotFound(_ message: String)
   case backupMethodNotRegistered(_ message: String)
   case backupNoLongerSupported(_ message: String)
