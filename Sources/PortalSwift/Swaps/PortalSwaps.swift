@@ -6,7 +6,7 @@
 import AnyCodable
 import Foundation
 
-public struct Quote: Codable {
+public struct Quote: Codable, Equatable {
   public var allowanceTarget: String
   public var cost: Double
   public var transaction: ETHTransactionParam

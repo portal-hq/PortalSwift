@@ -33,3 +33,13 @@ extension ETHTransactionParam {
     )
   }
 }
+
+extension QuoteArgs {
+  static func stub(
+    buyToken: String = "default_buyToken",
+    sellToken: String = "default_sellToken",
+    buyAmount: String = "default_buyAmount"
+  ) -> Self {
+    return QuoteArgs(buyToken: buyToken, sellToken: sellToken, buyAmount: buyAmount)
+  }
+}
