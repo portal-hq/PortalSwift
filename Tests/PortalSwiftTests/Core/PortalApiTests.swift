@@ -460,7 +460,7 @@ extension PortalApiTests {
 
   func test_getSources() async throws {
     // given
-    let sourcesResponse = try encoder.encode(StringDictionary.stub())
+    let sourcesResponse = try encoder.encode(Dictionary.stub())
     let portalRequestMock = PortalRequestsMock()
     initPortalApiWith(requests: portalRequestMock)
     portalRequestMock.returnValueData = sourcesResponse

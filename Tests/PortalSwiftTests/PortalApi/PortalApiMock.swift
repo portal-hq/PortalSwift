@@ -13,9 +13,7 @@ class PortalApiMock: PortalApiProtocol {
   var client: PortalSwift.ClientResponse?
 
   var ejectReturnValue: String?
-  var ejectCallsCount: Int = 0
   func eject() async throws -> String {
-    ejectCallsCount += 1
     return ejectReturnValue ?? ""
   }
 
@@ -30,10 +28,8 @@ class PortalApiMock: PortalApiProtocol {
   }
 
   var getClientCipherTextReturnValue: String?
-  var getClientCipherTextCallsCount: Int = 0
   func getClientCipherText(_: String) async throws -> String {
-    getClientCipherTextCallsCount += 1
-    return getClientCipherTextReturnValue ?? ""
+    getClientCipherTextReturnValue ?? ""
   }
 
   var getQuoteReturnValue: Quote?
@@ -67,15 +63,13 @@ class PortalApiMock: PortalApiProtocol {
   }
 
   var prepareEjectReturnValue: String?
-  var prepareEjectCallsCount: Int = 0
   func prepareEject(_: String, _: PortalSwift.BackupMethods) async throws -> String {
-    prepareEjectCallsCount += 1
     return prepareEjectReturnValue ?? ""
   }
 
-  var refreshClientCallsCount = 0
+  var refreshClientCalled = false
   func refreshClient() async throws {
-      refreshClientCallsCount += 1
+    refreshClientCalled = true
   }
 
   var simulateTransactionReturnValue: PortalSwift.SimulatedTransaction?
@@ -83,19 +77,13 @@ class PortalApiMock: PortalApiProtocol {
     return simulateTransactionReturnValue ?? SimulatedTransaction(changes: [])
   }
 
-  var updateShareStatusCallsCount = 0
-  var updateShareStatusSharePareTypeParam: PortalSharePairType?
-  var updateShareStatusStatusParam: SharePairUpdateStatus?
-  func updateShareStatus(_ type: PortalSwift.PortalSharePairType, status: PortalSwift.SharePairUpdateStatus, sharePairIds _: [String]) async throws {
-      updateShareStatusSharePareTypeParam = type
-      updateShareStatusStatusParam = status
-      updateShareStatusCallsCount += 1
+  var updateShareStatusCalled = false
+  func updateShareStatus(_: PortalSwift.PortalSharePairType, status _: PortalSwift.SharePairUpdateStatus, sharePairIds _: [String]) async throws {
+    updateShareStatusCalled = true
   }
 
   var storeClientCipherTextReturnValue: Bool?
-  var storeClientCipherTextCallsCount: Int = 0
   func storeClientCipherText(_: String, cipherText _: String) async throws -> Bool {
-    storeClientCipherTextCallsCount += 1
     return storeClientCipherTextReturnValue ?? false
   }
 
