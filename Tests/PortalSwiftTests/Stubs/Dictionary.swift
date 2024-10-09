@@ -6,7 +6,8 @@
 //
 
 import Foundation
-typealias StringDictionary = [String : String]
+
+typealias StringDictionary = [String: String]
 
 extension StringDictionary where Key == String, Value == String {
   static func stub() -> [String: String] {
