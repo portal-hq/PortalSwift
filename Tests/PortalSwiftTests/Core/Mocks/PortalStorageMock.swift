@@ -9,66 +9,66 @@ import Foundation
 @testable import PortalSwift
 
 class PortalStorageMock: PortalStorage {
-  var api: PortalApiProtocol?
-  var encryption: PortalEncryptionProtocol
+    var api: PortalApiProtocol?
+    var encryption: PortalEncryption
 
-  // Initialize with default or injected encryption
-  init(encryption: PortalEncryptionProtocol = PortalEncryption()) {
-    self.encryption = encryption
-  }
-
-  // Mock properties to store return values
-  var decryptReturnValue: String?
-  var decryptError: Error?
-  func decrypt(_: String, withKey _: String) async throws -> String {
-    if let error = decryptError {
-      throw error
+    // Initialize with default or injected encryption
+    init(encryption: PortalEncryption = PortalEncryption()) {
+        self.encryption = encryption
     }
-    return decryptReturnValue ?? ""
-  }
 
-  var deleteReturnValue: Bool?
-  var deleteError: Error?
-  func delete() async throws -> Bool {
-    if let error = deleteError {
-      throw error
+    // Mock properties to store return values
+    var decryptReturnValue: String?
+    var decryptError: Error?
+    func decrypt(_ value: String, withKey: String) async throws -> String {
+        if let error = decryptError {
+            throw error
+        }
+        return decryptReturnValue ?? ""
     }
-    return deleteReturnValue ?? false
-  }
 
-  var encryptReturnValue: EncryptData?
-  var encryptError: Error?
-  func encrypt(_: String) async throws -> EncryptData {
-    if let error = encryptError {
-      throw error
+    var deleteReturnValue: Bool?
+    var deleteError: Error?
+    func delete() async throws -> Bool {
+        if let error = deleteError {
+            throw error
+        }
+        return deleteReturnValue ?? false
     }
-    return encryptReturnValue ?? EncryptData(key: "", cipherText: "")
-  }
 
-  var readReturnValue: String?
-  var readError: Error?
-  func read() async throws -> String {
-    if let error = readError {
-      throw error
+    var encryptReturnValue: EncryptData?
+    var encryptError: Error?
+    func encrypt(_ value: String) async throws -> EncryptData {
+        if let error = encryptError {
+            throw error
+        }
+        return encryptReturnValue ?? EncryptData(key: "", cipherText: "")
     }
-    return readReturnValue ?? ""
-  }
 
-  var validateOperationsReturnValue: Bool?
-  var validateOperationsError: Error?
-  func validateOperations() async throws -> Bool {
-    if let error = validateOperationsError {
-      throw error
+    var readReturnValue: String?
+    var readError: Error?
+    func read() async throws -> String {
+        if let error = readError {
+            throw error
+        }
+        return readReturnValue ?? ""
     }
-    return validateOperationsReturnValue ?? false
-  }
 
-  var writeReturnValue: Bool?
-  var writeError: Error?
-  func write(_: String) async throws -> Bool {
-    if let error = writeError {
-      throw error
+    var validateOperationsReturnValue: Bool?
+    var validateOperationsError: Error?
+    func validateOperations() async throws -> Bool {
+        if let error = validateOperationsError {
+            throw error
+        }
+        return validateOperationsReturnValue ?? false
     }
-    return writeReturnValue ?? false
-  }
+
+    var writeReturnValue: Bool?
+    var writeError: Error?
+    func write(_ value: String) async throws -> Bool {
+        if let error = writeError {
+            throw error
+        }
+        return writeReturnValue ?? false
+    }
 }
