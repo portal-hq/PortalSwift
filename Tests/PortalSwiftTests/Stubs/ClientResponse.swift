@@ -17,7 +17,7 @@ extension ClientResponse {
     ejectedAt: String? = nil,
     isAccountAbstracted: Bool = false,
     metadata: ClientResponseMetadata = .stub(),
-    wallets: [ClientResponseWallet] = [.stub()]
+    wallets: [ClientResponseWallet] = [.stub(curve: .ED25519), .stub(curve: .SECP256K1)]
   ) -> Self {
     return ClientResponse(
       id: id,
