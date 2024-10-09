@@ -75,7 +75,7 @@ class PortalApiMock: PortalApiProtocol {
 
   var refreshClientCallsCount = 0
   func refreshClient() async throws {
-      refreshClientCallsCount += 1
+    refreshClientCallsCount += 1
   }
 
   var simulateTransactionReturnValue: PortalSwift.SimulatedTransaction?
@@ -87,9 +87,9 @@ class PortalApiMock: PortalApiProtocol {
   var updateShareStatusSharePareTypeParam: PortalSharePairType?
   var updateShareStatusStatusParam: SharePairUpdateStatus?
   func updateShareStatus(_ type: PortalSwift.PortalSharePairType, status: PortalSwift.SharePairUpdateStatus, sharePairIds _: [String]) async throws {
-      updateShareStatusSharePareTypeParam = type
-      updateShareStatusStatusParam = status
-      updateShareStatusCallsCount += 1
+    updateShareStatusSharePareTypeParam = type
+    updateShareStatusStatusParam = status
+    updateShareStatusCallsCount += 1
   }
 
   var storeClientCipherTextReturnValue: Bool?

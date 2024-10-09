@@ -24,7 +24,7 @@ public class PortalMpcError: LocalizedError, CustomStringConvertible, Equatable 
     return self.errorDescription
   }
 
-    public static func == (lhs: PortalMpcError, rhs: PortalMpcError) -> Bool {
-        return lhs.code == rhs.code && lhs.message == rhs.message
-    }
+  public static func == (lhs: PortalMpcError, rhs: PortalMpcError) -> Bool {
+    return lhs.code == rhs.code && lhs.message == rhs.message
+  }
 }

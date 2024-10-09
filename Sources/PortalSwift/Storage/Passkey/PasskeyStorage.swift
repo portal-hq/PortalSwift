@@ -21,7 +21,7 @@ public class PasskeyStorage: Storage, PortalStorage {
 
   var apiKey: String?
   public var client: Client?
-  public let encryption: PortalEncryption
+  public let encryption: PortalEncryptionProtocol
   public var portalApi: PortalApiProtocol?
   public var relyingParty: String
   public var webAuthnHost: String
@@ -42,7 +42,7 @@ public class PasskeyStorage: Storage, PortalStorage {
     relyingParty: String? = "portalhq.io",
     webAuthnHost: String? = "backup.web.portalhq.io",
     auth: PasskeyAuth? = nil,
-    encryption: PortalEncryption? = nil,
+    encryption: PortalEncryptionProtocol? = nil,
     requests: PortalRequestsProtocol? = nil
   ) {
     self.relyingParty = relyingParty ?? "portalhq.io"
@@ -59,7 +59,7 @@ public class PasskeyStorage: Storage, PortalStorage {
     relyingParty: String? = "portalhq.io",
     webAuthnHost: String? = "backup.web.portalhq.io",
     auth: PasskeyAuth? = nil,
-    encryption: PortalEncryption? = nil,
+    encryption: PortalEncryptionProtocol? = nil,
     requests: PortalRequestsProtocol? = nil
   ) {
     self.relyingParty = relyingParty ?? "portalhq.io"
