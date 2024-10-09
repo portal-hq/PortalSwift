@@ -13,10 +13,12 @@ class PortalApiSpy: PortalApiProtocol {
   // Property to track client access
   var clientCallsCount: Int = 0
 
+  var mockClient: ClientResponse?
+
   public var client: ClientResponse? {
     get async throws {
       clientCallsCount += 1
-      return nil
+      return mockClient
     }
   }
 
