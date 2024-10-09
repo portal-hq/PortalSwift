@@ -40,9 +40,9 @@ public class ICloudStorage: Storage, PortalStorage {
   private var filenameHashes: [String: String]?
 
   public init(
+    mobile: Mobile? = nil,
     encryption: PortalEncryption? = nil,
-    keyValueStore: PortalKeyValueStore? = nil,
-    mobile: Mobile? = nil
+    keyValueStore: PortalKeyValueStore? = nil
   ) {
     self.encryption = encryption ?? PortalEncryption()
     self.storage = keyValueStore ?? PortalKeyValueStore()
