@@ -15,10 +15,10 @@ public enum PasswordStorageError: Error {
 /// Responsible for CRUD actions for items in the specified storage.
 public class PasswordStorage: Storage, PortalStorage {
   public var api: PortalApiProtocol?
-  public let encryption: PortalEncryption
+  public let encryption: PortalEncryptionProtocol
   public var password: String?
 
-  public init(encryption: PortalEncryption = PortalEncryption()) {
+  public init(encryption: PortalEncryptionProtocol = PortalEncryption()) {
     self.encryption = encryption
   }
 
