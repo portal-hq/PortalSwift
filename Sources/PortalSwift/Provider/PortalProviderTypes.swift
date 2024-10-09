@@ -165,7 +165,7 @@ public struct ETHChainPayload: Codable {
 }
 
 /// A param within ETHTransactionPayload.params.
-public struct ETHTransactionParam: Codable {
+public struct ETHTransactionParam: Codable, Equatable {
   public var from: String
   public var to: String
   public var gas: String?
