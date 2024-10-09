@@ -31,15 +31,15 @@ public class ICloudStorage: Storage, PortalStorage {
   /// The key used to store the private key in iCloud.
   public var key: String = ""
 
-  public let encryption: PortalEncryption
+  public let encryption: PortalEncryptionProtocol
 
   private let isSimulator = TARGET_OS_SIMULATOR != 0
-  private let storage: PortalKeyValueStore
+  private let storage: PortalKeyValueStoreProtocol
 
   /// Initializes a new ICloudStorage instance.
   public init(
-    encryption: PortalEncryption? = nil,
-    keyValueStore: PortalKeyValueStore? = nil
+    encryption: PortalEncryptionProtocol? = nil,
+    keyValueStore: PortalKeyValueStoreProtocol? = nil
   ) {
     self.encryption = encryption ?? PortalEncryption()
     self.storage = keyValueStore ?? PortalKeyValueStore()
