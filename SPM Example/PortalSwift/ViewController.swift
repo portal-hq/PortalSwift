@@ -13,7 +13,9 @@ import UIKit
 
 struct UserResult: Codable {
   var clientApiKey: String
+  var clientId: String
   var exchangeUserId: Int
+  var username: String
 }
 
 struct CipherTextResult: Codable {
@@ -1442,7 +1444,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         try portal.setGDriveView(self)
         self.logger.debug("ViewController.handleGdriveBackup() - Starting backup...")
         _ = try await self.backup(String(user.exchangeUserId), withMethod: .GoogleDrive)
-        self.logger.debug("ViewController.handlePasskeyBackup(): ✅ Successfully sent custodian cipherText.")
+        self.logger.debug("ViewController.handleGdriveBackup(): ✅ Successfully sent custodian cipherText.")
         self.showStatusView(message: "\(self.successStatus) Successfully sent custodian cipherText.")
         self.updateUIComponents()
       } catch {
@@ -1579,7 +1581,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.updateUIComponents()
       } catch {
         self.stopLoading()
-        self.logger.error("ViewController.handlePasskeyBackup() - Error running recover: \(error)")
+        self.logger.error("ViewController.handlePasskeyRecover() - Error running recover: \(error)")
         self.showStatusView(message: "\(self.failureStatus) Error running recover \(error)")
       }
     }
@@ -1601,12 +1603,12 @@ class ViewController: UIViewController, UITextFieldDelegate {
         try self.portal?.setPassword(enteredPassword)
         self.logger.debug("ViewController.handlPasswordBackup() - Starting backup...")
         _ = try await self.backup(String(userId), withMethod: .Password)
-        self.logger.debug("ViewController.handlePasskeyBackup(): ✅ Successfully sent custodian cipherText.")
+        self.logger.debug("ViewController.handlePasswordBackup(): ✅ Successfully sent custodian cipherText.")
         self.showStatusView(message: "\(self.successStatus) Successfully sent custodian cipherText.")
         self.updateUIComponents()
       } catch {
         self.stopLoading()
-        self.logger.error("ViewController.handlePasskeyBackup() - Error running backup: \(error)")
+        self.logger.error("ViewController.handlePasswordBackup() - Error running backup: \(error)")
         self.showStatusView(message: "\(self.failureStatus) Error running backup \(error)")
       }
     }
@@ -1634,7 +1636,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.logger.error("ViewController.handlePasswordRecover() - ❌ Wallet was recovered, but no ETH address was found.")
           throw PortalKeychain.KeychainError.noAddressesFound
         }
-        let debugMessage = "ViewController.handlePasskeyRecover() - ✅ Wallet successfully recovered! ETH address: \(ethereum), Solana address: \(solana ?? "N/A")"
+        let debugMessage = "ViewController.handlePasswordRecover() - ✅ Wallet successfully recovered! ETH address: \(ethereum), Solana address: \(solana ?? "N/A")"
         self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
         self.showStatusView(message: "\(self.successStatus) Wallet successfully recovered!")
         DispatchQueue.main.async {
@@ -1645,7 +1647,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.updateUIComponents()
       } catch {
         self.stopLoading()
-        self.logger.error("ViewController.handlePasskeyBackup() - Error running recover: \(error)")
+        self.logger.error("ViewController.handlePasswordRecover() - Error running recover: \(error)")
         self.showStatusView(message: "\(self.failureStatus) Error running recover \(error)")
       }
     }

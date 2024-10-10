@@ -143,7 +143,6 @@ public enum MockConstants {
   public static let mockGoogleAccessToken = "test-google-access-token"
   public static let mockGoogleUserId = "test-google-user-id"
   public static let mockHost = "example.com"
-  public static let mockICloudHash = ICloudStorage.hash("\(mockClient.custodian.id)\(mockClient.id)")
   public static let mockKeychainBackupShare = PortalKeychainClientMetadataWalletBackupShare(
     backupMethod: .Password,
     createdAt: mockCreatedAt,
@@ -168,35 +167,50 @@ public enum MockConstants {
     status: .completed
   )
   public static let mockMetricsResponse = MetricsResponse(status: true)
-  public static let mockMpcShare = MpcShare(
-    allY: mockMpcSharePartialPublicKey,
-    backupSharePairId: mockMpcShareId,
-    bks: mockMpcShareBks,
-    clientId: mockClientId,
-    p: mockMpcShareP,
-    pederson: mockMpcSharePederssens,
-    pubkey: mockMpcSharePublicKey,
-    q: mockMpcShareQ,
-    share: mockMpcShareShare,
-    signingSharePairId: mockMpcShareId,
-    ssid: mocMpcShareSsid
-  )
-  public static let mockMpcShareBerkhoff = Berkhoff(X: "test-berkhoff-x", Rank: 0)
-  public static let mockMpcShareBks = Berkhoffs(
-    client: mockMpcShareBerkhoff,
-    server: mockMpcShareBerkhoff
-  )
+  public static let mockMpcShare: MpcShare = {
+    let mockData: [String: Any] = [
+      "clientId": "",
+      "backupSharePairId": "test-share-id",
+      "signingSharePairId": "test-share-id",
+      "share": "mock-share-data",
+      "ssid": "mock-ssid",
+      "pubkey": [
+        "X": "mock-pubkey-x",
+        "Y": "mock-pubkey-y"
+      ],
+      "partialPubkey": [
+        "client": ["X": "mock-partial-client-x", "Y": "mock-partial-client-y"],
+        "server": ["X": "mock-partial-server-x", "Y": "mock-partial-server-y"]
+      ],
+      "allY": [
+        "client": ["X": "mock-all-y-client-x", "Y": "mock-all-y-client-y"],
+        "server": ["X": "mock-all-y-server-x", "Y": "mock-all-y-server-y"]
+      ],
+      "p": "mock-p",
+      "q": "mock-q",
+      "pederson": [
+        "client": ["n": "mock-pederson-client-n", "s": "mock-pederson-client-s", "t": "mock-pederson-client-t"],
+        "server": ["n": "mock-pederson-server-n", "s": "mock-pederson-server-s", "t": "mock-pederson-server-t"]
+      ],
+      "bks": [
+        "client": ["X": "mock-bks-client-x", "Rank": 0],
+        "server": ["X": "mock-bks-server-x", "Rank": 1]
+      ],
+      "partialPublicKey": [
+        "client": ["X": "mock-partial-public-key-client-x", "Y": "mock-partial-public-key-client-y"],
+        "server": ["X": "mock-partial-public-key-server-x", "Y": "mock-partial-public-key-server-y"]
+      ],
+      "partialPubKey": [
+        ["X": "mock-partial-pub-key-1-x", "Y": "mock-partial-pub-key-1-y"],
+        ["X": "mock-partial-pub-key-2-x", "Y": "mock-partial-pub-key-2-y"]
+      ]
+    ]
+
+    let jsonData = try! JSONSerialization.data(withJSONObject: mockData, options: [])
+    return try! JSONDecoder().decode(MpcShare.self, from: jsonData)
+  }()
+
   public static let mockMpcShareId = "test-share-id"
-  public static let mockMpcSharePartialPublicKey = PartialPublicKey(
-    client: mockMpcSharePublicKey,
-    server: mockMpcSharePublicKey
-  )
-  public static let mockMpcSharePederssen = Pederssen(n: "mock-pederssen-n", s: "mock-pederssen-s", t: "mock-pederssen-t")
-  public static let mockMpcSharePederssens = Pederssens(
-    client: mockMpcSharePederssen,
-    server: mockMpcSharePederssen
-  )
-  public static let mockMpcSharePublicKey = PublicKey(X: "test-public-key-x", Y: "test-public-key-y")
   public static let mockMpcShareShare = "test-mpc-share-share"
   public static let mocMpcShareSsid = "test-mpc-share-ssid"
   public static let mockMpcShareP = "test-mpc-share-p"

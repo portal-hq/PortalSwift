@@ -184,4 +184,35 @@ public class MockMobileWrapper: Mobile {
   public func MobileEjectWalletAndDiscontinueMPCEd25519(_: String, _: String) -> String {
     return MockConstants.mockSolanaEjectResponse
   }
+
+  public func MobileGetCustodianIdClientIdHashes(_: String) -> String {
+    // Mock implementation
+    return """
+    {
+        "android": "123456",
+        "default": "34532234",
+        "ios": "abcdef1234567890",
+        "react_native": "789012",
+        "web_sdk": "345678"
+    }
+    """
+  }
+
+  public func MobileFormatShares(_: String) -> String {
+    // Mock implementation
+    return """
+    {
+        "data": {
+            "SECP256K1": {
+                "id": "mockId1",
+                "share": "mockShare1"
+            },
+            "ED25519": {
+                "id": "mockId2",
+                "share": "mockShare2"
+            }
+        }
+    }
+    """
+  }
 }

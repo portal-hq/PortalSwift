@@ -129,15 +129,26 @@ FOUNDATION_EXPORT NSString* _Nonnull MobileEncrypt(NSString* _Nullable value);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileEncryptWithPassword(NSString* _Nullable value, NSString* _Nullable password);
 
+FOUNDATION_EXPORT NSString* _Nonnull MobileFormatShares(NSString* _Nullable sharesJSON);
+
 FOUNDATION_EXPORT NSString* _Nonnull MobileGenerate(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileGenerateEd25519(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileGenerateSecp256k1(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
 
+FOUNDATION_EXPORT NSString* _Nonnull MobileGetCustodianIdClientIdHashes(NSString* _Nullable custodianIdClientIdJSON);
+
 FOUNDATION_EXPORT NSString* _Nonnull MobileGetMe(NSString* _Nullable url, NSString* _Nullable token);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileGetVersion(void);
+
+// skipped function RecoverAndFormatPrivateKey with unsupported parameter or return types
+
+
+FOUNDATION_EXPORT NSString* _Nonnull MobileRecoverAndFormatPrivateKeyEd25519(NSString* _Nullable clientDkgResult, NSString* _Nullable serverDkgResult, NSError* _Nullable* _Nullable error);
+
+FOUNDATION_EXPORT NSString* _Nonnull MobileRecoverAndFormatPrivateKeySecp256k1(NSString* _Nullable clientDkgResult, NSString* _Nullable serverDkgResult, NSError* _Nullable* _Nullable error);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileRecoverBackup(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
 

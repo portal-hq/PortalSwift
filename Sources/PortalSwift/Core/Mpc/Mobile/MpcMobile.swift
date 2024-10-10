@@ -235,4 +235,12 @@ class MobileWrapper: Mobile {
 
     return result
   }
+
+  func MobileGetCustodianIdClientIdHashes(_ custodianIdClientIdJSON: String) -> String {
+    return Mpc.MobileGetCustodianIdClientIdHashes(custodianIdClientIdJSON)
+  }
+
+  func MobileFormatShares(_ sharesJSON: String) -> String {
+    return Mpc.MobileFormatShares(sharesJSON)
+  }
 }

@@ -10,8 +10,8 @@ import Foundation
 import UIKit
 
 public class MockGDriveStorage: GDriveStorage {
-  public init(clientID: String? = nil, viewController: UIViewController? = nil) {
-    super.init(clientID: clientID, viewController: viewController, encryption: MockPortalEncryption())
+  public init(mobile: Mobile? = nil, clientID: String? = nil, viewController: UIViewController? = nil) {
+    super.init(mobile: mobile, clientID: clientID, viewController: viewController, encryption: MockPortalEncryption())
   }
 
   // Async decrypt implementation
