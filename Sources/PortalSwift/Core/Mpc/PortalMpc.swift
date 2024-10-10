@@ -829,16 +829,6 @@ public class PortalMpc {
     }
   }
 
-  private func parseShare(_ shareData: Any) throws -> String? {
-    if let stringShare = shareData as? String {
-      return try parseStringShare(stringShare)
-    } else if let dictionaryShare = shareData as? [String: Any] {
-      return try parseDictionaryShare(dictionaryShare)
-    } else {
-      return nil
-    }
-  }
-
   private func parseStringShare(_ shareString: String) throws -> String? {
     // First, try to parse it.
     if let jsonData = shareString.data(using: .utf8),
