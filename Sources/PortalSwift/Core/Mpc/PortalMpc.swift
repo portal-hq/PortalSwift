@@ -829,48 +829,6 @@ public class PortalMpc {
     }
   }
 
-  private func parseStringShare(_ shareString: String) throws -> String? {
-    // First, try to parse it.
-    if let jsonData = shareString.data(using: .utf8),
-       (try? JSONSerialization.jsonObject(with: jsonData)) != nil
-    {
-      return shareString
-    }
-
-    // If that fails, try to decode as base64, handling potential missing padding
-    let paddedShareString: String
-    if shareString.count % 4 != 0 {
-      let padding = String(repeating: "=", count: 4 - (shareString.count % 4))
-      paddedShareString = shareString + padding
-    } else {
-      paddedShareString = shareString
-    }
-
-    if let decodedData = Data(base64Encoded: paddedShareString, options: [.ignoreUnknownCharacters]) {
-      // Convert to string and trim null characters
-      var decodedString = String(data: decodedData, encoding: .utf8) ?? ""
-      decodedString = decodedString.trimmingCharacters(in: CharacterSet(charactersIn: "\u{0000}"))
-
-      // Try to parse the decoded and trimmed string as JSON
-      if let jsonData = decodedString.data(using: .utf8),
-         (try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]) != nil
-      {
-        return decodedString
-      }
-    }
-
-    // If we can't parse it as JSON in either form, return nil
-    return nil
-  }
-
-  private func parseDictionaryShare(_ shareDictionary: [String: Any]) throws -> String? {
-    let shareJsonData = try JSONSerialization.data(withJSONObject: shareDictionary, options: [])
-
-    // Validate that it can be decoded into an MpcShare
-    _ = try JSONDecoder().decode(MpcShare.self, from: shareJsonData)
-    return String(data: shareJsonData, encoding: .utf8)
-  }
-
   private func recoverSigningShare(_ forCurve: PortalCurve, withMethod: BackupMethods, andBackupShare: String) async throws -> MpcShare {
     let mpcShare = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<MpcShare, Error>) in
       Task {

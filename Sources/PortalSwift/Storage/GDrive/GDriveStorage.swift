@@ -88,7 +88,7 @@ public class GDriveStorage: Storage, PortalStorage {
 
       // This should never happen because recoverFiles throws an error if no files are recovered
       throw GDriveStorageError.unableToReadFile
-    } catch GDriveClientError.unableToRecoverAnyFiles(let errors) {
+    } catch let GDriveClientError.unableToRecoverAnyFiles(errors) {
       self.logger.error("GDriveStorage.read() - Unable to recover any files. Errors: \(errors)")
       throw GDriveStorageError.unableToReadFile
     } catch {
@@ -119,10 +119,6 @@ public class GDriveStorage: Storage, PortalStorage {
    * Private functions
    *******************************************/
   private func getFilenameHashes() async throws -> [String: String] {
-    if let hashes = self.filenameHashes {
-      return hashes
-    }
-
     guard let api = self.api else {
       throw GDriveStorageError.portalApiNotConfigured
     }
@@ -133,7 +129,7 @@ public class GDriveStorage: Storage, PortalStorage {
 
     let custodianId = client.custodian.id
     let clientId = client.id
-    self.filenameHashes = try await fetchFileHashes(custodianId: custodianId, clientId: clientId)
+    self.filenameHashes = try await self.fetchFileHashes(custodianId: custodianId, clientId: clientId)
 
     return self.filenameHashes!
   }
@@ -213,11 +209,11 @@ struct CustodianIDClientIDHashes: Codable {
 
   func toMap() -> [String: String] {
     return [
-      "android": android,
-      "default": defaultHash,
-      "ios": ios,
-      "react_native": reactNative,
-      "web_sdk": webSDK
+      "android": self.android,
+      "default": self.defaultHash,
+      "ios": self.ios,
+      "react_native": self.reactNative,
+      "web_sdk": self.webSDK
     ]
   }
 }

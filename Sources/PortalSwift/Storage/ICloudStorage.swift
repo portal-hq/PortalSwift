@@ -117,7 +117,7 @@ public class ICloudStorage: Storage, PortalStorage {
 
     let custodianId = client.custodian.id
     let clientId = client.id
-    self.filenameHashes = try await fetchFileHashes(custodianId: custodianId, clientId: clientId)
+    self.filenameHashes = try await self.fetchFileHashes(custodianId: custodianId, clientId: clientId)
 
     return self.filenameHashes!
   }
@@ -148,12 +148,24 @@ public class ICloudStorage: Storage, PortalStorage {
 
     let hashesJSON = mobile.MobileGetCustodianIdClientIdHashes(inputJSONString)
 
-    guard let hashesData = hashesJSON.data(using: .utf8),
-          let hashes = try? JSONDecoder().decode(CustodianIDClientIDHashesResponse.self, from: hashesData)
-    else {
+    guard let hashesData = hashesJSON.data(using: .utf8) else {
       throw ICloudStorageError.unableToFetchClientData
     }
 
-    return hashes.data?.toMap() ?? [:]
+    do {
+      let response = try JSONDecoder().decode(CustodianIDClientIDHashesResponse.self, from: hashesData)
+
+      if let error = response.error {
+        throw ICloudStorageError.unableToFetchClientData
+      }
+
+      guard let hashes = response.data else {
+        throw ICloudStorageError.unableToFetchClientData
+      }
+
+      return hashes.toMap()
+    } catch {
+      throw ICloudStorageError.unableToFetchClientData
+    }
   }
 }
