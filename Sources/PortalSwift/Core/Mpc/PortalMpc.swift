@@ -299,7 +299,7 @@ public class PortalMpc {
 
     var privateKeys: [PortalNamespace: String] = [:]
 
-    if let secp256k1Share = formattedShares["SECP256K1"] ?? formattedShares["secp256k1"] {
+    if let secp256k1Share = formattedShares["SECP256K1"] {
       let ejectResponse = await self.mobile.MobileEjectWalletAndDiscontinueMPC(secp256k1Share.share, organizationShare)
       guard let jsonData = ejectResponse.data(using: .utf8) else {
         throw JSONParseError.stringToDataConversionFailed
@@ -314,7 +314,7 @@ public class PortalMpc {
       privateKeys[.eip155] = ejectResult.privateKey
     }
 
-    if let ed25519Share = formattedShares["ED25519"] ?? formattedShares["ed25519"],
+    if let ed25519Share = formattedShares["ED25519"],
        let organizationShareEd25519 = andOrganizationSolanaBackupShare
     {
       let ejectResponse = await self.mobile.MobileEjectWalletAndDiscontinueMPCEd25519(ed25519Share.share, organizationShareEd25519)
