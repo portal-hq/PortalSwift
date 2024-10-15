@@ -338,6 +338,8 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
 
     if method == "wallet_switchEthereumChain" {
       try self.handleWalletSwitchEthereumChain(method: method, params: params)
+    } else if method == "wallet_revokePermissions" {
+      try self.handleWalletRevokePermissions(method: method, params: params)
     } else if signerMethods.contains(method) {
       self.portal.provider.request(payload: payload, completion: self.signerRequestCompletion)
     } else {
@@ -418,6 +420,20 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
       "signature": AnyCodable(signature)
     ]
     self.postMessage(payload: payload)
+  }
+
+  private func handleWalletRevokePermissions(method: String, params: [Any]) throws {
+    let encodedParams = try JSONSerialization.data(withJSONObject: params)
+    let params = try decoder.decode([ChainChangedParam].self, from: encodedParams)
+
+    print("⚠️ Params: \(params)")
+
+    let signatureReceivedJavascript = """
+      window.postMessage(JSON.stringify({ type: 'portal_signatureReceived', data: { method: '\(method)', params: "null" }, signature: "null" }))
+    """
+
+    print("⚠️ Signature Received JS: \(signatureReceivedJavascript)")
+    self.evaluateJavascript(signatureReceivedJavascript)
   }
 
   private func handleWalletSwitchEthereumChain(method: String, params: [Any]) throws {
