@@ -60,7 +60,7 @@ public class PortalKeychain: PortalKeychainProtocol {
     case unsupportedNamespace(_ chainId: String)
   }
 
-  public var api: PortalApiProtocol? {
+  public weak var api: PortalApiProtocol? {
     get { self._api }
     set(api) {
       self._api = api
@@ -83,7 +83,7 @@ public class PortalKeychain: PortalKeychainProtocol {
   let deprecatedAddressKey = "PortalMpc.Address"
   let deprecatedShareKey = "PortalMpc.DkgResult"
 
-  private var _api: PortalApiProtocol?
+  private weak var _api: PortalApiProtocol?
   private var client: ClientResponse? {
     get async throws {
       return try await self.api?.client

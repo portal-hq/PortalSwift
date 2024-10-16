@@ -12,7 +12,7 @@ import GoogleSignIn
 
 public class GDriveStorage: Storage, PortalStorage {
   public var accessToken: String?
-  public var api: PortalApiProtocol?
+  public weak var api: PortalApiProtocol?
   public var clientId: String? {
     get { return self.drive.clientId }
     set(clientId) { self.drive.clientId = clientId }

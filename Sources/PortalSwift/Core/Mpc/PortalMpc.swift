@@ -126,7 +126,7 @@ public class PortalMpc: PortalMpcProtocol {
 
     do {
       // Obtain the signing share.
-        let shares = try await keychain?.getShares() ?? [:]
+      let shares = try await keychain?.getShares() ?? [:]
       usingProgressCallback?(MpcStatus(status: .readingShare, done: false))
 
       // Derive the storage and throw an error if none was provided.
@@ -433,7 +433,7 @@ public class PortalMpc: PortalMpcProtocol {
       withProgressCallback?(MpcStatus(status: .done, done: false))
       self.isWalletModificationInProgress = false
 
-        let addresses = try await keychain?.getAddresses() ?? [:]
+      let addresses = try await keychain?.getAddresses() ?? [:]
 
       return addresses
     } catch {
@@ -644,7 +644,7 @@ public class PortalMpc: PortalMpcProtocol {
       self.isWalletModificationInProgress = false
 
       // get addresses from the Keychain.
-        newAddresses = try await self.keychain?.getAddresses() ?? [:]
+      newAddresses = try await self.keychain?.getAddresses() ?? [:]
 
     } catch {
       self.isWalletModificationInProgress = false

@@ -28,7 +28,7 @@ public protocol PortalProviderProtocol {
 public class PortalProvider: PortalProviderProtocol {
   public var address: String? {
     do {
-      return try self.keychain.getAddress()
+      return try self.keychain?.getAddress()
     } catch {
       return nil
     }
@@ -42,7 +42,7 @@ public class PortalProvider: PortalProviderProtocol {
 
   private let decoder = JSONDecoder()
   private var events: [Events.RawValue: [RegisteredEventHandler]] = [:]
-  private var keychain: PortalKeychainProtocol
+  private weak var keychain: PortalKeychainProtocol?
   private let logger = PortalLogger()
   private var mpcQueue: DispatchQueue
   private var processedRequestIds: [String] = []
@@ -230,7 +230,7 @@ public class PortalProvider: PortalProviderProtocol {
     // or not.
     switch withMethod {
     case .eth_accounts, .eth_requestAccounts:
-      let address = try await keychain.getAddress(chainId)
+      let address = try await keychain?.getAddress(chainId)
       return PortalProviderResult(id: id, result: [address])
     case .wallet_switchEthereumChain:
       return PortalProviderResult(id: id, result: "null")

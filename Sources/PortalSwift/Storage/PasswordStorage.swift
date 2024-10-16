@@ -14,7 +14,7 @@ public enum PasswordStorageError: Error {
 
 /// Responsible for CRUD actions for items in the specified storage.
 public class PasswordStorage: Storage, PortalStorage {
-  public var api: PortalApiProtocol?
+  public weak var api: PortalApiProtocol?
   public let encryption: PortalEncryptionProtocol
   public var password: String?
 

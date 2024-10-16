@@ -16,7 +16,7 @@ public enum LocalFileStorageError: Error {
 }
 
 public class LocalFileStorage: Storage, PortalStorage {
-  public var api: PortalApiProtocol?
+  public weak var api: PortalApiProtocol?
   public let encryption: PortalEncryptionProtocol
   var fileName: String = "PORTAL_BACKUP_SHARE"
 
