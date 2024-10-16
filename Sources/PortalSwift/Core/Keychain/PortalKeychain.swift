@@ -38,7 +38,7 @@ public class PortalKeychain {
     case unsupportedNamespace(_ chainId: String)
   }
 
-  public var api: PortalApi? {
+  public weak var api: PortalApi? {
     get { self._api }
     set(api) {
       self._api = api
@@ -61,7 +61,7 @@ public class PortalKeychain {
   let deprecatedAddressKey = "PortalMpc.Address"
   let deprecatedShareKey = "PortalMpc.DkgResult"
 
-  private var _api: PortalApi?
+  private weak var _api: PortalApi?
   private var client: ClientResponse? {
     get async throws {
       return try await self.api?.client

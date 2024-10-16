@@ -12,7 +12,7 @@ import Foundation
 public class PortalProvider {
   public var address: String? {
     do {
-      return try self.keychain.getAddress()
+      return try self.keychain?.getAddress()
     } catch {
       return nil
     }
@@ -26,7 +26,7 @@ public class PortalProvider {
 
   private let decoder = JSONDecoder()
   private var events: [Events.RawValue: [RegisteredEventHandler]] = [:]
-  private var keychain: PortalKeychain
+  private weak var keychain: PortalKeychain?
   private let logger = PortalLogger()
   private var mpcQueue: DispatchQueue
   private var processedRequestIds: [String] = []
@@ -214,7 +214,7 @@ public class PortalProvider {
     // or not.
     switch withMethod {
     case .eth_accounts, .eth_requestAccounts:
-      let address = try await keychain.getAddress(chainId)
+      let address = try await keychain?.getAddress(chainId)
       return PortalProviderResult(id: id, result: [address])
     case .wallet_switchEthereumChain:
       return PortalProviderResult(id: id, result: "null")

@@ -17,7 +17,7 @@ public class PasskeyStorage: Storage, PortalStorage {
     set(anchor) { self.auth.authenticationAnchor = anchor }
   }
 
-  public var api: PortalApi?
+  public weak var api: PortalApi?
 
   var apiKey: String?
   public var client: Client?

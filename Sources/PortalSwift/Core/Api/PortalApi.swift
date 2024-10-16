@@ -53,7 +53,7 @@ public class PortalApi {
     }
   }
 
-  public var provider: PortalProvider?
+  public weak var provider: PortalProvider?
 
   /// Create an instance of a PortalApi class.
   /// - Parameters:
