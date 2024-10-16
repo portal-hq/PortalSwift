@@ -250,9 +250,11 @@ public class Portal {
 
     // Ensure storage adapters have access to the Portal API
     if let gDrive = backup.gdrive {
+      gDrive.mobile = self.binary
       self.mpc.registerBackupMethod(.GoogleDrive, withStorage: gDrive)
     }
     if let iCloud = backup.icloud {
+      iCloud.mobile = self.binary
       self.mpc.registerBackupMethod(.iCloud, withStorage: iCloud)
     }
     if let local = backup.local {
