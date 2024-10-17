@@ -204,9 +204,10 @@ public class PortalMpc {
       try await self.api.refreshClient()
       try await self.keychain.loadMetadata()
 
+      self.isWalletModificationInProgress = false
+
       // Send the last progress update
       usingProgressCallback?(MpcStatus(status: .done, done: true))
-      self.isWalletModificationInProgress = false
 
       // Return the Backup response
       return PortalMpcBackupResponse(cipherText: encryptResult.cipherText, shareIds: shareIds)
@@ -408,10 +409,10 @@ public class PortalMpc {
       try await self.api.refreshClient()
       try await self.keychain.loadMetadata()
 
-      withProgressCallback?(MpcStatus(status: .done, done: false))
-      self.isWalletModificationInProgress = false
-
       let addresses = try await keychain.getAddresses()
+
+      self.isWalletModificationInProgress = false
+      withProgressCallback?(MpcStatus(status: .done, done: false))
 
       return addresses
     } catch {
@@ -429,46 +430,46 @@ public class PortalMpc {
       throw MpcError.backupNoLongerSupported("[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = \"v6\"`.")
     }
 
-    guard let client = try await api.client else {
-      throw MpcError.clientInformationUnavailable
-    }
-
-    var cipherText = withCipherText
-
-    // Fetch the cipherText if necessary
-    if client.environment?.backupWithPortalEnabled ?? false {
-      var backupSharePairId: String?
-
-      for wallet in client.wallets {
-        for backupSharePair in wallet.backupSharePairs {
-          if backupSharePair.status == .completed, backupSharePair.backupMethod == method {
-            backupSharePairId = backupSharePair.id
-          }
-        }
-      }
-
-      guard let backupSharePairId else {
-        throw MpcError.noValidBackupFound
-      }
-
-      cipherText = try await self.api.getClientCipherText(backupSharePairId)
-    }
-
-    guard let cipherText else {
-      throw MpcError.noBackupCipherTextFound
-    }
-
     guard !self.isWalletModificationInProgress else {
       throw MpcError.walletModificationAlreadyInProgress
     }
 
     self.isWalletModificationInProgress = true
 
-    guard let storage = self.backupOptions[method] else {
-      throw MpcError.unexpectedErrorOnRecover("Storage method \(method.rawValue) not registered.")
-    }
-
     do {
+      guard let client = try await api.client else {
+        throw MpcError.clientInformationUnavailable
+      }
+
+      var cipherText = withCipherText
+
+      // Fetch the cipherText if necessary
+      if client.environment?.backupWithPortalEnabled ?? false {
+        var backupSharePairId: String?
+
+        for wallet in client.wallets {
+          for backupSharePair in wallet.backupSharePairs {
+            if backupSharePair.status == .completed, backupSharePair.backupMethod == method {
+              backupSharePairId = backupSharePair.id
+            }
+          }
+        }
+
+        guard let backupSharePairId else {
+          throw MpcError.noValidBackupFound
+        }
+
+        cipherText = try await self.api.getClientCipherText(backupSharePairId)
+      }
+
+      guard let cipherText else {
+        throw MpcError.noBackupCipherTextFound
+      }
+
+      guard let storage = self.backupOptions[method] else {
+        throw MpcError.unexpectedErrorOnRecover("Storage method \(method.rawValue) not registered.")
+      }
+
       let recoverResponse = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<PortalMpcGenerateResponse, Error>) in
         Task {
           do {
@@ -546,10 +547,10 @@ public class PortalMpc {
       try await self.api.refreshClient()
       try await self.keychain.loadMetadata()
 
-      usingProgressCallback?(MpcStatus(status: .done, done: false))
-      self.isWalletModificationInProgress = false
-
       let addresses = try await keychain.getAddresses()
+
+      self.isWalletModificationInProgress = false
+      usingProgressCallback?(MpcStatus(status: .done, done: false))
 
       return addresses
     } catch {
@@ -568,6 +569,7 @@ public class PortalMpc {
     }
 
     self.isWalletModificationInProgress = true
+
     var newAddresses: [PortalNamespace: String?]
 
     do {
@@ -646,9 +648,9 @@ public class PortalMpc {
   /// You should only call this function if you are upgrading from v3 to v4.
   public func generateSolanaWalletAndBackupShares(backupMethod: BackupMethods, usingProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> (solanaAddress: String, backupResponse: PortalMpcBackupResponse) {
     // generate solana wallet
-    let generateSolonaResult: [PortalNamespace: String?] = try await generateSolanaWallet(callerFuncName: "PortalMpc.generateSolanaWalletAndBackupShares()", usingProgressCallback: usingProgressCallback)
+    let generateSolanaResult: [PortalNamespace: String?] = try await generateSolanaWallet(callerFuncName: "PortalMpc.generateSolanaWalletAndBackupShares()", usingProgressCallback: usingProgressCallback)
     var solanaAddress: String
-    if let newSolanaAddress = generateSolonaResult[PortalNamespace.solana], let unwrappedNewSolanaAddress = newSolanaAddress {
+    if let newSolanaAddress = generateSolanaResult[PortalNamespace.solana], let unwrappedNewSolanaAddress = newSolanaAddress {
       solanaAddress = unwrappedNewSolanaAddress
     } else {
       throw MpcError.unexpectedErrorOnGenerate("Unable to get the Solana address from keychain.")
