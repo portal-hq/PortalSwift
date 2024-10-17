@@ -63,7 +63,10 @@ public class PortalBlockchain {
   public func isMethodSupported(_ method: PortalRequestMethod) -> Bool {
     switch self.namespace {
     case .eip155:
-      !method.rawValue.starts(with: "wallet_") || method == .wallet_switchEthereumChain
+      !method.rawValue
+        .starts(
+          with: "wallet_"
+        ) || method == .wallet_switchEthereumChain || method == .wallet_revokePermissions
     default:
       true
     }

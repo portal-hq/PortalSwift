@@ -199,9 +199,9 @@ public class PortalProvider {
     connect: PortalConnect? = nil
   ) async throws -> PortalProviderResult {
     let blockchain = try PortalBlockchain(fromChainId: chainId)
-    guard blockchain.isMethodSupported(withMethod) else {
-      throw PortalProviderError.unsupportedRequestMethod(withMethod.rawValue)
-    }
+//    guard blockchain.isMethodSupported(withMethod) else {
+//      throw PortalProviderError.unsupportedRequestMethod(withMethod.rawValue)
+//    }
 
     let id = UUID().uuidString
 
@@ -216,7 +216,7 @@ public class PortalProvider {
     case .eth_accounts, .eth_requestAccounts:
       let address = try await keychain.getAddress(chainId)
       return PortalProviderResult(id: id, result: [address])
-    case .wallet_switchEthereumChain:
+    case .wallet_switchEthereumChain, .wallet_revokePermissions:
       return PortalProviderResult(id: id, result: "null")
     default:
       if blockchain.shouldMethodBeSigned(withMethod) {
@@ -611,6 +611,7 @@ public enum PortalRequestMethod: String, Codable {
   case wallet_requestPermissions
   case wallet_switchEthereumChain
   case wallet_watchAsset
+  case wallet_revokePermissions
 
   // Net Methods
   case net_version
@@ -732,7 +733,7 @@ public enum ETHRequestMethods: String {
   case WalletRequestPermissions = "wallet_requestPermissions"
   case WalletSwitchEthereumChain = "wallet_switchEthereumChain"
   case WalletWatchAsset = "wallet_watchAsset"
-
+  case WalletRevokePermissions = "wallet_revokePermissions"
   // Net Methods
   case NetVersion = "net_version"
 
