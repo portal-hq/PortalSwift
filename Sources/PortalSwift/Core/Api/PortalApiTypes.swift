@@ -597,3 +597,135 @@ public enum EvaluateTransactionOperationType: String, CaseIterable {
   case simulation
   case all
 }
+
+// MARK: - Get Assets by Chain
+public struct AssetsResponse: Decodable {
+  let nativeBalance: NativeBalance?
+  let tokenBalances: [TokenBalanceResponse]?
+  let nfts: [Nft]?
+}
+
+public struct NativeBalance: Decodable {
+  let balance: String?
+  let decimals: Int?
+  let name, rawBalance, symbol: String?
+  let metadata: NativeBalanceMetadata?
+}
+
+public struct NativeBalanceMetadata: Decodable {
+  let logo, thumbnail: String?
+}
+
+public struct Nft: Decodable {
+  let nftID, name, description: String?
+  let imageURL: String?
+  let chainID, contractAddress, tokenID: String?
+  let collection: Collection?
+  let lastSale: LastSale?
+  let rarity: Rarity?
+  let floorPrice: NftFloorPrice?
+  let detailedInfo: DetailedInfo?
+}
+
+public struct Collection: Decodable {
+  let name, description: String?
+  let imageURL: String?
+}
+
+public struct DetailedInfo: Decodable {
+  let ownerCount, tokenCount: Int?
+  let createdDate: String?
+  let attributes: [Attribute]?
+  let owners: [Owner]?
+  let extendedCollectionInfo: ExtendedCollectionInfo?
+  let extendedSaleInfo: ExtendedSaleInfo?
+  let marketplaceInfo: [MarketplaceInfo]?
+  let mediaInfo: MediaInfo?
+}
+
+public struct Attribute: Decodable {
+  let traitType, value: String?
+  let displayType: String?
+}
+
+public struct ExtendedCollectionInfo: Decodable {
+  let bannerImageURL: String?
+  let externalURL: String?
+  let twitterUsername: String?
+  let discordURL: String?
+  let instagramUsername, mediumUsername: String?
+  let telegramURL: String?
+  let distinctOwnerCount, distinctNftCount, totalQuantity: Int?
+}
+
+public struct ExtendedSaleInfo: Decodable {
+  let fromAddress, toAddress: String?
+  let priceUsdCents: Int?
+  let transaction, marketplaceID, marketplaceName: String?
+}
+
+public struct MarketplaceInfo: Decodable {
+  let marketplaceID, marketplaceName, marketplaceCollectionID: String?
+  let nftURL, collectionURL: String?
+  let verified: Bool?
+  let floorPrice: MarketplaceInfoFloorPrice?
+}
+
+public struct MarketplaceInfoFloorPrice: Decodable {
+  let value: Double?
+  let paymentToken: PaymentToken?
+  let valueUsdCents: Int?
+}
+
+public struct PaymentToken: Decodable {
+  let paymentTokenID, name, symbol: String?
+  let address: String?
+  let decimals: Int?
+}
+
+public struct MediaInfo: Decodable {
+  let previews: Previews?
+  let animationURL: String?
+  let backgroundColor: String?
+}
+
+public struct Previews: Decodable {
+  let imageSmallURL, imageMediumURL, imageLargeURL, imageOpengraphURL: String?
+  let blurhash, predominantColor: String?
+}
+
+public struct Owner: Decodable {
+  let ownerAddress: String?
+  let quantity: Int?
+  let firstAcquiredDate, lastAcquiredDate: String?
+}
+
+public struct NftFloorPrice: Decodable {
+  let price: Double?
+  let currency: String?
+}
+
+public struct LastSale: Decodable {
+  let price: Double?
+  let currency: String?
+  let date: String?
+}
+
+public struct Rarity: Decodable {
+  let rank: Int?
+  let score: Double?
+}
+
+public struct TokenBalanceResponse: Decodable {
+  let balance: String?
+  let decimals: Int?
+  let name, rawBalance, symbol: String?
+  let metadata: TokenBalanceMetadata?
+}
+
+public struct TokenBalanceMetadata: Decodable {
+  let tokenAddress: String?
+  let verifiedContract: Bool?
+  let totalSupply, rawTotalSupply: String?
+  let percentageRelativeToTotalSupply: Double?
+}
