@@ -597,3 +597,52 @@ public enum EvaluateTransactionOperationType: String, CaseIterable {
   case simulation
   case all
 }
+
+public struct BuildEip115TransactionResponse: Codable {
+  let transaction: Eip115Transaction
+  let metadata: BuildTransactionMetaData
+  let error: String?
+}
+
+public struct Eip115Transaction: Codable {
+  let from: String
+  let to: String
+  let data: String?
+  let value: String?
+}
+
+public struct BuildTransactionMetaData: Codable {
+  let amount: String
+  let fromAddress: String
+  let toAddress: String
+  let tokenAddress: String?
+  let tokenDecimals: Int
+  let tokenSymbol: String?
+  let rawAmount: String
+}
+
+public struct BuildSolanaTransactionResponse: Codable {
+  let transaction: String
+  let metadata: BuildTransactionMetaData
+  let error: String?
+}
+
+public struct BuildTransactionParam {
+  let to: String
+  let token: String
+  let amount: String
+
+  public init(to: String, token: String, amount: String) {
+    self.to = to
+    self.token = token
+    self.amount = amount
+  }
+
+  func toDictionary() -> [String: String] {
+    return [
+      "to": to,
+      "token": token,
+      "amount": amount
+    ]
+  }
+}
