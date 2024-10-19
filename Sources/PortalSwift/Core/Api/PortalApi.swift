@@ -168,20 +168,20 @@ public class PortalApi {
     throw URLError(.badURL)
   }
 
-  public func getNFTs(_ chainId: String) async throws -> [FetchedNFT] {
-    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/nfts?chainId=\(chainId)") {
+  func getNftAssets(_ chainId: String) async throws -> [NftAsset] {
+    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)/assets/nfts") {
       do {
         let data = try await get(url, withBearerToken: self.apiKey)
-        let nfts = try decoder.decode([FetchedNFT].self, from: data)
+        let nfts = try decoder.decode([NftAsset].self, from: data)
 
         return nfts
       } catch {
-        self.logger.error("PortalApi.getNFTs() - Unable to fetch NFTs: \(error.localizedDescription)")
+        self.logger.error("PortalApi.getNftAssets() - Unable to fetch NFT Assets: \(error.localizedDescription)")
         throw error
       }
     }
 
-    self.logger.error("PortalApi.getNFTs() - Unable to build request URL.")
+    self.logger.error("PortalApi.getNftAssets() - Unable to build request URL.")
     throw URLError(.badURL)
   }
 
@@ -475,22 +475,6 @@ public class PortalApi {
     Task {
       do {
         let response = try await getSources(swapsApiKey, forChainId: "eip155:\(self.chainId ?? 1)")
-        completion(Result(data: response))
-      } catch {
-        completion(Result(error: error))
-      }
-    }
-  }
-
-  /// Retrieve a list of NFTs for the client.
-  /// - Parameters:
-  ///   - completion: The callback that contains the list of NFTs.
-  /// - Returns: Void.
-  @available(*, deprecated, renamed: "getNFTs", message: "Please use the async/await implementation of getNFTs().")
-  public func getNFTs(completion: @escaping (Result<[FetchedNFT]>) -> Void) throws {
-    Task {
-      do {
-        let response = try await getNFTs("eip155:\(self.chainId ?? 1)")
         completion(Result(data: response))
       } catch {
         completion(Result(error: error))
