@@ -250,6 +250,11 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
       autoApprove: self.portal.autoApprove,
       enableMpc: true
     )
+    
+    
+    
+    let preScript = WKUserScript(source: "document.head.appendChild(document.createElement('meta').setAttribute('http-equiv', 'Content-Security-Policy').setAttribute('content', 'script-src \"self\" \"unsafe-inline\"'));", injectionTime: .atDocumentStart, forMainFrameOnly: true)
+    
     let script = WKUserScript(source: scriptSource, injectionTime: .atDocumentStart, forMainFrameOnly: true)
 
     // build the WekUserContentController
