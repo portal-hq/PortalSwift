@@ -994,7 +994,7 @@ public enum MpcStatuses: String {
 }
 
 /// A list of errors MPC can throw.
-public enum MpcError: Error {
+public enum MpcError: LocalizedError {
   case addressNotFound(_ message: String)
   case backupMethodNotRegistered(_ message: String)
   case backupNoLongerSupported(_ message: String)
@@ -1027,6 +1027,10 @@ public enum MpcError: Error {
   case unsupportedStorageMethod
   case unwrappingAddress
   case walletModificationAlreadyInProgress
+
+    public var errorDescription: String? {
+        return "The operation couldn’t be completed. (PortalSwift.MpcError.\(self))"
+    }
 }
 
 /// A list of errors RSA can throw.
