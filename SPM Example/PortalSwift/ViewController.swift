@@ -1480,6 +1480,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handleGdriveRecover() - Error running recover: \(error)")
+          self.logger.error("ViewController.handleGdriveRecover() - Error running recover: \(error.localizedDescription)")
         self.showStatusView(message: "\(self.failureStatus) Error running recover \(error)")
       }
     }
