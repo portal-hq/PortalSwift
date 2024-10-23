@@ -6,7 +6,7 @@
 import AnyCodable
 import Foundation
 
-public struct Quote: Codable {
+public struct Quote: Codable, Equatable {
   public var allowanceTarget: String
   public var cost: Double
   public var transaction: ETHTransactionParam
@@ -126,7 +126,7 @@ public class PortalSwaps {
 
   public func getQuote(args: QuoteArgs, completion: @escaping (Result<Quote>) -> Void) {
     do {
-      try self.portal.api.getQuote(self.apiKey, args) { result in
+      try self.portal.api.getQuote(self.apiKey, args, nil) { result in
         completion(result)
       }
     } catch {
