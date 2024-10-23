@@ -8,8 +8,24 @@
 import AnyCodable
 import Foundation
 
+public protocol PortalProviderProtocol {
+  var chainId: Int? { get set }
+  var address: String? { get }
+
+  func emit(event: Events.RawValue, data: Any) -> PortalProvider
+  func on(event: Events.RawValue, callback: @escaping (_ data: Any) -> Void) -> PortalProvider
+  func once(event: Events.RawValue, callback: @escaping (_ data: Any) throws -> Void) -> PortalProvider
+  func removeListener(event: Events.RawValue) -> PortalProvider
+  func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [AnyCodable]?, connect: PortalConnect?) async throws -> PortalProviderResult
+  func request(_ chainId: String, withMethod: String, andParams: [AnyCodable]?, connect: PortalConnect?) async throws -> PortalProviderResult
+  func request(payload: ETHRequestPayload, completion: @escaping (Result<RequestCompletionResult>) -> Void, connect: PortalConnect?)
+  func request(payload: ETHTransactionPayload, completion: @escaping (Result<TransactionCompletionResult>) -> Void, connect: PortalConnect?)
+  func request(payload: ETHAddressPayload, completion: @escaping (Result<AddressCompletionResult>) -> Void, connect: PortalConnect?)
+  func setChainId(value: Int, connect: PortalConnect?) throws -> PortalProvider
+}
+
 /// Portal's EVM blockchain provider.
-public class PortalProvider {
+public class PortalProvider: PortalProviderProtocol {
   public var address: String? {
     do {
       return try self.keychain.getAddress()
@@ -32,7 +48,7 @@ public class PortalProvider {
   private var processedRequestIds: [String] = []
   private var processedSignatureIds: [String] = []
   private var portalApi: HttpRequester
-  private let requests: PortalRequests
+  private let requests: PortalRequestsProtocol
   private let rpcConfig: [String: String]
   private let signer: PortalMpcSigner
   private let featureFlags: FeatureFlags?
@@ -62,7 +78,7 @@ public class PortalProvider {
     mpcHost: String = "mpc.portalhq.io",
     version: String = "v6",
     featureFlags: FeatureFlags? = nil,
-    requests: PortalRequests? = nil,
+    requests: PortalRequestsProtocol? = nil,
     signer: PortalMpcSigner? = nil
   ) throws {
     // User-defined instance variables

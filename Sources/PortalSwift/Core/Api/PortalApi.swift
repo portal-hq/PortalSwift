@@ -8,6 +8,39 @@
 import AnyCodable
 import Foundation
 
+public protocol PortalApiProtocol {
+  var client: ClientResponse? { get async throws }
+
+    func eject() async throws -> String
+    func getBalances(_ chainId: String) async throws -> [FetchedBalance]
+    func getClient() async throws -> ClientResponse
+    func getClientCipherText(_ backupSharePairId: String) async throws -> String
+    func getQuote(_ swapsApiKey: String, withArgs: QuoteArgs, forChainId: String?) async throws -> Quote
+    func getNFTs(_ chainId: String) async throws -> [FetchedNFT]
+    func getSharePairs(_ type: PortalSharePairType, walletId: String) async throws -> [FetchedSharePair]
+    func getSources(_ swapsApiKey: String, forChainId: String) async throws -> [String: String]
+    func getTransactions(_ chainId: String, limit: Int?, offset: Int?, order: TransactionOrder?) async throws -> [FetchedTransaction]
+    func identify(_ traits: [String: AnyCodable]) async throws -> MetricsResponse
+    func prepareEject(_ walletId: String, _ backupMethod: BackupMethods) async throws -> String
+    func refreshClient() async throws
+    func simulateTransaction(_ transaction: Any, withChainId: String) async throws -> SimulatedTransaction
+    func updateShareStatus(_ type: PortalSharePairType, status: SharePairUpdateStatus, sharePairIds: [String]) async throws
+    func getClient(completion: @escaping (Result<ClientResponse>) -> Void) throws
+    func getQuote(_ swapsApiKey: String, _ args: QuoteArgs, _ forChainId: String?, completion: @escaping (Result<Quote>) -> Void) throws
+    func getSources(swapsApiKey: String, completion: @escaping (Result<[String: String]>) -> Void) throws
+    func getNFTs(completion: @escaping (Result<[FetchedNFT]>) -> Void) throws
+    func getTransactions(limit: Int?, offset: Int?, order: GetTransactionsOrder?, chainId: Int?, completion: @escaping (Result<[FetchedTransaction]>) -> Void) throws
+    func getBalances(completion: @escaping (Result<[FetchedBalance]>) -> Void) throws
+    func simulateTransaction(transaction: SimulateTransactionParam, completion: @escaping (Result<SimulatedTransaction>) -> Void) throws
+    func ejectClient(completion: @escaping (Result<String>) -> Void) throws
+    func storedClientBackupShare(success: Bool, backupMethod: BackupMethods.RawValue, completion: @escaping (Result<String>) -> Void) throws
+    func getBackupShareMetadata(completion: @escaping (Result<[FetchedSharePair]>) -> Void) throws
+    func getSigningShareMetadata(completion: @escaping (Result<[FetchedSharePair]>) -> Void) throws
+    func storeClientCipherText(_ backupSharePairId: String, cipherText: String) async throws -> Bool
+    func track(_ event: String, withProperties: [String: AnyCodable]) async throws -> MetricsResponse
+    func evaluateTransaction(chainId: String, transaction: EvaluateTransactionParam, operationType: EvaluateTransactionOperationType?) async throws -> BlockaidValidateTrxRes
+}
+
 /// The ThreadSafeClientWrapper is just a thread-safe actor to consume the ClientResponse class, we need to refactor that later.
 private actor ThreadSafeClientWrapper {
   private var _client: ClientResponse?
@@ -27,14 +60,14 @@ private actor ThreadSafeClientWrapper {
 }
 
 /// The class to interface with Portal's REST API.
-public class PortalApi {
+public class PortalApi: PortalApiProtocol {
   private let _clientStorage = ThreadSafeClientWrapper()
   private var apiKey: String
   private var baseUrl: String
   private let decoder = JSONDecoder()
   private var httpRequests: HttpRequester
   private let logger = PortalLogger()
-  private let requests: PortalRequests
+  private let requests: PortalRequestsProtocol
   private let featureFlags: FeatureFlags?
 
   private var address: String? {
@@ -53,7 +86,7 @@ public class PortalApi {
     }
   }
 
-  public var provider: PortalProvider?
+  public var provider: PortalProviderProtocol?
 
   /// Create an instance of a PortalApi class.
   /// - Parameters:
@@ -63,9 +96,9 @@ public class PortalApi {
   public init(
     apiKey: String,
     apiHost: String = "api.portalhq.io",
-    provider: PortalProvider? = nil,
+    provider: PortalProviderProtocol? = nil,
     featureFlags: FeatureFlags? = nil,
-    requests: PortalRequests? = nil
+    requests: PortalRequestsProtocol? = nil
   ) {
     self.apiKey = apiKey
     self.baseUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
@@ -106,7 +139,7 @@ public class PortalApi {
 
         return balancesResponse
       } catch {
-        self.logger.error("PortalApi.getBalances() - Unable to get balanaces: \(error.localizedDescription)")
+        self.logger.error("PortalApi.getBalances() - Unable to get balances: \(error.localizedDescription)")
         throw error
       }
     }
@@ -326,7 +359,7 @@ public class PortalApi {
     }
   }
 
-  func storeClientCipherText(_ backupSharePairId: String, cipherText: String) async throws -> Bool {
+  public func storeClientCipherText(_ backupSharePairId: String, cipherText: String) async throws -> Bool {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/backup-share-pairs/\(backupSharePairId)") {
       do {
         let payload = AnyCodable([
@@ -345,7 +378,7 @@ public class PortalApi {
     throw URLError(.badURL)
   }
 
-  func track(_ event: String, withProperties: [String: AnyCodable]) async throws -> MetricsResponse {
+  public func track(_ event: String, withProperties: [String: AnyCodable]) async throws -> MetricsResponse {
     if let url = URL(string: "\(baseUrl)/api/v1/analytics/track") {
       let payload = MetricsTrackRequest(
         event: event,
