@@ -47,7 +47,7 @@ public class PortalConnect: EventBus {
   public init(
     _ apiKey: String,
     _ chainId: Int,
-    _ keychain: PortalKeychain,
+    _ keychain: PortalKeychainProtocol,
     _ rpcConfig: [String: String],
     _ featureFlags: FeatureFlags?,
     _ webSocketServer: String = "connect.portalhq.io",

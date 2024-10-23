@@ -399,7 +399,7 @@ public struct Balance: Codable {
   public var balance: String
 }
 
-public struct SimulatedTransactionChange: Codable {
+public struct SimulatedTransactionChange: Codable, Equatable {
   public var amount: String?
   public var assetType: String?
   public var changeType: String?
@@ -413,7 +413,7 @@ public struct SimulatedTransactionChange: Codable {
   public var tokenId: Int?
 }
 
-public struct SimulatedTransactionError: Codable {
+public struct SimulatedTransactionError: Codable, Equatable {
   public var message: String
 }
 
@@ -445,14 +445,14 @@ public struct SimulateTransactionParam: Codable {
   }
 }
 
-public struct SimulatedTransaction: Codable {
+public struct SimulatedTransaction: Codable, Equatable {
   public var changes: [SimulatedTransactionChange]
   public var gasUsed: String? = nil
   public var error: SimulatedTransactionError?
   public var requestError: SimulatedTransactionError?
 }
 
-public struct MetricsResponse: Codable {
+public struct MetricsResponse: Codable, Equatable {
   public var status: Bool
 }
 
