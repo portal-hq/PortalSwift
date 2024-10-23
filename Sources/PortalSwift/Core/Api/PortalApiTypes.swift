@@ -599,6 +599,7 @@ public enum EvaluateTransactionOperationType: String, CaseIterable {
 }
 
 // MARK: - Get Assets by Chain
+
 public struct AssetsResponse: Decodable {
   let nativeBalance: NativeBalance?
   let tokenBalances: [TokenBalanceResponse]?
