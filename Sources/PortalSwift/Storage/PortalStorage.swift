@@ -39,7 +39,7 @@ open class Storage {
 }
 
 public protocol PortalStorage {
-  var api: PortalApi? { get set }
+  var api: PortalApiProtocol? { get set }
   var encryption: PortalEncryption { get }
 
   func decrypt(_ value: String, withKey: String) async throws -> String

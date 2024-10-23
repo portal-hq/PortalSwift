@@ -38,7 +38,7 @@ public class PortalKeychain {
     case unsupportedNamespace(_ chainId: String)
   }
 
-  public var api: PortalApi? {
+  public var api: PortalApiProtocol? {
     get { self._api }
     set(api) {
       self._api = api
@@ -61,7 +61,7 @@ public class PortalKeychain {
   let deprecatedAddressKey = "PortalMpc.Address"
   let deprecatedShareKey = "PortalMpc.DkgResult"
 
-  private var _api: PortalApi?
+  private var _api: PortalApiProtocol?
   private var client: ClientResponse? {
     get async throws {
       return try await self.api?.client
@@ -70,12 +70,12 @@ public class PortalKeychain {
 
   private let decoder = JSONDecoder()
   private let encoder = JSONEncoder()
-  private let keychain: PortalKeychainAccess
-  private let logger = PortalLogger()
+  private let keychain: PortalKeychainAccessProtocol
+  private let logger: PortalLoggerProtocol = PortalLogger()
   private let metadataKey = "metadata"
   private let sharesKey = "shares"
 
-  public init(keychainAccess: PortalKeychainAccess? = nil) {
+  public init(keychainAccess: PortalKeychainAccessProtocol? = nil) {
     self.keychain = keychainAccess ?? PortalKeychainAccess()
   }
 
