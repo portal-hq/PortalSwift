@@ -7,7 +7,7 @@
 
 import Foundation
 
-public class PortalMpcError: LocalizedError, CustomStringConvertible {
+public class PortalMpcError: LocalizedError, CustomStringConvertible, Equatable {
   public var code: Int
   public var message: String
 
@@ -22,5 +22,9 @@ public class PortalMpcError: LocalizedError, CustomStringConvertible {
 
   public var description: String {
     return self.errorDescription
+  }
+
+  public static func == (lhs: PortalMpcError, rhs: PortalMpcError) -> Bool {
+    return lhs.code == rhs.code && lhs.message == rhs.message
   }
 }

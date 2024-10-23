@@ -11,7 +11,7 @@ import Mpc
 
 public class PortalMpcSigner {
   private let apiKey: String
-  private let keychain: PortalKeychain
+  private let keychain: PortalKeychainProtocol
   private let mpcUrl: String
   private let version: String
   private let featureFlags: FeatureFlags?
@@ -20,7 +20,7 @@ public class PortalMpcSigner {
 
   init(
     apiKey: String,
-    keychain: PortalKeychain,
+    keychain: PortalKeychainProtocol,
     mpcUrl: String = "mpc.portalhq.io",
     version: String = "v6",
     featureFlags: FeatureFlags? = nil,
