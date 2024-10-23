@@ -446,11 +446,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
     return balances
   }
 
-  func getAssets() async throws -> AssetsResponse {
+  func getAssets(for chainId: String) async throws -> AssetsResponse {
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
-    let chainId = "eip155:11155111"
     let assets = try await portal.getAssets(chainId)
 
     return assets
@@ -1695,13 +1694,24 @@ class ViewController: UIViewController, UITextFieldDelegate {
         return
       }
       do {
-        let assets = try await self.getAssets()
+        let assets = try await self.getAssets(for: "eip155:11155111")
         print(assets)
-        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched assets.")
-        self.showStatusView(message: "\(self.successStatus) Successfully fetched assets.")
+        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched  assets for chain eip155:11155111.")
+        self.showStatusView(message: "\(self.successStatus) Successfully fetched assets for chain eip155:11155111.")
       } catch {
-        self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching assets: \(error)")
-        self.showStatusView(message: "\(self.failureStatus) Error fetching assets \(error)")
+        self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching assets  for chain eip155:11155111: \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error fetching assets  for chain eip155:11155111 \(error)")
+        return
+      }
+
+      do {
+        let assets = try await self.getAssets(for: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1")
+        print(assets)
+        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched  assets for chain solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1.")
+        self.showStatusView(message: "\(self.successStatus) Successfully fetched assets for chain solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1.")
+      } catch {
+        self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching assets  for chain solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1: \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error fetching assets  for chain solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1 \(error)")
         return
       }
       do {
