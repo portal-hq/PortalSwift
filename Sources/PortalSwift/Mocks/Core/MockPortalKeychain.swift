@@ -8,10 +8,15 @@
 
 import Foundation
 
-public class MockPortalKeychain: PortalKeychain {
-  override public func deleteShares() async throws {}
+public class MockPortalKeychain: PortalKeychainProtocol {
+  public var metadata: PortalKeychainMetadata?
+  public var api: (any PortalApiProtocol)?
 
-  override public func getAddress(_ forChainId: String) async throws -> String? {
+  public var legacyAddress: String?
+
+  public func deleteShares() async throws {}
+
+  public func getAddress(_ forChainId: String) async throws -> String? {
     if forChainId.starts(with: "eip155") {
       return MockConstants.mockEip155Address
     } else if forChainId.starts(with: "solana") {
@@ -21,18 +26,18 @@ public class MockPortalKeychain: PortalKeychain {
     throw PortalKeychain.KeychainError.unsupportedNamespace(forChainId)
   }
 
-  override public func getAddresses() async throws -> [PortalNamespace: String?] {
+  public func getAddresses() async throws -> [PortalNamespace: String?] {
     return [
       .eip155: MockConstants.mockEip155Address,
       .solana: MockConstants.mockSolanaAddress
     ]
   }
 
-  override public func getMetadata() async throws -> PortalKeychainClientMetadata {
+  public func getMetadata() async throws -> PortalKeychainClientMetadata {
     return MockConstants.mockKeychainClientMetadata
   }
 
-  override public func getShare(_ forChainId: String) async throws -> String {
+  public func getShare(_ forChainId: String) async throws -> String {
     if forChainId.starts(with: "eip155") {
       return try MockConstants.mockMpcShareString
     } else if forChainId.starts(with: "solana") {
@@ -42,43 +47,43 @@ public class MockPortalKeychain: PortalKeychain {
     throw PortalKeychain.KeychainError.unsupportedNamespace(forChainId)
   }
 
-  override public func getShares() async throws -> PortalKeychainClientShares {
+  public func getShares() async throws -> PortalKeychainClientShares {
     return try await MockConstants.mockGenerateResponse
   }
 
-  override public func loadMetadata() async throws -> PortalKeychainMetadata {
+  public func loadMetadata() async throws -> PortalKeychainMetadata {
     PortalKeychainMetadata(
       namespaces: [:]
     )
   }
 
-  override public func setMetadata(_: PortalKeychainClientMetadata) async throws {}
+  public func setMetadata(_: PortalKeychainClientMetadata) async throws {}
 
-  override public func setShares(_: [String: PortalMpcGeneratedShare]) async throws {}
+  public func setShares(_: [String: PortalMpcGeneratedShare]) async throws {}
 
   // Deprecated functions
 
-  override public func getAddress() throws -> String {
+  public func getAddress() throws -> String {
     return MockConstants.mockEip155Address
   }
 
-  override public func getSigningShare() throws -> String {
+  public func getSigningShare() throws -> String {
     return try MockConstants.mockMpcShareString
   }
 
-  override public func deleteAddress() throws {}
+  public func deleteAddress() throws {}
 
-  override public func deleteSigningShare() throws {}
+  public func deleteSigningShare() throws {}
 
-  override public func setAddress(address _: String, completion: @escaping (Result<OSStatus>) -> Void) {
+  public func setAddress(address _: String, completion: @escaping (Result<OSStatus>) -> Void) {
     return completion(Result(data: OSStatus(1)))
   }
 
-  override public func setSigningShare(signingShare _: String, completion: @escaping (Result<OSStatus>) -> Void) {
+  public func setSigningShare(signingShare _: String, completion: @escaping (Result<OSStatus>) -> Void) {
     return completion(Result(data: OSStatus(1)))
   }
 
-  override public func validateOperations(completion: @escaping (Result<OSStatus>) -> Void) {
+  public func validateOperations(completion: @escaping (Result<OSStatus>) -> Void) {
     return completion(Result(data: OSStatus(1)))
   }
 }

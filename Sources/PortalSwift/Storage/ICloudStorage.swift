@@ -31,18 +31,21 @@ public class ICloudStorage: Storage, PortalStorage {
     case noAccess
   }
 
-  public var api: PortalApi?
+  /// The Portal API instance to retrieve the client's and custodian's IDs.
+  public var api: PortalApiProtocol?
+  /// The key used to store the private key in iCloud.
+  public var key: String = ""
   public var mobile: Mobile?
-  public let encryption: PortalEncryption
+  public let encryption: PortalEncryptionProtocol
 
   private let isSimulator = TARGET_OS_SIMULATOR != 0
-  private let storage: PortalKeyValueStore
+  private let storage: PortalKeyValueStoreProtocol
   private var filenameHashes: [String: String]?
 
   public init(
     mobile: Mobile? = nil,
-    encryption: PortalEncryption? = nil,
-    keyValueStore: PortalKeyValueStore? = nil
+    encryption: PortalEncryptionProtocol? = nil,
+    keyValueStore: PortalKeyValueStoreProtocol? = nil
   ) {
     self.encryption = encryption ?? PortalEncryption()
     self.storage = keyValueStore ?? PortalKeyValueStore()

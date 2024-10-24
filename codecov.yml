@@ -8,3 +8,4 @@ ignore:
   - "**/PasskeyAuth.swift"
   - "**/PortalStorage.swift"
   - "**/*Types.swift"
+  - "main/Tests"

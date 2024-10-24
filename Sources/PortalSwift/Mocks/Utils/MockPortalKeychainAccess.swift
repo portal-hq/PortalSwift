@@ -7,16 +7,16 @@
 
 import Foundation
 
-public class MockPortalKeychainAccess: PortalKeychainAccess {
+public class MockPortalKeychainAccess: PortalKeychainAccessProtocol {
   private let encoder = JSONEncoder()
 
-  override public init() {}
+  public init() {}
 
-  override public func addItem(_: String, value _: String) throws {}
+  public func addItem(_: String, value _: String) throws {}
 
-  override public func deleteItem(_: String) throws {}
+  public func deleteItem(_: String) throws {}
 
-  override public func getItem(_ key: String) throws -> String {
+  public func getItem(_ key: String) throws -> String {
     let keyParts = key.split(separator: ".").map(String.init)
     let keyType = keyParts.last
     switch keyType {
@@ -37,5 +37,5 @@ public class MockPortalKeychainAccess: PortalKeychainAccess {
     }
   }
 
-  override public func updateItem(_: String, value _: String) throws {}
+  public func updateItem(_: String, value _: String) throws {}
 }
