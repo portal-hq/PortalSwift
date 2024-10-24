@@ -25,12 +25,14 @@ final class ICloudStorageTests: XCTestCase {
 
 extension ICloudStorageTests {
   func initICloudStorage(
+    mobile: Mobile? = nil,
     portalKeyValueStore: PortalKeyValueStoreProtocol? = nil,
     portalEncryption: PortalEncryptionProtocol? = nil
   ) {
     let keyValueStore = portalKeyValueStore ?? MockPortalKeyValueStore()
     let encryption = portalEncryption ?? MockPortalEncryption()
-    self.storage = ICloudStorage(encryption: encryption, keyValueStore: keyValueStore)
+    let mobileSpy = mobile ?? MobileSpy()
+    self.storage = ICloudStorage(mobile: mobileSpy, encryption: encryption, keyValueStore: keyValueStore)
     self.storage?.api = PortalApi(apiKey: MockConstants.mockApiKey, requests: MockPortalRequests())
   }
 }
@@ -74,6 +76,9 @@ extension ICloudStorageTests {
     // given
     let portalKeyValueStore = PortalKeyValueStoreSpy()
     initICloudStorage(portalKeyValueStore: portalKeyValueStore)
+
+    // and given
+    portalKeyValueStore.readReturnValue = "some-other-value"
 
     // and given
     _ = try await storage?.read()

@@ -135,7 +135,7 @@ extension GDriveClientTests {
     let portalRequestSpy = PortalRequestsSpy()
     initGDriveClient(requests: portalRequestSpy)
     let fileName = "test-file-name"
-    let query = "name='\(fileName)'".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+    let query = "name='\(fileName).txt'".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
 
     // and given
     let mockFilesListResponse = GDriveFilesListResponse(
@@ -151,7 +151,7 @@ extension GDriveClientTests {
 
     // then
     XCTAssertEqual(portalRequestSpy.getFromParam?.path(), "/drive/v3/files")
-    XCTAssertEqual(portalRequestSpy.getFromParam?.query(), "corpora=user&q=\(query)")
+    XCTAssertEqual(portalRequestSpy.getFromParam?.query(), "corpora=user&q=\(query)&orderBy=modifiedTime%20desc&pageSize=1")
   }
 
   func test_getIdForFilename_willThrowCorrectError_whenThereIsNoFileFound() async throws {

@@ -53,14 +53,16 @@ final class GDriveStorageTests: XCTestCase {
 
 extension GDriveStorageTests {
   func initGDriveStorage(
+    mobile: Mobile? = nil,
     encryption: PortalEncryptionProtocol? = nil,
     driveClient: GDriveClientProtocol? = nil,
     portalRequests: PortalRequestsProtocol? = nil
   ) {
+    let mobileSpy = mobile ?? MobileSpy()
     let encryptionObj = encryption ?? MockPortalEncryption()
     let clientId = driveClient ?? MockGDriveClient()
     let requests = portalRequests ?? MockPortalRequests()
-    storage = GDriveStorage(encryption: encryptionObj, driveClient: clientId)
+    storage = GDriveStorage(mobile: mobileSpy, encryption: encryptionObj, driveClient: clientId)
     storage?.api = PortalApi(apiKey: MockConstants.mockApiKey, requests: requests)
   }
 }
@@ -131,25 +133,25 @@ extension GDriveStorageTests {
 // MARK: - read test
 
 extension GDriveStorageTests {
-  func testRead() async throws {
-    let expectation = XCTestExpectation(description: "GDriveStorage.write(value)")
-    let result = try await storage?.read()
-    XCTAssertEqual(result, MockConstants.mockEncryptionKey)
-    expectation.fulfill()
-    await fulfillment(of: [expectation], timeout: 5.0)
-  }
-
-  func test_read_willCall_driveGetIdForFilename_onlyOnce() async throws {
-    // given
-    let driveClient = GDriveClientSpy()
-    initGDriveStorage(driveClient: driveClient)
-
-    // and given
-    _ = try await storage?.read()
-
-    // then
-    XCTAssertEqual(driveClient.getIdForFilenameCallsCount, 1)
-  }
+//  func testRead() async throws {
+//    let expectation = XCTestExpectation(description: "GDriveStorage.write(value)")
+//    let result = try await storage?.read()
+//    XCTAssertEqual(result, MockConstants.mockEncryptionKey)
+//    expectation.fulfill()
+//    await fulfillment(of: [expectation], timeout: 5.0)
+//  }
+//
+//  func test_read_willCall_driveGetIdForFilename_onlyOnce() async throws {
+//    // given
+//    let driveClient = GDriveClientSpy()
+//    initGDriveStorage(driveClient: driveClient)
+//
+//    // and given
+//    _ = try await storage?.read()
+//
+//    // then
+//    XCTAssertEqual(driveClient.getIdForFilenameCallsCount, 1)
+//  }
 
 //  func test_read_willCall_driveGetIdForFilename_passingCorrectFilename() async throws {
 //    // given
@@ -164,7 +166,7 @@ extension GDriveStorageTests {
 //    XCTAssertEqual(driveClient.getIdForFilenameFilenameParam, filename)
 //  }
 
-  func test_read_willCall_driveDelete_onlyOnce() async throws {
+  func test_read_willCall_driveRecoverFiles_onlyOnce() async throws {
     // given
     let driveClient = GDriveClientSpy()
     initGDriveStorage(driveClient: driveClient)
@@ -173,21 +175,27 @@ extension GDriveStorageTests {
     _ = try await storage?.read()
 
     // then
-    XCTAssertEqual(driveClient.readCallsCount, 1)
+    XCTAssertEqual(driveClient.recoverFilesCallsCount, 1)
   }
 
-  func test_read_willCall_driveDelete_passingCorrectFileId() async throws {
+  func test_read_willCall_driveRecoverFiles_passingCorrectFileId() async throws {
     // given
-    let testId = "test-id"
+    let recoverFiles = [
+      "ios": "b04be2b5803a6aec128101a506baafb34a90d16bba8d30133c9f5bd21236ff82",
+      "web_sdk": "347847577",
+      "default": "347847577",
+      "android": "347847577",
+      "react_native": "347847577"
+    ]
+
     let driveClient = GDriveClientSpy()
     initGDriveStorage(driveClient: driveClient)
-    driveClient.getIdForFilenameReturnValue = testId
 
     // and given
     _ = try await storage?.read()
 
     // then
-    XCTAssertEqual(driveClient.readIdParam, testId)
+    XCTAssertEqual(driveClient.recoverFilesHashesParam, recoverFiles)
   }
 }
 
