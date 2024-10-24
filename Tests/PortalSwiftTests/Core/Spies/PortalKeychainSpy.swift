@@ -9,139 +9,154 @@ import Foundation
 @testable import PortalSwift
 
 class PortalKeychainSpy: PortalKeychainProtocol {
-    var metadata: PortalSwift.PortalKeychainMetadata?
-    var api: PortalApiProtocol?
-    var legacyAddress: String?
+  var metadata: PortalSwift.PortalKeychainMetadata?
+  var api: PortalApiProtocol?
+  var legacyAddress: String?
 
-    // MARK: - deleteShares
-    private(set) var deleteSharesCallCount = 0
-    
-    func deleteShares() async throws {
-        deleteSharesCallCount += 1
-    }
+  // MARK: - deleteShares
 
-    // MARK: - getAddress(forChainId:)
-    private(set) var getAddressForChainIdCallCount = 0
-    private(set) var getAddressForChainIdParams: [String] = []
+  private(set) var deleteSharesCallCount = 0
 
-    func getAddress(_ forChainId: String) async throws -> String? {
-        getAddressForChainIdCallCount += 1
-        getAddressForChainIdParams.append(forChainId)
-        return nil
-    }
+  func deleteShares() async throws {
+    deleteSharesCallCount += 1
+  }
 
-    // MARK: - getAddresses
-    private(set) var getAddressesCallCount = 0
-    var getAddressesReturnValue: [PortalNamespace: String?] = [:]
+  // MARK: - getAddress(forChainId:)
 
-    func getAddresses() async throws -> [PortalNamespace: String?] {
-        getAddressesCallCount += 1
-        return getAddressesReturnValue
-    }
+  private(set) var getAddressForChainIdCallCount = 0
+  private(set) var getAddressForChainIdParams: [String] = []
 
-    // MARK: - getMetadata
-    private(set) var getMetadataCallCount = 0
+  func getAddress(_ forChainId: String) async throws -> String? {
+    getAddressForChainIdCallCount += 1
+    getAddressForChainIdParams.append(forChainId)
+    return nil
+  }
 
-    func getMetadata() async throws -> PortalKeychainClientMetadata {
-        getMetadataCallCount += 1
-        // Provide a mock or stub value if needed
-        return PortalKeychainClientMetadata.stub()
-    }
+  // MARK: - getAddresses
 
-    // MARK: - getShare(forChainId:)
-    private(set) var getShareForChainIdCallCount = 0
-    private(set) var getShareForChainIdParams: [String] = []
+  private(set) var getAddressesCallCount = 0
+  var getAddressesReturnValue: [PortalNamespace: String?] = [:]
 
-    func getShare(_ forChainId: String) async throws -> String {
-        getShareForChainIdCallCount += 1
-        getShareForChainIdParams.append(forChainId)
-        return ""
-    }
+  func getAddresses() async throws -> [PortalNamespace: String?] {
+    getAddressesCallCount += 1
+    return getAddressesReturnValue
+  }
 
-    // MARK: - getShares
-    private(set) var getSharesCallCount = 0
+  // MARK: - getMetadata
 
-    func getShares() async throws -> PortalKeychainClientShares {
-        getSharesCallCount += 1
-        // Provide a mock or stub value if needed
-        return PortalKeychainClientShares()
-    }
+  private(set) var getMetadataCallCount = 0
 
-    // MARK: - loadMetadata
-    private(set) var loadMetadataCallCount = 0
+  func getMetadata() async throws -> PortalKeychainClientMetadata {
+    getMetadataCallCount += 1
+    // Provide a mock or stub value if needed
+    return PortalKeychainClientMetadata.stub()
+  }
 
-    func loadMetadata() async throws -> PortalSwift.PortalKeychainMetadata {
-        loadMetadataCallCount += 1
-        return PortalKeychainMetadata(namespaces: [:])
-    }
+  // MARK: - getShare(forChainId:)
 
-    // MARK: - setMetadata
-    private(set) var setMetadataCallCount = 0
-    private(set) var setMetadataParams: [PortalKeychainClientMetadata] = []
+  private(set) var getShareForChainIdCallCount = 0
+  private(set) var getShareForChainIdParams: [String] = []
 
-    func setMetadata(_ metadata: PortalKeychainClientMetadata) async throws {
-        setMetadataCallCount += 1
-        setMetadataParams.append(metadata)
-    }
+  func getShare(_ forChainId: String) async throws -> String {
+    getShareForChainIdCallCount += 1
+    getShareForChainIdParams.append(forChainId)
+    return ""
+  }
 
-    // MARK: - setShares
-    private(set) var setSharesCallCount = 0
-    private(set) var setSharesParams: [[String: PortalMpcGeneratedShare]] = []
+  // MARK: - getShares
 
-    func setShares(_ shares: [String: PortalMpcGeneratedShare]) async throws {
-        setSharesCallCount += 1
-        setSharesParams.append(shares)
-    }
+  private(set) var getSharesCallCount = 0
 
-    // MARK: - getAddress
-    private(set) var getAddressCallCount = 0
+  func getShares() async throws -> PortalKeychainClientShares {
+    getSharesCallCount += 1
+    // Provide a mock or stub value if needed
+    return PortalKeychainClientShares()
+  }
 
-    func getAddress() throws -> String {
-        getAddressCallCount += 1
-        return ""
-    }
+  // MARK: - loadMetadata
 
-    // MARK: - getSigningShare
-    private(set) var getSigningShareCallCount = 0
+  private(set) var loadMetadataCallCount = 0
 
-    func getSigningShare() throws -> String {
-        getSigningShareCallCount += 1
-        return ""
-    }
+  func loadMetadata() async throws -> PortalSwift.PortalKeychainMetadata {
+    loadMetadataCallCount += 1
+    return PortalKeychainMetadata(namespaces: [:])
+  }
 
-    // MARK: - deleteAddress
-    private(set) var deleteAddressCallCount = 0
+  // MARK: - setMetadata
 
-    func deleteAddress() throws {
-        deleteAddressCallCount += 1
-    }
+  private(set) var setMetadataCallCount = 0
+  private(set) var setMetadataParams: [PortalKeychainClientMetadata] = []
 
-    // MARK: - deleteSigningShare
-    private(set) var deleteSigningShareCallCount = 0
+  func setMetadata(_ metadata: PortalKeychainClientMetadata) async throws {
+    setMetadataCallCount += 1
+    setMetadataParams.append(metadata)
+  }
 
-    func deleteSigningShare() throws {
-        deleteSigningShareCallCount += 1
-    }
+  // MARK: - setShares
 
-    // MARK: - setAddress
-    private(set) var setAddressCallCount = 0
-    private(set) var setAddressParams: [String] = []
+  private(set) var setSharesCallCount = 0
+  private(set) var setSharesParams: [[String: PortalMpcGeneratedShare]] = []
 
-    func setAddress(address: String, completion: @escaping (Result<OSStatus>) -> Void) {
-        setAddressCallCount += 1
-        setAddressParams.append(address)
-        // Call completion with a mock result
-        completion(Result(error: NSError()))
-    }
+  func setShares(_ shares: [String: PortalMpcGeneratedShare]) async throws {
+    setSharesCallCount += 1
+    setSharesParams.append(shares)
+  }
 
-    // MARK: - setSigningShare
-    private(set) var setSigningShareCallCount = 0
-    private(set) var setSigningShareParams: [String] = []
+  // MARK: - getAddress
 
-    func setSigningShare(signingShare: String, completion: @escaping (Result<OSStatus>) -> Void) {
-        setSigningShareCallCount += 1
-        setSigningShareParams.append(signingShare)
-        // Call completion with a mock result
-        completion(Result(error: NSError()))
-    }
+  private(set) var getAddressCallCount = 0
+
+  func getAddress() throws -> String {
+    getAddressCallCount += 1
+    return ""
+  }
+
+  // MARK: - getSigningShare
+
+  private(set) var getSigningShareCallCount = 0
+
+  func getSigningShare() throws -> String {
+    getSigningShareCallCount += 1
+    return ""
+  }
+
+  // MARK: - deleteAddress
+
+  private(set) var deleteAddressCallCount = 0
+
+  func deleteAddress() throws {
+    deleteAddressCallCount += 1
+  }
+
+  // MARK: - deleteSigningShare
+
+  private(set) var deleteSigningShareCallCount = 0
+
+  func deleteSigningShare() throws {
+    deleteSigningShareCallCount += 1
+  }
+
+  // MARK: - setAddress
+
+  private(set) var setAddressCallCount = 0
+  private(set) var setAddressParams: [String] = []
+
+  func setAddress(address: String, completion: @escaping (Result<OSStatus>) -> Void) {
+    setAddressCallCount += 1
+    setAddressParams.append(address)
+    // Call completion with a mock result
+    completion(Result(error: NSError()))
+  }
+
+  // MARK: - setSigningShare
+
+  private(set) var setSigningShareCallCount = 0
+  private(set) var setSigningShareParams: [String] = []
+
+  func setSigningShare(signingShare: String, completion: @escaping (Result<OSStatus>) -> Void) {
+    setSigningShareCallCount += 1
+    setSigningShareParams.append(signingShare)
+    // Call completion with a mock result
+    completion(Result(error: NSError()))
+  }
 }

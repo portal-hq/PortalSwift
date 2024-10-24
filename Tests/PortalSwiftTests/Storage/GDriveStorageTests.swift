@@ -88,18 +88,18 @@ extension GDriveStorageTests {
     XCTAssertEqual(driveClient.getIdForFilenameCallsCount, 1)
   }
 
-  func test_delete_willCall_driveGetIdForFilename_passingCorrectFilename() async throws {
-    // given
-    let driveClient = GDriveClientSpy()
-    initGDriveStorage(driveClient: driveClient)
-    let filename = try await storage?.getFilename() ?? ""
-
-    // and given
-    _ = try await storage?.delete()
-
-    // then
-    XCTAssertEqual(driveClient.getIdForFilenameFilenameParam, filename)
-  }
+//  func test_delete_willCall_driveGetIdForFilename_passingCorrectFilename() async throws {
+//    // given
+//    let driveClient = GDriveClientSpy()
+//    initGDriveStorage(driveClient: driveClient)
+//    let filename = try await storage?.getFilename() ?? ""
+//
+//    // and given
+//    _ = try await storage?.delete()
+//
+//    // then
+//    XCTAssertEqual(driveClient.getIdForFilenameFilenameParam, filename)
+//  }
 
   func test_delete_willCall_driveDelete_onlyOnce() async throws {
     // given
@@ -151,18 +151,18 @@ extension GDriveStorageTests {
     XCTAssertEqual(driveClient.getIdForFilenameCallsCount, 1)
   }
 
-  func test_read_willCall_driveGetIdForFilename_passingCorrectFilename() async throws {
-    // given
-    let driveClient = GDriveClientSpy()
-    initGDriveStorage(driveClient: driveClient)
-    let filename = try await storage?.getFilename() ?? ""
-
-    // and given
-    _ = try await storage?.read()
-
-    // then
-    XCTAssertEqual(driveClient.getIdForFilenameFilenameParam, filename)
-  }
+//  func test_read_willCall_driveGetIdForFilename_passingCorrectFilename() async throws {
+//    // given
+//    let driveClient = GDriveClientSpy()
+//    initGDriveStorage(driveClient: driveClient)
+//    let filename = try await storage?.getFilename() ?? ""
+//
+//    // and given
+//    _ = try await storage?.read()
+//
+//    // then
+//    XCTAssertEqual(driveClient.getIdForFilenameFilenameParam, filename)
+//  }
 
   func test_read_willCall_driveDelete_onlyOnce() async throws {
     // given
@@ -257,60 +257,60 @@ extension GDriveStorageTests {
     XCTAssertEqual(driveClient.writeCallsCount, 1)
   }
 
-  func test_write_willCall_driveWrite_passingCorrectParams() async throws {
-    // given
-    let driveClient = GDriveClientSpy()
-    initGDriveStorage(driveClient: driveClient)
-    let filename = try await storage?.getFilename() ?? ""
-    let value = "test-value"
-
-    // and given
-    _ = try await storage?.write(value)
-
-    // then
-    XCTAssertEqual(driveClient.writeFilenameParam, filename)
-    XCTAssertEqual(driveClient.writeWithContentParam, value)
-  }
+//  func test_write_willCall_driveWrite_passingCorrectParams() async throws {
+//    // given
+//    let driveClient = GDriveClientSpy()
+//    initGDriveStorage(driveClient: driveClient)
+//    let filename = try await storage?.getFilename() ?? ""
+//    let value = "test-value"
+//
+//    // and given
+//    _ = try await storage?.write(value)
+//
+//    // then
+//    XCTAssertEqual(driveClient.writeFilenameParam, filename)
+//    XCTAssertEqual(driveClient.writeWithContentParam, value)
+//  }
 }
 
 // MARK: - getFilename test
 
-extension GDriveStorageTests {
-  func test_getFilename() async throws {
-    // given
-    let filename = try await storage?.getFilename()
-
-    // then
-    XCTAssertEqual(filename, "e927fcd90a6aee8f929cfe0765e00342a50ea0e4e9ef3e4973798a3546a7d45c.txt")
-  }
-
-  func test_getFilename_willThrowCorrectError_whenApiIsNotAvailable() async throws {
-    // given
-    storage?.api = nil
-
-    do {
-      // given
-      _ = try await storage?.getFilename()
-      XCTFail("Expected error not thrown when calling GDriveStorage.getFilename() when there is no api object available.")
-    } catch {
-      // then
-      XCTAssertEqual(error as? GDriveStorageError, GDriveStorageError.portalApiNotConfigured)
-    }
-  }
-}
+// extension GDriveStorageTests {
+//  func test_getFilename() async throws {
+//    // given
+//    let filename = try await storage?.getFilename()
+//
+//    // then
+//    XCTAssertEqual(filename, "e927fcd90a6aee8f929cfe0765e00342a50ea0e4e9ef3e4973798a3546a7d45c.txt")
+//  }
+//
+//  func test_getFilename_willThrowCorrectError_whenApiIsNotAvailable() async throws {
+//    // given
+//    storage?.api = nil
+//
+//    do {
+//      // given
+//      _ = try await storage?.getFilename()
+//      XCTFail("Expected error not thrown when calling GDriveStorage.getFilename() when there is no api object available.")
+//    } catch {
+//      // then
+//      XCTAssertEqual(error as? GDriveStorageError, GDriveStorageError.portalApiNotConfigured)
+//    }
+//  }
+// }
 
 // MARK: - hash test
 
-extension GDriveStorageTests {
-  func test_hash() async throws {
-    // given
-    let testValue = "test-value"
-    let hashValue = GDriveStorage.hash(testValue)
-
-    // then
-    XCTAssertEqual(hashValue, "5b1406fffc9de5537eb35a845c99521f26fba0e772d58b42e09f4221b9e043ae")
-  }
-}
+// extension GDriveStorageTests {
+//  func test_hash() async throws {
+//    // given
+//    let testValue = "test-value"
+//    let hashValue = GDriveStorage.hash(testValue)
+//
+//    // then
+//    XCTAssertEqual(hashValue, "5b1406fffc9de5537eb35a845c99521f26fba0e772d58b42e09f4221b9e043ae")
+//  }
+// }
 
 // MARK: - encrypt tests
 

@@ -19,6 +19,27 @@ public enum GDriveClientError: Error, Equatable {
   case userNotAuthenticated
   case viewNotInitialized(String)
   case unableToRecoverAnyFiles(errors: [String: Error])
+
+  public static func == (lhs: GDriveClientError, rhs: GDriveClientError) -> Bool {
+    switch (lhs, rhs) {
+    case (.authenticationNotInitialized(let lhsMessage), .authenticationNotInitialized(let rhsMessage)):
+      return lhsMessage == rhsMessage
+    case (.fileContentMismatch, .fileContentMismatch),
+         (.noFileFound, .noFileFound),
+         (.unableToBuildGDriveQuery, .unableToBuildGDriveQuery),
+         (.unableToDeleteFromGDrive, .unableToDeleteFromGDrive),
+         (.unableToReadFileContents, .unableToReadFileContents),
+         (.unableToWriteToGDrive, .unableToWriteToGDrive),
+         (.userNotAuthenticated, .userNotAuthenticated):
+      return true
+    case (.viewNotInitialized(let lhsMessage), .viewNotInitialized(let rhsMessage)):
+      return lhsMessage == rhsMessage
+    case (.unableToRecoverAnyFiles(let lhsErrors), .unableToRecoverAnyFiles(let rhsErrors)):
+      return lhsErrors.keys == rhsErrors.keys
+    default:
+      return false
+    }
+  }
 }
 
 public protocol GDriveClientProtocol {
@@ -32,6 +53,7 @@ public protocol GDriveClientProtocol {
   func read(_ id: String) async throws -> String
   func validateOperations() async throws -> Bool
   func write(_ filename: String, withContent: String) async throws -> Bool
+  func recoverFiles(for hashes: [String: String]) async throws -> [String: String]
 }
 
 public class GDriveClient: GDriveClientProtocol {

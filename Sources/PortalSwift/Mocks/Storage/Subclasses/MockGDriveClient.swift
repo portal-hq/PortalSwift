@@ -39,4 +39,8 @@ class MockGDriveClient: GDriveClientProtocol {
   public func write(_: String, withContent _: String) async throws -> Bool {
     return true
   }
+
+  func recoverFiles(for _: [String: String]) async throws -> [String: String] {
+    return [:]
+  }
 }
