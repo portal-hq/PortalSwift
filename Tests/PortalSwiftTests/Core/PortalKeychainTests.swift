@@ -311,19 +311,19 @@ extension PortalKeychainTests {
 // MARK: - setShares tests
 
 extension PortalKeychainTests {
-//  func test_setShares_willThrowCorrectError_whenClientNotFound() async throws {
-//    // given
-//    keychain.api = nil
-//
-//    do {
-//      // and given
-//      _ = try await keychain.setShares([:])
-//      XCTFail("Expected error not thrown when calling PortalKeychain.setMetadata when client is not found.")
-//    } catch {
-//      // then
-//      XCTAssertEqual(error as? PortalKeychain.KeychainError, PortalKeychain.KeychainError.clientNotFound)
-//    }
-//  }
+  func test_setShares_willThrowCorrectError_whenClientNotFound() async throws {
+    // given
+    keychain.api = nil
+
+    do {
+      // and given
+      _ = try await keychain.setShares([:])
+      XCTFail("Expected error not thrown when calling PortalKeychain.setMetadata when client is not found.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? PortalKeychain.KeychainError, PortalKeychain.KeychainError.clientNotFound)
+    }
+  }
 
   func test_setShares_willCall_keychainUpdateItem_atLeastOnce() async throws {
     // given
