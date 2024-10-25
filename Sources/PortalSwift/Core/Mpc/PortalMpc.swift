@@ -292,29 +292,14 @@ public class PortalMpc {
     }
 
     let decryptionKey = try await storage.read()
-
     let decryptedString = try await storage.decrypt(cipherText, withKey: decryptionKey)
-    guard let decryptedData = decryptedString.data(using: .utf8) else {
-      throw MpcError.unexpectedErrorOnEject("Unable to convert decrypted data.")
-    }
 
-    // Decode the backup share into the appropriate format
-    var generateResponse: PortalMpcGenerateResponse = [:]
-    do {
-      generateResponse = try self.decoder.decode(PortalMpcGenerateResponse.self, from: decryptedData)
-    } catch {
-      let backupShare = try decoder.decode(MpcShare.self, from: decryptedData)
-      generateResponse["SECP256K1"] = PortalMpcGeneratedShare(
-        id: backupShare.backupSharePairId ?? "",
-        share: decryptedString
-      )
-    }
+    // Use the new formatShares function
+    let formattedShares = try await formatShares(sharesJSONString: decryptedString)
 
-    // Get the dictionary of private keys via the `eject` MPC operation
     var privateKeys: [PortalNamespace: String] = [:]
-    let response = generateResponse
 
-    if let secp256k1Share = response["SECP256K1"] {
+    if let secp256k1Share = formattedShares["SECP256K1"] {
       let ejectResponse = await self.mobile.MobileEjectWalletAndDiscontinueMPC(secp256k1Share.share, organizationShare)
       guard let jsonData = ejectResponse.data(using: .utf8) else {
         throw JSONParseError.stringToDataConversionFailed
@@ -322,21 +307,16 @@ public class PortalMpc {
 
       let ejectResult: EjectResult = try decoder.decode(EjectResult.self, from: jsonData)
 
-      // Throw if there is an error getting the privateKey.
       guard ejectResult.error.code == 0 else {
         throw PortalMpcError(ejectResult.error)
       }
 
-      let privateKey = ejectResult.privateKey
-
-      privateKeys[.eip155] = privateKey
+      privateKeys[.eip155] = ejectResult.privateKey
     }
 
-    if let ed25519Share = response["ED25519"], organizationShareEd25519 != nil {
-      guard let organizationShareEd25519 else {
-        throw MpcError.noOrganizationShareFound("No organization share found for Solana wallet.")
-      }
-
+    if let ed25519Share = formattedShares["ED25519"],
+       let organizationShareEd25519 = andOrganizationSolanaBackupShare
+    {
       let ejectResponse = await self.mobile.MobileEjectWalletAndDiscontinueMPCEd25519(ed25519Share.share, organizationShareEd25519)
       guard let jsonData = ejectResponse.data(using: .utf8) else {
         throw JSONParseError.stringToDataConversionFailed
@@ -344,19 +324,16 @@ public class PortalMpc {
 
       let ejectResult: EjectResult = try decoder.decode(EjectResult.self, from: jsonData)
 
-      // Throw if there is an error getting the privateKey.
       guard ejectResult.error.code == 0 else {
         throw PortalMpcError(ejectResult.error)
       }
 
-      let privateKey = ejectResult.privateKey
-
-      privateKeys[.solana] = privateKey
+      privateKeys[.solana] = ejectResult.privateKey
     }
 
     _ = try await self.api?.eject()
 
-    guard let _ = privateKeys[.eip155] else {
+    guard privateKeys[.eip155] != nil else {
       throw MpcError.unexpectedErrorOnEject("Unable to find private key for Ethereum wallet.")
     }
 
@@ -499,19 +476,19 @@ public class PortalMpc {
             let decryptionKey = try await storage.read()
 
             usingProgressCallback?(MpcStatus(status: .decryptingShare, done: false))
-            let decryptedString = try await storage.decrypt(cipherText, withKey: decryptionKey)
-            guard let decryptedData = decryptedString.data(using: .utf8) else {
-              throw MpcError.unexpectedErrorOnRecover("Unable to parse decrypted data.")
-            }
+            let decryptedSharesString = try await storage.decrypt(cipherText, withKey: decryptionKey)
             usingProgressCallback?(MpcStatus(status: .parsingShare, done: false))
-            let backupResponse = try await parseRecoveryInput(data: decryptedData)
+            let shares = try await formatShares(sharesJSONString: decryptedSharesString)
 
             usingProgressCallback?(MpcStatus(status: .generatingShare, done: false))
             var recoverResponse: PortalMpcGenerateResponse = [:]
             if let shares = try? await keychain?.getShares() {
               recoverResponse = shares
             }
-            if let ed25519Share = backupResponse[PortalCurve.ED25519.rawValue] {
+
+            var recoveredShareCount = 0
+
+            if let ed25519Share = shares[PortalCurve.ED25519.rawValue] {
               //  The share's already been backed up, recover it
               async let ed25519MpcShare = try recoverSigningShare(.ED25519, withMethod: method, andBackupShare: ed25519Share.share)
 
@@ -524,9 +501,10 @@ public class PortalMpc {
                 id: ed25519MpcShare.signingSharePairId ?? "",
                 share: shareString
               )
+              recoveredShareCount += 1
             }
 
-            if let secp256k1Share = backupResponse[PortalCurve.SECP256K1.rawValue] {
+            if let secp256k1Share = shares[PortalCurve.SECP256K1.rawValue] {
               async let secp256k1MpcShare = try recoverSigningShare(.SECP256K1, withMethod: method, andBackupShare: secp256k1Share.share)
 
               let shareData = try await encoder.encode(secp256k1MpcShare)
@@ -538,6 +516,12 @@ public class PortalMpc {
                 id: secp256k1MpcShare.signingSharePairId ?? "",
                 share: shareString
               )
+              recoveredShareCount += 1
+            }
+
+            // Check if any shares were recovered
+            if recoveredShareCount == 0 {
+              throw MpcError.unexpectedErrorOnRecover("No valid shares found in the backup data")
             }
 
             continuation.resume(returning: recoverResponse)
@@ -820,23 +804,28 @@ public class PortalMpc {
     return mpcShare
   }
 
-  private func parseRecoveryInput(data: Data) async throws -> PortalMpcGenerateResponse {
+  private func formatShares(sharesJSONString: String) async throws -> PortalMpcGenerateResponse {
+    let formattedSharesString = self.mobile.MobileFormatShares(sharesJSONString)
+
+    guard let jsonData = formattedSharesString.data(using: .utf8) else {
+      throw MpcError.unableToDecodeShare
+    }
+
     do {
-      return try self.decoder.decode(PortalMpcGenerateResponse.self, from: data)
-    } catch {
-      // If the backup isn't in the new format, try to get it in the old format and convert to the new format
-      let mpcShare = try decoder.decode(MpcShare.self, from: data)
-      guard let shareString = String(data: data, encoding: .utf8) else {
-        throw MpcError.unableToDecodeShare
+      let result = try JSONDecoder().decode(FormatShareResponse.self, from: jsonData)
+
+      if let error = result.error {
+        throw MpcError.unexpectedErrorOnRecover("Error formatting shares: \(error.message)")
       }
-      var backupShares: PortalMpcGenerateResponse = [:]
 
-      backupShares["SECP256K1"] = PortalMpcGeneratedShare(
-        id: mpcShare.backupSharePairId ?? "",
-        share: shareString
-      )
+      guard let data = result.data else {
+        throw MpcError.unexpectedErrorOnRecover("No data returned from MobileFormatShares")
+      }
 
-      return backupShares
+      return data
+    } catch {
+      print("Error decoding formatted shares: \(error)")
+      throw MpcError.unableToDecodeShare
     }
   }
 

@@ -18,6 +18,7 @@ public enum GDriveClientError: Error {
   case unableToWriteToGDrive
   case userNotAuthenticated
   case viewNotInitialized(String)
+  case unableToRecoverAnyFiles(errors: [String: Error])
 }
 
 public class GDriveClient {
@@ -111,12 +112,13 @@ public class GDriveClient {
       throw GDriveClientError.userNotAuthenticated
     }
 
-    let query = "name='\(filename)'".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
+    let filenameWithExtension = filename + ".txt"
+    let query = "name='\(filenameWithExtension)'".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
     guard let query = query else {
       throw GDriveClientError.unableToBuildGDriveQuery
     }
 
-    if let url = URL(string: "\(baseUrl)/drive/v3/files?corpora=user&q=\(query)") {
+    if let url = URL(string: "\(baseUrl)/drive/v3/files?corpora=user&q=\(query)&orderBy=modifiedTime%20desc&pageSize=1") {
       let data = try await requests.get(url, withBearerToken: accessToken)
       let filesListResponse = try decoder.decode(GDriveFilesListResponse.self, from: data)
 
@@ -124,6 +126,7 @@ public class GDriveClient {
         return filesListResponse.files[0].id
       }
 
+      self.logger.info("GDriveClient.getIdForFilename() - No file found for: \(filenameWithExtension)")
       throw GDriveClientError.noFileFound
     }
 
@@ -193,20 +196,51 @@ public class GDriveClient {
       throw GDriveClientError.userNotAuthenticated
     }
 
+    let filenameWithExtension = filename + ".txt"
+
     do {
       let existingFileId = try await getIdForFilename(filename)
       guard try await self.delete(existingFileId) else {
         throw GDriveClientError.unableToDeleteFromGDrive
       }
 
-      let fileId = try await writeFile(filename, withContent: withContent, andAccessToken: accessToken)
+      let fileId = try await writeFile(filenameWithExtension, withContent: withContent, andAccessToken: accessToken)
 
       return !fileId.isEmpty
     } catch {
-      let fileId = try await writeFile(filename, withContent: withContent, andAccessToken: accessToken)
+      let fileId = try await writeFile(filenameWithExtension, withContent: withContent, andAccessToken: accessToken)
 
       return !fileId.isEmpty
     }
+  }
+
+  public func recoverFiles(for hashes: [String: String]) async throws -> [String: String] {
+    var recoveredFiles: [String: String] = [:]
+    var errors: [String: Error] = [:]
+    var processedHashes: Set<String> = []
+
+    for (platform, hash) in hashes {
+      if processedHashes.contains(hash) {
+        self.logger.info("GDriveClient.recoverFiles() - Skipping duplicate hash for platform: \(platform), hash: \(hash)")
+        continue
+      }
+
+      do {
+        let fileId = try await getIdForFilename(hash)
+        let content = try await read(fileId)
+        recoveredFiles[platform] = content
+        processedHashes.insert(hash)
+      } catch {
+        self.logger.info("GDriveClient.recoverFiles() - Error recovering file for platform: \(platform), hash: \(hash). Error: \(error)")
+        errors[platform] = error
+      }
+    }
+
+    if recoveredFiles.isEmpty {
+      throw GDriveClientError.unableToRecoverAnyFiles(errors: errors)
+    }
+
+    return recoveredFiles
   }
 
   private func createFolder() async throws -> GDriveFile {

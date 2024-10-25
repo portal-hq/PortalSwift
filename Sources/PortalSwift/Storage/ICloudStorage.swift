@@ -17,6 +17,11 @@ public class ICloudStorage: Storage, PortalStorage {
     case unableToDeriveKey(String)
     case unableToRetrieveClient(String)
     case failedValidateOperations(String)
+    case binaryNotConfigured
+    case unableToFetchClientData
+    case unableToDeleteFile
+    case unableToReadFile
+    case unableToFetchIOSHash
     case unknownError
   }
 
@@ -30,19 +35,21 @@ public class ICloudStorage: Storage, PortalStorage {
   public weak var api: PortalApi?
   /// The key used to store the private key in iCloud.
   public var key: String = ""
-
+  public var mobile: Mobile?
   public let encryption: PortalEncryption
 
   private let isSimulator = TARGET_OS_SIMULATOR != 0
   private let storage: PortalKeyValueStore
+  private var filenameHashes: [String: String]?
 
-  /// Initializes a new ICloudStorage instance.
   public init(
+    mobile: Mobile? = nil,
     encryption: PortalEncryption? = nil,
     keyValueStore: PortalKeyValueStore? = nil
   ) {
     self.encryption = encryption ?? PortalEncryption()
     self.storage = keyValueStore ?? PortalKeyValueStore()
+    self.mobile = mobile
   }
 
   /*******************************************
@@ -50,17 +57,32 @@ public class ICloudStorage: Storage, PortalStorage {
    *******************************************/
 
   public func delete() async throws -> Bool {
-    let key = try await getKey()
-    return self.storage.delete(key)
+    let hashes = try await getFilenameHashes()
+
+    for hash in hashes.values {
+      if self.storage.delete(hash) {
+        return true
+      }
+    }
+
+    throw ICloudStorageError.unableToDeleteFile
   }
 
   public func read() async throws -> String {
-    let key = try await getKey()
-    return self.storage.read(key)
+    let hashes = try await getFilenameHashes()
+
+    for hash in hashes.values {
+      let value = self.storage.read(hash)
+      if !value.isEmpty {
+        return value
+      }
+    }
+
+    throw ICloudStorageError.unableToReadFile
   }
 
   public func write(_ value: String) async throws -> Bool {
-    let key = try await getKey()
+    let key = try await getDefaultFilename()
     return self.storage.write(key, value: value)
   }
 
@@ -79,38 +101,74 @@ public class ICloudStorage: Storage, PortalStorage {
     }
   }
 
-  /*******************************************
+  /****************************
    * Private functions
    *******************************************/
 
-  private func createKey(_ client: ClientResponse) -> String {
-    ICloudStorage.hash("\(client.custodian.id)\(client.id)")
-  }
-
-  private func getKey() async throws -> String {
-    if key.count > 0 {
-      return key
+  private func getFilenameHashes() async throws -> [String: String] {
+    if let hashes = self.filenameHashes {
+      return hashes
     }
 
-    if self.api == nil {
+    guard let api = self.api else {
       throw ICloudStorageError.noAPIKeyProvided("No API key provided")
     }
 
-    guard let clientResponse = try await api!.client else {
+    guard let client = try await api.client else {
       throw ICloudStorageError.unableToRetrieveClient("Unable to retrieve client from PortalApi.")
     }
 
-    let key = self.createKey(clientResponse)
+    let custodianId = client.custodian.id
+    let clientId = client.id
+    self.filenameHashes = try await self.fetchFileHashes(custodianId: custodianId, clientId: clientId)
 
-    return key
+    return self.filenameHashes!
   }
 
-  public static func hash(_ str: String) -> String {
-    let data = str.data(using: .utf8)!
-    var digest = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
-    data.withUnsafeBytes {
-      _ = CC_SHA256($0.baseAddress, CC_LONG(data.count), &digest)
+  private func getDefaultFilename() async throws -> String {
+    let hashes = try await getFilenameHashes()
+    guard let defaultHash = hashes["default"] else {
+      throw ICloudStorageError.unableToFetchIOSHash
     }
-    return Data(digest).map { String(format: "%02hhx", $0) }.joined()
+    return defaultHash
+  }
+
+  private func fetchFileHashes(custodianId: String, clientId: String) async throws -> [String: String] {
+    let input = [
+      "custodianId": custodianId,
+      "clientId": clientId
+    ]
+
+    guard let mobile = self.mobile else {
+      throw ICloudStorageError.binaryNotConfigured
+    }
+
+    guard let inputJSON = try? JSONSerialization.data(withJSONObject: input),
+          let inputJSONString = String(data: inputJSON, encoding: .utf8)
+    else {
+      throw ICloudStorageError.unableToFetchClientData
+    }
+
+    let hashesJSON = mobile.MobileGetCustodianIdClientIdHashes(inputJSONString)
+
+    guard let hashesData = hashesJSON.data(using: .utf8) else {
+      throw ICloudStorageError.unableToFetchClientData
+    }
+
+    do {
+      let response = try JSONDecoder().decode(CustodianIDClientIDHashesResponse.self, from: hashesData)
+
+      if let error = response.error {
+        throw ICloudStorageError.unableToFetchClientData
+      }
+
+      guard let hashes = response.data else {
+        throw ICloudStorageError.unableToFetchClientData
+      }
+
+      return hashes.toMap()
+    } catch {
+      throw ICloudStorageError.unableToFetchClientData
+    }
   }
 }

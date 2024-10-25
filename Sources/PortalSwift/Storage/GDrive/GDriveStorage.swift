@@ -18,6 +18,7 @@ public class GDriveStorage: Storage, PortalStorage {
     set(clientId) { self.drive.clientId = clientId }
   }
 
+  public var mobile: Mobile?
   public let encryption: PortalEncryption
   public var folder: String {
     get { return self.drive.folder }
@@ -37,13 +38,16 @@ public class GDriveStorage: Storage, PortalStorage {
   private var filename: String?
   private var logger = PortalLogger()
   private var separator: String = ""
+  private var filenameHashes: [String: String]?
 
   public init(
+    mobile: Mobile? = nil,
     clientID: String? = nil,
     viewController: UIViewController? = nil,
     encryption: PortalEncryption? = nil,
     driveClient: GDriveClient? = nil
   ) {
+    self.mobile = mobile
     self.drive = driveClient ?? GDriveClient(clientId: clientID, view: viewController)
     self.encryption = encryption ?? PortalEncryption()
   }
@@ -53,19 +57,49 @@ public class GDriveStorage: Storage, PortalStorage {
    *******************************************/
 
   public func delete() async throws -> Bool {
-    let filename = try await getFilename()
-    let fileId = try await drive.getIdForFilename(filename)
+    let hashes = try await getFilenameHashes()
 
-    return try await self.drive.delete(fileId)
+    for hash in hashes.values {
+      if let fileId = try? await drive.getIdForFilename(hash) {
+        if try await self.drive.delete(fileId) {
+          return true
+        }
+      }
+    }
+
+    throw GDriveStorageError.unableToDeleteFile
   }
 
   public func read() async throws -> String {
-    let filename = try await getFilename()
-    let fileId = try await drive.getIdForFilename(filename)
+    let hashes = try await getFilenameHashes()
 
-    let fileContents = try await drive.read(fileId)
+    do {
+      let recoveredFiles = try await drive.recoverFiles(for: hashes)
 
-    return fileContents
+      // Prioritize default file if available
+      if let defaultFile = recoveredFiles["default"] {
+        return defaultFile
+      }
+
+      // If iOS file is not available, return content of any recovered file
+      if let anyContent = recoveredFiles.values.first {
+        return anyContent
+      }
+
+      // This should never happen because recoverFiles throws an error if no files are recovered
+      throw GDriveStorageError.unableToReadFile
+    } catch let GDriveClientError.unableToRecoverAnyFiles(errors) {
+      self.logger.error("GDriveStorage.read() - Unable to recover any files. Errors: \(errors)")
+      throw GDriveStorageError.unableToReadFile
+    } catch {
+      self.logger.error("GDriveStorage.read() - Unexpected error: \(error)")
+      throw GDriveStorageError.unableToReadFile
+    }
+  }
+
+  public func write(_ value: String) async throws -> Bool {
+    let filename = try await getDefaultFilename()
+    return try await self.drive.write(filename, withContent: value)
   }
 
   public func signIn() async throws -> GIDGoogleUser {
@@ -81,48 +115,116 @@ public class GDriveStorage: Storage, PortalStorage {
     return try await self.drive.validateOperations()
   }
 
-  public func write(_ value: String) async throws -> Bool {
-    let filename = try await getFilename()
-
-    return try await self.drive.write(filename, withContent: value)
-  }
-
   /*******************************************
    * Private functions
    *******************************************/
-
-  private func getFilename() async throws -> String {
+  private func getFilenameHashes() async throws -> [String: String] {
     guard let api = self.api else {
       throw GDriveStorageError.portalApiNotConfigured
     }
 
-    if self.filename == nil || self.filename == "" {
-      guard let client = try await api.client else {
-        throw GDriveStorageError.unableToGetClient
-      }
-
-      let name = GDriveStorage.hash("\(client.custodian.id)\(client.id)")
-      self.filename = "\(name).txt"
-
-      print("Filename: \(self.filename ?? "")")
+    guard let client = try await api.client else {
+      throw GDriveStorageError.unableToGetClient
     }
 
-    return self.filename!
+    let custodianId = client.custodian.id
+    let clientId = client.id
+    self.filenameHashes = try await self.fetchFileHashes(custodianId: custodianId, clientId: clientId)
+
+    return self.filenameHashes!
   }
 
-  private static func hash(_ str: String) -> String {
-    let data = str.data(using: .utf8)!
-    var digest = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
-    data.withUnsafeBytes {
-      _ = CC_SHA256($0.baseAddress, CC_LONG(data.count), &digest)
+  private func getDefaultFilename() async throws -> String {
+    let hashes = try await getFilenameHashes()
+    guard let defaultHash = hashes["default"] else {
+      throw GDriveStorageError.unableToFetchDefaultHash
     }
-    return Data(digest).map { String(format: "%02hhx", $0) }.joined()
+    return defaultHash
+  }
+
+  private func fetchFileHashes(custodianId: String, clientId: String) async throws -> [String: String] {
+    let input = [
+      "custodianId": custodianId,
+      "clientId": clientId
+    ]
+
+    guard let mobile = self.mobile else {
+      throw GDriveStorageError.binaryNotConfigured
+    }
+
+    guard let inputJSON = try? JSONSerialization.data(withJSONObject: input),
+          let inputJSONString = String(data: inputJSON, encoding: .utf8)
+    else {
+      throw GDriveStorageError.unableToFetchClientData
+    }
+
+    let hashesJSON = mobile.MobileGetCustodianIdClientIdHashes(inputJSONString)
+
+    guard let hashesData = hashesJSON.data(using: .utf8) else {
+      throw GDriveStorageError.unableToFetchClientData
+    }
+
+    do {
+      let response = try JSONDecoder().decode(CustodianIDClientIDHashesResponse.self, from: hashesData)
+
+      if let error = response.error {
+        self.logger.error("GDriveStorage.fetchFileHashes() - \(error.message)")
+        throw GDriveStorageError.unableToFetchClientData
+      }
+
+      guard let hashes = response.data else {
+        throw GDriveStorageError.unableToFetchClientData
+      }
+
+      return hashes.toMap()
+    } catch {
+      if let decodingError = error as? DecodingError {
+        self.logger.error("GDriveStorage.fetchFileHashes() - Decoding Error: \(decodingError)")
+      }
+      throw GDriveStorageError.unableToFetchClientData
+    }
+  }
+}
+
+struct CustodianIDClientIDHashesResponse: Codable {
+  let data: CustodianIDClientIDHashes?
+  let error: CustodianIDClientIDHashesResponseError?
+}
+
+struct CustodianIDClientIDHashesResponseError: Codable {
+  let code: Int
+  let message: String
+}
+
+struct CustodianIDClientIDHashes: Codable {
+  let android, defaultHash, ios, reactNative, webSDK: String
+
+  enum CodingKeys: String, CodingKey {
+    case android
+    case defaultHash = "default"
+    case ios
+    case reactNative = "react_native"
+    case webSDK = "web_sdk"
+  }
+
+  func toMap() -> [String: String] {
+    return [
+      "android": self.android,
+      "default": self.defaultHash,
+      "ios": self.ios,
+      "react_native": self.reactNative,
+      "web_sdk": self.webSDK
+    ]
   }
 }
 
 public enum GDriveStorageError: Error, Equatable {
   case portalApiNotConfigured
+  case binaryNotConfigured
   case unableToFetchClientData
   case unableToGetClient
+  case unableToDeleteFile
+  case unableToReadFile
+  case unableToFetchDefaultHash
   case unknownError
 }
