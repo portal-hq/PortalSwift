@@ -7,7 +7,7 @@
 
 import Foundation
 
-public protocol PortalKeychainProtocol {
+public protocol PortalKeychainProtocol: AnyObject {
   var metadata: PortalKeychainMetadata? { get async throws }
   var api: PortalApiProtocol? { get set }
   var legacyAddress: String? { get set }

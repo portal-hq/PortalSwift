@@ -8,7 +8,7 @@
 import AnyCodable
 import Foundation
 
-public protocol PortalProviderProtocol {
+public protocol PortalProviderProtocol: AnyObject {
   var chainId: Int? { get set }
   var address: String? { get }
 

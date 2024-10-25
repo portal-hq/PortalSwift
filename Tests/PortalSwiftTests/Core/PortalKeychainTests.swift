@@ -11,16 +11,18 @@ import XCTest
 
 final class PortalKeychainTests: XCTestCase {
   var keychain: PortalKeychainProtocol!
+  var portalApi : PortalApiProtocol!
   private let encoder = JSONEncoder()
   private let decoder = JSONDecoder()
 
   override func setUpWithError() throws {
     keychain = PortalKeychain(keychainAccess: MockPortalKeychainAccess())
-    self.keychain.api = PortalApi(
-      apiKey: MockConstants.mockApiKey,
-      apiHost: MockConstants.mockHost,
-      requests: MockPortalRequests()
-    )
+      self.portalApi = PortalApi(
+        apiKey: MockConstants.mockApiKey,
+        apiHost: MockConstants.mockHost,
+        requests: MockPortalRequests()
+      )
+    self.keychain.api = portalApi
   }
 
   override func tearDownWithError() throws {
@@ -40,7 +42,8 @@ extension PortalKeychainTests {
     )
   ) {
     keychain = PortalKeychain(keychainAccess: keychainAccess)
-    keychain.api = api
+      self.portalApi = api
+      keychain.api = portalApi
   }
 }
 

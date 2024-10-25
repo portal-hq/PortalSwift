@@ -8,7 +8,7 @@
 import AnyCodable
 import Foundation
 
-public protocol PortalApiProtocol {
+public protocol PortalApiProtocol: AnyObject {
   var client: ClientResponse? { get async throws }
 
   func eject() async throws -> String
