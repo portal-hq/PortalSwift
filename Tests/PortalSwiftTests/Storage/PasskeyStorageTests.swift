@@ -98,8 +98,10 @@ extension PasskeyStorageTests {
     // and given
     _ = try await storage?.read()
 
+    let postCallsCount = await portalRequestsSpy.postCallsCount
+
     // then
-    XCTAssertEqual(portalRequestsSpy.postCallsCount, 2)
+    XCTAssertEqual(postCallsCount, 2)
   }
 }
 
@@ -123,8 +125,10 @@ extension PasskeyStorageTests {
     // and given
     _ = try await storage?.write("")
 
+    let getCallsCount = await portalRequestsSpy.getCallsCount
+
     // then
-    XCTAssertEqual(portalRequestsSpy.getCallsCount, 1)
+    XCTAssertEqual(getCallsCount, 1)
   }
 }
 

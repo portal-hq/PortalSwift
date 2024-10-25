@@ -7,7 +7,7 @@
 
 import Foundation
 
-public class MockPortalRequests: PortalRequestsProtocol {
+public actor MockPortalRequests: PortalRequestsProtocol {
   private let encoder = JSONEncoder()
 
   public init() {}
