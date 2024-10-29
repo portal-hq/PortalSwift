@@ -468,13 +468,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
     print("sol_getTransaction response: \(result)")
   }
 
-  public func getNFTs(_ chainId: String) async throws -> [FetchedNFT] {
-    guard let portal else {
-      throw PortalExampleAppError.portalNotInitialized()
-    }
-    return try await portal.getNFTs(chainId)
-  }
-
   func buildEip155Transaction(chainId: String = "eip155:11155111", params: BuildTransactionParam) async throws -> BuildEip115TransactionResponse {
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
@@ -487,6 +480,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
       throw PortalExampleAppError.portalNotInitialized()
     }
     return try await portal.buildSolanaTransaction(chainId: chainId, params: params)
+  }
+
+  public func getNftAssets(_ chainId: String) async throws -> [NftAsset] {
+    guard let portal else {
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+    return try await portal.getNftAssets(chainId)
   }
 
   public func getShareMetadata() async throws -> [FetchedSharePair] {
@@ -1685,13 +1685,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
         return
       }
       do {
-        let nfts = try await self.getNFTs(chainId)
+        let nfts = try await self.getNftAssets(chainId)
         print(nfts)
-        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched NFTs.")
-        self.showStatusView(message: "\(self.successStatus) Successfully fetched NFTs.")
+        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched NFT Assets.")
+        self.showStatusView(message: "\(self.successStatus) Successfully fetched NFT Assets.")
       } catch {
-        self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching NFTs: \(error)")
-        self.showStatusView(message: "\(self.failureStatus) Error fetching NFTs \(error)")
+        self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching NFT Assets: \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error fetching NFT Assets \(error)")
         return
       }
       do {

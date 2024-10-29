@@ -81,77 +81,6 @@ public struct FetchedBalance: Codable, Equatable {
   public var symbol: String?
 }
 
-public struct FetchedNFT: Codable, Equatable {
-  public var contract: FetchedNFTContract
-  public var id: FetchedNFTTokenId
-  public var balance: String
-  public var title: String
-  public var description: String
-  public var tokenUri: FetchedNFTTokenUri
-  public var media: [FetchedNFTMedia]
-  public var metadata: FetchedNFTMetadata
-  public var timeLastUpdated: String
-  public var contractMetadata: FetchedNFTContractMetadata
-}
-
-public struct FetchedNFTContract: Codable, Equatable {
-  public var address: String
-}
-
-public struct FetchedNFTContractMetadata: Codable, Equatable {
-  public var name: String
-  public var symbol: String
-  public var tokenType: String
-  public var contractDeployer: String
-  public var deployedBlockNumber: Int
-  public var openSea: FetchedNFTContractOpenSeaMetadata?
-}
-
-public struct FetchedNFTContractOpenSeaMetadata: Codable, Equatable {
-  public var collectionName: String
-  public var safelistRequestStatus: String
-  public var imageUrl: String?
-  public var description: String
-  public var externalUrl: String
-  public var lastIngestedAt: String
-  public var floorPrice: Float?
-  public var twitterUsername: String?
-  public var discordUrl: String?
-}
-
-public struct FetchedNFTTokenId: Codable, Equatable {
-  public var tokenId: String
-  public var tokenMetadata: FetchedNFTTokenMetadata
-}
-
-/// Represents the metadata of an NFT's id.
-public struct FetchedNFTTokenMetadata: Codable, Equatable {
-  public var tokenType: String
-}
-
-/// Represents the URI of an NFT.
-public struct FetchedNFTTokenUri: Codable, Equatable {
-  public var gateway: String
-  public var raw: String
-}
-
-/// Represents the media of an NFT.
-public struct FetchedNFTMedia: Codable, Equatable {
-  public var gateway: String
-  public var thumbnail: String
-  public var raw: String
-  public var format: String
-  public var bytes: Int
-}
-
-/// Represents the metadata of an NFT.
-public struct FetchedNFTMetadata: Codable, Equatable {
-  public var name: String
-  public var description: String
-  public var image: String
-  public var external_url: String?
-}
-
 public struct FetchedSharePair: Codable, Equatable {
   public let id: String
   public let createdAt: String
@@ -196,8 +125,8 @@ public struct FetchedTransaction: Codable, Equatable {
 }
 
 public struct Erc1155Metadata: Codable, Equatable {
-    public let tokenId: String?
-    public let value: String?
+  public let tokenId: String?
+  public let value: String?
 }
 
 public struct FetchedTransactionRawContract: Codable, Equatable {
@@ -650,4 +579,134 @@ public struct BuildTransactionParam {
       "amount": amount
     ]
   }
+}
+
+// MARK: - NftAsset
+
+public struct NftAsset: Codable {
+  let nftID, name, description: String?
+  let imageURL: String?
+  let chainID, contractAddress, tokenID: String?
+  let collection: Collection?
+  let lastSale: LastSale?
+  let rarity: Rarity?
+  let floorPrice: NftAssetFloorPrice?
+  let detailedInfo: DetailedInfo?
+}
+
+// MARK: - Collection
+
+public struct Collection: Codable {
+  let name, description: String?
+  let imageURL: String?
+}
+
+// MARK: - DetailedInfo
+
+public struct DetailedInfo: Codable {
+  let ownerCount, tokenCount: Int?
+  let createdDate: String?
+  let attributes: [Attribute]?
+  let owners: [Owner]?
+  let extendedCollectionInfo: ExtendedCollectionInfo?
+  let extendedSaleInfo: ExtendedSaleInfo?
+  let marketplaceInfo: [MarketplaceInfo]?
+  let mediaInfo: MediaInfo?
+}
+
+// MARK: - Attribute
+
+public struct Attribute: Codable {
+  let traitType, value: String?
+  let displayType: String?
+}
+
+// MARK: - ExtendedCollectionInfo
+
+public struct ExtendedCollectionInfo: Codable {
+  let bannerImageURL: String?
+  let externalURL: String?
+  let twitterUsername: String?
+  let discordURL: String?
+  let instagramUsername, mediumUsername: String?
+  let telegramURL: String?
+  let distinctOwnerCount, distinctNftCount, totalQuantity: Int?
+}
+
+// MARK: - ExtendedSaleInfo
+
+public struct ExtendedSaleInfo: Codable {
+  let fromAddress, toAddress: String?
+  let priceUsdCents: Int?
+  let transaction, marketplaceID, marketplaceName: String?
+}
+
+// MARK: - MarketplaceInfo
+
+public struct MarketplaceInfo: Codable {
+  let marketplaceID, marketplaceName, marketplaceCollectionID: String?
+  let nftURL, collectionURL: String?
+  let verified: Bool?
+  let floorPrice: MarketplaceInfoFloorPrice?
+}
+
+// MARK: - MarketplaceInfoFloorPrice
+
+public struct MarketplaceInfoFloorPrice: Codable {
+  let value: Double?
+  let paymentToken: PaymentToken?
+  let valueUsdCents: Int?
+}
+
+// MARK: - PaymentToken
+
+public struct PaymentToken: Codable {
+  let paymentTokenID, name, symbol: String?
+  let address: String?
+  let decimals: Int?
+}
+
+// MARK: - MediaInfo
+
+public struct MediaInfo: Codable {
+  let previews: Previews?
+  let animationURL: String?
+  let backgroundColor: String?
+}
+
+// MARK: - Previews
+
+public struct Previews: Codable {
+  let imageSmallURL, imageMediumURL, imageLargeURL, imageOpengraphURL: String?
+  let blurhash, predominantColor: String?
+}
+
+// MARK: - Owner
+
+public struct Owner: Codable {
+  let ownerAddress: String?
+  let quantity: Int?
+  let firstAcquiredDate, lastAcquiredDate: String?
+}
+
+// MARK: - NftAssetFloorPrice
+
+public struct NftAssetFloorPrice: Codable {
+  let price: Double?
+  let currency: String?
+}
+
+// MARK: - LastSale
+
+public struct LastSale: Codable {
+  let price: Double?
+  let currency: String?
+  let date: String?
+}
+
+// MARK: - Rarity
+
+public struct Rarity: Codable {
+  let rank: Int?
+  let score: Double?
 }

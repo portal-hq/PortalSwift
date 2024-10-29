@@ -10,12 +10,12 @@ import XCTest
 
 final class PortalMpcTests: XCTestCase {
   private var mpc: PortalMpc?
-    private var portalApi: PortalApiProtocol!
-    private var keychain: PortalKeychainProtocol!
+  private var portalApi: PortalApiProtocol!
+  private var keychain: PortalKeychainProtocol!
 
   override func setUpWithError() throws {
-      portalApi = PortalApi(apiKey: MockConstants.mockApiKey, requests: MockPortalRequests())
-      keychain = MockPortalKeychain()
+    portalApi = PortalApi(apiKey: MockConstants.mockApiKey, requests: MockPortalRequests())
+    keychain = MockPortalKeychain()
     self.mpc = PortalMpc(
       apiKey: MockConstants.mockApiKey,
       api: portalApi,
@@ -48,8 +48,8 @@ extension PortalMpcTests {
     iCloudStorage: PortalStorage? = nil,
     passKeyStorage: PortalStorage? = nil
   ) {
-      self.portalApi = portalApi
-      self.keychain = keychain
+    self.portalApi = portalApi
+    self.keychain = keychain
 
     self.mpc = PortalMpc(
       apiKey: MockConstants.mockApiKey,

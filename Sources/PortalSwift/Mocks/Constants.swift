@@ -91,35 +91,6 @@ public enum MockConstants {
   public static let mockEncryptWithPasswordResult = "{\"data\":{\"cipherText\":\"\(mockCiphertext)\"},\"error\":{\"code\":0,\"message\":\"\"}}"
   public static let mockEncryptionKey = "test-encryption-key"
   public static let mockedFetchedBalance = FetchedBalance(contractAddress: mockEip155Address, balance: "test-balance")
-  public static let mockFetchedNFT = FetchedNFT(
-    contract: FetchedNFTContract(address: mockEip155Address),
-    id: FetchedNFTTokenId(tokenId: "test-token-id", tokenMetadata: FetchedNFTTokenMetadata(tokenType: "test-token-type")),
-    balance: "test-nft-balance",
-    title: "test-nft-title",
-    description: "test-nft-description",
-    tokenUri: FetchedNFTTokenUri(gateway: "test-nft-gateway", raw: "test-nft-token-uri-raw"),
-    media: [FetchedNFTMedia(
-      gateway: "test-nft-gateway",
-      thumbnail: "test-nft-thumbnail",
-      raw: "test-nft-media-raw",
-      format: "test-nft-formal",
-      bytes: 0
-    )],
-    metadata: FetchedNFTMetadata(
-      name: "test-nft-name",
-      description: "test-nft-description",
-      image: "test-nft-image",
-      external_url: "test-nft-external-url"
-    ),
-    timeLastUpdated: "test-nft-last-updated",
-    contractMetadata: FetchedNFTContractMetadata(
-      name: "test-nft-contract-name",
-      symbol: "test-nft-symbol",
-      tokenType: "test-nft-token-type",
-      contractDeployer: "test-nft-contract-deployer",
-      deployedBlockNumber: 0
-    )
-  )
   public static let mockFetchedShairPair = FetchedSharePair(
     id: mockMpcShareId,
     createdAt: mockCreatedAt,

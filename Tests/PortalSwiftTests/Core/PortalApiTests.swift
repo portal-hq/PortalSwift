@@ -322,54 +322,54 @@ extension PortalApiTests {
 
 // MARK: - getNFTs tests
 
-extension PortalApiTests {
-  func test_getNFTs_willCall_requestGet_onlyOnce() async throws {
-    // given
-    let portalRequestsSpy = PortalRequestsSpy()
-    initPortalApiWith(requests: portalRequestsSpy)
-
-    do {
-      // and given
-      _ = try await api?.getNFTs("")
-    } catch {}
-
-    // then
-    XCTAssertEqual(portalRequestsSpy.getCallsCount, 1)
-  }
-
-  func test_getNFTs() async throws {
-    // given
-    let fetchedNFTResponse = try encoder.encode([FetchedNFT.stub()])
-    let portalRequestMock = PortalRequestsMock()
-    initPortalApiWith(requests: portalRequestMock)
-    portalRequestMock.returnValueData = fetchedNFTResponse
-
-    do {
-      // and given
-      let fetchedNFT = try await api?.getNFTs("")
-      // then
-      XCTAssertEqual(fetchedNFT, [FetchedNFT.stub()])
-    } catch {}
-  }
-
-  func test_getNFTs_willCall_requestGet_passingCorrectUrlPathAndQuery() async throws {
-    // given
-    let portalRequestsSpy = PortalRequestsSpy()
-    initPortalApiWith(requests: portalRequestsSpy)
-    let chainId = "eip155:11155111"
-
-    do {
-      // and given
-      _ = try await api?.getNFTs(chainId)
-    } catch {}
-
-    // then
-    if #available(iOS 16.0, *) {
-      XCTAssertEqual(portalRequestsSpy.getFromParam?.path(), "/api/v3/clients/me/nfts")
-      XCTAssertEqual(portalRequestsSpy.getFromParam?.query(), "chainId=\(chainId)")
-    }
-  }
-}
+// extension PortalApiTests {
+//  func test_getNFTs_willCall_requestGet_onlyOnce() async throws {
+//    // given
+//    let portalRequestsSpy = PortalRequestsSpy()
+//    initPortalApiWith(requests: portalRequestsSpy)
+//
+//    do {
+//      // and given
+//      _ = try await api?.getNFTs("")
+//    } catch {}
+//
+//    // then
+//    XCTAssertEqual(portalRequestsSpy.getCallsCount, 1)
+//  }
+//
+//  func test_getNFTs() async throws {
+//    // given
+//    let fetchedNFTResponse = try encoder.encode([FetchedNFT.stub()])
+//    let portalRequestMock = PortalRequestsMock()
+//    initPortalApiWith(requests: portalRequestMock)
+//    portalRequestMock.returnValueData = fetchedNFTResponse
+//
+//    do {
+//      // and given
+//      let fetchedNFT = try await api?.getNFTs("")
+//      // then
+//      XCTAssertEqual(fetchedNFT, [FetchedNFT.stub()])
+//    } catch {}
+//  }
+//
+//  func test_getNFTs_willCall_requestGet_passingCorrectUrlPathAndQuery() async throws {
+//    // given
+//    let portalRequestsSpy = PortalRequestsSpy()
+//    initPortalApiWith(requests: portalRequestsSpy)
+//    let chainId = "eip155:11155111"
+//
+//    do {
+//      // and given
+//      _ = try await api?.getNFTs(chainId)
+//    } catch {}
+//
+//    // then
+//    if #available(iOS 16.0, *) {
+//      XCTAssertEqual(portalRequestsSpy.getFromParam?.path(), "/api/v3/clients/me/nfts")
+//      XCTAssertEqual(portalRequestsSpy.getFromParam?.query(), "chainId=\(chainId)")
+//    }
+//  }
+// }
 
 // MARK: - getSharePairs tests
 
