@@ -710,6 +710,7 @@ public class PortalApi: PortalApiProtocol {
     }
   }
 
+  @available(*, deprecated, message: "Please use the async/await implementation of track().")
   func track(event: String, properties: [String: String], completion: ((Result<MetricsResponse>) -> Void)? = nil) {
     Task.init {
       do {
