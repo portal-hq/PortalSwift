@@ -431,7 +431,7 @@ public class PortalMpc: PortalMpcProtocol {
       try await self.api?.refreshClient()
       try await self.keychain?.loadMetadata()
 
-      let addresses = try await keychain.getAddresses()
+      let addresses = try await keychain?.getAddresses() ?? [:]
 
       self.isWalletModificationInProgress = false
       withProgressCallback?(MpcStatus(status: .done, done: false))
@@ -459,7 +459,7 @@ public class PortalMpc: PortalMpcProtocol {
     self.isWalletModificationInProgress = true
 
     do {
-      guard let client = try await api.client else {
+      guard let client = try await api?.client else {
         throw MpcError.clientInformationUnavailable
       }
 
@@ -481,7 +481,7 @@ public class PortalMpc: PortalMpcProtocol {
           throw MpcError.noValidBackupFound
         }
 
-        cipherText = try await self.api.getClientCipherText(backupSharePairId)
+        cipherText = try await self.api?.getClientCipherText(backupSharePairId)
       }
 
       guard let cipherText else {
@@ -569,7 +569,7 @@ public class PortalMpc: PortalMpcProtocol {
       try await self.api?.refreshClient()
       try await self.keychain?.loadMetadata()
 
-      let addresses = try await keychain.getAddresses()
+      let addresses = try await keychain?.getAddresses() ?? [:]
 
       self.isWalletModificationInProgress = false
       usingProgressCallback?(MpcStatus(status: .done, done: false))

@@ -16,7 +16,7 @@ public protocol PortalApiProtocol: AnyObject {
   func getClient() async throws -> ClientResponse
   func getClientCipherText(_ backupSharePairId: String) async throws -> String
   func getQuote(_ swapsApiKey: String, withArgs: QuoteArgs, forChainId: String?) async throws -> Quote
-  func getNFTs(_ chainId: String) async throws -> [FetchedNFT]
+  func getNftAssets(_ chainId: String) async throws -> [NftAsset]
   func getSharePairs(_ type: PortalSharePairType, walletId: String) async throws -> [FetchedSharePair]
   func getSources(_ swapsApiKey: String, forChainId: String) async throws -> [String: String]
   func getTransactions(_ chainId: String, limit: Int?, offset: Int?, order: TransactionOrder?) async throws -> [FetchedTransaction]
@@ -28,7 +28,6 @@ public protocol PortalApiProtocol: AnyObject {
   func getClient(completion: @escaping (Result<ClientResponse>) -> Void) throws
   func getQuote(_ swapsApiKey: String, _ args: QuoteArgs, _ forChainId: String?, completion: @escaping (Result<Quote>) -> Void) throws
   func getSources(swapsApiKey: String, completion: @escaping (Result<[String: String]>) -> Void) throws
-  func getNFTs(completion: @escaping (Result<[FetchedNFT]>) -> Void) throws
   func getTransactions(limit: Int?, offset: Int?, order: GetTransactionsOrder?, chainId: Int?, completion: @escaping (Result<[FetchedTransaction]>) -> Void) throws
   func getBalances(completion: @escaping (Result<[FetchedBalance]>) -> Void) throws
   func simulateTransaction(transaction: SimulateTransactionParam, completion: @escaping (Result<SimulatedTransaction>) -> Void) throws
@@ -39,6 +38,8 @@ public protocol PortalApiProtocol: AnyObject {
   func storeClientCipherText(_ backupSharePairId: String, cipherText: String) async throws -> Bool
   func track(_ event: String, withProperties: [String: AnyCodable]) async throws -> MetricsResponse
   func evaluateTransaction(chainId: String, transaction: EvaluateTransactionParam, operationType: EvaluateTransactionOperationType?) async throws -> BlockaidValidateTrxRes
+  func buildEip155Transaction(chainId: String, params: BuildTransactionParam) async throws -> BuildEip115TransactionResponse
+  func buildSolanaTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildSolanaTransactionResponse
 }
 
 /// The ThreadSafeClientWrapper is just a thread-safe actor to consume the ClientResponse class, we need to refactor that later.
@@ -201,7 +202,7 @@ public class PortalApi: PortalApiProtocol {
     throw URLError(.badURL)
   }
 
-  func getNftAssets(_ chainId: String) async throws -> [NftAsset] {
+  public func getNftAssets(_ chainId: String) async throws -> [NftAsset] {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)/assets/nfts") {
       do {
         let data = try await get(url, withBearerToken: self.apiKey)
@@ -419,7 +420,7 @@ public class PortalApi: PortalApiProtocol {
     throw URLError(.badURL)
   }
 
-  func buildEip155Transaction(chainId: String, params: BuildTransactionParam) async throws -> BuildEip115TransactionResponse {
+  public func buildEip155Transaction(chainId: String, params: BuildTransactionParam) async throws -> BuildEip115TransactionResponse {
     guard chainId.starts(with: "eip155:") else {
       throw PortalApiError.invalidChainId(message: "Invalid chainId: \(chainId). ChainId must start with 'eip155:'")
     }
@@ -434,7 +435,7 @@ public class PortalApi: PortalApiProtocol {
     throw URLError(.badURL)
   }
 
-  func buildSolanaTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildSolanaTransactionResponse {
+  public func buildSolanaTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildSolanaTransactionResponse {
     guard chainId.starts(with: "solana:") else {
       throw PortalApiError.invalidChainId(message: "Invalid chainId: \(chainId). ChainId must start with 'solana:'")
     }
