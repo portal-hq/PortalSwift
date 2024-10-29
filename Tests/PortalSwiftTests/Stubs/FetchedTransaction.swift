@@ -17,7 +17,7 @@ extension FetchedTransaction {
     to: String = "0xabcdef123456789abcdef123456789abcdef12345",
     value: Float = 1.23,
     erc721TokenId: String? = nil,
-    erc1155Metadata: String? = nil,
+    erc1155Metadata: [Erc1155Metadata?] = [],
     tokenId: String? = nil,
     asset: String = "ETH",
     category: String = "external",

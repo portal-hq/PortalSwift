@@ -11,7 +11,7 @@ import XCTest
 
 final class GDriveStorageTests: XCTestCase {
   var storage: GDriveStorage? = nil
-    var portalApi: PortalApiProtocol? = nil
+  var portalApi: PortalApiProtocol? = nil
 
   override func setUpWithError() throws {
     initGDriveStorage()
@@ -64,8 +64,8 @@ extension GDriveStorageTests {
     let clientId = driveClient ?? MockGDriveClient()
     let requests = portalRequests ?? MockPortalRequests()
     storage = GDriveStorage(mobile: mobileSpy, encryption: encryptionObj, driveClient: clientId)
-      portalApi = PortalApi(apiKey: MockConstants.mockApiKey, requests: requests)
-      storage?.api = portalApi
+    portalApi = PortalApi(apiKey: MockConstants.mockApiKey, requests: requests)
+    storage?.api = portalApi
   }
 }
 

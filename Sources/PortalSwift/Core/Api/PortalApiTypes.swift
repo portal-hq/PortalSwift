@@ -125,8 +125,8 @@ public struct FetchedTransaction: Codable, Equatable {
 }
 
 public struct Erc1155Metadata: Codable, Equatable {
-    public let tokenId: String?
-    public let value: String?
+  public let tokenId: String?
+  public let value: String?
 }
 
 public struct FetchedTransactionRawContract: Codable, Equatable {

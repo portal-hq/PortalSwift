@@ -76,12 +76,6 @@ class PortalApiSpy: PortalApiProtocol {
   var getNFTsCallsCount: Int = 0
   var getNFTsChainIdParam: String?
 
-  public func getNFTs(_ chainId: String) async throws -> [FetchedNFT] {
-    getNFTsCallsCount += 1
-    getNFTsChainIdParam = chainId
-    return []
-  }
-
   // Get Share Pairs method tracking
   var getSharePairsCallsCount: Int = 0
   var getSharePairsTypeParam: PortalSharePairType?
@@ -211,15 +205,6 @@ class PortalApiSpy: PortalApiProtocol {
     completion(getSourcesWithCompletionResult ?? Result(error: NSError()))
   }
 
-  // getNFTs method with completion tracking
-  var getNFTsWithCompletionCallsCount: Int = 0
-  var getNFTsWithCompletionResult: Result<[FetchedNFT]>?
-
-  public func getNFTs(completion: @escaping (Result<[FetchedNFT]>) -> Void) throws {
-    getNFTsWithCompletionCallsCount += 1
-    completion(getNFTsWithCompletionResult ?? Result(error: NSError()))
-  }
-
   // getTransactions method with completion tracking
   var getTransactionsWithCompletionCallsCount: Int = 0
   var getTransactionsWithCompletionLimitParam: Int?
@@ -335,5 +320,39 @@ class PortalApiSpy: PortalApiProtocol {
     evaluateTransactionTransactionParam = transaction
     evaluateTransactionOperationType = operationType
     return BlockaidValidateTrxRes.stub()
+  }
+
+  // getNftAssets method tracking
+  var getNftAssetsCallsCount: Int = 0
+  var getNftAssetsChainIdParam: String?
+
+  func getNftAssets(_ chainId: String) async throws -> [PortalSwift.NftAsset] {
+    getNftAssetsCallsCount += 1
+    getNftAssetsChainIdParam = chainId
+    return []
+  }
+
+  // buildEip155Transaction method tracking
+  var buildEip155TransactionCallsCount: Int = 0
+  var buildEip155TransactionChainIdParam: String?
+  var buildEip155TransactionParams: PortalSwift.BuildTransactionParam?
+
+  func buildEip155Transaction(chainId: String, params: PortalSwift.BuildTransactionParam) async throws -> PortalSwift.BuildEip115TransactionResponse {
+    buildEip155TransactionCallsCount += 1
+    buildEip155TransactionChainIdParam = chainId
+    buildEip155TransactionParams = params
+    return PortalSwift.BuildEip115TransactionResponse.stub()
+  }
+
+  // buildSolanaTransaction method tracking
+  var buildSolanaTransactionCallsCount: Int = 0
+  var buildSolanaTransactionChainIdParam: String?
+  var buildSolanaTransactionParams: PortalSwift.BuildTransactionParam?
+
+  func buildSolanaTransaction(chainId: String, params: PortalSwift.BuildTransactionParam) async throws -> PortalSwift.BuildSolanaTransactionResponse {
+    buildSolanaTransactionCallsCount += 1
+    buildSolanaTransactionChainIdParam = chainId
+    buildSolanaTransactionParams = params
+    return PortalSwift.BuildSolanaTransactionResponse.stub()
   }
 }

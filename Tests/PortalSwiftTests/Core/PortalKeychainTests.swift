@@ -11,17 +11,17 @@ import XCTest
 
 final class PortalKeychainTests: XCTestCase {
   var keychain: PortalKeychainProtocol!
-  var portalApi : PortalApiProtocol!
+  var portalApi: PortalApiProtocol!
   private let encoder = JSONEncoder()
   private let decoder = JSONDecoder()
 
   override func setUpWithError() throws {
     keychain = PortalKeychain(keychainAccess: MockPortalKeychainAccess())
-      self.portalApi = PortalApi(
-        apiKey: MockConstants.mockApiKey,
-        apiHost: MockConstants.mockHost,
-        requests: MockPortalRequests()
-      )
+    self.portalApi = PortalApi(
+      apiKey: MockConstants.mockApiKey,
+      apiHost: MockConstants.mockHost,
+      requests: MockPortalRequests()
+    )
     self.keychain.api = portalApi
   }
 
@@ -42,8 +42,8 @@ extension PortalKeychainTests {
     )
   ) {
     keychain = PortalKeychain(keychainAccess: keychainAccess)
-      self.portalApi = api
-      keychain.api = portalApi
+    self.portalApi = api
+    keychain.api = portalApi
   }
 }
 
@@ -258,10 +258,9 @@ extension PortalKeychainTests {
 
 extension PortalKeychainTests {
   func test_setMetadata_willThrowCorrectError_whenClientNotFound() async throws {
-
     do {
-        // given
-        keychain.api = nil
+      // given
+      keychain.api = nil
       // and given
       _ = try await keychain.setMetadata(MockConstants.mockKeychainClientMetadata)
       XCTFail("Expected error not thrown when calling PortalKeychain.setMetadata when client is not found.")

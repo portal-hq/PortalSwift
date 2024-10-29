@@ -41,11 +41,6 @@ class PortalApiMock: PortalApiProtocol {
     getQuoteReturnValue ?? Quote.stub()
   }
 
-  var getNFTsReturnValue: [FetchedNFT]?
-  func getNFTs(_: String) async throws -> [PortalSwift.FetchedNFT] {
-    getNFTsReturnValue ?? []
-  }
-
   var getSharePairsReturnValue: [FetchedSharePair]?
   func getSharePairs(_: PortalSwift.PortalSharePairType, walletId _: String) async throws -> [PortalSwift.FetchedSharePair] {
     getSharePairsReturnValue ?? []
@@ -139,17 +134,6 @@ class PortalApiMock: PortalApiProtocol {
     }
   }
 
-  var getNFTsCompletionReturnValue: [PortalSwift.FetchedNFT]?
-  func getNFTs(completion: @escaping (PortalSwift.Result<[PortalSwift.FetchedNFT]>) -> Void) throws {
-    if let result = getNFTsCompletionReturnValue {
-      let res = Result(data: result)
-      completion(res)
-    } else {
-      let res = Result<[PortalSwift.FetchedNFT]>(error: NSError(domain: "", code: 0, userInfo: nil))
-      completion(res)
-    }
-  }
-
   var getTransactionsCompletionReturnValue: [PortalSwift.FetchedTransaction]?
   func getTransactions(limit _: Int?, offset _: Int?, order _: PortalSwift.GetTransactionsOrder?, chainId _: Int?, completion: @escaping (PortalSwift.Result<[PortalSwift.FetchedTransaction]>) -> Void) throws {
     if let result = getTransactionsCompletionReturnValue {
@@ -230,5 +214,20 @@ class PortalApiMock: PortalApiProtocol {
   var evaluateTransactionReturnValue: BlockaidValidateTrxRes?
   func evaluateTransaction(chainId _: String, transaction _: EvaluateTransactionParam, operationType _: EvaluateTransactionOperationType?) async throws -> BlockaidValidateTrxRes {
     return evaluateTransactionReturnValue ?? BlockaidValidateTrxRes.stub()
+  }
+
+  var getNftAssetsReturnValue: [PortalSwift.NftAsset]?
+  func getNftAssets(_: String) async throws -> [PortalSwift.NftAsset] {
+    return getNftAssetsReturnValue ?? []
+  }
+
+  var buildEip115TransactionReturnValue: PortalSwift.BuildEip115TransactionResponse?
+  func buildEip155Transaction(chainId _: String, params _: PortalSwift.BuildTransactionParam) async throws -> PortalSwift.BuildEip115TransactionResponse {
+    return buildEip115TransactionReturnValue ?? PortalSwift.BuildEip115TransactionResponse.stub()
+  }
+
+  var buildSolanaTransactionReturnValue: PortalSwift.BuildSolanaTransactionResponse?
+  func buildSolanaTransaction(chainId _: String, params _: PortalSwift.BuildTransactionParam) async throws -> PortalSwift.BuildSolanaTransactionResponse {
+    return buildSolanaTransactionReturnValue ?? PortalSwift.BuildSolanaTransactionResponse.stub()
   }
 }

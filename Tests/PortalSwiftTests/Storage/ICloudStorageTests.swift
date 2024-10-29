@@ -11,7 +11,7 @@ import XCTest
 
 final class ICloudStorageTests: XCTestCase {
   var storage: ICloudStorage? = nil
-    private var portalApi: PortalApiProtocol?
+  private var portalApi: PortalApiProtocol?
 
   override func setUpWithError() throws {
     initICloudStorage()
@@ -34,8 +34,8 @@ extension ICloudStorageTests {
     let encryption = portalEncryption ?? MockPortalEncryption()
     let mobileSpy = mobile ?? MobileSpy()
     self.storage = ICloudStorage(mobile: mobileSpy, encryption: encryption, keyValueStore: keyValueStore)
-      self.portalApi = PortalApi(apiKey: MockConstants.mockApiKey, requests: MockPortalRequests())
-      self.storage?.api = self.portalApi
+    self.portalApi = PortalApi(apiKey: MockConstants.mockApiKey, requests: MockPortalRequests())
+    self.storage?.api = self.portalApi
   }
 }
 

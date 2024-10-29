@@ -655,29 +655,29 @@ extension PortalTests {
     XCTAssertEqual(portalApiSpy.getBalancesChainIdParam, "123")
   }
 
-  func test_getNFTs_willCall_api_getNFTs_onlyOnce() async throws {
-    // given
-    let portalApiSpy = PortalApiSpy()
-    try initPortalWithSpy(api: portalApiSpy)
-
-    // and given
-    _ = try await portal.getNFTs("")
-
-    // then
-    XCTAssertEqual(portalApiSpy.getNFTsCallsCount, 1)
-  }
-
-  func test_getNFTs_willCall_api_getNFTs_passingCorrectParams() async throws {
-    // given
-    let portalApiSpy = PortalApiSpy()
-    try initPortalWithSpy(api: portalApiSpy)
-
-    // and given
-    _ = try await portal.getNFTs("12345")
-
-    // then
-    XCTAssertEqual(portalApiSpy.getNFTsChainIdParam, "12345")
-  }
+//  func test_getNFTs_willCall_api_getNFTs_onlyOnce() async throws {
+//    // given
+//    let portalApiSpy = PortalApiSpy()
+//    try initPortalWithSpy(api: portalApiSpy)
+//
+//    // and given
+//    _ = try await portal.getNFTs("")
+//
+//    // then
+//    XCTAssertEqual(portalApiSpy.getNFTsCallsCount, 1)
+//  }
+//
+//  func test_getNFTs_willCall_api_getNFTs_passingCorrectParams() async throws {
+//    // given
+//    let portalApiSpy = PortalApiSpy()
+//    try initPortalWithSpy(api: portalApiSpy)
+//
+//    // and given
+//    _ = try await portal.getNFTs("12345")
+//
+//    // then
+//    XCTAssertEqual(portalApiSpy.getNFTsChainIdParam, "12345")
+//  }
 
   func test_getSigningShares_willReturn_correctResult_forNilChainId() async throws {
     // given
