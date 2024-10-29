@@ -547,22 +547,6 @@ public class PortalApi: PortalApiProtocol {
     }
   }
 
-  /// Retrieve a list of NFTs for the client.
-  /// - Parameters:
-  ///   - completion: The callback that contains the list of NFTs.
-  /// - Returns: Void.
-  @available(*, deprecated, message: "This function has been moved to 'Portal'. Please use 'Portal.getNFTs()' instead.")
-  public func getNFTs(completion: @escaping (Result<[FetchedNFT]>) -> Void) throws {
-    Task {
-      do {
-        let response = try await getNFTs("eip155:\(self.chainId ?? 1)")
-        completion(Result(data: response))
-      } catch {
-        completion(Result(error: error))
-      }
-    }
-  }
-
   /// Retrieve a list of Transactions for the client.
   /// - Parameters:
   ///   - limit: (Optional) The maximum number of transactions to return.
