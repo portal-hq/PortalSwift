@@ -17,12 +17,12 @@ public class PasskeyStorage: Storage, PortalStorage {
     set(anchor) { self.auth.authenticationAnchor = anchor }
   }
 
-  public var api: PortalApi?
+  public weak var api: PortalApiProtocol?
 
   var apiKey: String?
   public var client: Client?
-  public let encryption: PortalEncryption
-  public var portalApi: PortalApi?
+  public let encryption: PortalEncryptionProtocol
+  public var portalApi: PortalApiProtocol?
   public var relyingParty: String
   public var webAuthnHost: String
 
@@ -31,7 +31,7 @@ public class PasskeyStorage: Storage, PortalStorage {
   private let decoder = JSONDecoder()
   private let logger = PortalLogger()
   private var passkeyApi: HttpRequester
-  private let requests: PortalRequests
+  private let requests: PortalRequestsProtocol
   private var sessionId: String?
 
   deinit {
@@ -42,8 +42,8 @@ public class PasskeyStorage: Storage, PortalStorage {
     relyingParty: String? = "portalhq.io",
     webAuthnHost: String? = "backup.web.portalhq.io",
     auth: PasskeyAuth? = nil,
-    encryption: PortalEncryption? = nil,
-    requests: PortalRequests? = nil
+    encryption: PortalEncryptionProtocol? = nil,
+    requests: PortalRequestsProtocol? = nil
   ) {
     self.relyingParty = relyingParty ?? "portalhq.io"
     self.auth = auth ?? PasskeyAuth(domain: self.relyingParty)
@@ -59,8 +59,8 @@ public class PasskeyStorage: Storage, PortalStorage {
     relyingParty: String? = "portalhq.io",
     webAuthnHost: String? = "backup.web.portalhq.io",
     auth: PasskeyAuth? = nil,
-    encryption: PortalEncryption? = nil,
-    requests: PortalRequests? = nil
+    encryption: PortalEncryptionProtocol? = nil,
+    requests: PortalRequestsProtocol? = nil
   ) {
     self.relyingParty = relyingParty ?? "portalhq.io"
     self.auth = auth ?? PasskeyAuth(domain: self.relyingParty)
@@ -155,7 +155,7 @@ public class PasskeyStorage: Storage, PortalStorage {
    * Private functions
    *******************************************/
 
-  private func beginLogin() async throws -> WebAuthnAuthenticationOption {
+  func beginLogin() async throws -> WebAuthnAuthenticationOption {
     guard let apiKey = self.apiKey else {
       throw PasskeyStorageError.noApiKey
     }
@@ -170,7 +170,7 @@ public class PasskeyStorage: Storage, PortalStorage {
     throw URLError(.badURL)
   }
 
-  private func beginRegistration() async throws -> WebAuthnRegistrationOptions {
+  func beginRegistration() async throws -> WebAuthnRegistrationOptions {
     guard let apiKey = self.apiKey else {
       throw PasskeyStorageError.noApiKey
     }
@@ -185,7 +185,7 @@ public class PasskeyStorage: Storage, PortalStorage {
     throw URLError(.badURL)
   }
 
-  private func getPasskeyStatus() async throws -> PasskeyStatus {
+  func getPasskeyStatus() async throws -> PasskeyStatus {
     guard let apiKey = self.apiKey else {
       throw PasskeyStorageError.noApiKey
     }
@@ -200,7 +200,7 @@ public class PasskeyStorage: Storage, PortalStorage {
     throw URLError(.badURL)
   }
 
-  private func handleFinishLoginRead(_ assertion: String) async throws -> String {
+  func handleFinishLoginRead(_ assertion: String) async throws -> String {
     guard let apiKey = self.apiKey, let sessionId = self.sessionId else {
       throw PasskeyStorageError.readError
     }

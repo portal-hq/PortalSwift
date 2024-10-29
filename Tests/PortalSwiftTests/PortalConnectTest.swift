@@ -12,12 +12,13 @@ class PortalConnectTest: XCTestCase {
   var portalConnect: PortalConnect!
   var mockClient: MockWebSocketClient!
 
+  var keychain: PortalKeychainProtocol!
   let mockURL = "https://\(MockConstants.mockHost)/test-rpc"
 
   override func setUpWithError() throws {
     try super.setUpWithError()
 
-    let keychain = MockPortalKeychain()
+    self.keychain = MockPortalKeychain()
     let chainId = 11_155_111
 
     portalConnect = try PortalConnect(

@@ -10,11 +10,33 @@ import Foundation
 import Mpc
 import Security
 
+public protocol PortalMpcProtocol {
+  func backup(_ method: BackupMethods, usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> PortalMpcBackupResponse
+  func eject(_ method: BackupMethods, withCipherText: String?, andOrganizationBackupShare: String?, andOrganizationSolanaBackupShare: String?, usingProgressCallback _: ((MpcStatus) -> Void)?) async throws -> [PortalNamespace: String]
+  func generate(withProgressCallback: ((MpcStatus) -> Void)?) async throws -> [PortalNamespace: String?]
+  func recover(_ method: BackupMethods, withCipherText: String?, usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> [PortalNamespace: String?]
+  func generateSolanaWallet(usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> String
+  func generateSolanaWalletAndBackupShares(backupMethod: BackupMethods, usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> (solanaAddress: String, backupResponse: PortalMpcBackupResponse)
+  func registerBackupMethod(_ method: BackupMethods, withStorage: PortalStorage)
+  func setGDriveConfiguration(clientId: String, folderName: String) throws
+  func setGDriveView(_ view: UIViewController) throws
+  @available(iOS 16, *)
+  func setPasskeyAuthenticationAnchor(_ anchor: ASPresentationAnchor) throws
+  @available(iOS 16, *)
+  func setPasskeyConfiguration(relyingParty: String, webAuthnHost: String) throws
+  func setPassword(_ value: String) throws
+  // Deprecated functions
+  func backup(method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?)
+  func generate(completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?)
+  func ejectPrivateKey(clientBackupCiphertext: String, method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, orgBackupShare: String, completion: @escaping (Result<String>) -> Void)
+  func recover(cipherText: String, method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?)
+}
+
 /// The main interface with Portal's MPC service.
-public class PortalMpc {
+public class PortalMpc: PortalMpcProtocol {
   private var address: String? {
     do {
-      return try self.keychain.getAddress()
+      return try self.keychain?.getAddress()
     } catch {
       return nil
     }
@@ -22,13 +44,13 @@ public class PortalMpc {
 
   private var signingShare: String? {
     do {
-      return try self.keychain.getSigningShare()
+      return try self.keychain?.getSigningShare()
     } catch {
       return nil
     }
   }
 
-  private let api: PortalApi
+  private weak var api: PortalApiProtocol?
   private let apiHost: String
   private let apiKey: String
   private var backupOptions: [BackupMethods: PortalStorage] = [:]
@@ -37,7 +59,7 @@ public class PortalMpc {
   private let featureFlags: FeatureFlags?
   private let host: String
   private let isSimulator: Bool
-  private let keychain: PortalKeychain
+  private weak var keychain: PortalKeychainProtocol?
   private let logger = PortalLogger()
   private let mobile: Mobile
   private let version: String
@@ -51,8 +73,8 @@ public class PortalMpc {
   /// Create an instance of Portal's MPC service.
   public init(
     apiKey: String,
-    api: PortalApi,
-    keychain: PortalKeychain,
+    api: PortalApiProtocol,
+    keychain: PortalKeychainProtocol,
     host: String = "mpc.portalhq.io",
     isSimulator: Bool = false,
     version: String = "v6",
@@ -104,7 +126,7 @@ public class PortalMpc {
 
     do {
       // Obtain the signing share.
-      let shares = try await keychain.getShares()
+      let shares = try await keychain?.getShares() ?? [:]
       usingProgressCallback?(MpcStatus(status: .readingShare, done: false))
 
       // Derive the storage and throw an error if none was provided.
@@ -183,15 +205,15 @@ public class PortalMpc {
       let shareIds = generateResponse.values.map { share in
         share.id
       }
-      try await self.api.updateShareStatus(.backup, status: .STORED_CLIENT_BACKUP_SHARE_KEY, sharePairIds: shareIds)
+      try await self.api?.updateShareStatus(.backup, status: .STORED_CLIENT_BACKUP_SHARE_KEY, sharePairIds: shareIds)
 
-      guard let client = try await api.client else {
+      guard let client = try await api?.client else {
         throw MpcError.clientInformationUnavailable
       }
 
       if client.environment?.backupWithPortalEnabled ?? false {
         for share in generateResponse.values {
-          let successful = try await api.storeClientCipherText(share.id, cipherText: encryptResult.cipherText)
+          let successful = try await api?.storeClientCipherText(share.id, cipherText: encryptResult.cipherText) ?? false
 
           if !successful {
             self.logger.error("[PortalMpc] Unable to store client cipherText.")
@@ -201,8 +223,8 @@ public class PortalMpc {
       }
 
       // Refresh the client
-      try await self.api.refreshClient()
-      try await self.keychain.loadMetadata()
+      try await self.api?.refreshClient()
+      try await self.keychain?.loadMetadata()
 
       // Send the last progress update
       usingProgressCallback?(MpcStatus(status: .done, done: true))
@@ -235,7 +257,7 @@ public class PortalMpc {
       throw MpcError.unexpectedErrorOnEject("Backup method \(method.rawValue) not registered.")
     }
 
-    guard let client = try await api.client else {
+    guard let client = try await api?.client else {
       throw MpcError.clientInformationUnavailable
     }
 
@@ -274,12 +296,12 @@ public class PortalMpc {
 
     let backupWithPortal = client.environment?.backupWithPortalEnabled ?? false
     if backupWithPortal {
-      cipherText = try await self.api.getClientCipherText(backupSharePairId)
-      organizationShare = try await self.api.prepareEject(walletId, method)
+      cipherText = try await self.api?.getClientCipherText(backupSharePairId)
+      organizationShare = try await self.api?.prepareEject(walletId, method)
 
       // Conditionally prepare eject for Solana wallets
       if let walletIdEd25519 {
-        organizationShareEd25519 = try? await self.api.prepareEject(walletIdEd25519, method)
+        organizationShareEd25519 = try? await self.api?.prepareEject(walletIdEd25519, method)
       }
     }
 
@@ -331,7 +353,7 @@ public class PortalMpc {
       privateKeys[.solana] = ejectResult.privateKey
     }
 
-    _ = try await self.api.eject()
+    _ = try await self.api?.eject()
 
     guard privateKeys[.eip155] != nil else {
       throw MpcError.unexpectedErrorOnEject("Unable to find private key for Ethereum wallet.")
@@ -396,22 +418,22 @@ public class PortalMpc {
       }
 
       withProgressCallback?(MpcStatus(status: .storingShare, done: false))
-      try await self.keychain.setShares(generateResponse)
+      try await self.keychain?.setShares(generateResponse)
 
       // Update share statuses
       let shareIds: [String] = generateResponse.values.map { share in
         share.id
       }
-      try await self.api.updateShareStatus(.signing, status: .STORED_CLIENT, sharePairIds: shareIds)
+      try await self.api?.updateShareStatus(.signing, status: .STORED_CLIENT, sharePairIds: shareIds)
 
       // Reset the metadata in the Keychain
-      try await self.api.refreshClient()
-      try await self.keychain.loadMetadata()
+      try await self.api?.refreshClient()
+      try await self.keychain?.loadMetadata()
 
       withProgressCallback?(MpcStatus(status: .done, done: false))
       self.isWalletModificationInProgress = false
 
-      let addresses = try await keychain.getAddresses()
+      let addresses = try await keychain?.getAddresses() ?? [:]
 
       return addresses
     } catch {
@@ -429,7 +451,7 @@ public class PortalMpc {
       throw MpcError.backupNoLongerSupported("[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = \"v6\"`.")
     }
 
-    guard let client = try await api.client else {
+    guard let client = try await api?.client else {
       throw MpcError.clientInformationUnavailable
     }
 
@@ -451,7 +473,7 @@ public class PortalMpc {
         throw MpcError.noValidBackupFound
       }
 
-      cipherText = try await self.api.getClientCipherText(backupSharePairId)
+      cipherText = try await self.api?.getClientCipherText(backupSharePairId)
     }
 
     guard let cipherText else {
@@ -482,7 +504,7 @@ public class PortalMpc {
 
             usingProgressCallback?(MpcStatus(status: .generatingShare, done: false))
             var recoverResponse: PortalMpcGenerateResponse = [:]
-            if let shares = try? await keychain.getShares() {
+            if let shares = try? await keychain?.getShares() {
               recoverResponse = shares
             }
 
@@ -533,23 +555,23 @@ public class PortalMpc {
       }
 
       usingProgressCallback?(MpcStatus(status: .storingShare, done: false))
-      try await self.keychain.setShares(recoverResponse)
+      try await self.keychain?.setShares(recoverResponse)
 
       // Update share statuses
       let shareIds: [String] = recoverResponse.values.map { share in
         share.id
       }
 
-      try await self.api.updateShareStatus(.signing, status: .STORED_CLIENT, sharePairIds: shareIds)
+      try await self.api?.updateShareStatus(.signing, status: .STORED_CLIENT, sharePairIds: shareIds)
 
       // Reset the metadata in the Keychain
-      try await self.api.refreshClient()
-      try await self.keychain.loadMetadata()
+      try await self.api?.refreshClient()
+      try await self.keychain?.loadMetadata()
 
       usingProgressCallback?(MpcStatus(status: .done, done: false))
       self.isWalletModificationInProgress = false
 
-      let addresses = try await keychain.getAddresses()
+      let addresses = try await keychain?.getAddresses() ?? [:]
 
       return addresses
     } catch {
@@ -571,7 +593,7 @@ public class PortalMpc {
     var newAddresses: [PortalNamespace: String?]
 
     do {
-      let addresses = try await keychain.getAddresses()
+      let addresses = try await keychain?.getAddresses() ?? [:]
 
       guard addresses[.eip155] ?? nil != nil else {
         throw MpcError.unexpectedErrorOnGenerate("\(callerFuncName) - No eip155 wallet found. Please use createWallet() to generate both eip155 and solana wallets for this client.")
@@ -601,28 +623,28 @@ public class PortalMpc {
       )
 
       // Obtain the signing secpk256k1 share
-      let shares = try await keychain.getShares()
+      let shares = try await keychain?.getShares() ?? [:]
 
       generateResponse["SECP256K1"] = shares["SECP256K1"]
 
       usingProgressCallback?(MpcStatus(status: .storingShare, done: false))
 
       // store the shares to keychain
-      try await self.keychain.setShares(generateResponse)
+      try await self.keychain?.setShares(generateResponse)
 
       // Update share statuses
       let shareIds: [String] = generateResponse.values.map { share in
         share.id
       }
-      try await self.api.updateShareStatus(.signing, status: .STORED_CLIENT, sharePairIds: shareIds)
+      try await self.api?.updateShareStatus(.signing, status: .STORED_CLIENT, sharePairIds: shareIds)
 
       // Reset the metadata in the Keychain
-      try await self.api.refreshClient()
-      try await self.keychain.loadMetadata()
+      try await self.api?.refreshClient()
+      try await self.keychain?.loadMetadata()
       self.isWalletModificationInProgress = false
 
       // get addresses from the Keychain.
-      newAddresses = try await self.keychain.getAddresses()
+      newAddresses = try await self.keychain?.getAddresses() ?? [:]
 
     } catch {
       self.isWalletModificationInProgress = false
@@ -906,7 +928,7 @@ public class PortalMpc {
     Task {
       do {
         _ = try await self.generate(withProgressCallback: progress)
-        guard let address = try await keychain.getAddress("eip155:1") else {
+        guard let address = try await keychain?.getAddress("eip155:1") else {
           throw PortalKeychain.KeychainError.noAddressesFound
         }
         completion(Result(data: address))
@@ -970,7 +992,7 @@ public class PortalMpc {
 
         _ = try await self.recover(backupMethod, withCipherText: cipherText, usingProgressCallback: progress)
 
-        guard let address = try await keychain.getAddress("eip155:1") else {
+        guard let address = try await keychain?.getAddress("eip155:1") else {
           throw PortalKeychain.KeychainError.noAddressesFound
         }
         completion(Result(data: address))
@@ -994,7 +1016,7 @@ public enum MpcStatuses: String {
 }
 
 /// A list of errors MPC can throw.
-public enum MpcError: Error {
+public enum MpcError: Error, Equatable {
   case addressNotFound(_ message: String)
   case backupMethodNotRegistered(_ message: String)
   case backupNoLongerSupported(_ message: String)

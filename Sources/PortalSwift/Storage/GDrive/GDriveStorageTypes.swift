@@ -11,7 +11,7 @@ public struct GDriveFile: Codable {
   let mimeType: String
 }
 
-struct GDriveFolderMetadata: Codable {
+struct GDriveFolderMetadata: Codable, Equatable {
   let mimeType: String
   let name: String
   let parents: [String]

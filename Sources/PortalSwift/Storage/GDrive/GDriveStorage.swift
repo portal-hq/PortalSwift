@@ -12,14 +12,14 @@ import GoogleSignIn
 
 public class GDriveStorage: Storage, PortalStorage {
   public var accessToken: String?
-  public var api: PortalApi?
+  public weak var api: PortalApiProtocol?
   public var clientId: String? {
     get { return self.drive.clientId }
     set(clientId) { self.drive.clientId = clientId }
   }
 
+  public let encryption: PortalEncryptionProtocol
   public var mobile: Mobile?
-  public let encryption: PortalEncryption
   public var folder: String {
     get { return self.drive.folder }
     set(folder) { self.drive.folder = folder }
@@ -34,7 +34,7 @@ public class GDriveStorage: Storage, PortalStorage {
     }
   }
 
-  private var drive: GDriveClient
+  private var drive: GDriveClientProtocol
   private var filename: String?
   private var logger = PortalLogger()
   private var separator: String = ""
@@ -44,8 +44,8 @@ public class GDriveStorage: Storage, PortalStorage {
     mobile: Mobile? = nil,
     clientID: String? = nil,
     viewController: UIViewController? = nil,
-    encryption: PortalEncryption? = nil,
-    driveClient: GDriveClient? = nil
+    encryption: PortalEncryptionProtocol? = nil,
+    driveClient: GDriveClientProtocol? = nil
   ) {
     self.mobile = mobile
     self.drive = driveClient ?? GDriveClient(clientId: clientID, view: viewController)
