@@ -754,7 +754,7 @@ public class Portal {
     return try await self.api.simulateTransaction(transaction, withChainId: chainId)
   }
 
-  @available(*, deprecated, renamed: "backupWallet", message: "Please use the async implamentation of backupWallet()")
+  @available(*, deprecated, renamed: "backupWallet", message: "Please use the async implementation of backupWallet()")
   public func backupWallet(
     method: BackupMethods.RawValue,
     backupConfigs: BackupConfigs? = nil,

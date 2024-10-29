@@ -132,6 +132,7 @@ public class PortalApi: PortalApiProtocol {
     throw URLError(.badURL)
   }
 
+  @available(*, deprecated, message: "This function has been moved to 'Portal'. Please use 'Portal.getBalances()' instead.") // this func need to be private thats why we deprecate it to move it to private later
   public func getBalances(_ chainId: String) async throws -> [FetchedBalance] {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/balances?chainId=\(chainId)") {
       do {
@@ -480,7 +481,7 @@ public class PortalApi: PortalApiProtocol {
   ///   - gas: (Optional) The transacton "gas" parameter.
   ///   - gasPrice: (Optional) The transacton "gasPrice" parameter.
   /// - Returns: SimulatedTransaction.
-  @available(*, deprecated, renamed: "evaluateTransaction", message: "Please use evaluateTransaction().")
+  @available(*, deprecated, renamed: "evaluateTransaction", message: "Please use 'Portal.evaluateTransaction()' instead.")
   public func simulateTransaction(_ transaction: Any, withChainId: String) async throws -> SimulatedTransaction {
     guard let chainId = withChainId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
       throw PortalApiError.unableToEncodeData
@@ -577,7 +578,7 @@ public class PortalApi: PortalApiProtocol {
   /// - Parameters:
   ///   - completion: The callback that contains the list of Balances.
   /// - Returns: Void.
-  @available(*, deprecated, renamed: "getBalances", message: "Please use the async/await implementation of getBalances().")
+  @available(*, deprecated, message: "This function has been moved to 'Portal'. Please use 'Portal.getBalances()' instead.")
   public func getBalances(
     completion: @escaping (Result<[FetchedBalance]>) -> Void
   ) throws {
@@ -602,7 +603,7 @@ public class PortalApi: PortalApiProtocol {
   ///   - gasPrice: (Optional) The transacton "gasPrice" parameter.
   ///   - completion: The callback that contains transaction simulation response.
   /// - Returns: Void.
-  @available(*, deprecated, renamed: "simulateTransaction", message: "Please use the async/await implementation of simulateTransaction().")
+  @available(*, deprecated, renamed: "evaluateTransaction", message: "Please use 'Portal.evaluateTransaction()' instead.")
   public func simulateTransaction(
     transaction: SimulateTransactionParam,
     completion: @escaping (Result<SimulatedTransaction>) -> Void
