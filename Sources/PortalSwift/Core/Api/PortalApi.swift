@@ -419,6 +419,36 @@ public class PortalApi: PortalApiProtocol {
     throw URLError(.badURL)
   }
 
+  func buildEip155Transaction(chainId: String, params: BuildTransactionParam) async throws -> BuildEip115TransactionResponse {
+    guard chainId.starts(with: "eip155:") else {
+      throw PortalApiError.invalidChainId(message: "Invalid chainId: \(chainId). ChainId must start with 'eip155:'")
+    }
+
+    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)/assets/send/build-transaction") {
+      let data = try await post(url, withBearerToken: self.apiKey, andPayload: params.toDictionary())
+      let response = try decoder.decode(BuildEip115TransactionResponse.self, from: data)
+
+      return response
+    }
+
+    throw URLError(.badURL)
+  }
+
+  func buildSolanaTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildSolanaTransactionResponse {
+    guard chainId.starts(with: "solana:") else {
+      throw PortalApiError.invalidChainId(message: "Invalid chainId: \(chainId). ChainId must start with 'solana:'")
+    }
+
+    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)/assets/send/build-transaction") {
+      let data = try await post(url, withBearerToken: self.apiKey, andPayload: params.toDictionary())
+      let response = try decoder.decode(BuildSolanaTransactionResponse.self, from: data)
+
+      return response
+    }
+
+    throw URLError(.badURL)
+  }
+
   /*******************************************
    * Private functions
    *******************************************/
@@ -711,6 +741,7 @@ public class PortalApi: PortalApiProtocol {
 public enum PortalApiError: Error, Equatable {
   case unableToEncodeData
   case unableToReadStringResponse
+  case invalidChainId(message: String)
 }
 
 public enum SharePairUpdateStatus: String, Codable {

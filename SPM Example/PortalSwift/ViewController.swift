@@ -475,6 +475,20 @@ class ViewController: UIViewController, UITextFieldDelegate {
     return try await portal.getNFTs(chainId)
   }
 
+  func buildEip155Transaction(chainId: String = "eip155:11155111", params: BuildTransactionParam) async throws -> BuildEip115TransactionResponse {
+    guard let portal else {
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+    return try await portal.buildEip155Transaction(chainId: chainId, params: params)
+  }
+
+  func buildSolanaTransaction(chainId: String = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1", params: BuildTransactionParam) async throws -> BuildSolanaTransactionResponse {
+    guard let portal else {
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+    return try await portal.buildSolanaTransaction(chainId: chainId, params: params)
+  }
+
   public func getShareMetadata() async throws -> [FetchedSharePair] {
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
@@ -1749,6 +1763,38 @@ class ViewController: UIViewController, UITextFieldDelegate {
       } catch {
         self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error executing sol_getTransaction request: \(error)")
         self.showStatusView(message: "\(self.failureStatus) Error executing sol_getTransaction request: \(error)")
+      }
+
+      do {
+        let buildTransactionParam = BuildTransactionParam(
+          to: "0xdFd8302f44727A6348F702fF7B594f127dE3A902",
+          token: "ETH",
+          amount: "0.001"
+        )
+        let eip155Transaction = try await self.buildEip155Transaction(params: buildTransactionParam)
+        print(eip155Transaction)
+        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched buildEip155Transaction.")
+        self.showStatusView(message: "\(self.successStatus) Successfully fetched buildEip155Transaction.")
+      } catch {
+        self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching buildEip155Transaction: \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error fetching buildEip155Transaction \(error)")
+        return
+      }
+
+      do {
+        let buildTransactionParam = BuildTransactionParam(
+          to: "GPsPXxoQA51aTJJkNHtFDFYui5hN5UxcFPnheJEHa5Du",
+          token: "SOL",
+          amount: "0.001"
+        )
+        let solanaTransaction = try await self.buildSolanaTransaction(params: buildTransactionParam)
+        print(solanaTransaction)
+        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched buildSolanaTransaction.")
+        self.showStatusView(message: "\(self.successStatus) Successfully fetched buildSolanaTransaction.")
+      } catch {
+        self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching buildSolanaTransaction: \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error fetching buildSolanaTransaction \(error)")
+        return
       }
     }
   }
