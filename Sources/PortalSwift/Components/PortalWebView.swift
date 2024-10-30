@@ -28,7 +28,7 @@ public struct PortalMessageBody {
 }
 
 /// The errors the web view controller can throw.
-enum WebViewControllerErrors: Error {
+enum WebViewControllerErrors: LocalizedError {
   case unparseableMessage
   case MissingFieldsForEIP1559Transation
   case unknownMessageType(type: String)
@@ -560,7 +560,7 @@ public struct ChainChangedParam: Codable {
   public let chainId: String
 }
 
-enum PortalWebViewError: Error {
+enum PortalWebViewError: LocalizedError {
   case unexpectedError(String)
 }
 

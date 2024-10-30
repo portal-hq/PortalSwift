@@ -7,7 +7,7 @@
 
 import Foundation
 
-public enum PasswordStorageError: Error {
+public enum PasswordStorageError: LocalizedError {
   case passwordMissing(String)
   case unableToEncodeData
 }

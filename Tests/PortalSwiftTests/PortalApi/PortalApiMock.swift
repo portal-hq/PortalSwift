@@ -231,8 +231,8 @@ class PortalApiMock: PortalApiProtocol {
     return buildSolanaTransactionReturnValue ?? PortalSwift.BuildSolanaTransactionResponse.stub()
   }
 
-    var getAssetsReturnValue: PortalSwift.AssetsResponse?
-    func getAssets(_ chainId: String) async throws -> PortalSwift.AssetsResponse {
-        return getAssetsReturnValue ?? PortalSwift.AssetsResponse.stub()
-    }
+  var getAssetsReturnValue: PortalSwift.AssetsResponse?
+  func getAssets(_: String) async throws -> PortalSwift.AssetsResponse {
+    return getAssetsReturnValue ?? PortalSwift.AssetsResponse.stub()
+  }
 }

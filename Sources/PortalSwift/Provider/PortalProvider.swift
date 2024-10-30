@@ -758,13 +758,13 @@ public enum ETHRequestMethods: String {
 }
 
 /// A list of errors that can be thrown when instantiating PortalProvider.
-public enum ProviderInvalidArgumentError: Error {
+public enum ProviderInvalidArgumentError: LocalizedError {
   case invalidGatewayUrl
   case invalidParamsForSwitchingChain
 }
 
 /// A list of errors that can be thrown when making requests to Gateway.
-public enum ProviderRpcError: Error {
+public enum ProviderRpcError: LocalizedError {
   case chainDisconnected
   case disconnected
   case unauthorized
@@ -773,7 +773,7 @@ public enum ProviderRpcError: Error {
 }
 
 /// A list of errors that can be thrown when signing.
-public enum ProviderSigningError: Error {
+public enum ProviderSigningError: LocalizedError {
   case noBindingForSigningApprovalFound
   case userDeclinedApproval
   case walletRequestRejected

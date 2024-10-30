@@ -106,7 +106,7 @@ public class PortalMpcSigner {
   }
 }
 
-enum PortalMpcSignerError: Error, Equatable {
+enum PortalMpcSignerError: LocalizedError, Equatable {
   case invalidParamsForMethod(String)
   case noCurveFoundForNamespace(String)
   case noNamespaceFoundForChainId(String)

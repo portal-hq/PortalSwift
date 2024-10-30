@@ -247,7 +247,7 @@ public class PasskeyStorage: Storage, PortalStorage {
   }
 }
 
-public enum PasskeyStorageError: Error {
+public enum PasskeyStorageError: LocalizedError {
   case mustExtendStorageClass
   case fileNotFound
   case writeError

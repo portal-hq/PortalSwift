@@ -96,7 +96,7 @@ public class GoogleAuth {
   }
 }
 
-public enum GoogleAuthError: Error, Equatable {
+public enum GoogleAuthError: LocalizedError, Equatable {
   case noUserFound
   case noViewFound
   case unableToReadAccessToken

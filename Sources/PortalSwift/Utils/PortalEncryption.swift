@@ -145,6 +145,6 @@ public class PortalEncryption: PortalEncryptionProtocol {
   }
 }
 
-public enum PortalEncryptionError: Error {
+public enum PortalEncryptionError: LocalizedError {
   case unableToEncodeData
 }

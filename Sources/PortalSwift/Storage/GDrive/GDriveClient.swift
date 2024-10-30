@@ -8,7 +8,7 @@
 import Foundation
 import GoogleSignIn
 
-public enum GDriveClientError: Error, Equatable {
+public enum GDriveClientError: LocalizedError, Equatable {
   case authenticationNotInitialized(String)
   case fileContentMismatch
   case noFileFound

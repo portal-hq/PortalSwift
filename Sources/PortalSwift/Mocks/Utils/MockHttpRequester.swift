@@ -110,7 +110,7 @@ public class MockHttpRequester: HttpRequester {
   }
 }
 
-enum CustomError: Error {
+enum CustomError: LocalizedError {
   case missingMethod
   case unhandledMethod
 }

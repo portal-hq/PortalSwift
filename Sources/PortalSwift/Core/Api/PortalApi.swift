@@ -743,7 +743,7 @@ public class PortalApi: PortalApiProtocol {
   }
 }
 
-public enum PortalApiError: Error, Equatable {
+public enum PortalApiError: LocalizedError, Equatable {
   case unableToEncodeData
   case unableToReadStringResponse
   case invalidChainId(message: String)

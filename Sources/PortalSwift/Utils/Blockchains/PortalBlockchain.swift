@@ -74,7 +74,7 @@ public class PortalBlockchain {
   }
 }
 
-enum PortalBlockchainError: Error {
+enum PortalBlockchainError: LocalizedError {
   case invalidChainId(String)
   case noSupportedCurveForChainId(String)
   case noSupportedNamespaceForChainId(String)
