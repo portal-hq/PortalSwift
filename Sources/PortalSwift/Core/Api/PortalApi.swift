@@ -40,6 +40,7 @@ public protocol PortalApiProtocol: AnyObject {
   func evaluateTransaction(chainId: String, transaction: EvaluateTransactionParam, operationType: EvaluateTransactionOperationType?) async throws -> BlockaidValidateTrxRes
   func buildEip155Transaction(chainId: String, params: BuildTransactionParam) async throws -> BuildEip115TransactionResponse
   func buildSolanaTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildSolanaTransactionResponse
+  func getAssets(_ chainId: String) async throws -> AssetsResponse
 }
 
 /// The ThreadSafeClientWrapper is just a thread-safe actor to consume the ClientResponse class, we need to refactor that later.
@@ -164,6 +165,23 @@ public class PortalApi: PortalApiProtocol {
       }
     }
 
+    throw URLError(.badURL)
+  }
+
+  public func getAssets(_ chainId: String) async throws -> AssetsResponse {
+    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)/assets") {
+      do {
+        let data = try await get(url, withBearerToken: self.apiKey)
+        let assets = try decoder.decode(AssetsResponse.self, from: data)
+
+        return assets
+      } catch {
+        self.logger.error("PortalApi.getAssets() - Unable to fetch Assets: \(error.localizedDescription)")
+        throw error
+      }
+    }
+
+    self.logger.error("PortalApi.getNFTs() - Unable to build request URL.")
     throw URLError(.badURL)
   }
 

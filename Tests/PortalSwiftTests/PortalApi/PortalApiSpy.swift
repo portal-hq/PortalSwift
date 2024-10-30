@@ -355,4 +355,14 @@ class PortalApiSpy: PortalApiProtocol {
     buildSolanaTransactionParams = params
     return PortalSwift.BuildSolanaTransactionResponse.stub()
   }
+    
+    // getAssets method tracking
+    var getAssetsCallsCount: Int = 0
+    var getAssetsChainIdParam: String?
+    
+    func getAssets(_ chainId: String) async throws -> PortalSwift.AssetsResponse {
+        getAssetsCallsCount += 1
+        getAssetsChainIdParam = chainId
+        return PortalSwift.AssetsResponse.stub()
+    }
 }
