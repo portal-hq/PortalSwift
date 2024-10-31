@@ -1,3 +1,4 @@
+import Foundation
 import SolanaSwift
 
 public struct AnyEncodable: Encodable {
@@ -19,7 +20,7 @@ public struct AnyEncodable: Encodable {
   }
 }
 
-public enum AnyEncodableError: Error {
+public enum AnyEncodableError: LocalizedError {
   case typeNotEncodable(Any.Type)
 }
 
@@ -53,7 +54,7 @@ public struct BackupConfigs {
 public struct PasswordStorageConfig {
   public var password: String
 
-  public enum PasswordStorageError: Error {
+  public enum PasswordStorageError: LocalizedError {
     case invalidLength
   }
 

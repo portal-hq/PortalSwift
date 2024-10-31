@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum MockMobileWrapperError: Error {
+enum MockMobileWrapperError: LocalizedError {
   case unableToEncodeData
 }
 

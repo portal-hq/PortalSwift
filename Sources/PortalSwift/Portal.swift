@@ -1050,13 +1050,13 @@ public class Portal {
  * Supporting Enums & Structs
  *****************************************/
 
-enum PortalClassError: Error, Equatable {
+enum PortalClassError: LocalizedError, Equatable {
   case clientNotAvailable
   case noWalletFoundForChain(String)
   case unsupportedChainId(String)
 }
 
-enum PortalProviderError: Error, Equatable {
+enum PortalProviderError: LocalizedError, Equatable {
   case invalidChainId(_ message: String)
   case invalidRequestParams
   case invalidRpcResponse
@@ -1082,7 +1082,7 @@ public enum BackupMethods: String, Codable {
 }
 
 /// Gateway URL errors.
-public enum PortalArgumentError: Error {
+public enum PortalArgumentError: LocalizedError {
   case invalidGatewayConfig
   case noGatewayConfigForChain(chainId: Int)
   case versionNoLongerSupported(message: String)
@@ -1109,7 +1109,7 @@ public enum PortalSharePairType: String, Codable {
   case signing
 }
 
-public enum PortalSolError: Error {
+public enum PortalSolError: LocalizedError {
   case failedToGetLatestBlockhash
   case failedToGetTransactionHash
 }

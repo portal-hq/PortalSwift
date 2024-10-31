@@ -226,7 +226,7 @@ public typealias AuthorizationCompletion = (_ result: Result<String>) -> Void
 
 public typealias RegistrationCompletion = (_ result: Result<String>) -> Void
 
-public enum PasskeyAuthError: Error {
+public enum PasskeyAuthError: LocalizedError {
   case MissingSignature
   case MissingAuthenticatorData
   case MissingUserID

@@ -218,7 +218,7 @@ struct CustodianIDClientIDHashes: Codable {
   }
 }
 
-public enum GDriveStorageError: Error, Equatable {
+public enum GDriveStorageError: LocalizedError, Equatable {
   case portalApiNotConfigured
   case binaryNotConfigured
   case unableToFetchClientData

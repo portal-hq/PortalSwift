@@ -130,7 +130,7 @@ public class PortalKeychainAccess: PortalKeychainAccessProtocol {
   }
 }
 
-enum PortalKeychainAccessError: Error {
+enum PortalKeychainAccessError: LocalizedError {
   case itemNotFound(String)
   case keychainUnavailableOrNoPasscode(OSStatus)
   case unexpectedItemData(String)

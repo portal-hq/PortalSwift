@@ -9,7 +9,7 @@
 import Foundation
 import GoogleSignIn
 
-enum MockConstantsError: Error {
+enum MockConstantsError: LocalizedError {
   case unableToEncodeMockValue
 }
 

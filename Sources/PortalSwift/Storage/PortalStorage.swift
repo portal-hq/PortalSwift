@@ -7,7 +7,7 @@
 
 import Foundation
 
-public enum StorageError: Error {
+public enum StorageError: LocalizedError {
   case mustExtendStorageClass
 }
 

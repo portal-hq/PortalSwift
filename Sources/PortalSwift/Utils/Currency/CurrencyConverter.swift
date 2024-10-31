@@ -7,7 +7,7 @@
 
 import Foundation
 
-public enum CurrencyConverterError: Error {
+public enum CurrencyConverterError: LocalizedError {
   case invalidCountryCode
   case invalidCurrencyCode
 }

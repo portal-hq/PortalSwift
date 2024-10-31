@@ -43,7 +43,7 @@ public class PortalKeychain: PortalKeychainProtocol {
     }
   }
 
-  public enum KeychainError: Error, Equatable {
+  public enum KeychainError: LocalizedError, Equatable {
     case clientNotFound
     case clientIdNotSetYet
     case itemNotFound(item: String)

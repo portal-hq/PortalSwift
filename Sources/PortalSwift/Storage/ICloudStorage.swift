@@ -10,7 +10,7 @@ import Foundation
 
 /// A storage class that uses iCloud's key-value store to store/retrieve private keys.
 public class ICloudStorage: Storage, PortalStorage {
-  public enum ICloudStorageError: Error {
+  public enum ICloudStorageError: LocalizedError {
     case noAPIKeyProvided(String)
     case noAccessToICloud(String)
     case notSignedIntoICloud(String)

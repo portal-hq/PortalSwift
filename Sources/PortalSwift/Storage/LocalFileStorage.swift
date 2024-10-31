@@ -8,7 +8,7 @@
 
 import Foundation
 
-public enum LocalFileStorageError: Error {
+public enum LocalFileStorageError: LocalizedError {
   case mustExtendStorageClass
   case fileNotFound
   case writeError

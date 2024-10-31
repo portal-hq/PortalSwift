@@ -180,7 +180,7 @@ public class PortalRequests: PortalRequestsProtocol {
   }
 }
 
-public enum PortalRequestsError: Error, Equatable {
+public enum PortalRequestsError: LocalizedError, Equatable {
   case clientError(_ message: String, url: String)
   case couldNotParseHttpResponse
   case internalServerError(_ message: String, url: String)

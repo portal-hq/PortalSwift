@@ -567,7 +567,7 @@ public class PortalConnect: EventBus {
   }
 }
 
-enum PortalConnectError: Error {
+enum PortalConnectError: LocalizedError {
   case noWebSocketClientFound
   case unableToParseSignResponse
   case unsupportedRequestMethod(String)

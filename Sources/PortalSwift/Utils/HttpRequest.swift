@@ -12,7 +12,7 @@ public enum HttpRequestType {
   case CustomRequest
 }
 
-private enum HttpError: Error {
+private enum HttpError: LocalizedError {
   case clientError(String)
   case httpError(String)
   case internalServerError(String)
@@ -20,7 +20,7 @@ private enum HttpError: Error {
   case unknownError(String)
 }
 
-private enum GatewayError: Error {
+private enum GatewayError: LocalizedError {
   case gatewayError(response: PortalProviderRpcResponseError, status: String)
 }
 

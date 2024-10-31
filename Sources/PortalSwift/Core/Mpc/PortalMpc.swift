@@ -1018,7 +1018,7 @@ public enum MpcStatuses: String {
 }
 
 /// A list of errors MPC can throw.
-public enum MpcError: Error, Equatable {
+public enum MpcError: LocalizedError, Equatable {
   case addressNotFound(_ message: String)
   case backupMethodNotRegistered(_ message: String)
   case backupNoLongerSupported(_ message: String)
@@ -1054,7 +1054,7 @@ public enum MpcError: Error, Equatable {
 }
 
 /// A list of errors RSA can throw.
-public enum RsaError: Error {
+public enum RsaError: LocalizedError {
   case unableToCreatePrivateKey(message: String)
   case incompatibleKeyWithAlgorithm
   case dataIsTooLongForKey
@@ -1062,11 +1062,11 @@ public enum RsaError: Error {
   case incorrectCipherTextFormat
 }
 
-public enum JSONParseError: Error {
+public enum JSONParseError: LocalizedError {
   case stringToDataConversionFailed
   case jsonDecodingFailed
 }
 
-public enum ReadSigningSharePairIdError: Error {
+public enum ReadSigningSharePairIdError: LocalizedError {
   case noSigningSharePairIdFound
 }
