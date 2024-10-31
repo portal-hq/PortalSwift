@@ -134,6 +134,7 @@ public class PortalConnect: EventBus {
     _ mpcHost: String = "mpc.portalhq.io",
     _ version: String = "v6"
   ) throws {
+    // TODO: change it to not be restrcited to eip155, also should include solana
     //  Handle the legacy use case of using Ethereum references as keys
     let rpcConfig: [String: String] = Dictionary(gatewayConfig.map { key, value in
       let newKey = "eip155:\(key)"
@@ -192,7 +193,7 @@ public class PortalConnect: EventBus {
 
   public func addChainsToProposal(data: ConnectData) -> ConnectData {
     let chainsToAdd = self.rpcConfig.keys
-
+    // TODO: add solana to this method
     // Convert existing chains and chainsToAdd to sets
     let existingChainsSet = Set<String>(data.params.params.requiredNamespaces.eip155?.chains ?? [])
     let chainsToAddSet = Set(chainsToAdd)
@@ -201,10 +202,10 @@ public class PortalConnect: EventBus {
     let newChains = Array(existingChainsSet.union(chainsToAddSet))
 
     // Create a new Eip155 instance with the updated chains
-    let newEip155 = Eip155(chains: newChains,
-                           methods: data.params.params.requiredNamespaces.eip155?.methods ?? [],
-                           events: data.params.params.requiredNamespaces.eip155?.events ?? [],
-                           rpcMap: data.params.params.requiredNamespaces.eip155?.rpcMap ?? [:])
+    let newEip155 = Namespace(chains: newChains,
+                              methods: data.params.params.requiredNamespaces.eip155?.methods ?? [],
+                              events: data.params.params.requiredNamespaces.eip155?.events ?? [],
+                              rpcMap: data.params.params.requiredNamespaces.eip155?.rpcMap ?? [:])
 
     // Create a new Namespaces instance with the updated Eip155
     let newNamespaces = Namespaces(eip155: newEip155)
@@ -556,6 +557,7 @@ public class PortalConnect: EventBus {
     guard let method = PortalRequestMethod(rawValue: method) else {
       throw PortalConnectError.unsupportedRequestMethod(method)
     }
+    // TODO: should not be restircuted to eip155.
     let response = try await self.provider.request(
       "eip155:\(chainId)",
       withMethod: method,

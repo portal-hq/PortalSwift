@@ -163,10 +163,11 @@ public struct Params: Codable {
 }
 
 public struct Namespaces: Codable {
-  public var eip155: Eip155?
+  public var eip155: NameSpace?
+  public var solana: NameSpace?
 }
 
-public struct Eip155: Codable {
+public struct NameSpace: Codable {
   public var chains: [String]?
   public var methods: [String]?
   public var events: [String]?
@@ -174,10 +175,11 @@ public struct Eip155: Codable {
 }
 
 public struct OptionalNamespaces: Codable {
-  public var eip155: OptionalEip155?
+  public var eip155: OptionalNamespace?
+  public var solana: OptionalNamespace?
 }
 
-public struct OptionalEip155: Codable {
+public struct OptionalNamespace: Codable {
   public var chains: [String]?
   public var methods: [String]?
   public var events: [String]?
