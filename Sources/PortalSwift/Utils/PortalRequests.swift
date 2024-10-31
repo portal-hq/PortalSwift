@@ -1,7 +1,15 @@
 import AnyCodable
 import Foundation
 
-public class PortalRequests {
+public protocol PortalRequestsProtocol {
+  func delete(_ from: URL, withBearerToken: String?) async throws -> Data
+  func get(_ from: URL, withBearerToken: String?) async throws -> Data
+  func patch(_ from: URL, withBearerToken: String?, andPayload: Codable) async throws -> Data
+  func post(_ from: URL, withBearerToken: String?, andPayload: Codable?) async throws -> Data
+  func postMultiPartData(_ from: URL, withBearerToken: String, andPayload: String, usingBoundary: String) async throws -> Data
+}
+
+public class PortalRequests: PortalRequestsProtocol {
   public init() {}
 
   public func delete(_ from: URL, withBearerToken: String? = nil) async throws -> Data {
@@ -172,7 +180,7 @@ public class PortalRequests {
   }
 }
 
-public enum PortalRequestsError: Error, Equatable {
+public enum PortalRequestsError: LocalizedError, Equatable {
   case clientError(_ message: String, url: String)
   case couldNotParseHttpResponse
   case internalServerError(_ message: String, url: String)

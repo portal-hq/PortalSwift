@@ -8,7 +8,7 @@
 import Foundation
 import Starscream
 
-enum WebSocketTypeErrors: Error {
+enum WebSocketTypeErrors: LocalizedError {
   case MismatchedTypeMessage
 }
 

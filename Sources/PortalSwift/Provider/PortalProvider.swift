@@ -8,11 +8,27 @@
 import AnyCodable
 import Foundation
 
+public protocol PortalProviderProtocol: AnyObject {
+  var chainId: Int? { get set }
+  var address: String? { get }
+
+  func emit(event: Events.RawValue, data: Any) -> PortalProvider
+  func on(event: Events.RawValue, callback: @escaping (_ data: Any) -> Void) -> PortalProvider
+  func once(event: Events.RawValue, callback: @escaping (_ data: Any) throws -> Void) -> PortalProvider
+  func removeListener(event: Events.RawValue) -> PortalProvider
+  func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [AnyCodable]?, connect: PortalConnect?) async throws -> PortalProviderResult
+  func request(_ chainId: String, withMethod: String, andParams: [AnyCodable]?, connect: PortalConnect?) async throws -> PortalProviderResult
+  func request(payload: ETHRequestPayload, completion: @escaping (Result<RequestCompletionResult>) -> Void, connect: PortalConnect?)
+  func request(payload: ETHTransactionPayload, completion: @escaping (Result<TransactionCompletionResult>) -> Void, connect: PortalConnect?)
+  func request(payload: ETHAddressPayload, completion: @escaping (Result<AddressCompletionResult>) -> Void, connect: PortalConnect?)
+  func setChainId(value: Int, connect: PortalConnect?) throws -> PortalProvider
+}
+
 /// Portal's EVM blockchain provider.
-public class PortalProvider {
+public class PortalProvider: PortalProviderProtocol {
   public var address: String? {
     do {
-      return try self.keychain.getAddress()
+      return try self.keychain?.getAddress()
     } catch {
       return nil
     }
@@ -26,13 +42,13 @@ public class PortalProvider {
 
   private let decoder = JSONDecoder()
   private var events: [Events.RawValue: [RegisteredEventHandler]] = [:]
-  private var keychain: PortalKeychain
+  private weak var keychain: PortalKeychainProtocol?
   private let logger = PortalLogger()
   private var mpcQueue: DispatchQueue
   private var processedRequestIds: [String] = []
   private var processedSignatureIds: [String] = []
   private var portalApi: HttpRequester
-  private let requests: PortalRequests
+  private let requests: PortalRequestsProtocol
   private let rpcConfig: [String: String]
   private let signer: PortalMpcSigner
   private let featureFlags: FeatureFlags?
@@ -56,13 +72,13 @@ public class PortalProvider {
   public init(
     apiKey: String,
     rpcConfig: [String: String],
-    keychain: PortalKeychain,
+    keychain: PortalKeychainProtocol,
     autoApprove: Bool,
     apiHost: String = "api.portalhq.io",
     mpcHost: String = "mpc.portalhq.io",
     version: String = "v6",
     featureFlags: FeatureFlags? = nil,
-    requests: PortalRequests? = nil,
+    requests: PortalRequestsProtocol? = nil,
     signer: PortalMpcSigner? = nil
   ) throws {
     // User-defined instance variables
@@ -214,7 +230,7 @@ public class PortalProvider {
     // or not.
     switch withMethod {
     case .eth_accounts, .eth_requestAccounts:
-      let address = try await keychain.getAddress(chainId)
+      let address = try await keychain?.getAddress(chainId)
       return PortalProviderResult(id: id, result: [address])
     case .wallet_switchEthereumChain:
       return PortalProviderResult(id: id, result: "null")
@@ -742,13 +758,13 @@ public enum ETHRequestMethods: String {
 }
 
 /// A list of errors that can be thrown when instantiating PortalProvider.
-public enum ProviderInvalidArgumentError: Error {
+public enum ProviderInvalidArgumentError: LocalizedError {
   case invalidGatewayUrl
   case invalidParamsForSwitchingChain
 }
 
 /// A list of errors that can be thrown when making requests to Gateway.
-public enum ProviderRpcError: Error {
+public enum ProviderRpcError: LocalizedError {
   case chainDisconnected
   case disconnected
   case unauthorized
@@ -757,7 +773,7 @@ public enum ProviderRpcError: Error {
 }
 
 /// A list of errors that can be thrown when signing.
-public enum ProviderSigningError: Error {
+public enum ProviderSigningError: LocalizedError {
   case noBindingForSigningApprovalFound
   case userDeclinedApproval
   case walletRequestRejected

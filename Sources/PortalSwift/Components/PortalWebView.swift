@@ -28,7 +28,7 @@ public struct PortalMessageBody {
 }
 
 /// The errors the web view controller can throw.
-enum WebViewControllerErrors: Error {
+enum WebViewControllerErrors: LocalizedError {
   case unparseableMessage
   case MissingFieldsForEIP1559Transation
   case unknownMessageType(type: String)
@@ -339,9 +339,9 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
     if method == "wallet_switchEthereumChain" {
       try self.handleWalletSwitchEthereumChain(method: method, params: params)
     } else if signerMethods.contains(method) {
-      self.portal.provider.request(payload: payload, completion: self.signerRequestCompletion)
+      self.portal.provider.request(payload: payload, completion: self.signerRequestCompletion, connect: nil)
     } else {
-      self.portal.provider.request(payload: payload, completion: self.gatewayRequestCompletion)
+      self.portal.provider.request(payload: payload, completion: self.gatewayRequestCompletion, connect: nil)
     }
   }
 
@@ -374,9 +374,9 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
     let payload = ETHTransactionPayload(method: method, params: [transactionParam], chainId: chainId)
 
     if signerMethods.contains(method) {
-      self.portal.provider.request(payload: payload, completion: self.signerTransactionRequestCompletion)
+      self.portal.provider.request(payload: payload, completion: self.signerTransactionRequestCompletion, connect: nil)
     } else {
-      self.portal.provider.request(payload: payload, completion: self.gatewayTransactionRequestCompletion)
+      self.portal.provider.request(payload: payload, completion: self.gatewayTransactionRequestCompletion, connect: nil)
     }
   }
 
@@ -560,7 +560,7 @@ public struct ChainChangedParam: Codable {
   public let chainId: String
 }
 
-enum PortalWebViewError: Error {
+enum PortalWebViewError: LocalizedError {
   case unexpectedError(String)
 }
 

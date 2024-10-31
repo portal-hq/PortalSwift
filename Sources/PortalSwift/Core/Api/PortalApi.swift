@@ -8,6 +8,41 @@
 import AnyCodable
 import Foundation
 
+public protocol PortalApiProtocol: AnyObject {
+  var client: ClientResponse? { get async throws }
+
+  func eject() async throws -> String
+  func getBalances(_ chainId: String) async throws -> [FetchedBalance]
+  func getClient() async throws -> ClientResponse
+  func getClientCipherText(_ backupSharePairId: String) async throws -> String
+  func getQuote(_ swapsApiKey: String, withArgs: QuoteArgs, forChainId: String?) async throws -> Quote
+  func getNftAssets(_ chainId: String) async throws -> [NftAsset]
+  func getSharePairs(_ type: PortalSharePairType, walletId: String) async throws -> [FetchedSharePair]
+  func getSources(_ swapsApiKey: String, forChainId: String) async throws -> [String: String]
+  func getTransactions(_ chainId: String, limit: Int?, offset: Int?, order: TransactionOrder?) async throws -> [FetchedTransaction]
+  func identify(_ traits: [String: AnyCodable]) async throws -> MetricsResponse
+  func prepareEject(_ walletId: String, _ backupMethod: BackupMethods) async throws -> String
+  func refreshClient() async throws
+  func simulateTransaction(_ transaction: Any, withChainId: String) async throws -> SimulatedTransaction
+  func updateShareStatus(_ type: PortalSharePairType, status: SharePairUpdateStatus, sharePairIds: [String]) async throws
+  func getClient(completion: @escaping (Result<ClientResponse>) -> Void) throws
+  func getQuote(_ swapsApiKey: String, _ args: QuoteArgs, _ forChainId: String?, completion: @escaping (Result<Quote>) -> Void) throws
+  func getSources(swapsApiKey: String, completion: @escaping (Result<[String: String]>) -> Void) throws
+  func getTransactions(limit: Int?, offset: Int?, order: GetTransactionsOrder?, chainId: Int?, completion: @escaping (Result<[FetchedTransaction]>) -> Void) throws
+  func getBalances(completion: @escaping (Result<[FetchedBalance]>) -> Void) throws
+  func simulateTransaction(transaction: SimulateTransactionParam, completion: @escaping (Result<SimulatedTransaction>) -> Void) throws
+  func ejectClient(completion: @escaping (Result<String>) -> Void) throws
+  func storedClientBackupShare(success: Bool, backupMethod: BackupMethods.RawValue, completion: @escaping (Result<String>) -> Void) throws
+  func getBackupShareMetadata(completion: @escaping (Result<[FetchedSharePair]>) -> Void) throws
+  func getSigningShareMetadata(completion: @escaping (Result<[FetchedSharePair]>) -> Void) throws
+  func storeClientCipherText(_ backupSharePairId: String, cipherText: String) async throws -> Bool
+  func track(_ event: String, withProperties: [String: AnyCodable]) async throws -> MetricsResponse
+  func evaluateTransaction(chainId: String, transaction: EvaluateTransactionParam, operationType: EvaluateTransactionOperationType?) async throws -> BlockaidValidateTrxRes
+  func buildEip155Transaction(chainId: String, params: BuildTransactionParam) async throws -> BuildEip115TransactionResponse
+  func buildSolanaTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildSolanaTransactionResponse
+  func getAssets(_ chainId: String) async throws -> AssetsResponse
+}
+
 /// The ThreadSafeClientWrapper is just a thread-safe actor to consume the ClientResponse class, we need to refactor that later.
 private actor ThreadSafeClientWrapper {
   private var _client: ClientResponse?
@@ -27,14 +62,14 @@ private actor ThreadSafeClientWrapper {
 }
 
 /// The class to interface with Portal's REST API.
-public class PortalApi {
+public class PortalApi: PortalApiProtocol {
   private let _clientStorage = ThreadSafeClientWrapper()
   private var apiKey: String
   private var baseUrl: String
   private let decoder = JSONDecoder()
   private var httpRequests: HttpRequester
   private let logger = PortalLogger()
-  private let requests: PortalRequests
+  private let requests: PortalRequestsProtocol
   private let featureFlags: FeatureFlags?
 
   private var address: String? {
@@ -53,7 +88,7 @@ public class PortalApi {
     }
   }
 
-  public var provider: PortalProvider?
+  public weak var provider: PortalProviderProtocol?
 
   /// Create an instance of a PortalApi class.
   /// - Parameters:
@@ -63,9 +98,9 @@ public class PortalApi {
   public init(
     apiKey: String,
     apiHost: String = "api.portalhq.io",
-    provider: PortalProvider? = nil,
+    provider: PortalProviderProtocol? = nil,
     featureFlags: FeatureFlags? = nil,
-    requests: PortalRequests? = nil
+    requests: PortalRequestsProtocol? = nil
   ) {
     self.apiKey = apiKey
     self.baseUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
@@ -89,7 +124,7 @@ public class PortalApi {
 
         return ejectResponse
       } catch {
-        self.logger.error("PortalApi.getBalances() - Unable to eject: \(error.localizedDescription)")
+        self.logger.error("PortalApi.eject() - Unable to eject: \(error.localizedDescription)")
         throw error
       }
     }
@@ -98,6 +133,7 @@ public class PortalApi {
     throw URLError(.badURL)
   }
 
+  @available(*, deprecated, message: "This function has been moved to 'Portal'. Please use 'Portal.getBalances()' instead.") // this func need to be private thats why we deprecate it to move it to private later
   public func getBalances(_ chainId: String) async throws -> [FetchedBalance] {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/balances?chainId=\(chainId)") {
       do {
@@ -106,7 +142,7 @@ public class PortalApi {
 
         return balancesResponse
       } catch {
-        self.logger.error("PortalApi.getBalances() - Unable to get balanaces: \(error.localizedDescription)")
+        self.logger.error("PortalApi.getBalances() - Unable to get balances: \(error.localizedDescription)")
         throw error
       }
     }
@@ -129,6 +165,23 @@ public class PortalApi {
       }
     }
 
+    throw URLError(.badURL)
+  }
+
+  public func getAssets(_ chainId: String) async throws -> AssetsResponse {
+    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)/assets") {
+      do {
+        let data = try await get(url, withBearerToken: self.apiKey)
+        let assets = try decoder.decode(AssetsResponse.self, from: data)
+
+        return assets
+      } catch {
+        self.logger.error("PortalApi.getAssets() - Unable to fetch Assets: \(error.localizedDescription)")
+        throw error
+      }
+    }
+
+    self.logger.error("PortalApi.getNFTs() - Unable to build request URL.")
     throw URLError(.badURL)
   }
 
@@ -168,20 +221,20 @@ public class PortalApi {
     throw URLError(.badURL)
   }
 
-  public func getNFTs(_ chainId: String) async throws -> [FetchedNFT] {
-    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/nfts?chainId=\(chainId)") {
+  public func getNftAssets(_ chainId: String) async throws -> [NftAsset] {
+    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)/assets/nfts") {
       do {
         let data = try await get(url, withBearerToken: self.apiKey)
-        let nfts = try decoder.decode([FetchedNFT].self, from: data)
+        let nfts = try decoder.decode([NftAsset].self, from: data)
 
         return nfts
       } catch {
-        self.logger.error("PortalApi.getNFTs() - Unable to fetch NFTs: \(error.localizedDescription)")
+        self.logger.error("PortalApi.getNftAssets() - Unable to fetch NFT Assets: \(error.localizedDescription)")
         throw error
       }
     }
 
-    self.logger.error("PortalApi.getNFTs() - Unable to build request URL.")
+    self.logger.error("PortalApi.getNftAssets() - Unable to build request URL.")
     throw URLError(.badURL)
   }
 
@@ -326,7 +379,7 @@ public class PortalApi {
     }
   }
 
-  func storeClientCipherText(_ backupSharePairId: String, cipherText: String) async throws -> Bool {
+  public func storeClientCipherText(_ backupSharePairId: String, cipherText: String) async throws -> Bool {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/backup-share-pairs/\(backupSharePairId)") {
       do {
         let payload = AnyCodable([
@@ -345,7 +398,7 @@ public class PortalApi {
     throw URLError(.badURL)
   }
 
-  func track(_ event: String, withProperties: [String: AnyCodable]) async throws -> MetricsResponse {
+  public func track(_ event: String, withProperties: [String: AnyCodable]) async throws -> MetricsResponse {
     if let url = URL(string: "\(baseUrl)/api/v1/analytics/track") {
       let payload = MetricsTrackRequest(
         event: event,
@@ -386,6 +439,36 @@ public class PortalApi {
     throw URLError(.badURL)
   }
 
+  public func buildEip155Transaction(chainId: String, params: BuildTransactionParam) async throws -> BuildEip115TransactionResponse {
+    guard chainId.starts(with: "eip155:") else {
+      throw PortalApiError.invalidChainId(message: "Invalid chainId: \(chainId). ChainId must start with 'eip155:'")
+    }
+
+    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)/assets/send/build-transaction") {
+      let data = try await post(url, withBearerToken: self.apiKey, andPayload: params.toDictionary())
+      let response = try decoder.decode(BuildEip115TransactionResponse.self, from: data)
+
+      return response
+    }
+
+    throw URLError(.badURL)
+  }
+
+  public func buildSolanaTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildSolanaTransactionResponse {
+    guard chainId.starts(with: "solana:") else {
+      throw PortalApiError.invalidChainId(message: "Invalid chainId: \(chainId). ChainId must start with 'solana:'")
+    }
+
+    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)/assets/send/build-transaction") {
+      let data = try await post(url, withBearerToken: self.apiKey, andPayload: params.toDictionary())
+      let response = try decoder.decode(BuildSolanaTransactionResponse.self, from: data)
+
+      return response
+    }
+
+    throw URLError(.badURL)
+  }
+
   /*******************************************
    * Private functions
    *******************************************/
@@ -416,7 +499,7 @@ public class PortalApi {
   ///   - gas: (Optional) The transacton "gas" parameter.
   ///   - gasPrice: (Optional) The transacton "gasPrice" parameter.
   /// - Returns: SimulatedTransaction.
-  @available(*, deprecated, renamed: "evaluateTransaction", message: "Please use evaluateTransaction().")
+  @available(*, deprecated, renamed: "evaluateTransaction", message: "Please use 'Portal.evaluateTransaction()' instead.")
   public func simulateTransaction(_ transaction: Any, withChainId: String) async throws -> SimulatedTransaction {
     guard let chainId = withChainId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
       throw PortalApiError.unableToEncodeData
@@ -482,22 +565,6 @@ public class PortalApi {
     }
   }
 
-  /// Retrieve a list of NFTs for the client.
-  /// - Parameters:
-  ///   - completion: The callback that contains the list of NFTs.
-  /// - Returns: Void.
-  @available(*, deprecated, renamed: "getNFTs", message: "Please use the async/await implementation of getNFTs().")
-  public func getNFTs(completion: @escaping (Result<[FetchedNFT]>) -> Void) throws {
-    Task {
-      do {
-        let response = try await getNFTs("eip155:\(self.chainId ?? 1)")
-        completion(Result(data: response))
-      } catch {
-        completion(Result(error: error))
-      }
-    }
-  }
-
   /// Retrieve a list of Transactions for the client.
   /// - Parameters:
   ///   - limit: (Optional) The maximum number of transactions to return.
@@ -529,7 +596,7 @@ public class PortalApi {
   /// - Parameters:
   ///   - completion: The callback that contains the list of Balances.
   /// - Returns: Void.
-  @available(*, deprecated, renamed: "getBalances", message: "Please use the async/await implementation of getBalances().")
+  @available(*, deprecated, message: "This function has been moved to 'Portal'. Please use 'Portal.getBalances()' instead.")
   public func getBalances(
     completion: @escaping (Result<[FetchedBalance]>) -> Void
   ) throws {
@@ -554,7 +621,7 @@ public class PortalApi {
   ///   - gasPrice: (Optional) The transacton "gasPrice" parameter.
   ///   - completion: The callback that contains transaction simulation response.
   /// - Returns: Void.
-  @available(*, deprecated, renamed: "simulateTransaction", message: "Please use the async/await implementation of simulateTransaction().")
+  @available(*, deprecated, renamed: "evaluateTransaction", message: "Please use 'Portal.evaluateTransaction()' instead.")
   public func simulateTransaction(
     transaction: SimulateTransactionParam,
     completion: @escaping (Result<SimulatedTransaction>) -> Void
@@ -662,6 +729,7 @@ public class PortalApi {
     }
   }
 
+  @available(*, deprecated, message: "Please use the async/await implementation of track().")
   func track(event: String, properties: [String: String], completion: ((Result<MetricsResponse>) -> Void)? = nil) {
     Task.init {
       do {
@@ -675,9 +743,10 @@ public class PortalApi {
   }
 }
 
-public enum PortalApiError: Error, Equatable {
+public enum PortalApiError: LocalizedError, Equatable {
   case unableToEncodeData
   case unableToReadStringResponse
+  case invalidChainId(message: String)
 }
 
 public enum SharePairUpdateStatus: String, Codable {

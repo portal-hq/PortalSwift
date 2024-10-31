@@ -446,6 +446,15 @@ class ViewController: UIViewController, UITextFieldDelegate {
     return balances
   }
 
+  func getAssets(for chainId: String) async throws -> AssetsResponse {
+    guard let portal else {
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+    let assets = try await portal.getAssets(chainId)
+
+    return assets
+  }
+
   public func getGasPrice(_ chainId: String) async throws {
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
@@ -468,11 +477,25 @@ class ViewController: UIViewController, UITextFieldDelegate {
     print("sol_getTransaction response: \(result)")
   }
 
-  public func getNFTs(_ chainId: String) async throws -> [FetchedNFT] {
+  func buildEip155Transaction(chainId: String = "eip155:11155111", params: BuildTransactionParam) async throws -> BuildEip115TransactionResponse {
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
-    return try await portal.getNFTs(chainId)
+    return try await portal.buildEip155Transaction(chainId: chainId, params: params)
+  }
+
+  func buildSolanaTransaction(chainId: String = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1", params: BuildTransactionParam) async throws -> BuildSolanaTransactionResponse {
+    guard let portal else {
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+    return try await portal.buildSolanaTransaction(chainId: chainId, params: params)
+  }
+
+  public func getNftAssets(_ chainId: String) async throws -> [NftAsset] {
+    guard let portal else {
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+    return try await portal.getNftAssets(chainId)
   }
 
   public func getShareMetadata() async throws -> [FetchedSharePair] {
@@ -949,8 +972,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
       // The apikey from Portal class is private within the Portal SDK class, so it must not be accessible from outside. We already have the clientApiKey from user
       self.logger.info("ViewController.registerPortal() - Portal API Key: \(user.clientApiKey)")
 
-      portal.on(event: Events.PortalSigningRequested.rawValue, callback: { data in
-        portal.emit(Events.PortalSigningApproved.rawValue, data: data)
+      portal.on(event: Events.PortalSigningRequested.rawValue, callback: { [weak portal] data in
+        portal?.emit(Events.PortalSigningApproved.rawValue, data: data)
       })
 
       portal.on(event: Events.PortalSignatureReceived.rawValue) { (data: Any) in
@@ -1318,7 +1341,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
       throw PortalExampleAppError.userNotLoggedIn()
     }
 
-    let generateSolanaResult = try await portal.generateSolanaWalletAndBackupShares(.iCloud)
+    let generateSolanaResult = try await portal.generateSolanaWalletAndBackupShares(.iCloud) { _ in
+    }
 
     guard let url = URL(string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/cipher-text") else {
       throw URLError(.badURL)
@@ -1670,13 +1694,34 @@ class ViewController: UIViewController, UITextFieldDelegate {
         return
       }
       do {
-        let nfts = try await self.getNFTs(chainId)
-        print(nfts)
-        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched NFTs.")
-        self.showStatusView(message: "\(self.successStatus) Successfully fetched NFTs.")
+        let assets = try await self.getAssets(for: "eip155:11155111")
+        print(assets)
+        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched  assets for chain eip155:11155111.")
+        self.showStatusView(message: "\(self.successStatus) Successfully fetched assets for chain eip155:11155111.")
       } catch {
-        self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching NFTs: \(error)")
-        self.showStatusView(message: "\(self.failureStatus) Error fetching NFTs \(error)")
+        self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching assets  for chain eip155:11155111: \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error fetching assets  for chain eip155:11155111 \(error)")
+        return
+      }
+
+      do {
+        let assets = try await self.getAssets(for: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1")
+        print(assets)
+        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched  assets for chain solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1.")
+        self.showStatusView(message: "\(self.successStatus) Successfully fetched assets for chain solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1.")
+      } catch {
+        self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching assets  for chain solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1: \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error fetching assets  for chain solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1 \(error)")
+        return
+      }
+      do {
+        let nfts = try await self.getNftAssets(chainId)
+        print(nfts)
+        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched NFT Assets.")
+        self.showStatusView(message: "\(self.successStatus) Successfully fetched NFT Assets.")
+      } catch {
+        self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching NFT Assets: \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error fetching NFT Assets \(error)")
         return
       }
       do {
@@ -1748,6 +1793,38 @@ class ViewController: UIViewController, UITextFieldDelegate {
       } catch {
         self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error executing sol_getTransaction request: \(error)")
         self.showStatusView(message: "\(self.failureStatus) Error executing sol_getTransaction request: \(error)")
+      }
+
+      do {
+        let buildTransactionParam = BuildTransactionParam(
+          to: "0xdFd8302f44727A6348F702fF7B594f127dE3A902",
+          token: "ETH",
+          amount: "0.001"
+        )
+        let eip155Transaction = try await self.buildEip155Transaction(params: buildTransactionParam)
+        print(eip155Transaction)
+        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched buildEip155Transaction.")
+        self.showStatusView(message: "\(self.successStatus) Successfully fetched buildEip155Transaction.")
+      } catch {
+        self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching buildEip155Transaction: \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error fetching buildEip155Transaction \(error)")
+        return
+      }
+
+      do {
+        let buildTransactionParam = BuildTransactionParam(
+          to: "GPsPXxoQA51aTJJkNHtFDFYui5hN5UxcFPnheJEHa5Du",
+          token: "SOL",
+          amount: "0.001"
+        )
+        let solanaTransaction = try await self.buildSolanaTransaction(params: buildTransactionParam)
+        print(solanaTransaction)
+        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched buildSolanaTransaction.")
+        self.showStatusView(message: "\(self.successStatus) Successfully fetched buildSolanaTransaction.")
+      } catch {
+        self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching buildSolanaTransaction: \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error fetching buildSolanaTransaction \(error)")
+        return
       }
     }
   }

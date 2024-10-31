@@ -12,12 +12,14 @@ import XCTest
 
 final class PortalProviderTests: XCTestCase {
   var provider: PortalProvider!
+  private var keychain: PortalKeychainProtocol!
 
   override func setUpWithError() throws {
+    keychain = MockPortalKeychain()
     self.provider = try PortalProvider(
       apiKey: MockConstants.mockApiKey,
       rpcConfig: ["eip155:11155111": "https://\(MockConstants.mockHost)/test-rpc"],
-      keychain: MockPortalKeychain(),
+      keychain: keychain,
       autoApprove: true,
       requests: MockPortalRequests(),
       signer: MockPortalMpcSigner(apiKey: MockConstants.mockApiKey, keychain: MockPortalKeychain())

@@ -7,7 +7,7 @@
 
 import Foundation
 
-public enum StorageError: Error {
+public enum StorageError: LocalizedError {
   case mustExtendStorageClass
 }
 
@@ -39,8 +39,8 @@ open class Storage {
 }
 
 public protocol PortalStorage {
-  var api: PortalApi? { get set }
-  var encryption: PortalEncryption { get }
+  var api: PortalApiProtocol? { get set }
+  var encryption: PortalEncryptionProtocol { get }
 
   func decrypt(_ value: String, withKey: String) async throws -> String
   func delete() async throws -> Bool

@@ -7,10 +7,12 @@
 
 import Foundation
 
-public class MockPortalRequests: PortalRequests {
+public actor MockPortalRequests: PortalRequestsProtocol {
   private let encoder = JSONEncoder()
 
-  override public func delete(_ url: URL, withBearerToken _: String? = nil) async throws -> Data {
+  public init() {}
+
+  public func delete(_ url: URL, withBearerToken _: String? = nil) async throws -> Data {
     switch url.path {
     default:
       guard let mockNullData = "null".data(using: .utf8) else {
@@ -20,7 +22,16 @@ public class MockPortalRequests: PortalRequests {
     }
   }
 
-  override public func get(_ url: URL, withBearerToken _: String? = nil) async throws -> Data {
+  // Tracking variables for `get` function
+  private(set) var getCallsCount = 0
+  private(set) var getFromParam: URL?
+  private(set) var getWithBearerTokenParam: String?
+
+  public func get(_ url: URL, withBearerToken: String? = nil) async throws -> Data {
+    getCallsCount += 1
+    getFromParam = url
+    getWithBearerTokenParam = withBearerToken
+
     switch url.path {
     case "/api/v3/clients/me":
       let mockClientData = try encoder.encode(MockConstants.mockClient)
@@ -28,9 +39,6 @@ public class MockPortalRequests: PortalRequests {
     case "/api/v3/clients/me/balances":
       let mockBalancesData = try encoder.encode([MockConstants.mockedFetchedBalance])
       return mockBalancesData
-    case "/api/v3/clients/me/nfts":
-      let mockNFTData = try encoder.encode([MockConstants.mockFetchedNFT])
-      return mockNFTData
     case "/api/v3/clients/me/transactions":
       let mockTransactionData = try encoder.encode([MockConstants.mockFetchedTransaction])
       return mockTransactionData
@@ -61,7 +69,7 @@ public class MockPortalRequests: PortalRequests {
     }
   }
 
-  override public func patch(_ url: URL, withBearerToken _: String? = nil, andPayload _: Codable) async throws -> Data {
+  public func patch(_ url: URL, withBearerToken _: String? = nil, andPayload _: Codable) async throws -> Data {
     switch url.path {
     case "/api/v3/clients/me/backup-share-pairs/", "/api/v3/clients/me/signing-share-pairs/":
       guard let mockTrueData = "true".data(using: .utf8) else {
@@ -76,7 +84,18 @@ public class MockPortalRequests: PortalRequests {
     }
   }
 
-  override public func post(_ url: URL, withBearerToken _: String? = nil, andPayload _: Codable? = nil) async throws -> Data {
+  // Tracking variables for `post` function
+  private(set) var postCallsCount = 0
+  private(set) var postFromParam: URL?
+  private(set) var postWithBearerTokenParam: String?
+  private(set) var postAndPayloadParam: Codable?
+
+  public func post(_ url: URL, withBearerToken: String? = nil, andPayload: Codable? = nil) async throws -> Data {
+    postCallsCount += 1
+    postFromParam = url
+    postWithBearerTokenParam = withBearerToken
+    postAndPayloadParam = andPayload
+
     switch url.path {
     case "/api/v1/analytics/identify", "/api/v1/analytics/track":
       let mockMetricsResponseData = try encoder.encode(MockConstants.mockMetricsResponse)
@@ -117,7 +136,7 @@ public class MockPortalRequests: PortalRequests {
     }
   }
 
-  override public func postMultiPartData(
+  public func postMultiPartData(
     _: URL,
     withBearerToken _: String,
     andPayload _: String,

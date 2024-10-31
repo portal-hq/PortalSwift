@@ -11,7 +11,7 @@ import Mpc
 
 public class PortalMpcSigner {
   private let apiKey: String
-  private let keychain: PortalKeychain
+  private weak var keychain: PortalKeychainProtocol?
   private let mpcUrl: String
   private let version: String
   private let featureFlags: FeatureFlags?
@@ -20,7 +20,7 @@ public class PortalMpcSigner {
 
   init(
     apiKey: String,
-    keychain: PortalKeychain,
+    keychain: PortalKeychainProtocol,
     mpcUrl: String = "mpc.portalhq.io",
     version: String = "v6",
     featureFlags: FeatureFlags? = nil,
@@ -50,7 +50,7 @@ public class PortalMpcSigner {
     mpcMetadata.curve = usingBlockchain.curve
     mpcMetadata.chainId = chainId
 
-    let signingShare = try await keychain.getShare(chainId)
+    let signingShare = try await keychain?.getShare(chainId)
     let params = try self.prepareParams(withPayload.method, params: withPayload.params)
 
     let json = try JSONEncoder().encode(params)
@@ -106,7 +106,7 @@ public class PortalMpcSigner {
   }
 }
 
-enum PortalMpcSignerError: Error, Equatable {
+enum PortalMpcSignerError: LocalizedError, Equatable {
   case invalidParamsForMethod(String)
   case noCurveFoundForNamespace(String)
   case noNamespaceFoundForChainId(String)

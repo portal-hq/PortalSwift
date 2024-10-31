@@ -81,77 +81,6 @@ public struct FetchedBalance: Codable, Equatable {
   public var symbol: String?
 }
 
-public struct FetchedNFT: Codable, Equatable {
-  public var contract: FetchedNFTContract
-  public var id: FetchedNFTTokenId
-  public var balance: String
-  public var title: String
-  public var description: String
-  public var tokenUri: FetchedNFTTokenUri
-  public var media: [FetchedNFTMedia]
-  public var metadata: FetchedNFTMetadata
-  public var timeLastUpdated: String
-  public var contractMetadata: FetchedNFTContractMetadata
-}
-
-public struct FetchedNFTContract: Codable, Equatable {
-  public var address: String
-}
-
-public struct FetchedNFTContractMetadata: Codable, Equatable {
-  public var name: String
-  public var symbol: String
-  public var tokenType: String
-  public var contractDeployer: String
-  public var deployedBlockNumber: Int
-  public var openSea: FetchedNFTContractOpenSeaMetadata?
-}
-
-public struct FetchedNFTContractOpenSeaMetadata: Codable, Equatable {
-  public var collectionName: String
-  public var safelistRequestStatus: String
-  public var imageUrl: String?
-  public var description: String
-  public var externalUrl: String
-  public var lastIngestedAt: String
-  public var floorPrice: Float?
-  public var twitterUsername: String?
-  public var discordUrl: String?
-}
-
-public struct FetchedNFTTokenId: Codable, Equatable {
-  public var tokenId: String
-  public var tokenMetadata: FetchedNFTTokenMetadata
-}
-
-/// Represents the metadata of an NFT's id.
-public struct FetchedNFTTokenMetadata: Codable, Equatable {
-  public var tokenType: String
-}
-
-/// Represents the URI of an NFT.
-public struct FetchedNFTTokenUri: Codable, Equatable {
-  public var gateway: String
-  public var raw: String
-}
-
-/// Represents the media of an NFT.
-public struct FetchedNFTMedia: Codable, Equatable {
-  public var gateway: String
-  public var thumbnail: String
-  public var raw: String
-  public var format: String
-  public var bytes: Int
-}
-
-/// Represents the metadata of an NFT.
-public struct FetchedNFTMetadata: Codable, Equatable {
-  public var name: String
-  public var description: String
-  public var image: String
-  public var external_url: String?
-}
-
 public struct FetchedSharePair: Codable, Equatable {
   public let id: String
   public let createdAt: String
@@ -176,32 +105,37 @@ public struct FetchedTransaction: Codable, Equatable {
   /// Address that the transaction was sent to
   public var to: String
   /// Value transferred in the transaction
-  public var value: Float
+  public var value: Float?
   /// Token Id of an ERC721 token, if applicable
   public var erc721TokenId: String?
   /// Metadata of an ERC1155 token, if applicable
-  public var erc1155Metadata: String?
+  public var erc1155Metadata: [Erc1155Metadata?]?
   /// Token Id, if applicable
   public var tokenId: String?
   /// Type of asset involved in the transaction (e.g., ETH)
-  public var asset: String
+  public var asset: String?
   /// Category of the transaction (e.g., external)
   public var category: String
   /// Contract details related to the transaction
-  public var rawContract: FetchedTransactionRawContract
+  public var rawContract: FetchedTransactionRawContract?
   /// Metadata associated with the transaction
   public var metadata: FetchedTransactionMetadata
   /// ID of the chain associated with the transaction
   public var chainId: Int
 }
 
+public struct Erc1155Metadata: Codable, Equatable {
+  public let tokenId: String?
+  public let value: String?
+}
+
 public struct FetchedTransactionRawContract: Codable, Equatable {
   /// Value involved in the contract
-  public var value: String
+  public var value: String?
   /// Address of the contract, if applicable
   public var address: String?
   /// Decimal representation of the contract value
-  public var decimal: String
+  public var decimal: String?
 }
 
 public struct PrepareEjectResponse: Codable {
@@ -399,7 +333,7 @@ public struct Balance: Codable {
   public var balance: String
 }
 
-public struct SimulatedTransactionChange: Codable {
+public struct SimulatedTransactionChange: Codable, Equatable {
   public var amount: String?
   public var assetType: String?
   public var changeType: String?
@@ -413,7 +347,7 @@ public struct SimulatedTransactionChange: Codable {
   public var tokenId: Int?
 }
 
-public struct SimulatedTransactionError: Codable {
+public struct SimulatedTransactionError: Codable, Equatable {
   public var message: String
 }
 
@@ -445,14 +379,14 @@ public struct SimulateTransactionParam: Codable {
   }
 }
 
-public struct SimulatedTransaction: Codable {
+public struct SimulatedTransaction: Codable, Equatable {
   public var changes: [SimulatedTransactionChange]
   public var gasUsed: String? = nil
   public var error: SimulatedTransactionError?
   public var requestError: SimulatedTransactionError?
 }
 
-public struct MetricsResponse: Codable {
+public struct MetricsResponse: Codable, Equatable {
   public var status: Bool
 }
 
@@ -596,4 +530,232 @@ public enum EvaluateTransactionOperationType: String, CaseIterable {
   case validation
   case simulation
   case all
+}
+
+public struct BuildEip115TransactionResponse: Codable {
+  let transaction: Eip115Transaction
+  let metadata: BuildTransactionMetaData
+  let error: String?
+}
+
+public struct Eip115Transaction: Codable {
+  let from: String
+  let to: String
+  let data: String?
+  let value: String?
+}
+
+public struct BuildTransactionMetaData: Codable {
+  let amount: String
+  let fromAddress: String
+  let toAddress: String
+  let tokenAddress: String?
+  let tokenDecimals: Int
+  let tokenSymbol: String?
+  let rawAmount: String
+}
+
+public struct BuildSolanaTransactionResponse: Codable {
+  let transaction: String
+  let metadata: BuildTransactionMetaData
+  let error: String?
+}
+
+public struct BuildTransactionParam {
+  let to: String
+  let token: String
+  let amount: String
+
+  public init(to: String, token: String, amount: String) {
+    self.to = to
+    self.token = token
+    self.amount = amount
+  }
+
+  func toDictionary() -> [String: String] {
+    return [
+      "to": to,
+      "token": token,
+      "amount": amount
+    ]
+  }
+}
+
+// MARK: - NftAsset
+
+public struct NftAsset: Codable {
+  let nftID, name, description: String?
+  let imageURL: String?
+  let chainID, contractAddress, tokenID: String?
+  let collection: Collection?
+  let lastSale: LastSale?
+  let rarity: Rarity?
+  let floorPrice: NftAssetFloorPrice?
+  let detailedInfo: DetailedInfo?
+}
+
+// MARK: - Collection
+
+public struct Collection: Codable {
+  let name, description: String?
+  let imageURL: String?
+}
+
+// MARK: - DetailedInfo
+
+public struct DetailedInfo: Codable {
+  let ownerCount, tokenCount: Int?
+  let createdDate: String?
+  let attributes: [Attribute]?
+  let owners: [Owner]?
+  let extendedCollectionInfo: ExtendedCollectionInfo?
+  let extendedSaleInfo: ExtendedSaleInfo?
+  let marketplaceInfo: [MarketplaceInfo]?
+  let mediaInfo: MediaInfo?
+}
+
+// MARK: - Attribute
+
+public struct Attribute: Codable {
+  let traitType, value: String?
+//  let displayType: String?
+}
+
+// MARK: - ExtendedCollectionInfo
+
+public struct ExtendedCollectionInfo: Codable {
+  let bannerImageURL: String?
+  let externalURL: String?
+  let twitterUsername: String?
+  let discordURL: String?
+  let instagramUsername, mediumUsername: String?
+  let telegramURL: String?
+  let distinctOwnerCount, distinctNftCount, totalQuantity: Int?
+}
+
+// MARK: - ExtendedSaleInfo
+
+public struct ExtendedSaleInfo: Codable {
+  let fromAddress, toAddress: String?
+  let priceUsdCents: Int?
+  let transaction, marketplaceID, marketplaceName: String?
+}
+
+// MARK: - MarketplaceInfo
+
+public struct MarketplaceInfo: Codable {
+  let marketplaceID, marketplaceName, marketplaceCollectionID: String?
+  let nftURL, collectionURL: String?
+  let verified: Bool?
+  let floorPrice: MarketplaceInfoFloorPrice?
+}
+
+// MARK: - MarketplaceInfoFloorPrice
+
+public struct MarketplaceInfoFloorPrice: Codable {
+  let value: Double?
+  let paymentToken: PaymentToken?
+  let valueUsdCents: Int?
+}
+
+// MARK: - PaymentToken
+
+public struct PaymentToken: Codable {
+  let paymentTokenID, name, symbol: String?
+  let address: String?
+  let decimals: Int?
+}
+
+// MARK: - MediaInfo
+
+public struct MediaInfo: Codable {
+  let previews: Previews?
+  let animationURL: String?
+  let backgroundColor: String?
+}
+
+// MARK: - Previews
+
+public struct Previews: Codable {
+  let imageSmallURL, imageMediumURL, imageLargeURL, imageOpengraphURL: String?
+  let blurhash, predominantColor: String?
+}
+
+// MARK: - Owner
+
+public struct Owner: Codable {
+  let ownerAddress: String?
+  let quantity: Int?
+  let firstAcquiredDate, lastAcquiredDate: String?
+}
+
+// MARK: - NftAssetFloorPrice
+
+public struct NftAssetFloorPrice: Codable {
+  let price: Double?
+  let currency: String?
+}
+
+// MARK: - LastSale
+
+public struct LastSale: Codable {
+  let price: Double?
+  let currency: String?
+  let date: String?
+}
+
+// MARK: - Rarity
+
+public struct Rarity: Codable {
+  let rank: Int?
+  let score: Double?
+}
+
+// MARK: - Get Assets by Chain
+
+public struct AssetsResponse: Decodable {
+  let nativeBalance: NativeBalance?
+  let tokenBalances: [TokenBalanceResponse]?
+  let nfts: [Nft]?
+}
+
+public struct NativeBalance: Decodable {
+  let balance: String?
+  let decimals: Int?
+  let name, rawBalance, symbol: String?
+  let metadata: NativeBalanceMetadata?
+}
+
+public struct NativeBalanceMetadata: Decodable {
+  let logo, thumbnail: String?
+}
+
+public struct Nft: Decodable {
+  let nftID, name, description: String?
+  let imageURL: String?
+  let chainID, contractAddress, tokenID: String?
+  let collection: Collection?
+  let lastSale: LastSale?
+  let rarity: Rarity?
+  let floorPrice: NftFloorPrice?
+  let detailedInfo: DetailedInfo?
+}
+
+public struct NftFloorPrice: Decodable {
+  let price: Double?
+  let currency: String?
+}
+
+public struct TokenBalanceResponse: Decodable {
+  let balance: String?
+  let decimals: Int?
+  let name, rawBalance, symbol: String?
+  let metadata: TokenBalanceMetadata?
+}
+
+public struct TokenBalanceMetadata: Decodable {
+  let tokenAddress: String?
+  let verifiedContract: Bool?
+  let totalSupply, rawTotalSupply: String?
+  let percentageRelativeToTotalSupply: Double?
 }

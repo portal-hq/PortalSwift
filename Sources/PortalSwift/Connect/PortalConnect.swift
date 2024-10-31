@@ -47,7 +47,7 @@ public class PortalConnect: EventBus {
   public init(
     _ apiKey: String,
     _ chainId: Int,
-    _ keychain: PortalKeychain,
+    _ keychain: PortalKeychainProtocol,
     _ rpcConfig: [String: String],
     _ featureFlags: FeatureFlags?,
     _ webSocketServer: String = "connect.portalhq.io",
@@ -567,7 +567,7 @@ public class PortalConnect: EventBus {
   }
 }
 
-enum PortalConnectError: Error {
+enum PortalConnectError: LocalizedError {
   case noWebSocketClientFound
   case unableToParseSignResponse
   case unsupportedRequestMethod(String)

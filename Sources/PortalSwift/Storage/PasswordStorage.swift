@@ -7,18 +7,18 @@
 
 import Foundation
 
-public enum PasswordStorageError: Error {
+public enum PasswordStorageError: LocalizedError {
   case passwordMissing(String)
   case unableToEncodeData
 }
 
 /// Responsible for CRUD actions for items in the specified storage.
 public class PasswordStorage: Storage, PortalStorage {
-  public var api: PortalApi?
-  public let encryption: PortalEncryption
+  public weak var api: PortalApiProtocol?
+  public let encryption: PortalEncryptionProtocol
   public var password: String?
 
-  public init(encryption: PortalEncryption = PortalEncryption()) {
+  public init(encryption: PortalEncryptionProtocol = PortalEncryption()) {
     self.encryption = encryption
   }
 

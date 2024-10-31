@@ -31,7 +31,7 @@ extension MpcMetadata {
   }
 }
 
-public enum MpcMetadataError: Error, Equatable {
+public enum MpcMetadataError: LocalizedError, Equatable {
   case unableToEncodeJsonString
 }
 

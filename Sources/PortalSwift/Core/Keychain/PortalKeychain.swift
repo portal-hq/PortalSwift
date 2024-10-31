@@ -7,8 +7,30 @@
 
 import Foundation
 
+public protocol PortalKeychainProtocol: AnyObject {
+  var metadata: PortalKeychainMetadata? { get async throws }
+  var api: PortalApiProtocol? { get set }
+  var legacyAddress: String? { get set }
+
+  func deleteShares() async throws
+  func getAddress(_ forChainId: String) async throws -> String?
+  func getAddresses() async throws -> [PortalNamespace: String?]
+  func getMetadata() async throws -> PortalKeychainClientMetadata
+  func getShare(_ forChainId: String) async throws -> String
+  func getShares() async throws -> PortalKeychainClientShares
+  func loadMetadata() async throws -> PortalKeychainMetadata
+  func setMetadata(_: PortalKeychainClientMetadata) async throws
+  func setShares(_: [String: PortalMpcGeneratedShare]) async throws
+  func getAddress() throws -> String
+  func getSigningShare() throws -> String
+  func deleteAddress() throws
+  func deleteSigningShare() throws
+  func setAddress(address _: String, completion: @escaping (Result<OSStatus>) -> Void)
+  func setSigningShare(signingShare _: String, completion: @escaping (Result<OSStatus>) -> Void)
+}
+
 /// The main interface for Portal to securely store the client's signing share.
-public class PortalKeychain {
+public class PortalKeychain: PortalKeychainProtocol {
   private var _metadata: PortalKeychainMetadata?
   public var metadata: PortalKeychainMetadata? {
     get async throws {
@@ -21,7 +43,7 @@ public class PortalKeychain {
     }
   }
 
-  public enum KeychainError: Error, Equatable {
+  public enum KeychainError: LocalizedError, Equatable {
     case clientNotFound
     case clientIdNotSetYet
     case itemNotFound(item: String)
@@ -38,7 +60,7 @@ public class PortalKeychain {
     case unsupportedNamespace(_ chainId: String)
   }
 
-  public var api: PortalApi? {
+  public weak var api: PortalApiProtocol? {
     get { self._api }
     set(api) {
       self._api = api
@@ -61,7 +83,7 @@ public class PortalKeychain {
   let deprecatedAddressKey = "PortalMpc.Address"
   let deprecatedShareKey = "PortalMpc.DkgResult"
 
-  private var _api: PortalApi?
+  private weak var _api: PortalApiProtocol?
   private var client: ClientResponse? {
     get async throws {
       return try await self.api?.client
@@ -70,12 +92,12 @@ public class PortalKeychain {
 
   private let decoder = JSONDecoder()
   private let encoder = JSONEncoder()
-  private let keychain: PortalKeychainAccess
-  private let logger = PortalLogger()
+  private let keychain: PortalKeychainAccessProtocol
+  private let logger: PortalLoggerProtocol = PortalLogger()
   private let metadataKey = "metadata"
   private let sharesKey = "shares"
 
-  public init(keychainAccess: PortalKeychainAccess? = nil) {
+  public init(keychainAccess: PortalKeychainAccessProtocol? = nil) {
     self.keychain = keychainAccess ?? PortalKeychainAccess()
   }
 

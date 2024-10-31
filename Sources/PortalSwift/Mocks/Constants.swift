@@ -9,7 +9,7 @@
 import Foundation
 import GoogleSignIn
 
-enum MockConstantsError: Error {
+enum MockConstantsError: LocalizedError {
   case unableToEncodeMockValue
 }
 
@@ -66,6 +66,15 @@ public enum MockConstants {
     publicKey: mockPublicKey,
     signingSharePairs: [mockWalletSigningShare]
   )
+  public static let mockED25519NotBackedUpWallet = ClientResponseWallet(
+    id: mockWalletId,
+    createdAt: mockCreatedAt,
+    backupSharePairs: [],
+    curve: .ED25519,
+    ejectableUntil: nil,
+    publicKey: mockPublicKey,
+    signingSharePairs: [mockWalletSigningShare]
+  )
   public static let mockEip155Address = "0x73574d235573574d235573574d235573574d2355"
   public static let mockEip155EjectResponse = "{\"privateKey\":\"\(mockEip155EjectedPrivateKey)\",\"error\":{\"code\":0,\"message\":\"\"}}"
   public static let mockEip155EjectedPrivateKey = "099cabf8c65c81e629d59e72f04a549aafa531329e25685a5b8762b926597209"
@@ -82,35 +91,6 @@ public enum MockConstants {
   public static let mockEncryptWithPasswordResult = "{\"data\":{\"cipherText\":\"\(mockCiphertext)\"},\"error\":{\"code\":0,\"message\":\"\"}}"
   public static let mockEncryptionKey = "test-encryption-key"
   public static let mockedFetchedBalance = FetchedBalance(contractAddress: mockEip155Address, balance: "test-balance")
-  public static let mockFetchedNFT = FetchedNFT(
-    contract: FetchedNFTContract(address: mockEip155Address),
-    id: FetchedNFTTokenId(tokenId: "test-token-id", tokenMetadata: FetchedNFTTokenMetadata(tokenType: "test-token-type")),
-    balance: "test-nft-balance",
-    title: "test-nft-title",
-    description: "test-nft-description",
-    tokenUri: FetchedNFTTokenUri(gateway: "test-nft-gateway", raw: "test-nft-token-uri-raw"),
-    media: [FetchedNFTMedia(
-      gateway: "test-nft-gateway",
-      thumbnail: "test-nft-thumbnail",
-      raw: "test-nft-media-raw",
-      format: "test-nft-formal",
-      bytes: 0
-    )],
-    metadata: FetchedNFTMetadata(
-      name: "test-nft-name",
-      description: "test-nft-description",
-      image: "test-nft-image",
-      external_url: "test-nft-external-url"
-    ),
-    timeLastUpdated: "test-nft-last-updated",
-    contractMetadata: FetchedNFTContractMetadata(
-      name: "test-nft-contract-name",
-      symbol: "test-nft-symbol",
-      tokenType: "test-nft-token-type",
-      contractDeployer: "test-nft-contract-deployer",
-      deployedBlockNumber: 0
-    )
-  )
   public static let mockFetchedShairPair = FetchedSharePair(
     id: mockMpcShareId,
     createdAt: mockCreatedAt,
@@ -267,6 +247,15 @@ public enum MockConstants {
     publicKey: mockPublicKey,
     signingSharePairs: [mockWalletSigningShare]
   )
+  public static let mockSECP256K1NotBackedUpWallet = ClientResponseWallet(
+    id: mockWalletId,
+    createdAt: mockCreatedAt,
+    backupSharePairs: [],
+    curve: .SECP256K1,
+    ejectableUntil: nil,
+    publicKey: mockPublicKey,
+    signingSharePairs: [mockWalletSigningShare]
+  )
   public static let mockSignResult = "{\"data\":\"\(mockSignature)\",\"error\":{\"code\":0,\"message\":\"\"}}"
   public static let mockSignResultWithError = "{\"data\":\"\",\"error\":{\"code\":108,\"message\":\"This error is thrown if there is an issue completing the signing process.\"}}"
   public static let mockSignTypedDataMessage =
@@ -319,6 +308,34 @@ public enum MockConstants {
       wallets: [
         mockED25519Wallet,
         mockSECP256K1Wallet
+      ]
+    )
+  }
+
+  public static var mockNotBackedUpClient: ClientResponse {
+    ClientResponse(
+      id: mockClientId,
+      custodian: mockCustodian,
+      createdAt: mockCreatedAt,
+      environment: ClientResponseEnvironment(
+        id: "test-environment-id",
+        name: "test-environment-name",
+        backupWithPortalEnabled: false
+      ),
+      ejectedAt: "test-ejected-at",
+      isAccountAbstracted: false,
+      metadata: ClientResponseMetadata(
+        namespaces: ClientResponseMetadataNamespaces(
+          eip155: ClientResponseNamespaceMetadataItem(
+            address: mockEip155Address,
+            curve: .SECP256K1
+          ),
+          solana: nil
+        )
+      ),
+      wallets: [
+        mockED25519NotBackedUpWallet,
+        mockSECP256K1NotBackedUpWallet
       ]
     )
   }
