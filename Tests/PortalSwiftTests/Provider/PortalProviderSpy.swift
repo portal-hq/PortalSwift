@@ -151,4 +151,13 @@ class PortalProviderSpy: PortalProviderProtocol {
     setChainIdConnectParam = connect
     return mockPortalProvider
   }
+
+  private(set) var getRpcUrlCallsCount = 0
+  private(set) var getRpcUrlChainIdParam: String?
+
+  func getRpcUrl(_ chainId: String) throws -> String {
+    getRpcUrlCallsCount += 1
+    getRpcUrlChainIdParam = chainId
+    return ""
+  }
 }
