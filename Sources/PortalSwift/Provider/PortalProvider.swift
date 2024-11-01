@@ -22,6 +22,7 @@ public protocol PortalProviderProtocol: AnyObject {
   func request(payload: ETHTransactionPayload, completion: @escaping (Result<TransactionCompletionResult>) -> Void, connect: PortalConnect?)
   func request(payload: ETHAddressPayload, completion: @escaping (Result<AddressCompletionResult>) -> Void, connect: PortalConnect?)
   func setChainId(value: Int, connect: PortalConnect?) throws -> PortalProvider
+  func getRpcUrl(_ chainId: String) throws -> String
 }
 
 /// Portal's EVM blockchain provider.
@@ -263,6 +264,14 @@ public class PortalProvider: PortalProviderProtocol {
     return try await self.request(chainId, withMethod: method, andParams: andParams)
   }
 
+  public func getRpcUrl(_ chainId: String) throws -> String {
+    guard let rpcUrl = rpcConfig[chainId] else {
+      throw PortalProviderError.noRpcUrlFoundForChainId(chainId)
+    }
+
+    return rpcUrl
+  }
+
   /*******************************************
    * Private functions
    *******************************************/
@@ -313,14 +322,6 @@ public class PortalProvider: PortalProviderProtocol {
         _ = self.emit(event: Events.PortalSigningRequested.rawValue, data: forPayload)
       }
     }
-  }
-
-  private func getRpcUrl(_ chainId: String) throws -> String {
-    guard let rpcUrl = rpcConfig[chainId] else {
-      throw PortalProviderError.noRpcUrlFoundForChainId(chainId)
-    }
-
-    return rpcUrl
   }
 
   @available(*, deprecated, renamed: "getRpcUrl", message: "Please use the chain agnostic implementation of getRpcUrl()")

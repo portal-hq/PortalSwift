@@ -480,6 +480,10 @@ public class Portal {
     return try await self.request(chainId, withMethod: method, andParams: andParams)
   }
 
+  public func getRpcUrl(forChainId: String) async -> String? {
+    return try? self.provider.getRpcUrl(forChainId)
+  }
+
   // Wallet lifecycle helpers
 
   public func availableRecoveryMethods(_ forChainId: String? = nil) async throws -> [BackupMethods] {
