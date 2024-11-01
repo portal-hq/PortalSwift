@@ -80,4 +80,9 @@ class PortalProviderMock: PortalProviderProtocol {
   func setChainId(value _: Int, connect _: PortalSwift.PortalConnect?) throws -> PortalSwift.PortalProvider {
     mockPortalProvider
   }
+
+  var getRpcUrlReturnValue: String = ""
+  func getRpcUrl(_: String) throws -> String {
+    return getRpcUrlReturnValue
+  }
 }
