@@ -1300,5 +1300,49 @@ extension PortalTests {
     XCTAssertTrue(!transactionHash.isEmpty)
   }
 
+  func test_sendSol_withEmptyStringChainId_willThroughCorrectError() async throws {
+    // given
+    let chainId = ""
+
+    do {
+      // and given
+      _ = try await portal.sendSol(1, to: "6LmSRCiu3z6NCSpF19oz1pHXkYkN4jWbj9K1nVELpDkT", withChainId: chainId)
+      XCTFail("Expected error not thrown when calling Portal.sendSol passing empty string chain id.")
+
+    } catch {
+      // then
+      XCTAssertEqual(error as? PortalBlockchainError, PortalBlockchainError.invalidChainId(chainId))
+    }
+  }
+
+  func test_sendSol_withInvalidChainId_willThroughCorrectError() async throws {
+    // given
+    let chainId = "eip155:"
+
+    do {
+      // and given
+      _ = try await portal.sendSol(1, to: "6LmSRCiu3z6NCSpF19oz1pHXkYkN4jWbj9K1nVELpDkT", withChainId: chainId)
+      XCTFail("Expected error not thrown when calling Portal.sendSol passing empty string chain id.")
+
+    } catch {
+      // then
+      XCTAssertEqual(error as? PortalBlockchainError, PortalBlockchainError.invalidChainId(chainId))
+    }
+  }
+
+  func test_sendSol_withInvalidNameSpace_willThroughCorrectError() async throws {
+    // given
+    let chainId = ":11155111"
+
+    do {
+      // and given
+      _ = try await portal.sendSol(1, to: "6LmSRCiu3z6NCSpF19oz1pHXkYkN4jWbj9K1nVELpDkT", withChainId: chainId)
+      XCTFail("Expected error not thrown when calling Portal.sendSol passing empty string chain id.")
+
+    } catch {
+      // then
+      XCTAssertEqual(error as? PortalBlockchainError, PortalBlockchainError.invalidChainId(chainId))
+    }
+  }
   // TODO: - to send the `sendSol` function all cases.
 }
