@@ -89,7 +89,7 @@ extension GDriveClientTests {
 extension GDriveClientTests {
   func testGetIdForFilename() async throws {
     let expectation = XCTestExpectation(description: "GDriveClient.getIdForFilename(filename)")
-    let fileId = try await client?.getIdForFilename(MockConstants.mockGDriveFileName)
+    let fileId = try await client?.getIdForFilename(MockConstants.mockGDriveFileName, useAppDataFolderForBackup: false)
     XCTAssertEqual(fileId, MockConstants.mockGDriveFileId)
     expectation.fulfill()
     await fulfillment(of: [expectation], timeout: 5.0)
@@ -101,7 +101,7 @@ extension GDriveClientTests {
 
     do {
       // and given
-      _ = try await client?.getIdForFilename("")
+      _ = try await client?.getIdForFilename("", useAppDataFolderForBackup: false)
       XCTFail("Expected error not thrown when calling GDriveClient.delete() when there is no auth object.")
     } catch {
       XCTAssertEqual(error as? GDriveClientError, GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfig() to configure GoogleDrive"))
@@ -123,7 +123,7 @@ extension GDriveClientTests {
     portalRequestSpy.returnData = filesData
 
     // and given
-    _ = try await client?.getIdForFilename("")
+    _ = try await client?.getIdForFilename("", useAppDataFolderForBackup: false)
 
     // then
     XCTAssertEqual(portalRequestSpy.getCallsCount, 1)
@@ -147,7 +147,7 @@ extension GDriveClientTests {
     portalRequestSpy.returnData = filesData
 
     // and given
-    _ = try await client?.getIdForFilename(fileName)
+    _ = try await client?.getIdForFilename(fileName, useAppDataFolderForBackup: false)
 
     // then
     XCTAssertEqual(portalRequestSpy.getFromParam?.path(), "/drive/v3/files")
@@ -170,7 +170,7 @@ extension GDriveClientTests {
 
     do {
       // and given
-      _ = try await client?.getIdForFilename("")
+      _ = try await client?.getIdForFilename("", useAppDataFolderForBackup: false)
       XCTFail("Expected error not thrown when calling GDriveClient.delete() when there is no file found.")
     } catch {
       XCTAssertEqual(error as? GDriveClientError, GDriveClientError.noFileFound)

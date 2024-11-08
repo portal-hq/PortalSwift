@@ -1472,7 +1472,7 @@ extension PortalMpcTests {
 
     do {
       // and give
-      _ = try mpc?.setGDriveConfiguration(clientId: "", folderName: "")
+      _ = try mpc?.setGDriveConfiguration(clientId: "", useAppDataFolderForBackup: false, folderName: "")
     } catch {
       // then
       XCTAssertEqual(error as? MpcError, MpcError.backupMethodNotRegistered("PortalMpc.setGDriveConfig() - Could not find an instance of `GDriveStorage`. Please use `portal.registerBackupMethod()`"))
@@ -1490,7 +1490,7 @@ extension PortalMpcTests {
     )
 
     // and give
-    _ = try mpc?.setGDriveConfiguration(clientId: clientId, folderName: folderName)
+    _ = try mpc?.setGDriveConfiguration(clientId: clientId, useAppDataFolderForBackup: false, folderName: folderName)
 
     // then
     XCTAssertEqual(gDriveStorage.clientId, clientId)

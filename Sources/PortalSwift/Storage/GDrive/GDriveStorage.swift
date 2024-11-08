@@ -25,6 +25,11 @@ public class GDriveStorage: Storage, PortalStorage {
     set(folder) { self.drive.folder = folder }
   }
 
+  var useAppDataFolderForBackup: Bool {
+    get { return self.drive.useAppDataFolderForBackup ?? false }
+    set(useAppDataFolderForBackup) { self.drive.useAppDataFolderForBackup = useAppDataFolderForBackup }
+  }
+
   public var view: UIViewController? {
     get {
       return self.drive.view
@@ -60,7 +65,7 @@ public class GDriveStorage: Storage, PortalStorage {
     let hashes = try await getFilenameHashes()
 
     for hash in hashes.values {
-      if let fileId = try? await drive.getIdForFilename(hash) {
+      if let fileId = try? await drive.getIdForFilename(hash, useAppDataFolderForBackup: useAppDataFolderForBackup) {
         if try await self.drive.delete(fileId) {
           return true
         }
@@ -74,7 +79,16 @@ public class GDriveStorage: Storage, PortalStorage {
     let hashes = try await getFilenameHashes()
 
     do {
-      let recoveredFiles = try await drive.recoverFiles(for: hashes)
+      var recoveredFiles: [String: String] = [:]
+      var shouldReadFromAppDataFolder: Bool = useAppDataFolderForBackup
+      do {
+        // try the default folder depending on the `useAppDataFolderForBackup` flag value
+        recoveredFiles = try await drive.recoverFiles(for: hashes, useAppDataFolderForBackup: shouldReadFromAppDataFolder)
+      } catch {
+        // if the default folder failed try the other folder.
+        shouldReadFromAppDataFolder.toggle()
+        recoveredFiles = try await drive.recoverFiles(for: hashes, useAppDataFolderForBackup: shouldReadFromAppDataFolder)
+      }
 
       // Prioritize default file if available
       if let defaultFile = recoveredFiles["default"] {

@@ -9,6 +9,8 @@
 import UIKit
 
 class GDriveClientSpy: GDriveClientProtocol {
+  var useAppDataFolderForBackup: Bool?
+
   var auth: PortalSwift.GoogleAuth? = nil
 
   var clientId: String? = nil
@@ -37,11 +39,13 @@ class GDriveClientSpy: GDriveClientProtocol {
 
   var getIdForFilenameCallsCount: Int = 0
   var getIdForFilenameFilenameParam: String?
+  var getIdForFilenameUseAppDataFolderForBackupParam: Bool?
   var getIdForFilenameReturnValue: String = ""
 
-  func getIdForFilename(_ filename: String) async throws -> String {
+  func getIdForFilename(_ filename: String, useAppDataFolderForBackup: Bool) async throws -> String {
     getIdForFilenameCallsCount += 1
     getIdForFilenameFilenameParam = filename
+    getIdForFilenameUseAppDataFolderForBackupParam = useAppDataFolderForBackup
     return getIdForFilenameReturnValue
   }
 
@@ -77,11 +81,13 @@ class GDriveClientSpy: GDriveClientProtocol {
 
   var recoverFilesCallsCount: Int = 0
   var recoverFilesHashesParam: [String: String]?
+  var recoverFilesUseAppDataFolderForBackupParam: Bool?
   var recoverFilesReturnValue: [String: String] = ["default": "123456789.txt"]
 
-  func recoverFiles(for hashes: [String: String]) async throws -> [String: String] {
+  func recoverFiles(for hashes: [String: String], useAppDataFolderForBackup: Bool) async throws -> [String: String] {
     recoverFilesCallsCount += 1
     recoverFilesHashesParam = hashes
+    recoverFilesUseAppDataFolderForBackupParam = useAppDataFolderForBackup
     return recoverFilesReturnValue
   }
 }

@@ -289,8 +289,12 @@ public class Portal {
     self.mpc.registerBackupMethod(method, withStorage: withStorage)
   }
 
-  public func setGDriveConfiguration(clientId: String, folderName: String = "_PORTAL_MPC_DO_NOT_DELETE_") throws {
-    try self.mpc.setGDriveConfiguration(clientId: clientId, folderName: folderName)
+  public func setGDriveConfiguration(
+    clientId: String,
+    useAppDataFolderForBackup: Bool = true,
+    folderName: String = "_PORTAL_MPC_DO_NOT_DELETE_"
+  ) throws {
+    try self.mpc.setGDriveConfiguration(clientId: clientId, useAppDataFolderForBackup: useAppDataFolderForBackup, folderName: folderName)
   }
 
   public func setGDriveView(_ view: UIViewController) throws {

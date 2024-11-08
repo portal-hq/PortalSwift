@@ -49,6 +49,7 @@ class PortalMpcSpy: PortalMpcProtocol {
   // GDrive Configuration tracking
   var setGDriveConfigurationCallsCount: Int = 0
   var setGDriveConfigurationClientIdParam: String?
+  var setGDriveConfigurationUseAppDataFolderForBackupParam: Bool?
   var setGDriveConfigurationFolderNameParam: String?
 
   // GDrive View tracking
@@ -151,9 +152,10 @@ class PortalMpcSpy: PortalMpcProtocol {
     registerBackupMethodStorageParam = withStorage
   }
 
-  func setGDriveConfiguration(clientId: String, folderName: String) throws {
+  func setGDriveConfiguration(clientId: String, useAppDataFolderForBackup: Bool, folderName: String) throws {
     setGDriveConfigurationCallsCount += 1
     setGDriveConfigurationClientIdParam = clientId
+    setGDriveConfigurationUseAppDataFolderForBackupParam = useAppDataFolderForBackup
     setGDriveConfigurationFolderNameParam = folderName
   }
 

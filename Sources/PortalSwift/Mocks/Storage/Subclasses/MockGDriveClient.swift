@@ -8,6 +8,8 @@
 import UIKit
 
 class MockGDriveClient: GDriveClientProtocol {
+  var useAppDataFolderForBackup: Bool?
+
   var auth: GoogleAuth? = nil
 
   var clientId: String? = nil
@@ -24,7 +26,7 @@ class MockGDriveClient: GDriveClientProtocol {
     return MockConstants.mockGoogleAccessToken
   }
 
-  public func getIdForFilename(_: String) async throws -> String {
+  public func getIdForFilename(_: String, useAppDataFolderForBackup _: Bool) async throws -> String {
     return MockConstants.mockGDriveFileId
   }
 
@@ -40,7 +42,7 @@ class MockGDriveClient: GDriveClientProtocol {
     return true
   }
 
-  func recoverFiles(for _: [String: String]) async throws -> [String: String] {
+  func recoverFiles(for _: [String: String], useAppDataFolderForBackup _: Bool) async throws -> [String: String] {
     return [:]
   }
 }
