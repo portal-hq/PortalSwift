@@ -154,6 +154,31 @@ extension GDriveClientTests {
     XCTAssertEqual(portalRequestSpy.getFromParam?.query(), "corpora=user&q=\(query)&orderBy=modifiedTime%20desc&pageSize=1")
   }
 
+  @available(iOS 16.0, *)
+  func test_getIdForFilename_forAppDataFolder_willCall_requestGet_passingCorrectUrlPath() async throws {
+    // given
+    let portalRequestSpy = PortalRequestsSpy()
+    initGDriveClient(requests: portalRequestSpy)
+    let fileName = "test-file-name"
+    let query = "name='\(fileName).txt'".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+
+    // and given
+    let mockFilesListResponse = GDriveFilesListResponse(
+      kind: "test-gdrive-file-kind",
+      incompleteSearch: false,
+      files: [MockConstants.mockGDriveFile]
+    )
+    let filesData = try JSONEncoder().encode(mockFilesListResponse)
+    portalRequestSpy.returnData = filesData
+
+    // and given
+    _ = try await client?.getIdForFilename(fileName, useAppDataFolderForBackup: true)
+
+    // then
+    XCTAssertEqual(portalRequestSpy.getFromParam?.path(), "/drive/v3/files")
+    XCTAssertEqual(portalRequestSpy.getFromParam?.query(), "spaces=appDataFolder&q=\(query)&orderBy=modifiedTime%20desc&pageSize=1")
+  }
+
   func test_getIdForFilename_willThrowCorrectError_whenThereIsNoFileFound() async throws {
     // given
     let portalRequestSpy = PortalRequestsSpy()

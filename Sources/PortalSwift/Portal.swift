@@ -291,7 +291,7 @@ public class Portal {
 
   public func setGDriveConfiguration(
     clientId: String,
-    useAppDataFolderForBackup: Bool = true,
+    useAppDataFolderForBackup: Bool = false,
     folderName: String = "_PORTAL_MPC_DO_NOT_DELETE_"
   ) throws {
     try self.mpc.setGDriveConfiguration(clientId: clientId, useAppDataFolderForBackup: useAppDataFolderForBackup, folderName: folderName)
