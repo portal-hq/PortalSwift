@@ -767,6 +767,10 @@ public class Portal {
     return try await api.buildSolanaTransaction(chainId: chainId, params: params)
   }
 
+  public func getWalletCapabilities() async throws -> WalletCapabilitiesResponse {
+    return try await api.getWalletCapabilities()
+  }
+
   /**********************************
    * Deprecated functions
    **********************************/
