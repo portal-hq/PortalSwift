@@ -1320,3 +1320,19 @@ extension PortalTests {
 
   // TODO: - to send the `sendSol` function all cases.
 }
+
+// MARK: - getWalletCapabilities tests
+
+extension PortalTests {
+  func test_getWalletCapabilities_willCall_api_getWalletCapabilities_onlyOnce() async throws {
+    // given
+    let portalApiSpy = PortalApiSpy()
+    try initPortalWithSpy(api: portalApiSpy)
+
+    // and given
+    _ = try await portal.getWalletCapabilities()
+
+    // then
+    XCTAssertEqual(portalApiSpy.getWalletCapabilitiesCallsCount, 1)
+  }
+}

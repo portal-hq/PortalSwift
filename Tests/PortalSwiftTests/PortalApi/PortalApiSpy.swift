@@ -365,4 +365,12 @@ class PortalApiSpy: PortalApiProtocol {
     getAssetsChainIdParam = chainId
     return PortalSwift.AssetsResponse.stub()
   }
+
+  // getWalletCapabilities method tracking
+  var getWalletCapabilitiesCallsCount: Int = 0
+
+  func getWalletCapabilities() async throws -> PortalSwift.WalletCapabilitiesResponse {
+    getWalletCapabilitiesCallsCount += 1
+    return PortalSwift.WalletCapabilitiesResponse.stub()
+  }
 }

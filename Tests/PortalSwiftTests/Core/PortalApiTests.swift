@@ -918,3 +918,52 @@ extension PortalApiTests {
     }
   }
 }
+
+// MARK: - getWalletCapabilities tests
+
+extension PortalApiTests {
+  func test_getWalletCapabilities_willCall_requestPost_onlyOnce() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    initPortalApiWith(requests: portalRequestsSpy)
+
+    do {
+      // and given
+      _ = try await api?.getWalletCapabilities()
+    } catch {}
+
+    // then
+    XCTAssertEqual(portalRequestsSpy.getCallsCount, 1)
+  }
+
+  func test_getWalletCapabilities() async throws {
+    // given
+    let quoteResponse = try encoder.encode(Quote.stub())
+    let portalRequestMock = PortalRequestsMock()
+    initPortalApiWith(requests: portalRequestMock)
+    portalRequestMock.returnValueData = quoteResponse
+
+    do {
+      // and given
+      let walletCapabilities = try await api?.getWalletCapabilities()
+      // then
+      XCTAssertEqual(walletCapabilities, WalletCapabilitiesResponse.stub())
+    } catch {}
+  }
+
+  func test_getWalletCapabilities_willCall_requestGet_passingCorrectUrlPath() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    initPortalApiWith(requests: portalRequestsSpy)
+
+    do {
+      // and given
+      _ = try await api?.getWalletCapabilities()
+    } catch {}
+
+    // then
+    if #available(iOS 16.0, *) {
+      XCTAssertEqual(portalRequestsSpy.getFromParam?.path(), "/api/v3/clients/me/wallet_getCapabilities")
+    }
+  }
+}

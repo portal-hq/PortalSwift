@@ -766,12 +766,12 @@ public typealias WalletCapabilitiesResponse = [String: WalletCapabilitiesValue]
 
 // MARK: - WalletCapabilitiesValue
 
-public struct WalletCapabilitiesValue: Codable {
+public struct WalletCapabilitiesValue: Codable, Equatable {
   let paymasterService: PaymasterService
 }
 
 // MARK: - PaymasterService
 
-public struct PaymasterService: Codable {
+public struct PaymasterService: Codable, Equatable {
   let supported: Bool
 }
