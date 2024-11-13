@@ -519,7 +519,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     return try await portal.getTransactions(chainId)
   }
 
-  public func recover(_ userId: String, withBackupMethod: BackupMethods) async throws -> PortalCreateWalletResponse {
+  public func recover(_ userId: String, withBackupMethod: BackupMethods) async throws -> PortalRecoverWalletResponse {
     guard let portal else {
       self.logger.error("ViewController.recover() - Portal not initialized. Please call registerPortal().")
       throw PortalExampleAppError.portalNotInitialized()
@@ -1421,12 +1421,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       do {
         self.startLoading()
         let (ethereum, _) = try await generate()
-        guard let address = ethereum else {
-          self.logger.error("ViewController.handleGenerate() - ❌ Wallet was generated, but no address was found.")
-          self.showStatusView(message: "\(self.failureStatus) Wallet was generated, but no address was found.")
-          throw PortalKeychain.KeychainError.noAddressesFound
-        }
-        let debugMessage = "ViewController.handleGenerate() - ✅ Wallet successfully created! Address: \(String(describing: address))"
+        let debugMessage = "ViewController.handleGenerate() - ✅ Wallet successfully created! Address: \(String(describing: ethereum))"
         self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
         self.showStatusView(message: "\(self.successStatus) Wallet generated")
         self.updateUIComponents()

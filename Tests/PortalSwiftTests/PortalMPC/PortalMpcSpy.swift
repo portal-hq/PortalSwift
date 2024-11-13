@@ -25,6 +25,10 @@ class PortalMpcSpy: PortalMpcProtocol {
   // Generate method tracking
   var generateCallsCount: Int = 0
   var generateUsingProgressCallbackParam: ((PortalSwift.MpcStatus) -> Void)?
+  var generateResponse: [PortalSwift.PortalNamespace: String?] = [
+    .eip155: MockConstants.mockEip155Address,
+    .solana: MockConstants.mockSolanaAddress
+  ]
 
   // Recover method tracking
   var recoverCallsCount: Int = 0
@@ -115,7 +119,7 @@ class PortalMpcSpy: PortalMpcProtocol {
   func generate(withProgressCallback: ((PortalSwift.MpcStatus) -> Void)?) async throws -> [PortalSwift.PortalNamespace: String?] {
     generateCallsCount += 1
     generateUsingProgressCallbackParam = withProgressCallback
-    return [:]
+    return generateResponse
   }
 
   func recover(_ method: PortalSwift.BackupMethods, withCipherText: String?, usingProgressCallback: ((PortalSwift.MpcStatus) -> Void)?) async throws -> [PortalSwift.PortalNamespace: String?] {
