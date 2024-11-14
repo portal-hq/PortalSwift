@@ -65,6 +65,7 @@ public class PortalBlockchain {
     case .eip155:
       !method.rawValue.starts(with: "wallet_") ||
         method == .wallet_switchEthereumChain ||
+        method == .wallet_requestPermissions ||
         method == .wallet_revokePermissions
     default:
       true

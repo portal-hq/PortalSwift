@@ -216,7 +216,7 @@ public class PortalProvider {
     case .eth_accounts, .eth_requestAccounts:
       let address = try await keychain.getAddress(chainId)
       return PortalProviderResult(id: id, result: [address])
-    case .wallet_switchEthereumChain, .wallet_revokePermissions:
+    case .wallet_switchEthereumChain, .wallet_revokePermissions, .wallet_requestPermissions:
       return PortalProviderResult(id: id, result: "null")
     default:
       if blockchain.shouldMethodBeSigned(withMethod) {
