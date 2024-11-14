@@ -622,10 +622,10 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
     eip6963Name: String,
     eip6963Rdns: String,
     eip6963Uuid: String,
-    autoApprove _: Bool = false,
-    enableMpc: Bool = false
+    autoApprove: Bool = false,
+    enableMpc: Bool = true
   ) -> String {
-    "window.portalAddress='\(address)';window.portalApiKey='';window.portalAutoApprove=true;window.portalChainId='\(chainId)';window.portalGatewayConfig='\(gatewayConfig)';window.portalMPCEnabled='\(String(enableMpc))';window.portalEIP6963Uuid='\(eip6963Uuid)';window.portalEIP6963Name='\(eip6963Name)';window.portalEIP6963Rdns='\(eip6963Rdns)';window.portalEIP6963Icon='\(eip6963Icon)';\(PortalInjectionScript.SCRIPT)true"
+    "window.portalAddress='\(address)';window.portalApiKey='';window.portalAutoApprove=\(String(autoApprove));window.portalChainId='\(chainId)';window.portalGatewayConfig='\(gatewayConfig)';window.portalMPCEnabled='\(String(enableMpc))';window.portalEIP6963Uuid='\(eip6963Uuid)';window.portalEIP6963Name='\(eip6963Name)';window.portalEIP6963Rdns='\(eip6963Rdns)';window.portalEIP6963Icon='\(eip6963Icon)';\(PortalInjectionScript.SCRIPT)true"
   }
 }
 
