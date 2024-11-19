@@ -117,7 +117,12 @@ public class PortalApi: PortalApiProtocol {
   public func eject() async throws -> String {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/eject") {
       do {
-        let data = try await post(url, withBearerToken: self.apiKey)
+        let body: [String: String] = [
+          "clientPlatform": "NATIVE_IOS",
+          "clientPlatformVersion": SDK_VERSION
+        ]
+
+        let data = try await post(url, withBearerToken: self.apiKey, andPayload: body)
         guard let ejectResponse = String(data: data, encoding: .utf8) else {
           throw PortalApiError.unableToReadStringResponse
         }

@@ -110,6 +110,23 @@ extension PortalApiTests {
     XCTAssertEqual(portalRequestsSpy.postCallsCount, 1)
   }
 
+  @available(iOS 16.0, *)
+  func test_eject_willCall_requestPost_passingCorrectParams() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    initPortalApiWith(requests: portalRequestsSpy)
+
+    // and given
+    _ = try await api?.eject()
+
+    // then
+    XCTAssertEqual(portalRequestsSpy.postFromParam?.path() ?? "", "/api/v3/clients/me/eject")
+    XCTAssertEqual(portalRequestsSpy.postAndPayloadParam as? [String: String] ?? [:], [
+      "clientPlatform": "NATIVE_IOS",
+      "clientPlatformVersion": SDK_VERSION
+    ])
+  }
+
   func test_eject_willThrowCorrectError_whenRequestPostThrowError() async throws {
     // given
     let portalRequestsFailMock = PortalRequestsFailMock()
