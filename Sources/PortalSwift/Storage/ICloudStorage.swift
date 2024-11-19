@@ -159,7 +159,7 @@ public class ICloudStorage: Storage, PortalStorage {
     do {
       let response = try JSONDecoder().decode(CustodianIDClientIDHashesResponse.self, from: hashesData)
 
-      if let error = response.error {
+      if response.error != nil {
         throw ICloudStorageError.unableToFetchClientData
       }
 

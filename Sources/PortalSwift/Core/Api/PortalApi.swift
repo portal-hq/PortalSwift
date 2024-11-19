@@ -390,7 +390,7 @@ public class PortalApi: PortalApiProtocol {
         let payload = AnyCodable([
           "clientCipherText": cipherText
         ])
-        let data = try await patch(url, withBearerToken: self.apiKey, andPayload: payload)
+        _ = try await patch(url, withBearerToken: self.apiKey, andPayload: payload)
 
         return true
       } catch {

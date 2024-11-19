@@ -62,8 +62,6 @@ public class PortalRequests: PortalRequestsProtocol {
       throw self.buildError(httpResponse, withData: data, url: from.absoluteString)
     }
 
-    let logger = PortalLogger()
-
     return data
   }
 
