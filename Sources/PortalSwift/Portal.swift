@@ -340,9 +340,15 @@ public class Portal {
   public func createWallet(usingProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> PortalCreateWalletResponse {
     let addresses = try await mpc.generate(withProgressCallback: usingProgressCallback)
 
+    guard let ethereumAddress = addresses[.eip155] ?? nil,
+          let solanaAddress = addresses[.solana] ?? nil
+    else {
+      throw PortalClassError.cannotCreateWallet
+    }
+
     return PortalCreateWalletResponse(
-      ethereum: addresses[.eip155] ?? nil,
-      solana: addresses[.solana] ?? nil
+      ethereum: ethereumAddress,
+      solana: solanaAddress
     )
   }
 
@@ -393,11 +399,16 @@ public class Portal {
     _ method: BackupMethods,
     withCipherText: String? = nil,
     usingProgressCallback: ((MpcStatus) -> Void)? = nil
-  ) async throws -> PortalCreateWalletResponse {
+  ) async throws -> PortalRecoverWalletResponse {
     let addresses = try await mpc.recover(method, withCipherText: withCipherText, usingProgressCallback: usingProgressCallback)
 
-    return PortalCreateWalletResponse(
-      ethereum: addresses[.eip155] ?? nil,
+    guard let ethereumAddress = addresses[.eip155] ?? nil
+    else {
+      throw PortalClassError.cannotRecoverWallet
+    }
+
+    return PortalRecoverWalletResponse(
+      ethereum: ethereumAddress,
       solana: addresses[.solana] ?? nil
     )
   }
@@ -1058,6 +1069,8 @@ enum PortalClassError: LocalizedError, Equatable {
   case clientNotAvailable
   case noWalletFoundForChain(String)
   case unsupportedChainId(String)
+  case cannotCreateWallet
+  case cannotRecoverWallet
 }
 
 enum PortalProviderError: LocalizedError, Equatable {

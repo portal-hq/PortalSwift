@@ -519,7 +519,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     return try await portal.getTransactions(chainId)
   }
 
-  public func recover(_ userId: String, withBackupMethod: BackupMethods) async throws -> PortalCreateWalletResponse {
+  public func recover(_ userId: String, withBackupMethod: BackupMethods) async throws -> PortalRecoverWalletResponse {
     guard let portal else {
       self.logger.error("ViewController.recover() - Portal not initialized. Please call registerPortal().")
       throw PortalExampleAppError.portalNotInitialized()
@@ -1421,12 +1421,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       do {
         self.startLoading()
         let (ethereum, _) = try await generate()
-        guard let address = ethereum else {
-          self.logger.error("ViewController.handleGenerate() - ❌ Wallet was generated, but no address was found.")
-          self.showStatusView(message: "\(self.failureStatus) Wallet was generated, but no address was found.")
-          throw PortalKeychain.KeychainError.noAddressesFound
-        }
-        let debugMessage = "ViewController.handleGenerate() - ✅ Wallet successfully created! Address: \(String(describing: address))"
+        let debugMessage = "ViewController.handleGenerate() - ✅ Wallet successfully created! Address: \(String(describing: ethereum))"
         self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
         self.showStatusView(message: "\(self.successStatus) Wallet generated")
         self.updateUIComponents()
@@ -1488,10 +1483,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.startLoading()
         self.logger.debug("ViewController.handleGdriveRecover() - Starting recover...")
         let (ethereum, solana) = try await recover(String(user.exchangeUserId), withBackupMethod: .GoogleDrive)
-        guard let ethereum else {
-          self.logger.error("ViewController.handleGdriveRecover() - ❌ Wallet was recovered, but no ETH address was found.")
-          throw PortalKeychain.KeychainError.noAddressesFound
-        }
         let debugMessage = "ViewController.handleGdriveRecover() - ✅ Wallet successfully recovered! ETH address: \(ethereum), Solana address: \(solana ?? "N/A")"
         self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
         self.showStatusView(message: "\(self.successStatus) Wallet successfully recovered!")
@@ -1538,10 +1529,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.startLoading()
         self.logger.debug("ViewController.handleiCloudRecover() - Starting recover...")
         let (ethereum, solana) = try await recover(String(user.exchangeUserId), withBackupMethod: .iCloud)
-        guard let ethereum else {
-          self.logger.error("ViewController.handleiCloudRecover() - ❌ Wallet was recovered, but no ETH address was found.")
-          throw PortalExampleAppError.addressNotFound()
-        }
         let debugMessage = "ViewController.handleiCloudRecover() - ✅ Wallet successfully recovered! ETH address: \(ethereum), Solana address: \(solana ?? "N/A")"
         self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
         self.showStatusView(message: "\(self.successStatus) Wallet successfully recovered!")
@@ -1590,10 +1577,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.startLoading()
         self.logger.debug("ViewController.handlPasskeyRecover() - Starting recover...")
         let (ethereum, solana) = try await recover(String(userId), withBackupMethod: .Passkey)
-        guard let ethereum else {
-          self.logger.error("ViewController.handleGenerate() - ❌ Wallet was recovered, but no ETH address was found.")
-          throw PortalKeychain.KeychainError.noAddressesFound
-        }
         let debugMessage = "ViewController.handlePasskeyRecover() - ✅ Wallet successfully recovered! ETH address: \(ethereum), Solana address: \(solana ?? "N/A")"
         self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
         self.showStatusView(message: "\(self.successStatus) Wallet successfully recovered!")
@@ -1656,10 +1639,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
         try portal.setPassword(enteredPassword)
         self.logger.debug("ViewController.handlPasswordRecover() - Starting recover...")
         let (ethereum, solana) = try await recover(String(user.exchangeUserId), withBackupMethod: .Password)
-        guard let ethereum else {
-          self.logger.error("ViewController.handlePasswordRecover() - ❌ Wallet was recovered, but no ETH address was found.")
-          throw PortalKeychain.KeychainError.noAddressesFound
-        }
         let debugMessage = "ViewController.handlePasswordRecover() - ✅ Wallet successfully recovered! ETH address: \(ethereum), Solana address: \(solana ?? "N/A")"
         self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
         self.showStatusView(message: "\(self.successStatus) Wallet successfully recovered!")

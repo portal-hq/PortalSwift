@@ -128,6 +128,22 @@ extension PortalTests {
     XCTAssertEqual(portalMpcSpy.generateCallsCount, 1)
   }
 
+  func test_createWallet_willThrowCorrectError_whenFailToGenerateWallets() async throws {
+    // given
+    let portalMpcSpy = PortalMpcSpy()
+    portalMpcSpy.generateResponse = [:]
+    try initPortalWithSpy(portalMpc: portalMpcSpy)
+
+    do {
+      // and given
+      _ = try await portal.createWallet()
+      XCTFail("Expected error not thrown when calling Portal.createWallet when mpc return no wallets.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? PortalClassError, PortalClassError.cannotCreateWallet)
+    }
+  }
+
   func test_createWallet_will_return_ethereumAndSolanaAddresses() async throws {
     // given
     let (eth, sol) = try await portal.createWallet()
@@ -372,7 +388,7 @@ extension PortalTests {
     try initPortalWithSpy(portalMpc: portalMpcSpy)
 
     // and given
-    _ = portal.provisionWallet(cipherText: "", method: "ICLOUD", completion: { _ in })
+    portal.provisionWallet(cipherText: "", method: "ICLOUD", completion: { _ in })
 
     // then
     XCTAssertEqual(portalMpcSpy.recoverWithCompletionCallsCount, 1)
