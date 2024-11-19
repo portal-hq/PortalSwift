@@ -25,7 +25,7 @@ public enum AnyEncodableError: LocalizedError {
 }
 
 public typealias PortalCreateWalletResponse = (ethereum: String, solana: String)
-public typealias PortalRecoverWalletResponse = (ethereum: String?, solana: String?)
+public typealias PortalRecoverWalletResponse = (ethereum: String, solana: String?)
 
 public struct PortalBackupWalletResponse {
   public let cipherText: String

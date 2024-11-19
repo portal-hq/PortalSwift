@@ -402,8 +402,13 @@ public class Portal {
   ) async throws -> PortalRecoverWalletResponse {
     let addresses = try await mpc.recover(method, withCipherText: withCipherText, usingProgressCallback: usingProgressCallback)
 
+    guard let ethereumAddress = addresses[.eip155] ?? nil
+    else {
+      throw PortalClassError.cannotRecoverWallet
+    }
+
     return PortalRecoverWalletResponse(
-      ethereum: addresses[.eip155] ?? nil,
+      ethereum: ethereumAddress,
       solana: addresses[.solana] ?? nil
     )
   }
@@ -1065,6 +1070,7 @@ enum PortalClassError: LocalizedError, Equatable {
   case noWalletFoundForChain(String)
   case unsupportedChainId(String)
   case cannotCreateWallet
+  case cannotRecoverWallet
 }
 
 enum PortalProviderError: LocalizedError, Equatable {
