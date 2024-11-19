@@ -41,6 +41,9 @@ public class PortalBlockchain {
 
   init(fromChainId: String) throws {
     let chainIdParts = fromChainId.split(separator: ":").map(String.init)
+    guard chainIdParts.count == 2 else {
+      throw PortalBlockchainError.invalidChainId(fromChainId)
+    }
     let namespaceString = chainIdParts[0]
     let reference = chainIdParts[1]
     guard !reference.isEmpty else {
@@ -74,7 +77,7 @@ public class PortalBlockchain {
   }
 }
 
-enum PortalBlockchainError: LocalizedError {
+enum PortalBlockchainError: LocalizedError, Equatable {
   case invalidChainId(String)
   case noSupportedCurveForChainId(String)
   case noSupportedNamespaceForChainId(String)
