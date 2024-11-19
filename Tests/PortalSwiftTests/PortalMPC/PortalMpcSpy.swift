@@ -127,7 +127,7 @@ class PortalMpcSpy: PortalMpcProtocol {
     recoverMethodParam = method
     recoverCipherTextParam = withCipherText
     recoverUsingProgressCallbackParam = usingProgressCallback
-    return [:]
+    return [.eip155: MockConstants.mockEip155Address]
   }
 
   func generateSolanaWallet(usingProgressCallback: ((PortalSwift.MpcStatus) -> Void)?) async throws -> String {

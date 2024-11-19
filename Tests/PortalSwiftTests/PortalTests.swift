@@ -388,7 +388,7 @@ extension PortalTests {
     try initPortalWithSpy(portalMpc: portalMpcSpy)
 
     // and given
-    _ = portal.provisionWallet(cipherText: "", method: "ICLOUD", completion: { _ in })
+    portal.provisionWallet(cipherText: "", method: "ICLOUD", completion: { _ in })
 
     // then
     XCTAssertEqual(portalMpcSpy.recoverWithCompletionCallsCount, 1)
