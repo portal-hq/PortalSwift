@@ -66,7 +66,8 @@ public class PortalBlockchain {
       !method.rawValue.starts(with: "wallet_") ||
         method == .wallet_switchEthereumChain ||
         method == .wallet_requestPermissions ||
-        method == .wallet_revokePermissions
+        method == .wallet_revokePermissions ||
+        method == .wallet_getCapabilities
     default:
       true
     }

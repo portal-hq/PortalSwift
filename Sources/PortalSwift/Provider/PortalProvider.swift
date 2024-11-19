@@ -629,6 +629,7 @@ public enum PortalRequestMethod: String, Codable {
   case wallet_revokePermissions
   case wallet_switchEthereumChain
   case wallet_watchAsset
+  case wallet_getCapabilities
 
   // Net Methods
   case net_version
