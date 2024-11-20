@@ -128,6 +128,22 @@ extension PortalTests {
     XCTAssertEqual(portalMpcSpy.generateCallsCount, 1)
   }
 
+  func test_createWallet_willThrowCorrectError_whenFailToGenerateWallets() async throws {
+    // given
+    let portalMpcSpy = PortalMpcSpy()
+    portalMpcSpy.generateResponse = [:]
+    try initPortalWithSpy(portalMpc: portalMpcSpy)
+
+    do {
+      // and given
+      _ = try await portal.createWallet()
+      XCTFail("Expected error not thrown when calling Portal.createWallet when mpc return no wallets.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? PortalClassError, PortalClassError.cannotCreateWallet)
+    }
+  }
+
   func test_createWallet_will_return_ethereumAndSolanaAddresses() async throws {
     // given
     let (eth, sol) = try await portal.createWallet()
@@ -372,7 +388,7 @@ extension PortalTests {
     try initPortalWithSpy(portalMpc: portalMpcSpy)
 
     // and given
-    _ = portal.provisionWallet(cipherText: "", method: "ICLOUD", completion: { _ in })
+    portal.provisionWallet(cipherText: "", method: "ICLOUD", completion: { _ in })
 
     // then
     XCTAssertEqual(portalMpcSpy.recoverWithCompletionCallsCount, 1)
@@ -827,8 +843,10 @@ extension PortalTests {
     XCTAssertTrue(isWalletOnDevice)
   }
 
-  func test_isWalletOnDevice_willReturn_correctResult_forEIP255ChainId_whenItIsNotExist() async throws {
+  func test_isWalletOnDevice_willReturn_correctResult_forEIP155ChainId_whenItIsNotExist() async throws {
     // given
+    keychain.metadata = PortalKeychainMetadata(namespaces: [.eip155: .SECP256K1])
+    keychain.getSharesReturnValue = [:]
     let isWalletOnDevice = try await portal.isWalletOnDevice("eip155:11155111")
 
     // then
@@ -1345,4 +1363,20 @@ extension PortalTests {
     }
   }
   // TODO: - to send the `sendSol` function all cases.
+}
+
+// MARK: - getWalletCapabilities tests
+
+extension PortalTests {
+  func test_getWalletCapabilities_willCall_api_getWalletCapabilities_onlyOnce() async throws {
+    // given
+    let portalApiSpy = PortalApiSpy()
+    try initPortalWithSpy(api: portalApiSpy)
+
+    // and given
+    _ = try await portal.getWalletCapabilities()
+
+    // then
+    XCTAssertEqual(portalApiSpy.getWalletCapabilitiesCallsCount, 1)
+  }
 }

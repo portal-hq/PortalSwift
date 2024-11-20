@@ -94,7 +94,6 @@ public class Portal {
       rpcConfig: self.rpcConfig,
       keychain: self.keychain,
       autoApprove: autoApprove,
-      apiHost: apiHost,
       mpcHost: mpcHost,
       featureFlags: featureFlags
     )
@@ -104,6 +103,7 @@ public class Portal {
     let api = api ?? PortalApi(apiKey: apiKey, apiHost: apiHost, provider: provider)
     self.api = api
     self.keychain.api = api
+    self.provider.api = api
 
     self.mpc = mpc ?? PortalMpc(apiKey: apiKey, api: self.api, keychain: self.keychain, host: mpcHost, mobile: self.binary, featureFlags: featureFlags)
 
@@ -208,7 +208,6 @@ public class Portal {
       rpcConfig: rpcConfig,
       keychain: keychain,
       autoApprove: autoApprove,
-      apiHost: apiHost,
       mpcHost: mpcHost,
       version: version,
       featureFlags: featureFlags
@@ -340,9 +339,15 @@ public class Portal {
   public func createWallet(usingProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> PortalCreateWalletResponse {
     let addresses = try await mpc.generate(withProgressCallback: usingProgressCallback)
 
+    guard let ethereumAddress = addresses[.eip155] ?? nil,
+          let solanaAddress = addresses[.solana] ?? nil
+    else {
+      throw PortalClassError.cannotCreateWallet
+    }
+
     return PortalCreateWalletResponse(
-      ethereum: addresses[.eip155] ?? nil,
-      solana: addresses[.solana] ?? nil
+      ethereum: ethereumAddress,
+      solana: solanaAddress
     )
   }
 
@@ -393,11 +398,16 @@ public class Portal {
     _ method: BackupMethods,
     withCipherText: String? = nil,
     usingProgressCallback: ((MpcStatus) -> Void)? = nil
-  ) async throws -> PortalCreateWalletResponse {
+  ) async throws -> PortalRecoverWalletResponse {
     let addresses = try await mpc.recover(method, withCipherText: withCipherText, usingProgressCallback: usingProgressCallback)
 
-    return PortalCreateWalletResponse(
-      ethereum: addresses[.eip155] ?? nil,
+    guard let ethereumAddress = addresses[.eip155] ?? nil
+    else {
+      throw PortalClassError.cannotRecoverWallet
+    }
+
+    return PortalRecoverWalletResponse(
+      ethereum: ethereumAddress,
       solana: addresses[.solana] ?? nil
     )
   }
@@ -593,29 +603,33 @@ public class Portal {
   }
 
   public func isWalletOnDevice(_ forChainId: String? = nil) async throws -> Bool {
-    do {
-      let shares = try await keychain.getShares()
-      // Filter by chainId if one is provided
-      if let chainId = forChainId {
-        let chainIdParts = chainId.split(separator: ":").map(String.init)
-        guard let namespace = PortalNamespace(rawValue: chainIdParts[0]), let curve = try await keychain.metadata?.namespaces[namespace] else {
-          throw PortalClassError.unsupportedChainId(chainId)
-        }
+    let shares = try await keychain.getShares()
+    // Filter by chainId if one is provided
+    if let chainId = forChainId {
+      let chainIdParts = chainId.split(separator: ":").map(String.init)
 
-        if let _ = shares[curve.rawValue] {
-          return true
-        }
-
-        return false
-      } else {
-        let validShare = shares.values.first { share in
-          !share.id.isEmpty
-        }
-
-        return validShare != nil
+      guard chainIdParts.count > 0
+      else {
+        throw PortalClassError.invalidChainId(chainId)
       }
-    } catch {
+
+      guard let namespace = PortalNamespace(rawValue: chainIdParts[0]),
+            let curve = try await keychain.metadata?.namespaces[namespace]
+      else {
+        throw PortalClassError.unsupportedChainId(chainId)
+      }
+
+      if let _ = shares[curve.rawValue] {
+        return true
+      }
+
       return false
+    } else {
+      let validShare = shares.values.first { share in
+        !share.id.isEmpty
+      }
+
+      return validShare != nil
     }
   }
 
@@ -750,6 +764,10 @@ public class Portal {
 
   public func buildSolanaTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildSolanaTransactionResponse {
     return try await api.buildSolanaTransaction(chainId: chainId, params: params)
+  }
+
+  public func getWalletCapabilities() async throws -> WalletCapabilitiesResponse {
+    return try await api.getWalletCapabilities()
   }
 
   /**********************************
@@ -1058,6 +1076,9 @@ enum PortalClassError: LocalizedError, Equatable {
   case clientNotAvailable
   case noWalletFoundForChain(String)
   case unsupportedChainId(String)
+  case cannotCreateWallet
+  case cannotRecoverWallet
+  case invalidChainId(String)
 }
 
 enum PortalProviderError: LocalizedError, Equatable {

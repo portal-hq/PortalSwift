@@ -12,6 +12,7 @@ import Foundation
 class PortalProviderSpy: PortalProviderProtocol {
   var chainId: Int?
   var address: String?
+  var api: PortalApiProtocol?
 
   let mockPortalProvider: PortalProvider!
 

@@ -46,6 +46,10 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
 
   private let decoder = JSONDecoder()
   private let encoder = JSONEncoder()
+  private var eip6963Icon: String
+  private var eip6963Name: String
+  private var eip6963Rdns: String
+  private var eip6963Uuid: String
   private var portal: Portal
   private var url: URL
   private var onError: (Result<Any>) -> Void
@@ -57,8 +61,24 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
   ///   - portal: Your Portal instance.
   ///   - url: The URL the web view should start at.
   ///   - onError: An error handler in case the web view throws errors.
-  public init(portal: Portal, url: URL, onError: @escaping (Result<Any>) -> Void) {
+  ///   - eip6963Icon: A string representing the icon URL for EIP-6963 compliance.
+  ///   - eip6963Name: A string representing the name for EIP-6963 compliance.
+  ///   - eip6963Rdns: A reverse DNS string for identifying the application in EIP-6963-compliant contexts.
+  ///   - eip6963Uuid: A unique identifier string for EIP-6963 compliance.
+  public init(
+    portal: Portal,
+    url: URL,
+    onError: @escaping (Result<Any>) -> Void,
+    eip6963Icon: String = EIP6963Constants.eip6963Icon,
+    eip6963Name: String = EIP6963Constants.eip6963Name,
+    eip6963Rdns: String = EIP6963Constants.eip6963Rdns,
+    eip6963Uuid: String = EIP6963Constants.eip6963Uuid
+  ) {
     self.chainId = portal.chainId ?? 11_155_111
+    self.eip6963Icon = eip6963Icon
+    self.eip6963Name = eip6963Name
+    self.eip6963Rdns = eip6963Rdns
+    self.eip6963Uuid = eip6963Uuid
     self.portal = portal
     self.url = url
     self.onError = onError
@@ -84,8 +104,26 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
   ///   - onError: An error handler in case the web view throws errors.
   ///   - onPageStart: A handler that fires when the web view is starting to load a page.
   ///   - onPageComplete: A handler that fires when the web view has finished loading a page.
-  public init(portal: Portal, url: URL, onError: @escaping (Result<Any>) -> Void, onPageStart: @escaping () -> Void, onPageComplete: @escaping () -> Void) {
+  ///   - eip6963Icon: A string representing the icon URL for EIP-6963 compliance.
+  ///   - eip6963Name: A string representing the name for EIP-6963 compliance.
+  ///   - eip6963Rdns: A reverse DNS string for identifying the application in EIP-6963-compliant contexts.
+  ///   - eip6963Uuid: A unique identifier string for EIP-6963 compliance.
+  public init(
+    portal: Portal,
+    url: URL,
+    onError: @escaping (Result<Any>) -> Void,
+    onPageStart: @escaping () -> Void,
+    onPageComplete: @escaping () -> Void,
+    eip6963Icon: String = EIP6963Constants.eip6963Icon,
+    eip6963Name: String = EIP6963Constants.eip6963Name,
+    eip6963Rdns: String = EIP6963Constants.eip6963Rdns,
+    eip6963Uuid: String = EIP6963Constants.eip6963Uuid
+  ) {
     self.chainId = portal.chainId ?? 11_155_111
+    self.eip6963Icon = eip6963Icon
+    self.eip6963Name = eip6963Name
+    self.eip6963Rdns = eip6963Rdns
+    self.eip6963Uuid = eip6963Uuid
     self.portal = portal
     self.url = url
     self.onError = onError
@@ -114,8 +152,27 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
   ///   - onError: An error handler in case the web view throws errors.
   ///   - onPageStart: A handler that fires when the web view is starting to load a page.
   ///   - onPageComplete: A handler that fires when the web view has finished loading a page.
-  public init(portal: Portal, url: URL, persistSessionData: Bool, onError: @escaping (Result<Any>) -> Void, onPageStart: @escaping () -> Void, onPageComplete: @escaping () -> Void) {
+  ///   - eip6963Icon: A string representing the icon URL for EIP-6963 compliance.
+  ///   - eip6963Name: A string representing the name for EIP-6963 compliance.
+  ///   - eip6963Rdns: A reverse DNS string for identifying the application in EIP-6963-compliant contexts.
+  ///   - eip6963Uuid: A unique identifier string for EIP-6963 compliance.
+  public init(
+    portal: Portal,
+    url: URL,
+    persistSessionData: Bool,
+    onError: @escaping (Result<Any>) -> Void,
+    onPageStart: @escaping () -> Void,
+    onPageComplete: @escaping () -> Void,
+    eip6963Icon: String = EIP6963Constants.eip6963Icon,
+    eip6963Name: String = EIP6963Constants.eip6963Name,
+    eip6963Rdns: String = EIP6963Constants.eip6963Rdns,
+    eip6963Uuid: String = EIP6963Constants.eip6963Uuid
+  ) {
     self.chainId = portal.chainId ?? 11_155_111
+    self.eip6963Icon = eip6963Icon
+    self.eip6963Name = eip6963Name
+    self.eip6963Rdns = eip6963Rdns
+    self.eip6963Uuid = eip6963Uuid
     self.portal = portal
     self.url = url
     self.onError = onError
@@ -198,9 +255,14 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
       apiKey: self.portal.apiKey,
       chainId: String(self.portal.chainId ?? 11_155_111),
       gatewayConfig: rpcUrl,
+      eip6963Icon: self.eip6963Icon,
+      eip6963Name: self.eip6963Name,
+      eip6963Rdns: self.eip6963Rdns,
+      eip6963Uuid: self.eip6963Uuid,
       autoApprove: self.portal.autoApprove,
       enableMpc: true
     )
+
     let script = WKUserScript(source: scriptSource, injectionTime: .atDocumentStart, forMainFrameOnly: true)
 
     // build the WekUserContentController
@@ -551,8 +613,19 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
     }
   }
 
-  private func injectPortal(address: String, apiKey _: String, chainId: String, gatewayConfig: String, autoApprove _: Bool = false, enableMpc: Bool = false) -> String {
-    "window.portalAddress='\(address)';window.portalAutoApprove=true;window.portalChainId='\(chainId)';window.portalGatewayConfig='\(gatewayConfig)';window.portalMPCEnabled='\(String(enableMpc))';\(PortalInjectionScript.SCRIPT)true"
+  private func injectPortal(
+    address: String,
+    apiKey _: String,
+    chainId: String,
+    gatewayConfig: String,
+    eip6963Icon: String,
+    eip6963Name: String,
+    eip6963Rdns: String,
+    eip6963Uuid: String,
+    autoApprove: Bool = false,
+    enableMpc: Bool = true
+  ) -> String {
+    "window.portalAddress='\(address)';window.portalApiKey='';window.portalAutoApprove=\(String(autoApprove));window.portalChainId='\(chainId)';window.portalGatewayConfig='\(gatewayConfig)';window.portalMPCEnabled='\(String(enableMpc))';window.portalEIP6963Uuid='\(eip6963Uuid)';window.portalEIP6963Name='\(eip6963Name)';window.portalEIP6963Rdns='\(eip6963Rdns)';window.portalEIP6963Icon='\(eip6963Icon)';\(PortalInjectionScript.SCRIPT)true"
   }
 }
 

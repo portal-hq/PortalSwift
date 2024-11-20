@@ -47,8 +47,10 @@ public class MockPortalKeychain: PortalKeychainProtocol {
     throw PortalKeychain.KeychainError.unsupportedNamespace(forChainId)
   }
 
+  var getSharesReturnValue: PortalKeychainClientShares?
+
   public func getShares() async throws -> PortalKeychainClientShares {
-    return try await MockConstants.mockGenerateResponse
+    return try getSharesReturnValue ?? MockConstants.mockGenerateResponse
   }
 
   public func loadMetadata() async throws -> PortalKeychainMetadata {

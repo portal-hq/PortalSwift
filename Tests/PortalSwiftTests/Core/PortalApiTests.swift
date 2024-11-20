@@ -110,6 +110,23 @@ extension PortalApiTests {
     XCTAssertEqual(portalRequestsSpy.postCallsCount, 1)
   }
 
+  @available(iOS 16.0, *)
+  func test_eject_willCall_requestPost_passingCorrectParams() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    initPortalApiWith(requests: portalRequestsSpy)
+
+    // and given
+    _ = try await api?.eject()
+
+    // then
+    XCTAssertEqual(portalRequestsSpy.postFromParam?.path() ?? "", "/api/v3/clients/me/eject")
+    XCTAssertEqual(portalRequestsSpy.postAndPayloadParam as? [String: String] ?? [:], [
+      "clientPlatform": "NATIVE_IOS",
+      "clientPlatformVersion": SDK_VERSION
+    ])
+  }
+
   func test_eject_willThrowCorrectError_whenRequestPostThrowError() async throws {
     // given
     let portalRequestsFailMock = PortalRequestsFailMock()
@@ -898,6 +915,55 @@ extension PortalApiTests {
       XCTAssertEqual(portalRequestsSpy.patchFromParam?.path(), "/api/v3/clients/me/\(backupType.rawValue)-share-pairs/")
       XCTAssertEqual((portalRequestsSpy.patchAndPayloadParam as? ShareStatusUpdateRequest)?.backupSharePairIds, sharePairIds)
       XCTAssertEqual((portalRequestsSpy.patchAndPayloadParam as? ShareStatusUpdateRequest)?.status, status)
+    }
+  }
+}
+
+// MARK: - getWalletCapabilities tests
+
+extension PortalApiTests {
+  func test_getWalletCapabilities_willCall_requestPost_onlyOnce() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    initPortalApiWith(requests: portalRequestsSpy)
+
+    do {
+      // and given
+      _ = try await api?.getWalletCapabilities()
+    } catch {}
+
+    // then
+    XCTAssertEqual(portalRequestsSpy.getCallsCount, 1)
+  }
+
+  func test_getWalletCapabilities() async throws {
+    // given
+    let quoteResponse = try encoder.encode(Quote.stub())
+    let portalRequestMock = PortalRequestsMock()
+    initPortalApiWith(requests: portalRequestMock)
+    portalRequestMock.returnValueData = quoteResponse
+
+    do {
+      // and given
+      let walletCapabilities = try await api?.getWalletCapabilities()
+      // then
+      XCTAssertEqual(walletCapabilities, WalletCapabilitiesResponse.stub())
+    } catch {}
+  }
+
+  func test_getWalletCapabilities_willCall_requestGet_passingCorrectUrlPath() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    initPortalApiWith(requests: portalRequestsSpy)
+
+    do {
+      // and given
+      _ = try await api?.getWalletCapabilities()
+    } catch {}
+
+    // then
+    if #available(iOS 16.0, *) {
+      XCTAssertEqual(portalRequestsSpy.getFromParam?.path(), "/api/v3/clients/me/wallet_getCapabilities")
     }
   }
 }

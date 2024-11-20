@@ -41,6 +41,7 @@ public protocol PortalApiProtocol: AnyObject {
   func buildEip155Transaction(chainId: String, params: BuildTransactionParam) async throws -> BuildEip115TransactionResponse
   func buildSolanaTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildSolanaTransactionResponse
   func getAssets(_ chainId: String) async throws -> AssetsResponse
+  func getWalletCapabilities() async throws -> WalletCapabilitiesResponse
 }
 
 /// The ThreadSafeClientWrapper is just a thread-safe actor to consume the ClientResponse class, we need to refactor that later.
@@ -117,7 +118,12 @@ public class PortalApi: PortalApiProtocol {
   public func eject() async throws -> String {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/eject") {
       do {
-        let data = try await post(url, withBearerToken: self.apiKey)
+        let body: [String: String] = [
+          "clientPlatform": "NATIVE_IOS",
+          "clientPlatformVersion": SDK_VERSION
+        ]
+
+        let data = try await post(url, withBearerToken: self.apiKey, andPayload: body)
         guard let ejectResponse = String(data: data, encoding: .utf8) else {
           throw PortalApiError.unableToReadStringResponse
         }
@@ -385,7 +391,7 @@ public class PortalApi: PortalApiProtocol {
         let payload = AnyCodable([
           "clientCipherText": cipherText
         ])
-        let data = try await patch(url, withBearerToken: self.apiKey, andPayload: payload)
+        _ = try await patch(url, withBearerToken: self.apiKey, andPayload: payload)
 
         return true
       } catch {
@@ -462,6 +468,17 @@ public class PortalApi: PortalApiProtocol {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)/assets/send/build-transaction") {
       let data = try await post(url, withBearerToken: self.apiKey, andPayload: params.toDictionary())
       let response = try decoder.decode(BuildSolanaTransactionResponse.self, from: data)
+
+      return response
+    }
+
+    throw URLError(.badURL)
+  }
+
+  public func getWalletCapabilities() async throws -> WalletCapabilitiesResponse {
+    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/wallet_getCapabilities") {
+      let data = try await get(url, withBearerToken: self.apiKey)
+      let response = try decoder.decode(WalletCapabilitiesResponse.self, from: data)
 
       return response
     }
