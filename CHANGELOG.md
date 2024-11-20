@@ -14,7 +14,15 @@ Possible Types of changes include:
 
 ## 4.0.2 - 2024-10-31
 
+- Add `buildTransaction` methods for ETH & SOL
+- Add `getNFTAssets` method to get NFT assets by `chainId`
+- Add `getAssets` method to get assets by `chainId`
+- Enhance the `errors` to have a proper `localizedDescription`
+- Fix for the `GETTransactions` API response.
+
 ## 4.0.1 - 2024-10-16
+
+- Fixes cross-SDK recovery
 
 ## 4.0.0 - 2024-09-16
 
@@ -26,6 +34,9 @@ Possible Types of changes include:
 
 ## 3.2.0 - 2024-07-31
 
+- Solana migration support for pre-multi wallet sdk versions. (Android v3 and iOS v3.0.x) [docs](https://docs.portalhq.io/resources/multi-wallet-migration-guides)
+- Solana Eject ([iOS docs](https://docs.portalhq.io/guides/ios/eject-a-wallet), [android docs](https://docs.portalhq.io/guides/android/eject-a-wallet))
+
 ## 3.1.12 - 2024-07-30
 
 ## 3.1.11 - 2024-07-29
@@ -36,7 +47,14 @@ Possible Types of changes include:
 
 ## 3.1.8 - 2024-07-22
 
-## 3.1.7 - 2024-07-11
+## 3.1.7 & 3.0.13 - 2024-07-11
+
+- PortalConnect Update
+  - Adds `emitGetSessionRequest()` to Connect class.
+  - Allows customers to retrieve previous session requests from dApps.
+  - This is primarily meant to be used in conjunction with mobile deeplinking to properly respond to a session request.
+  - Read more [here for Swift](https://docs.portalhq.io/guides/native-ios/connect-with-walletconnect#retrieve-session-request) and [here for Kotlin](https://docs.portalhq.io/guides/native-android/connect-with-walletconnect#retrieve-session-request).
+- Tracking SDK version on requests to Portal
 
 ## 3.1.6 - 2024-06-18
 
