@@ -10,6 +10,13 @@ Possible Types of changes include:
 - Fixed
 - Security
 
+## 4.1.0 - 2024-11-20
+
+- Change `createWallet` to return non-optional eth and Solana addresses & recover wallet non-optional ETH address
+- EIP-6963 Support in the Dapp Browser
+- Add `wallet_getCapabilities` method to the provider
+- Throw errors for `isWalletOnDevice` instead of returning false for errors
+
 ## 4.0.3 - 2024-11-1
 
 - Add `portal.getRpcUrl(forChainId)`
