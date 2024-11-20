@@ -94,7 +94,6 @@ public class Portal {
       rpcConfig: self.rpcConfig,
       keychain: self.keychain,
       autoApprove: autoApprove,
-      apiHost: apiHost,
       mpcHost: mpcHost,
       featureFlags: featureFlags
     )
@@ -104,6 +103,7 @@ public class Portal {
     let api = api ?? PortalApi(apiKey: apiKey, apiHost: apiHost, provider: provider)
     self.api = api
     self.keychain.api = api
+    self.provider.api = api
 
     self.mpc = mpc ?? PortalMpc(apiKey: apiKey, api: self.api, keychain: self.keychain, host: mpcHost, mobile: self.binary, featureFlags: featureFlags)
 
@@ -208,7 +208,6 @@ public class Portal {
       rpcConfig: rpcConfig,
       keychain: keychain,
       autoApprove: autoApprove,
-      apiHost: apiHost,
       mpcHost: mpcHost,
       version: version,
       featureFlags: featureFlags
@@ -765,6 +764,10 @@ public class Portal {
 
   public func buildSolanaTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildSolanaTransactionResponse {
     return try await api.buildSolanaTransaction(chainId: chainId, params: params)
+  }
+
+  public func getWalletCapabilities() async throws -> WalletCapabilitiesResponse {
+    return try await api.getWalletCapabilities()
   }
 
   /**********************************

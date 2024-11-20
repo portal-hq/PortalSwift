@@ -498,6 +498,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
     return try await portal.getNftAssets(chainId)
   }
 
+  public func getWalletCapabilities() async throws -> WalletCapabilitiesResponse {
+    guard let portal else {
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+    return try await portal.getWalletCapabilities()
+  }
+
   public func getShareMetadata() async throws -> [FetchedSharePair] {
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
@@ -1808,6 +1815,17 @@ class ViewController: UIViewController, UITextFieldDelegate {
       } catch {
         self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching buildSolanaTransaction: \(error)")
         self.showStatusView(message: "\(self.failureStatus) Error fetching buildSolanaTransaction \(error)")
+        return
+      }
+
+      do {
+        let walletCapabilities = try await self.getWalletCapabilities()
+        print(walletCapabilities)
+        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched getWalletCapabilities.")
+        self.showStatusView(message: "\(self.successStatus) Successfully fetched getWalletCapabilities.")
+      } catch {
+        self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching getWalletCapabilities: \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error fetching getWalletCapabilities \(error)")
         return
       }
     }

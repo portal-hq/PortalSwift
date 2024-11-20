@@ -759,3 +759,19 @@ public struct TokenBalanceMetadata: Decodable {
   let totalSupply, rawTotalSupply: String?
   let percentageRelativeToTotalSupply: Double?
 }
+
+// MARK: - Wallet_getCapabilities response
+
+public typealias WalletCapabilitiesResponse = [String: WalletCapabilitiesValue]
+
+// MARK: - WalletCapabilitiesValue
+
+public struct WalletCapabilitiesValue: Codable, Equatable {
+  let paymasterService: PaymasterService
+}
+
+// MARK: - PaymasterService
+
+public struct PaymasterService: Codable, Equatable {
+  let supported: Bool
+}

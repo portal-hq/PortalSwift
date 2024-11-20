@@ -52,7 +52,7 @@ public class PortalConnect: EventBus {
     _ featureFlags: FeatureFlags?,
     _ webSocketServer: String = "connect.portalhq.io",
     _ autoApprove: Bool = false,
-    _ apiHost: String = "api.portalhq.io",
+    _: String = "api.portalhq.io",
     _ mpcHost: String = "mpc.portalhq.io",
     _ version: String = "v6"
   ) throws {
@@ -67,7 +67,6 @@ public class PortalConnect: EventBus {
       rpcConfig: rpcConfig,
       keychain: keychain,
       autoApprove: autoApprove,
-      apiHost: apiHost,
       mpcHost: mpcHost,
       version: version,
       featureFlags: featureFlags

@@ -235,4 +235,8 @@ class PortalApiMock: PortalApiProtocol {
   func getAssets(_: String) async throws -> PortalSwift.AssetsResponse {
     return getAssetsReturnValue ?? PortalSwift.AssetsResponse.stub()
   }
+
+  func getWalletCapabilities() async throws -> PortalSwift.WalletCapabilitiesResponse {
+    return [:]
+  }
 }
