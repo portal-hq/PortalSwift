@@ -12,6 +12,8 @@ Possible Types of changes include:
 
 ## 4.0.3 - 2024-11-1
 
+- Add `portal.getRpcUrl(forChainId)`
+
 ## 4.0.2 - 2024-10-31
 
 - Add `buildTransaction` methods for ETH & SOL
@@ -26,11 +28,31 @@ Possible Types of changes include:
 
 ## 4.0.0 - 2024-09-16
 
+- Breaking change to `PortalKeychain.metadata` to be instance member & thread-safe.
+- Fixes the `Portal.isWalletBackedUp()` bug.
+- Breaking change to handle the unauthorized session to throw `PortalRequestsError.unauthorized` instead of a generic error
+
 ## 3.2.3 - 2024-08-30
+
+- PortalConnect Update
+  - Adds `emitGetSessionRequest()` to Connect class.
+  - Allows customers to retrieve previous session requests from dApps.
+  - This is primarily meant to be used in conjunction with mobile deeplinking to properly respond to a session request.
+  - Read more on [Swift](https://docs.portalhq.io/guides/native-ios/connect-with-walletconnect#retrieve-session-request) and [Kotlin](https://docs.portalhq.io/guides/native-android/connect-with-walletconnect#retrieve-session-request).
+- Adds thread safe access to client
+- Adds evaluate transaction function using evaluate endpoint
+- Refer to the Portal API Documentation for more details
+- Adds sol_getTransaction RPC request
 
 ## 3.2.2 - 2024-08-15
 
+- Fix eject error handling
+- Default rpc urls
+- Webview made public
+
 ## 3.2.1 - 2024-08-05
+
+- Hot-Fix: recovering bug after solana generate with no backup.
 
 ## 3.2.0 - 2024-07-31
 
@@ -39,13 +61,23 @@ Possible Types of changes include:
 
 ## 3.1.12 - 2024-07-30
 
+- Includes `chainId` on the payload provided to all `Provider.request()` approval hooks
+
 ## 3.1.11 - 2024-07-29
+
+- Resolves issues with `featureFlag` propagation during backup and recovery
 
 ## 3.1.10 - 2024-07-26
 
+- Resolves issues with `continuation.resume()` falling throught.
+
 ## 3.1.9 - 2024-07-26
 
+- Resolves issues with feature flags being propagated in `PortalConnect` instances.
+
 ## 3.1.8 - 2024-07-22
+
+- Resolves an issue with signing share lookup when upgrading from 3.0.x to 3.1.x
 
 ## 3.1.7 & 3.0.13 - 2024-07-11
 
@@ -53,14 +85,19 @@ Possible Types of changes include:
   - Adds `emitGetSessionRequest()` to Connect class.
   - Allows customers to retrieve previous session requests from dApps.
   - This is primarily meant to be used in conjunction with mobile deeplinking to properly respond to a session request.
-  - Read more [here for Swift](https://docs.portalhq.io/guides/native-ios/connect-with-walletconnect#retrieve-session-request) and [here for Kotlin](https://docs.portalhq.io/guides/native-android/connect-with-walletconnect#retrieve-session-request).
+  - Read more on [Swift](https://docs.portalhq.io/guides/native-ios/connect-with-walletconnect#retrieve-session-request) and [Kotlin](https://docs.portalhq.io/guides/native-android/connect-with-walletconnect#retrieve-session-request).
 - Tracking SDK version on requests to Portal
 
 ## 3.1.6 - 2024-06-18
 
-## 3.0.12 - 2024-06-18
+- updated swiftformat rules
+- Fixed crash while setting `self.events[event] = event`
+- Added test case for PortalConnect.swift
+- Created new class for EventBus unit test
+- Removed apiKey constraint
+- Added support for updating RPC URL on chain changed
 
-## 3.1.5 - 2024-06-12
+## 3.1.5 & 3.0.12 - 2024-06-12 & 2024-06-18
 
 - Resolves once listener bug
 - Resolves disconnect event emit bug
