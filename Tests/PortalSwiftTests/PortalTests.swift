@@ -843,8 +843,10 @@ extension PortalTests {
     XCTAssertTrue(isWalletOnDevice)
   }
 
-  func test_isWalletOnDevice_willReturn_correctResult_forEIP255ChainId_whenItIsNotExist() async throws {
+  func test_isWalletOnDevice_willReturn_correctResult_forEIP155ChainId_whenItIsNotExist() async throws {
     // given
+    keychain.metadata = PortalKeychainMetadata(namespaces: [.eip155: .SECP256K1])
+    keychain.getSharesReturnValue = [:]
     let isWalletOnDevice = try await portal.isWalletOnDevice("eip155:11155111")
 
     // then
