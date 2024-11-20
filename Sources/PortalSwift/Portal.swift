@@ -94,7 +94,6 @@ public class Portal {
       rpcConfig: self.rpcConfig,
       keychain: self.keychain,
       autoApprove: autoApprove,
-      apiHost: apiHost,
       mpcHost: mpcHost,
       featureFlags: featureFlags
     )
@@ -209,7 +208,6 @@ public class Portal {
       rpcConfig: rpcConfig,
       keychain: keychain,
       autoApprove: autoApprove,
-      apiHost: apiHost,
       mpcHost: mpcHost,
       version: version,
       featureFlags: featureFlags

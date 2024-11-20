@@ -76,7 +76,6 @@ public class PortalProvider: PortalProviderProtocol {
     rpcConfig: [String: String],
     keychain: PortalKeychainProtocol,
     autoApprove: Bool,
-    apiHost: String = "api.portalhq.io",
     mpcHost: String = "mpc.portalhq.io",
     version: String = "v6",
     featureFlags: FeatureFlags? = nil,
@@ -235,8 +234,8 @@ public class PortalProvider: PortalProviderProtocol {
     case .wallet_switchEthereumChain, .wallet_revokePermissions, .wallet_requestPermissions:
       return PortalProviderResult(id: id, result: "null")
     case .wallet_getCapabilities:
-        let walletCapabilities = try await self.api?.getWalletCapabilities()
-        return PortalProviderResult(id: id, result: walletCapabilities ?? "null")
+      let walletCapabilities = try await self.api?.getWalletCapabilities()
+      return PortalProviderResult(id: id, result: walletCapabilities ?? "null")
     default:
       if blockchain.shouldMethodBeSigned(withMethod) {
         let payload = PortalProviderRequestWithId(id: id, method: withMethod, params: andParams, chainId: chainId)

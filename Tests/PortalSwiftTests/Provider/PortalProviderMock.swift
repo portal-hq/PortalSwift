@@ -14,6 +14,8 @@ class PortalProviderMock: PortalProviderProtocol {
 
   var address: String?
 
+  var api: PortalApiProtocol?
+
   private let mockPortalProvider: PortalProvider!
 
   init() {
