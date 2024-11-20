@@ -11,6 +11,7 @@ import Foundation
 public protocol PortalProviderProtocol: AnyObject {
   var chainId: Int? { get set }
   var address: String? { get }
+  var api: PortalApiProtocol? { get set }
 
   func emit(event: Events.RawValue, data: Any) -> PortalProvider
   func on(event: Events.RawValue, callback: @escaping (_ data: Any) -> Void) -> PortalProvider
@@ -40,6 +41,7 @@ public class PortalProvider: PortalProviderProtocol {
   public var chainId: Int?
   public var delegate: PortalProviderDelegate?
   public var gatewayUrl: String?
+  public weak var api: PortalApiProtocol?
 
   private let decoder = JSONDecoder()
   private var events: [Events.RawValue: [RegisteredEventHandler]] = [:]
@@ -48,7 +50,6 @@ public class PortalProvider: PortalProviderProtocol {
   private var mpcQueue: DispatchQueue
   private var processedRequestIds: [String] = []
   private var processedSignatureIds: [String] = []
-  private var portalApi: HttpRequester
   private let requests: PortalRequestsProtocol
   private let rpcConfig: [String: String]
   private let signer: PortalMpcSigner
@@ -89,8 +90,6 @@ public class PortalProvider: PortalProviderProtocol {
     self.rpcConfig = rpcConfig
 
     // Other instance variables
-    let apiUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
-    self.portalApi = HttpRequester(baseUrl: apiUrl)
     self.featureFlags = featureFlags
     self.requests = requests ?? PortalRequests()
     self.signer = signer ?? PortalMpcSigner(
@@ -235,6 +234,9 @@ public class PortalProvider: PortalProviderProtocol {
       return PortalProviderResult(id: id, result: [address])
     case .wallet_switchEthereumChain, .wallet_revokePermissions, .wallet_requestPermissions:
       return PortalProviderResult(id: id, result: "null")
+    case .wallet_getCapabilities:
+        let walletCapabilities = try await self.api?.getWalletCapabilities()
+        return PortalProviderResult(id: id, result: walletCapabilities ?? "null")
     default:
       if blockchain.shouldMethodBeSigned(withMethod) {
         let payload = PortalProviderRequestWithId(id: id, method: withMethod, params: andParams, chainId: chainId)

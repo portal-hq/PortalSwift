@@ -104,6 +104,7 @@ public class Portal {
     let api = api ?? PortalApi(apiKey: apiKey, apiHost: apiHost, provider: provider)
     self.api = api
     self.keychain.api = api
+    self.provider.api = api
 
     self.mpc = mpc ?? PortalMpc(apiKey: apiKey, api: self.api, keychain: self.keychain, host: mpcHost, mobile: self.binary, featureFlags: featureFlags)
 
