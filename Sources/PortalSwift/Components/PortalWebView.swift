@@ -60,94 +60,6 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
   /// - Parameters:
   ///   - portal: Your Portal instance.
   ///   - url: The URL the web view should start at.
-  ///   - onError: An error handler in case the web view throws errors.
-  ///   - eip6963Icon: A string representing the Base64-encoded icon for EIP-6963 compliance.
-  ///   - eip6963Name: A string representing the name for EIP-6963 compliance.
-  ///   - eip6963Rdns: A reverse DNS string for identifying the application in EIP-6963-compliant contexts.
-  ///   - eip6963Uuid: A unique identifier string for EIP-6963 compliance.
-  public init(
-    portal: Portal,
-    url: URL,
-    onError: @escaping (Result<Any>) -> Void,
-    eip6963Icon: String = EIP6963Constants.eip6963Icon,
-    eip6963Name: String = EIP6963Constants.eip6963Name,
-    eip6963Rdns: String = EIP6963Constants.eip6963Rdns,
-    eip6963Uuid: String = EIP6963Constants.eip6963Uuid
-  ) {
-    self.chainId = portal.chainId ?? 11_155_111
-    self.eip6963Icon = eip6963Icon
-    self.eip6963Name = eip6963Name
-    self.eip6963Rdns = eip6963Rdns
-    self.eip6963Uuid = eip6963Uuid
-    self.portal = portal
-    self.url = url
-    self.onError = onError
-
-    super.init(nibName: nil, bundle: nil)
-
-    guard let address = portal.address else {
-      print("[PortalWebView] No address found for user. Cannot inject provider into web page.")
-      return
-    }
-    do {
-      self.webView = try self.initWebView(address: address)
-      self.bindPortalEvents(portal: portal)
-    } catch {
-      print("Error initializing WebView: ❌ \(error.localizedDescription)")
-    }
-  }
-
-  /// The constructor for Portal's PortalWebView.
-  /// - Parameters:
-  ///   - portal: Your Portal instance.
-  ///   - url: The URL the web view should start at.
-  ///   - onError: An error handler in case the web view throws errors.
-  ///   - onPageStart: A handler that fires when the web view is starting to load a page.
-  ///   - onPageComplete: A handler that fires when the web view has finished loading a page.
-  ///   - eip6963Icon: A string representing the Base64-encoded icon for EIP-6963 compliance.
-  ///   - eip6963Name: A string representing the name for EIP-6963 compliance.
-  ///   - eip6963Rdns: A reverse DNS string for identifying the application in EIP-6963-compliant contexts.
-  ///   - eip6963Uuid: A unique identifier string for EIP-6963 compliance.
-  public init(
-    portal: Portal,
-    url: URL,
-    onError: @escaping (Result<Any>) -> Void,
-    onPageStart: @escaping () -> Void,
-    onPageComplete: @escaping () -> Void,
-    eip6963Icon: String = EIP6963Constants.eip6963Icon,
-    eip6963Name: String = EIP6963Constants.eip6963Name,
-    eip6963Rdns: String = EIP6963Constants.eip6963Rdns,
-    eip6963Uuid: String = EIP6963Constants.eip6963Uuid
-  ) {
-    self.chainId = portal.chainId ?? 11_155_111
-    self.eip6963Icon = eip6963Icon
-    self.eip6963Name = eip6963Name
-    self.eip6963Rdns = eip6963Rdns
-    self.eip6963Uuid = eip6963Uuid
-    self.portal = portal
-    self.url = url
-    self.onError = onError
-    self.onPageStart = onPageStart
-    self.onPageComplete = onPageComplete
-
-    super.init(nibName: nil, bundle: nil)
-
-    guard let address = portal.address else {
-      print("[PortalWebView] No address found for user. Cannot inject provider into web page.")
-      return
-    }
-    do {
-      self.webView = try self.initWebView(address: address)
-      self.bindPortalEvents(portal: portal)
-    } catch {
-      print("Error initializing WebView: ❌ \(error.localizedDescription)")
-    }
-  }
-
-  /// The constructor for Portal's PortalWebView.
-  /// - Parameters:
-  ///   - portal: Your Portal instance.
-  ///   - url: The URL the web view should start at.
   ///   - persistSessionData: Will persist browser session data (local-storage, cookies, etc...) when enabled.
   ///   - onError: An error handler in case the web view throws errors.
   ///   - onPageStart: A handler that fires when the web view is starting to load a page.
@@ -159,10 +71,10 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
   public init(
     portal: Portal,
     url: URL,
-    persistSessionData: Bool,
+    persistSessionData: Bool = false,
     onError: @escaping (Result<Any>) -> Void,
-    onPageStart: @escaping () -> Void,
-    onPageComplete: @escaping () -> Void,
+    onPageStart: (() -> Void)? = nil,
+    onPageComplete: (() -> Void)? = nil,
     eip6963Icon: String = EIP6963Constants.eip6963Icon,
     eip6963Name: String = EIP6963Constants.eip6963Name,
     eip6963Rdns: String = EIP6963Constants.eip6963Rdns,
