@@ -6,7 +6,6 @@
 //
 
 import AnyCodable
-import UIKit
 import WebKit
 
 /// The expected response from portal.provider.request
@@ -310,7 +309,7 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
       chainId: chainId
     )
 
-    if method == "wallet_switchEthereumChain" {
+    if method == PortalRequestMethod.wallet_switchEthereumChain.rawValue {
       try self.handleWalletSwitchEthereumChain(method: method, params: params)
     } else if signerMethods.contains(method) {
       self.portal.provider.request(payload: payload, completion: self.signerRequestCompletion, connect: nil)
