@@ -56,12 +56,12 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
   private var onPageStart: (() -> Void)?
   private var onPageComplete: (() -> Void)?
 
-  /// The constructor for Portal's WebViewController.
+  /// The constructor for Portal's PortalWebView.
   /// - Parameters:
   ///   - portal: Your Portal instance.
   ///   - url: The URL the web view should start at.
   ///   - onError: An error handler in case the web view throws errors.
-  ///   - eip6963Icon: A string representing the icon URL for EIP-6963 compliance.
+  ///   - eip6963Icon: A string representing the Base64-encoded icon for EIP-6963 compliance.
   ///   - eip6963Name: A string representing the name for EIP-6963 compliance.
   ///   - eip6963Rdns: A reverse DNS string for identifying the application in EIP-6963-compliant contexts.
   ///   - eip6963Uuid: A unique identifier string for EIP-6963 compliance.
@@ -97,14 +97,14 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
     }
   }
 
-  /// The constructor for Portal's WebViewController.
+  /// The constructor for Portal's PortalWebView.
   /// - Parameters:
   ///   - portal: Your Portal instance.
   ///   - url: The URL the web view should start at.
   ///   - onError: An error handler in case the web view throws errors.
   ///   - onPageStart: A handler that fires when the web view is starting to load a page.
   ///   - onPageComplete: A handler that fires when the web view has finished loading a page.
-  ///   - eip6963Icon: A string representing the icon URL for EIP-6963 compliance.
+  ///   - eip6963Icon: A string representing the Base64-encoded icon for EIP-6963 compliance.
   ///   - eip6963Name: A string representing the name for EIP-6963 compliance.
   ///   - eip6963Rdns: A reverse DNS string for identifying the application in EIP-6963-compliant contexts.
   ///   - eip6963Uuid: A unique identifier string for EIP-6963 compliance.
@@ -144,15 +144,15 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
     }
   }
 
-  /// The constructor for Portal's WebViewController.
+  /// The constructor for Portal's PortalWebView.
   /// - Parameters:
   ///   - portal: Your Portal instance.
   ///   - url: The URL the web view should start at.
-  ///   - persistSessionData: Will persist browser session data (localstorage, cookies, etc...) when enabled.
+  ///   - persistSessionData: Will persist browser session data (local-storage, cookies, etc...) when enabled.
   ///   - onError: An error handler in case the web view throws errors.
   ///   - onPageStart: A handler that fires when the web view is starting to load a page.
   ///   - onPageComplete: A handler that fires when the web view has finished loading a page.
-  ///   - eip6963Icon: A string representing the icon URL for EIP-6963 compliance.
+  ///   - eip6963Icon: A string representing the Base64-encoded icon for EIP-6963 compliance.
   ///   - eip6963Name: A string representing the name for EIP-6963 compliance.
   ///   - eip6963Rdns: A reverse DNS string for identifying the application in EIP-6963-compliant contexts.
   ///   - eip6963Uuid: A unique identifier string for EIP-6963 compliance.
