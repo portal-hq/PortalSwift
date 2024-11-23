@@ -289,6 +289,20 @@ public class Portal {
     self.mpc.registerBackupMethod(method, withStorage: withStorage)
   }
 
+  /// Configures Google Drive settings for the SDK.
+  ///
+  /// This method allows you to configure where backups are stored in Google Drive:
+  /// - **App Data Folder**: A hidden, app-specific storage area that is not visible to the user in their Google Drive interface. This is ideal for sensitive data or configurations that the user doesn't need to manage directly.
+  /// - **Google Drive Files**: A visible folder in the user's Google Drive, accessible and manageable by the user. This is suitable for backups the user might want to view, share, or organize manually.
+  ///
+  /// - Parameters:
+  ///   - clientId: The client ID for the Google Drive integration.
+  ///   - useAppDataFolderForBackup: A Boolean value indicating whether to use the app's private "App Data Folder" for backups if `true` and GDrive if `false`. Defaults to `false`.
+  ///   - folderName: The name of the folder to be used for storing data in Google Drive. Defaults to `"_PORTAL_MPC_DO_NOT_DELETE_"`.
+  ///
+  /// - Throws: An error if the Google Drive configuration fails.
+  ///
+  /// Use this method to set up Google Drive integration for backing and recover.
   public func setGDriveConfiguration(
     clientId: String,
     useAppDataFolderForBackup: Bool = false,
@@ -297,6 +311,13 @@ public class Portal {
     try self.mpc.setGDriveConfiguration(clientId: clientId, useAppDataFolderForBackup: useAppDataFolderForBackup, folderName: folderName)
   }
 
+  /// Sets the view controller to be used for presenting Google Drive-related UI.
+  ///
+  /// - Parameter view: A `UIViewController` instance that will be used to present Google Drive UI components.
+  ///
+  /// - Throws: An error if the Google Drive view configuration fails.
+  ///
+  /// Use this method to specify the view controller that handles Google Drive-related interactions or presentations.
   public func setGDriveView(_ view: UIViewController) throws {
     try self.mpc.setGDriveView(view)
   }
