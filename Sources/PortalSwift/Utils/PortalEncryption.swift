@@ -1,5 +1,4 @@
 import Foundation
-import Mpc
 
 public protocol PortalEncryptionProtocol {
   func decrypt(_ value: String, withPrivateKey: String) async throws -> String
