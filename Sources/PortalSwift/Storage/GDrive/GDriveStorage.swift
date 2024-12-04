@@ -25,9 +25,9 @@ public class GDriveStorage: Storage, PortalStorage {
     set(folder) { self.drive.folder = folder }
   }
 
-  var useAppDataFolderForBackup: Bool {
-    get { return self.drive.useAppDataFolderForBackup ?? false }
-    set(useAppDataFolderForBackup) { self.drive.useAppDataFolderForBackup = useAppDataFolderForBackup }
+  var backupOption: GDriveBackupOption {
+    get { return self.drive.backupOption ?? .appDataFolder }
+    set(backupOption) { self.drive.backupOption = backupOption }
   }
 
   public var view: UIViewController? {
@@ -63,9 +63,9 @@ public class GDriveStorage: Storage, PortalStorage {
 
   public func delete() async throws -> Bool {
     let hashes = try await getFilenameHashes()
-
+    let useAppDataFolder = backupOption == .appDataFolder || backupOption == .appDataFolderWithFallback
     for hash in hashes.values {
-      if let fileId = try? await drive.getIdForFilename(hash, useAppDataFolderForBackup: useAppDataFolderForBackup) {
+      if let fileId = try? await drive.getIdForFilename(hash, useAppDataFolder: useAppDataFolder) {
         if try await self.drive.delete(fileId) {
           return true
         }
@@ -80,14 +80,17 @@ public class GDriveStorage: Storage, PortalStorage {
 
     do {
       var recoveredFiles: [String: String] = [:]
-      var shouldReadFromAppDataFolder: Bool = useAppDataFolderForBackup
+      let shouldUseAppDataFolder: Bool = backupOption == .appDataFolder || backupOption == .appDataFolderWithFallback
+
       do {
-        // try the default folder depending on the `useAppDataFolderForBackup` flag value
-        recoveredFiles = try await drive.recoverFiles(for: hashes, useAppDataFolderForBackup: shouldReadFromAppDataFolder)
+        recoveredFiles = try await drive.recoverFiles(for: hashes, useAppDataFolder: shouldUseAppDataFolder)
       } catch {
-        // if the default folder failed try the other folder.
-        shouldReadFromAppDataFolder.toggle()
-        recoveredFiles = try await drive.recoverFiles(for: hashes, useAppDataFolderForBackup: shouldReadFromAppDataFolder)
+        let shouldFallbackToGDrive: Bool = backupOption == .appDataFolderWithFallback
+        if shouldFallbackToGDrive {
+          recoveredFiles = try await drive.recoverFiles(for: hashes, useAppDataFolder: false)
+        } else {
+          throw error
+        }
       }
 
       // Prioritize default file if available

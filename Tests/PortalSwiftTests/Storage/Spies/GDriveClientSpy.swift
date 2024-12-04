@@ -9,7 +9,7 @@
 import UIKit
 
 class GDriveClientSpy: GDriveClientProtocol {
-  var useAppDataFolderForBackup: Bool?
+  var backupOption: PortalSwift.GDriveBackupOption?
 
   var auth: PortalSwift.GoogleAuth? = nil
 
@@ -39,13 +39,13 @@ class GDriveClientSpy: GDriveClientProtocol {
 
   var getIdForFilenameCallsCount: Int = 0
   var getIdForFilenameFilenameParam: String?
-  var getIdForFilenameUseAppDataFolderForBackupParam: Bool?
+  var getIdForFilenameUseAppDataFolderParam: Bool?
   var getIdForFilenameReturnValue: String = ""
 
-  func getIdForFilename(_ filename: String, useAppDataFolderForBackup: Bool) async throws -> String {
+  func getIdForFilename(_ filename: String, useAppDataFolder: Bool) async throws -> String {
     getIdForFilenameCallsCount += 1
     getIdForFilenameFilenameParam = filename
-    getIdForFilenameUseAppDataFolderForBackupParam = useAppDataFolderForBackup
+    getIdForFilenameUseAppDataFolderParam = useAppDataFolder
     return getIdForFilenameReturnValue
   }
 
