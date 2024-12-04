@@ -81,13 +81,13 @@ class GDriveClientSpy: GDriveClientProtocol {
 
   var recoverFilesCallsCount: Int = 0
   var recoverFilesHashesParam: [String: String]?
-  var recoverFilesUseAppDataFolderForBackupParam: Bool?
+  var recoverFilesUseAppDataFolderParam: Bool?
   var recoverFilesReturnValue: [String: String] = ["default": "123456789.txt"]
 
-  func recoverFiles(for hashes: [String: String], useAppDataFolderForBackup: Bool) async throws -> [String: String] {
+  func recoverFiles(for hashes: [String: String], useAppDataFolder: Bool) async throws -> [String: String] {
     recoverFilesCallsCount += 1
     recoverFilesHashesParam = hashes
-    recoverFilesUseAppDataFolderForBackupParam = useAppDataFolderForBackup
+    recoverFilesUseAppDataFolderParam = useAppDataFolder
     return recoverFilesReturnValue
   }
 }
