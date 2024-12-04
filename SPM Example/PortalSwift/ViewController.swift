@@ -965,7 +965,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         mpcHost: config.mpcUrl
       )
 
-      try portal.setGDriveConfiguration(clientId: config.googleClientId)
+      try portal.setGDriveConfiguration(clientId: config.googleClientId, backupOption: .appDataFolder)
       try portal.setGDriveView(self)
       try portal.setPasskeyAuthenticationAnchor(self.view.window!)
       try portal.setPasskeyConfiguration(relyingParty: config.relyingParty, webAuthnHost: config.webAuthnHost)
