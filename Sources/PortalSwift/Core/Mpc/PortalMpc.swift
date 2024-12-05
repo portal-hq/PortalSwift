@@ -7,7 +7,6 @@
 
 import AuthenticationServices
 import Foundation
-import Mpc
 import Security
 
 public protocol PortalMpcProtocol {

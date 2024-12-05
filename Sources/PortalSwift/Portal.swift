@@ -8,7 +8,6 @@
 import AnyCodable
 import AuthenticationServices
 import Foundation
-import Mpc
 import SolanaSwift
 
 /// The main Portal class.
