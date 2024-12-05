@@ -2086,7 +2086,6 @@ extension ViewController {
 
     let settingsView = SettingsView(portal: portal)
     let hostingController = UIHostingController(rootView: settingsView)
-//        hostingController.modalPresentationStyle = .fullScreen // Optional
     self.present(hostingController, animated: true, completion: nil)
   }
 }
