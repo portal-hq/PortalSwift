@@ -287,10 +287,54 @@ public class Portal {
     self.mpc.registerBackupMethod(method, withStorage: withStorage)
   }
 
-  public func setGDriveConfiguration(clientId: String, folderName: String = "_PORTAL_MPC_DO_NOT_DELETE_") throws {
-    try self.mpc.setGDriveConfiguration(clientId: clientId, folderName: folderName)
+  /// Configures Google Drive settings for the SDK.
+  ///
+  /// This method allows you to configure where backups are stored in Google Drive:
+  /// - **App Data Folder**: A hidden, app-specific storage area that is not visible to the user in their Google Drive interface. This is ideal for sensitive data or configurations that the user doesn't need to manage directly.
+  /// - **Google Drive Files**: A visible folder in the user's Google Drive, accessible and manageable by the user. This is suitable for backups the user might want to view, share, or organize manually.
+  ///
+  /// - Parameters:
+  ///   - clientId: The client ID for the Google Drive integration.
+  ///   - folderName: The name of the folder to be used for storing data in Google Drive. Defaults to `"_PORTAL_MPC_DO_NOT_DELETE_"`.
+  ///
+  /// - Throws: An error if the Google Drive configuration fails.
+  ///
+  /// Use this method to set up Google Drive integration for backing and recover.
+  @available(*, deprecated, message: "Use setGDriveConfiguration(clientId:backupOption:) instead.")
+  public func setGDriveConfiguration(
+    clientId: String,
+    folderName: String = "_PORTAL_MPC_DO_NOT_DELETE_"
+  ) throws {
+    try self.mpc.setGDriveConfiguration(clientId: clientId, backupOption: .gdriveFolder(folderName: folderName))
   }
 
+  /// Configures Google Drive settings for the SDK with a specified backup option.
+  ///
+  /// This method allows you to set up Google Drive integration and choose the backup storage strategy using the `GDriveBackupOption` enum.
+  ///
+  /// - Parameters:
+  ///   - clientId: The client ID for the Google Drive integration.
+  ///   - backupOption: An option from the `GDriveBackupOption` enum that specifies the backup/recover storage type:
+  ///     - `appDataFolder`: Stores backups in the hidden, app-specific "App Data Folder" in Google Drive. This folder is not visible to the user.
+  ///     - `appDataFolderWithFallback`: Attempts to store backups and recover using the "App Data Folder". If recover fails, it automatically falls back to a user-visible Google Drive.
+  ///     - `gdriveFolder(folderName: String)`: Stores backups in a user-visible folder in Google Drive with the specified `folderName`.
+  ///
+  /// - Throws: An error if the Google Drive configuration fails.
+  ///
+  /// ## Important Notes:
+  /// - The `appDataFolder` and `appDataFolderWithFallback` options are supported starting from SDK version 4.2.0. Those options cannot be used with an earlier SDK version, backups stored in the App Data Folder will be lost.
+  /// - Choose the appropriate backup option based on your application's requirements. For example, use the `App Data Folder` for sensitive or hidden backups, and a visible folder for backups the user may want to manage manually.
+  public func setGDriveConfiguration(clientId: String, backupOption: GDriveBackupOption) throws {
+    try self.mpc.setGDriveConfiguration(clientId: clientId, backupOption: backupOption)
+  }
+
+  /// Sets the view controller to be used for presenting Google Drive-related UI.
+  ///
+  /// - Parameter view: A `UIViewController` instance that will be used to present Google Drive UI components.
+  ///
+  /// - Throws: An error if the Google Drive view configuration fails.
+  ///
+  /// Use this method to specify the view controller that handles Google Drive-related interactions or presentations.
   public func setGDriveView(_ view: UIViewController) throws {
     try self.mpc.setGDriveView(view)
   }
@@ -1103,6 +1147,13 @@ public enum BackupMethods: String, Codable {
   init?(fromString: String) {
     self.init(rawValue: fromString)
   }
+}
+
+/// The list of Google Drive backup options.
+public enum GDriveBackupOption: Equatable {
+  case appDataFolder
+  case appDataFolderWithFallback
+  case gdriveFolder(folderName: String)
 }
 
 /// Gateway URL errors.

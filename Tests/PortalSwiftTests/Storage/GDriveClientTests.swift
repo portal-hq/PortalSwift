@@ -89,7 +89,7 @@ extension GDriveClientTests {
 extension GDriveClientTests {
   func testGetIdForFilename() async throws {
     let expectation = XCTestExpectation(description: "GDriveClient.getIdForFilename(filename)")
-    let fileId = try await client?.getIdForFilename(MockConstants.mockGDriveFileName)
+    let fileId = try await client?.getIdForFilename(MockConstants.mockGDriveFileName, useAppDataFolder: false)
     XCTAssertEqual(fileId, MockConstants.mockGDriveFileId)
     expectation.fulfill()
     await fulfillment(of: [expectation], timeout: 5.0)
@@ -101,7 +101,7 @@ extension GDriveClientTests {
 
     do {
       // and given
-      _ = try await client?.getIdForFilename("")
+      _ = try await client?.getIdForFilename("", useAppDataFolder: false)
       XCTFail("Expected error not thrown when calling GDriveClient.delete() when there is no auth object.")
     } catch {
       XCTAssertEqual(error as? GDriveClientError, GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfig() to configure GoogleDrive"))
@@ -123,7 +123,7 @@ extension GDriveClientTests {
     portalRequestSpy.returnData = filesData
 
     // and given
-    _ = try await client?.getIdForFilename("")
+    _ = try await client?.getIdForFilename("", useAppDataFolder: false)
 
     // then
     XCTAssertEqual(portalRequestSpy.getCallsCount, 1)
@@ -147,11 +147,36 @@ extension GDriveClientTests {
     portalRequestSpy.returnData = filesData
 
     // and given
-    _ = try await client?.getIdForFilename(fileName)
+    _ = try await client?.getIdForFilename(fileName, useAppDataFolder: false)
 
     // then
     XCTAssertEqual(portalRequestSpy.getFromParam?.path(), "/drive/v3/files")
     XCTAssertEqual(portalRequestSpy.getFromParam?.query(), "corpora=user&q=\(query)&orderBy=modifiedTime%20desc&pageSize=1")
+  }
+
+  @available(iOS 16.0, *)
+  func test_getIdForFilename_forAppDataFolder_willCall_requestGet_passingCorrectUrlPath() async throws {
+    // given
+    let portalRequestSpy = PortalRequestsSpy()
+    initGDriveClient(requests: portalRequestSpy)
+    let fileName = "test-file-name"
+    let query = "name='\(fileName).txt'".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+
+    // and given
+    let mockFilesListResponse = GDriveFilesListResponse(
+      kind: "test-gdrive-file-kind",
+      incompleteSearch: false,
+      files: [MockConstants.mockGDriveFile]
+    )
+    let filesData = try JSONEncoder().encode(mockFilesListResponse)
+    portalRequestSpy.returnData = filesData
+
+    // and given
+    _ = try await client?.getIdForFilename(fileName, useAppDataFolder: true)
+
+    // then
+    XCTAssertEqual(portalRequestSpy.getFromParam?.path(), "/drive/v3/files")
+    XCTAssertEqual(portalRequestSpy.getFromParam?.query(), "spaces=appDataFolder&q=\(query)&orderBy=modifiedTime%20desc&pageSize=1")
   }
 
   func test_getIdForFilename_willThrowCorrectError_whenThereIsNoFileFound() async throws {
@@ -170,7 +195,7 @@ extension GDriveClientTests {
 
     do {
       // and given
-      _ = try await client?.getIdForFilename("")
+      _ = try await client?.getIdForFilename("", useAppDataFolder: false)
       XCTFail("Expected error not thrown when calling GDriveClient.delete() when there is no file found.")
     } catch {
       XCTAssertEqual(error as? GDriveClientError, GDriveClientError.noFileFound)
@@ -458,7 +483,7 @@ extension GDriveClientTests {
 
     do {
       // and given
-      _ = try await client?.writeFile("", withContent: "", andAccessToken: "")
+      _ = try await client?.writeFile("", withContent: "", andAccessToken: "", useAppDataFolder: false)
       XCTFail("Expected error not thrown when calling GDriveClient.read() when there is no auth object.")
     } catch {
       XCTAssertEqual(error as? GDriveClientError, GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfig() to configure GoogleDrive"))
@@ -480,7 +505,7 @@ extension GDriveClientTests {
     portalRequestSpy.returnData = filesData
 
     // and given
-    _ = try? await client?.writeFile("", withContent: "", andAccessToken: "")
+    _ = try? await client?.writeFile("", withContent: "", andAccessToken: "", useAppDataFolder: false)
 
     // then
     XCTAssertEqual(portalRequestSpy.postMultiPartDataCallsCount, 1)
@@ -512,7 +537,7 @@ extension GDriveClientTests {
     )
 
     // and given
-    _ = try? await client?.writeFile(fileName, withContent: content, andAccessToken: accessToken)
+    _ = try? await client?.writeFile(fileName, withContent: content, andAccessToken: accessToken, useAppDataFolder: false)
 
     // then
     XCTAssertEqual(portalRequestSpy.postMultiPartDataFromParam?.path(), "/upload/drive/v3/files")
