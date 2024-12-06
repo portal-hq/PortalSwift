@@ -7,84 +7,98 @@
 //
 
 import PortalSwift
-import SwiftUI
 import WebKit
 
 class WebViewController: UIViewController, PortalWebViewDelegate {
-  public var portal: Portal?
-  public var url: String?
-  public var webViewController: PortalWebView?
+  var portal: Portal?
+  var url: String?
+  var webViewController: PortalWebView?
+  let persistSessionData = false
+  let eip6963Icon = EIP6963Constants.eip6963Icon
+  let eip6963Name = EIP6963Constants.eip6963Name
+  let eip6963Rdns = EIP6963Constants.eip6963Rdns
+  let eip6963Uuid = EIP6963Constants.eip6963Uuid
 
   private var activityIndicator: UIActivityIndicatorView!
 
   override func viewDidLoad() {
     super.viewDidLoad()
+    addActivityIndicator()
 
-    // Initialize the activity indicator and add it to the view
-    self.activityIndicator = UIActivityIndicatorView(style: .large)
-    self.activityIndicator.color = UIColor(hex: "#3e71f8")
-    self.activityIndicator.translatesAutoresizingMaskIntoConstraints = false
-    view.addSubview(self.activityIndicator)
-
-    guard let portal = self.portal else {
-      print("No self.portal found")
+    guard let portal else {
+      print("❌ WebViewController error: The portal object is nil.")
       return
     }
 
-    if self.portal != nil, self.url != nil {
-      guard let url = URL(string: url ?? "") else {
-        print("WebViewController error: URL could not be derived.")
-        return
-      }
-
-      webViewController = PortalWebView(
-        portal: portal,
-        url: url,
-        onError: self.onError,
-        onPageStart: self.onPageStart,
-        onPageComplete: self.onPageComplete
-      )
-
-      guard let webViewController = webViewController else {
-        print("Unable to load webViewController")
-        return
-      }
-
-      webViewController.delegate = self
-
-      // Install the WebViewController as a child view controller.
-      addChild(webViewController)
-
-      guard let webViewControllerView = webViewController.view else {
-        print("WebViewController error: webViewController.view could not be derived.")
-        return
-      }
-
-      view.addSubview(webViewControllerView)
-      webViewController.didMove(toParent: self)
+    guard let url else {
+      print("❌ WebViewController error: The url object is nil.")
+      return
     }
+
+    guard let url = URL(string: url) else {
+      print("❌ WebViewController error: URL could not be derived.")
+      return
+    }
+
+    webViewController = PortalWebView(
+      portal: portal, // Your Portal instance.
+      url: url, // The URL the web view should start at.
+      persistSessionData: persistSessionData, // Will persist browser session data (local-storage, cookies, etc...) when enabled.
+      onError: self.onErrorHandler, // An error handler in case the web view throws errors.
+      onPageStart: self.onPageStartHandler, // A handler that fires when the web view is starting to load a page.
+      onPageComplete: self.onPageCompleteHandler, // A handler that fires when the web view has finished loading a page.
+      eip6963Icon: eip6963Icon, // A string representing the Base64-encoded icon for EIP-6963 compliance.
+      eip6963Name: eip6963Name, // A string representing the name for EIP-6963 compliance.
+      eip6963Rdns: eip6963Rdns, // A reverse DNS string for identifying the application in EIP-6963-compliant contexts.
+      eip6963Uuid: eip6963Uuid // A unique identifier string for EIP-6963 compliance.
+    )
+
+    guard let webViewController = webViewController else {
+      print("❌ WebViewController error: the PortalWebView object is nil.")
+      return
+    }
+
+    webViewController.delegate = self
+
+    // Install the WebViewController as a child view controller.
+    addChild(webViewController)
+
+    guard let webViewControllerView = webViewController.view else {
+      print("❌ WebViewController error: webViewController.view could not be derived.")
+      return
+    }
+
+    view.addSubview(webViewControllerView)
+    webViewController.didMove(toParent: self)
+  }
+
+  private func addActivityIndicator() {
+    // Initialize the activity indicator and add it to the view
+    self.activityIndicator = UIActivityIndicatorView(style: .large)
+    self.activityIndicator.color = UIColor.blue
+    self.activityIndicator.translatesAutoresizingMaskIntoConstraints = false
+    view.addSubview(self.activityIndicator)
   }
 
   override func viewDidDisappear(_ animated: Bool) {
     super.viewDidDisappear(animated)
-
     self.webViewController = nil
   }
 
-  func onPageStart() {
+  func onPageStartHandler() {
     print("🔄 PortalWebView: Page loading started")
     self.activityIndicator.startAnimating()
     view.bringSubviewToFront(self.activityIndicator)
   }
 
-  func onPageComplete() {
+  func onPageCompleteHandler() {
     print("✅ PortalWebView: Page loading completed")
     self.activityIndicator.stopAnimating()
   }
 
-  func onError(result: Result<Any>) {
+  func onErrorHandler(result: Result<Any>) {
     if let error = result.error {
-      print("PortalWebviewError:", error, "Description:", error.localizedDescription)
+      print("❌ PortalWebViewError:", error, "Description:", error.localizedDescription)
       return
     }
 
@@ -96,31 +110,13 @@ class WebViewController: UIViewController, PortalWebViewDelegate {
     }
 
     if let nestedError = nestedResult.error {
-      print("❌ Error in nested PortalWebviewError:", nestedError)
+      print("❌ Error in nested PortalWebViewError:", nestedError)
       return
     }
   }
 
-  public func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+  func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
     print("✅ Delegate method fired!", webView, navigationAction, decisionHandler)
     decisionHandler(.allow)
-  }
-}
-
-// UIColor extension to handle hex color strings
-extension UIColor {
-  convenience init(hex: String) {
-    var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
-    hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
-
-    var rgb: UInt64 = 0
-    Scanner(string: hexSanitized).scanHexInt64(&rgb)
-
-    let red = CGFloat((rgb & 0xFF0000) >> 16) / 255.0
-    let green = CGFloat((rgb & 0x00FF00) >> 8) / 255.0
-    let blue = CGFloat(rgb & 0x0000FF) / 255.0
-    let alpha = CGFloat(1.0)
-
-    self.init(red: red, green: green, blue: blue, alpha: alpha)
   }
 }

@@ -7,7 +7,6 @@
 
 import AnyCodable
 import Foundation
-import Mpc
 
 public class PortalMpcSigner {
   private let apiKey: String

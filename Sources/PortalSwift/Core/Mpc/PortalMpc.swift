@@ -7,7 +7,6 @@
 
 import AuthenticationServices
 import Foundation
-import Mpc
 import Security
 
 public protocol PortalMpcProtocol {
@@ -18,7 +17,7 @@ public protocol PortalMpcProtocol {
   func generateSolanaWallet(usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> String
   func generateSolanaWalletAndBackupShares(backupMethod: BackupMethods, usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> (solanaAddress: String, backupResponse: PortalMpcBackupResponse)
   func registerBackupMethod(_ method: BackupMethods, withStorage: PortalStorage)
-  func setGDriveConfiguration(clientId: String, folderName: String) throws
+  func setGDriveConfiguration(clientId: String, backupOption: GDriveBackupOption) throws
   func setGDriveView(_ view: UIViewController) throws
   @available(iOS 16, *)
   func setPasskeyAuthenticationAnchor(_ anchor: ASPresentationAnchor) throws
@@ -697,13 +696,17 @@ public class PortalMpc: PortalMpcProtocol {
     self.backupOptions[method] = storage
   }
 
-  public func setGDriveConfiguration(clientId: String, folderName: String) throws {
+  public func setGDriveConfiguration(clientId: String, backupOption: GDriveBackupOption) throws {
     guard let storage = backupOptions[.GoogleDrive] as? GDriveStorage else {
       throw MpcError.backupMethodNotRegistered("PortalMpc.setGDriveConfig() - Could not find an instance of `GDriveStorage`. Please use `portal.registerBackupMethod()`")
     }
 
+    if case .gdriveFolder(let folderName) = backupOption {
+      storage.folder = folderName
+    }
+
+    storage.backupOption = backupOption
     storage.clientId = clientId
-    storage.folder = folderName
   }
 
   public func setGDriveView(_ view: UIViewController) throws {

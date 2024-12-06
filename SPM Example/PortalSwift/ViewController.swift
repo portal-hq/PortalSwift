@@ -9,6 +9,7 @@
 import AnyCodable
 import os.log
 import PortalSwift
+import SwiftUI
 import UIKit
 
 struct UserResult: Codable {
@@ -876,6 +877,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
           relyingParty: "portalhq.dev"
         )
       }
+
+      Settings.shared.portalConfig.appConfig = self.config
     } catch {
       self.logger.error("ViewController.loadApplicationConfig() - Error loading application config: \(error)")
     }
@@ -972,7 +975,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         mpcHost: config.mpcUrl
       )
 
-      try portal.setGDriveConfiguration(clientId: config.googleClientId)
+      try portal.setGDriveConfiguration(clientId: config.googleClientId, backupOption: .appDataFolder)
       try portal.setGDriveView(self)
       try portal.setPasskeyAuthenticationAnchor(self.view.window!)
       try portal.setPasskeyConfiguration(relyingParty: config.relyingParty, webAuthnHost: config.webAuthnHost)
@@ -2040,6 +2043,15 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
     }
   }
+
+  @available(iOS 17.0, *)
+  @IBAction func didPressSettings(_: Any) {
+    do {
+      try openSettingsPage()
+    } catch {
+      print("ViewController.didPressSettings() - ❌ Cannot open settings. \(error)")
+    }
+  }
 }
 
 // MARK: - ETH balance refresh
@@ -2062,5 +2074,20 @@ extension ViewController {
 
   private func stopRefreshBalanceTimer() {
     self.refreshBalanceTimer?.invalidate()
+  }
+}
+
+// MARK: - Settings
+
+@available(iOS 17.0, *)
+extension ViewController {
+  func openSettingsPage() throws {
+    guard let portal = self.portal else {
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+
+    let settingsView = SettingsView(portal: portal)
+    let hostingController = UIHostingController(rootView: settingsView)
+    self.present(hostingController, animated: true, completion: nil)
   }
 }
