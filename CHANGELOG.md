@@ -10,6 +10,10 @@ Possible Types of changes include:
 - Fixed
 - Security
 
+## 4.2.0 - 2024-12-05
+
+- Add support for AppData folder backups with GDrive
+
 ## 4.1.0 - 2024-11-20
 
 - Change `createWallet` to return non-optional eth and Solana addresses & recover wallet non-optional ETH address
