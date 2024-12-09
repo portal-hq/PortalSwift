@@ -508,7 +508,7 @@ extension PortalMpcTests {
       XCTFail("Expected error not thrown when calling PortalMpc.eject when ETH backup share not found.")
     } catch {
       // then
-      XCTAssertEqual(error as? MpcError, MpcError.unableToEjectWallet("No backup share pair found for curve SECP256K1."))
+      XCTAssertEqual(error as? MpcError, MpcError.unableToEjectWallet("No backed up wallet found for curve SECP256K1."))
     }
   }
 
@@ -623,15 +623,10 @@ extension PortalMpcTests {
 
   func test_eject_willThrowCorrectError_whenEthereumWalletNotExists() async throws {
     // given
-
     let mockICloudMock = PortalStorageMock()
-
     let portalApiMock = PortalApiMock()
-
     portalApiMock.client = ClientResponse.stub(wallets: [.stub(curve: .ED25519)])
-
     mockICloudMock.decryptReturnValue = UnitTestMockConstants.decodedShare
-
     initPortalMpcWith(
       portalApi: portalApiMock,
 
@@ -640,14 +635,10 @@ extension PortalMpcTests {
 
     do {
       // and given
-
       _ = try await mpc?.eject(.iCloud)
-
       XCTFail("Expected error not thrown when calling PortalMpc.eject when ETH wallet not found.")
-
     } catch {
       // then
-
       XCTAssertEqual(error as? MpcError, MpcError.unableToEjectWallet("No backed up wallet found for curve SECP256K1."))
     }
   }

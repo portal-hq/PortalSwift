@@ -251,7 +251,6 @@ public class PortalMpc: PortalMpcProtocol {
 
     var cipherText = withCipherText
     var organizationShare = andOrganizationBackupShare
-    var organizationShareEd25519 = andOrganizationSolanaBackupShare
 
     guard let storage = self.backupOptions[method] else {
       throw MpcError.unexpectedErrorOnEject("Backup method \(method.rawValue) not registered.")
@@ -262,16 +261,16 @@ public class PortalMpc: PortalMpcProtocol {
     }
 
     var backupSharePairId: String?
-    var walletId: String?
-    var walletIdEd25519: String?
+    var SECP256K1WalletId: String?
+    var Ed25519WalletId: String?
 
     for wallet in client.wallets {
       if wallet.curve == .SECP256K1 {
         // Locate the appropriate wallet for Ethereum
-        walletId = wallet.id
         for backupShare in wallet.backupSharePairs {
           if backupShare.status == .completed, backupShare.backupMethod == method {
             backupSharePairId = backupShare.id
+            SECP256K1WalletId = wallet.id
             break
           }
         }
@@ -279,7 +278,7 @@ public class PortalMpc: PortalMpcProtocol {
         // Locate the appropriate wallet for Solana
         for backupShare in wallet.backupSharePairs {
           if backupShare.status == .completed, backupShare.backupMethod == method {
-            walletIdEd25519 = wallet.id
+            Ed25519WalletId = wallet.id
             break
           }
         }
@@ -287,7 +286,7 @@ public class PortalMpc: PortalMpcProtocol {
     }
 
     // Always enforce Ethereum values are present
-    guard let walletId else {
+    guard let SECP256K1WalletId else {
       throw MpcError.unableToEjectWallet("No backed up wallet found for curve SECP256K1.")
     }
     guard let backupSharePairId else {
@@ -297,11 +296,11 @@ public class PortalMpc: PortalMpcProtocol {
     let backupWithPortal = client.environment?.backupWithPortalEnabled ?? false
     if backupWithPortal {
       cipherText = try await self.api?.getClientCipherText(backupSharePairId)
-      organizationShare = try await self.api?.prepareEject(walletId, method)
+      organizationShare = try await self.api?.prepareEject(SECP256K1WalletId, method)
 
       // Conditionally prepare eject for Solana wallets
-      if let walletIdEd25519 {
-        organizationShareEd25519 = try? await self.api?.prepareEject(walletIdEd25519, method)
+      if let Ed25519WalletId {
+        _ = try? await self.api?.prepareEject(Ed25519WalletId, method)
       }
     }
 
@@ -948,7 +947,7 @@ public class PortalMpc: PortalMpcProtocol {
   ///    - cipherText: the cipherText of the client's backup share
   ///    - method: The specific backup storage option.
   ///    - orgShare: the stringified version of the organization's backup share
-  @available(*, deprecated, renamed: "ejectPrivateKey", message: "Please use the async/await implementation of ejectPrivateKey().")
+  @available(*, deprecated, renamed: "ejectPrivateKey", message: "Please use eject() instead.")
   public func ejectPrivateKey(
     clientBackupCiphertext: String,
     method: BackupMethods.RawValue,
