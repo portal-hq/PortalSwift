@@ -406,7 +406,7 @@ public class Portal {
   /// provided by the client and organization. If the private key is not found, it throws an error.
   ///
   /// - Parameters:
-  ///   - method: The backup method to be used for ejection. This defines the storage option (e.g., Password, Cloud, etc.).
+  ///   - method: The backup method to be used for ejection. This defines the storage option (e.g., Password, iCloud, etc.).
   ///   - withCipherText: The client's backup share, provided as a cipherText string. (Optional)
   ///   - andOrganizationBackupShare: The stringified version of the organization's Ethereum-specific backup share. (Optional)
   ///
@@ -456,7 +456,7 @@ public class Portal {
   /// namespaces to their corresponding private keys.
   ///
   /// - Parameters:
-  ///   - method: The backup method to be used for ejection. This defines the storage option (e.g., Password, Cloud, etc.).
+  ///   - method: The backup method to be used for ejection. This defines the storage option (e.g., Password, iCloud, etc.).
   ///   - withCipherText: The client's backup share, provided as a cipherText string. (Optional)
   ///   - andOrganizationBackupShare: The stringified version of the organization's Ethereum-specific backup share. (Optional)
   ///   - andOrganizationSolanaBackupShare: The stringified version of the organization's Solana-specific backup share. (Optional)
