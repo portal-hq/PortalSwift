@@ -400,6 +400,35 @@ public class Portal {
     return addresses
   }
 
+  /// Ejects the Ethereum private key using the specified backup method and provided shares.
+  ///
+  /// This method retrieves the private key for Ethereum-based chains (`eip155`) using backup shares
+  /// provided by the client and organization. If the private key is not found, it throws an error.
+  ///
+  /// - Parameters:
+  ///   - method: The backup method to be used for ejection. This defines the storage option (e.g., Password, iCloud, etc.).
+  ///   - withCipherText: The client's backup share, provided as a cipherText string. (Optional)
+  ///   - andOrganizationBackupShare: The stringified version of the organization's Ethereum-specific backup share. (Optional)
+  ///
+  /// - Returns: The private key for the EIP-155 namespace as a `String`.
+  ///
+  /// - Throws:
+  ///   - `MpcError.unableToEjectWallet` if the private key is not found.
+  ///   - Other errors thrown by the MPC ejection process.
+  ///
+  /// ## Example Usage
+  /// ```swift
+  /// do {
+  ///     let privateKey = try await eject(
+  ///         .Password,
+  ///         withCipherText: "encrypted-client-share",
+  ///         andOrganizationBackupShare: "encrypted-org-ethereum-share"
+  ///     )
+  ///     print("Ethereum Private Key: \(privateKey)")
+  /// } catch {
+  ///     print("Failed to eject private key: \(error)")
+  /// }
+  /// ```
   public func eject(
     _ method: BackupMethods,
     withCipherText: String? = nil,
@@ -420,6 +449,44 @@ public class Portal {
     return privateKey
   }
 
+  /// Ejects private keys for all supported namespaces (eip155 & solana) using the specified backup method and provided shares.
+  ///
+  /// This method retrieves private keys from the backup shares provided by the client and organization.
+  /// It supports optional organization backup shares for Solana. The returned dictionary maps
+  /// namespaces to their corresponding private keys.
+  ///
+  /// - Parameters:
+  ///   - method: The backup method to be used for ejection. This defines the storage option (e.g., Password, iCloud, etc.).
+  ///   - withCipherText: The client's backup share, provided as a cipherText string. (Optional)
+  ///   - andOrganizationBackupShare: The stringified version of the organization's Ethereum-specific backup share. (Optional)
+  ///   - andOrganizationSolanaBackupShare: The stringified version of the organization's Solana-specific backup share. (Optional)
+  ///
+  /// - Returns: A dictionary mapping `PortalNamespace` values to their corresponding private keys (`String`).
+  ///   The dictionary may include the following keys:
+  ///   - `.eip155`: The private key for the EIP-155 namespace (commonly used for Ethereum-based chains).
+  ///   - `.solana`: The private key for the Solana namespace.
+  ///
+  /// - Throws: Errors thrown by the MPC ejection process.
+  ///
+  /// ## Example Usage
+  /// ```swift
+  /// do {
+  ///     let privateKeys = try await ejectPrivateKeys(
+  ///         .Password,
+  ///         withCipherText: "encrypted-client-share",
+  ///         andOrganizationBackupShare: "encrypted-org-ethereum-share",
+  ///         andOrganizationSolanaBackupShare: "encrypted-org-solana-share"
+  ///     )
+  ///     if let eip155Key = privateKeys[.eip155] {
+  ///         print("EIP-155 Private Key: \(eip155Key)")
+  ///     }
+  ///     if let solanaKey = privateKeys[.solana] {
+  ///         print("Solana Private Key: \(solanaKey)")
+  ///     }
+  /// } catch {
+  ///     print("Failed to eject private keys: \(error)")
+  /// }
+  /// ```
   public func ejectPrivateKeys(
     _ method: BackupMethods,
     withCipherText: String? = nil,
