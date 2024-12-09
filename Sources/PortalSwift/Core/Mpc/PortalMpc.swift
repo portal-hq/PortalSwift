@@ -268,10 +268,10 @@ public class PortalMpc: PortalMpcProtocol {
     for wallet in client.wallets {
       if wallet.curve == .SECP256K1 {
         // Locate the appropriate wallet for Ethereum
+        walletId = wallet.id
         for backupShare in wallet.backupSharePairs {
           if backupShare.status == .completed, backupShare.backupMethod == method {
             backupSharePairId = backupShare.id
-            walletId = wallet.id
             break
           }
         }
@@ -287,11 +287,11 @@ public class PortalMpc: PortalMpcProtocol {
     }
 
     // Always enforce Ethereum values are present
-    guard let backupSharePairId else {
-      throw MpcError.unableToEjectWallet("No backup share pair found for curve SECP256K1.")
-    }
     guard let walletId else {
       throw MpcError.unableToEjectWallet("No backed up wallet found for curve SECP256K1.")
+    }
+    guard let backupSharePairId else {
+      throw MpcError.unableToEjectWallet("No backup share pair found for curve SECP256K1.")
     }
 
     let backupWithPortal = client.environment?.backupWithPortalEnabled ?? false

@@ -618,6 +618,39 @@ extension PortalMpcTests {
     // then
     XCTAssertEqual(portalApiMock.ejectCallsCount, 1)
   }
+
+  @available(iOS 16, *)
+
+  func test_eject_willThrowCorrectError_whenEthereumWalletNotExists() async throws {
+    // given
+
+    let mockICloudMock = PortalStorageMock()
+
+    let portalApiMock = PortalApiMock()
+
+    portalApiMock.client = ClientResponse.stub(wallets: [.stub(curve: .ED25519)])
+
+    mockICloudMock.decryptReturnValue = UnitTestMockConstants.decodedShare
+
+    initPortalMpcWith(
+      portalApi: portalApiMock,
+
+      iCloudStorage: mockICloudMock
+    )
+
+    do {
+      // and given
+
+      _ = try await mpc?.eject(.iCloud)
+
+      XCTFail("Expected error not thrown when calling PortalMpc.eject when ETH wallet not found.")
+
+    } catch {
+      // then
+
+      XCTAssertEqual(error as? MpcError, MpcError.unableToEjectWallet("No backed up wallet found for curve SECP256K1."))
+    }
+  }
 }
 
 // MARK: - generate Tests
