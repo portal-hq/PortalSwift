@@ -165,6 +165,23 @@ extension PortalKeychainTests {
     // then
     XCTAssertTrue(keyChainAccessSpy.getItemCallsCount >= 1)
   }
+
+  func test_getAddresses_willThrowCorrectError_WhenThereIsNoMetadata() async throws {
+    // given
+    let keyChainAccessSpy = PortalKeyChainAccessSpy()
+    initKeychainWith(keychainAccess: keyChainAccessSpy)
+
+    do {
+      // and given
+      _ = try await keychain.getAddresses()
+      XCTFail("Expected error not thrown when calling PortalKeychain.getAddresses when there is metadata.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? PortalKeychain.KeychainError, PortalKeychain.KeychainError.unableToDecodeMetadata)
+    }
+    // then
+    XCTAssertTrue(keyChainAccessSpy.getItemCallsCount >= 1)
+  }
 }
 
 // MARK: - getMetadata tests
