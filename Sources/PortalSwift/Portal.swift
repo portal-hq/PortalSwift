@@ -513,24 +513,12 @@ public class Portal {
     _ = self.provider.once(event: event, callback: callback)
   }
 
-  public func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any]?) async throws -> PortalProviderResult {
-    guard let andParams = andParams else {
-      throw PortalProviderError.invalidRequestParams
-    }
-
+  public func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any] = []) async throws -> PortalProviderResult {
     let params = andParams.map { param in
       AnyCodable(param)
     }
 
     return try await self.provider.request(chainId, withMethod: withMethod, andParams: params, connect: nil)
-  }
-
-  public func request(_ chainId: String, withMethod: String, andParams: [Any]) async throws -> PortalProviderResult {
-    guard let method = PortalRequestMethod(rawValue: withMethod) else {
-      throw PortalProviderError.unsupportedRequestMethod(withMethod)
-    }
-
-    return try await self.request(chainId, withMethod: method, andParams: andParams)
   }
 
   public func getRpcUrl(forChainId: String) async -> String? {
@@ -861,6 +849,28 @@ public class Portal {
     completion: @escaping (Result<String>) -> Void
   ) {
     self.mpc.ejectPrivateKey(clientBackupCiphertext: clientBackupCiphertext, method: method, backupConfigs: backupConfigs, orgBackupShare: orgBackupShare, completion: completion)
+  }
+
+  @available(*, deprecated, message: "Use request(_:withMethod:andParams:) with a default value for andParams instead.")
+  public func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any]?) async throws -> PortalProviderResult {
+    guard let andParams = andParams else {
+      throw PortalProviderError.invalidRequestParams
+    }
+
+    let params = andParams.map { param in
+      AnyCodable(param)
+    }
+
+    return try await self.request(chainId, withMethod: withMethod, andParams: andParams)
+  }
+
+  @available(*, deprecated, message: "Use request(_:withMethod:andParams:) with PortalRequestMethod instead of String.")
+  public func request(_ chainId: String, withMethod: String, andParams: [Any]) async throws -> PortalProviderResult {
+    guard let method = PortalRequestMethod(rawValue: withMethod) else {
+      throw PortalProviderError.unsupportedRequestMethod(withMethod)
+    }
+
+    return try await self.request(chainId, withMethod: method, andParams: andParams)
   }
 
   public func provisionWallet(
