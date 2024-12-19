@@ -546,19 +546,19 @@ public struct Eip115Transaction: Codable {
 }
 
 public struct BuildTransactionMetaData: Codable {
-  let amount: String
-  let fromAddress: String
-  let toAddress: String
-  let tokenAddress: String?
-  let tokenDecimals: Int
-  let tokenSymbol: String?
-  let rawAmount: String
+  public let amount: String
+  public let fromAddress: String
+  public let toAddress: String
+  public let tokenAddress: String?
+  public let tokenDecimals: Int
+  public let tokenSymbol: String?
+  public let rawAmount: String
 }
 
 public struct BuildSolanaTransactionResponse: Codable {
-  let transaction: String
-  let metadata: BuildTransactionMetaData
-  let error: String?
+  public let transaction: String
+  public let metadata: BuildTransactionMetaData
+  public let error: String?
 }
 
 public struct BuildTransactionParam {
