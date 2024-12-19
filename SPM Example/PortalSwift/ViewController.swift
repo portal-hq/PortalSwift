@@ -2035,7 +2035,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         let transactionParam = BuildTransactionParam(
           to: "75ZfLXXsSpycDvHTQuHnGQuYgd2ihb6Bu4viiCCQ7P4H",
           token: "NATIVE",
-          amount: "0.0001" // Sends 1 USDC
+          amount: "0.0001"
         )
 
         // Build the transaction using Portal
