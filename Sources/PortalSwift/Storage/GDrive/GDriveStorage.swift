@@ -205,12 +205,7 @@ public class GDriveStorage: Storage, PortalStorage {
 
 struct CustodianIDClientIDHashesResponse: Codable {
   let data: CustodianIDClientIDHashes?
-  let error: CustodianIDClientIDHashesResponseError?
-}
-
-struct CustodianIDClientIDHashesResponseError: Codable {
-  let code: Int
-  let message: String
+  let error: PortalError?
 }
 
 struct CustodianIDClientIDHashes: Codable {

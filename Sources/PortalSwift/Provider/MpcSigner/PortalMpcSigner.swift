@@ -75,8 +75,8 @@ public class PortalMpcSigner {
     }
 
     let signResult: SignResult = try JSONDecoder().decode(SignResult.self, from: data)
-    guard signResult.error.code == 0 else {
-      throw PortalMpcError(signResult.error)
+    guard signResult.error == nil || signResult.error?.code == 0 else {
+      throw PortalMpcError(signResult.error!)
     }
     guard let signature = signResult.data else {
       throw PortalMpcSignerError.noSignatureFoundInSignResult
