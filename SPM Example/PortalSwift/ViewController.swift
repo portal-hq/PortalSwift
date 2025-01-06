@@ -565,23 +565,23 @@ class ViewController: UIViewController, UITextFieldDelegate {
       throw PortalExampleAppError.portalNotInitialized()
     }
     let chainId = "eip155:11155111"
-    guard let address = await portal.getAddress(chainId) else {
-      self.logger.error("ViewController.sendTransaction() - ❌ Address not found.")
-      throw PortalExampleAppError.addressNotFound()
-    }
 
-    _ = try await self.getGasPrice(chainId)
+    let transactionParam = BuildTransactionParam(
+      to: self.sendAddress?.text ?? "",
+      token: "NATIVE",
+      amount: "0.0001"
+    )
 
-    let transaction = [
-      "from": address,
-      "to": self.sendAddress?.text ?? "",
-      "value": "0x10"
-    ]
+    // Build the transaction using Portal
+    let transactionResponse = try await portal.buildEip155Transaction(chainId: chainId, params: transactionParam)
 
-    let sendTransactionResponse = try await portal.request(chainId, withMethod: .eth_sendTransaction, andParams: [transaction])
+    let sendTransactionResponse = try await portal.request(chainId, withMethod: .eth_sendTransaction, andParams: [transactionResponse.transaction])
+
     guard let transactionHash = sendTransactionResponse.result as? String else {
       throw PortalExampleAppError.invalidResponseTypeForRequest()
     }
+
+    print("✅ Transaction hash: \(transactionHash)")
 
     return transactionHash
   }
