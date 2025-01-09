@@ -433,7 +433,7 @@ public class PortalMpc: PortalMpcProtocol {
       let addresses = try await keychain?.getAddresses() ?? [:]
 
       self.isWalletModificationInProgress = false
-      withProgressCallback?(MpcStatus(status: .done, done: false))
+      withProgressCallback?(MpcStatus(status: .done, done: true))
 
       return addresses
     } catch {
@@ -571,7 +571,7 @@ public class PortalMpc: PortalMpcProtocol {
       let addresses = try await keychain?.getAddresses() ?? [:]
 
       self.isWalletModificationInProgress = false
-      usingProgressCallback?(MpcStatus(status: .done, done: false))
+      usingProgressCallback?(MpcStatus(status: .done, done: true))
 
       return addresses
     } catch {
