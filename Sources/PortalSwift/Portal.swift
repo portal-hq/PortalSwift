@@ -283,6 +283,24 @@ public class Portal {
 
   // Primitive helpers
 
+  /// Registers a storage implementation for a specific backup method.
+  ///
+  /// This method allows you to provide custom storage implementations for different
+  /// backup methods. Use this to customize how backup data is stored and retrieved.
+  ///
+  /// - Parameters:
+  ///   - method: The backup method to register. Supported methods include:
+  ///     - `.GoogleDrive`: Google Drive storage
+  ///     - `.iCloud`: iCloud storage
+  ///     - `.Password`: Password-protected storage
+  ///     - `.Passkey`: Passkey authentication storage
+  ///     - `.local`: Local storage
+  ///     - `.Unknown`: Can be used for custom storage
+  ///   - withStorage: A custom implementation of `PortalStorage` protocol that handles
+  ///     the storage operations for the specified backup method.
+  ///
+  /// - Note: Each backup method must have a registered storage implementation
+  ///   before it can be used for backup or recovery operations.
   public func registerBackupMethod(_ method: BackupMethods, withStorage: PortalStorage) {
     self.mpc.registerBackupMethod(method, withStorage: withStorage)
   }
@@ -339,22 +357,91 @@ public class Portal {
     try self.mpc.setGDriveView(view)
   }
 
+  /// Sets the presentation anchor for passkey authentication dialogs.
+  ///
+  /// This method configures where passkey authentication UI components will be presented
+  /// in your application's interface.
+  ///
+  /// - Parameter anchor: The window anchor where passkey authentication UI will be presented.
+  ///
+  /// - Throws: Errors if the passkey anchor configuration fails.
+  ///
+  /// - Note: Required to be called before using passkey backup or recovery methods.
   @available(iOS 16, *)
   public func setPasskeyAuthenticationAnchor(_ anchor: ASPresentationAnchor) throws {
     try self.mpc.setPasskeyAuthenticationAnchor(anchor)
   }
 
+  /// Configures the passkey authentication settings.
+  ///
+  /// This method sets up the required configuration for using passkeys as a backup
+  /// and authentication method.
+  ///
+  /// - Parameters:
+  ///   - relyingParty: The relying party identifier for WebAuthn/passkey authentication.
+  ///     This is typically your application's domain name.
+  ///   - webAuthnHost: The WebAuthn host that will handle passkey operations.
+  ///     This should match your application's authentication server.
+  ///
+  /// - Throws: Errors if the passkey configuration fails.
+  ///
+  /// - Note: Must be called before using passkey backup or recovery methods.
+  ///   The relying party should match your application's domain name for security purposes.
   @available(iOS 16, *)
   public func setPasskeyConfiguration(relyingParty: String, webAuthnHost: String) throws {
     try self.mpc.setPasskeyConfiguration(relyingParty: relyingParty, webAuthnHost: webAuthnHost)
   }
 
+  /// Sets the password used for the Password backup method.
+  ///
+  /// This method configures the password that will be used to encrypt and decrypt
+  /// wallet backups when using the `.Password` backup method.
+  ///
+  /// - Parameter value: The password string to use for backup encryption/decryption.
+  ///
+  /// - Throws: `MpcError.backupMethodNotRegistered` if the Password backup method
+  ///   has not been registered using `registerBackupMethod`.
+  ///
+  /// - Note: Must be called before using the `.Password` backup method for
+  ///   wallet backup or recovery operations.
   public func setPassword(_ value: String) throws {
     try self.mpc.setPassword(value)
   }
 
   // Wallet management helpers
 
+  /// Creates a backup of the wallet using the specified backup method.
+  ///
+  /// This method initiates the wallet backup process, which involves encrypting the wallet data
+  /// and preparing it for storage. The progress of the backup can be monitored through the optional callback.
+  ///
+  /// - Parameters:
+  ///   - method: The backup method to use. Supported methods include:
+  ///     - `.GoogleDrive`: Back up to Google Drive
+  ///     - `.iCloud`: Back up to iCloud
+  ///     - `.Password`: Back up with password protection
+  ///     - `.Passkey`: Back up with passkey authentication
+  ///     - `.local`: Back up to local storage
+  ///   - usingProgressCallback: Optional callback to track the backup progress.
+  ///     The callback receives an `MpcStatus` object containing:
+  ///     - `status`: The current operation being performed:
+  ///       - `.readingShare`: Reading the share data
+  ///       - `.generatingShare`: Creating the backup share
+  ///       - `.parsingShare`: Processing the share data
+  ///       - `.encryptingShare`: Encrypting the share data
+  ///       - `.storingShare`: Saving the encrypted share
+  ///       - `.done`: Process completed
+  ///     - `done`: Boolean indicating whether the whole operation is complete
+  ///
+  /// - Returns: A tuple containing:
+  ///   - `cipherText`: The encrypted backup data
+  ///   - `storageCallback`: A callback function that must be called to complete the backup process
+  ///     and update the server state
+  ///
+  /// - Throws: Various backup method-specific errors if the backup process fails
+  ///
+  /// - Note: The backup process is not complete until the storageCallback is executed successfully.
+  ///   The callback updates the server state and refreshes local metadata.
   public func backupWallet(
     _ method: BackupMethods,
     usingProgressCallback: ((MpcStatus) -> Void)? = nil
@@ -379,6 +466,27 @@ public class Portal {
     )
   }
 
+  /// Creates a new wallet and generates addresses for supported chains.
+  ///
+  /// This method initiates the wallet creation process, which involves multiple steps such as
+  /// generating shares, encrypting them, and storing them securely. The progress of these steps
+  /// can be monitored through the optional callback.
+  ///
+  /// - Parameter usingProgressCallback: Optional callback to track the wallet creation progress.
+  ///   The callback receives an `MpcStatus` object containing:
+  ///   - `status`: The current operation being performed:
+  ///     - `.generatingShare`: Creating the initial share
+  ///     - `.parsingShare`: Processing the share data
+  ///     - `.storingShare`: Saving the encrypted share
+  ///     - `.done`: Process completed
+  ///   - `done`: Boolean indicating whether the current operation is complete
+  ///
+  /// - Returns: A `PortalCreateWalletResponse` containing the generated Ethereum and Solana addresses.
+  ///
+  /// - Throws: `PortalClassError.cannotCreateWallet` if wallet creation fails.
+  ///
+  /// - Note: The callback is invoked multiple times during the wallet creation process,
+  ///   allowing you to update your UI with the current progress.
   public func createWallet(usingProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> PortalCreateWalletResponse {
     let addresses = try await mpc.generate(withProgressCallback: usingProgressCallback)
 
@@ -394,12 +502,59 @@ public class Portal {
     )
   }
 
-  /// You should only call this function if you are upgrading from v3 to v4.
+  /// Creates a dedicated Solana wallet during v3 to v4 migration.
+  ///
+  /// This method is specifically designed for use during SDK version migration and should not be used
+  /// in new implementations. For new wallet creation, use `createWallet()` instead.
+  ///
+  /// - Parameter usingProgressCallback: Optional callback to track the wallet creation progress.
+  ///   The callback receives an `MpcStatus` object containing:
+  ///   - `status`: The current operation being performed:
+  ///     - `.generatingShare`: Creating the initial share
+  ///     - `.parsingShare`: Processing the share data
+  ///     - `.storingShare`: Saving the encrypted share
+  ///     - `.done`: Process completed
+  ///   - `done`: Boolean indicating whether the current operation is complete
+  ///
+  /// - Returns: The generated Solana wallet address as a string.
+  ///
+  /// - Throws: Various MPC-related errors if wallet generation fails.
+  ///
+  /// - Important: This function is only for v3 to v4 migration purposes.
+  ///   New implementations should use `createWallet()` instead.
   public func createSolanaWallet(usingProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> String {
     let addresses = try await mpc.generateSolanaWallet(usingProgressCallback: usingProgressCallback)
     return addresses
   }
 
+  /// Extracts the private key from the wallet using a specified backup method.
+  ///
+  /// This function allows you to retrieve the raw private key from a wallet after proving ownership
+  /// through one of the supported backup methods. The private key can then be used to import the wallet
+  /// into other applications or wallets.
+  ///
+  /// - Parameters:
+  ///   - method: The backup method to use for authentication. Supported methods include:
+  ///     - `.GoogleDrive`: Authenticate using Google Drive backup
+  ///     - `.iCloud`: Authenticate using iCloud backup
+  ///     - `.Password`: Authenticate using password
+  ///     - `.Passkey`: Authenticate using passkey
+  ///     - `.local`: Authenticate using local backup
+  ///   - withCipherText: Optional cipher text from a previous backup. Required for some backup methods.
+  ///   - andOrganizationBackupShare: Optional backup share provided by the organization.
+  ///
+  /// - Returns: The Ethereum private key as a hexadecimal string.
+  ///
+  /// - Throws:
+  ///   - `MpcError.unableToEjectWallet` if no Ethereum private key is found
+  ///   - Various backup method-specific errors if authentication fails
+  ///
+  /// - Warning: Providing the custodian backup share to the client device puts both MPC shares on a single device,
+  ///   removing the multi-party security benefits of MPC. This operation should only be done for users who want
+  ///   to move off of MPC and into a single private key. Use `portal.eject()` at your own risk!
+  ///
+  /// - Note: This method only returns the Ethereum private key. For multi-chain support,
+  ///   use `ejectPrivateKeys()` instead.
   public func eject(
     _ method: BackupMethods,
     withCipherText: String? = nil,
@@ -420,6 +575,35 @@ public class Portal {
     return privateKey
   }
 
+  /// Extracts all private keys from the wallet using a specified backup method.
+  ///
+  /// This function allows you to retrieve the raw private keys for all supported chains after proving ownership
+  /// through one of the supported backup methods. The private keys can then be used to import the wallet
+  /// into other applications or wallets.
+  ///
+  /// - Parameters:
+  ///   - method: The backup method to use for authentication. Supported methods include:
+  ///     - `.GoogleDrive`: Authenticate using Google Drive backup
+  ///     - `.iCloud`: Authenticate using iCloud backup
+  ///     - `.Password`: Authenticate using password
+  ///     - `.Passkey`: Authenticate using passkey
+  ///     - `.local`: Authenticate using local backup
+  ///   - withCipherText: Optional cipher text from a previous backup.
+  ///   - andOrganizationBackupShare: Optional backup share provided by the organization for EVM chains.
+  ///   - andOrganizationSolanaBackupShare: Optional backup share provided by the organization specifically for Solana.
+  ///
+  /// - Returns: A dictionary mapping `PortalNamespace` to private keys, where:
+  ///   - `.eip155` key contains the Ethereum/EVM private key
+  ///   - `.solana` key contains the Solana private key
+  ///
+  /// - Throws: Various backup method-specific errors if authentication fails.
+  ///
+  /// - Warning: Providing the custodian backup share to the client device puts both MPC shares on a single device,
+  ///   removing the multi-party security benefits of MPC. This operation should only be done for users who want
+  ///   to move off of MPC and into a single private key. Use `portal.ejectPrivateKeys()` at your own risk!
+  ///
+  /// - Note: This is the multi-chain version of `eject()`. Use this method when you need to
+  ///   retrieve private keys for multiple chains simultaneously.
   public func ejectPrivateKeys(
     _ method: BackupMethods,
     withCipherText: String? = nil,
@@ -437,6 +621,40 @@ public class Portal {
     return privateKeys
   }
 
+  /// Recovers a wallet using a specified backup method.
+  ///
+  /// This method initiates the wallet recovery process, which involves retrieving and reconstructing the wallet
+  /// from a previous backup. The progress of the recovery steps can be monitored through the optional callback.
+  ///
+  /// - Parameters:
+  ///   - method: The backup method to use for recovery. Supported methods include:
+  ///     - `.GoogleDrive`: Recover from Google Drive backup
+  ///     - `.iCloud`: Recover from iCloud backup
+  ///     - `.Password`: Recover using password
+  ///     - `.Passkey`: Recover using passkey
+  ///     - `.local`: Recover from local backup
+  ///   - withCipherText: Optional cipher text from a previous backup. Required for some backup methods.
+  ///   - usingProgressCallback: Optional callback to track the recovery progress.
+  ///     The callback receives an `MpcStatus` object containing:
+  ///     - `status`: The current operation being performed:
+  ///       - `.readingShare`: Reading the stored share
+  ///       - `.decryptingShare`: Decrypting the share
+  ///       - `.parsingShare`: Parsing the share data
+  ///       - `.generatingShare`: Generating the share data
+  ///       - `.storingShare`: Saving the recovered share
+  ///       - `.done`: Process completed
+  ///     - `done`: Boolean indicating whether the whole operation is complete
+  ///
+  /// - Returns: A `PortalRecoverWalletResponse` containing:
+  ///   - `ethereum`: The recovered Ethereum address
+  ///   - `solana`: The recovered Solana address, if available
+  ///
+  /// - Throws:
+  ///   - `PortalClassError.cannotRecoverWallet` if the Ethereum address cannot be recovered
+  ///   - Various backup method-specific errors if recovery fails
+  ///
+  /// - Note: The callback is invoked multiple times during the recovery process,
+  ///   allowing you to update your UI with the current progress.
   public func recoverWallet(
     _ method: BackupMethods,
     withCipherText: String? = nil,
@@ -455,7 +673,41 @@ public class Portal {
     )
   }
 
-  /// You should only call this function if you are upgrading from v3 to v4.
+  /// Generates a Solana wallet and creates backup shares during v3 to v4 migration.
+  ///
+  /// This method is specifically designed for use during SDK version migration and should not be used
+  /// in new implementations. For new wallet creation, use `createWallet()` instead.
+  ///
+  /// - Parameters:
+  ///   - method: The backup method to use for storing the backup shares. Supported methods include:
+  ///     - `.GoogleDrive`: Store in Google Drive
+  ///     - `.iCloud`: Store in iCloud
+  ///     - `.Password`: Protect with password
+  ///     - `.Passkey`: Protect with passkey
+  ///     - `.local`: Store locally
+  ///   - usingProgressCallback: Optional callback to track the wallet creation progress.
+  ///     The callback receives an `MpcStatus` object containing:
+  ///     - `status`: The current operation being performed:
+  ///       - `.generatingShare`: Creating the initial share
+  ///       - `.parsingShare`: Processing the share data
+  ///       - `.storingShare`: Saving the encrypted share
+  ///       - `.readingShare`: Reading the stored share
+  ///       - `.encryptingShare`: Encrypting the generated share
+  ///       - `.decryptingShare`: Decrypting the share
+  ///       - `.done`: Process completed
+  ///     - `done`: Boolean indicating whether the whole operation is complete
+  ///
+  /// - Returns: A tuple containing:
+  ///   - `solanaAddress`: The generated Solana wallet address
+  ///   - `cipherText`: The encrypted backup data
+  ///   - `storageCallback`: A callback function that must be called to complete the backup process
+  ///
+  /// - Throws: Various MPC-related errors if wallet generation or backup creation fails
+  ///
+  /// - Important: This function is only for v3 to v4 migration purposes.
+  ///   New implementations should use `createWallet()` instead.
+  ///
+  /// - Note: The backup process is not complete until the storageCallback is executed successfully.
   public func generateSolanaWalletAndBackupShares(
     _ method: BackupMethods, usingProgressCallback: ((MpcStatus) -> Void)? = nil
   ) async throws -> (solanaAddress: String, cipherText: String, storageCallback: () async throws -> Void) {
@@ -481,10 +733,31 @@ public class Portal {
 
   // Keychain helpers
 
+  /// Deletes all wallet shares from the device's keychain.
+  ///
+  /// This method removes all stored wallet shares from the device, effectively
+  /// removing access to the wallet from this device. The wallet can be restored
+  /// later using backup methods if they were previously configured.
+  ///
+  /// - Throws: Keychain-related errors if the deletion fails.
+  ///
+  /// - Warning: After calling this method, you will not be able to sign transactions
+  ///   or access the wallet from this device until it is recovered using a backup method.
   public func deleteShares() async throws {
     try await self.keychain.deleteShares()
   }
 
+  /// Retrieves the wallet address for a specific blockchain.
+  ///
+  /// This method attempts to fetch the wallet address associated with the specified
+  /// chain ID from the device's keychain.
+  ///
+  /// - Parameter forChainId: The chain identifier
+  ///
+  /// - Returns: The wallet address as a string if found, nil otherwise.
+  ///
+  /// - Note: This method handles errors internally and returns nil instead of throwing.
+  ///   For error handling, use `getAddresses()` instead.
   public func getAddress(_ forChainId: String) async -> String? {
     do {
       let address = try await keychain.getAddress(forChainId)
@@ -495,24 +768,133 @@ public class Portal {
     }
   }
 
+  /// Retrieves all wallet addresses for supported blockchains.
+  ///
+  /// This method fetches all wallet addresses stored in the device's keychain across
+  /// all supported blockchain namespaces.
+  ///
+  /// - Returns: A dictionary mapping `PortalNamespace` to optional wallet addresses, where:
+  ///   - `.eip155` key contains the Ethereum/EVM address
+  ///   - `.solana` key contains the Solana address
+  ///
+  /// - Throws: Keychain-related errors if the retrieval fails.
+  ///
+  /// - Note: Unlike `getAddress(_:)`, this method throws errors instead of returning nil
+  ///   when access to the keychain fails.
   public func getAddresses() async throws -> [PortalNamespace: String?] {
     try await self.keychain.getAddresses()
   }
 
-  // Provider helpers
+  // MARK: - Provider helpers
 
+  /// Emits an event with associated data through the provider.
+  ///
+  /// This method allows you to emit custom events that can be listened to
+  /// using the `on()` and `once()` methods.
+  ///
+  /// - Parameters:
+  ///   - event: The event type to emit. Supported events include:
+  ///     - `.ChainChanged`: Emitted when the active blockchain changes
+  ///     - `.PortalConnectChainChanged`: Emitted when Portal Connect chain changes
+  ///     - `.Connect`: Emitted on successful connection
+  ///     - `.ConnectError`: Emitted when a connection error occurs
+  ///     - `.Disconnect`: Emitted on disconnection
+  ///     - `.PortalSignatureReceived`: Emitted when a signature is received
+  ///     - `.PortalSigningApproved`: Emitted when signing is approved
+  ///     - `.PortalSigningRejected`: Emitted when signing is rejected
+  ///     - `.PortalConnectSigningRequested`: Emitted when Portal Connect requests signing
+  ///     - `.PortalSigningRequested`: Emitted when signing is requested
+  ///     - `.PortalGetSessionRequest`: Emitted for session requests
+  ///     - `.PortalDappSessionRequested`: Emitted when a dApp requests a session
+  ///     - `.PortalDappSessionApproved`: Emitted when a dApp session is approved
+  ///     - `.PortalDappSessionRejected`: Emitted when a dApp session is rejected
+  ///   - data: Any data to be passed along with the event.
+  ///
+  /// - Note: The emitted event can be captured by any listeners registered
+  ///   for that specific event type.
   public func emit(_ event: Events.RawValue, data: Any) {
     _ = self.provider.emit(event: event, data: data)
   }
 
+  /// Registers a callback to handle events emitted by the provider.
+  ///
+  /// This method sets up a persistent listener for a specific event type. The callback
+  /// will be called every time the specified event is emitted.
+  ///
+  /// - Parameters:
+  ///   - event: The event type to listen for. Supported events include:
+  ///     - `.ChainChanged`: Triggered when the active blockchain changes
+  ///     - `.PortalConnectChainChanged`: Triggered when Portal Connect chain changes
+  ///     - `.Connect`: Triggered on successful connection
+  ///     - `.ConnectError`: Triggered when a connection error occurs
+  ///     - `.Disconnect`: Triggered on disconnection
+  ///     - `.PortalSignatureReceived`: Triggered when a signature is received
+  ///     - `.PortalSigningApproved`: Triggered when signing is approved
+  ///     - `.PortalSigningRejected`: Triggered when signing is rejected
+  ///     - `.PortalConnectSigningRequested`: Triggered when Portal Connect requests signing
+  ///     - `.PortalSigningRequested`: Triggered when signing is requested
+  ///     - `.PortalGetSessionRequest`: Triggered for session requests
+  ///     - `.PortalDappSessionRequested`: Triggered when a dApp requests a session
+  ///     - `.PortalDappSessionApproved`: Triggered when a dApp session is approved
+  ///     - `.PortalDappSessionRejected`: Triggered when a dApp session is rejected
+  ///   - callback: The function to be called when the event occurs. The callback receives
+  ///     the event data as its parameter.
+  ///
+  /// - Note: The callback will continue to be called for all future events until explicitly
+  ///   removed. For one-time event handling, use `once()` instead.
   public func on(event: Events.RawValue, callback: @escaping (Any) -> Void) {
     _ = self.provider.on(event: event, callback: callback)
   }
 
+  /// Registers a one-time callback to handle a single occurrence of an event.
+  ///
+  /// This method sets up a listener that will be triggered only once for the specified event type.
+  /// After the event occurs and the callback is executed, the listener is automatically removed.
+  ///
+  /// - Parameters:
+  ///   - event: The event type to listen for. Supported events include:
+  ///     - `.ChainChanged`: Triggered when the active blockchain changes
+  ///     - `.PortalConnectChainChanged`: Triggered when Portal Connect chain changes
+  ///     - `.Connect`: Triggered on successful connection
+  ///     - `.ConnectError`: Triggered when a connection error occurs
+  ///     - `.Disconnect`: Triggered on disconnection
+  ///     - `.PortalSignatureReceived`: Triggered when a signature is received
+  ///     - `.PortalSigningApproved`: Triggered when signing is approved
+  ///     - `.PortalSigningRejected`: Triggered when signing is rejected
+  ///     - `.PortalConnectSigningRequested`: Triggered when Portal Connect requests signing
+  ///     - `.PortalSigningRequested`: Triggered when signing is requested
+  ///     - `.PortalGetSessionRequest`: Triggered for session requests
+  ///     - `.PortalDappSessionRequested`: Triggered when a dApp requests a session
+  ///     - `.PortalDappSessionApproved`: Triggered when a dApp session is approved
+  ///     - `.PortalDappSessionRejected`: Triggered when a dApp session is rejected
+  ///   - callback: The function to be called when the event occurs. The callback receives
+  ///     the event data as its parameter.
+  ///
+  /// - Note: Unlike `on()`, this callback will only be executed once and then automatically
+  ///   removed. For persistent event handling, use `on()` instead.
   public func once(event: Events.RawValue, callback: @escaping (Any) -> Void) {
     _ = self.provider.once(event: event, callback: callback)
   }
 
+  /// Sends a blockchain request with the specified method and parameters.
+  ///
+  /// This method allows you to make RPC calls to various blockchain networks
+  /// supported by Portal.
+  ///
+  /// - Parameters:
+  ///   - chainId: The chain identifier.
+  ///   - withMethod: The RPC method to call, specified using `PortalRequestMethod`
+  ///   - andParams: Optional array of parameters for the RPC method. Must not be nil,
+  ///     use an empty array if no parameters are needed.
+  ///
+  /// - Returns: A `PortalProviderResult` containing the response from the blockchain.
+  ///
+  /// - Throws:
+  ///   - `PortalProviderError.invalidRequestParams` if andParams is nil
+  ///   - Other blockchain-specific errors if the request fails
+  ///
+  /// - Note: Parameters are automatically converted to a format compatible with
+  ///   blockchain RPC calls.
   public func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any]?) async throws -> PortalProviderResult {
     guard let andParams = andParams else {
       throw PortalProviderError.invalidRequestParams
@@ -525,6 +907,25 @@ public class Portal {
     return try await self.provider.request(chainId, withMethod: withMethod, andParams: params, connect: nil)
   }
 
+  /// Sends a blockchain request with the specified method string and parameters.
+  ///
+  /// This method is an alternative version of `request(_:withMethod:andParams:)` that
+  /// accepts a string method name instead of a `PortalRequestMethod` enum value.
+  ///
+  /// - Parameters:
+  ///   - chainId: The chain identifier
+  ///   - withMethod: The RPC method name as a string
+  ///   - andParams: Array of parameters for the RPC method
+  ///
+  /// - Returns: A `PortalProviderResult` containing the response from the blockchain.
+  ///
+  /// - Throws:
+  ///   - `PortalProviderError.unsupportedRequestMethod` if the method string is not a valid
+  ///     `PortalRequestMethod`
+  ///   - Other errors from the underlying `request(_:withMethod:andParams:)` call
+  ///
+  /// - Note: This is a convenience wrapper that converts the method string to a
+  ///   `PortalRequestMethod` enum value before making the request.
   public func request(_ chainId: String, withMethod: String, andParams: [Any]) async throws -> PortalProviderResult {
     guard let method = PortalRequestMethod(rawValue: withMethod) else {
       throw PortalProviderError.unsupportedRequestMethod(withMethod)
@@ -537,8 +938,32 @@ public class Portal {
     return try? self.provider.getRpcUrl(forChainId)
   }
 
-  // Wallet lifecycle helpers
+  // MARK: - Wallet lifecycle helpers
 
+  /// Retrieves the list of available backup methods that can be used for wallet recovery.
+  ///
+  /// This method checks all completed backup share pairs across wallets to determine which
+  /// backup methods are available for recovery. The check can be performed for a specific
+  /// blockchain or across all supported chains.
+  ///
+  /// - Parameter forChainId: Optional chain identifier
+  ///   If nil, returns backup methods from all wallets.
+  ///
+  /// - Returns: An array of `BackupMethods` representing completed backups, which may include:
+  ///   - `.GoogleDrive`: Google Drive backup
+  ///   - `.iCloud`: iCloud backup
+  ///   - `.Password`: Password-protected backup
+  ///   - `.Passkey`: Passkey backup
+  ///   - `.local`: Local backup
+  ///
+  /// - Throws:
+  ///   - `PortalClassError.clientNotAvailable` if the client is not initialized
+  ///   - When a specific chainId is provided:
+  ///     - `PortalClassError.unsupportedChainId` if the chain's namespace is not supported
+  ///     - `PortalClassError.noWalletFoundForChain` if no wallet exists for the specified chain
+  ///
+  /// - Note: The method only returns backup methods where the corresponding backup share pairs
+  ///   have a status of `.completed`. Methods with incomplete or pending backups are excluded.
   public func availableRecoveryMethods(_ forChainId: String? = nil) async throws -> [BackupMethods] {
     if let client = try await client {
       // Filter by chainId if one is provided
@@ -577,6 +1002,26 @@ public class Portal {
     throw PortalClassError.clientNotAvailable
   }
 
+  /// Checks whether a wallet exists with completed signing shares.
+  ///
+  /// This method verifies the existence of a wallet by checking for completed signing shares.
+  /// The check can be performed for a specific blockchain or across all supported chains.
+  ///
+  /// - Parameter forChainId: Optional chain identifier.
+  ///   If nil, checks for wallets across all chains.
+  ///
+  /// - Returns: A boolean value indicating whether a wallet exists:
+  ///   - When chainId is provided:
+  ///     - Returns true if a wallet exists for the specified chain and has at least one completed signing share
+  ///     - Returns false if no wallet exists or if no signing shares are completed
+  ///   - When chainId is nil:
+  ///     - Returns true if any wallet exists and has at least one completed signing share
+  ///     - Returns false if no wallets exist or if no signing shares are completed
+  ///
+  /// - Throws: `PortalClassError.clientNotAvailable` if the client is not initialized
+  ///
+  /// - Note: The method checks for the presence of signing shares with a status of `.completed`.
+  ///   Incomplete or pending signing shares are not considered when determining wallet existence.
   public func doesWalletExist(_ forChainId: String? = nil) async throws -> Bool {
     if let client = try await client {
       // Filter by chainId if one is provided
@@ -611,6 +1056,26 @@ public class Portal {
     throw PortalClassError.clientNotAvailable
   }
 
+  /// Checks whether a wallet has completed backups.
+  ///
+  /// This method verifies if backup shares have been successfully created and stored.
+  /// The check can be performed for a specific blockchain or across all supported chains.
+  ///
+  /// - Parameter forChainId: Optional chain identifier.
+  ///   If nil, checks backup status across all chains.
+  ///
+  /// - Returns: A boolean value indicating whether the wallet is backed up:
+  ///   - When forChainId is provided:
+  ///     - Returns true if a wallet exists for the specified chain and has at least one completed backup share
+  ///     - Returns false if no wallet exists or if no backup shares are completed
+  ///   - When forChainId is nil:
+  ///     - Returns true if any wallet exists and has at least one completed backup share
+  ///     - Returns false if no wallets exist or if no backup shares are completed
+  ///
+  /// - Throws: `PortalClassError.clientNotAvailable` if the client is not initialized
+  ///
+  /// - Note: The method only considers backup shares with a status of `.completed`.
+  ///   Incomplete or pending backups are not considered when determining backup status.
   public func isWalletBackedUp(_ forChainId: String? = nil) async throws -> Bool {
     if let client = try await client {
       // Filter by chainId if one is provided
@@ -645,6 +1110,31 @@ public class Portal {
     throw PortalClassError.clientNotAvailable
   }
 
+  /// Checks whether wallet shares are present in the device's keychain.
+  ///
+  /// This method verifies if the signing shares required for wallet operations are stored
+  /// in the device's local keychain. The check can be performed for a specific blockchain
+  /// or across all supported chains.
+  ///
+  /// - Parameter forChainId: Optional chain identifier.
+  ///   If nil, checks for any valid shares across all chains.
+  ///
+  /// - Returns: A boolean value indicating whether wallet shares exist on the device:
+  ///   - When forChainId is provided:
+  ///     - Returns true if shares exist for the specified chain
+  ///     - Returns false if no shares are found for the chain
+  ///   - When forChainId is nil:
+  ///     - Returns true if any valid share exists (has non-empty ID)
+  ///     - Returns false if no valid shares are found
+  ///
+  /// - Throws:
+  ///   - `PortalClassError.invalidChainId` if the provided chain ID format is invalid
+  ///   - `PortalClassError.unsupportedChainId` if the chain's namespace is not supported
+  ///   - Various keychain-related errors if share retrieval fails
+  ///
+  /// - Note: This method checks for the physical presence of shares on the device,
+  ///   regardless of their status. Use `doesWalletExist()` to verify if a wallet
+  ///   is fully functional with completed shares.
   public func isWalletOnDevice(_ forChainId: String? = nil) async throws -> Bool {
     let shares = try await keychain.getShares()
     // Filter by chainId if one is provided
@@ -676,22 +1166,86 @@ public class Portal {
     }
   }
 
+  /// Checks whether the wallet can be recovered using any available backup methods.
+  ///
+  /// This method verifies if there are any completed backup methods that could be used
+  /// to recover the wallet. The check can be performed for a specific blockchain or
+  /// across all supported chains.
+  ///
+  /// - Parameter forChainId: Optional CAIP-2 chain identifier (e.g., "eip155:1" for Ethereum mainnet,
+  ///   "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp" for Solana mainnet).
+  ///   If nil, checks recovery options across all chains.
+  ///
+  /// - Returns: A boolean value indicating whether the wallet can be recovered:
+  ///   - Returns true if at least one completed backup method is available
+  ///   - Returns false if no completed backup methods are found
+  ///
+  /// - Throws:
+  ///   - `PortalClassError.clientNotAvailable` if the client is not initialized
+  ///   - `PortalClassError.unsupportedChainId` if the chain's namespace is not supported
+  ///   - `PortalClassError.noWalletFoundForChain` if no wallet exists for the specified chain
+  ///
+  /// - Note: This method uses `availableRecoveryMethods()` internally to determine if
+  ///   any completed backup methods exist.
   public func isWalletRecoverable(_ forChainId: String? = nil) async throws -> Bool {
     let availableRecoveryMethods = try await availableRecoveryMethods(forChainId)
 
     return availableRecoveryMethods.count > 0
   }
 
-  // Api helpers
+  // MARK: - Api helpers
 
+  /// Retrieves token balances for the specified blockchain.
+  ///
+  /// This method fetches all token balances associated with the wallet on the
+  /// specified blockchain network.
+  ///
+  /// - Parameter chainId: The chain identifier.
+  ///
+  /// - Returns: An array of `FetchedBalance` objects containing token balance information
+  ///
+  /// - Throws: Various API-related errors if the balance retrieval fails
   public func getBalances(_ chainId: String) async throws -> [FetchedBalance] {
     try await self.api.getBalances(chainId)
   }
 
+  /// Retrieves a collection of assets (tokens and NFTs) for the specified blockchain.
+  ///
+  /// This method fetches all available assets associated with the wallet on the
+  /// specified blockchain network, including both fungible tokens and NFTs.
+  ///
+  /// - Parameter chainId: The chain identifier.
+  ///
+  /// - Returns: An `AssetsResponse` object containing collections of both fungible
+  ///   and non-fungible tokens
+  ///
+  /// - Throws: Various API-related errors if the asset retrieval fails
+  ///
+  /// - Note: For token balances only, use `getBalances(_:)`. For NFTs only, use `getNftAssets(_:)`.
   public func getAssets(_ chainId: String) async throws -> AssetsResponse {
     try await self.api.getAssets(chainId)
   }
 
+  /// Retrieves backup share pairs for the wallet.
+  ///
+  /// This method fetches all backup share pairs, which represent the backup state of the wallet.
+  /// The retrieval can be performed for a specific blockchain or across all supported chains.
+  ///
+  /// - Parameter chainId: Optional chain identifier.
+  ///   If nil, retrieves backup shares for all chains.
+  ///
+  /// - Returns: An array of `FetchedSharePair` objects containing backup share information.
+  ///   When no chainId is provided, returns a flattened array of backup shares from all wallets.
+  ///
+  /// - Throws:
+  ///   - `PortalClassError.clientNotAvailable` if the client is not initialized
+  ///   - When a specific chainId is provided:
+  ///     - `PortalClassError.unsupportedChainId` if the chain's namespace is not supported
+  ///     - `PortalClassError.noWalletFoundForChain` if no wallet exists for the specified chain
+  ///   - Various API-related errors if share retrieval fails
+  ///
+  /// - Note: The method uses concurrent tasks to fetch shares from multiple wallets
+  ///   when no specific chainId is provided, improving performance for multi-chain wallets.
   public func getBackupShares(_ chainId: String? = nil) async throws -> [FetchedSharePair] {
     guard let client = try await client else {
       throw PortalClassError.clientNotAvailable
@@ -734,10 +1288,43 @@ public class Portal {
     return sharePairGroups.flatMap { $0 }
   }
 
+  /// Retrieves NFT assets for the specified blockchain.
+  ///
+  /// This method fetches all NFTs (Non-Fungible Tokens) owned by the wallet on the
+  /// specified blockchain network.
+  ///
+  /// - Parameter chainId: The chain identifier.
+  ///
+  /// - Returns: An array of `NftAsset` objects containing NFT information
+  ///
+  /// - Throws: Various API-related errors if the NFT retrieval fails
+  ///
+  /// - Note: For fungible token balances, use `getBalances(_:)` instead.
+  ///   For both NFTs and tokens, use `getAssets(_:)`.
   public func getNftAssets(_ chainId: String) async throws -> [NftAsset] {
     try await self.api.getNftAssets(chainId)
   }
 
+  /// Retrieves signing share pairs for the wallet.
+  ///
+  /// This method fetches all signing share pairs, which are used for transaction signing.
+  /// The retrieval can be performed for a specific blockchain or across all supported chains.
+  ///
+  /// - Parameter chainId: Optional chain identifier.
+  ///   If nil, retrieves signing shares for all chains.
+  ///
+  /// - Returns: An array of `FetchedSharePair` objects containing signing share information.
+  ///   When no chainId is provided, returns a flattened array of signing shares from all wallets.
+  ///
+  /// - Throws:
+  ///   - `PortalClassError.clientNotAvailable` if the client is not initialized
+  ///   - When a specific chainId is provided:
+  ///     - `PortalClassError.unsupportedChainId` if the chain's namespace is not supported
+  ///     - `PortalClassError.noWalletFoundForChain` if no wallet exists for the specified chain
+  ///   - Various API-related errors if share retrieval fails
+  ///
+  /// - Note: The method uses concurrent tasks to fetch shares from multiple wallets
+  ///   when no specific chainId is provided, improving performance for multi-chain wallets.
   public func getSigningShares(_ chainId: String? = nil) async throws -> [FetchedSharePair] {
     guard let client = try await client else {
       throw PortalClassError.clientNotAvailable
@@ -780,6 +1367,22 @@ public class Portal {
     return sharePairGroups.flatMap { $0 }
   }
 
+  /// Retrieves transaction history for the specified blockchain.
+  ///
+  /// This method fetches a list of transactions associated with the wallet on the
+  /// specified blockchain network. The results can be paginated and ordered.
+  ///
+  /// - Parameters:
+  ///   - chainId: The chain identifier.
+  ///   - limit: Optional maximum number of transactions to return.
+  ///     If nil, returns all transactions.
+  ///   - offset: Optional number of transactions to skip for pagination.
+  ///     If nil, starts from the beginning.
+  ///   - order: Optional `TransactionOrder` to specify the sort order of transactions `ASC` or `DESC`.
+  ///
+  /// - Returns: An array of `FetchedTransaction` objects containing transaction history
+  ///
+  /// - Throws: Various API-related errors if the transaction retrieval fails
   public func getTransactions(
     _ chainId: String,
     limit: Int? = nil,
@@ -801,14 +1404,52 @@ public class Portal {
     )
   }
 
+  /// Builds an EIP-155 compliant transaction for Ethereum-compatible chains.
+  ///
+  /// This method constructs a transaction object following the EIP-155 specification,
+  /// which adds replay protection to Ethereum transactions.
+  ///
+  /// - Parameters:
+  ///   - chainId: The chain identifier.
+  ///   - params: Transaction parameters specified in `BuildTransactionParam`
+  ///
+  /// - Returns: A `BuildEip115TransactionResponse` containing the constructed transaction
+  ///
+  /// - Throws: Various API-related errors if the transaction building fails
+  ///
+  /// - Note: Only valid for EVM-compatible chains. For Solana transactions,
+  ///   use `buildSolanaTransaction(_:params:)` instead.
   public func buildEip155Transaction(chainId: String, params: BuildTransactionParam) async throws -> BuildEip115TransactionResponse {
     return try await api.buildEip155Transaction(chainId: chainId, params: params)
   }
 
+  /// Builds a Solana transaction.
+  ///
+  /// This method constructs a transaction object compatible with the Solana blockchain.
+  ///
+  /// - Parameters:
+  ///   - chainId: The chain identifier.
+  ///   - params: Transaction parameters specified in `BuildTransactionParam`
+  ///
+  /// - Returns: A `BuildSolanaTransactionResponse` containing the constructed transaction
+  ///
+  /// - Throws: Various API-related errors if the transaction building fails
+  ///
+  /// - Note: Only valid for Solana chains. For EVM-compatible chains,
+  ///   use `buildEip155Transaction(_:params:)` instead.
   public func buildSolanaTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildSolanaTransactionResponse {
     return try await api.buildSolanaTransaction(chainId: chainId, params: params)
   }
 
+  /// Retrieves the capabilities of the current wallet.
+  ///
+  /// This method fetches information about what features and operations are
+  /// supported by the wallet, including supported chains and operations.
+  ///
+  /// - Returns: A `WalletCapabilitiesResponse` containing information about
+  ///   supported wallet features and capabilities
+  ///
+  /// - Throws: Various API-related errors if the capabilities retrieval fails
   public func getWalletCapabilities() async throws -> WalletCapabilitiesResponse {
     return try await api.getWalletCapabilities()
   }
@@ -863,6 +1504,26 @@ public class Portal {
     self.mpc.ejectPrivateKey(clientBackupCiphertext: clientBackupCiphertext, method: method, backupConfigs: backupConfigs, orgBackupShare: orgBackupShare, completion: completion)
   }
 
+  /// Provisions a wallet using backup data.
+  ///
+  /// This method recovers a wallet using provided backup data and configures it
+  /// for use on this device.
+  ///
+  /// - Parameters:
+  ///   - cipherText: The encrypted backup data used for wallet recovery
+  ///   - method: The backup method used to store the wallet
+  ///   - backupConfigs: Optional configuration for the backup method
+  ///   - completion: Callback that receives the Result of the operation
+  ///   - progress: Optional callback to track the provisioning progress.
+  ///     The callback receives an `MpcStatus` object containing:
+  ///     - `status`: The current operation being performed:
+  ///       - `.readingShare`: Reading the stored share
+  ///       - `.decryptingShare`: Decrypting the share
+  ///       - `.parsingShare`: Parsing the share data
+  ///       - `.generatingShare`: Generating the share data
+  ///       - `.storingShare`: Saving the recovered share
+  ///       - `.done`: Process completed
+  ///     - `done`: Boolean indicating whether the whole operation is complete
   public func provisionWallet(
     cipherText: String,
     method: BackupMethods.RawValue,
@@ -873,6 +1534,20 @@ public class Portal {
     self.recoverWallet(cipherText: cipherText, method: method, backupConfigs: backupConfigs, completion: completion, progress: progress)
   }
 
+  /// Estimates the gas required for an Ethereum transaction.
+  ///
+  /// This method calculates the estimated gas units needed to execute the
+  /// specified Ethereum transaction.
+  ///
+  /// - Parameters:
+  ///   - transaction: The Ethereum transaction parameters
+  ///   - completion: Callback that receives the gas estimation result.
+  ///     The callback is invoked with:
+  ///     - A successful `RequestCompletionResult` containing the estimated gas amount
+  ///     - An error if the estimation fails
+  ///
+  /// - Note: This is a convenience wrapper around the `eth_estimateGas` RPC method.
+  ///   The estimate may vary from the actual gas used in the final transaction.
   public func ethEstimateGas(
     transaction: ETHTransactionParam,
     completion: @escaping (Result<RequestCompletionResult>) -> Void
@@ -883,6 +1558,17 @@ public class Portal {
     ), completion: completion, connect: nil)
   }
 
+  /// Retrieves the current gas price on the Ethereum network.
+  ///
+  /// This method fetches the current gas price in wei from the Ethereum network.
+  ///
+  /// - Parameter completion: Callback that receives the gas price result.
+  ///   The callback is invoked with:
+  ///   - A successful `RequestCompletionResult` containing the current gas price in wei
+  ///   - An error if the price fetch fails
+  ///
+  /// - Note: This is a convenience wrapper around the `eth_gasPrice` RPC method.
+  ///   Gas prices can be volatile and may change rapidly.
   public func ethGasPrice(
     completion: @escaping (Result<RequestCompletionResult>) -> Void
   ) {
@@ -892,6 +1578,20 @@ public class Portal {
     ), completion: completion, connect: nil)
   }
 
+  /// Retrieves the ETH balance for the current wallet address.
+  ///
+  /// This method fetches the native ETH balance for the wallet's Ethereum address.
+  ///
+  /// - Parameter completion: Callback that receives the balance result.
+  ///   The callback is invoked with:
+  ///   - A successful `RequestCompletionResult` containing the balance in wei
+  ///   - An error if the balance fetch fails
+  ///
+  /// - Note:
+  ///   - This is a convenience wrapper around the `eth_getBalance` RPC method
+  ///   - The balance is returned for the latest block
+  ///   - Requires the wallet address to be available, otherwise returns
+  ///     `PortalProviderError.noAddress`
   public func ethGetBalance(
     completion: @escaping (Result<RequestCompletionResult>) -> Void
   ) {
@@ -905,6 +1605,21 @@ public class Portal {
     ), completion: completion, connect: nil)
   }
 
+  /// Sends an Ethereum transaction to the network.
+  ///
+  /// This method broadcasts a signed Ethereum transaction to the network
+  /// for processing.
+  ///
+  /// - Parameters:
+  ///   - transaction: The Ethereum transaction parameters to be sent
+  ///   - completion: Callback that receives the transaction result.
+  ///     The callback is invoked with:
+  ///     - A successful `TransactionCompletionResult` containing the transaction hash
+  ///     - An error if the transaction fails to send
+  ///
+  /// - Note:
+  ///   - This is a convenience wrapper around the `eth_sendTransaction` RPC method
+  ///   - The transaction is automatically signed before being sent
   public func ethSendTransaction(
     transaction: ETHTransactionParam,
     completion: @escaping (Result<TransactionCompletionResult>) -> Void
@@ -915,6 +1630,24 @@ public class Portal {
     ), completion: completion, connect: nil)
   }
 
+  /// Signs an Ethereum message using the wallet's private key.
+  ///
+  /// This method produces an Ethereum-specific signature for the provided message
+  /// using the current wallet address.
+  ///
+  /// - Parameters:
+  ///   - message: The message to be signed
+  ///   - completion: Callback that receives the signing result.
+  ///     The callback is invoked with:
+  ///     - A successful `RequestCompletionResult` containing the signature
+  ///     - An error if the signing fails
+  ///
+  /// - Note:
+  ///   - This is a convenience wrapper around the `eth_sign` RPC method
+  ///   - Requires the wallet address to be available, otherwise returns
+  ///     `PortalProviderError.noAddress`
+  ///   - Signs messages using the Ethereum personal message signing format
+  ///     which adds a prefix to prevent signing arbitrary transactions
   public func ethSign(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void) {
     guard let address = provider.address else {
       completion(Result(error: PortalProviderError.noAddress))
@@ -930,6 +1663,23 @@ public class Portal {
     ), completion: completion, connect: nil)
   }
 
+  /// Signs an Ethereum transaction without broadcasting it to the network.
+  ///
+  /// This method creates a cryptographic signature for an Ethereum transaction
+  /// using the wallet's private key, but does not send it to the network.
+  ///
+  /// - Parameters:
+  ///   - transaction: The Ethereum transaction parameters to be signed
+  ///   - completion: Callback that receives the signing result.
+  ///     The callback is invoked with:
+  ///     - A successful `TransactionCompletionResult` containing the signed transaction
+  ///     - An error if the signing fails
+  ///
+  /// - Note:
+  ///   - This is a convenience wrapper around the `eth_signTransaction` RPC method
+  ///   - Unlike `ethSendTransaction`, this method only signs the transaction and
+  ///     returns the signed transaction data without broadcasting it
+  ///   - The signed transaction can later be broadcast using `ethSendTransaction`
   public func ethSignTransaction(
     transaction: ETHTransactionParam,
     completion: @escaping (Result<TransactionCompletionResult>) -> Void
@@ -940,6 +1690,26 @@ public class Portal {
     ), completion: completion, connect: nil)
   }
 
+  /// Signs typed data according to EIP-712 (v3) specification.
+  ///
+  /// This method signs structured data following the EIP-712 v3 standard,
+  /// providing a more secure way to sign structured data in Ethereum applications.
+  ///
+  /// - Parameters:
+  ///   - message: JSON-encoded string of the typed data to be signed,
+  ///     must follow the EIP-712 schema
+  ///   - completion: Callback that receives the signing result.
+  ///     The callback is invoked with:
+  ///     - A successful `RequestCompletionResult` containing the signature
+  ///     - An error if the signing fails
+  ///
+  /// - Note:
+  ///   - This is a convenience wrapper around the `eth_signTypedData_v3` RPC method
+  ///   - Requires the wallet address to be available, otherwise returns
+  ///     `PortalProviderError.noAddress`
+  ///   - The message must be a properly formatted EIP-712 typed data structure
+  ///   - For the latest version of typed data signing, consider using
+  ///     `ethSignTypedData` (v4) instead
   public func ethSignTypedDataV3(
     message: String,
     completion: @escaping (Result<RequestCompletionResult>) -> Void
@@ -955,6 +1725,27 @@ public class Portal {
     ), completion: completion, connect: nil)
   }
 
+  /// Signs typed data according to EIP-712 (v4) specification.
+  ///
+  /// This method signs structured data following the latest EIP-712 v4 standard,
+  /// providing the most secure and feature-complete way to sign structured data
+  /// in Ethereum applications.
+  ///
+  /// - Parameters:
+  ///   - message: JSON-encoded string of the typed data to be signed,
+  ///     must follow the EIP-712 schema
+  ///   - completion: Callback that receives the signing result.
+  ///     The callback is invoked with:
+  ///     - A successful `RequestCompletionResult` containing the signature
+  ///     - An error if the signing fails
+  ///
+  /// - Note:
+  ///   - This is a convenience wrapper around the `eth_signTypedData_v4` RPC method
+  ///   - Requires the wallet address to be available, otherwise returns
+  ///     `PortalProviderError.noAddress`
+  ///   - The message must be a properly formatted EIP-712 typed data structure
+  ///   - This is the recommended method for signing typed data, as it includes
+  ///     all improvements and security features from previous versions
   public func ethSignTypedData(
     message: String,
     completion: @escaping (Result<RequestCompletionResult>) -> Void
@@ -970,6 +1761,26 @@ public class Portal {
     ), completion: completion, connect: nil)
   }
 
+  /// Signs a message using the Ethereum personal message format.
+  ///
+  /// This method signs a message using the personal_sign format, which adds
+  /// a prefix to prevent malicious DApps from tricking users into signing
+  /// transactions.
+  ///
+  /// - Parameters:
+  ///   - message: The message to be signed
+  ///   - completion: Callback that receives the signing result.
+  ///     The callback is invoked with:
+  ///     - A successful `RequestCompletionResult` containing the signature
+  ///     - An error if the signing fails
+  ///
+  /// - Note:
+  ///   - This is a convenience wrapper around the `personal_sign` RPC method
+  ///   - Requires the wallet address to be available, otherwise returns
+  ///     `PortalProviderError.noAddress`
+  ///   - The message is automatically prefixed with "\x19Ethereum Signed Message:\n"
+  ///     before signing
+  ///   - This method is commonly used by DApps for user authentication
   public func personalSign(
     message: String,
     completion: @escaping (Result<RequestCompletionResult>) -> Void
@@ -1002,7 +1813,31 @@ public class Portal {
     ), completion: completion, connect: nil)
   }
 
-  // Solana Methods
+  // MARK: - Solana Methods
+
+  /// Sends SOL tokens to a specified Solana address.
+  ///
+  /// This method constructs and sends a Solana transfer transaction for sending SOL
+  /// tokens to another address.
+  ///
+  /// - Parameters:
+  ///   - lamports: Amount of lamports to send (1 SOL = 1,000,000,000 lamports)
+  ///   - to: The recipient's Solana address
+  ///   - withChainId: The CAIP-2 chain identifier (e.g.,
+  ///     "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp" for Solana mainnet)
+  ///
+  /// - Returns: The transaction hash (signature) as a string
+  ///
+  /// - Throws:
+  ///   - `MpcError.addressNotFound` if no Solana address is found for the wallet
+  ///   - `PortalSolError.failedToGetLatestBlockhash` if unable to get the latest blockhash
+  ///   - `PortalSolError.failedToGetTransactionHash` if transaction signing/sending fails
+  ///   - Errors from `SolanaSwift.PublicKey` initialization if addresses are invalid
+  ///
+  /// - Note:
+  ///   - The wallet must have a Solana address. Run generate or recover if needed.
+  ///   - The transaction is automatically signed and sent to the network
+  ///   - The fee is paid by the sender's address
   public func sendSol(_ lamports: UInt64, to: String, withChainId chainId: String) async throws -> String {
     // Format Solana to and from addresses
     guard let fromAddress = try await self.addresses[.solana] else {
@@ -1044,6 +1879,23 @@ public class Portal {
     return txHash
   }
 
+  /// Creates a Solana request object from a compiled message.
+  ///
+  /// This method transforms a Solana message into a format suitable for
+  /// signing and sending to the network.
+  ///
+  /// - Parameter message: The compiled Solana message containing transaction details
+  ///
+  /// - Returns: A `SolanaRequest` object containing:
+  ///   - Header information about required signatures
+  ///   - Base58-encoded account keys
+  ///   - Recent blockhash
+  ///   - Transaction instructions
+  ///
+  /// - Note: This is an internal helper method used by `sendSol` to prepare
+  ///   transactions for signing and sending.
+  ///   The signatures field is intentionally set to nil as they will be
+  ///   added during the signing process.
   public func createSolanaRequest(solanaMessage message: Message) -> SolanaRequest {
     let solanaHeader = SolanaHeader(numRequiredSignatures: message.header.numRequiredSignatures, numReadonlySignedAccounts: message.header.numReadonlySignedAccounts, numReadonlyUnsignedAccounts: message.header.numReadonlyUnsignedAccounts)
 
@@ -1080,6 +1932,22 @@ public class Portal {
    * Portal Connect Helper Methods
    ****************************************/
 
+  /// Creates an instance of Portal Connect for remote transaction signing.
+  ///
+  /// This method instantiates a Portal Connect object that enables remote
+  /// transaction signing capabilities using WebSocket communication.
+  ///
+  /// - Parameter webSocketServer: The WebSocket server hostname to connect to.
+  ///   Defaults to "connect.portalhq.io"
+  ///
+  /// - Returns: A configured `PortalConnect` instance
+  ///
+  /// - Throws: Various initialization errors if Portal Connect setup fails
+  ///
+  /// - Note:
+  ///   - Uses the current Portal instance's configuration for setup
+  ///   - If no chainId is set, defaults to Sepolia testnet (11155111)
+  ///   - The WebSocket server must be accessible from the client device
   public func createPortalConnectInstance(
     webSocketServer: String = "connect.portalhq.io"
   ) throws -> PortalConnect {
