@@ -20,7 +20,7 @@ public class PortalMpcError: LocalizedError, CustomStringConvertible, Equatable 
   }
 
   public var errorDescription: String {
-    return "PortalMpcError -id: \(self.id ?? "") -message: \(self.message ?? "")"
+    return "PortalMpcError -id: \(self.id ?? "unknown") -message: \(self.message ?? "unknown")"
   }
 
   public var description: String {
