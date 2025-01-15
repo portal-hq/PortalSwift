@@ -26,8 +26,8 @@ public class PortalEncryption: PortalEncryptionProtocol {
           }
           let decryptResult = try decoder.decode(DecryptResult.self, from: decryptedData)
 
-          if let decryptError = decryptResult.error, decryptError.code ?? 0 > 0 {
-            continuation.resume(throwing: PortalMpcError(decryptError))
+          guard decryptResult.error?.isNotValid() ?? false else {
+            continuation.resume(throwing: PortalMpcError(decryptResult.error!))
             return
           }
 
@@ -58,8 +58,8 @@ public class PortalEncryption: PortalEncryptionProtocol {
           }
           let decryptResult = try decoder.decode(DecryptResult.self, from: decryptedData)
 
-          if let decryptError = decryptResult.error, decryptError.code ?? 0 > 0 {
-            continuation.resume(throwing: PortalMpcError(decryptError))
+          guard decryptResult.error?.isNotValid() ?? false else {
+            continuation.resume(throwing: PortalMpcError(decryptResult.error!))
             return
           }
 
@@ -90,8 +90,8 @@ public class PortalEncryption: PortalEncryptionProtocol {
           }
           let encryptResult = try decoder.decode(EncryptResult.self, from: encryptedData)
 
-          if let encryptError = encryptResult.error, encryptError.code ?? 0 > 0 {
-            continuation.resume(throwing: PortalMpcError(encryptError))
+          guard encryptResult.error?.isNotValid() ?? false else {
+            continuation.resume(throwing: PortalMpcError(encryptResult.error!))
             return
           }
 
@@ -122,8 +122,8 @@ public class PortalEncryption: PortalEncryptionProtocol {
           }
           let encryptResult = try decoder.decode(EncryptResultWithPassword.self, from: encryptedData)
 
-          if let encryptError = encryptResult.error, encryptError.code ?? 0 > 0 {
-            continuation.resume(throwing: PortalMpcError(encryptError))
+          guard encryptResult.error?.isNotValid() ?? false else {
+            continuation.resume(throwing: PortalMpcError(encryptResult.error!))
             return
           }
 

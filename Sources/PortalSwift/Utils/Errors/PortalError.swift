@@ -13,3 +13,9 @@ public struct PortalError: Codable {
   public var id: String?
   public var message: String?
 }
+
+extension PortalError {
+  func isNotValid() -> Bool {
+    return id?.isEmpty ?? true
+  }
+}

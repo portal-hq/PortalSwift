@@ -329,7 +329,7 @@ public class PortalMpc: PortalMpcProtocol {
 
       let ejectResult: EjectResult = try decoder.decode(EjectResult.self, from: jsonData)
 
-      guard ejectResult.error == nil || ejectResult.error?.code == 0 else {
+      guard ejectResult.error?.isNotValid() ?? false else {
         throw PortalMpcError(ejectResult.error!)
       }
 
@@ -346,7 +346,7 @@ public class PortalMpc: PortalMpcProtocol {
 
       let ejectResult: EjectResult = try decoder.decode(EjectResult.self, from: jsonData)
 
-      guard ejectResult.error == nil || ejectResult.error?.code == 0 else {
+      guard ejectResult.error?.isNotValid() ?? false else {
         throw PortalMpcError(ejectResult.error!)
       }
 
@@ -774,7 +774,7 @@ public class PortalMpc: PortalMpcProtocol {
           let rotateResult: RotateResult = try JSONDecoder().decode(RotateResult.self, from: jsonData)
 
           // Throw if there is an error getting the backup share.
-          guard rotateResult.error == nil || rotateResult.error?.code == 0 else {
+          guard rotateResult.error?.isNotValid() ?? false else {
             continuation.resume(throwing: PortalMpcError(rotateResult.error!))
             return
           }
@@ -811,7 +811,7 @@ public class PortalMpc: PortalMpcProtocol {
           let rotateResult: RotateResult = try JSONDecoder().decode(RotateResult.self, from: jsonData)
 
           // Throw if there is an error getting the backup share.
-          guard rotateResult.error == nil || rotateResult.error?.code == 0 else {
+          guard rotateResult.error?.isNotValid() ?? false else {
             self.logger.error("Error generating \(forCurve.rawValue) share: \(rotateResult.error?.message ?? "")")
             continuation.resume(throwing: PortalMpcError(rotateResult.error!))
             return
@@ -877,7 +877,7 @@ public class PortalMpc: PortalMpcProtocol {
           let rotateResult: RotateResult = try JSONDecoder().decode(RotateResult.self, from: jsonData)
 
           // Throw if there is an error getting the backup share.
-          guard rotateResult.error == nil || rotateResult.error?.code == 0 else {
+          guard rotateResult.error?.isNotValid() ?? false else {
             continuation.resume(throwing: PortalMpcError(rotateResult.error!))
             return
           }
