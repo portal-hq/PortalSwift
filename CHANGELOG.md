@@ -9,6 +9,14 @@ Possible Types of changes include:
 - Removed
 - Fixed
 - Security
+- Improved
+
+## 4.2.1 - 2025-01-16
+
+- Improved error codes throughout the sdk
+- Deprecated `Portal.request()` with optional parameters and string method in favor of implementation with default parameters
+- Added public properties to `BuildSolanaTransactionResponse` & `BuildEip115TransactionResponse` type
+- Added Xcode documentation for Portal's public API functions
 
 ## 4.2.0 - 2024-12-05
 
