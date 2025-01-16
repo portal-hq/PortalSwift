@@ -903,33 +903,6 @@ public class Portal {
     return try await self.provider.request(chainId, withMethod: withMethod, andParams: params, connect: nil)
   }
 
-  /// Sends a blockchain request with the specified method string and parameters.
-  ///
-  /// This method is an alternative version of `request(_:withMethod:andParams:)` that
-  /// accepts a string method name instead of a `PortalRequestMethod` enum value.
-  ///
-  /// - Parameters:
-  ///   - chainId: The chain identifier
-  ///   - withMethod: The RPC method name as a string
-  ///   - andParams: Array of parameters for the RPC method
-  ///
-  /// - Returns: A `PortalProviderResult` containing the response from the blockchain.
-  ///
-  /// - Throws:
-  ///   - `PortalProviderError.unsupportedRequestMethod` if the method string is not a valid
-  ///     `PortalRequestMethod`
-  ///   - Other errors from the underlying `request(_:withMethod:andParams:)` call
-  ///
-  /// - Note: This is a convenience wrapper that converts the method string to a
-  ///   `PortalRequestMethod` enum value before making the request.
-  public func request(_ chainId: String, withMethod: String, andParams: [Any]) async throws -> PortalProviderResult {
-    guard let method = PortalRequestMethod(rawValue: withMethod) else {
-      throw PortalProviderError.unsupportedRequestMethod(withMethod)
-    }
-
-    return try await self.request(chainId, withMethod: method, andParams: andParams)
-  }
-
   public func getRpcUrl(forChainId: String) async -> String? {
     return try? self.provider.getRpcUrl(forChainId)
   }
@@ -1513,6 +1486,25 @@ public class Portal {
     return try await self.request(chainId, withMethod: withMethod, andParams: andParams)
   }
 
+  /// Sends a blockchain request with the specified method string and parameters.
+  ///
+  /// This method is an alternative version of `request(_:withMethod:andParams:)` that
+  /// accepts a string method name instead of a `PortalRequestMethod` enum value.
+  ///
+  /// - Parameters:
+  ///   - chainId: The chain identifier
+  ///   - withMethod: The RPC method name as a string
+  ///   - andParams: Array of parameters for the RPC method
+  ///
+  /// - Returns: A `PortalProviderResult` containing the response from the blockchain.
+  ///
+  /// - Throws:
+  ///   - `PortalProviderError.unsupportedRequestMethod` if the method string is not a valid
+  ///     `PortalRequestMethod`
+  ///   - Other errors from the underlying `request(_:withMethod:andParams:)` call
+  ///
+  /// - Note: This is a convenience wrapper that converts the method string to a
+  ///   `PortalRequestMethod` enum value before making the request.
   @available(*, deprecated, message: "Use request(_:withMethod:andParams:) with PortalRequestMethod instead of String.")
   public func request(_ chainId: String, withMethod: String, andParams: [Any]) async throws -> PortalProviderResult {
     guard let method = PortalRequestMethod(rawValue: withMethod) else {
