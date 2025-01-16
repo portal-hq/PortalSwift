@@ -8,16 +8,19 @@
 import Foundation
 
 public class PortalMpcError: LocalizedError, CustomStringConvertible, Equatable {
-  public var code: Int
-  public var message: String
+  @available(*, deprecated, message: "Use `id` instead.")
+  public var code: Int?
+  public var id: String?
+  public var message: String?
 
   init(_ error: PortalError) {
     self.code = error.code
+    self.id = error.id
     self.message = error.message
   }
 
   public var errorDescription: String {
-    return "PortalMpcError -code: \(self.code) -message: \(self.message)"
+    return "PortalMpcError -id: \(self.id ?? "unknown") -message: \(self.message ?? "unknown")"
   }
 
   public var description: String {
@@ -25,6 +28,6 @@ public class PortalMpcError: LocalizedError, CustomStringConvertible, Equatable 
   }
 
   public static func == (lhs: PortalMpcError, rhs: PortalMpcError) -> Bool {
-    return lhs.code == rhs.code && lhs.message == rhs.message
+    return lhs.code == rhs.code && lhs.message == rhs.message && lhs.id == rhs.id
   }
 }

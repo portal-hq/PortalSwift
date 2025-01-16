@@ -730,7 +730,7 @@ extension PortalMpcTests {
       XCTFail("Expected error not thrown when calling PortalMpc.generate when MPC MobileGenerateEd25519 return error.")
     } catch {
       // then
-      XCTAssertEqual(error as? PortalMpcError, PortalMpcError(PortalError(code: 400, message: "error message")))
+      XCTAssertEqual(error as? PortalMpcError, PortalMpcError(PortalError(code: 400, id: "error-id", message: "error message")))
     }
   }
 
@@ -750,7 +750,7 @@ extension PortalMpcTests {
       XCTFail("Expected error not thrown when calling PortalMpc.generate when MPC MobileGenerateSecp256k1 return error.")
     } catch {
       // then
-      XCTAssertEqual(error as? PortalMpcError, PortalMpcError(PortalError(code: 400, message: "error message")))
+      XCTAssertEqual(error as? PortalMpcError, PortalMpcError(PortalError(code: 400, id: "error-id", message: "error message")))
     }
   }
 
@@ -770,7 +770,7 @@ extension PortalMpcTests {
       XCTFail("Expected error not thrown when calling PortalMpc.generate when MPC MobileGenerateSecp256k1 & MobileGenerateEd25519 return error.")
     } catch {
       // then
-      XCTAssertEqual(error as? PortalMpcError, PortalMpcError(PortalError(code: 400, message: "error message")))
+      XCTAssertEqual(error as? PortalMpcError, PortalMpcError(PortalError(code: 400, id: "error-id", message: "error message")))
     }
   }
 

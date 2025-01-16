@@ -8,6 +8,14 @@
 import Foundation
 
 public struct PortalError: Codable {
-  public var code: Int
-  public var message: String
+  @available(*, deprecated, message: "Use `id` instead.")
+  public var code: Int?
+  public var id: String?
+  public var message: String?
+}
+
+extension PortalError {
+  func isNotValid() -> Bool {
+    return id?.isEmpty ?? true
+  }
 }
