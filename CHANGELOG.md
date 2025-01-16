@@ -9,21 +9,13 @@ Possible Types of changes include:
 - Removed
 - Fixed
 - Security
-- Updated
+- Improved
 
 ## 4.2.1 - 2025-01-16
 
-- Changed validation checks order in `Portal.eject()`
-- Fixed decoding issues in `PortalKeychain.getMetadata()`
-- Deprecated `Portal.request()` with optional parameters and string method in favor of new implementation with default parameters
-- Added public properties to `BuildSolanaTransactionResponse` type
-- Added public properties to `BuildEip115TransactionResponse` type
-- Updated MPC binary to version `4.0.92`
-- Deprecated `code` property in `PortalMpcError` and added `id` property instead
-- Changed `PortalMpcError.message` to include both `id` and error details
-- Changed all MPC function responses to include optional `data` and `error` fields
-- Fixed `ProgressCallback.done` flag in `Portal.recover()` to properly report `true` for completed status
-- Fixed `ProgressCallback.done` flag in `Portal.generate()` to properly report `true` for completed status
+- Improved error codes throughout the sdk
+- Deprecated `Portal.request()` with optional parameters and string method in favor of implementation with default parameters
+- Added public properties to `BuildSolanaTransactionResponse` & `BuildEip115TransactionResponse` type
 - Added Xcode documentation for Portal's public API functions
 
 ## 4.2.0 - 2024-12-05
