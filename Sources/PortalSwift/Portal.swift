@@ -895,11 +895,7 @@ public class Portal {
   ///
   /// - Note: Parameters are automatically converted to a format compatible with
   ///   blockchain RPC calls.
-  public func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any]?) async throws -> PortalProviderResult {
-    guard let andParams = andParams else {
-      throw PortalProviderError.invalidRequestParams
-    }
-
+  public func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any] = []) async throws -> PortalProviderResult {
     let params = andParams.map { param in
       AnyCodable(param)
     }
@@ -1504,6 +1500,28 @@ public class Portal {
     self.mpc.ejectPrivateKey(clientBackupCiphertext: clientBackupCiphertext, method: method, backupConfigs: backupConfigs, orgBackupShare: orgBackupShare, completion: completion)
   }
 
+  @available(*, deprecated, message: "Use request(_:withMethod:andParams:) with a default value for andParams instead.")
+  public func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any]?) async throws -> PortalProviderResult {
+    guard let andParams = andParams else {
+      throw PortalProviderError.invalidRequestParams
+    }
+
+    let params = andParams.map { param in
+      AnyCodable(param)
+    }
+
+    return try await self.request(chainId, withMethod: withMethod, andParams: andParams)
+  }
+
+  @available(*, deprecated, message: "Use request(_:withMethod:andParams:) with PortalRequestMethod instead of String.")
+  public func request(_ chainId: String, withMethod: String, andParams: [Any]) async throws -> PortalProviderResult {
+    guard let method = PortalRequestMethod(rawValue: withMethod) else {
+      throw PortalProviderError.unsupportedRequestMethod(withMethod)
+    }
+
+    return try await self.request(chainId, withMethod: method, andParams: andParams)
+  }
+
   /// Provisions a wallet using backup data.
   ///
   /// This method recovers a wallet using provided backup data and configures it
@@ -1974,7 +1992,7 @@ public class Portal {
       "eip155:84532": "https://\(apiHost)/rpc/v1/eip155/84532", // Base Testnet
       "eip155:11155111": "https://\(apiHost)/rpc/v1/eip155/11155111", // Ethereum Sepolia
       "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": "https://\(apiHost)/rpc/v1/solana/5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", // Solana Mainnet
-      "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": "https://\(apiHost)/rpc/v1/solana/EtWTRABZaYq6iMfeYKouRu166VU2xqa1" // Solana Testnet
+      "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": "https://\(apiHost)/rpc/v1/solana/EtWTRABZaYq6iMfeYKouRu166VU2xqa1" // Solana Devnet
     ]
   }
 }

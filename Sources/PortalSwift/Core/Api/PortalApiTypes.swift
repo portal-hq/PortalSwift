@@ -533,32 +533,32 @@ public enum EvaluateTransactionOperationType: String, CaseIterable {
 }
 
 public struct BuildEip115TransactionResponse: Codable {
-  let transaction: Eip115Transaction
-  let metadata: BuildTransactionMetaData
-  let error: String?
+  public let transaction: Eip115Transaction
+  public let metadata: BuildTransactionMetaData
+  public let error: String?
 }
 
 public struct Eip115Transaction: Codable {
-  let from: String
-  let to: String
-  let data: String?
-  let value: String?
+  public let from: String
+  public let to: String
+  public let data: String?
+  public let value: String?
 }
 
 public struct BuildTransactionMetaData: Codable {
-  let amount: String
-  let fromAddress: String
-  let toAddress: String
-  let tokenAddress: String?
-  let tokenDecimals: Int
-  let tokenSymbol: String?
-  let rawAmount: String
+  public let amount: String
+  public let fromAddress: String
+  public let toAddress: String
+  public let tokenAddress: String?
+  public let tokenDecimals: Int
+  public let tokenSymbol: String?
+  public let rawAmount: String
 }
 
 public struct BuildSolanaTransactionResponse: Codable {
-  let transaction: String
-  let metadata: BuildTransactionMetaData
-  let error: String?
+  public let transaction: String
+  public let metadata: BuildTransactionMetaData
+  public let error: String?
 }
 
 public struct BuildTransactionParam {
