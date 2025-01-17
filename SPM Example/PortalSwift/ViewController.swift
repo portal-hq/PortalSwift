@@ -565,23 +565,23 @@ class ViewController: UIViewController, UITextFieldDelegate {
       throw PortalExampleAppError.portalNotInitialized()
     }
     let chainId = "eip155:11155111"
-    guard let address = await portal.getAddress(chainId) else {
-      self.logger.error("ViewController.sendTransaction() - ❌ Address not found.")
-      throw PortalExampleAppError.addressNotFound()
-    }
 
-    _ = try await self.getGasPrice(chainId)
+    let transactionParam = BuildTransactionParam(
+      to: self.sendAddress?.text ?? "",
+      token: "NATIVE",
+      amount: "0.0001"
+    )
 
-    let transaction = [
-      "from": address,
-      "to": self.sendAddress?.text ?? "",
-      "value": "0x10"
-    ]
+    // Build the transaction using Portal
+    let transactionResponse = try await portal.buildEip155Transaction(chainId: chainId, params: transactionParam)
 
-    let sendTransactionResponse = try await portal.request(chainId, withMethod: .eth_sendTransaction, andParams: [transaction])
+    let sendTransactionResponse = try await portal.request(chainId, withMethod: .eth_sendTransaction, andParams: [transactionResponse.transaction])
+
     guard let transactionHash = sendTransactionResponse.result as? String else {
       throw PortalExampleAppError.invalidResponseTypeForRequest()
     }
+
+    print("✅ Transaction hash: \(transactionHash)")
 
     return transactionHash
   }
@@ -2026,13 +2026,33 @@ class ViewController: UIViewController, UITextFieldDelegate {
         // Setup and address retrieval
         let chainId = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1" // Devnet
         // let chainId = "solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z" // Testnet
-        guard let portal = self.portal, let fromAddress = await portal.getAddress(chainId) else {
+        guard let portal = self.portal else {
           self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Portal or address not initialized/found")
           self.stopLoading()
           return
         }
 
-        let txHash = try await portal.sendSol(1, to: "GPsPXxoQA51aTJJkNHtFDFYui5hN5UxcFPnheJEHa5Du", withChainId: chainId)
+        let transactionParam = BuildTransactionParam(
+          to: "75ZfLXXsSpycDvHTQuHnGQuYgd2ihb6Bu4viiCCQ7P4H",
+          token: "NATIVE",
+          amount: "0.0001"
+        )
+
+        // Build the transaction using Portal
+        let transactionResponse = try await portal.buildSolanaTransaction(chainId: chainId, params: transactionParam)
+
+        // Sign the transaction
+        let response = try await portal.request(
+          chainId,
+          withMethod: .sol_signAndSendTransaction,
+          andParams: [transactionResponse.transaction] // RPC params are always expected to be an array
+        )
+
+        // Obtain the transaction hash.
+        guard let txHash = response.result as? String else {
+          // Handle a bad response here
+          return
+        }
 
         self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Successfully signed message: SOL: \(txHash)")
 

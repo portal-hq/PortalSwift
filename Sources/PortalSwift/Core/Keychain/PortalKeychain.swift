@@ -55,6 +55,7 @@ public class PortalKeychain: PortalKeychainProtocol {
     case noWalletsFound
     case shareNotFoundForCurve(_ curve: PortalCurve)
     case unableToEncodeKeychainData
+    case unableToDecodeMetadata
     case unexpectedItemData(item: String)
     case unhandledError(status: OSStatus)
     case unsupportedNamespace(_ chainId: String)
@@ -197,9 +198,12 @@ public class PortalKeychain: PortalKeychainProtocol {
       self.logger.error("PortalKeychain.getMetadata() - Unable to encode keychain data")
       throw KeychainError.unableToEncodeKeychainData
     }
-    let metadata = try decoder.decode(PortalKeychainClientMetadata.self, from: data)
-
-    return metadata
+    do {
+      let metadata = try decoder.decode(PortalKeychainClientMetadata.self, from: data)
+      return metadata
+    } catch {
+      throw KeychainError.unableToDecodeMetadata
+    }
   }
 
   public func getShare(_ forChainId: String) async throws -> String {

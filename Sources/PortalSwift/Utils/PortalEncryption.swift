@@ -26,8 +26,8 @@ public class PortalEncryption: PortalEncryptionProtocol {
           }
           let decryptResult = try decoder.decode(DecryptResult.self, from: decryptedData)
 
-          if decryptResult.error.code > 0 {
-            continuation.resume(throwing: PortalMpcError(decryptResult.error))
+          guard decryptResult.error?.isNotValid() ?? false else {
+            continuation.resume(throwing: PortalMpcError(decryptResult.error!))
             return
           }
 
@@ -58,8 +58,8 @@ public class PortalEncryption: PortalEncryptionProtocol {
           }
           let decryptResult = try decoder.decode(DecryptResult.self, from: decryptedData)
 
-          if decryptResult.error.code > 0 {
-            continuation.resume(throwing: PortalMpcError(decryptResult.error))
+          guard decryptResult.error?.isNotValid() ?? false else {
+            continuation.resume(throwing: PortalMpcError(decryptResult.error!))
             return
           }
 
@@ -90,8 +90,8 @@ public class PortalEncryption: PortalEncryptionProtocol {
           }
           let encryptResult = try decoder.decode(EncryptResult.self, from: encryptedData)
 
-          if encryptResult.error.code > 0 {
-            continuation.resume(throwing: PortalMpcError(encryptResult.error))
+          guard encryptResult.error?.isNotValid() ?? false else {
+            continuation.resume(throwing: PortalMpcError(encryptResult.error!))
             return
           }
 
@@ -122,8 +122,8 @@ public class PortalEncryption: PortalEncryptionProtocol {
           }
           let encryptResult = try decoder.decode(EncryptResultWithPassword.self, from: encryptedData)
 
-          if encryptResult.error.code > 0 {
-            continuation.resume(throwing: PortalMpcError(encryptResult.error))
+          guard encryptResult.error?.isNotValid() ?? false else {
+            continuation.resume(throwing: PortalMpcError(encryptResult.error!))
             return
           }
 

@@ -5,12 +5,7 @@ public struct PortalMpcBackupResponse {
 
 public struct FormatShareResponse: Codable {
   let data: PortalMpcGenerateResponse?
-  let error: ErrorDetails?
-}
-
-public struct ErrorDetails: Codable {
-  let id: String
-  let message: String
+  let error: PortalError?
 }
 
 public typealias PortalMpcGenerateResponse = [String: PortalMpcGeneratedShare]
@@ -112,7 +107,7 @@ public struct MpcShare: Codable, Equatable {
 
 struct DecryptResult: Codable {
   public var data: DecryptData?
-  public var error: PortalError
+  public var error: PortalError?
 }
 
 struct DecryptData: Codable {
@@ -126,7 +121,7 @@ struct EncryptDataWithPassword: Codable {
 
 struct EncryptResultWithPassword: Codable {
   public var data: EncryptDataWithPassword?
-  public var error: PortalError
+  public var error: PortalError?
 }
 
 /// The response from encrypting.
@@ -137,7 +132,7 @@ public struct EncryptData: Codable, Equatable {
 
 struct EncryptResult: Codable {
   public var data: EncryptData?
-  public var error: PortalError
+  public var error: PortalError?
 }
 
 /// The response from fetching the client.
@@ -148,8 +143,8 @@ public struct ClientResult: Codable {
 
 /// The response from fetching the client.
 public struct EjectResult: Codable {
-  public var privateKey: String
-  public var error: PortalError
+  public var privateKey: String?
+  public var error: PortalError?
 }
 
 /// The data for GenerateResult.
@@ -172,7 +167,7 @@ public struct RotateData: Codable {
 /// The response from rotating.
 struct RotateResult: Codable {
   public var data: RotateData?
-  public var error: PortalError
+  public var error: PortalError?
 }
 
 /// The data for SignResult.
@@ -184,7 +179,7 @@ public struct SignData: Codable {
 /// The response from signing.
 public struct SignResult: Codable {
   public var data: String?
-  public var error: PortalError
+  public var error: PortalError?
 }
 
 public struct MpcStatus {
