@@ -1,9 +1,9 @@
 name: Build and Upload iOS ipa to Mukktest
 
-on:
-  push:
-    branches:
-      - release-candidate
+#on:
+#  push:
+#    branches:
+#      - release-candidate
 
 jobs:
   build-and-upload:
