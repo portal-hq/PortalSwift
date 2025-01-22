@@ -444,6 +444,18 @@ public class PortalApi: PortalApiProtocol {
     self.logger.error("PortalApi.updateShareStatus() - Unable to build request URL.")
     throw URLError(.badURL)
   }
+  
+  public func fund(chainId: String, params: FundParams) async throws -> FundResponse {
+    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/fund") {
+      let payload = FundRequestBody(amount: params.amount, chainId: chainId, token: params.token)
+      let data = try await post(url, withBearerToken: self.apiKey, andPayload: payload)
+      let response = try decoder.decode(FundResponse.self, from: data)
+
+      return response
+    }
+
+    throw URLError(.badURL)
+  }
 
   public func buildEip155Transaction(chainId: String, params: BuildTransactionParam) async throws -> BuildEip115TransactionResponse {
     guard chainId.starts(with: "eip155:") else {

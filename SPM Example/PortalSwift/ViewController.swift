@@ -1309,11 +1309,22 @@ class ViewController: UIViewController, UITextFieldDelegate {
     Task {
       do {
         self.startLoading()
-        let transactionHash = try await sendSepoliaTransaction()
-        self.logger.info("ViewController.handleFundSepolia() - ✅ Successfully sent transaction")
-        self.showStatusView(message: "\(self.successStatus) Successfully sent transaction")
-        self.logger.info("ViewController.handleFundSepolia() - ✅ Transaction Hash: \(transactionHash)")
-        try await self.populateEthBalance()
+
+        let chainId = "eip155:11155111"
+        let params = FundParams(
+          amount: "0.001",
+          token: "ETH"
+        )
+        
+        let response = try await portal?.api.fund(chainId: chainId, params: params)
+        
+        if let txHash = response?.data.txHash {
+          self.logger.info("ViewController.handleFundSepolia() - ✅ Successfully sent transaction")
+          self.showStatusView(message: "\(self.successStatus) Successfully sent transaction")
+          self.logger.info("ViewController.handleFundSepolia() - ✅ Transaction Hash: \(txHash)")
+          try await self.populateEthBalance()
+        }
+
         self.stopLoading()
       } catch {
         self.stopLoading()
