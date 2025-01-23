@@ -514,8 +514,6 @@ extension PortalApiTests {
     let expectation = XCTestExpectation(description: "PortalApi.fund()")
     let mockFundResponse = MockConstants.mockFundResponse
     let fundResponse = try await api?.fund(chainId: "eip155:11155111", params: FundParams(amount: "0.01", token: "ETH"))
-    print("fundResponse", fundResponse)
-    print("mockFundResponse", mockFundResponse)
     XCTAssert(fundResponse?.data?.txHash == mockFundResponse.data?.txHash)
     expectation.fulfill()
     await fulfillment(of: [expectation], timeout: 5.0)
