@@ -12,6 +12,7 @@ public protocol PortalApiProtocol: AnyObject {
   var client: ClientResponse? { get async throws }
 
   func eject() async throws -> String
+  func fund(chainId: String, params: FundParams) async throws -> FundResponse
   func getBalances(_ chainId: String) async throws -> [FetchedBalance]
   func getClient() async throws -> ClientResponse
   func getClientCipherText(_ backupSharePairId: String) async throws -> String

@@ -1422,6 +1422,10 @@ public class Portal {
   public func getWalletCapabilities() async throws -> WalletCapabilitiesResponse {
     return try await api.getWalletCapabilities()
   }
+  
+  public func receiveTestnetAsset(chainId: String, params: FundParams) async throws -> FundResponse {
+    return try await api.fund(chainId: chainId, params: params)
+  }
 
   /**********************************
    * Deprecated functions

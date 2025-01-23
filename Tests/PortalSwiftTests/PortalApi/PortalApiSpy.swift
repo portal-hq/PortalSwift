@@ -115,6 +115,32 @@ class PortalApiSpy: PortalApiProtocol {
     getTransactionsOrderParam = order
     return []
   }
+  
+  // Get Transactions method tracking
+  var fundCallsCount: Int = 0
+  var fundChainIdParam: String?
+  var fundParams: FundParams?
+
+  public func fund(chainId: String, params: FundParams) async throws -> FundResponse {
+    fundCallsCount += 1
+    fundChainIdParam = chainId
+    fundParams = params
+    return FundResponse(
+      data: FundResponseData(
+        explorerUrl: "https://sepolia.etherscan.io/tx/0x13aebe28e9661959f73e06c48123d67d47e8e24a3833f626d2fcaa6ef640d0de",
+        txHash: "0x13aebe28e9661959f73e06c48123d67d47e8e24a3833f626d2fcaa6ef640d0de"
+      ),
+      metadata: FundResponseMetadata(
+        amount: "0.01",
+        chainId: "eip155:11155111",
+        clientId: "clientId",
+        custodianId: "custodianId",
+        environmentId: "environmentId",
+        token: "ETH"
+      ),
+      error: FundResponseError(id: "id", message: "message")
+    )
+  }
 
   // Identify method tracking
   var identifyCallsCount: Int = 0

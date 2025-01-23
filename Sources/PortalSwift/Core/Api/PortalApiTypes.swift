@@ -533,6 +533,11 @@ public enum EvaluateTransactionOperationType: String, CaseIterable {
 }
 
 public struct FundParams: Codable {
+  public init (amount: String, token: String) {
+    self.amount = amount
+    self.token = token
+  }
+
   public let amount: String
   public let token: String
 }
