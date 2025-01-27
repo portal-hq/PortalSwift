@@ -1319,8 +1319,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
         let response = try await portal?.receiveTestnetAsset(chainId: chainId, params: params)
         
         if let txHash = response?.data?.txHash {
-          self.logger.info("ViewController.handleReceiveAsset() - ✅ Successfully sent transaction")
-          self.showStatusView(message: "\(self.successStatus) Successfully sent transaction")
+          self.logger.info("ViewController.handleReceiveAsset() - ✅ Successfully created transaction to fund account")
+          self.showStatusView(message: "\(self.successStatus) Successfully created transaction to fund account")
           self.logger.info("ViewController.handleReceiveAsset() - ✅ Transaction Hash: \(txHash)")
           try await self.populateEthBalance()
         }
