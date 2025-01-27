@@ -1426,6 +1426,81 @@ public class Portal {
   public func receiveTestnetAsset(chainId: String, params: FundParams) async throws -> FundResponse {
     return try await api.fund(chainId: chainId, params: params)
   }
+  
+  /// Sends an asset (token) to a specified address.
+  ///
+  /// This method handles sending both native and token assets on supported chains. It automatically
+  /// detects the chain type (EVM or Solana) and uses the appropriate transaction building and sending methods.
+  ///
+  /// - Parameters:
+  ///   - chainId: The CAIP-2 chain identifier (e.g., "eip155:1" for Ethereum mainnet,
+  ///     "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp" for Solana mainnet)
+  ///   - params: Transaction parameters including:
+  ///     - to: The recipient's address
+  ///     - token: The token to send (use "NATIVE" for chain's native token)
+  ///     - amount: The amount to send as a string
+  ///
+  /// - Returns: A SendAssetResponse containing:
+  ///   - data: Transaction data including hash and explorer URL if successful
+  ///   - metadata: Additional transaction metadata
+  ///   - error: Error information if the transaction failed
+  ///
+  /// - Throws: Various errors if transaction building or sending fails
+  ///
+  /// - Note: Chain identifiers must follow CAIP-2 format (namespace:reference)
+  public func sendAsset(chainId: String, params: SendAssetParams) async throws -> SendAssetResponse {
+    // Validate required parameters
+    guard !params.to.isEmpty, !params.token.isEmpty, !params.amount.isEmpty else {
+      throw PortalClassError.invalidParameters("Missing required parameters: to, token, or amount")
+    }
+    
+    // Get chain namespace
+    let chainParts = chainId.split(separator: ":")
+    guard chainParts.count == 2 else {
+      throw PortalClassError.invalidChainId(chainId)
+    }
+    let namespace = String(chainParts[0])
+    
+    // Build the appropriate transaction based on chain type
+    let transactionParam = BuildTransactionParam(
+      to: params.to,
+      token: params.token,
+      amount: params.amount
+    )
+    
+    switch namespace {
+    case "eip155":
+      // Build and send EVM transaction
+      let transactionResponse = try await buildEip155Transaction(chainId: chainId, params: transactionParam)
+      
+      // Send the transaction using eth_sendTransaction
+      let sendResponse = try await request(chainId, withMethod: .eth_sendTransaction, andParams: [transactionResponse.transaction])
+      
+      guard let txHash = sendResponse.result as? String else {
+          throw PortalClassError.invalidResponseTypeForRequest
+      }
+      
+      // Construct and return response
+      return SendAssetResponse(txHash: txHash)
+        
+    case "solana":
+      // Build and send Solana transaction
+      let transactionResponse = try await buildSolanaTransaction(chainId: chainId, params: transactionParam)
+      
+      // Send the transaction using sol_signAndSendTransaction
+      let sendResponse = try await request(chainId, withMethod: .sol_signAndSendTransaction, andParams: [transactionResponse.transaction])
+      
+      guard let txHash = sendResponse.result as? String else {
+          throw PortalClassError.invalidResponseTypeForRequest
+      }
+      
+      // Construct and return response
+      return SendAssetResponse(txHash: txHash)
+        
+    default:
+      throw PortalClassError.unsupportedChainId(chainId)
+    }
+  }
 
   /**********************************
    * Deprecated functions
@@ -2004,6 +2079,8 @@ enum PortalClassError: LocalizedError, Equatable {
   case cannotCreateWallet
   case cannotRecoverWallet
   case invalidChainId(String)
+  case invalidResponseTypeForRequest
+  case invalidParameters(String)
 }
 
 enum PortalProviderError: LocalizedError, Equatable {

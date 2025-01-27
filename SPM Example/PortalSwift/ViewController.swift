@@ -63,7 +63,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var testNFTsTrxsBalancesSimTrxButton: UIButton?
   @IBOutlet var ejectButton: UIButton?
   @IBOutlet var ejectAllButton: UIButton?
-  @IBOutlet var fundSepoliaButton: UIButton?
+  @IBOutlet var receiveAssetButton: UIButton?
+  @IBOutlet var sendAssetButton: UIButton?
   @IBOutlet var generateSolanaAndBackupShares: UIButton!
 
   @IBOutlet var passkeyBackupButton: UIButton?
@@ -1140,9 +1141,11 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.ejectAllButton?.isEnabled = availableRecoveryMethods.count > 0
           self.ejectAllButton?.isHidden = availableRecoveryMethods.count == 0
 
-          // Test Add funds to Sepolia
-          self.fundSepoliaButton?.isEnabled = walletExists && isWalletOnDevice
-          self.fundSepoliaButton?.isHidden = !walletExists || !isWalletOnDevice
+          // Test Receive + Send Assets
+          self.receiveAssetButton?.isEnabled = walletExists && isWalletOnDevice
+          self.receiveAssetButton?.isHidden = !walletExists || !isWalletOnDevice
+          self.sendAssetButton?.isEnabled = walletExists && isWalletOnDevice
+          self.sendAssetButton?.isHidden = !walletExists || !isWalletOnDevice
 
           // Test Generate Solana and backup shares
           self.generateSolanaAndBackupShares.isHidden = self.user == nil
@@ -1305,20 +1308,46 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  @IBAction func handleFundSepolia(_: UIButton) {
+  @IBAction func handleReceiveAsset(_: UIButton) {
     Task {
       do {
         self.startLoading()
 
         let chainId = "eip155:11155111"
-        let params = FundParams(amount: "0.001", token: "ETH")
+        let params = FundParams(amount: "0.01", token: "NATIVE")
         
         let response = try await portal?.receiveTestnetAsset(chainId: chainId, params: params)
         
         if let txHash = response?.data?.txHash {
-          self.logger.info("ViewController.handleFundSepolia() - ✅ Successfully sent transaction")
+          self.logger.info("ViewController.handleReceiveAsset() - ✅ Successfully sent transaction")
           self.showStatusView(message: "\(self.successStatus) Successfully sent transaction")
-          self.logger.info("ViewController.handleFundSepolia() - ✅ Transaction Hash: \(txHash)")
+          self.logger.info("ViewController.handleReceiveAsset() - ✅ Transaction Hash: \(txHash)")
+          try await self.populateEthBalance()
+        }
+
+        self.stopLoading()
+      } catch {
+        self.stopLoading()
+        self.logger.error("Error sending transaction: \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error sending transaction: \(error)")
+      }
+    }
+  }
+  
+  @IBAction func handleSendAsset(_: UIButton) {
+    Task {
+      do {
+        self.startLoading()
+
+        let chainId = "eip155:11155111"
+        let params = SendAssetParams(to: "0xdFd8302f44727A6348F702fF7B594f127dE3A902", amount: "0.001", token: "NATIVE")
+        
+        let response = try await portal?.sendAsset(chainId: chainId, params: params)
+        
+        if let txHash = response?.txHash {
+          self.logger.info("ViewController.handleSendAsset() - ✅ Successfully sent transaction")
+          self.showStatusView(message: "\(self.successStatus) Successfully sent transaction")
+          self.logger.info("ViewController.handleSendAsset() - ✅ Transaction Hash: \(txHash)")
           try await self.populateEthBalance()
         }
 

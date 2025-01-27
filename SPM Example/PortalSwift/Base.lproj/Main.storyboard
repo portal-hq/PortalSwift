@@ -389,7 +389,7 @@
                                     <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 </buttonConfiguration>
                                 <connections>
-                                    <action selector="handleFundSepolia:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="OQH-mh-gh1"/>
+                                    <action selector="handleReceiveAsset:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="7Ui-U5-54N"/>
                                 </connections>
                             </button>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="ePx-1g-j7r">
@@ -402,7 +402,7 @@
                                     <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 </buttonConfiguration>
                                 <connections>
-                                    <action selector="handleFundSepolia:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="qDZ-Cc-wEo"/>
+                                    <action selector="handleSendAsset:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="U39-2j-hYj"/>
                                 </connections>
                             </button>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" restorationIdentifier="ejectAllButton" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="V5k-BN-vvY">
@@ -460,7 +460,6 @@
                         <outlet property="ejectAllButton" destination="V5k-BN-vvY" id="5TG-3y-6ed"/>
                         <outlet property="ejectButton" destination="xhu-mS-abX" id="Ihh-3a-afy"/>
                         <outlet property="ethBalanceInformation" destination="XWB-hw-iZv" id="c0l-fG-eWb"/>
-                        <outlet property="fundSepoliaButton" destination="weH-pZ-F1n" id="I3z-Up-cgE"/>
                         <outlet property="gdriveBackupButton" destination="DaJ-fr-bUt" id="5NR-6g-wxq"/>
                         <outlet property="gdriveRecoverButton" destination="U9U-6p-gAr" id="aUT-iv-Rxw"/>
                         <outlet property="generateButton" destination="PLS-JE-WGU" id="i8N-R8-wtj"/>
@@ -475,8 +474,10 @@
                         <outlet property="passwordRecoverButton" destination="e3a-WD-Rlx" id="1rg-cD-ovX"/>
                         <outlet property="personalSignButton" destination="ML8-lm-u4m" id="htk-XR-9zw"/>
                         <outlet property="portalConnectButton" destination="Oix-QY-d5L" id="ggO-uw-BBj"/>
+                        <outlet property="receiveAssetButton" destination="weH-pZ-F1n" id="FjP-f9-WsX"/>
                         <outlet property="scrollView" destination="kh9-bI-dsS" id="weE-Dd-shd"/>
                         <outlet property="sendAddress" destination="rf6-ZQ-VL3" id="jeB-Fl-Ghp"/>
+                        <outlet property="sendAssetButton" destination="ePx-1g-j7r" id="6Iz-DL-DbK"/>
                         <outlet property="sendButton" destination="a21-UV-DHr" id="e3D-3c-9Tc"/>
                         <outlet property="sendUniButton" destination="jpZ-X5-eUU" id="Caj-Z5-rEC"/>
                         <outlet property="signButton" destination="NGV-LW-69G" id="A0r-h6-x1L"/>
@@ -725,7 +726,7 @@
             <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
         </systemColor>
         <systemColor name="systemPinkColor">
-            <color red="1" green="0.17647058823529413" blue="0.33333333333333331" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+            <color red="1" green="0.1764705882" blue="0.33333333329999998" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </systemColor>
     </resources>
 </document>
