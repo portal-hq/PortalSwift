@@ -1954,10 +1954,13 @@ public class Portal {
       throw PortalClassError.unsupportedChainId(chainId)
     }
 
+    let sol = (Double(lamports) / 1_000_000_000.0) // convert lamport to solana
+    let solString = String(format: "%.9f", sol)
+
     let transactionParam = BuildTransactionParam(
       to: to,
       token: "NATIVE",
-      amount: "\(lamports / 1_000_000_000)" // convert lamport to solana
+      amount: solString
     )
 
     // Build the transaction using Portal
