@@ -10,14 +10,14 @@ import UIKit
 
 final class AppConfigViewModel: ObservableObject {
   @Published var appConfig = AppSettings.Config.toArrayOfTuple()
-    
-    func copyToClipboard(for key: String) {
-        let value = appConfig.first { $0.key == key }?.value ?? ""
-        UIPasteboard.general.string = value
-    }
+
+  func copyToClipboard(for key: String) {
+    let value = appConfig.first { $0.key == key }?.value ?? ""
+    UIPasteboard.general.string = value
+  }
 }
 
-fileprivate extension AppSettings.Config {
+private extension AppSettings.Config {
   static func toArrayOfTuple() -> [(key: String, value: String)] {
     return [
       (key: "Env", value: AppSettings.shared.env.rawValue),

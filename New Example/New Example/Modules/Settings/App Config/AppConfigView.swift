@@ -20,11 +20,11 @@ struct AppConfigView: View {
               .bold()
             Text(config.value)
             Spacer()
-              Button {
-                  viewModel.copyToClipboard(for: config.key)
-              } label: {
-                Image(systemName: "doc.on.doc")
-              }
+            Button {
+              viewModel.copyToClipboard(for: config.key)
+            } label: {
+              Image(systemName: "doc.on.doc")
+            }
           }
           .buttonStyle(PlainButtonStyle())
         }

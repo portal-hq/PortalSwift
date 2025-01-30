@@ -26,7 +26,7 @@ extension PortalInstance {
       apiHost: AppSettings.Config.apiUrl,
       mpcHost: AppSettings.Config.mpcUrl
     )
-    
+
     portal?.on(event: Events.PortalSigningRequested.rawValue, callback: { [weak portal] data in
       portal?.emit(Events.PortalSigningApproved.rawValue, data: data)
     })

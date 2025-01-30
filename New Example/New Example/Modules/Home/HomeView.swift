@@ -19,24 +19,24 @@ struct HomeView: View {
       case .error(errorMessage: let errorMessage):
         Text(errorMessage)
       case .available(ethAddress: let ethAddress, solanaAddress: let solanaAddress):
-          VStack {
-              WalletDetails(
-                ethAddress: ethAddress,
-                solanaAddress: solanaAddress,
-                onCopyEthAddressClick: {
-                    viewModel.copyEthereumAddress()
-                },
-                onCopySolanaAddressClick: {
-                    viewModel.copySolanaAddress()
-                }
-              )
-              
-              Rectangle()
-                  .frame(height: 1)
-              
-              BackupAndRecoverView()
-                  .padding(.top)
-          }
+        VStack {
+          WalletDetails(
+            ethAddress: ethAddress,
+            solanaAddress: solanaAddress,
+            onCopyEthAddressClick: {
+              viewModel.copyEthereumAddress()
+            },
+            onCopySolanaAddressClick: {
+              viewModel.copySolanaAddress()
+            }
+          )
+
+          Rectangle()
+            .frame(height: 1)
+
+          BackupAndRecoverView()
+            .padding(.top)
+        }
       case .noWalletAvailable:
         PortalButton(title: "Generate Wallet") {
           viewModel.generateWallet()

@@ -18,12 +18,12 @@ struct SettingsView: View {
           AppConfigView()
         }
 
-          NavigationLink("GDrive Settings") {
-              GDriveSettings()
-          }
+        NavigationLink("GDrive Settings") {
+          GDriveSettings()
+        }
 
         Text("More settings coming soon...")
-            .multilineTextAlignment(.center)
+          .multilineTextAlignment(.center)
       }
     }
   }

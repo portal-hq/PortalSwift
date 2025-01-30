@@ -16,12 +16,11 @@ struct AuthView: View {
 
   var body: some View {
     VStack {
-        
       Image("portal-logo")
-            .resizable()
-            .frame(width: 100, height: 100)
-            .padding([.top, .bottom], 50)
-        
+        .resizable()
+        .frame(width: 100, height: 100)
+        .padding([.top, .bottom], 50)
+
       PortalTextField(placeholder: "username", text: $username)
 
       HStack {
@@ -48,7 +47,7 @@ struct AuthView: View {
         Text(errorMessage)
       }
 
-        Spacer()
+      Spacer()
     }
     .padding([.leading, .trailing])
   }
