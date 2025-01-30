@@ -7,7 +7,6 @@
 
 import AnyCodable
 @testable import PortalSwift
-@testable import SolanaSwift
 import XCTest
 
 class PortalTests: XCTestCase {
@@ -1295,26 +1294,33 @@ extension PortalTests {
 // MARK: - Solana tests
 
 extension PortalTests {
-  func test_sendSol_passingWrongToAddressFormat_willThroughCorrectError() async throws {
+  func test_sendSol_passingWrongChainId_willThroughCorrectError() async throws {
     // given
-    let toAddress = ""
+    let chainId = "qqq"
 
     do {
       // and given
-      _ = try await portal.sendSol(1, to: toAddress, withChainId: "")
+      _ = try await portal.sendSol(1, to: "", withChainId: chainId)
       XCTFail("Expected error not thrown when calling Portal.sendSol passing invalid to address format.")
     } catch {
       // then
-      XCTAssertEqual(error as? PublicKeyError, PublicKeyError.invalidAddress(toAddress))
+      XCTAssertEqual(error as? PortalClassError, PortalClassError.unsupportedChainId(chainId))
     }
   }
 
   func test_sendSol() async throws {
+    // given
+    let portalApiMock = PortalApiMock()
+    portalApiMock.buildSolanaTransactionReturnValue = BuildSolanaTransactionResponse.stub()
+    try initPortalWithSpy(api: portalApiMock)
+
     setToPortal(portalProvider: PortalProviderMock())
 
-    let chainId = "eip155:11155111"
+    // and given
+    let chainId = "solana:11155111"
     let transactionHash = try await portal.sendSol(1, to: "6LmSRCiu3z6NCSpF19oz1pHXkYkN4jWbj9K1nVELpDkT", withChainId: chainId)
 
+    // then
     XCTAssertTrue(!transactionHash.isEmpty)
   }
 
@@ -1329,7 +1335,7 @@ extension PortalTests {
 
     } catch {
       // then
-      XCTAssertEqual(error as? PortalBlockchainError, PortalBlockchainError.invalidChainId(chainId))
+      XCTAssertEqual(error as? PortalClassError, PortalClassError.invalidChainId(chainId))
     }
   }
 
@@ -1344,7 +1350,7 @@ extension PortalTests {
 
     } catch {
       // then
-      XCTAssertEqual(error as? PortalBlockchainError, PortalBlockchainError.invalidChainId(chainId))
+      XCTAssertEqual(error as? PortalClassError, PortalClassError.unsupportedChainId(chainId))
     }
   }
 
@@ -1359,7 +1365,7 @@ extension PortalTests {
 
     } catch {
       // then
-      XCTAssertEqual(error as? PortalBlockchainError, PortalBlockchainError.invalidChainId(chainId))
+      XCTAssertEqual(error as? PortalClassError, PortalClassError.unsupportedChainId(chainId))
     }
   }
   // TODO: - to send the `sendSol` function all cases.

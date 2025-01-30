@@ -2069,29 +2069,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
           return
         }
 
-        let transactionParam = BuildTransactionParam(
+        let transactionHash = try await portal.sendSol(
+          1,
           to: "75ZfLXXsSpycDvHTQuHnGQuYgd2ihb6Bu4viiCCQ7P4H",
-          token: "NATIVE",
-          amount: "0.0001"
+          withChainId: chainId
         )
 
-        // Build the transaction using Portal
-        let transactionResponse = try await portal.buildSolanaTransaction(chainId: chainId, params: transactionParam)
-
-        // Sign the transaction
-        let response = try await portal.request(
-          chainId,
-          withMethod: .sol_signAndSendTransaction,
-          andParams: [transactionResponse.transaction] // RPC params are always expected to be an array
-        )
-
-        // Obtain the transaction hash.
-        guard let txHash = response.result as? String else {
-          // Handle a bad response here
-          return
-        }
-
-        self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Successfully signed message: SOL: \(txHash)")
+        self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Successfully signed message: SOL: \(transactionHash)")
 
         self.stopLoading()
       } catch {
