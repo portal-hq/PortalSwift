@@ -101,7 +101,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  private var portal: Portal? {
+  private var portal: PortalProtocol? {
     get {
       if let appDelegate = UIApplication.shared.delegate as? PortalExampleAppDelegate {
         return appDelegate.portal
@@ -425,7 +425,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       throw PortalExampleAppError.portalNotInitialized()
     }
 
-    return try await portal.createWallet()
+    return try await portal.createWallet(usingProgressCallback: nil)
   }
 
   public func generateSolana() async throws -> String {
@@ -434,7 +434,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       throw PortalExampleAppError.portalNotInitialized()
     }
 
-    return try await portal.createSolanaWallet()
+    return try await portal.createSolanaWallet(usingProgressCallback: nil)
   }
 
   func getBalances() async throws -> [FetchedBalance] {
@@ -510,10 +510,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
-    let backupShares = try await portal.getBackupShares()
+    let backupShares = try await portal.getBackupShares(nil)
     self.logger.info("ViewController.getShareMetadata() - ✅ Successfully fetched backup shares.")
 
-    let signingShares = try await portal.getSigningShares()
+    let signingShares = try await portal.getSigningShares(nil)
     self.logger.info("ViewController.getShareMetadata() - ✅ Successfully fetched signing shares.")
 
     let shares = backupShares + signingShares
@@ -524,7 +524,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
-    return try await portal.getTransactions(chainId)
+    return try await portal.getTransactions(chainId, limit: nil, offset: nil, order: nil)
   }
 
   public func recover(_ userId: String, withBackupMethod: BackupMethods) async throws -> PortalRecoverWalletResponse {
@@ -1062,12 +1062,12 @@ class ViewController: UIViewController, UITextFieldDelegate {
             self.stopRefreshBalanceTimer()
           }
 
-          let availableRecoveryMethods = try await self.portal?.availableRecoveryMethods() ?? []
-          let walletExists = try await self.portal?.doesWalletExist() ?? false
+          let availableRecoveryMethods = try await self.portal?.availableRecoveryMethods(nil) ?? []
+          let walletExists = try await self.portal?.doesWalletExist(nil) ?? false
           let solanaWalletExists = try await self.portal?.doesWalletExist("solana") ?? false
           var isWalletOnDevice = false
           do {
-            isWalletOnDevice = try await self.portal?.isWalletOnDevice() ?? false
+            isWalletOnDevice = try await self.portal?.isWalletOnDevice(nil) ?? false
           } catch {
             self.logger.error("ViewController.UpdateUIComponents() - ❌ portal.isWalletOnDevice() failed with: \(error)")
           }
