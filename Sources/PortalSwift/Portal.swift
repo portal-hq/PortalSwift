@@ -1423,6 +1423,23 @@ public class Portal {
     return try await api.getWalletCapabilities()
   }
   
+  /// Requests testnet assets (tokens/coins) for development and testing purposes.
+  ///
+  /// This method allows developers to receive test assets on supported testnet chains
+  /// to facilitate development and testing of their applications.
+  ///
+  /// - Parameters:
+  ///   - chainId: The CAIP-2 chain identifier (e.g., "eip155:11155111" for Ethereum Sepolia)
+  ///   - params: Request parameters including:
+  ///     - token: The token symbol to receive (e.g., "ETH" for Ethereum Sepolia)
+  ///     - amount: The amount of tokens to request as a string (e.g. "0.01" is 0.01 Test ETH)
+  ///
+  /// - Returns: A `FundResponse` containing the transaction details and status
+  ///
+  /// - Throws: Various API-related errors if the funding request fails
+  ///
+  /// - Note: This method only works on testnet chains. Attempting to request
+  ///   assets on mainnet chains will result in an error.
   public func receiveTestnetAsset(chainId: String, params: FundParams) async throws -> FundResponse {
     return try await api.fund(chainId: chainId, params: params)
   }
