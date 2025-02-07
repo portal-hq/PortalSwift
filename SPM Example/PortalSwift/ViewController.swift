@@ -1315,9 +1315,9 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
         let chainId = "eip155:11155111"
         let params = FundParams(amount: "0.01", token: "NATIVE")
-        
+
         let response = try await portal?.receiveTestnetAsset(chainId: chainId, params: params)
-        
+
         if let txHash = response?.data?.txHash {
           self.logger.info("ViewController.handleReceiveAsset() - ✅ Successfully created transaction to fund account")
           self.showStatusView(message: "\(self.successStatus) Successfully created transaction to fund account")
@@ -1333,7 +1333,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
     }
   }
-  
+
   @IBAction func handleSendAsset(_: UIButton) {
     Task {
       do {
@@ -1341,9 +1341,9 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
         let chainId = "eip155:11155111"
         let params = SendAssetParams(to: "0xdFd8302f44727A6348F702fF7B594f127dE3A902", amount: "0.001", token: "NATIVE")
-        
+
         let response = try await portal?.sendAsset(chainId: chainId, params: params)
-        
+
         if let txHash = response?.txHash {
           self.logger.info("ViewController.handleSendAsset() - ✅ Successfully sent transaction")
           self.showStatusView(message: "\(self.successStatus) Successfully sent transaction")

@@ -1422,7 +1422,7 @@ public class Portal {
   public func getWalletCapabilities() async throws -> WalletCapabilitiesResponse {
     return try await api.getWalletCapabilities()
   }
-  
+
   /// Requests testnet assets (tokens/coins) for development and testing purposes.
   ///
   /// This method allows developers to receive test assets on supported testnet chains
@@ -1443,7 +1443,7 @@ public class Portal {
   public func receiveTestnetAsset(chainId: String, params: FundParams) async throws -> FundResponse {
     return try await api.fund(chainId: chainId, params: params)
   }
-  
+
   /// Sends an asset (token) to a specified address.
   ///
   /// This method handles sending both native and token assets on supported chains. It automatically
@@ -1470,54 +1470,50 @@ public class Portal {
     guard !params.to.isEmpty, !params.token.isEmpty, !params.amount.isEmpty else {
       throw PortalClassError.invalidParameters("Missing required parameters: to, token, or amount")
     }
-    
-    // Get chain parts
+
+    // Get chain namespace
     let chainParts = chainId.split(separator: ":")
     guard chainParts.count == 2 else {
       throw PortalClassError.invalidChainId(chainId)
     }
-    
-    // Get chain namespace
-    guard let namespace = PortalNamespace(rawValue: String(chainParts[0])) else {
-      throw PortalClassError.invalidChainId(chainId)
-    }
-    
+
+    let namespace = PortalNamespace(rawValue: String(chainParts[0]))
     // Build the appropriate transaction based on chain type
     let transactionParam = BuildTransactionParam(
       to: params.to,
       token: params.token,
       amount: params.amount
     )
-    
+
     switch namespace {
-    case PortalNamespace.eip155:
+    case .eip155:
       // Build and send EVM transaction
       let transactionResponse = try await buildEip155Transaction(chainId: chainId, params: transactionParam)
-      
+
       // Send the transaction using eth_sendTransaction
       let sendResponse = try await request(chainId, withMethod: .eth_sendTransaction, andParams: [transactionResponse.transaction])
-      
+
       guard let txHash = sendResponse.result as? String else {
-          throw PortalClassError.invalidResponseTypeForRequest
+        throw PortalClassError.invalidResponseTypeForRequest
       }
-      
+
       // Construct and return response
       return SendAssetResponse(txHash: txHash)
-        
-    case PortalNamespace.solana:
+
+    case .solana:
       // Build and send Solana transaction
       let transactionResponse = try await buildSolanaTransaction(chainId: chainId, params: transactionParam)
-      
+
       // Send the transaction using sol_signAndSendTransaction
       let sendResponse = try await request(chainId, withMethod: .sol_signAndSendTransaction, andParams: [transactionResponse.transaction])
-      
+
       guard let txHash = sendResponse.result as? String else {
-          throw PortalClassError.invalidResponseTypeForRequest
+        throw PortalClassError.invalidResponseTypeForRequest
       }
-      
+
       // Construct and return response
       return SendAssetResponse(txHash: txHash)
-        
+
     default:
       throw PortalClassError.unsupportedChainId(chainId)
     }
@@ -2081,7 +2077,7 @@ public class Portal {
       "eip155:137": "https://\(apiHost)/rpc/v1/eip155/137", // Polygon Mainnet
       "eip155:8453": "https://\(apiHost)/rpc/v1/eip155/8453", // Base Mainnet
       "eip155:80002": "https://\(apiHost)/rpc/v1/eip155/80002", // Polygon Amoy
-      "eip155:84532": "https://\(apiHost)/rpc/v1/eip155/84532", // Base Sepolia
+      "eip155:84532": "https://\(apiHost)/rpc/v1/eip155/84532", // Base Testnet
       "eip155:11155111": "https://\(apiHost)/rpc/v1/eip155/11155111", // Ethereum Sepolia
       "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": "https://\(apiHost)/rpc/v1/solana/5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", // Solana Mainnet
       "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": "https://\(apiHost)/rpc/v1/solana/EtWTRABZaYq6iMfeYKouRu166VU2xqa1" // Solana Devnet
