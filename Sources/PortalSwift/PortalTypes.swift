@@ -189,7 +189,7 @@ public struct SendAssetParams: Codable {
     self.amount = amount
     self.token = token
   }
-  
+
   public let to: String
   public let amount: String
   public let token: String
