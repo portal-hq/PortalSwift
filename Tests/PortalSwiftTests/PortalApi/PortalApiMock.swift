@@ -24,6 +24,11 @@ class PortalApiMock: PortalApiProtocol {
     getBalancesReturnValue ?? []
   }
 
+  var fundReturnValue: PortalSwift.FundResponse?
+  func fund(chainId _: String, params _: PortalSwift.FundParams) async throws -> PortalSwift.FundResponse {
+    fundReturnValue!
+  }
+
   var getClientReturnValue: PortalSwift.ClientResponse?
   func getClient() async throws -> PortalSwift.ClientResponse {
     getClientReturnValue ?? ClientResponse.stub()

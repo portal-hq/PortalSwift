@@ -532,6 +532,47 @@ public enum EvaluateTransactionOperationType: String, CaseIterable {
   case all
 }
 
+public struct FundParams: Codable {
+  public init(amount: String, token: String) {
+    self.amount = amount
+    self.token = token
+  }
+
+  public let amount: String
+  public let token: String
+}
+
+struct FundRequestBody: Codable, Equatable {
+  let amount: String
+  let chainId: String
+  let token: String
+}
+
+public struct FundResponseData: Codable {
+  public let explorerUrl: String
+  public let txHash: String
+}
+
+public struct FundResponseMetadata: Codable {
+  public let amount: String
+  public let chainId: String
+  public let clientId: String
+  public let custodianId: String
+  public let environmentId: String
+  public let token: String
+}
+
+public struct FundResponseError: Codable {
+  public let id: String
+  public let message: String
+}
+
+public struct FundResponse: Codable {
+  public let data: FundResponseData?
+  public let metadata: FundResponseMetadata
+  public let error: FundResponseError?
+}
+
 public struct BuildEip115TransactionResponse: Codable {
   public let transaction: Eip115Transaction
   public let metadata: BuildTransactionMetaData

@@ -108,6 +108,9 @@ public actor MockPortalRequests: PortalRequestsProtocol {
     case "/api/v3/clients/me/simulate-transaction":
       let mockSimulateTransactionData = try encoder.encode(MockConstants.mockSimulatedTransaction)
       return mockSimulateTransactionData
+    case "/api/v3/clients/me/fund":
+      let mockFundResponse = try encoder.encode(MockConstants.mockFundResponse)
+      return mockFundResponse
     case "/drive/v3/files":
       let mockFilesListResponse = GDriveFilesListResponse(
         kind: "test-gdrive-file-kind",

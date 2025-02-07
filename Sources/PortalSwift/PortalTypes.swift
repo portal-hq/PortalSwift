@@ -182,3 +182,19 @@ public struct SolanaMessage: Codable {
   public var recentBlockhash: String
   public var instructions: [SolanaInstruction]
 }
+
+public struct SendAssetParams: Codable {
+  public init(to: String, amount: String, token: String) {
+    self.to = to
+    self.amount = amount
+    self.token = token
+  }
+
+  public let to: String
+  public let amount: String
+  public let token: String
+}
+
+public struct SendAssetResponse: Codable {
+  public let txHash: String
+}
