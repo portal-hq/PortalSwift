@@ -1471,12 +1471,16 @@ public class Portal {
       throw PortalClassError.invalidParameters("Missing required parameters: to, token, or amount")
     }
     
-    // Get chain namespace
+    // Get chain parts
     let chainParts = chainId.split(separator: ":")
     guard chainParts.count == 2 else {
       throw PortalClassError.invalidChainId(chainId)
     }
-    let namespace = String(chainParts[0])
+    
+    // Get chain namespace
+    guard let namespace = PortalNamespace(rawValue: String(chainParts[0])) else {
+      throw PortalClassError.invalidChainId(chainId)
+    }
     
     // Build the appropriate transaction based on chain type
     let transactionParam = BuildTransactionParam(
@@ -1486,7 +1490,7 @@ public class Portal {
     )
     
     switch namespace {
-    case "eip155":
+    case PortalNamespace.eip155:
       // Build and send EVM transaction
       let transactionResponse = try await buildEip155Transaction(chainId: chainId, params: transactionParam)
       
@@ -1500,7 +1504,7 @@ public class Portal {
       // Construct and return response
       return SendAssetResponse(txHash: txHash)
         
-    case "solana":
+    case PortalNamespace.solana:
       // Build and send Solana transaction
       let transactionResponse = try await buildSolanaTransaction(chainId: chainId, params: transactionParam)
       
@@ -2077,7 +2081,7 @@ public class Portal {
       "eip155:137": "https://\(apiHost)/rpc/v1/eip155/137", // Polygon Mainnet
       "eip155:8453": "https://\(apiHost)/rpc/v1/eip155/8453", // Base Mainnet
       "eip155:80002": "https://\(apiHost)/rpc/v1/eip155/80002", // Polygon Amoy
-      "eip155:84532": "https://\(apiHost)/rpc/v1/eip155/84532", // Base Testnet
+      "eip155:84532": "https://\(apiHost)/rpc/v1/eip155/84532", // Base Sepolia
       "eip155:11155111": "https://\(apiHost)/rpc/v1/eip155/11155111", // Ethereum Sepolia
       "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": "https://\(apiHost)/rpc/v1/solana/5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", // Solana Mainnet
       "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": "https://\(apiHost)/rpc/v1/solana/EtWTRABZaYq6iMfeYKouRu166VU2xqa1" // Solana Devnet
