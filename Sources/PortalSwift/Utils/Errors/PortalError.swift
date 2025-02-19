@@ -15,7 +15,7 @@ public struct PortalError: Codable {
 }
 
 extension PortalError {
-  func isNotValid() -> Bool {
-    return id?.isEmpty ?? true
+  func isValid() -> Bool {
+    return !(id?.isEmpty ?? true)
   }
 }

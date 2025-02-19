@@ -75,8 +75,8 @@ public class PortalMpcSigner: PortalSignerProtocol {
     }
 
     let signResult: SignResult = try JSONDecoder().decode(SignResult.self, from: data)
-    guard signResult.error?.isNotValid() ?? false else {
-      throw PortalMpcError(signResult.error!)
+    if let error = signResult.error, error.isValid() {
+      throw PortalMpcError(error)
     }
     guard let signature = signResult.data else {
       throw PortalMpcSignerError.noSignatureFoundInSignResult
