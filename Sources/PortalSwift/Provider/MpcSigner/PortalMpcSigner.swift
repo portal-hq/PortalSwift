@@ -8,7 +8,7 @@
 import AnyCodable
 import Foundation
 
-public class PortalMpcSigner {
+public class PortalMpcSigner: PortalSignerProtocol {
   private let apiKey: String
   private weak var keychain: PortalKeychainProtocol?
   private let mpcUrl: String

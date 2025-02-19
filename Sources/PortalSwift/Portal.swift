@@ -81,7 +81,10 @@ public class Portal {
     self.apiHost = apiHost
     self.apiKey = apiKey
     self.autoApprove = autoApprove
-    self.binary = binary ?? MobileWrapper()
+    self.binary = binary ?? (
+      featureFlags?.useEnclaveSigner == true ? EnclaveMobileWrapper() : MobileWrapper()
+    )
+
     self.featureFlags = featureFlags
     self.keychain = keychain ?? PortalKeychain()
     self.mpcHost = mpcHost
@@ -94,7 +97,8 @@ public class Portal {
       keychain: self.keychain,
       autoApprove: autoApprove,
       mpcHost: mpcHost,
-      featureFlags: featureFlags
+      featureFlags: featureFlags,
+      binary: self.binary
     )
 
     // Creating this as a variable first so it's usable to

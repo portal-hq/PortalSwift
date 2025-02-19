@@ -35,12 +35,16 @@ public struct PortalBackupWalletResponse {
 /*********************************************
  * Legacy stuff - consider replacing these
  *********************************************/
-
 public struct FeatureFlags {
   public var isMultiBackupEnabled: Bool?
+  public var useEnclaveSigner: Bool?
 
-  public init(isMultiBackupEnabled: Bool? = nil) {
+  public init(
+    isMultiBackupEnabled: Bool? = nil,
+    useEnclaveSigner: Bool? = nil
+  ) {
     self.isMultiBackupEnabled = isMultiBackupEnabled
+    self.useEnclaveSigner = useEnclaveSigner
   }
 }
 

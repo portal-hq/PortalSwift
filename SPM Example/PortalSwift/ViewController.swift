@@ -970,7 +970,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
       let portal = try Portal(
         user.clientApiKey,
-        featureFlags: FeatureFlags(isMultiBackupEnabled: true),
+        featureFlags: FeatureFlags(
+          isMultiBackupEnabled: true,
+          useEnclaveSigner: true
+        ),
         apiHost: config.apiUrl,
         mpcHost: config.mpcUrl
       )
