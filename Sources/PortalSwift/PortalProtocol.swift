@@ -57,7 +57,6 @@ public protocol PortalProtocol {
 
   // Public functions
   func registerBackupMethod(_ method: BackupMethods, withStorage: PortalStorage)
-  func setGDriveConfiguration(clientId: String, folderName: String) throws
   func setGDriveConfiguration(clientId: String, backupOption: GDriveBackupOption) throws
   func setGDriveView(_ view: UIViewController) throws
   @available(iOS 16, *)
@@ -95,8 +94,24 @@ public protocol PortalProtocol {
   func buildEip155Transaction(chainId: String, params: BuildTransactionParam) async throws -> BuildEip115TransactionResponse
   func buildSolanaTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildSolanaTransactionResponse
   func getWalletCapabilities() async throws -> WalletCapabilitiesResponse
+  func provisionWallet(cipherText: String, method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?)
+  func ethEstimateGas(transaction: ETHTransactionParam, completion: @escaping (Result<RequestCompletionResult>) -> Void)
+  func ethGasPrice(completion: @escaping (Result<RequestCompletionResult>) -> Void)
+  func ethGetBalance(completion: @escaping (Result<RequestCompletionResult>) -> Void)
+  func ethSendTransaction(transaction: ETHTransactionParam, completion: @escaping (Result<TransactionCompletionResult>) -> Void)
+  func ethSign(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
+  func ethSignTransaction(transaction: ETHTransactionParam, completion: @escaping (Result<TransactionCompletionResult>) -> Void)
+  func ethSignTypedDataV3(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
+  func ethSignTypedData(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
+  func personalSign(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
+  func request(method: ETHRequestMethods.RawValue, params: [Any], completion: @escaping (Result<RequestCompletionResult>) -> Void)
+  func sendSol(_ lamports: UInt64, to: String, withChainId chainId: String) async throws -> String
+  func createSolanaRequest(solanaMessage message: Message) -> SolanaRequest
+  func createPortalConnectInstance(webSocketServer: String) throws -> PortalConnect
 
   // Deprecated functions
+  @available(*, deprecated, message: "Use setGDriveConfiguration(clientId:backupOption:) instead.")
+  func setGDriveConfiguration(clientId: String, folderName: String) throws
   @available(*, deprecated, renamed: "evaluateTransaction", message: "Please use evaluateTransaction().")
   func simulateTransaction(_ chainId: String, from: Any) async throws -> SimulatedTransaction
   @available(*, deprecated, renamed: "backupWallet", message: "Please use the async implementation of backupWallet()")
@@ -111,24 +126,10 @@ public protocol PortalProtocol {
   func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any]?) async throws -> PortalProviderResult
   @available(*, deprecated, message: "Use request(_:withMethod:andParams:) with PortalRequestMethod instead of String.")
   func request(_ chainId: String, withMethod: String, andParams: [Any]) async throws -> PortalProviderResult
-  func provisionWallet(cipherText: String, method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?)
-  func ethEstimateGas(transaction: ETHTransactionParam, completion: @escaping (Result<RequestCompletionResult>) -> Void)
-  func ethGasPrice(completion: @escaping (Result<RequestCompletionResult>) -> Void)
-  func ethGetBalance(completion: @escaping (Result<RequestCompletionResult>) -> Void)
-  func ethSendTransaction(transaction: ETHTransactionParam, completion: @escaping (Result<TransactionCompletionResult>) -> Void)
-  func ethSign(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
-  func ethSignTransaction(transaction: ETHTransactionParam, completion: @escaping (Result<TransactionCompletionResult>) -> Void)
-  func ethSignTypedDataV3(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
-  func ethSignTypedData(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
-  func personalSign(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
-  func request(method: ETHRequestMethods.RawValue, params: [Any], completion: @escaping (Result<RequestCompletionResult>) -> Void)
-  func sendSol(_ lamports: UInt64, to: String, withChainId chainId: String) async throws -> String
-  func createSolanaRequest(solanaMessage message: Message) -> SolanaRequest
   @available(*, deprecated, renamed: "REMOVED", message: "The PortalProvider class will be chain agnostic very soon. Please update to the chainId-specific implementations of all Provider helper methods as this function will be removed in the future.")
   func setChainId(to: Int) throws
   @available(*, deprecated, renamed: "REMOVED", message: "The PortalKeychain now manages metadata internally based on Portal's server state. This function will be removed in the future.")
   func deleteAddress() throws
   @available(*, deprecated, renamed: "deleteShares", message: "The Portal SDK is now multi-wallet. Please update to the multi-wallet-compatible deleteShares() as this function will be removed in the future.")
   func deleteSigningShare() throws
-  func createPortalConnectInstance(webSocketServer: String) throws -> PortalConnect
 }
