@@ -8,7 +8,7 @@
 import XCTest
 
 extension XCTestCase {
-  func AssertJSONEQual(_ json1: String?, _ json2: String?) {
+  func AssertJSONEqual(_ json1: String?, _ json2: String?) {
     guard
       let json1,
       let json2,

@@ -10,6 +10,7 @@ import XCTest
 
 final class EnclaveMobileWrapperTests: XCTestCase {
   private var enclaveMobileWrapper: EnclaveMobileWrapper!
+  private let encoder = JSONEncoder()
 
   override func setUpWithError() throws {}
 
@@ -31,6 +32,22 @@ extension EnclaveMobileWrapperTests {
 // MARK: - MobileSign tests
 
 extension EnclaveMobileWrapperTests {
+  func test_MobileSign() async throws {
+    // given
+    let transactionHash = "dummy-transaction-hash"
+    let enclaveSigningResponse = try encoder.encode(EnclaveSignResponse(data: transactionHash))
+    let portalRequestMock = PortalRequestsMock()
+    portalRequestMock.returnValueData = enclaveSigningResponse
+    initEnclaveMobileWrapper(portalRequests: portalRequestMock)
+    let expectedReturnValue = "{\"data\":\"\(transactionHash)\"}"
+
+    // and given
+    let resultTransactionHash = await enclaveMobileWrapper?.MobileSign("", "", "", "", "", "", "", "")
+
+    // then
+    AssertJSONEqual(resultTransactionHash, expectedReturnValue)
+  }
+
   func test_MobileSign_willCall_requestPost_onlyOnce() async {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
@@ -82,37 +99,37 @@ extension EnclaveMobileWrapperTests {
     // and given
     var result = await enclaveMobileWrapper?.MobileSign(nil, "", "", "", "", "", "", "")
     // then
-    AssertJSONEQual(result, invalidParamsReturnValue)
+    AssertJSONEqual(result, invalidParamsReturnValue)
 
     // and given
     result = await enclaveMobileWrapper?.MobileSign("", "", nil, "", "", "", "", "")
     // then
-    AssertJSONEQual(result, invalidParamsReturnValue)
+    AssertJSONEqual(result, invalidParamsReturnValue)
 
     // and given
     result = await enclaveMobileWrapper?.MobileSign("", "", "", nil, "", "", "", "")
     // then
-    AssertJSONEQual(result, invalidParamsReturnValue)
+    AssertJSONEqual(result, invalidParamsReturnValue)
 
     // and given
     result = await enclaveMobileWrapper?.MobileSign("", "", "", "", nil, "", "", "")
     // then
-    AssertJSONEQual(result, invalidParamsReturnValue)
+    AssertJSONEqual(result, invalidParamsReturnValue)
 
     // and given
     result = await enclaveMobileWrapper?.MobileSign("", "", "", "", "", nil, "", "")
     // then
-    AssertJSONEQual(result, invalidParamsReturnValue)
+    AssertJSONEqual(result, invalidParamsReturnValue)
 
     // and given
     result = await enclaveMobileWrapper?.MobileSign("", "", "", "", "", "", nil, "")
     // then
-    AssertJSONEQual(result, invalidParamsReturnValue)
+    AssertJSONEqual(result, invalidParamsReturnValue)
 
     // and given
     result = await enclaveMobileWrapper?.MobileSign("", "", "", "", "", "", "", nil)
     // then
-    AssertJSONEQual(result, invalidParamsReturnValue)
+    AssertJSONEqual(result, invalidParamsReturnValue)
   }
 
   func test_MobileSign_willReturn_correctError_whenRequestPostThrowError() async {
@@ -125,6 +142,6 @@ extension EnclaveMobileWrapperTests {
     let result = await enclaveMobileWrapper?.MobileSign("", "", "", "", "", "", "", "")
 
     // then
-    AssertJSONEQual(result, expectedReturnValue)
+    AssertJSONEqual(result, expectedReturnValue)
   }
 }
