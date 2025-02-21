@@ -972,7 +972,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         user.clientApiKey,
         featureFlags: FeatureFlags(
           isMultiBackupEnabled: true,
-          useEnclaveSigner: true
+          useEnclaveMPCApi: true
         ),
         apiHost: config.apiUrl,
         mpcHost: config.mpcUrl

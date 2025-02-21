@@ -82,7 +82,7 @@ public class Portal {
     self.apiKey = apiKey
     self.autoApprove = autoApprove
     self.binary = binary ?? (
-      featureFlags?.useEnclaveSigner == true ? EnclaveMobileWrapper() : MobileWrapper()
+      featureFlags?.useEnclaveMPCApi ?? false ? EnclaveMobileWrapper() : MobileWrapper()
     )
 
     self.featureFlags = featureFlags
