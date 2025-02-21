@@ -8,7 +8,13 @@
 import Foundation
 
 class EnclaveMobileWrapper: MPCMobile {
-  private let requests: PortalRequestsProtocol = PortalRequests()
+  private let requests: PortalRequestsProtocol
+
+  init(
+    requests: PortalRequestsProtocol = PortalRequests()
+  ) {
+    self.requests = requests
+  }
 
   // Override sign method to use HTTP endpoint
   func MobileSign(
