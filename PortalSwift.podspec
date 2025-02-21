@@ -1,9 +1,15 @@
 Pod::Spec.new do |s|
   s.name             = 'PortalSwift'
   s.version          = "4.2.1"
-  s.summary          = "Portal's native Swift implementation for iOS applications"
-  s.description      = "PortalSwift is a comprehensive native Swift implementation for iOS applications,
-                      providing seamless integration with Portal's services."
+  s.summary          = "The Portal SDK enables a secure and seamless integration of Portal MPC wallets and Web3 functionalities into your applications."
+  s.description      = "The Portal SDK provides an easy way to integrate Multi-Party Computation (MPC) wallets and Web3 capabilities into iOS applications. It enables secure wallet creation, transaction signing, and cross-device session management. The SDK supports multiple authentication and backup methods, ensuring a seamless user experience. Features include:
+  • MPC-based wallet creation (no single point of failure)
+  • Transaction signing 
+  • Cloud-based backup options for account recovery
+  • Support for multiple blockchain networks
+  • Dozens of developer-centric methods to speed up integration
+
+Designed for performance and security, Portal SDK is optimized for iOS apps requiring seamless blockchain integration."
   s.homepage         = 'https://portalhq.io'
   s.license          = { :type => 'MIT', :text => File.read('LICENSE') }
   s.author           = { 'Portal Labs, Inc.' => 'apple-developer@portalhq.io' }
