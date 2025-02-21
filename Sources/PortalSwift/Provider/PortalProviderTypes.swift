@@ -1,6 +1,5 @@
 import AnyCodable
 import Foundation
-import SolanaSwift
 
 public struct BlockData: Codable {
   public var number: String
@@ -469,6 +468,185 @@ public struct GetTransactionMeta: Decodable {
   public let postTokenBalances: [TokenBalance]?
   public let preBalances: [UInt64?]?
   public let preTokenBalances: [TokenBalance]?
+}
+
+public enum AnyTransactionError: Codable {
+  case detailed(TransactionError)
+  case string(String)
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.singleValueContainer()
+    if let x = try? container.decode(String.self) {
+      self = .string(x)
+      return
+    }
+    if let x = try? container.decode(TransactionError.self) {
+      self = .detailed(x)
+      return
+    }
+    throw DecodingError.typeMismatch(AnyTransactionError.self, DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "Wrong type for ErrUnion"))
+  }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.singleValueContainer()
+    switch self {
+    case let .detailed(x):
+      try container.encode(x)
+    case let .string(x):
+      try container.encode(x)
+    }
+  }
+}
+
+public typealias TransactionError = [String: [ErrorDetail]]
+public struct ErrorDetail: Codable {
+  public init(wrapped: Any) {
+    self.wrapped = wrapped
+  }
+
+  let wrapped: Any
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.singleValueContainer()
+    if let value = try? container.decode(Bool.self) {
+      wrapped = value
+    } else if let value = try? container.decode(Double.self) {
+      wrapped = value
+    } else if let value = try? container.decode(String.self) {
+      wrapped = value
+    } else if let value = try? container.decode(Int.self) {
+      wrapped = value
+    } else if let value = try? container.decode([String: Int].self) {
+      wrapped = value
+    } else {
+      wrapped = ""
+    }
+  }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.singleValueContainer()
+    if let wrapped = wrapped as? Encodable {
+      let wrapper = EncodableWrapper(wrapped: wrapped)
+      try container.encode(wrapper)
+    }
+  }
+}
+
+public struct EncodableWrapper: Encodable {
+  let wrapped: Encodable
+
+  public func encode(to encoder: Encoder) throws {
+    try wrapped.encode(to: encoder)
+  }
+}
+
+public struct InnerInstruction: Decodable {
+  public let index: UInt32
+  public let instructions: [ParsedInstruction]
+}
+
+public struct ParsedInstruction: Decodable {
+  public struct Parsed: Decodable {
+    public struct Info: Decodable {
+      public let owner: String?
+      public let account: String?
+      public let source: String?
+      public let destination: String?
+
+      // create account
+      public let lamports: UInt64?
+      public let newAccount: String?
+      public let space: UInt64?
+
+      // initialize account
+      public let mint: String?
+      public let rentSysvar: String?
+
+      // approve
+      public let amount: String?
+      public let delegate: String?
+
+      // transfer
+      public let authority: String?
+      public let wallet: String? // spl-associated-token-account
+
+      // transferChecked
+      public let tokenAmount: TokenAccountBalance?
+    }
+
+    public let info: Info
+    public let type: String?
+  }
+
+  public let program: String?
+  public let programId: String
+  public let parsed: Parsed?
+
+  // swap
+  public let data: String?
+  public let accounts: [String]?
+
+  public enum CodingKeys: CodingKey {
+    case program
+    case programId
+    case parsed
+    case data
+    case accounts
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    program = try container.decodeIfPresent(String.self, forKey: .program)
+    programId = try container.decode(String.self, forKey: .programId)
+    parsed = try? container.decodeIfPresent(ParsedInstruction.Parsed.self, forKey: .parsed)
+    data = try container.decodeIfPresent(String.self, forKey: .data)
+    accounts = try container.decodeIfPresent([String].self, forKey: .accounts)
+  }
+}
+
+public struct TokenBalance: Decodable {
+  public let accountIndex: UInt64
+  public let mint: String
+  public let uiTokenAmount: TokenAccountBalance
+}
+
+public struct TokenAccountBalance: Codable, Equatable, Hashable {
+  public init(uiAmount: Float64?, amount: String, decimals: UInt8?, uiAmountString: String?) {
+    self.uiAmount = uiAmount
+    self.amount = amount
+    self.decimals = decimals
+    self.uiAmountString = uiAmountString
+  }
+
+  public init(amount: String, decimals: UInt8?) {
+    uiAmount = UInt64(amount)?.convertToBalance(decimals: decimals)
+    self.amount = amount
+    self.decimals = decimals
+    uiAmountString = "\(uiAmount ?? 0)"
+  }
+
+  public let uiAmount: Float64?
+  public let amount: String
+  public let decimals: UInt8?
+  public let uiAmountString: String?
+
+  public var amountInUInt64: UInt64? {
+    UInt64(amount)
+  }
+}
+
+public extension UInt64 {
+  func convertToBalance(decimals: UInt8?) -> Double {
+    guard let decimals = decimals else { return 0 }
+    return (Double(self) * pow(10, -Double(decimals))).rounded(toPlaces: decimals)
+  }
+}
+
+extension Double {
+  func rounded(toPlaces places: UInt8) -> Double {
+    let divisor = pow(10.0, Double(places))
+    return (self * divisor).rounded() / divisor
+  }
 }
 
 // MARK: - GetTransactionTransaction
