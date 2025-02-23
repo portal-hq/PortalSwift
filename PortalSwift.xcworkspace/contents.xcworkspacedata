@@ -2,6 +2,9 @@
 <Workspace
    version = "1.0">
    <FileRef
+      location = "group:New Example/New Example.xcodeproj">
+   </FileRef>
+   <FileRef
       location = "group:SPM Example/SPM Example.xcodeproj">
    </FileRef>
    <FileRef

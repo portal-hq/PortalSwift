@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>ALCHEMY_API_KEY</key>
+	<string>$(ALCHEMY_API_KEY)</string>
+	<key>ENV</key>
+	<string>$(ENV)</string>
+	<key>GDRIVE_CLIENT_ID</key>
+	<string>$(GDRIVE_CLIENT_ID)</string>
+</dict>
+</plist>
