@@ -23,9 +23,10 @@ final class EnclaveMobileWrapperTests: XCTestCase {
 
 extension EnclaveMobileWrapperTests {
   func initEnclaveMobileWrapper(
-    portalRequests: PortalRequestsProtocol = PortalRequestsSpy()
+    portalRequests: PortalRequestsProtocol = PortalRequestsSpy(),
+    enclaveMPCHost: String = ""
   ) {
-    enclaveMobileWrapper = EnclaveMobileWrapper(requests: portalRequests)
+      enclaveMobileWrapper = EnclaveMobileWrapper(requests: portalRequests, enclaveMPCHost: enclaveMPCHost)
   }
 }
 
@@ -62,8 +63,9 @@ extension EnclaveMobileWrapperTests {
 
   func test_MobileSign_willCall_requestPost_passingCorrectParams() async {
     // given
+    let enclaveMPCHost = "mpc-client.portalhq.io"
     let portalRequestsSpy = PortalRequestsSpy()
-    initEnclaveMobileWrapper(portalRequests: portalRequestsSpy)
+      initEnclaveMobileWrapper(portalRequests: portalRequestsSpy, enclaveMPCHost: enclaveMPCHost)
 
     let apiKey = "apiKey"
     let host = "host"
@@ -78,7 +80,7 @@ extension EnclaveMobileWrapperTests {
     _ = await enclaveMobileWrapper?.MobileSign(apiKey, host, signingShare, method, params, rpcUrl, chainId, metadata)
 
     // then
-    XCTAssertEqual(portalRequestsSpy.postFromParam?.absoluteString ?? "", "https://mpc-client.portalhq.io/v1/sign")
+    XCTAssertEqual(portalRequestsSpy.postFromParam?.absoluteString ?? "", "https://\(enclaveMPCHost)/v1/sign")
     XCTAssertEqual(portalRequestsSpy.postAndPayloadParam as? [String: String] ?? [:], [
       "method": method,
       "params": params,
