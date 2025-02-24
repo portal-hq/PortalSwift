@@ -1892,11 +1892,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
         self.logger.debug("Params: \(params)")
 
-        guard let response = try? await portal.request(chainId, withMethod: .eth_sign, andParams: params) else {
-          self.logger.error("ViewController.handlSign() - ❌ Failed to process request")
-          self.stopLoading()
-          return
-        }
+        let response = try await portal.request(chainId, withMethod: .eth_sign, andParams: params)
 
         guard let signature = response.result as? String else {
           self.logger.error("ViewController.handlSign() - ❌ Invalid response type for request:")

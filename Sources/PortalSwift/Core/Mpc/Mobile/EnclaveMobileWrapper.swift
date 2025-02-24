@@ -9,11 +9,14 @@ import Foundation
 
 class EnclaveMobileWrapper: MPCMobile {
   private let requests: PortalRequestsProtocol
+  private let enclaveMPCHost: String
 
   init(
-    requests: PortalRequestsProtocol = PortalRequests()
+    requests: PortalRequestsProtocol = PortalRequests(),
+    enclaveMPCHost: String
   ) {
     self.requests = requests
+    self.enclaveMPCHost = enclaveMPCHost
   }
 
   // Override sign method to use HTTP endpoint
@@ -38,7 +41,7 @@ class EnclaveMobileWrapper: MPCMobile {
       return encodeErrorResult(id: "INVALID_PARAMETERS", message: "Invalid parameters provided")
     }
 
-    guard let url = URL(string: "https://mpc-client.portalhq.io/v1/sign") else {
+    guard let url = URL(string: "https://\(enclaveMPCHost)/v1/sign") else {
       return encodeErrorResult(id: "INVALID_URL", message: "Invalid URL")
     }
 
@@ -57,21 +60,35 @@ class EnclaveMobileWrapper: MPCMobile {
       let data = try await requests.post(url, withBearerToken: apiKey, andPayload: requestBody)
       let enclaveResponse = try JSONDecoder().decode(EnclaveSignResponse.self, from: data)
       return encodeSuccessResult(data: enclaveResponse.data)
-
     } catch {
+      if let portalRequestError = error as? PortalRequestsError {
+        let portalError = decodePortalError(errorStr: portalRequestError.dataStr)
+        return encodeErrorResult(error: portalError)
+      }
       return encodeErrorResult(id: "SIGNING_NETWORK_ERROR", message: error.localizedDescription)
     }
   }
 
   // Helper function to encode success results
-  private func encodeSuccessResult(data: String?) -> String {
+  private func encodeSuccessResult(data: String) -> String {
     let successResult = SignResult(data: data, error: nil)
     return encodeJSON(successResult)
   }
 
+  // Helper function to decode PortalRequestError to PortalError
+  private func decodePortalError(errorStr: String?) -> PortalError? {
+    guard let data = errorStr?.data(using: .utf8) else { return nil }
+    return try? JSONDecoder().decode(PortalError.self, from: data)
+  }
+
   // Helper function to encode error results
-  private func encodeErrorResult(id: String, message: String) -> String {
+  private func encodeErrorResult(id: String?, message: String?) -> String {
     let errorResult = SignResult(data: nil, error: PortalError(id: id, message: message))
+    return encodeJSON(errorResult)
+  }
+
+  private func encodeErrorResult(error: PortalError?) -> String {
+    let errorResult = SignResult(data: nil, error: error)
     return encodeJSON(errorResult)
   }
 
@@ -93,9 +110,4 @@ class EnclaveMobileWrapper: MPCMobile {
 // Response types
 struct EnclaveSignResponse: Codable {
   let data: String
-}
-
-private struct EnclaveErrorResponse: Codable {
-  let code: Int
-  let message: String
 }

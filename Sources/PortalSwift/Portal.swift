@@ -66,6 +66,7 @@ public class Portal {
     version: String = "v6",
     apiHost: String = "api.portalhq.io",
     mpcHost: String = "mpc.portalhq.io",
+    enclaveMPCHost: String = "mpc-client.portalhq.io",
     api: PortalApiProtocol? = nil,
     binary: Mobile? = nil,
     gDrive: GDriveStorage? = nil,
@@ -82,7 +83,7 @@ public class Portal {
     self.apiKey = apiKey
     self.autoApprove = autoApprove
     self.binary = binary ?? (
-      featureFlags?.useEnclaveMPCApi ?? false ? EnclaveMobileWrapper() : MobileWrapper()
+      featureFlags?.useEnclaveMPCApi ?? false ? EnclaveMobileWrapper(enclaveMPCHost: enclaveMPCHost) : MobileWrapper()
     )
 
     self.featureFlags = featureFlags
