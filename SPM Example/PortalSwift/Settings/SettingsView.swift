@@ -11,7 +11,7 @@ import SwiftUI
 
 @available(iOS 17.0, *)
 struct SettingsView: View {
-  var portal: Portal
+  var portal: PortalProtocol
 
   @State var gdriveBackupOption: Int = 0
 

@@ -10,7 +10,7 @@ import AuthenticationServices
 import Foundation
 
 /// The main Portal class.
-public class Portal {
+public final class Portal: PortalProtocol {
   @available(*, deprecated, renamed: "addresses", message: "Please use the async getter for `addresses`")
   public var address: String? {
     self.keychain.legacyAddress
@@ -31,7 +31,7 @@ public class Portal {
   }
 
   public let api: PortalApiProtocol
-  let apiKey: String
+  public let apiKey: String
   public let autoApprove: Bool
   public var gatewayConfig: [Int: String] = [:]
   public var provider: PortalProviderProtocol

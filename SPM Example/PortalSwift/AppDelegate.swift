@@ -13,7 +13,7 @@ protocol PortalExampleAppDelegate {
   var config: ApplicationConfiguration? { get set }
   var connect: PortalConnect? { get set }
   var connect2: PortalConnect? { get set }
-  var portal: Portal? { get set }
+  var portal: PortalProtocol? { get set }
 }
 
 public enum PortalExampleAppError: Error {
@@ -47,7 +47,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, PortalExampleAppDelegate 
   var config: ApplicationConfiguration?
   var connect: PortalConnect?
   var connect2: PortalConnect?
-  var portal: Portal?
+  var portal: PortalProtocol?
 
   func application(_: UIApplication, didFinishLaunchingWithOptions _: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
     // Override point for customization after application launch.

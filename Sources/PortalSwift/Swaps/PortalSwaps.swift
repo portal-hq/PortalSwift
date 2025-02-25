@@ -107,9 +107,9 @@ public struct QuoteArgs: Codable {
 
 public class PortalSwaps {
   private var apiKey: String
-  private var portal: Portal
+  private var portal: PortalProtocol
 
-  public init(apiKey: String, portal: Portal) {
+  public init(apiKey: String, portal: PortalProtocol) {
     self.apiKey = apiKey
     self.portal = portal
   }
