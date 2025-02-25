@@ -34,12 +34,16 @@ public struct PortalBackupWalletResponse {
 /*********************************************
  * Legacy stuff - consider replacing these
  *********************************************/
-
 public struct FeatureFlags {
   public var isMultiBackupEnabled: Bool?
+  public var useEnclaveMPCApi: Bool?
 
-  public init(isMultiBackupEnabled: Bool? = nil) {
+  public init(
+    isMultiBackupEnabled: Bool? = nil,
+    useEnclaveMPCApi: Bool? = nil
+  ) {
     self.isMultiBackupEnabled = isMultiBackupEnabled
+    self.useEnclaveMPCApi = useEnclaveMPCApi
   }
 }
 
