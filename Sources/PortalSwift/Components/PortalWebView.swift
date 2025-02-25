@@ -27,7 +27,7 @@ public struct PortalMessageBody {
 }
 
 /// The errors the web view controller can throw.
-enum WebViewControllerErrors: LocalizedError {
+enum PortalWebViewErrors: LocalizedError {
   case unparseableMessage
   case MissingFieldsForEIP1559Transation
   case unknownMessageType(type: String)
@@ -276,7 +276,7 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
           try self.handlePortalSign(method: portalMessageBody.data.method, params: portalMessageBody.data.params)
         }
       default:
-        self.onError(Result(error: WebViewControllerErrors.unknownMessageType(type: portalMessageBody.type)))
+        self.onError(Result(error: PortalWebViewErrors.unknownMessageType(type: portalMessageBody.type)))
       }
     } catch {
       self.onError(Result(error: error))
@@ -323,7 +323,7 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
     let transactionParam: ETHTransactionParam
     if firstParams["maxPriorityFeePerGas"] != nil, firstParams["maxFeePerGas"] != nil {
       guard firstParams["maxPriorityFeePerGas"]!.isEmpty || firstParams["maxFeePerGas"]!.isEmpty else {
-        throw WebViewControllerErrors.MissingFieldsForEIP1559Transation
+        throw PortalWebViewErrors.MissingFieldsForEIP1559Transation
       }
       transactionParam = ETHTransactionParam(
         from: firstParams["from"]!,
@@ -481,12 +481,12 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
     }
 
     guard let requestData = result.data else {
-      self.onError(Result(error: WebViewControllerErrors.dataNilError))
+      self.onError(Result(error: PortalWebViewErrors.dataNilError))
       return
     }
 
     guard let signature = requestData.result as? String else {
-      self.onError(Result(error: WebViewControllerErrors.invalidResponseType))
+      self.onError(Result(error: PortalWebViewErrors.invalidResponseType))
       return
     }
 
