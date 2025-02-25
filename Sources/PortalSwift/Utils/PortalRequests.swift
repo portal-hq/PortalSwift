@@ -184,4 +184,25 @@ public enum PortalRequestsError: LocalizedError, Equatable {
   case internalServerError(_ message: String, url: String)
   case redirectError(_ message: String)
   case unauthorized
+
+  var dataStr: String? {
+    switch self {
+    case let .clientError(message, _):
+      return getDataStr(from: message)
+    case let .internalServerError(message, _):
+      return getDataStr(from: message)
+    case let .redirectError(message):
+      return getDataStr(from: message)
+    default:
+      return nil
+    }
+  }
+
+  private func getDataStr(from message: String) -> String? {
+    let messageComponents = message.components(separatedBy: " - ")
+    if messageComponents.count >= 2 {
+      return messageComponents[1]
+    }
+    return nil
+  }
 }

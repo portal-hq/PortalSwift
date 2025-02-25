@@ -507,6 +507,69 @@ extension PortalApiTests {
   }
 }
 
+// MARK: - fund tests
+
+extension PortalApiTests {
+  func test_fund() async throws {
+    let expectation = XCTestExpectation(description: "PortalApi.fund()")
+    let mockFundResponse = MockConstants.mockFundResponse
+    let fundResponse = try await api?.fund(chainId: "eip155:11155111", params: FundParams(amount: "0.01", token: "ETH"))
+    XCTAssert(fundResponse?.data?.txHash == mockFundResponse.data?.txHash)
+    expectation.fulfill()
+    await fulfillment(of: [expectation], timeout: 5.0)
+  }
+
+  func test_fund_willCall_requestPost_onlyOnce() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    let fundResponse = MockConstants.mockFundResponse
+    portalRequestsSpy.returnData = try Data(JSONEncoder().encode(fundResponse))
+    initPortalApiWith(requests: portalRequestsSpy)
+
+    // and given
+    _ = try await api?.fund(chainId: "", params: FundParams(amount: "", token: ""))
+
+    // then
+    XCTAssertEqual(portalRequestsSpy.postCallsCount, 1)
+  }
+
+  @available(iOS 16.0, *)
+  func test_fund_willCall_requestPost_passingCorrectParams() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    let fundResponse = MockConstants.mockFundResponse
+    portalRequestsSpy.returnData = try Data(JSONEncoder().encode(fundResponse))
+    initPortalApiWith(requests: portalRequestsSpy)
+
+    // and given
+    let amount = "0.01"
+    let token = "ETH"
+    let chainId = "eip155:11155111"
+
+    // and given
+    _ = try await api?.fund(chainId: chainId, params: FundParams(amount: amount, token: token))
+
+    // then
+    XCTAssertEqual(portalRequestsSpy.postFromParam?.path() ?? "", "/api/v3/clients/me/fund")
+    XCTAssertEqual(portalRequestsSpy.postAndPayloadParam as? FundRequestBody, FundRequestBody(amount: amount, chainId: chainId, token: token))
+  }
+
+  func test_fund_willThrowCorrectError_whenRequestPostThrowError() async throws {
+    // given
+    let portalRequestsFailMock = PortalRequestsFailMock()
+    initPortalApiWith(requests: portalRequestsFailMock)
+
+    do {
+      // and given
+      _ = try await api?.fund(chainId: "", params: FundParams(amount: "", token: ""))
+      XCTFail("Expected error not thrown when calling PortalApi.eject when Request throws error.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? URLError, portalRequestsFailMock.errorToThrow)
+    }
+  }
+}
+
 // MARK: - getTransactions tests
 
 extension PortalApiTests {

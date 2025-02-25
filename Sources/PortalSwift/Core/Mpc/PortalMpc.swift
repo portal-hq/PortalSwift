@@ -328,8 +328,8 @@ public class PortalMpc: PortalMpcProtocol {
 
       let ejectResult: EjectResult = try decoder.decode(EjectResult.self, from: jsonData)
 
-      guard ejectResult.error?.isNotValid() ?? false else {
-        throw PortalMpcError(ejectResult.error!)
+      if let error = ejectResult.error, error.isValid() {
+        throw PortalMpcError(error)
       }
 
       privateKeys[.eip155] = ejectResult.privateKey
@@ -345,8 +345,8 @@ public class PortalMpc: PortalMpcProtocol {
 
       let ejectResult: EjectResult = try decoder.decode(EjectResult.self, from: jsonData)
 
-      guard ejectResult.error?.isNotValid() ?? false else {
-        throw PortalMpcError(ejectResult.error!)
+      if let error = ejectResult.error, error.isValid() {
+        throw PortalMpcError(error)
       }
 
       privateKeys[.solana] = ejectResult.privateKey
@@ -773,8 +773,8 @@ public class PortalMpc: PortalMpcProtocol {
           let rotateResult: RotateResult = try JSONDecoder().decode(RotateResult.self, from: jsonData)
 
           // Throw if there is an error getting the backup share.
-          guard rotateResult.error?.isNotValid() ?? false else {
-            continuation.resume(throwing: PortalMpcError(rotateResult.error!))
+          if let error = rotateResult.error, error.isValid() {
+            continuation.resume(throwing: PortalMpcError(error))
             return
           }
 
@@ -810,9 +810,9 @@ public class PortalMpc: PortalMpcProtocol {
           let rotateResult: RotateResult = try JSONDecoder().decode(RotateResult.self, from: jsonData)
 
           // Throw if there is an error getting the backup share.
-          guard rotateResult.error?.isNotValid() ?? false else {
+          if let error = rotateResult.error, error.isValid() {
             self.logger.error("Error generating \(forCurve.rawValue) share: \(rotateResult.error?.message ?? "")")
-            continuation.resume(throwing: PortalMpcError(rotateResult.error!))
+            continuation.resume(throwing: PortalMpcError(error))
             return
           }
 
@@ -876,8 +876,8 @@ public class PortalMpc: PortalMpcProtocol {
           let rotateResult: RotateResult = try JSONDecoder().decode(RotateResult.self, from: jsonData)
 
           // Throw if there is an error getting the backup share.
-          guard rotateResult.error?.isNotValid() ?? false else {
-            continuation.resume(throwing: PortalMpcError(rotateResult.error!))
+          if let error = rotateResult.error, error.isValid() {
+            continuation.resume(throwing: PortalMpcError(error))
             return
           }
 

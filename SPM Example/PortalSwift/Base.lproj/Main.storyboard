@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="23090" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" colorMatched="YES" initialViewController="vXZ-lx-hvc">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="23094" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" colorMatched="YES" initialViewController="vXZ-lx-hvc">
     <device id="retina4_7" orientation="portrait" appearance="light"/>
     <dependencies>
         <deployment identifier="iOS"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="23079"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="23084"/>
         <capability name="System colors in document resources" minToolsVersion="11.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
@@ -17,7 +17,7 @@
                         <viewControllerLayoutGuide type="bottom" id="2fi-mo-0CV"/>
                     </layoutGuides>
                     <scrollView key="view" contentMode="scaleToFill" ambiguous="YES" restorationIdentifier="mainViewController" id="kh9-bI-dsS">
-                        <rect key="frame" x="0.0" y="0.0" width="375" height="1125"/>
+                        <rect key="frame" x="0.0" y="0.0" width="375" height="1297"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                         <subviews>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="WxW-BK-2tM">
@@ -383,13 +383,26 @@
                                 <rect key="frame" x="16" y="993" width="342" height="41"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <state key="normal" title="Button"/>
-                                <buttonConfiguration key="configuration" style="filled" title="Fund Sepolia Wallet">
+                                <buttonConfiguration key="configuration" style="filled" title="Receive Asset (ETH)">
                                     <backgroundConfiguration key="background"/>
                                     <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
                                     <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                 </buttonConfiguration>
                                 <connections>
-                                    <action selector="handleFundSepolia:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="OQH-mh-gh1"/>
+                                    <action selector="handleReceiveAsset:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="7Ui-U5-54N"/>
+                                </connections>
+                            </button>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="ePx-1g-j7r">
+                                <rect key="frame" x="14" y="1042" width="342" height="41"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <state key="normal" title="Button"/>
+                                <buttonConfiguration key="configuration" style="filled" title="Send Asset (ETH)">
+                                    <backgroundConfiguration key="background"/>
+                                    <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
+                                    <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                </buttonConfiguration>
+                                <connections>
+                                    <action selector="handleSendAsset:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="U39-2j-hYj"/>
                                 </connections>
                             </button>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" restorationIdentifier="ejectAllButton" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="V5k-BN-vvY">
@@ -431,6 +444,19 @@
                                     <action selector="didPressSettings:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="Hac-vY-GcK"/>
                                 </connections>
                             </button>
+                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" id="edD-nv-uVc">
+                                <rect key="frame" x="16" y="1091" width="342" height="41"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <state key="normal" title="Button"/>
+                                <buttonConfiguration key="configuration" style="filled" title="ETH Provider Helper Method">
+                                    <backgroundConfiguration key="background"/>
+                                    <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
+                                    <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                </buttonConfiguration>
+                                <connections>
+                                    <action selector="handleETHProviderHelperMethod:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="0Tx-Ku-9sY"/>
+                                </connections>
+                            </button>
                         </subviews>
                         <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <variation key="default">
@@ -439,7 +465,7 @@
                             </mask>
                         </variation>
                     </scrollView>
-                    <size key="freeformSize" width="375" height="1125"/>
+                    <size key="freeformSize" width="375" height="1297"/>
                     <connections>
                         <outlet property="addressInformation" destination="0fE-Dt-jQE" id="FgG-eb-2eu"/>
                         <outlet property="dappBrowserButton" destination="qcu-G8-SAB" id="A5q-1k-dxD"/>
@@ -447,7 +473,6 @@
                         <outlet property="ejectAllButton" destination="V5k-BN-vvY" id="5TG-3y-6ed"/>
                         <outlet property="ejectButton" destination="xhu-mS-abX" id="Ihh-3a-afy"/>
                         <outlet property="ethBalanceInformation" destination="XWB-hw-iZv" id="c0l-fG-eWb"/>
-                        <outlet property="fundSepoliaButton" destination="weH-pZ-F1n" id="I3z-Up-cgE"/>
                         <outlet property="gdriveBackupButton" destination="DaJ-fr-bUt" id="5NR-6g-wxq"/>
                         <outlet property="gdriveRecoverButton" destination="U9U-6p-gAr" id="aUT-iv-Rxw"/>
                         <outlet property="generateButton" destination="PLS-JE-WGU" id="i8N-R8-wtj"/>
@@ -462,8 +487,10 @@
                         <outlet property="passwordRecoverButton" destination="e3a-WD-Rlx" id="1rg-cD-ovX"/>
                         <outlet property="personalSignButton" destination="ML8-lm-u4m" id="htk-XR-9zw"/>
                         <outlet property="portalConnectButton" destination="Oix-QY-d5L" id="ggO-uw-BBj"/>
+                        <outlet property="receiveAssetButton" destination="weH-pZ-F1n" id="FjP-f9-WsX"/>
                         <outlet property="scrollView" destination="kh9-bI-dsS" id="weE-Dd-shd"/>
                         <outlet property="sendAddress" destination="rf6-ZQ-VL3" id="jeB-Fl-Ghp"/>
+                        <outlet property="sendAssetButton" destination="ePx-1g-j7r" id="6Iz-DL-DbK"/>
                         <outlet property="sendButton" destination="a21-UV-DHr" id="e3D-3c-9Tc"/>
                         <outlet property="sendUniButton" destination="jpZ-X5-eUU" id="Caj-Z5-rEC"/>
                         <outlet property="signButton" destination="NGV-LW-69G" id="A0r-h6-x1L"/>
@@ -478,7 +505,7 @@
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="x5A-6p-PRh" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="93.599999999999994" y="69.715142428785612"/>
+            <point key="canvasLocation" x="93.599999999999994" y="147.07646176911544"/>
         </scene>
         <!--Web View Controller-->
         <scene sceneID="AeA-zC-7Sc">
@@ -496,7 +523,7 @@
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="KVY-F6-Tah" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="94" y="913"/>
+            <point key="canvasLocation" x="94" y="1126"/>
         </scene>
         <!--Connect View Controller-->
         <scene sceneID="94S-6a-j1d">

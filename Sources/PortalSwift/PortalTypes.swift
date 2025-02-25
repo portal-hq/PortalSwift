@@ -1,5 +1,4 @@
 import Foundation
-import SolanaSwift
 
 public struct AnyEncodable: Encodable {
   let value: Encodable
@@ -35,12 +34,16 @@ public struct PortalBackupWalletResponse {
 /*********************************************
  * Legacy stuff - consider replacing these
  *********************************************/
-
 public struct FeatureFlags {
   public var isMultiBackupEnabled: Bool?
+  public var useEnclaveMPCApi: Bool?
 
-  public init(isMultiBackupEnabled: Bool? = nil) {
+  public init(
+    isMultiBackupEnabled: Bool? = nil,
+    useEnclaveMPCApi: Bool? = nil
+  ) {
     self.isMultiBackupEnabled = isMultiBackupEnabled
+    self.useEnclaveMPCApi = useEnclaveMPCApi
   }
 }
 
@@ -149,12 +152,6 @@ public struct BackupOptions {
   }
 }
 
-// Solana Types
-public struct SolanaRequest: Codable {
-  public var signatures: [String]?
-  public var message: SolanaMessage
-}
-
 // Define the structure for the header of the message
 public struct SolanaHeader: Codable {
   public var numRequiredSignatures: Int
@@ -162,23 +159,18 @@ public struct SolanaHeader: Codable {
   public var numReadonlyUnsignedAccounts: Int
 }
 
-// Define the structure for an instruction within the message
-public struct SolanaInstruction: Codable {
-  public var programIdIndex: UInt8
-  public var accounts: [Int]
-  public var data: String
-
-  public init(from instruction: SolanaSwift.CompiledInstruction) {
-    self.accounts = instruction.accounts
-    self.data = SolanaSwift.Base58.encode(instruction.data)
-    self.programIdIndex = instruction.programIdIndex
+public struct SendAssetParams: Codable {
+  public init(to: String, amount: String, token: String) {
+    self.to = to
+    self.amount = amount
+    self.token = token
   }
+
+  public let to: String
+  public let amount: String
+  public let token: String
 }
 
-// Define the main structure of the message
-public struct SolanaMessage: Codable {
-  public var accountKeys: [String]
-  public var header: SolanaHeader
-  public var recentBlockhash: String
-  public var instructions: [SolanaInstruction]
+public struct SendAssetResponse: Codable {
+  public let txHash: String
 }

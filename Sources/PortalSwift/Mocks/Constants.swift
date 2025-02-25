@@ -109,6 +109,21 @@ public enum MockConstants {
     metadata: FetchedTransaction.FetchedTransactionMetadata(blockTimestamp: "test-block-timestamp"),
     chainId: 11_155_111
   )
+  public static let mockFundResponse = FundResponse(
+    data: FundResponseData(
+      explorerUrl: "https://sepolia.etherscan.io/tx/0x13aebe28e9661959f73e06c48123d67d47e8e24a3833f626d2fcaa6ef640d0de",
+      txHash: "0x13aebe28e9661959f73e06c48123d67d47e8e24a3833f626d2fcaa6ef640d0de"
+    ),
+    metadata: FundResponseMetadata(
+      amount: "0.01",
+      chainId: "eip155:11155111",
+      clientId: "clientId",
+      custodianId: "custodianId",
+      environmentId: "environmentId",
+      token: "ETH"
+    ),
+    error: FundResponseError(id: "id", message: "message")
+  )
   public static let mockGDriveClientId = "test-mock-gdrive-client-id"
   public static let mockGDriveFile = GDriveFile(
     kind: "test-gdrive-file-kind",

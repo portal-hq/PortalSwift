@@ -9,7 +9,7 @@ import PortalSwift
 import UIKit
 
 class ConnectViewController: UIViewController, UITextFieldDelegate {
-  public var portal: Portal?
+  public var portal: PortalProtocol?
   public var app: PortalExampleAppDelegate? = UIApplication.shared.delegate as? PortalExampleAppDelegate
 
   private var connect: PortalConnect?

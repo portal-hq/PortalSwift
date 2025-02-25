@@ -116,6 +116,18 @@ class PortalApiSpy: PortalApiProtocol {
     return []
   }
 
+  // Get Transactions method tracking
+  var fundCallsCount: Int = 0
+  var fundChainIdParam: String?
+  var fundParams: FundParams?
+
+  public func fund(chainId: String, params: FundParams) async throws -> FundResponse {
+    fundCallsCount += 1
+    fundChainIdParam = chainId
+    fundParams = params
+    return FundResponse.stub()
+  }
+
   // Identify method tracking
   var identifyCallsCount: Int = 0
   var identifyTraitsParam: [String: AnyCodable]?

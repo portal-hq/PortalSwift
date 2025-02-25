@@ -8,7 +8,9 @@
 import Foundation
 import Mpc
 
-class MobileWrapper: Mobile {
+protocol MPCMobile: Mobile {}
+
+extension MPCMobile {
   func MobileGenerate(
     _ apiKey: String,
     _ host: String,
@@ -244,3 +246,5 @@ class MobileWrapper: Mobile {
     return Mpc.MobileFormatShares(sharesJSON)
   }
 }
+
+class MobileWrapper: MPCMobile {}

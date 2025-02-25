@@ -7,7 +7,6 @@
 
 import AnyCodable
 @testable import PortalSwift
-@testable import SolanaSwift
 import XCTest
 
 class PortalTests: XCTestCase {
@@ -1295,26 +1294,33 @@ extension PortalTests {
 // MARK: - Solana tests
 
 extension PortalTests {
-  func test_sendSol_passingWrongToAddressFormat_willThroughCorrectError() async throws {
+  func test_sendSol_passingWrongChainId_willThroughCorrectError() async throws {
     // given
-    let toAddress = ""
+    let chainId = "qqq"
 
     do {
       // and given
-      _ = try await portal.sendSol(1, to: toAddress, withChainId: "")
+      _ = try await portal.sendSol(1, to: "", withChainId: chainId)
       XCTFail("Expected error not thrown when calling Portal.sendSol passing invalid to address format.")
     } catch {
       // then
-      XCTAssertEqual(error as? PublicKeyError, PublicKeyError.invalidAddress(toAddress))
+      XCTAssertEqual(error as? PortalClassError, PortalClassError.unsupportedChainId(chainId))
     }
   }
 
   func test_sendSol() async throws {
+    // given
+    let portalApiMock = PortalApiMock()
+    portalApiMock.buildSolanaTransactionReturnValue = BuildSolanaTransactionResponse.stub()
+    try initPortalWithSpy(api: portalApiMock)
+
     setToPortal(portalProvider: PortalProviderMock())
 
-    let chainId = "eip155:11155111"
+    // and given
+    let chainId = "solana:11155111"
     let transactionHash = try await portal.sendSol(1, to: "6LmSRCiu3z6NCSpF19oz1pHXkYkN4jWbj9K1nVELpDkT", withChainId: chainId)
 
+    // then
     XCTAssertTrue(!transactionHash.isEmpty)
   }
 
@@ -1329,7 +1335,7 @@ extension PortalTests {
 
     } catch {
       // then
-      XCTAssertEqual(error as? PortalBlockchainError, PortalBlockchainError.invalidChainId(chainId))
+      XCTAssertEqual(error as? PortalClassError, PortalClassError.invalidChainId(chainId))
     }
   }
 
@@ -1344,7 +1350,7 @@ extension PortalTests {
 
     } catch {
       // then
-      XCTAssertEqual(error as? PortalBlockchainError, PortalBlockchainError.invalidChainId(chainId))
+      XCTAssertEqual(error as? PortalClassError, PortalClassError.unsupportedChainId(chainId))
     }
   }
 
@@ -1359,7 +1365,7 @@ extension PortalTests {
 
     } catch {
       // then
-      XCTAssertEqual(error as? PortalBlockchainError, PortalBlockchainError.invalidChainId(chainId))
+      XCTAssertEqual(error as? PortalClassError, PortalClassError.unsupportedChainId(chainId))
     }
   }
   // TODO: - to send the `sendSol` function all cases.
@@ -1378,5 +1384,120 @@ extension PortalTests {
 
     // then
     XCTAssertEqual(portalApiSpy.getWalletCapabilitiesCallsCount, 1)
+  }
+}
+
+// MARK: - receiveTestnetAsset tests
+
+extension PortalTests {
+  func test_receiveTestnetAsset_willCall_api_fund_onlyOnce() async throws {
+    // given
+    let portalApiSpy = PortalApiSpy()
+    try initPortalWithSpy(api: portalApiSpy)
+
+    // and given
+    _ = try await portal.receiveTestnetAsset(chainId: "", params: FundParams(amount: "", token: ""))
+
+    // then
+    XCTAssertEqual(portalApiSpy.fundCallsCount, 1)
+  }
+
+  func test_receiveTestnetAsset_willCall_api_fund_passingCorrectParams() async throws {
+    // given
+    let portalApiSpy = PortalApiSpy()
+    try initPortalWithSpy(api: portalApiSpy)
+
+    // and given
+    let chainId = "eip155:11155111"
+    let amount = "0.01"
+    let token = "ETH"
+
+    // and given
+    _ = try await portal.receiveTestnetAsset(chainId: chainId, params: FundParams(amount: amount, token: token))
+
+    // then
+    XCTAssertEqual(portalApiSpy.fundChainIdParam, chainId)
+    XCTAssertEqual(portalApiSpy.fundParams?.amount, amount)
+    XCTAssertEqual(portalApiSpy.fundParams?.token, token)
+  }
+}
+
+// MARK: - sendAsset tests
+
+extension PortalTests {
+  func test_sendAsset_willCall_portalProvider_request_onlyOnce_for_eip115Chain() async throws {
+    // given
+    let portalApiSpy = PortalApiMock()
+    portalApiSpy.buildEip115TransactionReturnValue = BuildEip115TransactionResponse.stub()
+    try initPortalWithSpy(api: portalApiSpy)
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+
+    // and given
+    _ = try await portal.sendAsset(chainId: "eip155:11155111", params: SendAssetParams.stub())
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestAsyncMethodCallsCount, 1)
+  }
+
+  func test_sendAsset_willCall_portalProvider_request_onlyOnce_for_SolanaChain() async throws {
+    // given
+    let portalApiSpy = PortalApiMock()
+    portalApiSpy.buildSolanaTransactionReturnValue = BuildSolanaTransactionResponse.stub()
+    try initPortalWithSpy(api: portalApiSpy)
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+
+    // and given
+    _ = try await portal.sendAsset(chainId: "solana:11155111", params: SendAssetParams.stub())
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestAsyncMethodCallsCount, 1)
+  }
+
+  func test_sendAsset_withInvalidNameSpace_willThroughCorrectError() async throws {
+    // given
+    let chainId = ":11155111"
+
+    do {
+      // and given
+      _ = try await portal.sendAsset(chainId: chainId, params: SendAssetParams.stub())
+      XCTFail("Expected error not thrown when calling Portal.sendAsset passing invalid chain id.")
+
+    } catch {
+      // then
+      XCTAssertEqual(error as? PortalClassError, PortalClassError.invalidChainId(chainId))
+    }
+  }
+
+  func test_sendAsset_withInvalidChaninId_willThroughCorrectError() async throws {
+    // given
+    for chainId in ["eip155:", ":", ""] {
+      do {
+        // and given
+        _ = try await portal.sendAsset(chainId: chainId, params: SendAssetParams.stub())
+        XCTFail("Expected error not thrown when calling Portal.sendAsset passing invalid chain id.")
+
+      } catch {
+        // then
+        XCTAssertEqual(error as? PortalClassError, PortalClassError.invalidChainId(chainId))
+      }
+    }
+  }
+
+  func test_sendAsset_withInvalidParams_willThroughCorrectError() async throws {
+    // given
+    do {
+      // and given
+      _ = try await portal.sendAsset(chainId: "eip155:11155111", params: SendAssetParams.stub(to: ""))
+      _ = try await portal.sendAsset(chainId: "eip155:11155111", params: SendAssetParams.stub(amount: ""))
+      _ = try await portal.sendAsset(chainId: "eip155:11155111", params: SendAssetParams.stub(token: ""))
+      _ = try await portal.sendAsset(chainId: "eip155:11155111", params: SendAssetParams.stub(to: "", amount: "", token: ""))
+      XCTFail("Expected error not thrown when calling Portal.sendAsset passing invalid params.")
+
+    } catch {
+      // then
+      XCTAssertEqual(error as? PortalClassError, PortalClassError.invalidParameters("Missing required parameters: to, token, or amount"))
+    }
   }
 }

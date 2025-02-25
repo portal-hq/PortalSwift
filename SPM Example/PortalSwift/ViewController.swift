@@ -63,7 +63,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var testNFTsTrxsBalancesSimTrxButton: UIButton?
   @IBOutlet var ejectButton: UIButton?
   @IBOutlet var ejectAllButton: UIButton?
-  @IBOutlet var fundSepoliaButton: UIButton?
+  @IBOutlet var receiveAssetButton: UIButton?
+  @IBOutlet var sendAssetButton: UIButton?
   @IBOutlet var generateSolanaAndBackupShares: UIButton!
 
   @IBOutlet var passkeyBackupButton: UIButton?
@@ -101,7 +102,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  private var portal: Portal? {
+  private var portal: PortalProtocol? {
     get {
       if let appDelegate = UIApplication.shared.delegate as? PortalExampleAppDelegate {
         return appDelegate.portal
@@ -425,7 +426,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       throw PortalExampleAppError.portalNotInitialized()
     }
 
-    return try await portal.createWallet()
+    return try await portal.createWallet(usingProgressCallback: nil)
   }
 
   public func generateSolana() async throws -> String {
@@ -434,7 +435,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       throw PortalExampleAppError.portalNotInitialized()
     }
 
-    return try await portal.createSolanaWallet()
+    return try await portal.createSolanaWallet(usingProgressCallback: nil)
   }
 
   func getBalances() async throws -> [FetchedBalance] {
@@ -510,10 +511,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
-    let backupShares = try await portal.getBackupShares()
+    let backupShares = try await portal.getBackupShares(nil)
     self.logger.info("ViewController.getShareMetadata() - ✅ Successfully fetched backup shares.")
 
-    let signingShares = try await portal.getSigningShares()
+    let signingShares = try await portal.getSigningShares(nil)
     self.logger.info("ViewController.getShareMetadata() - ✅ Successfully fetched signing shares.")
 
     let shares = backupShares + signingShares
@@ -524,7 +525,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
-    return try await portal.getTransactions(chainId)
+    return try await portal.getTransactions(chainId, limit: nil, offset: nil, order: nil)
   }
 
   public func recover(_ userId: String, withBackupMethod: BackupMethods) async throws -> PortalRecoverWalletResponse {
@@ -970,7 +971,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
       let portal = try Portal(
         user.clientApiKey,
-        featureFlags: FeatureFlags(isMultiBackupEnabled: true),
+        featureFlags: FeatureFlags(
+          isMultiBackupEnabled: true,
+          useEnclaveMPCApi: true
+        ),
         apiHost: config.apiUrl,
         mpcHost: config.mpcUrl
       )
@@ -1062,14 +1066,36 @@ class ViewController: UIViewController, UITextFieldDelegate {
             self.stopRefreshBalanceTimer()
           }
 
-          let availableRecoveryMethods = try await self.portal?.availableRecoveryMethods() ?? []
-          let walletExists = try await self.portal?.doesWalletExist() ?? false
+          let availableRecoveryMethods = try await self.portal?.availableRecoveryMethods(nil) ?? []
+          let walletExists = try await self.portal?.doesWalletExist(nil) ?? false
           let solanaWalletExists = try await self.portal?.doesWalletExist("solana") ?? false
           var isWalletOnDevice = false
           do {
-            isWalletOnDevice = try await self.portal?.isWalletOnDevice() ?? false
+            isWalletOnDevice = try await self.portal?.isWalletOnDevice(nil) ?? false
           } catch {
             self.logger.error("ViewController.UpdateUIComponents() - ❌ portal.isWalletOnDevice() failed with: \(error)")
+          }
+
+          do {
+            let isWalletBackedUp = try await self.portal?.isWalletBackedUp(nil)
+            if isWalletBackedUp ?? false {
+              print("isWalletBackedUp: Wallet is backed up already: \(String(describing: isWalletBackedUp))")
+            } else {
+              print("isWalletBackedUp: Wallet is not backed up.")
+            }
+          } catch {
+            print("❌ Unable to check if wallet is backed up: \(error)")
+          }
+
+          do {
+            let isWalletRecoverable = try await self.portal?.isWalletRecoverable(nil)
+            if isWalletRecoverable ?? false {
+              print("isWalletRecoverable: Wallet is recoverable up already: \(String(describing: isWalletRecoverable))")
+            } else {
+              print("isWalletRecoverable: Wallet is not recoverable.")
+            }
+          } catch {
+            print("❌ Unable to check if wallet is recoverable : \(error)")
           }
 
           let username = self.username?.text ?? ""
@@ -1140,9 +1166,11 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.ejectAllButton?.isEnabled = availableRecoveryMethods.count > 0
           self.ejectAllButton?.isHidden = availableRecoveryMethods.count == 0
 
-          // Test Add funds to Sepolia
-          self.fundSepoliaButton?.isEnabled = walletExists && isWalletOnDevice
-          self.fundSepoliaButton?.isHidden = !walletExists || !isWalletOnDevice
+          // Test Receive + Send Assets
+          self.receiveAssetButton?.isEnabled = walletExists && isWalletOnDevice
+          self.receiveAssetButton?.isHidden = !walletExists || !isWalletOnDevice
+          self.sendAssetButton?.isEnabled = walletExists && isWalletOnDevice
+          self.sendAssetButton?.isHidden = !walletExists || !isWalletOnDevice
 
           // Test Generate Solana and backup shares
           self.generateSolanaAndBackupShares.isHidden = self.user == nil
@@ -1305,15 +1333,49 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  @IBAction func handleFundSepolia(_: UIButton) {
+  @IBAction func handleReceiveAsset(_: UIButton) {
     Task {
       do {
         self.startLoading()
-        let transactionHash = try await sendSepoliaTransaction()
-        self.logger.info("ViewController.handleFundSepolia() - ✅ Successfully sent transaction")
-        self.showStatusView(message: "\(self.successStatus) Successfully sent transaction")
-        self.logger.info("ViewController.handleFundSepolia() - ✅ Transaction Hash: \(transactionHash)")
-        try await self.populateEthBalance()
+
+        let chainId = "eip155:11155111"
+        let params = FundParams(amount: "0.01", token: "NATIVE")
+
+        let response = try await portal?.receiveTestnetAsset(chainId: chainId, params: params)
+
+        if let txHash = response?.data?.txHash {
+          self.logger.info("ViewController.handleReceiveAsset() - ✅ Successfully created transaction to fund account")
+          self.showStatusView(message: "\(self.successStatus) Successfully created transaction to fund account")
+          self.logger.info("ViewController.handleReceiveAsset() - ✅ Transaction Hash: \(txHash)")
+          try await self.populateEthBalance()
+        }
+
+        self.stopLoading()
+      } catch {
+        self.stopLoading()
+        self.logger.error("Error sending transaction: \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error sending transaction: \(error)")
+      }
+    }
+  }
+
+  @IBAction func handleSendAsset(_: UIButton) {
+    Task {
+      do {
+        self.startLoading()
+
+        let chainId = "eip155:11155111"
+        let params = SendAssetParams(to: "0xdFd8302f44727A6348F702fF7B594f127dE3A902", amount: "0.001", token: "NATIVE")
+
+        let response = try await portal?.sendAsset(chainId: chainId, params: params)
+
+        if let txHash = response?.txHash {
+          self.logger.info("ViewController.handleSendAsset() - ✅ Successfully sent transaction")
+          self.showStatusView(message: "\(self.successStatus) Successfully sent transaction")
+          self.logger.info("ViewController.handleSendAsset() - ✅ Transaction Hash: \(txHash)")
+          try await self.populateEthBalance()
+        }
+
         self.stopLoading()
       } catch {
         self.stopLoading()
@@ -1428,6 +1490,83 @@ class ViewController: UIViewController, UITextFieldDelegate {
     } catch {
       self.logger.error("ViewController.sendSepoliaTransaction() - ❌ Error: \(error)")
       throw error
+    }
+  }
+
+  @IBAction func handleETHProviderHelperMethod(_: Any) {
+    Task { @MainActor in
+      portal?.ethGasPrice(completion: { result in
+        if let data = result.data {
+          print("ViewController.handleETHProviderHelperMethod(): ✅ Successfully retrieved ethGasPrice result.data: \(String(describing: data))")
+        } else {
+          print("ViewController.handleETHProviderHelperMethod(): ❌ failed to retrieved ethGasPrice result: \(String(describing: result))")
+        }
+      })
+
+      let transactionParam = ETHTransactionParam(from: "4cd042bba0da4b3f37ea36e8a2737dce2ed70db7", to: "4cd042bba0da4b3f37ea36e8a2737dce2ed70db7", value: "0.0001")
+      portal?.ethEstimateGas(transaction: transactionParam, completion: { result in
+        if let data = result.data {
+          print("ViewController.handleETHProviderHelperMethod(): ✅ Successfully retrieved ethEstimateGas result.data: \(String(describing: data))")
+        } else {
+          print("ViewController.handleETHProviderHelperMethod(): ❌ failed to retrieved ethEstimateGas result: \(String(describing: result))")
+        }
+      })
+
+      portal?.ethGetBalance(completion: { result in
+        if let data = result.data {
+          print("ViewController.handleETHProviderHelperMethod(): ✅ Successfully retrieved ethGetBalance result.data: \(String(describing: data))")
+        } else {
+          print("ViewController.handleETHProviderHelperMethod(): ❌ failed to retrieved ethGetBalance result: \(String(describing: result))")
+        }
+      })
+
+      portal?.ethSignTransaction(transaction: transactionParam, completion: { result in
+        if let data = result.data {
+          print("ViewController.handleETHProviderHelperMethod(): ✅ Successfully retrieved ethSignTransaction result.data: \(String(describing: data))")
+        } else {
+          print("ViewController.handleETHProviderHelperMethod(): ❌ failed to retrieved ethSignTransaction result: \(String(describing: result))")
+        }
+      })
+
+      portal?.ethSendTransaction(transaction: transactionParam, completion: { result in
+        if let data = result.data {
+          print("ViewController.handleETHProviderHelperMethod(): ✅ Successfully retrieved ethSendTransaction result.data: \(String(describing: data))")
+        } else {
+          print("ViewController.handleETHProviderHelperMethod(): ❌ failed to retrieved ethSendTransaction result: \(String(describing: result))")
+        }
+      })
+
+      portal?.ethSign(message: "0xdeadbeef", completion: { result in
+        if let data = result.data {
+          print("ViewController.handleETHProviderHelperMethod(): ✅ Successfully retrieved ethSign result.data: \(String(describing: data))")
+        } else {
+          print("ViewController.handleETHProviderHelperMethod(): ❌ failed to retrieved ethSign result: \(String(describing: result))")
+        }
+      })
+
+      portal?.ethSignTypedDataV3(message: "0xdeadbeef", completion: { result in
+        if let data = result.data {
+          print("ViewController.handleETHProviderHelperMethod(): ✅ Successfully retrieved ethSignTypedDataV3 result.data: \(String(describing: data))")
+        } else {
+          print("ViewController.handleETHProviderHelperMethod(): ❌ failed to retrieved ethSignTypedDataV3 result: \(String(describing: result))")
+        }
+      })
+
+      portal?.ethSignTypedData(message: "0xdeadbeef", completion: { result in
+        if let data = result.data {
+          print("ViewController.handleETHProviderHelperMethod(): ✅ Successfully retrieved ethSignTypedData result.data: \(String(describing: data))")
+        } else {
+          print("ViewController.handleETHProviderHelperMethod(): ❌ failed to retrieved ethSignTypedData result: \(String(describing: result))")
+        }
+      })
+
+      portal?.personalSign(message: "0xdeadbeef", completion: { result in
+        if let data = result.data {
+          print("ViewController.handleETHProviderHelperMethod(): ✅ Successfully retrieved personalSign result.data: \(String(describing: data))")
+        } else {
+          print("ViewController.handleETHProviderHelperMethod(): ❌ failed to retrieved personalSign result: \(String(describing: result))")
+        }
+      })
     }
   }
 
@@ -1889,11 +2028,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
         self.logger.debug("Params: \(params)")
 
-        guard let response = try? await portal.request(chainId, withMethod: .eth_sign, andParams: params) else {
-          self.logger.error("ViewController.handlSign() - ❌ Failed to process request")
-          self.stopLoading()
-          return
-        }
+        let response = try await portal.request(chainId, withMethod: .eth_sign, andParams: params)
 
         guard let signature = response.result as? String else {
           self.logger.error("ViewController.handlSign() - ❌ Invalid response type for request:")
@@ -2032,29 +2167,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
           return
         }
 
-        let transactionParam = BuildTransactionParam(
+        let transactionHash = try await portal.sendSol(
+          1,
           to: "75ZfLXXsSpycDvHTQuHnGQuYgd2ihb6Bu4viiCCQ7P4H",
-          token: "NATIVE",
-          amount: "0.0001"
+          withChainId: chainId
         )
 
-        // Build the transaction using Portal
-        let transactionResponse = try await portal.buildSolanaTransaction(chainId: chainId, params: transactionParam)
-
-        // Sign the transaction
-        let response = try await portal.request(
-          chainId,
-          withMethod: .sol_signAndSendTransaction,
-          andParams: [transactionResponse.transaction] // RPC params are always expected to be an array
-        )
-
-        // Obtain the transaction hash.
-        guard let txHash = response.result as? String else {
-          // Handle a bad response here
-          return
-        }
-
-        self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Successfully signed message: SOL: \(txHash)")
+        self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Successfully signed message: SOL: \(transactionHash)")
 
         self.stopLoading()
       } catch {

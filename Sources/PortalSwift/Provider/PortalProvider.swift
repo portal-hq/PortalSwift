@@ -80,7 +80,8 @@ public class PortalProvider: PortalProviderProtocol {
     version: String = "v6",
     featureFlags: FeatureFlags? = nil,
     requests: PortalRequestsProtocol? = nil,
-    signer: PortalMpcSigner? = nil
+    signer: PortalMpcSigner? = nil,
+    binary: Mobile? = nil
   ) throws {
     // User-defined instance variables
     self.apiKey = apiKey
@@ -96,7 +97,8 @@ public class PortalProvider: PortalProviderProtocol {
       keychain: keychain,
       mpcUrl: mpcHost,
       version: version,
-      featureFlags: featureFlags
+      featureFlags: featureFlags,
+      binary: binary
     )
     // Create a serial dispatch queue with a unique label
     self.mpcQueue = DispatchQueue.global(qos: .background)

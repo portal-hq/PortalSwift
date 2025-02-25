@@ -10,7 +10,7 @@ import PortalSwift
 import WebKit
 
 class WebViewController: UIViewController, PortalWebViewDelegate {
-  var portal: Portal?
+  var portal: PortalProtocol?
   var url: String?
   var webViewController: PortalWebView?
   let persistSessionData = false
