@@ -5,7 +5,6 @@
 //  Created by Ahmed Ragab on 31/01/2025.
 //
 import AuthenticationServices
-import SolanaSwift
 import UIKit
 
 public protocol PortalProtocol {
@@ -30,6 +29,7 @@ public protocol PortalProtocol {
     version: String,
     apiHost: String,
     mpcHost: String,
+    enclaveMPCHost: String,
     api: PortalApiProtocol?,
     binary: Mobile?,
     gDrive: GDriveStorage?,
@@ -106,8 +106,9 @@ public protocol PortalProtocol {
   func personalSign(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
   func request(method: ETHRequestMethods.RawValue, params: [Any], completion: @escaping (Result<RequestCompletionResult>) -> Void)
   func sendSol(_ lamports: UInt64, to: String, withChainId chainId: String) async throws -> String
-  func createSolanaRequest(solanaMessage message: Message) -> SolanaRequest
   func createPortalConnectInstance(webSocketServer: String) throws -> PortalConnect
+  func receiveTestnetAsset(chainId: String, params: FundParams) async throws -> FundResponse
+  func sendAsset(chainId: String, params: SendAssetParams) async throws -> SendAssetResponse
 
   // Deprecated functions
   @available(*, deprecated, message: "Use setGDriveConfiguration(clientId:backupOption:) instead.")
