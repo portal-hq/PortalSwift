@@ -16,7 +16,7 @@ Possible Types of changes include:
 - Added MPC Enclave Sign Support.
 - Added ReceiveTestnetAsset and sentAsset helper functions to `Portal` class.
 - Added `PortalProtocol` to enable clients to mock our SDK for unit-testing.
-- Changed `PortalWebView.WebViewControllerErrors` to `PortalWebView.PortalWebViewErrors` for better naming convention.
+- Changed `PortalWebView.WebViewControllerErrors` to `PortalWebView.PortalWebViewErrors` for a better naming convention.
 
 ## 4.2.1 - 2025-01-16
 
