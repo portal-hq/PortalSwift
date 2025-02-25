@@ -1076,6 +1076,28 @@ class ViewController: UIViewController, UITextFieldDelegate {
             self.logger.error("ViewController.UpdateUIComponents() - ❌ portal.isWalletOnDevice() failed with: \(error)")
           }
 
+          do {
+            let isWalletBackedUp = try await self.portal?.isWalletBackedUp(nil)
+            if isWalletBackedUp ?? false {
+              print("isWalletBackedUp: Wallet is backed up already: \(String(describing: isWalletBackedUp))")
+            } else {
+              print("isWalletBackedUp: Wallet is not backed up.")
+            }
+          } catch {
+            print("❌ Unable to check if wallet is backed up: \(error)")
+          }
+
+          do {
+            let isWalletRecoverable = try await self.portal?.isWalletRecoverable(nil)
+            if isWalletRecoverable ?? false {
+              print("isWalletRecoverable: Wallet is recoverable up already: \(String(describing: isWalletRecoverable))")
+            } else {
+              print("isWalletRecoverable: Wallet is not recoverable.")
+            }
+          } catch {
+            print("❌ Unable to check if wallet is recoverable : \(error)")
+          }
+
           let username = self.username?.text ?? ""
 
           // Auth buttons
@@ -1468,6 +1490,83 @@ class ViewController: UIViewController, UITextFieldDelegate {
     } catch {
       self.logger.error("ViewController.sendSepoliaTransaction() - ❌ Error: \(error)")
       throw error
+    }
+  }
+
+  @IBAction func handleETHProviderHelperMethod(_: Any) {
+    Task { @MainActor in
+      portal?.ethGasPrice(completion: { result in
+        if let data = result.data {
+          print("ViewController.handleETHProviderHelperMethod(): ✅ Successfully retrieved ethGasPrice result.data: \(String(describing: data))")
+        } else {
+          print("ViewController.handleETHProviderHelperMethod(): ❌ failed to retrieved ethGasPrice result: \(String(describing: result))")
+        }
+      })
+
+      let transactionParam = ETHTransactionParam(from: "4cd042bba0da4b3f37ea36e8a2737dce2ed70db7", to: "4cd042bba0da4b3f37ea36e8a2737dce2ed70db7", value: "0.0001")
+      portal?.ethEstimateGas(transaction: transactionParam, completion: { result in
+        if let data = result.data {
+          print("ViewController.handleETHProviderHelperMethod(): ✅ Successfully retrieved ethEstimateGas result.data: \(String(describing: data))")
+        } else {
+          print("ViewController.handleETHProviderHelperMethod(): ❌ failed to retrieved ethEstimateGas result: \(String(describing: result))")
+        }
+      })
+
+      portal?.ethGetBalance(completion: { result in
+        if let data = result.data {
+          print("ViewController.handleETHProviderHelperMethod(): ✅ Successfully retrieved ethGetBalance result.data: \(String(describing: data))")
+        } else {
+          print("ViewController.handleETHProviderHelperMethod(): ❌ failed to retrieved ethGetBalance result: \(String(describing: result))")
+        }
+      })
+
+      portal?.ethSignTransaction(transaction: transactionParam, completion: { result in
+        if let data = result.data {
+          print("ViewController.handleETHProviderHelperMethod(): ✅ Successfully retrieved ethSignTransaction result.data: \(String(describing: data))")
+        } else {
+          print("ViewController.handleETHProviderHelperMethod(): ❌ failed to retrieved ethSignTransaction result: \(String(describing: result))")
+        }
+      })
+
+      portal?.ethSendTransaction(transaction: transactionParam, completion: { result in
+        if let data = result.data {
+          print("ViewController.handleETHProviderHelperMethod(): ✅ Successfully retrieved ethSendTransaction result.data: \(String(describing: data))")
+        } else {
+          print("ViewController.handleETHProviderHelperMethod(): ❌ failed to retrieved ethSendTransaction result: \(String(describing: result))")
+        }
+      })
+
+      portal?.ethSign(message: "0xdeadbeef", completion: { result in
+        if let data = result.data {
+          print("ViewController.handleETHProviderHelperMethod(): ✅ Successfully retrieved ethSign result.data: \(String(describing: data))")
+        } else {
+          print("ViewController.handleETHProviderHelperMethod(): ❌ failed to retrieved ethSign result: \(String(describing: result))")
+        }
+      })
+
+      portal?.ethSignTypedDataV3(message: "0xdeadbeef", completion: { result in
+        if let data = result.data {
+          print("ViewController.handleETHProviderHelperMethod(): ✅ Successfully retrieved ethSignTypedDataV3 result.data: \(String(describing: data))")
+        } else {
+          print("ViewController.handleETHProviderHelperMethod(): ❌ failed to retrieved ethSignTypedDataV3 result: \(String(describing: result))")
+        }
+      })
+
+      portal?.ethSignTypedData(message: "0xdeadbeef", completion: { result in
+        if let data = result.data {
+          print("ViewController.handleETHProviderHelperMethod(): ✅ Successfully retrieved ethSignTypedData result.data: \(String(describing: data))")
+        } else {
+          print("ViewController.handleETHProviderHelperMethod(): ❌ failed to retrieved ethSignTypedData result: \(String(describing: result))")
+        }
+      })
+
+      portal?.personalSign(message: "0xdeadbeef", completion: { result in
+        if let data = result.data {
+          print("ViewController.handleETHProviderHelperMethod(): ✅ Successfully retrieved personalSign result.data: \(String(describing: data))")
+        } else {
+          print("ViewController.handleETHProviderHelperMethod(): ❌ failed to retrieved personalSign result: \(String(describing: result))")
+        }
+      })
     }
   }
 
