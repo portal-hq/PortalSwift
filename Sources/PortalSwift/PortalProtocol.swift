@@ -105,7 +105,6 @@ public protocol PortalProtocol {
   func ethSignTypedData(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
   func personalSign(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
   func request(method: ETHRequestMethods.RawValue, params: [Any], completion: @escaping (Result<RequestCompletionResult>) -> Void)
-  func sendSol(_ lamports: UInt64, to: String, withChainId chainId: String) async throws -> String
   func createPortalConnectInstance(webSocketServer: String) throws -> PortalConnect
   func receiveTestnetAsset(chainId: String, params: FundParams) async throws -> FundResponse
   func sendAsset(chainId: String, params: SendAssetParams) async throws -> SendAssetResponse
@@ -133,4 +132,6 @@ public protocol PortalProtocol {
   func deleteAddress() throws
   @available(*, deprecated, renamed: "deleteShares", message: "The Portal SDK is now multi-wallet. Please update to the multi-wallet-compatible deleteShares() as this function will be removed in the future.")
   func deleteSigningShare() throws
+  @available(*, deprecated, renamed: "sendAsset", message: "Please use sendAsset().")
+  func sendSol(_ lamports: UInt64, to: String, withChainId chainId: String) async throws -> String
 }
