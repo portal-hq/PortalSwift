@@ -1947,6 +1947,8 @@ public final class Portal: PortalProtocol {
   ///   - The wallet must have a Solana address. Run generate or recover if needed.
   ///   - The transaction is automatically signed and sent to the network
   ///   - The fee is paid by the sender's address
+  /// - Deprecated: Use `sendAsset()` instead.
+  @available(*, deprecated, renamed: "sendAsset", message: "Please use sendAsset().")
   public func sendSol(_ lamports: UInt64, to: String, withChainId chainId: String) async throws -> String {
     guard chainId.split(separator: ":").count > 0 else {
       throw PortalClassError.invalidChainId(chainId)

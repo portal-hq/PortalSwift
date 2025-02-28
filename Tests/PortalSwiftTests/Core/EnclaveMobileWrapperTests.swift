@@ -26,7 +26,7 @@ extension EnclaveMobileWrapperTests {
     portalRequests: PortalRequestsProtocol = PortalRequestsSpy(),
     enclaveMPCHost: String = ""
   ) {
-      enclaveMobileWrapper = EnclaveMobileWrapper(requests: portalRequests, enclaveMPCHost: enclaveMPCHost)
+    enclaveMobileWrapper = EnclaveMobileWrapper(requests: portalRequests, enclaveMPCHost: enclaveMPCHost)
   }
 }
 
@@ -65,7 +65,7 @@ extension EnclaveMobileWrapperTests {
     // given
     let enclaveMPCHost = "mpc-client.portalhq.io"
     let portalRequestsSpy = PortalRequestsSpy()
-      initEnclaveMobileWrapper(portalRequests: portalRequestsSpy, enclaveMPCHost: enclaveMPCHost)
+    initEnclaveMobileWrapper(portalRequests: portalRequestsSpy, enclaveMPCHost: enclaveMPCHost)
 
     let apiKey = "apiKey"
     let host = "host"
