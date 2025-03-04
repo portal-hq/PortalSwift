@@ -44,7 +44,7 @@ public class PortalProvider: PortalProviderProtocol {
   public weak var api: PortalApiProtocol?
 
   private let decoder = JSONDecoder()
-  private var events: [Events.RawValue: [RegisteredEventHandler]] = [:]
+  private var events = ThreadSafeDictionary<Events.RawValue, [RegisteredEventHandler]>()
   private weak var keychain: PortalKeychainProtocol?
   private let logger = PortalLogger()
   private var mpcQueue: DispatchQueue
