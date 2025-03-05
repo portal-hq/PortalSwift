@@ -18,7 +18,7 @@ public protocol PortalKeychainProtocol: AnyObject {
   func getMetadata() async throws -> PortalKeychainClientMetadata
   func getShare(_ forChainId: String) async throws -> String
   func getShares() async throws -> PortalKeychainClientShares
-  func loadMetadata() async throws -> PortalKeychainMetadata
+  @discardableResult func loadMetadata() async throws -> PortalKeychainMetadata
   func setMetadata(_: PortalKeychainClientMetadata) async throws
   func setShares(_: [String: PortalMpcGeneratedShare]) async throws
   func getAddress() throws -> String

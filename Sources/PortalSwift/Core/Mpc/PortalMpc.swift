@@ -841,7 +841,7 @@ public class PortalMpc: PortalMpcProtocol {
       let result = try JSONDecoder().decode(FormatShareResponse.self, from: jsonData)
 
       if let error = result.error {
-        throw MpcError.unexpectedErrorOnRecover("Error formatting shares: \(error.message)")
+        throw MpcError.unexpectedErrorOnRecover("Error formatting shares: \(String(describing: error.message))")
       }
 
       guard let data = result.data else {
