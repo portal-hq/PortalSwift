@@ -422,7 +422,8 @@ public class PortalProvider: PortalProviderProtocol {
     }
 
     let rpcUrl = try getRpcUrl(onChainId)
-    let payload = PortalSignRequest(method: withPayload.method, params: withPayload.params)
+
+    let payload = try getPortalSignRequest(method: withPayload.method, params: withPayload.params)
 
     let signature = try await self.signer.sign(
       onChainId,
@@ -432,6 +433,60 @@ public class PortalProvider: PortalProviderProtocol {
     )
 
     return PortalProviderResult(id: withPayload.id, result: signature)
+  }
+
+  private func getPortalSignRequest(
+    method: PortalRequestMethod,
+    params: [AnyCodable]?
+  ) throws -> PortalSignRequest {
+    if method == .rawSign {
+      return getPortalRawSignRequest(paramsStr: params?.first?.value as? String ?? "")
+    } else {
+      return try getPortalNoneRawSignRequest(method: method, params: params)
+    }
+  }
+
+  private func getPortalRawSignRequest(
+    paramsStr: String
+  ) -> PortalSignRequest {
+    return PortalSignRequest(
+      method: nil,
+      params: paramsStr,
+      isRaw: true
+    )
+  }
+
+  private func getPortalNoneRawSignRequest(
+    method: PortalRequestMethod,
+    params: [AnyCodable]?
+  ) throws -> PortalSignRequest {
+    let params = try prepareParamsForNoneRawSignRequest(method, params: params)
+    let paramsJson = try JSONEncoder().encode(params)
+    guard let paramsStr = String(data: paramsJson, encoding: .utf8) else {
+      throw PortalMpcSignerError.unableToEncodeParams
+    }
+    return PortalSignRequest(
+      method: method,
+      params: paramsStr
+    )
+  }
+
+  private func prepareParamsForNoneRawSignRequest(_ method: PortalRequestMethod?, params: [AnyCodable]?) throws -> AnyCodable? {
+    switch method {
+    case .eth_sendTransaction, .eth_signTransaction:
+      guard let params = params?[0] else {
+        throw PortalMpcSignerError.noParamsForSignRequest
+      }
+      return params
+    case .eth_sign, .personal_sign:
+      guard let count = params?.count, count >= 2 else {
+        throw PortalMpcSignerError.invalidParamsForMethod("\(String(describing: method?.rawValue)) - \(String(describing: params))")
+      }
+
+      return AnyCodable([params?[0], params?[1]])
+    default:
+      return AnyCodable(params)
+    }
   }
 
   private func removeOnce(registeredEventHandler: RegisteredEventHandler) -> Bool {
@@ -701,6 +756,9 @@ public enum PortalRequestMethod: String, Codable {
   case sol_signAndSendTransaction
   case sol_signMessage
   case sol_signTransaction
+
+  // Raw methods
+  case rawSign = "raw_sign"
 }
 
 /// All available provider methods.

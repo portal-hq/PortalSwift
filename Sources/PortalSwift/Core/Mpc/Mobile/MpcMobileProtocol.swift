@@ -16,6 +16,7 @@ public struct MpcMetadata: Codable {
   var isMultiBackupEnabled: Bool? = nil
   var mpcServerVersion: String
   var optimized: Bool = true
+  var isRaw: Bool? = nil
 }
 
 extension MpcMetadata {

@@ -48,24 +48,20 @@ public class PortalMpcSigner: PortalSignerProtocol {
     var mpcMetadata = self.mpcMetadata
     mpcMetadata.curve = usingBlockchain.curve
     mpcMetadata.chainId = chainId
+    mpcMetadata.isRaw = withPayload.isRaw
 
     let signingShare = try await keychain?.getShare(chainId)
-    let params = try self.prepareParams(withPayload.method, params: withPayload.params)
 
-    let json = try JSONEncoder().encode(params)
-    guard let params = String(data: json, encoding: .utf8) else {
-      throw PortalMpcSignerError.unableToEncodeParams
-    }
     let mpcMetadataString = try mpcMetadata.jsonString()
 
     let clientSignResult = await self.binary.MobileSign(
       self.apiKey,
       self.mpcUrl,
       signingShare,
-      withPayload.method.rawValue,
-      params,
-      andRpcUrl,
-      chainId,
+      withPayload.method?.rawValue ?? "",
+      withPayload.params,
+      withPayload.isRaw ?? false ? "" : andRpcUrl,
+      withPayload.isRaw ?? false ? "" : chainId,
       mpcMetadataString
     )
 
@@ -84,24 +80,6 @@ public class PortalMpcSigner: PortalSignerProtocol {
 
     // Return the sign result.
     return signature
-  }
-
-  func prepareParams(_ method: PortalRequestMethod, params: [AnyCodable]?) throws -> AnyCodable? {
-    switch method {
-    case .eth_sendTransaction, .eth_signTransaction:
-      guard let params = params?[0] else {
-        throw PortalMpcSignerError.noParamsForSignRequest
-      }
-      return params
-    case .eth_sign, .personal_sign:
-      guard let count = params?.count, count >= 2 else {
-        throw PortalMpcSignerError.invalidParamsForMethod("\(method.rawValue) - \(String(describing: params))")
-      }
-
-      return AnyCodable([params?[0], params?[1]])
-    default:
-      return AnyCodable(params)
-    }
   }
 }
 

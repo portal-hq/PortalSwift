@@ -104,6 +104,7 @@ public protocol PortalProtocol {
   func ethSignTypedDataV3(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
   func ethSignTypedData(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
   func personalSign(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
+  func rawSign(message: String, chainId: String) async throws -> PortalProviderResult
   func request(method: ETHRequestMethods.RawValue, params: [Any], completion: @escaping (Result<RequestCompletionResult>) -> Void)
   func sendSol(_ lamports: UInt64, to: String, withChainId chainId: String) async throws -> String
   func createPortalConnectInstance(webSocketServer: String) throws -> PortalConnect
