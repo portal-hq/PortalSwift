@@ -21,11 +21,19 @@ public protocol PortalKeychainProtocol: AnyObject {
   func loadMetadata() async throws -> PortalKeychainMetadata
   func setMetadata(_: PortalKeychainClientMetadata) async throws
   func setShares(_: [String: PortalMpcGeneratedShare]) async throws
+
+  // deprecated functions
+  @available(*, deprecated, renamed: "getAddress", message: "Please use the async, chainId-specific implementation of getAddress().")
   func getAddress() throws -> String
+  @available(*, deprecated, renamed: "getShares", message: "Please use the async implementation of getShares() or getShare(forChainId).")
   func getSigningShare() throws -> String
+  @available(*, deprecated, renamed: "deleteMetadata", message: "Please use the async implementation of deleteMetadata().")
   func deleteAddress() throws
+  @available(*, deprecated, renamed: "deleteShares", message: "Please use the async implementation of deleteShares().")
   func deleteSigningShare() throws
+  @available(*, deprecated, renamed: "updateMetadata", message: "Please use the async implementation of updateMetadata().")
   func setAddress(address _: String, completion: @escaping (Result<OSStatus>) -> Void)
+  @available(*, deprecated, renamed: "updateShares", message: "Please use the async implementation of updateShares().")
   func setSigningShare(signingShare _: String, completion: @escaping (Result<OSStatus>) -> Void)
 }
 
@@ -549,35 +557,6 @@ public class PortalKeychain: PortalKeychainProtocol {
 
     try deleteItem(shareKey)
     try deleteItem(deprecatedShareKey)
-  }
-
-  /// Tests `setItem` in the client's keychain.
-  @available(*, deprecated, renamed: "validateOperations", message: "Please use the async implementation of validateOperations().")
-  func validateOperations(completion: @escaping (Result<OSStatus>) -> Void) {
-    do {
-      _ = try self.getClientId()
-    } catch {
-      completion(Result(error: error))
-      return
-    }
-
-    let testKey = "portal_test"
-    let testValue = "test_value"
-
-    self.setItem(key: testKey, value: testValue) { result in
-      // Handle errors.
-      guard result.error == nil else {
-        return completion(Result(error: result.error!))
-      }
-
-      do {
-        // Delete the key that was created.
-        try self.deleteItem(testKey)
-        return completion(Result(data: result.data!))
-      } catch {
-        return completion(Result(error: error))
-      }
-    }
   }
 
   @available(*, deprecated, renamed: "setItem", message: "Please use the async implementation of setItem().")
