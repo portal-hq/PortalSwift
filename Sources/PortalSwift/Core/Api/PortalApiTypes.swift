@@ -573,20 +573,20 @@ public struct FundResponse: Codable {
   public let error: FundResponseError?
 }
 
-public struct BuildEip115TransactionResponse: Codable {
+public struct BuildEip115TransactionResponse: Codable, Equatable {
   public let transaction: Eip115Transaction
   public let metadata: BuildTransactionMetaData
   public let error: String?
 }
 
-public struct Eip115Transaction: Codable {
+public struct Eip115Transaction: Codable, Equatable {
   public let from: String
   public let to: String
   public let data: String?
   public let value: String?
 }
 
-public struct BuildTransactionMetaData: Codable {
+public struct BuildTransactionMetaData: Codable, Equatable {
   public let amount: String
   public let fromAddress: String
   public let toAddress: String
@@ -596,7 +596,7 @@ public struct BuildTransactionMetaData: Codable {
   public let rawAmount: String
 }
 
-public struct BuildSolanaTransactionResponse: Codable {
+public struct BuildSolanaTransactionResponse: Codable, Equatable {
   public let transaction: String
   public let metadata: BuildTransactionMetaData
   public let error: String?

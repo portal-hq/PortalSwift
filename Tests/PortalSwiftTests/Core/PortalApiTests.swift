@@ -562,7 +562,7 @@ extension PortalApiTests {
     do {
       // and given
       _ = try await api?.fund(chainId: "", params: FundParams(amount: "", token: ""))
-      XCTFail("Expected error not thrown when calling PortalApi.eject when Request throws error.")
+      XCTFail("Expected error not thrown when calling PortalApi.fund when Request throws error.")
     } catch {
       // then
       XCTAssertEqual(error as? URLError, portalRequestsFailMock.errorToThrow)
@@ -1027,6 +1027,164 @@ extension PortalApiTests {
     // then
     if #available(iOS 16.0, *) {
       XCTAssertEqual(portalRequestsSpy.getFromParam?.path(), "/api/v3/clients/me/wallet_getCapabilities")
+    }
+  }
+}
+
+// MARK: - buildEip155Transaction tests
+
+extension PortalApiTests {
+  func test_buildEip155Transaction() async throws {
+    let expectation = XCTestExpectation(description: "PortalApi.buildEip155Transaction()")
+    let portalRequestsSpy = PortalRequestsSpy()
+    let mockBuildEip115TransactionResponse = BuildEip115TransactionResponse.stub()
+    portalRequestsSpy.returnData = try Data(JSONEncoder().encode(mockBuildEip115TransactionResponse))
+    initPortalApiWith(requests: portalRequestsSpy)
+
+    let buildEip115TransactionResponse = try await api?.buildEip155Transaction(chainId: "eip155:11155111", params: BuildTransactionParam.stub())
+    XCTAssert(buildEip115TransactionResponse == mockBuildEip115TransactionResponse)
+    expectation.fulfill()
+    await fulfillment(of: [expectation], timeout: 5.0)
+  }
+
+  func test_buildEip155Transaction_willCall_requestPost_onlyOnce() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    let buildEip115TransactionResponse = BuildEip115TransactionResponse.stub()
+    portalRequestsSpy.returnData = try Data(JSONEncoder().encode(buildEip115TransactionResponse))
+    initPortalApiWith(requests: portalRequestsSpy)
+
+    // and given
+    _ = try await api?.buildEip155Transaction(chainId: "eip155:11155111", params: BuildTransactionParam.stub())
+
+    // then
+    XCTAssertEqual(portalRequestsSpy.postCallsCount, 1)
+  }
+
+  @available(iOS 16.0, *)
+  func test_buildEip155Transaction_willCall_requestPost_passingCorrectParams() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    let buildEip115TransactionResponse = BuildEip115TransactionResponse.stub()
+    portalRequestsSpy.returnData = try Data(JSONEncoder().encode(buildEip115TransactionResponse))
+    initPortalApiWith(requests: portalRequestsSpy)
+
+    // and given
+    let chainId = "eip155:11155111"
+    let buildTransactionParams: BuildTransactionParam = .stub()
+
+    // and given
+    _ = try await api?.buildEip155Transaction(chainId: chainId, params: buildTransactionParams)
+
+    // then
+    XCTAssertEqual(portalRequestsSpy.postFromParam?.path() ?? "", "/api/v3/clients/me/chains/\(chainId)/assets/send/build-transaction")
+    XCTAssertEqual(portalRequestsSpy.postAndPayloadParam as? [String: String], buildTransactionParams.toDictionary())
+  }
+
+  func test_buildEip155Transaction_willThrowCorrectError_whenRequestPostThrowError() async throws {
+    // given
+    let portalRequestsFailMock = PortalRequestsFailMock()
+    initPortalApiWith(requests: portalRequestsFailMock)
+
+    do {
+      // and given
+      _ = try await api?.buildEip155Transaction(chainId: "eip155:11155111", params: BuildTransactionParam.stub())
+      XCTFail("Expected error not thrown when calling PortalApi.buildEip155Transaction when Request throws error.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? URLError, portalRequestsFailMock.errorToThrow)
+    }
+  }
+
+  func test_buildEip155Transaction_willThrowCorrectError_whenPassingInvalidChainId() async throws {
+    // give
+    let chainId = ""
+    do {
+      // and given
+      _ = try await api?.buildEip155Transaction(chainId: chainId, params: BuildTransactionParam.stub())
+      XCTFail("Expected error not thrown when calling PortalApi.buildEip155Transaction when Request throws error.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? PortalApiError, PortalApiError.invalidChainId(message: "Invalid chainId: \(chainId). ChainId must start with 'eip155:'"))
+    }
+  }
+}
+
+// MARK: - buildSolanaTransaction tests
+
+extension PortalApiTests {
+  func test_buildSolanaTransaction() async throws {
+    let expectation = XCTestExpectation(description: "PortalApi.buildSolanaTransaction()")
+    let portalRequestsSpy = PortalRequestsSpy()
+    let mockBuildSolanaTransactionResponse = BuildSolanaTransactionResponse.stub()
+    portalRequestsSpy.returnData = try Data(JSONEncoder().encode(mockBuildSolanaTransactionResponse))
+    initPortalApiWith(requests: portalRequestsSpy)
+
+    let buildSolanaTransactionResponse = try await api?.buildSolanaTransaction(chainId: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1", params: BuildTransactionParam.stub())
+    XCTAssert(buildSolanaTransactionResponse == mockBuildSolanaTransactionResponse)
+    expectation.fulfill()
+    await fulfillment(of: [expectation], timeout: 5.0)
+  }
+
+  func test_buildSolanaTransaction_willCall_requestPost_onlyOnce() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    let mockBuildSolanaTransactionResponse = BuildSolanaTransactionResponse.stub()
+    portalRequestsSpy.returnData = try Data(JSONEncoder().encode(mockBuildSolanaTransactionResponse))
+    initPortalApiWith(requests: portalRequestsSpy)
+
+    // and given
+    _ = try await api?.buildSolanaTransaction(chainId: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1", params: BuildTransactionParam.stub())
+
+    // then
+    XCTAssertEqual(portalRequestsSpy.postCallsCount, 1)
+  }
+
+  @available(iOS 16.0, *)
+  func test_buildSolanaTransaction_willCall_requestPost_passingCorrectParams() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    let mockBuildSolanaTransactionResponse = BuildSolanaTransactionResponse.stub()
+    portalRequestsSpy.returnData = try Data(JSONEncoder().encode(mockBuildSolanaTransactionResponse))
+    initPortalApiWith(requests: portalRequestsSpy)
+
+    // and given
+    let chainId = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+    let buildTransactionParams: BuildTransactionParam = .stub()
+
+    // and given
+    _ = try await api?.buildSolanaTransaction(chainId: chainId, params: buildTransactionParams)
+
+    // then
+    XCTAssertEqual(portalRequestsSpy.postFromParam?.path() ?? "", "/api/v3/clients/me/chains/\(chainId)/assets/send/build-transaction")
+    XCTAssertEqual(portalRequestsSpy.postAndPayloadParam as? [String: String], buildTransactionParams.toDictionary())
+  }
+
+  func test_buildSolanaTransaction_willThrowCorrectError_whenRequestPostThrowError() async throws {
+    // given
+    let portalRequestsFailMock = PortalRequestsFailMock()
+    initPortalApiWith(requests: portalRequestsFailMock)
+
+    do {
+      // and given
+      _ = try await api?.buildSolanaTransaction(chainId: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1", params: BuildTransactionParam.stub())
+      XCTFail("Expected error not thrown when calling PortalApi.buildEip155Transaction when Request throws error.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? URLError, portalRequestsFailMock.errorToThrow)
+    }
+  }
+
+  func test_buildSolanaTransaction_willThrowCorrectError_whenPassingInvalidChainId() async throws {
+    // give
+    let chainId = ""
+    do {
+      // and given
+      _ = try await api?.buildSolanaTransaction(chainId: chainId, params: BuildTransactionParam.stub())
+      XCTFail("Expected error not thrown when calling PortalApi.buildSolanaTransaction when Request throws error.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? PortalApiError, PortalApiError.invalidChainId(message: "Invalid chainId: \(chainId). ChainId must start with 'solana:'"))
     }
   }
 }
