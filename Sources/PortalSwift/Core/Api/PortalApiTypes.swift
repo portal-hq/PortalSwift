@@ -624,7 +624,7 @@ public struct BuildTransactionParam {
 
 // MARK: - NftAsset
 
-public struct NftAsset: Codable {
+public struct NftAsset: Codable, Equatable {
   let nftID, name, description: String?
   let imageURL: String?
   let chainID, contractAddress, tokenID: String?
@@ -637,14 +637,14 @@ public struct NftAsset: Codable {
 
 // MARK: - Collection
 
-public struct Collection: Codable {
+public struct Collection: Codable, Equatable {
   let name, description: String?
   let imageURL: String?
 }
 
 // MARK: - DetailedInfo
 
-public struct DetailedInfo: Codable {
+public struct DetailedInfo: Codable, Equatable {
   public let ownerCount, tokenCount: Int?
   public let createdDate: String?
   public let attributes: [Attribute]?
@@ -657,14 +657,14 @@ public struct DetailedInfo: Codable {
 
 // MARK: - Attribute
 
-public struct Attribute: Codable {
+public struct Attribute: Codable, Equatable {
   let traitType, value: String?
 //  let displayType: String?
 }
 
 // MARK: - ExtendedCollectionInfo
 
-public struct ExtendedCollectionInfo: Codable {
+public struct ExtendedCollectionInfo: Codable, Equatable {
   public let bannerImageURL: String?
   public let externalURL: String?
   public let twitterUsername: String?
@@ -676,7 +676,7 @@ public struct ExtendedCollectionInfo: Codable {
 
 // MARK: - ExtendedSaleInfo
 
-public struct ExtendedSaleInfo: Codable {
+public struct ExtendedSaleInfo: Codable, Equatable {
   public let fromAddress, toAddress: String?
   public let priceUsdCents: Int?
   public let transaction, marketplaceID, marketplaceName: String?
@@ -684,7 +684,7 @@ public struct ExtendedSaleInfo: Codable {
 
 // MARK: - MarketplaceInfo
 
-public struct MarketplaceInfo: Codable {
+public struct MarketplaceInfo: Codable, Equatable {
   public let marketplaceID, marketplaceName, marketplaceCollectionID: String?
   public let nftURL, collectionURL: String?
   public let verified: Bool?
@@ -693,7 +693,7 @@ public struct MarketplaceInfo: Codable {
 
 // MARK: - MarketplaceInfoFloorPrice
 
-public struct MarketplaceInfoFloorPrice: Codable {
+public struct MarketplaceInfoFloorPrice: Codable, Equatable {
   public let value: Double?
   public let paymentToken: PaymentToken?
   public let valueUsdCents: Int?
@@ -701,7 +701,7 @@ public struct MarketplaceInfoFloorPrice: Codable {
 
 // MARK: - PaymentToken
 
-public struct PaymentToken: Codable {
+public struct PaymentToken: Codable, Equatable {
   public let paymentTokenID, name, symbol: String?
   public let address: String?
   public let decimals: Int?
@@ -709,7 +709,7 @@ public struct PaymentToken: Codable {
 
 // MARK: - MediaInfo
 
-public struct MediaInfo: Codable {
+public struct MediaInfo: Codable, Equatable {
   public let previews: Previews?
   public let animationURL: String?
   public let backgroundColor: String?
@@ -717,14 +717,14 @@ public struct MediaInfo: Codable {
 
 // MARK: - Previews
 
-public struct Previews: Codable {
+public struct Previews: Codable, Equatable {
   public let imageSmallURL, imageMediumURL, imageLargeURL, imageOpengraphURL: String?
   public let blurhash, predominantColor: String?
 }
 
 // MARK: - Owner
 
-public struct Owner: Codable {
+public struct Owner: Codable, Equatable {
   public let ownerAddress: String?
   public let quantity: Int?
   public let firstAcquiredDate, lastAcquiredDate: String?
@@ -732,14 +732,14 @@ public struct Owner: Codable {
 
 // MARK: - NftAssetFloorPrice
 
-public struct NftAssetFloorPrice: Codable {
+public struct NftAssetFloorPrice: Codable, Equatable {
   let price: Double?
   let currency: String?
 }
 
 // MARK: - LastSale
 
-public struct LastSale: Codable {
+public struct LastSale: Codable, Equatable {
   public let price: Double?
   public let currency: String?
   public let date: String?
@@ -747,7 +747,7 @@ public struct LastSale: Codable {
 
 // MARK: - Rarity
 
-public struct Rarity: Codable {
+public struct Rarity: Codable, Equatable {
   public let rank: Int?
   public let score: Double?
 }

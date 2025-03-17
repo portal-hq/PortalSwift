@@ -1188,3 +1188,67 @@ extension PortalApiTests {
     }
   }
 }
+
+// MARK: - getNftAssets tests
+
+extension PortalApiTests {
+  func test_getNftAssets() async throws {
+    let expectation = XCTestExpectation(description: "PortalApi.getNftAssets()")
+    let portalRequestsSpy = PortalRequestsSpy()
+    let mockGetNftAssetsResponse = [NftAsset.stub()]
+    portalRequestsSpy.returnData = try Data(JSONEncoder().encode(mockGetNftAssetsResponse))
+    initPortalApiWith(requests: portalRequestsSpy)
+
+    let getNftAssetsResponse = try await api?.getNftAssets("solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1")
+    XCTAssert(getNftAssetsResponse == mockGetNftAssetsResponse)
+    expectation.fulfill()
+    await fulfillment(of: [expectation], timeout: 5.0)
+  }
+
+  func test_getNftAssets_willCall_requestGet_onlyOnce() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    let mockGetNftAssetsResponse = [NftAsset.stub()]
+    portalRequestsSpy.returnData = try Data(JSONEncoder().encode(mockGetNftAssetsResponse))
+    initPortalApiWith(requests: portalRequestsSpy)
+
+    // and given
+    _ = try await api?.getNftAssets("solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1")
+
+    // then
+    XCTAssertEqual(portalRequestsSpy.getCallsCount, 1)
+  }
+
+  @available(iOS 16.0, *)
+  func test_getNftAssets_willCall_requestGet_passingCorrectParams() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    let mockGetNftAssetsResponse = [NftAsset.stub()]
+    portalRequestsSpy.returnData = try Data(JSONEncoder().encode(mockGetNftAssetsResponse))
+    initPortalApiWith(requests: portalRequestsSpy)
+
+    // and given
+    let chainId = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+
+    // and given
+    _ = try await api?.getNftAssets("solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1")
+
+    // then
+    XCTAssertEqual(portalRequestsSpy.getFromParam?.path() ?? "", "/api/v3/clients/me/chains/\(chainId)/assets/nfts")
+  }
+
+  func test_getNftAssets_willThrowCorrectError_whenRequestPostThrowError() async throws {
+    // given
+    let portalRequestsFailMock = PortalRequestsFailMock()
+    initPortalApiWith(requests: portalRequestsFailMock)
+
+    do {
+      // and given
+      _ = try await api?.getNftAssets("solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1")
+      XCTFail("Expected error not thrown when calling PortalApi.buildEip155Transaction when Request throws error.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? URLError, portalRequestsFailMock.errorToThrow)
+    }
+  }
+}
