@@ -991,11 +991,11 @@ class ViewController: UIViewController, UITextFieldDelegate {
       // The apikey from Portal class is private within the Portal SDK class, so it must not be accessible from outside. We already have the clientApiKey from user
       self.logger.info("ViewController.registerPortal() - Portal API Key: \(user.clientApiKey)")
 
-      portal.on(event: Events.PortalSigningRequested.rawValue, callback: { [weak portal] data in
-        portal?.emit(Events.PortalSigningApproved.rawValue, data: data)
+      portal.on(event: Events.PortalSigningRequested, callback: { [weak portal] data in
+        portal?.emit(Events.PortalSigningApproved, data: data)
       })
 
-      portal.on(event: Events.PortalSignatureReceived.rawValue) { (data: Any) in
+      portal.on(event: Events.PortalSignatureReceived) { (data: Any) in
         let result = data as! RequestCompletionResult
 
         let debugMessage = "ViewController.registerPortal() - Recived signature: \(result)"

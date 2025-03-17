@@ -816,8 +816,8 @@ public final class Portal: PortalProtocol {
   ///
   /// - Note: The emitted event can be captured by any listeners registered
   ///   for that specific event type.
-  public func emit(_ event: Events.RawValue, data: Any) {
-    _ = self.provider.emit(event: event, data: data)
+  public func emit(_ event: Events, data: Any) {
+    _ = self.provider.emit(event: event.rawValue, data: data)
   }
 
   /// Registers a callback to handle events emitted by the provider.
@@ -846,8 +846,8 @@ public final class Portal: PortalProtocol {
   ///
   /// - Note: The callback will continue to be called for all future events until explicitly
   ///   removed. For one-time event handling, use `once()` instead.
-  public func on(event: Events.RawValue, callback: @escaping (Any) -> Void) {
-    _ = self.provider.on(event: event, callback: callback)
+  public func on(event: Events, callback: @escaping (Any) -> Void) {
+    _ = self.provider.on(event: event.rawValue, callback: callback)
   }
 
   /// Registers a one-time callback to handle a single occurrence of an event.
@@ -876,8 +876,8 @@ public final class Portal: PortalProtocol {
   ///
   /// - Note: Unlike `on()`, this callback will only be executed once and then automatically
   ///   removed. For persistent event handling, use `on()` instead.
-  public func once(event: Events.RawValue, callback: @escaping (Any) -> Void) {
-    _ = self.provider.once(event: event, callback: callback)
+  public func once(event: Events, callback: @escaping (Any) -> Void) {
+    _ = self.provider.once(event: event.rawValue, callback: callback)
   }
 
   /// Sends a blockchain request with the specified method and parameters.
@@ -1612,6 +1612,98 @@ public final class Portal: PortalProtocol {
     }
 
     return try await self.request(chainId, withMethod: method, andParams: andParams)
+  }
+
+  /// Emits an event with associated data through the provider.
+  ///
+  /// This method allows you to emit custom events that can be listened to
+  /// using the `on()` and `once()` methods.
+  ///
+  /// - Parameters:
+  ///   - event: The event type to emit. Supported events include:
+  ///     - `.ChainChanged`: Emitted when the active blockchain changes
+  ///     - `.PortalConnectChainChanged`: Emitted when Portal Connect chain changes
+  ///     - `.Connect`: Emitted on successful connection
+  ///     - `.ConnectError`: Emitted when a connection error occurs
+  ///     - `.Disconnect`: Emitted on disconnection
+  ///     - `.PortalSignatureReceived`: Emitted when a signature is received
+  ///     - `.PortalSigningApproved`: Emitted when signing is approved
+  ///     - `.PortalSigningRejected`: Emitted when signing is rejected
+  ///     - `.PortalConnectSigningRequested`: Emitted when Portal Connect requests signing
+  ///     - `.PortalSigningRequested`: Emitted when signing is requested
+  ///     - `.PortalGetSessionRequest`: Emitted for session requests
+  ///     - `.PortalDappSessionRequested`: Emitted when a dApp requests a session
+  ///     - `.PortalDappSessionApproved`: Emitted when a dApp session is approved
+  ///     - `.PortalDappSessionRejected`: Emitted when a dApp session is rejected
+  ///   - data: Any data to be passed along with the event.
+  ///
+  /// - Note: The emitted event can be captured by any listeners registered
+  ///   for that specific event type.
+  @available(*, deprecated, message: "Use emit(_ event: Events, data: Any) instead")
+  public func emit(_ event: Events.RawValue, data: Any) {
+    _ = self.provider.emit(event: event, data: data)
+  }
+
+  /// Registers a callback to handle events emitted by the provider.
+  ///
+  /// This method sets up a persistent listener for a specific event type. The callback
+  /// will be called every time the specified event is emitted.
+  ///
+  /// - Parameters:
+  ///   - event: The event type to listen for. Supported events include:
+  ///     - `.ChainChanged`: Triggered when the active blockchain changes
+  ///     - `.PortalConnectChainChanged`: Triggered when Portal Connect chain changes
+  ///     - `.Connect`: Triggered on successful connection
+  ///     - `.ConnectError`: Triggered when a connection error occurs
+  ///     - `.Disconnect`: Triggered on disconnection
+  ///     - `.PortalSignatureReceived`: Triggered when a signature is received
+  ///     - `.PortalSigningApproved`: Triggered when signing is approved
+  ///     - `.PortalSigningRejected`: Triggered when signing is rejected
+  ///     - `.PortalConnectSigningRequested`: Triggered when Portal Connect requests signing
+  ///     - `.PortalSigningRequested`: Triggered when signing is requested
+  ///     - `.PortalGetSessionRequest`: Triggered for session requests
+  ///     - `.PortalDappSessionRequested`: Triggered when a dApp requests a session
+  ///     - `.PortalDappSessionApproved`: Triggered when a dApp session is approved
+  ///     - `.PortalDappSessionRejected`: Triggered when a dApp session is rejected
+  ///   - callback: The function to be called when the event occurs. The callback receives
+  ///     the event data as its parameter.
+  ///
+  /// - Note: The callback will continue to be called for all future events until explicitly
+  ///   removed. For one-time event handling, use `once()` instead.
+  @available(*, deprecated, message: "Use on(event: Events, callback: @escaping (Any) -> Void) instead")
+  public func on(event: Events.RawValue, callback: @escaping (Any) -> Void) {
+    _ = self.provider.on(event: event, callback: callback)
+  }
+
+  /// Registers a one-time callback to handle a single occurrence of an event.
+  ///
+  /// This method sets up a listener that will be triggered only once for the specified event type.
+  /// After the event occurs and the callback is executed, the listener is automatically removed.
+  ///
+  /// - Parameters:
+  ///   - event: The event type to listen for. Supported events include:
+  ///     - `.ChainChanged`: Triggered when the active blockchain changes
+  ///     - `.PortalConnectChainChanged`: Triggered when Portal Connect chain changes
+  ///     - `.Connect`: Triggered on successful connection
+  ///     - `.ConnectError`: Triggered when a connection error occurs
+  ///     - `.Disconnect`: Triggered on disconnection
+  ///     - `.PortalSignatureReceived`: Triggered when a signature is received
+  ///     - `.PortalSigningApproved`: Triggered when signing is approved
+  ///     - `.PortalSigningRejected`: Triggered when signing is rejected
+  ///     - `.PortalConnectSigningRequested`: Triggered when Portal Connect requests signing
+  ///     - `.PortalSigningRequested`: Triggered when signing is requested
+  ///     - `.PortalGetSessionRequest`: Triggered for session requests
+  ///     - `.PortalDappSessionRequested`: Triggered when a dApp requests a session
+  ///     - `.PortalDappSessionApproved`: Triggered when a dApp session is approved
+  ///     - `.PortalDappSessionRejected`: Triggered when a dApp session is rejected
+  ///   - callback: The function to be called when the event occurs. The callback receives
+  ///     the event data as its parameter.
+  ///
+  /// - Note: Unlike `on()`, this callback will only be executed once and then automatically
+  ///   removed. For persistent event handling, use `on()` instead.
+  @available(*, deprecated, message: "Use once(event: Events, callback: @escaping (Any) -> Void) instead")
+  public func once(event: Events.RawValue, callback: @escaping (Any) -> Void) {
+    _ = self.provider.once(event: event, callback: callback)
   }
 
   /// Provisions a wallet using backup data.
