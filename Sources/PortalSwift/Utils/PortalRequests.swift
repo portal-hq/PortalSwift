@@ -2,16 +2,17 @@ import AnyCodable
 import Foundation
 
 public protocol PortalRequestsProtocol {
-  func delete(_ from: URL, withBearerToken: String?) async throws -> Data
+  @discardableResult func delete(_ from: URL, withBearerToken: String?) async throws -> Data
   func get(_ from: URL, withBearerToken: String?) async throws -> Data
-  func patch(_ from: URL, withBearerToken: String?, andPayload: Codable) async throws -> Data
-  func post(_ from: URL, withBearerToken: String?, andPayload: Codable?) async throws -> Data
-  func postMultiPartData(_ from: URL, withBearerToken: String, andPayload: String, usingBoundary: String) async throws -> Data
+  @discardableResult func patch(_ from: URL, withBearerToken: String?, andPayload: Codable) async throws -> Data
+  @discardableResult func post(_ from: URL, withBearerToken: String?, andPayload: Codable?) async throws -> Data
+  @discardableResult func postMultiPartData(_ from: URL, withBearerToken: String, andPayload: String, usingBoundary: String) async throws -> Data
 }
 
 public class PortalRequests: PortalRequestsProtocol {
   public init() {}
 
+  @discardableResult
   public func delete(_ from: URL, withBearerToken: String? = nil) async throws -> Data {
     var request = URLRequest(url: from)
 
@@ -65,6 +66,7 @@ public class PortalRequests: PortalRequestsProtocol {
     return data
   }
 
+  @discardableResult
   public func patch(_ from: URL, withBearerToken: String? = nil, andPayload: Codable) async throws -> Data {
     var request = URLRequest(url: from)
 
@@ -94,6 +96,7 @@ public class PortalRequests: PortalRequestsProtocol {
     return data
   }
 
+  @discardableResult
   public func post(_ from: URL, withBearerToken: String? = nil, andPayload: Codable? = nil) async throws -> Data {
     var request = URLRequest(url: from)
 
@@ -127,6 +130,7 @@ public class PortalRequests: PortalRequestsProtocol {
     return data
   }
 
+  @discardableResult
   public func postMultiPartData(
     _ from: URL,
     withBearerToken: String,

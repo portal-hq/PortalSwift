@@ -15,7 +15,7 @@ public class MockHttpRequester: HttpRequester {
     completion: @escaping (Result<String>) -> Void
   ) throws {
     Task {
-      try completion(Result(data: await MockConstants.mockMpcShareString))
+      try completion(Result(data: MockConstants.mockMpcShareString))
     }
   }
 
