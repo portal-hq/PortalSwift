@@ -20,6 +20,8 @@ public protocol PortalProviderProtocol: AnyObject {
   func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [AnyCodable]?, connect: PortalConnect?) async throws -> PortalProviderResult
   func request(_ chainId: String, withMethod: String, andParams: [AnyCodable]?, connect: PortalConnect?) async throws -> PortalProviderResult
   func getRpcUrl(_ chainId: String) throws -> String
+  func updateChain(newChainId: String, connect: PortalConnect?)
+  func getRpcUrl(_ chainId: String) throws -> String
 
   // deprecated functions
   @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of request().")
@@ -497,6 +499,11 @@ public class PortalProvider: PortalProviderProtocol {
 
   private func removeOnce(registeredEventHandler: RegisteredEventHandler) -> Bool {
     !registeredEventHandler.once
+  }
+
+  public func updateChain(newChainId: String, connect: PortalConnect? = nil) {
+    emit(event: Events.ChainChanged.rawValue, data: newChainId)
+    connect?.emit(event: Events.PortalConnectChainChanged.rawValue, data: newChainId)
   }
 
   /*******************************************
