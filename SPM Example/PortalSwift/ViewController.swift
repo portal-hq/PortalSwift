@@ -936,26 +936,26 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
   public func populateEthBalance() async throws {
-//    guard let portal else {
-//      throw PortalExampleAppError.portalNotInitialized()
-//    }
-//
-//    let chainId = "eip155:11155111"
-//    guard let address = await portal.getAddress(chainId) else {
-//      throw PortalExampleAppError.addressNotFound()
-//    }
-//
-//    let balanceResponse = try await portal.request(chainId, withMethod: .eth_getBalance, andParams: [address, "latest"])
-//    guard let balance = balanceResponse.result as? PortalProviderRpcResponse else {
-//      throw PortalExampleAppError.invalidResponseTypeForRequest()
-//    }
-//
-//    if let balanceHex = balance.result {
-//      let balance = self.parseETHBalanceHex(hex: balanceHex)
-//      DispatchQueue.main.async {
-//        self.ethBalanceInformation?.text = "ETH Balance: \(balance) ETH"
-//      }
-//    }
+    guard let portal else {
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+
+    let chainId = "eip155:11155111"
+    guard let address = await portal.getAddress(chainId) else {
+      throw PortalExampleAppError.addressNotFound()
+    }
+
+    let balanceResponse = try await portal.request(chainId, withMethod: .eth_getBalance, andParams: [address, "latest"])
+    guard let balance = balanceResponse.result as? PortalProviderRpcResponse else {
+      throw PortalExampleAppError.invalidResponseTypeForRequest()
+    }
+
+    if let balanceHex = balance.result {
+      let balance = self.parseETHBalanceHex(hex: balanceHex)
+      DispatchQueue.main.async {
+        self.ethBalanceInformation?.text = "ETH Balance: \(balance) ETH"
+      }
+    }
   }
 
   public func registerPortal() async throws -> Portal {
@@ -2109,18 +2109,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
         self.logger.debug("Params: \(params)")
         let response = try await portal.rawSign(message: "74657374", chainId: chainId)
-
-//            guard let response else {
-//                self.logger.error("ViewController.handleRawSign() - ❌ Failed to process request")
-//                self.stopLoading()
-//                return
-//            }
-
-//          guard let response = try? await portal.request(chainId, withMethod: .personal_sign, andParams: params) else {
-//            self.logger.error("ViewController.handleRawSign() - ❌ Failed to process request")
-//            self.stopLoading()
-//            return
-//          }
 
         guard let signature = response.result as? String else {
           self.logger.error("ViewController.handleRawSign() - ❌ Invalid response type for request:")
