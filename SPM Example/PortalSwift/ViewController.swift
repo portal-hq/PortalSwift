@@ -853,7 +853,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
           googleClientId: GOOGLE_CLIENT_ID,
           mpcUrl: "mpc.portalhq.io",
           webAuthnHost: "backup.web.portalhq.io",
-          relyingParty: "portalhq.io"
+          relyingParty: "portalhq.io",
+          enclaveMPCHost: "mpc-client.portalhq.io"
         )
       case "stage", "staging":
         let custodianServerUrl = BACKUP_WITH_PORTAL == "true" ? "https://staging-portalex-backup-with-portal.onrender.com" : "https://staging-portalex-mpc-service.onrender.com"
@@ -865,7 +866,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
           googleClientId: GOOGLE_CLIENT_ID,
           mpcUrl: "mpc.portalhq.dev",
           webAuthnHost: "backup.portalhq.dev",
-          relyingParty: "portalhq.dev"
+          relyingParty: "portalhq.dev",
+          enclaveMPCHost: "mpc-client.portalhq.dev"
         )
       default:
         self.config = ApplicationConfiguration(
@@ -875,7 +877,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
           googleClientId: GOOGLE_CLIENT_ID,
           mpcUrl: "localhost:3002",
           webAuthnHost: "backup.portalhq.dev",
-          relyingParty: "portalhq.dev"
+          relyingParty: "portalhq.dev",
+          enclaveMPCHost: "mpc-client.portalhq.dev"
         )
       }
 
@@ -976,7 +979,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
           useEnclaveMPCApi: true
         ),
         apiHost: config.apiUrl,
-        mpcHost: config.mpcUrl
+        mpcHost: config.mpcUrl,
+        enclaveMPCHost: config.enclaveMPCHost
       )
 
       try portal.setGDriveConfiguration(clientId: config.googleClientId, backupOption: .appDataFolder)

@@ -32,13 +32,14 @@ public enum PortalExampleAppError: Error {
 }
 
 struct ApplicationConfiguration {
-  public let alchemyApiKey: String
-  public let apiUrl: String
-  public let custodianServerUrl: String
-  public let googleClientId: String
-  public let mpcUrl: String
-  public let webAuthnHost: String
-  public let relyingParty: String
+  let alchemyApiKey: String
+  let apiUrl: String
+  let custodianServerUrl: String
+  let googleClientId: String
+  let mpcUrl: String
+  let webAuthnHost: String
+  let relyingParty: String
+  let enclaveMPCHost: String
 }
 
 @UIApplicationMain
