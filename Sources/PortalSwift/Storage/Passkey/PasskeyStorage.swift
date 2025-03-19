@@ -97,11 +97,14 @@ public class PasskeyStorage: Storage, PortalStorage {
       self.sessionId = result.sessionId
 
       let assertion = try await withCheckedThrowingContinuation { [weak self] continuation in
-        self?.auth.continuation = continuation
+        guard let self = self else { return }
+        Task { @MainActor in
+          self.auth.continuation = continuation
 
-        DispatchQueue.main.async { [self] in
-          if let _ = self?.auth.authenticationAnchor {
-            self?.auth.signInWith(result.options, preferImmediatelyAvailableCredentials: true)
+          DispatchQueue.main.async { [self] in
+            if self.auth.authenticationAnchor != nil {
+              self.auth.signInWith(result.options, preferImmediatelyAvailableCredentials: true)
+            }
           }
         }
       }
@@ -123,11 +126,15 @@ public class PasskeyStorage: Storage, PortalStorage {
       self.sessionId = authenticationOption.sessionId
 
       let assertion = try await withCheckedThrowingContinuation { [weak self] continuation in
-        self?.auth.continuation = continuation
+        guard let self = self else { return }
 
-        DispatchQueue.main.async { [self] in
-          if let _ = self?.auth.authenticationAnchor {
-            self?.auth.signInWith(authenticationOption.options, preferImmediatelyAvailableCredentials: true)
+        Task { @MainActor in
+          self.auth.continuation = continuation
+
+          DispatchQueue.main.async {
+            if self.auth.authenticationAnchor != nil {
+              self.auth.signInWith(authenticationOption.options, preferImmediatelyAvailableCredentials: true)
+            }
           }
         }
       }
@@ -138,11 +145,15 @@ public class PasskeyStorage: Storage, PortalStorage {
       self.sessionId = registrationOption.sessionId
 
       let attestation = try await withCheckedThrowingContinuation { [weak self] continuation in
-        self?.auth.continuation = continuation
+        guard let self = self else { return }
 
-        DispatchQueue.main.async { [self] in
-          if let _ = self?.auth.authenticationAnchor {
-            self?.auth.signUpWith(registrationOption.options)
+        Task { @MainActor in
+          self.auth.continuation = continuation
+
+          DispatchQueue.main.async {
+            if self.auth.authenticationAnchor != nil {
+              self.auth.signUpWith(registrationOption.options)
+            }
           }
         }
       }
