@@ -275,7 +275,7 @@
                                 </connections>
                             </button>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="ML8-lm-u4m">
-                                <rect key="frame" x="16" y="644" width="343" height="35"/>
+                                <rect key="frame" x="16" y="644" width="155" height="35"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <state key="normal" title="Button"/>
                                 <buttonConfiguration key="configuration" style="filled" title="Personal Sign">
@@ -457,6 +457,19 @@
                                     <action selector="handleETHProviderHelperMethod:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="0Tx-Ku-9sY"/>
                                 </connections>
                             </button>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="7Vh-jw-9jK">
+                                <rect key="frame" x="201" y="642" width="155" height="39"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <state key="normal" title="Button"/>
+                                <buttonConfiguration key="configuration" style="filled" title="Raw Sign">
+                                    <backgroundConfiguration key="background"/>
+                                    <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
+                                    <color key="baseBackgroundColor" white="0.0" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                </buttonConfiguration>
+                                <connections>
+                                    <action selector="handleRawSign" destination="vXZ-lx-hvc" eventType="touchUpInside" id="rXm-kd-yDT"/>
+                                </connections>
+                            </button>
                         </subviews>
                         <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <variation key="default">
@@ -487,6 +500,7 @@
                         <outlet property="passwordRecoverButton" destination="e3a-WD-Rlx" id="1rg-cD-ovX"/>
                         <outlet property="personalSignButton" destination="ML8-lm-u4m" id="htk-XR-9zw"/>
                         <outlet property="portalConnectButton" destination="Oix-QY-d5L" id="ggO-uw-BBj"/>
+                        <outlet property="rawSignButton" destination="7Vh-jw-9jK" id="6ZA-xx-FPe"/>
                         <outlet property="receiveAssetButton" destination="weH-pZ-F1n" id="FjP-f9-WsX"/>
                         <outlet property="scrollView" destination="kh9-bI-dsS" id="weE-Dd-shd"/>
                         <outlet property="sendAddress" destination="rf6-ZQ-VL3" id="jeB-Fl-Ghp"/>

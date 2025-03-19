@@ -31,7 +31,7 @@ final class PortalMpcSignerTests: XCTestCase {
     guard let blockchain = blockchain else {
       throw PortalMpcSignerError.noCurveFoundForNamespace("eip155:11155111")
     }
-    let signRequest = PortalSignRequest(method: .eth_sendTransaction, params: [AnyCodable("test-transaction")])
+    let signRequest = PortalSignRequest(method: .eth_sendTransaction, params: "test-transaction")
     let response = try await signer.sign(
       "eip155:11155111",
       withPayload: signRequest,
@@ -48,12 +48,15 @@ final class PortalMpcSignerTests: XCTestCase {
     guard let blockchain = blockchain else {
       throw PortalMpcSignerError.noCurveFoundForNamespace("eip155:11155111")
     }
+    let params = [
+      AnyCodable(MockConstants.mockEip155Address),
+      AnyCodable("test-message")
+    ]
+    let paramsJson = try JSONEncoder().encode(params)
+    let paramsStr = String(data: paramsJson, encoding: .utf8)!
     let signRequest = PortalSignRequest(
       method: .eth_sign,
-      params: [
-        AnyCodable(MockConstants.mockEip155Address),
-        AnyCodable("test-message")
-      ]
+      params: paramsStr
     )
     let response = try await signer.sign(
       "eip155:11155111",
@@ -71,7 +74,7 @@ final class PortalMpcSignerTests: XCTestCase {
     guard let blockchain = blockchain else {
       throw PortalMpcSignerError.noCurveFoundForNamespace("eip155:11155111")
     }
-    let signRequest = PortalSignRequest(method: .eth_signTransaction, params: [AnyCodable("test-transaction")])
+    let signRequest = PortalSignRequest(method: .eth_signTransaction, params: "test-transaction")
     let response = try await signer.sign(
       "eip155:11155111",
       withPayload: signRequest,

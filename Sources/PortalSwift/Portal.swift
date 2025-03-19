@@ -1909,6 +1909,36 @@ public final class Portal: PortalProtocol {
     ), completion: completion, connect: nil)
   }
 
+  /// Generates raw signatures using the underlying key share without chain-specific formatting.
+  ///
+  /// This method allows you to create signatures that can be used with any blockchain
+  /// that utilizes SECP256K1 or ED25519 cryptography, effectively making the Portal SDK
+  /// chain-agnostic.
+  ///
+  /// - Parameters:
+  ///   - message: The message to be signed
+  ///   - chainId: The blockchain network identifier to use for signing
+  ///
+  /// - Returns: A PortalProviderResult containing the raw signature
+  ///
+  /// - Throws: Any error that might occur during the signing process
+  ///
+  /// - Note:
+  ///   - Compatible with any blockchain using SECP256K1 or ED25519 cryptography
+  ///   - Provides more flexibility for cross-chain applications
+  ///   - The signature is generated directly from the underlying key share
+  public func rawSign(
+    message: String,
+    chainId: String
+  ) async throws -> PortalProviderResult {
+    return try await self.provider.request(
+      chainId,
+      withMethod: .rawSign,
+      andParams: [AnyCodable(message)],
+      connect: nil
+    )
+  }
+
   public func request(
     method: ETHRequestMethods.RawValue,
     params: [Any],
