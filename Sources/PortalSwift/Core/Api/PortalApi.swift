@@ -13,7 +13,6 @@ public protocol PortalApiProtocol: AnyObject {
 
   func eject() async throws -> String
   func fund(chainId: String, params: FundParams) async throws -> FundResponse
-  func getBalances(_ chainId: String) async throws -> [FetchedBalance]
   func getClient() async throws -> ClientResponse
   func getClientCipherText(_ backupSharePairId: String) async throws -> String
   func getQuote(_ swapsApiKey: String, withArgs: QuoteArgs, forChainId: String?) async throws -> Quote
@@ -24,18 +23,7 @@ public protocol PortalApiProtocol: AnyObject {
   func identify(_ traits: [String: AnyCodable]) async throws -> MetricsResponse
   func prepareEject(_ walletId: String, _ backupMethod: BackupMethods) async throws -> String
   func refreshClient() async throws
-  func simulateTransaction(_ transaction: Any, withChainId: String) async throws -> SimulatedTransaction
   func updateShareStatus(_ type: PortalSharePairType, status: SharePairUpdateStatus, sharePairIds: [String]) async throws
-  func getClient(completion: @escaping (Result<ClientResponse>) -> Void) throws
-  func getQuote(_ swapsApiKey: String, _ args: QuoteArgs, _ forChainId: String?, completion: @escaping (Result<Quote>) -> Void) throws
-  func getSources(swapsApiKey: String, completion: @escaping (Result<[String: String]>) -> Void) throws
-  func getTransactions(limit: Int?, offset: Int?, order: GetTransactionsOrder?, chainId: Int?, completion: @escaping (Result<[FetchedTransaction]>) -> Void) throws
-  func getBalances(completion: @escaping (Result<[FetchedBalance]>) -> Void) throws
-  func simulateTransaction(transaction: SimulateTransactionParam, completion: @escaping (Result<SimulatedTransaction>) -> Void) throws
-  func ejectClient(completion: @escaping (Result<String>) -> Void) throws
-  func storedClientBackupShare(success: Bool, backupMethod: BackupMethods.RawValue, completion: @escaping (Result<String>) -> Void) throws
-  func getBackupShareMetadata(completion: @escaping (Result<[FetchedSharePair]>) -> Void) throws
-  func getSigningShareMetadata(completion: @escaping (Result<[FetchedSharePair]>) -> Void) throws
   func storeClientCipherText(_ backupSharePairId: String, cipherText: String) async throws -> Bool
   func track(_ event: String, withProperties: [String: AnyCodable]) async throws -> MetricsResponse
   func evaluateTransaction(chainId: String, transaction: EvaluateTransactionParam, operationType: EvaluateTransactionOperationType?) async throws -> BlockaidValidateTrxRes
@@ -43,6 +31,32 @@ public protocol PortalApiProtocol: AnyObject {
   func buildSolanaTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildSolanaTransactionResponse
   func getAssets(_ chainId: String) async throws -> AssetsResponse
   func getWalletCapabilities() async throws -> WalletCapabilitiesResponse
+
+  // deprecated functions
+  @available(*, deprecated, message: "This function has been moved to 'Portal'. Please use 'Portal.getBalances()' instead.") // this func need to be private thats why we deprecate it to move it to private later
+  func getBalances(_ chainId: String) async throws -> [FetchedBalance]
+  @available(*, deprecated, renamed: "evaluateTransaction", message: "Please use 'Portal.evaluateTransaction()' instead.")
+  func simulateTransaction(_ transaction: Any, withChainId: String) async throws -> SimulatedTransaction
+  @available(*, deprecated, renamed: "getClient", message: "Please use the async/await implementation of getClient().")
+  func getClient(completion: @escaping (Result<ClientResponse>) -> Void) throws
+  @available(*, deprecated, renamed: "getQuote", message: "Please use the async/await implementation of getQuote().")
+  func getQuote(_ swapsApiKey: String, _ args: QuoteArgs, _ forChainId: String?, completion: @escaping (Result<Quote>) -> Void) throws
+  @available(*, deprecated, renamed: "getSources", message: "Please use the async/await implementation of getSources().")
+  func getSources(swapsApiKey: String, completion: @escaping (Result<[String: String]>) -> Void) throws
+  @available(*, deprecated, renamed: "getTransactions", message: "Please use the async/await implementation of getTransactions().")
+  func getTransactions(limit: Int?, offset: Int?, order: GetTransactionsOrder?, chainId: Int?, completion: @escaping (Result<[FetchedTransaction]>) -> Void) throws
+  @available(*, deprecated, message: "This function has been moved to 'Portal'. Please use 'Portal.getBalances()' instead.")
+  func getBalances(completion: @escaping (Result<[FetchedBalance]>) -> Void) throws
+  @available(*, deprecated, renamed: "evaluateTransaction", message: "Please use 'Portal.evaluateTransaction()' instead.")
+  func simulateTransaction(transaction: SimulateTransactionParam, completion: @escaping (Result<SimulatedTransaction>) -> Void) throws
+  @available(*, deprecated, renamed: "eject", message: "Please use the async/await implementation of eject().")
+  func ejectClient(completion: @escaping (Result<String>) -> Void) throws
+  @available(*, deprecated, renamed: "updateShareStatus", message: "Please use the async/await implementation of updateShareStatus().")
+  func storedClientBackupShare(success: Bool, backupMethod: BackupMethods.RawValue, completion: @escaping (Result<String>) -> Void) throws
+  @available(*, deprecated, renamed: "getSharePairs", message: "Please use the async/await implementation of getSharePairs().")
+  func getBackupShareMetadata(completion: @escaping (Result<[FetchedSharePair]>) -> Void) throws
+  @available(*, deprecated, renamed: "getSharePairs", message: "Please use the async/await implementation of getSharePairs().")
+  func getSigningShareMetadata(completion: @escaping (Result<[FetchedSharePair]>) -> Void) throws
 }
 
 /// The ThreadSafeClientWrapper is just a thread-safe actor to consume the ClientResponse class, we need to refactor that later.

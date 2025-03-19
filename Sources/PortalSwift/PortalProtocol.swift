@@ -9,7 +9,6 @@ import UIKit
 
 public protocol PortalProtocol {
   // Properties
-  var address: String? { get }
   var addresses: [PortalNamespace: String?] { get async throws }
   var client: ClientResponse? { get async throws }
   var chainId: Int? { get }
@@ -19,6 +18,10 @@ public protocol PortalProtocol {
   var provider: PortalProviderProtocol { get }
   var rpcConfig: [String: String] { get set }
   var apiKey: String { get }
+
+  // Deprecated Properties
+  @available(*, deprecated, renamed: "addresses", message: "Please use the async getter for `addresses`")
+  var address: String? { get }
 
   // Initializers
   init(

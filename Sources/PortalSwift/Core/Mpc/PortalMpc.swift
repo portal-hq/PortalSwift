@@ -24,10 +24,15 @@ public protocol PortalMpcProtocol {
   @available(iOS 16, *)
   func setPasskeyConfiguration(relyingParty: String, webAuthnHost: String) throws
   func setPassword(_ value: String) throws
+
   // Deprecated functions
+  @available(*, deprecated, renamed: "backup", message: "Please use the async/await implementation of backup().")
   func backup(method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?)
+  @available(*, deprecated, renamed: "backup", message: "Please use the async/await implementation of generate().")
   func generate(completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?)
+  @available(*, deprecated, renamed: "ejectPrivateKey", message: "Please use eject() instead.")
   func ejectPrivateKey(clientBackupCiphertext: String, method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, orgBackupShare: String, completion: @escaping (Result<String>) -> Void)
+  @available(*, deprecated, renamed: "recover", message: "Please use the async/await implementation of recover().")
   func recover(cipherText: String, method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?)
 }
 

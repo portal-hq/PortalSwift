@@ -19,11 +19,17 @@ public protocol PortalProviderProtocol: AnyObject {
   func removeListener(event: Events.RawValue) -> PortalProvider
   func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [AnyCodable]?, connect: PortalConnect?) async throws -> PortalProviderResult
   func request(_ chainId: String, withMethod: String, andParams: [AnyCodable]?, connect: PortalConnect?) async throws -> PortalProviderResult
-  func request(payload: ETHRequestPayload, completion: @escaping (Result<RequestCompletionResult>) -> Void, connect: PortalConnect?)
-  func request(payload: ETHTransactionPayload, completion: @escaping (Result<TransactionCompletionResult>) -> Void, connect: PortalConnect?)
-  func request(payload: ETHAddressPayload, completion: @escaping (Result<AddressCompletionResult>) -> Void, connect: PortalConnect?)
-  func setChainId(value: Int, connect: PortalConnect?) throws -> PortalProvider
   func getRpcUrl(_ chainId: String) throws -> String
+
+  // deprecated functions
+  @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of request().")
+  func request(payload: ETHRequestPayload, completion: @escaping (Result<RequestCompletionResult>) -> Void, connect: PortalConnect?)
+  @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of request().")
+  func request(payload: ETHTransactionPayload, completion: @escaping (Result<TransactionCompletionResult>) -> Void, connect: PortalConnect?)
+  @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of request().")
+  func request(payload: ETHAddressPayload, completion: @escaping (Result<AddressCompletionResult>) -> Void, connect: PortalConnect?)
+  @available(*, deprecated, renamed: "NONE", message: "Please use the chain agnostic approach to using Portal by passing a CAIP-2 Blockchain ID to your request() calls.")
+  func setChainId(value: Int, connect: PortalConnect?) throws -> PortalProvider
 }
 
 /// Portal's EVM blockchain provider.
