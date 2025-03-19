@@ -15,7 +15,7 @@ Possible Types of changes include:
 
 - Added Raw Sign function `Portal.rawSign()`
 - Deprecated `Portal.sendSol()` to use `Portal.sendAsset()` instead.
-- Changed the `AssetsResponse` propertied to be public.
+- Changed the `AssetsResponse` properties to be public.
 - Improved the custom signature hook threading performance.
 - Fixed Swift 6 threading warning.
 
