@@ -1568,3 +1568,32 @@ extension PortalTests {
     }
   }
 }
+
+// MARK: - updateChain tests
+
+extension PortalTests {
+  func test_updateChain_willCall_provider_updateChain_onlyOnce() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+
+    // and given
+    portal.updateChain(newChainId: "")
+
+    XCTAssertEqual(portalProviderSpy.updateChainCount, 1)
+  }
+
+  func test_updateChain_willCall_provider_updateChain_passingCorrectParams() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+
+    // and given
+    let chainId = "eip155:11155111"
+
+    // and given
+    portal.updateChain(newChainId: chainId)
+
+    XCTAssertEqual(portalProviderSpy.updateChainNewChainIdParam, chainId)
+  }
+}
