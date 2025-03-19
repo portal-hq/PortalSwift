@@ -77,9 +77,9 @@ public protocol PortalProtocol {
   func deleteShares() async throws
   func getAddress(_ forChainId: String) async -> String?
   func getAddresses() async throws -> [PortalNamespace: String?]
-  func emit(_ event: Events.RawValue, data: Any)
-  func on(event: Events.RawValue, callback: @escaping (Any) -> Void)
-  func once(event: Events.RawValue, callback: @escaping (Any) -> Void)
+  func emit(_ event: Events, data: Any)
+  func on(event: Events, callback: @escaping (Any) -> Void)
+  func once(event: Events, callback: @escaping (Any) -> Void)
   func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any]) async throws -> PortalProviderResult
   func getRpcUrl(forChainId: String) async -> String?
   func availableRecoveryMethods(_ forChainId: String?) async throws -> [BackupMethods]
@@ -138,4 +138,10 @@ public protocol PortalProtocol {
   func deleteSigningShare() throws
   @available(*, deprecated, renamed: "sendAsset", message: "Please use sendAsset().")
   func sendSol(_ lamports: UInt64, to: String, withChainId chainId: String) async throws -> String
+  @available(*, deprecated, message: "Use emit(_ event: Events, data: Any) instead")
+  func emit(_ event: Events.RawValue, data: Any)
+  @available(*, deprecated, message: "Use on(event: Events, callback: @escaping (Any) -> Void) instead")
+  func on(event: Events.RawValue, callback: @escaping (Any) -> Void)
+  @available(*, deprecated, message: "Use once(event: Events, callback: @escaping (Any) -> Void) instead")
+  func once(event: Events.RawValue, callback: @escaping (Any) -> Void)
 }

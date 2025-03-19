@@ -519,7 +519,7 @@ extension PortalTests {
 // MARK: - Provider helpers tests
 
 extension PortalTests {
-  func test_emit_willCall_provider_emit_onlyOnce() async throws {
+  func test_deprecated_emit_willCall_provider_emit_onlyOnce() async throws {
     // given
     let portalProviderSpy = PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
@@ -530,7 +530,7 @@ extension PortalTests {
     XCTAssertEqual(portalProviderSpy.emitCallsCount, 1)
   }
 
-  func test_emit_willCall_provider_emit_passingCorrectParams() async throws {
+  func test_deprecated_emit_willCall_provider_emit_passingCorrectParams() async throws {
     // given
     let portalProviderSpy = PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
@@ -542,7 +542,30 @@ extension PortalTests {
     XCTAssertEqual(portalProviderSpy.emitDataParam as? String, "123")
   }
 
-  func test_on_willCall_provider_on_onlyOnce() async throws {
+  func test_emit_willCall_provider_emit_onlyOnce() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+
+    // and given
+    portal.emit(Events.Connect, data: "")
+
+    XCTAssertEqual(portalProviderSpy.emitCallsCount, 1)
+  }
+
+  func test_emit_willCall_provider_emit_passingCorrectParams() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+
+    // and given
+    portal.emit(Events.ChainChanged, data: "123")
+
+    XCTAssertEqual(portalProviderSpy.emitEventParam, Events.ChainChanged.rawValue)
+    XCTAssertEqual(portalProviderSpy.emitDataParam as? String, "123")
+  }
+
+  func test_deprecated_on_willCall_provider_on_onlyOnce() async throws {
     // given
     let portalProviderSpy = PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
@@ -553,7 +576,7 @@ extension PortalTests {
     XCTAssertEqual(portalProviderSpy.onCallsCount, 1)
   }
 
-  func test_on_willCall_provider_on_passingCorrectParams() async throws {
+  func test_deprecated_on_willCall_provider_on_passingCorrectParams() async throws {
     // given
     let portalProviderSpy = PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
@@ -564,7 +587,29 @@ extension PortalTests {
     XCTAssertEqual(portalProviderSpy.onEventParam, Events.PortalConnectSigningRequested.rawValue)
   }
 
-  func test_once_willCall_provider_once_onlyOnce() async throws {
+  func test_on_willCall_provider_on_onlyOnce() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+
+    // and given
+    portal.on(event: Events.PortalSigningRequested, callback: { _ in })
+
+    XCTAssertEqual(portalProviderSpy.onCallsCount, 1)
+  }
+
+  func test_on_willCall_provider_on_passingCorrectParams() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+
+    // and given
+    portal.on(event: Events.PortalConnectSigningRequested, callback: { _ in })
+
+    XCTAssertEqual(portalProviderSpy.onEventParam, Events.PortalConnectSigningRequested.rawValue)
+  }
+
+  func test_deprecated_once_willCall_provider_once_onlyOnce() async throws {
     // given
     let portalProviderSpy = PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
@@ -575,13 +620,35 @@ extension PortalTests {
     XCTAssertEqual(portalProviderSpy.onceCallsCount, 1)
   }
 
-  func test_once_willCall_provider_once_passingCorrectParams() async throws {
+  func test_deprecated_once_willCall_provider_once_passingCorrectParams() async throws {
     // given
     let portalProviderSpy = PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
     portal.once(event: Events.PortalSigningApproved.rawValue, callback: { _ in })
+
+    XCTAssertEqual(portalProviderSpy.onceEventParam, Events.PortalSigningApproved.rawValue)
+  }
+
+  func test_once_willCall_provider_once_onlyOnce() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+
+    // and given
+    portal.once(event: Events.PortalSignatureReceived, callback: { _ in })
+
+    XCTAssertEqual(portalProviderSpy.onceCallsCount, 1)
+  }
+
+  func test_once_willCall_provider_once_passingCorrectParams() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+
+    // and given
+    portal.once(event: Events.PortalSigningApproved, callback: { _ in })
 
     XCTAssertEqual(portalProviderSpy.onceEventParam, Events.PortalSigningApproved.rawValue)
   }
