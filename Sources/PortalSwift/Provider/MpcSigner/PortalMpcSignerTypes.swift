@@ -6,8 +6,9 @@ public struct Signature: Codable {
 }
 
 public struct PortalSignRequest: Codable {
-  public let method: PortalRequestMethod
-  public let params: [AnyCodable]?
+  public let method: PortalRequestMethod?
+  public let params: String
+  public var isRaw: Bool? = nil
 }
 
 public struct SignerResult: Codable {

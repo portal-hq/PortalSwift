@@ -573,20 +573,20 @@ public struct FundResponse: Codable {
   public let error: FundResponseError?
 }
 
-public struct BuildEip115TransactionResponse: Codable {
+public struct BuildEip115TransactionResponse: Codable, Equatable {
   public let transaction: Eip115Transaction
   public let metadata: BuildTransactionMetaData
   public let error: String?
 }
 
-public struct Eip115Transaction: Codable {
+public struct Eip115Transaction: Codable, Equatable {
   public let from: String
   public let to: String
   public let data: String?
   public let value: String?
 }
 
-public struct BuildTransactionMetaData: Codable {
+public struct BuildTransactionMetaData: Codable, Equatable {
   public let amount: String
   public let fromAddress: String
   public let toAddress: String
@@ -596,7 +596,7 @@ public struct BuildTransactionMetaData: Codable {
   public let rawAmount: String
 }
 
-public struct BuildSolanaTransactionResponse: Codable {
+public struct BuildSolanaTransactionResponse: Codable, Equatable {
   public let transaction: String
   public let metadata: BuildTransactionMetaData
   public let error: String?
@@ -624,7 +624,7 @@ public struct BuildTransactionParam {
 
 // MARK: - NftAsset
 
-public struct NftAsset: Codable {
+public struct NftAsset: Codable, Equatable {
   let nftID, name, description: String?
   let imageURL: String?
   let chainID, contractAddress, tokenID: String?
@@ -637,168 +637,168 @@ public struct NftAsset: Codable {
 
 // MARK: - Collection
 
-public struct Collection: Codable {
+public struct Collection: Codable, Equatable {
   let name, description: String?
   let imageURL: String?
 }
 
 // MARK: - DetailedInfo
 
-public struct DetailedInfo: Codable {
-  let ownerCount, tokenCount: Int?
-  let createdDate: String?
-  let attributes: [Attribute]?
-  let owners: [Owner]?
-  let extendedCollectionInfo: ExtendedCollectionInfo?
-  let extendedSaleInfo: ExtendedSaleInfo?
-  let marketplaceInfo: [MarketplaceInfo]?
-  let mediaInfo: MediaInfo?
+public struct DetailedInfo: Codable, Equatable {
+  public let ownerCount, tokenCount: Int?
+  public let createdDate: String?
+  public let attributes: [Attribute]?
+  public let owners: [Owner]?
+  public let extendedCollectionInfo: ExtendedCollectionInfo?
+  public let extendedSaleInfo: ExtendedSaleInfo?
+  public let marketplaceInfo: [MarketplaceInfo]?
+  public let mediaInfo: MediaInfo?
 }
 
 // MARK: - Attribute
 
-public struct Attribute: Codable {
+public struct Attribute: Codable, Equatable {
   let traitType, value: String?
 //  let displayType: String?
 }
 
 // MARK: - ExtendedCollectionInfo
 
-public struct ExtendedCollectionInfo: Codable {
-  let bannerImageURL: String?
-  let externalURL: String?
-  let twitterUsername: String?
-  let discordURL: String?
-  let instagramUsername, mediumUsername: String?
-  let telegramURL: String?
-  let distinctOwnerCount, distinctNftCount, totalQuantity: Int?
+public struct ExtendedCollectionInfo: Codable, Equatable {
+  public let bannerImageURL: String?
+  public let externalURL: String?
+  public let twitterUsername: String?
+  public let discordURL: String?
+  public let instagramUsername, mediumUsername: String?
+  public let telegramURL: String?
+  public let distinctOwnerCount, distinctNftCount, totalQuantity: Int?
 }
 
 // MARK: - ExtendedSaleInfo
 
-public struct ExtendedSaleInfo: Codable {
-  let fromAddress, toAddress: String?
-  let priceUsdCents: Int?
-  let transaction, marketplaceID, marketplaceName: String?
+public struct ExtendedSaleInfo: Codable, Equatable {
+  public let fromAddress, toAddress: String?
+  public let priceUsdCents: Int?
+  public let transaction, marketplaceID, marketplaceName: String?
 }
 
 // MARK: - MarketplaceInfo
 
-public struct MarketplaceInfo: Codable {
-  let marketplaceID, marketplaceName, marketplaceCollectionID: String?
-  let nftURL, collectionURL: String?
-  let verified: Bool?
-  let floorPrice: MarketplaceInfoFloorPrice?
+public struct MarketplaceInfo: Codable, Equatable {
+  public let marketplaceID, marketplaceName, marketplaceCollectionID: String?
+  public let nftURL, collectionURL: String?
+  public let verified: Bool?
+  public let floorPrice: MarketplaceInfoFloorPrice?
 }
 
 // MARK: - MarketplaceInfoFloorPrice
 
-public struct MarketplaceInfoFloorPrice: Codable {
-  let value: Double?
-  let paymentToken: PaymentToken?
-  let valueUsdCents: Int?
+public struct MarketplaceInfoFloorPrice: Codable, Equatable {
+  public let value: Double?
+  public let paymentToken: PaymentToken?
+  public let valueUsdCents: Int?
 }
 
 // MARK: - PaymentToken
 
-public struct PaymentToken: Codable {
-  let paymentTokenID, name, symbol: String?
-  let address: String?
-  let decimals: Int?
+public struct PaymentToken: Codable, Equatable {
+  public let paymentTokenID, name, symbol: String?
+  public let address: String?
+  public let decimals: Int?
 }
 
 // MARK: - MediaInfo
 
-public struct MediaInfo: Codable {
-  let previews: Previews?
-  let animationURL: String?
-  let backgroundColor: String?
+public struct MediaInfo: Codable, Equatable {
+  public let previews: Previews?
+  public let animationURL: String?
+  public let backgroundColor: String?
 }
 
 // MARK: - Previews
 
-public struct Previews: Codable {
-  let imageSmallURL, imageMediumURL, imageLargeURL, imageOpengraphURL: String?
-  let blurhash, predominantColor: String?
+public struct Previews: Codable, Equatable {
+  public let imageSmallURL, imageMediumURL, imageLargeURL, imageOpengraphURL: String?
+  public let blurhash, predominantColor: String?
 }
 
 // MARK: - Owner
 
-public struct Owner: Codable {
-  let ownerAddress: String?
-  let quantity: Int?
-  let firstAcquiredDate, lastAcquiredDate: String?
+public struct Owner: Codable, Equatable {
+  public let ownerAddress: String?
+  public let quantity: Int?
+  public let firstAcquiredDate, lastAcquiredDate: String?
 }
 
 // MARK: - NftAssetFloorPrice
 
-public struct NftAssetFloorPrice: Codable {
+public struct NftAssetFloorPrice: Codable, Equatable {
   let price: Double?
   let currency: String?
 }
 
 // MARK: - LastSale
 
-public struct LastSale: Codable {
-  let price: Double?
-  let currency: String?
-  let date: String?
+public struct LastSale: Codable, Equatable {
+  public let price: Double?
+  public let currency: String?
+  public let date: String?
 }
 
 // MARK: - Rarity
 
-public struct Rarity: Codable {
-  let rank: Int?
-  let score: Double?
+public struct Rarity: Codable, Equatable {
+  public let rank: Int?
+  public let score: Double?
 }
 
 // MARK: - Get Assets by Chain
 
 public struct AssetsResponse: Decodable {
-  let nativeBalance: NativeBalance?
-  let tokenBalances: [TokenBalanceResponse]?
-  let nfts: [Nft]?
+  public let nativeBalance: NativeBalance?
+  public let tokenBalances: [TokenBalanceResponse]?
+  public let nfts: [Nft]?
 }
 
 public struct NativeBalance: Decodable {
-  let balance: String?
-  let decimals: Int?
-  let name, rawBalance, symbol: String?
-  let metadata: NativeBalanceMetadata?
+  public let balance: String?
+  public let decimals: Int?
+  public let name, rawBalance, symbol: String?
+  public let metadata: NativeBalanceMetadata?
 }
 
 public struct NativeBalanceMetadata: Decodable {
-  let logo, thumbnail: String?
+  public let logo, thumbnail: String?
 }
 
 public struct Nft: Decodable {
-  let nftID, name, description: String?
-  let imageURL: String?
-  let chainID, contractAddress, tokenID: String?
-  let collection: Collection?
-  let lastSale: LastSale?
-  let rarity: Rarity?
-  let floorPrice: NftFloorPrice?
-  let detailedInfo: DetailedInfo?
+  public let nftID, name, description: String?
+  public let imageURL: String?
+  public let chainID, contractAddress, tokenID: String?
+  public let collection: Collection?
+  public let lastSale: LastSale?
+  public let rarity: Rarity?
+  public let floorPrice: NftFloorPrice?
+  public let detailedInfo: DetailedInfo?
 }
 
 public struct NftFloorPrice: Decodable {
-  let price: Double?
-  let currency: String?
+  public let price: Double?
+  public let currency: String?
 }
 
 public struct TokenBalanceResponse: Decodable {
-  let balance: String?
-  let decimals: Int?
-  let name, rawBalance, symbol: String?
-  let metadata: TokenBalanceMetadata?
+  public let balance: String?
+  public let decimals: Int?
+  public let name, rawBalance, symbol: String?
+  public let metadata: TokenBalanceMetadata?
 }
 
 public struct TokenBalanceMetadata: Decodable {
-  let tokenAddress: String?
-  let verifiedContract: Bool?
-  let totalSupply, rawTotalSupply: String?
-  let percentageRelativeToTotalSupply: Double?
+  public let tokenAddress: String?
+  public let verifiedContract: Bool?
+  public let totalSupply, rawTotalSupply: String?
+  public let percentageRelativeToTotalSupply: Double?
 }
 
 // MARK: - Wallet_getCapabilities response

@@ -185,7 +185,7 @@ public class GDriveStorage: Storage, PortalStorage {
       let response = try JSONDecoder().decode(CustodianIDClientIDHashesResponse.self, from: hashesData)
 
       if let error = response.error {
-        self.logger.error("GDriveStorage.fetchFileHashes() - \(error.message)")
+        self.logger.error("GDriveStorage.fetchFileHashes() - \(String(describing: error.message))")
         throw GDriveStorageError.unableToFetchClientData
       }
 

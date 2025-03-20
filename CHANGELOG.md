@@ -11,6 +11,14 @@ Possible Types of changes include:
 - Security
 - Improved
 
+## 5.0.1 - 2025-03-19
+
+- Added Raw Sign function `Portal.rawSign()`
+- Deprecated `Portal.sendSol()` to use `Portal.sendAsset()` instead.
+- Changed the `AssetsResponse` properties to be public.
+- Improved the custom signature hook threading performance.
+- Fixed Swift 6 threading warning.
+
 ## 5.0.0 - 2025-02-25
 
 - Added MPC Enclave Sign Support.

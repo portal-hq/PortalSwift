@@ -11,7 +11,7 @@ import Foundation
 public class MockHttpRequest: HttpRequest<String, Any> {
   override public func send(completion: @escaping (Result<String>) -> Void) {
     Task {
-      try completion(Result(data: await MockConstants.mockMpcShareString))
+      try completion(Result(data: MockConstants.mockMpcShareString))
     }
   }
 }

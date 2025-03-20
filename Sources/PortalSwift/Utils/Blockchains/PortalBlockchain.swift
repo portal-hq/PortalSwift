@@ -23,13 +23,15 @@ public class PortalBlockchain {
       .eth_signTransaction,
       .eth_signTypedData_v3,
       .eth_signTypedData_v4,
-      .personal_sign
+      .personal_sign,
+      .rawSign
     ],
     .solana: [
       .sol_signAndConfirmTransaction,
       .sol_signAndSendTransaction,
       .sol_signMessage,
-      .sol_signTransaction
+      .sol_signTransaction,
+      .rawSign
     ]
   ]
 

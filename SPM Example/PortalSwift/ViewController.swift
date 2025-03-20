@@ -55,6 +55,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var portalConnectButton: UIButton?
 
   @IBOutlet var personalSignButton: UIButton?
+  @IBOutlet var rawSignButton: UIButton?
   @IBOutlet var signButton: UIButton?
   @IBOutlet var signInButton: UIButton?
   @IBOutlet var signUpButton: UIButton?
@@ -853,7 +854,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
           googleClientId: GOOGLE_CLIENT_ID,
           mpcUrl: "mpc.portalhq.io",
           webAuthnHost: "backup.web.portalhq.io",
-          relyingParty: "portalhq.io"
+          relyingParty: "portalhq.io",
+          enclaveMPCHost: "mpc-client.portalhq.io"
         )
       case "stage", "staging":
         let custodianServerUrl = BACKUP_WITH_PORTAL == "true" ? "https://staging-portalex-backup-with-portal.onrender.com" : "https://staging-portalex-mpc-service.onrender.com"
@@ -865,7 +867,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
           googleClientId: GOOGLE_CLIENT_ID,
           mpcUrl: "mpc.portalhq.dev",
           webAuthnHost: "backup.portalhq.dev",
-          relyingParty: "portalhq.dev"
+          relyingParty: "portalhq.dev",
+          enclaveMPCHost: "mpc-client.portalhq.dev"
         )
       default:
         self.config = ApplicationConfiguration(
@@ -875,7 +878,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
           googleClientId: GOOGLE_CLIENT_ID,
           mpcUrl: "localhost:3002",
           webAuthnHost: "backup.portalhq.dev",
-          relyingParty: "portalhq.dev"
+          relyingParty: "portalhq.dev",
+          enclaveMPCHost: "mpc-client.portalhq.dev"
         )
       }
 
@@ -976,7 +980,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
           useEnclaveMPCApi: true
         ),
         apiHost: config.apiUrl,
-        mpcHost: config.mpcUrl
+        mpcHost: config.mpcUrl,
+        enclaveMPCHost: config.enclaveMPCHost
       )
 
       try portal.setGDriveConfiguration(clientId: config.googleClientId, backupOption: .appDataFolder)
@@ -986,11 +991,11 @@ class ViewController: UIViewController, UITextFieldDelegate {
       // The apikey from Portal class is private within the Portal SDK class, so it must not be accessible from outside. We already have the clientApiKey from user
       self.logger.info("ViewController.registerPortal() - Portal API Key: \(user.clientApiKey)")
 
-      portal.on(event: Events.PortalSigningRequested.rawValue, callback: { [weak portal] data in
-        portal?.emit(Events.PortalSigningApproved.rawValue, data: data)
+      portal.on(event: Events.PortalSigningRequested, callback: { [weak portal] data in
+        portal?.emit(Events.PortalSigningApproved, data: data)
       })
 
-      portal.on(event: Events.PortalSignatureReceived.rawValue) { (data: Any) in
+      portal.on(event: Events.PortalSignatureReceived) { (data: Any) in
         let result = data as! RequestCompletionResult
 
         let debugMessage = "ViewController.registerPortal() - Recived signature: \(result)"
@@ -1153,6 +1158,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.signButton?.isHidden = !walletExists || !isWalletOnDevice
           self.personalSignButton?.isEnabled = walletExists && isWalletOnDevice
           self.personalSignButton?.isHidden = !walletExists || !isWalletOnDevice
+          self.rawSignButton?.isEnabled = walletExists && isWalletOnDevice
+          self.rawSignButton?.isHidden = !walletExists || !isWalletOnDevice
           self.sendButton?.isEnabled = walletExists && isWalletOnDevice
           self.sendButton?.isHidden = !walletExists || !isWalletOnDevice
           self.sendUniButton?.isEnabled = walletExists && isWalletOnDevice
@@ -2052,11 +2059,11 @@ class ViewController: UIViewController, UITextFieldDelegate {
         let chainId = "eip155:11155111"
 
         guard let portal else {
-          self.logger.error("ViewController.handlSign() - ❌ Portal not initialized")
+          self.logger.error("ViewController.handlePersonalSign() - ❌ Portal not initialized")
           throw PortalExampleAppError.portalNotInitialized()
         }
         guard let address = await portal.getAddress(chainId) else {
-          self.logger.error("ViewController.handlSign() - ❌ Address not found")
+          self.logger.error("ViewController.handlePersonalSign() - ❌ Address not found")
           throw PortalExampleAppError.addressNotFound()
         }
 
@@ -2066,22 +2073,58 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.logger.debug("Params: \(params)")
 
         guard let response = try? await portal.request(chainId, withMethod: .personal_sign, andParams: params) else {
-          self.logger.error("ViewController.handlSign() - ❌ Failed to process request")
+          self.logger.error("ViewController.handlePersonalSign() - ❌ Failed to process request")
           self.stopLoading()
           return
         }
 
         guard let signature = response.result as? String else {
-          self.logger.error("ViewController.handlSign() - ❌ Invalid response type for request:")
+          self.logger.error("ViewController.handlePersonalSign() - ❌ Invalid response type for request:")
           print(response.result)
           throw PortalExampleAppError.invalidResponseTypeForRequest()
         }
-        self.logger.info("ViewController.handleSign() - ✅ Successfully signed message: \(signature)")
+        self.logger.info("ViewController.handlePersonalSign() - ✅ Successfully signed message: \(signature)")
         self.showStatusView(message: "\(self.successStatus) Successfully signed message")
         self.stopLoading()
       } catch {
         self.stopLoading()
-        self.logger.error("ViewController.handleSign() - ❌ Error signing message: \(error)")
+        self.logger.error("ViewController.handlePersonalSign() - ❌ Error signing message: \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error signing message \(error)")
+      }
+    }
+  }
+
+  @IBAction func handleRawSign() {
+    Task {
+      do {
+        let chainId = "eip155:11155111"
+
+        guard let portal else {
+          self.logger.error("ViewController.handleRawSign() - ❌ Portal not initialized")
+          throw PortalExampleAppError.portalNotInitialized()
+        }
+        guard let address = await portal.getAddress(chainId) else {
+          self.logger.error("ViewController.handleRawSign() - ❌ Address not found")
+          throw PortalExampleAppError.addressNotFound()
+        }
+
+        self.startLoading()
+        let params = ["0xdeadbeef", address]
+
+        self.logger.debug("Params: \(params)")
+        let response = try await portal.rawSign(message: "74657374", chainId: chainId)
+
+        guard let signature = response.result as? String else {
+          self.logger.error("ViewController.handleRawSign() - ❌ Invalid response type for request:")
+          print(response.result)
+          throw PortalExampleAppError.invalidResponseTypeForRequest()
+        }
+        self.logger.info("ViewController.handleRawSign() - ✅ Successfully signed message: \(signature)")
+        self.showStatusView(message: "\(self.successStatus) Successfully signed message")
+        self.stopLoading()
+      } catch {
+        self.stopLoading()
+        self.logger.error("ViewController.handleRawSign() - ❌ Error signing message: \(error)")
         self.showStatusView(message: "\(self.failureStatus) Error signing message \(error)")
       }
     }

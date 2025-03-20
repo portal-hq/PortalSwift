@@ -19,11 +19,17 @@ public protocol PortalProviderProtocol: AnyObject {
   func removeListener(event: Events.RawValue) -> PortalProvider
   func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [AnyCodable]?, connect: PortalConnect?) async throws -> PortalProviderResult
   func request(_ chainId: String, withMethod: String, andParams: [AnyCodable]?, connect: PortalConnect?) async throws -> PortalProviderResult
-  func request(payload: ETHRequestPayload, completion: @escaping (Result<RequestCompletionResult>) -> Void, connect: PortalConnect?)
-  func request(payload: ETHTransactionPayload, completion: @escaping (Result<TransactionCompletionResult>) -> Void, connect: PortalConnect?)
-  func request(payload: ETHAddressPayload, completion: @escaping (Result<AddressCompletionResult>) -> Void, connect: PortalConnect?)
-  func setChainId(value: Int, connect: PortalConnect?) throws -> PortalProvider
   func getRpcUrl(_ chainId: String) throws -> String
+
+  // deprecated functions
+  @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of request().")
+  func request(payload: ETHRequestPayload, completion: @escaping (Result<RequestCompletionResult>) -> Void, connect: PortalConnect?)
+  @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of request().")
+  func request(payload: ETHTransactionPayload, completion: @escaping (Result<TransactionCompletionResult>) -> Void, connect: PortalConnect?)
+  @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of request().")
+  func request(payload: ETHAddressPayload, completion: @escaping (Result<AddressCompletionResult>) -> Void, connect: PortalConnect?)
+  @available(*, deprecated, renamed: "NONE", message: "Please use the chain agnostic approach to using Portal by passing a CAIP-2 Blockchain ID to your request() calls.")
+  func setChainId(value: Int, connect: PortalConnect?) throws -> PortalProvider
 }
 
 /// Portal's EVM blockchain provider.
@@ -44,7 +50,7 @@ public class PortalProvider: PortalProviderProtocol {
   public weak var api: PortalApiProtocol?
 
   private let decoder = JSONDecoder()
-  private var events: [Events.RawValue: [RegisteredEventHandler]] = [:]
+  private var events = ThreadSafeDictionary<Events.RawValue, [RegisteredEventHandler]>()
   private weak var keychain: PortalKeychainProtocol?
   private let logger = PortalLogger()
   private var mpcQueue: DispatchQueue
@@ -422,7 +428,8 @@ public class PortalProvider: PortalProviderProtocol {
     }
 
     let rpcUrl = try getRpcUrl(onChainId)
-    let payload = PortalSignRequest(method: withPayload.method, params: withPayload.params)
+
+    let payload = try getPortalSignRequest(method: withPayload.method, params: withPayload.params)
 
     let signature = try await self.signer.sign(
       onChainId,
@@ -432,6 +439,60 @@ public class PortalProvider: PortalProviderProtocol {
     )
 
     return PortalProviderResult(id: withPayload.id, result: signature)
+  }
+
+  private func getPortalSignRequest(
+    method: PortalRequestMethod,
+    params: [AnyCodable]?
+  ) throws -> PortalSignRequest {
+    if method == .rawSign {
+      return getPortalRawSignRequest(paramsStr: params?.first?.value as? String ?? "")
+    } else {
+      return try getPortalNoneRawSignRequest(method: method, params: params)
+    }
+  }
+
+  private func getPortalRawSignRequest(
+    paramsStr: String
+  ) -> PortalSignRequest {
+    return PortalSignRequest(
+      method: nil,
+      params: paramsStr,
+      isRaw: true
+    )
+  }
+
+  private func getPortalNoneRawSignRequest(
+    method: PortalRequestMethod,
+    params: [AnyCodable]?
+  ) throws -> PortalSignRequest {
+    let params = try prepareParamsForNoneRawSignRequest(method, params: params)
+    let paramsJson = try JSONEncoder().encode(params)
+    guard let paramsStr = String(data: paramsJson, encoding: .utf8) else {
+      throw PortalMpcSignerError.unableToEncodeParams
+    }
+    return PortalSignRequest(
+      method: method,
+      params: paramsStr
+    )
+  }
+
+  private func prepareParamsForNoneRawSignRequest(_ method: PortalRequestMethod?, params: [AnyCodable]?) throws -> AnyCodable? {
+    switch method {
+    case .eth_sendTransaction, .eth_signTransaction:
+      guard let params = params?[0] else {
+        throw PortalMpcSignerError.noParamsForSignRequest
+      }
+      return params
+    case .eth_sign, .personal_sign:
+      guard let count = params?.count, count >= 2 else {
+        throw PortalMpcSignerError.invalidParamsForMethod("\(String(describing: method?.rawValue)) - \(String(describing: params))")
+      }
+
+      return AnyCodable([params?[0], params?[1]])
+    default:
+      return AnyCodable(params)
+    }
   }
 
   private func removeOnce(registeredEventHandler: RegisteredEventHandler) -> Bool {
@@ -701,6 +762,9 @@ public enum PortalRequestMethod: String, Codable {
   case sol_signAndSendTransaction
   case sol_signMessage
   case sol_signTransaction
+
+  // Raw methods
+  case rawSign = "raw_sign"
 }
 
 /// All available provider methods.

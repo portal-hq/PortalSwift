@@ -9,7 +9,6 @@ import UIKit
 
 public protocol PortalProtocol {
   // Properties
-  var address: String? { get }
   var addresses: [PortalNamespace: String?] { get async throws }
   var client: ClientResponse? { get async throws }
   var chainId: Int? { get }
@@ -19,6 +18,10 @@ public protocol PortalProtocol {
   var provider: PortalProviderProtocol { get }
   var rpcConfig: [String: String] { get set }
   var apiKey: String { get }
+
+  // Deprecated Properties
+  @available(*, deprecated, renamed: "addresses", message: "Please use the async getter for `addresses`")
+  var address: String? { get }
 
   // Initializers
   init(
@@ -74,9 +77,9 @@ public protocol PortalProtocol {
   func deleteShares() async throws
   func getAddress(_ forChainId: String) async -> String?
   func getAddresses() async throws -> [PortalNamespace: String?]
-  func emit(_ event: Events.RawValue, data: Any)
-  func on(event: Events.RawValue, callback: @escaping (Any) -> Void)
-  func once(event: Events.RawValue, callback: @escaping (Any) -> Void)
+  func emit(_ event: Events, data: Any)
+  func on(event: Events, callback: @escaping (Any) -> Void)
+  func once(event: Events, callback: @escaping (Any) -> Void)
   func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any]) async throws -> PortalProviderResult
   func getRpcUrl(forChainId: String) async -> String?
   func availableRecoveryMethods(_ forChainId: String?) async throws -> [BackupMethods]
@@ -104,8 +107,8 @@ public protocol PortalProtocol {
   func ethSignTypedDataV3(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
   func ethSignTypedData(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
   func personalSign(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
+  func rawSign(message: String, chainId: String) async throws -> PortalProviderResult
   func request(method: ETHRequestMethods.RawValue, params: [Any], completion: @escaping (Result<RequestCompletionResult>) -> Void)
-  func sendSol(_ lamports: UInt64, to: String, withChainId chainId: String) async throws -> String
   func createPortalConnectInstance(webSocketServer: String) throws -> PortalConnect
   func receiveTestnetAsset(chainId: String, params: FundParams) async throws -> FundResponse
   func sendAsset(chainId: String, params: SendAssetParams) async throws -> SendAssetResponse
@@ -133,4 +136,12 @@ public protocol PortalProtocol {
   func deleteAddress() throws
   @available(*, deprecated, renamed: "deleteShares", message: "The Portal SDK is now multi-wallet. Please update to the multi-wallet-compatible deleteShares() as this function will be removed in the future.")
   func deleteSigningShare() throws
+  @available(*, deprecated, renamed: "sendAsset", message: "Please use sendAsset().")
+  func sendSol(_ lamports: UInt64, to: String, withChainId chainId: String) async throws -> String
+  @available(*, deprecated, message: "Use emit(_ event: Events, data: Any) instead")
+  func emit(_ event: Events.RawValue, data: Any)
+  @available(*, deprecated, message: "Use on(event: Events, callback: @escaping (Any) -> Void) instead")
+  func on(event: Events.RawValue, callback: @escaping (Any) -> Void)
+  @available(*, deprecated, message: "Use once(event: Events, callback: @escaping (Any) -> Void) instead")
+  func once(event: Events.RawValue, callback: @escaping (Any) -> Void)
 }
