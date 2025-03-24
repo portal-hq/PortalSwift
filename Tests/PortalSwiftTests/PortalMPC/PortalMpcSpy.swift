@@ -20,7 +20,6 @@ class PortalMpcSpy: PortalMpcProtocol {
   var ejectCipherTextParam: String?
   var ejectOrganizationBackupShareParam: String?
   var ejectOrganizationSolanaBackupShareParam: String?
-  var ejectUsingProgressCallbackParam: ((PortalSwift.MpcStatus) -> Void)?
 
   // Generate method tracking
   var generateCallsCount: Int = 0
@@ -106,13 +105,12 @@ class PortalMpcSpy: PortalMpcProtocol {
     )
   }
 
-  func eject(_ method: PortalSwift.BackupMethods, withCipherText: String?, andOrganizationBackupShare: String?, andOrganizationSolanaBackupShare: String?, usingProgressCallback: ((PortalSwift.MpcStatus) -> Void)?) async throws -> [PortalSwift.PortalNamespace: String] {
+  func eject(_ method: PortalSwift.BackupMethods, withCipherText: String?, andOrganizationBackupShare: String?, andOrganizationSolanaBackupShare: String?) async throws -> [PortalSwift.PortalNamespace: String] {
     ejectCallsCount += 1
     ejectMethodParam = method
     ejectCipherTextParam = withCipherText
     ejectOrganizationBackupShareParam = andOrganizationBackupShare
     ejectOrganizationSolanaBackupShareParam = andOrganizationSolanaBackupShare
-    ejectUsingProgressCallbackParam = usingProgressCallback
     return [.eip155: MockConstants.mockEip155Address]
   }
 

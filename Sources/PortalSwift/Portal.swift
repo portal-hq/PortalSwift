@@ -568,8 +568,7 @@ public final class Portal: PortalProtocol {
       method,
       withCipherText: withCipherText,
       andOrganizationBackupShare: andOrganizationBackupShare,
-      andOrganizationSolanaBackupShare: nil,
-      usingProgressCallback: nil
+      andOrganizationSolanaBackupShare: nil
     )
 
     guard let privateKey = privateKeys[.eip155] else {
@@ -618,8 +617,7 @@ public final class Portal: PortalProtocol {
       method,
       withCipherText: withCipherText,
       andOrganizationBackupShare: andOrganizationBackupShare,
-      andOrganizationSolanaBackupShare: andOrganizationSolanaBackupShare,
-      usingProgressCallback: nil
+      andOrganizationSolanaBackupShare: andOrganizationSolanaBackupShare
     )
 
     return privateKeys
