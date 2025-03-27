@@ -22,15 +22,15 @@ class PortalTests: XCTestCase {
 
     self.portal = try Portal(
       MockConstants.mockApiKey,
-      withRpcConfig: ["eip155:11155111": "https://\(MockConstants.mockHost)/test-rpc"],
-      api: api,
-      binary: binary,
-      gDrive: MockGDriveStorage(),
-      iCloud: MockICloudStorage(),
-      keychain: keychain,
-      mpc: MockPortalMpc(),
-      passwords: MockPasswordStorage()
+      withRpcConfig: ["eip155:11155111": "https://\(MockConstants.mockHost)/test-rpc"]
     )
+    portal.setApi(api)
+    portal.setBinary(binary)
+    portal.setKeychain(keychain)
+    portal.setMPC(MockPortalMpc())
+    portal.registerBackupMethod(.GoogleDrive, withStorage: MockGDriveStorage())
+    portal.registerBackupMethod(.iCloud, withStorage: MockICloudStorage())
+    portal.registerBackupMethod(.Password, withStorage: MockPasswordStorage())
   }
 
   override func tearDownWithError() throws {
@@ -44,15 +44,15 @@ extension PortalTests {
   func initPortalWithSpy(portalMpc: PortalMpcProtocol? = nil, api: PortalApiProtocol? = nil) throws {
     self.portal = try Portal(
       MockConstants.mockApiKey,
-      withRpcConfig: ["eip155:11155111": "https://\(MockConstants.mockHost)/test-rpc"],
-      api: api ?? self.api,
-      binary: binary,
-      gDrive: MockGDriveStorage(),
-      iCloud: MockICloudStorage(),
-      keychain: keychain,
-      mpc: portalMpc ?? MockPortalMpc(),
-      passwords: MockPasswordStorage()
+      withRpcConfig: ["eip155:11155111": "https://\(MockConstants.mockHost)/test-rpc"]
     )
+    portal.setApi(api ?? self.api)
+    portal.setBinary(binary)
+    portal.setKeychain(keychain)
+    portal.setMPC(portalMpc ?? MockPortalMpc())
+    portal.registerBackupMethod(.GoogleDrive, withStorage: MockGDriveStorage())
+    portal.registerBackupMethod(.iCloud, withStorage: MockICloudStorage())
+    portal.registerBackupMethod(.Password, withStorage: MockPasswordStorage())
   }
 
   func setToPortal(portalProvider: PortalProviderProtocol) {
@@ -68,15 +68,16 @@ extension PortalTests {
     let newPortal = try Portal(
       MockConstants.mockApiKey,
       withRpcConfig: [:],
-      apiHost: apiHost,
-      api: api ?? self.api,
-      binary: binary,
-      gDrive: MockGDriveStorage(),
-      iCloud: MockICloudStorage(),
-      keychain: keychain,
-      mpc: MockPortalMpc(),
-      passwords: MockPasswordStorage()
+      apiHost: apiHost
     )
+
+    portal.setApi(api ?? self.api)
+    portal.setBinary(binary)
+    portal.setKeychain(keychain)
+    portal.setMPC(MockPortalMpc())
+    portal.registerBackupMethod(.GoogleDrive, withStorage: MockGDriveStorage())
+    portal.registerBackupMethod(.iCloud, withStorage: MockICloudStorage())
+    portal.registerBackupMethod(.Password, withStorage: MockPasswordStorage())
 
     XCTAssertEqual(
       newPortal.rpcConfig,

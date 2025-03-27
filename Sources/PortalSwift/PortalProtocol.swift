@@ -23,41 +23,6 @@ public protocol PortalProtocol {
   @available(*, deprecated, renamed: "addresses", message: "Please use the async getter for `addresses`")
   var address: String? { get }
 
-  // Initializers
-  init(
-    _ apiKey: String,
-    withRpcConfig: [String: String],
-    autoApprove: Bool,
-    featureFlags: FeatureFlags?,
-    version: String,
-    apiHost: String,
-    mpcHost: String,
-    enclaveMPCHost: String,
-    api: PortalApiProtocol?,
-    binary: Mobile?,
-    gDrive: GDriveStorage?,
-    iCloud: ICloudStorage?,
-    keychain: PortalKeychainProtocol?,
-    mpc: PortalMpcProtocol?,
-    passwords: PasswordStorage?
-  ) throws
-
-  // Deprecated Initializer
-  @available(*, deprecated, renamed: "Portal", message: "We've updated our constructor to be more streamlined and support multiple wallets. Please see the migration guide at https://docs.portalhq.io/resources/migrating-from-v3-to-v4/")
-  init(
-    apiKey: String,
-    backup: BackupOptions,
-    chainId: Int,
-    keychain: PortalKeychainProtocol,
-    gatewayConfig: [Int: String],
-    isSimulator: Bool,
-    version: String,
-    autoApprove: Bool,
-    apiHost: String,
-    mpcHost: String,
-    featureFlags: FeatureFlags?
-  ) throws
-
   // Public functions
   func registerBackupMethod(_ method: BackupMethods, withStorage: PortalStorage)
   func setGDriveConfiguration(clientId: String, backupOption: GDriveBackupOption) throws
