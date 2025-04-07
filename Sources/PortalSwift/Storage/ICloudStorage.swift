@@ -33,7 +33,6 @@ public class ICloudStorage: Storage, PortalStorage {
 
   public let encryption: PortalEncryption
 
-  private let isSimulator = TARGET_OS_SIMULATOR != 0
   private let storage: PortalKeyValueStore
 
   /// Initializes a new ICloudStorage instance.
