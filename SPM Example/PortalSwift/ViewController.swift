@@ -289,15 +289,15 @@ class ViewController: UIViewController, UITextFieldDelegate {
         throw PortalExampleAppError.clientInformationUnavailable("Could not find Ethereum backup share for backup method.")
       }
 
-      guard let prepareEjectUrl = URL(string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/prepare-eject") else {
+      guard let enableEjectUrl = URL(string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/enable-eject") else {
         throw URLError(.badURL)
       }
-      let prepareEjectData = try await requests.post(prepareEjectUrl, withBearerToken: nil, andPayload: ["walletId": walletId])
-      guard let prepareEjectResponse = String(data: prepareEjectData, encoding: .utf8) else {
-        throw PortalExampleAppError.couldNotParseCustodianResponse("Unable to read prepare eject response.")
+      let enableEjectData = try await requests.patch(enableEjectUrl, withBearerToken: nil, andPayload: ["walletId": walletId])
+      guard let enableEjectResponse = String(data: enableEjectData, encoding: .utf8) else {
+        throw PortalExampleAppError.couldNotParseCustodianResponse("Unable to read enable eject response from PortalEx")
       }
 
-      print("Ethereum Wallet ejectable until \(prepareEjectResponse)")
+      print("Ethereum Wallet ejectable until \(enableEjectResponse)")
     }
 
     let privateKey = try await portal.eject(
@@ -391,34 +391,30 @@ class ViewController: UIViewController, UITextFieldDelegate {
         throw PortalExampleAppError.clientInformationUnavailable("Could not find Ethereum backup share for backup method.")
       }
 
-      guard let prepareEjectUrl = URL(string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/prepare-eject") else {
+      guard let enableEjectUrl = URL(string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/enable-eject") else {
         throw URLError(.badURL)
       }
-      let prepareEjectData = try await requests.post(prepareEjectUrl, withBearerToken: nil, andPayload: ["walletId": walletId])
-      guard let prepareEjectResponse = String(data: prepareEjectData, encoding: .utf8) else {
-        throw PortalExampleAppError.couldNotParseCustodianResponse("Unable to read prepare eject response.")
+      let enableEjectData = try await requests.patch(enableEjectUrl, withBearerToken: nil, andPayload: ["walletId": walletId])
+      guard let enableEjectResponse = String(data: enableEjectData, encoding: .utf8) else {
+        throw PortalExampleAppError.couldNotParseCustodianResponse("Unable to read enable eject response from PortalEx.")
       }
 
-      print("Ethereum Wallet ejectable until \(prepareEjectResponse)")
-
       if let walletIdEd25519 {
-        let prepareEjectDataEd25519 = try await requests.post(prepareEjectUrl, withBearerToken: nil, andPayload: ["walletId": walletIdEd25519])
-        guard let prepareEjectResponseEd25519 = String(data: prepareEjectDataEd25519, encoding: .utf8) else {
-          throw PortalExampleAppError.couldNotParseCustodianResponse("Unable to read prepare eject response.")
+        let enableEjectDataEd25519 = try await requests.patch(enableEjectUrl, withBearerToken: nil, andPayload: ["walletId": walletIdEd25519])
+        guard let enableEjectResponseEd25519 = String(data: enableEjectDataEd25519, encoding: .utf8) else {
+          throw PortalExampleAppError.couldNotParseCustodianResponse("Unable to read enable eject response from PortalEx.")
         }
-
-        print("Solana Wallet ejectable until \(prepareEjectResponseEd25519)")
       }
     }
 
-    let privateKey = try await portal.ejectPrivateKeys(
+    let privateKeysByNamespace = try await portal.ejectPrivateKeys(
       withBackupMethod,
       withCipherText: cipherText,
       andOrganizationBackupShare: organizationShare,
       andOrganizationSolanaBackupShare: organizationSolanaShare
     )
 
-    return privateKey
+    return privateKeysByNamespace
   }
 
   public func generate() async throws -> PortalCreateWalletResponse {
@@ -1321,20 +1317,20 @@ class ViewController: UIViewController, UITextFieldDelegate {
     Task {
       do {
         guard let enteredPassword = await requestPassword(), !enteredPassword.isEmpty else {
-          self.logger.error("ViewController.handleEject() - ❌ No password set by user. Eject will not take place.")
+          self.logger.error("ViewController.handleEjectAll() - ❌ No password set by user. Eject will not take place.")
           return
         }
 
         try self.portal?.setPassword(enteredPassword)
 
-        let privateKey = try await ejectAll(.Password)
+        let privateKeysByNamespace = try await ejectAll(.Password)
 
-        self.logger.info("ViewController.handleEject() - ✅ Successfully ejected wallet. Private key: \(privateKey)")
-        self.showStatusView(message: "\(self.successStatus) Private key: \(privateKey)")
+        self.logger.info("ViewController.handleEjectAll() - ✅ Successfully ejected wallet. Private keys by chain namespace: \(privateKeysByNamespace)")
+        self.showStatusView(message: "\(self.successStatus) Private key: \(privateKeysByNamespace)")
       } catch {
         self.stopLoading()
         print("⚠️", error)
-        self.logger.error("ViewController.handleEject() - Error ejecting wallet: \(error)")
+        self.logger.error("ViewController.handleEjectAll() - Error ejecting wallet: \(error)")
         self.showStatusView(message: "\(self.failureStatus) Error ejecting wallet \(error)")
       }
     }

@@ -705,7 +705,7 @@ extension PortalApiTests {
   func test_prepareEject() async throws {
     // given
     let share = "dummy_share"
-    let prepareEjectResponseStub = PrepareEjectResponse(share: share)
+    let prepareEjectResponseStub = GetEjectableBackupSharesResponse(custodianBackupShare: share)
     let prepareEjectResponse = try encoder.encode(prepareEjectResponseStub)
     let portalRequestMock = PortalRequestsMock()
     initPortalApiWith(requests: portalRequestMock)
@@ -733,7 +733,7 @@ extension PortalApiTests {
 
     // then
     if #available(iOS 16.0, *) {
-      XCTAssertEqual(portalRequestsSpy.postFromParam?.path(), "/api/v3/clients/me/wallets/\(walletId)/prepare-eject")
+      XCTAssertEqual(portalRequestsSpy.postFromParam?.path(), "/api/v3/clients/me/wallets/\(walletId)/ejectable-backup-shares")
       XCTAssertEqual(portalRequestsSpy.postAndPayloadParam as? [String: String], ["backupMethod": backupMethod.rawValue])
     }
   }

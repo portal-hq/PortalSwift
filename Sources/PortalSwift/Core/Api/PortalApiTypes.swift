@@ -138,8 +138,8 @@ public struct FetchedTransactionRawContract: Codable, Equatable {
   public var decimal: String?
 }
 
-public struct PrepareEjectResponse: Codable {
-  public let share: String
+public struct GetEjectableBackupSharesResponse: Codable {
+  public let custodianBackupShare: String
 }
 
 public struct ShareStatusUpdateRequest: Codable, Equatable {

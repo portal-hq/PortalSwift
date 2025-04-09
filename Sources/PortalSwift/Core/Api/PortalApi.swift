@@ -341,11 +341,11 @@ public class PortalApi: PortalApiProtocol {
   }
 
   public func prepareEject(_ walletId: String, _ backupMethod: BackupMethods) async throws -> String {
-    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/wallets/\(walletId)/prepare-eject") {
-      let data = try await post(url, withBearerToken: self.apiKey, andPayload: ["backupMethod": backupMethod.rawValue])
-      let prepareEjectResponse = try decoder.decode(PrepareEjectResponse.self, from: data)
+    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/wallets/\(walletId)/ejectable-backup-shares?backupMethod=\(backupMethod.rawValue)") {
+      let data = try await get(url, withBearerToken: self.apiKey)
+      let prepareEjectResponse = try decoder.decode(GetEjectableBackupSharesResponse.self, from: data)
 
-      return prepareEjectResponse.share
+      return prepareEjectResponse.custodianBackupShare
     }
 
     throw URLError(.badURL)

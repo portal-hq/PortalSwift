@@ -268,7 +268,7 @@ public class PortalMpc: PortalMpcProtocol {
     var backupSharePairId: String?
     var SECP256K1WalletId: String?
     var Ed25519WalletId: String?
-
+    
     for wallet in client.wallets {
       if wallet.curve == .SECP256K1 {
         // Locate the appropriate wallet for Ethereum
@@ -299,13 +299,14 @@ public class PortalMpc: PortalMpcProtocol {
     }
 
     let backupWithPortal = client.environment?.backupWithPortalEnabled ?? false
+    var organizationShareEd25519 = andOrganizationSolanaBackupShare
     if backupWithPortal {
       cipherText = try await self.api?.getClientCipherText(backupSharePairId)
       organizationShare = try await self.api?.prepareEject(SECP256K1WalletId, method)
 
       // Conditionally prepare eject for Solana wallets
       if let Ed25519WalletId {
-        _ = try? await self.api?.prepareEject(Ed25519WalletId, method)
+        organizationShareEd25519 = try? await self.api?.prepareEject(Ed25519WalletId, method)
       }
     }
 
@@ -340,9 +341,7 @@ public class PortalMpc: PortalMpcProtocol {
       privateKeys[.eip155] = ejectResult.privateKey
     }
 
-    if let ed25519Share = formattedShares["ED25519"],
-       let organizationShareEd25519 = andOrganizationSolanaBackupShare
-    {
+    if let ed25519Share = formattedShares["ED25519"], let organizationShareEd25519 {
       let ejectResponse = await self.mobile.MobileEjectWalletAndDiscontinueMPCEd25519(ed25519Share.share, organizationShareEd25519)
       guard let jsonData = ejectResponse.data(using: .utf8) else {
         throw JSONParseError.stringToDataConversionFailed
