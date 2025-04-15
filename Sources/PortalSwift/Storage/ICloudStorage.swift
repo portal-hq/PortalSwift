@@ -39,7 +39,6 @@ public class ICloudStorage: Storage, PortalStorage {
 
   public let encryption: PortalEncryptionProtocol
 
-  private let isSimulator = TARGET_OS_SIMULATOR != 0
   private let storage: PortalKeyValueStoreProtocol
   private var filenameHashes: [String: String]?
 
