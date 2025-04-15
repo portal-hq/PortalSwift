@@ -688,7 +688,7 @@ extension PortalApiTests {
 // MARK: - prepareEject tests
 
 extension PortalApiTests {
-  func test_prepareEject_willCall_requestPost_onlyOnce() async throws {
+  func test_prepareEject_willCall_requestGet_onlyOnce() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -699,7 +699,7 @@ extension PortalApiTests {
     } catch {}
 
     // then
-    XCTAssertEqual(portalRequestsSpy.postCallsCount, 1)
+    XCTAssertEqual(portalRequestsSpy.getCallsCount, 1)
   }
 
   func test_prepareEject() async throws {
@@ -719,7 +719,7 @@ extension PortalApiTests {
     } catch {}
   }
 
-  func test_prepareEject_willCall_requestPost_passingCorrectUrlPathAndPayload() async throws {
+  func test_prepareEject_willCall_requestGet_passingCorrectUrlPathAndQuery() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     let backupMethod: BackupMethods = .iCloud
@@ -733,8 +733,9 @@ extension PortalApiTests {
 
     // then
     if #available(iOS 16.0, *) {
-      XCTAssertEqual(portalRequestsSpy.postFromParam?.path(), "/api/v3/clients/me/wallets/\(walletId)/ejectable-backup-shares")
-      XCTAssertEqual(portalRequestsSpy.postAndPayloadParam as? [String: String], ["backupMethod": backupMethod.rawValue])
+      XCTAssertEqual(portalRequestsSpy.getFromParam?.path(), "/api/v3/clients/me/wallets/\(walletId)/ejectable-backup-shares")
+      XCTAssertEqual(portalRequestsSpy.getFromParam?.query(), "backupMethod=\(backupMethod.rawValue)")
+      XCTAssertEqual(portalRequestsSpy.getWithBearerTokenParam, MockConstants.mockApiKey)
     }
   }
 }

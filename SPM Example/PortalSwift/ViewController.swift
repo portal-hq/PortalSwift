@@ -395,13 +395,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
         throw URLError(.badURL)
       }
       let enableEjectData = try await requests.patch(enableEjectUrl, withBearerToken: nil, andPayload: ["walletId": walletId])
-      guard let enableEjectResponse = String(data: enableEjectData, encoding: .utf8) else {
+      guard String(data: enableEjectData, encoding: .utf8) != nil else {
         throw PortalExampleAppError.couldNotParseCustodianResponse("Unable to read enable eject response from PortalEx.")
       }
 
       if let walletIdEd25519 {
         let enableEjectDataEd25519 = try await requests.patch(enableEjectUrl, withBearerToken: nil, andPayload: ["walletId": walletIdEd25519])
-        guard let enableEjectResponseEd25519 = String(data: enableEjectDataEd25519, encoding: .utf8) else {
+        guard String(data: enableEjectDataEd25519, encoding: .utf8) != nil else {
           throw PortalExampleAppError.couldNotParseCustodianResponse("Unable to read enable eject response from PortalEx.")
         }
       }
