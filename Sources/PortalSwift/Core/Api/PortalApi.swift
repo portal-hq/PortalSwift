@@ -202,7 +202,7 @@ public class PortalApi: PortalApiProtocol {
       }
     }
 
-    self.logger.error("PortalApi.getNFTs() - Unable to build request URL.")
+    self.logger.error("PortalApi.getAssets() - Unable to build request URL.")
     throw URLError(.badURL)
   }
 
