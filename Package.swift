@@ -40,6 +40,9 @@ let package = Package(
         .product(name: "AnyCodable", package: "AnyCodable"),
         .product(name: "GoogleSignIn", package: "GoogleSignIn-iOS"),
         .product(name: "Starscream", package: "Starscream")
+      ],
+      linkerSettings: [
+        .linkedLibrary("resolv")
       ]
     ),
     .binaryTarget(
