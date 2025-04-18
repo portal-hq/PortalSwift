@@ -2103,15 +2103,9 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.logger.error("ViewController.handleRawSign() - ❌ Portal not initialized")
           throw PortalExampleAppError.portalNotInitialized()
         }
-        guard let address = await portal.getAddress(chainId) else {
-          self.logger.error("ViewController.handleRawSign() - ❌ Address not found")
-          throw PortalExampleAppError.addressNotFound()
-        }
 
         self.startLoading()
-        let params = ["0xdeadbeef", address]
 
-        self.logger.debug("Params: \(params)")
         let response = try await portal.rawSign(message: "74657374", chainId: chainId)
 
         guard let signature = response.result as? String else {
