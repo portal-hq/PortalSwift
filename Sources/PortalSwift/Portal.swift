@@ -1750,6 +1750,7 @@ public final class Portal: PortalProtocol {
   ///
   /// - Note: This is a convenience wrapper around the `eth_estimateGas` RPC method.
   ///   The estimate may vary from the actual gas used in the final transaction.
+  @available(*, deprecated, message: "Use `request(_:withMethod:andParams:)` with `PortalRequestMethod.ethEstimateGas` instead")
   public func ethEstimateGas(
     transaction: ETHTransactionParam,
     completion: @escaping (Result<RequestCompletionResult>) -> Void
@@ -1771,6 +1772,7 @@ public final class Portal: PortalProtocol {
   ///
   /// - Note: This is a convenience wrapper around the `eth_gasPrice` RPC method.
   ///   Gas prices can be volatile and may change rapidly.
+  @available(*, deprecated, message: "Use `request(_:withMethod:andParams:)` with `PortalRequestMethod.ethGasPrice` instead")
   public func ethGasPrice(
     completion: @escaping (Result<RequestCompletionResult>) -> Void
   ) {
@@ -1794,6 +1796,7 @@ public final class Portal: PortalProtocol {
   ///   - The balance is returned for the latest block
   ///   - Requires the wallet address to be available, otherwise returns
   ///     `PortalProviderError.noAddress`
+  @available(*, deprecated, message: "Use `request(_:withMethod:andParams:)` with `PortalRequestMethod.ethGetBalance` instead")
   public func ethGetBalance(
     completion: @escaping (Result<RequestCompletionResult>) -> Void
   ) {
@@ -1822,6 +1825,7 @@ public final class Portal: PortalProtocol {
   /// - Note:
   ///   - This is a convenience wrapper around the `eth_sendTransaction` RPC method
   ///   - The transaction is automatically signed before being sent
+  @available(*, deprecated, message: "Use `request(_:withMethod:andParams:)` with `PortalRequestMethod.ethSendTransaction` instead")
   public func ethSendTransaction(
     transaction: ETHTransactionParam,
     completion: @escaping (Result<TransactionCompletionResult>) -> Void
@@ -1850,6 +1854,7 @@ public final class Portal: PortalProtocol {
   ///     `PortalProviderError.noAddress`
   ///   - Signs messages using the Ethereum personal message signing format
   ///     which adds a prefix to prevent signing arbitrary transactions
+  @available(*, deprecated, message: "Use `request(_:withMethod:andParams:)` with `PortalRequestMethod.ethSign` instead")
   public func ethSign(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void) {
     guard let address = provider.address else {
       completion(Result(error: PortalProviderError.noAddress))
@@ -1882,6 +1887,7 @@ public final class Portal: PortalProtocol {
   ///   - Unlike `ethSendTransaction`, this method only signs the transaction and
   ///     returns the signed transaction data without broadcasting it
   ///   - The signed transaction can later be broadcast using `ethSendTransaction`
+  @available(*, deprecated, message: "Use `request(_:withMethod:andParams:)` with `PortalRequestMethod.ethSignTransaction` instead")
   public func ethSignTransaction(
     transaction: ETHTransactionParam,
     completion: @escaping (Result<TransactionCompletionResult>) -> Void
@@ -1912,6 +1918,7 @@ public final class Portal: PortalProtocol {
   ///   - The message must be a properly formatted EIP-712 typed data structure
   ///   - For the latest version of typed data signing, consider using
   ///     `ethSignTypedData` (v4) instead
+  @available(*, deprecated, message: "Use `request(_:withMethod:andParams:)` with `PortalRequestMethod.ethSignTypedDataV3` instead")
   public func ethSignTypedDataV3(
     message: String,
     completion: @escaping (Result<RequestCompletionResult>) -> Void
@@ -1948,6 +1955,7 @@ public final class Portal: PortalProtocol {
   ///   - The message must be a properly formatted EIP-712 typed data structure
   ///   - This is the recommended method for signing typed data, as it includes
   ///     all improvements and security features from previous versions
+  @available(*, deprecated, message: "Use `request(_:withMethod:andParams:)` with `PortalRequestMethod.ethSignTypedDataV4` instead")
   public func ethSignTypedData(
     message: String,
     completion: @escaping (Result<RequestCompletionResult>) -> Void
@@ -1983,6 +1991,7 @@ public final class Portal: PortalProtocol {
   ///   - The message is automatically prefixed with "\x19Ethereum Signed Message:\n"
   ///     before signing
   ///   - This method is commonly used by DApps for user authentication
+  @available(*, deprecated, message: "Use `request(_:withMethod:andParams:)` with `PortalRequestMethod.personalSign` instead")
   public func personalSign(
     message: String,
     completion: @escaping (Result<RequestCompletionResult>) -> Void

@@ -98,15 +98,6 @@ public protocol PortalProtocol {
   func buildSolanaTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildSolanaTransactionResponse
   func getWalletCapabilities() async throws -> WalletCapabilitiesResponse
   func provisionWallet(cipherText: String, method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?)
-  func ethEstimateGas(transaction: ETHTransactionParam, completion: @escaping (Result<RequestCompletionResult>) -> Void)
-  func ethGasPrice(completion: @escaping (Result<RequestCompletionResult>) -> Void)
-  func ethGetBalance(completion: @escaping (Result<RequestCompletionResult>) -> Void)
-  func ethSendTransaction(transaction: ETHTransactionParam, completion: @escaping (Result<TransactionCompletionResult>) -> Void)
-  func ethSign(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
-  func ethSignTransaction(transaction: ETHTransactionParam, completion: @escaping (Result<TransactionCompletionResult>) -> Void)
-  func ethSignTypedDataV3(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
-  func ethSignTypedData(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
-  func personalSign(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
   func rawSign(message: String, chainId: String) async throws -> PortalProviderResult
   func request(method: ETHRequestMethods.RawValue, params: [Any], completion: @escaping (Result<RequestCompletionResult>) -> Void)
   func createPortalConnectInstance(webSocketServer: String) throws -> PortalConnect
@@ -144,4 +135,22 @@ public protocol PortalProtocol {
   func on(event: Events.RawValue, callback: @escaping (Any) -> Void)
   @available(*, deprecated, message: "Use once(event: Events, callback: @escaping (Any) -> Void) instead")
   func once(event: Events.RawValue, callback: @escaping (Any) -> Void)
+  @available(*, deprecated, message: "Use `request(_:withMethod:andParams:)` with `PortalRequestMethod.ethEstimateGas` instead")
+  func ethEstimateGas(transaction: ETHTransactionParam, completion: @escaping (Result<RequestCompletionResult>) -> Void)
+  @available(*, deprecated, message: "Use `request(_:withMethod:andParams:)` with `PortalRequestMethod.ethGasPrice` instead")
+  func ethGasPrice(completion: @escaping (Result<RequestCompletionResult>) -> Void)
+  @available(*, deprecated, message: "Use `request(_:withMethod:andParams:)` with `PortalRequestMethod.ethGetBalance` instead")
+  func ethGetBalance(completion: @escaping (Result<RequestCompletionResult>) -> Void)
+  @available(*, deprecated, message: "Use `request(_:withMethod:andParams:)` with `PortalRequestMethod.ethSendTransaction` instead")
+  func ethSendTransaction(transaction: ETHTransactionParam, completion: @escaping (Result<TransactionCompletionResult>) -> Void)
+  @available(*, deprecated, message: "Use `request(_:withMethod:andParams:)` with `PortalRequestMethod.ethSign` instead")
+  func ethSign(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
+  @available(*, deprecated, message: "Use `request(_:withMethod:andParams:)` with `PortalRequestMethod.ethSignTransaction` instead")
+  func ethSignTransaction(transaction: ETHTransactionParam, completion: @escaping (Result<TransactionCompletionResult>) -> Void)
+  @available(*, deprecated, message: "Use `request(_:withMethod:andParams:)` with `PortalRequestMethod.ethSignTypedDataV3` instead")
+  func ethSignTypedDataV3(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
+  @available(*, deprecated, message: "Use `request(_:withMethod:andParams:)` with `PortalRequestMethod.ethSignTypedDataV4` instead")
+  func ethSignTypedData(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
+  @available(*, deprecated, message: "Use `request(_:withMethod:andParams:)` with `PortalRequestMethod.personalSign` instead")
+  func personalSign(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
 }
