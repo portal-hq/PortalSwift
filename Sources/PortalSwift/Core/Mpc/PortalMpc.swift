@@ -11,7 +11,7 @@ import Security
 
 public protocol PortalMpcProtocol {
   func backup(_ method: BackupMethods, usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> PortalMpcBackupResponse
-  func eject(_ method: BackupMethods, withCipherText: String?, andOrganizationBackupShare: String?, andOrganizationSolanaBackupShare: String?, usingProgressCallback _: ((MpcStatus) -> Void)?) async throws -> [PortalNamespace: String]
+  func eject(_ method: BackupMethods, withCipherText: String?, andOrganizationBackupShare: String?, andOrganizationSolanaBackupShare: String?) async throws -> [PortalNamespace: String]
   func generate(withProgressCallback: ((MpcStatus) -> Void)?) async throws -> [PortalNamespace: String?]
   func recover(_ method: BackupMethods, withCipherText: String?, usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> [PortalNamespace: String?]
   func generateSolanaWallet(usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> String
@@ -247,8 +247,7 @@ public class PortalMpc: PortalMpcProtocol {
     _ method: BackupMethods,
     withCipherText: String? = nil,
     andOrganizationBackupShare: String? = nil,
-    andOrganizationSolanaBackupShare: String? = nil,
-    usingProgressCallback _: ((MpcStatus) -> Void)? = nil
+    andOrganizationSolanaBackupShare: String? = nil
   ) async throws -> [PortalNamespace: String] {
     if self.version != "v6" {
       throw MpcError.backupNoLongerSupported("[PortalMpc] Eject is no longer supported for this version of MPC. Please use `version = \"v6\"`.")
