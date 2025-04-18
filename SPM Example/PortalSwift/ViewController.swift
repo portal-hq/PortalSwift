@@ -820,7 +820,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   public func loadApplicationConfig() {
     do {
       guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
-        self.logger.error("PortalWrapper.init - Couldnt load info.plist dictionary.")
+        self.logger.error("PortalWrapper.init - Couldn't load info.plist dictionary.")
         throw PortalExampleAppError.cantLoadInfoPlist()
       }
       guard let ENV: String = infoDictionary["ENV"] as? String else {
@@ -2124,8 +2124,15 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  func handleSwaps() {
+  @IBAction func handleSwaps() {
     do {
+      guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary,
+            let SWAPS_API_KEY: String = infoDictionary["SWAPS_API_KEY"] as? String
+      else {
+        self.logger.error("ViewController.handleSwaps() - ❌ Error: Do you have `SWAPS_API_KEY=$(SWAPS_API_KEY)` in your Secrets.xcconfig?")
+        throw PortalExampleAppError.environmentNotSet()
+      }
+
       self.startLoading()
 
       guard let portal else {
@@ -2133,13 +2140,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         throw PortalExampleAppError.portalNotInitialized()
       }
 
-      let swapsApiKey = ""
-      if swapsApiKey == "" {
-        self.logger.error("ViewController.handleSwaps() - ❌ Portal not initialized")
-        throw PortalExampleAppError.configurationNotSet("Swaps API Key not set")
-      }
-
-      let swaps = PortalSwaps(apiKey: swapsApiKey, portal: portal)
+      let swaps = PortalSwaps(apiKey: SWAPS_API_KEY, portal: portal)
 
       swaps.getSources { result in
         let source = result
@@ -2157,6 +2158,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
           swaps.getQuote(args: quoteArgs, forChainId: customChainId) { result in
             guard let transaction = result.data?.transaction else {
               self.logger.error("ViewController.handleSwaps() - ❌ Unable to get quote transaction")
+              self.showStatusView(message: "\(self.failureStatus) Unable to get quote transaction")
               self.stopLoading()
               return
             }
@@ -2170,6 +2172,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
                 }
 
                 self.logger.info("ViewController.handleSwaps() - ✅ Successfully called get sources + quotes + submitted trx: \(transactionHash)")
+                self.showStatusView(message: "\(self.successStatus) Successfully called get sources + quotes + submitted trx: \(transactionHash)")
               } catch {
                 print("Error sending transaction", error)
               }
@@ -2181,7 +2184,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
     } catch {
       self.stopLoading()
-      self.logger.error("ViewController.handleSwaps() - ❌ Error signing message: \(error)")
+      self.logger.error("ViewController.handleSwaps() - ❌ Error swap: \(error)")
+      self.showStatusView(message: "\(self.failureStatus) Error swap: \(error)")
     }
   }
 
