@@ -37,14 +37,15 @@ public final class Portal: PortalProtocol {
   public var provider: PortalProviderProtocol
   public var rpcConfig: [String: String]
 
-  private let apiHost: String
+  private var apiHost: String
   private var backup: BackupOptions?
   private var binary: Mobile
   private let featureFlags: FeatureFlags?
   private var keychain: PortalKeychainProtocol
   private var mpc: PortalMpcProtocol
-  private let mpcHost: String
-  private let version: String
+  private var mpcHost: String
+  private var version: String
+  private var enclaveMPCHost: String
 
   /// Creates a Portal instance with the essential configuration.
   /// This is the recommended initializer for most use cases.
@@ -62,20 +63,13 @@ public final class Portal: PortalProtocol {
     withRpcConfig: [String: String] = [:],
     // Optional
     autoApprove: Bool = false,
-    featureFlags: FeatureFlags? = nil,
-    version: String = "v6",
-    apiHost: String = "api.portalhq.io",
-    mpcHost: String = "mpc.portalhq.io",
-    enclaveMPCHost _: String = "mpc-client.portalhq.io"
+    featureFlags: FeatureFlags? = nil
   ) throws {
     try self.init(
       apiKey,
       withRpcConfig: withRpcConfig,
       autoApprove: autoApprove,
       featureFlags: featureFlags,
-      version: version,
-      apiHost: apiHost,
-      mpcHost: mpcHost,
       api: nil,
       binary: nil,
       gDrive: nil,
@@ -131,6 +125,7 @@ public final class Portal: PortalProtocol {
     self.apiHost = apiHost
     self.apiKey = apiKey
     self.autoApprove = autoApprove
+    self.enclaveMPCHost = enclaveMPCHost
     self.binary = binary ?? (
       featureFlags?.useEnclaveMPCApi ?? false ? EnclaveMobileWrapper(enclaveMPCHost: enclaveMPCHost) : MobileWrapper()
     )
@@ -243,6 +238,7 @@ public final class Portal: PortalProtocol {
     self.mpcHost = mpcHost
     self.version = version
     self.featureFlags = featureFlags
+    self.enclaveMPCHost = ""
 
     if version != "v6" {
       throw PortalArgumentError.versionNoLongerSupported(message: "MPC Version is not supported. Only version 'v6' is currently supported.")
@@ -2254,6 +2250,78 @@ extension Portal {
 
   func setMPC(_ mpc: PortalMpcProtocol) {
     self.mpc = mpc
+  }
+
+  func setVersion(_ version: String) throws -> Portal {
+    self.version = version
+    return try Portal(
+      self.apiKey,
+      withRpcConfig: self.rpcConfig,
+      autoApprove: self.autoApprove,
+      featureFlags: self.featureFlags,
+      version: self.version,
+      apiHost: self.apiHost,
+      mpcHost: self.mpcHost,
+      enclaveMPCHost: self.enclaveMPCHost,
+      api: self.api,
+      binary: self.binary,
+      keychain: self.keychain,
+      mpc: self.mpc
+    )
+  }
+
+  func setApiHost(_ apiHost: String) throws -> Portal {
+    self.apiHost = apiHost
+    return try Portal(
+      self.apiKey,
+      withRpcConfig: Portal.buildDefaultRpcConfig(self.apiHost),
+      autoApprove: self.autoApprove,
+      featureFlags: self.featureFlags,
+      version: self.version,
+      apiHost: self.apiHost,
+      mpcHost: self.mpcHost,
+      enclaveMPCHost: self.enclaveMPCHost,
+      api: self.api,
+      binary: self.binary,
+      keychain: self.keychain,
+      mpc: self.mpc
+    )
+  }
+
+  func setMpcHost(_ mpcHost: String) throws -> Portal {
+    self.mpcHost = mpcHost
+    return try Portal(
+      self.apiKey,
+      withRpcConfig: self.rpcConfig,
+      autoApprove: self.autoApprove,
+      featureFlags: self.featureFlags,
+      version: self.version,
+      apiHost: self.apiHost,
+      mpcHost: self.mpcHost,
+      enclaveMPCHost: self.enclaveMPCHost,
+      api: self.api,
+      binary: self.binary,
+      keychain: self.keychain,
+      mpc: self.mpc
+    )
+  }
+
+  func setEnclaveMPCHost(_ enclaveMPCHost: String) throws -> Portal {
+    self.enclaveMPCHost = enclaveMPCHost
+    return try Portal(
+      self.apiKey,
+      withRpcConfig: self.rpcConfig,
+      autoApprove: self.autoApprove,
+      featureFlags: self.featureFlags,
+      version: self.version,
+      apiHost: self.apiHost,
+      mpcHost: self.mpcHost,
+      enclaveMPCHost: self.enclaveMPCHost,
+      api: self.api,
+      binary: self.binary,
+      keychain: self.keychain,
+      mpc: self.mpc
+    )
   }
 }
 

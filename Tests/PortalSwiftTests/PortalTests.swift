@@ -64,21 +64,17 @@ extension PortalTests {
 
 extension PortalTests {
   func test_buildDefaultRpcConfig() async throws {
-    let apiHost = "api.portalhq.io"
-    let newPortal = try Portal(
+    // given
+    let apiHost = "api.portalhq.dev"
+    var newPortal = try Portal(
       MockConstants.mockApiKey,
-      withRpcConfig: [:],
-      apiHost: apiHost
+      withRpcConfig: [:]
     )
 
-    portal.setApi(api ?? self.api)
-    portal.setBinary(binary)
-    portal.setKeychain(keychain)
-    portal.setMPC(MockPortalMpc())
-    portal.registerBackupMethod(.GoogleDrive, withStorage: MockGDriveStorage())
-    portal.registerBackupMethod(.iCloud, withStorage: MockICloudStorage())
-    portal.registerBackupMethod(.Password, withStorage: MockPasswordStorage())
+    // and given
+    newPortal = try newPortal.setApiHost(apiHost)
 
+    // then
     XCTAssertEqual(
       newPortal.rpcConfig,
       [
@@ -89,7 +85,7 @@ extension PortalTests {
         "eip155:84532": "https://\(apiHost)/rpc/v1/eip155/84532", // Base Testnet
         "eip155:11155111": "https://\(apiHost)/rpc/v1/eip155/11155111", // Ethereum Sepolia
         "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": "https://\(apiHost)/rpc/v1/solana/5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", // Solana Mainnet
-        "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": "https://\(apiHost)/rpc/v1/solana/EtWTRABZaYq6iMfeYKouRu166VU2xqa1" // Solana Testnet
+        "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": "https://\(apiHost)/rpc/v1/solana/EtWTRABZaYq6iMfeYKouRu166VU2xqa1" // Solana Devnet
       ]
     )
   }
