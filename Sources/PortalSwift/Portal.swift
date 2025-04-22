@@ -2029,6 +2029,7 @@ public final class Portal: PortalProtocol {
     )
   }
 
+  @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of request().")
   public func request(
     method: ETHRequestMethods.RawValue,
     params: [Any],
