@@ -93,12 +93,28 @@ public class PortalConnect: EventBus {
     }
 
     on(event: Events.PortalConnectChainChanged.rawValue) { payload in
+      var chainId: Int? = nil
+      if let intChainId = payload as? Int {
+        chainId = intChainId
+      } else if let stringChainId = payload as? String,
+                let chainIdInt = Int(stringChainId.split(separator: ":").last ?? "")
+      {
+        chainId = chainIdInt
+      }
+
+      guard let chainId else {
+        print("[PortalConnect] ⚠️ Invalid ChainId (\(payload)) for \(Events.PortalConnectChainChanged.rawValue).")
+        return
+      }
+
+      self.chainId = chainId
+
       let event = ChainChangedMessage(
         event: "portal_chainChanged",
         data: ChainChangedData(
           topic: self.topic,
           uri: self.uri,
-          chainId: String(payload as! Int)
+          chainId: String(chainId)
         )
       )
       do {

@@ -111,6 +111,7 @@ public protocol PortalProtocol {
   func createPortalConnectInstance(webSocketServer: String) throws -> PortalConnect
   func receiveTestnetAsset(chainId: String, params: FundParams) async throws -> FundResponse
   func sendAsset(chainId: String, params: SendAssetParams) async throws -> SendAssetResponse
+  func updateChain(newChainId: String)
 
   // Deprecated functions
   @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of request().")

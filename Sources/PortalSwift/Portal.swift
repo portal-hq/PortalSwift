@@ -1164,6 +1164,25 @@ public final class Portal: PortalProtocol {
     return availableRecoveryMethods.count > 0
   }
 
+  /// Updates the currently active chain ID used by the provider.
+  ///
+  /// This function delegates the chain ID update to the underlying provider. After calling this,
+  /// all subsequent requests will be directed to the specified chain.
+  ///
+  /// - Parameter newChainId: The new chain ID to switch to.
+  ///
+  /// - Note: This function does not establish a new connection to the chain. It only updates
+  ///   the chain ID for subsequent requests. If a connection to the new chain is required,
+  ///   use the `connect` parameter in the provider's `updateChain` method.
+  ///
+  /// - Example:
+  ///   ```swift
+  ///   updateChain(newChainId: "eip155:1") // Switches to Ethereum mainnet
+  ///   ```
+  public func updateChain(newChainId: String) {
+    provider.updateChain(newChainId: newChainId, connect: nil)
+  }
+
   // MARK: - Api helpers
 
   /// Retrieves token balances for the specified blockchain.
