@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'PortalSwift'
-  s.version          = "5.0.1"
+  s.version          = "6.0.0"
   s.summary          = "The Portal SDK enables a secure and seamless integration of Portal MPC wallets and Web3 functionalities into your applications."
   s.description      = "The Portal SDK provides an easy way to integrate Multi-Party Computation (MPC) wallets and Web3 capabilities into iOS applications. It enables secure wallet creation, transaction signing, and cross-device session management. The SDK supports multiple authentication and backup methods, ensuring a seamless user experience. Features include:
   • MPC-based wallet creation (no single point of failure)
