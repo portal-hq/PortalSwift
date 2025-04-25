@@ -297,6 +297,8 @@ public class PortalMpc: PortalMpcProtocol {
       throw MpcError.unableToEjectWallet("No backup share pair found for curve SECP256K1.")
     }
 
+    var organizationShareEd25519 = andOrganizationSolanaBackupShare
+
     let backupWithPortal = client.environment?.backupWithPortalEnabled ?? false
     if backupWithPortal {
       cipherText = try await self.api?.getClientCipherText(backupSharePairId)
@@ -304,7 +306,7 @@ public class PortalMpc: PortalMpcProtocol {
 
       // Conditionally prepare eject for Solana wallets
       if let Ed25519WalletId {
-        _ = try? await self.api?.prepareEject(Ed25519WalletId, method)
+        organizationShareEd25519 = try? await self.api?.prepareEject(Ed25519WalletId, method)
       }
     }
 
@@ -340,7 +342,7 @@ public class PortalMpc: PortalMpcProtocol {
     }
 
     if let ed25519Share = formattedShares["ED25519"],
-       let organizationShareEd25519 = andOrganizationSolanaBackupShare
+       let organizationShareEd25519
     {
       let ejectResponse = await self.mobile.MobileEjectWalletAndDiscontinueMPCEd25519(ed25519Share.share, organizationShareEd25519)
       guard let jsonData = ejectResponse.data(using: .utf8) else {
