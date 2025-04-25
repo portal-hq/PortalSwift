@@ -161,4 +161,14 @@ class PortalProviderSpy: PortalProviderProtocol {
     getRpcUrlChainIdParam = chainId
     return ""
   }
+
+  private(set) var updateChainCount = 0
+  private(set) var updateChainNewChainIdParam: String?
+  private(set) var updateConnectParam: PortalConnect?
+
+  func updateChain(newChainId: String, connect: PortalConnect?) {
+    updateChainCount += 1
+    updateChainNewChainIdParam = newChainId
+    updateConnectParam = connect
+  }
 }

@@ -10,7 +10,16 @@ Possible Types of changes include:
 - Fixed
 - Security
 - Improved
+- Upgraded
 
+## 6.0.0 - 2025-04-25
+
+- Fixed the build issue using Xcode 16.3
+- Upgraded `googlesignin-ios` from version `7.1.0` to `8.0.0`
+- Fixed `eject` solana wallet for portal managed backups.
+- Deprecated `Portal.request(_:_:completion)` to use the `async/await` `Portal.request()` instead.
+- Added `Portal.updateChainId()` that updates the currently active chain ID used by the provider.
+- Deprecated ETH helper functions `ethEstimateGas`, `ethGasPrice`, `ethGetBalance`, `ethSendTransaction`, `ethSign`, `ethSignTransaction`, `ethSignTypedDataV3`, `ethSignTypedData`, and `personalSign` to use `Portal.request(_:withMethod:andParams:)` instead.
 ## 5.0.1 - 2025-03-19
 
 - Added Raw Sign function `Portal.rawSign()`

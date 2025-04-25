@@ -19,7 +19,7 @@ let package = Package(
     // .package(url: /* package url */, from: "1.0.0"),
     .package(
       url: "https://github.com/google/GoogleSignIn-iOS.git",
-      from: "7.1.0"
+      from: "8.0.0"
     ),
     .package(
       url: "https://github.com/daltoniam/Starscream.git",
@@ -40,6 +40,9 @@ let package = Package(
         .product(name: "AnyCodable", package: "AnyCodable"),
         .product(name: "GoogleSignIn", package: "GoogleSignIn-iOS"),
         .product(name: "Starscream", package: "Starscream")
+      ],
+      linkerSettings: [
+        .linkedLibrary("resolv")
       ]
     ),
     .binaryTarget(

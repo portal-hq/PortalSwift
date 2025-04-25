@@ -568,8 +568,7 @@ public final class Portal: PortalProtocol {
       method,
       withCipherText: withCipherText,
       andOrganizationBackupShare: andOrganizationBackupShare,
-      andOrganizationSolanaBackupShare: nil,
-      usingProgressCallback: nil
+      andOrganizationSolanaBackupShare: nil
     )
 
     guard let privateKey = privateKeys[.eip155] else {
@@ -618,8 +617,7 @@ public final class Portal: PortalProtocol {
       method,
       withCipherText: withCipherText,
       andOrganizationBackupShare: andOrganizationBackupShare,
-      andOrganizationSolanaBackupShare: andOrganizationSolanaBackupShare,
-      usingProgressCallback: nil
+      andOrganizationSolanaBackupShare: andOrganizationSolanaBackupShare
     )
 
     return privateKeys
@@ -1164,6 +1162,25 @@ public final class Portal: PortalProtocol {
     let availableRecoveryMethods = try await availableRecoveryMethods(forChainId)
 
     return availableRecoveryMethods.count > 0
+  }
+
+  /// Updates the currently active chain ID used by the provider.
+  ///
+  /// This function delegates the chain ID update to the underlying provider. After calling this,
+  /// all subsequent requests will be directed to the specified chain.
+  ///
+  /// - Parameter newChainId: The new chain ID to switch to.
+  ///
+  /// - Note: This function does not establish a new connection to the chain. It only updates
+  ///   the chain ID for subsequent requests. If a connection to the new chain is required,
+  ///   use the `connect` parameter in the provider's `updateChain` method.
+  ///
+  /// - Example:
+  ///   ```swift
+  ///   updateChain(newChainId: "eip155:1") // Switches to Ethereum mainnet
+  ///   ```
+  public func updateChain(newChainId: String) {
+    provider.updateChain(newChainId: newChainId, connect: nil)
   }
 
   // MARK: - Api helpers
@@ -2040,6 +2057,7 @@ public final class Portal: PortalProtocol {
     )
   }
 
+  @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of request().")
   public func request(
     method: ETHRequestMethods.RawValue,
     params: [Any],

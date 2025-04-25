@@ -24,8 +24,7 @@ public class MockPortalMpc: PortalMpcProtocol {
     _: BackupMethods,
     withCipherText _: String? = nil,
     andOrganizationBackupShare _: String? = nil,
-    andOrganizationSolanaBackupShare _: String? = nil,
-    usingProgressCallback _: ((MpcStatus) -> Void)? = nil
+    andOrganizationSolanaBackupShare _: String? = nil
   ) async throws -> [PortalNamespace: String] {
     return [
       .eip155: MockConstants.mockEip155EjectedPrivateKey,

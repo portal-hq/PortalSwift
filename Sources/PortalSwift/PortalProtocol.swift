@@ -99,12 +99,14 @@ public protocol PortalProtocol {
   func getWalletCapabilities() async throws -> WalletCapabilitiesResponse
   func provisionWallet(cipherText: String, method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?)
   func rawSign(message: String, chainId: String) async throws -> PortalProviderResult
-  func request(method: ETHRequestMethods.RawValue, params: [Any], completion: @escaping (Result<RequestCompletionResult>) -> Void)
   func createPortalConnectInstance(webSocketServer: String) throws -> PortalConnect
   func receiveTestnetAsset(chainId: String, params: FundParams) async throws -> FundResponse
   func sendAsset(chainId: String, params: SendAssetParams) async throws -> SendAssetResponse
+  func updateChain(newChainId: String)
 
   // Deprecated functions
+  @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of request().")
+  func request(method: ETHRequestMethods.RawValue, params: [Any], completion: @escaping (Result<RequestCompletionResult>) -> Void)
   @available(*, deprecated, message: "Use setGDriveConfiguration(clientId:backupOption:) instead.")
   func setGDriveConfiguration(clientId: String, folderName: String) throws
   @available(*, deprecated, renamed: "evaluateTransaction", message: "Please use evaluateTransaction().")
