@@ -19,8 +19,7 @@ Possible Types of changes include:
 - Fixed `eject` solana wallet for portal managed backups.
 - Deprecated `Portal.request(_:_:completion)` to use the `async/await` `Portal.request()` instead.
 - Added `Portal.updateChainId()` that updates the currently active chain ID used by the provider.
-- Deprecated ETH helper functions `ethEstimateGas`, `ethGasPrice`, `ethGetBalance`, `ethSendTransaction`, `ethSign`, `ethSignTransaction`, , `ethSignTypedDataV3`, `ethSignTypedData`, and `personalSign` to use `Portal.request(_:withMethod:andParams:)` instead.
-
+- Deprecated ETH helper functions `ethEstimateGas`, `ethGasPrice`, `ethGetBalance`, `ethSendTransaction`, `ethSign`, `ethSignTransaction`, `ethSignTypedDataV3`, `ethSignTypedData`, and `personalSign` to use `Portal.request(_:withMethod:andParams:)` instead.
 ## 5.0.1 - 2025-03-19
 
 - Added Raw Sign function `Portal.rawSign()`
