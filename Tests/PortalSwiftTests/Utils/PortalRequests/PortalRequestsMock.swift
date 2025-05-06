@@ -26,6 +26,10 @@ final class PortalRequestsMock: PortalRequestsProtocol {
     return try getReturnValue()
   }
 
+  func put(_: URL, withBearerToken _: String?, andPayload _: any Codable) async throws -> Data {
+    return try getReturnValue()
+  }
+
   func post(_: URL, withBearerToken _: String?, andPayload _: (any Codable)?) async throws -> Data {
     return try getReturnValue()
   }

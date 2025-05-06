@@ -148,4 +148,13 @@ public actor MockPortalRequests: PortalRequestsProtocol {
     let gDriveFileData = try JSONEncoder().encode(MockConstants.mockGDriveFile)
     return gDriveFileData
   }
+
+  public func put(
+    _: URL,
+    withBearerToken _: String?,
+    andPayload _: any Codable
+  ) async throws -> Data {
+    let gDriveFileData = try JSONEncoder().encode(MockConstants.mockGDriveFile)
+    return gDriveFileData
+  }
 }

@@ -5,129 +5,58 @@ public protocol PortalRequestsProtocol {
   @discardableResult func delete(_ from: URL, withBearerToken: String?) async throws -> Data
   func get(_ from: URL, withBearerToken: String?) async throws -> Data
   @discardableResult func patch(_ from: URL, withBearerToken: String?, andPayload: Codable) async throws -> Data
+  @discardableResult func put(_ from: URL, withBearerToken: String?, andPayload: Codable) async throws -> Data
   @discardableResult func post(_ from: URL, withBearerToken: String?, andPayload: Codable?) async throws -> Data
   @discardableResult func postMultiPartData(_ from: URL, withBearerToken: String, andPayload: String, usingBoundary: String) async throws -> Data
 }
 
 public class PortalRequests: PortalRequestsProtocol {
+  private lazy var urlSession: URLSession = {
+    let configuration = URLSessionConfiguration.default
+    configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+    configuration.urlCache = URLCache(memoryCapacity: 0, diskCapacity: 0, diskPath: nil)
+    return URLSession(configuration: configuration)
+  }()
+
   public init() {}
 
   @discardableResult
   public func delete(_ from: URL, withBearerToken: String? = nil) async throws -> Data {
-    var request = URLRequest(url: from)
-
-    // Add required request headers
-    if let token = withBearerToken {
-      request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-    }
-
-    request.addValue("application/json", forHTTPHeaderField: "Accept")
-    request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-
-    // Send the request
-    let (data, response) = try await getURLSession().data(for: request)
-
-    // Check the reponse status
-    guard let httpResponse = response as? HTTPURLResponse else {
-      throw PortalRequestsError.couldNotParseHttpResponse
-    }
-    guard httpResponse.statusCode < 300 else {
-      throw self.buildError(httpResponse, withData: data, url: from.absoluteString)
-    }
-
-    return data
+    let request = try createBaseRequest(url: from, method: .delete, bearerToken: withBearerToken)
+    return try await executeRequest(request)
   }
 
   public func get(_ from: URL, withBearerToken: String? = nil) async throws -> Data {
-    var request = URLRequest(url: from)
-
-    // Add required request headers
-    if let token = withBearerToken {
-      request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-    }
-
-    request.addValue("application/json", forHTTPHeaderField: "Accept")
-    request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-
-    // Make sure we're sending a DELETE request
-    request.httpMethod = "GET"
-
-    // Send the request
-    let (data, response) = try await getURLSession().data(for: request)
-
-    // Check the reponse status
-    guard let httpResponse = response as? HTTPURLResponse else {
-      throw PortalRequestsError.couldNotParseHttpResponse
-    }
-    guard httpResponse.statusCode < 300 else {
-      throw self.buildError(httpResponse, withData: data, url: from.absoluteString)
-    }
-
-    return data
+    let request = try createBaseRequest(url: from, method: .get, bearerToken: withBearerToken)
+    return try await executeRequest(request)
   }
 
   @discardableResult
   public func patch(_ from: URL, withBearerToken: String? = nil, andPayload: Codable) async throws -> Data {
-    var request = URLRequest(url: from)
-
-    // Add required request headers
-    if let token = withBearerToken {
-      request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-    }
-
-    request.addValue("application/json", forHTTPHeaderField: "Accept")
-    request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-
-    // Make sure we're sending a PATCH request with the data provided
-    request.httpMethod = "PATCH"
+    var request = try createBaseRequest(url: from, method: .patch, bearerToken: withBearerToken)
     request.httpBody = try JSONEncoder().encode(andPayload)
+    return try await executeRequest(request)
+  }
 
-    // Send the request
-    let (data, response) = try await getURLSession().data(for: request)
-
-    // Check the reponse status
-    guard let httpResponse = response as? HTTPURLResponse else {
-      throw PortalRequestsError.couldNotParseHttpResponse
-    }
-    guard httpResponse.statusCode < 300 else {
-      throw self.buildError(httpResponse, withData: data, url: from.absoluteString)
-    }
-
-    return data
+  @discardableResult
+  public func put(_ from: URL, withBearerToken: String? = nil, andPayload: Codable) async throws -> Data {
+    var request = try createBaseRequest(url: from, method: .put, bearerToken: withBearerToken)
+    request.httpBody = try JSONEncoder().encode(andPayload)
+    return try await executeRequest(request)
   }
 
   @discardableResult
   public func post(_ from: URL, withBearerToken: String? = nil, andPayload: Codable? = nil) async throws -> Data {
-    var request = URLRequest(url: from)
-
-    // Add required request headers
-    if let token = withBearerToken {
-      request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-    }
-
-    request.addValue("application/json", forHTTPHeaderField: "Accept")
-    request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-
-    // Make sure we're sending a POST request with the data provided
-    request.httpMethod = "POST"
+    var request = try createBaseRequest(url: from, method: .post, bearerToken: withBearerToken)
 
     if let payload = andPayload {
       request.httpBody = try JSONEncoder().encode(payload)
-      request.addValue("\((String(data: request.httpBody!, encoding: .utf8) ?? "").count)", forHTTPHeaderField: "Content-Length")
+      if let bodyLength = request.httpBody?.count {
+        request.addValue("\(bodyLength)", forHTTPHeaderField: "Content-Length")
+      }
     }
 
-    // Send the request
-    let (data, response) = try await getURLSession().data(for: request)
-
-    // Check the reponse status
-    guard let httpResponse = response as? HTTPURLResponse else {
-      throw PortalRequestsError.couldNotParseHttpResponse
-    }
-    guard httpResponse.statusCode < 300 else {
-      throw self.buildError(httpResponse, withData: data, url: from.absoluteString)
-    }
-
-    return data
+    return try await executeRequest(request)
   }
 
   @discardableResult
@@ -137,24 +66,41 @@ public class PortalRequests: PortalRequestsProtocol {
     andPayload: String,
     usingBoundary: String
   ) async throws -> Data {
-    var request = URLRequest(url: from)
+    var request = try createBaseRequest(url: from, method: .post, bearerToken: withBearerToken)
 
-    // Add required request headers
-    request.addValue("application/json", forHTTPHeaderField: "Accept")
-    request.addValue("Bearer \(withBearerToken)", forHTTPHeaderField: "Authorization")
-    request.addValue("multipart/related; boundary=\(usingBoundary)", forHTTPHeaderField: "Content-Type")
-
-    request.httpMethod = "POST"
+    // Override headers for multipart
+    request.setValue("multipart/related; boundary=\(usingBoundary)", forHTTPHeaderField: "Content-Type")
     request.httpBody = andPayload.data(using: .utf8)
 
-    let (data, response) = try await getURLSession().data(for: request)
+    return try await executeRequest(request)
+  }
 
-    // Check the reponse status
+  // MARK: - Private Methods
+
+  private func createBaseRequest(url: URL, method: HttpMethod, bearerToken: String?) throws -> URLRequest {
+    var request = URLRequest(url: url)
+    request.httpMethod = method.rawValue
+
+    if let token = bearerToken {
+      request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+    }
+
+    request.addValue("application/json", forHTTPHeaderField: "Accept")
+    request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+
+    return request
+  }
+
+  private func executeRequest(_ request: URLRequest) async throws -> Data {
+    let (data, response) = try await urlSession.data(for: request)
+
     guard let httpResponse = response as? HTTPURLResponse else {
       throw PortalRequestsError.couldNotParseHttpResponse
     }
+
     guard httpResponse.statusCode < 300 else {
-      throw self.buildError(httpResponse, withData: data, url: from.absoluteString)
+      let urlString = request.url?.absoluteString ?? "unknown URL"
+      throw buildError(httpResponse, withData: data, url: urlString)
     }
 
     return data
@@ -209,4 +155,12 @@ public enum PortalRequestsError: LocalizedError, Equatable {
     }
     return nil
   }
+}
+
+private enum HttpMethod: String {
+  case get = "GET"
+  case post = "POST"
+  case put = "PUT"
+  case delete = "DELETE"
+  case patch = "PATCH"
 }

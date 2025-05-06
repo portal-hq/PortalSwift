@@ -30,7 +30,6 @@ public class PasskeyStorage: Storage, PortalStorage {
 
   private let decoder = JSONDecoder()
   private let logger = PortalLogger()
-  private var passkeyApi: HttpRequester
   private let requests: PortalRequestsProtocol
   private var sessionId: String?
 
@@ -50,7 +49,6 @@ public class PasskeyStorage: Storage, PortalStorage {
     self.encryption = encryption ?? PortalEncryption()
     self.requests = requests ?? PortalRequests()
     self.webAuthnHost = "https://" + (webAuthnHost ?? "backup.web.portalhq.io")
-    self.passkeyApi = HttpRequester(baseUrl: self.webAuthnHost)
   }
 
   @available(*, deprecated, renamed: "PortalStorage", message: "Please use the new initialization pattern excluding your viewController.")
@@ -67,7 +65,6 @@ public class PasskeyStorage: Storage, PortalStorage {
     self.encryption = encryption ?? PortalEncryption()
     self.requests = requests ?? PortalRequests()
     self.webAuthnHost = "https://" + (webAuthnHost ?? "backup.web.portalhq.io")
-    self.passkeyApi = HttpRequester(baseUrl: self.webAuthnHost)
 
     if let view = viewController {
       self.auth.authenticationAnchor = view.view.window

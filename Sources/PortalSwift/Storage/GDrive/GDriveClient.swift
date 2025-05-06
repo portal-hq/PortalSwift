@@ -86,7 +86,6 @@ public class GDriveClient: GDriveClientProtocol {
 
   private var _clientId: String?
   private var _view: UIViewController?
-  private var api: HttpRequester
   private var baseUrl: String = "https://www.googleapis.com"
   private let boundary: String = "portal-backup-share"
   private let decoder = JSONDecoder()
@@ -102,7 +101,6 @@ public class GDriveClient: GDriveClientProtocol {
     self._clientId = clientId
     self._view = view
 
-    self.api = HttpRequester(baseUrl: self.baseUrl)
     self.folder = folder ?? "_PORTAL_MPC_DO_NOT_DELETE_"
     self.requests = requests ?? PortalRequests()
 
