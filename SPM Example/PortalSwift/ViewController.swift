@@ -2140,48 +2140,47 @@ class ViewController: UIViewController, UITextFieldDelegate {
         throw PortalExampleAppError.portalNotInitialized()
       }
 
-      let swaps = PortalSwaps(apiKey: SWAPS_API_KEY, portal: portal)
+      let swaps: PortalSwapsProtocol = PortalSwaps(apiKey: SWAPS_API_KEY, portal: portal)
+      let customChainId = "eip155:11155111"
 
-      swaps.getSources { result in
-        let source = result
-        print("getSources response:", source)
+      Task {
+        do {
+          let resourcesResult = try await swaps.getSources(forChainId: customChainId)
+          print("getSources response:", resourcesResult)
+        } catch {
+          self.logger.error("ViewController.handleSwaps() - ❌ Unable to get sources with error: \(error)")
+          self.showStatusView(message: "\(self.failureStatus) Unable to get sources with error: \(error)")
+          self.stopLoading()
+        }
 
-        // Delay the second request by 1 second
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-          let quoteArgs = QuoteArgs(
-            buyToken: "0x68194a729c2450ad26072b3d33adacbcef39d574", // USDC on Sepolia
-            sellToken: "ETH",
-            sellAmount: "1000"
-          )
+        let quoteArgs = QuoteArgs(
+          buyToken: "0x68194a729c2450ad26072b3d33adacbcef39d574", // USDC on Sepolia
+          sellToken: "ETH",
+          sellAmount: "1000"
+        )
 
-          let customChainId = "eip155:11155111"
-          swaps.getQuote(args: quoteArgs, forChainId: customChainId) { result in
-            guard let transaction = result.data?.transaction else {
-              self.logger.error("ViewController.handleSwaps() - ❌ Unable to get quote transaction")
-                DispatchQueue.main.async {
-                    self.showStatusView(message: "\(self.failureStatus) Unable to get quote transaction")
-                    self.stopLoading()
-                }
-              return
-            }
+        var quoteResult: Quote
+        do {
+          quoteResult = try await swaps.getQuote(args: quoteArgs, forChainId: customChainId)
 
-            Task {
-              do {
-                let sendTransactionResponse = try await portal.request(customChainId, withMethod: .eth_sendTransaction, andParams: [transaction])
-                print("sendTransactionResponse", sendTransactionResponse)
-                guard let transactionHash = sendTransactionResponse.result as? String else {
-                  throw PortalExampleAppError.invalidResponseTypeForRequest()
-                }
+        } catch {
+          self.logger.error("ViewController.handleSwaps() - ❌ Unable to get quote with error: \(error)")
+          self.showStatusView(message: "\(self.failureStatus) Unable to get quote with error: \(error)")
+          self.stopLoading()
+          return
+        }
 
-                self.logger.info("ViewController.handleSwaps() - ✅ Successfully called get sources + quotes + submitted trx: \(transactionHash)")
-                self.showStatusView(message: "\(self.successStatus) Successfully called get sources + quotes + submitted trx: \(transactionHash)")
-              } catch {
-                print("Error sending transaction", error)
-              }
-            }
+        do {
+          let sendTransactionResponse = try await portal.request(customChainId, withMethod: .eth_sendTransaction, andParams: [quoteResult.transaction])
+          print("sendTransactionResponse", sendTransactionResponse)
+          guard let transactionHash = sendTransactionResponse.result as? String else {
+            throw PortalExampleAppError.invalidResponseTypeForRequest()
           }
 
-          self.stopLoading()
+          self.logger.info("ViewController.handleSwaps() - ✅ Successfully called get sources + quotes + submitted trx: \(transactionHash)")
+          self.showStatusView(message: "\(self.successStatus) Successfully called get sources + quotes + submitted trx: \(transactionHash)")
+        } catch {
+          print("Error sending transaction", error)
         }
       }
     } catch {

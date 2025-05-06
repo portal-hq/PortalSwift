@@ -105,7 +105,12 @@ public struct QuoteArgs: Codable {
   }
 }
 
-public class PortalSwaps {
+public protocol PortalSwapsProtocol {
+  func getQuote(args: QuoteArgs, forChainId: String?) async throws -> Quote
+  func getSources(forChainId: String) async throws -> [String: String]
+}
+
+public class PortalSwaps: PortalSwapsProtocol {
   private var apiKey: String
   private var portal: PortalProtocol
 
@@ -114,6 +119,17 @@ public class PortalSwaps {
     self.portal = portal
   }
 
+  public func getQuote(args: QuoteArgs, forChainId: String? = nil) async throws -> Quote {
+    return try await self.portal.api.getQuote(self.apiKey, withArgs: args, forChainId: forChainId)
+  }
+
+  public func getSources(forChainId: String) async throws -> [String: String] {
+    return try await self.portal.api.getSources(self.apiKey, forChainId: forChainId)
+  }
+
+  // MARK: - Deprecated functions
+
+  @available(*, deprecated, renamed: "getQuote", message: "Please use the async/await implementation of getQuote().")
   public func getQuote(args: QuoteArgs, forChainId: String, completion: @escaping (Result<Quote>) -> Void) {
     do {
       try self.portal.api.getQuote(self.apiKey, args, forChainId) { result in
@@ -124,6 +140,7 @@ public class PortalSwaps {
     }
   }
 
+  @available(*, deprecated, renamed: "getQuote", message: "Please use the async/await implementation of getQuote().")
   public func getQuote(args: QuoteArgs, completion: @escaping (Result<Quote>) -> Void) {
     do {
       try self.portal.api.getQuote(self.apiKey, args, nil) { result in
@@ -134,6 +151,7 @@ public class PortalSwaps {
     }
   }
 
+  @available(*, deprecated, renamed: "getSources", message: "Please use the async/await implementation of getSources().")
   public func getSources(completion: @escaping (Result<[String: String]>) -> Void) {
     do {
       try self.portal.api.getSources(swapsApiKey: self.apiKey) { result in
