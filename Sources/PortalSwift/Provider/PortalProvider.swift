@@ -354,59 +354,60 @@ public class PortalProvider: PortalProviderProtocol {
         method: withMethod,
         params: andParams
       )
-      let data = try await requests.post(
-        url,
-        withBearerToken: rpcUrl.starts(with: "https://api.portalhq.") ? self.apiKey : nil,
-        andPayload: payload
+      let request = PortalAPIRequest(
+        url: url,
+        method: .post,
+        payload: payload,
+        bearerToken: rpcUrl.starts(with: "https://api.portalhq.") ? self.apiKey : nil
       )
 
       switch withMethod {
       case .eth_getBlockByHash, .eth_getBlockByNumber, .eth_getUncleByBlockHashAndIndex, .eth_getUncleByBlockNumberAndIndex:
         if let params = andParams, params.count > 1, let elementAtIndex1 = andParams?[1] as? Bool, elementAtIndex1 {
-          let rpcResponse = try decoder.decode(BlockDataResponseTrue.self, from: data)
+          let rpcResponse = try await requests.execute(request: request, mappingInResponse: BlockDataResponseTrue.self)
           if let rpcError = rpcResponse.error {
             throw PortalRpcError(rpcError)
           }
           return PortalProviderResult(id: forId, result: rpcResponse)
         } else {
-          let rpcResponse = try decoder.decode(BlockDataResponseFalse.self, from: data)
+          let rpcResponse = try await requests.execute(request: request, mappingInResponse: BlockDataResponseFalse.self)
           if let rpcError = rpcResponse.error {
             throw PortalRpcError(rpcError)
           }
           return PortalProviderResult(id: forId, result: rpcResponse)
         }
       case .eth_getTransactionByBlockHashAndIndex, .eth_getTransactionByBlockNumberAndIndex, .eth_getTransactionByHash, .eth_getTransactionReceipt:
-        let rpcResponse = try decoder.decode(EthTransactionResponse.self, from: data)
+        let rpcResponse = try await requests.execute(request: request, mappingInResponse: EthTransactionResponse.self)
         if let rpcError = rpcResponse.error {
           throw PortalRpcError(rpcError)
         }
         return PortalProviderResult(id: forId, result: rpcResponse)
       case .eth_uninstallFilter, .net_listening:
-        let rpcResponse = try decoder.decode(PortalProviderRpcBoolResponse.self, from: data)
+        let rpcResponse = try await requests.execute(request: request, mappingInResponse: PortalProviderRpcBoolResponse.self)
         if let rpcError = rpcResponse.error {
           throw PortalRpcError(rpcError)
         }
         return PortalProviderResult(id: forId, result: rpcResponse)
       case .eth_getFilterChanges, .eth_getFilterLogs, .eth_getLogs:
-        let rpcResponse = try decoder.decode(LogsResponse.self, from: data)
+        let rpcResponse = try await requests.execute(request: request, mappingInResponse: LogsResponse.self)
         if let rpcError = rpcResponse.error {
           throw PortalRpcError(rpcError)
         }
         return PortalProviderResult(id: forId, result: rpcResponse)
       case .sol_getLatestBlockhash:
-        let rpcResponse = try decoder.decode(SolGetLatestBlockhashResponse.self, from: data)
+        let rpcResponse = try await requests.execute(request: request, mappingInResponse: SolGetLatestBlockhashResponse.self)
         if let rpcError = rpcResponse.error {
           throw PortalRpcError(rpcError)
         }
         return PortalProviderResult(id: forId, result: rpcResponse)
       case .sol_getTransaction:
-        let rpcResponse = try decoder.decode(PortalRpcResponse<GetTransactionResult>.self, from: data)
+        let rpcResponse = try await requests.execute(request: request, mappingInResponse: PortalRpcResponse<GetTransactionResult>.self)
         if let rpcError = rpcResponse.error {
           throw PortalRpcError(rpcError)
         }
         return PortalProviderResult(id: forId, result: rpcResponse)
       default:
-        let rpcResponse = try decoder.decode(PortalProviderRpcResponse.self, from: data)
+        let rpcResponse = try await requests.execute(request: request, mappingInResponse: PortalProviderRpcResponse.self)
         if let rpcError = rpcResponse.error {
           throw PortalRpcError(rpcError)
         }

@@ -118,7 +118,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  private let decoder = JSONDecoder()
   private let logger = Logger()
   private let requests = PortalRequests()
 
@@ -196,15 +195,15 @@ class ViewController: UIViewController, UITextFieldDelegate {
         "cipherText": cipherText
       ]
 
-      let resultData = try await requests.post(url, andPayload: payload)
-      guard let result = String(data: resultData, encoding: .utf8) else {
-        self.logger.error("ViewController.backup() - Unable to parse response from cipherText storage request to custodian.")
-        throw PortalExampleAppError.couldNotParseCustodianResponse()
+      struct ResponseType: Decodable {
+        let message: String?
       }
 
+      let request = PortalAPIRequest(url: url, method: .post, payload: payload)
+      let result = try await requests.execute(request: request, mappingInResponse: ResponseType.self)
       try await storageCallback()
 
-      return result
+      return result.message ?? ""
     }
 
     return ""
@@ -257,9 +256,9 @@ class ViewController: UIViewController, UITextFieldDelegate {
       ) else {
         throw URLError(.badURL)
       }
-      let cipherTextData = try await requests.get(cipherTextUrl)
-      let cipherTextResponse = try decoder.decode(CipherTextResult.self, from: cipherTextData)
 
+      let cipherTextRequest = PortalAPIRequest(url: cipherTextUrl)
+      let cipherTextResponse = try await requests.execute(request: cipherTextRequest, mappingInResponse: CipherTextResult.self)
       cipherText = cipherTextResponse.cipherText
 
       guard let organizationBackupShareUrl = URL(
@@ -267,8 +266,9 @@ class ViewController: UIViewController, UITextFieldDelegate {
       ) else {
         throw URLError(.badURL)
       }
-      let organizationBackupShareData = try await requests.get(organizationBackupShareUrl)
-      let organizationBackupShareResponse = try decoder.decode(OrgShareResult.self, from: organizationBackupShareData)
+
+      let organizationBackupShareRequest = PortalAPIRequest(url: organizationBackupShareUrl)
+      let organizationBackupShareResponse = try await requests.execute(request: cipherTextRequest, mappingInResponse: OrgShareResult.self)
 
       organizationShare = organizationBackupShareResponse.orgShare
     } else {
@@ -292,10 +292,9 @@ class ViewController: UIViewController, UITextFieldDelegate {
       guard let prepareEjectUrl = URL(string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/prepare-eject") else {
         throw URLError(.badURL)
       }
-      let prepareEjectData = try await requests.post(prepareEjectUrl, withBearerToken: nil, andPayload: ["walletId": walletId])
-      guard let prepareEjectResponse = String(data: prepareEjectData, encoding: .utf8) else {
-        throw PortalExampleAppError.couldNotParseCustodianResponse("Unable to read prepare eject response.")
-      }
+
+      let prepareEjectRequest = PortalAPIRequest(url: prepareEjectUrl, method: .post, payload: ["walletId": walletId])
+      let prepareEjectResponse = try await requests.execute(request: prepareEjectRequest, mappingInResponse: String.self)
 
       print("Ethereum Wallet ejectable until \(prepareEjectResponse)")
     }
@@ -339,8 +338,9 @@ class ViewController: UIViewController, UITextFieldDelegate {
       ) else {
         throw URLError(.badURL)
       }
-      let cipherTextData = try await requests.get(cipherTextUrl)
-      let cipherTextResponse = try decoder.decode(CipherTextResult.self, from: cipherTextData)
+
+      let cipherTextRequest = PortalAPIRequest(url: cipherTextUrl)
+      let cipherTextResponse = try await requests.execute(request: cipherTextRequest, mappingInResponse: CipherTextResult.self)
 
       cipherText = cipherTextResponse.cipherText
 
@@ -349,8 +349,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
       ) else {
         throw URLError(.badURL)
       }
-      let organizationBackupShareData = try await requests.get(organizationBackupShareUrl)
-      let organizationBackupShareResponse = try decoder.decode(OrgShareResult.self, from: organizationBackupShareData)
+      let organizationBackupShareRequest = PortalAPIRequest(url: organizationBackupShareUrl)
+      let organizationBackupShareResponse = try await requests.execute(request: organizationBackupShareRequest, mappingInResponse: OrgShareResult.self)
 
       organizationShare = organizationBackupShareResponse.orgShare
 
@@ -359,10 +359,9 @@ class ViewController: UIViewController, UITextFieldDelegate {
       ) else {
         throw URLError(.badURL)
       }
-      let organizationSolanaBackupShareData = try? await requests.get(organizationSolanaBackupShareUrl)
-      if let organizationSolanaBackupShareData {
-        let organizationSolanaBackupShareResponse = try decoder.decode(OrgShareResult.self, from: organizationSolanaBackupShareData)
-
+      let organizationSolanaBackupShareRequest = PortalAPIRequest(url: organizationSolanaBackupShareUrl)
+      let organizationSolanaBackupShareResponse = try? await requests.execute(request: organizationSolanaBackupShareRequest, mappingInResponse: OrgShareResult.self)
+      if let organizationSolanaBackupShareResponse {
         organizationSolanaShare = organizationSolanaBackupShareResponse.orgShare
       }
     } else {
@@ -394,18 +393,14 @@ class ViewController: UIViewController, UITextFieldDelegate {
       guard let prepareEjectUrl = URL(string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/prepare-eject") else {
         throw URLError(.badURL)
       }
-      let prepareEjectData = try await requests.post(prepareEjectUrl, withBearerToken: nil, andPayload: ["walletId": walletId])
-      guard let prepareEjectResponse = String(data: prepareEjectData, encoding: .utf8) else {
-        throw PortalExampleAppError.couldNotParseCustodianResponse("Unable to read prepare eject response.")
-      }
+      let prepareEjectRequest = PortalAPIRequest(url: prepareEjectUrl, method: .post, payload: ["walletId": walletId])
+      let prepareEjectResponse = try await requests.execute(request: prepareEjectRequest, mappingInResponse: String.self)
 
       print("Ethereum Wallet ejectable until \(prepareEjectResponse)")
 
       if let walletIdEd25519 {
-        let prepareEjectDataEd25519 = try await requests.post(prepareEjectUrl, withBearerToken: nil, andPayload: ["walletId": walletIdEd25519])
-        guard let prepareEjectResponseEd25519 = String(data: prepareEjectDataEd25519, encoding: .utf8) else {
-          throw PortalExampleAppError.couldNotParseCustodianResponse("Unable to read prepare eject response.")
-        }
+        let prepareEjectEd25519Request = PortalAPIRequest(url: prepareEjectUrl, method: .post, payload: ["walletId": walletIdEd25519])
+        let prepareEjectResponseEd25519 = try await requests.execute(request: prepareEjectEd25519Request, mappingInResponse: String.self)
 
         print("Solana Wallet ejectable until \(prepareEjectResponseEd25519)")
       }
@@ -551,8 +546,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
       guard let url = URL(string: "\(config.custodianServerUrl)/mobile/\(userId)/cipher-text/fetch?backupMethod=\(withBackupMethod.rawValue)") else {
         throw URLError(.badURL)
       }
-      let data = try await requests.get(url)
-      let response = try decoder.decode(CipherTextResult.self, from: data)
+      let request = PortalAPIRequest(url: url)
+      let response = try await requests.execute(request: request, mappingInResponse: CipherTextResult.self)
       cipherText = response.cipherText
     }
 
@@ -777,8 +772,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
       if let url = URL(string: "\(config.custodianServerUrl)/mobile/login") {
         let payload = ["username": username]
 
-        let data = try await requests.post(url, andPayload: payload)
-        let user = try decoder.decode(UserResult.self, from: data)
+        let request = PortalAPIRequest(url: url, method: .post, payload: payload)
+        let user = try await requests.execute(request: request, mappingInResponse: UserResult.self)
 
         self.user = user
         return user
@@ -799,8 +794,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
       if let url = URL(string: "\(config.custodianServerUrl)/mobile/signup") {
         let payload = ["username": username]
 
-        let data = try await requests.post(url, andPayload: payload)
-        let user = try decoder.decode(UserResult.self, from: data)
+        let request = PortalAPIRequest(url: url, method: .post, payload: payload)
+        let user = try await requests.execute(request: request, mappingInResponse: UserResult.self)
 
         self.user = user
         return user
@@ -1436,11 +1431,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
       "cipherText": generateSolanaResult.cipherText
     ]
 
-    let resultData = try await requests.post(url, andPayload: payload)
-    guard let result = String(data: resultData, encoding: .utf8) else {
-      self.logger.error("ViewController.backup() - Unable to parse response from cipherText storage request to custodian.")
-      throw PortalExampleAppError.couldNotParseCustodianResponse()
-    }
+    let request = PortalAPIRequest(url: url, method: .post, payload: payload)
+    let result = try await requests.execute(request: request, mappingInResponse: String.self)
 
     try await generateSolanaResult.storageCallback()
 
@@ -1485,10 +1477,9 @@ class ViewController: UIViewController, UITextFieldDelegate {
       ]
 
     do {
-      let data = try await requests.post(url, andPayload: payload)
-      guard let jsonDictionary = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
-            let txnHash = jsonDictionary["txHash"] as? String
-      else {
+      let request = PortalAPIRequest(url: url, method: .post, payload: payload)
+      let jsonDictionary = try await requests.execute(request: request, mappingInResponse: [String: String].self)
+      guard let txnHash = jsonDictionary["txHash"] else {
         self.logger.error("ViewController.sendSepoliaTransaction() - ❌ Invalid response type for request.")
         throw PortalExampleAppError.invalidResponseTypeForRequest()
       }
@@ -2158,10 +2149,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
           swaps.getQuote(args: quoteArgs, forChainId: customChainId) { result in
             guard let transaction = result.data?.transaction else {
               self.logger.error("ViewController.handleSwaps() - ❌ Unable to get quote transaction")
-                DispatchQueue.main.async {
-                    self.showStatusView(message: "\(self.failureStatus) Unable to get quote transaction")
-                    self.stopLoading()
-                }
+              DispatchQueue.main.async {
+                self.showStatusView(message: "\(self.failureStatus) Unable to get quote transaction")
+                self.stopLoading()
+              }
               return
             }
 
