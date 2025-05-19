@@ -30,4 +30,12 @@ final class PortalRequestsFailMock: PortalRequestsProtocol {
   func postMultiPartData(_: URL, withBearerToken _: String, andPayload _: String, usingBoundary _: String) async throws -> Data {
     throw errorToThrow
   }
+
+  func execute<ResponseType>(request _: any PortalSwift.PortalBaseRequestProtocol, mappingInResponse _: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable {
+    throw errorToThrow
+  }
+
+  func put(_: URL, withBearerToken _: String?, andPayload _: any Codable) async throws -> Data {
+    throw errorToThrow
+  }
 }
