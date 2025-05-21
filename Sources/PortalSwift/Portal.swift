@@ -392,7 +392,7 @@ public final class Portal: PortalProtocol {
   /// - Note: Must be called before using passkey backup or recovery methods.
   ///   The relying party should match your application's domain name for security purposes.
   @available(iOS 16, *)
-  public func setPasskeyConfiguration(relyingParty: String, webAuthnHost: String) throws {
+  public func setPasskeyConfiguration(relyingParty: String, webAuthnHost: String = "backup.web.portalhq.io") throws {
     try self.mpc.setPasskeyConfiguration(relyingParty: relyingParty, webAuthnHost: webAuthnHost)
   }
 
