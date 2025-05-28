@@ -2139,6 +2139,48 @@ public final class Portal: PortalProtocol {
 
     return txHash
   }
+    
+  public func signAndConfirmSolTransaction(_ lamports: UInt64, to: String, withChainId chainId: String) async throws -> String {
+    guard chainId.split(separator: ":").count > 0 else {
+      throw PortalClassError.invalidChainId(chainId)
+    }
+
+    let namespaceString = chainId.split(separator: ":").map(String.init)[0]
+    guard let namespace = PortalNamespace(rawValue: namespaceString),
+          namespace == .solana
+    else {
+      throw PortalClassError.unsupportedChainId(chainId)
+    }
+
+    let sol = (Double(lamports) / 1_000_000_000.0) // convert lamport to solana
+    let solString = String(format: "%.9f", sol)
+
+    let transactionParam = BuildTransactionParam(
+      to: to,
+      token: "NATIVE",
+      amount: solString
+    )
+
+    // Build the transaction using Portal
+    let txDetails = try await buildSolanaTransaction(
+      chainId: chainId,
+      params: transactionParam
+    )
+
+    // Sign the transaction
+    let response = try await request(
+      chainId,
+      withMethod: .sol_signAndConfirmTransaction,
+      andParams: [txDetails.transaction]
+    )
+
+    // Obtain the transaction hash.
+    guard let txHash = response.result as? String else {
+      throw PortalSolError.failedToGetTransactionHash
+    }
+
+    return txHash
+  }
 
   /// Set the chainId on the instance and update MPC and Provider chainId
   /// - Parameters:

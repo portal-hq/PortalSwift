@@ -155,4 +155,6 @@ public protocol PortalProtocol {
   func ethSignTypedData(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
   @available(*, deprecated, message: "Use `request(_:withMethod:andParams:)` with `PortalRequestMethod.personalSign` instead")
   func personalSign(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
+    
+    func signAndConfirmSolTransaction(_ lamports: UInt64, to: String, withChainId chainId: String) async throws -> String
 }

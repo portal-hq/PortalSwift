@@ -2158,10 +2158,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
           swaps.getQuote(args: quoteArgs, forChainId: customChainId) { result in
             guard let transaction = result.data?.transaction else {
               self.logger.error("ViewController.handleSwaps() - ❌ Unable to get quote transaction")
-                DispatchQueue.main.async {
-                    self.showStatusView(message: "\(self.failureStatus) Unable to get quote transaction")
-                    self.stopLoading()
-                }
+              DispatchQueue.main.async {
+                self.showStatusView(message: "\(self.failureStatus) Unable to get quote transaction")
+                self.stopLoading()
+              }
               return
             }
 
@@ -2210,7 +2210,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
           return
         }
 
-        let transactionHash = try await portal.sendSol(
+        let transactionHash = try await portal.signAndConfirmSolTransaction(
           1,
           to: "75ZfLXXsSpycDvHTQuHnGQuYgd2ihb6Bu4viiCCQ7P4H",
           withChainId: chainId
