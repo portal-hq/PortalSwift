@@ -1107,7 +1107,15 @@ public final class Portal: PortalProtocol {
   ///   regardless of their status. Use `doesWalletExist()` to verify if a wallet
   ///   is fully functional with completed shares.
   public func isWalletOnDevice(_ forChainId: String? = nil) async throws -> Bool {
-    let shares = try await keychain.getShares()
+    // get the shares from the keychain
+    let shares: PortalKeychainClientShares
+    do {
+      shares = try await keychain.getShares()
+    } catch {
+      // if failed to get the shares from keychain, then there is no wallet on the device, then it is safe to return false.
+      return false
+    }
+
     // Filter by chainId if one is provided
     if let chainId = forChainId {
       let chainIdParts = chainId.split(separator: ":").map(String.init)
