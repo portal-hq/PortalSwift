@@ -8,6 +8,12 @@ public protocol PortalRequestsProtocol {
     mappingInResponse response: ResponseType.Type
   ) async throws -> ResponseType where ResponseType: Decodable
 
+  /// Preferred method for executing requests and and getting Data response.
+  @discardableResult
+  func execute(
+    request: PortalBaseRequestProtocol
+  ) async throws -> Data
+
   @discardableResult
   func postMultiPartData(
     _ from: URL,

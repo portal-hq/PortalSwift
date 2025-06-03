@@ -161,4 +161,8 @@ public actor MockPortalRequests: PortalRequestsProtocol {
   public func execute<ResponseType>(request _: any PortalBaseRequestProtocol, mappingInResponse _: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable {
     throw PortalRequestsError.couldNotParseHttpResponse
   }
+
+  public func execute(request _: any PortalBaseRequestProtocol) async throws -> Data {
+    throw PortalRequestsError.couldNotParseHttpResponse
+  }
 }
