@@ -91,4 +91,24 @@ final class PortalRequestsSpy: PortalRequestsProtocol {
     postMultiPartDataUsingBoundaryParam = usingBoundary
     return returnData
   }
+
+  // Tracking variables for `execute` function
+  private(set) var executeCallsCount = 0
+  private(set) var executeRequestParam: PortalBaseRequestProtocol?
+
+  func execute<ResponseType>(request: any PortalSwift.PortalBaseRequestProtocol, mappingInResponse _: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable {
+    executeCallsCount += 1
+    executeRequestParam = request
+    return try JSONDecoder().decode(ResponseType.self, from: returnData)
+  }
+
+  // Tracking variables for `execute` function
+  private(set) var executeReturningDataCallsCount = 0
+  private(set) var executeReturningDataRequestParam: PortalBaseRequestProtocol?
+
+  func execute(request: any PortalSwift.PortalBaseRequestProtocol) async throws -> Data {
+    executeReturningDataCallsCount += 1
+    executeReturningDataRequestParam = request
+    return returnData
+  }
 }

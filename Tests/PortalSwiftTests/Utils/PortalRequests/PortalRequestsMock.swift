@@ -37,6 +37,15 @@ final class PortalRequestsMock: PortalRequestsProtocol {
   func postMultiPartData(_: URL, withBearerToken _: String, andPayload _: String, usingBoundary _: String) async throws -> Data {
     return try getReturnValue()
   }
+
+  func execute<ResponseType>(request _: any PortalSwift.PortalBaseRequestProtocol, mappingInResponse _: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable {
+    let data = try getReturnValue()
+    return try JSONDecoder().decode(ResponseType.self, from: data)
+  }
+
+  func execute(request _: any PortalSwift.PortalBaseRequestProtocol) async throws -> Data {
+    return try getReturnValue()
+  }
 }
 
 extension PortalRequestsMock {

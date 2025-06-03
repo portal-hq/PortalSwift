@@ -1,13 +1,52 @@
-import AnyCodable
 import Foundation
 
 public protocol PortalRequestsProtocol {
-  @discardableResult func delete(_ from: URL, withBearerToken: String?) async throws -> Data
+  /// Preferred method for executing requests and mapping responses.
+  @discardableResult
+  func execute<ResponseType>(
+    request: PortalBaseRequestProtocol,
+    mappingInResponse response: ResponseType.Type
+  ) async throws -> ResponseType where ResponseType: Decodable
+
+  /// Preferred method for executing requests and and getting Data response.
+  @discardableResult
+  func execute(
+    request: PortalBaseRequestProtocol
+  ) async throws -> Data
+
+  @discardableResult
+  func postMultiPartData(
+    _ from: URL,
+    withBearerToken: String,
+    andPayload: String,
+    usingBoundary: String
+  ) async throws -> Data
+
+  // MARK: - Deprecated functions
+
+  /// Deprecated: Use `execute(request:mappingInResponse:)` instead.
+  @available(*, deprecated, message: "Use execute(request:mappingInResponse:) instead.")
+  @discardableResult
+  func delete(_ from: URL, withBearerToken: String?) async throws -> Data
+
+  /// Deprecated: Use `execute(request:mappingInResponse:)` instead.
+  @available(*, deprecated, message: "Use execute(request:mappingInResponse:) instead.")
   func get(_ from: URL, withBearerToken: String?) async throws -> Data
-  @discardableResult func patch(_ from: URL, withBearerToken: String?, andPayload: Codable) async throws -> Data
-  @discardableResult func put(_ from: URL, withBearerToken: String?, andPayload: Codable) async throws -> Data
-  @discardableResult func post(_ from: URL, withBearerToken: String?, andPayload: Codable?) async throws -> Data
-  @discardableResult func postMultiPartData(_ from: URL, withBearerToken: String, andPayload: String, usingBoundary: String) async throws -> Data
+
+  /// Deprecated: Use `execute(request:mappingInResponse:)` instead.
+  @available(*, deprecated, message: "Use execute(request:mappingInResponse:) instead.")
+  @discardableResult
+  func patch(_ from: URL, withBearerToken: String?, andPayload: Codable) async throws -> Data
+
+  /// Deprecated: Use `execute(request:mappingInResponse:)` instead.
+  @available(*, deprecated, message: "Use execute(request:mappingInResponse:) instead.")
+  @discardableResult
+  func put(_ from: URL, withBearerToken: String?, andPayload: Codable) async throws -> Data
+
+  /// Deprecated: Use `execute(request:mappingInResponse:)` instead.
+  @available(*, deprecated, message: "Use execute(request:mappingInResponse:) instead.")
+  @discardableResult
+  func post(_ from: URL, withBearerToken: String?, andPayload: Codable?) async throws -> Data
 }
 
 public class PortalRequests: PortalRequestsProtocol {
@@ -21,42 +60,33 @@ public class PortalRequests: PortalRequestsProtocol {
   public init() {}
 
   @discardableResult
-  public func delete(_ from: URL, withBearerToken: String? = nil) async throws -> Data {
-    let request = try createBaseRequest(url: from, method: .delete, bearerToken: withBearerToken)
-    return try await executeRequest(request)
-  }
-
-  public func get(_ from: URL, withBearerToken: String? = nil) async throws -> Data {
-    let request = try createBaseRequest(url: from, method: .get, bearerToken: withBearerToken)
-    return try await executeRequest(request)
-  }
-
-  @discardableResult
-  public func patch(_ from: URL, withBearerToken: String? = nil, andPayload: Codable) async throws -> Data {
-    var request = try createBaseRequest(url: from, method: .patch, bearerToken: withBearerToken)
-    request.httpBody = try JSONEncoder().encode(andPayload)
+  public func execute(request: PortalBaseRequestProtocol) async throws -> Data {
+    // create the request
+    let request = try createBaseRequest(portalRequest: request)
+    // execute the request
     return try await executeRequest(request)
   }
 
   @discardableResult
-  public func put(_ from: URL, withBearerToken: String? = nil, andPayload: Codable) async throws -> Data {
-    var request = try createBaseRequest(url: from, method: .put, bearerToken: withBearerToken)
-    request.httpBody = try JSONEncoder().encode(andPayload)
-    return try await executeRequest(request)
-  }
+  public func execute<ResponseType>(request: PortalBaseRequestProtocol,
+                                    mappingInResponse _: ResponseType.Type)
+    async throws -> ResponseType where ResponseType: Decodable
+  {
+    // create the request
+    let request = try createBaseRequest(portalRequest: request)
+    // execute the request
+    let data = try await executeRequest(request)
 
-  @discardableResult
-  public func post(_ from: URL, withBearerToken: String? = nil, andPayload: Codable? = nil) async throws -> Data {
-    var request = try createBaseRequest(url: from, method: .post, bearerToken: withBearerToken)
-
-    if let payload = andPayload {
-      request.httpBody = try JSONEncoder().encode(payload)
-      if let bodyLength = request.httpBody?.count {
-        request.addValue("\(bodyLength)", forHTTPHeaderField: "Content-Length")
-      }
+    // Special case when ResponseType is Data
+    if ResponseType.self == Data.self {
+      // Force cast is safe here because we've checked the type
+      return data as! ResponseType
     }
 
-    return try await executeRequest(request)
+    // decode the response for all other types other than Data
+    let result = try JSONDecoder().decode(ResponseType.self, from: data)
+    // return the decode object
+    return result
   }
 
   @discardableResult
@@ -71,6 +101,57 @@ public class PortalRequests: PortalRequestsProtocol {
     // Override headers for multipart
     request.setValue("multipart/related; boundary=\(usingBoundary)", forHTTPHeaderField: "Content-Type")
     request.httpBody = andPayload.data(using: .utf8)
+
+    return try await executeRequest(request)
+  }
+
+  // MARK: - Deprecated functions
+
+  /// Deprecated: Use `execute(request:mappingInResponse:)` instead.
+  @available(*, deprecated, message: "Use execute(request:mappingInResponse:) instead.")
+  @discardableResult
+  public func delete(_ from: URL, withBearerToken: String? = nil) async throws -> Data {
+    let request = try createBaseRequest(url: from, method: .delete, bearerToken: withBearerToken)
+    return try await executeRequest(request)
+  }
+
+  /// Deprecated: Use `execute(request:mappingInResponse:)` instead.
+  @available(*, deprecated, message: "Use execute(request:mappingInResponse:) instead.")
+  public func get(_ from: URL, withBearerToken: String? = nil) async throws -> Data {
+    let request = try createBaseRequest(url: from, method: .get, bearerToken: withBearerToken)
+    return try await executeRequest(request)
+  }
+
+  /// Deprecated: Use `execute(request:mappingInResponse:)` instead.
+  @available(*, deprecated, message: "Use execute(request:mappingInResponse:) instead.")
+  @discardableResult
+  public func patch(_ from: URL, withBearerToken: String? = nil, andPayload: Codable) async throws -> Data {
+    var request = try createBaseRequest(url: from, method: .patch, bearerToken: withBearerToken)
+    request.httpBody = try JSONEncoder().encode(andPayload)
+    return try await executeRequest(request)
+  }
+
+  /// Deprecated: Use `execute(request:mappingInResponse:)` instead.
+  @available(*, deprecated, message: "Use execute(request:mappingInResponse:) instead.")
+  @discardableResult
+  public func put(_ from: URL, withBearerToken: String? = nil, andPayload: Codable) async throws -> Data {
+    var request = try createBaseRequest(url: from, method: .put, bearerToken: withBearerToken)
+    request.httpBody = try JSONEncoder().encode(andPayload)
+    return try await executeRequest(request)
+  }
+
+  /// Deprecated: Use `execute(request:mappingInResponse:)` instead.
+  @available(*, deprecated, message: "Use execute(request:mappingInResponse:) instead.")
+  @discardableResult
+  public func post(_ from: URL, withBearerToken: String? = nil, andPayload: Codable? = nil) async throws -> Data {
+    var request = try createBaseRequest(url: from, method: .post, bearerToken: withBearerToken)
+
+    if let payload = andPayload {
+      request.httpBody = try JSONEncoder().encode(payload)
+      if let bodyLength = request.httpBody?.count {
+        request.addValue("\(bodyLength)", forHTTPHeaderField: "Content-Length")
+      }
+    }
 
     return try await executeRequest(request)
   }
@@ -91,16 +172,34 @@ public class PortalRequests: PortalRequestsProtocol {
     return request
   }
 
-  private func executeRequest(_ request: URLRequest) async throws -> Data {
-    let (data, response) = try await urlSession.data(for: request)
+  private func createBaseRequest(portalRequest: PortalBaseRequestProtocol) throws -> URLRequest {
+    var request = URLRequest(url: portalRequest.url)
+    request.httpMethod = portalRequest.method.rawValue
 
+    for (key, value) in portalRequest.headers {
+      request.addValue(value, forHTTPHeaderField: key)
+    }
+
+    if let payload = portalRequest.payload {
+      request.httpBody = try JSONEncoder().encode(payload)
+      if let bodyLength = request.httpBody?.count {
+        request.addValue("\(bodyLength)", forHTTPHeaderField: "Content-Length")
+      }
+    }
+
+    return request
+  }
+
+  private func executeRequest(_ request: URLRequest) async throws -> Data {
+    let (data, response) = try await getURLSession().data(for: request)
+
+    // Check the reponse status
     guard let httpResponse = response as? HTTPURLResponse else {
       throw PortalRequestsError.couldNotParseHttpResponse
     }
 
     guard httpResponse.statusCode < 300 else {
-      let urlString = request.url?.absoluteString ?? "unknown URL"
-      throw buildError(httpResponse, withData: data, url: urlString)
+      throw self.buildError(httpResponse, withData: data, url: request.url?.absoluteString ?? "")
     }
 
     return data
@@ -155,12 +254,4 @@ public enum PortalRequestsError: LocalizedError, Equatable {
     }
     return nil
   }
-}
-
-private enum HttpMethod: String {
-  case get = "GET"
-  case post = "POST"
-  case put = "PUT"
-  case delete = "DELETE"
-  case patch = "PATCH"
 }
