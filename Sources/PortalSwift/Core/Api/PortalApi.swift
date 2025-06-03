@@ -525,6 +525,10 @@ public class PortalApi: PortalApiProtocol {
     return try await self.requests.patch(url, withBearerToken: withBearerToken, andPayload: andPayload)
   }
 
+  private func put(_ url: URL, withBearerToken: String? = nil, andPayload: Codable) async throws -> Data {
+    return try await self.requests.put(url, withBearerToken: withBearerToken, andPayload: andPayload)
+  }
+
   private func post(_ url: URL, withBearerToken: String? = nil, andPayload: Codable? = nil) async throws -> Data {
     return try await self.requests.post(url, withBearerToken: withBearerToken, andPayload: andPayload)
   }

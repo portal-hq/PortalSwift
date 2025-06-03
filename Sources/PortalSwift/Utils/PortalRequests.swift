@@ -44,6 +44,13 @@ public protocol PortalRequestsProtocol {
 }
 
 public class PortalRequests: PortalRequestsProtocol {
+  private lazy var urlSession: URLSession = {
+    let configuration = URLSessionConfiguration.default
+    configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+    configuration.urlCache = URLCache(memoryCapacity: 0, diskCapacity: 0, diskPath: nil)
+    return URLSession(configuration: configuration)
+  }()
+
   public init() {}
 
   @discardableResult
@@ -83,14 +90,10 @@ public class PortalRequests: PortalRequestsProtocol {
     andPayload: String,
     usingBoundary: String
   ) async throws -> Data {
-    var request = URLRequest(url: from)
+    var request = try createBaseRequest(url: from, method: .post, bearerToken: withBearerToken)
 
-    // Add required request headers
-    request.addValue("application/json", forHTTPHeaderField: "Accept")
-    request.addValue("Bearer \(withBearerToken)", forHTTPHeaderField: "Authorization")
-    request.addValue("multipart/related; boundary=\(usingBoundary)", forHTTPHeaderField: "Content-Type")
-
-    request.httpMethod = "POST"
+    // Override headers for multipart
+    request.setValue("multipart/related; boundary=\(usingBoundary)", forHTTPHeaderField: "Content-Type")
     request.httpBody = andPayload.data(using: .utf8)
 
     return try await executeRequest(request)
@@ -188,6 +191,7 @@ public class PortalRequests: PortalRequestsProtocol {
     guard let httpResponse = response as? HTTPURLResponse else {
       throw PortalRequestsError.couldNotParseHttpResponse
     }
+
     guard httpResponse.statusCode < 300 else {
       throw self.buildError(httpResponse, withData: data, url: request.url?.absoluteString ?? "")
     }
