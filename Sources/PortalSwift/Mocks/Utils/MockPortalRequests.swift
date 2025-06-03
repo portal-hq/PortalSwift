@@ -192,4 +192,8 @@ public actor MockPortalRequests: PortalRequestsProtocol {
 
     return try JSONDecoder().decode(ResponseType.self, from: data)
   }
+
+  public func execute(request _: any PortalBaseRequestProtocol) async throws -> Data {
+    throw PortalRequestsError.couldNotParseHttpResponse
+  }
 }

@@ -23,6 +23,10 @@ final class PortalRequestsFailMock: PortalRequestsProtocol {
     throw errorToThrow
   }
 
+  func put(_: URL, withBearerToken _: String?, andPayload _: any Codable) async throws -> Data {
+    throw errorToThrow
+  }
+
   func post(_: URL, withBearerToken _: String?, andPayload _: (any Codable)?) async throws -> Data {
     throw errorToThrow
   }
@@ -35,7 +39,7 @@ final class PortalRequestsFailMock: PortalRequestsProtocol {
     throw errorToThrow
   }
 
-  func put(_: URL, withBearerToken _: String?, andPayload _: any Codable) async throws -> Data {
+  func execute(request _: any PortalSwift.PortalBaseRequestProtocol) async throws -> Data {
     throw errorToThrow
   }
 }
