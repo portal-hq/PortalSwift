@@ -102,17 +102,13 @@ final class PortalRequestsSpy: PortalRequestsProtocol {
     return try JSONDecoder().decode(ResponseType.self, from: returnData)
   }
 
-  // Tracking variables for `put` function
-  private(set) var putCallsCount = 0
-  private(set) var putFromParam: URL?
-  private(set) var putWithBearerTokenParam: String?
-  private(set) var putAndPayloadParam: Codable?
+  // Tracking variables for `execute` function
+  private(set) var executeReturningDataCallsCount = 0
+  private(set) var executeReturningDataRequestParam: PortalBaseRequestProtocol?
 
-  func put(_ from: URL, withBearerToken: String?, andPayload: any Codable) async throws -> Data {
-    putCallsCount += 1
-    putFromParam = from
-    putWithBearerTokenParam = withBearerToken
-    putAndPayloadParam = andPayload
+  func execute(request: any PortalSwift.PortalBaseRequestProtocol) async throws -> Data {
+    executeReturningDataCallsCount += 1
+    executeReturningDataRequestParam = request
     return returnData
   }
 }

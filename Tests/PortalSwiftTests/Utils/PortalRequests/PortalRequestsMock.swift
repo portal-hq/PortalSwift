@@ -43,7 +43,7 @@ final class PortalRequestsMock: PortalRequestsProtocol {
     return try JSONDecoder().decode(ResponseType.self, from: data)
   }
 
-  func put(_: URL, withBearerToken _: String?, andPayload _: any Codable) async throws -> Data {
+  func execute(request _: any PortalSwift.PortalBaseRequestProtocol) async throws -> Data {
     return try getReturnValue()
   }
 }
