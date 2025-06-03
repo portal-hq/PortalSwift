@@ -236,7 +236,7 @@ public class PasskeyStorage: Storage, PortalStorage {
       let payload = ["encryptionKey": withValue, "assertion": assertion, "sessionId": sessionId, "relyingParty": relyingParty]
       let request = PortalAPIRequest(url: url, method: .post, payload: payload, bearerToken: apiKey)
 
-      try await requests.execute(request: request, mappingInResponse: Data.self) // revisit the response type
+      try await requests.execute(request: request, mappingInResponse: Data.self)
 
       return true
     }
@@ -253,7 +253,7 @@ public class PasskeyStorage: Storage, PortalStorage {
       let payload = ["attestation": attestation, "sessionId": sessionId, "encryptionKey": withPrivateKey, "relyingParty": relyingParty]
       let request = PortalAPIRequest(url: url, method: .post, payload: payload, bearerToken: apiKey)
 
-      try await requests.execute(request: request, mappingInResponse: Data.self) // revisit the response type
+      try await requests.execute(request: request, mappingInResponse: Data.self)
 
       return true
     }
