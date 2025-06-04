@@ -12,6 +12,13 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
+## 6.1.0 - 2025-06-05
+- Added default web auth host to the function `setPasskeyConfiguration`.
+- Added `PortalRequests.execute()` that receives a request object and decoding type, returning a concrete type.
+- Deprecated `PortalSwaps.getQuote` with completion handler in favor of the async/await version `PortalSwaps.getQuote`.
+- Deprecated `PortalSwaps.getSources` with completion handler in favor of the async/await version `PortalSwaps.getSources`.
+- Fixed an issue in `Portal.isWalletOnDevice()` so it no longer throws an exception when there is no share stored in the keychain.
+
 ## 6.0.0 - 2025-04-25
 
 - Fixed the build issue using Xcode 16.3
@@ -20,6 +27,7 @@ Possible Types of changes include:
 - Deprecated `Portal.request(_:_:completion)` to use the `async/await` `Portal.request()` instead.
 - Added `Portal.updateChainId()` that updates the currently active chain ID used by the provider.
 - Deprecated ETH helper functions `ethEstimateGas`, `ethGasPrice`, `ethGetBalance`, `ethSendTransaction`, `ethSign`, `ethSignTransaction`, `ethSignTypedDataV3`, `ethSignTypedData`, and `personalSign` to use `Portal.request(_:withMethod:andParams:)` instead.
+
 ## 5.0.1 - 2025-03-19
 
 - Added Raw Sign function `Portal.rawSign()`
