@@ -90,7 +90,7 @@ extension PasskeyStorageTests {
     await fulfillment(of: [expectation], timeout: 5.0)
   }
 
-  func test_read_willCall_requestPost_twice() async throws {
+  func test_read_willCall_executeRequest_twice() async throws {
     // given
     let portalRequestsSpy = MockPortalRequests()
     initPasskeyStorage(requests: portalRequestsSpy)
@@ -98,10 +98,10 @@ extension PasskeyStorageTests {
     // and given
     _ = try await storage?.read()
 
-    let postCallsCount = await portalRequestsSpy.postCallsCount
+    let executeCallsCount = await portalRequestsSpy.executeCallsCount
 
     // then
-    XCTAssertEqual(postCallsCount, 2)
+    XCTAssertEqual(executeCallsCount, 2)
   }
 }
 
@@ -117,7 +117,7 @@ extension PasskeyStorageTests {
     await fulfillment(of: [expectation], timeout: 5.0)
   }
 
-  func test_write_willCall_requestGet_onlyOnce() async throws {
+  func test_write_willCall_executeRequest_onlyOnce() async throws {
     // given
     let portalRequestsSpy = MockPortalRequests()
     initPasskeyStorage(requests: portalRequestsSpy)
@@ -126,8 +126,10 @@ extension PasskeyStorageTests {
     _ = try await storage?.write("")
 
     let getCallsCount = await portalRequestsSpy.getCallsCount
+    let executeCallsCount = await portalRequestsSpy.executeCallsCount
 
     // then
+    XCTAssertEqual(executeCallsCount, 3)
     XCTAssertEqual(getCallsCount, 1)
   }
 }
@@ -164,7 +166,7 @@ extension PasskeyStorageTests {
 
 @available(iOS 16, *)
 extension PasskeyStorageTests {
-  func test_beginLogin_willCall_requestPost_onlyOnce() async throws {
+  func test_beginLogin_willCall_executeRequest_onlyOnce() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     portalRequestsSpy.returnData = try JSONEncoder().encode(MockConstants.mockPasskeyAuthenticationOptions)
@@ -174,10 +176,10 @@ extension PasskeyStorageTests {
     _ = try await storage?.beginLogin()
 
     // then
-    XCTAssertEqual(portalRequestsSpy.postCallsCount, 1)
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
   }
 
-  func test_beginLogin_willCall_requestPost_passingCorrectUrlPathAndPayload() async throws {
+  func test_beginLogin_willCall_executeRequest_passingCorrectUrlPathAndPayloadAndMethod() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     portalRequestsSpy.returnData = try JSONEncoder().encode(MockConstants.mockPasskeyAuthenticationOptions)
@@ -187,8 +189,9 @@ extension PasskeyStorageTests {
     _ = try await storage?.beginLogin()
 
     // then
-    XCTAssertEqual(portalRequestsSpy.postFromParam?.path(), "/passkeys/begin-login")
-    XCTAssertEqual(portalRequestsSpy.postAndPayloadParam as? [String: String], ["relyingParty": "portalhq.io"])
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.method, .post)
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.url.path(), "/passkeys/begin-login")
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.payload as? [String: String], ["relyingParty": "portalhq.io"])
   }
 }
 
@@ -196,7 +199,7 @@ extension PasskeyStorageTests {
 
 @available(iOS 16, *)
 extension PasskeyStorageTests {
-  func test_beginRegistration_willCall_requestPost_onlyOnce() async throws {
+  func test_beginRegistration_willCall_executeRequest_onlyOnce() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     portalRequestsSpy.returnData = try JSONEncoder().encode(MockConstants.mockPasskeyRegistrationOptions)
@@ -206,10 +209,10 @@ extension PasskeyStorageTests {
     _ = try await storage?.beginRegistration()
 
     // then
-    XCTAssertEqual(portalRequestsSpy.postCallsCount, 1)
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
   }
 
-  func test_beginRegistration_willCall_requestPost_passingCorrectUrlPathAndPayload() async throws {
+  func test_beginRegistration_willCall_executeRequest_passingCorrectUrlPathAndPayloadAndMethod() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     portalRequestsSpy.returnData = try JSONEncoder().encode(MockConstants.mockPasskeyRegistrationOptions)
@@ -219,8 +222,9 @@ extension PasskeyStorageTests {
     _ = try await storage?.beginRegistration()
 
     // then
-    XCTAssertEqual(portalRequestsSpy.postFromParam?.path(), "/passkeys/begin-registration")
-    XCTAssertEqual(portalRequestsSpy.postAndPayloadParam as? [String: String], ["relyingParty": "portalhq.io"])
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.method, .post)
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.url.path(), "/passkeys/begin-registration")
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.payload as? [String: String], ["relyingParty": "portalhq.io"])
   }
 }
 
@@ -228,7 +232,7 @@ extension PasskeyStorageTests {
 
 @available(iOS 16, *)
 extension PasskeyStorageTests {
-  func test_getPasskeyStatus_willCall_requestGet_onlyOnce() async throws {
+  func test_getPasskeyStatus_willCall_executeRequest_onlyOnce() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     portalRequestsSpy.returnData = try JSONEncoder().encode(MockConstants.mockPasskeyStatus)
@@ -238,10 +242,10 @@ extension PasskeyStorageTests {
     _ = try await storage?.getPasskeyStatus()
 
     // then
-    XCTAssertEqual(portalRequestsSpy.getCallsCount, 1)
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
   }
 
-  func test_getPasskeyStatus_willCall_requestGet_passingCorrectUrlPath() async throws {
+  func test_getPasskeyStatus_willCall_exeuteRequest_passingCorrectUrlPathAndMethod() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     portalRequestsSpy.returnData = try JSONEncoder().encode(MockConstants.mockPasskeyStatus)
@@ -251,7 +255,8 @@ extension PasskeyStorageTests {
     _ = try await storage?.getPasskeyStatus()
 
     // then
-    XCTAssertEqual(portalRequestsSpy.getFromParam?.path(), "/passkeys/status")
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.method, .get)
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.url.path(), "/passkeys/status")
   }
 }
 

@@ -98,7 +98,7 @@ extension PortalApiTests {
     await fulfillment(of: [expectation], timeout: 5.0)
   }
 
-  func test_eject_willCall_requestPost_onlyOnce() async throws {
+  func test_eject_willCall_execureRequest_onlyOnce() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -107,11 +107,11 @@ extension PortalApiTests {
     _ = try await api?.eject()
 
     // then
-    XCTAssertEqual(portalRequestsSpy.postCallsCount, 1)
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
   }
 
   @available(iOS 16.0, *)
-  func test_eject_willCall_requestPost_passingCorrectParams() async throws {
+  func test_eject_willCall_executeRequest_passingCorrectParamsAndMethod() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -120,14 +120,15 @@ extension PortalApiTests {
     _ = try await api?.eject()
 
     // then
-    XCTAssertEqual(portalRequestsSpy.postFromParam?.path() ?? "", "/api/v3/clients/me/eject")
-    XCTAssertEqual(portalRequestsSpy.postAndPayloadParam as? [String: String] ?? [:], [
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.method, .post)
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.url.path() ?? "", "/api/v3/clients/me/eject")
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.payload as? [String: String] ?? [:], [
       "clientPlatform": "NATIVE_IOS",
       "clientPlatformVersion": SDK_VERSION
     ])
   }
 
-  func test_eject_willThrowCorrectError_whenRequestPostThrowError() async throws {
+  func test_eject_willThrowCorrectError_whenExecuteRequestThrowError() async throws {
     // given
     let portalRequestsFailMock = PortalRequestsFailMock()
     initPortalApiWith(requests: portalRequestsFailMock)
@@ -157,7 +158,7 @@ extension PortalApiTests {
     await fulfillment(of: [expectation], timeout: 5.0)
   }
 
-  func test_getBalances_willCall_requestGet_onlyOnce() async throws {
+  func test_getBalances_willCall_executeRequest_onlyOnce() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -168,10 +169,10 @@ extension PortalApiTests {
     } catch {}
 
     // then
-    XCTAssertEqual(portalRequestsSpy.getCallsCount, 1)
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
   }
 
-  func test_getBalances_willThrowCorrectError_whenRequestPostThrowError() async throws {
+  func test_getBalances_willThrowCorrectError_whenExecuteRequestThrowError() async throws {
     // given
     let portalRequestsFailMock = PortalRequestsFailMock()
     initPortalApiWith(requests: portalRequestsFailMock)
@@ -210,7 +211,7 @@ extension PortalApiTests {
     wait(for: [expectation], timeout: 5.0)
   }
 
-  func test_getClient_willCall_requestGet_onlyOnce() async throws {
+  func test_getClient_willCall_executeRequest_onlyOnce() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -221,10 +222,10 @@ extension PortalApiTests {
     } catch {}
 
     // then
-    XCTAssertEqual(portalRequestsSpy.getCallsCount, 1)
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
   }
 
-  func test_getClient_willThrowCorrectError_whenRequestPostThrowError() async throws {
+  func test_getClient_willThrowCorrectError_whenExecuteRequestThrowError() async throws {
     // given
     let portalRequestsFailMock = PortalRequestsFailMock()
     initPortalApiWith(requests: portalRequestsFailMock)
@@ -258,7 +259,7 @@ extension PortalApiTests {
     XCTAssertEqual(clientCipherText, dummyCipherText)
   }
 
-  func test_getClientCipherText_willCall_requestGet_onlyOnce() async throws {
+  func test_getClientCipherText_willCall_executeRequest_onlyOnce() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -269,10 +270,10 @@ extension PortalApiTests {
     } catch {}
 
     // then
-    XCTAssertEqual(portalRequestsSpy.getCallsCount, 1)
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
   }
 
-  func test_getClientCipherText_willThrowCorrectError_whenRequestPostThrowError() async throws {
+  func test_getClientCipherText_willThrowCorrectError_whenExecuteRequestThrowError() async throws {
     // given
     let portalRequestsFailMock = PortalRequestsFailMock()
     initPortalApiWith(requests: portalRequestsFailMock)
@@ -291,7 +292,7 @@ extension PortalApiTests {
 // MARK: - getQuote tests
 
 extension PortalApiTests {
-  func test_getQuote_willCall_requestPost_onlyOnce() async throws {
+  func test_getQuote_willCall_executeRequest_onlyOnce() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -302,7 +303,7 @@ extension PortalApiTests {
     } catch {}
 
     // then
-    XCTAssertEqual(portalRequestsSpy.postCallsCount, 1)
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
   }
 
   func test_getQuote() async throws {
@@ -320,7 +321,7 @@ extension PortalApiTests {
     } catch {}
   }
 
-  func test_getQuote_willCall_requestPost_passingCorrectUrlPath() async throws {
+  func test_getQuote_willCall_executeRequest_passingCorrectUrlPathAndMethod() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -331,8 +332,9 @@ extension PortalApiTests {
     } catch {}
 
     // then
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.method, .post)
     if #available(iOS 16.0, *) {
-      XCTAssertEqual(portalRequestsSpy.postFromParam?.path(), "/api/v3/swaps/quote")
+      XCTAssertEqual(portalRequestsSpy.executeRequestParam?.url.path(), "/api/v3/swaps/quote")
     }
   }
 }
@@ -410,7 +412,7 @@ extension PortalApiTests {
     await fulfillment(of: [expectation], timeout: 5.0)
   }
 
-  func test_getSharePairs_willCall_requestGet_onlyOnce() async throws {
+  func test_getSharePairs_willCall_executeRequest_onlyOnce() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -421,7 +423,7 @@ extension PortalApiTests {
     } catch {}
 
     // then
-    XCTAssertEqual(portalRequestsSpy.getCallsCount, 1)
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
   }
 
   func test_getSharePairs() async throws {
@@ -439,7 +441,7 @@ extension PortalApiTests {
     } catch {}
   }
 
-  func test_getSharePairs_willCall_requestGet_passingCorrectUrlPathAndQuery() async throws {
+  func test_getSharePairs_willCall_executeRequest_passingCorrectUrlPathAndQueryAndMethod() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -452,8 +454,9 @@ extension PortalApiTests {
     } catch {}
 
     // then
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.method, .get)
     if #available(iOS 16.0, *) {
-      XCTAssertEqual(portalRequestsSpy.getFromParam?.path(), "/api/v3/clients/me/wallets/\(walletId)/\(type)-share-pairs")
+      XCTAssertEqual(portalRequestsSpy.executeRequestParam?.url.path() ?? "", "/api/v3/clients/me/wallets/\(walletId)/\(type)-share-pairs")
     }
   }
 }
@@ -461,7 +464,7 @@ extension PortalApiTests {
 // MARK: - getSources tests
 
 extension PortalApiTests {
-  func test_getSources_willCall_requestPost_onlyOnce() async throws {
+  func test_getSources_willCall_executeRequest_onlyOnce() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -472,7 +475,7 @@ extension PortalApiTests {
     } catch {}
 
     // then
-    XCTAssertEqual(portalRequestsSpy.postCallsCount, 1)
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
   }
 
   func test_getSources() async throws {
@@ -490,7 +493,7 @@ extension PortalApiTests {
     } catch {}
   }
 
-  func test_getSources_willCall_requestPost_passingCorrectUrlPathAndQuery() async throws {
+  func test_getSources_willCall_execureRequest_passingCorrectUrlPathAndQueryAndMethod() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -501,8 +504,9 @@ extension PortalApiTests {
     } catch {}
 
     // then
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.method, .post)
     if #available(iOS 16.0, *) {
-      XCTAssertEqual(portalRequestsSpy.postFromParam?.path(), "/api/v3/swaps/sources")
+      XCTAssertEqual(portalRequestsSpy.executeRequestParam?.url.path(), "/api/v3/swaps/sources")
     }
   }
 }
@@ -519,7 +523,7 @@ extension PortalApiTests {
     await fulfillment(of: [expectation], timeout: 5.0)
   }
 
-  func test_fund_willCall_requestPost_onlyOnce() async throws {
+  func test_fund_willCall_executeRequest_onlyOnce() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     let fundResponse = MockConstants.mockFundResponse
@@ -530,11 +534,11 @@ extension PortalApiTests {
     _ = try await api?.fund(chainId: "", params: FundParams(amount: "", token: ""))
 
     // then
-    XCTAssertEqual(portalRequestsSpy.postCallsCount, 1)
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
   }
 
   @available(iOS 16.0, *)
-  func test_fund_willCall_requestPost_passingCorrectParams() async throws {
+  func test_fund_willCall_executeRequest_passingCorrectParamsAndMethod() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     let fundResponse = MockConstants.mockFundResponse
@@ -550,11 +554,12 @@ extension PortalApiTests {
     _ = try await api?.fund(chainId: chainId, params: FundParams(amount: amount, token: token))
 
     // then
-    XCTAssertEqual(portalRequestsSpy.postFromParam?.path() ?? "", "/api/v3/clients/me/fund")
-    XCTAssertEqual(portalRequestsSpy.postAndPayloadParam as? FundRequestBody, FundRequestBody(amount: amount, chainId: chainId, token: token))
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.url.path() ?? "", "/api/v3/clients/me/fund")
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.method, .post)
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.payload as? FundRequestBody, FundRequestBody(amount: amount, chainId: chainId, token: token))
   }
 
-  func test_fund_willThrowCorrectError_whenRequestPostThrowError() async throws {
+  func test_fund_willThrowCorrectError_whenExecuteRequestThrowError() async throws {
     // given
     let portalRequestsFailMock = PortalRequestsFailMock()
     initPortalApiWith(requests: portalRequestsFailMock)
@@ -584,7 +589,7 @@ extension PortalApiTests {
     await fulfillment(of: [expectation], timeout: 5.0)
   }
 
-  func test_getTransactions_willCall_requestGet_onlyOnce() async throws {
+  func test_getTransactions_willCall_executeRequest_onlyOnce() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -595,7 +600,7 @@ extension PortalApiTests {
     } catch {}
 
     // then
-    XCTAssertEqual(portalRequestsSpy.getCallsCount, 1)
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
   }
 
   func test_getTransactions() async throws {
@@ -613,7 +618,7 @@ extension PortalApiTests {
     } catch {}
   }
 
-  func test_getTransactions_willCall_requestGet_passingCorrectUrlPathAndQuery() async throws {
+  func test_getTransactions_willCall_executeRequest_passingCorrectUrlPathAndQueryAndMethod() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -629,8 +634,9 @@ extension PortalApiTests {
 
     // then
     if #available(iOS 16.0, *) {
-      XCTAssertEqual(portalRequestsSpy.getFromParam?.path(), "/api/v3/clients/me/transactions")
-      XCTAssertEqual(portalRequestsSpy.getFromParam?.query(), "chainId=\(chainId)&limit=\(limit)&offset=\(offset)&order=\(order)")
+      XCTAssertEqual(portalRequestsSpy.executeRequestParam?.url.path(), "/api/v3/clients/me/transactions")
+      XCTAssertEqual(portalRequestsSpy.executeRequestParam?.url.query(), "chainId=\(chainId)&limit=\(limit)&offset=\(offset)&order=\(order)")
+      XCTAssertEqual(portalRequestsSpy.executeRequestParam?.method, .get)
     }
   }
 }
@@ -638,7 +644,7 @@ extension PortalApiTests {
 // MARK: - identify tests
 
 extension PortalApiTests {
-  func test_identify_willCall_requestPost_onlyOnce() async throws {
+  func test_identify_willCall_executeRequest_onlyOnce() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -649,7 +655,7 @@ extension PortalApiTests {
     } catch {}
 
     // then
-    XCTAssertEqual(portalRequestsSpy.postCallsCount, 1)
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
   }
 
   func test_identify() async throws {
@@ -668,7 +674,7 @@ extension PortalApiTests {
     } catch {}
   }
 
-  func test_identify_willCall_requestPost_passingCorrectUrlPath() async throws {
+  func test_identify_willCall_executeRequest_passingCorrectUrlPathAndMethod() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -679,8 +685,9 @@ extension PortalApiTests {
     } catch {}
 
     // then
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.method, .post)
     if #available(iOS 16.0, *) {
-      XCTAssertEqual(portalRequestsSpy.postFromParam?.path(), "/api/v1/analytics/identify")
+      XCTAssertEqual(portalRequestsSpy.executeRequestParam?.url.path(), "/api/v1/analytics/identify")
     }
   }
 }
@@ -688,7 +695,7 @@ extension PortalApiTests {
 // MARK: - prepareEject tests
 
 extension PortalApiTests {
-  func test_prepareEject_willCall_requestPost_onlyOnce() async throws {
+  func test_prepareEject_willCall_executeRequest_onlyOnce() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -699,7 +706,7 @@ extension PortalApiTests {
     } catch {}
 
     // then
-    XCTAssertEqual(portalRequestsSpy.postCallsCount, 1)
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
   }
 
   func test_prepareEject() async throws {
@@ -719,7 +726,7 @@ extension PortalApiTests {
     } catch {}
   }
 
-  func test_prepareEject_willCall_requestPost_passingCorrectUrlPathAndPayload() async throws {
+  func test_prepareEject_willCall_executeRequest_passingCorrectUrlPathAndPayloadAndMethod() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     let backupMethod: BackupMethods = .iCloud
@@ -733,8 +740,9 @@ extension PortalApiTests {
 
     // then
     if #available(iOS 16.0, *) {
-      XCTAssertEqual(portalRequestsSpy.postFromParam?.path(), "/api/v3/clients/me/wallets/\(walletId)/prepare-eject")
-      XCTAssertEqual(portalRequestsSpy.postAndPayloadParam as? [String: String], ["backupMethod": backupMethod.rawValue])
+      XCTAssertEqual(portalRequestsSpy.executeRequestParam?.url.path(), "/api/v3/clients/me/wallets/\(walletId)/prepare-eject")
+      XCTAssertEqual(portalRequestsSpy.executeRequestParam?.method, .post)
+      XCTAssertEqual(portalRequestsSpy.executeRequestParam?.payload as? [String: String], ["backupMethod": backupMethod.rawValue])
     }
   }
 }
@@ -742,7 +750,7 @@ extension PortalApiTests {
 // MARK: - refreshClient tests
 
 extension PortalApiTests {
-  func test_refreshClient_willCall_requestGet_onlyOnce() async throws {
+  func test_refreshClient_willCall_executeRequest_onlyOnce() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -753,7 +761,7 @@ extension PortalApiTests {
     } catch {}
 
     // then
-    XCTAssertEqual(portalRequestsSpy.getCallsCount, 1)
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
   }
 }
 
@@ -769,7 +777,7 @@ extension PortalApiTests {
     await fulfillment(of: [expectation], timeout: 5.0)
   }
 
-  func test_simulateTransaction_willCall_requestPost_onlyOnce() async throws {
+  func test_simulateTransaction_willCall_executeRequest_onlyOnce() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -780,7 +788,7 @@ extension PortalApiTests {
     } catch {}
 
     // then
-    XCTAssertEqual(portalRequestsSpy.postCallsCount, 1)
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
   }
 
   func test_simulateTransaction() async throws {
@@ -798,7 +806,7 @@ extension PortalApiTests {
     } catch {}
   }
 
-  func test_simulateTransaction_willCall_requestPost_passingCorrectUrlPathAndPayload() async throws {
+  func test_simulateTransaction_willCall_executeRequest_passingCorrectUrlPathAndPayloadAndMethod() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -810,9 +818,10 @@ extension PortalApiTests {
     } catch {}
 
     // then
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.method, .post)
     if #available(iOS 16.0, *) {
-      XCTAssertEqual(portalRequestsSpy.postFromParam?.path(), "/api/v3/clients/me/simulate-transaction")
-      XCTAssertEqual(portalRequestsSpy.postFromParam?.query(), "chainId=\(chainId)")
+      XCTAssertEqual(portalRequestsSpy.executeRequestParam?.url.path(), "/api/v3/clients/me/simulate-transaction")
+      XCTAssertEqual(portalRequestsSpy.executeRequestParam?.url.query(), "chainId=\(chainId)")
     }
   }
 }
@@ -820,7 +829,7 @@ extension PortalApiTests {
 // MARK: - storeClientCipherText tests
 
 extension PortalApiTests {
-  func test_storeClientCipherText_willCall_requestPatch_onlyOnce() async throws {
+  func test_storeClientCipherText_willCall_executeRequest_onlyOnce() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -831,7 +840,7 @@ extension PortalApiTests {
     } catch {}
 
     // then
-    XCTAssertEqual(portalRequestsSpy.patchCallsCount, 1)
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
   }
 
   func test_storeClientCipherText() async throws {
@@ -849,7 +858,7 @@ extension PortalApiTests {
     } catch {}
   }
 
-  func test_storeClientCipherText_willCall_requestPatch_passingCorrectUrlPathAndPayload() async throws {
+  func test_storeClientCipherText_willCall_executeRequest_passingCorrectUrlPathAndPayloadAndMethod() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -863,8 +872,9 @@ extension PortalApiTests {
 
     // then
     if #available(iOS 16.0, *) {
-      XCTAssertEqual(portalRequestsSpy.patchFromParam?.path(), "/api/v3/clients/me/backup-share-pairs/\(backupSharePairId)")
-      XCTAssertEqual((portalRequestsSpy.patchAndPayloadParam as? AnyCodable)?.value as? [String: String], ["clientCipherText": cipherText])
+      XCTAssertEqual(portalRequestsSpy.executeRequestParam?.url.path() ?? "", "/api/v3/clients/me/backup-share-pairs/\(backupSharePairId)")
+      XCTAssertEqual(portalRequestsSpy.executeRequestParam?.method, .patch)
+      XCTAssertEqual((portalRequestsSpy.executeRequestParam?.payload as? AnyCodable)?.value as? [String: String], ["clientCipherText": cipherText])
     }
   }
 }
@@ -872,7 +882,7 @@ extension PortalApiTests {
 // MARK: - track tests
 
 extension PortalApiTests {
-  func test_track_willCall_requestPost_onlyOnce() async throws {
+  func test_track_willCall_executeRequest_onlyOnce() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -883,7 +893,7 @@ extension PortalApiTests {
     } catch {}
 
     // then
-    XCTAssertEqual(portalRequestsSpy.postCallsCount, 1)
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
   }
 
   func test_track() async throws {
@@ -901,7 +911,7 @@ extension PortalApiTests {
     } catch {}
   }
 
-  func test_track_willCall_requestPost_passingCorrectUrlPathAndPayload() async throws {
+  func test_track_willCall_executeRequest_passingCorrectUrlPathAndPayloadAndMethod() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -915,9 +925,10 @@ extension PortalApiTests {
 
     // then
     if #available(iOS 16.0, *) {
-      XCTAssertEqual(portalRequestsSpy.postFromParam?.path(), "/api/v1/analytics/track")
-      XCTAssertEqual((portalRequestsSpy.postAndPayloadParam as? MetricsTrackRequest)?.event, event)
-      XCTAssertEqual((portalRequestsSpy.postAndPayloadParam as? MetricsTrackRequest)?.properties as? [String: AnyCodable], properties)
+      XCTAssertEqual(portalRequestsSpy.executeRequestParam?.url.path(), "/api/v1/analytics/track")
+      XCTAssertEqual(portalRequestsSpy.executeRequestParam?.method, .post)
+      XCTAssertEqual((portalRequestsSpy.executeRequestParam?.payload as? MetricsTrackRequest)?.event, event)
+      XCTAssertEqual((portalRequestsSpy.executeRequestParam?.payload as? MetricsTrackRequest)?.properties as? [String: AnyCodable], properties)
     }
   }
 }
@@ -925,7 +936,7 @@ extension PortalApiTests {
 // MARK: - updateShareStatus tests
 
 extension PortalApiTests {
-  func test_updateShareStatus_willCall_requestPatch_onlyOnce() async throws {
+  func test_updateShareStatus_willCall_executeRequest_onlyOnce() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -936,10 +947,10 @@ extension PortalApiTests {
     } catch {}
 
     // then
-    XCTAssertEqual(portalRequestsSpy.patchCallsCount, 1)
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
   }
 
-  func test_updateShareStatus_willCall_requestPatch_passingCorrectUrlPathAndPayload_forSigningType() async throws {
+  func test_updateShareStatus_willCall_executeRequest_passingCorrectUrlPathAndPayloadAndMethod_forSigningType() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -954,13 +965,14 @@ extension PortalApiTests {
 
     // then
     if #available(iOS 16.0, *) {
-      XCTAssertEqual(portalRequestsSpy.patchFromParam?.path(), "/api/v3/clients/me/\(signingType.rawValue)-share-pairs/")
-      XCTAssertEqual((portalRequestsSpy.patchAndPayloadParam as? ShareStatusUpdateRequest)?.signingSharePairIds, sharePairIds)
-      XCTAssertEqual((portalRequestsSpy.patchAndPayloadParam as? ShareStatusUpdateRequest)?.status, status)
+      XCTAssertEqual(portalRequestsSpy.executeRequestParam?.url.path(), "/api/v3/clients/me/\(signingType.rawValue)-share-pairs/")
+      XCTAssertEqual(portalRequestsSpy.executeRequestParam?.method, .patch)
+      XCTAssertEqual((portalRequestsSpy.executeRequestParam?.payload as? ShareStatusUpdateRequest)?.signingSharePairIds, sharePairIds)
+      XCTAssertEqual((portalRequestsSpy.executeRequestParam?.payload as? ShareStatusUpdateRequest)?.status, status)
     }
   }
 
-  func test_updateShareStatus_willCall_requestPatch_passingCorrectUrlPathAndPayload_forBackupType() async throws {
+  func test_updateShareStatus_willCall_executeRequest_passingCorrectUrlPathAndPayloadAndMethod_forBackupType() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -975,9 +987,9 @@ extension PortalApiTests {
 
     // then
     if #available(iOS 16.0, *) {
-      XCTAssertEqual(portalRequestsSpy.patchFromParam?.path(), "/api/v3/clients/me/\(backupType.rawValue)-share-pairs/")
-      XCTAssertEqual((portalRequestsSpy.patchAndPayloadParam as? ShareStatusUpdateRequest)?.backupSharePairIds, sharePairIds)
-      XCTAssertEqual((portalRequestsSpy.patchAndPayloadParam as? ShareStatusUpdateRequest)?.status, status)
+      XCTAssertEqual(portalRequestsSpy.executeRequestParam?.url.path(), "/api/v3/clients/me/\(backupType.rawValue)-share-pairs/")
+      XCTAssertEqual((portalRequestsSpy.executeRequestParam?.payload as? ShareStatusUpdateRequest)?.backupSharePairIds, sharePairIds)
+      XCTAssertEqual((portalRequestsSpy.executeRequestParam?.payload as? ShareStatusUpdateRequest)?.status, status)
     }
   }
 }
@@ -985,7 +997,7 @@ extension PortalApiTests {
 // MARK: - getWalletCapabilities tests
 
 extension PortalApiTests {
-  func test_getWalletCapabilities_willCall_requestPost_onlyOnce() async throws {
+  func test_getWalletCapabilities_willCall_executeRequest_onlyOnce() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -996,7 +1008,7 @@ extension PortalApiTests {
     } catch {}
 
     // then
-    XCTAssertEqual(portalRequestsSpy.getCallsCount, 1)
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
   }
 
   func test_getWalletCapabilities() async throws {
@@ -1014,7 +1026,7 @@ extension PortalApiTests {
     } catch {}
   }
 
-  func test_getWalletCapabilities_willCall_requestGet_passingCorrectUrlPath() async throws {
+  func test_getWalletCapabilities_willCall_executeRequest_passingCorrectUrlPathAndMethod() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initPortalApiWith(requests: portalRequestsSpy)
@@ -1026,7 +1038,8 @@ extension PortalApiTests {
 
     // then
     if #available(iOS 16.0, *) {
-      XCTAssertEqual(portalRequestsSpy.getFromParam?.path(), "/api/v3/clients/me/wallet_getCapabilities")
+      XCTAssertEqual(portalRequestsSpy.executeRequestParam?.url.path(), "/api/v3/clients/me/wallet_getCapabilities")
+      XCTAssertEqual(portalRequestsSpy.executeRequestParam?.method, .get)
     }
   }
 }
@@ -1047,7 +1060,7 @@ extension PortalApiTests {
     await fulfillment(of: [expectation], timeout: 5.0)
   }
 
-  func test_buildEip155Transaction_willCall_requestPost_onlyOnce() async throws {
+  func test_buildEip155Transaction_willCall_executeRequest_onlyOnce() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     let buildEip115TransactionResponse = BuildEip115TransactionResponse.stub()
@@ -1058,11 +1071,11 @@ extension PortalApiTests {
     _ = try await api?.buildEip155Transaction(chainId: "eip155:11155111", params: BuildTransactionParam.stub())
 
     // then
-    XCTAssertEqual(portalRequestsSpy.postCallsCount, 1)
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
   }
 
   @available(iOS 16.0, *)
-  func test_buildEip155Transaction_willCall_requestPost_passingCorrectParams() async throws {
+  func test_buildEip155Transaction_willCall_executeRequest_passingCorrectParams() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     let buildEip115TransactionResponse = BuildEip115TransactionResponse.stub()
@@ -1077,11 +1090,12 @@ extension PortalApiTests {
     _ = try await api?.buildEip155Transaction(chainId: chainId, params: buildTransactionParams)
 
     // then
-    XCTAssertEqual(portalRequestsSpy.postFromParam?.path() ?? "", "/api/v3/clients/me/chains/\(chainId)/assets/send/build-transaction")
-    XCTAssertEqual(portalRequestsSpy.postAndPayloadParam as? [String: String], buildTransactionParams.toDictionary())
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.url.path() ?? "", "/api/v3/clients/me/chains/\(chainId)/assets/send/build-transaction")
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.method, .post)
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.payload as? [String: String], buildTransactionParams.toDictionary())
   }
 
-  func test_buildEip155Transaction_willThrowCorrectError_whenRequestPostThrowError() async throws {
+  func test_buildEip155Transaction_willThrowCorrectError_whenExecuteRequestThrowError() async throws {
     // given
     let portalRequestsFailMock = PortalRequestsFailMock()
     initPortalApiWith(requests: portalRequestsFailMock)
@@ -1126,7 +1140,7 @@ extension PortalApiTests {
     await fulfillment(of: [expectation], timeout: 5.0)
   }
 
-  func test_buildSolanaTransaction_willCall_requestPost_onlyOnce() async throws {
+  func test_buildSolanaTransaction_willCall_executeRequest_onlyOnce() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     let mockBuildSolanaTransactionResponse = BuildSolanaTransactionResponse.stub()
@@ -1137,11 +1151,11 @@ extension PortalApiTests {
     _ = try await api?.buildSolanaTransaction(chainId: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1", params: BuildTransactionParam.stub())
 
     // then
-    XCTAssertEqual(portalRequestsSpy.postCallsCount, 1)
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
   }
 
   @available(iOS 16.0, *)
-  func test_buildSolanaTransaction_willCall_requestPost_passingCorrectParams() async throws {
+  func test_buildSolanaTransaction_willCall_executeRequest_passingCorrectParams() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     let mockBuildSolanaTransactionResponse = BuildSolanaTransactionResponse.stub()
@@ -1156,11 +1170,12 @@ extension PortalApiTests {
     _ = try await api?.buildSolanaTransaction(chainId: chainId, params: buildTransactionParams)
 
     // then
-    XCTAssertEqual(portalRequestsSpy.postFromParam?.path() ?? "", "/api/v3/clients/me/chains/\(chainId)/assets/send/build-transaction")
-    XCTAssertEqual(portalRequestsSpy.postAndPayloadParam as? [String: String], buildTransactionParams.toDictionary())
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.url.path() ?? "", "/api/v3/clients/me/chains/\(chainId)/assets/send/build-transaction")
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.method, .post)
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.payload as? [String: String], buildTransactionParams.toDictionary())
   }
 
-  func test_buildSolanaTransaction_willThrowCorrectError_whenRequestPostThrowError() async throws {
+  func test_buildSolanaTransaction_willThrowCorrectError_whenExecuteRequestThrowError() async throws {
     // given
     let portalRequestsFailMock = PortalRequestsFailMock()
     initPortalApiWith(requests: portalRequestsFailMock)
@@ -1205,7 +1220,7 @@ extension PortalApiTests {
     await fulfillment(of: [expectation], timeout: 5.0)
   }
 
-  func test_getNftAssets_willCall_requestGet_onlyOnce() async throws {
+  func test_getNftAssets_willCall_executeRequest_onlyOnce() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     let mockGetNftAssetsResponse = [NftAsset.stub()]
@@ -1216,11 +1231,11 @@ extension PortalApiTests {
     _ = try await api?.getNftAssets("solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1")
 
     // then
-    XCTAssertEqual(portalRequestsSpy.getCallsCount, 1)
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
   }
 
   @available(iOS 16.0, *)
-  func test_getNftAssets_willCall_requestGet_passingCorrectParams() async throws {
+  func test_getNftAssets_willCall_executeRequest_passingCorrectParams() async throws {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     let mockGetNftAssetsResponse = [NftAsset.stub()]
@@ -1234,10 +1249,11 @@ extension PortalApiTests {
     _ = try await api?.getNftAssets("solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1")
 
     // then
-    XCTAssertEqual(portalRequestsSpy.getFromParam?.path() ?? "", "/api/v3/clients/me/chains/\(chainId)/assets/nfts")
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.url.path() ?? "", "/api/v3/clients/me/chains/\(chainId)/assets/nfts")
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.method, .get)
   }
 
-  func test_getNftAssets_willThrowCorrectError_whenRequestPostThrowError() async throws {
+  func test_getNftAssets_willThrowCorrectError_whenExecuteRequestThrowError() async throws {
     // given
     let portalRequestsFailMock = PortalRequestsFailMock()
     initPortalApiWith(requests: portalRequestsFailMock)

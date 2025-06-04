@@ -99,6 +99,11 @@ final class PortalRequestsSpy: PortalRequestsProtocol {
   func execute<ResponseType>(request: any PortalSwift.PortalBaseRequestProtocol, mappingInResponse _: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable {
     executeCallsCount += 1
     executeRequestParam = request
+
+    if ResponseType.self == Data.self {
+      return returnData as! ResponseType
+    }
+
     return try JSONDecoder().decode(ResponseType.self, from: returnData)
   }
 

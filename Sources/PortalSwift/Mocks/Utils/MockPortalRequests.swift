@@ -158,8 +158,39 @@ public actor MockPortalRequests: PortalRequestsProtocol {
     return gDriveFileData
   }
 
-  public func execute<ResponseType>(request _: any PortalBaseRequestProtocol, mappingInResponse _: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable {
-    throw PortalRequestsError.couldNotParseHttpResponse
+  // Track call count and parameters
+  public private(set) var executeCallsCount = 0
+  public private(set) var executeRequestParam: (any PortalBaseRequestProtocol)?
+  public private(set) var mappingInResponseParam: Decodable.Type?
+
+  public func execute<ResponseType>(
+    request: any PortalBaseRequestProtocol,
+    mappingInResponse: ResponseType.Type
+  ) async throws -> ResponseType where ResponseType: Decodable {
+    executeCallsCount += 1
+    executeRequestParam = request
+    mappingInResponseParam = mappingInResponse
+
+    let data: Data
+
+    switch request.method {
+    case .get:
+      data = try await get(request.url, withBearerToken: nil)
+    case .post:
+      data = try await post(request.url, withBearerToken: nil, andPayload: request.payload)
+    case .put:
+      data = try await put(request.url, withBearerToken: nil, andPayload: request.payload!)
+    case .delete:
+      data = try await delete(request.url, withBearerToken: nil)
+    case .patch:
+      data = try await patch(request.url, withBearerToken: nil, andPayload: request.payload!)
+    }
+
+    if ResponseType.self == Data.self {
+      return data as! ResponseType
+    }
+
+    return try JSONDecoder().decode(ResponseType.self, from: data)
   }
 
   public func execute(request _: any PortalBaseRequestProtocol) async throws -> Data {
