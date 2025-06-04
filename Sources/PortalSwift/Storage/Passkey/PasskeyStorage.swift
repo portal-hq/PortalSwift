@@ -87,7 +87,7 @@ public class PasskeyStorage: Storage, PortalStorage {
     }
 
     if let url = URL(string: "\(webAuthnHost)/passkeys/begin-login") {
-      let request = PortalAPIRequest(url: url, method: .post, payload: ["relyingParty": relyingParty])
+      let request = PortalAPIRequest(url: url, method: .post, payload: ["relyingParty": relyingParty], bearerToken: apiKey)
       let result = try await requests.execute(request: request, mappingInResponse: WebAuthnAuthenticationOption.self)
 
       self.sessionId = result.sessionId
