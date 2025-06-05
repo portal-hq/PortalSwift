@@ -2190,23 +2190,25 @@ class ViewController: UIViewController, UITextFieldDelegate {
     Task {
       do {
         self.startLoading()
+          
+          
+          guard let portal = self.portal else {
+            self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Portal or address not initialized/found")
+            self.stopLoading()
+            return
+          }
 
-        // Setup and address retrieval
-        let chainId = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1" // Devnet
-        // let chainId = "solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z" // Testnet
-        guard let portal = self.portal else {
-          self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Portal or address not initialized/found")
-          self.stopLoading()
-          return
-        }
+          // Setup and address retrieval
+          let chainId = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1" // Devnet
+//           let chainId = "solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z" // Testnet
 
-        let transactionHash = try await portal.sendSol(
-          1,
-          to: "75ZfLXXsSpycDvHTQuHnGQuYgd2ihb6Bu4viiCCQ7P4H",
-          withChainId: chainId
-        )
+          let params = SendAssetParams(to: "75ZfLXXsSpycDvHTQuHnGQuYgd2ihb6Bu4viiCCQ7P4H", amount: "0.001", token: "NATIVE")
 
-        self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Successfully signed message: SOL: \(transactionHash)")
+          let response = try await portal.sendAsset(chainId: chainId, params: params)
+
+            self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Successfully sent transaction")
+            self.showStatusView(message: "\(self.successStatus) Successfully sent transaction")
+            self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Transaction Hash: \(response.txHash )")
 
         self.stopLoading()
       } catch {
