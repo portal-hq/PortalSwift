@@ -28,6 +28,8 @@ Designed for performance and security, Portal SDK is optimized for iOS apps requ
   s.dependency "Starscream", "~> 4.0.7"
   s.dependency "AnyCodable-FlightSchool", "~> 0.6.7"
   
+  s.libraries = 'resolv'
+
   # Framework search paths for dependencies
   s.xcconfig = {
     'HEADER_SEARCH_PATHS' => '$(PODS_ROOT)/',
