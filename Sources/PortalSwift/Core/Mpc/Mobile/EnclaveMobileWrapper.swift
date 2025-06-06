@@ -57,8 +57,8 @@ class EnclaveMobileWrapper: MPCMobile {
     ]
 
     do {
-      let data = try await requests.post(url, withBearerToken: apiKey, andPayload: requestBody)
-      let enclaveResponse = try JSONDecoder().decode(EnclaveSignResponse.self, from: data)
+      let request = PortalAPIRequest(url: url, method: .post, payload: requestBody, bearerToken: apiKey)
+      let enclaveResponse = try await requests.execute(request: request, mappingInResponse: EnclaveSignResponse.self)
       return encodeSuccessResult(data: enclaveResponse.data)
     } catch {
       if let portalRequestError = error as? PortalRequestsError {

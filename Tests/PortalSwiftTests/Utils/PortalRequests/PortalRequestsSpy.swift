@@ -49,6 +49,19 @@ final class PortalRequestsSpy: PortalRequestsProtocol {
     return returnData
   }
 
+  // Tracking variables for `put` function
+  private(set) var putCallsCount = 0
+  private(set) var putFromParam: URL?
+  private(set) var putWithBearerTokenParam: String?
+  private(set) var putAndPayloadParam: Codable?
+  func put(_ from: URL, withBearerToken: String?, andPayload: any Codable) async throws -> Data {
+    putCallsCount += 1
+    putFromParam = from
+    putWithBearerTokenParam = withBearerToken
+    putAndPayloadParam = andPayload
+    return returnData
+  }
+
   // Tracking variables for `post` function
   var postCallsCount = 0
   private(set) var postFromParam: URL?
@@ -76,6 +89,31 @@ final class PortalRequestsSpy: PortalRequestsProtocol {
     postMultiPartDataWithBearerTokenParam = withBearerToken
     postMultiPartDataAndPayloadParam = andPayload
     postMultiPartDataUsingBoundaryParam = usingBoundary
+    return returnData
+  }
+
+  // Tracking variables for `execute` function
+  private(set) var executeCallsCount = 0
+  private(set) var executeRequestParam: PortalBaseRequestProtocol?
+
+  func execute<ResponseType>(request: any PortalSwift.PortalBaseRequestProtocol, mappingInResponse _: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable {
+    executeCallsCount += 1
+    executeRequestParam = request
+
+    if ResponseType.self == Data.self {
+      return returnData as! ResponseType
+    }
+
+    return try JSONDecoder().decode(ResponseType.self, from: returnData)
+  }
+
+  // Tracking variables for `execute` function
+  private(set) var executeReturningDataCallsCount = 0
+  private(set) var executeReturningDataRequestParam: PortalBaseRequestProtocol?
+
+  func execute(request: any PortalSwift.PortalBaseRequestProtocol) async throws -> Data {
+    executeReturningDataCallsCount += 1
+    executeReturningDataRequestParam = request
     return returnData
   }
 }

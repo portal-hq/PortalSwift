@@ -57,7 +57,7 @@ extension GDriveClientTests {
     }
   }
 
-  func test_delete_willCall_requestDelete_onlyOnce() async throws {
+  func test_delete_willCall_executeRequest_onlyOnce() async throws {
     // given
     let portalRequestSpy = PortalRequestsSpy()
     initGDriveClient(requests: portalRequestSpy)
@@ -66,11 +66,11 @@ extension GDriveClientTests {
     _ = try await client?.delete("")
 
     // then
-    XCTAssertEqual(portalRequestSpy.deleteCallsCount, 1)
+    XCTAssertEqual(portalRequestSpy.executeCallsCount, 1)
   }
 
   @available(iOS 16.0, *)
-  func test_delete_willCall_requestDelete_passingCorrectUrlPath() async throws {
+  func test_delete_willCall_executeRequest_passingCorrectUrlPathAndMethod() async throws {
     // given
     let portalRequestSpy = PortalRequestsSpy()
     initGDriveClient(requests: portalRequestSpy)
@@ -80,7 +80,8 @@ extension GDriveClientTests {
     _ = try await client?.delete(id)
 
     // then
-    XCTAssertEqual(portalRequestSpy.deleteFromParam?.path(), "/drive/v3/files/\(id)")
+    XCTAssertEqual(portalRequestSpy.executeRequestParam?.method, .delete)
+    XCTAssertEqual(portalRequestSpy.executeRequestParam?.url.path(), "/drive/v3/files/\(id)")
   }
 }
 
@@ -108,7 +109,7 @@ extension GDriveClientTests {
     }
   }
 
-  func test_getIdForFilename_willCall_requestGet_onlyOnce() async throws {
+  func test_getIdForFilename_willCall_executeRequest_onlyOnce() async throws {
     // given
     let portalRequestSpy = PortalRequestsSpy()
     initGDriveClient(requests: portalRequestSpy)
@@ -126,11 +127,11 @@ extension GDriveClientTests {
     _ = try await client?.getIdForFilename("", useAppDataFolder: false)
 
     // then
-    XCTAssertEqual(portalRequestSpy.getCallsCount, 1)
+    XCTAssertEqual(portalRequestSpy.executeCallsCount, 1)
   }
 
   @available(iOS 16.0, *)
-  func test_getIdForFilename_willCall_requestGet_passingCorrectUrlPath() async throws {
+  func test_getIdForFilename_willCall_executeRequest_passingCorrectUrlPathAndMethod() async throws {
     // given
     let portalRequestSpy = PortalRequestsSpy()
     initGDriveClient(requests: portalRequestSpy)
@@ -150,12 +151,13 @@ extension GDriveClientTests {
     _ = try await client?.getIdForFilename(fileName, useAppDataFolder: false)
 
     // then
-    XCTAssertEqual(portalRequestSpy.getFromParam?.path(), "/drive/v3/files")
-    XCTAssertEqual(portalRequestSpy.getFromParam?.query(), "corpora=user&q=\(query)&orderBy=modifiedTime%20desc&pageSize=1")
+    XCTAssertEqual(portalRequestSpy.executeRequestParam?.method, .get)
+    XCTAssertEqual(portalRequestSpy.executeRequestParam?.url.path(), "/drive/v3/files")
+    XCTAssertEqual(portalRequestSpy.executeRequestParam?.url.query(), "corpora=user&q=\(query)&orderBy=modifiedTime%20desc&pageSize=1")
   }
 
   @available(iOS 16.0, *)
-  func test_getIdForFilename_forAppDataFolder_willCall_requestGet_passingCorrectUrlPath() async throws {
+  func test_getIdForFilename_forAppDataFolder_willCall_executeRequest_passingCorrectUrlPathAndMethod() async throws {
     // given
     let portalRequestSpy = PortalRequestsSpy()
     initGDriveClient(requests: portalRequestSpy)
@@ -175,8 +177,9 @@ extension GDriveClientTests {
     _ = try await client?.getIdForFilename(fileName, useAppDataFolder: true)
 
     // then
-    XCTAssertEqual(portalRequestSpy.getFromParam?.path(), "/drive/v3/files")
-    XCTAssertEqual(portalRequestSpy.getFromParam?.query(), "spaces=appDataFolder&q=\(query)&orderBy=modifiedTime%20desc&pageSize=1")
+    XCTAssertEqual(portalRequestSpy.executeRequestParam?.method, .get)
+    XCTAssertEqual(portalRequestSpy.executeRequestParam?.url.path(), "/drive/v3/files")
+    XCTAssertEqual(portalRequestSpy.executeRequestParam?.url.query(), "spaces=appDataFolder&q=\(query)&orderBy=modifiedTime%20desc&pageSize=1")
   }
 
   func test_getIdForFilename_willThrowCorrectError_whenThereIsNoFileFound() async throws {
@@ -227,7 +230,7 @@ extension GDriveClientTests {
     }
   }
 
-  func test_read_willCall_requestGet_onlyOnce() async throws {
+  func test_read_willCall_executeRequest_onlyOnce() async throws {
     // given
     let portalRequestSpy = PortalRequestsSpy()
     initGDriveClient(requests: portalRequestSpy)
@@ -240,11 +243,11 @@ extension GDriveClientTests {
     _ = try await client?.read("")
 
     // then
-    XCTAssertEqual(portalRequestSpy.getCallsCount, 1)
+    XCTAssertEqual(portalRequestSpy.executeCallsCount, 1)
   }
 
   @available(iOS 16.0, *)
-  func test_read_willCall_requestGet_passingCorrectUrlPath() async throws {
+  func test_read_willCall_executeRequest_passingCorrectUrlPathAndMethod() async throws {
     // given
     let portalRequestSpy = PortalRequestsSpy()
     initGDriveClient(requests: portalRequestSpy)
@@ -259,8 +262,9 @@ extension GDriveClientTests {
     _ = try await client?.read(fileName)
 
     // then
-    XCTAssertEqual(portalRequestSpy.getFromParam?.path(), "/drive/v3/files/\(fileName)")
-    XCTAssertEqual(portalRequestSpy.getFromParam?.query(), "alt=media")
+    XCTAssertEqual(portalRequestSpy.executeRequestParam?.method, .get)
+    XCTAssertEqual(portalRequestSpy.executeRequestParam?.url.path(), "/drive/v3/files/\(fileName)")
+    XCTAssertEqual(portalRequestSpy.executeRequestParam?.url.query(), "alt=media")
   }
 
   func test_read_willThrowCorrectError_whenUnableToReadFileContent() async throws {
@@ -338,7 +342,7 @@ extension GDriveClientTests {
     }
   }
 
-  func test_createFolder_willCall_requestPost_onlyOnce() async throws {
+  func test_createFolder_willCall_executeRequest_onlyOnce() async throws {
     // given
     let portalRequestSpy = PortalRequestsSpy()
     initGDriveClient(requests: portalRequestSpy)
@@ -352,11 +356,11 @@ extension GDriveClientTests {
     _ = try await client?.createFolder()
 
     // then
-    XCTAssertEqual(portalRequestSpy.postCallsCount, 1)
+    XCTAssertEqual(portalRequestSpy.executeCallsCount, 1)
   }
 
   @available(iOS 16.0, *)
-  func test_createFolder_willCall_requestPost_passingCorrectUrlPathAndPayload() async throws {
+  func test_createFolder_willCall_executeRequest_passingCorrectUrlPathAndPayloadAndMethod() async throws {
     // given
     let portalRequestSpy = PortalRequestsSpy()
     initGDriveClient(requests: portalRequestSpy)
@@ -376,9 +380,10 @@ extension GDriveClientTests {
     _ = try await client?.createFolder()
 
     // then
-    XCTAssertEqual(portalRequestSpy.postFromParam?.path(), "/drive/v3/files")
-    XCTAssertEqual(portalRequestSpy.postFromParam?.query(), "ignoreDefaultVisibility=true")
-    XCTAssertEqual(portalRequestSpy.postAndPayloadParam as? GDriveFolderMetadata, payload)
+    XCTAssertEqual(portalRequestSpy.executeRequestParam?.method, .post)
+    XCTAssertEqual(portalRequestSpy.executeRequestParam?.url.path(), "/drive/v3/files")
+    XCTAssertEqual(portalRequestSpy.executeRequestParam?.url.query(), "ignoreDefaultVisibility=true")
+    XCTAssertEqual(portalRequestSpy.executeRequestParam?.payload as? GDriveFolderMetadata, payload)
   }
 }
 
@@ -398,7 +403,7 @@ extension GDriveClientTests {
     }
   }
 
-  func test_getOrCreateFolder_willCall_requestGet_onlyOnce() async throws {
+  func test_getOrCreateFolder_willCall_executeRequest_onlyOnce() async throws {
     // given
     let portalRequestSpy = PortalRequestsSpy()
     initGDriveClient(requests: portalRequestSpy)
@@ -416,11 +421,11 @@ extension GDriveClientTests {
     _ = try await client?.getOrCreateFolder()
 
     // then
-    XCTAssertEqual(portalRequestSpy.getCallsCount, 1)
+    XCTAssertEqual(portalRequestSpy.executeCallsCount, 1)
   }
 
   @available(iOS 16.0, *)
-  func test_getOrCreateFolder_willCall_requestGet_passingCorrectUrlPath() async throws {
+  func test_getOrCreateFolder_willCall_executeRequest_passingCorrectUrlPath() async throws {
     // given
     let portalRequestSpy = PortalRequestsSpy()
     initGDriveClient(requests: portalRequestSpy)
@@ -439,8 +444,8 @@ extension GDriveClientTests {
     _ = try await client?.getOrCreateFolder()
 
     // then
-    XCTAssertEqual(portalRequestSpy.getFromParam?.path(), "/drive/v3/files")
-    XCTAssertEqual(portalRequestSpy.getFromParam?.query(), "q=\(query)")
+    XCTAssertEqual(portalRequestSpy.executeRequestParam?.url.path(), "/drive/v3/files")
+    XCTAssertEqual(portalRequestSpy.executeRequestParam?.url.query(), "q=\(query)")
   }
 
   @available(iOS 16.0, *)
@@ -468,9 +473,9 @@ extension GDriveClientTests {
     _ = try? await client?.getOrCreateFolder()
 
     // then
-    XCTAssertEqual(portalRequestSpy.postFromParam?.path(), "/drive/v3/files")
-    XCTAssertEqual(portalRequestSpy.postFromParam?.query(), "ignoreDefaultVisibility=true")
-    XCTAssertEqual(portalRequestSpy.postAndPayloadParam as? GDriveFolderMetadata, payload)
+    XCTAssertEqual(portalRequestSpy.executeRequestParam?.url.path(), "/drive/v3/files")
+    XCTAssertEqual(portalRequestSpy.executeRequestParam?.url.query(), "ignoreDefaultVisibility=true")
+    XCTAssertEqual(portalRequestSpy.executeRequestParam?.payload as? GDriveFolderMetadata, payload)
   }
 }
 
@@ -512,7 +517,7 @@ extension GDriveClientTests {
   }
 
   @available(iOS 16.0, *)
-  func test_writeFile_willCall_requestPost_passingCorrectUrlPathAndPayload() async throws {
+  func test_writeFile_willCall_requestPostMultiPart_passingCorrectUrlPathAndPayload() async throws {
     // given
     let portalRequestSpy = PortalRequestsSpy()
     initGDriveClient(requests: portalRequestSpy)

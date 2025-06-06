@@ -30,7 +30,6 @@ public class PasskeyStorage: Storage, PortalStorage {
 
   private let decoder = JSONDecoder()
   private let logger = PortalLogger()
-  private var passkeyApi: HttpRequester
   private let requests: PortalRequestsProtocol
   private var sessionId: String?
 
@@ -50,7 +49,6 @@ public class PasskeyStorage: Storage, PortalStorage {
     self.encryption = encryption ?? PortalEncryption()
     self.requests = requests ?? PortalRequests()
     self.webAuthnHost = "https://" + (webAuthnHost ?? "backup.web.portalhq.io")
-    self.passkeyApi = HttpRequester(baseUrl: self.webAuthnHost)
   }
 
   @available(*, deprecated, renamed: "PortalStorage", message: "Please use the new initialization pattern excluding your viewController.")
@@ -67,7 +65,6 @@ public class PasskeyStorage: Storage, PortalStorage {
     self.encryption = encryption ?? PortalEncryption()
     self.requests = requests ?? PortalRequests()
     self.webAuthnHost = "https://" + (webAuthnHost ?? "backup.web.portalhq.io")
-    self.passkeyApi = HttpRequester(baseUrl: self.webAuthnHost)
 
     if let view = viewController {
       self.auth.authenticationAnchor = view.view.window
@@ -90,9 +87,8 @@ public class PasskeyStorage: Storage, PortalStorage {
     }
 
     if let url = URL(string: "\(webAuthnHost)/passkeys/begin-login") {
-      let payload = ["relyingParty": relyingParty]
-      let data = try await requests.post(url, withBearerToken: apiKey, andPayload: payload)
-      let result = try decoder.decode(WebAuthnAuthenticationOption.self, from: data)
+      let request = PortalAPIRequest(url: url, method: .post, payload: ["relyingParty": relyingParty], bearerToken: apiKey)
+      let result = try await requests.execute(request: request, mappingInResponse: WebAuthnAuthenticationOption.self)
 
       self.sessionId = result.sessionId
 
@@ -172,8 +168,9 @@ public class PasskeyStorage: Storage, PortalStorage {
     }
 
     if let url = URL(string: "\(webAuthnHost)/passkeys/begin-login") {
-      let data = try await requests.post(url, withBearerToken: apiKey, andPayload: ["relyingParty": self.relyingParty])
-      let authenticationOption = try decoder.decode(WebAuthnAuthenticationOption.self, from: data)
+      let request = PortalAPIRequest(url: url, method: .post, payload: ["relyingParty": self.relyingParty], bearerToken: apiKey)
+
+      let authenticationOption = try await requests.execute(request: request, mappingInResponse: WebAuthnAuthenticationOption.self)
 
       return authenticationOption
     }
@@ -187,8 +184,9 @@ public class PasskeyStorage: Storage, PortalStorage {
     }
 
     if let url = URL(string: "\(webAuthnHost)/passkeys/begin-registration") {
-      let data = try await requests.post(url, withBearerToken: apiKey, andPayload: ["relyingParty": self.relyingParty])
-      let registrationOption = try decoder.decode(WebAuthnRegistrationOptions.self, from: data)
+      let request = PortalAPIRequest(url: url, method: .post, payload: ["relyingParty": self.relyingParty], bearerToken: apiKey)
+
+      let registrationOption = try await requests.execute(request: request, mappingInResponse: WebAuthnRegistrationOptions.self)
 
       return registrationOption
     }
@@ -202,8 +200,9 @@ public class PasskeyStorage: Storage, PortalStorage {
     }
 
     if let url = URL(string: "\(webAuthnHost)/passkeys/status") {
-      let data = try await requests.get(url, withBearerToken: apiKey)
-      let statusResponse = try decoder.decode(PasskeyStatusResponse.self, from: data)
+      let request = PortalAPIRequest(url: url, bearerToken: apiKey)
+
+      let statusResponse = try await requests.execute(request: request, mappingInResponse: PasskeyStatusResponse.self)
 
       return statusResponse.status
     }
@@ -218,8 +217,9 @@ public class PasskeyStorage: Storage, PortalStorage {
 
     if let url = URL(string: "\(webAuthnHost)/passkeys/finish-login/read") {
       let payload = ["assertion": assertion, "sessionId": sessionId, "relyingParty": relyingParty]
-      let data = try await requests.post(url, withBearerToken: apiKey, andPayload: payload)
-      let loginReadResponse = try decoder.decode(PasskeyLoginReadResponse.self, from: data)
+      let request = PortalAPIRequest(url: url, method: .post, payload: payload, bearerToken: apiKey)
+
+      let loginReadResponse = try await requests.execute(request: request, mappingInResponse: PasskeyLoginReadResponse.self)
 
       return loginReadResponse.encryptionKey
     }
@@ -234,7 +234,9 @@ public class PasskeyStorage: Storage, PortalStorage {
 
     if let url = URL(string: "\(webAuthnHost)/passkeys/finish-login/write") {
       let payload = ["encryptionKey": withValue, "assertion": assertion, "sessionId": sessionId, "relyingParty": relyingParty]
-      let _ = try await requests.post(url, withBearerToken: apiKey, andPayload: payload)
+      let request = PortalAPIRequest(url: url, method: .post, payload: payload, bearerToken: apiKey)
+
+      try await requests.execute(request: request, mappingInResponse: Data.self)
 
       return true
     }
@@ -249,7 +251,9 @@ public class PasskeyStorage: Storage, PortalStorage {
 
     if let url = URL(string: "\(webAuthnHost)/passkeys/finish-registration") {
       let payload = ["attestation": attestation, "sessionId": sessionId, "encryptionKey": withPrivateKey, "relyingParty": relyingParty]
-      let _ = try await requests.post(url, withBearerToken: apiKey, andPayload: payload)
+      let request = PortalAPIRequest(url: url, method: .post, payload: payload, bearerToken: apiKey)
+
+      try await requests.execute(request: request, mappingInResponse: Data.self)
 
       return true
     }

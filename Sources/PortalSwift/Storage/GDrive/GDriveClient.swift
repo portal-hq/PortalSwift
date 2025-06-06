@@ -86,7 +86,6 @@ public class GDriveClient: GDriveClientProtocol {
 
   private var _clientId: String?
   private var _view: UIViewController?
-  private var api: HttpRequester
   private var baseUrl: String = "https://www.googleapis.com"
   private let boundary: String = "portal-backup-share"
   private let decoder = JSONDecoder()
@@ -102,7 +101,6 @@ public class GDriveClient: GDriveClientProtocol {
     self._clientId = clientId
     self._view = view
 
-    self.api = HttpRequester(baseUrl: self.baseUrl)
     self.folder = folder ?? "_PORTAL_MPC_DO_NOT_DELETE_"
     self.requests = requests ?? PortalRequests()
 
@@ -123,7 +121,9 @@ public class GDriveClient: GDriveClientProtocol {
     }
 
     if let url = URL(string: "\(baseUrl)/drive/v3/files/\(id)") {
-      let _ = try await requests.delete(url, withBearerToken: accessToken)
+      try await requests.execute(
+        request: PortalAPIRequest(url: url, method: .delete, bearerToken: accessToken), mappingInResponse: Data.self
+      )
       return true
     }
 
@@ -162,8 +162,8 @@ public class GDriveClient: GDriveClientProtocol {
     }
 
     if let url = URL(string: "\(baseUrl)/drive/v3/files?\(spaces)&q=\(query)&orderBy=modifiedTime%20desc&pageSize=1") {
-      let data = try await requests.get(url, withBearerToken: accessToken)
-      let filesListResponse = try decoder.decode(GDriveFilesListResponse.self, from: data)
+      let request = PortalAPIRequest(url: url, bearerToken: accessToken)
+      let filesListResponse = try await requests.execute(request: request, mappingInResponse: GDriveFilesListResponse.self)
 
       if filesListResponse.files.count > 0 {
         return filesListResponse.files[0].id
@@ -188,9 +188,10 @@ public class GDriveClient: GDriveClientProtocol {
     }
 
     if let url = URL(string: "\(baseUrl)/drive/v3/files/\(id)?alt=media") {
-      let data = try await requests.get(url, withBearerToken: accessToken)
+      let request = PortalAPIRequest(url: url, bearerToken: accessToken)
+      let fileData = try await requests.execute(request: request, mappingInResponse: Data.self)
 
-      guard let fileContents = String(data: data, encoding: .utf8) else {
+      guard let fileContents = String(data: fileData, encoding: .utf8) else {
         throw GDriveClientError.unableToReadFileContents
       }
 
@@ -303,8 +304,9 @@ public class GDriveClient: GDriveClientProtocol {
         name: self.folder,
         parents: ["root"]
       )
-      let data = try await requests.post(url, withBearerToken: accessToken, andPayload: payload)
-      let file = try decoder.decode(GDriveFile.self, from: data)
+
+      let request = PortalAPIRequest(url: url, method: .post, payload: payload, bearerToken: accessToken)
+      let file = try await requests.execute(request: request, mappingInResponse: GDriveFile.self)
 
       return file
     }
@@ -328,8 +330,8 @@ public class GDriveClient: GDriveClientProtocol {
     }
 
     if let url = URL(string: "\(baseUrl)/drive/v3/files?q=\(query)") {
-      let data = try await requests.get(url, withBearerToken: accessToken)
-      let filesListResponse = try decoder.decode(GDriveFilesListResponse.self, from: data)
+      let request = PortalAPIRequest(url: url, bearerToken: accessToken)
+      let filesListResponse = try await requests.execute(request: request, mappingInResponse: GDriveFilesListResponse.self)
 
       if filesListResponse.files.count > 0 {
         return filesListResponse.files[0]
@@ -355,8 +357,8 @@ public class GDriveClient: GDriveClientProtocol {
     }
 
     if let url = URL(string: "\(baseUrl)/drive/v3/files/appDataFolder") {
-      let data = try await requests.get(url, withBearerToken: accessToken)
-      return try decoder.decode(GDriveFile.self, from: data)
+      let request = PortalAPIRequest(url: url, bearerToken: accessToken)
+      return try await requests.execute(request: request, mappingInResponse: GDriveFile.self)
     }
 
     throw URLError(.badURL)

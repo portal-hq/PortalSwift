@@ -49,7 +49,7 @@ extension EnclaveMobileWrapperTests {
     AssertJSONEqual(resultTransactionHash, expectedReturnValue)
   }
 
-  func test_MobileSign_willCall_requestPost_onlyOnce() async {
+  func test_MobileSign_willCall_executeRequest_onlyOnce() async {
     // given
     let portalRequestsSpy = PortalRequestsSpy()
     initEnclaveMobileWrapper(portalRequests: portalRequestsSpy)
@@ -58,10 +58,10 @@ extension EnclaveMobileWrapperTests {
     _ = await enclaveMobileWrapper?.MobileSign("", "", "", "", "", "", "", "")
 
     // then
-    XCTAssertEqual(portalRequestsSpy.postCallsCount, 1)
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
   }
 
-  func test_MobileSign_willCall_requestPost_passingCorrectParams() async {
+  func test_MobileSign_willCall_executeRequest_passingCorrectParams() async {
     // given
     let enclaveMPCHost = "mpc-client.portalhq.io"
     let portalRequestsSpy = PortalRequestsSpy()
@@ -80,8 +80,8 @@ extension EnclaveMobileWrapperTests {
     _ = await enclaveMobileWrapper?.MobileSign(apiKey, host, signingShare, method, params, rpcUrl, chainId, metadata)
 
     // then
-    XCTAssertEqual(portalRequestsSpy.postFromParam?.absoluteString ?? "", "https://\(enclaveMPCHost)/v1/sign")
-    XCTAssertEqual(portalRequestsSpy.postAndPayloadParam as? [String: String] ?? [:], [
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.url.absoluteString ?? "", "https://\(enclaveMPCHost)/v1/sign")
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.payload as? [String: String] ?? [:], [
       "method": method,
       "params": params,
       "share": signingShare,
@@ -134,7 +134,7 @@ extension EnclaveMobileWrapperTests {
     AssertJSONEqual(result, invalidParamsReturnValue)
   }
 
-  func test_MobileSign_willReturn_correctError_whenRequestPostThrowError() async {
+  func test_MobileSign_willReturn_correctError_whenExecuteRequestThrowError() async {
     // given
     let portalRequestsFailMock = PortalRequestsFailMock()
     initEnclaveMobileWrapper(portalRequests: portalRequestsFailMock)

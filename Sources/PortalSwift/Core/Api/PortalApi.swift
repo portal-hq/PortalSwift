@@ -138,8 +138,8 @@ public class PortalApi: PortalApiProtocol {
           "clientPlatformVersion": SDK_VERSION
         ]
 
-        let data = try await post(url, withBearerToken: self.apiKey, andPayload: body)
-        guard let ejectResponse = String(data: data, encoding: .utf8) else {
+        let ejectData = try await post(url, withBearerToken: self.apiKey, andPayload: body, mappingInResponse: Data.self)
+        guard let ejectResponse = String(data: ejectData, encoding: .utf8) else {
           throw PortalApiError.unableToReadStringResponse
         }
 
@@ -158,8 +158,7 @@ public class PortalApi: PortalApiProtocol {
   public func getBalances(_ chainId: String) async throws -> [FetchedBalance] {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/balances?chainId=\(chainId)") {
       do {
-        let data = try await get(url, withBearerToken: self.apiKey)
-        let balancesResponse = try decoder.decode([FetchedBalance].self, from: data)
+        let balancesResponse = try await get(url, withBearerToken: self.apiKey, mappingInResponse: [FetchedBalance].self)
 
         return balancesResponse
       } catch {
@@ -177,8 +176,7 @@ public class PortalApi: PortalApiProtocol {
   public func getClient() async throws -> ClientResponse {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me") {
       do {
-        let data = try await get(url, withBearerToken: self.apiKey)
-        let clientResponse = try decoder.decode(ClientResponse.self, from: data)
+        let clientResponse = try await get(url, withBearerToken: self.apiKey, mappingInResponse: ClientResponse.self)
 
         return clientResponse
       } catch {
@@ -192,8 +190,7 @@ public class PortalApi: PortalApiProtocol {
   public func getAssets(_ chainId: String) async throws -> AssetsResponse {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)/assets") {
       do {
-        let data = try await get(url, withBearerToken: self.apiKey)
-        let assets = try decoder.decode(AssetsResponse.self, from: data)
+        let assets = try await get(url, withBearerToken: self.apiKey, mappingInResponse: AssetsResponse.self)
 
         return assets
       } catch {
@@ -209,8 +206,7 @@ public class PortalApi: PortalApiProtocol {
   public func getClientCipherText(_ backupSharePairId: String) async throws -> String {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/backup-share-pairs/\(backupSharePairId)/cipher-text") {
       do {
-        let data = try await get(url, withBearerToken: self.apiKey)
-        let response = try decoder.decode(ClientCipherTextResponse.self, from: data)
+        let response = try await get(url, withBearerToken: self.apiKey, mappingInResponse: ClientCipherTextResponse.self)
 
         return response.cipherText
       } catch {
@@ -233,8 +229,7 @@ public class PortalApi: PortalApiProtocol {
       body["apiKey"] = AnyCodable(swapsApiKey)
       body["chainId"] = AnyCodable(chainId)
 
-      let data = try await post(url, withBearerToken: self.apiKey, andPayload: body)
-      let response = try decoder.decode(Quote.self, from: data)
+      let response = try await post(url, withBearerToken: self.apiKey, andPayload: body, mappingInResponse: Quote.self)
 
       return response
     }
@@ -245,8 +240,7 @@ public class PortalApi: PortalApiProtocol {
   public func getNftAssets(_ chainId: String) async throws -> [NftAsset] {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)/assets/nfts") {
       do {
-        let data = try await get(url, withBearerToken: self.apiKey)
-        let nfts = try decoder.decode([NftAsset].self, from: data)
+        let nfts = try await get(url, withBearerToken: self.apiKey, mappingInResponse: [NftAsset].self)
 
         return nfts
       } catch {
@@ -262,8 +256,7 @@ public class PortalApi: PortalApiProtocol {
   public func getSharePairs(_ type: PortalSharePairType, walletId: String) async throws -> [FetchedSharePair] {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/wallets/\(walletId)/\(type)-share-pairs") {
       do {
-        let data = try await get(url, withBearerToken: self.apiKey)
-        let sharePairs = try decoder.decode([FetchedSharePair].self, from: data)
+        let sharePairs = try await get(url, withBearerToken: self.apiKey, mappingInResponse: [FetchedSharePair].self)
 
         return sharePairs
       } catch {
@@ -279,8 +272,7 @@ public class PortalApi: PortalApiProtocol {
   public func getSources(_ swapsApiKey: String, forChainId: String) async throws -> [String: String] {
     if let url = URL(string: "\(baseUrl)/api/v3/swaps/sources") {
       let payload = ["apiKey": swapsApiKey, "chainId": forChainId]
-      let data = try await post(url, withBearerToken: self.apiKey, andPayload: payload)
-      let response = try decoder.decode([String: String].self, from: data)
+      let response = try await post(url, withBearerToken: self.apiKey, andPayload: payload, mappingInResponse: [String: String].self)
 
       return response
     }
@@ -315,8 +307,7 @@ public class PortalApi: PortalApiProtocol {
 
     if let url = URL(string: requestUrlString) {
       do {
-        let data = try await get(url, withBearerToken: self.apiKey)
-        let transactions = try decoder.decode([FetchedTransaction].self, from: data)
+        let transactions = try await get(url, withBearerToken: self.apiKey, mappingInResponse: [FetchedTransaction].self)
 
         return transactions
       } catch {
@@ -331,8 +322,7 @@ public class PortalApi: PortalApiProtocol {
 
   public func identify(_ traits: [String: AnyCodable] = [:]) async throws -> MetricsResponse {
     if let url = URL(string: "\(baseUrl)/api/v1/analytics/identify") {
-      let data = try await post(url, withBearerToken: self.apiKey, andPayload: ["traits": traits])
-      let response = try decoder.decode(MetricsResponse.self, from: data)
+      let response = try await post(url, withBearerToken: self.apiKey, andPayload: ["traits": traits], mappingInResponse: MetricsResponse.self)
 
       return response
     }
@@ -342,8 +332,7 @@ public class PortalApi: PortalApiProtocol {
 
   public func prepareEject(_ walletId: String, _ backupMethod: BackupMethods) async throws -> String {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/wallets/\(walletId)/prepare-eject") {
-      let data = try await post(url, withBearerToken: self.apiKey, andPayload: ["backupMethod": backupMethod.rawValue])
-      let prepareEjectResponse = try decoder.decode(PrepareEjectResponse.self, from: data)
+      let prepareEjectResponse = try await post(url, withBearerToken: self.apiKey, andPayload: ["backupMethod": backupMethod.rawValue], mappingInResponse: PrepareEjectResponse.self)
 
       return prepareEjectResponse.share
     }
@@ -386,8 +375,7 @@ public class PortalApi: PortalApiProtocol {
         if let operationType {
           payload["operationType"] = operationType.rawValue
         }
-        let data = try await post(url, withBearerToken: self.apiKey, andPayload: payload)
-        let response = try decoder.decode(BlockaidValidateTrxRes.self, from: data)
+        let response = try await post(url, withBearerToken: self.apiKey, andPayload: payload, mappingInResponse: BlockaidValidateTrxRes.self)
 
         return response
       } catch {
@@ -406,7 +394,7 @@ public class PortalApi: PortalApiProtocol {
         let payload = AnyCodable([
           "clientCipherText": cipherText
         ])
-        _ = try await patch(url, withBearerToken: self.apiKey, andPayload: payload)
+        try await patch(url, withBearerToken: self.apiKey, andPayload: payload, mappingInResponse: Data.self)
 
         return true
       } catch {
@@ -425,8 +413,7 @@ public class PortalApi: PortalApiProtocol {
         event: event,
         properties: withProperties
       )
-      let data = try await post(url, withBearerToken: self.apiKey, andPayload: payload)
-      let response = try decoder.decode(MetricsResponse.self, from: data)
+      let response = try await post(url, withBearerToken: self.apiKey, andPayload: payload, mappingInResponse: MetricsResponse.self)
 
       return response
     }
@@ -447,7 +434,7 @@ public class PortalApi: PortalApiProtocol {
           status: status
         )
 
-        _ = try await self.patch(url, withBearerToken: self.apiKey, andPayload: payload)
+        try await self.patch(url, withBearerToken: self.apiKey, andPayload: payload, mappingInResponse: Data.self)
 
         return
       } catch {
@@ -463,8 +450,7 @@ public class PortalApi: PortalApiProtocol {
   public func fund(chainId: String, params: FundParams) async throws -> FundResponse {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/fund") {
       let payload = FundRequestBody(amount: params.amount, chainId: chainId, token: params.token)
-      let data = try await post(url, withBearerToken: self.apiKey, andPayload: payload)
-      let response = try decoder.decode(FundResponse.self, from: data)
+      let response = try await post(url, withBearerToken: self.apiKey, andPayload: payload, mappingInResponse: FundResponse.self)
 
       return response
     }
@@ -478,8 +464,7 @@ public class PortalApi: PortalApiProtocol {
     }
 
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)/assets/send/build-transaction") {
-      let data = try await post(url, withBearerToken: self.apiKey, andPayload: params.toDictionary())
-      let response = try decoder.decode(BuildEip115TransactionResponse.self, from: data)
+      let response = try await post(url, withBearerToken: self.apiKey, andPayload: params.toDictionary(), mappingInResponse: BuildEip115TransactionResponse.self)
 
       return response
     }
@@ -493,8 +478,7 @@ public class PortalApi: PortalApiProtocol {
     }
 
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)/assets/send/build-transaction") {
-      let data = try await post(url, withBearerToken: self.apiKey, andPayload: params.toDictionary())
-      let response = try decoder.decode(BuildSolanaTransactionResponse.self, from: data)
+      let response = try await post(url, withBearerToken: self.apiKey, andPayload: params.toDictionary(), mappingInResponse: BuildSolanaTransactionResponse.self)
 
       return response
     }
@@ -504,8 +488,7 @@ public class PortalApi: PortalApiProtocol {
 
   public func getWalletCapabilities() async throws -> WalletCapabilitiesResponse {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/wallet_getCapabilities") {
-      let data = try await get(url, withBearerToken: self.apiKey)
-      let response = try decoder.decode(WalletCapabilitiesResponse.self, from: data)
+      let response = try await get(url, withBearerToken: self.apiKey, mappingInResponse: WalletCapabilitiesResponse.self)
 
       return response
     }
@@ -517,16 +500,30 @@ public class PortalApi: PortalApiProtocol {
    * Private functions
    *******************************************/
 
-  private func get(_ url: URL, withBearerToken: String? = nil) async throws -> Data {
-    return try await self.requests.get(url, withBearerToken: withBearerToken)
+  @discardableResult
+  private func get<ResponseType>(_ url: URL, withBearerToken: String? = nil,
+                                 mappingInResponse: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable
+  {
+    let portalRequest = PortalAPIRequest(url: url, bearerToken: withBearerToken)
+    return try await self.requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }
 
-  private func patch(_ url: URL, withBearerToken: String? = nil, andPayload: Codable) async throws -> Data {
-    return try await self.requests.patch(url, withBearerToken: withBearerToken, andPayload: andPayload)
+  @discardableResult
+  private func patch<ResponseType>(_ url: URL, withBearerToken: String? = nil, andPayload: Codable, mappingInResponse: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable {
+    let portalRequest = PortalAPIRequest(url: url, method: .patch, payload: andPayload, bearerToken: withBearerToken)
+    return try await self.requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }
 
-  private func post(_ url: URL, withBearerToken: String? = nil, andPayload: Codable? = nil) async throws -> Data {
-    return try await self.requests.post(url, withBearerToken: withBearerToken, andPayload: andPayload)
+  @discardableResult
+  private func put<ResponseType>(_ url: URL, withBearerToken: String? = nil, andPayload: Codable, mappingInResponse: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable {
+    let portalRequest = PortalAPIRequest(url: url, method: .put, payload: andPayload, bearerToken: withBearerToken)
+    return try await self.requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
+  }
+
+  @discardableResult
+  private func post<ResponseType>(_ url: URL, withBearerToken: String? = nil, andPayload: Codable? = nil, mappingInResponse: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable {
+    let portalRequest = PortalAPIRequest(url: url, method: .post, payload: andPayload, bearerToken: withBearerToken)
+    return try await self.requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }
 
   /*******************************************
@@ -551,8 +548,7 @@ public class PortalApi: PortalApiProtocol {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/simulate-transaction?chainId=\(chainId)") {
       do {
         let transformedTransaction = AnyCodable(transaction)
-        let data = try await post(url, withBearerToken: self.apiKey, andPayload: transformedTransaction)
-        let simulatedTransaction = try decoder.decode(SimulatedTransaction.self, from: data)
+        let simulatedTransaction = try await post(url, withBearerToken: self.apiKey, andPayload: transformedTransaction, mappingInResponse: SimulatedTransaction.self)
 
         return simulatedTransaction
       } catch {
