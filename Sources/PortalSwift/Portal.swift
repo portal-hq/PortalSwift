@@ -30,32 +30,76 @@ public final class Portal: PortalProtocol {
     self.provider.chainId
   }
 
-  public let api: PortalApiProtocol
+  public private(set) var api: PortalApiProtocol
   public let apiKey: String
   public let autoApprove: Bool
   public var gatewayConfig: [Int: String] = [:]
   public var provider: PortalProviderProtocol
   public var rpcConfig: [String: String]
 
-  private let apiHost: String
+  private var apiHost: String
   private var backup: BackupOptions?
-  private let binary: Mobile
+  private var binary: Mobile
   private let featureFlags: FeatureFlags?
   private var keychain: PortalKeychainProtocol
-  private let mpc: PortalMpcProtocol
-  private let mpcHost: String
-  private let version: String
+  private var mpc: PortalMpcProtocol
+  private var mpcHost: String
+  private var version: String
+  private var enclaveMPCHost: String
+
+  /// Creates a Portal instance with the essential configuration.
+  /// This is the recommended initializer for most use cases.
+  /// - Parameters:
+  ///   - apiKey: The Client API key. You can obtain this through Portal's REST API.
+  ///   - withRpcConfig: (optional) A dictionary of CAIP-2 Blockchain IDs (keys) and RPC URLs (values) in `[String:String]` format.
+  ///   - autoApprove: (optional) When true, transactions will be automatically approved without user confirmation.
+  ///   - featureFlags: (optional) A set of flags to opt into new or experimental features.
+  ///   - version: (optional) The API version to use. Currently only "v6" is supported.
+  ///   - apiHost: (optional) Portal's API host. Defaults to "api.portalhq.io".
+  ///   - mpcHost: (optional) Portal's MPC API host. Defaults to "mpc.portalhq.io".
+  /// - Throws: `PortalArgumentError` if an unsupported version is provided.
+  public convenience init(
+    _ apiKey: String,
+    withRpcConfig: [String: String] = [:],
+    // Optional
+    autoApprove: Bool = false,
+    featureFlags: FeatureFlags? = nil
+  ) throws {
+    try self.init(
+      apiKey,
+      withRpcConfig: withRpcConfig,
+      autoApprove: autoApprove,
+      featureFlags: featureFlags,
+      api: nil,
+      binary: nil,
+      gDrive: nil,
+      iCloud: nil,
+      keychain: nil,
+      mpc: nil,
+      passwords: nil
+    )
+  }
 
   /// Create a Portal instance. This initializer is used by unit tests and mocks.
   /// - Parameters:
   ///   - apiKey: The Client API key. You can obtain this through Portal's REST API.
   ///   - withRpcConfig: (optional) A dictionary of CAIP-2 Blockchain IDs (keys) and RPC URLs (values) in `[String:String]` format.
-  ///   - featureFlags: (optional) a set of flags to opt into new or experimental features
-  ///   - isSimulator: (optional) Whether you are testing on the iOS simulator or not.
   ///   - autoApprove: (optional) Auto-approve transactions.
+  ///   - featureFlags: (optional) a set of flags to opt into new or experimental features
+  ///   - version: (optional) The API version to use. Currently only "v6" is supported.
   ///   - apiHost: (optional) Portal's API host.
   ///   - mpcHost: (optional) Portal's MPC API host.
-
+  ///   - enclaveMPCHost: (optional) Portal's Enclave MPC host.
+  ///   - api: (optional) Custom API implementation for testing.
+  ///   - binary: (optional) Custom mobile wrapper implementation for testing.
+  ///   - gDrive: (optional) Custom Google Drive storage implementation for testing.
+  ///   - iCloud: (optional) Custom iCloud storage implementation for testing.
+  ///   - keychain: (optional) Custom keychain implementation for testing.
+  ///   - mpc: (optional) Custom MPC implementation for testing.
+  ///   - passwords: (optional) Custom password storage implementation for testing.
+  /// - Throws: `PortalArgumentError` if an unsupported version is provided.
+  /// - Warning: This initializer is primarily for testing purposes. For production use, prefer the convenience initializer with fewer parameters.
+  @available(*, deprecated, message: "This initializer is primarily for testing. Use the convenience initializer with required parameters instead.")
   public init(
     _ apiKey: String,
     withRpcConfig: [String: String] = [:],
@@ -81,6 +125,7 @@ public final class Portal: PortalProtocol {
     self.apiHost = apiHost
     self.apiKey = apiKey
     self.autoApprove = autoApprove
+    self.enclaveMPCHost = enclaveMPCHost
     self.binary = binary ?? (
       featureFlags?.useEnclaveMPCApi ?? false ? EnclaveMobileWrapper(enclaveMPCHost: enclaveMPCHost) : MobileWrapper()
     )
@@ -193,6 +238,7 @@ public final class Portal: PortalProtocol {
     self.mpcHost = mpcHost
     self.version = version
     self.featureFlags = featureFlags
+    self.enclaveMPCHost = ""
 
     if version != "v6" {
       throw PortalArgumentError.versionNoLongerSupported(message: "MPC Version is not supported. Only version 'v6' is currently supported.")
@@ -2219,6 +2265,100 @@ public final class Portal: PortalProtocol {
       "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": "https://\(apiHost)/rpc/v1/solana/5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", // Solana Mainnet
       "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": "https://\(apiHost)/rpc/v1/solana/EtWTRABZaYq6iMfeYKouRu166VU2xqa1" // Solana Devnet
     ]
+  }
+}
+
+// MARK: - unit tests helper
+
+extension Portal {
+  func setApi(_ newApi: PortalApiProtocol) {
+    self.api = newApi
+    self.keychain.api = newApi
+    self.provider.api = newApi
+  }
+
+  func setBinary(_ binary: Mobile) {
+    self.binary = binary
+  }
+
+  func setKeychain(_ keychain: PortalKeychainProtocol) {
+    self.keychain = keychain
+  }
+
+  func setMPC(_ mpc: PortalMpcProtocol) {
+    self.mpc = mpc
+  }
+
+  func setVersion(_ version: String) throws -> Portal {
+    self.version = version
+    return try Portal(
+      self.apiKey,
+      withRpcConfig: self.rpcConfig,
+      autoApprove: self.autoApprove,
+      featureFlags: self.featureFlags,
+      version: self.version,
+      apiHost: self.apiHost,
+      mpcHost: self.mpcHost,
+      enclaveMPCHost: self.enclaveMPCHost,
+      api: self.api,
+      binary: self.binary,
+      keychain: self.keychain,
+      mpc: self.mpc
+    )
+  }
+
+  func setApiHost(_ apiHost: String) throws -> Portal {
+    self.apiHost = apiHost
+    return try Portal(
+      self.apiKey,
+      withRpcConfig: Portal.buildDefaultRpcConfig(self.apiHost),
+      autoApprove: self.autoApprove,
+      featureFlags: self.featureFlags,
+      version: self.version,
+      apiHost: self.apiHost,
+      mpcHost: self.mpcHost,
+      enclaveMPCHost: self.enclaveMPCHost,
+      api: self.api,
+      binary: self.binary,
+      keychain: self.keychain,
+      mpc: self.mpc
+    )
+  }
+
+  func setMpcHost(_ mpcHost: String) throws -> Portal {
+    self.mpcHost = mpcHost
+    return try Portal(
+      self.apiKey,
+      withRpcConfig: self.rpcConfig,
+      autoApprove: self.autoApprove,
+      featureFlags: self.featureFlags,
+      version: self.version,
+      apiHost: self.apiHost,
+      mpcHost: self.mpcHost,
+      enclaveMPCHost: self.enclaveMPCHost,
+      api: self.api,
+      binary: self.binary,
+      keychain: self.keychain,
+      mpc: self.mpc
+    )
+  }
+
+  func setEnclaveMPCHost(_ enclaveMPCHost: String) throws -> Portal {
+    self.enclaveMPCHost = enclaveMPCHost
+    return try Portal(
+      self.apiKey,
+      withRpcConfig: self.rpcConfig,
+      autoApprove: self.autoApprove,
+      featureFlags: self.featureFlags,
+      version: self.version,
+      apiHost: self.apiHost,
+      mpcHost: self.mpcHost,
+      enclaveMPCHost: self.enclaveMPCHost,
+      api: self.api,
+      binary: self.binary,
+      keychain: self.keychain,
+      mpc: self.mpc
+    )
   }
 }
 
