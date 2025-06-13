@@ -14,6 +14,7 @@ public class PortalBlockchain {
   ]
   static let namespaceCurves: [PortalNamespace: PortalCurve] = [
     .eip155: .SECP256K1,
+    .bip122: .SECP256K1,
     .solana: .ED25519
   ]
   static let namespaceSignerMethods: [PortalNamespace: [PortalRequestMethod]] = [
@@ -31,6 +32,9 @@ public class PortalBlockchain {
       .sol_signAndSendTransaction,
       .sol_signMessage,
       .sol_signTransaction,
+      .rawSign
+    ],
+    .bip122: [
       .rawSign
     ]
   ]

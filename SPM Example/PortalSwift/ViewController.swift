@@ -36,6 +36,12 @@ struct ProviderRequest {
   var params: [Any]
 }
 
+struct WalletAddress {
+  let type: String
+  let address: String
+  let namespace: PortalNamespace
+}
+
 @available(iOS 16.0, *)
 class ViewController: UIViewController, UITextFieldDelegate {
   var activityIndicator: UIActivityIndicatorView!
@@ -123,6 +129,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   private let successStatus = "✅ Success"
   private let failureStatus = "❌ Failure"
+  private var currentAddresses: [WalletAddress] = []
 
   // Set up the scroll view
   @IBOutlet var scrollView: UIScrollView!
@@ -1054,17 +1061,115 @@ class ViewController: UIViewController, UITextFieldDelegate {
     view.isUserInteractionEnabled = true
   }
 
+  private func updateAddressDisplay() async {
+    var addresses: [WalletAddress] = []
+
+    // Get client from portal
+    guard let client = try? await self.portal?.client else {
+      DispatchQueue.main.async {
+        self.addressInformation?.text = "N/A"
+        self.stopRefreshBalanceTimer()
+      }
+      return
+    }
+    
+    // Get addresses from client metadata namespaces
+    if let eip155Address = client.metadata.namespaces.eip155?.address {
+      addresses.append(WalletAddress(type: "EIP-155", address: eip155Address, namespace: .eip155))
+    }
+    
+    if let solanaAddress = client.metadata.namespaces.solana?.address {
+      addresses.append(WalletAddress(type: "Solana", address: solanaAddress, namespace: .solana))
+    }
+    
+    if let stellarAddress = client.metadata.namespaces.stellar?.address {
+      addresses.append(WalletAddress(type: "Stellar", address: stellarAddress, namespace: .stellar))
+    }
+    
+    if let tronAddress = client.metadata.namespaces.tron?.address {
+      addresses.append(WalletAddress(type: "Tron", address: tronAddress, namespace: .tron))
+    }
+    
+    // Handle Bitcoin p2wpkh addresses (both mainnet and testnet)
+    if let bitcoinInfo = client.metadata.namespaces.bip122?.bitcoin?.p2wpkh {
+      // Add testnet address
+      addresses.append(WalletAddress(type: "PW2PKH Testnet", address: bitcoinInfo.testnet, namespace: .bip122))
+      
+      // Add mainnet address
+      addresses.append(WalletAddress(type: "PW2PKH Mainnet", address: bitcoinInfo.mainnet, namespace: .bip122))
+    }
+    
+    DispatchQueue.main.async {
+      if addresses.isEmpty {
+        self.addressInformation?.text = "N/A"
+        self.stopRefreshBalanceTimer()
+      } else {
+        self.logger.info("Portal client addresses:\n\(addresses)")
+        let attributedText = self.createBoldAttributedText(for: addresses)
+        self.addressInformation?.attributedText = attributedText
+        
+        // Make the text view clickable
+        self.setupAddressClickHandling(for: addresses)
+        self.startRefreshBalanceTimer()
+      }
+    }
+  }
+  
+  private func createBoldAttributedText(for addresses: [WalletAddress]) -> NSAttributedString {
+    let attributedString = NSMutableAttributedString()
+    
+    for (index, walletAddress) in addresses.enumerated() {
+      // Create bold text for the key
+      let boldKey = NSAttributedString(
+        string: "\(walletAddress.type):\n",
+        attributes: [
+          .font: UIFont.boldSystemFont(ofSize: 8),
+          .foregroundColor: UIColor.label
+        ]
+      )
+      
+      // Create regular text for the address
+      let regularAddress = NSAttributedString(
+        string: walletAddress.address,
+        attributes: [
+          .font: UIFont.systemFont(ofSize: 12),
+          .foregroundColor: UIColor.secondaryLabel
+        ]
+      )
+      
+      // Append to main string
+      attributedString.append(boldKey)
+      attributedString.append(regularAddress)
+      
+      // Add newline if not the last item
+      if index < addresses.count - 1 {
+        attributedString.append(NSAttributedString(string: "\n\n"))
+      }
+    }
+    
+    return attributedString
+  }
+  
+  private func setupAddressClickHandling(for addresses: [WalletAddress]) {
+    guard let textView = self.addressInformation else { return }
+    
+    // Enable user interaction
+    textView.isUserInteractionEnabled = true
+    textView.isEditable = false
+    textView.isSelectable = true
+    
+    // Remove existing gesture recognizers
+    textView.gestureRecognizers?.removeAll()
+    
+    // Store addresses for later use
+    self.currentAddresses = addresses
+  }
+
   private func updateUIComponents() {
     DispatchQueue.main.async {
       Task {
         do {
-          self.addressInformation?.text = "N/A"
-          if let address = try? await self.portal?.addresses[.eip155], address != nil {
-            self.addressInformation?.text = address
-            self.startRefreshBalanceTimer()
-          } else {
-            self.stopRefreshBalanceTimer()
-          }
+          await self.updateAddressDisplay()
 
           let availableRecoveryMethods = try await self.portal?.availableRecoveryMethods(nil) ?? []
           let walletExists = try await self.portal?.doesWalletExist(nil) ?? false
@@ -2185,6 +2290,43 @@ class ViewController: UIViewController, UITextFieldDelegate {
   // Method to display status messages on the UI
   func showStatusView(message: String) {
     self.statusLabel?.text = message
+  }
+  
+  @IBAction func handleBitcoinP2wpkhSendTrx() {
+    Task {
+      do {
+        self.startLoading()
+
+        guard let portal = self.portal else {
+          self.logger.error("ViewController.handleBitcoinP2wpkhSendTrx() - ❌ Portal or address not initialized/found")
+          self.stopLoading()
+          return
+        }
+
+        // Derive inputs for bitcoin p2wpkh testnet tx.
+        let chainId = "bip122:000000000933ea01ad0ee984209779ba-p2wpkh"
+        let destinationAddress = "tb1q7ynrnrywae5ypxk6fqgzqhqy202ehk7hntqc9j"
+        let amount: String = "0.00001"
+        let token: String = "NATIVE"
+
+        let params = SendAssetParams(
+          to: destinationAddress,
+          amount: amount,
+          token: token
+        )
+
+        let response = try await portal.sendAsset(chainId: chainId, params: params)
+
+        self.logger.info("ViewController.handleBitcoinP2wpkhSendTrx() - ✅ Successfully sent transaction")
+        self.showStatusView(message: "\(self.successStatus) Successfully sent transaction")
+        self.logger.info("ViewController.handleBitcoinP2wpkhSendTrx() - ✅ Transaction Hash: \(response.txHash )")
+
+        self.stopLoading()
+      } catch {
+        self.stopLoading()
+        self.logger.error("ViewController.handleBitcoinP2wpkhSendTrx() - ❌ Generic error: \(error)")
+      }
+    }
   }
 
   @IBAction func handleSolanaSendTrx() {
