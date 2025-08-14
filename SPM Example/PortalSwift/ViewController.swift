@@ -2132,12 +2132,12 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
 
       let swaps: PortalSwapsProtocol = PortalSwaps(apiKey: SWAPS_API_KEY, portal: portal)
-      let customChainId = "eip155:11155111"
+      let customChainId = "eip155:1"
 
       Task {
         do {
           let resourcesResult = try await swaps.getSources(forChainId: customChainId)
-          print("getSources response:", resourcesResult)
+          self.logger.info("ViewController.handleSwaps() - ✅ Got sources successfully: \(resourcesResult)")
         } catch {
           self.logger.error("ViewController.handleSwaps() - ❌ Unable to get sources with error: \(error)")
           self.showStatusView(message: "\(self.failureStatus) Unable to get sources with error: \(error)")
@@ -2145,15 +2145,15 @@ class ViewController: UIViewController, UITextFieldDelegate {
         }
 
         let quoteArgs = QuoteArgs(
-          buyToken: "0x68194a729c2450ad26072b3d33adacbcef39d574", // USDC on Sepolia
+          buyToken: "USDC",
           sellToken: "ETH",
-          sellAmount: "1000"
+          sellAmount: "1000000000000000000"
         )
 
         var quoteResult: Quote
         do {
           quoteResult = try await swaps.getQuote(args: quoteArgs, forChainId: customChainId)
-
+          print("ViewController.handleSwaps() - ✅ Got quote successfully: \(quoteResult)")
         } catch {
           self.logger.error("ViewController.handleSwaps() - ❌ Unable to get quote with error: \(error)")
           self.showStatusView(message: "\(self.failureStatus) Unable to get quote with error: \(error)")
@@ -2163,7 +2163,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
         do {
           let sendTransactionResponse = try await portal.request(customChainId, withMethod: .eth_sendTransaction, andParams: [quoteResult.transaction])
-          print("sendTransactionResponse", sendTransactionResponse)
           guard let transactionHash = sendTransactionResponse.result as? String else {
             throw PortalExampleAppError.invalidResponseTypeForRequest()
           }
@@ -2171,7 +2170,9 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.logger.info("ViewController.handleSwaps() - ✅ Successfully called get sources + quotes + submitted trx: \(transactionHash)")
           self.showStatusView(message: "\(self.successStatus) Successfully called get sources + quotes + submitted trx: \(transactionHash)")
         } catch {
-          print("Error sending transaction", error)
+          self.logger.error("ViewController.handleSwaps() - ❌ Error making swap: \(error)")
+          self.showStatusView(message: "\(self.failureStatus) Error making swap: \(error)")
+          self.stopLoading()
         }
       }
     } catch {
