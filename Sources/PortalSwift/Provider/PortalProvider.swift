@@ -17,7 +17,7 @@ public protocol PortalProviderProtocol: AnyObject {
   func on(event: Events.RawValue, callback: @escaping (_ data: Any) -> Void) -> PortalProvider
   func once(event: Events.RawValue, callback: @escaping (_ data: Any) throws -> Void) -> PortalProvider
   func removeListener(event: Events.RawValue) -> PortalProvider
-  func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [AnyCodable]?, connect: PortalConnect?) async throws -> PortalProviderResult
+  func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [AnyCodable]?, connect: PortalConnect?, signatureApprovalMemo: String?) async throws -> PortalProviderResult
   func request(_ chainId: String, withMethod: String, andParams: [AnyCodable]?, connect: PortalConnect?) async throws -> PortalProviderResult
   func getRpcUrl(_ chainId: String) throws -> String
   func updateChain(newChainId: String, connect: PortalConnect?)
@@ -215,12 +215,15 @@ public class PortalProvider: PortalProviderProtocol {
   ///   - chainId: A CAIP-2 Blockchain ID associated with the request.
   ///   - withMethod: A member of the PortalRequestMethod enum
   ///   - andParams: An array of parameters for the request (either RPC parameters or a transaction if signing)
+  ///   - connect: Optional `PortalConnect` object to use for the request.
+  ///   - signatureApprovalMemo: Optional signature approval memo to use for the request.
   /// - Returns: PortalProviderResult
   public func request(
     _ chainId: String,
     withMethod: PortalRequestMethod,
     andParams: [AnyCodable]? = [],
-    connect: PortalConnect? = nil
+    connect: PortalConnect? = nil,
+    signatureApprovalMemo: String? = nil
   ) async throws -> PortalProviderResult {
     let blockchain = try PortalBlockchain(fromChainId: chainId)
     guard blockchain.isMethodSupported(withMethod) else {
@@ -248,7 +251,7 @@ public class PortalProvider: PortalProviderProtocol {
     default:
       if blockchain.shouldMethodBeSigned(withMethod) {
         let payload = PortalProviderRequestWithId(id: id, method: withMethod, params: andParams, chainId: chainId)
-        return try await self.handleSignRequest(chainId, withPayload: payload, forId: id, onBlockchain: blockchain, connect: connect)
+        return try await self.handleSignRequest(chainId, withPayload: payload, forId: id, onBlockchain: blockchain, connect: connect, signatureApprovalMemo: signatureApprovalMemo)
       } else {
         return try await self.handleRpcRequest(chainId, withMethod: withMethod, andParams: andParams, forId: id)
       }
@@ -260,18 +263,21 @@ public class PortalProvider: PortalProviderProtocol {
   ///   - chainId: A CAIP-2 Blockchain ID associated with the request.
   ///   - withMethod: The string literal of your RPC method
   ///   - andParams: An array of parameters for the request (either RPC parameters or a transaction if signing)
+  ///   - connect: Optional `PortalConnect` object to use for the request.
+  ///   - signatureApprovalMemo: Optional signature approval memo to use for the request.
   /// - Returns: PortalProviderResult
   public func request(
     _ chainId: String,
     withMethod: String,
     andParams: [AnyCodable]? = [],
-    connect _: PortalConnect? = nil
+    connect: PortalConnect? = nil,
+    signatureApprovalMemo: String? = nil
   ) async throws -> PortalProviderResult {
     guard let method = PortalRequestMethod(rawValue: withMethod) else {
       throw PortalProviderError.unsupportedRequestMethod("Received a request with unsupported method: \(withMethod)")
     }
 
-    return try await self.request(chainId, withMethod: method, andParams: andParams)
+    return try await self.request(chainId, withMethod: method, andParams: andParams, connect: connect, signatureApprovalMemo: signatureApprovalMemo)
   }
 
   public func getRpcUrl(_ chainId: String) throws -> String {
@@ -423,7 +429,8 @@ public class PortalProvider: PortalProviderProtocol {
     withPayload: PortalProviderRequestWithId,
     forId _: String,
     onBlockchain: PortalBlockchain,
-    connect: PortalConnect? = nil
+    connect: PortalConnect? = nil,
+    signatureApprovalMemo: String? = nil
   ) async throws -> PortalProviderResult {
     guard try await self.getApproval(onChainId, forPayload: withPayload, connect: connect) else {
       throw ProviderSigningError.userDeclinedApproval
@@ -437,7 +444,8 @@ public class PortalProvider: PortalProviderProtocol {
       onChainId,
       withPayload: payload,
       andRpcUrl: rpcUrl,
-      usingBlockchain: onBlockchain
+      usingBlockchain: onBlockchain,
+      signatureApprovalMemo: signatureApprovalMemo
     )
 
     return PortalProviderResult(id: withPayload.id, result: signature)

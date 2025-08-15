@@ -160,15 +160,17 @@ public struct SolanaHeader: Codable {
 }
 
 public struct SendAssetParams: Codable {
-  public init(to: String, amount: String, token: String) {
+  public init(to: String, amount: String, token: String, signatureApprovalMemo: String? = nil) {
     self.to = to
     self.amount = amount
     self.token = token
+    self.signatureApprovalMemo = signatureApprovalMemo
   }
 
   public let to: String
   public let amount: String
   public let token: String
+  public let signatureApprovalMemo: String?
 }
 
 public struct SendAssetResponse: Codable {

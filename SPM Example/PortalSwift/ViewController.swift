@@ -1367,7 +1367,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.startLoading()
 
         let chainId = "eip155:11155111"
-        let params = SendAssetParams(to: "0xdFd8302f44727A6348F702fF7B594f127dE3A902", amount: "0.001", token: "NATIVE")
+        let params = SendAssetParams(to: "0xdFd8302f44727A6348F702fF7B594f127dE3A902", amount: "0.001", token: "NATIVE", signatureApprovalMemo: "test")
 
         let response = try await portal?.sendAsset(chainId: chainId, params: params)
 
@@ -2190,8 +2190,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
     Task {
       do {
         self.startLoading()
-          
-          
+
+
           guard let portal = self.portal else {
             self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Portal or address not initialized/found")
             self.stopLoading()
@@ -2202,7 +2202,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
           let chainId = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1" // Devnet
 //           let chainId = "solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z" // Testnet
 
-          let params = SendAssetParams(to: "75ZfLXXsSpycDvHTQuHnGQuYgd2ihb6Bu4viiCCQ7P4H", amount: "0.001", token: "NATIVE")
+          let params = SendAssetParams(to: "75ZfLXXsSpycDvHTQuHnGQuYgd2ihb6Bu4viiCCQ7P4H", amount: "0.001", token: "NATIVE", signatureApprovalMemo: "test")
 
           let response = try await portal.sendAsset(chainId: chainId, params: params)
 
