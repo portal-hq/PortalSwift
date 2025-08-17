@@ -18,7 +18,7 @@ public protocol PortalProviderProtocol: AnyObject {
   func once(event: Events.RawValue, callback: @escaping (_ data: Any) throws -> Void) -> PortalProvider
   func removeListener(event: Events.RawValue) -> PortalProvider
   func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [AnyCodable]?, connect: PortalConnect?, signatureApprovalMemo: String?) async throws -> PortalProviderResult
-  func request(_ chainId: String, withMethod: String, andParams: [AnyCodable]?, connect: PortalConnect?) async throws -> PortalProviderResult
+  func request(_ chainId: String, withMethod: String, andParams: [AnyCodable]?, connect: PortalConnect?, signatureApprovalMemo: String?) async throws -> PortalProviderResult
   func getRpcUrl(_ chainId: String) throws -> String
   func updateChain(newChainId: String, connect: PortalConnect?)
 

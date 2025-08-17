@@ -44,7 +44,7 @@ public class PortalMpcSigner: PortalSignerProtocol {
     withPayload: PortalSignRequest,
     andRpcUrl: String,
     usingBlockchain: PortalBlockchain,
-    signatureApprovalMemo: String? = nil
+    signatureApprovalMemo: String?
   ) async throws -> String {
     var mpcMetadata = self.mpcMetadata
     mpcMetadata.curve = usingBlockchain.curve
@@ -55,6 +55,7 @@ public class PortalMpcSigner: PortalSignerProtocol {
     let signingShare = try await keychain?.getShare(chainId)
 
     let mpcMetadataString = try mpcMetadata.jsonString()
+    print("mpcMetadataString", mpcMetadataString)
 
     let clientSignResult = await self.binary.MobileSign(
       self.apiKey,

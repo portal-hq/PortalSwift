@@ -1521,7 +1521,7 @@ public final class Portal: PortalProtocol {
       let transactionResponse = try await buildEip155Transaction(chainId: chainId, params: transactionParam)
 
       // Send the transaction using eth_sendTransaction
-      let sendResponse = try await request(chainId, withMethod: .eth_sendTransaction, andParams: [transactionResponse.transaction])
+      let sendResponse = try await request(chainId, withMethod: .eth_sendTransaction, andParams: [transactionResponse.transaction], signatureApprovalMemo: params.signatureApprovalMemo)
 
       guard let txHash = sendResponse.result as? String else {
         throw PortalClassError.invalidResponseTypeForRequest
@@ -2056,13 +2056,15 @@ public final class Portal: PortalProtocol {
   ///   - The signature is generated directly from the underlying key share
   public func rawSign(
     message: String,
-    chainId: String
+    chainId: String,
+    signatureApprovalMemo: String? = nil
   ) async throws -> PortalProviderResult {
     return try await self.provider.request(
       chainId,
       withMethod: .rawSign,
       andParams: [AnyCodable(message)],
-      connect: nil
+      connect: nil,
+      signatureApprovalMemo: signatureApprovalMemo
     )
   }
 
