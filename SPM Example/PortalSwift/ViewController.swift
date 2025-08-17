@@ -2097,7 +2097,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
         self.startLoading()
 
-        let response = try await portal.rawSign(message: "74657374", chainId: chainId)
+        let response = try await portal.rawSign(message: "74657374", chainId: chainId, signatureApprovalMemo: "test")
 
         guard let signature = response.result as? String else {
           self.logger.error("ViewController.handleRawSign() - ❌ Invalid response type for request:")
