@@ -2067,10 +2067,6 @@ public final class Portal: PortalProtocol {
       signatureApprovalMemo: signatureApprovalMemo
     )
   }
-  
-  public func rawSign(message: String, chainId: String) async throws -> PortalProviderResult {
-    return try await self.rawSign(message: message, chainId: chainId, signatureApprovalMemo: nil)
-  }
 
   @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of request().")
   public func request(

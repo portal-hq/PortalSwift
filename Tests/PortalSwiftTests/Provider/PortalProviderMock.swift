@@ -42,7 +42,7 @@ class PortalProviderMock: PortalProviderProtocol {
     mockPortalProvider
   }
 
-  func request(_: String, withMethod: PortalSwift.PortalRequestMethod, andParams _: [AnyCodable]?, connect _: PortalSwift.PortalConnect?, signatureApprovalMemo: String?) async throws -> PortalSwift.PortalProviderResult {
+  func request(_: String, withMethod: PortalSwift.PortalRequestMethod, andParams _: [AnyCodable]?, connect _: PortalSwift.PortalConnect?, signatureApprovalMemo _: String?) async throws -> PortalSwift.PortalProviderResult {
     switch withMethod {
     case .eth_accounts, .eth_requestAccounts:
       return PortalProviderResult(

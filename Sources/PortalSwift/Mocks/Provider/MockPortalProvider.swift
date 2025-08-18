@@ -61,16 +61,16 @@ public class MockPortalProvider: PortalProvider {
   }
 
   override public func request(
-    _: String,
+    _ chainId: String,
     withMethod: String,
-    andParams _: [AnyCodable]? = [],
-    connect _: PortalConnect? = nil,
-    signatureApprovalMemo _: String? = nil
+    andParams: [AnyCodable]? = [],
+    connect: PortalConnect? = nil,
+    signatureApprovalMemo: String? = nil
   ) async throws -> PortalProviderResult {
     guard let method = PortalRequestMethod(rawValue: withMethod) else {
       throw PortalProviderError.unsupportedRequestMethod("Received a request with unsupported method: \(withMethod)")
     }
-    return try await self.request("", withMethod: method, andParams: [], connect: nil, signatureApprovalMemo: nil)
+    return try await self.request(chainId, withMethod: method, andParams: andParams, connect: connect, signatureApprovalMemo: signatureApprovalMemo)
   }
 
   override public func setChainId(value _: Int, connect _: PortalConnect? = nil) -> PortalProvider {

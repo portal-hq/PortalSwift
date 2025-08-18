@@ -2207,7 +2207,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
         self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Successfully sent transaction")
         self.showStatusView(message: "\(self.successStatus) Successfully sent transaction")
-        self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Transaction Hash: \(response.txHash )")
+        self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Transaction Hash: \(response.txHash)")
 
         self.stopLoading()
       } catch {

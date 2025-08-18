@@ -652,8 +652,39 @@ extension PortalTests {
 
     XCTAssertEqual(portalProviderSpy.onceEventParam, Events.PortalSigningApproved.rawValue)
   }
+}
 
+// MARK: - Request Tests
+
+extension PortalTests {
   func test_request_willCall_provider_request_onlyOnce() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+
+    // and given
+    _ = try await portal.request("", withMethod: .eth_accounts, andParams: [])
+
+    XCTAssertEqual(portalProviderSpy.requestAsyncMethodCallsCount, 1)
+  }
+
+  func test_request_willCall_provider_request_passingCorrectParams() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+
+    // and given
+    let method = PortalRequestMethod.eth_accounts
+    let signatureApprovalMemo: String? = "signature approval memo"
+    _ = try await portal.request("123", withMethod: method, andParams: ["123", "321"], signatureApprovalMemo: signatureApprovalMemo)
+
+    XCTAssertEqual(portalProviderSpy.requestAsyncMethodChainIdParam, "123")
+    XCTAssertEqual(portalProviderSpy.requestAsyncMethodMethodParam, method)
+    XCTAssertEqual(portalProviderSpy.requestAsyncMethodParamsParam, ["123", "321"])
+    XCTAssertEqual(portalProviderSpy.requestAsyncMethodSignatureApprovalMemoParam, signatureApprovalMemo)
+  }
+
+  func test_request_withStringMethod_willCall_provider_request_onlyOnce() async throws {
     // given
     let portalProviderSpy = PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
@@ -664,7 +695,7 @@ extension PortalTests {
     XCTAssertEqual(portalProviderSpy.requestAsyncMethodCallsCount, 1)
   }
 
-  func test_request_willThrowCorrectError_WhenPassingWrongMethod() async throws {
+  func test_request_withStringMethod_willThrowCorrectError_WhenPassingWrongMethod() async throws {
     // given
     let portalProviderSpy = PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
@@ -680,7 +711,7 @@ extension PortalTests {
     }
   }
 
-  func test_request_willThrowCorrectError_WhenPassingNilParams() async throws {
+  func test_request_withStringMethod_willThrowCorrectError_WhenPassingNilParams() async throws {
     // given
     let portalProviderSpy = PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
@@ -695,7 +726,7 @@ extension PortalTests {
     }
   }
 
-  func test_request_willCall_provider_request_passingCorrectParams() async throws {
+  func test_request_withStringMethod_willCall_provider_request_passingCorrectParams() async throws {
     // given
     let portalProviderSpy = PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
@@ -1522,6 +1553,42 @@ extension PortalTests {
     XCTAssertEqual(portalProviderSpy.requestAsyncMethodCallsCount, 1)
   }
 
+  func test_sendAsset_willCall_portalProvider_request_passingCorrectParams_for_eip115Chain() async throws {
+    // given
+    let portalApiSpy = PortalApiMock()
+    try initPortalWithSpy(api: portalApiSpy)
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let params = SendAssetParams.stub(signatureApprovalMemo: "signatureApprovalMemo")
+    let chainId = "eip155:11155111"
+
+    // and given
+    _ = try await portal.sendAsset(chainId: chainId, params: params)
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestAsyncMethodChainIdParam, chainId)
+    XCTAssertEqual(portalProviderSpy.requestAsyncMethodMethodParam, .eth_sendTransaction)
+    XCTAssertEqual(portalProviderSpy.requestAsyncMethodSignatureApprovalMemoParam, params.signatureApprovalMemo)
+  }
+
+  func test_sendAsset_willCall_portalProvider_request_passingCorrectParams_for_SolanaChain() async throws {
+    // given
+    let portalApiSpy = PortalApiMock()
+    try initPortalWithSpy(api: portalApiSpy)
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let params = SendAssetParams.stub(signatureApprovalMemo: "signatureApprovalMemo")
+    let chainId = "solana:11155111"
+
+    // and given
+    _ = try await portal.sendAsset(chainId: chainId, params: params)
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestAsyncMethodChainIdParam, chainId)
+    XCTAssertEqual(portalProviderSpy.requestAsyncMethodMethodParam, .sol_signAndSendTransaction)
+    XCTAssertEqual(portalProviderSpy.requestAsyncMethodSignatureApprovalMemoParam, params.signatureApprovalMemo)
+  }
+
   func test_sendAsset_withInvalidNameSpace_willThroughCorrectError() async throws {
     // given
     let chainId = ":11155111"
@@ -1595,5 +1662,44 @@ extension PortalTests {
     portal.updateChain(newChainId: chainId)
 
     XCTAssertEqual(portalProviderSpy.updateChainNewChainIdParam, chainId)
+  }
+}
+
+// MARK: - rawSign tests
+
+extension PortalTests {
+  func test_rawSign_willCall_portalProvider_request_onlyOnce() async throws {
+    // given
+    let portalApiSpy = PortalApiMock()
+    portalApiSpy.buildSolanaTransactionReturnValue = BuildSolanaTransactionResponse.stub()
+    try initPortalWithSpy(api: portalApiSpy)
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+
+    // and given
+    _ = try await portal.rawSign(message: "", chainId: "")
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestAsyncMethodCallsCount, 1)
+  }
+
+  func test_rawSign_willCall_portalProvider_request_passingCorrectParams() async throws {
+    // given
+    let portalApiSpy = PortalApiMock()
+    try initPortalWithSpy(api: portalApiSpy)
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let message = "message to sign"
+    let chainId = "eip155:11155111"
+    let signatureApprovalMemo = "signature approval memo"
+
+    // and given
+    _ = try await portal.rawSign(message: message, chainId: chainId, signatureApprovalMemo: signatureApprovalMemo)
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestAsyncMethodChainIdParam, chainId)
+    XCTAssertEqual(portalProviderSpy.requestAsyncMethodMethodParam, .rawSign)
+    XCTAssertEqual(portalProviderSpy.requestAsyncMethodParamsParam, [AnyCodable(message)])
+    XCTAssertEqual(portalProviderSpy.requestAsyncMethodSignatureApprovalMemoParam, signatureApprovalMemo)
   }
 }
