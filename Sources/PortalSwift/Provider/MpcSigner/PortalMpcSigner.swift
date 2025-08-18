@@ -44,7 +44,7 @@ public class PortalMpcSigner: PortalSignerProtocol {
     withPayload: PortalSignRequest,
     andRpcUrl: String,
     usingBlockchain: PortalBlockchain,
-    signatureApprovalMemo: String?
+    signatureApprovalMemo: String? = nil
   ) async throws -> String {
     var mpcMetadata = self.mpcMetadata
     mpcMetadata.curve = usingBlockchain.curve

@@ -76,13 +76,15 @@ class PortalProviderSpy: PortalProviderProtocol {
   private(set) var requestAsyncMethodMethodParam: PortalRequestMethod?
   private(set) var requestAsyncMethodParamsParam: [AnyCodable]?
   private(set) var requestAsyncMethodConnectParam: PortalConnect?
+  private(set) var requestAsyncMethodSignatureApprovalMemoParam: String?
 
-  func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [AnyCodable]?, connect: PortalConnect?) async throws -> PortalProviderResult {
+  func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [AnyCodable]?, connect: PortalConnect?, signatureApprovalMemo: String?) async throws -> PortalProviderResult {
     requestAsyncMethodCallsCount += 1
     requestAsyncMethodChainIdParam = chainId
     requestAsyncMethodMethodParam = withMethod
     requestAsyncMethodParamsParam = andParams
     requestAsyncMethodConnectParam = connect
+    requestAsyncMethodSignatureApprovalMemoParam = signatureApprovalMemo
     return PortalProviderResult(id: "", result: "")
   }
 
@@ -92,13 +94,15 @@ class PortalProviderSpy: PortalProviderProtocol {
   private(set) var requestAsyncStringMethodParam: String?
   private(set) var requestAsyncStringParamsParam: [AnyCodable]?
   private(set) var requestAsyncStringConnectParam: PortalConnect?
+  private(set) var requestAsyncStringSignatureApprovalMemoParam: String?
 
-  func request(_ chainId: String, withMethod: String, andParams: [AnyCodable]?, connect: PortalConnect?) async throws -> PortalProviderResult {
+  func request(_ chainId: String, withMethod: String, andParams: [AnyCodable]?, connect: PortalConnect?, signatureApprovalMemo: String?) async throws -> PortalProviderResult {
     requestAsyncStringCallsCount += 1
     requestAsyncStringChainIdParam = chainId
     requestAsyncStringMethodParam = withMethod
     requestAsyncStringParamsParam = andParams
     requestAsyncStringConnectParam = connect
+    requestAsyncStringSignatureApprovalMemoParam = signatureApprovalMemo
     return PortalProviderResult(id: "", result: "")
   }
 
