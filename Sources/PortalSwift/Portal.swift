@@ -888,6 +888,7 @@ public final class Portal: PortalProtocol {
   ///   - withMethod: The RPC method to call, specified using `PortalRequestMethod`
   ///   - andParams: Optional array of parameters for the RPC method. Must not be nil,
   ///     use an empty array if no parameters are needed.
+  ///   - signatureApprovalMemo: Optional signature approval memo to use for the request.
   ///
   /// - Returns: A `PortalProviderResult` containing the response from the blockchain.
   ///
@@ -897,12 +898,12 @@ public final class Portal: PortalProtocol {
   ///
   /// - Note: Parameters are automatically converted to a format compatible with
   ///   blockchain RPC calls.
-  public func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any] = []) async throws -> PortalProviderResult {
+  public func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any] = [], signatureApprovalMemo: String? = nil) async throws -> PortalProviderResult {
     let params = andParams.map { param in
       AnyCodable(param)
     }
 
-    return try await self.provider.request(chainId, withMethod: withMethod, andParams: params, connect: nil)
+    return try await self.provider.request(chainId, withMethod: withMethod, andParams: params, connect: nil, signatureApprovalMemo: signatureApprovalMemo)
   }
 
   public func getRpcUrl(forChainId: String) async -> String? {
@@ -1520,7 +1521,7 @@ public final class Portal: PortalProtocol {
       let transactionResponse = try await buildEip155Transaction(chainId: chainId, params: transactionParam)
 
       // Send the transaction using eth_sendTransaction
-      let sendResponse = try await request(chainId, withMethod: .eth_sendTransaction, andParams: [transactionResponse.transaction])
+      let sendResponse = try await request(chainId, withMethod: .eth_sendTransaction, andParams: [transactionResponse.transaction], signatureApprovalMemo: params.signatureApprovalMemo)
 
       guard let txHash = sendResponse.result as? String else {
         throw PortalClassError.invalidResponseTypeForRequest
@@ -1534,7 +1535,7 @@ public final class Portal: PortalProtocol {
       let transactionResponse = try await buildSolanaTransaction(chainId: chainId, params: transactionParam)
 
       // Send the transaction using sol_signAndSendTransaction
-      let sendResponse = try await request(chainId, withMethod: .sol_signAndSendTransaction, andParams: [transactionResponse.transaction])
+      let sendResponse = try await request(chainId, withMethod: .sol_signAndSendTransaction, andParams: [transactionResponse.transaction], signatureApprovalMemo: params.signatureApprovalMemo)
 
       guard let txHash = sendResponse.result as? String else {
         throw PortalClassError.invalidResponseTypeForRequest
@@ -2055,14 +2056,20 @@ public final class Portal: PortalProtocol {
   ///   - The signature is generated directly from the underlying key share
   public func rawSign(
     message: String,
-    chainId: String
+    chainId: String,
+    signatureApprovalMemo: String? = nil
   ) async throws -> PortalProviderResult {
     return try await self.provider.request(
       chainId,
       withMethod: .rawSign,
       andParams: [AnyCodable(message)],
-      connect: nil
+      connect: nil,
+      signatureApprovalMemo: signatureApprovalMemo
     )
+  }
+  
+  public func rawSign(message: String, chainId: String) async throws -> PortalProviderResult {
+    return try await self.rawSign(message: message, chainId: chainId, signatureApprovalMemo: nil)
   }
 
   @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of request().")

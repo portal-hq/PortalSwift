@@ -12,7 +12,8 @@ public class MockPortalMpcSigner: PortalMpcSigner {
     _: String,
     withPayload: PortalSignRequest,
     andRpcUrl _: String,
-    usingBlockchain _: PortalBlockchain
+    usingBlockchain _: PortalBlockchain,
+    signatureApprovalMemo _: String?
   ) async throws -> String {
     switch withPayload.method {
     case .eth_sendTransaction, .eth_sendRawTransaction:

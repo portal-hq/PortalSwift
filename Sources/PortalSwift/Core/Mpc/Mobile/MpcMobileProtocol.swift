@@ -17,6 +17,7 @@ public struct MpcMetadata: Codable {
   var mpcServerVersion: String
   var optimized: Bool = true
   var isRaw: Bool? = nil
+  var signatureApprovalMemo: String? = nil
 }
 
 extension MpcMetadata {
