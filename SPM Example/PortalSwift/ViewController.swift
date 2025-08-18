@@ -1367,7 +1367,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.startLoading()
 
         let chainId = "eip155:11155111"
-        let params = SendAssetParams(to: "0xdFd8302f44727A6348F702fF7B594f127dE3A902", amount: "0.001", token: "NATIVE", signatureApprovalMemo: "test")
+        let params = SendAssetParams(to: "0xdFd8302f44727A6348F702fF7B594f127dE3A902", amount: "0.001", token: "NATIVE")
 
         let response = try await portal?.sendAsset(chainId: chainId, params: params)
 
@@ -2097,7 +2097,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
         self.startLoading()
 
-        let response = try await portal.rawSign(message: "74657374", chainId: chainId, signatureApprovalMemo: "test")
+        let response = try await portal.rawSign(message: "74657374", chainId: chainId)
 
         guard let signature = response.result as? String else {
           self.logger.error("ViewController.handleRawSign() - ❌ Invalid response type for request:")
@@ -2200,7 +2200,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         // Setup and address retrieval
         let chainId = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1" // Devnet
 
-        let params = SendAssetParams(to: "75ZfLXXsSpycDvHTQuHnGQuYgd2ihb6Bu4viiCCQ7P4H", amount: "0.001", token: "NATIVE", signatureApprovalMemo: "test")
+        let params = SendAssetParams(to: "75ZfLXXsSpycDvHTQuHnGQuYgd2ihb6Bu4viiCCQ7P4H", amount: "0.001", token: "NATIVE")
 
         let response = try await portal.sendAsset(chainId: chainId, params: params)
 
