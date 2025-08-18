@@ -55,7 +55,6 @@ public class PortalMpcSigner: PortalSignerProtocol {
     let signingShare = try await keychain?.getShare(chainId)
 
     let mpcMetadataString = try mpcMetadata.jsonString()
-    print("mpcMetadataString", mpcMetadataString)
 
     let clientSignResult = await self.binary.MobileSign(
       self.apiKey,
