@@ -972,7 +972,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         user.clientApiKey,
         featureFlags: FeatureFlags(
           isMultiBackupEnabled: true,
-          useEnclaveMPCApi: true
+          useEnclaveMPCApi: false
         ),
         apiHost: config.apiUrl,
         mpcHost: config.mpcUrl,
@@ -2201,7 +2201,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         // Setup and address retrieval
         let chainId = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1" // Devnet
 
-        let params = SendAssetParams(to: "75ZfLXXsSpycDvHTQuHnGQuYgd2ihb6Bu4viiCCQ7P4H", amount: "0.001", token: "NATIVE")
+        let params = SendAssetParams(to: "75ZfLXXsSpycDvHTQuHnGQuYgd2ihb6Bu4viiCCQ7P4H", amount: "0.001", token: "NATIVE", signatureApprovalMemo: "test")
 
         let response = try await portal.sendAsset(chainId: chainId, params: params)
 
