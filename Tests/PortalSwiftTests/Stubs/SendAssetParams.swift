@@ -12,12 +12,14 @@ extension SendAssetParams {
   static func stub(
     to: String = "0xabcdef123456789abcdef123456789abcdef123456",
     amount: String = "0.001",
-    token: String = "ETH"
+    token: String = "ETH",
+    signatureApprovalMemo: String? = nil
   ) -> SendAssetParams {
     return SendAssetParams(
       to: to,
       amount: amount,
-      token: token
+      token: token,
+      signatureApprovalMemo: signatureApprovalMemo
     )
   }
 }

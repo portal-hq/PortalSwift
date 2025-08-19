@@ -972,7 +972,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         user.clientApiKey,
         featureFlags: FeatureFlags(
           isMultiBackupEnabled: true,
-          useEnclaveMPCApi: true
+          useEnclaveMPCApi: false
         ),
         apiHost: config.apiUrl,
         mpcHost: config.mpcUrl,
@@ -2097,7 +2097,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
         self.startLoading()
 
-        let response = try await portal.rawSign(message: "74657374", chainId: chainId)
+        let response = try await portal.rawSign(message: "74657374", chainId: chainId, signatureApprovalMemo: "test")
 
         guard let signature = response.result as? String else {
           self.logger.error("ViewController.handleRawSign() - ❌ Invalid response type for request:")
@@ -2191,25 +2191,23 @@ class ViewController: UIViewController, UITextFieldDelegate {
     Task {
       do {
         self.startLoading()
-          
-          
-          guard let portal = self.portal else {
-            self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Portal or address not initialized/found")
-            self.stopLoading()
-            return
-          }
 
-          // Setup and address retrieval
-          let chainId = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1" // Devnet
-//           let chainId = "solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z" // Testnet
+        guard let portal = self.portal else {
+          self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Portal or address not initialized/found")
+          self.stopLoading()
+          return
+        }
 
-          let params = SendAssetParams(to: "75ZfLXXsSpycDvHTQuHnGQuYgd2ihb6Bu4viiCCQ7P4H", amount: "0.001", token: "NATIVE")
+        // Setup and address retrieval
+        let chainId = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1" // Devnet
 
-          let response = try await portal.sendAsset(chainId: chainId, params: params)
+        let params = SendAssetParams(to: "75ZfLXXsSpycDvHTQuHnGQuYgd2ihb6Bu4viiCCQ7P4H", amount: "0.001", token: "NATIVE", signatureApprovalMemo: "test")
 
-            self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Successfully sent transaction")
-            self.showStatusView(message: "\(self.successStatus) Successfully sent transaction")
-            self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Transaction Hash: \(response.txHash )")
+        let response = try await portal.sendAsset(chainId: chainId, params: params)
+
+        self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Successfully sent transaction")
+        self.showStatusView(message: "\(self.successStatus) Successfully sent transaction")
+        self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Transaction Hash: \(response.txHash)")
 
         self.stopLoading()
       } catch {

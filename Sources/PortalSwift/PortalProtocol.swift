@@ -80,7 +80,7 @@ public protocol PortalProtocol {
   func emit(_ event: Events, data: Any)
   func on(event: Events, callback: @escaping (Any) -> Void)
   func once(event: Events, callback: @escaping (Any) -> Void)
-  func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any]) async throws -> PortalProviderResult
+  func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any], signatureApprovalMemo: String?) async throws -> PortalProviderResult
   func getRpcUrl(forChainId: String) async -> String?
   func availableRecoveryMethods(_ forChainId: String?) async throws -> [BackupMethods]
   func doesWalletExist(_ forChainId: String?) async throws -> Bool
@@ -98,7 +98,7 @@ public protocol PortalProtocol {
   func buildSolanaTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildSolanaTransactionResponse
   func getWalletCapabilities() async throws -> WalletCapabilitiesResponse
   func provisionWallet(cipherText: String, method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?)
-  func rawSign(message: String, chainId: String) async throws -> PortalProviderResult
+  func rawSign(message: String, chainId: String, signatureApprovalMemo: String?) async throws -> PortalProviderResult
   func createPortalConnectInstance(webSocketServer: String) throws -> PortalConnect
   func receiveTestnetAsset(chainId: String, params: FundParams) async throws -> FundResponse
   func sendAsset(chainId: String, params: SendAssetParams) async throws -> SendAssetResponse
@@ -155,4 +155,15 @@ public protocol PortalProtocol {
   func ethSignTypedData(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
   @available(*, deprecated, message: "Use `request(_:withMethod:andParams:)` with `PortalRequestMethod.personalSign` instead")
   func personalSign(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
+}
+
+// Proxy functions to avoid releasing breaking changes after adding the `signatureApprovalMemo` param
+public extension PortalProtocol {
+  func rawSign(message: String, chainId: String) async throws -> PortalProviderResult {
+    return try await rawSign(message: message, chainId: chainId, signatureApprovalMemo: nil)
+  }
+
+  func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any]) async throws -> PortalProviderResult {
+    return try await request(chainId, withMethod: withMethod, andParams: andParams, signatureApprovalMemo: nil)
+  }
 }

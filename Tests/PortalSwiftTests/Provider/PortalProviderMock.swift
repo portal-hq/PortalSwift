@@ -42,7 +42,7 @@ class PortalProviderMock: PortalProviderProtocol {
     mockPortalProvider
   }
 
-  func request(_: String, withMethod: PortalSwift.PortalRequestMethod, andParams _: [AnyCodable]?, connect _: PortalSwift.PortalConnect?) async throws -> PortalSwift.PortalProviderResult {
+  func request(_: String, withMethod: PortalSwift.PortalRequestMethod, andParams _: [AnyCodable]?, connect _: PortalSwift.PortalConnect?, signatureApprovalMemo _: String?) async throws -> PortalSwift.PortalProviderResult {
     switch withMethod {
     case .eth_accounts, .eth_requestAccounts:
       return PortalProviderResult(
@@ -69,8 +69,8 @@ class PortalProviderMock: PortalProviderProtocol {
     }
   }
 
-  func request(_ chainId: String, withMethod: String, andParams: [AnyCodable]?, connect: PortalSwift.PortalConnect?) async throws -> PortalSwift.PortalProviderResult {
-    try await self.request(chainId, withMethod: PortalRequestMethod(rawValue: withMethod)!, andParams: andParams, connect: connect)
+  func request(_ chainId: String, withMethod: String, andParams: [AnyCodable]?, connect: PortalSwift.PortalConnect?, signatureApprovalMemo: String?) async throws -> PortalSwift.PortalProviderResult {
+    try await self.request(chainId, withMethod: PortalRequestMethod(rawValue: withMethod)!, andParams: andParams, connect: connect, signatureApprovalMemo: signatureApprovalMemo)
   }
 
   func request(payload _: PortalSwift.ETHRequestPayload, completion _: @escaping (PortalSwift.Result<PortalSwift.RequestCompletionResult>) -> Void, connect _: PortalSwift.PortalConnect?) {}
