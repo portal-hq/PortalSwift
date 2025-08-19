@@ -12,6 +12,9 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
+## 6.1.1 - 2025-08-19
+- Added an optional `signatureApprovalMemo` parameter when signing to the functions `rawSign`, `sendAsset`, and `request`.
+
 ## 6.1.0 - 2025-06-05
 - Added default web auth host to the function `setPasskeyConfiguration`.
 - Added `PortalRequests.execute()` that receives a request object and decoding type, returning a concrete type.
