@@ -156,3 +156,14 @@ public protocol PortalProtocol {
   @available(*, deprecated, message: "Use `request(_:withMethod:andParams:)` with `PortalRequestMethod.personalSign` instead")
   func personalSign(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
 }
+
+// Proxy functions to avoid releasing breaking changes after adding the `signatureApprovalMemo` param
+public extension PortalProtocol {
+  func rawSign(message: String, chainId: String) async throws -> PortalProviderResult {
+    return try await rawSign(message: message, chainId: chainId, signatureApprovalMemo: nil)
+  }
+
+  func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any]) async throws -> PortalProviderResult {
+    return try await request(chainId, withMethod: withMethod, andParams: andParams, signatureApprovalMemo: nil)
+  }
+}
