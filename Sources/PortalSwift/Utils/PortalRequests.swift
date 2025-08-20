@@ -81,6 +81,8 @@ public class PortalRequests: PortalRequestsProtocol {
     if ResponseType.self == Data.self {
       // Force cast is safe here because we've checked the type
       return data as! ResponseType
+    } else if ResponseType.self == String.self {
+        return (String(data: data, encoding: .utf8) ?? "") as! ResponseType
     }
 
     // decode the response for all other types other than Data
