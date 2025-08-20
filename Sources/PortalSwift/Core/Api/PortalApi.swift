@@ -217,6 +217,17 @@ public class PortalApi: PortalApiProtocol {
     throw URLError(.badURL)
   }
 
+  public func getSources(_ swapsApiKey: String, forChainId: String) async throws -> [String: String] {
+    if let url = URL(string: "\(baseUrl)/api/v3/swaps/sources") {
+      let payload = ["apiKey": swapsApiKey, "chainId": forChainId]
+      let response = try await post(url, withBearerToken: self.apiKey, andPayload: payload, mappingInResponse: [String: String].self)
+
+      return response
+    }
+
+    throw URLError(.badURL)
+  }
+
   public func getQuote(_ swapsApiKey: String, withArgs: QuoteArgs, forChainId: String? = nil) async throws -> Quote {
     let chainId = forChainId != nil ? forChainId : "eip155:\(self.chainId ?? 1)"
 
@@ -266,17 +277,6 @@ public class PortalApi: PortalApiProtocol {
     }
 
     self.logger.error("PortalApi.getSharePairs() - Unable to build request URL.")
-    throw URLError(.badURL)
-  }
-
-  public func getSources(_ swapsApiKey: String, forChainId: String) async throws -> [String: String] {
-    if let url = URL(string: "\(baseUrl)/api/v3/swaps/sources") {
-      let payload = ["apiKey": swapsApiKey, "chainId": forChainId]
-      let response = try await post(url, withBearerToken: self.apiKey, andPayload: payload, mappingInResponse: [String: String].self)
-
-      return response
-    }
-
     throw URLError(.badURL)
   }
 

@@ -268,7 +268,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
 
       let organizationBackupShareRequest = PortalAPIRequest(url: organizationBackupShareUrl)
-      let organizationBackupShareResponse = try await requests.execute(request: cipherTextRequest, mappingInResponse: OrgShareResult.self)
+      let organizationBackupShareResponse = try await requests.execute(request: organizationBackupShareRequest, mappingInResponse: OrgShareResult.self)
 
       organizationShare = organizationBackupShareResponse.orgShare
     } else {
@@ -972,7 +972,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         user.clientApiKey,
         featureFlags: FeatureFlags(
           isMultiBackupEnabled: true,
-          useEnclaveMPCApi: true
+          useEnclaveMPCApi: false
         ),
         apiHost: config.apiUrl,
         mpcHost: config.mpcUrl,
@@ -2097,7 +2097,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
         self.startLoading()
 
-        let response = try await portal.rawSign(message: "74657374", chainId: chainId)
+        let response = try await portal.rawSign(message: "74657374", chainId: chainId, signatureApprovalMemo: "test")
 
         guard let signature = response.result as? String else {
           self.logger.error("ViewController.handleRawSign() - ❌ Invalid response type for request:")
@@ -2132,12 +2132,12 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
 
       let swaps: PortalSwapsProtocol = PortalSwaps(apiKey: SWAPS_API_KEY, portal: portal)
-      let customChainId = "eip155:11155111"
+      let customChainId = "eip155:1"
 
       Task {
         do {
           let resourcesResult = try await swaps.getSources(forChainId: customChainId)
-          print("getSources response:", resourcesResult)
+          self.logger.info("ViewController.handleSwaps() - ✅ Got sources successfully: \(resourcesResult)")
         } catch {
           self.logger.error("ViewController.handleSwaps() - ❌ Unable to get sources with error: \(error)")
           self.showStatusView(message: "\(self.failureStatus) Unable to get sources with error: \(error)")
@@ -2145,15 +2145,15 @@ class ViewController: UIViewController, UITextFieldDelegate {
         }
 
         let quoteArgs = QuoteArgs(
-          buyToken: "0x68194a729c2450ad26072b3d33adacbcef39d574", // USDC on Sepolia
+          buyToken: "USDC",
           sellToken: "ETH",
-          sellAmount: "1000"
+          sellAmount: "1000000000000000000"
         )
 
         var quoteResult: Quote
         do {
           quoteResult = try await swaps.getQuote(args: quoteArgs, forChainId: customChainId)
-
+          print("ViewController.handleSwaps() - ✅ Got quote successfully: \(quoteResult)")
         } catch {
           self.logger.error("ViewController.handleSwaps() - ❌ Unable to get quote with error: \(error)")
           self.showStatusView(message: "\(self.failureStatus) Unable to get quote with error: \(error)")
@@ -2163,7 +2163,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
         do {
           let sendTransactionResponse = try await portal.request(customChainId, withMethod: .eth_sendTransaction, andParams: [quoteResult.transaction])
-          print("sendTransactionResponse", sendTransactionResponse)
           guard let transactionHash = sendTransactionResponse.result as? String else {
             throw PortalExampleAppError.invalidResponseTypeForRequest()
           }
@@ -2171,7 +2170,9 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.logger.info("ViewController.handleSwaps() - ✅ Successfully called get sources + quotes + submitted trx: \(transactionHash)")
           self.showStatusView(message: "\(self.successStatus) Successfully called get sources + quotes + submitted trx: \(transactionHash)")
         } catch {
-          print("Error sending transaction", error)
+          self.logger.error("ViewController.handleSwaps() - ❌ Error making swap: \(error)")
+          self.showStatusView(message: "\(self.failureStatus) Error making swap: \(error)")
+          self.stopLoading()
         }
       }
     } catch {
@@ -2190,25 +2191,23 @@ class ViewController: UIViewController, UITextFieldDelegate {
     Task {
       do {
         self.startLoading()
-          
-          
-          guard let portal = self.portal else {
-            self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Portal or address not initialized/found")
-            self.stopLoading()
-            return
-          }
 
-          // Setup and address retrieval
-          let chainId = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1" // Devnet
-//           let chainId = "solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z" // Testnet
+        guard let portal = self.portal else {
+          self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Portal or address not initialized/found")
+          self.stopLoading()
+          return
+        }
 
-          let params = SendAssetParams(to: "75ZfLXXsSpycDvHTQuHnGQuYgd2ihb6Bu4viiCCQ7P4H", amount: "0.001", token: "NATIVE")
+        // Setup and address retrieval
+        let chainId = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1" // Devnet
 
-          let response = try await portal.sendAsset(chainId: chainId, params: params)
+        let params = SendAssetParams(to: "75ZfLXXsSpycDvHTQuHnGQuYgd2ihb6Bu4viiCCQ7P4H", amount: "0.001", token: "NATIVE", signatureApprovalMemo: "test")
 
-            self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Successfully sent transaction")
-            self.showStatusView(message: "\(self.successStatus) Successfully sent transaction")
-            self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Transaction Hash: \(response.txHash )")
+        let response = try await portal.sendAsset(chainId: chainId, params: params)
+
+        self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Successfully sent transaction")
+        self.showStatusView(message: "\(self.successStatus) Successfully sent transaction")
+        self.logger.info("ViewController.handleSolanaSendTrx() - ✅ Transaction Hash: \(response.txHash)")
 
         self.stopLoading()
       } catch {
