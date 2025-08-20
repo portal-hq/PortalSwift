@@ -268,7 +268,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
 
       let organizationBackupShareRequest = PortalAPIRequest(url: organizationBackupShareUrl)
-      let organizationBackupShareResponse = try await requests.execute(request: cipherTextRequest, mappingInResponse: OrgShareResult.self)
+      let organizationBackupShareResponse = try await requests.execute(request: organizationBackupShareRequest, mappingInResponse: OrgShareResult.self)
 
       organizationShare = organizationBackupShareResponse.orgShare
     } else {
