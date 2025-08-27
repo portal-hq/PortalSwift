@@ -1072,52 +1072,51 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
       return
     }
-    
+
     // Get addresses from client metadata namespaces
     if let eip155Address = client.metadata.namespaces.eip155?.address {
       addresses.append(WalletAddress(type: "EIP-155", address: eip155Address, namespace: .eip155))
     }
-    
+
     if let solanaAddress = client.metadata.namespaces.solana?.address {
       addresses.append(WalletAddress(type: "Solana", address: solanaAddress, namespace: .solana))
     }
-    
+
     if let stellarAddress = client.metadata.namespaces.stellar?.address {
       addresses.append(WalletAddress(type: "Stellar", address: stellarAddress, namespace: .stellar))
     }
-    
+
     if let tronAddress = client.metadata.namespaces.tron?.address {
       addresses.append(WalletAddress(type: "Tron", address: tronAddress, namespace: .tron))
     }
-    
+
     // Handle Bitcoin p2wpkh addresses (both mainnet and testnet)
     if let bitcoinInfo = client.metadata.namespaces.bip122?.bitcoin?.p2wpkh {
       // Add testnet address
       addresses.append(WalletAddress(type: "PW2PKH Testnet", address: bitcoinInfo.testnet, namespace: .bip122))
-      
+
       // Add mainnet address
       addresses.append(WalletAddress(type: "PW2PKH Mainnet", address: bitcoinInfo.mainnet, namespace: .bip122))
     }
-    
+
     DispatchQueue.main.async {
       if addresses.isEmpty {
         self.addressInformation?.text = "N/A"
         self.stopRefreshBalanceTimer()
       } else {
         self.logger.info("Portal client addresses:\n\(addresses)")
-        let attributedText = self.createBoldAttributedText(for: addresses)
+        let attributedText = self.createAddressesAttributedText(for: addresses)
         self.addressInformation?.attributedText = attributedText
-        
-        // Make the text view clickable
-        self.setupAddressClickHandling(for: addresses)
+
+        self.currentAddresses = addresses
         self.startRefreshBalanceTimer()
       }
     }
   }
-  
-  private func createBoldAttributedText(for addresses: [WalletAddress]) -> NSAttributedString {
+
+  private func createAddressesAttributedText(for addresses: [WalletAddress]) -> NSAttributedString {
     let attributedString = NSMutableAttributedString()
-    
+
     for (index, walletAddress) in addresses.enumerated() {
       // Create bold text for the key
       let boldKey = NSAttributedString(
@@ -1127,7 +1126,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
           .foregroundColor: UIColor.label
         ]
       )
-      
+
       // Create regular text for the address
       let regularAddress = NSAttributedString(
         string: walletAddress.address,
@@ -1136,33 +1135,18 @@ class ViewController: UIViewController, UITextFieldDelegate {
           .foregroundColor: UIColor.secondaryLabel
         ]
       )
-      
+
       // Append to main string
       attributedString.append(boldKey)
       attributedString.append(regularAddress)
-      
+
       // Add newline if not the last item
       if index < addresses.count - 1 {
         attributedString.append(NSAttributedString(string: "\n\n"))
       }
     }
-    
+
     return attributedString
-  }
-  
-  private func setupAddressClickHandling(for addresses: [WalletAddress]) {
-    guard let textView = self.addressInformation else { return }
-    
-    // Enable user interaction
-    textView.isUserInteractionEnabled = true
-    textView.isEditable = false
-    textView.isSelectable = true
-    
-    // Remove existing gesture recognizers
-    textView.gestureRecognizers?.removeAll()
-    
-    // Store addresses for later use
-    self.currentAddresses = addresses
   }
 
   private func updateUIComponents() {
@@ -1294,6 +1278,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
           // Text components
           self.addressInformation?.isHidden = !walletExists || !isWalletOnDevice
+          self.addressInformation?.isEditable = false
           self.ethBalanceInformation?.isHidden = !walletExists || !isWalletOnDevice
           self.sendAddress?.isHidden = !walletExists || !isWalletOnDevice
           self.url?.isHidden = !walletExists || !isWalletOnDevice
@@ -2291,7 +2276,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   func showStatusView(message: String) {
     self.statusLabel?.text = message
   }
-  
+
   @IBAction func handleBitcoinP2wpkhSendTrx() {
     Task {
       do {
@@ -2319,12 +2304,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
         self.logger.info("ViewController.handleBitcoinP2wpkhSendTrx() - ✅ Successfully sent transaction")
         self.showStatusView(message: "\(self.successStatus) Successfully sent transaction")
-        self.logger.info("ViewController.handleBitcoinP2wpkhSendTrx() - ✅ Transaction Hash: \(response.txHash )")
+        self.logger.info("ViewController.handleBitcoinP2wpkhSendTrx() - ✅ Transaction Hash: \(response.txHash)")
 
         self.stopLoading()
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handleBitcoinP2wpkhSendTrx() - ❌ Generic error: \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error send bitcoin: \(error)")
       }
     }
   }
@@ -2355,6 +2341,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       } catch {
         self.stopLoading()
         self.logger.error("ViewController.handleSolanaSendTrx() - ❌ Generic error: \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error send solana: \(error)")
       }
     }
   }

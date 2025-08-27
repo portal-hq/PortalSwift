@@ -66,7 +66,7 @@ public struct ClientResponseNamespaceMetadataItem: Codable, Equatable {
   public let address: String
   public let curve: PortalCurve
   public let bitcoin: BitcoinAddressInfo?
-  
+
   public init(address: String, curve: PortalCurve, bitcoin: BitcoinAddressInfo? = nil) {
     self.address = address
     self.curve = curve
@@ -667,9 +667,9 @@ public struct BroadcastBitcoinP2wpkhTransactionResponse: Codable, Equatable {
 }
 
 public struct BroadcastParam: Codable, Equatable {
-  let signatures: [String]
-  let rawTxHex: String
-  
+  public let signatures: [String]
+  public let rawTxHex: String
+
   public init(signatures: [String], rawTxHex: String) {
     self.signatures = signatures
     self.rawTxHex = rawTxHex

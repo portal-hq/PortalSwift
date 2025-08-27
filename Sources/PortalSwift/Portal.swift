@@ -1402,7 +1402,7 @@ public final class Portal: PortalProtocol {
       operationType: operationType
     )
   }
-  
+
   /// Constructs a Bitcoin P2WPKH transaction as a Partially Signed Bitcoin Transaction (PSBT).
   ///
   /// This method builds a Pay-to-Witness-Public-Key-Hash (P2WPKH) transaction for the Bitcoin network, preparing it for signing and broadcasting. It generates a PSBT that includes the transaction's raw hexadecimal representation and a list of signature hashes that need to be signed using `rawSign`. The resulting PSBT is used as input for `broadcastBitcoinP2wpkhTransaction` to submit the transaction to the network.
@@ -1469,7 +1469,7 @@ public final class Portal: PortalProtocol {
   public func buildSolanaTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildSolanaTransactionResponse {
     return try await api.buildSolanaTransaction(chainId: chainId, params: params)
   }
-  
+
   /// Broadcasts a Bitcoin P2WPKH transaction to the network.
   ///
   /// This method submits a signed Bitcoin Pay-to-Witness-Public-Key-Hash (P2WPKH) transaction to the specified Bitcoin network for processing. It is typically used after constructing a Partially Signed Bitcoin Transaction (PSBT) with `buildBitcoinP2wpkhTransaction` and signing its signature hashes using `rawSign`.
@@ -1599,7 +1599,7 @@ public final class Portal: PortalProtocol {
 
       // Construct and return response
       return SendAssetResponse(txHash: txHash)
-      
+
     case .bip122:
       // Ensure the chain is bitcoin p2wpkh
       let p2wpkhChains = ["bip122:000000000019d6689c085ae165831e93-p2wpkh", "bip122:000000000933ea01ad0ee984209779ba-p2wpkh"]
@@ -1609,19 +1609,19 @@ public final class Portal: PortalProtocol {
 
       // Build the transaction
       let transactionResponse = try await buildBitcoinP2wpkhTransaction(chainId: chainId, params: transactionParam)
-      
+
       // Raw sign each of the signature hashes of the partially-signed bitcoin tx (psbt)
       var signatures: [String] = []
       for signatureHash in transactionResponse.transaction.signatureHashes {
         let signResponse = try await rawSign(message: signatureHash, chainId: chainId)
-        
+
         guard let signature = signResponse.result as? String else {
           throw PortalClassError.invalidResponseTypeForRequest
         }
 
         signatures.append(signature)
       }
-      
+
       // Broadcast the transaction
       let broadcastResponse = try await broadcastBitcoinP2wpkhTransaction(
         chainId: chainId,

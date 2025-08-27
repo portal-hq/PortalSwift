@@ -368,6 +368,38 @@ class PortalApiSpy: PortalApiProtocol {
     return PortalSwift.BuildSolanaTransactionResponse.stub()
   }
 
+  // MARK: - Bitcoin P2WPKH build transaction spy tracking
+
+  var buildBitcoinP2wpkhTransactionCallsCount: Int = 0
+  var buildBitcoinP2wpkhTransactionChainIdParam: String?
+  var buildBitcoinP2wpkhTransactionParams: PortalSwift.BuildTransactionParam?
+
+  func buildBitcoinP2wpkhTransaction(
+    chainId: String,
+    params: PortalSwift.BuildTransactionParam
+  ) async throws -> PortalSwift.BuildBitcoinP2wpkhTransactionResponse {
+    buildBitcoinP2wpkhTransactionCallsCount += 1
+    buildBitcoinP2wpkhTransactionChainIdParam = chainId
+    buildBitcoinP2wpkhTransactionParams = params
+    return PortalSwift.BuildBitcoinP2wpkhTransactionResponse.stub()
+  }
+
+  // MARK: - Bitcoin P2WPKH broadcast transaction spy tracking
+
+  var broadcastBitcoinP2wpkhTransactionCallsCount: Int = 0
+  var broadcastBitcoinP2wpkhTransactionChainIdParam: String?
+  var broadcastBitcoinP2wpkhTransactionParams: PortalSwift.BroadcastParam?
+
+  func broadcastBitcoinP2wpkhTransaction(
+    chainId: String,
+    params: PortalSwift.BroadcastParam
+  ) async throws -> PortalSwift.BroadcastBitcoinP2wpkhTransactionResponse {
+    broadcastBitcoinP2wpkhTransactionCallsCount += 1
+    broadcastBitcoinP2wpkhTransactionChainIdParam = chainId
+    broadcastBitcoinP2wpkhTransactionParams = params
+    return PortalSwift.BroadcastBitcoinP2wpkhTransactionResponse.stub()
+  }
+
   // getAssets method tracking
   var getAssetsCallsCount: Int = 0
   var getAssetsChainIdParam: String?
