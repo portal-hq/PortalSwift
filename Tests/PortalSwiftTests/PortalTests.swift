@@ -1553,6 +1553,72 @@ extension PortalTests {
     XCTAssertEqual(portalProviderSpy.requestAsyncMethodCallsCount, 1)
   }
 
+  func test_sendAsset_willCall_portalProvider_request_onlyOnce_for_bip122Chain() async throws {
+    // given
+    let portalApiMock = PortalApiMock()
+    portalApiMock.buildBitcoinP2wpkhTransactionReturnValue = BuildBitcoinP2wpkhTransactionResponse.stub()
+    try initPortalWithSpy(api: portalApiMock)
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+
+    // and given
+    _ = try await portal.sendAsset(chainId: "bip122:000000000019d6689c085ae165831e93-p2wpkh", params: SendAssetParams.stub())
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestAsyncMethodCallsCount, 1)
+  }
+
+  func test_sendAsset_willCall_portalProvider_request_correctTimes_whenHavingMoreThanSingatureHash_for_bip122Chain() async throws {
+    // given
+    let numberOfHashes = Int.random(in: 1 ... 100)
+    let signatureHashes: [String] = Array(1 ... numberOfHashes).map { number in "SignatureHash-\(number)" }
+    let portalApiMock = PortalApiMock()
+    portalApiMock.buildBitcoinP2wpkhTransactionReturnValue = BuildBitcoinP2wpkhTransactionResponse.stub(transaction: BitcoinP2wpkhTransaction.stub(signatureHashes: signatureHashes, rawTxHex: "rawTxHex"))
+    try initPortalWithSpy(api: portalApiMock)
+
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+
+    let params = SendAssetParams.stub(signatureApprovalMemo: "signatureApprovalMemo")
+    let chainId = "bip122:000000000019d6689c085ae165831e93-p2wpkh"
+
+    // and given
+    _ = try await portal.sendAsset(chainId: chainId, params: params)
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestAsyncMethodCallsCount, numberOfHashes)
+  }
+
+  func test_sendAsset_willCall_portalApi_buildBitcoinP2wpkhTransaction_onlyOnce_for_bip122Chain() async throws {
+    // given
+    let portalApiSpy = PortalApiSpy()
+    portalApiSpy.buildBitcoinP2wpkhTransactionReturnValue = BuildBitcoinP2wpkhTransactionResponse.stub()
+    try initPortalWithSpy(api: portalApiSpy)
+    let portalProviderMock = PortalProviderMock()
+    setToPortal(portalProvider: portalProviderMock)
+
+    // and given
+    _ = try await portal.sendAsset(chainId: "bip122:000000000019d6689c085ae165831e93-p2wpkh", params: SendAssetParams.stub())
+
+    // then
+    XCTAssertEqual(portalApiSpy.buildBitcoinP2wpkhTransactionCallsCount, 1)
+  }
+
+  func test_sendAsset_willCall_portalApi_broadcastBitcoinP2wpkhTransaction_onlyOnce_for_bip122Chain() async throws {
+    // given
+    let portalApiSpy = PortalApiSpy()
+    portalApiSpy.buildBitcoinP2wpkhTransactionReturnValue = BuildBitcoinP2wpkhTransactionResponse.stub()
+    try initPortalWithSpy(api: portalApiSpy)
+    let portalProviderMock = PortalProviderMock()
+    setToPortal(portalProvider: portalProviderMock)
+
+    // and given
+    _ = try await portal.sendAsset(chainId: "bip122:000000000019d6689c085ae165831e93-p2wpkh", params: SendAssetParams.stub())
+
+    // then
+    XCTAssertEqual(portalApiSpy.broadcastBitcoinP2wpkhTransactionCallsCount, 1)
+  }
+
   func test_sendAsset_willCall_portalProvider_request_passingCorrectParams_for_eip115Chain() async throws {
     // given
     let portalApiSpy = PortalApiMock()
@@ -1589,6 +1655,85 @@ extension PortalTests {
     XCTAssertEqual(portalProviderSpy.requestAsyncMethodSignatureApprovalMemoParam, params.signatureApprovalMemo)
   }
 
+  func test_sendAsset_willCall_portalAPI_buildBitcoinP2wpkhTransaction_passingCorrectParams_for_bip122Chain() async throws {
+    // given
+    let portalApiSpy = PortalApiSpy()
+    try initPortalWithSpy(api: portalApiSpy)
+    let portalProviderMock = PortalProviderMock()
+    setToPortal(portalProvider: portalProviderMock)
+    let params = SendAssetParams.stub(signatureApprovalMemo: "signatureApprovalMemo")
+    let chainId = "bip122:000000000019d6689c085ae165831e93-p2wpkh"
+
+    let buildTransactionParams = BuildTransactionParam(
+      to: params.to,
+      token: params.token,
+      amount: params.amount
+    )
+
+    // and given
+    _ = try await portal.sendAsset(chainId: chainId, params: params)
+
+    // then
+    XCTAssertEqual(portalApiSpy.buildBitcoinP2wpkhTransactionChainIdParam, chainId)
+    XCTAssertEqual(portalApiSpy.buildBitcoinP2wpkhTransactionParams, buildTransactionParams)
+  }
+
+  func test_sendAsset_willCall_portalAPI_broadcastBitcoinP2wpkhTransaction_passingCorrectParams_for_bip122Chain() async throws {
+    // given
+    let rawTxHex = "rawTxHex"
+    let portalApiSpy = PortalApiSpy()
+    portalApiSpy.buildBitcoinP2wpkhTransactionReturnValue = BuildBitcoinP2wpkhTransactionResponse.stub(transaction: BitcoinP2wpkhTransaction.stub(signatureHashes: ["SignatureHash"], rawTxHex: rawTxHex))
+    try initPortalWithSpy(api: portalApiSpy)
+
+    let portalProviderMock = PortalProviderMock()
+    let mockSignature = MockConstants.mockSignature
+    portalProviderMock.requestReturnValue = PortalProviderResult(
+      id: MockConstants.mockProviderRequestId,
+      result: mockSignature
+    )
+    setToPortal(portalProvider: portalProviderMock)
+
+    let params = SendAssetParams.stub(signatureApprovalMemo: "signatureApprovalMemo")
+    let chainId = "bip122:000000000019d6689c085ae165831e93-p2wpkh"
+
+    let broadcastParamParams = BroadcastParam(signatures: [mockSignature], rawTxHex: rawTxHex)
+
+    // and given
+    _ = try await portal.sendAsset(chainId: chainId, params: params)
+
+    // then
+    XCTAssertEqual(portalApiSpy.broadcastBitcoinP2wpkhTransactionChainIdParam, chainId)
+    XCTAssertEqual(portalApiSpy.broadcastBitcoinP2wpkhTransactionParams, broadcastParamParams)
+  }
+
+  func test_sendAsset_willCall_portalAPI_broadcastBitcoinP2wpkhTransaction_passingCorrectParams_whenHavingMoreThanSingatureHash_for_bip122Chain() async throws {
+    // given
+    let rawTxHex = "rawTxHex"
+    let portalApiSpy = PortalApiSpy()
+    portalApiSpy.buildBitcoinP2wpkhTransactionReturnValue = BuildBitcoinP2wpkhTransactionResponse.stub(transaction: BitcoinP2wpkhTransaction.stub(signatureHashes: ["SignatureHash-1", "SignatureHash-2", "SignatureHash-3"], rawTxHex: rawTxHex))
+    try initPortalWithSpy(api: portalApiSpy)
+
+    let portalProviderMock = PortalProviderMock()
+    let mockSignature = MockConstants.mockSignature
+    portalProviderMock.requestReturnValue = PortalProviderResult(
+      id: MockConstants.mockProviderRequestId,
+      result: mockSignature
+    )
+    setToPortal(portalProvider: portalProviderMock)
+
+    let params = SendAssetParams.stub(signatureApprovalMemo: "signatureApprovalMemo")
+    let chainId = "bip122:000000000019d6689c085ae165831e93-p2wpkh"
+
+    let broadcastParamParams = BroadcastParam(signatures: [mockSignature, mockSignature, mockSignature], rawTxHex: rawTxHex) // Should have 3 signatures one per signature hash
+
+    // and given
+    _ = try await portal.sendAsset(chainId: chainId, params: params)
+
+    // then
+    XCTAssertEqual(portalApiSpy.broadcastBitcoinP2wpkhTransactionChainIdParam, chainId)
+    XCTAssertEqual(portalApiSpy.broadcastBitcoinP2wpkhTransactionParams, broadcastParamParams)
+  }
+
   func test_sendAsset_withInvalidNameSpace_willThroughCorrectError() async throws {
     // given
     let chainId = ":11155111"
@@ -1615,6 +1760,58 @@ extension PortalTests {
       } catch {
         // then
         XCTAssertEqual(error as? PortalClassError, PortalClassError.invalidChainId(chainId))
+      }
+    }
+  }
+
+  func test_sendAsset_withUnsupportedBitCoinChainId_willThroughCorrectError() async throws {
+    // given
+    let unsupportedBitcoinChainIds: [String] = [
+      "bip122:000000000019d6689c085ae165831e93-p2pkh", // mainnet legacy (1-prefix)
+      "bip122:000000000019d6689c085ae165831e93-p2sh", // mainnet script hash (3-prefix)
+      "bip122:000000000019d6689c085ae165831e93-p2tr", // mainnet taproot (bc1p-prefix)
+      "bip122:000000000933ea01ad0ee984209779ba-p2pkh", // testnet legacy
+      "bip122:000000000933ea01ad0ee984209779ba-p2sh", // testnet script hash
+      "bip122:000000000933ea01ad0ee984209779ba-p2tr", // testnet taproot
+      "bip122:0f9188f13cb7b2c71f2a335e3a4fc328-p2pkh", // regtest legacy
+      "bip122:0f9188f13cb7b2c71f2a335e3a4fc328-p2sh", // regtest script hash
+      "bip122:0f9188f13cb7b2c71f2a335e3a4fc328-p2tr" // regtest taproot
+    ]
+
+    for chainId in unsupportedBitcoinChainIds {
+      do {
+        // and given
+        _ = try await portal.sendAsset(chainId: chainId, params: SendAssetParams.stub())
+        XCTFail("Expected error not thrown when calling Portal.sendAsset passing unsupported Bitcoin chain id.")
+
+      } catch {
+        // then
+        XCTAssertEqual(error as? PortalClassError, PortalClassError.unsupportedChainId(chainId))
+      }
+    }
+  }
+
+  func test_sendAsset_withSupportedBitCoinChainId_willNotThroughCorrectError() async throws {
+    // given
+    let portalApiMock = PortalApiMock()
+    try initPortalWithSpy(api: portalApiMock)
+    let portalProviderMock = PortalProviderMock()
+    setToPortal(portalProvider: portalProviderMock)
+
+    // and given
+    let supportedBitcoinChainIds: [String] = [
+      "bip122:000000000019d6689c085ae165831e93-p2wpkh",
+      "bip122:000000000933ea01ad0ee984209779ba-p2wpkh"
+    ]
+
+    for chainId in supportedBitcoinChainIds {
+      do {
+        // and given
+        _ = try await portal.sendAsset(chainId: chainId, params: SendAssetParams.stub())
+
+      } catch {
+        // then
+        XCTFail("Calling Portal.sendAsset passing p2wpkh supported Bitcoin chain id should not throw error.")
       }
     }
   }

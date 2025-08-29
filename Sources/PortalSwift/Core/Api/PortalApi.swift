@@ -29,6 +29,8 @@ public protocol PortalApiProtocol: AnyObject {
   func evaluateTransaction(chainId: String, transaction: EvaluateTransactionParam, operationType: EvaluateTransactionOperationType?) async throws -> BlockaidValidateTrxRes
   func buildEip155Transaction(chainId: String, params: BuildTransactionParam) async throws -> BuildEip115TransactionResponse
   func buildSolanaTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildSolanaTransactionResponse
+  func buildBitcoinP2wpkhTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildBitcoinP2wpkhTransactionResponse
+  func broadcastBitcoinP2wpkhTransaction(chainId: String, params: BroadcastParam) async throws -> BroadcastBitcoinP2wpkhTransactionResponse
   func getAssets(_ chainId: String) async throws -> AssetsResponse
   func getWalletCapabilities() async throws -> WalletCapabilitiesResponse
 
@@ -458,12 +460,40 @@ public class PortalApi: PortalApiProtocol {
     throw URLError(.badURL)
   }
 
+  public func broadcastBitcoinP2wpkhTransaction(chainId: String, params: BroadcastParam) async throws -> BroadcastBitcoinP2wpkhTransactionResponse {
+    guard chainId.starts(with: "bip122:") else {
+      throw PortalApiError.invalidChainId(message: "Invalid chainId: \(chainId). ChainId must start with 'bip122:'")
+    }
+
+    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)/assets/send/broadcast-transaction") {
+      let response = try await post(url, withBearerToken: self.apiKey, andPayload: params, mappingInResponse: BroadcastBitcoinP2wpkhTransactionResponse.self)
+
+      return response
+    }
+
+    throw URLError(.badURL)
+  }
+
+  public func buildBitcoinP2wpkhTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildBitcoinP2wpkhTransactionResponse {
+    guard chainId.starts(with: "bip122:") else {
+      throw PortalApiError.invalidChainId(message: "Invalid chainId: \(chainId). ChainId must start with 'bip122:'")
+    }
+
+    if let url = getBuildTransactionUrl(chainId: chainId) {
+      let response = try await post(url, withBearerToken: self.apiKey, andPayload: params.toDictionary(), mappingInResponse: BuildBitcoinP2wpkhTransactionResponse.self)
+
+      return response
+    }
+
+    throw URLError(.badURL)
+  }
+
   public func buildEip155Transaction(chainId: String, params: BuildTransactionParam) async throws -> BuildEip115TransactionResponse {
     guard chainId.starts(with: "eip155:") else {
       throw PortalApiError.invalidChainId(message: "Invalid chainId: \(chainId). ChainId must start with 'eip155:'")
     }
 
-    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)/assets/send/build-transaction") {
+    if let url = getBuildTransactionUrl(chainId: chainId) {
       let response = try await post(url, withBearerToken: self.apiKey, andPayload: params.toDictionary(), mappingInResponse: BuildEip115TransactionResponse.self)
 
       return response
@@ -477,7 +507,7 @@ public class PortalApi: PortalApiProtocol {
       throw PortalApiError.invalidChainId(message: "Invalid chainId: \(chainId). ChainId must start with 'solana:'")
     }
 
-    if let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)/assets/send/build-transaction") {
+    if let url = getBuildTransactionUrl(chainId: chainId) {
       let response = try await post(url, withBearerToken: self.apiKey, andPayload: params.toDictionary(), mappingInResponse: BuildSolanaTransactionResponse.self)
 
       return response
@@ -499,6 +529,10 @@ public class PortalApi: PortalApiProtocol {
   /*******************************************
    * Private functions
    *******************************************/
+
+  private func getBuildTransactionUrl(chainId: String) -> URL? {
+    return URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)/assets/send/build-transaction")
+  }
 
   @discardableResult
   private func get<ResponseType>(_ url: URL, withBearerToken: String? = nil,

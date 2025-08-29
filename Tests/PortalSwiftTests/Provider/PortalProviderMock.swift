@@ -42,7 +42,13 @@ class PortalProviderMock: PortalProviderProtocol {
     mockPortalProvider
   }
 
+  var requestReturnValue: PortalSwift.PortalProviderResult?
+
   func request(_: String, withMethod: PortalSwift.PortalRequestMethod, andParams _: [AnyCodable]?, connect _: PortalSwift.PortalConnect?, signatureApprovalMemo _: String?) async throws -> PortalSwift.PortalProviderResult {
+    if let requestReturnValue {
+      return requestReturnValue
+    }
+
     switch withMethod {
     case .eth_accounts, .eth_requestAccounts:
       return PortalProviderResult(
@@ -54,7 +60,7 @@ class PortalProviderMock: PortalProviderProtocol {
         id: MockConstants.mockProviderRequestId,
         result: MockConstants.mockTransactionHash
       )
-    case .eth_sign, .eth_signTransaction, .eth_signTypedData_v3, .eth_signTypedData_v4, .personal_sign:
+    case .eth_sign, .eth_signTransaction, .eth_signTypedData_v3, .eth_signTypedData_v4, .personal_sign, .rawSign:
       return PortalProviderResult(
         id: MockConstants.mockProviderRequestId,
         result: MockConstants.mockSignature

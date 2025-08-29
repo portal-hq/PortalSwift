@@ -281,6 +281,13 @@ public class PortalProvider: PortalProviderProtocol {
   }
 
   public func getRpcUrl(_ chainId: String) throws -> String {
+    // Skip getting the RPC url for bitcoin p2wpkh mainnet and testnet
+    if chainId == "bip122:000000000019d6689c085ae165831e93-p2wpkh" ||
+      chainId == "bip122:000000000933ea01ad0ee984209779ba-p2wpkh"
+    {
+      return ""
+    }
+
     guard let rpcUrl = rpcConfig[chainId] else {
       throw PortalProviderError.noRpcUrlFoundForChainId(chainId)
     }

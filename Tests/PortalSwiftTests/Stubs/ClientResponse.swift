@@ -62,9 +62,18 @@ extension ClientResponseMetadata {
 extension ClientResponseMetadataNamespaces {
   static func stub(
     eip155: ClientResponseNamespaceMetadataItem? = .stub(),
-    solana: ClientResponseNamespaceMetadataItem? = .stub()
+    solana: ClientResponseNamespaceMetadataItem? = .stub(),
+    bip122: ClientResponseNamespaceMetadataItem? = .stub(),
+    stellar: ClientResponseNamespaceMetadataItem? = .stub(),
+    tron: ClientResponseNamespaceMetadataItem? = .stub()
   ) -> Self {
-    return ClientResponseMetadataNamespaces(eip155: eip155, solana: solana)
+    return ClientResponseMetadataNamespaces(
+      eip155: eip155,
+      solana: solana,
+      bip122: bip122,
+      stellar: stellar,
+      tron: tron
+    )
   }
 }
 

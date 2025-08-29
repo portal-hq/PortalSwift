@@ -48,11 +48,30 @@ public struct ClientResponseMetadata: Codable, Equatable {
 public struct ClientResponseMetadataNamespaces: Codable, Equatable {
   public let eip155: ClientResponseNamespaceMetadataItem?
   public let solana: ClientResponseNamespaceMetadataItem?
+  public let bip122: ClientResponseNamespaceMetadataItem?
+  public let stellar: ClientResponseNamespaceMetadataItem?
+  public let tron: ClientResponseNamespaceMetadataItem?
+}
+
+public struct P2wpkhAddressInfo: Codable, Equatable {
+  public let mainnet: String
+  public let testnet: String
+}
+
+public struct BitcoinAddressInfo: Codable, Equatable {
+  public let p2wpkh: P2wpkhAddressInfo
 }
 
 public struct ClientResponseNamespaceMetadataItem: Codable, Equatable {
   public let address: String
   public let curve: PortalCurve
+  public let bitcoin: BitcoinAddressInfo?
+
+  public init(address: String, curve: PortalCurve, bitcoin: BitcoinAddressInfo? = nil) {
+    self.address = address
+    self.curve = curve
+    self.bitcoin = bitcoin
+  }
 }
 
 public struct ClientResponseSharePair: Codable, Equatable {
@@ -573,6 +592,17 @@ public struct FundResponse: Codable {
   public let error: FundResponseError?
 }
 
+public struct BuildBitcoinP2wpkhTransactionResponse: Codable, Equatable {
+  public let transaction: BitcoinP2wpkhTransaction
+  public let metadata: BuildTransactionMetaData
+  public let error: String?
+}
+
+public struct BitcoinP2wpkhTransaction: Codable, Equatable {
+  public let signatureHashes: [String]
+  public let rawTxHex: String
+}
+
 public struct BuildEip115TransactionResponse: Codable, Equatable {
   public let transaction: Eip115Transaction
   public let metadata: BuildTransactionMetaData
@@ -602,7 +632,7 @@ public struct BuildSolanaTransactionResponse: Codable, Equatable {
   public let error: String?
 }
 
-public struct BuildTransactionParam {
+public struct BuildTransactionParam: Equatable {
   let to: String
   let token: String
   let amount: String
@@ -619,6 +649,30 @@ public struct BuildTransactionParam {
       "token": token,
       "amount": amount
     ]
+  }
+}
+
+public struct BroadcastBitcoinP2wpkhTransactionResponseData: Codable, Equatable {
+  public let txHash: String
+}
+
+public struct BroadcastBitcoinP2wpkhTransactionMetaData: Codable, Equatable {
+  public let chainId: String
+  public let clientId: String
+}
+
+public struct BroadcastBitcoinP2wpkhTransactionResponse: Codable, Equatable {
+  public let data: BroadcastBitcoinP2wpkhTransactionResponseData
+  public let metadata: BroadcastBitcoinP2wpkhTransactionMetaData
+}
+
+public struct BroadcastParam: Codable, Equatable {
+  public let signatures: [String]
+  public let rawTxHex: String
+
+  public init(signatures: [String], rawTxHex: String) {
+    self.signatures = signatures
+    self.rawTxHex = rawTxHex
   }
 }
 
