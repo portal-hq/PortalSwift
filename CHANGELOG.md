@@ -13,7 +13,7 @@ Possible Types of changes include:
 - Upgraded
 
 ## 6.2.0 - 2025-09-02
-- Added bitcoin support to `portal.sendAsset`.
+- Added Bitcoin (p2wpkh) support to `portal.sendAsset`.
 
 ## 6.1.1 - 2025-08-19
 - Added an optional `signatureApprovalMemo` parameter when signing to the functions `rawSign`, `sendAsset`, and `request`.
