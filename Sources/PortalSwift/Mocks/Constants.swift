@@ -317,7 +317,10 @@ public enum MockConstants {
             address: mockEip155Address,
             curve: .SECP256K1
           ),
-          solana: nil
+          solana: nil,
+          bip122: nil,
+          stellar: nil,
+          tron: nil
         )
       ),
       wallets: [
@@ -345,7 +348,10 @@ public enum MockConstants {
             address: mockEip155Address,
             curve: .SECP256K1
           ),
-          solana: nil
+          solana: nil,
+          bip122: nil,
+          stellar: nil,
+          tron: nil
         )
       ),
       wallets: [
