@@ -632,7 +632,7 @@ public struct BuildSolanaTransactionResponse: Codable, Equatable {
   public let error: String?
 }
 
-public struct BuildTransactionParam {
+public struct BuildTransactionParam: Equatable {
   let to: String
   let token: String
   let amount: String

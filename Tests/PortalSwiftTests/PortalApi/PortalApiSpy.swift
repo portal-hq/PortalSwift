@@ -373,6 +373,7 @@ class PortalApiSpy: PortalApiProtocol {
   var buildBitcoinP2wpkhTransactionCallsCount: Int = 0
   var buildBitcoinP2wpkhTransactionChainIdParam: String?
   var buildBitcoinP2wpkhTransactionParams: PortalSwift.BuildTransactionParam?
+  var buildBitcoinP2wpkhTransactionReturnValue: PortalSwift.BuildBitcoinP2wpkhTransactionResponse?
 
   func buildBitcoinP2wpkhTransaction(
     chainId: String,
@@ -381,7 +382,7 @@ class PortalApiSpy: PortalApiProtocol {
     buildBitcoinP2wpkhTransactionCallsCount += 1
     buildBitcoinP2wpkhTransactionChainIdParam = chainId
     buildBitcoinP2wpkhTransactionParams = params
-    return PortalSwift.BuildBitcoinP2wpkhTransactionResponse.stub()
+    return buildBitcoinP2wpkhTransactionReturnValue ?? PortalSwift.BuildBitcoinP2wpkhTransactionResponse.stub()
   }
 
   // MARK: - Bitcoin P2WPKH broadcast transaction spy tracking
