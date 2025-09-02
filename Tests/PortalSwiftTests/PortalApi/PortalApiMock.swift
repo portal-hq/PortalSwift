@@ -236,6 +236,16 @@ class PortalApiMock: PortalApiProtocol {
     return buildSolanaTransactionReturnValue ?? PortalSwift.BuildSolanaTransactionResponse.stub()
   }
 
+  var buildBitcoinP2wpkhTransactionReturnValue: PortalSwift.BuildBitcoinP2wpkhTransactionResponse?
+  func buildBitcoinP2wpkhTransaction(chainId _: String, params _: PortalSwift.BuildTransactionParam) async throws -> PortalSwift.BuildBitcoinP2wpkhTransactionResponse {
+    return buildBitcoinP2wpkhTransactionReturnValue ?? PortalSwift.BuildBitcoinP2wpkhTransactionResponse.stub()
+  }
+
+  var broadcastBitcoinP2wpkhTransactionReturnValue: PortalSwift.BroadcastBitcoinP2wpkhTransactionResponse?
+  func broadcastBitcoinP2wpkhTransaction(chainId _: String, params _: PortalSwift.BroadcastParam) async throws -> PortalSwift.BroadcastBitcoinP2wpkhTransactionResponse {
+    return broadcastBitcoinP2wpkhTransactionReturnValue ?? PortalSwift.BroadcastBitcoinP2wpkhTransactionResponse.stub()
+  }
+
   var getAssetsReturnValue: PortalSwift.AssetsResponse?
   func getAssets(_: String) async throws -> PortalSwift.AssetsResponse {
     return getAssetsReturnValue ?? PortalSwift.AssetsResponse.stub()
