@@ -12,6 +12,9 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
+## 6.2.1 - 2025-09-04
+- Minor updates to improve stability.
+
 ## 6.2.0 - 2025-09-02
 - Added Bitcoin (p2wpkh) support to `portal.sendAsset`.
 
