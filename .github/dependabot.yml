@@ -1,7 +1,18 @@
 version: 2
 updates:
+  # Track the Swift package definition at repo root
   - package-ecosystem: "swift"
     directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+
+  # Track the Xcode workspace-managed Package.resolved
+  - package-ecosystem: "swift"
+    directory: "/PortalSwift.xcworkspace/xcshareddata/swiftpm"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
