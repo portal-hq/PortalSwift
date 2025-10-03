@@ -19,15 +19,15 @@ let package = Package(
     // .package(url: /* package url */, from: "1.0.0"),
     .package(
       url: "https://github.com/google/GoogleSignIn-iOS.git",
-      from: "8.0.0"
+      exact: "8.0.0"
     ),
     .package(
       url: "https://github.com/daltoniam/Starscream.git",
-      from: "4.0.7"
+      exact: "4.0.8"
     ),
     .package(
       url: "https://github.com/Flight-School/AnyCodable.git",
-      from: "0.6.7"
+      exact: "0.6.7"
     ),
   ],
   targets: [
