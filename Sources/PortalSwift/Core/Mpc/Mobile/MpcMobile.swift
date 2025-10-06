@@ -210,7 +210,9 @@ extension MPCMobile {
     _ params: String?,
     _ rpcURL: String?,
     _ chainId: String?,
-    _ metadata: String?
+    _ metadata: String?,
+    _: PortalCurve?,
+    isRaw _: Bool?
   ) async -> String {
     let result = await withCheckedContinuation { continuation in
       let signResponse = Mpc.MobileSign(apiKey, host, signingShare, method, params, rpcURL, chainId, metadata)

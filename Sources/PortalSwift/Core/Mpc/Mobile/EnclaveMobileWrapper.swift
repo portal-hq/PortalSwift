@@ -28,7 +28,9 @@ class EnclaveMobileWrapper: MPCMobile {
     _ params: String?,
     _ rpcURL: String?,
     _ chainId: String?,
-    _ metadata: String?
+    _ metadata: String?,
+    _ curve: PortalCurve?,
+    _ isRaw: Bool?
   ) async -> String {
     guard let apiKey = apiKey,
           let signingShare = signingShare,
@@ -41,7 +43,12 @@ class EnclaveMobileWrapper: MPCMobile {
       return encodeErrorResult(id: "INVALID_PARAMETERS", message: "Invalid parameters provided")
     }
 
-    guard let url = URL(string: "https://\(enclaveMPCHost)/v1/sign") else {
+    var path = "/v1/sign"
+    if isRaw ?? false, let curve {
+      path = "/v1/raw/sign/\(curve.rawValue)"
+    }
+
+    guard let url = URL(string: "https://\(enclaveMPCHost)\(path)") else {
       return encodeErrorResult(id: "INVALID_URL", message: "Invalid URL")
     }
 
