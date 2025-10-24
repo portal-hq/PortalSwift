@@ -1,5 +1,5 @@
 //
-//  ExitYieldRequest.swift
+//  ExitYieldXyzRequest.swift
 //  PortalSwift
 //
 //  Created by Ahmed Ragab on 20/10/2025.
@@ -8,7 +8,7 @@
 import Foundation
 
 /// Request to exit a yield opportunity
-public struct ExitYieldRequest: Codable {
+public struct ExitYieldXyzRequest: Codable {
     public let yieldId: String
     public let address: String
     public let arguments: EnterYieldArguments?

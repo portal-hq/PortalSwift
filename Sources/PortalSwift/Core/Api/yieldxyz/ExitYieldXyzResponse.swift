@@ -1,5 +1,5 @@
 //
-//  ExitYieldResponse.swift
+//  ExitYieldXyzResponse.swift
 //  PortalSwift
 //
 //  Created by Ahmed Ragab on 20/10/2025.
@@ -8,7 +8,7 @@
 import Foundation
 
 /// Response from exiting a yield opportunity
-public struct ExitYieldResponse: Codable {
+public struct ExitYieldXyzResponse: Codable {
     public let data: ExitYieldData
     
     public init(data: ExitYieldData) {

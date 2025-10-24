@@ -1,5 +1,5 @@
 //
-//  EnterYieldRequest.swift
+//  EnterYieldXyzRequest.swift
 //  PortalSwift
 //
 //  Created by Ahmed Ragab on 20/10/2025.
@@ -8,7 +8,7 @@
 import Foundation
 
 /// Request to enter a yield opportunity
-public struct EnterYieldRequest: Codable {
+public struct EnterYieldXyzRequest: Codable {
     public let yieldId: String
     public let address: String
     public let arguments: EnterYieldArguments?
