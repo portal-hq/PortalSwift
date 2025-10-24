@@ -18,6 +18,7 @@ public protocol PortalProtocol {
   var provider: PortalProviderProtocol { get }
   var rpcConfig: [String: String] { get set }
   var apiKey: String { get }
+  var yield: Yield { get }
 
   // Deprecated Properties
   @available(*, deprecated, renamed: "addresses", message: "Please use the async getter for `addresses`")
