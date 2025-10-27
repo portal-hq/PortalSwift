@@ -22,7 +22,7 @@ class EnclaveMobileWrapper: MPCMobile {
   // Override sign method to use HTTP endpoint
   func MobileSign(
     _ apiKey: String?,
-    _: String?,
+    _ host: String?,
     _ signingShare: String?,
     _ method: String?,
     _ params: String?,
@@ -30,50 +30,26 @@ class EnclaveMobileWrapper: MPCMobile {
     _ chainId: String?,
     _ metadata: String?,
     _ curve: PortalCurve?,
-    _ isRaw: Bool?
+    isRaw: Bool?
   ) async -> String {
-    guard let apiKey = apiKey,
-          let signingShare = signingShare,
-          let method = method,
-          let params = params,
-          let rpcURL = rpcURL,
-          let chainId = chainId,
-          let metadata = metadata
-    else {
-      return encodeErrorResult(id: "INVALID_PARAMETERS", message: "Invalid parameters provided")
-    }
-
-    var path = "/v1/sign"
-    if isRaw ?? false, let curve {
-      path = "/v1/raw/sign/\(curve.rawValue)"
-    }
-
-    guard let url = URL(string: "https://\(enclaveMPCHost)\(path)") else {
-      return encodeErrorResult(id: "INVALID_URL", message: "Invalid URL")
-    }
-
-    let requestBody: [String: String] = [
-      "method": method,
-      "params": params,
-      "share": signingShare,
-      "chainId": chainId,
-      "rpcUrl": rpcURL,
-      "metadataStr": metadata,
-      "clientPlatform": "NATIVE_IOS",
-      "clientPlatformVersion": SDK_VERSION
-    ]
-
-    do {
-      let request = PortalAPIRequest(url: url, method: .post, payload: requestBody, bearerToken: apiKey)
-      let enclaveResponse = try await requests.execute(request: request, mappingInResponse: EnclaveSignResponse.self)
-      return encodeSuccessResult(data: enclaveResponse.data)
-    } catch {
-      if let portalRequestError = error as? PortalRequestsError {
-        let portalError = decodePortalError(errorStr: portalRequestError.dataStr)
-        return encodeErrorResult(error: portalError)
+      if isRaw ?? false {
+          return await enclaveRawSign(
+            apiKey: apiKey,
+            signingShare: signingShare,
+            params: params,
+            curve: curve
+          )
+      } else {
+          return await enclaveSign(
+            apiKey: apiKey,
+            signingShare: signingShare,
+            method: method,
+            params: params,
+            rpcURL: rpcURL,
+            chainId: chainId,
+            metadata: metadata
+          )
       }
-      return encodeErrorResult(id: "SIGNING_NETWORK_ERROR", message: error.localizedDescription)
-    }
   }
 
   // Helper function to encode success results
@@ -112,6 +88,98 @@ class EnclaveMobileWrapper: MPCMobile {
       return "{\"error\":{\"id\":\"ENCODING_ERROR\",\"message\":\"\(error.localizedDescription)\"}}"
     }
   }
+}
+
+extension EnclaveMobileWrapper {
+    
+    private func enclaveRawSign(
+      apiKey: String?,
+      signingShare: String?,
+      params: String?,
+      curve: PortalCurve?
+    ) async -> String {
+      guard let apiKey = apiKey,
+            let signingShare = signingShare,
+            let params = params,
+            let curve
+      else {
+        return encodeErrorResult(id: "INVALID_PARAMETERS", message: "Invalid parameters provided")
+      }
+
+      guard let url = URL(string: "https://\(enclaveMPCHost)/v1/raw/sign/\(curve.rawValue)") else {
+        return encodeErrorResult(id: "INVALID_URL", message: "Invalid URL")
+      }
+
+      let requestBody: [String: String] = [
+        "params": params,
+        "share": signingShare,
+        "clientPlatform": "NATIVE_IOS",
+        "clientPlatformVersion": SDK_VERSION
+      ]
+
+      do {
+        let request = PortalAPIRequest(url: url, method: .post, payload: requestBody, bearerToken: apiKey)
+        let enclaveResponse = try await requests.execute(request: request, mappingInResponse: EnclaveSignResponse.self)
+        return encodeSuccessResult(data: enclaveResponse.data)
+      } catch {
+        if let portalRequestError = error as? PortalRequestsError {
+          let portalError = decodePortalError(errorStr: portalRequestError.dataStr)
+          return encodeErrorResult(error: portalError)
+        }
+        return encodeErrorResult(id: "SIGNING_NETWORK_ERROR", message: error.localizedDescription)
+      }
+    }
+    
+    private func enclaveSign(
+      apiKey: String?,
+      signingShare: String?,
+      method: String?,
+      params: String?,
+      rpcURL: String?,
+      chainId: String?,
+      metadata: String?
+    ) async -> String {
+
+      guard let apiKey,
+            let signingShare,
+            let method,
+            let params,
+            let chainId,
+            let metadata
+      else {
+        return encodeErrorResult(id: "INVALID_PARAMETERS", message: "Invalid parameters provided")
+      }
+        
+      guard let url = URL(string: "https://\(enclaveMPCHost)/v1/sign") else {
+        return encodeErrorResult(id: "INVALID_URL", message: "Invalid URL")
+      }
+
+      var requestBody: [String: String] = [
+        "method": method,
+        "params": params,
+        "share": signingShare,
+        "chainId": chainId,
+        "metadataStr": metadata,
+        "clientPlatform": "NATIVE_IOS",
+        "clientPlatformVersion": SDK_VERSION
+      ]
+        
+        if let rpcURL {
+            requestBody["rpcUrl"] = rpcURL
+        }
+
+      do {
+        let request = PortalAPIRequest(url: url, method: .post, payload: requestBody, bearerToken: apiKey)
+        let enclaveResponse = try await requests.execute(request: request, mappingInResponse: EnclaveSignResponse.self)
+        return encodeSuccessResult(data: enclaveResponse.data)
+      } catch {
+        if let portalRequestError = error as? PortalRequestsError {
+          let portalError = decodePortalError(errorStr: portalRequestError.dataStr)
+          return encodeErrorResult(error: portalError)
+        }
+        return encodeErrorResult(id: "SIGNING_NETWORK_ERROR", message: error.localizedDescription)
+      }
+    }
 }
 
 // Response types
