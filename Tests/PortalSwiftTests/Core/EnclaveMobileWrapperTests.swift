@@ -43,7 +43,7 @@ extension EnclaveMobileWrapperTests {
     let expectedReturnValue = "{\"data\":\"\(transactionHash)\"}"
 
     // and given
-    let resultTransactionHash = await enclaveMobileWrapper?.MobileSign("", "", "", "", "", "", "", "", nil, false)
+    let resultTransactionHash = await enclaveMobileWrapper?.MobileSign("", "", "", "", "", "", "", "", nil, isRaw: false)
 
     // then
     AssertJSONEqual(resultTransactionHash, expectedReturnValue)
@@ -55,7 +55,7 @@ extension EnclaveMobileWrapperTests {
     initEnclaveMobileWrapper(portalRequests: portalRequestsSpy)
 
     // and given
-    _ = await enclaveMobileWrapper?.MobileSign("", "", "", "", "", "", "", "", nil, false)
+    _ = await enclaveMobileWrapper?.MobileSign("", "", "", "", "", "", "", "", nil, isRaw: false)
 
     // then
     XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
@@ -77,7 +77,7 @@ extension EnclaveMobileWrapperTests {
     let metadata = "metadata"
 
     // and given
-    _ = await enclaveMobileWrapper?.MobileSign(apiKey, host, signingShare, method, params, rpcUrl, chainId, metadata, nil, false)
+    _ = await enclaveMobileWrapper?.MobileSign(apiKey, host, signingShare, method, params, rpcUrl, chainId, metadata, nil, isRaw: false)
 
     // then
     XCTAssertEqual(portalRequestsSpy.executeRequestParam?.url.absoluteString ?? "", "https://\(enclaveMPCHost)/v1/sign")
@@ -110,17 +110,13 @@ extension EnclaveMobileWrapperTests {
     let curve: PortalCurve = .SECP256K1
 
     // and given
-    _ = await enclaveMobileWrapper?.MobileSign(apiKey, host, signingShare, method, params, rpcUrl, chainId, metadata, curve, true)
+    _ = await enclaveMobileWrapper?.MobileSign(apiKey, host, signingShare, method, params, rpcUrl, chainId, metadata, curve, isRaw: true)
 
     // then
     XCTAssertEqual(portalRequestsSpy.executeRequestParam?.url.absoluteString ?? "", "https://\(enclaveMPCHost)/v1/raw/sign/\(curve.rawValue)")
     XCTAssertEqual(portalRequestsSpy.executeRequestParam?.payload as? [String: String] ?? [:], [
-      "method": method,
       "params": params,
       "share": signingShare,
-      "chainId": chainId,
-      "rpcUrl": rpcUrl,
-      "metadataStr": metadata,
       "clientPlatform": "NATIVE_IOS",
       "clientPlatformVersion": SDK_VERSION
     ])
@@ -132,37 +128,37 @@ extension EnclaveMobileWrapperTests {
     let invalidParamsReturnValue = "{\"error\":{\"id\":\"INVALID_PARAMETERS\",\"message\":\"Invalid parameters provided\"}}"
 
     // and given
-    var result = await enclaveMobileWrapper?.MobileSign(nil, "", "", "", "", "", "", "", nil, nil)
+    var result = await enclaveMobileWrapper?.MobileSign(nil, "", "", "", "", "", "", "", nil, isRaw: nil)
     // then
     AssertJSONEqual(result, invalidParamsReturnValue)
 
     // and given
-    result = await enclaveMobileWrapper?.MobileSign("", "", nil, "", "", "", "", "", nil, nil)
+    result = await enclaveMobileWrapper?.MobileSign("", "", nil, "", "", "", "", "", nil, isRaw: nil)
     // then
     AssertJSONEqual(result, invalidParamsReturnValue)
 
     // and given
-    result = await enclaveMobileWrapper?.MobileSign("", "", "", nil, "", "", "", "", nil, nil)
+    result = await enclaveMobileWrapper?.MobileSign("", "", "", nil, "", "", "", "", nil, isRaw: nil)
     // then
     AssertJSONEqual(result, invalidParamsReturnValue)
 
     // and given
-    result = await enclaveMobileWrapper?.MobileSign("", "", "", "", nil, "", "", "", nil, nil)
+    result = await enclaveMobileWrapper?.MobileSign("", "", "", "", nil, "", "", "", nil, isRaw: nil)
     // then
     AssertJSONEqual(result, invalidParamsReturnValue)
 
     // and given
-    result = await enclaveMobileWrapper?.MobileSign("", "", "", "", "", nil, "", "", nil, nil)
+    result = await enclaveMobileWrapper?.MobileSign("", "", "", "", "", nil, "", "", nil, isRaw: nil)
     // then
     AssertJSONEqual(result, invalidParamsReturnValue)
 
     // and given
-    result = await enclaveMobileWrapper?.MobileSign("", "", "", "", "", "", nil, "", nil, nil)
+    result = await enclaveMobileWrapper?.MobileSign("", "", "", "", "", "", nil, "", nil, isRaw: nil)
     // then
     AssertJSONEqual(result, invalidParamsReturnValue)
 
     // and given
-    result = await enclaveMobileWrapper?.MobileSign("", "", "", "", "", "", "", nil, nil, nil)
+    result = await enclaveMobileWrapper?.MobileSign("", "", "", "", "", "", "", nil, nil, isRaw: nil)
     // then
     AssertJSONEqual(result, invalidParamsReturnValue)
   }
@@ -174,7 +170,7 @@ extension EnclaveMobileWrapperTests {
     let expectedReturnValue = "{\"error\":{\"id\":\"SIGNING_NETWORK_ERROR\",\"message\":\"\(portalRequestsFailMock.errorToThrow.localizedDescription)\"}}"
 
     // and given
-    let result = await enclaveMobileWrapper?.MobileSign("", "", "", "", "", "", "", "", nil, nil)
+    let result = await enclaveMobileWrapper?.MobileSign("", "", "", "", "", "", "", "", nil, isRaw: nil)
 
     // then
     AssertJSONEqual(result, expectedReturnValue)
