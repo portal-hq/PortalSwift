@@ -1,5 +1,5 @@
 //
-//  ManageYieldXyzResponse.swift
+//  ManageYieldResponse.swift
 //  PortalSwift
 //
 //  Created by Ahmed Ragab on 20/10/2025.
@@ -8,7 +8,7 @@
 import Foundation
 
 /// Response from managing a yield opportunity
-public struct ManageYieldXyzResponse: Codable {
+public struct ManageYieldResponse: Codable {
     public let data: ManageYieldData
     
     public init(data: ManageYieldData) {

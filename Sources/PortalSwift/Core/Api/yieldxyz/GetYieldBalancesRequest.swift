@@ -1,5 +1,5 @@
 //
-//  GetYieldXyzBalancesRequest.swift
+//  GetYieldBalancesRequest.swift
 //  PortalSwift
 //
 //  Created by Ahmed Ragab on 20/10/2025.
@@ -8,7 +8,7 @@
 import Foundation
 
 /// Request to get yield balances for specific addresses and networks
-public struct GetYieldXyzBalancesRequest: Codable {
+public struct GetYieldBalancesRequest: Codable {
     public let queries: [YieldBalanceQuery]
     
     public init(queries: [YieldBalanceQuery]) {

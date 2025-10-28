@@ -1,5 +1,5 @@
 //
-//  GetYieldsXyzResponse.swift
+//  GetYieldsResponse.swift
 //  PortalSwift
 //
 //  Created by Ahmed Ragab on 20/10/2025.
@@ -9,7 +9,7 @@ import Foundation
 import AnyCodable
 
 /// Response containing yield opportunities from Yield.xyz
-public struct GetYieldsXyzResponse: Codable {
+public struct GetYieldsResponse: Codable {
     public let data: GetYieldsData
     
     public init(data: GetYieldsData) {

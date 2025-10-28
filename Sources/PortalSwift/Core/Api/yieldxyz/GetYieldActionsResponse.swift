@@ -1,5 +1,5 @@
 //
-//  GetYieldXyzActionsResponse.swift
+//  GetYieldActionsResponse.swift
 //  PortalSwift
 //
 //  Created by Ahmed Ragab on 20/10/2025.
@@ -8,7 +8,7 @@
 import Foundation
 
 /// Response for fetching yield actions list for an address
-public struct GetYieldXyzActionsResponse: Codable {
+public struct GetYieldActionsResponse: Codable {
     public let data: YieldActionsData
     public let metadata: YieldMetadata?
     

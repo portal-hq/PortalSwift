@@ -1,5 +1,5 @@
 //
-//  GetYieldXyzActionTransactionResponse.swift
+//  GetYieldActionTransactionResponse.swift
 //  PortalSwift
 //
 //  Created by Ahmed Ragab on 20/10/2025.
@@ -9,7 +9,7 @@ import Foundation
 import AnyCodable
 
 /// Response for fetching a single yield action transaction by ID
-public struct GetYieldXyzActionTransactionResponse: Codable {
+public struct GetYieldActionTransactionResponse: Codable {
     public let data: YieldActionTransactionData
     public let metadata: YieldActionTransactionMetadata?
     

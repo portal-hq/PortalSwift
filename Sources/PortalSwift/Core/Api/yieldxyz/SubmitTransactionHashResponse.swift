@@ -1,5 +1,5 @@
 //
-//  SubmitYieldXyzTransactionHashResponse.swift
+//  SubmitTransactionHashResponse.swift
 //  PortalSwift
 //
 //  Created by Ahmed Ragab on 20/10/2025.
@@ -8,7 +8,7 @@
 import Foundation
 
 /// Response from submitting a transaction hash
-public struct SubmitYieldXyzTransactionHashResponse: Codable {
+public struct SubmitTransactionHashResponse: Codable {
     public let success: Bool
     public let transaction: TransactionInfo
     

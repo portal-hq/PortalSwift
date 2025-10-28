@@ -1,5 +1,5 @@
 //
-//  EnterYieldXyzResponse.swift
+//  EnterYieldResponse.swift
 //  PortalSwift
 //
 //  Created by Ahmed Ragab on 20/10/2025.
@@ -9,7 +9,7 @@ import Foundation
 import AnyCodable
 
 /// Response from entering a yield opportunity
-public struct EnterYieldXyzResponse: Codable {
+public struct EnterYieldResponse: Codable {
     public let data: EnterYieldData
     
     public init(data: EnterYieldData) {

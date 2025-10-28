@@ -1,5 +1,5 @@
 //
-//  GetYieldXyzBalancesResponse.swift
+//  GetYieldBalancesResponse.swift
 //  PortalSwift
 //
 //  Created by Ahmed Ragab on 20/10/2025.
@@ -8,7 +8,7 @@
 import Foundation
 
 /// Response from getting yield balances
-public struct GetYieldXyzBalancesResponse: Codable {
+public struct GetYieldBalancesResponse: Codable {
     public let data: YieldBalancesData?
     public let metadata: YieldMetadata?
     
@@ -106,9 +106,9 @@ public struct YieldToken: Codable {
 }
 
 public struct YieldMetadata: Codable {
-    public let clientId: String?
+    public let clientId: String
     
-    public init(clientId: String?) {
+    public init(clientId: String) {
         self.clientId = clientId
     }
 }

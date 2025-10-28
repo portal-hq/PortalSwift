@@ -1,5 +1,5 @@
 //
-//  ManageYieldXyzRequest.swift
+//  ManageYieldRequest.swift
 //  PortalSwift
 //
 //  Created by Ahmed Ragab on 20/10/2025.
@@ -8,7 +8,7 @@
 import Foundation
 
 /// Request to manage a yield opportunity
-public struct ManageYieldXyzRequest: Codable {
+public struct ManageYieldRequest: Codable {
     public let yieldId: String
     public let address: String
     public let arguments: EnterYieldArguments
