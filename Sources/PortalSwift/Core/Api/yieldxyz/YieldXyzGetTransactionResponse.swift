@@ -1,5 +1,5 @@
 //
-//  GetYieldXyzActionTransactionResponse.swift
+//  YieldXyzGetTransactionResponse.swift
 //  PortalSwift
 //
 //  Created by Ahmed Ragab on 20/10/2025.
@@ -9,31 +9,31 @@ import Foundation
 import AnyCodable
 
 /// Response for fetching a single yield action transaction by ID
-public struct GetYieldXyzActionTransactionResponse: Codable {
-    public let data: YieldActionTransactionData
-    public let metadata: YieldActionTransactionMetadata?
+public struct YieldXyzGetTransactionResponse: Codable {
+    public let data: YieldXyzGetTransactionData
+    public let metadata: YieldXyzGetTransactionMetadata?
     
-    public init(data: YieldActionTransactionData, metadata: YieldActionTransactionMetadata? = nil) {
+    public init(data: YieldXyzGetTransactionData, metadata: YieldXyzGetTransactionMetadata? = nil) {
         self.data = data
         self.metadata = metadata
     }
 }
 
-public struct YieldActionTransactionData: Codable {
-    public let rawResponse: YieldActionTransactionRawResponse
+public struct YieldXyzGetTransactionData: Codable {
+    public let rawResponse: YieldXyzGetTransactionRawResponse
     
-    public init(rawResponse: YieldActionTransactionRawResponse) {
+    public init(rawResponse: YieldXyzGetTransactionRawResponse) {
         self.rawResponse = rawResponse
     }
 }
 
 /// Mirrors a single transaction object returned by the Yield.xyz actions API.
-public struct YieldActionTransactionRawResponse: Codable {
+public struct YieldXyzGetTransactionRawResponse: Codable {
     public let id: String
     public let title: String
     public let network: String
-    public let status: YieldActionTransactionStatus
-    public let type: YieldActionTransactionType
+    public let status: YieldXyzActionTransactionStatus
+    public let type: YieldXyzActionTransactionType
     public let hash: String?
     public let createdAt: String
     public let broadcastedAt: String?
@@ -46,8 +46,8 @@ public struct YieldActionTransactionRawResponse: Codable {
         id: String,
         title: String,
         network: String,
-        status: YieldActionTransactionStatus,
-        type: YieldActionTransactionType,
+        status: YieldXyzActionTransactionStatus,
+        type: YieldXyzActionTransactionType,
         hash: String? = nil,
         createdAt: String,
         broadcastedAt: String? = nil,
@@ -71,7 +71,7 @@ public struct YieldActionTransactionRawResponse: Codable {
     }
 }
 
-public struct YieldActionTransactionMetadata: Codable {
+public struct YieldXyzGetTransactionMetadata: Codable {
     public let clientId: String?
     public let transactionId: String?
     

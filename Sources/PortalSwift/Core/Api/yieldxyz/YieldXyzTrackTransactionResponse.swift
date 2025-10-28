@@ -1,5 +1,5 @@
 //
-//  SubmitYieldXyzTransactionHashResponse.swift
+//  YieldXyzTrackTransactionResponse.swift
 //  PortalSwift
 //
 //  Created by Ahmed Ragab on 20/10/2025.
@@ -8,17 +8,17 @@
 import Foundation
 
 /// Response from submitting a transaction hash
-public struct SubmitYieldXyzTransactionHashResponse: Codable {
+public struct YieldXyzTrackTransactionResponse: Codable {
     public let success: Bool
-    public let transaction: TransactionInfo
+    public let transaction: YieldXyzTrackedTransaction
     
-    public init(success: Bool, transaction: TransactionInfo) {
+    public init(success: Bool, transaction: YieldXyzTrackedTransaction) {
         self.success = success
         self.transaction = transaction
     }
 }
 
-public struct TransactionInfo: Codable {
+public struct YieldXyzTrackedTransaction: Codable {
     public let id: String
     public let hash: String
     public let status: String

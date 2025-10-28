@@ -1,5 +1,5 @@
 //
-//  GetYieldXyzActionsRequest.swift
+//  YieldXyzGetHistoricalActionsRequest.swift
 //  PortalSwift
 //
 //  Created by Ahmed Ragab on 20/10/2025.
@@ -8,22 +8,22 @@
 import Foundation
 
 /// Request to get historical yield actions with optional filtering
-public struct GetYieldXyzActionsRequest: Codable {
+public struct YieldXyzGetHistoricalActionsRequest: Codable {
     public let offset: Int?
     public let limit: Int?
     public let address: String?
-    public let status: YieldActionStatus?
-    public let intent: YieldActionIntent?
-    public let type: YieldActionType?
+    public let status: YieldXyzActionStatus?
+    public let intent: YieldXyzActionIntent?
+    public let type: YieldXyzActionType?
     public let yieldId: String?
     
     public init(
         offset: Int? = nil,
         limit: Int? = nil,
         address: String? = nil,
-        status: YieldActionStatus? = nil,
-        intent: YieldActionIntent? = nil,
-        type: YieldActionType? = nil,
+        status: YieldXyzActionStatus? = nil,
+        intent: YieldXyzActionIntent? = nil,
+        type: YieldXyzActionType? = nil,
         yieldId: String? = nil
     ) {
         self.offset = offset

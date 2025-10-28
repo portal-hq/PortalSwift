@@ -1,5 +1,5 @@
 //
-//  ManageYieldXyzResponse.swift
+//  YieldXyzExitResponse.swift
 //  PortalSwift
 //
 //  Created by Ahmed Ragab on 20/10/2025.
@@ -7,54 +7,54 @@
 
 import Foundation
 
-/// Response from managing a yield opportunity
-public struct ManageYieldXyzResponse: Codable {
-    public let data: ManageYieldData
+/// Response from exiting a yield opportunity
+public struct YieldXyzExitResponse: Codable {
+    public let data: YieldXyzExitData
     
-    public init(data: ManageYieldData) {
+    public init(data: YieldXyzExitData) {
         self.data = data
     }
 }
 
-public struct ManageYieldData: Codable {
-    public let rawResponse: ManageYieldRawResponse
+public struct YieldXyzExitData: Codable {
+    public let rawResponse: YieldXyzExitRawResponse
     
-    public init(rawResponse: ManageYieldRawResponse) {
+    public init(rawResponse: YieldXyzExitRawResponse) {
         self.rawResponse = rawResponse
     }
 }
 
-public struct ManageYieldRawResponse: Codable {
+public struct YieldXyzExitRawResponse: Codable {
     public let id: String
-    public let intent: YieldActionIntent
-    public let type: YieldActionType
+    public let intent: YieldXyzActionIntent
+    public let type: YieldXyzActionType
     public let yieldId: String
     public let address: String
     public let amount: String?
     public let amountRaw: String?
     public let amountUsd: String?
-    public let transactions: [YieldActionTransaction]
-    public let executionPattern: YieldActionExecutionPattern
-    public let rawArguments: EnterYieldArguments?
+    public let transactions: [YieldXyzActionTransaction]
+    public let executionPattern: YieldXyzActionExecutionPattern
+    public let rawArguments: YieldXyzEnterArguments?
     public let createdAt: String
     public let completedAt: String?
-    public let status: YieldActionStatus
+    public let status: YieldXyzActionStatus
     
     public init(
         id: String,
-        intent: YieldActionIntent,
-        type: YieldActionType,
+        intent: YieldXyzActionIntent,
+        type: YieldXyzActionType,
         yieldId: String,
         address: String,
         amount: String? = nil,
         amountRaw: String? = nil,
         amountUsd: String? = nil,
-        transactions: [YieldActionTransaction],
-        executionPattern: YieldActionExecutionPattern,
-        rawArguments: EnterYieldArguments? = nil,
+        transactions: [YieldXyzActionTransaction],
+        executionPattern: YieldXyzActionExecutionPattern,
+        rawArguments: YieldXyzEnterArguments? = nil,
         createdAt: String,
         completedAt: String? = nil,
-        status: YieldActionStatus
+        status: YieldXyzActionStatus
     ) {
         self.id = id
         self.intent = intent

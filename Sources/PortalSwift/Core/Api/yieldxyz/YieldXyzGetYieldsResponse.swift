@@ -1,5 +1,5 @@
 //
-//  GetYieldsXyzResponse.swift
+//  YieldXyzGetYieldsResponse.swift
 //  PortalSwift
 //
 //  Created by Ahmed Ragab on 20/10/2025.
@@ -9,29 +9,29 @@ import Foundation
 import AnyCodable
 
 /// Response containing yield opportunities from Yield.xyz
-public struct GetYieldsXyzResponse: Codable {
-    public let data: GetYieldsData
+public struct YieldXyzGetYieldsResponse: Codable {
+    public let data: YieldXyzGetYieldsData
     
-    public init(data: GetYieldsData) {
+    public init(data: YieldXyzGetYieldsData) {
         self.data = data
     }
 }
 
-public struct GetYieldsData: Codable {
-    public let rawResponse: GetYieldsRawResponse
+public struct YieldXyzGetYieldsData: Codable {
+    public let rawResponse: YieldXyzGetYieldsRawResponse
     
-    public init(rawResponse: GetYieldsRawResponse) {
+    public init(rawResponse: YieldXyzGetYieldsRawResponse) {
         self.rawResponse = rawResponse
     }
 }
 
-public struct GetYieldsRawResponse: Codable {
-    public let items: [YieldOpportunity]
+public struct YieldXyzGetYieldsRawResponse: Codable {
+    public let items: [YieldXyzOpportunity]
     public let limit: Int
     public let offset: Int
     public let total: Int
     
-    public init(items: [YieldOpportunity], limit: Int, offset: Int, total: Int) {
+    public init(items: [YieldXyzOpportunity], limit: Int, offset: Int, total: Int) {
         self.items = items
         self.limit = limit
         self.offset = offset
@@ -40,7 +40,7 @@ public struct GetYieldsRawResponse: Codable {
 }
 
 /// A yield opportunity
-public struct YieldOpportunity: Codable {
+public struct YieldXyzOpportunity: Codable {
     public let id: String
     public let network: String
     public let inputTokens: [YieldXyzToken]
@@ -49,7 +49,7 @@ public struct YieldOpportunity: Codable {
     public let rewardRate: YieldXyzRewardRate
     public let statistics: YieldXyzStatistics?
     public let status: YieldXyzStatus
-    public let metadata: YieldXyzMetadata
+    public let metadata: YieldXyzOpportunityMetadata
     public let mechanics: YieldXyzMechanics
     public let providerId: String
     public let tags: [String]
@@ -63,7 +63,7 @@ public struct YieldOpportunity: Codable {
         rewardRate: YieldXyzRewardRate,
         statistics: YieldXyzStatistics? = nil,
         status: YieldXyzStatus,
-        metadata: YieldXyzMetadata,
+        metadata: YieldXyzOpportunityMetadata,
         mechanics: YieldXyzMechanics,
         providerId: String,
         tags: [String]
@@ -118,10 +118,10 @@ public struct YieldXyzToken: Codable {
 /// Reward rate information
 public struct YieldXyzRewardRate: Codable {
     public let total: Double
-    public let rateType: RateType
+    public let rateType: YieldXyzRateType
     public let components: [YieldXyzRewardRateComponent]
     
-    public init(total: Double, rateType: RateType, components: [YieldXyzRewardRateComponent]) {
+    public init(total: Double, rateType: YieldXyzRateType, components: [YieldXyzRewardRateComponent]) {
         self.total = total
         self.rateType = rateType
         self.components = components
@@ -129,7 +129,7 @@ public struct YieldXyzRewardRate: Codable {
 }
 
 /// Rate type enum
-public enum RateType: String, Codable {
+public enum YieldXyzRateType: String, Codable {
     case APR
     case APY
 }
@@ -137,16 +137,16 @@ public enum RateType: String, Codable {
 /// Reward rate component
 public struct YieldXyzRewardRateComponent: Codable {
     public let rate: Double
-    public let rateType: RateType
+    public let rateType: YieldXyzRateType
     public let token: YieldXyzToken
-    public let yieldSource: YieldSource
+    public let yieldSource: YieldXyzSource
     public let description: String
     
     public init(
         rate: Double,
-        rateType: RateType,
+        rateType: YieldXyzRateType,
         token: YieldXyzToken,
-        yieldSource: YieldSource,
+        yieldSource: YieldXyzSource,
         description: String
     ) {
         self.rate = rate
@@ -158,7 +158,7 @@ public struct YieldXyzRewardRateComponent: Codable {
 }
 
 /// Yield source enum
-public enum YieldSource: String, Codable {
+public enum YieldXyzSource: String, Codable {
     case staking
     case restaking
     case protocol_incentive
@@ -204,7 +204,7 @@ public struct YieldXyzStatus: Codable {
 }
 
 /// Metadata for a yield opportunity
-public struct YieldXyzMetadata: Codable {
+public struct YieldXyzOpportunityMetadata: Codable {
     public let name: String
     public let logoURI: String
     public let description: String

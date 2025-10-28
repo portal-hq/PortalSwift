@@ -1,5 +1,5 @@
 //
-//  GetYieldXyzBalancesResponse.swift
+//  YieldXyzGetBalancesResponse.swift
 //  PortalSwift
 //
 //  Created by Ahmed Ragab on 20/10/2025.
@@ -8,51 +8,51 @@
 import Foundation
 
 /// Response from getting yield balances
-public struct GetYieldXyzBalancesResponse: Codable {
-    public let data: YieldBalancesData?
-    public let metadata: YieldMetadata?
+public struct YieldXyzGetBalancesResponse: Codable {
+    public let data: YieldXyzGetBalancesData?
+    public let metadata: YieldXyzGetBalancesMetadata?
     
-    public init(data: YieldBalancesData? = nil, metadata: YieldMetadata? = nil) {
+    public init(data: YieldXyzGetBalancesData? = nil, metadata: YieldXyzGetBalancesMetadata? = nil) {
         self.data = data
         self.metadata = metadata
     }
 }
 
-public struct YieldBalancesData: Codable {
-    public let rawResponse: YieldBalancesRawResponse
+public struct YieldXyzGetBalancesData: Codable {
+    public let rawResponse: YieldXyzGetBalancesRawResponse
     
-    public init(rawResponse: YieldBalancesRawResponse) {
+    public init(rawResponse: YieldXyzGetBalancesRawResponse) {
         self.rawResponse = rawResponse
     }
 }
 
-public struct YieldBalancesRawResponse: Codable {
-    public let items: [YieldBalanceItem]
+public struct YieldXyzGetBalancesRawResponse: Codable {
+    public let items: [YieldXyzGetBalancesItem]
     public let errors: [String]
     
-    public init(items: [YieldBalanceItem], errors: [String] = []) {
+    public init(items: [YieldXyzGetBalancesItem], errors: [String] = []) {
         self.items = items
         self.errors = errors
     }
 }
 
-public struct YieldBalanceItem: Codable {
+public struct YieldXyzGetBalancesItem: Codable {
     public let yieldId: String
-    public let balances: [YieldBalance]
+    public let balances: [YieldXyzBalance]
     
-    public init(yieldId: String, balances: [YieldBalance]) {
+    public init(yieldId: String, balances: [YieldXyzBalance]) {
         self.yieldId = yieldId
         self.balances = balances
     }
 }
 
-public struct YieldBalance: Codable {
+public struct YieldXyzBalance: Codable {
     public let address: String
     public let amount: String
     public let amountRaw: String
     public let type: String
-    public let token: YieldToken
-    public let pendingActions: [String]
+    public let token: YieldXyzBalanceToken
+    public let pendingActions: [YieldXyzBalancePendingAction]
     public let amountUsd: String?
     public let isEarning: Bool?
     
@@ -61,8 +61,8 @@ public struct YieldBalance: Codable {
         amount: String,
         amountRaw: String,
         type: String,
-        token: YieldToken,
-        pendingActions: [String] = [],
+        token: YieldXyzBalanceToken,
+        pendingActions: [YieldXyzBalancePendingAction] = [],
         amountUsd: String? = nil,
         isEarning: Bool? = nil
     ) {
@@ -77,7 +77,7 @@ public struct YieldBalance: Codable {
     }
 }
 
-public struct YieldToken: Codable {
+public struct YieldXyzBalanceToken: Codable {
     public let address: String
     public let symbol: String
     public let name: String
@@ -105,10 +105,17 @@ public struct YieldToken: Codable {
     }
 }
 
-public struct YieldMetadata: Codable {
+public struct YieldXyzBalancePendingAction: Codable {
+    public let intent: YieldXyzActionIntent
+    public let type: YieldXyzActionType
+    public let passthrough: String
+    public let arguments: YieldXyzArgument?
+}
+
+public struct YieldXyzGetBalancesMetadata: Codable {
     public let clientId: String?
     
-    public init(clientId: String?) {
+    public init(clientId: String? = nil) {
         self.clientId = clientId
     }
 }

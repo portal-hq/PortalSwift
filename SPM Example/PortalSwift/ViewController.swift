@@ -2416,7 +2416,7 @@ extension ViewController {
         Task {
             self.logger.info("Starting yield discovery...")
             do {
-                let request = GetYieldsXyzRequest(
+                let request = YieldXyzGetYieldsRequest(
                     offset: 0,
                     yieldId: "polygon-dai-aave-v3-lending",
                     network: "eip155:137",
@@ -2471,7 +2471,7 @@ extension ViewController {
                 self.logger.info("User address: \(userAddress)")
                 
                 // First, discover the specific yield to ensure it's available
-                let discoverRequest = GetYieldsXyzRequest(
+                let discoverRequest = YieldXyzGetYieldsRequest(
                     yieldId: "ethereum-sepolia-link-aave-v3-lending",
                     network: "eip155:11155111",
                     limit: 1
@@ -2494,10 +2494,10 @@ extension ViewController {
                         let amount = "0.000001"
                         self.logger.info("Entering yield with amount: \(amount) LINK")
                         
-                        let enterRequest = EnterYieldXyzRequest(
+                        let enterRequest = YieldXyzEnterRequest(
                             yieldId: yield.id,
                             address: userAddress,
-                            arguments: EnterYieldArguments(
+                            arguments: YieldXyzEnterArguments(
                                 amount: amount,
                                 executionMode: .batch
                             )
@@ -2573,9 +2573,9 @@ extension ViewController {
                 self.logger.info("Getting yield balances for address: \(address)")
                 
                 // Create balance request for Sepolia testnet
-                let balanceRequest = GetYieldXyzBalancesRequest(
+                let balanceRequest = YieldXyzGetBalancesRequest(
                     queries: [
-                        YieldBalanceQuery(
+                        YieldXyzBalanceQuery(
                             address: address,
                             network: chainId // Sepolia testnet
                         )
@@ -2599,7 +2599,7 @@ extension ViewController {
                         
                         // Fetch historical actions
                         do {
-                            let actionsRequest = GetYieldXyzActionsRequest(address: address)
+                            let actionsRequest = YieldXyzGetHistoricalActionsRequest(address: address)
                             let actionsResult = try await portal.yield.yieldxyz.getHistoricalActions(request: actionsRequest)
                             let actions = actionsResult.data.rawResponse
                             
@@ -2670,7 +2670,7 @@ extension ViewController {
                 self.logger.info("User address: \(address)")
                 
                 // First, discover the specific yield to ensure it's available
-                let discoverRequest = GetYieldsXyzRequest(
+                let discoverRequest = YieldXyzGetYieldsRequest(
                     yieldId: "ethereum-sepolia-link-aave-v3-lending",
                     network: chainId, // Sepolia testnet
                     limit: 1
@@ -2691,10 +2691,10 @@ extension ViewController {
                     let amount = "0.001"
                     self.logger.info("Managing yield with amount: \(amount) LINK")
                     
-                    let manageRequest = ManageYieldXyzRequest(
+                    let manageRequest = YieldXyzManageYieldRequest(
                         yieldId: yield.id,
                         address: address,
-                        arguments: EnterYieldArguments(amount: amount),
+                        arguments: YieldXyzEnterArguments(amount: amount),
                         action: .CLAIM_REWARDS,
                         passthrough: "eyJhZGRyZXNzZXMiOnsiYWRkcmVzcyI6ImNvc21vczF5ZXk..." // Replace with actual passthrough data after clicking the Manage Yield button
                     )
@@ -2763,10 +2763,10 @@ extension ViewController {
                 let amount = "0.001"
                 self.logger.info("Exiting yield with amount: \(amount) ETH")
                 
-                let exitRequest = ExitYieldXyzRequest(
+                let exitRequest = YieldXyzExitRequest(
                     yieldId: "ethereum-sepolia-link-aave-v3-lending",
                     address: address,
-                    arguments: EnterYieldArguments(amount: amount)
+                    arguments: YieldXyzEnterArguments(amount: amount)
                 )
                 
                 let exitResponse = try await portal.yield.yieldxyz.exit(request: exitRequest)
@@ -2811,7 +2811,7 @@ extension ViewController {
 /// Includes logging helpers, transaction processing, and yield operation utilities
 @available(iOS 16.0, *)
 extension ViewController {
-    private func logDiscoverYieldsResults(request: GetYieldsXyzRequest, response: GetYieldsRawResponse) {
+    private func logDiscoverYieldsResults(request: YieldXyzGetYieldsRequest, response: YieldXyzGetYieldsRawResponse) {
         self.logger.info("Found \(response.items.count) yield opportunities (total: \(response.total))")
         self.logger.info("Request parameters: offset=\(request.offset ?? 0), limit=\(request.limit ?? 10)")
         self.logger.info("Network: \(request.network ?? "nil")")
@@ -2829,7 +2829,7 @@ extension ViewController {
         }
     }
     
-    private func logYieldEntryResults(response: EnterYieldRawResponse) {
+    private func logYieldEntryResults(response: YieldXyzEnterRawResponse) {
         self.logger.info("Successfully initiated yield entry")
         self.logger.info("Action ID: \(response.id)")
         self.logger.info("Status: \(response.status.rawValue)")
@@ -2843,7 +2843,7 @@ extension ViewController {
         self.logger.info("Transactions: \(response.transactions.count)")
     }
     
-    private func logTransactionDetails(transaction: YieldActionTransaction, index: Int, total: Int) {
+    private func logTransactionDetails(transaction: YieldXyzActionTransaction, index: Int, total: Int) {
         self.logger.info("=== Processing Transaction \(index + 1)/\(total) ===")
         self.logger.info("Transaction: \(transaction.title) - Status: \(transaction.status.rawValue)")
         self.logger.info("Transaction ID: \(transaction.id)")
@@ -2855,7 +2855,7 @@ extension ViewController {
     
     /// Logs detailed information about yield balance items
     /// - Parameter items: Array of yield balance items to log
-    private func logYieldBalanceDetails(items: [YieldBalanceItem]) {
+    private func logYieldBalanceDetails(items: [YieldXyzGetBalancesItem]) {
         for item in items {
             self.logger.info("Yield ID: \(item.yieldId)")
             for balance in item.balances {
@@ -2872,7 +2872,7 @@ extension ViewController {
     
     /// Logs detailed information about yield action items (first 2 actions)
     /// - Parameter actions: Array of yield action items to log
-    private func logYieldActionDetails(actions: [EnterYieldRawResponse]) {
+    private func logYieldActionDetails(actions: [YieldXyzEnterRawResponse]) {
         for action in actions.prefix(2) {
             self.logger.info("Action \(action.id) intent=\(action.intent.rawValue) status=\(action.status.rawValue)")
             for transaction in action.transactions {
@@ -2884,7 +2884,7 @@ extension ViewController {
     
     /// Logs detailed information about yield management response
     /// - Parameter response: The yield management raw response to log
-    private func logYieldManagementResponse(_ response: ManageYieldRawResponse) {
+    private func logYieldManagementResponse(_ response: YieldXyzManageYieldRawResponse) {
         self.logger.info("Successfully initiated yield management")
         self.logger.info("Action ID: \(response.id)")
         self.logger.info("Status: \(response.status.rawValue)")
@@ -2900,7 +2900,7 @@ extension ViewController {
     
     /// Logs detailed information about yield exit response
     /// - Parameter response: The yield exit raw response to log
-    private func logYieldExitResponse(_ response: ExitYieldRawResponse) {
+    private func logYieldExitResponse(_ response: YieldXyzExitRawResponse) {
         self.logger.info("Successfully initiated yield exit")
         self.logger.info("Action ID: \(response.id)")
         self.logger.info("Status: \(response.status.rawValue)")
@@ -2919,7 +2919,7 @@ extension ViewController {
     ///   - transaction: The transaction being processed
     ///   - index: The current transaction index (0-based)
     ///   - total: The total number of transactions
-    private func logDetailedTransactionProcessing(transaction: YieldActionTransaction, index: Int, total: Int) {
+    private func logDetailedTransactionProcessing(transaction: YieldXyzActionTransaction, index: Int, total: Int) {
         self.logger.info("=== Processing Transaction \(index + 1)/\(total) ===")
         self.logger.info("Transaction: \(transaction.title) - Status: \(transaction.status.rawValue)")
         self.logger.info("Transaction ID: \(transaction.id)")
@@ -2930,7 +2930,7 @@ extension ViewController {
     }
     
     private func signAndSubmitTransactionSequential(
-        transaction: YieldActionTransaction,
+        transaction: YieldXyzActionTransaction,
         portal: PortalProtocol
     ) async -> Bool {
 

@@ -38,9 +38,9 @@ public class PortalYieldXyzApi {
     
     /// Retrieves yield opportunities from the Yield.xyz integration.
     /// - Parameter request: The parameters for the yield discovery request.
-    /// - Returns: A `GetYieldsXyzResponse` containing available yield opportunities.
+    /// - Returns: A `YieldXyzGetYieldsResponse` containing available yield opportunities.
     /// - Throws: An error if the operation fails.
-    public func getYields(request: GetYieldsXyzRequest) async throws -> GetYieldsXyzResponse {
+    public func getYields(request: YieldXyzGetYieldsRequest) async throws -> YieldXyzGetYieldsResponse {
         var queryParams: [String] = []
         
         // Helper function to add query parameters
@@ -73,7 +73,7 @@ public class PortalYieldXyzApi {
         }
         
         do {
-            return try await get(url, withBearerToken: apiKey, mappingInResponse: GetYieldsXyzResponse.self)
+            return try await get(url, withBearerToken: apiKey, mappingInResponse: YieldXyzGetYieldsResponse.self)
         } catch {
             logger.error("PortalYieldXyzApi.getYields() - Error: \(error.localizedDescription)")
             throw error
@@ -82,16 +82,16 @@ public class PortalYieldXyzApi {
     
     /// Enters a yield opportunity through the Yield.xyz integration.
     /// - Parameter request: The parameters for entering a yield opportunity.
-    /// - Returns: An `EnterYieldXyzResponse` containing the action details.
+    /// - Returns: A `YieldXyzEnterYieldResponse` containing the action details.
     /// - Throws: An error if the operation fails.
-    public func enterYield(request: EnterYieldXyzRequest) async throws -> EnterYieldXyzResponse {
+    public func enterYield(request: YieldXyzEnterRequest) async throws -> YieldXyzEnterYieldResponse {
         guard let url = URL(string: "\(baseUrl)/api/v3/clients/me/integrations/yield-xyz/actions/enter") else {
             logger.error("PortalYieldXyzApi.enterYield() - Unable to build request URL.")
             throw URLError(.badURL)
         }
         
         do {
-            return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: EnterYieldXyzResponse.self)
+            return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: YieldXyzEnterYieldResponse.self)
         } catch {
             logger.error("PortalYieldXyzApi.enterYield() - Error: \(error.localizedDescription)")
             // Provide more helpful error message for common issues
@@ -109,16 +109,16 @@ public class PortalYieldXyzApi {
     
     /// Exits a yield opportunity through the Yield.xyz integration.
     /// - Parameter request: The parameters for exiting a yield opportunity.
-    /// - Returns: An `ExitYieldXyzResponse` containing the action details.
+    /// - Returns: A `YieldXyzExitResponse` containing the action details.
     /// - Throws: An error if the operation fails.
-    public func exitYield(request: ExitYieldXyzRequest) async throws -> ExitYieldXyzResponse {
+    public func exitYield(request: YieldXyzExitRequest) async throws -> YieldXyzExitResponse {
         guard let url = URL(string: "\(baseUrl)/api/v3/clients/me/integrations/yield-xyz/actions/exit") else {
             logger.error("PortalYieldXyzApi.exitYield() - Unable to build request URL.")
             throw URLError(.badURL)
         }
         
         do {
-            return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: ExitYieldXyzResponse.self)
+            return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: YieldXyzExitResponse.self)
         } catch {
             logger.error("PortalYieldXyzApi.exitYield() - Error: \(error.localizedDescription)")
             let errorString = error.localizedDescription.lowercased()
@@ -135,16 +135,16 @@ public class PortalYieldXyzApi {
     
     /// Manages a yield opportunity through the Yield.xyz integration.
     /// - Parameter request: The parameters for managing a yield opportunity.
-    /// - Returns: A `ManageYieldXyzResponse` containing the action details.
+    /// - Returns: A `YieldXyzManageYieldResponse` containing the action details.
     /// - Throws: An error if the operation fails.
-    public func manageYield(request: ManageYieldXyzRequest) async throws -> ManageYieldXyzResponse {
+    public func manageYield(request: YieldXyzManageYieldRequest) async throws -> YieldXyzManageYieldResponse {
         guard let url = URL(string: "\(baseUrl)/api/v3/clients/me/integrations/yield-xyz/actions/manage") else {
             logger.error("PortalYieldXyzApi.manageYield() - Unable to build request URL.")
             throw URLError(.badURL)
         }
         
         do {
-            return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: ManageYieldXyzResponse.self)
+            return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: YieldXyzManageYieldResponse.self)
         } catch {
             logger.error("PortalYieldXyzApi.manageYield() - Error: \(error.localizedDescription)")
             let errorString = error.localizedDescription.lowercased()
@@ -161,16 +161,16 @@ public class PortalYieldXyzApi {
     
     /// Retrieves yield balances for specified addresses and networks.
     /// - Parameter request: The parameters for the yield balances request.
-    /// - Returns: A `GetYieldXyzBalancesResponse` containing balance information.
+    /// - Returns: A `YieldXyzGetBalancesResponse` containing balance information.
     /// - Throws: An error if the operation fails.
-    public func getYieldBalances(request: GetYieldXyzBalancesRequest) async throws -> GetYieldXyzBalancesResponse {
+    public func getYieldBalances(request: YieldXyzGetBalancesRequest) async throws -> YieldXyzGetBalancesResponse {
         guard let url = URL(string: "\(baseUrl)/api/v3/clients/me/integrations/yield-xyz/yields/balances") else {
             logger.error("PortalYieldXyzApi.getYieldBalances() - Unable to build request URL.")
             throw URLError(.badURL)
         }
         
         do {
-            return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: GetYieldXyzBalancesResponse.self)
+            return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: YieldXyzGetBalancesResponse.self)
         } catch {
             logger.error("PortalYieldXyzApi.getYieldBalances() - Error: \(error.localizedDescription)")
             let errorString = error.localizedDescription.lowercased()
@@ -187,9 +187,9 @@ public class PortalYieldXyzApi {
     
     /// Retrieves historical yield actions with optional filtering.
     /// - Parameter request: The parameters for the historical yield actions request.
-    /// - Returns: A `GetYieldXyzActionsResponse` containing historical actions.
+    /// - Returns: A `YieldXyzGetHistoricalActionsResponse` containing historical actions.
     /// - Throws: An error if the operation fails.
-    public func getHistoricalYieldActions(request: GetYieldXyzActionsRequest) async throws -> GetYieldXyzActionsResponse {
+    public func getHistoricalYieldActions(request: YieldXyzGetHistoricalActionsRequest) async throws -> YieldXyzGetHistoricalActionsResponse {
         var queryParams: [String] = []
         
         // Helper function to add query parameters
@@ -217,7 +217,7 @@ public class PortalYieldXyzApi {
         }
         
         do {
-            return try await get(url, withBearerToken: apiKey, mappingInResponse: GetYieldXyzActionsResponse.self)
+            return try await get(url, withBearerToken: apiKey, mappingInResponse: YieldXyzGetHistoricalActionsResponse.self)
         } catch {
             logger.error("PortalYieldXyzApi.getHistoricalYieldActions() - Error: \(error.localizedDescription)")
             throw error
@@ -226,16 +226,16 @@ public class PortalYieldXyzApi {
     
     /// Retrieves a single yield action transaction by its ID.
     /// - Parameter transactionId: The ID of the transaction to retrieve.
-    /// - Returns: A `GetYieldXyzActionTransactionResponse` containing transaction details.
+    /// - Returns: A `YieldXyzGetTransactionResponse` containing transaction details.
     /// - Throws: An error if the operation fails.
-    public func getYieldTransaction(transactionId: String) async throws -> GetYieldXyzActionTransactionResponse {
+    public func getYieldTransaction(transactionId: String) async throws -> YieldXyzGetTransactionResponse {
         guard let url = URL(string: "\(baseUrl)/api/v3/clients/me/integrations/yield-xyz/transactions/\(transactionId)") else {
             logger.error("PortalYieldXyzApi.getYieldTransaction() - Unable to build request URL.")
             throw URLError(.badURL)
         }
         
         do {
-            return try await get(url, withBearerToken: apiKey, mappingInResponse: GetYieldXyzActionTransactionResponse.self)
+            return try await get(url, withBearerToken: apiKey, mappingInResponse: YieldXyzGetTransactionResponse.self)
         } catch {
             logger.error("PortalYieldXyzApi.getYieldTransaction() - Error: \(error.localizedDescription)")
             throw error
@@ -246,7 +246,7 @@ public class PortalYieldXyzApi {
     /// - Parameter request: The transaction hash submission request containing transactionId and hash.
     /// - Returns: `true` if the submission was successful.
     /// - Throws: An error if the operation fails.
-    public func submitTransactionHash(request: SubmitYieldXyzTransactionHashRequest) async throws -> Bool {
+    public func submitTransactionHash(request: YieldXyzTrackTransactionRequest) async throws -> Bool {
         guard let url = URL(string: "\(baseUrl)/api/v3/clients/me/integrations/yield-xyz/transactions/\(request.transactionId)/submit-hash") else {
             logger.error("PortalYieldXyzApi.submitTransactionHash() - Unable to build request URL.")
             throw URLError(.badURL)

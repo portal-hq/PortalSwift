@@ -1,5 +1,5 @@
 //
-//  EnterYieldXyzResponse.swift
+//  YieldXyzEnterYieldResponse.swift
 //  PortalSwift
 //
 //  Created by Ahmed Ragab on 20/10/2025.
@@ -9,53 +9,53 @@ import Foundation
 import AnyCodable
 
 /// Response from entering a yield opportunity
-public struct EnterYieldXyzResponse: Codable {
-    public let data: EnterYieldData
+public struct YieldXyzEnterYieldResponse: Codable {
+    public let data: YieldXyzEnterYieldData
     
-    public init(data: EnterYieldData) {
+    public init(data: YieldXyzEnterYieldData) {
         self.data = data
     }
 }
 
-public struct EnterYieldData: Codable {
-    public let rawResponse: EnterYieldRawResponse
+public struct YieldXyzEnterYieldData: Codable {
+    public let rawResponse: YieldXyzEnterRawResponse
     
-    public init(rawResponse: EnterYieldRawResponse) {
+    public init(rawResponse: YieldXyzEnterRawResponse) {
         self.rawResponse = rawResponse
     }
 }
 
-public struct EnterYieldRawResponse: Codable {
+public struct YieldXyzEnterRawResponse: Codable {
     public let id: String
-    public let intent: YieldActionIntent
-    public let type: YieldActionType
+    public let intent: YieldXyzActionIntent
+    public let type: YieldXyzActionType
     public let yieldId: String
     public let address: String
     public let amount: String?
     public let amountRaw: String?
     public let amountUsd: String?
-    public let transactions: [YieldActionTransaction]
-    public let executionPattern: YieldActionExecutionPattern
-    public let rawArguments: EnterYieldArguments?
+    public let transactions: [YieldXyzActionTransaction]
+    public let executionPattern: YieldXyzActionExecutionPattern
+    public let rawArguments: YieldXyzEnterArguments?
     public let createdAt: String
     public let completedAt: String?
-    public let status: YieldActionStatus
+    public let status: YieldXyzActionStatus
     
     public init(
         id: String,
-        intent: YieldActionIntent,
-        type: YieldActionType,
+        intent: YieldXyzActionIntent,
+        type: YieldXyzActionType,
         yieldId: String,
         address: String,
         amount: String? = nil,
         amountRaw: String? = nil,
         amountUsd: String? = nil,
-        transactions: [YieldActionTransaction],
-        executionPattern: YieldActionExecutionPattern,
-        rawArguments: EnterYieldArguments? = nil,
+        transactions: [YieldXyzActionTransaction],
+        executionPattern: YieldXyzActionExecutionPattern,
+        rawArguments: YieldXyzEnterArguments? = nil,
         createdAt: String,
         completedAt: String? = nil,
-        status: YieldActionStatus
+        status: YieldXyzActionStatus
     ) {
         self.id = id
         self.intent = intent
@@ -75,14 +75,14 @@ public struct EnterYieldRawResponse: Codable {
 }
 
 /// Yield action intent types
-public enum YieldActionIntent: String, Codable {
+public enum YieldXyzActionIntent: String, Codable {
     case enter
     case manage
     case exit
 }
 
 /// Yield action types
-public enum YieldActionType: String, Codable {
+public enum YieldXyzActionType: String, Codable {
     case STAKE
     case UNSTAKE
     case CLAIM_REWARDS
@@ -104,14 +104,14 @@ public enum YieldActionType: String, Codable {
 }
 
 /// Yield action execution patterns
-public enum YieldActionExecutionPattern: String, Codable {
+public enum YieldXyzActionExecutionPattern: String, Codable {
     case synchronous
     case asynchronous
     case batch
 }
 
 /// Yield action status
-public enum YieldActionStatus: String, Codable {
+public enum YieldXyzActionStatus: String, Codable {
     case CANCELED
     case CREATED
     case WAITING_FOR_NEXT
@@ -122,12 +122,12 @@ public enum YieldActionStatus: String, Codable {
 }
 
 /// Yield action transaction
-public struct YieldActionTransaction: Codable {
+public struct YieldXyzActionTransaction: Codable {
     public let id: String
     public let title: String
     public let network: String
-    public let status: YieldActionTransactionStatus
-    public let type: YieldActionTransactionType
+    public let status: YieldXyzActionTransactionStatus
+    public let type: YieldXyzActionTransactionType
     public let hash: String?
     public let createdAt: String
     public let broadcastedAt: String?
@@ -146,8 +146,8 @@ public struct YieldActionTransaction: Codable {
         id: String,
         title: String,
         network: String,
-        status: YieldActionTransactionStatus,
-        type: YieldActionTransactionType,
+        status: YieldXyzActionTransactionStatus,
+        type: YieldXyzActionTransactionType,
         hash: String? = nil,
         createdAt: String,
         broadcastedAt: String? = nil,
@@ -184,7 +184,7 @@ public struct YieldActionTransaction: Codable {
 }
 
 /// Yield action transaction status
-public enum YieldActionTransactionStatus: String, Codable {
+public enum YieldXyzActionTransactionStatus: String, Codable {
     case NOT_FOUND
     case CREATED
     case BLOCKED
@@ -198,7 +198,7 @@ public enum YieldActionTransactionStatus: String, Codable {
 }
 
 /// Yield action transaction type
-public enum YieldActionTransactionType: String, Codable {
+public enum YieldXyzActionTransactionType: String, Codable {
     case SWAP
     case DEPOSIT
     case APPROVAL

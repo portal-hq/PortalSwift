@@ -1,5 +1,5 @@
 //
-//  EnterYieldXyzRequest.swift
+//  YieldXyzEnterRequest.swift
 //  PortalSwift
 //
 //  Created by Ahmed Ragab on 20/10/2025.
@@ -8,12 +8,12 @@
 import Foundation
 
 /// Request to enter a yield opportunity
-public struct EnterYieldXyzRequest: Codable {
+public struct YieldXyzEnterRequest: Codable {
     public let yieldId: String
     public let address: String
-    public let arguments: EnterYieldArguments?
+    public let arguments: YieldXyzEnterArguments?
     
-    public init(yieldId: String, address: String, arguments: EnterYieldArguments? = nil) {
+    public init(yieldId: String, address: String, arguments: YieldXyzEnterArguments? = nil) {
         self.yieldId = yieldId
         self.address = address
         self.arguments = arguments
@@ -21,7 +21,7 @@ public struct EnterYieldXyzRequest: Codable {
 }
 
 /// Arguments for entering a yield opportunity
-public struct EnterYieldArguments: Codable {
+public struct YieldXyzEnterArguments: Codable {
     public let amount: String?
     public let validatorAddress: String?
     public let validatorAddresses: [String]?
@@ -29,13 +29,13 @@ public struct EnterYieldArguments: Codable {
     public let duration: Int?
     public let inputToken: String?
     public let subnetId: Int?
-    public let tronResource: TronResource?
+    public let tronResource: YieldXyzTronResource?
     public let feeConfigurationId: String?
     public let cosmosPubKey: String?
     public let tezosPubKey: String?
     public let cAddressBech: String?
     public let pAddressBech: String?
-    public let executionMode: ExecutionMode?
+    public let executionMode: YieldXyzExecutionMode?
     public let ledgerWalletApiCompatible: Bool?
     
     public init(
@@ -46,13 +46,13 @@ public struct EnterYieldArguments: Codable {
         duration: Int? = nil,
         inputToken: String? = nil,
         subnetId: Int? = nil,
-        tronResource: TronResource? = nil,
+        tronResource: YieldXyzTronResource? = nil,
         feeConfigurationId: String? = nil,
         cosmosPubKey: String? = nil,
         tezosPubKey: String? = nil,
         cAddressBech: String? = nil,
         pAddressBech: String? = nil,
-        executionMode: ExecutionMode? = nil,
+        executionMode: YieldXyzExecutionMode? = nil,
         ledgerWalletApiCompatible: Bool? = nil
     ) {
         self.amount = amount
@@ -74,13 +74,13 @@ public struct EnterYieldArguments: Codable {
 }
 
 /// Tron resource types
-public enum TronResource: String, Codable {
+public enum YieldXyzTronResource: String, Codable {
     case BANDWIDTH
     case ENERGY
 }
 
 /// Execution modes for yield actions
-public enum ExecutionMode: String, Codable {
+public enum YieldXyzExecutionMode: String, Codable {
     case individual
     case batch
 }

@@ -1,5 +1,5 @@
 //
-//  GetYieldsXyzRequest.swift
+//  YieldXyzGetYieldsRequest.swift
 //  PortalSwift
 //
 //  Created by Ahmed Ragab on 20/10/2025.
@@ -8,11 +8,11 @@
 import Foundation
 
 /// Request parameters for getting yield opportunities from Yield.xyz
-public struct GetYieldsXyzRequest: Codable {
+public struct YieldXyzGetYieldsRequest: Codable {
     public let offset: Int?
-    public let yieldId: String?
-    public let network: String?
     public let limit: Int?
+    public let network: String?
+    public let yieldId: String?
     public let type: YieldXyzMechanicsType?
     public let hasCooldownPeriod: Bool?
     public let hasWarmupPeriod: Bool?
@@ -20,7 +20,7 @@ public struct GetYieldsXyzRequest: Codable {
     public let inputToken: String?
     public let provider: String?
     public let search: String?
-    public let sort: YieldXyzSort?
+    public let sort: YieldXyzGetYieldsSort?
     
     public init(
         offset: Int? = nil,
@@ -34,7 +34,7 @@ public struct GetYieldsXyzRequest: Codable {
         inputToken: String? = nil,
         provider: String? = nil,
         search: String? = nil,
-        sort: YieldXyzSort? = nil
+        sort: YieldXyzGetYieldsSort? = nil
     ) {
         self.offset = offset
         self.limit = limit
@@ -52,7 +52,7 @@ public struct GetYieldsXyzRequest: Codable {
 }
 
 /// Sort options for yield opportunities
-public enum YieldXyzSort: String, Codable {
+public enum YieldXyzGetYieldsSort: String, Codable {
     case statusEnterAsc
     case statusEnterDesc
     case statusExitAsc
