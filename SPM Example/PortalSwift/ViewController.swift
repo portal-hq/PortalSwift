@@ -3004,9 +3004,8 @@ extension ViewController {
             
             // Parse the unsigned transaction - it comes as AnyCodable wrapping a JSON string
             let unsignedTxJson: String
-            if let anyCodable = transaction.unsignedTransaction,
-               let jsonString = anyCodable.value as? String {
-                unsignedTxJson = jsonString
+            if let unsignedTransaction = transaction.unsignedTransaction {
+                unsignedTxJson = unsignedTransaction
             } else {
                 self.logger.error("Unsigned transaction is not in the expected format: \(String(describing: transaction.unsignedTransaction))")
                 return false

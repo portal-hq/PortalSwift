@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import AnyCodable
 
 /// Response for fetching a single yield action transaction by ID
 public struct YieldXyzGetTransactionResponse: Codable {
@@ -40,7 +39,7 @@ public struct YieldXyzGetTransactionRawResponse: Codable {
     public let createdAt: String
     public let broadcastedAt: String?
     public let signedTransaction: String?
-    public let unsignedTransaction: AnyCodable?
+    public let unsignedTransaction: String?
     public let stepIndex: Int
     public let gasEstimate: String?
     
@@ -54,7 +53,7 @@ public struct YieldXyzGetTransactionRawResponse: Codable {
         createdAt: String,
         broadcastedAt: String? = nil,
         signedTransaction: String? = nil,
-        unsignedTransaction: AnyCodable? = nil,
+        unsignedTransaction: String? = nil,
         stepIndex: Int,
         gasEstimate: String? = nil
     ) {

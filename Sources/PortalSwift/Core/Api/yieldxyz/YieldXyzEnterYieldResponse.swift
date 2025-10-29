@@ -134,7 +134,7 @@ public struct YieldXyzActionTransaction: Codable {
     public let createdAt: String
     public let broadcastedAt: String?
     public let signedTransaction: String?
-    public let unsignedTransaction: AnyCodable? // TODO: - revisit this type here
+    public let unsignedTransaction: String?
     public let annotatedTransaction: [String: AnyCodable]?
     public let structuredTransaction: [String: AnyCodable]?
     public let stepIndex: Int
@@ -154,7 +154,7 @@ public struct YieldXyzActionTransaction: Codable {
         createdAt: String,
         broadcastedAt: String? = nil,
         signedTransaction: String? = nil,
-        unsignedTransaction: AnyCodable? = nil,
+        unsignedTransaction: String? = nil,
         annotatedTransaction: [String: AnyCodable]? = nil,
         structuredTransaction: [String: AnyCodable]? = nil,
         stepIndex: Int,
