@@ -2666,64 +2666,107 @@ extension ViewController {
                     return
                 }
                 
-                self.logger.info("Starting yield management flow for Sepolia LINK Aave v3 lending")
+                self.logger.info("Starting yield management flow")
                 self.logger.info("User address: \(address)")
-                
-                // First, discover the specific yield to ensure it's available
-                let discoverRequest = YieldXyzGetYieldsRequest(
-                    yieldId: "ethereum-sepolia-link-aave-v3-lending",
-                    network: chainId, // Sepolia testnet
-                    limit: 1
+
+                // Step 1: Get yield balances to check existing positions
+                self.logger.info("Getting yield balances...")
+                let balanceRequest = YieldXyzGetBalancesRequest(
+                    queries: [
+                        YieldXyzBalanceQuery(
+                            address: address,
+                            network: chainId // Sepolia testnet
+                        )
+                    ]
                 )
-                
-                self.logger.info("Discovering yield: \(discoverRequest.yieldId ?? "nil")")
-                let discoverResponse = try await portal.yield.yieldxyz.discover(request: discoverRequest)
-                
-                // TODO: - we need to call the get balances
-                
-                if !discoverResponse.data.rawResponse.items.isEmpty {
-                    let yield = discoverResponse.data.rawResponse.items.first!
-                    self.logger.info("Found yield: \(yield.metadata.name)")
-                    self.logger.info("APY: \(String(format: "%.2f", yield.rewardRate.total * 100))%")
-                    self.logger.info("Status - Enter: \(yield.status.enter), Exit: \(yield.status.exit)")
-                    
-                    // Use a very small amount for testing
-                    let amount = "0.001"
-                    self.logger.info("Managing yield with amount: \(amount) LINK")
-                    
-                    let manageRequest = YieldXyzManageYieldRequest(
-                        yieldId: yield.id,
-                        address: address,
-                        arguments: YieldXyzEnterArguments(amount: amount),
-                        action: .CLAIM_REWARDS,
-                        passthrough: "eyJhZGRyZXNzZXMiOnsiYWRkcmVzcyI6ImNvc21vczF5ZXk..." // Replace with actual passthrough data after clicking the Manage Yield button
-                    )
-                    
-                    let manageResponse = try await portal.yield.yieldxyz.manage(request: manageRequest)
-                    
-                    let manageRawResponse = manageResponse.data.rawResponse
-                    self.showStatusView(message: "\(self.successStatus) Successfully initiated yield management")
-                    
-                    self.logYieldManagementResponse(manageRawResponse)
-                    
-                    // Process transactions sequentially, waiting for each to be mined
-                    let sortedTransactions = manageRawResponse.transactions.sorted { $0.stepIndex < $1.stepIndex }
-                    
-                    for (index, transaction) in sortedTransactions.enumerated() {
-                        self.logTransactionDetails(transaction: transaction, index: index, total: sortedTransactions.count)
-                        
-                        // Sign and submit the transaction
-                        if transaction.unsignedTransaction != nil && transaction.status == .CREATED {
-                            let success = await signAndSubmitTransactionSequential(transaction: transaction, portal: portal)
-                            if !success {
-                                self.logger.error("Failed to process transaction \(transaction.id), stopping sequence")
-                                break
+
+                let balanceResponse = try await portal.yield.yieldxyz.getBalances(request: balanceRequest)
+
+                guard let balanceRawResponse = balanceResponse.data?.rawResponse else {
+                    self.logger.error("Response structure is missing rawResponse data for balances")
+                    self.showStatusView(message: "\(self.failureStatus) Failed to get yield balances")
+                    self.stopLoading()
+                    return
+                }
+
+                if balanceRawResponse.items.isEmpty {
+                    self.logger.info("No yield positions found for this address")
+                    self.showStatusView(message: "\(self.successStatus) No yield positions found")
+                    self.stopLoading()
+                    return
+                }
+
+                self.logger.info("Found \(balanceRawResponse.items.count) yield positions")
+
+                // Step 2: Find yield position with pending actions
+                var selectedYieldId: String?
+                var selectedPassthrough: String?
+                var selectedAction: YieldXyzActionType?
+
+                for item in balanceRawResponse.items {
+                    self.logger.info("Checking yield ID: \(item.yieldId)")
+                    for balance in item.balances {
+                        self.logger.info("Balance: \(balance.amount) \(balance.token.symbol)")
+                        self.logger.info("Pending Actions: \(balance.pendingActions)")
+
+                        if !balance.pendingActions.isEmpty {
+                            selectedYieldId = item.yieldId
+                            if let pendingAction = balance.pendingActions.first {
+                                selectedPassthrough = pendingAction.passthrough
+                                selectedAction = pendingAction.type
+                                self.logger.info("Found yield with pending actions: \(item.yieldId)")
+                                self.logger.info("Using passthrough: \(selectedPassthrough ?? "nil")")
+                                self.logger.info("Using action: \(selectedAction?.rawValue ?? "nil")")
                             }
+                            break
                         }
                     }
-                } else {
-                    self.logger.error("Yield not found in discovery results")
-                    self.showStatusView(message: "\(self.failureStatus) Yield not found")
+                    if selectedYieldId != nil { break }
+                }
+
+                guard let finalYieldId = selectedYieldId,
+                      let finalPassthrough = selectedPassthrough,
+                      let finalAction = selectedAction else {
+                    self.logger.info("No yield positions with pending actions found")
+                    self.showStatusView(message: "\(self.successStatus) No yield positions with pending actions found")
+                    self.stopLoading()
+                    return
+                }
+
+                // Step 3: Call manageYield with the selected yield, action, and passthrough
+                self.logger.info("Calling manageYield for yield: \(finalYieldId)")
+                self.logger.info("Using passthrough: \(finalPassthrough)")
+                self.logger.info("Using action: \(finalAction.rawValue)")
+
+                let manageRequest = YieldXyzManageYieldRequest(
+                    yieldId: finalYieldId,
+                    address: address,
+                    arguments: YieldXyzEnterArguments(), // Empty arguments since not part of pending action
+                    action: finalAction,
+                    passthrough: finalPassthrough
+                )
+
+                let manageResponse = try await portal.yield.yieldxyz.manage(request: manageRequest)
+
+                let manageRawResponse = manageResponse.data.rawResponse
+                self.showStatusView(message: "\(self.successStatus) Successfully initiated yield management")
+
+                self.logYieldManagementResponse(manageRawResponse)
+
+                // Process transactions sequentially, waiting for each to be mined
+                let sortedTransactions = manageRawResponse.transactions.sorted { $0.stepIndex < $1.stepIndex }
+
+                for (index, transaction) in sortedTransactions.enumerated() {
+                    self.logTransactionDetails(transaction: transaction, index: index, total: sortedTransactions.count)
+
+                    // Sign and submit the transaction
+                    if transaction.unsignedTransaction != nil && transaction.status == .CREATED {
+                        let success = await signAndSubmitTransactionSequential(transaction: transaction, portal: portal)
+                        if !success {
+                            self.logger.error("Failed to process transaction \(transaction.id), stopping sequence")
+                            break
+                        }
+                    }
                 }
                 
                 self.stopLoading()
