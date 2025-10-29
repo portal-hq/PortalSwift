@@ -2967,9 +2967,7 @@ extension ViewController {
             self.logger.info("ETH Transaction created for signing")
             
             // Determine the correct chain ID based on the transaction's network
-            let chainId = getChainId(for: transaction.network)
-            
-            self.logger.info("Using chain ID: \(chainId) for network: \(transaction.network)")
+            let chainId = transaction.network
             
             // Sign and send the transaction
             let sendTransactionResponse = try await portal.request(chainId, withMethod: .eth_sendTransaction, andParams: [ethTransaction])
@@ -3003,24 +3001,6 @@ extension ViewController {
         } catch {
             self.logger.error("Exception during transaction signing/submission: \(error.localizedDescription)")
             return false
-        }
-    }
-    
-    /// Converts a network name to its corresponding CAIP-2 chain ID
-    /// - Parameter network: The network name (e.g., "ethereum-sepolia", "base", "polygon")
-    /// - Returns: The CAIP-2 formatted chain ID (e.g., "eip155:11155111")
-    private func getChainId(for network: String) -> String {
-        switch network {
-        case "base":
-            return "eip155:8453"
-        case "ethereum-sepolia":
-            return "eip155:11155111"
-        case "ethereum":
-            return "eip155:1"
-        case "polygon":
-            return "eip155:137"
-        default:
-            return "eip155:11155111" // Default to Sepolia
         }
     }
     
