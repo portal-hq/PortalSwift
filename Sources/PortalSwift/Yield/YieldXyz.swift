@@ -41,7 +41,7 @@ public class YieldXyz {
     /// - Returns: `true` if the submission was successful.
     /// - Throws: An error if the operation fails.
     @discardableResult
-    public func track(transactionId: String, txHash: String) async throws -> Bool {
+    public func track(transactionId: String, txHash: String) async throws -> YieldXyzTrackTransactionResponse {
         let request = YieldXyzTrackTransactionRequest(transactionId: transactionId, hash: txHash)
         return try await api.submitTransactionHash(request: request)
     }

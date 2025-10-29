@@ -9,40 +9,63 @@ import Foundation
 
 /// Response from submitting a transaction hash
 public struct YieldXyzTrackTransactionResponse: Codable {
-    public let success: Bool
-    public let transaction: YieldXyzTrackedTransaction
+    public let data: YieldXyzTrackTransactionData?
+    public let error: String?
     
-    public init(success: Bool, transaction: YieldXyzTrackedTransaction) {
-        self.success = success
-        self.transaction = transaction
+    public init(data: YieldXyzTrackTransactionData? = nil, error: String? = nil) {
+        self.data = data
+        self.error = error
     }
 }
 
-public struct YieldXyzTrackedTransaction: Codable {
+public struct YieldXyzTrackTransactionData: Codable {
+    public let rawResponse: YieldXyzTrackTransactionRawResponse
+    
+    public init(rawResponse: YieldXyzTrackTransactionRawResponse) {
+        self.rawResponse = rawResponse
+    }
+}
+
+public struct YieldXyzTrackTransactionRawResponse: Codable {
     public let id: String
-    public let hash: String
-    public let status: String
-    public let blockNumber: Int?
-    public let gasUsed: String?
-    public let gasPrice: String?
-    public let updatedAt: String
+    public let title: String
+    public let network: String
+    public let status: YieldXyzActionTransactionStatus
+    public let type: YieldXyzActionTransactionType
+    public let hash: String?
+    public let createdAt: String
+    public let broadcastedAt: String?
+    public let signedTransaction: String?
+    public let unsignedTransaction: String?
+    public let stepIndex: Int
+    public let gasEstimate: String?
     
     public init(
         id: String,
-        hash: String,
-        status: String,
-        blockNumber: Int? = nil,
-        gasUsed: String? = nil,
-        gasPrice: String? = nil,
-        updatedAt: String
+        title: String,
+        network: String,
+        status: YieldXyzActionTransactionStatus,
+        type: YieldXyzActionTransactionType,
+        hash: String? = nil,
+        createdAt: String,
+        broadcastedAt: String? = nil,
+        signedTransaction: String? = nil,
+        unsignedTransaction: String? = nil,
+        stepIndex: Int,
+        gasEstimate: String? = nil
     ) {
         self.id = id
-        self.hash = hash
+        self.title = title
+        self.network = network
         self.status = status
-        self.blockNumber = blockNumber
-        self.gasUsed = gasUsed
-        self.gasPrice = gasPrice
-        self.updatedAt = updatedAt
+        self.type = type
+        self.hash = hash
+        self.createdAt = createdAt
+        self.broadcastedAt = broadcastedAt
+        self.signedTransaction = signedTransaction
+        self.unsignedTransaction = unsignedTransaction
+        self.stepIndex = stepIndex
+        self.gasEstimate = gasEstimate
     }
 }
 

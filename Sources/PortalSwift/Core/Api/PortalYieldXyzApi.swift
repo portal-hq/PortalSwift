@@ -246,16 +246,14 @@ public class PortalYieldXyzApi {
     /// - Parameter request: The transaction hash submission request containing transactionId and hash.
     /// - Returns: `true` if the submission was successful.
     /// - Throws: An error if the operation fails.
-    public func submitTransactionHash(request: YieldXyzTrackTransactionRequest) async throws -> Bool {
+    public func submitTransactionHash(request: YieldXyzTrackTransactionRequest) async throws -> YieldXyzTrackTransactionResponse {
         guard let url = URL(string: "\(baseUrl)/api/v3/clients/me/integrations/yield-xyz/transactions/\(request.transactionId)/submit-hash") else {
             logger.error("PortalYieldXyzApi.submitTransactionHash() - Unable to build request URL.")
             throw URLError(.badURL)
         }
         
         do {
-            // TODO: - we need to revisit the response here
-            try await put(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: Data.self)
-            return true
+            return try await put(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: YieldXyzTrackTransactionResponse.self)
         } catch {
             logger.error("PortalYieldXyzApi.submitTransactionHash() - Error: \(error.localizedDescription)")
             let errorString = error.localizedDescription.lowercased()

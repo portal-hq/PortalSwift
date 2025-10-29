@@ -3042,8 +3042,8 @@ extension ViewController {
                 
                 // Track the transaction with the yield system
                 do {
-                    try await portal.yield.yieldxyz.track(transactionId: transaction.id, txHash: txHash)
-                    self.logger.info("Transaction tracking successful")
+                    let trackTransactionResponse = try await portal.yield.yieldxyz.track(transactionId: transaction.id, txHash: txHash)
+                    self.logger.info("Transaction tracking successful - with id: \(trackTransactionResponse.data?.rawResponse.id ?? "unknown")")
                 } catch {
                     self.logger.warning("Failed to track transaction (continuing anyway): \(error.localizedDescription)")
                 }
