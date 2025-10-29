@@ -10,10 +10,12 @@ import AnyCodable
 
 /// Response from entering a yield opportunity
 public struct YieldXyzEnterYieldResponse: Codable {
-    public let data: YieldXyzEnterYieldData
+    public let data: YieldXyzEnterYieldData?
+    public let error: String?
     
-    public init(data: YieldXyzEnterYieldData) {
+    public init(data: YieldXyzEnterYieldData? = nil, error: String? = nil) {
         self.data = data
+        self.error = error
     }
 }
 
@@ -132,7 +134,7 @@ public struct YieldXyzActionTransaction: Codable {
     public let createdAt: String
     public let broadcastedAt: String?
     public let signedTransaction: String?
-    public let unsignedTransaction: AnyCodable?
+    public let unsignedTransaction: AnyCodable? // TODO: - revisit this type here
     public let annotatedTransaction: [String: AnyCodable]?
     public let structuredTransaction: [String: AnyCodable]?
     public let stepIndex: Int

@@ -10,10 +10,12 @@ import AnyCodable
 
 /// Response containing yield opportunities from Yield.xyz
 public struct YieldXyzGetYieldsResponse: Codable {
-    public let data: YieldXyzGetYieldsData
+    public let data: YieldXyzGetYieldsData?
+    public let error: String?
     
-    public init(data: YieldXyzGetYieldsData) {
+    public init(data: YieldXyzGetYieldsData? = nil, error: String? = nil) {
         self.data = data
+        self.error = error
     }
 }
 

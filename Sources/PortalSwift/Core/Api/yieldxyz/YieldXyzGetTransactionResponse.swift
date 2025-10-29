@@ -10,12 +10,14 @@ import AnyCodable
 
 /// Response for fetching a single yield action transaction by ID
 public struct YieldXyzGetTransactionResponse: Codable {
-    public let data: YieldXyzGetTransactionData
+    public let data: YieldXyzGetTransactionData?
     public let metadata: YieldXyzGetTransactionMetadata?
+    public let error: String?
     
-    public init(data: YieldXyzGetTransactionData, metadata: YieldXyzGetTransactionMetadata? = nil) {
+    public init(data: YieldXyzGetTransactionData? = nil, metadata: YieldXyzGetTransactionMetadata? = nil, error: String? = nil) {
         self.data = data
         self.metadata = metadata
+        self.error = error
     }
 }
 

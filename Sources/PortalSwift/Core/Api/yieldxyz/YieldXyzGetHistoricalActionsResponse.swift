@@ -9,12 +9,14 @@ import Foundation
 
 /// Response for fetching yield actions list for an address
 public struct YieldXyzGetHistoricalActionsResponse: Codable {
-    public let data: YieldXyzGetHistoricalActionsData
+    public let data: YieldXyzGetHistoricalActionsData?
     public let metadata: YieldXyzGetBalancesMetadata?
+    public let error: String?
     
-    public init(data: YieldXyzGetHistoricalActionsData, metadata: YieldXyzGetBalancesMetadata? = nil) {
+    public init(data: YieldXyzGetHistoricalActionsData? = nil, metadata: YieldXyzGetBalancesMetadata? = nil, error: String? = nil) {
         self.data = data
         self.metadata = metadata
+        self.error = error
     }
 }
 

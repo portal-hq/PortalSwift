@@ -9,10 +9,12 @@ import Foundation
 
 /// Response from managing a yield opportunity
 public struct YieldXyzManageYieldResponse: Codable {
-    public let data: YieldXyzManageYieldData
+    public let data: YieldXyzManageYieldData?
+    public let error: String?
     
-    public init(data: YieldXyzManageYieldData) {
+    public init(data: YieldXyzManageYieldData? = nil, error: String? = nil) {
         self.data = data
+        self.error = error
     }
 }
 

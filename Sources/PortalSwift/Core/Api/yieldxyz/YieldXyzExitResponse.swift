@@ -9,10 +9,12 @@ import Foundation
 
 /// Response from exiting a yield opportunity
 public struct YieldXyzExitResponse: Codable {
-    public let data: YieldXyzExitData
+    public let data: YieldXyzExitData?
+    public let error: String?
     
-    public init(data: YieldXyzExitData) {
+    public init(data: YieldXyzExitData? = nil, error: String? = nil) {
         self.data = data
+        self.error = error
     }
 }
 

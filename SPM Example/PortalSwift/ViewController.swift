@@ -2434,16 +2434,18 @@ extension ViewController {
                 let response = try await portal.yield.yieldxyz.discover(request: request)
                 
                 // Handle success response
-                let rawResponse = response.data.rawResponse
-                let success = !rawResponse.items.isEmpty || rawResponse.total == 0
-                
-                self.logger.info("Yield discovery \(success ? "SUCCESS" : "FAILED")")
-                
-                self.showStatusView(message: "\(success ? self.successStatus : self.failureStatus) Yield discovery")
-
-                // Log comprehensive results for debugging
-                self.logDiscoverYieldsResults(request: request, response: rawResponse)
-                
+                if let rawResponse = response.data?.rawResponse {
+                    let success = !rawResponse.items.isEmpty || rawResponse.total == 0
+                    
+                    self.logger.info("Yield discovery \(success ? "SUCCESS" : "FAILED")")
+                    
+                    self.showStatusView(message: "\(success ? self.successStatus : self.failureStatus) Yield discovery")
+                    
+                    // Log comprehensive results for debugging
+                    self.logDiscoverYieldsResults(request: request, response: rawResponse)
+                } else {
+                    self.logger.error("Yield discovery FAILED: \(response.error ?? "")")
+                }
             } catch {
                 self.logger.error("Yield discovery FAILED: \(error.localizedDescription)")
                 self.showStatusView(message: "\(self.failureStatus) Yield discovery FAILED: \(error.localizedDescription)")
@@ -2480,65 +2482,72 @@ extension ViewController {
                 self.logger.info("Discovering yield: \(discoverRequest.yieldId ?? "nil")")
                 let discoverResponse = try await portal.yield.yieldxyz.discover(request: discoverRequest)
                 
-                let rawResponse = discoverResponse.data.rawResponse
-                
-                // Log discovery results
-                self.logDiscoverYieldsResults(request: discoverRequest, response: rawResponse)
-                
-                if !rawResponse.items.isEmpty {
-                    let yield = rawResponse.items.first!
+                if let rawResponse = discoverResponse.data?.rawResponse {
                     
-                    // Check if yield is available for entry
-                    if yield.status.enter {
-                        // Use a very small amount for testing
-                        let amount = "0.000001"
-                        self.logger.info("Entering yield with amount: \(amount) LINK")
+                    // Log discovery results
+                    self.logDiscoverYieldsResults(request: discoverRequest, response: rawResponse)
+                    
+                    if !rawResponse.items.isEmpty {
+                        let yield = rawResponse.items.first!
                         
-                        let enterRequest = YieldXyzEnterRequest(
-                            yieldId: yield.id,
-                            address: userAddress,
-                            arguments: YieldXyzEnterArguments(
-                                amount: amount,
-                                executionMode: .batch
-                            )
-                        )
-                        
-                        let enterResponse = try await portal.yield.yieldxyz.enter(request: enterRequest)
-                        let enterRawResponse = enterResponse.data.rawResponse
-                        
-                        // Log yield entry results
-                        self.logYieldEntryResults(response: enterRawResponse)
-                        
-                        // Process transactions sequentially
-                        let sortedTransactions = (enterRawResponse.transactions).sorted { $0.stepIndex < $1.stepIndex }
-                        self.logger.info("Processing \(sortedTransactions.count) transactions sequentially")
-                        
-                        for (index, transaction) in sortedTransactions.enumerated() {
-                            self.logTransactionDetails(transaction: transaction, index: index, total: sortedTransactions.count)
+                        // Check if yield is available for entry
+                        if yield.status.enter {
+                            // Use a very small amount for testing
+                            let amount = "0.000001"
+                            self.logger.info("Entering yield with amount: \(amount) LINK")
                             
-                            // Sign and submit the transaction
-                            if transaction.unsignedTransaction != nil && transaction.status == .CREATED {
-                                self.logger.info("Starting sequential processing of transaction \(transaction.id)")
-                                let success = await signAndSubmitTransactionSequential(transaction: transaction, portal: portal)
-                                if !success {
-                                    self.logger.error("Failed to process transaction \(transaction.id), stopping sequence")
-                                    break
-                                } else {
-                                self.logger.info("Successfully completed transaction \(transaction.id), proceeding to next transaction")
+                            let enterRequest = YieldXyzEnterRequest(
+                                yieldId: yield.id,
+                                address: userAddress,
+                                arguments: YieldXyzEnterArguments(
+                                    amount: amount,
+                                    executionMode: .batch
+                                )
+                            )
+                            
+                            let enterResponse = try await portal.yield.yieldxyz.enter(request: enterRequest)
+                            if let enterRawResponse = enterResponse.data?.rawResponse {
+                                
+                                // Log yield entry results
+                                self.logYieldEntryResults(response: enterRawResponse)
+                                
+                                // Process transactions sequentially
+                                let sortedTransactions = (enterRawResponse.transactions).sorted { $0.stepIndex < $1.stepIndex }
+                                self.logger.info("Processing \(sortedTransactions.count) transactions sequentially")
+                                
+                                for (index, transaction) in sortedTransactions.enumerated() {
+                                    self.logTransactionDetails(transaction: transaction, index: index, total: sortedTransactions.count)
+                                    
+                                    // Sign and submit the transaction
+                                    if transaction.unsignedTransaction != nil && transaction.status == .CREATED {
+                                        self.logger.info("Starting sequential processing of transaction \(transaction.id)")
+                                        let success = await signAndSubmitTransactionSequential(transaction: transaction, portal: portal)
+                                        if !success {
+                                            self.logger.error("Failed to process transaction \(transaction.id), stopping sequence")
+                                            break
+                                        } else {
+                                            self.logger.info("Successfully completed transaction \(transaction.id), proceeding to next transaction")
+                                        }
+                                    } else {
+                                        self.logger.info("Skipping transaction \(transaction.id) - no unsigned transaction or not in CREATED status")
+                                    }
                                 }
+                                
+                                self.showStatusView(message: "\(self.successStatus) Yield entry initiated successfully")
                             } else {
-                                self.logger.info("Skipping transaction \(transaction.id) - no unsigned transaction or not in CREATED status")
+                                self.logger.error("Enter yield failed with error: \(discoverResponse.error ?? "")")
+                                self.showStatusView(message: "\(self.failureStatus) Yield is not available for entry")
                             }
+                        } else {
+                            self.logger.error("Yield is not available for entry (status.enter = false)")
+                            self.showStatusView(message: "\(self.failureStatus) Yield is not available for entry")
                         }
-                        
-                        self.showStatusView(message: "\(self.successStatus) Yield entry initiated successfully")
-                        
                     } else {
-                        self.logger.error("Yield is not available for entry (status.enter = false)")
-                        self.showStatusView(message: "\(self.failureStatus) Yield is not available for entry")
+                        self.logger.error("Yield not found in discovery results")
+                        self.showStatusView(message: "\(self.failureStatus) Yield not found in discovery results")
                     }
                 } else {
-                    self.logger.error("Yield not found in discovery results")
+                    self.logger.error("Yield not found in discovery results with error: \(discoverResponse.error ?? "")")
                     self.showStatusView(message: "\(self.failureStatus) Yield not found in discovery results")
                 }
                 
@@ -2601,30 +2610,35 @@ extension ViewController {
                         do {
                             let actionsRequest = YieldXyzGetHistoricalActionsRequest(address: address)
                             let actionsResult = try await portal.yield.yieldxyz.getHistoricalActions(request: actionsRequest)
-                            let actions = actionsResult.data.rawResponse
-                            
-                            let totalActions = actions.total ?? actions.items.count
-                            self.logger.info("Total actions: \(totalActions)")
-                            
-                            // Log first 2 actions
-                            self.logYieldActionDetails(actions: actions.items)
-                            
-                            // Fetch single transaction detail for first transaction if available
-                            if let firstTransaction = actions.items.first?.transactions.first {
-                                self.logger.info("Fetching details for first transaction: \(firstTransaction.id)")
+                            if let actions = actionsResult.data?.rawResponse {
                                 
-                                do {
-                                    let txResponse = try await portal.yield.yieldxyz.getTransaction(transactionId: firstTransaction.id)
-                                    let t = txResponse.data.rawResponse
-                                    let hashStr = t.hash ?? "nil"
-                                    self.logger.info("Fetched txn \(t.id) status=\(t.status.rawValue) hash=\(hashStr)")
-                                } catch {
-                                    self.logger.warning("Failed fetching txn \(firstTransaction.id): \(error.localizedDescription)")
+                                let totalActions = actions.total ?? actions.items.count
+                                self.logger.info("Total actions: \(totalActions)")
+                                
+                                // Log first 2 actions
+                                self.logYieldActionDetails(actions: actions.items)
+                                
+                                // Fetch single transaction detail for first transaction if available
+                                if let firstTransaction = actions.items.first?.transactions.first {
+                                    self.logger.info("Fetching details for first transaction: \(firstTransaction.id)")
+                                    
+                                    do {
+                                        let txResponse = try await portal.yield.yieldxyz.getTransaction(transactionId: firstTransaction.id)
+                                        if let t = txResponse.data?.rawResponse {
+                                            let hashStr = t.hash ?? "nil"
+                                            self.logger.info("Fetched txn \(t.id) status=\(t.status.rawValue) hash=\(hashStr)")
+                                        } else {
+                                            self.logger.warning("Failed fetching txn \(firstTransaction.id) with error: \(txResponse.error ?? "")")
+                                        }
+                                    } catch {
+                                        self.logger.warning("Failed fetching txn \(firstTransaction.id): \(error.localizedDescription)")
+                                    }
+                                } else {
+                                    self.logger.info("No transactions found to fetch details for")
                                 }
                             } else {
-                                self.logger.info("No transactions found to fetch details for")
+                                self.logger.info("Yield get historical actions failed with error: \(actionsResult.error ?? "")")
                             }
-                            
                         } catch {
                             self.logger.warning("Failed to fetch actions: \(error.localizedDescription)")
                         }
@@ -2748,30 +2762,34 @@ extension ViewController {
 
                 let manageResponse = try await portal.yield.yieldxyz.manage(request: manageRequest)
 
-                let manageRawResponse = manageResponse.data.rawResponse
-                self.showStatusView(message: "\(self.successStatus) Successfully initiated yield management")
-
-                self.logYieldManagementResponse(manageRawResponse)
-
-                // Process transactions sequentially, waiting for each to be mined
-                let sortedTransactions = manageRawResponse.transactions.sorted { $0.stepIndex < $1.stepIndex }
-
-                for (index, transaction) in sortedTransactions.enumerated() {
-                    self.logTransactionDetails(transaction: transaction, index: index, total: sortedTransactions.count)
-
-                    // Sign and submit the transaction
-                    if transaction.unsignedTransaction != nil && transaction.status == .CREATED {
-                        let success = await signAndSubmitTransactionSequential(transaction: transaction, portal: portal)
-                        if !success {
-                            self.logger.error("Failed to process transaction \(transaction.id), stopping sequence")
-                            break
+                if let manageRawResponse = manageResponse.data?.rawResponse {
+                    self.showStatusView(message: "\(self.successStatus) Successfully initiated yield management")
+                    
+                    self.logYieldManagementResponse(manageRawResponse)
+                    
+                    // Process transactions sequentially, waiting for each to be mined
+                    let sortedTransactions = manageRawResponse.transactions.sorted { $0.stepIndex < $1.stepIndex }
+                    
+                    for (index, transaction) in sortedTransactions.enumerated() {
+                        self.logTransactionDetails(transaction: transaction, index: index, total: sortedTransactions.count)
+                        
+                        // Sign and submit the transaction
+                        if transaction.unsignedTransaction != nil && transaction.status == .CREATED {
+                            let success = await signAndSubmitTransactionSequential(transaction: transaction, portal: portal)
+                            if !success {
+                                self.logger.error("Failed to process transaction \(transaction.id), stopping sequence")
+                                break
+                            }
                         }
                     }
+                } else {
+                    self.logger.error("Failed exception during yield management: \(manageResponse.error ?? "")")
+                    self.showStatusView(message: "\(self.failureStatus) Yield management FAILED: \(manageResponse.error ?? "")")
                 }
                 
                 self.stopLoading()
             } catch {
-                self.logger.error("Exception during yield management: \(error.localizedDescription)")
+                self.logger.error("Failed exception during yield management: \(error.localizedDescription)")
                 self.showStatusView(message: "\(self.failureStatus) Yield management FAILED: \(error.localizedDescription)")
                 self.stopLoading()
             }
@@ -2814,35 +2832,39 @@ extension ViewController {
                 
                 let exitResponse = try await portal.yield.yieldxyz.exit(request: exitRequest)
                 
-                let exitRawResponse = exitResponse.data.rawResponse
-                self.showStatusView(message: "\(self.successStatus) Successfully initiated yield exit")
-                
-                self.logYieldExitResponse(exitRawResponse)
-                
-                // Process transactions sequentially, waiting for each to be mined
-                let sortedTransactions = exitRawResponse.transactions.sorted { $0.stepIndex < $1.stepIndex }
-                self.logger.info("Processing \(sortedTransactions.count) transactions sequentially")
-                
-                for (index, transaction) in sortedTransactions.enumerated() {
-                    self.logDetailedTransactionProcessing(transaction: transaction, index: index, total: sortedTransactions.count)
+                if let exitRawResponse = exitResponse.data?.rawResponse {
+                    self.showStatusView(message: "\(self.successStatus) Successfully initiated yield exit")
                     
-                    // Sign and submit the transaction
-                    if transaction.unsignedTransaction != nil && transaction.status == .CREATED {
-                        self.logger.info("Starting sequential processing of transaction \(transaction.id)")
-                        let success = await signAndSubmitTransactionSequential(transaction: transaction, portal: portal)
-                        if !success {
-                            self.logger.error("Failed to process transaction \(transaction.id), stopping sequence")
-                            break
+                    self.logYieldExitResponse(exitRawResponse)
+                    
+                    // Process transactions sequentially, waiting for each to be mined
+                    let sortedTransactions = exitRawResponse.transactions.sorted { $0.stepIndex < $1.stepIndex }
+                    self.logger.info("Processing \(sortedTransactions.count) transactions sequentially")
+                    
+                    for (index, transaction) in sortedTransactions.enumerated() {
+                        self.logDetailedTransactionProcessing(transaction: transaction, index: index, total: sortedTransactions.count)
+                        
+                        // Sign and submit the transaction
+                        if transaction.unsignedTransaction != nil && transaction.status == .CREATED {
+                            self.logger.info("Starting sequential processing of transaction \(transaction.id)")
+                            let success = await signAndSubmitTransactionSequential(transaction: transaction, portal: portal)
+                            if !success {
+                                self.logger.error("Failed to process transaction \(transaction.id), stopping sequence")
+                                break
+                            }
+                            self.logger.info("Successfully completed transaction \(transaction.id), proceeding to next transaction")
+                        } else {
+                            self.logger.info("Skipping transaction \(transaction.id) - no unsigned transaction or not in CREATED status")
                         }
-                        self.logger.info("Successfully completed transaction \(transaction.id), proceeding to next transaction")
-                    } else {
-                        self.logger.info("Skipping transaction \(transaction.id) - no unsigned transaction or not in CREATED status")
                     }
+                } else {
+                    self.logger.error("Failed exception during yield exit: \(exitResponse.error ?? "")")
+                    self.showStatusView(message: "\(self.failureStatus) Yield exit FAILED: \(exitResponse.error ?? "")")
                 }
                 
                 self.stopLoading()
             } catch {
-                self.logger.error("Exception during yield exit: \(error.localizedDescription)")
+                self.logger.error("Failed exception during yield exit: \(error.localizedDescription)")
                 self.showStatusView(message: "\(self.failureStatus) Yield exit FAILED: \(error.localizedDescription)")
                 self.stopLoading()
             }

@@ -11,10 +11,12 @@ import Foundation
 public struct YieldXyzGetBalancesResponse: Codable {
     public let data: YieldXyzGetBalancesData?
     public let metadata: YieldXyzGetBalancesMetadata?
+    public let error: String?
     
-    public init(data: YieldXyzGetBalancesData? = nil, metadata: YieldXyzGetBalancesMetadata? = nil) {
+    public init(data: YieldXyzGetBalancesData? = nil, metadata: YieldXyzGetBalancesMetadata? = nil, error: String? = nil) {
         self.data = data
         self.metadata = metadata
+        self.error = error
     }
 }
 
