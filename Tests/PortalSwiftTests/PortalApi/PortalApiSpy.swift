@@ -12,8 +12,7 @@ import Foundation
 class PortalApiSpy: PortalApiProtocol {
     var yieldxyz: any PortalSwift.PortalYieldXyzApiProtocol
     
-    // TODO: - replace this PortalYieldXyzApiMock with Spy.
-    init(yieldxyz: any PortalSwift.PortalYieldXyzApiProtocol = PortalYieldXyzApiMock()) {
+    init(yieldxyz: any PortalSwift.PortalYieldXyzApiProtocol = PortalYieldXyzApiSpy()) {
         self.yieldxyz = yieldxyz
     }
   // Property to track client access
