@@ -10,6 +10,12 @@ import Foundation
 @testable import PortalSwift
 
 class PortalApiSpy: PortalApiProtocol {
+    var yieldxyz: any PortalSwift.PortalYieldXyzApiProtocol
+    
+    // TODO: - replace this PortalYieldXyzApiMock with Spy.
+    init(yieldxyz: any PortalSwift.PortalYieldXyzApiProtocol = PortalYieldXyzApiMock()) {
+        self.yieldxyz = yieldxyz
+    }
   // Property to track client access
   var clientCallsCount: Int = 0
 

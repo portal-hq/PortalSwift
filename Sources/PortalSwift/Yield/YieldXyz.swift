@@ -9,11 +9,11 @@ import Foundation
 
 /// YieldXyz provider implementation for discovering and managing yield opportunities.
 public class YieldXyz {
-    private let api: PortalYieldXyzApi
+    private let api: PortalYieldXyzApiProtocol
     
     /// Create an instance of YieldXyz.
     /// - Parameter api: The PortalYieldXyzApi instance to use for yield operations.
-    public init(api: PortalYieldXyzApi) {
+    public init(api: PortalYieldXyzApiProtocol) {
         self.api = api
     }
     

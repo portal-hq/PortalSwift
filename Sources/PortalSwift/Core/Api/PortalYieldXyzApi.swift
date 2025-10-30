@@ -7,11 +7,23 @@
 
 import Foundation
 
+/// Protocol of Yield.xyz API interactions.
+public protocol PortalYieldXyzApiProtocol: AnyObject {
+    func getYields(request: YieldXyzGetYieldsRequest) async throws -> YieldXyzGetYieldsResponse
+    func enterYield(request: YieldXyzEnterRequest) async throws -> YieldXyzEnterYieldResponse
+    func exitYield(request: YieldXyzExitRequest) async throws -> YieldXyzExitResponse
+    func manageYield(request: YieldXyzManageYieldRequest) async throws -> YieldXyzManageYieldResponse
+    func getYieldBalances(request: YieldXyzGetBalancesRequest) async throws -> YieldXyzGetBalancesResponse
+    func getHistoricalYieldActions(request: YieldXyzGetHistoricalActionsRequest) async throws -> YieldXyzGetHistoricalActionsResponse
+    func getYieldTransaction(transactionId: String) async throws -> YieldXyzGetTransactionResponse
+    func submitTransactionHash(request: YieldXyzTrackTransactionRequest) async throws -> YieldXyzTrackTransactionResponse
+}
+
 /// API class specifically for Yield.xyz integration functionality.
 ///
 /// This class handles all yield-related API calls including discovering yields,
 /// entering/exiting yield opportunities, managing yields, and tracking transactions.
-public class PortalYieldXyzApi {
+public class PortalYieldXyzApi: PortalYieldXyzApiProtocol {
     private let apiKey: String
     private let baseUrl: String
     private let requests: PortalRequestsProtocol
