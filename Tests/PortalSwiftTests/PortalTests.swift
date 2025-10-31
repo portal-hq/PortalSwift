@@ -1900,3 +1900,337 @@ extension PortalTests {
     XCTAssertEqual(portalProviderSpy.requestAsyncMethodSignatureApprovalMemoParam, signatureApprovalMemo)
   }
 }
+
+// MARK: - yield property tests
+
+extension PortalTests {
+  func test_yield_propertyExists() {
+    // given & when
+    let yieldProperty = portal.yield
+    
+    // then
+    XCTAssertNotNil(yieldProperty)
+  }
+  
+  func test_yield_isOfCorrectType() {
+    // given & when
+    let yieldProperty = portal.yield
+    
+    // then
+    XCTAssertTrue(yieldProperty is Yield)
+  }
+  
+  func test_yield_returnsSameInstanceOnMultipleAccesses() {
+    // given
+    let firstAccess = portal.yield
+    
+    // when
+    let secondAccess = portal.yield
+    
+    // then - lazy var should return the same instance
+    XCTAssertTrue(firstAccess === secondAccess)
+  }
+  
+  func test_yield_hasYieldxyzProperty() {
+    // given & when
+    let yieldxyz = portal.yield.yieldxyz
+    
+    // then
+    XCTAssertNotNil(yieldxyz)
+    XCTAssertTrue(yieldxyz is YieldXyzProtocol)
+  }
+  
+  func test_yield_yieldxyz_canCallDiscover() async throws {
+    // given
+    let mockResponse = YieldXyzGetYieldsResponse.stub()
+    let yieldXyzApiMock = PortalYieldXyzApiMock()
+    yieldXyzApiMock.getYieldsReturnValue = mockResponse
+    let portalApiMock = PortalApiMock(yieldxyz: yieldXyzApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+    
+    // when
+    let response = try await portal.yield.yieldxyz.discover(request: nil)
+    
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertNotNil(response.data)
+    XCTAssertEqual(yieldXyzApiMock.getYieldsCalls, 1)
+  }
+  
+  func test_yield_yieldxyz_canCallDiscoverWithRequest() async throws {
+    // given
+    let mockResponse = YieldXyzGetYieldsResponse.stub()
+    let yieldXyzApiMock = PortalYieldXyzApiMock()
+    yieldXyzApiMock.getYieldsReturnValue = mockResponse
+    let portalApiMock = PortalApiMock(yieldxyz: yieldXyzApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+    
+    let request = YieldXyzGetYieldsRequest(
+      offset: 0,
+      yieldId: "yield-1",
+      network: "eip155:1",
+      limit: 10
+    )
+    
+    // when
+    let response = try await portal.yield.yieldxyz.discover(request: request)
+    
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertNotNil(response.data)
+    XCTAssertEqual(yieldXyzApiMock.getYieldsCalls, 1)
+  }
+  
+  func test_yield_yieldxyz_canCallEnter() async throws {
+    // given
+    let mockResponse = YieldXyzEnterYieldResponse.stub()
+    let yieldXyzApiMock = PortalYieldXyzApiMock()
+    yieldXyzApiMock.enterYieldReturnValue = mockResponse
+    let portalApiMock = PortalApiMock(yieldxyz: yieldXyzApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+    
+    let request = YieldXyzEnterRequest(
+      yieldId: "yield-1",
+      address: "0x1234567890abcdef1234567890abcdef12345678"
+    )
+    
+    // when
+    let response = try await portal.yield.yieldxyz.enter(request: request)
+    
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertNotNil(response.data)
+    XCTAssertEqual(response.data?.rawResponse.intent, .enter)
+    XCTAssertEqual(yieldXyzApiMock.enterYieldCalls, 1)
+  }
+  
+  func test_yield_yieldxyz_canCallExit() async throws {
+    // given
+    let mockResponse = YieldXyzExitResponse.stub()
+    let yieldXyzApiMock = PortalYieldXyzApiMock()
+    yieldXyzApiMock.exitYieldReturnValue = mockResponse
+    let portalApiMock = PortalApiMock(yieldxyz: yieldXyzApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+    
+    let request = YieldXyzExitRequest(
+      yieldId: "yield-1",
+      address: "0x1234567890abcdef1234567890abcdef12345678"
+    )
+    
+    // when
+    let response = try await portal.yield.yieldxyz.exit(request: request)
+    
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertNotNil(response.data)
+    XCTAssertEqual(response.data?.rawResponse.intent, .exit)
+    XCTAssertEqual(yieldXyzApiMock.exitYieldCalls, 1)
+  }
+  
+  func test_yield_yieldxyz_canCallManage() async throws {
+    // given
+    let mockResponse = YieldXyzManageYieldResponse.stub()
+    let yieldXyzApiMock = PortalYieldXyzApiMock()
+    yieldXyzApiMock.manageYieldReturnValue = mockResponse
+    let portalApiMock = PortalApiMock(yieldxyz: yieldXyzApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+    
+    let request = YieldXyzManageYieldRequest(
+      yieldId: "yield-1",
+      address: "0x1234567890abcdef1234567890abcdef12345678",
+      arguments: YieldXyzEnterArguments(),
+      action: .CLAIM_REWARDS,
+      passthrough: "passthrough-data"
+    )
+    
+    // when
+    let response = try await portal.yield.yieldxyz.manage(request: request)
+    
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertNotNil(response.data)
+    XCTAssertEqual(response.data?.rawResponse.intent, .manage)
+    XCTAssertEqual(yieldXyzApiMock.manageYieldCalls, 1)
+  }
+  
+  func test_yield_yieldxyz_canCallGetBalances() async throws {
+    // given
+    let mockResponse = YieldXyzGetBalancesResponse.stub()
+    let yieldXyzApiMock = PortalYieldXyzApiMock()
+    yieldXyzApiMock.getYieldBalancesReturnValue = mockResponse
+    let portalApiMock = PortalApiMock(yieldxyz: yieldXyzApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+    
+    let query = YieldXyzBalanceQuery(
+      address: "0x1234567890abcdef1234567890abcdef12345678",
+      network: "eip155:1",
+      yieldId: "yield-1"
+    )
+    let request = YieldXyzGetBalancesRequest(queries: [query])
+    
+    // when
+    let response = try await portal.yield.yieldxyz.getBalances(request: request)
+    
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertNotNil(response.data)
+    XCTAssertEqual(yieldXyzApiMock.getYieldBalancesCalls, 1)
+  }
+  
+  func test_yield_yieldxyz_canCallGetHistoricalActions() async throws {
+    // given
+    let mockResponse = YieldXyzGetHistoricalActionsResponse.stub()
+    let yieldXyzApiMock = PortalYieldXyzApiMock()
+    yieldXyzApiMock.getHistoricalYieldActionsReturnValue = mockResponse
+    let portalApiMock = PortalApiMock(yieldxyz: yieldXyzApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+    
+    let request = YieldXyzGetHistoricalActionsRequest(
+      address: "0x1234567890abcdef1234567890abcdef12345678"
+    )
+    
+    // when
+    let response = try await portal.yield.yieldxyz.getHistoricalActions(request: request)
+    
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertNotNil(response.data)
+    XCTAssertEqual(yieldXyzApiMock.getHistoricalYieldActionsCalls, 1)
+  }
+  
+  func test_yield_yieldxyz_canCallGetTransaction() async throws {
+    // given
+    let mockResponse = YieldXyzGetTransactionResponse.stub()
+    let yieldXyzApiMock = PortalYieldXyzApiMock()
+    yieldXyzApiMock.getYieldTransactionReturnValue = mockResponse
+    let portalApiMock = PortalApiMock(yieldxyz: yieldXyzApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+    
+    let transactionId = "tx-123"
+    
+    // when
+    let response = try await portal.yield.yieldxyz.getTransaction(transactionId: transactionId)
+    
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertNotNil(response.data)
+    XCTAssertEqual(yieldXyzApiMock.getYieldTransactionCalls, 1)
+  }
+  
+  func test_yield_yieldxyz_canCallTrack() async throws {
+    // given
+    let mockResponse = YieldXyzTrackTransactionResponse.stub()
+    let yieldXyzApiMock = PortalYieldXyzApiMock()
+    yieldXyzApiMock.submitTransactionHashReturnValue = mockResponse
+    let portalApiMock = PortalApiMock(yieldxyz: yieldXyzApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+    
+    let transactionId = "tx-123"
+    let txHash = "0xhash123"
+    
+    // when
+    let response = try await portal.yield.yieldxyz.track(transactionId: transactionId, txHash: txHash)
+    
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertNotNil(response.data)
+    XCTAssertEqual(yieldXyzApiMock.submitTransactionHashCalls, 1)
+  }
+  
+  func test_yield_usesPortalApiInstance() {
+    // given
+    let yieldProperty = portal.yield
+    
+    // when - access yieldxyz which uses portal.api.yieldxyz internally
+    let yieldxyz = yieldProperty.yieldxyz
+    
+    // then - should not be nil and should be properly initialized
+    XCTAssertNotNil(yieldxyz)
+  }
+  
+  func test_yield_multipleAccessesSameInstance() {
+    // given
+    let firstYield = portal.yield
+    let firstYieldxyz = firstYield.yieldxyz
+    
+    // when
+    let secondYield = portal.yield
+    let secondYieldxyz = secondYield.yieldxyz
+    
+    // then - yield should be same instance (lazy var)
+    XCTAssertTrue(firstYield === secondYield)
+    // yieldxyz should also be same instance (let property in Yield)
+    XCTAssertTrue(firstYieldxyz as AnyObject === secondYieldxyz as AnyObject)
+  }
+  
+  func test_yield_errorPropagation() async throws {
+    // given
+    let mockError = "Mock error"
+    let yieldXyzApiMock = PortalYieldXyzApiMock()
+    // Force yieldXyzApiMock to throw by not setting return value and making it fail
+    yieldXyzApiMock.getYieldsReturnValue = YieldXyzGetYieldsResponse(data: nil, error: mockError)
+    let portalApiMock = PortalApiMock(yieldxyz: yieldXyzApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+    
+    // when
+    let response = try await portal.yield.yieldxyz.discover(request: nil)
+    
+    // then - error should be returned in response
+    XCTAssertNotNil(response)
+    XCTAssertEqual(response.error, mockError)
+    XCTAssertNil(response.data)
+  }
+  
+  func test_yield_differentPortalsHaveDifferentYieldInstances() throws {
+    // given
+    let portal2 = try Portal(
+      MockConstants.mockApiKey,
+      withRpcConfig: ["eip155:11155111": "https://\(MockConstants.mockHost)/test-rpc"],
+      api: api,
+      binary: binary,
+      gDrive: MockGDriveStorage(),
+      iCloud: MockICloudStorage(),
+      keychain: keychain,
+      mpc: MockPortalMpc(),
+      passwords: MockPasswordStorage()
+    )
+    
+    let yield1 = portal.yield
+    let yield2 = portal2.yield
+    
+    // then - different Portal instances should have different Yield instances
+    XCTAssertFalse(yield1 === yield2)
+  }
+  
+  func test_yield_withCustomApi() async throws {
+    // given
+    let customApiKey = "custom-yield-api-key"
+    let portalRequestsSpy = PortalRequestsSpy()
+    let mockResponse = YieldXyzGetYieldsResponse.stub()
+    portalRequestsSpy.returnData = try JSONEncoder().encode(mockResponse)
+    
+    let customApi = PortalApi(
+      apiKey: customApiKey,
+      apiHost: MockConstants.mockHost,
+      requests: portalRequestsSpy
+    )
+    
+    let customPortal = try Portal(
+      MockConstants.mockApiKey,
+      withRpcConfig: ["eip155:11155111": "https://\(MockConstants.mockHost)/test-rpc"],
+      api: customApi,
+      binary: binary,
+      gDrive: MockGDriveStorage(),
+      iCloud: MockICloudStorage(),
+      keychain: keychain,
+      mpc: MockPortalMpc(),
+      passwords: MockPasswordStorage()
+    )
+    
+    // when
+    _ = try await customPortal.yield.yieldxyz.discover(request: nil)
+    
+    // then - should use custom API key
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.headers["Authorization"], "Bearer \(customApiKey)")
+  }
+}

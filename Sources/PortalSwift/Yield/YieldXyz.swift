@@ -7,8 +7,61 @@
 
 import Foundation
 
+/// Protocol defining the interface for YieldXyz provider functionality.
+public protocol YieldXyzProtocol {
+    /// Discovers yield opportunities based on the provided parameters.
+    /// - Parameter request: Optional parameters for yield discovery. If nil, uses default parameters.
+    /// - Returns: A `YieldXyzGetYieldsResponse` containing available yield opportunities.
+    /// - Throws: An error if the operation fails.
+    func discover(request: YieldXyzGetYieldsRequest?) async throws -> YieldXyzGetYieldsResponse
+    
+    /// Enters a yield opportunity with the specified parameters.
+    /// - Parameter request: The parameters for entering a yield opportunity.
+    /// - Returns: A `YieldXyzEnterYieldResponse` containing the action details.
+    /// - Throws: An error if the operation fails.
+    func enter(request: YieldXyzEnterRequest) async throws -> YieldXyzEnterYieldResponse
+    
+    /// Tracks a transaction by submitting its hash to the Yield.xyz integration.
+    /// - Parameters:
+    ///   - transactionId: The ID of the transaction to track.
+    ///   - txHash: The hash of the transaction to submit.
+    /// - Returns: A `YieldXyzTrackTransactionResponse` containing the result.
+    /// - Throws: An error if the operation fails.
+    func track(transactionId: String, txHash: String) async throws -> YieldXyzTrackTransactionResponse
+    
+    /// Retrieves yield balances for specified addresses and networks.
+    /// - Parameter request: The parameters for the yield balances request.
+    /// - Returns: A `YieldXyzGetBalancesResponse` containing balance information.
+    /// - Throws: An error if the operation fails.
+    func getBalances(request: YieldXyzGetBalancesRequest) async throws -> YieldXyzGetBalancesResponse
+    
+    /// Retrieves a single yield action transaction by its ID.
+    /// - Parameter transactionId: The ID of the transaction to retrieve.
+    /// - Returns: A `YieldXyzGetTransactionResponse` containing transaction details.
+    /// - Throws: An error if the operation fails.
+    func getTransaction(transactionId: String) async throws -> YieldXyzGetTransactionResponse
+    
+    /// Retrieves historical yield actions with optional filtering.
+    /// - Parameter request: The parameters for the historical yield actions request.
+    /// - Returns: A `YieldXyzGetHistoricalActionsResponse` containing historical actions.
+    /// - Throws: An error if the operation fails.
+    func getHistoricalActions(request: YieldXyzGetHistoricalActionsRequest) async throws -> YieldXyzGetHistoricalActionsResponse
+    
+    /// Manages a yield opportunity with the specified parameters.
+    /// - Parameter request: The parameters for managing a yield opportunity.
+    /// - Returns: A `YieldXyzManageYieldResponse` containing the action details.
+    /// - Throws: An error if the operation fails.
+    func manage(request: YieldXyzManageYieldRequest) async throws -> YieldXyzManageYieldResponse
+    
+    /// Exits a yield opportunity with the specified parameters.
+    /// - Parameter request: The parameters for exiting a yield opportunity.
+    /// - Returns: A `YieldXyzExitResponse` containing the action details.
+    /// - Throws: An error if the operation fails.
+    func exit(request: YieldXyzExitRequest) async throws -> YieldXyzExitResponse
+}
+
 /// YieldXyz provider implementation for discovering and managing yield opportunities.
-public class YieldXyz {
+public class YieldXyz: YieldXyzProtocol {
     private let api: PortalYieldXyzApiProtocol
     
     /// Create an instance of YieldXyz.

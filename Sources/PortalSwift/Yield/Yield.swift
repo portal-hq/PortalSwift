@@ -13,7 +13,8 @@ import Foundation
 /// Currently supports YieldXyz as the primary yield provider.
 public class Yield {
     /// Access to YieldXyz yield provider functionality.
-    public let yieldxyz: YieldXyz
+    /// This property can be set for custom implementations.
+    public var yieldxyz: YieldXyzProtocol
     
     /// Create an instance of Yield.
     /// - Parameter api: The Portal API instance to use for yield operations.
