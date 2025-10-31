@@ -10,19 +10,18 @@ import Foundation
 @testable import PortalSwift
 
 class PortalApiMock: PortalApiProtocol {
-  
   var yieldxyz: PortalSwift.PortalYieldXyzApiProtocol
-    
+
   var client: PortalSwift.ClientResponse?
 
-    init(
-        yieldxyz: PortalSwift.PortalYieldXyzApiProtocol = PortalYieldXyzApiMock(),
-        client: PortalSwift.ClientResponse? = nil
-    ) {
-        self.yieldxyz = yieldxyz
-        self.client = client
-    }
-    
+  init(
+    yieldxyz: PortalSwift.PortalYieldXyzApiProtocol = PortalYieldXyzApiMock(),
+    client: PortalSwift.ClientResponse? = nil
+  ) {
+    self.yieldxyz = yieldxyz
+    self.client = client
+  }
+
   var ejectReturnValue: String?
   var ejectCallsCount: Int = 0
   func eject() async throws -> String {

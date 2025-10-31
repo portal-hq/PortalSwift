@@ -5,10 +5,9 @@
 //  Created by Ahmed Ragab on 30/10/2025.
 //
 
-import Foundation
 import AnyCodable
+import Foundation
 @testable import PortalSwift
-
 
 extension YieldXyzToken {
   static func stub(

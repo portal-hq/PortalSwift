@@ -10,6 +10,7 @@ import Foundation
 
 final class PortalYieldXyzApiSpy: PortalYieldXyzApiProtocol {
   // MARK: - getYields
+
   var getYieldsCallsCount = 0
   var getYieldsRequestParam: YieldXyzGetYieldsRequest?
   var getYieldsReturnValue: YieldXyzGetYieldsResponse = .stub()
@@ -20,6 +21,7 @@ final class PortalYieldXyzApiSpy: PortalYieldXyzApiProtocol {
   }
 
   // MARK: - enterYield
+
   var enterYieldCallsCount = 0
   var enterYieldRequestParam: YieldXyzEnterRequest?
   var enterYieldReturnValue: YieldXyzEnterYieldResponse = .stub()
@@ -30,6 +32,7 @@ final class PortalYieldXyzApiSpy: PortalYieldXyzApiProtocol {
   }
 
   // MARK: - exitYield
+
   var exitYieldCallsCount = 0
   var exitYieldRequestParam: YieldXyzExitRequest?
   var exitYieldReturnValue: YieldXyzExitResponse = .stub()
@@ -40,6 +43,7 @@ final class PortalYieldXyzApiSpy: PortalYieldXyzApiProtocol {
   }
 
   // MARK: - manageYield
+
   var manageYieldCallsCount = 0
   var manageYieldRequestParam: YieldXyzManageYieldRequest?
   var manageYieldReturnValue: YieldXyzManageYieldResponse = .stub()
@@ -50,6 +54,7 @@ final class PortalYieldXyzApiSpy: PortalYieldXyzApiProtocol {
   }
 
   // MARK: - getYieldBalances
+
   var getYieldBalancesCallsCount = 0
   var getYieldBalancesRequestParam: YieldXyzGetBalancesRequest?
   var getYieldBalancesReturnValue: YieldXyzGetBalancesResponse = .stub()
@@ -60,6 +65,7 @@ final class PortalYieldXyzApiSpy: PortalYieldXyzApiProtocol {
   }
 
   // MARK: - getHistoricalYieldActions
+
   var getHistoricalYieldActionsCallsCount = 0
   var getHistoricalYieldActionsRequestParam: YieldXyzGetHistoricalActionsRequest?
   var getHistoricalYieldActionsReturnValue: YieldXyzGetHistoricalActionsResponse = .stub()
@@ -70,6 +76,7 @@ final class PortalYieldXyzApiSpy: PortalYieldXyzApiProtocol {
   }
 
   // MARK: - getYieldTransaction
+
   var getYieldTransactionCallsCount = 0
   var getYieldTransactionIdParam: String?
   var getYieldTransactionReturnValue: YieldXyzGetTransactionResponse = .stub()
@@ -80,6 +87,7 @@ final class PortalYieldXyzApiSpy: PortalYieldXyzApiProtocol {
   }
 
   // MARK: - submitTransactionHash
+
   var submitTransactionHashCallsCount = 0
   var submitTransactionHashRequestParam: YieldXyzTrackTransactionRequest?
   var submitTransactionHashReturnValue: YieldXyzTrackTransactionResponse = .stub()
