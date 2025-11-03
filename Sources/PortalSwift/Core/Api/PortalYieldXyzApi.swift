@@ -55,27 +55,18 @@ public class PortalYieldXyzApi: PortalYieldXyzApiProtocol {
   public func getYields(request: YieldXyzGetYieldsRequest) async throws -> YieldXyzGetYieldsResponse {
     var queryParams: [String] = []
 
-    // Helper function to add query parameters
-    func addParam(_ key: String, _ value: Any?) {
-      guard let value = value else { return }
-      let stringValue = "\(value)"
-      if let encoded = stringValue.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
-        queryParams.append("\(key)=\(encoded)")
-      }
-    }
-
-    addParam("offset", request.offset)
-    addParam("limit", request.limit)
-    addParam("network", request.network)
-    addParam("yieldId", request.yieldId)
-    addParam("type", request.type?.rawValue)
-    addParam("hasCooldownPeriod", request.hasCooldownPeriod)
-    addParam("hasWarmupPeriod", request.hasWarmupPeriod)
-    addParam("token", request.token)
-    addParam("inputToken", request.inputToken)
-    addParam("provider", request.provider)
-    addParam("search", request.search)
-    addParam("sort", request.sort?.rawValue)
+    addParam("offset", request.offset, to: &queryParams)
+    addParam("limit", request.limit, to: &queryParams)
+    addParam("network", request.network, to: &queryParams)
+    addParam("yieldId", request.yieldId, to: &queryParams)
+    addParam("type", request.type?.rawValue, to: &queryParams)
+    addParam("hasCooldownPeriod", request.hasCooldownPeriod, to: &queryParams)
+    addParam("hasWarmupPeriod", request.hasWarmupPeriod, to: &queryParams)
+    addParam("token", request.token, to: &queryParams)
+    addParam("inputToken", request.inputToken, to: &queryParams)
+    addParam("provider", request.provider, to: &queryParams)
+    addParam("search", request.search, to: &queryParams)
+    addParam("sort", request.sort?.rawValue, to: &queryParams)
 
     let queryString = queryParams.isEmpty ? "" : "?\(queryParams.joined(separator: "&"))"
 
@@ -204,22 +195,13 @@ public class PortalYieldXyzApi: PortalYieldXyzApiProtocol {
   public func getHistoricalYieldActions(request: YieldXyzGetHistoricalActionsRequest) async throws -> YieldXyzGetHistoricalActionsResponse {
     var queryParams: [String] = []
 
-    // Helper function to add query parameters
-    func addParam(_ key: String, _ value: Any?) {
-      guard let value = value else { return }
-      let stringValue = "\(value)"
-      if let encoded = stringValue.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
-        queryParams.append("\(key)=\(encoded)")
-      }
-    }
-
-    addParam("address", request.address)
-    addParam("offset", request.offset)
-    addParam("limit", request.limit)
-    addParam("status", request.status?.rawValue)
-    addParam("intent", request.intent?.rawValue)
-    addParam("type", request.type?.rawValue)
-    addParam("yieldId", request.yieldId)
+    addParam("address", request.address, to: &queryParams)
+    addParam("offset", request.offset, to: &queryParams)
+    addParam("limit", request.limit, to: &queryParams)
+    addParam("status", request.status?.rawValue, to: &queryParams)
+    addParam("intent", request.intent?.rawValue, to: &queryParams)
+    addParam("type", request.type?.rawValue, to: &queryParams)
+    addParam("yieldId", request.yieldId, to: &queryParams)
 
     let queryString = queryParams.isEmpty ? "" : "?\(queryParams.joined(separator: "&"))"
 
@@ -283,6 +265,15 @@ public class PortalYieldXyzApi: PortalYieldXyzApiProtocol {
   /*******************************************
    * Private functions
    *******************************************/
+
+  // Helper function to add query parameters
+  private func addParam(_ key: String, _ value: Any?, to queryParams: inout [String]) {
+    guard let value = value else { return }
+    let stringValue = "\(value)"
+    if let encoded = stringValue.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
+      queryParams.append("\(key)=\(encoded)")
+    }
+  }
 
   @discardableResult
   private func get<ResponseType>(
