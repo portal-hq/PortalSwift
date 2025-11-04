@@ -2752,7 +2752,6 @@ extension ViewController {
         let manageRequest = YieldXyzManageYieldRequest(
           yieldId: finalYieldId,
           address: address,
-          arguments: YieldXyzEnterArguments(), // Empty arguments since not part of pending action
           action: finalAction,
           passthrough: finalPassthrough
         )

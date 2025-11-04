@@ -11,14 +11,14 @@ import Foundation
 public struct YieldXyzManageYieldRequest: Codable {
   public let yieldId: String
   public let address: String
-  public let arguments: YieldXyzEnterArguments
+  public let arguments: YieldXyzEnterArguments?
   public let action: YieldXyzActionType
   public let passthrough: String
 
   public init(
     yieldId: String,
     address: String,
-    arguments: YieldXyzEnterArguments,
+    arguments: YieldXyzEnterArguments? = nil,
     action: YieldXyzActionType,
     passthrough: String
   ) {
