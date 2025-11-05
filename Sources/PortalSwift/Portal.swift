@@ -37,6 +37,9 @@ public final class Portal: PortalProtocol {
   public var provider: PortalProviderProtocol
   public var rpcConfig: [String: String]
 
+  /// Access to yield-related functionality.
+  public lazy var yield: Yield = .init(api: self.api)
+
   private let apiHost: String
   private var backup: BackupOptions?
   private let binary: Mobile
