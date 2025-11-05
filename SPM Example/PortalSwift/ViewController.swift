@@ -90,6 +90,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet public var username: UITextField?
   @IBOutlet public var url: UITextField?
 
+  // Yield buttons
+  @IBOutlet var discoverYieldsButton: UIButton!
+  @IBOutlet var enterYieldButton: UIButton!
+  @IBOutlet var getYieldPositionButton: UIButton!
+  @IBOutlet var manageYieldButton: UIButton!
+  @IBOutlet var exitYieldButton: UIButton!
+
   public var user: UserResult?
 
   private var refreshBalanceTimer: Timer?
@@ -992,6 +999,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       try portal.setPasskeyConfiguration(relyingParty: config.relyingParty, webAuthnHost: config.webAuthnHost)
       // The apikey from Portal class is private within the Portal SDK class, so it must not be accessible from outside. We already have the clientApiKey from user
       self.logger.info("ViewController.registerPortal() - Portal API Key: \(user.clientApiKey)")
+      self.logger.info("ViewController.registerPortal() - Client ID: \(user.clientId)")
 
       portal.on(event: Events.PortalSigningRequested, callback: { [weak portal] data in
         portal?.emit(Events.PortalSigningApproved, data: data)
@@ -2391,5 +2399,710 @@ extension ViewController {
     let settingsView = SettingsView(portal: portal)
     let hostingController = UIHostingController(rootView: settingsView)
     self.present(hostingController, animated: true, completion: nil)
+  }
+}
+
+// MARK: - Yield Actions
+
+@available(iOS 16.0, *)
+extension ViewController {
+  @IBAction func handleDiscoverYields() {
+    guard let portal = portal else {
+      self.logger.info("Portal is not initialized")
+      return
+    }
+
+    Task {
+      self.logger.info("Starting yield discovery...")
+      do {
+        let request = YieldXyzGetYieldsRequest(
+          offset: 0,
+          yieldId: "polygon-dai-aave-v3-lending",
+          network: "eip155:137",
+          limit: 10,
+          type: .lending,
+          hasCooldownPeriod: false,
+          hasWarmupPeriod: false,
+          token: "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063",
+          inputToken: "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063",
+          provider: "aave",
+          search: "DAI",
+          sort: .statusEnterDesc
+        )
+
+        let response = try await portal.yield.yieldxyz.discover(request: request)
+
+        // Handle success response
+        if let rawResponse = response.data?.rawResponse {
+          let success = !rawResponse.items.isEmpty || rawResponse.total == 0
+
+          self.logger.info("Yield discovery \(success ? "SUCCESS" : "FAILED")")
+
+          self.showStatusView(message: "\(success ? self.successStatus : self.failureStatus) Yield discovery")
+
+          // Log comprehensive results for debugging
+          self.logDiscoverYieldsResults(request: request, response: rawResponse)
+        } else {
+          self.logger.error("Yield discovery FAILED: \(response.error ?? "")")
+        }
+      } catch {
+        self.logger.error("Yield discovery FAILED: \(error.localizedDescription)")
+        self.showStatusView(message: "\(self.failureStatus) Yield discovery FAILED: \(error.localizedDescription)")
+      }
+    }
+  }
+
+  @IBAction func handleEnterYield() {
+    guard let portal = portal else {
+      self.logger.info("Portal is not initialized")
+      return
+    }
+
+    Task {
+      self.logger.info("Starting yield entry flow for Sepolia USDC Aave v3 lending")
+
+      do {
+        let chainId = "eip155:11155111" // Sepolia testnet
+        guard let userAddress = await portal.getAddress(chainId) else {
+          self.logger.error("No Ethereum address found")
+          self.showStatusView(message: "\(self.failureStatus) No Ethereum address found")
+          return
+        }
+
+        self.logger.info("User address: \(userAddress)")
+
+        // First, discover the specific yield to ensure it's available
+        let discoverRequest = YieldXyzGetYieldsRequest(
+          yieldId: "ethereum-sepolia-link-aave-v3-lending",
+          network: "eip155:11155111",
+          limit: 1
+        )
+
+        self.logger.info("Discovering yield: \(discoverRequest.yieldId ?? "nil")")
+        let discoverResponse = try await portal.yield.yieldxyz.discover(request: discoverRequest)
+
+        if let rawResponse = discoverResponse.data?.rawResponse {
+          // Log discovery results
+          self.logDiscoverYieldsResults(request: discoverRequest, response: rawResponse)
+
+          if !rawResponse.items.isEmpty {
+            let yield = rawResponse.items.first!
+
+            // Check if yield is available for entry
+            if yield.status.enter {
+              // Use a very small amount for testing
+              let amount = "0.000001"
+              self.logger.info("Entering yield with amount: \(amount) LINK")
+
+              let enterRequest = YieldXyzEnterRequest(
+                yieldId: yield.id,
+                address: userAddress,
+                arguments: YieldXyzEnterArguments(
+                  amount: amount,
+                  executionMode: .batch
+                )
+              )
+
+              let enterResponse = try await portal.yield.yieldxyz.enter(request: enterRequest)
+              if let enterRawResponse = enterResponse.data?.rawResponse {
+                // Log yield entry results
+                self.logYieldEntryResults(response: enterRawResponse)
+
+                // Process transactions sequentially
+                let sortedTransactions = (enterRawResponse.transactions).sorted { $0.stepIndex < $1.stepIndex }
+                self.logger.info("Processing \(sortedTransactions.count) transactions sequentially")
+
+                for (index, transaction) in sortedTransactions.enumerated() {
+                  self.logTransactionDetails(transaction: transaction, index: index, total: sortedTransactions.count)
+
+                  // Sign and submit the transaction
+                  if transaction.unsignedTransaction != nil && transaction.status == .CREATED {
+                    self.logger.info("Starting sequential processing of transaction \(transaction.id)")
+                    let success = await signAndSubmitTransactionSequential(transaction: transaction, portal: portal)
+                    if !success {
+                      self.logger.error("Failed to process transaction \(transaction.id), stopping sequence")
+                      break
+                    } else {
+                      self.logger.info("Successfully completed transaction \(transaction.id), proceeding to next transaction")
+                    }
+                  } else {
+                    self.logger.info("Skipping transaction \(transaction.id) - no unsigned transaction or not in CREATED status")
+                  }
+                }
+
+                self.showStatusView(message: "\(self.successStatus) Yield entry initiated successfully")
+              } else {
+                self.logger.error("Enter yield failed with error: \(discoverResponse.error ?? "")")
+                self.showStatusView(message: "\(self.failureStatus) Yield is not available for entry")
+              }
+            } else {
+              self.logger.error("Yield is not available for entry (status.enter = false)")
+              self.showStatusView(message: "\(self.failureStatus) Yield is not available for entry")
+            }
+          } else {
+            self.logger.error("Yield not found in discovery results")
+            self.showStatusView(message: "\(self.failureStatus) Yield not found in discovery results")
+          }
+        } else {
+          self.logger.error("Yield not found in discovery results with error: \(discoverResponse.error ?? "")")
+          self.showStatusView(message: "\(self.failureStatus) Yield not found in discovery results")
+        }
+
+      } catch {
+        self.logger.error("Exception during yield entry: \(error.localizedDescription)")
+        self.showStatusView(message: "\(self.failureStatus) Yield entry FAILED: \(error.localizedDescription)")
+      }
+    }
+  }
+
+  @IBAction func handleGetYieldPosition() {
+    guard let portal = portal else {
+      self.logger.info("Portal is not initialized")
+      return
+    }
+
+    Task {
+      do {
+        self.startLoading()
+
+        // Get user's Ethereum address
+        let chainId = "eip155:11155111" // Sepolia testnet
+        let userAddress = await portal.getAddress(chainId)
+
+        guard let address = userAddress else {
+          self.logger.error("No Ethereum address found")
+          self.showStatusView(message: "\(self.failureStatus) No Ethereum address found")
+          self.stopLoading()
+          return
+        }
+
+        self.logger.info("Getting yield balances for address: \(address)")
+
+        // Create balance request for Sepolia testnet
+        let balanceRequest = YieldXyzGetBalancesRequest(
+          queries: [
+            YieldXyzBalanceQuery(
+              address: address,
+              network: chainId // Sepolia testnet
+            )
+          ]
+        )
+
+        // Fetch yield balances
+        let response = try await portal.yield.yieldxyz.getBalances(request: balanceRequest)
+
+        if let rawResponse = response.data?.rawResponse {
+          self.logger.info("Successfully retrieved yield balances")
+          self.logger.info("Found \(rawResponse.items.count) yield positions")
+          self.logger.info("Errors: \(rawResponse.errors)")
+
+          if rawResponse.items.isEmpty {
+            self.logger.info("No yield positions found for this address")
+            self.showStatusView(message: "\(self.successStatus) No yield positions found")
+          } else {
+            // Log balance details
+            self.logYieldBalanceDetails(items: rawResponse.items)
+
+            // Fetch historical actions
+            do {
+              let actionsRequest = YieldXyzGetHistoricalActionsRequest(address: address)
+              let actionsResult = try await portal.yield.yieldxyz.getHistoricalActions(request: actionsRequest)
+              if let actions = actionsResult.data?.rawResponse {
+                let totalActions = actions.total ?? actions.items.count
+                self.logger.info("Total actions: \(totalActions)")
+
+                // Log first 2 actions
+                self.logYieldActionDetails(actions: actions.items)
+
+                // Fetch single transaction detail for first transaction if available
+                if let firstTransaction = actions.items.first?.transactions.first {
+                  self.logger.info("Fetching details for first transaction: \(firstTransaction.id)")
+
+                  do {
+                    let txResponse = try await portal.yield.yieldxyz.getTransaction(transactionId: firstTransaction.id)
+                    if let t = txResponse.data?.rawResponse {
+                      let hashStr = t.hash ?? "nil"
+                      self.logger.info("Fetched txn \(t.id) status=\(t.status.rawValue) hash=\(hashStr)")
+                    } else {
+                      self.logger.warning("Failed fetching txn \(firstTransaction.id) with error: \(txResponse.error ?? "")")
+                    }
+                  } catch {
+                    self.logger.warning("Failed fetching txn \(firstTransaction.id): \(error.localizedDescription)")
+                  }
+                } else {
+                  self.logger.info("No transactions found to fetch details for")
+                }
+              } else {
+                self.logger.info("Yield get historical actions failed with error: \(actionsResult.error ?? "")")
+              }
+            } catch {
+              self.logger.warning("Failed to fetch actions: \(error.localizedDescription)")
+            }
+
+            self.showStatusView(message: "\(self.successStatus) Found \(rawResponse.items.count) yield positions")
+          }
+        } else {
+          self.logger.error("Response structure is missing rawResponse data")
+          self.showStatusView(message: "\(self.failureStatus) Response structure error")
+        }
+
+        self.stopLoading()
+      } catch {
+        self.logger.error("Exception during yield balance retrieval: \(error.localizedDescription)")
+        self.showStatusView(message: "\(self.failureStatus) Yield balance retrieval FAILED: \(error.localizedDescription)")
+        self.stopLoading()
+      }
+    }
+  }
+
+  @IBAction func handleManageYield() {
+    guard let portal = portal else {
+      self.logger.info("Portal is not initialized")
+      return
+    }
+
+    Task {
+      do {
+        self.startLoading()
+
+        // Get user's Ethereum address
+        let chainId = "eip155:11155111" // Sepolia testnet
+        let userAddress = await portal.getAddress(chainId)
+
+        guard let address = userAddress else {
+          self.logger.error("No Ethereum address found")
+          self.showStatusView(message: "\(self.failureStatus) No Ethereum address found")
+          self.stopLoading()
+          return
+        }
+
+        self.logger.info("Starting yield management flow")
+        self.logger.info("User address: \(address)")
+
+        // Step 1: Get yield balances to check existing positions
+        self.logger.info("Getting yield balances...")
+        let balanceRequest = YieldXyzGetBalancesRequest(
+          queries: [
+            YieldXyzBalanceQuery(
+              address: address,
+              network: chainId // Sepolia testnet
+            )
+          ]
+        )
+
+        let balanceResponse = try await portal.yield.yieldxyz.getBalances(request: balanceRequest)
+
+        guard let balanceRawResponse = balanceResponse.data?.rawResponse else {
+          self.logger.error("Response structure is missing rawResponse data for balances")
+          self.showStatusView(message: "\(self.failureStatus) Failed to get yield balances")
+          self.stopLoading()
+          return
+        }
+
+        if balanceRawResponse.items.isEmpty {
+          self.logger.info("No yield positions found for this address")
+          self.showStatusView(message: "\(self.successStatus) No yield positions found")
+          self.stopLoading()
+          return
+        }
+
+        self.logger.info("Found \(balanceRawResponse.items.count) yield positions")
+
+        // Step 2: Find yield position with pending actions
+        var selectedYieldId: String?
+        var selectedPassthrough: String?
+        var selectedAction: YieldXyzActionType?
+
+        for item in balanceRawResponse.items {
+          self.logger.info("Checking yield ID: \(item.yieldId)")
+          for balance in item.balances {
+            self.logger.info("Balance: \(balance.amount) \(balance.token.symbol)")
+            self.logger.info("Pending Actions: \(balance.pendingActions)")
+
+            if !balance.pendingActions.isEmpty {
+              selectedYieldId = item.yieldId
+              if let pendingAction = balance.pendingActions.first {
+                selectedPassthrough = pendingAction.passthrough
+                selectedAction = pendingAction.type
+                self.logger.info("Found yield with pending actions: \(item.yieldId)")
+                self.logger.info("Using passthrough: \(selectedPassthrough ?? "nil")")
+                self.logger.info("Using action: \(selectedAction?.rawValue ?? "nil")")
+              }
+              break
+            }
+          }
+          if selectedYieldId != nil { break }
+        }
+
+        guard let finalYieldId = selectedYieldId,
+              let finalPassthrough = selectedPassthrough,
+              let finalAction = selectedAction
+        else {
+          self.logger.info("No yield positions with pending actions found")
+          self.showStatusView(message: "\(self.successStatus) No yield positions with pending actions found")
+          self.stopLoading()
+          return
+        }
+
+        // Step 3: Call manageYield with the selected yield, action, and passthrough
+        self.logger.info("Calling manageYield for yield: \(finalYieldId)")
+        self.logger.info("Using passthrough: \(finalPassthrough)")
+        self.logger.info("Using action: \(finalAction.rawValue)")
+
+        let manageRequest = YieldXyzManageYieldRequest(
+          yieldId: finalYieldId,
+          address: address,
+          action: finalAction,
+          passthrough: finalPassthrough
+        )
+
+        let manageResponse = try await portal.yield.yieldxyz.manage(request: manageRequest)
+
+        if let manageRawResponse = manageResponse.data?.rawResponse {
+          self.showStatusView(message: "\(self.successStatus) Successfully initiated yield management")
+
+          self.logYieldManagementResponse(manageRawResponse)
+
+          // Process transactions sequentially, waiting for each to be mined
+          let sortedTransactions = manageRawResponse.transactions.sorted { $0.stepIndex < $1.stepIndex }
+
+          for (index, transaction) in sortedTransactions.enumerated() {
+            self.logTransactionDetails(transaction: transaction, index: index, total: sortedTransactions.count)
+
+            // Sign and submit the transaction
+            if transaction.unsignedTransaction != nil && transaction.status == .CREATED {
+              let success = await signAndSubmitTransactionSequential(transaction: transaction, portal: portal)
+              if !success {
+                self.logger.error("Failed to process transaction \(transaction.id), stopping sequence")
+                break
+              }
+            }
+          }
+        } else {
+          self.logger.error("Failed exception during yield management: \(manageResponse.error ?? "")")
+          self.showStatusView(message: "\(self.failureStatus) Yield management FAILED: \(manageResponse.error ?? "")")
+        }
+
+        self.stopLoading()
+      } catch {
+        self.logger.error("Failed exception during yield management: \(error.localizedDescription)")
+        self.showStatusView(message: "\(self.failureStatus) Yield management FAILED: \(error.localizedDescription)")
+        self.stopLoading()
+      }
+    }
+  }
+
+  @IBAction func handleExitYield() {
+    guard let portal = portal else {
+      self.logger.info("Portal is not initialized")
+      return
+    }
+
+    Task {
+      do {
+        self.startLoading()
+
+        // Get user's Ethereum address
+        let chainId = "eip155:11155111" // Sepolia testnet
+        let userAddress = await portal.getAddress(chainId)
+
+        guard let address = userAddress else {
+          self.logger.error("No Ethereum address found")
+          self.showStatusView(message: "\(self.failureStatus) No Ethereum address found")
+          self.stopLoading()
+          return
+        }
+
+        self.logger.info("Starting yield exit flow for Ethereum ETH Lido staking")
+        self.logger.info("User address: \(address)")
+
+        // Use a very small amount for testing
+        let amount = "0.001"
+        self.logger.info("Exiting yield with amount: \(amount) ETH")
+
+        let exitRequest = YieldXyzExitRequest(
+          yieldId: "ethereum-sepolia-link-aave-v3-lending",
+          address: address,
+          arguments: YieldXyzEnterArguments(amount: amount)
+        )
+
+        let exitResponse = try await portal.yield.yieldxyz.exit(request: exitRequest)
+
+        if let exitRawResponse = exitResponse.data?.rawResponse {
+          self.showStatusView(message: "\(self.successStatus) Successfully initiated yield exit")
+
+          self.logYieldExitResponse(exitRawResponse)
+
+          // Process transactions sequentially, waiting for each to be mined
+          let sortedTransactions = exitRawResponse.transactions.sorted { $0.stepIndex < $1.stepIndex }
+          self.logger.info("Processing \(sortedTransactions.count) transactions sequentially")
+
+          for (index, transaction) in sortedTransactions.enumerated() {
+            self.logDetailedTransactionProcessing(transaction: transaction, index: index, total: sortedTransactions.count)
+
+            // Sign and submit the transaction
+            if transaction.unsignedTransaction != nil && transaction.status == .CREATED {
+              self.logger.info("Starting sequential processing of transaction \(transaction.id)")
+              let success = await signAndSubmitTransactionSequential(transaction: transaction, portal: portal)
+              if !success {
+                self.logger.error("Failed to process transaction \(transaction.id), stopping sequence")
+                break
+              }
+              self.logger.info("Successfully completed transaction \(transaction.id), proceeding to next transaction")
+            } else {
+              self.logger.info("Skipping transaction \(transaction.id) - no unsigned transaction or not in CREATED status")
+            }
+          }
+        } else {
+          self.logger.error("Failed exception during yield exit: \(exitResponse.error ?? "")")
+          self.showStatusView(message: "\(self.failureStatus) Yield exit FAILED: \(exitResponse.error ?? "")")
+        }
+
+        self.stopLoading()
+      } catch {
+        self.logger.error("Failed exception during yield exit: \(error.localizedDescription)")
+        self.showStatusView(message: "\(self.failureStatus) Yield exit FAILED: \(error.localizedDescription)")
+        self.stopLoading()
+      }
+    }
+  }
+}
+
+// MARK: - Helper Functions
+
+/// Includes logging helpers, transaction processing, and yield operation utilities
+@available(iOS 16.0, *)
+extension ViewController {
+  private func logDiscoverYieldsResults(request: YieldXyzGetYieldsRequest, response: YieldXyzGetYieldsRawResponse) {
+    self.logger.info("Found \(response.items.count) yield opportunities (total: \(response.total))")
+    self.logger.info("Request parameters: offset=\(request.offset ?? 0), limit=\(request.limit ?? 10)")
+    self.logger.info("Network: \(request.network ?? "nil")")
+    self.logger.info("Type: \(request.type?.rawValue ?? "nil")")
+    self.logger.info("Provider: \(request.provider ?? "nil")")
+    self.logger.info("Search term: \(request.search ?? "nil")")
+    self.logger.info("Yield ID: \(request.yieldId ?? "nil")")
+    self.logger.info("Token: \(request.token ?? "nil")")
+    self.logger.info("Input Token: \(request.inputToken ?? "nil")")
+
+    // Log first 5 yield opportunities
+    for (index, opportunity) in response.items.prefix(5).enumerated() {
+      let apyPercentage = String(format: "%.2f", opportunity.rewardRate.total * 100)
+      self.logger.info("Yield \(index + 1): \(opportunity.metadata.name) - APY: \(apyPercentage)% - Network: \(opportunity.network)")
+    }
+  }
+
+  private func logYieldEntryResults(response: YieldXyzEnterRawResponse) {
+    self.logger.info("Successfully initiated yield entry")
+    self.logger.info("Action ID: \(response.id)")
+    self.logger.info("Status: \(response.status.rawValue)")
+    self.logger.info("Intent: \(response.intent.rawValue)")
+    self.logger.info("Type: \(response.type.rawValue)")
+    self.logger.info("Yield ID: \(response.yieldId)")
+    self.logger.info("Amount: \(response.amount ?? "")")
+    self.logger.info("Amount Raw: \(response.amountRaw ?? "")")
+    self.logger.info("Amount USD: \(response.amountUsd ?? "")")
+    self.logger.info("Execution Pattern: \(response.executionPattern.rawValue)")
+    self.logger.info("Transactions: \(response.transactions.count)")
+  }
+
+  private func logTransactionDetails(transaction: YieldXyzActionTransaction, index: Int, total: Int) {
+    self.logger.info("=== Processing Transaction \(index + 1)/\(total) ===")
+    self.logger.info("Transaction: \(transaction.title) - Status: \(transaction.status.rawValue)")
+    self.logger.info("Transaction ID: \(transaction.id)")
+    self.logger.info("Network: \(transaction.network)")
+    self.logger.info("Type: \(transaction.type.rawValue)")
+    self.logger.info("Step Index: \(transaction.stepIndex)")
+    self.logger.info("Gas Estimate: \(transaction.gasEstimate ?? "N/A")")
+  }
+
+  /// Logs detailed information about yield balance items
+  /// - Parameter items: Array of yield balance items to log
+  private func logYieldBalanceDetails(items: [YieldXyzGetBalancesItem]) {
+    for item in items {
+      self.logger.info("Yield ID: \(item.yieldId)")
+      for balance in item.balances {
+        self.logger.info("Balance: \(balance.amount) \(balance.token.symbol)")
+        self.logger.info("Amount Raw: \(balance.amountRaw)")
+        self.logger.info("Type: \(balance.type)")
+        self.logger.info("Is Earning: \(balance.isEarning?.description ?? "nil")")
+        self.logger.info("Amount USD: \(balance.amountUsd ?? "nil")")
+        self.logger.info("Token: \(balance.token.name) (\(balance.token.address))")
+        self.logger.info("Network: \(balance.token.network)")
+      }
+    }
+  }
+
+  /// Logs detailed information about yield action items (first 2 actions)
+  /// - Parameter actions: Array of yield action items to log
+  private func logYieldActionDetails(actions: [YieldXyzEnterRawResponse]) {
+    for action in actions.prefix(2) {
+      self.logger.info("Action \(action.id) intent=\(action.intent.rawValue) status=\(action.status.rawValue)")
+      for transaction in action.transactions {
+        let hashStr = transaction.hash ?? "nil"
+        self.logger.info("  Txn \(transaction.id) \(transaction.title) status=\(transaction.status.rawValue) hash=\(hashStr)")
+      }
+    }
+  }
+
+  /// Logs detailed information about yield management response
+  /// - Parameter response: The yield management raw response to log
+  private func logYieldManagementResponse(_ response: YieldXyzManageYieldRawResponse) {
+    self.logger.info("Successfully initiated yield management")
+    self.logger.info("Action ID: \(response.id)")
+    self.logger.info("Status: \(response.status.rawValue)")
+    self.logger.info("Intent: \(response.intent.rawValue)")
+    self.logger.info("Type: \(response.type.rawValue)")
+    self.logger.info("Yield ID: \(response.yieldId)")
+    self.logger.info("Amount: \(response.amount ?? "nil")")
+    self.logger.info("Amount Raw: \(response.amountRaw ?? "nil")")
+    self.logger.info("Amount USD: \(response.amountUsd ?? "nil")")
+    self.logger.info("Execution Pattern: \(response.executionPattern.rawValue)")
+    self.logger.info("Transactions: \(response.transactions.count)")
+  }
+
+  /// Logs detailed information about yield exit response
+  /// - Parameter response: The yield exit raw response to log
+  private func logYieldExitResponse(_ response: YieldXyzExitRawResponse) {
+    self.logger.info("Successfully initiated yield exit")
+    self.logger.info("Action ID: \(response.id)")
+    self.logger.info("Status: \(response.status.rawValue)")
+    self.logger.info("Intent: \(response.intent.rawValue)")
+    self.logger.info("Type: \(response.type.rawValue)")
+    self.logger.info("Yield ID: \(response.yieldId)")
+    self.logger.info("Amount: \(response.amount ?? "nil")")
+    self.logger.info("Amount Raw: \(response.amountRaw ?? "nil")")
+    self.logger.info("Amount USD: \(response.amountUsd ?? "nil")")
+    self.logger.info("Execution Pattern: \(response.executionPattern.rawValue)")
+    self.logger.info("Transactions: \(response.transactions.count)")
+  }
+
+  /// Logs detailed information about transaction processing
+  /// - Parameters:
+  ///   - transaction: The transaction being processed
+  ///   - index: The current transaction index (0-based)
+  ///   - total: The total number of transactions
+  private func logDetailedTransactionProcessing(transaction: YieldXyzActionTransaction, index: Int, total: Int) {
+    self.logger.info("=== Processing Transaction \(index + 1)/\(total) ===")
+    self.logger.info("Transaction: \(transaction.title) - Status: \(transaction.status.rawValue)")
+    self.logger.info("Transaction ID: \(transaction.id)")
+    self.logger.info("Network: \(transaction.network)")
+    self.logger.info("Type: \(transaction.type.rawValue)")
+    self.logger.info("Step Index: \(transaction.stepIndex)")
+    self.logger.info("Gas Estimate: \(transaction.gasEstimate ?? "N/A")")
+  }
+
+  private func signAndSubmitTransactionSequential(
+    transaction: YieldXyzActionTransaction,
+    portal: PortalProtocol
+  ) async -> Bool {
+    do {
+      self.logger.info("Signing and submitting transaction: \(transaction.id)")
+
+      // Parse the unsigned transaction - it comes as AnyCodable wrapping a JSON string
+      let unsignedTxJson: String
+      if let unsignedTransaction = transaction.unsignedTransaction {
+        unsignedTxJson = unsignedTransaction
+      } else {
+        self.logger.error("Unsigned transaction is not in the expected format: \(String(describing: transaction.unsignedTransaction))")
+        return false
+      }
+
+      // Parse the JSON string to get transaction parameters
+      guard let jsonData = unsignedTxJson.data(using: .utf8),
+            let txParams = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
+      else {
+        self.logger.error("Failed to parse transaction JSON: \(unsignedTxJson)")
+        return false
+      }
+
+      self.logger.info("Transaction params: \(txParams)")
+
+      // Create ETHTransactionParam from the parsed JSON
+      let ethTransaction = ETHTransactionParam(
+        from: txParams["from"] as? String ?? "",
+        to: txParams["to"] as? String ?? "",
+        value: txParams["value"] as? String ?? "0x0",
+        data: txParams["data"] as? String ?? ""
+      )
+
+      self.logger.info("ETH Transaction created for signing")
+
+      // Determine the correct chain ID based on the transaction's network
+      let chainId = transaction.network
+
+      // Sign and send the transaction
+      let sendTransactionResponse = try await portal.request(chainId, withMethod: .eth_sendTransaction, andParams: [ethTransaction])
+
+      if let txHash = sendTransactionResponse.result as? String {
+        self.logger.info("Transaction submitted successfully: \(txHash)")
+
+        // Track the transaction with the yield system
+        do {
+          let trackTransactionResponse = try await portal.yield.yieldxyz.track(transactionId: transaction.id, txHash: txHash)
+          self.logger.info("Transaction tracking successful - with id: \(trackTransactionResponse.data?.rawResponse.id ?? "unknown")")
+        } catch {
+          self.logger.warning("Failed to track transaction (continuing anyway): \(error.localizedDescription)")
+        }
+
+        // Wait for transaction to be mined and confirmed
+        self.logger.info("Waiting for transaction \(txHash) to be confirmed on-chain before proceeding...")
+        let mined = await waitForTransactionConfirmation(txHash: txHash, chainId: chainId, portal: portal)
+        if mined {
+          self.logger.info("✅ Transaction \(txHash) confirmed on-chain - proceeding to next transaction")
+          return true
+        } else {
+          self.logger.error("❌ Transaction \(txHash) failed to be confirmed - stopping sequence")
+          return false
+        }
+      } else {
+        self.logger.error("Failed to submit transaction: No result returned")
+        return false
+      }
+
+    } catch {
+      self.logger.error("Exception during transaction signing/submission: \(error.localizedDescription)")
+      return false
+    }
+  }
+
+  private func waitForTransactionConfirmation(
+    txHash: String,
+    chainId: String,
+    portal: PortalProtocol,
+    maxAttempts: Int = 30
+  ) async -> Bool {
+    self.logger.info("Waiting for transaction confirmation: \(txHash) on chain: \(chainId)")
+
+    for attempt in 0 ..< maxAttempts {
+      do {
+        // Wait 2 seconds between attempts
+        try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+
+        // Check transaction receipt
+        let response = try await portal.request(chainId, withMethod: .eth_getTransactionReceipt, andParams: [txHash])
+        // The result is wrapped in a PortalProviderRpcResponse
+        if let innerResponse = response.result as? EthTransactionResponse {
+          // The actual receipt is in innerResponse.result
+          if let status = innerResponse.result?.status {
+            if status == "0x1" {
+              self.logger.info("Transaction \(txHash) confirmed successfully after \(attempt + 1) attempts")
+              return true
+            } else {
+              self.logger.error("Transaction \(txHash) failed (reverted) after \(attempt + 1) attempts")
+              return false
+            }
+          } else {
+            self.logger.info("Transaction \(txHash) receipt found but status not available, attempt \(attempt + 1)/\(maxAttempts)")
+          }
+        } else {
+          self.logger.info("Transaction \(txHash) not yet mined, attempt \(attempt + 1)/\(maxAttempts)")
+        }
+      } catch {
+        self.logger.error("Error checking transaction confirmation: \(error.localizedDescription)")
+      }
+    }
+
+    self.logger.error("Transaction \(txHash) not confirmed after \(maxAttempts) attempts")
+    return false
   }
 }

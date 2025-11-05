@@ -64,7 +64,9 @@ public class PortalMpcSigner: PortalSignerProtocol {
       withPayload.params,
       withPayload.isRaw ?? false ? "" : andRpcUrl,
       withPayload.isRaw ?? false ? "" : chainId,
-      mpcMetadataString
+      mpcMetadataString,
+      mpcMetadata.curve,
+      isRaw: withPayload.isRaw
     )
 
     // Attempt to decode the sign result.

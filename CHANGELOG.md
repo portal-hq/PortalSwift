@@ -12,6 +12,10 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
+## 6.3.0 - 2025-11-04
+- Added `portal.yield`, `portal.yield.yieldxyz`, `portal.yield.yieldxyz.discover`, `portal.yield.yieldxyz.enter`, `portal.yield.yieldxyz.manage`, `portal.yield.yieldxyz.exit`, `portal.yield.yieldxyz.getBalances`, and `portal.yield.yieldxyz.getHistoricalActions`.
+- Fixed an issue in the enclave sign and raw sign.
+
 ## 6.2.1 - 2025-09-04
 - Minor updates to improve stability.
 

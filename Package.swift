@@ -28,7 +28,7 @@ let package = Package(
     .package(
       url: "https://github.com/Flight-School/AnyCodable.git",
       exact: "0.6.7"
-    ),
+    )
   ],
   targets: [
     // Targets are the basic building blocks of a package. A target can define a module or a test suite.
