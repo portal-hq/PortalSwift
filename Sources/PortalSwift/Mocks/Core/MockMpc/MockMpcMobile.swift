@@ -170,7 +170,7 @@ public class MockMobileWrapper: Mobile {
     return "4.0.1"
   }
 
-  public func MobileSign(_: String?, _: String?, _: String?, _ method: String?, _: String?, _: String?, _: String?, _: String?) -> String {
+  public func MobileSign(_: String?, _: String?, _: String?, _ method: String?, _: String?, _: String?, _: String?, _: String?, _: PortalCurve?, isRaw _: Bool?) -> String {
     if method == PortalRequestMethod.eth_sendTransaction.rawValue {
       return MockConstants.mockTransactionHashResponse
     }

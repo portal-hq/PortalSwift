@@ -70,7 +70,7 @@ public protocol Mobile {
 
   func MobileGetVersion() -> String
 
-  func MobileSign(_ apiKey: String?, _ host: String?, _ signingShare: String?, _ method: String?, _ params: String?, _ rpcURL: String?, _ chainId: String?, _ metadata: String?) async -> String
+  func MobileSign(_ apiKey: String?, _ host: String?, _ signingShare: String?, _ method: String?, _ params: String?, _ rpcURL: String?, _ chainId: String?, _ metadata: String?, _ curve: PortalCurve?, isRaw: Bool?) async -> String
 
   func MobileEjectWalletAndDiscontinueMPC(_ clientDkgCipherText: String, _ serverDkgCipherText: String) async -> String
 

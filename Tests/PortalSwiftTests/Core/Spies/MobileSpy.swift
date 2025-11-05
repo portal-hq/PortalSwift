@@ -292,9 +292,11 @@ final class MobileSpy: Mobile {
   private(set) var mobileSignRpcURLParam: String?
   private(set) var mobileSignChainIdParam: String?
   private(set) var mobileSignMetadataParam: String?
+  private(set) var mobileSignCurveParam: PortalCurve?
+  private(set) var mobileSignIsRawParam: Bool?
   var mobileSignReturnValue: String = MockConstants.mockSignatureResponse
 
-  public func MobileSign(_ apiKey: String?, _ host: String?, _ signingShare: String?, _ method: String?, _ params: String?, _ rpcURL: String?, _ chainId: String?, _ metadata: String?) async -> String {
+  public func MobileSign(_ apiKey: String?, _ host: String?, _ signingShare: String?, _ method: String?, _ params: String?, _ rpcURL: String?, _ chainId: String?, _ metadata: String?, _ curve: PortalCurve?, isRaw: Bool?) async -> String {
     mobileSignCallsCount += 1
     mobileSignApiKeyParam = apiKey
     mobileSignHostParam = host
@@ -304,6 +306,8 @@ final class MobileSpy: Mobile {
     mobileSignRpcURLParam = rpcURL
     mobileSignChainIdParam = chainId
     mobileSignMetadataParam = metadata
+    mobileSignCurveParam = curve
+    mobileSignIsRawParam = isRaw
     return mobileSignReturnValue
   }
 
