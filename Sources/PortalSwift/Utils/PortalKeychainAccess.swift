@@ -34,6 +34,7 @@ public class PortalKeychainAccess: PortalKeychainAccessProtocol {
     // Throw if the status is not successful.
     if status == errSecDuplicateItem {
       try self.updateItem(key, value: value)
+      return
     }
 
     guard status != errSecNotAvailable else {
@@ -111,10 +112,17 @@ public class PortalKeychainAccess: PortalKeychainAccessProtocol {
       guard status != errSecItemNotFound else {
         throw PortalKeychainAccessError.itemNotFound(key)
       }
+
       guard status != errSecNotAvailable else {
         self.logger.error("PortalKeychain.updateItem() - Keychain unavailable: \(status)")
         throw PortalKeychainAccessError.keychainUnavailableOrNoPasscode(status)
       }
+
+      guard status != errSecDuplicateItem else {
+        self.logger.debug("PortalKeychain.updateItem() - Unexpected duplicate item error for key: \(key). Treating as success.")
+        return
+      }
+
       guard status == errSecSuccess else {
         self.logger.error("PortalKeychain.updateItem() - Unhandled error: \(status)")
         throw PortalKeychainAccessError.unhandledError(status)
