@@ -19,4 +19,6 @@ class Settings {
   private init() {}
 
   var portalConfig: PortalConfig = .init()
+
+  var isAccountAbstracted: Bool = false
 }

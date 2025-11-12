@@ -800,13 +800,16 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  public func signUp(_ username: String) async throws -> UserResult {
+  public func signUp(_ username: String, isAccountAbstracted: Bool? = nil) async throws -> UserResult {
     do {
       guard let config = self.config else {
         throw PortalExampleAppError.configurationNotSet()
       }
       if let url = URL(string: "\(config.custodianServerUrl)/mobile/signup") {
-        let payload = ["username": username]
+        var payload: [String: AnyCodable] = ["username": AnyCodable(username)]
+        if isAccountAbstracted ?? false {
+          payload["isAccountAbstracted"] = AnyCodable(true)
+        }
 
         let request = PortalAPIRequest(url: url, method: .post, payload: payload)
         let user = try await requests.execute(request: request, mappingInResponse: UserResult.self)
@@ -1291,6 +1294,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.sendAddress?.isHidden = !walletExists || !isWalletOnDevice
           self.url?.isHidden = !walletExists || !isWalletOnDevice
 
+          let client = try await self.portal?.client
+          Settings.shared.isAccountAbstracted = client?.isAccountAbstracted ?? false
+          self.logger.debug("isAccountAbstracted: \(client?.isAccountAbstracted ?? false)")
+
           self.logger.debug("ViewController.updateUIComponents() - ✅ Ending loading")
 
           self.stopLoading()
@@ -1352,7 +1359,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
           return
         }
         self.startLoading()
-        let user = try await signUp(username)
+        let user = try await signUp(username, isAccountAbstracted: Settings.shared.isAccountAbstracted)
         self.logger.debug("ViewController.handleSignUp() - ✅ Signed up! User clientApiKey: \(user.clientApiKey)")
         self.showStatusView(message: "\(self.successStatus) Signed up!")
         self.portal = try await self.registerPortal()
@@ -2356,11 +2363,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   @available(iOS 17.0, *)
   @IBAction func didPressSettings(_: Any) {
-    do {
-      try openSettingsPage()
-    } catch {
-      print("ViewController.didPressSettings() - ❌ Cannot open settings. \(error)")
-    }
+    openSettingsPage()
   }
 }
 
@@ -2391,11 +2394,7 @@ extension ViewController {
 
 @available(iOS 17.0, *)
 extension ViewController {
-  func openSettingsPage() throws {
-    guard let portal = self.portal else {
-      throw PortalExampleAppError.portalNotInitialized()
-    }
-
+  func openSettingsPage() {
     let settingsView = SettingsView(portal: portal)
     let hostingController = UIHostingController(rootView: settingsView)
     self.present(hostingController, animated: true, completion: nil)
