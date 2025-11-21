@@ -2867,6 +2867,59 @@ extension ViewController {
   }
 }
 
+// MARK: - RawSign validation
+@available(iOS 16.0, *)
+extension ViewController {
+    @IBAction func handleValidateRawSign() {
+
+        guard let portal = portal else {
+          self.logger.info("Portal is not initialized")
+          return
+        }
+        
+        Task {
+            do {
+                self.startLoading()
+                let chainId = "eip155:11155111"
+                
+                // 1- Build Transaction
+                let buildTransactionParam = BuildTransactionParam(
+                    to: "0xdFd8302f44727A6348F702fF7B594f127dE3A902",
+                    token: "ETH",
+                    amount: "0.001"
+                )
+                let eip155Transaction = try await self.buildEip155Transaction(params: buildTransactionParam)
+                self.logger.info("ViewController.handleValidateRawSign() - ✅ Successfully fetched buildEip155Transaction.")
+                let transactionJSON = try eip155Transaction.transaction.toJSONString()
+                print(eip155Transaction.transaction)
+                print(transactionJSON)
+                
+                // Convert JSON string to hex-encoded string for rawSign
+                // rawSign expects a hex-encoded string, not a JSON string
+                let transactionHex = transactionJSON.data(using: .utf8)?.map { String(format: "%02x", $0) }.joined() ?? ""
+                
+                print(transactionHex)
+                
+                // 2- RawSign that transaction built in step (1)
+                let response = try await portal.rawSign(message: transactionHex, chainId: chainId)
+                print("RawSign response: \(response)")
+                
+                // 3- Submit it via `eth_sendRawTransaction`
+                if let rawSignResult = response.result as? String {
+                    let sendTransactionResponse = try await portal.request(chainId, withMethod: .eth_sendRawTransaction, andParams: [rawSignResult])
+                    print("eth_sendRawTransaction response: \(sendTransactionResponse)")
+                    self.showStatusView(message: "\(self.successStatus) Successfully Validate RawSign!")
+                }
+                
+            } catch {
+              self.logger.error("Failed Validating RawSign: \(error.localizedDescription)")
+              self.showStatusView(message: "\(self.failureStatus) Validate RawSign FAILED: \(error.localizedDescription)")
+              self.stopLoading()
+            }
+        }
+    }
+}
+
 // MARK: - Helper Functions
 
 /// Includes logging helpers, transaction processing, and yield operation utilities
