@@ -2890,7 +2890,13 @@ extension ViewController {
                 )
                 let eip155Transaction = try await self.buildEip155Transaction(params: buildTransactionParam)
                 self.logger.info("ViewController.handleValidateRawSign() - ✅ Successfully fetched buildEip155Transaction.")
-                let transactionJSON = try eip155Transaction.transaction.toJSONString()
+                
+                // Convert transaction to JSON string
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                let jsonData = try encoder.encode(eip155Transaction.transaction)
+                let transactionJSON = String(data: jsonData, encoding: .utf8) ?? ""
+                
                 print(eip155Transaction.transaction)
                 print(transactionJSON)
                 
