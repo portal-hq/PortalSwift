@@ -13,7 +13,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/Library/Developer/Xcode/DerivedData
-          key: ${{ runner.os }}-derived-data-${{ hashFiles('**/*.xcodeproj', '**/*.xcworkspace', '**/*.swift', '**/*.h', '**/*.m') }}
+          key: ${{ runner.os }}-derived-data-${{ github.run_number }}
           restore-keys: |
             ${{ runner.os }}-derived-data-
 
