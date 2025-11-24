@@ -10,107 +10,136 @@ import AnyCodable
 
 /// - Note: `routes` is required, `unavailableRoutes` is optional
 // MARK: - LifiRoutesResponse
-struct LifiRoutesResponse: Codable {
+public struct LifiRoutesResponse: Codable {
     /// List of possible routes for the given transfer (required)
-    let routes: [LifiRoute]
+    public let routes: [LifiRoute]
     /// Routes that are unavailable for the given transfer (optional)
-    let unavailableRoutes: LifiUnavailableRoutes?
+    public let unavailableRoutes: LifiUnavailableRoutes?
 }
 
 /// A route that can be used to realize a token transfer
 // MARK: - LifiRoute
-struct LifiRoute: Codable {
+public struct LifiRoute: Codable {
     /// Unique identifier of the route
-    let id: String
+    public let id: String
     /// The id of the sending chain
-    let fromChainId: Int
+    public let fromChainId: Int
     /// The amount that should be transferred in USD
-    let fromAmountUSD: String
+    public let fromAmountUSD: String
     /// The amount that should be transferred including all decimals
-    let fromAmount: String
+    public let fromAmount: String
     /// The sending Token
-    let fromToken: LifiToken
+    public let fromToken: LifiToken
     /// The id of the receiving chain
-    let toChainId: Int
+    public let toChainId: Int
     /// The estimated resulting amount of the toToken in USD as float with two decimals
-    let toAmountUSD: String
+    public let toAmountUSD: String
     /// The estimated resulting amount of the toToken including all decimals
-    let toAmount: String
+    public let toAmount: String
     /// The minimal resulting amount of the toToken including all decimals
-    let toAmountMin: String
+    public let toAmountMin: String
     /// The Token that should be transferred to
-    let toToken: LifiToken
+    public let toToken: LifiToken
     /// The steps required to fulfill the transfer
-    let steps: [LifiStep]
+    public let steps: [LifiStep]
     /// Aggregation of the underlying gas costs in USD
-    let gasCostUSD: String?
+    public let gasCostUSD: String?
     /// The sending wallet address
-    let fromAddress: String?
+    public let fromAddress: String?
     /// The receiving wallet address
-    let toAddress: String?
+    public let toAddress: String?
     /// Whether a chain switch is part of the route
-    let containsSwitchChain: Bool?
+    public let containsSwitchChain: Bool?
 }
 
 /// Token information
 // MARK: - LifiToken
-struct LifiToken: Codable {
+public struct LifiToken: Codable {
     /// Address of the token
-    let address: String
+    public let address: String
     /// Symbol of the token
-    let symbol: String
+    public let symbol: String
     /// Number of decimals the token uses
-    let decimals: Int
+    public let decimals: Int
     /// Id of the token's chain
-    let chainId: Int
+    public let chainId: Int
     /// Name of the token
-    let name: String
+    public let name: String
     /// Identifier for the token
-    let coinKey: String?
+    public let coinKey: String?
     /// Logo of the token
-    let logoURI: String?
+    public let logoURI: String?
     /// Token price in USD
-    let priceUSD: String?
+    public let priceUSD: String?
+    
+    public init(address: String, symbol: String, decimals: Int, chainId: Int, name: String, coinKey: String?, logoURI: String?, priceUSD: String?) {
+        self.address = address
+        self.symbol = symbol
+        self.decimals = decimals
+        self.chainId = chainId
+        self.name = name
+        self.coinKey = coinKey
+        self.logoURI = logoURI
+        self.priceUSD = priceUSD
+    }
 }
 
 /// Step in a route
 // MARK: - LifiStep
-struct LifiStep: Codable {
+public struct LifiStep: Codable {
     /// Unique identifier of the step
-    let id: String
+    public let id: String
     /// The type of the step (swap, cross, or lifi)
-    let type: LifiStepType
+    public let type: LifiStepType
     /// The tool used for this step. E.g. relay
-    let tool: String
+    public let tool: String
     /// The action of the step
-    let action: LifiAction
+    public let action: LifiAction
     /// The details of the tool used for this step. E.g. relay
-    let toolDetails: LifiToolDetails?
+    public let toolDetails: LifiToolDetails?
     /// The estimation for the step
-    let estimate: LifiEstimate?
+    public let estimate: LifiEstimate?
     /// Internal steps included in this step
-    let includedSteps: [LifiInternalStep]?
+    public let includedSteps: [LifiInternalStep]?
     /// A string containing tracking information about the integrator of the API
-    let integrator: String?
+    public let integrator: String?
     /// A string containing tracking information about the referrer of the integrator
-    let referrer: String?
+    public let referrer: String?
     /// An object containing status information about the execution
-    let execution: AnyCodable?
+    public let execution: AnyCodable?
     /// An ether.js TransactionRequest that can be triggered using a wallet provider
-    let transactionRequest: AnyCodable?
+    public let transactionRequest: AnyCodable?
     /// Aggregation of the underlying gas costs in USD
-    let gasCostUSD: String?
+    public let gasCostUSD: String?
     /// The sending wallet address
-    let fromAddress: String?
+    public let fromAddress: String?
     /// The receiving wallet address
-    let toAddress: String?
+    public let toAddress: String?
     /// Whether a chain switch is part of the route
-    let containsSwitchChain: Bool?
+    public let containsSwitchChain: Bool?
+    
+    public init(id: String, type: LifiStepType, tool: String, action: LifiAction, toolDetails: LifiToolDetails?, estimate: LifiEstimate?, includedSteps: [LifiInternalStep]?, integrator: String?, referrer: String?, execution: AnyCodable?, transactionRequest: AnyCodable?, gasCostUSD: String?, fromAddress: String?, toAddress: String?, containsSwitchChain: Bool?) {
+        self.id = id
+        self.type = type
+        self.tool = tool
+        self.action = action
+        self.toolDetails = toolDetails
+        self.estimate = estimate
+        self.includedSteps = includedSteps
+        self.integrator = integrator
+        self.referrer = referrer
+        self.execution = execution
+        self.transactionRequest = transactionRequest
+        self.gasCostUSD = gasCostUSD
+        self.fromAddress = fromAddress
+        self.toAddress = toAddress
+        self.containsSwitchChain = containsSwitchChain
+    }
 }
 
 /// Type of step in a route
 // MARK: - LifiStepType
-enum LifiStepType: String, Codable {
+public enum LifiStepType: String, Codable {
     /// Swap step
     case swap = "swap"
     /// Cross-chain step
@@ -121,104 +150,135 @@ enum LifiStepType: String, Codable {
 
 /// Tool details
 // MARK: - LifiToolDetails
-struct LifiToolDetails: Codable {
+public struct LifiToolDetails: Codable {
     /// The tool key
-    let key: String?
+    public let key: String?
     /// The tool name
-    let name: String?
+    public let name: String?
     /// The tool logo URL
-    let logoURI: String?
+    public let logoURI: String?
+    
+    public init(key: String?, name: String?, logoURI: String?) {
+        self.key = key
+        self.name = name
+        self.logoURI = logoURI
+    }
 }
 
 /// Action within a step
 // MARK: - LifiAction
-struct LifiAction: Codable {
+public struct LifiAction: Codable {
     /// The id of the chain where the transfer should start
-    let fromChainId: Int
+    public let fromChainId: Int
     /// The amount that should be transferred including all decimals
-    let fromAmount: String
+    public let fromAmount: String
     /// The sending token
-    let fromToken: LifiToken
+    public let fromToken: LifiToken
     /// The id of the chain where the transfer should end
-    let toChainId: Int
+    public let toChainId: Int
     /// The token that should be transferred to
-    let toToken: LifiToken
+    public let toToken: LifiToken
     /// The maximum allowed slippage
-    let slippage: Double?
+    public let slippage: Double?
     /// The sending wallet address
-    let fromAddress: String?
+    public let fromAddress: String?
     /// The receiving wallet address
-    let toAddress: String?
+    public let toAddress: String?
+    
+    public init(fromChainId: Int, fromAmount: String, fromToken: LifiToken, toChainId: Int, toToken: LifiToken, slippage: Double?, fromAddress: String?, toAddress: String?) {
+        self.fromChainId = fromChainId
+        self.fromAmount = fromAmount
+        self.fromToken = fromToken
+        self.toChainId = toChainId
+        self.toToken = toToken
+        self.slippage = slippage
+        self.fromAddress = fromAddress
+        self.toAddress = toAddress
+    }
 }
 
 /// Estimate for a step
 // MARK: - LifiEstimate
-struct LifiEstimate: Codable {
+public struct LifiEstimate: Codable {
     /// The tool that is being used for this step
-    let tool: String
+    public let tool: String
     /// The amount that should be transferred including all decimals
-    let fromAmount: String
+    public let fromAmount: String
     /// The estimated resulting amount of the toToken including all decimals
-    let toAmount: String
+    public let toAmount: String
     /// The minimal outcome of the transfer including all decimals
-    let toAmountMin: String
+    public let toAmountMin: String
     /// The contract address for the approval
-    let approvalAddress: String
+    public let approvalAddress: String
     /// The time needed to complete the following step (in seconds)
-    let executionDuration: Int
+    public let executionDuration: Int
     /// The amount that should be transferred in USD equivalent
-    let fromAmountUSD: String?
+    public let fromAmountUSD: String?
     /// The estimated resulting amount of the toToken in USD equivalent
-    let toAmountUSD: String?
+    public let toAmountUSD: String?
     /// Fees included in the transfer
-    let feeCosts: [LifiFeeCost]?
+    public let feeCosts: [LifiFeeCost]?
     /// Gas costs included in the transfer
-    let gasCosts: [LifiGasCost]?
+    public let gasCosts: [LifiGasCost]?
     /// Arbitrary data that depends on the used tool
-    let data: LifiEstimateData?
+    public let data: LifiEstimateData?
+    
+    public init(tool: String, fromAmount: String, toAmount: String, toAmountMin: String, approvalAddress: String, executionDuration: Int, fromAmountUSD: String?, toAmountUSD: String?, feeCosts: [LifiFeeCost]?, gasCosts: [LifiGasCost]?, data: LifiEstimateData?) {
+        self.tool = tool
+        self.fromAmount = fromAmount
+        self.toAmount = toAmount
+        self.toAmountMin = toAmountMin
+        self.approvalAddress = approvalAddress
+        self.executionDuration = executionDuration
+        self.fromAmountUSD = fromAmountUSD
+        self.toAmountUSD = toAmountUSD
+        self.feeCosts = feeCosts
+        self.gasCosts = gasCosts
+        self.data = data
+    }
 }
 
 /// Fee cost information
 // MARK: - LifiFeeCost
-struct LifiFeeCost: Codable {
+public struct LifiFeeCost: Codable {
     /// Name of the fee
-    let name: String
+    public let name: String
     /// Percentage of how much fees are taken
-    let percentage: String
+    public let percentage: String
     /// The Token in which the fees are taken
-    let token: LifiToken
+    public let token: LifiToken
     /// The amount of fees in USD
-    let amountUSD: String
+    public let amountUSD: String
     /// Whether fee is included into transfer's fromAmount
-    let included: Bool
+    public let included: Bool
     /// Description of the fee costs
-    let description: String?
+    public let description: String?
     /// The amount of fees
-    let amount: String?
+    public let amount: String?
 }
 
 /// Gas cost information
 // MARK: - LifiGasCost
-struct LifiGasCost: Codable {
+public struct LifiGasCost: Codable {
     /// Can be one of SUM, APPROVE or SEND
-    let type: LifiGasCostType
+    public let type: LifiGasCostType
     /// Amount of the gas cost
-    let amount: String
+    public let amount: String
     /// The used gas token
-    let token: LifiToken
+    public let token: LifiToken
     /// Suggested current standard price for the chain
-    let price: String?
+    public let price: String?
     /// Estimation how much gas will be needed
-    let estimate: String?
+    public let estimate: String?
     /// Suggested gas limit
-    let limit: String?
+    public let limit: String?
     /// Amount of the gas cost in USD
-    let amountUSD: String?
+    public let amountUSD: String?
 }
 
 /// Type of gas cost
 // MARK: - LifiGasCostType
-enum LifiGasCostType: String, Codable {
+public enum LifiGasCostType: String, Codable {
     /// Sum of gas costs
     case sum = "SUM"
     /// Gas cost for approval
@@ -229,131 +289,131 @@ enum LifiGasCostType: String, Codable {
 
 /// Estimate data (arbitrary data that depends on the tool)
 // MARK: - LifiEstimateData
-struct LifiEstimateData: Codable {
+public struct LifiEstimateData: Codable {
     /// Bid information for the transfer
-    let bid: LifiBid?
+    public let bid: LifiBid?
     /// Bid signature
-    let bidSignature: String?
+    public let bidSignature: String?
     /// Gas fee in receiving token
-    let gasFeeInReceivingToken: String?
+    public let gasFeeInReceivingToken: String?
     /// Total fee
-    let totalFee: String?
+    public let totalFee: String?
     /// Meta transaction relayer fee
-    let metaTxRelayerFee: String?
+    public let metaTxRelayerFee: String?
     /// Router fee
-    let routerFee: String?
+    public let routerFee: String?
 }
 
 /// Bid information
 // MARK: - LifiBid
-struct LifiBid: Codable {
+public struct LifiBid: Codable {
     /// User address
-    let user: String?
+    public let user: String?
     /// Router address
-    let router: String?
+    public let router: String?
     /// Initiator address
-    let initiator: String?
+    public let initiator: String?
     /// Sending chain ID
-    let sendingChainId: Int?
+    public let sendingChainId: Int?
     /// Sending asset ID (token address)
-    let sendingAssetId: String?
+    public let sendingAssetId: String?
     /// Amount to send
-    let amount: String?
+    public let amount: String?
     /// Receiving chain ID
-    let receivingChainId: Int?
+    public let receivingChainId: Int?
     /// Receiving asset ID (token address)
-    let receivingAssetId: String?
+    public let receivingAssetId: String?
     /// Amount to receive
-    let amountReceived: String?
+    public let amountReceived: String?
     /// Receiving address
-    let receivingAddress: String?
+    public let receivingAddress: String?
     /// Transaction ID
-    let transactionId: String?
+    public let transactionId: String?
     /// Expiry timestamp
-    let expiry: Int?
+    public let expiry: Int?
     /// Call data hash
-    let callDataHash: String?
+    public let callDataHash: String?
     /// Call to address
-    let callTo: String?
+    public let callTo: String?
     /// Encrypted call data
-    let encryptedCallData: String?
+    public let encryptedCallData: String?
     /// Sending chain transaction manager address
-    let sendingChainTxManagerAddress: String?
+    public let sendingChainTxManagerAddress: String?
     /// Receiving chain transaction manager address
-    let receivingChainTxManagerAddress: String?
+    public let receivingChainTxManagerAddress: String?
     /// Bid expiry timestamp
-    let bidExpiry: Int?
+    public let bidExpiry: Int?
 }
 
 /// Internal step (used in includedSteps)
 // MARK: - LifiInternalStep
-struct LifiInternalStep: Codable {
+public struct LifiInternalStep: Codable {
     /// Unique identifier of the step
-    let id: String
+    public let id: String
     /// The type of the step (swap, cross, or lifi)
-    let type: LifiStepType
+    public let type: LifiStepType
     /// The tool used for this step. E.g. allbridge
-    let tool: String
+    public let tool: String
     /// The details of the tool used for this step. E.g. allbridge
-    let toolDetails: LifiToolDetails
+    public let toolDetails: LifiToolDetails
     /// Object describing what happens in a Step
-    let action: LifiAction
+    public let action: LifiAction
     /// An estimate for the current transfer
-    let estimate: LifiEstimate
+    public let estimate: LifiEstimate
 }
 
 /// Unavailable routes information
 // MARK: - LifiUnavailableRoutes
-struct LifiUnavailableRoutes: Codable {
+public struct LifiUnavailableRoutes: Codable {
     /// An object containing information about routes that were intentionally filtered out
-    let filteredOut: [LifiFilteredRoute]?
+    public let filteredOut: [LifiFilteredRoute]?
     /// An object containing information about failed routes
-    let failed: [LifiFailedRoute]?
+    public let failed: [LifiFailedRoute]?
 }
 
 /// Filtered out route
 // MARK: - LifiFilteredRoute
-struct LifiFilteredRoute: Codable {
+public struct LifiFilteredRoute: Codable {
     /// The complete representation of the attempted route (e.g., "100:USDC-hop-137:USDC-137:USDC~137:SUSHI")
-    let overallPath: String?
+    public let overallPath: String?
     /// Our best attempt at describing the failure
-    let reason: String?
+    public let reason: String?
 }
 
 /// Failed route
 // MARK: - LifiFailedRoute
-struct LifiFailedRoute: Codable {
+public struct LifiFailedRoute: Codable {
     /// The complete representation of the attempted route (e.g., "100:USDC-hop-137:USDC-137:USDC~137:SUSHI")
-    let overallPath: String?
+    public let overallPath: String?
     /// An object with all subpaths that generated one or more errors
-    let subpaths: [String: LifiSubpathError]?
+    public let subpaths: [String: LifiSubpathError]?
 }
 
 /// Subpath error information
 // MARK: - LifiSubpathError
-struct LifiSubpathError: Codable {
+public struct LifiSubpathError: Codable {
     /// The type of error that occurred
-    let errorType: LifiErrorType?
+    public let errorType: LifiErrorType?
     /// The error code
-    let code: LifiErrorCode?
+    public let code: LifiErrorCode?
     /// Object describing what happens in a Step
-    let action: LifiAction?
+    public let action: LifiAction?
     /// The tool that emitted the error
-    let tool: String?
+    public let tool: String?
     /// A human-readable message describing the error
-    let message: String?
+    public let message: String?
 }
 
 /// Error type
 // MARK: - LifiErrorType
-enum LifiErrorType: String, Codable {
+public enum LifiErrorType: String, Codable {
     /// No quote available
     case noQuote = "NO_QUOTE"
 }
 
 /// Error code
 // MARK: - LifiErrorCode
-enum LifiErrorCode: String, Codable {
+public enum LifiErrorCode: String, Codable {
     /// No possible route found
     case noPossibleRoute = "NO_POSSIBLE_ROUTE"
     /// Insufficient liquidity

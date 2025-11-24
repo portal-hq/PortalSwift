@@ -9,95 +9,95 @@ import Foundation
 
 /// Contains the current status of a cross chain transfer
 // MARK: - LifiStatusResponse
-struct LifiStatusResponse: Codable {
+public struct LifiStatusResponse: Codable {
     /// The transaction on the sending chain (required)
-    let sending: LifiTransactionInfo
+    public let sending: LifiTransactionInfo
     /// The transaction on the receiving chain
-    let receiving: LifiTransactionInfo?
+    public let receiving: LifiTransactionInfo?
     /// An array of fee costs for the transaction
-    let feeCosts: [LifiFeeCost]?
+    public let feeCosts: [LifiFeeCost]?
     /// The current status of the transfer (required)
-    let status: LifiTransferStatus
+    public let status: LifiTransferStatus
     /// A more specific substatus (available for PENDING and DONE statuses)
-    let substatus: LifiTransferSubstatus?
+    public let substatus: LifiTransferSubstatus?
     /// A message that describes the substatus
-    let substatusMessage: String?
+    public let substatusMessage: String?
     /// The tool used for this transfer (required)
-    let tool: String
+    public let tool: String
     /// The ID of this transfer (NOT a transaction hash)
-    let transactionId: String?
+    public let transactionId: String?
     /// The address of the sender
-    let fromAddress: String?
+    public let fromAddress: String?
     /// The address of the receiver
-    let toAddress: String?
+    public let toAddress: String?
     /// The link to the LI.FI explorer
-    let lifiExplorerLink: String?
+    public let lifiExplorerLink: String?
     /// The link to the bridge explorer
-    let bridgeExplorerLink: String?
+    public let bridgeExplorerLink: String?
     /// The transaction metadata which includes integrator's string, etc.
-    let metadata: LifiMetadata?
+    public let metadata: LifiMetadata?
 }
 
 /// Transaction information
 // MARK: - LifiTransactionInfo
-struct LifiTransactionInfo: Codable {
+public struct LifiTransactionInfo: Codable {
     /// The hash of the transaction (required)
-    let txHash: String
+    public let txHash: String
     /// Link to a block explorer showing the transaction (required)
-    let txLink: String
+    public let txLink: String
     /// The amount of the transaction (required)
-    let amount: String
+    public let amount: String
     /// Information about the token (required)
-    let token: LifiToken
+    public let token: LifiToken
     /// The id of the chain (required)
-    let chainId: Int
+    public let chainId: Int
     /// The token in which gas was paid
-    let gasToken: LifiToken?
+    public let gasToken: LifiToken?
     /// The amount of the gas that was paid
-    let gasAmount: String?
+    public let gasAmount: String?
     /// The amount of the gas that was paid in USD
-    let gasAmountUSD: String?
+    public let gasAmountUSD: String?
     /// The price of the gas
-    let gasPrice: String?
+    public let gasPrice: String?
     /// The amount of the gas that was used
-    let gasUsed: String?
+    public let gasUsed: String?
     /// The transaction timestamp
-    let timestamp: Int?
+    public let timestamp: Int?
     /// The transaction value
-    let value: String?
+    public let value: String?
     /// An array of swap or protocol steps included in the LI.FI transaction
-    let includedSteps: [LifiIncludedSwapStep]?
+    public let includedSteps: [LifiIncludedSwapStep]?
 }
 
 /// Included swap or protocol step in the status response
 // MARK: - LifiIncludedSwapStep
-struct LifiIncludedSwapStep: Codable {
+public struct LifiIncludedSwapStep: Codable {
     /// The tool used for this step
-    let tool: String?
+    public let tool: String?
     /// The details of the tool used for this step (e.g. `1inch` or `feeProtocol`)
-    let toolDetails: LifiToolDetails?
+    public let toolDetails: LifiToolDetails?
     /// The amount that was sent to the tool
-    let fromAmount: String?
+    public let fromAmount: String?
     /// The token that was sent to the tool
-    let fromToken: String?
+    public let fromToken: String?
     /// The amount that was received from the tool
-    let toAmount: String?
+    public let toAmount: String?
     /// The token that was received from the tool
-    let toToken: String?
+    public let toToken: String?
     /// The amount that was sent to the bridge
-    let bridgedAmount: String?
+    public let bridgedAmount: String?
 }
 
 /// Transaction metadata
 // MARK: - LifiMetadata
-struct LifiMetadata: Codable {
+public struct LifiMetadata: Codable {
     /// Integrator ID
-    let integrator: String?
+    public let integrator: String?
 }
 
 /// The current status of the transfer
 // MARK: - LifiTransferStatus
-enum LifiTransferStatus: String, Codable {
+public enum LifiTransferStatus: String, Codable {
     /// Transaction not found
     case notFound = "NOT_FOUND"
     /// Invalid transaction
@@ -112,7 +112,7 @@ enum LifiTransferStatus: String, Codable {
 
 /// A more specific substatus for PENDING and DONE statuses
 // MARK: - LifiTransferSubstatus
-enum LifiTransferSubstatus: String, Codable {
+public enum LifiTransferSubstatus: String, Codable {
     /// Waiting for source chain confirmations
     case waitSourceConfirmations = "WAIT_SOURCE_CONFIRMATIONS"
     /// Waiting for destination transaction

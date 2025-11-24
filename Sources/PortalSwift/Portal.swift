@@ -40,6 +40,9 @@ public final class Portal: PortalProtocol {
   /// Access to yield-related functionality.
   public lazy var yield: Yield = .init(api: self.api)
 
+  /// Access to swap-related functionality.
+  public lazy var swap: Swap = .init(api: self.api)
+
   private let apiHost: String
   private var backup: BackupOptions?
   private let binary: Mobile

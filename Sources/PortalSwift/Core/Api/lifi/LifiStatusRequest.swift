@@ -9,20 +9,27 @@ import Foundation
 
 /// Used to check the status of a cross chain transfer
 // MARK: - LifiStatusRequest
-struct LifiStatusRequest: Codable {
+public struct LifiStatusRequest: Codable {
     /// The transaction hash on the sending chain, destination chain or lifi step id (required)
-    let txHash: String
+    public let txHash: String
     /// The bridging tool used for the transfer
-    let bridge: LifiStatusBridge?
+    public let bridge: LifiStatusBridge?
     /// The sending chain. Can be the chain id or chain key
-    let fromChain: String?
+    public let fromChain: String?
     /// The receiving chain. Can be the chain id or chain key
-    let toChain: String?
+    public let toChain: String?
+    
+    public init(txHash: String, bridge: LifiStatusBridge? = nil, fromChain: String? = nil, toChain: String? = nil) {
+        self.txHash = txHash
+        self.bridge = bridge
+        self.fromChain = fromChain
+        self.toChain = toChain
+    }
 }
 
 /// Bridging tools supported for status check
 // MARK: - LifiStatusBridge
-enum LifiStatusBridge: String, Codable {
+public enum LifiStatusBridge: String, Codable {
     case hop = "hop"
     case cbridge = "cbridge"
     case celercircle = "celercircle"

@@ -8,4 +8,4 @@
 import Foundation
 
 // MARK: - LifiStepTransactionRequest
-typealias LifiStepTransactionRequest = LifiStep
+public typealias LifiStepTransactionRequest = LifiStep

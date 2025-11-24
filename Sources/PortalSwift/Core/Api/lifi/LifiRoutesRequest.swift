@@ -9,70 +9,103 @@ import Foundation
 
 /// Describes a desired any-to-any transfer and contains all information necessary to calculate the most efficient routes
 // MARK: - LifiRoutesRequest
-struct LifiRoutesRequest: Codable {
+public struct LifiRoutesRequest: Codable {
     /// The sending chain id (required)
-    let fromChainId: Int
+    public let fromChainId: Int
     /// The amount that should be transferred including all decimals (e.g. 1000000 for 1 USDC (6 decimals)) (required)
-    let fromAmount: String
+    public let fromAmount: String
     /// The address of the sending Token (required)
-    let fromTokenAddress: String
+    public let fromTokenAddress: String
     /// The id of the receiving chain (required)
-    let toChainId: Int
+    public let toChainId: Int
     /// The address of the receiving Token (required)
-    let toTokenAddress: String
+    public let toTokenAddress: String
     /// Optional configuration for the routes
-    let options: LifiRoutesRequestOptions?
+    public let options: LifiRoutesRequestOptions?
     /// The sending wallet address
-    let fromAddress: String?
+    public let fromAddress: String?
     /// The receiving wallet address
-    let toAddress: String?
+    public let toAddress: String?
     /// The amount of the token to convert to gas on the destination side
-    let fromAmountForGas: String?
+    public let fromAmountForGas: String?
+    
+    public init(fromChainId: Int, fromAmount: String, fromTokenAddress: String, toChainId: Int, toTokenAddress: String, options: LifiRoutesRequestOptions? = nil, fromAddress: String? = nil, toAddress: String? = nil, fromAmountForGas: String? = nil) {
+        self.fromChainId = fromChainId
+        self.fromAmount = fromAmount
+        self.fromTokenAddress = fromTokenAddress
+        self.toChainId = toChainId
+        self.toTokenAddress = toTokenAddress
+        self.options = options
+        self.fromAddress = fromAddress
+        self.toAddress = toAddress
+        self.fromAmountForGas = fromAmountForGas
+    }
 }
 
 /// Optional configuration for the routes
 // MARK: - LifiRoutesRequestOptions
-struct LifiRoutesRequestOptions: Codable {
+public struct LifiRoutesRequestOptions: Codable {
     /// Facilitates transfer insurance via insurace.io, ensuring secure and insured transfer of assets (deprecated)
-    let insurance: Bool?
+    public let insurance: Bool?
     /// Custom string the developer who integrates LiFi can set
-    let integrator: String?
+    public let integrator: String?
     /// The maximum allowed slippage
-    let slippage: Double?
+    public let slippage: Double?
     /// Object configuring the bridges that should or should not be taken into consideration for the possibilities
-    let bridges: LifiToolsConfiguration?
+    public let bridges: LifiToolsConfiguration?
     /// Object configuring the exchanges that should or should not be taken into consideration for the possibilities
-    let exchanges: LifiToolsConfiguration?
+    public let exchanges: LifiToolsConfiguration?
     /// The way the resulting routes should be ordered
-    let order: LifiRoutesOrder?
+    public let order: LifiRoutesOrder?
     /// Whether chain switches should be allowed in the routes (default: false)
-    let allowSwitchChain: Bool?
+    public let allowSwitchChain: Bool?
     /// Defines if we should return routes with a cross-chain bridge protocol (Connext, etc.) destination calls or not (default: true)
-    let allowDestinationCall: Bool?
+    public let allowDestinationCall: Bool?
     /// Integrators can set a wallet address as referrer to track them
-    let referrer: String?
+    public let referrer: String?
     /// The percent of the integrator's fee that is taken from every transaction. The maximum fee amount should be less than 100%. Required range: 0 <= x < 1
-    let fee: Double?
+    public let fee: Double?
     /// The price impact threshold above which routes are hidden. As an example, one should specify 0.15 (15%) to hide routes with more than 15% price impact. The default is 10%.
-    let maxPriceImpact: Double?
+    public let maxPriceImpact: Double?
     /// Timing settings for route and swap steps
-    let timing: LifiTimingOptions?
+    public let timing: LifiTimingOptions?
+    
+    public init(insurance: Bool? = nil, integrator: String? = nil, slippage: Double? = nil, bridges: LifiToolsConfiguration? = nil, exchanges: LifiToolsConfiguration? = nil, order: LifiRoutesOrder? = nil, allowSwitchChain: Bool? = nil, allowDestinationCall: Bool? = nil, referrer: String? = nil, fee: Double? = nil, maxPriceImpact: Double? = nil, timing: LifiTimingOptions? = nil) {
+        self.insurance = insurance
+        self.integrator = integrator
+        self.slippage = slippage
+        self.bridges = bridges
+        self.exchanges = exchanges
+        self.order = order
+        self.allowSwitchChain = allowSwitchChain
+        self.allowDestinationCall = allowDestinationCall
+        self.referrer = referrer
+        self.fee = fee
+        self.maxPriceImpact = maxPriceImpact
+        self.timing = timing
+    }
 }
 
 /// Configuration for bridges or exchanges (allow, deny, prefer)
 // MARK: - LifiToolsConfiguration
-struct LifiToolsConfiguration: Codable {
+public struct LifiToolsConfiguration: Codable {
     /// Allowed tools
-    let allow: [String]?
+    public let allow: [String]?
     /// Forbidden tools
-    let deny: [String]?
+    public let deny: [String]?
     /// Preferred tools
-    let prefer: [String]?
+    public let prefer: [String]?
+    
+    public init(allow: [String]? = nil, deny: [String]? = nil, prefer: [String]? = nil) {
+        self.allow = allow
+        self.deny = deny
+        self.prefer = prefer
+    }
 }
 
 /// The way the resulting routes should be ordered
 // MARK: - LifiRoutesOrder
-enum LifiRoutesOrder: String, Codable {
+public enum LifiRoutesOrder: String, Codable {
     /// Order by fastest route
     case fastest = "FASTEST"
     /// Order by cheapest route
@@ -81,29 +114,41 @@ enum LifiRoutesOrder: String, Codable {
 
 /// Timing options for routes and swap steps
 // MARK: - LifiTimingOptions
-struct LifiTimingOptions: Codable {
+public struct LifiTimingOptions: Codable {
     /// Timing setting to wait for a certain amount of swap rates
-    let swapStepTimingStrategies: [LifiTimingStrategy]?
+    public let swapStepTimingStrategies: [LifiTimingStrategy]?
     /// Timing setting to wait for a certain amount of routes to be generated before choosing the best one
-    let routeTimingStrategies: [LifiTimingStrategy]?
+    public let routeTimingStrategies: [LifiTimingStrategy]?
+    
+    public init(swapStepTimingStrategies: [LifiTimingStrategy]? = nil, routeTimingStrategies: [LifiTimingStrategy]? = nil) {
+        self.swapStepTimingStrategies = swapStepTimingStrategies
+        self.routeTimingStrategies = routeTimingStrategies
+    }
 }
 
 /// Timing strategy configuration
 // MARK: - LifiTimingStrategy
-struct LifiTimingStrategy: Codable {
+public struct LifiTimingStrategy: Codable {
     /// The timing strategy type
-    let strategy: LifiTimingStrategyType?
+    public let strategy: LifiTimingStrategyType?
     /// Minimum wait time in milliseconds (range: 0 <= x <= 15000)
-    let minWaitTimeMs: Int?
+    public let minWaitTimeMs: Int?
     /// Starting expected results (range: 0 <= x <= 100)
-    let startingExpectedResults: Int?
+    public let startingExpectedResults: Int?
     /// Reduce every milliseconds (range: 0 <= x <= 15000)
-    let reduceEveryMs: Int?
+    public let reduceEveryMs: Int?
+    
+    public init(strategy: LifiTimingStrategyType? = nil, minWaitTimeMs: Int? = nil, startingExpectedResults: Int? = nil, reduceEveryMs: Int? = nil) {
+        self.strategy = strategy
+        self.minWaitTimeMs = minWaitTimeMs
+        self.startingExpectedResults = startingExpectedResults
+        self.reduceEveryMs = reduceEveryMs
+    }
 }
 
 /// Type of timing strategy
 // MARK: - LifiTimingStrategyType
-enum LifiTimingStrategyType: String, Codable {
+public enum LifiTimingStrategyType: String, Codable {
     /// Minimum wait time strategy
     case minWaitTime = "minWaitTime"
 }
