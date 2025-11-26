@@ -11,13 +11,13 @@ import Foundation
 // MARK: - LifiRoutesRequest
 public struct LifiRoutesRequest: Codable {
     /// The sending chain id (required)
-    public let fromChainId: Int
+    public let fromChainId: String
     /// The amount that should be transferred including all decimals (e.g. 1000000 for 1 USDC (6 decimals)) (required)
     public let fromAmount: String
     /// The address of the sending Token (required)
     public let fromTokenAddress: String
     /// The id of the receiving chain (required)
-    public let toChainId: Int
+    public let toChainId: String
     /// The address of the receiving Token (required)
     public let toTokenAddress: String
     /// Optional configuration for the routes
@@ -29,7 +29,7 @@ public struct LifiRoutesRequest: Codable {
     /// The amount of the token to convert to gas on the destination side
     public let fromAmountForGas: String?
     
-    public init(fromChainId: Int, fromAmount: String, fromTokenAddress: String, toChainId: Int, toTokenAddress: String, options: LifiRoutesRequestOptions? = nil, fromAddress: String? = nil, toAddress: String? = nil, fromAmountForGas: String? = nil) {
+    public init(fromChainId: String, fromAmount: String, fromTokenAddress: String, toChainId: String, toTokenAddress: String, options: LifiRoutesRequestOptions? = nil, fromAddress: String? = nil, toAddress: String? = nil, fromAmountForGas: String? = nil) {
         self.fromChainId = fromChainId
         self.fromAmount = fromAmount
         self.fromTokenAddress = fromTokenAddress

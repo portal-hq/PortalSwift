@@ -23,7 +23,7 @@ public struct LifiRoute: Codable {
     /// Unique identifier of the route
     public let id: String
     /// The id of the sending chain
-    public let fromChainId: Int
+    public let fromChainId: String
     /// The amount that should be transferred in USD
     public let fromAmountUSD: String
     /// The amount that should be transferred including all decimals
@@ -31,7 +31,7 @@ public struct LifiRoute: Codable {
     /// The sending Token
     public let fromToken: LifiToken
     /// The id of the receiving chain
-    public let toChainId: Int
+    public let toChainId: String
     /// The estimated resulting amount of the toToken in USD as float with two decimals
     public let toAmountUSD: String
     /// The estimated resulting amount of the toToken including all decimals
@@ -62,7 +62,7 @@ public struct LifiToken: Codable {
     /// Number of decimals the token uses
     public let decimals: Int
     /// Id of the token's chain
-    public let chainId: Int
+    public let chainId: String
     /// Name of the token
     public let name: String
     /// Identifier for the token
@@ -72,7 +72,7 @@ public struct LifiToken: Codable {
     /// Token price in USD
     public let priceUSD: String?
     
-    public init(address: String, symbol: String, decimals: Int, chainId: Int, name: String, coinKey: String?, logoURI: String?, priceUSD: String?) {
+    public init(address: String, symbol: String, decimals: Int, chainId: String, name: String, coinKey: String?, logoURI: String?, priceUSD: String?) {
         self.address = address
         self.symbol = symbol
         self.decimals = decimals
@@ -169,13 +169,13 @@ public struct LifiToolDetails: Codable {
 // MARK: - LifiAction
 public struct LifiAction: Codable {
     /// The id of the chain where the transfer should start
-    public let fromChainId: Int
+    public let fromChainId: String
     /// The amount that should be transferred including all decimals
     public let fromAmount: String
     /// The sending token
     public let fromToken: LifiToken
     /// The id of the chain where the transfer should end
-    public let toChainId: Int
+    public let toChainId: String
     /// The token that should be transferred to
     public let toToken: LifiToken
     /// The maximum allowed slippage
@@ -185,7 +185,7 @@ public struct LifiAction: Codable {
     /// The receiving wallet address
     public let toAddress: String?
     
-    public init(fromChainId: Int, fromAmount: String, fromToken: LifiToken, toChainId: Int, toToken: LifiToken, slippage: Double?, fromAddress: String?, toAddress: String?) {
+    public init(fromChainId: String, fromAmount: String, fromToken: LifiToken, toChainId: String, toToken: LifiToken, slippage: Double?, fromAddress: String?, toAddress: String?) {
         self.fromChainId = fromChainId
         self.fromAmount = fromAmount
         self.fromToken = fromToken
@@ -314,13 +314,13 @@ public struct LifiBid: Codable {
     /// Initiator address
     public let initiator: String?
     /// Sending chain ID
-    public let sendingChainId: Int?
+    public let sendingChainId: String?
     /// Sending asset ID (token address)
     public let sendingAssetId: String?
     /// Amount to send
     public let amount: String?
     /// Receiving chain ID
-    public let receivingChainId: Int?
+    public let receivingChainId: String?
     /// Receiving asset ID (token address)
     public let receivingAssetId: String?
     /// Amount to receive

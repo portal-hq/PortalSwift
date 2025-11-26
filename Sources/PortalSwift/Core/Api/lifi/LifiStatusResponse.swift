@@ -50,7 +50,7 @@ public struct LifiTransactionInfo: Codable {
     /// Information about the token (required)
     public let token: LifiToken
     /// The id of the chain (required)
-    public let chainId: Int
+    public let chainId: String
     /// The token in which gas was paid
     public let gasToken: LifiToken?
     /// The amount of the gas that was paid
