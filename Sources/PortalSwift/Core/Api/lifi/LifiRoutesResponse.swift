@@ -109,6 +109,8 @@ public struct LifiStep: Codable {
     public let execution: AnyCodable?
     /// An ether.js TransactionRequest that can be triggered using a wallet provider
     public let transactionRequest: AnyCodable?
+    /// The unique transaction ID for tracking
+    public let transactionId: String?
     /// Aggregation of the underlying gas costs in USD
     public let gasCostUSD: String?
     /// The sending wallet address
@@ -118,7 +120,7 @@ public struct LifiStep: Codable {
     /// Whether a chain switch is part of the route
     public let containsSwitchChain: Bool?
     
-    public init(id: String, type: LifiStepType, tool: String, action: LifiAction, toolDetails: LifiToolDetails?, estimate: LifiEstimate?, includedSteps: [LifiInternalStep]?, integrator: String?, referrer: String?, execution: AnyCodable?, transactionRequest: AnyCodable?, gasCostUSD: String?, fromAddress: String?, toAddress: String?, containsSwitchChain: Bool?) {
+    public init(id: String, type: LifiStepType, tool: String, action: LifiAction, toolDetails: LifiToolDetails?, estimate: LifiEstimate?, includedSteps: [LifiInternalStep]?, integrator: String?, referrer: String?, execution: AnyCodable?, transactionRequest: AnyCodable?, transactionId: String? = nil, gasCostUSD: String?, fromAddress: String?, toAddress: String?, containsSwitchChain: Bool?) {
         self.id = id
         self.type = type
         self.tool = tool
@@ -130,6 +132,7 @@ public struct LifiStep: Codable {
         self.referrer = referrer
         self.execution = execution
         self.transactionRequest = transactionRequest
+        self.transactionId = transactionId
         self.gasCostUSD = gasCostUSD
         self.fromAddress = fromAddress
         self.toAddress = toAddress
@@ -146,6 +149,8 @@ public enum LifiStepType: String, Codable {
     case cross = "cross"
     /// LI.FI step
     case lifi = "lifi"
+    /// Protocol step (fee collection, etc.)
+    case `protocol` = "protocol"
 }
 
 /// Tool details
@@ -184,8 +189,10 @@ public struct LifiAction: Codable {
     public let fromAddress: String?
     /// The receiving wallet address
     public let toAddress: String?
+    /// The amount of gas to be consumed on the destination chain
+    public let destinationGasConsumption: String?
     
-    public init(fromChainId: String, fromAmount: String, fromToken: LifiToken, toChainId: String, toToken: LifiToken, slippage: Double?, fromAddress: String?, toAddress: String?) {
+    public init(fromChainId: String, fromAmount: String, fromToken: LifiToken, toChainId: String, toToken: LifiToken, slippage: Double?, fromAddress: String?, toAddress: String?, destinationGasConsumption: String? = nil) {
         self.fromChainId = fromChainId
         self.fromAmount = fromAmount
         self.fromToken = fromToken
@@ -194,6 +201,7 @@ public struct LifiAction: Codable {
         self.slippage = slippage
         self.fromAddress = fromAddress
         self.toAddress = toAddress
+        self.destinationGasConsumption = destinationGasConsumption
     }
 }
 
@@ -255,6 +263,17 @@ public struct LifiFeeCost: Codable {
     public let description: String?
     /// The amount of fees
     public let amount: String?
+    /// Fee split details between integrator and LI.FI
+    public let feeSplit: LifiFeeSplit?
+}
+
+/// Fee split between integrator and LI.FI
+// MARK: - LifiFeeSplit
+public struct LifiFeeSplit: Codable {
+    /// The integrator's portion of the fee
+    public let integratorFee: String?
+    /// The LI.FI portion of the fee
+    public let lifiFee: String?
 }
 
 /// Gas cost information

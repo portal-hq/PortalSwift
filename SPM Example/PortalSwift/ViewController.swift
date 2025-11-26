@@ -2867,7 +2867,7 @@ extension ViewController {
   }
 }
 
-// MARK: - Helper Functions
+// MARK: - Yield Helper Functions
 
 /// Includes logging helpers, transaction processing, and yield operation utilities
 @available(iOS 16.0, *)
@@ -3104,4 +3104,96 @@ extension ViewController {
     self.logger.error("Transaction \(txHash) not confirmed after \(maxAttempts) attempts")
     return false
   }
+}
+
+// MARK: - Lifi Swap Actions
+@available(iOS 16.0, *)
+extension ViewController {
+    @IBAction func handleGetAQuote() {
+        guard let portal = portal else {
+            self.logger.info("Portal is not initialized")
+            return
+        }
+
+        Task {
+            self.logger.info("Starting Lifi quote request...")
+            do {
+                // Get the user's address from the Ethereum mainnet
+                let chainId = "eip155:1"
+                guard let address = await portal.getAddress(chainId) else {
+                    self.logger.error("Lifi quote FAILED: Could not get address for chain \(chainId)")
+                    self.showStatusView(message: "\(self.failureStatus) Lifi quote: Address not found")
+                    return
+                }
+
+                let request = LifiQuoteRequest(
+                    fromChain: "eip155:1",
+                    toChain: "eip155:137",
+                    fromToken: "ETH",
+                    toToken: "USDC",
+                    fromAddress: address,
+                    fromAmount: "1000000000000000000"
+                )
+
+                let response = try await portal.swap.lifi.getQuote(request: request)
+
+                // Handle success response
+                if let rawResponse = response.data?.rawResponse {
+                    self.logger.info("Lifi quote SUCCESS")
+                    self.showStatusView(message: "\(self.successStatus) Lifi quote")
+
+                    // Log comprehensive results for debugging
+                    self.logLifiQuoteResults(request: request, response: rawResponse)
+                } else {
+                    self.logger.error("Lifi quote FAILED: \(response.error ?? "Unknown error")")
+                    self.showStatusView(message: "\(self.failureStatus) Lifi quote: \(response.error ?? "Unknown error")")
+                }
+            } catch {
+                self.logger.error("Lifi quote FAILED: \(error.localizedDescription)")
+                self.showStatusView(message: "\(self.failureStatus) Lifi quote: \(error.localizedDescription)")
+            }
+        }
+    }
+}
+
+// MARK: - LifiHelper Functions
+@available(iOS 16.0, *)
+extension ViewController {
+    private func logLifiQuoteResults(request: LifiQuoteRequest, response: LifiStep) {
+        self.logger.info("=== Lifi Quote Results ===")
+        self.logger.info("Request: fromChain=\(request.fromChain), toChain=\(request.toChain)")
+        self.logger.info("Request: fromToken=\(request.fromToken), toToken=\(request.toToken)")
+        self.logger.info("Request: fromAmount=\(request.fromAmount)")
+        self.logger.info("Request: fromAddress=\(request.fromAddress)")
+
+        self.logger.info("Response ID: \(response.id)")
+        self.logger.info("Response Type: \(response.type.rawValue)")
+        self.logger.info("Response Tool: \(response.tool)")
+
+        if let estimate = response.estimate {
+            self.logger.info("Estimate: fromAmount=\(estimate.fromAmount), toAmount=\(estimate.toAmount)")
+            self.logger.info("Estimate: toAmountMin=\(estimate.toAmountMin)")
+            self.logger.info("Estimate: executionDuration=\(estimate.executionDuration)s")
+            if let fromAmountUSD = estimate.fromAmountUSD {
+                self.logger.info("Estimate: fromAmountUSD=\(fromAmountUSD)")
+            }
+            if let toAmountUSD = estimate.toAmountUSD {
+                self.logger.info("Estimate: toAmountUSD=\(toAmountUSD)")
+            }
+        }
+
+        if let gasCostUSD = response.gasCostUSD {
+            self.logger.info("Gas Cost USD: \(gasCostUSD)")
+        }
+
+        if response.transactionRequest != nil {
+            self.logger.info("Transaction Request: Available (ready to sign)")
+        } else {
+            self.logger.info("Transaction Request: Not available")
+        }
+
+        if let transactionId = response.transactionId {
+            self.logger.info("Transaction ID: \(transactionId)")
+        }
+    }
 }

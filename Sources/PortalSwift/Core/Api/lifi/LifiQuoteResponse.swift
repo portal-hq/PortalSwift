@@ -7,9 +7,25 @@
 
 import Foundation
 
-/// Returns a Step object which contains information about the estimated result and a transactionRequest
+/// Response containing a quote from the Lifi integration
 // MARK: - LifiQuoteResponse
-public typealias LifiQuoteResponse = LifiStep
+public struct LifiQuoteResponse: Codable {
+    public let data: LifiQuoteData?
+    public let error: String?
+
+    public init(data: LifiQuoteData? = nil, error: String? = nil) {
+        self.data = data
+        self.error = error
+    }
+}
+
+public struct LifiQuoteData: Codable {
+    public let rawResponse: LifiStep
+
+    public init(rawResponse: LifiStep) {
+        self.rawResponse = rawResponse
+    }
+}
 
 /// Error response when unable to find a quote for the requested transfer (404)
 // MARK: - LifiQuoteErrorResponse
