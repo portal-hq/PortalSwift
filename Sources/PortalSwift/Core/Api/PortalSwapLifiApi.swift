@@ -12,7 +12,7 @@ public protocol PortalSwapLifiApiProtocol: AnyObject {
   func getRoutes(request: LifiRoutesRequest) async throws -> LifiRoutesResponse
   func getQuote(request: LifiQuoteRequest) async throws -> LifiQuoteResponse
   func getStatus(request: LifiStatusRequest) async throws -> LifiStatusResponse
-  func stepTransaction(request: LifiStepTransactionRequest) async throws -> LifiStepTransactionResponse
+  func getRouteStep(request: LifiStepTransactionRequest) async throws -> LifiStepTransactionResponse
 }
 
 /// API class specifically for Lifi Swap integration functionality.
@@ -94,17 +94,17 @@ public class PortalSwapLifiApi: PortalSwapLifiApiProtocol {
     }
   }
 
-  /// Submits step transaction details to the Lifi integration.
-  public func stepTransaction(request: LifiStepTransactionRequest) async throws -> LifiStepTransactionResponse {
-    guard let url = URL(string: "\(baseUrl)/api/v3/clients/me/integrations/lifi/step-details") else {
-      logger.error("PortalSwapLifiApi.stepTransaction() - Unable to build request URL.")
+  /// Retrieves an unsigned transaction from the Lifi integration that has yet to be signed/submitted.
+  public func getRouteStep(request: LifiStepTransactionRequest) async throws -> LifiStepTransactionResponse {
+    guard let url = URL(string: "\(baseUrl)/api/v3/clients/me/integrations/lifi/route-step-details") else {
+      logger.error("PortalSwapLifiApi.getRouteStep() - Unable to build request URL.")
       throw URLError(.badURL)
     }
 
     do {
       return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: LifiStepTransactionResponse.self)
     } catch {
-      logger.error("PortalSwapLifiApi.stepTransaction() - Error: \(error.localizedDescription)")
+      logger.error("PortalSwapLifiApi.getRouteStep() - Error: \(error.localizedDescription)")
       throw error
     }
   }

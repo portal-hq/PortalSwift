@@ -12,7 +12,7 @@ public protocol LifiProtocol {
   func getRoutes(request: LifiRoutesRequest) async throws -> LifiRoutesResponse
   func getQuote(request: LifiQuoteRequest) async throws -> LifiQuoteResponse
   func getStatus(request: LifiStatusRequest) async throws -> LifiStatusResponse
-  func stepTransaction(request: LifiStepTransactionRequest) async throws -> LifiStepTransactionResponse
+  func getRouteStep(request: LifiStepTransactionRequest) async throws -> LifiStepTransactionResponse
 }
 
 /// Lifi provider implementation for swap functionality.
@@ -40,8 +40,8 @@ public class Lifi: LifiProtocol {
     return try await api.getStatus(request: request)
   }
 
-  /// Submits step transaction details to the Lifi integration.
-  public func stepTransaction(request: LifiStepTransactionRequest) async throws -> LifiStepTransactionResponse {
-    return try await api.stepTransaction(request: request)
+  /// Retrieves an unsigned transaction from the Lifi integration that has yet to be signed/submitted.
+  public func getRouteStep(request: LifiStepTransactionRequest) async throws -> LifiStepTransactionResponse {
+    return try await api.getRouteStep(request: request)
   }
 }
