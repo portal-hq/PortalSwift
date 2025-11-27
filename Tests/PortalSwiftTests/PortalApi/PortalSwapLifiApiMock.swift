@@ -41,4 +41,3 @@ final class PortalSwapLifiApiMock: PortalSwapLifiApiProtocol {
     return getRouteStepReturnValue ?? LifiStepTransactionResponse(data: nil, error: nil)
   }
 }
-

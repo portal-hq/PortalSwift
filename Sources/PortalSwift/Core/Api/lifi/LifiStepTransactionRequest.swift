@@ -8,4 +8,5 @@
 import Foundation
 
 // MARK: - LifiStepTransactionRequest
+
 public typealias LifiStepTransactionRequest = LifiStep

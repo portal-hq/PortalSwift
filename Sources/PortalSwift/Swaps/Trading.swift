@@ -21,4 +21,3 @@ public class Trading {
     self.lifi = Lifi(api: api.swapLifi)
   }
 }
-

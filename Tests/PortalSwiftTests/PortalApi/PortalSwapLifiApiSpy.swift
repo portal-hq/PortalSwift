@@ -13,7 +13,7 @@ final class PortalSwapLifiApiSpy: PortalSwapLifiApiProtocol {
 
   var getRoutesCallsCount = 0
   var getRoutesRequestParam: LifiRoutesRequest?
-  var getRoutesReturnValue: LifiRoutesResponse = LifiRoutesResponse(data: nil, error: nil)
+  var getRoutesReturnValue: LifiRoutesResponse = .init(data: nil, error: nil)
   func getRoutes(request: LifiRoutesRequest) async throws -> LifiRoutesResponse {
     getRoutesCallsCount += 1
     getRoutesRequestParam = request
@@ -24,7 +24,7 @@ final class PortalSwapLifiApiSpy: PortalSwapLifiApiProtocol {
 
   var getQuoteCallsCount = 0
   var getQuoteRequestParam: LifiQuoteRequest?
-  var getQuoteReturnValue: LifiQuoteResponse = LifiQuoteResponse(data: nil, error: nil)
+  var getQuoteReturnValue: LifiQuoteResponse = .init(data: nil, error: nil)
   func getQuote(request: LifiQuoteRequest) async throws -> LifiQuoteResponse {
     getQuoteCallsCount += 1
     getQuoteRequestParam = request
@@ -35,7 +35,7 @@ final class PortalSwapLifiApiSpy: PortalSwapLifiApiProtocol {
 
   var getStatusCallsCount = 0
   var getStatusRequestParam: LifiStatusRequest?
-  var getStatusReturnValue: LifiStatusResponse = LifiStatusResponse(data: nil, error: nil)
+  var getStatusReturnValue: LifiStatusResponse = .init(data: nil, error: nil)
   func getStatus(request: LifiStatusRequest) async throws -> LifiStatusResponse {
     getStatusCallsCount += 1
     getStatusRequestParam = request
@@ -46,11 +46,10 @@ final class PortalSwapLifiApiSpy: PortalSwapLifiApiProtocol {
 
   var getRouteStepCallsCount = 0
   var getRouteStepRequestParam: LifiStepTransactionRequest?
-  var getRouteStepReturnValue: LifiStepTransactionResponse = LifiStepTransactionResponse(data: nil, error: nil)
+  var getRouteStepReturnValue: LifiStepTransactionResponse = .init(data: nil, error: nil)
   func getRouteStep(request: LifiStepTransactionRequest) async throws -> LifiStepTransactionResponse {
     getRouteStepCallsCount += 1
     getRouteStepRequestParam = request
     return getRouteStepReturnValue
   }
 }
-

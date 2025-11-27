@@ -3107,546 +3107,549 @@ extension ViewController {
 }
 
 // MARK: - Lifi Trading Actions
+
 @available(iOS 16.0, *)
 extension ViewController {
-    @IBAction func handleGetAQuote() {
-        guard let portal = portal else {
-            self.logger.info("Portal is not initialized")
-            return
-        }
-
-        Task {
-            self.logger.info("Starting Lifi quote request...")
-            do {
-                // Get the user's address from the Ethereum mainnet
-                let chainId = "eip155:1"
-                guard let address = await portal.getAddress(chainId) else {
-                    self.logger.error("Lifi quote FAILED: Could not get address for chain \(chainId)")
-                    self.showStatusView(message: "\(self.failureStatus) Lifi quote: Address not found")
-                    return
-                }
-
-                let request = LifiQuoteRequest(
-                    fromChain: "eip155:8453",
-                    toChain: "eip155:42161",
-                    fromToken: "ETH",
-                    toToken: "USDC",
-                    fromAddress: address,
-                    fromAmount: "1000000000000"
-                )
-
-                let response = try await portal.trading.lifi.getQuote(request: request)
-
-                // Handle success response
-                if let rawResponse = response.data?.rawResponse {
-                    self.logger.info("Lifi quote SUCCESS")
-                    self.showStatusView(message: "\(self.successStatus) Lifi quote")
-
-                    // Log comprehensive results for debugging
-                    self.logLifiQuoteResults(request: request, response: rawResponse)
-                    
-                    // Sign and submit the transaction if transactionRequest is available
-                    if let transactionRequest = rawResponse.transactionRequest {
-                        self.logger.info("Processing Lifi transaction request...")
-                        let result = await self.signAndSubmitLifiTransaction(
-                            transactionRequest: transactionRequest,
-                            fromChainId: request.fromChain,
-                            portal: portal
-                        )
-                        if result.success {
-                            self.logger.info("Lifi transaction submitted successfully")
-                            self.showStatusView(message: "\(self.successStatus) Lifi transaction submitted")
-                        } else {
-                            self.logger.error("Lifi transaction failed")
-                            self.showStatusView(message: "\(self.failureStatus) Lifi transaction failed")
-                        }
-                    } else {
-                        self.logger.info("No transaction request available in quote response")
-                    }
-
-                } else {
-                    self.logger.error("Lifi quote FAILED: \(response.error ?? "Unknown error")")
-                    self.showStatusView(message: "\(self.failureStatus) Lifi quote: \(response.error ?? "Unknown error")")
-                }
-            } catch {
-                self.logger.error("Lifi quote FAILED: \(error.localizedDescription)")
-                self.showStatusView(message: "\(self.failureStatus) Lifi quote: \(error.localizedDescription)")
-            }
-        }
+  @IBAction func handleGetAQuote() {
+    guard let portal = portal else {
+      self.logger.info("Portal is not initialized")
+      return
     }
-    
-    @IBAction func handleGetRoutes() {
-        guard let portal = portal else {
-            self.logger.info("Portal is not initialized")
-            return
+
+    Task {
+      self.logger.info("Starting Lifi quote request...")
+      do {
+        // Get the user's address from the Ethereum mainnet
+        let chainId = "eip155:1"
+        guard let address = await portal.getAddress(chainId) else {
+          self.logger.error("Lifi quote FAILED: Could not get address for chain \(chainId)")
+          self.showStatusView(message: "\(self.failureStatus) Lifi quote: Address not found")
+          return
         }
 
-        Task {
-            self.logger.info("=== LiFi Routes Integration Example ===")
-            do {
-                // Get the user's address from Base chain (where we'll start)
-                let fromChainId = "eip155:8453"
-                guard let address = await portal.getAddress(fromChainId) else {
-                    self.logger.error("Lifi routes FAILED: Could not get address for chain \(fromChainId)")
-                    self.showStatusView(message: "\(self.failureStatus) Lifi routes: Address not found")
-                    return
-                }
+        let request = LifiQuoteRequest(
+          fromChain: "eip155:8453",
+          toChain: "eip155:42161",
+          fromToken: "ETH",
+          toToken: "USDC",
+          fromAddress: address,
+          fromAmount: "1000000000000"
+        )
 
-                let request = LifiRoutesRequest(
-                    fromChainId: fromChainId,
-                    fromAmount: "1000000000000",
-                    fromTokenAddress: "ETH",
-                    toChainId: "eip155:42161",
-                    toTokenAddress: "USDC",
-                    fromAddress: address
-                )
+        let response = try await portal.trading.lifi.getQuote(request: request)
 
-                self.logLifiRoutesRequest(request: request, walletAddress: address)
+        // Handle success response
+        if let rawResponse = response.data?.rawResponse {
+          self.logger.info("Lifi quote SUCCESS")
+          self.showStatusView(message: "\(self.successStatus) Lifi quote")
 
-                let response = try await portal.trading.lifi.getRoutes(request: request)
+          // Log comprehensive results for debugging
+          self.logLifiQuoteResults(request: request, response: rawResponse)
 
-                // Handle success response
-                guard let rawResponse = response.data?.rawResponse else {
-                    self.logger.error("Lifi routes FAILED: \(response.error ?? "Unknown error")")
-                    self.showStatusView(message: "\(self.failureStatus) Lifi routes: \(response.error ?? "Unknown error")")
-                    return
-                }
-
-                let routes = rawResponse.routes
-                guard !routes.isEmpty else {
-                    self.logger.error("Lifi routes FAILED: No routes returned")
-                    self.showStatusView(message: "\(self.failureStatus) Lifi routes: No routes found")
-                    return
-                }
-
-                // Use the first route
-                let selectedRoute = routes[0]
-                self.logLifiRoutesResults(request: request, routes: routes, selectedRoute: selectedRoute)
-
-                guard !selectedRoute.steps.isEmpty else {
-                    self.logger.error("Selected route has no steps")
-                    self.showStatusView(message: "\(self.failureStatus) Lifi routes: Route has no steps")
-                    return
-                }
-
-                // Process route steps sequentially
-                let success = await processRouteStepsSequentially(
-                    steps: selectedRoute.steps,
-                    walletAddress: address,
-                    fromChainId: fromChainId,
-                    portal: portal
-                )
-
-                if success {
-                    self.logger.info("=== LiFi Routes Integration Example Complete ===")
-                    self.showStatusView(message: "\(self.successStatus) Lifi routes: All steps completed")
-                } else {
-                    self.logger.error("Route execution failed")
-                    self.showStatusView(message: "\(self.failureStatus) Lifi routes: Execution failed")
-                }
-            } catch {
-                self.logger.error("Lifi routes FAILED: \(error.localizedDescription)")
-                self.showStatusView(message: "\(self.failureStatus) Lifi routes: \(error.localizedDescription)")
+          // Sign and submit the transaction if transactionRequest is available
+          if let transactionRequest = rawResponse.transactionRequest {
+            self.logger.info("Processing Lifi transaction request...")
+            let result = await self.signAndSubmitLifiTransaction(
+              transactionRequest: transactionRequest,
+              fromChainId: request.fromChain,
+              portal: portal
+            )
+            if result.success {
+              self.logger.info("Lifi transaction submitted successfully")
+              self.showStatusView(message: "\(self.successStatus) Lifi transaction submitted")
+            } else {
+              self.logger.error("Lifi transaction failed")
+              self.showStatusView(message: "\(self.failureStatus) Lifi transaction failed")
             }
+          } else {
+            self.logger.info("No transaction request available in quote response")
+          }
+
+        } else {
+          self.logger.error("Lifi quote FAILED: \(response.error ?? "Unknown error")")
+          self.showStatusView(message: "\(self.failureStatus) Lifi quote: \(response.error ?? "Unknown error")")
         }
+      } catch {
+        self.logger.error("Lifi quote FAILED: \(error.localizedDescription)")
+        self.showStatusView(message: "\(self.failureStatus) Lifi quote: \(error.localizedDescription)")
+      }
     }
-    
-    /// Process route steps sequentially, waiting for each to complete before starting the next
-    /// - Parameters:
-    ///   - steps: Array of route steps from LiFi routes response
-    ///   - walletAddress: User's wallet address
-    ///   - fromChainId: Source chain in CAIP-2 format
-    ///   - portal: The Portal instance
-    /// - Returns: True if all steps completed successfully
-    private func processRouteStepsSequentially(
-        steps: [LifiStep],
-        walletAddress: String,
-        fromChainId: String,
-        portal: PortalProtocol
-    ) async -> Bool {
-        self.logRouteStepProcessingStart(totalSteps: steps.count)
+  }
 
-        for (index, step) in steps.enumerated() {
-            self.logRouteStepStart(stepIndex: index + 1, totalSteps: steps.count, step: step)
-
-            do {
-                // 1. Get transaction details for this step
-                guard let stepWithTransaction = await getStepTransactionDetails(
-                    step: step,
-                    walletAddress: walletAddress,
-                    portal: portal
-                ) else {
-                    self.logger.error("Failed to get transaction details for step \(index + 1)")
-                    return false
-                }
-
-                guard let transactionRequest = stepWithTransaction.transactionRequest else {
-                    self.logger.error("No transaction request available for step \(index + 1)")
-                    return false
-                }
-
-                // 2. Sign and submit the transaction
-                let signResult = await signAndSubmitLifiTransaction(
-                    transactionRequest: transactionRequest,
-                    fromChainId: fromChainId,
-                    portal: portal
-                )
-
-                guard signResult.success, let txHash = signResult.txHash else {
-                    self.logger.error("Failed to sign/submit step \(index + 1)")
-                    return false
-                }
-
-                // 3. Poll for LiFi status completion (for cross-chain transfers)
-                // Note: signAndSubmitLifiTransaction already waits for on-chain confirmation
-                // For cross-chain transfers, we also poll LiFi status to check bridge completion
-                let statusResult = await pollLiFiStatus(
-                    txHash: txHash,
-                    fromChain: fromChainId,
-                    portal: portal
-                )
-
-                if !statusResult.success {
-                    self.logger.error("Step \(index + 1) failed to complete in LiFi")
-                    return false
-                }
-
-                self.logRouteStepCompletion(stepIndex: index + 1, lifiExplorerLink: statusResult.lifiExplorerLink)
-            } catch {
-                self.logger.error("Error processing step \(index + 1): \(error.localizedDescription)")
-                return false
-            }
-        }
-
-        self.logger.info("All route steps processed successfully!")
-        return true
+  @IBAction func handleGetRoutes() {
+    guard let portal = portal else {
+      self.logger.info("Portal is not initialized")
+      return
     }
-    
-    /// Gets transaction details for a specific route step
-    /// - Parameters:
-    ///   - step: Route step object from LiFi routes response
-    ///   - walletAddress: User's wallet address
-    ///   - portal: The Portal instance
-    /// - Returns: Step with transaction request populated, or nil if failed
-    private func getStepTransactionDetails(
-        step: LifiStep,
-        walletAddress: String,
-        portal: PortalProtocol
-    ) async -> LifiStep? {
-        self.logStepTransactionDetailsRequest(step: step)
 
-        do {
-            // Create step request - the API will populate addresses
-            let stepRequest = step as LifiStepTransactionRequest
-
-            let response = try await portal.trading.lifi.getRouteStep(request: stepRequest)
-
-            // Handle success response
-            guard let rawResponse = response.data?.rawResponse else {
-                self.logger.error("Lifi step transaction details FAILED: \(response.error ?? "Unknown error")")
-                return nil
-            }
-
-            guard let transactionRequest = rawResponse.transactionRequest else {
-                self.logger.error("No transactionRequest found in step details response")
-                return nil
-            }
-
-            self.logStepTransactionDetailsResponse(step: rawResponse)
-            return rawResponse
-        } catch {
-            self.logger.error("Error getting step transaction details: \(error.localizedDescription)")
-            return nil
+    Task {
+      self.logger.info("=== LiFi Routes Integration Example ===")
+      do {
+        // Get the user's address from Base chain (where we'll start)
+        let fromChainId = "eip155:8453"
+        guard let address = await portal.getAddress(fromChainId) else {
+          self.logger.error("Lifi routes FAILED: Could not get address for chain \(fromChainId)")
+          self.showStatusView(message: "\(self.failureStatus) Lifi routes: Address not found")
+          return
         }
+
+        let request = LifiRoutesRequest(
+          fromChainId: fromChainId,
+          fromAmount: "1000000000000",
+          fromTokenAddress: "ETH",
+          toChainId: "eip155:42161",
+          toTokenAddress: "USDC",
+          fromAddress: address
+        )
+
+        self.logLifiRoutesRequest(request: request, walletAddress: address)
+
+        let response = try await portal.trading.lifi.getRoutes(request: request)
+
+        // Handle success response
+        guard let rawResponse = response.data?.rawResponse else {
+          self.logger.error("Lifi routes FAILED: \(response.error ?? "Unknown error")")
+          self.showStatusView(message: "\(self.failureStatus) Lifi routes: \(response.error ?? "Unknown error")")
+          return
+        }
+
+        let routes = rawResponse.routes
+        guard !routes.isEmpty else {
+          self.logger.error("Lifi routes FAILED: No routes returned")
+          self.showStatusView(message: "\(self.failureStatus) Lifi routes: No routes found")
+          return
+        }
+
+        // Use the first route
+        let selectedRoute = routes[0]
+        self.logLifiRoutesResults(request: request, routes: routes, selectedRoute: selectedRoute)
+
+        guard !selectedRoute.steps.isEmpty else {
+          self.logger.error("Selected route has no steps")
+          self.showStatusView(message: "\(self.failureStatus) Lifi routes: Route has no steps")
+          return
+        }
+
+        // Process route steps sequentially
+        let success = await processRouteStepsSequentially(
+          steps: selectedRoute.steps,
+          walletAddress: address,
+          fromChainId: fromChainId,
+          portal: portal
+        )
+
+        if success {
+          self.logger.info("=== LiFi Routes Integration Example Complete ===")
+          self.showStatusView(message: "\(self.successStatus) Lifi routes: All steps completed")
+        } else {
+          self.logger.error("Route execution failed")
+          self.showStatusView(message: "\(self.failureStatus) Lifi routes: Execution failed")
+        }
+      } catch {
+        self.logger.error("Lifi routes FAILED: \(error.localizedDescription)")
+        self.showStatusView(message: "\(self.failureStatus) Lifi routes: \(error.localizedDescription)")
+      }
     }
-    
-    /// Polls the LiFi status endpoint until bridge/swap completes or times out
-    /// - Parameters:
-    ///   - txHash: Transaction hash from the signed transaction
-    ///   - fromChain: Source chain in CAIP-2 format
-    ///   - portal: The Portal instance
-    ///   - maxAttempts: Maximum number of polling attempts (default: 300)
-    ///   - pollIntervalMs: Milliseconds between polls (default: 2000)
-    ///   - timeoutSeconds: Overall timeout in seconds (default: 600)
-    /// - Returns: Tuple with success status, transaction ID, and LiFi explorer link
-    private func pollLiFiStatus(
-        txHash: String,
-        fromChain: String,
-        portal: PortalProtocol,
-        maxAttempts: Int = 300,
-        pollIntervalMs: Int = 2000,
-        timeoutSeconds: Int = 600
-    ) async -> (success: Bool, txId: String?, lifiExplorerLink: String?) {
-        self.logLiFiStatusPollingStart(txHash: txHash, fromChain: fromChain)
-        let startTime = Date()
-        var attempt = 0
+  }
 
-        while attempt < maxAttempts {
-            attempt += 1
+  /// Process route steps sequentially, waiting for each to complete before starting the next
+  /// - Parameters:
+  ///   - steps: Array of route steps from LiFi routes response
+  ///   - walletAddress: User's wallet address
+  ///   - fromChainId: Source chain in CAIP-2 format
+  ///   - portal: The Portal instance
+  /// - Returns: True if all steps completed successfully
+  private func processRouteStepsSequentially(
+    steps: [LifiStep],
+    walletAddress: String,
+    fromChainId: String,
+    portal: PortalProtocol
+  ) async -> Bool {
+    self.logRouteStepProcessingStart(totalSteps: steps.count)
 
-            // Check timeout
-            if Date().timeIntervalSince(startTime) > Double(timeoutSeconds) {
-                self.logger.error("Timeout after \(timeoutSeconds) seconds waiting for LiFi bridge/swap completion")
-                return (false, nil, nil)
-            }
+    for (index, step) in steps.enumerated() {
+      self.logRouteStepStart(stepIndex: index + 1, totalSteps: steps.count, step: step)
 
-            do {
-                let statusRequest = LifiStatusRequest(
-                    txHash: txHash,
-                    fromChain: fromChain
-                )
-
-                let statusResponse = try await portal.trading.lifi.getStatus(request: statusRequest)
-
-                // Handle success response
-                guard let rawResponse = statusResponse.data?.rawResponse else {
-                    self.logger.error("Lifi status FAILED: \(statusResponse.error ?? "Unknown error")")
-                    // Continue polling on error
-                    try? await Task.sleep(nanoseconds: UInt64(pollIntervalMs) * 1_000_000)
-                    continue
-                }
-
-                let txId = rawResponse.transactionId
-                let lifiExplorerLink = rawResponse.lifiExplorerLink
-
-                self.logLiFiStatusPollingUpdate(
-                    attempt: attempt,
-                    maxAttempts: maxAttempts,
-                    txId: txId,
-                    status: rawResponse.status
-                )
-
-                // Check if transfer is complete
-                if rawResponse.status == .done {
-                    self.logLiFiStatusPollingComplete(txId: txId, lifiExplorerLink: lifiExplorerLink)
-                    return (true, txId, lifiExplorerLink)
-                } else if rawResponse.status == .failed {
-                    self.logger.error("LiFi transfer failed")
-                    return (false, txId, lifiExplorerLink)
-                }
-
-            } catch {
-                self.logger.warning("Warning: Error during status poll (attempt \(attempt)): \(error.localizedDescription)")
-                // Continue polling on network errors
-            }
-
-            // Wait before next poll
-            try? await Task.sleep(nanoseconds: UInt64(pollIntervalMs) * 1_000_000)
+      do {
+        // 1. Get transaction details for this step
+        guard let stepWithTransaction = await getStepTransactionDetails(
+          step: step,
+          walletAddress: walletAddress,
+          portal: portal
+        ) else {
+          self.logger.error("Failed to get transaction details for step \(index + 1)")
+          return false
         }
 
-        // Max attempts reached
-        self.logger.error("Max polling attempts (\(maxAttempts)) reached without completion")
+        guard let transactionRequest = stepWithTransaction.transactionRequest else {
+          self.logger.error("No transaction request available for step \(index + 1)")
+          return false
+        }
+
+        // 2. Sign and submit the transaction
+        let signResult = await signAndSubmitLifiTransaction(
+          transactionRequest: transactionRequest,
+          fromChainId: fromChainId,
+          portal: portal
+        )
+
+        guard signResult.success, let txHash = signResult.txHash else {
+          self.logger.error("Failed to sign/submit step \(index + 1)")
+          return false
+        }
+
+        // 3. Poll for LiFi status completion (for cross-chain transfers)
+        // Note: signAndSubmitLifiTransaction already waits for on-chain confirmation
+        // For cross-chain transfers, we also poll LiFi status to check bridge completion
+        let statusResult = await pollLiFiStatus(
+          txHash: txHash,
+          fromChain: fromChainId,
+          portal: portal
+        )
+
+        if !statusResult.success {
+          self.logger.error("Step \(index + 1) failed to complete in LiFi")
+          return false
+        }
+
+        self.logRouteStepCompletion(stepIndex: index + 1, lifiExplorerLink: statusResult.lifiExplorerLink)
+      } catch {
+        self.logger.error("Error processing step \(index + 1): \(error.localizedDescription)")
+        return false
+      }
+    }
+
+    self.logger.info("All route steps processed successfully!")
+    return true
+  }
+
+  /// Gets transaction details for a specific route step
+  /// - Parameters:
+  ///   - step: Route step object from LiFi routes response
+  ///   - walletAddress: User's wallet address
+  ///   - portal: The Portal instance
+  /// - Returns: Step with transaction request populated, or nil if failed
+  private func getStepTransactionDetails(
+    step: LifiStep,
+    walletAddress _: String,
+    portal: PortalProtocol
+  ) async -> LifiStep? {
+    self.logStepTransactionDetailsRequest(step: step)
+
+    do {
+      // Create step request - the API will populate addresses
+      let stepRequest = step as LifiStepTransactionRequest
+
+      let response = try await portal.trading.lifi.getRouteStep(request: stepRequest)
+
+      // Handle success response
+      guard let rawResponse = response.data?.rawResponse else {
+        self.logger.error("Lifi step transaction details FAILED: \(response.error ?? "Unknown error")")
+        return nil
+      }
+
+      guard let transactionRequest = rawResponse.transactionRequest else {
+        self.logger.error("No transactionRequest found in step details response")
+        return nil
+      }
+
+      self.logStepTransactionDetailsResponse(step: rawResponse)
+      return rawResponse
+    } catch {
+      self.logger.error("Error getting step transaction details: \(error.localizedDescription)")
+      return nil
+    }
+  }
+
+  /// Polls the LiFi status endpoint until bridge/swap completes or times out
+  /// - Parameters:
+  ///   - txHash: Transaction hash from the signed transaction
+  ///   - fromChain: Source chain in CAIP-2 format
+  ///   - portal: The Portal instance
+  ///   - maxAttempts: Maximum number of polling attempts (default: 300)
+  ///   - pollIntervalMs: Milliseconds between polls (default: 2000)
+  ///   - timeoutSeconds: Overall timeout in seconds (default: 600)
+  /// - Returns: Tuple with success status, transaction ID, and LiFi explorer link
+  private func pollLiFiStatus(
+    txHash: String,
+    fromChain: String,
+    portal: PortalProtocol,
+    maxAttempts: Int = 300,
+    pollIntervalMs: Int = 2000,
+    timeoutSeconds: Int = 600
+  ) async -> (success: Bool, txId: String?, lifiExplorerLink: String?) {
+    self.logLiFiStatusPollingStart(txHash: txHash, fromChain: fromChain)
+    let startTime = Date()
+    var attempt = 0
+
+    while attempt < maxAttempts {
+      attempt += 1
+
+      // Check timeout
+      if Date().timeIntervalSince(startTime) > Double(timeoutSeconds) {
+        self.logger.error("Timeout after \(timeoutSeconds) seconds waiting for LiFi bridge/swap completion")
         return (false, nil, nil)
+      }
+
+      do {
+        let statusRequest = LifiStatusRequest(
+          txHash: txHash,
+          fromChain: fromChain
+        )
+
+        let statusResponse = try await portal.trading.lifi.getStatus(request: statusRequest)
+
+        // Handle success response
+        guard let rawResponse = statusResponse.data?.rawResponse else {
+          self.logger.error("Lifi status FAILED: \(statusResponse.error ?? "Unknown error")")
+          // Continue polling on error
+          try? await Task.sleep(nanoseconds: UInt64(pollIntervalMs) * 1_000_000)
+          continue
+        }
+
+        let txId = rawResponse.transactionId
+        let lifiExplorerLink = rawResponse.lifiExplorerLink
+
+        self.logLiFiStatusPollingUpdate(
+          attempt: attempt,
+          maxAttempts: maxAttempts,
+          txId: txId,
+          status: rawResponse.status
+        )
+
+        // Check if transfer is complete
+        if rawResponse.status == .done {
+          self.logLiFiStatusPollingComplete(txId: txId, lifiExplorerLink: lifiExplorerLink)
+          return (true, txId, lifiExplorerLink)
+        } else if rawResponse.status == .failed {
+          self.logger.error("LiFi transfer failed")
+          return (false, txId, lifiExplorerLink)
+        }
+
+      } catch {
+        self.logger.warning("Warning: Error during status poll (attempt \(attempt)): \(error.localizedDescription)")
+        // Continue polling on network errors
+      }
+
+      // Wait before next poll
+      try? await Task.sleep(nanoseconds: UInt64(pollIntervalMs) * 1_000_000)
     }
+
+    // Max attempts reached
+    self.logger.error("Max polling attempts (\(maxAttempts)) reached without completion")
+    return (false, nil, nil)
+  }
 }
 
 // MARK: - LifiHelper Functions
+
 @available(iOS 16.0, *)
 extension ViewController {
-    private func logLifiQuoteResults(request: LifiQuoteRequest, response: LifiStep) {
-        self.logger.info("=== Lifi Quote Results ===")
-        self.logger.info("Request: fromChain=\(request.fromChain), toChain=\(request.toChain)")
-        self.logger.info("Request: fromToken=\(request.fromToken), toToken=\(request.toToken)")
-        self.logger.info("Request: fromAmount=\(request.fromAmount)")
-        self.logger.info("Request: fromAddress=\(request.fromAddress)")
+  private func logLifiQuoteResults(request: LifiQuoteRequest, response: LifiStep) {
+    self.logger.info("=== Lifi Quote Results ===")
+    self.logger.info("Request: fromChain=\(request.fromChain), toChain=\(request.toChain)")
+    self.logger.info("Request: fromToken=\(request.fromToken), toToken=\(request.toToken)")
+    self.logger.info("Request: fromAmount=\(request.fromAmount)")
+    self.logger.info("Request: fromAddress=\(request.fromAddress)")
 
-        self.logger.info("Response ID: \(response.id)")
-        self.logger.info("Response Type: \(response.type.rawValue)")
-        self.logger.info("Response Tool: \(response.tool)")
+    self.logger.info("Response ID: \(response.id)")
+    self.logger.info("Response Type: \(response.type.rawValue)")
+    self.logger.info("Response Tool: \(response.tool)")
 
-        if let estimate = response.estimate {
-            self.logger.info("Estimate: fromAmount=\(estimate.fromAmount), toAmount=\(estimate.toAmount)")
-            self.logger.info("Estimate: toAmountMin=\(estimate.toAmountMin)")
-            self.logger.info("Estimate: executionDuration=\(estimate.executionDuration)s")
-            if let fromAmountUSD = estimate.fromAmountUSD {
-                self.logger.info("Estimate: fromAmountUSD=\(fromAmountUSD)")
-            }
-            if let toAmountUSD = estimate.toAmountUSD {
-                self.logger.info("Estimate: toAmountUSD=\(toAmountUSD)")
-            }
-        }
+    if let estimate = response.estimate {
+      self.logger.info("Estimate: fromAmount=\(estimate.fromAmount), toAmount=\(estimate.toAmount)")
+      self.logger.info("Estimate: toAmountMin=\(estimate.toAmountMin)")
+      self.logger.info("Estimate: executionDuration=\(estimate.executionDuration)s")
+      if let fromAmountUSD = estimate.fromAmountUSD {
+        self.logger.info("Estimate: fromAmountUSD=\(fromAmountUSD)")
+      }
+      if let toAmountUSD = estimate.toAmountUSD {
+        self.logger.info("Estimate: toAmountUSD=\(toAmountUSD)")
+      }
+    }
 
-        if let gasCostUSD = response.gasCostUSD {
-            self.logger.info("Gas Cost USD: \(gasCostUSD)")
-        }
+    if let gasCostUSD = response.gasCostUSD {
+      self.logger.info("Gas Cost USD: \(gasCostUSD)")
+    }
 
-        if response.transactionRequest != nil {
-            self.logger.info("Transaction Request: Available (ready to sign)")
+    if response.transactionRequest != nil {
+      self.logger.info("Transaction Request: Available (ready to sign)")
+    } else {
+      self.logger.info("Transaction Request: Not available")
+    }
+
+    if let transactionId = response.transactionId {
+      self.logger.info("Transaction ID: \(transactionId)")
+    }
+  }
+
+  private func logLifiRoutesRequest(request: LifiRoutesRequest, walletAddress: String) {
+    self.logger.info("Wallet address: \(walletAddress)")
+    self.logger.info("--- Step 1: Requesting LiFi routes ---")
+    self.logger.info("Route parameters: \(request.fromChainId) -> \(request.toChainId)")
+    self.logger.info("Token swap: \(request.fromTokenAddress) -> \(request.toTokenAddress)")
+    self.logger.info("Amount: \(request.fromAmount) wei")
+  }
+
+  private func logLifiRoutesResults(request _: LifiRoutesRequest, routes: [LifiRoute], selectedRoute: LifiRoute) {
+    self.logger.info("Routes received successfully!")
+    self.logger.info("Total routes available: \(routes.count)")
+
+    self.logger.info("Selected route: \(selectedRoute.id)")
+    self.logger.info("  From: \(selectedRoute.fromAmountUSD) USD (\(selectedRoute.fromToken.symbol))")
+    self.logger.info("  To: \(selectedRoute.toAmountUSD) USD (\(selectedRoute.toToken.symbol))")
+    self.logger.info("  Steps: \(selectedRoute.steps.count)")
+    if let tags = selectedRoute.tags {
+      self.logger.info("  Tags: \(tags.joined(separator: ", "))")
+    }
+    if let gasCostUSD = selectedRoute.gasCostUSD {
+      self.logger.info("  Gas Cost USD: \(gasCostUSD)")
+    }
+  }
+
+  private func logRouteStepProcessingStart(totalSteps: Int) {
+    self.logger.info("--- Step 2: Processing route steps ---")
+    self.logger.info("Processing \(totalSteps) route step(s) sequentially...")
+  }
+
+  private func logRouteStepStart(stepIndex: Int, totalSteps: Int, step: LifiStep) {
+    self.logger.info("--- Step \(stepIndex)/\(totalSteps): \(step.tool) ---")
+    self.logger.info("Step ID: \(step.id)")
+    self.logger.info("Step Type: \(step.type.rawValue)")
+  }
+
+  private func logRouteStepCompletion(stepIndex: Int, lifiExplorerLink: String?) {
+    self.logger.info("Step \(stepIndex) completed successfully!")
+    if let explorerLink = lifiExplorerLink {
+      self.logger.info("LiFi Explorer: \(explorerLink)")
+    }
+  }
+
+  private func logStepTransactionDetailsRequest(step: LifiStep) {
+    self.logger.info("Getting transaction details for step: \(step.id) (\(step.tool))")
+  }
+
+  private func logStepTransactionDetailsResponse(step: LifiStep) {
+    self.logger.info("Step transaction details received")
+    if let estimate = step.estimate {
+      self.logger.info("Estimate: fromAmount=\(estimate.fromAmount), toAmount=\(estimate.toAmount)")
+      if let fromAmountUSD = estimate.fromAmountUSD {
+        self.logger.info("Estimate: fromAmountUSD=\(fromAmountUSD)")
+      }
+      if let toAmountUSD = estimate.toAmountUSD {
+        self.logger.info("Estimate: toAmountUSD=\(toAmountUSD)")
+      }
+    }
+    if step.transactionRequest != nil {
+      self.logger.info("Transaction Request: Available (ready to sign)")
+    }
+  }
+
+  private func logLiFiStatusPollingStart(txHash: String, fromChain: String) {
+    self.logger.info("Polling LiFi status...")
+    self.logger.info("Transaction Hash: \(txHash)")
+    self.logger.info("From Chain: \(fromChain)")
+  }
+
+  private func logLiFiStatusPollingUpdate(attempt: Int, maxAttempts: Int, txId: String?, status: LifiTransferStatus) {
+    self.logger.info("Polling LiFi status: \(txId ?? "N/A") (\(attempt)/\(maxAttempts))")
+    self.logger.info("Status: \(status.rawValue)")
+  }
+
+  private func logLiFiStatusPollingComplete(txId: String?, lifiExplorerLink: String?) {
+    self.logger.info("LiFi transfer completed successfully!")
+    if let txId = txId {
+      self.logger.info("Transaction ID: \(txId)")
+    }
+    if let explorerLink = lifiExplorerLink {
+      self.logger.info("LiFi Explorer: \(explorerLink)")
+    }
+  }
+
+  /// Signs and submits a Lifi transaction using the transactionRequest from the quote response.
+  /// - Parameters:
+  ///   - transactionRequest: The transaction request object from the Lifi quote response (AnyCodable)
+  ///   - fromChainId: The chain ID in CAIP-2 format (e.g., "eip155:1")
+  ///   - portal: The Portal instance
+  /// - Returns: Tuple with success status and transaction hash (if successful)
+  private func signAndSubmitLifiTransaction(
+    transactionRequest: AnyCodable,
+    fromChainId: String,
+    portal: PortalProtocol
+  ) async -> (success: Bool, txHash: String?) {
+    do {
+      self.logger.info("Processing Lifi transaction request...")
+
+      // Extract transaction parameters from AnyCodable
+      guard let txParams = transactionRequest.value as? [String: Any] else {
+        self.logger.error("Failed to extract transaction parameters from transactionRequest")
+        return (false, nil)
+      }
+
+      self.logger.info("Transaction params: \(txParams)")
+
+      // Extract required fields
+      guard let from = txParams["from"] as? String,
+            let to = txParams["to"] as? String
+      else {
+        self.logger.error("Missing required 'from' or 'to' field in transaction request")
+        return (false, nil)
+      }
+
+      // Extract value (convert hex string or number to hex string)
+      var value = "0x0"
+      if let valueString = txParams["value"] as? String {
+        value = valueString
+      } else if let valueInt = txParams["value"] as? Int {
+        value = String(format: "0x%x", valueInt)
+      }
+
+      // Extract data
+      let data = txParams["data"] as? String ?? ""
+
+      // Create ETHTransactionParam from the parsed parameters
+      let ethTransaction = ETHTransactionParam(
+        from: from,
+        to: to,
+        value: value,
+        data: data
+      )
+
+      self.logger.info("ETH Transaction created - from: \(from), to: \(to), value: \(value)")
+
+      // Sign and send the transaction using the fromChainId
+      let sendTransactionResponse = try await portal.request(
+        fromChainId,
+        withMethod: .eth_sendTransaction,
+        andParams: [ethTransaction]
+      )
+
+      if let txHash = sendTransactionResponse.result as? String {
+        self.logger.info("Lifi transaction submitted successfully: \(txHash)")
+
+        // Wait for transaction to be mined and confirmed
+        self.logger.info("Waiting for transaction \(txHash) to be confirmed on-chain...")
+        let confirmed = await waitForTransactionConfirmation(
+          txHash: txHash,
+          chainId: fromChainId,
+          portal: portal
+        )
+
+        if confirmed {
+          self.logger.info("✅ Lifi transaction \(txHash) confirmed on-chain")
+          return (true, txHash)
         } else {
-            self.logger.info("Transaction Request: Not available")
+          self.logger.error("❌ Lifi transaction \(txHash) failed to be confirmed")
+          return (false, txHash)
         }
+      } else {
+        self.logger.error("Failed to submit Lifi transaction: No result returned")
+        return (false, nil)
+      }
 
-        if let transactionId = response.transactionId {
-            self.logger.info("Transaction ID: \(transactionId)")
-        }
+    } catch {
+      self.logger.error("Exception during Lifi transaction signing/submission: \(error.localizedDescription)")
+      return (false, nil)
     }
-
-    private func logLifiRoutesRequest(request: LifiRoutesRequest, walletAddress: String) {
-        self.logger.info("Wallet address: \(walletAddress)")
-        self.logger.info("--- Step 1: Requesting LiFi routes ---")
-        self.logger.info("Route parameters: \(request.fromChainId) -> \(request.toChainId)")
-        self.logger.info("Token swap: \(request.fromTokenAddress) -> \(request.toTokenAddress)")
-        self.logger.info("Amount: \(request.fromAmount) wei")
-    }
-
-    private func logLifiRoutesResults(request: LifiRoutesRequest, routes: [LifiRoute], selectedRoute: LifiRoute) {
-        self.logger.info("Routes received successfully!")
-        self.logger.info("Total routes available: \(routes.count)")
-
-        self.logger.info("Selected route: \(selectedRoute.id)")
-        self.logger.info("  From: \(selectedRoute.fromAmountUSD) USD (\(selectedRoute.fromToken.symbol))")
-        self.logger.info("  To: \(selectedRoute.toAmountUSD) USD (\(selectedRoute.toToken.symbol))")
-        self.logger.info("  Steps: \(selectedRoute.steps.count)")
-        if let tags = selectedRoute.tags {
-            self.logger.info("  Tags: \(tags.joined(separator: ", "))")
-        }
-        if let gasCostUSD = selectedRoute.gasCostUSD {
-            self.logger.info("  Gas Cost USD: \(gasCostUSD)")
-        }
-    }
-
-    private func logRouteStepProcessingStart(totalSteps: Int) {
-        self.logger.info("--- Step 2: Processing route steps ---")
-        self.logger.info("Processing \(totalSteps) route step(s) sequentially...")
-    }
-
-    private func logRouteStepStart(stepIndex: Int, totalSteps: Int, step: LifiStep) {
-        self.logger.info("--- Step \(stepIndex)/\(totalSteps): \(step.tool) ---")
-        self.logger.info("Step ID: \(step.id)")
-        self.logger.info("Step Type: \(step.type.rawValue)")
-    }
-
-    private func logRouteStepCompletion(stepIndex: Int, lifiExplorerLink: String?) {
-        self.logger.info("Step \(stepIndex) completed successfully!")
-        if let explorerLink = lifiExplorerLink {
-            self.logger.info("LiFi Explorer: \(explorerLink)")
-        }
-    }
-
-    private func logStepTransactionDetailsRequest(step: LifiStep) {
-        self.logger.info("Getting transaction details for step: \(step.id) (\(step.tool))")
-    }
-
-    private func logStepTransactionDetailsResponse(step: LifiStep) {
-        self.logger.info("Step transaction details received")
-        if let estimate = step.estimate {
-            self.logger.info("Estimate: fromAmount=\(estimate.fromAmount), toAmount=\(estimate.toAmount)")
-            if let fromAmountUSD = estimate.fromAmountUSD {
-                self.logger.info("Estimate: fromAmountUSD=\(fromAmountUSD)")
-            }
-            if let toAmountUSD = estimate.toAmountUSD {
-                self.logger.info("Estimate: toAmountUSD=\(toAmountUSD)")
-            }
-        }
-        if step.transactionRequest != nil {
-            self.logger.info("Transaction Request: Available (ready to sign)")
-        }
-    }
-
-    private func logLiFiStatusPollingStart(txHash: String, fromChain: String) {
-        self.logger.info("Polling LiFi status...")
-        self.logger.info("Transaction Hash: \(txHash)")
-        self.logger.info("From Chain: \(fromChain)")
-    }
-
-    private func logLiFiStatusPollingUpdate(attempt: Int, maxAttempts: Int, txId: String?, status: LifiTransferStatus) {
-        self.logger.info("Polling LiFi status: \(txId ?? "N/A") (\(attempt)/\(maxAttempts))")
-        self.logger.info("Status: \(status.rawValue)")
-    }
-
-    private func logLiFiStatusPollingComplete(txId: String?, lifiExplorerLink: String?) {
-        self.logger.info("LiFi transfer completed successfully!")
-        if let txId = txId {
-            self.logger.info("Transaction ID: \(txId)")
-        }
-        if let explorerLink = lifiExplorerLink {
-            self.logger.info("LiFi Explorer: \(explorerLink)")
-        }
-    }
-
-    /// Signs and submits a Lifi transaction using the transactionRequest from the quote response.
-    /// - Parameters:
-    ///   - transactionRequest: The transaction request object from the Lifi quote response (AnyCodable)
-    ///   - fromChainId: The chain ID in CAIP-2 format (e.g., "eip155:1")
-    ///   - portal: The Portal instance
-    /// - Returns: Tuple with success status and transaction hash (if successful)
-    private func signAndSubmitLifiTransaction(
-        transactionRequest: AnyCodable,
-        fromChainId: String,
-        portal: PortalProtocol
-    ) async -> (success: Bool, txHash: String?) {
-        do {
-            self.logger.info("Processing Lifi transaction request...")
-
-            // Extract transaction parameters from AnyCodable
-            guard let txParams = transactionRequest.value as? [String: Any] else {
-                self.logger.error("Failed to extract transaction parameters from transactionRequest")
-                return (false, nil)
-            }
-
-            self.logger.info("Transaction params: \(txParams)")
-
-            // Extract required fields
-            guard let from = txParams["from"] as? String,
-                  let to = txParams["to"] as? String else {
-                self.logger.error("Missing required 'from' or 'to' field in transaction request")
-                return (false, nil)
-            }
-
-            // Extract value (convert hex string or number to hex string)
-            var value = "0x0"
-            if let valueString = txParams["value"] as? String {
-                value = valueString
-            } else if let valueInt = txParams["value"] as? Int {
-                value = String(format: "0x%x", valueInt)
-            }
-
-            // Extract data
-            let data = txParams["data"] as? String ?? ""
-
-            // Create ETHTransactionParam from the parsed parameters
-            let ethTransaction = ETHTransactionParam(
-                from: from,
-                to: to,
-                value: value,
-                data: data
-            )
-
-            self.logger.info("ETH Transaction created - from: \(from), to: \(to), value: \(value)")
-
-            // Sign and send the transaction using the fromChainId
-            let sendTransactionResponse = try await portal.request(
-                fromChainId,
-                withMethod: .eth_sendTransaction,
-                andParams: [ethTransaction]
-            )
-
-            if let txHash = sendTransactionResponse.result as? String {
-                self.logger.info("Lifi transaction submitted successfully: \(txHash)")
-
-                // Wait for transaction to be mined and confirmed
-                self.logger.info("Waiting for transaction \(txHash) to be confirmed on-chain...")
-                let confirmed = await waitForTransactionConfirmation(
-                    txHash: txHash,
-                    chainId: fromChainId,
-                    portal: portal
-                )
-
-                if confirmed {
-                    self.logger.info("✅ Lifi transaction \(txHash) confirmed on-chain")
-                    return (true, txHash)
-                } else {
-                    self.logger.error("❌ Lifi transaction \(txHash) failed to be confirmed")
-                    return (false, txHash)
-                }
-            } else {
-                self.logger.error("Failed to submit Lifi transaction: No result returned")
-                return (false, nil)
-            }
-
-        } catch {
-            self.logger.error("Exception during Lifi transaction signing/submission: \(error.localizedDescription)")
-            return (false, nil)
-        }
-    }
+  }
 }
