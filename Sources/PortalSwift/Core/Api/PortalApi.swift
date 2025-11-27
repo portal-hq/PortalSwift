@@ -115,7 +115,7 @@ public class PortalApi: PortalApiProtocol {
     requests: self.requests
   )
 
-  /// Access to Lifi Swap integration functionality.
+  /// Access to Lifi trading integration functionality.
   public lazy var swapLifi: PortalSwapLifiApiProtocol = PortalSwapLifiApi(
     apiKey: self.apiKey,
     apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),

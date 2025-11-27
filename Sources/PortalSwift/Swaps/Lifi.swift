@@ -7,7 +7,7 @@
 
 import Foundation
 
-/// Protocol defining the interface for Lifi Swap provider functionality.
+/// Protocol defining the interface for Lifi trading provider functionality.
 public protocol LifiProtocol {
   func getRoutes(request: LifiRoutesRequest) async throws -> LifiRoutesResponse
   func getQuote(request: LifiQuoteRequest) async throws -> LifiQuoteResponse
@@ -15,12 +15,12 @@ public protocol LifiProtocol {
   func getRouteStep(request: LifiStepTransactionRequest) async throws -> LifiStepTransactionResponse
 }
 
-/// Lifi provider implementation for swap functionality.
+/// Lifi provider implementation for trading functionality.
 public class Lifi: LifiProtocol {
   private let api: PortalSwapLifiApiProtocol
 
   /// Create an instance of Lifi.
-  /// - Parameter api: The PortalSwapLifiApi instance to use for swap operations.
+  /// - Parameter api: The PortalSwapLifiApi instance to use for trading operations.
   public init(api: PortalSwapLifiApiProtocol) {
     self.api = api
   }

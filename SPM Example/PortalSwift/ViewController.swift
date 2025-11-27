@@ -3106,7 +3106,7 @@ extension ViewController {
   }
 }
 
-// MARK: - Lifi Swap Actions
+// MARK: - Lifi Trading Actions
 @available(iOS 16.0, *)
 extension ViewController {
     @IBAction func handleGetAQuote() {
@@ -3135,7 +3135,7 @@ extension ViewController {
                     fromAmount: "1000000000000"
                 )
 
-                let response = try await portal.swap.lifi.getQuote(request: request)
+                let response = try await portal.trading.lifi.getQuote(request: request)
 
                 // Handle success response
                 if let rawResponse = response.data?.rawResponse {
@@ -3203,7 +3203,7 @@ extension ViewController {
 
                 self.logLifiRoutesRequest(request: request, walletAddress: address)
 
-                let response = try await portal.swap.lifi.getRoutes(request: request)
+                let response = try await portal.trading.lifi.getRoutes(request: request)
 
                 // Handle success response
                 guard let rawResponse = response.data?.rawResponse else {
@@ -3339,7 +3339,7 @@ extension ViewController {
             // Create step request - the API will populate addresses
             let stepRequest = step as LifiStepTransactionRequest
 
-            let response = try await portal.swap.lifi.getRouteStep(request: stepRequest)
+            let response = try await portal.trading.lifi.getRouteStep(request: stepRequest)
 
             // Handle success response
             guard let rawResponse = response.data?.rawResponse else {
@@ -3396,7 +3396,7 @@ extension ViewController {
                     fromChain: fromChain
                 )
 
-                let statusResponse = try await portal.swap.lifi.getStatus(request: statusRequest)
+                let statusResponse = try await portal.trading.lifi.getStatus(request: statusRequest)
 
                 // Handle success response
                 guard let rawResponse = statusResponse.data?.rawResponse else {
