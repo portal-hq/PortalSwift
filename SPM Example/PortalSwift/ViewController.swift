@@ -3127,12 +3127,12 @@ extension ViewController {
                 }
 
                 let request = LifiQuoteRequest(
-                    fromChain: "eip155:1",
-                    toChain: "eip155:137",
+                    fromChain: "eip155:8453",
+                    toChain: "eip155:42161",
                     fromToken: "ETH",
                     toToken: "USDC",
                     fromAddress: address,
-                    fromAmount: "1000000000000000000"
+                    fromAmount: "1000000000000"
                 )
 
                 let response = try await portal.swap.lifi.getQuote(request: request)
@@ -3144,6 +3144,26 @@ extension ViewController {
 
                     // Log comprehensive results for debugging
                     self.logLifiQuoteResults(request: request, response: rawResponse)
+                    
+                    // Sign and submit the transaction if transactionRequest is available
+                    if let transactionRequest = rawResponse.transactionRequest {
+                        self.logger.info("Processing Lifi transaction request...")
+                        let success = await self.signAndSubmitLifiTransaction(
+                            transactionRequest: transactionRequest,
+                            fromChainId: request.fromChain,
+                            portal: portal
+                        )
+                        if success {
+                            self.logger.info("Lifi transaction submitted successfully")
+                            self.showStatusView(message: "\(self.successStatus) Lifi transaction submitted")
+                        } else {
+                            self.logger.error("Lifi transaction failed")
+                            self.showStatusView(message: "\(self.failureStatus) Lifi transaction failed")
+                        }
+                    } else {
+                        self.logger.info("No transaction request available in quote response")
+                    }
+
                 } else {
                     self.logger.error("Lifi quote FAILED: \(response.error ?? "Unknown error")")
                     self.showStatusView(message: "\(self.failureStatus) Lifi quote: \(response.error ?? "Unknown error")")
@@ -3194,6 +3214,92 @@ extension ViewController {
 
         if let transactionId = response.transactionId {
             self.logger.info("Transaction ID: \(transactionId)")
+        }
+    }
+
+    /// Signs and submits a Lifi transaction using the transactionRequest from the quote response.
+    /// - Parameters:
+    ///   - transactionRequest: The transaction request object from the Lifi quote response (AnyCodable)
+    ///   - fromChainId: The chain ID in CAIP-2 format (e.g., "eip155:1")
+    ///   - portal: The Portal instance
+    /// - Returns: True if the transaction was submitted successfully, false otherwise
+    private func signAndSubmitLifiTransaction(
+        transactionRequest: AnyCodable,
+        fromChainId: String,
+        portal: PortalProtocol
+    ) async -> Bool {
+        do {
+            self.logger.info("Processing Lifi transaction request...")
+
+            // Extract transaction parameters from AnyCodable
+            guard let txParams = transactionRequest.value as? [String: Any] else {
+                self.logger.error("Failed to extract transaction parameters from transactionRequest")
+                return false
+            }
+
+            self.logger.info("Transaction params: \(txParams)")
+
+            // Extract required fields
+            guard let from = txParams["from"] as? String,
+                  let to = txParams["to"] as? String else {
+                self.logger.error("Missing required 'from' or 'to' field in transaction request")
+                return false
+            }
+
+            // Extract value (convert hex string or number to hex string)
+            var value = "0x0"
+            if let valueString = txParams["value"] as? String {
+                value = valueString
+            } else if let valueInt = txParams["value"] as? Int {
+                value = String(format: "0x%x", valueInt)
+            }
+
+            // Extract data
+            let data = txParams["data"] as? String ?? ""
+
+            // Create ETHTransactionParam from the parsed parameters
+            let ethTransaction = ETHTransactionParam(
+                from: from,
+                to: to,
+                value: value,
+                data: data
+            )
+
+            self.logger.info("ETH Transaction created - from: \(from), to: \(to), value: \(value)")
+
+            // Sign and send the transaction using the fromChainId
+            let sendTransactionResponse = try await portal.request(
+                fromChainId,
+                withMethod: .eth_sendTransaction,
+                andParams: [ethTransaction]
+            )
+
+            if let txHash = sendTransactionResponse.result as? String {
+                self.logger.info("Lifi transaction submitted successfully: \(txHash)")
+
+                // Wait for transaction to be mined and confirmed
+                self.logger.info("Waiting for transaction \(txHash) to be confirmed on-chain...")
+                let confirmed = await waitForTransactionConfirmation(
+                    txHash: txHash,
+                    chainId: fromChainId,
+                    portal: portal
+                )
+
+                if confirmed {
+                    self.logger.info("✅ Lifi transaction \(txHash) confirmed on-chain")
+                    return true
+                } else {
+                    self.logger.error("❌ Lifi transaction \(txHash) failed to be confirmed")
+                    return false
+                }
+            } else {
+                self.logger.error("Failed to submit Lifi transaction: No result returned")
+                return false
+            }
+
+        } catch {
+            self.logger.error("Exception during Lifi transaction signing/submission: \(error.localizedDescription)")
+            return false
         }
     }
 }

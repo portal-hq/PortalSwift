@@ -219,7 +219,7 @@ public struct LifiEstimate: Codable {
     /// The contract address for the approval
     public let approvalAddress: String
     /// The time needed to complete the following step (in seconds)
-    public let executionDuration: Int
+    public let executionDuration: Double
     /// The amount that should be transferred in USD equivalent
     public let fromAmountUSD: String?
     /// The estimated resulting amount of the toToken in USD equivalent
@@ -231,7 +231,7 @@ public struct LifiEstimate: Codable {
     /// Arbitrary data that depends on the used tool
     public let data: LifiEstimateData?
     
-    public init(tool: String, fromAmount: String, toAmount: String, toAmountMin: String, approvalAddress: String, executionDuration: Int, fromAmountUSD: String?, toAmountUSD: String?, feeCosts: [LifiFeeCost]?, gasCosts: [LifiGasCost]?, data: LifiEstimateData?) {
+    public init(tool: String, fromAmount: String, toAmount: String, toAmountMin: String, approvalAddress: String, executionDuration: Double, fromAmountUSD: String?, toAmountUSD: String?, feeCosts: [LifiFeeCost]?, gasCosts: [LifiGasCost]?, data: LifiEstimateData?) {
         self.tool = tool
         self.fromAmount = fromAmount
         self.toAmount = toAmount
