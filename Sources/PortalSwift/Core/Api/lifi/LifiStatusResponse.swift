@@ -7,13 +7,33 @@
 
 import Foundation
 
-/// Contains the current status of a cross chain transfer
+/// Response containing the status of a cross chain transfer from the Lifi integration
 // MARK: - LifiStatusResponse
 public struct LifiStatusResponse: Codable {
+    public let data: LifiStatusData?
+    public let error: String?
+
+    public init(data: LifiStatusData? = nil, error: String? = nil) {
+        self.data = data
+        self.error = error
+    }
+}
+
+public struct LifiStatusData: Codable {
+    public let rawResponse: LifiStatusRawResponse
+
+    public init(rawResponse: LifiStatusRawResponse) {
+        self.rawResponse = rawResponse
+    }
+}
+
+/// Contains the current status of a cross chain transfer
+// MARK: - LifiStatusRawResponse
+public struct LifiStatusRawResponse: Codable {
     /// The transaction on the sending chain (required)
     public let sending: LifiTransactionInfo
-    /// The transaction on the receiving chain
-    public let receiving: LifiTransactionInfo?
+    /// The transaction on the receiving chain (can be partial with just chainId)
+    public let receiving: LifiReceivingInfo?
     /// An array of fee costs for the transaction
     public let feeCosts: [LifiFeeCost]?
     /// The current status of the transfer (required)
@@ -38,6 +58,26 @@ public struct LifiStatusResponse: Codable {
     public let metadata: LifiMetadata?
 }
 
+/// Receiving chain information (can be partial or full transaction info)
+// MARK: - LifiReceivingInfo
+public struct LifiReceivingInfo: Codable {
+    /// The id of the chain
+    public let chainId: String?
+    /// Full transaction information (if available)
+    public let txHash: String?
+    public let txLink: String?
+    public let token: LifiToken?
+    public let amount: String?
+    public let gasToken: LifiToken?
+    public let gasAmount: String?
+    public let gasAmountUSD: String?
+    public let gasPrice: String?
+    public let gasUsed: String?
+    public let timestamp: Int?
+    public let value: String?
+    public let includedSteps: [LifiIncludedSwapStep]?
+}
+
 /// Transaction information
 // MARK: - LifiTransactionInfo
 public struct LifiTransactionInfo: Codable {
@@ -47,6 +87,8 @@ public struct LifiTransactionInfo: Codable {
     public let txLink: String
     /// The amount of the transaction (required)
     public let amount: String
+    /// The amount of the transaction in USD
+    public let amountUSD: String?
     /// Information about the token (required)
     public let token: LifiToken
     /// The id of the chain (required)
@@ -79,11 +121,11 @@ public struct LifiIncludedSwapStep: Codable {
     /// The amount that was sent to the tool
     public let fromAmount: String?
     /// The token that was sent to the tool
-    public let fromToken: String?
+    public let fromToken: LifiToken?
     /// The amount that was received from the tool
     public let toAmount: String?
     /// The token that was received from the tool
-    public let toToken: String?
+    public let toToken: LifiToken?
     /// The amount that was sent to the bridge
     public let bridgedAmount: String?
 }

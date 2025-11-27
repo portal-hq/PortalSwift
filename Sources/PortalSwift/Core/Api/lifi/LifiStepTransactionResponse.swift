@@ -7,6 +7,22 @@
 
 import Foundation
 
-/// Returns a Step object populated with transaction data (including transactionRequest)
+/// Response containing a step with transaction data from the Lifi integration
 // MARK: - LifiStepTransactionResponse
-public typealias LifiStepTransactionResponse = LifiStep
+public struct LifiStepTransactionResponse: Codable {
+    public let data: LifiStepTransactionData?
+    public let error: String?
+
+    public init(data: LifiStepTransactionData? = nil, error: String? = nil) {
+        self.data = data
+        self.error = error
+    }
+}
+
+public struct LifiStepTransactionData: Codable {
+    public let rawResponse: LifiStep
+
+    public init(rawResponse: LifiStep) {
+        self.rawResponse = rawResponse
+    }
+}

@@ -8,9 +8,29 @@
 import Foundation
 import AnyCodable
 
-/// - Note: `routes` is required, `unavailableRoutes` is optional
+/// Response containing routes from the Lifi integration
 // MARK: - LifiRoutesResponse
 public struct LifiRoutesResponse: Codable {
+    public let data: LifiRoutesData?
+    public let error: String?
+
+    public init(data: LifiRoutesData? = nil, error: String? = nil) {
+        self.data = data
+        self.error = error
+    }
+}
+
+public struct LifiRoutesData: Codable {
+    public let rawResponse: LifiRoutesRawResponse
+
+    public init(rawResponse: LifiRoutesRawResponse) {
+        self.rawResponse = rawResponse
+    }
+}
+
+/// - Note: `routes` is required, `unavailableRoutes` is optional
+// MARK: - LifiRoutesRawResponse
+public struct LifiRoutesRawResponse: Codable {
     /// List of possible routes for the given transfer (required)
     public let routes: [LifiRoute]
     /// Routes that are unavailable for the given transfer (optional)
@@ -50,6 +70,27 @@ public struct LifiRoute: Codable {
     public let toAddress: String?
     /// Whether a chain switch is part of the route
     public let containsSwitchChain: Bool?
+    /// Tags associated with the route (e.g., "RECOMMENDED", "CHEAPEST", "FASTEST")
+    public let tags: [String]?
+    
+    public init(id: String, fromChainId: String, fromAmountUSD: String, fromAmount: String, fromToken: LifiToken, toChainId: String, toAmountUSD: String, toAmount: String, toAmountMin: String, toToken: LifiToken, steps: [LifiStep], gasCostUSD: String?, fromAddress: String?, toAddress: String?, containsSwitchChain: Bool?, tags: [String]? = nil) {
+        self.id = id
+        self.fromChainId = fromChainId
+        self.fromAmountUSD = fromAmountUSD
+        self.fromAmount = fromAmount
+        self.fromToken = fromToken
+        self.toChainId = toChainId
+        self.toAmountUSD = toAmountUSD
+        self.toAmount = toAmount
+        self.toAmountMin = toAmountMin
+        self.toToken = toToken
+        self.steps = steps
+        self.gasCostUSD = gasCostUSD
+        self.fromAddress = fromAddress
+        self.toAddress = toAddress
+        self.containsSwitchChain = containsSwitchChain
+        self.tags = tags
+    }
 }
 
 /// Token information
@@ -162,11 +203,14 @@ public struct LifiToolDetails: Codable {
     public let name: String?
     /// The tool logo URL
     public let logoURI: String?
+    /// The tool website URL
+    public let webUrl: String?
     
-    public init(key: String?, name: String?, logoURI: String?) {
+    public init(key: String?, name: String?, logoURI: String?, webUrl: String? = nil) {
         self.key = key
         self.name = name
         self.logoURI = logoURI
+        self.webUrl = webUrl
     }
 }
 
