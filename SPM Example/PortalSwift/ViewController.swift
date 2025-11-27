@@ -3192,12 +3192,6 @@ extension ViewController {
                     return
                 }
 
-                self.logger.info("Wallet address: \(address)")
-                self.logger.info("--- Step 1: Requesting LiFi routes ---")
-                self.logger.info("Route parameters: eip155:8453 -> eip155:42161")
-                self.logger.info("Token swap: ETH -> USDC")
-                self.logger.info("Amount: 1000000000000 wei")
-
                 let request = LifiRoutesRequest(
                     fromChainId: fromChainId,
                     fromAmount: "1000000000000",
@@ -3206,6 +3200,8 @@ extension ViewController {
                     toTokenAddress: "USDC",
                     fromAddress: address
                 )
+
+                self.logLifiRoutesRequest(request: request, walletAddress: address)
 
                 let response = try await portal.swap.lifi.getRoutes(request: request)
 
@@ -3223,17 +3219,9 @@ extension ViewController {
                     return
                 }
 
-                self.logger.info("Routes received successfully!")
-
                 // Use the first route
                 let selectedRoute = routes[0]
-                self.logger.info("Selected route: \(selectedRoute.id)")
-                self.logger.info("  From: \(selectedRoute.fromAmountUSD) USD (\(selectedRoute.fromToken.symbol))")
-                self.logger.info("  To: \(selectedRoute.toAmountUSD) USD (\(selectedRoute.toToken.symbol))")
-                self.logger.info("  Steps: \(selectedRoute.steps.count)")
-                if let tags = selectedRoute.tags {
-                    self.logger.info("  Tags: \(tags.joined(separator: ", "))")
-                }
+                self.logLifiRoutesResults(request: request, routes: routes, selectedRoute: selectedRoute)
 
                 guard !selectedRoute.steps.isEmpty else {
                     self.logger.error("Selected route has no steps")
@@ -3242,7 +3230,6 @@ extension ViewController {
                 }
 
                 // Process route steps sequentially
-                self.logger.info("--- Step 2: Processing route steps ---")
                 let success = await processRouteStepsSequentially(
                     steps: selectedRoute.steps,
                     walletAddress: address,
@@ -3277,10 +3264,10 @@ extension ViewController {
         fromChainId: String,
         portal: PortalProtocol
     ) async -> Bool {
-        self.logger.info("Processing \(steps.count) route step(s) sequentially...")
+        self.logRouteStepProcessingStart(totalSteps: steps.count)
 
         for (index, step) in steps.enumerated() {
-            self.logger.info("--- Step \(index + 1)/\(steps.count): \(step.tool) ---")
+            self.logRouteStepStart(stepIndex: index + 1, totalSteps: steps.count, step: step)
 
             do {
                 // 1. Get transaction details for this step
@@ -3324,10 +3311,7 @@ extension ViewController {
                     return false
                 }
 
-                self.logger.info("Step \(index + 1) completed successfully!")
-                if let explorerLink = statusResult.lifiExplorerLink {
-                    self.logger.info("LiFi Explorer: \(explorerLink)")
-                }
+                self.logRouteStepCompletion(stepIndex: index + 1, lifiExplorerLink: statusResult.lifiExplorerLink)
             } catch {
                 self.logger.error("Error processing step \(index + 1): \(error.localizedDescription)")
                 return false
@@ -3349,7 +3333,7 @@ extension ViewController {
         walletAddress: String,
         portal: PortalProtocol
     ) async -> LifiStep? {
-        self.logger.info("Getting transaction details for step: \(step.id) (\(step.tool))")
+        self.logStepTransactionDetailsRequest(step: step)
 
         do {
             // Create step request - the API will populate addresses
@@ -3368,7 +3352,7 @@ extension ViewController {
                 return nil
             }
 
-            self.logger.info("Step transaction details received")
+            self.logStepTransactionDetailsResponse(step: rawResponse)
             return rawResponse
         } catch {
             self.logger.error("Error getting step transaction details: \(error.localizedDescription)")
@@ -3393,7 +3377,7 @@ extension ViewController {
         pollIntervalMs: Int = 2000,
         timeoutSeconds: Int = 600
     ) async -> (success: Bool, txId: String?, lifiExplorerLink: String?) {
-        self.logger.info("Polling LiFi status...")
+        self.logLiFiStatusPollingStart(txHash: txHash, fromChain: fromChain)
         let startTime = Date()
         var attempt = 0
 
@@ -3425,15 +3409,16 @@ extension ViewController {
                 let txId = rawResponse.transactionId
                 let lifiExplorerLink = rawResponse.lifiExplorerLink
 
-                self.logger.info("Polling LiFi status: \(txId ?? "N/A") (\(attempt)/\(maxAttempts))")
-                self.logger.info("Status: \(rawResponse.status.rawValue)")
+                self.logLiFiStatusPollingUpdate(
+                    attempt: attempt,
+                    maxAttempts: maxAttempts,
+                    txId: txId,
+                    status: rawResponse.status
+                )
 
                 // Check if transfer is complete
                 if rawResponse.status == .done {
-                    self.logger.info("LiFi transfer completed successfully!")
-                    if let explorerLink = lifiExplorerLink {
-                        self.logger.info("LiFi Explorer: \(explorerLink)")
-                    }
+                    self.logLiFiStatusPollingComplete(txId: txId, lifiExplorerLink: lifiExplorerLink)
                     return (true, txId, lifiExplorerLink)
                 } else if rawResponse.status == .failed {
                     self.logger.error("LiFi transfer failed")
@@ -3493,6 +3478,89 @@ extension ViewController {
 
         if let transactionId = response.transactionId {
             self.logger.info("Transaction ID: \(transactionId)")
+        }
+    }
+
+    private func logLifiRoutesRequest(request: LifiRoutesRequest, walletAddress: String) {
+        self.logger.info("Wallet address: \(walletAddress)")
+        self.logger.info("--- Step 1: Requesting LiFi routes ---")
+        self.logger.info("Route parameters: \(request.fromChainId) -> \(request.toChainId)")
+        self.logger.info("Token swap: \(request.fromTokenAddress) -> \(request.toTokenAddress)")
+        self.logger.info("Amount: \(request.fromAmount) wei")
+    }
+
+    private func logLifiRoutesResults(request: LifiRoutesRequest, routes: [LifiRoute], selectedRoute: LifiRoute) {
+        self.logger.info("Routes received successfully!")
+        self.logger.info("Total routes available: \(routes.count)")
+
+        self.logger.info("Selected route: \(selectedRoute.id)")
+        self.logger.info("  From: \(selectedRoute.fromAmountUSD) USD (\(selectedRoute.fromToken.symbol))")
+        self.logger.info("  To: \(selectedRoute.toAmountUSD) USD (\(selectedRoute.toToken.symbol))")
+        self.logger.info("  Steps: \(selectedRoute.steps.count)")
+        if let tags = selectedRoute.tags {
+            self.logger.info("  Tags: \(tags.joined(separator: ", "))")
+        }
+        if let gasCostUSD = selectedRoute.gasCostUSD {
+            self.logger.info("  Gas Cost USD: \(gasCostUSD)")
+        }
+    }
+
+    private func logRouteStepProcessingStart(totalSteps: Int) {
+        self.logger.info("--- Step 2: Processing route steps ---")
+        self.logger.info("Processing \(totalSteps) route step(s) sequentially...")
+    }
+
+    private func logRouteStepStart(stepIndex: Int, totalSteps: Int, step: LifiStep) {
+        self.logger.info("--- Step \(stepIndex)/\(totalSteps): \(step.tool) ---")
+        self.logger.info("Step ID: \(step.id)")
+        self.logger.info("Step Type: \(step.type.rawValue)")
+    }
+
+    private func logRouteStepCompletion(stepIndex: Int, lifiExplorerLink: String?) {
+        self.logger.info("Step \(stepIndex) completed successfully!")
+        if let explorerLink = lifiExplorerLink {
+            self.logger.info("LiFi Explorer: \(explorerLink)")
+        }
+    }
+
+    private func logStepTransactionDetailsRequest(step: LifiStep) {
+        self.logger.info("Getting transaction details for step: \(step.id) (\(step.tool))")
+    }
+
+    private func logStepTransactionDetailsResponse(step: LifiStep) {
+        self.logger.info("Step transaction details received")
+        if let estimate = step.estimate {
+            self.logger.info("Estimate: fromAmount=\(estimate.fromAmount), toAmount=\(estimate.toAmount)")
+            if let fromAmountUSD = estimate.fromAmountUSD {
+                self.logger.info("Estimate: fromAmountUSD=\(fromAmountUSD)")
+            }
+            if let toAmountUSD = estimate.toAmountUSD {
+                self.logger.info("Estimate: toAmountUSD=\(toAmountUSD)")
+            }
+        }
+        if step.transactionRequest != nil {
+            self.logger.info("Transaction Request: Available (ready to sign)")
+        }
+    }
+
+    private func logLiFiStatusPollingStart(txHash: String, fromChain: String) {
+        self.logger.info("Polling LiFi status...")
+        self.logger.info("Transaction Hash: \(txHash)")
+        self.logger.info("From Chain: \(fromChain)")
+    }
+
+    private func logLiFiStatusPollingUpdate(attempt: Int, maxAttempts: Int, txId: String?, status: LifiTransferStatus) {
+        self.logger.info("Polling LiFi status: \(txId ?? "N/A") (\(attempt)/\(maxAttempts))")
+        self.logger.info("Status: \(status.rawValue)")
+    }
+
+    private func logLiFiStatusPollingComplete(txId: String?, lifiExplorerLink: String?) {
+        self.logger.info("LiFi transfer completed successfully!")
+        if let txId = txId {
+            self.logger.info("Transaction ID: \(txId)")
+        }
+        if let explorerLink = lifiExplorerLink {
+            self.logger.info("LiFi Explorer: \(explorerLink)")
         }
     }
 
