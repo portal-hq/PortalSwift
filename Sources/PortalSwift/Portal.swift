@@ -40,6 +40,9 @@ public final class Portal: PortalProtocol {
   /// Access to yield-related functionality.
   public lazy var yield: Yield = .init(api: self.api)
 
+  /// Access to trading-related functionality.
+  public lazy var trading: Trading = .init(api: self.api)
+
   private let apiHost: String
   private var backup: BackupOptions?
   private let binary: Mobile

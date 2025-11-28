@@ -11,14 +11,17 @@ import Foundation
 
 class PortalApiMock: PortalApiProtocol {
   var yieldxyz: PortalSwift.PortalYieldXyzApiProtocol
+  var lifi: PortalSwift.PortalLifiTradingApiProtocol
 
   var client: PortalSwift.ClientResponse?
 
   init(
     yieldxyz: PortalSwift.PortalYieldXyzApiProtocol = PortalYieldXyzApiMock(),
+    lifi: PortalSwift.PortalLifiTradingApiProtocol = PortalLifiTradingApiMock(),
     client: PortalSwift.ClientResponse? = nil
   ) {
     self.yieldxyz = yieldxyz
+    self.lifi = lifi
     self.client = client
   }
 

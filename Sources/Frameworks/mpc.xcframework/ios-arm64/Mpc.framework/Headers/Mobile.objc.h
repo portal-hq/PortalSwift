@@ -11,44 +11,11 @@
 #include "Universe.objc.h"
 
 
-@class MobileCggmpBackup;
 @class MobileCustodian;
-@class MobileEjectResult;
-@class MobileGetMeErrorType;
 @class MobileGetMeResponse;
 @class MobileGetMeResult;
-
-@interface MobileCggmpBackup : NSObject <goSeqRefInterface> {
-}
-@property(strong, readonly) _Nonnull id _ref;
-
-- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
-- (nonnull instancetype)init;
-@property (nonatomic) NSString* _Nonnull clientId;
-@property (nonatomic) NSString* _Nonnull custodianId;
-@property (nonatomic) NSString* _Nonnull x;
-@property (nonatomic) NSString* _Nonnull y;
-@property (nonatomic) NSString* _Nonnull clientBk;
-@property (nonatomic) NSString* _Nonnull serverBk;
-@property (nonatomic) NSString* _Nonnull share;
-@property (nonatomic) NSString* _Nonnull clientPartialPubKey_x;
-@property (nonatomic) NSString* _Nonnull clientPartialPubKey_y;
-@property (nonatomic) NSString* _Nonnull serverPartialPubKey_x;
-@property (nonatomic) NSString* _Nonnull serverPartialPubKey_y;
-@property (nonatomic) NSString* _Nonnull yClient_x;
-@property (nonatomic) NSString* _Nonnull yClient_y;
-@property (nonatomic) NSString* _Nonnull yServer_x;
-@property (nonatomic) NSString* _Nonnull yServer_y;
-@property (nonatomic) NSString* _Nonnull pailler_p;
-@property (nonatomic) NSString* _Nonnull pailler_q;
-@property (nonatomic) NSString* _Nonnull ssid;
-@property (nonatomic) NSString* _Nonnull pedersenClient_n;
-@property (nonatomic) NSString* _Nonnull pedersenClient_s;
-@property (nonatomic) NSString* _Nonnull pedersenClient_t;
-@property (nonatomic) NSString* _Nonnull pedersenServer_n;
-@property (nonatomic) NSString* _Nonnull pedersenServer_s;
-@property (nonatomic) NSString* _Nonnull pedersenServer_t;
-@end
+@class MobileMetaResult;
+@class MobileMetadata;
 
 @interface MobileCustodian : NSObject <goSeqRefInterface> {
 }
@@ -58,28 +25,6 @@
 - (nonnull instancetype)init;
 @property (nonatomic) NSString* _Nonnull id_;
 @property (nonatomic) NSString* _Nonnull name;
-@end
-
-@interface MobileEjectResult : NSObject <goSeqRefInterface> {
-}
-@property(strong, readonly) _Nonnull id _ref;
-
-- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
-- (nonnull instancetype)init;
-@property (nonatomic) NSString* _Nonnull privateKey;
-// skipped field EjectResult.Error with unsupported type: github.com/portal-hq/mpc/errs.PortalError
-
-@end
-
-@interface MobileGetMeErrorType : NSObject <goSeqRefInterface> {
-}
-@property(strong, readonly) _Nonnull id _ref;
-
-- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
-- (nonnull instancetype)init;
-// skipped field GetMeErrorType.Code with unsupported type: uint16
-
-@property (nonatomic) NSString* _Nonnull message;
 @end
 
 @interface MobileGetMeResponse : NSObject <goSeqRefInterface> {
@@ -104,25 +49,60 @@
 - (nonnull instancetype)init;
 // skipped field GetMeResult.Data with unsupported type: github.com/portal-hq/mpc/client/mobile.GetMeResponse
 
-// skipped field GetMeResult.Error with unsupported type: github.com/portal-hq/mpc/client/mobile.GetMeErrorType
+@end
+
+@interface MobileMetaResult : NSObject <goSeqRefInterface> {
+}
+@property(strong, readonly) _Nonnull id _ref;
+
+- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
+- (nonnull instancetype)init;
+// skipped field MetaResult.Metrics with unsupported type: *github.com/portal-hq/mpc/client/core.Metrics
 
 @end
 
+@interface MobileMetadata : NSObject <goSeqRefInterface> {
+}
+@property(strong, readonly) _Nonnull id _ref;
+
+- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
+- (nonnull instancetype)init;
+@property (nonatomic) NSString* _Nonnull backupMethod;
+@property (nonatomic) NSString* _Nonnull clientPlatform;
+@property (nonatomic) NSString* _Nonnull clientPlatformVersion;
+// skipped field Metadata.IsMultiBackupEnabled with unsupported type: *bool
+
+@property (nonatomic) NSString* _Nonnull mpcServerVersion;
+@property (nonatomic) BOOL optimized;
+@property (nonatomic) NSString* _Nonnull curve;
+@property (nonatomic) NSString* _Nonnull signingScheme;
+@property (nonatomic) NSString* _Nonnull chainId;
+@property (nonatomic) NSString* _Nonnull reqId;
+@property (nonatomic) BOOL isRaw;
+@property (nonatomic) NSString* _Nonnull mpcClientHeader;
+@property (nonatomic) NSString* _Nonnull signatureApprovalMemo;
+@property (nonatomic) BOOL connectionTracingEnabled;
+/**
+ * Custom unmarshalling to set the default value of Optimized to true
+ */
+- (BOOL)unmarshalJSON:(NSData* _Nullable)data error:(NSError* _Nullable* _Nullable)error;
+@end
+
+FOUNDATION_EXPORT NSString* _Nonnull const MobileCurrentClientVersion;
+
 FOUNDATION_EXPORT NSString* _Nonnull MobileBackup(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
 
-FOUNDATION_EXPORT NSString* _Nonnull MobileBackupEd25519(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
+FOUNDATION_EXPORT NSString* _Nonnull MobileBackupEd25519(NSString* _Nullable clientAPIKey, NSString* _Nullable mpcAddr, NSString* _Nullable shareStr, NSString* _Nullable portalApiUrl, NSString* _Nullable metadataStr);
 
-FOUNDATION_EXPORT NSString* _Nonnull MobileBackupSecp256k1(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
+FOUNDATION_EXPORT NSString* _Nonnull MobileBackupSecp256k1(NSString* _Nullable clientAPIKey, NSString* _Nullable mpcAddr, NSString* _Nullable shareStr, NSString* _Nullable portalApiUrl, NSString* _Nullable metadataStr);
 
-FOUNDATION_EXPORT NSString* _Nonnull MobileCreateEjectResult(NSString* _Nullable privateKey, NSError* _Nullable err);
+FOUNDATION_EXPORT NSString* _Nonnull MobileDecrypt(NSString* _Nullable key, NSString* _Nullable encryptedText);
 
-FOUNDATION_EXPORT NSString* _Nonnull MobileDecrypt(NSString* _Nullable key, NSString* _Nullable dkgCipherText);
+FOUNDATION_EXPORT NSString* _Nonnull MobileDecryptWithPassword(NSString* _Nullable password, NSString* _Nullable encryptedText);
 
-FOUNDATION_EXPORT NSString* _Nonnull MobileDecryptWithPassword(NSString* _Nullable password, NSString* _Nullable dkgCipherText);
+FOUNDATION_EXPORT NSString* _Nonnull MobileEjectWalletAndDiscontinueMPC(NSString* _Nullable clientShareStr, NSString* _Nullable custodianShareStr);
 
-FOUNDATION_EXPORT NSString* _Nonnull MobileEjectWalletAndDiscontinueMPC(NSString* _Nullable clientDkgResult, NSString* _Nullable serverDkgResult);
-
-FOUNDATION_EXPORT NSString* _Nonnull MobileEjectWalletAndDiscontinueMPCEd25519(NSString* _Nullable clientDkgResult, NSString* _Nullable serverDkgResult);
+FOUNDATION_EXPORT NSString* _Nonnull MobileEjectWalletAndDiscontinueMPCEd25519(NSString* _Nullable clientShareStr, NSString* _Nullable custodianShareStr);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileEncrypt(NSString* _Nullable value);
 
@@ -130,12 +110,15 @@ FOUNDATION_EXPORT NSString* _Nonnull MobileEncryptWithPassword(NSString* _Nullab
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileFormatShares(NSString* _Nullable sharesJSON);
 
-FOUNDATION_EXPORT NSString* _Nonnull MobileGenerate(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
+FOUNDATION_EXPORT NSString* _Nonnull MobileGenerate(NSString* _Nullable clientAPIKey, NSString* _Nullable mpcAddr, NSString* _Nullable portalApiUrl, NSString* _Nullable metadataStr);
 
-FOUNDATION_EXPORT NSString* _Nonnull MobileGenerateEd25519(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
+FOUNDATION_EXPORT NSString* _Nonnull MobileGenerateEd25519(NSString* _Nullable clientAPIKey, NSString* _Nullable mpcAddr, NSString* _Nullable portalApiUrl, NSString* _Nullable metadataStr);
 
-FOUNDATION_EXPORT NSString* _Nonnull MobileGenerateSecp256k1(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
+FOUNDATION_EXPORT NSString* _Nonnull MobileGenerateSecp256k1(NSString* _Nullable clientAPIKey, NSString* _Nullable mpcAddr, NSString* _Nullable portalApiUrl, NSString* _Nullable metadataStr);
 
+/**
+ * TODO: Does this function have to be part of the mobile client?
+ */
 FOUNDATION_EXPORT NSString* _Nonnull MobileGetCustodianIdClientIdHashes(NSString* _Nullable custodianIdClientIdJSON);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileGetMe(NSString* _Nullable url, NSString* _Nullable token);
@@ -144,17 +127,17 @@ FOUNDATION_EXPORT NSString* _Nonnull MobileGetVersion(void);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileRecoverBackup(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
 
-FOUNDATION_EXPORT NSString* _Nonnull MobileRecoverBackupEd25519(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
+FOUNDATION_EXPORT NSString* _Nonnull MobileRecoverBackupEd25519(NSString* _Nullable clientAPIKey, NSString* _Nullable mpcAddr, NSString* _Nullable shareStr, NSString* _Nullable portalApiUrl, NSString* _Nullable metadataStr);
 
-FOUNDATION_EXPORT NSString* _Nonnull MobileRecoverBackupSecp256k1(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
+FOUNDATION_EXPORT NSString* _Nonnull MobileRecoverBackupSecp256k1(NSString* _Nullable clientAPIKey, NSString* _Nullable mpcAddr, NSString* _Nullable shareStr, NSString* _Nullable portalApiUrl, NSString* _Nullable metadataStr);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileRecoverSigning(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
 
-FOUNDATION_EXPORT NSString* _Nonnull MobileRecoverSigningEd25519(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
+FOUNDATION_EXPORT NSString* _Nonnull MobileRecoverSigningEd25519(NSString* _Nullable clientAPIKey, NSString* _Nullable mpcAddr, NSString* _Nullable shareStr, NSString* _Nullable portalApiUrl, NSString* _Nullable metadataStr);
 
-FOUNDATION_EXPORT NSString* _Nonnull MobileRecoverSigningSecp256k1(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
+FOUNDATION_EXPORT NSString* _Nonnull MobileRecoverSigningSecp256k1(NSString* _Nullable clientAPIKey, NSString* _Nullable mpcAddr, NSString* _Nullable shareStr, NSString* _Nullable portalApiUrl, NSString* _Nullable metadataStr);
 
-FOUNDATION_EXPORT NSString* _Nonnull MobileSign(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable method, NSString* _Nullable params, NSString* _Nullable rpcURL, NSString* _Nullable chainId, NSString* _Nullable metadataStr);
+FOUNDATION_EXPORT NSString* _Nonnull MobileSign(NSString* _Nullable clientAPIKey, NSString* _Nullable mpcAddr, NSString* _Nullable shareStr, NSString* _Nullable method, NSString* _Nullable params, NSString* _Nullable rpcURL, NSString* _Nullable chainId, NSString* _Nullable metadataStr);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileWebsocketHealthcheck(NSString* _Nullable addr);
 

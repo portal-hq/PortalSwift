@@ -11,25 +11,41 @@ import SwiftUI
 
 @available(iOS 17.0, *)
 struct SettingsView: View {
-  var portal: PortalProtocol
+  var portal: PortalProtocol?
 
   @State var gdriveBackupOption: Int = 0
 
   var body: some View {
-    VStack {
-      HStack {
-        Text("GDrive Option:")
+    VStack(spacing: 8) {
+      VStack {
+        HStack {
+          Text("GDrive Option:")
 
-        Spacer()
+          Spacer()
 
-        Picker("GDrive Backup Option", selection: self.$gdriveBackupOption) {
-          Text("appDataFolder").tag(0)
-          Text("appDataFolderWithFallback").tag(1)
-          Text("gdriveFolder").tag(2)
+          Picker("GDrive Backup Option", selection: self.$gdriveBackupOption) {
+            Text("appDataFolder").tag(0)
+            Text("appDataFolderWithFallback").tag(1)
+            Text("gdriveFolder").tag(2)
+          }
+          .pickerStyle(DefaultPickerStyle())
+          .padding([.horizontal, .top])
         }
-        .pickerStyle(DefaultPickerStyle())
-        .padding()
+
+        if self.portal == nil {
+          Text("Please init Portal to change the GDrive Option.")
+            .foregroundColor(.red)
+            .font(.caption)
+        }
       }
+      .disabled(self.portal == nil)
+      .padding(.bottom, 20)
+
+      Toggle("Is Account Abstracted", isOn: Binding(
+        get: { Settings.shared.isAccountAbstracted },
+        set: { Settings.shared.isAccountAbstracted = $0 }
+      ))
+      .padding(.horizontal)
 
       Spacer()
     }
@@ -46,13 +62,13 @@ struct SettingsView: View {
       do {
         let gdriveClientId = Settings.shared.portalConfig.appConfig?.googleClientId ?? ""
         if newValue == 0 { // appDataFolder
-          try portal.setGDriveConfiguration(clientId: gdriveClientId, backupOption: .appDataFolder)
+          try portal?.setGDriveConfiguration(clientId: gdriveClientId, backupOption: .appDataFolder)
           Settings.shared.portalConfig.gdriveBackupOption = .appDataFolder
         } else if newValue == 1 { // appDataFolderWithFallback
-          try portal.setGDriveConfiguration(clientId: gdriveClientId, backupOption: .appDataFolderWithFallback)
+          try portal?.setGDriveConfiguration(clientId: gdriveClientId, backupOption: .appDataFolderWithFallback)
           Settings.shared.portalConfig.gdriveBackupOption = .appDataFolderWithFallback
         } else if newValue == 2 { // gdriveFolder
-          try portal.setGDriveConfiguration(clientId: gdriveClientId, backupOption: .gdriveFolder(folderName: "_PORTAL_MPC_DO_NOT_DELETE_"))
+          try portal?.setGDriveConfiguration(clientId: gdriveClientId, backupOption: .gdriveFolder(folderName: "_PORTAL_MPC_DO_NOT_DELETE_"))
           Settings.shared.portalConfig.gdriveBackupOption = .gdriveFolder(folderName: "_PORTAL_MPC_DO_NOT_DELETE_")
         }
       } catch {
