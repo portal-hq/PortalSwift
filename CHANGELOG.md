@@ -16,8 +16,8 @@ Possible Types of changes include:
 - Added Li.Fi integration
     - Added `portal.trading.lifi.getQuote`
     - Added `portal.trading.lifi.getRoutes`
-    - Added `portal.trading.lifi.getStatus`
     - Added `portal.trading.lifi.getRouteStep`
+    - Added `portal.trading.lifi.getStatus`
 
 ## 6.3.1 - 2025-11-11
 - Fixed the `errSecDuplicateItem` error in keychain update.
