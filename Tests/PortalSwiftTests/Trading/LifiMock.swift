@@ -1,37 +1,44 @@
 //
-//  PortalLifiTradingApiMock.swift
+//  LifiMock.swift
 //  PortalSwift
 //
-//  Created by Ahmed Ragab on 23/11/2025.
+//  Created by Portal Labs
 //
 
 import Foundation
 @testable import PortalSwift
 
-final class PortalLifiTradingApiMock: PortalLifiTradingApiProtocol {
-  // Configurable return values
+/// Mock implementation of LifiProtocol for testing purposes.
+final class LifiMock: LifiProtocol {
+  // MARK: - Configurable return values
+
   var getRoutesReturnValue: LifiRoutesResponse?
   var getQuoteReturnValue: LifiQuoteResponse?
   var getStatusReturnValue: LifiStatusResponse?
   var getRouteStepReturnValue: LifiStepTransactionResponse?
 
-  // Error simulation
+  // MARK: - Error simulation
+
   var getRoutesError: Error?
   var getQuoteError: Error?
   var getStatusError: Error?
   var getRouteStepError: Error?
 
-  // Call counters
+  // MARK: - Call counters
+
   var getRoutesCalls = 0
   var getQuoteCalls = 0
   var getStatusCalls = 0
   var getRouteStepCalls = 0
 
-  // Call parameters
+  // MARK: - Call parameters
+
   var getRoutesRequestParam: LifiRoutesRequest?
   var getQuoteRequestParam: LifiQuoteRequest?
   var getStatusRequestParam: LifiStatusRequest?
   var getRouteStepRequestParam: LifiStepTransactionRequest?
+
+  // MARK: - Protocol Implementation
 
   func getRoutes(request: LifiRoutesRequest) async throws -> LifiRoutesResponse {
     getRoutesCalls += 1
@@ -39,7 +46,7 @@ final class PortalLifiTradingApiMock: PortalLifiTradingApiProtocol {
     if let error = getRoutesError {
       throw error
     }
-    return getRoutesReturnValue ?? LifiRoutesResponse(data: nil, error: nil)
+    return getRoutesReturnValue ?? LifiRoutesResponse.stub()
   }
 
   func getQuote(request: LifiQuoteRequest) async throws -> LifiQuoteResponse {
@@ -48,7 +55,7 @@ final class PortalLifiTradingApiMock: PortalLifiTradingApiProtocol {
     if let error = getQuoteError {
       throw error
     }
-    return getQuoteReturnValue ?? LifiQuoteResponse(data: nil, error: nil)
+    return getQuoteReturnValue ?? LifiQuoteResponse.stub()
   }
 
   func getStatus(request: LifiStatusRequest) async throws -> LifiStatusResponse {
@@ -57,7 +64,7 @@ final class PortalLifiTradingApiMock: PortalLifiTradingApiProtocol {
     if let error = getStatusError {
       throw error
     }
-    return getStatusReturnValue ?? LifiStatusResponse(data: nil, error: nil)
+    return getStatusReturnValue ?? LifiStatusResponse.stub()
   }
 
   func getRouteStep(request: LifiStepTransactionRequest) async throws -> LifiStepTransactionResponse {
@@ -66,8 +73,10 @@ final class PortalLifiTradingApiMock: PortalLifiTradingApiProtocol {
     if let error = getRouteStepError {
       throw error
     }
-    return getRouteStepReturnValue ?? LifiStepTransactionResponse(data: nil, error: nil)
+    return getRouteStepReturnValue ?? LifiStepTransactionResponse.stub()
   }
+
+  // MARK: - Helper Methods
 
   /// Resets all call counters and captured parameters
   func reset() {
@@ -92,3 +101,4 @@ final class PortalLifiTradingApiMock: PortalLifiTradingApiProtocol {
     getRouteStepError = nil
   }
 }
+
