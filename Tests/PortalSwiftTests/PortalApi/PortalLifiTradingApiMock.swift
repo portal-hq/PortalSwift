@@ -1,5 +1,5 @@
 //
-//  PortalSwapLifiApiMock.swift
+//  PortalLifiTradingApiMock.swift
 //  PortalSwift
 //
 //  Created by Ahmed Ragab on 23/11/2025.
@@ -8,7 +8,7 @@
 import Foundation
 @testable import PortalSwift
 
-final class PortalSwapLifiApiMock: PortalSwapLifiApiProtocol {
+final class PortalLifiTradingApiMock: PortalLifiTradingApiProtocol {
   // Configurable return values
   var getRoutesReturnValue: LifiRoutesResponse?
   var getQuoteReturnValue: LifiQuoteResponse?

@@ -18,6 +18,6 @@ public class Trading {
   /// Create an instance of Trading.
   /// - Parameter api: The Portal API instance to use for trading operations.
   init(api: PortalApiProtocol) {
-    self.lifi = Lifi(api: api.swapLifi)
+    self.lifi = Lifi(api: api.lifi)
   }
 }

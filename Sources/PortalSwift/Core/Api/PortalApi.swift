@@ -11,7 +11,7 @@ import Foundation
 public protocol PortalApiProtocol: AnyObject {
   var client: ClientResponse? { get async throws }
   var yieldxyz: PortalYieldXyzApiProtocol { get }
-  var swapLifi: PortalSwapLifiApiProtocol { get }
+  var lifi: PortalLifiTradingApiProtocol { get }
 
   func eject() async throws -> String
   func fund(chainId: String, params: FundParams) async throws -> FundResponse
@@ -116,7 +116,7 @@ public class PortalApi: PortalApiProtocol {
   )
 
   /// Access to Lifi trading integration functionality.
-  public lazy var swapLifi: PortalSwapLifiApiProtocol = PortalSwapLifiApi(
+  public lazy var lifi: PortalLifiTradingApiProtocol = PortalLifiTradingApi(
     apiKey: self.apiKey,
     apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
     requests: self.requests

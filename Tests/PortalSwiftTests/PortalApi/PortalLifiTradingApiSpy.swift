@@ -1,5 +1,5 @@
 //
-//  PortalSwapLifiApiSpy.swift
+//  PortalLifiTradingApiSpy.swift
 //  PortalSwift
 //
 //  Created by Ahmed Ragab on 23/11/2025.
@@ -8,7 +8,7 @@
 import Foundation
 @testable import PortalSwift
 
-final class PortalSwapLifiApiSpy: PortalSwapLifiApiProtocol {
+final class PortalLifiTradingApiSpy: PortalLifiTradingApiProtocol {
   // MARK: - getRoutes
 
   var getRoutesCallsCount = 0

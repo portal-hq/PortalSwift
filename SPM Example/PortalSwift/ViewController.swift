@@ -138,6 +138,16 @@ class ViewController: UIViewController, UITextFieldDelegate {
   private let failureStatus = "❌ Failure"
   private var currentAddresses: [WalletAddress] = []
 
+  // MARK: - Trading Configuration
+
+  private enum TradingConfig {
+    static let fromChainId = "eip155:8453" // Base Mainnet
+    static let toChainId = "eip155:42161" // Arbitrum
+    static let fromToken = "ETH"
+    static let toToken = "USDC"
+    static let fromAmount = "1000000000000" // 0.000001 ETH (in wei)
+  }
+
   // Set up the scroll view
   @IBOutlet var scrollView: UIScrollView!
   override func viewDidLoad() {
@@ -3128,12 +3138,12 @@ extension ViewController {
         }
 
         let request = LifiQuoteRequest(
-          fromChain: "eip155:8453",
-          toChain: "eip155:42161",
-          fromToken: "ETH",
-          toToken: "USDC",
+          fromChain: TradingConfig.fromChainId,
+          toChain: TradingConfig.toChainId,
+          fromToken: TradingConfig.fromToken,
+          toToken: TradingConfig.toToken,
           fromAddress: address,
-          fromAmount: "1000000000000"
+          fromAmount: TradingConfig.fromAmount
         )
 
         let response = try await portal.trading.lifi.getQuote(request: request)
@@ -3186,7 +3196,7 @@ extension ViewController {
       self.logger.info("=== LiFi Routes Integration Example ===")
       do {
         // Get the user's address from Base chain (where we'll start)
-        let fromChainId = "eip155:8453"
+        let fromChainId = TradingConfig.fromChainId
         guard let address = await portal.getAddress(fromChainId) else {
           self.logger.error("Lifi routes FAILED: Could not get address for chain \(fromChainId)")
           self.showStatusView(message: "\(self.failureStatus) Lifi routes: Address not found")
@@ -3195,10 +3205,10 @@ extension ViewController {
 
         let request = LifiRoutesRequest(
           fromChainId: fromChainId,
-          fromAmount: "1000000000000",
-          fromTokenAddress: "ETH",
-          toChainId: "eip155:42161",
-          toTokenAddress: "USDC",
+          fromAmount: TradingConfig.fromAmount,
+          fromTokenAddress: TradingConfig.fromToken,
+          toChainId: TradingConfig.toChainId,
+          toTokenAddress: TradingConfig.toToken,
           fromAddress: address
         )
 
@@ -3607,15 +3617,27 @@ extension ViewController {
       // Extract data
       let data = txParams["data"] as? String ?? ""
 
+      // Extract gas limit and gas price for testing purposes
+      let gasLimit = txParams["gasLimit"] as? String
+      let gasPrice = txParams["gasPrice"] as? String
+
       // Create ETHTransactionParam from the parsed parameters
-      let ethTransaction = ETHTransactionParam(
+      var ethTransaction = ETHTransactionParam(
         from: from,
         to: to,
         value: value,
         data: data
       )
 
-      self.logger.info("ETH Transaction created - from: \(from), to: \(to), value: \(value)")
+      // Set optional gas properties if available
+      if let gasLimit = gasLimit {
+        ethTransaction.maxFeePerGas = gasLimit
+      }
+      if let gasPrice = gasPrice {
+        ethTransaction.gasPrice = gasPrice
+      }
+
+      self.logger.info("ETH Transaction created - from: \(from), to: \(to), value: \(value), gasLimit: \(gasLimit ?? "N/A"), gasPrice: \(gasPrice ?? "N/A")")
 
       // Sign and send the transaction using the fromChainId
       let sendTransactionResponse = try await portal.request(

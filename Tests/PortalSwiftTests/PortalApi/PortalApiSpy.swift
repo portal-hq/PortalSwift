@@ -11,14 +11,14 @@ import Foundation
 
 class PortalApiSpy: PortalApiProtocol {
   var yieldxyz: any PortalSwift.PortalYieldXyzApiProtocol
-  var swapLifi: any PortalSwift.PortalSwapLifiApiProtocol
+  var lifi: any PortalSwift.PortalLifiTradingApiProtocol
 
   init(
     yieldxyz: any PortalSwift.PortalYieldXyzApiProtocol = PortalYieldXyzApiSpy(),
-    swapLifi: any PortalSwift.PortalSwapLifiApiProtocol = PortalSwapLifiApiSpy()
+    lifi: any PortalSwift.PortalLifiTradingApiProtocol = PortalLifiTradingApiSpy()
   ) {
     self.yieldxyz = yieldxyz
-    self.swapLifi = swapLifi
+    self.lifi = lifi
   }
 
   // Property to track client access

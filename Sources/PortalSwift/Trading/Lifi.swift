@@ -17,11 +17,11 @@ public protocol LifiProtocol {
 
 /// Lifi provider implementation for trading functionality.
 public class Lifi: LifiProtocol {
-  private let api: PortalSwapLifiApiProtocol
+  private let api: PortalLifiTradingApiProtocol
 
   /// Create an instance of Lifi.
-  /// - Parameter api: The PortalSwapLifiApi instance to use for trading operations.
-  public init(api: PortalSwapLifiApiProtocol) {
+  /// - Parameter api: The PortalLifiTradingApi instance to use for trading operations.
+  public init(api: PortalLifiTradingApiProtocol) {
     self.api = api
   }
 

@@ -1,5 +1,5 @@
 //
-//  PortalSwapLifiApi.swift
+//  PortalLifiTradingApi.swift
 //  PortalSwift
 //
 //  Created by Ahmed Ragab on 23/11/2025.
@@ -7,22 +7,22 @@
 
 import Foundation
 
-/// Protocol of Lifi Swap API interactions.
-public protocol PortalSwapLifiApiProtocol: AnyObject {
+/// Protocol of Lifi Trading API interactions.
+public protocol PortalLifiTradingApiProtocol: AnyObject {
   func getRoutes(request: LifiRoutesRequest) async throws -> LifiRoutesResponse
   func getQuote(request: LifiQuoteRequest) async throws -> LifiQuoteResponse
   func getStatus(request: LifiStatusRequest) async throws -> LifiStatusResponse
   func getRouteStep(request: LifiStepTransactionRequest) async throws -> LifiStepTransactionResponse
 }
 
-/// API class specifically for Lifi Swap integration functionality.
-public class PortalSwapLifiApi: PortalSwapLifiApiProtocol {
+/// API class specifically for Lifi Trading integration functionality.
+public class PortalLifiTradingApi: PortalLifiTradingApiProtocol {
   private let apiKey: String
   private let baseUrl: String
   private let requests: PortalRequestsProtocol
   private let logger = PortalLogger()
 
-  /// Create an instance of PortalSwapLifiApi.
+  /// Create an instance of PortalLifiTradingApi.
   /// - Parameters:
   ///   - apiKey: The Client API key.
   ///   - apiHost: The Portal API hostname.
@@ -44,14 +44,14 @@ public class PortalSwapLifiApi: PortalSwapLifiApiProtocol {
   /// Retrieves routes from the Lifi integration.
   public func getRoutes(request: LifiRoutesRequest) async throws -> LifiRoutesResponse {
     guard let url = URL(string: "\(baseUrl)/api/v3/clients/me/integrations/lifi/routes") else {
-      logger.error("PortalSwapLifiApi.getRoutes() - Unable to build request URL.")
+      logger.error("PortalLifiTradingApi.getRoutes() - Unable to build request URL.")
       throw URLError(.badURL)
     }
 
     do {
       return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: LifiRoutesResponse.self)
     } catch {
-      logger.error("PortalSwapLifiApi.getRoutes() - Error: \(error.localizedDescription)")
+      logger.error("PortalLifiTradingApi.getRoutes() - Error: \(error.localizedDescription)")
       throw error
     }
   }
@@ -59,14 +59,14 @@ public class PortalSwapLifiApi: PortalSwapLifiApiProtocol {
   /// Retrieves a quote from the Lifi integration.
   public func getQuote(request: LifiQuoteRequest) async throws -> LifiQuoteResponse {
     guard let url = URL(string: "\(baseUrl)/api/v3/clients/me/integrations/lifi/quote") else {
-      logger.error("PortalSwapLifiApi.getQuote() - Unable to build request URL.")
+      logger.error("PortalLifiTradingApi.getQuote() - Unable to build request URL.")
       throw URLError(.badURL)
     }
 
     do {
       return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: LifiQuoteResponse.self)
     } catch {
-      logger.error("PortalSwapLifiApi.getQuote() - Error: \(error.localizedDescription)")
+      logger.error("PortalLifiTradingApi.getQuote() - Error: \(error.localizedDescription)")
       throw error
     }
   }
@@ -82,14 +82,14 @@ public class PortalSwapLifiApi: PortalSwapLifiApiProtocol {
     let queryString = queryParams.isEmpty ? "" : "?\(queryParams.joined(separator: "&"))"
 
     guard let url = URL(string: "\(baseUrl)/api/v3/clients/me/integrations/lifi/status\(queryString)") else {
-      logger.error("PortalSwapLifiApi.getStatus() - Unable to build request URL.")
+      logger.error("PortalLifiTradingApi.getStatus() - Unable to build request URL.")
       throw URLError(.badURL)
     }
 
     do {
       return try await get(url, withBearerToken: apiKey, mappingInResponse: LifiStatusResponse.self)
     } catch {
-      logger.error("PortalSwapLifiApi.getStatus() - Error: \(error.localizedDescription)")
+      logger.error("PortalLifiTradingApi.getStatus() - Error: \(error.localizedDescription)")
       throw error
     }
   }
@@ -97,14 +97,14 @@ public class PortalSwapLifiApi: PortalSwapLifiApiProtocol {
   /// Retrieves an unsigned transaction from the Lifi integration that has yet to be signed/submitted.
   public func getRouteStep(request: LifiStepTransactionRequest) async throws -> LifiStepTransactionResponse {
     guard let url = URL(string: "\(baseUrl)/api/v3/clients/me/integrations/lifi/route-step-details") else {
-      logger.error("PortalSwapLifiApi.getRouteStep() - Unable to build request URL.")
+      logger.error("PortalLifiTradingApi.getRouteStep() - Unable to build request URL.")
       throw URLError(.badURL)
     }
 
     do {
       return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: LifiStepTransactionResponse.self)
     } catch {
-      logger.error("PortalSwapLifiApi.getRouteStep() - Error: \(error.localizedDescription)")
+      logger.error("PortalLifiTradingApi.getRouteStep() - Error: \(error.localizedDescription)")
       throw error
     }
   }
