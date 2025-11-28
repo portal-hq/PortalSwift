@@ -21,21 +21,58 @@ final class PortalLifiTradingApiMock: PortalLifiTradingApiProtocol {
   var getStatusError: Error?
   var getRouteStepError: Error?
 
-  // Call counters
-  var getRoutesCalls = 0
-  var getQuoteCalls = 0
-  var getStatusCalls = 0
-  var getRouteStepCalls = 0
+  // Thread-safe serial queue for synchronizing access to counters and parameters
+  private let queue = DispatchQueue(label: "com.portal.PortalLifiTradingApiMock.queue")
 
-  // Call parameters
-  var getRoutesRequestParam: LifiRoutesRequest?
-  var getQuoteRequestParam: LifiQuoteRequest?
-  var getStatusRequestParam: LifiStatusRequest?
-  var getRouteStepRequestParam: LifiStepTransactionRequest?
+  // Call counters (thread-safe via serial queue)
+  private var _getRoutesCalls = 0
+  private var _getQuoteCalls = 0
+  private var _getStatusCalls = 0
+  private var _getRouteStepCalls = 0
+
+  var getRoutesCalls: Int {
+    queue.sync { _getRoutesCalls }
+  }
+
+  var getQuoteCalls: Int {
+    queue.sync { _getQuoteCalls }
+  }
+
+  var getStatusCalls: Int {
+    queue.sync { _getStatusCalls }
+  }
+
+  var getRouteStepCalls: Int {
+    queue.sync { _getRouteStepCalls }
+  }
+
+  // Call parameters (thread-safe via serial queue)
+  private var _getRoutesRequestParam: LifiRoutesRequest?
+  private var _getQuoteRequestParam: LifiQuoteRequest?
+  private var _getStatusRequestParam: LifiStatusRequest?
+  private var _getRouteStepRequestParam: LifiStepTransactionRequest?
+
+  var getRoutesRequestParam: LifiRoutesRequest? {
+    queue.sync { _getRoutesRequestParam }
+  }
+
+  var getQuoteRequestParam: LifiQuoteRequest? {
+    queue.sync { _getQuoteRequestParam }
+  }
+
+  var getStatusRequestParam: LifiStatusRequest? {
+    queue.sync { _getStatusRequestParam }
+  }
+
+  var getRouteStepRequestParam: LifiStepTransactionRequest? {
+    queue.sync { _getRouteStepRequestParam }
+  }
 
   func getRoutes(request: LifiRoutesRequest) async throws -> LifiRoutesResponse {
-    getRoutesCalls += 1
-    getRoutesRequestParam = request
+    queue.sync {
+      _getRoutesCalls += 1
+      _getRoutesRequestParam = request
+    }
     if let error = getRoutesError {
       throw error
     }
@@ -43,8 +80,10 @@ final class PortalLifiTradingApiMock: PortalLifiTradingApiProtocol {
   }
 
   func getQuote(request: LifiQuoteRequest) async throws -> LifiQuoteResponse {
-    getQuoteCalls += 1
-    getQuoteRequestParam = request
+    queue.sync {
+      _getQuoteCalls += 1
+      _getQuoteRequestParam = request
+    }
     if let error = getQuoteError {
       throw error
     }
@@ -52,8 +91,10 @@ final class PortalLifiTradingApiMock: PortalLifiTradingApiProtocol {
   }
 
   func getStatus(request: LifiStatusRequest) async throws -> LifiStatusResponse {
-    getStatusCalls += 1
-    getStatusRequestParam = request
+    queue.sync {
+      _getStatusCalls += 1
+      _getStatusRequestParam = request
+    }
     if let error = getStatusError {
       throw error
     }
@@ -61,8 +102,10 @@ final class PortalLifiTradingApiMock: PortalLifiTradingApiProtocol {
   }
 
   func getRouteStep(request: LifiStepTransactionRequest) async throws -> LifiStepTransactionResponse {
-    getRouteStepCalls += 1
-    getRouteStepRequestParam = request
+    queue.sync {
+      _getRouteStepCalls += 1
+      _getRouteStepRequestParam = request
+    }
     if let error = getRouteStepError {
       throw error
     }
@@ -71,15 +114,17 @@ final class PortalLifiTradingApiMock: PortalLifiTradingApiProtocol {
 
   /// Resets all call counters and captured parameters
   func reset() {
-    getRoutesCalls = 0
-    getQuoteCalls = 0
-    getStatusCalls = 0
-    getRouteStepCalls = 0
+    queue.sync {
+      _getRoutesCalls = 0
+      _getQuoteCalls = 0
+      _getStatusCalls = 0
+      _getRouteStepCalls = 0
 
-    getRoutesRequestParam = nil
-    getQuoteRequestParam = nil
-    getStatusRequestParam = nil
-    getRouteStepRequestParam = nil
+      _getRoutesRequestParam = nil
+      _getQuoteRequestParam = nil
+      _getStatusRequestParam = nil
+      _getRouteStepRequestParam = nil
+    }
 
     getRoutesReturnValue = nil
     getQuoteReturnValue = nil
