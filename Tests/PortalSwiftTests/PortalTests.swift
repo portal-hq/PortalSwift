@@ -2234,3 +2234,1046 @@ extension PortalTests {
     XCTAssertEqual(portalRequestsSpy.executeRequestParam?.headers["Authorization"], "Bearer \(customApiKey)")
   }
 }
+
+// MARK: - trading property tests
+
+extension PortalTests {
+  func test_trading_propertyExists() {
+    // given & when
+    let tradingProperty = portal.trading
+
+    // then
+    XCTAssertNotNil(tradingProperty)
+  }
+
+  func test_trading_isOfCorrectType() {
+    // given & when
+    let tradingProperty = portal.trading
+
+    // then
+    XCTAssertTrue(tradingProperty is Trading)
+  }
+
+  func test_trading_returnsSameInstanceOnMultipleAccesses() {
+    // given
+    let firstAccess = portal.trading
+
+    // when
+    let secondAccess = portal.trading
+
+    // then - lazy var should return the same instance
+    XCTAssertTrue(firstAccess === secondAccess)
+  }
+
+  func test_trading_hasLifiProperty() {
+    // given & when
+    let lifi = portal.trading.lifi
+
+    // then
+    XCTAssertNotNil(lifi)
+    XCTAssertTrue(lifi is LifiProtocol)
+  }
+
+  func test_trading_lifi_canCallGetRoutes() async throws {
+    // given
+    let mockResponse = LifiRoutesResponse.stub()
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getRoutesReturnValue = mockResponse
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    let request = LifiRoutesRequest.stub()
+
+    // when
+    let response = try await portal.trading.lifi.getRoutes(request: request)
+
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertNotNil(response.data)
+    XCTAssertEqual(lifiApiMock.getRoutesCalls, 1)
+  }
+
+  func test_trading_lifi_canCallGetRoutesWithFullRequest() async throws {
+    // given
+    let mockResponse = LifiRoutesResponse.stub()
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getRoutesReturnValue = mockResponse
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    let options = LifiRoutesRequestOptions.stub(
+      slippage: 0.01,
+      order: .cheapest,
+      allowSwitchChain: true
+    )
+    let request = LifiRoutesRequest(
+      fromChainId: "1",
+      fromAmount: "1000000000000000000",
+      fromTokenAddress: "0x0000000000000000000000000000000000000000",
+      toChainId: "137",
+      toTokenAddress: "0x0000000000000000000000000000000000001010",
+      options: options,
+      fromAddress: "0x1234567890abcdef1234567890abcdef12345678",
+      toAddress: "0x1234567890abcdef1234567890abcdef12345678"
+    )
+
+    // when
+    let response = try await portal.trading.lifi.getRoutes(request: request)
+
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertNotNil(response.data)
+    XCTAssertEqual(lifiApiMock.getRoutesCalls, 1)
+  }
+
+  func test_trading_lifi_canCallGetQuote() async throws {
+    // given
+    let mockResponse = LifiQuoteResponse.stub()
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getQuoteReturnValue = mockResponse
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    let request = LifiQuoteRequest.stub()
+
+    // when
+    let response = try await portal.trading.lifi.getQuote(request: request)
+
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertNotNil(response.data)
+    XCTAssertEqual(lifiApiMock.getQuoteCalls, 1)
+  }
+
+  func test_trading_lifi_canCallGetQuoteWithFullRequest() async throws {
+    // given
+    let mockResponse = LifiQuoteResponse.stub()
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getQuoteReturnValue = mockResponse
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    let request = LifiQuoteRequest(
+      fromChain: "1",
+      toChain: "137",
+      fromToken: "ETH",
+      toToken: "MATIC",
+      fromAddress: "0x1234567890abcdef1234567890abcdef12345678",
+      fromAmount: "1000000000000000000",
+      toAddress: "0xabcdef1234567890abcdef1234567890abcdef12",
+      order: .fastest,
+      slippage: 0.005,
+      integrator: "portal",
+      allowBridges: ["hop", "across"],
+      allowExchanges: ["uniswap"],
+      allowDestinationCall: true
+    )
+
+    // when
+    let response = try await portal.trading.lifi.getQuote(request: request)
+
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertNotNil(response.data)
+    XCTAssertEqual(lifiApiMock.getQuoteCalls, 1)
+  }
+
+  func test_trading_lifi_canCallGetStatus() async throws {
+    // given
+    let mockResponse = LifiStatusResponse.stub()
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getStatusReturnValue = mockResponse
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    let request = LifiStatusRequest.stub()
+
+    // when
+    let response = try await portal.trading.lifi.getStatus(request: request)
+
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertNotNil(response.data)
+    XCTAssertEqual(response.data?.rawResponse.status, .done)
+    XCTAssertEqual(lifiApiMock.getStatusCalls, 1)
+  }
+
+  func test_trading_lifi_canCallGetStatusWithFullRequest() async throws {
+    // given
+    let mockResponse = LifiStatusResponse.stub()
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getStatusReturnValue = mockResponse
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    let request = LifiStatusRequest(
+      txHash: "0xabc123def456789",
+      bridge: .relay,
+      fromChain: "1",
+      toChain: "137"
+    )
+
+    // when
+    let response = try await portal.trading.lifi.getStatus(request: request)
+
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertNotNil(response.data)
+    XCTAssertEqual(lifiApiMock.getStatusCalls, 1)
+  }
+
+  func test_trading_lifi_canCallGetRouteStep() async throws {
+    // given
+    let mockResponse = LifiStepTransactionResponse.stub()
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getRouteStepReturnValue = mockResponse
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    let request = LifiStep.stub()
+
+    // when
+    let response = try await portal.trading.lifi.getRouteStep(request: request)
+
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertNotNil(response.data)
+    XCTAssertEqual(lifiApiMock.getRouteStepCalls, 1)
+  }
+
+  func test_trading_lifi_canCallGetRouteStepWithSwapStep() async throws {
+    // given
+    let mockResponse = LifiStepTransactionResponse.stub()
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getRouteStepReturnValue = mockResponse
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    let request = LifiStep.stub(type: .swap, tool: "uniswap")
+
+    // when
+    let response = try await portal.trading.lifi.getRouteStep(request: request)
+
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertNotNil(response.data)
+    XCTAssertEqual(lifiApiMock.getRouteStepCalls, 1)
+  }
+
+  func test_trading_lifi_canCallGetRouteStepWithCrossChainStep() async throws {
+    // given
+    let mockResponse = LifiStepTransactionResponse.stub()
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getRouteStepReturnValue = mockResponse
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    let request = LifiStep.stub(type: .cross, tool: "relay")
+
+    // when
+    let response = try await portal.trading.lifi.getRouteStep(request: request)
+
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertNotNil(response.data)
+    XCTAssertEqual(lifiApiMock.getRouteStepCalls, 1)
+  }
+
+  func test_trading_usesPortalApiInstance() {
+    // given
+    let tradingProperty = portal.trading
+
+    // when - access lifi which uses portal.api.lifi internally
+    let lifi = tradingProperty.lifi
+
+    // then - should not be nil and should be properly initialized
+    XCTAssertNotNil(lifi)
+  }
+
+  func test_trading_multipleAccessesSameInstance() {
+    // given
+    let firstTrading = portal.trading
+    let firstLifi = firstTrading.lifi
+
+    // when
+    let secondTrading = portal.trading
+    let secondLifi = secondTrading.lifi
+
+    // then - trading should be same instance (lazy var)
+    XCTAssertTrue(firstTrading === secondTrading)
+    // lifi should also be same instance (var property in Trading)
+    XCTAssertTrue(firstLifi as AnyObject === secondLifi as AnyObject)
+  }
+
+  func test_trading_lifi_errorPropagation_getRoutes() async throws {
+    // given
+    let mockError = "No routes found"
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getRoutesReturnValue = LifiRoutesResponse(data: nil, error: mockError)
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    // when
+    let response = try await portal.trading.lifi.getRoutes(request: LifiRoutesRequest.stub())
+
+    // then - error should be returned in response
+    XCTAssertNotNil(response)
+    XCTAssertEqual(response.error, mockError)
+    XCTAssertNil(response.data)
+  }
+
+  func test_trading_lifi_errorPropagation_getQuote() async throws {
+    // given
+    let mockError = "Unable to find quote"
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getQuoteReturnValue = LifiQuoteResponse(data: nil, error: mockError)
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    // when
+    let response = try await portal.trading.lifi.getQuote(request: LifiQuoteRequest.stub())
+
+    // then - error should be returned in response
+    XCTAssertNotNil(response)
+    XCTAssertEqual(response.error, mockError)
+    XCTAssertNil(response.data)
+  }
+
+  func test_trading_lifi_errorPropagation_getStatus() async throws {
+    // given
+    let mockError = "Transaction not found"
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getStatusReturnValue = LifiStatusResponse(data: nil, error: mockError)
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    // when
+    let response = try await portal.trading.lifi.getStatus(request: LifiStatusRequest.stub())
+
+    // then - error should be returned in response
+    XCTAssertNotNil(response)
+    XCTAssertEqual(response.error, mockError)
+    XCTAssertNil(response.data)
+  }
+
+  func test_trading_lifi_errorPropagation_getRouteStep() async throws {
+    // given
+    let mockError = "Step execution failed"
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getRouteStepReturnValue = LifiStepTransactionResponse(data: nil, error: mockError)
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    // when
+    let response = try await portal.trading.lifi.getRouteStep(request: LifiStep.stub())
+
+    // then - error should be returned in response
+    XCTAssertNotNil(response)
+    XCTAssertEqual(response.error, mockError)
+    XCTAssertNil(response.data)
+  }
+
+  func test_trading_differentPortalsHaveDifferentTradingInstances() throws {
+    // given
+    let portal2 = try Portal(
+      MockConstants.mockApiKey,
+      withRpcConfig: ["eip155:11155111": "https://\(MockConstants.mockHost)/test-rpc"],
+      api: api,
+      binary: binary,
+      gDrive: MockGDriveStorage(),
+      iCloud: MockICloudStorage(),
+      keychain: keychain,
+      mpc: MockPortalMpc(),
+      passwords: MockPasswordStorage()
+    )
+
+    let trading1 = portal.trading
+    let trading2 = portal2.trading
+
+    // then - different Portal instances should have different Trading instances
+    XCTAssertFalse(trading1 === trading2)
+  }
+
+  func test_trading_lifi_withCustomApi() async throws {
+    // given
+    let customApiKey = "custom-trading-api-key"
+    let portalRequestsSpy = PortalRequestsSpy()
+    let mockResponse = LifiRoutesResponse.stub()
+    portalRequestsSpy.returnData = try JSONEncoder().encode(mockResponse)
+
+    let customApi = PortalApi(
+      apiKey: customApiKey,
+      apiHost: MockConstants.mockHost,
+      requests: portalRequestsSpy
+    )
+
+    let customPortal = try Portal(
+      MockConstants.mockApiKey,
+      withRpcConfig: ["eip155:11155111": "https://\(MockConstants.mockHost)/test-rpc"],
+      api: customApi,
+      binary: binary,
+      gDrive: MockGDriveStorage(),
+      iCloud: MockICloudStorage(),
+      keychain: keychain,
+      mpc: MockPortalMpc(),
+      passwords: MockPasswordStorage()
+    )
+
+    // when
+    _ = try await customPortal.trading.lifi.getRoutes(request: LifiRoutesRequest.stub())
+
+    // then - should use custom API key
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.headers["Authorization"], "Bearer \(customApiKey)")
+  }
+
+  func test_trading_lifi_getRoutesWithMultipleRoutes() async throws {
+    // given
+    let routes = [
+      LifiRoute.stub(id: "route-1", tags: ["FASTEST"]),
+      LifiRoute.stub(id: "route-2", tags: ["CHEAPEST"]),
+      LifiRoute.stub(id: "route-3", tags: ["RECOMMENDED"])
+    ]
+    let rawResponse = LifiRoutesRawResponse.stub(routes: routes)
+    let mockResponse = LifiRoutesResponse.stub(data: LifiRoutesData(rawResponse: rawResponse))
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getRoutesReturnValue = mockResponse
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    // when
+    let response = try await portal.trading.lifi.getRoutes(request: LifiRoutesRequest.stub())
+
+    // then
+    XCTAssertEqual(response.data?.rawResponse.routes.count, 3)
+    XCTAssertEqual(response.data?.rawResponse.routes[0].tags, ["FASTEST"])
+    XCTAssertEqual(response.data?.rawResponse.routes[1].tags, ["CHEAPEST"])
+    XCTAssertEqual(response.data?.rawResponse.routes[2].tags, ["RECOMMENDED"])
+  }
+
+  func test_trading_lifi_getRoutesWithEmptyRoutes() async throws {
+    // given
+    let rawResponse = LifiRoutesRawResponse.stub(routes: [])
+    let mockResponse = LifiRoutesResponse.stub(data: LifiRoutesData(rawResponse: rawResponse))
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getRoutesReturnValue = mockResponse
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    // when
+    let response = try await portal.trading.lifi.getRoutes(request: LifiRoutesRequest.stub())
+
+    // then
+    XCTAssertEqual(response.data?.rawResponse.routes.count, 0)
+  }
+
+  func test_trading_lifi_getRoutesWithUnavailableRoutes() async throws {
+    // given
+    let unavailableRoutes = LifiUnavailableRoutes.stub(
+      filteredOut: [LifiFilteredRoute.stub(reason: "Amount too low")],
+      failed: [LifiFailedRoute.stub(overallPath: "1:ETH-hop-137:MATIC")]
+    )
+    let rawResponse = LifiRoutesRawResponse.stub(routes: [], unavailableRoutes: unavailableRoutes)
+    let mockResponse = LifiRoutesResponse.stub(data: LifiRoutesData(rawResponse: rawResponse))
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getRoutesReturnValue = mockResponse
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    // when
+    let response = try await portal.trading.lifi.getRoutes(request: LifiRoutesRequest.stub())
+
+    // then
+    XCTAssertNotNil(response.data?.rawResponse.unavailableRoutes)
+    XCTAssertEqual(response.data?.rawResponse.unavailableRoutes?.filteredOut?.count, 1)
+    XCTAssertEqual(response.data?.rawResponse.unavailableRoutes?.failed?.count, 1)
+  }
+
+  func test_trading_lifi_getStatusWithPendingStatus() async throws {
+    // given
+    let rawResponse = LifiStatusRawResponse.stub(
+      status: .pending,
+      substatus: .waitSourceConfirmations,
+      substatusMessage: "Waiting for confirmations"
+    )
+    let mockResponse = LifiStatusResponse.stub(data: LifiStatusData(rawResponse: rawResponse))
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getStatusReturnValue = mockResponse
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    // when
+    let response = try await portal.trading.lifi.getStatus(request: LifiStatusRequest.stub())
+
+    // then
+    XCTAssertEqual(response.data?.rawResponse.status, .pending)
+    XCTAssertEqual(response.data?.rawResponse.substatus, .waitSourceConfirmations)
+    XCTAssertEqual(response.data?.rawResponse.substatusMessage, "Waiting for confirmations")
+  }
+
+  func test_trading_lifi_getStatusWithFailedStatus() async throws {
+    // given
+    let rawResponse = LifiStatusRawResponse.stub(
+      status: .failed,
+      substatus: .unknownError,
+      substatusMessage: "Transaction reverted"
+    )
+    let mockResponse = LifiStatusResponse.stub(data: LifiStatusData(rawResponse: rawResponse))
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getStatusReturnValue = mockResponse
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    // when
+    let response = try await portal.trading.lifi.getStatus(request: LifiStatusRequest.stub())
+
+    // then
+    XCTAssertEqual(response.data?.rawResponse.status, .failed)
+    XCTAssertEqual(response.data?.rawResponse.substatus, .unknownError)
+  }
+
+  func test_trading_lifi_getStatusWithNotFoundStatus() async throws {
+    // given
+    let rawResponse = LifiStatusRawResponse.stub(status: .notFound)
+    let mockResponse = LifiStatusResponse.stub(data: LifiStatusData(rawResponse: rawResponse))
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getStatusReturnValue = mockResponse
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    // when
+    let response = try await portal.trading.lifi.getStatus(request: LifiStatusRequest.stub())
+
+    // then
+    XCTAssertEqual(response.data?.rawResponse.status, .notFound)
+  }
+
+  func test_trading_lifi_getStatusWithReceivingInfo() async throws {
+    // given
+    let receiving = LifiReceivingInfo.stub(
+      chainId: "137",
+      txHash: "0xdef789",
+      amount: "950000000000000000"
+    )
+    let rawResponse = LifiStatusRawResponse.stub(receiving: receiving)
+    let mockResponse = LifiStatusResponse.stub(data: LifiStatusData(rawResponse: rawResponse))
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getStatusReturnValue = mockResponse
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    // when
+    let response = try await portal.trading.lifi.getStatus(request: LifiStatusRequest.stub())
+
+    // then
+    XCTAssertNotNil(response.data?.rawResponse.receiving)
+    XCTAssertEqual(response.data?.rawResponse.receiving?.chainId, "137")
+    XCTAssertEqual(response.data?.rawResponse.receiving?.txHash, "0xdef789")
+  }
+
+  func test_trading_lifi_getQuoteWithEstimate() async throws {
+    // given
+    let estimate = LifiEstimate.stub(
+      fromAmount: "1000000000000000000",
+      toAmount: "950000000000000000",
+      toAmountMin: "940000000000000000",
+      executionDuration: 120.0,
+      feeCosts: [LifiFeeCost.stub()],
+      gasCosts: [LifiGasCost.stub()]
+    )
+    let step = LifiStep.stub(estimate: estimate)
+    let mockResponse = LifiQuoteResponse(data: LifiQuoteData(rawResponse: step), error: nil)
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getQuoteReturnValue = mockResponse
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    // when
+    let response = try await portal.trading.lifi.getQuote(request: LifiQuoteRequest.stub())
+
+    // then
+    XCTAssertNotNil(response.data?.rawResponse.estimate)
+    XCTAssertEqual(response.data?.rawResponse.estimate?.executionDuration, 120.0)
+    XCTAssertNotNil(response.data?.rawResponse.estimate?.feeCosts)
+    XCTAssertNotNil(response.data?.rawResponse.estimate?.gasCosts)
+  }
+
+  func test_trading_lifi_getQuoteWithIncludedSteps() async throws {
+    // given
+    let step = LifiStep.stub(
+      includedSteps: [
+        LifiInternalStep.stub(id: "swap-1", type: .swap),
+        LifiInternalStep.stub(id: "bridge-1", type: .cross)
+      ]
+    )
+    let mockResponse = LifiQuoteResponse(data: LifiQuoteData(rawResponse: step), error: nil)
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getQuoteReturnValue = mockResponse
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    // when
+    let response = try await portal.trading.lifi.getQuote(request: LifiQuoteRequest.stub())
+
+    // then
+    XCTAssertEqual(response.data?.rawResponse.includedSteps?.count, 2)
+    XCTAssertEqual(response.data?.rawResponse.includedSteps?[0].type, .swap)
+    XCTAssertEqual(response.data?.rawResponse.includedSteps?[1].type, .cross)
+  }
+
+  func test_trading_lifi_crossChainSwapFlow() async throws {
+    // given
+    let lifiApiMock = PortalLifiTradingApiMock()
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    // Step 1: Get routes
+    let routes = [
+      LifiRoute.stub(id: "route-1", tags: ["FASTEST"]),
+      LifiRoute.stub(id: "route-2", tags: ["CHEAPEST"])
+    ]
+    lifiApiMock.getRoutesReturnValue = LifiRoutesResponse.stub(
+      data: LifiRoutesData(rawResponse: LifiRoutesRawResponse(routes: routes, unavailableRoutes: nil))
+    )
+
+    let routesRequest = LifiRoutesRequest.stub()
+    let routesResponse = try await portal.trading.lifi.getRoutes(request: routesRequest)
+
+    // Step 2: Get quote for selected route
+    lifiApiMock.getQuoteReturnValue = LifiQuoteResponse.stub()
+    let quoteRequest = LifiQuoteRequest.stub()
+    let quoteResponse = try await portal.trading.lifi.getQuote(request: quoteRequest)
+
+    // Step 3: Get route step (transaction details)
+    lifiApiMock.getRouteStepReturnValue = LifiStepTransactionResponse.stub()
+    let stepRequest = LifiStep.stub()
+    let stepResponse = try await portal.trading.lifi.getRouteStep(request: stepRequest)
+
+    // Step 4: Check status
+    lifiApiMock.getStatusReturnValue = LifiStatusResponse.stub(
+      data: LifiStatusData(rawResponse: LifiStatusRawResponse.stub(status: .done, substatus: .completed))
+    )
+    let statusRequest = LifiStatusRequest.stub()
+    let statusResponse = try await portal.trading.lifi.getStatus(request: statusRequest)
+
+    // then
+    XCTAssertEqual(routesResponse.data?.rawResponse.routes.count, 2)
+    XCTAssertNotNil(quoteResponse.data)
+    XCTAssertNotNil(stepResponse.data)
+    XCTAssertEqual(statusResponse.data?.rawResponse.status, .done)
+    XCTAssertEqual(statusResponse.data?.rawResponse.substatus, .completed)
+
+    XCTAssertEqual(lifiApiMock.getRoutesCalls, 1)
+    XCTAssertEqual(lifiApiMock.getQuoteCalls, 1)
+    XCTAssertEqual(lifiApiMock.getRouteStepCalls, 1)
+    XCTAssertEqual(lifiApiMock.getStatusCalls, 1)
+  }
+
+  func test_trading_lifi_apiCallsAreTrackedCorrectly() async throws {
+    // given
+    let lifiApiMock = PortalLifiTradingApiMock()
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    // when - make multiple calls
+    _ = try await portal.trading.lifi.getRoutes(request: LifiRoutesRequest.stub())
+    _ = try await portal.trading.lifi.getRoutes(request: LifiRoutesRequest.stub())
+    _ = try await portal.trading.lifi.getQuote(request: LifiQuoteRequest.stub())
+    _ = try await portal.trading.lifi.getStatus(request: LifiStatusRequest.stub())
+    _ = try await portal.trading.lifi.getRouteStep(request: LifiStep.stub())
+
+    // then
+    XCTAssertEqual(lifiApiMock.getRoutesCalls, 2)
+    XCTAssertEqual(lifiApiMock.getQuoteCalls, 1)
+    XCTAssertEqual(lifiApiMock.getStatusCalls, 1)
+    XCTAssertEqual(lifiApiMock.getRouteStepCalls, 1)
+  }
+
+  func test_trading_lifi_requestParametersAreCaptured() async throws {
+    // given
+    let lifiApiMock = PortalLifiTradingApiMock()
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    let routesRequest = LifiRoutesRequest(
+      fromChainId: "1",
+      fromAmount: "1000000000000000000",
+      fromTokenAddress: "0xETH",
+      toChainId: "137",
+      toTokenAddress: "0xMATIC",
+      options: LifiRoutesRequestOptions.stub(slippage: 0.02)
+    )
+
+    // when
+    _ = try await portal.trading.lifi.getRoutes(request: routesRequest)
+
+    // then
+    XCTAssertNotNil(lifiApiMock.getRoutesRequestParam)
+    XCTAssertEqual(lifiApiMock.getRoutesRequestParam?.fromChainId, "1")
+    XCTAssertEqual(lifiApiMock.getRoutesRequestParam?.toChainId, "137")
+    XCTAssertEqual(lifiApiMock.getRoutesRequestParam?.options?.slippage, 0.02)
+  }
+
+  func test_trading_lifi_getStatusWithDifferentBridges() async throws {
+    // given
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getStatusReturnValue = LifiStatusResponse.stub()
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    let bridges: [LifiStatusBridge] = [.hop, .across, .relay, .symbiosis]
+
+    for bridge in bridges {
+      let request = LifiStatusRequest(txHash: "0xtest", bridge: bridge)
+
+      // when
+      let response = try await portal.trading.lifi.getStatus(request: request)
+
+      // then
+      XCTAssertNotNil(response)
+    }
+
+    XCTAssertEqual(lifiApiMock.getStatusCalls, bridges.count)
+  }
+
+  func test_trading_lifi_getStatusAllStatuses() async throws {
+    // given
+    let lifiApiMock = PortalLifiTradingApiMock()
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    let statuses: [LifiTransferStatus] = [.notFound, .invalid, .pending, .done, .failed]
+
+    for status in statuses {
+      lifiApiMock.getStatusReturnValue = LifiStatusResponse.stub(
+        data: LifiStatusData(rawResponse: LifiStatusRawResponse.stub(status: status))
+      )
+      let request = LifiStatusRequest.stub()
+
+      // when
+      let response = try await portal.trading.lifi.getStatus(request: request)
+
+      // then
+      XCTAssertEqual(response.data?.rawResponse.status, status)
+    }
+  }
+
+  func test_trading_lifi_getStatusAllSubstatuses() async throws {
+    // given
+    let lifiApiMock = PortalLifiTradingApiMock()
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    let substatuses: [LifiTransferSubstatus] = [
+      .waitSourceConfirmations, .waitDestinationTransaction,
+      .bridgeNotAvailable, .chainNotAvailable, .refundInProgress,
+      .unknownError, .completed, .partial, .refunded
+    ]
+
+    for substatus in substatuses {
+      lifiApiMock.getStatusReturnValue = LifiStatusResponse.stub(
+        data: LifiStatusData(rawResponse: LifiStatusRawResponse.stub(substatus: substatus))
+      )
+      let request = LifiStatusRequest.stub()
+
+      // when
+      let response = try await portal.trading.lifi.getStatus(request: request)
+
+      // then
+      XCTAssertEqual(response.data?.rawResponse.substatus, substatus)
+    }
+  }
+
+  func test_trading_lifi_getRoutesWithAllOptions() async throws {
+    // given
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getRoutesReturnValue = LifiRoutesResponse.stub()
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    let bridges = LifiToolsConfiguration(
+      allow: ["hop", "across", "relay"],
+      deny: ["cbridge"],
+      prefer: ["relay"]
+    )
+    let exchanges = LifiToolsConfiguration(
+      allow: ["uniswap", "sushiswap"],
+      deny: nil,
+      prefer: ["1inch"]
+    )
+    let timing = LifiTimingOptions(
+      swapStepTimingStrategies: [LifiTimingStrategy(strategy: .minWaitTime, minWaitTimeMs: 1000)],
+      routeTimingStrategies: nil
+    )
+    let options = LifiRoutesRequestOptions(
+      insurance: false,
+      integrator: "portal",
+      slippage: 0.01,
+      bridges: bridges,
+      exchanges: exchanges,
+      order: .cheapest,
+      allowSwitchChain: true,
+      allowDestinationCall: true,
+      referrer: "0xRef",
+      fee: 0.003,
+      maxPriceImpact: 0.15,
+      timing: timing
+    )
+    let request = LifiRoutesRequest(
+      fromChainId: "1",
+      fromAmount: "1000000000000000000",
+      fromTokenAddress: "0xETH",
+      toChainId: "137",
+      toTokenAddress: "0xMATIC",
+      options: options,
+      fromAddress: "0xSender",
+      toAddress: "0xReceiver",
+      fromAmountForGas: "50000000000000000"
+    )
+
+    // when
+    let response = try await portal.trading.lifi.getRoutes(request: request)
+
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertEqual(lifiApiMock.getRoutesCalls, 1)
+    XCTAssertEqual(lifiApiMock.getRoutesRequestParam?.options?.slippage, 0.01)
+    XCTAssertEqual(lifiApiMock.getRoutesRequestParam?.options?.order, .cheapest)
+    XCTAssertEqual(lifiApiMock.getRoutesRequestParam?.options?.bridges?.allow?.count, 3)
+  }
+
+  func test_trading_lifi_getQuoteWithAllOptions() async throws {
+    // given
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getQuoteReturnValue = LifiQuoteResponse.stub()
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    let request = LifiQuoteRequest(
+      fromChain: "1",
+      toChain: "137",
+      fromToken: "ETH",
+      toToken: "MATIC",
+      fromAddress: "0xSender",
+      fromAmount: "1000000000000000000",
+      toAddress: "0xReceiver",
+      order: .fastest,
+      slippage: 0.005,
+      integrator: "portal",
+      fee: 0.003,
+      referrer: "0xRef",
+      allowBridges: ["hop", "across"],
+      allowExchanges: ["uniswap"],
+      denyBridges: ["cbridge"],
+      denyExchanges: nil,
+      preferBridges: ["relay"],
+      preferExchanges: ["1inch"],
+      allowDestinationCall: true,
+      fromAmountForGas: "50000000000000000",
+      maxPriceImpact: 0.15,
+      swapStepTimingStrategies: ["minWaitTime-1000"],
+      routeTimingStrategies: nil,
+      skipSimulation: true
+    )
+
+    // when
+    let response = try await portal.trading.lifi.getQuote(request: request)
+
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertEqual(lifiApiMock.getQuoteCalls, 1)
+    XCTAssertEqual(lifiApiMock.getQuoteRequestParam?.order, .fastest)
+    XCTAssertEqual(lifiApiMock.getQuoteRequestParam?.slippage, 0.005)
+    XCTAssertEqual(lifiApiMock.getQuoteRequestParam?.skipSimulation, true)
+  }
+
+  func test_trading_lifi_handlesRouteError() async throws {
+    // given
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getRoutesReturnValue = LifiRoutesResponse(data: nil, error: "No routes available")
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    // when
+    let response = try await portal.trading.lifi.getRoutes(request: LifiRoutesRequest.stub())
+
+    // then
+    XCTAssertNil(response.data)
+    XCTAssertEqual(response.error, "No routes available")
+  }
+
+  func test_trading_lifi_handlesQuoteError() async throws {
+    // given
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getQuoteReturnValue = LifiQuoteResponse(data: nil, error: "Quote not available")
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    // when
+    let response = try await portal.trading.lifi.getQuote(request: LifiQuoteRequest.stub())
+
+    // then
+    XCTAssertNil(response.data)
+    XCTAssertEqual(response.error, "Quote not available")
+  }
+
+  func test_trading_lifi_handlesStatusError() async throws {
+    // given
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getStatusReturnValue = LifiStatusResponse(data: nil, error: "Transaction not found")
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    // when
+    let response = try await portal.trading.lifi.getStatus(request: LifiStatusRequest.stub())
+
+    // then
+    XCTAssertNil(response.data)
+    XCTAssertEqual(response.error, "Transaction not found")
+  }
+
+  func test_trading_lifi_handlesStepError() async throws {
+    // given
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getRouteStepReturnValue = LifiStepTransactionResponse(data: nil, error: "Step execution failed")
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    // when
+    let response = try await portal.trading.lifi.getRouteStep(request: LifiStep.stub())
+
+    // then
+    XCTAssertNil(response.data)
+    XCTAssertEqual(response.error, "Step execution failed")
+  }
+
+  func test_trading_lifi_throwsApiError() async throws {
+    // given
+    let lifiApiMock = PortalLifiTradingApiMock()
+    let expectedError = NSError(domain: "TestError", code: 500, userInfo: nil)
+    lifiApiMock.getRoutesError = expectedError
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    // when/then
+    do {
+      _ = try await portal.trading.lifi.getRoutes(request: LifiRoutesRequest.stub())
+      XCTFail("Expected error to be thrown")
+    } catch {
+      XCTAssertEqual((error as NSError).code, 500)
+    }
+  }
+
+  func test_trading_lifi_edgeCaseVeryLargeAmount() async throws {
+    // given
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getRoutesReturnValue = LifiRoutesResponse.stub()
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    let request = LifiRoutesRequest(
+      fromChainId: "1",
+      fromAmount: "999999999999999999999999999999999999",
+      fromTokenAddress: "0x0",
+      toChainId: "137",
+      toTokenAddress: "0x0"
+    )
+
+    // when
+    let response = try await portal.trading.lifi.getRoutes(request: request)
+
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertEqual(lifiApiMock.getRoutesRequestParam?.fromAmount, "999999999999999999999999999999999999")
+  }
+
+  func test_trading_lifi_edgeCaseZeroSlippage() async throws {
+    // given
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getRoutesReturnValue = LifiRoutesResponse.stub()
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    let options = LifiRoutesRequestOptions(slippage: 0.0)
+    let request = LifiRoutesRequest.stub(options: options)
+
+    // when
+    let response = try await portal.trading.lifi.getRoutes(request: request)
+
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertEqual(lifiApiMock.getRoutesRequestParam?.options?.slippage, 0.0)
+  }
+
+  func test_trading_lifi_edgeCaseMaxSlippage() async throws {
+    // given
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getRoutesReturnValue = LifiRoutesResponse.stub()
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    let options = LifiRoutesRequestOptions(slippage: 1.0)
+    let request = LifiRoutesRequest.stub(options: options)
+
+    // when
+    let response = try await portal.trading.lifi.getRoutes(request: request)
+
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertEqual(lifiApiMock.getRoutesRequestParam?.options?.slippage, 1.0)
+  }
+
+  func test_trading_lifi_multipleDifferentPortals() async throws {
+    // given
+    let lifiApiMock1 = PortalLifiTradingApiMock()
+    lifiApiMock1.getRoutesReturnValue = LifiRoutesResponse.stub()
+    let portalApiMock1 = PortalApiMock(lifi: lifiApiMock1)
+
+    let lifiApiMock2 = PortalLifiTradingApiMock()
+    lifiApiMock2.getRoutesReturnValue = LifiRoutesResponse.stub()
+    let portalApiMock2 = PortalApiMock(lifi: lifiApiMock2)
+
+    try initPortalWithSpy(api: portalApiMock1)
+    let portal1 = portal
+
+    try initPortalWithSpy(api: portalApiMock2)
+    let portal2 = portal
+
+    // when
+    _ = try await portal1?.trading.lifi.getRoutes(request: LifiRoutesRequest.stub())
+    _ = try await portal2?.trading.lifi.getRoutes(request: LifiRoutesRequest.stub())
+    _ = try await portal1?.trading.lifi.getRoutes(request: LifiRoutesRequest.stub())
+
+    // then
+    XCTAssertEqual(lifiApiMock1.getRoutesCalls, 2)
+    XCTAssertEqual(lifiApiMock2.getRoutesCalls, 1)
+  }
+
+  func test_trading_lifi_concurrentCalls() async throws {
+    // given
+    let lifiApiMock = PortalLifiTradingApiMock()
+    lifiApiMock.getRoutesReturnValue = LifiRoutesResponse.stub()
+    let portalApiMock = PortalApiMock(lifi: lifiApiMock)
+    try initPortalWithSpy(api: portalApiMock)
+
+    let callCount = 5
+
+    // when
+    await withTaskGroup(of: LifiRoutesResponse.self) { group in
+      for _ in 0 ..< callCount {
+        group.addTask {
+          try! await self.portal.trading.lifi.getRoutes(request: LifiRoutesRequest.stub())
+        }
+      }
+
+      var responses: [LifiRoutesResponse] = []
+      for await response in group {
+        responses.append(response)
+      }
+
+      // then
+      XCTAssertEqual(responses.count, callCount)
+    }
+
+    XCTAssertEqual(lifiApiMock.getRoutesCalls, callCount)
+  }
+}

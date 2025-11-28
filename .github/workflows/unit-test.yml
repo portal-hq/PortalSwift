@@ -8,20 +8,17 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-        with:
-          path: main
 
       - name: Cache Xcode Derived Data
         uses: actions/cache@v4
         with:
           path: ~/Library/Developer/Xcode/DerivedData
-          key: ${{ runner.os }}-derived-data-${{ hashFiles('**/*.xcodeproj', '**/*.xcworkspace', '**/*.swift', '**/*.h', '**/*.m') }}
+          key: ${{ runner.os }}-derived-data-${{ github.run_number }}
           restore-keys: |
             ${{ runner.os }}-derived-data-
 
       - name: Run Tests
         run: |
-          cd ${{ github.workspace }}/main/
           xcodebuild -quiet -scheme Unit\ Tests -workspace PortalSwift.xcworkspace test -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.4'
 
       - name: Upload coverage to Codecov
