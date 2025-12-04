@@ -2508,7 +2508,7 @@ extension ViewController {
                 address: userAddress,
                 arguments: YieldXyzEnterArguments(
                   amount: amount,
-                  executionMode: .batch
+                  executionMode: .batched
                 )
               )
 
