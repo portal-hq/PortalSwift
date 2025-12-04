@@ -82,5 +82,5 @@ public enum YieldXyzTronResource: String, Codable {
 /// Execution modes for yield actions
 public enum YieldXyzExecutionMode: String, Codable {
   case individual
-  case batch
+  case batched
 }
