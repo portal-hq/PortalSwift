@@ -103,16 +103,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   private var config: ApplicationConfiguration? {
     get {
-      if let appDelegate = UIApplication.shared.delegate as? PortalExampleAppDelegate {
-        return appDelegate.config
-      }
-
-      return nil
+        return Settings.shared.portalConfig.appConfig
     }
     set(config) {
-      if var appDelegate = UIApplication.shared.delegate as? PortalExampleAppDelegate {
-        appDelegate.config = config
-      }
+        Settings.shared.portalConfig.appConfig = config
     }
   }
 
@@ -152,9 +146,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var scrollView: UIScrollView!
   override func viewDidLoad() {
     super.viewDidLoad()
-
-    // Set up application using Secrets.xcconfig
-    self.loadApplicationConfig()
 
     // Set up UI components
     self.prepareUIComponents()
@@ -838,78 +829,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
   /***********************************************
    * Setup functions
    ***********************************************/
-
-  public func loadApplicationConfig() {
-    do {
-      guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary else {
-        self.logger.error("PortalWrapper.init - Couldn't load info.plist dictionary.")
-        throw PortalExampleAppError.cantLoadInfoPlist()
-      }
-      guard let ENV: String = infoDictionary["ENV"] as? String else {
-        self.logger.error("Error: Do you have `ENV=$(ENV)` in your Secrets.xcconfig?")
-        throw PortalExampleAppError.environmentNotSet()
-      }
-      guard let ALCHEMY_API_KEY: String = infoDictionary["ALCHEMY_API_KEY"] as? String else {
-        self.logger.error("Error: Do you have `ALCHEMY_API_KEY=$(ALCHEMY_API_KEY)` in your Secrets.xcconfig?")
-        throw PortalExampleAppError.environmentNotSet()
-      }
-      guard let GOOGLE_CLIENT_ID: String = infoDictionary["GDRIVE_CLIENT_ID"] as? String else {
-        self.logger.error("Error: Do you have `GDRIVE_CLIENT_ID=$(GDRIVE_CLIENT_ID)` in your Secrets.xcconfig?")
-        throw PortalExampleAppError.environmentNotSet()
-      }
-      guard let BACKUP_WITH_PORTAL: String = infoDictionary["BACKUP_WITH_PORTAL"] as? String else {
-        self.logger.error("Error: The environment variable `BACKUP_WITH_PORTAL` is not set or is empty. Please ensure that `BACKUP_WITH_PORTAL=true` or `BACKUP_WITH_PORTAL=false` is included in your Secrets.xcconfig file, and that `BACKUP_WITH_PORTAL=$(BACKUP_WITH_PORTAL)` is referenced correctly in your App's info.plist.")
-        throw PortalExampleAppError.environmentNotSet()
-      }
-
-      let debugMessage = "ViewController.loadApplicationConfig() - Found environment: \(ENV)"
-      self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
-
-      switch ENV {
-      case "prod", "production":
-        let custodianServerUrl = BACKUP_WITH_PORTAL == "true" ? "https://prod-portalex-backup-with-portal.onrender.com" : "https://portalex-mpc.portalhq.io"
-
-        self.config = ApplicationConfiguration(
-          alchemyApiKey: ALCHEMY_API_KEY,
-          apiUrl: "api.portalhq.io",
-          custodianServerUrl: custodianServerUrl,
-          googleClientId: GOOGLE_CLIENT_ID,
-          mpcUrl: "mpc.portalhq.io",
-          webAuthnHost: "backup.web.portalhq.io",
-          relyingParty: "portalhq.io",
-          enclaveMPCHost: "mpc-client.portalhq.io"
-        )
-      case "stage", "staging":
-        let custodianServerUrl = BACKUP_WITH_PORTAL == "true" ? "https://staging-portalex-backup-with-portal.onrender.com" : "https://staging-portalex-mpc-service.onrender.com"
-
-        self.config = ApplicationConfiguration(
-          alchemyApiKey: ALCHEMY_API_KEY,
-          apiUrl: "api.portalhq.dev",
-          custodianServerUrl: custodianServerUrl,
-          googleClientId: GOOGLE_CLIENT_ID,
-          mpcUrl: "mpc.portalhq.dev",
-          webAuthnHost: "backup.portalhq.dev",
-          relyingParty: "portalhq.dev",
-          enclaveMPCHost: "mpc-client.portalhq.dev"
-        )
-      default:
-        self.config = ApplicationConfiguration(
-          alchemyApiKey: ALCHEMY_API_KEY,
-          apiUrl: "localhost:3001",
-          custodianServerUrl: "http://localhost:3010",
-          googleClientId: GOOGLE_CLIENT_ID,
-          mpcUrl: "localhost:3002",
-          webAuthnHost: "backup.portalhq.dev",
-          relyingParty: "portalhq.dev",
-          enclaveMPCHost: "mpc-client.portalhq.dev"
-        )
-      }
-
-      Settings.shared.portalConfig.appConfig = self.config
-    } catch {
-      self.logger.error("ViewController.loadApplicationConfig() - Error loading application config: \(error)")
-    }
-  }
 
   public func parseETHBalanceHex(hex: String) -> String {
     let hexString = hex.replacingOccurrences(of: "0x", with: "")
