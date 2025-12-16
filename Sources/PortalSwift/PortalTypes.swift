@@ -160,37 +160,37 @@ public struct SolanaHeader: Codable {
 }
 
 public struct SendAssetParams: Codable {
-    /// to: The recipient's address
+  /// to: The recipient's address
   public let to: String
-    /// amount: The amount to send as a string
+  /// amount: The amount to send as a string
   public let amount: String
-    /// token: The token to send (use "NATIVE" for chain's native token)
+  /// token: The token to send (use "NATIVE" for chain's native token)
   public let token: String
-    /// signatureApprovalMemo: Optional signature approval memo to use for the request.
+  /// signatureApprovalMemo: Optional signature approval memo to use for the request.
   public let signatureApprovalMemo: String?
-    /// sponsorGas: Optional flag to `enable/disable` sponsor the gas,  to be used for the send asset request.
-    public var sponsorGas: Bool?
+  /// sponsorGas: Optional flag to `enable/disable` sponsor the gas,  to be used for the send asset request.
+  public var sponsorGas: Bool?
 
-    /// Initializes parameters for sending an asset.
-    /// - Parameters:
-    ///   - to: The recipient's address
-    ///   - amount: The amount to send as a string
-    ///   - token: The token to send (use "NATIVE" for chain's native token)
-    ///   - signatureApprovalMemo: Optional signature approval memo to use for the request.
-    ///   - sponsorGas: Optional flag to `enable/disable` sponsor the gas, to be used for the send asset request.
-    public init(
-        to: String,
-        amount: String,
-        token: String,
-        signatureApprovalMemo: String? = nil,
-        sponsorGas: Bool? = nil
-    ) {
-      self.to = to
-      self.amount = amount
-      self.token = token
-      self.signatureApprovalMemo = signatureApprovalMemo
-      self.sponsorGas = sponsorGas
-    }
+  /// Initializes parameters for sending an asset.
+  /// - Parameters:
+  ///   - to: The recipient's address
+  ///   - amount: The amount to send as a string
+  ///   - token: The token to send (use "NATIVE" for chain's native token)
+  ///   - signatureApprovalMemo: Optional signature approval memo to use for the request.
+  ///   - sponsorGas: Optional flag to `enable/disable` sponsor the gas, to be used for the send asset request.
+  public init(
+    to: String,
+    amount: String,
+    token: String,
+    signatureApprovalMemo: String? = nil,
+    sponsorGas: Bool? = nil
+  ) {
+    self.to = to
+    self.amount = amount
+    self.token = token
+    self.signatureApprovalMemo = signatureApprovalMemo
+    self.sponsorGas = sponsorGas
+  }
 }
 
 public struct SendAssetResponse: Codable {

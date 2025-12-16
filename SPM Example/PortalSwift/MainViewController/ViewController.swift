@@ -103,14 +103,14 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   private var config: ApplicationConfiguration? {
     get {
-        return Settings.shared.portalConfig.appConfig
+      return Settings.shared.portalConfig.appConfig
     }
     set(config) {
-        Settings.shared.portalConfig.appConfig = config
+      Settings.shared.portalConfig.appConfig = config
     }
   }
 
-  private var portal: PortalProtocol? {
+  var portal: PortalProtocol? {
     get {
       if let appDelegate = UIApplication.shared.delegate as? PortalExampleAppDelegate {
         return appDelegate.portal
@@ -125,11 +125,11 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  private let logger = Logger()
+  let logger = Logger()
   private let requests = PortalRequests()
 
-  private let successStatus = "✅ Success"
-  private let failureStatus = "❌ Failure"
+  let successStatus = "✅ Success"
+  let failureStatus = "❌ Failure"
   private var currentAddresses: [WalletAddress] = []
 
   // MARK: - Trading Configuration
@@ -2307,17 +2307,17 @@ class ViewController: UIViewController, UITextFieldDelegate {
 @available(iOS 16.0, *)
 extension ViewController {
   private func startRefreshBalanceTimer() {
-//    self.refreshBalanceTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
-//      guard let self else { return }
-//      Task {
-//        do {
-//          try await self.populateEthBalance()
-//        } catch {
-//          print("Failed to refresh the the ETH balance. \(error)")
-//        }
-//      }
-//    }
-//    self.refreshBalanceTimer?.fire()
+    self.refreshBalanceTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+      guard let self else { return }
+      Task {
+        do {
+          try await self.populateEthBalance()
+        } catch {
+          print("Failed to refresh the the ETH balance. \(error)")
+        }
+      }
+    }
+    self.refreshBalanceTimer?.fire()
   }
 
   private func stopRefreshBalanceTimer() {

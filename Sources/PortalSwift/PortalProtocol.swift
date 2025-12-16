@@ -171,6 +171,6 @@ public extension PortalProtocol {
 
   @available(*, deprecated, message: "Use request(chainId:method:params:options:) instead.")
   func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any]) async throws -> PortalProviderResult {
-      return try await request(chainId: chainId, method: withMethod, params: andParams, options: nil)
+    return try await request(chainId: chainId, method: withMethod, params: andParams, options: nil)
   }
 }

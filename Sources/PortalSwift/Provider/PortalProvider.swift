@@ -213,54 +213,54 @@ public class PortalProvider: PortalProviderProtocol {
     return self
   }
 
-    /// Makes a request.
-    /// - Parameters:
-    ///   - chainId: A CAIP-2 Blockchain ID associated with the request.
-    ///   - method: A member of the PortalRequestMethod enum
-    ///   - params: An array of parameters for the request (either RPC parameters or a transaction if signing)
-    ///   - connect: Optional `PortalConnect` object to use for the request.
-    ///   - options: Optional request options containing signature approval memo and gas sponsorship settings.
-    /// - Returns: PortalProviderResult
-    public func request(
-      chainId: String,
-      method: PortalRequestMethod,
-      params: [AnyCodable]? = [],
-      connect: PortalConnect? = nil,
-      options: RequestOptions? = nil
-    ) async throws -> PortalProviderResult {
-      let blockchain = try PortalBlockchain(fromChainId: chainId)
-      guard blockchain.isMethodSupported(method) else {
-        throw PortalProviderError.unsupportedRequestMethod(method.rawValue)
-      }
+  /// Makes a request.
+  /// - Parameters:
+  ///   - chainId: A CAIP-2 Blockchain ID associated with the request.
+  ///   - method: A member of the PortalRequestMethod enum
+  ///   - params: An array of parameters for the request (either RPC parameters or a transaction if signing)
+  ///   - connect: Optional `PortalConnect` object to use for the request.
+  ///   - options: Optional request options containing signature approval memo and gas sponsorship settings.
+  /// - Returns: PortalProviderResult
+  public func request(
+    chainId: String,
+    method: PortalRequestMethod,
+    params: [AnyCodable]? = [],
+    connect: PortalConnect? = nil,
+    options: RequestOptions? = nil
+  ) async throws -> PortalProviderResult {
+    let blockchain = try PortalBlockchain(fromChainId: chainId)
+    guard blockchain.isMethodSupported(method) else {
+      throw PortalProviderError.unsupportedRequestMethod(method.rawValue)
+    }
 
-      let id = UUID().uuidString
+    let id = UUID().uuidString
 
-      // This switch is here to handle methods that should be
-      // resolved by the provider directly before passing the
-      // request on to RPC or the signer.
-      //
-      // The default behavior is to use the `PortalBlockchain`
-      // instance to determine if the method should be signed
-      // or not.
-      switch method {
-      case .eth_accounts, .eth_requestAccounts:
-        let address = try await keychain?.getAddress(chainId)
-        return PortalProviderResult(id: id, result: [address])
-      case .wallet_switchEthereumChain, .wallet_revokePermissions, .wallet_requestPermissions:
-        return PortalProviderResult(id: id, result: "null")
-      case .wallet_getCapabilities:
-        let walletCapabilities = try await self.api?.getWalletCapabilities()
-        return PortalProviderResult(id: id, result: walletCapabilities ?? "null")
-      default:
-        if blockchain.shouldMethodBeSigned(method) {
-          let payload = PortalProviderRequestWithId(id: id, method: method, params: params, chainId: chainId)
-            return try await self.handleSignRequest(chainId, withPayload: payload, forId: id, onBlockchain: blockchain, connect: connect, options: options)
-        } else {
-          return try await self.handleRpcRequest(chainId, withMethod: method, andParams: params, forId: id)
-        }
+    // This switch is here to handle methods that should be
+    // resolved by the provider directly before passing the
+    // request on to RPC or the signer.
+    //
+    // The default behavior is to use the `PortalBlockchain`
+    // instance to determine if the method should be signed
+    // or not.
+    switch method {
+    case .eth_accounts, .eth_requestAccounts:
+      let address = try await keychain?.getAddress(chainId)
+      return PortalProviderResult(id: id, result: [address])
+    case .wallet_switchEthereumChain, .wallet_revokePermissions, .wallet_requestPermissions:
+      return PortalProviderResult(id: id, result: "null")
+    case .wallet_getCapabilities:
+      let walletCapabilities = try await self.api?.getWalletCapabilities()
+      return PortalProviderResult(id: id, result: walletCapabilities ?? "null")
+    default:
+      if blockchain.shouldMethodBeSigned(method) {
+        let payload = PortalProviderRequestWithId(id: id, method: method, params: params, chainId: chainId)
+        return try await self.handleSignRequest(chainId, withPayload: payload, forId: id, onBlockchain: blockchain, connect: connect, options: options)
+      } else {
+        return try await self.handleRpcRequest(chainId, withMethod: method, andParams: params, forId: id)
       }
     }
-    
+  }
+
   /// Makes a request.
   /// - Parameters:
   ///   - chainId: A CAIP-2 Blockchain ID associated with the request.
@@ -278,13 +278,13 @@ public class PortalProvider: PortalProviderProtocol {
     connect: PortalConnect? = nil,
     signatureApprovalMemo: String? = nil
   ) async throws -> PortalProviderResult {
-      return try await request(
-        chainId: chainId,
-        method: withMethod,
-        params: andParams,
-        connect: connect,
-        options: RequestOptions(signatureApprovalMemo: signatureApprovalMemo)
-      )
+    return try await request(
+      chainId: chainId,
+      method: withMethod,
+      params: andParams,
+      connect: connect,
+      options: RequestOptions(signatureApprovalMemo: signatureApprovalMemo)
+    )
   }
 
   /// Makes a request.
@@ -308,13 +308,13 @@ public class PortalProvider: PortalProviderProtocol {
       throw PortalProviderError.unsupportedRequestMethod("Received a request with unsupported method: \(withMethod)")
     }
 
-      return try await request(
-        chainId: chainId,
-        method: method,
-        params: andParams,
-        connect: connect,
-        options: RequestOptions(signatureApprovalMemo: signatureApprovalMemo)
-      )
+    return try await request(
+      chainId: chainId,
+      method: method,
+      params: andParams,
+      connect: connect,
+      options: RequestOptions(signatureApprovalMemo: signatureApprovalMemo)
+    )
   }
 
   public func getRpcUrl(_ chainId: String) throws -> String {

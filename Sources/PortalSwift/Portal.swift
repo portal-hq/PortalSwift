@@ -883,33 +883,33 @@ public final class Portal: PortalProtocol {
   public func once(event: Events, callback: @escaping (Any) -> Void) {
     _ = self.provider.once(event: event.rawValue, callback: callback)
   }
-    
-    /// Sends a blockchain request with the specified method and parameters.
-    ///
-    /// This method allows you to make RPC calls to various blockchain networks
-    /// supported by Portal.
-    ///
-    /// - Parameters:
-    ///   - chainId: A CAIP-2 Blockchain ID associated with the request.
-    ///   - method: The string literal of your RPC method.
-    ///   - params: An array of parameters for the request (either RPC parameters or a transaction if signing).
-    ///   - connect: Optional `PortalConnect` object to use for the request.
-    ///   - options: Optional request options containing signature approval memo and gas sponsorship settings.
-    ///
-    /// - Returns: A `PortalProviderResult` containing the response from the blockchain.
-    ///
-    /// - Throws:
-    ///   - `PortalProviderError.invalidRequestParams` if andParams is nil
-    ///   - Other blockchain-specific errors if the request fails
-    ///
-    /// - Note: Parameters are automatically converted to a format compatible with
-    ///   blockchain RPC calls.
-  public func request(chainId: String, method: PortalRequestMethod, params: [Any], options: RequestOptions?) async throws -> PortalProviderResult {
-      let anyCodableParams = params.map { param in
-        AnyCodable(param)
-      }
 
-      return try await self.provider.request(chainId: chainId, method: method, params: anyCodableParams, connect: nil, options: options)
+  /// Sends a blockchain request with the specified method and parameters.
+  ///
+  /// This method allows you to make RPC calls to various blockchain networks
+  /// supported by Portal.
+  ///
+  /// - Parameters:
+  ///   - chainId: A CAIP-2 Blockchain ID associated with the request.
+  ///   - method: The string literal of your RPC method.
+  ///   - params: An array of parameters for the request (either RPC parameters or a transaction if signing).
+  ///   - connect: Optional `PortalConnect` object to use for the request.
+  ///   - options: Optional request options containing signature approval memo and gas sponsorship settings.
+  ///
+  /// - Returns: A `PortalProviderResult` containing the response from the blockchain.
+  ///
+  /// - Throws:
+  ///   - `PortalProviderError.invalidRequestParams` if andParams is nil
+  ///   - Other blockchain-specific errors if the request fails
+  ///
+  /// - Note: Parameters are automatically converted to a format compatible with
+  ///   blockchain RPC calls.
+  public func request(chainId: String, method: PortalRequestMethod, params: [Any], options: RequestOptions?) async throws -> PortalProviderResult {
+    let anyCodableParams = params.map { param in
+      AnyCodable(param)
+    }
+
+    return try await self.provider.request(chainId: chainId, method: method, params: anyCodableParams, connect: nil, options: options)
   }
 
   public func getRpcUrl(forChainId: String) async -> String? {
@@ -1585,12 +1585,12 @@ public final class Portal: PortalProtocol {
       let transactionResponse = try await buildEip155Transaction(chainId: chainId, params: transactionParam)
 
       // Send the transaction using eth_sendTransaction
-        let sendResponse = try await request(
-            chainId: chainId,
-            method: .eth_sendTransaction,
-            params: [transactionResponse.transaction],
-            options: RequestOptions(signatureApprovalMemo: params.signatureApprovalMemo, sponsorGas: params.sponsorGas)
-        )
+      let sendResponse = try await request(
+        chainId: chainId,
+        method: .eth_sendTransaction,
+        params: [transactionResponse.transaction],
+        options: RequestOptions(signatureApprovalMemo: params.signatureApprovalMemo, sponsorGas: params.sponsorGas)
+      )
 
       guard let txHash = sendResponse.result as? String else {
         throw PortalClassError.invalidResponseTypeForRequest
@@ -1604,12 +1604,12 @@ public final class Portal: PortalProtocol {
       let transactionResponse = try await buildSolanaTransaction(chainId: chainId, params: transactionParam)
 
       // Send the transaction using sol_signAndSendTransaction
-        let sendResponse = try await request(
-            chainId: chainId,
-            method: .sol_signAndSendTransaction,
-            params: [transactionResponse.transaction],
-            options: RequestOptions(signatureApprovalMemo: params.signatureApprovalMemo, sponsorGas: params.sponsorGas)
-        )
+      let sendResponse = try await request(
+        chainId: chainId,
+        method: .sol_signAndSendTransaction,
+        params: [transactionResponse.transaction],
+        options: RequestOptions(signatureApprovalMemo: params.signatureApprovalMemo, sponsorGas: params.sponsorGas)
+      )
 
       guard let txHash = sendResponse.result as? String else {
         throw PortalClassError.invalidResponseTypeForRequest
@@ -1658,36 +1658,36 @@ public final class Portal: PortalProtocol {
    * Deprecated functions
    **********************************/
 
-    /// Sends a blockchain request with the specified method and parameters.
-    ///
-    /// This method allows you to make RPC calls to various blockchain networks
-    /// supported by Portal.
-    ///
-    /// - Parameters:
-    ///   - chainId: The chain identifier.
-    ///   - withMethod: The RPC method to call, specified using `PortalRequestMethod`
-    ///   - andParams: Optional array of parameters for the RPC method. Must not be nil,
-    ///     use an empty array if no parameters are needed.
-    ///   - signatureApprovalMemo: Optional signature approval memo to use for the request.
-    ///
-    /// - Returns: A `PortalProviderResult` containing the response from the blockchain.
-    ///
-    /// - Throws:
-    ///   - `PortalProviderError.invalidRequestParams` if andParams is nil
-    ///   - Other blockchain-specific errors if the request fails
-    ///
-    /// - Note: Parameters are automatically converted to a format compatible with
-    ///   blockchain RPC calls.
-    /// - Warning: This function is deprecated. Use `request(chainId:method:params:options:)` instead.
-    @available(*, deprecated, message: "Use request(chainId:method:params:options:) instead. Pass RequestOptions(signatureApprovalMemo: yourMemo) to provide the signature approval memo.")
-    public func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any] = [], signatureApprovalMemo: String? = nil) async throws -> PortalProviderResult {
-      let params = andParams.map { param in
-        AnyCodable(param)
-      }
-
-        return try await self.provider.request(chainId: chainId, method: withMethod, params: params, connect: nil, options: RequestOptions(signatureApprovalMemo: signatureApprovalMemo))
+  /// Sends a blockchain request with the specified method and parameters.
+  ///
+  /// This method allows you to make RPC calls to various blockchain networks
+  /// supported by Portal.
+  ///
+  /// - Parameters:
+  ///   - chainId: The chain identifier.
+  ///   - withMethod: The RPC method to call, specified using `PortalRequestMethod`
+  ///   - andParams: Optional array of parameters for the RPC method. Must not be nil,
+  ///     use an empty array if no parameters are needed.
+  ///   - signatureApprovalMemo: Optional signature approval memo to use for the request.
+  ///
+  /// - Returns: A `PortalProviderResult` containing the response from the blockchain.
+  ///
+  /// - Throws:
+  ///   - `PortalProviderError.invalidRequestParams` if andParams is nil
+  ///   - Other blockchain-specific errors if the request fails
+  ///
+  /// - Note: Parameters are automatically converted to a format compatible with
+  ///   blockchain RPC calls.
+  /// - Warning: This function is deprecated. Use `request(chainId:method:params:options:)` instead.
+  @available(*, deprecated, message: "Use request(chainId:method:params:options:) instead. Pass RequestOptions(signatureApprovalMemo: yourMemo) to provide the signature approval memo.")
+  public func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any] = [], signatureApprovalMemo: String? = nil) async throws -> PortalProviderResult {
+    let params = andParams.map { param in
+      AnyCodable(param)
     }
-    
+
+    return try await self.provider.request(chainId: chainId, method: withMethod, params: params, connect: nil, options: RequestOptions(signatureApprovalMemo: signatureApprovalMemo))
+  }
+
   @available(*, deprecated, renamed: "evaluateTransaction", message: "Please use evaluateTransaction().")
   public func simulateTransaction(_ chainId: String, from: Any) async throws -> SimulatedTransaction {
     let transaction = AnyCodable(from)
