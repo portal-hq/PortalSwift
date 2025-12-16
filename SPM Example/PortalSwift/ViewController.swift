@@ -2131,7 +2131,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
         self.startLoading()
 
-        let response = try await portal.rawSign(message: "74657374", chainId: chainId, signatureApprovalMemo: "test")
+        let response = try await portal.provider.request(
+          chainId: chainId,
+          method: .rawSign,
+          params: [AnyCodable("74657374")],
+          connect: nil,
+          options: RequestOptions(signatureApprovalMemo: "test")
+        )
 
         guard let signature = response.result as? String else {
           self.logger.error("ViewController.handleRawSign() - ❌ Invalid response type for request:")
@@ -2301,17 +2307,17 @@ class ViewController: UIViewController, UITextFieldDelegate {
 @available(iOS 16.0, *)
 extension ViewController {
   private func startRefreshBalanceTimer() {
-    self.refreshBalanceTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
-      guard let self else { return }
-      Task {
-        do {
-          try await self.populateEthBalance()
-        } catch {
-          print("Failed to refresh the the ETH balance. \(error)")
-        }
-      }
-    }
-    self.refreshBalanceTimer?.fire()
+//    self.refreshBalanceTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+//      guard let self else { return }
+//      Task {
+//        do {
+//          try await self.populateEthBalance()
+//        } catch {
+//          print("Failed to refresh the the ETH balance. \(error)")
+//        }
+//      }
+//    }
+//    self.refreshBalanceTimer?.fire()
   }
 
   private func stopRefreshBalanceTimer() {

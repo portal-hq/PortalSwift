@@ -82,7 +82,7 @@ public protocol PortalProtocol {
   func emit(_ event: Events, data: Any)
   func on(event: Events, callback: @escaping (Any) -> Void)
   func once(event: Events, callback: @escaping (Any) -> Void)
-  func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any], signatureApprovalMemo: String?) async throws -> PortalProviderResult
+  func request(chainId: String, method: PortalRequestMethod, params: [Any], options: RequestOptions?) async throws -> PortalProviderResult
   func getRpcUrl(forChainId: String) async -> String?
   func availableRecoveryMethods(_ forChainId: String?) async throws -> [BackupMethods]
   func doesWalletExist(_ forChainId: String?) async throws -> Bool
@@ -159,6 +159,8 @@ public protocol PortalProtocol {
   func ethSignTypedData(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
   @available(*, deprecated, message: "Use `request(_:withMethod:andParams:)` with `PortalRequestMethod.personalSign` instead")
   func personalSign(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
+  @available(*, deprecated, message: "Use request(chainId:method:params:options:) instead. Pass RequestOptions(signatureApprovalMemo: yourMemo) to provide the signature approval memo.")
+  func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any], signatureApprovalMemo: String?) async throws -> PortalProviderResult
 }
 
 // Proxy functions to avoid releasing breaking changes after adding the `signatureApprovalMemo` param
@@ -167,7 +169,8 @@ public extension PortalProtocol {
     return try await rawSign(message: message, chainId: chainId, signatureApprovalMemo: nil)
   }
 
+  @available(*, deprecated, message: "Use request(chainId:method:params:options:) instead.")
   func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any]) async throws -> PortalProviderResult {
-    return try await request(chainId, withMethod: withMethod, andParams: andParams, signatureApprovalMemo: nil)
+      return try await request(chainId: chainId, method: withMethod, params: andParams, options: nil)
   }
 }
