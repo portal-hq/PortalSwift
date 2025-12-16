@@ -345,7 +345,7 @@ extension LifiTransactionInfo {
     gasAmountUSD: String? = "5.00",
     gasPrice: String? = "50000000000",
     gasUsed: String? = "21000",
-    timestamp: Int? = 1700000000,
+    timestamp: Int? = 1_700_000_000,
     value: String? = "1000000000000000000",
     includedSteps: [LifiIncludedSwapStep]? = nil
   ) -> Self {
@@ -380,7 +380,7 @@ extension LifiReceivingInfo {
     gasAmountUSD: String? = nil,
     gasPrice: String? = nil,
     gasUsed: String? = nil,
-    timestamp: Int? = 1700000060,
+    timestamp: Int? = 1_700_000_060,
     value: String? = nil,
     includedSteps: [LifiIncludedSwapStep]? = nil
   ) -> Self {
@@ -599,4 +599,3 @@ extension LifiStatusRequest {
     )
   }
 }
-

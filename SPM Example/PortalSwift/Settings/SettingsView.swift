@@ -56,12 +56,12 @@ struct SettingsView: View {
           .pickerStyle(DefaultPickerStyle())
           .padding([.horizontal, .top])
         }
-          
-          if self.portal != nil {
-            Text("Please sign out to be able to change the Environment.")
-              .foregroundColor(.red)
-              .font(.caption)
-          }
+
+        if self.portal != nil {
+          Text("Please sign out to be able to change the Environment.")
+            .foregroundColor(.red)
+            .font(.caption)
+        }
       }
       .disabled(self.portal != nil)
       .padding(.bottom, 20)
@@ -103,9 +103,9 @@ struct SettingsView: View {
       }
     }
     .onChange(of: self.environment) { oldValue, newValue in
-        print("Environment changed from: \(oldValue) to \(newValue)")
-        Settings.shared.portalConfig.environment = newValue
-        Settings.shared.loadApplicationConfig() // To refresh the Example App Environment Config
+      print("Environment changed from: \(oldValue) to \(newValue)")
+      Settings.shared.portalConfig.environment = newValue
+      Settings.shared.loadApplicationConfig() // To refresh the Example App Environment Config
     }
   }
 }
