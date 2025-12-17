@@ -26,9 +26,9 @@ extension ViewController {
       let amount = "0.000001"
       let token = "NATIVE"
 
-      // 1st gas sponsor test case is to call sendAsset passing no gas sponsor flag, it should be defaulted to false from the backend side
+      // 1st gas sponsor test case is to call sendAsset passing no gas sponsor flag, it should be defaulted to true from the backend side
       do {
-        self.logger.info("1st gas sponsor test case is to call sendAsset passing no gas sponsor flag, it should be defaulted to false from the backend side")
+        self.logger.info("1st gas sponsor test case is to call sendAsset passing no gas sponsor flag, it should be defaulted to true from the backend side")
         let params1 = SendAssetParams(to: recipientAddress, amount: amount, token: token)
         let response1 = try await portal.sendAsset(chainId: chainId, params: params1)
         self.logger.info("ViewController.handleTestGasSponsor() - ✅ Test 1 Success: Transaction Hash: \(response1.txHash)")
