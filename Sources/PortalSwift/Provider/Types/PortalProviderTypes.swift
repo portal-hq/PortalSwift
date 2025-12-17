@@ -351,6 +351,58 @@ public struct EthTransactionResponse: Codable {
   public var error: PortalProviderRpcResponseError?
 }
 
+public struct UserOperationResponse: Codable {
+  public var jsonrpc: String = "2.0"
+  public var id: Int?
+  public var result: UserOperationData?
+  public var error: PortalProviderRpcResponseError?
+}
+
+public struct UserOperationData: Codable {
+  public let userOpHash: String?
+  public let entryPoint: String?
+  public let sender: String?
+  public let nonce: String?
+  public let paymaster: String?
+  public let actualGasCost: String?
+  public let actualGasUsed: String?
+  public let success: Bool?
+  public let reason: String?
+  public let logs: [UserOperationLog]?
+  public let receipt: UserOperationReceipt?
+  public let status: String?
+}
+
+public struct UserOperationLog: Codable {
+  public let address: String?
+  public let topics: [String]?
+  public let data: String?
+  public let blockHash: String?
+  public let blockNumber: String?
+  public let blockTimestamp: String?
+  public let transactionHash: String?
+  public let transactionIndex: String?
+  public let logIndex: String?
+  public let removed: Bool?
+}
+
+public struct UserOperationReceipt: Codable {
+  public let status: String?
+  public let cumulativeGasUsed: String?
+  public let logs: [UserOperationLog]?
+  public let logsBloom: String?
+  public let type: String?
+  public let transactionHash: String?
+  public let transactionIndex: String?
+  public let blockHash: String?
+  public let blockNumber: String?
+  public let gasUsed: String?
+  public let effectiveGasPrice: String?
+  public let from: String?
+  public let to: String?
+  public let contractAddress: String?
+}
+
 public struct EthBoolResponse: Codable {
   public var jsonrpc: String = "2.0"
   public var id: Int?

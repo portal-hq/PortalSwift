@@ -432,6 +432,12 @@ public class PortalProvider: PortalProviderProtocol {
           throw PortalRpcError(rpcError)
         }
         return PortalProviderResult(id: forId, result: rpcResponse)
+      case .eth_getUserOperationReceipt:
+        let rpcResponse = try await requests.execute(request: request, mappingInResponse: UserOperationResponse.self)
+        if let rpcError = rpcResponse.error {
+          throw PortalRpcError(rpcError)
+        }
+        return PortalProviderResult(id: forId, result: rpcResponse)
       case .eth_uninstallFilter, .net_listening:
         let rpcResponse = try await requests.execute(request: request, mappingInResponse: PortalProviderRpcBoolResponse.self)
         if let rpcError = rpcResponse.error {
@@ -744,6 +750,7 @@ public enum PortalRequestMethod: String, Codable {
   case eth_getFilterLogs
   case eth_newBlockFilter
   case eth_getFilterChanges
+  case eth_getUserOperationReceipt
 
   // Wallet Methods (MetaMask stuff)
   case wallet_addEthereumChain

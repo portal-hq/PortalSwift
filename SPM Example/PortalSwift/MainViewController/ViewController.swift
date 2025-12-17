@@ -3003,14 +3003,16 @@ extension ViewController {
     txHash: String,
     chainId: String,
     portal: PortalProtocol,
-    maxAttempts: Int = 30
+    maxAttempts: Int = 30,
+    waitingInSeconds: Int = 2
   ) async -> Bool {
     self.logger.info("Waiting for transaction confirmation: \(txHash) on chain: \(chainId)")
 
     for attempt in 0 ..< maxAttempts {
       do {
-        // Wait 2 seconds between attempts
-        try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+        // Wait `waitingInSeconds` seconds between attempts
+          let waitingTimeInNanoSeconds: UInt64 = UInt64(waitingInSeconds * 1_000_000_000)
+          try await Task.sleep(nanoseconds: waitingTimeInNanoSeconds)
 
         // Check transaction receipt
         let response = try await portal.request(chainId, withMethod: .eth_getTransactionReceipt, andParams: [txHash])
