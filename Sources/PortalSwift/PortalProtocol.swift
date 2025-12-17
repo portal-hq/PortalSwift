@@ -123,9 +123,9 @@ public protocol PortalProtocol {
   func recoverWallet(cipherText: String, method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?)
   @available(*, deprecated, renamed: "eject", message: "Please use the async implementation of eject()")
   func ejectPrivateKey(clientBackupCiphertext: String, method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, orgBackupShare: String, completion: @escaping (Result<String>) -> Void)
-  @available(*, deprecated, message: "Use request(_:withMethod:andParams:) with a default value for andParams instead.")
+  @available(*, deprecated, message: "Use request(chainId:method:params:options:) instead.")
   func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any]?) async throws -> PortalProviderResult
-  @available(*, deprecated, message: "Use request(_:withMethod:andParams:) with PortalRequestMethod instead of String.")
+  @available(*, deprecated, message: "Use request(chainId:method:params:options:) with PortalRequestMethod instead of String.")
   func request(_ chainId: String, withMethod: String, andParams: [Any]) async throws -> PortalProviderResult
   @available(*, deprecated, renamed: "REMOVED", message: "The PortalProvider class will be chain agnostic very soon. Please update to the chainId-specific implementations of all Provider helper methods as this function will be removed in the future.")
   func setChainId(to: Int) throws

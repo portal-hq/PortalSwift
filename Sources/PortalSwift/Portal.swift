@@ -1734,7 +1734,7 @@ public final class Portal: PortalProtocol {
     self.mpc.ejectPrivateKey(clientBackupCiphertext: clientBackupCiphertext, method: method, backupConfigs: backupConfigs, orgBackupShare: orgBackupShare, completion: completion)
   }
 
-  @available(*, deprecated, message: "Use request(_:withMethod:andParams:) with a default value for andParams instead.")
+  @available(*, deprecated, message: "Use request(chainId:method:params:options:) instead.")
   public func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any]?) async throws -> PortalProviderResult {
     guard let andParams = andParams else {
       throw PortalProviderError.invalidRequestParams
@@ -1762,7 +1762,7 @@ public final class Portal: PortalProtocol {
   ///
   /// - Note: This is a convenience wrapper that converts the method string to a
   ///   `PortalRequestMethod` enum value before making the request.
-  @available(*, deprecated, message: "Use request(_:withMethod:andParams:) with PortalRequestMethod instead of String.")
+  @available(*, deprecated, message: "Use request(chainId:method:params:options:) with PortalRequestMethod instead of String.")
   public func request(_ chainId: String, withMethod: String, andParams: [Any]) async throws -> PortalProviderResult {
     guard let method = PortalRequestMethod(rawValue: withMethod) else {
       throw PortalProviderError.unsupportedRequestMethod(withMethod)
