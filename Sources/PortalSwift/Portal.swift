@@ -904,7 +904,7 @@ public final class Portal: PortalProtocol {
   ///
   /// - Note: Parameters are automatically converted to a format compatible with
   ///   blockchain RPC calls.
-  public func request(chainId: String, method: PortalRequestMethod, params: [Any], options: RequestOptions?) async throws -> PortalProviderResult {
+  public func request(chainId: String, method: PortalRequestMethod, params: [Any], options: RequestOptions? = nil) async throws -> PortalProviderResult {
     let anyCodableParams = params.map { param in
       AnyCodable(param)
     }
