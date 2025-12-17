@@ -32,13 +32,14 @@ extension ViewController {
         let params1 = SendAssetParams(to: recipientAddress, amount: amount, token: token)
         let response1 = try await portal.sendAsset(chainId: chainId, params: params1)
         self.logger.info("ViewController.handleTestGasSponsor() - ✅ Test 1 Success: Transaction: https://jiffyscan.xyz/userOpHash/\(response1.txHash)?network=sepolia&section=overview")
+        
+        // Wait for transaction confirmation before proceeding
+        let confirmed1 = await self.waitForTransactionConfirmation(txHash: response1.txHash, chainId: chainId, portal: portal)
+        self.logger.info("Test 1 transaction confirmation: \(confirmed1 ? "✅ Confirmed" : "❌ Not confirmed")")
       } catch {
         self.logger.error("ViewController.handleTestGasSponsor() - ❌ Test 1 Error: \(error)")
         self.showStatusView(message: "\(self.failureStatus) Test 1 failed: \(error)")
       }
-
-      self.logger.info("Wait for 10 seconds before proceeding to the next test")
-      try? await Task.sleep(nanoseconds: 10_000_000_000)
 
       // 2nd gas sponsor test case is to call sendAsset passing `true` gas sponsor flag
       do {
@@ -46,13 +47,14 @@ extension ViewController {
         let params2 = SendAssetParams(to: recipientAddress, amount: amount, token: token, sponsorGas: true)
         let response2 = try await portal.sendAsset(chainId: chainId, params: params2)
         self.logger.info("ViewController.handleTestGasSponsor() - ✅ Test 2 Success: Transaction: https://jiffyscan.xyz/userOpHash/\(response2.txHash)?network=sepolia&section=overview")
+        
+        // Wait for transaction confirmation before proceeding
+        let confirmed2 = await self.waitForTransactionConfirmation(txHash: response2.txHash, chainId: chainId, portal: portal)
+        self.logger.info("Test 2 transaction confirmation: \(confirmed2 ? "✅ Confirmed" : "❌ Not confirmed")")
       } catch {
         self.logger.error("ViewController.handleTestGasSponsor() - ❌ Test 2 Error: \(error)")
         self.showStatusView(message: "\(self.failureStatus) Test 2 failed: \(error)")
       }
-
-      self.logger.info("Wait for 10 seconds before proceeding to the next test")
-      try? await Task.sleep(nanoseconds: 10_000_000_000)
 
       // 3rd gas sponsor test case is to call sendAsset passing `false` gas sponsor flag
       do {
@@ -60,13 +62,14 @@ extension ViewController {
         let params3 = SendAssetParams(to: recipientAddress, amount: amount, token: token, sponsorGas: false)
         let response3 = try await portal.sendAsset(chainId: chainId, params: params3)
         self.logger.info("ViewController.handleTestGasSponsor() - ✅ Test 3 Success: Transaction: https://jiffyscan.xyz/userOpHash/\(response3.txHash)?network=sepolia&section=overview")
+        
+        // Wait for transaction confirmation before proceeding
+        let confirmed3 = await self.waitForTransactionConfirmation(txHash: response3.txHash, chainId: chainId, portal: portal)
+        self.logger.info("Test 3 transaction confirmation: \(confirmed3 ? "✅ Confirmed" : "❌ Not confirmed")")
       } catch {
         self.logger.error("ViewController.handleTestGasSponsor() - ❌ Test 3 Error: \(error)")
         self.showStatusView(message: "\(self.failureStatus) Test 3 failed: \(error)")
       }
-
-      self.logger.info("Wait for 10 seconds before proceeding to the next test")
-      try? await Task.sleep(nanoseconds: 10_000_000_000)
 
       // 4th gas sponsor test case is to call request(eth_sendTransaction) passing no gas sponsor flag, it should be defaulted to true from the backend side
       do {
@@ -87,13 +90,14 @@ extension ViewController {
           throw PortalExampleAppError.invalidResponseTypeForRequest()
         }
         self.logger.info("ViewController.handleTestGasSponsor() - ✅ Test 4 Success: Transaction: https://jiffyscan.xyz/userOpHash/\(transactionHash1)?network=sepolia&section=overview")
+        
+        // Wait for transaction confirmation before proceeding
+        let confirmed4 = await self.waitForTransactionConfirmation(txHash: transactionHash1, chainId: chainId, portal: portal)
+        self.logger.info("Test 4 transaction confirmation: \(confirmed4 ? "✅ Confirmed" : "❌ Not confirmed")")
       } catch {
         self.logger.error("ViewController.handleTestGasSponsor() - ❌ Test 4 Error: \(error)")
         self.showStatusView(message: "\(self.failureStatus) Test 4 failed: \(error)")
       }
-
-      self.logger.info("Wait for 10 seconds before proceeding to the next test")
-      try? await Task.sleep(nanoseconds: 10_000_000_000)
 
       // 5th gas sponsor test case is to call request(eth_sendTransaction) passing `true` gas sponsor flag
       do {
@@ -114,13 +118,14 @@ extension ViewController {
           throw PortalExampleAppError.invalidResponseTypeForRequest()
         }
         self.logger.info("ViewController.handleTestGasSponsor() - ✅ Test 5 Success: Transaction: https://jiffyscan.xyz/userOpHash/\(transactionHash2)?network=sepolia&section=overview")
+        
+        // Wait for transaction confirmation before proceeding
+        let confirmed5 = await self.waitForTransactionConfirmation(txHash: transactionHash2, chainId: chainId, portal: portal)
+        self.logger.info("Test 5 transaction confirmation: \(confirmed5 ? "✅ Confirmed" : "❌ Not confirmed")")
       } catch {
         self.logger.error("ViewController.handleTestGasSponsor() - ❌ Test 5 Error: \(error)")
         self.showStatusView(message: "\(self.failureStatus) Test 5 failed: \(error)")
       }
-
-      self.logger.info("Wait for 10 seconds before proceeding to the next test")
-      try? await Task.sleep(nanoseconds: 10_000_000_000)
 
       // 6th gas sponsor test case is to call request(eth_sendTransaction) passing `false` gas sponsor flag
       do {

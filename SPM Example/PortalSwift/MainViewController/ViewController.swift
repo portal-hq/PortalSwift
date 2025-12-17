@@ -2999,7 +2999,7 @@ extension ViewController {
     }
   }
 
-  private func waitForTransactionConfirmation(
+  func waitForTransactionConfirmation(
     txHash: String,
     chainId: String,
     portal: PortalProtocol,
