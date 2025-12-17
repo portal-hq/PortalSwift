@@ -665,7 +665,7 @@ extension PortalTests {
     // and given
     _ = try await portal.request("", withMethod: .eth_accounts, andParams: [])
 
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodCallsCount, 1)
+    XCTAssertEqual(portalProviderSpy.requestOptionsCallsCount, 1)
   }
 
   func test_request_willCall_provider_request_passingCorrectParams() async throws {
@@ -678,10 +678,11 @@ extension PortalTests {
     let signatureApprovalMemo: String? = "signature approval memo"
     _ = try await portal.request("123", withMethod: method, andParams: ["123", "321"], signatureApprovalMemo: signatureApprovalMemo)
 
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodChainIdParam, "123")
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodMethodParam, method)
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodParamsParam, ["123", "321"])
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodSignatureApprovalMemoParam, signatureApprovalMemo)
+    XCTAssertEqual(portalProviderSpy.requestOptionsChainIdParam, "123")
+    XCTAssertEqual(portalProviderSpy.requestOptionsMethodParam, method)
+    XCTAssertEqual(portalProviderSpy.requestOptionsParamsParam, ["123", "321"])
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.signatureApprovalMemo, signatureApprovalMemo)
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.sponsorGas, nil)
   }
 
   func test_request_withStringMethod_willCall_provider_request_onlyOnce() async throws {
@@ -692,7 +693,7 @@ extension PortalTests {
     // and given
     _ = try await portal.request("", withMethod: "eth_accounts", andParams: [])
 
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodCallsCount, 1)
+    XCTAssertEqual(portalProviderSpy.requestOptionsCallsCount, 1)
   }
 
   func test_request_withStringMethod_willThrowCorrectError_WhenPassingWrongMethod() async throws {
@@ -735,9 +736,9 @@ extension PortalTests {
     let method = "eth_accounts"
     _ = try await portal.request("123", withMethod: method, andParams: ["123", "321"])
 
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodChainIdParam, "123")
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodMethodParam, PortalRequestMethod(rawValue: method))
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodParamsParam, ["123", "321"])
+    XCTAssertEqual(portalProviderSpy.requestOptionsChainIdParam, "123")
+    XCTAssertEqual(portalProviderSpy.requestOptionsMethodParam, PortalRequestMethod(rawValue: method))
+    XCTAssertEqual(portalProviderSpy.requestOptionsParamsParam, ["123", "321"])
   }
 }
 
@@ -1535,7 +1536,7 @@ extension PortalTests {
     _ = try await portal.sendAsset(chainId: "eip155:11155111", params: SendAssetParams.stub())
 
     // then
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodCallsCount, 1)
+    XCTAssertEqual(portalProviderSpy.requestOptionsCallsCount, 1)
   }
 
   func test_sendAsset_willCall_portalProvider_request_onlyOnce_for_SolanaChain() async throws {
@@ -1550,7 +1551,7 @@ extension PortalTests {
     _ = try await portal.sendAsset(chainId: "solana:11155111", params: SendAssetParams.stub())
 
     // then
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodCallsCount, 1)
+    XCTAssertEqual(portalProviderSpy.requestOptionsCallsCount, 1)
   }
 
   func test_sendAsset_willCall_portalProvider_request_onlyOnce_for_bip122Chain() async throws {
@@ -1565,7 +1566,7 @@ extension PortalTests {
     _ = try await portal.sendAsset(chainId: "bip122:000000000019d6689c085ae165831e93-p2wpkh", params: SendAssetParams.stub())
 
     // then
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodCallsCount, 1)
+    XCTAssertEqual(portalProviderSpy.requestOptionsCallsCount, 1)
   }
 
   func test_sendAsset_willCall_portalProvider_request_correctTimes_whenHavingMoreThanSingatureHash_for_bip122Chain() async throws {
@@ -1586,7 +1587,7 @@ extension PortalTests {
     _ = try await portal.sendAsset(chainId: chainId, params: params)
 
     // then
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodCallsCount, numberOfHashes)
+    XCTAssertEqual(portalProviderSpy.requestOptionsCallsCount, numberOfHashes)
   }
 
   func test_sendAsset_willCall_portalApi_buildBitcoinP2wpkhTransaction_onlyOnce_for_bip122Chain() async throws {
@@ -1632,9 +1633,9 @@ extension PortalTests {
     _ = try await portal.sendAsset(chainId: chainId, params: params)
 
     // then
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodChainIdParam, chainId)
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodMethodParam, .eth_sendTransaction)
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodSignatureApprovalMemoParam, params.signatureApprovalMemo)
+    XCTAssertEqual(portalProviderSpy.requestOptionsChainIdParam, chainId)
+    XCTAssertEqual(portalProviderSpy.requestOptionsMethodParam, .eth_sendTransaction)
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.signatureApprovalMemo, params.signatureApprovalMemo)
   }
 
   func test_sendAsset_willCall_portalProvider_request_passingCorrectParams_for_SolanaChain() async throws {
@@ -1650,9 +1651,9 @@ extension PortalTests {
     _ = try await portal.sendAsset(chainId: chainId, params: params)
 
     // then
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodChainIdParam, chainId)
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodMethodParam, .sol_signAndSendTransaction)
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodSignatureApprovalMemoParam, params.signatureApprovalMemo)
+    XCTAssertEqual(portalProviderSpy.requestOptionsChainIdParam, chainId)
+    XCTAssertEqual(portalProviderSpy.requestOptionsMethodParam, .sol_signAndSendTransaction)
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.signatureApprovalMemo, params.signatureApprovalMemo)
   }
 
   func test_sendAsset_willCall_portalAPI_buildBitcoinP2wpkhTransaction_passingCorrectParams_for_bip122Chain() async throws {
@@ -1877,7 +1878,7 @@ extension PortalTests {
     _ = try await portal.rawSign(message: "", chainId: "")
 
     // then
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodCallsCount, 1)
+    XCTAssertEqual(portalProviderSpy.requestOptionsCallsCount, 1)
   }
 
   func test_rawSign_willCall_portalProvider_request_passingCorrectParams() async throws {
@@ -1894,10 +1895,10 @@ extension PortalTests {
     _ = try await portal.rawSign(message: message, chainId: chainId, signatureApprovalMemo: signatureApprovalMemo)
 
     // then
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodChainIdParam, chainId)
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodMethodParam, .rawSign)
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodParamsParam, [AnyCodable(message)])
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodSignatureApprovalMemoParam, signatureApprovalMemo)
+    XCTAssertEqual(portalProviderSpy.requestOptionsChainIdParam, chainId)
+    XCTAssertEqual(portalProviderSpy.requestOptionsMethodParam, .rawSign)
+    XCTAssertEqual(portalProviderSpy.requestOptionsParamsParam, [AnyCodable(message)])
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.signatureApprovalMemo, signatureApprovalMemo)
   }
 }
 

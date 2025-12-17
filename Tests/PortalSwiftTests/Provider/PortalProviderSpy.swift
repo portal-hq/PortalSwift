@@ -70,6 +70,24 @@ class PortalProviderSpy: PortalProviderProtocol {
     return mockPortalProvider
   }
 
+  // Tracking variables for the async `request` function with RequestOptions
+  private(set) var requestOptionsCallsCount = 0
+  private(set) var requestOptionsChainIdParam: String?
+  private(set) var requestOptionsMethodParam: PortalRequestMethod?
+  private(set) var requestOptionsParamsParam: [AnyCodable]?
+  private(set) var requestOptionsConnectParam: PortalConnect?
+  private(set) var requestOptionsOptionsParam: RequestOptions?
+
+  func request(chainId: String, method: PortalRequestMethod, params: [AnyCodable]?, connect: PortalConnect?, options: RequestOptions?) async throws -> PortalProviderResult {
+    requestOptionsCallsCount += 1
+    requestOptionsChainIdParam = chainId
+    requestOptionsMethodParam = method
+    requestOptionsParamsParam = params
+    requestOptionsConnectParam = connect
+    requestOptionsOptionsParam = options
+    return PortalProviderResult(id: "", result: "")
+  }
+
   // Tracking variables for the async `request` function with PortalRequestMethod
   private(set) var requestAsyncMethodCallsCount = 0
   private(set) var requestAsyncMethodChainIdParam: String?
