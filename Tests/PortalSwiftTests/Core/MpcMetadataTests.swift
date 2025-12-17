@@ -390,4 +390,3 @@ extension MpcMetadataTests {
     XCTAssertEqual(error1, error2)
   }
 }
-

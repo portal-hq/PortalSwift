@@ -3011,8 +3011,8 @@ extension ViewController {
     for attempt in 0 ..< maxAttempts {
       do {
         // Wait `waitingInSeconds` seconds between attempts
-          let waitingTimeInNanoSeconds: UInt64 = UInt64(waitingInSeconds * 1_000_000_000)
-          try await Task.sleep(nanoseconds: waitingTimeInNanoSeconds)
+        let waitingTimeInNanoSeconds: UInt64 = .init(waitingInSeconds * 1_000_000_000)
+        try await Task.sleep(nanoseconds: waitingTimeInNanoSeconds)
 
         // Check transaction receipt
         let response = try await portal.request(chainId, withMethod: .eth_getTransactionReceipt, andParams: [txHash])

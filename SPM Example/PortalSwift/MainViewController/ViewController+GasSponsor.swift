@@ -32,9 +32,9 @@ extension ViewController {
         let params1 = SendAssetParams(to: recipientAddress, amount: amount, token: token)
         let response1 = try await portal.sendAsset(chainId: chainId, params: params1)
         self.logger.info("ViewController.handleTestGasSponsor() - ✅ Test 1 Success: Transaction: https://jiffyscan.xyz/userOpHash/\(response1.txHash)?network=sepolia&section=overview")
-        
+
         // Wait for transaction confirmation before proceeding
-          let confirmed1 = await self.waitForUserOperationConfirmation(txHash: response1.txHash, chainId: chainId, portal: portal, waitingInSeconds: 5)
+        let confirmed1 = await self.waitForUserOperationConfirmation(userOperationHash: response1.txHash, chainId: chainId, portal: portal, waitingInSeconds: 5)
         self.logger.info("Test 1 transaction confirmation: \(confirmed1 ? "✅ Confirmed" : "❌ Not confirmed")")
       } catch {
         self.logger.error("ViewController.handleTestGasSponsor() - ❌ Test 1 Error: \(error)")
@@ -47,9 +47,9 @@ extension ViewController {
         let params2 = SendAssetParams(to: recipientAddress, amount: amount, token: token, sponsorGas: true)
         let response2 = try await portal.sendAsset(chainId: chainId, params: params2)
         self.logger.info("ViewController.handleTestGasSponsor() - ✅ Test 2 Success: Transaction: https://jiffyscan.xyz/userOpHash/\(response2.txHash)?network=sepolia&section=overview")
-        
+
         // Wait for transaction confirmation before proceeding
-        let confirmed2 = await self.waitForUserOperationConfirmation(txHash: response2.txHash, chainId: chainId, portal: portal, waitingInSeconds: 5)
+        let confirmed2 = await self.waitForUserOperationConfirmation(userOperationHash: response2.txHash, chainId: chainId, portal: portal, waitingInSeconds: 5)
         self.logger.info("Test 2 transaction confirmation: \(confirmed2 ? "✅ Confirmed" : "❌ Not confirmed")")
       } catch {
         self.logger.error("ViewController.handleTestGasSponsor() - ❌ Test 2 Error: \(error)")
@@ -62,9 +62,9 @@ extension ViewController {
         let params3 = SendAssetParams(to: recipientAddress, amount: amount, token: token, sponsorGas: false)
         let response3 = try await portal.sendAsset(chainId: chainId, params: params3)
         self.logger.info("ViewController.handleTestGasSponsor() - ✅ Test 3 Success: Transaction: https://jiffyscan.xyz/userOpHash/\(response3.txHash)?network=sepolia&section=overview")
-        
+
         // Wait for transaction confirmation before proceeding
-        let confirmed3 = await self.waitForUserOperationConfirmation(txHash: response3.txHash, chainId: chainId, portal: portal, waitingInSeconds: 5)
+        let confirmed3 = await self.waitForUserOperationConfirmation(userOperationHash: response3.txHash, chainId: chainId, portal: portal, waitingInSeconds: 5)
         self.logger.info("Test 3 transaction confirmation: \(confirmed3 ? "✅ Confirmed" : "❌ Not confirmed")")
       } catch {
         self.logger.error("ViewController.handleTestGasSponsor() - ❌ Test 3 Error: \(error)")
@@ -90,9 +90,9 @@ extension ViewController {
           throw PortalExampleAppError.invalidResponseTypeForRequest()
         }
         self.logger.info("ViewController.handleTestGasSponsor() - ✅ Test 4 Success: Transaction: https://jiffyscan.xyz/userOpHash/\(transactionHash1)?network=sepolia&section=overview")
-        
+
         // Wait for transaction confirmation before proceeding
-        let confirmed4 = await self.waitForUserOperationConfirmation(txHash: transactionHash1, chainId: chainId, portal: portal, waitingInSeconds: 5)
+        let confirmed4 = await self.waitForUserOperationConfirmation(userOperationHash: transactionHash1, chainId: chainId, portal: portal, waitingInSeconds: 5)
         self.logger.info("Test 4 transaction confirmation: \(confirmed4 ? "✅ Confirmed" : "❌ Not confirmed")")
       } catch {
         self.logger.error("ViewController.handleTestGasSponsor() - ❌ Test 4 Error: \(error)")
@@ -118,9 +118,9 @@ extension ViewController {
           throw PortalExampleAppError.invalidResponseTypeForRequest()
         }
         self.logger.info("ViewController.handleTestGasSponsor() - ✅ Test 5 Success: Transaction: https://jiffyscan.xyz/userOpHash/\(transactionHash2)?network=sepolia&section=overview")
-        
+
         // Wait for transaction confirmation before proceeding
-        let confirmed5 = await self.waitForUserOperationConfirmation(txHash: transactionHash2, chainId: chainId, portal: portal, waitingInSeconds: 5)
+        let confirmed5 = await self.waitForUserOperationConfirmation(userOperationHash: transactionHash2, chainId: chainId, portal: portal, waitingInSeconds: 5)
         self.logger.info("Test 5 transaction confirmation: \(confirmed5 ? "✅ Confirmed" : "❌ Not confirmed")")
       } catch {
         self.logger.error("ViewController.handleTestGasSponsor() - ❌ Test 5 Error: \(error)")
@@ -155,47 +155,47 @@ extension ViewController {
       self.stopLoading()
     }
   }
-    
-    func waitForUserOperationConfirmation(
-      txHash: String,
-      chainId: String,
-      portal: PortalProtocol,
-      maxAttempts: Int = 30,
-      waitingInSeconds: Int = 2
-    ) async -> Bool {
-      self.logger.info("Waiting for transaction confirmation: \(txHash) on chain: \(chainId)")
 
-      for attempt in 0 ..< maxAttempts {
-        do {
-          // Wait `waitingInSeconds` seconds between attempts
-            let waitingTimeInNanoSeconds: UInt64 = UInt64(waitingInSeconds * 1_000_000_000)
-            try await Task.sleep(nanoseconds: waitingTimeInNanoSeconds)
+  func waitForUserOperationConfirmation(
+    userOperationHash: String,
+    chainId: String,
+    portal: PortalProtocol,
+    maxAttempts: Int = 30,
+    waitingInSeconds: Int = 2
+  ) async -> Bool {
+    self.logger.info("Waiting for User operation confirmation: \(userOperationHash) on chain: \(chainId)")
 
-          // Check transaction receipt
-          let response = try await portal.request(chainId, withMethod: .eth_getUserOperationReceipt, andParams: [txHash])
-          // The result is a UserOperationResponse
-          if let userOpResponse = response.result as? UserOperationResponse {
-            // The actual receipt is in userOpResponse.result
-            if let status = userOpResponse.result?.receipt?.status {
-              if status == "0x1" {
-                self.logger.info("Transaction \(txHash) confirmed successfully after \(attempt + 1) attempts")
-                return true
-              } else {
-                self.logger.error("Transaction \(txHash) failed (reverted) after \(attempt + 1) attempts")
-                return false
-              }
+    for attempt in 0 ..< maxAttempts {
+      do {
+        // Wait `waitingInSeconds` seconds between attempts
+        let waitingTimeInNanoSeconds: UInt64 = .init(waitingInSeconds * 1_000_000_000)
+        try await Task.sleep(nanoseconds: waitingTimeInNanoSeconds)
+
+        // Check transaction receipt
+        let response = try await portal.request(chainId, withMethod: .eth_getUserOperationReceipt, andParams: [userOperationHash])
+        // The result is a UserOperationResponse
+        if let userOpResponse = response.result as? UserOperationResponse {
+          // The actual receipt is in userOpResponse.result
+          if let status = userOpResponse.result?.receipt?.status {
+            if status == "0x1" {
+              self.logger.info("User operation \(userOperationHash) confirmed successfully after \(attempt + 1) attempts")
+              return true
             } else {
-              self.logger.info("Transaction \(txHash) receipt found but status not available, attempt \(attempt + 1)/\(maxAttempts)")
+              self.logger.error("User operation \(userOperationHash) failed (reverted) after \(attempt + 1) attempts")
+              return false
             }
           } else {
-            self.logger.info("Transaction \(txHash) not yet mined, attempt \(attempt + 1)/\(maxAttempts)")
+            self.logger.info("User operation \(userOperationHash) receipt found but status not available, attempt \(attempt + 1)/\(maxAttempts)")
           }
-        } catch {
-          self.logger.error("Error checking transaction confirmation: \(error.localizedDescription)")
+        } else {
+          self.logger.info("User operation \(userOperationHash) not yet mined, attempt \(attempt + 1)/\(maxAttempts)")
         }
+      } catch {
+        self.logger.error("Error checking the user operation confirmation: \(error.localizedDescription)")
       }
-
-      self.logger.error("Transaction \(txHash) not confirmed after \(maxAttempts) attempts")
-      return false
     }
+
+    self.logger.error("Transaction \(userOperationHash) not confirmed after \(maxAttempts) attempts")
+    return false
+  }
 }
