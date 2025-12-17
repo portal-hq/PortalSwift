@@ -2028,7 +2028,7 @@ extension PortalTests {
     try initPortalWithSpy(api: portalApiSpy)
     let portalProviderSpy = PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
-    let params = SendAssetParams.stub(signatureApprovalMemo: "signatureApprovalMemo")
+    let params = SendAssetParams.stub(signatureApprovalMemo: "signatureApprovalMemo", sponsorGas: true)
     let chainId = "eip155:11155111"
 
     // and given
@@ -2038,6 +2038,7 @@ extension PortalTests {
     XCTAssertEqual(portalProviderSpy.requestOptionsChainIdParam, chainId)
     XCTAssertEqual(portalProviderSpy.requestOptionsMethodParam, .eth_sendTransaction)
     XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.signatureApprovalMemo, params.signatureApprovalMemo)
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.sponsorGas, params.sponsorGas)
   }
 
   func test_sendAsset_willCall_portalProvider_request_passingCorrectParams_for_SolanaChain() async throws {
@@ -2046,7 +2047,7 @@ extension PortalTests {
     try initPortalWithSpy(api: portalApiSpy)
     let portalProviderSpy = PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
-    let params = SendAssetParams.stub(signatureApprovalMemo: "signatureApprovalMemo")
+    let params = SendAssetParams.stub(signatureApprovalMemo: "signatureApprovalMemo", sponsorGas: true)
     let chainId = "solana:11155111"
 
     // and given
@@ -2056,6 +2057,103 @@ extension PortalTests {
     XCTAssertEqual(portalProviderSpy.requestOptionsChainIdParam, chainId)
     XCTAssertEqual(portalProviderSpy.requestOptionsMethodParam, .sol_signAndSendTransaction)
     XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.signatureApprovalMemo, params.signatureApprovalMemo)
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.sponsorGas, params.sponsorGas)
+  }
+
+  func test_sendAsset_willPass_sponsorGasTrue_for_eip115Chain() async throws {
+    // given
+    let portalApiSpy = PortalApiMock()
+    try initPortalWithSpy(api: portalApiSpy)
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let params = SendAssetParams.stub(sponsorGas: true)
+    let chainId = "eip155:11155111"
+
+    // when
+    _ = try await portal.sendAsset(chainId: chainId, params: params)
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.sponsorGas, true)
+  }
+
+  func test_sendAsset_willPass_sponsorGasFalse_for_eip115Chain() async throws {
+    // given
+    let portalApiSpy = PortalApiMock()
+    try initPortalWithSpy(api: portalApiSpy)
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let params = SendAssetParams.stub(sponsorGas: false)
+    let chainId = "eip155:11155111"
+
+    // when
+    _ = try await portal.sendAsset(chainId: chainId, params: params)
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.sponsorGas, false)
+  }
+
+  func test_sendAsset_willPass_sponsorGasNil_for_eip115Chain() async throws {
+    // given
+    let portalApiSpy = PortalApiMock()
+    try initPortalWithSpy(api: portalApiSpy)
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let params = SendAssetParams.stub(sponsorGas: nil)
+    let chainId = "eip155:11155111"
+
+    // when
+    _ = try await portal.sendAsset(chainId: chainId, params: params)
+
+    // then
+    XCTAssertNil(portalProviderSpy.requestOptionsOptionsParam?.sponsorGas)
+  }
+
+  func test_sendAsset_willPass_sponsorGasTrue_for_SolanaChain() async throws {
+    // given
+    let portalApiSpy = PortalApiMock()
+    try initPortalWithSpy(api: portalApiSpy)
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let params = SendAssetParams.stub(sponsorGas: true)
+    let chainId = "solana:11155111"
+
+    // when
+    _ = try await portal.sendAsset(chainId: chainId, params: params)
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.sponsorGas, true)
+  }
+
+  func test_sendAsset_willPass_sponsorGasFalse_for_SolanaChain() async throws {
+    // given
+    let portalApiSpy = PortalApiMock()
+    try initPortalWithSpy(api: portalApiSpy)
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let params = SendAssetParams.stub(sponsorGas: false)
+    let chainId = "solana:11155111"
+
+    // when
+    _ = try await portal.sendAsset(chainId: chainId, params: params)
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.sponsorGas, false)
+  }
+
+  func test_sendAsset_willPass_sponsorGasNil_for_SolanaChain() async throws {
+    // given
+    let portalApiSpy = PortalApiMock()
+    try initPortalWithSpy(api: portalApiSpy)
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let params = SendAssetParams.stub(sponsorGas: nil)
+    let chainId = "solana:11155111"
+
+    // when
+    _ = try await portal.sendAsset(chainId: chainId, params: params)
+
+    // then
+    XCTAssertNil(portalProviderSpy.requestOptionsOptionsParam?.sponsorGas)
   }
 
   func test_sendAsset_willCall_portalAPI_buildBitcoinP2wpkhTransaction_passingCorrectParams_for_bip122Chain() async throws {

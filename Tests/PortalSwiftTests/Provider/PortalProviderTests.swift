@@ -561,6 +561,74 @@ extension PortalProviderTests {
     XCTAssertEqual(accounts.count, 1)
   }
 
+  func testRequest_withSponsorGasNil_succeeds() async throws {
+    let transaction = AnyCodable([:] as [String: String])
+    let options = RequestOptions(sponsorGas: nil)
+    let result = try await provider.request(
+      chainId: "eip155:11155111",
+      method: .eth_sendTransaction,
+      params: [transaction],
+      connect: nil,
+      options: options
+    )
+    guard let transactionHash = result.result as? String else {
+      XCTFail("Expected result to be String transaction hash")
+      return
+    }
+    XCTAssertEqual(transactionHash, MockConstants.mockTransactionHash)
+  }
+
+  func testRequest_personalSign_withSponsorGas_succeeds() async throws {
+    let params = ["test-message", MockConstants.mockEip155Address].map { AnyCodable($0) }
+    let options = RequestOptions(sponsorGas: true)
+    let result = try await provider.request(
+      chainId: "eip155:11155111",
+      method: .personal_sign,
+      params: params,
+      connect: nil,
+      options: options
+    )
+    guard let signature = result.result as? String else {
+      XCTFail("Expected result to be String signature")
+      return
+    }
+    XCTAssertEqual(signature, MockConstants.mockSignature)
+  }
+
+  func testRequest_ethSignTypedDataV4_withSponsorGas_succeeds() async throws {
+    let params = [MockConstants.mockEip155Address, "{}"].map { AnyCodable($0) }
+    let options = RequestOptions(sponsorGas: true)
+    let result = try await provider.request(
+      chainId: "eip155:11155111",
+      method: .eth_signTypedData_v4,
+      params: params,
+      connect: nil,
+      options: options
+    )
+    guard let signature = result.result as? String else {
+      XCTFail("Expected result to be String signature")
+      return
+    }
+    XCTAssertEqual(signature, MockConstants.mockSignature)
+  }
+
+  func testRequest_ethSignTransaction_withSponsorGas_succeeds() async throws {
+    let transaction = AnyCodable([:] as [String: String])
+    let options = RequestOptions(sponsorGas: true)
+    let result = try await provider.request(
+      chainId: "eip155:11155111",
+      method: .eth_signTransaction,
+      params: [transaction],
+      connect: nil,
+      options: options
+    )
+    guard let signature = result.result as? String else {
+      XCTFail("Expected result to be String signature")
+      return
+    }
+    XCTAssertEqual(signature, MockConstants.mockSignature)
+  }
+
   // MARK: - Params Parameter Tests
 
   func testRequest_withEmptyParams_succeeds() async throws {
