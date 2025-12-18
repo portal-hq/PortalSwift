@@ -10,7 +10,6 @@ import PortalSwift
 import UIKit
 
 protocol PortalExampleAppDelegate {
-  var config: ApplicationConfiguration? { get set }
   var connect: PortalConnect? { get set }
   var connect2: PortalConnect? { get set }
   var portal: PortalProtocol? { get set }
@@ -31,21 +30,9 @@ public enum PortalExampleAppError: Error {
   case userNotLoggedIn(_: String = "User not logged in")
 }
 
-struct ApplicationConfiguration {
-  let alchemyApiKey: String
-  let apiUrl: String
-  let custodianServerUrl: String
-  let googleClientId: String
-  let mpcUrl: String
-  let webAuthnHost: String
-  let relyingParty: String
-  let enclaveMPCHost: String
-}
-
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate, PortalExampleAppDelegate {
   var window: UIWindow?
-  var config: ApplicationConfiguration?
   var connect: PortalConnect?
   var connect2: PortalConnect?
   var portal: PortalProtocol?

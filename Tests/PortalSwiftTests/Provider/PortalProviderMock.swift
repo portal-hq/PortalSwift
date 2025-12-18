@@ -44,12 +44,12 @@ class PortalProviderMock: PortalProviderProtocol {
 
   var requestReturnValue: PortalSwift.PortalProviderResult?
 
-  func request(_: String, withMethod: PortalSwift.PortalRequestMethod, andParams _: [AnyCodable]?, connect _: PortalSwift.PortalConnect?, signatureApprovalMemo _: String?) async throws -> PortalSwift.PortalProviderResult {
+  func request(chainId _: String, method: PortalSwift.PortalRequestMethod, params _: [AnyCodable]?, connect _: PortalSwift.PortalConnect?, options _: PortalSwift.RequestOptions?) async throws -> PortalSwift.PortalProviderResult {
     if let requestReturnValue {
       return requestReturnValue
     }
 
-    switch withMethod {
+    switch method {
     case .eth_accounts, .eth_requestAccounts:
       return PortalProviderResult(
         id: MockConstants.mockProviderRequestId,
@@ -71,8 +71,13 @@ class PortalProviderMock: PortalProviderProtocol {
         result: SolGetLatestBlockhashResponse.stub()
       )
     default:
-      throw PortalProviderError.unsupportedRequestMethod(withMethod.rawValue)
+      throw PortalProviderError.unsupportedRequestMethod(method.rawValue)
     }
+  }
+
+  func request(_ chainId: String, withMethod: PortalSwift.PortalRequestMethod, andParams params: [AnyCodable]?, connect connectParam: PortalSwift.PortalConnect?, signatureApprovalMemo signatureApprovalMemo: String?) async throws -> PortalSwift.PortalProviderResult {
+    let options = signatureApprovalMemo.map { PortalSwift.RequestOptions(signatureApprovalMemo: $0) }
+    return try await request(chainId: chainId, method: withMethod, params: params, connect: connectParam, options: options)
   }
 
   func request(_ chainId: String, withMethod: String, andParams: [AnyCodable]?, connect: PortalSwift.PortalConnect?, signatureApprovalMemo: String?) async throws -> PortalSwift.PortalProviderResult {

@@ -82,7 +82,7 @@ public protocol PortalProtocol {
   func emit(_ event: Events, data: Any)
   func on(event: Events, callback: @escaping (Any) -> Void)
   func once(event: Events, callback: @escaping (Any) -> Void)
-  func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any], signatureApprovalMemo: String?) async throws -> PortalProviderResult
+  func request(chainId: String, method: PortalRequestMethod, params: [Any], options: RequestOptions?) async throws -> PortalProviderResult
   func getRpcUrl(forChainId: String) async -> String?
   func availableRecoveryMethods(_ forChainId: String?) async throws -> [BackupMethods]
   func doesWalletExist(_ forChainId: String?) async throws -> Bool
@@ -123,9 +123,9 @@ public protocol PortalProtocol {
   func recoverWallet(cipherText: String, method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?)
   @available(*, deprecated, renamed: "eject", message: "Please use the async implementation of eject()")
   func ejectPrivateKey(clientBackupCiphertext: String, method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, orgBackupShare: String, completion: @escaping (Result<String>) -> Void)
-  @available(*, deprecated, message: "Use request(_:withMethod:andParams:) with a default value for andParams instead.")
+  @available(*, deprecated, message: "Use request(chainId:method:params:options:) instead.")
   func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any]?) async throws -> PortalProviderResult
-  @available(*, deprecated, message: "Use request(_:withMethod:andParams:) with PortalRequestMethod instead of String.")
+  @available(*, deprecated, message: "Use request(chainId:method:params:options:) with PortalRequestMethod instead of String.")
   func request(_ chainId: String, withMethod: String, andParams: [Any]) async throws -> PortalProviderResult
   @available(*, deprecated, renamed: "REMOVED", message: "The PortalProvider class will be chain agnostic very soon. Please update to the chainId-specific implementations of all Provider helper methods as this function will be removed in the future.")
   func setChainId(to: Int) throws
@@ -159,6 +159,8 @@ public protocol PortalProtocol {
   func ethSignTypedData(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
   @available(*, deprecated, message: "Use `request(_:withMethod:andParams:)` with `PortalRequestMethod.personalSign` instead")
   func personalSign(message: String, completion: @escaping (Result<RequestCompletionResult>) -> Void)
+  @available(*, deprecated, message: "Use request(chainId:method:params:options:) instead. Pass RequestOptions(signatureApprovalMemo: yourMemo) to provide the signature approval memo.")
+  func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any], signatureApprovalMemo: String?) async throws -> PortalProviderResult
 }
 
 // Proxy functions to avoid releasing breaking changes after adding the `signatureApprovalMemo` param
@@ -167,7 +169,8 @@ public extension PortalProtocol {
     return try await rawSign(message: message, chainId: chainId, signatureApprovalMemo: nil)
   }
 
+  @available(*, deprecated, message: "Use request(chainId:method:params:options:) instead.")
   func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any]) async throws -> PortalProviderResult {
-    return try await request(chainId, withMethod: withMethod, andParams: andParams, signatureApprovalMemo: nil)
+    return try await request(chainId: chainId, method: withMethod, params: andParams, options: nil)
   }
 }

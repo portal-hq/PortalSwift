@@ -863,4 +863,3 @@ extension LifiCodableTests {
     XCTAssertEqual(LifiStatusBridge.chainflip.rawValue, "chainflip")
   }
 }
-

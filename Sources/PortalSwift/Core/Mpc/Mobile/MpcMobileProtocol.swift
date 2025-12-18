@@ -18,6 +18,7 @@ public struct MpcMetadata: Codable {
   var optimized: Bool = true
   var isRaw: Bool? = nil
   var signatureApprovalMemo: String? = nil
+  var sponsorGas: Bool? = nil
 }
 
 extension MpcMetadata {

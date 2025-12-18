@@ -86,3 +86,139 @@ final class PortalMpcSignerTests: XCTestCase {
     await fulfillment(of: [expectation], timeout: 5.0)
   }
 }
+
+// MARK: - SponsorGas Tests
+
+extension PortalMpcSignerTests {
+  func test_sign_withSponsorGasTrue_succeeds() async throws {
+    // given
+    guard let blockchain = blockchain else {
+      throw PortalMpcSignerError.noCurveFoundForNamespace("eip155:11155111")
+    }
+    let signRequest = PortalSignRequest(method: .eth_sendTransaction, params: "test-transaction")
+
+    // when
+    let response = try await signer.sign(
+      "eip155:11155111",
+      withPayload: signRequest,
+      andRpcUrl: MockConstants.mockHost,
+      usingBlockchain: blockchain,
+      signatureApprovalMemo: nil,
+      sponsorGas: true
+    )
+
+    // then
+    XCTAssertEqual(response, MockConstants.mockTransactionHash)
+  }
+
+  func test_sign_withSponsorGasFalse_succeeds() async throws {
+    // given
+    guard let blockchain = blockchain else {
+      throw PortalMpcSignerError.noCurveFoundForNamespace("eip155:11155111")
+    }
+    let signRequest = PortalSignRequest(method: .eth_sendTransaction, params: "test-transaction")
+
+    // when
+    let response = try await signer.sign(
+      "eip155:11155111",
+      withPayload: signRequest,
+      andRpcUrl: MockConstants.mockHost,
+      usingBlockchain: blockchain,
+      signatureApprovalMemo: nil,
+      sponsorGas: false
+    )
+
+    // then
+    XCTAssertEqual(response, MockConstants.mockTransactionHash)
+  }
+
+  func test_sign_withSponsorGasNil_succeeds() async throws {
+    // given
+    guard let blockchain = blockchain else {
+      throw PortalMpcSignerError.noCurveFoundForNamespace("eip155:11155111")
+    }
+    let signRequest = PortalSignRequest(method: .eth_sendTransaction, params: "test-transaction")
+
+    // when
+    let response = try await signer.sign(
+      "eip155:11155111",
+      withPayload: signRequest,
+      andRpcUrl: MockConstants.mockHost,
+      usingBlockchain: blockchain,
+      signatureApprovalMemo: nil,
+      sponsorGas: nil
+    )
+
+    // then
+    XCTAssertEqual(response, MockConstants.mockTransactionHash)
+  }
+
+  func test_sign_withSponsorGasAndSignatureApprovalMemo_succeeds() async throws {
+    // given
+    guard let blockchain = blockchain else {
+      throw PortalMpcSignerError.noCurveFoundForNamespace("eip155:11155111")
+    }
+    let signRequest = PortalSignRequest(method: .eth_sendTransaction, params: "test-transaction")
+
+    // when
+    let response = try await signer.sign(
+      "eip155:11155111",
+      withPayload: signRequest,
+      andRpcUrl: MockConstants.mockHost,
+      usingBlockchain: blockchain,
+      signatureApprovalMemo: "Confirm sponsored transaction",
+      sponsorGas: true
+    )
+
+    // then
+    XCTAssertEqual(response, MockConstants.mockTransactionHash)
+  }
+
+  func test_signTransaction_withSponsorGasTrue_succeeds() async throws {
+    // given
+    guard let blockchain = blockchain else {
+      throw PortalMpcSignerError.noCurveFoundForNamespace("eip155:11155111")
+    }
+    let signRequest = PortalSignRequest(method: .eth_signTransaction, params: "test-transaction")
+
+    // when
+    let response = try await signer.sign(
+      "eip155:11155111",
+      withPayload: signRequest,
+      andRpcUrl: MockConstants.mockHost,
+      usingBlockchain: blockchain,
+      signatureApprovalMemo: nil,
+      sponsorGas: true
+    )
+
+    // then
+    XCTAssertEqual(response, MockConstants.mockSignature)
+  }
+
+  func test_signMessage_withSponsorGasTrue_succeeds() async throws {
+    // given
+    guard let blockchain = blockchain else {
+      throw PortalMpcSignerError.noCurveFoundForNamespace("eip155:11155111")
+    }
+    let params = [
+      AnyCodable(MockConstants.mockEip155Address),
+      AnyCodable("test-message")
+    ]
+    let paramsJson = try JSONEncoder().encode(params)
+    let paramsStr = String(data: paramsJson, encoding: .utf8)!
+    let signRequest = PortalSignRequest(method: .eth_sign, params: paramsStr)
+
+    // when
+    let response = try await signer.sign(
+      "eip155:11155111",
+      withPayload: signRequest,
+      andRpcUrl: MockConstants.mockHost,
+      usingBlockchain: blockchain,
+      signatureApprovalMemo: nil,
+      sponsorGas: true
+    )
+
+    // then
+    XCTAssertEqual(response, MockConstants.mockSignature)
+  }
+}
