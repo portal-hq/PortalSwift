@@ -81,9 +81,10 @@
 @property (nonatomic) BOOL isRaw;
 @property (nonatomic) NSString* _Nonnull mpcClientHeader;
 @property (nonatomic) NSString* _Nonnull signatureApprovalMemo;
+@property (nonatomic) BOOL sponsorGas;
 @property (nonatomic) BOOL connectionTracingEnabled;
 /**
- * Custom unmarshalling to set the default value of Optimized to true
+ * Custom unmarshalling to set the default value of Optimized and SponsorGas to true
  */
 - (BOOL)unmarshalJSON:(NSData* _Nullable)data error:(NSError* _Nullable* _Nullable)error;
 @end

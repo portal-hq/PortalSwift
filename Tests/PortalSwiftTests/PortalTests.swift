@@ -665,7 +665,7 @@ extension PortalTests {
     // and given
     _ = try await portal.request("", withMethod: .eth_accounts, andParams: [])
 
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodCallsCount, 1)
+    XCTAssertEqual(portalProviderSpy.requestOptionsCallsCount, 1)
   }
 
   func test_request_willCall_provider_request_passingCorrectParams() async throws {
@@ -678,10 +678,11 @@ extension PortalTests {
     let signatureApprovalMemo: String? = "signature approval memo"
     _ = try await portal.request("123", withMethod: method, andParams: ["123", "321"], signatureApprovalMemo: signatureApprovalMemo)
 
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodChainIdParam, "123")
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodMethodParam, method)
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodParamsParam, ["123", "321"])
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodSignatureApprovalMemoParam, signatureApprovalMemo)
+    XCTAssertEqual(portalProviderSpy.requestOptionsChainIdParam, "123")
+    XCTAssertEqual(portalProviderSpy.requestOptionsMethodParam, method)
+    XCTAssertEqual(portalProviderSpy.requestOptionsParamsParam, ["123", "321"])
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.signatureApprovalMemo, signatureApprovalMemo)
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.sponsorGas, nil)
   }
 
   func test_request_withStringMethod_willCall_provider_request_onlyOnce() async throws {
@@ -692,7 +693,7 @@ extension PortalTests {
     // and given
     _ = try await portal.request("", withMethod: "eth_accounts", andParams: [])
 
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodCallsCount, 1)
+    XCTAssertEqual(portalProviderSpy.requestOptionsCallsCount, 1)
   }
 
   func test_request_withStringMethod_willThrowCorrectError_WhenPassingWrongMethod() async throws {
@@ -735,9 +736,411 @@ extension PortalTests {
     let method = "eth_accounts"
     _ = try await portal.request("123", withMethod: method, andParams: ["123", "321"])
 
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodChainIdParam, "123")
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodMethodParam, PortalRequestMethod(rawValue: method))
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodParamsParam, ["123", "321"])
+    XCTAssertEqual(portalProviderSpy.requestOptionsChainIdParam, "123")
+    XCTAssertEqual(portalProviderSpy.requestOptionsMethodParam, PortalRequestMethod(rawValue: method))
+    XCTAssertEqual(portalProviderSpy.requestOptionsParamsParam, ["123", "321"])
+  }
+}
+
+// MARK: - Request with chainId, method, params, options Tests
+
+extension PortalTests {
+  // MARK: - Basic Call Tests
+
+  func test_requestWithChainIdMethodParams_willCall_provider_request_onlyOnce() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+
+    // when
+    _ = try await portal.request(chainId: "eip155:1", method: .eth_accounts, params: [])
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsCallsCount, 1)
+  }
+
+  func test_requestWithChainIdMethodParams_willCall_provider_request_onlyOnce_withOptions() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+
+    // when
+    let options = RequestOptions(signatureApprovalMemo: "test memo")
+    _ = try await portal.request(chainId: "eip155:1", method: .eth_accounts, params: [], options: options)
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsCallsCount, 1)
+  }
+
+  // MARK: - ChainId Parameter Tests
+
+  func test_requestWithChainIdMethodParams_willPass_correctChainId() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let expectedChainId = "eip155:11155111"
+
+    // when
+    _ = try await portal.request(chainId: expectedChainId, method: .eth_accounts, params: [])
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsChainIdParam, expectedChainId)
+  }
+
+  func test_requestWithChainIdMethodParams_willPass_correctChainId_forSolana() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let expectedChainId = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+
+    // when
+    _ = try await portal.request(chainId: expectedChainId, method: .sol_signMessage, params: [])
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsChainIdParam, expectedChainId)
+  }
+
+  func test_requestWithChainIdMethodParams_willPass_emptyChainId() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+
+    // when
+    _ = try await portal.request(chainId: "", method: .eth_accounts, params: [])
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsChainIdParam, "")
+  }
+
+  // MARK: - Method Parameter Tests
+
+  func test_requestWithChainIdMethodParams_willPass_correctMethod_ethAccounts() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let expectedMethod = PortalRequestMethod.eth_accounts
+
+    // when
+    _ = try await portal.request(chainId: "eip155:1", method: expectedMethod, params: [])
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsMethodParam, expectedMethod)
+  }
+
+  func test_requestWithChainIdMethodParams_willPass_correctMethod_ethCall() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let expectedMethod = PortalRequestMethod.eth_call
+
+    // when
+    _ = try await portal.request(chainId: "eip155:1", method: expectedMethod, params: [])
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsMethodParam, expectedMethod)
+  }
+
+  func test_requestWithChainIdMethodParams_willPass_correctMethod_ethSendTransaction() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let expectedMethod = PortalRequestMethod.eth_sendTransaction
+
+    // when
+    _ = try await portal.request(chainId: "eip155:1", method: expectedMethod, params: [])
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsMethodParam, expectedMethod)
+  }
+
+  func test_requestWithChainIdMethodParams_willPass_correctMethod_personalSign() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let expectedMethod = PortalRequestMethod.personal_sign
+
+    // when
+    _ = try await portal.request(chainId: "eip155:1", method: expectedMethod, params: [])
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsMethodParam, expectedMethod)
+  }
+
+  func test_requestWithChainIdMethodParams_willPass_correctMethod_solSignMessage() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let expectedMethod = PortalRequestMethod.sol_signMessage
+
+    // when
+    _ = try await portal.request(chainId: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", method: expectedMethod, params: [])
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsMethodParam, expectedMethod)
+  }
+
+  // MARK: - Params Parameter Tests
+
+  func test_requestWithChainIdMethodParams_willPass_emptyParams() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+
+    // when
+    _ = try await portal.request(chainId: "eip155:1", method: .eth_accounts, params: [])
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsParamsParam, [])
+  }
+
+  func test_requestWithChainIdMethodParams_willPass_stringParams() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+
+    // when
+    _ = try await portal.request(chainId: "eip155:1", method: .eth_call, params: ["param1", "param2", "param3"])
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsParamsParam, ["param1", "param2", "param3"])
+  }
+
+  func test_requestWithChainIdMethodParams_willPass_intParams() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+
+    // when
+    _ = try await portal.request(chainId: "eip155:1", method: .eth_call, params: [1, 2, 3])
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsParamsParam, [1, 2, 3])
+  }
+
+  func test_requestWithChainIdMethodParams_willPass_boolParams() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+
+    // when
+    _ = try await portal.request(chainId: "eip155:1", method: .eth_call, params: [true, false, true])
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsParamsParam, [true, false, true])
+  }
+
+  func test_requestWithChainIdMethodParams_willPass_mixedTypeParams() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+
+    // when
+    _ = try await portal.request(chainId: "eip155:1", method: .eth_call, params: ["string", 123, true])
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsParamsParam, ["string", 123, true])
+  }
+
+  func test_requestWithChainIdMethodParams_willPass_dictionaryParams() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let transactionParam: [String: Any] = [
+      "from": "0x1234567890abcdef",
+      "to": "0xabcdef1234567890",
+      "value": "0x1000"
+    ]
+
+    // when
+    _ = try await portal.request(chainId: "eip155:1", method: .eth_sendTransaction, params: [transactionParam])
+
+    // then
+    XCTAssertNotNil(portalProviderSpy.requestOptionsParamsParam)
+    XCTAssertEqual(portalProviderSpy.requestOptionsParamsParam?.count, 1)
+  }
+
+  func test_requestWithChainIdMethodParams_willPass_nestedArrayParams() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let nestedArray = ["inner1", "inner2"]
+
+    // when
+    _ = try await portal.request(chainId: "eip155:1", method: .eth_call, params: [nestedArray, "outer"])
+
+    // then
+    XCTAssertNotNil(portalProviderSpy.requestOptionsParamsParam)
+    XCTAssertEqual(portalProviderSpy.requestOptionsParamsParam?.count, 2)
+  }
+
+  // MARK: - Options Parameter Tests
+
+  func test_requestWithChainIdMethodParams_willPass_nilOptions() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+
+    // when
+    _ = try await portal.request(chainId: "eip155:1", method: .eth_accounts, params: [])
+
+    // then
+    XCTAssertNil(portalProviderSpy.requestOptionsOptionsParam)
+  }
+
+  func test_requestWithChainIdMethodParams_willPass_optionsWithSignatureApprovalMemo() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let expectedMemo = "Please approve this signature"
+    let options = RequestOptions(signatureApprovalMemo: expectedMemo)
+
+    // when
+    _ = try await portal.request(chainId: "eip155:1", method: .personal_sign, params: [], options: options)
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.signatureApprovalMemo, expectedMemo)
+  }
+
+  func test_requestWithChainIdMethodParams_willPass_optionsWithSponsorGasTrue() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let options = RequestOptions(sponsorGas: true)
+
+    // when
+    _ = try await portal.request(chainId: "eip155:1", method: .eth_sendTransaction, params: [], options: options)
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.sponsorGas, true)
+  }
+
+  func test_requestWithChainIdMethodParams_willPass_optionsWithSponsorGasFalse() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let options = RequestOptions(sponsorGas: false)
+
+    // when
+    _ = try await portal.request(chainId: "eip155:1", method: .eth_sendTransaction, params: [], options: options)
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.sponsorGas, false)
+  }
+
+  func test_requestWithChainIdMethodParams_willPass_optionsWithBothMemoAndSponsorGas() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let expectedMemo = "Sign this transaction"
+    let options = RequestOptions(signatureApprovalMemo: expectedMemo, sponsorGas: true)
+
+    // when
+    _ = try await portal.request(chainId: "eip155:1", method: .eth_sendTransaction, params: [], options: options)
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.signatureApprovalMemo, expectedMemo)
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.sponsorGas, true)
+  }
+
+  func test_requestWithChainIdMethodParams_willPass_emptyOptions() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let options = RequestOptions()
+
+    // when
+    _ = try await portal.request(chainId: "eip155:1", method: .eth_accounts, params: [], options: options)
+
+    // then
+    XCTAssertNotNil(portalProviderSpy.requestOptionsOptionsParam)
+    XCTAssertNil(portalProviderSpy.requestOptionsOptionsParam?.signatureApprovalMemo)
+    XCTAssertNil(portalProviderSpy.requestOptionsOptionsParam?.sponsorGas)
+  }
+
+  // MARK: - Connect Parameter Tests
+
+  func test_requestWithChainIdMethodParams_willPass_nilConnect() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+
+    // when
+    _ = try await portal.request(chainId: "eip155:1", method: .eth_accounts, params: [])
+
+    // then
+    XCTAssertNil(portalProviderSpy.requestOptionsConnectParam)
+  }
+
+  // MARK: - Full Integration Tests
+
+  func test_requestWithChainIdMethodParams_willPass_allParametersCorrectly() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let expectedChainId = "eip155:137"
+    let expectedMethod = PortalRequestMethod.eth_sendTransaction
+    let expectedMemo = "Confirm transaction"
+    let options = RequestOptions(signatureApprovalMemo: expectedMemo, sponsorGas: true)
+
+    // when
+    _ = try await portal.request(chainId: expectedChainId, method: expectedMethod, params: ["0xabc", "0x123"], options: options)
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsCallsCount, 1)
+    XCTAssertEqual(portalProviderSpy.requestOptionsChainIdParam, expectedChainId)
+    XCTAssertEqual(portalProviderSpy.requestOptionsMethodParam, expectedMethod)
+    XCTAssertEqual(portalProviderSpy.requestOptionsParamsParam, ["0xabc", "0x123"])
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.signatureApprovalMemo, expectedMemo)
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.sponsorGas, true)
+    XCTAssertNil(portalProviderSpy.requestOptionsConnectParam)
+  }
+
+  func test_requestWithChainIdMethodParams_willConvertParamsToAnyCodable() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+
+    // when
+    _ = try await portal.request(chainId: "eip155:1", method: .eth_call, params: ["test", 42, true])
+
+    // then - verify that the params were converted to AnyCodable
+    XCTAssertNotNil(portalProviderSpy.requestOptionsParamsParam)
+    XCTAssertEqual(portalProviderSpy.requestOptionsParamsParam?.count, 3)
+    // AnyCodable comparison should work with the underlying values
+    XCTAssertEqual(portalProviderSpy.requestOptionsParamsParam?[0], AnyCodable("test"))
+    XCTAssertEqual(portalProviderSpy.requestOptionsParamsParam?[1], AnyCodable(42))
+    XCTAssertEqual(portalProviderSpy.requestOptionsParamsParam?[2], AnyCodable(true))
+  }
+
+  // MARK: - Multiple Calls Tests
+
+  func test_requestWithChainIdMethodParams_multipleCallsWillIncrementCallCount() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+
+    // when
+    _ = try await portal.request(chainId: "eip155:1", method: .eth_accounts, params: [])
+    _ = try await portal.request(chainId: "eip155:1", method: .eth_accounts, params: [])
+    _ = try await portal.request(chainId: "eip155:1", method: .eth_accounts, params: [])
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsCallsCount, 3)
+  }
+
+  func test_requestWithChainIdMethodParams_lastCallParamsAreRetained() async throws {
+    // given
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+
+    // when
+    _ = try await portal.request(chainId: "eip155:1", method: .eth_accounts, params: ["first"])
+    _ = try await portal.request(chainId: "eip155:137", method: .eth_call, params: ["second"])
+
+    // then - verify last call params are retained
+    XCTAssertEqual(portalProviderSpy.requestOptionsChainIdParam, "eip155:137")
+    XCTAssertEqual(portalProviderSpy.requestOptionsMethodParam, .eth_call)
+    XCTAssertEqual(portalProviderSpy.requestOptionsParamsParam, ["second"])
   }
 }
 
@@ -1535,7 +1938,7 @@ extension PortalTests {
     _ = try await portal.sendAsset(chainId: "eip155:11155111", params: SendAssetParams.stub())
 
     // then
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodCallsCount, 1)
+    XCTAssertEqual(portalProviderSpy.requestOptionsCallsCount, 1)
   }
 
   func test_sendAsset_willCall_portalProvider_request_onlyOnce_for_SolanaChain() async throws {
@@ -1550,7 +1953,7 @@ extension PortalTests {
     _ = try await portal.sendAsset(chainId: "solana:11155111", params: SendAssetParams.stub())
 
     // then
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodCallsCount, 1)
+    XCTAssertEqual(portalProviderSpy.requestOptionsCallsCount, 1)
   }
 
   func test_sendAsset_willCall_portalProvider_request_onlyOnce_for_bip122Chain() async throws {
@@ -1565,7 +1968,7 @@ extension PortalTests {
     _ = try await portal.sendAsset(chainId: "bip122:000000000019d6689c085ae165831e93-p2wpkh", params: SendAssetParams.stub())
 
     // then
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodCallsCount, 1)
+    XCTAssertEqual(portalProviderSpy.requestOptionsCallsCount, 1)
   }
 
   func test_sendAsset_willCall_portalProvider_request_correctTimes_whenHavingMoreThanSingatureHash_for_bip122Chain() async throws {
@@ -1586,7 +1989,7 @@ extension PortalTests {
     _ = try await portal.sendAsset(chainId: chainId, params: params)
 
     // then
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodCallsCount, numberOfHashes)
+    XCTAssertEqual(portalProviderSpy.requestOptionsCallsCount, numberOfHashes)
   }
 
   func test_sendAsset_willCall_portalApi_buildBitcoinP2wpkhTransaction_onlyOnce_for_bip122Chain() async throws {
@@ -1625,16 +2028,17 @@ extension PortalTests {
     try initPortalWithSpy(api: portalApiSpy)
     let portalProviderSpy = PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
-    let params = SendAssetParams.stub(signatureApprovalMemo: "signatureApprovalMemo")
+    let params = SendAssetParams.stub(signatureApprovalMemo: "signatureApprovalMemo", sponsorGas: true)
     let chainId = "eip155:11155111"
 
     // and given
     _ = try await portal.sendAsset(chainId: chainId, params: params)
 
     // then
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodChainIdParam, chainId)
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodMethodParam, .eth_sendTransaction)
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodSignatureApprovalMemoParam, params.signatureApprovalMemo)
+    XCTAssertEqual(portalProviderSpy.requestOptionsChainIdParam, chainId)
+    XCTAssertEqual(portalProviderSpy.requestOptionsMethodParam, .eth_sendTransaction)
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.signatureApprovalMemo, params.signatureApprovalMemo)
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.sponsorGas, params.sponsorGas)
   }
 
   func test_sendAsset_willCall_portalProvider_request_passingCorrectParams_for_SolanaChain() async throws {
@@ -1643,16 +2047,113 @@ extension PortalTests {
     try initPortalWithSpy(api: portalApiSpy)
     let portalProviderSpy = PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
-    let params = SendAssetParams.stub(signatureApprovalMemo: "signatureApprovalMemo")
+    let params = SendAssetParams.stub(signatureApprovalMemo: "signatureApprovalMemo", sponsorGas: true)
     let chainId = "solana:11155111"
 
     // and given
     _ = try await portal.sendAsset(chainId: chainId, params: params)
 
     // then
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodChainIdParam, chainId)
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodMethodParam, .sol_signAndSendTransaction)
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodSignatureApprovalMemoParam, params.signatureApprovalMemo)
+    XCTAssertEqual(portalProviderSpy.requestOptionsChainIdParam, chainId)
+    XCTAssertEqual(portalProviderSpy.requestOptionsMethodParam, .sol_signAndSendTransaction)
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.signatureApprovalMemo, params.signatureApprovalMemo)
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.sponsorGas, params.sponsorGas)
+  }
+
+  func test_sendAsset_willPass_sponsorGasTrue_for_eip115Chain() async throws {
+    // given
+    let portalApiSpy = PortalApiMock()
+    try initPortalWithSpy(api: portalApiSpy)
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let params = SendAssetParams.stub(sponsorGas: true)
+    let chainId = "eip155:11155111"
+
+    // when
+    _ = try await portal.sendAsset(chainId: chainId, params: params)
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.sponsorGas, true)
+  }
+
+  func test_sendAsset_willPass_sponsorGasFalse_for_eip115Chain() async throws {
+    // given
+    let portalApiSpy = PortalApiMock()
+    try initPortalWithSpy(api: portalApiSpy)
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let params = SendAssetParams.stub(sponsorGas: false)
+    let chainId = "eip155:11155111"
+
+    // when
+    _ = try await portal.sendAsset(chainId: chainId, params: params)
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.sponsorGas, false)
+  }
+
+  func test_sendAsset_willPass_sponsorGasNil_for_eip115Chain() async throws {
+    // given
+    let portalApiSpy = PortalApiMock()
+    try initPortalWithSpy(api: portalApiSpy)
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let params = SendAssetParams.stub(sponsorGas: nil)
+    let chainId = "eip155:11155111"
+
+    // when
+    _ = try await portal.sendAsset(chainId: chainId, params: params)
+
+    // then
+    XCTAssertNil(portalProviderSpy.requestOptionsOptionsParam?.sponsorGas)
+  }
+
+  func test_sendAsset_willPass_sponsorGasTrue_for_SolanaChain() async throws {
+    // given
+    let portalApiSpy = PortalApiMock()
+    try initPortalWithSpy(api: portalApiSpy)
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let params = SendAssetParams.stub(sponsorGas: true)
+    let chainId = "solana:11155111"
+
+    // when
+    _ = try await portal.sendAsset(chainId: chainId, params: params)
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.sponsorGas, true)
+  }
+
+  func test_sendAsset_willPass_sponsorGasFalse_for_SolanaChain() async throws {
+    // given
+    let portalApiSpy = PortalApiMock()
+    try initPortalWithSpy(api: portalApiSpy)
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let params = SendAssetParams.stub(sponsorGas: false)
+    let chainId = "solana:11155111"
+
+    // when
+    _ = try await portal.sendAsset(chainId: chainId, params: params)
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.sponsorGas, false)
+  }
+
+  func test_sendAsset_willPass_sponsorGasNil_for_SolanaChain() async throws {
+    // given
+    let portalApiSpy = PortalApiMock()
+    try initPortalWithSpy(api: portalApiSpy)
+    let portalProviderSpy = PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let params = SendAssetParams.stub(sponsorGas: nil)
+    let chainId = "solana:11155111"
+
+    // when
+    _ = try await portal.sendAsset(chainId: chainId, params: params)
+
+    // then
+    XCTAssertNil(portalProviderSpy.requestOptionsOptionsParam?.sponsorGas)
   }
 
   func test_sendAsset_willCall_portalAPI_buildBitcoinP2wpkhTransaction_passingCorrectParams_for_bip122Chain() async throws {
@@ -1877,7 +2378,7 @@ extension PortalTests {
     _ = try await portal.rawSign(message: "", chainId: "")
 
     // then
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodCallsCount, 1)
+    XCTAssertEqual(portalProviderSpy.requestOptionsCallsCount, 1)
   }
 
   func test_rawSign_willCall_portalProvider_request_passingCorrectParams() async throws {
@@ -1894,10 +2395,10 @@ extension PortalTests {
     _ = try await portal.rawSign(message: message, chainId: chainId, signatureApprovalMemo: signatureApprovalMemo)
 
     // then
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodChainIdParam, chainId)
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodMethodParam, .rawSign)
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodParamsParam, [AnyCodable(message)])
-    XCTAssertEqual(portalProviderSpy.requestAsyncMethodSignatureApprovalMemoParam, signatureApprovalMemo)
+    XCTAssertEqual(portalProviderSpy.requestOptionsChainIdParam, chainId)
+    XCTAssertEqual(portalProviderSpy.requestOptionsMethodParam, .rawSign)
+    XCTAssertEqual(portalProviderSpy.requestOptionsParamsParam, [AnyCodable(message)])
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.signatureApprovalMemo, signatureApprovalMemo)
   }
 }
 

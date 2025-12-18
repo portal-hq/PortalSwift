@@ -5,10 +5,10 @@
 //  Created by Portal Labs
 //
 
+import AnyCodable
 import Foundation
 @testable import PortalSwift
 import XCTest
-import AnyCodable
 
 final class LifiTests: XCTestCase {
   var apiMock: PortalLifiTradingApiMock!
@@ -1515,13 +1515,13 @@ extension LifiTests {
       amountReceived: "950000000000000000",
       receivingAddress: "0xReceiver",
       transactionId: "tx-123",
-      expiry: 1700000000,
+      expiry: 1_700_000_000,
       callDataHash: "0xHash",
       callTo: "0xContract",
       encryptedCallData: "encrypted-data",
       sendingChainTxManagerAddress: "0xSendingManager",
       receivingChainTxManagerAddress: "0xReceivingManager",
-      bidExpiry: 1700000100
+      bidExpiry: 1_700_000_100
     )
     let estimateData = LifiEstimateData(
       bid: bid,
@@ -1562,13 +1562,13 @@ extension LifiTests {
       amountReceived: "950000000000000000",
       receivingAddress: "0xReceiver",
       transactionId: "tx-123",
-      expiry: 1700000000,
+      expiry: 1_700_000_000,
       callDataHash: "0xHash",
       callTo: "0xContract",
       encryptedCallData: "encrypted-data",
       sendingChainTxManagerAddress: "0xSendingManager",
       receivingChainTxManagerAddress: "0xReceivingManager",
-      bidExpiry: 1700000100
+      bidExpiry: 1_700_000_100
     )
 
     // then
@@ -1583,13 +1583,13 @@ extension LifiTests {
     XCTAssertEqual(bid.amountReceived, "950000000000000000")
     XCTAssertEqual(bid.receivingAddress, "0xReceiver")
     XCTAssertEqual(bid.transactionId, "tx-123")
-    XCTAssertEqual(bid.expiry, 1700000000)
+    XCTAssertEqual(bid.expiry, 1_700_000_000)
     XCTAssertEqual(bid.callDataHash, "0xHash")
     XCTAssertEqual(bid.callTo, "0xContract")
     XCTAssertEqual(bid.encryptedCallData, "encrypted-data")
     XCTAssertEqual(bid.sendingChainTxManagerAddress, "0xSendingManager")
     XCTAssertEqual(bid.receivingChainTxManagerAddress, "0xReceivingManager")
-    XCTAssertEqual(bid.bidExpiry, 1700000100)
+    XCTAssertEqual(bid.bidExpiry, 1_700_000_100)
   }
 }
 
@@ -1709,7 +1709,7 @@ extension LifiTests {
       gasAmountUSD: "0.01",
       gasPrice: "50000000000",
       gasUsed: "21000",
-      timestamp: 1700000060,
+      timestamp: 1_700_000_060,
       value: "950000000000000000",
       includedSteps: [includedStep]
     )
@@ -1725,7 +1725,7 @@ extension LifiTests {
     XCTAssertEqual(receivingInfo.gasAmountUSD, "0.01")
     XCTAssertEqual(receivingInfo.gasPrice, "50000000000")
     XCTAssertEqual(receivingInfo.gasUsed, "21000")
-    XCTAssertEqual(receivingInfo.timestamp, 1700000060)
+    XCTAssertEqual(receivingInfo.timestamp, 1_700_000_060)
     XCTAssertEqual(receivingInfo.value, "950000000000000000")
     XCTAssertEqual(receivingInfo.includedSteps?.count, 1)
     XCTAssertEqual(receivingInfo.includedSteps?[0].tool, "sushiswap")
@@ -1751,7 +1751,7 @@ extension LifiTests {
       gasAmountUSD: "5.00",
       gasPrice: "50000000000",
       gasUsed: "21000",
-      timestamp: 1700000000,
+      timestamp: 1_700_000_000,
       value: "1000000000000000000",
       includedSteps: nil
     )
@@ -1768,7 +1768,7 @@ extension LifiTests {
     XCTAssertEqual(txInfo.gasAmountUSD, "5.00")
     XCTAssertEqual(txInfo.gasPrice, "50000000000")
     XCTAssertEqual(txInfo.gasUsed, "21000")
-    XCTAssertEqual(txInfo.timestamp, 1700000000)
+    XCTAssertEqual(txInfo.timestamp, 1_700_000_000)
     XCTAssertEqual(txInfo.value, "1000000000000000000")
     XCTAssertNil(txInfo.includedSteps)
   }
@@ -2099,4 +2099,3 @@ extension LifiTests {
     XCTAssertEqual(LifiErrorType.noQuote.rawValue, "NO_QUOTE")
   }
 }
-

@@ -840,4 +840,3 @@ extension TradingTests {
     XCTAssertEqual(lifiMock.getStatusCalls, 2)
   }
 }
-

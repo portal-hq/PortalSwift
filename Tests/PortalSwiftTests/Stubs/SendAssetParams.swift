@@ -13,13 +13,15 @@ extension SendAssetParams {
     to: String = "0xabcdef123456789abcdef123456789abcdef123456",
     amount: String = "0.001",
     token: String = "ETH",
-    signatureApprovalMemo: String? = nil
+    signatureApprovalMemo: String? = nil,
+    sponsorGas: Bool? = nil
   ) -> SendAssetParams {
     return SendAssetParams(
       to: to,
       amount: amount,
       token: token,
-      signatureApprovalMemo: signatureApprovalMemo
+      signatureApprovalMemo: signatureApprovalMemo,
+      sponsorGas: sponsorGas
     )
   }
 }

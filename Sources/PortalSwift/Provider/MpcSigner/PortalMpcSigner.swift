@@ -44,13 +44,15 @@ public class PortalMpcSigner: PortalSignerProtocol {
     withPayload: PortalSignRequest,
     andRpcUrl: String,
     usingBlockchain: PortalBlockchain,
-    signatureApprovalMemo: String? = nil
+    signatureApprovalMemo: String? = nil,
+    sponsorGas: Bool? = nil
   ) async throws -> String {
     var mpcMetadata = self.mpcMetadata
     mpcMetadata.curve = usingBlockchain.curve
     mpcMetadata.chainId = chainId
     mpcMetadata.isRaw = withPayload.isRaw
     mpcMetadata.signatureApprovalMemo = signatureApprovalMemo
+    mpcMetadata.sponsorGas = sponsorGas
 
     let signingShare = try await keychain?.getShare(chainId)
 

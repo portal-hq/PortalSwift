@@ -28,6 +28,7 @@ public protocol PortalSignerProtocol {
     withPayload: PortalSignRequest,
     andRpcUrl: String,
     usingBlockchain: PortalBlockchain,
-    signatureApprovalMemo: String?
+    signatureApprovalMemo: String?,
+    sponsorGas: Bool?
   ) async throws -> String
 }
