@@ -12,6 +12,10 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
+## 6.5.0 - 2025-12-18
+- Added optional `sponsorGas` parameter to `portal.sendAsset` and `portal.request` to control gas sponsorship per transaction in Account Abstraction clients.
+- Minor update to Yield.xyz type.
+
 ## 6.4.0 - 2025-11-28
 - Added Li.Fi integration
     - Added `portal.trading.lifi.getQuote`
