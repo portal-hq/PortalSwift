@@ -105,11 +105,16 @@ public struct QuoteArgs: Codable {
   }
 }
 
+@available(*, deprecated, message: "PortalSwapsProtocol has been replaced by ZeroX trading. Please use 'portal.trading.zeroX' instead.")
 public protocol PortalSwapsProtocol {
+  @available(*, deprecated, message: "This method has been replaced by ZeroX trading. Please use 'portal.trading.zeroX.getQuote()' instead.")
   func getQuote(args: QuoteArgs, forChainId: String?) async throws -> Quote
+
+  @available(*, deprecated, message: "This method has been replaced by ZeroX trading. Please use 'portal.trading.zeroX.getSources()' instead.")
   func getSources(forChainId: String) async throws -> [String: String]
 }
 
+@available(*, deprecated, message: "PortalSwaps has been replaced by ZeroX trading. Please use 'portal.trading.zeroX' instead.")
 public class PortalSwaps: PortalSwapsProtocol {
   private var apiKey: String
   private var portal: PortalProtocol
@@ -119,10 +124,12 @@ public class PortalSwaps: PortalSwapsProtocol {
     self.portal = portal
   }
 
+  @available(*, deprecated, message: "This method has been replaced by ZeroX trading. Please use 'portal.trading.zeroX.getQuote()' instead.")
   public func getQuote(args: QuoteArgs, forChainId: String? = nil) async throws -> Quote {
     return try await self.portal.api.getQuote(self.apiKey, withArgs: args, forChainId: forChainId)
   }
 
+  @available(*, deprecated, message: "This method has been replaced by ZeroX trading. Please use 'portal.trading.zeroX.getSources()' instead.")
   public func getSources(forChainId: String) async throws -> [String: String] {
     return try await self.portal.api.getSources(self.apiKey, forChainId: forChainId)
   }

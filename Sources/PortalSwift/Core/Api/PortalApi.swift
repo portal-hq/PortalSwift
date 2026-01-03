@@ -12,6 +12,7 @@ public protocol PortalApiProtocol: AnyObject {
   var client: ClientResponse? { get async throws }
   var yieldxyz: PortalYieldXyzApiProtocol { get }
   var lifi: PortalLifiTradingApiProtocol { get }
+  var zeroX: PortalZeroXTradingApiProtocol { get }
 
   func eject() async throws -> String
   func fund(chainId: String, params: FundParams) async throws -> FundResponse
@@ -117,6 +118,13 @@ public class PortalApi: PortalApiProtocol {
 
   /// Access to Lifi trading integration functionality.
   public lazy var lifi: PortalLifiTradingApiProtocol = PortalLifiTradingApi(
+    apiKey: self.apiKey,
+    apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
+    requests: self.requests
+  )
+
+  /// Access to ZeroX trading integration functionality.
+  public lazy var zeroX: PortalZeroXTradingApiProtocol = PortalZeroXTradingApi(
     apiKey: self.apiKey,
     apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
     requests: self.requests
