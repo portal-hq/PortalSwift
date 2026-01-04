@@ -34,16 +34,16 @@ public struct ZeroXPriceData: Codable {
   public let buyAmount: String
   /// The amount of tokens to sell.
   public let sellAmount: String
-  /// The exchange rate.
-  public let price: String
-  /// Estimated gas for the transaction.
-  public let estimatedGas: String
-  /// The gas price.
-  public let gasPrice: String
-  /// Whether liquidity is available for this swap.
-  public let liquidityAvailable: Bool
-  /// The minimum amount of tokens to receive after slippage.
-  public let minBuyAmount: String
+  /// The exchange rate (optional - may not be present in all responses).
+  public let price: String?
+  /// Estimated gas for the transaction (optional).
+  public let estimatedGas: String?
+  /// The gas price (optional).
+  public let gasPrice: String?
+  /// Whether liquidity is available for this swap (optional).
+  public let liquidityAvailable: Bool?
+  /// The minimum amount of tokens to receive after slippage (optional).
+  public let minBuyAmount: String?
   /// Fee breakdown (optional).
   public let fees: ZeroXFees?
   /// Any issues with the price (optional).
@@ -52,11 +52,11 @@ public struct ZeroXPriceData: Codable {
   public init(
     buyAmount: String,
     sellAmount: String,
-    price: String,
-    estimatedGas: String,
-    gasPrice: String,
-    liquidityAvailable: Bool,
-    minBuyAmount: String,
+    price: String? = nil,
+    estimatedGas: String? = nil,
+    gasPrice: String? = nil,
+    liquidityAvailable: Bool? = nil,
+    minBuyAmount: String? = nil,
     fees: ZeroXFees? = nil,
     issues: ZeroXIssues? = nil
   ) {

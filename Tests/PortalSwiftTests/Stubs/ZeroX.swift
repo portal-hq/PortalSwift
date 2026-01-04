@@ -150,8 +150,8 @@ extension ZeroXIssues {
   static func stub(
     allowance: ZeroXAllowanceIssue? = nil,
     balance: ZeroXBalanceIssue? = nil,
-    simulationIncomplete: Bool = false,
-    invalidSourcesPassed: [String] = []
+    simulationIncomplete: Bool? = false,
+    invalidSourcesPassed: [String]? = []
   ) -> Self {
     ZeroXIssues(
       allowance: allowance,
@@ -166,9 +166,9 @@ extension ZeroXIssues {
 
 extension ZeroXFeeDetail {
   static func stub(
-    amount: String = "1000000000000000",
-    token: String = "0x0000000000000000000000000000000000000000",
-    type: String = "gas"
+    amount: String? = "1000000000000000",
+    token: String? = "0x0000000000000000000000000000000000000000",
+    type: String? = "gas"
   ) -> Self {
     ZeroXFeeDetail(amount: amount, token: token, type: type)
   }
@@ -176,10 +176,10 @@ extension ZeroXFeeDetail {
 
 extension ZeroXZeroExFeeDetail {
   static func stub(
-    billingType: String = "on-chain",
-    feeAmount: String = "500000000000000",
-    feeToken: String = "0x0000000000000000000000000000000000000000",
-    feeType: String = "volume"
+    billingType: String? = "on-chain",
+    feeAmount: String? = "500000000000000",
+    feeToken: String? = "0x0000000000000000000000000000000000000000",
+    feeType: String? = "volume"
   ) -> Self {
     ZeroXZeroExFeeDetail(
       billingType: billingType,

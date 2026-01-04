@@ -68,7 +68,9 @@ extension ViewController {
           self.logger.info("ViewController.handleZeroXTrading() - ✅ Got quote successfully:")
           self.logger.info("  Buy Amount: \(quoteResponse.data.quote.buyAmount)")
           self.logger.info("  Sell Amount: \(quoteResponse.data.quote.sellAmount)")
-          self.logger.info("  Price: \(quoteResponse.data.quote.price)")
+          if let price = quoteResponse.data.quote.price {
+            self.logger.info("  Price: \(price)")
+          }
         } catch {
           self.logger.error("ViewController.handleZeroXTrading() - ❌ Unable to get quote with error: \(error)")
           self.showStatusView(message: "\(self.failureStatus) Unable to get quote with error: \(error)")
@@ -245,7 +247,7 @@ extension ViewController {
           // Log price response details
           self.logZeroXPriceResponse(priceResponse)
 
-          self.showStatusView(message: "\(self.successStatus) Price check completed! Buy: \(priceResponse.data.price.buyAmount), Price: \(priceResponse.data.price.price)")
+          self.showStatusView(message: "\(self.successStatus) Price check completed! Buy: \(priceResponse.data.price.buyAmount), Price: \(priceResponse.data.price.price ?? "N/A")")
           self.stopLoading()
         } catch {
           self.logger.error("ViewController.handleZeroXPriceCheck() - ❌ Unable to get price with error: \(error)")
@@ -267,27 +269,33 @@ extension ViewController {
     self.logger.info("ViewController - ✅ Got price:")
     self.logger.info("  Buy Amount: \(response.data.price.buyAmount)")
     self.logger.info("  Sell Amount: \(response.data.price.sellAmount)")
-    self.logger.info("  Price: \(response.data.price.price)")
-    self.logger.info("  Liquidity Available: \(response.data.price.liquidityAvailable)")
+    if let price = response.data.price.price {
+      self.logger.info("  Price: \(price)")
+    }
+    if let liquidityAvailable = response.data.price.liquidityAvailable {
+      self.logger.info("  Liquidity Available: \(liquidityAvailable)")
+    }
 
     if let fees = response.data.price.fees {
       self.logger.info("  Fees:")
       if let integratorFee = fees.integratorFee {
-        self.logger.info("    Integrator Fee: \(integratorFee.amount) \(integratorFee.token)")
+        self.logger.info("    Integrator Fee: \(integratorFee.amount ?? "N/A") \(integratorFee.token ?? "N/A")")
       }
       if let zeroExFee = fees.zeroExFee {
-        self.logger.info("    ZeroEx Fee: \(zeroExFee.feeAmount) \(zeroExFee.feeToken)")
+        self.logger.info("    ZeroEx Fee: \(zeroExFee.feeAmount ?? "N/A") \(zeroExFee.feeToken ?? "N/A")")
       }
       if let gasFee = fees.gasFee {
-        self.logger.info("    Gas Fee: \(gasFee.amount) \(gasFee.token)")
+        self.logger.info("    Gas Fee: \(gasFee.amount ?? "N/A") \(gasFee.token ?? "N/A")")
       }
     }
 
     if let issues = response.data.price.issues {
       self.logger.warning("  Issues:")
-      self.logger.warning("    Simulation Incomplete: \(issues.simulationIncomplete)")
-      if !issues.invalidSourcesPassed.isEmpty {
-        self.logger.warning("    Invalid Sources: \(issues.invalidSourcesPassed)")
+      if let simulationIncomplete = issues.simulationIncomplete {
+        self.logger.warning("    Simulation Incomplete: \(simulationIncomplete)")
+      }
+      if let invalidSources = issues.invalidSourcesPassed, !invalidSources.isEmpty {
+        self.logger.warning("    Invalid Sources: \(invalidSources)")
       }
     }
   }
@@ -297,12 +305,24 @@ extension ViewController {
     self.logger.info("ViewController - ✅ Got quote:")
     self.logger.info("  Buy Amount: \(response.data.quote.buyAmount)")
     self.logger.info("  Sell Amount: \(response.data.quote.sellAmount)")
-    self.logger.info("  Price: \(response.data.quote.price)")
-    self.logger.info("  Estimated Gas: \(response.data.quote.estimatedGas)")
-    self.logger.info("  Gas Price: \(response.data.quote.gasPrice)")
-    self.logger.info("  Cost: \(response.data.quote.cost)")
-    self.logger.info("  Liquidity Available: \(response.data.quote.liquidityAvailable)")
-    self.logger.info("  Min Buy Amount: \(response.data.quote.minBuyAmount)")
+    if let price = response.data.quote.price {
+      self.logger.info("  Price: \(price)")
+    }
+    if let estimatedGas = response.data.quote.estimatedGas {
+      self.logger.info("  Estimated Gas: \(estimatedGas)")
+    }
+    if let gasPrice = response.data.quote.gasPrice {
+      self.logger.info("  Gas Price: \(gasPrice)")
+    }
+    if let cost = response.data.quote.cost {
+      self.logger.info("  Cost: \(cost)")
+    }
+    if let liquidityAvailable = response.data.quote.liquidityAvailable {
+      self.logger.info("  Liquidity Available: \(liquidityAvailable)")
+    }
+    if let minBuyAmount = response.data.quote.minBuyAmount {
+      self.logger.info("  Min Buy Amount: \(minBuyAmount)")
+    }
 
     self.logger.info("  Transaction:")
     self.logger.info("    To: \(response.data.quote.transaction.to)")
@@ -318,11 +338,11 @@ extension ViewController {
       if let balance = issues.balance {
         self.logger.warning("    Balance: actual=\(balance.actual), expected=\(balance.expected)")
       }
-      if issues.simulationIncomplete {
+      if let simulationIncomplete = issues.simulationIncomplete, simulationIncomplete {
         self.logger.warning("    Simulation Incomplete: true")
       }
-      if !issues.invalidSourcesPassed.isEmpty {
-        self.logger.warning("    Invalid Sources: \(issues.invalidSourcesPassed)")
+      if let invalidSources = issues.invalidSourcesPassed, !invalidSources.isEmpty {
+        self.logger.warning("    Invalid Sources: \(invalidSources)")
       }
     }
   }
@@ -359,9 +379,9 @@ extension ViewController {
       zeroXApiKey: "your-api-key"
     )
 
-    print("Price: \(price.data.price.price)")
+    print("Price: \(price.data.price.price ?? "N/A")")
     print("Buy Amount: \(price.data.price.buyAmount)")
-    print("Liquidity Available: \(price.data.price.liquidityAvailable)")
+    print("Liquidity Available: \(price.data.price.liquidityAvailable ?? false)")
   }
 
   /// Example: Get quote with transaction
@@ -382,7 +402,7 @@ extension ViewController {
       zeroXApiKey: "your-api-key"
     )
 
-    print("Quote: \(quote.data.quote.price)")
+    print("Quote: \(quote.data.quote.price ?? "N/A")")
     print("Transaction: \(quote.data.quote.transaction)")
   }
 
@@ -494,11 +514,11 @@ extension ViewController {
       if let balance = issues.balance {
         print("Balance issue: actual=\(balance.actual), expected=\(balance.expected)")
       }
-      if issues.simulationIncomplete {
+      if let simulationIncomplete = issues.simulationIncomplete, simulationIncomplete {
         print("Warning: Simulation incomplete")
       }
-      if !issues.invalidSourcesPassed.isEmpty {
-        print("Invalid sources: \(issues.invalidSourcesPassed)")
+      if let invalidSources = issues.invalidSourcesPassed, !invalidSources.isEmpty {
+        print("Invalid sources: \(invalidSources)")
       }
     }
   }

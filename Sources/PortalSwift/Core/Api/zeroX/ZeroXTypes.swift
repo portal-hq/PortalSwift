@@ -32,13 +32,14 @@ public struct ZeroXFees: Codable {
 
 /// General fee detail.
 public struct ZeroXFeeDetail: Codable {
-  /// The fee amount.
-  public let amount: String
-  public let token: String
-  /// The type of fee.
-  public let type: String
+  /// The fee amount (optional).
+  public let amount: String?
+  /// The token address (optional).
+  public let token: String?
+  /// The type of fee (optional).
+  public let type: String?
 
-  public init(amount: String, token: String, type: String) {
+  public init(amount: String? = nil, token: String? = nil, type: String? = nil) {
     self.amount = amount
     self.token = token
     self.type = type
@@ -47,15 +48,16 @@ public struct ZeroXFeeDetail: Codable {
 
 /// ZeroX protocol fee detail.
 public struct ZeroXZeroExFeeDetail: Codable {
-  /// The billing type for the fee.
-  public let billingType: String
-  /// The fee amount.
-  public let feeAmount: String
-  public let feeToken: String
-  /// The type of fee.
-  public let feeType: String
+  /// The billing type for the fee (optional).
+  public let billingType: String?
+  /// The fee amount (optional).
+  public let feeAmount: String?
+  /// The fee token address (optional).
+  public let feeToken: String?
+  /// The type of fee (optional).
+  public let feeType: String?
 
-  public init(billingType: String, feeAmount: String, feeToken: String, feeType: String) {
+  public init(billingType: String? = nil, feeAmount: String? = nil, feeToken: String? = nil, feeType: String? = nil) {
     self.billingType = billingType
     self.feeAmount = feeAmount
     self.feeToken = feeToken
@@ -71,16 +73,16 @@ public struct ZeroXIssues: Codable {
   public let allowance: ZeroXAllowanceIssue?
   /// Token balance issue (optional).
   public let balance: ZeroXBalanceIssue?
-  /// Whether the simulation was incomplete.
-  public let simulationIncomplete: Bool
-  /// List of invalid sources that were passed.
-  public let invalidSourcesPassed: [String]
+  /// Whether the simulation was incomplete (optional).
+  public let simulationIncomplete: Bool?
+  /// List of invalid sources that were passed (optional).
+  public let invalidSourcesPassed: [String]?
 
   public init(
     allowance: ZeroXAllowanceIssue? = nil,
     balance: ZeroXBalanceIssue? = nil,
-    simulationIncomplete: Bool = false,
-    invalidSourcesPassed: [String] = []
+    simulationIncomplete: Bool? = nil,
+    invalidSourcesPassed: [String]? = nil
   ) {
     self.allowance = allowance
     self.balance = balance
