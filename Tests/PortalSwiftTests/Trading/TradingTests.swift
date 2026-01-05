@@ -343,7 +343,7 @@ extension TradingTests {
     let trading = Trading(api: mockApi)
 
     // when
-    let response = try await trading.zeroX.getSources(chainId: "eip155:1", options: nil)
+    let response = try await trading.zeroX.getSources(chainId: "eip155:1", zeroXApiKey: nil)
 
     // then
     XCTAssertNotNil(response)
@@ -362,7 +362,7 @@ extension TradingTests {
     let request = ZeroXQuoteRequest.stub()
 
     // when
-    let response = try await trading.zeroX.getQuote(request: request, options: nil)
+    let response = try await trading.zeroX.getQuote(request: request, zeroXApiKey: nil)
 
     // then
     XCTAssertNotNil(response)
@@ -381,7 +381,7 @@ extension TradingTests {
     let request = ZeroXPriceRequest.stub()
 
     // when
-    let response = try await trading.zeroX.getPrice(request: request, options: nil)
+    let response = try await trading.zeroX.getPrice(request: request, zeroXApiKey: nil)
 
     // then
     XCTAssertNotNil(response)
@@ -398,7 +398,7 @@ extension TradingTests {
     trading.zeroX = zeroXMock
 
     // when
-    let response = try await trading.zeroX.getSources(chainId: "eip155:1", options: nil)
+    let response = try await trading.zeroX.getSources(chainId: "eip155:1", zeroXApiKey: nil)
 
     // then
     XCTAssertNotNil(response)
@@ -416,7 +416,7 @@ extension TradingTests {
     let request = ZeroXQuoteRequest.stub()
 
     // when
-    let response = try await trading.zeroX.getQuote(request: request, options: nil)
+    let response = try await trading.zeroX.getQuote(request: request, zeroXApiKey: nil)
 
     // then
     XCTAssertNotNil(response)
@@ -434,7 +434,7 @@ extension TradingTests {
     let request = ZeroXPriceRequest.stub()
 
     // when
-    let response = try await trading.zeroX.getPrice(request: request, options: nil)
+    let response = try await trading.zeroX.getPrice(request: request, zeroXApiKey: nil)
 
     // then
     XCTAssertNotNil(response)

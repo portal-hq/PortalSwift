@@ -322,8 +322,10 @@ extension ZeroXTests {
     // then
     XCTAssertNotNil(response.data.quote.issues)
     XCTAssertNotNil(response.data.quote.issues?.allowance)
-    XCTAssertTrue(response.data.quote.issues?.simulationIncomplete == true)
+    XCTAssertEqual(response.data.quote.issues?.simulationIncomplete, true)
     XCTAssertEqual(response.data.quote.issues?.invalidSourcesPassed, ["InvalidSource"])
+    // Verify optional fields can be nil
+    XCTAssertNil(response.data.quote.issues?.balance)
   }
 
   func test_getQuote_throwsError() async throws {
@@ -451,6 +453,9 @@ extension ZeroXTests {
     XCTAssertNotNil(response.data.price.fees?.integratorFee)
     XCTAssertNotNil(response.data.price.fees?.zeroExFee)
     XCTAssertNotNil(response.data.price.fees?.gasFee)
+    // Verify optional fee fields can be accessed
+    XCTAssertEqual(response.data.price.fees?.integratorFee?.amount, "100")
+    XCTAssertEqual(response.data.price.fees?.integratorFee?.token, "ETH")
   }
 
   func test_getPrice_returnsIssues() async throws {
@@ -466,7 +471,76 @@ extension ZeroXTests {
 
     // then
     XCTAssertNotNil(response.data.price.issues)
-    XCTAssertTrue(response.data.price.issues?.simulationIncomplete == true)
+    XCTAssertEqual(response.data.price.issues?.simulationIncomplete, true)
+  }
+
+  func test_getQuote_handlesOptionalFields() async throws {
+    // given - quote with minimal fields (optional fields are nil)
+    let quoteData = ZeroXQuoteData(
+      buyAmount: "3000000000",
+      sellAmount: "1000000000000000000",
+      price: nil,
+      estimatedGas: nil,
+      gasPrice: nil,
+      cost: nil,
+      liquidityAvailable: nil,
+      minBuyAmount: nil,
+      transaction: ZeroXTransaction.stub(),
+      issues: nil
+    )
+    let mockResponse = ZeroXQuoteResponse(data: ZeroXQuoteResponseData(quote: quoteData))
+    apiMock.getQuoteReturnValue = mockResponse
+    let request = ZeroXQuoteRequest.stub()
+
+    // when
+    let response = try await zeroX.getQuote(request: request, zeroXApiKey: nil)
+
+    // then - verify optional fields can be nil
+    XCTAssertNotNil(response.data.quote)
+    XCTAssertNil(response.data.quote.price)
+    XCTAssertNil(response.data.quote.estimatedGas)
+    XCTAssertNil(response.data.quote.gasPrice)
+    XCTAssertNil(response.data.quote.cost)
+    XCTAssertNil(response.data.quote.liquidityAvailable)
+    XCTAssertNil(response.data.quote.minBuyAmount)
+    // Required fields should still be present
+    XCTAssertEqual(response.data.quote.buyAmount, "3000000000")
+    XCTAssertEqual(response.data.quote.sellAmount, "1000000000000000000")
+    XCTAssertNotNil(response.data.quote.transaction)
+  }
+
+  func test_getPrice_handlesOptionalFields() async throws {
+    // given - price with minimal fields (optional fields are nil)
+    let priceData = ZeroXPriceData(
+      buyAmount: "3000000000",
+      sellAmount: "1000000000000000000",
+      price: nil,
+      estimatedGas: nil,
+      gasPrice: nil,
+      liquidityAvailable: nil,
+      minBuyAmount: nil,
+      fees: nil,
+      issues: nil
+    )
+    let mockResponse = ZeroXPriceResponse(data: ZeroXPriceResponseData(price: priceData))
+    apiMock.getPriceReturnValue = mockResponse
+    let request = ZeroXPriceRequest.stub()
+
+    // when
+    let response = try await zeroX.getPrice(request: request, zeroXApiKey: nil)
+
+    // then - verify optional fields can be nil
+    XCTAssertNotNil(response.data.price)
+    XCTAssertNil(response.data.price.price)
+    XCTAssertNil(response.data.price.estimatedGas)
+    XCTAssertNil(response.data.price.gasPrice)
+    XCTAssertNil(response.data.price.liquidityAvailable)
+    XCTAssertNil(response.data.price.minBuyAmount)
+    XCTAssertNil(response.data.price.fees)
+    XCTAssertNil(response.data.price.issues)
+    // Required fields should still be present
+    XCTAssertEqual(response.data.price.buyAmount, "3000000000")
+    XCTAssertEqual(response.data.price.sellAmount, "1000000000000000000")
   }
 
   func test_getPrice_throwsError() async throws {
@@ -938,7 +1012,7 @@ extension ZeroXTests {
     let priceRequest = ZeroXPriceRequest.stub()
     let price = try await zeroXMock.getPrice(request: priceRequest, zeroXApiKey: nil)
     XCTAssertNotNil(price)
-    XCTAssertTrue(price.data.price.liquidityAvailable)
+    XCTAssertEqual(price.data.price.liquidityAvailable, true)
 
     // Step 3: Get quote with transaction
     let quoteRequest = ZeroXQuoteRequest.stub()
