@@ -54,7 +54,7 @@ extension ViewController {
           chainId: chainId,
           buyToken: "USDC",
           sellToken: "ETH",
-          sellAmount: "1000000000000000000" // 1 ETH
+          sellAmount: "100000000000000" // 0.0001 ETH
         )
 
           var quoteResponse: ZeroXQuoteResponse
@@ -89,9 +89,10 @@ extension ViewController {
 
         do {
           let sendTransactionResponse = try await portal.request(
-            chainId,
-            withMethod: .eth_sendTransaction,
-            andParams: [transactionDict]
+            chainId: chainId,
+            method: .eth_sendTransaction,
+            params: [transactionDict],
+            options: nil
           )
           guard let transactionHash = sendTransactionResponse.result as? String else {
             throw PortalExampleAppError.invalidResponseTypeForRequest()
@@ -181,7 +182,7 @@ extension ViewController {
             chainId: chainId,
             buyToken: "USDC",
             sellToken: "ETH",
-            sellAmount: "1000000000000000000" // 1 ETH
+            sellAmount: "100000000000000" // 0.0001 ETH
           )
 
           let quoteResponse = try await portal.trading.zeroX.getQuote(
@@ -367,7 +368,7 @@ extension ViewController {
       chainId: "eip155:1",
       buyToken: "USDC",
       sellToken: "ETH",
-      sellAmount: "1000000000000000000"
+      sellAmount: "100000000000000" // 0.0001 ETH
     )
 
     let price = try await portal.trading.zeroX.getPrice(
@@ -388,7 +389,7 @@ extension ViewController {
       chainId: "eip155:1",
       buyToken: "USDC",
       sellToken: "ETH",
-      sellAmount: "1000000000000000000"
+      sellAmount: "100000000000000" // 0.0001 ETH
     )
 
     let quote = try await portal.trading.zeroX.getQuote(
@@ -419,7 +420,7 @@ extension ViewController {
       chainId: chainId,
       buyToken: "USDC",
       sellToken: "ETH",
-      sellAmount: "1000000000000000000"
+      sellAmount: "100000000000000" // 0.0001 ETH
     )
 
     let quote = try await portal.trading.zeroX.getQuote(
@@ -439,9 +440,10 @@ extension ViewController {
     ]
 
     let result = try await portal.request(
-      chainId,
-      withMethod: .eth_sendTransaction,
-      andParams: [transactionDict]
+      chainId: chainId,
+      method: .eth_sendTransaction,
+      params: [transactionDict],
+      options: nil
     )
 
     print("Transaction submitted: \(result)")
@@ -489,7 +491,7 @@ extension ViewController {
       chainId: "eip155:1",
       buyToken: "USDC",
       sellToken: "ETH",
-      sellAmount: "1000000000000000000"
+      sellAmount: "100000000000000" // 0.0001 ETH
     )
 
     let quote = try await portal.trading.zeroX.getQuote(
