@@ -20,8 +20,6 @@ public struct ZeroXPriceRequest: Codable {
   public let sellToken: String
   /// The amount to sell in base units
   public let sellAmount: String
-  /// The address of the taker (optional for price check)
-  public let taker: String?
   /// The transaction origin address (optional)
   public let txOrigin: String?
   /// The swap fee recipient address (optional)
@@ -46,7 +44,6 @@ public struct ZeroXPriceRequest: Codable {
     buyToken: String,
     sellToken: String,
     sellAmount: String,
-    taker: String? = nil,
     txOrigin: String? = nil,
     swapFeeRecipient: String? = nil,
     swapFeeBps: Int? = nil,
@@ -61,7 +58,6 @@ public struct ZeroXPriceRequest: Codable {
     self.buyToken = buyToken
     self.sellToken = sellToken
     self.sellAmount = sellAmount
-    self.taker = taker
     self.txOrigin = txOrigin
     self.swapFeeRecipient = swapFeeRecipient
     self.swapFeeBps = swapFeeBps
@@ -81,7 +77,6 @@ public struct ZeroXPriceRequest: Codable {
       "sellAmount": AnyCodable(sellAmount)
     ]
 
-    if let taker = taker { body["taker"] = AnyCodable(taker) }
     if let txOrigin = txOrigin { body["txOrigin"] = AnyCodable(txOrigin) }
     if let swapFeeRecipient = swapFeeRecipient { body["swapFeeRecipient"] = AnyCodable(swapFeeRecipient) }
     if let swapFeeBps = swapFeeBps { body["swapFeeBps"] = AnyCodable(swapFeeBps) }

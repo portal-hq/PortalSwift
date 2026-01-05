@@ -200,7 +200,6 @@ extension ZeroXTests {
     apiMock.getQuoteReturnValue = mockResponse
     let request = ZeroXQuoteRequest(
       chainId: "eip155:1",
-      taker: "0x123",
       buyToken: "USDC",
       sellToken: "ETH",
       sellAmount: "1000000000000000000"
@@ -220,7 +219,6 @@ extension ZeroXTests {
     apiMock.getQuoteReturnValue = mockResponse
     let request = ZeroXQuoteRequest(
       chainId: "eip155:1",
-      taker: "0x1234567890abcdef1234567890abcdef12345678",
       buyToken: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
       sellToken: "0x0000000000000000000000000000000000000000",
       sellAmount: "1000000000000000000",
@@ -349,7 +347,6 @@ extension ZeroXTests {
     apiMock.getQuoteReturnValue = mockResponse
     let request = ZeroXQuoteRequest.stub(
       chainId: "eip155:137",
-      taker: "0xtaker",
       buyToken: "MATIC",
       sellToken: "USDC",
       sellAmount: "5000000"
@@ -361,7 +358,6 @@ extension ZeroXTests {
 
     // then
     XCTAssertEqual(apiMock.getQuoteRequestParam?.chainId, "eip155:137")
-    XCTAssertEqual(apiMock.getQuoteRequestParam?.taker, "0xtaker")
     XCTAssertEqual(apiMock.getQuoteRequestParam?.buyToken, "MATIC")
     XCTAssertEqual(apiMock.getQuoteRequestParam?.sellToken, "USDC")
     XCTAssertEqual(apiMock.getQuoteZeroXApiKeyParam, "my-api-key")
@@ -403,34 +399,6 @@ extension ZeroXTests {
     // then
     XCTAssertNotNil(response)
     XCTAssertEqual(apiMock.getPriceCalls, 1)
-  }
-
-  func test_getPrice_withOptionalTaker() async throws {
-    // given
-    let mockResponse = ZeroXPriceResponse.stub()
-    apiMock.getPriceReturnValue = mockResponse
-    let request = ZeroXPriceRequest.stub(taker: "0xtaker")
-
-    // when
-    let response = try await zeroX.getPrice(request: request, zeroXApiKey: nil)
-
-    // then
-    XCTAssertNotNil(response)
-    XCTAssertEqual(apiMock.getPriceRequestParam?.taker, "0xtaker")
-  }
-
-  func test_getPrice_withoutTaker() async throws {
-    // given
-    let mockResponse = ZeroXPriceResponse.stub()
-    apiMock.getPriceReturnValue = mockResponse
-    let request = ZeroXPriceRequest.stub(taker: nil)
-
-    // when
-    let response = try await zeroX.getPrice(request: request, zeroXApiKey: nil)
-
-    // then
-    XCTAssertNotNil(response)
-    XCTAssertNil(apiMock.getPriceRequestParam?.taker)
   }
 
   func test_getPrice_returnsFees() async throws {
@@ -934,7 +902,6 @@ extension ZeroXTests {
 
     // then
     XCTAssertNil(body["chainId"])
-    XCTAssertNotNil(body["taker"])
     XCTAssertNotNil(body["buyToken"])
     XCTAssertNotNil(body["sellToken"])
     XCTAssertNotNil(body["sellAmount"])

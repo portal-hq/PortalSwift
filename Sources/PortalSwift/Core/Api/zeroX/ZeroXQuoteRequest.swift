@@ -14,8 +14,6 @@ import Foundation
 public struct ZeroXQuoteRequest: Codable {
   /// The chain ID for the swap (used in URL path, e.g., "eip155:1")
   public let chainId: String
-  /// The address of the taker (required)
-  public let taker: String
   /// The token to buy
   public let buyToken: String
   /// The token to sell
@@ -43,7 +41,6 @@ public struct ZeroXQuoteRequest: Codable {
 
   public init(
     chainId: String,
-    taker: String,
     buyToken: String,
     sellToken: String,
     sellAmount: String,
@@ -58,7 +55,6 @@ public struct ZeroXQuoteRequest: Codable {
     sellEntireBalance: Bool? = nil
   ) {
     self.chainId = chainId
-    self.taker = taker
     self.buyToken = buyToken
     self.sellToken = sellToken
     self.sellAmount = sellAmount
@@ -76,7 +72,6 @@ public struct ZeroXQuoteRequest: Codable {
   /// Converts the request to a dictionary for the request body, excluding `chainId`.
   public func toRequestBody() -> [String: AnyCodable] {
     var body: [String: AnyCodable] = [
-      "taker": AnyCodable(taker),
       "buyToken": AnyCodable(buyToken),
       "sellToken": AnyCodable(sellToken),
       "sellAmount": AnyCodable(sellAmount)

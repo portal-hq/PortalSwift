@@ -91,7 +91,7 @@ public class ZeroX: ZeroXProtocol {
   /// - Displaying price information to users
   /// - Comparing prices across different swap sources
   ///
-  /// Unlike `getQuote()`, this method does not require a `taker` address and does not return transaction data.
+  /// Unlike `getQuote()`, this method does not return transaction data.
   /// The response includes price information, fees breakdown, and liquidity availability.
   ///
   /// The ZeroX API key can be configured in two ways:
@@ -101,7 +101,6 @@ public class ZeroX: ZeroXProtocol {
   /// - Parameters:
   ///   - request: The price request parameters containing chain ID, tokens, amounts, and optional swap configuration.
   ///     - Note: The `chainId` in the request is used for the URL path only and is excluded from the request body.
-  ///     - The `taker` field is optional for price checks (unlike `getQuote()` where it's required).
   ///   - zeroXApiKey: Optional ZeroX API key to override the one configured in Portal Dashboard.
   ///     - If `nil`: The SDK will use the API key configured in the Portal Dashboard.
   ///     - If provided: This API key will be used for this request, overriding the Dashboard configuration.

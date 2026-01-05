@@ -50,10 +50,8 @@ extension ViewController {
         }
 
         // Step 2: Get quote
-        let takerAddress = try await portal.addresses[.eip155] ?? ""
         let quoteRequest = ZeroXQuoteRequest(
           chainId: chainId,
-          taker: takerAddress ?? "",
           buyToken: "USDC",
           sellToken: "ETH",
           sellAmount: "1000000000000000000" // 1 ETH
@@ -179,10 +177,8 @@ extension ViewController {
 
       Task {
         do {
-          let takerAddress = try await portal.addresses[.eip155] ?? ""
           let quoteRequest = ZeroXQuoteRequest(
             chainId: chainId,
-            taker: takerAddress ?? "",
             buyToken: "USDC",
             sellToken: "ETH",
             sellAmount: "1000000000000000000" // 1 ETH
@@ -231,7 +227,7 @@ extension ViewController {
 
       Task {
         do {
-          // Get price (doesn't require taker address)
+          // Get price quote
           let priceRequest = ZeroXPriceRequest(
             chainId: chainId,
             buyToken: "USDC",
@@ -388,10 +384,8 @@ extension ViewController {
   func exampleGetQuote() async throws {
     guard let portal else { return }
 
-    let takerAddress = try await portal.addresses[.eip155] ?? ""
     let quoteRequest = ZeroXQuoteRequest(
       chainId: "eip155:1",
-      taker: takerAddress ?? "",
       buyToken: "USDC",
       sellToken: "ETH",
       sellAmount: "1000000000000000000"
@@ -421,10 +415,8 @@ extension ViewController {
     print("Sources: \(sources.data.sources)")
 
     // Step 2: Get quote
-    let takerAddress = try await portal.addresses[.eip155] ?? ""
     let quoteRequest = ZeroXQuoteRequest(
       chainId: chainId,
-      taker: takerAddress ?? "",
       buyToken: "USDC",
       sellToken: "ETH",
       sellAmount: "1000000000000000000"
@@ -493,10 +485,8 @@ extension ViewController {
   func exampleCheckQuoteIssues() async throws {
     guard let portal else { return }
 
-    let takerAddress = try await portal.addresses[.eip155] ?? ""
     let quoteRequest = ZeroXQuoteRequest(
       chainId: "eip155:1",
-      taker: takerAddress ?? "",
       buyToken: "USDC",
       sellToken: "ETH",
       sellAmount: "1000000000000000000"

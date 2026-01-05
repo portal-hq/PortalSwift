@@ -14,7 +14,6 @@ import Foundation
 extension ZeroXQuoteRequest {
   static func stub(
     chainId: String = "eip155:1",
-    taker: String = "0x1234567890abcdef1234567890abcdef12345678",
     buyToken: String = "USDC",
     sellToken: String = "ETH",
     sellAmount: String = "1000000000000000000",
@@ -30,7 +29,6 @@ extension ZeroXQuoteRequest {
   ) -> Self {
     ZeroXQuoteRequest(
       chainId: chainId,
-      taker: taker,
       buyToken: buyToken,
       sellToken: sellToken,
       sellAmount: sellAmount,
@@ -55,7 +53,6 @@ extension ZeroXPriceRequest {
     buyToken: String = "USDC",
     sellToken: String = "ETH",
     sellAmount: String = "1000000000000000000",
-    taker: String? = nil,
     txOrigin: String? = nil,
     swapFeeRecipient: String? = nil,
     swapFeeBps: Int? = nil,
@@ -71,7 +68,6 @@ extension ZeroXPriceRequest {
       buyToken: buyToken,
       sellToken: sellToken,
       sellAmount: sellAmount,
-      taker: taker,
       txOrigin: txOrigin,
       swapFeeRecipient: swapFeeRecipient,
       swapFeeBps: swapFeeBps,
