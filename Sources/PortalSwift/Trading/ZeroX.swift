@@ -57,7 +57,7 @@ public class ZeroX: ZeroXProtocol {
   ///     - The API key is used to authenticate requests to the ZeroX API service and is included in the request body.
   /// - Returns: Response containing available swap sources as an array of source names (e.g., ["Uniswap", "Sushiswap", "Curve"]).
   /// - Throws: `URLError` if the URL cannot be constructed, or network/decoding errors if the request fails.
-  public func getSources(chainId: String, zeroXApiKey: String?) async throws -> ZeroXSourcesResponse {
+  public func getSources(chainId: String, zeroXApiKey: String? = nil) async throws -> ZeroXSourcesResponse {
     return try await api.getSources(chainId: chainId, zeroXApiKey: zeroXApiKey)
   }
 
@@ -80,7 +80,7 @@ public class ZeroX: ZeroXProtocol {
   ///     - The API key is used to authenticate requests to the ZeroX API service and is included in the request body.
   /// - Returns: Response containing the quote with transaction data, including buy/sell amounts, price, gas estimates, and a ready-to-submit transaction object.
   /// - Throws: `URLError` if the URL cannot be constructed, or network/decoding errors if the request fails.
-  public func getQuote(request: ZeroXQuoteRequest, zeroXApiKey: String?) async throws -> ZeroXQuoteResponse {
+  public func getQuote(request: ZeroXQuoteRequest, zeroXApiKey: String? = nil) async throws -> ZeroXQuoteResponse {
     return try await api.getQuote(request: request, zeroXApiKey: zeroXApiKey)
   }
 
@@ -107,7 +107,7 @@ public class ZeroX: ZeroXProtocol {
   ///     - The API key is used to authenticate requests to the ZeroX API service and is included in the request body.
   /// - Returns: Response containing the price data, including buy/sell amounts, price, gas estimates, fees breakdown, and liquidity availability.
   /// - Throws: `URLError` if the URL cannot be constructed, or network/decoding errors if the request fails.
-  public func getPrice(request: ZeroXPriceRequest, zeroXApiKey: String?) async throws -> ZeroXPriceResponse {
+  public func getPrice(request: ZeroXPriceRequest, zeroXApiKey: String? = nil) async throws -> ZeroXPriceResponse {
     return try await api.getPrice(request: request, zeroXApiKey: zeroXApiKey)
   }
 }
