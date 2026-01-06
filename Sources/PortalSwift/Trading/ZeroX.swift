@@ -32,6 +32,87 @@ public protocol ZeroXProtocol {
   func getPrice(request: ZeroXPriceRequest, zeroXApiKey: String?) async throws -> ZeroXPriceResponse
 }
 
+// MARK: - Protocol Extension for Default Parameters
+
+extension ZeroXProtocol {
+  /// Retrieves available swap sources for a chain using the API key configured in Portal Dashboard.
+  ///
+  /// This is a convenience method that allows you to fetch swap sources without explicitly passing the `zeroXApiKey` parameter.
+  /// It automatically uses the ZeroX API key configured in your Portal Dashboard settings.
+  ///
+  /// This method fetches the list of available swap sources (e.g., Uniswap, Sushiswap, Curve) for the specified chain.
+  /// The sources represent the different DEX aggregators and liquidity pools that ZeroX can route swaps through.
+  ///
+  /// **API Key Configuration:**
+  /// This method uses the ZeroX API key configured in the Portal Dashboard. If you need to override the Dashboard
+  /// configuration for a specific request, use `getSources(chainId:zeroXApiKey:)` instead.
+  ///
+  /// - Parameter chainId: The chain ID in the format "eip155:{chainId}" (e.g., "eip155:1" for Ethereum mainnet, "eip155:137" for Polygon).
+  /// - Returns: Response containing available swap sources as an array of source names (e.g., ["Uniswap", "Sushiswap", "Curve"]).
+  /// - Throws: `URLError` if the URL cannot be constructed, or network/decoding errors if the request fails.
+  ///
+  /// - Note: This method is equivalent to calling `getSources(chainId:zeroXApiKey:)` with `zeroXApiKey: nil`.
+  ///
+  /// - SeeAlso: `getSources(chainId:zeroXApiKey:)` for the version that allows API key override.
+  public func getSources(chainId: String) async throws -> ZeroXSourcesResponse {
+    return try await getSources(chainId: chainId, zeroXApiKey: nil)
+  }
+  
+  /// Retrieves a swap quote with transaction data using the API key configured in Portal Dashboard.
+  ///
+  /// This is a convenience method that allows you to fetch a swap quote without explicitly passing the `zeroXApiKey` parameter.
+  /// It automatically uses the ZeroX API key configured in your Portal Dashboard settings.
+  ///
+  /// This method fetches a swap quote that includes transaction data ready to be submitted to the blockchain.
+  /// The quote includes the transaction object with all necessary fields (to, from, data, gas, etc.) that can be directly
+  /// used with `portal.request()` to execute the swap.
+  ///
+  /// **API Key Configuration:**
+  /// This method uses the ZeroX API key configured in the Portal Dashboard. If you need to override the Dashboard
+  /// configuration for a specific request, use `getQuote(request:zeroXApiKey:)` instead.
+  ///
+  /// - Parameter request: The quote request parameters containing chain ID, tokens, amounts, and optional swap configuration.
+  ///   - Note: The `chainId` in the request is used for the URL path only and is excluded from the request body.
+  /// - Returns: Response containing the quote with transaction data, including buy/sell amounts, price, gas estimates, and a ready-to-submit transaction object.
+  /// - Throws: `URLError` if the URL cannot be constructed, or network/decoding errors if the request fails.
+  ///
+  /// - Note: This method is equivalent to calling `getQuote(request:zeroXApiKey:)` with `zeroXApiKey: nil`.
+  ///
+  /// - SeeAlso: `getQuote(request:zeroXApiKey:)` for the version that allows API key override.
+  public func getQuote(request: ZeroXQuoteRequest) async throws -> ZeroXQuoteResponse {
+    return try await getQuote(request: request, zeroXApiKey: nil)
+  }
+  
+  /// Retrieves a price quote without transaction data using the API key configured in Portal Dashboard.
+  ///
+  /// This is a convenience method that allows you to fetch a price quote without explicitly passing the `zeroXApiKey` parameter.
+  /// It automatically uses the ZeroX API key configured in your Portal Dashboard settings.
+  ///
+  /// This method fetches a price quote for a swap without generating transaction data. This is useful for:
+  /// - Checking swap prices before committing to a transaction
+  /// - Displaying price information to users
+  /// - Comparing prices across different swap sources
+  ///
+  /// Unlike `getQuote()`, this method does not return transaction data.
+  /// The response includes price information, fees breakdown, and liquidity availability.
+  ///
+  /// **API Key Configuration:**
+  /// This method uses the ZeroX API key configured in the Portal Dashboard. If you need to override the Dashboard
+  /// configuration for a specific request, use `getPrice(request:zeroXApiKey:)` instead.
+  ///
+  /// - Parameter request: The price request parameters containing chain ID, tokens, amounts, and optional swap configuration.
+  ///   - Note: The `chainId` in the request is used for the URL path only and is excluded from the request body.
+  /// - Returns: Response containing the price data, including buy/sell amounts, price, gas estimates, fees breakdown, and liquidity availability.
+  /// - Throws: `URLError` if the URL cannot be constructed, or network/decoding errors if the request fails.
+  ///
+  /// - Note: This method is equivalent to calling `getPrice(request:zeroXApiKey:)` with `zeroXApiKey: nil`.
+  ///
+  /// - SeeAlso: `getPrice(request:zeroXApiKey:)` for the version that allows API key override.
+  public func getPrice(request: ZeroXPriceRequest) async throws -> ZeroXPriceResponse {
+    return try await getPrice(request: request, zeroXApiKey: nil)
+  }
+}
+
 /// ZeroX provider implementation for trading functionality.
 public class ZeroX: ZeroXProtocol {
   private let api: PortalZeroXTradingApiProtocol

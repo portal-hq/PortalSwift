@@ -563,6 +563,412 @@ extension ZeroXTests {
   }
 }
 
+// MARK: - Convenience Methods Tests (Protocol Extension)
+
+extension ZeroXTests {
+  // MARK: - getSources Convenience Method Tests
+  
+  func test_getSources_convenienceMethod_returnsSourcesSuccessfully() async throws {
+    // given
+    let mockResponse = ZeroXSourcesResponse.stub()
+    apiMock.getSourcesReturnValue = mockResponse
+
+    // when - calling convenience method without zeroXApiKey
+    let response = try await zeroX.getSources(chainId: "eip155:1")
+
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertNotNil(response.data)
+    XCTAssertEqual(apiMock.getSourcesCalls, 1)
+    XCTAssertEqual(apiMock.getSourcesChainIdParam, "eip155:1")
+    // Verify that nil was passed for zeroXApiKey
+    XCTAssertNil(apiMock.getSourcesZeroXApiKeyParam)
+  }
+
+  func test_getSources_convenienceMethod_callsApiWithNilApiKey() async throws {
+    // given
+    let mockResponse = ZeroXSourcesResponse.stub()
+    apiMock.getSourcesReturnValue = mockResponse
+
+    // when
+    _ = try await zeroX.getSources(chainId: "eip155:137")
+
+    // then - verify nil was passed for zeroXApiKey
+    XCTAssertEqual(apiMock.getSourcesCalls, 1)
+    XCTAssertNil(apiMock.getSourcesZeroXApiKeyParam)
+    XCTAssertEqual(apiMock.getSourcesChainIdParam, "eip155:137")
+  }
+
+  func test_getSources_convenienceMethod_withDifferentChainIds() async throws {
+    // given
+    let mockResponse = ZeroXSourcesResponse.stub()
+    apiMock.getSourcesReturnValue = mockResponse
+
+    // when
+    _ = try await zeroX.getSources(chainId: "eip155:1")
+    _ = try await zeroX.getSources(chainId: "eip155:137")
+    _ = try await zeroX.getSources(chainId: "eip155:42161")
+
+    // then
+    XCTAssertEqual(apiMock.getSourcesCalls, 3)
+    XCTAssertNil(apiMock.getSourcesZeroXApiKeyParam)
+  }
+
+  func test_getSources_convenienceMethod_throwsError() async throws {
+    // given
+    let expectedError = URLError(.badURL)
+    apiMock.getSourcesError = expectedError
+
+    // when/then
+    do {
+      _ = try await zeroX.getSources(chainId: "eip155:1")
+      XCTFail("Expected error to be thrown")
+    } catch {
+      XCTAssertEqual((error as? URLError)?.code, expectedError.code)
+      XCTAssertEqual(apiMock.getSourcesCalls, 1)
+      XCTAssertNil(apiMock.getSourcesZeroXApiKeyParam)
+    }
+  }
+
+  func test_getSources_convenienceMethod_worksWithZeroXMock() async throws {
+    // given
+    let zeroXMock = ZeroXMock()
+    let mockResponse = ZeroXSourcesResponse.stub()
+    zeroXMock.getSourcesReturnValue = mockResponse
+
+    // when - calling convenience method on mock
+    let response = try await zeroXMock.getSources(chainId: "eip155:1")
+
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertEqual(zeroXMock.getSourcesCalls, 1)
+    XCTAssertNil(zeroXMock.getSourcesZeroXApiKeyParam)
+    XCTAssertEqual(zeroXMock.getSourcesChainIdParam, "eip155:1")
+  }
+
+  // MARK: - getQuote Convenience Method Tests
+
+  func test_getQuote_convenienceMethod_returnsQuoteSuccessfully() async throws {
+    // given
+    let mockResponse = ZeroXQuoteResponse.stub()
+    apiMock.getQuoteReturnValue = mockResponse
+    let request = ZeroXQuoteRequest.stub()
+
+    // when - calling convenience method without zeroXApiKey
+    let response = try await zeroX.getQuote(request: request)
+
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertNotNil(response.data)
+    XCTAssertEqual(apiMock.getQuoteCalls, 1)
+    XCTAssertEqual(apiMock.getQuoteRequestParam?.chainId, request.chainId)
+    // Verify that nil was passed for zeroXApiKey
+    XCTAssertNil(apiMock.getQuoteZeroXApiKeyParam)
+  }
+
+  func test_getQuote_convenienceMethod_callsApiWithNilApiKey() async throws {
+    // given
+    let mockResponse = ZeroXQuoteResponse.stub()
+    apiMock.getQuoteReturnValue = mockResponse
+    let request = ZeroXQuoteRequest.stub(
+      chainId: "eip155:137",
+      buyToken: "USDC",
+      sellToken: "ETH",
+      sellAmount: "1000000000000000000"
+    )
+
+    // when
+    _ = try await zeroX.getQuote(request: request)
+
+    // then - verify nil was passed for zeroXApiKey
+    XCTAssertEqual(apiMock.getQuoteCalls, 1)
+    XCTAssertNil(apiMock.getQuoteZeroXApiKeyParam)
+    XCTAssertEqual(apiMock.getQuoteRequestParam?.chainId, "eip155:137")
+  }
+
+  func test_getQuote_convenienceMethod_withFullRequest() async throws {
+    // given
+    let mockResponse = ZeroXQuoteResponse.stub()
+    apiMock.getQuoteReturnValue = mockResponse
+    let request = ZeroXQuoteRequest.stub(
+      chainId: "eip155:1",
+      buyToken: "USDC",
+      sellToken: "ETH",
+      sellAmount: "1000000000000000000",
+      slippageBps: 50,
+      excludedSources: "Uniswap",
+      sellEntireBalance: true
+    )
+
+    // when
+    let response = try await zeroX.getQuote(request: request)
+
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertEqual(apiMock.getQuoteCalls, 1)
+    XCTAssertNil(apiMock.getQuoteZeroXApiKeyParam)
+    XCTAssertEqual(apiMock.getQuoteRequestParam?.buyToken, "USDC")
+    XCTAssertEqual(apiMock.getQuoteRequestParam?.sellToken, "ETH")
+  }
+
+  func test_getQuote_convenienceMethod_returnsTransaction() async throws {
+    // given
+    let transaction = ZeroXTransaction.stub()
+    let quoteData = ZeroXQuoteData.stub(transaction: transaction)
+    let mockResponse = ZeroXQuoteResponse(data: ZeroXQuoteResponseData(quote: quoteData))
+    apiMock.getQuoteReturnValue = mockResponse
+    let request = ZeroXQuoteRequest.stub()
+
+    // when
+    let response = try await zeroX.getQuote(request: request)
+
+    // then
+    XCTAssertNotNil(response.data.quote.transaction)
+    XCTAssertEqual(apiMock.getQuoteCalls, 1)
+    XCTAssertNil(apiMock.getQuoteZeroXApiKeyParam)
+  }
+
+  func test_getQuote_convenienceMethod_throwsError() async throws {
+    // given
+    let expectedError = URLError(.badURL)
+    apiMock.getQuoteError = expectedError
+    let request = ZeroXQuoteRequest.stub()
+
+    // when/then
+    do {
+      _ = try await zeroX.getQuote(request: request)
+      XCTFail("Expected error to be thrown")
+    } catch {
+      XCTAssertEqual((error as? URLError)?.code, expectedError.code)
+      XCTAssertEqual(apiMock.getQuoteCalls, 1)
+      XCTAssertNil(apiMock.getQuoteZeroXApiKeyParam)
+    }
+  }
+
+  func test_getQuote_convenienceMethod_worksWithZeroXMock() async throws {
+    // given
+    let zeroXMock = ZeroXMock()
+    let mockResponse = ZeroXQuoteResponse.stub()
+    zeroXMock.getQuoteReturnValue = mockResponse
+    let request = ZeroXQuoteRequest.stub()
+
+    // when - calling convenience method on mock
+    let response = try await zeroXMock.getQuote(request: request)
+
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertEqual(zeroXMock.getQuoteCalls, 1)
+    XCTAssertNil(zeroXMock.getQuoteZeroXApiKeyParam)
+    XCTAssertEqual(zeroXMock.getQuoteRequestParam?.chainId, request.chainId)
+  }
+
+  // MARK: - getPrice Convenience Method Tests
+
+  func test_getPrice_convenienceMethod_returnsPriceSuccessfully() async throws {
+    // given
+    let mockResponse = ZeroXPriceResponse.stub()
+    apiMock.getPriceReturnValue = mockResponse
+    let request = ZeroXPriceRequest.stub()
+
+    // when - calling convenience method without zeroXApiKey
+    let response = try await zeroX.getPrice(request: request)
+
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertNotNil(response.data)
+    XCTAssertEqual(apiMock.getPriceCalls, 1)
+    XCTAssertEqual(apiMock.getPriceRequestParam?.chainId, request.chainId)
+    // Verify that nil was passed for zeroXApiKey
+    XCTAssertNil(apiMock.getPriceZeroXApiKeyParam)
+  }
+
+  func test_getPrice_convenienceMethod_callsApiWithNilApiKey() async throws {
+    // given
+    let mockResponse = ZeroXPriceResponse.stub()
+    apiMock.getPriceReturnValue = mockResponse
+    let request = ZeroXPriceRequest.stub(
+      chainId: "eip155:137",
+      buyToken: "USDC",
+      sellToken: "USDT",
+      sellAmount: "1000000000"
+    )
+
+    // when
+    _ = try await zeroX.getPrice(request: request)
+
+    // then - verify nil was passed for zeroXApiKey
+    XCTAssertEqual(apiMock.getPriceCalls, 1)
+    XCTAssertNil(apiMock.getPriceZeroXApiKeyParam)
+    XCTAssertEqual(apiMock.getPriceRequestParam?.chainId, "eip155:137")
+  }
+
+  func test_getPrice_convenienceMethod_withFullRequest() async throws {
+    // given
+    let mockResponse = ZeroXPriceResponse.stub()
+    apiMock.getPriceReturnValue = mockResponse
+    let request = ZeroXPriceRequest.stub(
+      chainId: "eip155:1",
+      buyToken: "USDC",
+      sellToken: "ETH",
+      sellAmount: "1000000000000000000",
+      slippageBps: 50,
+      excludedSources: "Uniswap",
+      sellEntireBalance: true
+    )
+
+    // when
+    let response = try await zeroX.getPrice(request: request)
+
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertEqual(apiMock.getPriceCalls, 1)
+    XCTAssertNil(apiMock.getPriceZeroXApiKeyParam)
+    XCTAssertEqual(apiMock.getPriceRequestParam?.buyToken, "USDC")
+    XCTAssertEqual(apiMock.getPriceRequestParam?.sellToken, "ETH")
+  }
+
+  func test_getPrice_convenienceMethod_returnsFees() async throws {
+    // given
+    let fees = ZeroXFees.stub()
+    let priceData = ZeroXPriceData.stub(fees: fees)
+    let mockResponse = ZeroXPriceResponse(data: ZeroXPriceResponseData(price: priceData))
+    apiMock.getPriceReturnValue = mockResponse
+    let request = ZeroXPriceRequest.stub()
+
+    // when
+    let response = try await zeroX.getPrice(request: request)
+
+    // then
+    XCTAssertNotNil(response.data.price.fees)
+    XCTAssertEqual(apiMock.getPriceCalls, 1)
+    XCTAssertNil(apiMock.getPriceZeroXApiKeyParam)
+  }
+
+  func test_getPrice_convenienceMethod_throwsError() async throws {
+    // given
+    let expectedError = URLError(.badURL)
+    apiMock.getPriceError = expectedError
+    let request = ZeroXPriceRequest.stub()
+
+    // when/then
+    do {
+      _ = try await zeroX.getPrice(request: request)
+      XCTFail("Expected error to be thrown")
+    } catch {
+      XCTAssertEqual((error as? URLError)?.code, expectedError.code)
+      XCTAssertEqual(apiMock.getPriceCalls, 1)
+      XCTAssertNil(apiMock.getPriceZeroXApiKeyParam)
+    }
+  }
+
+  func test_getPrice_convenienceMethod_worksWithZeroXMock() async throws {
+    // given
+    let zeroXMock = ZeroXMock()
+    let mockResponse = ZeroXPriceResponse.stub()
+    zeroXMock.getPriceReturnValue = mockResponse
+    let request = ZeroXPriceRequest.stub()
+
+    // when - calling convenience method on mock
+    let response = try await zeroXMock.getPrice(request: request)
+
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertEqual(zeroXMock.getPriceCalls, 1)
+    XCTAssertNil(zeroXMock.getPriceZeroXApiKeyParam)
+    XCTAssertEqual(zeroXMock.getPriceRequestParam?.chainId, request.chainId)
+  }
+
+  // MARK: - Convenience Methods Comparison Tests
+
+  func test_convenienceMethods_equivalentToPassingNil() async throws {
+    // given
+    let sourcesResponse = ZeroXSourcesResponse.stub()
+    let quoteResponse = ZeroXQuoteResponse.stub()
+    let priceResponse = ZeroXPriceResponse.stub()
+    apiMock.getSourcesReturnValue = sourcesResponse
+    apiMock.getQuoteReturnValue = quoteResponse
+    apiMock.getPriceReturnValue = priceResponse
+    let quoteRequest = ZeroXQuoteRequest.stub()
+    let priceRequest = ZeroXPriceRequest.stub()
+
+    // when - call both convenience and explicit nil methods
+    let sources1 = try await zeroX.getSources(chainId: "eip155:1")
+    let sources2 = try await zeroX.getSources(chainId: "eip155:1", zeroXApiKey: nil)
+    
+    let quote1 = try await zeroX.getQuote(request: quoteRequest)
+    let quote2 = try await zeroX.getQuote(request: quoteRequest, zeroXApiKey: nil)
+    
+    let price1 = try await zeroX.getPrice(request: priceRequest)
+    let price2 = try await zeroX.getPrice(request: priceRequest, zeroXApiKey: nil)
+
+    // then - both should produce same results
+    XCTAssertEqual(sources1.data.sources, sources2.data.sources)
+    XCTAssertEqual(quote1.data.quote.buyAmount, quote2.data.quote.buyAmount)
+    XCTAssertEqual(price1.data.price.buyAmount, price2.data.price.buyAmount)
+    
+    // Verify all calls passed nil for zeroXApiKey
+    XCTAssertNil(apiMock.getSourcesZeroXApiKeyParam)
+    XCTAssertNil(apiMock.getQuoteZeroXApiKeyParam)
+    XCTAssertNil(apiMock.getPriceZeroXApiKeyParam)
+  }
+
+  func test_convenienceMethods_canBeMixedWithExplicitApiKey() async throws {
+    // given
+    let sourcesResponse = ZeroXSourcesResponse.stub()
+    let quoteResponse = ZeroXQuoteResponse.stub()
+    apiMock.getSourcesReturnValue = sourcesResponse
+    apiMock.getQuoteReturnValue = quoteResponse
+    let quoteRequest = ZeroXQuoteRequest.stub()
+    let apiKey = "custom-api-key"
+
+    // when - mix convenience and explicit API key methods
+    _ = try await zeroX.getSources(chainId: "eip155:1") // convenience
+    _ = try await zeroX.getSources(chainId: "eip155:1", zeroXApiKey: apiKey) // explicit
+    
+    _ = try await zeroX.getQuote(request: quoteRequest) // convenience
+    _ = try await zeroX.getQuote(request: quoteRequest, zeroXApiKey: apiKey) // explicit
+
+    // then - verify both patterns work
+    XCTAssertEqual(apiMock.getSourcesCalls, 2)
+    XCTAssertEqual(apiMock.getQuoteCalls, 2)
+    // Last call should have API key
+    XCTAssertEqual(apiMock.getSourcesZeroXApiKeyParam, apiKey)
+    XCTAssertEqual(apiMock.getQuoteZeroXApiKeyParam, apiKey)
+  }
+
+  func test_convenienceMethods_workThroughProtocolType() async throws {
+    // given
+    let sourcesResponse = ZeroXSourcesResponse.stub()
+    let quoteResponse = ZeroXQuoteResponse.stub()
+    let priceResponse = ZeroXPriceResponse.stub()
+    apiMock.getSourcesReturnValue = sourcesResponse
+    apiMock.getQuoteReturnValue = quoteResponse
+    apiMock.getPriceReturnValue = priceResponse
+    
+    // Cast to protocol type (as it would be used in Trading.zeroX)
+    let zeroXProtocol: ZeroXProtocol = zeroX
+    let quoteRequest = ZeroXQuoteRequest.stub()
+    let priceRequest = ZeroXPriceRequest.stub()
+
+    // when - call convenience methods through protocol type
+    let sources = try await zeroXProtocol.getSources(chainId: "eip155:1")
+    let quote = try await zeroXProtocol.getQuote(request: quoteRequest)
+    let price = try await zeroXProtocol.getPrice(request: priceRequest)
+
+    // then
+    XCTAssertNotNil(sources)
+    XCTAssertNotNil(quote)
+    XCTAssertNotNil(price)
+    XCTAssertEqual(apiMock.getSourcesCalls, 1)
+    XCTAssertEqual(apiMock.getQuoteCalls, 1)
+    XCTAssertEqual(apiMock.getPriceCalls, 1)
+    // All should pass nil for zeroXApiKey
+    XCTAssertNil(apiMock.getSourcesZeroXApiKeyParam)
+    XCTAssertNil(apiMock.getQuoteZeroXApiKeyParam)
+    XCTAssertNil(apiMock.getPriceZeroXApiKeyParam)
+  }
+}
+
 // MARK: - Multiple Instance Tests
 
 extension ZeroXTests {
