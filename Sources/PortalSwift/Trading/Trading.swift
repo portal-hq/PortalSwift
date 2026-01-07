@@ -10,7 +10,7 @@ import Foundation
 /// The main entry point for trading-related functionality in the Portal SDK.
 ///
 /// This class provides access to various trading providers and their capabilities.
-/// Currently supports Lifi and ZeroX as trading providers.
+/// Currently supports Lifi and 0X as trading providers.
 public class Trading {
   /// Access to Lifi trading provider functionality.
   public var lifi: LifiProtocol
