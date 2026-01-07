@@ -14,6 +14,8 @@ import Foundation
 public struct ZeroXFees: Codable {
   /// The integrator fee (optional).
   public let integratorFee: ZeroXFeeDetail?
+  /// The integrator fees (plural, optional).
+  public let integratorFees: [ZeroXFeeDetail]?
   /// The ZeroX protocol fee (optional).
   public let zeroExFee: ZeroXZeroExFeeDetail?
   /// The gas fee (optional).
@@ -21,10 +23,12 @@ public struct ZeroXFees: Codable {
 
   public init(
     integratorFee: ZeroXFeeDetail? = nil,
+    integratorFees: [ZeroXFeeDetail]? = nil,
     zeroExFee: ZeroXZeroExFeeDetail? = nil,
     gasFee: ZeroXFeeDetail? = nil
   ) {
     self.integratorFee = integratorFee
+    self.integratorFees = integratorFees
     self.zeroExFee = zeroExFee
     self.gasFee = gasFee
   }
@@ -117,6 +121,84 @@ public struct ZeroXBalanceIssue: Codable {
     self.token = token
     self.actual = actual
     self.expected = expected
+  }
+}
+
+// MARK: - Route Types
+
+/// Route information for a ZeroX swap.
+public struct ZeroXRoute: Codable {
+  /// The fills in the route.
+  public let fills: [ZeroXFill]?
+  /// The tokens involved in the route.
+  public let tokens: [ZeroXRouteToken]?
+
+  public init(fills: [ZeroXFill]? = nil, tokens: [ZeroXRouteToken]? = nil) {
+    self.fills = fills
+    self.tokens = tokens
+  }
+}
+
+/// A single fill in a swap route.
+public struct ZeroXFill: Codable {
+  /// The source token address.
+  public let from: String
+  /// The destination token address.
+  public let to: String
+  /// The source DEX or protocol name.
+  public let source: String
+  /// The proportion of the swap going through this fill in basis points.
+  public let proportionBps: String
+
+  public init(from: String, to: String, source: String, proportionBps: String) {
+    self.from = from
+    self.to = to
+    self.source = source
+    self.proportionBps = proportionBps
+  }
+}
+
+/// Token information in a route.
+public struct ZeroXRouteToken: Codable {
+  /// The token address.
+  public let address: String
+  /// The token symbol.
+  public let symbol: String
+
+  public init(address: String, symbol: String) {
+    self.address = address
+    self.symbol = symbol
+  }
+}
+
+// MARK: - Token Metadata Types
+
+/// Token metadata for a swap.
+public struct ZeroXTokenMetadata: Codable {
+  /// Metadata for the buy token.
+  public let buyToken: ZeroXTokenTaxMetadata?
+  /// Metadata for the sell token.
+  public let sellToken: ZeroXTokenTaxMetadata?
+
+  public init(buyToken: ZeroXTokenTaxMetadata? = nil, sellToken: ZeroXTokenTaxMetadata? = nil) {
+    self.buyToken = buyToken
+    self.sellToken = sellToken
+  }
+}
+
+/// Tax metadata for a token.
+public struct ZeroXTokenTaxMetadata: Codable {
+  /// Buy tax in basis points.
+  public let buyTaxBps: String?
+  /// Sell tax in basis points.
+  public let sellTaxBps: String?
+  /// Transfer tax in basis points.
+  public let transferTaxBps: String?
+
+  public init(buyTaxBps: String? = nil, sellTaxBps: String? = nil, transferTaxBps: String? = nil) {
+    self.buyTaxBps = buyTaxBps
+    self.sellTaxBps = sellTaxBps
+    self.transferTaxBps = transferTaxBps
   }
 }
 

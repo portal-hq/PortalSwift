@@ -11,64 +11,87 @@ import Foundation
 /// Response model containing a price quote from ZeroX (without transaction data).
 public struct ZeroXPriceResponse: Codable {
   /// The response data containing the price details.
-  public let data: ZeroXPriceResponseData
+  public let data: ZeroXPriceResponseData?
+  /// Error message if the request failed.
+  public let error: String?
 
-  public init(data: ZeroXPriceResponseData) {
+  public init(data: ZeroXPriceResponseData? = nil, error: String? = nil) {
     self.data = data
+    self.error = error
   }
 }
 
 /// Data wrapper for the price response.
 public struct ZeroXPriceResponseData: Codable {
-  /// The price details.
-  public let price: ZeroXPriceData
+  /// The raw response from ZeroX containing price details.
+  public let rawResponse: ZeroXPriceRawResponse
 
-  public init(price: ZeroXPriceData) {
-    self.price = price
+  public init(rawResponse: ZeroXPriceRawResponse) {
+    self.rawResponse = rawResponse
   }
 }
 
-/// Detailed price data from ZeroX (without transaction information).
-public struct ZeroXPriceData: Codable {
+/// Raw response model from ZeroX containing detailed price information.
+public struct ZeroXPriceRawResponse: Codable {
+  /// The block number at which the price was generated (optional).
+  public let blockNumber: String?
   /// The amount of tokens to receive.
   public let buyAmount: String
-  /// The amount of tokens to sell.
-  public let sellAmount: String
-  /// The exchange rate (optional - may not be present in all responses).
-  public let price: String?
-  /// Estimated gas for the transaction (optional).
-  public let estimatedGas: String?
+  /// The token address to buy.
+  public let buyToken: String?
+  /// Fee breakdown (optional).
+  public let fees: ZeroXFees?
+  /// The gas limit for the transaction (optional).
+  public let gas: String?
   /// The gas price (optional).
   public let gasPrice: String?
+  /// Any issues with the price quote (optional).
+  public let issues: ZeroXIssues?
   /// Whether liquidity is available for this swap (optional).
   public let liquidityAvailable: Bool?
   /// The minimum amount of tokens to receive after slippage (optional).
   public let minBuyAmount: String?
-  /// Fee breakdown (optional).
-  public let fees: ZeroXFees?
-  /// Any issues with the price (optional).
-  public let issues: ZeroXIssues?
+  /// Route information for the swap (optional).
+  public let route: ZeroXRoute?
+  /// The amount of tokens to sell.
+  public let sellAmount: String
+  /// The token address to sell.
+  public let sellToken: String?
+  /// Token metadata including tax information (optional).
+  public let tokenMetadata: ZeroXTokenMetadata?
+  /// Total network fee for the transaction (optional).
+  public let totalNetworkFee: String?
 
   public init(
+    blockNumber: String? = nil,
     buyAmount: String,
-    sellAmount: String,
-    price: String? = nil,
-    estimatedGas: String? = nil,
+    buyToken: String? = nil,
+    fees: ZeroXFees? = nil,
+    gas: String? = nil,
     gasPrice: String? = nil,
+    issues: ZeroXIssues? = nil,
     liquidityAvailable: Bool? = nil,
     minBuyAmount: String? = nil,
-    fees: ZeroXFees? = nil,
-    issues: ZeroXIssues? = nil
+    route: ZeroXRoute? = nil,
+    sellAmount: String,
+    sellToken: String? = nil,
+    tokenMetadata: ZeroXTokenMetadata? = nil,
+    totalNetworkFee: String? = nil
   ) {
+    self.blockNumber = blockNumber
     self.buyAmount = buyAmount
-    self.sellAmount = sellAmount
-    self.price = price
-    self.estimatedGas = estimatedGas
+    self.buyToken = buyToken
+    self.fees = fees
+    self.gas = gas
     self.gasPrice = gasPrice
+    self.issues = issues
     self.liquidityAvailable = liquidityAvailable
     self.minBuyAmount = minBuyAmount
-    self.fees = fees
-    self.issues = issues
+    self.route = route
+    self.sellAmount = sellAmount
+    self.sellToken = sellToken
+    self.tokenMetadata = tokenMetadata
+    self.totalNetworkFee = totalNetworkFee
   }
 }
 

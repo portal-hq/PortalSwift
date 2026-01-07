@@ -75,16 +75,16 @@ public class PortalZeroXTradingApi: PortalZeroXTradingApiProtocol {
   /// - Returns: Response containing available swap sources as an array of source names (e.g., ["Uniswap", "Sushiswap", "Curve"]).
   /// - Throws: `URLError` if the URL cannot be constructed, or network/decoding errors if the request fails.
   public func getSources(chainId: String, zeroXApiKey: String? = nil) async throws -> ZeroXSourcesResponse {
-    let encodedChainId = encodeChainId(chainId)
-
-    guard let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(encodedChainId)/assets/swap/sources") else {
+    guard let url = URL(string: "\(baseUrl)/api/v3/clients/me/integrations/0x/swap/sources") else {
       logger.error("PortalZeroXTradingApi.getSources() - Unable to build request URL.")
       throw URLError(.badURL)
     }
 
     do {
-      // Build request body with only zeroXApiKey if provided
-      var body: [String: AnyCodable] = [:]
+      // Build request body with chainId and zeroXApiKey if provided
+      var body: [String: AnyCodable] = [
+        "chainId": AnyCodable(chainId)
+      ]
       if let zeroXApiKey = zeroXApiKey {
         body["zeroXApiKey"] = AnyCodable(zeroXApiKey)
       }
@@ -108,7 +108,7 @@ public class PortalZeroXTradingApi: PortalZeroXTradingApiProtocol {
   ///
   /// - Parameters:
   ///   - request: The quote request parameters containing chain ID, tokens, amounts, and optional swap configuration.
-  ///     - Note: The `chainId` in the request is used for the URL path only and is excluded from the request body.
+  ///     - Note: The `chainId` in the request is included in the request body.
   ///   - zeroXApiKey: Optional ZeroX API key to override the one configured in Portal Dashboard.
   ///     - If `nil`: The SDK will use the API key configured in the Portal Dashboard.
   ///     - If provided: This API key will be used for this request, overriding the Dashboard configuration.
@@ -116,16 +116,15 @@ public class PortalZeroXTradingApi: PortalZeroXTradingApiProtocol {
   /// - Returns: Response containing the quote with transaction data, including buy/sell amounts, price, gas estimates, and a ready-to-submit transaction object.
   /// - Throws: `URLError` if the URL cannot be constructed, or network/decoding errors if the request fails.
   public func getQuote(request: ZeroXQuoteRequest, zeroXApiKey: String? = nil) async throws -> ZeroXQuoteResponse {
-    let encodedChainId = encodeChainId(request.chainId)
-
-    guard let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(encodedChainId)/assets/swap/quote") else {
+    guard let url = URL(string: "\(baseUrl)/api/v3/clients/me/integrations/0x/swap/quote") else {
       logger.error("PortalZeroXTradingApi.getQuote() - Unable to build request URL.")
       throw URLError(.badURL)
     }
 
     do {
-      // Build request body excluding chainId
+      // Build request body including chainId
       var body = request.toRequestBody()
+      body["chainId"] = AnyCodable(request.chainId)
 
       // Merge zeroXApiKey if provided
       if let zeroXApiKey = zeroXApiKey {
@@ -155,7 +154,7 @@ public class PortalZeroXTradingApi: PortalZeroXTradingApiProtocol {
   ///
   /// - Parameters:
   ///   - request: The price request parameters containing chain ID, tokens, amounts, and optional swap configuration.
-  ///     - Note: The `chainId` in the request is used for the URL path only and is excluded from the request body.
+  ///     - Note: The `chainId` in the request is included in the request body.
   ///   - zeroXApiKey: Optional ZeroX API key to override the one configured in Portal Dashboard.
   ///     - If `nil`: The SDK will use the API key configured in the Portal Dashboard.
   ///     - If provided: This API key will be used for this request, overriding the Dashboard configuration.
@@ -163,16 +162,15 @@ public class PortalZeroXTradingApi: PortalZeroXTradingApiProtocol {
   /// - Returns: Response containing the price data, including buy/sell amounts, price, gas estimates, fees breakdown, and liquidity availability.
   /// - Throws: `URLError` if the URL cannot be constructed, or network/decoding errors if the request fails.
   public func getPrice(request: ZeroXPriceRequest, zeroXApiKey: String? = nil) async throws -> ZeroXPriceResponse {
-    let encodedChainId = encodeChainId(request.chainId)
-
-    guard let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(encodedChainId)/assets/swap/price") else {
+    guard let url = URL(string: "\(baseUrl)/api/v3/clients/me/integrations/0x/swap/price") else {
       logger.error("PortalZeroXTradingApi.getPrice() - Unable to build request URL.")
       throw URLError(.badURL)
     }
 
     do {
-      // Build request body excluding chainId
+      // Build request body including chainId
       var body = request.toRequestBody()
+      body["chainId"] = AnyCodable(request.chainId)
 
       // Merge zeroXApiKey if provided
       if let zeroXApiKey = zeroXApiKey {

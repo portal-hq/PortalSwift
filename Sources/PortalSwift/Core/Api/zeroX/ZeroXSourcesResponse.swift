@@ -10,21 +10,37 @@ import Foundation
 
 /// Response model containing available swap sources from ZeroX.
 public struct ZeroXSourcesResponse: Codable {
-  /// The response data containing the list of sources.
-  public let data: ZeroXSourcesData
+  /// The response data containing the raw response with sources.
+  public let data: ZeroXSourcesData?
+  /// Error message if the request failed.
+  public let error: String?
 
-  public init(data: ZeroXSourcesData) {
+  public init(data: ZeroXSourcesData? = nil, error: String? = nil) {
     self.data = data
+    self.error = error
   }
 }
 
-/// Data model containing the list of available swap sources.
+/// Data model containing the raw response with sources.
 public struct ZeroXSourcesData: Codable {
-  /// List of available swap source names (e.g., ["Uniswap", "Sushiswap"]).
-  public let sources: [String]
+  /// The raw response from ZeroX containing sources and zid.
+  public let rawResponse: ZeroXSourcesRawResponse
 
-  public init(sources: [String]) {
+  public init(rawResponse: ZeroXSourcesRawResponse) {
+    self.rawResponse = rawResponse
+  }
+}
+
+/// Raw response model from ZeroX containing the list of sources and zid.
+public struct ZeroXSourcesRawResponse: Codable {
+  /// List of available swap source names (e.g., ["Uniswap", "Sushiswap", "Curve"]).
+  public let sources: [String]
+  /// ZeroX identifier (zid) for the response.
+  public let zid: String
+
+  public init(sources: [String], zid: String) {
     self.sources = sources
+    self.zid = zid
   }
 }
 

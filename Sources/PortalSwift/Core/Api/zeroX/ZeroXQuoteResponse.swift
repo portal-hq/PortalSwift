@@ -11,68 +11,83 @@ import Foundation
 /// Response model containing a swap quote from ZeroX.
 public struct ZeroXQuoteResponse: Codable {
   /// The response data containing the quote details.
-  public let data: ZeroXQuoteResponseData
+  public let data: ZeroXQuoteResponseData?
+  /// Error message if the request failed.
+  public let error: String?
 
-  public init(data: ZeroXQuoteResponseData) {
+  public init(data: ZeroXQuoteResponseData? = nil, error: String? = nil) {
     self.data = data
+    self.error = error
   }
 }
 
 /// Data wrapper for the quote response.
 public struct ZeroXQuoteResponseData: Codable {
-  /// The quote details including transaction data.
-  public let quote: ZeroXQuoteData
+  /// The raw response from ZeroX containing quote details.
+  public let rawResponse: ZeroXQuoteRawResponse
 
-  public init(quote: ZeroXQuoteData) {
-    self.quote = quote
+  public init(rawResponse: ZeroXQuoteRawResponse) {
+    self.rawResponse = rawResponse
   }
 }
 
-/// Detailed quote data from ZeroX including transaction information.
-public struct ZeroXQuoteData: Codable {
+/// Raw response model from ZeroX containing detailed quote information.
+public struct ZeroXQuoteRawResponse: Codable {
+  /// The block number at which the quote was generated (optional).
+  public let blockNumber: String?
   /// The amount of tokens to receive.
   public let buyAmount: String
-  /// The amount of tokens to sell.
-  public let sellAmount: String
-  /// The exchange rate (optional - may not be present in all responses).
-  public let price: String?
-  /// Estimated gas for the transaction (optional).
-  public let estimatedGas: String?
-  /// The gas price (optional).
-  public let gasPrice: String?
-  /// The total cost of the swap (optional).
-  public let cost: Double?
+  /// The token address to buy.
+  public let buyToken: String?
+  /// Fee breakdown (optional).
+  public let fees: ZeroXFees?
+  /// Any issues with the quote (optional).
+  public let issues: ZeroXIssues?
   /// Whether liquidity is available for this swap (optional).
   public let liquidityAvailable: Bool?
   /// The minimum amount of tokens to receive after slippage (optional).
   public let minBuyAmount: String?
+  /// Route information for the swap (optional).
+  public let route: ZeroXRoute?
+  /// The amount of tokens to sell.
+  public let sellAmount: String
+  /// The token address to sell.
+  public let sellToken: String?
+  /// Token metadata including tax information (optional).
+  public let tokenMetadata: ZeroXTokenMetadata?
+  /// Total network fee for the transaction (optional).
+  public let totalNetworkFee: String?
   /// The transaction data to submit.
   public let transaction: ZeroXTransaction
-  /// Any issues with the quote (optional).
-  public let issues: ZeroXIssues?
 
   public init(
+    blockNumber: String? = nil,
     buyAmount: String,
-    sellAmount: String,
-    price: String? = nil,
-    estimatedGas: String? = nil,
-    gasPrice: String? = nil,
-    cost: Double? = nil,
+    buyToken: String? = nil,
+    fees: ZeroXFees? = nil,
+    issues: ZeroXIssues? = nil,
     liquidityAvailable: Bool? = nil,
     minBuyAmount: String? = nil,
-    transaction: ZeroXTransaction,
-    issues: ZeroXIssues? = nil
+    route: ZeroXRoute? = nil,
+    sellAmount: String,
+    sellToken: String? = nil,
+    tokenMetadata: ZeroXTokenMetadata? = nil,
+    totalNetworkFee: String? = nil,
+    transaction: ZeroXTransaction
   ) {
+    self.blockNumber = blockNumber
     self.buyAmount = buyAmount
-    self.sellAmount = sellAmount
-    self.price = price
-    self.estimatedGas = estimatedGas
-    self.gasPrice = gasPrice
-    self.cost = cost
+    self.buyToken = buyToken
+    self.fees = fees
+    self.issues = issues
     self.liquidityAvailable = liquidityAvailable
     self.minBuyAmount = minBuyAmount
+    self.route = route
+    self.sellAmount = sellAmount
+    self.sellToken = sellToken
+    self.tokenMetadata = tokenMetadata
+    self.totalNetworkFee = totalNetworkFee
     self.transaction = transaction
-    self.issues = issues
   }
 }
 

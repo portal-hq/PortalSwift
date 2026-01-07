@@ -89,7 +89,7 @@ extension PortalZeroXTradingApiTests {
 
     // then
     let request = requestsSpy.executeRequestParam as? PortalAPIRequest
-    let expectedURL = "https://api.portalhq.io/api/v3/clients/me/chains/eip155%3A1/assets/swap/sources"
+    let expectedURL = "https://api.portalhq.io/api/v3/clients/me/integrations/0x/swap/sources"
     XCTAssertEqual(request?.url.absoluteString, expectedURL)
   }
 
@@ -117,7 +117,7 @@ extension PortalZeroXTradingApiTests {
     XCTAssertEqual(request?.headers["Authorization"], "Bearer \(testApiKey)")
   }
 
-  func test_getSources_encodesChainIdInURL() async throws {
+  func test_getSources_includesChainIdInBody() async throws {
     // given
     try setReturnValue(ZeroXSourcesResponse.stub())
     let chainId = "eip155:137"
@@ -127,8 +127,8 @@ extension PortalZeroXTradingApiTests {
 
     // then
     let request = requestsSpy.executeRequestParam as? PortalAPIRequest
-    let urlString = request?.url.absoluteString ?? ""
-    XCTAssertTrue(urlString.contains("eip155%3A137"))
+    let payload = request?.payload as? [String: AnyCodable]
+    XCTAssertEqual(payload?["chainId"]?.value as? String, chainId)
   }
 
   func test_getSources_withSpecialCharactersInChainId() async throws {
@@ -141,8 +141,8 @@ extension PortalZeroXTradingApiTests {
 
     // then
     let request = requestsSpy.executeRequestParam as? PortalAPIRequest
-    let urlString = request?.url.absoluteString ?? ""
-    XCTAssertTrue(urlString.contains("eip155%3A42161"))
+    let payload = request?.payload as? [String: AnyCodable]
+    XCTAssertEqual(payload?["chainId"]?.value as? String, chainId)
   }
 
   func test_getSources_withLocalhostUsesHttp() async throws {
@@ -184,16 +184,18 @@ extension PortalZeroXTradingApiTests {
     XCTAssertEqual(payload?["zeroXApiKey"]?.value as? String, zeroXApiKey)
   }
 
-  func test_getSources_withoutZeroXApiKey_hasEmptyBody() async throws {
+  func test_getSources_withoutZeroXApiKey_includesOnlyChainIdInBody() async throws {
     // given
     try setReturnValue(ZeroXSourcesResponse.stub())
+    let chainId = "eip155:1"
 
     // when
-    _ = try await zeroXApi.getSources(chainId: "eip155:1", zeroXApiKey: nil)
+    _ = try await zeroXApi.getSources(chainId: chainId, zeroXApiKey: nil)
 
     // then
     let request = requestsSpy.executeRequestParam as? PortalAPIRequest
     let payload = request?.payload as? [String: AnyCodable]
+    XCTAssertEqual(payload?["chainId"]?.value as? String, chainId)
     XCTAssertNil(payload?["zeroXApiKey"])
   }
 }
@@ -211,7 +213,7 @@ extension PortalZeroXTradingApiTests {
 
     // then
     let apiRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
-    let expectedURL = "https://api.portalhq.io/api/v3/clients/me/chains/eip155%3A1/assets/swap/quote"
+    let expectedURL = "https://api.portalhq.io/api/v3/clients/me/integrations/0x/swap/quote"
     XCTAssertEqual(apiRequest?.url.absoluteString, expectedURL)
   }
 
@@ -241,7 +243,7 @@ extension PortalZeroXTradingApiTests {
     XCTAssertEqual(apiRequest?.headers["Authorization"], "Bearer \(testApiKey)")
   }
 
-  func test_getQuote_encodesChainIdInURL() async throws {
+  func test_getQuote_includesChainIdInBody() async throws {
     // given
     try setReturnValue(ZeroXQuoteResponse.stub())
     let request = ZeroXQuoteRequest.stub(chainId: "eip155:137")
@@ -251,22 +253,8 @@ extension PortalZeroXTradingApiTests {
 
     // then
     let apiRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
-    let urlString = apiRequest?.url.absoluteString ?? ""
-    XCTAssertTrue(urlString.contains("eip155%3A137"))
-  }
-
-  func test_getQuote_excludesChainIdFromBody() async throws {
-    // given
-    try setReturnValue(ZeroXQuoteResponse.stub())
-    let request = ZeroXQuoteRequest.stub(chainId: "eip155:1")
-
-    // when
-    _ = try await zeroXApi.getQuote(request: request, zeroXApiKey: nil)
-
-    // then
-    let apiRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
     let payload = apiRequest?.payload as? [String: AnyCodable]
-    XCTAssertNil(payload?["chainId"])
+    XCTAssertEqual(payload?["chainId"]?.value as? String, "eip155:137")
   }
 
   func test_getQuote_includesRequiredFieldsInBody() async throws {
@@ -352,7 +340,7 @@ extension PortalZeroXTradingApiTests {
 
     // then
     let apiRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
-    let expectedURL = "https://api.portalhq.io/api/v3/clients/me/chains/eip155%3A1/assets/swap/price"
+    let expectedURL = "https://api.portalhq.io/api/v3/clients/me/integrations/0x/swap/price"
     XCTAssertEqual(apiRequest?.url.absoluteString, expectedURL)
   }
 
@@ -382,7 +370,7 @@ extension PortalZeroXTradingApiTests {
     XCTAssertEqual(apiRequest?.headers["Authorization"], "Bearer \(testApiKey)")
   }
 
-  func test_getPrice_encodesChainIdInURL() async throws {
+  func test_getPrice_includesChainIdInBody() async throws {
     // given
     try setReturnValue(ZeroXPriceResponse.stub())
     let request = ZeroXPriceRequest.stub(chainId: "eip155:10")
@@ -392,22 +380,8 @@ extension PortalZeroXTradingApiTests {
 
     // then
     let apiRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
-    let urlString = apiRequest?.url.absoluteString ?? ""
-    XCTAssertTrue(urlString.contains("eip155%3A10"))
-  }
-
-  func test_getPrice_excludesChainIdFromBody() async throws {
-    // given
-    try setReturnValue(ZeroXPriceResponse.stub())
-    let request = ZeroXPriceRequest.stub(chainId: "eip155:1")
-
-    // when
-    _ = try await zeroXApi.getPrice(request: request, zeroXApiKey: nil)
-
-    // then
-    let apiRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
     let payload = apiRequest?.payload as? [String: AnyCodable]
-    XCTAssertNil(payload?["chainId"])
+    XCTAssertEqual(payload?["chainId"]?.value as? String, "eip155:10")
   }
 
   func test_getPrice_includesRequiredFieldsInBody() async throws {
@@ -460,12 +434,12 @@ extension PortalZeroXTradingApiTests {
     // then
     XCTAssertNotNil(response)
     XCTAssertNotNil(response.data)
-    XCTAssertFalse(response.data.sources.isEmpty)
+    XCTAssertFalse(response.data?.rawResponse.sources.isEmpty ?? true)
   }
 
   func test_getSources_returnsEmptySources() async throws {
     // given
-    let expectedResponse = ZeroXSourcesResponse(data: ZeroXSourcesData(sources: []))
+    let expectedResponse = ZeroXSourcesResponse(data: ZeroXSourcesData(rawResponse: ZeroXSourcesRawResponse(sources: [], zid: "test-zid")))
     try setReturnValue(expectedResponse)
 
     // when
@@ -473,7 +447,8 @@ extension PortalZeroXTradingApiTests {
 
     // then
     XCTAssertNotNil(response)
-    XCTAssertTrue(response.data.sources.isEmpty)
+    XCTAssertNotNil(response.data)
+    XCTAssertTrue(response.data?.rawResponse.sources.isEmpty ?? false)
   }
 
   func test_getQuote_returnsSuccessfulResponse() async throws {
@@ -487,8 +462,8 @@ extension PortalZeroXTradingApiTests {
     // then
     XCTAssertNotNil(response)
     XCTAssertNotNil(response.data)
-    XCTAssertNotNil(response.data.quote)
-    XCTAssertNotNil(response.data.quote.transaction)
+    XCTAssertNotNil(response.data?.rawResponse)
+    XCTAssertNotNil(response.data?.rawResponse.transaction)
   }
 
   func test_getPrice_returnsSuccessfulResponse() async throws {
@@ -502,21 +477,22 @@ extension PortalZeroXTradingApiTests {
     // then
     XCTAssertNotNil(response)
     XCTAssertNotNil(response.data)
-    XCTAssertNotNil(response.data.price)
+    XCTAssertNotNil(response.data?.rawResponse)
   }
 
   func test_getPrice_returnsFeesInResponse() async throws {
     // given
     let fees = ZeroXFees.stub()
-    let priceData = ZeroXPriceData.stub(fees: fees)
-    let expectedResponse = ZeroXPriceResponse(data: ZeroXPriceResponseData(price: priceData))
+    let priceData = ZeroXPriceRawResponse.stub(fees: fees)
+    let expectedResponse = ZeroXPriceResponse(data: ZeroXPriceResponseData(rawResponse: priceData))
     try setReturnValue(expectedResponse)
 
     // when
     let response = try await zeroXApi.getPrice(request: ZeroXPriceRequest.stub(), zeroXApiKey: nil)
 
     // then
-    XCTAssertNotNil(response.data.price.fees)
+    XCTAssertNotNil(response.data)
+    XCTAssertNotNil(response.data?.rawResponse.fees)
   }
 }
 
@@ -551,9 +527,9 @@ extension PortalZeroXTradingApiTests {
     let priceURL = (requestsSpy.executeRequestParam as? PortalAPIRequest)?.url.absoluteString
 
     // then
-    XCTAssertTrue(sourcesURL?.contains("/sources") ?? false)
-    XCTAssertTrue(quoteURL?.contains("/quote") ?? false)
-    XCTAssertTrue(priceURL?.contains("/price") ?? false)
+    XCTAssertTrue(sourcesURL?.contains("/integrations/0x/swap/sources") ?? false)
+    XCTAssertTrue(quoteURL?.contains("/integrations/0x/swap/quote") ?? false)
+    XCTAssertTrue(priceURL?.contains("/integrations/0x/swap/price") ?? false)
   }
 }
 
@@ -584,6 +560,7 @@ extension PortalZeroXTradingApiTests {
     // given
     try setReturnValue(ZeroXQuoteResponse.stub())
     let request = ZeroXQuoteRequest.stub(
+      chainId: "eip155:1",
       txOrigin: "0xOrigin",
       swapFeeRecipient: "0xFee",
       swapFeeBps: 100,
@@ -601,6 +578,7 @@ extension PortalZeroXTradingApiTests {
     // then
     let apiRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
     let payload = apiRequest?.payload as? [String: AnyCodable]
+    XCTAssertEqual(payload?["chainId"]?.value as? String, "eip155:1")
     XCTAssertEqual(payload?["txOrigin"]?.value as? String, "0xOrigin")
     XCTAssertEqual(payload?["swapFeeRecipient"]?.value as? String, "0xFee")
     XCTAssertEqual(payload?["swapFeeBps"]?.value as? Int, 100)
@@ -616,6 +594,7 @@ extension PortalZeroXTradingApiTests {
     // given
     try setReturnValue(ZeroXPriceResponse.stub())
     let request = ZeroXPriceRequest.stub(
+      chainId: "eip155:1",
       buyToken: "USDC",
       sellToken: "USDT",
       sellAmount: "1000000000",
@@ -629,6 +608,7 @@ extension PortalZeroXTradingApiTests {
     // then
     let apiRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
     let payload = apiRequest?.payload as? [String: AnyCodable]
+    XCTAssertEqual(payload?["chainId"]?.value as? String, "eip155:1")
     XCTAssertEqual(payload?["buyToken"]?.value as? String, "USDC")
     XCTAssertEqual(payload?["sellToken"]?.value as? String, "USDT")
     XCTAssertEqual(payload?["sellAmount"]?.value as? String, "1000000000")
@@ -771,37 +751,48 @@ extension PortalZeroXTradingApiTests {
   }
 }
 
-// MARK: - ChainId Encoding Tests
+// MARK: - ChainId in Request Body Tests
 
 extension PortalZeroXTradingApiTests {
-  func test_encodeChainId_handlesStandardFormat() async throws {
+  func test_chainId_includedInRequestBodyForAllMethods() async throws {
     // given
-    try setReturnValue(ZeroXSourcesResponse.stub())
     let chainId = "eip155:1"
-
-    // when
+    
+    // Test getSources
+    try setReturnValue(ZeroXSourcesResponse.stub())
     _ = try await zeroXApi.getSources(chainId: chainId, zeroXApiKey: nil)
-
-    // then
-    let request = requestsSpy.executeRequestParam as? PortalAPIRequest
-    let urlString = request?.url.absoluteString ?? ""
-    XCTAssertTrue(urlString.contains("eip155%3A1"))
+    var request = requestsSpy.executeRequestParam as? PortalAPIRequest
+    var payload = request?.payload as? [String: AnyCodable]
+    XCTAssertEqual(payload?["chainId"]?.value as? String, chainId)
+    
+    // Test getQuote
+    try setReturnValue(ZeroXQuoteResponse.stub())
+    _ = try await zeroXApi.getQuote(request: ZeroXQuoteRequest.stub(chainId: chainId), zeroXApiKey: nil)
+    request = requestsSpy.executeRequestParam as? PortalAPIRequest
+    payload = request?.payload as? [String: AnyCodable]
+    XCTAssertEqual(payload?["chainId"]?.value as? String, chainId)
+    
+    // Test getPrice
+    try setReturnValue(ZeroXPriceResponse.stub())
+    _ = try await zeroXApi.getPrice(request: ZeroXPriceRequest.stub(chainId: chainId), zeroXApiKey: nil)
+    request = requestsSpy.executeRequestParam as? PortalAPIRequest
+    payload = request?.payload as? [String: AnyCodable]
+    XCTAssertEqual(payload?["chainId"]?.value as? String, chainId)
   }
 
-  func test_encodeChainId_handlesMultipleChains() async throws {
+  func test_chainId_handlesMultipleChainsInBody() async throws {
     // given
-    try setReturnValue(ZeroXSourcesResponse.stub())
     let chainIds = ["eip155:1", "eip155:137", "eip155:42161", "eip155:10"]
 
     for chainId in chainIds {
       // when
+      try setReturnValue(ZeroXSourcesResponse.stub())
       _ = try await zeroXApi.getSources(chainId: chainId, zeroXApiKey: nil)
 
       // then
       let request = requestsSpy.executeRequestParam as? PortalAPIRequest
-      let urlString = request?.url.absoluteString ?? ""
-      let encoded = chainId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? chainId
-      XCTAssertTrue(urlString.contains(encoded), "ChainId \(chainId) should be encoded in URL")
+      let payload = request?.payload as? [String: AnyCodable]
+      XCTAssertEqual(payload?["chainId"]?.value as? String, chainId, "ChainId \(chainId) should be in request body")
     }
   }
 }

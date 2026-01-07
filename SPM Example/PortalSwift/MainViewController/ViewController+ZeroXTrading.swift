@@ -41,7 +41,10 @@ extension ViewController {
             chainId: chainId,
             zeroXApiKey: SWAPS_API_KEY
           )
-          self.logger.info("ViewController.handleZeroXTrading() - ✅ Got sources successfully: \(sourcesResponse.data.sources)")
+          guard let data = sourcesResponse.data else {
+            throw NSError(domain: "ZeroXError", code: -1, userInfo: [NSLocalizedDescriptionKey: "No data in response"])
+          }
+          self.logger.info("ViewController.handleZeroXTrading() - ✅ Got sources successfully: \(data.rawResponse.sources)")
         } catch {
           self.logger.error("ViewController.handleZeroXTrading() - ❌ Unable to get sources with error: \(error)")
           self.showStatusView(message: "\(self.failureStatus) Unable to get sources with error: \(error)")
@@ -64,10 +67,16 @@ extension ViewController {
               zeroXApiKey: SWAPS_API_KEY
             )
           self.logger.info("ViewController.handleZeroXTrading() - ✅ Got quote successfully:")
-          self.logger.info("  Buy Amount: \(quoteResponse.data.quote.buyAmount)")
-          self.logger.info("  Sell Amount: \(quoteResponse.data.quote.sellAmount)")
-          if let price = quoteResponse.data.quote.price {
-            self.logger.info("  Price: \(price)")
+          guard let data = quoteResponse.data else {
+            throw NSError(domain: "ZeroXError", code: -1, userInfo: [NSLocalizedDescriptionKey: "No data in response"])
+          }
+          self.logger.info("  Buy Amount: \(data.rawResponse.buyAmount)")
+          self.logger.info("  Sell Amount: \(data.rawResponse.sellAmount)")
+          if let buyToken = data.rawResponse.buyToken {
+            self.logger.info("  Buy Token: \(buyToken)")
+          }
+          if let sellToken = data.rawResponse.sellToken {
+            self.logger.info("  Sell Token: \(sellToken)")
           }
         } catch {
           self.logger.error("ViewController.handleZeroXTrading() - ❌ Unable to get quote with error: \(error)")
@@ -77,7 +86,10 @@ extension ViewController {
         }
 
         // Step 3: Submit transaction
-        let transaction = quoteResponse.data.quote.transaction
+        guard let data = quoteResponse.data else {
+          throw NSError(domain: "ZeroXError", code: -1, userInfo: [NSLocalizedDescriptionKey: "No data in response"])
+        }
+        let transaction = data.rawResponse.transaction
         let transactionDict: [String: Any] = [
           "data": transaction.data,
           "from": transaction.from,
@@ -136,12 +148,26 @@ extension ViewController {
 
       Task {
         do {
-          let sourcesResponse = try await portal.trading.zeroX.getSources(
+          // Test Case 1: getSources WITH explicit zeroXApiKey parameter (overrides Dashboard config)
+          self.logger.info("ViewController.handleZeroXGetSources() - 📝 Test Case 1: getSources WITH explicit zeroXApiKey parameter (overrides Dashboard config)")
+          let sourcesResponse1 = try await portal.trading.zeroX.getSources(
             chainId: chainId,
             zeroXApiKey: SWAPS_API_KEY
           )
-          self.logger.info("ViewController.handleZeroXGetSources() - ✅ Got sources: \(sourcesResponse.data.sources)")
-          self.showStatusView(message: "\(self.successStatus) Got \(sourcesResponse.data.sources.count) sources")
+          guard let data1 = sourcesResponse1.data else {
+            throw NSError(domain: "ZeroXError", code: -1, userInfo: [NSLocalizedDescriptionKey: "No data in response"])
+          }
+          self.logger.info("ViewController.handleZeroXGetSources() - ✅ Test Case 1 Success: Got \(data1.rawResponse.sources.count) sources with explicit API key: \(data1.rawResponse.sources)")
+          
+          // Test Case 2: getSources WITHOUT zeroXApiKey parameter (uses Dashboard config)
+          self.logger.info("ViewController.handleZeroXGetSources() - 📝 Test Case 2: getSources WITHOUT zeroXApiKey parameter (uses Dashboard config)")
+          let sourcesResponse2 = try await portal.trading.zeroX.getSources(chainId: chainId)
+          guard let data2 = sourcesResponse2.data else {
+            throw NSError(domain: "ZeroXError", code: -1, userInfo: [NSLocalizedDescriptionKey: "No data in response"])
+          }
+          self.logger.info("ViewController.handleZeroXGetSources() - ✅ Test Case 2 Success: Got \(data2.rawResponse.sources.count) sources using Dashboard API key: \(data2.rawResponse.sources)")
+          
+          self.showStatusView(message: "\(self.successStatus) Test 1: \(data1.rawResponse.sources.count) sources (with API key) | Test 2: \(data2.rawResponse.sources.count) sources (Dashboard key)")
           self.stopLoading()
         } catch {
           self.logger.error("ViewController.handleZeroXGetSources() - ❌ Error: \(error)")
@@ -185,13 +211,28 @@ extension ViewController {
             sellAmount: "100000000000000" // 0.0001 ETH
           )
 
-          let quoteResponse = try await portal.trading.zeroX.getQuote(
+          // Test Case 1: getQuote WITH explicit zeroXApiKey parameter (overrides Dashboard config)
+          self.logger.info("ViewController.handleZeroXGetQuote() - 📝 Test Case 1: getQuote WITH explicit zeroXApiKey parameter (overrides Dashboard config)")
+          let quoteResponse1 = try await portal.trading.zeroX.getQuote(
             request: quoteRequest,
             zeroXApiKey: SWAPS_API_KEY
           )
+          guard let data1 = quoteResponse1.data else {
+            throw NSError(domain: "ZeroXError", code: -1, userInfo: [NSLocalizedDescriptionKey: "No data in response"])
+          }
+          self.logger.info("ViewController.handleZeroXGetQuote() - ✅ Test Case 1 Success: Got quote with explicit API key - Buy: \(data1.rawResponse.buyAmount)")
+          self.logZeroXQuoteResponse(quoteResponse1)
 
-          self.logZeroXQuoteResponse(quoteResponse)
-          self.showStatusView(message: "\(self.successStatus) Got quote! Buy: \(quoteResponse.data.quote.buyAmount)")
+          // Test Case 2: getQuote WITHOUT zeroXApiKey parameter (uses Dashboard config)
+          self.logger.info("ViewController.handleZeroXGetQuote() - 📝 Test Case 2: getQuote WITHOUT zeroXApiKey parameter (uses Dashboard config)")
+          let quoteResponse2 = try await portal.trading.zeroX.getQuote(request: quoteRequest)
+          guard let data2 = quoteResponse2.data else {
+            throw NSError(domain: "ZeroXError", code: -1, userInfo: [NSLocalizedDescriptionKey: "No data in response"])
+          }
+          self.logger.info("ViewController.handleZeroXGetQuote() - ✅ Test Case 2 Success: Got quote using Dashboard API key - Buy: \(data2.rawResponse.buyAmount)")
+          self.logZeroXQuoteResponse(quoteResponse2)
+
+          self.showStatusView(message: "\(self.successStatus) Test 1: Buy \(data1.rawResponse.buyAmount) (with API key) | Test 2: Buy \(data2.rawResponse.buyAmount) (Dashboard key)")
           self.stopLoading()
         } catch {
           self.logger.error("ViewController.handleZeroXGetQuote() - ❌ Error: \(error)")
@@ -236,15 +277,28 @@ extension ViewController {
             sellAmount: "1000000000" // 1000 USDT (6 decimals)
           )
 
-          let priceResponse = try await portal.trading.zeroX.getPrice(
+          // Test Case 1: getPrice WITH explicit zeroXApiKey parameter (overrides Dashboard config)
+          self.logger.info("ViewController.handleZeroXPriceCheck() - 📝 Test Case 1: getPrice WITH explicit zeroXApiKey parameter (overrides Dashboard config)")
+          let priceResponse1 = try await portal.trading.zeroX.getPrice(
             request: priceRequest,
             zeroXApiKey: SWAPS_API_KEY
           )
+          guard let data1 = priceResponse1.data else {
+            throw NSError(domain: "ZeroXError", code: -1, userInfo: [NSLocalizedDescriptionKey: "No data in response"])
+          }
+          self.logger.info("ViewController.handleZeroXPriceCheck() - ✅ Test Case 1 Success: Got price with explicit API key - Buy: \(data1.rawResponse.buyAmount)")
+          self.logZeroXPriceResponse(priceResponse1)
 
-          // Log price response details
-          self.logZeroXPriceResponse(priceResponse)
+          // Test Case 2: getPrice WITHOUT zeroXApiKey parameter (uses Dashboard config)
+          self.logger.info("ViewController.handleZeroXPriceCheck() - 📝 Test Case 2: getPrice WITHOUT zeroXApiKey parameter (uses Dashboard config)")
+          let priceResponse2 = try await portal.trading.zeroX.getPrice(request: priceRequest)
+          guard let data2 = priceResponse2.data else {
+            throw NSError(domain: "ZeroXError", code: -1, userInfo: [NSLocalizedDescriptionKey: "No data in response"])
+          }
+          self.logger.info("ViewController.handleZeroXPriceCheck() - ✅ Test Case 2 Success: Got price using Dashboard API key - Buy: \(data2.rawResponse.buyAmount)")
+          self.logZeroXPriceResponse(priceResponse2)
 
-          self.showStatusView(message: "\(self.successStatus) Price check completed! Buy: \(priceResponse.data.price.buyAmount), Price: \(priceResponse.data.price.price ?? "N/A")")
+          self.showStatusView(message: "\(self.successStatus) Test 1: Buy \(data1.rawResponse.buyAmount) (with API key) | Test 2: Buy \(data2.rawResponse.buyAmount) (Dashboard key)")
           self.stopLoading()
         } catch {
           self.logger.error("ViewController.handleZeroXPriceCheck() - ❌ Unable to get price with error: \(error)")
@@ -263,17 +317,39 @@ extension ViewController {
 
   /// Logs ZeroX price response details
   private func logZeroXPriceResponse(_ response: ZeroXPriceResponse) {
-    self.logger.info("ViewController - ✅ Got price:")
-    self.logger.info("  Buy Amount: \(response.data.price.buyAmount)")
-    self.logger.info("  Sell Amount: \(response.data.price.sellAmount)")
-    if let price = response.data.price.price {
-      self.logger.info("  Price: \(price)")
+    guard let data = response.data else {
+      self.logger.warning("ViewController - ⚠️ No data in price response")
+      if let error = response.error {
+        self.logger.error("  Error: \(error)")
+      }
+      return
     }
-    if let liquidityAvailable = response.data.price.liquidityAvailable {
+    self.logger.info("ViewController - ✅ Got price:")
+    self.logger.info("  Buy Amount: \(data.rawResponse.buyAmount)")
+    self.logger.info("  Sell Amount: \(data.rawResponse.sellAmount)")
+    if let buyToken = data.rawResponse.buyToken {
+      self.logger.info("  Buy Token: \(buyToken)")
+    }
+    if let sellToken = data.rawResponse.sellToken {
+      self.logger.info("  Sell Token: \(sellToken)")
+    }
+    if let totalNetworkFee = data.rawResponse.totalNetworkFee {
+      self.logger.info("  Total Network Fee: \(totalNetworkFee)")
+    }
+    if let blockNumber = data.rawResponse.blockNumber {
+      self.logger.info("  Block Number: \(blockNumber)")
+    }
+    if let gas = data.rawResponse.gas {
+      self.logger.info("  Gas: \(gas)")
+    }
+    if let gasPrice = data.rawResponse.gasPrice {
+      self.logger.info("  Gas Price: \(gasPrice)")
+    }
+    if let liquidityAvailable = data.rawResponse.liquidityAvailable {
       self.logger.info("  Liquidity Available: \(liquidityAvailable)")
     }
 
-    if let fees = response.data.price.fees {
+    if let fees = data.rawResponse.fees {
       self.logger.info("  Fees:")
       if let integratorFee = fees.integratorFee {
         self.logger.info("    Integrator Fee: \(integratorFee.amount ?? "N/A") \(integratorFee.token ?? "N/A")")
@@ -286,7 +362,7 @@ extension ViewController {
       }
     }
 
-    if let issues = response.data.price.issues {
+    if let issues = data.rawResponse.issues {
       self.logger.warning("  Issues:")
       if let simulationIncomplete = issues.simulationIncomplete {
         self.logger.warning("    Simulation Incomplete: \(simulationIncomplete)")
@@ -299,35 +375,42 @@ extension ViewController {
 
   /// Logs ZeroX quote response details
   private func logZeroXQuoteResponse(_ response: ZeroXQuoteResponse) {
+    guard let data = response.data else {
+      self.logger.warning("ViewController - ⚠️ No data in quote response")
+      if let error = response.error {
+        self.logger.error("  Error: \(error)")
+      }
+      return
+    }
     self.logger.info("ViewController - ✅ Got quote:")
-    self.logger.info("  Buy Amount: \(response.data.quote.buyAmount)")
-    self.logger.info("  Sell Amount: \(response.data.quote.sellAmount)")
-    if let price = response.data.quote.price {
-      self.logger.info("  Price: \(price)")
+    self.logger.info("  Buy Amount: \(data.rawResponse.buyAmount)")
+    self.logger.info("  Sell Amount: \(data.rawResponse.sellAmount)")
+    if let buyToken = data.rawResponse.buyToken {
+      self.logger.info("  Buy Token: \(buyToken)")
     }
-    if let estimatedGas = response.data.quote.estimatedGas {
-      self.logger.info("  Estimated Gas: \(estimatedGas)")
+    if let sellToken = data.rawResponse.sellToken {
+      self.logger.info("  Sell Token: \(sellToken)")
     }
-    if let gasPrice = response.data.quote.gasPrice {
-      self.logger.info("  Gas Price: \(gasPrice)")
+    if let totalNetworkFee = data.rawResponse.totalNetworkFee {
+      self.logger.info("  Total Network Fee: \(totalNetworkFee)")
     }
-    if let cost = response.data.quote.cost {
-      self.logger.info("  Cost: \(cost)")
+    if let blockNumber = data.rawResponse.blockNumber {
+      self.logger.info("  Block Number: \(blockNumber)")
     }
-    if let liquidityAvailable = response.data.quote.liquidityAvailable {
+    if let liquidityAvailable = data.rawResponse.liquidityAvailable {
       self.logger.info("  Liquidity Available: \(liquidityAvailable)")
     }
-    if let minBuyAmount = response.data.quote.minBuyAmount {
+    if let minBuyAmount = data.rawResponse.minBuyAmount {
       self.logger.info("  Min Buy Amount: \(minBuyAmount)")
     }
 
     self.logger.info("  Transaction:")
-    self.logger.info("    To: \(response.data.quote.transaction.to)")
-    self.logger.info("    From: \(response.data.quote.transaction.from)")
-    self.logger.info("    Value: \(response.data.quote.transaction.value)")
-    self.logger.info("    Gas: \(response.data.quote.transaction.gas)")
+    self.logger.info("    To: \(data.rawResponse.transaction.to)")
+    self.logger.info("    From: \(data.rawResponse.transaction.from)")
+    self.logger.info("    Value: \(data.rawResponse.transaction.value)")
+    self.logger.info("    Gas: \(data.rawResponse.transaction.gas)")
 
-    if let issues = response.data.quote.issues {
+    if let issues = data.rawResponse.issues {
       self.logger.warning("  Issues:")
       if let allowance = issues.allowance {
         self.logger.warning("    Allowance: actual=\(allowance.actual), spender=\(allowance.spender)")

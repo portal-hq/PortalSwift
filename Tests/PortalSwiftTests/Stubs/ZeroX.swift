@@ -83,11 +83,20 @@ extension ZeroXPriceRequest {
 
 // MARK: - Sources Response
 
+extension ZeroXSourcesRawResponse {
+  static func stub(
+    sources: [String] = ["Uniswap", "Sushiswap", "Curve", "Balancer"],
+    zid: String = "0xcb8b525805920333079a1625"
+  ) -> Self {
+    ZeroXSourcesRawResponse(sources: sources, zid: zid)
+  }
+}
+
 extension ZeroXSourcesData {
   static func stub(
-    sources: [String] = ["Uniswap", "Sushiswap", "Curve", "Balancer"]
+    rawResponse: ZeroXSourcesRawResponse = .stub()
   ) -> Self {
-    ZeroXSourcesData(sources: sources)
+    ZeroXSourcesData(rawResponse: rawResponse)
   }
 }
 
@@ -202,39 +211,93 @@ extension ZeroXFees {
 
 // MARK: - Quote Response
 
-extension ZeroXQuoteData {
+extension ZeroXQuoteRawResponse {
   static func stub(
+    blockNumber: String? = "24179070",
     buyAmount: String = "3000000000",
+    buyToken: String? = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+    fees: ZeroXFees? = nil,
+    issues: ZeroXIssues? = nil,
+    liquidityAvailable: Bool? = true,
+    minBuyAmount: String? = "2970000000",
+    route: ZeroXRoute? = nil,
     sellAmount: String = "1000000000000000000",
-    price: String = "3000.00",
-    estimatedGas: String = "150000",
-    gasPrice: String = "50000000000",
-    cost: Double = 7.50,
-    liquidityAvailable: Bool = true,
-    minBuyAmount: String = "2970000000",
-    transaction: ZeroXTransaction = .stub(),
-    issues: ZeroXIssues? = nil
+    sellToken: String? = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    tokenMetadata: ZeroXTokenMetadata? = nil,
+    totalNetworkFee: String? = "50011696133192",
+    transaction: ZeroXTransaction = .stub()
   ) -> Self {
-    ZeroXQuoteData(
+    ZeroXQuoteRawResponse(
+      blockNumber: blockNumber,
       buyAmount: buyAmount,
-      sellAmount: sellAmount,
-      price: price,
-      estimatedGas: estimatedGas,
-      gasPrice: gasPrice,
-      cost: cost,
+      buyToken: buyToken,
+      fees: fees,
+      issues: issues,
       liquidityAvailable: liquidityAvailable,
       minBuyAmount: minBuyAmount,
-      transaction: transaction,
-      issues: issues
+      route: route,
+      sellAmount: sellAmount,
+      sellToken: sellToken,
+      tokenMetadata: tokenMetadata,
+      totalNetworkFee: totalNetworkFee,
+      transaction: transaction
     )
+  }
+}
+
+extension ZeroXRoute {
+  static func stub(
+    fills: [ZeroXFill]? = nil,
+    tokens: [ZeroXRouteToken]? = nil
+  ) -> Self {
+    ZeroXRoute(fills: fills, tokens: tokens)
+  }
+}
+
+extension ZeroXFill {
+  static func stub(
+    from: String = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+    to: String = "0x6b175474e89094c44da98b954eedeac495271d0f",
+    source: String = "Uniswap_V2",
+    proportionBps: String = "10000"
+  ) -> Self {
+    ZeroXFill(from: from, to: to, source: source, proportionBps: proportionBps)
+  }
+}
+
+extension ZeroXRouteToken {
+  static func stub(
+    address: String = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+    symbol: String = "USDC"
+  ) -> Self {
+    ZeroXRouteToken(address: address, symbol: symbol)
+  }
+}
+
+extension ZeroXTokenMetadata {
+  static func stub(
+    buyToken: ZeroXTokenTaxMetadata? = nil,
+    sellToken: ZeroXTokenTaxMetadata? = nil
+  ) -> Self {
+    ZeroXTokenMetadata(buyToken: buyToken, sellToken: sellToken)
+  }
+}
+
+extension ZeroXTokenTaxMetadata {
+  static func stub(
+    buyTaxBps: String? = "0",
+    sellTaxBps: String? = "0",
+    transferTaxBps: String? = "0"
+  ) -> Self {
+    ZeroXTokenTaxMetadata(buyTaxBps: buyTaxBps, sellTaxBps: sellTaxBps, transferTaxBps: transferTaxBps)
   }
 }
 
 extension ZeroXQuoteResponseData {
   static func stub(
-    quote: ZeroXQuoteData = .stub()
+    rawResponse: ZeroXQuoteRawResponse = .stub()
   ) -> Self {
-    ZeroXQuoteResponseData(quote: quote)
+    ZeroXQuoteResponseData(rawResponse: rawResponse)
   }
 }
 
@@ -248,37 +311,47 @@ extension ZeroXQuoteResponse {
 
 // MARK: - Price Response
 
-extension ZeroXPriceData {
+extension ZeroXPriceRawResponse {
   static func stub(
+    blockNumber: String? = "24179158",
     buyAmount: String = "3000000000",
+    buyToken: String? = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+    fees: ZeroXFees? = nil,
+    gas: String? = "379677",
+    gasPrice: String? = "132508222",
+    issues: ZeroXIssues? = nil,
+    liquidityAvailable: Bool? = true,
+    minBuyAmount: String? = "2970000000",
+    route: ZeroXRoute? = nil,
     sellAmount: String = "1000000000000000000",
-    price: String = "3000.00",
-    estimatedGas: String = "150000",
-    gasPrice: String = "50000000000",
-    liquidityAvailable: Bool = true,
-    minBuyAmount: String = "2970000000",
-    fees: ZeroXFees? = .stub(),
-    issues: ZeroXIssues? = nil
+    sellToken: String? = "0xdac17f958d2ee523a2206206994597c13d831ec7",
+    tokenMetadata: ZeroXTokenMetadata? = nil,
+    totalNetworkFee: String? = "50310324204294"
   ) -> Self {
-    ZeroXPriceData(
+    ZeroXPriceRawResponse(
+      blockNumber: blockNumber,
       buyAmount: buyAmount,
-      sellAmount: sellAmount,
-      price: price,
-      estimatedGas: estimatedGas,
+      buyToken: buyToken,
+      fees: fees,
+      gas: gas,
       gasPrice: gasPrice,
+      issues: issues,
       liquidityAvailable: liquidityAvailable,
       minBuyAmount: minBuyAmount,
-      fees: fees,
-      issues: issues
+      route: route,
+      sellAmount: sellAmount,
+      sellToken: sellToken,
+      tokenMetadata: tokenMetadata,
+      totalNetworkFee: totalNetworkFee
     )
   }
 }
 
 extension ZeroXPriceResponseData {
   static func stub(
-    price: ZeroXPriceData = .stub()
+    rawResponse: ZeroXPriceRawResponse = .stub()
   ) -> Self {
-    ZeroXPriceResponseData(price: price)
+    ZeroXPriceResponseData(rawResponse: rawResponse)
   }
 }
 
