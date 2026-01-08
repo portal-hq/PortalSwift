@@ -72,6 +72,7 @@ public struct ZeroXPriceRequest: Codable {
   /// Converts the request to a dictionary for the request body, excluding `chainId`.
   public func toRequestBody() -> [String: AnyCodable] {
     var body: [String: AnyCodable] = [
+      "chainId": AnyCodable(chainId),
       "buyToken": AnyCodable(buyToken),
       "sellToken": AnyCodable(sellToken),
       "sellAmount": AnyCodable(sellAmount)

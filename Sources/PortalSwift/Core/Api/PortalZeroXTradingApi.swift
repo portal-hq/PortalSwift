@@ -124,7 +124,6 @@ public class PortalZeroXTradingApi: PortalZeroXTradingApiProtocol {
     do {
       // Build request body including chainId
       var body = request.toRequestBody()
-      body["chainId"] = AnyCodable(request.chainId)
 
       // Merge zeroXApiKey if provided
       if let zeroXApiKey = zeroXApiKey {
@@ -170,7 +169,6 @@ public class PortalZeroXTradingApi: PortalZeroXTradingApiProtocol {
     do {
       // Build request body including chainId
       var body = request.toRequestBody()
-      body["chainId"] = AnyCodable(request.chainId)
 
       // Merge zeroXApiKey if provided
       if let zeroXApiKey = zeroXApiKey {
@@ -187,11 +185,6 @@ public class PortalZeroXTradingApi: PortalZeroXTradingApiProtocol {
   /*******************************************
    * Private functions
    *******************************************/
-
-  /// URL-encodes the chainId for use in URL paths.
-  private func encodeChainId(_ chainId: String) -> String {
-    return chainId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? chainId
-  }
 
   @discardableResult
   private func post<ResponseType>(
