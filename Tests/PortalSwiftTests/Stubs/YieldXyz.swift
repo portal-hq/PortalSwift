@@ -149,7 +149,7 @@ extension YieldXyzOpportunity {
     outputToken: YieldXyzToken = .stub(),
     token: YieldXyzToken = .stub(),
     rewardRate: YieldXyzRewardRate = .stub(),
-    statistics: YieldXyzStatistics? = .init(tvlUsd: "1000000", tvl: 1_000_000, uniqueUsers: 1000, averagePositionSizeUsd: 1000, averagePositionSize: 1),
+    statistics: YieldXyzStatistics? = .init(tvlUsd: "1000000", tvl: "1_000_000", uniqueUsers: 1000, averagePositionSizeUsd: "1000", averagePositionSize: "1"),
     status: YieldXyzStatus = .stub(),
     metadata: YieldXyzOpportunityMetadata = .stub(),
     mechanics: YieldXyzMechanics = .stub(),
