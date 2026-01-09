@@ -174,17 +174,17 @@ public enum YieldXyzSource: String, Codable {
 /// Statistics for a yield opportunity
 public struct YieldXyzStatistics: Codable {
   public let tvlUsd: String?
-  public let tvl: Double?
+  public let tvl: String?
   public let uniqueUsers: Int?
-  public let averagePositionSizeUsd: Double?
-  public let averagePositionSize: Double?
+  public let averagePositionSizeUsd: String?
+  public let averagePositionSize: String?
 
   public init(
     tvlUsd: String? = nil,
-    tvl: Double? = nil,
+    tvl: String? = nil,
     uniqueUsers: Int? = nil,
-    averagePositionSizeUsd: Double? = nil,
-    averagePositionSize: Double? = nil
+    averagePositionSizeUsd: String? = nil,
+    averagePositionSize: String? = nil
   ) {
     self.tvlUsd = tvlUsd
     self.tvl = tvl
