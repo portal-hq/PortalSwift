@@ -1335,7 +1335,7 @@ extension ZeroXTests {
 // MARK: - Request Model Tests
 
 extension ZeroXTests {
-  func test_zeroXQuoteRequest_toRequestBodyExcludesChainId() {
+  func test_zeroXQuoteRequest_toRequestBodyIncludesRequiredParams() {
     // given
     let request = ZeroXQuoteRequest.stub(chainId: "eip155:1")
 
@@ -1343,13 +1343,13 @@ extension ZeroXTests {
     let body = request.toRequestBody()
 
     // then
-    XCTAssertNil(body["chainId"])
+    XCTAssertNotNil(body["chainId"])
     XCTAssertNotNil(body["buyToken"])
     XCTAssertNotNil(body["sellToken"])
     XCTAssertNotNil(body["sellAmount"])
   }
 
-  func test_zeroXPriceRequest_toRequestBodyExcludesChainId() {
+  func test_zeroXPriceRequest_toRequestBodyIncludesRequiredParams() {
     // given
     let request = ZeroXPriceRequest.stub(chainId: "eip155:137")
 
@@ -1357,7 +1357,7 @@ extension ZeroXTests {
     let body = request.toRequestBody()
 
     // then
-    XCTAssertNil(body["chainId"])
+    XCTAssertNotNil(body["chainId"])
     XCTAssertNotNil(body["buyToken"])
     XCTAssertNotNil(body["sellToken"])
     XCTAssertNotNil(body["sellAmount"])
