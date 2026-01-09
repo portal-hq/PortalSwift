@@ -369,7 +369,7 @@ public class PortalMpc: PortalMpcProtocol {
 
   public func generate(withProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> [PortalNamespace: String?] {
     if self.version != "v6" {
-      throw MpcError.backupNoLongerSupported("[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = \"v6\"`.")
+      throw MpcError.generateNoLongerSupported("[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = \"v6\"`.")
     }
 
     guard !self.isWalletModificationInProgress else {
