@@ -12,7 +12,7 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
-## 7.0.0 - 2026-01-09
+## 6.6.0 - 2026-01-09
 - Added 0x integration
     - Added `portal.trading.zeroX.getSources`
     - Added `portal.trading.zeroX.getQuote`
