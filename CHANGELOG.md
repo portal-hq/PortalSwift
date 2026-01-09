@@ -12,6 +12,14 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
+## 7.0.0 - 2026-01-09
+- Added 0x integration
+    - Added `portal.trading.zeroX.getSources`
+    - Added `portal.trading.zeroX.getQuote`
+    - Added `portal.trading.zeroX.getPrice`
+- Minor update to Yield.xyz type.
+- Fixed an issue in `Portal.createWallet()` so it now throws a correct exception when using an unsupported version of MPC.
+
 ## 6.5.0 - 2025-12-18
 - Added optional `sponsorGas` parameter to `portal.sendAsset` and `portal.request` to control gas sponsorship per transaction in Account Abstraction clients.
 - Minor update to Yield.xyz type.
