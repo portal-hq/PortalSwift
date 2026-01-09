@@ -49,6 +49,17 @@ extension TradingTests {
     XCTAssertNotNil(trading.lifi)
   }
 
+  func test_init_initializesZeroXProperty() {
+    // given
+    let portalApi = PortalApi(apiKey: MockConstants.mockApiKey, requests: PortalRequestsMock())
+
+    // when
+    let trading = Trading(api: portalApi)
+
+    // then
+    XCTAssertNotNil(trading.zeroX)
+  }
+
   func test_init_lifiIsOfCorrectType() {
     // given
     let portalApi = PortalApi(apiKey: MockConstants.mockApiKey, requests: PortalRequestsMock())
@@ -58,6 +69,17 @@ extension TradingTests {
 
     // then
     XCTAssertTrue(trading.lifi is LifiProtocol)
+  }
+
+  func test_init_zeroXIsOfCorrectType() {
+    // given
+    let portalApi = PortalApi(apiKey: MockConstants.mockApiKey, requests: PortalRequestsMock())
+
+    // when
+    let trading = Trading(api: portalApi)
+
+    // then
+    XCTAssertTrue(trading.zeroX is ZeroXProtocol)
   }
 
   func test_init_withCustomApiKey() {
@@ -82,6 +104,7 @@ extension TradingTests {
     // then
     XCTAssertNotNil(trading)
     XCTAssertNotNil(trading.lifi)
+    XCTAssertNotNil(trading.zeroX)
   }
 
   func test_init_withCustomLifiApi() {
@@ -94,6 +117,18 @@ extension TradingTests {
 
     // then
     XCTAssertNotNil(trading.lifi)
+  }
+
+  func test_init_withCustomZeroXApi() {
+    // given
+    let zeroXApiMock = PortalZeroXTradingApiMock()
+    let mockApi = PortalApiMock(zeroX: zeroXApiMock)
+
+    // when
+    let trading = Trading(api: mockApi)
+
+    // then
+    XCTAssertNotNil(trading.zeroX)
   }
 }
 
@@ -108,12 +143,28 @@ extension TradingTests {
     XCTAssertNotNil(lifi)
   }
 
+  func test_zeroX_isAccessible() {
+    // given & when
+    let zeroX = tradingInstance.zeroX
+
+    // then
+    XCTAssertNotNil(zeroX)
+  }
+
   func test_lifi_isPublic() {
     // given & when
     let lifi = tradingInstance.lifi
 
     // then - if this compiles, the property is public
     XCTAssertNotNil(lifi)
+  }
+
+  func test_zeroX_isPublic() {
+    // given & when
+    let zeroX = tradingInstance.zeroX
+
+    // then - if this compiles, the property is public
+    XCTAssertNotNil(zeroX)
   }
 
   func test_lifi_canBeReassigned() {
@@ -127,6 +178,17 @@ extension TradingTests {
     XCTAssertTrue(tradingInstance.lifi as AnyObject === lifiMock as AnyObject)
   }
 
+  func test_zeroX_canBeReassigned() {
+    // given
+    let zeroXMock = ZeroXMock()
+
+    // when
+    tradingInstance.zeroX = zeroXMock
+
+    // then
+    XCTAssertTrue(tradingInstance.zeroX as AnyObject === zeroXMock as AnyObject)
+  }
+
   func test_lifi_multipleCalls_returnSameInstance() {
     // given
     var instances: [LifiProtocol] = []
@@ -134,6 +196,22 @@ extension TradingTests {
     // when
     for _ in 0 ..< 10 {
       instances.append(tradingInstance.lifi)
+    }
+
+    // then - all should be the same instance
+    let firstInstance = instances[0]
+    for instance in instances {
+      XCTAssertTrue(instance as AnyObject === firstInstance as AnyObject)
+    }
+  }
+
+  func test_zeroX_multipleCalls_returnSameInstance() {
+    // given
+    var instances: [ZeroXProtocol] = []
+
+    // when
+    for _ in 0 ..< 10 {
+      instances.append(tradingInstance.zeroX)
     }
 
     // then - all should be the same instance
@@ -250,6 +328,149 @@ extension TradingTests {
     XCTAssertNotNil(response)
     XCTAssertNotNil(response.data)
     XCTAssertEqual(lifiApiMock.getRouteStepCalls, 1)
+  }
+}
+
+// MARK: - Integration Tests with ZeroX
+
+extension TradingTests {
+  func test_zeroX_canCallGetSources() async throws {
+    // given
+    let mockResponse = ZeroXSourcesResponse.stub()
+    let zeroXApiMock = PortalZeroXTradingApiMock()
+    zeroXApiMock.getSourcesReturnValue = mockResponse
+    let mockApi = PortalApiMock(zeroX: zeroXApiMock)
+    let trading = Trading(api: mockApi)
+
+    // when
+    let response = try await trading.zeroX.getSources(chainId: "eip155:1", zeroXApiKey: nil)
+
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertNotNil(response.data)
+    XCTAssertEqual(zeroXApiMock.getSourcesCalls, 1)
+  }
+
+  func test_zeroX_canCallGetQuote() async throws {
+    // given
+    let mockResponse = ZeroXQuoteResponse.stub()
+    let zeroXApiMock = PortalZeroXTradingApiMock()
+    zeroXApiMock.getQuoteReturnValue = mockResponse
+    let mockApi = PortalApiMock(zeroX: zeroXApiMock)
+    let trading = Trading(api: mockApi)
+
+    let request = ZeroXQuoteRequest.stub()
+
+    // when
+    let response = try await trading.zeroX.getQuote(request: request, zeroXApiKey: nil)
+
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertNotNil(response.data)
+    XCTAssertEqual(zeroXApiMock.getQuoteCalls, 1)
+  }
+
+  func test_zeroX_canCallGetPrice() async throws {
+    // given
+    let mockResponse = ZeroXPriceResponse.stub()
+    let zeroXApiMock = PortalZeroXTradingApiMock()
+    zeroXApiMock.getPriceReturnValue = mockResponse
+    let mockApi = PortalApiMock(zeroX: zeroXApiMock)
+    let trading = Trading(api: mockApi)
+
+    let request = ZeroXPriceRequest.stub()
+
+    // when
+    let response = try await trading.zeroX.getPrice(request: request, zeroXApiKey: nil)
+
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertNotNil(response.data)
+    XCTAssertEqual(zeroXApiMock.getPriceCalls, 1)
+  }
+
+  func test_zeroX_withMock_canCallGetSources() async throws {
+    // given
+    let mockResponse = ZeroXSourcesResponse.stub()
+    let zeroXMock = ZeroXMock()
+    zeroXMock.getSourcesReturnValue = mockResponse
+    let trading = Trading(api: api)
+    trading.zeroX = zeroXMock
+
+    // when
+    let response = try await trading.zeroX.getSources(chainId: "eip155:1", zeroXApiKey: nil)
+
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertEqual(zeroXMock.getSourcesCalls, 1)
+  }
+
+  func test_zeroX_withMock_canCallGetQuote() async throws {
+    // given
+    let mockResponse = ZeroXQuoteResponse.stub()
+    let zeroXMock = ZeroXMock()
+    zeroXMock.getQuoteReturnValue = mockResponse
+    let trading = Trading(api: api)
+    trading.zeroX = zeroXMock
+
+    let request = ZeroXQuoteRequest.stub()
+
+    // when
+    let response = try await trading.zeroX.getQuote(request: request, zeroXApiKey: nil)
+
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertEqual(zeroXMock.getQuoteCalls, 1)
+  }
+
+  func test_zeroX_withMock_canCallGetPrice() async throws {
+    // given
+    let mockResponse = ZeroXPriceResponse.stub()
+    let zeroXMock = ZeroXMock()
+    zeroXMock.getPriceReturnValue = mockResponse
+    let trading = Trading(api: api)
+    trading.zeroX = zeroXMock
+
+    let request = ZeroXPriceRequest.stub()
+
+    // when
+    let response = try await trading.zeroX.getPrice(request: request, zeroXApiKey: nil)
+
+    // then
+    XCTAssertNotNil(response)
+    XCTAssertEqual(zeroXMock.getPriceCalls, 1)
+  }
+
+  func test_zeroX_withMock_tracksMultipleCalls() async throws {
+    // given
+    let zeroXMock = ZeroXMock()
+    let trading = Trading(api: api)
+    trading.zeroX = zeroXMock
+
+    // when
+    _ = try await trading.zeroX.getSources(chainId: "eip155:1", zeroXApiKey: nil)
+    _ = try await trading.zeroX.getSources(chainId: "eip155:137", zeroXApiKey: nil)
+    _ = try await trading.zeroX.getSources(chainId: "eip155:42161", zeroXApiKey: nil)
+
+    // then
+    XCTAssertEqual(zeroXMock.getSourcesCalls, 3)
+  }
+
+  func test_zeroX_withMock_tracksDifferentMethodCalls() async throws {
+    // given
+    let zeroXMock = ZeroXMock()
+    let trading = Trading(api: api)
+    trading.zeroX = zeroXMock
+
+    // when
+    _ = try await trading.zeroX.getSources(chainId: "eip155:1", zeroXApiKey: nil)
+    _ = try await trading.zeroX.getQuote(request: ZeroXQuoteRequest.stub(), zeroXApiKey: nil)
+    _ = try await trading.zeroX.getPrice(request: ZeroXPriceRequest.stub(), zeroXApiKey: nil)
+
+    // then
+    XCTAssertEqual(zeroXMock.getSourcesCalls, 1)
+    XCTAssertEqual(zeroXMock.getQuoteCalls, 1)
+    XCTAssertEqual(zeroXMock.getPriceCalls, 1)
   }
 }
 
