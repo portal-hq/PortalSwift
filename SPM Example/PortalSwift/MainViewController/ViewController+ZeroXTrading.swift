@@ -10,11 +10,11 @@ import Foundation
 import PortalSwift
 import UIKit
 
-// MARK: - ZeroX Trading Extension
+// MARK: - 0x Trading Extension
 
 @available(iOS 16.0, *)
 extension ViewController {
-  // MARK: - ZeroX Complete Trading Flow
+  // MARK: - 0x Complete Trading Flow
 
   @IBAction func handleZeroXTrading() {
     do {
@@ -126,7 +126,7 @@ extension ViewController {
     }
   }
 
-  // MARK: - ZeroX Get Sources Only
+  // MARK: - 0x Get Sources Only
 
   @IBAction func handleZeroXGetSources() {
     do {
@@ -182,7 +182,7 @@ extension ViewController {
     }
   }
 
-  // MARK: - ZeroX Get Quote Only
+  // MARK: - 0x Get Quote Only
 
   @IBAction func handleZeroXGetQuote() {
     do {
@@ -247,7 +247,7 @@ extension ViewController {
     }
   }
 
-  // MARK: - ZeroX Price Check
+  // MARK: - 0x Price Check
 
   @IBAction func handleZeroXPriceCheck() {
     do {
@@ -313,9 +313,9 @@ extension ViewController {
     }
   }
 
-  // MARK: - ZeroX Helper Functions
+  // MARK: - 0x Helper Functions
 
-  /// Logs ZeroX price response details
+  /// Logs 0x price response details
   private func logZeroXPriceResponse(_ response: ZeroXPriceResponse) {
     guard let data = response.data else {
       self.logger.warning("ViewController - ⚠️ No data in price response")
@@ -373,7 +373,7 @@ extension ViewController {
     }
   }
 
-  /// Logs ZeroX quote response details
+  /// Logs 0x quote response details
   private func logZeroXQuoteResponse(_ response: ZeroXQuoteResponse) {
     guard let data = response.data else {
       self.logger.warning("ViewController - ⚠️ No data in quote response")

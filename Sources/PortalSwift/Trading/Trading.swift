@@ -15,7 +15,7 @@ public class Trading {
   /// Access to Lifi trading provider functionality.
   public var lifi: LifiProtocol
 
-  /// Access to ZeroX trading provider functionality.
+  /// Access to 0X trading provider functionality.
   public var zeroX: ZeroXProtocol
 
   /// Create an instance of Trading.

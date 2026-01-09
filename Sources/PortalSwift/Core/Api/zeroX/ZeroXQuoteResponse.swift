@@ -8,7 +8,7 @@
 
 import Foundation
 
-/// Response model containing a swap quote from ZeroX.
+/// Response model containing a swap quote from 0x.
 public struct ZeroXQuoteResponse: Codable {
   /// The response data containing the quote details.
   public let data: ZeroXQuoteResponseData?
@@ -23,7 +23,7 @@ public struct ZeroXQuoteResponse: Codable {
 
 /// Data wrapper for the quote response.
 public struct ZeroXQuoteResponseData: Codable {
-  /// The raw response from ZeroX containing quote details.
+  /// The raw response from 0x containing quote details.
   public let rawResponse: ZeroXQuoteRawResponse
 
   public init(rawResponse: ZeroXQuoteRawResponse) {
@@ -31,7 +31,7 @@ public struct ZeroXQuoteResponseData: Codable {
   }
 }
 
-/// Raw response model from ZeroX containing detailed quote information.
+/// Raw response model from 0x containing detailed quote information.
 public struct ZeroXQuoteRawResponse: Codable {
   /// The block number at which the quote was generated (optional).
   public let blockNumber: String?
@@ -91,7 +91,7 @@ public struct ZeroXQuoteRawResponse: Codable {
   }
 }
 
-/// Transaction data from ZeroX quote.
+/// Transaction data from 0x quote.
 public struct ZeroXTransaction: Codable {
   /// The transaction calldata.
   public let data: String

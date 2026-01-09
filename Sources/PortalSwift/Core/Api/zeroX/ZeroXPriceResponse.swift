@@ -8,7 +8,7 @@
 
 import Foundation
 
-/// Response model containing a price quote from ZeroX (without transaction data).
+/// Response model containing a price quote from 0x (without transaction data).
 public struct ZeroXPriceResponse: Codable {
   /// The response data containing the price details.
   public let data: ZeroXPriceResponseData?
@@ -23,7 +23,7 @@ public struct ZeroXPriceResponse: Codable {
 
 /// Data wrapper for the price response.
 public struct ZeroXPriceResponseData: Codable {
-  /// The raw response from ZeroX containing price details.
+  /// The raw response from 0x containing price details.
   public let rawResponse: ZeroXPriceRawResponse
 
   public init(rawResponse: ZeroXPriceRawResponse) {
@@ -31,7 +31,7 @@ public struct ZeroXPriceResponseData: Codable {
   }
 }
 
-/// Raw response model from ZeroX containing detailed price information.
+/// Raw response model from 0x containing detailed price information.
 public struct ZeroXPriceRawResponse: Codable {
   /// The block number at which the price was generated (optional).
   public let blockNumber: String?

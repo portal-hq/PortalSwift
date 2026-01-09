@@ -8,7 +8,7 @@
 
 import Foundation
 
-/// Response model containing available swap sources from ZeroX.
+/// Response model containing available swap sources from 0x.
 public struct ZeroXSourcesResponse: Codable {
   /// The response data containing the raw response with sources.
   public let data: ZeroXSourcesData?
@@ -23,7 +23,7 @@ public struct ZeroXSourcesResponse: Codable {
 
 /// Data model containing the raw response with sources.
 public struct ZeroXSourcesData: Codable {
-  /// The raw response from ZeroX containing sources and zid.
+  /// The raw response from 0x containing sources and zid.
   public let rawResponse: ZeroXSourcesRawResponse
 
   public init(rawResponse: ZeroXSourcesRawResponse) {
@@ -31,11 +31,11 @@ public struct ZeroXSourcesData: Codable {
   }
 }
 
-/// Raw response model from ZeroX containing the list of sources and zid.
+/// Raw response model from 0x containing the list of sources and zid.
 public struct ZeroXSourcesRawResponse: Codable {
   /// List of available swap source names (e.g., ["Uniswap", "Sushiswap", "Curve"]).
   public let sources: [String]
-  /// ZeroX identifier (zid) for the response.
+  /// 0x identifier (zid) for the response.
   public let zid: String
 
   public init(sources: [String], zid: String) {

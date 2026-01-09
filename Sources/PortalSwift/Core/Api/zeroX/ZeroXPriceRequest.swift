@@ -9,7 +9,7 @@
 import AnyCodable
 import Foundation
 
-/// Request model for getting a price quote from ZeroX (without transaction data).
+/// Request model for getting a price quote from 0x (without transaction data).
 /// Note: `chainId` is used for the URL path only, not included in the request body.
 public struct ZeroXPriceRequest: Codable {
   /// The chain ID for the price check (used in URL path, e.g., "eip155:1")

@@ -10,13 +10,13 @@ import Foundation
 
 // MARK: - Fee Types
 
-/// Fee breakdown for a ZeroX swap.
+/// Fee breakdown for a 0x swap.
 public struct ZeroXFees: Codable {
   /// The integrator fee (optional).
   public let integratorFee: ZeroXFeeDetail?
   /// The integrator fees (plural, optional).
   public let integratorFees: [ZeroXFeeDetail]?
-  /// The ZeroX protocol fee (optional).
+  /// The 0x protocol fee (optional).
   public let zeroExFee: ZeroXZeroExFeeDetail?
   /// The gas fee (optional).
   public let gasFee: ZeroXFeeDetail?
@@ -50,7 +50,7 @@ public struct ZeroXFeeDetail: Codable {
   }
 }
 
-/// ZeroX protocol fee detail.
+/// 0x protocol fee detail.
 public struct ZeroXZeroExFeeDetail: Codable {
   /// The billing type for the fee (optional).
   public let billingType: String?
@@ -126,7 +126,7 @@ public struct ZeroXBalanceIssue: Codable {
 
 // MARK: - Route Types
 
-/// Route information for a ZeroX swap.
+/// Route information for a 0x swap.
 public struct ZeroXRoute: Codable {
   /// The fills in the route.
   public let fills: [ZeroXFill]?

@@ -123,7 +123,7 @@ public class PortalApi: PortalApiProtocol {
     requests: self.requests
   )
 
-  /// Access to ZeroX trading integration functionality.
+  /// Access to 0x trading integration functionality.
   public lazy var zeroX: PortalZeroXTradingApiProtocol = PortalZeroXTradingApi(
     apiKey: self.apiKey,
     apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
