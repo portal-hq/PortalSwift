@@ -161,6 +161,20 @@ final class HypernativeTests: XCTestCase {
     XCTAssertEqual(apiMock.lastScanAddressesRequest?.addresses.count, 2)
   }
   
+  func testScanAddresses_apiError_throwsError() async {
+    // Given
+    apiMock.scanAddressesError = NSError(domain: "Test", code: 429)
+    let request = ScanAddressesRequest.stub()
+    
+    // When/Then
+    do {
+      _ = try await sut.scanAddresses(request: request)
+      XCTFail("Expected error to be thrown")
+    } catch {
+      XCTAssertEqual((error as NSError).code, 429)
+    }
+  }
+  
   func testScanAddresses_singleAddress_returnsResponse() async throws {
     // Given
     let expectedResponse = ScanAddressesResponse.stub()
@@ -201,6 +215,20 @@ final class HypernativeTests: XCTestCase {
     // Then
     XCTAssertEqual(apiMock.scanNftsCallCount, 1)
     XCTAssertNotNil(response.data)
+  }
+  
+  func testScanNfts_apiError_throwsError() async {
+    // Given
+    apiMock.scanNftsError = NSError(domain: "Test", code: 502)
+    let request = ScanNftsRequest.stub()
+    
+    // When/Then
+    do {
+      _ = try await sut.scanNfts(request: request)
+      XCTFail("Expected error to be thrown")
+    } catch {
+      XCTAssertEqual((error as NSError).code, 502)
+    }
   }
   
   func testScanNfts_multipleNfts_returnsResponse() async throws {
@@ -265,6 +293,20 @@ final class HypernativeTests: XCTestCase {
     // Then
     XCTAssertEqual(apiMock.scanURLCallCount, 1)
     XCTAssertNotNil(response.data)
+  }
+  
+  func testScanURL_apiError_throwsError() async {
+    // Given
+    apiMock.scanURLError = NSError(domain: "Test", code: 503)
+    let request = ScanUrlRequest.stub()
+    
+    // When/Then
+    do {
+      _ = try await sut.scanURL(request: request)
+      XCTFail("Expected error to be thrown")
+    } catch {
+      XCTAssertEqual((error as NSError).code, 503)
+    }
   }
   
   func testScanURL_maliciousUrl_returnsTrue() async throws {

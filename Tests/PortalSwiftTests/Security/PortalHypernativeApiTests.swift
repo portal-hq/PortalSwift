@@ -147,6 +147,32 @@ final class PortalHypernativeApiTests: XCTestCase {
     XCTAssertEqual(portalRequest?.method, .post)
   }
   
+  func testScanEip712Tx_includesBearerToken() async throws {
+    // Given
+    try setReturnValue(ScanEip712Response(data: nil, error: nil))
+    let request = ScanEip712Request.stub()
+    
+    // When
+    _ = try await sut.scanEip712Tx(request: request)
+    
+    // Then
+    let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
+    XCTAssertEqual(portalRequest?.headers["Authorization"], "Bearer \(testApiKey)")
+  }
+  
+  func testScanEip712Tx_serializesRequestPayload() async throws {
+    // Given
+    try setReturnValue(ScanEip712Response(data: nil, error: nil))
+    let request = ScanEip712Request.stub()
+    
+    // When
+    _ = try await sut.scanEip712Tx(request: request)
+    
+    // Then
+    let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
+    XCTAssertNotNil(portalRequest?.payload)
+  }
+  
   // MARK: - scanSolanaTx Tests
   
   func testScanSolanaTx_buildsCorrectUrl() async throws {
@@ -161,6 +187,45 @@ final class PortalHypernativeApiTests: XCTestCase {
     let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
     let expectedUrl = "https://api.portalhq.io/api/v3/clients/me/integrations/hypernative/solana/scan"
     XCTAssertEqual(portalRequest?.url.absoluteString, expectedUrl)
+  }
+  
+  func testScanSolanaTx_usesPostMethod() async throws {
+    // Given
+    try setReturnValue(ScanSolanaResponse(data: nil, error: nil))
+    let request = ScanSolanaRequest.stub()
+    
+    // When
+    _ = try await sut.scanSolanaTx(request: request)
+    
+    // Then
+    let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
+    XCTAssertEqual(portalRequest?.method, .post)
+  }
+  
+  func testScanSolanaTx_includesBearerToken() async throws {
+    // Given
+    try setReturnValue(ScanSolanaResponse(data: nil, error: nil))
+    let request = ScanSolanaRequest.stub()
+    
+    // When
+    _ = try await sut.scanSolanaTx(request: request)
+    
+    // Then
+    let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
+    XCTAssertEqual(portalRequest?.headers["Authorization"], "Bearer \(testApiKey)")
+  }
+  
+  func testScanSolanaTx_serializesRequestPayload() async throws {
+    // Given
+    try setReturnValue(ScanSolanaResponse(data: nil, error: nil))
+    let request = ScanSolanaRequest.stub()
+    
+    // When
+    _ = try await sut.scanSolanaTx(request: request)
+    
+    // Then
+    let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
+    XCTAssertNotNil(portalRequest?.payload)
   }
   
   // MARK: - scanAddresses Tests
@@ -179,6 +244,45 @@ final class PortalHypernativeApiTests: XCTestCase {
     XCTAssertEqual(portalRequest?.url.absoluteString, expectedUrl)
   }
   
+  func testScanAddresses_usesPostMethod() async throws {
+    // Given
+    try setReturnValue(ScanAddressesResponse(data: nil, error: nil))
+    let request = ScanAddressesRequest.stub()
+    
+    // When
+    _ = try await sut.scanAddresses(request: request)
+    
+    // Then
+    let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
+    XCTAssertEqual(portalRequest?.method, .post)
+  }
+  
+  func testScanAddresses_includesBearerToken() async throws {
+    // Given
+    try setReturnValue(ScanAddressesResponse(data: nil, error: nil))
+    let request = ScanAddressesRequest.stub()
+    
+    // When
+    _ = try await sut.scanAddresses(request: request)
+    
+    // Then
+    let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
+    XCTAssertEqual(portalRequest?.headers["Authorization"], "Bearer \(testApiKey)")
+  }
+  
+  func testScanAddresses_serializesRequestPayload() async throws {
+    // Given
+    try setReturnValue(ScanAddressesResponse(data: nil, error: nil))
+    let request = ScanAddressesRequest.stub()
+    
+    // When
+    _ = try await sut.scanAddresses(request: request)
+    
+    // Then
+    let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
+    XCTAssertNotNil(portalRequest?.payload)
+  }
+  
   // MARK: - scanNfts Tests
   
   func testScanNfts_buildsCorrectUrl() async throws {
@@ -193,6 +297,45 @@ final class PortalHypernativeApiTests: XCTestCase {
     let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
     let expectedUrl = "https://api.portalhq.io/api/v3/clients/me/integrations/hypernative/nfts/scan"
     XCTAssertEqual(portalRequest?.url.absoluteString, expectedUrl)
+  }
+  
+  func testScanNfts_usesPostMethod() async throws {
+    // Given
+    try setReturnValue(ScanNftsResponse(data: nil, error: nil))
+    let request = ScanNftsRequest.stub()
+    
+    // When
+    _ = try await sut.scanNfts(request: request)
+    
+    // Then
+    let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
+    XCTAssertEqual(portalRequest?.method, .post)
+  }
+  
+  func testScanNfts_includesBearerToken() async throws {
+    // Given
+    try setReturnValue(ScanNftsResponse(data: nil, error: nil))
+    let request = ScanNftsRequest.stub()
+    
+    // When
+    _ = try await sut.scanNfts(request: request)
+    
+    // Then
+    let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
+    XCTAssertEqual(portalRequest?.headers["Authorization"], "Bearer \(testApiKey)")
+  }
+  
+  func testScanNfts_serializesRequestPayload() async throws {
+    // Given
+    try setReturnValue(ScanNftsResponse(data: nil, error: nil))
+    let request = ScanNftsRequest.stub()
+    
+    // When
+    _ = try await sut.scanNfts(request: request)
+    
+    // Then
+    let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
+    XCTAssertNotNil(portalRequest?.payload)
   }
   
   // MARK: - scanTokens Tests
@@ -211,6 +354,45 @@ final class PortalHypernativeApiTests: XCTestCase {
     XCTAssertEqual(portalRequest?.url.absoluteString, expectedUrl)
   }
   
+  func testScanTokens_usesPostMethod() async throws {
+    // Given
+    try setReturnValue(ScanTokensResponse(data: nil, error: nil))
+    let request = ScanTokensRequest.stub()
+    
+    // When
+    _ = try await sut.scanTokens(request: request)
+    
+    // Then
+    let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
+    XCTAssertEqual(portalRequest?.method, .post)
+  }
+  
+  func testScanTokens_includesBearerToken() async throws {
+    // Given
+    try setReturnValue(ScanTokensResponse(data: nil, error: nil))
+    let request = ScanTokensRequest.stub()
+    
+    // When
+    _ = try await sut.scanTokens(request: request)
+    
+    // Then
+    let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
+    XCTAssertEqual(portalRequest?.headers["Authorization"], "Bearer \(testApiKey)")
+  }
+  
+  func testScanTokens_serializesRequestPayload() async throws {
+    // Given
+    try setReturnValue(ScanTokensResponse(data: nil, error: nil))
+    let request = ScanTokensRequest.stub()
+    
+    // When
+    _ = try await sut.scanTokens(request: request)
+    
+    // Then
+    let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
+    XCTAssertNotNil(portalRequest?.payload)
+  }
+  
   // MARK: - scanURL Tests
   
   func testScanURL_buildsCorrectUrl() async throws {
@@ -225,6 +407,45 @@ final class PortalHypernativeApiTests: XCTestCase {
     let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
     let expectedUrl = "https://api.portalhq.io/api/v3/clients/me/integrations/hypernative/url/scan"
     XCTAssertEqual(portalRequest?.url.absoluteString, expectedUrl)
+  }
+  
+  func testScanURL_usesPostMethod() async throws {
+    // Given
+    try setReturnValue(ScanUrlResponse(data: nil, error: nil))
+    let request = ScanUrlRequest.stub()
+    
+    // When
+    _ = try await sut.scanURL(request: request)
+    
+    // Then
+    let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
+    XCTAssertEqual(portalRequest?.method, .post)
+  }
+  
+  func testScanURL_includesBearerToken() async throws {
+    // Given
+    try setReturnValue(ScanUrlResponse(data: nil, error: nil))
+    let request = ScanUrlRequest.stub()
+    
+    // When
+    _ = try await sut.scanURL(request: request)
+    
+    // Then
+    let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
+    XCTAssertEqual(portalRequest?.headers["Authorization"], "Bearer \(testApiKey)")
+  }
+  
+  func testScanURL_serializesRequestPayload() async throws {
+    // Given
+    try setReturnValue(ScanUrlResponse(data: nil, error: nil))
+    let request = ScanUrlRequest.stub()
+    
+    // When
+    _ = try await sut.scanURL(request: request)
+    
+    // Then
+    let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
+    XCTAssertNotNil(portalRequest?.payload)
   }
   
   // MARK: - Error Handling Tests
