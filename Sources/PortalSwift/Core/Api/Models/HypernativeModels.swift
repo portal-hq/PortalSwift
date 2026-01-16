@@ -9,8 +9,8 @@ import Foundation
 
 // MARK: - Request Models
 
-/// Request to scan an EIP-155 transaction for security risks
-public struct ScanEip155Request: Codable {
+/// Request to scan an EVM transaction for security risks
+public struct ScanEVMRequest: Codable {
   public let transaction: HypernativeTransactionObject
   public let url: String?
   public let blockNumber: Int?
@@ -124,17 +124,17 @@ public struct ScanUrlRequest: Codable {
 
 // MARK: - Response Models
 
-/// Response from EIP-155 transaction scan
-public struct ScanEip155Response: Codable {
-  public let data: ScanEip155Data?
+/// Response from EVM transaction scan
+public struct ScanEVMResponse: Codable {
+  public let data: ScanEVMData?
   public let error: String?
 }
 
-public struct ScanEip155Data: Codable {
-  public let rawResponse: ScanEip155RawResponse
+public struct ScanEVMData: Codable {
+  public let rawResponse: ScanEVMRawResponse
 }
 
-public struct ScanEip155RawResponse: Codable {
+public struct ScanEVMRawResponse: Codable {
   public let success: Bool
   public let data: TransactionRiskData?
   public let error: String?

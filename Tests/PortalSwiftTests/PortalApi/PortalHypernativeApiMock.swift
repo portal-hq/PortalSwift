@@ -12,7 +12,7 @@ final class PortalHypernativeApiMock: PortalHypernativeApiProtocol {
   
   // MARK: - Configurable Return Values
   
-  var scanEip155TxReturnValue: ScanEip155Response?
+  var scanEVMTxReturnValue: ScanEVMResponse?
   var scanEip712TxReturnValue: ScanEip712Response?
   var scanSolanaTxReturnValue: ScanSolanaResponse?
   var scanAddressesReturnValue: ScanAddressesResponse?
@@ -22,7 +22,7 @@ final class PortalHypernativeApiMock: PortalHypernativeApiProtocol {
   
   // MARK: - Error Simulation
   
-  var scanEip155TxError: Error?
+  var scanEVMTxError: Error?
   var scanEip712TxError: Error?
   var scanSolanaTxError: Error?
   var scanAddressesError: Error?
@@ -32,7 +32,7 @@ final class PortalHypernativeApiMock: PortalHypernativeApiProtocol {
   
   // MARK: - Call Tracking
   
-  var scanEip155TxCallCount = 0
+  var scanEVMTxCallCount = 0
   var scanEip712TxCallCount = 0
   var scanSolanaTxCallCount = 0
   var scanAddressesCallCount = 0
@@ -42,7 +42,7 @@ final class PortalHypernativeApiMock: PortalHypernativeApiProtocol {
   
   // MARK: - Request Capture
   
-  var lastScanEip155Request: ScanEip155Request?
+  var lastScanEVMRequest: ScanEVMRequest?
   var lastScanEip712Request: ScanEip712Request?
   var lastScanSolanaRequest: ScanSolanaRequest?
   var lastScanAddressesRequest: ScanAddressesRequest?
@@ -52,13 +52,13 @@ final class PortalHypernativeApiMock: PortalHypernativeApiProtocol {
   
   // MARK: - Protocol Implementation
   
-  func scanEip155Tx(request: ScanEip155Request) async throws -> ScanEip155Response {
-    scanEip155TxCallCount += 1
-    lastScanEip155Request = request
-    if let error = scanEip155TxError {
+  func scanEVMTx(request: ScanEVMRequest) async throws -> ScanEVMResponse {
+    scanEVMTxCallCount += 1
+    lastScanEVMRequest = request
+    if let error = scanEVMTxError {
       throw error
     }
-    return scanEip155TxReturnValue ?? ScanEip155Response(data: nil, error: nil)
+    return scanEVMTxReturnValue ?? ScanEVMResponse(data: nil, error: nil)
   }
   
   func scanEip712Tx(request: ScanEip712Request) async throws -> ScanEip712Response {
@@ -118,7 +118,7 @@ final class PortalHypernativeApiMock: PortalHypernativeApiProtocol {
   // MARK: - Reset
   
   func reset() {
-    scanEip155TxCallCount = 0
+    scanEVMTxCallCount = 0
     scanEip712TxCallCount = 0
     scanSolanaTxCallCount = 0
     scanAddressesCallCount = 0
@@ -126,7 +126,7 @@ final class PortalHypernativeApiMock: PortalHypernativeApiProtocol {
     scanTokensCallCount = 0
     scanURLCallCount = 0
     
-    lastScanEip155Request = nil
+    lastScanEVMRequest = nil
     lastScanEip712Request = nil
     lastScanSolanaRequest = nil
     lastScanAddressesRequest = nil
@@ -134,7 +134,7 @@ final class PortalHypernativeApiMock: PortalHypernativeApiProtocol {
     lastScanTokensRequest = nil
     lastScanUrlRequest = nil
     
-    scanEip155TxReturnValue = nil
+    scanEVMTxReturnValue = nil
     scanEip712TxReturnValue = nil
     scanSolanaTxReturnValue = nil
     scanAddressesReturnValue = nil
@@ -142,7 +142,7 @@ final class PortalHypernativeApiMock: PortalHypernativeApiProtocol {
     scanTokensReturnValue = nil
     scanURLReturnValue = nil
     
-    scanEip155TxError = nil
+    scanEVMTxError = nil
     scanEip712TxError = nil
     scanSolanaTxError = nil
     scanAddressesError = nil

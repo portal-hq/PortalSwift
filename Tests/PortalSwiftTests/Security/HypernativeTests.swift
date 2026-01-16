@@ -33,53 +33,53 @@ final class HypernativeTests: XCTestCase {
     XCTAssertNotNil(sut)
   }
   
-  // MARK: - scanEip155Tx Tests
+  // MARK: - scanEVMTx Tests
   
-  func testScanEip155Tx_success_returnsResponse() async throws {
+  func testScanEVMTx_success_returnsResponse() async throws {
     // Given
-    let expectedResponse = ScanEip155Response.stub()
-    apiMock.scanEip155TxReturnValue = expectedResponse
-    let request = ScanEip155Request.stub()
+    let expectedResponse = ScanEVMResponse.stub()
+    apiMock.scanEVMTxReturnValue = expectedResponse
+    let request = ScanEVMRequest.stub()
     
     // When
-    let response = try await sut.scanEip155Tx(request: request)
+    let response = try await sut.scanEVMTx(request: request)
     
     // Then
-    XCTAssertEqual(apiMock.scanEip155TxCallCount, 1)
-    XCTAssertNotNil(apiMock.lastScanEip155Request)
-    XCTAssertEqual(apiMock.lastScanEip155Request?.transaction.chain, "eip155:1")
+    XCTAssertEqual(apiMock.scanEVMTxCallCount, 1)
+    XCTAssertNotNil(apiMock.lastScanEVMRequest)
+    XCTAssertEqual(apiMock.lastScanEVMRequest?.transaction.chain, "eip155:1")
     XCTAssertNotNil(response.data)
   }
   
-  func testScanEip155Tx_apiError_throwsError() async {
+  func testScanEVMTx_apiError_throwsError() async {
     // Given
     let expectedError = NSError(domain: "Test", code: 500, userInfo: [NSLocalizedDescriptionKey: "Server Error"])
-    apiMock.scanEip155TxError = expectedError
-    let request = ScanEip155Request.stub()
+    apiMock.scanEVMTxError = expectedError
+    let request = ScanEVMRequest.stub()
     
     // When/Then
     do {
-      _ = try await sut.scanEip155Tx(request: request)
+      _ = try await sut.scanEVMTx(request: request)
       XCTFail("Expected error to be thrown")
     } catch {
       XCTAssertEqual((error as NSError).code, 500)
     }
   }
   
-  func testScanEip155Tx_denyRecommendation_returnsDenyResponse() async throws {
+  func testScanEVMTx_denyRecommendation_returnsDenyResponse() async throws {
     // Given
-    let expectedResponse = ScanEip155Response.stub(
-      data: ScanEip155Data.stub(
-        rawResponse: ScanEip155RawResponse.stub(
+    let expectedResponse = ScanEVMResponse.stub(
+      data: ScanEVMData.stub(
+        rawResponse: ScanEVMRawResponse.stub(
           data: TransactionRiskData.stub(recommendation: .deny)
         )
       )
     )
-    apiMock.scanEip155TxReturnValue = expectedResponse
-    let request = ScanEip155Request.stub()
+    apiMock.scanEVMTxReturnValue = expectedResponse
+    let request = ScanEVMRequest.stub()
     
     // When
-    let response = try await sut.scanEip155Tx(request: request)
+    let response = try await sut.scanEVMTx(request: request)
     
     // Then
     XCTAssertEqual(response.data?.rawResponse.data?.recommendation, .deny)
@@ -303,16 +303,16 @@ final class HypernativeTests: XCTestCase {
   
   func testConcurrentCalls_multipleSimultaneousRequests_allSucceed() async throws {
     // Given
-    let eip155Response = ScanEip155Response.stub()
+    let evmResponse = ScanEVMResponse.stub()
     let addressResponse = ScanAddressesResponse.stub()
     let urlResponse = ScanUrlResponse.stub()
     
-    apiMock.scanEip155TxReturnValue = eip155Response
+    apiMock.scanEVMTxReturnValue = evmResponse
     apiMock.scanAddressesReturnValue = addressResponse
     apiMock.scanURLReturnValue = urlResponse
     
     // When
-    async let result1 = sut.scanEip155Tx(request: ScanEip155Request.stub())
+    async let result1 = sut.scanEVMTx(request: ScanEVMRequest.stub())
     async let result2 = sut.scanAddresses(request: ScanAddressesRequest.stub(addresses: ["0x123"]))
     async let result3 = sut.scanURL(request: ScanUrlRequest.stub(url: "https://test.com"))
     
@@ -320,7 +320,7 @@ final class HypernativeTests: XCTestCase {
     
     // Then
     XCTAssertEqual(responses.count, 3)
-    XCTAssertEqual(apiMock.scanEip155TxCallCount, 1)
+    XCTAssertEqual(apiMock.scanEVMTxCallCount, 1)
     XCTAssertEqual(apiMock.scanAddressesCallCount, 1)
     XCTAssertEqual(apiMock.scanURLCallCount, 1)
   }

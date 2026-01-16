@@ -10,7 +10,7 @@ import Foundation
 
 // MARK: - Request Stubs
 
-extension ScanEip155Request {
+extension ScanEVMRequest {
   static func stub(
     transaction: HypernativeTransactionObject = .stub(),
     url: String? = nil,
@@ -19,7 +19,7 @@ extension ScanEip155Request {
     showFullFindings: Bool? = nil,
     policy: String? = nil
   ) -> Self {
-    ScanEip155Request(
+    ScanEVMRequest(
       transaction: transaction,
       url: url,
       blockNumber: blockNumber,
@@ -267,7 +267,7 @@ extension TransactionRiskData {
   }
 }
 
-extension ScanEip155RawResponse {
+extension ScanEVMRawResponse {
   static func stub(
     success: Bool = true,
     data: TransactionRiskData? = .stub(),
@@ -275,7 +275,7 @@ extension ScanEip155RawResponse {
     version: String? = "1.0",
     service: String? = "hypernative"
   ) -> Self {
-    ScanEip155RawResponse(
+    ScanEVMRawResponse(
       success: success,
       data: data,
       error: error,
@@ -285,20 +285,20 @@ extension ScanEip155RawResponse {
   }
 }
 
-extension ScanEip155Data {
+extension ScanEVMData {
   static func stub(
-    rawResponse: ScanEip155RawResponse = .stub()
+    rawResponse: ScanEVMRawResponse = .stub()
   ) -> Self {
-    ScanEip155Data(rawResponse: rawResponse)
+    ScanEVMData(rawResponse: rawResponse)
   }
 }
 
-extension ScanEip155Response {
+extension ScanEVMResponse {
   static func stub(
-    data: ScanEip155Data? = .stub(),
+    data: ScanEVMData? = .stub(),
     error: String? = nil
   ) -> Self {
-    ScanEip155Response(data: data, error: error)
+    ScanEVMResponse(data: data, error: error)
   }
 }
 

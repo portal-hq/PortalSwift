@@ -24,8 +24,8 @@ extension ViewController {
     Task {
       logger.info("ViewController.hypernativeScanTx() - 📝 Starting transaction scans...")
       
-      // Test EIP-155 Transaction Scan
-      await testEip155Scan()
+      // Test EVM Transaction Scan
+      await testEVMScan()
       
       // Test EIP-712 Transaction Scan
       await testEip712Scan()
@@ -187,12 +187,12 @@ extension ViewController {
   
   // MARK: - Private Helper Methods
   
-  private func testEip155Scan() async {
+  private func testEVMScan() async {
     do {
-      logger.info("ViewController.testEip155Scan() - 📝 Testing EIP-155 transaction scan...")
+      logger.info("ViewController.testEVMScan() - 📝 Testing EVM transaction scan...")
       
       guard let portal = portal else {
-        logger.error("ViewController.testEip155Scan() - ❌ Portal not initialized")
+        logger.error("ViewController.testEVMScan() - ❌ Portal not initialized")
         return
       }
       
@@ -210,7 +210,7 @@ extension ViewController {
         maxFeePerGas: nil
       )
       
-      let request = ScanEip155Request(
+      let request = ScanEVMRequest(
         transaction: transaction,
         url: nil,
         blockNumber: nil,
@@ -219,13 +219,13 @@ extension ViewController {
         policy: nil
       )
       
-      let response = try await portal.security.hypernative.scanEip155Tx(request: request)
+      let response = try await portal.security.hypernative.scanEVMTx(request: request)
       
-      logger.info("ViewController.testEip155Scan() - ✅ EIP-155 scan completed successfully")
-      logEip155Result(response)
+      logger.info("ViewController.testEVMScan() - ✅ EVM scan completed successfully")
+      logEVMResult(response)
       
     } catch {
-      logger.error("ViewController.testEip155Scan() - ❌ EIP-155 scan failed: \(error.localizedDescription)")
+      logger.error("ViewController.testEVMScan() - ❌ EVM scan failed: \(error.localizedDescription)")
     }
   }
   
@@ -329,9 +329,9 @@ extension ViewController {
   
   // MARK: - Logging Helpers
   
-  private func logEip155Result(_ response: ScanEip155Response) {
+  private func logEVMResult(_ response: ScanEVMResponse) {
     if let rawResponse = response.data?.rawResponse {
-      logger.info("ViewController - ✅ EIP-155 Scan Result:")
+      logger.info("ViewController - ✅ EVM Scan Result:")
       logger.info("  Success: \(rawResponse.success)")
       if let data = rawResponse.data {
         logger.info("  Recommendation: \(data.recommendation.rawValue)")
@@ -347,7 +347,7 @@ extension ViewController {
         logger.error("  ❌ Error: \(error)")
       }
     } else if let error = response.error {
-      logger.error("ViewController - ❌ EIP-155 Scan Error: \(error)")
+      logger.error("ViewController - ❌ EVM Scan Error: \(error)")
     }
   }
   

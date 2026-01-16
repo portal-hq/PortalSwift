@@ -13,11 +13,11 @@ import Foundation
 /// for blockchain transactions, addresses, NFTs, tokens, and URLs. It integrates with Hypernative's
 /// security infrastructure to detect phishing, scams, malicious contracts, and other security threats.
 public protocol HypernativeProtocol {
-  /// Scans an EIP-155 transaction for security risks.
+  /// Scans an EVM transaction for security risks.
   /// - Parameter request: The scan request containing transaction details (chain, addresses, input data, etc.)
   /// - Returns: Response containing risk assessment, recommendations, findings, and trace data
   /// - Throws: `URLError` if the request fails or network errors occur
-  func scanEip155Tx(request: ScanEip155Request) async throws -> ScanEip155Response
+  func scanEVMTx(request: ScanEVMRequest) async throws -> ScanEVMResponse
   
   /// Scans an EIP-712 typed message for security risks.
   /// - Parameter request: The scan request containing wallet address, chain ID, and EIP-712 typed data
@@ -63,7 +63,7 @@ public protocol HypernativeProtocol {
 ///
 /// ## Overview
 /// The Hypernative provider integrates with Portal's security infrastructure to provide:
-/// - **Transaction Scanning**: Analyze EIP-155, EIP-712, and Solana transactions for security risks
+/// - **Transaction Scanning**: Analyze EVM, EIP-712, and Solana transactions for security risks
 /// - **Address Screening**: Check addresses against known phishing, scam, and compliance databases
 /// - **NFT Verification**: Validate NFT contracts for security risks
 /// - **Token Reputation**: Check token contracts for rug pulls, honeypots, and other risks
@@ -71,7 +71,7 @@ public protocol HypernativeProtocol {
 ///
 /// ## Usage Example
 /// ```swift
-/// // Scan an EIP-155 transaction
+/// // Scan an EVM transaction
 /// let transaction = HypernativeTransactionObject(
 ///     chain: "eip155:1",
 ///     fromAddress: "0x...",
@@ -82,8 +82,8 @@ public protocol HypernativeProtocol {
 ///     gas: 21000,
 ///     gasPrice: 20000000000
 /// )
-/// let request = ScanEip155Request(transaction: transaction)
-/// let response = try await portal.security.hypernative.scanEip155Tx(request: request)
+/// let request = ScanEVMRequest(transaction: transaction)
+/// let response = try await portal.security.hypernative.scanEVMTx(request: request)
 ///
 /// if response.data?.rawResponse.data?.recommendation == .deny {
 ///     print("Transaction blocked: potential security risk")
@@ -98,9 +98,9 @@ public class Hypernative: HypernativeProtocol {
     self.api = api
   }
 
-  /// Scans an EIP-155 transaction for security risks.
+  /// Scans an EVM transaction for security risks.
   ///
-  /// This method analyzes an EIP-155 (standard Ethereum) transaction before it's submitted to the blockchain.
+  /// This method analyzes an EVM transaction (including EIP-155, EIP-1559, and other EVM transaction formats) before it's submitted to the blockchain.
   /// The scan checks for:
   /// - Interactions with known phishing/scam addresses
   /// - Malicious contract interactions
@@ -121,8 +121,8 @@ public class Hypernative: HypernativeProtocol {
   ///   - `trace`: Transaction execution trace for debugging
   ///   - `parsedActions`: Parsed transaction actions (approvals, transfers, etc.)
   /// - Throws: `URLError` if the URL cannot be constructed, or network/decoding errors if the request fails.
-  public func scanEip155Tx(request: ScanEip155Request) async throws -> ScanEip155Response {
-    return try await api.scanEip155Tx(request: request)
+  public func scanEVMTx(request: ScanEVMRequest) async throws -> ScanEVMResponse {
+    return try await api.scanEVMTx(request: request)
   }
 
   /// Scans an EIP-712 typed message for security risks.

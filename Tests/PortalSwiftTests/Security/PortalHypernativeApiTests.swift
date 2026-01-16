@@ -54,64 +54,64 @@ final class PortalHypernativeApiTests: XCTestCase {
     )
     
     // When
-    try setReturnValue(ScanEip155Response(data: nil, error: nil))
-    let request = ScanEip155Request.stub()
-    _ = try? await localSut.scanEip155Tx(request: request)
+    try setReturnValue(ScanEVMResponse(data: nil, error: nil))
+    let request = ScanEVMRequest.stub()
+    _ = try? await localSut.scanEVMTx(request: request)
     
     // Then
     let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
     XCTAssertTrue(portalRequest?.url.absoluteString.starts(with: "http://") ?? false)
   }
   
-  // MARK: - scanEip155Tx Tests
+  // MARK: - scanEVMTx Tests
   
-  func testScanEip155Tx_buildsCorrectUrl() async throws {
+  func testScanEVMTx_buildsCorrectUrl() async throws {
     // Given
-    try setReturnValue(ScanEip155Response(data: nil, error: nil))
-    let request = ScanEip155Request.stub()
+    try setReturnValue(ScanEVMResponse(data: nil, error: nil))
+    let request = ScanEVMRequest.stub()
     
     // When
-    _ = try await sut.scanEip155Tx(request: request)
+    _ = try await sut.scanEVMTx(request: request)
     
     // Then
     let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
-    let expectedUrl = "https://api.portalhq.io/api/v3/clients/me/integrations/hypernative/eip-155/scan"
+    let expectedUrl = "https://api.portalhq.io/api/v3/clients/me/integrations/hypernative/evm/scan"
     XCTAssertEqual(portalRequest?.url.absoluteString, expectedUrl)
   }
   
-  func testScanEip155Tx_usesPostMethod() async throws {
+  func testScanEVMTx_usesPostMethod() async throws {
     // Given
-    try setReturnValue(ScanEip155Response(data: nil, error: nil))
-    let request = ScanEip155Request.stub()
+    try setReturnValue(ScanEVMResponse(data: nil, error: nil))
+    let request = ScanEVMRequest.stub()
     
     // When
-    _ = try await sut.scanEip155Tx(request: request)
+    _ = try await sut.scanEVMTx(request: request)
     
     // Then
     let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
     XCTAssertEqual(portalRequest?.method, .post)
   }
   
-  func testScanEip155Tx_includesBearerToken() async throws {
+  func testScanEVMTx_includesBearerToken() async throws {
     // Given
-    try setReturnValue(ScanEip155Response(data: nil, error: nil))
-    let request = ScanEip155Request.stub()
+    try setReturnValue(ScanEVMResponse(data: nil, error: nil))
+    let request = ScanEVMRequest.stub()
     
     // When
-    _ = try await sut.scanEip155Tx(request: request)
+    _ = try await sut.scanEVMTx(request: request)
     
     // Then
     let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
     XCTAssertEqual(portalRequest?.headers["Authorization"], "Bearer \(testApiKey)")
   }
   
-  func testScanEip155Tx_serializesRequestPayload() async throws {
+  func testScanEVMTx_serializesRequestPayload() async throws {
     // Given
-    try setReturnValue(ScanEip155Response(data: nil, error: nil))
-    let request = ScanEip155Request.stub()
+    try setReturnValue(ScanEVMResponse(data: nil, error: nil))
+    let request = ScanEVMRequest.stub()
     
     // When
-    _ = try await sut.scanEip155Tx(request: request)
+    _ = try await sut.scanEVMTx(request: request)
     
     // Then
     let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
@@ -229,14 +229,14 @@ final class PortalHypernativeApiTests: XCTestCase {
   
   // MARK: - Error Handling Tests
   
-  func testScanEip155Tx_networkError_throwsError() async {
+  func testScanEVMTx_networkError_throwsError() async {
     // Given
     requestsSpy.returnData = Data() // Empty data will cause decode error
-    let request = ScanEip155Request.stub()
+    let request = ScanEVMRequest.stub()
     
     // When/Then
     do {
-      _ = try await sut.scanEip155Tx(request: request)
+      _ = try await sut.scanEVMTx(request: request)
       XCTFail("Expected error to be thrown")
     } catch {
       // Expected to throw decoding error

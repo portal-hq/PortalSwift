@@ -9,11 +9,11 @@ import Foundation
 
 /// Protocol for Hypernative Security API interactions.
 public protocol PortalHypernativeApiProtocol: AnyObject {
-  /// Scans an EIP-155 transaction for security risks.
+  /// Scans an EVM transaction for security risks.
   /// - Parameters:
   ///   - request: The scan request containing transaction details
   /// - Returns: Response containing security risk assessment
-  func scanEip155Tx(request: ScanEip155Request) async throws -> ScanEip155Response
+  func scanEVMTx(request: ScanEVMRequest) async throws -> ScanEVMResponse
   
   /// Scans an EIP-712 typed message for security risks.
   /// - Parameters:
@@ -78,15 +78,15 @@ public class PortalHypernativeApi: PortalHypernativeApiProtocol {
    * Public functions
    *******************************************/
 
-  /// Scans an EIP-155 transaction for security risks.
+  /// Scans an EVM transaction for security risks.
   ///
-  /// This method analyzes an Ethereum/EVM transaction (EIP-155 format) to identify potential security threats,
+  /// This method analyzes an Ethereum/EVM transaction (including EIP-155, EIP-1559, and other EVM transaction formats) to identify potential security threats,
   /// including malicious contracts, suspicious token approvals, phishing attempts, and other risk factors.
   /// The analysis includes transaction simulation, balance change detection, and comprehensive risk scoring.
   ///
   /// - Parameters:
   ///   - request: The scan request containing:
-  ///     - `transaction`: The EIP-155 transaction object with chain, from/to addresses, input data, value, gas, etc.
+  ///     - `transaction`: The EVM transaction object with chain, from/to addresses, input data, value, gas, etc.
   ///     - `url`: Optional URL associated with the transaction (e.g., dApp origin)
   ///     - `blockNumber`: Optional block number for transaction validation
   ///     - `validateNonce`: Optional flag to validate transaction nonce
@@ -100,16 +100,16 @@ public class PortalHypernativeApi: PortalHypernativeApiProtocol {
   ///   - Transaction trace information
   ///   - Expected transaction status (success/fail)
   /// - Throws: `URLError` if the URL cannot be constructed, or network/decoding errors if the request fails.
-  public func scanEip155Tx(request: ScanEip155Request) async throws -> ScanEip155Response {
-    guard let url = URL(string: "\(baseUrl)/api/v3/clients/me/integrations/hypernative/eip-155/scan") else {
-      logger.error("PortalHypernativeApi.scanEip155Tx() - Unable to build request URL.")
+  public func scanEVMTx(request: ScanEVMRequest) async throws -> ScanEVMResponse {
+    guard let url = URL(string: "\(baseUrl)/api/v3/clients/me/integrations/hypernative/evm/scan") else {
+      logger.error("PortalHypernativeApi.scanEVMTx() - Unable to build request URL.")
       throw URLError(.badURL)
     }
 
     do {
-      return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: ScanEip155Response.self)
+      return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: ScanEVMResponse.self)
     } catch {
-      logger.error("PortalHypernativeApi.scanEip155Tx() - Error: \(error.localizedDescription)")
+      logger.error("PortalHypernativeApi.scanEVMTx() - Error: \(error.localizedDescription)")
       throw error
     }
   }
