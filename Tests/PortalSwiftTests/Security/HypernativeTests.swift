@@ -71,7 +71,7 @@ final class HypernativeTests: XCTestCase {
     let expectedResponse = ScanEVMResponse.stub(
       data: ScanEVMData.stub(
         rawResponse: ScanEVMRawResponse.stub(
-          data: TransactionRiskData.stub(recommendation: .deny)
+          data: ScanEVMRiskData.stub(recommendation: "deny")
         )
       )
     )
@@ -82,7 +82,7 @@ final class HypernativeTests: XCTestCase {
     let response = try await sut.scanEVMTx(request: request)
     
     // Then
-    XCTAssertEqual(response.data?.rawResponse.data?.recommendation, .deny)
+    XCTAssertEqual(response.data?.rawResponse.data?.recommendation, "deny")
   }
   
   // MARK: - scanEip712Tx Tests

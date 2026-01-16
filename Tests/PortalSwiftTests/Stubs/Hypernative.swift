@@ -6,13 +6,14 @@
 //
 
 import Foundation
+import AnyCodable
 @testable import PortalSwift
 
 // MARK: - Request Stubs
 
 extension ScanEVMRequest {
   static func stub(
-    transaction: HypernativeTransactionObject = .stub(),
+    transaction: ScanEVMTransaction = .stub(),
     url: String? = nil,
     blockNumber: Int? = nil,
     validateNonce: Bool? = nil,
@@ -30,7 +31,7 @@ extension ScanEVMRequest {
   }
 }
 
-extension HypernativeTransactionObject {
+extension ScanEVMTransaction {
   static func stub(
     chain: String = "eip155:1",
     fromAddress: String = "0x7C01728004d3F2370C1BBC36a4Ad680fE6FE8729",
@@ -44,7 +45,7 @@ extension HypernativeTransactionObject {
     maxPriorityFeePerGas: Int? = nil,
     maxFeePerGas: Int? = nil
   ) -> Self {
-    HypernativeTransactionObject(
+    ScanEVMTransaction(
       chain: chain,
       fromAddress: fromAddress,
       toAddress: toAddress,
@@ -64,7 +65,7 @@ extension ScanEip712Request {
   static func stub(
     walletAddress: String = "0x12345",
     chainId: String = "eip155:1",
-    eip712Message: Eip712TypedData = .stub(),
+    eip712Message: ScanEip712TypedData = .stub(),
     showFullFindings: Bool? = nil,
     policy: String? = nil
   ) -> Self {
@@ -78,19 +79,25 @@ extension ScanEip712Request {
   }
 }
 
-extension Eip712TypedData {
+extension ScanEip712TypedData {
   static func stub(
     primaryType: String = "Permit",
-    types: [String: [Eip712TypeProperty]] = [
+    types: [String: [ScanEip712TypeProperty]] = [
       "Permit": [
-        Eip712TypeProperty(name: "owner", type: "address"),
-        Eip712TypeProperty(name: "spender", type: "address")
+        ScanEip712TypeProperty(name: "owner", type: "address"),
+        ScanEip712TypeProperty(name: "spender", type: "address")
       ]
     ],
-    domain: Eip712Domain = .stub(),
-    message: Eip712Message = .stub()
+    domain: ScanEip712Domain = .stub(),
+    message: [String: AnyCodable] = [
+      "owner": AnyCodable("0x7b1363f33b86d16ef7c8d03d11f4394a37d95c36"),
+      "spender": AnyCodable("0x67beb4dd770a9c2cbc7133ba428b9eecdcf09186"),
+      "value": AnyCodable(3000),
+      "nonce": AnyCodable(0),
+      "deadline": AnyCodable(50000000000)
+    ]
   ) -> Self {
-    Eip712TypedData(
+    ScanEip712TypedData(
       primaryType: primaryType,
       types: types,
       domain: domain,
@@ -99,7 +106,7 @@ extension Eip712TypedData {
   }
 }
 
-extension Eip712Domain {
+extension ScanEip712Domain {
   static func stub(
     name: String? = "MyToken",
     version: String? = "1",
@@ -107,7 +114,7 @@ extension Eip712Domain {
     verifyingContract: String? = "0xa0b86991c6218b36c1d19d4a2e9Eb0cE3606eB48",
     salt: String? = nil
   ) -> Self {
-    Eip712Domain(
+    ScanEip712Domain(
       name: name,
       version: version,
       chainId: chainId,
@@ -117,27 +124,9 @@ extension Eip712Domain {
   }
 }
 
-extension Eip712Message {
-  static func stub(
-    owner: String = "0x7b1363f33b86d16ef7c8d03d11f4394a37d95c36",
-    spender: String = "0x67beb4dd770a9c2cbc7133ba428b9eecdcf09186",
-    value: Int = 3000,
-    nonce: Int = 0,
-    deadline: Int64 = 50000000000
-  ) -> Self {
-    Eip712Message(
-      owner: owner,
-      spender: spender,
-      value: value,
-      nonce: nonce,
-      deadline: deadline
-    )
-  }
-}
-
 extension ScanSolanaRequest {
   static func stub(
-    transaction: SolanaTransaction = .stub(),
+    transaction: ScanSolanaTransaction = .stub(),
     url: String? = nil,
     validateRecentBlockHash: Bool? = nil,
     showFullFindings: Bool? = true,
@@ -153,14 +142,14 @@ extension ScanSolanaRequest {
   }
 }
 
-extension SolanaTransaction {
+extension ScanSolanaTransaction {
   static func stub(
-    message: SolanaMessage? = nil,
+    message: ScanSolanaMessage? = nil,
     signatures: [String]? = nil,
     rawTransaction: String? = "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADCQkVR3SiiKbW0l4c3NBsEn6",
     version: String? = "0"
   ) -> Self {
-    SolanaTransaction(
+    ScanSolanaTransaction(
       message: message,
       signatures: signatures,
       rawTransaction: rawTransaction,
@@ -235,34 +224,28 @@ extension ScanUrlRequest {
 
 // MARK: - Response Stubs
 
-extension TransactionRiskData {
+extension ScanEVMRiskData {
   static func stub(
     assessmentId: String = "test-id",
     assessmentTimestamp: String? = "2024-01-01T00:00:00Z",
-    recommendation: HypernativeRecommendation = .accept,
-    expectedStatus: HypernativeExpectedStatus? = .success,
-    findings: [HypernativeFinding]? = nil,
-    involvedAssets: [HypernativeAsset]? = nil,
-    balanceChanges: [String: [HypernativeBalanceChange]]? = nil,
-    parsedActions: HypernativeParsedActions? = nil,
+    recommendation: String = "accept",
+    findings: [ScanEVMFinding]? = nil,
+    balanceChanges: [String: [ScanEVMBalanceChange]]? = nil,
+    parsedActions: ScanEVMParsedActions? = nil,
     blockNumber: Int? = nil,
-    trace: [HypernativeTrace]? = nil,
-    riIds: [String]? = nil,
-    signature: String? = nil
+    trace: [ScanEVMTrace]? = nil,
+    riIds: [String]? = nil
   ) -> Self {
-    TransactionRiskData(
+    ScanEVMRiskData(
       assessmentId: assessmentId,
       assessmentTimestamp: assessmentTimestamp,
       recommendation: recommendation,
-      expectedStatus: expectedStatus,
       findings: findings,
-      involvedAssets: involvedAssets,
       balanceChanges: balanceChanges,
       parsedActions: parsedActions,
       blockNumber: blockNumber,
       trace: trace,
-      riIds: riIds,
-      signature: signature
+      riIds: riIds
     )
   }
 }
@@ -270,7 +253,7 @@ extension TransactionRiskData {
 extension ScanEVMRawResponse {
   static func stub(
     success: Bool = true,
-    data: TransactionRiskData? = .stub(),
+    data: ScanEVMRiskData? = .stub(),
     error: String? = nil,
     version: String? = "1.0",
     service: String? = "hypernative"
@@ -302,28 +285,24 @@ extension ScanEVMResponse {
   }
 }
 
-extension TypedMessageRiskData {
+extension ScanEip712RiskData {
   static func stub(
     assessmentId: String = "test-id",
     assessmentTimestamp: String? = nil,
     blockNumber: Int? = nil,
-    recommendation: HypernativeRecommendation = .accept,
-    findings: [HypernativeFinding]? = nil,
-    involvedAssets: [HypernativeAsset]? = nil,
-    parsedActions: HypernativeParsedActions? = nil,
-    trace: [HypernativeTrace]? = nil,
-    riIds: [String]? = nil
+    recommendation: String = "accept",
+    trace: [ScanEip712Trace]? = nil,
+    riIds: [String]? = nil,
+    parsedActions: ScanEip712ParsedActions? = nil
   ) -> Self {
-    TypedMessageRiskData(
+    ScanEip712RiskData(
       assessmentId: assessmentId,
       assessmentTimestamp: assessmentTimestamp,
       blockNumber: blockNumber,
       recommendation: recommendation,
-      findings: findings,
-      involvedAssets: involvedAssets,
-      parsedActions: parsedActions,
       trace: trace,
-      riIds: riIds
+      riIds: riIds,
+      parsedActions: parsedActions
     )
   }
 }
@@ -331,7 +310,7 @@ extension TypedMessageRiskData {
 extension ScanEip712RawResponse {
   static func stub(
     success: Bool = true,
-    data: TypedMessageRiskData? = .stub(),
+    data: ScanEip712RiskData? = .stub(),
     error: String? = nil,
     version: String? = "1.0",
     service: String? = "hypernative"
@@ -363,21 +342,21 @@ extension ScanEip712Response {
   }
 }
 
-extension SolanaTransactionRiskData {
+extension ScanSolanaRiskData {
   static func stub(
     assessmentId: String = "test-id",
     assessmentTimestamp: String? = "2024-01-01T00:00:00Z",
-    recommendation: HypernativeRecommendation = .accept,
-    expectedStatus: HypernativeExpectedStatus? = nil,
-    findings: [HypernativeFinding]? = nil,
-    involvedAssets: [HypernativeAsset]? = nil,
-    balanceChanges: [String: [HypernativeBalanceChange]]? = nil,
-    parsedActions: HypernativeParsedActions? = nil,
+    recommendation: String = "accept",
+    expectedStatus: String? = nil,
+    findings: [ScanSolanaFinding]? = nil,
+    involvedAssets: [ScanSolanaAsset]? = nil,
+    balanceChanges: [String: [ScanSolanaBalanceChange]]? = nil,
+    parsedActions: ScanSolanaParsedActions? = nil,
     blockNumber: Int? = nil,
-    trace: [HypernativeTrace]? = nil,
+    trace: [ScanSolanaTrace]? = nil,
     riIds: [String]? = nil
   ) -> Self {
-    SolanaTransactionRiskData(
+    ScanSolanaRiskData(
       assessmentId: assessmentId,
       assessmentTimestamp: assessmentTimestamp,
       recommendation: recommendation,
@@ -396,7 +375,7 @@ extension SolanaTransactionRiskData {
 extension ScanSolanaRawResponse {
   static func stub(
     success: Bool = true,
-    data: SolanaTransactionRiskData? = .stub(),
+    data: ScanSolanaRiskData? = .stub(),
     error: String? = nil,
     version: String? = "1.0",
     service: String? = "hypernative"
@@ -428,7 +407,7 @@ extension ScanSolanaResponse {
   }
 }
 
-extension ScanAddressesResponseItem {
+extension ScanAddressesItem {
   static func stub(
     address: String = "0x123",
     recommendation: String = "accept",
@@ -436,9 +415,9 @@ extension ScanAddressesResponseItem {
     totalIncomingUsd: Double = 0.0,
     policyId: String = "test-policy-id",
     timestamp: String = "2024-01-01T00:00:00Z",
-    flags: [HypernativeFlag] = []
+    flags: [ScanAddressesFlag] = []
   ) -> Self {
-    ScanAddressesResponseItem(
+    ScanAddressesItem(
       address: address,
       recommendation: recommendation,
       severity: severity,
@@ -452,7 +431,7 @@ extension ScanAddressesResponseItem {
 
 extension ScanAddressesData {
   static func stub(
-    rawResponse: [ScanAddressesResponseItem] = []
+    rawResponse: [ScanAddressesItem] = []
   ) -> Self {
     ScanAddressesData(rawResponse: rawResponse)
   }
@@ -470,15 +449,15 @@ extension ScanAddressesResponse {
 extension ScanNftsResponseItem {
   static func stub(
     address: String = "0x5C1B9caA8492585182eD994633e76d744A876548",
-    chain: String = "ethereum",
     evmChainId: String = "eip155:1",
-    accept: Bool = true
+    accept: Bool = true,
+    chain: String = "ethereum"
   ) -> Self {
     ScanNftsResponseItem(
       address: address,
-      chain: chain,
       evmChainId: evmChainId,
-      accept: accept
+      accept: accept,
+      chain: chain
     )
   }
 }
@@ -526,19 +505,11 @@ extension ScanNftsResponse {
   }
 }
 
-extension TokenReputation {
-  static func stub(
-    recommendation: String = "accept"
-  ) -> Self {
-    TokenReputation(recommendation: recommendation)
-  }
-}
-
 extension ScanTokensResponseItem {
   static func stub(
     address: String = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     chain: String = "ethereum",
-    reputation: TokenReputation = .stub()
+    reputation: ScanTokensReputation = .stub()
   ) -> Self {
     ScanTokensResponseItem(
       address: address,
@@ -640,16 +611,16 @@ extension ScanUrlResponse {
 
 // MARK: - Risk Data Detail Stubs
 
-extension HypernativeFinding {
+extension ScanEVMFinding {
   static func stub(
     typeId: String = "test-type-id",
     title: String = "Test Finding",
     description: String = "Test finding description",
     details: String? = nil,
-    severity: HypernativeSeverity = .Accept,
-    relatedAssets: [HypernativeAsset]? = nil
+    severity: String = "Accept",
+    relatedAssets: [ScanEVMAsset]? = nil
   ) -> Self {
-    HypernativeFinding(
+    ScanEVMFinding(
       typeId: typeId,
       title: title,
       description: description,
@@ -660,33 +631,31 @@ extension HypernativeFinding {
   }
 }
 
-extension HypernativeAsset {
+extension ScanEVMAsset {
   static func stub(
     chain: String = "ethereum",
     evmChainId: String? = "eip155:1",
     address: String = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-    type: HypernativeAssetType = .Contract,
+    type: String = "Contract",
     involvementTypes: [String] = ["transfer"],
-    tag: String = "USDC",
     alias: String? = nil,
-    note: String? = nil
+    tag: String = "USDC"
   ) -> Self {
-    HypernativeAsset(
+    ScanEVMAsset(
       chain: chain,
       evmChainId: evmChainId,
       address: address,
       type: type,
       involvementTypes: involvementTypes,
-      tag: tag,
       alias: alias,
-      note: note
+      tag: tag
     )
   }
 }
 
-extension HypernativeBalanceChange {
+extension ScanEVMBalanceChange {
   static func stub(
-    changeType: HypernativeChangeType = .send,
+    changeType: String = "send",
     tokenSymbol: String = "USDC",
     tokenAddress: String? = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     usdValue: String? = "100.00",
@@ -694,7 +663,7 @@ extension HypernativeBalanceChange {
     chain: String = "ethereum",
     evmChainId: String? = "eip155:1"
   ) -> Self {
-    HypernativeBalanceChange(
+    ScanEVMBalanceChange(
       changeType: changeType,
       tokenSymbol: tokenSymbol,
       tokenAddress: tokenAddress,
@@ -706,15 +675,15 @@ extension HypernativeBalanceChange {
   }
 }
 
-extension HypernativeParsedActions {
+extension ScanEVMParsedActions {
   static func stub(
-    ethValues: [HypernativeParsedActionItem]? = nil,
-    tokenValues: [HypernativeParsedActionItem]? = nil,
-    nftValues: [HypernativeParsedActionItem]? = nil,
-    approval: [HypernativeParsedApprovalItem]? = nil,
-    approve: [HypernativeParsedApproveItem]? = nil
+    ethValues: [ScanEVMParsedActionItem]? = nil,
+    tokenValues: [ScanEVMParsedActionItem]? = nil,
+    nftValues: [ScanEVMParsedActionItem]? = nil,
+    approval: [ScanEVMApprovalItem]? = nil,
+    approve: [ScanEVMApproveItem]? = nil
   ) -> Self {
-    HypernativeParsedActions(
+    ScanEVMParsedActions(
       ethValues: ethValues,
       tokenValues: tokenValues,
       nftValues: nftValues,
@@ -724,7 +693,7 @@ extension HypernativeParsedActions {
   }
 }
 
-extension HypernativeParsedActionItem {
+extension ScanEVMParsedActionItem {
   static func stub(
     amountInUsd: Double? = 100.0,
     amount: Double? = 1.0,
@@ -736,7 +705,7 @@ extension HypernativeParsedActionItem {
     price: Double? = nil,
     priceSource: String? = nil
   ) -> Self {
-    HypernativeParsedActionItem(
+    ScanEVMParsedActionItem(
       amountInUsd: amountInUsd,
       amount: amount,
       from: from,
@@ -750,7 +719,7 @@ extension HypernativeParsedActionItem {
   }
 }
 
-extension HypernativeParsedApprovalItem {
+extension ScanEVMApprovalItem {
   static func stub(
     tokenName: String? = "USD Coin",
     tokenSymbol: String? = "USDC",
@@ -769,7 +738,7 @@ extension HypernativeParsedApprovalItem {
     logIndex: Int? = nil,
     action: String? = "approve"
   ) -> Self {
-    HypernativeParsedApprovalItem(
+    ScanEVMApprovalItem(
       tokenName: tokenName,
       tokenSymbol: tokenSymbol,
       tokenAddress: tokenAddress,
@@ -790,36 +759,471 @@ extension HypernativeParsedApprovalItem {
   }
 }
 
-extension HypernativeParsedApproveItem {
+extension ScanEVMApproveItem {
   static func stub(
     from: String? = "0x7C01728004d3F2370C1BBC36a4Ad680fE6FE8729",
     to: String? = "0x67beb4dd770a9c2cbc7133ba428b9eecdcf09186"
   ) -> Self {
-    HypernativeParsedApproveItem(
+    ScanEVMApproveItem(
       from: from,
       to: to
     )
   }
 }
 
-extension HypernativeFlag {
+extension ScanEVMTrace {
+  static func stub(
+    from: String = "0x7C01728004d3F2370C1BBC36a4Ad680fE6FE8729",
+    to: String = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    funcId: String? = nil,
+    callType: String? = nil,
+    value: Int? = nil,
+    traceAddress: [Int]? = nil,
+    status: Int? = 1,
+    callInput: String? = nil,
+    extraInfo: [String: String]? = nil
+  ) -> Self {
+    ScanEVMTrace(
+      from: from,
+      to: to,
+      funcId: funcId,
+      callType: callType,
+      value: value,
+      traceAddress: traceAddress,
+      status: status,
+      callInput: callInput,
+      extraInfo: extraInfo
+    )
+  }
+}
+
+extension ScanAddressesFlag {
   static func stub(
     title: String = "Test Flag",
     flagId: String = "test-flag-id",
     chain: String = "ethereum",
     severity: String = "low",
+    events: [ScanAddressesEvent] = [],
     lastUpdate: String? = "2024-01-01T00:00:00Z",
-    events: [HypernativeEvent] = [],
-    exposures: [HypernativeExposure] = []
+    exposures: [ScanAddressesExposure] = []
   ) -> Self {
-    HypernativeFlag(
+    ScanAddressesFlag(
       title: title,
       flagId: flagId,
       chain: chain,
       severity: severity,
-      lastUpdate: lastUpdate,
       events: events,
+      lastUpdate: lastUpdate,
       exposures: exposures
+    )
+  }
+}
+
+extension ScanTokensReputation {
+  static func stub(
+    recommendation: String = "accept"
+  ) -> Self {
+    ScanTokensReputation(recommendation: recommendation)
+  }
+}
+
+// MARK: - Missing Request Type Stubs
+
+extension ScanEip712TypeProperty {
+  static func stub(
+    name: String = "owner",
+    type: String = "address"
+  ) -> Self {
+    ScanEip712TypeProperty(name: name, type: type)
+  }
+}
+
+extension ScanSolanaMessage {
+  static func stub(
+    accountKeys: [String] = ["0x123"],
+    header: ScanSolanaHeader = .stub(),
+    instructions: [ScanSolanaInstruction] = [.stub()],
+    addressTableLookups: [ScanSolanaAddressTableLookup]? = nil,
+    recentBlockhash: String = "test-blockhash"
+  ) -> Self {
+    ScanSolanaMessage(
+      accountKeys: accountKeys,
+      header: header,
+      instructions: instructions,
+      addressTableLookups: addressTableLookups,
+      recentBlockhash: recentBlockhash
+    )
+  }
+}
+
+extension ScanSolanaHeader {
+  static func stub(
+    numReadonlySignedAccounts: Int = 0,
+    numReadonlyUnsignedAccounts: Int = 0,
+    numRequiredSignatures: Int = 1
+  ) -> Self {
+    ScanSolanaHeader(
+      numReadonlySignedAccounts: numReadonlySignedAccounts,
+      numReadonlyUnsignedAccounts: numReadonlyUnsignedAccounts,
+      numRequiredSignatures: numRequiredSignatures
+    )
+  }
+}
+
+extension ScanSolanaInstruction {
+  static func stub(
+    accounts: [Int] = [0],
+    data: String = "test-data",
+    programIdIndex: Int = 0
+  ) -> Self {
+    ScanSolanaInstruction(
+      accounts: accounts,
+      data: data,
+      programIdIndex: programIdIndex
+    )
+  }
+}
+
+extension ScanSolanaAddressTableLookup {
+  static func stub(
+    accountKey: String = "0x123",
+    writableIndexes: [Int] = [],
+    readonlyIndexes: [Int] = []
+  ) -> Self {
+    ScanSolanaAddressTableLookup(
+      accountKey: accountKey,
+      writableIndexes: writableIndexes,
+      readonlyIndexes: readonlyIndexes
+    )
+  }
+}
+
+// MARK: - Missing EIP-712 Response Type Stubs
+
+extension ScanEip712Trace {
+  static func stub(
+    from: String = "0x7C01728004d3F2370C1BBC36a4Ad680fE6FE8729",
+    to: String = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    funcId: String? = nil,
+    callType: String? = nil,
+    value: Int? = nil,
+    traceAddress: [Int]? = nil,
+    status: Int? = 1,
+    callInput: String? = nil,
+    extraInfo: [String: String]? = nil
+  ) -> Self {
+    ScanEip712Trace(
+      from: from,
+      to: to,
+      funcId: funcId,
+      callType: callType,
+      value: value,
+      traceAddress: traceAddress,
+      status: status,
+      callInput: callInput,
+      extraInfo: extraInfo
+    )
+  }
+}
+
+extension ScanEip712ParsedActions {
+  static func stub(
+    approval: [ScanEip712ApprovalItem]? = nil,
+    ethValues: [ScanEip712ParsedActionItem]? = nil
+  ) -> Self {
+    ScanEip712ParsedActions(
+      approval: approval,
+      ethValues: ethValues
+    )
+  }
+}
+
+extension ScanEip712ApprovalItem {
+  static func stub(
+    tokenName: String? = "USD Coin",
+    tokenSymbol: String? = "USDC",
+    tokenAddress: String? = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    tokenTotalSupply: Double? = nil,
+    tokenMarketCap: Double? = nil,
+    tokenTotalVolume: Double? = nil,
+    amountInUsd: Double? = 100.0,
+    amount: Double? = 100.0,
+    amountAfterDecimals: Double? = nil,
+    tokenId: Int? = nil,
+    owner: String? = "0x7C01728004d3F2370C1BBC36a4Ad680fE6FE8729",
+    spender: String? = "0x67beb4dd770a9c2cbc7133ba428b9eecdcf09186",
+    isNft: Bool? = false,
+    priceSource: String? = nil,
+    logIndex: Int? = nil,
+    action: String? = "approve"
+  ) -> Self {
+    ScanEip712ApprovalItem(
+      tokenName: tokenName,
+      tokenSymbol: tokenSymbol,
+      tokenAddress: tokenAddress,
+      tokenTotalSupply: tokenTotalSupply,
+      tokenMarketCap: tokenMarketCap,
+      tokenTotalVolume: tokenTotalVolume,
+      amountInUsd: amountInUsd,
+      amount: amount,
+      amountAfterDecimals: amountAfterDecimals,
+      tokenId: tokenId,
+      owner: owner,
+      spender: spender,
+      isNft: isNft,
+      priceSource: priceSource,
+      logIndex: logIndex,
+      action: action
+    )
+  }
+}
+
+extension ScanEip712ParsedActionItem {
+  static func stub(
+    amountInUsd: Double? = 100.0,
+    amount: Double? = 1.0,
+    from: String? = "0x7C01728004d3F2370C1BBC36a4Ad680fE6FE8729",
+    to: String? = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+  ) -> Self {
+    ScanEip712ParsedActionItem(
+      amountInUsd: amountInUsd,
+      amount: amount,
+      from: from,
+      to: to
+    )
+  }
+}
+
+// MARK: - Missing Solana Response Type Stubs
+
+extension ScanSolanaFinding {
+  static func stub(
+    typeId: String = "test-type-id",
+    title: String = "Test Finding",
+    description: String = "Test finding description",
+    details: String? = nil,
+    severity: String = "Accept",
+    relatedAssets: [ScanSolanaAsset]? = nil
+  ) -> Self {
+    ScanSolanaFinding(
+      typeId: typeId,
+      title: title,
+      description: description,
+      details: details,
+      severity: severity,
+      relatedAssets: relatedAssets
+    )
+  }
+}
+
+extension ScanSolanaAsset {
+  static func stub(
+    chain: String = "solana",
+    address: String = "0x123",
+    type: String = "Contract",
+    involvementTypes: [String] = ["transfer"],
+    alias: String? = nil,
+    tag: String = "SOL"
+  ) -> Self {
+    ScanSolanaAsset(
+      chain: chain,
+      address: address,
+      type: type,
+      involvementTypes: involvementTypes,
+      alias: alias,
+      tag: tag
+    )
+  }
+}
+
+extension ScanSolanaBalanceChange {
+  static func stub(
+    changeType: String = "send",
+    tokenSymbol: String = "SOL",
+    tokenAddress: String? = nil,
+    usdValue: String? = "100.00",
+    amount: String = "1000000000",
+    chain: String = "solana"
+  ) -> Self {
+    ScanSolanaBalanceChange(
+      changeType: changeType,
+      tokenSymbol: tokenSymbol,
+      tokenAddress: tokenAddress,
+      usdValue: usdValue,
+      amount: amount,
+      chain: chain
+    )
+  }
+}
+
+extension ScanSolanaParsedActions {
+  static func stub(
+    ethValues: [ScanSolanaParsedActionItem]? = nil,
+    tokenValues: [ScanSolanaParsedActionItem]? = nil
+  ) -> Self {
+    ScanSolanaParsedActions(
+      ethValues: ethValues,
+      tokenValues: tokenValues
+    )
+  }
+}
+
+extension ScanSolanaParsedActionItem {
+  static func stub(
+    amountInUsd: Double? = 100.0,
+    amount: Double? = 1.0,
+    from: String? = "0x123",
+    to: String? = "0x456",
+    decimals: Int? = 9,
+    decimalValue: Int? = nil,
+    callIndex: Int? = 0,
+    price: Double? = nil,
+    priceSource: String? = nil
+  ) -> Self {
+    ScanSolanaParsedActionItem(
+      amountInUsd: amountInUsd,
+      amount: amount,
+      from: from,
+      to: to,
+      decimals: decimals,
+      decimalValue: decimalValue,
+      callIndex: callIndex,
+      price: price,
+      priceSource: priceSource
+    )
+  }
+}
+
+extension ScanSolanaTrace {
+  static func stub(
+    from: String = "0x123",
+    to: String = "0x456",
+    funcId: String? = nil,
+    callType: String? = nil,
+    value: Int? = nil,
+    traceAddress: [Int]? = nil,
+    status: String? = "True",
+    callInput: ScanSolanaTraceCallInput? = nil,
+    extraInfo: [String: String]? = nil
+  ) -> Self {
+    ScanSolanaTrace(
+      from: from,
+      to: to,
+      funcId: funcId,
+      callType: callType,
+      value: value,
+      traceAddress: traceAddress,
+      status: status,
+      callInput: callInput,
+      extraInfo: extraInfo
+    )
+  }
+}
+
+extension ScanSolanaTraceCallInput {
+  static func stub(
+    type: String? = "transfer",
+    info: ScanSolanaTraceCallInputInfo? = nil
+  ) -> Self {
+    ScanSolanaTraceCallInput(
+      type: type,
+      info: info
+    )
+  }
+}
+
+extension ScanSolanaTransferInfo {
+  static func stub(
+    source: String? = "0x123",
+    destination: String? = "0x456",
+    lamports: Int? = 1000000000
+  ) -> Self {
+    ScanSolanaTransferInfo(
+      source: source,
+      destination: destination,
+      lamports: lamports
+    )
+  }
+}
+
+// MARK: - Missing Addresses Response Type Stubs
+
+extension ScanAddressesEvent {
+  static func stub(
+    eventId: String? = "test-event-id",
+    address: String? = "0x123",
+    chain: String? = "ethereum",
+    flagId: String? = "test-flag-id",
+    timestampEvent: String? = "2024-01-01T00:00:00Z",
+    txHash: String? = "0xhash",
+    direction: String? = "incoming",
+    hop: Int? = 1,
+    counterpartyAddress: String? = "0x456",
+    counterpartyAlias: String? = nil,
+    counterpartyFlagId: String? = "test-flag-id",
+    tokenSymbol: String? = "USDC",
+    tokenAmount: Double? = 100.0,
+    tokenUsdValue: Double? = 100.0,
+    reason: String? = "test-reason",
+    source: String? = "test-source",
+    originalFlaggedAddress: String? = "0x789",
+    originalFlaggedAlias: String? = nil,
+    originalFlaggedChain: String? = "ethereum"
+  ) -> Self {
+    ScanAddressesEvent(
+      eventId: eventId,
+      address: address,
+      chain: chain,
+      flagId: flagId,
+      timestampEvent: timestampEvent,
+      txHash: txHash,
+      direction: direction,
+      hop: hop,
+      counterpartyAddress: counterpartyAddress,
+      counterpartyAlias: counterpartyAlias,
+      counterpartyFlagId: counterpartyFlagId,
+      tokenSymbol: tokenSymbol,
+      tokenAmount: tokenAmount,
+      tokenUsdValue: tokenUsdValue,
+      reason: reason,
+      source: source,
+      originalFlaggedAddress: originalFlaggedAddress,
+      originalFlaggedAlias: originalFlaggedAlias,
+      originalFlaggedChain: originalFlaggedChain
+    )
+  }
+}
+
+extension ScanAddressesExposure {
+  static func stub(
+    exposurePortion: Double = 0.5,
+    exposureType: String? = "direct",
+    totalExposureUsd: Double = 1000.0,
+    flaggedInteractions: [ScanAddressesFlaggedInteraction] = []
+  ) -> Self {
+    ScanAddressesExposure(
+      exposurePortion: exposurePortion,
+      exposureType: exposureType,
+      totalExposureUsd: totalExposureUsd,
+      flaggedInteractions: flaggedInteractions
+    )
+  }
+}
+
+extension ScanAddressesFlaggedInteraction {
+  static func stub(
+    address: String = "0x123",
+    chain: String = "ethereum",
+    alias: String? = nil,
+    minHop: Int = 1,
+    totalExposureUsd: Double = 500.0
+  ) -> Self {
+    ScanAddressesFlaggedInteraction(
+      address: address,
+      chain: chain,
+      alias: alias,
+      minHop: minHop,
+      totalExposureUsd: totalExposureUsd
     )
   }
 }

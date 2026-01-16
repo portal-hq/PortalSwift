@@ -9,6 +9,7 @@
 
 import PortalSwift
 import UIKit
+import AnyCodable
 
 // MARK: - Hypernative Security Test Actions
 
@@ -196,7 +197,7 @@ extension ViewController {
         return
       }
       
-      let transaction = HypernativeTransactionObject(
+      let transaction = ScanEVMTransaction(
         chain: "eip155:1",
         fromAddress: "0x7C01728004d3F2370C1BBC36a4Ad680fE6FE8729",
         toAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
@@ -238,7 +239,7 @@ extension ViewController {
         return
       }
       
-      let domain = Eip712Domain(
+      let domain = ScanEip712Domain(
         name: "MyToken",
         version: "1",
         chainId: "eip155:1",
@@ -246,33 +247,33 @@ extension ViewController {
         salt: nil
       )
       
-      let types: [String: [Eip712TypeProperty]] = [
+      let types: [String: [ScanEip712TypeProperty]] = [
         "EIP712Domain": [
-          Eip712TypeProperty(name: "name", type: "string"),
-          Eip712TypeProperty(name: "version", type: "string"),
-          Eip712TypeProperty(name: "chainId", type: "uint256"),
-          Eip712TypeProperty(name: "verifyingContract", type: "address")
+          ScanEip712TypeProperty(name: "name", type: "string"),
+          ScanEip712TypeProperty(name: "version", type: "string"),
+          ScanEip712TypeProperty(name: "chainId", type: "uint256"),
+          ScanEip712TypeProperty(name: "verifyingContract", type: "address")
         ],
         "Permit": [
-          Eip712TypeProperty(name: "owner", type: "address"),
-          Eip712TypeProperty(name: "spender", type: "address"),
-          Eip712TypeProperty(name: "value", type: "uint256"),
-          Eip712TypeProperty(name: "nonce", type: "uint256"),
-          Eip712TypeProperty(name: "deadline", type: "uint256")
+          ScanEip712TypeProperty(name: "owner", type: "address"),
+          ScanEip712TypeProperty(name: "spender", type: "address"),
+          ScanEip712TypeProperty(name: "value", type: "uint256"),
+          ScanEip712TypeProperty(name: "nonce", type: "uint256"),
+          ScanEip712TypeProperty(name: "deadline", type: "uint256")
         ]
       ]
       
-      let message = Eip712TypedData(
+      let message = ScanEip712TypedData(
         primaryType: "Permit",
         types: types,
         domain: domain,
-        message: Eip712Message(
-          owner: "0x7b1363f33b86d16ef7c8d03d11f4394a37d95c36",
-          spender: "0x67beb4dd770a9c2cbc7133ba428b9eecdcf09186",
-          value: 3000,
-          nonce: 0,
-          deadline: 50000000000
-        )
+        message: [
+          "owner": AnyCodable("0x7b1363f33b86d16ef7c8d03d11f4394a37d95c36"),
+          "spender": AnyCodable("0x67beb4dd770a9c2cbc7133ba428b9eecdcf09186"),
+          "value": AnyCodable(3000),
+          "nonce": AnyCodable(0),
+          "deadline": AnyCodable(50000000000)
+        ]
       )
       
       let request = ScanEip712Request(
@@ -302,7 +303,7 @@ extension ViewController {
         return
       }
       
-      let transaction = SolanaTransaction(
+      let transaction = ScanSolanaTransaction(
         message: nil,
         signatures: nil,
         rawTransaction: "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADCQkVR3SiiKbW0l4c3NBsEn6+zn1o0YsyypPwN0GUhg4K5HK0Tb5GckDLYW+MsovQASt5EZ3bSH3nluRJAE69H61w0BRUDTrpYQcXosUun6/z2BROkRoH/1bL7KLU9s4lCav6k3ZZgV6qeZFwu4pu89WoIGaqUxG4C93XwVmmDy81v8qBaCSP4/UZfdo3q1bud/W+ixymkH8IMe0laQZYrSx4Uhyxec67hYm1VqLV7JTSSYaC/fm7KvWtZOSRzEFT2gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAT4tlY/P4mFG1wDJl0ektVggHiZf73lTlHBVJ3fK0nDoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANG5fPtlMEOI/eXV7aPDlpcdLUKm8L3VoW6k/oJlCNLaBQYABQLARQQABgAJAwYAAAAAAAAABzwACQoLCwgyMzQMNQ0ONjcPEDg5EgETFBUWOhEXGBkaGxwdHh8gISI7IyQlJicCKCkqKywtAwQuLzAxPBFVCg8JAQcHBgYBAAAAAwHwCgYBExUbBgICAAAPAwIAAAYBISMoEQQBGQAPAwIAAAYBLjA2DwMCAAAGAgIAAAAIBgYICAADAQkGCQUFBgACBQAEBwEAAAgCAAUMAgAAADwaAAAAAAAABgAFBGDMBQAEPPm21Wu6wrmHu23/ZFNIumpp+ADooZjd4JQgvjnBxkUJAgEDBqWqCgmmCAUIBwu1tp+gcP/+Ri3C1tRXUbPdgqo6rVsj/qnqC959wTdC/mRARysLz9HS09TW19jZ2tsC1QYsNrdxMcm5Nq5FXZrM0IXpEA+ApFa+pz/JvkLz0+2vnwuztLW2t7i5uru8vgAPvBv8VUeRwDy9yD1NHIH5Ji6ZA+zrmpHejKOz4MP8SwrKy8zNzs/S09TVAdY=",
@@ -334,12 +335,12 @@ extension ViewController {
       logger.info("ViewController - ✅ EVM Scan Result:")
       logger.info("  Success: \(rawResponse.success)")
       if let data = rawResponse.data {
-        logger.info("  Recommendation: \(data.recommendation.rawValue)")
+        logger.info("  Recommendation: \(data.recommendation)")
         logger.info("  Assessment ID: \(data.assessmentId ?? "N/A")")
         if let findings = data.findings {
           logger.info("  Findings count: \(findings.count)")
           for finding in findings {
-            logger.info("    - \(finding.title): \(finding.severity.rawValue)")
+            logger.info("    - \(finding.title): \(finding.severity)")
           }
         }
       }
@@ -356,11 +357,8 @@ extension ViewController {
       logger.info("ViewController - ✅ EIP-712 Scan Result:")
       logger.info("  Success: \(rawResponse.success)")
       if let data = rawResponse.data {
-        logger.info("  Recommendation: \(data.recommendation.rawValue)")
+        logger.info("  Recommendation: \(data.recommendation)")
         logger.info("  Assessment ID: \(data.assessmentId ?? "N/A")")
-        if let findings = data.findings {
-          logger.info("  Findings count: \(findings.count)")
-        }
       }
       if let error = rawResponse.error {
         logger.error("  ❌ Error: \(error)")
@@ -375,7 +373,7 @@ extension ViewController {
       logger.info("ViewController - ✅ Solana Scan Result:")
       logger.info("  Success: \(rawResponse.success)")
       if let data = rawResponse.data {
-        logger.info("  Recommendation: \(data.recommendation.rawValue)")
+        logger.info("  Recommendation: \(data.recommendation)")
         if let findings = data.findings {
           logger.info("  Findings count: \(findings.count)")
         }

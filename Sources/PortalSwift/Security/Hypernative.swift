@@ -72,7 +72,7 @@ public protocol HypernativeProtocol {
 /// ## Usage Example
 /// ```swift
 /// // Scan an EVM transaction
-/// let transaction = HypernativeTransactionObject(
+/// let transaction = ScanEVMTransaction(
 ///     chain: "eip155:1",
 ///     fromAddress: "0x...",
 ///     toAddress: "0x...",
@@ -85,7 +85,7 @@ public protocol HypernativeProtocol {
 /// let request = ScanEVMRequest(transaction: transaction)
 /// let response = try await portal.security.hypernative.scanEVMTx(request: request)
 ///
-/// if response.data?.rawResponse.data?.recommendation == .deny {
+/// if response.data?.rawResponse.data?.recommendation == "deny" {
 ///     print("Transaction blocked: potential security risk")
 /// }
 /// ```
