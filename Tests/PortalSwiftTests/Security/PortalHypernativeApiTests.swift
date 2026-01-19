@@ -464,4 +464,89 @@ final class PortalHypernativeApiTests: XCTestCase {
       XCTAssertNotNil(error)
     }
   }
+  
+  // MARK: - scanSolanaTx Success and Error Tests
+  
+  func testScanSolanaTx_decodesValidResponse_success() async throws {
+    // Given
+    let expectedResponse = ScanSolanaResponse.stub()
+    try setReturnValue(expectedResponse)
+    let request = ScanSolanaRequest.stub()
+    
+    // When
+    let response = try await sut.scanSolanaTx(request: request)
+    
+    // Then
+    XCTAssertNotNil(response.data)
+    XCTAssertEqual(response.data?.rawResponse.success, true)
+    XCTAssertEqual(response.data?.rawResponse.data?.recommendation, "accept")
+    XCTAssertNil(response.error)
+  }
+  
+  func testScanSolanaTx_decodingError_throwsError() async {
+    // Given
+    requestsSpy.returnData = Data("invalid json".utf8)
+    let request = ScanSolanaRequest.stub()
+    
+    // When/Then
+    do {
+      _ = try await sut.scanSolanaTx(request: request)
+      XCTFail("Expected decoding error to be thrown")
+    } catch {
+      XCTAssertNotNil(error)
+    }
+  }
+  
+  func testScanSolanaTx_executeThrows_throwsError() async {
+    // Given
+    let failMock = PortalRequestsFailMock()
+    failMock.errorToThrow = URLError(.networkConnectionLost)
+    let apiWithFailingRequests = PortalHypernativeApi(
+      apiKey: testApiKey,
+      apiHost: "api.portalhq.io",
+      requests: failMock
+    )
+    let request = ScanSolanaRequest.stub()
+    
+    // When/Then
+    do {
+      _ = try await apiWithFailingRequests.scanSolanaTx(request: request)
+      XCTFail("Expected error to be thrown")
+    } catch let error as URLError {
+      XCTAssertEqual(error.code, .networkConnectionLost)
+    } catch {
+      XCTFail("Expected URLError, got \(type(of: error))")
+    }
+  }
+  
+  func testScanSolanaTx_payloadMatchesRequest() async throws {
+    // Given
+    let tx = ScanSolanaTransaction.stub(
+      message: ScanSolanaMessage.stub(),
+      rawTransaction: "base64raw",
+      version: "0"
+    )
+    let request = ScanSolanaRequest(
+      transaction: tx,
+      url: "https://app.example.com",
+      validateRecentBlockHash: true,
+      showFullFindings: true,
+      policy: "policy-1"
+    )
+    try setReturnValue(ScanSolanaResponse.stub())
+    
+    // When
+    _ = try await sut.scanSolanaTx(request: request)
+    
+    // Then
+    let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
+    let payload = portalRequest?.payload as? ScanSolanaRequest
+    XCTAssertNotNil(payload)
+    XCTAssertEqual(payload?.transaction.rawTransaction, "base64raw")
+    XCTAssertEqual(payload?.transaction.version, "0")
+    XCTAssertEqual(payload?.url, "https://app.example.com")
+    XCTAssertEqual(payload?.validateRecentBlockHash, true)
+    XCTAssertEqual(payload?.showFullFindings, true)
+    XCTAssertEqual(payload?.policy, "policy-1")
+  }
 }
