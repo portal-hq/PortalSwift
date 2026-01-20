@@ -43,6 +43,9 @@ public final class Portal: PortalProtocol {
   /// Access to trading-related functionality.
   public lazy var trading: Trading = .init(api: self.api)
 
+  /// Access to security-related functionality.
+  public lazy var security: Security = .init(api: self.api)
+
   private let apiHost: String
   private var backup: BackupOptions?
   private let binary: Mobile
