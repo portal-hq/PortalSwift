@@ -13,6 +13,7 @@ public protocol PortalApiProtocol: AnyObject {
   var yieldxyz: PortalYieldXyzApiProtocol { get }
   var lifi: PortalLifiTradingApiProtocol { get }
   var zeroX: PortalZeroXTradingApiProtocol { get }
+  var hypernative: PortalHypernativeApiProtocol { get }
 
   func eject() async throws -> String
   func fund(chainId: String, params: FundParams) async throws -> FundResponse
@@ -125,6 +126,13 @@ public class PortalApi: PortalApiProtocol {
 
   /// Access to 0x trading integration functionality.
   public lazy var zeroX: PortalZeroXTradingApiProtocol = PortalZeroXTradingApi(
+    apiKey: self.apiKey,
+    apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
+    requests: self.requests
+  )
+
+  /// Access to Hypernative security API functionality.
+  public lazy var hypernative: PortalHypernativeApiProtocol = PortalHypernativeApi(
     apiKey: self.apiKey,
     apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
     requests: self.requests

@@ -12,6 +12,16 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
+## 6.7.0 - 2026-01-21
+- Added Hypernative integration
+    - Added `portal.security.hypernative.scanEVMTx`
+    - Added `portal.security.hypernative.scanEip712Tx`
+    - Added `portal.security.hypernative.scanSolanaTx`
+    - Added `portal.security.hypernative.scanAddresses`
+    - Added `portal.security.hypernative.scanNfts`
+    - Added `portal.security.hypernative.scanTokens`
+    - Added `portal.security.hypernative.scanURL`
+
 ## 6.6.0 - 2026-01-09
 - Added 0x integration
     - Added `portal.trading.zeroX.getSources`
