@@ -242,6 +242,29 @@ final class PortalBlockaidApiTests: XCTestCase {
     XCTAssertNotNil(portalRequest?.payload)
   }
 
+  func testScanAddress_decodesValidResponse_success() async throws {
+    let expectedResponse = BlockaidScanAddressResponse.stub()
+    try setReturnValue(expectedResponse)
+    let request = BlockaidScanAddressRequest.stub()
+
+    let response = try await sut.scanAddress(request: request)
+
+    XCTAssertNotNil(response.data)
+    XCTAssertNil(response.error)
+  }
+
+  func testScanAddress_networkError_throwsError() async {
+    requestsSpy.returnData = Data()
+    let request = BlockaidScanAddressRequest.stub()
+
+    do {
+      _ = try await sut.scanAddress(request: request)
+      XCTFail("Expected error to be thrown")
+    } catch {
+      XCTAssertNotNil(error)
+    }
+  }
+
   // MARK: - scanTokens Tests
 
   func testScanTokens_buildsCorrectUrl() async throws {
@@ -285,6 +308,29 @@ final class PortalBlockaidApiTests: XCTestCase {
     XCTAssertNotNil(portalRequest?.payload)
   }
 
+  func testScanTokens_decodesValidResponse_success() async throws {
+    let expectedResponse = BlockaidScanTokensResponse.stub()
+    try setReturnValue(expectedResponse)
+    let request = BlockaidScanTokensRequest.stub()
+
+    let response = try await sut.scanTokens(request: request)
+
+    XCTAssertNotNil(response.data)
+    XCTAssertNil(response.error)
+  }
+
+  func testScanTokens_networkError_throwsError() async {
+    requestsSpy.returnData = Data()
+    let request = BlockaidScanTokensRequest.stub()
+
+    do {
+      _ = try await sut.scanTokens(request: request)
+      XCTFail("Expected error to be thrown")
+    } catch {
+      XCTAssertNotNil(error)
+    }
+  }
+
   // MARK: - scanURL Tests
 
   func testScanURL_buildsCorrectUrl() async throws {
@@ -326,5 +372,28 @@ final class PortalBlockaidApiTests: XCTestCase {
 
     let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
     XCTAssertNotNil(portalRequest?.payload)
+  }
+
+  func testScanURL_decodesValidResponse_success() async throws {
+    let expectedResponse = BlockaidScanURLResponse.stub()
+    try setReturnValue(expectedResponse)
+    let request = BlockaidScanURLRequest.stub()
+
+    let response = try await sut.scanURL(request: request)
+
+    XCTAssertNotNil(response.data)
+    XCTAssertNil(response.error)
+  }
+
+  func testScanURL_networkError_throwsError() async {
+    requestsSpy.returnData = Data()
+    let request = BlockaidScanURLRequest.stub()
+
+    do {
+      _ = try await sut.scanURL(request: request)
+      XCTFail("Expected error to be thrown")
+    } catch {
+      XCTAssertNotNil(error)
+    }
   }
 }
