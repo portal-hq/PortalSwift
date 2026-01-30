@@ -99,10 +99,6 @@ extension ViewController {
         }
       }
     }
-
-    if let error = response.error {
-      logger.error("  Error: \(error)")
-    }
   }
 
   // MARK: - Blockaid Scan Solana Transaction
@@ -186,10 +182,6 @@ extension ViewController {
         }
       }
     }
-
-    if let error = response.error {
-      logger.error("  Error: \(error)")
-    }
   }
 
   // MARK: - Blockaid Scan Address
@@ -254,10 +246,6 @@ extension ViewController {
           logger.info("    - [\(feature.type)] \(feature.featureId): \(feature.description)")
         }
       }
-    }
-
-    if let error = response.error {
-      logger.error("  Error: \(error)")
     }
   }
 
@@ -332,10 +320,6 @@ extension ViewController {
         }
       }
     }
-
-    if let error = response.error {
-      logger.error("  Error: \(error)")
-    }
   }
 
   // MARK: - Blockaid Scan URL
@@ -404,10 +388,6 @@ extension ViewController {
           logger.info("  JSON-RPC Operations: \(jsonRpcOps.joined(separator: ", "))")
         }
       }
-    }
-
-    if let error = response.error {
-      logger.error("  Error: \(error)")
     }
   }
 }

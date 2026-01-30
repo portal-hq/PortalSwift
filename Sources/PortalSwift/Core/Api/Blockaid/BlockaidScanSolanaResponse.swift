@@ -11,7 +11,6 @@ import Foundation
 
 public struct BlockaidScanSolanaResponse: Codable {
   public let data: BlockaidScanSolanaData?
-  public let error: String?
 }
 
 public struct BlockaidScanSolanaData: Codable {
