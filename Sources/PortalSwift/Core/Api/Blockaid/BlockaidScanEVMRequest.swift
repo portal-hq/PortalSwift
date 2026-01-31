@@ -11,14 +11,14 @@ import Foundation
 
 public struct BlockaidScanEVMRequest: Codable {
   public let chain: String
-  public let metadata: BlockaidScanEVMMetadata
+  public let metadata: BlockaidScanEVMMetadata?
   public let data: BlockaidScanEVMTransactionData
   public let options: [BlockaidScanEVMOption]?
   public let block: String?
 
   public init(
     chain: String,
-    metadata: BlockaidScanEVMMetadata,
+    metadata: BlockaidScanEVMMetadata? = nil,
     data: BlockaidScanEVMTransactionData,
     options: [BlockaidScanEVMOption]? = nil,
     block: String? = nil

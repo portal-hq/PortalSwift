@@ -39,11 +39,8 @@ extension ViewController {
           value: "0x0"
         )
 
-        let metadata = BlockaidScanEVMMetadata(domain: "https://app.uniswap.org")
-
         let request = BlockaidScanEVMRequest(
           chain: "eip155:1",
-          metadata: metadata,
           data: transactionData,
           options: [.simulation, .validation],
           block: "21211118"
@@ -122,12 +119,9 @@ extension ViewController {
           "vxBNpvao9QJmLKXUThbbjRnxm3ufu4Wku97kHd5a67FDjSqeHwcPrBKTjAHp4ECr61eWwoxvUEVTuuWX65P9bCNDJrTJpX64vjdtpHA8cogA4C92Ubj813wUUA8Ey4Bvcrdj5c1bSTCnwoE8HeFYiyioRLNZTpShx8zkyzXaxkpUvPVRN26363bGvJDNSJt8bihmwAPxfrH7kSV9BvAuhRWsiuUAN4GZzyAiptknHZ1xjzrKAHz68UNJpWnYkaUThye6r3iULZUcp7baBaGAtnUmAdDMGG1UpBusWLF"
         ]
 
-        let metadata = BlockaidScanSolanaMetadata(url: "https://phantom.app")
-
         let request = BlockaidScanSolanaRequest(
           accountAddress: "86xCnPeV69n6t3DnyGvkKobf9FdN2H9oiVDdaMpo2MMY",
           transactions: transactions,
-          metadata: metadata,
           encoding: .base58,
           chain: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
           options: [.simulation, .validation],
@@ -202,11 +196,9 @@ extension ViewController {
         logger.info("📝 [Blockaid Scan Address] Starting scan...")
 
         // Use benign addresses: USDC and a known Solana address
-        let evmMetadata = BlockaidScanAddressMetadata(domain: "https://app.uniswap.org")
         let evmRequest = BlockaidScanAddressRequest(
           address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // USDC on Ethereum
-          chain: "eip155:1",
-          metadata: evmMetadata
+          chain: "eip155:1"
         )
 
         logger.info("  Scanning EVM address...")
@@ -215,8 +207,7 @@ extension ViewController {
 
         let solanaRequest = BlockaidScanAddressRequest(
           address: "So11111111111111111111111111111111111111112", // Wrapped SOL
-          chain: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
-          metadata: nil
+          chain: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
         )
 
         logger.info("  Scanning Solana address...")
@@ -274,8 +265,7 @@ extension ViewController {
 
         let request = BlockaidScanTokensRequest(
           chain: "eip155:1",
-          tokens: tokens,
-          metadata: nil
+          tokens: tokens
         )
 
         let response = try await portal.security.blockaid.scanTokens(request: request)
@@ -339,10 +329,8 @@ extension ViewController {
       do {
         logger.info("📝 [Blockaid Scan URL] Starting scan...")
 
-        let metadata = BlockaidScanURLMetadata(type: .catalog)
         let request = BlockaidScanURLRequest(
-          url: "https://app.uniswap.org",
-          metadata: metadata
+          url: "https://app.uniswap.org"
         )
 
         let response = try await portal.security.blockaid.scanURL(request: request)
