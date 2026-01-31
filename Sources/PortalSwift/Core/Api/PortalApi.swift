@@ -14,6 +14,7 @@ public protocol PortalApiProtocol: AnyObject {
   var lifi: PortalLifiTradingApiProtocol { get }
   var zeroX: PortalZeroXTradingApiProtocol { get }
   var hypernative: PortalHypernativeApiProtocol { get }
+  var blockaid: PortalBlockaidApiProtocol { get }
 
   func eject() async throws -> String
   func fund(chainId: String, params: FundParams) async throws -> FundResponse
@@ -133,6 +134,13 @@ public class PortalApi: PortalApiProtocol {
 
   /// Access to Hypernative security API functionality.
   public lazy var hypernative: PortalHypernativeApiProtocol = PortalHypernativeApi(
+    apiKey: self.apiKey,
+    apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
+    requests: self.requests
+  )
+
+  /// Access to Blockaid security API functionality.
+  public lazy var blockaid: PortalBlockaidApiProtocol = PortalBlockaidApi(
     apiKey: self.apiKey,
     apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
     requests: self.requests
