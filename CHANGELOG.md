@@ -12,6 +12,14 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
+## 6.8.0 - 2026-01-30
+- Added Blockaid integration
+    - Added `portal.security.blockaid.scanEVMTx`
+    - Added `portal.security.blockaid.scanSolanaTx`
+    - Added `portal.security.blockaid.scanAddress`
+    - Added `portal.security.blockaid.scanTokens`
+    - Added `portal.security.blockaid.scanURL`
+
 ## 6.7.0 - 2026-01-21
 - Added Hypernative integration
     - Added `portal.security.hypernative.scanEVMTx`
