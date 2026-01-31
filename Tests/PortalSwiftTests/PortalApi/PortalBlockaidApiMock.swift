@@ -21,7 +21,7 @@ final class PortalBlockaidApiMock: PortalBlockaidApiProtocol {
     if let error = scanEVMTxError {
       throw error
     }
-    return scanEVMTxReturnValue ?? BlockaidScanEVMResponse(data: nil, error: nil)
+    return scanEVMTxReturnValue ?? BlockaidScanEVMResponse(data: nil)
   }
 
   var scanSolanaTxReturnValue: BlockaidScanSolanaResponse?
@@ -35,7 +35,7 @@ final class PortalBlockaidApiMock: PortalBlockaidApiProtocol {
     if let error = scanSolanaTxError {
       throw error
     }
-    return scanSolanaTxReturnValue ?? BlockaidScanSolanaResponse(data: nil, error: nil)
+    return scanSolanaTxReturnValue ?? BlockaidScanSolanaResponse(data: nil)
   }
 
   var scanAddressReturnValue: BlockaidScanAddressResponse?
@@ -49,7 +49,7 @@ final class PortalBlockaidApiMock: PortalBlockaidApiProtocol {
     if let error = scanAddressError {
       throw error
     }
-    return scanAddressReturnValue ?? BlockaidScanAddressResponse(data: nil, error: nil)
+    return scanAddressReturnValue ?? BlockaidScanAddressResponse(data: nil)
   }
 
   var scanTokensReturnValue: BlockaidScanTokensResponse?
@@ -63,7 +63,7 @@ final class PortalBlockaidApiMock: PortalBlockaidApiProtocol {
     if let error = scanTokensError {
       throw error
     }
-    return scanTokensReturnValue ?? BlockaidScanTokensResponse(data: nil, error: nil)
+    return scanTokensReturnValue ?? BlockaidScanTokensResponse(data: nil)
   }
 
   var scanURLReturnValue: BlockaidScanURLResponse?
@@ -77,6 +77,6 @@ final class PortalBlockaidApiMock: PortalBlockaidApiProtocol {
     if let error = scanURLError {
       throw error
     }
-    return scanURLReturnValue ?? BlockaidScanURLResponse(data: nil, error: nil)
+    return scanURLReturnValue ?? BlockaidScanURLResponse(data: nil)
   }
 }

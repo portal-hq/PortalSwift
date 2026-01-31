@@ -43,7 +43,6 @@ final class BlockaidTests: XCTestCase {
     let response = try await sut.scanEVMTx(request: request)
 
     XCTAssertNotNil(response.data)
-    XCTAssertNil(response.error)
   }
 
   func testScanEVMTx_error_throwsError() async {
@@ -82,7 +81,6 @@ final class BlockaidTests: XCTestCase {
     let response = try await sut.scanSolanaTx(request: request)
 
     XCTAssertNotNil(response.data)
-    XCTAssertNil(response.error)
   }
 
   func testScanSolanaTx_error_throwsError() async {

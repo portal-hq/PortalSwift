@@ -115,8 +115,8 @@ extension BlockaidScanURLMetadata {
 // MARK: - EVM Response Stubs
 
 extension BlockaidScanEVMResponse {
-  static func stub(data: BlockaidScanEVMData? = .stub(), error: String? = nil) -> Self {
-    BlockaidScanEVMResponse(data: data, error: error)
+  static func stub(data: BlockaidScanEVMData? = .stub()) -> Self {
+    BlockaidScanEVMResponse(data: data)
   }
 }
 
@@ -229,8 +229,8 @@ extension BlockaidAsset {
 // MARK: - Solana Response Stubs
 
 extension BlockaidScanSolanaResponse {
-  static func stub(data: BlockaidScanSolanaData? = .stub(), error: String? = nil) -> Self {
-    BlockaidScanSolanaResponse(data: data, error: error)
+  static func stub(data: BlockaidScanSolanaData? = .stub()) -> Self {
+    BlockaidScanSolanaResponse(data: data)
   }
 }
 
@@ -288,8 +288,8 @@ extension BlockaidSolanaValidation {
 // MARK: - Address Response Stubs
 
 extension BlockaidScanAddressResponse {
-  static func stub(data: BlockaidScanAddressData? = .stub(), error: String? = nil) -> Self {
-    BlockaidScanAddressResponse(data: data, error: error)
+  static func stub(data: BlockaidScanAddressData? = .stub()) -> Self {
+    BlockaidScanAddressResponse(data: data)
   }
 }
 
@@ -322,8 +322,8 @@ extension BlockaidAddressFeature {
 // MARK: - Tokens Response Stubs
 
 extension BlockaidScanTokensResponse {
-  static func stub(data: BlockaidScanTokensData? = .stub(), error: String? = nil) -> Self {
-    BlockaidScanTokensResponse(data: data, error: error)
+  static func stub(data: BlockaidScanTokensData? = .stub()) -> Self {
+    BlockaidScanTokensResponse(data: data)
   }
 }
 
@@ -370,8 +370,8 @@ extension BlockaidTokenResult {
 // MARK: - URL Response Stubs
 
 extension BlockaidScanURLResponse {
-  static func stub(data: BlockaidScanURLData? = .stub(), error: String? = nil) -> Self {
-    BlockaidScanURLResponse(data: data, error: error)
+  static func stub(data: BlockaidScanURLData? = .stub()) -> Self {
+    BlockaidScanURLResponse(data: data)
   }
 }
 

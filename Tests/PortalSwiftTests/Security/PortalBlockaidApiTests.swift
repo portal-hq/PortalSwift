@@ -51,7 +51,7 @@ final class PortalBlockaidApiTests: XCTestCase {
       requests: requestsSpy
     )
 
-    try setReturnValue(BlockaidScanEVMResponse(data: nil, error: nil))
+    try setReturnValue(BlockaidScanEVMResponse(data: nil))
     let request = BlockaidScanEVMRequest.stub()
     _ = try? await localSut.scanEVMTx(request: request)
 
@@ -62,7 +62,7 @@ final class PortalBlockaidApiTests: XCTestCase {
   // MARK: - scanEVMTx Tests
 
   func testScanEVMTx_buildsCorrectUrl() async throws {
-    try setReturnValue(BlockaidScanEVMResponse(data: nil, error: nil))
+    try setReturnValue(BlockaidScanEVMResponse(data: nil))
     let request = BlockaidScanEVMRequest.stub()
 
     _ = try await sut.scanEVMTx(request: request)
@@ -73,7 +73,7 @@ final class PortalBlockaidApiTests: XCTestCase {
   }
 
   func testScanEVMTx_usesPostMethod() async throws {
-    try setReturnValue(BlockaidScanEVMResponse(data: nil, error: nil))
+    try setReturnValue(BlockaidScanEVMResponse(data: nil))
     let request = BlockaidScanEVMRequest.stub()
 
     _ = try await sut.scanEVMTx(request: request)
@@ -83,7 +83,7 @@ final class PortalBlockaidApiTests: XCTestCase {
   }
 
   func testScanEVMTx_includesBearerToken() async throws {
-    try setReturnValue(BlockaidScanEVMResponse(data: nil, error: nil))
+    try setReturnValue(BlockaidScanEVMResponse(data: nil))
     let request = BlockaidScanEVMRequest.stub()
 
     _ = try await sut.scanEVMTx(request: request)
@@ -93,7 +93,7 @@ final class PortalBlockaidApiTests: XCTestCase {
   }
 
   func testScanEVMTx_serializesRequestPayload() async throws {
-    try setReturnValue(BlockaidScanEVMResponse(data: nil, error: nil))
+    try setReturnValue(BlockaidScanEVMResponse(data: nil))
     let request = BlockaidScanEVMRequest.stub()
 
     _ = try await sut.scanEVMTx(request: request)
@@ -110,7 +110,6 @@ final class PortalBlockaidApiTests: XCTestCase {
     let response = try await sut.scanEVMTx(request: request)
 
     XCTAssertNotNil(response.data)
-    XCTAssertNil(response.error)
   }
 
   func testScanEVMTx_networkError_throwsError() async {
@@ -128,7 +127,7 @@ final class PortalBlockaidApiTests: XCTestCase {
   // MARK: - scanSolanaTx Tests
 
   func testScanSolanaTx_buildsCorrectUrl() async throws {
-    try setReturnValue(BlockaidScanSolanaResponse(data: nil, error: nil))
+    try setReturnValue(BlockaidScanSolanaResponse(data: nil))
     let request = BlockaidScanSolanaRequest.stub()
 
     _ = try await sut.scanSolanaTx(request: request)
@@ -139,7 +138,7 @@ final class PortalBlockaidApiTests: XCTestCase {
   }
 
   func testScanSolanaTx_usesPostMethod() async throws {
-    try setReturnValue(BlockaidScanSolanaResponse(data: nil, error: nil))
+    try setReturnValue(BlockaidScanSolanaResponse(data: nil))
     let request = BlockaidScanSolanaRequest.stub()
 
     _ = try await sut.scanSolanaTx(request: request)
@@ -149,7 +148,7 @@ final class PortalBlockaidApiTests: XCTestCase {
   }
 
   func testScanSolanaTx_includesBearerToken() async throws {
-    try setReturnValue(BlockaidScanSolanaResponse(data: nil, error: nil))
+    try setReturnValue(BlockaidScanSolanaResponse(data: nil))
     let request = BlockaidScanSolanaRequest.stub()
 
     _ = try await sut.scanSolanaTx(request: request)
@@ -159,7 +158,7 @@ final class PortalBlockaidApiTests: XCTestCase {
   }
 
   func testScanSolanaTx_serializesRequestPayload() async throws {
-    try setReturnValue(BlockaidScanSolanaResponse(data: nil, error: nil))
+    try setReturnValue(BlockaidScanSolanaResponse(data: nil))
     let request = BlockaidScanSolanaRequest.stub()
 
     _ = try await sut.scanSolanaTx(request: request)
@@ -176,7 +175,6 @@ final class PortalBlockaidApiTests: XCTestCase {
     let response = try await sut.scanSolanaTx(request: request)
 
     XCTAssertNotNil(response.data)
-    XCTAssertNil(response.error)
   }
 
   func testScanSolanaTx_networkError_throwsError() async {
@@ -202,7 +200,7 @@ final class PortalBlockaidApiTests: XCTestCase {
   // MARK: - scanAddress Tests
 
   func testScanAddress_buildsCorrectUrl() async throws {
-    try setReturnValue(BlockaidScanAddressResponse(data: nil, error: nil))
+    try setReturnValue(BlockaidScanAddressResponse(data: nil))
     let request = BlockaidScanAddressRequest.stub()
 
     _ = try await sut.scanAddress(request: request)
@@ -213,7 +211,7 @@ final class PortalBlockaidApiTests: XCTestCase {
   }
 
   func testScanAddress_usesPostMethod() async throws {
-    try setReturnValue(BlockaidScanAddressResponse(data: nil, error: nil))
+    try setReturnValue(BlockaidScanAddressResponse(data: nil))
     let request = BlockaidScanAddressRequest.stub()
 
     _ = try await sut.scanAddress(request: request)
@@ -223,7 +221,7 @@ final class PortalBlockaidApiTests: XCTestCase {
   }
 
   func testScanAddress_includesBearerToken() async throws {
-    try setReturnValue(BlockaidScanAddressResponse(data: nil, error: nil))
+    try setReturnValue(BlockaidScanAddressResponse(data: nil))
     let request = BlockaidScanAddressRequest.stub()
 
     _ = try await sut.scanAddress(request: request)
@@ -233,7 +231,7 @@ final class PortalBlockaidApiTests: XCTestCase {
   }
 
   func testScanAddress_serializesRequestPayload() async throws {
-    try setReturnValue(BlockaidScanAddressResponse(data: nil, error: nil))
+    try setReturnValue(BlockaidScanAddressResponse(data: nil))
     let request = BlockaidScanAddressRequest.stub()
 
     _ = try await sut.scanAddress(request: request)
@@ -250,7 +248,6 @@ final class PortalBlockaidApiTests: XCTestCase {
     let response = try await sut.scanAddress(request: request)
 
     XCTAssertNotNil(response.data)
-    XCTAssertNil(response.error)
   }
 
   func testScanAddress_networkError_throwsError() async {
@@ -268,7 +265,7 @@ final class PortalBlockaidApiTests: XCTestCase {
   // MARK: - scanTokens Tests
 
   func testScanTokens_buildsCorrectUrl() async throws {
-    try setReturnValue(BlockaidScanTokensResponse(data: nil, error: nil))
+    try setReturnValue(BlockaidScanTokensResponse(data: nil))
     let request = BlockaidScanTokensRequest.stub()
 
     _ = try await sut.scanTokens(request: request)
@@ -279,7 +276,7 @@ final class PortalBlockaidApiTests: XCTestCase {
   }
 
   func testScanTokens_usesPostMethod() async throws {
-    try setReturnValue(BlockaidScanTokensResponse(data: nil, error: nil))
+    try setReturnValue(BlockaidScanTokensResponse(data: nil))
     let request = BlockaidScanTokensRequest.stub()
 
     _ = try await sut.scanTokens(request: request)
@@ -289,7 +286,7 @@ final class PortalBlockaidApiTests: XCTestCase {
   }
 
   func testScanTokens_includesBearerToken() async throws {
-    try setReturnValue(BlockaidScanTokensResponse(data: nil, error: nil))
+    try setReturnValue(BlockaidScanTokensResponse(data: nil))
     let request = BlockaidScanTokensRequest.stub()
 
     _ = try await sut.scanTokens(request: request)
@@ -299,7 +296,7 @@ final class PortalBlockaidApiTests: XCTestCase {
   }
 
   func testScanTokens_serializesRequestPayload() async throws {
-    try setReturnValue(BlockaidScanTokensResponse(data: nil, error: nil))
+    try setReturnValue(BlockaidScanTokensResponse(data: nil))
     let request = BlockaidScanTokensRequest.stub()
 
     _ = try await sut.scanTokens(request: request)
@@ -316,7 +313,6 @@ final class PortalBlockaidApiTests: XCTestCase {
     let response = try await sut.scanTokens(request: request)
 
     XCTAssertNotNil(response.data)
-    XCTAssertNil(response.error)
   }
 
   func testScanTokens_networkError_throwsError() async {
@@ -334,7 +330,7 @@ final class PortalBlockaidApiTests: XCTestCase {
   // MARK: - scanURL Tests
 
   func testScanURL_buildsCorrectUrl() async throws {
-    try setReturnValue(BlockaidScanURLResponse(data: nil, error: nil))
+    try setReturnValue(BlockaidScanURLResponse(data: nil))
     let request = BlockaidScanURLRequest.stub()
 
     _ = try await sut.scanURL(request: request)
@@ -345,7 +341,7 @@ final class PortalBlockaidApiTests: XCTestCase {
   }
 
   func testScanURL_usesPostMethod() async throws {
-    try setReturnValue(BlockaidScanURLResponse(data: nil, error: nil))
+    try setReturnValue(BlockaidScanURLResponse(data: nil))
     let request = BlockaidScanURLRequest.stub()
 
     _ = try await sut.scanURL(request: request)
@@ -355,7 +351,7 @@ final class PortalBlockaidApiTests: XCTestCase {
   }
 
   func testScanURL_includesBearerToken() async throws {
-    try setReturnValue(BlockaidScanURLResponse(data: nil, error: nil))
+    try setReturnValue(BlockaidScanURLResponse(data: nil))
     let request = BlockaidScanURLRequest.stub()
 
     _ = try await sut.scanURL(request: request)
@@ -365,7 +361,7 @@ final class PortalBlockaidApiTests: XCTestCase {
   }
 
   func testScanURL_serializesRequestPayload() async throws {
-    try setReturnValue(BlockaidScanURLResponse(data: nil, error: nil))
+    try setReturnValue(BlockaidScanURLResponse(data: nil))
     let request = BlockaidScanURLRequest.stub()
 
     _ = try await sut.scanURL(request: request)
@@ -382,7 +378,6 @@ final class PortalBlockaidApiTests: XCTestCase {
     let response = try await sut.scanURL(request: request)
 
     XCTAssertNotNil(response.data)
-    XCTAssertNil(response.error)
   }
 
   func testScanURL_networkError_throwsError() async {

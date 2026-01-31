@@ -46,7 +46,7 @@ final class BlockaidCodableTests: XCTestCase {
 
     XCTAssertEqual(decoded.options?.count, 3)
     XCTAssertEqual(decoded.block, "12345678")
-    XCTAssertEqual(decoded.metadata.domain, "https://test.com")
+    XCTAssertEqual(decoded.metadata?.domain, "https://test.com")
   }
 
   // MARK: - EVM Response Tests
