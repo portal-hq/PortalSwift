@@ -14,17 +14,20 @@ class PortalApiSpy: PortalApiProtocol {
   var lifi: any PortalSwift.PortalLifiTradingApiProtocol
   var zeroX: any PortalSwift.PortalZeroXTradingApiProtocol
   var hypernative: any PortalSwift.PortalHypernativeApiProtocol
+  var blockaid: any PortalSwift.PortalBlockaidApiProtocol
 
   init(
     yieldxyz: any PortalSwift.PortalYieldXyzApiProtocol = PortalYieldXyzApiSpy(),
     lifi: any PortalSwift.PortalLifiTradingApiProtocol = PortalLifiTradingApiSpy(),
     zeroX: any PortalSwift.PortalZeroXTradingApiProtocol = PortalZeroXTradingApiMock(),
-    hypernative: any PortalSwift.PortalHypernativeApiProtocol = PortalHypernativeApiMock()
+    hypernative: any PortalSwift.PortalHypernativeApiProtocol = PortalHypernativeApiMock(),
+    blockaid: any PortalSwift.PortalBlockaidApiProtocol = PortalBlockaidApiMock()
   ) {
     self.yieldxyz = yieldxyz
     self.lifi = lifi
     self.zeroX = zeroX
     self.hypernative = hypernative
+    self.blockaid = blockaid
   }
 
   // Property to track client access

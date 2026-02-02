@@ -14,6 +14,7 @@ class PortalApiMock: PortalApiProtocol {
   var lifi: PortalSwift.PortalLifiTradingApiProtocol
   var zeroX: PortalSwift.PortalZeroXTradingApiProtocol
   var hypernative: PortalSwift.PortalHypernativeApiProtocol
+  var blockaid: PortalSwift.PortalBlockaidApiProtocol
 
   var client: PortalSwift.ClientResponse?
 
@@ -22,12 +23,14 @@ class PortalApiMock: PortalApiProtocol {
     lifi: PortalSwift.PortalLifiTradingApiProtocol = PortalLifiTradingApiMock(),
     zeroX: PortalSwift.PortalZeroXTradingApiProtocol = PortalZeroXTradingApiMock(),
     hypernative: PortalSwift.PortalHypernativeApiProtocol = PortalHypernativeApiMock(),
+    blockaid: PortalSwift.PortalBlockaidApiProtocol = PortalBlockaidApiMock(),
     client: PortalSwift.ClientResponse? = nil
   ) {
     self.yieldxyz = yieldxyz
     self.lifi = lifi
     self.zeroX = zeroX
     self.hypernative = hypernative
+    self.blockaid = blockaid
     self.client = client
   }
 
