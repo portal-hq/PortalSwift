@@ -2354,8 +2354,8 @@ public final class Portal: PortalProtocol {
       "eip155:80002": "https://\(apiHost)/rpc/v1/eip155/80002", // Polygon Amoy
       "eip155:84532": "https://\(apiHost)/rpc/v1/eip155/84532", // Base Testnet
       "eip155:11155111": "https://\(apiHost)/rpc/v1/eip155/11155111", // Ethereum Sepolia
-      "eip155:143" : "https://\(apiHost)/rpc/v1/eip155/143", // Monad Mainnet
-      "eip155:10143" : "https://\(apiHost)/rpc/v1/eip155/10143", // Monad Testnet
+      "eip155:143": "https://\(apiHost)/rpc/v1/eip155/143", // Monad Mainnet
+      "eip155:10143": "https://\(apiHost)/rpc/v1/eip155/10143", // Monad Testnet
       "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": "https://\(apiHost)/rpc/v1/solana/5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", // Solana Mainnet
       "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": "https://\(apiHost)/rpc/v1/solana/EtWTRABZaYq6iMfeYKouRu166VU2xqa1" // Solana Devnet
     ]
