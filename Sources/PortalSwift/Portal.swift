@@ -46,6 +46,9 @@ public final class Portal: PortalProtocol {
   /// Access to security-related functionality.
   public lazy var security: Security = .init(api: self.api)
 
+  /// Access to delegation-related functionality.
+  public lazy var delegations: DelegationsProtocol = Delegations(api: self.api.delegations)
+
   private let apiHost: String
   private var backup: BackupOptions?
   private let binary: Mobile
