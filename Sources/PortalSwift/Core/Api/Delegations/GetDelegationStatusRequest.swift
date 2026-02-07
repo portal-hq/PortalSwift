@@ -13,7 +13,7 @@ import Foundation
 public struct GetDelegationStatusRequest: Codable {
   /// CAIP-2 chain ID (e.g., "eip155:11155111" or "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1")
   public let chain: String
-  /// Token symbol (e.g., "USDC")
+  /// Token symbol or address (e.g., "USDC" or a contract address)
   public let token: String
   /// The delegate address to query status for
   public let delegateAddress: String

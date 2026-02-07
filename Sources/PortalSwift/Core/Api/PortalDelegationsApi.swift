@@ -92,7 +92,7 @@ public class PortalDelegationsApi: PortalDelegationsApiProtocol {
   ///
   /// - Parameter request: The approval request containing:
   ///   - `chain`: CAIP-2 chain ID (e.g., "eip155:11155111" or "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1")
-  ///   - `token`: Token symbol (e.g., "USDC")
+  ///   - `token`: Token symbol or address or address (e.g., "USDC" or a contract address)
   ///   - `delegateAddress`: The address to delegate to
   ///   - `amount`: The amount to delegate (e.g., "1.0")
   /// - Returns: Response containing transaction data and approval metadata
@@ -122,7 +122,7 @@ public class PortalDelegationsApi: PortalDelegationsApiProtocol {
   ///
   /// - Parameter request: The revocation request containing:
   ///   - `chain`: CAIP-2 chain ID
-  ///   - `token`: Token symbol
+  ///   - `token`: Token symbol or address
   ///   - `delegateAddress`: The address to revoke delegation from
   /// - Returns: Response containing transaction data and revocation metadata
   /// - Throws: `URLError` if the URL cannot be constructed, or network/decoding errors if the request fails.
@@ -147,7 +147,7 @@ public class PortalDelegationsApi: PortalDelegationsApiProtocol {
   ///
   /// - Parameter request: The status query containing:
   ///   - `chain`: CAIP-2 chain ID
-  ///   - `token`: Token symbol
+  ///   - `token`: Token symbol or address
   ///   - `delegateAddress`: The delegate address to query status for
   /// - Returns: Response containing chainId, token info, balance, and delegations array
   /// - Throws: `URLError` if the URL cannot be constructed, or network/decoding errors if the request fails.
@@ -178,7 +178,7 @@ public class PortalDelegationsApi: PortalDelegationsApiProtocol {
   ///
   /// - Parameter request: The transfer request containing:
   ///   - `chain`: CAIP-2 chain ID
-  ///   - `token`: Token symbol
+  ///   - `token`: Token symbol or address
   ///   - `fromAddress`: The owner's address (who approved the delegation)
   ///   - `toAddress`: The recipient's address
   ///   - `amount`: The amount to transfer (e.g., "1.0")
