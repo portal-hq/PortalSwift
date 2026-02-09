@@ -70,8 +70,28 @@ public class PortalMpc: PortalMpcProtocol {
 
   private let rsaHeader = "-----BEGIN RSA KEY-----\n"
   private let rsaFooter = "\n-----END RSA KEY-----"
-  private var isWalletModificationInProgress: Bool = false
+  private let walletModificationOperationGuard = WalletModificationOperationGuard()
   private var isMock: Bool = false
+  
+  /// Thread-safe guard to prevent concurrent wallet modifications.
+  /// Uses actor isolation to ensure atomic check-and-set operations.
+  private actor WalletModificationOperationGuard {
+    private var inProgress = false
+    private var currentOperation: String?
+    
+    func acquire(for operation: String) throws {
+      guard !inProgress else {
+        throw MpcError.walletModificationAlreadyInProgress
+      }
+      inProgress = true
+      currentOperation = operation
+    }
+    
+    func release() {
+      inProgress = false
+      currentOperation = nil
+    }
+  }
   private var mpcMetadata: MpcMetadata
 
   /// Create an instance of Portal's MPC service.
@@ -122,11 +142,7 @@ public class PortalMpc: PortalMpcProtocol {
       throw MpcError.backupNoLongerSupported("[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = \"v6\"`.")
     }
 
-    guard !self.isWalletModificationInProgress else {
-      throw MpcError.walletModificationAlreadyInProgress
-    }
-
-    self.isWalletModificationInProgress = true
+    try await walletModificationOperationGuard.acquire(for: "backup")
 
     do {
       // Obtain the signing share.
@@ -230,7 +246,7 @@ public class PortalMpc: PortalMpcProtocol {
       try await self.api?.refreshClient()
       try await self.keychain?.loadMetadata()
 
-      self.isWalletModificationInProgress = false
+      await walletModificationOperationGuard.release()
 
       // Send the last progress update
       usingProgressCallback?(MpcStatus(status: .done, done: true))
@@ -238,7 +254,7 @@ public class PortalMpc: PortalMpcProtocol {
       // Return the Backup response
       return PortalMpcBackupResponse(cipherText: encryptResult.cipherText, shareIds: shareIds)
     } catch {
-      self.isWalletModificationInProgress = false
+      await walletModificationOperationGuard.release()
       throw error
     }
   }
@@ -372,11 +388,7 @@ public class PortalMpc: PortalMpcProtocol {
       throw MpcError.generateNoLongerSupported("[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = \"v6\"`.")
     }
 
-    guard !self.isWalletModificationInProgress else {
-      throw MpcError.walletModificationAlreadyInProgress
-    }
-
-    self.isWalletModificationInProgress = true
+    try await walletModificationOperationGuard.acquire(for: "generate")
 
     do {
       // Generate both backup shares in parallel
@@ -437,12 +449,12 @@ public class PortalMpc: PortalMpcProtocol {
 
       let addresses = try await keychain?.getAddresses() ?? [:]
 
-      self.isWalletModificationInProgress = false
+      await walletModificationOperationGuard.release()
       withProgressCallback?(MpcStatus(status: .done, done: true))
 
       return addresses
     } catch {
-      self.isWalletModificationInProgress = false
+      await walletModificationOperationGuard.release()
       throw error
     }
   }
@@ -456,11 +468,7 @@ public class PortalMpc: PortalMpcProtocol {
       throw MpcError.backupNoLongerSupported("[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = \"v6\"`.")
     }
 
-    guard !self.isWalletModificationInProgress else {
-      throw MpcError.walletModificationAlreadyInProgress
-    }
-
-    self.isWalletModificationInProgress = true
+    try await walletModificationOperationGuard.acquire(for: "recover")
 
     do {
       guard let client = try await api?.client else {
@@ -575,12 +583,12 @@ public class PortalMpc: PortalMpcProtocol {
 
       let addresses = try await keychain?.getAddresses() ?? [:]
 
-      self.isWalletModificationInProgress = false
+      await walletModificationOperationGuard.release()
       usingProgressCallback?(MpcStatus(status: .done, done: true))
 
       return addresses
     } catch {
-      self.isWalletModificationInProgress = false
+      await walletModificationOperationGuard.release()
       throw error
     }
   }
@@ -590,11 +598,7 @@ public class PortalMpc: PortalMpcProtocol {
       throw MpcError.backupNoLongerSupported("[PortalMpc] Generate is no longer supported for this version of MPC. Please use `version = \"v6\"`.")
     }
 
-    guard !self.isWalletModificationInProgress else {
-      throw MpcError.walletModificationAlreadyInProgress
-    }
-
-    self.isWalletModificationInProgress = true
+    try await walletModificationOperationGuard.acquire(for: "generateSolanaWallet")
 
     var newAddresses: [PortalNamespace: String?]
 
@@ -647,13 +651,13 @@ public class PortalMpc: PortalMpcProtocol {
       // Reset the metadata in the Keychain
       try await self.api?.refreshClient()
       try await self.keychain?.loadMetadata()
-      self.isWalletModificationInProgress = false
+      await walletModificationOperationGuard.release()
 
       // get addresses from the Keychain.
       newAddresses = try await self.keychain?.getAddresses() ?? [:]
 
     } catch {
-      self.isWalletModificationInProgress = false
+      await walletModificationOperationGuard.release()
       throw error
     }
 
