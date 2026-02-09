@@ -21,6 +21,7 @@ public protocol PortalProtocol {
   var yield: Yield { get }
   var trading: Trading { get }
   var security: Security { get }
+  var delegations: DelegationsProtocol { get }
 
   // Deprecated Properties
   @available(*, deprecated, renamed: "addresses", message: "Please use the async getter for `addresses`")
