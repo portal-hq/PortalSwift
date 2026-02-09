@@ -15,6 +15,7 @@ public protocol PortalApiProtocol: AnyObject {
   var zeroX: PortalZeroXTradingApiProtocol { get }
   var hypernative: PortalHypernativeApiProtocol { get }
   var blockaid: PortalBlockaidApiProtocol { get }
+  var delegations: PortalDelegationsApiProtocol { get }
 
   func eject() async throws -> String
   func fund(chainId: String, params: FundParams) async throws -> FundResponse
@@ -141,6 +142,13 @@ public class PortalApi: PortalApiProtocol {
 
   /// Access to Blockaid security API functionality.
   public lazy var blockaid: PortalBlockaidApiProtocol = PortalBlockaidApi(
+    apiKey: self.apiKey,
+    apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
+    requests: self.requests
+  )
+
+  /// Access to Delegations API functionality.
+  public lazy var delegations: PortalDelegationsApiProtocol = PortalDelegationsApi(
     apiKey: self.apiKey,
     apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
     requests: self.requests
