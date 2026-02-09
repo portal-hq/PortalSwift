@@ -92,7 +92,7 @@ public class PortalDelegationsApi: PortalDelegationsApiProtocol {
   ///
   /// - Parameter request: The approval request containing:
   ///   - `chain`: CAIP-2 chain ID (e.g., "eip155:11155111" or "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1")
-  ///   - `token`: Token symbol or address or address (e.g., "USDC" or a contract address)
+  ///   - `token`: Token symbol or address (e.g., "USDC" or a contract address)
   ///   - `delegateAddress`: The address to delegate to
   ///   - `amount`: The amount to delegate (e.g., "1.0")
   /// - Returns: Response containing transaction data and approval metadata
@@ -117,8 +117,8 @@ public class PortalDelegationsApi: PortalDelegationsApiProtocol {
   /// transfer tokens on behalf of the owner. The endpoint returns unsigned transactions
   /// that must be signed sequentially.
   ///
-  /// - For EVM chains: Returns `transactions` (calls approve with amount 0)
-  /// - For Solana chains: Returns `encodedTransactions` (Revoke instruction)
+  /// - For EVM chains: Returns `transactions` for revoking the delegation
+  /// - For Solana chains: Returns `encodedTransactions` for revoking the delegation
   ///
   /// - Parameter request: The revocation request containing:
   ///   - `chain`: CAIP-2 chain ID

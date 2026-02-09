@@ -16,25 +16,25 @@ public protocol DelegationsProtocol {
   /// Approves a delegation for a specified token on a given chain.
   /// - Parameter request: The approval request containing chain, token, delegateAddress, and amount
   /// - Returns: Response containing transaction data and metadata
-  /// - Throws: `URLError` if the request fails or network errors occur
+  /// - Throws: `URLError` if the URL cannot be constructed, or other network/decoding errors if the request fails.
   func approve(request: ApproveDelegationRequest) async throws -> ApproveDelegationResponse
 
   /// Revokes a delegation for a specified token on a given chain.
   /// - Parameter request: The revocation request containing chain, token, and delegateAddress
   /// - Returns: Response containing transaction data and metadata
-  /// - Throws: `URLError` if the request fails or network errors occur
+  /// - Throws: `URLError` if the URL cannot be constructed, or other network/decoding errors if the request fails.
   func revoke(request: RevokeDelegationRequest) async throws -> RevokeDelegationResponse
 
   /// Retrieves the delegation status for a specified token and delegate address.
   /// - Parameter request: The status query containing chain, token, and delegateAddress
   /// - Returns: Response containing delegation status information
-  /// - Throws: `URLError` if the request fails or network errors occur
+  /// - Throws: `URLError` if the URL cannot be constructed, or other network/decoding errors if the request fails.
   func getStatus(request: GetDelegationStatusRequest) async throws -> DelegationStatusResponse
 
   /// Transfers tokens from one address to another using delegated authority.
   /// - Parameter request: The transfer request containing chain, token, fromAddress, toAddress, and amount
   /// - Returns: Response containing transaction data and metadata
-  /// - Throws: `URLError` if the request fails or network errors occur
+  /// - Throws: `URLError` if the URL cannot be constructed, or other network/decoding errors if the request fails.
   func transferFrom(request: TransferFromRequest) async throws -> TransferFromResponse
 }
 
@@ -85,7 +85,7 @@ public class Delegations: DelegationsProtocol {
   ///
   /// - Parameter request: The approval request containing:
   ///   - `chain`: CAIP-2 chain ID (e.g., "eip155:11155111" or "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1")
-  ///   - `token`: Token symbol or address or address (e.g., "USDC" or a contract address)
+  ///   - `token`: Token symbol or address (e.g., "USDC" or a contract address)
   ///   - `delegateAddress`: The address to delegate to
   ///   - `amount`: The amount to delegate
   /// - Returns: Response containing transaction data and approval metadata

@@ -131,7 +131,7 @@ final class PortalDelegationsApiTests: XCTestCase {
     XCTAssertNotNil(response.metadata)
   }
 
-  func testApprove_networkError_throwsError() async {
+  func testApprove_invalidResponse_throwsError() async {
     // Given
     requestsSpy.returnData = Data()
     let request = ApproveDelegationRequest.stub()
@@ -304,7 +304,7 @@ final class PortalDelegationsApiTests: XCTestCase {
     XCTAssertFalse(response.delegations.isEmpty)
   }
 
-  func testGetStatus_networkError_throwsError() async {
+  func testGetStatus_invalidResponse_throwsError() async {
     // Given
     requestsSpy.returnData = Data()
     let request = GetDelegationStatusRequest.stub()
@@ -400,7 +400,7 @@ final class PortalDelegationsApiTests: XCTestCase {
     XCTAssertEqual(response.metadata.amount, "1.0")
   }
 
-  func testTransferFrom_networkError_throwsError() async {
+  func testTransferFrom_invalidResponse_throwsError() async {
     // Given
     requestsSpy.returnData = Data()
     let request = TransferFromRequest.stub()
