@@ -12,6 +12,14 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
+## 6.9.0 - 2026-02-09
+- Added delegations integration for managing token approvals and delegated transfers:
+    - Added `portal.delegations.approve`
+    - Added `portal.delegations.revoke`
+    - Added `portal.delegations.getStatus`
+    - Added `portal.delegations.transferFrom`
+- Fixed a race condition in the wallet modification operations guard.
+
 ## 6.8.0 - 2026-01-30
 - Added Blockaid integration
     - Added `portal.security.blockaid.scanEVMTx`
