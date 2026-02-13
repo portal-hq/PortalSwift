@@ -5,11 +5,10 @@
 //  Created by Ahmed Ragab
 //
 
-import XCTest
 @testable import PortalSwift
+import XCTest
 
 final class DelegationsTests: XCTestCase {
-
   private var mockApi: PortalDelegationsApiMock!
   private var sut: Delegations!
 

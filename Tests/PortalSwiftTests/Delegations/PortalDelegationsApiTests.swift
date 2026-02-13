@@ -5,11 +5,10 @@
 //  Created by Ahmed Ragab
 //
 
-import XCTest
 @testable import PortalSwift
+import XCTest
 
 final class PortalDelegationsApiTests: XCTestCase {
-
   private var requestsSpy: PortalRequestsSpy!
   private var sut: PortalDelegationsApi!
   let testApiKey = "test-api-key"

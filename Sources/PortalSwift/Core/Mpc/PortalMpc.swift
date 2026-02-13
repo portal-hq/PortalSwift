@@ -72,13 +72,13 @@ public class PortalMpc: PortalMpcProtocol {
   private let rsaFooter = "\n-----END RSA KEY-----"
   private let walletModificationOperationGuard = WalletModificationOperationGuard()
   private var isMock: Bool = false
-  
+
   /// Thread-safe guard to prevent concurrent wallet modifications.
   /// Uses actor isolation to ensure atomic check-and-set operations.
   private actor WalletModificationOperationGuard {
     private var inProgress = false
     private var currentOperation: String?
-    
+
     func acquire(for operation: String) throws {
       guard !inProgress else {
         throw MpcError.walletModificationAlreadyInProgress
@@ -86,12 +86,13 @@ public class PortalMpc: PortalMpcProtocol {
       inProgress = true
       currentOperation = operation
     }
-    
+
     func release() {
       inProgress = false
       currentOperation = nil
     }
   }
+
   private var mpcMetadata: MpcMetadata
 
   /// Create an instance of Portal's MPC service.

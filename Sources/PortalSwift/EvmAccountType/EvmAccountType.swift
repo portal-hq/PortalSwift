@@ -26,7 +26,7 @@ public enum EvmAccountTypeError: LocalizedError, Equatable {
     case .invalidSignatureResponse:
       return "Invalid signature response from rawSign."
     case .invalidTransactionResponse:
-      return "Invalid transaction response from eth_sendTransaction."
+      return "Transaction hash is missing from buildAuthorizationTransaction response."
     }
   }
 }
@@ -74,7 +74,7 @@ public class EvmAccountType: EvmAccountTypeProtocol {
   /// Upgrades an EIP-155 EOA account to EIP-7702.
   ///
   /// Steps: validate eip155 namespace → getStatus → require EIP_155_EOA → build authorization list →
-  /// raw sign hash (without 0x) → build authorization transaction → eth_sendTransaction → return tx hash.
+  /// raw sign hash (without 0x) → build authorization transaction (subsidized) → return tx hash.
   public func upgradeTo7702(chainId: String) async throws -> String {
     // 1. Validate chain namespace is eip155
     let blockchain = try PortalBlockchain(fromChainId: chainId)
@@ -105,21 +105,25 @@ public class EvmAccountType: EvmAccountTypeProtocol {
     let signatureWithoutPrefix = signature.hasPrefix("0x") ? String(signature.dropFirst(2)) : signature
 
     // 5. Build authorization transaction
-    let buildTxResponse = try await api.buildAuthorizationTransaction(chainId: chainId, signature: signatureWithoutPrefix)
+    let buildTxResponse = try await api.buildAuthorizationTransaction(chainId: chainId, signature: signatureWithoutPrefix, subsidize: true)
     let transaction = buildTxResponse.data.transaction
-
-    // 6. Convert Eip7702Transaction to params and send via eth_sendTransaction
-    let txParams = transactionToParams(transaction)
-    let requestResult = try await portal.request(
-      chainId: chainId,
-      method: .eth_sendTransaction,
-      params: [txParams],
-      options: nil
-    )
-    guard let txHash = requestResult.result as? String else {
+    guard let txHash = buildTxResponse.data.transactionHash else {
       throw EvmAccountTypeError.invalidTransactionResponse
     }
     return txHash
+
+    // 6. Convert Eip7702Transaction to params and send via eth_sendTransaction
+//    let txParams = transactionToParams(transaction)
+//    let requestResult = try await portal.request(
+//      chainId: chainId,
+//      method: .eth_sendTransaction,
+//      params: [txParams],
+//      options: nil
+//    )
+//    guard let txHash = requestResult.result as? String else {
+//      throw EvmAccountTypeError.invalidTransactionResponse
+//    }
+//    return txHash
   }
 
   /// Converts Eip7702Transaction to a dictionary suitable for eth_sendTransaction params.

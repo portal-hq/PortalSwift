@@ -94,4 +94,3 @@ public struct ZeroXPriceRawResponse: Codable {
     self.totalNetworkFee = totalNetworkFee
   }
 }
-

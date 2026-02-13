@@ -8,7 +8,6 @@
 import Foundation
 @testable import PortalSwift
 
-
 // MARK: - Quote Request
 
 extension ZeroXQuoteRequest {
@@ -362,4 +361,3 @@ extension ZeroXPriceResponse {
     ZeroXPriceResponse(data: data)
   }
 }
-

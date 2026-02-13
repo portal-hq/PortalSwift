@@ -69,8 +69,11 @@ extension BuildAuthorizationTransactionResponse {
 }
 
 extension BuildAuthorizationTransactionData {
-  static func stub(transaction: Eip7702Transaction = .stub()) -> Self {
-    .init(transaction: transaction)
+  static func stub(
+    transaction: Eip7702Transaction = .stub(),
+    transactionHash: String? = "0xabc123hash"
+  ) -> Self {
+    .init(transaction: transaction, transactionHash: transactionHash)
   }
 }
 
@@ -142,14 +145,18 @@ extension BuildAuthorizationTransactionMetadata {
     authorization: AuthorizationDetail = .stub(),
     chainId: String = "eip155:11155111",
     hash: String? = "0x91aee67c57b66d6759640eb3beb69be6b36690ca9f0d8446fff3f9cb269a4736",
-    signature: AuthorizationSignature? = .stub()
+    signature: AuthorizationSignature? = .stub(),
+    subsidize: Bool? = true
   ) -> Self {
-    .init(authorization: authorization, chainId: chainId, hash: hash, signature: signature)
+    .init(authorization: authorization, chainId: chainId, hash: hash, signature: signature, subsidize: subsidize)
   }
 }
 
 extension BuildAuthorizationTransactionRequest {
-  static func stub(signature: String = "e904a3405299bf569cdf8c3b54ff2db6f8eb896d2bc0eaaec544a045e37cab70648daa33f3189d7739f8c74a41d541718145614e91d6427d6adc3ae4566aedbd01") -> Self {
-    .init(signature: signature)
+  static func stub(
+    signature: String = "e904a3405299bf569cdf8c3b54ff2db6f8eb896d2bc0eaaec544a045e37cab70648daa33f3189d7739f8c74a41d541718145614e91d6427d6adc3ae4566aedbd01",
+    subsidize: Bool? = true
+  ) -> Self {
+    .init(signature: signature, subsidize: subsidize)
   }
 }

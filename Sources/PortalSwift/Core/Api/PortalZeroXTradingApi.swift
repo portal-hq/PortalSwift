@@ -17,14 +17,14 @@ public protocol PortalZeroXTradingApiProtocol: AnyObject {
   ///   - zeroXApiKey: Optional 0x API key to override the one configured in Portal Dashboard. If `nil`, the SDK will use the API key configured in the Portal Dashboard. This parameter allows you to override the Dashboard configuration on a per-request basis. The API key is used to authenticate requests to the 0x API service.
   /// - Returns: Response containing available swap sources
   func getSources(chainId: String, zeroXApiKey: String?) async throws -> ZeroXSourcesResponse
-  
+
   /// Retrieves a swap quote with transaction data.
   /// - Parameters:
   ///   - request: The quote request parameters
   ///   - zeroXApiKey: Optional 0x API key to override the one configured in Portal Dashboard. If `nil`, the SDK will use the API key configured in the Portal Dashboard. This parameter allows you to override the Dashboard configuration on a per-request basis. The API key is used to authenticate requests to the 0x API service.
   /// - Returns: Response containing the quote with transaction data
   func getQuote(request: ZeroXQuoteRequest, zeroXApiKey: String?) async throws -> ZeroXQuoteResponse
-  
+
   /// Retrieves a price quote without transaction data.
   /// - Parameters:
   ///   - request: The price request parameters
@@ -197,4 +197,3 @@ public class PortalZeroXTradingApi: PortalZeroXTradingApiProtocol {
     return try await requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }
 }
-

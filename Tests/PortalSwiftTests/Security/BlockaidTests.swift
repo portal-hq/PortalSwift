@@ -5,11 +5,10 @@
 //  Created by Ahmed Ragab
 //
 
-import XCTest
 @testable import PortalSwift
+import XCTest
 
 final class BlockaidTests: XCTestCase {
-
   private var mockApi: PortalBlockaidApiMock!
   private var sut: Blockaid!
 

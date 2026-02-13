@@ -16,14 +16,14 @@ public protocol ZeroXProtocol {
   ///   - zeroXApiKey: Optional 0x API key to override the one configured in Portal Dashboard. If `nil`, the SDK will use the API key configured in the Portal Dashboard.
   /// - Returns: Response containing available swap sources
   func getSources(chainId: String, zeroXApiKey: String?) async throws -> ZeroXSourcesResponse
-  
+
   /// Retrieves a swap quote with transaction data.
   /// - Parameters:
   ///   - request: The quote request parameters
   ///   - zeroXApiKey: Optional 0x API key to override the one configured in Portal Dashboard. If `nil`, the SDK will use the API key configured in the Portal Dashboard.
   /// - Returns: Response containing the quote with transaction data
   func getQuote(request: ZeroXQuoteRequest, zeroXApiKey: String?) async throws -> ZeroXQuoteResponse
-  
+
   /// Retrieves a price quote without transaction data.
   /// - Parameters:
   ///   - request: The price request parameters
@@ -34,7 +34,7 @@ public protocol ZeroXProtocol {
 
 // MARK: - Protocol Extension for Default Parameters
 
-extension ZeroXProtocol {
+public extension ZeroXProtocol {
   /// Retrieves available swap sources for a chain using the API key configured in Portal Dashboard.
   ///
   /// This is a convenience method that allows you to fetch swap sources without explicitly passing the `zeroXApiKey` parameter.
@@ -54,10 +54,10 @@ extension ZeroXProtocol {
   /// - Note: This method is equivalent to calling `getSources(chainId:zeroXApiKey:)` with `zeroXApiKey: nil`.
   ///
   /// - SeeAlso: `getSources(chainId:zeroXApiKey:)` for the version that allows API key override.
-  public func getSources(chainId: String) async throws -> ZeroXSourcesResponse {
+  func getSources(chainId: String) async throws -> ZeroXSourcesResponse {
     return try await getSources(chainId: chainId, zeroXApiKey: nil)
   }
-  
+
   /// Retrieves a swap quote with transaction data using the API key configured in Portal Dashboard.
   ///
   /// This is a convenience method that allows you to fetch a swap quote without explicitly passing the `zeroXApiKey` parameter.
@@ -79,10 +79,10 @@ extension ZeroXProtocol {
   /// - Note: This method is equivalent to calling `getQuote(request:zeroXApiKey:)` with `zeroXApiKey: nil`.
   ///
   /// - SeeAlso: `getQuote(request:zeroXApiKey:)` for the version that allows API key override.
-  public func getQuote(request: ZeroXQuoteRequest) async throws -> ZeroXQuoteResponse {
+  func getQuote(request: ZeroXQuoteRequest) async throws -> ZeroXQuoteResponse {
     return try await getQuote(request: request, zeroXApiKey: nil)
   }
-  
+
   /// Retrieves a price quote without transaction data using the API key configured in Portal Dashboard.
   ///
   /// This is a convenience method that allows you to fetch a price quote without explicitly passing the `zeroXApiKey` parameter.
@@ -108,7 +108,7 @@ extension ZeroXProtocol {
   /// - Note: This method is equivalent to calling `getPrice(request:zeroXApiKey:)` with `zeroXApiKey: nil`.
   ///
   /// - SeeAlso: `getPrice(request:zeroXApiKey:)` for the version that allows API key override.
-  public func getPrice(request: ZeroXPriceRequest) async throws -> ZeroXPriceResponse {
+  func getPrice(request: ZeroXPriceRequest) async throws -> ZeroXPriceResponse {
     return try await getPrice(request: request, zeroXApiKey: nil)
   }
 }
@@ -192,4 +192,3 @@ public class ZeroX: ZeroXProtocol {
     return try await api.getPrice(request: request, zeroXApiKey: zeroXApiKey)
   }
 }
-

@@ -107,7 +107,7 @@ public struct ScanSolanaTraceCallInput: Codable {
 public enum ScanSolanaTraceCallInputInfo: Codable {
   case string(String)
   case transfer(ScanSolanaTransferInfo)
-  
+
   public init(from decoder: Decoder) throws {
     let container = try decoder.singleValueContainer()
     if let stringValue = try? container.decode(String.self) {
@@ -118,7 +118,7 @@ public enum ScanSolanaTraceCallInputInfo: Codable {
       self = .string("")
     }
   }
-  
+
   public func encode(to encoder: Encoder) throws {
     var container = encoder.singleValueContainer()
     switch self {

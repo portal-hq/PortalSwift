@@ -5,11 +5,10 @@
 //  Created by Ahmed Ragab
 //
 
-import XCTest
 @testable import PortalSwift
+import XCTest
 
 final class BlockaidCodableTests: XCTestCase {
-
   let encoder = JSONEncoder()
   let decoder = JSONDecoder()
 

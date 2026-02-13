@@ -13,10 +13,9 @@ import UIKit
 
 @available(iOS 16.0, *)
 extension ViewController {
-
   // MARK: - Delegation Approve (ETH)
 
-  @IBAction func delegationApproveETH(_ sender: Any) {
+  @IBAction func delegationApproveETH(_: Any) {
     startLoading()
 
     Task { @MainActor in
@@ -62,7 +61,7 @@ extension ViewController {
 
   // MARK: - Delegation Approve (SOL)
 
-  @IBAction func delegationApproveSOL(_ sender: Any) {
+  @IBAction func delegationApproveSOL(_: Any) {
     startLoading()
 
     Task { @MainActor in
@@ -108,7 +107,7 @@ extension ViewController {
 
   // MARK: - Delegation Revoke (ETH)
 
-  @IBAction func delegationRevokeETH(_ sender: Any) {
+  @IBAction func delegationRevokeETH(_: Any) {
     startLoading()
 
     Task { @MainActor in
@@ -153,7 +152,7 @@ extension ViewController {
 
   // MARK: - Delegation Revoke (SOL)
 
-  @IBAction func delegationRevokeSOL(_ sender: Any) {
+  @IBAction func delegationRevokeSOL(_: Any) {
     startLoading()
 
     Task { @MainActor in
@@ -198,7 +197,7 @@ extension ViewController {
 
   // MARK: - Delegation TransferFrom (ETH)
 
-  @IBAction func delegationTransferFromETH(_ sender: Any) {
+  @IBAction func delegationTransferFromETH(_: Any) {
     startLoading()
 
     Task { @MainActor in
@@ -246,7 +245,7 @@ extension ViewController {
 
   // MARK: - Delegation TransferFrom (SOL)
 
-  @IBAction func delegationTransferFromSOL(_ sender: Any) {
+  @IBAction func delegationTransferFromSOL(_: Any) {
     startLoading()
 
     Task { @MainActor in
@@ -294,7 +293,7 @@ extension ViewController {
 
   // MARK: - Delegation Get Status (ETH)
 
-  @IBAction func delegationGetStatusETH(_ sender: Any) {
+  @IBAction func delegationGetStatusETH(_: Any) {
     startLoading()
 
     Task { @MainActor in
@@ -330,7 +329,7 @@ extension ViewController {
 
   // MARK: - Delegation Get Status (SOL)
 
-  @IBAction func delegationGetStatusSOL(_ sender: Any) {
+  @IBAction func delegationGetStatusSOL(_: Any) {
     startLoading()
 
     Task { @MainActor in
