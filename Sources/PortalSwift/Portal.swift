@@ -49,6 +49,9 @@ public final class Portal: PortalProtocol {
   /// Access to delegation-related functionality.
   public lazy var delegations: DelegationsProtocol = Delegations(api: self.api.delegations)
 
+  /// Access to EVM Account Type functionality (EIP-7702 upgrade, account type status).
+  public lazy var evmAccountType: EvmAccountTypeProtocol = EvmAccountType(api: self.api.evmAccountType, portal: self)
+
   private let apiHost: String
   private var backup: BackupOptions?
   private let binary: Mobile
@@ -2364,6 +2367,8 @@ public final class Portal: PortalProtocol {
     ]
   }
 }
+
+extension Portal: EvmAccountTypePortalDependency {}
 
 /*****************************************
  * Supporting Enums & Structs
