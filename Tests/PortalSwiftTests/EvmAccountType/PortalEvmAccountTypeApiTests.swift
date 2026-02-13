@@ -5,8 +5,8 @@
 //  Created by Ahmed Ragab
 //
 
-import XCTest
 @testable import PortalSwift
+import XCTest
 
 final class PortalEvmAccountTypeApiTests: XCTestCase {
   private var requestsSpy: PortalRequestsSpy!
@@ -172,11 +172,21 @@ final class PortalEvmAccountTypeApiTests: XCTestCase {
 
   func testBuildAuthorizationTransaction_serializesSignaturePayload() async throws {
     try setReturnValue(BuildAuthorizationTransactionResponse.stub())
-    _ = try await sut.buildAuthorizationTransaction(chainId: "eip155:11155111", signature: "mysignature")
+    _ = try await sut.buildAuthorizationTransaction(chainId: "eip155:11155111", signature: "mysignature", subsidize: true)
     let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
     XCTAssertNotNil(portalRequest?.payload)
     if let payload = portalRequest?.payload as? BuildAuthorizationTransactionRequest {
       XCTAssertEqual(payload.signature, "mysignature")
+      XCTAssertEqual(payload.subsidize, true)
+    }
+  }
+
+  func testBuildAuthorizationTransaction_serializesNilSubsidize() async throws {
+    try setReturnValue(BuildAuthorizationTransactionResponse.stub())
+    _ = try await sut.buildAuthorizationTransaction(chainId: "eip155:11155111", signature: "sig")
+    let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
+    if let payload = portalRequest?.payload as? BuildAuthorizationTransactionRequest {
+      XCTAssertNil(payload.subsidize)
     }
   }
 

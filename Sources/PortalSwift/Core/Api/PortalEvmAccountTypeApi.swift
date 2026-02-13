@@ -24,7 +24,7 @@ public protocol PortalEvmAccountTypeApiProtocol: AnyObject {
   ///   - chainId: CAIP-2 chain ID
   ///   - signature: The raw signature (without 0x prefix) from signing the authorization list hash
   /// - Returns: Response containing the EIP-7702 transaction to submit
-  func buildAuthorizationTransaction(chainId: String, signature: String) async throws -> BuildAuthorizationTransactionResponse
+  func buildAuthorizationTransaction(chainId: String, signature: String, subsidize: Bool?) async throws -> BuildAuthorizationTransactionResponse
 }
 
 /// API class for EVM Account Type integration functionality.
@@ -103,7 +103,7 @@ public class PortalEvmAccountTypeApi: PortalEvmAccountTypeApiProtocol {
   ///   - signature: The raw signature (without 0x prefix) from signing the authorization list hash
   /// - Returns: Response containing data.transaction (EIP-7702 transaction to submit via eth_sendTransaction)
   /// - Throws: `URLError` if the URL cannot be constructed, or network/decoding errors if the request fails.
-  public func buildAuthorizationTransaction(chainId: String, signature: String) async throws -> BuildAuthorizationTransactionResponse {
+  public func buildAuthorizationTransaction(chainId: String, signature: String, subsidize: Bool? = nil) async throws -> BuildAuthorizationTransactionResponse {
     guard let encodedChain = chainId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
           let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(encodedChain)/wallet/build-authorization-transaction")
     else {
@@ -111,7 +111,7 @@ public class PortalEvmAccountTypeApi: PortalEvmAccountTypeApiProtocol {
       throw URLError(.badURL)
     }
     do {
-      let body = BuildAuthorizationTransactionRequest(signature: signature)
+      let body = BuildAuthorizationTransactionRequest(signature: signature, subsidize: subsidize)
       return try await post(url, withBearerToken: apiKey, andPayload: body, mappingInResponse: BuildAuthorizationTransactionResponse.self)
     } catch {
       logger.error("PortalEvmAccountTypeApi.buildAuthorizationTransaction() - Error: \(error.localizedDescription)")

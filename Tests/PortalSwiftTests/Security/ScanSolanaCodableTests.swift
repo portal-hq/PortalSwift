@@ -368,7 +368,7 @@ extension ScanSolanaCodableTests {
     if case .transfer(let transfer)? = decoded.info {
       XCTAssertEqual(transfer.source, "Src111111111111111111111111111111111111111")
       XCTAssertEqual(transfer.destination, "Dst111111111111111111111111111111111111111")
-      XCTAssertEqual(transfer.lamports, 5000000)
+      XCTAssertEqual(transfer.lamports, 5_000_000)
     } else {
       XCTFail("Expected .transfer case, got \(String(describing: decoded.info))")
     }

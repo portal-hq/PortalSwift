@@ -14,37 +14,37 @@ public protocol PortalHypernativeApiProtocol: AnyObject {
   ///   - request: The scan request containing transaction details
   /// - Returns: Response containing security risk assessment
   func scanEVMTx(request: ScanEVMRequest) async throws -> ScanEVMResponse
-  
+
   /// Scans an EIP-712 typed message for security risks.
   /// - Parameters:
   ///   - request: The scan request containing EIP-712 message details
   /// - Returns: Response containing security risk assessment
   func scanEip712Tx(request: ScanEip712Request) async throws -> ScanEip712Response
-  
+
   /// Scans a Solana transaction for security risks.
   /// - Parameters:
   ///   - request: The scan request containing Solana transaction details
   /// - Returns: Response containing security risk assessment
   func scanSolanaTx(request: ScanSolanaRequest) async throws -> ScanSolanaResponse
-  
+
   /// Screens addresses for security risks.
   /// - Parameters:
   ///   - request: The scan request containing addresses to screen
   /// - Returns: Response containing security risk assessment for each address
   func scanAddresses(request: ScanAddressesRequest) async throws -> ScanAddressesResponse
-  
+
   /// Scans NFTs for security risks.
   /// - Parameters:
   ///   - request: The scan request containing NFT addresses to scan
   /// - Returns: Response containing security risk assessment for each NFT
   func scanNfts(request: ScanNftsRequest) async throws -> ScanNftsResponse
-  
+
   /// Scans tokens for security risks.
   /// - Parameters:
   ///   - request: The scan request containing token addresses to scan
   /// - Returns: Response containing security risk assessment for each token
   func scanTokens(request: ScanTokensRequest) async throws -> ScanTokensResponse
-  
+
   /// Scans a URL for security risks.
   /// - Parameters:
   ///   - request: The scan request containing the URL to scan

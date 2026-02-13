@@ -131,4 +131,3 @@ final class PortalZeroXTradingApiMock: PortalZeroXTradingApiProtocol {
     getPriceError = nil
   }
 }
-

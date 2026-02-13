@@ -18,37 +18,37 @@ public protocol HypernativeProtocol {
   /// - Returns: Response containing risk assessment, recommendations, findings, and trace data
   /// - Throws: `URLError` if the request fails or network errors occur
   func scanEVMTx(request: ScanEVMRequest) async throws -> ScanEVMResponse
-  
+
   /// Scans an EIP-712 typed message for security risks.
   /// - Parameter request: The scan request containing wallet address, chain ID, and EIP-712 typed data
   /// - Returns: Response containing risk assessment, recommendations, and findings for the typed message
   /// - Throws: `URLError` if the request fails or network errors occur
   func scanEip712Tx(request: ScanEip712Request) async throws -> ScanEip712Response
-  
+
   /// Scans a Solana transaction for security risks.
   /// - Parameter request: The scan request containing the Solana transaction (raw or structured)
   /// - Returns: Response containing risk assessment, recommendations, findings, and trace data
   /// - Throws: `URLError` if the request fails or network errors occur
   func scanSolanaTx(request: ScanSolanaRequest) async throws -> ScanSolanaResponse
-  
+
   /// Screens multiple addresses for security risks and compliance flags.
   /// - Parameter request: The scan request containing an array of addresses to screen
   /// - Returns: Response containing risk assessment, severity, and compliance flags for each address
   /// - Throws: `URLError` if the request fails or network errors occur
   func scanAddresses(request: ScanAddressesRequest) async throws -> ScanAddressesResponse
-  
+
   /// Scans multiple NFTs for security risks.
   /// - Parameter request: The scan request containing an array of NFT addresses and chain IDs
   /// - Returns: Response containing accept/reject status for each NFT
   /// - Throws: `URLError` if the request fails or network errors occur
   func scanNfts(request: ScanNftsRequest) async throws -> ScanNftsResponse
-  
+
   /// Scans multiple tokens for security risks and reputation.
   /// - Parameter request: The scan request containing an array of token addresses and chain IDs
   /// - Returns: Response containing reputation and recommendation for each token
   /// - Throws: `URLError` if the request fails or network errors occur
   func scanTokens(request: ScanTokensRequest) async throws -> ScanTokensResponse
-  
+
   /// Scans a URL for malicious content and phishing indicators.
   /// - Parameter request: The scan request containing the URL to scan
   /// - Returns: Response indicating whether the URL is malicious

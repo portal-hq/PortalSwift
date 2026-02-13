@@ -7,48 +7,47 @@
 //  Hypernative Security testing functionality
 //
 
+import AnyCodable
 import PortalSwift
 import UIKit
-import AnyCodable
 
 // MARK: - Hypernative Security Test Actions
 
 @available(iOS 16.0, *)
 extension ViewController {
-  
   // MARK: - IBActions
-  
+
   /// Tests all transaction scan functions: EIP-155, EIP-712, and Solana
-  @IBAction func hypernativeScanTx(_ sender: Any) {
+  @IBAction func hypernativeScanTx(_: Any) {
     startLoading()
-    
+
     Task {
       logger.info("ViewController.hypernativeScanTx() - 📝 Starting transaction scans...")
-      
+
       // Test EVM Transaction Scan
       await testEVMScan()
-      
+
       // Test EIP-712 Transaction Scan
       await testEip712Scan()
-      
+
       // Test Solana Transaction Scan
       await testSolanaScan()
-      
+
       await MainActor.run {
         self.stopLoading()
         self.showStatusView(message: "\(self.successStatus) All transaction scans completed! Check logs for details.")
       }
     }
   }
-  
+
   /// Tests address screening functionality
-  @IBAction func hypernativeScanAddresses(_ sender: Any) {
+  @IBAction func hypernativeScanAddresses(_: Any) {
     startLoading()
-    
+
     Task {
       do {
         logger.info("ViewController.hypernativeScanAddresses() - 📝 Starting address scan...")
-        
+
         let request = ScanAddressesRequest(
           addresses: [
             "0x31c05d73f2333b5a176cfdbb7c5ef96ec7bb04ac",
@@ -56,16 +55,16 @@ extension ViewController {
           ],
           screenerPolicyId: nil
         )
-        
+
         guard let portal = portal else {
           logger.error("ViewController.hypernativeScanAddresses() - ❌ Portal not initialized")
           throw PortalExampleAppError.portalNotInitialized()
         }
-        
+
         let response = try await portal.security.hypernative.scanAddresses(request: request)
-        
+
         logAddressScanResult(response)
-        
+
         await MainActor.run {
           self.stopLoading()
           self.showStatusView(message: "\(self.successStatus) Address scan completed! Check logs for details.")
@@ -75,15 +74,15 @@ extension ViewController {
       }
     }
   }
-  
+
   /// Tests NFT scanning functionality
-  @IBAction func hypernativeScanNfts(_ sender: Any) {
+  @IBAction func hypernativeScanNfts(_: Any) {
     startLoading()
-    
+
     Task {
       do {
         logger.info("ViewController.hypernativeScanNfts() - 📝 Starting NFT scan...")
-        
+
         let request = ScanNftsRequest(
           nfts: [
             ScanNftsRequestItem(
@@ -98,16 +97,16 @@ extension ViewController {
             )
           ]
         )
-        
+
         guard let portal = portal else {
           logger.error("ViewController.hypernativeScanNfts() - ❌ Portal not initialized")
           throw PortalExampleAppError.portalNotInitialized()
         }
-        
+
         let response = try await portal.security.hypernative.scanNfts(request: request)
-        
+
         logNftScanResult(response)
-        
+
         await MainActor.run {
           self.stopLoading()
           self.showStatusView(message: "\(self.successStatus) NFT scan completed! Check logs for details.")
@@ -117,15 +116,15 @@ extension ViewController {
       }
     }
   }
-  
+
   /// Tests token scanning functionality
-  @IBAction func hypernativeScanTokens(_ sender: Any) {
+  @IBAction func hypernativeScanTokens(_: Any) {
     startLoading()
-    
+
     Task {
       do {
         logger.info("ViewController.hypernativeScanTokens() - 📝 Starting token scan...")
-        
+
         let request = ScanTokensRequest(
           tokens: [
             ScanTokensRequestItem(
@@ -135,16 +134,16 @@ extension ViewController {
             )
           ]
         )
-        
+
         guard let portal = portal else {
           logger.error("ViewController.hypernativeScanTokens() - ❌ Portal not initialized")
           throw PortalExampleAppError.portalNotInitialized()
         }
-        
+
         let response = try await portal.security.hypernative.scanTokens(request: request)
-        
+
         logTokenScanResult(response)
-        
+
         await MainActor.run {
           self.stopLoading()
           self.showStatusView(message: "\(self.successStatus) Token scan completed! Check logs for details.")
@@ -154,26 +153,26 @@ extension ViewController {
       }
     }
   }
-  
+
   /// Tests URL scanning functionality
-  @IBAction func hypernativeScanURL(_ sender: Any) {
+  @IBAction func hypernativeScanURL(_: Any) {
     startLoading()
-    
+
     Task {
       do {
         logger.info("ViewController.hypernativeScanURL() - 📝 Starting URL scan...")
-        
+
         let request = ScanUrlRequest(url: "curve.fi")
-        
+
         guard let portal = portal else {
           logger.error("ViewController.hypernativeScanURL() - ❌ Portal not initialized")
           throw PortalExampleAppError.portalNotInitialized()
         }
-        
+
         let response = try await portal.security.hypernative.scanURL(request: request)
-        
+
         logUrlScanResult(response)
-        
+
         await MainActor.run {
           self.stopLoading()
           let isMalicious = response.data?.rawResponse.data?.isMalicious ?? false
@@ -185,18 +184,18 @@ extension ViewController {
       }
     }
   }
-  
+
   // MARK: - Private Helper Methods
-  
+
   private func testEVMScan() async {
     do {
       logger.info("ViewController.testEVMScan() - 📝 Testing EVM transaction scan...")
-      
+
       guard let portal = portal else {
         logger.error("ViewController.testEVMScan() - ❌ Portal not initialized")
         return
       }
-      
+
       let transaction = ScanEVMTransaction(
         chain: "eip155:1",
         fromAddress: "0x7C01728004d3F2370C1BBC36a4Ad680fE6FE8729",
@@ -205,12 +204,12 @@ extension ViewController {
         value: 0,
         nonce: 2340,
         hash: nil,
-        gas: 3000000,
-        gasPrice: 3000000,
+        gas: 3_000_000,
+        gasPrice: 3_000_000,
         maxPriorityFeePerGas: nil,
         maxFeePerGas: nil
       )
-      
+
       let request = ScanEVMRequest(
         transaction: transaction,
         url: nil,
@@ -219,26 +218,26 @@ extension ViewController {
         showFullFindings: nil,
         policy: nil
       )
-      
+
       let response = try await portal.security.hypernative.scanEVMTx(request: request)
-      
+
       logger.info("ViewController.testEVMScan() - ✅ EVM scan completed successfully")
       logEVMResult(response)
-      
+
     } catch {
       logger.error("ViewController.testEVMScan() - ❌ EVM scan failed: \(error.localizedDescription)")
     }
   }
-  
+
   private func testEip712Scan() async {
     do {
       logger.info("ViewController.testEip712Scan() - 📝 Testing EIP-712 transaction scan...")
-      
+
       guard let portal = portal else {
         logger.error("ViewController.testEip712Scan() - ❌ Portal not initialized")
         return
       }
-      
+
       let domain = ScanEip712Domain(
         name: "MyToken",
         version: "1",
@@ -246,7 +245,7 @@ extension ViewController {
         verifyingContract: "0xa0b86991c6218b36c1d19d4a2e9Eb0cE3606eB48",
         salt: nil
       )
-      
+
       let types: [String: [ScanEip712TypeProperty]] = [
         "EIP712Domain": [
           ScanEip712TypeProperty(name: "name", type: "string"),
@@ -262,7 +261,7 @@ extension ViewController {
           ScanEip712TypeProperty(name: "deadline", type: "uint256")
         ]
       ]
-      
+
       let message = ScanEip712TypedData(
         primaryType: "Permit",
         types: types,
@@ -272,10 +271,10 @@ extension ViewController {
           "spender": AnyCodable("0x67beb4dd770a9c2cbc7133ba428b9eecdcf09186"),
           "value": AnyCodable(3000),
           "nonce": AnyCodable(0),
-          "deadline": AnyCodable(50000000000)
+          "deadline": AnyCodable(50_000_000_000)
         ]
       )
-      
+
       let request = ScanEip712Request(
         walletAddress: "0x12345",
         chainId: "eip155:1",
@@ -283,33 +282,33 @@ extension ViewController {
         showFullFindings: nil,
         policy: nil
       )
-      
+
       let response = try await portal.security.hypernative.scanEip712Tx(request: request)
-      
+
       logger.info("ViewController.testEip712Scan() - ✅ EIP-712 scan completed successfully")
       logEip712Result(response)
-      
+
     } catch {
       logger.error("ViewController.testEip712Scan() - ❌ EIP-712 scan failed: \(error.localizedDescription)")
     }
   }
-  
+
   private func testSolanaScan() async {
     do {
       logger.info("ViewController.testSolanaScan() - 📝 Testing Solana transaction scan...")
-      
+
       guard let portal = portal else {
         logger.error("ViewController.testSolanaScan() - ❌ Portal not initialized")
         return
       }
-      
+
       let transaction = ScanSolanaTransaction(
         message: nil,
         signatures: nil,
         rawTransaction: "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQADCQkVR3SiiKbW0l4c3NBsEn6+zn1o0YsyypPwN0GUhg4K5HK0Tb5GckDLYW+MsovQASt5EZ3bSH3nluRJAE69H61w0BRUDTrpYQcXosUun6/z2BROkRoH/1bL7KLU9s4lCav6k3ZZgV6qeZFwu4pu89WoIGaqUxG4C93XwVmmDy81v8qBaCSP4/UZfdo3q1bud/W+ixymkH8IMe0laQZYrSx4Uhyxec67hYm1VqLV7JTSSYaC/fm7KvWtZOSRzEFT2gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAT4tlY/P4mFG1wDJl0ektVggHiZf73lTlHBVJ3fK0nDoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANG5fPtlMEOI/eXV7aPDlpcdLUKm8L3VoW6k/oJlCNLaBQYABQLARQQABgAJAwYAAAAAAAAABzwACQoLCwgyMzQMNQ0ONjcPEDg5EgETFBUWOhEXGBkaGxwdHh8gISI7IyQlJicCKCkqKywtAwQuLzAxPBFVCg8JAQcHBgYBAAAAAwHwCgYBExUbBgICAAAPAwIAAAYBISMoEQQBGQAPAwIAAAYBLjA2DwMCAAAGAgIAAAAIBgYICAADAQkGCQUFBgACBQAEBwEAAAgCAAUMAgAAADwaAAAAAAAABgAFBGDMBQAEPPm21Wu6wrmHu23/ZFNIumpp+ADooZjd4JQgvjnBxkUJAgEDBqWqCgmmCAUIBwu1tp+gcP/+Ri3C1tRXUbPdgqo6rVsj/qnqC959wTdC/mRARysLz9HS09TW19jZ2tsC1QYsNrdxMcm5Nq5FXZrM0IXpEA+ApFa+pz/JvkLz0+2vnwuztLW2t7i5uru8vgAPvBv8VUeRwDy9yD1NHIH5Ji6ZA+zrmpHejKOz4MP8SwrKy8zNzs/S09TVAdY=",
         version: "0"
       )
-      
+
       let request = ScanSolanaRequest(
         transaction: transaction,
         url: nil,
@@ -317,19 +316,19 @@ extension ViewController {
         showFullFindings: true,
         policy: nil
       )
-      
+
       let response = try await portal.security.hypernative.scanSolanaTx(request: request)
-      
+
       logger.info("ViewController.testSolanaScan() - ✅ Solana scan completed successfully")
       logSolanaResult(response)
-      
+
     } catch {
       logger.error("ViewController.testSolanaScan() - ❌ Solana scan failed: \(error.localizedDescription)")
     }
   }
-  
+
   // MARK: - Logging Helpers
-  
+
   private func logEVMResult(_ response: ScanEVMResponse) {
     if let rawResponse = response.data?.rawResponse {
       logger.info("ViewController - ✅ EVM Scan Result:")
@@ -351,7 +350,7 @@ extension ViewController {
       logger.error("ViewController - ❌ EVM Scan Error: \(error)")
     }
   }
-  
+
   private func logEip712Result(_ response: ScanEip712Response) {
     if let rawResponse = response.data?.rawResponse {
       logger.info("ViewController - ✅ EIP-712 Scan Result:")
@@ -367,7 +366,7 @@ extension ViewController {
       logger.error("ViewController - ❌ EIP-712 Scan Error: \(error)")
     }
   }
-  
+
   private func logSolanaResult(_ response: ScanSolanaResponse) {
     if let rawResponse = response.data?.rawResponse {
       logger.info("ViewController - ✅ Solana Scan Result:")
@@ -385,7 +384,7 @@ extension ViewController {
       logger.error("ViewController - ❌ Solana Scan Error: \(error)")
     }
   }
-  
+
   private func logAddressScanResult(_ response: ScanAddressesResponse) {
     if let data = response.data {
       logger.info("ViewController - ✅ Address Scan Result:")
@@ -399,7 +398,7 @@ extension ViewController {
       logger.error("ViewController - ❌ Address Scan Error: \(error)")
     }
   }
-  
+
   private func logNftScanResult(_ response: ScanNftsResponse) {
     if let rawResponse = response.data?.rawResponse {
       logger.info("ViewController - ✅ NFT Scan Result:")
@@ -418,7 +417,7 @@ extension ViewController {
       logger.error("ViewController - ❌ NFT Scan Error: \(error)")
     }
   }
-  
+
   private func logTokenScanResult(_ response: ScanTokensResponse) {
     if let rawResponse = response.data?.rawResponse {
       logger.info("ViewController - ✅ Token Scan Result:")
@@ -439,7 +438,7 @@ extension ViewController {
       logger.error("ViewController - ❌ Token Scan Error: \(error)")
     }
   }
-  
+
   private func logUrlScanResult(_ response: ScanUrlResponse) {
     if let rawResponse = response.data?.rawResponse {
       logger.info("ViewController - ✅ URL Scan Result:")
@@ -458,7 +457,7 @@ extension ViewController {
       logger.error("ViewController - ❌ URL Scan Error: \(error)")
     }
   }
-  
+
   private func handleError(_ error: Error, context: String) async {
     logger.error("ViewController.\(context) - ❌ Error: \(error.localizedDescription)")
     await MainActor.run {
