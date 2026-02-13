@@ -42,7 +42,7 @@ extension ViewController {
 
         // Step 2: Pause and ask user to fund the address
         logger.info("📝 [Upgrade EIP7702] Step 2: Ensure EOA address \(statusBefore.metadata.eoaAddress) is funded with ETH for gas")
-        let shouldContinue = await showFundingAlert(address: statusBefore.metadata.eoaAddress)
+        let shouldContinue = await showFundingAlert(address: statusBefore.metadata.eoaAddress, chainId: chainId)
         guard shouldContinue else {
           logger.info("📝 [Upgrade EIP7702] User cancelled upgrade.")
           showStatusView(message: "Upgrade cancelled by user.")
@@ -90,11 +90,11 @@ extension ViewController {
   /// Shows an alert asking the user to fund the EOA address before continuing.
   /// Returns `true` if the user taps "Continue", `false` if they tap "Cancel".
   @MainActor
-  private func showFundingAlert(address: String) async -> Bool {
+  private func showFundingAlert(address: String, chainId: String) async -> Bool {
     await withCheckedContinuation { continuation in
       let alert = UIAlertController(
         title: "Fund Your Address",
-        message: "Please fund the following address with Sepolia ETH for gas before continuing:\n\n\(address)",
+        message: "Please fund the following address with Native Token on \(chainId) for gas before continuing:\n\n\(address)",
         preferredStyle: .alert
       )
       alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in
