@@ -61,7 +61,7 @@ final class PortalEvmAccountTypeApiTests: XCTestCase {
     try setReturnValue(EvmAccountTypeResponse.stub())
     _ = try await sut.getStatus(chainId: "eip155:11155111")
     let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
-    let expectedUrl = "https://api.portalhq.io/api/v3/clients/me/chains/eip155%3A11155111/wallet/account-type"
+    let expectedUrl = "https://api.portalhq.io/api/v3/clients/me/chains/eip155:11155111/wallet/account-type"
     XCTAssertEqual(portalRequest?.url.absoluteString, expectedUrl)
   }
 
@@ -111,7 +111,7 @@ final class PortalEvmAccountTypeApiTests: XCTestCase {
     try setReturnValue(BuildAuthorizationListResponse.stub())
     _ = try await sut.buildAuthorizationList(chainId: "eip155:11155111")
     let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
-    let expectedUrl = "https://api.portalhq.io/api/v3/clients/me/chains/eip155%3A11155111/wallet/build-authorization-list"
+    let expectedUrl = "https://api.portalhq.io/api/v3/clients/me/chains/eip155:11155111/wallet/build-authorization-list"
     XCTAssertEqual(portalRequest?.url.absoluteString, expectedUrl)
   }
 
@@ -152,7 +152,7 @@ final class PortalEvmAccountTypeApiTests: XCTestCase {
     try setReturnValue(BuildAuthorizationTransactionResponse.stub())
     _ = try await sut.buildAuthorizationTransaction(chainId: "eip155:11155111", signature: "abc123")
     let portalRequest = requestsSpy.executeRequestParam as? PortalAPIRequest
-    let expectedUrl = "https://api.portalhq.io/api/v3/clients/me/chains/eip155%3A11155111/wallet/build-authorization-transaction"
+    let expectedUrl = "https://api.portalhq.io/api/v3/clients/me/chains/eip155:11155111/wallet/build-authorization-transaction"
     XCTAssertEqual(portalRequest?.url.absoluteString, expectedUrl)
   }
 

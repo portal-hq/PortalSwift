@@ -13,6 +13,7 @@ public enum EvmAccountTypeError: LocalizedError, Equatable {
   case unsupportedChainNamespace(String)
   case invalidAccountType(String)
   case invalidSignatureResponse
+  case invalidTransactionResponse
 
   public var errorDescription: String? {
     switch self {
@@ -24,6 +25,8 @@ public enum EvmAccountTypeError: LocalizedError, Equatable {
       return "Account type must be EIP_155_EOA to upgrade. Current status: \(status)"
     case .invalidSignatureResponse:
       return "Invalid signature response from rawSign."
+    case .invalidTransactionResponse:
+      return "Invalid transaction response from eth_sendTransaction."
     }
   }
 }
@@ -114,7 +117,7 @@ public class EvmAccountType: EvmAccountTypeProtocol {
       options: nil
     )
     guard let txHash = requestResult.result as? String else {
-      throw EvmAccountTypeError.invalidSignatureResponse
+      throw EvmAccountTypeError.invalidTransactionResponse
     }
     return txHash
   }
