@@ -23,7 +23,8 @@ public protocol PortalEvmAccountTypeApiProtocol: AnyObject {
   /// - Parameters:
   ///   - chainId: CAIP-2 chain ID
   ///   - signature: The raw signature (without 0x prefix) from signing the authorization list hash
-  /// - Returns: Response containing the EIP-7702 transaction to submit
+  ///   - subsidize: When `true`, the API submits the transaction on-chain and returns the hash in `data.transactionHash`.
+  /// - Returns: Response containing the EIP-7702 transaction and, when subsidized, the on-chain transaction hash.
   func buildAuthorizationTransaction(chainId: String, signature: String, subsidize: Bool?) async throws -> BuildAuthorizationTransactionResponse
 }
 
@@ -101,7 +102,8 @@ public class PortalEvmAccountTypeApi: PortalEvmAccountTypeApiProtocol {
   /// - Parameters:
   ///   - chainId: CAIP-2 chain ID
   ///   - signature: The raw signature (without 0x prefix) from signing the authorization list hash
-  /// - Returns: Response containing data.transaction (EIP-7702 transaction to submit via eth_sendTransaction)
+  ///   - subsidize: When `true`, the API submits the transaction on-chain and returns the transaction hash in `data.transactionHash`. Defaults to `nil`.
+  /// - Returns: Response containing `data.transaction` (the EIP-7702 transaction) and, when subsidized, `data.transactionHash` (the on-chain transaction hash).
   /// - Throws: `URLError` if the URL cannot be constructed, or network/decoding errors if the request fails.
   public func buildAuthorizationTransaction(chainId: String, signature: String, subsidize: Bool? = nil) async throws -> BuildAuthorizationTransactionResponse {
     guard let encodedChain = chainId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
