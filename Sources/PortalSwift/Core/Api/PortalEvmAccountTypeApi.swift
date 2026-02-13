@@ -61,8 +61,8 @@ public class PortalEvmAccountTypeApi: PortalEvmAccountTypeApiProtocol {
   /// - Returns: Response containing data.status ("SMART_CONTRACT", "EIP_155_EOA", "EIP_7702_EOA") and metadata (chainId, eoaAddress, smartContractAddress)
   /// - Throws: `URLError` if the URL cannot be constructed, or network/decoding errors if the request fails.
   public func getStatus(chainId: String) async throws -> EvmAccountTypeResponse {
-    let encodedChain = chainId.replacingOccurrences(of: ":", with: "%3A")
-    guard let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(encodedChain)/wallet/account-type")
+    guard let encodedChain = chainId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+          let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(encodedChain)/wallet/account-type")
     else {
       logger.error("PortalEvmAccountTypeApi.getStatus() - Unable to build request URL.")
       throw URLError(.badURL)
@@ -81,8 +81,8 @@ public class PortalEvmAccountTypeApi: PortalEvmAccountTypeApiProtocol {
   /// - Returns: Response containing data.hash (hex string with 0x prefix)
   /// - Throws: `URLError` if the URL cannot be constructed, or network/decoding errors if the request fails.
   public func buildAuthorizationList(chainId: String) async throws -> BuildAuthorizationListResponse {
-    let encodedChain = chainId.replacingOccurrences(of: ":", with: "%3A")
-    guard let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(encodedChain)/wallet/build-authorization-list")
+    guard let encodedChain = chainId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+          let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(encodedChain)/wallet/build-authorization-list")
     else {
       logger.error("PortalEvmAccountTypeApi.buildAuthorizationList() - Unable to build request URL.")
       throw URLError(.badURL)
@@ -104,8 +104,8 @@ public class PortalEvmAccountTypeApi: PortalEvmAccountTypeApiProtocol {
   /// - Returns: Response containing data.transaction (EIP-7702 transaction to submit via eth_sendTransaction)
   /// - Throws: `URLError` if the URL cannot be constructed, or network/decoding errors if the request fails.
   public func buildAuthorizationTransaction(chainId: String, signature: String) async throws -> BuildAuthorizationTransactionResponse {
-    let encodedChain = chainId.replacingOccurrences(of: ":", with: "%3A")
-    guard let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(encodedChain)/wallet/build-authorization-transaction")
+    guard let encodedChain = chainId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+          let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(encodedChain)/wallet/build-authorization-transaction")
     else {
       logger.error("PortalEvmAccountTypeApi.buildAuthorizationTransaction() - Unable to build request URL.")
       throw URLError(.badURL)
