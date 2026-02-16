@@ -59,13 +59,13 @@ extension ViewController {
       do {
         let chainId = "eip155:11155111"
 
-        // Step 2: Upgrade
+        // Step 1: Upgrade
         logger.info("📝 [Upgrade EIP7702] Step 3: Upgrading to EIP-7702...")
         let txHash = try await portal.evmAccountType.upgradeTo7702(chainId: chainId)
         logger.info("  Transaction Hash: \(txHash)")
         logger.info("  Explorer: https://sepolia.etherscan.io/tx/\(txHash)")
 
-        // Step 3: Wait for transaction confirmation on chain
+        // Step 2: Wait for transaction confirmation on chain
         logger.info("📝 [Upgrade EIP7702] Step 4: Waiting for transaction confirmation...")
         let confirmed = await waitForTransactionConfirmation(
           txHash: txHash,
@@ -78,7 +78,7 @@ extension ViewController {
           return
         }
 
-        // Step 4: Verify final status
+        // Step 3: Verify final status
         logger.info("📝 [Upgrade EIP7702] Step 5: Verifying final status...")
         let statusAfter = try await portal.evmAccountType.getStatus(chainId: chainId)
         logger.info("  Final Status: \(statusAfter.data.status)")

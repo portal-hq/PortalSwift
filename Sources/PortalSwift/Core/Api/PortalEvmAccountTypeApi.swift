@@ -15,9 +15,11 @@ public protocol PortalEvmAccountTypeApiProtocol: AnyObject {
   func getStatus(chainId: String) async throws -> EvmAccountTypeResponse
 
   /// Builds the authorization list hash for EIP-7702 upgrade.
-  /// - Parameter chainId: CAIP-2 chain ID
+  /// - Parameters:
+  ///   - chainId: CAIP-2 chain ID
+  ///   - subsidize: When `true`, the API submits the transaction on-chain and returns the hash in `data.transactionHash`.
   /// - Returns: Response containing the hash to sign
-  func buildAuthorizationList(chainId: String) async throws -> BuildAuthorizationListResponse
+  func buildAuthorizationList(chainId: String, subsidize: Bool?) async throws -> BuildAuthorizationListResponse
 
   /// Builds the authorization transaction from the signature.
   /// - Parameters:
@@ -78,10 +80,12 @@ public class PortalEvmAccountTypeApi: PortalEvmAccountTypeApiProtocol {
 
   /// Builds the authorization list hash for EIP-7702 upgrade.
   ///
-  /// - Parameter chainId: CAIP-2 chain ID
+  /// - Parameters:
+  ///   - chainId: CAIP-2 chain ID
+  ///   - subsidize: When `true`, the API submits the transaction on-chain and returns the transaction hash in `data.transactionHash`. Defaults to `nil`.
   /// - Returns: Response containing data.hash (hex string with 0x prefix)
   /// - Throws: `URLError` if the URL cannot be constructed, or network/decoding errors if the request fails.
-  public func buildAuthorizationList(chainId: String) async throws -> BuildAuthorizationListResponse {
+  public func buildAuthorizationList(chainId: String, subsidize: Bool? = nil) async throws -> BuildAuthorizationListResponse {
     guard let encodedChain = chainId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
           let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(encodedChain)/wallet/build-authorization-list")
     else {
@@ -89,7 +93,7 @@ public class PortalEvmAccountTypeApi: PortalEvmAccountTypeApiProtocol {
       throw URLError(.badURL)
     }
     do {
-      let body = EmptyBody()
+      let body = BuildAuthorizationListRequest(subsidize: subsidize)
       return try await post(url, withBearerToken: apiKey, andPayload: body, mappingInResponse: BuildAuthorizationListResponse.self)
     } catch {
       logger.error("PortalEvmAccountTypeApi.buildAuthorizationList() - Error: \(error.localizedDescription)")

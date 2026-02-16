@@ -93,7 +93,7 @@ public class EvmAccountType: EvmAccountTypeProtocol {
     }
 
     // 3. Build authorization list and get hash
-    let authListResponse = try await api.buildAuthorizationList(chainId: chainId)
+    let authListResponse = try await api.buildAuthorizationList(chainId: chainId, subsidize: true)
     let hash = authListResponse.data.hash
     let messageToSign = hash.hasPrefix("0x") ? String(hash.dropFirst(2)) : hash
 
@@ -106,24 +106,10 @@ public class EvmAccountType: EvmAccountTypeProtocol {
 
     // 5. Build authorization transaction
     let buildTxResponse = try await api.buildAuthorizationTransaction(chainId: chainId, signature: signatureWithoutPrefix, subsidize: true)
-    let transaction = buildTxResponse.data.transaction
     guard let txHash = buildTxResponse.data.transactionHash else {
       throw EvmAccountTypeError.invalidTransactionResponse
     }
     return txHash
-
-    // 6. Convert Eip7702Transaction to params and send via eth_sendTransaction
-//    let txParams = transactionToParams(transaction)
-//    let requestResult = try await portal.request(
-//      chainId: chainId,
-//      method: .eth_sendTransaction,
-//      params: [txParams],
-//      options: nil
-//    )
-//    guard let txHash = requestResult.result as? String else {
-//      throw EvmAccountTypeError.invalidTransactionResponse
-//    }
-//    return txHash
   }
 
   /// Converts Eip7702Transaction to a dictionary suitable for eth_sendTransaction params.

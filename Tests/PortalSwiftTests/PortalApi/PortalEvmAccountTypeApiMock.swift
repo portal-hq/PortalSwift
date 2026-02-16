@@ -34,10 +34,12 @@ final class PortalEvmAccountTypeApiMock: PortalEvmAccountTypeApiProtocol {
   var buildAuthorizationListError: Error?
   var buildAuthorizationListCallCount = 0
   var buildAuthorizationListChainId: String?
+  var buildAuthorizationListSubsidize: Bool?
 
-  func buildAuthorizationList(chainId: String) async throws -> BuildAuthorizationListResponse {
+  func buildAuthorizationList(chainId: String, subsidize: Bool? = nil) async throws -> BuildAuthorizationListResponse {
     buildAuthorizationListCallCount += 1
     buildAuthorizationListChainId = chainId
+    buildAuthorizationListSubsidize = subsidize
     if let error = buildAuthorizationListError {
       throw error
     }
