@@ -122,4 +122,3 @@ public struct ZeroXTransaction: Codable {
     self.value = value
   }
 }
-

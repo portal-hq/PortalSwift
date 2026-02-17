@@ -1396,12 +1396,47 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
   @IBAction func handleSendAsset(_: UIButton) {
+    let defaultAddress = "0xdFd8302f44727A6348F702fF7B594f127dE3A902"
+    let defaultAmount = "0.001"
+
+    let alert = UIAlertController(
+      title: "Send Asset",
+      message: "Enter the recipient address and amount:",
+      preferredStyle: .alert
+    )
+    alert.addTextField { textField in
+      textField.placeholder = "0x..."
+      textField.text = defaultAddress
+      textField.clearButtonMode = .whileEditing
+    }
+    alert.addTextField { textField in
+      textField.placeholder = "Amount (e.g. 0.001)"
+      textField.text = defaultAmount
+      textField.keyboardType = .decimalPad
+      textField.clearButtonMode = .whileEditing
+    }
+    alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+    alert.addAction(UIAlertAction(title: "Use Default", style: .default) { [weak self] _ in
+      self?.sendAsset(to: defaultAddress, amount: defaultAmount)
+    })
+    alert.addAction(UIAlertAction(title: "Send", style: .default) { [weak self] _ in
+      let address = alert.textFields?[0].text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? defaultAddress
+      let amount = alert.textFields?[1].text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? defaultAmount
+      self?.sendAsset(
+        to: address.isEmpty ? defaultAddress : address,
+        amount: amount.isEmpty ? defaultAmount : amount
+      )
+    })
+    present(alert, animated: true)
+  }
+
+  private func sendAsset(to address: String, amount: String) {
     Task {
       do {
         self.startLoading()
 
         let chainId = "eip155:11155111"
-        let params = SendAssetParams(to: "0xdFd8302f44727A6348F702fF7B594f127dE3A902", amount: "0.001", token: "NATIVE")
+        let params = SendAssetParams(to: address, amount: amount, token: "NATIVE")
 
         let response = try await portal?.sendAsset(chainId: chainId, params: params)
 

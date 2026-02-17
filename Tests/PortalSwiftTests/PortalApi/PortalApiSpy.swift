@@ -16,6 +16,7 @@ class PortalApiSpy: PortalApiProtocol {
   var hypernative: any PortalSwift.PortalHypernativeApiProtocol
   var blockaid: any PortalSwift.PortalBlockaidApiProtocol
   var delegations: any PortalSwift.PortalDelegationsApiProtocol
+  var evmAccountType: any PortalSwift.PortalEvmAccountTypeApiProtocol
 
   init(
     yieldxyz: any PortalSwift.PortalYieldXyzApiProtocol = PortalYieldXyzApiSpy(),
@@ -23,7 +24,8 @@ class PortalApiSpy: PortalApiProtocol {
     zeroX: any PortalSwift.PortalZeroXTradingApiProtocol = PortalZeroXTradingApiMock(),
     hypernative: any PortalSwift.PortalHypernativeApiProtocol = PortalHypernativeApiMock(),
     blockaid: any PortalSwift.PortalBlockaidApiProtocol = PortalBlockaidApiMock(),
-    delegations: any PortalSwift.PortalDelegationsApiProtocol = PortalDelegationsApiMock()
+    delegations: any PortalSwift.PortalDelegationsApiProtocol = PortalDelegationsApiMock(),
+    evmAccountType: any PortalSwift.PortalEvmAccountTypeApiProtocol = PortalEvmAccountTypeApiMock()
   ) {
     self.yieldxyz = yieldxyz
     self.lifi = lifi
@@ -31,6 +33,7 @@ class PortalApiSpy: PortalApiProtocol {
     self.hypernative = hypernative
     self.blockaid = blockaid
     self.delegations = delegations
+    self.evmAccountType = evmAccountType
   }
 
   // Property to track client access

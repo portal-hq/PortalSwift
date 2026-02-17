@@ -16,6 +16,7 @@ class PortalApiMock: PortalApiProtocol {
   var hypernative: PortalSwift.PortalHypernativeApiProtocol
   var blockaid: PortalSwift.PortalBlockaidApiProtocol
   var delegations: PortalSwift.PortalDelegationsApiProtocol
+  var evmAccountType: PortalSwift.PortalEvmAccountTypeApiProtocol
 
   var client: PortalSwift.ClientResponse?
 
@@ -26,6 +27,7 @@ class PortalApiMock: PortalApiProtocol {
     hypernative: PortalSwift.PortalHypernativeApiProtocol = PortalHypernativeApiMock(),
     blockaid: PortalSwift.PortalBlockaidApiProtocol = PortalBlockaidApiMock(),
     delegations: PortalSwift.PortalDelegationsApiProtocol = PortalDelegationsApiMock(),
+    evmAccountType: PortalSwift.PortalEvmAccountTypeApiProtocol = PortalEvmAccountTypeApiMock(),
     client: PortalSwift.ClientResponse? = nil
   ) {
     self.yieldxyz = yieldxyz
@@ -34,6 +36,7 @@ class PortalApiMock: PortalApiProtocol {
     self.hypernative = hypernative
     self.blockaid = blockaid
     self.delegations = delegations
+    self.evmAccountType = evmAccountType
     self.client = client
   }
 

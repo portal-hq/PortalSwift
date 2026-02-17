@@ -5,8 +5,8 @@
 //  Created by Ahmed Ragab
 //
 
-import Foundation
 import AnyCodable
+import Foundation
 
 // MARK: - ScanEip712Request
 

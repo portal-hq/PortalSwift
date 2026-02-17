@@ -594,7 +594,7 @@ extension ZeroXTests {
 
 extension ZeroXTests {
   // MARK: - getSources Convenience Method Tests
-  
+
   func test_getSources_convenienceMethod_returnsSourcesSuccessfully() async throws {
     // given
     let mockResponse = ZeroXSourcesResponse.stub()
@@ -923,10 +923,10 @@ extension ZeroXTests {
     // when - call both convenience and explicit nil methods
     let sources1 = try await zeroX.getSources(chainId: "eip155:1")
     let sources2 = try await zeroX.getSources(chainId: "eip155:1", zeroXApiKey: nil)
-    
+
     let quote1 = try await zeroX.getQuote(request: quoteRequest)
     let quote2 = try await zeroX.getQuote(request: quoteRequest, zeroXApiKey: nil)
-    
+
     let price1 = try await zeroX.getPrice(request: priceRequest)
     let price2 = try await zeroX.getPrice(request: priceRequest, zeroXApiKey: nil)
 
@@ -940,7 +940,7 @@ extension ZeroXTests {
     XCTAssertNotNil(price1.data)
     XCTAssertNotNil(price2.data)
     XCTAssertEqual(price1.data?.rawResponse.buyAmount ?? "", price2.data?.rawResponse.buyAmount ?? "")
-    
+
     // Verify all calls passed nil for zeroXApiKey
     XCTAssertNil(apiMock.getSourcesZeroXApiKeyParam)
     XCTAssertNil(apiMock.getQuoteZeroXApiKeyParam)
@@ -959,7 +959,7 @@ extension ZeroXTests {
     // when - mix convenience and explicit API key methods
     _ = try await zeroX.getSources(chainId: "eip155:1") // convenience
     _ = try await zeroX.getSources(chainId: "eip155:1", zeroXApiKey: apiKey) // explicit
-    
+
     _ = try await zeroX.getQuote(request: quoteRequest) // convenience
     _ = try await zeroX.getQuote(request: quoteRequest, zeroXApiKey: apiKey) // explicit
 
@@ -979,7 +979,7 @@ extension ZeroXTests {
     apiMock.getSourcesReturnValue = sourcesResponse
     apiMock.getQuoteReturnValue = quoteResponse
     apiMock.getPriceReturnValue = priceResponse
-    
+
     // Cast to protocol type (as it would be used in Trading.zeroX)
     let zeroXProtocol: ZeroXProtocol = zeroX
     let quoteRequest = ZeroXQuoteRequest.stub()
@@ -1465,4 +1465,3 @@ extension ZeroXTests {
     XCTAssertEqual(zeroXMock2.getSourcesCalls, 1)
   }
 }
-

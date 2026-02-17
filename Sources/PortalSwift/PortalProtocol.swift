@@ -22,6 +22,7 @@ public protocol PortalProtocol {
   var trading: Trading { get }
   var security: Security { get }
   var delegations: DelegationsProtocol { get }
+  var evmAccountType: EvmAccountTypeProtocol { get }
 
   // Deprecated Properties
   @available(*, deprecated, renamed: "addresses", message: "Please use the async getter for `addresses`")

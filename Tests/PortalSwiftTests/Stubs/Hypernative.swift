@@ -5,8 +5,8 @@
 //  Created by Ahmed Ragab
 //
 
-import Foundation
 import AnyCodable
+import Foundation
 @testable import PortalSwift
 
 // MARK: - Request Stubs
@@ -40,8 +40,8 @@ extension ScanEVMTransaction {
     value: Int? = 0,
     nonce: Int? = 2340,
     hash: String? = nil,
-    gas: Int? = 3000000,
-    gasPrice: Int? = 3000000,
+    gas: Int? = 3_000_000,
+    gasPrice: Int? = 3_000_000,
     maxPriorityFeePerGas: Int? = nil,
     maxFeePerGas: Int? = nil
   ) -> Self {
@@ -94,7 +94,7 @@ extension ScanEip712TypedData {
       "spender": AnyCodable("0x67beb4dd770a9c2cbc7133ba428b9eecdcf09186"),
       "value": AnyCodable(3000),
       "nonce": AnyCodable(0),
-      "deadline": AnyCodable(50000000000)
+      "deadline": AnyCodable(50_000_000_000)
     ]
   ) -> Self {
     ScanEip712TypedData(
@@ -1136,7 +1136,7 @@ extension ScanSolanaTransferInfo {
   static func stub(
     source: String? = "0x123",
     destination: String? = "0x456",
-    lamports: Int? = 1000000000
+    lamports: Int? = 1_000_000_000
   ) -> Self {
     ScanSolanaTransferInfo(
       source: source,
