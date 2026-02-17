@@ -13,7 +13,7 @@ Possible Types of changes include:
 - Upgraded
 
 ## 6.10.0 - 2026-02-17
-- Added upgrade account to EIP_7702 functionality:
+- Added upgrade account to EIP-7702 functionality:
     - Added `portal.evmAccountType.getStatus`
     - Added `portal.evmAccountType.upgradeTo7702`
 
