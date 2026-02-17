@@ -12,6 +12,11 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
+## 6.10.0 - 2026-02-17
+- Added upgrade account to EIP_7702 functionality:
+    - Added `portal.evmAccountType.getStatus`
+    - Added `portal.evmAccountType.upgradeTo7702`
+
 ## 6.9.0 - 2026-02-09
 - Added delegations integration for managing token approvals and delegated transfers:
     - Added `portal.delegations.approve`
