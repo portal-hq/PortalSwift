@@ -17,7 +17,7 @@
                         <viewControllerLayoutGuide type="bottom" id="2fi-mo-0CV"/>
                     </layoutGuides>
                     <scrollView key="view" contentMode="scaleToFill" ambiguous="YES" restorationIdentifier="mainViewController" id="kh9-bI-dsS">
-                        <rect key="frame" x="0.0" y="0.0" width="375" height="2450"/>
+                        <rect key="frame" x="0.0" y="0.0" width="375" height="3196"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                         <subviews>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="WxW-BK-2tM">
@@ -803,6 +803,13 @@
                                 <nil key="textColor"/>
                                 <nil key="highlightedColor"/>
                             </label>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="Upgarade to 7702" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="lOv-mm-Fuc">
+                                <rect key="frame" x="106" y="2885" width="171" height="21"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <fontDescription key="fontDescription" type="boldSystem" pointSize="17"/>
+                                <nil key="textColor"/>
+                                <nil key="highlightedColor"/>
+                            </label>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Del-AE-Bt1">
                                 <rect key="frame" x="14" y="2488" width="339" height="39"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
@@ -908,7 +915,20 @@
                                 </connections>
                             </button>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="EVM-7702-Bt1">
-                                <rect key="frame" x="14" y="2883" width="339" height="39"/>
+                                <rect key="frame" x="14" y="2912" width="339" height="39"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <state key="normal" title="Button"/>
+                                <buttonConfiguration key="configuration" style="filled" title="EVM Account getStatus">
+                                    <backgroundConfiguration key="background"/>
+                                    <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
+                                    <color key="baseBackgroundColor" white="0.0" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                </buttonConfiguration>
+                                <connections>
+                                    <action selector="evmAccountGetStatus:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="dOs-qY-0Qh"/>
+                                </connections>
+                            </button>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="pGp-Ux-Xpk">
+                                <rect key="frame" x="15" y="2959" width="339" height="39"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <state key="normal" title="Button"/>
                                 <buttonConfiguration key="configuration" style="filled" title="Upgrade AA to EIP7702">
@@ -917,7 +937,7 @@
                                     <color key="baseBackgroundColor" white="0.0" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 </buttonConfiguration>
                                 <connections>
-                                    <action selector="upgradeToEIP7702:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="EVM-7702-Ac1"/>
+                                    <action selector="upgradeToEIP7702:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="y3h-xS-1zf"/>
                                 </connections>
                             </button>
                         </subviews>
@@ -928,7 +948,7 @@
                             </mask>
                         </variation>
                     </scrollView>
-                    <size key="freeformSize" width="375" height="2960"/>
+                    <size key="freeformSize" width="375" height="3196"/>
                     <connections>
                         <outlet property="addressInformation" destination="0fE-Dt-jQE" id="FgG-eb-2eu"/>
                         <outlet property="dappBrowserButton" destination="qcu-G8-SAB" id="A5q-1k-dxD"/>
@@ -974,7 +994,7 @@
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="x5A-6p-PRh" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="93.599999999999994" y="362.06896551724139"/>
+            <point key="canvasLocation" x="93.599999999999994" y="467.3163418290855"/>
         </scene>
         <!--Web View Controller-->
         <scene sceneID="AeA-zC-7Sc">
@@ -992,7 +1012,7 @@
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="KVY-F6-Tah" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="94" y="1817"/>
+            <point key="canvasLocation" x="1014" y="1962"/>
         </scene>
         <!--Connect View Controller-->
         <scene sceneID="94S-6a-j1d">
@@ -1208,7 +1228,7 @@
             <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
         </systemColor>
         <systemColor name="systemPinkColor">
-            <color red="1" green="0.1764705882" blue="0.33333333329999998" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+            <color red="1" green="0.17647058823529413" blue="0.33333333333333331" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </systemColor>
     </resources>
 </document>

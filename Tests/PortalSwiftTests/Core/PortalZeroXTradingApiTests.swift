@@ -757,21 +757,21 @@ extension PortalZeroXTradingApiTests {
   func test_chainId_includedInRequestBodyForAllMethods() async throws {
     // given
     let chainId = "eip155:1"
-    
+
     // Test getSources
     try setReturnValue(ZeroXSourcesResponse.stub())
     _ = try await zeroXApi.getSources(chainId: chainId, zeroXApiKey: nil)
     var request = requestsSpy.executeRequestParam as? PortalAPIRequest
     var payload = request?.payload as? [String: AnyCodable]
     XCTAssertEqual(payload?["chainId"]?.value as? String, chainId)
-    
+
     // Test getQuote
     try setReturnValue(ZeroXQuoteResponse.stub())
     _ = try await zeroXApi.getQuote(request: ZeroXQuoteRequest.stub(chainId: chainId), zeroXApiKey: nil)
     request = requestsSpy.executeRequestParam as? PortalAPIRequest
     payload = request?.payload as? [String: AnyCodable]
     XCTAssertEqual(payload?["chainId"]?.value as? String, chainId)
-    
+
     // Test getPrice
     try setReturnValue(ZeroXPriceResponse.stub())
     _ = try await zeroXApi.getPrice(request: ZeroXPriceRequest.stub(chainId: chainId), zeroXApiKey: nil)
@@ -841,4 +841,3 @@ extension PortalZeroXTradingApiTests {
     }
   }
 }
-

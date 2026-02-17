@@ -34,10 +34,12 @@ final class PortalEvmAccountTypeApiMock: PortalEvmAccountTypeApiProtocol {
   var buildAuthorizationListError: Error?
   var buildAuthorizationListCallCount = 0
   var buildAuthorizationListChainId: String?
+  var buildAuthorizationListSubsidize: Bool?
 
-  func buildAuthorizationList(chainId: String) async throws -> BuildAuthorizationListResponse {
+  func buildAuthorizationList(chainId: String, subsidize: Bool? = nil) async throws -> BuildAuthorizationListResponse {
     buildAuthorizationListCallCount += 1
     buildAuthorizationListChainId = chainId
+    buildAuthorizationListSubsidize = subsidize
     if let error = buildAuthorizationListError {
       throw error
     }
@@ -57,11 +59,13 @@ final class PortalEvmAccountTypeApiMock: PortalEvmAccountTypeApiProtocol {
   var buildAuthorizationTransactionCallCount = 0
   var buildAuthorizationTransactionChainId: String?
   var buildAuthorizationTransactionSignature: String?
+  var buildAuthorizationTransactionSubsidize: Bool?
 
-  func buildAuthorizationTransaction(chainId: String, signature: String) async throws -> BuildAuthorizationTransactionResponse {
+  func buildAuthorizationTransaction(chainId: String, signature: String, subsidize: Bool? = nil) async throws -> BuildAuthorizationTransactionResponse {
     buildAuthorizationTransactionCallCount += 1
     buildAuthorizationTransactionChainId = chainId
     buildAuthorizationTransactionSignature = signature
+    buildAuthorizationTransactionSubsidize = subsidize
     if let error = buildAuthorizationTransactionError {
       throw error
     }
@@ -79,7 +83,8 @@ final class PortalEvmAccountTypeApiMock: PortalEvmAccountTypeApiProtocol {
           gasLimit: nil,
           maxFeePerGas: nil,
           maxPriorityFeePerGas: nil
-        )
+        ),
+        transactionHash: "0xdefaulttxhash"
       ),
       metadata: nil
     )

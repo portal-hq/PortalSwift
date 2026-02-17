@@ -9,7 +9,6 @@ import Foundation
 @testable import PortalSwift
 
 final class PortalDelegationsApiMock: PortalDelegationsApiProtocol {
-
   // MARK: - approve
 
   var approveReturnValue: ApproveDelegationResponse?

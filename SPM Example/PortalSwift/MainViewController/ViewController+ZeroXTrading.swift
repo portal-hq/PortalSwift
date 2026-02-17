@@ -60,12 +60,12 @@ extension ViewController {
           sellAmount: "100000000000000" // 0.0001 ETH
         )
 
-          var quoteResponse: ZeroXQuoteResponse
-          do {
-            quoteResponse = try await portal.trading.zeroX.getQuote(
-              request: quoteRequest,
-              zeroXApiKey: SWAPS_API_KEY
-            )
+        var quoteResponse: ZeroXQuoteResponse
+        do {
+          quoteResponse = try await portal.trading.zeroX.getQuote(
+            request: quoteRequest,
+            zeroXApiKey: SWAPS_API_KEY
+          )
           self.logger.info("ViewController.handleZeroXTrading() - ✅ Got quote successfully:")
           guard let data = quoteResponse.data else {
             throw NSError(domain: "ZeroXError", code: -1, userInfo: [NSLocalizedDescriptionKey: "No data in response"])
@@ -158,7 +158,7 @@ extension ViewController {
             throw NSError(domain: "ZeroXError", code: -1, userInfo: [NSLocalizedDescriptionKey: "No data in response"])
           }
           self.logger.info("ViewController.handleZeroXGetSources() - ✅ Test Case 1 Success: Got \(data1.rawResponse.sources.count) sources with explicit API key: \(data1.rawResponse.sources)")
-          
+
           // Test Case 2: getSources WITHOUT zeroXApiKey parameter (uses Dashboard config)
           self.logger.info("ViewController.handleZeroXGetSources() - 📝 Test Case 2: getSources WITHOUT zeroXApiKey parameter (uses Dashboard config)")
           let sourcesResponse2 = try await portal.trading.zeroX.getSources(chainId: chainId)
@@ -166,7 +166,7 @@ extension ViewController {
             throw NSError(domain: "ZeroXError", code: -1, userInfo: [NSLocalizedDescriptionKey: "No data in response"])
           }
           self.logger.info("ViewController.handleZeroXGetSources() - ✅ Test Case 2 Success: Got \(data2.rawResponse.sources.count) sources using Dashboard API key: \(data2.rawResponse.sources)")
-          
+
           self.showStatusView(message: "\(self.successStatus) Test 1: \(data1.rawResponse.sources.count) sources (with API key) | Test 2: \(data2.rawResponse.sources.count) sources (Dashboard key)")
           self.stopLoading()
         } catch {

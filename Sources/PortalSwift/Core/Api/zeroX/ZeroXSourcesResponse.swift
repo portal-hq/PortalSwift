@@ -43,4 +43,3 @@ public struct ZeroXSourcesRawResponse: Codable {
     self.zid = zid
   }
 }
-

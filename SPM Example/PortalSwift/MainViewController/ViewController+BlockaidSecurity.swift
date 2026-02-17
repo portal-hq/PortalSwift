@@ -13,10 +13,9 @@ import UIKit
 
 @available(iOS 16.0, *)
 extension ViewController {
-
   // MARK: - Blockaid Scan EVM Transaction
 
-  @IBAction func blockaidScanEVMTx(_ sender: Any) {
+  @IBAction func blockaidScanEVMTx(_: Any) {
     startLoading()
 
     Task { @MainActor in
@@ -100,7 +99,7 @@ extension ViewController {
 
   // MARK: - Blockaid Scan Solana Transaction
 
-  @IBAction func blockaidScanSolanaTx(_ sender: Any) {
+  @IBAction func blockaidScanSolanaTx(_: Any) {
     startLoading()
 
     Task { @MainActor in
@@ -180,7 +179,7 @@ extension ViewController {
 
   // MARK: - Blockaid Scan Address
 
-  @IBAction func blockaidScanAddress(_ sender: Any) {
+  @IBAction func blockaidScanAddress(_: Any) {
     startLoading()
 
     Task { @MainActor in
@@ -242,7 +241,7 @@ extension ViewController {
 
   // MARK: - Blockaid Scan Tokens
 
-  @IBAction func blockaidScanTokens(_ sender: Any) {
+  @IBAction func blockaidScanTokens(_: Any) {
     startLoading()
 
     Task { @MainActor in
@@ -260,7 +259,7 @@ extension ViewController {
         // Use benign tokens: WETH and USDC on Ethereum mainnet
         let tokens = [
           "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", // WETH
-          "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"  // USDC
+          "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" // USDC
         ]
 
         let request = BlockaidScanTokensRequest(
@@ -314,7 +313,7 @@ extension ViewController {
 
   // MARK: - Blockaid Scan URL
 
-  @IBAction func blockaidScanURL(_ sender: Any) {
+  @IBAction func blockaidScanURL(_: Any) {
     startLoading()
 
     Task { @MainActor in
@@ -338,7 +337,7 @@ extension ViewController {
         logURLResult(response)
 
         let status = response.data?.rawResponse.status
-        if (response.data?.rawResponse.isMalicious ?? false) {
+        if response.data?.rawResponse.isMalicious ?? false {
           logger.info("⚠️ [Blockaid Scan URL] URL flagged as MALICIOUS")
         } else if status == "miss" {
           logger.info("ℹ️ [Blockaid Scan URL] URL not in database (miss)")

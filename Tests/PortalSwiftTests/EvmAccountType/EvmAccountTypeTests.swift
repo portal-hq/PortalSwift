@@ -5,8 +5,8 @@
 //  Created by Ahmed Ragab
 //
 
-import XCTest
 @testable import PortalSwift
+import XCTest
 
 /// Minimal portal mock for EvmAccountType tests (rawSign and request only).
 private final class EvmAccountTypePortalMock: EvmAccountTypePortalDependency {
@@ -23,7 +23,7 @@ private final class EvmAccountTypePortalMock: EvmAccountTypePortalDependency {
   var requestMethod: PortalRequestMethod?
   var requestParams: [Any]?
 
-  func rawSign(message: String, chainId: String, signatureApprovalMemo: String?) async throws -> PortalProviderResult {
+  func rawSign(message: String, chainId: String, signatureApprovalMemo _: String?) async throws -> PortalProviderResult {
     rawSignCallCount += 1
     rawSignMessage = message
     rawSignChainId = chainId
@@ -33,7 +33,7 @@ private final class EvmAccountTypePortalMock: EvmAccountTypePortalDependency {
     return rawSignReturnValue ?? PortalProviderResult(id: "1", result: "sig_without_0x")
   }
 
-  func request(chainId: String, method: PortalRequestMethod, params: [Any], options: RequestOptions?) async throws -> PortalProviderResult {
+  func request(chainId: String, method: PortalRequestMethod, params: [Any], options _: RequestOptions?) async throws -> PortalProviderResult {
     requestCallCount += 1
     requestChainId = chainId
     requestMethod = method
@@ -168,9 +168,10 @@ final class EvmAccountTypeTests: XCTestCase {
   func testUpgradeTo7702_success_returnsTransactionHash() async throws {
     mockApi.getStatusReturnValue = EvmAccountTypeResponse.stub(data: EvmAccountTypeData.stub(status: "EIP_155_EOA"))
     mockApi.buildAuthorizationListReturnValue = BuildAuthorizationListResponse.stub()
-    mockApi.buildAuthorizationTransactionReturnValue = BuildAuthorizationTransactionResponse.stub()
+    mockApi.buildAuthorizationTransactionReturnValue = BuildAuthorizationTransactionResponse.stub(
+      data: BuildAuthorizationTransactionData.stub(transactionHash: "0xabc123hash")
+    )
     portalMock.rawSignReturnValue = PortalProviderResult(id: "1", result: "sig123")
-    portalMock.requestReturnValue = PortalProviderResult(id: "1", result: "0xabc123hash")
 
     let txHash = try await sut.upgradeTo7702(chainId: "eip155:11155111")
 
@@ -179,7 +180,8 @@ final class EvmAccountTypeTests: XCTestCase {
     XCTAssertEqual(mockApi.buildAuthorizationListCallCount, 1)
     XCTAssertEqual(mockApi.buildAuthorizationTransactionCallCount, 1)
     XCTAssertEqual(portalMock.rawSignCallCount, 1)
-    XCTAssertEqual(portalMock.requestCallCount, 1)
+    XCTAssertEqual(portalMock.requestCallCount, 0)
+    XCTAssertEqual(mockApi.buildAuthorizationTransactionSubsidize, true)
   }
 
   func testUpgradeTo7702_buildAuthorizationList_fails_throwsError() async {
@@ -223,19 +225,25 @@ final class EvmAccountTypeTests: XCTestCase {
     XCTAssertEqual(mockApi.buildAuthorizationTransactionCallCount, 1)
   }
 
-  func testUpgradeTo7702_sendTransaction_fails_throwsError() async {
+  func testUpgradeTo7702_nilTransactionHash_throwsInvalidTransactionResponse() async {
     mockApi.getStatusReturnValue = EvmAccountTypeResponse.stub(data: EvmAccountTypeData.stub(status: "EIP_155_EOA"))
     mockApi.buildAuthorizationListReturnValue = BuildAuthorizationListResponse.stub()
-    mockApi.buildAuthorizationTransactionReturnValue = BuildAuthorizationTransactionResponse.stub()
+    mockApi.buildAuthorizationTransactionReturnValue = BuildAuthorizationTransactionResponse.stub(
+      data: BuildAuthorizationTransactionData.stub(transactionHash: nil)
+    )
     portalMock.rawSignReturnValue = PortalProviderResult(id: "1", result: "sig")
-    portalMock.requestError = URLError(.cannotConnectToHost)
     do {
       _ = try await sut.upgradeTo7702(chainId: "eip155:11155111")
-      XCTFail("Expected error")
+      XCTFail("Expected EvmAccountTypeError.invalidTransactionResponse")
+    } catch let error as EvmAccountTypeError {
+      if case .invalidTransactionResponse = error { } else {
+        XCTFail("Expected invalidTransactionResponse, got \(error)")
+      }
     } catch {
-      XCTAssertNotNil(error)
+      XCTFail("Expected EvmAccountTypeError, got \(type(of: error))")
     }
-    XCTAssertEqual(portalMock.requestCallCount, 1)
+    XCTAssertEqual(mockApi.buildAuthorizationTransactionCallCount, 1)
+    XCTAssertEqual(portalMock.requestCallCount, 0)
   }
 
   func testUpgradeTo7702_verifiesHashPrefixRemoved() async throws {
@@ -245,7 +253,6 @@ final class EvmAccountTypeTests: XCTestCase {
     )
     mockApi.buildAuthorizationTransactionReturnValue = BuildAuthorizationTransactionResponse.stub()
     portalMock.rawSignReturnValue = PortalProviderResult(id: "1", result: "sig")
-    portalMock.requestReturnValue = PortalProviderResult(id: "1", result: "0xhash")
 
     _ = try await sut.upgradeTo7702(chainId: "eip155:11155111")
 
@@ -258,7 +265,6 @@ final class EvmAccountTypeTests: XCTestCase {
     mockApi.buildAuthorizationListReturnValue = BuildAuthorizationListResponse.stub()
     mockApi.buildAuthorizationTransactionReturnValue = BuildAuthorizationTransactionResponse.stub()
     portalMock.rawSignReturnValue = PortalProviderResult(id: "1", result: "sig")
-    portalMock.requestReturnValue = PortalProviderResult(id: "1", result: "0xhash")
 
     _ = try await sut.upgradeTo7702(chainId: chainId)
 
@@ -266,7 +272,6 @@ final class EvmAccountTypeTests: XCTestCase {
     XCTAssertEqual(mockApi.buildAuthorizationListChainId, chainId)
     XCTAssertEqual(mockApi.buildAuthorizationTransactionChainId, chainId)
     XCTAssertEqual(portalMock.rawSignChainId, chainId)
-    XCTAssertEqual(portalMock.requestChainId, chainId)
   }
 
   func testUpgradeTo7702_nilPortal_throwsPortalNotInitialized() async {

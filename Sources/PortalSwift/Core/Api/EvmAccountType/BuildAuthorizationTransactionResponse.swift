@@ -19,9 +19,11 @@ public struct BuildAuthorizationTransactionResponse: Codable {
 
 public struct BuildAuthorizationTransactionData: Codable {
   public let transaction: Eip7702Transaction
+  public let transactionHash: String?
 
-  public init(transaction: Eip7702Transaction) {
+  public init(transaction: Eip7702Transaction, transactionHash: String?) {
     self.transaction = transaction
+    self.transactionHash = transactionHash
   }
 }
 
@@ -88,12 +90,14 @@ public struct BuildAuthorizationTransactionMetadata: Codable {
   public let chainId: String
   public let hash: String?
   public let signature: AuthorizationSignature?
+  public let subsidize: Bool?
 
-  public init(authorization: AuthorizationDetail, chainId: String, hash: String? = nil, signature: AuthorizationSignature? = nil) {
+  public init(authorization: AuthorizationDetail, chainId: String, hash: String? = nil, signature: AuthorizationSignature? = nil, subsidize: Bool? = nil) {
     self.authorization = authorization
     self.chainId = chainId
     self.hash = hash
     self.signature = signature
+    self.subsidize = subsidize
   }
 }
 

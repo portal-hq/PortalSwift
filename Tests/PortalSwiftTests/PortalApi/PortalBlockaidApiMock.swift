@@ -9,7 +9,6 @@ import Foundation
 @testable import PortalSwift
 
 final class PortalBlockaidApiMock: PortalBlockaidApiProtocol {
-
   var scanEVMTxReturnValue: BlockaidScanEVMResponse?
   var scanEVMTxError: Error?
   var scanEVMTxCallCount = 0

@@ -201,4 +201,3 @@ public struct ZeroXTokenTaxMetadata: Codable {
     self.transferTaxBps = transferTaxBps
   }
 }
-

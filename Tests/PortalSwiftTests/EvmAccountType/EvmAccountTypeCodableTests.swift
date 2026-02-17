@@ -5,8 +5,8 @@
 //  Created by Ahmed Ragab
 //
 
-import XCTest
 @testable import PortalSwift
+import XCTest
 
 final class EvmAccountTypeCodableTests: XCTestCase {
   let encoder = JSONEncoder()
@@ -109,7 +109,8 @@ final class EvmAccountTypeCodableTests: XCTestCase {
                         "yParity": "0x01"
                     }
                 ]
-            }
+            },
+            "transactionHash": "0xabc123hash"
         },
         "metadata": {
             "authorization": {
@@ -118,7 +119,8 @@ final class EvmAccountTypeCodableTests: XCTestCase {
                 "nonce": "0x01"
             },
             "chainId": "eip155:11155111",
-            "hash": "0x91aee67c57b66d6759640eb3beb69be6b36690ca9f0d8446fff3f9cb269a4736"
+            "hash": "0x91aee67c57b66d6759640eb3beb69be6b36690ca9f0d8446fff3f9cb269a4736",
+            "subsidize": true
         }
     }
     """.data(using: .utf8)!
@@ -128,6 +130,8 @@ final class EvmAccountTypeCodableTests: XCTestCase {
     XCTAssertEqual(decoded.data.transaction.from, "0xf80d492e12d01fbfb4804a6194a18ca24a539ad5")
     XCTAssertEqual(decoded.data.transaction.authorizationList?.count, 1)
     XCTAssertEqual(decoded.data.transaction.authorizationList?[0].address, "0xD3F582F6B4814E989Ee8E96bc3175320B5A540ab")
+    XCTAssertEqual(decoded.data.transactionHash, "0xabc123hash")
+    XCTAssertEqual(decoded.metadata?.subsidize, true)
   }
 
   func test_buildAuthorizationTransactionResponse_decodesWithOptionalFields() throws {
@@ -147,6 +151,7 @@ final class EvmAccountTypeCodableTests: XCTestCase {
     XCTAssertEqual(decoded.data.transaction.from, "0xfrom")
     XCTAssertEqual(decoded.data.transaction.to, "0xto")
     XCTAssertNil(decoded.data.transaction.authorizationList)
+    XCTAssertNil(decoded.data.transactionHash)
     XCTAssertNil(decoded.metadata)
   }
 
@@ -192,6 +197,7 @@ final class EvmAccountTypeCodableTests: XCTestCase {
     XCTAssertNotNil(decoded.metadata)
     XCTAssertNil(decoded.metadata?.hash)
     XCTAssertNil(decoded.metadata?.signature)
+    XCTAssertNil(decoded.metadata?.subsidize)
     XCTAssertEqual(decoded.metadata?.chainId, "eip155:11155111")
     XCTAssertEqual(decoded.data.transaction.gasLimit, "0x1819b")
     XCTAssertEqual(decoded.data.transaction.maxFeePerGas, "0x01fc1cd261")
@@ -199,9 +205,18 @@ final class EvmAccountTypeCodableTests: XCTestCase {
   }
 
   func test_buildAuthorizationTransactionRequest_encodesCorrectly() throws {
-    let request = BuildAuthorizationTransactionRequest.stub(signature: "abc123sig")
+    let request = BuildAuthorizationTransactionRequest.stub(signature: "abc123sig", subsidize: true)
     let data = try encoder.encode(request)
     let decoded = try decoder.decode(BuildAuthorizationTransactionRequest.self, from: data)
     XCTAssertEqual(decoded.signature, "abc123sig")
+    XCTAssertEqual(decoded.subsidize, true)
+  }
+
+  func test_buildAuthorizationTransactionRequest_encodesWithNilSubsidize() throws {
+    let request = BuildAuthorizationTransactionRequest(signature: "sig123", subsidize: nil)
+    let data = try encoder.encode(request)
+    let decoded = try decoder.decode(BuildAuthorizationTransactionRequest.self, from: data)
+    XCTAssertEqual(decoded.signature, "sig123")
+    XCTAssertNil(decoded.subsidize)
   }
 }

@@ -12,10 +12,9 @@ import Foundation
 /// This class provides access to various security providers and their capabilities.
 /// Supports Blockaid and Hypernative as security providers.
 public class Security {
-  
   /// Access to Blockaid security provider functionality.
   public var blockaid: BlockaidProtocol
-  
+
   /// Access to Hypernative security provider functionality.
   public var hypernative: HypernativeProtocol
 
