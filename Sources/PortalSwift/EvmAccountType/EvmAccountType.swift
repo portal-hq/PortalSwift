@@ -111,49 +111,4 @@ public class EvmAccountType: EvmAccountTypeProtocol {
     }
     return txHash
   }
-
-  /// Converts Eip7702Transaction to a dictionary suitable for eth_sendTransaction params.
-  private func transactionToParams(_ tx: Eip7702Transaction) -> [String: Any] {
-    var params: [String: Any] = [
-      "from": tx.from,
-      "to": tx.to
-    ]
-    if let type = tx.type {
-      params["type"] = type
-    }
-    if let value = tx.value {
-      params["value"] = value
-    }
-    if let data = tx.data {
-      params["data"] = data
-    }
-    if let nonce = tx.nonce {
-      params["nonce"] = nonce
-    }
-    if let chainId = tx.chainId {
-      params["chainId"] = chainId
-    }
-    if let list = tx.authorizationList, !list.isEmpty {
-      params["authorizationList"] = list.map { item in
-        [
-          "address": item.address,
-          "chainId": item.chainId,
-          "nonce": item.nonce,
-          "r": item.r,
-          "s": item.s,
-          "yParity": item.yParity
-        ] as [String: String]
-      }
-    }
-    if let gasLimit = tx.gasLimit {
-      params["gasLimit"] = gasLimit
-    }
-    if let maxFeePerGas = tx.maxFeePerGas {
-      params["maxFeePerGas"] = maxFeePerGas
-    }
-    if let maxPriorityFeePerGas = tx.maxPriorityFeePerGas {
-      params["maxPriorityFeePerGas"] = maxPriorityFeePerGas
-    }
-    return params
-  }
 }
