@@ -39,6 +39,11 @@ public struct LifiRoutesRawResponse: Codable {
   public let routes: [LifiRoute]
   /// Routes that are unavailable for the given transfer (optional)
   public let unavailableRoutes: LifiUnavailableRoutes?
+
+  public init(routes: [LifiRoute], unavailableRoutes: LifiUnavailableRoutes? = nil) {
+    self.routes = routes
+    self.unavailableRoutes = unavailableRoutes
+  }
 }
 
 /// A route that can be used to realize a token transfer
@@ -329,6 +334,26 @@ public struct LifiFeeCost: Codable {
   public let amount: String?
   /// Fee split details between integrator and LI.FI
   public let feeSplit: LifiFeeSplit?
+
+  public init(
+    name: String,
+    percentage: String,
+    token: LifiToken,
+    amountUSD: String,
+    included: Bool,
+    description: String? = nil,
+    amount: String? = nil,
+    feeSplit: LifiFeeSplit? = nil
+  ) {
+    self.name = name
+    self.percentage = percentage
+    self.token = token
+    self.amountUSD = amountUSD
+    self.included = included
+    self.description = description
+    self.amount = amount
+    self.feeSplit = feeSplit
+  }
 }
 
 /// Fee split between integrator and LI.FI
@@ -340,6 +365,11 @@ public struct LifiFeeSplit: Codable {
   public let integratorFee: String?
   /// The LI.FI portion of the fee
   public let lifiFee: String?
+
+  public init(integratorFee: String? = nil, lifiFee: String? = nil) {
+    self.integratorFee = integratorFee
+    self.lifiFee = lifiFee
+  }
 }
 
 /// Gas cost information
@@ -361,6 +391,24 @@ public struct LifiGasCost: Codable {
   public let limit: String?
   /// Amount of the gas cost in USD
   public let amountUSD: String?
+
+  public init(
+    type: LifiGasCostType,
+    amount: String,
+    token: LifiToken,
+    price: String? = nil,
+    estimate: String? = nil,
+    limit: String? = nil,
+    amountUSD: String? = nil
+  ) {
+    self.type = type
+    self.amount = amount
+    self.token = token
+    self.price = price
+    self.estimate = estimate
+    self.limit = limit
+    self.amountUSD = amountUSD
+  }
 }
 
 /// Type of gas cost
@@ -393,6 +441,22 @@ public struct LifiEstimateData: Codable {
   public let metaTxRelayerFee: String?
   /// Router fee
   public let routerFee: String?
+
+  public init(
+    bid: LifiBid? = nil,
+    bidSignature: String? = nil,
+    gasFeeInReceivingToken: String? = nil,
+    totalFee: String? = nil,
+    metaTxRelayerFee: String? = nil,
+    routerFee: String? = nil
+  ) {
+    self.bid = bid
+    self.bidSignature = bidSignature
+    self.gasFeeInReceivingToken = gasFeeInReceivingToken
+    self.totalFee = totalFee
+    self.metaTxRelayerFee = metaTxRelayerFee
+    self.routerFee = routerFee
+  }
 }
 
 /// Bid information
@@ -436,6 +500,46 @@ public struct LifiBid: Codable {
   public let receivingChainTxManagerAddress: String?
   /// Bid expiry timestamp
   public let bidExpiry: Int?
+
+  public init(
+    user: String? = nil,
+    router: String? = nil,
+    initiator: String? = nil,
+    sendingChainId: String? = nil,
+    sendingAssetId: String? = nil,
+    amount: String? = nil,
+    receivingChainId: String? = nil,
+    receivingAssetId: String? = nil,
+    amountReceived: String? = nil,
+    receivingAddress: String? = nil,
+    transactionId: String? = nil,
+    expiry: Int? = nil,
+    callDataHash: String? = nil,
+    callTo: String? = nil,
+    encryptedCallData: String? = nil,
+    sendingChainTxManagerAddress: String? = nil,
+    receivingChainTxManagerAddress: String? = nil,
+    bidExpiry: Int? = nil
+  ) {
+    self.user = user
+    self.router = router
+    self.initiator = initiator
+    self.sendingChainId = sendingChainId
+    self.sendingAssetId = sendingAssetId
+    self.amount = amount
+    self.receivingChainId = receivingChainId
+    self.receivingAssetId = receivingAssetId
+    self.amountReceived = amountReceived
+    self.receivingAddress = receivingAddress
+    self.transactionId = transactionId
+    self.expiry = expiry
+    self.callDataHash = callDataHash
+    self.callTo = callTo
+    self.encryptedCallData = encryptedCallData
+    self.sendingChainTxManagerAddress = sendingChainTxManagerAddress
+    self.receivingChainTxManagerAddress = receivingChainTxManagerAddress
+    self.bidExpiry = bidExpiry
+  }
 }
 
 /// Internal step (used in includedSteps)
@@ -455,6 +559,15 @@ public struct LifiInternalStep: Codable {
   public let action: LifiAction
   /// An estimate for the current transfer
   public let estimate: LifiEstimate
+
+  public init(id: String, type: LifiStepType, tool: String, toolDetails: LifiToolDetails, action: LifiAction, estimate: LifiEstimate) {
+    self.id = id
+    self.type = type
+    self.tool = tool
+    self.toolDetails = toolDetails
+    self.action = action
+    self.estimate = estimate
+  }
 }
 
 /// Unavailable routes information
@@ -466,6 +579,11 @@ public struct LifiUnavailableRoutes: Codable {
   public let filteredOut: [LifiFilteredRoute]?
   /// An object containing information about failed routes
   public let failed: [LifiFailedRoute]?
+
+  public init(filteredOut: [LifiFilteredRoute]? = nil, failed: [LifiFailedRoute]? = nil) {
+    self.filteredOut = filteredOut
+    self.failed = failed
+  }
 }
 
 /// Filtered out route
@@ -477,6 +595,11 @@ public struct LifiFilteredRoute: Codable {
   public let overallPath: String?
   /// Our best attempt at describing the failure
   public let reason: String?
+
+  public init(overallPath: String? = nil, reason: String? = nil) {
+    self.overallPath = overallPath
+    self.reason = reason
+  }
 }
 
 /// Failed route
@@ -488,6 +611,11 @@ public struct LifiFailedRoute: Codable {
   public let overallPath: String?
   /// An object with all subpaths that generated one or more errors
   public let subpaths: [String: LifiSubpathError]?
+
+  public init(overallPath: String? = nil, subpaths: [String: LifiSubpathError]? = nil) {
+    self.overallPath = overallPath
+    self.subpaths = subpaths
+  }
 }
 
 /// Subpath error information
@@ -505,6 +633,20 @@ public struct LifiSubpathError: Codable {
   public let tool: String?
   /// A human-readable message describing the error
   public let message: String?
+
+  public init(
+    errorType: LifiErrorType? = nil,
+    code: LifiErrorCode? = nil,
+    action: LifiAction? = nil,
+    tool: String? = nil,
+    message: String? = nil
+  ) {
+    self.errorType = errorType
+    self.code = code
+    self.action = action
+    self.tool = tool
+    self.message = message
+  }
 }
 
 /// Error type
