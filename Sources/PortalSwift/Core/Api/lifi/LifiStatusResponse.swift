@@ -60,6 +60,36 @@ public struct LifiStatusRawResponse: Codable {
   public let bridgeExplorerLink: String?
   /// The transaction metadata which includes integrator's string, etc.
   public let metadata: LifiMetadata?
+
+  public init(
+    sending: LifiTransactionInfo,
+    status: LifiTransferStatus,
+    tool: String,
+    receiving: LifiReceivingInfo? = nil,
+    feeCosts: [LifiFeeCost]? = nil,
+    substatus: LifiTransferSubstatus? = nil,
+    substatusMessage: String? = nil,
+    transactionId: String? = nil,
+    fromAddress: String? = nil,
+    toAddress: String? = nil,
+    lifiExplorerLink: String? = nil,
+    bridgeExplorerLink: String? = nil,
+    metadata: LifiMetadata? = nil
+  ) {
+    self.sending = sending
+    self.receiving = receiving
+    self.feeCosts = feeCosts
+    self.status = status
+    self.substatus = substatus
+    self.substatusMessage = substatusMessage
+    self.tool = tool
+    self.transactionId = transactionId
+    self.fromAddress = fromAddress
+    self.toAddress = toAddress
+    self.lifiExplorerLink = lifiExplorerLink
+    self.bridgeExplorerLink = bridgeExplorerLink
+    self.metadata = metadata
+  }
 }
 
 /// Receiving chain information (can be partial or full transaction info)
@@ -82,6 +112,36 @@ public struct LifiReceivingInfo: Codable {
   public let timestamp: Int?
   public let value: String?
   public let includedSteps: [LifiIncludedSwapStep]?
+
+  public init(
+    chainId: String? = nil,
+    txHash: String? = nil,
+    txLink: String? = nil,
+    token: LifiToken? = nil,
+    amount: String? = nil,
+    gasToken: LifiToken? = nil,
+    gasAmount: String? = nil,
+    gasAmountUSD: String? = nil,
+    gasPrice: String? = nil,
+    gasUsed: String? = nil,
+    timestamp: Int? = nil,
+    value: String? = nil,
+    includedSteps: [LifiIncludedSwapStep]? = nil
+  ) {
+    self.chainId = chainId
+    self.txHash = txHash
+    self.txLink = txLink
+    self.token = token
+    self.amount = amount
+    self.gasToken = gasToken
+    self.gasAmount = gasAmount
+    self.gasAmountUSD = gasAmountUSD
+    self.gasPrice = gasPrice
+    self.gasUsed = gasUsed
+    self.timestamp = timestamp
+    self.value = value
+    self.includedSteps = includedSteps
+  }
 }
 
 /// Transaction information
@@ -117,6 +177,38 @@ public struct LifiTransactionInfo: Codable {
   public let value: String?
   /// An array of swap or protocol steps included in the LI.FI transaction
   public let includedSteps: [LifiIncludedSwapStep]?
+
+  public init(
+    txHash: String,
+    txLink: String,
+    amount: String,
+    token: LifiToken,
+    chainId: String,
+    amountUSD: String? = nil,
+    gasToken: LifiToken? = nil,
+    gasAmount: String? = nil,
+    gasAmountUSD: String? = nil,
+    gasPrice: String? = nil,
+    gasUsed: String? = nil,
+    timestamp: Int? = nil,
+    value: String? = nil,
+    includedSteps: [LifiIncludedSwapStep]? = nil
+  ) {
+    self.txHash = txHash
+    self.txLink = txLink
+    self.amount = amount
+    self.amountUSD = amountUSD
+    self.token = token
+    self.chainId = chainId
+    self.gasToken = gasToken
+    self.gasAmount = gasAmount
+    self.gasAmountUSD = gasAmountUSD
+    self.gasPrice = gasPrice
+    self.gasUsed = gasUsed
+    self.timestamp = timestamp
+    self.value = value
+    self.includedSteps = includedSteps
+  }
 }
 
 /// Included swap or protocol step in the status response
@@ -138,6 +230,24 @@ public struct LifiIncludedSwapStep: Codable {
   public let toToken: LifiToken?
   /// The amount that was sent to the bridge
   public let bridgedAmount: String?
+
+  public init(
+    tool: String? = nil,
+    toolDetails: LifiToolDetails? = nil,
+    fromAmount: String? = nil,
+    fromToken: LifiToken? = nil,
+    toAmount: String? = nil,
+    toToken: LifiToken? = nil,
+    bridgedAmount: String? = nil
+  ) {
+    self.tool = tool
+    self.toolDetails = toolDetails
+    self.fromAmount = fromAmount
+    self.fromToken = fromToken
+    self.toAmount = toAmount
+    self.toToken = toToken
+    self.bridgedAmount = bridgedAmount
+  }
 }
 
 /// Transaction metadata
@@ -147,6 +257,10 @@ public struct LifiIncludedSwapStep: Codable {
 public struct LifiMetadata: Codable {
   /// Integrator ID
   public let integrator: String?
+
+  public init(integrator: String? = nil) {
+    self.integrator = integrator
+  }
 }
 
 /// The current status of the transfer
