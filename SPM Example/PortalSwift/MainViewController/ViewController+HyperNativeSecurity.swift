@@ -88,12 +88,12 @@ extension ViewController {
             ScanNftsRequestItem(
               address: "0x5C1B9caA8492585182eD994633e76d744A876548",
               chain: nil,
-              evmChainId: "eip155:1"
+              evmChainId: "eip155:143"
             ),
             ScanNftsRequestItem(
               address: "0xC2e0cA5FE0b9AbE1B86f3cC0b865448908D20A16",
               chain: nil,
-              evmChainId: "eip155:1"
+              evmChainId: "eip155:143"
             )
           ]
         )
@@ -130,7 +130,7 @@ extension ViewController {
             ScanTokensRequestItem(
               address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
               chain: nil,
-              evmChainId: "eip155:1"
+              evmChainId: "eip155:143"
             )
           ]
         )
@@ -197,7 +197,7 @@ extension ViewController {
       }
 
       let transaction = ScanEVMTransaction(
-        chain: "eip155:1",
+        chain: "eip155:143",
         fromAddress: "0x7C01728004d3F2370C1BBC36a4Ad680fE6FE8729",
         toAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
         input: "0x095ea7b300000000000000000000000066ba61be3bab35c0c00038f335850a390b086fe300000000000000000000000000000000000000000fffffffffffffffffffffff",
@@ -241,7 +241,7 @@ extension ViewController {
       let domain = ScanEip712Domain(
         name: "MyToken",
         version: "1",
-        chainId: "eip155:1",
+        chainId: "eip155:143",
         verifyingContract: "0xa0b86991c6218b36c1d19d4a2e9Eb0cE3606eB48",
         salt: nil
       )
@@ -277,7 +277,7 @@ extension ViewController {
 
       let request = ScanEip712Request(
         walletAddress: "0x12345",
-        chainId: "eip155:1",
+        chainId: "eip155:143",
         eip712Message: message,
         showFullFindings: nil,
         policy: nil

@@ -21,7 +21,7 @@ extension ViewController {
       }
 
       self.startLoading()
-      let chainId = "eip155:11155111"
+      let chainId = "eip155:10143"
       let recipientAddress = "0xdFd8302f44727A6348F702fF7B594f127dE3A902"
       let amount = "0.000001"
       let token = "NATIVE"

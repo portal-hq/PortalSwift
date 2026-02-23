@@ -32,7 +32,7 @@ extension ViewController {
         throw PortalExampleAppError.portalNotInitialized()
       }
 
-      let chainId = "eip155:1"
+      let chainId = "eip155:143"
 
       Task {
         do {
@@ -144,7 +144,7 @@ extension ViewController {
         throw PortalExampleAppError.portalNotInitialized()
       }
 
-      let chainId = "eip155:1"
+      let chainId = "eip155:143"
 
       Task {
         do {
@@ -200,7 +200,7 @@ extension ViewController {
         throw PortalExampleAppError.portalNotInitialized()
       }
 
-      let chainId = "eip155:1"
+      let chainId = "eip155:143"
 
       Task {
         do {
@@ -265,7 +265,7 @@ extension ViewController {
         throw PortalExampleAppError.portalNotInitialized()
       }
 
-      let chainId = "eip155:1"
+      let chainId = "eip155:143"
 
       Task {
         do {

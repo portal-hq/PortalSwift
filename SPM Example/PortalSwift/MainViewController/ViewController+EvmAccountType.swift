@@ -26,7 +26,7 @@ extension ViewController {
       }
 
       do {
-        let chainId = "eip155:11155111"
+        let chainId = "eip155:10143"
 
         let statusBefore = try await portal.evmAccountType.getStatus(chainId: chainId)
         logger.info("📝  Status: \(statusBefore.data.status)")
@@ -57,7 +57,7 @@ extension ViewController {
       }
 
       do {
-        let chainId = "eip155:11155111"
+        let chainId = "eip155:10143"
 
         // Step 1: Upgrade
         logger.info("📝 [Upgrade EIP7702] Step 3: Upgrading to EIP-7702...")
