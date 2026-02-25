@@ -39,7 +39,7 @@ extension ViewController {
         )
 
         let request = BlockaidScanEVMRequest(
-          chain: "eip155:1",
+          chain: "eip155:143",
           data: transactionData,
           options: [.simulation, .validation],
           block: "21211118"
@@ -197,7 +197,7 @@ extension ViewController {
         // Use benign addresses: USDC and a known Solana address
         let evmRequest = BlockaidScanAddressRequest(
           address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // USDC on Ethereum
-          chain: "eip155:1"
+          chain: "eip155:143"
         )
 
         logger.info("  Scanning EVM address...")
@@ -263,7 +263,7 @@ extension ViewController {
         ]
 
         let request = BlockaidScanTokensRequest(
-          chain: "eip155:1",
+          chain: "eip155:143",
           tokens: tokens
         )
 

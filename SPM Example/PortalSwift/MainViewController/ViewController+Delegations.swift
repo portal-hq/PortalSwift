@@ -31,7 +31,7 @@ extension ViewController {
         logger.info("📝 [Delegation Approve ETH] Starting approval...")
 
         let request = ApproveDelegationRequest(
-          chain: "eip155:11155111",
+          chain: "eip155:10143",
           token: "USDC",
           delegateAddress: "0xa944e86eb36f039becd1843132347eb5b8501562",
           amount: "0.01"
@@ -123,7 +123,7 @@ extension ViewController {
         logger.info("📝 [Delegation Revoke ETH] Starting revocation...")
 
         let request = RevokeDelegationRequest(
-          chain: "eip155:11155111",
+          chain: "eip155:10143",
           token: "USDC",
           delegateAddress: "0xa944e86eb36f039becd1843132347eb5b8501562"
         )
@@ -214,7 +214,7 @@ extension ViewController {
         logger.info("ℹ️ NOTE: This must be called from the delegate's client account")
 
         let request = TransferFromRequest(
-          chain: "eip155:11155111",
+          chain: "eip155:10143",
           token: "USDC",
           fromAddress: "0x099699ed181517d4ce0ba4487bea671d31bb1db5",
           toAddress: "0xdFd8302f44727A6348F702fF7B594f127dE3A902",
@@ -309,7 +309,7 @@ extension ViewController {
         logger.info("📝 [Delegation Get Status ETH] Querying status...")
 
         let request = GetDelegationStatusRequest(
-          chain: "eip155:11155111",
+          chain: "eip155:10143",
           token: "USDC",
           delegateAddress: "0xa944e86eb36f039becd1843132347eb5b8501562"
         )
@@ -370,7 +370,7 @@ extension ViewController {
   /// - Parameters:
   ///   - portal: The Portal instance
   ///   - transaction: The EVM transaction to sign and send
-  ///   - chain: The CAIP-2 chain ID (e.g., "eip155:11155111")
+  ///   - chain: The CAIP-2 chain ID (e.g., "eip155:10143")
   /// - Returns: The transaction hash
   private func sendEVMDelegationTransaction(
     portal: PortalProtocol,
