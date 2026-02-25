@@ -89,9 +89,8 @@ public final class Portal: PortalProtocol {
     mpc: PortalMpcProtocol? = nil,
     passwords: PasswordStorage? = nil
   ) throws {
-    
     PortalLogger.shared.setLogLevel(.none)
-    
+
     if version != "v6" {
       throw PortalArgumentError.versionNoLongerSupported(message: "MPC Version is not supported. Only version 'v6' is currently supported.")
     }

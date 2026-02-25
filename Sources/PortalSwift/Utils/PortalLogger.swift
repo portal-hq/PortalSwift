@@ -1,11 +1,24 @@
 import Foundation
 import os.log
 
+/// Controls the verbosity of the PortalSwift SDK logging output.
+///
+/// Each level includes everything above it in the hierarchy:
+/// - `.none`  — **default**, no logs emitted.
+/// - `.error` — only things that broke (failed transactions, network failures, binary crashes).
+/// - `.warn`  — something is off but not broken (deprecated method usage, retry attempts, slow responses).
+/// - `.info`  — normal operational milestones (signing started, share generated, connection established).
+/// - `.debug` — everything, including internals (request/response payloads, timing, state transitions).
 public enum PortalLogLevel: Int, Comparable {
+  /// No logs emitted. This is the default.
   case none = 0
+  /// Only things that broke (failed transactions, network failures, binary crashes).
   case error = 1
+  /// Something is off but not broken (deprecated method usage, retry attempts, slow responses).
   case warn = 2
+  /// Normal operational milestones (signing started, share generated, connection established).
   case info = 3
+  /// Everything, including internals (request/response payloads, timing, state transitions).
   case debug = 4
 
   public static func < (lhs: PortalLogLevel, rhs: PortalLogLevel) -> Bool {
@@ -28,6 +41,8 @@ class PortalLogger: PortalLoggerProtocol {
   private let osLog = OSLog(subsystem: "io.portalhq.ios", category: "General")
   private let lock = NSLock()
   private var _logLevel: PortalLogLevel = .none
+
+  private init() {}
 
   var logLevel: PortalLogLevel {
     lock.lock()
