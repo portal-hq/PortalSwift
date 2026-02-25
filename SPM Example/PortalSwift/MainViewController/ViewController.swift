@@ -135,8 +135,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
   // MARK: - Trading Configuration
 
   private enum TradingConfig {
-    static let fromChainId = "eip155:8453" // Base Mainnet
-    static let toChainId = "eip155:42161" // Arbitrum
+    static let fromChainId = "eip155:10143" // Monad Testnet
+    static let toChainId = "eip155:10143" // Monad Testnet
     static let fromToken = "ETH"
     static let toToken = "USDC"
     static let fromAmount = "1000000000000" // 0.000001 ETH (in wei)
@@ -453,7 +453,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
-    let chainId = "eip155:11155111"
+    let chainId = "eip155:10143"
     let balances = try await portal.getBalances(chainId)
 
     return balances
@@ -490,7 +490,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     print("sol_getTransaction response: \(result)")
   }
 
-  func buildEip155Transaction(chainId: String = "eip155:11155111", params: BuildTransactionParam) async throws -> BuildEip115TransactionResponse {
+  func buildEip155Transaction(chainId: String = "eip155:10143", params: BuildTransactionParam) async throws -> BuildEip115TransactionResponse {
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
@@ -576,7 +576,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       self.logger.error("ViewController.sendTransaction() - ❌ Portal not initialized.")
       throw PortalExampleAppError.portalNotInitialized()
     }
-    let chainId = "eip155:11155111"
+    let chainId = "eip155:10143"
 
     let transactionParam = BuildTransactionParam(
       to: self.sendAddress?.text ?? "",
@@ -628,7 +628,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
       self.logger.info("ViewController.testProviderRequest() - Testing `\(method.rawValue)`...")
 
-      let chainId = "eip155:11155111"
+      let chainId = "eip155:10143"
       let response = try await portal.request(chainId, withMethod: method, andParams: params)
 
       let result = response.result
@@ -657,7 +657,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
   public func testOtherRequests() async throws {
-    let chainId = "eip155:11155111"
+    let chainId = "eip155:10143"
 
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
@@ -697,7 +697,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
   public func testSignerRequests() async throws {
-    let chainId = "eip155:11155111"
+    let chainId = "eip155:10143"
 
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
@@ -726,7 +726,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
   public func testTransactionRequests() async throws {
-    let chainId = "eip155:11155111"
+    let chainId = "eip155:10143"
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
@@ -884,7 +884,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       throw PortalExampleAppError.portalNotInitialized()
     }
 
-    let chainId = "eip155:11155111"
+    let chainId = "eip155:10143"
     guard let address = await portal.getAddress(chainId) else {
       throw PortalExampleAppError.addressNotFound()
     }
@@ -1375,7 +1375,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       do {
         self.startLoading()
 
-        let chainId = "eip155:11155111"
+        let chainId = "eip155:10143"
         let params = FundParams(amount: "0.01", token: "NATIVE")
 
         let response = try await portal?.receiveTestnetAsset(chainId: chainId, params: params)
@@ -1436,7 +1436,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       do {
         self.startLoading()
 
-        let chainId = "eip155:11155111"
+        let chainId = "eip155:10143"
         let params = SendAssetParams(to: address, amount: amount, token: "NATIVE")
 
         let response = try await portal?.sendAsset(chainId: chainId, params: params)
@@ -1515,7 +1515,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       throw PortalExampleAppError.portalNotInitialized()
     }
 
-    let chainId = "eip155:11155111"
+    let chainId = "eip155:10143"
     guard let address = await portal.getAddress(chainId) else {
       self.logger.error("ViewController.sendSepoliaTransaction() - ❌ Address not found.")
       throw PortalExampleAppError.addressNotFound()
@@ -1882,7 +1882,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   @IBAction func testGetNFTsTrxsBalancesSharesAndSimTrx() {
     Task {
-      let chainId = "eip155:11155111"
+      let chainId = "eip155:10143"
 
       do {
         let erc20Balances = try await self.getBalances()
@@ -1895,13 +1895,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
         return
       }
       do {
-        let assets = try await self.getAssets(for: "eip155:11155111")
+        let assets = try await self.getAssets(for: "eip155:10143")
         print(assets)
-        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched  assets for chain eip155:11155111.")
-        self.showStatusView(message: "\(self.successStatus) Successfully fetched assets for chain eip155:11155111.")
+        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched  assets for chain eip155:10143.")
+        self.showStatusView(message: "\(self.successStatus) Successfully fetched assets for chain eip155:10143.")
       } catch {
-        self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching assets  for chain eip155:11155111: \(error)")
-        self.showStatusView(message: "\(self.failureStatus) Error fetching assets  for chain eip155:11155111 \(error)")
+        self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching assets  for chain eip155:10143: \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error fetching assets  for chain eip155:10143 \(error)")
         return
       }
 
@@ -2080,7 +2080,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBAction func handleSign() {
     Task {
       do {
-        let chainId = "eip155:11155111"
+        let chainId = "eip155:10143"
 
         guard let portal else {
           self.logger.error("ViewController.handlSign() - ❌ Portal not initialized")
@@ -2117,7 +2117,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBAction func handlePersonalSign() {
     Task {
       do {
-        let chainId = "eip155:11155111"
+        let chainId = "eip155:10143"
 
         guard let portal else {
           self.logger.error("ViewController.handlePersonalSign() - ❌ Portal not initialized")
@@ -2158,7 +2158,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBAction func handleRawSign() {
     Task {
       do {
-        let chainId = "eip155:11155111"
+        let chainId = "eip155:10143"
 
         guard let portal else {
           self.logger.error("ViewController.handleRawSign() - ❌ Portal not initialized")
@@ -2208,7 +2208,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       }
 
       let swaps: PortalSwapsProtocol = PortalSwaps(apiKey: SWAPS_API_KEY, portal: portal)
-      let customChainId = "eip155:1"
+      let customChainId = "eip155:143"
 
       Task {
         do {
@@ -2388,7 +2388,7 @@ extension ViewController {
         let request = YieldXyzGetYieldsRequest(
           offset: 0,
           yieldId: "polygon-dai-aave-v3-lending",
-          network: "eip155:137",
+          network: "eip155:10143",
           limit: 10,
           type: .lending,
           hasCooldownPeriod: false,
@@ -2432,7 +2432,7 @@ extension ViewController {
       self.logger.info("Starting yield entry flow for Sepolia USDC Aave v3 lending")
 
       do {
-        let chainId = "eip155:11155111" // Sepolia testnet
+        let chainId = "eip155:10143" // Monad Testnet
         guard let userAddress = await portal.getAddress(chainId) else {
           self.logger.error("No Ethereum address found")
           self.showStatusView(message: "\(self.failureStatus) No Ethereum address found")
@@ -2444,7 +2444,7 @@ extension ViewController {
         // First, discover the specific yield to ensure it's available
         let discoverRequest = YieldXyzGetYieldsRequest(
           yieldId: "ethereum-sepolia-link-aave-v3-lending",
-          network: "eip155:11155111",
+          network: "eip155:10143",
           limit: 1
         )
 
@@ -2536,7 +2536,7 @@ extension ViewController {
         self.startLoading()
 
         // Get user's Ethereum address
-        let chainId = "eip155:11155111" // Sepolia testnet
+        let chainId = "eip155:10143" // Monad Testnet
         let userAddress = await portal.getAddress(chainId)
 
         guard let address = userAddress else {
@@ -2553,7 +2553,7 @@ extension ViewController {
           queries: [
             YieldXyzBalanceQuery(
               address: address,
-              network: chainId // Sepolia testnet
+              network: chainId // Monad Testnet
             )
           ]
         )
@@ -2636,7 +2636,7 @@ extension ViewController {
         self.startLoading()
 
         // Get user's Ethereum address
-        let chainId = "eip155:11155111" // Sepolia testnet
+        let chainId = "eip155:10143" // Monad Testnet
         let userAddress = await portal.getAddress(chainId)
 
         guard let address = userAddress else {
@@ -2655,7 +2655,7 @@ extension ViewController {
           queries: [
             YieldXyzBalanceQuery(
               address: address,
-              network: chainId // Sepolia testnet
+              network: chainId // Monad Testnet
             )
           ]
         )
@@ -2773,7 +2773,7 @@ extension ViewController {
         self.startLoading()
 
         // Get user's Ethereum address
-        let chainId = "eip155:11155111" // Sepolia testnet
+        let chainId = "eip155:10143" // Monad Testnet
         let userAddress = await portal.getAddress(chainId)
 
         guard let address = userAddress else {
@@ -3092,8 +3092,8 @@ extension ViewController {
     Task {
       self.logger.info("Starting Lifi quote request...")
       do {
-        // Get the user's address from the Ethereum mainnet
-        let chainId = "eip155:1"
+        // Get the user's address from the Monad Mainnet
+        let chainId = "eip155:143"
         guard let address = await portal.getAddress(chainId) else {
           self.logger.error("Lifi quote FAILED: Could not get address for chain \(chainId)")
           self.showStatusView(message: "\(self.failureStatus) Lifi quote: Address not found")
@@ -3542,7 +3542,7 @@ extension ViewController {
   /// Signs and submits a Lifi transaction using the transactionRequest from the quote response.
   /// - Parameters:
   ///   - transactionRequest: The transaction request object from the Lifi quote response (AnyCodable)
-  ///   - fromChainId: The chain ID in CAIP-2 format (e.g., "eip155:1")
+  ///   - fromChainId: The chain ID in CAIP-2 format (e.g., "eip155:143")
   ///   - portal: The Portal instance
   /// - Returns: Tuple with success status and transaction hash (if successful)
   private func signAndSubmitLifiTransaction(
