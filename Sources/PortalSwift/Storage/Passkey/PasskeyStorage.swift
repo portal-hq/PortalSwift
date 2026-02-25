@@ -29,12 +29,12 @@ public class PasskeyStorage: Storage, PortalStorage {
   var auth: PasskeyAuth
 
   private let decoder = JSONDecoder()
-  private let logger = PortalLogger()
+  private let logger = PortalLogger.shared
   private let requests: PortalRequestsProtocol
   private var sessionId: String?
 
   deinit {
-    print("PasskeyStorage is being deallocated")
+    self.logger.debug("[PasskeyStorage] PasskeyStorage is being deallocated")
   }
 
   public init(

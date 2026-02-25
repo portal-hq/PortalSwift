@@ -41,7 +41,7 @@ public class GDriveStorage: Storage, PortalStorage {
 
   private var drive: GDriveClientProtocol
   private var filename: String?
-  private var logger = PortalLogger()
+  private var logger = PortalLogger.shared
   private var separator: String = ""
   private var filenameHashes: [String: String]?
 

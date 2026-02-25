@@ -16,7 +16,7 @@ public protocol PortalKeychainAccessProtocol {
 
 public class PortalKeychainAccess: PortalKeychainAccessProtocol {
   private let baseKey = "PortalMpc"
-  private let logger = PortalLogger()
+  private let logger = PortalLogger.shared
 
   public func addItem(_ key: String, value: String) throws {
     // Construct the query to set the keychain item.

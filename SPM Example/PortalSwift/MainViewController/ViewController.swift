@@ -925,6 +925,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         enclaveMPCHost: config.enclaveMPCHost
       )
 
+      portal.setLogLevel(.debug)
       try portal.setGDriveConfiguration(clientId: config.googleClientId, backupOption: .appDataFolder)
       try portal.setGDriveView(self)
       try portal.setPasskeyAuthenticationAnchor(self.view.window!)

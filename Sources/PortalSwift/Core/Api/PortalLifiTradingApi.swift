@@ -20,7 +20,7 @@ public class PortalLifiTradingApi: PortalLifiTradingApiProtocol {
   private let apiKey: String
   private let baseUrl: String
   private let requests: PortalRequestsProtocol
-  private let logger = PortalLogger()
+  private let logger = PortalLogger.shared
 
   /// Create an instance of PortalLifiTradingApi.
   /// - Parameters:

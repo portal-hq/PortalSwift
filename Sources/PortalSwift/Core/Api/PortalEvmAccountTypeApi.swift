@@ -35,7 +35,7 @@ public class PortalEvmAccountTypeApi: PortalEvmAccountTypeApiProtocol {
   private let apiKey: String
   private let baseUrl: String
   private let requests: PortalRequestsProtocol
-  private let logger = PortalLogger()
+  private let logger = PortalLogger.shared
 
   // MARK: - Private Body Structs
 

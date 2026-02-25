@@ -64,7 +64,7 @@ public class PortalMpc: PortalMpcProtocol {
   private let host: String
   private let isSimulator: Bool
   private weak var keychain: PortalKeychainProtocol?
-  private let logger = PortalLogger()
+  private let logger = PortalLogger.shared
   private let mobile: Mobile
   private let version: String
 
@@ -861,7 +861,7 @@ public class PortalMpc: PortalMpcProtocol {
 
       return data
     } catch {
-      print("Error decoding formatted shares: \(error)")
+      self.logger.error("[PortalMpc] Error decoding formatted shares: \(error)")
       throw MpcError.unableToDecodeShare
     }
   }

@@ -56,7 +56,7 @@ public class PortalProvider: PortalProviderProtocol {
   private let decoder = JSONDecoder()
   private var events = ThreadSafeDictionary<Events.RawValue, [RegisteredEventHandler]>()
   private weak var keychain: PortalKeychainProtocol?
-  private let logger = PortalLogger()
+  private let logger = PortalLogger.shared
   private var mpcQueue: DispatchQueue
   private var processedRequestIds: [String] = []
   private var processedSignatureIds: [String] = []

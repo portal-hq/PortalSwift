@@ -21,10 +21,10 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
   // The domain of our relying party server.
   var domain: String
 
-  private let logger = PortalLogger()
+  private let logger = PortalLogger.shared
 
   deinit {
-    print("PasskeyAuth is being deallocated")
+    self.logger.debug("[PasskeyAuth] PasskeyAuth is being deallocated")
   }
 
   init(domain: String = "portalhq.io") {
@@ -96,7 +96,7 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
     if authorizationError.code == .canceled {
       // Either the system doesn't find any credentials and the request ends silently, or the user cancels the request.
       // This is a good time to show a traditional login form, or ask the user to create an account.
-      self.logger.log("Request canceled.")
+      self.logger.info("Request canceled.")
       self.continuation?.resume(throwing: authorizationError)
     } else {
       // Another ASAuthorization error.
@@ -124,7 +124,7 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
   // Private functions
 
   private func handleCredentialAssertion(_ assertion: ASAuthorizationPlatformPublicKeyCredentialAssertion) {
-    self.logger.log("A passkey was used to sign in")
+    self.logger.info("A passkey was used to sign in")
 
     guard let signature = assertion.signature else {
       self.continuation?.resume(throwing: PasskeyAuthError.MissingSignature)
@@ -165,7 +165,7 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
   }
 
   private func handleCredentialRegistration(_ registration: ASAuthorizationPlatformPublicKeyCredentialRegistration) {
-    self.logger.log("A new passkey was registered")
+    self.logger.info("A new passkey was registered")
 
     guard let attestationObject = registration.rawAttestationObject else { return }
     let clientDataJSON = registration.rawClientDataJSON

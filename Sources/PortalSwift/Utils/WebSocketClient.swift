@@ -55,7 +55,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   private var connect: PortalConnect
   private var events = EventHandlers()
   private let decoder = JSONDecoder()
-  private let logger = PortalLogger()
+  private let logger = PortalLogger.shared
   private var webSocketServer: String
   private let socket: Starscream.WebSocket
   private var uri: String?
@@ -100,7 +100,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   func connect(uri: String) {
     self.uri = uri
 
-    print("[WebSocketClient] Connecting to proxy...")
+    self.logger.info("[WebSocketClient] Connecting to proxy...")
     self.socket.connect()
   }
 
@@ -108,7 +108,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
     self.connectState = .disconnecting
 
     do {
-      print("[WebSocketClient] Disconnecting from proxy...")
+      self.logger.info("[WebSocketClient] Disconnecting from proxy...")
 
       // Build the WebSocketRequest
       let request = WebSocketDisconnectRequest(
@@ -129,14 +129,14 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
       self.pingTimer?.invalidate()
       self.handleData(json)
     } catch {
-      print("[WebSocketClient] Error encoding outbound message. Could not disconnect.")
+      self.logger.error("[WebSocketClient] Error encoding outbound message. Could not disconnect.")
     }
   }
 
   public func didReceive(event: Starscream.WebSocketEvent, client _: Starscream.WebSocketClient) {
     if case .pong = event {} // Do nothing for pong
     else {
-      print("[WebSocketClient] Received event: \(event)")
+      self.logger.debug("[WebSocketClient] Received event: \(event)")
     }
     // Handle incoming messages
     switch event {
@@ -182,10 +182,10 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
     self.connectState = .connecting
 
     do {
-      print("[WebSocketClient] Connected to proxy service. Sending connect message...")
+      self.logger.info("[WebSocketClient] Connected to proxy service. Sending connect message...")
 
       guard let address = connect.address else {
-        print("[WebSocketClient] No address found in keychain. Ignoring connect event...")
+        self.logger.warn("[WebSocketClient] No address found in keychain. Ignoring connect event...")
         return
       }
       // Build the WebSocketRequest
@@ -206,7 +206,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
       self.send(message!)
       self.ping(interval: 10)
     } catch {
-      print("[PortalConnect] Error connecting to uri: \(String(describing: self.uri)); \(error.localizedDescription)")
+      self.logger.error("[WebSocketClient] Error connecting to uri: \(String(describing: self.uri)); \(error.localizedDescription)")
     }
   }
 
@@ -245,16 +245,16 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   func handleDisconnect(_ reason: String, _ code: UInt16) {
     self.connectState = .disconnected
     self.pingTimer?.invalidate()
-    print("[WebSocketClient] Websocket is disconnected: \(reason) with code: \(code)")
+    self.logger.info("[WebSocketClient] Websocket is disconnected: \(reason) with code: \(code)")
     self.socket.disconnect(closeCode: 1000)
   }
 
   func handleError(_ error: (any Error)?) {
-    print("[WebSocketClient] Received error: \(String(describing: error))")
+    self.logger.error("[WebSocketClient] Received error: \(String(describing: error))")
 
     // This error needs to match
     if let error = error, error.localizedDescription == "The operation couldn’t be completed. Connection reset by peer", isConnected {
-      print("Connection reset by peer. Attempting reconnect...")
+      self.logger.warn("[WebSocketClient] Connection reset by peer. Attempting reconnect...")
       self.connectState = .disconnected
       self.pingTimer?.invalidate()
       self.connect(uri: self.uri!)
@@ -295,7 +295,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
       }
     } else {
       // Ignore the event
-      print("[PortalConnect] No registered event handlers for \(event). Ignoring...")
+      self.logger.debug("[WebSocketClient] No registered event handlers for \(event). Ignoring...")
     }
   }
 
@@ -312,7 +312,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
       }
     } else {
       // Ignore the event
-      print("[PortalConnect] No registered event handlers for \(event). Ignoring...")
+      self.logger.debug("[WebSocketClient] No registered event handlers for \(event). Ignoring...")
     }
   }
 
@@ -329,7 +329,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
       }
     } else {
       // Ignore the event
-      print("[PortalConnect] No registered event handlers for \(event). Ignoring...")
+      self.logger.debug("[WebSocketClient] No registered event handlers for \(event). Ignoring...")
     }
   }
 
@@ -345,7 +345,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
       }
     } else {
       // Ignore the event
-      print("[PortalConnect] No registered event handlers for \(event). Ignoring...")
+      self.logger.debug("[WebSocketClient] No registered event handlers for \(event). Ignoring...")
     }
   }
 
@@ -361,7 +361,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
       }
     } else {
       // Ignore the event
-      print("[PortalConnect] No registered event handlers for \(event). Ignoring...")
+      self.logger.debug("[WebSocketClient] No registered event handlers for \(event). Ignoring...")
     }
   }
 
@@ -373,13 +373,13 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
     if eventHandlers.count > 0 {
       // Loop through the event handlers
       for handler in eventHandlers {
-        print("[WebsocketClient] data: \(String(describing: data))")
+        self.logger.debug("[WebSocketClient] data: \(String(describing: data))")
         // Invoke the handler
         handler(data)
       }
     } else {
       // Ignore the event
-      print("[PortalConnect] No registered event handlers for \(event). Ignoring...")
+      self.logger.debug("[WebSocketClient] No registered event handlers for \(event). Ignoring...")
     }
   }
 
@@ -396,7 +396,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
       }
     } else {
       // Ignore the event
-      print("[PortalConnect] No registered event handlers for \(event). Ignoring...")
+      self.logger.debug("[WebSocketClient] No registered event handlers for \(event). Ignoring...")
     }
   }
 
@@ -413,7 +413,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
       }
     } else {
       // Ignore the event
-      print("[PortalConnect] No registered event handlers for \(event). Ignoring...")
+      self.logger.debug("[WebSocketClient] No registered event handlers for \(event). Ignoring...")
     }
   }
 
@@ -488,7 +488,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   }
 
   func send(_ message: String) {
-    print("[WebSocketClient] Sending message: \(message)")
+    self.logger.debug("[WebSocketClient] Sending message: \(message)")
     self.socket.write(string: message)
   }
 
@@ -500,7 +500,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
     self.connectState = .disconnecting
 
     do {
-      print("[WebSocketClient] Sending final message before deallocation...")
+      self.logger.debug("[WebSocketClient] Sending final message before deallocation...")
 
       // Write your last message here
       let request = WebSocketDisconnectRequest(
@@ -516,13 +516,13 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
       let message = String(data: json, encoding: .utf8)!
 
       self.socket.write(string: message) {
-        print("[WebSocketClient] Final message sent! Disconnecting...")
+        self.logger.debug("[WebSocketClient] Final message sent! Disconnecting...")
         // Close the connection
         self.socket.disconnect()
         self.connectState = .disconnected
       }
     } catch {
-      print("[WebSocketClient] Unable to encode disconnect message. Failed to disconnect.")
+      self.logger.error("[WebSocketClient] Unable to encode disconnect message. Failed to disconnect.")
     }
   }
 }

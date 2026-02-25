@@ -89,6 +89,8 @@ public final class Portal: PortalProtocol {
     mpc: PortalMpcProtocol? = nil,
     passwords: PasswordStorage? = nil
   ) throws {
+    PortalLogger.shared.setLogLevel(.none)
+
     if version != "v6" {
       throw PortalArgumentError.versionNoLongerSupported(message: "MPC Version is not supported. Only version 'v6' is currently supported.")
     }
@@ -250,7 +252,7 @@ public final class Portal: PortalProtocol {
     semaphore.wait()
     // End legacy GetClient() implementation
 
-    print("Portal initializer done!")
+    PortalLogger.shared.info("Portal initializer done!")
 
     // Initialize Mpc
     self.mpc = PortalMpc(
@@ -299,6 +301,22 @@ public final class Portal: PortalProtocol {
   /**********************************
    * Public functions
    **********************************/
+
+  /// Changes the SDK log verbosity at runtime without reinitializing Portal.
+  ///
+  /// Each level includes everything above it:
+  /// - `.none`  — **default**, no logs emitted.
+  /// - `.error` — only things that broke (failed transactions, network failures, binary crashes).
+  /// - `.warn`  — something is off but not broken (deprecated method usage, retry attempts, slow responses).
+  /// - `.info`  — normal operational milestones (signing started, share generated, connection established).
+  /// - `.debug` — everything, including internals (request/response payloads, timing, state transitions).
+  ///
+  /// The change takes effect immediately for all SDK components.
+  ///
+  /// - Parameter level: The desired log level.
+  public func setLogLevel(_ level: PortalLogLevel) {
+    PortalLogger.shared.setLogLevel(level)
+  }
 
   // Primitive helpers
 
