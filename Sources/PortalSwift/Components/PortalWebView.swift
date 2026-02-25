@@ -50,6 +50,7 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
   private var eip6963Rdns: String
   private var eip6963Uuid: String
   private var portal: PortalProtocol
+  private let logger = PortalLogger.shared
   private var url: URL
   private var onError: (Result<Any>) -> Void
   private var onPageStart: (() -> Void)?
@@ -93,14 +94,14 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
     super.init(nibName: nil, bundle: nil)
 
     guard let address = portal.address else {
-      print("[PortalWebView] No address found for user. Cannot inject provider into web page.")
+      self.logger.warn("[PortalWebView] No address found for user. Cannot inject provider into web page.")
       return
     }
     do {
       self.webView = try self.initWebView(address: address, persistSessionData: persistSessionData)
       self.bindPortalEvents(portal: portal)
     } catch {
-      print("Error initializing WebView: ❌ \(error.localizedDescription)")
+      self.logger.error("[PortalWebView] Error initializing WebView: \(error.localizedDescription)")
     }
   }
 
@@ -113,7 +114,7 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
         let chainIdString = data["chainId"] ?? "0" // Get the string value, defaulting to "0" if nil
 
         guard let chainId = Int(chainIdString, radix: 16) else {
-          print("[PortalWebView] Invalid chainId provided to `portal_chainChanged` event. Ignoring...")
+          self.logger.warn("[PortalWebView] Invalid chainId provided to `portal_chainChanged` event. Ignoring...")
           return
         }
 
@@ -358,10 +359,10 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
       self.onError(Result(error: error))
 
       if let error = error as? ProviderSigningError {
-        print("Received a ProviderSigningError: \(error)")
+        self.logger.warn("[PortalWebView] Received a ProviderSigningError: \(error)")
 
         if error == ProviderSigningError.userDeclinedApproval {
-          print("Received userDeclinedApproval. Sending rejection to dApp.")
+          self.logger.info("[PortalWebView] Received userDeclinedApproval. Sending rejection to dApp.")
 
           // Handle Signature Rejection
           let javascript = "window.postMessage(JSON.stringify({ type: 'portal_signingRejected', data: {} }));"
@@ -397,14 +398,14 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
     let encodedParams = try JSONSerialization.data(withJSONObject: params)
     let params = try decoder.decode([ChainChangedParam].self, from: encodedParams)
 
-    print("⚠️ Params: \(params)")
+    self.logger.debug("[PortalWebView] wallet_switchEthereumChain params: \(params)")
 
     let rawChainId = params[0].chainId
 
-    print("⚠️ Raw Chain ID: \(rawChainId)")
+    self.logger.debug("[PortalWebView] wallet_switchEthereumChain rawChainId: \(rawChainId)")
     let chainId = try parseRawChainId(rawChainId: rawChainId)
 
-    print("⚠️ Chain ID: \(chainId)")
+    self.logger.debug("[PortalWebView] wallet_switchEthereumChain chainId: \(chainId)")
 
     // Set the chainId locally
     self.chainId = chainId
@@ -417,7 +418,7 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
       window.postMessage(JSON.stringify({ type: 'portal_signatureReceived', data: { method: '\(method)', params: \(jsonData) }, signature: "null" }))
     """
 
-    print("⚠️ Signature Received JS: \(signatureReceivedJavascript)")
+    self.logger.debug("[PortalWebView] Signature Received JS: \(signatureReceivedJavascript)")
     self.evaluateJavascript(signatureReceivedJavascript)
   }
 

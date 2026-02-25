@@ -38,7 +38,7 @@ public class PortalConnect: EventBus {
   public var uri: String?
 
   private let apiKey: String
-  private let logger = PortalLogger()
+  private let logger = PortalLogger.shared
   private let provider: PortalProvider
   private var rpcConfig: [String: String]
   private var topic: String?
@@ -83,7 +83,7 @@ public class PortalConnect: EventBus {
     )
 
     guard self.address != nil else {
-      print("[PortalConnect] ⚠️ Address not found in Keychain. This may cause some features not to work as expected.")
+      self.logger.warn("[PortalConnect] Address not found in Keychain. This may cause some features not to work as expected.")
       return
     }
 
@@ -103,7 +103,7 @@ public class PortalConnect: EventBus {
       }
 
       guard let chainId else {
-        print("[PortalConnect] ⚠️ Invalid ChainId (\(payload)) for \(Events.PortalConnectChainChanged.rawValue).")
+        self.logger.warn("[PortalConnect] Invalid ChainId (\(payload)) for \(Events.PortalConnectChainChanged.rawValue).")
         return
       }
 
@@ -122,7 +122,7 @@ public class PortalConnect: EventBus {
 
         self.client?.send(message)
       } catch {
-        print("[PortalConnect] Error encoding PortalChainChanged: \(error)")
+        self.logger.error("[PortalConnect] Error encoding PortalChainChanged: \(error)")
       }
     }
 
@@ -256,7 +256,7 @@ public class PortalConnect: EventBus {
       let jsonString = String(data: jsonData, encoding: .utf8)
       self.client?.send(jsonString ?? "")
     } catch {
-      print("[PortalConnect] Error serializing JSON for getSessionRequest: \(error)")
+      self.logger.error("[PortalConnect] Error serializing JSON for getSessionRequest: \(error)")
     }
   }
 
@@ -264,7 +264,7 @@ public class PortalConnect: EventBus {
     once(event: Events.PortalDappSessionApproved.rawValue) { [weak self] callbackData in
       guard let self = self else { return }
       guard let connectData = callbackData as? ConnectData else {
-        print("[PortalConnect] Received data is not of type ConnectData")
+        self.logger.error("[PortalConnect] Received data is not of type ConnectData")
         self.emit(event: Events.ConnectError.rawValue, data: ErrorData(id: data.id, topic: data.topic, params: ConnectError(message: "Received data is not of type ConnectData", code: 504)))
         return
       }
@@ -285,14 +285,14 @@ public class PortalConnect: EventBus {
 
         self.client?.send(message)
       } catch {
-        print("[PortalConnect] Error encoding DappSessionRequestApprovedMessage: \(error)")
+        self.logger.error("[PortalConnect] Error encoding DappSessionRequestApprovedMessage: \(error)")
       }
     }
 
     once(event: Events.PortalDappSessionRejected.rawValue) { [weak self] callbackData in
       guard let self = self else { return }
       guard let connectData = callbackData as? ConnectData else {
-        print("[PortalConnect] Received data is not of type ConnectData")
+        self.logger.error("[PortalConnect] Received data is not of type ConnectData")
         self.emit(event: Events.ConnectError.rawValue, data: ErrorData(id: data.id, topic: data.topic, params: ConnectError(message: "Received data is not of type ConnectData", code: 504)))
         return
       }
@@ -313,7 +313,7 @@ public class PortalConnect: EventBus {
         let message = try JSONEncoder().encode(event)
         self.client?.send(message)
       } catch {
-        print("[PortalConnect] Error encoding DappSessionRequestRejectedMessage: \(error)")
+        self.logger.error("[PortalConnect] Error encoding DappSessionRequestRejectedMessage: \(error)")
       }
     }
 
@@ -361,7 +361,7 @@ public class PortalConnect: EventBus {
           data.topic,
           data.params.chainId
         )
-        print("[handleSessionRequest]", id, topic)
+        self.logger.debug("[PortalConnect] handleSessionRequest id=\(id) topic=\(topic)")
 
         guard let client = self.client else {
           throw PortalConnectError.noWebSocketClientFound
@@ -486,7 +486,7 @@ public class PortalConnect: EventBus {
           data.params.chainId
         )
 
-        print("⚠️ Method: \(method), Params: \(params)")
+        self.logger.debug("[PortalConnect] handleSessionRequestTransaction method=\(method), params=\(params)")
 
         on(event: Events.PortalSigningRejected.rawValue) { [weak self] _ in
           guard let self = self else { return }

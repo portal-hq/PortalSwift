@@ -102,7 +102,7 @@ public class PortalKeychain: PortalKeychainProtocol {
   private let decoder = JSONDecoder()
   private let encoder = JSONEncoder()
   private let keychain: PortalKeychainAccessProtocol
-  private let logger: PortalLoggerProtocol = PortalLogger()
+  private let logger: PortalLoggerProtocol = PortalLogger.shared
   private let metadataKey = "metadata"
   private let sharesKey = "shares"
 

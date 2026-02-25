@@ -89,7 +89,7 @@ public class GDriveClient: GDriveClientProtocol {
   private var baseUrl: String = "https://www.googleapis.com"
   private let boundary: String = "portal-backup-share"
   private let decoder = JSONDecoder()
-  private let logger = PortalLogger()
+  private let logger = PortalLogger.shared
   private let requests: PortalRequestsProtocol
 
   init(

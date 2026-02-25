@@ -93,7 +93,7 @@ public class PortalApi: PortalApiProtocol {
   private var baseUrl: String
   private let decoder = JSONDecoder()
   private var httpRequests: HttpRequester
-  private let logger = PortalLogger()
+  private let logger = PortalLogger.shared
   private let requests: PortalRequestsProtocol
   private let featureFlags: FeatureFlags?
 

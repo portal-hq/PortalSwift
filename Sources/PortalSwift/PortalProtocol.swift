@@ -64,6 +64,7 @@ public protocol PortalProtocol {
   ) throws
 
   // Public functions
+  func setLogLevel(_ level: PortalLogLevel)
   func registerBackupMethod(_ method: BackupMethods, withStorage: PortalStorage)
   func setGDriveConfiguration(clientId: String, backupOption: GDriveBackupOption) throws
   func setGDriveView(_ view: UIViewController) throws
