@@ -55,7 +55,13 @@ public class FirebaseStorage: Storage, PortalStorage {
     requests: PortalRequestsProtocol? = nil
   ) {
     self.getToken = getToken
-    self.tbsHost = "https://" + tbsHost
+    if tbsHost.hasPrefix("http://") || tbsHost.hasPrefix("https://") {
+      self.tbsHost = tbsHost
+    } else if tbsHost.hasPrefix("localhost") || tbsHost.hasPrefix("127.0.0.1") {
+      self.tbsHost = "http://" + tbsHost
+    } else {
+      self.tbsHost = "https://" + tbsHost
+    }
     self.encryption = encryption ?? PortalEncryption()
     self.requests = requests ?? PortalRequests()
   }

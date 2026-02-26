@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2510AC4B2F50C6DE0021F8F3 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 2510AC4A2F50C6DE0021F8F3 /* GoogleService-Info.plist */; };
+		2510AC4C2F50C7000021F8F3 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 2510AC4D2F50C7000021F8F3 /* FirebaseAuth */; };
+		2510AC4E2F50C7000021F8F3 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 2510AC4F2F50C7000021F8F3 /* FirebaseCore */; };
+		2510ACBC2F50E0E30021F8F3 /* Secrets.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 2510ACBB2F50E0E30021F8F3 /* Secrets.xcconfig */; };
 		607FACD61AFB9204008FA782 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FACD51AFB9204008FA782 /* AppDelegate.swift */; };
 		607FACDB1AFB9204008FA782 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 607FACD91AFB9204008FA782 /* Main.storyboard */; };
 		607FACDD1AFB9204008FA782 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 607FACDC1AFB9204008FA782 /* Images.xcassets */; };
@@ -34,7 +38,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		429213112B51C578005B80B6 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
+		2510AC4A2F50C6DE0021F8F3 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		2510ACBB2F50E0E30021F8F3 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 		607FACD01AFB9204008FA782 /* SPM Example.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "SPM Example.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		607FACD41AFB9204008FA782 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		607FACD51AFB9204008FA782 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -79,6 +84,8 @@
 				F975DB932BEBBED500E4E5F6 /* PortalSwift in Frameworks */,
 				F9BF35A62BF8115000BF2862 /* Web3PromiseKit in Frameworks */,
 				F9BF35A22BF8115000BF2862 /* Web3 in Frameworks */,
+				2510AC4C2F50C7000021F8F3 /* FirebaseAuth in Frameworks */,
+				2510AC4E2F50C7000021F8F3 /* FirebaseCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -96,7 +103,7 @@
 		607FACC71AFB9204008FA782 = {
 			isa = PBXGroup;
 			children = (
-				429213112B51C578005B80B6 /* Secrets.xcconfig */,
+				2510ACBB2F50E0E30021F8F3 /* Secrets.xcconfig */,
 				7EDEB9FA2AF59DFE005E8C7F /* SPM E2E Tests.xctestplan */,
 				7E1A4FD82AF46A0A00A6F7A5 /* SPM Example.entitlements */,
 				607FACD21AFB9204008FA782 /* SPM Example */,
@@ -127,6 +134,7 @@
 				607FACDC1AFB9204008FA782 /* Images.xcassets */,
 				607FACDE1AFB9204008FA782 /* LaunchScreen.xib */,
 				607FACD31AFB9204008FA782 /* Supporting Files */,
+				2510AC4A2F50C6DE0021F8F3 /* GoogleService-Info.plist */,
 			);
 			name = "SPM Example";
 			path = PortalSwift;
@@ -200,6 +208,8 @@
 				F9BF35A12BF8115000BF2862 /* Web3 */,
 				F9BF35A32BF8115000BF2862 /* Web3ContractABI */,
 				F9BF35A52BF8115000BF2862 /* Web3PromiseKit */,
+				2510AC4D2F50C7000021F8F3 /* FirebaseAuth */,
+				2510AC4F2F50C7000021F8F3 /* FirebaseCore */,
 			);
 			productName = PortalSwift;
 			productReference = 607FACD01AFB9204008FA782 /* SPM Example.app */;
@@ -262,6 +272,7 @@
 			packageReferences = (
 				7E4579F12BC85D6700D71835 /* XCLocalSwiftPackageReference ".." */,
 				F9BF35A02BF8115000BF2862 /* XCRemoteSwiftPackageReference "Web3" */,
+				2510AC502F50C7000021F8F3 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
 			productRefGroup = 607FACD11AFB9204008FA782 /* Products */;
 			projectDirPath = "";
@@ -278,6 +289,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2510AC4B2F50C6DE0021F8F3 /* GoogleService-Info.plist in Resources */,
+				2510ACBC2F50E0E30021F8F3 /* Secrets.xcconfig in Resources */,
 				607FACDB1AFB9204008FA782 /* Main.storyboard in Resources */,
 				607FACE01AFB9204008FA782 /* LaunchScreen.xib in Resources */,
 				607FACDD1AFB9204008FA782 /* Images.xcassets in Resources */,
@@ -346,7 +359,6 @@
 /* Begin XCBuildConfiguration section */
 		607FACED1AFB9204008FA782 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 429213112B51C578005B80B6 /* Secrets.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
@@ -406,7 +418,6 @@
 		};
 		607FACEE1AFB9204008FA782 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 429213112B51C578005B80B6 /* Secrets.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
@@ -460,7 +471,7 @@
 		};
 		607FACF01AFB9204008FA782 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 429213112B51C578005B80B6 /* Secrets.xcconfig */;
+			baseConfigurationReference = 2510ACBB2F50E0E30021F8F3 /* Secrets.xcconfig */;
 			buildSettings = {
 				"ARCHS[sdk=iphonesimulator*]" = "$(ARCHS_STANDARD)";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -488,7 +499,7 @@
 		};
 		607FACF11AFB9204008FA782 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 429213112B51C578005B80B6 /* Secrets.xcconfig */;
+			baseConfigurationReference = 2510ACBB2F50E0E30021F8F3 /* Secrets.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "SPM Example.entitlements";
@@ -516,7 +527,6 @@
 		};
 		607FACF31AFB9204008FA782 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 429213112B51C578005B80B6 /* Secrets.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				DEVELOPMENT_TEAM = WTQ4Q66FY6;
@@ -546,7 +556,6 @@
 		};
 		607FACF41AFB9204008FA782 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 429213112B51C578005B80B6 /* Secrets.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				DEVELOPMENT_TEAM = WTQ4Q66FY6;
@@ -572,7 +581,6 @@
 		};
 		D885D5572C3CB1F50099F0D1 /* Automation */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 429213112B51C578005B80B6 /* Secrets.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
@@ -626,7 +634,7 @@
 		};
 		D885D5582C3CB1F50099F0D1 /* Automation */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 429213112B51C578005B80B6 /* Secrets.xcconfig */;
+			baseConfigurationReference = 2510ACBB2F50E0E30021F8F3 /* Secrets.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = "SPM Example.entitlements";
@@ -654,7 +662,6 @@
 		};
 		D885D5592C3CB1F50099F0D1 /* Automation */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 429213112B51C578005B80B6 /* Secrets.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				DEVELOPMENT_TEAM = WTQ4Q66FY6;
@@ -721,6 +728,14 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		2510AC502F50C7000021F8F3 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.0.0;
+			};
+		};
 		F9BF35A02BF8115000BF2862 /* XCRemoteSwiftPackageReference "Web3" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/Boilertalk/Web3.swift";
@@ -732,6 +747,16 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		2510AC4D2F50C7000021F8F3 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2510AC502F50C7000021F8F3 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		2510AC4F2F50C7000021F8F3 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2510AC502F50C7000021F8F3 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
 		7EDEB9FB2AF59EC3005E8C7F /* PortalSwift */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PortalSwift;
