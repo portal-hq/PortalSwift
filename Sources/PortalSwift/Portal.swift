@@ -331,6 +331,7 @@ public final class Portal: PortalProtocol {
   ///     - `.iCloud`: iCloud storage
   ///     - `.Password`: Password-protected storage
   ///     - `.Passkey`: Passkey authentication storage
+  ///     - `.Firebase`: Firebase authentication storage
   ///     - `.local`: Local storage
   ///     - `.Unknown`: Can be used for custom storage
   ///   - withStorage: A custom implementation of `PortalStorage` protocol that handles
@@ -2421,6 +2422,7 @@ public enum BackupMethods: String, Codable {
   case local = "CUSTOM"
   case Password = "PASSWORD"
   case Passkey = "PASSKEY"
+  case Firebase = "FIREBASE"
   case Unknown = "UNKNOWN"
 
   init?(fromString: String) {

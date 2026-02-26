@@ -703,6 +703,10 @@ public class PortalMpc: PortalMpcProtocol {
       }
     }
 
+    if method == .Firebase {
+      (storage as! FirebaseStorage).apiKey = self.apiKey
+    }
+
     self.backupOptions[method] = storage
   }
 
