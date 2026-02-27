@@ -19,7 +19,7 @@ import Foundation
 ///
 /// portal.registerBackupMethod(.Firebase, withStorage: FirebaseStorage(
 ///   getToken: {
-///     return try await Auth.auth().currentUser?.getIDToken()
+///     return try await Auth.auth().currentUser?.getIDToken(forcingRefresh: true)
 ///   }
 /// ))
 /// ```
@@ -42,9 +42,9 @@ public class FirebaseStorage: Storage, PortalStorage {
   /// Creates a new FirebaseStorage instance.
   ///
   /// - Parameters:
-  ///   - getToken: A callback that returns a fresh Firebase ID token. This is called
-  ///     before each TBS request to ensure the token is valid. The callback should
-  ///     call Firebase's `getIDToken()` method internally.
+  ///   - getToken: A callback that returns a fresh Firebase ID token.
+  ///     **Important:** This callback should always force-refresh the token (e.g., call
+  ///     `getIDToken(forcingRefresh: true)`) to ensure retry-on-401 works correctly.
   ///   - tbsHost: The TBS host URL. Defaults to Portal's production TBS.
   ///   - encryption: The encryption implementation. Defaults to `PortalEncryption()`.
   ///   - requests: The HTTP request executor. Defaults to `PortalRequests()`.
@@ -73,6 +73,7 @@ public class FirebaseStorage: Storage, PortalStorage {
   }
 
   public func delete() async throws -> Bool {
+    // TODO: Implement deletion of encryption key from TBS server
     return true
   }
 
@@ -99,10 +100,16 @@ public class FirebaseStorage: Storage, PortalStorage {
       // Token may have expired; retry once with a fresh token
       let refreshedToken = try await obtainFirebaseToken()
       return try await fetchEncryptionKey(apiKey: apiKey, firebaseToken: refreshedToken)
+    } catch {
+      throw FirebaseStorageError.requestFailed(underlying: error)
     }
   }
 
   public func validateOperations() async throws -> Bool {
+    guard apiKey != nil else {
+      throw FirebaseStorageError.noApiKey
+    }
+    let _ = try await obtainFirebaseToken()
     return true
   }
 
@@ -126,6 +133,8 @@ public class FirebaseStorage: Storage, PortalStorage {
       // Token may have expired; retry once with a fresh token
       let refreshedToken = try await obtainFirebaseToken()
       return try await storeEncryptionKey(value, apiKey: apiKey, firebaseToken: refreshedToken)
+    } catch {
+      throw FirebaseStorageError.requestFailed(underlying: error)
     }
   }
 

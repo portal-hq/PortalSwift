@@ -16,6 +16,8 @@ public enum FirebaseStorageError: LocalizedError {
   case tokenUnavailable
   /// The TBS endpoint returned an unexpected response.
   case unexpectedResponse(String)
+  /// A non-401 request to TBS failed with the given underlying error.
+  case requestFailed(underlying: Error)
 
   public var errorDescription: String? {
     switch self {
@@ -25,6 +27,8 @@ public enum FirebaseStorageError: LocalizedError {
       return "FirebaseStorage: Firebase token unavailable. Ensure the user is signed in to Firebase before performing backup operations."
     case .unexpectedResponse(let message):
       return "FirebaseStorage: Unexpected response from TBS - \(message)"
+    case .requestFailed(let underlying):
+      return "FirebaseStorage: Request to TBS failed - \(underlying.localizedDescription)"
     }
   }
 }

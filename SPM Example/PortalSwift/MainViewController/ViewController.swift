@@ -971,7 +971,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       // Register Firebase backup method
       portal.registerBackupMethod(.Firebase, withStorage: FirebaseStorage(
         getToken: {
-          return try await Auth.auth().currentUser?.getIDToken()
+          return try await Auth.auth().currentUser?.getIDToken(forcingRefresh: true)
         },
         tbsHost: config.webAuthnHost
       ))

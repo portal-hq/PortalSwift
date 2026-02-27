@@ -40,6 +40,7 @@ class FirebaseAuthViewController: UIViewController {
   private let statusLabel = UILabel()
   private let backupButton = UIButton(type: .system)
   private let recoverButton = UIButton(type: .system)
+  private let ejectButton = UIButton(type: .system)
   private let resultLabel = UILabel()
   private let activityIndicator = UIActivityIndicatorView(style: .large)
   private let overlayView = UIView()
@@ -49,20 +50,11 @@ class FirebaseAuthViewController: UIViewController {
     view.backgroundColor = .systemBackground
     title = "Firebase BYO Auth"
 
-    if #available(iOS 13.0, *) {
-      navigationItem.leftBarButtonItem = UIBarButtonItem(
-        barButtonSystemItem: .close,
-        target: self,
-        action: #selector(dismissSelf)
-      )
-    } else {
-      navigationItem.leftBarButtonItem = UIBarButtonItem(
-        title: "Close",
-        style: .done,
-        target: self,
-        action: #selector(dismissSelf)
-      )
-    }
+    navigationItem.leftBarButtonItem = UIBarButtonItem(
+      barButtonSystemItem: .close,
+      target: self,
+      action: #selector(dismissSelf)
+    )
 
     setupUI()
     updateUI()
@@ -172,6 +164,16 @@ class FirebaseAuthViewController: UIViewController {
     recoverButton.addTarget(self, action: #selector(handleRecover), for: .touchUpInside)
     stack.addArrangedSubview(recoverButton)
 
+    // Eject button
+    ejectButton.setTitle("Firebase Eject", for: .normal)
+    ejectButton.backgroundColor = .systemRed
+    ejectButton.setTitleColor(.white, for: .normal)
+    ejectButton.layer.cornerRadius = 8
+    ejectButton.titleLabel?.font = .boldSystemFont(ofSize: 16)
+    ejectButton.addTarget(self, action: #selector(handleEject), for: .touchUpInside)
+    ejectButton.heightAnchor.constraint(equalToConstant: 44).isActive = true
+    stack.addArrangedSubview(ejectButton)
+
     stack.addArrangedSubview(makeSeparator())
 
     // Result label
@@ -233,6 +235,8 @@ class FirebaseAuthViewController: UIViewController {
         self.backupButton.alpha = self.backupButton.isEnabled ? 1.0 : 0.5
         self.recoverButton.isEnabled = signedIn && recoveryMethods.contains(.Firebase)
         self.recoverButton.alpha = self.recoverButton.isEnabled ? 1.0 : 0.5
+        self.ejectButton.isEnabled = signedIn && recoveryMethods.contains(.Firebase)
+        self.ejectButton.alpha = self.ejectButton.isEnabled ? 1.0 : 0.5
       }
     }
   }
@@ -324,8 +328,8 @@ class FirebaseAuthViewController: UIViewController {
         startLoading()
         logger.debug("FirebaseAuth.backup - Starting...")
 
-        let (cipherText, storageCallback) = try await portal.backupWallet(.Firebase) { status in
-          self.logger.debug("FirebaseAuth.backup - Progress: \(status.status.rawValue), done: \(status.done)")
+        let (cipherText, storageCallback) = try await portal.backupWallet(.Firebase) { [weak self] status in
+          self?.logger.debug("FirebaseAuth.backup - Progress: \(status.status.rawValue), done: \(status.done)")
         }
 
         let backupWithPortal = client.environment?.backupWithPortalEnabled ?? false
@@ -399,8 +403,8 @@ class FirebaseAuthViewController: UIViewController {
           cipherText = response.cipherText
         }
 
-        let (ethereum, solana) = try await portal.recoverWallet(.Firebase, withCipherText: cipherText) { status in
-          self.logger.debug("FirebaseAuth.recover - Progress: \(status.status.rawValue), done: \(status.done)")
+        let (ethereum, solana) = try await portal.recoverWallet(.Firebase, withCipherText: cipherText) { [weak self] status in
+          self?.logger.debug("FirebaseAuth.recover - Progress: \(status.status.rawValue), done: \(status.done)")
         }
 
         stopLoading()
@@ -413,6 +417,132 @@ class FirebaseAuthViewController: UIViewController {
         stopLoading()
         logger.error("FirebaseAuth.recover - ❌ \(error)")
         showResult("Recover failed: \(error)", success: false)
+      }
+    }
+  }
+
+  @objc private func handleEject() {
+    Task {
+      do {
+        guard let portal else {
+          throw PortalExampleAppError.portalNotInitialized()
+        }
+        guard let user else {
+          throw PortalExampleAppError.userNotLoggedIn()
+        }
+        guard isFirebaseSignedIn else {
+          showResult("Sign into Firebase first", success: false)
+          return
+        }
+        guard let config = Settings.shared.portalConfig.appConfig else {
+          throw PortalExampleAppError.configurationNotSet()
+        }
+        guard let client = try await portal.client else {
+          throw PortalExampleAppError.clientInformationUnavailable()
+        }
+
+        startLoading()
+        logger.debug("FirebaseAuth.eject - Starting...")
+
+        var cipherText: String? = nil
+        var organizationShare: String? = nil
+        var organizationSolanaShare: String? = nil
+
+        let backupWithPortal = client.environment?.backupWithPortalEnabled ?? false
+
+        if !backupWithPortal {
+          // Self-managed: fetch cipher text and org shares from custodian server
+          guard let cipherTextUrl = URL(
+            string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/cipher-text/fetch?backupMethod=\(BackupMethods.Firebase.rawValue)"
+          ) else {
+            throw URLError(.badURL)
+          }
+          let cipherTextRequest = PortalAPIRequest(url: cipherTextUrl)
+          let cipherTextResponse = try await requests.execute(request: cipherTextRequest, mappingInResponse: CipherTextResult.self)
+          cipherText = cipherTextResponse.cipherText
+
+          guard let organizationBackupShareUrl = URL(
+            string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/org-share/fetch?backupMethod=\(BackupMethods.Firebase.rawValue)-SECP256K1"
+          ) else {
+            throw URLError(.badURL)
+          }
+          let organizationBackupShareRequest = PortalAPIRequest(url: organizationBackupShareUrl)
+          let organizationBackupShareResponse = try await requests.execute(request: organizationBackupShareRequest, mappingInResponse: OrgShareResult.self)
+          organizationShare = organizationBackupShareResponse.orgShare
+
+          // Try to get Solana org share
+          guard let organizationSolanaBackupShareUrl = URL(
+            string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/org-share/fetch?backupMethod=\(BackupMethods.Firebase.rawValue)-ED25519"
+          ) else {
+            throw URLError(.badURL)
+          }
+          let organizationSolanaBackupShareRequest = PortalAPIRequest(url: organizationSolanaBackupShareUrl)
+          let organizationSolanaBackupShareResponse = try? await requests.execute(request: organizationSolanaBackupShareRequest, mappingInResponse: OrgShareResult.self)
+          if let organizationSolanaBackupShareResponse {
+            organizationSolanaShare = organizationSolanaBackupShareResponse.orgShare
+          }
+        } else {
+          // Portal-managed: call prepare-eject for each wallet
+          var walletId: String?
+          var walletIdEd25519: String? = nil
+
+          for wallet in client.wallets {
+            if wallet.curve == .SECP256K1 {
+              for backupSharePair in wallet.backupSharePairs {
+                if backupSharePair.status == .completed, backupSharePair.backupMethod == .Firebase {
+                  walletId = wallet.id
+                  break
+                }
+              }
+            } else if wallet.curve == .ED25519 {
+              for backupSharePair in wallet.backupSharePairs {
+                if backupSharePair.status == .completed, backupSharePair.backupMethod == .Firebase {
+                  walletIdEd25519 = wallet.id
+                  break
+                }
+              }
+            }
+          }
+
+          guard let walletId else {
+            throw PortalExampleAppError.clientInformationUnavailable("Could not find Ethereum backup share for backup method.")
+          }
+
+          guard let prepareEjectUrl = URL(string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/prepare-eject") else {
+            throw URLError(.badURL)
+          }
+
+          let prepareEjectRequest = PortalAPIRequest(url: prepareEjectUrl, method: .post, payload: ["walletId": walletId])
+          let prepareEjectResponse = try await requests.execute(request: prepareEjectRequest, mappingInResponse: String.self)
+          self.logger.debug("FirebaseAuth.eject - Ethereum wallet ejectable until \(prepareEjectResponse)")
+
+          if let walletIdEd25519 {
+            let prepareEjectEd25519Request = PortalAPIRequest(url: prepareEjectUrl, method: .post, payload: ["walletId": walletIdEd25519])
+            let prepareEjectResponseEd25519 = try await requests.execute(request: prepareEjectEd25519Request, mappingInResponse: String.self)
+            self.logger.debug("FirebaseAuth.eject - Solana wallet ejectable until \(prepareEjectResponseEd25519)")
+          }
+        }
+
+        let privateKeys = try await portal.ejectPrivateKeys(
+          .Firebase,
+          withCipherText: cipherText,
+          andOrganizationBackupShare: organizationShare,
+          andOrganizationSolanaBackupShare: organizationSolanaShare
+        )
+
+        stopLoading()
+
+        var resultMessage = "Ejected private keys:\n"
+        for (namespace, key) in privateKeys {
+          resultMessage += "\(namespace): \(key)\n"
+        }
+        showResult(resultMessage, success: true)
+        logger.debug("FirebaseAuth.eject - ✅ Successfully ejected wallet")
+        updateUI()
+      } catch {
+        stopLoading()
+        logger.error("FirebaseAuth.eject - ❌ \(error)")
+        showResult("Eject failed: \(error)", success: false)
       }
     }
   }
@@ -446,6 +576,8 @@ class FirebaseAuthViewController: UIViewController {
       self.overlayView.isHidden = false
       self.activityIndicator.startAnimating()
       self.view.isUserInteractionEnabled = false
+      self.signOutButton.isEnabled = false
+      self.navigationItem.leftBarButtonItem?.isEnabled = false
     }
   }
 
@@ -454,6 +586,8 @@ class FirebaseAuthViewController: UIViewController {
       self.overlayView.isHidden = true
       self.activityIndicator.stopAnimating()
       self.view.isUserInteractionEnabled = true
+      self.signOutButton.isEnabled = true
+      self.navigationItem.leftBarButtonItem?.isEnabled = true
     }
   }
 }
