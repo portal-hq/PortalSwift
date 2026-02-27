@@ -135,11 +135,11 @@ class ViewController: UIViewController, UITextFieldDelegate {
   // MARK: - Trading Configuration
 
   private enum TradingConfig {
-    static let fromChainId = "eip155:10143" // Monad Testnet
-    static let toChainId = "eip155:10143" // Monad Testnet
-    static let fromToken = "ETH"
+    static let fromChainId = "eip155:143" // Monad Mainnet
+    static let toChainId = "eip155:143" // Monad Mainnet
+    static let fromToken = "MON"
     static let toToken = "USDC"
-    static let fromAmount = "1000000000000" // 0.000001 ETH (in wei)
+    static let fromAmount = "10"
   }
 
   // Set up the scroll view
