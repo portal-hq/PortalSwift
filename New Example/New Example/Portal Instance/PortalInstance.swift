@@ -39,7 +39,7 @@ extension PortalInstance {
     // Prerequisites:
     // 1. Add FirebaseAuth SDK to your project (via SPM or CocoaPods)
     // 2. Configure your Firebase project in the Portal dashboard
-    //    (POST /api/v1/custodians/{id}/jwt-provider with provider: "firebase")
+    //    (POST /api/v3/custodians/me/jwt-provider with provider: "firebase")
     // 3. Ensure users sign in with Firebase before performing backup/recovery
     //
     // Example registration:
