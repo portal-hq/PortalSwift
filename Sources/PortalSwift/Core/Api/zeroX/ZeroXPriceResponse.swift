@@ -35,8 +35,8 @@ public struct ZeroXPriceResponseData: Codable {
 public struct ZeroXPriceRawResponse: Codable {
   /// The block number at which the price was generated (optional).
   public let blockNumber: String?
-  /// The amount of tokens to receive.
-  public let buyAmount: String
+  /// The amount of tokens to receive (may be absent when liquidity is unavailable).
+  public let buyAmount: String?
   /// The token address to buy.
   public let buyToken: String?
   /// Fee breakdown (optional).
@@ -53,8 +53,8 @@ public struct ZeroXPriceRawResponse: Codable {
   public let minBuyAmount: String?
   /// Route information for the swap (optional).
   public let route: ZeroXRoute?
-  /// The amount of tokens to sell.
-  public let sellAmount: String
+  /// The amount of tokens to sell (may be absent when liquidity is unavailable).
+  public let sellAmount: String?
   /// The token address to sell.
   public let sellToken: String?
   /// Token metadata including tax information (optional).
@@ -64,7 +64,7 @@ public struct ZeroXPriceRawResponse: Codable {
 
   public init(
     blockNumber: String? = nil,
-    buyAmount: String,
+    buyAmount: String? = nil,
     buyToken: String? = nil,
     fees: ZeroXFees? = nil,
     gas: String? = nil,
@@ -73,7 +73,7 @@ public struct ZeroXPriceRawResponse: Codable {
     liquidityAvailable: Bool? = nil,
     minBuyAmount: String? = nil,
     route: ZeroXRoute? = nil,
-    sellAmount: String,
+    sellAmount: String? = nil,
     sellToken: String? = nil,
     tokenMetadata: ZeroXTokenMetadata? = nil,
     totalNetworkFee: String? = nil

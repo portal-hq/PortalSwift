@@ -12,6 +12,12 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
+## 6.11.0 - 2026-02-27
+- Added `portal.setLogLevel()` to configure the SDK log level.
+    - Supported levels: `none`, `error`, `warn`, `info`, `debug` (each includes everything above it, defaults to `none`).
+- Added public init to `LifiQuoteResponse`, `LifiRoutesResponse`, and `LifiStatusResponse` models.
+- Fixed parsing issue in `ZeroXPriceResponse` and `ZeroXQuoteResponse`.
+
 ## 6.10.0 - 2026-02-17
 - Added upgrade account to EIP-7702 functionality:
     - Added `portal.evmAccountType.getStatus`

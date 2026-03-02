@@ -38,4 +38,9 @@ public struct LifiQuoteErrorResponse: Codable {
   public let message: String
   /// Error details containing unavailable routes information
   public let errors: LifiUnavailableRoutes?
+
+  public init(message: String, errors: LifiUnavailableRoutes? = nil) {
+    self.message = message
+    self.errors = errors
+  }
 }

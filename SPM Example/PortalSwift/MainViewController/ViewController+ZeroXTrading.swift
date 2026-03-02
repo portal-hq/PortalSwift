@@ -32,7 +32,7 @@ extension ViewController {
         throw PortalExampleAppError.portalNotInitialized()
       }
 
-      let chainId = "eip155:1"
+      let chainId = "eip155:143"
 
       Task {
         do {
@@ -70,8 +70,8 @@ extension ViewController {
           guard let data = quoteResponse.data else {
             throw NSError(domain: "ZeroXError", code: -1, userInfo: [NSLocalizedDescriptionKey: "No data in response"])
           }
-          self.logger.info("  Buy Amount: \(data.rawResponse.buyAmount)")
-          self.logger.info("  Sell Amount: \(data.rawResponse.sellAmount)")
+          self.logger.info("  Buy Amount: \(data.rawResponse.buyAmount ?? "N/A")")
+          self.logger.info("  Sell Amount: \(data.rawResponse.sellAmount ?? "N/A")")
           if let buyToken = data.rawResponse.buyToken {
             self.logger.info("  Buy Token: \(buyToken)")
           }
@@ -144,7 +144,7 @@ extension ViewController {
         throw PortalExampleAppError.portalNotInitialized()
       }
 
-      let chainId = "eip155:1"
+      let chainId = "eip155:143"
 
       Task {
         do {
@@ -200,7 +200,7 @@ extension ViewController {
         throw PortalExampleAppError.portalNotInitialized()
       }
 
-      let chainId = "eip155:1"
+      let chainId = "eip155:143"
 
       Task {
         do {
@@ -220,7 +220,7 @@ extension ViewController {
           guard let data1 = quoteResponse1.data else {
             throw NSError(domain: "ZeroXError", code: -1, userInfo: [NSLocalizedDescriptionKey: "No data in response"])
           }
-          self.logger.info("ViewController.handleZeroXGetQuote() - ✅ Test Case 1 Success: Got quote with explicit API key - Buy: \(data1.rawResponse.buyAmount)")
+          self.logger.info("ViewController.handleZeroXGetQuote() - ✅ Test Case 1 Success: Got quote with explicit API key - Buy: \(data1.rawResponse.buyAmount ?? "N/A")")
           self.logZeroXQuoteResponse(quoteResponse1)
 
           // Test Case 2: getQuote WITHOUT zeroXApiKey parameter (uses Dashboard config)
@@ -229,10 +229,10 @@ extension ViewController {
           guard let data2 = quoteResponse2.data else {
             throw NSError(domain: "ZeroXError", code: -1, userInfo: [NSLocalizedDescriptionKey: "No data in response"])
           }
-          self.logger.info("ViewController.handleZeroXGetQuote() - ✅ Test Case 2 Success: Got quote using Dashboard API key - Buy: \(data2.rawResponse.buyAmount)")
+          self.logger.info("ViewController.handleZeroXGetQuote() - ✅ Test Case 2 Success: Got quote using Dashboard API key - Buy: \(data2.rawResponse.buyAmount ?? "N/A")")
           self.logZeroXQuoteResponse(quoteResponse2)
 
-          self.showStatusView(message: "\(self.successStatus) Test 1: Buy \(data1.rawResponse.buyAmount) (with API key) | Test 2: Buy \(data2.rawResponse.buyAmount) (Dashboard key)")
+          self.showStatusView(message: "\(self.successStatus) Test 1: Buy \(data1.rawResponse.buyAmount ?? "N/A") (with API key) | Test 2: Buy \(data2.rawResponse.buyAmount ?? "N/A") (Dashboard key)")
           self.stopLoading()
         } catch {
           self.logger.error("ViewController.handleZeroXGetQuote() - ❌ Error: \(error)")
@@ -265,7 +265,7 @@ extension ViewController {
         throw PortalExampleAppError.portalNotInitialized()
       }
 
-      let chainId = "eip155:1"
+      let chainId = "eip155:143"
 
       Task {
         do {
@@ -273,8 +273,8 @@ extension ViewController {
           let priceRequest = ZeroXPriceRequest(
             chainId: chainId,
             buyToken: "USDC",
-            sellToken: "USDT",
-            sellAmount: "1000000000" // 1000 USDT (6 decimals)
+            sellToken: "MON",
+            sellAmount: "100"
           )
 
           // Test Case 1: getPrice WITH explicit zeroXApiKey parameter (overrides Dashboard config)
@@ -286,7 +286,7 @@ extension ViewController {
           guard let data1 = priceResponse1.data else {
             throw NSError(domain: "ZeroXError", code: -1, userInfo: [NSLocalizedDescriptionKey: "No data in response"])
           }
-          self.logger.info("ViewController.handleZeroXPriceCheck() - ✅ Test Case 1 Success: Got price with explicit API key - Buy: \(data1.rawResponse.buyAmount)")
+          self.logger.info("ViewController.handleZeroXPriceCheck() - ✅ Test Case 1 Success: Got price with explicit API key - Buy: \(data1.rawResponse.buyAmount ?? "N/A")")
           self.logZeroXPriceResponse(priceResponse1)
 
           // Test Case 2: getPrice WITHOUT zeroXApiKey parameter (uses Dashboard config)
@@ -295,10 +295,10 @@ extension ViewController {
           guard let data2 = priceResponse2.data else {
             throw NSError(domain: "ZeroXError", code: -1, userInfo: [NSLocalizedDescriptionKey: "No data in response"])
           }
-          self.logger.info("ViewController.handleZeroXPriceCheck() - ✅ Test Case 2 Success: Got price using Dashboard API key - Buy: \(data2.rawResponse.buyAmount)")
+          self.logger.info("ViewController.handleZeroXPriceCheck() - ✅ Test Case 2 Success: Got price using Dashboard API key - Buy: \(data2.rawResponse.buyAmount ?? "N/A")")
           self.logZeroXPriceResponse(priceResponse2)
 
-          self.showStatusView(message: "\(self.successStatus) Test 1: Buy \(data1.rawResponse.buyAmount) (with API key) | Test 2: Buy \(data2.rawResponse.buyAmount) (Dashboard key)")
+          self.showStatusView(message: "\(self.successStatus) Test 1: Buy \(data1.rawResponse.buyAmount ?? "N/A") (with API key) | Test 2: Buy \(data2.rawResponse.buyAmount ?? "N/A") (Dashboard key)")
           self.stopLoading()
         } catch {
           self.logger.error("ViewController.handleZeroXPriceCheck() - ❌ Unable to get price with error: \(error)")
@@ -325,8 +325,8 @@ extension ViewController {
       return
     }
     self.logger.info("ViewController - ✅ Got price:")
-    self.logger.info("  Buy Amount: \(data.rawResponse.buyAmount)")
-    self.logger.info("  Sell Amount: \(data.rawResponse.sellAmount)")
+    self.logger.info("  Buy Amount: \(data.rawResponse.buyAmount ?? "N/A")")
+    self.logger.info("  Sell Amount: \(data.rawResponse.sellAmount ?? "N/A")")
     if let buyToken = data.rawResponse.buyToken {
       self.logger.info("  Buy Token: \(buyToken)")
     }
@@ -383,8 +383,8 @@ extension ViewController {
       return
     }
     self.logger.info("ViewController - ✅ Got quote:")
-    self.logger.info("  Buy Amount: \(data.rawResponse.buyAmount)")
-    self.logger.info("  Sell Amount: \(data.rawResponse.sellAmount)")
+    self.logger.info("  Buy Amount: \(data.rawResponse.buyAmount ?? "N/A")")
+    self.logger.info("  Sell Amount: \(data.rawResponse.sellAmount ?? "N/A")")
     if let buyToken = data.rawResponse.buyToken {
       self.logger.info("  Buy Token: \(buyToken)")
     }

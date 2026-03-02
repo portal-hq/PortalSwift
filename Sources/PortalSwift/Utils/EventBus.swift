@@ -10,6 +10,7 @@ import Foundation
 public class EventBus {
   private var events: [Events.RawValue: [RegisteredEventHandler]] = [:]
   private var label: String
+  private let logger = PortalLogger.shared
 
   public init(label: String) {
     self.label = "\(label)EventBus"
@@ -22,7 +23,7 @@ public class EventBus {
   /// - Returns: The Portal Provider instance.
   public func emit(event: Events.RawValue, data: Any) {
     guard let registeredEventHandlers = self.events[event] else {
-      print(String(format: "[\(self.label)] Could not find any bindings for event '%@'. Ignoring...", event))
+      self.logger.debug(String(format: "[\(self.label)] Could not find any bindings for event '%@'. Ignoring...", event))
       return
     }
     // Invoke all registered handlers for the event
@@ -31,7 +32,7 @@ public class EventBus {
         try registeredEventHandler.handler(data)
       }
     } catch {
-      print("[\(self.label)] Error invoking registered handlers", error)
+      self.logger.error("[\(self.label)] Error invoking registered handlers: \(error)")
     }
 
     // Remove once instances
@@ -84,7 +85,7 @@ public class EventBus {
     event: Events.RawValue
   ) {
     if self.events[event] == nil {
-      print(String(format: "[\(self.label)] Could not find any bindings for event '%@'. Ignoring...", event))
+      self.logger.debug(String(format: "[\(self.label)] Could not find any bindings for event '%@'. Ignoring...", event))
     }
 
     self.events[event] = nil
