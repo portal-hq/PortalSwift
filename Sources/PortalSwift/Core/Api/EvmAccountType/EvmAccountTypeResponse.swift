@@ -44,7 +44,7 @@ public struct EvmAccountTypeAddresses {
   public let eoaAddress: String
   public let smartContractAddress: String?
 
-  public init(eoaAddress: String, smartContractAddress: String?) {
+  public init(eoaAddress: String, smartContractAddress: String? = nil) {
     self.eoaAddress = eoaAddress
     self.smartContractAddress = smartContractAddress
   }
