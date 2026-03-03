@@ -42,6 +42,39 @@ extension ViewController {
     }
   }
 
+  // MARK: - Get Addresses
+
+  @IBAction func evmAccountGetAddresses(_: Any) {
+    startLoading()
+
+    Task { @MainActor in
+      defer { stopLoading() }
+
+      guard let portal = portal else {
+        logger.error("❌ [EVM Account GetAddresses] Portal not initialized")
+        showStatusView(message: "\(failureStatus) Portal not initialized")
+        return
+      }
+
+      do {
+        let chainId = "eip155:10143"
+
+        let addresses = try await portal.evmAccountType.getAddresses(chainId: chainId)
+        logger.info("📝  EOA Address: \(addresses.eoaAddress)")
+        if let sc = addresses.smartContractAddress {
+          logger.info("📝  Smart Contract Address: \(sc)")
+        } else {
+          logger.info("📝  Smart Contract Address: nil")
+        }
+
+        showStatusView(message: "\(successStatus) EOA: \(addresses.eoaAddress), SC: \(addresses.smartContractAddress ?? "nil")")
+      } catch {
+        logger.error("❌ EVM Account GetAddresses Error: \(error.localizedDescription)")
+        showStatusView(message: "\(failureStatus) \(error.localizedDescription)")
+      }
+    }
+  }
+
   // MARK: - Upgrade AA to EIP7702
 
   @IBAction func upgradeToEIP7702(_: Any) {

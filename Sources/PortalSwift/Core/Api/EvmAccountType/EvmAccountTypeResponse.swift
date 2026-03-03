@@ -38,3 +38,14 @@ public struct EvmAccountTypeMetadata: Codable {
     self.smartContractAddress = smartContractAddress
   }
 }
+
+/// Lightweight value type returned by `getAddresses()`.
+public struct EvmAccountTypeAddresses {
+  public let eoaAddress: String
+  public let smartContractAddress: String?
+
+  public init(eoaAddress: String, smartContractAddress: String?) {
+    self.eoaAddress = eoaAddress
+    self.smartContractAddress = smartContractAddress
+  }
+}
