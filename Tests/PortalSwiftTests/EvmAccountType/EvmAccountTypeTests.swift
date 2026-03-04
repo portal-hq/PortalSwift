@@ -107,6 +107,43 @@ final class EvmAccountTypeTests: XCTestCase {
     XCTAssertNil(response.metadata.smartContractAddress)
   }
 
+  // MARK: - getAddresses Tests
+
+  func testGetAddresses_success_returnsBothAddresses() async throws {
+    mockApi.getStatusReturnValue = EvmAccountTypeResponse.stub(
+      metadata: .stub(eoaAddress: "0xeoa123", smartContractAddress: "0xsc456")
+    )
+    let addresses = try await sut.getAddresses(chainId: "eip155:11155111")
+    XCTAssertEqual(addresses.eoaAddress, "0xeoa123")
+    XCTAssertEqual(addresses.smartContractAddress, "0xsc456")
+    XCTAssertEqual(mockApi.getStatusCallCount, 1)
+  }
+
+  func testGetAddresses_noSmartContract_returnsNilSmartContractAddress() async throws {
+    mockApi.getStatusReturnValue = EvmAccountTypeResponse.stub(
+      metadata: .stub(eoaAddress: "0xeoa789", smartContractAddress: nil)
+    )
+    let addresses = try await sut.getAddresses(chainId: "eip155:1")
+    XCTAssertEqual(addresses.eoaAddress, "0xeoa789")
+    XCTAssertNil(addresses.smartContractAddress)
+  }
+
+  func testGetAddresses_error_throwsError() async {
+    mockApi.getStatusError = URLError(.badServerResponse)
+    do {
+      _ = try await sut.getAddresses(chainId: "eip155:11155111")
+      XCTFail("Expected error")
+    } catch {
+      XCTAssertNotNil(error)
+    }
+  }
+
+  func testGetAddresses_passesChainIdToGetStatus() async throws {
+    mockApi.getStatusReturnValue = EvmAccountTypeResponse.stub()
+    _ = try await sut.getAddresses(chainId: "eip155:137")
+    XCTAssertEqual(mockApi.getStatusChainId, "eip155:137")
+  }
+
   // MARK: - upgradeTo7702 Tests
 
   func testUpgradeTo7702_nonEip155Chain_throwsUnsupportedNamespaceError() async {

@@ -35,6 +35,15 @@ extension EvmAccountTypeMetadata {
   }
 }
 
+extension EvmAccountTypeAddresses {
+  static func stub(
+    eoaAddress: String = "0xf80d492e12d01fbfb4804a6194a18ca24a539ad5",
+    smartContractAddress: String? = "0x54d37A9b7c614ac2141f6a880dA2201b45586De3"
+  ) -> Self {
+    .init(eoaAddress: eoaAddress, smartContractAddress: smartContractAddress)
+  }
+}
+
 extension BuildAuthorizationListResponse {
   static func stub(
     data: BuildAuthorizationListData = .stub(),
