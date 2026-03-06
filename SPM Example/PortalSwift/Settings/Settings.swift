@@ -116,7 +116,7 @@ extension Settings {
 
         portalConfig.appConfig = ApplicationConfiguration(
           alchemyApiKey: ALCHEMY_API_KEY,
-          apiUrl: "localhost:3000",
+          apiUrl: "localhost:3001",
           custodianServerUrl: "http://localhost:3010",
           googleClientId: GOOGLE_CLIENT_ID,
           mpcUrl: "localhost:3002",

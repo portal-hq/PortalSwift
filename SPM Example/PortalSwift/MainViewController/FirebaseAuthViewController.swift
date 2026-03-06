@@ -92,12 +92,14 @@ class FirebaseAuthViewController: UIViewController {
     emailField.autocapitalizationType = .none
     emailField.keyboardType = .emailAddress
     emailField.returnKeyType = .next
+    emailField.accessibilityIdentifier = "emailField"
     stack.addArrangedSubview(emailField)
 
     passwordField.placeholder = "Password"
     passwordField.borderStyle = .roundedRect
-    passwordField.isSecureTextEntry = true
+    passwordField.isSecureTextEntry = false
     passwordField.returnKeyType = .done
+    passwordField.accessibilityIdentifier = "passwordField"
     stack.addArrangedSubview(passwordField)
 
     let authRow = UIStackView()
