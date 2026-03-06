@@ -28,7 +28,19 @@ enum Environment: String, Equatable {
 }
 
 struct PortalConfig {
-  var environment: Environment = .production
+  var environment: Environment = {
+    if let env = Bundle.main.infoDictionary?["ENV"] as? String {
+      switch env.trimmingCharacters(in: .whitespaces).lowercased() {
+      case "local", "localhost":
+        return .localHost
+      case "staging":
+        return .staging
+      default:
+        return .production
+      }
+    }
+    return .production
+  }()
   var gdriveBackupOption: GDriveBackupOption = .appDataFolder
   var appConfig: ApplicationConfiguration?
 }
@@ -108,9 +120,9 @@ extension Settings {
           custodianServerUrl: "http://localhost:3010",
           googleClientId: GOOGLE_CLIENT_ID,
           mpcUrl: "localhost:3002",
-          webAuthnHost: "backup.portalhq.dev",
-          relyingParty: "portalhq.dev",
-          enclaveMPCHost: "mpc-client.portalhq.dev"
+          webAuthnHost: "localhost:8080",
+          relyingParty: "localhost",
+          enclaveMPCHost: "localhost:8081"
         )
       }
 

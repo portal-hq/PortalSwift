@@ -6,6 +6,7 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
+import FirebaseCore
 import PortalSwift
 import UIKit
 
@@ -38,7 +39,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, PortalExampleAppDelegate 
   var portal: PortalProtocol?
 
   func application(_: UIApplication, didFinishLaunchingWithOptions _: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-    // Override point for customization after application launch.
+    FirebaseApp.configure()
     return true
   }
 

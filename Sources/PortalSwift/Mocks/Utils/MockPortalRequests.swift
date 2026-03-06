@@ -61,6 +61,9 @@ public actor MockPortalRequests: PortalRequestsProtocol {
     case "/passkeys/status":
       let statusData = try encoder.encode(MockConstants.mockPasskeyStatus)
       return statusData
+    case "/v1/backup/encrypt-key":
+      let mockResponse = try encoder.encode(FirebaseEncryptionKeyResponse(encryptionKey: MockConstants.mockEncryptionKey))
+      return mockResponse
     default:
       guard let mockNullData = "null".data(using: .utf8) else {
         throw PortalRequestsError.couldNotParseHttpResponse
@@ -150,12 +153,20 @@ public actor MockPortalRequests: PortalRequestsProtocol {
   }
 
   public func put(
-    _: URL,
+    _ url: URL,
     withBearerToken _: String?,
     andPayload _: any Codable
   ) async throws -> Data {
-    let gDriveFileData = try JSONEncoder().encode(MockConstants.mockGDriveFile)
-    return gDriveFileData
+    switch url.path {
+    case "/v1/backup/encrypt-key":
+      guard let okData = "{\"status\":\"ok\"}".data(using: .utf8) else {
+        throw PortalRequestsError.couldNotParseHttpResponse
+      }
+      return okData
+    default:
+      let gDriveFileData = try JSONEncoder().encode(MockConstants.mockGDriveFile)
+      return gDriveFileData
+    }
   }
 
   // Track call count and parameters
