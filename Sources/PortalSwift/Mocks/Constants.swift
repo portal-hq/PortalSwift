@@ -105,8 +105,8 @@ public enum MockConstants {
     value: 0.1,
     asset: "test-transaction-asset",
     category: "test-transaction-category",
-    rawContract: FetchedTransactionRawContract(value: "test-value", address: mockEip155Address, decimal: "test-decimal"),
-    metadata: FetchedTransaction.FetchedTransactionMetadata(blockTimestamp: "test-block-timestamp"),
+    rawContract: FetchedTransaction.RawContract(value: "test-value", address: mockEip155Address, decimal: "test-decimal"),
+    metadata: FetchedTransaction.Metadata(blockTimestamp: "test-block-timestamp"),
     chainId: 11_155_111
   )
   public static let mockFundResponse = FundResponse(
