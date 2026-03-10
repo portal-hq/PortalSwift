@@ -70,6 +70,9 @@ class PortalKeychainSpy: PortalKeychainProtocol {
 
   func getShares() async throws -> PortalKeychainClientShares {
     getSharesCallCount += 1
+    if getSharesShouldThrow {
+      throw NSError(domain: "PortalKeychainSpy", code: -1, userInfo: [NSLocalizedDescriptionKey: "Mock getShares failure"])
+    }
     return getSharesReturnValue
   }
 
@@ -109,6 +112,9 @@ class PortalKeychainSpy: PortalKeychainProtocol {
   private(set) var insertPresignatureCallCount = 0
   private(set) var popOldestPresignatureCallCount = 0
   private(set) var deletePresignaturesCallCount = 0
+  var insertPresignatureShouldThrow = false
+  var deletePresignaturesShouldThrow = false
+  var getSharesShouldThrow = false
 
   func getPresignatures(_ curve: String) async throws -> [PresignatureEntry] {
     getPresignaturesCallCount += 1
@@ -117,6 +123,9 @@ class PortalKeychainSpy: PortalKeychainProtocol {
 
   func insertPresignature(_ curve: String, _ entry: PresignatureEntry) async throws {
     insertPresignatureCallCount += 1
+    if insertPresignatureShouldThrow {
+      throw NSError(domain: "PortalKeychainSpy", code: -1, userInfo: [NSLocalizedDescriptionKey: "Mock insert failure"])
+    }
     presignatureStore[curve, default: []].append(entry)
   }
 
@@ -130,6 +139,9 @@ class PortalKeychainSpy: PortalKeychainProtocol {
 
   func deletePresignatures(_ curve: String) async throws {
     deletePresignaturesCallCount += 1
+    if deletePresignaturesShouldThrow {
+      throw NSError(domain: "PortalKeychainSpy", code: -1, userInfo: [NSLocalizedDescriptionKey: "Mock delete failure"])
+    }
     presignatureStore[curve] = nil
   }
 
