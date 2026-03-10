@@ -201,11 +201,11 @@ extension PresignatureSupportedCurve {
   }
 }
 
-public struct PresignResponse: Codable {
-  public let id: String?
-  public let expiresAt: String?
-  public let data: String?
-  public var error: PortalError?
+struct PresignResponse: Codable {
+  let id: String?
+  let expiresAt: String?
+  let data: String?
+  var error: PortalError?
 }
 
 public struct PresignatureEntry: Codable, Equatable {
