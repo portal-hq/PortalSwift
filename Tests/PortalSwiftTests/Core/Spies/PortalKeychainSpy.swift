@@ -66,11 +66,11 @@ class PortalKeychainSpy: PortalKeychainProtocol {
   // MARK: - getShares
 
   private(set) var getSharesCallCount = 0
+  var getSharesReturnValue: PortalKeychainClientShares = PortalKeychainClientShares()
 
   func getShares() async throws -> PortalKeychainClientShares {
     getSharesCallCount += 1
-    // Provide a mock or stub value if needed
-    return PortalKeychainClientShares()
+    return getSharesReturnValue
   }
 
   // MARK: - loadMetadata
@@ -100,6 +100,54 @@ class PortalKeychainSpy: PortalKeychainProtocol {
   func setShares(_ shares: [String: PortalMpcGeneratedShare]) async throws {
     setSharesCallCount += 1
     setSharesParams.append(shares)
+  }
+
+  // MARK: - Presignature Storage
+
+  private var presignatureStore: [String: [PresignatureEntry]] = [:]
+  private(set) var getPresignaturesCallCount = 0
+  private(set) var insertPresignatureCallCount = 0
+  private(set) var popOldestPresignatureCallCount = 0
+  private(set) var deletePresignaturesCallCount = 0
+
+  func getPresignatures(_ curve: String) async throws -> [PresignatureEntry] {
+    getPresignaturesCallCount += 1
+    return presignatureStore[curve] ?? []
+  }
+
+  func insertPresignature(_ curve: String, _ entry: PresignatureEntry) async throws {
+    insertPresignatureCallCount += 1
+    presignatureStore[curve, default: []].append(entry)
+  }
+
+  func popOldestPresignature(_ curve: String) async throws -> PresignatureEntry? {
+    popOldestPresignatureCallCount += 1
+    guard var entries = presignatureStore[curve], !entries.isEmpty else { return nil }
+    let oldest = entries.removeFirst()
+    presignatureStore[curve] = entries
+    return oldest
+  }
+
+  func deletePresignatures(_ curve: String) async throws {
+    deletePresignaturesCallCount += 1
+    presignatureStore[curve] = nil
+  }
+
+  private(set) var cleanupExpiredPresignaturesCallCount = 0
+
+  @discardableResult
+  func cleanupExpiredPresignatures(_ curve: String) async throws -> Int {
+    cleanupExpiredPresignaturesCallCount += 1
+    let entries = presignatureStore[curve] ?? []
+    let now = Date()
+    let formatter = ISO8601DateFormatter()
+    let valid = entries.filter { entry in
+      guard let expiresAt = formatter.date(from: entry.expiresAt) else { return false }
+      return expiresAt > now
+    }
+    let removed = entries.count - valid.count
+    presignatureStore[curve] = valid
+    return removed
   }
 
   // MARK: - getAddress

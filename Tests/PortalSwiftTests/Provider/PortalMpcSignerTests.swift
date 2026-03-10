@@ -87,6 +87,171 @@ final class PortalMpcSignerTests: XCTestCase {
   }
 }
 
+// MARK: - Presignature Tests
+
+extension PortalMpcSignerTests {
+  func test_sign_withPresignatureAvailable_usesSignWithPresignature() async throws {
+    let mobileSpy = MobileSpy()
+    mobileSpy.mobileSignWithPresignatureReturnValue = MockConstants.mockSignatureResponse
+    let keychainSpy = PortalKeychainSpy()
+    let source = MockPresignatureSource(entry: PresignatureEntry(
+      id: "presig-1", expiresAt: "2099-01-01T00:00:00Z", data: "mock-presig-data"
+    ))
+
+    let signer = PortalMpcSigner(
+      apiKey: MockConstants.mockApiKey,
+      keychain: keychainSpy,
+      featureFlags: FeatureFlags(usePresignatures: true),
+      binary: mobileSpy,
+      presignatureSource: source
+    )
+
+    guard let blockchain = blockchain else { return }
+    let signRequest = PortalSignRequest(method: .eth_signTransaction, params: "test-transaction")
+
+    let response = try await signer.sign(
+      "eip155:11155111",
+      withPayload: signRequest,
+      andRpcUrl: MockConstants.mockHost,
+      usingBlockchain: blockchain
+    )
+
+    XCTAssertEqual(mobileSpy.mobileSignWithPresignatureCallsCount, 1)
+    XCTAssertEqual(mobileSpy.mobileSignCallsCount, 0)
+    XCTAssertEqual(mobileSpy.mobileSignWithPresignaturePresignatureDataParam, "mock-presig-data")
+    XCTAssertEqual(response, MockConstants.mockSignature)
+  }
+
+  func test_sign_withPresignatureDisabled_usesNormalSign() async throws {
+    let mobileSpy = MobileSpy()
+    mobileSpy.mobileSignReturnValue = MockConstants.mockSignatureResponse
+    let source = MockPresignatureSource(entry: PresignatureEntry(
+      id: "presig-1", expiresAt: "2099-01-01T00:00:00Z", data: "mock-presig-data"
+    ))
+
+    let signer = PortalMpcSigner(
+      apiKey: MockConstants.mockApiKey,
+      keychain: MockPortalKeychain(),
+      featureFlags: FeatureFlags(usePresignatures: false),
+      binary: mobileSpy,
+      presignatureSource: source
+    )
+
+    guard let blockchain = blockchain else { return }
+    let signRequest = PortalSignRequest(method: .eth_signTransaction, params: "test-transaction")
+
+    _ = try await signer.sign(
+      "eip155:11155111",
+      withPayload: signRequest,
+      andRpcUrl: MockConstants.mockHost,
+      usingBlockchain: blockchain
+    )
+
+    XCTAssertEqual(mobileSpy.mobileSignWithPresignatureCallsCount, 0)
+    XCTAssertEqual(mobileSpy.mobileSignCallsCount, 1)
+  }
+
+  func test_sign_withNoPresignatureAvailable_fallsBackToNormalSign() async throws {
+    let mobileSpy = MobileSpy()
+    mobileSpy.mobileSignReturnValue = MockConstants.mockSignatureResponse
+    let source = MockPresignatureSource(entry: nil)
+
+    let signer = PortalMpcSigner(
+      apiKey: MockConstants.mockApiKey,
+      keychain: MockPortalKeychain(),
+      featureFlags: FeatureFlags(usePresignatures: true),
+      binary: mobileSpy,
+      presignatureSource: source
+    )
+
+    guard let blockchain = blockchain else { return }
+    let signRequest = PortalSignRequest(method: .eth_signTransaction, params: "test-transaction")
+
+    _ = try await signer.sign(
+      "eip155:11155111",
+      withPayload: signRequest,
+      andRpcUrl: MockConstants.mockHost,
+      usingBlockchain: blockchain
+    )
+
+    XCTAssertEqual(mobileSpy.mobileSignWithPresignatureCallsCount, 0)
+    XCTAssertEqual(mobileSpy.mobileSignCallsCount, 1)
+  }
+
+  func test_sign_whenSignWithPresignatureFails_fallsBackToNormalSign() async throws {
+    let mobileSpy = MobileSpy()
+    mobileSpy.mobileSignWithPresignatureReturnValue = "{\"data\":null,\"error\":{\"id\":\"PRESIG_FAIL\",\"message\":\"presig error\"}}"
+    mobileSpy.mobileSignReturnValue = MockConstants.mockSignatureResponse
+
+    let source = MockPresignatureSource(entry: PresignatureEntry(
+      id: "presig-1", expiresAt: "2099-01-01T00:00:00Z", data: "mock-presig-data"
+    ))
+
+    let signer = PortalMpcSigner(
+      apiKey: MockConstants.mockApiKey,
+      keychain: MockPortalKeychain(),
+      featureFlags: FeatureFlags(usePresignatures: true),
+      binary: mobileSpy,
+      presignatureSource: source
+    )
+
+    guard let blockchain = blockchain else { return }
+    let signRequest = PortalSignRequest(method: .eth_signTransaction, params: "test-transaction")
+
+    let response = try await signer.sign(
+      "eip155:11155111",
+      withPayload: signRequest,
+      andRpcUrl: MockConstants.mockHost,
+      usingBlockchain: blockchain
+    )
+
+    XCTAssertEqual(mobileSpy.mobileSignWithPresignatureCallsCount, 1)
+    XCTAssertEqual(mobileSpy.mobileSignCallsCount, 1, "Should fall back to normal sign")
+    XCTAssertEqual(response, MockConstants.mockSignature)
+  }
+
+  func test_sign_withNoPresignatureSource_usesNormalSign() async throws {
+    let mobileSpy = MobileSpy()
+    mobileSpy.mobileSignReturnValue = MockConstants.mockSignatureResponse
+
+    let signer = PortalMpcSigner(
+      apiKey: MockConstants.mockApiKey,
+      keychain: MockPortalKeychain(),
+      featureFlags: FeatureFlags(usePresignatures: true),
+      binary: mobileSpy
+    )
+
+    guard let blockchain = blockchain else { return }
+    let signRequest = PortalSignRequest(method: .eth_signTransaction, params: "test-transaction")
+
+    _ = try await signer.sign(
+      "eip155:11155111",
+      withPayload: signRequest,
+      andRpcUrl: MockConstants.mockHost,
+      usingBlockchain: blockchain
+    )
+
+    XCTAssertEqual(mobileSpy.mobileSignCallsCount, 1)
+    XCTAssertEqual(mobileSpy.mobileSignWithPresignatureCallsCount, 0)
+  }
+}
+
+// MARK: - MockPresignatureSource
+
+private class MockPresignatureSource: PresignatureSource {
+  private let entry: PresignatureEntry?
+  private(set) var consumeCallCount = 0
+
+  init(entry: PresignatureEntry?) {
+    self.entry = entry
+  }
+
+  func consumePresignature(forCurve _: PortalCurve) async -> PresignatureEntry? {
+    consumeCallCount += 1
+    return entry
+  }
+}
+
 // MARK: - SponsorGas Tests
 
 extension PortalMpcSignerTests {

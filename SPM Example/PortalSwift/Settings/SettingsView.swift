@@ -71,6 +71,11 @@ struct SettingsView: View {
         set: { Settings.shared.isAccountAbstracted = $0 }
       ))
 
+      Toggle("Use Presignatures", isOn: Binding(
+        get: { Settings.shared.usePresignatures },
+        set: { Settings.shared.usePresignatures = $0 }
+      ))
+
       Spacer()
     }
     .padding(.horizontal)

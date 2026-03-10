@@ -22,6 +22,13 @@ public protocol PortalKeychainProtocol: AnyObject {
   func setMetadata(_: PortalKeychainClientMetadata) async throws
   func setShares(_: [String: PortalMpcGeneratedShare]) async throws
 
+  // Presignature storage
+  func getPresignatures(_ curve: String) async throws -> [PresignatureEntry]
+  func insertPresignature(_ curve: String, _ entry: PresignatureEntry) async throws
+  func popOldestPresignature(_ curve: String) async throws -> PresignatureEntry?
+  func deletePresignatures(_ curve: String) async throws
+  @discardableResult func cleanupExpiredPresignatures(_ curve: String) async throws -> Int
+
   // deprecated functions
   @available(*, deprecated, renamed: "getAddress", message: "Please use the async, chainId-specific implementation of getAddress().")
   func getAddress() throws -> String
@@ -67,6 +74,7 @@ public class PortalKeychain: PortalKeychainProtocol {
     case unexpectedItemData(item: String)
     case unhandledError(status: OSStatus)
     case unsupportedNamespace(_ chainId: String)
+    case invalidPresignatureEntry(_ reason: String)
   }
 
   public weak var api: PortalApiProtocol? {
@@ -400,6 +408,120 @@ public class PortalKeychain: PortalKeychainProtocol {
     }
 
     try self.keychain.updateItem("\(clientId).\(self.sharesKey)", value: value)
+  }
+
+  // MARK: - Presignature Storage
+
+  private func presignatureKey(_ curve: String) async throws -> String {
+    guard let client = try await client else {
+      self.logger.error("PortalKeychain.presignatureKey() - Client not found")
+      throw KeychainError.clientNotFound
+    }
+    return "\(client.id).presignatures.\(curve)"
+  }
+
+  public func getPresignatures(_ curve: String) async throws -> [PresignatureEntry] {
+    let key = try await presignatureKey(curve)
+    do {
+      let value = try keychain.getItem(key)
+      guard let data = value.data(using: .utf8) else {
+        return []
+      }
+      return (try? decoder.decode([PresignatureEntry].self, from: data)) ?? []
+    } catch is PortalKeychainAccessError {
+      return []
+    }
+  }
+
+  public func insertPresignature(_ curve: String, _ entry: PresignatureEntry) async throws {
+    guard !entry.id.isEmpty else {
+      throw KeychainError.invalidPresignatureEntry("id must be non-empty")
+    }
+    guard !entry.data.isEmpty else {
+      throw KeychainError.invalidPresignatureEntry("data must be non-empty")
+    }
+    guard !entry.expiresAt.isEmpty else {
+      throw KeychainError.invalidPresignatureEntry("expiresAt must be non-empty")
+    }
+    guard ISO8601DateFormatter().date(from: entry.expiresAt) != nil else {
+      throw KeychainError.invalidPresignatureEntry("expiresAt must be valid ISO 8601")
+    }
+
+    let key = try await presignatureKey(curve)
+    var entries = try await getPresignatures(curve)
+    let isNew = entries.isEmpty
+    entries.append(entry)
+
+    let data = try encoder.encode(entries)
+    guard let value = String(data: data, encoding: .utf8) else {
+      throw KeychainError.unableToEncodeKeychainData
+    }
+    if isNew {
+      try keychain.addItem(key, value: value)
+    } else {
+      try keychain.updateItem(key, value: value)
+    }
+  }
+
+  public func popOldestPresignature(_ curve: String) async throws -> PresignatureEntry? {
+    let key = try await presignatureKey(curve)
+    var entries = try await getPresignatures(curve)
+
+    let now = ISO8601DateFormatter().date(from: ISO8601DateFormatter().string(from: Date())) ?? Date()
+    let formatter = ISO8601DateFormatter()
+    entries.removeAll { entry in
+      guard let expiresAt = formatter.date(from: entry.expiresAt) else { return false }
+      return expiresAt <= now
+    }
+
+    guard !entries.isEmpty else {
+      let data = try encoder.encode(entries)
+      if let value = String(data: data, encoding: .utf8) {
+        try keychain.updateItem(key, value: value)
+      }
+      return nil
+    }
+
+    let oldest = entries.removeFirst()
+
+    let data = try encoder.encode(entries)
+    guard let value = String(data: data, encoding: .utf8) else {
+      throw KeychainError.unableToEncodeKeychainData
+    }
+    try keychain.updateItem(key, value: value)
+    return oldest
+  }
+
+  public func deletePresignatures(_ curve: String) async throws {
+    let key = try await presignatureKey(curve)
+    do {
+      try keychain.deleteItem(key)
+    } catch is PortalKeychainAccessError {
+      // Already deleted or not found, no-op
+    }
+  }
+
+  @discardableResult
+  public func cleanupExpiredPresignatures(_ curve: String) async throws -> Int {
+    let key = try await presignatureKey(curve)
+    let entries = try await getPresignatures(curve)
+    let now = Date()
+    let formatter = ISO8601DateFormatter()
+
+    let valid = entries.filter { entry in
+      guard let expiresAt = formatter.date(from: entry.expiresAt) else { return false }
+      return expiresAt > now
+    }
+
+    let removed = entries.count - valid.count
+    if removed > 0 {
+      let data = try encoder.encode(valid)
+      guard let value = String(data: data, encoding: .utf8) else {
+        throw KeychainError.unableToEncodeKeychainData
+      }
+      try keychain.updateItem(key, value: value)
+    }
+    return removed
   }
 
   /*******************************************

@@ -44,7 +44,8 @@ public protocol PortalProtocol {
     iCloud: ICloudStorage?,
     keychain: PortalKeychainProtocol?,
     mpc: PortalMpcProtocol?,
-    passwords: PasswordStorage?
+    passwords: PasswordStorage?,
+    maxPresignaturesPerCurve: [PresignatureSupportedCurve: Int]
   ) throws
 
   // Deprecated Initializer

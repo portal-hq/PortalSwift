@@ -177,6 +177,28 @@ public class MockMobileWrapper: Mobile {
     return MockConstants.mockSignatureResponse
   }
 
+  public func MobilePresign(_: String, _: String, _: String, _: String, _: PortalCurve?) async -> String {
+    let response = PresignResponse(
+      id: "mock-presig-id",
+      expiresAt: "2099-01-01T00:00:00Z",
+      data: "mock-presig-data",
+      error: nil
+    )
+    do {
+      let data = try JSONEncoder().encode(response)
+      return String(data: data, encoding: .utf8) ?? ""
+    } catch {
+      return ""
+    }
+  }
+
+  public func MobileSignWithPresignature(_: String?, _: String?, _: String?, _: String?, _ method: String?, _: String?, _: String?, _: String?, _: String?, _: PortalCurve?, isRaw _: Bool?) async -> String {
+    if method == PortalRequestMethod.eth_sendTransaction.rawValue {
+      return MockConstants.mockTransactionHashResponse
+    }
+    return MockConstants.mockSignatureResponse
+  }
+
   public func MobileEjectWalletAndDiscontinueMPC(_: String, _: String) -> String {
     return MockConstants.mockEip155EjectResponse
   }

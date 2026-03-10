@@ -222,6 +222,43 @@ extension MPCMobile {
     return result
   }
 
+  func MobilePresign(
+    _ clientAPIKey: String,
+    _ mpcAddr: String,
+    _ shareStr: String,
+    _ metadataStr: String,
+    _: PortalCurve?
+  ) async -> String {
+    let result = await withCheckedContinuation { continuation in
+      let presignResponse = Mpc.MobilePresign(clientAPIKey, mpcAddr, shareStr, metadataStr)
+      continuation.resume(returning: presignResponse)
+    }
+    return result
+  }
+
+  func MobileSignWithPresignature(
+    _ clientAPIKey: String?,
+    _ mpcAddr: String?,
+    _ shareStr: String?,
+    _ presignatureData: String?,
+    _ method: String?,
+    _ params: String?,
+    _ rpcURL: String?,
+    _ chainId: String?,
+    _ metadataStr: String?,
+    _: PortalCurve?,
+    isRaw _: Bool?
+  ) async -> String {
+    let result = await withCheckedContinuation { continuation in
+      let signResponse = Mpc.MobileSignWithPresignature(
+        clientAPIKey, mpcAddr, shareStr, presignatureData,
+        method, params, rpcURL, chainId, metadataStr
+      )
+      continuation.resume(returning: signResponse)
+    }
+    return result
+  }
+
   func MobileEjectWalletAndDiscontinueMPC(_ clientDkgCipherText: String, _ serverDkgCipherText: String) async -> String {
     let result = await withCheckedContinuation { continuation in
       let ejectResponse = Mpc.MobileEjectWalletAndDiscontinueMPC(clientDkgCipherText, serverDkgCipherText)
