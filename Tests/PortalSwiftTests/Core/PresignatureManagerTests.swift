@@ -15,7 +15,8 @@ final class PresignatureManagerTests: XCTestCase {
 
   private func makeManager(
     maxPresignaturesPerCurve: [PresignatureSupportedCurve: Int] = [.SECP256K1: 3],
-    featureFlags: FeatureFlags? = FeatureFlags(usePresignatures: true)
+    featureFlags: FeatureFlags? = FeatureFlags(usePresignatures: true),
+    retryConfig: PresignRetryConfig = .fast
   ) -> PresignatureManager {
     PresignatureManager(
       apiKey: "test-api-key",
@@ -23,7 +24,8 @@ final class PresignatureManagerTests: XCTestCase {
       binary: mobileSpy,
       keychain: keychainSpy,
       maxPresignaturesPerCurve: maxPresignaturesPerCurve,
-      featureFlags: featureFlags
+      featureFlags: featureFlags,
+      retryConfig: retryConfig
     )
   }
 
@@ -171,7 +173,7 @@ extension PresignatureManagerTests {
     let manager = makeManager(maxPresignaturesPerCurve: [.SECP256K1: 1])
     manager.initializeBuffers()
 
-    try await Task.sleep(nanoseconds: 15_000_000_000)
+    try await Task.sleep(nanoseconds: 500_000_000)
 
     XCTAssertGreaterThan(mobileSpy.mobilePresignCallsCount, 1, "Should have retried")
     XCTAssertEqual(keychainSpy.insertPresignatureCallCount, 0, "Should not have inserted any presignatures on failure")

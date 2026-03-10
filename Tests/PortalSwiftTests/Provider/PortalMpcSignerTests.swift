@@ -106,7 +106,7 @@ extension PortalMpcSignerTests {
       presignatureSource: source
     )
 
-    guard let blockchain = blockchain else { return }
+    let blockchain = try XCTUnwrap(blockchain)
     let signRequest = PortalSignRequest(method: .eth_signTransaction, params: "test-transaction")
 
     let response = try await signer.sign(
@@ -137,7 +137,7 @@ extension PortalMpcSignerTests {
       presignatureSource: source
     )
 
-    guard let blockchain = blockchain else { return }
+    let blockchain = try XCTUnwrap(blockchain)
     let signRequest = PortalSignRequest(method: .eth_signTransaction, params: "test-transaction")
 
     _ = try await signer.sign(
@@ -164,7 +164,7 @@ extension PortalMpcSignerTests {
       presignatureSource: source
     )
 
-    guard let blockchain = blockchain else { return }
+    let blockchain = try XCTUnwrap(blockchain)
     let signRequest = PortalSignRequest(method: .eth_signTransaction, params: "test-transaction")
 
     _ = try await signer.sign(
@@ -195,7 +195,7 @@ extension PortalMpcSignerTests {
       presignatureSource: source
     )
 
-    guard let blockchain = blockchain else { return }
+    let blockchain = try XCTUnwrap(blockchain)
     let signRequest = PortalSignRequest(method: .eth_signTransaction, params: "test-transaction")
 
     let response = try await signer.sign(
@@ -221,7 +221,7 @@ extension PortalMpcSignerTests {
       binary: mobileSpy
     )
 
-    guard let blockchain = blockchain else { return }
+    let blockchain = try XCTUnwrap(blockchain)
     let signRequest = PortalSignRequest(method: .eth_signTransaction, params: "test-transaction")
 
     _ = try await signer.sign(

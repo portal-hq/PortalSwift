@@ -8,22 +8,39 @@
 
 import Foundation
 
-private let presignRetryMaxAttempts = 6
-private let presignRetryBaseDelayNs: UInt64 = 2_000_000_000
-private let presignRetryMultiplier: Double = 2.0
-private let presignRetryMaxDelayNs: UInt64 = 3_600_000_000_000
+struct PresignRetryConfig {
+  let maxAttempts: Int
+  let baseDelayNs: UInt64
+  let multiplier: Double
+  let maxDelayNs: UInt64
+
+  static let `default` = PresignRetryConfig(
+    maxAttempts: 6,
+    baseDelayNs: 2_000_000_000,
+    multiplier: 2.0,
+    maxDelayNs: 3_600_000_000_000
+  )
+
+  static let fast = PresignRetryConfig(
+    maxAttempts: 6,
+    baseDelayNs: 1_000_000,
+    multiplier: 2.0,
+    maxDelayNs: 10_000_000
+  )
+}
 
 public protocol PresignatureSource: AnyObject {
   func consumePresignature(forCurve curve: PortalCurve) async -> PresignatureEntry?
 }
 
-public class PresignatureManager: PresignatureSource {
+class PresignatureManager: PresignatureSource {
   private let apiKey: String
   private let mpcHost: String
   private let binary: Mobile
   private weak var keychain: PortalKeychainProtocol?
   private let maxPresignaturesPerCurve: [PresignatureSupportedCurve: Int]
   private let featureFlags: FeatureFlags?
+  private let retryConfig: PresignRetryConfig
 
   private let fillTasks = ThreadSafeDictionary<String, Task<Void, Never>>()
   private let guard_ = PresignatureGuard()
@@ -35,7 +52,8 @@ public class PresignatureManager: PresignatureSource {
     binary: Mobile,
     keychain: PortalKeychainProtocol,
     maxPresignaturesPerCurve: [PresignatureSupportedCurve: Int],
-    featureFlags: FeatureFlags?
+    featureFlags: FeatureFlags?,
+    retryConfig: PresignRetryConfig = .default
   ) {
     self.apiKey = apiKey
     self.mpcHost = mpcHost
@@ -43,6 +61,7 @@ public class PresignatureManager: PresignatureSource {
     self.keychain = keychain
     self.maxPresignaturesPerCurve = maxPresignaturesPerCurve
     self.featureFlags = featureFlags
+    self.retryConfig = retryConfig
   }
 
   // MARK: - Public
@@ -117,7 +136,7 @@ public class PresignatureManager: PresignatureSource {
       return nil
     }
 
-    for attempt in 0 ..< presignRetryMaxAttempts {
+    for attempt in 0 ..< retryConfig.maxAttempts {
       guard !Task.isCancelled else {
         logger.debug("[PresignatureManager] Presign cancelled for \(curve.rawValue)")
         return nil
@@ -160,15 +179,15 @@ public class PresignatureManager: PresignatureSource {
         logger.debug("[PresignatureManager] Generated presignature \(id) for \(curve.rawValue)")
         return PresignatureEntry(id: id, expiresAt: expiresAt, data: presignData)
       } catch {
-        logger.warn("[PresignatureManager] Presign failed for \(curve.rawValue) (attempt \(attempt + 1)/\(presignRetryMaxAttempts)): \(error.localizedDescription)")
-        if attempt < presignRetryMaxAttempts - 1 {
-          let rawDelay = UInt64(Double(presignRetryBaseDelayNs) * pow(presignRetryMultiplier, Double(attempt)))
-          let delay = min(rawDelay, presignRetryMaxDelayNs)
+        logger.warn("[PresignatureManager] Presign failed for \(curve.rawValue) (attempt \(attempt + 1)/\(retryConfig.maxAttempts)): \(error.localizedDescription)")
+        if attempt < retryConfig.maxAttempts - 1 {
+          let rawDelay = UInt64(Double(retryConfig.baseDelayNs) * pow(retryConfig.multiplier, Double(attempt)))
+          let delay = min(rawDelay, retryConfig.maxDelayNs)
           try? await Task.sleep(nanoseconds: delay)
         }
       }
     }
-    logger.error("[PresignatureManager] Presign failed for \(curve.rawValue) after \(presignRetryMaxAttempts) attempts")
+    logger.error("[PresignatureManager] Presign failed for \(curve.rawValue) after \(retryConfig.maxAttempts) attempts")
     return nil
   }
 
@@ -216,7 +235,7 @@ public class PresignatureManager: PresignatureSource {
         }
 
         guard let entry = await preSign(curve: curve) else {
-          logger.error("[PresignatureManager] Presign failed for \(curve.rawValue) after \(presignRetryMaxAttempts) attempts, stopping buffer fill")
+          logger.error("[PresignatureManager] Presign failed for \(curve.rawValue) after \(retryConfig.maxAttempts) attempts, stopping buffer fill")
           break
         }
 
