@@ -15,6 +15,9 @@
 		7E4B874E2A58BFFB003A8DB5 /* WebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4B874D2A58BFFB003A8DB5 /* WebViewController.swift */; };
 		7E7F4C002A002D7F00756B6A /* ConnectViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E7F4BFF2A002D7F00756B6A /* ConnectViewController.swift */; };
 		7EDEB9FC2AF59EC3005E8C7F /* PortalSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 7EDEB9FB2AF59EC3005E8C7F /* PortalSwift */; };
+		D8PU00012EF2000000000001 /* Pulse in Frameworks */ = {isa = PBXBuildFile; productRef = D8PU00022EF2000000000002 /* Pulse */; };
+		D8PU00032EF2000000000003 /* PulseUI in Frameworks */ = {isa = PBXBuildFile; productRef = D8PU00042EF2000000000004 /* PulseUI */; };
+		D8PU00052EF2000000000005 /* PulseProxy in Frameworks */ = {isa = PBXBuildFile; productRef = D8PU00062EF2000000000006 /* PulseProxy */; };
 		F915F34E2A8195E70014C25B /* ProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F915F34D2A8195E70014C25B /* ProviderTests.swift */; };
 		F95EA8282AE1440F00A31827 /* PasswordWalletTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F95EA8272AE1440F00A31827 /* PasswordWalletTests.swift */; };
 		F975DB932BEBBED500E4E5F6 /* PortalSwift in Frameworks */ = {isa = PBXBuildFile; productRef = F975DB922BEBBED500E4E5F6 /* PortalSwift */; };
@@ -79,6 +82,9 @@
 				F975DB932BEBBED500E4E5F6 /* PortalSwift in Frameworks */,
 				F9BF35A62BF8115000BF2862 /* Web3PromiseKit in Frameworks */,
 				F9BF35A22BF8115000BF2862 /* Web3 in Frameworks */,
+				D8PU00012EF2000000000001 /* Pulse in Frameworks */,
+				D8PU00032EF2000000000003 /* PulseUI in Frameworks */,
+				D8PU00052EF2000000000005 /* PulseProxy in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -200,6 +206,9 @@
 				F9BF35A12BF8115000BF2862 /* Web3 */,
 				F9BF35A32BF8115000BF2862 /* Web3ContractABI */,
 				F9BF35A52BF8115000BF2862 /* Web3PromiseKit */,
+				D8PU00022EF2000000000002 /* Pulse */,
+				D8PU00042EF2000000000004 /* PulseUI */,
+				D8PU00062EF2000000000006 /* PulseProxy */,
 			);
 			productName = PortalSwift;
 			productReference = 607FACD01AFB9204008FA782 /* SPM Example.app */;
@@ -262,6 +271,7 @@
 			packageReferences = (
 				7E4579F12BC85D6700D71835 /* XCLocalSwiftPackageReference ".." */,
 				F9BF35A02BF8115000BF2862 /* XCRemoteSwiftPackageReference "Web3" */,
+				D8PU00072EF2000000000007 /* XCRemoteSwiftPackageReference "Pulse" */,
 			);
 			productRefGroup = 607FACD11AFB9204008FA782 /* Products */;
 			projectDirPath = "";
@@ -721,6 +731,14 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		D8PU00072EF2000000000007 /* XCRemoteSwiftPackageReference "Pulse" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/kean/Pulse";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.1.4;
+			};
+		};
 		F9BF35A02BF8115000BF2862 /* XCRemoteSwiftPackageReference "Web3" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/Boilertalk/Web3.swift";
@@ -735,6 +753,21 @@
 		7EDEB9FB2AF59EC3005E8C7F /* PortalSwift */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PortalSwift;
+		};
+		D8PU00022EF2000000000002 /* Pulse */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D8PU00072EF2000000000007 /* XCRemoteSwiftPackageReference "Pulse" */;
+			productName = Pulse;
+		};
+		D8PU00042EF2000000000004 /* PulseUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D8PU00072EF2000000000007 /* XCRemoteSwiftPackageReference "Pulse" */;
+			productName = PulseUI;
+		};
+		D8PU00062EF2000000000006 /* PulseProxy */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D8PU00072EF2000000000007 /* XCRemoteSwiftPackageReference "Pulse" */;
+			productName = PulseProxy;
 		};
 		F975DB922BEBBED500E4E5F6 /* PortalSwift */ = {
 			isa = XCSwiftPackageProductDependency;
