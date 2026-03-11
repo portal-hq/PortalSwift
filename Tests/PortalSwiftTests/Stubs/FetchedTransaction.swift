@@ -14,15 +14,15 @@ extension FetchedTransaction {
     uniqueId: String = "unique-transaction-id",
     hash: String = "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
     from: String = "0x123456789abcdef123456789abcdef123456789a",
-    to: String = "0xabcdef123456789abcdef123456789abcdef12345",
-    value: Float = 1.23,
+    to: String? = "0xabcdef123456789abcdef123456789abcdef12345",
+    value: Double? = 1.23,
     erc721TokenId: String? = nil,
     erc1155Metadata: [Erc1155Metadata?] = [],
     tokenId: String? = nil,
     asset: String = "ETH",
     category: String = "external",
     rawContract: FetchedTransactionRawContract = .stub(),
-    metadata: FetchedTransactionMetadata = .stub(),
+    metadata: FetchedTransactionMetadata? = .stub(),
     chainId: Int = 1
   ) -> FetchedTransaction {
     return FetchedTransaction(
@@ -54,13 +54,13 @@ extension FetchedTransaction.FetchedTransactionMetadata {
   }
 }
 
-extension FetchedTransactionRawContract {
+extension FetchedTransaction.FetchedTransactionRawContract {
   static func stub(
     value: String = "1000000000000000000",
     address: String? = "0xabcdef123456789abcdef123456789abcdef12345",
     decimal: String = "18"
-  ) -> FetchedTransactionRawContract {
-    return FetchedTransactionRawContract(
+  ) -> FetchedTransaction.FetchedTransactionRawContract {
+    return FetchedTransaction.FetchedTransactionRawContract(
       value: value,
       address: address,
       decimal: decimal
