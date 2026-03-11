@@ -918,7 +918,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         user.clientApiKey,
         featureFlags: FeatureFlags(
           isMultiBackupEnabled: true,
-          useEnclaveMPCApi: false,
+          useEnclaveMPCApi: Settings.shared.useEnclaveMPC,
           usePresignatures: Settings.shared.usePresignatures
         ),
         apiHost: config.apiUrl,

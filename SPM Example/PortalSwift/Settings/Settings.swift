@@ -44,6 +44,7 @@ class Settings: ObservableObject {
   var portalConfig: PortalConfig = .init()
 
   var isAccountAbstracted: Bool = false
+  var useEnclaveMPC: Bool = false
   var usePresignatures: Bool = false
 }
 
