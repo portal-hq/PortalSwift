@@ -234,7 +234,6 @@ extension PortalMpcSignerTests {
     XCTAssertEqual(mobileSpy.mobileSignCallsCount, 1)
     XCTAssertEqual(mobileSpy.mobileSignWithPresignatureCallsCount, 0)
   }
-}
 
   func test_sign_withPresignature_forSendTransaction() async throws {
     let mobileSpy = MobileSpy()
