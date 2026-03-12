@@ -417,7 +417,7 @@ public class PortalKeychain: PortalKeychainProtocol {
       self.logger.error("PortalKeychain.presignatureKey() - Client not found")
       throw KeychainError.clientNotFound
     }
-    return "\(client.id).presignatures.\(curve)"
+    return "PortalMpc.Presignatures.\(curve).\(client.custodian.id)\(client.id)"
   }
 
   public func getPresignatures(_ curve: String) async throws -> [PresignatureEntry] {
