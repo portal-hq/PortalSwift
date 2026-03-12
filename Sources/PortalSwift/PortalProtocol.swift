@@ -44,7 +44,8 @@ public protocol PortalProtocol {
     iCloud: ICloudStorage?,
     keychain: PortalKeychainProtocol?,
     mpc: PortalMpcProtocol?,
-    passwords: PasswordStorage?
+    passwords: PasswordStorage?,
+    maxPresignaturesPerCurve: [PresignatureSupportedCurve: Int]
   ) throws
 
   // Deprecated Initializer
@@ -167,8 +168,45 @@ public protocol PortalProtocol {
   func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any], signatureApprovalMemo: String?) async throws -> PortalProviderResult
 }
 
-// Proxy functions to avoid releasing breaking changes after adding the `signatureApprovalMemo` param
+// Proxy functions to avoid releasing breaking changes after adding new params
 public extension PortalProtocol {
+  init(
+    _ apiKey: String,
+    withRpcConfig: [String: String],
+    autoApprove: Bool,
+    featureFlags: FeatureFlags?,
+    version: String,
+    apiHost: String,
+    mpcHost: String,
+    enclaveMPCHost: String,
+    api: PortalApiProtocol?,
+    binary: Mobile?,
+    gDrive: GDriveStorage?,
+    iCloud: ICloudStorage?,
+    keychain: PortalKeychainProtocol?,
+    mpc: PortalMpcProtocol?,
+    passwords: PasswordStorage?
+  ) throws {
+    try self.init(
+      apiKey,
+      withRpcConfig: withRpcConfig,
+      autoApprove: autoApprove,
+      featureFlags: featureFlags,
+      version: version,
+      apiHost: apiHost,
+      mpcHost: mpcHost,
+      enclaveMPCHost: enclaveMPCHost,
+      api: api,
+      binary: binary,
+      gDrive: gDrive,
+      iCloud: iCloud,
+      keychain: keychain,
+      mpc: mpc,
+      passwords: passwords,
+      maxPresignaturesPerCurve: [.SECP256K1: 3]
+    )
+  }
+
   func rawSign(message: String, chainId: String) async throws -> PortalProviderResult {
     return try await rawSign(message: message, chainId: chainId, signatureApprovalMemo: nil)
   }
