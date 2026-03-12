@@ -509,6 +509,19 @@
                                     <action selector="handleRawSign" destination="vXZ-lx-hvc" eventType="touchUpInside" id="rXm-kd-yDT"/>
                                 </connections>
                             </button>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="sUo-7k-Qp3">
+                                <rect key="frame" x="16" y="863" width="343" height="35"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <state key="normal" title="Button"/>
+                                <buttonConfiguration key="configuration" style="filled" title="Sign UserOperation - AA">
+                                    <backgroundConfiguration key="background"/>
+                                    <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
+                                    <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                </buttonConfiguration>
+                                <connections>
+                                    <action selector="handleSignUserOperation" destination="vXZ-lx-hvc" eventType="touchUpInside" id="pLm-3x-Yk9"/>
+                                </connections>
+                            </button>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="RIl-6u-QAe">
                                 <rect key="frame" x="14" y="1673" width="339" height="39"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
@@ -996,6 +1009,7 @@
                         <outlet property="sendButton" destination="a21-UV-DHr" id="e3D-3c-9Tc"/>
                         <outlet property="sendUniButton" destination="jpZ-X5-eUU" id="Caj-Z5-rEC"/>
                         <outlet property="signButton" destination="NGV-LW-69G" id="A0r-h6-x1L"/>
+                        <outlet property="signUserOperationButton" destination="sUo-7k-Qp3" id="bKz-4d-Rn8"/>
                         <outlet property="signInButton" destination="Ojs-ji-UfQ" id="c9X-B9-99T"/>
                         <outlet property="signUpButton" destination="um8-uX-tq6" id="b5D-14-Cen"/>
                         <outlet property="statusLabel" destination="OXC-5g-rqF" id="NVs-bf-qi7"/>
