@@ -15,10 +15,10 @@ struct PresignRetryConfig {
   let maxDelayNs: UInt64
 
   static let `default` = PresignRetryConfig(
-    maxAttempts: 6,
+    maxAttempts: 3,
     baseDelayNs: 2_000_000_000,
     multiplier: 2.0,
-    maxDelayNs: 3_600_000_000_000
+    maxDelayNs: 300_000_000_000
   )
 
   static let fast = PresignRetryConfig(
