@@ -16,6 +16,8 @@
 @class MobileGetMeResult;
 @class MobileMetaResult;
 @class MobileMetadata;
+@class MobilePresignResponse;
+@class MobilePresignaturePayload;
 
 @interface MobileCustodian : NSObject <goSeqRefInterface> {
 }
@@ -81,12 +83,42 @@
 @property (nonatomic) BOOL isRaw;
 @property (nonatomic) NSString* _Nonnull mpcClientHeader;
 @property (nonatomic) NSString* _Nonnull signatureApprovalMemo;
-@property (nonatomic) BOOL sponsorGas;
 @property (nonatomic) BOOL connectionTracingEnabled;
+@property (nonatomic) int64_t presignatureExpirationTs;
 /**
- * Custom unmarshalling to set the default value of Optimized and SponsorGas to true
+ * Custom unmarshalling to set the default value of Optimized to true
  */
 - (BOOL)unmarshalJSON:(NSData* _Nullable)data error:(NSError* _Nullable* _Nullable)error;
+@end
+
+@interface MobilePresignResponse : NSObject <goSeqRefInterface> {
+}
+@property(strong, readonly) _Nonnull id _ref;
+
+- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
+- (nonnull instancetype)init;
+@property (nonatomic) NSString* _Nonnull id_;
+@property (nonatomic) NSString* _Nonnull expiresAt;
+@property (nonatomic) NSString* _Nonnull data;
+@end
+
+/**
+ * PresignaturePayload is the internal structure packed into the opaque Data blob.
+This matches the structure used in enclave-client for consistency.
+ */
+@interface MobilePresignaturePayload : NSObject <goSeqRefInterface> {
+}
+@property(strong, readonly) _Nonnull id _ref;
+
+- (nonnull instancetype)initWithRef:(_Nonnull id)ref;
+- (nonnull instancetype)init;
+@property (nonatomic) NSString* _Nonnull id_;
+@property (nonatomic) NSString* _Nonnull signingSharePairId;
+@property (nonatomic) NSString* _Nonnull version;
+@property (nonatomic) NSString* _Nonnull expiresAt;
+@property (nonatomic) NSString* _Nonnull curve;
+@property (nonatomic) NSString* _Nonnull signingScheme;
+@property (nonatomic) NSString* _Nonnull serializedRawPresignature;
 @end
 
 FOUNDATION_EXPORT NSString* _Nonnull const MobileCurrentClientVersion;
@@ -126,6 +158,8 @@ FOUNDATION_EXPORT NSString* _Nonnull MobileGetMe(NSString* _Nullable url, NSStri
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileGetVersion(void);
 
+FOUNDATION_EXPORT NSString* _Nonnull MobilePresign(NSString* _Nullable clientAPIKey, NSString* _Nullable mpcAddr, NSString* _Nullable shareStr, NSString* _Nullable metadataStr);
+
 FOUNDATION_EXPORT NSString* _Nonnull MobileRecoverBackup(NSString* _Nullable clientAPIKey, NSString* _Nullable addr, NSString* _Nullable dkgResult, NSString* _Nullable apiAddr, NSString* _Nullable metadataStr);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileRecoverBackupEd25519(NSString* _Nullable clientAPIKey, NSString* _Nullable mpcAddr, NSString* _Nullable shareStr, NSString* _Nullable portalApiUrl, NSString* _Nullable metadataStr);
@@ -139,6 +173,8 @@ FOUNDATION_EXPORT NSString* _Nonnull MobileRecoverSigningEd25519(NSString* _Null
 FOUNDATION_EXPORT NSString* _Nonnull MobileRecoverSigningSecp256k1(NSString* _Nullable clientAPIKey, NSString* _Nullable mpcAddr, NSString* _Nullable shareStr, NSString* _Nullable portalApiUrl, NSString* _Nullable metadataStr);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileSign(NSString* _Nullable clientAPIKey, NSString* _Nullable mpcAddr, NSString* _Nullable shareStr, NSString* _Nullable method, NSString* _Nullable params, NSString* _Nullable rpcURL, NSString* _Nullable chainId, NSString* _Nullable metadataStr);
+
+FOUNDATION_EXPORT NSString* _Nonnull MobileSignWithPresignature(NSString* _Nullable clientAPIKey, NSString* _Nullable mpcAddr, NSString* _Nullable shareStr, NSString* _Nullable presignatureData, NSString* _Nullable method, NSString* _Nullable params, NSString* _Nullable rpcURL, NSString* _Nullable chainId, NSString* _Nullable metadataStr);
 
 FOUNDATION_EXPORT NSString* _Nonnull MobileWebsocketHealthcheck(NSString* _Nullable addr);
 
