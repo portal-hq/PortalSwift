@@ -22,7 +22,7 @@
 		</data>
 		<key>ios-arm64/Mpc.framework/Info.plist</key>
 		<data>
-		+MmyoZ6iV42NAlsI71ABHAsksDQ=
+		LYyZpOpclO3fNC0w2mhxT5wHn7E=
 		</data>
 		<key>ios-arm64/Mpc.framework/Modules/module.modulemap</key>
 		<data>
@@ -30,7 +30,7 @@
 		</data>
 		<key>ios-arm64/Mpc.framework/Mpc</key>
 		<data>
-		TezlMZIq0KRWpyt6ZDwiPDLqAPc=
+		lGuxcOb1LtuTfsafaZCGbg6fbJg=
 		</data>
 		<key>ios-arm64_x86_64-simulator/Mpc.framework/Headers/Mobile.objc.h</key>
 		<data>
@@ -50,7 +50,7 @@
 		</data>
 		<key>ios-arm64_x86_64-simulator/Mpc.framework/Info.plist</key>
 		<data>
-		+MmyoZ6iV42NAlsI71ABHAsksDQ=
+		LYyZpOpclO3fNC0w2mhxT5wHn7E=
 		</data>
 		<key>ios-arm64_x86_64-simulator/Mpc.framework/Modules/module.modulemap</key>
 		<data>
@@ -58,7 +58,7 @@
 		</data>
 		<key>ios-arm64_x86_64-simulator/Mpc.framework/Mpc</key>
 		<data>
-		40wwW+3gzq1qDAezDZ6EKuqo83Q=
+		DRgm0PyAdBCYQaEyRmwo2bouQ3c=
 		</data>
 	</dict>
 	<key>files2</key>
@@ -111,11 +111,11 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			+MmyoZ6iV42NAlsI71ABHAsksDQ=
+			LYyZpOpclO3fNC0w2mhxT5wHn7E=
 			</data>
 			<key>hash2</key>
 			<data>
-			qDtBMapwWmwiBBE27qdBxEW1ZA2cX+OpOznCKnE+jjE=
+			UU6th4qIUJf1IfQ8r/B1IIHHRrObqjidna9GC43Th64=
 			</data>
 		</dict>
 		<key>ios-arm64/Mpc.framework/Modules/module.modulemap</key>
@@ -133,11 +133,11 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			TezlMZIq0KRWpyt6ZDwiPDLqAPc=
+			lGuxcOb1LtuTfsafaZCGbg6fbJg=
 			</data>
 			<key>hash2</key>
 			<data>
-			QsR2QW+0LZPmpkOwOxhvgp9Vb9DHrJTjVGKWGLmigtk=
+			eA1ZCe9eyDYXjAu0XnQ14peAVzteTHh63K4o6AlInhU=
 			</data>
 		</dict>
 		<key>ios-arm64_x86_64-simulator/Mpc.framework/Headers/Mobile.objc.h</key>
@@ -188,11 +188,11 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			+MmyoZ6iV42NAlsI71ABHAsksDQ=
+			LYyZpOpclO3fNC0w2mhxT5wHn7E=
 			</data>
 			<key>hash2</key>
 			<data>
-			qDtBMapwWmwiBBE27qdBxEW1ZA2cX+OpOznCKnE+jjE=
+			UU6th4qIUJf1IfQ8r/B1IIHHRrObqjidna9GC43Th64=
 			</data>
 		</dict>
 		<key>ios-arm64_x86_64-simulator/Mpc.framework/Modules/module.modulemap</key>
@@ -210,11 +210,11 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			40wwW+3gzq1qDAezDZ6EKuqo83Q=
+			DRgm0PyAdBCYQaEyRmwo2bouQ3c=
 			</data>
 			<key>hash2</key>
 			<data>
-			zloPqjhRGNTw/Piyn6UkU+6zHcXgAUwGiLovCWaJzAg=
+			NZAjSxhROTP6jYvSVRKjRPQbtMM1ZFAp2s352MwJT7Y=
 			</data>
 		</dict>
 	</dict>
