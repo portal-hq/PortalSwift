@@ -13,7 +13,7 @@ Possible Types of changes include:
 - Upgraded
 
 ## 7.0.0 - 2026-03-14
-- Added support for `eth_signUserOperation` method for ERC-4337 Account Abstraction signing.
+- Added support for `eth_signUserOperation` method for Account Abstraction signing.
 - Added `portal.evmAccountType.getAddresses()` method.
 - Fixed the Transaction model for the `clients/me/transactions` API.
 
