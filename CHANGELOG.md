@@ -12,6 +12,11 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
+## 7.0.0 - 2026-03-14
+- Added support for `eth_signUserOperation` method for ERC-4337 Account Abstraction signing.
+- Added `portal.evmAccountType.getAddresses()` method.
+- Fixed the Transaction model for the `clients/me/transactions` API.
+
 ## 6.11.0 - 2026-02-27
 - Added `portal.setLogLevel()` to configure the SDK log level.
     - Supported levels: `none`, `error`, `warn`, `info`, `debug` (each includes everything above it, defaults to `none`).
