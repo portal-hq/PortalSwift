@@ -7,6 +7,8 @@
 //
 
 import PortalSwift
+import Pulse
+import PulseProxy
 import UIKit
 
 protocol PortalExampleAppDelegate {
@@ -38,7 +40,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate, PortalExampleAppDelegate 
   var portal: PortalProtocol?
 
   func application(_: UIApplication, didFinishLaunchingWithOptions _: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-    // Override point for customization after application launch.
+    URLSessionProxyDelegate.enableAutomaticRegistration()
+    NetworkLogger.enableProxy()
+    LoggerStore.shared.storeMessage(label: "app", level: .info, message: "Pulse initialized - network proxy enabled")
     return true
   }
 

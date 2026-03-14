@@ -475,6 +475,76 @@ extension PortalProviderTests {
     XCTAssertEqual(signature, MockConstants.mockSignature)
   }
 
+  // MARK: - eth_signUserOperation Tests
+
+  func testRequest_ethSignUserOperation_returnsSignature() async throws {
+    let userOp = AnyCodable([
+      "sender": MockConstants.mockEip155Address,
+      "nonce": "0x0",
+      "callData": "0x",
+      "callGasLimit": "0x5208",
+      "verificationGasLimit": "0x5208",
+      "preVerificationGas": "0x5208",
+      "maxFeePerGas": "0x1",
+      "maxPriorityFeePerGas": "0x1"
+    ] as [String: String])
+    let result = try await provider.request(
+      chainId: "eip155:11155111",
+      method: .eth_signUserOperation,
+      params: [userOp],
+      connect: nil,
+      options: nil
+    )
+    guard let signature = result.result as? String else {
+      XCTFail("Expected result to be String signature")
+      return
+    }
+    XCTAssertEqual(signature, MockConstants.mockSignature)
+  }
+
+  func testRequest_ethSignUserOperation_withApproval_returnsSignature() async throws {
+    self.provider.autoApprove = false
+    let userOp = AnyCodable([
+      "sender": MockConstants.mockEip155Address,
+      "nonce": "0x0",
+      "callData": "0x"
+    ] as [String: String])
+    let result = try await provider.request(
+      chainId: "eip155:11155111",
+      method: .eth_signUserOperation,
+      params: [userOp],
+      connect: nil,
+      options: nil
+    )
+    guard let signature = result.result as? String else {
+      XCTFail("Expected result to be String signature")
+      return
+    }
+    XCTAssertEqual(signature, MockConstants.mockSignature)
+    self.provider.autoApprove = true
+  }
+
+  func testRequest_ethSignUserOperation_withOptions_returnsSignature() async throws {
+    let userOp = AnyCodable([
+      "sender": MockConstants.mockEip155Address,
+      "nonce": "0x0",
+      "callData": "0x"
+    ] as [String: String])
+    let options = RequestOptions(signatureApprovalMemo: "Approve UserOp", sponsorGas: true)
+    let result = try await provider.request(
+      chainId: "eip155:11155111",
+      method: .eth_signUserOperation,
+      params: [userOp],
+      connect: nil,
+      options: options
+    )
+    guard let signature = result.result as? String else {
+      XCTFail("Expected result to be String signature")
+      return
+    }
+    XCTAssertEqual(signature, MockConstants.mockSignature)
+  }
+
   // MARK: - Options Parameter Tests
 
   func testRequest_withSignatureApprovalMemo_succeeds() async throws {

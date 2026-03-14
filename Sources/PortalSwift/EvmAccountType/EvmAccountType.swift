@@ -45,6 +45,11 @@ public protocol EvmAccountTypeProtocol {
   /// - Returns: Response containing account type status and metadata
   func getStatus(chainId: String) async throws -> EvmAccountTypeResponse
 
+  /// Returns the EOA and smart contract addresses for the client's wallet on the given chain.
+  /// - Parameter chainId: CAIP-2 chain ID (e.g., "eip155:11155111")
+  /// - Returns: The EOA address and optional smart contract address
+  func getAddresses(chainId: String) async throws -> EvmAccountTypeAddresses
+
   /// Upgrades an EIP-155 EOA account to EIP-7702 on the given chain.
   /// - Parameter chainId: CAIP-2 chain ID (e.g., "eip155:11155111")
   /// - Returns: The transaction hash of the submitted upgrade transaction
@@ -69,6 +74,15 @@ public class EvmAccountType: EvmAccountTypeProtocol {
   /// Retrieves the account type for the client's wallet on the given chain.
   public func getStatus(chainId: String) async throws -> EvmAccountTypeResponse {
     return try await api.getStatus(chainId: chainId)
+  }
+
+  /// Returns the EOA and smart contract addresses for the client's wallet on the given chain.
+  public func getAddresses(chainId: String) async throws -> EvmAccountTypeAddresses {
+    let status = try await getStatus(chainId: chainId)
+    return EvmAccountTypeAddresses(
+      eoaAddress: status.metadata.eoaAddress,
+      smartContractAddress: status.metadata.smartContractAddress
+    )
   }
 
   /// Upgrades an EIP-155 EOA account to EIP-7702.
