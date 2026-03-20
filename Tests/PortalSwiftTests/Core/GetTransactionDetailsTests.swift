@@ -731,6 +731,604 @@ extension GetTransactionDetailsTests {
   }
 }
 
+// MARK: - Empty / all-null response decoding tests
+
+extension GetTransactionDetailsTests {
+  func test_decode_allNullChains_fromJSON() throws {
+    let json = """
+    {
+      "data": {
+        "evmTransaction": null,
+        "evmUserOperation": null,
+        "solanaTransaction": null,
+        "bitcoinTransaction": null,
+        "stellarTransaction": null,
+        "tronTransaction": null
+      },
+      "metadata": { "chainId": "eip155:1", "signature": "0x000" }
+    }
+    """.data(using: .utf8)!
+
+    let response = try decoder.decode(GetTransactionDetailsResponse.self, from: json)
+
+    XCTAssertNil(response.data.evmTransaction)
+    XCTAssertNil(response.data.evmUserOperation)
+    XCTAssertNil(response.data.solanaTransaction)
+    XCTAssertNil(response.data.bitcoinTransaction)
+    XCTAssertNil(response.data.stellarTransaction)
+    XCTAssertNil(response.data.tronTransaction)
+    XCTAssertEqual(response.metadata.chainId, "eip155:1")
+    XCTAssertEqual(response.metadata.signature, "0x000")
+  }
+}
+
+// MARK: - EVM Transaction additional edge-case tests
+
+extension GetTransactionDetailsTests {
+  func test_decode_evmTransaction_withContractAddress() throws {
+    let json = """
+    {
+      "data": {
+        "evmTransaction": {
+          "hash": "0xdeploy",
+          "from": "0xdeployer",
+          "to": null,
+          "value": "0x0",
+          "nonce": "0x0",
+          "blockNumber": "0x100",
+          "blockHash": "0xblockhash",
+          "transactionIndex": "0x0",
+          "gas": "0x5208",
+          "gasPrice": "0x3b9aca00",
+          "maxFeePerGas": null,
+          "maxPriorityFeePerGas": null,
+          "input": "0x6080604052",
+          "type": "0x0",
+          "status": "0x1",
+          "gasUsed": "0x4000",
+          "effectiveGasPrice": "0x3b9aca00",
+          "logs": [],
+          "contractAddress": "0xnewcontract"
+        },
+        "evmUserOperation": null,
+        "solanaTransaction": null,
+        "bitcoinTransaction": null,
+        "stellarTransaction": null,
+        "tronTransaction": null
+      },
+      "metadata": { "chainId": "eip155:1", "signature": "0xdeploy" }
+    }
+    """.data(using: .utf8)!
+
+    let response = try decoder.decode(GetTransactionDetailsResponse.self, from: json)
+    let tx = response.data.evmTransaction!
+
+    XCTAssertNil(tx.to)
+    XCTAssertEqual(tx.contractAddress, "0xnewcontract")
+    XCTAssertEqual(tx.input, "0x6080604052")
+    XCTAssertEqual(tx.logs?.count, 0)
+  }
+
+  func test_decode_evmTransaction_withMultipleLogs() throws {
+    let json = """
+    {
+      "data": {
+        "evmTransaction": {
+          "hash": "0xmulti",
+          "from": "0xsender",
+          "to": "0xcontract",
+          "value": "0x0",
+          "nonce": "0x5",
+          "blockNumber": "0x200",
+          "blockHash": "0xbh2",
+          "transactionIndex": "0x1",
+          "gas": "0x10000",
+          "gasPrice": "0x3b9aca00",
+          "maxFeePerGas": null,
+          "maxPriorityFeePerGas": null,
+          "input": "0xabcdef",
+          "type": "0x0",
+          "status": "0x1",
+          "gasUsed": "0x8000",
+          "effectiveGasPrice": "0x3b9aca00",
+          "logs": [
+            {
+              "address": "0xtoken1",
+              "topics": ["0xddf252ad"],
+              "data": "0x01",
+              "blockNumber": "0x200",
+              "transactionHash": "0xmulti",
+              "logIndex": "0x0"
+            },
+            {
+              "address": "0xtoken2",
+              "topics": ["0xddf252ad", "0x00000001", "0x00000002"],
+              "data": "0x02",
+              "blockNumber": "0x200",
+              "transactionHash": "0xmulti",
+              "logIndex": "0x1"
+            },
+            {
+              "address": "0xtoken3",
+              "topics": [],
+              "data": "0x03",
+              "blockNumber": "0x200",
+              "transactionHash": "0xmulti",
+              "logIndex": "0x2"
+            }
+          ],
+          "contractAddress": null
+        },
+        "evmUserOperation": null,
+        "solanaTransaction": null,
+        "bitcoinTransaction": null,
+        "stellarTransaction": null,
+        "tronTransaction": null
+      },
+      "metadata": { "chainId": "eip155:1", "signature": "0xmulti" }
+    }
+    """.data(using: .utf8)!
+
+    let response = try decoder.decode(GetTransactionDetailsResponse.self, from: json)
+    let tx = response.data.evmTransaction!
+
+    XCTAssertEqual(tx.logs?.count, 3)
+    XCTAssertEqual(tx.logs?[0].address, "0xtoken1")
+    XCTAssertEqual(tx.logs?[0].logIndex, "0x0")
+    XCTAssertEqual(tx.logs?[1].topics.count, 3)
+    XCTAssertEqual(tx.logs?[2].topics.count, 0)
+  }
+}
+
+// MARK: - EVM User Operation additional tests
+
+extension GetTransactionDetailsTests {
+  func test_decode_evmUserOperation_allGasFieldsExercised() throws {
+    let json = """
+    {
+      "data": {
+        "evmTransaction": null,
+        "evmUserOperation": {
+          "sender": "0xuser",
+          "nonce": "0xa",
+          "callData": "0xcalldata",
+          "callGasLimit": "0x1234",
+          "verificationGasLimit": "0x5678",
+          "preVerificationGas": "0x9abc",
+          "maxFeePerGas": "0xdef0",
+          "maxPriorityFeePerGas": "0x1111",
+          "signature": "0xsig",
+          "entryPoint": "0xep",
+          "success": false,
+          "actualGasCost": "0x2222",
+          "actualGasUsed": "0x3333",
+          "receipt": {
+            "hash": "0xreceipt",
+            "from": "0xbundler",
+            "to": "0xep",
+            "value": "0x0",
+            "nonce": "0x10",
+            "blockNumber": "0x500",
+            "blockHash": "0xbh5",
+            "transactionIndex": "0x2",
+            "gas": "0x50000",
+            "gasPrice": "0xdef0",
+            "maxFeePerGas": "0xdef0",
+            "maxPriorityFeePerGas": "0x1111",
+            "input": "0x1fad948c",
+            "type": "0x2",
+            "status": "0x1",
+            "gasUsed": "0x40000",
+            "effectiveGasPrice": "0xdef0",
+            "logs": [],
+            "contractAddress": null
+          }
+        },
+        "solanaTransaction": null,
+        "bitcoinTransaction": null,
+        "stellarTransaction": null,
+        "tronTransaction": null
+      },
+      "metadata": { "chainId": "eip155:10143", "signature": "0xsig" }
+    }
+    """.data(using: .utf8)!
+
+    let response = try decoder.decode(GetTransactionDetailsResponse.self, from: json)
+    let op = response.data.evmUserOperation!
+
+    XCTAssertEqual(op.callGasLimit, "0x1234")
+    XCTAssertEqual(op.verificationGasLimit, "0x5678")
+    XCTAssertEqual(op.preVerificationGas, "0x9abc")
+    XCTAssertEqual(op.maxFeePerGas, "0xdef0")
+    XCTAssertEqual(op.maxPriorityFeePerGas, "0x1111")
+    XCTAssertEqual(op.success, false)
+    XCTAssertEqual(op.actualGasCost, "0x2222")
+    XCTAssertEqual(op.actualGasUsed, "0x3333")
+
+    let receipt = op.receipt!
+    XCTAssertEqual(receipt.hash, "0xreceipt")
+    XCTAssertEqual(receipt.from, "0xbundler")
+    XCTAssertEqual(receipt.maxFeePerGas, "0xdef0")
+    XCTAssertEqual(receipt.maxPriorityFeePerGas, "0x1111")
+    XCTAssertEqual(receipt.type, "0x2")
+    XCTAssertEqual(receipt.logs?.count, 0)
+  }
+}
+
+// MARK: - Solana Transaction additional tests
+
+extension GetTransactionDetailsTests {
+  func test_decode_solanaTransaction_withNullTransactionDetails() throws {
+    let json = """
+    {
+      "data": {
+        "evmTransaction": null,
+        "evmUserOperation": null,
+        "solanaTransaction": {
+          "blockTime": null,
+          "error": "TransactionExpired",
+          "signature": "expiredSig",
+          "status": "expired",
+          "transactionDetails": null
+        },
+        "bitcoinTransaction": null,
+        "stellarTransaction": null,
+        "tronTransaction": null
+      },
+      "metadata": { "chainId": "solana:devnet", "signature": "expiredSig" }
+    }
+    """.data(using: .utf8)!
+
+    let response = try decoder.decode(GetTransactionDetailsResponse.self, from: json)
+    let tx = response.data.solanaTransaction!
+
+    XCTAssertNil(tx.blockTime)
+    XCTAssertEqual(tx.error, "TransactionExpired")
+    XCTAssertEqual(tx.status, "expired")
+    XCTAssertNil(tx.transactionDetails)
+  }
+
+  func test_decode_solanaTransaction_loadedAddresses() throws {
+    let json = """
+    {
+      "data": {
+        "evmTransaction": null,
+        "evmUserOperation": null,
+        "solanaTransaction": {
+          "blockTime": 1747834869,
+          "error": null,
+          "signature": "sigLA",
+          "status": "finalized",
+          "transactionDetails": {
+            "transaction": null,
+            "signatureDetails": null,
+            "metadata": {
+              "blockTime": 1747834869,
+              "slot": 100,
+              "error": null,
+              "fee": 5000,
+              "innerInstructions": [],
+              "loadedAddresses": {
+                "readonly": ["addr1", "addr2"],
+                "writable": ["addr3"]
+              },
+              "logMessages": ["Program log: ok"],
+              "postBalances": [1000],
+              "postTokenBalances": [],
+              "preBalances": [2000],
+              "preTokenBalances": [],
+              "rewards": [],
+              "status": { "Ok": null },
+              "version": "0"
+            }
+          }
+        },
+        "bitcoinTransaction": null,
+        "stellarTransaction": null,
+        "tronTransaction": null
+      },
+      "metadata": { "chainId": "solana:devnet", "signature": "sigLA" }
+    }
+    """.data(using: .utf8)!
+
+    let response = try decoder.decode(GetTransactionDetailsResponse.self, from: json)
+    let meta = response.data.solanaTransaction!.transactionDetails!.metadata!
+
+    XCTAssertEqual(meta.loadedAddresses?.readonly, ["addr1", "addr2"])
+    XCTAssertEqual(meta.loadedAddresses?.writable, ["addr3"])
+    XCTAssertEqual(meta.fee, 5000)
+    XCTAssertEqual(meta.version, "0")
+    XCTAssertNil(response.data.solanaTransaction!.transactionDetails!.transaction)
+    XCTAssertNil(response.data.solanaTransaction!.transactionDetails!.signatureDetails)
+  }
+
+  func test_decode_solanaTransaction_multipleInstructions() throws {
+    let json = """
+    {
+      "data": {
+        "evmTransaction": null,
+        "evmUserOperation": null,
+        "solanaTransaction": {
+          "blockTime": 1747834869,
+          "error": null,
+          "signature": "sigMulti",
+          "status": "finalized",
+          "transactionDetails": {
+            "transaction": {
+              "message": {
+                "accountKeys": ["key1", "key2", "key3"],
+                "header": {
+                  "numReadonlySignedAccounts": 1,
+                  "numReadonlyUnsignedAccounts": 1,
+                  "numRequiredSignatures": 2
+                },
+                "instructions": [
+                  { "accounts": [0, 1], "data": "3Bxs4a", "programIdIndex": 2, "stackHeight": 1 },
+                  { "accounts": [1, 2], "data": "9Pxs4b", "programIdIndex": 2, "stackHeight": 2 }
+                ],
+                "recentBlockhash": "blockhash123"
+              },
+              "signatures": ["sig1", "sig2"]
+            },
+            "signatureDetails": {
+              "blockTime": 1747834869,
+              "confirmationStatus": "finalized",
+              "error": null,
+              "memo": "test memo",
+              "signature": "sigMulti",
+              "slot": 999999
+            },
+            "metadata": null
+          }
+        },
+        "bitcoinTransaction": null,
+        "stellarTransaction": null,
+        "tronTransaction": null
+      },
+      "metadata": { "chainId": "solana:devnet", "signature": "sigMulti" }
+    }
+    """.data(using: .utf8)!
+
+    let response = try decoder.decode(GetTransactionDetailsResponse.self, from: json)
+    let details = response.data.solanaTransaction!.transactionDetails!
+
+    XCTAssertEqual(details.transaction?.message?.instructions?.count, 2)
+    XCTAssertEqual(details.transaction?.message?.instructions?[0].stackHeight, 1)
+    XCTAssertEqual(details.transaction?.message?.instructions?[1].stackHeight, 2)
+    XCTAssertEqual(details.transaction?.message?.header?.numRequiredSignatures, 2)
+    XCTAssertEqual(details.transaction?.signatures?.count, 2)
+    XCTAssertEqual(details.signatureDetails?.memo, "test memo")
+    XCTAssertEqual(details.signatureDetails?.slot, 999999)
+    XCTAssertNil(details.metadata)
+  }
+}
+
+// MARK: - Bitcoin Transaction additional tests
+
+extension GetTransactionDetailsTests {
+  func test_decode_bitcoinTransaction_unconfirmed() throws {
+    let json = """
+    {
+      "data": {
+        "evmTransaction": null,
+        "evmUserOperation": null,
+        "solanaTransaction": null,
+        "bitcoinTransaction": {
+          "txid": "pending123",
+          "version": 2,
+          "size": 150,
+          "weight": 400,
+          "locktime": 0,
+          "fee": 150,
+          "status": {
+            "confirmed": false,
+            "blockHeight": null,
+            "blockHash": null,
+            "blockTime": null
+          },
+          "vin": [{
+            "txid": "prevtx",
+            "vout": 0,
+            "prevout": null,
+            "scriptsig": "",
+            "witness": ["3044", "02ab"],
+            "sequence": 4294967293
+          }],
+          "vout": [
+            { "scriptpubkey": "0014aabb", "scriptpubkey_address": "tb1qaddr1", "value": 5000 }
+          ]
+        },
+        "stellarTransaction": null,
+        "tronTransaction": null
+      },
+      "metadata": { "chainId": "bip122:test", "signature": "pending123" }
+    }
+    """.data(using: .utf8)!
+
+    let response = try decoder.decode(GetTransactionDetailsResponse.self, from: json)
+    let tx = response.data.bitcoinTransaction!
+
+    XCTAssertEqual(tx.status.confirmed, false)
+    XCTAssertNil(tx.status.blockHeight)
+    XCTAssertNil(tx.status.blockHash)
+    XCTAssertNil(tx.status.blockTime)
+    XCTAssertNil(tx.vin[0].prevout)
+    XCTAssertEqual(tx.vin[0].witness, ["3044", "02ab"])
+    XCTAssertEqual(tx.vin[0].sequence, 4294967293)
+    XCTAssertEqual(tx.vout.count, 1)
+    XCTAssertEqual(tx.vout[0].scriptpubkeyAddress, "tb1qaddr1")
+  }
+
+  func test_decode_bitcoinTransaction_multipleVinVout() throws {
+    let json = """
+    {
+      "data": {
+        "evmTransaction": null,
+        "evmUserOperation": null,
+        "solanaTransaction": null,
+        "bitcoinTransaction": {
+          "txid": "multio",
+          "version": 1,
+          "size": 500,
+          "weight": 1200,
+          "locktime": 100,
+          "fee": 500,
+          "status": { "confirmed": true, "blockHeight": 800000, "blockHash": "0000abc", "blockTime": 1700000000 },
+          "vin": [
+            { "txid": "in1", "vout": 0, "prevout": { "scriptpubkey": "00", "scriptpubkey_address": "a1", "value": 1000 }, "scriptsig": "sig1", "witness": [], "sequence": 0 },
+            { "txid": "in2", "vout": 1, "prevout": { "scriptpubkey": "01", "scriptpubkey_address": "a2", "value": 2000 }, "scriptsig": "sig2", "witness": ["w1"], "sequence": 1 }
+          ],
+          "vout": [
+            { "scriptpubkey": "10", "scriptpubkey_address": "b1", "value": 1500 },
+            { "scriptpubkey": "11", "scriptpubkey_address": "b2", "value": 900 },
+            { "scriptpubkey": "12", "scriptpubkey_address": "b3", "value": 100 }
+          ]
+        },
+        "stellarTransaction": null,
+        "tronTransaction": null
+      },
+      "metadata": { "chainId": "bip122:mainnet", "signature": "multio" }
+    }
+    """.data(using: .utf8)!
+
+    let response = try decoder.decode(GetTransactionDetailsResponse.self, from: json)
+    let tx = response.data.bitcoinTransaction!
+
+    XCTAssertEqual(tx.vin.count, 2)
+    XCTAssertEqual(tx.vout.count, 3)
+    XCTAssertEqual(tx.locktime, 100)
+    XCTAssertEqual(tx.vin[0].scriptsig, "sig1")
+    XCTAssertEqual(tx.vin[1].prevout?.value, 2000)
+    XCTAssertEqual(tx.status.blockHash, "0000abc")
+    XCTAssertEqual(tx.vout[0].value + tx.vout[1].value + tx.vout[2].value, 2500)
+  }
+}
+
+// MARK: - Stellar Transaction additional tests
+
+extension GetTransactionDetailsTests {
+  func test_decode_stellarTransaction_withMemo() throws {
+    let json = """
+    {
+      "data": {
+        "evmTransaction": null,
+        "evmUserOperation": null,
+        "solanaTransaction": null,
+        "bitcoinTransaction": null,
+        "stellarTransaction": {
+          "id": "stellarWithMemo",
+          "hash": "hashMemo",
+          "ledger": 2000000,
+          "createdAt": "2026-03-20T10:00:00Z",
+          "sourceAccount": "GABC",
+          "feeCharged": "200",
+          "maxFee": "50000",
+          "operationCount": 2,
+          "successful": true,
+          "memo": "payment-ref-12345",
+          "memoType": "text",
+          "operations": [{"type": "payment"}, {"type": "create_account"}]
+        },
+        "tronTransaction": null
+      },
+      "metadata": { "chainId": "stellar:pubnet", "signature": "hashMemo" }
+    }
+    """.data(using: .utf8)!
+
+    let response = try decoder.decode(GetTransactionDetailsResponse.self, from: json)
+    let tx = response.data.stellarTransaction!
+
+    XCTAssertEqual(tx.memo, "payment-ref-12345")
+    XCTAssertEqual(tx.memoType, "text")
+    XCTAssertEqual(tx.operationCount, 2)
+    XCTAssertEqual(tx.operations.count, 2)
+    XCTAssertEqual(tx.ledger, 2000000)
+    XCTAssertEqual(tx.maxFee, "50000")
+    XCTAssertEqual(response.metadata.chainId, "stellar:pubnet")
+  }
+
+  func test_decode_stellarTransaction_failedTransaction() throws {
+    let json = """
+    {
+      "data": {
+        "evmTransaction": null,
+        "evmUserOperation": null,
+        "solanaTransaction": null,
+        "bitcoinTransaction": null,
+        "stellarTransaction": {
+          "id": "failedStellar",
+          "hash": "hashFail",
+          "ledger": 1500000,
+          "createdAt": "2026-03-19T08:00:00Z",
+          "sourceAccount": "GDEF",
+          "feeCharged": "100",
+          "maxFee": "10000",
+          "operationCount": 1,
+          "successful": false,
+          "memo": null,
+          "memoType": "none",
+          "operations": []
+        },
+        "tronTransaction": null
+      },
+      "metadata": { "chainId": "stellar:testnet", "signature": "hashFail" }
+    }
+    """.data(using: .utf8)!
+
+    let response = try decoder.decode(GetTransactionDetailsResponse.self, from: json)
+    let tx = response.data.stellarTransaction!
+
+    XCTAssertEqual(tx.successful, false)
+    XCTAssertEqual(tx.id, "failedStellar")
+    XCTAssertNil(tx.memo)
+    XCTAssertEqual(tx.operations.count, 0)
+  }
+}
+
+// MARK: - Tron Transaction additional tests
+
+extension GetTransactionDetailsTests {
+  func test_decode_tronTransaction_withEnergyUsage() throws {
+    let json = """
+    {
+      "data": {
+        "evmTransaction": null,
+        "evmUserOperation": null,
+        "solanaTransaction": null,
+        "bitcoinTransaction": null,
+        "stellarTransaction": null,
+        "tronTransaction": {
+          "txID": "tronEnergy",
+          "blockNumber": 60000000,
+          "blockTimeStamp": 1800000000000,
+          "contractResult": ["SUCCESS"],
+          "receipt": {
+            "result": "SUCCESS",
+            "energyUsage": 15000,
+            "energyUsageTotal": 45000,
+            "netUsage": 500
+          },
+          "contractType": "TransferContract",
+          "contractData": { "amount": 1000000, "to_address": "TAddr1", "owner_address": "TAddr2" },
+          "result": "SUCCESS"
+        }
+      },
+      "metadata": { "chainId": "tron:mainnet", "signature": "tronEnergy" }
+    }
+    """.data(using: .utf8)!
+
+    let response = try decoder.decode(GetTransactionDetailsResponse.self, from: json)
+    let tx = response.data.tronTransaction!
+
+    XCTAssertEqual(tx.receipt?.energyUsage, 15000)
+    XCTAssertEqual(tx.receipt?.energyUsageTotal, 45000)
+    XCTAssertEqual(tx.receipt?.netUsage, 500)
+    XCTAssertEqual(tx.blockNumber, 60000000)
+    XCTAssertEqual(tx.blockTimeStamp, 1800000000000)
+    XCTAssertNotNil(tx.contractData)
+  }
+}
+
 // MARK: - Roundtrip encode/decode tests
 
 extension GetTransactionDetailsTests {
@@ -878,5 +1476,132 @@ extension GetTransactionDetailsTests {
     XCTAssertNotNil(response?.data.tronTransaction)
     XCTAssertEqual(response?.data.tronTransaction?.txID, "74ffe63b")
     XCTAssertEqual(response?.data.tronTransaction?.receipt?.result, "SUCCESS")
+  }
+
+  func test_getTransactionDetails_decodesSolanaTransactionFromMock() async throws {
+    // given
+    let portalRequestMock = PortalRequestsMock()
+    let stubResponse = GetTransactionDetailsResponse.stub(
+      data: .stubSolanaTransaction(),
+      metadata: .stub(chainId: "solana:devnet", signature: "4U9JaGKb86")
+    )
+    portalRequestMock.returnValueData = try encoder.encode(stubResponse)
+    initPortalApiWith(requests: portalRequestMock)
+
+    // when
+    let response = try await api?.getTransactionDetails(chain: "solana-devnet", signature: "4U9JaGKb86")
+
+    // then
+    XCTAssertNotNil(response?.data.solanaTransaction)
+    XCTAssertNil(response?.data.evmTransaction)
+    XCTAssertEqual(response?.data.solanaTransaction?.signature, "4U9JaGKb86")
+    XCTAssertEqual(response?.data.solanaTransaction?.status, "finalized")
+    XCTAssertEqual(response?.metadata.chainId, "solana:devnet")
+  }
+
+  func test_getTransactionDetails_decodesStellarTransactionFromMock() async throws {
+    // given
+    let portalRequestMock = PortalRequestsMock()
+    let stubResponse = GetTransactionDetailsResponse.stub(
+      data: .stubStellarTransaction(),
+      metadata: .stub(chainId: "stellar:testnet", signature: "c21b3ba7")
+    )
+    portalRequestMock.returnValueData = try encoder.encode(stubResponse)
+    initPortalApiWith(requests: portalRequestMock)
+
+    // when
+    let response = try await api?.getTransactionDetails(chain: "stellar:testnet", signature: "c21b3ba7")
+
+    // then
+    XCTAssertNotNil(response?.data.stellarTransaction)
+    XCTAssertNil(response?.data.evmTransaction)
+    XCTAssertNil(response?.data.bitcoinTransaction)
+    XCTAssertEqual(response?.data.stellarTransaction?.id, "c21b3ba7")
+    XCTAssertEqual(response?.data.stellarTransaction?.successful, true)
+    XCTAssertEqual(response?.data.stellarTransaction?.feeCharged, "100")
+    XCTAssertEqual(response?.metadata.chainId, "stellar:testnet")
+  }
+
+  func test_getTransactionDetails_decodesEvmUserOperationFromMock() async throws {
+    // given
+    let portalRequestMock = PortalRequestsMock()
+    let stubResponse = GetTransactionDetailsResponse.stub(
+      data: .stubEvmUserOperation(),
+      metadata: .stub(chainId: "eip155:10143", signature: "0x87981bfa")
+    )
+    portalRequestMock.returnValueData = try encoder.encode(stubResponse)
+    initPortalApiWith(requests: portalRequestMock)
+
+    // when
+    let response = try await api?.getTransactionDetails(chain: "monad-testnet", signature: "0x87981bfa")
+
+    // then
+    XCTAssertNil(response?.data.evmTransaction)
+    XCTAssertNotNil(response?.data.evmUserOperation)
+    XCTAssertNil(response?.data.solanaTransaction)
+    XCTAssertEqual(response?.data.evmUserOperation?.sender, "0xe9791af5")
+    XCTAssertEqual(response?.data.evmUserOperation?.success, true)
+    XCTAssertNotNil(response?.data.evmUserOperation?.receipt)
+    XCTAssertEqual(response?.data.evmUserOperation?.receipt?.hash, "0x7a2ddf10")
+  }
+
+  func test_getTransactionDetails_decodesEmptyResponseFromMock() async throws {
+    // given
+    let portalRequestMock = PortalRequestsMock()
+    let stubResponse = GetTransactionDetailsResponse.stub(
+      data: .stubEmpty(),
+      metadata: .stub(chainId: "eip155:1", signature: "0xnotfound")
+    )
+    portalRequestMock.returnValueData = try encoder.encode(stubResponse)
+    initPortalApiWith(requests: portalRequestMock)
+
+    // when
+    let response = try await api?.getTransactionDetails(chain: "eip155:1", signature: "0xnotfound")
+
+    // then
+    XCTAssertNil(response?.data.evmTransaction)
+    XCTAssertNil(response?.data.evmUserOperation)
+    XCTAssertNil(response?.data.solanaTransaction)
+    XCTAssertNil(response?.data.bitcoinTransaction)
+    XCTAssertNil(response?.data.stellarTransaction)
+    XCTAssertNil(response?.data.tronTransaction)
+    XCTAssertEqual(response?.metadata.signature, "0xnotfound")
+  }
+}
+
+// MARK: - Spy integration tests
+
+extension GetTransactionDetailsTests {
+  func test_getTransactionDetails_spy_tracksCallCountAndParams() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    let response = GetTransactionDetailsResponse.stub(data: .stubEvmTransaction())
+    portalRequestsSpy.returnData = try encoder.encode(response)
+    initPortalApiWith(requests: portalRequestsSpy)
+
+    // when
+    _ = try await api?.getTransactionDetails(chain: "chain1", signature: "sig1")
+    _ = try await api?.getTransactionDetails(chain: "chain2", signature: "sig2")
+
+    // then
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 2)
+  }
+
+  func test_getTransactionDetails_spy_eachCallBuildsIndependentUrl() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    let response = GetTransactionDetailsResponse.stub(data: .stubEvmTransaction())
+    portalRequestsSpy.returnData = try encoder.encode(response)
+    initPortalApiWith(requests: portalRequestsSpy)
+
+    // when
+    _ = try await api?.getTransactionDetails(chain: "stellar:testnet", signature: "abc")
+
+    // then
+    if #available(iOS 16.0, *) {
+      let urlString = portalRequestsSpy.executeRequestParam?.url.absoluteString ?? ""
+      XCTAssertTrue(urlString.contains("stellar"))
+      XCTAssertTrue(urlString.contains("/transactions/abc"))
+    }
   }
 }

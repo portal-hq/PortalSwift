@@ -145,12 +145,20 @@ class PortalApiSpy: PortalApiProtocol {
   var getTransactionDetailsCallsCount: Int = 0
   var getTransactionDetailsChainParam: String?
   var getTransactionDetailsSignatureParam: String?
+  var getTransactionDetailsReturnValue: GetTransactionDetailsResponse?
+  var getTransactionDetailsErrorToThrow: Error?
 
   public func getTransactionDetails(chain: String, signature: String) async throws -> GetTransactionDetailsResponse {
     getTransactionDetailsCallsCount += 1
     getTransactionDetailsChainParam = chain
     getTransactionDetailsSignatureParam = signature
-    throw URLError(.badURL)
+    if let error = getTransactionDetailsErrorToThrow {
+      throw error
+    }
+    guard let value = getTransactionDetailsReturnValue else {
+      throw URLError(.badURL)
+    }
+    return value
   }
 
   // Get Transactions method tracking
