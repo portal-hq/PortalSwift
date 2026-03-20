@@ -60,7 +60,7 @@ class PortalProviderMock: PortalProviderProtocol {
         id: MockConstants.mockProviderRequestId,
         result: MockConstants.mockTransactionHash
       )
-    case .eth_sign, .eth_signTransaction, .eth_signTypedData_v3, .eth_signTypedData_v4, .personal_sign, .rawSign:
+    case .eth_sign, .eth_signTransaction, .eth_signTypedData_v3, .eth_signTypedData_v4, .eth_signUserOperation, .personal_sign, .rawSign:
       return PortalProviderResult(
         id: MockConstants.mockProviderRequestId,
         result: MockConstants.mockSignature

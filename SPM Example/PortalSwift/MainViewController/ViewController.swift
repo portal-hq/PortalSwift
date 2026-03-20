@@ -64,6 +64,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var personalSignButton: UIButton?
   @IBOutlet var rawSignButton: UIButton?
   @IBOutlet var signButton: UIButton?
+  @IBOutlet var signUserOperationButton: UIButton?
   @IBOutlet var signInButton: UIButton?
   @IBOutlet var signUpButton: UIButton?
   @IBOutlet var testButton: UIButton?
@@ -1234,6 +1235,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.personalSignButton?.isHidden = !walletExists || !isWalletOnDevice
           self.rawSignButton?.isEnabled = walletExists && isWalletOnDevice
           self.rawSignButton?.isHidden = !walletExists || !isWalletOnDevice
+          self.signUserOperationButton?.isEnabled = walletExists && isWalletOnDevice
+          self.signUserOperationButton?.isHidden = !walletExists || !isWalletOnDevice
           self.sendButton?.isEnabled = walletExists && isWalletOnDevice
           self.sendButton?.isHidden = !walletExists || !isWalletOnDevice
           self.sendUniButton?.isEnabled = walletExists && isWalletOnDevice
@@ -2247,6 +2250,57 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.stopLoading()
         self.logger.error("ViewController.handleRawSign() - ❌ Error signing message: \(error)")
         self.showStatusView(message: "\(self.failureStatus) Error signing message \(error)")
+      }
+    }
+  }
+
+  @IBAction func handleSignUserOperation() {
+    Task {
+      do {
+        let chainId = "eip155:10143"
+
+        guard let portal else {
+          self.logger.error("ViewController.handleSignUserOperation() - ❌ Portal not initialized")
+          throw PortalExampleAppError.portalNotInitialized()
+        }
+        guard let address = await portal.getAddress(chainId) else {
+          self.logger.error("ViewController.handleSignUserOperation() - ❌ Address not found")
+          throw PortalExampleAppError.addressNotFound()
+        }
+
+        self.startLoading()
+
+        let userOp: [String: String] = [
+          "sender": address,
+          "nonce": "0x0",
+          "callData": "0x",
+          "callGasLimit": "0x5208",
+          "verificationGasLimit": "0x5208",
+          "preVerificationGas": "0x5208",
+          "maxFeePerGas": "0x1",
+          "maxPriorityFeePerGas": "0x1"
+        ]
+
+        let response = try await portal.provider.request(
+          chainId: chainId,
+          method: .eth_signUserOperation,
+          params: [AnyCodable(userOp)],
+          connect: nil,
+          options: nil
+        )
+
+        guard let transactionHash = response.result as? String else {
+          self.logger.error("ViewController.handleSignUserOperation() - ❌ Invalid response type for request:")
+          print(response.result)
+          throw PortalExampleAppError.invalidResponseTypeForRequest()
+        }
+        self.logger.info("ViewController.handleSignUserOperation() - ✅ Successfully signed UserOperation, Trx Hash: \(transactionHash)")
+        self.showStatusView(message: "\(self.successStatus) Signed UserOperation\nTrx Hash: \(transactionHash)")
+        self.stopLoading()
+      } catch {
+        self.stopLoading()
+        self.logger.error("ViewController.handleSignUserOperation() - ❌ Error signing UserOperation: \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error signing UserOperation \(error)")
       }
     }
   }
