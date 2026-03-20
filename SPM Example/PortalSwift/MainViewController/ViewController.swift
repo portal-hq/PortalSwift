@@ -70,6 +70,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var testButton: UIButton?
   @IBOutlet var deleteKeychainButton: UIButton?
   @IBOutlet var testNFTsTrxsBalancesSimTrxButton: UIButton?
+  @IBOutlet var testTransactionDetailsButton: UIButton?
   @IBOutlet var ejectButton: UIButton?
   @IBOutlet var ejectAllButton: UIButton?
   @IBOutlet var receiveAssetButton: UIButton?
@@ -542,6 +543,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
       throw PortalExampleAppError.portalNotInitialized()
     }
     return try await portal.getTransactions(chainId, limit: nil, offset: nil, order: nil)
+  }
+
+  public func getTransactionDetails(chain: String, signature: String) async throws -> GetTransactionDetailsResponse {
+    guard let portal else {
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+    return try await portal.getTransactionDetails(chain: chain, signature: signature)
   }
 
   public func recover(_ userId: String, withBackupMethod: BackupMethods) async throws -> PortalRecoverWalletResponse {
@@ -1264,6 +1272,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.testButton?.isHidden = !walletExists || !isWalletOnDevice
           self.testNFTsTrxsBalancesSimTrxButton?.isEnabled = walletExists && isWalletOnDevice
           self.testNFTsTrxsBalancesSimTrxButton?.isHidden = !walletExists || !isWalletOnDevice
+          self.testTransactionDetailsButton?.isEnabled = walletExists && isWalletOnDevice
+          self.testTransactionDetailsButton?.isHidden = !walletExists || !isWalletOnDevice
 
           // Test Simulate Transactions functions
           self.testSimulateTransactionButton?.isEnabled = walletExists && isWalletOnDevice
@@ -2100,6 +2110,32 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching getWalletCapabilities: \(error)")
         self.showStatusView(message: "\(self.failureStatus) Error fetching getWalletCapabilities \(error)")
         return
+      }
+    }
+  }
+
+  @IBAction func testGetTransactionDetails() {
+    let testCases: [(label: String, chain: String, signature: String)] = [
+      ("EVM Transaction (Monad Testnet)", "monad-testnet", "0x7a2ddf1031309d847f3e3b3fb13deebea6c4c8e02dbf7da33ef8717224939a29"),
+      ("EVM User Operation (Monad Testnet)", "monad-testnet", "0x87981bfa87da6c5faf4b357179596e14a1d104956b9a97aa8c57680e0e304009"),
+      ("Solana Transaction (Devnet)", "solana-devnet", "4U9JaGKb86VtRqoKT1QqY4D6q2LkifKnoewa4vFAZofCxjazRpXB3yWTUY98u1b9GQ9ooeRfDUiNpjed13HUrJ4T"),
+      ("Bitcoin Transaction (Testnet)", "bip122:000000000933ea01ad0ee984209779ba-p2wpkh", "cb56ab9f10559c412d4a1ec4adaa46d48df1a4c3da50e6b84b70789ecedfadd0"),
+      ("Tron Transaction (Nile)", "tron:nile", "74ffe63b22b1f3c3dd1d7337f8feccab34ef4229be3a2a0548fc2e43d12b8d0f"),
+      ("Stellar Transaction (Testnet)", "stellar:testnet", "c21b3ba78255b91b5dcfed56868068e91eb9b963f303e64f78269ea67053ef6b"),
+    ]
+
+    Task {
+      for testCase in testCases {
+        do {
+          let details = try await self.getTransactionDetails(chain: testCase.chain, signature: testCase.signature)
+          print("\(testCase.label):", details)
+          self.logger.info("ViewController.testGetTransactionDetails() - ✅ \(testCase.label): success.")
+          self.showStatusView(message: "\(self.successStatus) \(testCase.label): success.")
+        } catch {
+          self.logger.error("ViewController.testGetTransactionDetails() - ❌ \(testCase.label): \(error)")
+          self.showStatusView(message: "\(self.failureStatus) \(testCase.label): \(error)")
+          return
+        }
       }
     }
   }

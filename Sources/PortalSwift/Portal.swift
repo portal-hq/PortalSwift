@@ -1425,6 +1425,10 @@ public final class Portal: PortalProtocol {
     try await self.api.getTransactions(chainId, limit: limit, offset: offset, order: order)
   }
 
+  public func getTransactionDetails(chain: String, signature: String) async throws -> GetTransactionDetailsResponse {
+    try await self.api.getTransactionDetails(chain: chain, signature: signature)
+  }
+
   public func evaluateTransaction(
     chainId: String,
     transaction: EvaluateTransactionParam,
