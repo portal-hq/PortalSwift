@@ -89,6 +89,14 @@ class PortalApiMock: PortalApiProtocol {
     getTransactionsReturnValue ?? []
   }
 
+  var getTransactionDetailsReturnValue: GetTransactionDetailsResponse?
+  func getTransactionDetails(chain _: String, signature _: String) async throws -> GetTransactionDetailsResponse {
+    guard let value = getTransactionDetailsReturnValue else {
+      throw URLError(.badURL)
+    }
+    return value
+  }
+
   var identifyReturnValue: PortalSwift.MetricsResponse?
   func identify(_: [String: AnyCodable]) async throws -> PortalSwift.MetricsResponse {
     return identifyReturnValue ?? MetricsResponse(status: true)
