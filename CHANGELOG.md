@@ -12,6 +12,10 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
+## 7.1.0 - 2026-03-20
+- Added `portal.getTransactionDetails(chain, signature)` for multi-chain transaction lookup via `GET /api/v3/clients/me/chains/{chain}/transactions/{signature}`.
+    - Supports EVM transactions, EVM user operations, Solana, Bitcoin, Stellar, and Tron chains.
+
 ## 7.0.0 - 2026-03-14
 - Added support for `eth_signUserOperation` method for Account Abstraction signing.
 - Added `portal.evmAccountType.getAddresses()` method.
