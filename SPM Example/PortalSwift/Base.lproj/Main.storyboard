@@ -397,6 +397,19 @@
                                     <action selector="testGetNFTsTrxsBalancesSharesAndSimTrx" destination="vXZ-lx-hvc" eventType="touchUpInside" id="a8A-8w-aIY"/>
                                 </connections>
                             </button>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" restorationIdentifier="transactionDetailsButton" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="tDt-Qx-7kL">
+                                <rect key="frame" x="14" y="1120" width="342" height="35"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <state key="normal" title="Button"/>
+                                <buttonConfiguration key="configuration" style="filled" title="Get Transaction Details">
+                                    <backgroundConfiguration key="background"/>
+                                    <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
+                                    <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                </buttonConfiguration>
+                                <connections>
+                                    <action selector="testGetTransactionDetails" destination="vXZ-lx-hvc" eventType="touchUpInside" id="pRt-Nz-3mV"/>
+                                </connections>
+                            </button>
                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="jpZ-X5-eUU">
                                 <rect key="frame" x="208" y="777" width="149" height="35"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
@@ -411,7 +424,7 @@
                                 </connections>
                             </button>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" restorationIdentifier="ejectButton" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="xhu-mS-abX">
-                                <rect key="frame" x="14" y="1123" width="342" height="35"/>
+                                <rect key="frame" x="14" y="1163" width="342" height="35"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <state key="normal" title="Button"/>
                                 <buttonConfiguration key="configuration" style="filled" title="Eject Ethereum with Password">
@@ -445,7 +458,7 @@
                                 </connections>
                             </button>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" restorationIdentifier="ejectAllButton" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="V5k-BN-vvY">
-                                <rect key="frame" x="15" y="1166" width="342" height="35"/>
+                                <rect key="frame" x="15" y="1206" width="342" height="35"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <state key="normal" title="Button"/>
                                 <buttonConfiguration key="configuration" style="filled" title="Eject All with Password">
@@ -1028,6 +1041,7 @@
                         <outlet property="statusLabel" destination="OXC-5g-rqF" id="NVs-bf-qi7"/>
                         <outlet property="testButton" destination="jgr-2k-ChE" id="Iwz-Qk-mgO"/>
                         <outlet property="testNFTsTrxsBalancesSimTrxButton" destination="zxl-zt-jSZ" id="sQP-08-jvX"/>
+                        <outlet property="testTransactionDetailsButton" destination="tDt-Qx-7kL" id="bXt-Rz-4qN"/>
                         <outlet property="url" destination="5Yb-DH-Pnv" id="kdn-BV-aGw"/>
                         <outlet property="username" destination="Ysr-eH-5f6" id="lgr-mF-HfE"/>
                     </connections>

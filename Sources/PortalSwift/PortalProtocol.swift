@@ -99,6 +99,7 @@ public protocol PortalProtocol {
   func getNftAssets(_ chainId: String) async throws -> [NftAsset]
   func getSigningShares(_ chainId: String?) async throws -> [FetchedSharePair]
   func getTransactions(_ chainId: String, limit: Int?, offset: Int?, order: TransactionOrder?) async throws -> [FetchedTransaction]
+  func getTransactionDetails(chain: String, signature: String) async throws -> GetTransactionDetailsResponse
   func evaluateTransaction(chainId: String, transaction: EvaluateTransactionParam, operationType: EvaluateTransactionOperationType?) async throws -> BlockaidValidateTrxRes
   func buildEip155Transaction(chainId: String, params: BuildTransactionParam) async throws -> BuildEip115TransactionResponse
   func buildSolanaTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildSolanaTransactionResponse

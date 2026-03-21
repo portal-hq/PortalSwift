@@ -493,6 +493,71 @@ extension PortalTests {
     XCTAssertEqual(portalApiSpy.getTransactionsOrderParam, .ASC)
   }
 
+  func test_getTransactionDetails_willCall_api_getTransactionDetails_onlyOnce() async throws {
+    // given
+    let portalApiSpy = PortalApiSpy()
+    portalApiSpy.getTransactionDetailsReturnValue = .stub(data: .stubEvmTransaction())
+    try initPortalWithSpy(api: portalApiSpy)
+
+    // when
+    _ = try await portal.getTransactionDetails(chain: "monad-testnet", signature: "0xabc")
+
+    // then
+    XCTAssertEqual(portalApiSpy.getTransactionDetailsCallsCount, 1)
+  }
+
+  func test_getTransactionDetails_willCall_api_getTransactionDetails_passingCorrectParams() async throws {
+    // given
+    let portalApiSpy = PortalApiSpy()
+    portalApiSpy.getTransactionDetailsReturnValue = .stub(data: .stubBitcoinTransaction())
+    try initPortalWithSpy(api: portalApiSpy)
+
+    // when
+    _ = try await portal.getTransactionDetails(
+      chain: "bip122:000000000933ea01ad0ee984209779ba-p2wpkh",
+      signature: "cb56ab9f"
+    )
+
+    // then
+    XCTAssertEqual(portalApiSpy.getTransactionDetailsChainParam, "bip122:000000000933ea01ad0ee984209779ba-p2wpkh")
+    XCTAssertEqual(portalApiSpy.getTransactionDetailsSignatureParam, "cb56ab9f")
+  }
+
+  func test_getTransactionDetails_willReturnResponse_fromApi() async throws {
+    // given
+    let portalApiSpy = PortalApiSpy()
+    let stubResponse = GetTransactionDetailsResponse.stub(
+      data: .stubTronTransaction(),
+      metadata: .stub(chainId: "tron:nile", signature: "74ffe63b")
+    )
+    portalApiSpy.getTransactionDetailsReturnValue = stubResponse
+    try initPortalWithSpy(api: portalApiSpy)
+
+    // when
+    let response = try await portal.getTransactionDetails(chain: "tron:nile", signature: "74ffe63b")
+
+    // then
+    XCTAssertNotNil(response.data.tronTransaction)
+    XCTAssertEqual(response.data.tronTransaction?.txID, "74ffe63b")
+    XCTAssertEqual(response.metadata.chainId, "tron:nile")
+    XCTAssertEqual(response.metadata.signature, "74ffe63b")
+  }
+
+  func test_getTransactionDetails_willThrowError_whenApiThrows() async throws {
+    // given
+    let portalApiSpy = PortalApiSpy()
+    portalApiSpy.getTransactionDetailsErrorToThrow = URLError(.notConnectedToInternet)
+    try initPortalWithSpy(api: portalApiSpy)
+
+    // when / then
+    do {
+      _ = try await portal.getTransactionDetails(chain: "monad-testnet", signature: "0xabc")
+      XCTFail("Expected an error to be thrown")
+    } catch {
+      XCTAssertEqual((error as? URLError)?.code, .notConnectedToInternet)
+    }
+  }
+
   func test_simulateTransaction_willCall_api_simulateTransaction_onlyOnce() async throws {
     // given
     let portalApiSpy = PortalApiSpy()
