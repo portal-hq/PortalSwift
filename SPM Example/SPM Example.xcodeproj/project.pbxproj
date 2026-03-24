@@ -10,7 +10,7 @@
 		2510AC4B2F50C6DE0021F8F3 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 2510AC4A2F50C6DE0021F8F3 /* GoogleService-Info.plist */; };
 		2510AC4C2F50C7000021F8F3 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 2510AC4D2F50C7000021F8F3 /* FirebaseAuth */; };
 		2510AC4E2F50C7000021F8F3 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 2510AC4F2F50C7000021F8F3 /* FirebaseCore */; };
-		2510ACBC2F50E0E30021F8F3 /* Secrets.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 2510ACBB2F50E0E30021F8F3 /* Secrets.xcconfig */; };
+
 		607FACD61AFB9204008FA782 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FACD51AFB9204008FA782 /* AppDelegate.swift */; };
 		607FACDB1AFB9204008FA782 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 607FACD91AFB9204008FA782 /* Main.storyboard */; };
 		607FACDD1AFB9204008FA782 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 607FACDC1AFB9204008FA782 /* Images.xcassets */; };
@@ -300,7 +300,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				2510AC4B2F50C6DE0021F8F3 /* GoogleService-Info.plist in Resources */,
-				2510ACBC2F50E0E30021F8F3 /* Secrets.xcconfig in Resources */,
 				607FACDB1AFB9204008FA782 /* Main.storyboard in Resources */,
 				607FACE01AFB9204008FA782 /* LaunchScreen.xib in Resources */,
 				607FACDD1AFB9204008FA782 /* Images.xcassets in Resources */,

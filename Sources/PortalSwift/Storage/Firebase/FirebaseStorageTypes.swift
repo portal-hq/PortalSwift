@@ -18,6 +18,8 @@ public enum FirebaseStorageError: LocalizedError {
   case unexpectedResponse(String)
   /// A non-401 request to TBS failed with the given underlying error.
   case requestFailed(underlying: Error)
+  /// Delete is not supported for Firebase backup storage.
+  case deleteNotSupported
 
   public var errorDescription: String? {
     switch self {
@@ -29,16 +31,18 @@ public enum FirebaseStorageError: LocalizedError {
       return "FirebaseStorage: Unexpected response from TBS - \(message)"
     case .requestFailed(let underlying):
       return "FirebaseStorage: Request to TBS failed - \(underlying.localizedDescription)"
+    case .deleteNotSupported:
+      return "FirebaseStorage: Delete is not supported for Firebase backup storage."
     }
   }
 }
 
 /// Response from GET /v1/backup/encrypt-key.
-struct FirebaseEncryptionKeyResponse: Codable {
-  let encryptionKey: String
+public struct FirebaseEncryptionKeyResponse: Codable {
+  public let encryptionKey: String
 }
 
 /// Request body for PUT /v1/backup/encrypt-key.
-struct FirebaseStoreEncryptionKeyRequest: Codable {
-  let encryptionKey: String
+public struct FirebaseStoreEncryptionKeyRequest: Codable {
+  public let encryptionKey: String
 }

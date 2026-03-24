@@ -31,7 +31,7 @@ public class FirebaseStorage: Storage, PortalStorage {
   var apiKey: String?
 
   /// The TBS host URL for Firebase backup endpoints.
-  var tbsHost: String
+  private let tbsHost: String
 
   /// Customer-provided callback that returns a fresh Firebase ID token.
   private let getToken: () async throws -> String?
@@ -73,8 +73,8 @@ public class FirebaseStorage: Storage, PortalStorage {
   }
 
   public func delete() async throws -> Bool {
-    // TODO: Implement deletion of encryption key from TBS server
-    return true
+    // Delete is not supported for Firebase backup storage.
+    throw FirebaseStorageError.deleteNotSupported
   }
 
   public func encrypt(_ value: String) async throws -> EncryptData {

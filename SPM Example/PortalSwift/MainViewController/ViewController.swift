@@ -86,8 +86,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var iCloudBackupButton: UIButton!
   @IBOutlet var iCloudRecoverButton: UIButton!
 
-  // Firebase (programmatic - separate screen)
-  var firebaseAuthButton: UIButton?
+  @IBOutlet var firebaseAuthButton: UIButton!
 
   // Send form
   @IBOutlet public var sendAddress: UITextField?
@@ -890,39 +889,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
     view.addSubview(self.overlayView)
     view.bringSubviewToFront(self.activityIndicator)
-
-    // Firebase Auth button — placed inline after iCloud backup/recover row
-    if let scrollView = self.scrollView, let iCloudBtn = self.iCloudBackupButton {
-      let btn = UIButton(type: .system)
-      var config = UIButton.Configuration.filled()
-      config.title = "Firebase Backup / Recover"
-      config.baseBackgroundColor = UIColor(red: 0.027, green: 0.055, blue: 0.086, alpha: 1)
-      config.baseForegroundColor = .white
-      btn.configuration = config
-      btn.isHidden = true
-      btn.addTarget(self, action: #selector(handleOpenFirebaseAuth), for: .touchUpInside)
-      // Position right below iCloud row (iCloud is at y=648 h=36, so next row at y=692)
-      // Shift the existing "Test ~70 Provider Methods" button (and everything below) down by 44px
-      let firebaseY = iCloudBtn.frame.maxY + 8
-      btn.frame = CGRect(x: 18, y: firebaseY, width: 341, height: 36)
-      scrollView.addSubview(btn)
-
-      // Shift all storyboard subviews that are below the Firebase button down by 44px
-      let shiftAmount: CGFloat = 44
-      for subview in scrollView.subviews where subview !== btn {
-        if subview.frame.origin.y >= firebaseY {
-          subview.frame.origin.y += shiftAmount
-        }
-      }
-
-      // Expand scroll content size
-      scrollView.contentSize = CGSize(
-        width: scrollView.contentSize.width,
-        height: scrollView.contentSize.height + shiftAmount
-      )
-
-      self.firebaseAuthButton = btn
-    }
   }
 
   public func populateEthBalance() async throws {
@@ -1942,7 +1908,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   // MARK: - Firebase Auth & Backup
 
-  @objc func handleOpenFirebaseAuth() {
+  @IBAction func handleOpenFirebaseAuth(_ sender: UIButton) {
     let firebaseVC = FirebaseAuthViewController()
     firebaseVC.portal = self.portal
     firebaseVC.user = self.user
