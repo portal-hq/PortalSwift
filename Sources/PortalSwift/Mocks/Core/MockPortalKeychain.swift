@@ -63,6 +63,42 @@ public class MockPortalKeychain: PortalKeychainProtocol {
 
   public func setShares(_: [String: PortalMpcGeneratedShare]) async throws {}
 
+  // Presignature storage stubs
+  private var presignatureStore: [String: [PresignatureEntry]] = [:]
+
+  public func getPresignatures(_ curve: String) async throws -> [PresignatureEntry] {
+    return presignatureStore[curve] ?? []
+  }
+
+  public func insertPresignature(_ curve: String, _ entry: PresignatureEntry) async throws {
+    presignatureStore[curve, default: []].append(entry)
+  }
+
+  public func popOldestPresignature(_ curve: String) async throws -> PresignatureEntry? {
+    guard var entries = presignatureStore[curve], !entries.isEmpty else { return nil }
+    let oldest = entries.removeFirst()
+    presignatureStore[curve] = entries
+    return oldest
+  }
+
+  public func deletePresignatures(_ curve: String) async throws {
+    presignatureStore[curve] = nil
+  }
+
+  @discardableResult
+  public func cleanupExpiredPresignatures(_ curve: String) async throws -> Int {
+    let entries = presignatureStore[curve] ?? []
+    let now = Date()
+    let formatter = ISO8601DateFormatter()
+    let valid = entries.filter { entry in
+      guard let expiresAt = formatter.date(from: entry.expiresAt) else { return false }
+      return expiresAt > now
+    }
+    let removed = entries.count - valid.count
+    presignatureStore[curve] = valid
+    return removed
+  }
+
   // Deprecated functions
 
   public func getAddress() throws -> String {

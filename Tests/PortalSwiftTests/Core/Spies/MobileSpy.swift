@@ -311,6 +311,40 @@ final class MobileSpy: Mobile {
     return mobileSignReturnValue
   }
 
+  // MARK: - MobilePresign Spy Properties
+
+  var mobilePresignCallsCount = 0
+  private(set) var mobilePresignApiKeyParam: String?
+  private(set) var mobilePresignMpcAddrParam: String?
+  private(set) var mobilePresignShareStrParam: String?
+  private(set) var mobilePresignMetadataStrParam: String?
+  private(set) var mobilePresignCurveParam: PortalCurve?
+  var mobilePresignReturnValue: String = ""
+
+  public func MobilePresign(_ clientAPIKey: String, _ mpcAddr: String, _ shareStr: String, _ metadataStr: String, _ curve: PortalCurve?) async -> String {
+    mobilePresignCallsCount += 1
+    mobilePresignApiKeyParam = clientAPIKey
+    mobilePresignMpcAddrParam = mpcAddr
+    mobilePresignShareStrParam = shareStr
+    mobilePresignMetadataStrParam = metadataStr
+    mobilePresignCurveParam = curve
+    return mobilePresignReturnValue
+  }
+
+  // MARK: - MobileSignWithPresignature Spy Properties
+
+  var mobileSignWithPresignatureCallsCount = 0
+  private(set) var mobileSignWithPresignatureApiKeyParam: String?
+  private(set) var mobileSignWithPresignaturePresignatureDataParam: String?
+  var mobileSignWithPresignatureReturnValue: String = MockConstants.mockSignatureResponse
+
+  public func MobileSignWithPresignature(_ clientAPIKey: String?, _ mpcAddr: String?, _ shareStr: String?, _ presignatureData: String?, _ method: String?, _ params: String?, _ rpcURL: String?, _ chainId: String?, _ metadataStr: String?, _ curve: PortalCurve?, isRaw: Bool?) async -> String {
+    mobileSignWithPresignatureCallsCount += 1
+    mobileSignWithPresignatureApiKeyParam = clientAPIKey
+    mobileSignWithPresignaturePresignatureDataParam = presignatureData
+    return mobileSignWithPresignatureReturnValue
+  }
+
   // MARK: - MobileEjectWalletAndDiscontinueMPC Spy Properties
 
   var mobileEjectWalletAndDiscontinueMPCCallsCount = 0

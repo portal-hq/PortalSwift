@@ -186,3 +186,30 @@ public struct MpcStatus {
   public var status: MpcStatuses
   public var done: Bool
 }
+
+// MARK: - Presignature Types
+
+public enum PresignatureSupportedCurve: String, CaseIterable {
+  case SECP256K1
+}
+
+extension PresignatureSupportedCurve {
+  var portalCurve: PortalCurve {
+    switch self {
+    case .SECP256K1: return .SECP256K1
+    }
+  }
+}
+
+struct PresignResponse: Codable {
+  let id: String?
+  let expiresAt: String?
+  let data: String?
+  var error: PortalError?
+}
+
+public struct PresignatureEntry: Codable, Equatable {
+  public let id: String
+  public let expiresAt: String
+  public let data: String
+}

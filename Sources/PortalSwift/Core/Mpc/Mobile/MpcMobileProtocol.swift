@@ -73,6 +73,21 @@ public protocol Mobile {
 
   func MobileSign(_ apiKey: String?, _ host: String?, _ signingShare: String?, _ method: String?, _ params: String?, _ rpcURL: String?, _ chainId: String?, _ metadata: String?, _ curve: PortalCurve?, isRaw: Bool?) async -> String
 
+  func MobilePresign(
+    _ clientAPIKey: String, _ mpcAddr: String,
+    _ shareStr: String, _ metadataStr: String,
+    _ curve: PortalCurve?
+  ) async -> String
+
+  func MobileSignWithPresignature(
+    _ clientAPIKey: String?, _ mpcAddr: String?,
+    _ shareStr: String?, _ presignatureData: String?,
+    _ method: String?, _ params: String?,
+    _ rpcURL: String?, _ chainId: String?,
+    _ metadataStr: String?,
+    _ curve: PortalCurve?, isRaw: Bool?
+  ) async -> String
+
   func MobileEjectWalletAndDiscontinueMPC(_ clientDkgCipherText: String, _ serverDkgCipherText: String) async -> String
 
   func MobileEjectWalletAndDiscontinueMPCEd25519(_ clientDkgCipherText: String, _ serverDkgCipherText: String) async -> String

@@ -12,6 +12,15 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
+## 7.2.0 - 2026-03-27
+- Added presignature support for faster signing via `FeatureFlags.usePresignatures`.
+    - When enabled, the SDK pre-generates signatures in the background and uses them at signing time for reduced latency.
+    - Added `maxPresignaturesPerCurve` parameter to the `Portal` initializer to control the presignature buffer size per curve (defaults to 3 for SECP256K1).
+- Added Firebase BYO Auth as a backup storage method.
+    - Added `BackupMethods.Firebase` enum case.
+    - Added `FirebaseStorage` class — register via `portal.registerBackupMethod(.Firebase, withStorage: FirebaseStorage(getToken: { ... }))`.
+
+
 ## 7.1.0 - 2026-03-20
 - Added `portal.getTransactionDetails(chain, signature)` for multi-chain transaction lookup via `GET /api/v3/clients/me/chains/{chain}/transactions/{signature}`.
     - Supports EVM transactions, EVM user operations, Solana, Bitcoin, Stellar, and Tron chains.
