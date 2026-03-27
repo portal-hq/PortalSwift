@@ -475,16 +475,25 @@ public class PortalKeychain: PortalKeychainProtocol {
     }
 
     guard !entries.isEmpty else {
+      do {
+        try keychain.deleteItem(key)
+      } catch is PortalKeychainAccessError {}
       return nil
     }
 
     let oldest = entries.removeFirst()
 
-    let data = try encoder.encode(entries)
-    guard let value = String(data: data, encoding: .utf8) else {
-      throw KeychainError.unableToEncodeKeychainData
+    if entries.isEmpty {
+      do {
+        try keychain.deleteItem(key)
+      } catch is PortalKeychainAccessError {}
+    } else {
+      let data = try encoder.encode(entries)
+      guard let value = String(data: data, encoding: .utf8) else {
+        throw KeychainError.unableToEncodeKeychainData
+      }
+      try keychain.updateItem(key, value: value)
     }
-    try keychain.updateItem(key, value: value)
     return oldest
   }
 
@@ -511,11 +520,17 @@ public class PortalKeychain: PortalKeychainProtocol {
 
     let removed = entries.count - valid.count
     if removed > 0 {
-      let data = try encoder.encode(valid)
-      guard let value = String(data: data, encoding: .utf8) else {
-        throw KeychainError.unableToEncodeKeychainData
+      if valid.isEmpty {
+        do {
+          try keychain.deleteItem(key)
+        } catch is PortalKeychainAccessError {}
+      } else {
+        let data = try encoder.encode(valid)
+        guard let value = String(data: data, encoding: .utf8) else {
+          throw KeychainError.unableToEncodeKeychainData
+        }
+        try keychain.updateItem(key, value: value)
       }
-      try keychain.updateItem(key, value: value)
     }
     return removed
   }
