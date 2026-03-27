@@ -475,10 +475,6 @@ public class PortalKeychain: PortalKeychainProtocol {
     }
 
     guard !entries.isEmpty else {
-      let data = try encoder.encode(entries)
-      if let value = String(data: data, encoding: .utf8) {
-        try keychain.updateItem(key, value: value)
-      }
       return nil
     }
 
