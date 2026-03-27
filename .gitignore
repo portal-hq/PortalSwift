@@ -42,3 +42,4 @@ Secrets.xcconfig
 
 .build/
 xcuserdata/
+SPM Example/PortalSwift/GoogleService-Info.plist

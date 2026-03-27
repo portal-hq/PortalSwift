@@ -54,6 +54,7 @@ struct BackupAndRecoverView: View {
         }
       }
       .frame(height: 40)
+
     }
   }
 }

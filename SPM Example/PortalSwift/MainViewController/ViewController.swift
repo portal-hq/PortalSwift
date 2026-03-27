@@ -7,6 +7,7 @@
 //
 
 import AnyCodable
+import FirebaseAuth
 import os.log
 import PortalSwift
 import SwiftUI
@@ -84,6 +85,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var gdriveRecoverButton: UIButton!
   @IBOutlet var iCloudBackupButton: UIButton!
   @IBOutlet var iCloudRecoverButton: UIButton!
+
+  @IBOutlet var firebaseAuthButton: UIButton!
 
   // Send form
   @IBOutlet public var sendAddress: UITextField?
@@ -939,6 +942,15 @@ class ViewController: UIViewController, UITextFieldDelegate {
       try portal.setGDriveView(self)
       try portal.setPasskeyAuthenticationAnchor(self.view.window!)
       try portal.setPasskeyConfiguration(relyingParty: config.relyingParty, webAuthnHost: config.webAuthnHost)
+
+      // Register Firebase backup method
+      portal.registerBackupMethod(.Firebase, withStorage: FirebaseStorage(
+        getToken: {
+          return try await Auth.auth().currentUser?.getIDToken(forcingRefresh: true)
+        },
+        tbsHost: config.webAuthnHost
+      ))
+
       // The apikey from Portal class is private within the Portal SDK class, so it must not be accessible from outside. We already have the clientApiKey from user
       self.logger.info("ViewController.registerPortal() - Portal API Key: \(user.clientApiKey)")
       self.logger.info("ViewController.registerPortal() - Client ID: \(user.clientId)")
@@ -1176,6 +1188,9 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.passkeyBackupButton?.isHidden = !walletExists || !isWalletOnDevice
           self.passwordBackupButton?.isEnabled = walletExists && isWalletOnDevice
           self.passwordBackupButton?.isHidden = !walletExists || !isWalletOnDevice
+
+          // Firebase Auth button (visible once portal is initialized)
+          self.firebaseAuthButton?.isHidden = self.portal == nil
 
           // Recover buttons
           self.gdriveRecoverButton?.isEnabled = availableRecoveryMethods.contains(.GoogleDrive)
@@ -1889,6 +1904,17 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.showStatusView(message: "\(self.failureStatus) Error running recover \(error)")
       }
     }
+  }
+
+  // MARK: - Firebase Auth & Backup
+
+  @IBAction func handleOpenFirebaseAuth(_ sender: UIButton) {
+    let firebaseVC = FirebaseAuthViewController()
+    firebaseVC.portal = self.portal
+    firebaseVC.user = self.user
+    firebaseVC.delegate = self
+    let nav = UINavigationController(rootViewController: firebaseVC)
+    self.present(nav, animated: true)
   }
 
   // Portal API actions
@@ -3726,5 +3752,14 @@ extension ViewController {
       self.logger.error("Exception during Lifi transaction signing/submission: \(error.localizedDescription)")
       return (false, nil)
     }
+  }
+}
+
+// MARK: - FirebaseAuthDelegate
+
+@available(iOS 16.0, *)
+extension ViewController: FirebaseAuthDelegate {
+  func firebaseAuthDidComplete(backup: Bool) {
+    self.updateUIComponents()
   }
 }
