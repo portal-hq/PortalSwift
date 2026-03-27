@@ -39,6 +39,7 @@ public protocol PortalApiProtocol: AnyObject {
   func buildBitcoinP2wpkhTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildBitcoinP2wpkhTransactionResponse
   func broadcastBitcoinP2wpkhTransaction(chainId: String, params: BroadcastParam) async throws -> BroadcastBitcoinP2wpkhTransactionResponse
   func getAssets(_ chainId: String) async throws -> AssetsResponse
+  func getTransactionDetails(chain: String, signature: String) async throws -> GetTransactionDetailsResponse
   func getWalletCapabilities() async throws -> WalletCapabilitiesResponse
 
   // deprecated functions
@@ -376,6 +377,23 @@ public class PortalApi: PortalApiProtocol {
 
     self.logger.error("PortalApi.getTransactions() - Unable to build request URL.")
     throw URLError(.badURL)
+  }
+
+  public func getTransactionDetails(chain: String, signature: String) async throws -> GetTransactionDetailsResponse {
+    guard let encodedChain = chain.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
+          let encodedSignature = signature.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
+          let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(encodedChain)/transactions/\(encodedSignature)")
+    else {
+      self.logger.error("PortalApi.getTransactionDetails() - Unable to build request URL.")
+      throw URLError(.badURL)
+    }
+
+    do {
+      return try await get(url, withBearerToken: self.apiKey, mappingInResponse: GetTransactionDetailsResponse.self)
+    } catch {
+      self.logger.error("PortalApi.getTransactionDetails() - Error: \(error.localizedDescription)")
+      throw error
+    }
   }
 
   public func identify(_ traits: [String: AnyCodable] = [:]) async throws -> MetricsResponse {

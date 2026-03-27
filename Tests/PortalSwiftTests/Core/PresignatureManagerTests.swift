@@ -496,10 +496,10 @@ extension PresignatureManagerTests {
 extension PresignatureManagerTests {
   func test_presignRetryConfig_defaultValues() {
     let config = PresignRetryConfig.default
-    XCTAssertEqual(config.maxAttempts, 6)
+    XCTAssertEqual(config.maxAttempts, 3)
     XCTAssertEqual(config.baseDelayNs, 2_000_000_000)
     XCTAssertEqual(config.multiplier, 2.0)
-    XCTAssertEqual(config.maxDelayNs, 3_600_000_000_000)
+    XCTAssertEqual(config.maxDelayNs, 3_00_000_000_000)
   }
 
   func test_presignRetryConfig_fastValues() {

@@ -63,11 +63,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var personalSignButton: UIButton?
   @IBOutlet var rawSignButton: UIButton?
   @IBOutlet var signButton: UIButton?
+  @IBOutlet var signUserOperationButton: UIButton?
   @IBOutlet var signInButton: UIButton?
   @IBOutlet var signUpButton: UIButton?
   @IBOutlet var testButton: UIButton?
   @IBOutlet var deleteKeychainButton: UIButton?
   @IBOutlet var testNFTsTrxsBalancesSimTrxButton: UIButton?
+  @IBOutlet var testTransactionDetailsButton: UIButton?
   @IBOutlet var ejectButton: UIButton?
   @IBOutlet var ejectAllButton: UIButton?
   @IBOutlet var receiveAssetButton: UIButton?
@@ -537,6 +539,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
       throw PortalExampleAppError.portalNotInitialized()
     }
     return try await portal.getTransactions(chainId, limit: nil, offset: nil, order: nil)
+  }
+
+  public func getTransactionDetails(chain: String, signature: String) async throws -> GetTransactionDetailsResponse {
+    guard let portal else {
+      throw PortalExampleAppError.portalNotInitialized()
+    }
+    return try await portal.getTransactionDetails(chain: chain, signature: signature)
   }
 
   public func recover(_ userId: String, withBackupMethod: BackupMethods) async throws -> PortalRecoverWalletResponse {
@@ -1186,6 +1195,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.personalSignButton?.isHidden = !walletExists || !isWalletOnDevice
           self.rawSignButton?.isEnabled = walletExists && isWalletOnDevice
           self.rawSignButton?.isHidden = !walletExists || !isWalletOnDevice
+          self.signUserOperationButton?.isEnabled = walletExists && isWalletOnDevice
+          self.signUserOperationButton?.isHidden = !walletExists || !isWalletOnDevice
           self.sendButton?.isEnabled = walletExists && isWalletOnDevice
           self.sendButton?.isHidden = !walletExists || !isWalletOnDevice
           self.sendUniButton?.isEnabled = walletExists && isWalletOnDevice
@@ -1213,6 +1224,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.testButton?.isHidden = !walletExists || !isWalletOnDevice
           self.testNFTsTrxsBalancesSimTrxButton?.isEnabled = walletExists && isWalletOnDevice
           self.testNFTsTrxsBalancesSimTrxButton?.isHidden = !walletExists || !isWalletOnDevice
+          self.testTransactionDetailsButton?.isEnabled = walletExists && isWalletOnDevice
+          self.testTransactionDetailsButton?.isHidden = !walletExists || !isWalletOnDevice
 
           // Test Simulate Transactions functions
           self.testSimulateTransactionButton?.isEnabled = walletExists && isWalletOnDevice
@@ -2042,6 +2055,32 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
+  @IBAction func testGetTransactionDetails() {
+    let testCases: [(label: String, chain: String, signature: String)] = [
+      ("EVM Transaction (Monad Testnet)", "monad-testnet", "0x7a2ddf1031309d847f3e3b3fb13deebea6c4c8e02dbf7da33ef8717224939a29"),
+      ("EVM User Operation (Monad Testnet)", "monad-testnet", "0x87981bfa87da6c5faf4b357179596e14a1d104956b9a97aa8c57680e0e304009"),
+      ("Solana Transaction (Devnet)", "solana-devnet", "4U9JaGKb86VtRqoKT1QqY4D6q2LkifKnoewa4vFAZofCxjazRpXB3yWTUY98u1b9GQ9ooeRfDUiNpjed13HUrJ4T"),
+      ("Bitcoin Transaction (Testnet)", "bip122:000000000933ea01ad0ee984209779ba-p2wpkh", "cb56ab9f10559c412d4a1ec4adaa46d48df1a4c3da50e6b84b70789ecedfadd0"),
+      ("Tron Transaction (Nile)", "tron:nile", "74ffe63b22b1f3c3dd1d7337f8feccab34ef4229be3a2a0548fc2e43d12b8d0f"),
+      ("Stellar Transaction (Testnet)", "stellar:testnet", "c21b3ba78255b91b5dcfed56868068e91eb9b963f303e64f78269ea67053ef6b"),
+    ]
+
+    Task {
+      for testCase in testCases {
+        do {
+          let details = try await self.getTransactionDetails(chain: testCase.chain, signature: testCase.signature)
+          print("\(testCase.label):", details)
+          self.logger.info("ViewController.testGetTransactionDetails() - ✅ \(testCase.label): success.")
+          self.showStatusView(message: "\(self.successStatus) \(testCase.label): success.")
+        } catch {
+          self.logger.error("ViewController.testGetTransactionDetails() - ❌ \(testCase.label): \(error)")
+          self.showStatusView(message: "\(self.failureStatus) \(testCase.label): \(error)")
+          return
+        }
+      }
+    }
+  }
+
   @IBAction func sendPressed(_: UIButton!) {
     Task {
       do {
@@ -2188,6 +2227,57 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.stopLoading()
         self.logger.error("ViewController.handleRawSign() - ❌ Error signing message: \(error)")
         self.showStatusView(message: "\(self.failureStatus) Error signing message \(error)")
+      }
+    }
+  }
+
+  @IBAction func handleSignUserOperation() {
+    Task {
+      do {
+        let chainId = "eip155:10143"
+
+        guard let portal else {
+          self.logger.error("ViewController.handleSignUserOperation() - ❌ Portal not initialized")
+          throw PortalExampleAppError.portalNotInitialized()
+        }
+        guard let address = await portal.getAddress(chainId) else {
+          self.logger.error("ViewController.handleSignUserOperation() - ❌ Address not found")
+          throw PortalExampleAppError.addressNotFound()
+        }
+
+        self.startLoading()
+
+        let userOp: [String: String] = [
+          "sender": address,
+          "nonce": "0x0",
+          "callData": "0x",
+          "callGasLimit": "0x5208",
+          "verificationGasLimit": "0x5208",
+          "preVerificationGas": "0x5208",
+          "maxFeePerGas": "0x1",
+          "maxPriorityFeePerGas": "0x1"
+        ]
+
+        let response = try await portal.provider.request(
+          chainId: chainId,
+          method: .eth_signUserOperation,
+          params: [AnyCodable(userOp)],
+          connect: nil,
+          options: nil
+        )
+
+        guard let transactionHash = response.result as? String else {
+          self.logger.error("ViewController.handleSignUserOperation() - ❌ Invalid response type for request:")
+          print(response.result)
+          throw PortalExampleAppError.invalidResponseTypeForRequest()
+        }
+        self.logger.info("ViewController.handleSignUserOperation() - ✅ Successfully signed UserOperation, Trx Hash: \(transactionHash)")
+        self.showStatusView(message: "\(self.successStatus) Signed UserOperation\nTrx Hash: \(transactionHash)")
+        self.stopLoading()
+      } catch {
+        self.stopLoading()
+        self.logger.error("ViewController.handleSignUserOperation() - ❌ Error signing UserOperation: \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error signing UserOperation \(error)")
       }
     }
   }

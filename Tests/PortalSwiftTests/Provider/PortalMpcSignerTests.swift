@@ -405,6 +405,40 @@ private class MockPresignatureSource: PresignatureSource {
   }
 }
 
+// MARK: - eth_signUserOperation Tests
+
+extension PortalMpcSignerTests {
+  func testSignUserOperation() async throws {
+    guard let blockchain = blockchain else {
+      throw PortalMpcSignerError.noCurveFoundForNamespace("eip155:11155111")
+    }
+    let signRequest = PortalSignRequest(method: .eth_signUserOperation, params: "{\"sender\":\"\(MockConstants.mockEip155Address)\",\"nonce\":\"0x0\",\"callData\":\"0x\"}")
+    let response = try await signer.sign(
+      "eip155:11155111",
+      withPayload: signRequest,
+      andRpcUrl: MockConstants.mockHost,
+      usingBlockchain: blockchain
+    )
+    XCTAssertEqual(response, MockConstants.mockSignature)
+  }
+
+  func testSignUserOperation_withSponsorGas_succeeds() async throws {
+    guard let blockchain = blockchain else {
+      throw PortalMpcSignerError.noCurveFoundForNamespace("eip155:11155111")
+    }
+    let signRequest = PortalSignRequest(method: .eth_signUserOperation, params: "{\"sender\":\"\(MockConstants.mockEip155Address)\",\"nonce\":\"0x0\",\"callData\":\"0x\"}")
+    let response = try await signer.sign(
+      "eip155:11155111",
+      withPayload: signRequest,
+      andRpcUrl: MockConstants.mockHost,
+      usingBlockchain: blockchain,
+      signatureApprovalMemo: "Approve UserOp",
+      sponsorGas: true
+    )
+    XCTAssertEqual(response, MockConstants.mockSignature)
+  }
+}
+
 // MARK: - SponsorGas Tests
 
 extension PortalMpcSignerTests {

@@ -542,7 +542,7 @@ public class PortalProvider: PortalProviderProtocol {
 
   private func prepareParamsForNoneRawSignRequest(_ method: PortalRequestMethod?, params: [AnyCodable]?) throws -> AnyCodable? {
     switch method {
-    case .eth_sendTransaction, .eth_signTransaction:
+    case .eth_sendTransaction, .eth_signTransaction, .eth_signUserOperation:
       guard let params = params?[0] else {
         throw PortalMpcSignerError.noParamsForSignRequest
       }
@@ -753,6 +753,7 @@ public enum PortalRequestMethod: String, Codable {
   case eth_newBlockFilter
   case eth_getFilterChanges
   case eth_getUserOperationReceipt
+  case eth_signUserOperation
 
   // Wallet Methods (MetaMask stuff)
   case wallet_addEthereumChain
