@@ -57,8 +57,10 @@ public final class Portal: PortalProtocol {
   private let binary: Mobile
   private let featureFlags: FeatureFlags?
   private var keychain: PortalKeychainProtocol
+  private let maxPresignaturesPerCurve: [PresignatureSupportedCurve: Int]
   private let mpc: PortalMpcProtocol
   private let mpcHost: String
+  private var presignatureManager: PresignatureManager?
   private let version: String
 
   /// Create a Portal instance. This initializer is used by unit tests and mocks.
@@ -87,7 +89,8 @@ public final class Portal: PortalProtocol {
     iCloud: ICloudStorage? = nil,
     keychain: PortalKeychainProtocol? = nil,
     mpc: PortalMpcProtocol? = nil,
-    passwords: PasswordStorage? = nil
+    passwords: PasswordStorage? = nil,
+    maxPresignaturesPerCurve: [PresignatureSupportedCurve: Int] = [.SECP256K1: 3]
   ) throws {
     PortalLogger.shared.setLogLevel(.none)
 
@@ -104,9 +107,21 @@ public final class Portal: PortalProtocol {
 
     self.featureFlags = featureFlags
     self.keychain = keychain ?? PortalKeychain()
+    self.maxPresignaturesPerCurve = maxPresignaturesPerCurve
     self.mpcHost = mpcHost
     self.rpcConfig = withRpcConfig.isEmpty ? Portal.buildDefaultRpcConfig(apiHost) : withRpcConfig
     self.version = version
+
+    if featureFlags?.usePresignatures == true {
+      self.presignatureManager = PresignatureManager(
+        apiKey: apiKey,
+        mpcHost: mpcHost,
+        binary: self.binary,
+        keychain: self.keychain,
+        maxPresignaturesPerCurve: maxPresignaturesPerCurve,
+        featureFlags: featureFlags
+      )
+    }
 
     self.provider = try PortalProvider(
       apiKey: apiKey,
@@ -115,7 +130,8 @@ public final class Portal: PortalProtocol {
       autoApprove: autoApprove,
       mpcHost: mpcHost,
       featureFlags: featureFlags,
-      binary: self.binary
+      binary: self.binary,
+      presignatureSource: self.presignatureManager
     )
 
     // Creating this as a variable first so it's usable to
@@ -169,8 +185,8 @@ public final class Portal: PortalProtocol {
       withStorage: LocalFileStorage()
     )
 
-    // Capture metrics.
-    Task {
+    // Capture metrics and initialize presignature buffers.
+    Task { [weak self] in
       if let client = try? await api.client {
         _ = try? await api.identify([
           "id": AnyCodable(client.id),
@@ -180,6 +196,11 @@ public final class Portal: PortalProtocol {
           MetricsEvents.portalInitialized.rawValue,
           withProperties: [:]
         )
+      }
+      if let manager = self?.presignatureManager {
+        if (try? await self?.isWalletOnDevice()) == true {
+          manager.initializeBuffers()
+        }
       }
     }
   }
@@ -207,6 +228,7 @@ public final class Portal: PortalProtocol {
     self.backup = backup
     self.gatewayConfig = gatewayConfig
     self.keychain = keychain
+    self.maxPresignaturesPerCurve = [.SECP256K1: 3]
     self.mpcHost = mpcHost
     self.version = version
     self.featureFlags = featureFlags
@@ -222,6 +244,17 @@ public final class Portal: PortalProtocol {
     }, uniquingKeysWith: { first, _ in first })
     self.rpcConfig = rpcConfig
 
+    if featureFlags?.usePresignatures == true {
+      self.presignatureManager = PresignatureManager(
+        apiKey: apiKey,
+        mpcHost: mpcHost,
+        binary: self.binary,
+        keychain: self.keychain,
+        maxPresignaturesPerCurve: self.maxPresignaturesPerCurve,
+        featureFlags: featureFlags
+      )
+    }
+
     // Initialize the PortalProvider
     self.provider = try PortalProvider(
       apiKey: apiKey,
@@ -230,7 +263,8 @@ public final class Portal: PortalProtocol {
       autoApprove: autoApprove,
       mpcHost: mpcHost,
       version: version,
-      featureFlags: featureFlags
+      featureFlags: featureFlags,
+      presignatureSource: self.presignatureManager
     )
 
     // Retain backward compatible chainId behavior
@@ -289,11 +323,16 @@ public final class Portal: PortalProtocol {
       }
     }
 
-    // Capture analytics.
-    Task {
+    // Capture analytics and initialize presignature buffers.
+    Task { [weak self] in
       if let client = try? await api.client {
         _ = try? await api.identify(["id": AnyCodable(client.id), "custodianId": AnyCodable(client.custodian.id)])
         _ = try? await api.track(MetricsEvents.portalInitialized.rawValue, withProperties: [:])
+      }
+      if let manager = self?.presignatureManager {
+        if (try? await self?.isWalletOnDevice()) == true {
+          manager.initializeBuffers()
+        }
       }
     }
   }
@@ -534,6 +573,8 @@ public final class Portal: PortalProtocol {
       throw PortalClassError.cannotCreateWallet
     }
 
+    self.presignatureManager?.initializeBuffers()
+
     return PortalCreateWalletResponse(
       ethereum: ethereumAddress,
       solana: solanaAddress
@@ -703,6 +744,9 @@ public final class Portal: PortalProtocol {
       throw PortalClassError.cannotRecoverWallet
     }
 
+    await self.presignatureManager?.deleteAll()
+    self.presignatureManager?.initializeBuffers()
+
     return PortalRecoverWalletResponse(
       ethereum: ethereumAddress,
       solana: addresses[.solana] ?? nil
@@ -781,6 +825,7 @@ public final class Portal: PortalProtocol {
   ///   or access the wallet from this device until it is recovered using a backup method.
   public func deleteShares() async throws {
     try await self.keychain.deleteShares()
+    await self.presignatureManager?.deleteAll()
   }
 
   /// Retrieves the wallet address for a specific blockchain.
