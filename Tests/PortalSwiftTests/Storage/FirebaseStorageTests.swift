@@ -247,9 +247,14 @@ extension FirebaseStorageTests {
 // MARK: - delete tests
 
 extension FirebaseStorageTests {
-  func test_delete_returnsTrue() async throws {
-    let success = try await storage?.delete() ?? false
-    XCTAssertTrue(success)
+  func test_delete_throwsDeleteNotSupported() async throws {
+    do {
+      _ = try await storage?.delete()
+      XCTFail("Expected FirebaseStorageError.deleteNotSupported to be thrown")
+    } catch {
+      XCTAssertTrue(error is FirebaseStorageError)
+      XCTAssertEqual(error as? FirebaseStorageError, .deleteNotSupported)
+    }
   }
 }
 
