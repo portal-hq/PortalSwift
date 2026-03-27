@@ -9,7 +9,7 @@
 import Foundation
 
 /// Errors specific to FirebaseStorage operations.
-public enum FirebaseStorageError: LocalizedError {
+public enum FirebaseStorageError: LocalizedError, Equatable {
   /// The client API key has not been set on the FirebaseStorage instance.
   case noApiKey
   /// The getToken callback returned nil, meaning no Firebase user is signed in.
@@ -20,6 +20,21 @@ public enum FirebaseStorageError: LocalizedError {
   case requestFailed(underlying: Error)
   /// Delete is not supported for Firebase backup storage.
   case deleteNotSupported
+
+  public static func == (lhs: FirebaseStorageError, rhs: FirebaseStorageError) -> Bool {
+    switch (lhs, rhs) {
+    case (.noApiKey, .noApiKey),
+      (.tokenUnavailable, .tokenUnavailable),
+      (.deleteNotSupported, .deleteNotSupported):
+      return true
+    case (.unexpectedResponse(let l), .unexpectedResponse(let r)):
+      return l == r
+    case (.requestFailed(let l), .requestFailed(let r)):
+      return l.localizedDescription == r.localizedDescription
+    default:
+      return false
+    }
+  }
 
   public var errorDescription: String? {
     switch self {

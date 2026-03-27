@@ -31,7 +31,7 @@ public class FirebaseStorage: Storage, PortalStorage {
   var apiKey: String?
 
   /// The TBS host URL for Firebase backup endpoints.
-  private let tbsHost: String
+  let tbsHost: String
 
   /// Customer-provided callback that returns a fresh Firebase ID token.
   private let getToken: () async throws -> String?
