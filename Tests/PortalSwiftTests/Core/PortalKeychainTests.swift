@@ -525,18 +525,127 @@ extension PortalKeychainTests {
     let removed = try await keychain.cleanupExpiredPresignatures("SECP256K1")
     XCTAssertEqual(removed, 0)
   }
+
+  // MARK: - popOldestPresignature cleanup edge cases
+
+  func test_popOldestPresignature_cleansUpKeychain_whenAllEntriesExpired() async throws {
+    let access = InMemoryKeychainAccess()
+    initKeychainWith(keychainAccess: access)
+
+    let expired1 = PresignatureEntry(id: "expired-1", expiresAt: "2020-01-01T00:00:00Z", data: "data-1")
+    let expired2 = PresignatureEntry(id: "expired-2", expiresAt: "2020-06-01T00:00:00Z", data: "data-2")
+    try await keychain.insertPresignature("SECP256K1", expired1)
+    try await keychain.insertPresignature("SECP256K1", expired2)
+
+    let popped = try await keychain.popOldestPresignature("SECP256K1")
+    XCTAssertNil(popped)
+
+    let remaining = try await keychain.getPresignatures("SECP256K1")
+    XCTAssertEqual(remaining.count, 0, "Expired entries should be removed from keychain")
+  }
+
+  func test_popOldestPresignature_doesNotWritePresignatureData_whenNoEntriesExist() async throws {
+    let access = InMemoryKeychainAccess()
+    initKeychainWith(keychainAccess: access)
+
+    let popped = try await keychain.popOldestPresignature("SECP256K1")
+    XCTAssertNil(popped)
+
+    let presignatureUpdates = access.updateItemKeys.filter { $0.contains("Presignatures") }
+    let presignatureAdds = access.addItemKeys.filter { $0.contains("Presignatures") }
+    XCTAssertEqual(presignatureUpdates.count, 0, "Should not call updateItem for presignatures when no entries exist")
+    XCTAssertEqual(presignatureAdds.count, 0, "Should not call addItem for presignatures when no entries exist")
+  }
+
+  func test_popOldestPresignature_deletesKeychainEntry_afterPoppingLastValidEntry() async throws {
+    let access = InMemoryKeychainAccess()
+    initKeychainWith(keychainAccess: access)
+
+    let entry = PresignatureEntry(id: "only", expiresAt: "2099-01-01T00:00:00Z", data: "data")
+    try await keychain.insertPresignature("SECP256K1", entry)
+
+    let popped = try await keychain.popOldestPresignature("SECP256K1")
+    XCTAssertEqual(popped, entry)
+
+    let remaining = try await keychain.getPresignatures("SECP256K1")
+    XCTAssertEqual(remaining.count, 0)
+
+    let deleteCountAfterPop = access.deleteItemKeys.count
+    XCTAssertTrue(deleteCountAfterPop > 0, "Should delete keychain entry after popping last item")
+  }
+
+  func test_popOldestPresignature_updatesKeychain_whenMultipleValidEntriesRemain() async throws {
+    let access = InMemoryKeychainAccess()
+    initKeychainWith(keychainAccess: access)
+
+    let entry1 = PresignatureEntry(id: "first", expiresAt: "2099-01-01T00:00:00Z", data: "data-1")
+    let entry2 = PresignatureEntry(id: "second", expiresAt: "2099-01-01T00:00:00Z", data: "data-2")
+    let entry3 = PresignatureEntry(id: "third", expiresAt: "2099-01-01T00:00:00Z", data: "data-3")
+    try await keychain.insertPresignature("SECP256K1", entry1)
+    try await keychain.insertPresignature("SECP256K1", entry2)
+    try await keychain.insertPresignature("SECP256K1", entry3)
+
+    let popped = try await keychain.popOldestPresignature("SECP256K1")
+    XCTAssertEqual(popped, entry1)
+
+    let remaining = try await keychain.getPresignatures("SECP256K1")
+    XCTAssertEqual(remaining, [entry2, entry3])
+  }
+
+  // MARK: - cleanupExpiredPresignatures cleanup edge cases
+
+  func test_cleanupExpiredPresignatures_deletesKeychainEntry_whenAllExpired() async throws {
+    let access = InMemoryKeychainAccess()
+    initKeychainWith(keychainAccess: access)
+
+    let expired1 = PresignatureEntry(id: "expired-1", expiresAt: "2020-01-01T00:00:00Z", data: "data-1")
+    let expired2 = PresignatureEntry(id: "expired-2", expiresAt: "2020-06-01T00:00:00Z", data: "data-2")
+    try await keychain.insertPresignature("SECP256K1", expired1)
+    try await keychain.insertPresignature("SECP256K1", expired2)
+
+    let deleteCountBefore = access.deleteItemKeys.count
+    let removed = try await keychain.cleanupExpiredPresignatures("SECP256K1")
+    XCTAssertEqual(removed, 2)
+    XCTAssertTrue(access.deleteItemKeys.count > deleteCountBefore, "Should delete keychain entry when all entries are expired")
+
+    let remaining = try await keychain.getPresignatures("SECP256K1")
+    XCTAssertEqual(remaining.count, 0)
+  }
+
+  func test_cleanupExpiredPresignatures_updatesKeychain_whenSomeExpired() async throws {
+    let access = InMemoryKeychainAccess()
+    initKeychainWith(keychainAccess: access)
+
+    let expired = PresignatureEntry(id: "expired", expiresAt: "2020-01-01T00:00:00Z", data: "data-old")
+    let valid = PresignatureEntry(id: "valid", expiresAt: "2099-01-01T00:00:00Z", data: "data-new")
+    try await keychain.insertPresignature("SECP256K1", expired)
+    try await keychain.insertPresignature("SECP256K1", valid)
+
+    let updateCountBefore = access.updateItemKeys.count
+    let removed = try await keychain.cleanupExpiredPresignatures("SECP256K1")
+    XCTAssertEqual(removed, 1)
+    XCTAssertTrue(access.updateItemKeys.count > updateCountBefore, "Should update (not delete) keychain when valid entries remain")
+
+    let remaining = try await keychain.getPresignatures("SECP256K1")
+    XCTAssertEqual(remaining, [valid])
+  }
 }
 
 /// In-memory keychain access for presignature tests.
 /// Simulates real keychain behavior: throws itemNotFound when key doesn't exist.
 private class InMemoryKeychainAccess: PortalKeychainAccessProtocol {
   private var store: [String: String] = [:]
+  private(set) var deleteItemKeys: [String] = []
+  private(set) var updateItemKeys: [String] = []
+  private(set) var addItemKeys: [String] = []
 
   func addItem(_ key: String, value: String) throws {
+    addItemKeys.append(key)
     store[key] = value
   }
 
   func deleteItem(_ key: String) throws {
+    deleteItemKeys.append(key)
     store.removeValue(forKey: key)
   }
 
@@ -548,10 +657,15 @@ private class InMemoryKeychainAccess: PortalKeychainAccessProtocol {
   }
 
   func updateItem(_ key: String, value: String) throws {
+    updateItemKeys.append(key)
     if store[key] == nil {
       try addItem(key, value: value)
     } else {
       store[key] = value
     }
+  }
+
+  func hasKey(_ key: String) -> Bool {
+    store[key] != nil
   }
 }
