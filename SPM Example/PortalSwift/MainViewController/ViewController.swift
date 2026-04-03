@@ -2081,6 +2081,105 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
+  // MARK: - Solana Insufficient Funds Error Tests
+
+  /// Tests the error shapes returned when submitting pre-built Solana transactions
+  /// with insufficient funds via sol_signAndSendTransaction (NOT sendAsset).
+  ///
+  /// Repro per David's thread:
+  ///   1. Have some USDC balance (so tx build succeeds)
+  ///   2. Build a transaction for more than you have
+  ///   3. Submit via sol_signAndSendTransaction
+  ///   4. Observe the error
+  func testSolanaInsufficientFunds() {
+    let chainId = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1" // Devnet
+
+    Task {
+      guard let portal else {
+        self.logger.error("testSolanaInsufficientFunds() - ❌ Portal not initialized")
+        self.showStatusView(message: "\(self.failureStatus) Portal not initialized")
+        return
+      }
+
+      self.startLoading()
+
+      // --- Test 1: Insufficient USDC (SPL token) via sol_signAndSendTransaction ---
+      self.logger.info("testSolanaInsufficientFunds() - 🧪 Test 1: Insufficient USDC transfer")
+      do {
+        let buildParam = BuildTransactionParam(
+          to: "GPsPXxoQA51aTJJkNHtFDFYui5hN5UxcFPnheJEHa5Du",
+          token: "USDC",
+          amount: "999999.99"
+        )
+        let txResponse = try await self.buildSolanaTransaction(chainId: chainId, params: buildParam)
+        self.logger.info("testSolanaInsufficientFunds() - ℹ️ Transaction built successfully, now signing+sending...")
+
+        let sendResponse = try await portal.request(
+          chainId: chainId,
+          method: .sol_signAndSendTransaction,
+          params: [AnyCodable(txResponse.transaction)],
+          options: nil
+        )
+        self.logger.error("testSolanaInsufficientFunds() - ❌ Test 1 UNEXPECTED SUCCESS: \(String(describing: sendResponse.result))")
+        self.showStatusView(message: "\(self.failureStatus) Test 1: Transaction unexpectedly succeeded")
+      } catch {
+        self.logger.info("testSolanaInsufficientFunds() - ✅ Test 1 caught error (type: \(type(of: error))): \(error)")
+        self.showStatusView(message: "\(self.successStatus) Test 1 error: \(error)")
+      }
+
+      // --- Test 2: Insufficient native SOL transfer ---
+      self.logger.info("testSolanaInsufficientFunds() - 🧪 Test 2: Insufficient native SOL transfer")
+      do {
+        let buildParam = BuildTransactionParam(
+          to: "GPsPXxoQA51aTJJkNHtFDFYui5hN5UxcFPnheJEHa5Du",
+          token: "SOL",
+          amount: "999999.99"
+        )
+        let txResponse = try await self.buildSolanaTransaction(chainId: chainId, params: buildParam)
+        self.logger.info("testSolanaInsufficientFunds() - ℹ️ Transaction built successfully, now signing+sending...")
+
+        let sendResponse = try await portal.request(
+          chainId: chainId,
+          method: .sol_signAndSendTransaction,
+          params: [AnyCodable(txResponse.transaction)],
+          options: nil
+        )
+        self.logger.error("testSolanaInsufficientFunds() - ❌ Test 2 UNEXPECTED SUCCESS: \(String(describing: sendResponse.result))")
+        self.showStatusView(message: "\(self.failureStatus) Test 2: Transaction unexpectedly succeeded")
+      } catch {
+        self.logger.info("testSolanaInsufficientFunds() - ✅ Test 2 caught error (type: \(type(of: error))): \(error)")
+        self.showStatusView(message: "\(self.successStatus) Test 2 error: \(error)")
+      }
+
+      // --- Test 3: Zero USDC balance (may fail at build step) ---
+      self.logger.info("testSolanaInsufficientFunds() - 🧪 Test 3: Zero balance USDC (expect build or send failure)")
+      do {
+        let buildParam = BuildTransactionParam(
+          to: "GPsPXxoQA51aTJJkNHtFDFYui5hN5UxcFPnheJEHa5Du",
+          token: "USDC",
+          amount: "0.01"
+        )
+        let txResponse = try await self.buildSolanaTransaction(chainId: chainId, params: buildParam)
+        self.logger.info("testSolanaInsufficientFunds() - ℹ️ Transaction built, now signing+sending...")
+
+        let sendResponse = try await portal.request(
+          chainId: chainId,
+          method: .sol_signAndSendTransaction,
+          params: [AnyCodable(txResponse.transaction)],
+          options: nil
+        )
+        self.logger.info("testSolanaInsufficientFunds() - ℹ️ Test 3 result: \(String(describing: sendResponse.result))")
+        self.showStatusView(message: "\(self.successStatus) Test 3 result: \(String(describing: sendResponse.result))")
+      } catch {
+        self.logger.info("testSolanaInsufficientFunds() - ✅ Test 3 caught error (type: \(type(of: error))): \(error)")
+        self.showStatusView(message: "\(self.successStatus) Test 3 error: \(error)")
+      }
+
+      self.stopLoading()
+      self.logger.info("testSolanaInsufficientFunds() - 🏁 All tests complete. Check logs for error shapes.")
+    }
+  }
+
   @IBAction func testGetTransactionDetails() {
     let testCases: [(label: String, chain: String, signature: String)] = [
       ("EVM Transaction (Monad Testnet)", "monad-testnet", "0x7a2ddf1031309d847f3e3b3fb13deebea6c4c8e02dbf7da33ef8717224939a29"),
