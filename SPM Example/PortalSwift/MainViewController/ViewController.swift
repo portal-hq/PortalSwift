@@ -2122,9 +2122,14 @@ class ViewController: UIViewController, UITextFieldDelegate {
         )
         self.logger.error("testSolanaInsufficientFunds() - ❌ Test 1 UNEXPECTED SUCCESS: \(String(describing: sendResponse.result))")
         self.showStatusView(message: "\(self.failureStatus) Test 1: Transaction unexpectedly succeeded")
+      } catch let mpcError as PortalMpcError {
+        let wouldMarcosCatchThis = mpcError.id == "RPC_OP_FAILED"
+          && (mpcError.message?.contains("custom program error: 0x1") == true)
+        self.logger.info("testSolanaInsufficientFunds() - ✅ Test 1 PortalMpcError (id: \(mpcError.id ?? "nil"), message: \(mpcError.message ?? "nil"))")
+        self.logger.info("testSolanaInsufficientFunds() - ℹ️ Test 1 Marco's check would match: \(wouldMarcosCatchThis)")
       } catch {
-        self.logger.info("testSolanaInsufficientFunds() - ✅ Test 1 caught error (type: \(type(of: error))): \(error)")
-        self.showStatusView(message: "\(self.successStatus) Test 1 error: \(error)")
+        self.logger.info("testSolanaInsufficientFunds() - ✅ Test 1 non-MPC error (type: \(type(of: error))): \(error)")
+        self.logger.info("testSolanaInsufficientFunds() - ℹ️ Test 1 Marco's check would match: false (wrong error type)")
       }
 
       // --- Test 2: Insufficient native SOL transfer ---
@@ -2146,9 +2151,14 @@ class ViewController: UIViewController, UITextFieldDelegate {
         )
         self.logger.error("testSolanaInsufficientFunds() - ❌ Test 2 UNEXPECTED SUCCESS: \(String(describing: sendResponse.result))")
         self.showStatusView(message: "\(self.failureStatus) Test 2: Transaction unexpectedly succeeded")
+      } catch let mpcError as PortalMpcError {
+        let wouldMarcosCatchThis = mpcError.id == "RPC_OP_FAILED"
+          && (mpcError.message?.contains("custom program error: 0x1") == true)
+        self.logger.info("testSolanaInsufficientFunds() - ✅ Test 2 PortalMpcError (id: \(mpcError.id ?? "nil"), message: \(mpcError.message ?? "nil"))")
+        self.logger.info("testSolanaInsufficientFunds() - ℹ️ Test 2 Marco's check would match: \(wouldMarcosCatchThis)")
       } catch {
-        self.logger.info("testSolanaInsufficientFunds() - ✅ Test 2 caught error (type: \(type(of: error))): \(error)")
-        self.showStatusView(message: "\(self.successStatus) Test 2 error: \(error)")
+        self.logger.info("testSolanaInsufficientFunds() - ✅ Test 2 non-MPC error (type: \(type(of: error))): \(error)")
+        self.logger.info("testSolanaInsufficientFunds() - ℹ️ Test 2 Marco's check would match: false (wrong error type)")
       }
 
       // --- Test 3: Zero USDC balance (may fail at build step) ---
@@ -2170,9 +2180,14 @@ class ViewController: UIViewController, UITextFieldDelegate {
         )
         self.logger.info("testSolanaInsufficientFunds() - ℹ️ Test 3 result: \(String(describing: sendResponse.result))")
         self.showStatusView(message: "\(self.successStatus) Test 3 result: \(String(describing: sendResponse.result))")
+      } catch let mpcError as PortalMpcError {
+        let wouldMarcosCatchThis = mpcError.id == "RPC_OP_FAILED"
+          && (mpcError.message?.contains("custom program error: 0x1") == true)
+        self.logger.info("testSolanaInsufficientFunds() - ✅ Test 3 PortalMpcError (id: \(mpcError.id ?? "nil"), message: \(mpcError.message ?? "nil"))")
+        self.logger.info("testSolanaInsufficientFunds() - ℹ️ Test 3 Marco's check would match: \(wouldMarcosCatchThis)")
       } catch {
-        self.logger.info("testSolanaInsufficientFunds() - ✅ Test 3 caught error (type: \(type(of: error))): \(error)")
-        self.showStatusView(message: "\(self.successStatus) Test 3 error: \(error)")
+        self.logger.info("testSolanaInsufficientFunds() - ✅ Test 3 non-MPC error (type: \(type(of: error))): \(error)")
+        self.logger.info("testSolanaInsufficientFunds() - ℹ️ Test 3 Marco's check would match: false (wrong error type)")
       }
 
       self.stopLoading()
