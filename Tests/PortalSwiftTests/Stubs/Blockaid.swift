@@ -395,8 +395,7 @@ extension BlockaidScanURLRawResponse {
     networkOperations: [String]? = nil,
     jsonRpcOperations: [String]? = nil,
     contractWrite: BlockaidContractOperations? = nil,
-    contractRead: BlockaidContractOperations? = nil,
-    modals: [String]? = nil
+    contractRead: BlockaidContractOperations? = nil
   ) -> Self {
     BlockaidScanURLRawResponse(
       status: status,
@@ -411,8 +410,7 @@ extension BlockaidScanURLRawResponse {
       networkOperations: networkOperations,
       jsonRpcOperations: jsonRpcOperations,
       contractWrite: contractWrite,
-      contractRead: contractRead,
-      modals: modals
+      contractRead: contractRead
     )
   }
 }
