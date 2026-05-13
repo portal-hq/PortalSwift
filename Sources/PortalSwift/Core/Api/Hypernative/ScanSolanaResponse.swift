@@ -89,13 +89,35 @@ public struct ScanSolanaParsedActionItem: Codable {
 public struct ScanSolanaTrace: Codable {
   public let from: String
   public let to: String
-  public let funcId: String?
+  public let funcId: ScanSolanaFuncId?
   public let callType: String?
   public let value: Int?
   public let traceAddress: [Int]?
   public let status: String?
   public let callInput: ScanSolanaTraceCallInput?
   public let extraInfo: [String: String]?
+}
+
+public enum ScanSolanaFuncId: Codable {
+  case string(String)
+  case bytes([Int])
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.singleValueContainer()
+    if let stringValue = try? container.decode(String.self) {
+      self = .string(stringValue)
+    } else if let bytes = try? container.decode([Int].self) {
+      self = .bytes(bytes)
+    } else {
+      self = .string("")
+    }
+  }
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.singleValueContainer()
+    switch self {
+    case .string(let value): try container.encode(value)
+    case .bytes(let value): try container.encode(value)
+    }
+  }
 }
 
 public struct ScanSolanaTraceCallInput: Codable {
