@@ -392,7 +392,7 @@ extension ViewController {
         logger.info("  Address: \(addressResult.address)")
         logger.info("    Recommendation: \(addressResult.recommendation)")
         logger.info("    Severity: \(addressResult.severity)")
-        logger.info("    Flags count: \(addressResult.flags.count)")
+        logger.info("    Flags count: \(addressResult.flags?.count ?? 0)")
       }
     } else if let error = response.error {
       logger.error("ViewController - ❌ Address Scan Error: \(error)")

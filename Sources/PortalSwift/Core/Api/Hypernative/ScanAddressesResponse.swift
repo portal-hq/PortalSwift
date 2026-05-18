@@ -24,18 +24,19 @@ public struct ScanAddressesItem: Codable {
   public let address: String
   public let recommendation: String
   public let severity: String
-  public let totalIncomingUsd: Double
-  public let policyId: String
-  public let timestamp: String
-  public let flags: [ScanAddressesFlag]
+  public let totalIncomingUsd: Double?
+  public let totalOutgoingUsd: Double?
+  public let policyId: String?
+  public let timestamp: String?
+  public let flags: [ScanAddressesFlag]?
 }
 
 public struct ScanAddressesFlag: Codable {
   public let title: String
   public let flagId: String
-  public let chain: String
+  public let chain: String?
   public let severity: String
-  public let events: [ScanAddressesEvent]
+  public let events: [ScanAddressesEvent]?
   public let lastUpdate: String?
   public let exposures: [ScanAddressesExposure]
 }
@@ -63,16 +64,21 @@ public struct ScanAddressesEvent: Codable {
 }
 
 public struct ScanAddressesExposure: Codable {
-  public let exposurePortion: Double
+  public let exposurePortion: Double?
   public let exposureType: String?
   public let totalExposureUsd: Double
   public let flaggedInteractions: [ScanAddressesFlaggedInteraction]
+  public let direction: String?
+  public let severity: String?
 }
 
 public struct ScanAddressesFlaggedInteraction: Codable {
-  public let address: String
-  public let chain: String
+  public let address: String?
+  public let chain: String?
   public let alias: String?
   public let minHop: Int
   public let totalExposureUsd: Double
+  public let entityId: String?
+  public let entityName: String?
+  public let severity: String?
 }
