@@ -451,3 +451,160 @@ extension ScanSolanaCodableTests {
     XCTAssertEqual(decoded.lamports, info.lamports)
   }
 }
+
+// MARK: - ScanSolanaFuncId (Polymorphic) Codable Tests
+
+extension ScanSolanaCodableTests {
+  func test_scanSolanaFuncId_decodesString() throws {
+    // Given: funcId as string
+    let json = "\"transfer\"".data(using: .utf8)!
+
+    // When
+    let decoded = try decoder.decode(ScanSolanaFuncId.self, from: json)
+
+    // Then
+    if case .string(let value) = decoded {
+      XCTAssertEqual(value, "transfer")
+    } else {
+      XCTFail("Expected .string case, got \(decoded)")
+    }
+  }
+
+  func test_scanSolanaFuncId_decodesBytes() throws {
+    // Given: funcId as array of bytes
+    let json = "[1, 2, 3, 4]".data(using: .utf8)!
+
+    // When
+    let decoded = try decoder.decode(ScanSolanaFuncId.self, from: json)
+
+    // Then
+    if case .bytes(let bytes) = decoded {
+      XCTAssertEqual(bytes, [1, 2, 3, 4])
+    } else {
+      XCTFail("Expected .bytes case, got \(decoded)")
+    }
+  }
+
+  func test_scanSolanaFuncId_invalidPayloadFallsBackToEmptyString() throws {
+    // Given: funcId as an unexpected type (boolean)
+    let json = "true".data(using: .utf8)!
+
+    // When
+    let decoded = try decoder.decode(ScanSolanaFuncId.self, from: json)
+
+    // Then
+    if case .string(let value) = decoded {
+      XCTAssertEqual(value, "")
+    } else {
+      XCTFail("Expected .string fallback, got \(decoded)")
+    }
+  }
+
+  func test_scanSolanaFuncId_encodesString() throws {
+    // Given
+    let funcId = ScanSolanaFuncId.string("transfer")
+
+    // When
+    let data = try encoder.encode(funcId)
+    let decoded = try decoder.decode(ScanSolanaFuncId.self, from: data)
+
+    // Then
+    if case .string(let value) = decoded {
+      XCTAssertEqual(value, "transfer")
+    } else {
+      XCTFail("Expected .string case after round-trip, got \(decoded)")
+    }
+  }
+
+  func test_scanSolanaFuncId_encodesBytes() throws {
+    // Given
+    let funcId = ScanSolanaFuncId.bytes([10, 20, 30])
+
+    // When
+    let data = try encoder.encode(funcId)
+    let decoded = try decoder.decode(ScanSolanaFuncId.self, from: data)
+
+    // Then
+    if case .bytes(let bytes) = decoded {
+      XCTAssertEqual(bytes, [10, 20, 30])
+    } else {
+      XCTFail("Expected .bytes case after round-trip, got \(decoded)")
+    }
+  }
+
+  func test_scanSolanaTrace_decodesFuncIdAsString() throws {
+    // Given: trace JSON where funcId is a string
+    let json = """
+    {
+      "from": "0x123",
+      "to": "0x456",
+      "funcId": "transfer",
+      "status": "True"
+    }
+    """.data(using: .utf8)!
+
+    // When
+    let decoded = try decoder.decode(ScanSolanaTrace.self, from: json)
+
+    // Then
+    if case .string(let value)? = decoded.funcId {
+      XCTAssertEqual(value, "transfer")
+    } else {
+      XCTFail("Expected funcId .string, got \(String(describing: decoded.funcId))")
+    }
+  }
+
+  func test_scanSolanaTrace_decodesFuncIdAsBytes() throws {
+    // Given: trace JSON where funcId is a byte array
+    let json = """
+    {
+      "from": "0x123",
+      "to": "0x456",
+      "funcId": [1, 2, 3, 4],
+      "status": "True"
+    }
+    """.data(using: .utf8)!
+
+    // When
+    let decoded = try decoder.decode(ScanSolanaTrace.self, from: json)
+
+    // Then
+    if case .bytes(let bytes)? = decoded.funcId {
+      XCTAssertEqual(bytes, [1, 2, 3, 4])
+    } else {
+      XCTFail("Expected funcId .bytes, got \(String(describing: decoded.funcId))")
+    }
+  }
+
+  func test_scanSolanaTrace_roundTripsWithFuncIdString() throws {
+    // Given
+    let trace = ScanSolanaTrace.stub(funcId: .string("transfer"))
+
+    // When
+    let data = try encoder.encode(trace)
+    let decoded = try decoder.decode(ScanSolanaTrace.self, from: data)
+
+    // Then
+    if case .string(let value)? = decoded.funcId {
+      XCTAssertEqual(value, "transfer")
+    } else {
+      XCTFail("Expected funcId .string after round-trip, got \(String(describing: decoded.funcId))")
+    }
+  }
+
+  func test_scanSolanaTrace_roundTripsWithFuncIdBytes() throws {
+    // Given
+    let trace = ScanSolanaTrace.stub(funcId: .bytes([7, 8, 9]))
+
+    // When
+    let data = try encoder.encode(trace)
+    let decoded = try decoder.decode(ScanSolanaTrace.self, from: data)
+
+    // Then
+    if case .bytes(let bytes)? = decoded.funcId {
+      XCTAssertEqual(bytes, [7, 8, 9])
+    } else {
+      XCTFail("Expected funcId .bytes after round-trip, got \(String(describing: decoded.funcId))")
+    }
+  }
+}

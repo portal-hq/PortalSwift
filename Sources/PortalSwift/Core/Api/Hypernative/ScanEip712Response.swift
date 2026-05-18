@@ -70,8 +70,8 @@ public struct ScanEip712ParsedActionItem: Codable {
 }
 
 public struct ScanEip712Trace: Codable {
-  public let from: String
-  public let to: String
+  public let from: String?
+  public let to: String?
   public let funcId: String?
   public let callType: String?
   public let value: Int?

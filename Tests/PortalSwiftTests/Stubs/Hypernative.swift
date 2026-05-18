@@ -902,8 +902,8 @@ extension ScanSolanaAddressTableLookup {
 
 extension ScanEip712Trace {
   static func stub(
-    from: String = "0x7C01728004d3F2370C1BBC36a4Ad680fE6FE8729",
-    to: String = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    from: String? = "0x7C01728004d3F2370C1BBC36a4Ad680fE6FE8729",
+    to: String? = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     funcId: String? = nil,
     callType: String? = nil,
     value: Int? = nil,
@@ -1098,7 +1098,7 @@ extension ScanSolanaTrace {
   static func stub(
     from: String = "0x123",
     to: String = "0x456",
-    funcId: String? = nil,
+    funcId: ScanSolanaFuncId? = nil,
     callType: String? = nil,
     value: Int? = nil,
     traceAddress: [Int]? = nil,
