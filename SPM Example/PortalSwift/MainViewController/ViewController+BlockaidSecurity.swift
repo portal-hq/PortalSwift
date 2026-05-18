@@ -329,7 +329,7 @@ extension ViewController {
         logger.info("📝 [Blockaid Scan URL] Starting scan...")
 
         let request = BlockaidScanURLRequest(
-          url: "https://app.uniswap.org"
+          url: "https://uniswap.org"
         )
 
         let response = try await portal.security.blockaid.scanURL(request: request)
