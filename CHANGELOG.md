@@ -21,6 +21,7 @@ Possible Types of changes include:
 - Relaxed Codable strictness in Hypernative scan transaction response models to prevent decoding failures.
     - Made `from` and `to` optional on `ScanEip712Trace`.
     - Changed `funcId` on `ScanSolanaTrace` to a new `ScanSolanaFuncId` enum that accepts either a string or a byte array.
+    - Changed `status` on `ScanEVMTrace` and `ScanEip712Trace` from `Int?` to `Bool?` to align with the Hypernative API.
 - Removed the unused `modals` field from `BlockaidScanURLRawResponse`.
 
 ## 7.2.0 - 2026-03-27
