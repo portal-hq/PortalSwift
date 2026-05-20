@@ -36,7 +36,7 @@ extension ScanEip712CodableTests {
       callType: "call",
       value: 0,
       traceAddress: [0],
-      status: 1,
+      status: true,
       callInput: "0xabcdef",
       extraInfo: ["key": "value"]
     )
@@ -52,7 +52,7 @@ extension ScanEip712CodableTests {
     XCTAssertEqual(decoded.callType, "call")
     XCTAssertEqual(decoded.value, 0)
     XCTAssertEqual(decoded.traceAddress, [0])
-    XCTAssertEqual(decoded.status, 1)
+    XCTAssertEqual(decoded.status, true)
     XCTAssertEqual(decoded.callInput, "0xabcdef")
     XCTAssertEqual(decoded.extraInfo?["key"], "value")
   }
@@ -63,7 +63,7 @@ extension ScanEip712CodableTests {
     {
       "funcId": "0xdeadbeef",
       "callType": "call",
-      "status": 1
+      "status": true
     }
     """.data(using: .utf8)!
 
@@ -75,7 +75,7 @@ extension ScanEip712CodableTests {
     XCTAssertNil(decoded.to)
     XCTAssertEqual(decoded.funcId, "0xdeadbeef")
     XCTAssertEqual(decoded.callType, "call")
-    XCTAssertEqual(decoded.status, 1)
+    XCTAssertEqual(decoded.status, true)
   }
 
   func test_scanEip712Trace_decodesWithExplicitNullFromAndTo() throws {

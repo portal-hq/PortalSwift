@@ -125,7 +125,7 @@ public struct ScanEVMTrace: Codable {
   public let callType: String?
   public let value: Int?
   public let traceAddress: [Int]?
-  public let status: Int?
+  public let status: Bool?
   public let callInput: String?
   public let extraInfo: [String: String]?
 }

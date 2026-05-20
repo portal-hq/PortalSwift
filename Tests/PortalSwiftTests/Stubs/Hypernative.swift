@@ -781,7 +781,7 @@ extension ScanEVMTrace {
     callType: String? = nil,
     value: Int? = nil,
     traceAddress: [Int]? = nil,
-    status: Int? = 1,
+    status: Bool? = true,
     callInput: String? = nil,
     extraInfo: [String: String]? = nil
   ) -> Self {
@@ -910,7 +910,7 @@ extension ScanEip712Trace {
     callType: String? = nil,
     value: Int? = nil,
     traceAddress: [Int]? = nil,
-    status: Int? = 1,
+    status: Bool? = true,
     callInput: String? = nil,
     extraInfo: [String: String]? = nil
   ) -> Self {
