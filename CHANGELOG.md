@@ -12,6 +12,18 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
+## 7.2.1 - 2026-05-20
+- Fixed Hypernative `ScanAddressesResponse` decoding to align with the Hypernative API.
+    - Made `totalIncomingUsd`, `policyId`, `timestamp`, and `flags` optional on `ScanAddressesItem`, and added `totalOutgoingUsd`.
+    - Made `chain` and `events` optional on `ScanAddressesFlag`.
+    - Made `exposurePortion` optional on `ScanAddressesExposure`, and added `direction` and `severity`.
+    - Made `address` and `chain` optional on `ScanAddressesFlaggedInteraction`, and added `entityId`, `entityName`, and `severity`.
+- Relaxed Codable strictness in Hypernative scan transaction response models to prevent decoding failures.
+    - Made `from` and `to` optional on `ScanEip712Trace`.
+    - Changed `funcId` on `ScanSolanaTrace` to a new `ScanSolanaFuncId` enum that accepts either a string or a byte array.
+    - Changed `status` on `ScanEVMTrace` and `ScanEip712Trace` from `Int?` to `Bool?` to align with the Hypernative API.
+- Removed the unused `modals` field from `BlockaidScanURLRawResponse`.
+
 ## 7.2.0 - 2026-03-27
 - Added presignature support for faster signing via `FeatureFlags.usePresignatures`.
     - When enabled, the SDK pre-generates signatures in the background and uses them at signing time for reduced latency.
