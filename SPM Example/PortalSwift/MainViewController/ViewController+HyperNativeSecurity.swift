@@ -24,8 +24,11 @@ extension ViewController {
     Task {
       logger.info("ViewController.hypernativeScanTx() - 📝 Starting transaction scans...")
 
+      // Test EVM malicious Transaction Scan
+      await testEVMScan(malicious: true)
+      
       // Test EVM Transaction Scan
-      await testEVMScan()
+      await testEVMScan(malicious: false)
 
       // Test EIP-712 Transaction Scan
       await testEip712Scan()
@@ -187,27 +190,25 @@ extension ViewController {
 
   // MARK: - Private Helper Methods
 
-  private func testEVMScan() async {
+  private func testEVMScan(malicious: Bool = false) async {
     do {
-      logger.info("ViewController.testEVMScan() - 📝 Testing EVM transaction scan...")
+      logger.info("ViewController.testEVMScan() - 📝 Testing EVM \(malicious ? "malicious" : "") transaction scan...")
 
       guard let portal = portal else {
         logger.error("ViewController.testEVMScan() - ❌ Portal not initialized")
         return
       }
 
+      let input = malicious
+        ? "0x095ea7b300000000000000000000000066ba61be3bab35c0c00038f335850a390b086fe300000000000000000000000000000000000000000fffffffffffffffffffffff"
+        : "0x"
+
       let transaction = ScanEVMTransaction(
-        chain: "eip155:143",
+        chain: "eip155:1",
         fromAddress: "0x7C01728004d3F2370C1BBC36a4Ad680fE6FE8729",
         toAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-        input: "0x095ea7b300000000000000000000000066ba61be3bab35c0c00038f335850a390b086fe300000000000000000000000000000000000000000fffffffffffffffffffffff",
-        value: 0,
-        nonce: 2340,
-        hash: nil,
-        gas: 3_000_000,
-        gasPrice: 3_000_000,
-        maxPriorityFeePerGas: nil,
-        maxFeePerGas: nil
+        input: input,
+        value: 0
       )
 
       let request = ScanEVMRequest(
@@ -221,11 +222,11 @@ extension ViewController {
 
       let response = try await portal.security.hypernative.scanEVMTx(request: request)
 
-      logger.info("ViewController.testEVMScan() - ✅ EVM scan completed successfully")
+      logger.info("ViewController.testEVMScan() - ✅ EVM \(malicious ? "malicious" : "") transaction scan completed successfully")
       logEVMResult(response)
 
     } catch {
-      logger.error("ViewController.testEVMScan() - ❌ EVM scan failed: \(error.localizedDescription)")
+      logger.error("ViewController.testEVMScan() - ❌ EVM \(malicious ? "malicious" : "") transaction scan failed: \(error.localizedDescription)")
     }
   }
 
@@ -392,7 +393,7 @@ extension ViewController {
         logger.info("  Address: \(addressResult.address)")
         logger.info("    Recommendation: \(addressResult.recommendation)")
         logger.info("    Severity: \(addressResult.severity)")
-        logger.info("    Flags count: \(addressResult.flags.count)")
+        logger.info("    Flags count: \(addressResult.flags?.count ?? 0)")
       }
     } else if let error = response.error {
       logger.error("ViewController - ❌ Address Scan Error: \(error)")

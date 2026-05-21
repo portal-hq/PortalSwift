@@ -33,10 +33,9 @@ public struct BlockaidScanURLRawResponse: Codable {
   public let jsonRpcOperations: [String]?
   public let contractWrite: BlockaidContractOperations?
   public let contractRead: BlockaidContractOperations?
-  public let modals: [String]?
 
   private enum CodingKeys: String, CodingKey {
-    case status, url, modals
+    case status, url
     case scanStartTime = "scan_start_time"
     case scanEndTime = "scan_end_time"
     case maliciousScore = "malicious_score"

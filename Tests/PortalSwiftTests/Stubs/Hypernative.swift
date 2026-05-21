@@ -412,16 +412,18 @@ extension ScanAddressesItem {
     address: String = "0x123",
     recommendation: String = "accept",
     severity: String = "low",
-    totalIncomingUsd: Double = 0.0,
-    policyId: String = "test-policy-id",
-    timestamp: String = "2024-01-01T00:00:00Z",
-    flags: [ScanAddressesFlag] = []
+    totalIncomingUsd: Double? = 0.0,
+    totalOutgoingUsd: Double? = 0.0,
+    policyId: String? = "test-policy-id",
+    timestamp: String? = "2024-01-01T00:00:00Z",
+    flags: [ScanAddressesFlag]? = []
   ) -> Self {
     ScanAddressesItem(
       address: address,
       recommendation: recommendation,
       severity: severity,
       totalIncomingUsd: totalIncomingUsd,
+      totalOutgoingUsd: totalOutgoingUsd,
       policyId: policyId,
       timestamp: timestamp,
       flags: flags
@@ -779,7 +781,7 @@ extension ScanEVMTrace {
     callType: String? = nil,
     value: Int? = nil,
     traceAddress: [Int]? = nil,
-    status: Int? = 1,
+    status: Bool? = true,
     callInput: String? = nil,
     extraInfo: [String: String]? = nil
   ) -> Self {
@@ -801,9 +803,9 @@ extension ScanAddressesFlag {
   static func stub(
     title: String = "Test Flag",
     flagId: String = "test-flag-id",
-    chain: String = "ethereum",
+    chain: String? = "ethereum",
     severity: String = "low",
-    events: [ScanAddressesEvent] = [],
+    events: [ScanAddressesEvent]? = [],
     lastUpdate: String? = "2024-01-01T00:00:00Z",
     exposures: [ScanAddressesExposure] = []
   ) -> Self {
@@ -902,13 +904,13 @@ extension ScanSolanaAddressTableLookup {
 
 extension ScanEip712Trace {
   static func stub(
-    from: String = "0x7C01728004d3F2370C1BBC36a4Ad680fE6FE8729",
-    to: String = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    from: String? = "0x7C01728004d3F2370C1BBC36a4Ad680fE6FE8729",
+    to: String? = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     funcId: String? = nil,
     callType: String? = nil,
     value: Int? = nil,
     traceAddress: [Int]? = nil,
-    status: Int? = 1,
+    status: Bool? = true,
     callInput: String? = nil,
     extraInfo: [String: String]? = nil
   ) -> Self {
@@ -1098,7 +1100,7 @@ extension ScanSolanaTrace {
   static func stub(
     from: String = "0x123",
     to: String = "0x456",
-    funcId: String? = nil,
+    funcId: ScanSolanaFuncId? = nil,
     callType: String? = nil,
     value: Int? = nil,
     traceAddress: [Int]? = nil,
@@ -1196,34 +1198,44 @@ extension ScanAddressesEvent {
 
 extension ScanAddressesExposure {
   static func stub(
-    exposurePortion: Double = 0.5,
+    exposurePortion: Double? = 0.5,
     exposureType: String? = "direct",
     totalExposureUsd: Double = 1000.0,
-    flaggedInteractions: [ScanAddressesFlaggedInteraction] = []
+    flaggedInteractions: [ScanAddressesFlaggedInteraction] = [],
+    direction: String? = "incoming",
+    severity: String? = "low"
   ) -> Self {
     ScanAddressesExposure(
       exposurePortion: exposurePortion,
       exposureType: exposureType,
       totalExposureUsd: totalExposureUsd,
-      flaggedInteractions: flaggedInteractions
+      flaggedInteractions: flaggedInteractions,
+      direction: direction,
+      severity: severity
     )
   }
 }
 
 extension ScanAddressesFlaggedInteraction {
   static func stub(
-    address: String = "0x123",
-    chain: String = "ethereum",
+    address: String? = "0x123",
+    chain: String? = "ethereum",
     alias: String? = nil,
     minHop: Int = 1,
-    totalExposureUsd: Double = 500.0
+    totalExposureUsd: Double = 500.0,
+    entityId: String? = "test-entity-id",
+    entityName: String? = "Test Entity",
+    severity: String? = "low"
   ) -> Self {
     ScanAddressesFlaggedInteraction(
       address: address,
       chain: chain,
       alias: alias,
       minHop: minHop,
-      totalExposureUsd: totalExposureUsd
+      totalExposureUsd: totalExposureUsd,
+      entityId: entityId,
+      entityName: entityName,
+      severity: severity
     )
   }
 }
