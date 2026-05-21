@@ -35,11 +35,7 @@ final class PortalKeychainTests: XCTestCase {
 extension PortalKeychainTests {
   func initKeychainWith(
     keychainAccess: PortalKeychainAccessProtocol? = nil,
-    api: PortalApiProtocol? = PortalApi(
-      apiKey: MockConstants.mockApiKey,
-      apiHost: MockConstants.mockHost,
-      requests: MockPortalRequests()
-    )
+    api: PortalApiProtocol? = PortalApiMock(client: MockConstants.mockClient)
   ) {
     keychain = PortalKeychain(keychainAccess: keychainAccess)
     self.portalApi = api
