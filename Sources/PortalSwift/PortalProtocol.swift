@@ -19,6 +19,7 @@ public protocol PortalProtocol {
   var rpcConfig: [String: String] { get set }
   var apiKey: String { get }
   var yield: Yield { get }
+  var ramps: Ramps { get }
   var trading: Trading { get }
   var security: Security { get }
   var delegations: DelegationsProtocol { get }

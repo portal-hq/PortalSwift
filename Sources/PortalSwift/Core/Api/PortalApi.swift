@@ -17,6 +17,7 @@ public protocol PortalApiProtocol: AnyObject {
   var blockaid: PortalBlockaidApiProtocol { get }
   var delegations: PortalDelegationsApiProtocol { get }
   var evmAccountType: PortalEvmAccountTypeApiProtocol { get }
+  var noah: PortalNoahApiProtocol { get }
 
   func eject() async throws -> String
   func fund(chainId: String, params: FundParams) async throws -> FundResponse
@@ -158,6 +159,13 @@ public class PortalApi: PortalApiProtocol {
 
   /// Access to EVM Account Type API functionality.
   public lazy var evmAccountType: PortalEvmAccountTypeApiProtocol = PortalEvmAccountTypeApi(
+    apiKey: self.apiKey,
+    apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
+    requests: self.requests
+  )
+
+  /// Access to Noah ramps integration functionality.
+  public lazy var noah: PortalNoahApiProtocol = PortalNoahApi(
     apiKey: self.apiKey,
     apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
     requests: self.requests
