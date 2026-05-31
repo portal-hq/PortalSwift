@@ -218,15 +218,21 @@ public struct NoahChannelPaymentMethodDisplay: Codable {
   public let id: String
   public let paymentMethodType: String
   public let details: NoahPaymentMethodDisplayDetails
+  public let accountHolderDetails: NoahAccountHolderDetails?
+  public let issuerDetails: NoahIssuerDetails?
 
   public init(
     id: String,
     paymentMethodType: String,
-    details: NoahPaymentMethodDisplayDetails
+    details: NoahPaymentMethodDisplayDetails,
+    accountHolderDetails: NoahAccountHolderDetails? = nil,
+    issuerDetails: NoahIssuerDetails? = nil
   ) {
     self.id = id
     self.paymentMethodType = paymentMethodType
     self.details = details
+    self.accountHolderDetails = accountHolderDetails
+    self.issuerDetails = issuerDetails
   }
 }
 
@@ -284,19 +290,36 @@ public struct NoahPaymentMethodCapabilities: Codable {
   }
 }
 
+
+public struct NoahPersonName: Codable {
+  public let firstName: String
+  public let lastName: String
+  public let middleName: String?
+
+  public init(
+    firstName: String,
+    lastName: String,
+    middleName: String? = nil
+  ) {
+    self.firstName = firstName
+    self.lastName = lastName
+    self.middleName = middleName
+  }
+}
+
 /// Information about the holder of a Noah payment method.
 ///
 /// Connect-api currently types this as a freeform object; the fields below
 /// reflect the common shape but may be empty if Noah doesn't populate them.
 public struct NoahAccountHolderDetails: Codable {
-  public let name: String?
+  public let name: NoahPersonName?
   public let taxId: String?
   public let email: String?
   public let phoneNumber: String?
   public let address: NoahStreetAddress?
 
   public init(
-    name: String? = nil,
+    name: NoahPersonName? = nil,
     taxId: String? = nil,
     email: String? = nil,
     phoneNumber: String? = nil,

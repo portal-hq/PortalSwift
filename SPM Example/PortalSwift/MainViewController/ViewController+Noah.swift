@@ -7,6 +7,7 @@
 //  Noah on/off-ramp testing functionality
 //
 
+import AnyCodable
 import Foundation
 import PortalSwift
 import UIKit
@@ -41,11 +42,34 @@ extension ViewController {
         let hostedUrl = response.data.hostedUrl
         logger.info("✅ [Noah Initiate KYC] Hosted URL: \(hostedUrl)")
         showStatusView(message: "\(successStatus) KYC URL ready: \(hostedUrl)")
+        presentNoahKycAlert(hostedUrl: hostedUrl)
       } catch {
         logger.error("❌ [Noah Initiate KYC] Error: \(error.localizedDescription)")
         showStatusView(message: "\(failureStatus) KYC failed: \(error.localizedDescription)")
       }
     }
+  }
+
+  // MARK: - Noah KYC Alert
+
+  private func presentNoahKycAlert(hostedUrl: String) {
+    let alert = UIAlertController(
+      title: "KYC Initiated",
+      message: "Noah KYC was initiated successfully. Open the verification page to continue.",
+      preferredStyle: .alert
+    )
+
+    alert.addAction(UIAlertAction(title: "Open in Safari", style: .default) { _ in
+      guard let url = URL(string: hostedUrl), UIApplication.shared.canOpenURL(url) else {
+        self.logger.error("❌ [Noah Initiate KYC] Invalid hosted URL: \(hostedUrl)")
+        return
+      }
+      UIApplication.shared.open(url)
+    })
+
+    alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+
+    present(alert, animated: true)
   }
 
   // MARK: - Noah Initiate Payin
@@ -65,7 +89,7 @@ extension ViewController {
       do {
         let request = NoahInitiatePayinRequest(
           fiatCurrency: "USD",
-          cryptoCurrency: "USDC",
+          cryptoCurrency: "USDC_TEST",
           network: NoahNetwork.ethereum,
           destinationAddress: "0x0000000000000000000000000000000000000000"
         )
@@ -97,8 +121,22 @@ extension ViewController {
       }
 
       do {
+        // Simulate requires a real Noah-issued payment method ID. Noah only
+        // mints one when a payin (bank-deposit workflow) is initiated, so kick
+        // one off first and reuse its bank details. A placeholder ID makes Noah
+        // respond with a 404 (ResourceNotFound, "read single fiat payment method").
+        let payinRequest = NoahInitiatePayinRequest(
+          fiatCurrency: "USD",
+          cryptoCurrency: "USDC_TEST",
+          network: NoahNetwork.ethereum,
+          destinationAddress: "0x0000000000000000000000000000000000000000"
+        )
+        let payinResponse = try await portal.ramps.noah.initiatePayin(request: payinRequest)
+        let paymentMethodId = payinResponse.data.bankDetails.paymentMethodId
+        logger.info("ℹ️ [Noah Simulate Payin] Using payment method ID: \(paymentMethodId)")
+
         let request = NoahSimulatePayinRequest(
-          paymentMethodId: "pm-sample",
+          paymentMethodId: paymentMethodId,
           fiatAmount: "100.00",
           fiatCurrency: "USD"
         )
@@ -192,7 +230,7 @@ extension ViewController {
       do {
         let request = NoahGetPayoutChannelsRequest(
           country: "US",
-          cryptoCurrency: "USDC",
+          cryptoCurrency: "USDC_TEST",
           fiatCurrency: "USD",
           fiatAmount: "100.00"
         )
@@ -227,7 +265,24 @@ extension ViewController {
       }
 
       do {
-        let channelId = "sample-channel-id"
+        // The form endpoint requires a real channel ID. Fetch the available
+        // payout channels first and use the first one returned, otherwise Noah
+        // responds with a 404 (ResourceNotFound) for unknown channel IDs.
+        let channelsRequest = NoahGetPayoutChannelsRequest(
+          country: "US",
+          cryptoCurrency: "USDC_TEST",
+          fiatCurrency: "USD",
+          fiatAmount: "100.00"
+        )
+        let channelsResponse = try await portal.ramps.noah.getPayoutChannels(request: channelsRequest)
+
+        guard let channelId = channelsResponse.data.items.first?.id else {
+          logger.error("❌ [Noah Get Payout Channel Form] No payout channels available")
+          showStatusView(message: "\(failureStatus) No payout channels available")
+          return
+        }
+
+        logger.info("ℹ️ [Noah Get Payout Channel Form] Using channel ID: \(channelId)")
         let response = try await portal.ramps.noah.getPayoutChannelForm(channelId: channelId)
 
         let data = response.data
@@ -238,6 +293,64 @@ extension ViewController {
         showStatusView(message: "\(failureStatus) Form failed: \(error.localizedDescription)")
       }
     }
+  }
+
+  // MARK: - Noah Sample Payout Channel + Form
+
+  /// Fetches the US/USDC_TEST/USD payout channels and returns a bank channel
+  /// together with a form payload that satisfies its dynamic schema.
+  ///
+  /// Noah validates the supplied `form` against the selected channel's
+  /// JSON-Schema. The US bank channels returned for USD require
+  /// `AccountHolderName`, `AccountHolderAddress`, `BankDetails`, and
+  /// `PaymentPurpose`. `AccountHolderName` is itself an object: an
+  /// `AccountHolderType` plus a conditional `Name` (a `FirstName`/`LastName`
+  /// object for individuals). We prefer a bank channel because its schema is
+  /// known; other channels (e.g. cards) expect a different shape.
+  private func noahSampleUsdPayoutChannelAndForm(
+    portal: PortalProtocol
+  ) async throws -> (channelId: String, form: [String: AnyCodable])? {
+    let channelsRequest = NoahGetPayoutChannelsRequest(
+      country: "US",
+      cryptoCurrency: "USDC_TEST",
+      fiatCurrency: "USD",
+      fiatAmount: "100.00"
+    )
+    let channelsResponse = try await portal.ramps.noah.getPayoutChannels(request: channelsRequest)
+
+    let bankChannel = channelsResponse.data.items.first { $0.paymentMethodCategory == "Bank" }
+    guard let channel = bankChannel ?? channelsResponse.data.items.first else {
+      return nil
+    }
+
+    var bankDetails: [String: Any] = [
+      "AccountNumber": "12345678",
+      "BankCode": "123456789"
+    ]
+    // BankAch channels additionally require an AccountType.
+    if channel.paymentMethodType == "BankAch" {
+      bankDetails["AccountType"] = "Checking"
+    }
+
+    let form: [String: AnyCodable] = [
+      "AccountHolderName": AnyCodable([
+        "AccountHolderType": "Individual",
+        "Name": [
+          "FirstName": "John",
+          "LastName": "Doe"
+        ]
+      ] as [String: Any]),
+      "AccountHolderAddress": AnyCodable([
+        "Address": "123 Main Street",
+        "City": "New York",
+        "State": "NY",
+        "PostalCode": "10001"
+      ]),
+      "BankDetails": AnyCodable(bankDetails),
+      "PaymentPurpose": AnyCodable("Transfer to own account")
+    ]
+
+    return (channel.id, form)
   }
 
   // MARK: - Noah Get Payout Quote
@@ -255,10 +368,23 @@ extension ViewController {
       }
 
       do {
+        // The quote endpoint requires a real channel ID (Noah expects a 36-char
+        // UUID) and validates the supplied form against the channel's dynamic
+        // schema. Fetch a bank channel plus a matching sample form, otherwise
+        // Noah rejects the request with a 400 validation error.
+        guard let (channelId, form) = try await noahSampleUsdPayoutChannelAndForm(portal: portal) else {
+          logger.error("❌ [Noah Get Payout Quote] No payout channels available")
+          showStatusView(message: "\(failureStatus) No payout channels available")
+          return
+        }
+
+        logger.info("ℹ️ [Noah Get Payout Quote] Using channel ID: \(channelId)")
+
         let request = NoahGetPayoutQuoteRequest(
-          channelId: "sample-channel-id",
-          cryptoCurrency: "USDC",
+          channelId: channelId,
+          cryptoCurrency: "USDC_TEST",
           fiatAmount: "100.00",
+          form: form,
           fiatCurrency: "USD"
         )
 
@@ -292,6 +418,33 @@ extension ViewController {
       }
 
       do {
+        // A payout must reference a real payoutId, which is issued by the quote
+        // endpoint. Fetch a bank channel + matching form, request a quote, then
+        // use the returned payoutId. Otherwise Noah responds with a 400
+        // ("Payout not found") for an unknown payout.
+        guard let (channelId, quoteForm) = try await noahSampleUsdPayoutChannelAndForm(portal: portal) else {
+          logger.error("❌ [Noah Initiate Payout] No payout channels available")
+          showStatusView(message: "\(failureStatus) No payout channels available")
+          return
+        }
+
+        let quoteRequest = NoahGetPayoutQuoteRequest(
+          channelId: channelId,
+          cryptoCurrency: "USDC_TEST",
+          fiatAmount: "100.00",
+          form: quoteForm,
+          fiatCurrency: "USD"
+        )
+        let quoteResponse = try await portal.ramps.noah.getPayoutQuote(request: quoteRequest)
+        let payoutId = quoteResponse.data.payoutId
+        logger.info("ℹ️ [Noah Initiate Payout] Using payout ID: \(payoutId)")
+
+        // Noah requires the trigger's nonce/sourceAddress/expiry to match the
+        // top-level request values, so compute them once and reuse them.
+        let sourceAddress = "0x1111111111111111111111111111111111111111"
+        let expiry = "2099-01-01T00:00:00Z"
+        let nonce = UUID().uuidString
+
         let trigger = NoahSingleOnchainDepositSourceTriggerInput(
           conditions: [
             NoahSingleOnchainDepositSourceTriggerCondition(
@@ -304,16 +457,16 @@ extension ViewController {
               network: NoahNetwork.ethereum
             )
           ],
-          sourceAddress: "0x1111111111111111111111111111111111111111",
-          expiry: "2099-01-01T00:00:00Z",
-          nonce: UUID().uuidString
+          sourceAddress: sourceAddress,
+          expiry: expiry,
+          nonce: nonce
         )
 
         let request = NoahInitiatePayoutRequest(
-          payoutId: "sample-payout-id",
-          sourceAddress: "0x1111111111111111111111111111111111111111",
-          expiry: "2099-01-01T00:00:00Z",
-          nonce: UUID().uuidString,
+          payoutId: payoutId,
+          sourceAddress: sourceAddress,
+          expiry: expiry,
+          nonce: nonce,
           network: NoahNetwork.ethereum,
           trigger: trigger
         )

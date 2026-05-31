@@ -31,6 +31,20 @@ extension NoahStreetAddress {
   }
 }
 
+extension NoahPersonName {
+  static func stub(
+    firstName: String = "John",
+    lastName: String = "Doe",
+    middleName: String? = nil
+  ) -> Self {
+    NoahPersonName(
+      firstName: firstName,
+      lastName: lastName,
+      middleName: middleName
+    )
+  }
+}
+
 extension NoahBankToAddressRelatedPaymentMethodDetails {
   static func stub(accountNumber: String? = "1234567890", bankCode: String? = "BANKUS33") -> Self {
     NoahBankToAddressRelatedPaymentMethodDetails(accountNumber: accountNumber, bankCode: bankCode)
@@ -157,7 +171,7 @@ extension NoahPaymentMethodCapabilities {
 
 extension NoahAccountHolderDetails {
   static func stub(
-    name: String? = "John Doe",
+    name: NoahPersonName? = .stub(),
     taxId: String? = "123-45-6789",
     email: String? = "john@example.com",
     phoneNumber: String? = "+15555555555",
