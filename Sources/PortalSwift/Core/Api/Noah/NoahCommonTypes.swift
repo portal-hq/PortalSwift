@@ -38,29 +38,54 @@ public enum NoahComparisonOperator: String, Codable {
 
 // MARK: - Address
 
-/// Street address shared by payin and payout payloads.
-public struct NoahStreetAddress: Codable {
+/// Bank address shape returned by Noah. Mirrors connect-api's `NoahBankAddress`
+/// after the BFF's pascal-to-camel formatter
+/// (`Street`/`Street2`/`City`/`PostCode`/`State`/`Country`).
+public struct NoahBankAddress: Codable {
+  public let street: String?
+  public let street2: String?
   public let city: String?
-  public let country: String?
-  public let line1: String?
-  public let line2: String?
-  public let postalCode: String?
+  public let postCode: String?
   public let state: String?
+  public let country: String?
 
   public init(
+    street: String? = nil,
+    street2: String? = nil,
     city: String? = nil,
-    country: String? = nil,
-    line1: String? = nil,
-    line2: String? = nil,
-    postalCode: String? = nil,
-    state: String? = nil
+    postCode: String? = nil,
+    state: String? = nil,
+    country: String? = nil
   ) {
+    self.street = street
+    self.street2 = street2
     self.city = city
-    self.country = country
-    self.line1 = line1
-    self.line2 = line2
-    self.postalCode = postalCode
+    self.postCode = postCode
     self.state = state
+    self.country = country
+  }
+}
+
+// MARK: - Fee details
+
+/// Fee breakdown returned with payin bank details. Mirrors connect-api's
+/// `NoahFeeDetails`.
+public struct NoahFeeDetails: Codable {
+  public let fiatCurrencyCode: String
+  public let totalFeePct: String
+  public let totalFeeBase: String
+  public let totalFeeMin: String
+
+  public init(
+    fiatCurrencyCode: String,
+    totalFeePct: String,
+    totalFeeBase: String,
+    totalFeeMin: String
+  ) {
+    self.fiatCurrencyCode = fiatCurrencyCode
+    self.totalFeePct = totalFeePct
+    self.totalFeeBase = totalFeeBase
+    self.totalFeeMin = totalFeeMin
   }
 }
 
@@ -69,16 +94,20 @@ public struct NoahStreetAddress: Codable {
 /// Bank-side payment method related to a payin destination address.
 public struct NoahBankToAddressRelatedPaymentMethod: Codable {
   public let paymentMethodId: String
+  /// Specific payment method type such as `"BankSepa"` or `"IdentifierPix"`.
   public let paymentMethodType: String
+  public let fee: NoahFeeDetails
   public let details: NoahBankToAddressRelatedPaymentMethodDetails?
 
   public init(
     paymentMethodId: String,
     paymentMethodType: String,
+    fee: NoahFeeDetails,
     details: NoahBankToAddressRelatedPaymentMethodDetails? = nil
   ) {
     self.paymentMethodId = paymentMethodId
     self.paymentMethodType = paymentMethodType
+    self.fee = fee
     self.details = details
   }
 }
@@ -96,13 +125,16 @@ public struct NoahBankToAddressRelatedPaymentMethodDetails: Codable {
 /// Bank details returned with a Noah payin (off-ramp deposit instructions).
 public struct NoahBankDetails: Codable {
   public let paymentMethodId: String
+  /// Specific payment method type such as `"BankSepa"` or `"IdentifierPix"`.
   public let paymentMethodType: String
   public let accountNumber: String
+  public let cryptoCurrency: String
   public let network: String
+  public let fee: NoahFeeDetails
   public let accountHolderName: String?
   public let bankCode: String?
   public let bankName: String?
-  public let bankAddress: NoahStreetAddress?
+  public let bankAddress: NoahBankAddress?
   public let reference: String?
   public let relatedPaymentMethods: [NoahBankToAddressRelatedPaymentMethod]?
 
@@ -110,18 +142,22 @@ public struct NoahBankDetails: Codable {
     paymentMethodId: String,
     paymentMethodType: String,
     accountNumber: String,
+    cryptoCurrency: String,
     network: String,
+    fee: NoahFeeDetails,
     accountHolderName: String? = nil,
     bankCode: String? = nil,
     bankName: String? = nil,
-    bankAddress: NoahStreetAddress? = nil,
+    bankAddress: NoahBankAddress? = nil,
     reference: String? = nil,
     relatedPaymentMethods: [NoahBankToAddressRelatedPaymentMethod]? = nil
   ) {
     self.paymentMethodId = paymentMethodId
     self.paymentMethodType = paymentMethodType
     self.accountNumber = accountNumber
+    self.cryptoCurrency = cryptoCurrency
     self.network = network
+    self.fee = fee
     self.accountHolderName = accountHolderName
     self.bankCode = bankCode
     self.bankName = bankName
@@ -172,6 +208,7 @@ public struct NoahChannel: Codable {
   public let calculated: NoahChannelCalculated?
   /// Recent payment methods, only populated if a customer id was supplied.
   public let paymentMethods: [NoahChannelPaymentMethodDisplay]?
+  /// Settlement speed tier such as `"Standard"` or `"Priority"`.
   public let processingTier: String?
   /// Inline JSON-Schema for the channel's payout form. Use this instead of
   /// `getPayoutChannelForm` whenever it's present to save a round-trip.
@@ -216,6 +253,7 @@ public struct NoahChannel: Codable {
 /// Display payload for a recent payment method attached to a channel.
 public struct NoahChannelPaymentMethodDisplay: Codable {
   public let id: String
+  /// Specific payment method type such as `"BankSepa"` or `"IdentifierPix"`.
   public let paymentMethodType: String
   public let details: NoahPaymentMethodDisplayDetails
   public let accountHolderDetails: NoahAccountHolderDetails?
@@ -253,6 +291,7 @@ public struct NoahPaymentMethodDisplayDetails: Codable {
   public let type: String
   public let accountNumber: String?
   public let bankCode: String?
+  public let bankAddress: NoahBankAddress?
   public let last4: String?
   public let scheme: String?
   public let identifierType: String?
@@ -262,6 +301,7 @@ public struct NoahPaymentMethodDisplayDetails: Codable {
     type: String,
     accountNumber: String? = nil,
     bankCode: String? = nil,
+    bankAddress: NoahBankAddress? = nil,
     last4: String? = nil,
     scheme: String? = nil,
     identifierType: String? = nil,
@@ -270,6 +310,7 @@ public struct NoahPaymentMethodDisplayDetails: Codable {
     self.type = type
     self.accountNumber = accountNumber
     self.bankCode = bankCode
+    self.bankAddress = bankAddress
     self.last4 = last4
     self.scheme = scheme
     self.identifierType = identifierType
@@ -309,47 +350,24 @@ public struct NoahPersonName: Codable {
 
 /// Information about the holder of a Noah payment method.
 ///
-/// Connect-api currently types this as a freeform object; the fields below
-/// reflect the common shape but may be empty if Noah doesn't populate them.
+/// Mirrors connect-api's `AccountHolderDetails`, which only carries the
+/// holder's structured `name`.
 public struct NoahAccountHolderDetails: Codable {
   public let name: NoahPersonName?
-  public let taxId: String?
-  public let email: String?
-  public let phoneNumber: String?
-  public let address: NoahStreetAddress?
 
-  public init(
-    name: NoahPersonName? = nil,
-    taxId: String? = nil,
-    email: String? = nil,
-    phoneNumber: String? = nil,
-    address: NoahStreetAddress? = nil
-  ) {
+  public init(name: NoahPersonName? = nil) {
     self.name = name
-    self.taxId = taxId
-    self.email = email
-    self.phoneNumber = phoneNumber
-    self.address = address
   }
 }
 
 /// Information about the issuer (e.g. bank) of a Noah payment method.
 ///
-/// Connect-api currently types this as a freeform object; the fields below
-/// reflect the common shape but may be empty if Noah doesn't populate them.
+/// Mirrors connect-api's `IssuerDetails`, which only carries an optional `name`.
 public struct NoahIssuerDetails: Codable {
   public let name: String?
-  public let bankCode: String?
-  public let bankName: String?
 
-  public init(
-    name: String? = nil,
-    bankCode: String? = nil,
-    bankName: String? = nil
-  ) {
+  public init(name: String? = nil) {
     self.name = name
-    self.bankCode = bankCode
-    self.bankName = bankName
   }
 }
 
@@ -360,6 +378,7 @@ public struct NoahIssuerDetails: Codable {
 /// `displayDetails`, and optional `customerId` / `capabilities`.
 public struct NoahPaymentMethod: Codable {
   public let id: String
+  /// Broad grouping such as `"Bank"`, `"Card"`, or `"Identifier"`.
   public let paymentMethodCategory: String
   public let country: String
   public let displayDetails: NoahPaymentMethodDisplayDetails

@@ -34,12 +34,17 @@ public struct NoahInitiatePayoutResponse: Codable {
 public struct NoahInitiatePayoutData: Codable {
   public let destinationAddress: String?
   public let conditions: [NoahDepositSourceTriggerCondition]?
+  /// Identifier of the Noah rule created for permanent/quoted triggers, when
+  /// returned.
+  public let ruleId: String?
 
   public init(
     destinationAddress: String? = nil,
-    conditions: [NoahDepositSourceTriggerCondition]? = nil
+    conditions: [NoahDepositSourceTriggerCondition]? = nil,
+    ruleId: String? = nil
   ) {
     self.destinationAddress = destinationAddress
     self.conditions = conditions
+    self.ruleId = ruleId
   }
 }

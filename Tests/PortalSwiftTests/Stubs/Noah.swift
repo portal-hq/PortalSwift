@@ -11,22 +11,38 @@ import Foundation
 
 // MARK: - Common Types
 
-extension NoahStreetAddress {
+extension NoahBankAddress {
   static func stub(
+    street: String? = "1 Market Street",
+    street2: String? = nil,
     city: String? = "San Francisco",
-    country: String? = "US",
-    line1: String? = "1 Market Street",
-    line2: String? = nil,
-    postalCode: String? = "94105",
-    state: String? = "CA"
+    postCode: String? = "94105",
+    state: String? = "CA",
+    country: String? = "US"
   ) -> Self {
-    NoahStreetAddress(
+    NoahBankAddress(
+      street: street,
+      street2: street2,
       city: city,
-      country: country,
-      line1: line1,
-      line2: line2,
-      postalCode: postalCode,
-      state: state
+      postCode: postCode,
+      state: state,
+      country: country
+    )
+  }
+}
+
+extension NoahFeeDetails {
+  static func stub(
+    fiatCurrencyCode: String = "USD",
+    totalFeePct: String = "0.5",
+    totalFeeBase: String = "0.25",
+    totalFeeMin: String = "1.00"
+  ) -> Self {
+    NoahFeeDetails(
+      fiatCurrencyCode: fiatCurrencyCode,
+      totalFeePct: totalFeePct,
+      totalFeeBase: totalFeeBase,
+      totalFeeMin: totalFeeMin
     )
   }
 }
@@ -54,12 +70,14 @@ extension NoahBankToAddressRelatedPaymentMethodDetails {
 extension NoahBankToAddressRelatedPaymentMethod {
   static func stub(
     paymentMethodId: String = "pm-related-1",
-    paymentMethodType: String = "BankAccount",
+    paymentMethodType: String = "BankAch",
+    fee: NoahFeeDetails = .stub(),
     details: NoahBankToAddressRelatedPaymentMethodDetails? = .stub()
   ) -> Self {
     NoahBankToAddressRelatedPaymentMethod(
       paymentMethodId: paymentMethodId,
       paymentMethodType: paymentMethodType,
+      fee: fee,
       details: details
     )
   }
@@ -68,13 +86,15 @@ extension NoahBankToAddressRelatedPaymentMethod {
 extension NoahBankDetails {
   static func stub(
     paymentMethodId: String = "pm-1",
-    paymentMethodType: String = "BankAccount",
+    paymentMethodType: String = "BankAch",
     accountNumber: String = "1111222233",
+    cryptoCurrency: String = "USDC",
     network: String = "ACH",
+    fee: NoahFeeDetails = .stub(),
     accountHolderName: String? = "John Doe",
     bankCode: String? = "BANKUS33",
     bankName: String? = "Test Bank",
-    bankAddress: NoahStreetAddress? = .stub(),
+    bankAddress: NoahBankAddress? = .stub(),
     reference: String? = "REF-1",
     relatedPaymentMethods: [NoahBankToAddressRelatedPaymentMethod]? = [.stub()]
   ) -> Self {
@@ -82,7 +102,9 @@ extension NoahBankDetails {
       paymentMethodId: paymentMethodId,
       paymentMethodType: paymentMethodType,
       accountNumber: accountNumber,
+      cryptoCurrency: cryptoCurrency,
       network: network,
+      fee: fee,
       accountHolderName: accountHolderName,
       bankCode: bankCode,
       bankName: bankName,
@@ -109,7 +131,7 @@ extension NoahChannel {
   static func stub(
     id: String = "channel-1",
     paymentMethodCategory: String = "Bank",
-    paymentMethodType: String = "BankAccount",
+    paymentMethodType: String = "BankAch",
     fiatCurrency: String = "USD",
     country: String = "US",
     limits: NoahChannelLimits = .stub(),
@@ -170,30 +192,14 @@ extension NoahPaymentMethodCapabilities {
 }
 
 extension NoahAccountHolderDetails {
-  static func stub(
-    name: NoahPersonName? = .stub(),
-    taxId: String? = "123-45-6789",
-    email: String? = "john@example.com",
-    phoneNumber: String? = "+15555555555",
-    address: NoahStreetAddress? = .stub()
-  ) -> Self {
-    NoahAccountHolderDetails(
-      name: name,
-      taxId: taxId,
-      email: email,
-      phoneNumber: phoneNumber,
-      address: address
-    )
+  static func stub(name: NoahPersonName? = .stub()) -> Self {
+    NoahAccountHolderDetails(name: name)
   }
 }
 
 extension NoahIssuerDetails {
-  static func stub(
-    name: String? = "Issuer Name",
-    bankCode: String? = "BANKUS33",
-    bankName: String? = "Test Bank"
-  ) -> Self {
-    NoahIssuerDetails(name: name, bankCode: bankCode, bankName: bankName)
+  static func stub(name: String? = "Issuer Name") -> Self {
+    NoahIssuerDetails(name: name)
   }
 }
 
@@ -371,8 +377,8 @@ extension NoahSimulatePayinRequest {
 }
 
 extension NoahSimulatePayinData {
-  static func stub(fiatDepositId: String = "fiat-deposit-1") -> Self {
-    NoahSimulatePayinData(fiatDepositId: fiatDepositId)
+  static func stub(fiatDepositId: String = "fiat-deposit-1", reference: String? = nil) -> Self {
+    NoahSimulatePayinData(fiatDepositId: fiatDepositId, reference: reference)
   }
 }
 
@@ -502,14 +508,22 @@ extension NoahGetPayoutQuoteData {
     payoutId: String = "payout-1",
     totalFee: String = "1.25",
     cryptoAmountEstimate: String = "101.25",
+    cryptoAuthorizedAmount: String = "101.25",
     formSessionId: String = "session-1",
+    rate: String? = nil,
+    breakdown: [NoahTransactionBreakdownItem]? = nil,
+    quote: NoahSellQuote? = nil,
     nextStep: NoahFormNextStep? = nil
   ) -> Self {
     NoahGetPayoutQuoteData(
       payoutId: payoutId,
       totalFee: totalFee,
       cryptoAmountEstimate: cryptoAmountEstimate,
+      cryptoAuthorizedAmount: cryptoAuthorizedAmount,
       formSessionId: formSessionId,
+      rate: rate,
+      breakdown: breakdown,
+      quote: quote,
       nextStep: nextStep
     )
   }
@@ -546,9 +560,10 @@ extension NoahInitiatePayoutRequest {
 extension NoahInitiatePayoutData {
   static func stub(
     destinationAddress: String? = "0x2222222222222222222222222222222222222222",
-    conditions: [NoahDepositSourceTriggerCondition]? = [.stub()]
+    conditions: [NoahDepositSourceTriggerCondition]? = [.stub()],
+    ruleId: String? = nil
   ) -> Self {
-    NoahInitiatePayoutData(destinationAddress: destinationAddress, conditions: conditions)
+    NoahInitiatePayoutData(destinationAddress: destinationAddress, conditions: conditions, ruleId: ruleId)
   }
 }
 

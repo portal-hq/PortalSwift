@@ -24,8 +24,11 @@ public struct NoahSimulatePayinResponse: Codable {
 /// The `data` payload of a Noah simulate-payin response.
 public struct NoahSimulatePayinData: Codable {
   public let fiatDepositId: String
+  /// Reference for the simulated deposit, when returned by Noah.
+  public let reference: String?
 
-  public init(fiatDepositId: String) {
+  public init(fiatDepositId: String, reference: String? = nil) {
     self.fiatDepositId = fiatDepositId
+    self.reference = reference
   }
 }

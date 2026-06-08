@@ -229,8 +229,8 @@ extension ViewController {
 
       do {
         let request = NoahGetPayoutChannelsRequest(
-          country: "US",
           cryptoCurrency: "USDC_TEST",
+          country: "US",
           fiatCurrency: "USD",
           fiatAmount: "100.00"
         )
@@ -269,8 +269,8 @@ extension ViewController {
         // payout channels first and use the first one returned, otherwise Noah
         // responds with a 404 (ResourceNotFound) for unknown channel IDs.
         let channelsRequest = NoahGetPayoutChannelsRequest(
-          country: "US",
           cryptoCurrency: "USDC_TEST",
+          country: "US",
           fiatCurrency: "USD",
           fiatAmount: "100.00"
         )
@@ -311,8 +311,8 @@ extension ViewController {
     portal: PortalProtocol
   ) async throws -> (channelId: String, form: [String: AnyCodable])? {
     let channelsRequest = NoahGetPayoutChannelsRequest(
-      country: "US",
       cryptoCurrency: "USDC_TEST",
+      country: "US",
       fiatCurrency: "USD",
       fiatAmount: "100.00"
     )

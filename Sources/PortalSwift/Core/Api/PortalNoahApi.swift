@@ -144,10 +144,12 @@ public class PortalNoahApi: PortalNoahApiProtocol {
   /// List Noah payout channels matching the supplied filters.
   public func getPayoutChannels(request: NoahGetPayoutChannelsRequest) async throws -> NoahGetPayoutChannelsResponse {
     var queryParams: [String] = []
-    addParam("country", request.country, to: &queryParams)
     addParam("cryptoCurrency", request.cryptoCurrency, to: &queryParams)
+    addParam("country", request.country, to: &queryParams)
     addParam("fiatCurrency", request.fiatCurrency, to: &queryParams)
     addParam("fiatAmount", request.fiatAmount, to: &queryParams)
+    addParam("paymentMethodId", request.paymentMethodId, to: &queryParams)
+    addParam("pageSize", request.pageSize, to: &queryParams)
     addParam("pageToken", request.pageToken, to: &queryParams)
 
     let queryString = queryParams.isEmpty ? "" : "?\(queryParams.joined(separator: "&"))"
