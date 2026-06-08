@@ -17,6 +17,8 @@ public protocol PortalYieldXyzApiProtocol: AnyObject {
   func getHistoricalYieldActions(request: YieldXyzGetHistoricalActionsRequest) async throws -> YieldXyzGetHistoricalActionsResponse
   func getYieldTransaction(transactionId: String) async throws -> YieldXyzGetTransactionResponse
   func submitTransactionHash(request: YieldXyzTrackTransactionRequest) async throws -> YieldXyzTrackTransactionResponse
+  func getYieldDefaults(includeOpportunities: Bool?) async throws -> YieldXyzGetDefaultsResponse
+  func getYieldValidators(yieldId: String) async throws -> YieldXyzGetValidatorsResponse
 }
 
 /// API class specifically for Yield.xyz integration functionality.
@@ -258,6 +260,49 @@ public class PortalYieldXyzApi: PortalYieldXyzApiProtocol {
           userInfo: [NSLocalizedDescriptionKey: "API returned 400 Bad Request when submitting transaction hash."]
         )
       }
+      throw error
+    }
+  }
+
+  /// Retrieves Portal's curated default yield opportunities, keyed by `"{caip2}:{TOKEN}"`.
+  /// - Parameter includeOpportunities: When `true`, the backend enriches each entry with the live opportunity.
+  /// - Returns: A `YieldXyzGetDefaultsResponse` whose `data` maps chain+token keys to default yields.
+  /// - Throws: An error if the operation fails.
+  public func getYieldDefaults(includeOpportunities: Bool? = nil) async throws -> YieldXyzGetDefaultsResponse {
+    var queryParams: [String] = []
+    addParam("includeOpportunities", includeOpportunities, to: &queryParams)
+
+    let queryString = queryParams.isEmpty ? "" : "?\(queryParams.joined(separator: "&"))"
+
+    guard let url = URL(string: "\(baseUrl)/api/v3/clients/me/integrations/yield-xyz/yields/defaults\(queryString)") else {
+      logger.error("PortalYieldXyzApi.getYieldDefaults() - Unable to build request URL.")
+      throw URLError(.badURL)
+    }
+
+    do {
+      return try await get(url, withBearerToken: apiKey, mappingInResponse: YieldXyzGetDefaultsResponse.self)
+    } catch {
+      logger.error("PortalYieldXyzApi.getYieldDefaults() - Error: \(error.localizedDescription)")
+      throw error
+    }
+  }
+
+  /// Retrieves available validators for a native-staking yield.
+  /// - Parameter yieldId: The yield identifier.
+  /// - Returns: A `YieldXyzGetValidatorsResponse` containing validators.
+  /// - Throws: An error if the operation fails.
+  public func getYieldValidators(yieldId: String) async throws -> YieldXyzGetValidatorsResponse {
+    let encodedYieldId = yieldId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? yieldId
+
+    guard let url = URL(string: "\(baseUrl)/api/v3/clients/me/integrations/yield-xyz/yields/\(encodedYieldId)/validators") else {
+      logger.error("PortalYieldXyzApi.getYieldValidators() - Unable to build request URL.")
+      throw URLError(.badURL)
+    }
+
+    do {
+      return try await get(url, withBearerToken: apiKey, mappingInResponse: YieldXyzGetValidatorsResponse.self)
+    } catch {
+      logger.error("PortalYieldXyzApi.getYieldValidators() - Error: \(error.localizedDescription)")
       throw error
     }
   }

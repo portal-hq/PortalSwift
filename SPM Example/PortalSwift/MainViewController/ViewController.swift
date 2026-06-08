@@ -2493,6 +2493,84 @@ extension ViewController {
 
 @available(iOS 16.0, *)
 extension ViewController {
+  /// High-level deposit using the explicit `yieldId` mode. The wallet address is auto-resolved.
+  @IBAction func handleYieldDeposit() {
+    guard let portal = portal else {
+      self.logger.info("Portal is not initialized")
+      return
+    }
+
+    Task {
+      self.logger.info("Starting high-level Yield deposit...")
+      do {
+        let params = YieldDepositParams(
+          target: .yieldId("ethereum-sepolia-link-aave-v3-lending"),
+          amount: "0.0000001"
+        )
+        let options = YieldSubmitOptions(onProgress: { event in
+          let hashSuffix = event.hash.map { " \(String($0.prefix(10)))..." } ?? ""
+          self.showStatusView(message: "Deposit: \(event.step.rawValue) (\(event.index + 1)/\(event.total))\(hashSuffix)")
+        })
+        let result = try await portal.yield.yieldxyz.deposit(params: params, options: options)
+        self.logger.info("Deposit complete: \(result.hashes) status: \(result.status.rawValue)")
+        self.showStatusView(message: "\(self.successStatus) Deposit complete. \(result.hashes.count) tx(s). Yield: \(result.yieldId)")
+      } catch {
+        self.logger.error("Yield deposit FAILED: \(error.localizedDescription)")
+        self.showStatusView(message: "\(self.failureStatus) Deposit FAILED: \(error.localizedDescription)")
+      }
+    }
+  }
+
+  /// High-level withdraw using the `chain` + `token` mode (resolves the yieldId from Portal defaults).
+  @IBAction func handleYieldWithdraw() {
+    guard let portal = portal else {
+      self.logger.info("Portal is not initialized")
+      return
+    }
+
+    Task {
+      self.logger.info("Starting high-level Yield withdraw...")
+      do {
+        let params = YieldWithdrawParams(
+          target: .chainAndToken(chain: "eip155:11155111", token: "ETH"),
+          amount: "0.0000001"
+        )
+        let options = YieldSubmitOptions(onProgress: { event in
+          let hashSuffix = event.hash.map { " \(String($0.prefix(10)))..." } ?? ""
+          self.showStatusView(message: "Withdraw: \(event.step.rawValue) (\(event.index + 1)/\(event.total))\(hashSuffix)")
+        })
+        let result = try await portal.yield.yieldxyz.withdraw(params: params, options: options)
+        self.logger.info("Withdraw complete: \(result.hashes) status: \(result.status.rawValue)")
+        self.showStatusView(message: "\(self.successStatus) Withdraw complete. \(result.hashes.count) tx(s). Yield: \(result.yieldId)")
+      } catch {
+        self.logger.error("Yield withdraw FAILED: \(error.localizedDescription)")
+        self.showStatusView(message: "\(self.failureStatus) Withdraw FAILED: \(error.localizedDescription)")
+      }
+    }
+  }
+
+  /// Fetches validators for a native-staking yield.
+  @IBAction func handleYieldGetValidators() {
+    guard let portal = portal else {
+      self.logger.info("Portal is not initialized")
+      return
+    }
+
+    Task {
+      let yieldId = "monad-testnet-mon-native-staking"
+      self.logger.info("Fetching validators for \(yieldId)...")
+      do {
+        let validators = try await portal.yield.getValidators(yieldId: yieldId)
+        self.logger.info("Found \(validators.count) validators for \(yieldId)")
+        self.logger.info("The validators: \(validators)")
+        self.showStatusView(message: "\(self.successStatus) \(validators.count) validators for \(yieldId)")
+      } catch {
+        self.logger.error("getValidators FAILED: \(error.localizedDescription)")
+        self.showStatusView(message: "\(self.failureStatus) getValidators FAILED: \(error.localizedDescription)")
+      }
+    }
+  }
+
   @IBAction func handleDiscoverYields() {
     guard let portal = portal else {
       self.logger.info("Portal is not initialized")
