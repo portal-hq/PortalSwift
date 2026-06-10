@@ -283,8 +283,8 @@ extension PortalNoahApiTests {
     initPortalNoahApiWith(requests: portalRequestsSpy)
 
     let request = NoahGetPayoutChannelsRequest(
-      country: "US",
       cryptoCurrency: "USDC",
+      country: "US",
       fiatCurrency: "USD",
       fiatAmount: "100.00"
     )
@@ -305,8 +305,8 @@ extension PortalNoahApiTests {
     initPortalNoahApiWith(requests: portalRequestsSpy)
 
     let request = NoahGetPayoutChannelsRequest(
-      country: "GB",
       cryptoCurrency: "USDC",
+      country: "GB",
       fiatCurrency: "GBP",
       fiatAmount: nil
     )

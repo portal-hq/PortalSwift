@@ -49,6 +49,12 @@ public struct NoahGetPayoutQuoteData: Codable {
   /// The crypto amount the client is authorized to send for this quote.
   public let cryptoAuthorizedAmount: String
   public let formSessionId: String
+  /// Disclosure: the crypto currency the quote was priced in, when returned by Noah.
+  public let cryptoCurrency: String?
+  /// Disclosure: the fiat currency the quote was priced in, when returned by Noah.
+  public let fiatCurrency: String?
+  /// Disclosure: the resolved fiat amount for the quote, when returned by Noah.
+  public let fiatAmount: String?
   /// Exchange rate applied to the quote, when returned by Noah.
   public let rate: String?
   /// Fee breakdown line items, when returned by Noah.
@@ -63,6 +69,9 @@ public struct NoahGetPayoutQuoteData: Codable {
     cryptoAmountEstimate: String,
     cryptoAuthorizedAmount: String,
     formSessionId: String,
+    cryptoCurrency: String? = nil,
+    fiatCurrency: String? = nil,
+    fiatAmount: String? = nil,
     rate: String? = nil,
     breakdown: [NoahTransactionBreakdownItem]? = nil,
     quote: NoahSellQuote? = nil,
@@ -73,6 +82,9 @@ public struct NoahGetPayoutQuoteData: Codable {
     self.cryptoAmountEstimate = cryptoAmountEstimate
     self.cryptoAuthorizedAmount = cryptoAuthorizedAmount
     self.formSessionId = formSessionId
+    self.cryptoCurrency = cryptoCurrency
+    self.fiatCurrency = fiatCurrency
+    self.fiatAmount = fiatAmount
     self.rate = rate
     self.breakdown = breakdown
     self.quote = quote

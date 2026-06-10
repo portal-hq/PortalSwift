@@ -17,6 +17,11 @@ import Foundation
 public enum NoahNetwork {
   /// Ethereum mainnet — `eip155:1` -> Noah `"Ethereum"`.
   public static let ethereum = "eip155:1"
+  /// Ethereum Sepolia testnet — `eip155:11155111` -> Noah `"EthereumTestSepolia"`.
+  /// Use with sandbox-only test assets such as `USDC_TEST`.
+  public static let ethereumSepolia = "eip155:11155111"
+  /// Base Sepolia testnet — `eip155:84532` -> Noah `"BaseTestSepolia"`.
+  public static let baseSepolia = "eip155:84532"
   /// Base mainnet — `eip155:8453` -> Noah `"Base"`.
   public static let base = "eip155:8453"
   /// Polygon mainnet — `eip155:137` -> Noah `"Polygon"`.

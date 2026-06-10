@@ -14,7 +14,12 @@ public struct NoahInitiatePayoutRequest: Codable {
   public let expiry: String
   public let nonce: String
   public let network: String
-  public let trigger: NoahSingleOnchainDepositSourceTriggerInput?
+  /// Optional explicit trigger. Accepts the Single, Permanent, or Quoted
+  /// variant. When omitted, the BFF synthesises a Single trigger from the
+  /// quote and the supplied `sourceAddress` / `expiry` / `nonce`.
+  public let trigger: NoahOnchainDepositSourceTrigger?
+  /// Optional business (partner) fee. Forwarded to Noah as `BusinessFee`.
+  public let businessFee: NoahBusinessFee?
 
   public init(
     payoutId: String,
@@ -22,7 +27,8 @@ public struct NoahInitiatePayoutRequest: Codable {
     expiry: String,
     nonce: String,
     network: String,
-    trigger: NoahSingleOnchainDepositSourceTriggerInput? = nil
+    trigger: NoahOnchainDepositSourceTrigger? = nil,
+    businessFee: NoahBusinessFee? = nil
   ) {
     self.payoutId = payoutId
     self.sourceAddress = sourceAddress
@@ -30,5 +36,6 @@ public struct NoahInitiatePayoutRequest: Codable {
     self.nonce = nonce
     self.network = network
     self.trigger = trigger
+    self.businessFee = businessFee
   }
 }

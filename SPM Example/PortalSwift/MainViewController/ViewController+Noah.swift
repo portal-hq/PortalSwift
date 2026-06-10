@@ -90,7 +90,7 @@ extension ViewController {
         let request = NoahInitiatePayinRequest(
           fiatCurrency: "USD",
           cryptoCurrency: "USDC_TEST",
-          network: NoahNetwork.ethereum,
+          network: NoahNetwork.ethereumSepolia,
           destinationAddress: "0x0000000000000000000000000000000000000000"
         )
 
@@ -128,7 +128,7 @@ extension ViewController {
         let payinRequest = NoahInitiatePayinRequest(
           fiatCurrency: "USD",
           cryptoCurrency: "USDC_TEST",
-          network: NoahNetwork.ethereum,
+          network: NoahNetwork.ethereumSepolia,
           destinationAddress: "0x0000000000000000000000000000000000000000"
         )
         let payinResponse = try await portal.ramps.noah.initiatePayin(request: payinRequest)
@@ -232,7 +232,7 @@ extension ViewController {
           cryptoCurrency: "USDC_TEST",
           country: "US",
           fiatCurrency: "USD",
-          fiatAmount: "100.00"
+          fiatAmount: "0.01"
         )
 
         let response = try await portal.ramps.noah.getPayoutChannels(request: request)
@@ -272,7 +272,7 @@ extension ViewController {
           cryptoCurrency: "USDC_TEST",
           country: "US",
           fiatCurrency: "USD",
-          fiatAmount: "100.00"
+          fiatAmount: "0.01"
         )
         let channelsResponse = try await portal.ramps.noah.getPayoutChannels(request: channelsRequest)
 
@@ -314,7 +314,7 @@ extension ViewController {
       cryptoCurrency: "USDC_TEST",
       country: "US",
       fiatCurrency: "USD",
-      fiatAmount: "100.00"
+      fiatAmount: "0.01"
     )
     let channelsResponse = try await portal.ramps.noah.getPayoutChannels(request: channelsRequest)
 
@@ -383,7 +383,7 @@ extension ViewController {
         let request = NoahGetPayoutQuoteRequest(
           channelId: channelId,
           cryptoCurrency: "USDC_TEST",
-          fiatAmount: "100.00",
+          fiatAmount: "0.01",
           form: form,
           fiatCurrency: "USD"
         )
@@ -431,7 +431,7 @@ extension ViewController {
         let quoteRequest = NoahGetPayoutQuoteRequest(
           channelId: channelId,
           cryptoCurrency: "USDC_TEST",
-          fiatAmount: "100.00",
+          fiatAmount: "0.01",
           form: quoteForm,
           fiatCurrency: "USD"
         )
@@ -454,7 +454,7 @@ extension ViewController {
                   value: "100"
                 )
               ],
-              network: NoahNetwork.ethereum
+              network: NoahNetwork.ethereumSepolia
             )
           ],
           sourceAddress: sourceAddress,
@@ -467,8 +467,8 @@ extension ViewController {
           sourceAddress: sourceAddress,
           expiry: expiry,
           nonce: nonce,
-          network: NoahNetwork.ethereum,
-          trigger: trigger
+          network: NoahNetwork.ethereumSepolia,
+          trigger: .single(trigger)
         )
 
         let response = try await portal.ramps.noah.initiatePayout(request: request)

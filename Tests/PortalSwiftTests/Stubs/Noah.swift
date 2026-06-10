@@ -292,6 +292,58 @@ extension NoahSingleOnchainDepositSourceTriggerInput {
   }
 }
 
+extension NoahNetworkOnlyOnchainDepositSourceTriggerCondition {
+  static func stub(network: String = NoahNetwork.ethereum) -> Self {
+    NoahNetworkOnlyOnchainDepositSourceTriggerCondition(network: network)
+  }
+}
+
+extension NoahPermanentOnchainDepositSourceTriggerInput {
+  static func stub(
+    conditions: [NoahNetworkOnlyOnchainDepositSourceTriggerCondition] = [.stub()],
+    sourceAddress: String = "0x1111111111111111111111111111111111111111",
+    expiry: String = "2099-01-01T00:00:00Z",
+    nonce: String = "nonce-1",
+    networkAgnostic: Bool? = nil
+  ) -> Self {
+    NoahPermanentOnchainDepositSourceTriggerInput(
+      conditions: conditions,
+      sourceAddress: sourceAddress,
+      expiry: expiry,
+      nonce: nonce,
+      networkAgnostic: networkAgnostic
+    )
+  }
+}
+
+extension NoahQuotedOnchainDepositSourceTriggerInput {
+  static func stub(
+    signedQuote: String = "signed-quote-1",
+    conditions: [NoahNetworkOnlyOnchainDepositSourceTriggerCondition] = [.stub()],
+    sourceAddress: String = "0x1111111111111111111111111111111111111111",
+    nonce: String = "nonce-1",
+    expiry: String? = "2099-01-01T00:00:00Z"
+  ) -> Self {
+    NoahQuotedOnchainDepositSourceTriggerInput(
+      signedQuote: signedQuote,
+      conditions: conditions,
+      sourceAddress: sourceAddress,
+      nonce: nonce,
+      expiry: expiry
+    )
+  }
+}
+
+extension NoahBusinessFee {
+  static func stub(
+    feeBase: String? = "0.50",
+    feePct: String? = "1.5",
+    fiatCurrency: String? = "USD"
+  ) -> Self {
+    NoahBusinessFee(feeBase: feeBase, feePct: feePct, fiatCurrency: fiatCurrency)
+  }
+}
+
 // MARK: - InitiateKyc
 
 extension NoahFiatOption {
@@ -337,13 +389,15 @@ extension NoahInitiatePayinRequest {
     fiatCurrency: String = "USD",
     cryptoCurrency: String = "USDC",
     network: String = NoahNetwork.ethereum,
-    destinationAddress: String = "0x0000000000000000000000000000000000000000"
+    destinationAddress: String = "0x0000000000000000000000000000000000000000",
+    businessFees: [String: NoahBusinessFee]? = nil
   ) -> Self {
     NoahInitiatePayinRequest(
       fiatCurrency: fiatCurrency,
       cryptoCurrency: cryptoCurrency,
       network: network,
-      destinationAddress: destinationAddress
+      destinationAddress: destinationAddress,
+      businessFees: businessFees
     )
   }
 }
@@ -413,8 +467,8 @@ extension NoahGetPayoutChannelsRequest {
     pageToken: String? = nil
   ) -> Self {
     NoahGetPayoutChannelsRequest(
-      country: country,
       cryptoCurrency: cryptoCurrency,
+      country: country,
       fiatCurrency: fiatCurrency,
       fiatAmount: fiatAmount,
       pageToken: pageToken
@@ -510,6 +564,9 @@ extension NoahGetPayoutQuoteData {
     cryptoAmountEstimate: String = "101.25",
     cryptoAuthorizedAmount: String = "101.25",
     formSessionId: String = "session-1",
+    cryptoCurrency: String? = nil,
+    fiatCurrency: String? = nil,
+    fiatAmount: String? = nil,
     rate: String? = nil,
     breakdown: [NoahTransactionBreakdownItem]? = nil,
     quote: NoahSellQuote? = nil,
@@ -521,6 +578,9 @@ extension NoahGetPayoutQuoteData {
       cryptoAmountEstimate: cryptoAmountEstimate,
       cryptoAuthorizedAmount: cryptoAuthorizedAmount,
       formSessionId: formSessionId,
+      cryptoCurrency: cryptoCurrency,
+      fiatCurrency: fiatCurrency,
+      fiatAmount: fiatAmount,
       rate: rate,
       breakdown: breakdown,
       quote: quote,
@@ -544,7 +604,8 @@ extension NoahInitiatePayoutRequest {
     expiry: String = "2099-01-01T00:00:00Z",
     nonce: String = "nonce-1",
     network: String = NoahNetwork.ethereum,
-    trigger: NoahSingleOnchainDepositSourceTriggerInput? = .stub()
+    trigger: NoahOnchainDepositSourceTrigger? = .single(.stub()),
+    businessFee: NoahBusinessFee? = nil
   ) -> Self {
     NoahInitiatePayoutRequest(
       payoutId: payoutId,
@@ -552,7 +613,8 @@ extension NoahInitiatePayoutRequest {
       expiry: expiry,
       nonce: nonce,
       network: network,
-      trigger: trigger
+      trigger: trigger,
+      businessFee: businessFee
     )
   }
 }

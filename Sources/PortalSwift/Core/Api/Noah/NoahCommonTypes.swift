@@ -560,6 +560,169 @@ public struct NoahSingleOnchainDepositSourceTriggerInput: Codable {
   }
 }
 
+/// Per-condition entry used inside permanent/quoted triggers. Unlike the single
+/// trigger, these conditions only constrain the network (no amount conditions).
+/// JSON keys use PascalCase to match the Noah API wire format.
+public struct NoahNetworkOnlyOnchainDepositSourceTriggerCondition: Codable {
+  public let network: String
+
+  public init(network: String) {
+    self.network = network
+  }
+
+  enum CodingKeys: String, CodingKey {
+    case network = "Network"
+  }
+}
+
+/// Trigger that keeps a payout source active across multiple deposits (until
+/// expiry), rather than for a single matching amount.
+/// JSON keys use PascalCase to match the Noah API wire format.
+public struct NoahPermanentOnchainDepositSourceTriggerInput: Codable {
+  public let type: String
+  public let conditions: [NoahNetworkOnlyOnchainDepositSourceTriggerCondition]
+  public let sourceAddress: String
+  public let expiry: String
+  public let nonce: String
+  /// When `true`, the trigger matches deposits on any supported network.
+  public let networkAgnostic: Bool?
+
+  public init(
+    type: String = "PermanentOnchainDepositSourceTriggerInput",
+    conditions: [NoahNetworkOnlyOnchainDepositSourceTriggerCondition],
+    sourceAddress: String,
+    expiry: String,
+    nonce: String,
+    networkAgnostic: Bool? = nil
+  ) {
+    self.type = type
+    self.conditions = conditions
+    self.sourceAddress = sourceAddress
+    self.expiry = expiry
+    self.nonce = nonce
+    self.networkAgnostic = networkAgnostic
+  }
+
+  enum CodingKeys: String, CodingKey {
+    case type = "Type"
+    case conditions = "Conditions"
+    case sourceAddress = "SourceAddress"
+    case expiry = "Expiry"
+    case nonce = "Nonce"
+    case networkAgnostic = "NetworkAgnostic"
+  }
+}
+
+/// Trigger backed by a signed quote (rate-locked payout). Requires the
+/// `SignedQuote` obtained from a `getPayoutQuote` call made with `quoted: true`.
+/// JSON keys use PascalCase to match the Noah API wire format.
+public struct NoahQuotedOnchainDepositSourceTriggerInput: Codable {
+  public let type: String
+  public let signedQuote: String
+  public let conditions: [NoahNetworkOnlyOnchainDepositSourceTriggerCondition]
+  public let sourceAddress: String
+  public let nonce: String
+  public let expiry: String?
+
+  public init(
+    type: String = "QuotedOnchainDepositSourceTriggerInput",
+    signedQuote: String,
+    conditions: [NoahNetworkOnlyOnchainDepositSourceTriggerCondition],
+    sourceAddress: String,
+    nonce: String,
+    expiry: String? = nil
+  ) {
+    self.type = type
+    self.signedQuote = signedQuote
+    self.conditions = conditions
+    self.sourceAddress = sourceAddress
+    self.nonce = nonce
+    self.expiry = expiry
+  }
+
+  enum CodingKeys: String, CodingKey {
+    case type = "Type"
+    case signedQuote = "SignedQuote"
+    case conditions = "Conditions"
+    case sourceAddress = "SourceAddress"
+    case nonce = "Nonce"
+    case expiry = "Expiry"
+  }
+}
+
+/// The three Noah on-chain deposit source trigger variants accepted by
+/// `POST /payouts`. The wire shape is discriminated by the `Type` field, so this
+/// enum encodes the wrapped value transparently (no extra nesting).
+public enum NoahOnchainDepositSourceTrigger: Codable {
+  case single(NoahSingleOnchainDepositSourceTriggerInput)
+  case permanent(NoahPermanentOnchainDepositSourceTriggerInput)
+  case quoted(NoahQuotedOnchainDepositSourceTriggerInput)
+
+  private enum TypeKey: String, CodingKey {
+    case type = "Type"
+  }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.singleValueContainer()
+    switch self {
+    case let .single(value):
+      try container.encode(value)
+    case let .permanent(value):
+      try container.encode(value)
+    case let .quoted(value):
+      try container.encode(value)
+    }
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: TypeKey.self)
+    let type = try container.decode(String.self, forKey: .type)
+    switch type {
+    case "SingleOnchainDepositSourceTriggerInput":
+      self = .single(try NoahSingleOnchainDepositSourceTriggerInput(from: decoder))
+    case "PermanentOnchainDepositSourceTriggerInput":
+      self = .permanent(try NoahPermanentOnchainDepositSourceTriggerInput(from: decoder))
+    case "QuotedOnchainDepositSourceTriggerInput":
+      self = .quoted(try NoahQuotedOnchainDepositSourceTriggerInput(from: decoder))
+    default:
+      throw DecodingError.dataCorruptedError(
+        forKey: TypeKey.type,
+        in: container,
+        debugDescription: "Unknown Noah trigger Type: \(type)"
+      )
+    }
+  }
+}
+
+// MARK: - Business fee
+
+/// Optional business (partner) fee applied to a Noah payout or payin.
+///
+/// JSON keys use PascalCase to match the Noah API wire format. The BFF forwards
+/// this object straight through to Noah, so the inner field names must stay
+/// PascalCase even though the surrounding request keys are camelCase.
+public struct NoahBusinessFee: Codable {
+  public let feeBase: String?
+  public let feePct: String?
+  public let fiatCurrency: String?
+
+  public init(
+    feeBase: String? = nil,
+    feePct: String? = nil,
+    fiatCurrency: String? = nil
+  ) {
+    self.feeBase = feeBase
+    self.feePct = feePct
+    self.fiatCurrency = fiatCurrency
+  }
+
+  enum CodingKeys: String, CodingKey {
+    case feeBase = "FeeBase"
+    case feePct = "FeePct"
+    case fiatCurrency = "FiatCurrency"
+  }
+}
+
 // MARK: - Response envelope metadata
 
 /// Response envelope metadata returned by connect-api alongside `data`.

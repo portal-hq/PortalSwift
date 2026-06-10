@@ -87,7 +87,83 @@ extension NoahCodableTests {
     XCTAssertEqual(decoded.expiry, original.expiry)
     XCTAssertEqual(decoded.nonce, original.nonce)
     XCTAssertEqual(decoded.network, original.network)
-    XCTAssertEqual(decoded.trigger?.type, "SingleOnchainDepositSourceTriggerInput")
+    guard case let .single(single)? = decoded.trigger else {
+      return XCTFail("Expected a single trigger variant")
+    }
+    XCTAssertEqual(single.type, "SingleOnchainDepositSourceTriggerInput")
+  }
+
+  func test_initiatePayoutRequest_quotedTrigger_roundTrips() throws {
+    let original = NoahInitiatePayoutRequest.stub(
+      trigger: .quoted(.stub()),
+      businessFee: .stub()
+    )
+    let data = try encoder.encode(original)
+    let decoded = try decoder.decode(NoahInitiatePayoutRequest.self, from: data)
+    guard case let .quoted(quoted)? = decoded.trigger else {
+      return XCTFail("Expected a quoted trigger variant")
+    }
+    XCTAssertEqual(quoted.type, "QuotedOnchainDepositSourceTriggerInput")
+    XCTAssertEqual(quoted.signedQuote, "signed-quote-1")
+    XCTAssertEqual(decoded.businessFee?.feePct, "1.5")
+  }
+
+  func test_initiatePayoutRequest_permanentTrigger_usesPascalCaseKeys() throws {
+    let original = NoahInitiatePayoutRequest.stub(trigger: .permanent(.stub(networkAgnostic: true)))
+    let data = try encoder.encode(original)
+    let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    let trigger = try XCTUnwrap(json["trigger"] as? [String: Any])
+
+    XCTAssertEqual(trigger["Type"] as? String, "PermanentOnchainDepositSourceTriggerInput")
+    XCTAssertEqual(trigger["NetworkAgnostic"] as? Bool, true)
+    let conditions = try XCTUnwrap(trigger["Conditions"] as? [[String: Any]])
+    XCTAssertNotNil(conditions.first?["Network"])
+    // Permanent triggers must not carry amount conditions.
+    XCTAssertNil(conditions.first?["AmountConditions"])
+  }
+
+  func test_getPayoutQuoteRequest_cryptoAmountAndBusinessFee_roundTrips() throws {
+    let original = NoahGetPayoutQuoteRequest(
+      channelId: "ch-1",
+      cryptoCurrency: "USDC",
+      cryptoAmount: "50",
+      quoted: true,
+      businessFee: .stub()
+    )
+    let data = try encoder.encode(original)
+    let decoded = try decoder.decode(NoahGetPayoutQuoteRequest.self, from: data)
+    XCTAssertNil(decoded.fiatAmount)
+    XCTAssertEqual(decoded.cryptoAmount, "50")
+    XCTAssertEqual(decoded.quoted, true)
+    XCTAssertEqual(decoded.businessFee?.fiatCurrency, "USD")
+
+    let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    XCTAssertNil(json["fiatAmount"])
+    let businessFee = try XCTUnwrap(json["businessFee"] as? [String: Any])
+    XCTAssertEqual(businessFee["FeePct"] as? String, "1.5")
+  }
+
+  func test_getPayoutQuoteResponse_disclosureFields_roundTrip() throws {
+    let original = NoahGetPayoutQuoteResponse.stub(
+      data: .stub(cryptoCurrency: "USDC", fiatCurrency: "USD", fiatAmount: "100.00")
+    )
+    let data = try encoder.encode(original)
+    let decoded = try decoder.decode(NoahGetPayoutQuoteResponse.self, from: data)
+    XCTAssertEqual(decoded.data.cryptoCurrency, "USDC")
+    XCTAssertEqual(decoded.data.fiatCurrency, "USD")
+    XCTAssertEqual(decoded.data.fiatAmount, "100.00")
+  }
+
+  func test_initiatePayinRequest_businessFees_roundTrips() throws {
+    let original = NoahInitiatePayinRequest.stub(businessFees: ["BankAch": .stub()])
+    let data = try encoder.encode(original)
+    let decoded = try decoder.decode(NoahInitiatePayinRequest.self, from: data)
+    XCTAssertEqual(decoded.businessFees?["BankAch"]?.feeBase, "0.50")
+
+    let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    let fees = try XCTUnwrap(json["businessFees"] as? [String: Any])
+    let ach = try XCTUnwrap(fees["BankAch"] as? [String: Any])
+    XCTAssertEqual(ach["FeeBase"] as? String, "0.50")
   }
 
   func test_initiatePayoutRequest_triggerUsesPascalCaseKeys() throws {
