@@ -37,7 +37,8 @@ public class PortalAPIRequest: PortalBaseRequestProtocol {
     url: URL,
     method: HttpMethod = .get,
     payload: (any Codable)? = nil,
-    bearerToken: String? = nil
+    bearerToken: String? = nil,
+    traceId: String? = nil
   ) {
     self.url = url
     self.method = method
@@ -45,7 +46,8 @@ public class PortalAPIRequest: PortalBaseRequestProtocol {
 
     var defaultHeaders = [
       "Accept": "application/json",
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      PORTAL_TRACE_ID_HEADER: traceId ?? generateTraceId()
     ]
     if let bearerToken = bearerToken {
       defaultHeaders["Authorization"] = "Bearer \(bearerToken)"

@@ -393,11 +393,13 @@ class PortalApiSpy: PortalApiProtocol {
   var buildEip155TransactionCallsCount: Int = 0
   var buildEip155TransactionChainIdParam: String?
   var buildEip155TransactionParams: PortalSwift.BuildTransactionParam?
+  var buildEip155TransactionTraceIdParam: String?
 
-  func buildEip155Transaction(chainId: String, params: PortalSwift.BuildTransactionParam) async throws -> PortalSwift.BuildEip115TransactionResponse {
+  func buildEip155Transaction(chainId: String, params: PortalSwift.BuildTransactionParam, traceId: String?) async throws -> PortalSwift.BuildEip115TransactionResponse {
     buildEip155TransactionCallsCount += 1
     buildEip155TransactionChainIdParam = chainId
     buildEip155TransactionParams = params
+    buildEip155TransactionTraceIdParam = traceId
     return PortalSwift.BuildEip115TransactionResponse.stub()
   }
 
@@ -405,11 +407,13 @@ class PortalApiSpy: PortalApiProtocol {
   var buildSolanaTransactionCallsCount: Int = 0
   var buildSolanaTransactionChainIdParam: String?
   var buildSolanaTransactionParams: PortalSwift.BuildTransactionParam?
+  var buildSolanaTransactionTraceIdParam: String?
 
-  func buildSolanaTransaction(chainId: String, params: PortalSwift.BuildTransactionParam) async throws -> PortalSwift.BuildSolanaTransactionResponse {
+  func buildSolanaTransaction(chainId: String, params: PortalSwift.BuildTransactionParam, traceId: String?) async throws -> PortalSwift.BuildSolanaTransactionResponse {
     buildSolanaTransactionCallsCount += 1
     buildSolanaTransactionChainIdParam = chainId
     buildSolanaTransactionParams = params
+    buildSolanaTransactionTraceIdParam = traceId
     return PortalSwift.BuildSolanaTransactionResponse.stub()
   }
 
@@ -418,15 +422,18 @@ class PortalApiSpy: PortalApiProtocol {
   var buildBitcoinP2wpkhTransactionCallsCount: Int = 0
   var buildBitcoinP2wpkhTransactionChainIdParam: String?
   var buildBitcoinP2wpkhTransactionParams: PortalSwift.BuildTransactionParam?
+  var buildBitcoinP2wpkhTransactionTraceIdParam: String?
   var buildBitcoinP2wpkhTransactionReturnValue: PortalSwift.BuildBitcoinP2wpkhTransactionResponse?
 
   func buildBitcoinP2wpkhTransaction(
     chainId: String,
-    params: PortalSwift.BuildTransactionParam
+    params: PortalSwift.BuildTransactionParam,
+    traceId: String?
   ) async throws -> PortalSwift.BuildBitcoinP2wpkhTransactionResponse {
     buildBitcoinP2wpkhTransactionCallsCount += 1
     buildBitcoinP2wpkhTransactionChainIdParam = chainId
     buildBitcoinP2wpkhTransactionParams = params
+    buildBitcoinP2wpkhTransactionTraceIdParam = traceId
     return buildBitcoinP2wpkhTransactionReturnValue ?? PortalSwift.BuildBitcoinP2wpkhTransactionResponse.stub()
   }
 
@@ -435,14 +442,17 @@ class PortalApiSpy: PortalApiProtocol {
   var broadcastBitcoinP2wpkhTransactionCallsCount: Int = 0
   var broadcastBitcoinP2wpkhTransactionChainIdParam: String?
   var broadcastBitcoinP2wpkhTransactionParams: PortalSwift.BroadcastParam?
+  var broadcastBitcoinP2wpkhTransactionTraceIdParam: String?
 
   func broadcastBitcoinP2wpkhTransaction(
     chainId: String,
-    params: PortalSwift.BroadcastParam
+    params: PortalSwift.BroadcastParam,
+    traceId: String?
   ) async throws -> PortalSwift.BroadcastBitcoinP2wpkhTransactionResponse {
     broadcastBitcoinP2wpkhTransactionCallsCount += 1
     broadcastBitcoinP2wpkhTransactionChainIdParam = chainId
     broadcastBitcoinP2wpkhTransactionParams = params
+    broadcastBitcoinP2wpkhTransactionTraceIdParam = traceId
     return PortalSwift.BroadcastBitcoinP2wpkhTransactionResponse.stub()
   }
 

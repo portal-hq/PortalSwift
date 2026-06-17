@@ -263,22 +263,22 @@ class PortalApiMock: PortalApiProtocol {
   }
 
   var buildEip115TransactionReturnValue: PortalSwift.BuildEip115TransactionResponse?
-  func buildEip155Transaction(chainId _: String, params _: PortalSwift.BuildTransactionParam) async throws -> PortalSwift.BuildEip115TransactionResponse {
+  func buildEip155Transaction(chainId _: String, params _: PortalSwift.BuildTransactionParam, traceId _: String?) async throws -> PortalSwift.BuildEip115TransactionResponse {
     return buildEip115TransactionReturnValue ?? PortalSwift.BuildEip115TransactionResponse.stub()
   }
 
   var buildSolanaTransactionReturnValue: PortalSwift.BuildSolanaTransactionResponse?
-  func buildSolanaTransaction(chainId _: String, params _: PortalSwift.BuildTransactionParam) async throws -> PortalSwift.BuildSolanaTransactionResponse {
+  func buildSolanaTransaction(chainId _: String, params _: PortalSwift.BuildTransactionParam, traceId _: String?) async throws -> PortalSwift.BuildSolanaTransactionResponse {
     return buildSolanaTransactionReturnValue ?? PortalSwift.BuildSolanaTransactionResponse.stub()
   }
 
   var buildBitcoinP2wpkhTransactionReturnValue: PortalSwift.BuildBitcoinP2wpkhTransactionResponse?
-  func buildBitcoinP2wpkhTransaction(chainId _: String, params _: PortalSwift.BuildTransactionParam) async throws -> PortalSwift.BuildBitcoinP2wpkhTransactionResponse {
+  func buildBitcoinP2wpkhTransaction(chainId _: String, params _: PortalSwift.BuildTransactionParam, traceId _: String?) async throws -> PortalSwift.BuildBitcoinP2wpkhTransactionResponse {
     return buildBitcoinP2wpkhTransactionReturnValue ?? PortalSwift.BuildBitcoinP2wpkhTransactionResponse.stub()
   }
 
   var broadcastBitcoinP2wpkhTransactionReturnValue: PortalSwift.BroadcastBitcoinP2wpkhTransactionResponse?
-  func broadcastBitcoinP2wpkhTransaction(chainId _: String, params _: PortalSwift.BroadcastParam) async throws -> PortalSwift.BroadcastBitcoinP2wpkhTransactionResponse {
+  func broadcastBitcoinP2wpkhTransaction(chainId _: String, params _: PortalSwift.BroadcastParam, traceId _: String?) async throws -> PortalSwift.BroadcastBitcoinP2wpkhTransactionResponse {
     return broadcastBitcoinP2wpkhTransactionReturnValue ?? PortalSwift.BroadcastBitcoinP2wpkhTransactionResponse.stub()
   }
 

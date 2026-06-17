@@ -34,10 +34,10 @@ public protocol PortalApiProtocol: AnyObject {
   func storeClientCipherText(_ backupSharePairId: String, cipherText: String) async throws -> Bool
   func track(_ event: String, withProperties: [String: AnyCodable]) async throws -> MetricsResponse
   func evaluateTransaction(chainId: String, transaction: EvaluateTransactionParam, operationType: EvaluateTransactionOperationType?) async throws -> BlockaidValidateTrxRes
-  func buildEip155Transaction(chainId: String, params: BuildTransactionParam) async throws -> BuildEip115TransactionResponse
-  func buildSolanaTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildSolanaTransactionResponse
-  func buildBitcoinP2wpkhTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildBitcoinP2wpkhTransactionResponse
-  func broadcastBitcoinP2wpkhTransaction(chainId: String, params: BroadcastParam) async throws -> BroadcastBitcoinP2wpkhTransactionResponse
+  func buildEip155Transaction(chainId: String, params: BuildTransactionParam, traceId: String?) async throws -> BuildEip115TransactionResponse
+  func buildSolanaTransaction(chainId: String, params: BuildTransactionParam, traceId: String?) async throws -> BuildSolanaTransactionResponse
+  func buildBitcoinP2wpkhTransaction(chainId: String, params: BuildTransactionParam, traceId: String?) async throws -> BuildBitcoinP2wpkhTransactionResponse
+  func broadcastBitcoinP2wpkhTransaction(chainId: String, params: BroadcastParam, traceId: String?) async throws -> BroadcastBitcoinP2wpkhTransactionResponse
   func getAssets(_ chainId: String) async throws -> AssetsResponse
   func getTransactionDetails(chain: String, signature: String) async throws -> GetTransactionDetailsResponse
   func getWalletCapabilities() async throws -> WalletCapabilitiesResponse
@@ -67,6 +67,30 @@ public protocol PortalApiProtocol: AnyObject {
   func getBackupShareMetadata(completion: @escaping (Result<[FetchedSharePair]>) -> Void) throws
   @available(*, deprecated, renamed: "getSharePairs", message: "Please use the async/await implementation of getSharePairs().")
   func getSigningShareMetadata(completion: @escaping (Result<[FetchedSharePair]>) -> Void) throws
+}
+
+/// Backward-compatible convenience overloads.
+///
+/// The transaction build/broadcast requirements carry an optional `traceId` so high-level
+/// operations (e.g. `sendAsset`) can share a single `X-Portal-Trace-Id` across their requests.
+/// These overloads preserve the original call shapes (without `traceId`) so existing callers
+/// of `PortalApiProtocol` continue to compile unchanged.
+public extension PortalApiProtocol {
+  func buildEip155Transaction(chainId: String, params: BuildTransactionParam) async throws -> BuildEip115TransactionResponse {
+    try await buildEip155Transaction(chainId: chainId, params: params, traceId: nil)
+  }
+
+  func buildSolanaTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildSolanaTransactionResponse {
+    try await buildSolanaTransaction(chainId: chainId, params: params, traceId: nil)
+  }
+
+  func buildBitcoinP2wpkhTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildBitcoinP2wpkhTransactionResponse {
+    try await buildBitcoinP2wpkhTransaction(chainId: chainId, params: params, traceId: nil)
+  }
+
+  func broadcastBitcoinP2wpkhTransaction(chainId: String, params: BroadcastParam) async throws -> BroadcastBitcoinP2wpkhTransactionResponse {
+    try await broadcastBitcoinP2wpkhTransaction(chainId: chainId, params: params, traceId: nil)
+  }
 }
 
 /// The ThreadSafeClientWrapper is just a thread-safe actor to consume the ClientResponse class, we need to refactor that later.
@@ -190,6 +214,7 @@ public class PortalApi: PortalApiProtocol {
    *******************************************/
 
   public func eject() async throws -> String {
+    let traceId = generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/eject") {
       do {
         let body: [String: String] = [
@@ -197,7 +222,7 @@ public class PortalApi: PortalApiProtocol {
           "clientPlatformVersion": SDK_VERSION
         ]
 
-        let ejectData = try await post(url, withBearerToken: self.apiKey, andPayload: body, mappingInResponse: Data.self)
+        let ejectData = try await post(url, withBearerToken: self.apiKey, andPayload: body, traceId: traceId, mappingInResponse: Data.self)
         guard let ejectResponse = String(data: ejectData, encoding: .utf8) else {
           throw PortalApiError.unableToReadStringResponse
         }
@@ -215,9 +240,10 @@ public class PortalApi: PortalApiProtocol {
 
   @available(*, deprecated, message: "This function has been moved to 'Portal'. Please use 'Portal.getBalances()' instead.") // this func need to be private thats why we deprecate it to move it to private later
   public func getBalances(_ chainId: String) async throws -> [FetchedBalance] {
+    let traceId = generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/balances?chainId=\(chainId)") {
       do {
-        let balancesResponse = try await get(url, withBearerToken: self.apiKey, mappingInResponse: [FetchedBalance].self)
+        let balancesResponse = try await get(url, withBearerToken: self.apiKey, traceId: traceId, mappingInResponse: [FetchedBalance].self)
 
         return balancesResponse
       } catch {
@@ -233,9 +259,10 @@ public class PortalApi: PortalApiProtocol {
   /// Retrieve the client by API key.
   /// - Returns: ClientResponse
   public func getClient() async throws -> ClientResponse {
+    let traceId = generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me") {
       do {
-        let clientResponse = try await get(url, withBearerToken: self.apiKey, mappingInResponse: ClientResponse.self)
+        let clientResponse = try await get(url, withBearerToken: self.apiKey, traceId: traceId, mappingInResponse: ClientResponse.self)
 
         return clientResponse
       } catch {
@@ -247,9 +274,10 @@ public class PortalApi: PortalApiProtocol {
   }
 
   public func getAssets(_ chainId: String) async throws -> AssetsResponse {
+    let traceId = generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)/assets") {
       do {
-        let assets = try await get(url, withBearerToken: self.apiKey, mappingInResponse: AssetsResponse.self)
+        let assets = try await get(url, withBearerToken: self.apiKey, traceId: traceId, mappingInResponse: AssetsResponse.self)
 
         return assets
       } catch {
@@ -263,9 +291,10 @@ public class PortalApi: PortalApiProtocol {
   }
 
   public func getClientCipherText(_ backupSharePairId: String) async throws -> String {
+    let traceId = generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/backup-share-pairs/\(backupSharePairId)/cipher-text") {
       do {
-        let response = try await get(url, withBearerToken: self.apiKey, mappingInResponse: ClientCipherTextResponse.self)
+        let response = try await get(url, withBearerToken: self.apiKey, traceId: traceId, mappingInResponse: ClientCipherTextResponse.self)
 
         return response.cipherText
       } catch {
@@ -277,9 +306,10 @@ public class PortalApi: PortalApiProtocol {
   }
 
   public func getSources(_ swapsApiKey: String, forChainId: String) async throws -> [String: String] {
+    let traceId = generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/swaps/sources") {
       let payload = ["apiKey": swapsApiKey, "chainId": forChainId]
-      let response = try await post(url, withBearerToken: self.apiKey, andPayload: payload, mappingInResponse: [String: String].self)
+      let response = try await post(url, withBearerToken: self.apiKey, andPayload: payload, traceId: traceId, mappingInResponse: [String: String].self)
 
       return response
     }
@@ -288,6 +318,7 @@ public class PortalApi: PortalApiProtocol {
   }
 
   public func getQuote(_ swapsApiKey: String, withArgs: QuoteArgs, forChainId: String? = nil) async throws -> Quote {
+    let traceId = generateTraceId()
     let chainId = forChainId != nil ? forChainId : "eip155:\(self.chainId ?? 1)"
 
     if let url = URL(string: "\(baseUrl)/api/v3/swaps/quote") {
@@ -299,7 +330,7 @@ public class PortalApi: PortalApiProtocol {
       body["apiKey"] = AnyCodable(swapsApiKey)
       body["chainId"] = AnyCodable(chainId)
 
-      let response = try await post(url, withBearerToken: self.apiKey, andPayload: body, mappingInResponse: Quote.self)
+      let response = try await post(url, withBearerToken: self.apiKey, andPayload: body, traceId: traceId, mappingInResponse: Quote.self)
 
       return response
     }
@@ -308,9 +339,10 @@ public class PortalApi: PortalApiProtocol {
   }
 
   public func getNftAssets(_ chainId: String) async throws -> [NftAsset] {
+    let traceId = generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)/assets/nfts") {
       do {
-        let nfts = try await get(url, withBearerToken: self.apiKey, mappingInResponse: [NftAsset].self)
+        let nfts = try await get(url, withBearerToken: self.apiKey, traceId: traceId, mappingInResponse: [NftAsset].self)
 
         return nfts
       } catch {
@@ -324,9 +356,10 @@ public class PortalApi: PortalApiProtocol {
   }
 
   public func getSharePairs(_ type: PortalSharePairType, walletId: String) async throws -> [FetchedSharePair] {
+    let traceId = generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/wallets/\(walletId)/\(type)-share-pairs") {
       do {
-        let sharePairs = try await get(url, withBearerToken: self.apiKey, mappingInResponse: [FetchedSharePair].self)
+        let sharePairs = try await get(url, withBearerToken: self.apiKey, traceId: traceId, mappingInResponse: [FetchedSharePair].self)
 
         return sharePairs
       } catch {
@@ -364,9 +397,10 @@ public class PortalApi: PortalApiProtocol {
       requestUrlString += "&" + queryParams.joined(separator: "&")
     }
 
+    let traceId = generateTraceId()
     if let url = URL(string: requestUrlString) {
       do {
-        let transactions = try await get(url, withBearerToken: self.apiKey, mappingInResponse: [FetchedTransaction].self)
+        let transactions = try await get(url, withBearerToken: self.apiKey, traceId: traceId, mappingInResponse: [FetchedTransaction].self)
 
         return transactions
       } catch {
@@ -388,8 +422,9 @@ public class PortalApi: PortalApiProtocol {
       throw URLError(.badURL)
     }
 
+    let traceId = generateTraceId()
     do {
-      return try await get(url, withBearerToken: self.apiKey, mappingInResponse: GetTransactionDetailsResponse.self)
+      return try await get(url, withBearerToken: self.apiKey, traceId: traceId, mappingInResponse: GetTransactionDetailsResponse.self)
     } catch {
       self.logger.error("PortalApi.getTransactionDetails() - Error: \(error.localizedDescription)")
       throw error
@@ -397,8 +432,9 @@ public class PortalApi: PortalApiProtocol {
   }
 
   public func identify(_ traits: [String: AnyCodable] = [:]) async throws -> MetricsResponse {
+    let traceId = generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v1/analytics/identify") {
-      let response = try await post(url, withBearerToken: self.apiKey, andPayload: ["traits": traits], mappingInResponse: MetricsResponse.self)
+      let response = try await post(url, withBearerToken: self.apiKey, andPayload: ["traits": traits], traceId: traceId, mappingInResponse: MetricsResponse.self)
 
       return response
     }
@@ -407,8 +443,9 @@ public class PortalApi: PortalApiProtocol {
   }
 
   public func prepareEject(_ walletId: String, _ backupMethod: BackupMethods) async throws -> String {
+    let traceId = generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/wallets/\(walletId)/prepare-eject") {
-      let prepareEjectResponse = try await post(url, withBearerToken: self.apiKey, andPayload: ["backupMethod": backupMethod.rawValue], mappingInResponse: PrepareEjectResponse.self)
+      let prepareEjectResponse = try await post(url, withBearerToken: self.apiKey, andPayload: ["backupMethod": backupMethod.rawValue], traceId: traceId, mappingInResponse: PrepareEjectResponse.self)
 
       return prepareEjectResponse.share
     }
@@ -445,13 +482,14 @@ public class PortalApi: PortalApiProtocol {
     guard let chainId = chainId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
       throw PortalApiError.unableToEncodeData
     }
+    let traceId = generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/evaluate-transaction?chainId=\(chainId)") {
       do {
         var payload = transaction.toDictionary()
         if let operationType {
           payload["operationType"] = operationType.rawValue
         }
-        let response = try await post(url, withBearerToken: self.apiKey, andPayload: payload, mappingInResponse: BlockaidValidateTrxRes.self)
+        let response = try await post(url, withBearerToken: self.apiKey, andPayload: payload, traceId: traceId, mappingInResponse: BlockaidValidateTrxRes.self)
 
         return response
       } catch {
@@ -465,12 +503,13 @@ public class PortalApi: PortalApiProtocol {
   }
 
   public func storeClientCipherText(_ backupSharePairId: String, cipherText: String) async throws -> Bool {
+    let traceId = generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/backup-share-pairs/\(backupSharePairId)") {
       do {
         let payload = AnyCodable([
           "clientCipherText": cipherText
         ])
-        try await patch(url, withBearerToken: self.apiKey, andPayload: payload, mappingInResponse: Data.self)
+        try await patch(url, withBearerToken: self.apiKey, andPayload: payload, traceId: traceId, mappingInResponse: Data.self)
 
         return true
       } catch {
@@ -484,12 +523,13 @@ public class PortalApi: PortalApiProtocol {
   }
 
   public func track(_ event: String, withProperties: [String: AnyCodable]) async throws -> MetricsResponse {
+    let traceId = generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v1/analytics/track") {
       let payload = MetricsTrackRequest(
         event: event,
         properties: withProperties
       )
-      let response = try await post(url, withBearerToken: self.apiKey, andPayload: payload, mappingInResponse: MetricsResponse.self)
+      let response = try await post(url, withBearerToken: self.apiKey, andPayload: payload, traceId: traceId, mappingInResponse: MetricsResponse.self)
 
       return response
     }
@@ -502,6 +542,7 @@ public class PortalApi: PortalApiProtocol {
     status: SharePairUpdateStatus,
     sharePairIds: [String]
   ) async throws {
+    let traceId = generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/\(type.rawValue)-share-pairs/") {
       do {
         let payload = ShareStatusUpdateRequest(
@@ -510,7 +551,7 @@ public class PortalApi: PortalApiProtocol {
           status: status
         )
 
-        try await self.patch(url, withBearerToken: self.apiKey, andPayload: payload, mappingInResponse: Data.self)
+        try await self.patch(url, withBearerToken: self.apiKey, andPayload: payload, traceId: traceId, mappingInResponse: Data.self)
 
         return
       } catch {
@@ -524,9 +565,10 @@ public class PortalApi: PortalApiProtocol {
   }
 
   public func fund(chainId: String, params: FundParams) async throws -> FundResponse {
+    let traceId = generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/fund") {
       let payload = FundRequestBody(amount: params.amount, chainId: chainId, token: params.token)
-      let response = try await post(url, withBearerToken: self.apiKey, andPayload: payload, mappingInResponse: FundResponse.self)
+      let response = try await post(url, withBearerToken: self.apiKey, andPayload: payload, traceId: traceId, mappingInResponse: FundResponse.self)
 
       return response
     }
@@ -534,13 +576,13 @@ public class PortalApi: PortalApiProtocol {
     throw URLError(.badURL)
   }
 
-  public func broadcastBitcoinP2wpkhTransaction(chainId: String, params: BroadcastParam) async throws -> BroadcastBitcoinP2wpkhTransactionResponse {
+  public func broadcastBitcoinP2wpkhTransaction(chainId: String, params: BroadcastParam, traceId: String?) async throws -> BroadcastBitcoinP2wpkhTransactionResponse {
     guard chainId.starts(with: "bip122:") else {
       throw PortalApiError.invalidChainId(message: "Invalid chainId: \(chainId). ChainId must start with 'bip122:'")
     }
 
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)/assets/send/broadcast-transaction") {
-      let response = try await post(url, withBearerToken: self.apiKey, andPayload: params, mappingInResponse: BroadcastBitcoinP2wpkhTransactionResponse.self)
+      let response = try await post(url, withBearerToken: self.apiKey, andPayload: params, traceId: traceId, mappingInResponse: BroadcastBitcoinP2wpkhTransactionResponse.self)
 
       return response
     }
@@ -548,13 +590,13 @@ public class PortalApi: PortalApiProtocol {
     throw URLError(.badURL)
   }
 
-  public func buildBitcoinP2wpkhTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildBitcoinP2wpkhTransactionResponse {
+  public func buildBitcoinP2wpkhTransaction(chainId: String, params: BuildTransactionParam, traceId: String?) async throws -> BuildBitcoinP2wpkhTransactionResponse {
     guard chainId.starts(with: "bip122:") else {
       throw PortalApiError.invalidChainId(message: "Invalid chainId: \(chainId). ChainId must start with 'bip122:'")
     }
 
     if let url = getBuildTransactionUrl(chainId: chainId) {
-      let response = try await post(url, withBearerToken: self.apiKey, andPayload: params.toDictionary(), mappingInResponse: BuildBitcoinP2wpkhTransactionResponse.self)
+      let response = try await post(url, withBearerToken: self.apiKey, andPayload: params.toDictionary(), traceId: traceId, mappingInResponse: BuildBitcoinP2wpkhTransactionResponse.self)
 
       return response
     }
@@ -562,13 +604,13 @@ public class PortalApi: PortalApiProtocol {
     throw URLError(.badURL)
   }
 
-  public func buildEip155Transaction(chainId: String, params: BuildTransactionParam) async throws -> BuildEip115TransactionResponse {
+  public func buildEip155Transaction(chainId: String, params: BuildTransactionParam, traceId: String?) async throws -> BuildEip115TransactionResponse {
     guard chainId.starts(with: "eip155:") else {
       throw PortalApiError.invalidChainId(message: "Invalid chainId: \(chainId). ChainId must start with 'eip155:'")
     }
 
     if let url = getBuildTransactionUrl(chainId: chainId) {
-      let response = try await post(url, withBearerToken: self.apiKey, andPayload: params.toDictionary(), mappingInResponse: BuildEip115TransactionResponse.self)
+      let response = try await post(url, withBearerToken: self.apiKey, andPayload: params.toDictionary(), traceId: traceId, mappingInResponse: BuildEip115TransactionResponse.self)
 
       return response
     }
@@ -576,13 +618,13 @@ public class PortalApi: PortalApiProtocol {
     throw URLError(.badURL)
   }
 
-  public func buildSolanaTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildSolanaTransactionResponse {
+  public func buildSolanaTransaction(chainId: String, params: BuildTransactionParam, traceId: String?) async throws -> BuildSolanaTransactionResponse {
     guard chainId.starts(with: "solana:") else {
       throw PortalApiError.invalidChainId(message: "Invalid chainId: \(chainId). ChainId must start with 'solana:'")
     }
 
     if let url = getBuildTransactionUrl(chainId: chainId) {
-      let response = try await post(url, withBearerToken: self.apiKey, andPayload: params.toDictionary(), mappingInResponse: BuildSolanaTransactionResponse.self)
+      let response = try await post(url, withBearerToken: self.apiKey, andPayload: params.toDictionary(), traceId: traceId, mappingInResponse: BuildSolanaTransactionResponse.self)
 
       return response
     }
@@ -591,8 +633,9 @@ public class PortalApi: PortalApiProtocol {
   }
 
   public func getWalletCapabilities() async throws -> WalletCapabilitiesResponse {
+    let traceId = generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/wallet_getCapabilities") {
-      let response = try await get(url, withBearerToken: self.apiKey, mappingInResponse: WalletCapabilitiesResponse.self)
+      let response = try await get(url, withBearerToken: self.apiKey, traceId: traceId, mappingInResponse: WalletCapabilitiesResponse.self)
 
       return response
     }
@@ -609,28 +652,28 @@ public class PortalApi: PortalApiProtocol {
   }
 
   @discardableResult
-  private func get<ResponseType>(_ url: URL, withBearerToken: String? = nil,
+  private func get<ResponseType>(_ url: URL, withBearerToken: String? = nil, traceId: String? = nil,
                                  mappingInResponse: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable
   {
-    let portalRequest = PortalAPIRequest(url: url, bearerToken: withBearerToken)
+    let portalRequest = PortalAPIRequest(url: url, bearerToken: withBearerToken, traceId: traceId)
     return try await self.requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }
 
   @discardableResult
-  private func patch<ResponseType>(_ url: URL, withBearerToken: String? = nil, andPayload: Codable, mappingInResponse: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable {
-    let portalRequest = PortalAPIRequest(url: url, method: .patch, payload: andPayload, bearerToken: withBearerToken)
+  private func patch<ResponseType>(_ url: URL, withBearerToken: String? = nil, andPayload: Codable, traceId: String? = nil, mappingInResponse: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable {
+    let portalRequest = PortalAPIRequest(url: url, method: .patch, payload: andPayload, bearerToken: withBearerToken, traceId: traceId)
     return try await self.requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }
 
   @discardableResult
-  private func put<ResponseType>(_ url: URL, withBearerToken: String? = nil, andPayload: Codable, mappingInResponse: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable {
-    let portalRequest = PortalAPIRequest(url: url, method: .put, payload: andPayload, bearerToken: withBearerToken)
+  private func put<ResponseType>(_ url: URL, withBearerToken: String? = nil, andPayload: Codable, traceId: String? = nil, mappingInResponse: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable {
+    let portalRequest = PortalAPIRequest(url: url, method: .put, payload: andPayload, bearerToken: withBearerToken, traceId: traceId)
     return try await self.requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }
 
   @discardableResult
-  private func post<ResponseType>(_ url: URL, withBearerToken: String? = nil, andPayload: Codable? = nil, mappingInResponse: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable {
-    let portalRequest = PortalAPIRequest(url: url, method: .post, payload: andPayload, bearerToken: withBearerToken)
+  private func post<ResponseType>(_ url: URL, withBearerToken: String? = nil, andPayload: Codable? = nil, traceId: String? = nil, mappingInResponse: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable {
+    let portalRequest = PortalAPIRequest(url: url, method: .post, payload: andPayload, bearerToken: withBearerToken, traceId: traceId)
     return try await self.requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }
 
@@ -653,10 +696,11 @@ public class PortalApi: PortalApiProtocol {
     guard let chainId = withChainId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
       throw PortalApiError.unableToEncodeData
     }
+    let traceId = generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/simulate-transaction?chainId=\(chainId)") {
       do {
         let transformedTransaction = AnyCodable(transaction)
-        let simulatedTransaction = try await post(url, withBearerToken: self.apiKey, andPayload: transformedTransaction, mappingInResponse: SimulatedTransaction.self)
+        let simulatedTransaction = try await post(url, withBearerToken: self.apiKey, andPayload: transformedTransaction, traceId: traceId, mappingInResponse: SimulatedTransaction.self)
 
         return simulatedTransaction
       } catch {
@@ -828,7 +872,8 @@ public class PortalApi: PortalApiProtocol {
       path: "/api/v2/clients/me/wallet/stored-client-backup-share",
       body: body,
       headers: [
-        "Authorization": "Bearer \(self.apiKey)"
+        "Authorization": "Bearer \(self.apiKey)",
+        PORTAL_TRACE_ID_HEADER: generateTraceId()
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<String>) in
