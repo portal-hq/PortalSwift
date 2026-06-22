@@ -19,9 +19,11 @@ public class Trading {
   public var zeroX: ZeroXProtocol
 
   /// Create an instance of Trading.
-  /// - Parameter api: The Portal API instance to use for trading operations.
-  init(api: PortalApiProtocol) {
+  /// - Parameters:
+  ///   - api: The Portal API instance to use for trading operations.
+  ///   - portal: The portal (or mock) providing `request` for high-level execution flows like `zeroX.tradeAsset` (can be `nil`, e.g. in tests).
+  init(api: PortalApiProtocol, portal: ZeroXPortalDependency? = nil) {
     self.lifi = Lifi(api: api.lifi)
-    self.zeroX = ZeroX(api: api.zeroX)
+    self.zeroX = ZeroX(api: api.zeroX, portal: portal)
   }
 }
