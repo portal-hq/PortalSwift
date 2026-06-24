@@ -41,7 +41,19 @@ public final class Portal: PortalProtocol {
   public lazy var yield: Yield = .init(api: self.api)
 
   /// Access to trading-related functionality.
-  public lazy var trading: Trading = .init(api: self.api)
+  public lazy var trading: Trading = .init(
+    api: self.api,
+    signAndSendTransaction: { [weak self] transaction, chainId in
+      guard let self else {
+        throw PortalClassError.clientNotAvailable
+      }
+      return try await self.signAndSendTransaction(transaction, chainId: chainId)
+    },
+    waitForConfirmation: { [weak self] txHash, chainId in
+      guard let self else { return false }
+      return await self.waitForTransactionConfirmation(txHash: txHash, chainId: chainId)
+    }
+  )
 
   /// Access to security-related functionality.
   public lazy var security: Security = .init(api: self.api)
@@ -983,6 +995,51 @@ public final class Portal: PortalProtocol {
     }
 
     return try await self.provider.request(chainId: chainId, method: method, params: anyCodableParams, connect: nil, options: options)
+  }
+
+  /// Signs and submits an EVM transaction via `eth_sendTransaction`, returning the transaction hash.
+  /// - Parameters:
+  ///   - transaction: The transaction to sign and submit.
+  ///   - chainId: A CAIP-2 Blockchain ID associated with the transaction.
+  /// - Returns: The transaction hash.
+  private func signAndSendTransaction(_ transaction: ETHTransactionParam, chainId: String) async throws -> String {
+    let response = try await self.request(chainId: chainId, method: .eth_sendTransaction, params: [transaction])
+    guard let txHash = response.result as? String else {
+      throw PortalClassError.invalidResponseTypeForRequest
+    }
+    return txHash
+  }
+
+  /// Polls `eth_getTransactionReceipt` until the transaction is mined and confirmed.
+  /// - Parameters:
+  ///   - txHash: The transaction hash to wait for.
+  ///   - chainId: A CAIP-2 Blockchain ID associated with the transaction.
+  ///   - maxAttempts: The maximum number of polling attempts (default: 30).
+  ///   - waitingInSeconds: The delay between attempts, in seconds (default: 2).
+  /// - Returns: `true` if the transaction was confirmed successfully, `false` on revert or timeout.
+  private func waitForTransactionConfirmation(
+    txHash: String,
+    chainId: String,
+    maxAttempts: Int = 30,
+    waitingInSeconds: Int = 2
+  ) async -> Bool {
+    for _ in 0 ..< maxAttempts {
+      do {
+        let waitingTimeInNanoSeconds = UInt64(waitingInSeconds) * 1_000_000_000
+        try await Task.sleep(nanoseconds: waitingTimeInNanoSeconds)
+
+        let response = try await self.request(chainId: chainId, method: .eth_getTransactionReceipt, params: [txHash])
+        if let innerResponse = response.result as? EthTransactionResponse,
+           let status = innerResponse.result?.status
+        {
+          return status == "0x1"
+        }
+      } catch {
+        PortalLogger.shared.error("Portal.waitForTransactionConfirmation() - Error checking receipt: \(error.localizedDescription)")
+      }
+    }
+
+    return false
   }
 
   public func getRpcUrl(forChainId: String) async -> String? {
