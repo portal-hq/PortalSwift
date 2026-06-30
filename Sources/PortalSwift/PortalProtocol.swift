@@ -99,7 +99,9 @@ public protocol PortalProtocol {
   func getBackupShares(_ chainId: String?) async throws -> [FetchedSharePair]
   func getNftAssets(_ chainId: String) async throws -> [NftAsset]
   func getSigningShares(_ chainId: String?) async throws -> [FetchedSharePair]
+  @available(*, deprecated, message: "Please use getTransactionHistory(_:) instead.")
   func getTransactions(_ chainId: String, limit: Int?, offset: Int?, order: TransactionOrder?) async throws -> [FetchedTransaction]
+  func getTransactionHistory(_ params: GetTransactionHistoryParams) async throws -> GetTransactionHistoryResponse
   func getTransactionDetails(chain: String, signature: String) async throws -> GetTransactionDetailsResponse
   func evaluateTransaction(chainId: String, transaction: EvaluateTransactionParam, operationType: EvaluateTransactionOperationType?) async throws -> BlockaidValidateTrxRes
   func buildEip155Transaction(chainId: String, params: BuildTransactionParam) async throws -> BuildEip115TransactionResponse

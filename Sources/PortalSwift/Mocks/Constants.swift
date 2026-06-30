@@ -109,6 +109,54 @@ public enum MockConstants {
     metadata: FetchedTransaction.FetchedTransactionMetadata(blockTimestamp: "test-block-timestamp"),
     chainId: 11_155_111
   )
+  public static let mockTransactionHistoryItem = TransactionHistoryItem(
+    type: "transaction",
+    hash: mockTransactionHash,
+    from: mockEip155Address,
+    to: mockEip155Address,
+    value: "1000000000000000000",
+    blockNumber: "12345",
+    blockTimestamp: 1_700_000_000,
+    status: "success",
+    chainId: "eip155:11155111",
+    asset: "ETH",
+    tokenAddress: nil,
+    tokenDecimals: 18,
+    userOpHash: nil,
+    entryPoint: nil,
+    actualGasCost: nil,
+    actualGasUsed: nil
+  )
+  public static let mockUserOperationHistoryItem = TransactionHistoryItem(
+    type: "userOperation",
+    hash: mockTransactionHash,
+    from: mockEip155Address,
+    to: nil,
+    value: "0",
+    blockNumber: "12345",
+    blockTimestamp: 1_700_000_000,
+    status: "success",
+    chainId: "eip155:11155111",
+    asset: nil,
+    tokenAddress: nil,
+    tokenDecimals: nil,
+    userOpHash: "test-user-op-hash",
+    entryPoint: "test-entry-point",
+    actualGasCost: "1000",
+    actualGasUsed: "2000"
+  )
+  public static let mockGetTransactionHistoryMetadata = GetTransactionHistoryMetadata(
+    address: mockEip155Address,
+    chainId: "eip155:11155111",
+    clientId: mockClientId,
+    limit: 50,
+    offset: 0,
+    count: 1
+  )
+  public static let mockUnifiedTransactionHistoryResponse = UnifiedTransactionHistoryResponse(
+    data: UnifiedTransactionHistoryResponse.DataContainer(transactions: [mockTransactionHistoryItem]),
+    metadata: mockGetTransactionHistoryMetadata
+  )
   public static let mockFundResponse = FundResponse(
     data: FundResponseData(
       explorerUrl: "https://sepolia.etherscan.io/tx/0x13aebe28e9661959f73e06c48123d67d47e8e24a3833f626d2fcaa6ef640d0de",
@@ -357,6 +405,37 @@ public enum MockConstants {
       wallets: [
         mockED25519NotBackedUpWallet,
         mockSECP256K1NotBackedUpWallet
+      ]
+    )
+  }
+
+  public static var mockAccountAbstractedClient: ClientResponse {
+    ClientResponse(
+      id: mockClientId,
+      custodian: mockCustodian,
+      createdAt: mockCreatedAt,
+      environment: ClientResponseEnvironment(
+        id: "test-environment-id",
+        name: "test-environment-name",
+        backupWithPortalEnabled: false
+      ),
+      ejectedAt: "test-ejected-at",
+      isAccountAbstracted: true,
+      metadata: ClientResponseMetadata(
+        namespaces: ClientResponseMetadataNamespaces(
+          eip155: ClientResponseNamespaceMetadataItem(
+            address: mockEip155Address,
+            curve: .SECP256K1
+          ),
+          solana: nil,
+          bip122: nil,
+          stellar: nil,
+          tron: nil
+        )
+      ),
+      wallets: [
+        mockED25519Wallet,
+        mockSECP256K1Wallet
       ]
     )
   }

@@ -89,6 +89,14 @@ class PortalApiMock: PortalApiProtocol {
     getTransactionsReturnValue ?? []
   }
 
+  var getTransactionHistoryReturnValue: GetTransactionHistoryResponse?
+  func getTransactionHistory(_: GetTransactionHistoryParams) async throws -> GetTransactionHistoryResponse {
+    guard let value = getTransactionHistoryReturnValue else {
+      throw URLError(.badURL)
+    }
+    return value
+  }
+
   var getTransactionDetailsReturnValue: GetTransactionDetailsResponse?
   func getTransactionDetails(chain _: String, signature _: String) async throws -> GetTransactionDetailsResponse {
     guard let value = getTransactionDetailsReturnValue else {

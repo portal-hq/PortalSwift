@@ -413,6 +413,7 @@ public enum MetricsEvents: String {
   case getSigningShareMetadata = "Get Signing Share Metadata"
   case getSources = "Get Sources"
   case getTransactions = "Get Transactions"
+  case getTransactionHistory = "Get Transaction History"
   case simulateTransaction = "Simulate Transaction"
   case storedClientBackupShare = "Stored Client Backup Share"
   case storedClientBackupShareKey = "Stored Client Backup Share Key"
@@ -422,6 +423,197 @@ public enum MetricsEvents: String {
 public enum GetTransactionsOrder: String {
   case asc
   case desc
+}
+
+// MARK: - Transaction History (v3 chained endpoint)
+
+/// Sort order for the `getTransactionHistory` endpoint.
+///
+/// Note: the v3 chained endpoint validates `order` with a strict, case-sensitive
+/// check (`asc`/`desc`) and does NOT normalize casing, so these raw values are
+/// intentionally lowercase. Do not reuse `TransactionOrder` (`ASC`/`DESC`) here.
+public enum TransactionHistoryOrder: String, Codable {
+  case asc
+  case desc
+}
+
+/// Controls whether ERC-4337 user operations are included in the transaction history.
+public enum UserOperationsFilter: String, Codable {
+  case include
+  case only
+  case exclude
+}
+
+/// Parameters for `getTransactionHistory`.
+public struct GetTransactionHistoryParams: Equatable {
+  /// The chain identifier in CAIP-2 format (e.g. "eip155:1") or a pretty slug (e.g. "ethereum").
+  public let chainId: String
+  /// Optional maximum number of items to return.
+  public let limit: Int?
+  /// Optional number of items to skip for pagination.
+  public let offset: Int?
+  /// Optional sort order.
+  public let order: TransactionHistoryOrder?
+  /// Optional EVM address override. Must match the client's EOA or smart-contract address.
+  public let address: String?
+  /// Optional user-operations filter. For EVM Account Abstraction wallets this defaults
+  /// to `.only` when omitted (see `PortalApi.getTransactionHistory`).
+  public let userOperations: UserOperationsFilter?
+
+  public init(
+    chainId: String,
+    limit: Int? = nil,
+    offset: Int? = nil,
+    order: TransactionHistoryOrder? = nil,
+    address: String? = nil,
+    userOperations: UserOperationsFilter? = nil
+  ) {
+    self.chainId = chainId
+    self.limit = limit
+    self.offset = offset
+    self.order = order
+    self.address = address
+    self.userOperations = userOperations
+  }
+}
+
+/// A normalized transaction history item returned for EVM, Bitcoin, Stellar, and Tron chains.
+///
+/// The `type` discriminator is either `"transaction"` (a regular transaction) or
+/// `"userOperation"` (an ERC-4337 user operation). User-operation specific fields
+/// (`userOpHash`, `entryPoint`, `actualGasCost`, `actualGasUsed`) are `nil` for regular
+/// transactions, and token-transfer fields (`asset`, `tokenAddress`, `tokenDecimals`)
+/// are `nil` for user operations.
+public struct TransactionHistoryItem: Codable, Equatable {
+  public let type: String
+  public let hash: String
+  public let from: String
+  public let to: String?
+  public let value: String
+  public let blockNumber: String?
+  public let blockTimestamp: Double?
+  public let status: String?
+  public let chainId: String
+  // Token transfer metadata (regular transactions only)
+  public let asset: String?
+  public let tokenAddress: String?
+  public let tokenDecimals: Int?
+  // User-operation specific (user operations only)
+  public let userOpHash: String?
+  public let entryPoint: String?
+  public let actualGasCost: String?
+  public let actualGasUsed: String?
+}
+
+/// Metadata returned alongside the transaction history.
+public struct GetTransactionHistoryMetadata: Codable, Equatable {
+  public let address: String
+  public let chainId: String
+  public let clientId: String
+  public let limit: Int
+  public let offset: Int
+  public let count: Int
+}
+
+/// The transaction history response for EVM, Bitcoin, Stellar, and Tron chains.
+public struct UnifiedTransactionHistoryResponse: Codable, Equatable {
+  public struct DataContainer: Codable, Equatable {
+    public let transactions: [TransactionHistoryItem]
+  }
+
+  public let data: DataContainer
+  public let metadata: GetTransactionHistoryMetadata
+}
+
+/// The transaction history response for Solana, which preserves the rich Solana
+/// transaction detail shape inside the same envelope.
+public struct SolanaTransactionHistoryResponse: Codable {
+  public struct DataContainer: Codable {
+    public let transactions: [SolanaTransactionHistoryDetails]
+  }
+
+  public let data: DataContainer
+  public let metadata: GetTransactionHistoryMetadata
+}
+
+/// The response returned by `getTransactionHistory`. The variant is selected by the
+/// requested chain: Solana returns `.solana`, all other chains return `.unified`.
+public enum GetTransactionHistoryResponse {
+  case unified(UnifiedTransactionHistoryResponse)
+  case solana(SolanaTransactionHistoryResponse)
+}
+
+// MARK: Solana transaction history details
+
+public struct SolanaTransactionHistoryDetails: Codable {
+  public let blockTime: Int?
+  public let error: AnyCodable?
+  public let signature: String
+  public let status: String
+  public let tokenMint: String?
+  public let transactionDetails: SolanaTransactionHistoryDetailsInner?
+}
+
+public struct SolanaTransactionHistoryDetailsInner: Codable {
+  public let transaction: SolanaTransactionHistoryContent?
+  public let signatureDetails: SolanaTransactionHistorySignatureDetails?
+  public let metadata: SolanaTransactionHistoryItemMetadata?
+}
+
+public struct SolanaTransactionHistoryContent: Codable {
+  public let message: SolanaTransactionHistoryMessage?
+  public let signatures: [String]?
+}
+
+public struct SolanaTransactionHistoryMessage: Codable {
+  public let accountKeys: [String]?
+  public let header: SolanaTransactionHistoryMessageHeader?
+  public let instructions: [SolanaTransactionHistoryInstruction]?
+  public let recentBlockhash: String?
+}
+
+public struct SolanaTransactionHistoryMessageHeader: Codable {
+  public let numRequiredSignatures: Int?
+  public let numReadonlySignedAccounts: Int?
+  public let numReadonlyUnsignedAccounts: Int?
+}
+
+public struct SolanaTransactionHistoryInstruction: Codable {
+  public let accounts: [Int]?
+  public let data: String?
+  public let programIdIndex: Int?
+  public let stackHeight: Int?
+}
+
+public struct SolanaTransactionHistorySignatureDetails: Codable {
+  public let blockTime: Int?
+  public let confirmationStatus: String?
+  public let error: AnyCodable?
+  public let memo: String?
+  public let signature: String?
+  public let slot: Int?
+}
+
+public struct SolanaTransactionHistoryItemMetadata: Codable {
+  public let blockTime: Int?
+  public let slot: Int?
+  public let error: AnyCodable?
+  public let fee: Int?
+  public let innerInstructions: [AnyCodable]?
+  public let loadedAddresses: SolanaTransactionHistoryLoadedAddresses?
+  public let logMessages: [String]?
+  public let postBalances: [AnyCodable]?
+  public let postTokenBalances: [AnyCodable]?
+  public let preBalances: [AnyCodable]?
+  public let preTokenBalances: [AnyCodable]?
+  public let rewards: [AnyCodable]?
+  public let status: AnyCodable?
+  public let version: AnyCodable?
+}
+
+public struct SolanaTransactionHistoryLoadedAddresses: Codable {
+  public let readonly: [String]?
+  public let writable: [String]?
 }
 
 public struct BackupSharePair: Codable {

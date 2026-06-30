@@ -26,7 +26,9 @@ public protocol PortalApiProtocol: AnyObject {
   func getNftAssets(_ chainId: String) async throws -> [NftAsset]
   func getSharePairs(_ type: PortalSharePairType, walletId: String) async throws -> [FetchedSharePair]
   func getSources(_ swapsApiKey: String, forChainId: String) async throws -> [String: String]
+  @available(*, deprecated, message: "Please use getTransactionHistory(_:) instead.")
   func getTransactions(_ chainId: String, limit: Int?, offset: Int?, order: TransactionOrder?) async throws -> [FetchedTransaction]
+  func getTransactionHistory(_ params: GetTransactionHistoryParams) async throws -> GetTransactionHistoryResponse
   func identify(_ traits: [String: AnyCodable]) async throws -> MetricsResponse
   func prepareEject(_ walletId: String, _ backupMethod: BackupMethods) async throws -> String
   func refreshClient() async throws
@@ -339,6 +341,7 @@ public class PortalApi: PortalApiProtocol {
     throw URLError(.badURL)
   }
 
+  @available(*, deprecated, message: "Please use getTransactionHistory(_:) instead.")
   public func getTransactions(
     _ chainId: String,
     limit: Int? = nil,
@@ -377,6 +380,80 @@ public class PortalApi: PortalApiProtocol {
 
     self.logger.error("PortalApi.getTransactions() - Unable to build request URL.")
     throw URLError(.badURL)
+  }
+
+  /// Fetches transaction history for the client on a given chain using the Portal v3
+  /// chained endpoint `GET /api/v3/clients/me/chains/{chainId}/transactions`.
+  ///
+  /// For EVM Account Abstraction (AA) wallets, `userOperations` defaults to `.only` when it
+  /// is not explicitly provided. This is determined by checking `ClientResponse.isAccountAbstracted`.
+  /// - Parameter params: The request parameters. See `GetTransactionHistoryParams`.
+  /// - Returns: A `GetTransactionHistoryResponse` (`.unified` for most chains, `.solana` for Solana).
+  public func getTransactionHistory(_ params: GetTransactionHistoryParams) async throws -> GetTransactionHistoryResponse {
+    let chainId = params.chainId
+
+    // For EVM AA wallets, default `userOperations` to `.only` unless explicitly provided.
+    var userOperations = params.userOperations
+    if userOperations == nil, chainId.hasPrefix("eip155:") {
+      do {
+        let client = try await getClient()
+        if client.isAccountAbstracted {
+          userOperations = .only
+        }
+      } catch {
+        // Fallback: proceed without injecting `userOperations` if the client lookup fails.
+        self.logger.error("PortalApi.getTransactionHistory() - Unable to fetch client for AA check: \(error.localizedDescription)")
+      }
+    }
+
+    guard let encodedChain = chainId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) else {
+      self.logger.error("PortalApi.getTransactionHistory() - Unable to encode chainId.")
+      throw URLError(.badURL)
+    }
+
+    var requestUrlString = "\(baseUrl)/api/v3/clients/me/chains/\(encodedChain)/transactions"
+
+    var queryParams: [String] = []
+    if let limit = params.limit {
+      queryParams.append("limit=\(limit)")
+    }
+    if let offset = params.offset {
+      queryParams.append("offset=\(offset)")
+    }
+    if let order = params.order {
+      queryParams.append("order=\(order.rawValue)")
+    }
+    if let address = params.address {
+      queryParams.append("address=\(address)")
+    }
+    if let userOperations {
+      queryParams.append("userOperations=\(userOperations.rawValue)")
+    }
+
+    if !queryParams.isEmpty {
+      requestUrlString += "?" + queryParams.joined(separator: "&")
+    }
+
+    guard let url = URL(string: requestUrlString) else {
+      self.logger.error("PortalApi.getTransactionHistory() - Unable to build request URL.")
+      throw URLError(.badURL)
+    }
+
+    do {
+      let response: GetTransactionHistoryResponse
+      if chainId.hasPrefix("solana:") {
+        let solana = try await get(url, withBearerToken: self.apiKey, mappingInResponse: SolanaTransactionHistoryResponse.self)
+        response = .solana(solana)
+      } else {
+        let unified = try await get(url, withBearerToken: self.apiKey, mappingInResponse: UnifiedTransactionHistoryResponse.self)
+        response = .unified(unified)
+      }
+
+      return response
+    } catch {
+      self.logger.error("PortalApi.getTransactionHistory() - Unable to fetch transaction history: \(error.localizedDescription)")
+      throw error
+    }
   }
 
   public func getTransactionDetails(chain: String, signature: String) async throws -> GetTransactionDetailsResponse {

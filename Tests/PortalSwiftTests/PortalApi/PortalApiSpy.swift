@@ -142,6 +142,24 @@ class PortalApiSpy: PortalApiProtocol {
     return []
   }
 
+  // Get Transaction History method tracking
+  var getTransactionHistoryCallsCount: Int = 0
+  var getTransactionHistoryParam: GetTransactionHistoryParams?
+  var getTransactionHistoryReturnValue: GetTransactionHistoryResponse?
+  var getTransactionHistoryErrorToThrow: Error?
+
+  public func getTransactionHistory(_ params: GetTransactionHistoryParams) async throws -> GetTransactionHistoryResponse {
+    getTransactionHistoryCallsCount += 1
+    getTransactionHistoryParam = params
+    if let getTransactionHistoryErrorToThrow {
+      throw getTransactionHistoryErrorToThrow
+    }
+    guard let getTransactionHistoryReturnValue else {
+      throw URLError(.badURL)
+    }
+    return getTransactionHistoryReturnValue
+  }
+
   var getTransactionDetailsCallsCount: Int = 0
   var getTransactionDetailsChainParam: String?
   var getTransactionDetailsSignatureParam: String?

@@ -641,6 +641,189 @@ extension PortalApiTests {
   }
 }
 
+// MARK: - getTransactionHistory tests
+
+extension PortalApiTests {
+  func test_getTransactionHistory_decodesUnifiedResponse() async throws {
+    // given
+    let params = GetTransactionHistoryParams(chainId: "eip155:11155111", userOperations: .include)
+
+    // when
+    let response = try await api?.getTransactionHistory(params)
+
+    // then
+    guard case let .unified(unified) = response else {
+      return XCTFail("Expected a unified transaction history response.")
+    }
+    XCTAssertEqual(unified.data.transactions, [MockConstants.mockTransactionHistoryItem])
+    XCTAssertEqual(unified.metadata, MockConstants.mockGetTransactionHistoryMetadata)
+  }
+
+  func test_getTransactionHistory_decodesUserOperationItem() async throws {
+    // given
+    let portalRequestMock = PortalRequestsMock()
+    let stubResponse = UnifiedTransactionHistoryResponse(
+      data: UnifiedTransactionHistoryResponse.DataContainer(
+        transactions: [
+          MockConstants.mockTransactionHistoryItem,
+          MockConstants.mockUserOperationHistoryItem,
+        ]
+      ),
+      metadata: MockConstants.mockGetTransactionHistoryMetadata
+    )
+    portalRequestMock.returnValueData = try encoder.encode(stubResponse)
+    initPortalApiWith(requests: portalRequestMock)
+    // Pass `userOperations` explicitly so the AA `getClient` lookup is skipped.
+    let params = GetTransactionHistoryParams(chainId: "eip155:11155111", userOperations: .only)
+
+    // when
+    let response = try await api?.getTransactionHistory(params)
+
+    // then
+    guard case let .unified(unified) = response else {
+      return XCTFail("Expected a unified transaction history response.")
+    }
+    XCTAssertEqual(unified.data.transactions.count, 2)
+    let userOp = unified.data.transactions.first { $0.type == "userOperation" }
+    XCTAssertEqual(userOp, MockConstants.mockUserOperationHistoryItem)
+    XCTAssertEqual(userOp?.userOpHash, "test-user-op-hash")
+    XCTAssertEqual(userOp?.entryPoint, "test-entry-point")
+    XCTAssertEqual(userOp?.actualGasCost, "1000")
+    XCTAssertEqual(userOp?.actualGasUsed, "2000")
+    XCTAssertNil(userOp?.asset)
+  }
+
+  func test_getTransactionHistory_willCall_executeRequest_passingCorrectUrlPathAndQueryAndMethod() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    initPortalApiWith(requests: portalRequestsSpy)
+    let chainId = "eip155:11155111"
+    // Pass `userOperations` explicitly so the AA `getClient` lookup is skipped.
+    let params = GetTransactionHistoryParams(
+      chainId: chainId,
+      limit: 2,
+      offset: 4,
+      order: .desc,
+      address: "0xabc",
+      userOperations: .exclude
+    )
+
+    do {
+      _ = try await api?.getTransactionHistory(params)
+    } catch {}
+
+    // then
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
+    if #available(iOS 16.0, *) {
+      // The chain segment may or may not percent-encode the colon depending on platform.
+      let urlString = portalRequestsSpy.executeRequestParam?.url.absoluteString ?? ""
+      XCTAssertTrue(urlString.contains("/api/v3/clients/me/chains/"))
+      XCTAssertTrue(urlString.contains("eip155%3A11155111") || urlString.contains("eip155:11155111"))
+      XCTAssertTrue(urlString.contains("/transactions?"))
+      XCTAssertEqual(portalRequestsSpy.executeRequestParam?.url.query(), "limit=2&offset=4&order=desc&address=0xabc&userOperations=exclude")
+      XCTAssertEqual(portalRequestsSpy.executeRequestParam?.method, .get)
+    }
+  }
+
+  func test_getTransactionHistory_withOnlyChainId_buildsPathWithoutQuery() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    initPortalApiWith(requests: portalRequestsSpy)
+    // Non-EVM chain so the AA `getClient` lookup is skipped and no query params are added.
+    let chainId = "stellar:pubnet"
+    let params = GetTransactionHistoryParams(chainId: chainId)
+
+    do {
+      _ = try await api?.getTransactionHistory(params)
+    } catch {}
+
+    // then
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
+    if #available(iOS 16.0, *) {
+      let urlString = portalRequestsSpy.executeRequestParam?.url.absoluteString ?? ""
+      XCTAssertTrue(urlString.contains("/api/v3/clients/me/chains/"))
+      XCTAssertTrue(urlString.contains("stellar%3Apubnet") || urlString.contains("stellar:pubnet"))
+      XCTAssertTrue(urlString.hasSuffix("/transactions"))
+      XCTAssertNil(portalRequestsSpy.executeRequestParam?.url.query())
+    }
+  }
+
+  func test_getTransactionHistory_forAaWallet_injectsUserOperationsOnly() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    portalRequestsSpy.returnData = try encoder.encode(MockConstants.mockAccountAbstractedClient)
+    initPortalApiWith(requests: portalRequestsSpy)
+    let params = GetTransactionHistoryParams(chainId: "eip155:11155111")
+
+    do {
+      _ = try await api?.getTransactionHistory(params)
+    } catch {}
+
+    // then
+    // First call resolves the client (AA check), second is the transaction history request.
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 2)
+    if #available(iOS 16.0, *) {
+      XCTAssertEqual(portalRequestsSpy.executeRequestParam?.url.query(), "userOperations=only")
+    }
+  }
+
+  func test_getTransactionHistory_forEoaWallet_doesNotInjectUserOperations() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    portalRequestsSpy.returnData = try encoder.encode(MockConstants.mockClient)
+    initPortalApiWith(requests: portalRequestsSpy)
+    let params = GetTransactionHistoryParams(chainId: "eip155:11155111")
+
+    do {
+      _ = try await api?.getTransactionHistory(params)
+    } catch {}
+
+    // then
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 2)
+    if #available(iOS 16.0, *) {
+      XCTAssertNil(portalRequestsSpy.executeRequestParam?.url.query())
+    }
+  }
+
+  func test_getTransactionHistory_forAaWallet_doesNotOverrideExplicitUserOperations() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    portalRequestsSpy.returnData = try encoder.encode(MockConstants.mockAccountAbstractedClient)
+    initPortalApiWith(requests: portalRequestsSpy)
+    let params = GetTransactionHistoryParams(chainId: "eip155:11155111", userOperations: .exclude)
+
+    do {
+      _ = try await api?.getTransactionHistory(params)
+    } catch {}
+
+    // then
+    // Explicit `userOperations` means the AA `getClient` lookup is skipped (single request).
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
+    if #available(iOS 16.0, *) {
+      XCTAssertEqual(portalRequestsSpy.executeRequestParam?.url.query(), "userOperations=exclude")
+    }
+  }
+
+  func test_getTransactionHistory_forSolana_doesNotInjectUserOperations() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    initPortalApiWith(requests: portalRequestsSpy)
+    let chainId = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+    let params = GetTransactionHistoryParams(chainId: chainId)
+
+    do {
+      _ = try await api?.getTransactionHistory(params)
+    } catch {}
+
+    // then
+    // Non-EVM chain: AA lookup skipped, single request, no `userOperations` param.
+    XCTAssertEqual(portalRequestsSpy.executeCallsCount, 1)
+    if #available(iOS 16.0, *) {
+      XCTAssertNil(portalRequestsSpy.executeRequestParam?.url.query())
+    }
+  }
+}
+
 // MARK: - identify tests
 
 extension PortalApiTests {

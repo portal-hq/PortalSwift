@@ -537,11 +537,11 @@ class ViewController: UIViewController, UITextFieldDelegate {
     return shares
   }
 
-  public func getTransactions(_ chainId: String) async throws -> [FetchedTransaction] {
+  public func getTransactionHistory(_ chainId: String) async throws -> GetTransactionHistoryResponse {
     guard let portal else {
       throw PortalExampleAppError.portalNotInitialized()
     }
-    return try await portal.getTransactions(chainId, limit: nil, offset: nil, order: nil)
+    return try await portal.getTransactionHistory(GetTransactionHistoryParams(chainId: chainId))
   }
 
   public func getTransactionDetails(chain: String, signature: String) async throws -> GetTransactionDetailsResponse {
@@ -1975,13 +1975,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.showStatusView(message: "\(self.failureStatus) Error fetching share metadata \(error)")
       }
       do {
-        let transactions = try await self.getTransactions(chainId)
-        print(transactions)
-        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched transactions.")
-        self.showStatusView(message: "\(self.successStatus) Successfully fetched transactions.")
+        let transactionHistory = try await self.getTransactionHistory(chainId)
+        print(transactionHistory)
+        self.logger.info("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ✅ Successfully fetched transaction history.")
+        self.showStatusView(message: "\(self.successStatus) Successfully fetched transaction history.")
       } catch {
-        self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching transactions: \(error)")
-        self.showStatusView(message: "\(self.failureStatus) Error fetching transactions \(error)")
+        self.logger.error("ViewController.testGetNFTsTrxsBalancesSharesAndSimTrx() - ❌ Error fetching transaction history: \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Error fetching transaction history \(error)")
         return
       }
       do {

@@ -42,6 +42,9 @@ public actor MockPortalRequests: PortalRequestsProtocol {
     case "/api/v3/clients/me/transactions":
       let mockTransactionData = try encoder.encode([MockConstants.mockFetchedTransaction])
       return mockTransactionData
+    case let path where path.hasPrefix("/api/v3/clients/me/chains/") && path.hasSuffix("/transactions"):
+      let mockTransactionHistoryData = try encoder.encode(MockConstants.mockUnifiedTransactionHistoryResponse)
+      return mockTransactionHistoryData
     case "/api/v3/clients/me/wallets/\(MockConstants.mockWalletId)/backup-share-pairs", "/api/v3/clients/me/wallets/\(MockConstants.mockWalletId)/signing-share-pairs":
       let mockSigningSharePairsData = try encoder.encode([MockConstants.mockFetchedShairPair])
       return mockSigningSharePairsData

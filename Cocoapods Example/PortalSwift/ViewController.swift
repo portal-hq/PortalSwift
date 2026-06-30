@@ -458,7 +458,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   @IBAction func fetchNFTsTrxsBalancesAndSimTrx() {
     self.retrieveNFTs()
-    self.getTransactions()
+    self.getTransactionHistory()
     self.getBalances()
     self.simulateTransaction()
     self.getShareMetadata()
@@ -498,18 +498,20 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
-  func getTransactions() {
-    do {
-      try self.portal?.api.getTransactions(limit: 100, offset: 0, order: GetTransactionsOrder.asc, chainId: 11_155_111) { results in
-        guard results.error == nil else {
-          print("❌ Unable to get transactions", results.error ?? "")
+  func getTransactionHistory() {
+    Task {
+      do {
+        guard let portal = self.portal else {
+          print("❌ Unable to retrieve transaction history: Portal not initialized")
           return
         }
-
-        print("✅ Retrieved transactions", results.data ?? "")
+        let response = try await portal.getTransactionHistory(
+          GetTransactionHistoryParams(chainId: "eip155:11155111", limit: 100, offset: 0, order: .asc)
+        )
+        print("✅ Retrieved transaction history", response)
+      } catch {
+        print("❌ Unable to retrieve transaction history", error)
       }
-    } catch {
-      print("❌ Unable to retrieve transactions", error)
     }
   }
 

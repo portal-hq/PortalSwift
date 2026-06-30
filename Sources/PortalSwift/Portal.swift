@@ -1461,6 +1461,7 @@ public final class Portal: PortalProtocol {
   /// - Returns: An array of `FetchedTransaction` objects containing transaction history
   ///
   /// - Throws: Various API-related errors if the transaction retrieval fails
+  @available(*, deprecated, message: "Please use getTransactionHistory(_:) instead.")
   public func getTransactions(
     _ chainId: String,
     limit: Int? = nil,
@@ -1468,6 +1469,18 @@ public final class Portal: PortalProtocol {
     order: TransactionOrder? = nil
   ) async throws -> [FetchedTransaction] {
     try await self.api.getTransactions(chainId, limit: limit, offset: offset, order: order)
+  }
+
+  /// Fetches transaction history for the client on a given chain using the Portal v3
+  /// chained endpoint `GET /api/v3/clients/me/chains/{chainId}/transactions`.
+  ///
+  /// For EVM Account Abstraction (AA) wallets, `userOperations` defaults to `.only` when it
+  /// is not explicitly provided.
+  /// - Parameter params: The request parameters. See `GetTransactionHistoryParams`.
+  /// - Returns: A `GetTransactionHistoryResponse` (`.unified` for most chains, `.solana` for Solana).
+  /// - Throws: Various API-related errors if the transaction retrieval fails.
+  public func getTransactionHistory(_ params: GetTransactionHistoryParams) async throws -> GetTransactionHistoryResponse {
+    try await self.api.getTransactionHistory(params)
   }
 
   public func getTransactionDetails(chain: String, signature: String) async throws -> GetTransactionDetailsResponse {
