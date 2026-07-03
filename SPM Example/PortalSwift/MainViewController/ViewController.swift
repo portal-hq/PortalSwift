@@ -931,7 +931,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
         featureFlags: FeatureFlags(
           isMultiBackupEnabled: true,
           useEnclaveMPCApi: Settings.shared.useEnclaveMPC,
-          usePresignatures: Settings.shared.usePresignatures
+          usePresignatures: Settings.shared.usePresignatures,
+          usePreGeneratedWallet: Settings.shared.usePreGeneratedWallet
         ),
         apiHost: config.apiUrl,
         mpcHost: config.mpcUrl,

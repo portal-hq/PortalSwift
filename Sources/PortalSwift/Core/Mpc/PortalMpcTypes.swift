@@ -159,6 +159,30 @@ struct GenerateResult: Codable {
   public var error: PortalError
 }
 
+/// The request body for the Enclave MPC API `POST /v1/generate` endpoint.
+struct GenerateApiRequest: Codable {
+  let usePreGenerated: Bool
+  let metadataStr: String
+}
+
+/// A single curve's share returned by the Enclave MPC API `POST /v1/generate` endpoint.
+/// `share` is the base64 (standard alphabet, no padding) of the serialized `MpcShare`.
+public struct GenerateApiCurveShare: Decodable {
+  public let share: String
+  public let id: String
+}
+
+/// The response from the Enclave MPC API `POST /v1/generate` endpoint.
+public struct GenerateApiResponse: Decodable {
+  public let secp256k1: GenerateApiCurveShare
+  public let ed25519: GenerateApiCurveShare
+
+  enum CodingKeys: String, CodingKey {
+    case secp256k1 = "SECP256K1"
+    case ed25519 = "ED25519"
+  }
+}
+
 /// The data for RotateResult.
 public struct RotateData: Codable {
   public var share: MpcShare

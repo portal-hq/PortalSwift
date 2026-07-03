@@ -29,6 +29,7 @@ public protocol PortalApiProtocol: AnyObject {
   func getTransactions(_ chainId: String, limit: Int?, offset: Int?, order: TransactionOrder?) async throws -> [FetchedTransaction]
   func identify(_ traits: [String: AnyCodable]) async throws -> MetricsResponse
   func prepareEject(_ walletId: String, _ backupMethod: BackupMethods) async throws -> String
+  func generatePreGeneratedShares(metadataStr: String) async throws -> GenerateApiResponse
   func refreshClient() async throws
   func updateShareStatus(_ type: PortalSharePairType, status: SharePairUpdateStatus, sharePairIds: [String]) async throws
   func storeClientCipherText(_ backupSharePairId: String, cipherText: String) async throws -> Bool
@@ -92,6 +93,7 @@ public class PortalApi: PortalApiProtocol {
   private let _clientStorage = ThreadSafeClientWrapper()
   private var apiKey: String
   private var baseUrl: String
+  private let enclaveMPCHost: String
   private let decoder = JSONDecoder()
   private var httpRequests: HttpRequester
   private let logger = PortalLogger.shared
@@ -173,12 +175,14 @@ public class PortalApi: PortalApiProtocol {
   public init(
     apiKey: String,
     apiHost: String = "api.portalhq.io",
+    enclaveMPCHost: String = "mpc-client.portalhq.io",
     provider: PortalProviderProtocol? = nil,
     featureFlags: FeatureFlags? = nil,
     requests: PortalRequestsProtocol? = nil
   ) {
     self.apiKey = apiKey
     self.baseUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
+    self.enclaveMPCHost = enclaveMPCHost
     self.featureFlags = featureFlags
     self.provider = provider
     self.requests = requests ?? PortalRequests()
@@ -495,6 +499,21 @@ public class PortalApi: PortalApiProtocol {
     }
 
     throw URLError(.badURL)
+  }
+
+  public func generatePreGeneratedShares(metadataStr: String) async throws -> GenerateApiResponse {
+    guard let url = URL(string: "https://\(enclaveMPCHost)/v1/generate") else {
+      self.logger.error("PortalApi.generatePreGeneratedShares() - Unable to build request URL.")
+      throw URLError(.badURL)
+    }
+
+    do {
+      let payload = GenerateApiRequest(usePreGenerated: true, metadataStr: metadataStr)
+      return try await self.post(url, withBearerToken: self.apiKey, andPayload: payload, mappingInResponse: GenerateApiResponse.self)
+    } catch {
+      self.logger.error("PortalApi.generatePreGeneratedShares() - Unable to generate pre-generated shares: \(error.localizedDescription)")
+      throw error
+    }
   }
 
   public func updateShareStatus(

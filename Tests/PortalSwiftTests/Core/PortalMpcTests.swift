@@ -43,6 +43,7 @@ extension PortalMpcTests {
     portalApi: PortalApiProtocol = PortalApi(apiKey: MockConstants.mockApiKey, requests: MockPortalRequests()),
     keychain: PortalKeychainProtocol = MockPortalKeychain(),
     mobile: Mobile = MockMobileWrapper(),
+    featureFlags: FeatureFlags? = nil,
     gDriveStorage: PortalStorage? = nil,
     passwordStorage: PortalStorage? = nil,
     iCloudStorage: PortalStorage? = nil,
@@ -55,7 +56,8 @@ extension PortalMpcTests {
       apiKey: MockConstants.mockApiKey,
       api: self.portalApi,
       keychain: self.keychain,
-      mobile: mobile
+      mobile: mobile,
+      featureFlags: featureFlags
     )
 
     if let gDriveStorage {
@@ -909,6 +911,255 @@ extension PortalMpcTests {
     _ = try await mpc?.generate()
 
     XCTAssertEqual(portalApiMock.refreshClientCallsCount, 1)
+  }
+
+  // MARK: - Pre-generated wallet (usePreGeneratedWallet) Tests
+
+  func test_featureFlags_usePreGeneratedWallet_defaultsToOff() {
+    // given a FeatureFlags created without specifying usePreGeneratedWallet
+    let featureFlags = FeatureFlags()
+
+    // then it defaults to nil (off) and is not treated as enabled
+    XCTAssertNil(featureFlags.usePreGeneratedWallet)
+    XCTAssertNotEqual(featureFlags.usePreGeneratedWallet, true)
+  }
+
+  @available(iOS 16, *)
+  func test_generate_whenUsePreGeneratedWalletEnabled_usesApiAndNotBinary() async throws {
+    // given
+    let mockRequests = MockPortalRequests()
+    let api = PortalApi(apiKey: MockConstants.mockApiKey, requests: mockRequests)
+    let mobileSpy = MobileSpy()
+    initPortalMpcWith(
+      portalApi: api,
+      mobile: mobileSpy,
+      featureFlags: FeatureFlags(usePreGeneratedWallet: true)
+    )
+
+    // and given
+    let addresses = try await mpc?.generate()
+
+    // then: the API path was used (single /v1/generate call) and the binary was not invoked
+    let generateCallsCount = await mockRequests.generateCallsCount
+    XCTAssertEqual(generateCallsCount, 1)
+    XCTAssertEqual(mobileSpy.mobileGenerateEd25519CallsCount, 0)
+    XCTAssertEqual(mobileSpy.mobileGenerateSecp256k1CallsCount, 0)
+    XCTAssertEqual(addresses?[.eip155], MockConstants.mockEip155Address)
+    XCTAssertEqual(addresses?[.solana], MockConstants.mockSolanaAddress)
+  }
+
+  @available(iOS 16, *)
+  func test_generate_whenUsePreGeneratedWalletEnabled_andApiFails_fallsBackToBinary() async throws {
+    // given
+    let mockRequests = MockPortalRequests(failEnclaveGenerate: true)
+    let api = PortalApi(apiKey: MockConstants.mockApiKey, requests: mockRequests)
+    let mobileSpy = MobileSpy()
+    mobileSpy.mobileGenerateSecp256k1ReturnValue = UnitTestMockConstants.validSecp256k1ShareRotatedResultJSON
+    mobileSpy.mobileGenerateEd25519ReturnValue = UnitTestMockConstants.validED25519ShareRotatedResultJSON
+    initPortalMpcWith(
+      portalApi: api,
+      mobile: mobileSpy,
+      featureFlags: FeatureFlags(usePreGeneratedWallet: true)
+    )
+
+    // and given
+    let addresses = try await mpc?.generate()
+
+    // then: API was attempted, then the binary fallback ran and the wallet was created
+    let generateCallsCount = await mockRequests.generateCallsCount
+    XCTAssertEqual(generateCallsCount, 1)
+    XCTAssertEqual(mobileSpy.mobileGenerateEd25519CallsCount, 1)
+    XCTAssertEqual(mobileSpy.mobileGenerateSecp256k1CallsCount, 1)
+    XCTAssertEqual(addresses?[.eip155], MockConstants.mockEip155Address)
+    XCTAssertEqual(addresses?[.solana], MockConstants.mockSolanaAddress)
+  }
+
+  @available(iOS 16, *)
+  func test_generate_whenUsePreGeneratedWalletDisabled_usesBinaryAndNotApi() async throws {
+    // given
+    let mockRequests = MockPortalRequests()
+    let api = PortalApi(apiKey: MockConstants.mockApiKey, requests: mockRequests)
+    let mobileSpy = MobileSpy()
+    mobileSpy.mobileGenerateSecp256k1ReturnValue = UnitTestMockConstants.validSecp256k1ShareRotatedResultJSON
+    mobileSpy.mobileGenerateEd25519ReturnValue = UnitTestMockConstants.validED25519ShareRotatedResultJSON
+    initPortalMpcWith(
+      portalApi: api,
+      mobile: mobileSpy,
+      featureFlags: FeatureFlags(usePreGeneratedWallet: false)
+    )
+
+    // and given
+    _ = try await mpc?.generate()
+
+    // then: the binary path was used and the API was never called
+    let generateCallsCount = await mockRequests.generateCallsCount
+    XCTAssertEqual(generateCallsCount, 0)
+    XCTAssertEqual(mobileSpy.mobileGenerateEd25519CallsCount, 1)
+    XCTAssertEqual(mobileSpy.mobileGenerateSecp256k1CallsCount, 1)
+  }
+
+  func test_decodeStandardBase64_roundTripsMpcShare() throws {
+    // given a base64 (no padding) of an MpcShare, as the Enclave MPC API returns
+    let shareData = try JSONEncoder().encode(MockConstants.mockMpcShare)
+    let base64NoPadding = shareData.base64EncodedString().replacingOccurrences(of: "=", with: "")
+
+    // when
+    let decoded = PortalMpc.decodeStandardBase64(base64NoPadding)
+
+    // then it decodes back into an equivalent MpcShare
+    XCTAssertNotNil(decoded)
+    let mpcShare = try JSONDecoder().decode(MpcShare.self, from: decoded!)
+    XCTAssertEqual(mpcShare.signingSharePairId, MockConstants.mockMpcShareId)
+  }
+
+  func test_decodeStandardBase64_handlesAllPaddingRemainders() {
+    // Standard-alphabet base64 with the `=` padding stripped, as the API returns.
+    XCTAssertEqual(PortalMpc.decodeStandardBase64("YWJj").flatMap { String(data: $0, encoding: .utf8) }, "abc") // len 4, no padding needed
+    XCTAssertEqual(PortalMpc.decodeStandardBase64("YQ").flatMap { String(data: $0, encoding: .utf8) }, "a") // remainder 2
+    XCTAssertEqual(PortalMpc.decodeStandardBase64("YWI").flatMap { String(data: $0, encoding: .utf8) }, "ab") // remainder 3
+    XCTAssertEqual(PortalMpc.decodeStandardBase64("YWJjZA").flatMap { String(data: $0, encoding: .utf8) }, "abcd") // remainder 2
+  }
+
+  func test_decodeStandardBase64_returnsNil_forInvalidInput() {
+    XCTAssertNil(PortalMpc.decodeStandardBase64("@@@@"))
+    XCTAssertNil(PortalMpc.decodeStandardBase64("not base64!"))
+  }
+
+  @available(iOS 16, *)
+  func test_generate_whenUsePreGeneratedWalletEnabled_stillUpdatesShareStatusAndRefreshesClient() async throws {
+    // given
+    let apiSpy = PortalApiSpy()
+    apiSpy.generatePreGeneratedSharesReturnValue = try Self.makePreGeneratedApiResponse()
+    initPortalMpcWith(portalApi: apiSpy, featureFlags: FeatureFlags(usePreGeneratedWallet: true))
+
+    // and given
+    _ = try await mpc?.generate()
+
+    // then: the post-generate lifecycle steps still run exactly as with the binary path
+    XCTAssertEqual(apiSpy.generatePreGeneratedSharesCallsCount, 1)
+    XCTAssertEqual(apiSpy.updateShareStatusCallsCount, 1)
+    XCTAssertEqual(apiSpy.updateShareStatusTypeParam, .signing)
+    XCTAssertEqual(apiSpy.updateShareStatusStatusParam, .STORED_CLIENT)
+    XCTAssertEqual(apiSpy.updateShareStatusSharePairIdsParam, [MockConstants.mockMpcShareId, MockConstants.mockMpcShareId])
+    XCTAssertEqual(apiSpy.refreshClientCallsCount, 1)
+  }
+
+  @available(iOS 16, *)
+  func test_generate_whenUsePreGeneratedWalletEnabled_passesIosMetadataToApi() async throws {
+    // given
+    let apiMock = PortalApiMock()
+    apiMock.generatePreGeneratedSharesReturnValue = try Self.makePreGeneratedApiResponse()
+    initPortalMpcWith(portalApi: apiMock, featureFlags: FeatureFlags(usePreGeneratedWallet: true))
+
+    // and given
+    _ = try await mpc?.generate()
+
+    // then: the same metadata we send to the binary is forwarded to the API
+    let metadataStr = apiMock.generatePreGeneratedSharesMetadataParam ?? ""
+    XCTAssertFalse(metadataStr.isEmpty)
+    let metadata = try JSONDecoder().decode(MpcMetadata.self, from: Data(metadataStr.utf8))
+    XCTAssertEqual(metadata.clientPlatform, "NATIVE_IOS")
+    XCTAssertEqual(metadata.mpcServerVersion, "v6")
+  }
+
+  @available(iOS 16, *)
+  func test_generate_whenUsePreGeneratedWalletEnabled_storesTransformedShares() async throws {
+    // given
+    let mockRequests = MockPortalRequests()
+    let api = PortalApi(apiKey: MockConstants.mockApiKey, requests: mockRequests)
+    let keychainSpy = PortalKeychainSpy()
+    initPortalMpcWith(portalApi: api, keychain: keychainSpy, featureFlags: FeatureFlags(usePreGeneratedWallet: true))
+
+    // and given
+    _ = try await mpc?.generate()
+
+    // then: the base64 API shares are transformed into the same stored format as the binary path
+    XCTAssertEqual(keychainSpy.setSharesCallCount, 1)
+    let stored = keychainSpy.setSharesParams.first
+    XCTAssertNotNil(stored?["ED25519"])
+    XCTAssertNotNil(stored?["SECP256K1"])
+    XCTAssertEqual(stored?["SECP256K1"]?.id, MockConstants.mockMpcShareId)
+
+    let storedShareString = stored?["SECP256K1"]?.share ?? ""
+    let decodedMpcShare = try JSONDecoder().decode(MpcShare.self, from: Data(storedShareString.utf8))
+    XCTAssertEqual(decodedMpcShare.signingSharePairId, MockConstants.mockMpcShareId)
+    XCTAssertEqual(decodedMpcShare, MockConstants.mockMpcShare)
+  }
+
+  @available(iOS 16, *)
+  func test_generate_whenApiShareHasEmptySigningSharePairId_fallsBackToBinary() async throws {
+    // given: an API response whose decoded MpcShare has no signingSharePairId
+    let apiMock = PortalApiMock()
+    let badJson = "{\"clientId\":\"\",\"signingSharePairId\":\"\",\"share\":\"s\",\"ssid\":\"x\"}"
+    let badShare = Data(badJson.utf8).base64EncodedString().replacingOccurrences(of: "=", with: "")
+    apiMock.generatePreGeneratedSharesReturnValue = GenerateApiResponse(
+      secp256k1: GenerateApiCurveShare(share: badShare, id: "id"),
+      ed25519: GenerateApiCurveShare(share: badShare, id: "id")
+    )
+    let mobileSpy = MobileSpy()
+    mobileSpy.mobileGenerateSecp256k1ReturnValue = UnitTestMockConstants.validSecp256k1ShareRotatedResultJSON
+    mobileSpy.mobileGenerateEd25519ReturnValue = UnitTestMockConstants.validED25519ShareRotatedResultJSON
+    initPortalMpcWith(portalApi: apiMock, mobile: mobileSpy, featureFlags: FeatureFlags(usePreGeneratedWallet: true))
+
+    // and given
+    let addresses = try await mpc?.generate()
+
+    // then: API was attempted, transform failed, binary fallback created the wallet
+    XCTAssertEqual(apiMock.generatePreGeneratedSharesCallsCount, 1)
+    XCTAssertEqual(mobileSpy.mobileGenerateEd25519CallsCount, 1)
+    XCTAssertEqual(mobileSpy.mobileGenerateSecp256k1CallsCount, 1)
+    XCTAssertEqual(addresses?[.eip155], MockConstants.mockEip155Address)
+  }
+
+  @available(iOS 16, *)
+  func test_generate_whenApiShareHasInvalidBase64_fallsBackToBinary() async throws {
+    // given: an API response with an undecodable base64 share
+    let apiMock = PortalApiMock()
+    apiMock.generatePreGeneratedSharesReturnValue = GenerateApiResponse(
+      secp256k1: GenerateApiCurveShare(share: "@@@@", id: "id"),
+      ed25519: GenerateApiCurveShare(share: "@@@@", id: "id")
+    )
+    let mobileSpy = MobileSpy()
+    mobileSpy.mobileGenerateSecp256k1ReturnValue = UnitTestMockConstants.validSecp256k1ShareRotatedResultJSON
+    mobileSpy.mobileGenerateEd25519ReturnValue = UnitTestMockConstants.validED25519ShareRotatedResultJSON
+    initPortalMpcWith(portalApi: apiMock, mobile: mobileSpy, featureFlags: FeatureFlags(usePreGeneratedWallet: true))
+
+    // and given
+    let addresses = try await mpc?.generate()
+
+    // then: the binary fallback ran and created the wallet
+    XCTAssertEqual(apiMock.generatePreGeneratedSharesCallsCount, 1)
+    XCTAssertEqual(mobileSpy.mobileGenerateEd25519CallsCount, 1)
+    XCTAssertEqual(mobileSpy.mobileGenerateSecp256k1CallsCount, 1)
+    XCTAssertEqual(addresses?[.eip155], MockConstants.mockEip155Address)
+  }
+
+  @available(iOS 16, *)
+  func test_generate_whenApiThrows_fallsBackToBinary_viaApiDouble() async throws {
+    // given: the API method itself throws
+    let apiMock = PortalApiMock()
+    apiMock.generatePreGeneratedSharesErrorToThrow = URLError(.timedOut)
+    let mobileSpy = MobileSpy()
+    mobileSpy.mobileGenerateSecp256k1ReturnValue = UnitTestMockConstants.validSecp256k1ShareRotatedResultJSON
+    mobileSpy.mobileGenerateEd25519ReturnValue = UnitTestMockConstants.validED25519ShareRotatedResultJSON
+    initPortalMpcWith(portalApi: apiMock, mobile: mobileSpy, featureFlags: FeatureFlags(usePreGeneratedWallet: true))
+
+    // and given
+    let addresses = try await mpc?.generate()
+
+    // then
+    XCTAssertEqual(apiMock.generatePreGeneratedSharesCallsCount, 1)
+    XCTAssertEqual(mobileSpy.mobileGenerateEd25519CallsCount, 1)
+    XCTAssertEqual(mobileSpy.mobileGenerateSecp256k1CallsCount, 1)
+    XCTAssertEqual(addresses?[.eip155], MockConstants.mockEip155Address)
+  }
+
+  private static func makePreGeneratedApiResponse(id: String = MockConstants.mockMpcShareId) throws -> GenerateApiResponse {
+    let share = try MockConstants.mockBase64EncodedMpcShare
+    return GenerateApiResponse(
+      secp256k1: GenerateApiCurveShare(share: share, id: id),
+      ed25519: GenerateApiCurveShare(share: share, id: id)
+    )
   }
 }
 
