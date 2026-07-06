@@ -394,12 +394,19 @@ public class PortalMpc: PortalMpcProtocol {
     do {
       let generateResponse: PortalMpcGenerateResponse
       if self.featureFlags?.usePreGeneratedWallet == true {
-        // Try the pre-generated wallet HTTP path, falling back to the binary on any failure
-        // so that wallet creation never regresses.
+        // Try the pre-generated wallet HTTP path, falling back to the binary DKG flow ONLY on a
+        // server-side (5xx) failure, which is transient and safe to retry. Every other failure —
+        // 4xx client errors (e.g. the enclave "wallet already exists" precheck), auth failures,
+        // network/URL errors, and share decode/validation failures — is surfaced immediately,
+        // since a binary retry would not resolve them and would only add a full DKG round of latency.
         do {
           generateResponse = try await self.generateSigningSharesViaApi(withProgressCallback: withProgressCallback)
         } catch {
-          self.logger.error("[PortalMpc] Pre-generated wallet generation failed, falling back to the binary: \(error.localizedDescription)")
+          guard PortalMpc.isRetryableServerError(error) else {
+            self.logger.error("[PortalMpc] Pre-generated wallet generation failed with a non-retryable error; not falling back to the binary: \(error.localizedDescription)")
+            throw error
+          }
+          self.logger.error("[PortalMpc] Pre-generated wallet generation failed with a server (5xx) error, falling back to the binary: \(error.localizedDescription)")
           generateResponse = try await self.generateSigningSharesViaBinary(withProgressCallback: withProgressCallback)
         }
       } else {
@@ -462,7 +469,7 @@ public class PortalMpc: PortalMpcProtocol {
           // Parse SECP256K1 Share
           let secp256k1ShareData = try self.encoder.encode(secp256k1MpcShare)
           guard let secp256k1ShareString = String(data: secp256k1ShareData, encoding: .utf8) else {
-            throw MpcError.unexpectedErrorOnGenerate("Unable to stringify ED25519 share.")
+            throw MpcError.unexpectedErrorOnGenerate("Unable to stringify SECP256K1 share.")
           }
           generateResponse["SECP256K1"] = PortalMpcGeneratedShare(
             id: secp256k1MpcShare.signingSharePairId ?? "",
@@ -522,7 +529,28 @@ public class PortalMpc: PortalMpcProtocol {
       throw MpcError.unexpectedErrorOnGenerate("Unable to stringify \(forCurve.rawValue) share.")
     }
 
-    return PortalMpcGeneratedShare(id: curveShare.id, share: shareString)
+    // Use the decoded `signingSharePairId` (not the response envelope `id`) so the stored
+    // share id matches exactly what the binary path produces. Downstream `updateShareStatus`
+    // is keyed off this id, so the two paths must stay identical.
+    return PortalMpcGeneratedShare(id: signingSharePairId, share: shareString)
+  }
+
+  /// Reports whether an error from the pre-generated wallet API is a server-side (5xx) failure —
+  /// the only case where we fall back to the on-device binary DKG flow, since a 5xx is transient
+  /// and safe to retry. Every other failure (4xx client errors such as "wallet already exists",
+  /// auth failures, network/URL errors, and share decode/validation failures) is surfaced
+  /// immediately, because a binary retry would not resolve it and would only add DKG latency.
+  static func isRetryableServerError(_ error: Error) -> Bool {
+    guard let requestError = error as? PortalRequestsError else {
+      return false
+    }
+
+    switch requestError {
+    case .internalServerError:
+      return true
+    default:
+      return false
+    }
   }
 
   /// Decodes a standard-alphabet base64 string into `Data`. The Enclave MPC API returns shares as
