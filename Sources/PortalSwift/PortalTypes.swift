@@ -38,15 +38,18 @@ public struct FeatureFlags {
   public var isMultiBackupEnabled: Bool?
   public var useEnclaveMPCApi: Bool?
   public var usePresignatures: Bool?
+  public var usePreGeneratedWallet: Bool?
 
   public init(
     isMultiBackupEnabled: Bool? = nil,
     useEnclaveMPCApi: Bool? = nil,
-    usePresignatures: Bool? = nil
+    usePresignatures: Bool? = nil,
+    usePreGeneratedWallet: Bool? = nil
   ) {
     self.isMultiBackupEnabled = isMultiBackupEnabled
     self.useEnclaveMPCApi = useEnclaveMPCApi
     self.usePresignatures = usePresignatures
+    self.usePreGeneratedWallet = usePreGeneratedWallet
   }
 }
 

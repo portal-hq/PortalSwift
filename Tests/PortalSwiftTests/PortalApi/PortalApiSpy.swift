@@ -202,6 +202,24 @@ class PortalApiSpy: PortalApiProtocol {
     refreshClientCallsCount += 1
   }
 
+  // Generate pre-generated shares method tracking
+  var generatePreGeneratedSharesCallsCount: Int = 0
+  var generatePreGeneratedSharesMetadataParam: String?
+  var generatePreGeneratedSharesReturnValue: GenerateApiResponse?
+  var generatePreGeneratedSharesErrorToThrow: Error?
+
+  public func generatePreGeneratedShares(metadataStr: String) async throws -> GenerateApiResponse {
+    generatePreGeneratedSharesCallsCount += 1
+    generatePreGeneratedSharesMetadataParam = metadataStr
+    if let error = generatePreGeneratedSharesErrorToThrow {
+      throw error
+    }
+    guard let value = generatePreGeneratedSharesReturnValue else {
+      throw URLError(.badURL)
+    }
+    return value
+  }
+
   // Simulate Transaction method tracking
   var simulateTransactionCallsCount: Int = 0
   var simulateTransactionTransactionParam: Any?

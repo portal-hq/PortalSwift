@@ -114,6 +114,22 @@ class PortalApiMock: PortalApiProtocol {
     refreshClientCallsCount += 1
   }
 
+  var generatePreGeneratedSharesCallsCount = 0
+  var generatePreGeneratedSharesMetadataParam: String?
+  var generatePreGeneratedSharesReturnValue: PortalSwift.GenerateApiResponse?
+  var generatePreGeneratedSharesErrorToThrow: Error?
+  func generatePreGeneratedShares(metadataStr: String) async throws -> PortalSwift.GenerateApiResponse {
+    generatePreGeneratedSharesCallsCount += 1
+    generatePreGeneratedSharesMetadataParam = metadataStr
+    if let error = generatePreGeneratedSharesErrorToThrow {
+      throw error
+    }
+    guard let value = generatePreGeneratedSharesReturnValue else {
+      throw URLError(.badURL)
+    }
+    return value
+  }
+
   var simulateTransactionReturnValue: PortalSwift.SimulatedTransaction?
   func simulateTransaction(_: Any, withChainId _: String) async throws -> PortalSwift.SimulatedTransaction {
     return simulateTransactionReturnValue ?? SimulatedTransaction(changes: [])
