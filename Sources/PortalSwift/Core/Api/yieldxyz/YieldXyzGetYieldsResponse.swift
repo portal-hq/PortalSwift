@@ -165,6 +165,7 @@ public enum YieldXyzSource: String, Codable {
   case restaking
   case protocol_incentive
   case points
+  case lending
   case lending_interest
   case mev
   case real_world_asset_yield
