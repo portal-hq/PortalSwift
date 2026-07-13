@@ -130,6 +130,9 @@ extension NoahCodableTests {
       quoted: true,
       businessFee: .stub()
     )
+    XCTAssertNil(original.fiatAmount)
+    XCTAssertEqual(original.cryptoAmount, "50")
+
     let data = try encoder.encode(original)
     let decoded = try decoder.decode(NoahGetPayoutQuoteRequest.self, from: data)
     XCTAssertNil(decoded.fiatAmount)
@@ -141,6 +144,21 @@ extension NoahCodableTests {
     XCTAssertNil(json["fiatAmount"])
     let businessFee = try XCTUnwrap(json["businessFee"] as? [String: Any])
     XCTAssertEqual(businessFee["FeePct"] as? String, "1.5")
+  }
+
+  func test_getPayoutQuoteRequest_fiatAmountInitializer_excludesCryptoAmount() throws {
+    let request = NoahGetPayoutQuoteRequest(
+      channelId: "ch-1",
+      cryptoCurrency: "USDC",
+      fiatAmount: "100.00"
+    )
+    XCTAssertEqual(request.fiatAmount, "100.00")
+    XCTAssertNil(request.cryptoAmount)
+
+    let data = try encoder.encode(request)
+    let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    XCTAssertEqual(json["fiatAmount"] as? String, "100.00")
+    XCTAssertNil(json["cryptoAmount"])
   }
 
   func test_getPayoutQuoteResponse_disclosureFields_roundTrip() throws {

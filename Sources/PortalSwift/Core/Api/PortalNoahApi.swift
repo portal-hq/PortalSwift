@@ -169,7 +169,13 @@ public class PortalNoahApi: PortalNoahApiProtocol {
 
   /// Fetch the dynamic form schema for the given Noah payout channel.
   public func getPayoutChannelForm(channelId: String) async throws -> NoahGetPayoutChannelFormResponse {
-    guard let encodedChannelId = channelId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) else {
+    // Encode as a single path segment. Both `.urlPathAllowed` and
+    // `URL.appendingPathComponent` leave `/` unescaped, which would alter the
+    // request path (path injection). Strip `/` from the allowed set so it is
+    // percent-encoded.
+    var allowed = CharacterSet.urlPathAllowed
+    allowed.remove(charactersIn: "/")
+    guard let encodedChannelId = channelId.addingPercentEncoding(withAllowedCharacters: allowed) else {
       logger.error("PortalNoahApi.getPayoutChannelForm() - Unable to percent-encode channelId.")
       throw PortalApiError.unableToEncodeData
     }

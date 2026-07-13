@@ -10,6 +10,10 @@ import Foundation
 /// Convenience constants for the CAIP-2 chain IDs that connect-api accepts in
 /// Noah `network` parameters.
 ///
+/// Only chains present in connect-api's `CAIP2_TO_NOAH_NETWORK` map are included.
+/// Passing any other value will be rejected with
+/// `Unsupported network for Noah integration`.
+///
 /// The BFF validates these via the `[namespace]:[reference]` regex and then
 /// translates them into Noah's internal network strings (e.g.
 /// `"eip155:1"` -> `"Ethereum"`). Passing a non-CAIP-2 value (e.g. `"ethereum"`)
@@ -20,24 +24,22 @@ public enum NoahNetwork {
   /// Ethereum Sepolia testnet — `eip155:11155111` -> Noah `"EthereumTestSepolia"`.
   /// Use with sandbox-only test assets such as `USDC_TEST`.
   public static let ethereumSepolia = "eip155:11155111"
-  /// Base Sepolia testnet — `eip155:84532` -> Noah `"BaseTestSepolia"`.
-  public static let baseSepolia = "eip155:84532"
   /// Base mainnet — `eip155:8453` -> Noah `"Base"`.
   public static let base = "eip155:8453"
-  /// Polygon mainnet — `eip155:137` -> Noah `"Polygon"`.
+  /// Base Sepolia testnet — `eip155:84532` -> Noah `"BaseTestSepolia"`.
+  public static let baseSepolia = "eip155:84532"
+  /// Polygon PoS mainnet — `eip155:137` -> Noah `"PolygonPos"`.
   public static let polygon = "eip155:137"
-  /// Arbitrum One — `eip155:42161` -> Noah `"Arbitrum"`.
-  public static let arbitrum = "eip155:42161"
-  /// Optimism mainnet — `eip155:10` -> Noah `"Optimism"`.
-  public static let optimism = "eip155:10"
-  /// Avalanche C-Chain — `eip155:43114` -> Noah `"Avalanche"`.
-  public static let avalanche = "eip155:43114"
-  /// BNB Smart Chain — `eip155:56` -> Noah `"Bsc"`.
-  public static let bsc = "eip155:56"
+  /// Polygon Amoy testnet — `eip155:80002` -> Noah `"PolygonTestAmoy"`.
+  public static let polygonAmoy = "eip155:80002"
+  /// Gnosis mainnet — `eip155:100` -> Noah `"Gnosis"`.
+  public static let gnosis = "eip155:100"
+  /// Gnosis Chiado testnet — `eip155:10200` -> Noah `"GnosisTestChiado"`.
+  public static let gnosisChiado = "eip155:10200"
   /// Solana mainnet — `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp` -> Noah `"Solana"`.
+  /// Equivalent to `solana:mainnet` on the BFF.
   public static let solana = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
-  /// Tron mainnet — `tron:0x2b6653dc` -> Noah `"Tron"`.
-  public static let tron = "tron:0x2b6653dc"
-  /// Bitcoin mainnet — `bip122:000000000019d6689c085ae165831e93` -> Noah `"Bitcoin"`.
-  public static let bitcoin = "bip122:000000000019d6689c085ae165831e93"
+  /// Solana devnet — `solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1` -> Noah `"SolanaDevnet"`.
+  /// Equivalent to `solana:devnet` on the BFF.
+  public static let solanaDevnet = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
 }

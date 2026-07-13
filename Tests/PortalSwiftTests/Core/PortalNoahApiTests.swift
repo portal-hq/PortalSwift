@@ -354,11 +354,14 @@ extension PortalNoahApiTests {
 
     _ = try await api?.getPayoutChannelForm(channelId: "channel/with spaces & special?")
 
-    let path = portalRequestsSpy.executeRequestParam?.url.path() ?? ""
-    XCTAssertTrue(path.contains("/api/v3/clients/me/integrations/noah/payouts/channels/"))
-    XCTAssertTrue(path.contains("/form"))
-    // raw special characters should not appear unencoded in the path
-    XCTAssertFalse(path.contains("channel/with spaces & special?"))
+    let url = try XCTUnwrap(portalRequestsSpy.executeRequestParam?.url)
+    let absoluteString = url.absoluteString
+    XCTAssertTrue(absoluteString.contains("/api/v3/clients/me/integrations/noah/payouts/channels/"))
+    XCTAssertTrue(absoluteString.contains("/form"))
+    // Slash must be escaped as a single path component (not alter the path).
+    XCTAssertTrue(absoluteString.contains("channel%2Fwith"))
+    // Raw special characters should not appear unencoded in the URL.
+    XCTAssertFalse(absoluteString.contains("channel/with spaces & special?"))
   }
 
   func test_getPayoutChannelForm_willThrowCorrectError_whenExecuteRequestThrowsError() async throws {

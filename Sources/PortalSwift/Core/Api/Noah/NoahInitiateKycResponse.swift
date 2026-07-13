@@ -9,9 +9,10 @@ import Foundation
 
 /// Response from `POST /integrations/noah/customers/kyc`.
 ///
-/// - Note: This endpoint is idempotent on the BFF: a customer already in `Approved`
-///   or `Submitted` status will receive a return URL pointing at the post-KYC
-///   destination instead of a fresh KYC URL.
+/// - Note: This endpoint is idempotent on the BFF. If a `NoahCustomer` record
+///   already exists for the client, the previously stored `hostedUrl` is
+///   returned regardless of KYC status (`Pending`, `Submitted`, `Approved`,
+///   `Declined`, etc.). Do not expect a fresh KYC URL for an existing customer.
 public struct NoahInitiateKycResponse: Codable {
   public let data: NoahInitiateKycData
   public let metadata: NoahResponseMetadata?

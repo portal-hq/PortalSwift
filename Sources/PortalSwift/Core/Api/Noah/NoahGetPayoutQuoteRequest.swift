@@ -10,8 +10,8 @@ import Foundation
 
 /// Request body for `POST /integrations/noah/payouts/quote`.
 ///
-/// Provide exactly one of `fiatAmount` or `cryptoAmount`; the BFF rejects
-/// requests that set both or neither.
+/// Exactly one of `fiatAmount` or `cryptoAmount` is set. Use the dedicated
+/// initializers so invalid states (both or neither) cannot be constructed.
 public struct NoahGetPayoutQuoteRequest: Codable {
   public let channelId: String
   public let cryptoCurrency: String
@@ -31,11 +31,11 @@ public struct NoahGetPayoutQuoteRequest: Codable {
   /// Optional business (partner) fee. Forwarded to Noah as `BusinessFee`.
   public let businessFee: NoahBusinessFee?
 
+  /// Creates a quote request specifying the fiat amount to receive.
   public init(
     channelId: String,
     cryptoCurrency: String,
-    fiatAmount: String? = nil,
-    cryptoAmount: String? = nil,
+    fiatAmount: String,
     quoted: Bool? = nil,
     form: [String: AnyCodable]? = nil,
     fiatCurrency: String? = nil,
@@ -46,6 +46,30 @@ public struct NoahGetPayoutQuoteRequest: Codable {
     self.channelId = channelId
     self.cryptoCurrency = cryptoCurrency
     self.fiatAmount = fiatAmount
+    self.cryptoAmount = nil
+    self.quoted = quoted
+    self.form = form
+    self.fiatCurrency = fiatCurrency
+    self.paymentMethodId = paymentMethodId
+    self.formSessionId = formSessionId
+    self.businessFee = businessFee
+  }
+
+  /// Creates a quote request specifying the crypto amount to sell.
+  public init(
+    channelId: String,
+    cryptoCurrency: String,
+    cryptoAmount: String,
+    quoted: Bool? = nil,
+    form: [String: AnyCodable]? = nil,
+    fiatCurrency: String? = nil,
+    paymentMethodId: String? = nil,
+    formSessionId: String? = nil,
+    businessFee: NoahBusinessFee? = nil
+  ) {
+    self.channelId = channelId
+    self.cryptoCurrency = cryptoCurrency
+    self.fiatAmount = nil
     self.cryptoAmount = cryptoAmount
     self.quoted = quoted
     self.form = form
