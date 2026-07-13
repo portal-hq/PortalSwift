@@ -122,7 +122,7 @@ public struct NoahBankToAddressRelatedPaymentMethodDetails: Codable {
   }
 }
 
-/// Bank details returned with a Noah payin (off-ramp deposit instructions).
+/// Bank details returned with a Noah payin (on-ramp deposit instructions).
 public struct NoahBankDetails: Codable {
   public let paymentMethodId: String
   /// Specific payment method type such as `"BankSepa"` or `"IdentifierPix"`.

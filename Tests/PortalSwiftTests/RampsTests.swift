@@ -169,7 +169,7 @@ extension RampsTests {
     XCTAssertEqual(noahMock.getPayoutCountriesCalls, 1)
   }
 
-  func test_noah_lazyVarIsStable() {
+  func test_noah_propertyIsStable() {
     let first = rampsInstance.noah
     let second = rampsInstance.noah
     XCTAssertTrue(first as AnyObject === second as AnyObject)

@@ -28,7 +28,8 @@ public protocol NoahProtocol {
   func simulatePayin(request: NoahSimulatePayinRequest) async throws -> NoahSimulatePayinResponse
 
   /// List stored Noah payment methods for the current customer.
-  /// - Parameter request: Optional pagination / capability filter.
+  /// - Parameter request: Pagination / capability filter. Use the no-argument
+  ///   overload to call with default request values.
   /// - Returns: `NoahGetPaymentMethodsResponse` with the stored payment methods.
   /// - Throws: An error if the operation fails.
   func getPaymentMethods(request: NoahGetPaymentMethodsRequest) async throws -> NoahGetPaymentMethodsResponse
