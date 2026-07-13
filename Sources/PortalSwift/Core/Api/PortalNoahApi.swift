@@ -106,14 +106,14 @@ public class PortalNoahApi: PortalNoahApiProtocol {
 
   /// List stored Noah payment methods for the current client.
   public func getPaymentMethods(request: NoahGetPaymentMethodsRequest) async throws -> NoahGetPaymentMethodsResponse {
-    var queryParams: [String] = []
-    addParam("pageSize", request.pageSize, to: &queryParams)
-    addParam("pageToken", request.pageToken, to: &queryParams)
-    addParam("capability", request.capability?.rawValue, to: &queryParams)
-
-    let queryString = queryParams.isEmpty ? "" : "?\(queryParams.joined(separator: "&"))"
-
-    guard let url = URL(string: "\(baseUrl)\(Self.basePath)/payouts/payment-methods\(queryString)") else {
+    guard let url = makeUrl(
+      path: "\(Self.basePath)/payouts/payment-methods",
+      queryItems: [
+        queryItem("pageSize", request.pageSize),
+        queryItem("pageToken", request.pageToken),
+        queryItem("capability", request.capability?.rawValue),
+      ]
+    ) else {
       logger.error("PortalNoahApi.getPaymentMethods() - Unable to build request URL.")
       throw URLError(.badURL)
     }
@@ -143,18 +143,18 @@ public class PortalNoahApi: PortalNoahApiProtocol {
 
   /// List Noah payout channels matching the supplied filters.
   public func getPayoutChannels(request: NoahGetPayoutChannelsRequest) async throws -> NoahGetPayoutChannelsResponse {
-    var queryParams: [String] = []
-    addParam("cryptoCurrency", request.cryptoCurrency, to: &queryParams)
-    addParam("country", request.country, to: &queryParams)
-    addParam("fiatCurrency", request.fiatCurrency, to: &queryParams)
-    addParam("fiatAmount", request.fiatAmount, to: &queryParams)
-    addParam("paymentMethodId", request.paymentMethodId, to: &queryParams)
-    addParam("pageSize", request.pageSize, to: &queryParams)
-    addParam("pageToken", request.pageToken, to: &queryParams)
-
-    let queryString = queryParams.isEmpty ? "" : "?\(queryParams.joined(separator: "&"))"
-
-    guard let url = URL(string: "\(baseUrl)\(Self.basePath)/payouts/channels\(queryString)") else {
+    guard let url = makeUrl(
+      path: "\(Self.basePath)/payouts/channels",
+      queryItems: [
+        queryItem("cryptoCurrency", request.cryptoCurrency),
+        queryItem("country", request.country),
+        queryItem("fiatCurrency", request.fiatCurrency),
+        queryItem("fiatAmount", request.fiatAmount),
+        queryItem("paymentMethodId", request.paymentMethodId),
+        queryItem("pageSize", request.pageSize),
+        queryItem("pageToken", request.pageToken),
+      ]
+    ) else {
       logger.error("PortalNoahApi.getPayoutChannels() - Unable to build request URL.")
       throw URLError(.badURL)
     }
@@ -227,12 +227,23 @@ public class PortalNoahApi: PortalNoahApiProtocol {
    * Private functions
    *******************************************/
 
-  private func addParam(_ key: String, _ value: Any?, to queryParams: inout [String]) {
-    guard let value = value else { return }
-    let stringValue = "\(value)"
-    if let encoded = stringValue.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
-      queryParams.append("\(key)=\(encoded)")
+  /// Builds a URL with correctly escaped query values via `URLComponents`.
+  /// Prefer this over manual string joining + `.urlQueryAllowed`, which leaves
+  /// reserved separators like `&` and `=` unescaped.
+  private func makeUrl(path: String, queryItems: [URLQueryItem?] = []) -> URL? {
+    guard var components = URLComponents(string: "\(baseUrl)\(path)") else {
+      return nil
     }
+    let items = queryItems.compactMap { $0 }
+    if !items.isEmpty {
+      components.queryItems = items
+    }
+    return components.url
+  }
+
+  private func queryItem(_ name: String, _ value: Any?) -> URLQueryItem? {
+    guard let value else { return nil }
+    return URLQueryItem(name: name, value: "\(value)")
   }
 
   @discardableResult

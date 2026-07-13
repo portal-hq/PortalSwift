@@ -209,6 +209,31 @@ extension PortalNoahApiTests {
   }
 
   @available(iOS 16.0, *)
+  func test_getPaymentMethods_percentEncodesReservedQueryCharacters() async throws {
+    let portalRequestsSpy = PortalRequestsSpy()
+    portalRequestsSpy.returnData = try encoder.encode(NoahGetPaymentMethodsResponse.stub())
+    initPortalNoahApiWith(requests: portalRequestsSpy)
+
+    let pageToken = "abc+/=def&ghi=1"
+    let request = NoahGetPaymentMethodsRequest(pageToken: pageToken)
+
+    _ = try await api?.getPaymentMethods(request: request)
+
+    let url = try XCTUnwrap(portalRequestsSpy.executeRequestParam?.url)
+    let absoluteString = url.absoluteString
+
+    // Reserved separators must be percent-encoded so they cannot inject params.
+    XCTAssertTrue(absoluteString.contains("%26"), "Expected '&' to be encoded as %26")
+    XCTAssertTrue(absoluteString.contains("%3D"), "Expected '=' to be encoded as %3D")
+    XCTAssertFalse(absoluteString.contains("pageToken=abc+/=def&ghi=1"))
+
+    // Decoded query item should round-trip the original token.
+    let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+    let decodedToken = components?.queryItems?.first(where: { $0.name == "pageToken" })?.value
+    XCTAssertEqual(decodedToken, pageToken)
+  }
+
+  @available(iOS 16.0, *)
   func test_getPaymentMethods_omitsQueryParams_whenAllNil() async throws {
     let portalRequestsSpy = PortalRequestsSpy()
     portalRequestsSpy.returnData = try encoder.encode(NoahGetPaymentMethodsResponse.stub())
