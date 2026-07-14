@@ -17,6 +17,7 @@ class PortalApiMock: PortalApiProtocol {
   var blockaid: PortalSwift.PortalBlockaidApiProtocol
   var delegations: PortalSwift.PortalDelegationsApiProtocol
   var evmAccountType: PortalSwift.PortalEvmAccountTypeApiProtocol
+  var noah: PortalSwift.PortalNoahApiProtocol
 
   var client: PortalSwift.ClientResponse?
 
@@ -28,6 +29,7 @@ class PortalApiMock: PortalApiProtocol {
     blockaid: PortalSwift.PortalBlockaidApiProtocol = PortalBlockaidApiMock(),
     delegations: PortalSwift.PortalDelegationsApiProtocol = PortalDelegationsApiMock(),
     evmAccountType: PortalSwift.PortalEvmAccountTypeApiProtocol = PortalEvmAccountTypeApiMock(),
+    noah: PortalSwift.PortalNoahApiProtocol = PortalNoahApiMock(),
     client: PortalSwift.ClientResponse? = nil
   ) {
     self.yieldxyz = yieldxyz
@@ -37,6 +39,7 @@ class PortalApiMock: PortalApiProtocol {
     self.blockaid = blockaid
     self.delegations = delegations
     self.evmAccountType = evmAccountType
+    self.noah = noah
     self.client = client
   }
 

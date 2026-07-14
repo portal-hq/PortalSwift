@@ -40,6 +40,9 @@ public final class Portal: PortalProtocol {
   /// Access to yield-related functionality.
   public lazy var yield: Yield = .init(api: self.api)
 
+  /// Access to ramps-related (on/off-ramp) functionality.
+  public lazy var ramps: Ramps = .init(api: self.api)
+
   /// Access to trading-related functionality.
   public lazy var trading: Trading = .init(api: self.api)
 
