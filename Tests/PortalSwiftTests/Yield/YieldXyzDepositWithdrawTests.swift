@@ -84,7 +84,6 @@ extension YieldXyzDepositWithdrawTests {
   func test_deposit_mergesAmountIntoArguments() async throws {
     let tx = YieldXyzActionTransaction.stub(unsignedTransaction: evmUnsignedTransaction(), stepIndex: 0)
     apiMock.enterYieldReturnValue = makeEnterResponse(transactions: [tx])
-    apiMock.enterYieldReturnValue = makeEnterResponse(transactions: [tx])
 
     _ = try await yieldXyz.deposit(
       params: YieldDepositParams(
@@ -294,6 +293,65 @@ extension YieldXyzDepositWithdrawTests {
     let validators = try await yieldXyz.getValidators(yieldId: "y")
 
     XCTAssertEqual(validators.first?.address, "0xtop")
+  }
+
+  func test_getValidators_emptyArray_throwsNoValidators() async throws {
+    apiMock.getYieldValidatorsReturnValue = YieldXyzGetValidatorsResponse(
+      data: YieldXyzGetValidatorsData(validators: [], rawResponse: nil)
+    )
+
+    do {
+      _ = try await yieldXyz.getValidators(yieldId: "y")
+      XCTFail("Expected noValidators error")
+    } catch let error as YieldXyzError {
+      XCTAssertEqual(error, .noValidators("y"))
+    }
+  }
+
+  func test_getValidators_backendError_throwsApiError() async throws {
+    apiMock.getYieldValidatorsReturnValue = YieldXyzGetValidatorsResponse(
+      data: nil,
+      error: "validators unavailable"
+    )
+
+    do {
+      _ = try await yieldXyz.getValidators(yieldId: "y")
+      XCTFail("Expected apiError")
+    } catch let error as YieldXyzError {
+      XCTAssertEqual(error, .apiError("validators unavailable"))
+    }
+  }
+
+  func test_deposit_byYieldId_normalizesFriendlyNetworkToCaip2() async throws {
+    apiMock.getYieldsReturnValue = YieldXyzGetYieldsResponse(
+      data: .stub(rawResponse: .stub(items: [.stub(network: "ethereum")]))
+    )
+    let tx = YieldXyzActionTransaction.stub(network: "eip155:1", unsignedTransaction: evmUnsignedTransaction(), stepIndex: 0)
+    apiMock.enterYieldReturnValue = makeEnterResponse(transactions: [tx])
+
+    _ = try await yieldXyz.deposit(
+      params: YieldDepositParams(target: .yieldId("yield-1"), amount: "0.1"),
+      options: fastOptions
+    )
+
+    XCTAssertEqual(portalMock.getAddressChainIdParam, "eip155:1")
+  }
+
+  func test_deposit_chainAndToken_defaultsError_throwsApiError() async throws {
+    apiMock.getYieldDefaultsReturnValue = YieldXyzGetDefaultsResponse(
+      data: nil,
+      error: "defaults service down"
+    )
+
+    do {
+      _ = try await yieldXyz.deposit(
+        params: YieldDepositParams(target: .chainAndToken(chain: "eip155:1", token: "ETH"), amount: "0.1"),
+        options: fastOptions
+      )
+      XCTFail("Expected apiError")
+    } catch let error as YieldXyzError {
+      XCTAssertEqual(error, .apiError("defaults service down"))
+    }
   }
 
   func test_deposit_withoutPortal_throwsPortalNotInitialized() async throws {

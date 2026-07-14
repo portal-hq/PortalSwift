@@ -162,6 +162,8 @@ public enum YieldXyzError: LocalizedError, Equatable {
   case invalidSignResponse
   case transactionFailed(String)
   case noValidators(String)
+  /// Backend returned an error payload (HTTP may still have succeeded with `data == nil`).
+  case apiError(String)
 
   public var errorDescription: String? {
     switch self {
@@ -189,6 +191,8 @@ public enum YieldXyzError: LocalizedError, Equatable {
       return "Transaction \(hash) failed on-chain."
     case let .noValidators(yieldId):
       return "No validators found for yieldId \"\(yieldId)\"."
+    case let .apiError(message):
+      return message
     }
   }
 }

@@ -28,6 +28,7 @@ final class YieldXyzPortalDependencyMock: YieldXyzPortalDependency {
   private(set) var sendCalls = 0
   private(set) var receiptCalls = 0
   private(set) var getAddressCalls = 0
+  private(set) var getAddressChainIdParam: String?
   private(set) var getTransactionDetailsCalls = 0
   private(set) var requestedMethods: [PortalRequestMethod] = []
   private(set) var requestedChainIds: [String] = []
@@ -59,6 +60,7 @@ final class YieldXyzPortalDependencyMock: YieldXyzPortalDependency {
 
   func getAddress(_ forChainId: String) async -> String? {
     getAddressCalls += 1
+    getAddressChainIdParam = forChainId
     return addressByChain[forChainId] ?? defaultAddress
   }
 

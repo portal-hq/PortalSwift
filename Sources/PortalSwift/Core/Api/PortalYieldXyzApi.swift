@@ -292,7 +292,10 @@ public class PortalYieldXyzApi: PortalYieldXyzApiProtocol {
   /// - Returns: A `YieldXyzGetValidatorsResponse` containing validators.
   /// - Throws: An error if the operation fails.
   public func getYieldValidators(yieldId: String) async throws -> YieldXyzGetValidatorsResponse {
-    let encodedYieldId = yieldId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? yieldId
+    // Encode as a single path segment (exclude `/` which `.urlPathAllowed` still permits).
+    var pathSegmentAllowed = CharacterSet.urlPathAllowed
+    pathSegmentAllowed.remove(charactersIn: "/")
+    let encodedYieldId = yieldId.addingPercentEncoding(withAllowedCharacters: pathSegmentAllowed) ?? yieldId
 
     guard let url = URL(string: "\(baseUrl)/api/v3/clients/me/integrations/yield-xyz/yields/\(encodedYieldId)/validators") else {
       logger.error("PortalYieldXyzApi.getYieldValidators() - Unable to build request URL.")

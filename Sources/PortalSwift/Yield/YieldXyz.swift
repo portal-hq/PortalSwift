@@ -74,7 +74,8 @@ public protocol YieldXyzProtocol {
   /// Returns the available validators for a native-staking yield.
   /// - Parameter yieldId: The yield identifier.
   /// - Returns: The validators for the yield.
-  /// - Throws: `YieldXyzError.noValidators` if none are returned, or network errors.
+  /// - Throws: `YieldXyzError.apiError` if the backend returns an error payload,
+  ///   `YieldXyzError.noValidators` if the validators list is missing or empty, or network errors.
   func getValidators(yieldId: String) async throws -> [YieldXyzValidator]
 }
 
@@ -96,6 +97,7 @@ public class YieldXyz: YieldXyzProtocol {
   /// Portal dependency used by `deposit`/`withdraw` for signing, address resolution and confirmation.
   /// Held weakly to avoid a retain cycle with `Portal`.
   private weak var portal: YieldXyzPortalDependency?
+  private let logger = PortalLogger.shared
 
   /// Create an instance of YieldXyz.
   /// - Parameters:
@@ -186,7 +188,7 @@ public class YieldXyz: YieldXyzProtocol {
 
     let response = try await api.enterYield(request: request)
     guard let raw = response.data?.rawResponse else {
-      if let error = response.error { throw NSError(domain: "YieldXyz", code: 0, userInfo: [NSLocalizedDescriptionKey: error]) }
+      if let error = response.error { throw YieldXyzError.apiError(error) }
       throw YieldXyzError.noTransactions
     }
 
@@ -216,7 +218,7 @@ public class YieldXyz: YieldXyzProtocol {
 
     let response = try await api.exitYield(request: request)
     guard let raw = response.data?.rawResponse else {
-      if let error = response.error { throw NSError(domain: "YieldXyz", code: 0, userInfo: [NSLocalizedDescriptionKey: error]) }
+      if let error = response.error { throw YieldXyzError.apiError(error) }
       throw YieldXyzError.noTransactions
     }
 
@@ -240,8 +242,11 @@ public class YieldXyz: YieldXyzProtocol {
 
   public func getValidators(yieldId: String) async throws -> [YieldXyzValidator] {
     let response = try await api.getYieldValidators(yieldId: yieldId)
+    if let error = response.error, !error.isEmpty {
+      throw YieldXyzError.apiError(error)
+    }
     let validators = response.data?.validators ?? response.data?.rawResponse?.validators ?? response.data?.rawResponse?.items
-    guard let validators = validators else {
+    guard let validators = validators, !validators.isEmpty else {
       throw YieldXyzError.noValidators(yieldId)
     }
     return validators
@@ -285,6 +290,9 @@ public class YieldXyz: YieldXyzProtocol {
   private func resolveYieldIdFromDefaults(chainCaip2: String, token: String) async throws -> String {
     guard !token.isEmpty else { throw YieldXyzError.noYieldForChainToken("\(chainCaip2):") }
     let response = try await api.getYieldDefaults(includeOpportunities: false)
+    if let error = response.error, !error.isEmpty {
+      throw YieldXyzError.apiError(error)
+    }
     let key = "\(chainCaip2):\(token)"
     guard let entry = response.data?[key], let yieldId = entry.yieldId, !yieldId.isEmpty else {
       throw YieldXyzError.noYieldForChainToken(key)
@@ -297,7 +305,7 @@ public class YieldXyz: YieldXyzProtocol {
     guard let network = response.data?.rawResponse.items.first?.network, !network.isEmpty else {
       throw YieldXyzError.yieldNotFound(yieldId)
     }
-    return network
+    return YieldNetwork.resolveToCaip2(network) ?? network
   }
 
   private func resolveAddress(forCaip2 chainCaip2: String?) async throws -> String {
@@ -310,23 +318,7 @@ public class YieldXyz: YieldXyzProtocol {
   }
 
   private func mergeAmount(_ amount: String, into arguments: YieldXyzEnterArguments?) -> YieldXyzEnterArguments {
-    YieldXyzEnterArguments(
-      amount: amount,
-      validatorAddress: arguments?.validatorAddress,
-      validatorAddresses: arguments?.validatorAddresses,
-      providerId: arguments?.providerId,
-      duration: arguments?.duration,
-      inputToken: arguments?.inputToken,
-      subnetId: arguments?.subnetId,
-      tronResource: arguments?.tronResource,
-      feeConfigurationId: arguments?.feeConfigurationId,
-      cosmosPubKey: arguments?.cosmosPubKey,
-      tezosPubKey: arguments?.tezosPubKey,
-      cAddressBech: arguments?.cAddressBech,
-      pAddressBech: arguments?.pAddressBech,
-      executionMode: arguments?.executionMode,
-      ledgerWalletApiCompatible: arguments?.ledgerWalletApiCompatible
-    )
+    (arguments ?? YieldXyzEnterArguments()).withAmount(amount)
   }
 
   private func makeDetails(
@@ -414,19 +406,19 @@ public class YieldXyz: YieldXyzProtocol {
         case .confirmed:
           confirmationsReached += 1
           options?.onProgress?(YieldSubmitProgress(step: .confirmed, index: index, total: total, hash: hash))
-          try? await trackHash(transactionId: tx.id, hash: hash)
+          await trackHashBestEffort(transactionId: tx.id, hash: hash)
         case .failed:
           failedEarly = true
-          try? await trackHash(transactionId: tx.id, hash: hash)
+          await trackHashBestEffort(transactionId: tx.id, hash: hash)
           break loop
         case .uncertain:
-          try? await trackHash(transactionId: tx.id, hash: hash)
+          await trackHashBestEffort(transactionId: tx.id, hash: hash)
           break loop
         case .skipped:
-          try? await trackHash(transactionId: tx.id, hash: hash)
+          await trackHashBestEffort(transactionId: tx.id, hash: hash)
         }
       } else {
-        try? await trackHash(transactionId: tx.id, hash: hash)
+        await trackHashBestEffort(transactionId: tx.id, hash: hash)
       }
     }
 
@@ -533,5 +525,16 @@ public class YieldXyz: YieldXyzProtocol {
 
   private func trackHash(transactionId: String, hash: String) async throws {
     _ = try await api.submitTransactionHash(request: YieldXyzTrackTransactionRequest(transactionId: transactionId, hash: hash))
+  }
+
+  /// Best-effort hash tracking: failures are logged but do not fail the overall deposit/withdraw result.
+  private func trackHashBestEffort(transactionId: String, hash: String) async {
+    do {
+      try await trackHash(transactionId: transactionId, hash: hash)
+    } catch {
+      logger.error(
+        "YieldXyz.trackHashBestEffort() - Failed to submit transaction hash for transactionId=\(transactionId) hash=\(hash): \(error.localizedDescription)"
+      )
+    }
   }
 }

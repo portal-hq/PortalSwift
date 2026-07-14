@@ -1257,6 +1257,22 @@ extension PortalYieldXyzApiTests {
     XCTAssertEqual(portalRequestsSpy.executeRequestParam?.method, .get)
     XCTAssertTrue(portalRequestsSpy.executeRequestParam?.url.path().contains("/api/v3/clients/me/integrations/yield-xyz/yields/monad-testnet-mon-native-staking/validators") ?? false)
   }
+
+  @available(iOS 16.0, *)
+  func test_getYieldValidators_percentEncodesSlashInYieldIdPathSegment() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    portalRequestsSpy.returnData = try encoder.encode(YieldXyzGetValidatorsResponse.stub())
+    initPortalYieldXyzApiWith(requests: portalRequestsSpy)
+
+    // when
+    _ = try await api?.getYieldValidators(yieldId: "foo/bar")
+
+    // then - `/` must be encoded so it stays a single path segment
+    let path = portalRequestsSpy.executeRequestParam?.url.path() ?? ""
+    XCTAssertTrue(path.contains("/yields/foo%2Fbar/validators"), "Expected encoded path segment, got: \(path)")
+    XCTAssertFalse(path.contains("/yields/foo/bar/validators"))
+  }
 }
 
 // MARK: - Unknown-tolerant enum decoding
