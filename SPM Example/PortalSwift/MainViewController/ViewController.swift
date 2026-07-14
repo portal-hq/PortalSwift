@@ -2500,7 +2500,7 @@ extension ViewController {
       return
     }
 
-    Task {
+    Task { @MainActor in
       self.logger.info("Starting high-level Yield deposit...")
       do {
         let params = YieldDepositParams(
@@ -2509,7 +2509,10 @@ extension ViewController {
         )
         let options = YieldSubmitOptions(onProgress: { event in
           let hashSuffix = event.hash.map { " \(String($0.prefix(10)))..." } ?? ""
-          self.showStatusView(message: "Deposit: \(event.step.rawValue) (\(event.index + 1)/\(event.total))\(hashSuffix)")
+          let message = "Deposit: \(event.step.rawValue) (\(event.index + 1)/\(event.total))\(hashSuffix)"
+          Task { @MainActor in
+            self.showStatusView(message: message)
+          }
         })
         let result = try await portal.yield.yieldxyz.deposit(params: params, options: options)
         self.logger.info("Deposit complete: \(result.hashes) status: \(result.status.rawValue)")
@@ -2528,7 +2531,7 @@ extension ViewController {
       return
     }
 
-    Task {
+    Task { @MainActor in
       self.logger.info("Starting high-level Yield withdraw...")
       do {
         let params = YieldWithdrawParams(
@@ -2537,7 +2540,10 @@ extension ViewController {
         )
         let options = YieldSubmitOptions(onProgress: { event in
           let hashSuffix = event.hash.map { " \(String($0.prefix(10)))..." } ?? ""
-          self.showStatusView(message: "Withdraw: \(event.step.rawValue) (\(event.index + 1)/\(event.total))\(hashSuffix)")
+          let message = "Withdraw: \(event.step.rawValue) (\(event.index + 1)/\(event.total))\(hashSuffix)"
+          Task { @MainActor in
+            self.showStatusView(message: message)
+          }
         })
         let result = try await portal.yield.yieldxyz.withdraw(params: params, options: options)
         self.logger.info("Withdraw complete: \(result.hashes) status: \(result.status.rawValue)")
@@ -2556,7 +2562,7 @@ extension ViewController {
       return
     }
 
-    Task {
+    Task { @MainActor in
       let yieldId = "monad-testnet-mon-native-staking"
       self.logger.info("Fetching validators for \(yieldId)...")
       do {

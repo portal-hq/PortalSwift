@@ -401,7 +401,7 @@ public class YieldXyz: YieldXyzProtocol {
 
       if isEvm || isSolana {
         options?.onProgress?(YieldSubmitProgress(step: .confirming, index: index, total: total, hash: hash))
-        let confirmation = await waitForConfirmation(hash: hash, chainId: chainId, isEvm: isEvm, isSolana: isSolana, options: options, portal: portal)
+        let confirmation = try await waitForConfirmation(hash: hash, chainId: chainId, isEvm: isEvm, isSolana: isSolana, options: options, portal: portal)
         switch confirmation {
         case .confirmed:
           confirmationsReached += 1
@@ -481,20 +481,25 @@ public class YieldXyz: YieldXyzProtocol {
     isSolana: Bool,
     options: YieldSubmitOptions?,
     portal: YieldXyzPortalDependency
-  ) async -> ConfirmationResult {
+  ) async throws -> ConfirmationResult {
     let pollInterval = max(1, options?.pollIntervalSeconds ?? 4)
     let timeout = max(pollInterval, options?.timeoutSeconds ?? 900)
     let maxAttempts = max(1, timeout / pollInterval)
     let sleepNanos = UInt64(pollInterval) * 1_000_000_000
 
     if isEvm {
-      for _ in 0 ..< maxAttempts {
-        try? await Task.sleep(nanoseconds: sleepNanos)
+      for attempt in 0 ..< maxAttempts {
+        // Poll immediately on the first attempt; sleep only between subsequent polls.
+        if attempt > 0 {
+          try await Task.sleep(nanoseconds: sleepNanos)
+        }
         do {
           let response = try await portal.request(chainId: chainId, method: .eth_getTransactionReceipt, params: [hash], options: nil)
           if let receipt = response.result as? EthTransactionResponse, let status = receipt.result?.status {
             return status == "0x1" ? .confirmed : .failed
           }
+        } catch is CancellationError {
+          throw CancellationError()
         } catch {
           // keep polling
         }
@@ -503,8 +508,10 @@ public class YieldXyz: YieldXyzProtocol {
     }
 
     if isSolana {
-      for _ in 0 ..< maxAttempts {
-        try? await Task.sleep(nanoseconds: sleepNanos)
+      for attempt in 0 ..< maxAttempts {
+        if attempt > 0 {
+          try await Task.sleep(nanoseconds: sleepNanos)
+        }
         do {
           let details = try await portal.getTransactionDetails(chain: chainId, signature: hash)
           if let sol = details.data.solanaTransaction {
@@ -513,6 +520,8 @@ public class YieldXyz: YieldXyzProtocol {
             if status == "confirmed" || status == "finalized" || status == "success" { return .confirmed }
             if status == "failed" { return .failed }
           }
+        } catch is CancellationError {
+          throw CancellationError()
         } catch {
           // keep polling
         }
