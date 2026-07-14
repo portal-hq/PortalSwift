@@ -354,6 +354,23 @@ extension YieldXyzDepositWithdrawTests {
     }
   }
 
+  func test_deposit_byYieldId_getYieldsError_throwsApiError() async throws {
+    apiMock.getYieldsReturnValue = YieldXyzGetYieldsResponse(
+      data: nil,
+      error: "yields service down"
+    )
+
+    do {
+      _ = try await yieldXyz.deposit(
+        params: YieldDepositParams(target: .yieldId("yield-1"), amount: "0.1"),
+        options: fastOptions
+      )
+      XCTFail("Expected apiError")
+    } catch let error as YieldXyzError {
+      XCTAssertEqual(error, .apiError("yields service down"))
+    }
+  }
+
   func test_deposit_withoutPortal_throwsPortalNotInitialized() async throws {
     let detached = YieldXyz(api: apiMock) // no portal
     apiMock.enterYieldReturnValue = makeEnterResponse(

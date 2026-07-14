@@ -302,6 +302,9 @@ public class YieldXyz: YieldXyzProtocol {
 
   private func resolveChainFromYieldId(_ yieldId: String) async throws -> String {
     let response = try await api.getYields(request: YieldXyzGetYieldsRequest(yieldId: yieldId))
+    if let error = response.error, !error.isEmpty {
+      throw YieldXyzError.apiError(error)
+    }
     guard let network = response.data?.rawResponse.items.first?.network, !network.isEmpty else {
       throw YieldXyzError.yieldNotFound(yieldId)
     }
