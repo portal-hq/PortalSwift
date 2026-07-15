@@ -38,7 +38,7 @@ public final class Portal: PortalProtocol {
   public var rpcConfig: [String: String]
 
   /// Access to yield-related functionality.
-  public lazy var yield: Yield = .init(api: self.api)
+  public lazy var yield: Yield = .init(api: self.api, portal: self)
 
   /// Access to ramps-related (on/off-ramp) functionality.
   public lazy var ramps: Ramps = .init(api: self.api)
@@ -2440,6 +2440,8 @@ public final class Portal: PortalProtocol {
 }
 
 extension Portal: EvmAccountTypePortalDependency {}
+
+extension Portal: YieldXyzPortalDependency {}
 
 /*****************************************
  * Supporting Enums & Structs
