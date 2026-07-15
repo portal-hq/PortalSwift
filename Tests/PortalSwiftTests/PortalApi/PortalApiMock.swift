@@ -17,6 +17,7 @@ class PortalApiMock: PortalApiProtocol {
   var blockaid: PortalSwift.PortalBlockaidApiProtocol
   var delegations: PortalSwift.PortalDelegationsApiProtocol
   var evmAccountType: PortalSwift.PortalEvmAccountTypeApiProtocol
+  var noah: PortalSwift.PortalNoahApiProtocol
 
   var client: PortalSwift.ClientResponse?
 
@@ -28,6 +29,7 @@ class PortalApiMock: PortalApiProtocol {
     blockaid: PortalSwift.PortalBlockaidApiProtocol = PortalBlockaidApiMock(),
     delegations: PortalSwift.PortalDelegationsApiProtocol = PortalDelegationsApiMock(),
     evmAccountType: PortalSwift.PortalEvmAccountTypeApiProtocol = PortalEvmAccountTypeApiMock(),
+    noah: PortalSwift.PortalNoahApiProtocol = PortalNoahApiMock(),
     client: PortalSwift.ClientResponse? = nil
   ) {
     self.yieldxyz = yieldxyz
@@ -37,6 +39,7 @@ class PortalApiMock: PortalApiProtocol {
     self.blockaid = blockaid
     self.delegations = delegations
     self.evmAccountType = evmAccountType
+    self.noah = noah
     self.client = client
   }
 
@@ -112,6 +115,22 @@ class PortalApiMock: PortalApiProtocol {
   var refreshClientCallsCount = 0
   func refreshClient() async throws {
     refreshClientCallsCount += 1
+  }
+
+  var generatePreGeneratedSharesCallsCount = 0
+  var generatePreGeneratedSharesMetadataParam: String?
+  var generatePreGeneratedSharesReturnValue: PortalSwift.GenerateApiResponse?
+  var generatePreGeneratedSharesErrorToThrow: Error?
+  func generatePreGeneratedShares(metadataStr: String) async throws -> PortalSwift.GenerateApiResponse {
+    generatePreGeneratedSharesCallsCount += 1
+    generatePreGeneratedSharesMetadataParam = metadataStr
+    if let error = generatePreGeneratedSharesErrorToThrow {
+      throw error
+    }
+    guard let value = generatePreGeneratedSharesReturnValue else {
+      throw URLError(.badURL)
+    }
+    return value
   }
 
   var simulateTransactionReturnValue: PortalSwift.SimulatedTransaction?

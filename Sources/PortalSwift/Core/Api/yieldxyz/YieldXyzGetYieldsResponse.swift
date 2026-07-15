@@ -167,6 +167,7 @@ public enum YieldXyzSource: String, YieldXyzUnknownTolerantEnum {
   case restaking
   case protocol_incentive
   case points
+  case lending
   case lending_interest
   case mev
   case real_world_asset_yield

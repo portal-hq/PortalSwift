@@ -86,6 +86,84 @@ extension PortalApiTests {
   }
 }
 
+// MARK: - generatePreGeneratedShares tests
+
+extension PortalApiTests {
+  func test_generatePreGeneratedShares_onSuccess_returnsBothCurveShares() async throws {
+    // given
+    let mockRequests = MockPortalRequests()
+    initPortalApiWith(requests: mockRequests)
+
+    // and given
+    let response = try await api?.generatePreGeneratedShares(metadataStr: "{\"clientPlatform\":\"NATIVE_IOS\"}")
+
+    // then: decode the base64 shares back into MpcShare and compare (base64 string key ordering is not stable)
+    let secpData = try XCTUnwrap(PortalMpc.decodeStandardBase64(try XCTUnwrap(response?.secp256k1.share)))
+    let edData = try XCTUnwrap(PortalMpc.decodeStandardBase64(try XCTUnwrap(response?.ed25519.share)))
+    let secpShare = try JSONDecoder().decode(MpcShare.self, from: secpData)
+    let edShare = try JSONDecoder().decode(MpcShare.self, from: edData)
+    XCTAssertEqual(secpShare, MockConstants.mockMpcShare)
+    XCTAssertEqual(edShare, MockConstants.mockMpcShare)
+    XCTAssertEqual(response?.secp256k1.id, MockConstants.mockMpcShareId)
+    XCTAssertEqual(response?.ed25519.id, MockConstants.mockMpcShareId)
+
+    let generateCallsCount = await mockRequests.generateCallsCount
+    XCTAssertEqual(generateCallsCount, 1)
+  }
+
+  func test_generatePreGeneratedShares_sendsCorrectRequest() async throws {
+    // given
+    let mockRequests = MockPortalRequests()
+    initPortalApiWith(requests: mockRequests)
+
+    // and given
+    let metadata = "{\"clientPlatform\":\"NATIVE_IOS\"}"
+    _ = try await api?.generatePreGeneratedShares(metadataStr: metadata)
+
+    // then: the request targets /v1/generate on the enclave host with the correct body
+    let request = await mockRequests.executeRequestParam
+    XCTAssertEqual(request?.url.path, "/v1/generate")
+    XCTAssertEqual(request?.url.absoluteString, "https://mpc-client.portalhq.io/v1/generate")
+    XCTAssertEqual(request?.method, .post)
+    let payload = request?.payload as? GenerateApiRequest
+    XCTAssertEqual(payload?.usePreGenerated, true)
+    XCTAssertEqual(payload?.metadataStr, metadata)
+  }
+
+  func test_generatePreGeneratedShares_usesCustomEnclaveHost() async throws {
+    // given
+    let mockRequests = MockPortalRequests()
+    let customApi = PortalApi(
+      apiKey: MockConstants.mockApiKey,
+      apiHost: MockConstants.mockHost,
+      enclaveMPCHost: "mpc-client.portalhq.dev",
+      requests: mockRequests
+    )
+
+    // and given
+    _ = try await customApi.generatePreGeneratedShares(metadataStr: "{}")
+
+    // then
+    let request = await mockRequests.executeRequestParam
+    XCTAssertEqual(request?.url.absoluteString, "https://mpc-client.portalhq.dev/v1/generate")
+  }
+
+  func test_generatePreGeneratedShares_onServerError_throws() async throws {
+    // given
+    let mockRequests = MockPortalRequests(failEnclaveGenerate: true)
+    initPortalApiWith(requests: mockRequests)
+
+    do {
+      // and given
+      _ = try await api?.generatePreGeneratedShares(metadataStr: "{}")
+      XCTFail("Expected error not thrown when the enclave generate endpoint fails.")
+    } catch {
+      // then
+      XCTAssertNotNil(error)
+    }
+  }
+}
+
 // MARK: - eject tests
 
 extension PortalApiTests {
