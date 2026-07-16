@@ -117,6 +117,11 @@ public class Delegations: DelegationsProtocol {
   private let api: PortalDelegationsApiProtocol
 
   /// Instance-level signer used by the high-level submit methods when no per-call override is given.
+  ///
+  /// - Note: This is expected to be configured once (typically during `Portal` initialization) before
+  ///   any submit call is made. Access is not synchronized, so reconfiguring it via
+  ///   `setSignAndSendTransaction(_:)` while a submit call is in flight is not thread-safe. To vary
+  ///   the signer per call, pass `DelegationSubmitOptions.signAndSendTransaction` instead.
   private var signAndSendTransactionFn: DelegationSignAndSend?
 
   /// Create an instance of Delegations.

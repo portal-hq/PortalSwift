@@ -2546,6 +2546,10 @@ extension Portal {
   ///
   /// Maps a `DelegationTransaction` to the appropriate provider request (EVM `eth_sendTransaction`
   /// or Solana `sol_signAndSendTransaction`), broadcasts it, and returns the transaction hash.
+  ///
+  /// Returns an empty string when the provider result is not a hash so that the caller
+  /// (`Delegations.executeAndTrack`) can raise `DelegationsError.invalidTransactionHash` with the
+  /// correct transaction index rather than a hardcoded index of 0.
   private func signDelegationTransaction(_ transaction: DelegationTransaction, chainId: String) async throws -> String {
     let method: PortalRequestMethod
     let params: [Any]
@@ -2561,9 +2565,9 @@ extension Portal {
       params = [encoded]
     }
     let result = try await request(chainId: chainId, method: method, params: params, options: nil)
-    guard let hash = result.result as? String, !hash.isEmpty else {
-      throw DelegationsError.invalidTransactionHash(index: 0, chainId: chainId)
-    }
-    return hash
+    // Return an empty string when the provider result is not a hash so that the caller
+    // (`Delegations.executeAndTrack`) can raise `DelegationsError.invalidTransactionHash` with the
+    // correct transaction index rather than a hardcoded index of 0.
+    return result.result as? String ?? ""
   }
 }

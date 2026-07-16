@@ -179,6 +179,44 @@ final class DelegationsAndSubmitTests: XCTestCase {
     }
   }
 
+  func testApproveAndSubmit_emptyHash_throws() async {
+    // The default Portal signer returns an empty string when the provider result is not a hash;
+    // `executeAndTrack` must catch that (not only whitespace-only strings).
+    sut.setSignAndSendTransaction { _, _ in "" }
+    mockApi.approveReturnValue = .stub()
+
+    do {
+      _ = try await sut.approveAndSubmit(request: .stub())
+      XCTFail("Expected error")
+    } catch let error as DelegationsError {
+      XCTAssertEqual(error, .invalidTransactionHash(index: 0, chainId: "eip155:11155111"))
+    } catch {
+      XCTFail("Unexpected error: \(error)")
+    }
+  }
+
+  func testApproveAndSubmit_invalidHashOnSecondTransaction_reportsCorrectIndex() async {
+    // Regression test for the default-signer path: a blank hash on a non-first transaction must
+    // report that transaction's index, not a hardcoded 0.
+    let signer = RecordingSigner(hashes: ["0xhash0", ""])
+    sut.setSignAndSendTransaction(signer.asFn())
+    mockApi.approveReturnValue = .stub(
+      transactions: [.stub(from: "0xfrom0"), .stub(from: "0xfrom1")],
+      encodedTransactions: nil
+    )
+
+    do {
+      _ = try await sut.approveAndSubmit(request: .stub())
+      XCTFail("Expected error")
+    } catch let error as DelegationsError {
+      XCTAssertEqual(error, .invalidTransactionHash(index: 1, chainId: "eip155:11155111"))
+      // The first transaction was signed before the failure surfaced.
+      XCTAssertEqual(signer.signedTransactions.count, 2)
+    } catch {
+      XCTFail("Unexpected error: \(error)")
+    }
+  }
+
   func testApproveAndSubmit_apiError_propagates() async {
     sut.setSignAndSendTransaction(RecordingSigner().asFn())
     mockApi.approveError = URLError(.badServerResponse)
