@@ -184,6 +184,11 @@ public class HttpRequest<T: Codable, BodyType> {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
       }
 
+      // Guarantee a trace ID header for the legacy HTTP path.
+      if self.headers[PORTAL_TRACE_ID_HEADER] == nil {
+        request.setValue(generateTraceId(), forHTTPHeaderField: PORTAL_TRACE_ID_HEADER)
+      }
+
       // Set the request body to the string literal of the Dictionary
       if self.headers["Content-Type"] != nil && (self.headers["Content-Type"]!).contains("multipart") {
         let rawBody = (body as! [String: Any])["rawBody"] as! String

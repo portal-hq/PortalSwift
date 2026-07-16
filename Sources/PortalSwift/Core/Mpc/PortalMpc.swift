@@ -145,6 +145,9 @@ public class PortalMpc: PortalMpcProtocol {
 
     try await walletModificationOperationGuard.acquire(for: "backup")
 
+    // A single trace ID is shared across MPC reqId and follow-up API calls for this operation.
+    let traceId = generateTraceId()
+
     do {
       // Obtain the signing share.
       let shares = try await keychain?.getShares() ?? [:]
@@ -167,7 +170,7 @@ public class PortalMpc: PortalMpcProtocol {
           // Run both backups in parallel
           if let ed25519SigningShare = shares[PortalCurve.ED25519.rawValue] {
             do {
-              async let mpcShare = try getBackupShare(.ED25519, withMethod: method, andSigningShare: ed25519SigningShare.share)
+              async let mpcShare = try getBackupShare(.ED25519, withMethod: method, andSigningShare: ed25519SigningShare.share, reqId: traceId)
 
               usingProgressCallback?(MpcStatus(status: .parsingShare, done: false))
               let shareData = try await encoder.encode(mpcShare)
@@ -186,7 +189,7 @@ public class PortalMpc: PortalMpcProtocol {
           }
           if let secp256k1SigningShare = shares[PortalCurve.SECP256K1.rawValue]?.share {
             do {
-              async let mpcShare = try getBackupShare(.SECP256K1, withMethod: method, andSigningShare: secp256k1SigningShare)
+              async let mpcShare = try getBackupShare(.SECP256K1, withMethod: method, andSigningShare: secp256k1SigningShare, reqId: traceId)
 
               usingProgressCallback?(MpcStatus(status: .parsingShare, done: false))
               let shareData = try await encoder.encode(mpcShare)
@@ -226,7 +229,7 @@ public class PortalMpc: PortalMpcProtocol {
       let shareIds = generateResponse.values.map { share in
         share.id
       }
-      try await self.api?.updateShareStatus(.backup, status: .STORED_CLIENT_BACKUP_SHARE_KEY, sharePairIds: shareIds)
+      try await self.api?.updateShareStatus(.backup, status: .STORED_CLIENT_BACKUP_SHARE_KEY, sharePairIds: shareIds, traceId: traceId)
 
       guard let client = try await api?.client else {
         throw MpcError.clientInformationUnavailable
@@ -234,7 +237,7 @@ public class PortalMpc: PortalMpcProtocol {
 
       if client.environment?.backupWithPortalEnabled ?? false {
         for share in generateResponse.values {
-          let successful = try await api?.storeClientCipherText(share.id, cipherText: encryptResult.cipherText) ?? false
+          let successful = try await api?.storeClientCipherText(share.id, cipherText: encryptResult.cipherText, traceId: traceId) ?? false
 
           if !successful {
             self.logger.error("[PortalMpc] Unable to store client cipherText.")
@@ -244,7 +247,7 @@ public class PortalMpc: PortalMpcProtocol {
       }
 
       // Refresh the client
-      try await self.api?.refreshClient()
+      try await self.api?.refreshClient(traceId: traceId)
       try await self.keychain?.loadMetadata()
 
       await walletModificationOperationGuard.release()
@@ -253,7 +256,7 @@ public class PortalMpc: PortalMpcProtocol {
       usingProgressCallback?(MpcStatus(status: .done, done: true))
 
       // Return the Backup response
-      return PortalMpcBackupResponse(cipherText: encryptResult.cipherText, shareIds: shareIds)
+      return PortalMpcBackupResponse(cipherText: encryptResult.cipherText, shareIds: shareIds, traceId: traceId)
     } catch {
       await walletModificationOperationGuard.release()
       throw error
@@ -269,6 +272,9 @@ public class PortalMpc: PortalMpcProtocol {
     if self.version != "v6" {
       throw MpcError.backupNoLongerSupported("[PortalMpc] Eject is no longer supported for this version of MPC. Please use `version = \"v6\"`.")
     }
+
+    // A single trace ID is shared across follow-up API calls for this operation.
+    let traceId = generateTraceId()
 
     var cipherText = withCipherText
     var organizationShare = andOrganizationBackupShare
@@ -318,12 +324,12 @@ public class PortalMpc: PortalMpcProtocol {
 
     let backupWithPortal = client.environment?.backupWithPortalEnabled ?? false
     if backupWithPortal {
-      cipherText = try await self.api?.getClientCipherText(backupSharePairId)
-      organizationShare = try await self.api?.prepareEject(SECP256K1WalletId, method)
+      cipherText = try await self.api?.getClientCipherText(backupSharePairId, traceId: traceId)
+      organizationShare = try await self.api?.prepareEject(SECP256K1WalletId, method, traceId: traceId)
 
       // Conditionally prepare eject for Solana wallets
       if let Ed25519WalletId {
-        organizationShareEd25519 = try? await self.api?.prepareEject(Ed25519WalletId, method)
+        organizationShareEd25519 = try? await self.api?.prepareEject(Ed25519WalletId, method, traceId: traceId)
       }
     }
 
@@ -375,7 +381,7 @@ public class PortalMpc: PortalMpcProtocol {
       privateKeys[.solana] = ejectResult.privateKey
     }
 
-    _ = try await self.api?.eject()
+    _ = try await self.api?.eject(traceId: traceId)
 
     guard privateKeys[.eip155] != nil else {
       throw MpcError.unexpectedErrorOnEject("Unable to find private key for Ethereum wallet.")
@@ -391,6 +397,9 @@ public class PortalMpc: PortalMpcProtocol {
 
     try await walletModificationOperationGuard.acquire(for: "generate")
 
+    // A single trace ID is shared across MPC reqId and follow-up API calls for this operation.
+    let traceId = generateTraceId()
+
     do {
       let generateResponse: PortalMpcGenerateResponse
       if self.featureFlags?.usePreGeneratedWallet == true {
@@ -400,17 +409,17 @@ public class PortalMpc: PortalMpcProtocol {
         // network/URL errors, and share decode/validation failures — is surfaced immediately,
         // since a binary retry would not resolve them and would only add a full DKG round of latency.
         do {
-          generateResponse = try await self.generateSigningSharesViaApi(withProgressCallback: withProgressCallback)
+          generateResponse = try await self.generateSigningSharesViaApi(withProgressCallback: withProgressCallback, reqId: traceId)
         } catch {
           guard PortalMpc.isRetryableServerError(error) else {
             self.logger.error("[PortalMpc] Pre-generated wallet generation failed with a non-retryable error; not falling back to the binary: \(error.localizedDescription)")
             throw error
           }
           self.logger.error("[PortalMpc] Pre-generated wallet generation failed with a server (5xx) error, falling back to the binary: \(error.localizedDescription)")
-          generateResponse = try await self.generateSigningSharesViaBinary(withProgressCallback: withProgressCallback)
+          generateResponse = try await self.generateSigningSharesViaBinary(withProgressCallback: withProgressCallback, reqId: traceId)
         }
       } else {
-        generateResponse = try await self.generateSigningSharesViaBinary(withProgressCallback: withProgressCallback)
+        generateResponse = try await self.generateSigningSharesViaBinary(withProgressCallback: withProgressCallback, reqId: traceId)
       }
 
       withProgressCallback?(MpcStatus(status: .storingShare, done: false))
@@ -420,10 +429,10 @@ public class PortalMpc: PortalMpcProtocol {
       let shareIds: [String] = generateResponse.values.map { share in
         share.id
       }
-      try await self.api?.updateShareStatus(.signing, status: .STORED_CLIENT, sharePairIds: shareIds)
+      try await self.api?.updateShareStatus(.signing, status: .STORED_CLIENT, sharePairIds: shareIds, traceId: traceId)
 
       // Reset the metadata in the Keychain
-      try await self.api?.refreshClient()
+      try await self.api?.refreshClient(traceId: traceId)
       try await self.keychain?.loadMetadata()
 
       let addresses = try await keychain?.getAddresses() ?? [:]
@@ -439,7 +448,7 @@ public class PortalMpc: PortalMpcProtocol {
   }
 
   /// Generates both signing shares using the MPC binary (the default, on-device DKG flow).
-  private func generateSigningSharesViaBinary(withProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> PortalMpcGenerateResponse {
+  private func generateSigningSharesViaBinary(withProgressCallback: ((MpcStatus) -> Void)? = nil, reqId: String?) async throws -> PortalMpcGenerateResponse {
     // Generate both signing shares in parallel
     try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<PortalMpcGenerateResponse, Error>) in
       Task { [self] in
@@ -449,8 +458,8 @@ public class PortalMpc: PortalMpcProtocol {
 
           var generateResponse: PortalMpcGenerateResponse = [:]
 
-          async let ed25519Generate = try self.getSigningShare(.ED25519)
-          async let secp256k1Generate = try self.getSigningShare(.SECP256K1)
+          async let ed25519Generate = try self.getSigningShare(.ED25519, reqId: reqId)
+          async let secp256k1Generate = try self.getSigningShare(.SECP256K1, reqId: reqId)
 
           let (ed25519MpcShare, secp256k1MpcShare) = try await (ed25519Generate, secp256k1Generate)
 
@@ -487,7 +496,7 @@ public class PortalMpc: PortalMpcProtocol {
 
   /// Generates both signing shares via the Enclave MPC API `POST /v1/generate` endpoint, opting
   /// into the pre-generated wallet pool. The API returns both curves in a single call.
-  private func generateSigningSharesViaApi(withProgressCallback: ((MpcStatus) -> Void)? = nil) async throws -> PortalMpcGenerateResponse {
+  private func generateSigningSharesViaApi(withProgressCallback: ((MpcStatus) -> Void)? = nil, reqId: String?) async throws -> PortalMpcGenerateResponse {
     self.logger.info("Generating wallet: generating signing shares using the API MPC Enclave flow.")
     withProgressCallback?(MpcStatus(status: .generatingShare, done: false))
 
@@ -497,9 +506,11 @@ public class PortalMpc: PortalMpcProtocol {
 
     // Send the same metadata we send to the binary. The per-curve `curve` is irrelevant here
     // because the API generates both curves in a single request.
-    let metadataString = try self.mpcMetadata.jsonString()
+    var metadata = self.mpcMetadata
+    metadata.reqId = reqId
+    let metadataString = try metadata.jsonString()
 
-    let apiResponse = try await api.generatePreGeneratedShares(metadataStr: metadataString)
+    let apiResponse = try await api.generatePreGeneratedShares(metadataStr: metadataString, traceId: reqId)
 
     withProgressCallback?(MpcStatus(status: .parsingShare, done: false))
 
@@ -576,6 +587,9 @@ public class PortalMpc: PortalMpcProtocol {
 
     try await walletModificationOperationGuard.acquire(for: "recover")
 
+    // A single trace ID is shared across MPC reqId and follow-up API calls for this operation.
+    let traceId = generateTraceId()
+
     do {
       guard let client = try await api?.client else {
         throw MpcError.clientInformationUnavailable
@@ -599,7 +613,7 @@ public class PortalMpc: PortalMpcProtocol {
           throw MpcError.noValidBackupFound
         }
 
-        cipherText = try await self.api?.getClientCipherText(backupSharePairId)
+        cipherText = try await self.api?.getClientCipherText(backupSharePairId, traceId: traceId)
       }
 
       guard let cipherText else {
@@ -631,7 +645,7 @@ public class PortalMpc: PortalMpcProtocol {
 
             if let ed25519Share = shares[PortalCurve.ED25519.rawValue] {
               //  The share's already been backed up, recover it
-              async let ed25519MpcShare = try recoverSigningShare(.ED25519, withMethod: method, andBackupShare: ed25519Share.share)
+              async let ed25519MpcShare = try recoverSigningShare(.ED25519, withMethod: method, andBackupShare: ed25519Share.share, reqId: traceId)
 
               let shareData = try await encoder.encode(ed25519MpcShare)
               guard let shareString = String(data: shareData, encoding: .utf8) else {
@@ -646,7 +660,7 @@ public class PortalMpc: PortalMpcProtocol {
             }
 
             if let secp256k1Share = shares[PortalCurve.SECP256K1.rawValue] {
-              async let secp256k1MpcShare = try recoverSigningShare(.SECP256K1, withMethod: method, andBackupShare: secp256k1Share.share)
+              async let secp256k1MpcShare = try recoverSigningShare(.SECP256K1, withMethod: method, andBackupShare: secp256k1Share.share, reqId: traceId)
 
               let shareData = try await encoder.encode(secp256k1MpcShare)
               guard let shareString = String(data: shareData, encoding: .utf8) else {
@@ -681,10 +695,10 @@ public class PortalMpc: PortalMpcProtocol {
         share.id
       }
 
-      try await self.api?.updateShareStatus(.signing, status: .STORED_CLIENT, sharePairIds: shareIds)
+      try await self.api?.updateShareStatus(.signing, status: .STORED_CLIENT, sharePairIds: shareIds, traceId: traceId)
 
       // Reset the metadata in the Keychain
-      try await self.api?.refreshClient()
+      try await self.api?.refreshClient(traceId: traceId)
       try await self.keychain?.loadMetadata()
 
       let addresses = try await keychain?.getAddresses() ?? [:]
@@ -706,6 +720,9 @@ public class PortalMpc: PortalMpcProtocol {
 
     try await walletModificationOperationGuard.acquire(for: "generateSolanaWallet")
 
+    // A single trace ID is shared across MPC reqId and follow-up API calls for this operation.
+    let traceId = generateTraceId()
+
     var newAddresses: [PortalNamespace: String?]
 
     do {
@@ -722,7 +739,7 @@ public class PortalMpc: PortalMpcProtocol {
       usingProgressCallback?(MpcStatus(status: .generatingShare, done: false))
 
       // generate the ED25519 share
-      let ed25519MpcShare = try await self.getSigningShare(.ED25519)
+      let ed25519MpcShare = try await self.getSigningShare(.ED25519, reqId: traceId)
 
       // create a share object to be stored to keychain
       var generateResponse: PortalMpcGenerateResponse = [:]
@@ -752,10 +769,10 @@ public class PortalMpc: PortalMpcProtocol {
       let shareIds: [String] = generateResponse.values.map { share in
         share.id
       }
-      try await self.api?.updateShareStatus(.signing, status: .STORED_CLIENT, sharePairIds: shareIds)
+      try await self.api?.updateShareStatus(.signing, status: .STORED_CLIENT, sharePairIds: shareIds, traceId: traceId)
 
       // Reset the metadata in the Keychain
-      try await self.api?.refreshClient()
+      try await self.api?.refreshClient(traceId: traceId)
       try await self.keychain?.loadMetadata()
       await walletModificationOperationGuard.release()
 
@@ -873,7 +890,8 @@ public class PortalMpc: PortalMpcProtocol {
   private func getBackupShare(
     _ forCurve: PortalCurve,
     withMethod: BackupMethods,
-    andSigningShare: String
+    andSigningShare: String,
+    reqId: String?
   ) async throws -> MpcShare {
     let mpcShare = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<MpcShare, Error>) in
       Task {
@@ -883,6 +901,7 @@ public class PortalMpc: PortalMpcProtocol {
           metadata.curve = forCurve
           metadata.backupMethod = withMethod.rawValue
           metadata.isMultiBackupEnabled = self.featureFlags?.isMultiBackupEnabled
+          metadata.reqId = reqId
 
           let mpcMetadataString = try metadata.jsonString()
 
@@ -914,13 +933,14 @@ public class PortalMpc: PortalMpcProtocol {
     return mpcShare
   }
 
-  private func getSigningShare(_ forCurve: PortalCurve) async throws -> MpcShare {
+  private func getSigningShare(_ forCurve: PortalCurve, reqId: String?) async throws -> MpcShare {
     let mpcShare = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<MpcShare, Error>) in
       Task {
         do {
           // Stringify the MPC metadata.
           var metadata = self.mpcMetadata
           metadata.curve = forCurve
+          metadata.reqId = reqId
 
           let mpcMetadataString = try metadata.jsonString()
           let response = forCurve == .ED25519
@@ -977,7 +997,7 @@ public class PortalMpc: PortalMpcProtocol {
     }
   }
 
-  private func recoverSigningShare(_ forCurve: PortalCurve, withMethod: BackupMethods, andBackupShare: String) async throws -> MpcShare {
+  private func recoverSigningShare(_ forCurve: PortalCurve, withMethod: BackupMethods, andBackupShare: String, reqId: String?) async throws -> MpcShare {
     let mpcShare = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<MpcShare, Error>) in
       Task {
         do {
@@ -986,6 +1006,7 @@ public class PortalMpc: PortalMpcProtocol {
           metadata.curve = forCurve
           metadata.backupMethod = withMethod.rawValue
           metadata.isMultiBackupEnabled = self.featureFlags?.isMultiBackupEnabled
+          metadata.reqId = reqId
 
           let mpcMetadataString = try metadata.jsonString()
 

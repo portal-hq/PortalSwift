@@ -16,7 +16,8 @@ public class MockPortalMpc: PortalMpcProtocol {
     usingProgressCallback?(MpcStatus(status: .done, done: true))
     return PortalMpcBackupResponse(
       cipherText: MockConstants.mockCiphertext,
-      shareIds: [MockConstants.mockMpcShareId, MockConstants.mockMpcShareId]
+      shareIds: [MockConstants.mockMpcShareId, MockConstants.mockMpcShareId],
+      traceId: generateTraceId()
     )
   }
 
@@ -62,7 +63,8 @@ public class MockPortalMpc: PortalMpcProtocol {
       backupResponse:
       PortalMpcBackupResponse(
         cipherText: MockConstants.mockCiphertext,
-        shareIds: [MockConstants.mockMpcShareId, MockConstants.mockMpcShareId]
+        shareIds: [MockConstants.mockMpcShareId, MockConstants.mockMpcShareId],
+        traceId: generateTraceId()
       )
     )
   }

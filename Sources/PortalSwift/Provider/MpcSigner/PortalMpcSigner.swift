@@ -49,7 +49,8 @@ public class PortalMpcSigner: PortalSignerProtocol {
     andRpcUrl: String,
     usingBlockchain: PortalBlockchain,
     signatureApprovalMemo: String? = nil,
-    sponsorGas: Bool? = nil
+    sponsorGas: Bool? = nil,
+    reqId: String? = nil
   ) async throws -> String {
     var mpcMetadata = self.mpcMetadata
     mpcMetadata.curve = usingBlockchain.curve
@@ -57,6 +58,7 @@ public class PortalMpcSigner: PortalSignerProtocol {
     mpcMetadata.isRaw = withPayload.isRaw
     mpcMetadata.signatureApprovalMemo = signatureApprovalMemo
     mpcMetadata.sponsorGas = sponsorGas
+    mpcMetadata.reqId = reqId
 
     if featureFlags?.usePresignatures == true,
        let presignature = await presignatureSource?.consumePresignature(forCurve: usingBlockchain.curve)

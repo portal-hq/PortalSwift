@@ -1,6 +1,14 @@
 public struct PortalMpcBackupResponse {
   public let cipherText: String
   public let shareIds: [String]
+  /// Operation-scoped trace ID used as MPC `reqId` and on follow-up API calls during backup.
+  public let traceId: String
+
+  public init(cipherText: String, shareIds: [String], traceId: String) {
+    self.cipherText = cipherText
+    self.shareIds = shareIds
+    self.traceId = traceId
+  }
 }
 
 public struct FormatShareResponse: Codable {
