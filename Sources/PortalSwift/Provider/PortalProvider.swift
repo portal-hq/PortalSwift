@@ -254,7 +254,7 @@ public class PortalProvider: PortalProviderProtocol {
     case .wallet_switchEthereumChain, .wallet_revokePermissions, .wallet_requestPermissions:
       return PortalProviderResult(id: id, result: "null")
     case .wallet_getCapabilities:
-      let walletCapabilities = try await self.api?.getWalletCapabilities()
+      let walletCapabilities = try await self.api?.getWalletCapabilities(traceId: traceId)
       return PortalProviderResult(id: id, result: walletCapabilities ?? "null")
     default:
       if blockchain.shouldMethodBeSigned(method) {

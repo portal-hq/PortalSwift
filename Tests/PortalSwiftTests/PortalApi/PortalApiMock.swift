@@ -42,8 +42,10 @@ class PortalApiMock: PortalApiProtocol {
 
   var ejectReturnValue: String?
   var ejectCallsCount: Int = 0
-  func eject() async throws -> String {
+  var ejectTraceIdParam: String?
+  func eject(traceId: String?) async throws -> String {
     ejectCallsCount += 1
+    ejectTraceIdParam = traceId
     return ejectReturnValue ?? ""
   }
 
@@ -58,14 +60,18 @@ class PortalApiMock: PortalApiProtocol {
   }
 
   var getClientReturnValue: PortalSwift.ClientResponse?
-  func getClient() async throws -> PortalSwift.ClientResponse {
-    getClientReturnValue ?? ClientResponse.stub()
+  var getClientTraceIdParam: String?
+  func getClient(traceId: String?) async throws -> PortalSwift.ClientResponse {
+    getClientTraceIdParam = traceId
+    return getClientReturnValue ?? ClientResponse.stub()
   }
 
   var getClientCipherTextReturnValue: String?
   var getClientCipherTextCallsCount: Int = 0
-  func getClientCipherText(_: String) async throws -> String {
+  var getClientCipherTextTraceIdParam: String?
+  func getClientCipherText(_: String, traceId: String?) async throws -> String {
     getClientCipherTextCallsCount += 1
+    getClientCipherTextTraceIdParam = traceId
     return getClientCipherTextReturnValue ?? ""
   }
 
@@ -104,14 +110,18 @@ class PortalApiMock: PortalApiProtocol {
 
   var prepareEjectReturnValue: String?
   var prepareEjectCallsCount: Int = 0
-  func prepareEject(_: String, _: PortalSwift.BackupMethods) async throws -> String {
+  var prepareEjectTraceIdParam: String?
+  func prepareEject(_: String, _: PortalSwift.BackupMethods, traceId: String?) async throws -> String {
     prepareEjectCallsCount += 1
+    prepareEjectTraceIdParam = traceId
     return prepareEjectReturnValue ?? ""
   }
 
   var refreshClientCallsCount = 0
-  func refreshClient() async throws {
+  var refreshClientTraceIdParam: String?
+  func refreshClient(traceId: String?) async throws {
     refreshClientCallsCount += 1
+    refreshClientTraceIdParam = traceId
   }
 
   var simulateTransactionReturnValue: PortalSwift.SimulatedTransaction?
@@ -122,16 +132,20 @@ class PortalApiMock: PortalApiProtocol {
   var updateShareStatusCallsCount = 0
   var updateShareStatusSharePareTypeParam: PortalSharePairType?
   var updateShareStatusStatusParam: SharePairUpdateStatus?
-  func updateShareStatus(_ type: PortalSwift.PortalSharePairType, status: PortalSwift.SharePairUpdateStatus, sharePairIds _: [String]) async throws {
+  var updateShareStatusTraceIdParam: String?
+  func updateShareStatus(_ type: PortalSwift.PortalSharePairType, status: PortalSwift.SharePairUpdateStatus, sharePairIds _: [String], traceId: String?) async throws {
     updateShareStatusSharePareTypeParam = type
     updateShareStatusStatusParam = status
+    updateShareStatusTraceIdParam = traceId
     updateShareStatusCallsCount += 1
   }
 
   var storeClientCipherTextReturnValue: Bool?
   var storeClientCipherTextCallsCount: Int = 0
-  func storeClientCipherText(_: String, cipherText _: String) async throws -> Bool {
+  var storeClientCipherTextTraceIdParam: String?
+  func storeClientCipherText(_: String, cipherText _: String, traceId: String?) async throws -> Bool {
     storeClientCipherTextCallsCount += 1
+    storeClientCipherTextTraceIdParam = traceId
     return storeClientCipherTextReturnValue ?? false
   }
 
@@ -287,7 +301,9 @@ class PortalApiMock: PortalApiProtocol {
     return getAssetsReturnValue ?? PortalSwift.AssetsResponse.stub()
   }
 
-  func getWalletCapabilities() async throws -> PortalSwift.WalletCapabilitiesResponse {
+  var getWalletCapabilitiesTraceIdParam: String?
+  func getWalletCapabilities(traceId: String?) async throws -> PortalSwift.WalletCapabilitiesResponse {
+    getWalletCapabilitiesTraceIdParam = traceId
     return [:]
   }
 }

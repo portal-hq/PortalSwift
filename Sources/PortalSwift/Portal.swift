@@ -526,14 +526,15 @@ public final class Portal: PortalProtocol {
     // Run backup
     let response = try await mpc.backup(method, usingProgressCallback: usingProgressCallback)
 
-    // Build the storage callback
+    // Build the storage callback — reuse the backup operation's trace ID for correlation.
     let storageCallback: () async throws -> Void = {
       try await self.api.updateShareStatus(
         .backup,
         status: .STORED_CLIENT_BACKUP_SHARE,
-        sharePairIds: response.shareIds
+        sharePairIds: response.shareIds,
+        traceId: response.traceId
       )
-      try await self.api.refreshClient()
+      try await self.api.refreshClient(traceId: response.traceId)
       try await self.keychain.loadMetadata()
     }
 
@@ -794,14 +795,15 @@ public final class Portal: PortalProtocol {
     // Run generateSolanaWalletAndBackupShares
     let result = try await mpc.generateSolanaWalletAndBackupShares(backupMethod: method, usingProgressCallback: usingProgressCallback)
 
-    // Build the storage callback
+    // Build the storage callback — reuse the backup operation's trace ID for correlation.
     let storageCallback: () async throws -> Void = {
       try await self.api.updateShareStatus(
         .backup,
         status: .STORED_CLIENT_BACKUP_SHARE,
-        sharePairIds: result.backupResponse.shareIds
+        sharePairIds: result.backupResponse.shareIds,
+        traceId: result.backupResponse.traceId
       )
-      try await self.api.refreshClient()
+      try await self.api.refreshClient(traceId: result.backupResponse.traceId)
     }
 
     return (

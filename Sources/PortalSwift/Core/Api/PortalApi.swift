@@ -18,20 +18,20 @@ public protocol PortalApiProtocol: AnyObject {
   var delegations: PortalDelegationsApiProtocol { get }
   var evmAccountType: PortalEvmAccountTypeApiProtocol { get }
 
-  func eject() async throws -> String
+  func eject(traceId: String?) async throws -> String
   func fund(chainId: String, params: FundParams) async throws -> FundResponse
-  func getClient() async throws -> ClientResponse
-  func getClientCipherText(_ backupSharePairId: String) async throws -> String
+  func getClient(traceId: String?) async throws -> ClientResponse
+  func getClientCipherText(_ backupSharePairId: String, traceId: String?) async throws -> String
   func getQuote(_ swapsApiKey: String, withArgs: QuoteArgs, forChainId: String?) async throws -> Quote
   func getNftAssets(_ chainId: String) async throws -> [NftAsset]
   func getSharePairs(_ type: PortalSharePairType, walletId: String) async throws -> [FetchedSharePair]
   func getSources(_ swapsApiKey: String, forChainId: String) async throws -> [String: String]
   func getTransactions(_ chainId: String, limit: Int?, offset: Int?, order: TransactionOrder?) async throws -> [FetchedTransaction]
   func identify(_ traits: [String: AnyCodable]) async throws -> MetricsResponse
-  func prepareEject(_ walletId: String, _ backupMethod: BackupMethods) async throws -> String
-  func refreshClient() async throws
-  func updateShareStatus(_ type: PortalSharePairType, status: SharePairUpdateStatus, sharePairIds: [String]) async throws
-  func storeClientCipherText(_ backupSharePairId: String, cipherText: String) async throws -> Bool
+  func prepareEject(_ walletId: String, _ backupMethod: BackupMethods, traceId: String?) async throws -> String
+  func refreshClient(traceId: String?) async throws
+  func updateShareStatus(_ type: PortalSharePairType, status: SharePairUpdateStatus, sharePairIds: [String], traceId: String?) async throws
+  func storeClientCipherText(_ backupSharePairId: String, cipherText: String, traceId: String?) async throws -> Bool
   func track(_ event: String, withProperties: [String: AnyCodable]) async throws -> MetricsResponse
   func evaluateTransaction(chainId: String, transaction: EvaluateTransactionParam, operationType: EvaluateTransactionOperationType?) async throws -> BlockaidValidateTrxRes
   func buildEip155Transaction(chainId: String, params: BuildTransactionParam, traceId: String?) async throws -> BuildEip115TransactionResponse
@@ -40,7 +40,7 @@ public protocol PortalApiProtocol: AnyObject {
   func broadcastBitcoinP2wpkhTransaction(chainId: String, params: BroadcastParam, traceId: String?) async throws -> BroadcastBitcoinP2wpkhTransactionResponse
   func getAssets(_ chainId: String) async throws -> AssetsResponse
   func getTransactionDetails(chain: String, signature: String) async throws -> GetTransactionDetailsResponse
-  func getWalletCapabilities() async throws -> WalletCapabilitiesResponse
+  func getWalletCapabilities(traceId: String?) async throws -> WalletCapabilitiesResponse
 
   // deprecated functions
   @available(*, deprecated, message: "This function has been moved to 'Portal'. Please use 'Portal.getBalances()' instead.") // this func need to be private thats why we deprecate it to move it to private later
@@ -71,11 +71,43 @@ public protocol PortalApiProtocol: AnyObject {
 
 /// Backward-compatible convenience overloads.
 ///
-/// The transaction build/broadcast requirements carry an optional `traceId` so high-level
-/// operations (e.g. `sendAsset`) can share a single `X-Portal-Trace-Id` across their requests.
-/// These overloads preserve the original call shapes (without `traceId`) so existing callers
-/// of `PortalApiProtocol` continue to compile unchanged.
+/// Several API requirements carry an optional `traceId` so high-level operations
+/// (e.g. `sendAsset`, MPC generate/backup/recover) can share a single
+/// `X-Portal-Trace-Id` across their requests. These overloads preserve the original
+/// call shapes (without `traceId`) so existing callers continue to compile unchanged.
 public extension PortalApiProtocol {
+  func eject() async throws -> String {
+    try await eject(traceId: nil)
+  }
+
+  func getClient() async throws -> ClientResponse {
+    try await getClient(traceId: nil)
+  }
+
+  func getClientCipherText(_ backupSharePairId: String) async throws -> String {
+    try await getClientCipherText(backupSharePairId, traceId: nil)
+  }
+
+  func prepareEject(_ walletId: String, _ backupMethod: BackupMethods) async throws -> String {
+    try await prepareEject(walletId, backupMethod, traceId: nil)
+  }
+
+  func refreshClient() async throws {
+    try await refreshClient(traceId: nil)
+  }
+
+  func updateShareStatus(_ type: PortalSharePairType, status: SharePairUpdateStatus, sharePairIds: [String]) async throws {
+    try await updateShareStatus(type, status: status, sharePairIds: sharePairIds, traceId: nil)
+  }
+
+  func storeClientCipherText(_ backupSharePairId: String, cipherText: String) async throws -> Bool {
+    try await storeClientCipherText(backupSharePairId, cipherText: cipherText, traceId: nil)
+  }
+
+  func getWalletCapabilities() async throws -> WalletCapabilitiesResponse {
+    try await getWalletCapabilities(traceId: nil)
+  }
+
   func buildEip155Transaction(chainId: String, params: BuildTransactionParam) async throws -> BuildEip115TransactionResponse {
     try await buildEip155Transaction(chainId: chainId, params: params, traceId: nil)
   }
@@ -213,8 +245,8 @@ public class PortalApi: PortalApiProtocol {
    * Public functions
    *******************************************/
 
-  public func eject() async throws -> String {
-    let traceId = generateTraceId()
+  public func eject(traceId: String? = nil) async throws -> String {
+    let traceId = traceId ?? generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/eject") {
       do {
         let body: [String: String] = [
@@ -257,9 +289,11 @@ public class PortalApi: PortalApiProtocol {
   }
 
   /// Retrieve the client by API key.
+  /// - Parameters:
+  ///   - traceId: Optional trace ID forwarded as the `X-Portal-Trace-Id` header.
   /// - Returns: ClientResponse
-  public func getClient() async throws -> ClientResponse {
-    let traceId = generateTraceId()
+  public func getClient(traceId: String? = nil) async throws -> ClientResponse {
+    let traceId = traceId ?? generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me") {
       do {
         let clientResponse = try await get(url, withBearerToken: self.apiKey, traceId: traceId, mappingInResponse: ClientResponse.self)
@@ -290,8 +324,8 @@ public class PortalApi: PortalApiProtocol {
     throw URLError(.badURL)
   }
 
-  public func getClientCipherText(_ backupSharePairId: String) async throws -> String {
-    let traceId = generateTraceId()
+  public func getClientCipherText(_ backupSharePairId: String, traceId: String? = nil) async throws -> String {
+    let traceId = traceId ?? generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/backup-share-pairs/\(backupSharePairId)/cipher-text") {
       do {
         let response = try await get(url, withBearerToken: self.apiKey, traceId: traceId, mappingInResponse: ClientCipherTextResponse.self)
@@ -442,8 +476,8 @@ public class PortalApi: PortalApiProtocol {
     throw URLError(.badURL)
   }
 
-  public func prepareEject(_ walletId: String, _ backupMethod: BackupMethods) async throws -> String {
-    let traceId = generateTraceId()
+  public func prepareEject(_ walletId: String, _ backupMethod: BackupMethods, traceId: String? = nil) async throws -> String {
+    let traceId = traceId ?? generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/wallets/\(walletId)/prepare-eject") {
       let prepareEjectResponse = try await post(url, withBearerToken: self.apiKey, andPayload: ["backupMethod": backupMethod.rawValue], traceId: traceId, mappingInResponse: PrepareEjectResponse.self)
 
@@ -453,9 +487,9 @@ public class PortalApi: PortalApiProtocol {
     throw URLError(.badURL)
   }
 
-  public func refreshClient() async throws {
+  public func refreshClient(traceId: String? = nil) async throws {
     do {
-      try await _clientStorage.set(client: self.getClient())
+      try await _clientStorage.set(client: self.getClient(traceId: traceId))
 
       return
     } catch {
@@ -502,8 +536,8 @@ public class PortalApi: PortalApiProtocol {
     }
   }
 
-  public func storeClientCipherText(_ backupSharePairId: String, cipherText: String) async throws -> Bool {
-    let traceId = generateTraceId()
+  public func storeClientCipherText(_ backupSharePairId: String, cipherText: String, traceId: String? = nil) async throws -> Bool {
+    let traceId = traceId ?? generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/backup-share-pairs/\(backupSharePairId)") {
       do {
         let payload = AnyCodable([
@@ -540,9 +574,10 @@ public class PortalApi: PortalApiProtocol {
   public func updateShareStatus(
     _ type: PortalSharePairType,
     status: SharePairUpdateStatus,
-    sharePairIds: [String]
+    sharePairIds: [String],
+    traceId: String? = nil
   ) async throws {
-    let traceId = generateTraceId()
+    let traceId = traceId ?? generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/\(type.rawValue)-share-pairs/") {
       do {
         let payload = ShareStatusUpdateRequest(
@@ -632,8 +667,8 @@ public class PortalApi: PortalApiProtocol {
     throw URLError(.badURL)
   }
 
-  public func getWalletCapabilities() async throws -> WalletCapabilitiesResponse {
-    let traceId = generateTraceId()
+  public func getWalletCapabilities(traceId: String? = nil) async throws -> WalletCapabilitiesResponse {
+    let traceId = traceId ?? generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/wallet_getCapabilities") {
       let response = try await get(url, withBearerToken: self.apiKey, traceId: traceId, mappingInResponse: WalletCapabilitiesResponse.self)
 

@@ -50,9 +50,11 @@ class PortalApiSpy: PortalApiProtocol {
 
   // Eject method tracking
   var ejectCallsCount: Int = 0
+  var ejectTraceIdParam: String?
 
-  public func eject() async throws -> String {
+  public func eject(traceId: String?) async throws -> String {
     ejectCallsCount += 1
+    ejectTraceIdParam = traceId
     return ""
   }
 
@@ -68,19 +70,23 @@ class PortalApiSpy: PortalApiProtocol {
 
   // Get Client method tracking
   var getClientCallsCount: Int = 0
+  var getClientTraceIdParam: String?
 
-  public func getClient() async throws -> ClientResponse {
+  public func getClient(traceId: String?) async throws -> ClientResponse {
     getClientCallsCount += 1
+    getClientTraceIdParam = traceId
     return ClientResponse.stub()
   }
 
   // Get Client Cipher Text method tracking
   var getClientCipherTextCallsCount: Int = 0
   var getClientCipherTextBackupSharePairIdParam: String?
+  var getClientCipherTextTraceIdParam: String?
 
-  public func getClientCipherText(_ backupSharePairId: String) async throws -> String {
+  public func getClientCipherText(_ backupSharePairId: String, traceId: String?) async throws -> String {
     getClientCipherTextCallsCount += 1
     getClientCipherTextBackupSharePairIdParam = backupSharePairId
+    getClientCipherTextTraceIdParam = traceId
     return ""
   }
 
@@ -187,19 +193,23 @@ class PortalApiSpy: PortalApiProtocol {
   var prepareEjectCallsCount: Int = 0
   var prepareEjectWalletIdParam: String?
   var prepareEjectBackupMethodParam: BackupMethods?
+  var prepareEjectTraceIdParam: String?
 
-  public func prepareEject(_ walletId: String, _ backupMethod: BackupMethods) async throws -> String {
+  public func prepareEject(_ walletId: String, _ backupMethod: BackupMethods, traceId: String?) async throws -> String {
     prepareEjectCallsCount += 1
     prepareEjectWalletIdParam = walletId
     prepareEjectBackupMethodParam = backupMethod
+    prepareEjectTraceIdParam = traceId
     return ""
   }
 
   // Refresh Client method tracking
   var refreshClientCallsCount: Int = 0
+  var refreshClientTraceIdParam: String?
 
-  public func refreshClient() async throws {
+  public func refreshClient(traceId: String?) async throws {
     refreshClientCallsCount += 1
+    refreshClientTraceIdParam = traceId
   }
 
   // Simulate Transaction method tracking
@@ -219,12 +229,14 @@ class PortalApiSpy: PortalApiProtocol {
   var updateShareStatusTypeParam: PortalSharePairType?
   var updateShareStatusStatusParam: SharePairUpdateStatus?
   var updateShareStatusSharePairIdsParam: [String]?
+  var updateShareStatusTraceIdParam: String?
 
-  public func updateShareStatus(_ type: PortalSharePairType, status: SharePairUpdateStatus, sharePairIds: [String]) async throws {
+  public func updateShareStatus(_ type: PortalSharePairType, status: SharePairUpdateStatus, sharePairIds: [String], traceId: String?) async throws {
     updateShareStatusCallsCount += 1
     updateShareStatusTypeParam = type
     updateShareStatusStatusParam = status
     updateShareStatusSharePairIdsParam = sharePairIds
+    updateShareStatusTraceIdParam = traceId
   }
 
   // getClient method with completion tracking
@@ -343,11 +355,13 @@ class PortalApiSpy: PortalApiProtocol {
   var storeClientCipherTextCallsCount: Int = 0
   var storeClientCipherTextBackupSharePairIdParam: String?
   var storeClientCipherTextCipherTextParam: String?
+  var storeClientCipherTextTraceIdParam: String?
 
-  func storeClientCipherText(_ backupSharePairId: String, cipherText: String) async throws -> Bool {
+  func storeClientCipherText(_ backupSharePairId: String, cipherText: String, traceId: String?) async throws -> Bool {
     storeClientCipherTextCallsCount += 1
     storeClientCipherTextBackupSharePairIdParam = backupSharePairId
     storeClientCipherTextCipherTextParam = cipherText
+    storeClientCipherTextTraceIdParam = traceId
 
     return true
   }
@@ -468,9 +482,11 @@ class PortalApiSpy: PortalApiProtocol {
 
   // getWalletCapabilities method tracking
   var getWalletCapabilitiesCallsCount: Int = 0
+  var getWalletCapabilitiesTraceIdParam: String?
 
-  func getWalletCapabilities() async throws -> PortalSwift.WalletCapabilitiesResponse {
+  func getWalletCapabilities(traceId: String?) async throws -> PortalSwift.WalletCapabilitiesResponse {
     getWalletCapabilitiesCallsCount += 1
+    getWalletCapabilitiesTraceIdParam = traceId
     return PortalSwift.WalletCapabilitiesResponse.stub()
   }
 }
