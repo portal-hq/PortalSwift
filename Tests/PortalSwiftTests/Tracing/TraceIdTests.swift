@@ -5,7 +5,6 @@
 //  Tests for the X-Portal-Trace-Id header and MPC reqId propagation.
 //
 
-import AnyCodable
 @testable import PortalSwift
 import XCTest
 
