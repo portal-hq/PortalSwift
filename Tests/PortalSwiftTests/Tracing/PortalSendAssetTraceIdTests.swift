@@ -5,7 +5,6 @@
 //  Verifies sendAsset shares a single trace ID across the build and sign/broadcast steps.
 //
 
-import AnyCodable
 @testable import PortalSwift
 import XCTest
 

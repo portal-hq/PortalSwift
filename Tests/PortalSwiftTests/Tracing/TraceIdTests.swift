@@ -132,6 +132,36 @@ final class TraceIdTests: XCTestCase {
     )
   }
 
+  func test_portalMpc_generate_preGeneratedWallet_sharesTraceIdAcrossApiCalls() async throws {
+    let mobileSpy = MobileSpy()
+    let apiSpy = PortalApiSpy()
+    let share = try MockConstants.mockBase64EncodedMpcShare
+    apiSpy.generatePreGeneratedSharesReturnValue = GenerateApiResponse(
+      secp256k1: GenerateApiCurveShare(share: share, id: MockConstants.mockMpcShareId),
+      ed25519: GenerateApiCurveShare(share: share, id: MockConstants.mockMpcShareId)
+    )
+    let mpc = PortalMpc(
+      apiKey: MockConstants.mockApiKey,
+      api: apiSpy,
+      keychain: MockPortalKeychain(),
+      mobile: mobileSpy,
+      featureFlags: FeatureFlags(usePreGeneratedWallet: true)
+    )
+
+    _ = try await mpc.generate()
+
+    XCTAssertEqual(apiSpy.generatePreGeneratedSharesCallsCount, 1)
+    XCTAssertEqual(mobileSpy.mobileGenerateEd25519CallsCount, 0)
+    XCTAssertEqual(mobileSpy.mobileGenerateSecp256k1CallsCount, 0)
+
+    assertSharedTraceId(
+      try reqId(fromMetadata: apiSpy.generatePreGeneratedSharesMetadataParam),
+      try XCTUnwrap(apiSpy.generatePreGeneratedSharesTraceIdParam),
+      try XCTUnwrap(apiSpy.updateShareStatusTraceIdParam),
+      try XCTUnwrap(apiSpy.refreshClientTraceIdParam)
+    )
+  }
+
   func test_portalMpc_backup_sharesTraceIdAcrossMpcMetadataAndApiCalls() async throws {
     let mobileSpy = MobileSpy()
     mobileSpy.mobileBackupSecp256k1ReturnValue = try MockConstants.mockRotateResult
