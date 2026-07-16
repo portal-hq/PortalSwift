@@ -415,6 +415,15 @@ public enum MockConstants {
     }
   }
 
+  /// Base64-encoded (standard alphabet, no padding) JSON of `mockMpcShare`, mimicking what the
+  /// Enclave MPC API `POST /v1/generate` returns for each curve's `share`.
+  public static var mockBase64EncodedMpcShare: String {
+    get throws {
+      let mockMpcShareData = try JSONEncoder().encode(mockMpcShare)
+      return mockMpcShareData.base64EncodedString().replacingOccurrences(of: "=", with: "")
+    }
+  }
+
   public static var mockCreateWalletResponse: PortalCreateWalletResponse {
     let mockCreateWalletResponse: PortalCreateWalletResponse = (
       ethereum: mockEip155Address,

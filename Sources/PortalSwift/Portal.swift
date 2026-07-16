@@ -38,7 +38,10 @@ public final class Portal: PortalProtocol {
   public var rpcConfig: [String: String]
 
   /// Access to yield-related functionality.
-  public lazy var yield: Yield = .init(api: self.api)
+  public lazy var yield: Yield = .init(api: self.api, portal: self)
+
+  /// Access to ramps-related (on/off-ramp) functionality.
+  public lazy var ramps: Ramps = .init(api: self.api)
 
   /// Access to trading-related functionality.
   public lazy var trading: Trading = .init(api: self.api)
@@ -136,7 +139,7 @@ public final class Portal: PortalProtocol {
 
     // Creating this as a variable first so it's usable to
     // fetch the client in the Task at the end of the initializer
-    let api = api ?? PortalApi(apiKey: apiKey, apiHost: apiHost, provider: provider)
+    let api = api ?? PortalApi(apiKey: apiKey, apiHost: apiHost, enclaveMPCHost: enclaveMPCHost, provider: provider)
     self.api = api
     self.keychain.api = api
     self.provider.api = api
@@ -2443,6 +2446,8 @@ public final class Portal: PortalProtocol {
 }
 
 extension Portal: EvmAccountTypePortalDependency {}
+
+extension Portal: YieldXyzPortalDependency {}
 
 /*****************************************
  * Supporting Enums & Structs

@@ -96,4 +96,26 @@ final class PortalYieldXyzApiSpy: PortalYieldXyzApiProtocol {
     submitTransactionHashRequestParam = request
     return submitTransactionHashReturnValue
   }
+
+  // MARK: - getYieldDefaults
+
+  var getYieldDefaultsCallsCount = 0
+  var getYieldDefaultsIncludeOpportunitiesParam: Bool?
+  var getYieldDefaultsReturnValue: YieldXyzGetDefaultsResponse = .stub()
+  func getYieldDefaults(includeOpportunities: Bool?) async throws -> YieldXyzGetDefaultsResponse {
+    getYieldDefaultsCallsCount += 1
+    getYieldDefaultsIncludeOpportunitiesParam = includeOpportunities
+    return getYieldDefaultsReturnValue
+  }
+
+  // MARK: - getYieldValidators
+
+  var getYieldValidatorsCallsCount = 0
+  var getYieldValidatorsYieldIdParam: String?
+  var getYieldValidatorsReturnValue: YieldXyzGetValidatorsResponse = .stub()
+  func getYieldValidators(yieldId: String) async throws -> YieldXyzGetValidatorsResponse {
+    getYieldValidatorsCallsCount += 1
+    getYieldValidatorsYieldIdParam = yieldId
+    return getYieldValidatorsReturnValue
+  }
 }

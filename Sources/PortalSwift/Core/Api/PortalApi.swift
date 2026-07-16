@@ -17,6 +17,7 @@ public protocol PortalApiProtocol: AnyObject {
   var blockaid: PortalBlockaidApiProtocol { get }
   var delegations: PortalDelegationsApiProtocol { get }
   var evmAccountType: PortalEvmAccountTypeApiProtocol { get }
+  var noah: PortalNoahApiProtocol { get }
 
   func eject(traceId: String?) async throws -> String
   func fund(chainId: String, params: FundParams) async throws -> FundResponse
@@ -29,6 +30,7 @@ public protocol PortalApiProtocol: AnyObject {
   func getTransactions(_ chainId: String, limit: Int?, offset: Int?, order: TransactionOrder?) async throws -> [FetchedTransaction]
   func identify(_ traits: [String: AnyCodable]) async throws -> MetricsResponse
   func prepareEject(_ walletId: String, _ backupMethod: BackupMethods, traceId: String?) async throws -> String
+  func generatePreGeneratedShares(metadataStr: String, traceId: String?) async throws -> GenerateApiResponse
   func refreshClient(traceId: String?) async throws
   func updateShareStatus(_ type: PortalSharePairType, status: SharePairUpdateStatus, sharePairIds: [String], traceId: String?) async throws
   func storeClientCipherText(_ backupSharePairId: String, cipherText: String, traceId: String?) async throws -> Bool
@@ -92,6 +94,10 @@ public extension PortalApiProtocol {
     try await prepareEject(walletId, backupMethod, traceId: nil)
   }
 
+  func generatePreGeneratedShares(metadataStr: String) async throws -> GenerateApiResponse {
+    try await generatePreGeneratedShares(metadataStr: metadataStr, traceId: nil)
+  }
+
   func refreshClient() async throws {
     try await refreshClient(traceId: nil)
   }
@@ -148,6 +154,7 @@ public class PortalApi: PortalApiProtocol {
   private let _clientStorage = ThreadSafeClientWrapper()
   private var apiKey: String
   private var baseUrl: String
+  private let enclaveMPCHost: String
   private let decoder = JSONDecoder()
   private var httpRequests: HttpRequester
   private let logger = PortalLogger.shared
@@ -219,6 +226,13 @@ public class PortalApi: PortalApiProtocol {
     requests: self.requests
   )
 
+  /// Access to Noah ramps integration functionality.
+  public lazy var noah: PortalNoahApiProtocol = PortalNoahApi(
+    apiKey: self.apiKey,
+    apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
+    requests: self.requests
+  )
+
   public weak var provider: PortalProviderProtocol?
 
   /// Create an instance of a PortalApi class.
@@ -229,12 +243,14 @@ public class PortalApi: PortalApiProtocol {
   public init(
     apiKey: String,
     apiHost: String = "api.portalhq.io",
+    enclaveMPCHost: String = "mpc-client.portalhq.io",
     provider: PortalProviderProtocol? = nil,
     featureFlags: FeatureFlags? = nil,
     requests: PortalRequestsProtocol? = nil
   ) {
     self.apiKey = apiKey
     self.baseUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
+    self.enclaveMPCHost = enclaveMPCHost
     self.featureFlags = featureFlags
     self.provider = provider
     self.requests = requests ?? PortalRequests()
@@ -569,6 +585,22 @@ public class PortalApi: PortalApiProtocol {
     }
 
     throw URLError(.badURL)
+  }
+
+  public func generatePreGeneratedShares(metadataStr: String, traceId: String? = nil) async throws -> GenerateApiResponse {
+    let traceId = traceId ?? generateTraceId()
+    guard let url = URL(string: "https://\(enclaveMPCHost)/v1/generate") else {
+      self.logger.error("PortalApi.generatePreGeneratedShares() - Unable to build request URL.")
+      throw URLError(.badURL)
+    }
+
+    do {
+      let payload = GenerateApiRequest(usePreGenerated: true, metadataStr: metadataStr)
+      return try await self.post(url, withBearerToken: self.apiKey, andPayload: payload, traceId: traceId, mappingInResponse: GenerateApiResponse.self)
+    } catch {
+      self.logger.error("PortalApi.generatePreGeneratedShares() - Unable to generate pre-generated shares: \(error.localizedDescription)")
+      throw error
+    }
   }
 
   public func updateShareStatus(

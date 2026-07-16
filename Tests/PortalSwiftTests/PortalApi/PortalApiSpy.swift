@@ -17,6 +17,7 @@ class PortalApiSpy: PortalApiProtocol {
   var blockaid: any PortalSwift.PortalBlockaidApiProtocol
   var delegations: any PortalSwift.PortalDelegationsApiProtocol
   var evmAccountType: any PortalSwift.PortalEvmAccountTypeApiProtocol
+  var noah: any PortalSwift.PortalNoahApiProtocol
 
   init(
     yieldxyz: any PortalSwift.PortalYieldXyzApiProtocol = PortalYieldXyzApiSpy(),
@@ -25,7 +26,8 @@ class PortalApiSpy: PortalApiProtocol {
     hypernative: any PortalSwift.PortalHypernativeApiProtocol = PortalHypernativeApiMock(),
     blockaid: any PortalSwift.PortalBlockaidApiProtocol = PortalBlockaidApiMock(),
     delegations: any PortalSwift.PortalDelegationsApiProtocol = PortalDelegationsApiMock(),
-    evmAccountType: any PortalSwift.PortalEvmAccountTypeApiProtocol = PortalEvmAccountTypeApiMock()
+    evmAccountType: any PortalSwift.PortalEvmAccountTypeApiProtocol = PortalEvmAccountTypeApiMock(),
+    noah: any PortalSwift.PortalNoahApiProtocol = PortalNoahApiSpy()
   ) {
     self.yieldxyz = yieldxyz
     self.lifi = lifi
@@ -34,6 +36,7 @@ class PortalApiSpy: PortalApiProtocol {
     self.blockaid = blockaid
     self.delegations = delegations
     self.evmAccountType = evmAccountType
+    self.noah = noah
   }
 
   // Property to track client access
@@ -210,6 +213,26 @@ class PortalApiSpy: PortalApiProtocol {
   public func refreshClient(traceId: String?) async throws {
     refreshClientCallsCount += 1
     refreshClientTraceIdParam = traceId
+  }
+
+  // Generate pre-generated shares method tracking
+  var generatePreGeneratedSharesCallsCount: Int = 0
+  var generatePreGeneratedSharesMetadataParam: String?
+  var generatePreGeneratedSharesTraceIdParam: String?
+  var generatePreGeneratedSharesReturnValue: GenerateApiResponse?
+  var generatePreGeneratedSharesErrorToThrow: Error?
+
+  public func generatePreGeneratedShares(metadataStr: String, traceId: String?) async throws -> GenerateApiResponse {
+    generatePreGeneratedSharesCallsCount += 1
+    generatePreGeneratedSharesMetadataParam = metadataStr
+    generatePreGeneratedSharesTraceIdParam = traceId
+    if let error = generatePreGeneratedSharesErrorToThrow {
+      throw error
+    }
+    guard let value = generatePreGeneratedSharesReturnValue else {
+      throw URLError(.badURL)
+    }
+    return value
   }
 
   // Simulate Transaction method tracking
