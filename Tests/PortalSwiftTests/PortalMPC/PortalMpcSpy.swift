@@ -101,7 +101,8 @@ class PortalMpcSpy: PortalMpcProtocol {
     backupUsingProgressCallbackParam = usingProgressCallback
     return PortalMpcBackupResponse(
       cipherText: MockConstants.mockCiphertext,
-      shareIds: [MockConstants.mockMpcShareId, MockConstants.mockMpcShareId]
+      shareIds: [MockConstants.mockMpcShareId, MockConstants.mockMpcShareId],
+      traceId: generateTraceId()
     )
   }
 
@@ -142,7 +143,8 @@ class PortalMpcSpy: PortalMpcProtocol {
       "",
       PortalMpcBackupResponse(
         cipherText: MockConstants.mockCiphertext,
-        shareIds: [MockConstants.mockMpcShareId, MockConstants.mockMpcShareId]
+        shareIds: [MockConstants.mockMpcShareId, MockConstants.mockMpcShareId],
+        traceId: generateTraceId()
       )
     )
   }

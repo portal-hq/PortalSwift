@@ -565,3 +565,118 @@ extension YieldXyzTrackTransactionResponse {
     YieldXyzTrackTransactionResponse(data: data, error: error)
   }
 }
+
+// MARK: - Defaults
+
+extension YieldXyzDefaultYieldEntry {
+  static func stub(yieldId: String? = "yield-1", opportunity: YieldXyzOpportunity? = nil) -> Self {
+    YieldXyzDefaultYieldEntry(yieldId: yieldId, opportunity: opportunity)
+  }
+}
+
+extension YieldXyzGetDefaultsResponse {
+  static func stub(
+    data: [String: YieldXyzDefaultYieldEntry]? = ["eip155:11155111:ETH": .stub()],
+    error: String? = nil
+  ) -> Self {
+    YieldXyzGetDefaultsResponse(data: data, error: error)
+  }
+}
+
+// MARK: - Validators
+
+extension YieldXyzProvider {
+  static func stub(
+    name: String? = "Provider",
+    uniqueId: String? = "provider-1",
+    website: String? = "https://example.com",
+    rank: Int? = 1,
+    preferred: Bool? = true
+  ) -> Self {
+    YieldXyzProvider(name: name, uniqueId: uniqueId, website: website, rank: rank, preferred: preferred)
+  }
+}
+
+extension YieldXyzValidator {
+  static func stub(
+    address: String = "0xvalidator",
+    name: String? = "Validator One",
+    rewardRate: YieldXyzRewardRate? = .stub(),
+    provider: YieldXyzProvider? = .stub(),
+    commission: Double? = 0.05,
+    preferred: Bool? = true,
+    status: String? = "active"
+  ) -> Self {
+    YieldXyzValidator(
+      address: address,
+      name: name,
+      rewardRate: rewardRate,
+      provider: provider,
+      commission: commission,
+      preferred: preferred,
+      status: status
+    )
+  }
+}
+
+extension YieldXyzGetValidatorsRawResponse {
+  static func stub(items: [YieldXyzValidator]? = [.stub()], limit: Int? = 10, offset: Int? = 0, total: Int? = 1) -> Self {
+    YieldXyzGetValidatorsRawResponse(items: items, validators: nil, limit: limit, offset: offset, total: total)
+  }
+}
+
+extension YieldXyzGetValidatorsData {
+  static func stub(validators: [YieldXyzValidator]? = nil, rawResponse: YieldXyzGetValidatorsRawResponse? = .stub()) -> Self {
+    YieldXyzGetValidatorsData(validators: validators, rawResponse: rawResponse)
+  }
+}
+
+extension YieldXyzGetValidatorsResponse {
+  static func stub(data: YieldXyzGetValidatorsData? = .stub(), error: String? = nil) -> Self {
+    YieldXyzGetValidatorsResponse(data: data, error: error)
+  }
+}
+
+// MARK: - High-level deposit/withdraw
+
+extension YieldOpportunityDetails {
+  static func stub(
+    yieldId: String = "yield-1",
+    intent: YieldXyzActionIntent? = .enter,
+    type: YieldXyzActionType? = .STAKE,
+    executionPattern: YieldXyzActionExecutionPattern? = .synchronous,
+    status: YieldXyzActionStatus? = .CREATED,
+    amount: String? = "1.0",
+    amountUsd: String? = "3000"
+  ) -> Self {
+    YieldOpportunityDetails(
+      yieldId: yieldId,
+      intent: intent,
+      type: type,
+      executionPattern: executionPattern,
+      status: status,
+      amount: amount,
+      amountUsd: amountUsd
+    )
+  }
+}
+
+extension YieldDepositResult {
+  static func stub(
+    hashes: [String] = ["0xhash"],
+    yieldId: String = "yield-1",
+    status: YieldSubmitResultStatus = .success,
+    chain: String? = nil,
+    token: String? = nil,
+    yieldOpportunityDetails: YieldOpportunityDetails = .stub()
+  ) -> Self {
+    YieldDepositResult(
+      hashes: hashes,
+      yieldId: yieldId,
+      status: status,
+      chain: chain,
+      token: token,
+      yieldOpportunityDetails: yieldOpportunityDetails
+    )
+  }
+}
