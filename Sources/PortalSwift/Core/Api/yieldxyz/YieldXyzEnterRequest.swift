@@ -71,6 +71,27 @@ public struct YieldXyzEnterArguments: Codable {
     self.executionMode = executionMode
     self.ledgerWalletApiCompatible = ledgerWalletApiCompatible
   }
+
+  /// Returns a copy with `amount` replaced. Prefer this over reconstructing all fields manually.
+  public func withAmount(_ amount: String) -> YieldXyzEnterArguments {
+    YieldXyzEnterArguments(
+      amount: amount,
+      validatorAddress: validatorAddress,
+      validatorAddresses: validatorAddresses,
+      providerId: providerId,
+      duration: duration,
+      inputToken: inputToken,
+      subnetId: subnetId,
+      tronResource: tronResource,
+      feeConfigurationId: feeConfigurationId,
+      cosmosPubKey: cosmosPubKey,
+      tezosPubKey: tezosPubKey,
+      cAddressBech: cAddressBech,
+      pAddressBech: pAddressBech,
+      executionMode: executionMode,
+      ledgerWalletApiCompatible: ledgerWalletApiCompatible
+    )
+  }
 }
 
 /// Tron resource types

@@ -81,6 +81,11 @@ struct SettingsView: View {
         set: { Settings.shared.usePresignatures = $0 }
       ))
 
+      Toggle("Use Pre-Generated Wallet", isOn: Binding(
+        get: { Settings.shared.usePreGeneratedWallet },
+        set: { Settings.shared.usePreGeneratedWallet = $0 }
+      ))
+
       Spacer()
     }
     .padding(.horizontal)

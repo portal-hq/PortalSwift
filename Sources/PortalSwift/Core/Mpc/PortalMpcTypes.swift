@@ -1,6 +1,14 @@
 public struct PortalMpcBackupResponse {
   public let cipherText: String
   public let shareIds: [String]
+  /// Operation-scoped trace ID used as MPC `reqId` and on follow-up API calls during backup.
+  public let traceId: String
+
+  public init(cipherText: String, shareIds: [String], traceId: String) {
+    self.cipherText = cipherText
+    self.shareIds = shareIds
+    self.traceId = traceId
+  }
 }
 
 public struct FormatShareResponse: Codable {
@@ -157,6 +165,30 @@ public struct GenerateData: Codable {
 struct GenerateResult: Codable {
   public var data: GenerateData?
   public var error: PortalError
+}
+
+/// The request body for the Enclave MPC API `POST /v1/generate` endpoint.
+struct GenerateApiRequest: Codable {
+  let usePreGenerated: Bool
+  let metadataStr: String
+}
+
+/// A single curve's share returned by the Enclave MPC API `POST /v1/generate` endpoint.
+/// `share` is the base64 (standard alphabet, no padding) of the serialized `MpcShare`.
+public struct GenerateApiCurveShare: Decodable {
+  public let share: String
+  public let id: String
+}
+
+/// The response from the Enclave MPC API `POST /v1/generate` endpoint.
+public struct GenerateApiResponse: Decodable {
+  public let secp256k1: GenerateApiCurveShare
+  public let ed25519: GenerateApiCurveShare
+
+  enum CodingKeys: String, CodingKey {
+    case secp256k1 = "SECP256K1"
+    case ed25519 = "ED25519"
+  }
 }
 
 /// The data for RotateResult.

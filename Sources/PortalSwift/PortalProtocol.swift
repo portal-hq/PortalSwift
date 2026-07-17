@@ -19,6 +19,7 @@ public protocol PortalProtocol {
   var rpcConfig: [String: String] { get set }
   var apiKey: String { get }
   var yield: Yield { get }
+  var ramps: Ramps { get }
   var trading: Trading { get }
   var security: Security { get }
   var delegations: DelegationsProtocol { get }
@@ -108,7 +109,7 @@ public protocol PortalProtocol {
   func broadcastBitcoinP2wpkhTransaction(chainId: String, params: BroadcastParam) async throws -> BroadcastBitcoinP2wpkhTransactionResponse
   func getWalletCapabilities() async throws -> WalletCapabilitiesResponse
   func provisionWallet(cipherText: String, method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?)
-  func rawSign(message: String, chainId: String, signatureApprovalMemo: String?) async throws -> PortalProviderResult
+  func rawSign(message: String, chainId: String, signatureApprovalMemo: String?, traceId: String?) async throws -> PortalProviderResult
   func createPortalConnectInstance(webSocketServer: String) throws -> PortalConnect
   func receiveTestnetAsset(chainId: String, params: FundParams) async throws -> FundResponse
   func sendAsset(chainId: String, params: SendAssetParams) async throws -> SendAssetResponse
@@ -209,7 +210,12 @@ public extension PortalProtocol {
   }
 
   func rawSign(message: String, chainId: String) async throws -> PortalProviderResult {
-    return try await rawSign(message: message, chainId: chainId, signatureApprovalMemo: nil)
+    return try await rawSign(message: message, chainId: chainId, signatureApprovalMemo: nil, traceId: nil)
+  }
+
+  /// Backward-compatible overload preserving the original call shape (without `traceId`).
+  func rawSign(message: String, chainId: String, signatureApprovalMemo: String?) async throws -> PortalProviderResult {
+    return try await rawSign(message: message, chainId: chainId, signatureApprovalMemo: signatureApprovalMemo, traceId: nil)
   }
 
   @available(*, deprecated, message: "Use request(chainId:method:params:options:) instead.")
