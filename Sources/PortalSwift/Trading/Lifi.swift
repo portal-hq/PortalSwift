@@ -300,6 +300,10 @@ public class Lifi: LifiProtocol {
               }
             }
           }
+        } else {
+          // No status payload — log the API-level error (if any) so a persistent failure isn't
+          // surfaced as an opaque pollTimeout with no diagnostic signal, then keep polling.
+          logger.warn("Lifi.pollStatus() - getStatus returned no data, will retry: \(response.error ?? "unknown error")")
         }
       } catch let error as LifiTradeAssetError {
         // Terminal/programmer errors should propagate; transient network errors are retried below.

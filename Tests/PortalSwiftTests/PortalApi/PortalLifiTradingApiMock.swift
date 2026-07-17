@@ -26,6 +26,11 @@ final class PortalLifiTradingApiMock: PortalLifiTradingApiProtocol {
   /// them. Enables testing the transient-error-then-recover branch of the polling loop.
   var getStatusResultSequence: [Swift.Result<LifiStatusResponse, Error>] = []
 
+  /// Optional sequence of `getRouteStep` outcomes consumed in order (one per call). When non-empty
+  /// it takes precedence over `getRouteStepError`/`getRouteStepReturnValue`; when exhausted it falls
+  /// back to them. Enables returning a distinct response per step in multi-step tests.
+  var getRouteStepResultSequence: [Swift.Result<LifiStepTransactionResponse, Error>] = []
+
   // Thread-safe serial queue for synchronizing access to counters and parameters
   private let queue = DispatchQueue(label: "com.portal.PortalLifiTradingApiMock.queue")
 
@@ -114,9 +119,16 @@ final class PortalLifiTradingApiMock: PortalLifiTradingApiProtocol {
   }
 
   func getRouteStep(request: LifiStepTransactionRequest) async throws -> LifiStepTransactionResponse {
-    queue.sync {
+    let queued: Swift.Result<LifiStepTransactionResponse, Error>? = queue.sync {
       _getRouteStepCalls += 1
       _getRouteStepRequestParam = request
+      return getRouteStepResultSequence.isEmpty ? nil : getRouteStepResultSequence.removeFirst()
+    }
+    if let queued {
+      switch queued {
+      case let .success(response): return response
+      case let .failure(error): throw error
+      }
     }
     if let error = getRouteStepError {
       throw error
@@ -149,5 +161,6 @@ final class PortalLifiTradingApiMock: PortalLifiTradingApiProtocol {
     getRouteStepError = nil
 
     getStatusResultSequence = []
+    getRouteStepResultSequence = []
   }
 }

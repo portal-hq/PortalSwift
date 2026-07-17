@@ -156,18 +156,26 @@ extension LifiTradeAssetTests {
     apiMock.getRoutesReturnValue = LifiRoutesResponse.stub(
       data: LifiRoutesData(rawResponse: LifiRoutesRawResponse(routes: [route]))
     )
-    // getRouteStep returns the same stub regardless; both steps share it for simplicity.
-    apiMock.getRouteStepReturnValue = LifiStepTransactionResponse(
-      data: LifiStepTransactionData(rawResponse: step1), error: nil
-    )
+    // Return a DISTINCT response per step (step1 then step2) so per-step transaction parsing and
+    // CAIP-2 chainId resolution are actually exercised rather than reusing step1 for both.
+    apiMock.getRouteStepResultSequence = [
+      Swift.Result<LifiStepTransactionResponse, Error>.success(
+        LifiStepTransactionResponse(data: LifiStepTransactionData(rawResponse: step1), error: nil)
+      ),
+      Swift.Result<LifiStepTransactionResponse, Error>.success(
+        LifiStepTransactionResponse(data: LifiStepTransactionData(rawResponse: step2), error: nil)
+      ),
+    ]
     apiMock.getStatusReturnValue = LifiStatusResponse.stub(
       data: LifiStatusData(rawResponse: LifiStatusRawResponse.stub(status: .done))
     )
 
     var signCount = 0
+    var signedChainIds: [String] = []
     let lifi = makeLifi(
-      signAndSend: { _, _ in
+      signAndSend: { _, chainId in
         signCount += 1
+        signedChainIds.append(chainId)
         return "0xhash\(signCount)"
       },
       waitForConfirmation: { _, _ in .confirmed }
@@ -183,6 +191,8 @@ extension LifiTradeAssetTests {
     // The last getRouteStep request must correspond to step2 (not a reused step1), so the steps
     // are fetched in order. step1/step2 are distinguished by their action.fromChainId.
     XCTAssertEqual(apiMock.getRouteStepRequestParam?.action.fromChainId, "137")
+    // Each step's own chainId is resolved independently (step1 -> 8453, step2 -> 137).
+    XCTAssertEqual(signedChainIds, ["eip155:8453", "eip155:137"])
   }
 
   func test_tradeAsset_emitsProgressStatuses() async throws {
