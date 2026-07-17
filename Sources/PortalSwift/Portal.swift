@@ -50,7 +50,14 @@ public final class Portal: PortalProtocol {
   public lazy var security: Security = .init(api: self.api)
 
   /// Access to delegation-related functionality.
-  public lazy var delegations: DelegationsProtocol = Delegations(api: self.api.delegations)
+  public lazy var delegations: DelegationsProtocol = {
+    let delegations = Delegations(api: self.api.delegations)
+    delegations.setSignAndSendTransaction { [weak self] transaction, chainId in
+      guard let self else { throw DelegationsError.noSignerConfigured }
+      return try await self.signDelegationTransaction(transaction, chainId: chainId)
+    }
+    return delegations
+  }()
 
   /// Access to EVM Account Type functionality (EIP-7702 upgrade, account type status).
   public lazy var evmAccountType: EvmAccountTypeProtocol = EvmAccountType(api: self.api.evmAccountType, portal: self)
@@ -2530,4 +2537,37 @@ public enum PortalSharePairType: String, Codable {
 
 public enum PortalSolError: LocalizedError {
   case failedToGetTransactionHash
+}
+
+// MARK: - Delegations
+
+extension Portal {
+  /// Default signer for high-level delegation submit flows.
+  ///
+  /// Maps a `DelegationTransaction` to the appropriate provider request (EVM `eth_sendTransaction`
+  /// or Solana `sol_signAndSendTransaction`), broadcasts it, and returns the transaction hash.
+  ///
+  /// Returns an empty string when the provider result is not a hash so that the caller
+  /// (`Delegations.executeAndTrack`) can raise `DelegationsError.invalidTransactionHash` with the
+  /// correct transaction index rather than a hardcoded index of 0.
+  private func signDelegationTransaction(_ transaction: DelegationTransaction, chainId: String) async throws -> String {
+    let method: PortalRequestMethod
+    let params: [Any]
+    switch transaction {
+    case let .evm(tx):
+      var dict: [String: String] = ["from": tx.from, "to": tx.to]
+      if let data = tx.data { dict["data"] = data }
+      if let value = tx.value { dict["value"] = value }
+      method = .eth_sendTransaction
+      params = [dict]
+    case let .solana(encoded):
+      method = .sol_signAndSendTransaction
+      params = [encoded]
+    }
+    let result = try await request(chainId: chainId, method: method, params: params, options: nil)
+    // Return an empty string when the provider result is not a hash so that the caller
+    // (`Delegations.executeAndTrack`) can raise `DelegationsError.invalidTransactionHash` with the
+    // correct transaction index rather than a hardcoded index of 0.
+    return result.result as? String ?? ""
+  }
 }
