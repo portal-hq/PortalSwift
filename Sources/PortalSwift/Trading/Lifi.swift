@@ -115,6 +115,9 @@ public class Lifi: LifiProtocol {
 
     do {
       return try await executeTradeAsset(params: params, report: report)
+    } catch is CancellationError {
+      // A cancelled trade is not a failure; propagate without reporting `.failed`.
+      throw CancellationError()
     } catch {
       let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
       report(.failed, LifiTradeAssetProgressData(errorMessage: message))
@@ -122,12 +125,15 @@ public class Lifi: LifiProtocol {
     }
   }
 
-  /// Polls the LiFi status for a transfer until it reaches a terminal state (DONE / FAILED) or times out.
+  /// Polls the LiFi status for a transfer until it reaches DONE (or `onUpdate` returns `false`).
   /// - Parameters:
   ///   - request: The status request describing which transfer to poll.
   ///   - onUpdate: Optional callback invoked on each non-terminal status. Return `false` to stop polling.
   ///   - options: Polling configuration (interval, initial delay, timeout).
-  /// - Returns: The terminal `LifiStatusRawResponse`.
+  /// - Returns: The `LifiStatusRawResponse` for a DONE transfer, or the most recent non-terminal
+  ///   status if `onUpdate` returned `false` to stop polling early.
+  /// - Throws: `LifiTradeAssetError.lifiTransferFailed` if the transfer reaches a FAILED terminal
+  ///   state, or `LifiTradeAssetError.pollTimeout` if the timeout elapses first.
   public func pollStatus(
     request: LifiStatusRequest,
     onUpdate: ((LifiStatusRawResponse) -> Bool)?,
@@ -194,10 +200,13 @@ public class Lifi: LifiProtocol {
       }
       executedSteps.append(rawStep)
 
-      guard let transactionRequest = rawStep.transactionRequest,
-            let txParams = transactionRequest.value as? [String: Any]
-      else {
+      guard let transactionRequest = rawStep.transactionRequest else {
+        // No transaction request at all on the step.
         throw LifiTradeAssetError.missingTransactionRequest
+      }
+      guard let txParams = transactionRequest.value as? [String: Any] else {
+        // Present, but not the expected object shape — malformed rather than missing.
+        throw LifiTradeAssetError.invalidTransactionRequest
       }
 
       let ethTransaction = try parseLifiTransactionRequest(txParams)
@@ -303,9 +312,11 @@ public class Lifi: LifiProtocol {
       }
 
       // Sleep until the next poll, but never past the remaining timeout so the overall deadline
-      // is honored (rather than overshooting by up to one interval). Use `try` (not `try?`) so
-      // task cancellation propagates between polls.
-      let remainingMs = max(0, timeoutMs - elapsedMs)
+      // is honored (rather than overshooting by up to one interval). Recompute elapsed AFTER the
+      // status call so time spent awaiting the network is counted. Use `try` (not `try?`) so task
+      // cancellation propagates between polls.
+      let elapsedAfterStatusMs = Int(Date().timeIntervalSince(startTime) * 1000.0)
+      let remainingMs = max(0, timeoutMs - elapsedAfterStatusMs)
       try await Task.sleep(nanoseconds: Self.sleepNanoseconds(fromMs: min(pollIntervalMs, remainingMs)))
     }
   }
@@ -370,11 +381,10 @@ public class Lifi: LifiProtocol {
         raw = String(intValue)
       } else if let stringValue = chainIdValue as? String {
         raw = stringValue
-      } else if let doubleValue = chainIdValue as? Double,
-                doubleValue.rounded(.towardZero) == doubleValue,
-                doubleValue >= Double(Int.min), doubleValue <= Double(Int.max) {
-        // Only accept an integral, in-range Double; anything else falls back to the step's chain.
-        raw = String(Int(doubleValue))
+      } else if let doubleValue = chainIdValue as? Double, let intValue = Int(exactly: doubleValue) {
+        // `Int(exactly:)` yields nil for non-integral or out-of-range values (including 2^63),
+        // so those cleanly fall back to the step's chain instead of trapping.
+        raw = String(intValue)
       }
     }
     if raw == nil {

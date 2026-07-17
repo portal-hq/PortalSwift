@@ -57,6 +57,57 @@ final class LifiTradeAssetTests: XCTestCase {
       stepPollOptions: fastPollOptions
     )
   }
+
+  /// Builds a step whose transactionRequest carries a raw (non-String) `value` and/or `chainId` so
+  /// the Int/Double parsing and CAIP-2 normalization branches can be exercised. Passing
+  /// `chainId: nil` omits the key entirely (forcing the `action.fromChainId` fallback).
+  private func makeStepWithRawTransaction(
+    value: Any = "0x0",
+    chainId: Any? = "8453",
+    fromChainId: String = "8453",
+    toChainId: String = "137",
+    from: String = "0x1234567890abcdef1234567890abcdef12345678",
+    to: String = "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
+    data: String = "0xdeadbeef",
+    tool: String = "relay"
+  ) -> LifiStep {
+    var dict: [String: Any] = ["from": from, "to": to, "value": value, "data": data]
+    if let chainId {
+      dict["chainId"] = chainId
+    }
+    let action = LifiAction.stub(fromChainId: fromChainId, toChainId: toChainId)
+    return LifiStep.stub(tool: tool, action: action, transactionRequest: AnyCodable(dict))
+  }
+
+  /// Runs a single-step, single-route `tradeAsset` where `getRouteStep` returns `step`, capturing
+  /// the `ETHTransactionParam` and CAIP-2 chainId passed to the signer. Resets the api mock first.
+  private func runTradeAsset(
+    returningStep step: LifiStep
+  ) async throws -> (transaction: ETHTransactionParam?, chainId: String) {
+    apiMock.reset()
+    let route = LifiRoute.stub(steps: [step])
+    apiMock.getRoutesReturnValue = LifiRoutesResponse.stub(
+      data: LifiRoutesData(rawResponse: LifiRoutesRawResponse(routes: [route]))
+    )
+    apiMock.getRouteStepReturnValue = LifiStepTransactionResponse(
+      data: LifiStepTransactionData(rawResponse: step), error: nil
+    )
+    apiMock.getStatusReturnValue = LifiStatusResponse.stub(
+      data: LifiStatusData(rawResponse: LifiStatusRawResponse.stub(status: .done))
+    )
+    var capturedTx: ETHTransactionParam?
+    var capturedChainId = ""
+    let lifi = makeLifi(
+      signAndSend: { tx, chainId in
+        capturedTx = tx
+        capturedChainId = chainId
+        return "0xhash1"
+      },
+      waitForConfirmation: { _, _ in .confirmed }
+    )
+    _ = try await lifi.tradeAsset(params: LifiTradeAssetParams.stub())
+    return (capturedTx, capturedChainId)
+  }
 }
 
 // MARK: - tradeAsset success
@@ -342,6 +393,124 @@ extension LifiTradeAssetTests {
   }
 }
 
+// MARK: - transaction value parsing
+
+extension LifiTradeAssetTests {
+  func test_tradeAsset_parsesIntValue_usesLlxFormatWithoutTruncation() async throws {
+    // A wei amount larger than UInt32.max would be truncated by %x; %llx must be used.
+    let bigWei = 12_345_678_901_234
+    let result = try await runTradeAsset(returningStep: makeStepWithRawTransaction(value: bigWei))
+    XCTAssertEqual(result.transaction?.value, String(format: "0x%llx", UInt64(bigWei)))
+  }
+
+  func test_tradeAsset_parsesIntegralDoubleValue() async throws {
+    let result = try await runTradeAsset(returningStep: makeStepWithRawTransaction(value: 1_000_000.0))
+    XCTAssertEqual(result.transaction?.value, "0xf4240") // 1_000_000
+  }
+
+  func test_tradeAsset_rejectsFractionalDoubleValue_throwsInvalidTransactionRequest() async {
+    do {
+      _ = try await runTradeAsset(returningStep: makeStepWithRawTransaction(value: 1.5))
+      XCTFail("Expected error to be thrown")
+    } catch {
+      XCTAssertEqual(error as? LifiTradeAssetError, .invalidTransactionRequest)
+    }
+  }
+
+  func test_tradeAsset_rejectsUnsafeIntegerDoubleValue_throwsInvalidTransactionRequest() async {
+    // Beyond 2^53 a Double can't represent every integer, so it must be rejected.
+    let unsafe = Double(UInt64(1) << 60)
+    do {
+      _ = try await runTradeAsset(returningStep: makeStepWithRawTransaction(value: unsafe))
+      XCTFail("Expected error to be thrown")
+    } catch {
+      XCTAssertEqual(error as? LifiTradeAssetError, .invalidTransactionRequest)
+    }
+  }
+}
+
+// MARK: - CAIP-2 normalization
+
+extension LifiTradeAssetTests {
+  func test_tradeAsset_caip2Normalization_variants() async throws {
+    // decimal string
+    var r = try await runTradeAsset(returningStep: makeStepWithRawTransaction(chainId: "8453"))
+    XCTAssertEqual(r.chainId, "eip155:8453")
+    // hex string
+    r = try await runTradeAsset(returningStep: makeStepWithRawTransaction(chainId: "0x2105"))
+    XCTAssertEqual(r.chainId, "eip155:8453")
+    // already-prefixed eip155 (no double prefix)
+    r = try await runTradeAsset(returningStep: makeStepWithRawTransaction(chainId: "eip155:8453"))
+    XCTAssertEqual(r.chainId, "eip155:8453")
+    // Int
+    r = try await runTradeAsset(returningStep: makeStepWithRawTransaction(chainId: 8453))
+    XCTAssertEqual(r.chainId, "eip155:8453")
+    // integral Double
+    r = try await runTradeAsset(returningStep: makeStepWithRawTransaction(chainId: 8453.0))
+    XCTAssertEqual(r.chainId, "eip155:8453")
+    // missing chainId -> falls back to action.fromChainId
+    r = try await runTradeAsset(returningStep: makeStepWithRawTransaction(chainId: nil, fromChainId: "42161"))
+    XCTAssertEqual(r.chainId, "eip155:42161")
+  }
+}
+
+// MARK: - tradeAsset error cases
+
+extension LifiTradeAssetTests {
+  func test_tradeAsset_routeHasNoSteps_throws() async {
+    apiMock.getRoutesReturnValue = LifiRoutesResponse.stub(
+      data: LifiRoutesData(rawResponse: LifiRoutesRawResponse(routes: [LifiRoute.stub(steps: [])]))
+    )
+    let lifi = makeLifi(signAndSend: { _, _ in "0xhash" }, waitForConfirmation: { _, _ in .confirmed })
+
+    do {
+      _ = try await lifi.tradeAsset(params: LifiTradeAssetParams.stub())
+      XCTFail("Expected error to be thrown")
+    } catch {
+      XCTAssertEqual(error as? LifiTradeAssetError, .routeHasNoSteps)
+    }
+  }
+
+  func test_tradeAsset_missingTransactionRequest_throws() async {
+    let route = LifiRoute.stub(steps: [makeStepWithTransactionRequest()])
+    apiMock.getRoutesReturnValue = LifiRoutesResponse.stub(
+      data: LifiRoutesData(rawResponse: LifiRoutesRawResponse(routes: [route]))
+    )
+    // getRouteStep returns a step with no transactionRequest at all.
+    apiMock.getRouteStepReturnValue = LifiStepTransactionResponse(
+      data: LifiStepTransactionData(rawResponse: LifiStep.stub(transactionRequest: nil)), error: nil
+    )
+    let lifi = makeLifi(signAndSend: { _, _ in "0xhash" }, waitForConfirmation: { _, _ in .confirmed })
+
+    do {
+      _ = try await lifi.tradeAsset(params: LifiTradeAssetParams.stub())
+      XCTFail("Expected error to be thrown")
+    } catch {
+      XCTAssertEqual(error as? LifiTradeAssetError, .missingTransactionRequest)
+    }
+  }
+
+  func test_tradeAsset_invalidTransactionRequest_throws() async {
+    let route = LifiRoute.stub(steps: [makeStepWithTransactionRequest()])
+    apiMock.getRoutesReturnValue = LifiRoutesResponse.stub(
+      data: LifiRoutesData(rawResponse: LifiRoutesRawResponse(routes: [route]))
+    )
+    // transactionRequest present but not an object — malformed, not missing.
+    apiMock.getRouteStepReturnValue = LifiStepTransactionResponse(
+      data: LifiStepTransactionData(rawResponse: LifiStep.stub(transactionRequest: AnyCodable("not-an-object"))),
+      error: nil
+    )
+    let lifi = makeLifi(signAndSend: { _, _ in "0xhash" }, waitForConfirmation: { _, _ in .confirmed })
+
+    do {
+      _ = try await lifi.tradeAsset(params: LifiTradeAssetParams.stub())
+      XCTFail("Expected error to be thrown")
+    } catch {
+      XCTAssertEqual(error as? LifiTradeAssetError, .invalidTransactionRequest)
+    }
+  }
+}
+
 // MARK: - pollStatus
 
 extension LifiTradeAssetTests {
@@ -410,6 +579,50 @@ extension LifiTradeAssetTests {
       XCTFail("Expected error to be thrown")
     } catch {
       XCTAssertEqual(error as? LifiTradeAssetError, .pollTimeout)
+    }
+  }
+
+  func test_pollStatus_transientErrorThenRecovers_returnsTerminal() async throws {
+    // given a transient network error on the first poll, then a DONE status
+    struct TransientError: Error {}
+    apiMock.getStatusResultSequence = [
+      Swift.Result<LifiStatusResponse, Error>.failure(TransientError()),
+      Swift.Result<LifiStatusResponse, Error>.success(LifiStatusResponse.stub(
+        data: LifiStatusData(rawResponse: LifiStatusRawResponse.stub(status: .done))
+      )),
+    ]
+    let lifi = Lifi(api: apiMock)
+
+    // when
+    let terminal = try await lifi.pollStatus(request: LifiStatusRequest.stub(), options: fastPollOptions)
+
+    // then - the transient error was retried, not surfaced
+    XCTAssertEqual(terminal.status, .done)
+    XCTAssertEqual(apiMock.getStatusCalls, 2)
+  }
+
+  func test_pollStatus_cancellation_throwsCancellationError() async {
+    // given a status that never resolves and a long poll interval so the task parks in sleep
+    apiMock.getStatusReturnValue = LifiStatusResponse.stub(
+      data: LifiStatusData(rawResponse: LifiStatusRawResponse.stub(status: .pending))
+    )
+    let lifi = Lifi(api: apiMock)
+    let options = LifiPollStatusOptions(everyMs: 10_000, initialDelayMs: 0, timeoutMs: 600_000)
+
+    let task = Task { () -> LifiStatusRawResponse in
+      try await lifi.pollStatus(request: LifiStatusRequest.stub(), options: options)
+    }
+
+    // let it enter the polling loop, then cancel
+    try? await Task.sleep(nanoseconds: 150_000_000) // 150ms
+    task.cancel()
+
+    // then
+    do {
+      _ = try await task.value
+      XCTFail("Expected cancellation to propagate")
+    } catch {
+      XCTAssertTrue(error is CancellationError, "Expected CancellationError, got \(error)")
     }
   }
 }
