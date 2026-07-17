@@ -144,7 +144,8 @@ public class Lifi: LifiProtocol {
       toChainId: params.toChain,
       toTokenAddress: params.toToken,
       fromAddress: params.fromAddress,
-      toAddress: params.toAddress
+      // Honor the documented behavior: when no recipient is provided, fall back to the sender.
+      toAddress: params.toAddress ?? params.fromAddress
     )
 
     let routesResponse = try await api.getRoutes(request: routesRequest)
@@ -194,9 +195,14 @@ public class Lifi: LifiProtocol {
       report(.submitted, LifiTradeAssetProgressData(routeIndex: routeIndex, stepIndex: stepIndex, totalSteps: totalSteps, route: route, step: rawStep, txHash: txHash))
       report(.confirming, LifiTradeAssetProgressData(routeIndex: routeIndex, stepIndex: stepIndex, totalSteps: totalSteps, route: route, step: rawStep, txHash: txHash))
 
-      let confirmed = await waitForConfirmation(txHash, network)
-      guard confirmed else {
+      let confirmation = try await waitForConfirmation(txHash, network)
+      switch confirmation {
+      case .confirmed:
+        break
+      case .reverted:
         throw LifiTradeAssetError.transactionConfirmationFailed(txHash)
+      case .timedOut:
+        throw LifiTradeAssetError.transactionConfirmationTimedOut(txHash)
       }
 
       report(.lifiPending, LifiTradeAssetProgressData(routeIndex: routeIndex, stepIndex: stepIndex, totalSteps: totalSteps, route: route, step: rawStep, txHash: txHash))
@@ -233,10 +239,13 @@ public class Lifi: LifiProtocol {
     let startTime = Date()
 
     if options.initialDelayMs > 0 {
-      try? await Task.sleep(nanoseconds: UInt64(options.initialDelayMs) * 1_000_000)
+      // Use `try` (not `try?`) so task cancellation propagates during the initial delay.
+      try await Task.sleep(nanoseconds: UInt64(options.initialDelayMs) * 1_000_000)
     }
 
     while true {
+      try Task.checkCancellation()
+
       if Date().timeIntervalSince(startTime) > Double(options.timeoutMs) / 1000.0 {
         throw LifiTradeAssetError.pollTimeout
       }
@@ -262,11 +271,15 @@ public class Lifi: LifiProtocol {
       } catch let error as LifiTradeAssetError {
         // Terminal/programmer errors should propagate; transient network errors are retried below.
         throw error
+      } catch is CancellationError {
+        // Cancellation must stop polling immediately rather than being treated as transient.
+        throw CancellationError()
       } catch {
         logger.warn("Lifi.pollStatus() - transient error, will retry: \(error.localizedDescription)")
       }
 
-      try? await Task.sleep(nanoseconds: UInt64(options.everyMs) * 1_000_000)
+      // Use `try` (not `try?`) so task cancellation propagates between polls.
+      try await Task.sleep(nanoseconds: UInt64(options.everyMs) * 1_000_000)
     }
   }
 
@@ -281,8 +294,12 @@ public class Lifi: LifiProtocol {
     var value = "0x0"
     if let valueString = txParams["value"] as? String {
       value = valueString
-    } else if let valueInt = txParams["value"] as? Int {
-      value = String(format: "0x%x", valueInt)
+    } else if let valueInt = txParams["value"] as? Int, valueInt >= 0 {
+      // Use %llx (64-bit) so large wei amounts are not truncated like %x (32-bit) would.
+      value = String(format: "0x%llx", UInt64(valueInt))
+    } else if let valueDouble = txParams["value"] as? Double, valueDouble >= 0, valueDouble <= Double(UInt64.max) {
+      // Some decoders surface JSON numbers as Double; handle native-token `value` amounts too.
+      value = String(format: "0x%llx", UInt64(valueDouble))
     }
 
     let data = txParams["data"] as? String ?? "0x"

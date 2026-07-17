@@ -50,8 +50,8 @@ public final class Portal: PortalProtocol {
       return try await self.signAndSendTransaction(transaction, chainId: chainId)
     },
     waitForConfirmation: { [weak self] txHash, chainId in
-      guard let self else { return false }
-      return await self.waitForTransactionConfirmation(txHash: txHash, chainId: chainId)
+      guard let self else { return .timedOut }
+      return try await self.waitForTransactionConfirmation(txHash: txHash, chainId: chainId)
     }
   )
 
@@ -1016,30 +1016,40 @@ public final class Portal: PortalProtocol {
   ///   - chainId: A CAIP-2 Blockchain ID associated with the transaction.
   ///   - maxAttempts: The maximum number of polling attempts (default: 30).
   ///   - waitingInSeconds: The delay between attempts, in seconds (default: 2).
-  /// - Returns: `true` if the transaction was confirmed successfully, `false` on revert or timeout.
+  /// - Returns: `.confirmed` on success, `.reverted` if the transaction was mined but reverted, or
+  ///   `.timedOut` if no definitive receipt was obtained within `maxAttempts` (still pending or the
+  ///   node was unreachable).
+  /// - Throws: `CancellationError` if the surrounding task is cancelled, so callers can stop promptly.
   private func waitForTransactionConfirmation(
     txHash: String,
     chainId: String,
     maxAttempts: Int = 30,
     waitingInSeconds: Int = 2
-  ) async -> Bool {
+  ) async throws -> LifiConfirmationResult {
     for _ in 0 ..< maxAttempts {
-      do {
-        let waitingTimeInNanoSeconds = UInt64(waitingInSeconds) * 1_000_000_000
-        try await Task.sleep(nanoseconds: waitingTimeInNanoSeconds)
+      try Task.checkCancellation()
 
+      // Kept outside the do/catch below so cancellation propagates instead of being retried.
+      let waitingTimeInNanoSeconds = UInt64(waitingInSeconds) * 1_000_000_000
+      try await Task.sleep(nanoseconds: waitingTimeInNanoSeconds)
+
+      do {
         let response = try await self.request(chainId: chainId, method: .eth_getTransactionReceipt, params: [txHash])
         if let innerResponse = response.result as? EthTransactionResponse,
            let status = innerResponse.result?.status
         {
-          return status == "0x1"
+          return status == "0x1" ? .confirmed : .reverted
         }
+        // No receipt yet; keep polling until mined.
+      } catch is CancellationError {
+        throw CancellationError()
       } catch {
+        // Transient RPC failure: log and retry rather than reporting a false revert.
         PortalLogger.shared.error("Portal.waitForTransactionConfirmation() - Error checking receipt: \(error.localizedDescription)")
       }
     }
 
-    return false
+    return .timedOut
   }
 
   public func getRpcUrl(forChainId: String) async -> String? {

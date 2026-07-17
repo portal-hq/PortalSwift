@@ -82,7 +82,7 @@ extension LifiTradeAssetTests {
         signedChainIds.append(chainId)
         return "0xhash1"
       },
-      waitForConfirmation: { _, _ in true }
+      waitForConfirmation: { _, _ in .confirmed }
     )
 
     // when
@@ -119,7 +119,7 @@ extension LifiTradeAssetTests {
         signCount += 1
         return "0xhash\(signCount)"
       },
-      waitForConfirmation: { _, _ in true }
+      waitForConfirmation: { _, _ in .confirmed }
     )
 
     // when
@@ -152,7 +152,7 @@ extension LifiTradeAssetTests {
 
     let lifi = makeLifi(
       signAndSend: { _, _ in "0xhash1" },
-      waitForConfirmation: { _, _ in true }
+      waitForConfirmation: { _, _ in .confirmed }
     )
 
     // when
@@ -211,7 +211,7 @@ extension LifiTradeAssetTests {
     )
     let lifi = makeLifi(
       signAndSend: { _, _ in "0xhash" },
-      waitForConfirmation: { _, _ in true }
+      waitForConfirmation: { _, _ in .confirmed }
     )
 
     // when / then
@@ -241,7 +241,7 @@ extension LifiTradeAssetTests {
 
     let lifi = makeLifi(
       signAndSend: { _, _ in "0xhash1" },
-      waitForConfirmation: { _, _ in false }
+      waitForConfirmation: { _, _ in .reverted }
     )
 
     // when / then
@@ -274,7 +274,7 @@ extension LifiTradeAssetTests {
 
     let lifi = makeLifi(
       signAndSend: { _, _ in "0xhash1" },
-      waitForConfirmation: { _, _ in true }
+      waitForConfirmation: { _, _ in .confirmed }
     )
 
     // when / then
@@ -295,7 +295,7 @@ extension LifiTradeAssetTests {
     )
     let lifi = makeLifi(
       signAndSend: { _, _ in "0xhash1" },
-      waitForConfirmation: { _, _ in true }
+      waitForConfirmation: { _, _ in .confirmed }
     )
 
     // when / then

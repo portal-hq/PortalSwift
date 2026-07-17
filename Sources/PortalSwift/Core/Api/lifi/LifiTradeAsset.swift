@@ -14,8 +14,20 @@ public typealias LifiProgressHandler = (_ status: LifiTradeAssetProgressStatus, 
 /// Closure that signs and submits an EVM transaction, returning the transaction hash.
 public typealias LifiSignAndSendTransaction = (_ transaction: ETHTransactionParam, _ chainId: String) async throws -> String
 
-/// Closure that waits for an on-chain transaction confirmation. Returns `true` on success.
-public typealias LifiWaitForConfirmation = (_ txHash: String, _ chainId: String) async -> Bool
+/// The outcome of waiting for an on-chain transaction confirmation.
+public enum LifiConfirmationResult: Equatable {
+  /// The transaction was mined and reported a success status.
+  case confirmed
+  /// The transaction was mined but reverted (receipt status != 0x1).
+  case reverted
+  /// Confirmation could not be determined within the allotted attempts (still pending or the node
+  /// was unreachable). This is distinct from a definitive on-chain revert.
+  case timedOut
+}
+
+/// Closure that waits for an on-chain transaction confirmation.
+/// Throws `CancellationError` if the surrounding task is cancelled so polling can stop promptly.
+public typealias LifiWaitForConfirmation = (_ txHash: String, _ chainId: String) async throws -> LifiConfirmationResult
 
 /// Parameters for the high-level `tradeAsset` bridging method.
 
@@ -183,8 +195,11 @@ public enum LifiTradeAssetError: Error, LocalizedError, Equatable {
   case missingTransactionRequest
   /// The step's transaction request was missing required fields.
   case invalidTransactionRequest
-  /// On-chain confirmation failed or reverted for the given transaction hash.
+  /// The transaction was mined but reverted on-chain for the given transaction hash.
   case transactionConfirmationFailed(String)
+  /// On-chain confirmation could not be determined before timing out (transaction may still be
+  /// pending, or the node was unreachable). Distinct from a definitive revert.
+  case transactionConfirmationTimedOut(String)
   /// The LiFi transfer reached a FAILED terminal state.
   case lifiTransferFailed(String)
   /// Polling exceeded the configured timeout.
@@ -207,7 +222,9 @@ public enum LifiTradeAssetError: Error, LocalizedError, Equatable {
     case .invalidTransactionRequest:
       return "The route step's transaction request was missing required fields."
     case let .transactionConfirmationFailed(txHash):
-      return "On-chain confirmation failed for transaction: \(txHash)."
+      return "Transaction reverted on-chain: \(txHash)."
+    case let .transactionConfirmationTimedOut(txHash):
+      return "Timed out waiting for on-chain confirmation of transaction: \(txHash). It may still be pending."
     case let .lifiTransferFailed(detail):
       return "LiFi transfer FAILED: \(detail)."
     case .pollTimeout:
