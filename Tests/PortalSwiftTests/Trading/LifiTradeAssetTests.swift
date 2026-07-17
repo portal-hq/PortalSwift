@@ -395,4 +395,21 @@ extension LifiTradeAssetTests {
     // then
     XCTAssertEqual(result.status, .pending)
   }
+
+  func test_pollStatus_timesOut_throwsPollTimeout() async {
+    // given a status that never reaches a terminal state and a tiny timeout
+    apiMock.getStatusReturnValue = LifiStatusResponse.stub(
+      data: LifiStatusData(rawResponse: LifiStatusRawResponse.stub(status: .pending))
+    )
+    let lifi = Lifi(api: apiMock)
+    let options = LifiPollStatusOptions(everyMs: 1, initialDelayMs: 0, timeoutMs: 1)
+
+    // when / then
+    do {
+      _ = try await lifi.pollStatus(request: LifiStatusRequest.stub(), options: options)
+      XCTFail("Expected error to be thrown")
+    } catch {
+      XCTAssertEqual(error as? LifiTradeAssetError, .pollTimeout)
+    }
+  }
 }

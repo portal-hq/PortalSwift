@@ -104,8 +104,18 @@ final class LifiMock: LifiProtocol {
       throw error
     }
     let result = pollStatusReturnValue ?? LifiStatusRawResponse.stub()
-    _ = onUpdate?(result)
-    return result
+    // Mirror the real Lifi.pollStatus contract: only invoke onUpdate for non-terminal statuses,
+    // and throw on a FAILED terminal state instead of returning it.
+    switch result.status {
+    case .done:
+      return result
+    case .failed:
+      let detail = result.substatusMessage ?? result.substatus?.rawValue ?? "LiFi transfer FAILED"
+      throw LifiTradeAssetError.lifiTransferFailed(detail)
+    default:
+      _ = onUpdate?(result)
+      return result
+    }
   }
 
   // MARK: - Helper Methods

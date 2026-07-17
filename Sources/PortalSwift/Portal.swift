@@ -1040,8 +1040,10 @@ public final class Portal: PortalProtocol {
     maxAttempts: Int = 30,
     waitingInSeconds: Int = 2
   ) async throws -> LifiConfirmationResult {
-    // Clamp to a non-negative delay so the UInt64 conversion below can never trap.
-    let waitingTimeInNanoSeconds = UInt64(max(0, waitingInSeconds)) * 1_000_000_000
+    // Clamp so the nanosecond conversion is non-negative and can't overflow UInt64 for a very
+    // large `waitingInSeconds`.
+    let maxWaitingSeconds = Int(UInt64.max / 1_000_000_000)
+    let waitingTimeInNanoSeconds = UInt64(min(max(0, waitingInSeconds), maxWaitingSeconds)) * 1_000_000_000
 
     for attempt in 0 ..< maxAttempts {
       try Task.checkCancellation()
