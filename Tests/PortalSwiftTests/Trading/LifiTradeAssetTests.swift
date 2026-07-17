@@ -129,6 +129,9 @@ extension LifiTradeAssetTests {
     XCTAssertEqual(result.hashes, ["0xhash1", "0xhash2"])
     XCTAssertEqual(result.steps.count, 2)
     XCTAssertEqual(apiMock.getRouteStepCalls, 2)
+    // The last getRouteStep request must correspond to step2 (not a reused step1), so the steps
+    // are fetched in order. step1/step2 are distinguished by their action.fromChainId.
+    XCTAssertEqual(apiMock.getRouteStepRequestParam?.action.fromChainId, "137")
   }
 
   func test_tradeAsset_emitsProgressStatuses() async throws {

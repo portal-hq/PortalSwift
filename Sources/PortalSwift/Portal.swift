@@ -53,7 +53,9 @@ public final class Portal: PortalProtocol {
       return try await self.signAndSendTransaction(transaction, chainId: chainId)
     },
     waitForConfirmation: { [weak self] txHash, chainId in
-      guard let self else { return .timedOut }
+      guard let self else {
+        throw PortalClassError.clientNotAvailable
+      }
       return try await self.waitForTransactionConfirmation(txHash: txHash, chainId: chainId)
     }
   )
@@ -1038,12 +1040,17 @@ public final class Portal: PortalProtocol {
     maxAttempts: Int = 30,
     waitingInSeconds: Int = 2
   ) async throws -> LifiConfirmationResult {
-    for _ in 0 ..< maxAttempts {
+    // Clamp to a non-negative delay so the UInt64 conversion below can never trap.
+    let waitingTimeInNanoSeconds = UInt64(max(0, waitingInSeconds)) * 1_000_000_000
+
+    for attempt in 0 ..< maxAttempts {
       try Task.checkCancellation()
 
-      // Kept outside the do/catch below so cancellation propagates instead of being retried.
-      let waitingTimeInNanoSeconds = UInt64(waitingInSeconds) * 1_000_000_000
-      try await Task.sleep(nanoseconds: waitingTimeInNanoSeconds)
+      // Sleep only between attempts, not before the first check — the receipt may already be
+      // available. Kept outside the do/catch below so cancellation propagates instead of retrying.
+      if attempt > 0 {
+        try await Task.sleep(nanoseconds: waitingTimeInNanoSeconds)
+      }
 
       do {
         let response = try await self.request(chainId: chainId, method: .eth_getTransactionReceipt, params: [txHash])

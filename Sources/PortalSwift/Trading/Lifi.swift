@@ -43,6 +43,9 @@ public extension LifiProtocol {
 
 /// Lifi provider implementation for trading functionality.
 public class Lifi: LifiProtocol {
+  /// The smallest interval, in milliseconds, allowed between status polls (guards against busy-waiting).
+  private static let minPollIntervalMs = 100
+
   private let api: PortalLifiTradingApiProtocol
   private let signAndSendTransaction: LifiSignAndSendTransaction?
   private let waitForConfirmation: LifiWaitForConfirmation?
@@ -238,9 +241,14 @@ public class Lifi: LifiProtocol {
   ) async throws -> LifiStatusRawResponse {
     let startTime = Date()
 
-    if options.initialDelayMs > 0 {
+    // Clamp interval/delay so the UInt64 conversions below can't trap on negatives and a
+    // zero/negative `everyMs` can't turn the loop into a busy-wait.
+    let initialDelayMs = max(0, options.initialDelayMs)
+    let pollIntervalMs = max(Self.minPollIntervalMs, options.everyMs)
+
+    if initialDelayMs > 0 {
       // Use `try` (not `try?`) so task cancellation propagates during the initial delay.
-      try await Task.sleep(nanoseconds: UInt64(options.initialDelayMs) * 1_000_000)
+      try await Task.sleep(nanoseconds: UInt64(initialDelayMs) * 1_000_000)
     }
 
     while true {
@@ -279,7 +287,7 @@ public class Lifi: LifiProtocol {
       }
 
       // Use `try` (not `try?`) so task cancellation propagates between polls.
-      try await Task.sleep(nanoseconds: UInt64(options.everyMs) * 1_000_000)
+      try await Task.sleep(nanoseconds: UInt64(pollIntervalMs) * 1_000_000)
     }
   }
 
