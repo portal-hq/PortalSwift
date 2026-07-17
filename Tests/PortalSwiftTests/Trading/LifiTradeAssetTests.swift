@@ -459,6 +459,41 @@ extension LifiTradeAssetTests {
   }
 }
 
+// MARK: - JSON-decoded transactionRequest (production decode path)
+
+extension LifiTradeAssetTests {
+  func test_tradeAsset_decodesTransactionRequestFromJSON_parsesCorrectly() async throws {
+    // Production decodes `transactionRequest` from the API JSON via AnyCodable, not from a native
+    // Swift dict. Decode it exactly that way here to prove `transactionRequest.value as? [String:
+    // Any]` holds (Flight-School AnyCodable unwraps nested objects to [String: Any]) and that the
+    // value/chainId are parsed from the decoded payload.
+    let json = """
+    {
+      "from": "0x1234567890abcdef1234567890abcdef12345678",
+      "to": "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
+      "value": "0x16345785d8a0000",
+      "data": "0xdeadbeef",
+      "chainId": 8453
+    }
+    """.data(using: .utf8)!
+    let decoded = try JSONDecoder().decode(AnyCodable.self, from: json)
+    // Sanity: the decoded object is [String: Any], so the cast in parseLifiTransactionRequest works.
+    XCTAssertNotNil(decoded.value as? [String: Any])
+
+    let step = LifiStep.stub(
+      action: LifiAction.stub(fromChainId: "8453", toChainId: "137"),
+      transactionRequest: decoded
+    )
+    let result = try await runTradeAsset(returningStep: step)
+
+    XCTAssertEqual(result.transaction?.value, "0x16345785d8a0000")
+    XCTAssertEqual(result.transaction?.to, "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd")
+    XCTAssertEqual(result.transaction?.from, "0x1234567890abcdef1234567890abcdef12345678")
+    // chainId arrives as a JSON number (Int) and normalizes to CAIP-2.
+    XCTAssertEqual(result.chainId, "eip155:8453")
+  }
+}
+
 // MARK: - CAIP-2 normalization
 
 extension LifiTradeAssetTests {
