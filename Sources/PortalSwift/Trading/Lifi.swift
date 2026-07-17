@@ -49,6 +49,10 @@ public class Lifi: LifiProtocol {
   /// The largest millisecond value that can be converted to nanoseconds without overflowing `UInt64`.
   private static let maxSleepMs = Int(UInt64.max / 1_000_000)
 
+  /// The largest integer a `Double` can represent exactly (2^53); beyond this, integer values can
+  /// be silently rounded, so a numeric `value` above it must be provided as a string instead.
+  private static let maxSafeIntegerDouble = Double(9_007_199_254_740_992)
+
   /// Converts a millisecond duration into nanoseconds for `Task.sleep`, clamping to a non-negative
   /// value that can't overflow `UInt64` when multiplied by 1_000_000.
   private static func sleepNanoseconds(fromMs ms: Int) -> UInt64 {
@@ -250,10 +254,12 @@ public class Lifi: LifiProtocol {
   ) async throws -> LifiStatusRawResponse {
     let startTime = Date()
 
-    // Clamp interval/delay so the UInt64 conversions below can't trap on negatives and a
-    // zero/negative `everyMs` can't turn the loop into a busy-wait.
+    // Clamp interval/delay/timeout so the UInt64 conversions below can't trap on negatives, a
+    // zero/negative `everyMs` can't turn the loop into a busy-wait, and a negative `timeoutMs`
+    // can't force an instant timeout.
     let initialDelayMs = max(0, options.initialDelayMs)
     let pollIntervalMs = max(Self.minPollIntervalMs, options.everyMs)
+    let timeoutMs = max(0, options.timeoutMs)
 
     if initialDelayMs > 0 {
       // Use `try` (not `try?`) so task cancellation propagates during the initial delay.
@@ -263,7 +269,8 @@ public class Lifi: LifiProtocol {
     while true {
       try Task.checkCancellation()
 
-      if Date().timeIntervalSince(startTime) > Double(options.timeoutMs) / 1000.0 {
+      let elapsedMs = Int(Date().timeIntervalSince(startTime) * 1000.0)
+      if elapsedMs > timeoutMs {
         throw LifiTradeAssetError.pollTimeout
       }
 
@@ -295,8 +302,11 @@ public class Lifi: LifiProtocol {
         logger.warn("Lifi.pollStatus() - transient error, will retry: \(error.localizedDescription)")
       }
 
-      // Use `try` (not `try?`) so task cancellation propagates between polls.
-      try await Task.sleep(nanoseconds: Self.sleepNanoseconds(fromMs: pollIntervalMs))
+      // Sleep until the next poll, but never past the remaining timeout so the overall deadline
+      // is honored (rather than overshooting by up to one interval). Use `try` (not `try?`) so
+      // task cancellation propagates between polls.
+      let remainingMs = max(0, timeoutMs - elapsedMs)
+      try await Task.sleep(nanoseconds: Self.sleepNanoseconds(fromMs: min(pollIntervalMs, remainingMs)))
     }
   }
 
@@ -316,9 +326,11 @@ public class Lifi: LifiProtocol {
       value = String(format: "0x%llx", UInt64(valueInt))
     } else if let valueDouble = txParams["value"] as? Double {
       // Some decoders surface JSON numbers as Double. EVM `value` is an integer wei amount, so
-      // reject fractional/out-of-range values rather than silently truncating to a wrong amount.
+      // reject fractional values and anything outside the IEEE-754 safe-integer range (±2^53) —
+      // beyond that a Double can't represent every integer, so converting could silently sign a
+      // different amount. Such values must be provided as a string instead.
       guard valueDouble >= 0,
-            valueDouble <= Double(UInt64.max),
+            valueDouble <= Self.maxSafeIntegerDouble,
             valueDouble.rounded(.towardZero) == valueDouble
       else {
         throw LifiTradeAssetError.invalidTransactionRequest
