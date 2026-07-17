@@ -437,6 +437,26 @@ extension LifiTradeAssetTests {
       XCTAssertEqual(error as? LifiTradeAssetError, .invalidTransactionRequest)
     }
   }
+
+  func test_tradeAsset_rejectsNegativeIntValue_throwsInvalidTransactionRequest() async {
+    // A negative Int value must fail fast rather than silently signing 0x0.
+    do {
+      _ = try await runTradeAsset(returningStep: makeStepWithRawTransaction(value: -1))
+      XCTFail("Expected error to be thrown")
+    } catch {
+      XCTAssertEqual(error as? LifiTradeAssetError, .invalidTransactionRequest)
+    }
+  }
+
+  func test_tradeAsset_rejectsUnexpectedValueType_throwsInvalidTransactionRequest() async {
+    // A value present but of an unexpected type (e.g. Bool) must fail fast, not default to 0x0.
+    do {
+      _ = try await runTradeAsset(returningStep: makeStepWithRawTransaction(value: true))
+      XCTFail("Expected error to be thrown")
+    } catch {
+      XCTAssertEqual(error as? LifiTradeAssetError, .invalidTransactionRequest)
+    }
+  }
 }
 
 // MARK: - CAIP-2 normalization
@@ -460,6 +480,17 @@ extension LifiTradeAssetTests {
     XCTAssertEqual(r.chainId, "eip155:8453")
     // missing chainId -> falls back to action.fromChainId
     r = try await runTradeAsset(returningStep: makeStepWithRawTransaction(chainId: nil, fromChainId: "42161"))
+    XCTAssertEqual(r.chainId, "eip155:42161")
+  }
+
+  func test_tradeAsset_caip2Normalization_rejectsNonPositiveChainId_fallsBack() async throws {
+    // Negative / zero numeric chainIds must not become invalid ids like "eip155:-1"; they fall
+    // back to the step's action.fromChainId instead.
+    var r = try await runTradeAsset(returningStep: makeStepWithRawTransaction(chainId: -1, fromChainId: "42161"))
+    XCTAssertEqual(r.chainId, "eip155:42161")
+    r = try await runTradeAsset(returningStep: makeStepWithRawTransaction(chainId: -1.0, fromChainId: "42161"))
+    XCTAssertEqual(r.chainId, "eip155:42161")
+    r = try await runTradeAsset(returningStep: makeStepWithRawTransaction(chainId: 0, fromChainId: "42161"))
     XCTAssertEqual(r.chainId, "eip155:42161")
   }
 }

@@ -75,7 +75,7 @@ public class Lifi: LifiProtocol {
     api: PortalLifiTradingApiProtocol,
     signAndSendTransaction: LifiSignAndSendTransaction? = nil,
     waitForConfirmation: LifiWaitForConfirmation? = nil,
-    stepPollOptions: LifiPollStatusOptions = LifiPollStatusOptions(everyMs: 10_000, initialDelayMs: 10_000, timeoutMs: 600_000)
+    stepPollOptions: LifiPollStatusOptions = LifiPollStatusOptions(everyMs: 10_000, initialDelayMs: 0, timeoutMs: 600_000)
   ) {
     self.api = api
     self.signAndSendTransaction = signAndSendTransaction
@@ -333,24 +333,34 @@ public class Lifi: LifiProtocol {
       throw LifiTradeAssetError.invalidTransactionRequest
     }
 
+    // Default to no value when the key is absent (native no-value txs). When it IS present, fail
+    // fast on anything invalid rather than silently signing "0x0" (a wrong amount).
     var value = "0x0"
-    if let valueString = txParams["value"] as? String {
-      value = valueString
-    } else if let valueInt = txParams["value"] as? Int, valueInt >= 0 {
-      // Use %llx (64-bit) so large wei amounts are not truncated like %x (32-bit) would.
-      value = String(format: "0x%llx", UInt64(valueInt))
-    } else if let valueDouble = txParams["value"] as? Double {
-      // Some decoders surface JSON numbers as Double. EVM `value` is an integer wei amount, so
-      // reject fractional values and anything outside the IEEE-754 safe-integer range (±2^53) —
-      // beyond that a Double can't represent every integer, so converting could silently sign a
-      // different amount. Such values must be provided as a string instead.
-      guard valueDouble >= 0,
-            valueDouble <= Self.maxSafeIntegerDouble,
-            valueDouble.rounded(.towardZero) == valueDouble
-      else {
+    if let rawValue = txParams["value"] {
+      if let valueString = rawValue as? String {
+        value = valueString
+      } else if let valueInt = rawValue as? Int {
+        guard valueInt >= 0 else {
+          throw LifiTradeAssetError.invalidTransactionRequest
+        }
+        // Use %llx (64-bit) so large wei amounts are not truncated like %x (32-bit) would.
+        value = String(format: "0x%llx", UInt64(valueInt))
+      } else if let valueDouble = rawValue as? Double {
+        // Some decoders surface JSON numbers as Double. EVM `value` is an integer wei amount, so
+        // reject fractional values and anything outside the IEEE-754 safe-integer range (±2^53) —
+        // beyond that a Double can't represent every integer, so converting could silently sign a
+        // different amount. Such values must be provided as a string instead.
+        guard valueDouble >= 0,
+              valueDouble <= Self.maxSafeIntegerDouble,
+              valueDouble.rounded(.towardZero) == valueDouble
+        else {
+          throw LifiTradeAssetError.invalidTransactionRequest
+        }
+        value = String(format: "0x%llx", UInt64(valueDouble))
+      } else {
+        // Present but an unexpected type — malformed, don't silently fall back to "0x0".
         throw LifiTradeAssetError.invalidTransactionRequest
       }
-      value = String(format: "0x%llx", UInt64(valueDouble))
     }
 
     let data = txParams["data"] as? String ?? "0x"
@@ -381,13 +391,13 @@ public class Lifi: LifiProtocol {
   private func resolveStepNetworkCaip2(step: LifiStep, txParams: [String: Any]?) -> String {
     var raw: String?
     if let chainIdValue = txParams?["chainId"] {
-      if let intValue = chainIdValue as? Int {
+      if let intValue = chainIdValue as? Int, intValue > 0 {
         raw = String(intValue)
       } else if let stringValue = chainIdValue as? String {
         raw = stringValue
-      } else if let doubleValue = chainIdValue as? Double, let intValue = Int(exactly: doubleValue) {
-        // `Int(exactly:)` yields nil for non-integral or out-of-range values (including 2^63),
-        // so those cleanly fall back to the step's chain instead of trapping.
+      } else if let doubleValue = chainIdValue as? Double, let intValue = Int(exactly: doubleValue), intValue > 0 {
+        // `Int(exactly:)` yields nil for non-integral or out-of-range values (including 2^63);
+        // non-positive chain ids are rejected too. Anything invalid falls back to the step's chain.
         raw = String(intValue)
       }
     }
@@ -398,14 +408,20 @@ public class Lifi: LifiProtocol {
   }
 
   /// Normalizes a chain identifier into CAIP-2 form (e.g. "8453" -> "eip155:8453").
+  /// Only a positive integer (hex or decimal) is mapped to `eip155:<n>`; already-namespaced values
+  /// pass through, and anything unrecognized is returned unchanged rather than emitting a malformed
+  /// identifier like `eip155:-1`, `eip155:0x...`, or `eip155:`.
   private func normalizeToCaip2(_ value: String) -> String {
     if value.hasPrefix("eip155:") || value.hasPrefix("solana:") {
       return value
     }
-    if value.hasPrefix("0x"), let intValue = Int(value.dropFirst(2), radix: 16) {
+    if value.hasPrefix("0x"), let intValue = Int(value.dropFirst(2), radix: 16), intValue > 0 {
       return "eip155:\(intValue)"
     }
-    return "eip155:\(value)"
+    if let intValue = Int(value), intValue > 0 {
+      return "eip155:\(intValue)"
+    }
+    return value
   }
 
   /// Maps a LiFi tool string to a `LifiStatusBridge`, if it corresponds to a known bridge.
