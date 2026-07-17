@@ -46,6 +46,15 @@ public class Lifi: LifiProtocol {
   /// The smallest interval, in milliseconds, allowed between status polls (guards against busy-waiting).
   private static let minPollIntervalMs = 100
 
+  /// The largest millisecond value that can be converted to nanoseconds without overflowing `UInt64`.
+  private static let maxSleepMs = Int(UInt64.max / 1_000_000)
+
+  /// Converts a millisecond duration into nanoseconds for `Task.sleep`, clamping to a non-negative
+  /// value that can't overflow `UInt64` when multiplied by 1_000_000.
+  private static func sleepNanoseconds(fromMs ms: Int) -> UInt64 {
+    return UInt64(min(max(0, ms), maxSleepMs)) * 1_000_000
+  }
+
   private let api: PortalLifiTradingApiProtocol
   private let signAndSendTransaction: LifiSignAndSendTransaction?
   private let waitForConfirmation: LifiWaitForConfirmation?
@@ -248,7 +257,7 @@ public class Lifi: LifiProtocol {
 
     if initialDelayMs > 0 {
       // Use `try` (not `try?`) so task cancellation propagates during the initial delay.
-      try await Task.sleep(nanoseconds: UInt64(initialDelayMs) * 1_000_000)
+      try await Task.sleep(nanoseconds: Self.sleepNanoseconds(fromMs: initialDelayMs))
     }
 
     while true {
@@ -287,7 +296,7 @@ public class Lifi: LifiProtocol {
       }
 
       // Use `try` (not `try?`) so task cancellation propagates between polls.
-      try await Task.sleep(nanoseconds: UInt64(pollIntervalMs) * 1_000_000)
+      try await Task.sleep(nanoseconds: Self.sleepNanoseconds(fromMs: pollIntervalMs))
     }
   }
 
@@ -305,8 +314,15 @@ public class Lifi: LifiProtocol {
     } else if let valueInt = txParams["value"] as? Int, valueInt >= 0 {
       // Use %llx (64-bit) so large wei amounts are not truncated like %x (32-bit) would.
       value = String(format: "0x%llx", UInt64(valueInt))
-    } else if let valueDouble = txParams["value"] as? Double, valueDouble >= 0, valueDouble <= Double(UInt64.max) {
-      // Some decoders surface JSON numbers as Double; handle native-token `value` amounts too.
+    } else if let valueDouble = txParams["value"] as? Double {
+      // Some decoders surface JSON numbers as Double. EVM `value` is an integer wei amount, so
+      // reject fractional/out-of-range values rather than silently truncating to a wrong amount.
+      guard valueDouble >= 0,
+            valueDouble <= Double(UInt64.max),
+            valueDouble.rounded(.towardZero) == valueDouble
+      else {
+        throw LifiTradeAssetError.invalidTransactionRequest
+      }
       value = String(format: "0x%llx", UInt64(valueDouble))
     }
 
@@ -342,7 +358,10 @@ public class Lifi: LifiProtocol {
         raw = String(intValue)
       } else if let stringValue = chainIdValue as? String {
         raw = stringValue
-      } else if let doubleValue = chainIdValue as? Double {
+      } else if let doubleValue = chainIdValue as? Double,
+                doubleValue.rounded(.towardZero) == doubleValue,
+                doubleValue >= Double(Int.min), doubleValue <= Double(Int.max) {
+        // Only accept an integral, in-range Double; anything else falls back to the step's chain.
         raw = String(Int(doubleValue))
       }
     }

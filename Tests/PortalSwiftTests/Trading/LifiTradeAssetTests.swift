@@ -257,6 +257,37 @@ extension LifiTradeAssetTests {
     }
   }
 
+  func test_tradeAsset_confirmationTimedOut_throwsTimedOutAndReportsFailed() async {
+    // given
+    let step = makeStepWithTransactionRequest()
+    let route = LifiRoute.stub(steps: [step])
+    apiMock.getRoutesReturnValue = LifiRoutesResponse.stub(
+      data: LifiRoutesData(rawResponse: LifiRoutesRawResponse(routes: [route]))
+    )
+    apiMock.getRouteStepReturnValue = LifiStepTransactionResponse(
+      data: LifiStepTransactionData(rawResponse: step), error: nil
+    )
+
+    var failedReported = false
+    let params = LifiTradeAssetParams.stub(onProgress: { status, _ in
+      if status == .failed { failedReported = true }
+    })
+
+    let lifi = makeLifi(
+      signAndSend: { _, _ in "0xhash1" },
+      waitForConfirmation: { _, _ in .timedOut }
+    )
+
+    // when / then
+    do {
+      _ = try await lifi.tradeAsset(params: params)
+      XCTFail("Expected error to be thrown")
+    } catch {
+      XCTAssertEqual(error as? LifiTradeAssetError, .transactionConfirmationTimedOut("0xhash1"))
+      XCTAssertTrue(failedReported)
+    }
+  }
+
   func test_tradeAsset_lifiStatusFailed_throwsLifiTransferFailed() async {
     // given
     let step = makeStepWithTransactionRequest()
