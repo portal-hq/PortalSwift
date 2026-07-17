@@ -279,7 +279,7 @@ public class Lifi: LifiProtocol {
       try Task.checkCancellation()
 
       let elapsedMs = Int(Date().timeIntervalSince(startTime) * 1000.0)
-      if elapsedMs > timeoutMs {
+      if elapsedMs >= timeoutMs {
         throw LifiTradeAssetError.pollTimeout
       }
 
