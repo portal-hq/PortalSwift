@@ -162,7 +162,7 @@ public struct LifiTradeAssetProgressData {
 // MARK: - LifiPollStatusOptions
 
 public struct LifiPollStatusOptions {
-  /// The interval between status polls, in milliseconds (default: 10000).
+  /// The interval between status polls, in milliseconds (default: 10000; minimum enforced: 100).
   public let everyMs: Int
   /// An initial delay before the first poll, in milliseconds (default: 0).
   public let initialDelayMs: Int
