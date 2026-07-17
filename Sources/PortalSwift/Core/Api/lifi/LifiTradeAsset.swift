@@ -42,7 +42,7 @@ public struct LifiTradeAssetParams {
   public let fromToken: String
   /// The token that should be transferred to. Can be the address or the symbol.
   public let toToken: String
-  /// The amount that should be sent including all decimals.
+  /// The amount to send, expressed in the token’s base units as an integer string (e.g. wei for 18-decimal tokens).
   public let amount: String
   /// The sending wallet address.
   public let fromAddress: String?
