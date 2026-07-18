@@ -193,7 +193,8 @@ public enum LifiTradeAssetError: Error, LocalizedError, Equatable {
   case routeHasNoSteps
   /// The step did not contain a transaction request to sign.
   case missingTransactionRequest
-  /// The step's transaction request was missing required fields.
+  /// The step's transaction request was malformed — missing required fields, the wrong shape, or
+  /// containing an invalid value (e.g. a negative or non-integer amount).
   case invalidTransactionRequest
   /// The transaction was mined but reverted on-chain for the given transaction hash.
   case transactionConfirmationFailed(String)
@@ -220,7 +221,7 @@ public enum LifiTradeAssetError: Error, LocalizedError, Equatable {
     case .missingTransactionRequest:
       return "The route step did not contain a transaction request to sign."
     case .invalidTransactionRequest:
-      return "The route step's transaction request was missing required fields."
+      return "The route step's transaction request was malformed (missing required fields, wrong shape, or an invalid value)."
     case let .transactionConfirmationFailed(txHash):
       return "Transaction reverted on-chain: \(txHash)."
     case let .transactionConfirmationTimedOut(txHash):
