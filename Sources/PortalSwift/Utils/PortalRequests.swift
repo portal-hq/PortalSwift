@@ -160,7 +160,7 @@ public class PortalRequests: PortalRequestsProtocol {
 
   // MARK: - Private Methods
 
-  private func createBaseRequest(url: URL, method: HttpMethod, bearerToken: String?) throws -> URLRequest {
+  private func createBaseRequest(url: URL, method: HttpMethod, bearerToken: String?, traceId: String? = nil) throws -> URLRequest {
     var request = URLRequest(url: url)
     request.httpMethod = method.rawValue
 
@@ -170,6 +170,7 @@ public class PortalRequests: PortalRequestsProtocol {
 
     request.addValue("application/json", forHTTPHeaderField: "Accept")
     request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.addValue(traceId ?? generateTraceId(), forHTTPHeaderField: PORTAL_TRACE_ID_HEADER)
 
     return request
   }
@@ -180,6 +181,11 @@ public class PortalRequests: PortalRequestsProtocol {
 
     for (key, value) in portalRequest.headers {
       request.addValue(value, forHTTPHeaderField: key)
+    }
+
+    // Guarantee a trace ID header even if a custom request omitted it.
+    if portalRequest.headers[PORTAL_TRACE_ID_HEADER] == nil {
+      request.addValue(generateTraceId(), forHTTPHeaderField: PORTAL_TRACE_ID_HEADER)
     }
 
     if let payload = portalRequest.payload {

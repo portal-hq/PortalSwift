@@ -236,6 +236,9 @@ public class PortalProvider: PortalProviderProtocol {
     }
 
     let id = UUID().uuidString
+    // A single trace ID is shared across the request. If the caller provided one
+    // via options, reuse it; otherwise generate a fresh one for this request.
+    let traceId = options?.traceId ?? generateTraceId()
 
     // This switch is here to handle methods that should be
     // resolved by the provider directly before passing the
@@ -251,14 +254,14 @@ public class PortalProvider: PortalProviderProtocol {
     case .wallet_switchEthereumChain, .wallet_revokePermissions, .wallet_requestPermissions:
       return PortalProviderResult(id: id, result: "null")
     case .wallet_getCapabilities:
-      let walletCapabilities = try await self.api?.getWalletCapabilities()
+      let walletCapabilities = try await self.api?.getWalletCapabilities(traceId: traceId)
       return PortalProviderResult(id: id, result: walletCapabilities ?? "null")
     default:
       if blockchain.shouldMethodBeSigned(method) {
         let payload = PortalProviderRequestWithId(id: id, method: method, params: params, chainId: chainId)
-        return try await self.handleSignRequest(chainId, withPayload: payload, forId: id, onBlockchain: blockchain, connect: connect, options: options)
+        return try await self.handleSignRequest(chainId, withPayload: payload, forId: id, onBlockchain: blockchain, connect: connect, options: options, traceId: traceId)
       } else {
-        return try await self.handleRpcRequest(chainId, withMethod: method, andParams: params, forId: id)
+        return try await self.handleRpcRequest(chainId, withMethod: method, andParams: params, forId: id, traceId: traceId)
       }
     }
   }
@@ -395,7 +398,8 @@ public class PortalProvider: PortalProviderProtocol {
     _ chainId: String,
     withMethod: PortalRequestMethod,
     andParams: [AnyCodable]?,
-    forId: String
+    forId: String,
+    traceId: String? = nil
   ) async throws -> PortalProviderResult {
     let rpcUrl = try getRpcUrl(chainId)
 
@@ -410,7 +414,8 @@ public class PortalProvider: PortalProviderProtocol {
         url: url,
         method: .post,
         payload: payload,
-        bearerToken: rpcUrl.starts(with: "https://api.portalhq.") ? self.apiKey : nil
+        bearerToken: rpcUrl.starts(with: "https://api.portalhq.") ? self.apiKey : nil,
+        traceId: traceId
       )
 
       switch withMethod {
@@ -482,7 +487,8 @@ public class PortalProvider: PortalProviderProtocol {
     forId _: String,
     onBlockchain: PortalBlockchain,
     connect: PortalConnect? = nil,
-    options: RequestOptions? = nil
+    options: RequestOptions? = nil,
+    traceId: String? = nil
   ) async throws -> PortalProviderResult {
     guard try await self.getApproval(onChainId, forPayload: withPayload, connect: connect) else {
       throw ProviderSigningError.userDeclinedApproval
@@ -498,7 +504,8 @@ public class PortalProvider: PortalProviderProtocol {
       andRpcUrl: rpcUrl,
       usingBlockchain: onBlockchain,
       signatureApprovalMemo: options?.signatureApprovalMemo,
-      sponsorGas: options?.sponsorGas
+      sponsorGas: options?.sponsorGas,
+      reqId: traceId ?? options?.traceId
     )
 
     return PortalProviderResult(id: withPayload.id, result: signature)

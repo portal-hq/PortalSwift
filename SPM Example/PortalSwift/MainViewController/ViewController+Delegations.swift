@@ -291,6 +291,134 @@ extension ViewController {
     }
   }
 
+  // MARK: - Delegation Approve & Submit (high-level)
+
+  @IBAction func delegationApproveAndSubmit(_: Any) {
+    startLoading()
+
+    Task { @MainActor in
+      defer { stopLoading() }
+
+      guard let portal = portal else {
+        logger.error("❌ [Delegation Approve & Submit] Portal not initialized")
+        showStatusView(message: "\(failureStatus) Portal not initialized")
+        return
+      }
+
+      do {
+        logger.info("📝 [Delegation Approve & Submit] Starting...")
+
+        let request = ApproveDelegationRequest(
+          chain: "eip155:10143",
+          token: "USDC",
+          delegateAddress: "0xf83f7449fb81332c4f37834182cdcb5dd6ea47db",
+          amount: "0.01"
+        )
+
+        let result = try await portal.delegations.approveAndSubmit(
+          request: request,
+          options: DelegationSubmitOptions(onProgress: logDelegationProgress)
+        )
+
+        logger.info("✅ [Delegation Approve & Submit] Broadcasted \(result.hashes.count) tx(s): \(result.hashes)")
+        showStatusView(message: "\(successStatus) Approve & Submit completed: \(result.hashes)")
+
+      } catch {
+        logger.error("❌ [Delegation Approve & Submit] Error: \(error.localizedDescription)")
+        showStatusView(message: "\(failureStatus) Approve & Submit failed: \(error.localizedDescription)")
+      }
+    }
+  }
+
+  // MARK: - Delegation Revoke & Submit (high-level)
+
+  @IBAction func delegationRevokeAndSubmit(_: Any) {
+    startLoading()
+
+    Task { @MainActor in
+      defer { stopLoading() }
+
+      guard let portal = portal else {
+        logger.error("❌ [Delegation Revoke & Submit] Portal not initialized")
+        showStatusView(message: "\(failureStatus) Portal not initialized")
+        return
+      }
+
+      do {
+        logger.info("📝 [Delegation Revoke & Submit] Starting...")
+
+        let request = RevokeDelegationRequest(
+          chain: "eip155:10143",
+          token: "USDC",
+          delegateAddress: "0xf83f7449fb81332c4f37834182cdcb5dd6ea47db"
+        )
+
+        let result = try await portal.delegations.revokeAndSubmit(
+          request: request,
+          options: DelegationSubmitOptions(onProgress: logDelegationProgress)
+        )
+
+        logger.info("✅ [Delegation Revoke & Submit] Broadcasted \(result.hashes.count) tx(s): \(result.hashes)")
+        showStatusView(message: "\(successStatus) Revoke & Submit completed: \(result.hashes)")
+
+      } catch {
+        logger.error("❌ [Delegation Revoke & Submit] Error: \(error.localizedDescription)")
+        showStatusView(message: "\(failureStatus) Revoke & Submit failed: \(error.localizedDescription)")
+      }
+    }
+  }
+
+  // MARK: - Delegation Transfer & Submit (high-level)
+
+  @IBAction func delegationTransferAndSubmit(_: Any) {
+    startLoading()
+
+    Task { @MainActor in
+      defer { stopLoading() }
+
+      guard let portal = portal else {
+        logger.error("❌ [Delegation Transfer & Submit] Portal not initialized")
+        showStatusView(message: "\(failureStatus) Portal not initialized")
+        return
+      }
+
+      do {
+        logger.info("📝 [Delegation Transfer & Submit] Starting...")
+        logger.info("ℹ️ NOTE: This must be called from the delegate's client account")
+
+        let request = TransferFromRequest(
+          chain: "eip155:10143",
+          token: "USDC",
+          fromAddress: "0xad9c2b19c9b24b11d3a458121a53f211abe0db31",
+          toAddress: "0xdFd8302f44727A6348F702fF7B594f127dE3A902",
+          amount: "0.01"
+        )
+
+        let result = try await portal.delegations.transferAndSubmit(
+          request: request,
+          options: DelegationSubmitOptions(onProgress: logDelegationProgress)
+        )
+
+        logger.info("✅ [Delegation Transfer & Submit] Broadcasted \(result.hashes.count) tx(s): \(result.hashes)")
+        showStatusView(message: "\(successStatus) Transfer & Submit completed: \(result.hashes)")
+
+      } catch {
+        logger.error("❌ [Delegation Transfer & Submit] Error: \(error.localizedDescription)")
+        showStatusView(message: "\(failureStatus) Transfer & Submit failed: \(error.localizedDescription)")
+      }
+    }
+  }
+
+  /// Logs a high-level delegation submit progress event.
+  private func logDelegationProgress(_ event: DelegationSubmitProgress) {
+    switch event.step {
+    case .signing:
+      logger.info("✍️ [Delegation Submit] Signing tx \(event.index + 1)/\(event.total)...")
+    case .submitted:
+      logger.info("✅ [Delegation Submit] Submitted tx \(event.index + 1)/\(event.total): \(event.hash ?? "")")
+    }
+  }
+
   // MARK: - Delegation Get Status (ETH)
 
   @IBAction func delegationGetStatusETH(_: Any) {
@@ -311,7 +439,7 @@ extension ViewController {
         let request = GetDelegationStatusRequest(
           chain: "eip155:10143",
           token: "USDC",
-          delegateAddress: "0xa944e86eb36f039becd1843132347eb5b8501562"
+          delegateAddress: "0xf83f7449fb81332c4f37834182cdcb5dd6ea47db"
         )
 
         let response = try await portal.delegations.getStatus(request: request)

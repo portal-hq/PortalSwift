@@ -38,16 +38,40 @@ public final class Portal: PortalProtocol {
   public var rpcConfig: [String: String]
 
   /// Access to yield-related functionality.
-  public lazy var yield: Yield = .init(api: self.api)
+  public lazy var yield: Yield = .init(api: self.api, portal: self)
+
+  /// Access to ramps-related (on/off-ramp) functionality.
+  public lazy var ramps: Ramps = .init(api: self.api)
 
   /// Access to trading-related functionality.
-  public lazy var trading: Trading = .init(api: self.api)
+  public lazy var trading: Trading = .init(
+    api: self.api,
+    signAndSendTransaction: { [weak self] transaction, chainId in
+      guard let self else {
+        throw PortalClassError.clientNotAvailable
+      }
+      return try await self.signAndSendTransaction(transaction, chainId: chainId)
+    },
+    waitForConfirmation: { [weak self] txHash, chainId in
+      guard let self else {
+        throw PortalClassError.clientNotAvailable
+      }
+      return try await self.waitForTransactionConfirmation(txHash: txHash, chainId: chainId)
+    }
+  )
 
   /// Access to security-related functionality.
   public lazy var security: Security = .init(api: self.api)
 
   /// Access to delegation-related functionality.
-  public lazy var delegations: DelegationsProtocol = Delegations(api: self.api.delegations)
+  public lazy var delegations: DelegationsProtocol = {
+    let delegations = Delegations(api: self.api.delegations)
+    delegations.setSignAndSendTransaction { [weak self] transaction, chainId in
+      guard let self else { throw DelegationsError.noSignerConfigured }
+      return try await self.signDelegationTransaction(transaction, chainId: chainId)
+    }
+    return delegations
+  }()
 
   /// Access to EVM Account Type functionality (EIP-7702 upgrade, account type status).
   public lazy var evmAccountType: EvmAccountTypeProtocol = EvmAccountType(api: self.api.evmAccountType, portal: self)
@@ -136,7 +160,7 @@ public final class Portal: PortalProtocol {
 
     // Creating this as a variable first so it's usable to
     // fetch the client in the Task at the end of the initializer
-    let api = api ?? PortalApi(apiKey: apiKey, apiHost: apiHost, provider: provider)
+    let api = api ?? PortalApi(apiKey: apiKey, apiHost: apiHost, enclaveMPCHost: enclaveMPCHost, provider: provider)
     self.api = api
     self.keychain.api = api
     self.provider.api = api
@@ -526,14 +550,15 @@ public final class Portal: PortalProtocol {
     // Run backup
     let response = try await mpc.backup(method, usingProgressCallback: usingProgressCallback)
 
-    // Build the storage callback
+    // Build the storage callback — reuse the backup operation's trace ID for correlation.
     let storageCallback: () async throws -> Void = {
       try await self.api.updateShareStatus(
         .backup,
         status: .STORED_CLIENT_BACKUP_SHARE,
-        sharePairIds: response.shareIds
+        sharePairIds: response.shareIds,
+        traceId: response.traceId
       )
-      try await self.api.refreshClient()
+      try await self.api.refreshClient(traceId: response.traceId)
       try await self.keychain.loadMetadata()
     }
 
@@ -794,14 +819,15 @@ public final class Portal: PortalProtocol {
     // Run generateSolanaWalletAndBackupShares
     let result = try await mpc.generateSolanaWalletAndBackupShares(backupMethod: method, usingProgressCallback: usingProgressCallback)
 
-    // Build the storage callback
+    // Build the storage callback — reuse the backup operation's trace ID for correlation.
     let storageCallback: () async throws -> Void = {
       try await self.api.updateShareStatus(
         .backup,
         status: .STORED_CLIENT_BACKUP_SHARE,
-        sharePairIds: result.backupResponse.shareIds
+        sharePairIds: result.backupResponse.shareIds,
+        traceId: result.backupResponse.traceId
       )
-      try await self.api.refreshClient()
+      try await self.api.refreshClient(traceId: result.backupResponse.traceId)
     }
 
     return (
@@ -983,6 +1009,68 @@ public final class Portal: PortalProtocol {
     }
 
     return try await self.provider.request(chainId: chainId, method: method, params: anyCodableParams, connect: nil, options: options)
+  }
+
+  /// Signs and submits an EVM transaction via `eth_sendTransaction`, returning the transaction hash.
+  /// - Parameters:
+  ///   - transaction: The transaction to sign and submit.
+  ///   - chainId: A CAIP-2 Blockchain ID associated with the transaction.
+  /// - Returns: The transaction hash.
+  private func signAndSendTransaction(_ transaction: ETHTransactionParam, chainId: String) async throws -> String {
+    let response = try await self.request(chainId: chainId, method: .eth_sendTransaction, params: [transaction])
+    guard let txHash = response.result as? String else {
+      throw PortalClassError.invalidResponseTypeForRequest
+    }
+    return txHash
+  }
+
+  /// Polls `eth_getTransactionReceipt` until the transaction is mined and confirmed.
+  /// - Parameters:
+  ///   - txHash: The transaction hash to wait for.
+  ///   - chainId: A CAIP-2 Blockchain ID associated with the transaction.
+  ///   - maxAttempts: The maximum number of polling attempts (default: 30).
+  ///   - waitingInSeconds: The delay between attempts, in seconds (default: 2).
+  /// - Returns: `.confirmed` on success, `.reverted` if the transaction was mined but reverted, or
+  ///   `.timedOut` if no definitive receipt was obtained within `maxAttempts` (still pending or the
+  ///   node was unreachable).
+  /// - Throws: `CancellationError` if the surrounding task is cancelled, so callers can stop promptly.
+  private func waitForTransactionConfirmation(
+    txHash: String,
+    chainId: String,
+    maxAttempts: Int = 30,
+    waitingInSeconds: Int = 2
+  ) async throws -> LifiConfirmationResult {
+    // Clamp so the nanosecond conversion is non-negative and can't overflow UInt64 for a very
+    // large `waitingInSeconds`.
+    let maxWaitingSeconds = Int(UInt64.max / 1_000_000_000)
+    let waitingTimeInNanoSeconds = UInt64(min(max(0, waitingInSeconds), maxWaitingSeconds)) * 1_000_000_000
+
+    for attempt in 0 ..< maxAttempts {
+      try Task.checkCancellation()
+
+      // Sleep only between attempts, not before the first check — the receipt may already be
+      // available. Kept outside the do/catch below so cancellation propagates instead of retrying.
+      if attempt > 0 {
+        try await Task.sleep(nanoseconds: waitingTimeInNanoSeconds)
+      }
+
+      do {
+        let response = try await self.request(chainId: chainId, method: .eth_getTransactionReceipt, params: [txHash])
+        if let innerResponse = response.result as? EthTransactionResponse,
+           let status = innerResponse.result?.status
+        {
+          return status == "0x1" ? .confirmed : .reverted
+        }
+        // No receipt yet; keep polling until mined.
+      } catch is CancellationError {
+        throw CancellationError()
+      } catch {
+        // Transient RPC failure: log and retry rather than reporting a false revert.
+        PortalLogger.shared.error("Portal.waitForTransactionConfirmation() - Error checking receipt: \(error.localizedDescription)")
+      }
+    }
+
+    return .timedOut
   }
 
   public func getRpcUrl(forChainId: String) async -> String? {
@@ -1513,7 +1601,7 @@ public final class Portal: PortalProtocol {
   ///   - The `rawTxHex` and signatures are required for broadcasting the transaction using `broadcastBitcoinP2wpkhTransaction`.
   ///   - Only native BTC transactions are supported; token transfers (e.g., ERC-20 equivalents) are not applicable to Bitcoin P2WPKH.
   public func buildBitcoinP2wpkhTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildBitcoinP2wpkhTransactionResponse {
-    return try await api.buildBitcoinP2wpkhTransaction(chainId: chainId, params: params)
+    return try await api.buildBitcoinP2wpkhTransaction(chainId: chainId, params: params, traceId: nil)
   }
 
   /// Builds an EIP-155 compliant transaction for Ethereum-compatible chains.
@@ -1532,7 +1620,7 @@ public final class Portal: PortalProtocol {
   /// - Note: Only valid for EVM-compatible chains. For Solana transactions,
   ///   use `buildSolanaTransaction(_:params:)` instead.
   public func buildEip155Transaction(chainId: String, params: BuildTransactionParam) async throws -> BuildEip115TransactionResponse {
-    return try await api.buildEip155Transaction(chainId: chainId, params: params)
+    return try await api.buildEip155Transaction(chainId: chainId, params: params, traceId: nil)
   }
 
   /// Builds a Solana transaction.
@@ -1550,7 +1638,7 @@ public final class Portal: PortalProtocol {
   /// - Note: Only valid for Solana chains. For EVM-compatible chains,
   ///   use `buildEip155Transaction(_:params:)` instead.
   public func buildSolanaTransaction(chainId: String, params: BuildTransactionParam) async throws -> BuildSolanaTransactionResponse {
-    return try await api.buildSolanaTransaction(chainId: chainId, params: params)
+    return try await api.buildSolanaTransaction(chainId: chainId, params: params, traceId: nil)
   }
 
   /// Broadcasts a Bitcoin P2WPKH transaction to the network.
@@ -1576,7 +1664,7 @@ public final class Portal: PortalProtocol {
   ///   - This method requires a valid wallet with completed signing shares for the specified `chainId`. Use `doesWalletExist(_:)` to verify wallet existence.
   ///   - Broadcasting a transaction does not guarantee inclusion in a block; monitor the transaction hash for confirmation status.
   public func broadcastBitcoinP2wpkhTransaction(chainId: String, params: BroadcastParam) async throws -> BroadcastBitcoinP2wpkhTransactionResponse {
-    return try await api.broadcastBitcoinP2wpkhTransaction(chainId: chainId, params: params)
+    return try await api.broadcastBitcoinP2wpkhTransaction(chainId: chainId, params: params, traceId: nil)
   }
 
   /// Retrieves the capabilities of the current wallet.
@@ -1649,6 +1737,8 @@ public final class Portal: PortalProtocol {
     }
 
     let namespace = PortalNamespace(rawValue: String(chainParts[0]))
+    // A single trace ID is shared across all build/sign/broadcast requests for this operation.
+    let traceId = params.traceId ?? generateTraceId()
     // Build the appropriate transaction based on chain type
     let transactionParam = BuildTransactionParam(
       to: params.to,
@@ -1659,14 +1749,14 @@ public final class Portal: PortalProtocol {
     switch namespace {
     case .eip155:
       // Build and send EVM transaction
-      let transactionResponse = try await buildEip155Transaction(chainId: chainId, params: transactionParam)
+      let transactionResponse = try await api.buildEip155Transaction(chainId: chainId, params: transactionParam, traceId: traceId)
 
       // Send the transaction using eth_sendTransaction
       let sendResponse = try await request(
         chainId: chainId,
         method: .eth_sendTransaction,
         params: [transactionResponse.transaction],
-        options: RequestOptions(signatureApprovalMemo: params.signatureApprovalMemo, sponsorGas: params.sponsorGas)
+        options: RequestOptions(signatureApprovalMemo: params.signatureApprovalMemo, sponsorGas: params.sponsorGas, traceId: traceId)
       )
 
       guard let txHash = sendResponse.result as? String else {
@@ -1678,14 +1768,14 @@ public final class Portal: PortalProtocol {
 
     case .solana:
       // Build and send Solana transaction
-      let transactionResponse = try await buildSolanaTransaction(chainId: chainId, params: transactionParam)
+      let transactionResponse = try await api.buildSolanaTransaction(chainId: chainId, params: transactionParam, traceId: traceId)
 
       // Send the transaction using sol_signAndSendTransaction
       let sendResponse = try await request(
         chainId: chainId,
         method: .sol_signAndSendTransaction,
         params: [transactionResponse.transaction],
-        options: RequestOptions(signatureApprovalMemo: params.signatureApprovalMemo, sponsorGas: params.sponsorGas)
+        options: RequestOptions(signatureApprovalMemo: params.signatureApprovalMemo, sponsorGas: params.sponsorGas, traceId: traceId)
       )
 
       guard let txHash = sendResponse.result as? String else {
@@ -1703,12 +1793,12 @@ public final class Portal: PortalProtocol {
       }
 
       // Build the transaction
-      let transactionResponse = try await buildBitcoinP2wpkhTransaction(chainId: chainId, params: transactionParam)
+      let transactionResponse = try await api.buildBitcoinP2wpkhTransaction(chainId: chainId, params: transactionParam, traceId: traceId)
 
       // Raw sign each of the signature hashes of the partially-signed bitcoin tx (psbt)
       var signatures: [String] = []
       for signatureHash in transactionResponse.transaction.signatureHashes {
-        let signResponse = try await rawSign(message: signatureHash, chainId: chainId)
+        let signResponse = try await rawSign(message: signatureHash, chainId: chainId, traceId: traceId)
 
         guard let signature = signResponse.result as? String else {
           throw PortalClassError.invalidResponseTypeForRequest
@@ -1718,9 +1808,10 @@ public final class Portal: PortalProtocol {
       }
 
       // Broadcast the transaction
-      let broadcastResponse = try await broadcastBitcoinP2wpkhTransaction(
+      let broadcastResponse = try await api.broadcastBitcoinP2wpkhTransaction(
         chainId: chainId,
-        params: BroadcastParam(signatures: signatures, rawTxHex: transactionResponse.transaction.rawTxHex)
+        params: BroadcastParam(signatures: signatures, rawTxHex: transactionResponse.transaction.rawTxHex),
+        traceId: traceId
       )
 
       // Construct and return response
@@ -2266,14 +2357,15 @@ public final class Portal: PortalProtocol {
   public func rawSign(
     message: String,
     chainId: String,
-    signatureApprovalMemo: String? = nil
+    signatureApprovalMemo: String? = nil,
+    traceId: String?
   ) async throws -> PortalProviderResult {
     return try await self.provider.request(
       chainId: chainId,
       method: .rawSign,
       params: [AnyCodable(message)],
       connect: nil,
-      options: RequestOptions(signatureApprovalMemo: signatureApprovalMemo)
+      options: RequestOptions(signatureApprovalMemo: signatureApprovalMemo, traceId: traceId)
     )
   }
 
@@ -2438,6 +2530,8 @@ public final class Portal: PortalProtocol {
 
 extension Portal: EvmAccountTypePortalDependency {}
 
+extension Portal: YieldXyzPortalDependency {}
+
 /*****************************************
  * Supporting Enums & Structs
  *****************************************/
@@ -2519,4 +2613,37 @@ public enum PortalSharePairType: String, Codable {
 
 public enum PortalSolError: LocalizedError {
   case failedToGetTransactionHash
+}
+
+// MARK: - Delegations
+
+extension Portal {
+  /// Default signer for high-level delegation submit flows.
+  ///
+  /// Maps a `DelegationTransaction` to the appropriate provider request (EVM `eth_sendTransaction`
+  /// or Solana `sol_signAndSendTransaction`), broadcasts it, and returns the transaction hash.
+  ///
+  /// Returns an empty string when the provider result is not a hash so that the caller
+  /// (`Delegations.executeAndTrack`) can raise `DelegationsError.invalidTransactionHash` with the
+  /// correct transaction index rather than a hardcoded index of 0.
+  private func signDelegationTransaction(_ transaction: DelegationTransaction, chainId: String) async throws -> String {
+    let method: PortalRequestMethod
+    let params: [Any]
+    switch transaction {
+    case let .evm(tx):
+      var dict: [String: String] = ["from": tx.from, "to": tx.to]
+      if let data = tx.data { dict["data"] = data }
+      if let value = tx.value { dict["value"] = value }
+      method = .eth_sendTransaction
+      params = [dict]
+    case let .solana(encoded):
+      method = .sol_signAndSendTransaction
+      params = [encoded]
+    }
+    let result = try await request(chainId: chainId, method: method, params: params, options: nil)
+    // Return an empty string when the provider result is not a hash so that the caller
+    // (`Delegations.executeAndTrack`) can raise `DelegationsError.invalidTransactionHash` with the
+    // correct transaction index rather than a hardcoded index of 0.
+    return result.result as? String ?? ""
+  }
 }

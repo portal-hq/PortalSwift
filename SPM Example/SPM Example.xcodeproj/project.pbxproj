@@ -10,7 +10,6 @@
 		2510AC4B2F50C6DE0021F8F3 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 2510AC4A2F50C6DE0021F8F3 /* GoogleService-Info.plist */; };
 		2510AC4C2F50C7000021F8F3 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 2510AC4D2F50C7000021F8F3 /* FirebaseAuth */; };
 		2510AC4E2F50C7000021F8F3 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 2510AC4F2F50C7000021F8F3 /* FirebaseCore */; };
-
 		607FACD61AFB9204008FA782 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FACD51AFB9204008FA782 /* AppDelegate.swift */; };
 		607FACDB1AFB9204008FA782 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 607FACD91AFB9204008FA782 /* Main.storyboard */; };
 		607FACDD1AFB9204008FA782 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 607FACDC1AFB9204008FA782 /* Images.xcassets */; };
@@ -283,6 +282,9 @@
 				F9BF35A02BF8115000BF2862 /* XCRemoteSwiftPackageReference "Web3" */,
 				2510AC502F50C7000021F8F3 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				D8PU00072EF2000000000007 /* XCRemoteSwiftPackageReference "Pulse" */,
+				5E10AC010000000000000001 /* XCRemoteSwiftPackageReference "swift-nio" */,
+				5E10AC020000000000000002 /* XCRemoteSwiftPackageReference "swift-nio-http2" */,
+				5E10AC030000000000000003 /* XCRemoteSwiftPackageReference "swift-nio-extras" */,
 			);
 			productRefGroup = 607FACD11AFB9204008FA782 /* Products */;
 			projectDirPath = "";
@@ -759,6 +761,30 @@
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 0.8.8;
+			};
+		};
+		5E10AC010000000000000001 /* XCRemoteSwiftPackageReference "swift-nio" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-nio.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.100.0;
+			};
+		};
+		5E10AC020000000000000002 /* XCRemoteSwiftPackageReference "swift-nio-http2" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-nio-http2.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.44.0;
+			};
+		};
+		5E10AC030000000000000003 /* XCRemoteSwiftPackageReference "swift-nio-extras" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-nio-extras.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.34.1;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
