@@ -12,7 +12,7 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
-## 7.3.0 - 2026-07-20
+## 7.3.0 - 2026-07-21
 - Added Noah on/off-ramp integration for fiat payins, payouts, and KYC via the new `portal.ramps` namespace.
     - Added `portal.ramps.noah.initiateKyc`
     - Added `portal.ramps.noah.initiatePayin` and `portal.ramps.noah.simulatePayin`
