@@ -9,8 +9,9 @@ import Foundation
 
 /// Response from `POST /integrations/noah/payins/simulate`.
 ///
-/// - Important: This endpoint is **sandbox-only**. The BFF returns
-///   `Forbidden` in production environments.
+/// - Important: This endpoint is **sandbox-only**. In production environments the
+///   BFF rejects the call with a 400, surfacing as
+///   `PortalRequestsError.clientError` — not as a 403.
 public struct NoahSimulatePayinResponse: Codable {
   public let data: NoahSimulatePayinData
   public let metadata: NoahResponseMetadata?

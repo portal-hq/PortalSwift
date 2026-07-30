@@ -11,13 +11,16 @@ import Foundation
 /// Noah `network` parameters.
 ///
 /// Only chains present in connect-api's `CAIP2_TO_NOAH_NETWORK` map are included.
-/// Passing any other value will be rejected with
-/// `Unsupported network for Noah integration`.
+/// Passing any other value is rejected with a 400 (`PortalRequestsError.clientError`)
+/// because the chain is not mapped to a Noah network.
 ///
-/// The BFF validates these via the `[namespace]:[reference]` regex and then
-/// translates them into Noah's internal network strings (e.g.
-/// `"eip155:1"` -> `"Ethereum"`). Passing a non-CAIP-2 value (e.g. `"ethereum"`)
-/// will be rejected with `Network must be a "[namespace]:[reference]"`.
+/// The BFF first validates the `[namespace]:[reference]` format and then
+/// translates the chain ID into Noah's internal network string (e.g.
+/// `"eip155:1"` -> `"Ethereum"`). A non-CAIP-2 value (e.g. `"ethereum"`) fails
+/// the format check and is rejected with a 400 as well.
+///
+/// Branch on the status code rather than the error message text — the wording of
+/// these backend messages is not a stable API.
 public enum NoahNetwork {
   /// Ethereum mainnet — `eip155:1` -> Noah `"Ethereum"`.
   public static let ethereum = "eip155:1"
