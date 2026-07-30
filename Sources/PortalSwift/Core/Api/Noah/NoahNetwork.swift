@@ -19,8 +19,8 @@ import Foundation
 /// `"eip155:1"` -> `"Ethereum"`). A non-CAIP-2 value (e.g. `"ethereum"`) fails
 /// the format check and is rejected with a 400 as well.
 ///
-/// Branch on the status code rather than the error message text — the wording of
-/// these backend messages is not a stable API.
+/// Avoid branching on backend error message text — the wording of these messages is not
+/// a stable API.
 public enum NoahNetwork {
   /// Ethereum mainnet — `eip155:1` -> Noah `"Ethereum"`.
   public static let ethereum = "eip155:1"
