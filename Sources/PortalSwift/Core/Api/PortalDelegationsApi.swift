@@ -103,8 +103,9 @@ public class PortalDelegationsApi: PortalDelegationsApiProtocol {
       throw URLError(.badURL)
     }
     do {
+      let traceId = generateTraceId()
       let body = ApproveDelegationBody(delegateAddress: request.delegateAddress, amount: request.amount)
-      return try await post(url, withBearerToken: apiKey, andPayload: body, mappingInResponse: ApproveDelegationResponse.self)
+      return try await post(url, withBearerToken: apiKey, andPayload: body, traceId: traceId, mappingInResponse: ApproveDelegationResponse.self)
     } catch {
       logger.error("PortalDelegationsApi.approve() - Error: \(error.localizedDescription)")
       throw error
@@ -132,8 +133,9 @@ public class PortalDelegationsApi: PortalDelegationsApiProtocol {
       throw URLError(.badURL)
     }
     do {
+      let traceId = generateTraceId()
       let body = RevokeDelegationBody(delegateAddress: request.delegateAddress)
-      return try await post(url, withBearerToken: apiKey, andPayload: body, mappingInResponse: RevokeDelegationResponse.self)
+      return try await post(url, withBearerToken: apiKey, andPayload: body, traceId: traceId, mappingInResponse: RevokeDelegationResponse.self)
     } catch {
       logger.error("PortalDelegationsApi.revoke() - Error: \(error.localizedDescription)")
       throw error
@@ -160,7 +162,8 @@ public class PortalDelegationsApi: PortalDelegationsApiProtocol {
       throw URLError(.badURL)
     }
     do {
-      return try await get(url, withBearerToken: apiKey, mappingInResponse: DelegationStatusResponse.self)
+      let traceId = generateTraceId()
+      return try await get(url, withBearerToken: apiKey, traceId: traceId, mappingInResponse: DelegationStatusResponse.self)
     } catch {
       logger.error("PortalDelegationsApi.getStatus() - Error: \(error.localizedDescription)")
       throw error
@@ -190,8 +193,9 @@ public class PortalDelegationsApi: PortalDelegationsApiProtocol {
       throw URLError(.badURL)
     }
     do {
+      let traceId = generateTraceId()
       let body = TransferFromBody(fromAddress: request.fromAddress, toAddress: request.toAddress, amount: request.amount)
-      return try await post(url, withBearerToken: apiKey, andPayload: body, mappingInResponse: TransferFromResponse.self)
+      return try await post(url, withBearerToken: apiKey, andPayload: body, traceId: traceId, mappingInResponse: TransferFromResponse.self)
     } catch {
       logger.error("PortalDelegationsApi.transferFrom() - Error: \(error.localizedDescription)")
       throw error
@@ -216,9 +220,10 @@ public class PortalDelegationsApi: PortalDelegationsApiProtocol {
     _ url: URL,
     withBearerToken: String? = nil,
     andPayload: Codable? = nil,
+    traceId: String? = nil,
     mappingInResponse: ResponseType.Type
   ) async throws -> ResponseType where ResponseType: Decodable {
-    let portalRequest = PortalAPIRequest(url: url, method: .post, payload: andPayload, bearerToken: withBearerToken)
+    let portalRequest = PortalAPIRequest(url: url, method: .post, payload: andPayload, bearerToken: withBearerToken, traceId: traceId)
     return try await requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }
 
@@ -227,15 +232,17 @@ public class PortalDelegationsApi: PortalDelegationsApiProtocol {
   /// - Parameters:
   ///   - url: The target URL for the request
   ///   - withBearerToken: Optional bearer token for authentication
+  ///   - traceId: Optional trace ID forwarded as the `X-Portal-Trace-Id` header
   ///   - mappingInResponse: The response type to decode the response into
   /// - Returns: Decoded response of the specified type
   /// - Throws: Network or decoding errors if the request fails
   private func get<ResponseType>(
     _ url: URL,
     withBearerToken: String? = nil,
+    traceId: String? = nil,
     mappingInResponse: ResponseType.Type
   ) async throws -> ResponseType where ResponseType: Decodable {
-    let portalRequest = PortalAPIRequest(url: url, bearerToken: withBearerToken)
+    let portalRequest = PortalAPIRequest(url: url, bearerToken: withBearerToken, traceId: traceId)
     return try await requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }
 

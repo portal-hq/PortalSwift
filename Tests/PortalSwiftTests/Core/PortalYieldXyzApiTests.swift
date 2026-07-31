@@ -1189,3 +1189,111 @@ extension PortalYieldXyzApiTests {
     XCTAssertEqual(portalRequestsSpy.executeRequestParam?.headers["Authorization"], "Bearer \(apiKey)")
   }
 }
+
+// MARK: - getYieldDefaults tests
+
+extension PortalYieldXyzApiTests {
+  func test_getYieldDefaults_willReturnCorrectResponse() async throws {
+    // given
+    let mockResponse = YieldXyzGetDefaultsResponse.stub()
+    let portalRequestMock = PortalRequestsMock()
+    portalRequestMock.returnValueData = try encoder.encode(mockResponse)
+    initPortalYieldXyzApiWith(requests: portalRequestMock)
+
+    // when
+    let response = try await api?.getYieldDefaults(includeOpportunities: false)
+
+    // then
+    XCTAssertNotNil(response?.data)
+    XCTAssertEqual(response?.data?["eip155:11155111:ETH"]?.yieldId, "yield-1")
+  }
+
+  @available(iOS 16.0, *)
+  func test_getYieldDefaults_willCall_executeRequest_passingCorrectUrlAndQuery() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    portalRequestsSpy.returnData = try encoder.encode(YieldXyzGetDefaultsResponse.stub())
+    initPortalYieldXyzApiWith(requests: portalRequestsSpy)
+
+    // when
+    _ = try await api?.getYieldDefaults(includeOpportunities: true)
+
+    // then
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.method, .get)
+    XCTAssertTrue(portalRequestsSpy.executeRequestParam?.url.path().contains("/api/v3/clients/me/integrations/yield-xyz/yields/defaults") ?? false)
+    XCTAssertTrue(portalRequestsSpy.executeRequestParam?.url.query()?.contains("includeOpportunities=true") ?? false)
+  }
+}
+
+// MARK: - getYieldValidators tests
+
+extension PortalYieldXyzApiTests {
+  func test_getYieldValidators_willReturnCorrectResponse() async throws {
+    // given
+    let mockResponse = YieldXyzGetValidatorsResponse.stub()
+    let portalRequestMock = PortalRequestsMock()
+    portalRequestMock.returnValueData = try encoder.encode(mockResponse)
+    initPortalYieldXyzApiWith(requests: portalRequestMock)
+
+    // when
+    let response = try await api?.getYieldValidators(yieldId: "monad-testnet-mon-native-staking")
+
+    // then
+    XCTAssertNotNil(response?.data)
+    XCTAssertEqual(response?.data?.rawResponse?.items?.count, 1)
+  }
+
+  @available(iOS 16.0, *)
+  func test_getYieldValidators_willCall_executeRequest_passingCorrectUrl() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    portalRequestsSpy.returnData = try encoder.encode(YieldXyzGetValidatorsResponse.stub())
+    initPortalYieldXyzApiWith(requests: portalRequestsSpy)
+
+    // when
+    _ = try await api?.getYieldValidators(yieldId: "monad-testnet-mon-native-staking")
+
+    // then
+    XCTAssertEqual(portalRequestsSpy.executeRequestParam?.method, .get)
+    XCTAssertTrue(portalRequestsSpy.executeRequestParam?.url.path().contains("/api/v3/clients/me/integrations/yield-xyz/yields/monad-testnet-mon-native-staking/validators") ?? false)
+  }
+
+  @available(iOS 16.0, *)
+  func test_getYieldValidators_percentEncodesSlashInYieldIdPathSegment() async throws {
+    // given
+    let portalRequestsSpy = PortalRequestsSpy()
+    portalRequestsSpy.returnData = try encoder.encode(YieldXyzGetValidatorsResponse.stub())
+    initPortalYieldXyzApiWith(requests: portalRequestsSpy)
+
+    // when
+    _ = try await api?.getYieldValidators(yieldId: "foo/bar")
+
+    // then - `/` must be encoded so it stays a single path segment
+    let path = portalRequestsSpy.executeRequestParam?.url.path() ?? ""
+    XCTAssertTrue(path.contains("/yields/foo%2Fbar/validators"), "Expected encoded path segment, got: \(path)")
+    XCTAssertFalse(path.contains("/yields/foo/bar/validators"))
+  }
+}
+
+// MARK: - Unknown-tolerant enum decoding
+
+extension PortalYieldXyzApiTests {
+  func test_enterYield_decodesUnknownTransactionTypeAndStatus_asUnknown() async throws {
+    // given - a transaction whose type/status are values not present in the SDK enums
+    let json = """
+    {"data":{"rawResponse":{"id":"a1","intent":"enter","type":"STAKE","yieldId":"y","address":"0x","transactions":[{"id":"t1","title":"t","network":"eip155:1","status":"SOME_NEW_STATUS","type":"SOME_NEW_TYPE","createdAt":"now","stepIndex":0,"unsignedTransaction":"0x00"}],"executionPattern":"synchronous","createdAt":"now","status":"CREATED"}}}
+    """
+    let portalRequestMock = PortalRequestsMock()
+    portalRequestMock.returnValueData = json.data(using: .utf8)
+    initPortalYieldXyzApiWith(requests: portalRequestMock)
+
+    // when - decoding must not throw
+    let response = try await api?.enterYield(request: YieldXyzEnterRequest(yieldId: "y", address: "0x"))
+
+    // then - unknown values fall back to .unknown rather than failing the whole decode
+    let tx = response?.data?.rawResponse.transactions.first
+    XCTAssertEqual(tx?.type, .unknown)
+    XCTAssertEqual(tx?.status, .unknown)
+    XCTAssertEqual(response?.data?.rawResponse.intent, .enter)
+  }
+}

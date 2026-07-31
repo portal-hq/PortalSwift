@@ -144,7 +144,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     static let toChainId = "eip155:143" // Monad Mainnet
     static let fromToken = "MON"
     static let toToken = "USDC"
-    static let fromAmount = "10"
+    static let fromAmount = "0.1"
   }
 
   // Set up the scroll view
@@ -931,7 +931,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
         featureFlags: FeatureFlags(
           isMultiBackupEnabled: true,
           useEnclaveMPCApi: Settings.shared.useEnclaveMPC,
-          usePresignatures: Settings.shared.usePresignatures
+          usePresignatures: Settings.shared.usePresignatures,
+          usePreGeneratedWallet: Settings.shared.usePreGeneratedWallet
         ),
         apiHost: config.apiUrl,
         mpcHost: config.mpcUrl,
@@ -2493,6 +2494,90 @@ extension ViewController {
 
 @available(iOS 16.0, *)
 extension ViewController {
+  /// High-level deposit using the explicit `yieldId` mode. The wallet address is auto-resolved.
+  @IBAction func handleYieldDeposit() {
+    guard let portal = portal else {
+      self.logger.info("Portal is not initialized")
+      return
+    }
+
+    Task { @MainActor in
+      self.logger.info("Starting high-level Yield deposit...")
+      do {
+        let params = YieldDepositParams(
+          target: .yieldId("ethereum-sepolia-link-aave-v3-lending"),
+          amount: "0.0000001"
+        )
+        let options = YieldSubmitOptions(onProgress: { event in
+          let hashSuffix = event.hash.map { " \(String($0.prefix(10)))..." } ?? ""
+          let message = "Deposit: \(event.step.rawValue) (\(event.index + 1)/\(event.total))\(hashSuffix)"
+          Task { @MainActor in
+            self.showStatusView(message: message)
+          }
+        })
+        let result = try await portal.yield.yieldxyz.deposit(params: params, options: options)
+        self.logger.info("Deposit complete: \(result.hashes) status: \(result.status.rawValue)")
+        self.showStatusView(message: "\(self.successStatus) Deposit complete. \(result.hashes.count) tx(s). Yield: \(result.yieldId)")
+      } catch {
+        self.logger.error("Yield deposit FAILED: \(error.localizedDescription)")
+        self.showStatusView(message: "\(self.failureStatus) Deposit FAILED: \(error.localizedDescription)")
+      }
+    }
+  }
+
+  /// High-level withdraw using the `chain` + `token` mode (resolves the yieldId from Portal defaults).
+  @IBAction func handleYieldWithdraw() {
+    guard let portal = portal else {
+      self.logger.info("Portal is not initialized")
+      return
+    }
+
+    Task { @MainActor in
+      self.logger.info("Starting high-level Yield withdraw...")
+      do {
+        let params = YieldWithdrawParams(
+          target: .chainAndToken(chain: "eip155:11155111", token: "ETH"),
+          amount: "0.0000001"
+        )
+        let options = YieldSubmitOptions(onProgress: { event in
+          let hashSuffix = event.hash.map { " \(String($0.prefix(10)))..." } ?? ""
+          let message = "Withdraw: \(event.step.rawValue) (\(event.index + 1)/\(event.total))\(hashSuffix)"
+          Task { @MainActor in
+            self.showStatusView(message: message)
+          }
+        })
+        let result = try await portal.yield.yieldxyz.withdraw(params: params, options: options)
+        self.logger.info("Withdraw complete: \(result.hashes) status: \(result.status.rawValue)")
+        self.showStatusView(message: "\(self.successStatus) Withdraw complete. \(result.hashes.count) tx(s). Yield: \(result.yieldId)")
+      } catch {
+        self.logger.error("Yield withdraw FAILED: \(error.localizedDescription)")
+        self.showStatusView(message: "\(self.failureStatus) Withdraw FAILED: \(error.localizedDescription)")
+      }
+    }
+  }
+
+  /// Fetches validators for a native-staking yield.
+  @IBAction func handleYieldGetValidators() {
+    guard let portal = portal else {
+      self.logger.info("Portal is not initialized")
+      return
+    }
+
+    Task { @MainActor in
+      let yieldId = "monad-testnet-mon-native-staking"
+      self.logger.info("Fetching validators for \(yieldId)...")
+      do {
+        let validators = try await portal.yield.getValidators(yieldId: yieldId)
+        self.logger.info("Found \(validators.count) validators for \(yieldId)")
+        self.logger.info("The validators: \(validators)")
+        self.showStatusView(message: "\(self.successStatus) \(validators.count) validators for \(yieldId)")
+      } catch {
+        self.logger.error("getValidators FAILED: \(error.localizedDescription)")
+        self.showStatusView(message: "\(self.failureStatus) getValidators FAILED: \(error.localizedDescription)")
+      }
+    }
+  }
+
   @IBAction func handleDiscoverYields() {
     guard let portal = portal else {
       self.logger.info("Portal is not initialized")
@@ -3338,6 +3423,56 @@ extension ViewController {
       } catch {
         self.logger.error("Lifi routes FAILED: \(error.localizedDescription)")
         self.showStatusView(message: "\(self.failureStatus) Lifi routes: \(error.localizedDescription)")
+      }
+    }
+  }
+
+  /// Demonstrates the high-level `portal.trading.lifi.tradeAsset` bridging method, which
+  /// encapsulates route discovery, sequential step execution (sign + confirm + poll status),
+  /// in a single call.
+  @IBAction func handleLifiTradeAsset() {
+    guard let portal = portal else {
+      self.logger.info("Portal is not initialized")
+      return
+    }
+
+    Task {
+      self.logger.info("=== LiFi Trade Asset (high-level) Example ===")
+      do {
+        let fromChainId = TradingConfig.fromChainId
+        guard let address = await portal.getAddress(fromChainId) else {
+          self.logger.error("Lifi tradeAsset FAILED: Could not get address for chain \(fromChainId)")
+          self.showStatusView(message: "\(self.failureStatus) Lifi tradeAsset: Address not found")
+          return
+        }
+
+        // LiFi /routes requires fromAmount in the token's smallest (base) units as an integer
+        // string (must pass "isBigNumberish" validation), NOT a human-readable decimal like "0.1".
+        // 0.1 MON (18 decimals) = 100000000000000000.
+        let amountInBaseUnits = "100000000000000000"
+
+        let params = LifiTradeAssetParams(
+          fromChain: TradingConfig.fromChainId,
+          toChain: TradingConfig.toChainId,
+          fromToken: TradingConfig.fromToken,
+          toToken: TradingConfig.toToken,
+          amount: amountInBaseUnits,
+          fromAddress: address,
+          onProgress: { [weak self] status, data in
+            self?.logger.info("[LiFi tradeAsset] \(status.rawValue) - step: \(data.stepIndex.map(String.init) ?? "-")/\(data.totalSteps.map(String.init) ?? "-"), txHash: \(data.txHash ?? "-")")
+          }
+        )
+
+        let result = try await portal.trading.lifi.tradeAsset(params: params)
+
+        self.logger.info("Lifi tradeAsset SUCCESS - executed \(result.hashes.count) step(s)")
+        for (index, hash) in result.hashes.enumerated() {
+          self.logger.info("  Step \(index + 1) tx: \(hash)")
+        }
+        self.showStatusView(message: "\(self.successStatus) Lifi tradeAsset: \(result.hashes.count) step(s) completed")
+      } catch {
+        self.logger.error("Lifi tradeAsset FAILED: \(error.localizedDescription)")
+        self.showStatusView(message: "\(self.failureStatus) Lifi tradeAsset: \(error.localizedDescription)")
       }
     }
   }

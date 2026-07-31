@@ -9,8 +9,14 @@ import Foundation
 
 public actor MockPortalRequests: PortalRequestsProtocol {
   private let encoder = JSONEncoder()
+  private let failEnclaveGenerate: Bool
 
-  public init() {}
+  /// Number of times the `/v1/generate` (pre-generated wallet) endpoint was requested.
+  public private(set) var generateCallsCount = 0
+
+  public init(failEnclaveGenerate: Bool = false) {
+    self.failEnclaveGenerate = failEnclaveGenerate
+  }
 
   public func delete(_ url: URL, withBearerToken _: String? = nil) async throws -> Data {
     switch url.path {
@@ -100,6 +106,17 @@ public actor MockPortalRequests: PortalRequestsProtocol {
     postAndPayloadParam = andPayload
 
     switch url.path {
+    case "/v1/generate":
+      self.generateCallsCount += 1
+      if self.failEnclaveGenerate {
+        throw PortalRequestsError.internalServerError("500 - simulated pre-generated wallet failure", url: url.absoluteString)
+      }
+      let share = try MockConstants.mockBase64EncodedMpcShare
+      let json = "{\"SECP256K1\":{\"share\":\"\(share)\",\"id\":\"\(MockConstants.mockMpcShareId)\"},\"ED25519\":{\"share\":\"\(share)\",\"id\":\"\(MockConstants.mockMpcShareId)\"}}"
+      guard let data = json.data(using: .utf8) else {
+        throw PortalRequestsError.couldNotParseHttpResponse
+      }
+      return data
     case "/api/v1/analytics/identify", "/api/v1/analytics/track":
       let mockMetricsResponseData = try encoder.encode(MockConstants.mockMetricsResponse)
       return mockMetricsResponseData

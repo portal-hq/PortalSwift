@@ -38,15 +38,18 @@ public struct FeatureFlags {
   public var isMultiBackupEnabled: Bool?
   public var useEnclaveMPCApi: Bool?
   public var usePresignatures: Bool?
+  public var usePreGeneratedWallet: Bool?
 
   public init(
     isMultiBackupEnabled: Bool? = nil,
     useEnclaveMPCApi: Bool? = nil,
-    usePresignatures: Bool? = nil
+    usePresignatures: Bool? = nil,
+    usePreGeneratedWallet: Bool? = nil
   ) {
     self.isMultiBackupEnabled = isMultiBackupEnabled
     self.useEnclaveMPCApi = useEnclaveMPCApi
     self.usePresignatures = usePresignatures
+    self.usePreGeneratedWallet = usePreGeneratedWallet
   }
 }
 
@@ -173,6 +176,9 @@ public struct SendAssetParams: Codable {
   public let signatureApprovalMemo: String?
   /// sponsorGas: Optional flag to `enable/disable` sponsor the gas,  to be used for the send asset request.
   public var sponsorGas: Bool?
+  /// traceId: Optional trace ID for request tracing. If not provided, a trace ID is generated
+  /// at the start of `sendAsset` and shared across all underlying build/sign/broadcast requests.
+  public var traceId: String?
 
   /// Initializes parameters for sending an asset.
   /// - Parameters:
@@ -181,18 +187,21 @@ public struct SendAssetParams: Codable {
   ///   - token: The token to send (use "NATIVE" for chain's native token)
   ///   - signatureApprovalMemo: Optional signature approval memo to use for the request.
   ///   - sponsorGas: Optional flag to `enable/disable` sponsor the gas, to be used for the send asset request.
+  ///   - traceId: Optional trace ID for request tracing. If not provided, one is generated automatically.
   public init(
     to: String,
     amount: String,
     token: String,
     signatureApprovalMemo: String? = nil,
-    sponsorGas: Bool? = nil
+    sponsorGas: Bool? = nil,
+    traceId: String? = nil
   ) {
     self.to = to
     self.amount = amount
     self.token = token
     self.signatureApprovalMemo = signatureApprovalMemo
     self.sponsorGas = sponsorGas
+    self.traceId = traceId
   }
 }
 

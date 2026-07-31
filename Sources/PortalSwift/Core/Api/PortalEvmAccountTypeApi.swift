@@ -12,22 +12,44 @@ public protocol PortalEvmAccountTypeApiProtocol: AnyObject {
   /// Retrieves the account type for the client's wallet on the given chain.
   /// - Parameter chainId: CAIP-2 chain ID (e.g., "eip155:11155111")
   /// - Returns: Response containing account type status and metadata
-  func getStatus(chainId: String) async throws -> EvmAccountTypeResponse
+  func getStatus(chainId: String, traceId: String?) async throws -> EvmAccountTypeResponse
 
   /// Builds the authorization list hash for EIP-7702 upgrade.
   /// - Parameters:
   ///   - chainId: CAIP-2 chain ID
   ///   - subsidize: When `true`, the API submits the transaction on-chain and returns the hash in `data.transactionHash`.
+  ///   - traceId: Optional trace ID forwarded as the `X-Portal-Trace-Id` header.
   /// - Returns: Response containing the hash to sign
-  func buildAuthorizationList(chainId: String, subsidize: Bool?) async throws -> BuildAuthorizationListResponse
+  func buildAuthorizationList(chainId: String, subsidize: Bool?, traceId: String?) async throws -> BuildAuthorizationListResponse
 
   /// Builds the authorization transaction from the signature.
   /// - Parameters:
   ///   - chainId: CAIP-2 chain ID
   ///   - signature: The raw signature (without 0x prefix) from signing the authorization list hash
   ///   - subsidize: When `true`, the API submits the transaction on-chain and returns the hash in `data.transactionHash`.
+  ///   - traceId: Optional trace ID forwarded as the `X-Portal-Trace-Id` header.
   /// - Returns: Response containing the EIP-7702 transaction and, when subsidized, the on-chain transaction hash.
-  func buildAuthorizationTransaction(chainId: String, signature: String, subsidize: Bool?) async throws -> BuildAuthorizationTransactionResponse
+  func buildAuthorizationTransaction(chainId: String, signature: String, subsidize: Bool?, traceId: String?) async throws -> BuildAuthorizationTransactionResponse
+}
+
+/// Backward-compatible convenience overloads.
+///
+/// The requirements carry an optional `traceId` so `EvmAccountType.upgradeTo7702` can share a
+/// single `X-Portal-Trace-Id` across its requests. These overloads preserve the original call
+/// shapes (without `traceId`) so existing callers of `PortalEvmAccountTypeApiProtocol` continue
+/// to compile unchanged.
+public extension PortalEvmAccountTypeApiProtocol {
+  func getStatus(chainId: String) async throws -> EvmAccountTypeResponse {
+    try await getStatus(chainId: chainId, traceId: nil)
+  }
+
+  func buildAuthorizationList(chainId: String, subsidize: Bool? = nil) async throws -> BuildAuthorizationListResponse {
+    try await buildAuthorizationList(chainId: chainId, subsidize: subsidize, traceId: nil)
+  }
+
+  func buildAuthorizationTransaction(chainId: String, signature: String, subsidize: Bool? = nil) async throws -> BuildAuthorizationTransactionResponse {
+    try await buildAuthorizationTransaction(chainId: chainId, signature: signature, subsidize: subsidize, traceId: nil)
+  }
 }
 
 /// API class for EVM Account Type integration functionality.
@@ -63,7 +85,8 @@ public class PortalEvmAccountTypeApi: PortalEvmAccountTypeApiProtocol {
   /// - Parameter chainId: CAIP-2 chain ID (e.g., "eip155:11155111")
   /// - Returns: Response containing data.status ("SMART_CONTRACT", "EIP_155_EOA", "EIP_7702_EOA") and metadata (chainId, eoaAddress, smartContractAddress)
   /// - Throws: `URLError` if the URL cannot be constructed, or network/decoding errors if the request fails.
-  public func getStatus(chainId: String) async throws -> EvmAccountTypeResponse {
+  public func getStatus(chainId: String, traceId: String? = nil) async throws -> EvmAccountTypeResponse {
+    let traceId = traceId ?? generateTraceId()
     guard let encodedChain = chainId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
           let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(encodedChain)/wallet/account-type")
     else {
@@ -71,7 +94,7 @@ public class PortalEvmAccountTypeApi: PortalEvmAccountTypeApiProtocol {
       throw URLError(.badURL)
     }
     do {
-      return try await get(url, withBearerToken: apiKey, mappingInResponse: EvmAccountTypeResponse.self)
+      return try await get(url, withBearerToken: apiKey, traceId: traceId, mappingInResponse: EvmAccountTypeResponse.self)
     } catch {
       logger.error("PortalEvmAccountTypeApi.getStatus() - Error: \(error.localizedDescription)")
       throw error
@@ -85,7 +108,8 @@ public class PortalEvmAccountTypeApi: PortalEvmAccountTypeApiProtocol {
   ///   - subsidize: When `true`, the API submits the transaction on-chain and returns the transaction hash in `data.transactionHash`. Defaults to `nil`.
   /// - Returns: Response containing data.hash (hex string with 0x prefix)
   /// - Throws: `URLError` if the URL cannot be constructed, or network/decoding errors if the request fails.
-  public func buildAuthorizationList(chainId: String, subsidize: Bool? = nil) async throws -> BuildAuthorizationListResponse {
+  public func buildAuthorizationList(chainId: String, subsidize: Bool? = nil, traceId: String? = nil) async throws -> BuildAuthorizationListResponse {
+    let traceId = traceId ?? generateTraceId()
     guard let encodedChain = chainId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
           let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(encodedChain)/wallet/build-authorization-list")
     else {
@@ -94,7 +118,7 @@ public class PortalEvmAccountTypeApi: PortalEvmAccountTypeApiProtocol {
     }
     do {
       let body = BuildAuthorizationListRequest(subsidize: subsidize)
-      return try await post(url, withBearerToken: apiKey, andPayload: body, mappingInResponse: BuildAuthorizationListResponse.self)
+      return try await post(url, withBearerToken: apiKey, andPayload: body, traceId: traceId, mappingInResponse: BuildAuthorizationListResponse.self)
     } catch {
       logger.error("PortalEvmAccountTypeApi.buildAuthorizationList() - Error: \(error.localizedDescription)")
       throw error
@@ -109,7 +133,8 @@ public class PortalEvmAccountTypeApi: PortalEvmAccountTypeApiProtocol {
   ///   - subsidize: When `true`, the API submits the transaction on-chain and returns the transaction hash in `data.transactionHash`. Defaults to `nil`.
   /// - Returns: Response containing `data.transaction` (the EIP-7702 transaction) and, when subsidized, `data.transactionHash` (the on-chain transaction hash).
   /// - Throws: `URLError` if the URL cannot be constructed, or network/decoding errors if the request fails.
-  public func buildAuthorizationTransaction(chainId: String, signature: String, subsidize: Bool? = nil) async throws -> BuildAuthorizationTransactionResponse {
+  public func buildAuthorizationTransaction(chainId: String, signature: String, subsidize: Bool? = nil, traceId: String? = nil) async throws -> BuildAuthorizationTransactionResponse {
+    let traceId = traceId ?? generateTraceId()
     guard let encodedChain = chainId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
           let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(encodedChain)/wallet/build-authorization-transaction")
     else {
@@ -118,7 +143,7 @@ public class PortalEvmAccountTypeApi: PortalEvmAccountTypeApiProtocol {
     }
     do {
       let body = BuildAuthorizationTransactionRequest(signature: signature, subsidize: subsidize)
-      return try await post(url, withBearerToken: apiKey, andPayload: body, mappingInResponse: BuildAuthorizationTransactionResponse.self)
+      return try await post(url, withBearerToken: apiKey, andPayload: body, traceId: traceId, mappingInResponse: BuildAuthorizationTransactionResponse.self)
     } catch {
       logger.error("PortalEvmAccountTypeApi.buildAuthorizationTransaction() - Error: \(error.localizedDescription)")
       throw error
@@ -132,18 +157,20 @@ public class PortalEvmAccountTypeApi: PortalEvmAccountTypeApiProtocol {
     _ url: URL,
     withBearerToken: String? = nil,
     andPayload: Codable? = nil,
+    traceId: String? = nil,
     mappingInResponse: ResponseType.Type
   ) async throws -> ResponseType where ResponseType: Decodable {
-    let portalRequest = PortalAPIRequest(url: url, method: .post, payload: andPayload, bearerToken: withBearerToken)
+    let portalRequest = PortalAPIRequest(url: url, method: .post, payload: andPayload, bearerToken: withBearerToken, traceId: traceId)
     return try await requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }
 
   private func get<ResponseType>(
     _ url: URL,
     withBearerToken: String? = nil,
+    traceId: String? = nil,
     mappingInResponse: ResponseType.Type
   ) async throws -> ResponseType where ResponseType: Decodable {
-    let portalRequest = PortalAPIRequest(url: url, bearerToken: withBearerToken)
+    let portalRequest = PortalAPIRequest(url: url, bearerToken: withBearerToken, traceId: traceId)
     return try await requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }
 }

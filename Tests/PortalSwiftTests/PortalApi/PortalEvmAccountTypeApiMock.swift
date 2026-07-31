@@ -15,10 +15,12 @@ final class PortalEvmAccountTypeApiMock: PortalEvmAccountTypeApiProtocol {
   var getStatusError: Error?
   var getStatusCallCount = 0
   var getStatusChainId: String?
+  var getStatusTraceId: String?
 
-  func getStatus(chainId: String) async throws -> EvmAccountTypeResponse {
+  func getStatus(chainId: String, traceId: String? = nil) async throws -> EvmAccountTypeResponse {
     getStatusCallCount += 1
     getStatusChainId = chainId
+    getStatusTraceId = traceId
     if let error = getStatusError {
       throw error
     }
@@ -35,11 +37,13 @@ final class PortalEvmAccountTypeApiMock: PortalEvmAccountTypeApiProtocol {
   var buildAuthorizationListCallCount = 0
   var buildAuthorizationListChainId: String?
   var buildAuthorizationListSubsidize: Bool?
+  var buildAuthorizationListTraceId: String?
 
-  func buildAuthorizationList(chainId: String, subsidize: Bool? = nil) async throws -> BuildAuthorizationListResponse {
+  func buildAuthorizationList(chainId: String, subsidize: Bool? = nil, traceId: String? = nil) async throws -> BuildAuthorizationListResponse {
     buildAuthorizationListCallCount += 1
     buildAuthorizationListChainId = chainId
     buildAuthorizationListSubsidize = subsidize
+    buildAuthorizationListTraceId = traceId
     if let error = buildAuthorizationListError {
       throw error
     }
@@ -60,12 +64,14 @@ final class PortalEvmAccountTypeApiMock: PortalEvmAccountTypeApiProtocol {
   var buildAuthorizationTransactionChainId: String?
   var buildAuthorizationTransactionSignature: String?
   var buildAuthorizationTransactionSubsidize: Bool?
+  var buildAuthorizationTransactionTraceId: String?
 
-  func buildAuthorizationTransaction(chainId: String, signature: String, subsidize: Bool? = nil) async throws -> BuildAuthorizationTransactionResponse {
+  func buildAuthorizationTransaction(chainId: String, signature: String, subsidize: Bool? = nil, traceId: String? = nil) async throws -> BuildAuthorizationTransactionResponse {
     buildAuthorizationTransactionCallCount += 1
     buildAuthorizationTransactionChainId = chainId
     buildAuthorizationTransactionSignature = signature
     buildAuthorizationTransactionSubsidize = subsidize
+    buildAuthorizationTransactionTraceId = traceId
     if let error = buildAuthorizationTransactionError {
       throw error
     }

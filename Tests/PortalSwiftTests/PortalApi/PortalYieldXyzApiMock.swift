@@ -18,6 +18,8 @@ final class PortalYieldXyzApiMock: PortalYieldXyzApiProtocol {
   var getHistoricalYieldActionsReturnValue: YieldXyzGetHistoricalActionsResponse?
   var getYieldTransactionReturnValue: YieldXyzGetTransactionResponse?
   var submitTransactionHashReturnValue: YieldXyzTrackTransactionResponse?
+  var getYieldDefaultsReturnValue: YieldXyzGetDefaultsResponse?
+  var getYieldValidatorsReturnValue: YieldXyzGetValidatorsResponse?
 
   // Call counters
   var getYieldsCalls = 0
@@ -28,6 +30,12 @@ final class PortalYieldXyzApiMock: PortalYieldXyzApiProtocol {
   var getHistoricalYieldActionsCalls = 0
   var getYieldTransactionCalls = 0
   var submitTransactionHashCalls = 0
+  var getYieldDefaultsCalls = 0
+  var getYieldValidatorsCalls = 0
+
+  // Call parameters
+  var getYieldDefaultsIncludeOpportunitiesParam: Bool?
+  var getYieldValidatorsYieldIdParam: String?
 
   func getYields(request _: YieldXyzGetYieldsRequest) async throws -> YieldXyzGetYieldsResponse {
     getYieldsCalls += 1
@@ -67,5 +75,17 @@ final class PortalYieldXyzApiMock: PortalYieldXyzApiProtocol {
   func submitTransactionHash(request _: YieldXyzTrackTransactionRequest) async throws -> YieldXyzTrackTransactionResponse {
     submitTransactionHashCalls += 1
     return submitTransactionHashReturnValue ?? YieldXyzTrackTransactionResponse.stub()
+  }
+
+  func getYieldDefaults(includeOpportunities: Bool?) async throws -> YieldXyzGetDefaultsResponse {
+    getYieldDefaultsCalls += 1
+    getYieldDefaultsIncludeOpportunitiesParam = includeOpportunities
+    return getYieldDefaultsReturnValue ?? YieldXyzGetDefaultsResponse.stub()
+  }
+
+  func getYieldValidators(yieldId: String) async throws -> YieldXyzGetValidatorsResponse {
+    getYieldValidatorsCalls += 1
+    getYieldValidatorsYieldIdParam = yieldId
+    return getYieldValidatorsReturnValue ?? YieldXyzGetValidatorsResponse.stub()
   }
 }

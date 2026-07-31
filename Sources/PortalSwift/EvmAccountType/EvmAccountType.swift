@@ -34,7 +34,7 @@ public enum EvmAccountTypeError: LocalizedError, Equatable {
 /// Minimal protocol for portal capabilities required by EvmAccountType (rawSign and request).
 /// Portal conforms to this protocol; tests can use a small mock.
 public protocol EvmAccountTypePortalDependency: AnyObject {
-  func rawSign(message: String, chainId: String, signatureApprovalMemo: String?) async throws -> PortalProviderResult
+  func rawSign(message: String, chainId: String, signatureApprovalMemo: String?, traceId: String?) async throws -> PortalProviderResult
   func request(chainId: String, method: PortalRequestMethod, params: [Any], options: RequestOptions?) async throws -> PortalProviderResult
 }
 
@@ -73,7 +73,7 @@ public class EvmAccountType: EvmAccountTypeProtocol {
 
   /// Retrieves the account type for the client's wallet on the given chain.
   public func getStatus(chainId: String) async throws -> EvmAccountTypeResponse {
-    return try await api.getStatus(chainId: chainId)
+    return try await api.getStatus(chainId: chainId, traceId: nil)
   }
 
   /// Returns the EOA and smart contract addresses for the client's wallet on the given chain.
@@ -90,6 +90,9 @@ public class EvmAccountType: EvmAccountTypeProtocol {
   /// Steps: validate eip155 namespace → getStatus → require EIP_155_EOA → build authorization list →
   /// raw sign hash (without 0x) → build authorization transaction (subsidized) → return tx hash.
   public func upgradeTo7702(chainId: String) async throws -> String {
+    // A single trace ID is shared across all requests for this operation.
+    let traceId = generateTraceId()
+
     // 1. Validate chain namespace is eip155
     let blockchain = try PortalBlockchain(fromChainId: chainId)
     guard blockchain.namespace == .eip155 else {
@@ -97,7 +100,7 @@ public class EvmAccountType: EvmAccountTypeProtocol {
     }
 
     // 2. Get status and require EIP_155_EOA
-    let statusResponse = try await getStatus(chainId: chainId)
+    let statusResponse = try await api.getStatus(chainId: chainId, traceId: traceId)
     guard statusResponse.data.status == "EIP_155_EOA" else {
       throw EvmAccountTypeError.invalidAccountType(statusResponse.data.status)
     }
@@ -107,19 +110,19 @@ public class EvmAccountType: EvmAccountTypeProtocol {
     }
 
     // 3. Build authorization list and get hash
-    let authListResponse = try await api.buildAuthorizationList(chainId: chainId, subsidize: true)
+    let authListResponse = try await api.buildAuthorizationList(chainId: chainId, subsidize: true, traceId: traceId)
     let hash = authListResponse.data.hash
     let messageToSign = hash.hasPrefix("0x") ? String(hash.dropFirst(2)) : hash
 
     // 4. Raw sign the hash
-    let signResult = try await portal.rawSign(message: messageToSign, chainId: chainId, signatureApprovalMemo: nil)
+    let signResult = try await portal.rawSign(message: messageToSign, chainId: chainId, signatureApprovalMemo: nil, traceId: traceId)
     guard let signature = signResult.result as? String else {
       throw EvmAccountTypeError.invalidSignatureResponse
     }
     let signatureWithoutPrefix = signature.hasPrefix("0x") ? String(signature.dropFirst(2)) : signature
 
     // 5. Build authorization transaction
-    let buildTxResponse = try await api.buildAuthorizationTransaction(chainId: chainId, signature: signatureWithoutPrefix, subsidize: true)
+    let buildTxResponse = try await api.buildAuthorizationTransaction(chainId: chainId, signature: signatureWithoutPrefix, subsidize: true, traceId: traceId)
     guard let txHash = buildTxResponse.data.transactionHash else {
       throw EvmAccountTypeError.invalidTransactionResponse
     }

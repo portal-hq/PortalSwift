@@ -10,7 +10,7 @@ import Foundation
 // MARK: - ConstructedEipTransaction
 
 /// Represents a constructed EVM transaction returned by delegation endpoints.
-public struct ConstructedEipTransaction: Codable {
+public struct ConstructedEipTransaction: Codable, Equatable {
   public let from: String
   public let to: String
   public let data: String?

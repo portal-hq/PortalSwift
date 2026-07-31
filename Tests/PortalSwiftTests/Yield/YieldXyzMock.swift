@@ -19,6 +19,9 @@ final class YieldXyzMock: YieldXyzProtocol {
   var getHistoricalActionsReturnValue: YieldXyzGetHistoricalActionsResponse?
   var manageReturnValue: YieldXyzManageYieldResponse?
   var exitReturnValue: YieldXyzExitResponse?
+  var depositReturnValue: YieldDepositResult?
+  var withdrawReturnValue: YieldWithdrawResult?
+  var getValidatorsReturnValue: [YieldXyzValidator]?
 
   // Call counters
   var discoverCalls = 0
@@ -29,6 +32,9 @@ final class YieldXyzMock: YieldXyzProtocol {
   var getHistoricalActionsCalls = 0
   var manageCalls = 0
   var exitCalls = 0
+  var depositCalls = 0
+  var withdrawCalls = 0
+  var getValidatorsCalls = 0
 
   // Call parameters
   var discoverRequestParam: YieldXyzGetYieldsRequest?
@@ -40,6 +46,9 @@ final class YieldXyzMock: YieldXyzProtocol {
   var getHistoricalActionsRequestParam: YieldXyzGetHistoricalActionsRequest?
   var manageRequestParam: YieldXyzManageYieldRequest?
   var exitRequestParam: YieldXyzExitRequest?
+  var depositParamsParam: YieldDepositParams?
+  var withdrawParamsParam: YieldWithdrawParams?
+  var getValidatorsYieldIdParam: String?
 
   func discover(request: YieldXyzGetYieldsRequest?) async throws -> YieldXyzGetYieldsResponse {
     discoverCalls += 1
@@ -88,5 +97,23 @@ final class YieldXyzMock: YieldXyzProtocol {
     exitCalls += 1
     exitRequestParam = request
     return exitReturnValue ?? YieldXyzExitResponse.stub()
+  }
+
+  func deposit(params: YieldDepositParams, options _: YieldSubmitOptions?) async throws -> YieldDepositResult {
+    depositCalls += 1
+    depositParamsParam = params
+    return depositReturnValue ?? YieldDepositResult.stub()
+  }
+
+  func withdraw(params: YieldWithdrawParams, options _: YieldSubmitOptions?) async throws -> YieldWithdrawResult {
+    withdrawCalls += 1
+    withdrawParamsParam = params
+    return withdrawReturnValue ?? YieldWithdrawResult.stub()
+  }
+
+  func getValidators(yieldId: String) async throws -> [YieldXyzValidator] {
+    getValidatorsCalls += 1
+    getValidatorsYieldIdParam = yieldId
+    return getValidatorsReturnValue ?? [YieldXyzValidator.stub()]
   }
 }

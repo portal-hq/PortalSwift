@@ -12,6 +12,31 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
+## 7.3.0 - 2026-07-21
+- Added Noah on/off-ramp integration for fiat payins, payouts, and KYC via the new `portal.ramps` namespace.
+    - Added `portal.ramps.noah.initiateKyc`
+    - Added `portal.ramps.noah.initiatePayin` and `portal.ramps.noah.simulatePayin`
+    - Added `portal.ramps.noah.getPaymentMethods`
+    - Added `portal.ramps.noah.getPayoutCountries`, `portal.ramps.noah.getPayoutChannels`, and `portal.ramps.noah.getPayoutChannelForm`
+    - Added `portal.ramps.noah.getPayoutQuote` and `portal.ramps.noah.initiatePayout`
+- Added high-level Li.Fi swap methods for one-call cross-chain bridging.
+    - Added `portal.trading.lifi.tradeAsset` — fetches routes and, for each step, signs, submits, waits for on-chain confirmation, and polls Li.Fi status until the transfer completes.
+    - Added `portal.trading.lifi.pollStatus` to poll a transfer's status until it is done, with an optional progress callback and polling controlled by `LifiPollStatusOptions`.
+- Added high-level Yield.xyz deposit and withdraw methods.
+    - Added `portal.yield.yieldxyz.deposit` and `portal.yield.yieldxyz.withdraw`, which resolve the yield, build the transactions, then sign, submit, and confirm each step for you.
+    - Added `portal.yield.yieldxyz.getValidators` (and the convenience `portal.yield.getValidators`) for native-staking validators.
+    - Target a yield by explicit `yieldId` or by chain and token, and track progress and tune polling via `YieldSubmitOptions`.
+    - Added the `lending` case to `YieldXyzSource`.
+- Added high-level delegation methods that construct and broadcast a transaction in a single call.
+    - Added `portal.delegations.approveAndSubmit`, `portal.delegations.revokeAndSubmit`, and `portal.delegations.transferAndSubmit`.
+    - Added `portal.delegations.setSignAndSendTransaction` to override the default signer, or supply a per-call override and progress callback via `DelegationSubmitOptions`.
+- Added pre-generated wallet support via the `FeatureFlags.usePreGeneratedWallet` flag.
+    - When enabled, wallet generation draws from the pre-generated wallet pool, with automatic fallback to on-device generation on transient server errors.
+- Added request tracing via an `X-Portal-Trace-Id` header attached to all client API requests for end-to-end request correlation.
+    - Multi-step flows (such as `sendAsset`, MPC generate/backup/recover, and `upgradeTo7702`) share a single trace ID across their underlying calls.
+    - Added an optional `traceId` parameter to `SendAssetParams` and `RequestOptions`; if omitted, one is generated automatically.
+- Bumped `swift-nio` to 2.101.3, `swift-nio-http2` to 1.44.0, and `swift-nio-extras` to 1.34.3.
+
 ## 7.2.1 - 2026-05-20
 - Fixed Hypernative `ScanAddressesResponse` decoding to align with the Hypernative API.
     - Made `totalIncomingUsd`, `policyId`, `timestamp`, and `flags` optional on `ScanAddressesItem`, and added `totalOutgoingUsd`.

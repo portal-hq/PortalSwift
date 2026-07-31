@@ -77,14 +77,16 @@ public struct YieldXyzEnterRawResponse: Codable {
 }
 
 /// Yield action intent types
-public enum YieldXyzActionIntent: String, Codable {
+public enum YieldXyzActionIntent: String, YieldXyzUnknownTolerantEnum {
   case enter
   case manage
   case exit
+  case unknown
+  public static var unknownValue: YieldXyzActionIntent { .unknown }
 }
 
 /// Yield action types
-public enum YieldXyzActionType: String, Codable {
+public enum YieldXyzActionType: String, YieldXyzUnknownTolerantEnum {
   case STAKE
   case UNSTAKE
   case CLAIM_REWARDS
@@ -103,17 +105,21 @@ public enum YieldXyzActionType: String, Codable {
   case MIGRATE
   case VERIFY_WITHDRAW_CREDENTIALS
   case DELEGATE
+  case unknown
+  public static var unknownValue: YieldXyzActionType { .unknown }
 }
 
 /// Yield action execution patterns
-public enum YieldXyzActionExecutionPattern: String, Codable {
+public enum YieldXyzActionExecutionPattern: String, YieldXyzUnknownTolerantEnum {
   case synchronous
   case asynchronous
   case batch
+  case unknown
+  public static var unknownValue: YieldXyzActionExecutionPattern { .unknown }
 }
 
 /// Yield action status
-public enum YieldXyzActionStatus: String, Codable {
+public enum YieldXyzActionStatus: String, YieldXyzUnknownTolerantEnum {
   case CANCELED
   case CREATED
   case WAITING_FOR_NEXT
@@ -121,6 +127,8 @@ public enum YieldXyzActionStatus: String, Codable {
   case FAILED
   case SUCCESS
   case STALE
+  case unknown
+  public static var unknownValue: YieldXyzActionStatus { .unknown }
 }
 
 /// Yield action transaction
@@ -186,7 +194,7 @@ public struct YieldXyzActionTransaction: Codable {
 }
 
 /// Yield action transaction status
-public enum YieldXyzActionTransactionStatus: String, Codable {
+public enum YieldXyzActionTransactionStatus: String, YieldXyzUnknownTolerantEnum {
   case NOT_FOUND
   case CREATED
   case BLOCKED
@@ -197,10 +205,12 @@ public enum YieldXyzActionTransactionStatus: String, Codable {
   case CONFIRMED
   case FAILED
   case SKIPPED
+  case unknown
+  public static var unknownValue: YieldXyzActionTransactionStatus { .unknown }
 }
 
 /// Yield action transaction type
-public enum YieldXyzActionTransactionType: String, Codable {
+public enum YieldXyzActionTransactionType: String, YieldXyzUnknownTolerantEnum {
   case SWAP
   case DEPOSIT
   case APPROVAL
@@ -251,4 +261,6 @@ public enum YieldXyzActionTransactionType: String, Codable {
   case INFSTONES_PROVISION
   case INFSTONES_EXIT_REQUEST
   case INFSTONES_CLAIM_REQUEST
+  case unknown
+  public static var unknownValue: YieldXyzActionTransactionType { .unknown }
 }

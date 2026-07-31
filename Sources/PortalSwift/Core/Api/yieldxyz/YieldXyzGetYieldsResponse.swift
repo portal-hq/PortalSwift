@@ -131,9 +131,11 @@ public struct YieldXyzRewardRate: Codable {
 }
 
 /// Rate type enum
-public enum YieldXyzRateType: String, Codable {
+public enum YieldXyzRateType: String, YieldXyzUnknownTolerantEnum {
   case APR
   case APY
+  case unknown
+  public static var unknownValue: YieldXyzRateType { .unknown }
 }
 
 /// Reward rate component
@@ -160,15 +162,18 @@ public struct YieldXyzRewardRateComponent: Codable {
 }
 
 /// Yield source enum
-public enum YieldXyzSource: String, Codable {
+public enum YieldXyzSource: String, YieldXyzUnknownTolerantEnum {
   case staking
   case restaking
   case protocol_incentive
   case points
+  case lending
   case lending_interest
   case mev
   case real_world_asset_yield
   case validator_commission
+  case unknown
+  public static var unknownValue: YieldXyzSource { .unknown }
 }
 
 /// Statistics for a yield opportunity
@@ -285,7 +290,7 @@ public struct YieldXyzMechanics: Codable {
 }
 
 /// Reward schedule enum
-public enum YieldXyzRewardSchedule: String, Codable {
+public enum YieldXyzRewardSchedule: String, YieldXyzUnknownTolerantEnum {
   case block
   case hour
   case day
@@ -294,12 +299,16 @@ public enum YieldXyzRewardSchedule: String, Codable {
   case era
   case epoch
   case campaign
+  case unknown
+  public static var unknownValue: YieldXyzRewardSchedule { .unknown }
 }
 
 /// Reward claiming enum
-public enum YieldXyzRewardClaiming: String, Codable {
+public enum YieldXyzRewardClaiming: String, YieldXyzUnknownTolerantEnum {
   case auto
   case manual
+  case unknown
+  public static var unknownValue: YieldXyzRewardClaiming { .unknown }
 }
 
 /// Lockup period information
@@ -431,7 +440,7 @@ public struct YieldXyzArgumentField: Codable {
 }
 
 /// Argument field name enum
-public enum YieldXyzArgumentFieldName: String, Codable {
+public enum YieldXyzArgumentFieldName: String, YieldXyzUnknownTolerantEnum {
   case amount
   case validatorAddress
   case validatorAddresses
@@ -448,15 +457,19 @@ public enum YieldXyzArgumentFieldName: String, Codable {
   case pAddressBech
   case executionMode
   case ledgerWalletApiCompatible
+  case unknown
+  public static var unknownValue: YieldXyzArgumentFieldName { .unknown }
 }
 
 /// Argument field type enum
-public enum YieldXyzArgumentFieldType: String, Codable {
+public enum YieldXyzArgumentFieldType: String, YieldXyzUnknownTolerantEnum {
   case string
   case number
   case address
   case `enum`
   case boolean
+  case unknown
+  public static var unknownValue: YieldXyzArgumentFieldType { .unknown }
 }
 
 /// Possible fee taking mechanisms

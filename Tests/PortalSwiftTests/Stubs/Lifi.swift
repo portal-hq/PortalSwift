@@ -599,3 +599,41 @@ extension LifiStatusRequest {
     )
   }
 }
+
+// MARK: - Trade Asset
+
+extension LifiTradeAssetResult {
+  static func stub(
+    hashes: [String] = ["0xabc123def456"],
+    steps: [LifiStep] = [.stub()],
+    route: LifiRoute = .stub()
+  ) -> Self {
+    LifiTradeAssetResult(hashes: hashes, steps: steps, route: route)
+  }
+}
+
+extension LifiTradeAssetParams {
+  static func stub(
+    fromChain: String = "8453",
+    toChain: String = "137",
+    fromToken: String = "0x0000000000000000000000000000000000000000",
+    toToken: String = "0x0000000000000000000000000000000000001010",
+    amount: String = "1000000000000000000",
+    fromAddress: String? = "0x1234567890abcdef1234567890abcdef12345678",
+    toAddress: String? = nil,
+    routeIndex: Int? = nil,
+    onProgress: LifiProgressHandler? = nil
+  ) -> Self {
+    LifiTradeAssetParams(
+      fromChain: fromChain,
+      toChain: toChain,
+      fromToken: fromToken,
+      toToken: toToken,
+      amount: amount,
+      fromAddress: fromAddress,
+      toAddress: toAddress,
+      routeIndex: routeIndex,
+      onProgress: onProgress
+    )
+  }
+}

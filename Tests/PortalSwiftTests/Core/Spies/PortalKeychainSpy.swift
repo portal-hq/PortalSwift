@@ -107,59 +107,88 @@ class PortalKeychainSpy: PortalKeychainProtocol {
 
   // MARK: - Presignature Storage
 
+  // Presignature operations can be invoked concurrently (e.g. concurrent fillBuffer calls),
+  // so all access to the mutable state below is guarded by this lock to avoid data races
+  // that would otherwise corrupt the underlying dictionary.
+  private let presignatureLock = NSLock()
+
+  private func withPresignatureLock<T>(_ body: () throws -> T) rethrows -> T {
+    presignatureLock.lock()
+    defer { presignatureLock.unlock() }
+    return try body()
+  }
+
   private var presignatureStore: [String: [PresignatureEntry]] = [:]
-  private(set) var getPresignaturesCallCount = 0
-  private(set) var insertPresignatureCallCount = 0
-  private(set) var popOldestPresignatureCallCount = 0
-  private(set) var deletePresignaturesCallCount = 0
+  private var _getPresignaturesCallCount = 0
+  private var _insertPresignatureCallCount = 0
+  private var _popOldestPresignatureCallCount = 0
+  private var _deletePresignaturesCallCount = 0
+  private var _cleanupExpiredPresignaturesCallCount = 0
+
+  var getPresignaturesCallCount: Int { withPresignatureLock { _getPresignaturesCallCount } }
+  var insertPresignatureCallCount: Int { withPresignatureLock { _insertPresignatureCallCount } }
+  var popOldestPresignatureCallCount: Int { withPresignatureLock { _popOldestPresignatureCallCount } }
+  var deletePresignaturesCallCount: Int { withPresignatureLock { _deletePresignaturesCallCount } }
+  var cleanupExpiredPresignaturesCallCount: Int { withPresignatureLock { _cleanupExpiredPresignaturesCallCount } }
+
   var insertPresignatureShouldThrow = false
   var deletePresignaturesShouldThrow = false
   var getSharesShouldThrow = false
 
   func getPresignatures(_ curve: String) async throws -> [PresignatureEntry] {
-    getPresignaturesCallCount += 1
-    return presignatureStore[curve] ?? []
+    withPresignatureLock {
+      _getPresignaturesCallCount += 1
+      return presignatureStore[curve] ?? []
+    }
   }
 
   func insertPresignature(_ curve: String, _ entry: PresignatureEntry) async throws {
-    insertPresignatureCallCount += 1
     if insertPresignatureShouldThrow {
+      withPresignatureLock { _insertPresignatureCallCount += 1 }
       throw NSError(domain: "PortalKeychainSpy", code: -1, userInfo: [NSLocalizedDescriptionKey: "Mock insert failure"])
     }
-    presignatureStore[curve, default: []].append(entry)
+    withPresignatureLock {
+      _insertPresignatureCallCount += 1
+      presignatureStore[curve, default: []].append(entry)
+    }
   }
 
   func popOldestPresignature(_ curve: String) async throws -> PresignatureEntry? {
-    popOldestPresignatureCallCount += 1
-    guard var entries = presignatureStore[curve], !entries.isEmpty else { return nil }
-    let oldest = entries.removeFirst()
-    presignatureStore[curve] = entries
-    return oldest
+    withPresignatureLock {
+      _popOldestPresignatureCallCount += 1
+      guard var entries = presignatureStore[curve], !entries.isEmpty else { return nil }
+      let oldest = entries.removeFirst()
+      presignatureStore[curve] = entries
+      return oldest
+    }
   }
 
   func deletePresignatures(_ curve: String) async throws {
-    deletePresignaturesCallCount += 1
     if deletePresignaturesShouldThrow {
+      withPresignatureLock { _deletePresignaturesCallCount += 1 }
       throw NSError(domain: "PortalKeychainSpy", code: -1, userInfo: [NSLocalizedDescriptionKey: "Mock delete failure"])
     }
-    presignatureStore[curve] = nil
+    withPresignatureLock {
+      _deletePresignaturesCallCount += 1
+      presignatureStore[curve] = nil
+    }
   }
-
-  private(set) var cleanupExpiredPresignaturesCallCount = 0
 
   @discardableResult
   func cleanupExpiredPresignatures(_ curve: String) async throws -> Int {
-    cleanupExpiredPresignaturesCallCount += 1
-    let entries = presignatureStore[curve] ?? []
     let now = Date()
     let formatter = ISO8601DateFormatter()
-    let valid = entries.filter { entry in
-      guard let expiresAt = formatter.date(from: entry.expiresAt) else { return false }
-      return expiresAt > now
+    return withPresignatureLock {
+      _cleanupExpiredPresignaturesCallCount += 1
+      let entries = presignatureStore[curve] ?? []
+      let valid = entries.filter { entry in
+        guard let expiresAt = formatter.date(from: entry.expiresAt) else { return false }
+        return expiresAt > now
+      }
+      let removed = entries.count - valid.count
+      presignatureStore[curve] = valid
+      return removed
     }
-    let removed = entries.count - valid.count
-    presignatureStore[curve] = valid
-    return removed
   }
 
   // MARK: - getAddress

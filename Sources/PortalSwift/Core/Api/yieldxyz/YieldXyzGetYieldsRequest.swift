@@ -60,11 +60,13 @@ public enum YieldXyzGetYieldsSort: String, Codable {
 }
 
 /// Yield mechanics types
-public enum YieldXyzMechanicsType: String, Codable {
+public enum YieldXyzMechanicsType: String, YieldXyzUnknownTolerantEnum {
   case staking
   case restaking
   case lending
   case vault
   case fixed_yield
   case real_world_asset
+  case unknown
+  public static var unknownValue: YieldXyzMechanicsType { .unknown }
 }

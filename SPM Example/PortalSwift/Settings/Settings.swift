@@ -58,6 +58,7 @@ class Settings: ObservableObject {
   var isAccountAbstracted: Bool = false
   var useEnclaveMPC: Bool = false
   var usePresignatures: Bool = false
+  var usePreGeneratedWallet: Bool = true
 }
 
 // MARK: - App Configuration

@@ -15,6 +15,7 @@ private final class EvmAccountTypePortalMock: EvmAccountTypePortalDependency {
   var rawSignCallCount = 0
   var rawSignMessage: String?
   var rawSignChainId: String?
+  var rawSignTraceId: String?
 
   var requestReturnValue: PortalProviderResult?
   var requestError: Error?
@@ -23,10 +24,11 @@ private final class EvmAccountTypePortalMock: EvmAccountTypePortalDependency {
   var requestMethod: PortalRequestMethod?
   var requestParams: [Any]?
 
-  func rawSign(message: String, chainId: String, signatureApprovalMemo _: String?) async throws -> PortalProviderResult {
+  func rawSign(message: String, chainId: String, signatureApprovalMemo _: String?, traceId: String? = nil) async throws -> PortalProviderResult {
     rawSignCallCount += 1
     rawSignMessage = message
     rawSignChainId = chainId
+    rawSignTraceId = traceId
     if let error = rawSignError {
       throw error
     }
