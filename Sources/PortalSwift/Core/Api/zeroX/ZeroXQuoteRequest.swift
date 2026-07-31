@@ -22,6 +22,8 @@ public struct ZeroXQuoteRequest: Codable {
   public let sellAmount: String
   /// The transaction origin address (optional)
   public let txOrigin: String?
+  /// The sender address included in the quote request body for balance/allowance simulation (optional)
+  public let fromAddress: String?
   /// The swap fee recipient address (optional)
   public let swapFeeRecipient: String?
   /// The swap fee in basis points (optional)
@@ -45,6 +47,7 @@ public struct ZeroXQuoteRequest: Codable {
     sellToken: String,
     sellAmount: String,
     txOrigin: String? = nil,
+    fromAddress: String? = nil,
     swapFeeRecipient: String? = nil,
     swapFeeBps: Int? = nil,
     swapFeeToken: String? = nil,
@@ -59,6 +62,7 @@ public struct ZeroXQuoteRequest: Codable {
     self.sellToken = sellToken
     self.sellAmount = sellAmount
     self.txOrigin = txOrigin
+    self.fromAddress = fromAddress
     self.swapFeeRecipient = swapFeeRecipient
     self.swapFeeBps = swapFeeBps
     self.swapFeeToken = swapFeeToken
@@ -79,6 +83,7 @@ public struct ZeroXQuoteRequest: Codable {
     ]
 
     if let txOrigin = txOrigin { body["txOrigin"] = AnyCodable(txOrigin) }
+    if let fromAddress = fromAddress { body["fromAddress"] = AnyCodable(fromAddress) }
     if let swapFeeRecipient = swapFeeRecipient { body["swapFeeRecipient"] = AnyCodable(swapFeeRecipient) }
     if let swapFeeBps = swapFeeBps { body["swapFeeBps"] = AnyCodable(swapFeeBps) }
     if let swapFeeToken = swapFeeToken { body["swapFeeToken"] = AnyCodable(swapFeeToken) }

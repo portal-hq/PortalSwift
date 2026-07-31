@@ -83,8 +83,10 @@ final class ZeroXMock: ZeroXProtocol {
       onProgress?(.failed, ZeroXTradeAssetProgressData(errorMessage: error.localizedDescription))
       throw error
     }
-    onProgress?(.confirmed, ZeroXTradeAssetProgressData(txHash: tradeAssetReturnValue?.hashes.first))
-    return tradeAssetReturnValue ?? ZeroXTradeAssetResult(hashes: ["0xmockhash"])
+    // Resolve the result first so the reported hash always matches what we return.
+    let result = tradeAssetReturnValue ?? ZeroXTradeAssetResult(hashes: ["0xmockhash"])
+    onProgress?(.confirmed, ZeroXTradeAssetProgressData(txHash: result.hashes.first))
+    return result
   }
 
   // MARK: - Helper Methods

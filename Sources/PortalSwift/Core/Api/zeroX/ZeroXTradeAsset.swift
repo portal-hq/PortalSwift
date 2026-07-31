@@ -10,8 +10,8 @@ import Foundation
 
 /// Parameters for the high-level `tradeAsset` swap method.
 ///
-/// Mirrors the fields of `ZeroXQuoteRequest` (used internally to fetch a quote) and adds
-/// optional `fromAddress` and `zeroXApiKey` overrides.
+/// Mirrors the fields of `ZeroXQuoteRequest` (used internally to fetch a quote) and adds an
+/// optional `zeroXApiKey` override.
 public struct ZeroXTradeAssetParams {
   /// The chain ID for the swap (e.g., "eip155:1").
   public let chainId: String
@@ -39,7 +39,12 @@ public struct ZeroXTradeAssetParams {
   public let excludedSources: String?
   /// Whether to sell the entire balance (optional).
   public let sellEntireBalance: Bool?
-  /// Sender address of the swap transaction (optional). Mirrors LiFi's `fromAddress` naming.
+  /// Sender address forwarded in the quote request body for balance/allowance simulation (optional).
+  /// Mirrors LiFi's `fromAddress` naming and Android SDK parity.
+  ///
+  /// - Note: This does not override the sender of the broadcast transaction. The swap is always sent
+  ///   with the `from` returned in the quote's `transaction`, and Portal's API uses the authenticated
+  ///   client address as the 0x taker when simulating the quote.
   public let fromAddress: String?
   /// Optional 0x API key to override the one configured in Portal Dashboard.
   public let zeroXApiKey: String?
@@ -86,6 +91,7 @@ public struct ZeroXTradeAssetParams {
       sellToken: sellToken,
       sellAmount: sellAmount,
       txOrigin: txOrigin,
+      fromAddress: fromAddress,
       swapFeeRecipient: swapFeeRecipient,
       swapFeeBps: swapFeeBps,
       swapFeeToken: swapFeeToken,

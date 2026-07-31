@@ -173,6 +173,45 @@ extension ZeroXTradeAssetTests {
     XCTAssertEqual(apiMock.getQuoteZeroXApiKeyParam, "custom-key")
   }
 
+  func test_tradeAsset_forwardsFromAddressToQuote() async throws {
+    // given
+    apiMock.getQuoteReturnValue = ZeroXQuoteResponse.stub()
+    let params = ZeroXTradeAssetParams(
+      chainId: "eip155:1",
+      buyToken: "USDC",
+      sellToken: "ETH",
+      sellAmount: "1000000000000000000",
+      fromAddress: "0xsender"
+    )
+
+    // when
+    _ = try await zeroX.tradeAsset(params: params)
+
+    // then
+    XCTAssertEqual(apiMock.getQuoteRequestParam?.fromAddress, "0xsender")
+  }
+
+  /// `fromAddress` feeds the quote request only; the broadcast sender always comes from the
+  /// quote's `transaction.from` (matches the Android SDK).
+  func test_tradeAsset_fromAddressDoesNotOverrideTransactionSender() async throws {
+    // given
+    apiMock.getQuoteReturnValue = ZeroXQuoteResponse.stub()
+    let params = ZeroXTradeAssetParams(
+      chainId: "eip155:1",
+      buyToken: "USDC",
+      sellToken: "ETH",
+      sellAmount: "1000000000000000000",
+      fromAddress: "0xsender"
+    )
+
+    // when
+    _ = try await zeroX.tradeAsset(params: params)
+
+    // then
+    let txParams = portalMock.lastSendParams?.first as? [String: Any]
+    XCTAssertEqual(txParams?["from"] as? String, "0x1234567890abcdef1234567890abcdef12345678")
+  }
+
   func test_tradeAsset_waitsForPendingReceipt() async throws {
     // given
     apiMock.getQuoteReturnValue = ZeroXQuoteResponse.stub()

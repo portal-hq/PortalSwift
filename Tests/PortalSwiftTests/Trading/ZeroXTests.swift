@@ -1363,6 +1363,47 @@ extension ZeroXTests {
     XCTAssertNotNil(body["sellAmount"])
   }
 
+  func test_zeroXQuoteRequest_toRequestBodyIncludesFromAddressWhenSet() {
+    // given
+    let request = ZeroXQuoteRequest.stub(fromAddress: "0xsender")
+
+    // when
+    let body = request.toRequestBody()
+
+    // then
+    XCTAssertEqual(body["fromAddress"]?.value as? String, "0xsender")
+  }
+
+  func test_zeroXQuoteRequest_toRequestBodyOmitsFromAddressWhenNil() {
+    // given
+    let request = ZeroXQuoteRequest.stub()
+
+    // when
+    let body = request.toRequestBody()
+
+    // then
+    XCTAssertNil(body["fromAddress"])
+  }
+
+  func test_zeroXTradeAssetParams_toQuoteRequestForwardsFromAddress() {
+    // given
+    let params = ZeroXTradeAssetParams(
+      chainId: "eip155:1",
+      buyToken: "USDC",
+      sellToken: "ETH",
+      sellAmount: "1000000000000000000",
+      txOrigin: "0xorigin",
+      fromAddress: "0xsender"
+    )
+
+    // when
+    let request = params.toQuoteRequest()
+
+    // then
+    XCTAssertEqual(request.fromAddress, "0xsender")
+    XCTAssertEqual(request.txOrigin, "0xorigin")
+  }
+
   func test_zeroXQuoteRequest_encodesOptionalFields() {
     // given
     let request = ZeroXQuoteRequest.stub(
