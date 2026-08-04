@@ -173,7 +173,9 @@ extension ZeroXTradeAssetTests {
     XCTAssertEqual(apiMock.getQuoteZeroXApiKeyParam, "custom-key")
   }
 
-  func test_tradeAsset_forwardsFromAddressToQuote() async throws {
+  /// `fromAddress` is sent as the quote's `txOrigin` — the only sender field the 0x quote
+  /// endpoint accepts (matches the Web SDK).
+  func test_tradeAsset_sendsFromAddressAsTxOrigin() async throws {
     // given
     apiMock.getQuoteReturnValue = ZeroXQuoteResponse.stub()
     let params = ZeroXTradeAssetParams(
@@ -188,7 +190,20 @@ extension ZeroXTradeAssetTests {
     _ = try await zeroX.tradeAsset(params: params)
 
     // then
-    XCTAssertEqual(apiMock.getQuoteRequestParam?.fromAddress, "0xsender")
+    XCTAssertEqual(apiMock.getQuoteRequestParam?.txOrigin, "0xsender")
+    XCTAssertNil(apiMock.getQuoteRequestParam?.toRequestBody()["fromAddress"])
+  }
+
+  func test_tradeAsset_omitsTxOriginWhenFromAddressIsNil() async throws {
+    // given
+    apiMock.getQuoteReturnValue = ZeroXQuoteResponse.stub()
+
+    // when
+    _ = try await zeroX.tradeAsset(params: stubParams())
+
+    // then
+    XCTAssertNil(apiMock.getQuoteRequestParam?.txOrigin)
+    XCTAssertNil(apiMock.getQuoteRequestParam?.toRequestBody()["txOrigin"])
   }
 
   /// `fromAddress` feeds the quote request only; the broadcast sender always comes from the
@@ -240,7 +255,9 @@ extension ZeroXTradeAssetTests {
       XCTFail("Expected error")
     } catch {
       XCTAssertEqual(error as? ZeroXTradeAssetError, .portalNotInitialized)
-      XCTAssertEqual(statuses, [.failed])
+      // A missing portal is a configuration error, not a flow failure: no progress is emitted
+      // (matches the React Native SDK's missing-signer/waiter guards).
+      XCTAssertEqual(statuses, [])
     }
   }
 
@@ -272,6 +289,40 @@ extension ZeroXTradeAssetTests {
     } catch {
       XCTAssertEqual((error as NSError).code, 400)
       XCTAssertEqual(statuses, [.fetchingQuote, .failed])
+    }
+  }
+
+  /// A blank-but-present `error` string must still fail closed, and must not be misreported as
+  /// `.quoteError` — it falls through to the missing-data guard.
+  func test_tradeAsset_throwsOnWhitespaceOnlyQuoteError() async throws {
+    // given
+    apiMock.getQuoteReturnValue = ZeroXQuoteResponse(data: nil, error: "   ")
+    var statuses: [ZeroXTradeAssetProgressStatus] = []
+
+    // when / then
+    do {
+      _ = try await zeroX.tradeAsset(params: stubParams()) { status, _ in statuses.append(status) }
+      XCTFail("Expected error")
+    } catch {
+      XCTAssertEqual(error as? ZeroXTradeAssetError, .missingQuoteData)
+      XCTAssertEqual(statuses, [.fetchingQuote, .failed])
+      XCTAssertEqual(portalMock.sendTransactionCalls, 0)
+    }
+  }
+
+  func test_tradeAsset_throwsOnMissingQuoteData() async throws {
+    // given - no data and no error string
+    apiMock.getQuoteReturnValue = ZeroXQuoteResponse(data: nil, error: nil)
+    var statuses: [ZeroXTradeAssetProgressStatus] = []
+
+    // when / then
+    do {
+      _ = try await zeroX.tradeAsset(params: stubParams()) { status, _ in statuses.append(status) }
+      XCTFail("Expected error")
+    } catch {
+      XCTAssertEqual(error as? ZeroXTradeAssetError, .missingQuoteData)
+      XCTAssertEqual(statuses, [.fetchingQuote, .failed])
+      XCTAssertEqual(portalMock.sendTransactionCalls, 0)
     }
   }
 

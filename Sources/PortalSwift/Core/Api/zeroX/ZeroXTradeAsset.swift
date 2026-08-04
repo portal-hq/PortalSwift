@@ -10,8 +10,9 @@ import Foundation
 
 /// Parameters for the high-level `tradeAsset` swap method.
 ///
-/// Mirrors the fields of `ZeroXQuoteRequest` (used internally to fetch a quote) and adds an
-/// optional `zeroXApiKey` override.
+/// Mirrors the fields of `ZeroXQuoteRequest` (used internally to fetch a quote), replacing
+/// `txOrigin` with `fromAddress` and adding an optional `zeroXApiKey` override. This matches the
+/// `ZeroXTradeAssetParams` shape in the React Native and Web SDKs.
 public struct ZeroXTradeAssetParams {
   /// The chain ID for the swap (e.g., "eip155:1").
   public let chainId: String
@@ -21,8 +22,6 @@ public struct ZeroXTradeAssetParams {
   public let sellToken: String
   /// The amount to sell in base units.
   public let sellAmount: String
-  /// The transaction origin address (optional).
-  public let txOrigin: String?
   /// The swap fee recipient address (optional).
   public let swapFeeRecipient: String?
   /// The swap fee in basis points (optional).
@@ -39,8 +38,7 @@ public struct ZeroXTradeAssetParams {
   public let excludedSources: String?
   /// Whether to sell the entire balance (optional).
   public let sellEntireBalance: Bool?
-  /// Sender address forwarded in the quote request body for balance/allowance simulation (optional).
-  /// Mirrors LiFi's `fromAddress` naming and Android SDK parity.
+  /// Sender address of the swap transaction (optional). Sent to the 0x quote endpoint as `txOrigin`.
   ///
   /// - Note: This does not override the sender of the broadcast transaction. The swap is always sent
   ///   with the `from` returned in the quote's `transaction`, and Portal's API uses the authenticated
@@ -54,7 +52,6 @@ public struct ZeroXTradeAssetParams {
     buyToken: String,
     sellToken: String,
     sellAmount: String,
-    txOrigin: String? = nil,
     swapFeeRecipient: String? = nil,
     swapFeeBps: Int? = nil,
     swapFeeToken: String? = nil,
@@ -70,7 +67,6 @@ public struct ZeroXTradeAssetParams {
     self.buyToken = buyToken
     self.sellToken = sellToken
     self.sellAmount = sellAmount
-    self.txOrigin = txOrigin
     self.swapFeeRecipient = swapFeeRecipient
     self.swapFeeBps = swapFeeBps
     self.swapFeeToken = swapFeeToken
@@ -84,14 +80,16 @@ public struct ZeroXTradeAssetParams {
   }
 
   /// Builds the `ZeroXQuoteRequest` used internally to fetch the swap quote.
+  ///
+  /// `fromAddress` is sent as the quote's `txOrigin` — the only sender field the 0x quote endpoint
+  /// accepts. This matches the Web SDK's mapping.
   func toQuoteRequest() -> ZeroXQuoteRequest {
     ZeroXQuoteRequest(
       chainId: chainId,
       buyToken: buyToken,
       sellToken: sellToken,
       sellAmount: sellAmount,
-      txOrigin: txOrigin,
-      fromAddress: fromAddress,
+      txOrigin: fromAddress,
       swapFeeRecipient: swapFeeRecipient,
       swapFeeBps: swapFeeBps,
       swapFeeToken: swapFeeToken,
@@ -164,15 +162,15 @@ public enum ZeroXTradeAssetError: LocalizedError, Equatable {
   public var errorDescription: String? {
     switch self {
     case .portalNotInitialized:
-      return "Portal instance is not available for signing or sending the swap transaction."
+      return "Portal is not available for signing or sending the swap transaction."
     case let .quoteError(message):
       return "Quote error: \(message)"
     case .missingQuoteData:
-      return "Quote response missing data.rawResponse."
+      return "Quote response missing data.rawResponse"
     case .missingTransaction:
-      return "Quote response missing a valid transaction (expected non-empty \"to\")."
+      return "Quote response missing valid transaction (expected object with non-empty string \"to\")"
     case .invalidTransactionHash:
-      return "Signing returned an empty or invalid transaction hash."
+      return "eth_sendTransaction returned empty or invalid transaction hash"
     case let .confirmationFailed(message):
       return message
     }

@@ -89,7 +89,7 @@ public extension ZeroXProtocol {
   /// configuration for a specific request, use `getQuote(request:zeroXApiKey:)` instead.
   ///
   /// - Parameter request: The quote request parameters containing chain ID, tokens, amounts, and optional swap configuration.
-  ///   - Note: The `chainId` in the request is used for the URL path only and is excluded from the request body.
+  ///   - Note: The `chainId` in the request is included in the request body.
   /// - Returns: Response containing the quote with transaction data, including buy/sell amounts, price, gas estimates, and a ready-to-submit transaction object.
   /// - Throws: `URLError` if the URL cannot be constructed, or network/decoding errors if the request fails.
   ///
@@ -118,7 +118,7 @@ public extension ZeroXProtocol {
   /// configuration for a specific request, use `getPrice(request:zeroXApiKey:)` instead.
   ///
   /// - Parameter request: The price request parameters containing chain ID, tokens, amounts, and optional swap configuration.
-  ///   - Note: The `chainId` in the request is used for the URL path only and is excluded from the request body.
+  ///   - Note: The `chainId` in the request is included in the request body.
   /// - Returns: Response containing the price data, including buy/sell amounts, price, gas estimates, fees breakdown, and liquidity availability.
   /// - Throws: `URLError` if the URL cannot be constructed, or network/decoding errors if the request fails.
   ///
@@ -198,7 +198,7 @@ public class ZeroX: ZeroXProtocol {
   ///
   /// - Parameters:
   ///   - request: The quote request parameters containing chain ID, tokens, amounts, and optional swap configuration.
-  ///     - Note: The `chainId` in the request is used for the URL path only and is excluded from the request body.
+  ///     - Note: The `chainId` in the request is included in the request body.
   ///   - zeroXApiKey: Optional 0x API key to override the one configured in Portal Dashboard.
   ///     - If `nil`: The SDK will use the API key configured in the Portal Dashboard.
   ///     - If provided: This API key will be used for this request, overriding the Dashboard configuration.
@@ -225,7 +225,7 @@ public class ZeroX: ZeroXProtocol {
   ///
   /// - Parameters:
   ///   - request: The price request parameters containing chain ID, tokens, amounts, and optional swap configuration.
-  ///     - Note: The `chainId` in the request is used for the URL path only and is excluded from the request body.
+  ///     - Note: The `chainId` in the request is included in the request body.
   ///   - zeroXApiKey: Optional 0x API key to override the one configured in Portal Dashboard.
   ///     - If `nil`: The SDK will use the API key configured in the Portal Dashboard.
   ///     - If provided: This API key will be used for this request, overriding the Dashboard configuration.
@@ -254,10 +254,10 @@ public class ZeroX: ZeroXProtocol {
       onProgress?(status, data)
     }
 
+    // Precondition failures are configuration errors, not flow failures: throw without emitting
+    // any progress event (matches the React Native SDK's missing-signer/waiter guards).
     guard let portal = portal else {
-      let error = ZeroXTradeAssetError.portalNotInitialized
-      report(.failed, ZeroXTradeAssetProgressData(errorMessage: error.localizedDescription))
-      throw error
+      throw ZeroXTradeAssetError.portalNotInitialized
     }
 
     let network = params.chainId
@@ -346,18 +346,10 @@ public class ZeroX: ZeroXProtocol {
     ))
 
     // 5. Wait for confirmation
-    let confirmed: Bool
     do {
-      confirmed = try await waitForConfirmation(txHash: txHash, chainId: network, portal: portal)
+      try await waitForConfirmation(txHash: txHash, chainId: network, portal: portal)
     } catch {
       report(.failed, ZeroXTradeAssetProgressData(txHash: txHash, errorMessage: "waitForConfirmation failed: \(error.localizedDescription)"))
-      throw error
-    }
-
-    guard confirmed else {
-      let message = "On-chain confirmation did not complete for \(txHash) on \(network)."
-      let error = ZeroXTradeAssetError.confirmationFailed(message)
-      report(.failed, ZeroXTradeAssetProgressData(txHash: txHash, errorMessage: message))
       throw error
     }
 
@@ -368,9 +360,10 @@ public class ZeroX: ZeroXProtocol {
   }
 
   /// Polls `eth_getTransactionReceipt` until the transaction is mined.
-  /// - Returns: `true` when the receipt reports success (`status == "0x1"`).
+  ///
+  /// Returns normally only when the receipt reports success (`status == "0x1"`).
   /// - Throws: `ZeroXTradeAssetError.confirmationFailed` on revert (`status == "0x0"`) or timeout.
-  private func waitForConfirmation(txHash: String, chainId: String, portal: ZeroXPortalDependency) async throws -> Bool {
+  private func waitForConfirmation(txHash: String, chainId: String, portal: ZeroXPortalDependency) async throws {
     for _ in 0 ..< confirmationMaxAttempts {
       try await Task.sleep(nanoseconds: confirmationPollIntervalNanoseconds)
 
@@ -383,7 +376,7 @@ public class ZeroX: ZeroXProtocol {
 
       if let receipt = response.result as? EthTransactionResponse, let status = receipt.result?.status {
         if status == "0x1" {
-          return true
+          return
         } else {
           throw ZeroXTradeAssetError.confirmationFailed("Transaction \(txHash) reverted (status: \(status)).")
         }
