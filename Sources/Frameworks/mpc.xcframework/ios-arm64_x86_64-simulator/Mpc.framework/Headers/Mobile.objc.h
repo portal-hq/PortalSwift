@@ -6,7 +6,7 @@
 #ifndef __Mobile_H__
 #define __Mobile_H__
 
-@import Foundation;
+#import <Foundation/Foundation.h>
 #include "ref.h"
 #include "Universe.objc.h"
 
@@ -80,6 +80,7 @@
 @property (nonatomic) NSString* _Nonnull signingScheme;
 @property (nonatomic) NSString* _Nonnull chainId;
 @property (nonatomic) NSString* _Nonnull reqId;
+@property (nonatomic) NSString* _Nonnull logLevel;
 @property (nonatomic) BOOL isRaw;
 @property (nonatomic) NSString* _Nonnull mpcClientHeader;
 @property (nonatomic) NSString* _Nonnull signatureApprovalMemo;
