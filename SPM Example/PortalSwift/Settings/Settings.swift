@@ -14,6 +14,9 @@ struct ApplicationConfiguration {
   let alchemyApiKey: String
   let apiUrl: String
   let custodianServerUrl: String
+  /// API key sent as the `x-api-key` header on every custodian server request.
+  /// Empty means no header is sent, which is the case for `.localHost`.
+  let custodianApiKey: String
   let googleClientId: String
   let mpcUrl: String
   let webAuthnHost: String
@@ -83,16 +86,20 @@ extension Settings {
         throw PortalExampleAppError.environmentNotSet()
       }
 
+      let isBackupWithPortal = BACKUP_WITH_PORTAL == "true"
+
       switch portalConfig.environment {
       case .production:
         logger.info("Settings - configuring for production")
 
-        let custodianServerUrl = BACKUP_WITH_PORTAL == "true" ? "https://prod-portalex-backup-with-portal.onrender.com" : "https://portalex-mpc.portalhq.io"
+        let custodianServerUrl = isBackupWithPortal ? "https://prod-portalex-backup-with-portal.onrender.com" : "https://portalex-mpc.portalhq.io"
+        let custodianApiKey = try requireSecret(isBackupWithPortal ? "PORTAL_EX_BACKUP_WITH_PORTAL_PROD_API_KEY" : "PORTAL_EX_PROD_API_KEY", from: infoDictionary)
 
         portalConfig.appConfig = ApplicationConfiguration(
           alchemyApiKey: ALCHEMY_API_KEY,
           apiUrl: "api.portalhq.io",
           custodianServerUrl: custodianServerUrl,
+          custodianApiKey: custodianApiKey,
           googleClientId: GOOGLE_CLIENT_ID,
           mpcUrl: "mpc.portalhq.io",
           webAuthnHost: "backup.web.portalhq.io",
@@ -102,12 +109,14 @@ extension Settings {
       case .staging:
         logger.info("Settings - configuring for staging")
 
-        let custodianServerUrl = BACKUP_WITH_PORTAL == "true" ? "https://staging-portalex-backup-with-portal.onrender.com" : "https://staging-portalex-mpc-service.onrender.com"
+        let custodianServerUrl = isBackupWithPortal ? "https://staging-portalex-backup-with-portal.onrender.com" : "https://staging-portalex-mpc-service.onrender.com"
+        let custodianApiKey = try requireSecret(isBackupWithPortal ? "PORTAL_EX_BACKUP_WITH_PORTAL_STAGING_API_KEY" : "PORTAL_EX_STAGING_API_KEY", from: infoDictionary)
 
         portalConfig.appConfig = ApplicationConfiguration(
           alchemyApiKey: ALCHEMY_API_KEY,
           apiUrl: "api.portalhq.dev",
           custodianServerUrl: custodianServerUrl,
+          custodianApiKey: custodianApiKey,
           googleClientId: GOOGLE_CLIENT_ID,
           mpcUrl: "mpc.portalhq.dev",
           webAuthnHost: "backup.portalhq.dev",
@@ -121,6 +130,7 @@ extension Settings {
           alchemyApiKey: ALCHEMY_API_KEY,
           apiUrl: "localhost:3001",
           custodianServerUrl: "http://localhost:3010",
+          custodianApiKey: "",
           googleClientId: GOOGLE_CLIENT_ID,
           mpcUrl: "localhost:3002",
           webAuthnHost: "localhost:8080",
@@ -132,5 +142,19 @@ extension Settings {
     } catch {
       self.logger.error("Settings - Error loading application config: \(error)")
     }
+  }
+
+  /// Reads a required value from the Info.plist.
+  ///
+  /// Note the `isEmpty` check: Xcode expands an undefined `$(VAR)` to an empty string, so the
+  /// Info.plist key still exists and a plain `as? String` cast would succeed. Without this check a
+  /// missing Secrets.xcconfig entry would silently produce `""` instead of an error.
+  private func requireSecret(_ key: String, from infoDictionary: [String: Any]) throws -> String {
+    guard let value: String = infoDictionary[key] as? String, !value.trimmingCharacters(in: .whitespaces).isEmpty else {
+      self.logger.error("Settings - Error: Do you have `\(key)=<your key>` in your Secrets.xcconfig, and `\(key)=$(\(key))` referenced in your App's info.plist?")
+      throw PortalExampleAppError.environmentNotSet()
+    }
+
+    return value
   }
 }

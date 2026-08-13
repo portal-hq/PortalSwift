@@ -219,7 +219,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         let message: String?
       }
 
-      let request = PortalAPIRequest(url: url, method: .post, payload: payload)
+      let request = PortalAPIRequest.custodian(url: url, method: .post, payload: payload)
       let result = try await requests.execute(request: request, mappingInResponse: ResponseType.self)
       try await storageCallback()
 
@@ -277,7 +277,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         throw URLError(.badURL)
       }
 
-      let cipherTextRequest = PortalAPIRequest(url: cipherTextUrl)
+      let cipherTextRequest = PortalAPIRequest.custodian(url: cipherTextUrl)
       let cipherTextResponse = try await requests.execute(request: cipherTextRequest, mappingInResponse: CipherTextResult.self)
       cipherText = cipherTextResponse.cipherText
 
@@ -287,7 +287,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         throw URLError(.badURL)
       }
 
-      let organizationBackupShareRequest = PortalAPIRequest(url: organizationBackupShareUrl)
+      let organizationBackupShareRequest = PortalAPIRequest.custodian(url: organizationBackupShareUrl)
       let organizationBackupShareResponse = try await requests.execute(request: organizationBackupShareRequest, mappingInResponse: OrgShareResult.self)
 
       organizationShare = organizationBackupShareResponse.orgShare
@@ -313,7 +313,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         throw URLError(.badURL)
       }
 
-      let prepareEjectRequest = PortalAPIRequest(url: prepareEjectUrl, method: .post, payload: ["walletId": walletId])
+      let prepareEjectRequest = PortalAPIRequest.custodian(url: prepareEjectUrl, method: .post, payload: ["walletId": walletId])
       let prepareEjectResponse = try await requests.execute(request: prepareEjectRequest, mappingInResponse: String.self)
 
       print("Ethereum Wallet ejectable until \(prepareEjectResponse)")
@@ -359,7 +359,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         throw URLError(.badURL)
       }
 
-      let cipherTextRequest = PortalAPIRequest(url: cipherTextUrl)
+      let cipherTextRequest = PortalAPIRequest.custodian(url: cipherTextUrl)
       let cipherTextResponse = try await requests.execute(request: cipherTextRequest, mappingInResponse: CipherTextResult.self)
 
       cipherText = cipherTextResponse.cipherText
@@ -369,7 +369,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       ) else {
         throw URLError(.badURL)
       }
-      let organizationBackupShareRequest = PortalAPIRequest(url: organizationBackupShareUrl)
+      let organizationBackupShareRequest = PortalAPIRequest.custodian(url: organizationBackupShareUrl)
       let organizationBackupShareResponse = try await requests.execute(request: organizationBackupShareRequest, mappingInResponse: OrgShareResult.self)
 
       organizationShare = organizationBackupShareResponse.orgShare
@@ -379,7 +379,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       ) else {
         throw URLError(.badURL)
       }
-      let organizationSolanaBackupShareRequest = PortalAPIRequest(url: organizationSolanaBackupShareUrl)
+      let organizationSolanaBackupShareRequest = PortalAPIRequest.custodian(url: organizationSolanaBackupShareUrl)
       let organizationSolanaBackupShareResponse = try? await requests.execute(request: organizationSolanaBackupShareRequest, mappingInResponse: OrgShareResult.self)
       if let organizationSolanaBackupShareResponse {
         organizationSolanaShare = organizationSolanaBackupShareResponse.orgShare
@@ -413,13 +413,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
       guard let prepareEjectUrl = URL(string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/prepare-eject") else {
         throw URLError(.badURL)
       }
-      let prepareEjectRequest = PortalAPIRequest(url: prepareEjectUrl, method: .post, payload: ["walletId": walletId])
+      let prepareEjectRequest = PortalAPIRequest.custodian(url: prepareEjectUrl, method: .post, payload: ["walletId": walletId])
       let prepareEjectResponse = try await requests.execute(request: prepareEjectRequest, mappingInResponse: String.self)
 
       print("Ethereum Wallet ejectable until \(prepareEjectResponse)")
 
       if let walletIdEd25519 {
-        let prepareEjectEd25519Request = PortalAPIRequest(url: prepareEjectUrl, method: .post, payload: ["walletId": walletIdEd25519])
+        let prepareEjectEd25519Request = PortalAPIRequest.custodian(url: prepareEjectUrl, method: .post, payload: ["walletId": walletIdEd25519])
         let prepareEjectResponseEd25519 = try await requests.execute(request: prepareEjectEd25519Request, mappingInResponse: String.self)
 
         print("Solana Wallet ejectable until \(prepareEjectResponseEd25519)")
@@ -573,7 +573,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       guard let url = URL(string: "\(config.custodianServerUrl)/mobile/\(userId)/cipher-text/fetch?backupMethod=\(withBackupMethod.rawValue)") else {
         throw URLError(.badURL)
       }
-      let request = PortalAPIRequest(url: url)
+      let request = PortalAPIRequest.custodian(url: url)
       let response = try await requests.execute(request: request, mappingInResponse: CipherTextResult.self)
       cipherText = response.cipherText
     }
@@ -799,7 +799,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       if let url = URL(string: "\(config.custodianServerUrl)/mobile/login") {
         let payload = ["username": username]
 
-        let request = PortalAPIRequest(url: url, method: .post, payload: payload)
+        let request = PortalAPIRequest.custodian(url: url, method: .post, payload: payload)
         let user = try await requests.execute(request: request, mappingInResponse: UserResult.self)
 
         self.user = user
@@ -824,7 +824,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
           payload["isAccountAbstracted"] = AnyCodable(true)
         }
 
-        let request = PortalAPIRequest(url: url, method: .post, payload: payload)
+        let request = PortalAPIRequest.custodian(url: url, method: .post, payload: payload)
         let user = try await requests.execute(request: request, mappingInResponse: UserResult.self)
 
         self.user = user
@@ -1531,7 +1531,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       "cipherText": generateSolanaResult.cipherText
     ]
 
-    let request = PortalAPIRequest(url: url, method: .post, payload: payload)
+    let request = PortalAPIRequest.custodian(url: url, method: .post, payload: payload)
     let result = try await requests.execute(request: request, mappingInResponse: String.self)
 
     try await generateSolanaResult.storageCallback()
@@ -1577,7 +1577,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       ]
 
     do {
-      let request = PortalAPIRequest(url: url, method: .post, payload: payload)
+      let request = PortalAPIRequest.custodian(url: url, method: .post, payload: payload)
       let jsonDictionary = try await requests.execute(request: request, mappingInResponse: [String: String].self)
       guard let txnHash = jsonDictionary["txHash"] else {
         self.logger.error("ViewController.sendSepoliaTransaction() - ❌ Invalid response type for request.")

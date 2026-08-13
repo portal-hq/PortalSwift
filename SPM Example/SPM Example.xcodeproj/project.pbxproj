@@ -65,6 +65,7 @@
 		D8A2B4FD2D0229B300890CDA /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				"PortalAPIRequest+Custodian.swift",
 				Settings.swift,
 				SettingsView.swift,
 			);
