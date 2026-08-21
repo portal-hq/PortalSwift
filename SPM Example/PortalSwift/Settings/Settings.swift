@@ -64,6 +64,32 @@ class Settings: ObservableObject {
   var usePreGeneratedWallet: Bool = true
 }
 
+// MARK: - Custodian Server Configuration
+
+/// Environment-specific values for the PortalEx custodian server.
+///
+/// These live here rather than inline in `loadApplicationConfig()` so every URL and Secrets key
+/// name has a single home.
+private enum CustodianServer {
+  /// Base URL of the custodian server backing each environment.
+  enum Url {
+    static let production = "https://portalex-mpc.portalhq.io"
+    static let productionBackupWithPortal = "https://prod-portalex-backup-with-portal.onrender.com"
+    static let staging = "https://staging-portalex-mpc-service.onrender.com"
+    static let stagingBackupWithPortal = "https://staging-portalex-backup-with-portal.onrender.com"
+    static let localHost = "http://localhost:3010"
+  }
+
+  /// Info.plist keys (fed from Secrets.xcconfig) holding the `x-api-key` for each environment.
+  /// `.localHost` has none: the custodian server it runs doesn't check the header.
+  enum ApiKeyPlistKey {
+    static let production = "PORTAL_EX_PROD_API_KEY"
+    static let productionBackupWithPortal = "PORTAL_EX_BACKUP_WITH_PORTAL_PROD_API_KEY"
+    static let staging = "PORTAL_EX_STAGING_API_KEY"
+    static let stagingBackupWithPortal = "PORTAL_EX_BACKUP_WITH_PORTAL_STAGING_API_KEY"
+  }
+}
+
 // MARK: - App Configuration
 
 extension Settings {
@@ -92,8 +118,9 @@ extension Settings {
       case .production:
         logger.info("Settings - configuring for production")
 
-        let custodianServerUrl = isBackupWithPortal ? "https://prod-portalex-backup-with-portal.onrender.com" : "https://portalex-mpc.portalhq.io"
-        let custodianApiKey = try requireSecret(isBackupWithPortal ? "PORTAL_EX_BACKUP_WITH_PORTAL_PROD_API_KEY" : "PORTAL_EX_PROD_API_KEY", from: infoDictionary)
+        let custodianServerUrl = isBackupWithPortal ? CustodianServer.Url.productionBackupWithPortal : CustodianServer.Url.production
+        let custodianApiKeyPlistKey = isBackupWithPortal ? CustodianServer.ApiKeyPlistKey.productionBackupWithPortal : CustodianServer.ApiKeyPlistKey.production
+        let custodianApiKey = try requireSecret(custodianApiKeyPlistKey, from: infoDictionary)
 
         portalConfig.appConfig = ApplicationConfiguration(
           alchemyApiKey: ALCHEMY_API_KEY,
@@ -109,8 +136,9 @@ extension Settings {
       case .staging:
         logger.info("Settings - configuring for staging")
 
-        let custodianServerUrl = isBackupWithPortal ? "https://staging-portalex-backup-with-portal.onrender.com" : "https://staging-portalex-mpc-service.onrender.com"
-        let custodianApiKey = try requireSecret(isBackupWithPortal ? "PORTAL_EX_BACKUP_WITH_PORTAL_STAGING_API_KEY" : "PORTAL_EX_STAGING_API_KEY", from: infoDictionary)
+        let custodianServerUrl = isBackupWithPortal ? CustodianServer.Url.stagingBackupWithPortal : CustodianServer.Url.staging
+        let custodianApiKeyPlistKey = isBackupWithPortal ? CustodianServer.ApiKeyPlistKey.stagingBackupWithPortal : CustodianServer.ApiKeyPlistKey.staging
+        let custodianApiKey = try requireSecret(custodianApiKeyPlistKey, from: infoDictionary)
 
         portalConfig.appConfig = ApplicationConfiguration(
           alchemyApiKey: ALCHEMY_API_KEY,
@@ -129,7 +157,7 @@ extension Settings {
         portalConfig.appConfig = ApplicationConfiguration(
           alchemyApiKey: ALCHEMY_API_KEY,
           apiUrl: "localhost:3001",
-          custodianServerUrl: "http://localhost:3010",
+          custodianServerUrl: CustodianServer.Url.localHost,
           custodianApiKey: "",
           googleClientId: GOOGLE_CLIENT_ID,
           mpcUrl: "localhost:3002",
@@ -144,13 +172,18 @@ extension Settings {
     }
   }
 
-  /// Reads a required value from the Info.plist.
+  /// Reads a required value from the Info.plist, trimmed of surrounding whitespace.
   ///
   /// Note the `isEmpty` check: Xcode expands an undefined `$(VAR)` to an empty string, so the
   /// Info.plist key still exists and a plain `as? String` cast would succeed. Without this check a
   /// missing Secrets.xcconfig entry would silently produce `""` instead of an error.
+  ///
+  /// The trimmed value is what gets returned, so a stray space in Secrets.xcconfig can't leak into
+  /// a request header and cause an authentication failure that's hard to trace back to here.
   private func requireSecret(_ key: String, from infoDictionary: [String: Any]) throws -> String {
-    guard let value: String = infoDictionary[key] as? String, !value.trimmingCharacters(in: .whitespaces).isEmpty else {
+    let value = (infoDictionary[key] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+
+    guard let value, !value.isEmpty else {
       self.logger.error("Settings - Error: Do you have `\(key)=<your key>` in your Secrets.xcconfig, and `\(key)=$(\(key))` referenced in your App's info.plist?")
       throw PortalExampleAppError.environmentNotSet()
     }

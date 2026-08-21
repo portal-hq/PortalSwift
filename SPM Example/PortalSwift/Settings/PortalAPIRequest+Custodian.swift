@@ -10,7 +10,7 @@ import Foundation
 import PortalSwift
 
 /// Header the PortalEx custodian server expects on every request.
-let CUSTODIAN_API_KEY_HEADER = "x-api-key"
+private let CUSTODIAN_API_KEY_HEADER = "x-api-key"
 
 extension PortalAPIRequest {
   /// Builds a request for the PortalEx custodian server, stamping the environment-specific
