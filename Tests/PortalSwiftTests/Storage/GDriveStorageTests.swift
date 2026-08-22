@@ -204,6 +204,44 @@ extension GDriveStorageTests {
 //    XCTAssertEqual(driveClient.getIdForFilenameFilenameParam, filename)
 //  }
 
+  func test_read_willNotFallBackToGDriveFolder_whenUserIsNotAuthenticated() async throws {
+    // given
+    let driveClient = GDriveClientSpy()
+    driveClient.recoverFilesThrowableError = GDriveClientError.userNotAuthenticated
+    initGDriveStorage(driveClient: driveClient)
+    storage?.backupOption = .appDataFolderWithFallback
+
+    do {
+      // and given
+      _ = try await storage?.read()
+      XCTFail("Expected error not thrown when calling GDriveStorage.read() while the user is not authenticated.")
+    } catch {
+      // then an authentication failure must not trigger the user-visible-folder
+      // fallback, which would re-present the consent prompt the user declined
+      XCTAssertEqual(error as? GDriveStorageError, GDriveStorageError.unableToReadFile)
+      XCTAssertEqual(driveClient.recoverFilesCallsCount, 1)
+    }
+  }
+
+  func test_read_willFallBackToGDriveFolder_whenRecoveryFailsForOtherReasons() async throws {
+    // given
+    let driveClient = GDriveClientSpy()
+    driveClient.recoverFilesThrowableError = GDriveClientError.noFileFound
+    initGDriveStorage(driveClient: driveClient)
+    storage?.backupOption = .appDataFolderWithFallback
+
+    do {
+      // and given
+      _ = try await storage?.read()
+      XCTFail("Expected error not thrown when calling GDriveStorage.read() while recovery fails in both folders.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? GDriveStorageError, GDriveStorageError.unableToReadFile)
+      XCTAssertEqual(driveClient.recoverFilesCallsCount, 2)
+      XCTAssertEqual(driveClient.recoverFilesUseAppDataFolderParam, false)
+    }
+  }
+
   func test_read_willCall_driveRecoverFiles_onlyOnce() async throws {
     // given
     let driveClient = GDriveClientSpy()

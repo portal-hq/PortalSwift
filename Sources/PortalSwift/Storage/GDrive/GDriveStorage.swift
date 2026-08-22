@@ -91,6 +91,13 @@ public class GDriveStorage: Storage, PortalStorage {
 
       do {
         recoveredFiles = try await drive.recoverFiles(for: hashes, useAppDataFolder: shouldUseAppDataFolder)
+      } catch GDriveClientError.userNotAuthenticated {
+        // An authentication failure applies to both Drive spaces equally, so
+        // the folder fallback below cannot succeed — it would only re-present
+        // the consent prompt the user just declined.
+        throw GDriveClientError.userNotAuthenticated
+      } catch let GDriveClientError.authenticationNotInitialized(message) {
+        throw GDriveClientError.authenticationNotInitialized(message)
       } catch {
         let shouldFallbackToGDrive: Bool = backupOption == .appDataFolderWithFallback
         if shouldFallbackToGDrive {
