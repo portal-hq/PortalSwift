@@ -30,7 +30,7 @@ class GDriveClientSpy: GDriveClientProtocol {
   }
 
   var getAccessTokenCallsCount: Int = 0
-  var getAccessTokenReturnValue: String = ""
+  var getAccessTokenReturnValue: String = MockConstants.mockGoogleAccessToken
 
   func getAccessToken() async throws -> String {
     getAccessTokenCallsCount += 1

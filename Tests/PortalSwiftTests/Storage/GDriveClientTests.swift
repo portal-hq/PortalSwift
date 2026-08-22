@@ -615,3 +615,74 @@ extension GDriveClientTests {
     return NSDictionary(dictionary: jsonObject1).isEqual(to: jsonObject2)
   }
 }
+
+// MARK: - scope wiring tests
+
+extension GDriveClientTests {
+  @MainActor
+  func test_auth_requestsBothScopes_whenBackupOptionIsNil() {
+    // given the legacy configuration path (clientId + view, no backup option)
+    let client = GDriveClient(clientId: MockConstants.mockGDriveClientId, view: UIViewController(), requests: MockPortalRequests())
+
+    // then
+    XCTAssertEqual(
+      client.auth?.requiredScopes,
+      [GDriveBackupOption.DriveScope.file, GDriveBackupOption.DriveScope.appData]
+    )
+  }
+
+  @MainActor
+  func test_auth_requestsAppDataOnly_whenOptionIsSetAfterAuthWasBuilt() {
+    // given an auth built before any backup option exists
+    let client = GDriveClient(clientId: MockConstants.mockGDriveClientId, view: UIViewController(), requests: MockPortalRequests())
+
+    // and given the option changes without the auth being rebuilt
+    client.backupOption = .appDataFolder
+
+    // then the live auth resolves the new option's scopes
+    XCTAssertEqual(client.auth?.requiredScopes, [GDriveBackupOption.DriveScope.appData])
+  }
+
+  @MainActor
+  func test_auth_requestsLatestOptionScopes_afterOptionMutation() {
+    // given
+    let client = GDriveClient(clientId: MockConstants.mockGDriveClientId, view: UIViewController(), requests: MockPortalRequests())
+    client.backupOption = .appDataFolder
+    let auth = client.auth
+
+    // and given the option changes again on the same auth instance
+    client.backupOption = .gdriveFolder(folderName: "test-folder")
+
+    // then
+    XCTAssertEqual(auth?.requiredScopes, [GDriveBackupOption.DriveScope.file])
+  }
+
+  @MainActor
+  func test_auth_reflectsOption_whenClientIdIsSetAfterOption() {
+    // given the PortalMpc.setGDriveConfiguration ordering (option first, clientId second)
+    let client = GDriveClient(view: UIViewController(), requests: MockPortalRequests())
+    client.backupOption = .appDataFolder
+    client.clientId = MockConstants.mockGDriveClientId
+
+    // then
+    XCTAssertEqual(client.auth?.requiredScopes, [GDriveBackupOption.DriveScope.appData])
+  }
+
+  @MainActor
+  func test_auth_reflectsOption_afterViewReassignmentRebuildsAuth() {
+    // given a configured client
+    let client = GDriveClient(clientId: MockConstants.mockGDriveClientId, view: UIViewController(), requests: MockPortalRequests())
+    client.backupOption = .appDataFolderWithFallback
+    let originalAuth = client.auth
+
+    // and given setGDriveView is called again (the example apps do this on every backup)
+    client.view = UIViewController()
+
+    // then the rebuilt auth still resolves the configured option's scopes
+    XCTAssertFalse(client.auth === originalAuth)
+    XCTAssertEqual(
+      client.auth?.requiredScopes,
+      [GDriveBackupOption.DriveScope.file, GDriveBackupOption.DriveScope.appData]
+    )
+  }
+}

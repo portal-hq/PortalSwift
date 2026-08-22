@@ -63,7 +63,14 @@ public class GDriveStorage: Storage, PortalStorage {
 
   public func delete() async throws -> Bool {
     let hashes = try await getFilenameHashes()
-    let useAppDataFolder = backupOption == .appDataFolder || backupOption == .appDataFolderWithFallback
+    let useAppDataFolder = backupOption.usesAppDataFolder
+
+    // One up-front token fetch so a missing or declined consent fails the whole
+    // delete once, instead of re-presenting the prompt for every hash below.
+    guard let accessToken = try? await drive.getAccessToken(), !accessToken.isEmpty else {
+      throw GDriveStorageError.unableToDeleteFile
+    }
+
     for hash in hashes.values {
       if let fileId = try? await drive.getIdForFilename(hash, useAppDataFolder: useAppDataFolder) {
         if try await self.drive.delete(fileId) {
@@ -80,7 +87,7 @@ public class GDriveStorage: Storage, PortalStorage {
 
     do {
       var recoveredFiles: [String: String] = [:]
-      let shouldUseAppDataFolder: Bool = backupOption == .appDataFolder || backupOption == .appDataFolderWithFallback
+      let shouldUseAppDataFolder: Bool = backupOption.usesAppDataFolder
 
       do {
         recoveredFiles = try await drive.recoverFiles(for: hashes, useAppDataFolder: shouldUseAppDataFolder)
@@ -119,6 +126,11 @@ public class GDriveStorage: Storage, PortalStorage {
     return try await self.drive.write(filename, withContent: value)
   }
 
+  /// Runs the interactive Google sign-in, requesting the Drive scopes required
+  /// by the configured backup option in the sign-in sheet itself. Returns only
+  /// after the user has answered the consent prompt and every required scope
+  /// was granted; throws `GoogleAuthError.scopesNotGranted(missing:)` when the
+  /// user declines a required scope.
   public func signIn() async throws -> GIDGoogleUser {
     guard let auth = drive.auth else {
       self.logger.debug("GDriveStorage.signIn() - ❌ Authentication not initialized. GDrive config has not been set yet.")

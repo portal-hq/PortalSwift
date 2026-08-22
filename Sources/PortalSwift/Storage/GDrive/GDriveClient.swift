@@ -65,7 +65,7 @@ public class GDriveClient: GDriveClientProtocol {
       self._clientId = clientId
 
       if let clientId = clientId, let view = view {
-        self.auth = GoogleAuth(config: GIDConfiguration(clientID: clientId), view: view)
+        self.auth = self.makeGoogleAuth(clientId: clientId, view: view)
       }
     }
   }
@@ -79,7 +79,7 @@ public class GDriveClient: GDriveClientProtocol {
       self._view = view
 
       if let clientId = clientId, let view = view {
-        self.auth = GoogleAuth(config: GIDConfiguration(clientID: clientId), view: view)
+        self.auth = self.makeGoogleAuth(clientId: clientId, view: view)
       }
     }
   }
@@ -105,8 +105,20 @@ public class GDriveClient: GDriveClientProtocol {
     self.requests = requests ?? PortalRequests()
 
     if let clientId = _clientId, let view = _view {
-      self.auth = GoogleAuth(config: GIDConfiguration(clientID: clientId), view: view)
+      self.auth = self.makeGoogleAuth(clientId: clientId, view: view)
     }
+  }
+
+  private func makeGoogleAuth(clientId: String, view: UIViewController) -> GoogleAuth {
+    GoogleAuth(
+      config: GIDConfiguration(clientID: clientId),
+      view: view,
+      scopesProvider: { [weak self] in
+        // Resolved at sign-in time so backupOption changes made after this
+        // GoogleAuth was built are always honored.
+        self?.backupOption?.requiredDriveScopes ?? GDriveBackupOption.legacyDriveScopes
+      }
+    )
   }
 
   public func delete(_ id: String) async throws -> Bool {
@@ -219,7 +231,7 @@ public class GDriveClient: GDriveClientProtocol {
       throw GDriveClientError.unableToWriteToGDrive
     }
 
-    let useAppDataFolder = backupOption == .appDataFolder || backupOption == .appDataFolderWithFallback
+    let useAppDataFolder = backupOption?.usesAppDataFolder ?? false
     let fileId = try await getIdForFilename(mockFileName, useAppDataFolder: useAppDataFolder)
 
     let fileContents = try await read(fileId)
@@ -243,7 +255,7 @@ public class GDriveClient: GDriveClientProtocol {
 
     let filenameWithExtension = filename + ".txt"
 
-    let useAppDataFolder = backupOption == .appDataFolder || backupOption == .appDataFolderWithFallback
+    let useAppDataFolder = backupOption?.usesAppDataFolder ?? false
 
     do {
       let existingFileId = try await getIdForFilename(filename, useAppDataFolder: useAppDataFolder)
@@ -262,6 +274,18 @@ public class GDriveClient: GDriveClientProtocol {
   }
 
   public func recoverFiles(for hashes: [String: String], useAppDataFolder: Bool) async throws -> [String: String] {
+    guard let auth = auth else {
+      self.logger.error("GDriveClient.recoverFiles() - Authentication not initialized. GDrive config has not been set yet.")
+      throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfiguration() to configure GoogleDrive")
+    }
+
+    // One up-front token fetch so a missing or declined consent fails the whole
+    // recovery once, instead of re-presenting the prompt for every hash below.
+    let accessToken = await auth.getAccessToken()
+    if accessToken.isEmpty {
+      throw GDriveClientError.userNotAuthenticated
+    }
+
     var recoveredFiles: [String: String] = [:]
     var errors: [String: Error] = [:]
     var processedHashes: Set<String> = []
