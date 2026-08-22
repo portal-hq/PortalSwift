@@ -92,6 +92,42 @@ extension GDriveStorageTests {
     XCTAssertEqual(driveClient.getIdForFilenameCallsCount, 1)
   }
 
+  func test_delete_willThrowCorrectError_whenAccessTokenIsEmpty() async throws {
+    // given
+    let driveClient = GDriveClientSpy()
+    driveClient.getAccessTokenReturnValue = ""
+    initGDriveStorage(driveClient: driveClient)
+
+    do {
+      // and given
+      _ = try await storage?.delete()
+      XCTFail("Expected error not thrown when calling GDriveStorage.delete() with an empty access token.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? GDriveStorageError, GDriveStorageError.unableToDeleteFile)
+      XCTAssertEqual(driveClient.getIdForFilenameCallsCount, 0)
+      XCTAssertEqual(driveClient.deleteCallsCount, 0)
+    }
+  }
+
+  func test_delete_willThrowCorrectError_whenGetAccessTokenThrows() async throws {
+    // given
+    let driveClient = GDriveClientSpy()
+    driveClient.getAccessTokenThrowableError = GDriveClientError.userNotAuthenticated
+    initGDriveStorage(driveClient: driveClient)
+
+    do {
+      // and given
+      _ = try await storage?.delete()
+      XCTFail("Expected error not thrown when calling GDriveStorage.delete() when fetching the access token fails.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? GDriveStorageError, GDriveStorageError.unableToDeleteFile)
+      XCTAssertEqual(driveClient.getIdForFilenameCallsCount, 0)
+      XCTAssertEqual(driveClient.deleteCallsCount, 0)
+    }
+  }
+
 //  func test_delete_willCall_driveGetIdForFilename_passingCorrectFilename() async throws {
 //    // given
 //    let driveClient = GDriveClientSpy()

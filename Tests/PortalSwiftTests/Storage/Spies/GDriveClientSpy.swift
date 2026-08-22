@@ -31,9 +31,13 @@ class GDriveClientSpy: GDriveClientProtocol {
 
   var getAccessTokenCallsCount: Int = 0
   var getAccessTokenReturnValue: String = MockConstants.mockGoogleAccessToken
+  var getAccessTokenThrowableError: Error?
 
   func getAccessToken() async throws -> String {
     getAccessTokenCallsCount += 1
+    if let getAccessTokenThrowableError {
+      throw getAccessTokenThrowableError
+    }
     return getAccessTokenReturnValue
   }
 

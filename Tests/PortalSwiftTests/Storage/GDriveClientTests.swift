@@ -686,3 +686,55 @@ extension GDriveClientTests {
     )
   }
 }
+
+// MARK: - recoverFiles tests
+
+private class EmptyTokenGoogleAuth: GoogleAuth {
+  override func getAccessToken() async -> String {
+    return ""
+  }
+}
+
+extension GDriveClientTests {
+  func test_recoverFiles_willReturnRecoveredFiles_whenTokenIsValid() async throws {
+    // given
+    let hashes = ["default": MockConstants.mockGDriveFileName]
+
+    // and given
+    let recoveredFiles = try await client?.recoverFiles(for: hashes, useAppDataFolder: false)
+
+    // then
+    XCTAssertEqual(recoveredFiles?["default"], MockConstants.mockEncryptionKey)
+  }
+
+  func test_recoverFiles_willThrowCorrectError_whenThereIsNoAuth() async throws {
+    // given
+    client?.auth = nil
+
+    do {
+      // and given
+      _ = try await client?.recoverFiles(for: ["default": MockConstants.mockGDriveFileName], useAppDataFolder: false)
+      XCTFail("Expected error not thrown when calling GDriveClient.recoverFiles() when there is no auth object.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? GDriveClientError, GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfiguration() to configure GoogleDrive"))
+    }
+  }
+
+  func test_recoverFiles_willThrowUserNotAuthenticated_beforeAnyDriveRequest_whenAccessTokenIsEmpty() async throws {
+    // given
+    let portalRequestSpy = PortalRequestsSpy()
+    initGDriveClient(requests: portalRequestSpy)
+    client?.auth = EmptyTokenGoogleAuth(config: GIDConfiguration(clientID: MockConstants.mockGDriveClientId))
+
+    do {
+      // and given
+      _ = try await client?.recoverFiles(for: ["default": MockConstants.mockGDriveFileName], useAppDataFolder: false)
+      XCTFail("Expected error not thrown when calling GDriveClient.recoverFiles() with an empty access token.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? GDriveClientError, GDriveClientError.userNotAuthenticated)
+      XCTAssertEqual(portalRequestSpy.executeCallsCount, 0)
+    }
+  }
+}
