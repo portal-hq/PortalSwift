@@ -10,9 +10,9 @@ import AnyCodable
 import Foundation
 
 /// Request model for getting a swap quote from ZeroX.
-/// Note: `chainId` is used for the URL path only, not included in the request body.
+/// Note: `chainId` is included in the request body, not the URL path.
 public struct ZeroXQuoteRequest: Codable {
-  /// The chain ID for the swap (used in URL path, e.g., "eip155:1")
+  /// The chain ID for the swap (e.g., "eip155:1")
   public let chainId: String
   /// The token to buy
   public let buyToken: String
@@ -69,7 +69,7 @@ public struct ZeroXQuoteRequest: Codable {
     self.sellEntireBalance = sellEntireBalance
   }
 
-  /// Converts the request to a dictionary for the request body, excluding `chainId`.
+  /// Converts the request to a dictionary for the request body.
   public func toRequestBody() -> [String: AnyCodable] {
     var body: [String: AnyCodable] = [
       "chainId": AnyCodable(chainId),

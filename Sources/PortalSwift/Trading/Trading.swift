@@ -21,12 +21,14 @@ public class Trading {
   /// Create an instance of Trading.
   /// - Parameters:
   ///   - api: The Portal API instance to use for trading operations.
+  ///   - portal: The portal (or mock) providing `request` for high-level execution flows like `zeroX.tradeAsset` (can be `nil`, e.g. in tests).
   ///   - signAndSendTransaction: Closure that signs and submits an EVM transaction (injected by Portal),
   ///     enabling the high-level `lifi.tradeAsset` bridging method.
   ///   - waitForConfirmation: Closure that waits for on-chain confirmation (injected by Portal),
   ///     enabling the high-level `lifi.tradeAsset` bridging method.
   init(
     api: PortalApiProtocol,
+    portal: ZeroXPortalDependency? = nil,
     signAndSendTransaction: LifiSignAndSendTransaction? = nil,
     waitForConfirmation: LifiWaitForConfirmation? = nil
   ) {
@@ -35,6 +37,6 @@ public class Trading {
       signAndSendTransaction: signAndSendTransaction,
       waitForConfirmation: waitForConfirmation
     )
-    self.zeroX = ZeroX(api: api.zeroX)
+    self.zeroX = ZeroX(api: api.zeroX, portal: portal)
   }
 }

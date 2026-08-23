@@ -12,6 +12,10 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
+## Unreleased
+- Added a high-level 0x swap method for one-call same-chain swaps.
+    - Added `portal.trading.zeroX.tradeAsset` — fetches a quote, then signs, submits, and waits for on-chain confirmation before resolving. Track progress with the optional `onProgress` callback (`fetching_quote` → `signing` → `submitted` → `confirming` → `confirmed`, or `failed`).
+
 ## 7.3.0 - 2026-07-21
 - Added Noah on/off-ramp integration for fiat payins, payouts, and KYC via the new `portal.ramps` namespace.
     - Added `portal.ramps.noah.initiateKyc`

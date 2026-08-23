@@ -15,18 +15,21 @@ final class ZeroXMock: ZeroXProtocol {
   var getSourcesReturnValue: ZeroXSourcesResponse?
   var getQuoteReturnValue: ZeroXQuoteResponse?
   var getPriceReturnValue: ZeroXPriceResponse?
+  var tradeAssetReturnValue: ZeroXTradeAssetResult?
 
   // MARK: - Error simulation
 
   var getSourcesError: Error?
   var getQuoteError: Error?
   var getPriceError: Error?
+  var tradeAssetError: Error?
 
   // MARK: - Call counters
 
   var getSourcesCalls = 0
   var getQuoteCalls = 0
   var getPriceCalls = 0
+  var tradeAssetCalls = 0
 
   // MARK: - Call parameters
 
@@ -36,6 +39,7 @@ final class ZeroXMock: ZeroXProtocol {
   var getQuoteZeroXApiKeyParam: String?
   var getPriceRequestParam: ZeroXPriceRequest?
   var getPriceZeroXApiKeyParam: String?
+  var tradeAssetParamsParam: ZeroXTradeAssetParams?
 
   // MARK: - Protocol Implementation
 
@@ -69,6 +73,22 @@ final class ZeroXMock: ZeroXProtocol {
     return getPriceReturnValue ?? ZeroXPriceResponse.stub()
   }
 
+  func tradeAsset(
+    params: ZeroXTradeAssetParams,
+    onProgress: ((ZeroXTradeAssetProgressStatus, ZeroXTradeAssetProgressData) -> Void)?
+  ) async throws -> ZeroXTradeAssetResult {
+    tradeAssetCalls += 1
+    tradeAssetParamsParam = params
+    if let error = tradeAssetError {
+      onProgress?(.failed, ZeroXTradeAssetProgressData(errorMessage: error.localizedDescription))
+      throw error
+    }
+    // Resolve the result first so the reported hash always matches what we return.
+    let result = tradeAssetReturnValue ?? ZeroXTradeAssetResult(hashes: ["0xmockhash"])
+    onProgress?(.confirmed, ZeroXTradeAssetProgressData(txHash: result.hashes.first))
+    return result
+  }
+
   // MARK: - Helper Methods
 
   /// Resets all call counters and captured parameters
@@ -76,6 +96,7 @@ final class ZeroXMock: ZeroXProtocol {
     getSourcesCalls = 0
     getQuoteCalls = 0
     getPriceCalls = 0
+    tradeAssetCalls = 0
 
     getSourcesChainIdParam = nil
     getSourcesZeroXApiKeyParam = nil
@@ -83,13 +104,16 @@ final class ZeroXMock: ZeroXProtocol {
     getQuoteZeroXApiKeyParam = nil
     getPriceRequestParam = nil
     getPriceZeroXApiKeyParam = nil
+    tradeAssetParamsParam = nil
 
     getSourcesReturnValue = nil
     getQuoteReturnValue = nil
     getPriceReturnValue = nil
+    tradeAssetReturnValue = nil
 
     getSourcesError = nil
     getQuoteError = nil
     getPriceError = nil
+    tradeAssetError = nil
   }
 }

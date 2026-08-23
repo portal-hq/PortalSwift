@@ -1363,6 +1363,87 @@ extension ZeroXTests {
     XCTAssertNotNil(body["sellAmount"])
   }
 
+  func test_zeroXQuoteRequest_toRequestBodyIncludesTxOriginWhenSet() {
+    // given
+    let request = ZeroXQuoteRequest.stub(txOrigin: "0xsender")
+
+    // when
+    let body = request.toRequestBody()
+
+    // then
+    XCTAssertEqual(body["txOrigin"]?.value as? String, "0xsender")
+  }
+
+  func test_zeroXQuoteRequest_toRequestBodyOmitsTxOriginWhenNil() {
+    // given
+    let request = ZeroXQuoteRequest.stub()
+
+    // when
+    let body = request.toRequestBody()
+
+    // then
+    XCTAssertNil(body["txOrigin"])
+  }
+
+  /// `fromAddress` is not a 0x quote parameter — it must never appear in the request body.
+  func test_zeroXQuoteRequest_toRequestBodyNeverIncludesFromAddress() {
+    // given
+    let request = ZeroXQuoteRequest.stub(
+      txOrigin: "0xsender",
+      swapFeeRecipient: "0xfee",
+      swapFeeBps: 25,
+      swapFeeToken: "USDC",
+      tradeSurplusRecipient: "0xsurplus",
+      gasPrice: "1000",
+      slippageBps: 50,
+      excludedSources: "Uniswap",
+      sellEntireBalance: true
+    )
+
+    // when
+    let body = request.toRequestBody()
+
+    // then
+    XCTAssertNil(body["fromAddress"])
+  }
+
+  /// `fromAddress` on the trade params is sent as the quote's `txOrigin` (matches the Web SDK).
+  func test_zeroXTradeAssetParams_toQuoteRequestMapsFromAddressToTxOrigin() {
+    // given
+    let params = ZeroXTradeAssetParams(
+      chainId: "eip155:1",
+      buyToken: "USDC",
+      sellToken: "ETH",
+      sellAmount: "1000000000000000000",
+      fromAddress: "0xsender"
+    )
+
+    // when
+    let request = params.toQuoteRequest()
+
+    // then
+    XCTAssertEqual(request.txOrigin, "0xsender")
+    XCTAssertEqual(request.toRequestBody()["txOrigin"]?.value as? String, "0xsender")
+    XCTAssertNil(request.toRequestBody()["fromAddress"])
+  }
+
+  func test_zeroXTradeAssetParams_toQuoteRequestOmitsTxOriginWhenFromAddressIsNil() {
+    // given
+    let params = ZeroXTradeAssetParams(
+      chainId: "eip155:1",
+      buyToken: "USDC",
+      sellToken: "ETH",
+      sellAmount: "1000000000000000000"
+    )
+
+    // when
+    let request = params.toQuoteRequest()
+
+    // then
+    XCTAssertNil(request.txOrigin)
+    XCTAssertNil(request.toRequestBody()["txOrigin"])
+  }
+
   func test_zeroXQuoteRequest_encodesOptionalFields() {
     // given
     let request = ZeroXQuoteRequest.stub(

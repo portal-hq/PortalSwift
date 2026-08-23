@@ -313,6 +313,65 @@ extension ViewController {
     }
   }
 
+  // MARK: - 0x Trade Asset (High-Level Swap)
+
+  @IBAction func handleZeroXTradeAsset() {
+    do {
+      guard let infoDictionary: [String: Any] = Bundle.main.infoDictionary,
+            let SWAPS_API_KEY: String = infoDictionary["SWAPS_API_KEY"] as? String
+      else {
+        self.logger.error("ViewController.handleZeroXTradeAsset() - ❌ Error: Do you have `SWAPS_API_KEY=$(SWAPS_API_KEY)` in your Secrets.xcconfig?")
+        throw PortalExampleAppError.environmentNotSet()
+      }
+
+      self.startLoading()
+
+      guard let portal else {
+        self.logger.error("ViewController.handleZeroXTradeAsset() - ❌ Portal not initialized")
+        throw PortalExampleAppError.portalNotInitialized()
+      }
+
+      let chainId = "eip155:143" // Monad Mainnet (0x integration does not support Monad Testnet)
+
+      Task {
+        do {
+          let params = ZeroXTradeAssetParams(
+            chainId: chainId,
+            buyToken: "USDC",
+            sellToken: "ETH",
+            sellAmount: "100000000000000", // 0.0001 ETH
+            zeroXApiKey: SWAPS_API_KEY
+          )
+
+          let result = try await portal.trading.zeroX.tradeAsset(params: params) { status, data in
+            self.logger.info("ViewController.handleZeroXTradeAsset() - 📈 Progress: \(status.rawValue)")
+            if let txHash = data.txHash {
+              self.logger.info("  Tx Hash: \(txHash)")
+            }
+            if let buyAmount = data.buyAmount {
+              self.logger.info("  Buy Amount: \(buyAmount)")
+            }
+            if let errorMessage = data.errorMessage {
+              self.logger.error("  Error: \(errorMessage)")
+            }
+          }
+
+          self.logger.info("ViewController.handleZeroXTradeAsset() - ✅ Swap confirmed. Hashes: \(result.hashes)")
+          self.showStatusView(message: "\(self.successStatus) Swap confirmed: \(result.hashes.joined(separator: ", "))")
+          self.stopLoading()
+        } catch {
+          self.logger.error("ViewController.handleZeroXTradeAsset() - ❌ Unable to trade asset with error: \(error)")
+          self.showStatusView(message: "\(self.failureStatus) Unable to trade asset with error: \(error)")
+          self.stopLoading()
+        }
+      }
+    } catch {
+      self.logger.error("ViewController.handleZeroXTradeAsset() - ❌ Error: \(error)")
+      self.showStatusView(message: "\(self.failureStatus) Error: \(error)")
+      self.stopLoading()
+    }
+  }
+
   // MARK: - 0x Helper Functions
 
   /// Logs 0x price response details
