@@ -301,6 +301,12 @@ public class GDriveClient: GDriveClientProtocol {
         let content = try await read(fileId)
         recoveredFiles[platform] = content
         processedHashes.insert(hash)
+      } catch GDriveClientError.userNotAuthenticated {
+        // The calls above fetch the access token again. If that fetch fails
+        // mid-loop, collecting the error would let the remaining hashes (and
+        // the caller's folder fallback) re-present the consent prompt, so
+        // fail the whole recovery here just like the pre-flight does.
+        throw GDriveClientError.userNotAuthenticated
       } catch {
         self.logger.info("GDriveClient.recoverFiles() - Error recovering file for platform: \(platform), hash: \(hash). Error: \(error)")
         errors[platform] = error

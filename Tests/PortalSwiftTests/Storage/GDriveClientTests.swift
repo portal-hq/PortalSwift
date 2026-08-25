@@ -695,6 +695,18 @@ private class EmptyTokenGoogleAuth: GoogleAuth {
   }
 }
 
+/// Returns a valid token for the first fetch (the recoverFiles pre-flight) and
+/// an empty token for every fetch after it, simulating the grant dying while
+/// the recovery loop is running.
+private class TokenLostAfterPreflightGoogleAuth: GoogleAuth {
+  private(set) var getAccessTokenCallsCount = 0
+
+  override func getAccessToken() async -> String {
+    getAccessTokenCallsCount += 1
+    return getAccessTokenCallsCount == 1 ? MockConstants.mockGoogleAccessToken : ""
+  }
+}
+
 extension GDriveClientTests {
   func test_recoverFiles_willReturnRecoveredFiles_whenTokenIsValid() async throws {
     // given
@@ -734,6 +746,32 @@ extension GDriveClientTests {
     } catch {
       // then
       XCTAssertEqual(error as? GDriveClientError, GDriveClientError.userNotAuthenticated)
+      XCTAssertEqual(portalRequestSpy.executeCallsCount, 0)
+    }
+  }
+
+  func test_recoverFiles_willRethrowUserNotAuthenticated_insteadOfCollectingIt_whenAccessTokenIsLostAfterPreflight() async throws {
+    // given
+    let portalRequestSpy = PortalRequestsSpy()
+    initGDriveClient(requests: portalRequestSpy)
+    let auth = TokenLostAfterPreflightGoogleAuth(config: GIDConfiguration(clientID: MockConstants.mockGDriveClientId))
+    client?.auth = auth
+    let hashes = [
+      "default": MockConstants.mockGDriveFileName,
+      "ios": MockConstants.mockGDriveFileName + "-ios",
+      "android": MockConstants.mockGDriveFileName + "-android"
+    ]
+
+    do {
+      // and given
+      _ = try await client?.recoverFiles(for: hashes, useAppDataFolder: false)
+      XCTFail("Expected error not thrown when calling GDriveClient.recoverFiles() and the access token is lost after the pre-flight.")
+    } catch {
+      // then: the auth failure surfaces as-is so GDriveStorage.read() can skip the folder fallback...
+      XCTAssertEqual(error as? GDriveClientError, GDriveClientError.userNotAuthenticated)
+      // ...the loop stops at the first failed fetch instead of re-fetching (and re-prompting) per remaining hash...
+      XCTAssertEqual(auth.getAccessTokenCallsCount, 2)
+      // ...and no Drive request was made with an empty token.
       XCTAssertEqual(portalRequestSpy.executeCallsCount, 0)
     }
   }
