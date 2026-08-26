@@ -491,7 +491,7 @@ extension GDriveClientTests {
       _ = try await client?.writeFile("", withContent: "", andAccessToken: "", useAppDataFolder: false)
       XCTFail("Expected error not thrown when calling GDriveClient.read() when there is no auth object.")
     } catch {
-      XCTAssertEqual(error as? GDriveClientError, GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfig() to configure GoogleDrive"))
+      XCTAssertEqual(error as? GDriveClientError, GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfiguration() to configure GoogleDrive"))
     }
   }
 

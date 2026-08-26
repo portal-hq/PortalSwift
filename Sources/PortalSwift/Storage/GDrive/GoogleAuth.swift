@@ -9,6 +9,11 @@ import Foundation
 import GoogleSignIn
 import UIKit
 
+/// Not safe for concurrent use: the SDK drives every Drive operation as
+/// sequential awaits within one task. Concurrent `getAccessToken()` calls on
+/// the same instance may present duplicate sign-in sheets or clear a session
+/// another call just renewed. Serialize callers, or land a single-flight
+/// recovery task if concurrent host-app usage becomes supported.
 public class GoogleAuth {
   public var auth: GIDSignIn
   public var config: GIDConfiguration
@@ -146,6 +151,11 @@ public class GoogleAuth {
       return ""
     }
 
+    // A revoked grant cannot refresh, so GIDSignIn hands back the identical
+    // token string until the session is cleared; a *different* token means an
+    // earlier recovery already renewed the session. Should Drive ever reject a
+    // renewed token as well, the next operation sees it come back unchanged and
+    // signs out then — one extra failed operation, not a permanent wedge.
     if currentToken != rejectedToken {
       return currentToken
     }
@@ -238,7 +248,9 @@ public class GoogleAuth {
     var depth = 0
     while let nsError = current, depth < 5 {
       // AppAuth is a transitive dependency, so its domain constant isn't
-      // importable. Every code in the token-endpoint domain is terminal
+      // importable; this literal is OIDOAuthTokenErrorDomain and is pinned by
+      // GoogleAuthTests.test_isDeadGrantError_* — update both if AppAuth ever
+      // renames it. Every code in the token-endpoint domain is terminal
       // (invalid_grant is -10).
       if nsError.domain == "org.openid.appauth.oauth_token" {
         return true

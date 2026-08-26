@@ -437,7 +437,7 @@ public class GDriveClient: GDriveClientProtocol {
   func writeFile(_ filename: String, withContent: String, andAccessToken: String, useAppDataFolder: Bool) async throws -> String {
     guard let auth = auth else {
       self.logger.error("GDriveClient.writeFile() - Authentication not initialized. GDrive config has not been set yet.")
-      throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfig() to configure GoogleDrive")
+      throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfiguration() to configure GoogleDrive")
     }
 
     let folder = try await useAppDataFolder ? getAppDataFolder() : getOrCreateFolder()

@@ -81,6 +81,9 @@ public class GDriveStorage: Storage, PortalStorage {
       } catch GDriveClientError.userNotAuthenticated {
         throw GDriveStorageError.unableToDeleteFile
       } catch {
+        // Most hashes belong to other platforms and legitimately have no file
+        // in this folder; log so a real failure on one of them stays visible.
+        self.logger.debug("GDriveStorage.delete() - Skipping hash \(hash): \(error)")
         continue
       }
 
