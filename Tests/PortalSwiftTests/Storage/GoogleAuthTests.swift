@@ -277,3 +277,168 @@ extension GoogleAuthTests {
     XCTAssertEqual(auth.getAccessTokenCallsCount, 1)
   }
 }
+
+// MARK: - session transition tests (real getAccessToken / recovery branching)
+
+extension GoogleAuthTests {
+  private static let invalidGrant = NSError(domain: appAuthTokenDomain, code: -10)
+  private static let transientNetworkError = NSError(domain: appAuthGeneralDomain, code: -5)
+
+  func test_getAccessToken_signsInFresh_afterDeadGrantClearsSession_thenRestoresSilently() async {
+    // given a stored session whose grant Google has revoked
+    let auth = SessionStateGoogleAuth(silentError: Self.invalidGrant, interactiveToken: "fresh-token")
+
+    // and given
+    let token = await auth.getAccessToken()
+
+    // then the dead session is cleared and the fresh sign-in path taken
+    XCTAssertEqual(token, "fresh-token")
+    XCTAssertEqual(auth.events, ["restore", "signOut", "signIn"])
+    XCTAssertTrue(auth.hasSession)
+
+    // and given the next call
+    let nextToken = await auth.getAccessToken()
+
+    // then the re-established session restores silently — no second prompt
+    XCTAssertEqual(nextToken, "fresh-token")
+    XCTAssertEqual(auth.events, ["restore", "signOut", "signIn", "restore"])
+  }
+
+  func test_getAccessToken_skipsRestoreAndPromptsDirectly_afterClearedSessionAndCanceledSignIn() async {
+    // given the fresh sign-in after a dead grant is canceled
+    let auth = SessionStateGoogleAuth(silentError: Self.invalidGrant, interactiveToken: nil)
+
+    // and given
+    let token = await auth.getAccessToken()
+
+    // then
+    XCTAssertEqual(token, "")
+    XCTAssertEqual(auth.events, ["restore", "signOut", "signIn"])
+    XCTAssertFalse(auth.hasSession)
+
+    // and given the user tries again
+    let nextToken = await auth.getAccessToken()
+
+    // then no restore is attempted on the cleared session; it prompts directly (unwedged)
+    XCTAssertEqual(nextToken, "")
+    XCTAssertEqual(auth.events, ["restore", "signOut", "signIn", "signIn"])
+  }
+
+  func test_getAccessToken_keepsSession_whenRestoreFailsTransiently() async {
+    // given
+    let auth = SessionStateGoogleAuth(silentError: Self.transientNetworkError, interactiveToken: "fresh-token")
+
+    // and given
+    let token = await auth.getAccessToken()
+
+    // then the still-valid session is preserved and nothing is presented
+    XCTAssertEqual(token, "")
+    XCTAssertEqual(auth.events, ["restore"])
+    XCTAssertTrue(auth.hasSession)
+  }
+
+  func test_getAccessToken_returnsRestoredToken_whenSessionIsHealthy() async {
+    // given
+    let auth = SessionStateGoogleAuth(silentToken: "stored-token")
+
+    // and given
+    let token = await auth.getAccessToken()
+
+    // then
+    XCTAssertEqual(token, "stored-token")
+    XCTAssertEqual(auth.events, ["restore"])
+  }
+
+  func test_getAccessToken_signsIn_whenThereIsNoSession() async {
+    // given
+    let auth = SessionStateGoogleAuth(hasSession: false, interactiveToken: "fresh-token")
+
+    // and given
+    let token = await auth.getAccessToken()
+
+    // then
+    XCTAssertEqual(token, "fresh-token")
+    XCTAssertEqual(auth.events, ["signIn"])
+    XCTAssertTrue(auth.hasSession)
+  }
+
+  func test_recoverFromRejectedAccessToken_clearsSessionAndSignsInFresh_whenRestoreStillYieldsRejectedToken() async {
+    // given GIDSignIn still hands back the token Drive rejected
+    let auth = SessionStateGoogleAuth(silentToken: "revoked-token", interactiveToken: "fresh-token")
+
+    // and given
+    let token = await auth.recoverFromRejectedAccessToken("revoked-token")
+
+    // then: re-check, sign-out, exactly one fresh sign-in
+    XCTAssertEqual(token, "fresh-token")
+    XCTAssertEqual(auth.events, ["restore", "signOut", "signIn"])
+    XCTAssertTrue(auth.hasSession)
+
+    // and given a later call
+    let nextToken = await auth.getAccessToken()
+
+    // then it restores the new session silently
+    XCTAssertEqual(nextToken, "fresh-token")
+    XCTAssertEqual(auth.events, ["restore", "signOut", "signIn", "restore"])
+  }
+
+  func test_recoverFromRejectedAccessToken_returnsRenewedToken_withoutClearingSession_whenAlreadyRenewed() async {
+    // given an earlier recovery already renewed the session
+    let auth = SessionStateGoogleAuth(silentToken: "fresh-token")
+
+    // and given
+    let token = await auth.recoverFromRejectedAccessToken("revoked-token")
+
+    // then
+    XCTAssertEqual(token, "fresh-token")
+    XCTAssertEqual(auth.events, ["restore"])
+    XCTAssertTrue(auth.hasSession)
+  }
+
+  func test_recoverFromRejectedAccessToken_leavesSessionCleared_whenFreshSignInIsCanceled() async {
+    // given
+    let auth = SessionStateGoogleAuth(silentToken: "revoked-token", interactiveToken: nil)
+
+    // and given
+    let token = await auth.recoverFromRejectedAccessToken("revoked-token")
+
+    // then
+    XCTAssertEqual(token, "")
+    XCTAssertEqual(auth.events, ["restore", "signOut", "signIn"])
+    XCTAssertFalse(auth.hasSession)
+
+    // and given the next attempt
+    let nextToken = await auth.getAccessToken()
+
+    // then it prompts directly instead of re-failing silently on the dead session
+    XCTAssertEqual(nextToken, "")
+    XCTAssertEqual(auth.events, ["restore", "signOut", "signIn", "signIn"])
+  }
+
+  func test_recoverFromRejectedAccessToken_doesNotClearSessionTwice_whenSilentPathAlreadyRecovered() async {
+    // given the cached token expired between the rejected request and the
+    // recovery, so getAccessToken() itself hits the dead grant and the user
+    // cancels the sign-in it presents
+    let auth = SessionStateGoogleAuth(silentError: Self.invalidGrant, interactiveToken: nil)
+
+    // and given
+    let token = await auth.recoverFromRejectedAccessToken("revoked-token")
+
+    // then exactly one sign-out and one sheet for the request
+    XCTAssertEqual(token, "")
+    XCTAssertEqual(auth.events, ["restore", "signOut", "signIn"])
+  }
+
+  func test_recoverFromRejectedAccessToken_keepsSession_whenRestoreFailsTransientlyAfterRejection() async {
+    // given
+    let auth = SessionStateGoogleAuth(silentError: Self.transientNetworkError)
+
+    // and given
+    let token = await auth.recoverFromRejectedAccessToken("revoked-token")
+
+    // then
+    XCTAssertEqual(token, "")
+    XCTAssertEqual(auth.events, ["restore"])
+    XCTAssertTrue(auth.hasSession)
+  }
+}

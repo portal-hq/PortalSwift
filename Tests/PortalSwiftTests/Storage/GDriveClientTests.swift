@@ -971,3 +971,64 @@ extension GDriveClientTests {
     }
   }
 }
+
+// MARK: - session transition through Drive requests
+
+extension GDriveClientTests {
+  func test_read_recoversWithOneFreshSignIn_thenRestoresSilently_whenDriveRejectsStoredToken() async throws {
+    // given Drive rejects the stored token once, and GIDSignIn keeps handing it
+    // back until the session is cleared
+    let portalRequestSpy = PortalRequestsSpy()
+    portalRequestSpy.returnData = Data("file-contents".utf8)
+    portalRequestSpy.executeThrowableErrorSequence = [PortalRequestsError.unauthorized]
+    initGDriveClient(requests: portalRequestSpy)
+    let auth = SessionStateGoogleAuth(silentToken: "revoked-token", interactiveToken: "fresh-token")
+    client?.auth = auth
+
+    // and given
+    let contents = try await client?.read(MockConstants.mockGDriveFileId)
+
+    // then: initial silent fetch, recovery re-check, sign-out, exactly one fresh sign-in
+    XCTAssertEqual(contents, "file-contents")
+    XCTAssertEqual(auth.events, ["restore", "restore", "signOut", "signIn"])
+    XCTAssertEqual(portalRequestSpy.executeCallsCount, 2)
+
+    // and given a later request
+    let nextContents = try await client?.read(MockConstants.mockGDriveFileId)
+
+    // then the re-established session is restored silently — no further prompt
+    XCTAssertEqual(nextContents, "file-contents")
+    XCTAssertEqual(auth.events, ["restore", "restore", "signOut", "signIn", "restore"])
+    XCTAssertEqual(portalRequestSpy.executeCallsCount, 3)
+  }
+
+  func test_read_failsOnce_andRetryPromptsDirectly_whenRecoverySignInIsCanceled() async throws {
+    // given the user cancels the recovery sign-in
+    let portalRequestSpy = PortalRequestsSpy()
+    portalRequestSpy.returnData = Data("file-contents".utf8)
+    portalRequestSpy.executeThrowableErrorSequence = [PortalRequestsError.unauthorized]
+    initGDriveClient(requests: portalRequestSpy)
+    let auth = SessionStateGoogleAuth(silentToken: "revoked-token", interactiveToken: nil)
+    client?.auth = auth
+
+    do {
+      // and given
+      _ = try await client?.read(MockConstants.mockGDriveFileId)
+      XCTFail("Expected error not thrown when the recovery sign-in is canceled.")
+    } catch {
+      // then one failure, one sheet, and the dead session is gone
+      XCTAssertEqual(error as? GDriveClientError, GDriveClientError.userNotAuthenticated)
+      XCTAssertEqual(auth.events, ["restore", "restore", "signOut", "signIn"])
+      XCTAssertEqual(portalRequestSpy.executeCallsCount, 1)
+      XCTAssertFalse(auth.hasSession)
+    }
+
+    // and given the user retries and completes the sign-in this time
+    auth.interactiveToken = "fresh-token"
+    let contents = try await client?.read(MockConstants.mockGDriveFileId)
+
+    // then the retry goes straight to sign-in (no restore on the cleared session) and succeeds
+    XCTAssertEqual(contents, "file-contents")
+    XCTAssertEqual(auth.events, ["restore", "restore", "signOut", "signIn", "signIn"])
+  }
+}

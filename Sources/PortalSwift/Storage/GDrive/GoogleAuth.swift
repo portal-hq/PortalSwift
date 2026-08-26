@@ -38,13 +38,9 @@ public class GoogleAuth {
 
   func getAccessToken() async -> String {
     do {
-      let user: GIDGoogleUser
       if self.hasPreviousSignIn() {
         do {
-          // Attempt to sign in silently, upgrading the granted scopes if the
-          // configured backup option now requires more than was consented to.
-          let restored = try await self.restorePreviousSignIn()
-          user = try await self.ensureRequiredScopes(on: restored)
+          return try await self.restoreAccessToken()
         } catch where Self.isDeadGrantError(error) {
           // Google permanently invalidated the stored grant. GIDSignIn never
           // clears its keychain state on this failure, so hasPreviousSignIn()
@@ -53,19 +49,34 @@ public class GoogleAuth {
           // a new sign-in — then fall through to a fresh interactive sign-in.
           self.logger.info("GoogleAuth.getAccessToken() - Stored Google grant is no longer valid; signing out and requesting a fresh interactive sign-in. Underlying error: \(error)")
           self.signOut()
-          user = try await self.signIn()
+          return try await self.signInForAccessToken()
         }
-      } else {
-        // User has not signed in before, prompt for sign-in
-        user = try await self.signIn()
       }
-      return user.accessToken.tokenString
+
+      // User has not signed in before, prompt for sign-in
+      return try await self.signInForAccessToken()
     } catch {
       // Contract: callers detect failure via the empty string and map it to
       // GDriveClientError.userNotAuthenticated.
       self.logger.error("GoogleAuth.getAccessToken() - Unable to get an access token: \(error)")
       return ""
     }
+  }
+
+  /// The silent path: restores the stored session, upgrading its granted scopes
+  /// if the configured backup option now requires more than was consented to,
+  /// and returns its access token. Internal so tests can model session state
+  /// without a constructible `GIDGoogleUser`.
+  func restoreAccessToken() async throws -> String {
+    let restored = try await self.restorePreviousSignIn()
+    let user = try await self.ensureRequiredScopes(on: restored)
+    return user.accessToken.tokenString
+  }
+
+  /// The interactive path: runs a fresh sign-in and returns its access token.
+  func signInForAccessToken() async throws -> String {
+    let user = try await self.signIn()
+    return user.accessToken.tokenString
   }
 
   func getCurrentUser() -> GIDGoogleUser? {
