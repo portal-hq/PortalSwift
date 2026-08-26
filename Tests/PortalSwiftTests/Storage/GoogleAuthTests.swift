@@ -221,6 +221,7 @@ extension GoogleAuthTests {
 private class ScriptedTokenGoogleAuth: GoogleAuth {
   var tokens: [String]
   var signOutCallsCount = 0
+  var getAccessTokenCallsCount = 0
 
   init(tokens: [String]) {
     self.tokens = tokens
@@ -228,6 +229,7 @@ private class ScriptedTokenGoogleAuth: GoogleAuth {
   }
 
   override func getAccessToken() async -> String {
+    getAccessTokenCallsCount += 1
     return tokens.count > 1 ? tokens.removeFirst() : tokens[0]
   }
 
@@ -261,15 +263,17 @@ extension GoogleAuthTests {
     XCTAssertEqual(auth.signOutCallsCount, 1)
   }
 
-  func test_recoverFromRejectedAccessToken_signsOutAndReturnsEmpty_whenNoTokenCanBeObtained() async {
-    // given
+  func test_recoverFromRejectedAccessToken_returnsEmptyWithoutSecondRecovery_whenGetAccessTokenAlreadyFailed() async {
+    // given getAccessToken() already ran its own recovery (e.g. the cached token
+    // expired meanwhile and the user cancelled the resulting sign-in)
     let auth = ScriptedTokenGoogleAuth(tokens: [""])
 
     // and given
     let token = await auth.recoverFromRejectedAccessToken("revoked-token")
 
-    // then
+    // then no second sign-out or sign-in is attempted for the same request
     XCTAssertEqual(token, "")
-    XCTAssertEqual(auth.signOutCallsCount, 1)
+    XCTAssertEqual(auth.signOutCallsCount, 0)
+    XCTAssertEqual(auth.getAccessTokenCallsCount, 1)
   }
 }

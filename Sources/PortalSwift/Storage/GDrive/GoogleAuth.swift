@@ -127,7 +127,15 @@ public class GoogleAuth {
   /// run a fresh interactive sign-in. Returns "" when no token could be obtained.
   func recoverFromRejectedAccessToken(_ rejectedToken: String) async -> String {
     let currentToken = await self.getAccessToken()
-    if !currentToken.isEmpty, currentToken != rejectedToken {
+    if currentToken.isEmpty {
+      // getAccessToken() already did everything recoverable — including, if the
+      // cached token expired meanwhile, its own dead-grant sign-out and an
+      // interactive sign-in the user may have cancelled. Signing out and asking
+      // again here would present a second sheet for the same request.
+      return ""
+    }
+
+    if currentToken != rejectedToken {
       return currentToken
     }
 

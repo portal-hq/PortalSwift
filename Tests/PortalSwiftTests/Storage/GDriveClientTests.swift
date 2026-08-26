@@ -948,11 +948,13 @@ extension GDriveClientTests {
 extension GDriveClientTests {
   func test_write_willNotFallBackToWriteFile_whenRecoverySignInIsDeclined() async throws {
     // given Drive rejects the cached token during the existing-file lookup and
-    // the user declines the recovery sign-in
+    // the user declines the recovery sign-in: write() fetches the token at the
+    // top and again in getIdForFilename, the recovery re-check still yields the
+    // rejected token, and only the post-sign-out fetch comes back empty
     let portalRequestSpy = PortalRequestsSpy()
     portalRequestSpy.executeThrowableErrorSequence = [PortalRequestsError.unauthorized]
     initGDriveClient(requests: portalRequestSpy)
-    let auth = ScriptedTokenGoogleAuth(tokens: ["revoked-token", "revoked-token", ""])
+    let auth = ScriptedTokenGoogleAuth(tokens: ["revoked-token", "revoked-token", "revoked-token", ""])
     client?.auth = auth
     client?.backupOption = .appDataFolder
 
