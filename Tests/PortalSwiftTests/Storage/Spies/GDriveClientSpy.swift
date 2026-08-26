@@ -45,11 +45,15 @@ class GDriveClientSpy: GDriveClientProtocol {
   var getIdForFilenameFilenameParam: String?
   var getIdForFilenameUseAppDataFolderParam: Bool?
   var getIdForFilenameReturnValue: String = ""
+  var getIdForFilenameThrowableError: Error?
 
   func getIdForFilename(_ filename: String, useAppDataFolder: Bool) async throws -> String {
     getIdForFilenameCallsCount += 1
     getIdForFilenameFilenameParam = filename
     getIdForFilenameUseAppDataFolderParam = useAppDataFolder
+    if let getIdForFilenameThrowableError {
+      throw getIdForFilenameThrowableError
+    }
     return getIdForFilenameReturnValue
   }
 

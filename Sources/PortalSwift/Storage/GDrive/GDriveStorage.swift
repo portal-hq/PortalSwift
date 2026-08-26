@@ -72,10 +72,24 @@ public class GDriveStorage: Storage, PortalStorage {
     }
 
     for hash in hashes.values {
-      if let fileId = try? await drive.getIdForFilename(hash, useAppDataFolder: useAppDataFolder) {
+      // The pre-flight cannot see a token that only Drive knows is revoked. If
+      // the recovery sign-in triggered by that 401 is declined, fail here so the
+      // remaining hashes do not each present the sheet again.
+      let fileId: String
+      do {
+        fileId = try await drive.getIdForFilename(hash, useAppDataFolder: useAppDataFolder)
+      } catch GDriveClientError.userNotAuthenticated {
+        throw GDriveStorageError.unableToDeleteFile
+      } catch {
+        continue
+      }
+
+      do {
         if try await self.drive.delete(fileId) {
           return true
         }
+      } catch GDriveClientError.userNotAuthenticated {
+        throw GDriveStorageError.unableToDeleteFile
       }
     }
 
@@ -145,6 +159,18 @@ public class GDriveStorage: Storage, PortalStorage {
     }
 
     return try await auth.signIn()
+  }
+
+  /// Clears the stored Google session so the next Drive operation runs a fresh
+  /// interactive sign-in. Use this to recover from a revoked or expired Google
+  /// grant, or to let the user switch Google accounts.
+  public func signOut() throws {
+    guard let auth = drive.auth else {
+      self.logger.debug("GDriveStorage.signOut() - ❌ Authentication not initialized. GDrive config has not been set yet.")
+      throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfiguration() to configure GoogleDrive")
+    }
+
+    auth.signOut()
   }
 
   public func validateOperations() async throws -> Bool {

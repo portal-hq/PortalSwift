@@ -40,10 +40,21 @@ public class GoogleAuth {
     do {
       let user: GIDGoogleUser
       if self.hasPreviousSignIn() {
-        // Attempt to sign in silently, upgrading the granted scopes if the
-        // configured backup option now requires more than was consented to.
-        let restored = try await self.restorePreviousSignIn()
-        user = try await self.ensureRequiredScopes(on: restored)
+        do {
+          // Attempt to sign in silently, upgrading the granted scopes if the
+          // configured backup option now requires more than was consented to.
+          let restored = try await self.restorePreviousSignIn()
+          user = try await self.ensureRequiredScopes(on: restored)
+        } catch where Self.isDeadGrantError(error) {
+          // Google permanently invalidated the stored grant. GIDSignIn never
+          // clears its keychain state on this failure, so hasPreviousSignIn()
+          // would stay true and every future call would re-fail the same way.
+          // Clear the dead session — even when no view is available to present
+          // a new sign-in — then fall through to a fresh interactive sign-in.
+          self.logger.info("GoogleAuth.getAccessToken() - Stored Google grant is no longer valid; signing out and requesting a fresh interactive sign-in. Underlying error: \(error)")
+          self.signOut()
+          user = try await self.signIn()
+        }
       } else {
         // User has not signed in before, prompt for sign-in
         user = try await self.signIn()
@@ -106,6 +117,23 @@ public class GoogleAuth {
 
   func signOut() {
     self.auth.signOut()
+  }
+
+  /// Google Drive answered 401 for `rejectedToken` even though the silent
+  /// restore considered it valid: the grant was revoked server-side while the
+  /// cached access token had not yet expired, so no token refresh happened and
+  /// the dead grant went unnoticed. If an earlier recovery already renewed the
+  /// session, hand back the renewed token; otherwise clear the dead session and
+  /// run a fresh interactive sign-in. Returns "" when no token could be obtained.
+  func recoverFromRejectedAccessToken(_ rejectedToken: String) async -> String {
+    let currentToken = await self.getAccessToken()
+    if !currentToken.isEmpty, currentToken != rejectedToken {
+      return currentToken
+    }
+
+    self.logger.info("GoogleAuth.recoverFromRejectedAccessToken() - Google Drive rejected the stored access token; signing out and requesting a fresh interactive sign-in.")
+    self.signOut()
+    return await self.getAccessToken()
   }
 
   /// Silently restored sessions were consented under whatever backup option was
@@ -173,6 +201,39 @@ public class GoogleAuth {
   static func missingScopes(required: [String], granted: [String]?) -> [String] {
     let grantedSet = Set(granted ?? [])
     return required.filter { !grantedSet.contains($0) }
+  }
+
+  /// Whether `error` means Google has permanently invalidated the stored grant,
+  /// as opposed to a transient failure a retry could clear. Transient AppAuth
+  /// errors — `org.openid.appauth.general` network (-5), server (-6) and JSON
+  /// (-7) — are deliberately excluded: signing out on those would destroy a
+  /// valid session while the device is merely offline. The wrapped
+  /// `GIDSignInError` EMM code (-6) is excluded as ambiguous; note that on the
+  /// silent restore path GIDSignIn surfaces EMM token-endpoint errors unwrapped
+  /// in the AppAuth token domain, where they are treated like any other
+  /// invalidated grant — the interactive sign-in that follows is also Google's
+  /// prescribed remediation for them. Wrapped errors are classified by their
+  /// underlying chain.
+  static func isDeadGrantError(_ error: Error) -> Bool {
+    var current: NSError? = error as NSError
+    var depth = 0
+    while let nsError = current, depth < 5 {
+      // AppAuth is a transitive dependency, so its domain constant isn't
+      // importable. Every code in the token-endpoint domain is terminal
+      // (invalid_grant is -10).
+      if nsError.domain == "org.openid.appauth.oauth_token" {
+        return true
+      }
+
+      if let gidError = nsError as? GIDSignInError, gidError.code == .hasNoAuthInKeychain {
+        return true
+      }
+
+      current = nsError.userInfo[NSUnderlyingErrorKey] as? NSError
+      depth += 1
+    }
+
+    return false
   }
 }
 

@@ -776,3 +776,196 @@ extension GDriveClientTests {
     }
   }
 }
+
+// MARK: - createFolder tests
+
+extension GDriveClientTests {
+  func test_createFolder_willThrowUserNotAuthenticated_beforeAnyDriveRequest_whenAccessTokenIsEmpty() async throws {
+    // given
+    let portalRequestSpy = PortalRequestsSpy()
+    initGDriveClient(requests: portalRequestSpy)
+    client?.auth = EmptyTokenGoogleAuth(config: GIDConfiguration(clientID: MockConstants.mockGDriveClientId))
+
+    do {
+      // and given
+      _ = try await client?.createFolder()
+      XCTFail("Expected error not thrown when calling GDriveClient.createFolder() with an empty access token.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? GDriveClientError, GDriveClientError.userNotAuthenticated)
+      XCTAssertEqual(portalRequestSpy.executeCallsCount, 0)
+    }
+  }
+}
+
+// MARK: - rejected access token recovery tests
+
+/// Returns the scripted tokens in order (the last one repeats), so a test can
+/// model a session that only renews after signOut(), or one already renewed by
+/// an earlier recovery in the same operation.
+private class ScriptedTokenGoogleAuth: MockGoogleAuth {
+  var tokens: [String]
+  var signOutCallsCount = 0
+
+  init(tokens: [String]) {
+    self.tokens = tokens
+    super.init(config: GIDConfiguration(clientID: MockConstants.mockGDriveClientId))
+  }
+
+  override func getAccessToken() async -> String {
+    return tokens.count > 1 ? tokens.removeFirst() : tokens[0]
+  }
+
+  override func signOut() {
+    signOutCallsCount += 1
+  }
+}
+
+extension GDriveClientTests {
+  func test_read_willSignOutAndRetryOnce_whenDriveRejectsTheStoredToken() async throws {
+    // given Drive rejects the token the silent restore keeps returning until we sign out
+    let portalRequestSpy = PortalRequestsSpy()
+    portalRequestSpy.returnData = Data("file-contents".utf8)
+    portalRequestSpy.executeThrowableErrorSequence = [PortalRequestsError.unauthorized]
+    initGDriveClient(requests: portalRequestSpy)
+    let auth = ScriptedTokenGoogleAuth(tokens: ["revoked-token", "revoked-token", "fresh-token"])
+    client?.auth = auth
+
+    // and given
+    let contents = try await client?.read(MockConstants.mockGDriveFileId)
+
+    // then
+    XCTAssertEqual(contents, "file-contents")
+    XCTAssertEqual(auth.signOutCallsCount, 1)
+    XCTAssertEqual(portalRequestSpy.executeCallsCount, 2)
+  }
+
+  func test_read_willRetryWithoutSignOut_whenSessionWasAlreadyRenewed() async throws {
+    // given an earlier recovery in the same operation already renewed the session
+    let portalRequestSpy = PortalRequestsSpy()
+    portalRequestSpy.returnData = Data("file-contents".utf8)
+    portalRequestSpy.executeThrowableErrorSequence = [PortalRequestsError.unauthorized]
+    initGDriveClient(requests: portalRequestSpy)
+    let auth = ScriptedTokenGoogleAuth(tokens: ["stale-token", "fresh-token"])
+    client?.auth = auth
+
+    // and given
+    let contents = try await client?.read(MockConstants.mockGDriveFileId)
+
+    // then no second prompt: the renewed token is used as-is
+    XCTAssertEqual(contents, "file-contents")
+    XCTAssertEqual(auth.signOutCallsCount, 0)
+    XCTAssertEqual(portalRequestSpy.executeCallsCount, 2)
+  }
+
+  func test_read_willThrowUserNotAuthenticated_whenDriveRejectsTheRenewedTokenToo() async throws {
+    // given
+    let portalRequestSpy = PortalRequestsSpy()
+    portalRequestSpy.executeThrowableErrorSequence = [PortalRequestsError.unauthorized, PortalRequestsError.unauthorized]
+    initGDriveClient(requests: portalRequestSpy)
+    let auth = ScriptedTokenGoogleAuth(tokens: ["revoked-token", "revoked-token", "fresh-token"])
+    client?.auth = auth
+
+    do {
+      // and given
+      _ = try await client?.read(MockConstants.mockGDriveFileId)
+      XCTFail("Expected error not thrown when Drive rejects the renewed token as well.")
+    } catch {
+      // then exactly one retry, reported as an authentication failure so loops fail once
+      XCTAssertEqual(error as? GDriveClientError, GDriveClientError.userNotAuthenticated)
+      XCTAssertEqual(auth.signOutCallsCount, 1)
+      XCTAssertEqual(portalRequestSpy.executeCallsCount, 2)
+    }
+  }
+
+  func test_read_willThrowUserNotAuthenticated_whenFreshSignInFailsAfterRejection() async throws {
+    // given the fallback sign-in is declined (no token comes back)
+    let portalRequestSpy = PortalRequestsSpy()
+    portalRequestSpy.executeThrowableErrorSequence = [PortalRequestsError.unauthorized]
+    initGDriveClient(requests: portalRequestSpy)
+    let auth = ScriptedTokenGoogleAuth(tokens: ["revoked-token", "revoked-token", ""])
+    client?.auth = auth
+
+    do {
+      // and given
+      _ = try await client?.read(MockConstants.mockGDriveFileId)
+      XCTFail("Expected error not thrown when the fresh sign-in yields no token.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? GDriveClientError, GDriveClientError.userNotAuthenticated)
+      XCTAssertEqual(auth.signOutCallsCount, 1)
+      XCTAssertEqual(portalRequestSpy.executeCallsCount, 1)
+    }
+  }
+
+  func test_read_willNotSignOut_whenDriveFailsForOtherReasons() async throws {
+    // given
+    let portalRequestSpy = PortalRequestsSpy()
+    portalRequestSpy.executeThrowableErrorSequence = [URLError(.timedOut)]
+    initGDriveClient(requests: portalRequestSpy)
+    let auth = ScriptedTokenGoogleAuth(tokens: ["token"])
+    client?.auth = auth
+
+    do {
+      // and given
+      _ = try await client?.read(MockConstants.mockGDriveFileId)
+      XCTFail("Expected error not thrown when the Drive request fails.")
+    } catch {
+      // then the session is left alone
+      XCTAssertEqual((error as? URLError)?.code, .timedOut)
+      XCTAssertEqual(auth.signOutCallsCount, 0)
+      XCTAssertEqual(portalRequestSpy.executeCallsCount, 1)
+    }
+  }
+
+  func test_writeFile_willSignOutAndRetryUploadOnce_whenDriveRejectsTheStoredToken() async throws {
+    // given the folder lookup succeeds but the upload is rejected with the stored token
+    let portalRequestSpy = PortalRequestsSpy()
+    portalRequestSpy.returnData = try JSONEncoder().encode(MockConstants.mockGDriveFile)
+    portalRequestSpy.postMultiPartDataThrowableErrorSequence = [PortalRequestsError.unauthorized]
+    initGDriveClient(requests: portalRequestSpy)
+    let auth = ScriptedTokenGoogleAuth(tokens: ["revoked-token", "revoked-token", "fresh-token"])
+    client?.auth = auth
+
+    // and given
+    let fileId = try await client?.writeFile(
+      MockConstants.mockGDriveFileName,
+      withContent: "content",
+      andAccessToken: "revoked-token",
+      useAppDataFolder: true
+    )
+
+    // then the upload is retried with the renewed token
+    XCTAssertEqual(fileId, MockConstants.mockGDriveFileId)
+    XCTAssertEqual(auth.signOutCallsCount, 1)
+    XCTAssertEqual(portalRequestSpy.postMultiPartDataCallsCount, 2)
+    XCTAssertEqual(portalRequestSpy.postMultiPartDataWithBearerTokenParam, "fresh-token")
+  }
+}
+
+// MARK: - write recovery tests
+
+extension GDriveClientTests {
+  func test_write_willNotFallBackToWriteFile_whenRecoverySignInIsDeclined() async throws {
+    // given Drive rejects the cached token during the existing-file lookup and
+    // the user declines the recovery sign-in
+    let portalRequestSpy = PortalRequestsSpy()
+    portalRequestSpy.executeThrowableErrorSequence = [PortalRequestsError.unauthorized]
+    initGDriveClient(requests: portalRequestSpy)
+    let auth = ScriptedTokenGoogleAuth(tokens: ["revoked-token", "revoked-token", ""])
+    client?.auth = auth
+    client?.backupOption = .appDataFolder
+
+    do {
+      // and given
+      _ = try await client?.write(MockConstants.mockGDriveFileName, withContent: "content")
+      XCTFail("Expected error not thrown when calling GDriveClient.write() after the recovery sign-in was declined.")
+    } catch {
+      // then the "no existing file" fallback must not run and prompt a second time
+      XCTAssertEqual(error as? GDriveClientError, GDriveClientError.userNotAuthenticated)
+      XCTAssertEqual(auth.signOutCallsCount, 1)
+      XCTAssertEqual(portalRequestSpy.executeCallsCount, 1)
+      XCTAssertEqual(portalRequestSpy.postMultiPartDataCallsCount, 0)
+    }
+  }
+}
