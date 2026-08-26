@@ -458,6 +458,20 @@ public final class Portal: PortalProtocol {
     try self.mpc.setGDriveView(view)
   }
 
+  /// Clears the stored Google Drive session so the next backup or recovery runs
+  /// a fresh interactive Google sign-in.
+  ///
+  /// Use this to recover from a revoked or expired Google grant, or to let the
+  /// user switch Google accounts. Requires `setGDriveConfiguration` to have been
+  /// called; no presenting view is needed.
+  ///
+  /// - Throws: `MpcError.backupMethodNotRegistered` if Google Drive backup is not
+  ///   registered, or `GDriveClientError.authenticationNotInitialized` if it has
+  ///   not been configured.
+  public func gDriveSignOut() throws {
+    try self.mpc.gDriveSignOut()
+  }
+
   /// Sets the presentation anchor for passkey authentication dialogs.
   ///
   /// This method configures where passkey authentication UI components will be presented

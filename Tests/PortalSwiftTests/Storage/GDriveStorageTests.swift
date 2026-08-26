@@ -334,8 +334,9 @@ private class SignOutCountingGoogleAuth: GoogleAuth {
 
 extension GDriveStorageTests {
   func test_signOut_willCallGoogleAuthSignOut() throws {
-    // given
+    // given a configured client with a live GoogleAuth wrapper
     let driveClient = GDriveClientSpy()
+    driveClient.clientId = MockConstants.mockGDriveClientId
     let auth = SignOutCountingGoogleAuth(config: GIDConfiguration(clientID: MockConstants.mockGDriveClientId))
     driveClient.auth = auth
     initGDriveStorage(driveClient: driveClient)
@@ -347,9 +348,22 @@ extension GDriveStorageTests {
     XCTAssertEqual(auth.signOutCallsCount, 1)
   }
 
-  func test_signOut_willThrowCorrectError_whenDriveAuthNotAvailable() throws {
+  func test_signOut_willNotThrow_whenConfiguredWithoutView() throws {
+    // given a configured client whose presenting view has not been set yet, so
+    // no GoogleAuth wrapper exists
+    let driveClient = GDriveClientSpy()
+    driveClient.clientId = MockConstants.mockGDriveClientId
+    driveClient.auth = nil
+    initGDriveStorage(driveClient: driveClient)
+
+    // then signing out needs no view
+    XCTAssertNoThrow(try storage?.signOut())
+  }
+
+  func test_signOut_willThrowCorrectError_whenDriveIsNotConfigured() throws {
     // given
     let driveClient = GDriveClientSpy()
+    driveClient.clientId = nil
     driveClient.auth = nil
     initGDriveStorage(driveClient: driveClient)
 

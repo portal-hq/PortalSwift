@@ -166,14 +166,21 @@ public class GDriveStorage: Storage, PortalStorage {
 
   /// Clears the stored Google session so the next Drive operation runs a fresh
   /// interactive sign-in. Use this to recover from a revoked or expired Google
-  /// grant, or to let the user switch Google accounts.
+  /// grant, or to let the user switch Google accounts. Requires only
+  /// `setGDriveConfiguration`; no presenting view is needed to sign out.
   public func signOut() throws {
-    guard let auth = drive.auth else {
-      self.logger.debug("GDriveStorage.signOut() - ❌ Authentication not initialized. GDrive config has not been set yet.")
+    guard drive.clientId != nil else {
+      self.logger.debug("GDriveStorage.signOut() - ❌ GDrive config has not been set yet.")
       throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfiguration() to configure GoogleDrive")
     }
 
-    auth.signOut()
+    if let auth = drive.auth {
+      auth.signOut()
+    } else {
+      // Configured, but no presenting view has been set yet so no GoogleAuth
+      // wrapper exists; clearing the stored session needs no view.
+      GIDSignIn.sharedInstance.signOut()
+    }
   }
 
   public func validateOperations() async throws -> Bool {

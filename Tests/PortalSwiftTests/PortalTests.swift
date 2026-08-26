@@ -270,6 +270,18 @@ extension PortalTests {
     XCTAssertEqual(portalMpcSpy.setGDriveViewCallsCount, 1)
   }
 
+  func test_gDriveSignOut_willCall_mpc_gDriveSignOut_onlyOnce() async throws {
+    // given
+    let portalMpcSpy = PortalMpcSpy()
+    try initPortalWithSpy(portalMpc: portalMpcSpy)
+
+    // and given
+    try portal.gDriveSignOut()
+
+    // then
+    XCTAssertEqual(portalMpcSpy.gDriveSignOutCallsCount, 1)
+  }
+
   @available(iOS 16, *)
   func test_setPasskeyAuthenticationAnchor_willCall_mpc_setPasskeyAuthenticationAnchor_onlyOnce() async throws {
     // given
