@@ -72,10 +72,27 @@ public class GDriveStorage: Storage, PortalStorage {
     }
 
     for hash in hashes.values {
-      if let fileId = try? await drive.getIdForFilename(hash, useAppDataFolder: useAppDataFolder) {
+      // The pre-flight cannot see a token that only Drive knows is revoked. If
+      // the recovery sign-in triggered by that 401 is declined, fail here so the
+      // remaining hashes do not each present the sheet again.
+      let fileId: String
+      do {
+        fileId = try await drive.getIdForFilename(hash, useAppDataFolder: useAppDataFolder)
+      } catch GDriveClientError.userNotAuthenticated {
+        throw GDriveStorageError.unableToDeleteFile
+      } catch {
+        // Most hashes belong to other platforms and legitimately have no file
+        // in this folder; log so a real failure on one of them stays visible.
+        self.logger.debug("GDriveStorage.delete() - Skipping hash \(hash): \(error)")
+        continue
+      }
+
+      do {
         if try await self.drive.delete(fileId) {
           return true
         }
+      } catch GDriveClientError.userNotAuthenticated {
+        throw GDriveStorageError.unableToDeleteFile
       }
     }
 
@@ -145,6 +162,25 @@ public class GDriveStorage: Storage, PortalStorage {
     }
 
     return try await auth.signIn()
+  }
+
+  /// Clears the stored Google session so the next Drive operation runs a fresh
+  /// interactive sign-in. Use this to recover from a revoked or expired Google
+  /// grant, or to let the user switch Google accounts. Requires only
+  /// `setGDriveConfiguration`; no presenting view is needed to sign out.
+  public func signOut() throws {
+    guard drive.clientId != nil else {
+      self.logger.debug("GDriveStorage.signOut() - ❌ GDrive config has not been set yet.")
+      throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfiguration() to configure GoogleDrive")
+    }
+
+    if let auth = drive.auth {
+      auth.signOut()
+    } else {
+      // Configured, but no presenting view has been set yet so no GoogleAuth
+      // wrapper exists; clearing the stored session needs no view.
+      GIDSignIn.sharedInstance.signOut()
+    }
   }
 
   public func validateOperations() async throws -> Bool {
