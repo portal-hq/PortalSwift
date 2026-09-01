@@ -114,6 +114,7 @@ public protocol PortalProtocol {
   func receiveTestnetAsset(chainId: String, params: FundParams) async throws -> FundResponse
   func sendAsset(chainId: String, params: SendAssetParams) async throws -> SendAssetResponse
   func updateChain(newChainId: String)
+  func gDriveSignOut() throws
 
   // Deprecated functions
   @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of request().")

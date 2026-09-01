@@ -12,6 +12,20 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
+## 7.4.0 - 2026-09-01
+- Changed Google Drive backup to request only the OAuth scopes your configured `GDriveBackupOption` actually needs, so users see a smaller Google consent screen when enabling Google Drive backup.
+    - `.appDataFolder` now requests only the hidden app-data scope (`https://www.googleapis.com/auth/drive.appdata`) — one consent checkbox instead of two.
+    - `.gdriveFolder(folderName:)` now requests only the user-visible files scope (`https://www.googleapis.com/auth/drive.file`).
+    - `.appDataFolderWithFallback` still requests both scopes, since it reads from both locations.
+    - Configurations that never set a backup option continue to request both scopes.
+    - Existing users are not re-prompted — their previously granted scopes already cover the narrower request.
+- Fixed Google Drive backup and recovery permanently failing authentication after Google revoked or expired the stored sign-in. The SDK now detects the dead session, clears it, and automatically falls back to a fresh interactive sign-in. Previously only reinstalling the app recovered. Transient network and server errors do not clear the session.
+- Fixed a race in the Google sign-in flow where Drive scopes were requested in a separate prompt after sign-in had already returned, so the first Drive call could run before the user finished consenting. Scopes are now requested in the sign-in sheet itself, and the flow waits for the user's answer.
+- Fixed silently restored Google sessions never re-checking their granted scopes. If your configured backup option needs scopes the restored session lacks (for example after switching backup options), the SDK now prompts the signed-in user for the missing consent instead of failing.
+- Added `portal.gDriveSignOut()` to clear the stored Google session so the next backup or recovery runs a fresh sign-in. It only requires `setGDriveConfiguration`; no presenting view is needed.
+- Added `GoogleAuthError.scopesNotGranted(missing:)`, thrown by `GDriveStorage.signIn()` when the user declines a required Drive scope on Google's consent screen. If you switch exhaustively over `GoogleAuthError`, add a case for it.
+
+
 ## 7.3.0 - 2026-07-21
 - Added Noah on/off-ramp integration for fiat payins, payouts, and KYC via the new `portal.ramps` namespace.
     - Added `portal.ramps.noah.initiateKyc`

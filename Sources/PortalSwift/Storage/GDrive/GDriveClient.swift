@@ -65,7 +65,7 @@ public class GDriveClient: GDriveClientProtocol {
       self._clientId = clientId
 
       if let clientId = clientId, let view = view {
-        self.auth = GoogleAuth(config: GIDConfiguration(clientID: clientId), view: view)
+        self.auth = self.makeGoogleAuth(clientId: clientId, view: view)
       }
     }
   }
@@ -79,7 +79,7 @@ public class GDriveClient: GDriveClientProtocol {
       self._view = view
 
       if let clientId = clientId, let view = view {
-        self.auth = GoogleAuth(config: GIDConfiguration(clientID: clientId), view: view)
+        self.auth = self.makeGoogleAuth(clientId: clientId, view: view)
       }
     }
   }
@@ -105,7 +105,45 @@ public class GDriveClient: GDriveClientProtocol {
     self.requests = requests ?? PortalRequests()
 
     if let clientId = _clientId, let view = _view {
-      self.auth = GoogleAuth(config: GIDConfiguration(clientID: clientId), view: view)
+      self.auth = self.makeGoogleAuth(clientId: clientId, view: view)
+    }
+  }
+
+  private func makeGoogleAuth(clientId: String, view: UIViewController) -> GoogleAuth {
+    GoogleAuth(
+      config: GIDConfiguration(clientID: clientId),
+      view: view,
+      scopesProvider: { [weak self] in
+        // Resolved at sign-in time so backupOption changes made after this
+        // GoogleAuth was built are always honored.
+        self?.backupOption?.requiredDriveScopes ?? GDriveBackupOption.legacyDriveScopes
+      }
+    )
+  }
+
+  /// Sends one Drive request and, when Drive rejects the access token (HTTP
+  /// 401) that the silent restore still considered valid, retries exactly once
+  /// with a renewed token — see `GoogleAuth.recoverFromRejectedAccessToken`.
+  private func sendAuthorized<Response>(
+    _ auth: GoogleAuth,
+    _ accessToken: String,
+    _ send: (String) async throws -> Response
+  ) async throws -> Response {
+    do {
+      return try await send(accessToken)
+    } catch PortalRequestsError.unauthorized {
+      let renewedToken = await auth.recoverFromRejectedAccessToken(accessToken)
+      if renewedToken.isEmpty {
+        throw GDriveClientError.userNotAuthenticated
+      }
+
+      do {
+        return try await send(renewedToken)
+      } catch PortalRequestsError.unauthorized {
+        // Drive rejected a token from a fresh sign-in as well; report it as an
+        // authentication failure so callers fail once instead of re-prompting.
+        throw GDriveClientError.userNotAuthenticated
+      }
     }
   }
 
@@ -121,9 +159,11 @@ public class GDriveClient: GDriveClientProtocol {
     }
 
     if let url = URL(string: "\(baseUrl)/drive/v3/files/\(id)") {
-      try await requests.execute(
-        request: PortalAPIRequest(url: url, method: .delete, bearerToken: accessToken), mappingInResponse: Data.self
-      )
+      _ = try await sendAuthorized(auth, accessToken) { token in
+        try await requests.execute(
+          request: PortalAPIRequest(url: url, method: .delete, bearerToken: token), mappingInResponse: Data.self
+        )
+      }
       return true
     }
 
@@ -162,8 +202,9 @@ public class GDriveClient: GDriveClientProtocol {
     }
 
     if let url = URL(string: "\(baseUrl)/drive/v3/files?\(spaces)&q=\(query)&orderBy=modifiedTime%20desc&pageSize=1") {
-      let request = PortalAPIRequest(url: url, bearerToken: accessToken)
-      let filesListResponse = try await requests.execute(request: request, mappingInResponse: GDriveFilesListResponse.self)
+      let filesListResponse = try await sendAuthorized(auth, accessToken) { token in
+        try await requests.execute(request: PortalAPIRequest(url: url, bearerToken: token), mappingInResponse: GDriveFilesListResponse.self)
+      }
 
       if filesListResponse.files.count > 0 {
         return filesListResponse.files[0].id
@@ -188,8 +229,9 @@ public class GDriveClient: GDriveClientProtocol {
     }
 
     if let url = URL(string: "\(baseUrl)/drive/v3/files/\(id)?alt=media") {
-      let request = PortalAPIRequest(url: url, bearerToken: accessToken)
-      let fileData = try await requests.execute(request: request, mappingInResponse: Data.self)
+      let fileData = try await sendAuthorized(auth, accessToken) { token in
+        try await requests.execute(request: PortalAPIRequest(url: url, bearerToken: token), mappingInResponse: Data.self)
+      }
 
       guard let fileContents = String(data: fileData, encoding: .utf8) else {
         throw GDriveClientError.unableToReadFileContents
@@ -219,7 +261,7 @@ public class GDriveClient: GDriveClientProtocol {
       throw GDriveClientError.unableToWriteToGDrive
     }
 
-    let useAppDataFolder = backupOption == .appDataFolder || backupOption == .appDataFolderWithFallback
+    let useAppDataFolder = backupOption?.usesAppDataFolder ?? false
     let fileId = try await getIdForFilename(mockFileName, useAppDataFolder: useAppDataFolder)
 
     let fileContents = try await read(fileId)
@@ -243,7 +285,7 @@ public class GDriveClient: GDriveClientProtocol {
 
     let filenameWithExtension = filename + ".txt"
 
-    let useAppDataFolder = backupOption == .appDataFolder || backupOption == .appDataFolderWithFallback
+    let useAppDataFolder = backupOption?.usesAppDataFolder ?? false
 
     do {
       let existingFileId = try await getIdForFilename(filename, useAppDataFolder: useAppDataFolder)
@@ -254,6 +296,10 @@ public class GDriveClient: GDriveClientProtocol {
       let fileId = try await writeFile(filenameWithExtension, withContent: withContent, andAccessToken: accessToken, useAppDataFolder: useAppDataFolder)
 
       return !fileId.isEmpty
+    } catch GDriveClientError.userNotAuthenticated {
+      // The fallback below exists for "no existing file to replace"; running it
+      // after a declined recovery sign-in would present the sheet a second time.
+      throw GDriveClientError.userNotAuthenticated
     } catch {
       let fileId = try await writeFile(filenameWithExtension, withContent: withContent, andAccessToken: accessToken, useAppDataFolder: useAppDataFolder)
 
@@ -262,6 +308,18 @@ public class GDriveClient: GDriveClientProtocol {
   }
 
   public func recoverFiles(for hashes: [String: String], useAppDataFolder: Bool) async throws -> [String: String] {
+    guard let auth = auth else {
+      self.logger.error("GDriveClient.recoverFiles() - Authentication not initialized. GDrive config has not been set yet.")
+      throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfiguration() to configure GoogleDrive")
+    }
+
+    // One up-front token fetch so a missing or declined consent fails the whole
+    // recovery once, instead of re-presenting the prompt for every hash below.
+    let accessToken = await auth.getAccessToken()
+    if accessToken.isEmpty {
+      throw GDriveClientError.userNotAuthenticated
+    }
+
     var recoveredFiles: [String: String] = [:]
     var errors: [String: Error] = [:]
     var processedHashes: Set<String> = []
@@ -277,6 +335,12 @@ public class GDriveClient: GDriveClientProtocol {
         let content = try await read(fileId)
         recoveredFiles[platform] = content
         processedHashes.insert(hash)
+      } catch GDriveClientError.userNotAuthenticated {
+        // The calls above fetch the access token again. If that fetch fails
+        // mid-loop, collecting the error would let the remaining hashes (and
+        // the caller's folder fallback) re-present the consent prompt, so
+        // fail the whole recovery here just like the pre-flight does.
+        throw GDriveClientError.userNotAuthenticated
       } catch {
         self.logger.info("GDriveClient.recoverFiles() - Error recovering file for platform: \(platform), hash: \(hash). Error: \(error)")
         errors[platform] = error
@@ -297,6 +361,9 @@ public class GDriveClient: GDriveClientProtocol {
     }
 
     let accessToken = await auth.getAccessToken()
+    if accessToken.isEmpty {
+      throw GDriveClientError.userNotAuthenticated
+    }
 
     if let url = URL(string: "\(baseUrl)/drive/v3/files?ignoreDefaultVisibility=true") {
       let payload = GDriveFolderMetadata(
@@ -305,8 +372,9 @@ public class GDriveClient: GDriveClientProtocol {
         parents: ["root"]
       )
 
-      let request = PortalAPIRequest(url: url, method: .post, payload: payload, bearerToken: accessToken)
-      let file = try await requests.execute(request: request, mappingInResponse: GDriveFile.self)
+      let file = try await sendAuthorized(auth, accessToken) { token in
+        try await requests.execute(request: PortalAPIRequest(url: url, method: .post, payload: payload, bearerToken: token), mappingInResponse: GDriveFile.self)
+      }
 
       return file
     }
@@ -330,8 +398,9 @@ public class GDriveClient: GDriveClientProtocol {
     }
 
     if let url = URL(string: "\(baseUrl)/drive/v3/files?q=\(query)") {
-      let request = PortalAPIRequest(url: url, bearerToken: accessToken)
-      let filesListResponse = try await requests.execute(request: request, mappingInResponse: GDriveFilesListResponse.self)
+      let filesListResponse = try await sendAuthorized(auth, accessToken) { token in
+        try await requests.execute(request: PortalAPIRequest(url: url, bearerToken: token), mappingInResponse: GDriveFilesListResponse.self)
+      }
 
       if filesListResponse.files.count > 0 {
         return filesListResponse.files[0]
@@ -357,14 +426,20 @@ public class GDriveClient: GDriveClientProtocol {
     }
 
     if let url = URL(string: "\(baseUrl)/drive/v3/files/appDataFolder") {
-      let request = PortalAPIRequest(url: url, bearerToken: accessToken)
-      return try await requests.execute(request: request, mappingInResponse: GDriveFile.self)
+      return try await sendAuthorized(auth, accessToken) { token in
+        try await requests.execute(request: PortalAPIRequest(url: url, bearerToken: token), mappingInResponse: GDriveFile.self)
+      }
     }
 
     throw URLError(.badURL)
   }
 
   func writeFile(_ filename: String, withContent: String, andAccessToken: String, useAppDataFolder: Bool) async throws -> String {
+    guard let auth = auth else {
+      self.logger.error("GDriveClient.writeFile() - Authentication not initialized. GDrive config has not been set yet.")
+      throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfiguration() to configure GoogleDrive")
+    }
+
     let folder = try await useAppDataFolder ? getAppDataFolder() : getOrCreateFolder()
 
     if let url = URL(string: "\(baseUrl)/upload/drive/v3/files?ignoreDefaultVisibility=true&uploadType=multipart") {
@@ -374,12 +449,14 @@ public class GDriveClient: GDriveClientProtocol {
         withMetadata: metadata
       )
 
-      let data = try await requests.postMultiPartData(
-        url,
-        withBearerToken: andAccessToken,
-        andPayload: body,
-        usingBoundary: self.boundary
-      )
+      let data = try await sendAuthorized(auth, andAccessToken) { token in
+        try await requests.postMultiPartData(
+          url,
+          withBearerToken: token,
+          andPayload: body,
+          usingBoundary: self.boundary
+        )
+      }
       let file = try decoder.decode(GDriveFile.self, from: data)
 
       return file.id

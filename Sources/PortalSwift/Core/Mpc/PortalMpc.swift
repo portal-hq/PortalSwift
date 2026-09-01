@@ -19,6 +19,7 @@ public protocol PortalMpcProtocol {
   func registerBackupMethod(_ method: BackupMethods, withStorage: PortalStorage)
   func setGDriveConfiguration(clientId: String, backupOption: GDriveBackupOption) throws
   func setGDriveView(_ view: UIViewController) throws
+  func gDriveSignOut() throws
   @available(iOS 16, *)
   func setPasskeyAuthenticationAnchor(_ anchor: ASPresentationAnchor) throws
   @available(iOS 16, *)
@@ -853,6 +854,14 @@ public class PortalMpc: PortalMpcProtocol {
     }
 
     storage.view = view
+  }
+
+  public func gDriveSignOut() throws {
+    guard let storage = backupOptions[.GoogleDrive] as? GDriveStorage else {
+      throw MpcError.backupMethodNotRegistered("PortalMpc.gDriveSignOut() - Could not find an instance of `GDriveStorage`. Please use `portal.registerBackupMethod()`")
+    }
+
+    try storage.signOut()
   }
 
   @available(iOS 16, *)

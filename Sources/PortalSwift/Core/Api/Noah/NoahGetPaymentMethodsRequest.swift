@@ -12,7 +12,9 @@ import Foundation
 /// All parameters are optional; omitting them lets connect-api fall back to
 /// its server-side defaults (`pageSize` defaults to whatever Noah uses).
 ///
-/// - `pageSize`: clamped to the range `[1, 100]` by connect-api.
+/// - `pageSize`: optional page size between 1 and 100. connect-api validates the
+///   range and rejects out-of-range values with a 400
+///   (`PortalRequestsError.clientError`) — it does not clamp them.
 /// - `pageToken`: cursor from a previous response's `data.pageToken`.
 /// - `capability`: filter the payment methods by what they can be used for.
 public struct NoahGetPaymentMethodsRequest: Codable {

@@ -9,31 +9,79 @@ import Foundation
 import GoogleSignIn
 import UIKit
 
+/// Not safe for concurrent use: the SDK drives every Drive operation as
+/// sequential awaits within one task. Concurrent `getAccessToken()` calls on
+/// the same instance may present duplicate sign-in sheets or clear a session
+/// another call just renewed. Serialize callers, or land a single-flight
+/// recovery task if concurrent host-app usage becomes supported.
 public class GoogleAuth {
   public var auth: GIDSignIn
   public var config: GIDConfiguration
   public var view: UIViewController?
 
-  init(config: GIDConfiguration, view: UIViewController? = nil) {
+  private let logger = PortalLogger.shared
+
+  /// Resolves the OAuth scopes to request at the moment of each auth call, so
+  /// `backupOption` changes made after this object was built are always honored.
+  private let scopesProvider: () -> [String]
+
+  /// The Drive OAuth scopes this instance would request right now.
+  var requiredScopes: [String] {
+    self.scopesProvider()
+  }
+
+  init(
+    config: GIDConfiguration,
+    view: UIViewController? = nil,
+    scopesProvider: @escaping () -> [String] = { GDriveBackupOption.legacyDriveScopes }
+  ) {
     self.auth = GIDSignIn.sharedInstance
     self.config = config
     self.view = view
+    self.scopesProvider = scopesProvider
   }
 
   func getAccessToken() async -> String {
     do {
       if self.hasPreviousSignIn() {
-        // Attempt to sign in silently
-        let user = try await self.restorePreviousSignIn()
-        return user.accessToken.tokenString
-      } else {
-        // User has not signed in before, prompt for sign-in
-        let user = try await self.signIn()
-        return user.accessToken.tokenString
+        do {
+          return try await self.restoreAccessToken()
+        } catch where Self.isDeadGrantError(error) {
+          // Google permanently invalidated the stored grant. GIDSignIn never
+          // clears its keychain state on this failure, so hasPreviousSignIn()
+          // would stay true and every future call would re-fail the same way.
+          // Clear the dead session — even when no view is available to present
+          // a new sign-in — then fall through to a fresh interactive sign-in.
+          self.logger.info("GoogleAuth.getAccessToken() - Stored Google grant is no longer valid; signing out and requesting a fresh interactive sign-in. Underlying error: \(error)")
+          self.signOut()
+          return try await self.signInForAccessToken()
+        }
       }
+
+      // User has not signed in before, prompt for sign-in
+      return try await self.signInForAccessToken()
     } catch {
+      // Contract: callers detect failure via the empty string and map it to
+      // GDriveClientError.userNotAuthenticated.
+      self.logger.error("GoogleAuth.getAccessToken() - Unable to get an access token: \(error)")
       return ""
     }
+  }
+
+  /// The silent path: restores the stored session, upgrading its granted scopes
+  /// if the configured backup option now requires more than was consented to,
+  /// and returns its access token. Internal so tests can model session state
+  /// without a constructible `GIDGoogleUser`.
+  func restoreAccessToken() async throws -> String {
+    let restored = try await self.restorePreviousSignIn()
+    let user = try await self.ensureRequiredScopes(on: restored)
+    return user.accessToken.tokenString
+  }
+
+  /// The interactive path: runs a fresh sign-in and returns its access token.
+  func signInForAccessToken() async throws -> String {
+    let user = try await self.signIn()
+    return user.accessToken.tokenString
   }
 
   func getCurrentUser() -> GIDGoogleUser? {
@@ -63,36 +111,22 @@ public class GoogleAuth {
   }
 
   func signIn() async throws -> GIDGoogleUser {
-    let user = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<GIDGoogleUser, Error>) in
-      guard let view = self.view else {
-        continuation.resume(throwing: GoogleAuthError.noViewFound)
-        return
-      }
-
-      self.auth.configuration = self.config
-
-      self.auth.signIn(withPresenting: view) { user, error in
-        if error != nil {
-          continuation.resume(throwing: error! as Error)
-          return
-        }
-
-        guard let user else {
-          continuation.resume(throwing: GoogleAuthError.noUserFound)
-          return
-        }
-
-        user.user.addScopes(
-          [
-            "https://www.googleapis.com/auth/drive.file",
-            "https://www.googleapis.com/auth/drive.appdata"
-          ],
-          presenting: view
-        )
-
-        continuation.resume(returning: user.user)
-      }
+    let requiredScopes = self.requiredScopes
+    guard let view = self.view else {
+      throw GoogleAuthError.noViewFound
     }
+
+    // Request the Drive scopes in the sign-in sheet itself and resume only
+    // once the user has answered, so the first Drive call can never race an
+    // unanswered consent prompt.
+    let user = try await self.awaitSignInResult { completion in
+      self.auth.configuration = self.config
+      self.auth.signIn(withPresenting: view, hint: nil, additionalScopes: requiredScopes, completion: completion)
+    }
+
+    // Google's granular consent screen lets the user untick individual scopes
+    // while still completing sign-in.
+    try Self.requireScopes(requiredScopes, grantedTo: user)
 
     return user
   }
@@ -100,11 +134,144 @@ public class GoogleAuth {
   func signOut() {
     self.auth.signOut()
   }
+
+  /// Google Drive answered 401 for `rejectedToken` even though the silent
+  /// restore considered it valid: the grant was revoked server-side while the
+  /// cached access token had not yet expired, so no token refresh happened and
+  /// the dead grant went unnoticed. If an earlier recovery already renewed the
+  /// session, hand back the renewed token; otherwise clear the dead session and
+  /// run a fresh interactive sign-in. Returns "" when no token could be obtained.
+  func recoverFromRejectedAccessToken(_ rejectedToken: String) async -> String {
+    let currentToken = await self.getAccessToken()
+    if currentToken.isEmpty {
+      // getAccessToken() already did everything recoverable — including, if the
+      // cached token expired meanwhile, its own dead-grant sign-out and an
+      // interactive sign-in the user may have cancelled. Signing out and asking
+      // again here would present a second sheet for the same request.
+      return ""
+    }
+
+    // A revoked grant cannot refresh, so GIDSignIn hands back the identical
+    // token string until the session is cleared; a *different* token means an
+    // earlier recovery already renewed the session. Should Drive ever reject a
+    // renewed token as well, the next operation sees it come back unchanged and
+    // signs out then — one extra failed operation, not a permanent wedge.
+    if currentToken != rejectedToken {
+      return currentToken
+    }
+
+    self.logger.info("GoogleAuth.recoverFromRejectedAccessToken() - Google Drive rejected the stored access token; signing out and requesting a fresh interactive sign-in.")
+    self.signOut()
+    return await self.getAccessToken()
+  }
+
+  /// Silently restored sessions were consented under whatever backup option was
+  /// configured at the time, so their grant must be re-checked and, when the
+  /// current option needs more, upgraded with an awaited incremental consent.
+  private func ensureRequiredScopes(on user: GIDGoogleUser) async throws -> GIDGoogleUser {
+    let required = self.requiredScopes
+    let missing = Self.missingScopes(required: required, granted: user.grantedScopes)
+    if missing.isEmpty {
+      return user
+    }
+
+    guard let view = self.view else {
+      self.logger.error("GoogleAuth.ensureRequiredScopes() - Signed-in user is missing scopes \(missing) and no view is configured to present the consent prompt.")
+      throw GoogleAuthError.noViewFound
+    }
+
+    let upgraded: GIDGoogleUser
+    do {
+      upgraded = try await self.awaitSignInResult { completion in
+        user.addScopes(missing, presenting: view, completion: completion)
+      }
+    } catch let error as GIDSignInError where error.code == .scopesAlreadyGranted {
+      // Another flow granted the scopes concurrently; re-read the current user.
+      upgraded = self.auth.currentUser ?? user
+    }
+
+    try Self.requireScopes(required, grantedTo: upgraded)
+
+    return upgraded
+  }
+
+  /// Bridges a GIDSignIn completion into async/await on the main thread —
+  /// GIDSignIn's presentation APIs are main-thread-only — resuming with the
+  /// resulting user only after the consent sheet has been answered.
+  private func awaitSignInResult(
+    _ start: @escaping (@escaping (GIDSignInResult?, Error?) -> Void) -> Void
+  ) async throws -> GIDGoogleUser {
+    try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<GIDGoogleUser, Error>) in
+      Task { @MainActor in
+        start { result, error in
+          if let error {
+            continuation.resume(throwing: error)
+            return
+          }
+
+          guard let user = result?.user else {
+            continuation.resume(throwing: GoogleAuthError.noUserFound)
+            return
+          }
+
+          continuation.resume(returning: user)
+        }
+      }
+    }
+  }
+
+  private static func requireScopes(_ required: [String], grantedTo user: GIDGoogleUser) throws {
+    let missing = missingScopes(required: required, granted: user.grantedScopes)
+    guard missing.isEmpty else {
+      throw GoogleAuthError.scopesNotGranted(missing: missing)
+    }
+  }
+
+  static func missingScopes(required: [String], granted: [String]?) -> [String] {
+    let grantedSet = Set(granted ?? [])
+    return required.filter { !grantedSet.contains($0) }
+  }
+
+  /// Whether `error` means Google has permanently invalidated the stored grant,
+  /// as opposed to a transient failure a retry could clear. Transient AppAuth
+  /// errors — `org.openid.appauth.general` network (-5), server (-6) and JSON
+  /// (-7) — are deliberately excluded: signing out on those would destroy a
+  /// valid session while the device is merely offline. The wrapped
+  /// `GIDSignInError` EMM code (-6) is excluded as ambiguous; note that on the
+  /// silent restore path GIDSignIn surfaces EMM token-endpoint errors unwrapped
+  /// in the AppAuth token domain, where they are treated like any other
+  /// invalidated grant — the interactive sign-in that follows is also Google's
+  /// prescribed remediation for them. Wrapped errors are classified by their
+  /// underlying chain.
+  static func isDeadGrantError(_ error: Error) -> Bool {
+    var current: NSError? = error as NSError
+    var depth = 0
+    while let nsError = current, depth < 5 {
+      // AppAuth is a transitive dependency, so its domain constant isn't
+      // importable; this literal is OIDOAuthTokenErrorDomain and is pinned by
+      // GoogleAuthTests.test_isDeadGrantError_* — update both if AppAuth ever
+      // renames it. Every code in the token-endpoint domain is terminal
+      // (invalid_grant is -10).
+      if nsError.domain == "org.openid.appauth.oauth_token" {
+        return true
+      }
+
+      if let gidError = nsError as? GIDSignInError, gidError.code == .hasNoAuthInKeychain {
+        return true
+      }
+
+      current = nsError.userInfo[NSUnderlyingErrorKey] as? NSError
+      depth += 1
+    }
+
+    return false
+  }
 }
 
 public enum GoogleAuthError: LocalizedError, Equatable {
   case noUserFound
   case noViewFound
+  case scopesNotGranted(missing: [String])
   case unableToReadAccessToken
   case viewMustBeProvidedAtInitialization(_ message: String)
 }

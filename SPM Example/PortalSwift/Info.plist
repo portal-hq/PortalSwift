@@ -8,6 +8,14 @@
 	<string>$(SWAPS_API_KEY)</string>
 	<key>BACKUP_WITH_PORTAL</key>
 	<string>$(BACKUP_WITH_PORTAL)</string>
+	<key>PORTAL_EX_PROD_API_KEY</key>
+	<string>$(PORTAL_EX_PROD_API_KEY)</string>
+	<key>PORTAL_EX_STAGING_API_KEY</key>
+	<string>$(PORTAL_EX_STAGING_API_KEY)</string>
+	<key>PORTAL_EX_BACKUP_WITH_PORTAL_PROD_API_KEY</key>
+	<string>$(PORTAL_EX_BACKUP_WITH_PORTAL_PROD_API_KEY)</string>
+	<key>PORTAL_EX_BACKUP_WITH_PORTAL_STAGING_API_KEY</key>
+	<string>$(PORTAL_EX_BACKUP_WITH_PORTAL_STAGING_API_KEY)</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleExecutable</key>

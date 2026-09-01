@@ -190,6 +190,10 @@ final class PortalRequestsSpy: PortalRequestsProtocol {
     queue.sync { _postMultiPartDataUsingBoundaryParam }
   }
 
+  /// Errors to throw from successive `postMultiPartData` calls (nil = succeed);
+  /// once exhausted, calls succeed with `returnData`.
+  var postMultiPartDataThrowableErrorSequence: [Error?] = []
+
   func postMultiPartData(_ from: URL, withBearerToken: String, andPayload: String, usingBoundary: String) async throws -> Data {
     queue.sync {
       _postMultiPartDataCallsCount += 1
@@ -197,6 +201,9 @@ final class PortalRequestsSpy: PortalRequestsProtocol {
       _postMultiPartDataWithBearerTokenParam = withBearerToken
       _postMultiPartDataAndPayloadParam = andPayload
       _postMultiPartDataUsingBoundaryParam = usingBoundary
+    }
+    if !postMultiPartDataThrowableErrorSequence.isEmpty, let error = postMultiPartDataThrowableErrorSequence.removeFirst() {
+      throw error
     }
     return returnData
   }
@@ -213,10 +220,18 @@ final class PortalRequestsSpy: PortalRequestsProtocol {
     queue.sync { _executeRequestParam }
   }
 
+  /// Errors to throw from successive `execute(request:mappingInResponse:)` calls
+  /// (nil = succeed); once exhausted, calls succeed with `returnData`.
+  var executeThrowableErrorSequence: [Error?] = []
+
   func execute<ResponseType>(request: any PortalSwift.PortalBaseRequestProtocol, mappingInResponse _: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable {
     queue.sync {
       _executeCallsCount += 1
       _executeRequestParam = request
+    }
+
+    if !executeThrowableErrorSequence.isEmpty, let error = executeThrowableErrorSequence.removeFirst() {
+      throw error
     }
 
     if ResponseType.self == Data.self {

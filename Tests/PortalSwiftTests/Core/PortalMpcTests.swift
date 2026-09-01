@@ -2062,6 +2062,43 @@ extension PortalMpcTests {
   }
 }
 
+// MARK: - gDriveSignOut Tests
+
+extension PortalMpcTests {
+  func test_gDriveSignOut_willThrowCorrectError_whenThereIsNoGDriveStorage() throws {
+    // given
+    initPortalMpcWith(
+      gDriveStorage: nil
+    )
+
+    do {
+      // and given
+      try mpc?.gDriveSignOut()
+      XCTFail("Expected error not thrown when calling PortalMpc.gDriveSignOut() without GDrive storage.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? MpcError, MpcError.backupMethodNotRegistered("PortalMpc.gDriveSignOut() - Could not find an instance of `GDriveStorage`. Please use `portal.registerBackupMethod()`"))
+    }
+  }
+
+  func test_gDriveSignOut_willDelegate_toGDriveStorage() throws {
+    // given an unconfigured storage, whose signOut() throws
+    let gDriveStorage = GDriveStorage()
+    initPortalMpcWith(
+      gDriveStorage: gDriveStorage
+    )
+
+    do {
+      // and given
+      try mpc?.gDriveSignOut()
+      XCTFail("Expected error not thrown when calling PortalMpc.gDriveSignOut() on unconfigured GDrive storage.")
+    } catch {
+      // then the storage's own error surfaces, proving the call was delegated
+      XCTAssertEqual(error as? GDriveClientError, GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfiguration() to configure GoogleDrive"))
+    }
+  }
+}
+
 // MARK: - setPasskeyAuthenticationAnchor Tests
 
 extension PortalMpcTests {

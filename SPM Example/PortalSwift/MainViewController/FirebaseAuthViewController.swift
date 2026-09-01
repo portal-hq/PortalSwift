@@ -349,7 +349,7 @@ class FirebaseAuthViewController: UIViewController {
             let message: String?
           }
 
-          let request = PortalAPIRequest(url: url, method: .post, payload: payload)
+          let request = PortalAPIRequest.custodian(url: url, method: .post, payload: payload)
           _ = try await requests.execute(request: request, mappingInResponse: ResponseType.self)
         }
 
@@ -400,7 +400,7 @@ class FirebaseAuthViewController: UIViewController {
           guard let url = URL(string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/cipher-text/fetch?backupMethod=FIREBASE") else {
             throw URLError(.badURL)
           }
-          let request = PortalAPIRequest(url: url)
+          let request = PortalAPIRequest.custodian(url: url)
           let response = try await requests.execute(request: request, mappingInResponse: CipherTextResult.self)
           cipherText = response.cipherText
         }
@@ -459,7 +459,7 @@ class FirebaseAuthViewController: UIViewController {
           ) else {
             throw URLError(.badURL)
           }
-          let cipherTextRequest = PortalAPIRequest(url: cipherTextUrl)
+          let cipherTextRequest = PortalAPIRequest.custodian(url: cipherTextUrl)
           let cipherTextResponse = try await requests.execute(request: cipherTextRequest, mappingInResponse: CipherTextResult.self)
           cipherText = cipherTextResponse.cipherText
 
@@ -468,7 +468,7 @@ class FirebaseAuthViewController: UIViewController {
           ) else {
             throw URLError(.badURL)
           }
-          let organizationBackupShareRequest = PortalAPIRequest(url: organizationBackupShareUrl)
+          let organizationBackupShareRequest = PortalAPIRequest.custodian(url: organizationBackupShareUrl)
           let organizationBackupShareResponse = try await requests.execute(request: organizationBackupShareRequest, mappingInResponse: OrgShareResult.self)
           organizationShare = organizationBackupShareResponse.orgShare
 
@@ -478,7 +478,7 @@ class FirebaseAuthViewController: UIViewController {
           ) else {
             throw URLError(.badURL)
           }
-          let organizationSolanaBackupShareRequest = PortalAPIRequest(url: organizationSolanaBackupShareUrl)
+          let organizationSolanaBackupShareRequest = PortalAPIRequest.custodian(url: organizationSolanaBackupShareUrl)
           let organizationSolanaBackupShareResponse = try? await requests.execute(request: organizationSolanaBackupShareRequest, mappingInResponse: OrgShareResult.self)
           if let organizationSolanaBackupShareResponse {
             organizationSolanaShare = organizationSolanaBackupShareResponse.orgShare
@@ -514,12 +514,12 @@ class FirebaseAuthViewController: UIViewController {
             throw URLError(.badURL)
           }
 
-          let prepareEjectRequest = PortalAPIRequest(url: prepareEjectUrl, method: .post, payload: ["walletId": walletId])
+          let prepareEjectRequest = PortalAPIRequest.custodian(url: prepareEjectUrl, method: .post, payload: ["walletId": walletId])
           let prepareEjectResponse = try await requests.execute(request: prepareEjectRequest, mappingInResponse: String.self)
           self.logger.debug("FirebaseAuth.eject - Ethereum wallet ejectable until \(prepareEjectResponse)")
 
           if let walletIdEd25519 {
-            let prepareEjectEd25519Request = PortalAPIRequest(url: prepareEjectUrl, method: .post, payload: ["walletId": walletIdEd25519])
+            let prepareEjectEd25519Request = PortalAPIRequest.custodian(url: prepareEjectUrl, method: .post, payload: ["walletId": walletIdEd25519])
             let prepareEjectResponseEd25519 = try await requests.execute(request: prepareEjectEd25519Request, mappingInResponse: String.self)
             self.logger.debug("FirebaseAuth.eject - Solana wallet ejectable until \(prepareEjectResponseEd25519)")
           }
