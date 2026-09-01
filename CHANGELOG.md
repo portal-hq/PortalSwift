@@ -12,18 +12,19 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
-## Unreleased
-- Changed Google Drive backup to request only the OAuth scopes the configured `GDriveBackupOption` actually uses, shrinking the Google consent screen users see when enabling GDrive backup. Previously every option requested both Drive scopes.
-    - `.appDataFolder` now requests only `https://www.googleapis.com/auth/drive.appdata` (one consent checkbox instead of two).
-    - `.appDataFolderWithFallback` still requests both `drive.file` and `drive.appdata`, because its fallback read targets the user-visible folder.
-    - `.gdriveFolder(folderName:)` now requests only `https://www.googleapis.com/auth/drive.file`.
-    - Legacy configurations that never set a backup option continue to request both scopes.
-    - Existing users are not re-prompted: a previously granted scope set is a superset of the narrowed request. Users who consent after upgrading grant only the narrower set, so rolling the SDK back would trigger a one-time incremental consent prompt.
-- Fixed a race in the Google sign-in flow where Drive scopes were requested in a separate, un-awaited consent prompt after sign-in completed. Scopes are now requested in the sign-in sheet itself and the flow only returns once the user has answered, so the first Drive call can no longer run before consent is granted.
-- Fixed silently restored Google sessions never re-checking their granted scopes. If the configured backup option requires scopes the restored session lacks (for example after switching backup options), the SDK now runs an awaited incremental consent prompt for the signed-in account.
-- Added `GoogleAuthError.scopesNotGranted(missing:)`, thrown by `GDriveStorage.signIn()` when the user declines a required Drive scope on Google's granular consent screen. Elsewhere a declined scope surfaces through each flow's existing error — backups throw `GDriveClientError.userNotAuthenticated`, recovery throws `GDriveStorageError.unableToReadFile`, and deletes throw `GDriveStorageError.unableToDeleteFile` — with the missing scopes logged. If you switch exhaustively over `GoogleAuthError`, add a case for it.
-- Fixed Google Drive backup and recovery getting permanently stuck failing authentication after Google revoked or expired the stored sign-in (backups failed with `GDriveClientError.userNotAuthenticated`, recovery with `GDriveStorageError.unableToReadFile`, deletes with `GDriveStorageError.unableToDeleteFile`; or, while the revoked access token was still cached, with a raw `PortalRequestsError.unauthorized` from Google Drive). The silent session restore now detects the dead grant, clears the stale session, and falls back to a fresh interactive sign-in; and when Google Drive rejects a still-cached access token (HTTP 401) right after the grant was revoked, the request is retried once through the same fresh sign-in. Previously only reinstalling the app recovered. Transient network and server errors do not clear the session.
-- Added `portal.gDriveSignOut()` (and the underlying `GDriveStorage.signOut()`) to clear the stored Google session so the next backup or recovery runs a fresh sign-in — parity with Android's `GoogleStorage.signOut()`. It only requires `setGDriveConfiguration`; no presenting view is needed. Throws `GDriveClientError.authenticationNotInitialized` if Google Drive has not been configured.
+## 7.4.0 - 2026-09-01
+- Changed Google Drive backup to request only the OAuth scopes your configured `GDriveBackupOption` actually needs, so users see a smaller Google consent screen when enabling Google Drive backup.
+    - `.appDataFolder` now requests only the hidden app-data scope (`drive.appdata`) — one consent checkbox instead of two.
+    - `.gdriveFolder(folderName:)` now requests only the user-visible files scope (`drive.file`).
+    - `.appDataFolderWithFallback` still requests both scopes, since it reads from both locations.
+    - Configurations that never set a backup option continue to request both scopes.
+    - Existing users are not re-prompted — their previously granted scopes already cover the narrower request.
+- Fixed Google Drive backup and recovery getting permanently stuck failing authentication after Google revoked or expired the stored sign-in. The SDK now detects the dead session, clears it, and automatically falls back to a fresh interactive sign-in. Previously only reinstalling the app recovered. Transient network and server errors do not clear the session.
+- Fixed a race in the Google sign-in flow where Drive permissions were requested in a separate prompt after sign-in had already returned, so the first Drive call could run before the user finished consenting. Permissions are now granted as part of the sign-in sheet itself.
+- Fixed silently restored Google sessions never re-checking their granted permissions. If your configured backup option needs scopes the restored session lacks (for example after switching backup options), the SDK now prompts the signed-in user for the missing consent instead of failing.
+- Added `portal.gDriveSignOut()` to clear the stored Google session so the next backup or recovery runs a fresh sign-in. It only requires `setGDriveConfiguration`; no presenting view is needed.
+- Added `GoogleAuthError.scopesNotGranted(missing:)`, thrown by `GDriveStorage.signIn()` when the user declines a required Drive permission on Google's consent screen. If you switch exhaustively over `GoogleAuthError`, add a case for it.
+
 
 ## 7.3.0 - 2026-07-21
 - Added Noah on/off-ramp integration for fiat payins, payouts, and KYC via the new `portal.ramps` namespace.
