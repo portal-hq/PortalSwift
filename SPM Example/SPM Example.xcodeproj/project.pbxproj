@@ -14,15 +14,12 @@
 		607FACDB1AFB9204008FA782 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 607FACD91AFB9204008FA782 /* Main.storyboard */; };
 		607FACDD1AFB9204008FA782 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 607FACDC1AFB9204008FA782 /* Images.xcassets */; };
 		607FACE01AFB9204008FA782 /* LaunchScreen.xib in Resources */ = {isa = PBXBuildFile; fileRef = 607FACDE1AFB9204008FA782 /* LaunchScreen.xib */; };
-		607FACEC1AFB9204008FA782 /* WalletTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FACEB1AFB9204008FA782 /* WalletTests.swift */; };
 		7E4B874E2A58BFFB003A8DB5 /* WebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4B874D2A58BFFB003A8DB5 /* WebViewController.swift */; };
 		7E7F4C002A002D7F00756B6A /* ConnectViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E7F4BFF2A002D7F00756B6A /* ConnectViewController.swift */; };
-		7EDEB9FC2AF59EC3005E8C7F /* PortalSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 7EDEB9FB2AF59EC3005E8C7F /* PortalSwift */; };
+		D8CD00022EF3000000000002 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8CD00012EF3000000000001 /* SceneDelegate.swift */; };
 		D8PU00012EF2000000000001 /* Pulse in Frameworks */ = {isa = PBXBuildFile; productRef = D8PU00022EF2000000000002 /* Pulse */; };
 		D8PU00032EF2000000000003 /* PulseUI in Frameworks */ = {isa = PBXBuildFile; productRef = D8PU00042EF2000000000004 /* PulseUI */; };
 		D8PU00052EF2000000000005 /* PulseProxy in Frameworks */ = {isa = PBXBuildFile; productRef = D8PU00062EF2000000000006 /* PulseProxy */; };
-		F915F34E2A8195E70014C25B /* ProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F915F34D2A8195E70014C25B /* ProviderTests.swift */; };
-		F95EA8282AE1440F00A31827 /* PasswordWalletTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F95EA8272AE1440F00A31827 /* PasswordWalletTests.swift */; };
 		F975DB932BEBBED500E4E5F6 /* PortalSwift in Frameworks */ = {isa = PBXBuildFile; productRef = F975DB922BEBBED500E4E5F6 /* PortalSwift */; };
 		F9BF35A22BF8115000BF2862 /* Web3 in Frameworks */ = {isa = PBXBuildFile; productRef = F9BF35A12BF8115000BF2862 /* Web3 */; };
 		F9BF35A42BF8115000BF2862 /* Web3ContractABI in Frameworks */ = {isa = PBXBuildFile; productRef = F9BF35A32BF8115000BF2862 /* Web3ContractABI */; };
@@ -50,15 +47,13 @@
 		607FACDF1AFB9204008FA782 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/LaunchScreen.xib; sourceTree = "<group>"; };
 		607FACE51AFB9204008FA782 /* SPM E2E Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "SPM E2E Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		607FACEA1AFB9204008FA782 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		607FACEB1AFB9204008FA782 /* WalletTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalletTests.swift; sourceTree = "<group>"; };
 		7E1A4FD82AF46A0A00A6F7A5 /* SPM Example.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = "SPM Example.entitlements"; sourceTree = "<group>"; };
 		7E4B874D2A58BFFB003A8DB5 /* WebViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewController.swift; sourceTree = "<group>"; };
 		7E7F4BFF2A002D7F00756B6A /* ConnectViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectViewController.swift; sourceTree = "<group>"; };
 		7EB608D3291EF2F000CF1346 /* PortalSwift.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = PortalSwift.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		7EBF73492BC84FBD0077FD03 /* PortalSwift.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = PortalSwift.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		7EDEB9FA2AF59DFE005E8C7F /* SPM E2E Tests.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; name = "SPM E2E Tests.xctestplan"; path = "/Users/blakewilliams/development/portal/PortalSwift/SPM Example/SPM E2E Tests.xctestplan"; sourceTree = "<absolute>"; };
-		F915F34D2A8195E70014C25B /* ProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderTests.swift; sourceTree = "<group>"; };
-		F95EA8272AE1440F00A31827 /* PasswordWalletTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordWalletTests.swift; sourceTree = "<group>"; };
+		7EDEB9FA2AF59DFE005E8C7F /* SPM E2E Tests.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = "SPM E2E Tests.xctestplan"; sourceTree = "<group>"; };
+		D8CD00012EF3000000000001 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -99,7 +94,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7EDEB9FC2AF59EC3005E8C7F /* PortalSwift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -134,6 +128,7 @@
 				D8AA920A2EF1ECE200F69B06 /* MainViewController */,
 				D8A2B4F92D02280000890CDA /* Settings */,
 				607FACD51AFB9204008FA782 /* AppDelegate.swift */,
+				D8CD00012EF3000000000001 /* SceneDelegate.swift */,
 				7E7F4BFF2A002D7F00756B6A /* ConnectViewController.swift */,
 				7E4B874D2A58BFFB003A8DB5 /* WebViewController.swift */,
 				607FACD91AFB9204008FA782 /* Main.storyboard */,
@@ -157,7 +152,6 @@
 		607FACE81AFB9204008FA782 /* Tests */ = {
 			isa = PBXGroup;
 			children = (
-				F97145592A1F6C830034189F /* e2e */,
 				607FACE91AFB9204008FA782 /* Supporting Files */,
 			);
 			path = Tests;
@@ -178,16 +172,6 @@
 				7EB608D3291EF2F000CF1346 /* PortalSwift.framework */,
 			);
 			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		F97145592A1F6C830034189F /* e2e */ = {
-			isa = PBXGroup;
-			children = (
-				607FACEB1AFB9204008FA782 /* WalletTests.swift */,
-				F95EA8272AE1440F00A31827 /* PasswordWalletTests.swift */,
-				F915F34D2A8195E70014C25B /* ProviderTests.swift */,
-			);
-			path = e2e;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -238,9 +222,6 @@
 				607FACE71AFB9204008FA782 /* PBXTargetDependency */,
 			);
 			name = "SPM E2E Tests";
-			packageProductDependencies = (
-				7EDEB9FB2AF59EC3005E8C7F /* PortalSwift */,
-			);
 			productName = Tests;
 			productReference = 607FACE51AFB9204008FA782 /* SPM E2E Tests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -326,6 +307,7 @@
 				7E7F4C002A002D7F00756B6A /* ConnectViewController.swift in Sources */,
 				7E4B874E2A58BFFB003A8DB5 /* WebViewController.swift in Sources */,
 				607FACD61AFB9204008FA782 /* AppDelegate.swift in Sources */,
+				D8CD00022EF3000000000002 /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -333,9 +315,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F915F34E2A8195E70014C25B /* ProviderTests.swift in Sources */,
-				607FACEC1AFB9204008FA782 /* WalletTests.swift in Sources */,
-				F95EA8282AE1440F00A31827 /* PasswordWalletTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -552,7 +531,7 @@
 					"$(inherited)",
 				);
 				INFOPLIST_FILE = Tests/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -577,7 +556,7 @@
 					"$(inherited)",
 				);
 				INFOPLIST_FILE = Tests/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -683,7 +662,7 @@
 					"$(inherited)",
 				);
 				INFOPLIST_FILE = Tests/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -748,22 +727,6 @@
 				minimumVersion = 11.0.0;
 			};
 		};
-		D8PU00072EF2000000000007 /* XCRemoteSwiftPackageReference "Pulse" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/kean/Pulse";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 5.1.4;
-			};
-		};
-		F9BF35A02BF8115000BF2862 /* XCRemoteSwiftPackageReference "Web3" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/Boilertalk/Web3.swift";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.8.8;
-			};
-		};
 		5E10AC010000000000000001 /* XCRemoteSwiftPackageReference "swift-nio" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/apple/swift-nio.git";
@@ -788,6 +751,22 @@
 				minimumVersion = 1.34.1;
 			};
 		};
+		D8PU00072EF2000000000007 /* XCRemoteSwiftPackageReference "Pulse" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/kean/Pulse";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.1.4;
+			};
+		};
+		F9BF35A02BF8115000BF2862 /* XCRemoteSwiftPackageReference "Web3" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Boilertalk/Web3.swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.8.8;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -800,10 +779,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 2510AC502F50C7000021F8F3 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseCore;
-		};
-		7EDEB9FB2AF59EC3005E8C7F /* PortalSwift */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = PortalSwift;
 		};
 		D8PU00022EF2000000000002 /* Pulse */ = {
 			isa = XCSwiftPackageProductDependency;

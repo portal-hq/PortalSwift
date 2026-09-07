@@ -13,11 +13,63 @@ import PortalSwift
 import SwiftUI
 import UIKit
 
+/// The PortalEx custodian user this screen is signed in as.
+///
+/// `exchangeUserId` is a `String` rather than an `Int` because it is only ever used as a path
+/// segment (`/mobile/<id>/cipher-text`) and because two producers disagree about its wire type:
+/// `/mobile/signin` returns a JSON number, while `/clients/register` — the Client Auth registration
+/// route — returns a string on some deployments and a number on others. Decoding leniently here
+/// means the difference is reconciled once, at the boundary, instead of at every call site.
+///
+/// Client Auth adoption synthesizes one of these with a blank `clientApiKey`, which
+/// `resolveCredentialSource` reads as *absent* — the session is the credential on that path.
 struct UserResult: Codable {
   var clientApiKey: String
   var clientId: String
-  var exchangeUserId: Int
+  var exchangeUserId: String
   var username: String
+
+  enum CodingKeys: String, CodingKey {
+    case clientApiKey
+    case clientId
+    case exchangeUserId
+    case username
+  }
+
+  init(clientApiKey: String, clientId: String, exchangeUserId: String, username: String) {
+    self.clientApiKey = clientApiKey
+    self.clientId = clientId
+    self.exchangeUserId = exchangeUserId
+    self.username = username
+  }
+
+  /// Accepts `exchangeUserId` as either a JSON string or a JSON number.
+  ///
+  /// A string is taken verbatim — it is already the exact path segment the custodian issued, and
+  /// re-parsing `"42.0"` as a number would rewrite an id the server chose. A number goes through
+  /// `normalizeExchangeUserId`, which is what stops `619692` becoming `"619692.0"` and
+  /// `1e15` becoming `"1e+15"`; neither resolves as a custodian route. Anything else (an object, an
+  /// array, a bool) throws, because a silently-empty id would produce `/mobile//cipher-text`.
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.clientApiKey = try container.decode(String.self, forKey: .clientApiKey)
+    self.clientId = try container.decode(String.self, forKey: .clientId)
+    self.username = try container.decode(String.self, forKey: .username)
+
+    if let text = try? container.decode(String.self, forKey: .exchangeUserId) {
+      self.exchangeUserId = text
+    } else {
+      let number = try container.decode(Double.self, forKey: .exchangeUserId)
+      guard let normalized = normalizeExchangeUserId(.number(number)) else {
+        throw DecodingError.dataCorruptedError(
+          forKey: .exchangeUserId,
+          in: container,
+          debugDescription: "exchangeUserId is not a usable identifier"
+        )
+      }
+      self.exchangeUserId = normalized
+    }
+  }
 }
 
 struct CipherTextResult: Codable {
@@ -88,6 +140,11 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   @IBOutlet var firebaseAuthButton: UIButton!
 
+  // Client Auth. Implicitly unwrapped because that is what an `@IBOutlet` is; every other force
+  // unwrap in this file's new code is a bug.
+  @IBOutlet var clientAuthButton: UIButton!
+  @IBOutlet var clientAuthStatusLabel: UILabel!
+
   // Send form
   @IBOutlet public var sendAddress: UITextField?
   @IBOutlet public var sendButton: UIButton?
@@ -106,7 +163,9 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   private var refreshBalanceTimer: Timer?
 
-  private var config: ApplicationConfiguration? {
+  /// Internal, not private: `ViewController+ClientAuth.swift` reads it, and `private` is
+  /// file-scoped.
+  var config: ApplicationConfiguration? {
     get {
       return Settings.shared.portalConfig.appConfig
     }
@@ -131,7 +190,15 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
   let logger = Logger()
-  private let requests = PortalRequests()
+  /// Internal for the same reason as `config`: the Client Auth extension posts through it.
+  let requests = PortalRequests()
+
+  /// Guards the launch-time session restore so it runs once per screen, not on every appearance.
+  ///
+  /// `viewDidAppear` is the right place to *start* it — a restore begun in `viewDidLoad` would race
+  /// a nil `view.window` and lose the passkey anchor — but it fires again after every modal
+  /// dismissal, and re-restoring would re-register Portal behind a session that is already adopted.
+  private var didStartClientAuthRestore = false
 
   let successStatus = "✅ Success"
   let failureStatus = "❌ Failure"
@@ -157,6 +224,24 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
     // Set proper visibility states
     self.updateUIComponents()
+    self.updateClientAuthUi()
+  }
+
+  override func viewDidAppear(_ animated: Bool) {
+    super.viewDidAppear(animated)
+
+    // Re-applied here, not only from `registerPortal()`: the window is nil while the view is still
+    // being loaded, and a Portal registered on the launch path would otherwise never get an anchor.
+    if let window = view.window {
+      try? self.portal?.setPasskeyAuthenticationAnchor(window)
+    }
+
+    if !self.didStartClientAuthRestore {
+      self.didStartClientAuthRestore = true
+      self.restoreClientAuthSession()
+    }
+
+    self.clientAuthViewDidAppear()
   }
 
   func textFieldShouldReturn(_ textField: UITextField) -> Bool {
@@ -199,34 +284,42 @@ class ViewController: UIViewController, UITextFieldDelegate {
       throw PortalExampleAppError.clientInformationUnavailable()
     }
 
+    // Resolved BEFORE the MPC backup, not after: `backupWallet` registers a backup share pair as it
+    // runs, so discovering afterwards that the ciphertext has nowhere to go orphans that pair.
+    let storage = try resolveBackupShareStorage(
+      exchangeUserId: userId,
+      isBackupWithPortalEnabled: client.environment?.backupWithPortalEnabled ?? false,
+      isBuiltWithBackupWithPortal: Settings.shared.isBuiltWithBackupWithPortal
+    )
+
     self.logger.debug("ViewController.backup() - Starting backup...")
     let (cipherText, storageCallback) = try await portal.backupWallet(withMethod) { status in
       self.logger.debug("ViewController.backup() - Backup progress callback with status: \(status.status.rawValue), \(status.done)")
     }
 
-    let backupWithPortal = client.environment?.backupWithPortalEnabled ?? false
-
-    if !backupWithPortal {
-      guard let url = URL(string: "\(config.custodianServerUrl)/mobile/\(userId)/cipher-text") else {
-        throw URLError(.badURL)
-      }
-      let payload = [
-        "backupMethod": withMethod.rawValue,
-        "cipherText": cipherText
-      ]
-
-      struct ResponseType: Decodable {
-        let message: String?
-      }
-
-      let request = PortalAPIRequest.custodian(url: url, method: .post, payload: payload)
-      let result = try await requests.execute(request: request, mappingInResponse: ResponseType.self)
-      try await storageCallback()
-
-      return result.message ?? ""
+    guard case let .custodian(exchangeUserId) = storage else {
+      // Backup-with-Portal: Portal already holds the ciphertext, and posting it at the demo
+      // custodian too would address it by an `exchangeUserId` such an environment need not have.
+      return ""
     }
 
-    return ""
+    guard let url = URL(string: "\(config.custodianServerUrl)/mobile/\(exchangeUserId)/cipher-text") else {
+      throw URLError(.badURL)
+    }
+    let payload = [
+      "backupMethod": withMethod.rawValue,
+      "cipherText": cipherText
+    ]
+
+    struct ResponseType: Decodable {
+      let message: String?
+    }
+
+    let request = PortalAPIRequest.custodian(url: url, method: .post, payload: payload)
+    let result = try await requests.execute(request: request, mappingInResponse: ResponseType.self)
+    try await storageCallback()
+
+    return result.message ?? ""
   }
 
   public func deleteKeychain() async {
@@ -248,6 +341,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
   public func eject(_ withBackupMethod: BackupMethods) async throws -> String {
+    // Eject needs material only a custodian holds — the org share and `prepare-eject`, both
+    // addressed by an `exchangeUserId` the demo custodian issued against its own API key. A Client
+    // Auth session can obtain neither, so eject is the one operation here that is custodian-only.
+    guard canEjectWallet(resolveCredentialSource(clientAuthSession: ClientAuthCoordinator.shared.session, user: self.user)) else {
+      self.logger.error("ViewController.eject() - ❌ Eject is unavailable for the current credential.")
+      throw PortalExampleAppError.ejectUnavailableForSession()
+    }
     guard let portal else {
       self.logger.error("ViewController.eject() - ❌ Portal not initialized. Please call registerPortal().")
       throw PortalExampleAppError.portalNotInitialized()
@@ -329,6 +429,11 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
   public func ejectAll(_ withBackupMethod: BackupMethods) async throws -> [PortalNamespace: String] {
+    // See `eject()`: custodian-only, for the same reason.
+    guard canEjectWallet(resolveCredentialSource(clientAuthSession: ClientAuthCoordinator.shared.session, user: self.user)) else {
+      self.logger.error("ViewController.ejectAll() - ❌ Eject is unavailable for the current credential.")
+      throw PortalExampleAppError.ejectUnavailableForSession()
+    }
     guard let portal else {
       self.logger.error("ViewController.eject() - ❌ Portal not initialized. Please call registerPortal().")
       throw PortalExampleAppError.portalNotInitialized()
@@ -567,10 +672,17 @@ class ViewController: UIViewController, UITextFieldDelegate {
       throw PortalExampleAppError.clientInformationUnavailable("Could not fetch client.")
     }
 
-    let backupWithPortal = client.environment?.backupWithPortalEnabled ?? false
+    // Resolved before `recoverWallet`, so a credential with no custodian store refuses here rather
+    // than fetching `/mobile//cipher-text/fetch` — a path that resolves to a different route
+    // entirely and returns something that is not this user's ciphertext.
+    let storage = try resolveBackupShareStorage(
+      exchangeUserId: userId,
+      isBackupWithPortalEnabled: client.environment?.backupWithPortalEnabled ?? false,
+      isBuiltWithBackupWithPortal: Settings.shared.isBuiltWithBackupWithPortal
+    )
 
-    if !backupWithPortal {
-      guard let url = URL(string: "\(config.custodianServerUrl)/mobile/\(userId)/cipher-text/fetch?backupMethod=\(withBackupMethod.rawValue)") else {
+    if let path = custodianCipherTextFetchPath(for: storage, backupMethod: withBackupMethod) {
+      guard let url = URL(string: "\(config.custodianServerUrl)\(path)") else {
         throw URLError(.badURL)
       }
       let request = PortalAPIRequest.custodian(url: url)
@@ -919,43 +1031,86 @@ class ViewController: UIViewController, UITextFieldDelegate {
       guard let config = self.config else {
         throw PortalExampleAppError.configurationNotSet()
       }
-      guard let user else {
+      // Fires in exactly the case the old `guard let user` did — no user and no session — so the
+      // custodian path is unchanged, while a Client Auth session now wins the branch.
+      guard let credentialSource = resolveCredentialSource(
+        clientAuthSession: ClientAuthCoordinator.shared.session,
+        user: self.user
+      ) else {
         throw PortalExampleAppError.userNotLoggedIn()
       }
 
-      let infoString = "ViewController.registerPortal() - Registering portal using config: \(config)"
-      self.logger.log(level: .info, "\(infoString, privacy: .public)")
-
-      let portal = try Portal(
-        user.clientApiKey,
-        featureFlags: FeatureFlags(
-          isMultiBackupEnabled: true,
-          useEnclaveMPCApi: Settings.shared.useEnclaveMPC,
-          usePresignatures: Settings.shared.usePresignatures,
-          usePreGeneratedWallet: Settings.shared.usePreGeneratedWallet
-        ),
-        apiHost: config.apiUrl,
-        mpcHost: config.mpcUrl,
-        enclaveMPCHost: config.enclaveMPCHost
+      // Environment and hosts only. The whole `ApplicationConfiguration` used to be dumped here
+      // with `privacy: .public`, which wrote the Alchemy key and the PortalEx custodian API key
+      // unredacted into the persistent unified log.
+      self.logger.info(
+        "ViewController.registerPortal() - Registering portal for environment \(Settings.shared.portalConfig.environment.rawValue), apiHost: \(config.apiUrl), mpcHost: \(config.mpcUrl), enclaveMPCHost: \(config.enclaveMPCHost), custodianServerUrl: \(config.custodianServerUrl)"
       )
+
+      let featureFlags = FeatureFlags(
+        isMultiBackupEnabled: true,
+        useEnclaveMPCApi: Settings.shared.useEnclaveMPC,
+        usePresignatures: Settings.shared.usePresignatures,
+        usePreGeneratedWallet: Settings.shared.usePreGeneratedWallet
+      )
+
+      // The two arms differ only in the credential — every other argument is identical, so the
+      // branch is verifiable by reading it.
+      let portal: Portal
+      switch credentialSource {
+      case let .session(session):
+        portal = try Portal(
+          credentials: session,
+          featureFlags: featureFlags,
+          apiHost: config.apiUrl,
+          mpcHost: config.mpcUrl,
+          enclaveMPCHost: config.enclaveMPCHost
+        )
+      case let .apiKey(apiKey):
+        portal = try Portal(
+          apiKey,
+          featureFlags: featureFlags,
+          apiHost: config.apiUrl,
+          mpcHost: config.mpcUrl,
+          enclaveMPCHost: config.enclaveMPCHost
+        )
+      }
+
+      // Cancelled first: this method runs again on every settings toggle and each run builds a new
+      // Portal, so without this every toggle would leave another live listener (and the Portal it
+      // captures) behind. Subscribed immediately after construction because `Portal.init` fires two
+      // eager `GET /clients/me` calls, which is where a dead restored session first surfaces.
+      ClientAuthCoordinator.shared.sessionInvalidatedHandle?.cancel()
+      ClientAuthCoordinator.shared.sessionInvalidatedHandle = portal.onSessionInvalidated { [weak self] in
+        self?.handleSessionInvalidated()
+      }
 
       portal.setLogLevel(.debug)
       try portal.setGDriveConfiguration(clientId: config.googleClientId, backupOption: .appDataFolder)
       try portal.setGDriveView(self)
-      try portal.setPasskeyAuthenticationAnchor(self.view.window!)
+      // `viewDidAppear` re-applies this: the window is nil on the launch path, and a force unwrap
+      // here used to crash the app when a restore beat the first layout.
+      if let window = view.window {
+        try portal.setPasskeyAuthenticationAnchor(window)
+      }
       try portal.setPasskeyConfiguration(relyingParty: config.relyingParty, webAuthnHost: config.webAuthnHost)
 
       // Register Firebase backup method
       portal.registerBackupMethod(.Firebase, withStorage: FirebaseStorage(
         getToken: {
-          return try await Auth.auth().currentUser?.getIDToken(forcingRefresh: true)
+          try await Auth.auth().currentUser?.getIDToken(forcingRefresh: true)
         },
         tbsHost: config.webAuthnHost
       ))
 
-      // The apikey from Portal class is private within the Portal SDK class, so it must not be accessible from outside. We already have the clientApiKey from user
-      self.logger.info("ViewController.registerPortal() - Portal API Key: \(user.clientApiKey)")
-      self.logger.info("ViewController.registerPortal() - Client ID: \(user.clientId)")
+      // Never the credential itself: a Client API Key and a client session token are equally
+      // sensitive, and the unified log is persistent and readable off-device.
+      switch credentialSource {
+      case let .session(session):
+        self.logger.info("ViewController.registerPortal() - Credential: Client Auth session, endUserId: \(session.endUserId)")
+      case .apiKey:
+        self.logger.info("ViewController.registerPortal() - Credential: Client API Key, clientId: \(self.user?.clientId ?? "unknown"), username: \(self.user?.username ?? "unknown")")
+      }
 
       portal.on(event: Events.PortalSigningRequested, callback: { [weak portal] data in
         portal?.emit(Events.PortalSigningApproved, data: data)
@@ -1113,7 +1268,8 @@ class ViewController: UIViewController, UITextFieldDelegate {
     return attributedString
   }
 
-  private func updateUIComponents() {
+  /// Internal, not private: `ViewController+ClientAuth.swift` refreshes the screen after adoption.
+  func updateUIComponents() {
     DispatchQueue.main.async {
       Task {
         do {
@@ -1153,13 +1309,20 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
           let username = self.username?.text ?? ""
 
-          // Auth buttons
-          self.logoutButton?.isEnabled = self.user != nil
-          self.logoutButton?.isHidden = self.user == nil
-          self.signInButton?.isEnabled = !username.isEmpty
-          self.signInButton?.isHidden = self.user != nil
-          self.signUpButton?.isEnabled = !username.isEmpty
-          self.signUpButton?.isHidden = self.user != nil
+          // Auth buttons. Resolved from the same two inputs `registerPortal()` reads, so what the
+          // screen offers and what Portal was built from can never disagree. Note the custodian
+          // controls key on a non-blank `clientApiKey`, not on `user != nil`: Client Auth adoption
+          // synthesizes a blank-key user, and offering "Sign Out" for it would name a login that
+          // never happened.
+          let clientAuthSession = ClientAuthCoordinator.shared.session
+          let authUiState = resolveAuthUiState(clientAuthSession: clientAuthSession, user: self.user)
+          self.logoutButton?.isEnabled = authUiState.canSignOutCustodian
+          self.logoutButton?.isHidden = !authUiState.canSignOutCustodian
+          self.signInButton?.isEnabled = authUiState.canSignInWithCustodian && !username.isEmpty
+          self.signInButton?.isHidden = !authUiState.canSignInWithCustodian
+          self.signUpButton?.isEnabled = authUiState.canSignInWithCustodian && !username.isEmpty
+          self.signUpButton?.isHidden = !authUiState.canSignInWithCustodian
+          self.updateClientAuthUi()
 
           // Generate buttons
           self.generateButton?.isEnabled = !walletExists
@@ -1221,10 +1384,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
           // Other management buttons
           self.deleteKeychainButton?.isEnabled = walletExists && isWalletOnDevice
           self.deleteKeychainButton?.isHidden = !walletExists || !isWalletOnDevice
-          self.ejectButton?.isEnabled = availableRecoveryMethods.count > 0
-          self.ejectButton?.isHidden = availableRecoveryMethods.count == 0
-          self.ejectAllButton?.isEnabled = availableRecoveryMethods.count > 0
-          self.ejectAllButton?.isHidden = availableRecoveryMethods.count == 0
+          // Eject is gated on the credential as well as on the recovery methods: only a custodian
+          // API key can reach the org share and `prepare-eject`.
+          let canEject = canEjectWallet(resolveCredentialSource(clientAuthSession: clientAuthSession, user: self.user))
+          self.ejectButton?.isEnabled = canEject && !availableRecoveryMethods.isEmpty
+          self.ejectButton?.isHidden = !canEject || availableRecoveryMethods.isEmpty
+          self.ejectAllButton?.isEnabled = canEject && !availableRecoveryMethods.isEmpty
+          self.ejectAllButton?.isHidden = !canEject || availableRecoveryMethods.isEmpty
 
           // Test Receive + Send Assets
           self.receiveAssetButton?.isEnabled = walletExists && isWalletOnDevice
@@ -1255,7 +1421,13 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.url?.isHidden = !walletExists || !isWalletOnDevice
 
           let client = try await self.portal?.client
-          Settings.shared.isAccountAbstracted = client?.isAccountAbstracted ?? false
+          // Not written back while a Client Auth session is active. `PortalAuthProvider` snapshots
+          // this flag and rebuilds `PortalAuth` when it changes, so a write-back on every refresh
+          // would mint a new `PortalAuth` behind the screen's back, discarding the replay memo and
+          // any pending TOTP step. The Client Auth path owns its own copy of the flag instead.
+          if clientAuthSession == nil {
+            Settings.shared.isAccountAbstracted = client?.isAccountAbstracted ?? false
+          }
           self.logger.debug("isAccountAbstracted: \(client?.isAccountAbstracted ?? false)")
 
           self.logger.debug("ViewController.updateUIComponents() - ✅ Ending loading")
@@ -1281,9 +1453,14 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.logger.error("ViewController.handleSignIn() - Cannot sign in. No username set.")
           return
         }
+        // A custodian sign-in supersedes any restored Client Auth session. Without this the session
+        // wins the credential branch in `registerPortal()` and the screen runs against the wrong
+        // client. In-memory only: the persisted session survives, and only the Client Auth sign-out
+        // button clears it.
+        self.clearClientAuthSession()
         self.startLoading()
         let user = try await signIn(username)
-        self.logger.debug("ViewController.handleSignIn() - ✅ Signed in! User clientApiKey: \(user.clientApiKey)")
+        self.logger.debug("ViewController.handleSignIn() - ✅ Signed in! clientId: \(user.clientId), username: \(user.username)")
         self.showStatusView(message: "\(self.successStatus) Signed in!")
         self.portal = try await self.registerPortal()
         self.logger.debug("ViewController.handleSignIn() - ✅ Initialized. Updating UI Components.")
@@ -1298,6 +1475,16 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
   @IBAction func handleSignOut(_: UIButton) {
+    self.signOutLocally()
+  }
+
+  /// Returns the screen to its signed-out state, whichever credential was just dropped.
+  ///
+  /// Extracted from `handleSignOut` so the Client Auth sign-out and the session-invalidated
+  /// listener reuse it verbatim. It clears the user on both paths, not just the custodian one:
+  /// Client Auth adoption synthesizes a `UserResult` too, and leaving that behind would hand a
+  /// blank-key user to the next `registerPortal()`.
+  func signOutLocally() {
     self.user = nil
     self.addressInformation?.text = "Address: N/A"
     self.ethBalanceInformation?.text = "ETH Balance: N/A"
@@ -1318,9 +1505,11 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.logger.error("ViewController.handleSignUp() - Cannot sign up. No username set.")
           return
         }
+        // See `handleSignIn`: a custodian sign-up supersedes any restored Client Auth session.
+        self.clearClientAuthSession()
         self.startLoading()
         let user = try await signUp(username, isAccountAbstracted: Settings.shared.isAccountAbstracted)
-        self.logger.debug("ViewController.handleSignUp() - ✅ Signed up! User clientApiKey: \(user.clientApiKey)")
+        self.logger.debug("ViewController.handleSignUp() - ✅ Signed up! clientId: \(user.clientId), username: \(user.username)")
         self.showStatusView(message: "\(self.successStatus) Signed up!")
         self.portal = try await self.registerPortal()
         self.logger.debug("ViewController.handleSignUp() - ✅ Portal initialized!")
@@ -1520,19 +1709,32 @@ class ViewController: UIViewController, UITextFieldDelegate {
       throw PortalExampleAppError.userNotLoggedIn()
     }
 
+    guard let client = try await portal.client else {
+      throw PortalExampleAppError.clientInformationUnavailable("Could not fetch client.")
+    }
+
+    // Resolved before generate-and-backup, which backs up internally — see `backup()`.
+    let storage = try resolveBackupShareStorage(
+      exchangeUserId: user.exchangeUserId,
+      isBackupWithPortalEnabled: client.environment?.backupWithPortalEnabled ?? false,
+      isBuiltWithBackupWithPortal: Settings.shared.isBuiltWithBackupWithPortal
+    )
+
     let generateSolanaResult = try await portal.generateSolanaWalletAndBackupShares(.iCloud) { _ in
     }
 
-    guard let url = URL(string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/cipher-text") else {
-      throw URLError(.badURL)
-    }
-    let payload = [
-      "backupMethod": withMethod.rawValue,
-      "cipherText": generateSolanaResult.cipherText
-    ]
+    if case let .custodian(exchangeUserId) = storage {
+      guard let url = URL(string: "\(config.custodianServerUrl)/mobile/\(exchangeUserId)/cipher-text") else {
+        throw URLError(.badURL)
+      }
+      let payload = [
+        "backupMethod": withMethod.rawValue,
+        "cipherText": generateSolanaResult.cipherText
+      ]
 
-    let request = PortalAPIRequest.custodian(url: url, method: .post, payload: payload)
-    let result = try await requests.execute(request: request, mappingInResponse: String.self)
+      let request = PortalAPIRequest.custodian(url: url, method: .post, payload: payload)
+      _ = try await requests.execute(request: request, mappingInResponse: String.self)
+    }
 
     try await generateSolanaResult.storageCallback()
 
@@ -1714,7 +1916,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.startLoading()
         try portal.setGDriveView(self)
         self.logger.debug("ViewController.handleGdriveBackup() - Starting backup...")
-        _ = try await self.backup(String(user.exchangeUserId), withMethod: .GoogleDrive)
+        _ = try await self.backup(user.exchangeUserId, withMethod: .GoogleDrive)
         self.logger.debug("ViewController.handleGdriveBackup(): ✅ Successfully sent custodian cipherText.")
         self.showStatusView(message: "\(self.successStatus) Successfully sent custodian cipherText.")
         self.updateUIComponents()
@@ -1734,7 +1936,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         }
         self.startLoading()
         self.logger.debug("ViewController.handleGdriveRecover() - Starting recover...")
-        let (ethereum, solana) = try await recover(String(user.exchangeUserId), withBackupMethod: .GoogleDrive)
+        let (ethereum, solana) = try await recover(user.exchangeUserId, withBackupMethod: .GoogleDrive)
         let debugMessage = "ViewController.handleGdriveRecover() - ✅ Wallet successfully recovered! ETH address: \(ethereum), Solana address: \(solana ?? "N/A")"
         self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
         self.showStatusView(message: "\(self.successStatus) Wallet successfully recovered!")
@@ -1760,7 +1962,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         }
         self.startLoading()
         self.logger.debug("ViewController.handleiCloudBackup() - Starting backup...")
-        _ = try await self.backup(String(user.exchangeUserId), withMethod: .iCloud)
+        _ = try await self.backup(user.exchangeUserId, withMethod: .iCloud)
         self.logger.debug("ViewController.handleiCloudBackup(): ✅ Successfully sent custodian cipherText.")
         self.showStatusView(message: "\(self.successStatus) Successfully sent custodian cipherText.")
         self.updateUIComponents()
@@ -1780,7 +1982,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         }
         self.startLoading()
         self.logger.debug("ViewController.handleiCloudRecover() - Starting recover...")
-        let (ethereum, solana) = try await recover(String(user.exchangeUserId), withBackupMethod: .iCloud)
+        let (ethereum, solana) = try await recover(user.exchangeUserId, withBackupMethod: .iCloud)
         let debugMessage = "ViewController.handleiCloudRecover() - ✅ Wallet successfully recovered! ETH address: \(ethereum), Solana address: \(solana ?? "N/A")"
         self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
         self.showStatusView(message: "\(self.successStatus) Wallet successfully recovered!")
@@ -1807,7 +2009,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         }
         self.startLoading()
         self.logger.debug("ViewController.handlPasskeyBackup() - Starting backup...")
-        _ = try await self.backup(String(userId), withMethod: .Passkey)
+        _ = try await self.backup(userId, withMethod: .Passkey)
         self.logger.debug("ViewController.handlePasskeyBackup(): ✅ Successfully sent custodian cipherText.")
         self.showStatusView(message: "\(self.successStatus) Successfully sent custodian cipherText.")
         self.updateUIComponents()
@@ -1828,7 +2030,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         }
         self.startLoading()
         self.logger.debug("ViewController.handlPasskeyRecover() - Starting recover...")
-        let (ethereum, solana) = try await recover(String(userId), withBackupMethod: .Passkey)
+        let (ethereum, solana) = try await recover(userId, withBackupMethod: .Passkey)
         let debugMessage = "ViewController.handlePasskeyRecover() - ✅ Wallet successfully recovered! ETH address: \(ethereum), Solana address: \(solana ?? "N/A")"
         self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
         self.showStatusView(message: "\(self.successStatus) Wallet successfully recovered!")
@@ -1861,7 +2063,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         // Set the Password for backup
         try self.portal?.setPassword(enteredPassword)
         self.logger.debug("ViewController.handlPasswordBackup() - Starting backup...")
-        _ = try await self.backup(String(userId), withMethod: .Password)
+        _ = try await self.backup(userId, withMethod: .Password)
         self.logger.debug("ViewController.handlePasswordBackup(): ✅ Successfully sent custodian cipherText.")
         self.showStatusView(message: "\(self.successStatus) Successfully sent custodian cipherText.")
         self.updateUIComponents()
@@ -1890,7 +2092,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
         // Set the Password for backup
         try portal.setPassword(enteredPassword)
         self.logger.debug("ViewController.handlPasswordRecover() - Starting recover...")
-        let (ethereum, solana) = try await recover(String(user.exchangeUserId), withBackupMethod: .Password)
+        let (ethereum, solana) = try await recover(user.exchangeUserId, withBackupMethod: .Password)
         let debugMessage = "ViewController.handlePasswordRecover() - ✅ Wallet successfully recovered! ETH address: \(ethereum), Solana address: \(solana ?? "N/A")"
         self.logger.log(level: .debug, "\(debugMessage, privacy: .public)")
         self.showStatusView(message: "\(self.successStatus) Wallet successfully recovered!")
@@ -1910,10 +2112,16 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
   // MARK: - Firebase Auth & Backup
 
-  @IBAction func handleOpenFirebaseAuth(_ sender: UIButton) {
+  @IBAction func handleOpenFirebaseAuth(_: UIButton) {
     let firebaseVC = FirebaseAuthViewController()
     firebaseVC.portal = self.portal
     firebaseVC.user = self.user
+    // The second backup/recover/eject surface needs the same credential answer this screen has, or
+    // it would offer Eject for a session that cannot reach the org share.
+    firebaseVC.credentialSource = resolveCredentialSource(
+      clientAuthSession: ClientAuthCoordinator.shared.session,
+      user: self.user
+    )
     firebaseVC.delegate = self
     let nav = UINavigationController(rootViewController: firebaseVC)
     self.present(nav, animated: true)
@@ -2089,7 +2297,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
       ("Solana Transaction (Devnet)", "solana-devnet", "4U9JaGKb86VtRqoKT1QqY4D6q2LkifKnoewa4vFAZofCxjazRpXB3yWTUY98u1b9GQ9ooeRfDUiNpjed13HUrJ4T"),
       ("Bitcoin Transaction (Testnet)", "bip122:000000000933ea01ad0ee984209779ba-p2wpkh", "cb56ab9f10559c412d4a1ec4adaa46d48df1a4c3da50e6b84b70789ecedfadd0"),
       ("Tron Transaction (Nile)", "tron:nile", "74ffe63b22b1f3c3dd1d7337f8feccab34ef4229be3a2a0548fc2e43d12b8d0f"),
-      ("Stellar Transaction (Testnet)", "stellar:testnet", "c21b3ba78255b91b5dcfed56868068e91eb9b963f303e64f78269ea67053ef6b"),
+      ("Stellar Transaction (Testnet)", "stellar:testnet", "c21b3ba78255b91b5dcfed56868068e91eb9b963f303e64f78269ea67053ef6b")
     ]
 
     Task {
@@ -3895,7 +4103,7 @@ extension ViewController {
 
 @available(iOS 16.0, *)
 extension ViewController: FirebaseAuthDelegate {
-  func firebaseAuthDidComplete(backup: Bool) {
+  func firebaseAuthDidComplete(backup _: Bool) {
     self.updateUIComponents()
   }
 }

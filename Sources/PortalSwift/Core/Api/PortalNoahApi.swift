@@ -33,7 +33,9 @@ public extension PortalNoahApiProtocol {
 /// under `/api/v3/clients/me/integrations/noah/*` and require the client API
 /// key as a bearer token.
 public class PortalNoahApi: PortalNoahApiProtocol {
-  private let apiKey: String
+  /// Resolved per request and never cached, so a session rotated or invalidated underneath
+  /// this instance is honoured on the next call. Shared by identity with the owning `PortalApi`.
+  private let credentials: PortalCredentials
   private let baseUrl: String
   private let requests: PortalRequestsProtocol
   private let logger = PortalLogger.shared
@@ -41,18 +43,46 @@ public class PortalNoahApi: PortalNoahApiProtocol {
   private static let basePath = "/api/v3/clients/me/integrations/noah"
 
   /// Create an instance of `PortalNoahApi`.
+  ///
+  /// The credential is resolved again on every request and never at construction, so a session
+  /// that rotates or is invalidated underneath this instance takes effect on the next call. The
+  /// transport's 401 hook is wired to `credentials` only when the transport reports 401s and has
+  /// no hook yet, so a standalone instance with its own transport still reports a dead session
+  /// while one built by `PortalApi` finds the hook already installed and leaves it alone.
+  /// - Parameters:
+  ///   - credentials: The credential presented as the bearer on every request: a `StaticCredentials`
+  ///     wrapping a Client API Key, or a session obtained through `PortalAuth`.
+  ///   - apiHost: The Portal API hostname.
+  ///   - requests: An instance of `PortalRequestsProtocol` used to perform HTTP requests.
+  public init(
+    credentials: PortalCredentials,
+    apiHost: String = "api.portalhq.io",
+    requests: PortalRequestsProtocol? = nil
+  ) {
+    self.credentials = credentials
+    self.baseUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
+    self.requests = requests ?? PortalRequests()
+
+    installUnauthorizedHook(on: self.requests, for: credentials, context: "PortalNoahApi")
+  }
+
+  /// Create an instance of `PortalNoahApi`.
+  ///
+  /// Kept as a convenience so existing integrations compile unchanged; the key is wrapped in
+  /// `StaticCredentials` and everything else follows the credentials path. A blank key is not
+  /// rejected here because this initializer cannot throw: it fails on first use with
+  /// `PortalCredentialError.unavailable` instead of sending an empty bearer.
   /// - Parameters:
   ///   - apiKey: The Portal Client API key.
   ///   - apiHost: The Portal API hostname.
   ///   - requests: An instance of `PortalRequestsProtocol` used to perform HTTP requests.
-  public init(
+  @available(*, deprecated, message: "Use init(credentials:) instead; wrap a Client API Key in StaticCredentials(apiKey) or pass a PortalAuth session.")
+  public convenience init(
     apiKey: String,
     apiHost: String = "api.portalhq.io",
     requests: PortalRequestsProtocol? = nil
   ) {
-    self.apiKey = apiKey
-    self.baseUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
-    self.requests = requests ?? PortalRequests()
+    self.init(credentials: StaticCredentials(apiKey), apiHost: apiHost, requests: requests)
   }
 
   /*******************************************
@@ -67,7 +97,7 @@ public class PortalNoahApi: PortalNoahApiProtocol {
     }
 
     do {
-      return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: NoahInitiateKycResponse.self)
+      return try await post(url, andPayload: request, mappingInResponse: NoahInitiateKycResponse.self)
     } catch {
       logger.error("PortalNoahApi.initiateKyc() - Error: \(error.localizedDescription)")
       throw error
@@ -82,7 +112,7 @@ public class PortalNoahApi: PortalNoahApiProtocol {
     }
 
     do {
-      return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: NoahInitiatePayinResponse.self)
+      return try await post(url, andPayload: request, mappingInResponse: NoahInitiatePayinResponse.self)
     } catch {
       logger.error("PortalNoahApi.initiatePayin() - Error: \(error.localizedDescription)")
       throw error
@@ -97,7 +127,7 @@ public class PortalNoahApi: PortalNoahApiProtocol {
     }
 
     do {
-      return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: NoahSimulatePayinResponse.self)
+      return try await post(url, andPayload: request, mappingInResponse: NoahSimulatePayinResponse.self)
     } catch {
       logger.error("PortalNoahApi.simulatePayin() - Error: \(error.localizedDescription)")
       throw error
@@ -111,7 +141,7 @@ public class PortalNoahApi: PortalNoahApiProtocol {
       queryItems: [
         queryItem("pageSize", request.pageSize),
         queryItem("pageToken", request.pageToken),
-        queryItem("capability", request.capability?.rawValue),
+        queryItem("capability", request.capability?.rawValue)
       ]
     ) else {
       logger.error("PortalNoahApi.getPaymentMethods() - Unable to build request URL.")
@@ -119,7 +149,7 @@ public class PortalNoahApi: PortalNoahApiProtocol {
     }
 
     do {
-      return try await get(url, withBearerToken: apiKey, mappingInResponse: NoahGetPaymentMethodsResponse.self)
+      return try await get(url, mappingInResponse: NoahGetPaymentMethodsResponse.self)
     } catch {
       logger.error("PortalNoahApi.getPaymentMethods() - Error: \(error.localizedDescription)")
       throw error
@@ -134,7 +164,7 @@ public class PortalNoahApi: PortalNoahApiProtocol {
     }
 
     do {
-      return try await get(url, withBearerToken: apiKey, mappingInResponse: NoahGetPayoutCountriesResponse.self)
+      return try await get(url, mappingInResponse: NoahGetPayoutCountriesResponse.self)
     } catch {
       logger.error("PortalNoahApi.getPayoutCountries() - Error: \(error.localizedDescription)")
       throw error
@@ -152,7 +182,7 @@ public class PortalNoahApi: PortalNoahApiProtocol {
         queryItem("fiatAmount", request.fiatAmount),
         queryItem("paymentMethodId", request.paymentMethodId),
         queryItem("pageSize", request.pageSize),
-        queryItem("pageToken", request.pageToken),
+        queryItem("pageToken", request.pageToken)
       ]
     ) else {
       logger.error("PortalNoahApi.getPayoutChannels() - Unable to build request URL.")
@@ -160,7 +190,7 @@ public class PortalNoahApi: PortalNoahApiProtocol {
     }
 
     do {
-      return try await get(url, withBearerToken: apiKey, mappingInResponse: NoahGetPayoutChannelsResponse.self)
+      return try await get(url, mappingInResponse: NoahGetPayoutChannelsResponse.self)
     } catch {
       logger.error("PortalNoahApi.getPayoutChannels() - Error: \(error.localizedDescription)")
       throw error
@@ -186,7 +216,7 @@ public class PortalNoahApi: PortalNoahApiProtocol {
     }
 
     do {
-      return try await get(url, withBearerToken: apiKey, mappingInResponse: NoahGetPayoutChannelFormResponse.self)
+      return try await get(url, mappingInResponse: NoahGetPayoutChannelFormResponse.self)
     } catch {
       logger.error("PortalNoahApi.getPayoutChannelForm() - Error: \(error.localizedDescription)")
       throw error
@@ -201,7 +231,7 @@ public class PortalNoahApi: PortalNoahApiProtocol {
     }
 
     do {
-      return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: NoahGetPayoutQuoteResponse.self)
+      return try await post(url, andPayload: request, mappingInResponse: NoahGetPayoutQuoteResponse.self)
     } catch {
       logger.error("PortalNoahApi.getPayoutQuote() - Error: \(error.localizedDescription)")
       throw error
@@ -216,7 +246,7 @@ public class PortalNoahApi: PortalNoahApiProtocol {
     }
 
     do {
-      return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: NoahInitiatePayoutResponse.self)
+      return try await post(url, andPayload: request, mappingInResponse: NoahInitiatePayoutResponse.self)
     } catch {
       logger.error("PortalNoahApi.initiatePayout() - Error: \(error.localizedDescription)")
       throw error
@@ -249,21 +279,25 @@ public class PortalNoahApi: PortalNoahApiProtocol {
   @discardableResult
   private func get<ResponseType>(
     _ url: URL,
-    withBearerToken: String? = nil,
     mappingInResponse: ResponseType.Type
   ) async throws -> ResponseType where ResponseType: Decodable {
-    let portalRequest = PortalAPIRequest(url: url, bearerToken: withBearerToken)
+    // Resolved here, at the moment the request is built, so a rotated session is sent on the
+    // next call and a dead one fails before anything reaches the wire.
+    let token = try resolveCredentialToken(self.credentials)
+    let portalRequest = PortalAPIRequest(url: url, bearerToken: token)
     return try await requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }
 
   @discardableResult
   private func post<ResponseType>(
     _ url: URL,
-    withBearerToken: String? = nil,
     andPayload: Codable? = nil,
     mappingInResponse: ResponseType.Type
   ) async throws -> ResponseType where ResponseType: Decodable {
-    let portalRequest = PortalAPIRequest(url: url, method: .post, payload: andPayload, bearerToken: withBearerToken)
+    // Resolved here, at the moment the request is built, so a rotated session is sent on the
+    // next call and a dead one fails before anything reaches the wire.
+    let token = try resolveCredentialToken(self.credentials)
+    let portalRequest = PortalAPIRequest(url: url, method: .post, payload: andPayload, bearerToken: token)
     return try await requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }
 }

@@ -642,41 +642,48 @@ extension PortalZeroXTradingApiTests {
 // MARK: - API Key Tests
 
 extension PortalZeroXTradingApiTests {
+  /// Ported to `credentials:`: every verb resolves the same credential instance per request, so
+  /// the token a host rotates on the credential is what the next call carries.
   func test_allMethods_useSameApiKey() async throws {
     // given
-    let customApiKey = "custom-api-key-67890"
-    let customApi = PortalZeroXTradingApi(apiKey: customApiKey, requests: requestsSpy)
+    let credentials = MockCredentials(tokenValue: "custom")
+    let customApi = PortalZeroXTradingApi(credentials: credentials, requests: requestsSpy)
 
     // Sources
     try setReturnValue(ZeroXSourcesResponse.stub())
     _ = try await customApi.getSources(chainId: "eip155:1", zeroXApiKey: nil)
     var request = requestsSpy.executeRequestParam as? PortalAPIRequest
-    XCTAssertEqual(request?.headers["Authorization"], "Bearer \(customApiKey)")
+    XCTAssertEqual(request?.headers["Authorization"], "Bearer custom")
 
     // Quote
     try setReturnValue(ZeroXQuoteResponse.stub())
     _ = try await customApi.getQuote(request: ZeroXQuoteRequest.stub(), zeroXApiKey: nil)
     request = requestsSpy.executeRequestParam as? PortalAPIRequest
-    XCTAssertEqual(request?.headers["Authorization"], "Bearer \(customApiKey)")
+    XCTAssertEqual(request?.headers["Authorization"], "Bearer custom")
 
     // Price
     try setReturnValue(ZeroXPriceResponse.stub())
     _ = try await customApi.getPrice(request: ZeroXPriceRequest.stub(), zeroXApiKey: nil)
     request = requestsSpy.executeRequestParam as? PortalAPIRequest
-    XCTAssertEqual(request?.headers["Authorization"], "Bearer \(customApiKey)")
+    XCTAssertEqual(request?.headers["Authorization"], "Bearer custom")
+
+    XCTAssertEqual(credentials.getTokenCalls, 3, "Every verb must resolve the one shared credential once per call.")
   }
 
-  func test_emptyApiKey_stillSendsAuthorizationHeader() async throws {
+  /// Behaviour change in the credentials layer: a blank key is no longer sent as an empty
+  /// bearer. It resolves to no credential at all and the call fails before anything is sent,
+  /// which is what the other Portal SDKs do and what stops a silent 401 loop.
+  func test_getSources_willThrowUnavailable_whenApiKeyBlank() async throws {
     // given
     let emptyApiKeyApi = PortalZeroXTradingApi(apiKey: "", requests: requestsSpy)
     try setReturnValue(ZeroXSourcesResponse.stub())
 
-    // when
-    _ = try await emptyApiKeyApi.getSources(chainId: "eip155:1", zeroXApiKey: nil)
-
-    // then
-    let request = requestsSpy.executeRequestParam as? PortalAPIRequest
-    XCTAssertEqual(request?.headers["Authorization"], "Bearer ")
+    // when & then
+    await XCTAssertThrowsAsync(
+      try await emptyApiKeyApi.getSources(chainId: "eip155:1", zeroXApiKey: nil),
+      expected: PortalCredentialError.unavailable
+    )
+    XCTAssertEqual(requestsSpy.executeCallsCount, 0, "A blank key must fail before the request is sent.")
   }
 
   func test_zeroXApiKey_overrideWorksForAllMethods() async throws {

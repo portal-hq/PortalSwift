@@ -19,7 +19,37 @@ public class PasskeyStorage: Storage, PortalStorage {
 
   public weak var api: PortalApiProtocol?
 
-  var apiKey: String?
+  /// The Portal credential the WebAuthn backend calls are authenticated with.
+  ///
+  /// Injected by `PortalMpc.registerBackupMethod(_:withStorage:)`; `nil` until then, which every
+  /// request reports as `PasskeyStorageError.noApiKey`. The token is resolved per request, never
+  /// cached, so a rotated session is sent on the next call. Assigning a credential also wires the
+  /// transport's 401 hook to it (first owner wins), so a rejected bearer on any passkey endpoint
+  /// invalidates the session and notifies the host like a rejected `PortalApi` call would.
+  var credentials: PortalCredentials? {
+    didSet {
+      guard let credentials = self.credentials else {
+        return
+      }
+      installUnauthorizedHook(on: self.requests, for: credentials, context: "PasskeyStorage")
+    }
+  }
+
+  /// The raw Client API Key behind `credentials`, for callers that still assign one.
+  ///
+  /// The getter returns `""` for a session-backed credential rather than the session token, and
+  /// `nil` when no credential is set. The setter wraps the key in `StaticCredentials` (or clears
+  /// the credential for `nil`), so the historical `passkeys.apiKey = key` keeps working.
+  @available(*, deprecated, message: "Not a reliable source of authentication — returns \"\" when Portal was constructed with credentials. Supply credentials to the SDK instead of reading this.")
+  var apiKey: String? {
+    get {
+      self.credentials.map { staticApiKeyOf($0) }
+    }
+    set {
+      self.credentials = newValue.map { StaticCredentials($0) }
+    }
+  }
+
   public var client: Client?
   public let encryption: PortalEncryptionProtocol
   public var portalApi: PortalApiProtocol?
@@ -82,12 +112,10 @@ public class PasskeyStorage: Storage, PortalStorage {
   }
 
   public func read() async throws -> String {
-    guard let apiKey = self.apiKey else {
-      throw PasskeyStorageError.noApiKey
-    }
+    let token = try self.resolvedToken()
 
     if let url = URL(string: "\(webAuthnHost)/passkeys/begin-login") {
-      let request = PortalAPIRequest(url: url, method: .post, payload: ["relyingParty": relyingParty], bearerToken: apiKey)
+      let request = PortalAPIRequest(url: url, method: .post, payload: ["relyingParty": relyingParty], bearerToken: token)
       let result = try await requests.execute(request: request, mappingInResponse: WebAuthnAuthenticationOption.self)
 
       self.sessionId = result.sessionId
@@ -163,12 +191,10 @@ public class PasskeyStorage: Storage, PortalStorage {
    *******************************************/
 
   func beginLogin() async throws -> WebAuthnAuthenticationOption {
-    guard let apiKey = self.apiKey else {
-      throw PasskeyStorageError.noApiKey
-    }
+    let token = try self.resolvedToken()
 
     if let url = URL(string: "\(webAuthnHost)/passkeys/begin-login") {
-      let request = PortalAPIRequest(url: url, method: .post, payload: ["relyingParty": self.relyingParty], bearerToken: apiKey)
+      let request = PortalAPIRequest(url: url, method: .post, payload: ["relyingParty": self.relyingParty], bearerToken: token)
 
       let authenticationOption = try await requests.execute(request: request, mappingInResponse: WebAuthnAuthenticationOption.self)
 
@@ -179,12 +205,10 @@ public class PasskeyStorage: Storage, PortalStorage {
   }
 
   func beginRegistration() async throws -> WebAuthnRegistrationOptions {
-    guard let apiKey = self.apiKey else {
-      throw PasskeyStorageError.noApiKey
-    }
+    let token = try self.resolvedToken()
 
     if let url = URL(string: "\(webAuthnHost)/passkeys/begin-registration") {
-      let request = PortalAPIRequest(url: url, method: .post, payload: ["relyingParty": self.relyingParty], bearerToken: apiKey)
+      let request = PortalAPIRequest(url: url, method: .post, payload: ["relyingParty": self.relyingParty], bearerToken: token)
 
       let registrationOption = try await requests.execute(request: request, mappingInResponse: WebAuthnRegistrationOptions.self)
 
@@ -195,12 +219,10 @@ public class PasskeyStorage: Storage, PortalStorage {
   }
 
   func getPasskeyStatus() async throws -> PasskeyStatus {
-    guard let apiKey = self.apiKey else {
-      throw PasskeyStorageError.noApiKey
-    }
+    let token = try self.resolvedToken()
 
     if let url = URL(string: "\(webAuthnHost)/passkeys/status") {
-      let request = PortalAPIRequest(url: url, bearerToken: apiKey)
+      let request = PortalAPIRequest(url: url, bearerToken: token)
 
       let statusResponse = try await requests.execute(request: request, mappingInResponse: PasskeyStatusResponse.self)
 
@@ -211,13 +233,15 @@ public class PasskeyStorage: Storage, PortalStorage {
   }
 
   func handleFinishLoginRead(_ assertion: String) async throws -> String {
-    guard let apiKey = self.apiKey, let sessionId = self.sessionId else {
+    // Local validation first: a missing session is a programming error, not a credential problem.
+    guard let sessionId = self.sessionId else {
       throw PasskeyStorageError.readError
     }
+    let token = try self.resolvedToken()
 
     if let url = URL(string: "\(webAuthnHost)/passkeys/finish-login/read") {
       let payload = ["assertion": assertion, "sessionId": sessionId, "relyingParty": relyingParty]
-      let request = PortalAPIRequest(url: url, method: .post, payload: payload, bearerToken: apiKey)
+      let request = PortalAPIRequest(url: url, method: .post, payload: payload, bearerToken: token)
 
       let loginReadResponse = try await requests.execute(request: request, mappingInResponse: PasskeyLoginReadResponse.self)
 
@@ -228,13 +252,14 @@ public class PasskeyStorage: Storage, PortalStorage {
   }
 
   func handleFinishLoginWrite(_ assertion: String, withValue: String) async throws -> Bool {
-    guard let apiKey = self.apiKey, let sessionId = self.sessionId else {
+    guard let sessionId = self.sessionId else {
       throw PasskeyStorageError.writeError
     }
+    let token = try self.resolvedToken()
 
     if let url = URL(string: "\(webAuthnHost)/passkeys/finish-login/write") {
       let payload = ["encryptionKey": withValue, "assertion": assertion, "sessionId": sessionId, "relyingParty": relyingParty]
-      let request = PortalAPIRequest(url: url, method: .post, payload: payload, bearerToken: apiKey)
+      let request = PortalAPIRequest(url: url, method: .post, payload: payload, bearerToken: token)
 
       try await requests.execute(request: request, mappingInResponse: Data.self)
 
@@ -245,13 +270,14 @@ public class PasskeyStorage: Storage, PortalStorage {
   }
 
   func handleFinishRegistration(_ attestation: String, withPrivateKey: String) async throws -> Bool {
-    guard let apiKey = self.apiKey, let sessionId = self.sessionId else {
+    guard let sessionId = self.sessionId else {
       throw PasskeyStorageError.writeError
     }
+    let token = try self.resolvedToken()
 
     if let url = URL(string: "\(webAuthnHost)/passkeys/finish-registration") {
       let payload = ["attestation": attestation, "sessionId": sessionId, "encryptionKey": withPrivateKey, "relyingParty": relyingParty]
-      let request = PortalAPIRequest(url: url, method: .post, payload: payload, bearerToken: apiKey)
+      let request = PortalAPIRequest(url: url, method: .post, payload: payload, bearerToken: token)
 
       try await requests.execute(request: request, mappingInResponse: Data.self)
 
@@ -259,6 +285,19 @@ public class PasskeyStorage: Storage, PortalStorage {
     }
 
     throw URLError(.badURL)
+  }
+
+  /// The bearer for the next WebAuthn backend call, resolved fresh from `credentials`.
+  ///
+  /// Throws `PasskeyStorageError.noApiKey` when no credential has been injected yet (the
+  /// historical error, so hosts that match on it keep working) and otherwise whatever
+  /// `resolveCredentialToken(_:)` raises — `.unavailable`, `.providerFailure` or
+  /// `.sessionInvalidated` — before any request is built.
+  private func resolvedToken() throws -> String {
+    guard let credentials = self.credentials else {
+      throw PasskeyStorageError.noApiKey
+    }
+    return try resolveCredentialToken(credentials)
   }
 }
 

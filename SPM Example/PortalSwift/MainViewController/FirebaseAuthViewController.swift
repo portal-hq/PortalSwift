@@ -17,10 +17,18 @@ protocol FirebaseAuthDelegate: AnyObject {
 
 @available(iOS 16.0, *)
 class FirebaseAuthViewController: UIViewController {
-
   weak var delegate: FirebaseAuthDelegate?
   var portal: PortalProtocol?
   var user: UserResult?
+
+  /// Which credential the presenting screen built `portal` from.
+  ///
+  /// This screen is a second, independent backup / recover / eject surface, and it receives the
+  /// main screen's `user` verbatim. Since Client Auth adoption synthesizes a blank-key `UserResult`,
+  /// `user` alone cannot tell a session apart from a custodian login — so the answer is passed in
+  /// rather than re-derived, and the two surfaces can never disagree about what Eject is allowed to
+  /// do.
+  var credentialSource: PortalCredentialSource?
 
   private let logger = Logger()
   private let requests = PortalRequests()
@@ -69,7 +77,7 @@ class FirebaseAuthViewController: UIViewController {
       scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
       scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
       scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-      scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+      scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
     ])
 
     stack.axis = .vertical
@@ -80,7 +88,7 @@ class FirebaseAuthViewController: UIViewController {
       stack.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 20),
       stack.leadingAnchor.constraint(equalTo: scrollView.frameLayoutGuide.leadingAnchor, constant: 20),
       stack.trailingAnchor.constraint(equalTo: scrollView.frameLayoutGuide.trailingAnchor, constant: -20),
-      stack.bottomAnchor.constraint(lessThanOrEqualTo: scrollView.bottomAnchor, constant: -20),
+      stack.bottomAnchor.constraint(lessThanOrEqualTo: scrollView.bottomAnchor, constant: -20)
     ])
 
     // Section: Firebase Sign In
@@ -194,7 +202,7 @@ class FirebaseAuthViewController: UIViewController {
       overlayView.topAnchor.constraint(equalTo: view.topAnchor),
       overlayView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
       overlayView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-      overlayView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+      overlayView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
     ])
 
     activityIndicator.hidesWhenStopped = true
@@ -203,7 +211,7 @@ class FirebaseAuthViewController: UIViewController {
     view.addSubview(activityIndicator)
     NSLayoutConstraint.activate([
       activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-      activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+      activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor)
     ])
   }
 
@@ -237,7 +245,9 @@ class FirebaseAuthViewController: UIViewController {
         self.backupButton.alpha = self.backupButton.isEnabled ? 1.0 : 0.5
         self.recoverButton.isEnabled = signedIn && recoveryMethods.contains(.Firebase)
         self.recoverButton.alpha = self.recoverButton.isEnabled ? 1.0 : 0.5
-        self.ejectButton.isEnabled = signedIn && recoveryMethods.contains(.Firebase)
+        // Eject needs the org share and `prepare-eject`, both custodian-only — see
+        // `canEjectWallet`. A Client Auth session can reach neither.
+        self.ejectButton.isEnabled = signedIn && recoveryMethods.contains(.Firebase) && canEjectWallet(self.credentialSource)
         self.ejectButton.alpha = self.ejectButton.isEnabled ? 1.0 : 0.5
       }
     }
@@ -330,19 +340,25 @@ class FirebaseAuthViewController: UIViewController {
         startLoading()
         logger.debug("FirebaseAuth.backup - Starting...")
 
+        // Resolved BEFORE the MPC backup: `backupWallet` registers a backup share pair as it runs,
+        // so finding out afterwards that the ciphertext has nowhere to go orphans that pair.
+        let storage = try resolveBackupShareStorage(
+          exchangeUserId: user.exchangeUserId,
+          isBackupWithPortalEnabled: client.environment?.backupWithPortalEnabled ?? false,
+          isBuiltWithBackupWithPortal: Settings.shared.isBuiltWithBackupWithPortal
+        )
+
         let (cipherText, storageCallback) = try await portal.backupWallet(.Firebase) { [weak self] status in
           self?.logger.debug("FirebaseAuth.backup - Progress: \(status.status.rawValue), done: \(status.done)")
         }
 
-        let backupWithPortal = client.environment?.backupWithPortalEnabled ?? false
-
-        if !backupWithPortal {
-          guard let url = URL(string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/cipher-text") else {
+        if case let .custodian(exchangeUserId) = storage {
+          guard let url = URL(string: "\(config.custodianServerUrl)/mobile/\(exchangeUserId)/cipher-text") else {
             throw URLError(.badURL)
           }
           let payload = [
             "backupMethod": BackupMethods.Firebase.rawValue,
-            "cipherText": cipherText,
+            "cipherText": cipherText
           ]
 
           struct ResponseType: Decodable {
@@ -360,6 +376,11 @@ class FirebaseAuthViewController: UIViewController {
         logger.debug("FirebaseAuth.backup - ✅ Complete")
         delegate?.firebaseAuthDidComplete(backup: true)
         updateUI()
+      } catch let error as NoBackupShareStorageError {
+        // Nothing ran, so there is no backup share pair to report a failure for.
+        stopLoading()
+        logger.error("FirebaseAuth.backup - ❌ \(error.localizedDescription)")
+        showResult(error.localizedDescription, success: false)
       } catch {
         stopLoading()
         logger.error("FirebaseAuth.backup - ❌ \(error)")
@@ -394,10 +415,17 @@ class FirebaseAuthViewController: UIViewController {
           throw PortalExampleAppError.clientInformationUnavailable()
         }
 
-        let backupWithPortal = client.environment?.backupWithPortalEnabled ?? false
+        // Resolved before `recoverWallet`, so a credential with no custodian store refuses here
+        // rather than fetching `/mobile//cipher-text/fetch` — a path that resolves to a different
+        // route entirely and returns something that is not this user's ciphertext.
+        let storage = try resolveBackupShareStorage(
+          exchangeUserId: user.exchangeUserId,
+          isBackupWithPortalEnabled: client.environment?.backupWithPortalEnabled ?? false,
+          isBuiltWithBackupWithPortal: Settings.shared.isBuiltWithBackupWithPortal
+        )
 
-        if !backupWithPortal {
-          guard let url = URL(string: "\(config.custodianServerUrl)/mobile/\(user.exchangeUserId)/cipher-text/fetch?backupMethod=FIREBASE") else {
+        if let path = custodianCipherTextFetchPath(for: storage, backupMethod: .Firebase) {
+          guard let url = URL(string: "\(config.custodianServerUrl)\(path)") else {
             throw URLError(.badURL)
           }
           let request = PortalAPIRequest.custodian(url: url)
@@ -415,6 +443,11 @@ class FirebaseAuthViewController: UIViewController {
         logger.debug("FirebaseAuth.recover - ✅ ETH: \(ethereum), SOL: \(solana ?? "N/A")")
         delegate?.firebaseAuthDidComplete(backup: false)
         updateUI()
+      } catch let error as NoBackupShareStorageError {
+        // Refused before `recoverWallet`, so nothing on the device or at Portal changed.
+        stopLoading()
+        logger.error("FirebaseAuth.recover - ❌ \(error.localizedDescription)")
+        showResult(error.localizedDescription, success: false)
       } catch {
         stopLoading()
         logger.error("FirebaseAuth.recover - ❌ \(error)")
@@ -426,6 +459,11 @@ class FirebaseAuthViewController: UIViewController {
   @objc private func handleEject() {
     Task {
       do {
+        // The button is already disabled for a session; this is the second line of defence, so the
+        // custodian-only routes below cannot be reached by a credential that has no exchange user.
+        guard canEjectWallet(self.credentialSource) else {
+          throw PortalExampleAppError.ejectUnavailableForSession()
+        }
         guard let portal else {
           throw PortalExampleAppError.portalNotInitialized()
         }

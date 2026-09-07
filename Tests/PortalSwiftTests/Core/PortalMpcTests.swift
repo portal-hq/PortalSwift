@@ -12,12 +12,17 @@ final class PortalMpcTests: XCTestCase {
   private var mpc: PortalMpc?
   private var portalApi: PortalApiProtocol!
   private var keychain: PortalKeychainProtocol!
+  private var recordingLogger = RecordingLogger()
 
   override func setUpWithError() throws {
-    portalApi = PortalApi(apiKey: MockConstants.mockApiKey, requests: MockPortalRequests())
+    CredentialInvalidationRegistry.shared.resetForTesting()
+    recordingLogger = RecordingLogger()
+    recordingLogger.install()
+
+    portalApi = PortalApi(credentials: MockConstants.mockCredentials, requests: MockPortalRequests())
     keychain = MockPortalKeychain()
     self.mpc = PortalMpc(
-      apiKey: MockConstants.mockApiKey,
+      credentials: MockConstants.mockCredentials,
       api: portalApi,
       keychain: keychain,
       mobile: MockMobileWrapper()
@@ -32,6 +37,8 @@ final class PortalMpcTests: XCTestCase {
   }
 
   override func tearDownWithError() throws {
+    recordingLogger.uninstall()
+    CredentialInvalidationRegistry.shared.resetForTesting()
     mpc = nil
   }
 }
@@ -40,7 +47,8 @@ final class PortalMpcTests: XCTestCase {
 
 extension PortalMpcTests {
   func initPortalMpcWith(
-    portalApi: PortalApiProtocol = PortalApi(apiKey: MockConstants.mockApiKey, requests: MockPortalRequests()),
+    credentials: PortalCredentials = MockCredentials(),
+    portalApi: PortalApiProtocol = PortalApi(credentials: MockConstants.mockCredentials, requests: MockPortalRequests()),
     keychain: PortalKeychainProtocol = MockPortalKeychain(),
     mobile: Mobile = MockMobileWrapper(),
     featureFlags: FeatureFlags? = nil,
@@ -53,7 +61,7 @@ extension PortalMpcTests {
     self.keychain = keychain
 
     self.mpc = PortalMpc(
-      apiKey: MockConstants.mockApiKey,
+      credentials: credentials,
       api: self.portalApi,
       keychain: self.keychain,
       mobile: mobile,
@@ -79,11 +87,13 @@ extension PortalMpcTests {
 
   @available(iOS 16, *)
   func initPortalMpcWithDefaultStorageAnd(
-    portalApi: PortalApiProtocol = PortalApi(apiKey: MockConstants.mockApiKey, requests: MockPortalRequests()),
+    credentials: PortalCredentials = MockCredentials(),
+    portalApi: PortalApiProtocol = PortalApi(credentials: MockConstants.mockCredentials, requests: MockPortalRequests()),
     keychain: PortalKeychainProtocol = MockPortalKeychain(),
     mobile: Mobile = MockMobileWrapper()
   ) {
     initPortalMpcWith(
+      credentials: credentials,
       portalApi: portalApi,
       keychain: keychain,
       mobile: mobile,
@@ -2202,5 +2212,766 @@ extension PortalMpcTests {
     _ = try mpc?.setPassword(password)
 
     XCTAssertEqual(passwordStorage.password, password)
+  }
+}
+
+// MARK: - Credentials test helpers
+
+/// Fixtures shared by the credential cases, so the token asserted at the binary boundary and the
+/// token searched for in logs and error descriptions are literally the same value.
+private enum MpcCredentialFixtures {
+  static let generateToken = "gen-tok"
+  static let rotatedToken = "gen-tok-2"
+  static let backupToken = "backup-tok"
+  static let recoverToken = "recover-tok"
+  static let solanaToken = "solana-tok"
+  static let secret = "mpc-secret"
+
+  /// A `MobileFormatShares` envelope carrying a single curve, so a recover fan-out makes exactly
+  /// one binary call and a rejection is therefore reported exactly once.
+  static let secp256k1OnlyFormatShares = "{\"data\":{\"SECP256K1\":{\"id\":\"backup-share-id\",\"share\":\"backup-share-data\"}}}"
+}
+
+/// A host-provider failure that is not a `PortalCredentialError`, so the SDK has to normalise it
+/// to `.providerFailure` at the credential boundary.
+private struct MpcProviderFailure: LocalizedError {
+  var errorDescription: String? {
+    "The host credential provider failed."
+  }
+}
+
+/// A provider failure whose own message echoes the token, which is exactly what
+/// `PortalCredentialError` must not carry into `errorDescription`.
+private struct TokenEchoingProviderFailure: LocalizedError {
+  let token: String
+
+  var errorDescription: String? {
+    "The host credential provider failed while handing over \(self.token)."
+  }
+}
+
+extension PortalMpcTests {
+  /// Scripts a `MobileSpy` so both curves of a `generate()` fan-out succeed.
+  func configureSpyForGenerate(_ spy: MobileSpy) {
+    spy.mobileGenerateEd25519ReturnValue = UnitTestMockConstants.validED25519ShareRotatedResultJSON
+    spy.mobileGenerateSecp256k1ReturnValue = UnitTestMockConstants.validSecp256k1ShareRotatedResultJSON
+  }
+
+  /// Scripts a `MobileSpy` so both curves of a `backup()` fan-out succeed.
+  func configureSpyForBackup(_ spy: MobileSpy) throws {
+    spy.mobileBackupEd25519ReturnValue = try MockConstants.mockRotateResult
+    spy.mobileBackupSecp256k1ReturnValue = try MockConstants.mockRotateResult
+  }
+
+  /// Scripts a `MobileSpy` so a `recover()` reads one SECP256K1 backup share and rotates it.
+  func configureSpyForRecover(_ spy: MobileSpy) throws {
+    spy.mobileFormatSharesReturnValue = MpcCredentialFixtures.secp256k1OnlyFormatShares
+    spy.mobileRecoverSigningSecp256k1ReturnValue = try MockConstants.mockRotateResult
+  }
+
+  /// A keychain holding a single SECP256K1 signing share, so a backup fan-out makes exactly one
+  /// binary call.
+  func secp256k1OnlyKeychainSpy() -> PortalKeychainSpy {
+    let keychainSpy = PortalKeychainSpy()
+    keychainSpy.getSharesReturnValue = [
+      "SECP256K1": PortalMpcGeneratedShare(id: "mock-share-id", share: "mock-share-data")
+    ]
+    return keychainSpy
+  }
+
+  /// A keychain that already holds an eip155 wallet and no Solana wallet, which is the only state
+  /// `generateSolanaWallet()` will act on.
+  func ethOnlyKeychainSpy() -> PortalKeychainSpy {
+    let keychainSpy = PortalKeychainSpy()
+    keychainSpy.getAddressesReturnValue = [.eip155: "dummy-eip155-address"]
+    keychainSpy.getSharesReturnValue = [
+      "SECP256K1": PortalMpcGeneratedShare(id: "mock-share-id", share: "mock-share-data")
+    ]
+    return keychainSpy
+  }
+
+  /// An API double whose client is present and not backup-with-Portal, so `recover()` uses the
+  /// cipherText the caller passes instead of fetching one.
+  func recoverApiMock() -> PortalApiMock {
+    let apiMock = PortalApiMock()
+    apiMock.client = ClientResponse.stub(environment: ClientResponseEnvironment.stub(backupWithPortalEnabled: false))
+    return apiMock
+  }
+}
+
+// MARK: - generate: credential resolution
+
+extension PortalMpcTests {
+  func test_generate_willResolveTokenOncePerFanOut() async throws {
+    // given
+    let credentials = MockCredentials(tokenValue: MpcCredentialFixtures.generateToken)
+    let mobileSpy = MobileSpy()
+    configureSpyForGenerate(mobileSpy)
+    initPortalMpcWith(credentials: credentials, mobile: mobileSpy)
+
+    // and given
+    _ = try await mpc?.generate()
+
+    // then
+    XCTAssertEqual(credentials.getTokenCalls, 1, "The token is resolved above the fan-out, not once per curve.")
+    XCTAssertEqual(mobileSpy.mobileGenerateEd25519CallsCount, 1)
+    XCTAssertEqual(mobileSpy.mobileGenerateSecp256k1CallsCount, 1)
+  }
+
+  func test_generate_willPassSameTokenToBothCurves() async throws {
+    // given
+    let credentials = MockCredentials(tokenValue: MpcCredentialFixtures.generateToken)
+    let mobileSpy = MobileSpy()
+    configureSpyForGenerate(mobileSpy)
+    initPortalMpcWith(credentials: credentials, mobile: mobileSpy)
+
+    // and given
+    _ = try await mpc?.generate()
+
+    // then
+    XCTAssertEqual(mobileSpy.mobileGenerateEd25519ApiKeyParam, MpcCredentialFixtures.generateToken)
+    XCTAssertEqual(mobileSpy.mobileGenerateSecp256k1ApiKeyParam, MpcCredentialFixtures.generateToken)
+  }
+
+  func test_generate_willUseRotatedToken_onNextCall() async throws {
+    // given
+    let credentials = MockCredentials(tokenValue: MpcCredentialFixtures.generateToken)
+    let mobileSpy = MobileSpy()
+    configureSpyForGenerate(mobileSpy)
+    initPortalMpcWith(credentials: credentials, mobile: mobileSpy)
+
+    // and given
+    _ = try await mpc?.generate()
+    credentials.tokenValue = MpcCredentialFixtures.rotatedToken
+    _ = try await mpc?.generate()
+
+    // then
+    XCTAssertEqual(mobileSpy.mobileGenerateEd25519ApiKeyParam, MpcCredentialFixtures.rotatedToken)
+    XCTAssertEqual(mobileSpy.mobileGenerateSecp256k1ApiKeyParam, MpcCredentialFixtures.rotatedToken)
+    XCTAssertEqual(credentials.getTokenCalls, 2, "Nothing is cached between operations.")
+  }
+
+  func test_generate_willThrowCredentialError_notMpcError_whenProviderThrows() async throws {
+    // given
+    let credentials = MockCredentials(onGetToken: { throw MpcProviderFailure() })
+    let keychainSpy = PortalKeychainSpy()
+    let mobileSpy = MobileSpy()
+    configureSpyForGenerate(mobileSpy)
+    initPortalMpcWith(credentials: credentials, keychain: keychainSpy, mobile: mobileSpy)
+
+    do {
+      // and given
+      _ = try await mpc?.generate()
+      XCTFail("Expected a credential error when the host provider throws.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? PortalCredentialError, .providerFailure(underlying: MpcProviderFailure()))
+      XCTAssertNil(error as? PortalMpcError, "A credential failure must not be laundered into an MPC error.")
+      XCTAssertNil(error as? MpcError)
+    }
+
+    XCTAssertEqual(mobileSpy.mobileGenerateEd25519CallsCount, 0)
+    XCTAssertEqual(mobileSpy.mobileGenerateSecp256k1CallsCount, 0)
+    XCTAssertEqual(keychainSpy.setSharesCallCount, 0)
+  }
+
+  func test_generate_willThrowUnavailable_beforeBinary_whenTokenBlank() async throws {
+    // given
+    let credentials = MockCredentials(tokenValue: "")
+    let mobileSpy = MobileSpy()
+    configureSpyForGenerate(mobileSpy)
+    initPortalMpcWith(credentials: credentials, mobile: mobileSpy)
+
+    do {
+      // and given
+      _ = try await mpc?.generate()
+      XCTFail("Expected a credential error for a blank token.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? PortalCredentialError, .unavailable)
+    }
+    XCTAssertEqual(mobileSpy.mobileGenerateEd25519CallsCount, 0)
+
+    // and then: the wallet-modification guard was released, so a valid token still works
+    credentials.tokenValue = MpcCredentialFixtures.generateToken
+    _ = try await mpc?.generate()
+    XCTAssertEqual(mobileSpy.mobileGenerateEd25519CallsCount, 1)
+  }
+}
+
+// MARK: - generate: AUTH_FAILED reporting
+
+extension PortalMpcTests {
+  func test_generate_willReportOnce_whenSecp256k1ReturnsAuthFailed() async throws {
+    // given
+    let session = MockPortalSession()
+    let recorder = InvalidationListenerRecorder(credentials: session)
+    let keychainSpy = PortalKeychainSpy()
+    let mobileSpy = MobileSpy()
+    mobileSpy.mobileGenerateEd25519ReturnValue = UnitTestMockConstants.validED25519ShareRotatedResultJSON
+    mobileSpy.mobileGenerateSecp256k1ReturnValue = MpcJSON.authFailed
+    initPortalMpcWith(credentials: session, keychain: keychainSpy, mobile: mobileSpy)
+
+    do {
+      // and given
+      _ = try await mpc?.generate()
+      XCTFail("Expected the rejected credential to surface as an MPC auth failure.")
+    } catch {
+      // then
+      let mpcError = try XCTUnwrap(error as? PortalMpcError)
+      XCTAssertTrue(mpcError.isAuthFailure)
+    }
+
+    XCTAssertEqual(session.invalidateCalls, 1)
+    let reported = await waitUntil { recorder.count == 1 }
+    XCTAssertTrue(reported, "The host should have been told the session ended.")
+    XCTAssertEqual(keychainSpy.setSharesCallCount, 0)
+  }
+
+  func test_generate_willReportOnce_whenBothCurvesReturnAuthFailed() async throws {
+    // given
+    let session = SessionLikeCredentials(token: "session-token", throwsWhenInvalidated: true)
+    let recorder = InvalidationListenerRecorder(credentials: session)
+    let mobileSpy = MobileSpy()
+    mobileSpy.mobileGenerateEd25519ReturnValue = MpcJSON.authFailed
+    mobileSpy.mobileGenerateSecp256k1ReturnValue = MpcJSON.authFailed
+    initPortalMpcWith(credentials: session, mobile: mobileSpy)
+
+    do {
+      // and given
+      _ = try await mpc?.generate()
+      XCTFail("Expected the rejected credential to surface as an MPC auth failure.")
+    } catch {
+      // then
+      XCTAssertTrue((error as? PortalMpcError)?.isAuthFailure == true)
+    }
+
+    XCTAssertEqual(session.storageDeletes, 1, "Two curves rejecting together still clear the session once.")
+    let reported = await waitUntil { recorder.count == 1 }
+    XCTAssertTrue(reported, "However many curves 401 together, the host is told exactly once.")
+    XCTAssertEqual(recorder.count, 1)
+  }
+
+  func test_generate_willNotReport_whenBinaryReturnsOtherError() async throws {
+    // given
+    let credentials = MockCredentials(tokenValue: MpcCredentialFixtures.generateToken)
+    let recorder = InvalidationListenerRecorder(credentials: credentials)
+    let mobileSpy = MobileSpy()
+    mobileSpy.mobileGenerateEd25519ReturnValue = UnitTestMockConstants.validED25519ShareRotatedResultJSON
+    mobileSpy.mobileGenerateSecp256k1ReturnValue = MpcJSON.error(id: "GENERATE_FAIL")
+    initPortalMpcWith(credentials: credentials, mobile: mobileSpy)
+
+    do {
+      // and given
+      _ = try await mpc?.generate()
+      XCTFail("Expected the binary error to surface.")
+    } catch {
+      // then
+      let mpcError = try XCTUnwrap(error as? PortalMpcError)
+      XCTAssertEqual(mpcError.id, "GENERATE_FAIL")
+      XCTAssertFalse(mpcError.isAuthFailure)
+    }
+
+    XCTAssertEqual(credentials.invalidateCalls, 0, "A non-401 failure must never end the session.")
+    XCTAssertEqual(recorder.count, 0)
+  }
+
+  func test_generate_willReleaseGuard_afterAuthFailed() async throws {
+    // given
+    let session = MockPortalSession()
+    let mobileSpy = MobileSpy()
+    mobileSpy.mobileGenerateEd25519ReturnValue = UnitTestMockConstants.validED25519ShareRotatedResultJSON
+    mobileSpy.mobileGenerateSecp256k1ReturnValue = MpcJSON.authFailed
+    initPortalMpcWith(credentials: session, mobile: mobileSpy)
+
+    do {
+      _ = try await mpc?.generate()
+      XCTFail("Expected the rejected credential to surface as an MPC auth failure.")
+    } catch {
+      XCTAssertTrue((error as? PortalMpcError)?.isAuthFailure == true)
+    }
+
+    do {
+      // and given
+      _ = try await mpc?.generate()
+      XCTFail("Expected the second generate to fail on the dead session.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? PortalCredentialError, .sessionInvalidated)
+      XCTAssertNotEqual(error as? MpcError, MpcError.walletModificationAlreadyInProgress)
+    }
+  }
+}
+
+// MARK: - backup: credential resolution and AUTH_FAILED reporting
+
+extension PortalMpcTests {
+  func test_backup_willResolveTokenOnce_andPassToBothCurves() async throws {
+    // given
+    let credentials = MockCredentials(tokenValue: MpcCredentialFixtures.backupToken)
+    let mobileSpy = MobileSpy()
+    try configureSpyForBackup(mobileSpy)
+    initPortalMpcWith(credentials: credentials, mobile: mobileSpy, passwordStorage: MockPasswordStorage())
+    try mpc?.setPassword(MockConstants.mockEncryptionKey)
+
+    // and given
+    _ = try? await mpc?.backup(.Password)
+
+    // then
+    XCTAssertEqual(credentials.getTokenCalls, 1, "The token is resolved above the fan-out, not once per curve.")
+    XCTAssertEqual(mobileSpy.mobileBackupEd25519ApiKeyParam, MpcCredentialFixtures.backupToken)
+    XCTAssertEqual(mobileSpy.mobileBackupSecp256k1ApiKeyParam, MpcCredentialFixtures.backupToken)
+  }
+
+  func test_backup_willThrowCredentialError_withoutBinaryOrWrite() async throws {
+    // given
+    let credentials = MockCredentials(onGetToken: { throw MpcProviderFailure() })
+    let storageSpy = PortalStorageSpy()
+    let apiMock = PortalApiMock()
+    let mobileSpy = MobileSpy()
+    try configureSpyForBackup(mobileSpy)
+    initPortalMpcWith(credentials: credentials, portalApi: apiMock, mobile: mobileSpy, passwordStorage: storageSpy)
+
+    do {
+      // and given
+      _ = try await mpc?.backup(.Password)
+      XCTFail("Expected a credential error when the host provider throws.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? PortalCredentialError, .providerFailure(underlying: MpcProviderFailure()))
+    }
+
+    XCTAssertEqual(mobileSpy.mobileBackupEd25519CallsCount, 0)
+    XCTAssertEqual(mobileSpy.mobileBackupSecp256k1CallsCount, 0)
+    XCTAssertEqual(storageSpy.writeCallsCount, 0, "Nothing is persisted when the credential cannot be resolved.")
+    XCTAssertEqual(apiMock.storeClientCipherTextCallsCount, 0)
+  }
+
+  func test_backup_willReportOnce_andNotWrite_whenAuthFailed() async throws {
+    // given
+    let session = MockPortalSession()
+    let recorder = InvalidationListenerRecorder(credentials: session)
+    let storageSpy = PortalStorageSpy()
+    let mobileSpy = MobileSpy()
+    mobileSpy.mobileBackupSecp256k1ReturnValue = MpcJSON.authFailed
+    initPortalMpcWith(
+      credentials: session,
+      keychain: secp256k1OnlyKeychainSpy(),
+      mobile: mobileSpy,
+      passwordStorage: storageSpy
+    )
+
+    do {
+      // and given
+      _ = try await mpc?.backup(.Password)
+      XCTFail("Expected the rejected credential to surface as an MPC auth failure.")
+    } catch {
+      // then
+      XCTAssertTrue((error as? PortalMpcError)?.isAuthFailure == true)
+    }
+
+    XCTAssertEqual(session.invalidateCalls, 1)
+    let reported = await waitUntil { recorder.count == 1 }
+    XCTAssertTrue(reported, "The host should have been told the session ended.")
+    XCTAssertEqual(storageSpy.writeCallsCount, 0)
+  }
+
+  func test_backup_willNotReport_whenBinaryReturnsOtherError() async throws {
+    // given
+    let credentials = MockCredentials(tokenValue: MpcCredentialFixtures.backupToken)
+    let recorder = InvalidationListenerRecorder(credentials: credentials)
+    let mobileSpy = MobileSpy()
+    mobileSpy.mobileBackupSecp256k1ReturnValue = MpcJSON.error(id: "BACKUP_FAIL")
+    initPortalMpcWith(
+      credentials: credentials,
+      keychain: secp256k1OnlyKeychainSpy(),
+      mobile: mobileSpy,
+      passwordStorage: MockPasswordStorage()
+    )
+
+    do {
+      // and given
+      _ = try await mpc?.backup(.Password)
+      XCTFail("Expected the binary error to surface.")
+    } catch {
+      // then
+      XCTAssertEqual((error as? PortalMpcError)?.id, "BACKUP_FAIL")
+    }
+
+    XCTAssertEqual(credentials.invalidateCalls, 0)
+    XCTAssertEqual(recorder.count, 0)
+  }
+}
+
+// MARK: - recover: credential resolution and AUTH_FAILED reporting
+
+extension PortalMpcTests {
+  func test_recover_willResolveTokenOnce_andPassToBinary() async throws {
+    // given
+    let credentials = MockCredentials(tokenValue: MpcCredentialFixtures.recoverToken)
+    let mobileSpy = MobileSpy()
+    try configureSpyForRecover(mobileSpy)
+    initPortalMpcWith(
+      credentials: credentials,
+      portalApi: recoverApiMock(),
+      mobile: mobileSpy,
+      passwordStorage: MockPasswordStorage()
+    )
+    try mpc?.setPassword(MockConstants.mockEncryptionKey)
+
+    // and given
+    _ = try? await mpc?.recover(.Password, withCipherText: MockConstants.mockCiphertext)
+
+    // then
+    XCTAssertEqual(credentials.getTokenCalls, 1)
+    XCTAssertEqual(mobileSpy.mobileRecoverSigningSecp256k1ApiKeyParam, MpcCredentialFixtures.recoverToken)
+  }
+
+  func test_recover_willThrowCredentialError_withoutBinary_orSetShares() async throws {
+    // given
+    let credentials = MockCredentials(onGetToken: { throw MpcProviderFailure() })
+    let keychainSpy = PortalKeychainSpy()
+    let mobileSpy = MobileSpy()
+    try configureSpyForRecover(mobileSpy)
+    initPortalMpcWith(
+      credentials: credentials,
+      portalApi: recoverApiMock(),
+      keychain: keychainSpy,
+      mobile: mobileSpy,
+      passwordStorage: MockPasswordStorage()
+    )
+    try mpc?.setPassword(MockConstants.mockEncryptionKey)
+
+    do {
+      // and given
+      _ = try await mpc?.recover(.Password, withCipherText: MockConstants.mockCiphertext)
+      XCTFail("Expected a credential error when the host provider throws.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? PortalCredentialError, .providerFailure(underlying: MpcProviderFailure()))
+    }
+
+    XCTAssertEqual(mobileSpy.mobileRecoverSigningSecp256k1CallsCount, 0)
+    XCTAssertEqual(mobileSpy.mobileRecoverSigningEd25519CallsCount, 0)
+    XCTAssertEqual(keychainSpy.setSharesCallCount, 0)
+  }
+
+  func test_recover_willReportOnce_whenAuthFailed() async throws {
+    // given
+    let session = MockPortalSession()
+    let recorder = InvalidationListenerRecorder(credentials: session)
+    let keychainSpy = PortalKeychainSpy()
+    let mobileSpy = MobileSpy()
+    try configureSpyForRecover(mobileSpy)
+    mobileSpy.mobileRecoverSigningSecp256k1ReturnValue = MpcJSON.authFailed
+    initPortalMpcWith(
+      credentials: session,
+      portalApi: recoverApiMock(),
+      keychain: keychainSpy,
+      mobile: mobileSpy,
+      passwordStorage: MockPasswordStorage()
+    )
+    try mpc?.setPassword(MockConstants.mockEncryptionKey)
+
+    do {
+      // and given
+      _ = try await mpc?.recover(.Password, withCipherText: MockConstants.mockCiphertext)
+      XCTFail("Expected the rejected credential to surface as an MPC auth failure.")
+    } catch {
+      // then
+      XCTAssertTrue((error as? PortalMpcError)?.isAuthFailure == true)
+    }
+
+    XCTAssertEqual(session.invalidateCalls, 1)
+    let reported = await waitUntil { recorder.count == 1 }
+    XCTAssertTrue(reported, "The host should have been told the session ended.")
+    XCTAssertEqual(keychainSpy.setSharesCallCount, 0)
+  }
+
+  func test_recover_willNotReport_whenBinaryReturnsOtherError() async throws {
+    // given
+    let credentials = MockCredentials(tokenValue: MpcCredentialFixtures.recoverToken)
+    let recorder = InvalidationListenerRecorder(credentials: credentials)
+    let mobileSpy = MobileSpy()
+    try configureSpyForRecover(mobileSpy)
+    mobileSpy.mobileRecoverSigningSecp256k1ReturnValue = MpcJSON.error(id: "RECOVER_FAIL")
+    initPortalMpcWith(
+      credentials: credentials,
+      portalApi: recoverApiMock(),
+      mobile: mobileSpy,
+      passwordStorage: MockPasswordStorage()
+    )
+    try mpc?.setPassword(MockConstants.mockEncryptionKey)
+
+    do {
+      // and given
+      _ = try await mpc?.recover(.Password, withCipherText: MockConstants.mockCiphertext)
+      XCTFail("Expected the binary error to surface.")
+    } catch {
+      // then
+      XCTAssertEqual((error as? PortalMpcError)?.id, "RECOVER_FAIL")
+    }
+
+    XCTAssertEqual(credentials.invalidateCalls, 0)
+    XCTAssertEqual(recorder.count, 0)
+  }
+}
+
+// MARK: - generateSolanaWallet: credential resolution and AUTH_FAILED reporting
+
+extension PortalMpcTests {
+  func test_generateSolanaWallet_willResolveTokenOnce_andPassToEd25519() async throws {
+    // given
+    let credentials = MockCredentials(tokenValue: MpcCredentialFixtures.solanaToken)
+    let mobileSpy = MobileSpy()
+    mobileSpy.mobileGenerateEd25519ReturnValue = UnitTestMockConstants.validED25519ShareRotatedResultJSON
+    initPortalMpcWith(
+      credentials: credentials,
+      portalApi: recoverApiMock(),
+      keychain: ethOnlyKeychainSpy(),
+      mobile: mobileSpy
+    )
+
+    // and given
+    _ = try? await mpc?.generateSolanaWallet()
+
+    // then
+    XCTAssertEqual(credentials.getTokenCalls, 1)
+    XCTAssertEqual(mobileSpy.mobileGenerateEd25519ApiKeyParam, MpcCredentialFixtures.solanaToken)
+    XCTAssertEqual(mobileSpy.mobileGenerateEd25519CallsCount, 1)
+  }
+
+  func test_generateSolanaWallet_willThrowCredentialError_beforeBinary() async throws {
+    // given
+    let credentials = MockCredentials(tokenValue: "")
+    let mobileSpy = MobileSpy()
+    mobileSpy.mobileGenerateEd25519ReturnValue = UnitTestMockConstants.validED25519ShareRotatedResultJSON
+    initPortalMpcWith(
+      credentials: credentials,
+      portalApi: recoverApiMock(),
+      keychain: ethOnlyKeychainSpy(),
+      mobile: mobileSpy
+    )
+
+    do {
+      // and given
+      _ = try await mpc?.generateSolanaWallet()
+      XCTFail("Expected a credential error for a blank token.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? PortalCredentialError, .unavailable)
+    }
+
+    XCTAssertEqual(mobileSpy.mobileGenerateEd25519CallsCount, 0)
+  }
+
+  func test_generateSolanaWallet_willReportOnce_whenAuthFailed() async throws {
+    // given
+    let session = MockPortalSession()
+    let recorder = InvalidationListenerRecorder(credentials: session)
+    let mobileSpy = MobileSpy()
+    mobileSpy.mobileGenerateEd25519ReturnValue = MpcJSON.authFailed
+    initPortalMpcWith(
+      credentials: session,
+      portalApi: recoverApiMock(),
+      keychain: ethOnlyKeychainSpy(),
+      mobile: mobileSpy
+    )
+
+    do {
+      // and given
+      _ = try await mpc?.generateSolanaWallet()
+      XCTFail("Expected the rejected credential to surface as an MPC auth failure.")
+    } catch {
+      // then
+      XCTAssertTrue((error as? PortalMpcError)?.isAuthFailure == true)
+    }
+
+    XCTAssertEqual(session.invalidateCalls, 1)
+    let reported = await waitUntil { recorder.count == 1 }
+    XCTAssertTrue(reported, "The host should have been told the session ended.")
+  }
+}
+
+// MARK: - registerBackupMethod: credential injection
+
+extension PortalMpcTests {
+  @available(iOS 16, *)
+  func test_registerBackupMethod_willInjectCredentialsIntoPasskeyStorage() async throws {
+    // given
+    let credentials = MockCredentials(tokenValue: MpcCredentialFixtures.generateToken)
+    let apiMock = PortalApiMock()
+    initPortalMpcWith(credentials: credentials, portalApi: apiMock)
+    let storage = PasskeyStorage(auth: MockPasskeyAuth(), requests: PortalRequestsSpy())
+
+    // and given
+    mpc?.registerBackupMethod(.Passkey, withStorage: storage)
+
+    // then
+    XCTAssertTrue(storage.credentials === credentials, "The storage resolves the credential per request, so it needs the object.")
+    XCTAssertTrue(storage.api === apiMock)
+  }
+
+  func test_registerBackupMethod_willInjectCredentialsIntoFirebaseStorage() async throws {
+    // given
+    let credentials = MockCredentials(tokenValue: MpcCredentialFixtures.generateToken)
+    let apiMock = PortalApiMock()
+    initPortalMpcWith(credentials: credentials, portalApi: apiMock)
+    let storage = FirebaseStorage(getToken: { "fb" }, requests: PortalRequestsSpy())
+
+    // and given
+    mpc?.registerBackupMethod(.Firebase, withStorage: storage)
+
+    // then
+    XCTAssertTrue(storage.credentials === credentials)
+    XCTAssertTrue(storage.api === apiMock)
+  }
+
+  func test_registerBackupMethod_willNotCrash_whenFirebaseMethodGetsNonFirebaseStorage() async throws {
+    // given
+    let credentials = MockCredentials(tokenValue: MpcCredentialFixtures.generateToken)
+    let storageSpy = PortalStorageSpy()
+    initPortalMpcWith(credentials: credentials)
+
+    // and given
+    mpc?.registerBackupMethod(.Firebase, withStorage: storageSpy)
+    _ = try? await mpc?.backup(.Firebase)
+
+    // then
+    XCTAssertEqual(storageSpy.validateOperationsCallsCount, 1, "A storage of the wrong type is registered as-is, never force-cast.")
+  }
+
+  func test_registerBackupMethod_willNotResolveToken_eagerly() async throws {
+    // given
+    let credentials = MockCredentials(tokenValue: MpcCredentialFixtures.generateToken)
+    initPortalMpcWith(credentials: credentials)
+
+    // and given
+    mpc?.registerBackupMethod(.GoogleDrive, withStorage: MockGDriveStorage())
+    mpc?.registerBackupMethod(.Password, withStorage: MockPasswordStorage())
+    mpc?.registerBackupMethod(.iCloud, withStorage: MockICloudStorage())
+    mpc?.registerBackupMethod(.Firebase, withStorage: FirebaseStorage(getToken: { "fb" }, requests: PortalRequestsSpy()))
+    if #available(iOS 16, *) {
+      mpc?.registerBackupMethod(.Passkey, withStorage: MockPasskeyStorage())
+    }
+
+    // then
+    XCTAssertEqual(credentials.getTokenCalls, 0, "Registration injects the credential object; the token is resolved per request.")
+  }
+
+  @available(iOS 16, *)
+  func test_registerBackupMethod_passkeyApiKeyBridge_willReflectStaticKeyOnly() async throws {
+    // given
+    let staticStorage = PasskeyStorage(auth: MockPasskeyAuth(), requests: PortalRequestsSpy())
+    initPortalMpcWith(credentials: StaticCredentials(MockConstants.mockApiKey))
+
+    // and given
+    mpc?.registerBackupMethod(.Passkey, withStorage: staticStorage)
+
+    // then
+    XCTAssertEqual(staticStorage.apiKey, MockConstants.mockApiKey)
+
+    // and given: the same bridge in credentials mode
+    let sessionStorage = PasskeyStorage(auth: MockPasskeyAuth(), requests: PortalRequestsSpy())
+    initPortalMpcWith(credentials: MockPortalSession())
+    mpc?.registerBackupMethod(.Passkey, withStorage: sessionStorage)
+
+    // then
+    XCTAssertEqual(sessionStorage.apiKey, "", "A session token must never leak through the deprecated apiKey bridge.")
+  }
+}
+
+// MARK: - Deprecated initializer and secret hygiene
+
+extension PortalMpcTests {
+  func test_init_apiKey_deprecated_willWrapStaticCredentials() async throws {
+    // given
+    let mobileSpy = MobileSpy()
+    configureSpyForGenerate(mobileSpy)
+    let api = PortalApi(credentials: MockConstants.mockCredentials, requests: MockPortalRequests())
+    let keychain = MockPortalKeychain()
+    let legacyMpc = PortalMpc(
+      apiKey: MockConstants.mockApiKey,
+      api: api,
+      keychain: keychain,
+      mobile: mobileSpy
+    )
+
+    // and given
+    _ = try await legacyMpc.generate()
+
+    // then
+    XCTAssertEqual(mobileSpy.mobileGenerateEd25519ApiKeyParam, MockConstants.mockApiKey)
+    XCTAssertEqual(mobileSpy.mobileGenerateSecp256k1ApiKeyParam, MockConstants.mockApiKey)
+    withExtendedLifetime(api) {}
+    withExtendedLifetime(keychain) {}
+  }
+
+  func test_generate_errorDescription_willNotContainToken() async throws {
+    // given: the AUTH_FAILED path
+    let session = MockPortalSession(tokenValue: MpcCredentialFixtures.secret)
+    let authFailedSpy = MobileSpy()
+    authFailedSpy.mobileGenerateEd25519ReturnValue = UnitTestMockConstants.validED25519ShareRotatedResultJSON
+    authFailedSpy.mobileGenerateSecp256k1ReturnValue = MpcJSON.authFailed
+    initPortalMpcWith(credentials: session, mobile: authFailedSpy)
+
+    do {
+      _ = try await mpc?.generate()
+      XCTFail("Expected the rejected credential to surface as an MPC auth failure.")
+    } catch {
+      // then
+      let mpcError = try XCTUnwrap(error as? PortalMpcError)
+      XCTAssertFalse(mpcError.errorDescription.contains(MpcCredentialFixtures.secret))
+      XCTAssertFalse(error.localizedDescription.contains(MpcCredentialFixtures.secret))
+    }
+
+    // and given: the providerFailure path, from a provider whose own message echoes the token
+    let credentials = MockCredentials(
+      tokenValue: MpcCredentialFixtures.secret,
+      onGetToken: { throw TokenEchoingProviderFailure(token: MpcCredentialFixtures.secret) }
+    )
+    let providerSpy = MobileSpy()
+    configureSpyForGenerate(providerSpy)
+    initPortalMpcWith(credentials: credentials, mobile: providerSpy)
+
+    do {
+      _ = try await mpc?.generate()
+      XCTFail("Expected a credential error when the host provider throws.")
+    } catch {
+      // then
+      let credentialError = try XCTUnwrap(error as? PortalCredentialError)
+      let description = try XCTUnwrap(credentialError.errorDescription)
+      XCTAssertFalse(description.contains(MpcCredentialFixtures.secret), "The provider's cause is never rendered into the message.")
+      XCTAssertFalse(error.localizedDescription.contains(MpcCredentialFixtures.secret))
+    }
+  }
+
+  func test_generate_willNotLogToken() async throws {
+    // given: the success path
+    let credentials = MockCredentials(tokenValue: MpcCredentialFixtures.secret)
+    let successSpy = MobileSpy()
+    configureSpyForGenerate(successSpy)
+    initPortalMpcWith(credentials: credentials, mobile: successSpy)
+    _ = try await mpc?.generate()
+
+    // and given: the AUTH_FAILED path
+    let session = MockPortalSession(tokenValue: MpcCredentialFixtures.secret)
+    let recorder = InvalidationListenerRecorder(credentials: session)
+    let authFailedSpy = MobileSpy()
+    authFailedSpy.mobileGenerateEd25519ReturnValue = UnitTestMockConstants.validED25519ShareRotatedResultJSON
+    authFailedSpy.mobileGenerateSecp256k1ReturnValue = MpcJSON.authFailed
+    initPortalMpcWith(credentials: session, mobile: authFailedSpy)
+
+    do {
+      _ = try await mpc?.generate()
+      XCTFail("Expected the rejected credential to surface as an MPC auth failure.")
+    } catch {
+      XCTAssertTrue((error as? PortalMpcError)?.isAuthFailure == true)
+    }
+    let reported = await waitUntil { recorder.count == 1 }
+    XCTAssertTrue(reported, "Both paths should have run before the log is inspected.")
+
+    // then
+    recordingLogger.assertNoSecret(MpcCredentialFixtures.secret)
   }
 }

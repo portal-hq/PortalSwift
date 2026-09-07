@@ -26,24 +26,54 @@ public protocol PortalYieldXyzApiProtocol: AnyObject {
 /// This class handles all yield-related API calls including discovering yields,
 /// entering/exiting yield opportunities, managing yields, and tracking transactions.
 public class PortalYieldXyzApi: PortalYieldXyzApiProtocol {
-  private let apiKey: String
+  /// Resolved per request and never cached, so a session rotated or invalidated underneath
+  /// this instance is honoured on the next call. Shared by identity with the owning `PortalApi`.
+  private let credentials: PortalCredentials
   private let baseUrl: String
   private let requests: PortalRequestsProtocol
   private let logger = PortalLogger.shared
 
   /// Create an instance of PortalYieldXyzApi.
+  ///
+  /// The credential is resolved again on every request and never at construction, so a session
+  /// that rotates or is invalidated underneath this instance takes effect on the next call. The
+  /// transport's 401 hook is wired to `credentials` only when the transport reports 401s and has
+  /// no hook yet, so a standalone instance with its own transport still reports a dead session
+  /// while one built by `PortalApi` finds the hook already installed and leaves it alone.
+  /// - Parameters:
+  ///   - credentials: The credential presented as the bearer on every request: a `StaticCredentials`
+  ///     wrapping a Client API Key, or a session obtained through `PortalAuth`.
+  ///   - apiHost: The Portal API hostname.
+  ///   - requests: An instance of PortalRequestsProtocol to handle HTTP requests.
+  public init(
+    credentials: PortalCredentials,
+    apiHost: String = "api.portalhq.io",
+    requests: PortalRequestsProtocol? = nil
+  ) {
+    self.credentials = credentials
+    self.baseUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
+    self.requests = requests ?? PortalRequests()
+
+    installUnauthorizedHook(on: self.requests, for: credentials, context: "PortalYieldXyzApi")
+  }
+
+  /// Create an instance of PortalYieldXyzApi.
+  ///
+  /// Kept as a convenience so existing integrations compile unchanged; the key is wrapped in
+  /// `StaticCredentials` and everything else follows the credentials path. A blank key is not
+  /// rejected here because this initializer cannot throw: it fails on first use with
+  /// `PortalCredentialError.unavailable` instead of sending an empty bearer.
   /// - Parameters:
   ///   - apiKey: The Client API key.
   ///   - apiHost: The Portal API hostname.
   ///   - requests: An instance of PortalRequestsProtocol to handle HTTP requests.
-  public init(
+  @available(*, deprecated, message: "Use init(credentials:) instead; wrap a Client API Key in StaticCredentials(apiKey) or pass a PortalAuth session.")
+  public convenience init(
     apiKey: String,
     apiHost: String = "api.portalhq.io",
     requests: PortalRequestsProtocol? = nil
   ) {
-    self.apiKey = apiKey
-    self.baseUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
-    self.requests = requests ?? PortalRequests()
+    self.init(credentials: StaticCredentials(apiKey), apiHost: apiHost, requests: requests)
   }
 
   /*******************************************
@@ -78,7 +108,7 @@ public class PortalYieldXyzApi: PortalYieldXyzApiProtocol {
     }
 
     do {
-      return try await get(url, withBearerToken: apiKey, mappingInResponse: YieldXyzGetYieldsResponse.self)
+      return try await get(url, mappingInResponse: YieldXyzGetYieldsResponse.self)
     } catch {
       logger.error("PortalYieldXyzApi.getYields() - Error: \(error.localizedDescription)")
       throw error
@@ -96,7 +126,7 @@ public class PortalYieldXyzApi: PortalYieldXyzApiProtocol {
     }
 
     do {
-      return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: YieldXyzEnterYieldResponse.self)
+      return try await post(url, andPayload: request, mappingInResponse: YieldXyzEnterYieldResponse.self)
     } catch {
       logger.error("PortalYieldXyzApi.enterYield() - Error: \(error.localizedDescription)")
       // Provide more helpful error message for common issues
@@ -123,7 +153,7 @@ public class PortalYieldXyzApi: PortalYieldXyzApiProtocol {
     }
 
     do {
-      return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: YieldXyzExitResponse.self)
+      return try await post(url, andPayload: request, mappingInResponse: YieldXyzExitResponse.self)
     } catch {
       logger.error("PortalYieldXyzApi.exitYield() - Error: \(error.localizedDescription)")
       let errorString = error.localizedDescription.lowercased()
@@ -149,7 +179,7 @@ public class PortalYieldXyzApi: PortalYieldXyzApiProtocol {
     }
 
     do {
-      return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: YieldXyzManageYieldResponse.self)
+      return try await post(url, andPayload: request, mappingInResponse: YieldXyzManageYieldResponse.self)
     } catch {
       logger.error("PortalYieldXyzApi.manageYield() - Error: \(error.localizedDescription)")
       let errorString = error.localizedDescription.lowercased()
@@ -175,7 +205,7 @@ public class PortalYieldXyzApi: PortalYieldXyzApiProtocol {
     }
 
     do {
-      return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: YieldXyzGetBalancesResponse.self)
+      return try await post(url, andPayload: request, mappingInResponse: YieldXyzGetBalancesResponse.self)
     } catch {
       logger.error("PortalYieldXyzApi.getYieldBalances() - Error: \(error.localizedDescription)")
       let errorString = error.localizedDescription.lowercased()
@@ -213,7 +243,7 @@ public class PortalYieldXyzApi: PortalYieldXyzApiProtocol {
     }
 
     do {
-      return try await get(url, withBearerToken: apiKey, mappingInResponse: YieldXyzGetHistoricalActionsResponse.self)
+      return try await get(url, mappingInResponse: YieldXyzGetHistoricalActionsResponse.self)
     } catch {
       logger.error("PortalYieldXyzApi.getHistoricalYieldActions() - Error: \(error.localizedDescription)")
       throw error
@@ -231,7 +261,7 @@ public class PortalYieldXyzApi: PortalYieldXyzApiProtocol {
     }
 
     do {
-      return try await get(url, withBearerToken: apiKey, mappingInResponse: YieldXyzGetTransactionResponse.self)
+      return try await get(url, mappingInResponse: YieldXyzGetTransactionResponse.self)
     } catch {
       logger.error("PortalYieldXyzApi.getYieldTransaction() - Error: \(error.localizedDescription)")
       throw error
@@ -249,7 +279,7 @@ public class PortalYieldXyzApi: PortalYieldXyzApiProtocol {
     }
 
     do {
-      return try await put(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: YieldXyzTrackTransactionResponse.self)
+      return try await put(url, andPayload: request, mappingInResponse: YieldXyzTrackTransactionResponse.self)
     } catch {
       logger.error("PortalYieldXyzApi.submitTransactionHash() - Error: \(error.localizedDescription)")
       let errorString = error.localizedDescription.lowercased()
@@ -280,7 +310,7 @@ public class PortalYieldXyzApi: PortalYieldXyzApiProtocol {
     }
 
     do {
-      return try await get(url, withBearerToken: apiKey, mappingInResponse: YieldXyzGetDefaultsResponse.self)
+      return try await get(url, mappingInResponse: YieldXyzGetDefaultsResponse.self)
     } catch {
       logger.error("PortalYieldXyzApi.getYieldDefaults() - Error: \(error.localizedDescription)")
       throw error
@@ -303,7 +333,7 @@ public class PortalYieldXyzApi: PortalYieldXyzApiProtocol {
     }
 
     do {
-      return try await get(url, withBearerToken: apiKey, mappingInResponse: YieldXyzGetValidatorsResponse.self)
+      return try await get(url, mappingInResponse: YieldXyzGetValidatorsResponse.self)
     } catch {
       logger.error("PortalYieldXyzApi.getYieldValidators() - Error: \(error.localizedDescription)")
       throw error
@@ -326,32 +356,38 @@ public class PortalYieldXyzApi: PortalYieldXyzApiProtocol {
   @discardableResult
   private func get<ResponseType>(
     _ url: URL,
-    withBearerToken: String? = nil,
     mappingInResponse: ResponseType.Type
   ) async throws -> ResponseType where ResponseType: Decodable {
-    let portalRequest = PortalAPIRequest(url: url, bearerToken: withBearerToken)
+    // Resolved here, at the moment the request is built, so a rotated session is sent on the
+    // next call and a dead one fails before anything reaches the wire.
+    let token = try resolveCredentialToken(self.credentials)
+    let portalRequest = PortalAPIRequest(url: url, bearerToken: token)
     return try await requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }
 
   @discardableResult
   private func post<ResponseType>(
     _ url: URL,
-    withBearerToken: String? = nil,
     andPayload: Codable? = nil,
     mappingInResponse: ResponseType.Type
   ) async throws -> ResponseType where ResponseType: Decodable {
-    let portalRequest = PortalAPIRequest(url: url, method: .post, payload: andPayload, bearerToken: withBearerToken)
+    // Resolved here, at the moment the request is built, so a rotated session is sent on the
+    // next call and a dead one fails before anything reaches the wire.
+    let token = try resolveCredentialToken(self.credentials)
+    let portalRequest = PortalAPIRequest(url: url, method: .post, payload: andPayload, bearerToken: token)
     return try await requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }
 
   @discardableResult
   private func put<ResponseType>(
     _ url: URL,
-    withBearerToken: String? = nil,
     andPayload: Codable,
     mappingInResponse: ResponseType.Type
   ) async throws -> ResponseType where ResponseType: Decodable {
-    let portalRequest = PortalAPIRequest(url: url, method: .put, payload: andPayload, bearerToken: withBearerToken)
+    // Resolved here, at the moment the request is built, so a rotated session is sent on the
+    // next call and a dead one fails before anything reaches the wire.
+    let token = try resolveCredentialToken(self.credentials)
+    let portalRequest = PortalAPIRequest(url: url, method: .put, payload: andPayload, bearerToken: token)
     return try await requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }
 }

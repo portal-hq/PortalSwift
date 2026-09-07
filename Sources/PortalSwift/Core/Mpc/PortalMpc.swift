@@ -57,7 +57,11 @@ public class PortalMpc: PortalMpcProtocol {
 
   private weak var api: PortalApiProtocol?
   private let apiHost: String
-  private let apiKey: String
+  /// The credential presented to the MPC binary. Resolved once above each per-curve fan-out
+  /// (generate, backup, recover, Solana generate) so both curves of one operation carry the same
+  /// token, and never at construction or registration, so a session rotated or invalidated under
+  /// a long-lived `PortalMpc` is seen by the next operation.
+  let credentials: PortalCredentials
   private var backupOptions: [BackupMethods: PortalStorage] = [:]
   private let decoder = JSONDecoder()
   private let encoder = JSONEncoder()
@@ -96,9 +100,10 @@ public class PortalMpc: PortalMpcProtocol {
 
   private var mpcMetadata: MpcMetadata
 
-  /// Create an instance of Portal's MPC service.
+  /// Create an instance of Portal's MPC service authenticated by `credentials` (a Client API
+  /// Key wrapped in `StaticCredentials`, or a session). The token is resolved per operation.
   public init(
-    apiKey: String,
+    credentials: PortalCredentials,
     api: PortalApiProtocol,
     keychain: PortalKeychainProtocol,
     host: String = "mpc.portalhq.io",
@@ -110,7 +115,7 @@ public class PortalMpc: PortalMpcProtocol {
   ) {
     // Basic setup
     self.api = api
-    self.apiKey = apiKey
+    self.credentials = credentials
     self.host = host
     self.keychain = keychain
     self.version = version
@@ -125,6 +130,35 @@ public class PortalMpc: PortalMpcProtocol {
       clientPlatformVersion: SDK_VERSION,
       isMultiBackupEnabled: featureFlags?.isMultiBackupEnabled,
       mpcServerVersion: self.version
+    )
+  }
+
+  /// Create an instance of Portal's MPC service from a Client API Key.
+  ///
+  /// Wraps the key in a `StaticCredentials`. Kept non-throwing like the original, so a blank key
+  /// surfaces as `PortalCredentialError.unavailable` at the first MPC operation rather than here.
+  @available(*, deprecated, message: "Use init(credentials:api:keychain:host:isSimulator:version:mobile:apiHost:featureFlags:) and pass StaticCredentials(apiKey) or a PortalSession.")
+  public convenience init(
+    apiKey: String,
+    api: PortalApiProtocol,
+    keychain: PortalKeychainProtocol,
+    host: String = "mpc.portalhq.io",
+    isSimulator: Bool = false,
+    version: String = "v6",
+    mobile: Mobile,
+    apiHost: String = "api.portalhq.io",
+    featureFlags: FeatureFlags? = nil
+  ) {
+    self.init(
+      credentials: StaticCredentials(apiKey),
+      api: api,
+      keychain: keychain,
+      host: host,
+      isSimulator: isSimulator,
+      version: version,
+      mobile: mobile,
+      apiHost: apiHost,
+      featureFlags: featureFlags
     )
   }
 
@@ -163,6 +197,9 @@ public class PortalMpc: PortalMpcProtocol {
       }
 
       usingProgressCallback?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
+      // Resolved once, above the fan-out, so both curves present the same token and a broken
+      // credential fails here as a PortalCredentialError before any binary round trip.
+      let token = try resolveCredentialToken(self.credentials)
       // Generate both backup shares in parallel
       let generateResponse = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<PortalMpcGenerateResponse, Error>) in
         Task {
@@ -171,7 +208,7 @@ public class PortalMpc: PortalMpcProtocol {
           // Run both backups in parallel
           if let ed25519SigningShare = shares[PortalCurve.ED25519.rawValue] {
             do {
-              async let mpcShare = try getBackupShare(.ED25519, withMethod: method, andSigningShare: ed25519SigningShare.share, reqId: traceId)
+              async let mpcShare = try getBackupShare(.ED25519, withMethod: method, andSigningShare: ed25519SigningShare.share, reqId: traceId, token: token)
 
               usingProgressCallback?(MpcStatus(status: .parsingShare, done: false))
               let shareData = try await encoder.encode(mpcShare)
@@ -190,7 +227,7 @@ public class PortalMpc: PortalMpcProtocol {
           }
           if let secp256k1SigningShare = shares[PortalCurve.SECP256K1.rawValue]?.share {
             do {
-              async let mpcShare = try getBackupShare(.SECP256K1, withMethod: method, andSigningShare: secp256k1SigningShare, reqId: traceId)
+              async let mpcShare = try getBackupShare(.SECP256K1, withMethod: method, andSigningShare: secp256k1SigningShare, reqId: traceId, token: token)
 
               usingProgressCallback?(MpcStatus(status: .parsingShare, done: false))
               let shareData = try await encoder.encode(mpcShare)
@@ -450,8 +487,12 @@ public class PortalMpc: PortalMpcProtocol {
 
   /// Generates both signing shares using the MPC binary (the default, on-device DKG flow).
   private func generateSigningSharesViaBinary(withProgressCallback: ((MpcStatus) -> Void)? = nil, reqId: String?) async throws -> PortalMpcGenerateResponse {
+    // Resolved once, above the fan-out, so both curves present the same token and a broken
+    // credential fails here as a PortalCredentialError before any DKG round starts.
+    let token = try resolveCredentialToken(self.credentials)
+
     // Generate both signing shares in parallel
-    try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<PortalMpcGenerateResponse, Error>) in
+    return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<PortalMpcGenerateResponse, Error>) in
       Task { [self] in
         do {
           self.logger.info("Generating wallet: generating signing shares using the binary MPC flow.")
@@ -459,8 +500,8 @@ public class PortalMpc: PortalMpcProtocol {
 
           var generateResponse: PortalMpcGenerateResponse = [:]
 
-          async let ed25519Generate = try self.getSigningShare(.ED25519, reqId: reqId)
-          async let secp256k1Generate = try self.getSigningShare(.SECP256K1, reqId: reqId)
+          async let ed25519Generate = try self.getSigningShare(.ED25519, reqId: reqId, token: token)
+          async let secp256k1Generate = try self.getSigningShare(.SECP256K1, reqId: reqId, token: token)
 
           let (ed25519MpcShare, secp256k1MpcShare) = try await (ed25519Generate, secp256k1Generate)
 
@@ -625,6 +666,10 @@ public class PortalMpc: PortalMpcProtocol {
         throw MpcError.unexpectedErrorOnRecover("Storage method \(method.rawValue) not registered.")
       }
 
+      // Resolved once, above the fan-out and before the storage read, so a dead session fails
+      // here instead of after the user has been prompted for their backup.
+      let token = try resolveCredentialToken(self.credentials)
+
       let recoverResponse = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<PortalMpcGenerateResponse, Error>) in
         Task {
           do {
@@ -646,7 +691,7 @@ public class PortalMpc: PortalMpcProtocol {
 
             if let ed25519Share = shares[PortalCurve.ED25519.rawValue] {
               //  The share's already been backed up, recover it
-              async let ed25519MpcShare = try recoverSigningShare(.ED25519, withMethod: method, andBackupShare: ed25519Share.share, reqId: traceId)
+              async let ed25519MpcShare = try recoverSigningShare(.ED25519, withMethod: method, andBackupShare: ed25519Share.share, reqId: traceId, token: token)
 
               let shareData = try await encoder.encode(ed25519MpcShare)
               guard let shareString = String(data: shareData, encoding: .utf8) else {
@@ -661,7 +706,7 @@ public class PortalMpc: PortalMpcProtocol {
             }
 
             if let secp256k1Share = shares[PortalCurve.SECP256K1.rawValue] {
-              async let secp256k1MpcShare = try recoverSigningShare(.SECP256K1, withMethod: method, andBackupShare: secp256k1Share.share, reqId: traceId)
+              async let secp256k1MpcShare = try recoverSigningShare(.SECP256K1, withMethod: method, andBackupShare: secp256k1Share.share, reqId: traceId, token: token)
 
               let shareData = try await encoder.encode(secp256k1MpcShare)
               guard let shareString = String(data: shareData, encoding: .utf8) else {
@@ -739,8 +784,11 @@ public class PortalMpc: PortalMpcProtocol {
 
       usingProgressCallback?(MpcStatus(status: .generatingShare, done: false))
 
+      // Resolved once, right above the binary call, after the local wallet checks.
+      let token = try resolveCredentialToken(self.credentials)
+
       // generate the ED25519 share
-      let ed25519MpcShare = try await self.getSigningShare(.ED25519, reqId: traceId)
+      let ed25519MpcShare = try await self.getSigningShare(.ED25519, reqId: traceId, token: token)
 
       // create a share object to be stored to keychain
       var generateResponse: PortalMpcGenerateResponse = [:]
@@ -816,19 +864,24 @@ public class PortalMpc: PortalMpcProtocol {
     return (solanaAddress, backupResult)
   }
 
+  /// Registers `withStorage` for `method` and hands it the API and, for the storages that call
+  /// Portal themselves (Passkey, Firebase), the credential. The credential object is injected,
+  /// never a token: registration must not resolve anything, and the storage resolves per request
+  /// so it follows session rotation like the rest of the SDK. A storage of the wrong type for
+  /// `method` is registered as-is rather than crashing.
   public func registerBackupMethod(_ method: BackupMethods, withStorage: PortalStorage) {
     var storage = withStorage
     storage.api = self.api
 
     if #available(iOS 16, *) {
       if method == .Passkey {
-        (storage as! PasskeyStorage).apiKey = self.apiKey
+        (storage as! PasskeyStorage).credentials = self.credentials
       }
     }
 
     if method == .Firebase {
       if let firebaseStorage = storage as? FirebaseStorage {
-        firebaseStorage.apiKey = self.apiKey
+        firebaseStorage.credentials = self.credentials
       }
     }
 
@@ -896,11 +949,24 @@ public class PortalMpc: PortalMpcProtocol {
    * Private functions
    *******************************************/
 
+  /// Builds the `PortalMpcError` for a binary error result and, when the MPC service rejected the
+  /// credential (`AUTH_FAILED`), reports it to the credentials layer before the error is thrown.
+  /// The binary is not behind the transport's 401 hook, so this is the MPC path's single
+  /// reporting point; `context` names the operation for the log line only.
+  private func mpcError(from error: PortalError, context: String) -> PortalMpcError {
+    let mpcError = PortalMpcError(error)
+    if mpcError.isAuthFailure {
+      reportUnauthorizedAndLog(self.credentials, context: context)
+    }
+    return mpcError
+  }
+
   private func getBackupShare(
     _ forCurve: PortalCurve,
     withMethod: BackupMethods,
     andSigningShare: String,
-    reqId: String?
+    reqId: String?,
+    token: String
   ) async throws -> MpcShare {
     let mpcShare = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<MpcShare, Error>) in
       Task {
@@ -915,8 +981,8 @@ public class PortalMpc: PortalMpcProtocol {
           let mpcMetadataString = try metadata.jsonString()
 
           let response = forCurve == .ED25519
-            ? await self.mobile.MobileBackupEd25519(self.apiKey, self.host, andSigningShare, self.apiHost, mpcMetadataString)
-            : await self.mobile.MobileBackupSecp256k1(self.apiKey, self.host, andSigningShare, self.apiHost, mpcMetadataString)
+            ? await self.mobile.MobileBackupEd25519(token, self.host, andSigningShare, self.apiHost, mpcMetadataString)
+            : await self.mobile.MobileBackupSecp256k1(token, self.host, andSigningShare, self.apiHost, mpcMetadataString)
 
           // Parse the backup share.
           let jsonData = response.data(using: .utf8)!
@@ -924,7 +990,7 @@ public class PortalMpc: PortalMpcProtocol {
 
           // Throw if there is an error getting the backup share.
           if let error = rotateResult.error, error.isValid() {
-            continuation.resume(throwing: PortalMpcError(error))
+            continuation.resume(throwing: self.mpcError(from: error, context: "PortalMpc.getBackupShare"))
             return
           }
 
@@ -942,7 +1008,7 @@ public class PortalMpc: PortalMpcProtocol {
     return mpcShare
   }
 
-  private func getSigningShare(_ forCurve: PortalCurve, reqId: String?) async throws -> MpcShare {
+  private func getSigningShare(_ forCurve: PortalCurve, reqId: String?, token: String) async throws -> MpcShare {
     let mpcShare = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<MpcShare, Error>) in
       Task {
         do {
@@ -953,8 +1019,8 @@ public class PortalMpc: PortalMpcProtocol {
 
           let mpcMetadataString = try metadata.jsonString()
           let response = forCurve == .ED25519
-            ? await self.mobile.MobileGenerateEd25519(self.apiKey, self.host, self.apiHost, mpcMetadataString)
-            : await self.mobile.MobileGenerateSecp256k1(self.apiKey, self.host, self.apiHost, mpcMetadataString)
+            ? await self.mobile.MobileGenerateEd25519(token, self.host, self.apiHost, mpcMetadataString)
+            : await self.mobile.MobileGenerateSecp256k1(token, self.host, self.apiHost, mpcMetadataString)
 
           // Parse the backup share.
           let jsonData = response.data(using: .utf8)!
@@ -963,7 +1029,7 @@ public class PortalMpc: PortalMpcProtocol {
           // Throw if there is an error getting the backup share.
           if let error = rotateResult.error, error.isValid() {
             self.logger.error("Error generating \(forCurve.rawValue) share: \(rotateResult.error?.message ?? "")")
-            continuation.resume(throwing: PortalMpcError(error))
+            continuation.resume(throwing: self.mpcError(from: error, context: "PortalMpc.getSigningShare"))
             return
           }
 
@@ -1006,7 +1072,7 @@ public class PortalMpc: PortalMpcProtocol {
     }
   }
 
-  private func recoverSigningShare(_ forCurve: PortalCurve, withMethod: BackupMethods, andBackupShare: String, reqId: String?) async throws -> MpcShare {
+  private func recoverSigningShare(_ forCurve: PortalCurve, withMethod: BackupMethods, andBackupShare: String, reqId: String?, token: String) async throws -> MpcShare {
     let mpcShare = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<MpcShare, Error>) in
       Task {
         do {
@@ -1020,8 +1086,8 @@ public class PortalMpc: PortalMpcProtocol {
           let mpcMetadataString = try metadata.jsonString()
 
           let response = forCurve == .ED25519
-            ? await self.mobile.MobileRecoverSigningEd25519(self.apiKey, self.host, andBackupShare, self.apiHost, mpcMetadataString)
-            : await self.mobile.MobileRecoverSigningSecp256k1(self.apiKey, self.host, andBackupShare, self.apiHost, mpcMetadataString)
+            ? await self.mobile.MobileRecoverSigningEd25519(token, self.host, andBackupShare, self.apiHost, mpcMetadataString)
+            : await self.mobile.MobileRecoverSigningSecp256k1(token, self.host, andBackupShare, self.apiHost, mpcMetadataString)
 
           // Parse the backup share.
           let jsonData = response.data(using: .utf8)!
@@ -1029,7 +1095,7 @@ public class PortalMpc: PortalMpcProtocol {
 
           // Throw if there is an error getting the backup share.
           if let error = rotateResult.error, error.isValid() {
-            continuation.resume(throwing: PortalMpcError(error))
+            continuation.resume(throwing: self.mpcError(from: error, context: "PortalMpc.recoverSigningShare"))
             return
           }
 

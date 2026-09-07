@@ -46,7 +46,10 @@ public class PortalProvider: PortalProviderProtocol {
     }
   }
 
-  private let apiKey: String
+  /// The credential every Portal-owned RPC request and every signature is authenticated with.
+  /// The token is resolved from it per call — never cached — so a session rotated or invalidated
+  /// under a long-lived provider takes effect on the next request.
+  let credentials: PortalCredentials
   public var autoApprove: Bool
   public var chainId: Int?
   public var delegate: PortalProviderDelegate?
@@ -62,7 +65,7 @@ public class PortalProvider: PortalProviderProtocol {
   private var processedSignatureIds: [String] = []
   private let requests: PortalRequestsProtocol
   private let rpcConfig: [String: String]
-  private let signer: PortalMpcSigner
+  private let signer: PortalSignerProtocol
   private let featureFlags: FeatureFlags?
 
   private var walletMethods: [ETHRequestMethods.RawValue] = [
@@ -76,12 +79,63 @@ public class PortalProvider: PortalProviderProtocol {
 
   /// Creates an instance of PortalProvider.
   /// - Parameters:
-  ///   - apiKey: The client API key. You can obtain this via Portal's REST API.
-  ///   - chainId: The ID of the EVM network you are using.
-  ///   - gatewayUrl: The gateway URL, such as Infura or Alchemy.
-  ///   - apiHost: The hostname of the API to use.
+  ///   - credentials: The credential (Client API Key or session) that authenticates Portal-owned
+  ///     RPC requests and signatures. Resolved per call, never cached.
+  ///   - rpcConfig: CAIP-2 chain id → RPC URL. The credential is attached only to Portal-owned
+  ///     (or local loopback) URLs; third-party gateways never see it.
+  ///   - keychain: Where signing shares and addresses live.
   ///   - autoApprove: Auto approves all transactions.
+  ///   - requests: The transport. When it reports 401s and has no hook yet, the provider wires
+  ///     one so a rejected credential is invalidated and the host is notified.
+  ///   - signer: Injectable signer; defaults to a `PortalMpcSigner` that receives the resolved
+  ///     token per call.
   public init(
+    credentials: PortalCredentials,
+    rpcConfig: [String: String],
+    keychain: PortalKeychainProtocol,
+    autoApprove: Bool,
+    mpcHost: String = "mpc.portalhq.io",
+    version: String = "v6",
+    featureFlags: FeatureFlags? = nil,
+    requests: PortalRequestsProtocol? = nil,
+    signer: PortalSignerProtocol? = nil,
+    binary: Mobile? = nil,
+    presignatureSource: PresignatureSource? = nil
+  ) throws {
+    // User-defined instance variables
+    self.credentials = credentials
+    self.autoApprove = autoApprove
+    self.keychain = keychain
+    self.rpcConfig = rpcConfig
+
+    // Other instance variables
+    self.featureFlags = featureFlags
+    self.requests = requests ?? PortalRequests()
+    self.signer = signer ?? PortalMpcSigner(
+      keychain: keychain,
+      mpcUrl: mpcHost,
+      version: version,
+      featureFlags: featureFlags,
+      binary: binary,
+      presignatureSource: presignatureSource
+    )
+    // Create a serial dispatch queue with a unique label
+    self.mpcQueue = DispatchQueue.global(qos: .background)
+
+    // The transport is the single reporter of RPC 401s; the provider itself never invalidates
+    // on a transport error, so a 401 from a third-party gateway cannot end the Portal session.
+    installUnauthorizedHook(on: self.requests, for: credentials, context: "PortalProvider")
+
+    self.dispatchConnect()
+  }
+
+  /// Creates an instance of PortalProvider from a Client API Key.
+  ///
+  /// The key is wrapped in a `StaticCredentials`. A blank key now throws
+  /// `PortalCredentialError.invalidApiKey` here instead of producing a provider that fails on its
+  /// first Portal-owned request (parity with the Android and React Native SDKs).
+  @available(*, deprecated, message: "Use init(credentials:rpcConfig:keychain:autoApprove:mpcHost:version:featureFlags:requests:signer:binary:presignatureSource:) and pass StaticCredentials(apiKey) or a PortalSession.")
+  public convenience init(
     apiKey: String,
     rpcConfig: [String: String],
     keychain: PortalKeychainProtocol,
@@ -94,28 +148,19 @@ public class PortalProvider: PortalProviderProtocol {
     binary: Mobile? = nil,
     presignatureSource: PresignatureSource? = nil
   ) throws {
-    // User-defined instance variables
-    self.apiKey = apiKey
-    self.autoApprove = autoApprove
-    self.keychain = keychain
-    self.rpcConfig = rpcConfig
-
-    // Other instance variables
-    self.featureFlags = featureFlags
-    self.requests = requests ?? PortalRequests()
-    self.signer = signer ?? PortalMpcSigner(
-      apiKey: apiKey,
+    try self.init(
+      credentials: resolveCredentials(apiKey: apiKey, credentials: nil),
+      rpcConfig: rpcConfig,
       keychain: keychain,
-      mpcUrl: mpcHost,
+      autoApprove: autoApprove,
+      mpcHost: mpcHost,
       version: version,
       featureFlags: featureFlags,
+      requests: requests,
+      signer: signer,
       binary: binary,
       presignatureSource: presignatureSource
     )
-    // Create a serial dispatch queue with a unique label
-    self.mpcQueue = DispatchQueue.global(qos: .background)
-
-    self.dispatchConnect()
   }
 
   /*******************************************
@@ -410,11 +455,12 @@ public class PortalProvider: PortalProviderProtocol {
         method: withMethod,
         params: andParams
       )
+      let bearerToken: String? = try rpcUrl.starts(with: "https://api.portalhq.") ? resolveCredentialToken(self.credentials) : nil
       let request = PortalAPIRequest(
         url: url,
         method: .post,
         payload: payload,
-        bearerToken: rpcUrl.starts(with: "https://api.portalhq.") ? self.apiKey : nil,
+        bearerToken: bearerToken,
         traceId: traceId
       )
 
@@ -498,17 +544,29 @@ public class PortalProvider: PortalProviderProtocol {
 
     let payload = try getPortalSignRequest(method: withPayload.method, params: withPayload.params)
 
-    let signature = try await self.signer.sign(
-      onChainId,
-      withPayload: payload,
-      andRpcUrl: rpcUrl,
-      usingBlockchain: onBlockchain,
-      signatureApprovalMemo: options?.signatureApprovalMemo,
-      sponsorGas: options?.sponsorGas,
-      reqId: traceId ?? options?.traceId
-    )
+    // Resolved only now, after the user approved: a declined request never touches the session,
+    // and a token resolved before a long approval wait could be stale by the time it is used.
+    let token = try resolveCredentialToken(self.credentials)
 
-    return PortalProviderResult(id: withPayload.id, result: signature)
+    do {
+      let signature = try await self.signer.sign(
+        onChainId,
+        withPayload: payload,
+        andRpcUrl: rpcUrl,
+        usingBlockchain: onBlockchain,
+        signatureApprovalMemo: options?.signatureApprovalMemo,
+        sponsorGas: options?.sponsorGas,
+        reqId: traceId ?? options?.traceId,
+        token: token
+      )
+
+      return PortalProviderResult(id: withPayload.id, result: signature)
+    } catch let error as PortalMpcError where error.isAuthFailure {
+      // The MPC service is not on the transport's 401 hook, so the signing path reports the
+      // rejected credential itself. The original error is rethrown unchanged.
+      reportUnauthorizedAndLog(self.credentials, context: "PortalProvider.handleSignRequest")
+      throw error
+    }
   }
 
   private func getPortalSignRequest(

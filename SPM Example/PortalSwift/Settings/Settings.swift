@@ -30,6 +30,33 @@ enum Environment: String, Equatable {
   case localHost
 }
 
+// MARK: - Portal Hosts
+
+/// Portal API hosts, one per environment.
+///
+/// Promoted out of `loadApplicationConfig()` because `PortalAuth` needs the same value: an
+/// `authEnvironmentId` minted on staging does not exist on production, and a session has to be
+/// spent against the backend that issued it, so both must follow one `ENV` switch.
+enum PortalHosts {
+  static let production = "api.portalhq.io"
+  static let staging = "api.portalhq.dev"
+  static let localHost = "localhost:3001"
+}
+
+extension Environment {
+  /// The Portal API host for this environment, shared by `Portal` and `PortalAuth`.
+  var portalApiHost: String {
+    switch self {
+    case .production:
+      return PortalHosts.production
+    case .staging:
+      return PortalHosts.staging
+    case .localHost:
+      return PortalHosts.localHost
+    }
+  }
+}
+
 struct PortalConfig {
   var environment: Environment = {
     if let env = Bundle.main.infoDictionary?["ENV"] as? String {
@@ -44,6 +71,7 @@ struct PortalConfig {
     }
     return .production
   }()
+
   var gdriveBackupOption: GDriveBackupOption = .appDataFolder
   var appConfig: ApplicationConfiguration?
 }
@@ -57,6 +85,20 @@ class Settings: ObservableObject {
   }
 
   var portalConfig: PortalConfig = .init()
+
+  /// The four `AUTH_*` values, all blank unless `Secrets.xcconfig` defines them.
+  ///
+  /// Populated by `loadApplicationConfig()` before the other keys are validated, so Client Auth
+  /// stays readable even when an unrelated secret is missing.
+  private(set) var clientAuthConfig: ClientAuthConfig = .init()
+
+  /// Whether this build was compiled against the backup-with-Portal PortalEx instance.
+  ///
+  /// A build-time choice (`BACKUP_WITH_PORTAL` picks the custodian server URL and its
+  /// `x-api-key`), while the register/backup gate is the runtime
+  /// `client.environment?.backupWithPortalEnabled`. The two can disagree, which is why the flag
+  /// is exposed rather than kept local to `loadApplicationConfig()`.
+  private(set) var isBuiltWithBackupWithPortal: Bool = false
 
   var isAccountAbstracted: Bool = false
   var useEnclaveMPC: Bool = false
@@ -99,6 +141,18 @@ extension Settings {
         self.logger.error("Settings - Couldn't load info.plist dictionary.")
         throw PortalExampleAppError.cantLoadInfoPlist()
       }
+      // Read before the required keys are validated: Client Auth is optional, and a missing
+      // ALCHEMY_API_KEY must not leave `clientAuthConfig` unpopulated.
+      self.clientAuthConfig = ClientAuthConfig(
+        authEnvironmentId: optionalSecret("AUTH_ENVIRONMENT_ID", from: infoDictionary),
+        redirectUrl: optionalSecret("AUTH_REDIRECT_URL", from: infoDictionary),
+        magicLinkFromEmail: optionalSecret("AUTH_MAGIC_LINK_FROM_EMAIL", from: infoDictionary),
+        magicLinkTemplateId: optionalSecret("AUTH_MAGIC_LINK_TEMPLATE_ID", from: infoDictionary)
+      )
+      // Flags and fixed key names only: the four values are configuration secrets, and the
+      // unified log is persistent.
+      self.logger.info("Settings - Client Auth isConfigured: \(self.clientAuthConfig.isConfigured, privacy: .public), isMagicLinkConfigured: \(self.clientAuthConfig.isMagicLinkConfigured, privacy: .public), missingKeys: \(self.clientAuthConfig.missingKeys.joined(separator: ", "), privacy: .public)")
+
       guard let ALCHEMY_API_KEY: String = infoDictionary["ALCHEMY_API_KEY"] as? String else {
         self.logger.error("Settings - Error: Do you have `ALCHEMY_API_KEY=$(ALCHEMY_API_KEY)` in your Secrets.xcconfig?")
         throw PortalExampleAppError.environmentNotSet()
@@ -113,6 +167,7 @@ extension Settings {
       }
 
       let isBackupWithPortal = BACKUP_WITH_PORTAL == "true"
+      self.isBuiltWithBackupWithPortal = isBackupWithPortal
 
       switch portalConfig.environment {
       case .production:
@@ -124,7 +179,7 @@ extension Settings {
 
         portalConfig.appConfig = ApplicationConfiguration(
           alchemyApiKey: ALCHEMY_API_KEY,
-          apiUrl: "api.portalhq.io",
+          apiUrl: PortalHosts.production,
           custodianServerUrl: custodianServerUrl,
           custodianApiKey: custodianApiKey,
           googleClientId: GOOGLE_CLIENT_ID,
@@ -142,7 +197,7 @@ extension Settings {
 
         portalConfig.appConfig = ApplicationConfiguration(
           alchemyApiKey: ALCHEMY_API_KEY,
-          apiUrl: "api.portalhq.dev",
+          apiUrl: PortalHosts.staging,
           custodianServerUrl: custodianServerUrl,
           custodianApiKey: custodianApiKey,
           googleClientId: GOOGLE_CLIENT_ID,
@@ -156,7 +211,7 @@ extension Settings {
 
         portalConfig.appConfig = ApplicationConfiguration(
           alchemyApiKey: ALCHEMY_API_KEY,
-          apiUrl: "localhost:3001",
+          apiUrl: PortalHosts.localHost,
           custodianServerUrl: CustodianServer.Url.localHost,
           custodianApiKey: "",
           googleClientId: GOOGLE_CLIENT_ID,
@@ -190,4 +245,16 @@ extension Settings {
 
     return value
   }
+}
+
+// MARK: - Optional Secrets
+
+/// Reads an optional value from the Info.plist, trimmed of surrounding whitespace.
+///
+/// The tolerant sibling of `requireSecret`: an undefined `$(VAR)` expands to an empty string, so
+/// a missing key and a blank one are the same thing and both mean "the feature is off". Returns
+/// `""` rather than throwing, and logs nothing — the caller decides whether blank is a problem,
+/// and the values these keys hold never belong in a log line.
+func optionalSecret(_ key: String, from infoDictionary: [String: Any]) -> String {
+  (infoDictionary[key] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 }

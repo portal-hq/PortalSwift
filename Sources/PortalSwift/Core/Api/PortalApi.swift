@@ -152,13 +152,20 @@ private actor ThreadSafeClientWrapper {
 /// The class to interface with Portal's REST API.
 public class PortalApi: PortalApiProtocol {
   private let _clientStorage = ThreadSafeClientWrapper()
-  private var apiKey: String
+  /// The credential every request resolves its bearer from, per call and never cached, so a
+  /// session rotated or invalidated underneath this instance is honoured on the next request.
+  /// Internal (not private) so tests can assert which credential an instance was built with.
+  let credentials: PortalCredentials
   private var baseUrl: String
   private let enclaveMPCHost: String
   private let decoder = JSONDecoder()
-  private var httpRequests: HttpRequester
+  /// The legacy synchronous transport behind `storedClientBackupShare`. Settable within the
+  /// module so tests can drive that path with a stub completing `HttpError.unauthorized`.
+  var httpRequests: HttpRequester
   private let logger = PortalLogger.shared
-  private let requests: PortalRequestsProtocol
+  /// The async transport shared with the eight lazy sub-APIs. Internal so tests can verify the
+  /// 401 hook was installed on it.
+  let requests: PortalRequestsProtocol
   private let featureFlags: FeatureFlags?
 
   private var address: String? {
@@ -179,56 +186,56 @@ public class PortalApi: PortalApiProtocol {
 
   /// Access to Yield.xyz integration functionality.
   public lazy var yieldxyz: PortalYieldXyzApiProtocol = PortalYieldXyzApi(
-    apiKey: self.apiKey,
+    credentials: self.credentials,
     apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
     requests: self.requests
   )
 
   /// Access to Lifi trading integration functionality.
   public lazy var lifi: PortalLifiTradingApiProtocol = PortalLifiTradingApi(
-    apiKey: self.apiKey,
+    credentials: self.credentials,
     apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
     requests: self.requests
   )
 
   /// Access to 0x trading integration functionality.
   public lazy var zeroX: PortalZeroXTradingApiProtocol = PortalZeroXTradingApi(
-    apiKey: self.apiKey,
+    credentials: self.credentials,
     apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
     requests: self.requests
   )
 
   /// Access to Hypernative security API functionality.
   public lazy var hypernative: PortalHypernativeApiProtocol = PortalHypernativeApi(
-    apiKey: self.apiKey,
+    credentials: self.credentials,
     apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
     requests: self.requests
   )
 
   /// Access to Blockaid security API functionality.
   public lazy var blockaid: PortalBlockaidApiProtocol = PortalBlockaidApi(
-    apiKey: self.apiKey,
+    credentials: self.credentials,
     apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
     requests: self.requests
   )
 
   /// Access to Delegations API functionality.
   public lazy var delegations: PortalDelegationsApiProtocol = PortalDelegationsApi(
-    apiKey: self.apiKey,
+    credentials: self.credentials,
     apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
     requests: self.requests
   )
 
   /// Access to EVM Account Type API functionality.
   public lazy var evmAccountType: PortalEvmAccountTypeApiProtocol = PortalEvmAccountTypeApi(
-    apiKey: self.apiKey,
+    credentials: self.credentials,
     apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
     requests: self.requests
   )
 
   /// Access to Noah ramps integration functionality.
   public lazy var noah: PortalNoahApiProtocol = PortalNoahApi(
-    apiKey: self.apiKey,
+    credentials: self.credentials,
     apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
     requests: self.requests
   )
@@ -236,11 +243,51 @@ public class PortalApi: PortalApiProtocol {
   public weak var provider: PortalProviderProtocol?
 
   /// Create an instance of a PortalApi class.
+  ///
+  /// The credential is resolved again on every request and never at construction, so a session
+  /// that rotates or is invalidated underneath a long-lived `PortalApi` takes effect on the very
+  /// next call. Construction also wires the transport's 401 hook to `credentials` — only when the
+  /// transport reports 401s and nobody has wired it yet — which is how a rejected session gets
+  /// invalidated and the host notified without per-endpoint handling.
+  /// - Parameters:
+  ///   - credentials: The credential presented as the bearer on every Portal request: a
+  ///     `StaticCredentials` wrapping a Client API Key, or a session obtained through `PortalAuth`.
+  ///   - apiHost: (optional) The Portal API hostname.
+  ///   - enclaveMPCHost: (optional) The enclave MPC hostname used for pre-generated shares.
+  ///   - provider: The PortalProvider instance to use for stateful Provider info (chainId, address)
+  ///   - featureFlags: (optional) Feature flags forwarded on the legacy backup-share status call.
+  ///   - requests: (optional) The transport to use; defaults to a fresh `PortalRequests`.
+  public init(
+    credentials: PortalCredentials,
+    apiHost: String = "api.portalhq.io",
+    enclaveMPCHost: String = "mpc-client.portalhq.io",
+    provider: PortalProviderProtocol? = nil,
+    featureFlags: FeatureFlags? = nil,
+    requests: PortalRequestsProtocol? = nil
+  ) {
+    self.credentials = credentials
+    self.baseUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
+    self.enclaveMPCHost = enclaveMPCHost
+    self.featureFlags = featureFlags
+    self.provider = provider
+    self.requests = requests ?? PortalRequests()
+    self.httpRequests = HttpRequester(baseUrl: self.baseUrl)
+
+    installUnauthorizedHook(on: self.requests, for: credentials, context: "PortalApi")
+  }
+
+  /// Create an instance of a PortalApi class from a Client API Key.
+  ///
+  /// Kept as a convenience so existing integrations compile unchanged; the key is wrapped in
+  /// `StaticCredentials` and everything else follows the credentials path. A blank key is not
+  /// rejected here because this initializer cannot throw: it fails on first use with
+  /// `PortalCredentialError.unavailable` instead of sending an empty bearer.
   /// - Parameters:
   ///   - apiKey: The Client API key. You can create one using Portal's REST API.
   ///   - apiHost: (optional) The Portal API hostname.
   ///   - provider: The PortalProvider instance to use for stateful Provider info (chainId, address)
-  public init(
+  @available(*, deprecated, message: "Use init(credentials:) instead; wrap a Client API Key in StaticCredentials(apiKey) or pass a PortalAuth session.")
+  public convenience init(
     apiKey: String,
     apiHost: String = "api.portalhq.io",
     enclaveMPCHost: String = "mpc-client.portalhq.io",
@@ -248,13 +295,40 @@ public class PortalApi: PortalApiProtocol {
     featureFlags: FeatureFlags? = nil,
     requests: PortalRequestsProtocol? = nil
   ) {
-    self.apiKey = apiKey
-    self.baseUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
-    self.enclaveMPCHost = enclaveMPCHost
-    self.featureFlags = featureFlags
-    self.provider = provider
-    self.requests = requests ?? PortalRequests()
-    self.httpRequests = HttpRequester(baseUrl: self.baseUrl)
+    self.init(
+      credentials: StaticCredentials(apiKey),
+      apiHost: apiHost,
+      enclaveMPCHost: enclaveMPCHost,
+      provider: provider,
+      featureFlags: featureFlags,
+      requests: requests
+    )
+  }
+
+  /// Test seam: the credentials initializer plus an injected legacy `HttpRequester`, so the
+  /// synchronous `storedClientBackupShare` path can be driven by a stub that completes with a
+  /// chosen `HttpError` without touching the network. `httpRequests` has no default on purpose so
+  /// this overload never competes with the public initializer.
+  convenience init(
+    credentials: PortalCredentials,
+    apiHost: String = "api.portalhq.io",
+    enclaveMPCHost: String = "mpc-client.portalhq.io",
+    provider: PortalProviderProtocol? = nil,
+    featureFlags: FeatureFlags? = nil,
+    requests: PortalRequestsProtocol? = nil,
+    httpRequests: HttpRequester?
+  ) {
+    self.init(
+      credentials: credentials,
+      apiHost: apiHost,
+      enclaveMPCHost: enclaveMPCHost,
+      provider: provider,
+      featureFlags: featureFlags,
+      requests: requests
+    )
+    if let httpRequests {
+      self.httpRequests = httpRequests
+    }
   }
 
   /*******************************************
@@ -270,7 +344,7 @@ public class PortalApi: PortalApiProtocol {
           "clientPlatformVersion": SDK_VERSION
         ]
 
-        let ejectData = try await post(url, withBearerToken: self.apiKey, andPayload: body, traceId: traceId, mappingInResponse: Data.self)
+        let ejectData = try await post(url, andPayload: body, traceId: traceId, mappingInResponse: Data.self)
         guard let ejectResponse = String(data: ejectData, encoding: .utf8) else {
           throw PortalApiError.unableToReadStringResponse
         }
@@ -291,7 +365,7 @@ public class PortalApi: PortalApiProtocol {
     let traceId = generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/balances?chainId=\(chainId)") {
       do {
-        let balancesResponse = try await get(url, withBearerToken: self.apiKey, traceId: traceId, mappingInResponse: [FetchedBalance].self)
+        let balancesResponse = try await get(url, traceId: traceId, mappingInResponse: [FetchedBalance].self)
 
         return balancesResponse
       } catch {
@@ -312,7 +386,7 @@ public class PortalApi: PortalApiProtocol {
     let traceId = traceId ?? generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me") {
       do {
-        let clientResponse = try await get(url, withBearerToken: self.apiKey, traceId: traceId, mappingInResponse: ClientResponse.self)
+        let clientResponse = try await get(url, traceId: traceId, mappingInResponse: ClientResponse.self)
 
         return clientResponse
       } catch {
@@ -327,7 +401,7 @@ public class PortalApi: PortalApiProtocol {
     let traceId = generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)/assets") {
       do {
-        let assets = try await get(url, withBearerToken: self.apiKey, traceId: traceId, mappingInResponse: AssetsResponse.self)
+        let assets = try await get(url, traceId: traceId, mappingInResponse: AssetsResponse.self)
 
         return assets
       } catch {
@@ -344,7 +418,7 @@ public class PortalApi: PortalApiProtocol {
     let traceId = traceId ?? generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/backup-share-pairs/\(backupSharePairId)/cipher-text") {
       do {
-        let response = try await get(url, withBearerToken: self.apiKey, traceId: traceId, mappingInResponse: ClientCipherTextResponse.self)
+        let response = try await get(url, traceId: traceId, mappingInResponse: ClientCipherTextResponse.self)
 
         return response.cipherText
       } catch {
@@ -359,7 +433,7 @@ public class PortalApi: PortalApiProtocol {
     let traceId = generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/swaps/sources") {
       let payload = ["apiKey": swapsApiKey, "chainId": forChainId]
-      let response = try await post(url, withBearerToken: self.apiKey, andPayload: payload, traceId: traceId, mappingInResponse: [String: String].self)
+      let response = try await post(url, andPayload: payload, traceId: traceId, mappingInResponse: [String: String].self)
 
       return response
     }
@@ -380,7 +454,7 @@ public class PortalApi: PortalApiProtocol {
       body["apiKey"] = AnyCodable(swapsApiKey)
       body["chainId"] = AnyCodable(chainId)
 
-      let response = try await post(url, withBearerToken: self.apiKey, andPayload: body, traceId: traceId, mappingInResponse: Quote.self)
+      let response = try await post(url, andPayload: body, traceId: traceId, mappingInResponse: Quote.self)
 
       return response
     }
@@ -392,7 +466,7 @@ public class PortalApi: PortalApiProtocol {
     let traceId = generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)/assets/nfts") {
       do {
-        let nfts = try await get(url, withBearerToken: self.apiKey, traceId: traceId, mappingInResponse: [NftAsset].self)
+        let nfts = try await get(url, traceId: traceId, mappingInResponse: [NftAsset].self)
 
         return nfts
       } catch {
@@ -409,7 +483,7 @@ public class PortalApi: PortalApiProtocol {
     let traceId = generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/wallets/\(walletId)/\(type)-share-pairs") {
       do {
-        let sharePairs = try await get(url, withBearerToken: self.apiKey, traceId: traceId, mappingInResponse: [FetchedSharePair].self)
+        let sharePairs = try await get(url, traceId: traceId, mappingInResponse: [FetchedSharePair].self)
 
         return sharePairs
       } catch {
@@ -450,7 +524,7 @@ public class PortalApi: PortalApiProtocol {
     let traceId = generateTraceId()
     if let url = URL(string: requestUrlString) {
       do {
-        let transactions = try await get(url, withBearerToken: self.apiKey, traceId: traceId, mappingInResponse: [FetchedTransaction].self)
+        let transactions = try await get(url, traceId: traceId, mappingInResponse: [FetchedTransaction].self)
 
         return transactions
       } catch {
@@ -474,7 +548,7 @@ public class PortalApi: PortalApiProtocol {
 
     let traceId = generateTraceId()
     do {
-      return try await get(url, withBearerToken: self.apiKey, traceId: traceId, mappingInResponse: GetTransactionDetailsResponse.self)
+      return try await get(url, traceId: traceId, mappingInResponse: GetTransactionDetailsResponse.self)
     } catch {
       self.logger.error("PortalApi.getTransactionDetails() - Error: \(error.localizedDescription)")
       throw error
@@ -484,7 +558,7 @@ public class PortalApi: PortalApiProtocol {
   public func identify(_ traits: [String: AnyCodable] = [:]) async throws -> MetricsResponse {
     let traceId = generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v1/analytics/identify") {
-      let response = try await post(url, withBearerToken: self.apiKey, andPayload: ["traits": traits], traceId: traceId, mappingInResponse: MetricsResponse.self)
+      let response = try await post(url, andPayload: ["traits": traits], traceId: traceId, mappingInResponse: MetricsResponse.self)
 
       return response
     }
@@ -495,7 +569,7 @@ public class PortalApi: PortalApiProtocol {
   public func prepareEject(_ walletId: String, _ backupMethod: BackupMethods, traceId: String? = nil) async throws -> String {
     let traceId = traceId ?? generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/wallets/\(walletId)/prepare-eject") {
-      let prepareEjectResponse = try await post(url, withBearerToken: self.apiKey, andPayload: ["backupMethod": backupMethod.rawValue], traceId: traceId, mappingInResponse: PrepareEjectResponse.self)
+      let prepareEjectResponse = try await post(url, andPayload: ["backupMethod": backupMethod.rawValue], traceId: traceId, mappingInResponse: PrepareEjectResponse.self)
 
       return prepareEjectResponse.share
     }
@@ -539,7 +613,7 @@ public class PortalApi: PortalApiProtocol {
         if let operationType {
           payload["operationType"] = operationType.rawValue
         }
-        let response = try await post(url, withBearerToken: self.apiKey, andPayload: payload, traceId: traceId, mappingInResponse: BlockaidValidateTrxRes.self)
+        let response = try await post(url, andPayload: payload, traceId: traceId, mappingInResponse: BlockaidValidateTrxRes.self)
 
         return response
       } catch {
@@ -559,7 +633,7 @@ public class PortalApi: PortalApiProtocol {
         let payload = AnyCodable([
           "clientCipherText": cipherText
         ])
-        try await patch(url, withBearerToken: self.apiKey, andPayload: payload, traceId: traceId, mappingInResponse: Data.self)
+        try await patch(url, andPayload: payload, traceId: traceId, mappingInResponse: Data.self)
 
         return true
       } catch {
@@ -579,7 +653,7 @@ public class PortalApi: PortalApiProtocol {
         event: event,
         properties: withProperties
       )
-      let response = try await post(url, withBearerToken: self.apiKey, andPayload: payload, traceId: traceId, mappingInResponse: MetricsResponse.self)
+      let response = try await post(url, andPayload: payload, traceId: traceId, mappingInResponse: MetricsResponse.self)
 
       return response
     }
@@ -596,7 +670,7 @@ public class PortalApi: PortalApiProtocol {
 
     do {
       let payload = GenerateApiRequest(usePreGenerated: true, metadataStr: metadataStr)
-      return try await self.post(url, withBearerToken: self.apiKey, andPayload: payload, traceId: traceId, mappingInResponse: GenerateApiResponse.self)
+      return try await self.post(url, andPayload: payload, traceId: traceId, mappingInResponse: GenerateApiResponse.self)
     } catch {
       self.logger.error("PortalApi.generatePreGeneratedShares() - Unable to generate pre-generated shares: \(error.localizedDescription)")
       throw error
@@ -618,7 +692,7 @@ public class PortalApi: PortalApiProtocol {
           status: status
         )
 
-        try await self.patch(url, withBearerToken: self.apiKey, andPayload: payload, traceId: traceId, mappingInResponse: Data.self)
+        try await self.patch(url, andPayload: payload, traceId: traceId, mappingInResponse: Data.self)
 
         return
       } catch {
@@ -635,7 +709,7 @@ public class PortalApi: PortalApiProtocol {
     let traceId = generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/fund") {
       let payload = FundRequestBody(amount: params.amount, chainId: chainId, token: params.token)
-      let response = try await post(url, withBearerToken: self.apiKey, andPayload: payload, traceId: traceId, mappingInResponse: FundResponse.self)
+      let response = try await post(url, andPayload: payload, traceId: traceId, mappingInResponse: FundResponse.self)
 
       return response
     }
@@ -649,7 +723,7 @@ public class PortalApi: PortalApiProtocol {
     }
 
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)/assets/send/broadcast-transaction") {
-      let response = try await post(url, withBearerToken: self.apiKey, andPayload: params, traceId: traceId, mappingInResponse: BroadcastBitcoinP2wpkhTransactionResponse.self)
+      let response = try await post(url, andPayload: params, traceId: traceId, mappingInResponse: BroadcastBitcoinP2wpkhTransactionResponse.self)
 
       return response
     }
@@ -663,7 +737,7 @@ public class PortalApi: PortalApiProtocol {
     }
 
     if let url = getBuildTransactionUrl(chainId: chainId) {
-      let response = try await post(url, withBearerToken: self.apiKey, andPayload: params.toDictionary(), traceId: traceId, mappingInResponse: BuildBitcoinP2wpkhTransactionResponse.self)
+      let response = try await post(url, andPayload: params.toDictionary(), traceId: traceId, mappingInResponse: BuildBitcoinP2wpkhTransactionResponse.self)
 
       return response
     }
@@ -677,7 +751,7 @@ public class PortalApi: PortalApiProtocol {
     }
 
     if let url = getBuildTransactionUrl(chainId: chainId) {
-      let response = try await post(url, withBearerToken: self.apiKey, andPayload: params.toDictionary(), traceId: traceId, mappingInResponse: BuildEip115TransactionResponse.self)
+      let response = try await post(url, andPayload: params.toDictionary(), traceId: traceId, mappingInResponse: BuildEip115TransactionResponse.self)
 
       return response
     }
@@ -691,7 +765,7 @@ public class PortalApi: PortalApiProtocol {
     }
 
     if let url = getBuildTransactionUrl(chainId: chainId) {
-      let response = try await post(url, withBearerToken: self.apiKey, andPayload: params.toDictionary(), traceId: traceId, mappingInResponse: BuildSolanaTransactionResponse.self)
+      let response = try await post(url, andPayload: params.toDictionary(), traceId: traceId, mappingInResponse: BuildSolanaTransactionResponse.self)
 
       return response
     }
@@ -702,7 +776,7 @@ public class PortalApi: PortalApiProtocol {
   public func getWalletCapabilities(traceId: String? = nil) async throws -> WalletCapabilitiesResponse {
     let traceId = traceId ?? generateTraceId()
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/wallet_getCapabilities") {
-      let response = try await get(url, withBearerToken: self.apiKey, traceId: traceId, mappingInResponse: WalletCapabilitiesResponse.self)
+      let response = try await get(url, traceId: traceId, mappingInResponse: WalletCapabilitiesResponse.self)
 
       return response
     }
@@ -718,29 +792,38 @@ public class PortalApi: PortalApiProtocol {
     return URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)/assets/send/build-transaction")
   }
 
+  // Every helper resolves the bearer at the moment the request is built — never earlier, never
+  // cached — so a rotated session is sent on the next call and a dead one fails here with a
+  // `PortalCredentialError` before anything reaches the wire. Callers validate their URL before
+  // reaching a helper, so local validation always precedes credential access.
+
   @discardableResult
-  private func get<ResponseType>(_ url: URL, withBearerToken: String? = nil, traceId: String? = nil,
+  private func get<ResponseType>(_ url: URL, traceId: String? = nil,
                                  mappingInResponse: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable
   {
-    let portalRequest = PortalAPIRequest(url: url, bearerToken: withBearerToken, traceId: traceId)
+    let token = try resolveCredentialToken(self.credentials)
+    let portalRequest = PortalAPIRequest(url: url, bearerToken: token, traceId: traceId)
     return try await self.requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }
 
   @discardableResult
-  private func patch<ResponseType>(_ url: URL, withBearerToken: String? = nil, andPayload: Codable, traceId: String? = nil, mappingInResponse: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable {
-    let portalRequest = PortalAPIRequest(url: url, method: .patch, payload: andPayload, bearerToken: withBearerToken, traceId: traceId)
+  private func patch<ResponseType>(_ url: URL, andPayload: Codable, traceId: String? = nil, mappingInResponse: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable {
+    let token = try resolveCredentialToken(self.credentials)
+    let portalRequest = PortalAPIRequest(url: url, method: .patch, payload: andPayload, bearerToken: token, traceId: traceId)
     return try await self.requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }
 
   @discardableResult
-  private func put<ResponseType>(_ url: URL, withBearerToken: String? = nil, andPayload: Codable, traceId: String? = nil, mappingInResponse: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable {
-    let portalRequest = PortalAPIRequest(url: url, method: .put, payload: andPayload, bearerToken: withBearerToken, traceId: traceId)
+  private func put<ResponseType>(_ url: URL, andPayload: Codable, traceId: String? = nil, mappingInResponse: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable {
+    let token = try resolveCredentialToken(self.credentials)
+    let portalRequest = PortalAPIRequest(url: url, method: .put, payload: andPayload, bearerToken: token, traceId: traceId)
     return try await self.requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }
 
   @discardableResult
-  private func post<ResponseType>(_ url: URL, withBearerToken: String? = nil, andPayload: Codable? = nil, traceId: String? = nil, mappingInResponse: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable {
-    let portalRequest = PortalAPIRequest(url: url, method: .post, payload: andPayload, bearerToken: withBearerToken, traceId: traceId)
+  private func post<ResponseType>(_ url: URL, andPayload: Codable? = nil, traceId: String? = nil, mappingInResponse: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable {
+    let token = try resolveCredentialToken(self.credentials)
+    let portalRequest = PortalAPIRequest(url: url, method: .post, payload: andPayload, bearerToken: token, traceId: traceId)
     return try await self.requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }
 
@@ -767,7 +850,7 @@ public class PortalApi: PortalApiProtocol {
     if let url = URL(string: "\(baseUrl)/api/v3/clients/me/simulate-transaction?chainId=\(chainId)") {
       do {
         let transformedTransaction = AnyCodable(transaction)
-        let simulatedTransaction = try await post(url, withBearerToken: self.apiKey, andPayload: transformedTransaction, traceId: traceId, mappingInResponse: SimulatedTransaction.self)
+        let simulatedTransaction = try await post(url, andPayload: transformedTransaction, traceId: traceId, mappingInResponse: SimulatedTransaction.self)
 
         return simulatedTransaction
       } catch {
@@ -935,15 +1018,27 @@ public class PortalApi: PortalApiProtocol {
       body["isMultiBackupEnabled"] = isMultiBackupEnabled
     }
 
+    // Resolve before building the request so a credential failure surfaces synchronously through
+    // the throw, without a wasted round trip; this legacy path has no async error channel.
+    let token = try resolveCredentialToken(self.credentials)
+    let credentials = self.credentials
+
     try self.httpRequests.put(
       path: "/api/v2/clients/me/wallet/stored-client-backup-share",
       body: body,
       headers: [
-        "Authorization": "Bearer \(self.apiKey)",
+        "Authorization": "Bearer \(token)",
         PORTAL_TRACE_ID_HEADER: generateTraceId()
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<String>) in
+      // This path bypasses `PortalRequests` and its hook, so it reports the 401 itself. Report
+      // first so the credential is already invalidated when the caller sees the error, then
+      // surface the original 401 untouched: the report is bookkeeping, never the outcome.
+      if let httpError = result.error as? HttpError, case .unauthorized = httpError {
+        reportUnauthorizedAndLog(credentials, context: "PortalApi.storedClientBackupShare")
+      }
+
       completion(result)
 
       self.track(
@@ -997,6 +1092,12 @@ public class PortalApi: PortalApiProtocol {
         let response = try await track(event, withProperties: transformedProperties)
         completion?(Result(data: response))
       } catch {
+        // The error always reaches a completion when one was supplied. Fire-and-forget callers
+        // have nowhere to receive it, so a credential failure is at least logged (by reason only)
+        // rather than vanishing as a silent metrics miss.
+        if completion == nil, let failure = error as? PortalCredentialError {
+          self.logger.debug("PortalApi.track() - Analytics event not sent; reason: \(failure.reason?.rawValue ?? "INVALID_API_KEY")")
+        }
         completion?(Result(error: error))
       }
     }

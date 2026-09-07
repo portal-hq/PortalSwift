@@ -12,6 +12,26 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
+## 7.5.0 - 
+- Added Client Auth: end users sign in directly with Portal by email magic link, Google, or Apple, and the SDK runs on the resulting session instead of a Client API Key.
+    - Added `PortalAuth` with `getMethods()`, `sendMagicLink(_:)`, `loginWithGoogle()`, `loginWithApple()`, `handleRedirect(_:)` (`String` or `URL`; returns `nil` for URLs that are not yours), `verifyTotp(_:userJwt:)`, `restoreSession()`, and `clearPersistedSession()`. Hold one long-lived instance: a re-delivered redirect replays the original result instead of failing.
+    - Added `signInWithGoogle()` and `signInWithApple()`, which own an `ASWebAuthenticationSession` end to end after `setAuthPresentationAnchor(_:)`; failures are `PortalAuthSignInError` (`closed`, `unavailable`, `signInInProgress`, `callbackIncomplete`).
+    - Added `PortalSession`, `AuthResult` (`.authenticated(AuthenticatedResult)` / `.totpRequired(TotpRequiredResult)`), `AuthMethod`, `AuthMethodsResult`, `AuthorizeUrlResult`, `MagicLinkConfig`, and `PortalAuthError`. A rejected grant surfaces as `PortalRequestsError.unauthorized`.
+    - Sessions are persisted in the Keychain under `PortalSwift.auth.session.<authEnvironmentId>` with `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, separate from MPC shares; `restoreSession()` returns `nil` (and clears the entry) when the stored session is unusable and throws only when the Keychain could not be read this time. The session token never changes: the backend extends it on every authenticated request and hard-stops about a week after sign-in, so there is nothing to refresh client-side. Keychain items survive app deletion; clear the persisted session on first launch after install if that is not what you want.
+    - Added `TotpRequiredResult.totpSecret`, `TotpRequiredResult.qrCodeImage(scale:)`, and `portalTotpQrCodeImage(otpAuthUrl:scale:)` to render the TOTP enrolment QR code locally with CoreImage.
+    - `PortalAuthError` also carries `accountAbstractionUnavailable(message:)` (400 when `isAccountAbstracted: true` is not available for the environment), `rateLimited` (429 on `sendMagicLink`), and `totpQrUnavailable`.
+- Added `PortalCredentials`, `StaticCredentials`, and `Portal(credentials:)`. Every authenticated request, MPC operation, presignature refill, Passkey/Firebase backup call, and PortalConnect WebSocket upgrade now resolves its bearer token from the credential per call.
+    - Added `portal.clearSession()` (local, silent sign-out; no-op on an API-key Portal) and `portal.onSessionInvalidated(_:)` (fires at most once per session on the main actor when the backend rejects it; never for an API-key Portal; not on `clearSession()`). Subscribe right after constructing `Portal`.
+    - Added `PortalCredentialError` (`unavailable`, `providerFailure`, `sessionInvalidated`, `invalidApiKey`) with `PortalCredentialErrorReason` wire values `CREDENTIAL_UNAVAILABLE`, `CREDENTIAL_PROVIDER_FAILURE`, `SESSION_INVALIDATED` and `requiresReauthentication`. If you switch exhaustively over SDK errors, add cases for it.
+    - Added `PortalRequests.onUnauthorized` (`PortalUnauthorizedReporting`), `isPortalOwnedUrl(_:)`, `PortalSessionInvalidationHandle` (with a public initializer and `.spent`), and `PortalMpcError.isAuthFailure`.
+- Deprecated `Portal.apiKey` (returns `""` when constructed with credentials) and the `apiKey:` initializers of `PortalApi`, the integration APIs, `PortalProvider`, `PortalMpc`, `PortalConnect`, and `PortalMpcSigner`; deprecated `PasskeyStorage.apiKey` / `FirebaseStorage.apiKey` in favour of the injected credential.
+- Changed `Portal("")` to throw `PortalCredentialError.invalidApiKey`; a blank API key on an integration API now fails with `CREDENTIAL_UNAVAILABLE` before the request instead of sending an empty bearer.
+- Fixed PortalConnect reconnecting without limit or delay after the proxy dropped the socket; reconnects are now capped at 5 attempts with exponential backoff and end with `ConnectError(code: 500)`.
+- An `AUTH_FAILED` error from the MPC service now invalidates a Client Auth session (`PortalMpcError.isAuthFailure`).
+- Fixed the presignature refill retrying a dead credential; it now stops and reports once.
+- Fixed PortalConnect reconnecting after the proxy rejected the credential; a 401 on the WebSocket upgrade now emits `ConnectError(code: 401)` and stops, and the client no longer reports itself connected.
+- Changed the SPM Example app: new Client Auth screen (magic link, Google, Apple, TOTP with QR), PortalEx `/clients/register` for self-managed backups, eject disabled and the backup destination resolved before the MPC backup under a session.
+
 ## 7.4.0 - 2026-09-01
 - Changed Google Drive backup to request only the OAuth scopes your configured `GDriveBackupOption` actually needs, so users see a smaller Google consent screen when enabling Google Drive backup.
     - `.appDataFolder` now requests only the hidden app-data scope (`https://www.googleapis.com/auth/drive.appdata`) — one consent checkbox instead of two.

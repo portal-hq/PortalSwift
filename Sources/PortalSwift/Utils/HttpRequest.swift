@@ -12,11 +12,19 @@ public enum HttpRequestType {
   case CustomRequest
 }
 
-private enum HttpError: LocalizedError {
+/// Errors produced by the legacy synchronous `HttpRequest`/`HttpRequester` path.
+///
+/// Internal (not private) so the callers that still use this path, `PortalApi`'s
+/// `storedClientBackupShare` in particular, can pattern-match on `.unauthorized` and report the
+/// rejected credential the same way the async `PortalRequests` transport does.
+enum HttpError: LocalizedError, Equatable {
   case clientError(String)
   case httpError(String)
   case internalServerError(String)
   case nilResponseError
+  /// HTTP 401. The response body is deliberately not carried in the payload: a rejected
+  /// credential is reported to the credentials layer, never surfaced or logged verbatim.
+  case unauthorized(String)
   case unknownError(String)
 }
 
@@ -149,6 +157,11 @@ public class HttpRequest<T: Codable, BodyType> {
                   )
                 )
               )
+            }
+            if httpResponse!.statusCode == 401 {
+              // A rejected credential: the body is discarded so it can never be logged or
+              // interpolated into an error message; the caller reports the 401 upstream.
+              return completion(Result(error: HttpError.unauthorized("Status: 401 Unauthorized")))
             }
             return completion(Result(error: HttpError.clientError("Status: \(httpResponse!.statusCode) " + String(data: data!, encoding: .utf8)!)))
           } else {

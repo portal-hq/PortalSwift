@@ -10,16 +10,37 @@
 import XCTest
 
 final class PresignatureManagerTests: XCTestCase {
-  private var mobileSpy: MobileSpy!
-  private var keychainSpy: PortalKeychainSpy!
+  private var mobileSpy = MobileSpy()
+  private var keychainSpy = PortalKeychainSpy()
+  private var recordingLogger = RecordingLogger()
+
+  /// A retry policy that exhausts in exactly three attempts with negligible backoff, for the
+  /// cases that count attempts rather than measure them.
+  private static let threeAttempts = PresignRetryConfig(
+    maxAttempts: 3,
+    baseDelayNs: 1_000_000,
+    multiplier: 2.0,
+    maxDelayNs: 10_000_000
+  )
+
+  /// A three-attempt policy whose two backoff sleeps (50 ms then 100 ms) are long enough to be
+  /// observed in wall-clock time, which is how the growing-backoff case is asserted without a
+  /// sleep seam on `PresignatureManager`.
+  private static let observableBackoff = PresignRetryConfig(
+    maxAttempts: 3,
+    baseDelayNs: 50_000_000,
+    multiplier: 2.0,
+    maxDelayNs: 10_000_000_000
+  )
 
   private func makeManager(
+    credentials: PortalCredentials = MockCredentials(tokenValue: "test-api-key"),
     maxPresignaturesPerCurve: [PresignatureSupportedCurve: Int] = [.SECP256K1: 3],
     featureFlags: FeatureFlags? = FeatureFlags(usePresignatures: true),
     retryConfig: PresignRetryConfig = .fast
   ) -> PresignatureManager {
     PresignatureManager(
-      apiKey: "test-api-key",
+      credentials: credentials,
       mpcHost: "mpc.test.io",
       binary: mobileSpy,
       keychain: keychainSpy,
@@ -30,17 +51,17 @@ final class PresignatureManagerTests: XCTestCase {
   }
 
   private func mockPresignResponse(id: String = "presig-1") -> String {
-    let response = PresignResponse(
+    MpcJSON.presignSuccess(
       id: id,
       expiresAt: "2099-01-01T00:00:00Z",
-      data: "mock-presig-data-\(id)",
-      error: nil
+      data: "mock-presig-data-\(id)"
     )
-    let data = try! JSONEncoder().encode(response)
-    return String(data: data, encoding: .utf8)!
   }
 
   override func setUpWithError() throws {
+    CredentialInvalidationRegistry.shared.resetForTesting()
+    recordingLogger = RecordingLogger()
+    recordingLogger.install()
     mobileSpy = MobileSpy()
     keychainSpy = PortalKeychainSpy()
     keychainSpy.getSharesReturnValue = [
@@ -49,8 +70,8 @@ final class PresignatureManagerTests: XCTestCase {
   }
 
   override func tearDownWithError() throws {
-    mobileSpy = nil
-    keychainSpy = nil
+    recordingLogger.uninstall()
+    CredentialInvalidationRegistry.shared.resetForTesting()
   }
 }
 
@@ -390,7 +411,7 @@ extension PresignatureManagerTests {
 
     let finalCount = keychainSpy.insertPresignatureCallCount
     XCTAssertLessThanOrEqual(finalCount, countAfterFirstInit + 10,
-                              "Second init should have cancelled first and started fresh")
+                             "Second init should have cancelled first and started fresh")
   }
 }
 
@@ -499,7 +520,7 @@ extension PresignatureManagerTests {
     XCTAssertEqual(config.maxAttempts, 3)
     XCTAssertEqual(config.baseDelayNs, 2_000_000_000)
     XCTAssertEqual(config.multiplier, 2.0)
-    XCTAssertEqual(config.maxDelayNs, 3_00_000_000_000)
+    XCTAssertEqual(config.maxDelayNs, 300_000_000_000)
   }
 
   func test_presignRetryConfig_fastValues() {
@@ -516,5 +537,432 @@ extension PresignatureManagerTests {
     XCTAssertEqual(config.baseDelayNs, 500)
     XCTAssertEqual(config.multiplier, 3.0)
     XCTAssertEqual(config.maxDelayNs, 999)
+  }
+}
+
+// MARK: - Credentials: per-attempt token resolution
+
+extension PresignatureManagerTests {
+  func test_preSign_willPassResolvedTokenToBinary() async throws {
+    // given
+    let credentials = MockCredentials(tokenValue: "test-api-key")
+    mobileSpy.mobilePresignReturnValue = mockPresignResponse()
+    let manager = makeManager(credentials: credentials, maxPresignaturesPerCurve: [.SECP256K1: 1])
+
+    // and given
+    manager.initializeBuffers()
+
+    // then
+    let stored = await waitUntil { self.keychainSpy.insertPresignatureCallCount == 1 }
+    XCTAssertTrue(stored, "The refill should have generated and stored exactly one presignature.")
+    XCTAssertEqual(mobileSpy.mobilePresignApiKeyParam, "test-api-key")
+    XCTAssertEqual(mobileSpy.mobilePresignMpcAddrParam, "mpc.test.io")
+    XCTAssertEqual(keychainSpy.insertPresignatureCallCount, 1)
+    withExtendedLifetime(manager) {}
+  }
+
+  func test_preSign_willResolveTokenPerAttempt() async throws {
+    // given
+    let credentials = MockCredentials(tokenValue: "test-api-key")
+    mobileSpy.mobilePresignReturnValue = MpcJSON.presignError(id: "ERR")
+    let manager = makeManager(
+      credentials: credentials,
+      maxPresignaturesPerCurve: [.SECP256K1: 1],
+      retryConfig: Self.threeAttempts
+    )
+
+    // and given
+    manager.initializeBuffers()
+
+    // then
+    let exhausted = await waitUntil { self.mobileSpy.mobilePresignCallsCount == 3 }
+    XCTAssertTrue(exhausted, "Every attempt should have reached the binary.")
+    XCTAssertEqual(credentials.getTokenCalls, 3, "The token must be resolved inside every attempt, not once per preSign.")
+    withExtendedLifetime(manager) {}
+  }
+
+  func test_preSign_willPickUpRotatedToken_betweenAttempts() async throws {
+    // given
+    let credentials = MockCredentials(tokenValue: "initial")
+    mobileSpy.mobilePresignReturnValue = MpcJSON.presignError(id: "ERR")
+    credentials.onGetToken = { [weak credentials, weak self] in
+      guard let self, let credentials else {
+        return
+      }
+      // The hook runs after the call has been counted and before `tokenValue` is read, so the
+      // second attempt both sees the rotated token and gets a successful binary response.
+      if credentials.getTokenCalls >= 2 {
+        credentials.tokenValue = "rotated"
+        self.mobileSpy.mobilePresignReturnValue = self.mockPresignResponse()
+      }
+    }
+    let manager = makeManager(
+      credentials: credentials,
+      maxPresignaturesPerCurve: [.SECP256K1: 1],
+      retryConfig: Self.threeAttempts
+    )
+
+    // and given
+    manager.initializeBuffers()
+
+    // then
+    let stored = await waitUntil { self.keychainSpy.insertPresignatureCallCount == 1 }
+    XCTAssertTrue(stored, "The second attempt should have succeeded with the rotated token.")
+    XCTAssertEqual(mobileSpy.mobilePresignApiKeyParam, "rotated")
+    XCTAssertEqual(mobileSpy.mobilePresignCallsCount, 2)
+    withExtendedLifetime(manager) {}
+  }
+}
+
+// MARK: - Credentials: failures that stop the refill without retrying
+
+extension PresignatureManagerTests {
+  func test_fillBuffer_willStopWithoutRetry_whenTokenBlank() async throws {
+    // given
+    let credentials = MockCredentials(tokenValue: "")
+    mobileSpy.mobilePresignReturnValue = mockPresignResponse()
+    let manager = makeManager(credentials: credentials, maxPresignaturesPerCurve: [.SECP256K1: 3])
+
+    // and given
+    manager.initializeBuffers()
+
+    // then
+    let resolved = await waitUntil { credentials.getTokenCalls >= 1 }
+    XCTAssertTrue(resolved, "The refill should have tried to resolve the credential.")
+    let reachedBinary = await waitUntil(timeout: 0.3) { self.mobileSpy.mobilePresignCallsCount > 0 }
+    XCTAssertFalse(reachedBinary, "A blank token must fail before any binary round trip.")
+    XCTAssertEqual(credentials.getTokenCalls, 1, "A credential failure is not retried.")
+    XCTAssertEqual(keychainSpy.insertPresignatureCallCount, 0)
+    withExtendedLifetime(manager) {}
+  }
+
+  func test_fillBuffer_willStopWithoutRetry_whenProviderThrows() async throws {
+    // given
+    let credentials = MockCredentials(tokenValue: "test-api-key", onGetToken: { throw PresignProviderFailure() })
+    let recorder = InvalidationListenerRecorder(credentials: credentials)
+    mobileSpy.mobilePresignReturnValue = mockPresignResponse()
+    let manager = makeManager(credentials: credentials, maxPresignaturesPerCurve: [.SECP256K1: 3])
+
+    // and given
+    manager.initializeBuffers()
+
+    // then
+    let resolved = await waitUntil { credentials.getTokenCalls >= 1 }
+    XCTAssertTrue(resolved, "The refill should have tried to resolve the credential.")
+    let reachedBinary = await waitUntil(timeout: 0.3) { self.mobileSpy.mobilePresignCallsCount > 0 }
+    XCTAssertFalse(reachedBinary, "A throwing provider must fail before any binary round trip.")
+    XCTAssertEqual(credentials.getTokenCalls, 1, "A credential failure is not retried.")
+    XCTAssertEqual(credentials.invalidateCalls, 0, "A provider failure is not a rejection; nothing is invalidated.")
+    XCTAssertEqual(recorder.count, 0, "A provider failure is not reported to the host.")
+    withExtendedLifetime(manager) {}
+  }
+
+  func test_fillBuffer_willStopWithoutRetry_whenSessionInvalidated() async throws {
+    // given
+    let session = MockPortalSession()
+    try session.invalidate()
+    let recorder = InvalidationListenerRecorder(credentials: session)
+    mobileSpy.mobilePresignReturnValue = mockPresignResponse()
+    let manager = makeManager(credentials: session, maxPresignaturesPerCurve: [.SECP256K1: 3])
+
+    // and given
+    manager.initializeBuffers()
+
+    // then
+    let resolved = await waitUntil { session.getTokenCalls >= 1 }
+    XCTAssertTrue(resolved, "The refill should have tried to resolve the session.")
+    let reachedBinary = await waitUntil(timeout: 0.3) { self.mobileSpy.mobilePresignCallsCount > 0 }
+    XCTAssertFalse(reachedBinary, "A dead session must fail before any binary round trip.")
+    XCTAssertEqual(session.getTokenCalls, 1, "A credential failure is not retried.")
+    XCTAssertEqual(session.invalidateCalls, 1, "Only the test's own invalidate(); the SDK must not re-report a dead session.")
+    XCTAssertEqual(recorder.count, 0)
+    withExtendedLifetime(manager) {}
+  }
+}
+
+// MARK: - Credentials: AUTH_FAILED from the binary
+
+extension PresignatureManagerTests {
+  func test_fillBuffer_willStopAndReportOnce_whenBinaryReturnsAuthFailed() async throws {
+    // given
+    let session = MockPortalSession()
+    let recorder = InvalidationListenerRecorder(credentials: session)
+    mobileSpy.mobilePresignReturnValue = MpcJSON.presignAuthFailed
+    let manager = makeManager(credentials: session, maxPresignaturesPerCurve: [.SECP256K1: 3], retryConfig: .fast)
+
+    // and given
+    manager.initializeBuffers()
+
+    // then
+    let reported = await waitUntil { recorder.count == 1 }
+    XCTAssertTrue(reported, "The host should have been told the session ended.")
+    XCTAssertEqual(mobileSpy.mobilePresignCallsCount, 1, "AUTH_FAILED is not retried.")
+    XCTAssertEqual(session.invalidateCalls, 1)
+    XCTAssertEqual(keychainSpy.insertPresignatureCallCount, 0)
+    withExtendedLifetime(manager) {}
+  }
+
+  func test_fillBuffer_willNotContinueNeededLoop_afterAuthFailed() async throws {
+    // given
+    let session = MockPortalSession()
+    let recorder = InvalidationListenerRecorder(credentials: session)
+    mobileSpy.mobilePresignReturnValue = MpcJSON.presignAuthFailed
+    let manager = makeManager(credentials: session, maxPresignaturesPerCurve: [.SECP256K1: 3], retryConfig: .fast)
+
+    // and given
+    manager.initializeBuffers()
+
+    // then
+    let reported = await waitUntil { recorder.count == 1 }
+    XCTAssertTrue(reported, "The host should have been told the session ended.")
+    let secondSlot = await waitUntil(timeout: 0.3) { self.mobileSpy.mobilePresignCallsCount > 1 }
+    XCTAssertFalse(secondSlot, "The needed-loop must break, not try the remaining slots.")
+    XCTAssertEqual(mobileSpy.mobilePresignCallsCount, 1)
+    withExtendedLifetime(manager) {}
+  }
+
+  func test_fillBuffer_willReportOnce_acrossRepeatedFills_afterAuthFailed() async throws {
+    // given
+    let session = MockPortalSession()
+    let recorder = InvalidationListenerRecorder(credentials: session)
+    mobileSpy.mobilePresignReturnValue = MpcJSON.presignAuthFailed
+    let manager = makeManager(credentials: session, maxPresignaturesPerCurve: [.SECP256K1: 3], retryConfig: .fast)
+
+    manager.initializeBuffers()
+    let reported = await waitUntil { recorder.count == 1 }
+    XCTAssertTrue(reported, "The first fill should have reported the rejection.")
+
+    // and given: something to consume, so consumePresignature triggers a second fill
+    let entry = PresignatureEntry(id: "presig-1", expiresAt: "2099-01-01T00:00:00Z", data: "data")
+    try await keychainSpy.insertPresignature("SECP256K1", entry)
+    _ = await manager.consumePresignature(forCurve: .SECP256K1)
+    manager.initializeBuffers()
+
+    // then
+    let secondBinaryCall = await waitUntil(timeout: 0.5) { self.mobileSpy.mobilePresignCallsCount > 1 }
+    XCTAssertFalse(secondBinaryCall, "The invalidated session must fail before the binary on every later fill.")
+    XCTAssertEqual(recorder.count, 1, "However many fills run, the host is told exactly once.")
+    withExtendedLifetime(manager) {}
+  }
+}
+
+// MARK: - Credentials: generic (non-credential) failures keep the old behaviour
+
+extension PresignatureManagerTests {
+  func test_fillBuffer_willRetryWithBackoff_forGenericErrors() async throws {
+    // given
+    mobileSpy.mobilePresignReturnValue = MpcJSON.presignError(id: "ERR")
+    let manager = makeManager(maxPresignaturesPerCurve: [.SECP256K1: 1], retryConfig: Self.observableBackoff)
+    let startedAt = Date()
+
+    // and given
+    manager.initializeBuffers()
+
+    // then
+    let exhausted = await waitUntil { self.mobileSpy.mobilePresignCallsCount == 3 }
+    XCTAssertTrue(exhausted, "A generic error is retried up to maxAttempts.")
+    XCTAssertGreaterThanOrEqual(
+      Date().timeIntervalSince(startedAt),
+      0.15,
+      "The two backoff sleeps must grow (50 ms then 100 ms), not fire back to back."
+    )
+    XCTAssertEqual(keychainSpy.insertPresignatureCallCount, 0)
+    withExtendedLifetime(manager) {}
+  }
+
+  func test_fillBuffer_willNotInvalidate_forGenericErrors() async throws {
+    // given
+    let credentials = MockCredentials(tokenValue: "test-api-key")
+    let recorder = InvalidationListenerRecorder(credentials: credentials)
+    mobileSpy.mobilePresignReturnValue = MpcJSON.presignError(id: "ERR")
+    let manager = makeManager(
+      credentials: credentials,
+      maxPresignaturesPerCurve: [.SECP256K1: 1],
+      retryConfig: Self.threeAttempts
+    )
+
+    // and given
+    manager.initializeBuffers()
+
+    // then
+    let exhausted = await waitUntil { self.mobileSpy.mobilePresignCallsCount == 3 }
+    XCTAssertTrue(exhausted, "A generic error is retried up to maxAttempts.")
+    XCTAssertEqual(credentials.invalidateCalls, 0, "A non-401 failure must never invalidate the credential.")
+    XCTAssertEqual(recorder.count, 0)
+    withExtendedLifetime(manager) {}
+  }
+
+  func test_fillBuffer_willLeaveExistingBufferIntact_afterAuthFailedStop() async throws {
+    // given
+    let entry = PresignatureEntry(id: "presig-1", expiresAt: "2099-01-01T00:00:00Z", data: "data")
+    try await keychainSpy.insertPresignature("SECP256K1", entry)
+
+    let session = MockPortalSession()
+    let recorder = InvalidationListenerRecorder(credentials: session)
+    mobileSpy.mobilePresignReturnValue = MpcJSON.presignAuthFailed
+    let manager = makeManager(credentials: session, maxPresignaturesPerCurve: [.SECP256K1: 3], retryConfig: .fast)
+
+    // and given
+    manager.initializeBuffers()
+
+    // then
+    let reported = await waitUntil { recorder.count == 1 }
+    XCTAssertTrue(reported, "The host should have been told the session ended.")
+    let remaining = try await keychainSpy.getPresignatures("SECP256K1")
+    XCTAssertEqual(remaining.count, 1, "A credential stop must not discard presignatures that are still usable.")
+    XCTAssertGreaterThanOrEqual(keychainSpy.cleanupExpiredPresignaturesCallCount, 1)
+    XCTAssertEqual(keychainSpy.deletePresignaturesCallCount, 0)
+    withExtendedLifetime(manager) {}
+  }
+}
+
+// MARK: - Credentials: consume, fill-lock and cancellation
+
+extension PresignatureManagerTests {
+  func test_consumePresignature_willStillReturnEntry_afterCredentialStop() async throws {
+    // given
+    let entry = PresignatureEntry(id: "presig-1", expiresAt: "2099-01-01T00:00:00Z", data: "data")
+    try await keychainSpy.insertPresignature("SECP256K1", entry)
+
+    let session = MockPortalSession()
+    try session.invalidate()
+    mobileSpy.mobilePresignReturnValue = mockPresignResponse()
+    let manager = makeManager(credentials: session, maxPresignaturesPerCurve: [.SECP256K1: 3])
+
+    // and given
+    let consumed = await manager.consumePresignature(forCurve: .SECP256K1)
+
+    // then
+    XCTAssertEqual(consumed, entry, "An already-generated presignature is still served; the signer surfaces the rejection later.")
+    let refilled = await waitUntil(timeout: 0.3) { self.mobileSpy.mobilePresignCallsCount > 0 }
+    XCTAssertFalse(refilled, "The refill triggered by the consume must stop at the dead credential.")
+    withExtendedLifetime(manager) {}
+  }
+
+  func test_fillBuffer_willReleaseFillLock_afterCredentialStop() async throws {
+    // given
+    let credentials = MockCredentials(tokenValue: "")
+    mobileSpy.mobilePresignReturnValue = mockPresignResponse()
+    let manager = makeManager(credentials: credentials, maxPresignaturesPerCurve: [.SECP256K1: 1])
+
+    manager.initializeBuffers()
+    let stopped = await waitUntil { credentials.getTokenCalls == 1 }
+    XCTAssertTrue(stopped, "The first fill should have stopped on the blank token.")
+
+    // and given
+    credentials.tokenValue = "test-api-key"
+
+    // then: a later fill must be able to take the lock the stopped one released
+    var presigned = false
+    for _ in 0 ..< 5 where !presigned {
+      manager.initializeBuffers()
+      presigned = await waitUntil(timeout: 0.3) { self.mobileSpy.mobilePresignCallsCount > 0 }
+    }
+    XCTAssertTrue(presigned, "The fill lock must be released even when the fill returns early on a credential failure.")
+    withExtendedLifetime(manager) {}
+  }
+
+  func test_fillBuffer_willReturnNil_whenCancelledWhileResolvingToken() async throws {
+    // given
+    let gate = DispatchSemaphore(value: 0)
+    let credentials = MockCredentials(tokenValue: "test-api-key", onGetToken: { gate.wait() })
+    mobileSpy.mobilePresignReturnValue = mockPresignResponse()
+    let manager = makeManager(credentials: credentials, maxPresignaturesPerCurve: [.SECP256K1: 1])
+
+    manager.initializeBuffers()
+    let resolving = await waitUntil { credentials.getTokenCalls == 1 }
+    XCTAssertTrue(resolving, "The refill should be parked inside the credential provider.")
+
+    // and given
+    await manager.deleteAll()
+    gate.signal()
+
+    // then
+    let reachedBinary = await waitUntil(timeout: 0.3) { self.mobileSpy.mobilePresignCallsCount > 0 }
+    XCTAssertFalse(reachedBinary, "A cancellation observed during credential I/O must not become a network round trip.")
+    XCTAssertEqual(credentials.getTokenCalls, 1)
+    XCTAssertEqual(keychainSpy.insertPresignatureCallCount, 0)
+    withExtendedLifetime(manager) {}
+  }
+
+  func test_deleteAll_willNotResolveCredentials() async throws {
+    // given
+    let credentials = MockCredentials(tokenValue: "test-api-key")
+    let manager = makeManager(credentials: credentials)
+
+    // and given
+    await manager.deleteAll()
+
+    // then
+    XCTAssertEqual(credentials.getTokenCalls, 0, "Deleting presignatures is local work and needs no credential.")
+    XCTAssertEqual(keychainSpy.deletePresignaturesCallCount, 1)
+  }
+}
+
+// MARK: - Credentials: security and the deprecated initializer
+
+extension PresignatureManagerTests {
+  func test_fillBuffer_willNotLogToken() async throws {
+    // given: the AUTH_FAILED path
+    let secret = "tok-secret"
+    let session = MockPortalSession(tokenValue: secret)
+    let recorder = InvalidationListenerRecorder(credentials: session)
+    mobileSpy.mobilePresignReturnValue = MpcJSON.presignAuthFailed
+    let authFailedManager = makeManager(credentials: session, maxPresignaturesPerCurve: [.SECP256K1: 3], retryConfig: .fast)
+
+    authFailedManager.initializeBuffers()
+    let reported = await waitUntil { recorder.count == 1 }
+    XCTAssertTrue(reported, "The host should have been told the session ended.")
+
+    // and given: the generic retry path
+    let credentials = MockCredentials(tokenValue: secret)
+    mobileSpy.mobilePresignReturnValue = MpcJSON.presignError(id: "ERR")
+    let retryManager = makeManager(
+      credentials: credentials,
+      maxPresignaturesPerCurve: [.SECP256K1: 1],
+      retryConfig: Self.threeAttempts
+    )
+
+    retryManager.initializeBuffers()
+    let exhausted = await waitUntil { self.mobileSpy.mobilePresignCallsCount >= 4 }
+    XCTAssertTrue(exhausted, "Both paths should have run before the log is inspected.")
+
+    // then
+    recordingLogger.assertNoSecret(secret)
+    withExtendedLifetime(authFailedManager) {}
+    withExtendedLifetime(retryManager) {}
+  }
+
+  func test_init_apiKey_deprecated_willStillPresign() async throws {
+    // given
+    mobileSpy.mobilePresignReturnValue = mockPresignResponse()
+    let manager = PresignatureManager(
+      apiKey: "legacy",
+      mpcHost: "mpc.test.io",
+      binary: mobileSpy,
+      keychain: keychainSpy,
+      maxPresignaturesPerCurve: [.SECP256K1: 1],
+      featureFlags: FeatureFlags(usePresignatures: true),
+      retryConfig: .fast
+    )
+
+    // and given
+    manager.initializeBuffers()
+
+    // then
+    let stored = await waitUntil { self.keychainSpy.insertPresignatureCallCount == 1 }
+    XCTAssertTrue(stored, "The deprecated Client API Key initializer must keep working.")
+    XCTAssertEqual(mobileSpy.mobilePresignApiKeyParam, "legacy")
+    withExtendedLifetime(manager) {}
+  }
+}
+
+// MARK: - Local test doubles
+
+/// A host-provider failure that is not a `PortalCredentialError`, so the SDK has to normalise it
+/// to `.providerFailure` at the credential boundary.
+private struct PresignProviderFailure: LocalizedError {
+  var errorDescription: String? {
+    "The host credential provider failed."
   }
 }

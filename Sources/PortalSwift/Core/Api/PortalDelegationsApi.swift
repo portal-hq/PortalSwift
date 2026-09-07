@@ -40,7 +40,9 @@ public protocol PortalDelegationsApiProtocol: AnyObject {
 
 /// API class for Delegations integration functionality.
 public class PortalDelegationsApi: PortalDelegationsApiProtocol {
-  private let apiKey: String
+  /// Resolved per request and never cached, so a session rotated or invalidated underneath
+  /// this instance is honoured on the next call. Shared by identity with the owning `PortalApi`.
+  private let credentials: PortalCredentials
   private let baseUrl: String
   private let requests: PortalRequestsProtocol
   private let logger = PortalLogger.shared
@@ -63,18 +65,46 @@ public class PortalDelegationsApi: PortalDelegationsApiProtocol {
   }
 
   /// Create an instance of PortalDelegationsApi.
+  ///
+  /// The credential is resolved again on every request and never at construction, so a session
+  /// that rotates or is invalidated underneath this instance takes effect on the next call. The
+  /// transport's 401 hook is wired to `credentials` only when the transport reports 401s and has
+  /// no hook yet, so a standalone instance with its own transport still reports a dead session
+  /// while one built by `PortalApi` finds the hook already installed and leaves it alone.
+  /// - Parameters:
+  ///   - credentials: The credential presented as the bearer on every request: a `StaticCredentials`
+  ///     wrapping a Client API Key, or a session obtained through `PortalAuth`.
+  ///   - apiHost: The Portal API hostname.
+  ///   - requests: An instance of PortalRequestsProtocol to handle HTTP requests.
+  public init(
+    credentials: PortalCredentials,
+    apiHost: String = "api.portalhq.io",
+    requests: PortalRequestsProtocol? = nil
+  ) {
+    self.credentials = credentials
+    self.baseUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
+    self.requests = requests ?? PortalRequests()
+
+    installUnauthorizedHook(on: self.requests, for: credentials, context: "PortalDelegationsApi")
+  }
+
+  /// Create an instance of PortalDelegationsApi.
+  ///
+  /// Kept as a convenience so existing integrations compile unchanged; the key is wrapped in
+  /// `StaticCredentials` and everything else follows the credentials path. A blank key is not
+  /// rejected here because this initializer cannot throw: it fails on first use with
+  /// `PortalCredentialError.unavailable` instead of sending an empty bearer.
   /// - Parameters:
   ///   - apiKey: The Client API key.
   ///   - apiHost: The Portal API hostname.
   ///   - requests: An instance of PortalRequestsProtocol to handle HTTP requests.
-  public init(
+  @available(*, deprecated, message: "Use init(credentials:) instead; wrap a Client API Key in StaticCredentials(apiKey) or pass a PortalAuth session.")
+  public convenience init(
     apiKey: String,
     apiHost: String = "api.portalhq.io",
     requests: PortalRequestsProtocol? = nil
   ) {
-    self.apiKey = apiKey
-    self.baseUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
-    self.requests = requests ?? PortalRequests()
+    self.init(credentials: StaticCredentials(apiKey), apiHost: apiHost, requests: requests)
   }
 
   /*******************************************
@@ -105,7 +135,7 @@ public class PortalDelegationsApi: PortalDelegationsApiProtocol {
     do {
       let traceId = generateTraceId()
       let body = ApproveDelegationBody(delegateAddress: request.delegateAddress, amount: request.amount)
-      return try await post(url, withBearerToken: apiKey, andPayload: body, traceId: traceId, mappingInResponse: ApproveDelegationResponse.self)
+      return try await post(url, andPayload: body, traceId: traceId, mappingInResponse: ApproveDelegationResponse.self)
     } catch {
       logger.error("PortalDelegationsApi.approve() - Error: \(error.localizedDescription)")
       throw error
@@ -135,7 +165,7 @@ public class PortalDelegationsApi: PortalDelegationsApiProtocol {
     do {
       let traceId = generateTraceId()
       let body = RevokeDelegationBody(delegateAddress: request.delegateAddress)
-      return try await post(url, withBearerToken: apiKey, andPayload: body, traceId: traceId, mappingInResponse: RevokeDelegationResponse.self)
+      return try await post(url, andPayload: body, traceId: traceId, mappingInResponse: RevokeDelegationResponse.self)
     } catch {
       logger.error("PortalDelegationsApi.revoke() - Error: \(error.localizedDescription)")
       throw error
@@ -163,7 +193,7 @@ public class PortalDelegationsApi: PortalDelegationsApiProtocol {
     }
     do {
       let traceId = generateTraceId()
-      return try await get(url, withBearerToken: apiKey, traceId: traceId, mappingInResponse: DelegationStatusResponse.self)
+      return try await get(url, traceId: traceId, mappingInResponse: DelegationStatusResponse.self)
     } catch {
       logger.error("PortalDelegationsApi.getStatus() - Error: \(error.localizedDescription)")
       throw error
@@ -195,7 +225,7 @@ public class PortalDelegationsApi: PortalDelegationsApiProtocol {
     do {
       let traceId = generateTraceId()
       let body = TransferFromBody(fromAddress: request.fromAddress, toAddress: request.toAddress, amount: request.amount)
-      return try await post(url, withBearerToken: apiKey, andPayload: body, traceId: traceId, mappingInResponse: TransferFromResponse.self)
+      return try await post(url, andPayload: body, traceId: traceId, mappingInResponse: TransferFromResponse.self)
     } catch {
       logger.error("PortalDelegationsApi.transferFrom() - Error: \(error.localizedDescription)")
       throw error
@@ -210,7 +240,6 @@ public class PortalDelegationsApi: PortalDelegationsApiProtocol {
   ///
   /// - Parameters:
   ///   - url: The target URL for the request
-  ///   - withBearerToken: Optional bearer token for authentication
   ///   - andPayload: Optional Codable payload to send in the request body
   ///   - mappingInResponse: The response type to decode the response into
   /// - Returns: Decoded response of the specified type
@@ -218,12 +247,14 @@ public class PortalDelegationsApi: PortalDelegationsApiProtocol {
   @discardableResult
   private func post<ResponseType>(
     _ url: URL,
-    withBearerToken: String? = nil,
     andPayload: Codable? = nil,
     traceId: String? = nil,
     mappingInResponse: ResponseType.Type
   ) async throws -> ResponseType where ResponseType: Decodable {
-    let portalRequest = PortalAPIRequest(url: url, method: .post, payload: andPayload, bearerToken: withBearerToken, traceId: traceId)
+    // Resolved here, at the moment the request is built, so a rotated session is sent on the
+    // next call and a dead one fails before anything reaches the wire.
+    let token = try resolveCredentialToken(self.credentials)
+    let portalRequest = PortalAPIRequest(url: url, method: .post, payload: andPayload, bearerToken: token, traceId: traceId)
     return try await requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }
 
@@ -231,18 +262,19 @@ public class PortalDelegationsApi: PortalDelegationsApiProtocol {
   ///
   /// - Parameters:
   ///   - url: The target URL for the request
-  ///   - withBearerToken: Optional bearer token for authentication
   ///   - traceId: Optional trace ID forwarded as the `X-Portal-Trace-Id` header
   ///   - mappingInResponse: The response type to decode the response into
   /// - Returns: Decoded response of the specified type
   /// - Throws: Network or decoding errors if the request fails
   private func get<ResponseType>(
     _ url: URL,
-    withBearerToken: String? = nil,
     traceId: String? = nil,
     mappingInResponse: ResponseType.Type
   ) async throws -> ResponseType where ResponseType: Decodable {
-    let portalRequest = PortalAPIRequest(url: url, bearerToken: withBearerToken, traceId: traceId)
+    // Resolved here, at the moment the request is built, so a rotated session is sent on the
+    // next call and a dead one fails before anything reaches the wire.
+    let token = try resolveCredentialToken(self.credentials)
+    let portalRequest = PortalAPIRequest(url: url, bearerToken: token, traceId: traceId)
     return try await requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }
 

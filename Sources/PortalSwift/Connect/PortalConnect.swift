@@ -37,15 +37,30 @@ public class PortalConnect: EventBus {
   public var client: WebSocketClient? = nil
   public var uri: String?
 
-  private let apiKey: String
+  /// The credential every proxy connection of this instance is authenticated with.
+  ///
+  /// Shared with the provider and the web socket client rather than copied as a token: the
+  /// client resolves it at each connect, so a session that rotates or is invalidated is picked
+  /// up by the next connection without rebuilding `PortalConnect`.
+  let credentials: PortalCredentials
+
   private let logger = PortalLogger.shared
   private let provider: PortalProvider
   private var rpcConfig: [String: String]
   private var topic: String?
+
+  /// The proxy URL including its scheme (`ws://` for localhost, `wss://` otherwise), so a client
+  /// rebuilt later by `connect(_:)` targets the same address the initial one did.
   private let webSocketServer: String
 
+  /// Creates a Portal Connect instance authenticated with `credentials`.
+  ///
+  /// Takes the same positional parameters as the historical `init(_ apiKey:...)` with the key
+  /// replaced by a `PortalCredentials`, so a host moving from a Client API Key to a session only
+  /// changes the first argument. The credential is never resolved here; it is resolved by the
+  /// provider per request and by the web socket client per connection.
   public init(
-    _ apiKey: String,
+    credentials: PortalCredentials,
     _ chainId: Int,
     _ keychain: PortalKeychainProtocol,
     _ rpcConfig: [String: String],
@@ -56,14 +71,14 @@ public class PortalConnect: EventBus {
     _ mpcHost: String = "mpc.portalhq.io",
     _ version: String = "v6"
   ) throws {
-    self.apiKey = apiKey
+    self.credentials = credentials
     self.chainId = chainId
     self.webSocketServer = webSocketServer
     self.rpcConfig = rpcConfig
 
     // Initialize the PortalProvider
     self.provider = try PortalProvider(
-      apiKey: apiKey,
+      credentials: credentials,
       rpcConfig: rpcConfig,
       keychain: keychain,
       autoApprove: autoApprove,
@@ -77,7 +92,7 @@ public class PortalConnect: EventBus {
     // Set up webSocketClient
     let connectionString = webSocketServer.starts(with: "localhost") ? "ws://\(webSocketServer)" : "wss://\(webSocketServer)"
     self.client = WebSocketClient(
-      apiKey: apiKey,
+      credentials: credentials,
       connect: self,
       webSocketServer: connectionString
     )
@@ -136,6 +151,68 @@ public class PortalConnect: EventBus {
     }
   }
 
+  /// Creates a Portal Connect instance authenticated with `credentials`, with every parameter
+  /// labelled.
+  ///
+  /// The labelled spelling `Portal.createPortalConnectInstance(webSocketServer:)` uses; it
+  /// forwards to the positional designated initializer so both spellings build the same object.
+  public convenience init(
+    credentials: PortalCredentials,
+    chainId: Int,
+    keychain: PortalKeychainProtocol,
+    rpcConfig: [String: String],
+    featureFlags: FeatureFlags?,
+    webSocketServer: String = "connect.portalhq.io",
+    autoApprove: Bool = false,
+    apiHost: String = "api.portalhq.io",
+    mpcHost: String = "mpc.portalhq.io",
+    version: String = "v6"
+  ) throws {
+    try self.init(
+      credentials: credentials,
+      chainId,
+      keychain,
+      rpcConfig,
+      featureFlags,
+      webSocketServer,
+      autoApprove,
+      apiHost,
+      mpcHost,
+      version
+    )
+  }
+
+  /// Creates a Portal Connect instance from a Client API Key.
+  ///
+  /// Wraps the key in `StaticCredentials` through the credentials layer. A blank key is rejected
+  /// here with `PortalCredentialError.invalidApiKey` instead of being sent as a malformed bearer.
+  @available(*, deprecated, message: "Use init(credentials:_:_:_:_:_:_:_:_:_:) instead. A blank apiKey now throws PortalCredentialError.invalidApiKey.")
+  public convenience init(
+    _ apiKey: String,
+    _ chainId: Int,
+    _ keychain: PortalKeychainProtocol,
+    _ rpcConfig: [String: String],
+    _ featureFlags: FeatureFlags?,
+    _ webSocketServer: String = "connect.portalhq.io",
+    _ autoApprove: Bool = false,
+    _ apiHost: String = "api.portalhq.io",
+    _ mpcHost: String = "mpc.portalhq.io",
+    _ version: String = "v6"
+  ) throws {
+    try self.init(
+      credentials: resolveCredentials(apiKey: apiKey, credentials: nil),
+      chainId,
+      keychain,
+      rpcConfig,
+      featureFlags,
+      webSocketServer,
+      autoApprove,
+      apiHost,
+      mpcHost,
+      version
+    )
+  }
+
   @available(*, deprecated, renamed: "createPortalConnectInstance", message: "Please use portal.createPortalConnectInstance().")
   public convenience init(
     _ apiKey: String,
@@ -173,31 +250,46 @@ public class PortalConnect: EventBus {
     client?.sendFinalMessageAndDisconnect()
   }
 
+  /// Connects to the dApp session at `uri`.
+  ///
+  /// Non-throwing, like before: a failure to open the connection is delivered on the
+  /// `portal_connectError` event bus as a `ConnectError` — code 401 when the credential could not
+  /// be resolved (the credential is also reported through the credentials layer so the host's
+  /// `onSessionInvalidated` listener fires), code 500 for anything else — and the client is left
+  /// in `.disconnected` so `connected` never reads `true` for a connection that was never opened.
   public func connect(_ uri: String) {
+    self.logger.info("PortalConnect.connect() - Trying to connect.")
+    if self.connected, uri == self.uri {
+      self.logger.info("PortalConnect.connect() - Connection is already in progress or established. Ignoring request to connect.")
+      return
+    }
+    if self.client == nil {
+      self.client = WebSocketClient(credentials: self.credentials, connect: self, webSocketServer: self.webSocketServer)
+    } else {
+      self.unbindClientEvents()
+    }
+    guard let client = self.client else {
+      self.logger.error("PortalConnect.connect() - No web socket client available. Unable to connect.")
+      return
+    }
+
+    self.uri = uri
+    client.resetEventBus()
+
+    self.bindClientEvents()
+
+    self.logger.info("PortalConnect.connect() - Invoking client.connect()")
     do {
-      self.logger.info("⚠️ PortalConnect.connect() - Trying to connect.")
-      if self.connected, uri == self.uri {
-        self.logger.info("PortalConnect.connect() - Connection is already in progress or established. Ignoring request to connect.")
-        return
-      }
-      if self.client == nil {
-        self.client = WebSocketClient(apiKey: self.apiKey, connect: self, webSocketServer: self.webSocketServer)
-      } else {
-        self.unbindClientEvents()
-      }
-      guard let client = self.client else {
-        throw PortalConnectError.noWebSocketClientFound
-      }
-
-      self.uri = uri
-      client.resetEventBus()
-
-      self.bindClientEvents()
-
-      self.logger.info("⚠️ PortalConnect.connect() - Invoking client.connect()")
-      client.connect(uri: uri)
+      try client.connect(uri: uri)
+    } catch let error as PortalCredentialError {
+      self.logger.error("PortalConnect.connect() - Credential unavailable (\(error.reason?.rawValue ?? "INVALID_API_KEY")). Not connecting.")
+      reportUnauthorizedAndLog(self.credentials, context: "PortalConnect.connect")
+      client.connectState = .disconnected
+      self.handleConnectError(data: ConnectError(message: "401 - Unauthorized", code: 401))
     } catch {
-      self.logger.error("⚠️ PortalConnect.connect() - Unable to connect: \(error.localizedDescription)")
+      self.logger.error("PortalConnect.connect() - Unable to connect: \(type(of: error))")
+      client.connectState = .disconnected
+      self.handleConnectError(data: ConnectError(message: error.localizedDescription, code: 500))
     }
   }
 
@@ -297,7 +389,7 @@ public class PortalConnect: EventBus {
         return
       }
 
-      // If the approved event is fired
+      // If the rejected event is fired
       let event = DappSessionResponseMessage(
         event: "portal_dappSessionRejected",
         data: SessionResponseData(

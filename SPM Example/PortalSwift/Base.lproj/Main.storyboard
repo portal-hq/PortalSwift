@@ -1255,6 +1255,26 @@
                                     <action selector="noahInitiatePayout:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="Noh-PO-Ac1"/>
                                 </connections>
                             </button>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="CAu-Sg-Bt1">
+                                <rect key="frame" x="14" y="4053" width="339" height="39"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <state key="normal" title="Button"/>
+                                <buttonConfiguration key="configuration" style="filled" title="Sign in with Portal">
+                                    <backgroundConfiguration key="background"/>
+                                    <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
+                                    <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                </buttonConfiguration>
+                                <connections>
+                                    <action selector="handleClientAuth:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="CAu-Sg-Ac1"/>
+                                </connections>
+                            </button>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="Credential: none (signed out)" textAlignment="natural" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" minimumFontSize="7" translatesAutoresizingMaskIntoConstraints="NO" id="CAu-St-Lb1">
+                                <rect key="frame" x="14" y="4102" width="339" height="40"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="13"/>
+                                <color key="textColor" systemColor="labelColor"/>
+                                <nil key="highlightedColor"/>
+                            </label>
                         </subviews>
                         <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <variation key="default">
@@ -1263,9 +1283,11 @@
                             </mask>
                         </variation>
                     </scrollView>
-                    <size key="freeformSize" width="375" height="4043"/>
+                    <size key="freeformSize" width="375" height="4152"/>
                     <connections>
                         <outlet property="addressInformation" destination="0fE-Dt-jQE" id="FgG-eb-2eu"/>
+                        <outlet property="clientAuthButton" destination="CAu-Sg-Bt1" id="CAu-Sg-Ou1"/>
+                        <outlet property="clientAuthStatusLabel" destination="CAu-St-Lb1" id="CAu-St-Ou1"/>
                         <outlet property="dappBrowserButton" destination="qcu-G8-SAB" id="A5q-1k-dxD"/>
                         <outlet property="deleteKeychainButton" destination="QJh-Gs-d32" id="0PG-E6-YO9"/>
                         <outlet property="discoverYieldsButton" destination="KOk-ae-1Rq" id="rGf-EY-Mkm"/>

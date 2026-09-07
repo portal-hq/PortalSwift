@@ -1,0 +1,418 @@
+//
+//  Credentials.swift
+//  PortalSwift
+//
+//  Created by Ahmed Ragab Issa.
+//  Copyright © 2026 Portal Labs, Inc. All rights reserved.
+//
+
+import Foundation
+
+// MARK: - Resolution
+
+/// Resolves the single credential source a component was constructed with.
+///
+/// `credentials` wins whenever it is supplied: the public `Portal` initializers make the
+/// "both supplied" case unrepresentable, so there is nothing to reject at runtime. A
+/// blank `apiKey` (empty or whitespace-only) is treated as absent rather than wrapped,
+/// because whitespace can only ever be sent as a malformed bearer; a non-blank key is
+/// wrapped verbatim — no trimming — so the server, not the SDK, decides what a valid key
+/// looks like.
+///
+/// - Throws: `PortalCredentialError.invalidApiKey` when neither source is usable.
+func resolveCredentials(apiKey: String?, credentials: PortalCredentials?) throws -> PortalCredentials {
+  if let credentials = credentials {
+    return credentials
+  }
+
+  guard let apiKey = apiKey, !isBlankCredentialValue(apiKey) else {
+    throw PortalCredentialError.invalidApiKey
+  }
+
+  return StaticCredentials(apiKey)
+}
+
+/// The SDK's credential boundary: resolves a token from `credentials`, normalising every
+/// failure to `PortalCredentialError` since a host-supplied provider can throw anything.
+///
+/// A `PortalCredentialError` raised by the provider passes through untouched, so a precise
+/// reason such as `.sessionInvalidated` is never downgraded to `.providerFailure`. Any
+/// other error becomes `.providerFailure(underlying:)`, and a blank token becomes
+/// `.unavailable`. The value is never cached: every call goes back to the provider, which
+/// is what lets a session rotate or be invalidated underneath a long-lived `Portal`.
+public func resolveCredentialToken(_ credentials: PortalCredentials) throws -> String {
+  let token: String
+  do {
+    token = try credentials.getToken()
+  } catch let error as PortalCredentialError {
+    throw error
+  } catch {
+    throw PortalCredentialError.providerFailure(underlying: error)
+  }
+
+  guard !isBlankCredentialValue(token) else {
+    throw PortalCredentialError.unavailable
+  }
+
+  return token
+}
+
+/// The raw Client API Key behind `credentials`, or `""` when it is not a static key —
+/// never a wrong or stale token.
+///
+/// A bridge for the subsystems that still expose a synchronous, deprecated `apiKey` on
+/// their public surface. It reports the absence of a static key rather than resolving
+/// one, so a session-backed credential reads as `""` instead of leaking a session token
+/// through a property hosts may log, and it never calls `getToken()` as a side effect.
+public func staticApiKeyOf(_ credentials: PortalCredentials) -> String {
+  (credentials as? StaticCredentials)?.value ?? ""
+}
+
+/// `true` for an empty or whitespace-only value, which is unusable as a bearer either way.
+private func isBlankCredentialValue(_ value: String) -> Bool {
+  value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+}
+
+// MARK: - Invalidation
+
+/// Invalidates `credentials` without telling the host.
+///
+/// This is the plain operation behind a host-initiated sign-out (`Portal.clearSession()`),
+/// and a sign-out is not news to whoever asked for it; a backend rejection goes through
+/// `reportUnauthorized(_:)` instead. The call is serialised on a per-credential monitor
+/// owned by `CredentialInvalidationRegistry`, so several subsystems reacting to the same
+/// 401 cannot run `invalidate()` concurrently — combined with the idempotence the protocol
+/// requires, the second caller finds an already-cleared credential and performs no second
+/// storage delete. The monitor is the registry's own `NSRecursiveLock`, never
+/// `objc_sync_enter` on the credential: `PortalCredentials` is implemented by host code,
+/// and taking a monitor on a host-owned object could contend or deadlock with the host's
+/// own synchronisation.
+///
+/// - Throws: whatever `invalidate()` throws, unchanged, so a failed persisted delete
+///   reaches the caller.
+public func invalidateCredentials(_ credentials: PortalCredentials) throws {
+  let monitor = CredentialInvalidationRegistry.shared.monitor(for: credentials)
+  monitor.lock()
+  defer { monitor.unlock() }
+  try credentials.invalidate()
+}
+
+/// The 401 path every Portal-authenticated requester routes through: invalidate the
+/// credential, then tell the host its session ended.
+///
+/// Kept separate from `invalidateCredentials(_:)`, which stays the silent operation a
+/// host-initiated sign-out uses — only a backend rejection is news to the host. The host is
+/// notified even when the invalidation throws: the in-memory token is dropped first by every
+/// conforming session, so the session is over either way and hiding that behind a storage
+/// failure would leave the UI signed in against a dead credential. The failure still
+/// propagates, and every call site treats it as bookkeeping that must not replace the
+/// original transport error. Reporting is once-ever per credential and never happens for a
+/// `StaticCredentials`, which has no session for a 401 to have ended.
+public func reportUnauthorized(_ credentials: PortalCredentials) throws {
+  defer { CredentialInvalidationRegistry.shared.notifyInvalidated(credentials) }
+  try invalidateCredentials(credentials)
+}
+
+/// `reportUnauthorized(_:)` for call sites that cannot throw (transport hooks, refill tasks,
+/// error-mapping branches): swallows the failure and logs it.
+///
+/// The log line carries only the caller's `context` and fixed literals. It never includes
+/// the error itself, because a session's storage error or a host provider's message can
+/// echo the token, and this line is emitted at the exact moment the token was rejected.
+func reportUnauthorizedAndLog(_ credentials: PortalCredentials, context: String) {
+  do {
+    try reportUnauthorized(credentials)
+  } catch {
+    PortalLogger.shared.error("\(context) - reportUnauthorized() could not invalidate the credential after an unauthorized response; the host was still notified.")
+  }
+}
+
+/// Wires a transport's 401 hook to `credentials`, but only when the transport reports 401s
+/// and nobody has wired it yet.
+///
+/// A host may share one `PortalRequests` between several SDK objects; the first owner to
+/// install wins and the rest leave it alone, so a hook is never silently replaced. The
+/// closure captures only the credential and the context string — never the installing
+/// object — so installing a hook cannot create a retain cycle or keep a `Portal` alive
+/// through its own transport. A transport that does not conform to
+/// `PortalUnauthorizedReporting` (test doubles, custom hosts) makes this a no-op.
+func installUnauthorizedHook(on requests: PortalRequestsProtocol, for credentials: PortalCredentials, context: String) {
+  guard let reporting = requests as? PortalUnauthorizedReporting, reporting.onUnauthorized == nil else {
+    return
+  }
+
+  reporting.onUnauthorized = {
+    reportUnauthorizedAndLog(credentials, context: context)
+  }
+}
+
+/// Subscribes `listener` to the backend invalidating `credentials`; the host-facing contract
+/// is documented on `Portal.onSessionInvalidated(_:)`.
+///
+/// The listener runs at most once, on the main actor, and only for a rejection reported
+/// through `reportUnauthorized(_:)` — a host-initiated `invalidateCredentials(_:)` is silent.
+/// A `StaticCredentials` can never be reported, and a credential that has already been
+/// reported cannot be reported again, so both return the shared `.spent` handle rather than
+/// retaining a listener (and whatever it captured) that will never fire. Hosts should
+/// therefore subscribe immediately after constructing `Portal`.
+func onCredentialsInvalidated(
+  _ credentials: PortalCredentials,
+  listener: @escaping @MainActor () -> Void
+) -> PortalSessionInvalidationHandle {
+  CredentialInvalidationRegistry.shared.subscribe(credentials, listener: listener)
+}
+
+// MARK: - PortalSessionInvalidationHandle
+
+/// One host subscription to `Portal.onSessionInvalidated(_:)`.
+///
+/// `cancel()` removes the listener and is idempotent, so a host can call it defensively from
+/// `deinit`, from a SwiftUI `onDisappear`, or from inside the listener itself. The handle
+/// does **not** cancel automatically when it is deallocated — parity with the React Native
+/// and Android SDKs, where the unsubscribe is an explicit call — so a host that discards the
+/// handle keeps receiving the notification. The initializer is public so host-written
+/// `PortalProtocol` conformers and test doubles can hand back a real handle.
+public final class PortalSessionInvalidationHandle {
+  /// The handle returned for a subscription that can never fire (a Client API Key, or a
+  /// credential the SDK has already reported). Shared so nothing is retained on its behalf;
+  /// `cancel()` on it is a no-op.
+  public static let spent = PortalSessionInvalidationHandle(onCancel: nil)
+
+  private let lock = NSLock()
+  private var onCancel: (() -> Void)?
+
+  /// Creates a handle whose `cancel()` runs `onCancel` exactly once. Pass `nil` for a handle
+  /// that has nothing to undo.
+  public init(onCancel: (() -> Void)? = nil) {
+    self.onCancel = onCancel
+  }
+
+  /// Removes the subscription. Safe to call any number of times, from any thread, and from
+  /// inside the listener: the cancellation closure is taken under the handle's own lock and
+  /// invoked outside it, so it can re-enter the registry without deadlocking.
+  public func cancel() {
+    self.lock.lock()
+    let action = self.onCancel
+    self.onCancel = nil
+    self.lock.unlock()
+
+    action?()
+  }
+}
+
+// MARK: - CredentialInvalidationRegistry
+
+/// Process-wide bookkeeping for credential invalidation, keyed by credential identity so it
+/// is reachable from the 401 call sites — which see a credential and nothing else.
+///
+/// Three maps live here, all guarded by one `NSLock` and all keyed by `ObjectIdentifier`:
+/// the per-credential monitors `invalidateCredentials(_:)` serialises on, the host listener
+/// entries `onCredentialsInvalidated(_:listener:)` appends to, and the once-ever "reported"
+/// set `reportUnauthorized(_:)` consults. `ObjectIdentifier` is only unique while the object
+/// is alive, so every entry also holds the credential weakly and every lookup re-checks
+/// identity with `===`: a credential that died and had its address reused can never inherit
+/// a stale monitor, listener list or reported flag. Dead entries are pruned under the lock on
+/// every operation. The registry lock is never held while calling into host code — not
+/// `invalidate()`, not a listener — which is what makes re-entrant and cross-credential
+/// invalidation safe.
+final class CredentialInvalidationRegistry {
+  /// The registry every free function in this file uses. Tests reset it between cases with
+  /// `resetForTesting()` so the once-ever reported flags cannot leak from one test to the next.
+  static let shared = CredentialInvalidationRegistry()
+
+  /// A weak reference to a credential, used for the reported set so a dead credential does
+  /// not pin its flag onto whichever object next occupies its address.
+  private final class WeakCredential {
+    weak var credential: PortalCredentials?
+
+    init(_ credential: PortalCredentials) {
+      self.credential = credential
+    }
+  }
+
+  /// One subscription. Wrapped with a unique id rather than stored as a bare closure so
+  /// subscribing the same closure twice yields two subscriptions, each cancellable alone.
+  private struct Subscription {
+    let id: UInt64
+    let listener: @MainActor () -> Void
+  }
+
+  private final class ListenerEntry {
+    weak var credential: PortalCredentials?
+    var subscriptions: [Subscription] = []
+
+    init(_ credential: PortalCredentials) {
+      self.credential = credential
+    }
+  }
+
+  private final class MonitorEntry {
+    weak var credential: PortalCredentials?
+    let monitor = NSRecursiveLock()
+
+    init(_ credential: PortalCredentials) {
+      self.credential = credential
+    }
+  }
+
+  private let lock = NSLock()
+  private var monitors: [ObjectIdentifier: MonitorEntry] = [:]
+  private var entries: [ObjectIdentifier: ListenerEntry] = [:]
+  private var reported: [ObjectIdentifier: WeakCredential] = [:]
+  private var nextSubscriptionId: UInt64 = 0
+
+  init() {}
+
+  /// Number of credentials that currently have at least one live listener. A test seam for
+  /// asserting that entries are pruned when a credential deallocates.
+  var entryCount: Int {
+    self.lock.lock()
+    defer { self.lock.unlock() }
+    return self.entries.count
+  }
+
+  /// Number of per-credential monitors currently retained. A test seam for asserting that
+  /// monitors do not grow without bound as credentials come and go.
+  var monitorCount: Int {
+    self.lock.lock()
+    defer { self.lock.unlock() }
+    return self.monitors.count
+  }
+
+  /// Forgets every monitor, listener and reported flag. Only for tests: in production a
+  /// reported credential must stay reported for the life of the process.
+  func resetForTesting() {
+    self.lock.lock()
+    defer { self.lock.unlock() }
+    self.monitors.removeAll()
+    self.entries.removeAll()
+    self.reported.removeAll()
+  }
+
+  /// The monitor `invalidateCredentials(_:)` serialises on for `credentials`, created on
+  /// first use. Recursive so a credential whose `invalidate()` routes back through the SDK
+  /// for the same credential does not deadlock on itself. Returned, not held: the caller
+  /// takes it after this method has released the registry lock.
+  func monitor(for credentials: PortalCredentials) -> NSRecursiveLock {
+    self.lock.lock()
+    defer { self.lock.unlock() }
+    self.pruneStaleEntries()
+
+    let key = ObjectIdentifier(credentials)
+    if let existing = self.monitors[key], existing.credential === credentials {
+      return existing.monitor
+    }
+
+    let entry = MonitorEntry(credentials)
+    self.monitors[key] = entry
+    return entry.monitor
+  }
+
+  /// Registers `listener` for `credentials`; see `onCredentialsInvalidated(_:listener:)`.
+  func subscribe(
+    _ credentials: PortalCredentials,
+    listener: @escaping @MainActor () -> Void
+  ) -> PortalSessionInvalidationHandle {
+    // A Client API Key is never reported, so registering would only hold the listener, and
+    // whatever it captured, for as long as the credential lives.
+    if credentials is StaticCredentials {
+      return .spent
+    }
+
+    self.lock.lock()
+    self.pruneStaleEntries()
+
+    let key = ObjectIdentifier(credentials)
+    // Same reasoning for a credential this process has already spent: the report has been
+    // made and cannot be made twice, so a late subscriber can only be told nothing.
+    if self.isReported(credentials, key: key) {
+      self.lock.unlock()
+      return .spent
+    }
+
+    let entry: ListenerEntry
+    if let existing = self.entries[key], existing.credential === credentials {
+      entry = existing
+    } else {
+      entry = ListenerEntry(credentials)
+      self.entries[key] = entry
+    }
+
+    self.nextSubscriptionId += 1
+    let subscriptionId = self.nextSubscriptionId
+    entry.subscriptions.append(Subscription(id: subscriptionId, listener: listener))
+    self.lock.unlock()
+
+    return PortalSessionInvalidationHandle(onCancel: { [weak self] in
+      self?.unsubscribe(key: key, id: subscriptionId)
+    })
+  }
+
+  /// Tells the host the session behind `credentials` ended — at most once per credential,
+  /// and never for a `StaticCredentials`.
+  ///
+  /// Listeners are snapshotted under the lock and dispatched outside it, each on the main
+  /// actor via its own `Task`, so a listener is free to cancel itself, subscribe another
+  /// listener or report another credential from inside the callback. The entry is dropped
+  /// rather than kept: this fires once per credential, so the list can never be read again
+  /// and would otherwise go on holding whatever the listeners captured.
+  func notifyInvalidated(_ credentials: PortalCredentials) {
+    // A host-supplied credential is not necessarily a session, but only a static key is known
+    // not to be one — anything else is treated as a session and reported.
+    if credentials is StaticCredentials {
+      return
+    }
+
+    self.lock.lock()
+    self.pruneStaleEntries()
+
+    let key = ObjectIdentifier(credentials)
+    if self.isReported(credentials, key: key) {
+      self.lock.unlock()
+      return
+    }
+    self.reported[key] = WeakCredential(credentials)
+
+    var snapshot: [Subscription] = []
+    if let entry = self.entries[key], entry.credential === credentials {
+      snapshot = entry.subscriptions
+      self.entries.removeValue(forKey: key)
+    }
+    self.lock.unlock()
+
+    for subscription in snapshot {
+      Task { @MainActor in
+        subscription.listener()
+      }
+    }
+  }
+
+  private func unsubscribe(key: ObjectIdentifier, id: UInt64) {
+    self.lock.lock()
+    defer { self.lock.unlock() }
+
+    guard let entry = self.entries[key] else {
+      return
+    }
+    entry.subscriptions.removeAll { $0.id == id }
+    if entry.subscriptions.isEmpty {
+      self.entries.removeValue(forKey: key)
+    }
+  }
+
+  /// Must be called with `lock` held. A stale flag (dead credential, or a live one that is
+  /// not `===` the caller's) is treated as absent so a reused address never reads as reported.
+  private func isReported(_ credentials: PortalCredentials, key: ObjectIdentifier) -> Bool {
+    guard let box = self.reported[key] else {
+      return false
+    }
+    return box.credential === credentials
+  }
+
+  /// Must be called with `lock` held. Drops every entry whose credential has deallocated.
+  private func pruneStaleEntries() {
+    self.monitors = self.monitors.filter { $0.value.credential != nil }
+    self.entries = self.entries.filter { $0.value.credential != nil }
+    self.reported = self.reported.filter { $0.value.credential != nil }
+  }
+}

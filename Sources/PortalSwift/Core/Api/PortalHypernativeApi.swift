@@ -54,24 +54,54 @@ public protocol PortalHypernativeApiProtocol: AnyObject {
 
 /// API class for Hypernative security integration functionality.
 public class PortalHypernativeApi: PortalHypernativeApiProtocol {
-  private let apiKey: String
+  /// Resolved per request and never cached, so a session rotated or invalidated underneath
+  /// this instance is honoured on the next call. Shared by identity with the owning `PortalApi`.
+  private let credentials: PortalCredentials
   private let baseUrl: String
   private let requests: PortalRequestsProtocol
   private let logger = PortalLogger.shared
 
   /// Create an instance of PortalHypernativeApi.
+  ///
+  /// The credential is resolved again on every request and never at construction, so a session
+  /// that rotates or is invalidated underneath this instance takes effect on the next call. The
+  /// transport's 401 hook is wired to `credentials` only when the transport reports 401s and has
+  /// no hook yet, so a standalone instance with its own transport still reports a dead session
+  /// while one built by `PortalApi` finds the hook already installed and leaves it alone.
+  /// - Parameters:
+  ///   - credentials: The credential presented as the bearer on every request: a `StaticCredentials`
+  ///     wrapping a Client API Key, or a session obtained through `PortalAuth`.
+  ///   - apiHost: The Portal API hostname.
+  ///   - requests: An instance of PortalRequestsProtocol to handle HTTP requests.
+  public init(
+    credentials: PortalCredentials,
+    apiHost: String = "api.portalhq.io",
+    requests: PortalRequestsProtocol? = nil
+  ) {
+    self.credentials = credentials
+    self.baseUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
+    self.requests = requests ?? PortalRequests()
+
+    installUnauthorizedHook(on: self.requests, for: credentials, context: "PortalHypernativeApi")
+  }
+
+  /// Create an instance of PortalHypernativeApi.
+  ///
+  /// Kept as a convenience so existing integrations compile unchanged; the key is wrapped in
+  /// `StaticCredentials` and everything else follows the credentials path. A blank key is not
+  /// rejected here because this initializer cannot throw: it fails on first use with
+  /// `PortalCredentialError.unavailable` instead of sending an empty bearer.
   /// - Parameters:
   ///   - apiKey: The Client API key.
   ///   - apiHost: The Portal API hostname.
   ///   - requests: An instance of PortalRequestsProtocol to handle HTTP requests.
-  public init(
+  @available(*, deprecated, message: "Use init(credentials:) instead; wrap a Client API Key in StaticCredentials(apiKey) or pass a PortalAuth session.")
+  public convenience init(
     apiKey: String,
     apiHost: String = "api.portalhq.io",
     requests: PortalRequestsProtocol? = nil
   ) {
-    self.apiKey = apiKey
-    self.baseUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
-    self.requests = requests ?? PortalRequests()
+    self.init(credentials: StaticCredentials(apiKey), apiHost: apiHost, requests: requests)
   }
 
   /*******************************************
@@ -107,7 +137,7 @@ public class PortalHypernativeApi: PortalHypernativeApiProtocol {
     }
 
     do {
-      return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: ScanEVMResponse.self)
+      return try await post(url, andPayload: request, mappingInResponse: ScanEVMResponse.self)
     } catch {
       logger.error("PortalHypernativeApi.scanEVMTx() - Error: \(error.localizedDescription)")
       throw error
@@ -141,7 +171,7 @@ public class PortalHypernativeApi: PortalHypernativeApiProtocol {
     }
 
     do {
-      return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: ScanEip712Response.self)
+      return try await post(url, andPayload: request, mappingInResponse: ScanEip712Response.self)
     } catch {
       logger.error("PortalHypernativeApi.scanEip712Tx() - Error: \(error.localizedDescription)")
       throw error
@@ -176,7 +206,7 @@ public class PortalHypernativeApi: PortalHypernativeApiProtocol {
     }
 
     do {
-      return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: ScanSolanaResponse.self)
+      return try await post(url, andPayload: request, mappingInResponse: ScanSolanaResponse.self)
     } catch {
       logger.error("PortalHypernativeApi.scanSolanaTx() - Error: \(error.localizedDescription)")
       throw error
@@ -208,7 +238,7 @@ public class PortalHypernativeApi: PortalHypernativeApiProtocol {
     }
 
     do {
-      return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: ScanAddressesResponse.self)
+      return try await post(url, andPayload: request, mappingInResponse: ScanAddressesResponse.self)
     } catch {
       logger.error("PortalHypernativeApi.scanAddresses() - Error: \(error.localizedDescription)")
       throw error
@@ -238,7 +268,7 @@ public class PortalHypernativeApi: PortalHypernativeApiProtocol {
     }
 
     do {
-      return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: ScanNftsResponse.self)
+      return try await post(url, andPayload: request, mappingInResponse: ScanNftsResponse.self)
     } catch {
       logger.error("PortalHypernativeApi.scanNfts() - Error: \(error.localizedDescription)")
       throw error
@@ -268,7 +298,7 @@ public class PortalHypernativeApi: PortalHypernativeApiProtocol {
     }
 
     do {
-      return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: ScanTokensResponse.self)
+      return try await post(url, andPayload: request, mappingInResponse: ScanTokensResponse.self)
     } catch {
       logger.error("PortalHypernativeApi.scanTokens() - Error: \(error.localizedDescription)")
       throw error
@@ -294,7 +324,7 @@ public class PortalHypernativeApi: PortalHypernativeApiProtocol {
     }
 
     do {
-      return try await post(url, withBearerToken: apiKey, andPayload: request, mappingInResponse: ScanUrlResponse.self)
+      return try await post(url, andPayload: request, mappingInResponse: ScanUrlResponse.self)
     } catch {
       logger.error("PortalHypernativeApi.scanURL() - Error: \(error.localizedDescription)")
       throw error
@@ -309,7 +339,6 @@ public class PortalHypernativeApi: PortalHypernativeApiProtocol {
   ///
   /// - Parameters:
   ///   - url: The target URL for the request
-  ///   - withBearerToken: Optional bearer token for authentication
   ///   - andPayload: Optional Codable payload to send in the request body
   ///   - mappingInResponse: The response type to decode the response into
   /// - Returns: Decoded response of the specified type
@@ -317,11 +346,13 @@ public class PortalHypernativeApi: PortalHypernativeApiProtocol {
   @discardableResult
   private func post<ResponseType>(
     _ url: URL,
-    withBearerToken: String? = nil,
     andPayload: Codable? = nil,
     mappingInResponse: ResponseType.Type
   ) async throws -> ResponseType where ResponseType: Decodable {
-    let portalRequest = PortalAPIRequest(url: url, method: .post, payload: andPayload, bearerToken: withBearerToken)
+    // Resolved here, at the moment the request is built, so a rotated session is sent on the
+    // next call and a dead one fails before anything reaches the wire.
+    let token = try resolveCredentialToken(self.credentials)
+    let portalRequest = PortalAPIRequest(url: url, method: .post, payload: andPayload, bearerToken: token)
     return try await requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }
 }
