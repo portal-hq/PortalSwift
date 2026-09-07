@@ -339,7 +339,7 @@ extension PortalApiCredentialsTests {
     // then
     XCTAssertTrue(api.credentials === credentials)
     XCTAssertTrue(transport.onUnauthorized != nil, "PortalApi must wire the 401 hook onto a transport that has none.")
-    transport.onUnauthorized?()
+    transport.onUnauthorized?(nil)
     XCTAssertEqual(credentials.invalidateCalls, 1)
   }
 
@@ -347,12 +347,12 @@ extension PortalApiCredentialsTests {
     // given
     let presetInvocations = LockedCounter()
     let transport = PortalRequestsSpy()
-    transport.onUnauthorized = { presetInvocations.increment() }
+    transport.onUnauthorized = { _ in presetInvocations.increment() }
     let credentials = MockCredentials(tokenValue: "first-token")
 
     // when
     let api = PortalApi(credentials: credentials, apiHost: MockConstants.mockHost, requests: transport)
-    transport.onUnauthorized?()
+    transport.onUnauthorized?(nil)
 
     // then
     XCTAssertTrue(api.credentials === credentials)
@@ -367,7 +367,7 @@ extension PortalApiCredentialsTests {
     let recorder = InvalidationListenerRecorder(credentials: self.credentials)
 
     // when
-    self.spy.onUnauthorized?()
+    self.spy.onUnauthorized?(nil)
 
     // then
     XCTAssertEqual(self.credentials.invalidateCalls, 1)

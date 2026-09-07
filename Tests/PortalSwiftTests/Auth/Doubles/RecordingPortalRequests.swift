@@ -155,7 +155,7 @@ final class RecordingPortalRequests: PortalRequestsProtocol, PortalUnauthorizedR
   private var gateReleased = false
   private var releaseWaiters: [CheckedContinuation<Void, Never>] = []
 
-  private var _onUnauthorized: (() -> Void)?
+  private var _onUnauthorized: ((String?) -> Void)?
   private var _onUnauthorizedSetCount = 0
   private var _unauthorizedHookInvocations = 0
 
@@ -388,7 +388,7 @@ final class RecordingPortalRequests: PortalRequestsProtocol, PortalUnauthorizedR
 
   /// The 401 hook. `PortalAuthApi` never installs one, so tests assert this stays `nil`.
   /// Assigning a non-nil closure bumps `onUnauthorizedSetCount`.
-  var onUnauthorized: (() -> Void)? {
+  var onUnauthorized: ((String?) -> Void)? {
     get {
       self.lock.lock()
       defer { self.lock.unlock() }
@@ -554,7 +554,7 @@ final class RecordingPortalRequests: PortalRequestsProtocol, PortalUnauthorizedR
     }
     self.lock.unlock()
 
-    hook?()
+    hook?(recorded.bearerToken)
   }
 
   private func rejectUnexpectedVerb(_ verb: String) throws -> Data {

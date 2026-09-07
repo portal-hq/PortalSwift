@@ -394,15 +394,20 @@ final class KeychainPortalSessionTests: XCTestCase {
     XCTAssertNil(self.storage.stored)
   }
 
-  func test_invalidate_willDelete_whenStoredSessionUnreadable() throws {
+  func test_invalidate_willThrowAndKeepEntry_whenStoredSessionUnreadable() throws {
     self.storage.onGet = {
       throw PortalAuthError.sessionStorageFailure(message: "The persisted session could not be read (OSStatus -25308).")
     }
 
-    XCTAssertNoThrow(try self.subject.invalidate())
+    XCTAssertThrowsError(try self.subject.invalidate()) { error in
+      XCTAssertTrue(error is PortalAuthError, "The storage failure reaches the caller, who now knows a stale copy may remain on disk")
+    }
 
     XCTAssertEqual(self.storage.deleteIfCurrentCalls, 1)
-    XCTAssertNil(self.storage.stored, "An unreadable entry is not evidence of a newer login, so it is deleted")
+    XCTAssertNotNil(self.storage.stored, "An entry that cannot be read may belong to a newer login and is never deleted blind")
+    XCTAssertThrowsError(try self.subject.getToken()) { error in
+      XCTAssertEqual(error as? PortalCredentialError, .sessionInvalidated, "The in-memory session is over either way")
+    }
   }
 
   func test_invalidate_willDelete_whenStoredSessionCorrupt() throws {

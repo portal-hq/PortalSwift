@@ -125,6 +125,8 @@ final class FakeWebAuthenticationSessionHandle: WebAuthenticationSessionHandle {
   private var _providerWasSetAtStart: Bool?
   private var _ephemeralAtStart: Bool?
   private var _cancelCalls = 0
+  private var _cancelCallsAfterStart = 0
+  private var _onStart: (() -> Void)?
 
   /// The URL the adapter asked the session to open.
   let url: URL
@@ -221,6 +223,31 @@ final class FakeWebAuthenticationSessionHandle: WebAuthenticationSessionHandle {
     return self._cancelCalls
   }
 
+  /// How many of those `cancel()` calls arrived after `start()` had run. A cancel before `start()`
+  /// is a no-op on the system class, so only these dismiss a presented session.
+  var cancelCallsAfterStart: Int {
+    self.lock.lock()
+    defer { self.lock.unlock() }
+    return self._cancelCallsAfterStart
+  }
+
+  /// Runs inside `start()`, before the call is recorded and outside the handle's lock: the
+  /// moment just before the system would present the browser. Lets a test reproduce a
+  /// cancellation that lands between the adapter's `.running` transition and `start()` — a
+  /// `cancel()` made from here counts as *before* start, as it would on the system class.
+  var onStart: (() -> Void)? {
+    get {
+      self.lock.lock()
+      defer { self.lock.unlock() }
+      return self._onStart
+    }
+    set {
+      self.lock.lock()
+      defer { self.lock.unlock() }
+      self._onStart = newValue
+    }
+  }
+
   /// Fires the adapter's completion handler with `url` / `error`, on the calling thread. May be
   /// called any number of times; the adapter must resume its continuation only once.
   func complete(url: URL?, error: Error?) {
@@ -232,6 +259,11 @@ final class FakeWebAuthenticationSessionHandle: WebAuthenticationSessionHandle {
   func start() -> Bool {
     let providerSet = self.presentationContextProvider != nil
     let ephemeral = self.prefersEphemeralWebBrowserSession
+
+    // Outside the lock: the hook may call back into the adapter, which calls `cancel()` here.
+    // Before the call is recorded, so a cancel made from the hook reads as one that arrived
+    // before `start()`.
+    self.onStart?()
 
     self.lock.lock()
     defer { self.lock.unlock() }
@@ -246,5 +278,8 @@ final class FakeWebAuthenticationSessionHandle: WebAuthenticationSessionHandle {
     self.lock.lock()
     defer { self.lock.unlock() }
     self._cancelCalls += 1
+    if self._startCalls > 0 {
+      self._cancelCallsAfterStart += 1
+    }
   }
 }

@@ -22,7 +22,8 @@ public class MockWebSocketClient: WebSocketClient {
   /// Receives every binary frame the SDK would have written to the socket.
   public var onSend: ((Data) -> Void)?
 
-  /// When set, the next `connect(uri:)` throws this instead of connecting. Pass a
+  /// When set, the next `connect(uri:)` throws this instead of connecting and then clears it, so
+  /// the call after that connects normally; set it again to fail twice. Pass a
   /// `PortalCredentialError` to exercise the 401 path, or any other error for the 500 path.
   public var connectThrows: Error?
 
@@ -55,6 +56,8 @@ public class MockWebSocketClient: WebSocketClient {
   override func connect(uri: String) throws {
     self.connectCallsCount += 1
     if let error = self.connectThrows {
+      // One-shot, as documented: the failure belongs to this call only.
+      self.connectThrows = nil
       throw error
     }
 

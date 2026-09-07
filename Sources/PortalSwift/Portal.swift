@@ -538,8 +538,12 @@ public final class Portal: PortalProtocol {
   ///
   /// This is the host's cue to route to sign-in. It never fires for a host-initiated
   /// `clearSession()`, and never for a `Portal` built from a Client API Key, whose key is not a
-  /// session. Subscribe right after constructing `Portal`: a credential that has already been
-  /// reported hands back `PortalSessionInvalidationHandle.spent` and the listener never runs.
+  /// session (that subscription hands back `PortalSessionInvalidationHandle.spent`). A
+  /// credential that was already rejected by the time the host subscribes — `init` starts an
+  /// authenticated client fetch immediately, and its 401 can land first — has that rejection
+  /// replayed: the listener runs once, on the main actor, as if it had been subscribed in time.
+  /// Do not subscribe again on the same `Portal` from inside the listener: the instance is spent,
+  /// and a new subscription would be replayed to as well.
   /// - Parameter listener: Called at most once, on the main actor.
   /// - Returns: A handle whose `cancel()` removes the listener. It is not cancelled on
   ///   deallocation (React Native / Android parity), so it only needs to be kept by hosts that

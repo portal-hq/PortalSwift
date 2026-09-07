@@ -171,8 +171,11 @@ extension ViewController: ClientAuthReporter {
   /// so `resolveCredentialSource` sees it and takes the `Portal(credentials:)` arm, and adoption
   /// runs against that Portal rather than one built inside the login screen.
   ///
-  /// Overlapping calls (a launch-time restore and a redirect landing milliseconds apart) join one
-  /// run through `AdoptionGuard`, so `createWallet()` can never be issued twice for one login.
+  /// Overlapping calls for the same user (a launch-time restore and a redirect landing
+  /// milliseconds apart) join one run through `AdoptionGuard`, so `createWallet()` can never be
+  /// issued twice for one login. A call for a *different* user is queued behind the in-flight
+  /// run instead of joining it, and a run whose user has been superseded by the time it finishes
+  /// does not write the screen — the newcomer's own completion does.
   func adoptClientAuthSession(_ session: PortalSession) {
     let coordinator = ClientAuthCoordinator.shared
     coordinator.session = session
@@ -189,8 +192,12 @@ extension ViewController: ClientAuthReporter {
       }
 
       let adoptionTask = coordinator.adoptionGuard.start(
+        key: session.endUserId,
         onBusy: { [weak self] in
-          self?.log("Client Auth adoption already in flight, joining it")
+          self?.log("Client Auth adoption already in flight for this user, joining it")
+        },
+        onQueued: { [weak self] in
+          self?.log("Client Auth adoption of another user is in flight; this one runs after it")
         },
         task: { [weak self] () async throws -> Bool in
           guard let self else {
@@ -218,6 +225,14 @@ extension ViewController: ClientAuthReporter {
             isBuiltWithBackupWithPortal: Settings.shared.isBuiltWithBackupWithPortal,
             onAuthenticated: { [weak self] adopted in
               guard let self else {
+                return
+              }
+
+              // A later sign-in may have replaced this session while the run was in flight
+              // (`AdoptionGuard` queues the newcomer behind this run). Its own completion is the
+              // one that gets to write the screen's user.
+              guard ClientAuthCoordinator.shared.session?.endUserId == session.endUserId else {
+                self.log("Client Auth adoption of \(session.endUserId) finished after another session took over; not applied")
                 return
               }
 

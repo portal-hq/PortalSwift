@@ -628,12 +628,15 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
     XCTAssertTrue(self.store.isEmpty)
   }
 
-  func test_deleteIfCurrent_willClearUnreadableEntry() throws {
+  func test_deleteIfCurrent_willThrowAndPreserveEntry_whenReadFails() throws {
     try self.subject.set(self.session("token"))
     self.store.nextCopyStatuses = [errSecInteractionNotAllowed]
 
-    XCTAssertNoThrow(try self.subject.deleteIfCurrent("token"))
-    XCTAssertTrue(self.store.isEmpty, "Signing out is asymmetric: an unreadable entry is not evidence of a newer login.")
+    XCTAssertThrowsError(try self.subject.deleteIfCurrent("token")) { error in
+      self.assertSessionStorageFailure(error)
+    }
+    XCTAssertEqual(self.store.item()?.string, self.session("token"), "A compare-and-delete that cannot compare must not delete blind: the entry may belong to a newer login")
+    XCTAssertEqual(self.store.opCounts[.delete], 0)
   }
 
   func test_deleteIfCurrent_willNoOp_whenEmpty() {
@@ -651,12 +654,17 @@ final class KeychainAuthSessionStorageTests: XCTestCase {
     XCTAssertEqual(self.store.item()?.string, self.session("token"))
   }
 
-  func test_deleteIfCurrent_willNotThrow_whenReadFailsButDeleteSucceeds() throws {
-    try self.subject.set(self.session("token"))
+  func test_deleteIfCurrent_willSpareNewerSession_evenWhenTheReadThatWouldRevealItFails() throws {
+    // The scenario the contract exists for: a stale session signs out while a newer login owns
+    // the slot, and the Keychain happens to be unreadable at that moment.
+    try self.subject.set(self.session("new-token"))
     self.store.nextCopyStatuses = [errSecIO]
 
-    XCTAssertNoThrow(try self.subject.deleteIfCurrent("token"))
-    XCTAssertEqual(self.store.opCounts[.delete], 1)
+    XCTAssertThrowsError(try self.subject.deleteIfCurrent("old-token")) { error in
+      self.assertSessionStorageFailure(error)
+    }
+    XCTAssertEqual(self.store.opCounts[.delete], 0)
+    XCTAssertEqual(try self.subject.getSession(), self.parsed("new-token"), "The newer login survives the stale sign-out")
   }
 
   func test_deleteIfCurrent_willNotSelfHealTwice_whenEntryUnparseable() throws {

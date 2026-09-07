@@ -22,13 +22,13 @@ final class PortalRequestsSpy: PortalRequestsProtocol, PortalUnauthorizedReporti
 
   // MARK: - PortalUnauthorizedReporting
 
-  private var _onUnauthorized: (() -> Void)?
+  private var _onUnauthorized: ((String?) -> Void)?
   private var _onUnauthorizedSetCount = 0
 
   /// The hook the credentials layer installs. Assigning a non-nil closure counts as an
   /// install (see `onUnauthorizedSetCount`); assigning `nil` clears it without counting so a
   /// test can reset between phases.
-  var onUnauthorized: (() -> Void)? {
+  var onUnauthorized: ((String?) -> Void)? {
     get {
       queue.sync { _onUnauthorized }
     }
@@ -49,8 +49,8 @@ final class PortalRequestsSpy: PortalRequestsProtocol, PortalUnauthorizedReporti
   }
 
   /// When `true`, the next call (any verb) behaves like the real transport receiving a `401`
-  /// from a Portal host: it invokes `onUnauthorized`, clears the flag, and throws
-  /// `PortalRequestsError.unauthorized`. Subsequent calls proceed normally.
+  /// from a Portal host: it invokes `onUnauthorized` with the bearer that call carried, clears
+  /// the flag, and throws `PortalRequestsError.unauthorized`. Subsequent calls proceed normally.
   var simulatePortalUnauthorizedOnce = false
 
   // MARK: - Cross-verb recording
@@ -102,7 +102,10 @@ final class PortalRequestsSpy: PortalRequestsProtocol, PortalUnauthorizedReporti
       return
     }
     simulatePortalUnauthorizedOnce = false
-    onUnauthorized?()
+    // The bearer was recorded by the caller just before this, so the hook sees what the real
+    // transport would hand it: the token of the request that was rejected.
+    let rejectedBearer = queue.sync { _bearerTokensSent.last ?? nil }
+    onUnauthorized?(rejectedBearer)
     throw PortalRequestsError.unauthorized
   }
 

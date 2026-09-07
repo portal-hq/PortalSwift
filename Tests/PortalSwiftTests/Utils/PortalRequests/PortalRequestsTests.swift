@@ -286,10 +286,38 @@ final class PortalRequestsTests: XCTestCase {
     XCTAssertEqual(hook.value, 1)
   }
 
+  func test_onUnauthorized_willPassRejectedBearer() async throws {
+    MockURLProtocol.respond(status: 401)
+    let received = HookEventLog()
+    self.sut.onUnauthorized = { bearer in received.append(bearer ?? "<nil>") }
+
+    _ = await self.expectError {
+      try await self.sut.execute(request: PortalAPIRequest(url: self.portalUrl, bearerToken: "secret-token"))
+    }
+
+    XCTAssertEqual(received.events, ["secret-token"], "The hook is handed the token of the rejected request, so a shared transport can attribute the 401")
+  }
+
+  func test_onUnauthorized_willPassNil_whenAuthorizationHeaderIsNonBearer() async throws {
+    MockURLProtocol.respond(status: 401)
+    let received = HookEventLog()
+    self.sut.onUnauthorized = { bearer in received.append(bearer ?? "<nil>") }
+    let request = BareRequest(
+      url: self.portalUrl,
+      headers: ["Accept": "application/json", "Authorization": "Basic abc"]
+    )
+
+    _ = await self.expectError {
+      try await self.sut.execute(request: request)
+    }
+
+    XCTAssertEqual(received.events, ["<nil>"], "A non-Bearer scheme still fires the hook but carries no token to attribute")
+  }
+
   func test_onUnauthorized_willFireBeforeRethrow() async throws {
     MockURLProtocol.respond(status: 401)
     let events = HookEventLog()
-    self.sut.onUnauthorized = { events.append("hook") }
+    self.sut.onUnauthorized = { _ in events.append("hook") }
 
     do {
       _ = try await self.sut.execute(request: PortalAPIRequest(url: self.portalUrl, bearerToken: "t"))
@@ -303,7 +331,7 @@ final class PortalRequestsTests: XCTestCase {
 
   func test_onUnauthorized_willRethrowOriginalUnauthorized_afterHookRuns() async throws {
     MockURLProtocol.respond(status: 401)
-    self.sut.onUnauthorized = {}
+    self.sut.onUnauthorized = { _ in }
 
     let error = await self.expectError {
       try await self.sut.execute(request: PortalAPIRequest(url: self.portalUrl, bearerToken: "t"))
@@ -321,7 +349,7 @@ final class PortalRequestsTests: XCTestCase {
     MockURLProtocol.respond(status: 401)
     let hookRuns = HookCounter()
     let credentials = MockCredentials(onInvalidate: { throw NSError(domain: "keystore", code: 9) })
-    self.sut.onUnauthorized = {
+    self.sut.onUnauthorized = { _ in
       hookRuns.increment()
       reportUnauthorizedAndLog(credentials, context: "PortalRequestsTests.hook")
     }
@@ -620,7 +648,7 @@ final class PortalRequestsTests: XCTestCase {
     for index in 0 ..< 8 {
       let thread = Thread {
         for round in 0 ..< 100 {
-          sut.onUnauthorized = { hookInvocations.increment() }
+          sut.onUnauthorized = { _ in hookInvocations.increment() }
           _ = sut.onUnauthorized
           if index.isMultiple(of: 2), round.isMultiple(of: 3) {
             sut.onUnauthorized = nil
@@ -641,7 +669,7 @@ final class PortalRequestsTests: XCTestCase {
 
     // The final value is observable and is what the next 401 invokes.
     let finalHook = HookCounter()
-    sut.onUnauthorized = { finalHook.increment() }
+    sut.onUnauthorized = { _ in finalHook.increment() }
     XCTAssertNotNil(sut.onUnauthorized)
     let error = await self.expectError {
       try await sut.execute(request: PortalAPIRequest(url: url, bearerToken: "t"))
@@ -653,13 +681,13 @@ final class PortalRequestsTests: XCTestCase {
   func test_onUnauthorized_willUseHookInstalledAtInvocationTime() async throws {
     let hookA = HookCounter()
     let hookB = HookCounter()
-    self.sut.onUnauthorized = { hookA.increment() }
+    self.sut.onUnauthorized = { _ in hookA.increment() }
     let sut = self.sut
 
     // The handler runs after the request left the transport and before the response arrives:
     // swapping the hook here proves the transport reads it at invocation time, not at send time.
     MockURLProtocol.handler = { request in
-      sut.onUnauthorized = { hookB.increment() }
+      sut.onUnauthorized = { _ in hookB.increment() }
       guard let url = request.url,
             let response = HTTPURLResponse(url: url, statusCode: 401, httpVersion: "HTTP/1.1", headerFields: nil)
       else {
@@ -811,7 +839,7 @@ final class PortalRequestsTests: XCTestCase {
   /// test can assert exactly how many times (usually zero or one) the transport fired it.
   private func installCountingHook() -> HookCounter {
     let counter = HookCounter()
-    self.sut.onUnauthorized = { counter.increment() }
+    self.sut.onUnauthorized = { _ in counter.increment() }
     return counter
   }
 

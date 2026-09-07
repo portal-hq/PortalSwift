@@ -127,23 +127,25 @@ func reportUnauthorizedAndLog(_ credentials: PortalCredentials, context: String)
   }
 }
 
-/// Wires a transport's 401 hook to `credentials`, but only when the transport reports 401s
-/// and nobody has wired it yet.
+/// Wires a transport's 401 hook to `credentials`.
 ///
-/// A host may share one `PortalRequests` between several SDK objects; the first owner to
-/// install wins and the rest leave it alone, so a hook is never silently replaced. The
-/// closure captures only the credential and the context string — never the installing
-/// object — so installing a hook cannot create a retain cycle or keep a `Portal` alive
-/// through its own transport. A transport that does not conform to
-/// `PortalUnauthorizedReporting` (test doubles, custom hosts) makes this a no-op.
+/// A host may share one `PortalRequests` between several SDK objects, and those objects may
+/// hold different credentials, so the transport's single closure cannot simply belong to
+/// whoever installed it first: a 401 for the second owner's request would then invalidate the
+/// first owner's session and leave the rejected one usable. Instead the closure is installed
+/// once per transport and every owner is recorded in `UnauthorizedHookRegistry`; on a 401 the
+/// transport hands over the rejected bearer and the registry reports the owner whose credential
+/// presented it (see `UnauthorizedHookRegistry.report(bearerToken:from:)` for the fallbacks).
+/// A hook the SDK did not install is never replaced. The installed closure captures the
+/// transport weakly and nothing else — never the installing object — so installing a hook
+/// cannot create a retain cycle or keep a `Portal` alive through its own transport. A transport
+/// that does not conform to `PortalUnauthorizedReporting` (test doubles, custom hosts) makes
+/// this a no-op.
 func installUnauthorizedHook(on requests: PortalRequestsProtocol, for credentials: PortalCredentials, context: String) {
-  guard let reporting = requests as? PortalUnauthorizedReporting, reporting.onUnauthorized == nil else {
+  guard let reporting = requests as? PortalUnauthorizedReporting else {
     return
   }
-
-  reporting.onUnauthorized = {
-    reportUnauthorizedAndLog(credentials, context: context)
-  }
+  UnauthorizedHookRegistry.shared.install(on: reporting, for: credentials, context: context)
 }
 
 /// Subscribes `listener` to the backend invalidating `credentials`; the host-facing contract
@@ -151,10 +153,12 @@ func installUnauthorizedHook(on requests: PortalRequestsProtocol, for credential
 ///
 /// The listener runs at most once, on the main actor, and only for a rejection reported
 /// through `reportUnauthorized(_:)` — a host-initiated `invalidateCredentials(_:)` is silent.
-/// A `StaticCredentials` can never be reported, and a credential that has already been
-/// reported cannot be reported again, so both return the shared `.spent` handle rather than
-/// retaining a listener (and whatever it captured) that will never fire. Hosts should
-/// therefore subscribe immediately after constructing `Portal`.
+/// A `StaticCredentials` can never be reported, so it returns the shared `.spent` handle rather
+/// than retaining a listener (and whatever it captured) that will never fire. A credential that
+/// was already reported has that rejection replayed: the listener runs once, on the main actor,
+/// as if it had been subscribed in time, so a host that subscribes a moment after `Portal`'s
+/// eager client fetch came back 401 still learns its session ended. The returned handle cancels
+/// that pending delivery like any other.
 func onCredentialsInvalidated(
   _ credentials: PortalCredentials,
   listener: @escaping @MainActor () -> Void
@@ -323,11 +327,13 @@ final class CredentialInvalidationRegistry {
     self.pruneStaleEntries()
 
     let key = ObjectIdentifier(credentials)
-    // Same reasoning for a credential this process has already spent: the report has been
-    // made and cannot be made twice, so a late subscriber can only be told nothing.
+    // A credential this process has already reported: the rejection happened before this
+    // listener existed, which is exactly what a host that subscribed a moment after `Portal`'s
+    // eager client fetch was rejected needs to hear. Replay it — once, on the main actor, and
+    // cancellable until it runs — instead of dropping the listener silently.
     if self.isReported(credentials, key: key) {
       self.lock.unlock()
-      return .spent
+      return Self.replay(listener)
     }
 
     let entry: ListenerEntry
@@ -387,6 +393,42 @@ final class CredentialInvalidationRegistry {
     }
   }
 
+  /// Delivers `listener` once, on the main actor, for a credential that was reported before the
+  /// subscription was made. The handle's `cancel()` suppresses the delivery if it has not run.
+  private static func replay(_ listener: @escaping @MainActor () -> Void) -> PortalSessionInvalidationHandle {
+    let gate = ReplayGate()
+    Task { @MainActor in
+      if gate.claim() {
+        listener()
+      }
+    }
+    return PortalSessionInvalidationHandle(onCancel: { gate.cancel() })
+  }
+
+  /// One-shot flag shared by a replayed delivery and its handle: whichever of `claim()` and
+  /// `cancel()` runs first settles it.
+  private final class ReplayGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var settled = false
+
+    /// `true` exactly once, and never after `cancel()`.
+    func claim() -> Bool {
+      self.lock.lock()
+      defer { self.lock.unlock() }
+      if self.settled {
+        return false
+      }
+      self.settled = true
+      return true
+    }
+
+    func cancel() {
+      self.lock.lock()
+      self.settled = true
+      self.lock.unlock()
+    }
+  }
+
   private func unsubscribe(key: ObjectIdentifier, id: UInt64) {
     self.lock.lock()
     defer { self.lock.unlock() }
@@ -414,5 +456,134 @@ final class CredentialInvalidationRegistry {
     self.monitors = self.monitors.filter { $0.value.credential != nil }
     self.entries = self.entries.filter { $0.value.credential != nil }
     self.reported = self.reported.filter { $0.value.credential != nil }
+  }
+}
+
+// MARK: - UnauthorizedHookRegistry
+
+/// Which credentials own each transport's 401 hook, keyed by transport identity.
+///
+/// A transport carries one `onUnauthorized` closure but may serve several SDK objects holding
+/// different credentials, so the closure the SDK installs looks its owners up here and reports
+/// only the one that presented the rejected bearer. Entries hold the transport and every owner
+/// weakly and are pruned on each operation, so a transport or credential that deallocates never
+/// pins a stale attribution onto whichever object next occupies its address. The lock is never
+/// held while calling into host code: `getToken()` and `reportUnauthorized(_:)` run on a
+/// snapshot taken under it.
+final class UnauthorizedHookRegistry {
+  static let shared = UnauthorizedHookRegistry()
+
+  private final class Owner {
+    weak var credentials: PortalCredentials?
+    let context: String
+
+    init(_ credentials: PortalCredentials, context: String) {
+      self.credentials = credentials
+      self.context = context
+    }
+  }
+
+  private final class TransportEntry {
+    weak var transport: PortalUnauthorizedReporting?
+    var owners: [Owner] = []
+
+    init(_ transport: PortalUnauthorizedReporting) {
+      self.transport = transport
+    }
+  }
+
+  private let lock = NSLock()
+  private var entries: [ObjectIdentifier: TransportEntry] = [:]
+
+  init() {}
+
+  /// Records `credentials` as an owner of `transport`'s hook, installing the hook when the
+  /// transport has none. A hook the SDK did not install is left alone and nothing is recorded.
+  /// Registering the same credential twice is a no-op.
+  func install(on transport: PortalUnauthorizedReporting, for credentials: PortalCredentials, context: String) {
+    self.lock.lock()
+    defer { self.lock.unlock() }
+    self.pruneStaleEntries()
+
+    let key = ObjectIdentifier(transport)
+    if let entry = self.entries[key], entry.transport === transport {
+      if !entry.owners.contains(where: { $0.credentials === credentials }) {
+        entry.owners.append(Owner(credentials, context: context))
+      }
+      return
+    }
+
+    // Not a hook of ours: whatever is installed came from somewhere else and is never replaced.
+    guard transport.onUnauthorized == nil else {
+      return
+    }
+
+    let entry = TransportEntry(transport)
+    entry.owners = [Owner(credentials, context: context)]
+    self.entries[key] = entry
+    transport.onUnauthorized = { [weak transport] rejectedBearerToken in
+      guard let transport = transport else {
+        return
+      }
+      UnauthorizedHookRegistry.shared.report(bearerToken: rejectedBearerToken, from: transport)
+    }
+  }
+
+  /// Reports the owner(s) of `transport` whose credential presented `bearerToken`.
+  ///
+  /// Every owner whose current `getToken()` equals the rejected bearer is reported — normally
+  /// exactly one. When none matches (the token rotated between request and response, or the
+  /// header used a non-Bearer scheme so no token is known) a lone owner is still reported,
+  /// because its credential is the only one the transport could have sent. With several owners
+  /// and no match nothing is reported and the ambiguity is logged: invalidating the wrong
+  /// session is worse than leaving the caller with the `PortalRequestsError.unauthorized` it is
+  /// about to receive anyway. The token is compared, never logged.
+  func report(bearerToken: String?, from transport: PortalUnauthorizedReporting) {
+    self.lock.lock()
+    self.pruneStaleEntries()
+    let key = ObjectIdentifier(transport)
+    guard let entry = self.entries[key], entry.transport === transport else {
+      self.lock.unlock()
+      PortalLogger.shared.debug("UnauthorizedHookRegistry.report() - Received a 401 from a transport with no registered owners; nothing to report.")
+      return
+    }
+    let owners: [(credentials: PortalCredentials, context: String)] = entry.owners.compactMap { owner in
+      owner.credentials.map { ($0, owner.context) }
+    }
+    self.lock.unlock()
+
+    let matches = owners.filter { owner in
+      guard let bearerToken = bearerToken else {
+        return false
+      }
+      return (try? owner.credentials.getToken()) == bearerToken
+    }
+
+    let targets: [(credentials: PortalCredentials, context: String)]
+    if !matches.isEmpty {
+      targets = matches
+    } else if owners.count == 1 {
+      targets = owners
+    } else {
+      PortalLogger.shared.error("UnauthorizedHookRegistry.report() - A 401 on a transport shared by \(owners.count) credentials could not be attributed to any of them; no credential was invalidated.")
+      return
+    }
+
+    for owner in targets {
+      reportUnauthorizedAndLog(owner.credentials, context: owner.context)
+    }
+  }
+
+  /// Must be called with `lock` held. Drops owners whose credential deallocated and entries whose
+  /// transport did. An entry whose transport is alive is kept even with no owners left: the
+  /// transport still carries our closure, and the next `install` on it must add to that entry
+  /// rather than mistake the closure for someone else's.
+  private func pruneStaleEntries() {
+    for (key, entry) in self.entries {
+      entry.owners.removeAll { $0.credentials == nil }
+      if entry.transport == nil {
+        self.entries.removeValue(forKey: key)
+      }
+    }
   }
 }

@@ -41,8 +41,12 @@ protocol AuthSessionStorage: AnyObject {
   /// Removes the persisted session only if it still carries `token`.
   ///
   /// A stored session with a positively different token belongs to a newer login and is
-  /// spared. An entry that cannot be read or decoded is deleted: the caller is signing out,
-  /// and an unreadable entry is not evidence of a newer login.
+  /// spared. An entry that cannot be decoded is cleared (that is a permanent fault). An entry
+  /// that cannot be *read* is left alone and the failure thrown: a transient fault has not said
+  /// whether a newer login owns the slot, and deleting blind could erase that login's session.
+  ///
+  /// - Throws: `PortalAuthError.sessionStorageFailure` when the entry could not be read or
+  ///   could not be deleted.
   func deleteIfCurrent(_ token: String) throws
 }
 
@@ -261,17 +265,22 @@ final class KeychainAuthSessionStorage: AuthSessionStorage, @unchecked Sendable 
     self.lock.lock()
     defer { self.lock.unlock() }
 
-    // A read failure is swallowed on purpose: the caller is signing out, and a locked or
-    // failing Keychain is not evidence that a newer login owns the entry.
-    switch try? self._read() {
-    case let .session(current)? where current.clientSessionToken != token:
+    // The read is not swallowed: this is a compare-and-delete, and a Keychain that cannot be
+    // read right now has not said whether a newer login owns the entry. Deleting blind could
+    // erase that login's session; failing instead leaves it intact and tells the caller
+    // (through `KeychainPortalSession.invalidate()`) that a stale copy may remain on disk.
+    switch try self._read() {
+    case let .session(current) where current.clientSessionToken != token:
       // Positively different: a newer login already re-keyed the slot. Spare it.
       return
-    case .cleared?:
+    case .cleared:
       // The entry was unusable and `_read()` has already deleted it under this same lock
       // hold; a second delete would only be a second chance to fail.
       return
-    default:
+    case .absent:
+      // Nothing is stored, so there is nothing to delete.
+      return
+    case .session:
       try self._delete()
     }
   }

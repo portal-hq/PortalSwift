@@ -60,8 +60,11 @@ final class KeychainPortalSession: PortalSession, CustomStringConvertible, Custo
   /// still this session's. Idempotent — a second call returns without touching storage.
   ///
   /// - Throws: `PortalAuthError.sessionStorageFailure` when the persisted copy could not be
-  ///   deleted. A `PortalAuthError` from storage is rethrown as is; any other error is wrapped
-  ///   with a message that names only its type.
+  ///   deleted, or could not be read to check whether it is still this session's (a Keychain
+  ///   that cannot be read is not deleted blind, or a newer login's session could be erased).
+  ///   The in-memory token is cleared either way; the error means a stale copy may remain on
+  ///   disk. A `PortalAuthError` from storage is rethrown as is; any other error is wrapped with
+  ///   a message that names only its type.
   func invalidate() throws {
     self.lock.lock()
     guard let previousToken = self.token else {

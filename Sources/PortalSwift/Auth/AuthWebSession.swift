@@ -91,7 +91,10 @@ final class AuthPresentationAnchorProvider: NSObject, ASWebAuthenticationPresent
 /// - Task cancellation calls `cancel()`, which dismisses the session and fails the call with
 ///   `.closed` itself rather than waiting for the system to report `canceledLogin`; a
 ///   cancellation that lands before the main-actor hop fails the call the same way and the
-///   session is never started. `cancel()` once the call has finished is a no-op.
+///   session is never started. One that lands between the transition to `running` and
+///   `start()` has cancelled a session that was not yet started (a no-op on the system class),
+///   so `begin` re-checks after `start()` and dismisses the session it just presented.
+///   `cancel()` once the call has finished is a no-op.
 ///
 /// Errors from the completion go through `mapError(_:)`: `canceledLogin` → `.closed`,
 /// `presentationContextNotProvided` / `presentationContextInvalid` → `.unavailable`,
@@ -234,6 +237,24 @@ final class ASWebAuthenticationSessionAdapter: AuthWebSessionProviding, @uncheck
     guard handle.start() else {
       self.finish(.failure(PortalAuthSignInError.unavailable))
       return
+    }
+
+    // `cancel()` may have run between the transition to `.running` above and `start()`. It
+    // then cancelled a session that had not started — a no-op on `ASWebAuthenticationSession`
+    // — and failed the continuation with `.closed`, and `start()` has just presented the browser
+    // anyway. If this handle is no longer the active run, dismiss it; every later completion is
+    // already ignored by `finish`.
+    self.lock.lock()
+    let stillActive: Bool
+    if case let .running(_, activeHandle, _) = self.state, activeHandle === handle {
+      stillActive = true
+    } else {
+      stillActive = false
+    }
+    self.lock.unlock()
+
+    if !stillActive {
+      handle.cancel()
     }
   }
 

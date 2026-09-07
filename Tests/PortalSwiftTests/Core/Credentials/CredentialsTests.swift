@@ -265,7 +265,7 @@ final class CredentialsTests: XCTestCase {
     installUnauthorizedHook(on: requests, for: credentials, context: "PortalApi")
 
     XCTAssertNotNil(requests.onUnauthorized)
-    requests.onUnauthorized?()
+    requests.onUnauthorized?(nil)
     XCTAssertEqual(credentials.invalidateCalls, 1)
   }
 
@@ -273,10 +273,10 @@ final class CredentialsTests: XCTestCase {
     let requests = PortalRequests(urlSession: MockURLProtocol.makeSession())
     let credentials = MockCredentials()
     var portalRuns = 0
-    requests.onUnauthorized = { portalRuns += 1 }
+    requests.onUnauthorized = { _ in portalRuns += 1 }
 
     installUnauthorizedHook(on: requests, for: credentials, context: "PortalApi")
-    requests.onUnauthorized?()
+    requests.onUnauthorized?(nil)
 
     XCTAssertEqual(portalRuns, 1, "The pre-existing hook must still be the one that runs")
     XCTAssertEqual(credentials.invalidateCalls, 0)
@@ -303,12 +303,93 @@ final class CredentialsTests: XCTestCase {
 
     installUnauthorizedHook(on: requests, for: credentials, context: "PortalApi")
     XCTAssertEqual(requests.onUnauthorizedSetCount, 1)
-    requests.onUnauthorized?()
+    requests.onUnauthorized?(nil)
 
     let delivered = await waitUntil { recorder.deliveries == 1 }
     XCTAssertTrue(delivered, "The hook must report the dead session to the host, not only invalidate it")
     XCTAssertEqual(recorder.deliveries, 1)
     XCTAssertEqual(credentials.invalidateCalls, 1)
+  }
+
+  func test_installUnauthorizedHook_willReportOnlyTheCredentialThatPresentedTheRejectedBearer() throws {
+    // One transport, two SDK objects with different credentials: the 401 belongs to whichever
+    // credential's token the rejected request carried, not to whichever installed first.
+    let requests = PortalRequestsSpy()
+    let first = MockCredentials(tokenValue: "token-first")
+    let second = MockCredentials(tokenValue: "token-second")
+
+    installUnauthorizedHook(on: requests, for: first, context: "PortalApi")
+    installUnauthorizedHook(on: requests, for: second, context: "PortalProvider")
+    XCTAssertEqual(requests.onUnauthorizedSetCount, 1, "One closure per transport, however many owners")
+
+    requests.onUnauthorized?("token-second")
+
+    XCTAssertEqual(second.invalidateCalls, 1, "The rejected credential is invalidated")
+    XCTAssertEqual(first.invalidateCalls, 0, "The other owner's session is untouched")
+
+    requests.onUnauthorized?("token-first")
+
+    XCTAssertEqual(first.invalidateCalls, 1)
+    XCTAssertEqual(second.invalidateCalls, 1, "Reporting is idempotent per credential and never spills over")
+  }
+
+  func test_installUnauthorizedHook_willReportNobody_whenBearerMatchesNoneOfSeveralOwners() {
+    let requests = PortalRequestsSpy()
+    let first = MockCredentials(tokenValue: "token-first")
+    let second = MockCredentials(tokenValue: "token-second")
+    installUnauthorizedHook(on: requests, for: first, context: "PortalApi")
+    installUnauthorizedHook(on: requests, for: second, context: "PortalProvider")
+
+    requests.onUnauthorized?("token-of-someone-else")
+    requests.onUnauthorized?(nil)
+
+    XCTAssertEqual(first.invalidateCalls, 0, "An unattributable 401 must not guess: invalidating the wrong session is worse than none")
+    XCTAssertEqual(second.invalidateCalls, 0)
+  }
+
+  func test_installUnauthorizedHook_willReportLoneOwner_whenBearerIsUnknownOrRotated() {
+    let requests = PortalRequestsSpy()
+    let only = MockCredentials(tokenValue: "token-now")
+    installUnauthorizedHook(on: requests, for: only, context: "PortalApi")
+
+    // A non-Bearer scheme yields no token; a token that rotated between request and response
+    // matches nothing. With a single owner both are unambiguous.
+    requests.onUnauthorized?(nil)
+    XCTAssertEqual(only.invalidateCalls, 1)
+
+    let rotated = MockCredentials(tokenValue: "token-now")
+    let other = PortalRequestsSpy()
+    installUnauthorizedHook(on: other, for: rotated, context: "PortalApi")
+    other.onUnauthorized?("token-before-rotation")
+    XCTAssertEqual(rotated.invalidateCalls, 1)
+  }
+
+  func test_installUnauthorizedHook_willRegisterSameCredentialOnce() {
+    let requests = PortalRequestsSpy()
+    let credentials = MockCredentials(tokenValue: "token")
+
+    installUnauthorizedHook(on: requests, for: credentials, context: "PortalApi")
+    installUnauthorizedHook(on: requests, for: credentials, context: "PortalProvider")
+    requests.onUnauthorized?("token")
+
+    XCTAssertEqual(requests.onUnauthorizedSetCount, 1)
+    XCTAssertEqual(credentials.invalidateCalls, 1, "The same credential registered from two owners is still one owner")
+  }
+
+  func test_installUnauthorizedHook_willKeepAttributing_afterAnOwnerDeallocates() {
+    // A long-lived transport outlives the credentials that used it: the closure stays, and a new
+    // owner must still be recorded against it rather than mistaken for someone else's hook.
+    let requests = PortalRequestsSpy()
+    var early: MockCredentials? = MockCredentials(tokenValue: "token-early")
+    installUnauthorizedHook(on: requests, for: early!, context: "PortalApi")
+    early = nil
+
+    let late = MockCredentials(tokenValue: "token-late")
+    installUnauthorizedHook(on: requests, for: late, context: "PortalApi")
+    requests.onUnauthorized?("token-late")
+
+    XCTAssertEqual(requests.onUnauthorizedSetCount, 1, "The closure is installed once for the life of the transport")
+    XCTAssertEqual(late.invalidateCalls, 1)
   }
 
   func test_installUnauthorizedHook_willNotRetainOwner() {
@@ -331,7 +412,7 @@ final class CredentialsTests: XCTestCase {
 
     XCTAssertNil(weakOwner, "The installed closure must capture only the credential, never its installer")
     XCTAssertNotNil(requests.onUnauthorized, "The hook must outlive the installer")
-    requests.onUnauthorized?()
+    requests.onUnauthorized?(nil)
     XCTAssertEqual(credentials.invalidateCalls, 1)
   }
 

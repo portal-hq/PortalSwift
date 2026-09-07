@@ -578,7 +578,7 @@ extension PortalCredentialsTests {
     let reporting = try XCTUnwrap(api.requests as? PortalUnauthorizedReporting, "PortalRequests must report 401s.")
     XCTAssertNotNil(reporting.onUnauthorized, "The default transport must carry a 401 hook.")
 
-    reporting.onUnauthorized?()
+    reporting.onUnauthorized?(nil)
 
     XCTAssertEqual(credentials.invalidateCalls, 1)
   }
@@ -593,7 +593,7 @@ extension PortalCredentialsTests {
     XCTAssertNotNil(spy.onUnauthorized)
     XCTAssertEqual(spy.onUnauthorizedSetCount, 1, "Portal must not replace a hook the API already installed.")
 
-    spy.onUnauthorized?()
+    spy.onUnauthorized?(nil)
 
     XCTAssertEqual(credentials.invalidateCalls, 1)
     XCTAssertTrue(portal.credentials === credentials)
@@ -653,8 +653,8 @@ extension PortalCredentialsTests {
     let spy = try makeSpy()
     spy.simulatePortalUnauthorizedOnce = true
 
-    // Hold the eager fetch at the credential boundary until the subscription is in place: the
-    // notification is once-ever, so a late subscriber would legitimately be told nothing.
+    // Hold the eager fetch at the credential boundary until the subscription is in place, so
+    // this case pins the live delivery; the late-subscriber replay is pinned separately below.
     let gate = DispatchSemaphore(value: 0)
     credentials.onGetToken = { [weak credentials] in
       guard credentials?.getTokenCalls == 1 else {
@@ -920,7 +920,7 @@ extension PortalCredentialsTests {
     let portal = try buildPortal(credentials: credentials, spy: spy)
     let (recorder, _) = subscribe(portal)
 
-    spy.onUnauthorized?()
+    spy.onUnauthorized?(nil)
 
     let fired = await waitUntil { recorder.deliveries == 1 }
     XCTAssertTrue(fired, "A rejected credential must reach the host.")
@@ -933,8 +933,8 @@ extension PortalCredentialsTests {
     let portal = try buildPortal(credentials: credentials, spy: spy)
     let (recorder, _) = subscribe(portal)
 
-    spy.onUnauthorized?()
-    spy.onUnauthorized?()
+    spy.onUnauthorized?(nil)
+    spy.onUnauthorized?(nil)
 
     let delivered = await waitUntil { recorder.deliveries == 1 }
     XCTAssertTrue(delivered, "The host must be notified exactly once.")
@@ -954,9 +954,9 @@ extension PortalCredentialsTests {
 
     try runConcurrently(2) { index in
       if index == 0 {
-        apiSpy.onUnauthorized?()
+        apiSpy.onUnauthorized?(nil)
       } else {
-        providerSpy.onUnauthorized?()
+        providerSpy.onUnauthorized?(nil)
       }
     }
 
@@ -974,7 +974,7 @@ extension PortalCredentialsTests {
     let (recorder, handle) = subscribe(portal)
 
     handle.cancel()
-    spy.onUnauthorized?()
+    spy.onUnauthorized?(nil)
 
     let fired = await waitUntil(timeout: 0.3) { recorder.deliveries > 0 }
     XCTAssertFalse(fired, "A cancelled subscription must not deliver.")
@@ -988,7 +988,7 @@ extension PortalCredentialsTests {
     let (first, _) = subscribe(portal)
     let (second, _) = subscribe(portal)
 
-    spy.onUnauthorized?()
+    spy.onUnauthorized?(nil)
 
     let delivered = await waitUntil { first.deliveries == 1 && second.deliveries == 1 }
     XCTAssertTrue(delivered, "Every subscriber must be notified.")
@@ -1002,25 +1002,28 @@ extension PortalCredentialsTests {
     let (recorder, handle) = subscribe(portal)
 
     XCTAssertTrue(handle === PortalSessionInvalidationHandle.spent, "A Client API Key can never be reported.")
-    spy.onUnauthorized?()
+    spy.onUnauthorized?(nil)
 
     let fired = await waitUntil(timeout: 0.3) { recorder.deliveries > 0 }
     XCTAssertFalse(fired)
   }
 
-  func test_onSessionInvalidated_willReturnSpentHandle_forLateSubscriber() async throws {
+  func test_onSessionInvalidated_willReplayRejection_forLateSubscriber() async throws {
     let credentials = MockCredentials(tokenValue: "session-token")
     let spy = try makeSpy()
     let portal = try buildPortal(credentials: credentials, spy: spy)
 
-    // The rejection is reported before anyone subscribes: the report cannot be made twice, so a late
-    // subscriber can only ever be told nothing.
-    spy.onUnauthorized?()
+    // The rejection is reported before anyone subscribes — the eager client fetch in `init` can
+    // come back 401 before the host's next line runs. The late subscriber is told once anyway.
+    spy.onUnauthorized?(nil)
     let (recorder, handle) = subscribe(portal)
 
-    XCTAssertTrue(handle === PortalSessionInvalidationHandle.spent)
-    let fired = await waitUntil(timeout: 0.3) { recorder.deliveries > 0 }
-    XCTAssertFalse(fired)
+    let fired = await waitUntil { recorder.deliveries == 1 }
+    XCTAssertTrue(fired, "A subscriber that arrives after the rejection must still learn the session ended")
+    XCTAssertEqual(recorder.mainThreadDeliveries, 1, "Replayed on the main actor like a live delivery")
+    XCTAssertFalse(handle === PortalSessionInvalidationHandle.spent, "The replay is cancellable, so it hands back a live handle")
+    let firedAgain = await waitUntil(timeout: 0.3) { recorder.deliveries > 1 }
+    XCTAssertFalse(firedAgain, "Replayed at most once")
   }
 
   func test_onSessionInvalidated_willLeavePortalOnDifferentSessionUnaffected() async throws {
@@ -1033,7 +1036,7 @@ extension PortalCredentialsTests {
     let (onSpent, _) = subscribe(spentPortal)
     let (onFresh, _) = subscribe(freshPortal)
 
-    spentSpy.onUnauthorized?()
+    spentSpy.onUnauthorized?(nil)
 
     let delivered = await waitUntil { onSpent.deliveries == 1 }
     XCTAssertTrue(delivered, "The Portal whose session was rejected must be notified.")
@@ -1049,7 +1052,7 @@ extension PortalCredentialsTests {
     let (recorder, _) = subscribe(portal)
 
     DispatchQueue.global(qos: .userInitiated).async {
-      spy.onUnauthorized?()
+      spy.onUnauthorized?(nil)
     }
 
     let delivered = await waitUntil { recorder.deliveries == 1 }
@@ -1064,7 +1067,7 @@ extension PortalCredentialsTests {
     let (recorder, handle) = subscribe(portal)
     recorder.onDeliver = { handle.cancel() }
 
-    spy.onUnauthorized?()
+    spy.onUnauthorized?(nil)
 
     let fired = await waitUntil { recorder.deliveries == 1 }
     XCTAssertTrue(fired, "Cancelling from inside the listener must not deadlock it.")

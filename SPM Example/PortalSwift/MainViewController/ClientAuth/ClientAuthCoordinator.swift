@@ -53,7 +53,8 @@ final class ClientAuthCoordinator {
   /// installed and on teardown.
   var sessionInvalidatedHandle: PortalSessionInvalidationHandle?
 
-  /// Joins a launch-time restore and a redirect adoption onto a single run.
+  /// Joins a launch-time restore and a redirect adoption of the same user onto a single run, and
+  /// queues a different user's adoption behind it.
   let adoptionGuard = AdoptionGuard<Bool>()
 
   /// The presented Client Auth screen, up-cast to `UIViewController` so this type carries no

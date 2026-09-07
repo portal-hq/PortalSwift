@@ -264,9 +264,9 @@ final class MockAuthSessionStorage: AuthSessionStorage, @unchecked Sendable {
     self._events.append(.deleteIfCurrent)
     self.lock.unlock()
 
-    // A read failure is swallowed on purpose, exactly like the real storage: the caller is
-    // signing out, and an unreadable entry is not evidence of a newer login.
-    let current = try? self.read()
+    // A read failure propagates, exactly like the real storage: a compare-and-delete that cannot
+    // compare must not delete blind, or a stale sign-out could erase a newer login's session.
+    let current = try self.read()
     if let current = current, current.clientSessionToken != token {
       // Positively different: a newer login owns the slot. Spare it.
       return

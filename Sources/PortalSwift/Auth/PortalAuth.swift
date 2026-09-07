@@ -347,6 +347,17 @@ public final class PortalAuth: @unchecked Sendable {
   /// delete-and-reinstall can restore a still-live session from the previous install; hosts
   /// that want a clean slate call `clearPersistedSession()` on first launch after install.
   ///
+  /// Deliberately outside `grantMutex`. The read is atomic on its own — the storage serialises
+  /// read, parse and self-heal under one lock — so it never observes a torn write. Ordering
+  /// against a concurrent `clearPersistedSession()` is not something the mutex could add: a
+  /// restore that acquires first returns the session and the clear then deletes the persisted
+  /// copy, which is the same end state as the unlocked race, because clearing never revokes a
+  /// session already handed out (there is no server-side revoke). The guarantee documented on
+  /// `clearPersistedSession()` is only that a restore *started after* it returns finds nothing,
+  /// and the storage lock already provides that. Taking the mutex here would instead make this
+  /// launch-time, network-free read block behind an in-flight grant exchange. Android's
+  /// `restoreSession` is likewise outside `grantLock`.
+  ///
   /// - Throws: `PortalAuthError.sessionStorageFailure` when the session could not be read
   ///   *this time* (a transient Keychain fault), or an unusable entry could not be cleared.
   public func restoreSession() async throws -> PortalSession? {

@@ -1458,6 +1458,33 @@ extension PortalAuthSignInTests {
     XCTAssertTrue(released, "Both are released once the call has finished")
   }
 
+  func test_adapter_willDismissSession_whenCancelledBetweenRunningAndStart() async throws {
+    // The race: `cancel()` lands after the adapter has moved to `.running` but before `start()`.
+    // It cancels a session that has not started — a no-op on `ASWebAuthenticationSession` — and
+    // fails the call with `.closed`; `start()` then presents the browser anyway. The adapter must
+    // notice and dismiss it, or the sheet stays up with every callback ignored.
+    let recorder = FakeWebAuthenticationSessionHandle.Recorder()
+    let retained = RetainedHandles()
+    let adapter = self.makeAdapter(recorder: recorder)
+    recorder.onCreate = { handle in
+      retained.append(handle)
+      handle.onStart = { adapter.cancel() }
+    }
+    let authorizeUrl = try AuthTestFixtures.url(SignInFixtures.googleAuthorizeUrl)
+
+    let task = self.startAuthenticate(adapter, url: authorizeUrl, anchor: self.anchor)
+
+    await XCTAssertThrowsAsync(try await self.awaitBounded("adapter.authenticate") { try await task.value }) { error in
+      XCTAssertEqual(error as? PortalAuthSignInError, .closed)
+    }
+    let handle = try XCTUnwrap(retained.latest)
+    XCTAssertEqual(handle.startCalls, 1)
+    XCTAssertEqual(handle.cancelCallsAfterStart, 1, "The session `start()` presented after the cancellation must be dismissed")
+    // A late completion from the dismissed session changes nothing.
+    let callback = try AuthTestFixtures.url(SignInFixtures.googleCallback)
+    handle.complete(url: callback, error: nil)
+  }
+
   func test_adapter_willReleaseProviderAndSession_afterFailure() async throws {
     let recorder = FakeWebAuthenticationSessionHandle.Recorder()
     let adapter = self.makeAdapter(recorder: recorder)

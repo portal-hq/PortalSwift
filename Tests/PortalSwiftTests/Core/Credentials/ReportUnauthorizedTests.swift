@@ -286,9 +286,9 @@ final class ReportUnauthorizedTests: XCTestCase {
     try reportUnauthorized(credentials)
 
     await self.flushPendingDeliveries()
-    XCTAssertEqual(original.deliveries, 1)
-    XCTAssertEqual(lateCounter.value, 0, "A listener subscribed during the callback arrives after the report and can never fire")
-    XCTAssertTrue(lateHandle.value === PortalSessionInvalidationHandle.spent, "The mid-callback subscription must receive the spent handle")
+    XCTAssertEqual(original.deliveries, 1, "The once-only guard holds: a second report does not re-run the original listener")
+    XCTAssertEqual(lateCounter.value, 1, "A listener subscribed during the callback is a late subscriber: the report is replayed to it once, and the second report does not run it again")
+    XCTAssertFalse(lateHandle.value === PortalSessionInvalidationHandle.spent, "The mid-callback subscription gets a live handle that could have cancelled its replay")
     XCTAssertEqual(credentials.invalidateCalls, 2)
   }
 
@@ -387,15 +387,39 @@ final class ReportUnauthorizedTests: XCTestCase {
     XCTAssertEqual(counter.value, 1, "Cancelling one of two subscriptions to the same closure leaves exactly one")
   }
 
-  func test_onCredentialsInvalidated_willReturnSpentHandle_whenSubscribingAfterReport() async throws {
+  func test_onCredentialsInvalidated_willReplayReport_whenSubscribingAfterReport() async throws {
     let credentials = MockCredentials()
     try reportUnauthorized(credentials)
 
     let recorder = InvalidationListenerRecorder(credentials: credentials)
 
-    XCTAssertTrue(recorder.handle === PortalSessionInvalidationHandle.spent, "A late subscriber on a reported credential receives the spent handle")
     await self.flushPendingDeliveries()
-    XCTAssertEqual(recorder.deliveries, 0, "The report has already been made and cannot be made twice")
+    XCTAssertEqual(recorder.deliveries, 1, "A late subscriber on a reported credential is told once, as if it had subscribed in time")
+    XCTAssertTrue(recorder.allDeliveredOnMainThread)
+    XCTAssertFalse(recorder.handle === PortalSessionInvalidationHandle.spent, "The pending replay is cancellable")
+  }
+
+  func test_onCredentialsInvalidated_willNotReplay_whenLateSubscriptionCancelledFirst() async throws {
+    let credentials = MockCredentials()
+    try reportUnauthorized(credentials)
+
+    let recorder = InvalidationListenerRecorder(credentials: credentials)
+    recorder.handle.cancel()
+
+    await self.flushPendingDeliveries()
+    XCTAssertEqual(recorder.deliveries, 0, "Cancelling before the main-actor hop suppresses the replay")
+  }
+
+  func test_onCredentialsInvalidated_willReplayToEachLateSubscriber() async throws {
+    let credentials = MockCredentials()
+    try reportUnauthorized(credentials)
+
+    let first = InvalidationListenerRecorder(credentials: credentials)
+    let second = InvalidationListenerRecorder(credentials: credentials)
+
+    await self.flushPendingDeliveries()
+    XCTAssertEqual(first.deliveries, 1)
+    XCTAssertEqual(second.deliveries, 1, "Each late subscription is its own once-only delivery")
   }
 
   func test_onCredentialsInvalidated_willReturnSpentHandle_forStaticCredentials() {

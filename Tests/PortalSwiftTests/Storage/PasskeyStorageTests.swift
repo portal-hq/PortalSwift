@@ -483,7 +483,7 @@ extension PasskeyStorageTests {
     // given
     let spy = PortalRequestsSpy()
     let marker = PasskeyCallMarker()
-    spy.onUnauthorized = { marker.fire() }
+    spy.onUnauthorized = { _ in marker.fire() }
     let credentials = MockCredentials(tokenValue: "pk-tok-1")
 
     // and given
@@ -491,7 +491,7 @@ extension PasskeyStorageTests {
 
     // then: the hook the host already wired is left alone
     XCTAssertEqual(spy.onUnauthorizedSetCount, 1)
-    spy.onUnauthorized?()
+    spy.onUnauthorized?(nil)
     XCTAssertEqual(marker.count, 1)
     XCTAssertEqual(credentials.invalidateCalls, 0)
   }
@@ -534,8 +534,8 @@ extension PasskeyStorageTests {
     initPasskeyStorage(requests: spy, credentials: credentials)
 
     // and given
-    spy.onUnauthorized?()
-    spy.onUnauthorized?()
+    spy.onUnauthorized?(nil)
+    spy.onUnauthorized?(nil)
 
     // then: the host hears about the dead session exactly once, however many 401s arrive.
     // Invalidation itself is idempotent rather than guarded, so it runs per rejection.
@@ -561,7 +561,7 @@ extension PasskeyStorageTests {
     // then: the closure captured the credential, never the storage
     let released = await waitUntil { weakStorage == nil }
     XCTAssertTrue(released, "The installed hook must not keep the storage alive.")
-    spy.onUnauthorized?()
+    spy.onUnauthorized?(nil)
     XCTAssertEqual(credentials.invalidateCalls, 1)
     let notified = await waitUntil { recorder.count == 1 }
     XCTAssertTrue(notified)

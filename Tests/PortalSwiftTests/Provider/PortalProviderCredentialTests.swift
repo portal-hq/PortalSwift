@@ -243,7 +243,7 @@ final class PortalProviderCredentialTests: XCTestCase {
     XCTAssertNotNil(self.requestsSpy.onUnauthorized)
     XCTAssertEqual(self.requestsSpy.onUnauthorizedSetCount, 1)
 
-    self.requestsSpy.onUnauthorized?()
+    self.requestsSpy.onUnauthorized?(nil)
 
     XCTAssertEqual(self.credentials.invalidateCalls, 1)
     await self.assertInvalidationDeliveredOnce(recorder)
@@ -252,13 +252,13 @@ final class PortalProviderCredentialTests: XCTestCase {
 
   func test_init_willLeaveExistingUnauthorizedHookAlone() throws {
     let marker = LockedBox<Bool>()
-    self.requestsSpy.onUnauthorized = { marker.value = true }
+    self.requestsSpy.onUnauthorized = { _ in marker.value = true }
 
     let provider = try makeProvider()
 
     XCTAssertEqual(self.requestsSpy.onUnauthorizedSetCount, 1, "The preset hook must not be replaced.")
 
-    self.requestsSpy.onUnauthorized?()
+    self.requestsSpy.onUnauthorized?(nil)
 
     XCTAssertEqual(marker.value, true, "The host's own hook should still be the one that runs.")
     XCTAssertEqual(self.credentials.invalidateCalls, 0)
