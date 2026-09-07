@@ -247,16 +247,20 @@ final class PortalOwnedUrlTests: XCTestCase {
 
   func test_isPortalOwnedUrl_willRejectPercentEncodedHost() {
     // `URLComponents.host` percent-decodes these into `attacker.com/.portalhq.io`,
-    // `a.portalhq.io`, `api.portalhq.io` and so on, which would pass a suffix test. The gate
-    // must read `percentEncodedHost` so the residual `%` is rejected by the character set.
+    // `a.portalhq.io`, `api.portalhq.io` and so on, which would pass a suffix test. On iOS 17's
+    // CFURL parser even `percentEncodedHost` can come back decoded, so the gate rejects a `%` in
+    // the raw host text before parsing; that holds on every Foundation.
     self.assertOwned([
       "https://attacker.com%2f.portalhq.io/rpc",
       "https://attacker.com%2F.portalhq.io/rpc",
       "https://a%2eportalhq%2eio/",
+      "https://a%2Eportalhq%2Eio/",
       "https://api%2eportalhq.io/",
+      "https://api.portalhq.io%2e/",
       "https://attacker.com%23.portalhq.io/",
       "https://attacker.com%3f.portalhq.io/",
-      "https://attacker.com%40api.portalhq.io/"
+      "https://attacker.com%40api.portalhq.io/",
+      "http://[fe80::1%25en0]/"
     ], false)
   }
 

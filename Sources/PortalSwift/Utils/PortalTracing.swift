@@ -64,6 +64,15 @@ private let ipv6LoopbackLiteral = "::1"
 /// - Parameter url: The absolute URL string to classify.
 /// - Returns: `true` only when the host is unambiguously Portal-owned or a local loopback.
 public func isPortalOwnedUrl(_ url: String) -> Bool {
+  // Refuse any percent-encoding in the raw host before parsing. Foundation's URL parser changed
+  // between iOS 17 (CFURL) and iOS 18+ (swift-foundation): the older one hands back an already
+  // decoded host for some encodings, so `attacker.com%2f.portalhq.io` can reach the suffix test
+  // as `attacker.com/.portalhq.io`, or `a%2eportalhq%2eio` as `a.portalhq.io`. No Portal or
+  // loopback host is ever spelled with a `%`, so the raw string is the parser-independent gate.
+  guard !rawHostContainsPercentEncoding(url) else {
+    return false
+  }
+
   guard let components = URLComponents(string: url),
         let scheme = components.scheme, !scheme.isEmpty,
         let rawHost = components.percentEncodedHost, !rawHost.isEmpty
@@ -94,6 +103,26 @@ public func isPortalOwnedUrl(_ url: String) -> Bool {
   }
 
   return false
+}
+
+/// `true` when the authority's host portion of the raw URL string contains a `%`.
+///
+/// Scans the text between `://` and the first `/`, `?` or `#`, after dropping any `user:pass@`
+/// prefix (split on the *last* literal `@`, so an encoded `%40` never creates a fake boundary).
+/// A bracketed IPv6 zone id (`[fe80::1%25en0]`) also contains `%` and is rejected; only `[::1]`
+/// is accepted by the caller anyway.
+private func rawHostContainsPercentEncoding(_ url: String) -> Bool {
+  guard let schemeEnd = url.range(of: "://") else {
+    return false
+  }
+  var authority = url[schemeEnd.upperBound...]
+  if let end = authority.firstIndex(where: { $0 == "/" || $0 == "?" || $0 == "#" }) {
+    authority = authority[..<end]
+  }
+  if let at = authority.lastIndex(of: "@") {
+    authority = authority[authority.index(after: at)...]
+  }
+  return authority.contains("%")
 }
 
 /// Removes every trailing `.` from the host by walking backwards over the UTF-8 view, so a
