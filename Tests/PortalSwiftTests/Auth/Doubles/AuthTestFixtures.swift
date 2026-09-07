@@ -412,24 +412,16 @@ enum AuthTestFixtures {
   }
 
   /// Runs `operation` and returns its value, or `nil` once `seconds` have passed without it
-  /// finishing (the loser is cancelled). An error from `operation` propagates unchanged. Keeps a
-  /// re-entrancy or deadlock regression in `grantMutex` a failed assertion, not a hung suite.
+  /// finishing. An error from `operation` propagates unchanged. Keeps a re-entrancy or deadlock
+  /// regression in `grantMutex` a failed assertion, not a hung suite — which is only true because
+  /// the target-wide `withTimeout(_:_:)` this forwards to races unstructured tasks; see its
+  /// documentation in `TestConcurrency.swift`. Kept on the fixtures type, like `pollUntil`, so the
+  /// auth tests read as one vocabulary.
   static func withTimeout<T>(
     _ seconds: TimeInterval = 2,
     _ operation: @escaping @Sendable () async throws -> T
   ) async throws -> T? {
-    try await withThrowingTaskGroup(of: T?.self) { group in
-      group.addTask {
-        try await operation()
-      }
-      group.addTask {
-        try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-        return nil
-      }
-      let first = try await group.next() ?? nil
-      group.cancelAll()
-      return first
-    }
+    try await PortalSwiftTests.withTimeout(seconds, operation)
   }
 }
 

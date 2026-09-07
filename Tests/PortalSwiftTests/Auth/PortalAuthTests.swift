@@ -1092,6 +1092,29 @@ final class PortalAuthTests: XCTestCase {
     XCTAssertEqual(self.storage.setCalls, 0)
   }
 
+  func test_handleRedirect_willThrowInvalidGrantResponse_whenCstWhitespaceOnly_andNoJwt() async throws {
+    // `PersistedSessionCodec` and `resolveCredentialToken` both reject a whitespace-only token, so
+    // persisting one would hand back a session that fails its first request and is cleared on the
+    // next restore. Blank is treated as absent at the source instead.
+    self.requests.enqueue(AuthTestFixtures.grantResponse(clientSessionToken: "  \n", endUserId: "user-1"))
+
+    await XCTAssertThrowsAsync(
+      try await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect()),
+      expected: PortalAuthError.invalidGrantResponse
+    )
+    XCTAssertEqual(self.storage.setCalls, 0)
+    XCTAssertNil(self.storage.stored)
+  }
+
+  func test_handleRedirect_willReturnTotpRequired_whenCstWhitespaceOnlyAndJwtPresent() async throws {
+    self.requests.enqueue(AuthTestFixtures.grantResponse(clientSessionToken: "   ", userJwt: AuthTestFixtures.userJwt()))
+
+    let step = try self.totpRequired(await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
+
+    XCTAssertEqual(step.userJwt, AuthTestFixtures.userJwt())
+    XCTAssertEqual(self.storage.setCalls, 0)
+  }
+
   func test_handleRedirect_willReturnTotpRequired_whenCstEmptyStringAndJwtPresent() async throws {
     self.requests.enqueue(AuthTestFixtures.grantResponse(clientSessionToken: "", userJwt: AuthTestFixtures.userJwt()))
 
@@ -1439,6 +1462,17 @@ final class PortalAuthTests: XCTestCase {
       expected: PortalAuthError.malformedResponse(path: "/api/v3/auth/totps/validations", missing: "clientSessionToken")
     )
     XCTAssertEqual(self.storage.setCalls, 0)
+  }
+
+  func test_verifyTotp_willNeverPersistWhitespaceOnlyCst() async throws {
+    self.requests.enqueue(AuthTestFixtures.totpResponse(clientSessionToken: " \t "))
+
+    await XCTAssertThrowsAsync(
+      try await self.auth.verifyTotp("777870", userJwt: AuthTestFixtures.userJwt()),
+      expected: PortalAuthError.malformedResponse(path: "/api/v3/auth/totps/validations", missing: "clientSessionToken")
+    )
+    XCTAssertEqual(self.storage.setCalls, 0)
+    XCTAssertNil(self.storage.stored)
   }
 
   func test_verifyTotp_willThrowMalformedResponse_whenEnvelopeMalformed() async throws {

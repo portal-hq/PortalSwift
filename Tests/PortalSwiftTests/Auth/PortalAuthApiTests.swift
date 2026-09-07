@@ -552,6 +552,17 @@ final class PortalAuthApiTests: XCTestCase {
     XCTAssertEqual(grant.userJwt, "jwt")
   }
 
+  func test_validateMagicLink_willNotGuardEndUserId_whenCstBlank() async throws {
+    // A whitespace-only token is not a completed grant either: `PortalAuth` treats it as absent,
+    // so the `endUserId` guard must not fire on it.
+    self.requests.enqueue(AuthTestFixtures.grantResponse(clientSessionToken: "  ", endUserId: nil, userJwt: "jwt"))
+
+    let grant = try await self.api.validateMagicLink(token: Self.grantToken)
+
+    XCTAssertEqual(grant.clientSessionToken, "  ")
+    XCTAssertEqual(grant.userJwt, "jwt")
+  }
+
   func test_validateMagicLink_willThrowMalformedNamingPath_whenNoData() async {
     self.requests.enqueue(Data("{\"error\":\"Unauthorized\"}".utf8))
 
@@ -821,6 +832,17 @@ final class PortalAuthApiTests: XCTestCase {
 
   func test_validateTotp_willRejectEmptyCst() async {
     self.requests.enqueue(AuthTestFixtures.envelope(["clientSessionToken": ""]))
+
+    await XCTAssertThrowsAsync(
+      try await self.api.validateTotp(code: Self.totpCode, userJwt: Self.userJwt),
+      expected: PortalAuthError.malformedResponse(path: PortalAuthApi.totpValidationsPath, missing: "clientSessionToken")
+    )
+  }
+
+  func test_validateTotp_willRejectWhitespaceOnlyCst() async {
+    // The same non-blank rule `PersistedSessionCodec` and `resolveCredentialToken` apply: a
+    // whitespace-only token would be persisted only to fail on first use.
+    self.requests.enqueue(AuthTestFixtures.envelope(["clientSessionToken": " \n "]))
 
     await XCTAssertThrowsAsync(
       try await self.api.validateTotp(code: Self.totpCode, userJwt: Self.userJwt),

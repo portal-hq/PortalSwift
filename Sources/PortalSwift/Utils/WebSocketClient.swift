@@ -15,7 +15,7 @@ enum WebSocketTypeErrors: LocalizedError {
 /// Failures raised by `WebSocketClient` itself, as opposed to errors surfaced by Starscream.
 ///
 /// Kept apart from `PortalCredentialError` so `PortalConnect` and the reconnect path can tell
-/// "the credential is dead" (report it, emit code 401, never retry) from "this client is
+/// "the credential is unusable" (emit code 401, never retry) from "this client is
 /// misconfigured" (emit code 500). The description is a fixed literal: the server string a host
 /// passed in is never echoed, so a malformed URL cannot smuggle anything into a log line.
 enum WebSocketClientError: LocalizedError {
@@ -131,8 +131,11 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   private(set) var pingTimer: Timer?
 
   /// How many reconnects have been started since the last successful `connected` handshake.
-  /// Reset to zero by `handleConnect()`; when it reaches `reconnectPolicy.maxAttempts` the next
-  /// drop gives up instead of retrying.
+  /// Reset to zero when `handleData()` receives the proxy's `connected` message — not when the
+  /// transport upgrade completes in `handleConnect()`, or a proxy that accepts every upgrade and
+  /// drops the socket during the handshake would refill the budget on each drop and reconnect
+  /// forever. When it reaches `reconnectPolicy.maxAttempts` the next drop gives up instead of
+  /// retrying.
   private(set) var reconnectAttempts: Int {
     get {
       self.reconnectLock.lock()
@@ -352,10 +355,9 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   }
 
   func handleConnect() {
-    // Set the connection state
+    // Set the connection state. The reconnect budget is *not* reset here: the upgrade completing
+    // says nothing about whether the proxy will answer the connect message (see `handleData`).
     self.connectState = .connecting
-    // A completed handshake ends the current outage; the next drop starts a fresh budget.
-    self.reconnectAttempts = 0
 
     self.logger.info("WebSocketClient.handleConnect() - Connected to proxy service. Sending connect message...")
 
@@ -411,6 +413,10 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
       return
     } else if let payload = try? decoder.decode(WebSocketConnectedMessage.self, from: data), payload.event == "connected" {
       self.connectState = .connected
+      // The proxy's answer, not the transport upgrade, ends the outage; the next drop starts a
+      // fresh budget. Resetting on the upgrade alone would let a proxy that drops the socket
+      // during every handshake defeat the cap.
+      self.reconnectAttempts = 0
       self.emit(payload.event, payload.data)
       return
     } else if let payload = try? decoder.decode(WebSocketDisconnectMessage.self, from: data), payload.event == "disconnect" {
@@ -741,9 +747,10 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   /// one attempt from the budget; once `reconnectPolicy.maxAttempts` are used the client gives
   /// up with `ConnectError(message: "Reconnect attempts exhausted", code: 500)`. Otherwise it
   /// waits `reconnectPolicy.delay(forAttempt:)` and re-enters `connect(uri:)`, which resolves
-  /// the credential again. A `PortalCredentialError` there is terminal (reported, code 401, no
-  /// further retry); any other failure emits code 500. Whatever happens, `connectState` ends in
-  /// `.disconnected` until the proxy actually answers with `.connected`.
+  /// the credential again. A `PortalCredentialError` there is terminal (code 401, no further
+  /// retry, and not reported — see `handleReconnectCredentialFailure`); any other failure emits
+  /// code 500. Whatever happens, `connectState` ends in `.disconnected` until the proxy actually
+  /// answers with `.connected`.
   private func reconnect() {
     guard let uri = self.uri else {
       self.logger.warn("WebSocketClient.reconnect() - No session uri to reconnect to. Staying disconnected.")
@@ -801,12 +808,18 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
     }
   }
 
-  /// A dead credential discovered while reconnecting: report it once through the credentials
-  /// layer, settle in `.disconnected` and tell the host with code 401. Not retried, because
-  /// the next attempt would resolve the same dead credential.
+  /// A credential that could not be resolved while reconnecting: settle in `.disconnected` and
+  /// tell the host with code 401. Not retried, because the next attempt would resolve the same
+  /// credential.
+  ///
+  /// Not reported through the credentials layer either. No request was sent, so the proxy
+  /// rejected nothing: a `.sessionInvalidated` was already reported by the 401 that ended the
+  /// session (or is a host sign-out, silent by contract), and a `.providerFailure` or
+  /// `.unavailable` from a host-written provider may be transient — invalidating it here would
+  /// destroy a credential the host could have recovered. Only the upgrade 401 in `handleError`
+  /// reports, which is the rule every other component follows for a local `PortalCredentialError`.
   private func handleReconnectCredentialFailure(_ error: PortalCredentialError) {
     self.logger.error("WebSocketClient.reconnect() - Credential unavailable (\(error.reason?.rawValue ?? "INVALID_API_KEY")). Not retrying.")
-    reportUnauthorizedAndLog(self.credentials, context: "WebSocketClient.reconnect")
     self.pingTimer?.invalidate()
     self.connectState = .disconnected
     self.emit("error", ConnectError(message: "401 - Unauthorized", code: 401))

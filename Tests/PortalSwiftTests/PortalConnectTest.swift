@@ -253,9 +253,10 @@ class PortalConnectTest: XCTestCase {
     XCTAssertEqual(self.errorEvents.last?.params.code, 401)
     XCTAssertFalse(portalConnect.connected)
     XCTAssertEqual(mockClient.connectState, .disconnected)
+    XCTAssertEqual(self.session.invalidateCalls, 0, "A provider failure may be transient; the credential is left alone")
   }
 
-  func test_connect_willReportUnauthorized_whenCredentialErrorIsSessionInvalidated() async throws {
+  func test_connect_willNotNotifyHost_whenSessionAlreadyInvalidated() async throws {
     let engine = FakeWebSocketEngine()
     let client = PortalSwift.WebSocketClient(
       credentials: session,
@@ -265,6 +266,8 @@ class PortalConnectTest: XCTestCase {
     )
     portalConnect.client = client
     let recorder = try XCTUnwrap(self.recorder)
+    // A host sign-out: silent by the credentials layer's contract. Had the SDK's own 401 ended the
+    // session, that path would already have notified the host.
     try self.session.invalidate()
 
     portalConnect.connect(mockURL)
@@ -273,9 +276,9 @@ class PortalConnectTest: XCTestCase {
     XCTAssertEqual(self.errorEvents.last?.params.code, 401)
     XCTAssertFalse(portalConnect.connected)
     XCTAssertEqual(engine.startCallsCount, 0, "A dead credential never reaches the transport")
-    let notified = await waitUntil { recorder.count == 1 }
-    XCTAssertTrue(notified, "The host must learn its session ended")
-    XCTAssertLessThanOrEqual(recorder.count, 1, "The host is told at most once per credential")
+    let notified = await waitUntil(timeout: 0.1) { recorder.count > 0 }
+    XCTAssertFalse(notified, "Nothing was sent, so nothing was rejected: a local credential failure is not a report")
+    XCTAssertEqual(self.session.invalidateCalls, 1, "Only the host's own sign-out touched the session")
   }
 
   func test_connect_willNotInvalidate_whenNonCredentialErrorThrown() {
@@ -307,7 +310,7 @@ class PortalConnectTest: XCTestCase {
     XCTAssertEqual(self.session.getTokenCalls, tokenCallsAfterFirstConnect)
   }
 
-  func test_connect_calledTwice_afterInvalidation_willReportOnce() async throws {
+  func test_connect_calledTwice_afterInvalidation_willSurfaceEachAttempt_withoutReporting() async throws {
     let engine = FakeWebSocketEngine()
     let client = PortalSwift.WebSocketClient(
       credentials: session,
@@ -324,11 +327,9 @@ class PortalConnectTest: XCTestCase {
 
     XCTAssertEqual(self.errorEvents.count, 2, "Every attempt is surfaced to the host's error handler")
     XCTAssertEqual(self.errorEvents.last?.params.code, 401)
-    let notified = await waitUntil { recorder.count == 1 }
-    XCTAssertTrue(notified)
-    XCTAssertLessThanOrEqual(recorder.count, 1, "The session-ended notification is once per credential")
-    // One invalidation from this test plus one per report: only the announcement is deduplicated.
-    XCTAssertEqual(self.session.invalidateCalls, 3)
+    let notified = await waitUntil(timeout: 0.1) { recorder.count > 0 }
+    XCTAssertFalse(notified, "A locally unresolvable credential is never reported, however often connect is retried")
+    XCTAssertEqual(self.session.invalidateCalls, 1, "Only this test's own sign-out touched the session")
     XCTAssertEqual(engine.startCallsCount, 0)
   }
 

@@ -254,9 +254,17 @@ public class PortalConnect: EventBus {
   ///
   /// Non-throwing, like before: a failure to open the connection is delivered on the
   /// `portal_connectError` event bus as a `ConnectError` — code 401 when the credential could not
-  /// be resolved (the credential is also reported through the credentials layer so the host's
-  /// `onSessionInvalidated` listener fires), code 500 for anything else — and the client is left
-  /// in `.disconnected` so `connected` never reads `true` for a connection that was never opened.
+  /// be resolved, code 500 for anything else — and the client is left in `.disconnected` so
+  /// `connected` never reads `true` for a connection that was never opened.
+  ///
+  /// A credential that cannot be resolved locally is deliberately **not** reported through the
+  /// credentials layer: no request was sent, so the proxy rejected nothing. A `.sessionInvalidated`
+  /// here was either already reported by the 401 that ended the session or is a host sign-out,
+  /// which is silent by contract; a `.providerFailure` or `.unavailable` from a host-written
+  /// provider may be transient and must not destroy the host's credential. Only an upgrade the
+  /// proxy answers with HTTP 401 (`WebSocketClient.handleError`) invalidates the credential and
+  /// fires the host's `onSessionInvalidated` listener — the same rule every other component
+  /// follows for a local `PortalCredentialError`.
   public func connect(_ uri: String) {
     self.logger.info("PortalConnect.connect() - Trying to connect.")
     if self.connected, uri == self.uri {
@@ -283,7 +291,6 @@ public class PortalConnect: EventBus {
       try client.connect(uri: uri)
     } catch let error as PortalCredentialError {
       self.logger.error("PortalConnect.connect() - Credential unavailable (\(error.reason?.rawValue ?? "INVALID_API_KEY")). Not connecting.")
-      reportUnauthorizedAndLog(self.credentials, context: "PortalConnect.connect")
       client.connectState = .disconnected
       self.handleConnectError(data: ConnectError(message: "401 - Unauthorized", code: 401))
     } catch {

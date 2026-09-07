@@ -465,7 +465,10 @@ public final class PortalAuth: @unchecked Sendable {
       return nil
     }
 
-    if let clientSessionToken = grant.clientSessionToken, !clientSessionToken.isEmpty {
+    // Blank counts as absent. `PersistedSessionCodec` and `resolveCredentialToken` both reject a
+    // whitespace-only token, so persisting one would only hand back a session that fails its
+    // first request with `.unavailable` and is cleared by the next restore.
+    if let clientSessionToken = grant.clientSessionToken, !Self.isBlank(clientSessionToken) {
       let endUserId = grant.endUserId ?? ""
       let authenticated = try self._persistAuthenticated(
         clientSessionToken: clientSessionToken,

@@ -31,6 +31,11 @@ struct ClientRegistrationRequest: Codable, Equatable {
 /// `normalizeExchangeUserId(_:)` renders it — which is also where the "`619692` must not become
 /// `619692.0`" rule lives, since a `619692.0` in a custodian path 404s on every route.
 ///
+/// Integers are tried as `Int64` before anything falls back to `Double`: a `Double` only holds
+/// 53 bits of integer exactly, so an id above 2^53 decoded through it would round to a
+/// neighbouring value and the path would name another user. `Double` remains the shape for a
+/// number that is not an `Int64` — one with a fraction, or one beyond `Int64`'s range.
+///
 /// `other` rather than a thrown `DecodingError` for any third shape: a custodian that answers
 /// with something unexpected costs this session its self-managed backup store, which adoption
 /// reports and continues past. It must not fail the decode of the whole response and take the
@@ -38,7 +43,9 @@ struct ClientRegistrationRequest: Codable, Equatable {
 enum ExchangeUserIdValue: Decodable, Equatable {
   /// A JSON string, verbatim.
   case string(String)
-  /// A JSON number, as a `Double` — the widest lossless shape `JSONDecoder` offers here.
+  /// A JSON integer that fits `Int64`, exactly.
+  case integer(Int64)
+  /// Any other JSON number, as a `Double`: fractional, or outside `Int64`'s range.
   case number(Double)
   /// Any other JSON type (a bool, an object, an array). Unusable, but not fatal.
   case other
@@ -48,6 +55,13 @@ enum ExchangeUserIdValue: Decodable, Equatable {
 
     if let value = try? container.decode(String.self) {
       self = .string(value)
+      return
+    }
+
+    // Before `Double`, so the integer is never rounded on the way in. A number with a fraction
+    // or one beyond `Int64` fails this decode and falls through.
+    if let value = try? container.decode(Int64.self) {
+      self = .integer(value)
       return
     }
 
@@ -89,7 +103,10 @@ struct ClientRegistrationResult: Equatable {
 
 /// Renders the custodian's `exchangeUserId` as a `String`, or `nil` when it is unusable.
 ///
-/// Numbers are the interesting half. A JSON `619692` decodes to `619692.0` as a `Double`, and
+/// Integers are the common case and the easy one: an `Int64` prints exactly, with no decimal
+/// point and no exponent, whatever its size.
+///
+/// The remaining numbers are the interesting half. A JSON `619692.0` decodes as a `Double`, and
 /// `String(619692.0)` is `"619692.0"` — an id that every custodian route 404s on. Integral
 /// values therefore go through `Int64`, which also keeps large ids out of Swift's exponent
 /// notation (`String(1e15)` is `"1e+15"`, and `/mobile/1e+15/cipher-text` is not a path).
@@ -103,6 +120,9 @@ func normalizeExchangeUserId(_ value: ExchangeUserIdValue?) -> String? {
   case let .some(.string(text)):
     let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
     return trimmed.isEmpty ? nil : trimmed
+
+  case let .some(.integer(integer)):
+    return String(integer)
 
   case let .some(.number(number)):
     guard number.isFinite else {

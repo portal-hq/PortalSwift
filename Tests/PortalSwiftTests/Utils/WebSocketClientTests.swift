@@ -32,6 +32,12 @@ private let wsMalformedServer = "wss://con nect.portalhq.io"
 /// A WalletConnect URI in the shape `PortalConnect` passes down, used for every connect.
 private let wsUri = "wc:test-topic@2?relay-protocol=irn&symKey=abc123"
 
+/// The proxy's application-level answer to the connect message: the `connected` event that moves
+/// the client to `.connected`. Distinct from Starscream's `.connected`, which is only the upgrade.
+private let proxyConnectedMessage = """
+{"event":"connected","data":{"id":"1","topic":"test-topic","params":{"active":true,"expiry":null,"peerMetadata":{"name":"dApp","description":"","url":"https://dapp.example","icons":[]},"relay":null,"topic":"test-topic"}}}
+"""
+
 // MARK: - WebSocketClientTests
 
 /// Covers `WebSocketClient` end to end through its real Starscream socket: the per-connect
@@ -445,7 +451,7 @@ final class WebSocketClientTests: XCTestCase {
     XCTAssertTrue(pingTimer.isValid, "The keep-alive timer is scheduled by the handshake")
   }
 
-  func test_didReceive_connected_willResetReconnectAttempts() async throws {
+  func test_didReceive_connected_willNotResetReconnectAttempts() async throws {
     let fixture = try self.defaultFixture()
     try fixture.client.connect(uri: wsUri)
 
@@ -453,7 +459,23 @@ final class WebSocketClientTests: XCTestCase {
     XCTAssertEqual(fixture.client.reconnectAttempts, 3)
 
     fixture.client.didReceive(event: .connected([:]), client: self.driver())
-    XCTAssertEqual(fixture.client.reconnectAttempts, 0, "A completed handshake ends the outage")
+
+    XCTAssertEqual(fixture.client.connectState, .connecting)
+    XCTAssertEqual(fixture.client.reconnectAttempts, 3, "The transport upgrade alone does not end the outage")
+  }
+
+  func test_handleData_connected_willResetReconnectAttempts() async throws {
+    let fixture = try self.defaultFixture()
+    try fixture.client.connect(uri: wsUri)
+
+    await self.driveReconnects(3, fixture: fixture, startCallsBefore: 1)
+    XCTAssertEqual(fixture.client.reconnectAttempts, 3)
+
+    fixture.client.didReceive(event: .connected([:]), client: self.driver())
+    fixture.client.didReceive(event: .text(proxyConnectedMessage), client: self.driver())
+
+    XCTAssertEqual(fixture.client.connectState, .connected, "The proxy's `connected` message is what completes the handshake")
+    XCTAssertEqual(fixture.client.reconnectAttempts, 0, "The proxy's answer ends the outage")
 
     fixture.sleeper.reset()
     let sleptBaseDelay = await waitUntil {
@@ -465,6 +487,40 @@ final class WebSocketClientTests: XCTestCase {
       return false
     }
     XCTAssertTrue(sleptBaseDelay, "The next drop starts a fresh budget at the base delay")
+  }
+
+  func test_reconnect_willExhaustBudget_whenProxyDropsAfterEveryUpgrade() async throws {
+    // The scenario the budget exists for: the proxy accepts every upgrade and then closes the
+    // socket before answering `connected`. Were the budget reset on the upgrade, each drop would
+    // start again at attempt 1 and the client would reconnect at the base delay forever.
+    let fixture = try self.defaultFixture()
+    try fixture.client.connect(uri: wsUri)
+
+    for attempt in 1 ... 5 {
+      let started = await waitUntil {
+        if fixture.client.reconnectAttempts >= attempt, fixture.engine.startCallsCount >= 1 + attempt {
+          return true
+        }
+        fixture.client.didReceive(event: .connected([:]), client: FakeStarscreamClient())
+        fixture.client.didReceive(event: .peerClosed, client: FakeStarscreamClient())
+        return false
+      }
+      XCTAssertTrue(started, "Reconnect attempt \(attempt) never reached the transport")
+    }
+    XCTAssertEqual(fixture.client.reconnectAttempts, 5, "Five upgrades without a `connected` answer do not refill the budget")
+
+    let gaveUp = await waitUntil {
+      if fixture.errors.last?.message == "Reconnect attempts exhausted" {
+        return true
+      }
+      fixture.client.didReceive(event: .connected([:]), client: FakeStarscreamClient())
+      fixture.client.didReceive(event: .peerClosed, client: FakeStarscreamClient())
+      return false
+    }
+    XCTAssertTrue(gaveUp, "The sixth drop exhausts the budget")
+    XCTAssertEqual(fixture.errors.last?.code, 500)
+    XCTAssertEqual(fixture.client.connectState, .disconnected)
+    XCTAssertEqual(fixture.engine.startCallsCount, 6, "One connect plus five reconnects, no seventh")
   }
 
   func test_didReceive_connected_willNotSend_whenNoAddress() throws {
@@ -686,27 +742,27 @@ final class WebSocketClientTests: XCTestCase {
     XCTAssertEqual(fixture.sleeper.sleepCallsCount, 5, "An exhausted budget does not wait")
   }
 
-  func test_reconnect_willReportAndStop_whenCredentialInvalidatedBeforeReconnect() async throws {
+  func test_reconnect_willStopWithoutReporting_whenCredentialInvalidatedBeforeReconnect() async throws {
     let fixture = try self.defaultFixture()
     let recorder = try self.defaultRecorder()
     try fixture.client.connect(uri: wsUri)
     fixture.client.didReceive(event: .connected([:]), client: self.driver())
 
+    // A host sign-out, which the credentials layer documents as silent. The SDK's own 401 path
+    // would already have reported before the session read as invalidated.
     try self.session.invalidate()
     fixture.client.connectState = .connected
     fixture.client.didReceive(event: .peerClosed, client: self.driver())
 
-    let reported = await waitUntil { fixture.errors.last?.code == 401 }
-    XCTAssertTrue(reported, "A dead credential found during a reconnect is terminal")
+    let surfaced = await waitUntil { fixture.errors.last?.code == 401 }
+    XCTAssertTrue(surfaced, "A dead credential found during a reconnect is terminal")
     XCTAssertEqual(fixture.client.connectState, .disconnected)
     XCTAssertFalse(fixture.client.isConnected)
     XCTAssertEqual(fixture.engine.startCallsCount, 1, "The reconnect never reached the transport")
     XCTAssertFalse(fixture.client.pingTimer?.isValid ?? false)
-    let notified = await waitUntil { recorder.count == 1 }
-    XCTAssertTrue(notified)
-    XCTAssertLessThanOrEqual(recorder.count, 1, "The host is told at most once per credential")
-    // One invalidation from this test, one from the SDK's report of the rejected credential.
-    XCTAssertEqual(self.session.invalidateCalls, 2)
+    let notified = await waitUntil(timeout: 0.1) { recorder.count > 0 }
+    XCTAssertFalse(notified, "Nothing was sent, so nothing was rejected: a local credential failure is not a report")
+    XCTAssertEqual(self.session.invalidateCalls, 1, "Only this test's own sign-out touched the session")
   }
 
   func test_reconnect_willNotRetry_afterCredentialFailure() async throws {
@@ -729,7 +785,7 @@ final class WebSocketClientTests: XCTestCase {
     XCTAssertEqual(fixture.sleeper.sleepCallsCount, 0)
   }
 
-  func test_reconnect_willReport_whenProviderThrowsDuringReconnect() async throws {
+  func test_reconnect_willStopWithoutInvalidating_whenProviderThrowsDuringReconnect() async throws {
     let credentials = MockCredentials(tokenValue: wsToken)
     credentials.onGetToken = { [weak credentials] in
       // The first resolution (the initial connect) succeeds; the reconnect's fails.
@@ -743,9 +799,9 @@ final class WebSocketClientTests: XCTestCase {
 
     fixture.client.didReceive(event: .peerClosed, client: self.driver())
 
-    let reported = await waitUntil { fixture.errors.last?.code == 401 }
-    XCTAssertTrue(reported, "A provider failure during a reconnect is reported like a rejection")
-    XCTAssertEqual(credentials.invalidateCalls, 1)
+    let surfaced = await waitUntil { fixture.errors.last?.code == 401 }
+    XCTAssertTrue(surfaced, "A provider failure during a reconnect is terminal for this connection")
+    XCTAssertEqual(credentials.invalidateCalls, 0, "A host provider's failure may be transient; the SDK must not destroy its credential")
     XCTAssertEqual(fixture.client.connectState, .disconnected)
     XCTAssertEqual(fixture.engine.startCallsCount, 1)
   }

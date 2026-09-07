@@ -219,7 +219,9 @@ final class PortalAuthApi {
   /// transport. The code is posted verbatim; a wrong code does not burn the JWT.
   ///
   /// - Throws: `PortalAuthError.malformedResponse(path, "clientSessionToken")` when the
-  ///   response carries no (or an empty) session token.
+  ///   response carries no session token, or an empty or whitespace-only one — the same
+  ///   non-blank rule `PersistedSessionCodec` and `resolveCredentialToken` apply, so a token
+  ///   that could never be used is rejected here rather than persisted.
   func validateTotp(code: String, userJwt: String) async throws -> TotpValidation {
     let request = try self.makeRequest(
       path: Self.totpValidationsPath,
@@ -230,7 +232,7 @@ final class PortalAuthApi {
     let data = try await self.requests.execute(request: request)
     let body = try Self.unwrap(data, path: Self.totpValidationsPath, as: TotpValidationResponse.self)
 
-    guard let clientSessionToken = body.clientSessionToken, !clientSessionToken.isEmpty else {
+    guard let clientSessionToken = body.clientSessionToken, !Self.isBlank(clientSessionToken) else {
       throw PortalAuthError.malformedResponse(path: Self.totpValidationsPath, missing: "clientSessionToken")
     }
 
@@ -254,13 +256,19 @@ final class PortalAuthApi {
     let data = try await self.requests.execute(request: request)
     let grant = try Self.unwrap(data, path: path, as: AuthGrantValidationResponse.self)
 
-    if let clientSessionToken = grant.clientSessionToken, !clientSessionToken.isEmpty,
-       (grant.endUserId ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    if let clientSessionToken = grant.clientSessionToken, !Self.isBlank(clientSessionToken),
+       Self.isBlank(grant.endUserId ?? "")
     {
       throw PortalAuthError.malformedResponse(path: path, missing: "endUserId")
     }
 
     return grant
+  }
+
+  /// `true` for an empty or whitespace-only value — unusable as a bearer either way, which is why
+  /// a session token is only "present" when this is `false`.
+  private static func isBlank(_ value: String) -> Bool {
+    value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
   }
 
   /// Builds the request: `PortalAPIRequest` supplies `Accept`, `Content-Type`, a fresh trace

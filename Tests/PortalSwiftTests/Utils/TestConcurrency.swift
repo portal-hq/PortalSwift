@@ -37,24 +37,79 @@ func waitUntil(timeout: TimeInterval = 2, _ condition: @escaping () -> Bool) asy
 /// Runs `operation` and returns its value, or `nil` when it has not finished after `seconds`.
 ///
 /// Used to keep a test that awaits a gated or possibly-deadlocked async operation from hanging
-/// the whole suite: the loser of the race is cancelled, so a timed-out operation does not keep
-/// running into the next test. An error thrown by the operation propagates unchanged so the
-/// caller can still assert on the failure it expected.
+/// the whole suite. The two sides race as *unstructured* tasks through a one-shot outcome — a
+/// task group would not do. `withThrowingTaskGroup` does not leave scope until every child has
+/// finished, and `cancelAll()` only sets a flag: an operation parked in a non-throwing
+/// continuation (`AsyncMutex.acquire` is deliberately not cancellation-aware) or blocked on an
+/// `NSLock` never observes it, so the group would wait on it forever and the deadline would
+/// protect nothing. Here the timer resumes the caller regardless, and the loser is cancelled and
+/// left to finish, or not, on its own. A stuck operation therefore leaks one task for the rest of
+/// the run, which is the trade a test wants over a hung process. An error thrown by the operation
+/// before the deadline propagates unchanged so the caller can still assert on the failure it
+/// expected.
 func withTimeout<T>(
   _ seconds: TimeInterval = 2,
   _ operation: @escaping @Sendable () async throws -> T
 ) async throws -> T? {
-  try await withThrowingTaskGroup(of: T?.self) { group in
-    group.addTask {
-      try await operation()
+  let outcome = OneShotOutcome<T?>()
+
+  let work = Task {
+    do {
+      let value = try await operation()
+      outcome.settle(.success(value))
+    } catch {
+      outcome.settle(.failure(error))
     }
-    group.addTask {
-      try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-      return nil
+  }
+  let timer = Task {
+    try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+    outcome.settle(.success(nil))
+  }
+  defer {
+    work.cancel()
+    timer.cancel()
+  }
+
+  return try await outcome.value().get()
+}
+
+/// The first `Result` handed to `settle` wins and resumes the single waiter; every later one is
+/// dropped. Built like `AsyncGate`: an `NSLock` around the state and a `CheckedContinuation`
+/// resumed outside the lock, so the waiter suspends instead of blocking a cooperative thread.
+private final class OneShotOutcome<Value>: @unchecked Sendable {
+  private let lock = NSLock()
+  private var result: Result<Value, Error>?
+  private var waiter: CheckedContinuation<Result<Value, Error>, Never>?
+
+  init() {}
+
+  /// Records `new` and resumes the waiter, unless an earlier result already won.
+  func settle(_ new: Result<Value, Error>) {
+    self.lock.lock()
+    guard self.result == nil else {
+      self.lock.unlock()
+      return
     }
-    let first = try await group.next() ?? nil
-    group.cancelAll()
-    return first
+    self.result = new
+    let waiter = self.waiter
+    self.waiter = nil
+    self.lock.unlock()
+
+    waiter?.resume(returning: new)
+  }
+
+  /// Suspends until `settle` has been called, or returns at once if it already has.
+  func value() async -> Result<Value, Error> {
+    await withCheckedContinuation { (continuation: CheckedContinuation<Result<Value, Error>, Never>) in
+      self.lock.lock()
+      if let result = self.result {
+        self.lock.unlock()
+        continuation.resume(returning: result)
+        return
+      }
+      self.waiter = continuation
+      self.lock.unlock()
+    }
   }
 }
 
