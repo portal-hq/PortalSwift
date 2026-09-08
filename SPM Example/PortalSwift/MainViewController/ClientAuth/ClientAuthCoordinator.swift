@@ -72,8 +72,9 @@ final class ClientAuthCoordinator {
 
   private let firstLaunchLock = NSLock()
 
-  /// Guarded by `firstLaunchLock`: the in-flight clear concurrent callers join.
-  private var firstLaunchClearTask: Task<Void, Never>?
+  /// Guarded by `firstLaunchLock`: the in-flight clear concurrent callers join. Its value is
+  /// whether the clear completed, so a joiner learns the outcome rather than only the timing.
+  private var firstLaunchClearTask: Task<Bool, Never>?
 
   init(redirectScheme: String?, defaults: UserDefaults = .standard, warn: @escaping (String) -> Void = { print($0) }) {
     let normalized = redirectScheme?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -170,37 +171,50 @@ final class ClientAuthCoordinator {
   /// out user with a stale item is a nuisance, an app that will not start is worse.
   ///
   /// Concurrent callers coalesce onto one run.
-  func clearPersistedSessionOnFirstLaunchIfNeeded(using clearer: @escaping () async throws -> Void) async {
-    guard !self.defaults.bool(forKey: Self.firstLaunchClearKey) else { return }
+  ///
+  /// - Returns: whether the install is known to be clear of a previous install's session —
+  ///   `true` when this launch's clear succeeded or an earlier launch already did it, `false`
+  ///   when the clear failed. The caller must not restore on `false`: the entry that is still
+  ///   on disk is the one this exists to remove.
+  @discardableResult
+  func clearPersistedSessionOnFirstLaunchIfNeeded(using clearer: @escaping () async throws -> Void) async -> Bool {
+    guard !self.defaults.bool(forKey: Self.firstLaunchClearKey) else { return true }
 
     self.firstLaunchLock.lock()
 
     if let existing = self.firstLaunchClearTask {
       self.firstLaunchLock.unlock()
-      await existing.value
-      return
+      return await existing.value
     }
 
     // Created under the lock so the body's own cleanup cannot clear the slot before it is filled.
-    let started = Task<Void, Never> { [weak self] in
-      guard let self else { return }
+    let started = Task<Bool, Never> { [weak self] in
+      // A deallocated coordinator cannot vouch for the Keychain, and the caller is about to
+      // decide whether to restore on this answer.
+      guard let self else { return false }
+
+      let cleared: Bool
       do {
         try await clearer()
         self.defaults.set(true, forKey: Self.firstLaunchClearKey)
+        cleared = true
       } catch {
         // Type name only: a Keychain or SDK error can carry the account it failed on.
         self.warn("ClientAuth: could not clear the persisted session on first launch (\(type(of: error))); will retry next launch.")
+        cleared = false
       }
 
       self.firstLaunchLock.lock()
       self.firstLaunchClearTask = nil
       self.firstLaunchLock.unlock()
+
+      return cleared
     }
 
     self.firstLaunchClearTask = started
     self.firstLaunchLock.unlock()
 
-    await started.value
+    return await started.value
   }
 
   /// Restores the persisted session, running the first-launch clear first.
@@ -208,8 +222,16 @@ final class ClientAuthCoordinator {
   /// Split into two injected closures so the ordering — clear, then restore — is testable
   /// without a Keychain: getting it backwards would restore the very session the clear exists
   /// to remove.
+  ///
+  /// A failed clear skips the restore entirely. Restoring anyway would hand back the previous
+  /// install's session — the one case this whole path exists to prevent — and only until the
+  /// next launch, whose retry deletes it. Staying signed out for one launch is the honest
+  /// outcome; the flag is still unset, so the clear runs again next time.
   func restoreClientAuthSession(clear: @escaping () async throws -> Void, restore: @escaping () async throws -> Void) async {
-    await self.clearPersistedSessionOnFirstLaunchIfNeeded(using: clear)
+    guard await self.clearPersistedSessionOnFirstLaunchIfNeeded(using: clear) else {
+      self.warn("ClientAuth: skipping session restore because the first-launch clear did not complete.")
+      return
+    }
 
     do {
       try await restore()

@@ -15,10 +15,15 @@ import Foundation
 /// apart for the *same* login — twice means two `createWallet()` calls.
 ///
 /// Runs are keyed by session identity (the caller passes the end user id). Two deliveries with
-/// the same key join one run. A different key — launch restores user A while a redirect signs in
-/// user B — must not join A's run, because A's completion would then write A's user data into an
-/// app that already holds B's session and Portal; nor may it run alongside A, or two wallets
-/// could be created at once. It runs after A settles, so B's completion is the last writer.
+/// the same key join one run — including a delivery that lands while that run sits queued behind
+/// another user's, which is why the live runs are tracked in a dictionary rather than as a single
+/// "current key": with A running and B queued, a third delivery of A must find A's run, not walk
+/// past it and enqueue a second one.
+///
+/// A different key — launch restores user A while a redirect signs in user B — must not join A's
+/// run, because A's completion would then write A's user data into an app that already holds B's
+/// session and Portal; nor may it run alongside A, or two wallets could be created at once. It
+/// runs after A settles, so B's completion is the last writer.
 ///
 /// The task's failure is captured into a `Result` rather than thrown out of the shared `Task`,
 /// for two reasons: a joiner awaiting the value must see the failure instead of inheriting a
@@ -27,23 +32,29 @@ import Foundation
 final class AdoptionGuard<T> {
   private let lock = NSLock()
 
-  /// Guarded by `lock`. Non-nil exactly while a run is in flight or queued.
-  private var inFlight: Task<Result<T, Error>, Never>?
+  /// Guarded by `lock`. Every run in flight or queued, by key. A key present here has a run a
+  /// duplicate delivery can join.
+  private var runs: [AnyHashable: Task<Result<T, Error>, Never>] = [:]
 
-  /// Guarded by `lock`. The key of the run `inFlight` is for.
-  private var currentKey: AnyHashable?
+  /// Guarded by `lock`. Identifies each key's current run so a late release cannot clear a newer
+  /// run registered under the same key.
+  private var runIds: [AnyHashable: UUID] = [:]
 
-  /// Guarded by `lock`. Identifies the current run so a late release cannot clear a newer one.
-  private var currentRun: UUID?
+  /// Guarded by `lock`. The most recently enqueued run: what the next run of a *different* key
+  /// waits on, which is what keeps adoptions strictly serial however many are outstanding.
+  private var tail: Task<Result<T, Error>, Never>?
+
+  /// Guarded by `lock`. Identifies `tail`, so only the run that is still last clears it.
+  private var tailRun: UUID?
 
   var isBusy: Bool {
     self.lock.lock()
     defer { self.lock.unlock() }
-    return self.inFlight != nil
+    return !self.runs.isEmpty
   }
 
-  /// Starts `task` for `key`, hands back the run already in flight for the same `key` (calling
-  /// `onBusy`), or queues `task` behind the run in flight for a different key (calling
+  /// Starts `task` for `key`, hands back the run already live for the same `key` (calling
+  /// `onBusy`), or queues `task` behind the runs already outstanding for other keys (calling
   /// `onQueued`).
   ///
   /// The guard is claimed synchronously, before the task body gets a chance to run: two
@@ -60,28 +71,21 @@ final class AdoptionGuard<T> {
   ) -> Task<Result<T, Error>, Never> {
     self.lock.lock()
 
-    let predecessor: Task<Result<T, Error>, Never>?
-    if let existing = self.inFlight {
-      if self.currentKey == key {
-        self.lock.unlock()
-        onBusy()
-        return existing
-      }
-      predecessor = existing
-    } else {
-      predecessor = nil
+    if let existing = self.runs[key] {
+      self.lock.unlock()
+      onBusy()
+      return existing
     }
 
+    let predecessor = self.tail
     let run = UUID()
-    self.currentRun = run
-    self.currentKey = key
 
-    // Created while `lock` is held: the body's `release(run)` blocks on the same lock until the
-    // assignment below has happened, so a task that finishes immediately cannot clear the slot
-    // before it was filled.
+    // Created while `lock` is held: the body's `release` blocks on the same lock until the
+    // registration below has happened, so a task that finishes immediately cannot clear the
+    // slot before it was filled.
     let started = Task<Result<T, Error>, Never> { [weak self] in
       if let predecessor = predecessor {
-        // The superseded run's outcome is its own callers' business; only its completion
+        // The preceding run's outcome is its own callers' business; only its completion
         // matters here, so the two adoptions never overlap.
         _ = await predecessor.value
       }
@@ -92,11 +96,14 @@ final class AdoptionGuard<T> {
       } catch {
         result = .failure(error)
       }
-      self?.release(run)
+      self?.release(key: key, run: run)
       return result
     }
 
-    self.inFlight = started
+    self.runs[key] = started
+    self.runIds[key] = run
+    self.tail = started
+    self.tailRun = run
     self.lock.unlock()
 
     if predecessor != nil {
@@ -105,14 +112,21 @@ final class AdoptionGuard<T> {
     return started
   }
 
-  /// Frees the guard once `run` has settled. A superseded run's release is ignored: `currentRun`
-  /// already names its successor.
-  private func release(_ run: UUID) {
+  /// Frees `key`'s slot once its run has settled, and clears the tail if this run was still it.
+  /// A run that has been superseded under either name leaves that name alone: `runIds` and
+  /// `tailRun` already point at its successor.
+  private func release(key: AnyHashable, run: UUID) {
     self.lock.lock()
     defer { self.lock.unlock() }
-    guard self.currentRun == run else { return }
-    self.inFlight = nil
-    self.currentKey = nil
-    self.currentRun = nil
+
+    if self.runIds[key] == run {
+      self.runs[key] = nil
+      self.runIds[key] = nil
+    }
+
+    if self.tailRun == run {
+      self.tail = nil
+      self.tailRun = nil
+    }
   }
 }
