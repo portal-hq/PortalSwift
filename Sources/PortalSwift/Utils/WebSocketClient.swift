@@ -852,13 +852,14 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
     let exhausted = attempts >= self.reconnectPolicy.maxAttempts
     // A new cycle starts: whatever attempt was in flight has resolved (that is how we got here).
     self._isRetryInFlight = false
-    var generation = self.reconnectGeneration
     if !exhausted {
       self.isReconnecting = true
       self._reconnectAttempts = attempts + 1
       self.reconnectGeneration += 1
-      generation = self.reconnectGeneration
     }
+    // Read once, after the bump, as a `let`: the reconnect Task below captures it, and Swift 5.10
+    // (CI's compiler) rejects a captured `var` in a `@Sendable` closure even when never mutated.
+    let generation = self.reconnectGeneration
     self.reconnectLock.unlock()
 
     // Whatever happens next, the connection we had is gone.
