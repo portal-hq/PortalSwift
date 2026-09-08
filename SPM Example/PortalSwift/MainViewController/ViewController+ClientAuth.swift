@@ -167,9 +167,15 @@ extension ViewController: ClientAuthReporter {
 
   /// Makes `session` this screen's credential and runs the adoption pipeline behind it.
   ///
-  /// Order matters and mirrors Android: the coordinator's session is set *before* `registerPortal()`
-  /// so `resolveCredentialSource` sees it and takes the `Portal(credentials:)` arm, and adoption
-  /// runs against that Portal rather than one built inside the login screen.
+  /// The Portal is built from *this* `session`, passed explicitly to
+  /// `registerPortal(credentialSource:)`, never from `ClientAuthCoordinator.shared.session`: the
+  /// build runs in a `Task`, and if two different users' sessions were adopted in one main-thread
+  /// turn the first task would wake to find the second session in the global and run the first
+  /// user's adoption — `getClient`, the custodian `/clients/register` call, `createWallet` —
+  /// through the second user's credential. The coordinator's session is still set first, mirroring
+  /// Android, so the rest of the screen (`resolveAuthUiState`, sign-out, the eject guards) sees the
+  /// new credential immediately, and adoption runs against this screen's Portal rather than one
+  /// built inside the login screen.
   ///
   /// Overlapping calls for the same user (a launch-time restore and a redirect landing
   /// milliseconds apart) join one run through `AdoptionGuard`, so `createWallet()` can never be
@@ -184,7 +190,7 @@ extension ViewController: ClientAuthReporter {
     Task {
       let portal: Portal
       do {
-        portal = try await self.registerPortal()
+        portal = try await self.registerPortal(credentialSource: .session(session))
       } catch {
         self.logger.error("ViewController.adoptClientAuthSession() - ❌ Could not register Portal: \(error)")
         self.showStatusView(message: "\(self.failureStatus) Could not register Portal: \(error.localizedDescription)")

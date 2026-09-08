@@ -1026,18 +1026,37 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
   }
 
+  /// Builds the screen's `Portal` from whatever credential the screen holds right now: the adopted
+  /// Client Auth session if there is one, else the custodian user's Client API Key.
+  ///
+  /// Reading the global here is deliberate — this is the settings-toggle and custodian sign-in
+  /// path, where "the current credential" is the only sensible input. Client Auth adoption does
+  /// **not** come through here: it knows which session it is adopting and hands it to
+  /// `registerPortal(credentialSource:)`, because two adoptions landing in one main-thread turn
+  /// would otherwise both read the later session and build the earlier user's Portal with the
+  /// later user's credential.
   public func registerPortal() async throws -> Portal {
+    // Fires in exactly the case the old `guard let user` did — no user and no session — so the
+    // custodian path is unchanged, while a Client Auth session now wins the branch.
+    guard let credentialSource = resolveCredentialSource(
+      clientAuthSession: ClientAuthCoordinator.shared.session,
+      user: self.user
+    ) else {
+      throw PortalExampleAppError.userNotLoggedIn()
+    }
+
+    return try await self.registerPortal(credentialSource: credentialSource)
+  }
+
+  /// Builds the screen's `Portal` from `credentialSource` and installs it as `self.portal`.
+  ///
+  /// Takes the credential explicitly instead of rereading `ClientAuthCoordinator.shared.session`,
+  /// so a caller holding a specific session gets a Portal for *that* session even if the global has
+  /// moved on by the time the call runs.
+  func registerPortal(credentialSource: PortalCredentialSource) async throws -> Portal {
     do {
       guard let config = self.config else {
         throw PortalExampleAppError.configurationNotSet()
-      }
-      // Fires in exactly the case the old `guard let user` did — no user and no session — so the
-      // custodian path is unchanged, while a Client Auth session now wins the branch.
-      guard let credentialSource = resolveCredentialSource(
-        clientAuthSession: ClientAuthCoordinator.shared.session,
-        user: self.user
-      ) else {
-        throw PortalExampleAppError.userNotLoggedIn()
       }
 
       // Environment and hosts only. The whole `ApplicationConfiguration` used to be dumped here
