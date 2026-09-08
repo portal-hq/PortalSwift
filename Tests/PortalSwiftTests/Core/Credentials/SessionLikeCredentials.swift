@@ -17,13 +17,13 @@ import Foundation
 /// both delete. This double reproduces that non-atomic shape on purpose — the "is there a
 /// token" read happens before the `onInvalidate` hook (where a test parks the caller for a
 /// few milliseconds) and the `storageDeletes` increment happens after it — so a test can
-/// prove that `invalidateCredentials(_:)` serialises the callers: eight overlapping callers
+/// prove that `PortalCredentialSupport.invalidate(_:)` serialises the callers: eight overlapping callers
 /// must produce eight `invalidateCalls`, one `storageDeletes` and a `maxConcurrentCallers`
 /// of one. After invalidation `getToken()` reports no token, either as `""` or, when
 /// `throwsWhenInvalidated` is set, as `PortalCredentialError.sessionInvalidated`, so both
 /// conforming styles are covered. All counters are lock-guarded; the hook runs outside the
 /// lock so a blocking hook cannot deadlock the counters.
-final class SessionLikeCredentials: PortalCredentials {
+final class SessionLikeCredentials: PortalCredentials, @unchecked Sendable {
   private let lock = NSLock()
   private var token: String?
   private var _invalidateCalls = 0

@@ -18,7 +18,7 @@ import Foundation
 /// session that is nonetheless over. `getTokenError` / `invalidateError` let a test inject
 /// any failure at either step. Every property is guarded by one lock so the mock can be
 /// driven from the SDK's background work and asserted on from the test thread.
-final class MockPortalSession: PortalSession {
+final class MockPortalSession: PortalSession, @unchecked Sendable {
   private let lock = NSLock()
   private var _tokenValue: String?
   private var _getTokenError: Error?

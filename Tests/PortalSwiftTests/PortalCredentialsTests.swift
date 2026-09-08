@@ -451,7 +451,7 @@ extension PortalCredentialsTests {
 
     let provider = try XCTUnwrap(portal.provider as? PortalProvider)
     XCTAssertTrue(provider.credentials === credentials)
-    _ = try resolveCredentialToken(provider.credentials)
+    _ = try PortalCredentialSupport.resolveToken(provider.credentials)
 
     // Registering a storage is the one public route into the private `PortalMpc`, and the MPC layer
     // stamps its own credential onto every storage that calls Portal itself.
@@ -459,7 +459,7 @@ extension PortalCredentialsTests {
     portal.registerBackupMethod(.Firebase, withStorage: firebase)
     let mpcCredentials = try XCTUnwrap(firebase.credentials, "PortalMpc must hand its credential to a Firebase storage.")
     XCTAssertTrue(mpcCredentials === credentials)
-    _ = try resolveCredentialToken(mpcCredentials)
+    _ = try PortalCredentialSupport.resolveToken(mpcCredentials)
 
     XCTAssertGreaterThanOrEqual(credentials.getTokenCalls, 3)
     XCTAssertFalse(spy.bearerTokensSent.isEmpty)

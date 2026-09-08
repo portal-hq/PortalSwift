@@ -210,6 +210,34 @@ class PortalConnectTest: XCTestCase {
     XCTAssertEqual(connect.address, MockConstants.mockEip155Address)
   }
 
+  func test_connect_willRebuildTheClient_withASchemedServerUrl() throws {
+    let keychain = MockPortalKeychain()
+    let session = MockPortalSession(tokenValue: connectToken)
+    let connect = try PortalConnect(
+      credentials: session,
+      11_155_111,
+      keychain,
+      ["eip155:11155111": mockURL],
+      FeatureFlags()
+    )
+    // Force the rebuild path in `connect(_:)`, which used to hand the new client the *stored*
+    // schemeless host and made every later connect fail with `invalidServerUrl`.
+    connect.client = nil
+    // A dead credential makes the upgrade fail at the credential — after the server URL has
+    // parsed and before any socket is touched — so no network is involved.
+    try session.invalidate()
+
+    connect.connect(mockURL)
+
+    let client = try XCTUnwrap(connect.client, "connect(_:) rebuilds a client when none exists")
+    XCTAssertThrowsError(try client.buildUpgradeRequest()) { error in
+      XCTAssertNil(error as? WebSocketClientError, "The rebuilt client must not fail on a schemeless server URL")
+      guard case .sessionInvalidated? = error as? PortalCredentialError else {
+        return XCTFail("Expected the credential failure, got \(error)")
+      }
+    }
+  }
+
   @available(*, deprecated, message: "Exercises the deprecated apiKey initializer on purpose.")
   func test_init_apiKey_deprecated_willStillBuild() throws {
     let connect = try PortalConnect(

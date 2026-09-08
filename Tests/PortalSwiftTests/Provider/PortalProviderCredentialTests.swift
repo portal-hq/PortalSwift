@@ -23,7 +23,7 @@ import XCTest
 /// the transport's 401 hook for HTTP, and `handleSignRequest` for the MPC service's `AUTH_FAILED`
 /// (which the transport never sees), and neither reports a 401 that came from a third party.
 ///
-/// The registry behind `reportUnauthorized(_:)` is process-wide and its "reported" flags are
+/// The registry behind `PortalCredentialSupport.reportUnauthorized(_:)` is process-wide and its "reported" flags are
 /// once-ever, so it is reset around every case; the logger sink is recorded so the "never logs a
 /// token" cases assert against what the SDK actually emitted rather than against nothing.
 final class PortalProviderCredentialTests: XCTestCase {
@@ -360,6 +360,71 @@ final class PortalProviderCredentialTests: XCTestCase {
   }
 
   // MARK: - request(): resolving the credential per call
+
+  // The four shapes the pre-7.5 string-prefix gate got wrong in the *withholding* direction: each
+  // starts with `https://api.portalhq.` and therefore received the credential.
+
+  func test_request_rpc_willWithholdBearer_onLookalikeHost() async throws {
+    let provider = try makeProvider(rpcUrl: Gateway.lookalike)
+
+    try await self.rpc(provider)
+
+    self.assertNoBearerSent()
+    XCTAssertEqual(self.credentials.getTokenCalls, 0, "The token must not even be resolved for a look-alike host")
+  }
+
+  func test_request_rpc_willWithholdBearer_onSuffixLookalikeHost() async throws {
+    let provider = try makeProvider(rpcUrl: Gateway.suffixLookalike)
+
+    try await self.rpc(provider)
+
+    self.assertNoBearerSent()
+    XCTAssertEqual(self.credentials.getTokenCalls, 0)
+  }
+
+  func test_request_rpc_willWithholdBearer_onUserinfoSpoofedHost() async throws {
+    let provider = try makeProvider(rpcUrl: Gateway.userinfoHost)
+
+    try await self.rpc(provider)
+
+    self.assertNoBearerSent()
+    XCTAssertEqual(self.credentials.getTokenCalls, 0)
+  }
+
+  // And the shapes it got wrong in the *attaching* direction: legitimate Portal hosts that do not
+  // spell `api.portalhq.` and so silently went out without a bearer.
+
+  func test_request_rpc_willAttachBearer_onNonApiPortalHost() async throws {
+    let provider = try makeProvider(rpcUrl: Gateway.nonApiPortal)
+
+    try await self.rpc(provider)
+
+    self.assertBearerSent(Self.sessionToken)
+  }
+
+  func test_request_rpc_willAttachBearer_onUppercasePortalHost() async throws {
+    let provider = try makeProvider(rpcUrl: Gateway.uppercaseHost)
+
+    try await self.rpc(provider)
+
+    self.assertBearerSent(Self.sessionToken)
+  }
+
+  func test_request_rpc_willAttachBearer_onLocalhost() async throws {
+    let provider = try makeProvider(rpcUrl: Gateway.localhost)
+
+    try await self.rpc(provider)
+
+    self.assertBearerSent(Self.sessionToken)
+  }
+
+  func test_request_rpc_willAttachBearer_onLoopbackIp() async throws {
+    let provider = try makeProvider(rpcUrl: Gateway.loopbackIp)
+
+    try await self.rpc(provider)
+
+    self.assertBearerSent(Self.sessionToken)
+  }
 
   func test_request_rpc_willResolveTokenPerRequest() async throws {
     let provider = try makeProvider()

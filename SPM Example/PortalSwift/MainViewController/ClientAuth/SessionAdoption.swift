@@ -58,6 +58,10 @@ protocol AdoptablePortal: WalletCapablePortal {
 /// Adoption reports rather than throws, because most of its steps are non-fatal: a custodian
 /// outage or a wallet problem is worth showing the tester without failing the login. The host
 /// decides how to render both.
+// `@MainActor`: the conformer is a view controller that writes UIKit from both methods. Without
+// the annotation the protocol requirement is nonisolated, the nonisolated async adoption below
+// calls it on the cooperative pool, and the Main Thread Checker fires on every failed step.
+@MainActor
 protocol ClientAuthReporter: AnyObject {
   /// One line of the step log. Never carries a token, JWT, email or `totpLink`.
   func log(_ line: String)
@@ -117,6 +121,7 @@ func hasSharesOnDevice(_ addresses: WalletAddresses?, _ portal: WalletCapablePor
 /// - Returns: the addresses in play, or `nil` when there is no wallet and none was created.
 /// - Throws: whatever `WalletCapablePortal.createWallet()` throws — a creation failure is the
 ///   caller's to handle.
+@MainActor
 func resolveWallet(
   _ portal: WalletCapablePortal,
   getMethods: () async throws -> AuthMethodsResult,
@@ -240,6 +245,9 @@ func backupConfigMismatchMessage(environmentFlag: Bool, isBuiltWithBackupWithPor
 /// client session token into a call stack that also writes a step log.
 ///
 /// - Returns: `true` when the session was adopted.
+// `@MainActor` so `reporter` calls and the `onAuthenticated` closure — which writes the screen's
+// user and refreshes the UI — run on the main thread; the awaited SDK calls hop off it themselves.
+@MainActor
 func adoptSessionIntoApp(
   session: PortalSession,
   portal: AdoptablePortal,
@@ -311,6 +319,7 @@ func adoptSessionIntoApp(
 /// recover and funding buttons work identically on both auth paths.
 ///
 /// Every failure is reported and swallowed: a demo-server outage must not block a login.
+@MainActor
 private func registerForSelfManagedBackup(
   client: ClientResponse,
   endUserId: String,

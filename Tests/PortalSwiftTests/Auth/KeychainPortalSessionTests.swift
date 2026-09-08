@@ -24,7 +24,7 @@ import XCTest
 /// Concurrency cases use real threads (`runConcurrently`, and `DispatchQueue.concurrentPerform`
 /// for the mixed read/invalidate race) because the production synchronisation is an `NSLock`;
 /// both helpers double as deadlock detectors. The invalidation registry is reset around every
-/// case because `invalidateCredentials(_:)` records a per-credential monitor, and a
+/// case because `PortalCredentialSupport.invalidate(_:)` records a per-credential monitor, and a
 /// `RecordingLogger` is installed throughout so a case can prove the token never reached a log.
 final class KeychainPortalSessionTests: XCTestCase {
   /// The token the default `subject` holds and the default `storage` has persisted.
@@ -275,7 +275,7 @@ final class KeychainPortalSessionTests: XCTestCase {
     let session = self.subject
 
     try runConcurrently(8) {
-      try invalidateCredentials(session)
+      try PortalCredentialSupport.invalidate(session)
     }
 
     XCTAssertEqual(self.storage.deleteIfCurrentCalls, 1, "The registry monitor plus the session's early return collapse onto one delete")
@@ -479,7 +479,7 @@ final class KeychainPortalSessionTests: XCTestCase {
   // MARK: - Credential helpers
 
   func test_resolveCredentialToken_willReturnToken_whenLive() throws {
-    XCTAssertEqual(try resolveCredentialToken(self.subject), Self.sessionToken)
+    XCTAssertEqual(try PortalCredentialSupport.resolveToken(self.subject), Self.sessionToken)
     XCTAssertEqual(self.storage.getCalls, 0)
     XCTAssertTrue(self.storage.events.isEmpty)
   }
@@ -487,7 +487,7 @@ final class KeychainPortalSessionTests: XCTestCase {
   func test_resolveCredentialToken_willKeepSessionInvalidatedReason() throws {
     try self.subject.invalidate()
 
-    XCTAssertThrowsError(try resolveCredentialToken(self.subject)) { error in
+    XCTAssertThrowsError(try PortalCredentialSupport.resolveToken(self.subject)) { error in
       let credentialError = error as? PortalCredentialError
       XCTAssertEqual(credentialError, .sessionInvalidated, "The boundary never downgrades a precise reason to .providerFailure")
       XCTAssertEqual(credentialError?.reason?.rawValue, "SESSION_INVALIDATED")
@@ -501,12 +501,12 @@ final class KeychainPortalSessionTests: XCTestCase {
       throw PortalAuthError.sessionStorageFailure(message: "keychain locked")
     }
 
-    XCTAssertThrowsError(try invalidateCredentials(session)) { error in
+    XCTAssertThrowsError(try PortalCredentialSupport.invalidate(session)) { error in
       XCTAssertEqual(error as? PortalAuthError, .sessionStorageFailure(message: "keychain locked"))
     }
 
     let finished = try await withTimeout(2) {
-      try invalidateCredentials(session)
+      try PortalCredentialSupport.invalidate(session)
       return true
     }
 
@@ -515,6 +515,6 @@ final class KeychainPortalSessionTests: XCTestCase {
   }
 
   func test_staticApiKeyOf_willReturnEmptyForSession() {
-    XCTAssertEqual(staticApiKeyOf(self.subject), "", "A session is never a static Client API Key")
+    XCTAssertEqual(PortalCredentialSupport.staticApiKey(of: self.subject), "", "A session is never a static Client API Key")
   }
 }

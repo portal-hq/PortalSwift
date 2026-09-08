@@ -11,7 +11,7 @@ import ObjectiveC
 @testable import PortalSwift
 import XCTest
 
-/// Covers `invalidateCredentials(_:)` and the per-credential monitor it takes from
+/// Covers `PortalCredentialSupport.invalidate(_:)` and the per-credential monitor it takes from
 /// `CredentialInvalidationRegistry`: one storage delete however many callers overlap, a
 /// guard that is released after success and failure alike, identity (not value) keying,
 /// re-entrancy without deadlock, pruning of dead entries, and the silence of the
@@ -39,7 +39,7 @@ final class InvalidateCredentialsTests: XCTestCase {
   /// A credential whose `invalidate()` takes the Objective-C runtime monitor on itself — the
   /// synchronisation a host written with `@synchronized(self)` would use. The SDK must never
   /// take that same monitor, or a host holding it while calling the SDK would deadlock.
-  private final class ObjcSyncingCredentials: PortalCredentials {
+  private final class ObjcSyncingCredentials: PortalCredentials, @unchecked Sendable {
     private let lock = NSLock()
     private var _invalidateCalls = 0
 
@@ -85,7 +85,7 @@ final class InvalidateCredentialsTests: XCTestCase {
   func test_invalidateCredentials_willCallInvalidateOnce() throws {
     let credentials = MockCredentials()
 
-    XCTAssertNoThrow(try invalidateCredentials(credentials))
+    XCTAssertNoThrow(try PortalCredentialSupport.invalidate(credentials))
 
     XCTAssertEqual(credentials.invalidateCalls, 1)
   }
@@ -94,7 +94,7 @@ final class InvalidateCredentialsTests: XCTestCase {
     let credentials = SessionLikeCredentials(onInvalidate: { Thread.sleep(forTimeInterval: 0.02) })
 
     try runConcurrently(8) {
-      try invalidateCredentials(credentials)
+      try PortalCredentialSupport.invalidate(credentials)
     }
 
     XCTAssertEqual(credentials.invalidateCalls, 8)
@@ -105,7 +105,7 @@ final class InvalidateCredentialsTests: XCTestCase {
     let credentials = SessionLikeCredentials(onInvalidate: { Thread.sleep(forTimeInterval: 0.02) })
 
     try runConcurrently(8) {
-      try invalidateCredentials(credentials)
+      try PortalCredentialSupport.invalidate(credentials)
     }
 
     XCTAssertEqual(credentials.maxConcurrentCallers, 1, "Two invalidations of one credential must never overlap")
@@ -115,8 +115,8 @@ final class InvalidateCredentialsTests: XCTestCase {
   func test_invalidateCredentials_willRunAgain_afterPriorInvalidationSettles() throws {
     let credentials = MockCredentials()
 
-    try invalidateCredentials(credentials)
-    try invalidateCredentials(credentials)
+    try PortalCredentialSupport.invalidate(credentials)
+    try PortalCredentialSupport.invalidate(credentials)
 
     XCTAssertEqual(credentials.invalidateCalls, 2, "The guard is a monitor, not a once-only flag; idempotence is the credential's job")
   }
@@ -129,8 +129,8 @@ final class InvalidateCredentialsTests: XCTestCase {
       }
     })
 
-    XCTAssertThrowsError(try invalidateCredentials(credentials))
-    XCTAssertNoThrow(try invalidateCredentials(credentials))
+    XCTAssertThrowsError(try PortalCredentialSupport.invalidate(credentials))
+    XCTAssertNoThrow(try PortalCredentialSupport.invalidate(credentials))
 
     XCTAssertEqual(credentials.invalidateCalls, 2)
   }
@@ -138,7 +138,7 @@ final class InvalidateCredentialsTests: XCTestCase {
   func test_invalidateCredentials_willPropagateInvalidationFailure() {
     let credentials = MockCredentials(onInvalidate: { throw NSError(domain: "ks", code: 9) })
 
-    XCTAssertThrowsError(try invalidateCredentials(credentials)) { error in
+    XCTAssertThrowsError(try PortalCredentialSupport.invalidate(credentials)) { error in
       let nsError = error as NSError
       XCTAssertEqual(nsError.domain, "ks")
       XCTAssertEqual(nsError.code, 9)
@@ -150,7 +150,7 @@ final class InvalidateCredentialsTests: XCTestCase {
     let first = SessionLikeCredentials()
     let second = SessionLikeCredentials()
 
-    try invalidateCredentials(first)
+    try PortalCredentialSupport.invalidate(first)
 
     XCTAssertEqual(first.storageDeletes, 1)
     XCTAssertEqual(first.invalidateCalls, 1)
@@ -163,8 +163,8 @@ final class InvalidateCredentialsTests: XCTestCase {
     let first = MockCredentials(tokenValue: "same")
     let second = MockCredentials(tokenValue: "same")
 
-    try invalidateCredentials(first)
-    try invalidateCredentials(second)
+    try PortalCredentialSupport.invalidate(first)
+    try PortalCredentialSupport.invalidate(second)
 
     XCTAssertEqual(first.invalidateCalls, 1)
     XCTAssertEqual(second.invalidateCalls, 1, "Keyed by identity, not by token value")
@@ -176,15 +176,15 @@ final class InvalidateCredentialsTests: XCTestCase {
     XCTAssertEqual(try silent.getToken(), "session-token")
     XCTAssertEqual(try throwing.getToken(), "session-token")
 
-    try invalidateCredentials(silent)
-    try invalidateCredentials(throwing)
+    try PortalCredentialSupport.invalidate(silent)
+    try PortalCredentialSupport.invalidate(throwing)
 
     XCTAssertEqual(try silent.getToken(), "")
     XCTAssertTrue(silent.isInvalidated)
     XCTAssertThrowsError(try throwing.getToken()) { error in
       XCTAssertEqual(error as? PortalCredentialError, .sessionInvalidated)
     }
-    XCTAssertThrowsError(try resolveCredentialToken(silent)) { error in
+    XCTAssertThrowsError(try PortalCredentialSupport.resolveToken(silent)) { error in
       XCTAssertEqual(error as? PortalCredentialError, .unavailable, "A blank token after invalidation surfaces as .unavailable at the boundary")
     }
   }
@@ -192,10 +192,10 @@ final class InvalidateCredentialsTests: XCTestCase {
   func test_invalidateCredentials_willBeNoOp_forStaticCredentials() throws {
     let credentials = StaticCredentials("k")
 
-    XCTAssertNoThrow(try invalidateCredentials(credentials))
+    XCTAssertNoThrow(try PortalCredentialSupport.invalidate(credentials))
 
     XCTAssertEqual(try credentials.getToken(), "k")
-    XCTAssertEqual(try resolveCredentialToken(credentials), "k")
+    XCTAssertEqual(try PortalCredentialSupport.resolveToken(credentials), "k")
   }
 
   func test_invalidateCredentials_willNotDeadlock_whenInvalidateReentersForSameCredential() throws {
@@ -205,12 +205,12 @@ final class InvalidateCredentialsTests: XCTestCase {
       guard let credentials = credentials, reentered.trip() else {
         return
       }
-      try invalidateCredentials(credentials)
+      try PortalCredentialSupport.invalidate(credentials)
     }
 
     // A single worker with a 2 s cap: a non-recursive monitor would park here forever.
     XCTAssertNoThrow(try runConcurrently(1, timeout: 2) {
-      try invalidateCredentials(credentials)
+      try PortalCredentialSupport.invalidate(credentials)
     })
 
     XCTAssertEqual(credentials.invalidateCalls, 2)
@@ -224,14 +224,14 @@ final class InvalidateCredentialsTests: XCTestCase {
       guard let credentialB = credentialB else {
         return
       }
-      try invalidateCredentials(credentialB)
+      try PortalCredentialSupport.invalidate(credentialB)
     }
 
     XCTAssertNoThrow(try runConcurrently(2, timeout: 2) { index in
       if index == 0 {
-        try invalidateCredentials(credentialA)
+        try PortalCredentialSupport.invalidate(credentialA)
       } else {
-        try invalidateCredentials(credentialB)
+        try PortalCredentialSupport.invalidate(credentialB)
       }
     })
 
@@ -245,7 +245,7 @@ final class InvalidateCredentialsTests: XCTestCase {
 
     func invalidateScopedCredential() throws {
       let scoped = MockCredentials()
-      try invalidateCredentials(scoped)
+      try PortalCredentialSupport.invalidate(scoped)
     }
 
     try invalidateScopedCredential()
@@ -257,7 +257,7 @@ final class InvalidateCredentialsTests: XCTestCase {
 
     // One live credential forces a prune of whatever was left and must be the only entry.
     let anchor = MockCredentials()
-    try invalidateCredentials(anchor)
+    try PortalCredentialSupport.invalidate(anchor)
     XCTAssertEqual(registry.monitorCount, 1)
     XCTAssertEqual(anchor.invalidateCalls, 1)
   }
@@ -266,7 +266,7 @@ final class InvalidateCredentialsTests: XCTestCase {
     // Report (and thereby "spend") a credential, keep only its identity, and let it die.
     func spendScopedCredential() throws -> ObjectIdentifier {
       let scoped = MockCredentials(tokenValue: "a")
-      try reportUnauthorized(scoped)
+      try PortalCredentialSupport.reportUnauthorized(scoped)
       return ObjectIdentifier(scoped)
     }
     let staleIdentity = try spendScopedCredential()
@@ -294,13 +294,13 @@ final class InvalidateCredentialsTests: XCTestCase {
     // ... nor a stale monitor: two overlapping callers are still serialised on a fresh one.
     credentialB.onInvalidate = { Thread.sleep(forTimeInterval: 0.02) }
     try runConcurrently(2, timeout: 2) {
-      try invalidateCredentials(credentialB)
+      try PortalCredentialSupport.invalidate(credentialB)
     }
     XCTAssertEqual(credentialB.invalidateCalls, 2)
     XCTAssertEqual(credentialB.maxConcurrentInvalidations, 1)
 
     // ... and it can be reported exactly once like any fresh credential.
-    try reportUnauthorized(credentialB)
+    try PortalCredentialSupport.reportUnauthorized(credentialB)
     let delivered = await waitUntil { recorder.deliveries == 1 }
     XCTAssertTrue(delivered, "A fresh credential at a reused address must still be reportable")
     XCTAssertEqual(recorder.deliveries, 1)
@@ -311,13 +311,13 @@ final class InvalidateCredentialsTests: XCTestCase {
     let credentials = MockCredentials()
     let recorder = InvalidationListenerRecorder(credentials: credentials)
 
-    try invalidateCredentials(credentials)
+    try PortalCredentialSupport.invalidate(credentials)
 
     // Flush the main-actor delivery queue with a sentinel report on another credential: once
     // its listener has run, any delivery for `credentials` would have run too.
     let sentinel = MockCredentials(tokenValue: "sentinel")
     let sentinelRecorder = InvalidationListenerRecorder(credentials: sentinel)
-    try reportUnauthorized(sentinel)
+    try PortalCredentialSupport.reportUnauthorized(sentinel)
     let sentinelDelivered = await waitUntil { sentinelRecorder.deliveries == 1 }
     XCTAssertTrue(sentinelDelivered)
 
@@ -337,7 +337,7 @@ final class InvalidateCredentialsTests: XCTestCase {
         Thread.sleep(forTimeInterval: 0.05)
         objc_sync_exit(credentials)
       } else {
-        try invalidateCredentials(credentials)
+        try PortalCredentialSupport.invalidate(credentials)
       }
     })
 

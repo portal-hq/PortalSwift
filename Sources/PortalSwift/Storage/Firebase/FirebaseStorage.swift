@@ -51,7 +51,7 @@ public class FirebaseStorage: Storage, PortalStorage {
   @available(*, deprecated, message: "Not a reliable source of authentication — returns \"\" when Portal was constructed with credentials. Supply credentials to the SDK instead of reading this.")
   var apiKey: String? {
     get {
-      self.credentials.map { staticApiKeyOf($0) }
+      self.credentials.map { PortalCredentialSupport.staticApiKey(of: $0) }
     }
     set {
       self.credentials = newValue.map { StaticCredentials($0) }
@@ -134,7 +134,7 @@ public class FirebaseStorage: Storage, PortalStorage {
   /// Firebase user is signed in).
   public func validateOperations() async throws -> Bool {
     let credentials = try self.requireCredentials()
-    _ = try resolveCredentialToken(credentials)
+    _ = try PortalCredentialSupport.resolveToken(credentials)
     _ = try await self.obtainFirebaseToken()
     return true
   }
@@ -160,7 +160,7 @@ public class FirebaseStorage: Storage, PortalStorage {
   /// Order matters and is pinned by tests: the Portal bearer is resolved before the Firebase
   /// token so a dead session fails without a wasted round trip to the host's auth SDK. On the
   /// first 401 both tokens are obtained again — the bearer through a second
-  /// `resolveCredentialToken(_:)`, never the value captured before the first attempt — and the
+  /// `PortalCredentialSupport.resolveToken(_:)`, never the value captured before the first attempt — and the
   /// call is retried once. Only a 401 on that retry is attributed to the Portal credential and
   /// reported; the raw `PortalRequestsError.unauthorized` is rethrown so callers see the same
   /// error `PortalApi` would raise. `PortalCredentialError` and `FirebaseStorageError` propagate
@@ -170,7 +170,7 @@ public class FirebaseStorage: Storage, PortalStorage {
     _ perform: (_ bearerToken: String, _ firebaseToken: String) async throws -> Response
   ) async throws -> Response {
     let credentials = try self.requireCredentials()
-    let bearerToken = try resolveCredentialToken(credentials)
+    let bearerToken = try PortalCredentialSupport.resolveToken(credentials)
     let firebaseToken = try await self.obtainFirebaseToken()
 
     do {
@@ -182,13 +182,21 @@ public class FirebaseStorage: Storage, PortalStorage {
     }
 
     let refreshedFirebaseToken = try await self.obtainFirebaseToken()
-    let refreshedBearerToken = try resolveCredentialToken(credentials)
+    let refreshedBearerToken = try PortalCredentialSupport.resolveToken(credentials)
 
     do {
       return try await perform(refreshedBearerToken, refreshedFirebaseToken)
     } catch PortalRequestsError.unauthorized {
+      // Attribution is only sound when the Firebase half actually changed. A host whose
+      // `getToken` callback handed back the same (stale) ID token did not refresh, so this second
+      // 401 says nothing about the Portal credential — signing the user out of the wallet for a
+      // Firebase misconfiguration is the wrong outcome.
+      guard refreshedFirebaseToken != firebaseToken else {
+        self.logger.error("FirebaseStorage.\(operation)() - TBS rejected the retried request with 401, but the Firebase token did not change on refresh; not attributing this to the Portal credential. Make getToken() force a refresh (getIDToken(forcingRefresh: true)).")
+        throw FirebaseStorageError.tokenNotRefreshed
+      }
       self.logger.error("FirebaseStorage.\(operation)() - TBS rejected the retried request with 401. Reporting the Portal credential as unauthorized.")
-      reportUnauthorizedAndLog(credentials, context: "FirebaseStorage.\(operation)")
+      PortalCredentialSupport.reportUnauthorizedAndLog(credentials, context: "FirebaseStorage.\(operation)")
       throw PortalRequestsError.unauthorized
     } catch {
       throw FirebaseStorageError.requestFailed(underlying: error)

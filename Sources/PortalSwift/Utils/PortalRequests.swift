@@ -220,7 +220,11 @@ public class PortalRequests: PortalRequestsProtocol, PortalUnauthorizedReporting
 
     request.addValue("application/json", forHTTPHeaderField: "Accept")
     request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-    request.addValue(traceId ?? generateTraceId(), forHTTPHeaderField: PORTAL_TRACE_ID_HEADER)
+    // Portal's correlation id is for Portal's servers: a custom RPC gateway or Google Drive must
+    // not receive it (see `isPortalOwnedUrl`).
+    if isPortalOwnedUrl(url.absoluteString) {
+      request.addValue(traceId ?? generateTraceId(), forHTTPHeaderField: PORTAL_TRACE_ID_HEADER)
+    }
 
     return request
   }
@@ -229,12 +233,20 @@ public class PortalRequests: PortalRequestsProtocol, PortalUnauthorizedReporting
     var request = URLRequest(url: portalRequest.url)
     request.httpMethod = portalRequest.method.rawValue
 
+    let isPortalTarget = isPortalOwnedUrl(portalRequest.url.absoluteString)
     for (key, value) in portalRequest.headers {
+      // A caller-supplied trace header is stripped for third-party targets rather than passed
+      // through: the correlation id is Portal's, whichever layer set it.
+      if !isPortalTarget, key.caseInsensitiveCompare(PORTAL_TRACE_ID_HEADER) == .orderedSame {
+        continue
+      }
       request.addValue(value, forHTTPHeaderField: key)
     }
 
-    // Guarantee a trace ID header even if a custom request omitted it.
-    if portalRequest.headers[PORTAL_TRACE_ID_HEADER] == nil {
+    // Guarantee a trace ID header for Portal targets even if a custom request omitted it. The
+    // lookup is case-insensitive (`value(forHTTPHeaderField:)`), so a caller spelling it
+    // `x-portal-trace-id` no longer ends up with a duplicate header.
+    if isPortalTarget, request.value(forHTTPHeaderField: PORTAL_TRACE_ID_HEADER) == nil {
       request.addValue(generateTraceId(), forHTTPHeaderField: PORTAL_TRACE_ID_HEADER)
     }
 
@@ -261,7 +273,7 @@ public class PortalRequests: PortalRequestsProtocol, PortalUnauthorizedReporting
       if httpResponse.statusCode == 401 {
         // Notify first so the credential is already invalidated when the caller sees the error.
         // The hook is non-throwing; nothing here may prevent the rethrow below.
-        self.notifyUnauthorizedIfApplicable(for: request)
+        self.notifyUnauthorizedIfApplicable(for: request, response: httpResponse)
       }
       throw error
     }
@@ -276,11 +288,13 @@ public class PortalRequests: PortalRequestsProtocol, PortalUnauthorizedReporting
   /// handed the bearer the request carried so the credentials layer can attribute the
   /// rejection when one transport serves several credentials. Neither the header nor the
   /// response body is ever logged.
-  private func notifyUnauthorizedIfApplicable(for request: URLRequest) {
+  private func notifyUnauthorizedIfApplicable(for request: URLRequest, response: HTTPURLResponse) {
     guard let authorization = request.value(forHTTPHeaderField: "Authorization") else {
       return
     }
-    guard let url = request.url, isPortalOwnedUrl(url.absoluteString) else {
+    // The URL that actually answered 401, not the one asked: after a redirect the two differ,
+    // and it is the responder that judged the credential.
+    guard let url = response.url ?? request.url, isPortalOwnedUrl(url.absoluteString) else {
       return
     }
     guard let hook = self.onUnauthorized else {

@@ -8,64 +8,81 @@
 
 import Foundation
 
+/// The SDK-internal helpers behind the credential boundary: resolution, invalidation, 401
+/// reporting, hook wiring and host notification.
+///
+/// One namespace rather than eight module-scope free functions, so hot-path helpers are not
+/// competing with host code for names, and `internal` because every operation a host can
+/// legitimately need has a public wrapper — `Portal.clearSession()` over `invalidate(_:)`,
+/// `Portal.onSessionInvalidated(_:)` over `onInvalidated(_:listener:)` — and nothing outside the
+/// module calls the rest. A public entry point can be added later without breaking anyone;
+/// withdrawing a public function could not.
+enum PortalCredentialSupport {}
+
 // MARK: - Resolution
 
-/// Resolves the single credential source a component was constructed with.
-///
-/// `credentials` wins whenever it is supplied: the public `Portal` initializers make the
-/// "both supplied" case unrepresentable, so there is nothing to reject at runtime. A
-/// blank `apiKey` (empty or whitespace-only) is treated as absent rather than wrapped,
-/// because whitespace can only ever be sent as a malformed bearer; a non-blank key is
-/// wrapped verbatim — no trimming — so the server, not the SDK, decides what a valid key
-/// looks like.
-///
-/// - Throws: `PortalCredentialError.invalidApiKey` when neither source is usable.
-func resolveCredentials(apiKey: String?, credentials: PortalCredentials?) throws -> PortalCredentials {
-  if let credentials = credentials {
-    return credentials
-  }
+extension PortalCredentialSupport {
+  /// Resolves the single credential source a component was constructed with.
+  ///
+  /// `credentials` wins whenever it is supplied: the public `Portal` initializers make the
+  /// "both supplied" case unrepresentable, so there is nothing to reject at runtime. A
+  /// blank `apiKey` (empty or whitespace-only) is treated as absent rather than wrapped,
+  /// because whitespace can only ever be sent as a malformed bearer; a non-blank key is
+  /// wrapped verbatim — no trimming — so the server, not the SDK, decides what a valid key
+  /// looks like.
+  ///
+  /// - Throws: `PortalCredentialError.invalidApiKey` when neither source is usable.
+  static func resolve(apiKey: String?, credentials: PortalCredentials?) throws -> PortalCredentials {
+    if let credentials = credentials {
+      return credentials
+    }
 
-  guard let apiKey = apiKey, !isBlankCredentialValue(apiKey) else {
-    throw PortalCredentialError.invalidApiKey
-  }
+    guard let apiKey = apiKey, !isBlankCredentialValue(apiKey) else {
+      throw PortalCredentialError.invalidApiKey
+    }
 
-  return StaticCredentials(apiKey)
+    return StaticCredentials(apiKey)
+  }
 }
 
-/// The SDK's credential boundary: resolves a token from `credentials`, normalising every
-/// failure to `PortalCredentialError` since a host-supplied provider can throw anything.
-///
-/// A `PortalCredentialError` raised by the provider passes through untouched, so a precise
-/// reason such as `.sessionInvalidated` is never downgraded to `.providerFailure`. Any
-/// other error becomes `.providerFailure(underlying:)`, and a blank token becomes
-/// `.unavailable`. The value is never cached: every call goes back to the provider, which
-/// is what lets a session rotate or be invalidated underneath a long-lived `Portal`.
-public func resolveCredentialToken(_ credentials: PortalCredentials) throws -> String {
-  let token: String
-  do {
-    token = try credentials.getToken()
-  } catch let error as PortalCredentialError {
-    throw error
-  } catch {
-    throw PortalCredentialError.providerFailure(underlying: error)
-  }
+extension PortalCredentialSupport {
+  /// The SDK's credential boundary: resolves a token from `credentials`, normalising every
+  /// failure to `PortalCredentialError` since a host-supplied provider can throw anything.
+  ///
+  /// A `PortalCredentialError` raised by the provider passes through untouched, so a precise
+  /// reason such as `.sessionInvalidated` is never downgraded to `.providerFailure`. Any
+  /// other error becomes `.providerFailure(underlying:)`, and a blank token becomes
+  /// `.unavailable`. The value is never cached: every call goes back to the provider, which
+  /// is what lets a session rotate or be invalidated underneath a long-lived `Portal`.
+  static func resolveToken(_ credentials: PortalCredentials) throws -> String {
+    let token: String
+    do {
+      token = try credentials.getToken()
+    } catch let error as PortalCredentialError {
+      throw error
+    } catch {
+      throw PortalCredentialError.providerFailure(underlying: error)
+    }
 
-  guard !isBlankCredentialValue(token) else {
-    throw PortalCredentialError.unavailable
-  }
+    guard !isBlankCredentialValue(token) else {
+      throw PortalCredentialError.unavailable
+    }
 
-  return token
+    return token
+  }
 }
 
-/// The raw Client API Key behind `credentials`, or `""` when it is not a static key —
-/// never a wrong or stale token.
-///
-/// A bridge for the subsystems that still expose a synchronous, deprecated `apiKey` on
-/// their public surface. It reports the absence of a static key rather than resolving
-/// one, so a session-backed credential reads as `""` instead of leaking a session token
-/// through a property hosts may log, and it never calls `getToken()` as a side effect.
-public func staticApiKeyOf(_ credentials: PortalCredentials) -> String {
-  (credentials as? StaticCredentials)?.value ?? ""
+extension PortalCredentialSupport {
+  /// The raw Client API Key behind `credentials`, or `""` when it is not a static key —
+  /// never a wrong or stale token.
+  ///
+  /// A bridge for the subsystems that still expose a synchronous, deprecated `apiKey` on
+  /// their public surface. It reports the absence of a static key rather than resolving
+  /// one, so a session-backed credential reads as `""` instead of leaking a session token
+  /// through a property hosts may log, and it never calls `getToken()` as a side effect.
+  static func staticApiKey(of credentials: PortalCredentials) -> String {
+    (credentials as? StaticCredentials)?.value ?? ""
+  }
 }
 
 /// `true` for an empty or whitespace-only value, which is unusable as a bearer either way.
@@ -75,95 +92,109 @@ private func isBlankCredentialValue(_ value: String) -> Bool {
 
 // MARK: - Invalidation
 
-/// Invalidates `credentials` without telling the host.
-///
-/// This is the plain operation behind a host-initiated sign-out (`Portal.clearSession()`),
-/// and a sign-out is not news to whoever asked for it; a backend rejection goes through
-/// `reportUnauthorized(_:)` instead. The call is serialised on a per-credential monitor
-/// owned by `CredentialInvalidationRegistry`, so several subsystems reacting to the same
-/// 401 cannot run `invalidate()` concurrently — combined with the idempotence the protocol
-/// requires, the second caller finds an already-cleared credential and performs no second
-/// storage delete. The monitor is the registry's own `NSRecursiveLock`, never
-/// `objc_sync_enter` on the credential: `PortalCredentials` is implemented by host code,
-/// and taking a monitor on a host-owned object could contend or deadlock with the host's
-/// own synchronisation.
-///
-/// - Throws: whatever `invalidate()` throws, unchanged, so a failed persisted delete
-///   reaches the caller.
-public func invalidateCredentials(_ credentials: PortalCredentials) throws {
-  let monitor = CredentialInvalidationRegistry.shared.monitor(for: credentials)
-  monitor.lock()
-  defer { monitor.unlock() }
-  try credentials.invalidate()
-}
-
-/// The 401 path every Portal-authenticated requester routes through: invalidate the
-/// credential, then tell the host its session ended.
-///
-/// Kept separate from `invalidateCredentials(_:)`, which stays the silent operation a
-/// host-initiated sign-out uses — only a backend rejection is news to the host. The host is
-/// notified even when the invalidation throws: the in-memory token is dropped first by every
-/// conforming session, so the session is over either way and hiding that behind a storage
-/// failure would leave the UI signed in against a dead credential. The failure still
-/// propagates, and every call site treats it as bookkeeping that must not replace the
-/// original transport error. Reporting is once-ever per credential and never happens for a
-/// `StaticCredentials`, which has no session for a 401 to have ended.
-public func reportUnauthorized(_ credentials: PortalCredentials) throws {
-  defer { CredentialInvalidationRegistry.shared.notifyInvalidated(credentials) }
-  try invalidateCredentials(credentials)
-}
-
-/// `reportUnauthorized(_:)` for call sites that cannot throw (transport hooks, refill tasks,
-/// error-mapping branches): swallows the failure and logs it.
-///
-/// The log line carries only the caller's `context` and fixed literals. It never includes
-/// the error itself, because a session's storage error or a host provider's message can
-/// echo the token, and this line is emitted at the exact moment the token was rejected.
-func reportUnauthorizedAndLog(_ credentials: PortalCredentials, context: String) {
-  do {
-    try reportUnauthorized(credentials)
-  } catch {
-    PortalLogger.shared.error("\(context) - reportUnauthorized() could not invalidate the credential after an unauthorized response; the host was still notified.")
+extension PortalCredentialSupport {
+  /// Invalidates `credentials` without telling the host.
+  ///
+  /// This is the plain operation behind a host-initiated sign-out (`Portal.clearSession()`),
+  /// and a sign-out is not news to whoever asked for it; a backend rejection goes through
+  /// `reportUnauthorized(_:)` instead. The call is serialised on a per-credential monitor
+  /// owned by `CredentialInvalidationRegistry`, so several subsystems reacting to the same
+  /// 401 cannot run `invalidate()` concurrently — combined with the idempotence the protocol
+  /// requires, the second caller finds an already-cleared credential and performs no second
+  /// storage delete. The monitor is the registry's own `NSRecursiveLock`, never
+  /// `objc_sync_enter` on the credential: `PortalCredentials` is implemented by host code,
+  /// and taking a monitor on a host-owned object could contend or deadlock with the host's
+  /// own synchronisation.
+  ///
+  /// - Throws: whatever `invalidate()` throws, unchanged, so a failed persisted delete
+  ///   reaches the caller.
+  static func invalidate(_ credentials: PortalCredentials) throws {
+    let monitor = CredentialInvalidationRegistry.shared.monitor(for: credentials)
+    monitor.lock()
+    defer { monitor.unlock() }
+    try credentials.invalidate()
   }
 }
 
-/// Wires a transport's 401 hook to `credentials`.
-///
-/// A host may share one `PortalRequests` between several SDK objects, and those objects may
-/// hold different credentials, so the transport's single closure cannot simply belong to
-/// whoever installed it first: a 401 for the second owner's request would then invalidate the
-/// first owner's session and leave the rejected one usable. Instead the closure is installed
-/// once per transport and every owner is recorded in `UnauthorizedHookRegistry`; on a 401 the
-/// transport hands over the rejected bearer and the registry reports the owner whose credential
-/// presented it (see `UnauthorizedHookRegistry.report(bearerToken:from:)` for the fallbacks).
-/// A hook the SDK did not install is never replaced. The installed closure captures the
-/// transport weakly and nothing else — never the installing object — so installing a hook
-/// cannot create a retain cycle or keep a `Portal` alive through its own transport. A transport
-/// that does not conform to `PortalUnauthorizedReporting` (test doubles, custom hosts) makes
-/// this a no-op.
-func installUnauthorizedHook(on requests: PortalRequestsProtocol, for credentials: PortalCredentials, context: String) {
-  guard let reporting = requests as? PortalUnauthorizedReporting else {
-    return
+extension PortalCredentialSupport {
+  /// The 401 path every Portal-authenticated requester routes through: invalidate the
+  /// credential, then tell the host its session ended.
+  ///
+  /// Kept separate from `invalidate(_:)`, which stays the silent operation a host-initiated
+  /// sign-out uses — only a backend rejection is news to the host. The host is notified even
+  /// when the invalidation throws: the in-memory token is dropped first by every conforming
+  /// session, so the session is over either way and hiding that behind a storage failure would
+  /// leave the UI signed in against a dead credential. The failure still propagates, and every
+  /// call site treats it as bookkeeping that must not replace the original transport error.
+  /// Reporting is once-ever per credential and never happens for a `StaticCredentials`, which
+  /// has no session for a 401 to have ended.
+  static func reportUnauthorized(_ credentials: PortalCredentials) throws {
+    defer { CredentialInvalidationRegistry.shared.notifyInvalidated(credentials) }
+    try invalidate(credentials)
   }
-  UnauthorizedHookRegistry.shared.install(on: reporting, for: credentials, context: context)
 }
 
-/// Subscribes `listener` to the backend invalidating `credentials`; the host-facing contract
-/// is documented on `Portal.onSessionInvalidated(_:)`.
-///
-/// The listener runs at most once, on the main actor, and only for a rejection reported
-/// through `reportUnauthorized(_:)` — a host-initiated `invalidateCredentials(_:)` is silent.
-/// A `StaticCredentials` can never be reported, so it returns the shared `.spent` handle rather
-/// than retaining a listener (and whatever it captured) that will never fire. A credential that
-/// was already reported has that rejection replayed: the listener runs once, on the main actor,
-/// as if it had been subscribed in time, so a host that subscribes a moment after `Portal`'s
-/// eager client fetch came back 401 still learns its session ended. The returned handle cancels
-/// that pending delivery like any other.
-func onCredentialsInvalidated(
-  _ credentials: PortalCredentials,
-  listener: @escaping @MainActor () -> Void
-) -> PortalSessionInvalidationHandle {
-  CredentialInvalidationRegistry.shared.subscribe(credentials, listener: listener)
+extension PortalCredentialSupport {
+  /// `reportUnauthorized(_:)` for call sites that cannot throw (transport hooks, refill tasks,
+  /// error-mapping branches): swallows the failure and logs it.
+  ///
+  /// The log line carries only the caller's `context` and fixed literals. It never includes
+  /// the error itself, because a session's storage error or a host provider's message can
+  /// echo the token, and this line is emitted at the exact moment the token was rejected.
+  static func reportUnauthorizedAndLog(_ credentials: PortalCredentials, context: String) {
+    do {
+      try reportUnauthorized(credentials)
+    } catch {
+      PortalLogger.shared.error("\(context) - reportUnauthorized() could not invalidate the credential after an unauthorized response; the host was still notified.")
+    }
+  }
+}
+
+extension PortalCredentialSupport {
+  /// Wires a transport's 401 hook to `credentials`.
+  ///
+  /// A host may share one `PortalRequests` between several SDK objects, and those objects may
+  /// hold different credentials, so the transport's single closure cannot simply belong to
+  /// whoever installed it first: a 401 for the second owner's request would then invalidate the
+  /// first owner's session and leave the rejected one usable. Instead the closure is installed
+  /// once per transport and every owner is recorded in `UnauthorizedHookRegistry`; on a 401 the
+  /// transport hands over the rejected bearer and the registry reports the owner whose credential
+  /// presented it (see `UnauthorizedHookRegistry.report(bearerToken:from:)` for the fallbacks).
+  /// A hook the SDK did not install is never replaced. The installed closure captures the
+  /// transport weakly and nothing else — never the installing object — so installing a hook
+  /// cannot create a retain cycle or keep a `Portal` alive through its own transport. A transport
+  /// that does not conform to `PortalUnauthorizedReporting` (test doubles, custom hosts) makes
+  /// this a logged no-op.
+  static func installUnauthorizedHook(on requests: PortalRequestsProtocol, for credentials: PortalCredentials, context: String) {
+    guard let reporting = requests as? PortalUnauthorizedReporting else {
+      // A host-supplied transport that cannot report 401s: session invalidation will never fire
+      // through it. Say so once at wiring time rather than staying silent until a dead session
+      // goes unnoticed.
+      PortalLogger.shared.warn("\(context) - The transport does not conform to PortalUnauthorizedReporting; a 401 through it will not invalidate the session or notify onSessionInvalidated.")
+      return
+    }
+    UnauthorizedHookRegistry.shared.install(on: reporting, for: credentials, context: context)
+  }
+}
+
+extension PortalCredentialSupport {
+  /// Subscribes `listener` to the backend invalidating `credentials`; the host-facing contract
+  /// is documented on `Portal.onSessionInvalidated(_:)`.
+  ///
+  /// The listener runs at most once, on the main actor, and only for a rejection reported
+  /// through `reportUnauthorized(_:)` — a host-initiated `invalidate(_:)` is silent. A
+  /// `StaticCredentials` can never be reported, so it returns the shared `.spent` handle rather
+  /// than retaining a listener (and whatever it captured) that will never fire. A credential that
+  /// was already reported has that rejection replayed: the listener runs once, on the main actor,
+  /// as if it had been subscribed in time, so a host that subscribes a moment after `Portal`'s
+  /// eager client fetch came back 401 still learns its session ended. The returned handle cancels
+  /// that pending delivery like any other.
+  static func onInvalidated(
+    _ credentials: PortalCredentials,
+    listener: @escaping @MainActor () -> Void
+  ) -> PortalSessionInvalidationHandle {
+    CredentialInvalidationRegistry.shared.subscribe(credentials, listener: listener)
+  }
 }
 
 // MARK: - PortalSessionInvalidationHandle
@@ -210,8 +241,8 @@ public final class PortalSessionInvalidationHandle {
 /// is reachable from the 401 call sites — which see a credential and nothing else.
 ///
 /// Three maps live here, all guarded by one `NSLock` and all keyed by `ObjectIdentifier`:
-/// the per-credential monitors `invalidateCredentials(_:)` serialises on, the host listener
-/// entries `onCredentialsInvalidated(_:listener:)` appends to, and the once-ever "reported"
+/// the per-credential monitors `PortalCredentialSupport.invalidate(_:)` serialises on, the host listener
+/// entries `PortalCredentialSupport.onInvalidated(_:listener:)` appends to, and the once-ever "reported"
 /// set `reportUnauthorized(_:)` consults. `ObjectIdentifier` is only unique while the object
 /// is alive, so every entry also holds the credential weakly and every lookup re-checks
 /// identity with `===`: a credential that died and had its address reused can never inherit
@@ -293,7 +324,7 @@ final class CredentialInvalidationRegistry {
     self.reported.removeAll()
   }
 
-  /// The monitor `invalidateCredentials(_:)` serialises on for `credentials`, created on
+  /// The monitor `PortalCredentialSupport.invalidate(_:)` serialises on for `credentials`, created on
   /// first use. Recursive so a credential whose `invalidate()` routes back through the SDK
   /// for the same credential does not deadlock on itself. Returned, not held: the caller
   /// takes it after this method has released the registry lock.
@@ -312,7 +343,7 @@ final class CredentialInvalidationRegistry {
     return entry.monitor
   }
 
-  /// Registers `listener` for `credentials`; see `onCredentialsInvalidated(_:listener:)`.
+  /// Registers `listener` for `credentials`; see `PortalCredentialSupport.onInvalidated(_:listener:)`.
   func subscribe(
     _ credentials: PortalCredentials,
     listener: @escaping @MainActor () -> Void
@@ -495,6 +526,21 @@ final class UnauthorizedHookRegistry {
   private let lock = NSLock()
   private var entries: [ObjectIdentifier: TransportEntry] = [:]
 
+  /// Test seam: how many live transports currently carry a hook.
+  var transportCount: Int {
+    self.lock.lock()
+    defer { self.lock.unlock() }
+    self.pruneStaleEntries()
+    return self.entries.count
+  }
+
+  /// Test seam: forgets every transport, so a case can count the hooks one construction installs.
+  func resetForTesting() {
+    self.lock.lock()
+    defer { self.lock.unlock() }
+    self.entries.removeAll()
+  }
+
   init() {}
 
   /// Records `credentials` as an owner of `transport`'s hook, installing the hook when the
@@ -570,7 +616,7 @@ final class UnauthorizedHookRegistry {
     }
 
     for owner in targets {
-      reportUnauthorizedAndLog(owner.credentials, context: owner.context)
+      PortalCredentialSupport.reportUnauthorizedAndLog(owner.credentials, context: owner.context)
     }
   }
 

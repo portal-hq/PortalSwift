@@ -193,7 +193,7 @@ class PresignatureManager: PresignatureSource {
         )
         let metadataString = try metadata.jsonString()
 
-        let token = try resolveCredentialToken(credentials)
+        let token = try PortalCredentialSupport.resolveToken(credentials)
 
         // Resolving the token may have blocked on a host provider; a cancellation that landed
         // meanwhile must not turn into a network round trip.
@@ -226,7 +226,7 @@ class PresignatureManager: PresignatureSource {
         throw error
       } catch let error as PortalMpcError where error.isAuthFailure {
         logger.error("PresignatureManager.preSign() - The MPC service rejected the credential for \(curve.rawValue); reporting it and not retrying.")
-        reportUnauthorizedAndLog(credentials, context: "PresignatureManager.preSign")
+        PortalCredentialSupport.reportUnauthorizedAndLog(credentials, context: "PresignatureManager.preSign")
         throw error
       } catch {
         logger.warn("[PresignatureManager] Presign failed for \(curve.rawValue) (attempt \(attempt + 1)/\(retryConfig.maxAttempts)): \(error.localizedDescription)")

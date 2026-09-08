@@ -124,7 +124,7 @@ public class PortalProvider: PortalProviderProtocol {
 
     // The transport is the single reporter of RPC 401s; the provider itself never invalidates
     // on a transport error, so a 401 from a third-party gateway cannot end the Portal session.
-    installUnauthorizedHook(on: self.requests, for: credentials, context: "PortalProvider")
+    PortalCredentialSupport.installUnauthorizedHook(on: self.requests, for: credentials, context: "PortalProvider")
 
     self.dispatchConnect()
   }
@@ -149,7 +149,7 @@ public class PortalProvider: PortalProviderProtocol {
     presignatureSource: PresignatureSource? = nil
   ) throws {
     try self.init(
-      credentials: resolveCredentials(apiKey: apiKey, credentials: nil),
+      credentials: PortalCredentialSupport.resolve(apiKey: apiKey, credentials: nil),
       rpcConfig: rpcConfig,
       keychain: keychain,
       autoApprove: autoApprove,
@@ -455,7 +455,10 @@ public class PortalProvider: PortalProviderProtocol {
         method: withMethod,
         params: andParams
       )
-      let bearerToken: String? = try rpcUrl.starts(with: "https://api.portalhq.") ? resolveCredentialToken(self.credentials) : nil
+      // Host-based, not a string prefix: `https://api.portalhq.io.attacker.com/rpc` passed the old
+      // "starts with the production API URL" test and received the end user's session token,
+      // while `web.portalhq.io`, an uppercase spelling or a registered custom host got none.
+      let bearerToken: String? = try isPortalOwnedUrl(rpcUrl) ? PortalCredentialSupport.resolveToken(self.credentials) : nil
       let request = PortalAPIRequest(
         url: url,
         method: .post,
@@ -546,7 +549,7 @@ public class PortalProvider: PortalProviderProtocol {
 
     // Resolved only now, after the user approved: a declined request never touches the session,
     // and a token resolved before a long approval wait could be stale by the time it is used.
-    let token = try resolveCredentialToken(self.credentials)
+    let token = try PortalCredentialSupport.resolveToken(self.credentials)
 
     do {
       let signature = try await self.signer.sign(
@@ -564,7 +567,7 @@ public class PortalProvider: PortalProviderProtocol {
     } catch let error as PortalMpcError where error.isAuthFailure {
       // The MPC service is not on the transport's 401 hook, so the signing path reports the
       // rejected credential itself. The original error is rethrown unchanged.
-      reportUnauthorizedAndLog(self.credentials, context: "PortalProvider.handleSignRequest")
+      PortalCredentialSupport.reportUnauthorizedAndLog(self.credentials, context: "PortalProvider.handleSignRequest")
       throw error
     }
   }

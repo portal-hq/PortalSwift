@@ -45,8 +45,9 @@ public extension TotpRequiredResult {
   /// trimmed, decoded link exactly as `totpSecret` reads it.
   ///
   /// - Throws: `PortalAuthError.totpQrUnavailable` when `totpLink` is `nil`, blank, not an
-  ///   `otpauth://` URI, carries no valid secret, when `scale` is not a positive finite
-  ///   number, or when the QR could not be generated. The error never includes the link.
+  ///   `otpauth://` URI, carries no valid secret, when `scale` is not a finite number of at
+  ///   least 1 (below one pixel per module the image cannot be scanned), or when the QR could
+  ///   not be generated. The error never includes the link.
   func qrCodeImage(scale: CGFloat = 10) throws -> UIImage {
     guard let totpLink = self.totpLink else {
       throw PortalAuthError.totpQrUnavailable
@@ -63,10 +64,12 @@ public extension TotpRequiredResult {
 /// `(modules + 8) × scale` pixels square.
 ///
 /// - Throws: `PortalAuthError.totpQrUnavailable` when the link is blank, not an `otpauth://`
-///   URI, carries no valid secret, when `scale` is not a positive finite number, or when the
-///   QR could not be generated. The error never includes the link.
+///   URI, carries no valid secret, when `scale` is not a finite number of at least 1, or when
+///   the QR could not be generated. The error never includes the link.
 public func portalTotpQrCodeImage(otpAuthUrl: String, scale: CGFloat = 10) throws -> UIImage {
-  guard scale.isFinite, scale > 0 else {
+  // At least one pixel per module: below that, nearest-neighbour sampling drops modules and the
+  // image looks like a QR code but cannot be scanned — a silent failure worse than throwing.
+  guard scale.isFinite, scale >= 1 else {
     throw PortalAuthError.totpQrUnavailable
   }
   guard let payload = totpQrPayload(otpAuthUrl) else {
@@ -336,10 +339,14 @@ enum TotpQrRenderer {
   /// falls in. Returns `nil` when the side is zero or exceeds `maxImageSide`.
   static func render(_ grid: ModuleGrid, scale: CGFloat) -> CGImage? {
     let totalModules = grid.size + 2 * self.quietZoneModules
-    let side = Int((CGFloat(totalModules) * scale).rounded())
-    guard side > 0, side <= self.maxImageSide else {
+    // Bounded in floating point *before* the integer conversion: `Int(_:)` traps on a value
+    // outside its range, so a huge finite `scale` would have crashed here instead of returning
+    // `nil` for the `maxImageSide` guard to report.
+    let sidePixels = (CGFloat(totalModules) * scale).rounded()
+    guard sidePixels >= 1, sidePixels <= CGFloat(self.maxImageSide) else {
       return nil
     }
+    let side = Int(sidePixels)
 
     guard let bitmap = CGContext(
       data: nil,

@@ -119,7 +119,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   public var connectState: ConnectState = .disconnected
 
   /// The credential every upgrade request is authenticated with. Resolved per connect through
-  /// `resolveCredentialToken(_:)`; the raw token is never stored on this object.
+  /// `PortalCredentialSupport.resolveToken(_:)`; the raw token is never stored on this object.
   let credentials: PortalCredentials
 
   /// The WalletConnect URI of the current (or last requested) session. Set by `connect(uri:)`
@@ -161,6 +161,40 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   private let reconnectLock = NSLock()
   private var _reconnectAttempts = 0
   private var isReconnecting = false
+
+  /// The backoff task scheduled by `reconnect()`, kept so `disconnect(_:)`, `close()`,
+  /// `sendFinalMessageAndDisconnect()`, a host-initiated `connect(uri:)` and `deinit` can cancel
+  /// it. Without this a socket the host closed during the backoff would silently re-open when
+  /// the task woke — the pre-7.5 client reconnected synchronously, so no such window existed.
+  /// Guarded by `reconnectLock`.
+  private var reconnectTask: Task<Void, Never>?
+
+  /// Bumped every time a reconnect is scheduled or cancelled, and captured by the task it
+  /// belongs to, so a stale task's `finishReconnect` cannot clear bookkeeping that now belongs
+  /// to a newer one. Guarded by `reconnectLock`.
+  private var reconnectGeneration = 0
+
+  /// `true` from the moment a reconnect attempt calls `openConnection(uri:)` until the proxy
+  /// accepts the upgrade (`handleConnect`) or the attempt fails. It lets the delegate paths tell
+  /// "the retry itself could not reach the proxy" — which must consume the next attempt from the
+  /// budget — from an ordinary drop while already disconnected, which must not. Without it the
+  /// budget was unreachable for exactly the common outage: `reconnect()` sets `.disconnected`,
+  /// every re-entry is gated on `isConnected`, so a retry that failed at the transport emitted
+  /// code 500 and stopped after one attempt. Guarded by `reconnectLock`.
+  private var _isRetryInFlight = false
+
+  private var isRetryInFlight: Bool {
+    get {
+      self.reconnectLock.lock()
+      defer { self.reconnectLock.unlock() }
+      return self._isRetryInFlight
+    }
+    set {
+      self.reconnectLock.lock()
+      defer { self.reconnectLock.unlock() }
+      self._isRetryInFlight = newValue
+    }
+  }
 
   /// Characters a web socket host may contain. Anything else (whitespace, `/`, `@`, `%`) means
   /// the server string is not a URL this client should try to open.
@@ -223,6 +257,9 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
       isConnected == false,
       "[WebSocketClient] sendFinalMessageAndDisconnect must be called before deallocating the WebSocketManager"
     )
+    // A backoff task holds `self` weakly, so it cannot keep the client alive — but it could
+    // still wake and touch a dead socket. Cancel it with the client.
+    reconnectTask?.cancel()
     connectState = .disconnected
     pingTimer?.invalidate()
   }
@@ -232,6 +269,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   }
 
   func close() {
+    self.cancelPendingReconnect()
     self.connectState = .disconnected
     self.pingTimer?.invalidate()
     self.socket?.disconnect(closeCode: 1000)
@@ -249,7 +287,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
       throw WebSocketClientError.invalidServerUrl
     }
 
-    let token = try resolveCredentialToken(self.credentials)
+    let token = try PortalCredentialSupport.resolveToken(self.credentials)
 
     var request = URLRequest(url: url)
     request.timeoutInterval = 5
@@ -257,13 +295,25 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
     return request
   }
 
-  /// Opens a connection to the proxy for the WalletConnect session at `uri`.
+  /// Opens a connection to the proxy for the WalletConnect session at `uri`, on the host's
+  /// initiative.
   ///
-  /// Throws `PortalCredentialError` when no usable credential is available and
-  /// `WebSocketClientError.invalidServerUrl` when the client was built with a bad server string;
-  /// in both cases nothing has been started and `connectState` is untouched. The upgrade request
-  /// is rebuilt on every call so the bearer is always the current one.
+  /// Any reconnect still sleeping in its backoff is cancelled first: the host's request
+  /// supersedes it, and letting the old task wake would clobber `uri` with the previous
+  /// session's and re-open a connection nobody asked for. Throws `PortalCredentialError` when no
+  /// usable credential is available and `WebSocketClientError.invalidServerUrl` when the client
+  /// was built with a bad server string; in both cases nothing has been started and
+  /// `connectState` is untouched. The upgrade request is rebuilt on every call so the bearer is
+  /// always the current one.
   func connect(uri: String) throws {
+    self.cancelPendingReconnect()
+    try self.openConnection(uri: uri)
+  }
+
+  /// The shared body of `connect(uri:)` and a reconnect attempt: build the upgrade request with
+  /// a freshly resolved bearer, record `uri`, and start the socket. Does not touch the pending
+  /// reconnect bookkeeping, so the reconnect task can call it without cancelling itself.
+  private func openConnection(uri: String) throws {
     let request = try self.buildUpgradeRequest()
     guard let socket = self.socket else {
       throw WebSocketClientError.invalidServerUrl
@@ -276,6 +326,9 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   }
 
   func disconnect(_ userInitiated: Bool = false) {
+    // A host-initiated disconnect must stay disconnected: drop any reconnect still waiting in
+    // its backoff before it can wake and undo this.
+    self.cancelPendingReconnect()
     self.connectState = .disconnecting
 
     do {
@@ -332,12 +385,19 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
         self.reconnect()
       }
     case .cancelled:
-      self.connectState = .disconnected
-      self.pingTimer?.invalidate()
+      if self.isRetryInFlight {
+        // The retry attempt itself was cancelled at the transport before the proxy answered:
+        // that is a failed attempt, so walk the budget rather than settling silently.
+        self.logger.warn("WebSocketClient.didReceive() - The reconnect attempt was cancelled before the proxy answered. Scheduling the next attempt...")
+        self.reconnect()
+      } else {
+        self.connectState = .disconnected
+        self.pingTimer?.invalidate()
+      }
     case let .error(error):
       self.handleError(error)
     case .peerClosed:
-      if self.isConnected {
+      if self.isConnected || self.isRetryInFlight {
         self.reconnect()
       } else {
         self.pingTimer?.invalidate()
@@ -355,6 +415,10 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   }
 
   func handleConnect() {
+    // The upgrade went through, so the retry — if this was one — did reach the proxy. From here a
+    // drop is an ordinary drop again (`isConnected` covers `.connecting`), not a failed attempt.
+    self.isRetryInFlight = false
+
     // Set the connection state. The reconnect budget is *not* reset here: the upgrade completing
     // says nothing about whether the proxy will answer the connect message (see `handleData`).
     self.connectState = .connecting
@@ -440,20 +504,23 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
 
   /// Handles a Starscream `.error` event.
   ///
-  /// Three outcomes: an upgrade rejected with 401 is terminal (report the credential, settle in
+  /// Four outcomes: an upgrade rejected with 401 is terminal (report the credential, settle in
   /// `.disconnected`, emit code 401, never reconnect — the same credential would only be
   /// rejected again); a peer reset while connected goes through the bounded `reconnect()`
-  /// budget; anything else (other upgrade codes, transport failures, `nil`) emits code 500 and
-  /// settles in `.disconnected`, exactly as before. Only the error's type and, for an upgrade
-  /// rejection, its status code are logged: the headers Starscream attaches to
-  /// `notAnUpgrade` are never printed.
+  /// budget; any failure of a reconnect attempt that is still in flight (`isRetryInFlight`)
+  /// also goes through the budget, so an unreachable proxy is retried up to
+  /// `reconnectPolicy.maxAttempts` times rather than once; anything else (other upgrade codes,
+  /// transport failures while idle, `nil`) emits code 500 and settles in `.disconnected`,
+  /// exactly as before. Only the error's type and, for an upgrade rejection, its status code are
+  /// logged: the headers Starscream attaches to `notAnUpgrade` are never printed.
   func handleError(_ error: (any Error)?) {
     if let upgradeError = error as? HTTPUpgradeError, case let .notAnUpgrade(statusCode, _) = upgradeError {
       self.logger.error("WebSocketClient.handleError() - The upgrade request was rejected with status \(statusCode).")
 
       if statusCode == 401 {
         self.logger.warn("WebSocketClient.handleError() - Credential rejected by the proxy. Not reconnecting.")
-        reportUnauthorizedAndLog(self.credentials, context: "WebSocketClient.handleError")
+        PortalCredentialSupport.reportUnauthorizedAndLog(self.credentials, context: "WebSocketClient.handleError")
+        self.isRetryInFlight = false
         self.pingTimer?.invalidate()
         self.connectState = .disconnected
         self.emit("error", ConnectError(message: "401 - Unauthorized", code: 401))
@@ -468,6 +535,15 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
 
     if let error = error, Self.isPeerReset(error), self.isConnected {
       self.logger.warn("WebSocketClient.handleError() - Connection reset by peer. Attempting reconnect...")
+      self.reconnect()
+      return
+    }
+
+    if self.isRetryInFlight {
+      // The retry attempt could not reach the proxy (network down, DNS, refused). Consume the
+      // next attempt instead of giving up after one; `reconnect()` emits the exhaustion error
+      // itself once the budget is spent.
+      self.logger.warn("WebSocketClient.handleError() - The reconnect attempt failed at the transport. Scheduling the next attempt...")
       self.reconnect()
       return
     }
@@ -704,6 +780,7 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   }
 
   func sendFinalMessageAndDisconnect() {
+    self.cancelPendingReconnect()
     self.connectState = .disconnecting
 
     do {
@@ -746,11 +823,17 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   /// sleeping is ignored, so back-to-back events cannot multiply connections. Each call consumes
   /// one attempt from the budget; once `reconnectPolicy.maxAttempts` are used the client gives
   /// up with `ConnectError(message: "Reconnect attempts exhausted", code: 500)`. Otherwise it
-  /// waits `reconnectPolicy.delay(forAttempt:)` and re-enters `connect(uri:)`, which resolves
-  /// the credential again. A `PortalCredentialError` there is terminal (code 401, no further
-  /// retry, and not reported — see `handleReconnectCredentialFailure`); any other failure emits
-  /// code 500. Whatever happens, `connectState` ends in `.disconnected` until the proxy actually
-  /// answers with `.connected`.
+  /// waits `reconnectPolicy.delay(forAttempt:)` on the main actor — the queue Starscream
+  /// delivers on, so state and emitted events never race a delegate callback — re-checks that
+  /// nothing superseded it while it slept (a host `disconnect()` or `connect(uri:)` cancels the
+  /// task; a changed `uri` or state means someone else already connected), marks the retry in
+  /// flight, and re-enters `openConnection(uri:)`, which resolves the credential again. A
+  /// `PortalCredentialError` there is terminal (code 401, no further retry, and not reported —
+  /// see `handleReconnectCredentialFailure`); any other failure emits code 500. A retry whose
+  /// socket then fails at the transport comes back here through the delegate paths while
+  /// `isRetryInFlight` is set, which is what lets the budget be walked to exhaustion. Whatever
+  /// happens, `connectState` ends in `.disconnected` until the proxy actually answers with
+  /// `.connected`.
   private func reconnect() {
     guard let uri = self.uri else {
       self.logger.warn("WebSocketClient.reconnect() - No session uri to reconnect to. Staying disconnected.")
@@ -767,9 +850,14 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
     }
     let attempts = self._reconnectAttempts
     let exhausted = attempts >= self.reconnectPolicy.maxAttempts
+    // A new cycle starts: whatever attempt was in flight has resolved (that is how we got here).
+    self._isRetryInFlight = false
+    var generation = self.reconnectGeneration
     if !exhausted {
       self.isReconnecting = true
       self._reconnectAttempts = attempts + 1
+      self.reconnectGeneration += 1
+      generation = self.reconnectGeneration
     }
     self.reconnectLock.unlock()
 
@@ -790,22 +878,69 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
     // open (a peer close leaves it in that state); closing it first lets the fresh start go out.
     self.socket?.disconnect(closeCode: 1000)
 
-    Task { [weak self] in
+    let task = Task { @MainActor [weak self] in
       guard let self = self else { return }
-      defer { self.finishReconnect() }
+      defer { self.finishReconnect(generation: generation) }
 
       do {
         try await self.sleep(delay)
-        try self.connect(uri: uri)
+      } catch {
+        // Only cancellation can land here; the guard below handles it.
+      }
+
+      // Superseded while sleeping: the host disconnected or closed (task cancelled — every
+      // host-initiated teardown and `connect(uri:)` goes through `cancelPendingReconnect`), or
+      // connected to another session (`uri` changed). Do nothing — waking up to re-open a
+      // connection nobody wants any more is exactly the bug this guards against. `connectState`
+      // is deliberately not consulted: the socket this reconnect replaces was closed in
+      // `reconnect()`, so nothing can legitimately move the state while the task sleeps.
+      guard !Task.isCancelled else {
+        self.logger.debug("WebSocketClient.reconnect() - Reconnect cancelled while waiting. Staying disconnected.")
+        return
+      }
+      guard self.uri == uri else {
+        self.logger.debug("WebSocketClient.reconnect() - Reconnect superseded by a newer session while waiting. Ignoring.")
+        return
+      }
+
+      self.isRetryInFlight = true
+      do {
+        try self.openConnection(uri: uri)
       } catch let error as PortalCredentialError {
+        self.isRetryInFlight = false
         self.handleReconnectCredentialFailure(error)
       } catch {
+        self.isRetryInFlight = false
         self.logger.error("WebSocketClient.reconnect() - Reconnect failed: \(type(of: error))")
         self.pingTimer?.invalidate()
         self.connectState = .disconnected
         self.emit("error", ConnectError(message: error.localizedDescription, code: 500))
       }
     }
+
+    self.reconnectLock.lock()
+    if generation == self.reconnectGeneration {
+      self.reconnectTask = task
+      self.reconnectLock.unlock()
+    } else {
+      // Cancelled (host disconnect / connect) between scheduling and here: never let it run.
+      self.reconnectLock.unlock()
+      task.cancel()
+    }
+  }
+
+  /// Drops the reconnect that is sleeping in its backoff, if any, and resets the in-flight
+  /// bookkeeping so the delegate paths stop treating the next transport event as a failed
+  /// attempt. Called by every host-initiated teardown and by a host-initiated `connect(uri:)`.
+  private func cancelPendingReconnect() {
+    self.reconnectLock.lock()
+    let task = self.reconnectTask
+    self.reconnectTask = nil
+    self.isReconnecting = false
+    self._isRetryInFlight = false
+    self.reconnectGeneration += 1
+    self.reconnectLock.unlock()
+    task?.cancel()
   }
 
   /// A credential that could not be resolved while reconnecting: settle in `.disconnected` and
@@ -825,10 +960,17 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
     self.emit("error", ConnectError(message: "401 - Unauthorized", code: 401))
   }
 
-  private func finishReconnect() {
+  /// Clears the in-flight flag for the reconnect of `generation` only. A task that was cancelled
+  /// or superseded (the generation moved on) must not clear state that now belongs to its
+  /// successor.
+  private func finishReconnect(generation: Int) {
     self.reconnectLock.lock()
     defer { self.reconnectLock.unlock() }
+    guard generation == self.reconnectGeneration else {
+      return
+    }
     self.isReconnecting = false
+    self.reconnectTask = nil
   }
 
   /// Starscream reports a TCP reset as a generic error; the text is the only handle it gives us.

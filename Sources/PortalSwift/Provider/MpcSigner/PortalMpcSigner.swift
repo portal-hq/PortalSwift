@@ -96,7 +96,7 @@ public class PortalMpcSigner: PortalSignerProtocol {
     guard let legacyCredentials = self.legacyCredentials else {
       throw PortalCredentialError.unavailable
     }
-    let token = try resolveCredentialToken(legacyCredentials)
+    let token = try PortalCredentialSupport.resolveToken(legacyCredentials)
 
     return try await self.sign(
       chainId,

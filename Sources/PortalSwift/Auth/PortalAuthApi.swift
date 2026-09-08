@@ -20,7 +20,8 @@ import Foundation
 /// the backend's own signal, with two deliberate exceptions where a status code carries an
 /// actionable meaning: a `429` from `POST /magic-links` becomes `PortalAuthError.rateLimited`,
 /// and a `400` from `POST /magic-links` or `GET /oauth/urls` whose body is `{"error": …}`
-/// becomes `PortalAuthError.accountAbstractionUnavailable(message:)`. Only a malformed
+/// becomes `PortalAuthError.accountAbstractionUnavailable(message:)` — but only when that
+/// request asked for `isAccountAbstracted: true`; any other 400 passes through. Only a malformed
 /// `{ "data": … }` envelope, or a field the flow cannot continue without, is translated to
 /// `PortalAuthError.malformedResponse`.
 final class PortalAuthApi {
@@ -169,7 +170,7 @@ final class PortalAuthApi {
     do {
       _ = try await self.requests.execute(request: request)
     } catch {
-      throw Self.mapMagicLinkError(error)
+      throw Self.mapMagicLinkError(error, isAccountAbstracted: isAccountAbstracted)
     }
   }
 
@@ -199,7 +200,7 @@ final class PortalAuthApi {
     do {
       data = try await self.requests.execute(request: request)
     } catch {
-      throw Self.mapOAuthUrlsError(error)
+      throw Self.mapOAuthUrlsError(error, isAccountAbstracted: isAccountAbstracted)
     }
 
     // The bare path, not the query-bearing one: the error names an endpoint, and the redirect
@@ -297,21 +298,30 @@ final class PortalAuthApi {
 
   // MARK: - Private: error mapping
 
-  private static func mapMagicLinkError(_ error: Error) -> Error {
+  /// Maps the two statuses on `POST /magic-links` that carry an actionable meaning. The 400
+  /// becomes `.accountAbstractionUnavailable` **only when the request asked for account
+  /// abstraction**: the same status with an `{"error": …}` body is also how ordinary validation
+  /// failures (a rejected email, a redirect URL missing from the allow-list) come back, and
+  /// reporting those as an account-abstraction problem the host never asked about would send an
+  /// integrator down the wrong debugging path.
+  private static func mapMagicLinkError(_ error: Error, isAccountAbstracted: Bool?) -> Error {
     guard let (status, body) = self.clientErrorParts(of: error) else {
       return error
     }
     if status == 429 {
       return PortalAuthError.rateLimited
     }
-    if status == 400, let message = self.serverErrorMessage(in: body) {
+    if status == 400, isAccountAbstracted == true, let message = self.serverErrorMessage(in: body) {
       return PortalAuthError.accountAbstractionUnavailable(message: message)
     }
     return error
   }
 
-  private static func mapOAuthUrlsError(_ error: Error) -> Error {
-    guard let (status, body) = self.clientErrorParts(of: error), status == 400,
+  /// Same rule as `mapMagicLinkError` for `GET /oauth/urls`: a 400 is an account-abstraction
+  /// failure only when `isAccountAbstracted: true` was sent; every other 400 passes through.
+  private static func mapOAuthUrlsError(_ error: Error, isAccountAbstracted: Bool?) -> Error {
+    guard isAccountAbstracted == true,
+          let (status, body) = self.clientErrorParts(of: error), status == 400,
           let message = self.serverErrorMessage(in: body)
     else {
       return error

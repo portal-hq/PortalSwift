@@ -716,13 +716,22 @@ extension PortalAuthSignInTests {
     )
     XCTAssertEqual(self.tokenExchangeRequests.count, 1)
 
-    // The grant was not memoised, so a re-delivered callback exchanges again rather than
-    // replaying a login that never completed.
+    // The backend burned the grant when it answered, so the issued session was memoised before
+    // the write: a re-delivered callback retries the Keychain write — still failing here — and
+    // never re-sends a token the backend has already spent.
     await XCTAssertThrowsAsync(
       try await self.awaitBounded("The replayed redirect") { try await subject.handleRedirect(SignInFixtures.googleCallback) },
       expected: failure
     )
-    XCTAssertEqual(self.tokenExchangeRequests.count, 2)
+    XCTAssertEqual(self.tokenExchangeRequests.count, 1, "A spent grant is never exchanged twice")
+
+    // Once the Keychain recovers, the same redirect completes the login the first attempt
+    // could not, again without going back to the backend.
+    self.storage.onSet = nil
+    let result = try await self.awaitBounded("The recovered redirect") { try await subject.handleRedirect(SignInFixtures.googleCallback) }
+    let authenticated = try self.authenticated(XCTUnwrap(result, "The recovered redirect must still be recognised as ours"))
+    XCTAssertEqual(try authenticated.session.getToken(), SignInFixtures.clientSessionToken)
+    XCTAssertEqual(self.tokenExchangeRequests.count, 1)
   }
 
   func test_signInWithGoogle_willReturnTotpRequired_whenGrantYieldsUserJwt() async throws {
@@ -1424,6 +1433,37 @@ extension PortalAuthSignInTests {
         prefersEphemeralWebBrowserSession: prefersEphemeral
       )
     }
+  }
+
+  func test_adapter_willNotPresent_whenEnteredOnAnAlreadyCancelledTask() async throws {
+    let recorder = FakeWebAuthenticationSessionHandle.Recorder()
+    let adapter = self.makeAdapter(recorder: recorder)
+    let authorizeUrl = try AuthTestFixtures.url(SignInFixtures.googleAuthorizeUrl)
+    let anchor = self.anchor
+    // Parks the task *before* `authenticate` so the cancellation is guaranteed to land first. A
+    // held sleep resumes by throwing `CancellationError`, which the task swallows on purpose so
+    // that `authenticate` is entered on a task that is already cancelled.
+    let gate = RecordingSleeper(isHolding: true)
+
+    let task = Task.detached { () throws -> URL in
+      do { try await gate.sleep(1) } catch {}
+      return try await adapter.authenticate(
+        url: authorizeUrl,
+        callbackURLScheme: SignInFixtures.callbackScheme,
+        anchor: anchor,
+        prefersEphemeralWebBrowserSession: false
+      )
+    }
+    let parked = await gate.waitUntilHeld()
+    XCTAssertTrue(parked, "The task never reached the gate")
+
+    task.cancel()
+
+    await XCTAssertThrowsAsync(try await task.value, expected: PortalAuthSignInError.closed)
+    XCTAssertNil(
+      recorder.latest,
+      "No browser session may be created, let alone presented, for a sign-in nobody is waiting for — the caller would otherwise be stuck until the user dismissed it"
+    )
   }
 
   func test_adapter_willRetainProviderAndSessionUntilCompletion() async throws {

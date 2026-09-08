@@ -120,6 +120,29 @@ final class WebSocketClientTests: XCTestCase {
     }
   }
 
+  /// Records, per emitted event, whether the handler ran on the main thread.
+  private final class ThreadRecorder {
+    private let lock = NSLock()
+    private var _onMainThread: [Bool] = []
+
+    var onMainThread: [Bool] {
+      self.lock.lock()
+      defer { self.lock.unlock() }
+      return self._onMainThread
+    }
+
+    var count: Int {
+      self.onMainThread.count
+    }
+
+    func record() {
+      let isMain = Thread.isMainThread
+      self.lock.lock()
+      defer { self.lock.unlock() }
+      self._onMainThread.append(isMain)
+    }
+  }
+
   /// A keychain that has no address, which is what `handleConnect()`'s guard is written for.
   ///
   /// `PortalProvider.address` maps a throwing `getAddress()` to `nil`, and `MockPortalKeychain`
@@ -886,6 +909,134 @@ final class WebSocketClientTests: XCTestCase {
     XCTAssertEqual(fixture.engine.stopCallsCount, 1)
     XCTAssertEqual(fixture.engine.stopCloseCodes, [1000])
     XCTAssertFalse(fixture.client.pingTimer?.isValid ?? false)
+  }
+
+  // MARK: - Cancellation of a pending reconnect
+
+  /// Drops the connection so a reconnect is scheduled and parks it inside the injected delay,
+  /// so the case can act "during the backoff". Returns once the sleep is held.
+  private func scheduleHeldReconnect(_ fixture: Fixture, file: StaticString = #filePath, line: UInt = #line) async throws {
+    try fixture.client.connect(uri: wsUri)
+    fixture.client.connectState = .connected
+    fixture.client.didReceive(event: .peerClosed, client: self.driver())
+    let held = await fixture.sleeper.waitUntilHeld()
+    XCTAssertTrue(held, "The reconnect never reached its backoff", file: file, line: line)
+  }
+
+  func test_disconnect_duringBackoff_willCancelTheReconnect_andNotReopenTheSocket() async throws {
+    let fixture = try self.makeFixture(credentials: self.session, sleeper: RecordingSleeper(isHolding: true))
+    try await self.scheduleHeldReconnect(fixture)
+
+    fixture.client.disconnect()
+    fixture.sleeper.release()
+
+    let reopened = await waitUntil(timeout: 0.3) { fixture.engine.startCallsCount > 1 }
+    XCTAssertFalse(reopened, "A socket the host closed must stay closed when the backoff expires")
+    XCTAssertEqual(fixture.engine.startCallsCount, 1)
+    XCTAssertEqual(fixture.client.connectState, .disconnected)
+  }
+
+  func test_close_duringBackoff_willCancelTheReconnect() async throws {
+    let fixture = try self.makeFixture(credentials: self.session, sleeper: RecordingSleeper(isHolding: true))
+    try await self.scheduleHeldReconnect(fixture)
+
+    fixture.client.close()
+    fixture.sleeper.release()
+
+    let reopened = await waitUntil(timeout: 0.3) { fixture.engine.startCallsCount > 1 }
+    XCTAssertFalse(reopened, "close() must also drop a reconnect waiting in its backoff")
+    XCTAssertEqual(fixture.client.connectState, .disconnected)
+  }
+
+  func test_connect_duringBackoff_willSupersedeTheReconnect_andKeepTheNewUri() async throws {
+    let fixture = try self.makeFixture(credentials: self.session, sleeper: RecordingSleeper(isHolding: true))
+    try await self.scheduleHeldReconnect(fixture)
+    let newUri = "wc:other-topic@2?relay-protocol=irn&symKey=def456"
+
+    try fixture.client.connect(uri: newUri)
+    fixture.sleeper.release()
+
+    let thirdStart = await waitUntil(timeout: 0.3) { fixture.engine.startCallsCount > 2 }
+    XCTAssertFalse(thirdStart, "The stale reconnect must not open a third connection")
+    XCTAssertEqual(fixture.engine.startCallsCount, 2, "The initial connect plus the host's new connect")
+    XCTAssertEqual(fixture.client.uri, newUri, "The stale reconnect must not clobber the new session's uri")
+  }
+
+  // MARK: - Retry budget when the proxy is unreachable
+
+  func test_reconnect_willWalkTheWholeBudget_whenEveryRetryFailsAtTheTransport() async throws {
+    let fixture = try self.defaultFixture()
+    try fixture.client.connect(uri: wsUri)
+    fixture.client.connectState = .connected
+    fixture.client.didReceive(event: .peerClosed, client: self.driver())
+
+    // Each retry reaches the transport and fails there. The client is deliberately *not*
+    // re-armed to `.connected` by the test — that re-arming is what the pre-fix ladder silently
+    // depended on, and it is not something a real outage does.
+    for attempt in 1 ... 5 {
+      let started = await waitUntil { fixture.engine.startCallsCount == 1 + attempt }
+      XCTAssertTrue(started, "Retry \(attempt) never reached the transport")
+      fixture.client.didReceive(event: .error(URLError(.cannotConnectToHost)), client: self.driver())
+    }
+
+    let gaveUp = await waitUntil { fixture.errors.last?.message == "Reconnect attempts exhausted" }
+    XCTAssertTrue(gaveUp, "The sixth transport failure exhausts the budget")
+    XCTAssertEqual(
+      fixture.sleeper.recordedNanoseconds,
+      [500_000_000, 1_000_000_000, 2_000_000_000, 4_000_000_000, 8_000_000_000]
+    )
+    XCTAssertEqual(fixture.engine.startCallsCount, 6, "One connect plus five retries, and no sixth")
+    XCTAssertEqual(fixture.client.connectState, .disconnected)
+  }
+
+  func test_reconnect_willTreatCancelledDuringRetry_asAFailedAttempt() async throws {
+    let fixture = try self.defaultFixture()
+    try fixture.client.connect(uri: wsUri)
+    fixture.client.connectState = .connected
+    fixture.client.didReceive(event: .peerClosed, client: self.driver())
+    let firstRetry = await waitUntil { fixture.engine.startCallsCount == 2 }
+    XCTAssertTrue(firstRetry)
+
+    fixture.client.didReceive(event: .cancelled, client: self.driver())
+
+    let secondRetry = await waitUntil { fixture.engine.startCallsCount == 3 }
+    XCTAssertTrue(secondRetry, "A retry cancelled at the transport consumes the next attempt")
+    XCTAssertEqual(fixture.client.reconnectAttempts, 2)
+  }
+
+  func test_handleError_whileIdle_willStillEmit500_andNotTouchTheBudget() async throws {
+    let fixture = try self.defaultFixture()
+    try fixture.client.connect(uri: wsUri)
+    fixture.client.connectState = .disconnected
+
+    fixture.client.didReceive(event: .error(URLError(.cannotConnectToHost)), client: self.driver())
+
+    XCTAssertEqual(fixture.errors.last?.code, 500)
+    XCTAssertEqual(fixture.sleeper.sleepCallsCount, 0, "A drop while idle is not a failed retry")
+    XCTAssertEqual(fixture.client.reconnectAttempts, 0)
+  }
+
+  // MARK: - Main-actor delivery
+
+  func test_reconnect_willEmitItsErrors_onTheMainThread() async throws {
+    let fixture = try self.defaultFixture()
+    let threads = ThreadRecorder()
+    fixture.client.on("error") { (_: ConnectError) in threads.record() }
+    try fixture.client.connect(uri: wsUri)
+    fixture.client.didReceive(event: .connected([:]), client: self.driver())
+
+    // Dead credential: the reconnect fails inside its task and emits code 401 from there.
+    try self.session.invalidate()
+    fixture.client.connectState = .connected
+    fixture.client.didReceive(event: .peerClosed, client: self.driver())
+
+    let emitted = await waitUntil { threads.count == 1 }
+    XCTAssertTrue(emitted)
+    XCTAssertEqual(
+      threads.onMainThread,
+      [true],
+      "Events emitted by the reconnect task must reach the host on the main thread, like every Starscream-delivered event"
+    )
   }
 
   // MARK: - Concurrency

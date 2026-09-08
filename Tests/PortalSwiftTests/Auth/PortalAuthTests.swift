@@ -409,10 +409,12 @@ final class PortalAuthTests: XCTestCase {
   }
 
   func test_sendMagicLink_willBoundAccountAbstractionMessageTo200Chars() async throws {
+    // The mapping only applies when the request asked for account abstraction.
+    let subject = self.makeSubject(requests: self.requests, storage: self.storage, isAccountAbstracted: true)
     let longMessage = String(repeating: "x", count: 500)
     self.requests.failWith = AuthTestFixtures.clientError(status: 400, body: "{\"error\":\"\(longMessage)\"}")
 
-    await XCTAssertThrowsAsync(try await self.auth.sendMagicLink("user@example.com")) { error in
+    await XCTAssertThrowsAsync(try await subject.sendMagicLink("user@example.com")) { error in
       guard case let .accountAbstractionUnavailable(message)? = error as? PortalAuthError else {
         XCTFail("Expected PortalAuthError.accountAbstractionUnavailable, got \(type(of: error)).")
         return
@@ -1025,7 +1027,7 @@ final class PortalAuthTests: XCTestCase {
     XCTAssertNotNil(result.isAccountAbstracted)
   }
 
-  func test_handleRedirect_willThrowSessionStorageFailure_andLeaveMemoUnset_whenPersistFails() async throws {
+  func test_handleRedirect_willThrowSessionStorageFailure_andMemoiseTheIssuedSession_whenPersistFails() async throws {
     let redirect = AuthTestFixtures.magicLinkRedirect()
     self.storage.onSet = { _ in throw PortalAuthError.sessionStorageFailure(message: "keystore write failed") }
     self.requests.enqueue(AuthTestFixtures.grantResponse())
@@ -1035,13 +1037,59 @@ final class PortalAuthTests: XCTestCase {
       expected: PortalAuthError.sessionStorageFailure(message: "keystore write failed")
     )
 
+    // The backend burned the grant when it answered, so re-sending it could only fail with 401.
+    // The issued session was memoised before the write; the replay retries the write instead.
     self.storage.onSet = nil
-    self.requests.enqueue(AuthTestFixtures.grantResponse())
 
     let result = try self.authenticated(await self.auth.handleRedirect(redirect))
 
     XCTAssertEqual(try result.session.getToken(), "session-token")
-    XCTAssertEqual(self.requests.callCount, 2, "A failed login must not be memoised.")
+    XCTAssertEqual(self.requests.callCount, 1, "A spent grant is never re-sent to the backend.")
+    XCTAssertEqual(self.storage.setCalls, 2, "The replay performed the Keychain write the first delivery could not.")
+  }
+
+  func test_handleRedirect_willThrowAgain_andKeepTheMemo_whenPersistKeepsFailing() async throws {
+    let redirect = AuthTestFixtures.magicLinkRedirect()
+    self.storage.onSet = { _ in throw PortalAuthError.sessionStorageFailure(message: "keystore write failed") }
+    self.requests.enqueue(AuthTestFixtures.grantResponse())
+
+    for _ in 0 ..< 2 {
+      await XCTAssertThrowsAsync(
+        try await self.auth.handleRedirect(redirect),
+        expected: PortalAuthError.sessionStorageFailure(message: "keystore write failed")
+      )
+    }
+
+    XCTAssertEqual(self.requests.callCount, 1, "Every retry goes to the Keychain, never back to the backend.")
+    XCTAssertEqual(self.storage.setCalls, 2)
+  }
+
+  func test_handleRedirect_willNotReplayAnInvalidatedSession() async throws {
+    let redirect = AuthTestFixtures.magicLinkRedirect()
+    self.requests.enqueue(AuthTestFixtures.grantResponse())
+    let first = try self.authenticated(await self.auth.handleRedirect(redirect))
+
+    // A 401 elsewhere (or a host sign-out) ended the session behind the memo.
+    try first.session.invalidate()
+
+    // Handing back `.authenticated` with a session whose `getToken()` throws would leave the
+    // host signed in against a dead credential; the redirect fails like a spent grant instead.
+    await XCTAssertThrowsAsync(
+      try await self.auth.handleRedirect(redirect),
+      expected: PortalRequestsError.unauthorized
+    )
+    XCTAssertEqual(self.requests.callCount, 1, "The spent grant is not re-sent after eviction either.")
+  }
+
+  func test_handleRedirect_willThrowInvalidGrantResponse_whenUserJwtIsBlank() async throws {
+    // A whitespace-only `userJwt` is as absent as a missing one: accepting it would hand the host
+    // a TOTP step whose code can never be verified.
+    self.requests.enqueue(AuthTestFixtures.grantResponse(clientSessionToken: nil, userJwt: "   "))
+
+    await XCTAssertThrowsAsync(
+      try await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect()),
+      expected: PortalAuthError.invalidGrantResponse
+    )
   }
 
   func test_handleRedirect_willThrowMalformedResponse_whenCstPresentButEndUserIdMissingOrBlank() async throws {

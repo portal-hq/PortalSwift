@@ -26,7 +26,7 @@ public enum PortalCredentialErrorReason: String, Codable, Equatable {
 
 /// Every way the SDK's credential boundary can fail.
 ///
-/// `resolveCredentialToken(_:)` normalises whatever a host-supplied `PortalCredentials`
+/// `PortalCredentialSupport.resolveToken(_:)` normalises whatever a host-supplied `PortalCredentials`
 /// throws into this one family, so call sites catch a single type and hosts can key
 /// their recovery on `reason` / `requiresReauthentication` instead of on the shape of
 /// an arbitrary provider error. The underlying cause of a `providerFailure` is kept on

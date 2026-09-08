@@ -82,7 +82,7 @@ public class PortalHypernativeApi: PortalHypernativeApiProtocol {
     self.baseUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
     self.requests = requests ?? PortalRequests()
 
-    installUnauthorizedHook(on: self.requests, for: credentials, context: "PortalHypernativeApi")
+    PortalCredentialSupport.installUnauthorizedHook(on: self.requests, for: credentials, context: "PortalHypernativeApi")
   }
 
   /// Create an instance of PortalHypernativeApi.
@@ -351,7 +351,7 @@ public class PortalHypernativeApi: PortalHypernativeApiProtocol {
   ) async throws -> ResponseType where ResponseType: Decodable {
     // Resolved here, at the moment the request is built, so a rotated session is sent on the
     // next call and a dead one fails before anything reaches the wire.
-    let token = try resolveCredentialToken(self.credentials)
+    let token = try PortalCredentialSupport.resolveToken(self.credentials)
     let portalRequest = PortalAPIRequest(url: url, method: .post, payload: andPayload, bearerToken: token)
     return try await requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }

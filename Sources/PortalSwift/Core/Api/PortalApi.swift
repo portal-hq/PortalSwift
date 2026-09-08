@@ -269,11 +269,15 @@ public class PortalApi: PortalApiProtocol {
     self.baseUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
     self.enclaveMPCHost = enclaveMPCHost
     self.featureFlags = featureFlags
+    // The configured hosts are Portal-owned for the credential, 401 and trace gates (see
+    // `PortalOwnedHosts`); a directly-constructed `PortalApi` gets the same treatment as one
+    // built by `Portal`.
+    PortalOwnedHosts.register(apiHost, enclaveMPCHost)
     self.provider = provider
     self.requests = requests ?? PortalRequests()
     self.httpRequests = HttpRequester(baseUrl: self.baseUrl)
 
-    installUnauthorizedHook(on: self.requests, for: credentials, context: "PortalApi")
+    PortalCredentialSupport.installUnauthorizedHook(on: self.requests, for: credentials, context: "PortalApi")
   }
 
   /// Create an instance of a PortalApi class from a Client API Key.
@@ -801,28 +805,28 @@ public class PortalApi: PortalApiProtocol {
   private func get<ResponseType>(_ url: URL, traceId: String? = nil,
                                  mappingInResponse: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable
   {
-    let token = try resolveCredentialToken(self.credentials)
+    let token = try PortalCredentialSupport.resolveToken(self.credentials)
     let portalRequest = PortalAPIRequest(url: url, bearerToken: token, traceId: traceId)
     return try await self.requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }
 
   @discardableResult
   private func patch<ResponseType>(_ url: URL, andPayload: Codable, traceId: String? = nil, mappingInResponse: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable {
-    let token = try resolveCredentialToken(self.credentials)
+    let token = try PortalCredentialSupport.resolveToken(self.credentials)
     let portalRequest = PortalAPIRequest(url: url, method: .patch, payload: andPayload, bearerToken: token, traceId: traceId)
     return try await self.requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }
 
   @discardableResult
   private func put<ResponseType>(_ url: URL, andPayload: Codable, traceId: String? = nil, mappingInResponse: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable {
-    let token = try resolveCredentialToken(self.credentials)
+    let token = try PortalCredentialSupport.resolveToken(self.credentials)
     let portalRequest = PortalAPIRequest(url: url, method: .put, payload: andPayload, bearerToken: token, traceId: traceId)
     return try await self.requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }
 
   @discardableResult
   private func post<ResponseType>(_ url: URL, andPayload: Codable? = nil, traceId: String? = nil, mappingInResponse: ResponseType.Type) async throws -> ResponseType where ResponseType: Decodable {
-    let token = try resolveCredentialToken(self.credentials)
+    let token = try PortalCredentialSupport.resolveToken(self.credentials)
     let portalRequest = PortalAPIRequest(url: url, method: .post, payload: andPayload, bearerToken: token, traceId: traceId)
     return try await self.requests.execute(request: portalRequest, mappingInResponse: mappingInResponse.self)
   }
@@ -1020,7 +1024,7 @@ public class PortalApi: PortalApiProtocol {
 
     // Resolve before building the request so a credential failure surfaces synchronously through
     // the throw, without a wasted round trip; this legacy path has no async error channel.
-    let token = try resolveCredentialToken(self.credentials)
+    let token = try PortalCredentialSupport.resolveToken(self.credentials)
     let credentials = self.credentials
 
     try self.httpRequests.put(
@@ -1036,7 +1040,7 @@ public class PortalApi: PortalApiProtocol {
       // first so the credential is already invalidated when the caller sees the error, then
       // surface the original 401 untouched: the report is bookkeeping, never the outcome.
       if let httpError = result.error as? HttpError, case .unauthorized = httpError {
-        reportUnauthorizedAndLog(credentials, context: "PortalApi.storedClientBackupShare")
+        PortalCredentialSupport.reportUnauthorizedAndLog(credentials, context: "PortalApi.storedClientBackupShare")
       }
 
       completion(result)

@@ -197,9 +197,15 @@ public class HttpRequest<T: Codable, BodyType> {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
       }
 
-      // Guarantee a trace ID header for the legacy HTTP path.
-      if self.headers[PORTAL_TRACE_ID_HEADER] == nil {
-        request.setValue(generateTraceId(), forHTTPHeaderField: PORTAL_TRACE_ID_HEADER)
+      // Guarantee a trace ID header for the legacy HTTP path — Portal targets only. A third-party
+      // host never receives Portal's correlation id, including one a caller set; the lookup is
+      // case-insensitive so an `x-portal-trace-id` spelling is not duplicated.
+      if isPortalOwnedUrl(request.url?.absoluteString ?? "") {
+        if request.value(forHTTPHeaderField: PORTAL_TRACE_ID_HEADER) == nil {
+          request.setValue(generateTraceId(), forHTTPHeaderField: PORTAL_TRACE_ID_HEADER)
+        }
+      } else {
+        request.setValue(nil, forHTTPHeaderField: PORTAL_TRACE_ID_HEADER)
       }
 
       // Set the request body to the string literal of the Dictionary

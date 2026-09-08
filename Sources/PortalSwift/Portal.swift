@@ -138,7 +138,7 @@ public final class Portal: PortalProtocol {
     passwords: PasswordStorage? = nil,
     maxPresignaturesPerCurve: [PresignatureSupportedCurve: Int] = [.SECP256K1: 3]
   ) throws {
-    let credentials = try resolveCredentials(apiKey: apiKey, credentials: nil)
+    let credentials = try PortalCredentialSupport.resolve(apiKey: apiKey, credentials: nil)
     try self.init(
       resolvedCredentials: credentials,
       withRpcConfig: withRpcConfig,
@@ -243,11 +243,28 @@ public final class Portal: PortalProtocol {
 
     self.apiHost = apiHost
     self.credentials = credentials
-    self._apiKey = staticApiKeyOf(credentials)
+    self._apiKey = PortalCredentialSupport.staticApiKey(of: credentials)
     self.autoApprove = autoApprove
-    self.binary = binary ?? (
-      featureFlags?.useEnclaveMPCApi ?? false ? EnclaveMobileWrapper(enclaveMPCHost: enclaveMPCHost) : MobileWrapper()
-    )
+    // The hosts this instance was configured with count as Portal-owned for the credential, 401
+    // and trace gates (see `PortalOwnedHosts`). Without this a custodian proxy or a private
+    // staging domain would have every 401 from its own backend classified as third-party, and
+    // session invalidation would silently never fire. `withRpcConfig` URLs are deliberately not
+    // registered: a custom RPC gateway is exactly what the bearer gate must keep untrusted.
+    PortalOwnedHosts.register(apiHost, mpcHost, enclaveMPCHost)
+
+    if let binary = binary {
+      self.binary = binary
+    } else if featureFlags?.useEnclaveMPCApi ?? false {
+      // The enclave wrapper talks to `enclaveMPCHost` on its own transport, which no `PortalApi`
+      // hooks. Without a hook of its own, a 401 there is logged as "no unauthorized hook is
+      // registered" and surfaces as a missing signature while the dead session stays live — the
+      // exact failure `onSessionInvalidated` exists to prevent.
+      let enclaveRequests = PortalRequests()
+      PortalCredentialSupport.installUnauthorizedHook(on: enclaveRequests, for: credentials, context: "EnclaveMobileWrapper")
+      self.binary = EnclaveMobileWrapper(requests: enclaveRequests, enclaveMPCHost: enclaveMPCHost)
+    } else {
+      self.binary = MobileWrapper()
+    }
 
     self.featureFlags = featureFlags
     self.keychain = keychain ?? PortalKeychain()
@@ -290,7 +307,7 @@ public final class Portal: PortalProtocol {
     // already carries a hook (`PortalApi` installs one for the credential it was built with)
     // or when it cannot report 401s at all (test doubles, custom transports).
     if let portalApi = api as? PortalApi {
-      installUnauthorizedHook(on: portalApi.requests, for: credentials, context: "Portal.init()")
+      PortalCredentialSupport.installUnauthorizedHook(on: portalApi.requests, for: credentials, context: "Portal.init()")
     }
 
     self.mpc = mpc ?? PortalMpc(credentials: credentials, api: self.api, keychain: self.keychain, host: mpcHost, mobile: self.binary, featureFlags: featureFlags)
@@ -378,11 +395,11 @@ public final class Portal: PortalProtocol {
     // Basic setup
     // Validate the key the same way the modern initializers do so a blank key fails here
     // instead of silently authenticating every later request with an empty bearer.
-    let credentials = try resolveCredentials(apiKey: apiKey, credentials: nil)
+    let credentials = try PortalCredentialSupport.resolve(apiKey: apiKey, credentials: nil)
     self.binary = MobileWrapper()
     self.apiHost = apiHost
     self.credentials = credentials
-    self._apiKey = staticApiKeyOf(credentials)
+    self._apiKey = PortalCredentialSupport.staticApiKey(of: credentials)
     self.autoApprove = autoApprove
     self.backup = backup
     self.gatewayConfig = gatewayConfig
@@ -530,7 +547,7 @@ public final class Portal: PortalProtocol {
   /// - Throws: Whatever the credential's `invalidate()` throws when its persisted copy could
   ///   not be deleted. The in-memory session is over either way.
   public func clearSession() async throws {
-    try invalidateCredentials(self.credentials)
+    try PortalCredentialSupport.invalidate(self.credentials)
   }
 
   /// Registers `listener` to run once, on the main actor, after the backend rejects this
@@ -547,10 +564,12 @@ public final class Portal: PortalProtocol {
   /// - Parameter listener: Called at most once, on the main actor.
   /// - Returns: A handle whose `cancel()` removes the listener. It is not cancelled on
   ///   deallocation (React Native / Android parity), so it only needs to be kept by hosts that
-  ///   intend to unsubscribe.
+  ///   intend to unsubscribe. The listener itself is retained until it fires or the credential
+  ///   is deallocated, so capture `self` weakly inside it — a view controller captured strongly
+  ///   would live exactly as long as the session does.
   @discardableResult
   public func onSessionInvalidated(_ listener: @escaping @MainActor () -> Void) -> PortalSessionInvalidationHandle {
-    onCredentialsInvalidated(self.credentials, listener: listener)
+    PortalCredentialSupport.onInvalidated(self.credentials, listener: listener)
   }
 
   // Primitive helpers
@@ -1219,7 +1238,10 @@ public final class Portal: PortalProtocol {
   /// - Returns: `.confirmed` on success, `.reverted` if the transaction was mined but reverted, or
   ///   `.timedOut` if no definitive receipt was obtained within `maxAttempts` (still pending or the
   ///   node was unreachable).
-  /// - Throws: `CancellationError` if the surrounding task is cancelled, so callers can stop promptly.
+  /// - Throws: `CancellationError` if the surrounding task is cancelled, so callers can stop promptly;
+  ///   `PortalCredentialError` or `PortalRequestsError.unauthorized` as soon as the session is
+  ///   found to be invalid — a credential that cannot be resolved is not a transient RPC failure,
+  ///   and polling on would only report a false `.timedOut` after `maxAttempts`.
   private func waitForTransactionConfirmation(
     txHash: String,
     chainId: String,
@@ -1250,6 +1272,15 @@ public final class Portal: PortalProtocol {
         // No receipt yet; keep polling until mined.
       } catch is CancellationError {
         throw CancellationError()
+      } catch let error as PortalCredentialError {
+        // The session is gone (invalidated by a 401 elsewhere, or a host sign-out). Every further
+        // tick would throw the same before touching the network; surface it now instead of
+        // reporting a timed-out transaction a minute later.
+        PortalLogger.shared.error("Portal.waitForTransactionConfirmation() - Credential unavailable (\(error.reason?.rawValue ?? "INVALID_API_KEY")); stopping the receipt poll.")
+        throw error
+      } catch PortalRequestsError.unauthorized {
+        PortalLogger.shared.error("Portal.waitForTransactionConfirmation() - The RPC gateway rejected the credential; stopping the receipt poll.")
+        throw PortalRequestsError.unauthorized
       } catch {
         // Transient RPC failure: log and retry rather than reporting a false revert.
         PortalLogger.shared.error("Portal.waitForTransactionConfirmation() - Error checking receipt: \(error.localizedDescription)")

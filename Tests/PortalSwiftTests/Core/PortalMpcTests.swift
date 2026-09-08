@@ -363,6 +363,19 @@ extension PortalMpcTests {
 
 extension PortalMpcTests {
   @available(iOS 16, *)
+  func test_registerBackupMethod_passkey_willNotTrap_whenStorageIsNotPasskeyStorage() {
+    // given: a storage of the wrong type for `.Passkey`
+    initPortalMpcWith()
+    let storage = MockGDriveStorage()
+
+    // when: pre-7.5 this was `storage as! PasskeyStorage` and trapped
+    mpc?.registerBackupMethod(.Passkey, withStorage: storage)
+
+    // then: registered as-is, with the API handed over like every other storage
+    XCTAssertNotNil(storage.api)
+  }
+
+  @available(iOS 16, *)
   func test_ejectWithGDrive_willThrowCorrectError_WhenThereIsNoGDriveStorage() async throws {
     // given\
     let method: BackupMethods = .GoogleDrive
@@ -461,6 +474,34 @@ extension PortalMpcTests {
       // then
       XCTAssertEqual(error as? MpcError, MpcError.clientInformationUnavailable)
     }
+  }
+
+  @available(iOS 16, *)
+  func test_eject_willReportTheCredential_whenTheBinaryRejectsItWithAuthFailed() async throws {
+    // given: a binary whose eject result carries the MPC service's `AUTH_FAILED`
+    let credentials = MockCredentials(tokenValue: "mpc-tok-1")
+    let recorder = InvalidationListenerRecorder(credentials: credentials)
+    let mockICloudMock = PortalStorageMock()
+    let portalApiMock = PortalApiMock()
+    portalApiMock.client = ClientResponse.stub(environment: ClientResponseEnvironment.stub(backupWithPortalEnabled: true))
+    mockICloudMock.decryptReturnValue = UnitTestMockConstants.decodedShare
+    initPortalMpcWith(
+      credentials: credentials,
+      portalApi: portalApiMock,
+      mobile: AuthFailingEjectMobile(),
+      iCloudStorage: mockICloudMock
+    )
+
+    // and given
+    await XCTAssertThrowsAsync(try await mpc?.eject(.iCloud)) { error in
+      XCTAssertEqual((error as? PortalMpcError)?.isAuthFailure, true, "The rejection surfaces as the MPC auth failure, not a generic eject error: \(error)")
+    }
+
+    // then: classified like every other binary operation — the dead credential is invalidated
+    // and the host is told, instead of staying signed in against it
+    XCTAssertEqual(credentials.invalidateCalls, 1)
+    let notified = await waitUntil { recorder.count == 1 }
+    XCTAssertTrue(notified, "An AUTH_FAILED during eject must reach onSessionInvalidated.")
   }
 
   @available(iOS 16, *)

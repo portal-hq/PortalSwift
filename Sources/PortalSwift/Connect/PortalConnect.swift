@@ -73,8 +73,14 @@ public class PortalConnect: EventBus {
   ) throws {
     self.credentials = credentials
     self.chainId = chainId
-    self.webSocketServer = webSocketServer
+    // Normalised into the stored property, not a local: `connect(_:)` rebuilds the client from
+    // this value, and a schemeless host there made the rebuilt client throw `invalidServerUrl`.
+    self.webSocketServer = webSocketServer.starts(with: "localhost") ? "ws://\(webSocketServer)" : "wss://\(webSocketServer)"
     self.rpcConfig = rpcConfig
+
+    // The configured proxy host is Portal-owned for the 401 gate on the upgrade (see
+    // `PortalOwnedHosts`).
+    PortalOwnedHosts.register(webSocketServer)
 
     // Initialize the PortalProvider
     self.provider = try PortalProvider(
@@ -90,11 +96,10 @@ public class PortalConnect: EventBus {
     super.init(label: "PortalConnect")
 
     // Set up webSocketClient
-    let connectionString = webSocketServer.starts(with: "localhost") ? "ws://\(webSocketServer)" : "wss://\(webSocketServer)"
     self.client = WebSocketClient(
       credentials: credentials,
       connect: self,
-      webSocketServer: connectionString
+      webSocketServer: self.webSocketServer
     )
 
     guard self.address != nil else {
@@ -200,7 +205,7 @@ public class PortalConnect: EventBus {
     _ version: String = "v6"
   ) throws {
     try self.init(
-      credentials: resolveCredentials(apiKey: apiKey, credentials: nil),
+      credentials: PortalCredentialSupport.resolve(apiKey: apiKey, credentials: nil),
       chainId,
       keychain,
       rpcConfig,

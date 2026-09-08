@@ -19,7 +19,7 @@ import Foundation
 /// "one storage delete however many requesters 401 together" guarantee is asserted.
 /// Every property is guarded by one lock so the mock can be driven from several threads,
 /// and the hooks run outside that lock so a blocking hook cannot deadlock the counters.
-final class MockCredentials: PortalCredentials {
+final class MockCredentials: PortalCredentials, @unchecked Sendable {
   private let lock = NSLock()
   private var _tokenValue: String
   private var _onGetToken: (() throws -> Void)?

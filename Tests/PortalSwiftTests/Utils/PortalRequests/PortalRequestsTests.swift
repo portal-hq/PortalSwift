@@ -36,6 +36,8 @@ final class PortalRequestsTests: XCTestCase {
   override func setUpWithError() throws {
     try super.setUpWithError()
     CredentialInvalidationRegistry.shared.resetForTesting()
+    // The third-party assertions below depend on nobody having registered these hosts.
+    PortalOwnedHosts.resetForTesting()
     MockURLProtocol.reset()
     self.session = MockURLProtocol.makeSession()
     self.sut = PortalRequests(urlSession: self.session)
@@ -351,7 +353,7 @@ final class PortalRequestsTests: XCTestCase {
     let credentials = MockCredentials(onInvalidate: { throw NSError(domain: "keystore", code: 9) })
     self.sut.onUnauthorized = { _ in
       hookRuns.increment()
-      reportUnauthorizedAndLog(credentials, context: "PortalRequestsTests.hook")
+      PortalCredentialSupport.reportUnauthorizedAndLog(credentials, context: "PortalRequestsTests.hook")
     }
 
     let error = await self.expectError {
@@ -831,6 +833,75 @@ final class PortalRequestsTests: XCTestCase {
     XCTAssertNotEqual(PortalRequestsError.unauthorized, .couldNotParseHttpResponse)
     XCTAssertNotEqual(PortalRequestsError.clientError("x", url: "u"), .internalServerError("x", url: "u"))
     XCTAssertNotEqual(PortalRequestsError.redirectError("x"), .clientError("x", url: ""))
+  }
+
+  // MARK: - X-Portal-Trace-Id gating
+
+  func test_traceHeader_willBeSent_toPortalHost() async throws {
+    MockURLProtocol.respond(status: 200, body: "{}")
+
+    _ = try await self.sut.execute(request: PortalAPIRequest(url: self.portalUrl, bearerToken: "t"))
+
+    let recorded = try XCTUnwrap(MockURLProtocol.lastRequest)
+    XCTAssertTrue(self.hasTraceHeader(recorded))
+  }
+
+  func test_traceHeader_willBeSent_toLocalhost() async throws {
+    MockURLProtocol.respond(status: 200, body: "{}")
+    let localhost = try XCTUnwrap(URL(string: "http://localhost:3001/api/v3/clients/me"))
+
+    _ = try await self.sut.execute(request: PortalAPIRequest(url: localhost, bearerToken: "t"))
+
+    let recorded = try XCTUnwrap(MockURLProtocol.lastRequest)
+    XCTAssertTrue(self.hasTraceHeader(recorded))
+  }
+
+  func test_traceHeader_willNotBeSent_toThirdPartyHost() async throws {
+    MockURLProtocol.respond(status: 200, body: "{}")
+
+    _ = try await self.sut.execute(request: PortalAPIRequest(url: self.thirdPartyUrl, bearerToken: nil))
+
+    let recorded = try XCTUnwrap(MockURLProtocol.lastRequest)
+    XCTAssertFalse(self.hasTraceHeader(recorded), "Portal's correlation id must not reach Google Drive")
+  }
+
+  func test_traceHeader_willNotBeSent_toCustomRpcGateway() async throws {
+    MockURLProtocol.respond(status: 200, body: "{}")
+
+    _ = try await self.sut.execute(request: PortalAPIRequest(url: self.rpcUrl, bearerToken: nil))
+
+    let recorded = try XCTUnwrap(MockURLProtocol.lastRequest)
+    XCTAssertFalse(self.hasTraceHeader(recorded), "Portal's correlation id must not reach a third-party RPC gateway")
+  }
+
+  func test_traceHeader_callerSupplied_willBeKept_forPortalHost() async throws {
+    MockURLProtocol.respond(status: 200, body: "{}")
+
+    _ = try await self.sut.execute(request: PortalAPIRequest(url: self.portalUrl, bearerToken: "t", traceId: "caller-trace"))
+
+    let recorded = try XCTUnwrap(MockURLProtocol.lastRequest)
+    XCTAssertEqual(recorded.value(forHTTPHeaderField: PORTAL_TRACE_ID_HEADER), "caller-trace")
+  }
+
+  func test_traceHeader_callerSupplied_willBeStripped_forThirdPartyHost() async throws {
+    MockURLProtocol.respond(status: 200, body: "{}")
+
+    _ = try await self.sut.execute(request: PortalAPIRequest(url: self.thirdPartyUrl, bearerToken: nil, traceId: "caller-trace"))
+
+    let recorded = try XCTUnwrap(MockURLProtocol.lastRequest)
+    XCTAssertFalse(self.hasTraceHeader(recorded), "A caller-supplied trace id is stripped, not passed through, for a third party")
+  }
+
+  func test_traceHeader_viaUrlOverload_willBeSent_toPortalHost_andNotToThirdParty() async throws {
+    MockURLProtocol.respond(status: 200, body: "{}")
+    _ = try await self.sut.get(self.portalUrl, withBearerToken: "t")
+    let portal = try XCTUnwrap(MockURLProtocol.lastRequest)
+    XCTAssertTrue(self.hasTraceHeader(portal))
+
+    MockURLProtocol.respond(status: 200, body: "{}")
+    _ = try await self.sut.get(self.thirdPartyUrl, withBearerToken: nil)
+    let thirdParty = try XCTUnwrap(MockURLProtocol.lastRequest)
+    XCTAssertFalse(self.hasTraceHeader(thirdParty))
   }
 
   // MARK: - Helpers

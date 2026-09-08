@@ -150,6 +150,36 @@ public struct TotpRequiredResult: Equatable {
   }
 }
 
+/// Redacted rendering, mirroring `KeychainPortalSession`.
+///
+/// The synthesized description of a struct prints every stored property, so a `"\(step)"` in a
+/// log line, an `XCTAssertEqual` failure message or a crash reporter's breadcrumb would carry
+/// the `userJwt` and the `otpauth://` URI with the shared secret in full. Both are replaced
+/// here; `endUserId` is not secret and stays.
+extension TotpRequiredResult: CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+  private static let redacted = "<redacted>"
+
+  public var description: String {
+    "TotpRequiredResult(endUserId: \(self.endUserId), userJwt: \(Self.redacted), totpLink: \(self.totpLink == nil ? "nil" : Self.redacted))"
+  }
+
+  public var debugDescription: String {
+    self.description
+  }
+
+  public var customMirror: Mirror {
+    Mirror(
+      self,
+      children: [
+        "endUserId": self.endUserId,
+        "userJwt": Self.redacted,
+        "totpLink": self.totpLink == nil ? "nil" : Self.redacted
+      ],
+      displayStyle: .struct
+    )
+  }
+}
+
 /// The outcome of a completed grant exchange.
 ///
 /// A two-case sum so a `switch` is exhaustive: either the login is done and a session exists,

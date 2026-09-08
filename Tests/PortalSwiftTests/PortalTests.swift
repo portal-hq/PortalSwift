@@ -36,6 +36,37 @@ class PortalTests: XCTestCase {
   override func tearDownWithError() throws {
     self.portal = nil
   }
+
+  // MARK: - Enclave transport 401 hook
+
+  func test_init_willHookTheEnclaveTransport_whenEnclaveMpcIsEnabled() throws {
+    let baseline = try self.hookedTransportCount(useEnclaveMPCApi: nil)
+    let withEnclave = try self.hookedTransportCount(useEnclaveMPCApi: true)
+
+    XCTAssertEqual(
+      withEnclave,
+      baseline + 1,
+      "The enclave wrapper talks to mpc-client on its own transport; without a hook of its own a 401 there is logged as 'no unauthorized hook is registered' and never invalidates the session"
+    )
+  }
+
+  /// Builds a session-backed `Portal` with the SDK's own binary (so the enclave wrapper is really
+  /// constructed) and counts the transports carrying a 401 hook while it is alive.
+  private func hookedTransportCount(useEnclaveMPCApi: Bool?) throws -> Int {
+    UnauthorizedHookRegistry.shared.resetForTesting()
+    let portal = try Portal(
+      credentials: MockPortalSession(tokenValue: "session-token-1"),
+      withRpcConfig: ["eip155:11155111": "https://\(MockConstants.mockHost)/test-rpc"],
+      featureFlags: FeatureFlags(useEnclaveMPCApi: useEnclaveMPCApi),
+      api: PortalApi(credentials: MockConstants.mockCredentials, requests: MockPortalRequests()),
+      gDrive: MockGDriveStorage(),
+      iCloud: MockICloudStorage(),
+      keychain: MockPortalKeychain(),
+      mpc: MockPortalMpc(),
+      passwords: MockPasswordStorage()
+    )
+    return withExtendedLifetime(portal) { UnauthorizedHookRegistry.shared.transportCount }
+  }
 }
 
 // MARK: - Test Helpers

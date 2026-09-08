@@ -39,7 +39,7 @@ final class CredentialsTests: XCTestCase {
   // MARK: - resolveCredentials
 
   func test_resolveCredentials_willWrapApiKeyInStaticCredentials() throws {
-    let resolved = try resolveCredentials(apiKey: "client-api-key", credentials: nil)
+    let resolved = try PortalCredentialSupport.resolve(apiKey: "client-api-key", credentials: nil)
 
     let wrapped = resolved as? StaticCredentials
     XCTAssertNotNil(wrapped, "Expected a StaticCredentials, got \(type(of: resolved))")
@@ -50,7 +50,7 @@ final class CredentialsTests: XCTestCase {
   func test_resolveCredentials_willReturnSuppliedCredentialsUnchanged() throws {
     let credentials = MockCredentials()
 
-    let resolved = try resolveCredentials(apiKey: nil, credentials: credentials)
+    let resolved = try PortalCredentialSupport.resolve(apiKey: nil, credentials: credentials)
 
     XCTAssertTrue(resolved === credentials, "Expected the very same credential object back")
   }
@@ -58,7 +58,7 @@ final class CredentialsTests: XCTestCase {
   func test_resolveCredentials_willPreferCredentials_whenApiKeyIsEmpty() throws {
     let credentials = MockCredentials()
 
-    let resolved = try resolveCredentials(apiKey: "", credentials: credentials)
+    let resolved = try PortalCredentialSupport.resolve(apiKey: "", credentials: credentials)
 
     XCTAssertTrue(resolved === credentials)
     XCTAssertFalse(resolved is StaticCredentials, "An empty apiKey must not produce a StaticCredentials")
@@ -68,14 +68,14 @@ final class CredentialsTests: XCTestCase {
     let credentials = MockCredentials()
 
     // PLAN 4.2: "credentials wins" — a deliberate divergence from Android's IllegalArgumentException.
-    let resolved = try resolveCredentials(apiKey: "client-api-key", credentials: credentials)
+    let resolved = try PortalCredentialSupport.resolve(apiKey: "client-api-key", credentials: credentials)
 
     XCTAssertTrue(resolved === credentials)
     XCTAssertFalse(resolved is StaticCredentials)
   }
 
   func test_resolveCredentials_willThrowInvalidApiKey_whenNeitherSupplied() {
-    XCTAssertThrowsError(try resolveCredentials(apiKey: nil, credentials: nil)) { error in
+    XCTAssertThrowsError(try PortalCredentialSupport.resolve(apiKey: nil, credentials: nil)) { error in
       let credentialError = error as? PortalCredentialError
       XCTAssertEqual(credentialError, .invalidApiKey)
       XCTAssertNil(credentialError?.reason)
@@ -83,19 +83,19 @@ final class CredentialsTests: XCTestCase {
   }
 
   func test_resolveCredentials_willThrowInvalidApiKey_whenApiKeyIsEmpty() {
-    XCTAssertThrowsError(try resolveCredentials(apiKey: "", credentials: nil)) { error in
+    XCTAssertThrowsError(try PortalCredentialSupport.resolve(apiKey: "", credentials: nil)) { error in
       XCTAssertEqual(error as? PortalCredentialError, .invalidApiKey)
     }
   }
 
   func test_resolveCredentials_willThrowInvalidApiKey_whenApiKeyIsWhitespaceOnly() {
-    XCTAssertThrowsError(try resolveCredentials(apiKey: "   \t\n", credentials: nil)) { error in
+    XCTAssertThrowsError(try PortalCredentialSupport.resolve(apiKey: "   \t\n", credentials: nil)) { error in
       XCTAssertEqual(error as? PortalCredentialError, .invalidApiKey)
     }
   }
 
   func test_resolveCredentials_willKeepSurroundingWhitespace_whenApiKeyIsNonBlank() throws {
-    let resolved = try resolveCredentials(apiKey: " key ", credentials: nil)
+    let resolved = try PortalCredentialSupport.resolve(apiKey: " key ", credentials: nil)
 
     XCTAssertEqual((resolved as? StaticCredentials)?.value, " key ", "The SDK must not trim; the server decides")
     XCTAssertEqual(try resolved.getToken(), " key ")
@@ -106,7 +106,7 @@ final class CredentialsTests: XCTestCase {
   func test_resolveCredentialToken_willReturnTokenFromGetToken() throws {
     let credentials = MockCredentials(tokenValue: "test-api-key")
 
-    let token = try resolveCredentialToken(credentials)
+    let token = try PortalCredentialSupport.resolveToken(credentials)
 
     XCTAssertEqual(token, "test-api-key")
     XCTAssertEqual(credentials.getTokenCalls, 1)
@@ -115,9 +115,9 @@ final class CredentialsTests: XCTestCase {
   func test_resolveCredentialToken_willResolveAgainOnEveryCall() throws {
     let credentials = MockCredentials(tokenValue: "first")
 
-    let first = try resolveCredentialToken(credentials)
+    let first = try PortalCredentialSupport.resolveToken(credentials)
     credentials.tokenValue = "second"
-    let second = try resolveCredentialToken(credentials)
+    let second = try PortalCredentialSupport.resolveToken(credentials)
 
     XCTAssertEqual(first, "first")
     XCTAssertEqual(second, "second")
@@ -128,7 +128,7 @@ final class CredentialsTests: XCTestCase {
     let cause = NSError(domain: "keystore", code: 7)
     let credentials = MockCredentials(onGetToken: { throw cause })
 
-    XCTAssertThrowsError(try resolveCredentialToken(credentials)) { error in
+    XCTAssertThrowsError(try PortalCredentialSupport.resolveToken(credentials)) { error in
       guard let credentialError = error as? PortalCredentialError else {
         return XCTFail("Expected PortalCredentialError, got \(type(of: error))")
       }
@@ -148,7 +148,7 @@ final class CredentialsTests: XCTestCase {
     let cause = NSError(domain: "keystore", code: 1, userInfo: [NSLocalizedDescriptionKey: "keystore path /secret unreadable"])
     let credentials = MockCredentials(onGetToken: { throw cause })
 
-    XCTAssertThrowsError(try resolveCredentialToken(credentials)) { error in
+    XCTAssertThrowsError(try PortalCredentialSupport.resolveToken(credentials)) { error in
       let credentialError = error as? PortalCredentialError
       XCTAssertEqual(credentialError?.errorDescription, "[Portal] The credential provider failed to supply a credential.")
       XCTAssertFalse(credentialError?.errorDescription?.contains("secret") ?? true)
@@ -159,7 +159,7 @@ final class CredentialsTests: XCTestCase {
   func test_resolveCredentialToken_willPassThroughPortalCredentialError_withReasonIntact() {
     let credentials = MockCredentials(onGetToken: { throw PortalCredentialError.sessionInvalidated })
 
-    XCTAssertThrowsError(try resolveCredentialToken(credentials)) { error in
+    XCTAssertThrowsError(try PortalCredentialSupport.resolveToken(credentials)) { error in
       let credentialError = error as? PortalCredentialError
       XCTAssertEqual(credentialError, .sessionInvalidated)
       XCTAssertEqual(credentialError?.reason, .sessionInvalidated)
@@ -171,7 +171,7 @@ final class CredentialsTests: XCTestCase {
   func test_resolveCredentialToken_willPassThroughUnavailable_whenProviderThrowsUnavailable() {
     let credentials = MockCredentials(onGetToken: { throw PortalCredentialError.unavailable })
 
-    XCTAssertThrowsError(try resolveCredentialToken(credentials)) { error in
+    XCTAssertThrowsError(try PortalCredentialSupport.resolveToken(credentials)) { error in
       XCTAssertEqual(error as? PortalCredentialError, .unavailable)
     }
   }
@@ -179,7 +179,7 @@ final class CredentialsTests: XCTestCase {
   func test_resolveCredentialToken_willThrowUnavailable_whenTokenIsEmpty() {
     let credentials = MockCredentials(tokenValue: "")
 
-    XCTAssertThrowsError(try resolveCredentialToken(credentials)) { error in
+    XCTAssertThrowsError(try PortalCredentialSupport.resolveToken(credentials)) { error in
       let credentialError = error as? PortalCredentialError
       XCTAssertEqual(credentialError, .unavailable)
       XCTAssertEqual(credentialError?.reason, .unavailable)
@@ -192,7 +192,7 @@ final class CredentialsTests: XCTestCase {
   func test_resolveCredentialToken_willThrowUnavailable_whenTokenIsWhitespaceOnly() {
     let credentials = MockCredentials(tokenValue: " \n")
 
-    XCTAssertThrowsError(try resolveCredentialToken(credentials)) { error in
+    XCTAssertThrowsError(try PortalCredentialSupport.resolveToken(credentials)) { error in
       XCTAssertEqual(error as? PortalCredentialError, .unavailable)
     }
   }
@@ -200,13 +200,13 @@ final class CredentialsTests: XCTestCase {
   func test_resolveCredentialToken_willReturnTokenVerbatim_whenTokenHasInnerWhitespace() throws {
     let credentials = MockCredentials(tokenValue: "a b")
 
-    XCTAssertEqual(try resolveCredentialToken(credentials), "a b")
+    XCTAssertEqual(try PortalCredentialSupport.resolveToken(credentials), "a b")
   }
 
   func test_resolveCredentialToken_willNotInvalidateCredential_onFailure() {
     let credentials = MockCredentials(onGetToken: { throw NSError(domain: "keystore", code: 3) })
 
-    XCTAssertThrowsError(try resolveCredentialToken(credentials))
+    XCTAssertThrowsError(try PortalCredentialSupport.resolveToken(credentials))
 
     XCTAssertEqual(credentials.invalidateCalls, 0, "Resolution must never mutate the credential")
   }
@@ -214,13 +214,13 @@ final class CredentialsTests: XCTestCase {
   // MARK: - staticApiKeyOf
 
   func test_staticApiKeyOf_willReturnRawKey_forStaticCredentials() {
-    XCTAssertEqual(staticApiKeyOf(StaticCredentials("client-api-key")), "client-api-key")
+    XCTAssertEqual(PortalCredentialSupport.staticApiKey(of: StaticCredentials("client-api-key")), "client-api-key")
   }
 
   func test_staticApiKeyOf_willReturnEmptyString_forNonStaticCredential() {
     let credentials = MockCredentials(tokenValue: "session-token")
 
-    XCTAssertEqual(staticApiKeyOf(credentials), "")
+    XCTAssertEqual(PortalCredentialSupport.staticApiKey(of: credentials), "")
     XCTAssertEqual(credentials.getTokenCalls, 0, "A session token must never be resolved into the apiKey bridge")
   }
 
@@ -262,7 +262,7 @@ final class CredentialsTests: XCTestCase {
     let credentials = MockCredentials()
     XCTAssertNil(requests.onUnauthorized)
 
-    installUnauthorizedHook(on: requests, for: credentials, context: "PortalApi")
+    PortalCredentialSupport.installUnauthorizedHook(on: requests, for: credentials, context: "PortalApi")
 
     XCTAssertNotNil(requests.onUnauthorized)
     requests.onUnauthorized?(nil)
@@ -275,7 +275,7 @@ final class CredentialsTests: XCTestCase {
     var portalRuns = 0
     requests.onUnauthorized = { _ in portalRuns += 1 }
 
-    installUnauthorizedHook(on: requests, for: credentials, context: "PortalApi")
+    PortalCredentialSupport.installUnauthorizedHook(on: requests, for: credentials, context: "PortalApi")
     requests.onUnauthorized?(nil)
 
     XCTAssertEqual(portalRuns, 1, "The pre-existing hook must still be the one that runs")
@@ -289,8 +289,8 @@ final class CredentialsTests: XCTestCase {
     XCTAssertFalse(plainMock is PortalUnauthorizedReporting)
     XCTAssertFalse(nonReporting is PortalUnauthorizedReporting)
 
-    installUnauthorizedHook(on: plainMock, for: credentials, context: "PortalApi")
-    installUnauthorizedHook(on: nonReporting, for: credentials, context: "PortalApi")
+    PortalCredentialSupport.installUnauthorizedHook(on: plainMock, for: credentials, context: "PortalApi")
+    PortalCredentialSupport.installUnauthorizedHook(on: nonReporting, for: credentials, context: "PortalApi")
 
     XCTAssertEqual(credentials.invalidateCalls, 0)
     XCTAssertEqual(credentials.getTokenCalls, 0)
@@ -301,7 +301,7 @@ final class CredentialsTests: XCTestCase {
     let credentials = MockCredentials()
     let recorder = InvalidationListenerRecorder(credentials: credentials)
 
-    installUnauthorizedHook(on: requests, for: credentials, context: "PortalApi")
+    PortalCredentialSupport.installUnauthorizedHook(on: requests, for: credentials, context: "PortalApi")
     XCTAssertEqual(requests.onUnauthorizedSetCount, 1)
     requests.onUnauthorized?(nil)
 
@@ -318,8 +318,8 @@ final class CredentialsTests: XCTestCase {
     let first = MockCredentials(tokenValue: "token-first")
     let second = MockCredentials(tokenValue: "token-second")
 
-    installUnauthorizedHook(on: requests, for: first, context: "PortalApi")
-    installUnauthorizedHook(on: requests, for: second, context: "PortalProvider")
+    PortalCredentialSupport.installUnauthorizedHook(on: requests, for: first, context: "PortalApi")
+    PortalCredentialSupport.installUnauthorizedHook(on: requests, for: second, context: "PortalProvider")
     XCTAssertEqual(requests.onUnauthorizedSetCount, 1, "One closure per transport, however many owners")
 
     requests.onUnauthorized?("token-second")
@@ -337,8 +337,8 @@ final class CredentialsTests: XCTestCase {
     let requests = PortalRequestsSpy()
     let first = MockCredentials(tokenValue: "token-first")
     let second = MockCredentials(tokenValue: "token-second")
-    installUnauthorizedHook(on: requests, for: first, context: "PortalApi")
-    installUnauthorizedHook(on: requests, for: second, context: "PortalProvider")
+    PortalCredentialSupport.installUnauthorizedHook(on: requests, for: first, context: "PortalApi")
+    PortalCredentialSupport.installUnauthorizedHook(on: requests, for: second, context: "PortalProvider")
 
     requests.onUnauthorized?("token-of-someone-else")
     requests.onUnauthorized?(nil)
@@ -350,7 +350,7 @@ final class CredentialsTests: XCTestCase {
   func test_installUnauthorizedHook_willReportLoneOwner_whenBearerIsUnknownOrRotated() {
     let requests = PortalRequestsSpy()
     let only = MockCredentials(tokenValue: "token-now")
-    installUnauthorizedHook(on: requests, for: only, context: "PortalApi")
+    PortalCredentialSupport.installUnauthorizedHook(on: requests, for: only, context: "PortalApi")
 
     // A non-Bearer scheme yields no token; a token that rotated between request and response
     // matches nothing. With a single owner both are unambiguous.
@@ -359,7 +359,7 @@ final class CredentialsTests: XCTestCase {
 
     let rotated = MockCredentials(tokenValue: "token-now")
     let other = PortalRequestsSpy()
-    installUnauthorizedHook(on: other, for: rotated, context: "PortalApi")
+    PortalCredentialSupport.installUnauthorizedHook(on: other, for: rotated, context: "PortalApi")
     other.onUnauthorized?("token-before-rotation")
     XCTAssertEqual(rotated.invalidateCalls, 1)
   }
@@ -368,8 +368,8 @@ final class CredentialsTests: XCTestCase {
     let requests = PortalRequestsSpy()
     let credentials = MockCredentials(tokenValue: "token")
 
-    installUnauthorizedHook(on: requests, for: credentials, context: "PortalApi")
-    installUnauthorizedHook(on: requests, for: credentials, context: "PortalProvider")
+    PortalCredentialSupport.installUnauthorizedHook(on: requests, for: credentials, context: "PortalApi")
+    PortalCredentialSupport.installUnauthorizedHook(on: requests, for: credentials, context: "PortalProvider")
     requests.onUnauthorized?("token")
 
     XCTAssertEqual(requests.onUnauthorizedSetCount, 1)
@@ -381,11 +381,11 @@ final class CredentialsTests: XCTestCase {
     // owner must still be recorded against it rather than mistaken for someone else's hook.
     let requests = PortalRequestsSpy()
     var early: MockCredentials? = MockCredentials(tokenValue: "token-early")
-    installUnauthorizedHook(on: requests, for: early!, context: "PortalApi")
+    PortalCredentialSupport.installUnauthorizedHook(on: requests, for: early!, context: "PortalApi")
     early = nil
 
     let late = MockCredentials(tokenValue: "token-late")
-    installUnauthorizedHook(on: requests, for: late, context: "PortalApi")
+    PortalCredentialSupport.installUnauthorizedHook(on: requests, for: late, context: "PortalApi")
     requests.onUnauthorized?("token-late")
 
     XCTAssertEqual(requests.onUnauthorizedSetCount, 1, "The closure is installed once for the life of the transport")
@@ -395,7 +395,7 @@ final class CredentialsTests: XCTestCase {
   func test_installUnauthorizedHook_willNotRetainOwner() {
     final class HookOwner {
       init(requests: PortalRequestsProtocol, credentials: PortalCredentials) {
-        installUnauthorizedHook(on: requests, for: credentials, context: "HookOwner")
+        PortalCredentialSupport.installUnauthorizedHook(on: requests, for: credentials, context: "HookOwner")
       }
     }
 
@@ -421,7 +421,7 @@ final class CredentialsTests: XCTestCase {
   func test_reportUnauthorizedAndLog_willSwallowInvalidationFailure() {
     let credentials = MockCredentials(onInvalidate: { throw NSError(domain: "keystore", code: 9) })
 
-    reportUnauthorizedAndLog(credentials, context: "PortalApi.execute()")
+    PortalCredentialSupport.reportUnauthorizedAndLog(credentials, context: "PortalApi.execute()")
 
     XCTAssertEqual(credentials.invalidateCalls, 1)
     let errors = self.logger.messages(at: .error)
@@ -438,7 +438,7 @@ final class CredentialsTests: XCTestCase {
       }
     )
 
-    reportUnauthorizedAndLog(credentials, context: "PortalApi.execute()")
+    PortalCredentialSupport.reportUnauthorizedAndLog(credentials, context: "PortalApi.execute()")
 
     XCTAssertFalse(self.logger.messages.isEmpty, "The failure path must log something for the assertion to be meaningful")
     self.logger.assertNoSecret(secret)
@@ -448,7 +448,7 @@ final class CredentialsTests: XCTestCase {
     let credentials = MockCredentials()
     let recorder = InvalidationListenerRecorder(credentials: credentials)
 
-    reportUnauthorizedAndLog(credentials, context: "PortalProvider.request()")
+    PortalCredentialSupport.reportUnauthorizedAndLog(credentials, context: "PortalProvider.request()")
 
     let delivered = await waitUntil { recorder.deliveries == 1 }
     XCTAssertTrue(delivered, "Listener should have run once")

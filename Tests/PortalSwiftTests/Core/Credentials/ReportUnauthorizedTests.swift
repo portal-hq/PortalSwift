@@ -10,8 +10,8 @@ import Foundation
 @testable import PortalSwift
 import XCTest
 
-/// Covers the host-notification half of the credentials layer: `reportUnauthorized(_:)`,
-/// `onCredentialsInvalidated(_:listener:)`, the `CredentialInvalidationRegistry` behind both,
+/// Covers the host-notification half of the credentials layer: `PortalCredentialSupport.reportUnauthorized(_:)`,
+/// `PortalCredentialSupport.onInvalidated(_:listener:)`, the `CredentialInvalidationRegistry` behind both,
 /// and the `PortalSessionInvalidationHandle` a host holds.
 ///
 /// The contract under test is the one hosts build sign-out UI on: a reported credential is
@@ -94,7 +94,7 @@ final class ReportUnauthorizedTests: XCTestCase {
     let sentinel = MockCredentials(tokenValue: "sentinel")
     let recorder = InvalidationListenerRecorder(credentials: sentinel)
     do {
-      try reportUnauthorized(sentinel)
+      try PortalCredentialSupport.reportUnauthorized(sentinel)
     } catch {
       XCTFail("The sentinel report threw: \(error)", file: file, line: line)
     }
@@ -108,7 +108,7 @@ final class ReportUnauthorizedTests: XCTestCase {
     let credentials = MockCredentials()
     let recorder = InvalidationListenerRecorder(credentials: credentials)
 
-    try reportUnauthorized(credentials)
+    try PortalCredentialSupport.reportUnauthorized(credentials)
 
     XCTAssertEqual(credentials.invalidateCalls, 1)
     let delivered = await waitUntil { recorder.deliveries == 1 }
@@ -123,7 +123,7 @@ final class ReportUnauthorizedTests: XCTestCase {
     let recorder = InvalidationListenerRecorder(credentials: credentials)
 
     try runConcurrently(8) {
-      try reportUnauthorized(credentials)
+      try PortalCredentialSupport.reportUnauthorized(credentials)
     }
 
     let delivered = await waitUntil { recorder.deliveries == 1 }
@@ -137,8 +137,8 @@ final class ReportUnauthorizedTests: XCTestCase {
     let credentials = MockCredentials()
     let recorder = InvalidationListenerRecorder(credentials: credentials)
 
-    try reportUnauthorized(credentials)
-    try reportUnauthorized(credentials)
+    try PortalCredentialSupport.reportUnauthorized(credentials)
+    try PortalCredentialSupport.reportUnauthorized(credentials)
 
     XCTAssertEqual(credentials.invalidateCalls, 2)
     let delivered = await waitUntil { recorder.deliveries == 1 }
@@ -152,7 +152,7 @@ final class ReportUnauthorizedTests: XCTestCase {
     let first = InvalidationListenerRecorder(credentials: credentials)
     let second = InvalidationListenerRecorder(credentials: credentials)
 
-    try reportUnauthorized(credentials)
+    try PortalCredentialSupport.reportUnauthorized(credentials)
 
     let delivered = await waitUntil { first.deliveries == 1 && second.deliveries == 1 }
     XCTAssertTrue(delivered, "Both subscribers must be notified")
@@ -166,7 +166,7 @@ final class ReportUnauthorizedTests: XCTestCase {
     let recorder = InvalidationListenerRecorder(credentials: credentials)
 
     recorder.cancel()
-    try reportUnauthorized(credentials)
+    try PortalCredentialSupport.reportUnauthorized(credentials)
 
     await self.flushPendingDeliveries()
     XCTAssertEqual(recorder.deliveries, 0, "A cancelled subscription must not be notified")
@@ -179,7 +179,7 @@ final class ReportUnauthorizedTests: XCTestCase {
     let kept = InvalidationListenerRecorder(credentials: credentials)
 
     dropped.cancel()
-    try reportUnauthorized(credentials)
+    try PortalCredentialSupport.reportUnauthorized(credentials)
 
     let delivered = await waitUntil { kept.deliveries == 1 }
     XCTAssertTrue(delivered, "The remaining subscriber must still be notified")
@@ -192,7 +192,7 @@ final class ReportUnauthorizedTests: XCTestCase {
     let credentials = StaticCredentials("client-api-key")
     let recorder = InvalidationListenerRecorder(credentials: credentials)
 
-    try reportUnauthorized(credentials)
+    try PortalCredentialSupport.reportUnauthorized(credentials)
 
     await self.flushPendingDeliveries()
     XCTAssertEqual(recorder.deliveries, 0, "A Client API Key has no session for a 401 to have ended")
@@ -206,7 +206,7 @@ final class ReportUnauthorizedTests: XCTestCase {
     let onSpent = InvalidationListenerRecorder(credentials: spent)
     let onFresh = InvalidationListenerRecorder(credentials: fresh)
 
-    try reportUnauthorized(spent)
+    try PortalCredentialSupport.reportUnauthorized(spent)
 
     let delivered = await waitUntil { onSpent.deliveries == 1 }
     XCTAssertTrue(delivered)
@@ -223,7 +223,7 @@ final class ReportUnauthorizedTests: XCTestCase {
     credentials.onInvalidate = { throw StorageDeleteFailed() }
     let recorder = InvalidationListenerRecorder(credentials: credentials)
 
-    XCTAssertThrowsError(try reportUnauthorized(credentials)) { error in
+    XCTAssertThrowsError(try PortalCredentialSupport.reportUnauthorized(credentials)) { error in
       XCTAssertTrue(error is StorageDeleteFailed, "Expected the invalidation failure to propagate, got \(error)")
     }
 
@@ -239,7 +239,7 @@ final class ReportUnauthorizedTests: XCTestCase {
     let failure = NSError(domain: "io.portalhq.tests", code: 9, userInfo: nil)
     credentials.onInvalidate = { throw failure }
 
-    XCTAssertThrowsError(try reportUnauthorized(credentials)) { error in
+    XCTAssertThrowsError(try PortalCredentialSupport.reportUnauthorized(credentials)) { error in
       let nsError = error as NSError
       XCTAssertEqual(nsError.domain, "io.portalhq.tests")
       XCTAssertEqual(nsError.code, 9, "The very same error must reach the caller, unwrapped")
@@ -259,7 +259,7 @@ final class ReportUnauthorizedTests: XCTestCase {
       first?.cancel()
     }
 
-    try reportUnauthorized(credentials)
+    try PortalCredentialSupport.reportUnauthorized(credentials)
 
     let delivered = await waitUntil { first.deliveries == 1 && second.deliveries == 1 }
     XCTAssertTrue(delivered, "The second listener must still run: deliveries are snapshotted before any listener is invoked")
@@ -275,15 +275,15 @@ final class ReportUnauthorizedTests: XCTestCase {
     let lateHandle = LockedBox<PortalSessionInvalidationHandle>()
     let original = InvalidationListenerRecorder(credentials: credentials)
     original.onDeliver = {
-      lateHandle.value = onCredentialsInvalidated(credentials) {
+      lateHandle.value = PortalCredentialSupport.onInvalidated(credentials) {
         lateCounter.increment()
       }
     }
 
-    try reportUnauthorized(credentials)
+    try PortalCredentialSupport.reportUnauthorized(credentials)
     let delivered = await waitUntil { original.deliveries == 1 }
     XCTAssertTrue(delivered)
-    try reportUnauthorized(credentials)
+    try PortalCredentialSupport.reportUnauthorized(credentials)
 
     await self.flushPendingDeliveries()
     XCTAssertEqual(original.deliveries, 1, "The once-only guard holds: a second report does not re-run the original listener")
@@ -299,7 +299,7 @@ final class ReportUnauthorizedTests: XCTestCase {
       recorder?.cancel()
     }
 
-    try reportUnauthorized(credentials)
+    try PortalCredentialSupport.reportUnauthorized(credentials)
 
     let delivered = await waitUntil { recorder.deliveries == 1 }
     XCTAssertTrue(delivered, "A listener cancelling itself must not deadlock the registry")
@@ -318,7 +318,7 @@ final class ReportUnauthorizedTests: XCTestCase {
       _ = gate.wait(timeout: .now() + 3)
     }
 
-    try reportUnauthorized(blocked)
+    try PortalCredentialSupport.reportUnauthorized(blocked)
     let entered = await waitUntil { blockedRecorder.deliveries == 1 }
     XCTAssertTrue(entered, "The blocking listener never started")
 
@@ -332,7 +332,7 @@ final class ReportUnauthorizedTests: XCTestCase {
       let other = MockCredentials(tokenValue: "other")
       otherRecorder.value = InvalidationListenerRecorder(credentials: other)
       do {
-        try reportUnauthorized(other)
+        try PortalCredentialSupport.reportUnauthorized(other)
       } catch {
         secondError.value = error
       }
@@ -359,7 +359,7 @@ final class ReportUnauthorizedTests: XCTestCase {
     )
     credentials.onInvalidate = { throw leakyFailure }
 
-    XCTAssertThrowsError(try reportUnauthorized(credentials)) { error in
+    XCTAssertThrowsError(try PortalCredentialSupport.reportUnauthorized(credentials)) { error in
       // The vector is real: the propagated error carries the token in its own description.
       XCTAssertTrue(error.localizedDescription.contains(secret))
     }
@@ -374,12 +374,12 @@ final class ReportUnauthorizedTests: XCTestCase {
     let counter = LockedCounter()
     let listener: @MainActor () -> Void = { counter.increment() }
 
-    let firstHandle = onCredentialsInvalidated(credentials, listener: listener)
-    let secondHandle = onCredentialsInvalidated(credentials, listener: listener)
+    let firstHandle = PortalCredentialSupport.onInvalidated(credentials, listener: listener)
+    let secondHandle = PortalCredentialSupport.onInvalidated(credentials, listener: listener)
     XCTAssertFalse(firstHandle === secondHandle, "Each subscription gets its own handle")
 
     firstHandle.cancel()
-    try reportUnauthorized(credentials)
+    try PortalCredentialSupport.reportUnauthorized(credentials)
 
     let delivered = await waitUntil { counter.value == 1 }
     XCTAssertTrue(delivered, "The surviving subscription must still run")
@@ -389,7 +389,7 @@ final class ReportUnauthorizedTests: XCTestCase {
 
   func test_onCredentialsInvalidated_willReplayReport_whenSubscribingAfterReport() async throws {
     let credentials = MockCredentials()
-    try reportUnauthorized(credentials)
+    try PortalCredentialSupport.reportUnauthorized(credentials)
 
     let recorder = InvalidationListenerRecorder(credentials: credentials)
 
@@ -401,7 +401,7 @@ final class ReportUnauthorizedTests: XCTestCase {
 
   func test_onCredentialsInvalidated_willNotReplay_whenLateSubscriptionCancelledFirst() async throws {
     let credentials = MockCredentials()
-    try reportUnauthorized(credentials)
+    try PortalCredentialSupport.reportUnauthorized(credentials)
 
     let recorder = InvalidationListenerRecorder(credentials: credentials)
     recorder.handle.cancel()
@@ -412,7 +412,7 @@ final class ReportUnauthorizedTests: XCTestCase {
 
   func test_onCredentialsInvalidated_willReplayToEachLateSubscriber() async throws {
     let credentials = MockCredentials()
-    try reportUnauthorized(credentials)
+    try PortalCredentialSupport.reportUnauthorized(credentials)
 
     let first = InvalidationListenerRecorder(credentials: credentials)
     let second = InvalidationListenerRecorder(credentials: credentials)
@@ -426,7 +426,7 @@ final class ReportUnauthorizedTests: XCTestCase {
     let credentials = StaticCredentials("client-api-key")
     let counter = LockedCounter()
 
-    let handle = onCredentialsInvalidated(credentials) {
+    let handle = PortalCredentialSupport.onInvalidated(credentials) {
       counter.increment()
     }
 
@@ -446,7 +446,7 @@ final class ReportUnauthorizedTests: XCTestCase {
 
     DispatchQueue.global(qos: .userInitiated).async {
       do {
-        try reportUnauthorized(credentials)
+        try PortalCredentialSupport.reportUnauthorized(credentials)
       } catch {
         reportError.value = error
       }
@@ -468,7 +468,7 @@ final class ReportUnauthorizedTests: XCTestCase {
     // Report from the main actor and read the counter before yielding: the hop through a
     // Task means the listener cannot have run yet, even though it targets this same actor.
     let observedSynchronously = try await MainActor.run(resultType: Int.self) {
-      try reportUnauthorized(credentials)
+      try PortalCredentialSupport.reportUnauthorized(credentials)
       return recorder.deliveries
     }
 
@@ -483,7 +483,7 @@ final class ReportUnauthorizedTests: XCTestCase {
 
     func subscribeScopedCredential() {
       let scoped = MockCredentials(tokenValue: "scoped")
-      _ = onCredentialsInvalidated(scoped) {}
+      _ = PortalCredentialSupport.onInvalidated(scoped) {}
       XCTAssertEqual(registry.entryCount, 1)
     }
 
@@ -498,7 +498,7 @@ final class ReportUnauthorizedTests: XCTestCase {
     // Reporting another credential afterwards is unaffected by the stale entry.
     let recorder = InvalidationListenerRecorder(credentials: other)
     XCTAssertEqual(registry.entryCount, 1)
-    try reportUnauthorized(other)
+    try PortalCredentialSupport.reportUnauthorized(other)
     let delivered = await waitUntil { recorder.deliveries == 1 }
     XCTAssertTrue(delivered)
     XCTAssertEqual(registry.entryCount, 0, "A reported credential's entry is dropped: it can never be read again")
@@ -508,8 +508,8 @@ final class ReportUnauthorizedTests: XCTestCase {
     // Spend a credential, keep only its identity, and let it die.
     func spendScopedCredential() throws -> ObjectIdentifier {
       let scoped = MockCredentials(tokenValue: "a")
-      _ = onCredentialsInvalidated(scoped) {}
-      try reportUnauthorized(scoped)
+      _ = PortalCredentialSupport.onInvalidated(scoped) {}
+      try PortalCredentialSupport.reportUnauthorized(scoped)
       return ObjectIdentifier(scoped)
     }
     let staleIdentity = try spendScopedCredential()
@@ -533,7 +533,7 @@ final class ReportUnauthorizedTests: XCTestCase {
     let recorder = InvalidationListenerRecorder(credentials: credentialB)
     XCTAssertFalse(recorder.handle === PortalSessionInvalidationHandle.spent, "A fresh credential at a stale address must not read as already reported")
 
-    try reportUnauthorized(credentialB)
+    try PortalCredentialSupport.reportUnauthorized(credentialB)
 
     let delivered = await waitUntil { recorder.deliveries == 1 }
     XCTAssertTrue(delivered, "The reported set is keyed by weak box and re-checked with ===, so B is reportable")
@@ -562,7 +562,7 @@ final class ReportUnauthorizedTests: XCTestCase {
 
     recorder.cancel()
     recorder.cancel()
-    try reportUnauthorized(credentials)
+    try PortalCredentialSupport.reportUnauthorized(credentials)
 
     await self.flushPendingDeliveries()
     XCTAssertEqual(recorder.deliveries, 0, "A twice-cancelled subscription stays cancelled and never runs")
@@ -574,13 +574,13 @@ final class ReportUnauthorizedTests: XCTestCase {
     let counter = LockedCounter()
 
     func subscribeAndDropHandle() {
-      _ = onCredentialsInvalidated(credentials) {
+      _ = PortalCredentialSupport.onInvalidated(credentials) {
         counter.increment()
       }
     }
     subscribeAndDropHandle()
 
-    try reportUnauthorized(credentials)
+    try PortalCredentialSupport.reportUnauthorized(credentials)
 
     let delivered = await waitUntil { counter.value == 1 }
     XCTAssertTrue(delivered, "Dropping the handle must not unsubscribe: parity with React Native and Android")
@@ -591,7 +591,7 @@ final class ReportUnauthorizedTests: XCTestCase {
   func test_PortalSessionInvalidationHandle_spent_willBeSharedSingleton() {
     let first = PortalSessionInvalidationHandle.spent
     let second = PortalSessionInvalidationHandle.spent
-    let fromStaticKey = onCredentialsInvalidated(StaticCredentials("client-api-key")) {}
+    let fromStaticKey = PortalCredentialSupport.onInvalidated(StaticCredentials("client-api-key")) {}
 
     XCTAssertTrue(first === second, "spent is one shared instance")
     XCTAssertTrue(fromStaticKey === first, "Every subscription that can never fire returns the same handle")

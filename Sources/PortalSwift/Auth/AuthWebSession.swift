@@ -150,6 +150,17 @@ final class ASWebAuthenticationSessionAdapter: AuthWebSessionProviding, @uncheck
         self.state = .pending(continuation)
         self.lock.unlock()
 
+        // Entered on an already-cancelled task: `withTaskCancellationHandler` ran `cancel()`
+        // before this body, at `.idle`, where it was a no-op — and the unstructured `Task` below
+        // does not inherit cancellation. Without this check the browser sheet would be presented
+        // for a sign-in nobody is waiting for and the caller would wait for the user to dismiss
+        // it. `Task.isCancelled` is valid here because the continuation body runs synchronously
+        // in the caller's task.
+        if Task.isCancelled {
+          self.cancel()
+          return
+        }
+
         Task { @MainActor in
           self.begin(
             url: url,

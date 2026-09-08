@@ -66,6 +66,14 @@ public final class PortalAuth: @unchecked Sendable {
   private struct ConsumedGrant {
     let token: String
     let result: AuthResult
+    /// The session record that has not yet reached the Keychain, or `nil` once it has (and
+    /// always `nil` for `.totpRequired`, which persists nothing by design).
+    ///
+    /// The backend burns a grant — and retires a TOTP `userJwt` — before it answers, so a
+    /// Keychain write failure must not throw the issued session away: the result is memoised
+    /// first, and a re-delivered redirect retries the write (see `_replay`) instead of
+    /// re-sending a token the backend already spent, which could only fail with 401.
+    var pendingPersist: PersistedSession?
   }
 
   private let redirectUrl: String
@@ -123,8 +131,13 @@ public final class PortalAuth: @unchecked Sendable {
       throw PortalAuthError.invalidArgument(name: "redirectUrl")
     }
 
+    // The configured host is Portal-owned for the 401 and trace gates (see `PortalOwnedHosts`).
+    PortalOwnedHosts.register(apiHost)
+
     self.init(
-      redirectUrl: redirectUrl,
+      // Stored trimmed: the blank check above trims, and the backend's allow-list match is exact,
+      // so surrounding whitespace would pass every local check and fail only server-side.
+      redirectUrl: redirectUrl.trimmingCharacters(in: .whitespacesAndNewlines),
       api: PortalAuthApi(authEnvironmentId: authEnvironmentId, apiHost: apiHost, requests: PortalRequests()),
       // Keyed by `authEnvironmentId`: instances sharing one share the session.
       storage: KeychainAuthSessionStorage(authEnvironmentId: authEnvironmentId),
@@ -156,6 +169,10 @@ public final class PortalAuth: @unchecked Sendable {
   /// Whether `signInWith*` asks for an ephemeral browser session (no shared cookies, so an
   /// already-signed-in Google or Apple account is not reused). Defaults to `false` so users
   /// get the one-tap experience; read at the start of each sign-in.
+  ///
+  /// The SDK cannot clear the system browser's cookies, so with the default a sign-out followed
+  /// by a sign-in reuses the same Google or Apple account. A host whose sign-out must allow
+  /// switching accounts should set this to `true` before the next `signInWith*`.
   public var prefersEphemeralWebBrowserSession: Bool {
     get {
       self.stateLock.lock()
@@ -192,7 +209,9 @@ public final class PortalAuth: @unchecked Sendable {
   /// Sends a magic-link email.
   ///
   /// Returns once the email is **sent**; the eventual login arrives as a deep link and
-  /// completes through `handleRedirect(_:)`. The address is trimmed and lowercased first (the
+  /// completes through `handleRedirect(_:)`. That deep link is delivered by the OS URL handler,
+  /// so the redirect-hijacking note on `loginWithGoogle()` applies to it as well: an app that
+  /// registered your scheme can deliver a grant of its own. The address is trimmed and lowercased first (the
   /// backend requires lowercase and does not trim). Every call delivers a real email and sends
   /// are rate limited, so **never retry automatically** — a resend is an explicit user action.
   ///
@@ -230,14 +249,26 @@ public final class PortalAuth: @unchecked Sendable {
   /// by both provider URLs in a single backend response, so a stale one fails at the provider
   /// with no useful message. For a flow that also owns the browser, see `signInWithGoogle()`.
   ///
+  /// **Redirect hijacking.** The callback this URL ends in comes back through the OS URL
+  /// handler, which delivers it to whichever installed app registered your URL scheme — and
+  /// `handleRedirect(_:)` cannot tell a grant from *your* flow from one another app started,
+  /// because the redirect carries no app-side `state` (the backend's `state` binds the provider
+  /// to Portal, not the app to Portal). An app that claims the same scheme can therefore hand
+  /// your user a grant *it* obtained and sign them into *its* end-user account. Prefer
+  /// `signInWithGoogle()`: its `ASWebAuthenticationSession` returns the callback to the SDK
+  /// directly and never routes it through the OS. If you must open the URL yourself, treat this
+  /// as a known exposure shared by every Portal SDK; binding an app-side state is tracked as a
+  /// cross-platform backend change.
+  ///
   /// - Throws: `PortalAuthError.authMethodUnavailable(.google)` when Google is not enabled for
   ///   this environment. Not retryable — check `getMethods()`.
   public func loginWithGoogle() async throws -> AuthorizeUrlResult {
     try await self.getAuthorizeUrl(.google)
   }
 
-  /// The Apple authorize URL to open in a browser. See `loginWithGoogle()` for how to open it
-  /// and why the result must not be cached.
+  /// The Apple authorize URL to open in a browser. See `loginWithGoogle()` for how to open it,
+  /// why the result must not be cached, and the redirect-hijacking exposure of opening the URL
+  /// yourself rather than through `signInWithApple()`.
   ///
   /// Sign in with Apple identifies end users differently: Portal identifies an end user by
   /// email, and a user who chooses *Hide My Email* becomes a distinct end user (with a distinct
@@ -256,15 +287,20 @@ public final class PortalAuth: @unchecked Sendable {
   ///
   /// Returns `nil` when the URL does not target this instance's `redirectUrl` or carries no
   /// Client Auth grant, so it is safe to call on every instance and safe for the app's router
-  /// to try other handlers afterwards. Throws when the URL matches but carries `?error=…`.
+  /// to try other handlers afterwards. Throws when the URL matches but carries `?error=…`. It
+  /// trusts any grant that arrives on your redirect URL — see the redirect-hijacking note on
+  /// `loginWithGoogle()` for what that means when the URL is delivered by the OS.
   ///
   /// Safe to call twice with the same grant: the first exchange's result is remembered and
   /// replayed, so a redirect the system re-delivers resolves to the same `AuthResult` — and
   /// the same `PortalSession` instance — rather than failing the backend's single-use
-  /// rejection. Only a *successful* exchange is remembered, so a redirect that failed on a
-  /// dropped connection stays retryable. The memory belongs to this instance and this process:
-  /// `clearPersistedSession()` drops it, and after a process death the recovery is
-  /// `restoreSession()`.
+  /// rejection. A redirect that failed on a dropped connection or a rejected grant is not
+  /// remembered and stays retryable. A successful exchange whose Keychain write failed *is*
+  /// remembered — the backend has already spent the grant — and the replay retries the write
+  /// instead of re-sending the token. A remembered session the backend has since rejected is
+  /// not replayed: the redirect fails with `PortalRequestsError.unauthorized`, like a spent
+  /// grant. The memory belongs to this instance and this process: `clearPersistedSession()`
+  /// drops it, and after a process death the recovery is `restoreSession()`.
   ///
   /// On success the session is persisted **before** it is returned, so a Keychain write
   /// failure rejects the login rather than handing back a session that will not survive a
@@ -319,13 +355,14 @@ public final class PortalAuth: @unchecked Sendable {
     return try await self.grantMutex.withLock {
       let validation = try await self.api.validateTotp(code: code, userJwt: userJwt)
 
-      let result = try self._persistAuthenticated(
-        clientSessionToken: validation.clientSessionToken,
-        endUserId: endUserId,
-        clientId: validation.clientId,
-        isAccountAbstracted: validation.isAccountAbstracted
-      )
-      self._completeTotpStep(userJwt: userJwt, result: result)
+      let persisted = PersistedSession(clientSessionToken: validation.clientSessionToken, endUserId: endUserId)
+      let result = self._makeAuthenticated(persisted, clientId: validation.clientId, isAccountAbstracted: validation.isAccountAbstracted)
+      // Memoised before the write for the same reason as `_exchangeGrant`: the backend retires
+      // the `userJwt` before it answers, so a persist failure must leave a re-delivered redirect
+      // able to finish the login rather than replaying a TOTP step that can never be accepted.
+      self._completeTotpStep(userJwt: userJwt, result: result, pendingPersist: persisted)
+      try self._persist(persisted)
+      self._markPersisted()
       PortalLogger.shared.debug("PortalAuth.verifyTotp() - TOTP accepted; session persisted for endUserId: \(endUserId).")
       return result
     }
@@ -459,18 +496,49 @@ public final class PortalAuth: @unchecked Sendable {
 
     return try await self.grantMutex.withLock {
       if let memo = self.consumedGrant, memo.token == token {
-        PortalLogger.shared.debug("PortalAuth.handleRedirect() - Replaying the result of an already-exchanged grant.")
-        return memo.result
+        return try self._replay(memo)
       }
       return try await self._exchangeGrant(token: token, params: params)
     }
   }
 
+  /// Serves a re-delivered redirect from the memo. Called only with `grantMutex` held.
+  ///
+  /// Two things a plain "return the memo" would get wrong. A session the backend has since
+  /// rejected — `getToken()` throws `.sessionInvalidated` — must not be handed back as
+  /// `.authenticated`: the memo is evicted and the redirect fails with
+  /// `PortalRequestsError.unauthorized`, the same error a burned grant produces, so the host
+  /// handles both the same way. And a session whose first Keychain write failed is written now:
+  /// the grant is spent server-side, so this retry is the only way that login can still finish.
+  private func _replay(_ memo: ConsumedGrant) throws -> AuthResult {
+    guard case let .authenticated(result) = memo.result else {
+      PortalLogger.shared.debug("PortalAuth.handleRedirect() - Replaying the TOTP step of an already-exchanged grant.")
+      return memo.result
+    }
+
+    guard (try? result.session.getToken()) != nil else {
+      PortalLogger.shared.error("PortalAuth.handleRedirect() - The replayed session has been invalidated; evicting the memo.")
+      self.consumedGrant = nil
+      throw PortalRequestsError.unauthorized
+    }
+
+    if let pending = memo.pendingPersist {
+      PortalLogger.shared.debug("PortalAuth.handleRedirect() - Retrying the persist of an already-exchanged grant.")
+      try self._persist(pending)
+      self._markPersisted()
+    } else {
+      PortalLogger.shared.debug("PortalAuth.handleRedirect() - Replaying the result of an already-exchanged grant.")
+    }
+    return memo.result
+  }
+
   /// Exchanges a grant that has not been seen before and remembers what it resolved to.
   ///
-  /// Recording happens on the way out, so a throw — a rejected grant, a dropped connection, a
-  /// failed persist — leaves the token unconsumed and the redirect retryable. Called only with
-  /// `grantMutex` held.
+  /// A rejected grant or a dropped connection records nothing, so the redirect stays retryable.
+  /// A failed persist is different: the backend has already burned the grant by the time it
+  /// answers, so the issued session is memoised *before* the Keychain write and a re-delivered
+  /// redirect retries the write (`ConsumedGrant.pendingPersist`, `_replay`) instead of re-sending
+  /// a spent token. Called only with `grantMutex` held.
   private func _exchangeGrant(token: String, params: [String: String]) async throws -> AuthResult? {
     guard let grant = try await self.exchangeGrantToken(token, params: params) else {
       return nil
@@ -481,21 +549,23 @@ public final class PortalAuth: @unchecked Sendable {
     // first request with `.unavailable` and is cleared by the next restore.
     if let clientSessionToken = grant.clientSessionToken, !Self.isBlank(clientSessionToken) {
       let endUserId = grant.endUserId ?? ""
-      let authenticated = try self._persistAuthenticated(
-        clientSessionToken: clientSessionToken,
-        endUserId: endUserId,
-        clientId: grant.clientId,
-        isAccountAbstracted: grant.isAccountAbstracted
+      let persisted = PersistedSession(clientSessionToken: clientSessionToken, endUserId: endUserId)
+      let result = AuthResult.authenticated(
+        self._makeAuthenticated(persisted, clientId: grant.clientId, isAccountAbstracted: grant.isAccountAbstracted)
       )
-      let result = AuthResult.authenticated(authenticated)
-      self.consumedGrant = ConsumedGrant(token: token, result: result)
+      // Memoised before the write: the grant is already spent, so a persist failure must leave
+      // a re-delivered redirect able to finish this login (see `ConsumedGrant.pendingPersist`).
+      self.consumedGrant = ConsumedGrant(token: token, result: result, pendingPersist: persisted)
+      try self._persist(persisted)
+      self._markPersisted()
       PortalLogger.shared.debug("PortalAuth.handleRedirect() - Exchanged the grant and persisted the session for endUserId: \(endUserId).")
       return result
     }
 
     // A `userJwt` instead of a session token means a TOTP step is required. Nothing is
     // persisted on this path — the login is not complete until `verifyTotp` resolves a session.
-    guard let userJwt = grant.userJwt, !userJwt.isEmpty else {
+    // Blank counts as absent here too, matching the session-token check above.
+    guard let userJwt = grant.userJwt, !Self.isBlank(userJwt) else {
       PortalLogger.shared.error("PortalAuth.handleRedirect() - The grant response carried neither a session token nor a userJwt.")
       throw PortalAuthError.invalidGrantResponse
     }
@@ -509,7 +579,7 @@ public final class PortalAuth: @unchecked Sendable {
       endUserId: grant.endUserId ?? ""
     )
     let result = AuthResult.totpRequired(step)
-    self.consumedGrant = ConsumedGrant(token: token, result: result)
+    self.consumedGrant = ConsumedGrant(token: token, result: result, pendingPersist: nil)
     PortalLogger.shared.debug("PortalAuth.handleRedirect() - The grant requires a TOTP step; nothing persisted.")
     return result
   }
@@ -542,39 +612,47 @@ public final class PortalAuth: @unchecked Sendable {
   /// two halves together — the grant token is never passed back to `verifyTotp`. A JWT
   /// matching nothing leaves the memo alone rather than inventing an entry no redirect can
   /// replay. Called only with `grantMutex` held.
-  private func _completeTotpStep(userJwt: String, result: AuthenticatedResult) {
+  private func _completeTotpStep(userJwt: String, result: AuthenticatedResult, pendingPersist: PersistedSession?) {
     guard let pending = self.consumedGrant,
           case let .totpRequired(step) = pending.result,
           step.userJwt == userJwt
     else {
       return
     }
-    self.consumedGrant = ConsumedGrant(token: pending.token, result: .authenticated(result))
+    self.consumedGrant = ConsumedGrant(token: pending.token, result: .authenticated(result), pendingPersist: pendingPersist)
   }
 
-  /// Persists the session, then wraps it. The write happens first, so a storage failure
-  /// rejects the login rather than handing back a session that will not survive a restart.
-  /// Called only with `grantMutex` held.
-  private func _persistAuthenticated(
-    clientSessionToken: String,
-    endUserId: String,
+  /// Records that the session in the current memo has reached the Keychain.
+  private func _markPersisted() {
+    guard let memo = self.consumedGrant, memo.pendingPersist != nil else {
+      return
+    }
+    self.consumedGrant = ConsumedGrant(token: memo.token, result: memo.result, pendingPersist: nil)
+  }
+
+  /// Builds the result for `persisted` without touching storage; `_persist(_:)` writes it. Split
+  /// from the write so the result can be memoised before the write is attempted.
+  private func _makeAuthenticated(
+    _ persisted: PersistedSession,
     clientId: String?,
     isAccountAbstracted: Bool?
-  ) throws -> AuthenticatedResult {
-    let persisted = PersistedSession(clientSessionToken: clientSessionToken, endUserId: endUserId)
+  ) -> AuthenticatedResult {
+    let session = KeychainPortalSession(
+      clientSessionToken: persisted.clientSessionToken,
+      endUserId: persisted.endUserId,
+      storage: self.storage
+    )
+    return AuthenticatedResult(session: session, clientId: clientId, isAccountAbstracted: isAccountAbstracted)
+  }
+
+  /// Writes `persisted` to the Keychain, wrapping any failure as `sessionStorageFailure`.
+  private func _persist(_ persisted: PersistedSession) throws {
     do {
       let raw = try PersistedSessionCodec.encode(persisted)
       try self.storage.set(raw)
     } catch {
       throw Self.storageFailure(error, context: "PortalAuth.persistSession()", message: "The session could not be persisted.")
     }
-
-    let session = KeychainPortalSession(
-      clientSessionToken: clientSessionToken,
-      endUserId: endUserId,
-      storage: self.storage
-    )
-    return AuthenticatedResult(session: session, clientId: clientId, isAccountAbstracted: isAccountAbstracted)
   }
 
   // MARK: - Private: OAuth

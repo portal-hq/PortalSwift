@@ -31,6 +31,78 @@ private let localDevelopmentHosts: Set<String> = ["localhost", "127.0.0.1"]
 /// The only IPv6 literal accepted as Portal-owned: the loopback address, i.e. `http://[::1]`.
 private let ipv6LoopbackLiteral = "::1"
 
+// MARK: - Registered hosts
+
+/// Hosts a `Portal`, `PortalApi`, `PortalConnect` or `PortalAuth` instance was configured with,
+/// treated as Portal-owned by `isPortalOwnedUrl(_:)` in addition to the static allow-list.
+///
+/// Without this, an integrator who points `apiHost` / `mpcHost` / `enclaveMPCHost` /
+/// `webSocketServer` at a domain outside `portalhq.io` — a custodian proxy, a private staging
+/// domain — would have every 401 from their own backend classified as third-party, and session
+/// invalidation would silently never fire; the RPC bearer and the trace header would be withheld
+/// the same way. The Web SDK's `isPortalGatewayUrl` trusts the configured host for the same
+/// reason. Only hosts the SDK was *constructed* with are registered; `rpcConfig` URLs never are,
+/// because a custom RPC gateway is exactly what the bearer gate must keep untrusted. Process-wide
+/// and lock-guarded, like `CredentialInvalidationRegistry`: a host is a deployment fact, not
+/// per-instance state. Public so a host that fronts Portal through its own domain can register
+/// it explicitly.
+public enum PortalOwnedHosts {
+  private static let lock = NSLock()
+  private static var hosts: Set<String> = []
+
+  /// Registers each value as a Portal-owned host. Accepts a bare host (`api.custodian.example`),
+  /// a host with a port, or a full URL; the host component is extracted, lowercased and
+  /// trailing-dot trimmed, and matched afterwards whole or as a dot-anchored suffix. Values
+  /// that do not yield a well-formed host name (percent-encoding, IP literals, userinfo) are
+  /// ignored rather than trusted.
+  public static func register(_ values: String...) {
+    let normalized = values.compactMap(Self.normalizedHost)
+    guard !normalized.isEmpty else {
+      return
+    }
+    self.lock.lock()
+    defer { self.lock.unlock() }
+    self.hosts.formUnion(normalized)
+  }
+
+  /// `true` when `host` — already lowercased and trailing-dot trimmed — is a registered host or
+  /// a subdomain of one.
+  static func contains(_ host: String) -> Bool {
+    self.lock.lock()
+    defer { self.lock.unlock() }
+    return self.hosts.contains { registered in host == registered || hasDotAnchoredSuffix(host, registered) }
+  }
+
+  /// Test seam: forgets every registered host.
+  static func resetForTesting() {
+    self.lock.lock()
+    defer { self.lock.unlock() }
+    self.hosts.removeAll()
+  }
+
+  private static func normalizedHost(_ value: String) -> String? {
+    let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else {
+      return nil
+    }
+    // A full URL: take its host. A bare host, optionally with a port: parse it as one.
+    let candidate = trimmed.contains("://") ? trimmed : "https://\(trimmed)"
+    guard !rawHostContainsPercentEncoding(candidate),
+          let components = URLComponents(string: candidate),
+          // `user@evil.example` would otherwise register `evil.example`.
+          components.user == nil, components.password == nil,
+          let rawHost = components.percentEncodedHost, !rawHost.isEmpty
+    else {
+      return nil
+    }
+    let host = trimTrailingDots(rawHost.lowercased())
+    guard !host.isEmpty, ipv6LiteralValue(in: host) == nil, isWellFormedHostName(host) else {
+      return nil
+    }
+    return host
+  }
+}
+
 /// Decides whether a URL points at infrastructure Portal operates.
 ///
 /// This is the single gate that decides three security-relevant behaviours in the SDK:
@@ -55,8 +127,9 @@ private let ipv6LoopbackLiteral = "::1"
 ///   percent-encoding, path/query/fragment/userinfo characters, unbracketed colons, and
 ///   leading dots or hyphens.
 /// - Only then are the allow-lists consulted: `localhost`, `127.0.0.1` and `*.localhost` for
-///   local development, and `portalhq.io` / `portalhq.dev` as the whole host or as a
-///   dot-anchored suffix.
+///   local development, `portalhq.io` / `portalhq.dev` as the whole host or as a dot-anchored
+///   suffix, and finally the hosts the SDK was configured with (`PortalOwnedHosts`), matched the
+///   same way.
 ///
 /// The scan is a hand-rolled linear pass over the UTF-8 bytes (no regular expressions), so a
 /// hostile multi-hundred-kilobyte input completes in linear time.
@@ -102,7 +175,9 @@ public func isPortalOwnedUrl(_ url: String) -> Bool {
     return true
   }
 
-  return false
+  // Hosts an SDK instance was configured with (`apiHost`, `mpcHost`, `enclaveMPCHost`,
+  // `webSocketServer`, `PortalAuth`'s `apiHost`) — see `PortalOwnedHosts`.
+  return PortalOwnedHosts.contains(host)
 }
 
 /// `true` when the authority's host portion of the raw URL string contains a `%`.

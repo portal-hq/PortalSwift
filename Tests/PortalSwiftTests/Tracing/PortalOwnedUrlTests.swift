@@ -28,12 +28,15 @@ final class PortalOwnedUrlTests: XCTestCase {
   override func setUp() {
     super.setUp()
     CredentialInvalidationRegistry.shared.resetForTesting()
+    // The false vectors below assume no test constructed an SDK object against one of them.
+    PortalOwnedHosts.resetForTesting()
     self.logger = RecordingLogger()
     self.logger.install()
   }
 
   override func tearDown() {
     self.logger.uninstall()
+    PortalOwnedHosts.resetForTesting()
     CredentialInvalidationRegistry.shared.resetForTesting()
     super.tearDown()
   }
@@ -339,6 +342,60 @@ final class PortalOwnedUrlTests: XCTestCase {
     ], false)
   }
 
+  // MARK: - Registered hosts
+
+  func test_isPortalOwnedUrl_willAcceptARegisteredHost_wholeOrAsDotAnchoredSuffix() {
+    PortalOwnedHosts.register("api.custodian.example")
+
+    self.assertOwned([
+      "https://api.custodian.example/api/v3/clients/me",
+      "https://API.Custodian.Example/api/v3/clients/me",
+      "https://api.custodian.example./api/v3/clients/me",
+      "https://rpc.api.custodian.example/rpc"
+    ], true)
+  }
+
+  func test_isPortalOwnedUrl_willRejectLookalikesOfARegisteredHost() {
+    PortalOwnedHosts.register("api.custodian.example")
+
+    self.assertOwned([
+      "https://api.custodian.example.attacker.com/rpc",
+      "https://notapi.custodian.example/rpc",
+      "https://custodian.example/rpc",
+      "https://attacker.com/api.custodian.example",
+      "https://api.custodian.example@attacker.com/rpc"
+    ], false)
+  }
+
+  func test_isPortalOwnedUrl_willRejectACustomHost_untilItIsRegistered() {
+    self.assertOwned(["https://api.custodian.example/api/v3/clients/me"], false)
+
+    PortalOwnedHosts.register("api.custodian.example")
+
+    self.assertOwned(["https://api.custodian.example/api/v3/clients/me"], true)
+  }
+
+  func test_register_willAcceptFullUrlsAndPorts_andIgnoreValuesThatAreNotAHost() {
+    PortalOwnedHosts.register(
+      "https://proxy.custodian.example:8443/some/path?x=1",
+      "mpc.custodian.example:9000",
+      "   ",
+      "attacker.com%2f.portalhq.io",
+      "[2001:db8::1]",
+      "user@evil.example"
+    )
+
+    self.assertOwned([
+      "https://proxy.custodian.example/x",
+      "wss://mpc.custodian.example/v1/sign"
+    ], true)
+    self.assertOwned([
+      "https://evil.example/x",
+      "https://attacker.com/x",
+      "http://[2001:db8::1]/x"
+    ], false)
+  }
+
   func test_isPortalOwnedUrl_willAcceptSubdomainsWithHyphenAndDigits() {
     self.assertOwned([
       "https://mpc-client.portalhq.io/",
@@ -368,7 +425,9 @@ final class PortalOwnedUrlTests: XCTestCase {
   }
 
   func test_isPortalOwnedUrl_willCompleteQuickly_forHostileLongInputs() {
-    let limit: TimeInterval = 0.1
+    // Generous on purpose: this guards against a super-linear scan (seconds), not a slow CI
+    // host. 0.1 s had a ~3x margin on fast hardware and would flake on a loaded runner.
+    let limit: TimeInterval = 1.0
 
     // 8192-byte URL whose host is a single ~8 KB label under `.portalhq.io`. Foundation refuses
     // to yield a host longer than 2048 bytes, so this is rejected at the parse step; a host

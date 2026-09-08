@@ -19,7 +19,7 @@ import XCTest
 /// thrown (parity with the real session, whose in-memory token is gone even when the
 /// persisted delete fails), and behave like any other `PortalCredentials` when driven through
 /// the SDK's credential helpers. The invalidation registry is reset around each case because
-/// `invalidateCredentials(_:)` records a monitor for the subject.
+/// `PortalCredentialSupport.invalidate(_:)` records a monitor for the subject.
 final class MockPortalSessionTests: XCTestCase {
   private var subject = MockPortalSession(tokenValue: "mock-cst", endUserId: "user-1")
 
@@ -101,16 +101,16 @@ final class MockPortalSessionTests: XCTestCase {
   // MARK: - Credential helpers
 
   func test_mockPortalSession_willWorkThroughCredentialHelpers() throws {
-    let token = try resolveCredentialToken(self.subject)
+    let token = try PortalCredentialSupport.resolveToken(self.subject)
     XCTAssertEqual(token, "mock-cst")
     XCTAssertEqual(self.subject.getTokenCalls, 1)
 
-    try invalidateCredentials(self.subject)
+    try PortalCredentialSupport.invalidate(self.subject)
     XCTAssertEqual(self.subject.invalidateCalls, 1)
     XCTAssertTrue(self.subject.isInvalidated)
 
-    XCTAssertEqual(staticApiKeyOf(self.subject), "", "A session is never a static Client API Key")
-    XCTAssertThrowsError(try resolveCredentialToken(self.subject)) { error in
+    XCTAssertEqual(PortalCredentialSupport.staticApiKey(of: self.subject), "", "A session is never a static Client API Key")
+    XCTAssertThrowsError(try PortalCredentialSupport.resolveToken(self.subject)) { error in
       XCTAssertEqual(error as? PortalCredentialError, .sessionInvalidated, "The precise reason passes through the boundary untouched")
     }
   }

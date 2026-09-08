@@ -11,7 +11,7 @@ import Foundation
 
 // MARK: - InvalidationListenerRecorder
 
-/// Subscribes to `onCredentialsInvalidated(_:listener:)` for one credential and records every
+/// Subscribes to `PortalCredentialSupport.onInvalidated(_:listener:)` for one credential and records every
 /// delivery, so tests can assert the once-only, main-actor contract of the host notification.
 ///
 /// The recorder counts deliveries and, separately, deliveries that observed
@@ -76,7 +76,7 @@ final class InvalidationListenerRecorder {
   /// Subscribes to `credentials` immediately.
   init(credentials: PortalCredentials, onDeliver: (() -> Void)? = nil) {
     self._onDeliver = onDeliver
-    self.handle = onCredentialsInvalidated(credentials) { [weak self] in
+    self.handle = PortalCredentialSupport.onInvalidated(credentials) { [weak self] in
       self?.record()
     }
   }

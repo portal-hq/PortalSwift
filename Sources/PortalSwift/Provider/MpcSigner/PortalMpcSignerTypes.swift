@@ -1,4 +1,5 @@
 import AnyCodable
+import Foundation
 
 public struct Signature: Codable {
   public var x: String
@@ -32,8 +33,9 @@ public enum SignerType {
 public protocol PortalSignerProtocol {
   /// Signs `withPayload` authenticating with whatever credential the conformer holds itself.
   ///
-  /// Kept for existing conformers. New conformers should implement the `token:` overload and
-  /// may leave this one throwing, since the SDK never calls it.
+  /// Kept for existing conformers. New conformers implement the `token:` overload and may omit
+  /// this one: the extension default throws `PortalSignerError.tokenLessSignUnsupported`, and
+  /// the SDK never calls it.
   func sign(
     _ chainId: String,
     withPayload: PortalSignRequest,
@@ -61,7 +63,33 @@ public protocol PortalSignerProtocol {
   ) async throws -> String
 }
 
+/// Raised by the default implementation of the token-less `sign` when a conformer written
+/// against the current contract (the `token:` overload only) is driven through the legacy
+/// overload, which the SDK itself never calls.
+public enum PortalSignerError: LocalizedError, Equatable {
+  case tokenLessSignUnsupported
+
+  public var errorDescription: String? {
+    "PortalSignerProtocol - This signer implements sign(...token:) only; the token-less overload is not supported."
+  }
+}
+
 public extension PortalSignerProtocol {
+  /// Default for conformers written against the current contract, so implementing the `token:`
+  /// overload alone compiles. Existing conformers that implement this overload themselves are
+  /// unaffected: a conformance's own method always wins over an extension default.
+  func sign(
+    _: String,
+    withPayload _: PortalSignRequest,
+    andRpcUrl _: String,
+    usingBlockchain _: PortalBlockchain,
+    signatureApprovalMemo _: String?,
+    sponsorGas _: Bool?,
+    reqId _: String?
+  ) async throws -> String {
+    throw PortalSignerError.tokenLessSignUnsupported
+  }
+
   /// Source-compatibility default for conformers that predate the `token:` overload: they
   /// authenticate on their own, so the caller-resolved token is deliberately ignored and the
   /// call is forwarded to the token-less requirement they implemented.

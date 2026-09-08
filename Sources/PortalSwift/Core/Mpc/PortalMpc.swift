@@ -199,7 +199,7 @@ public class PortalMpc: PortalMpcProtocol {
       usingProgressCallback?(MpcStatus(status: MpcStatuses.generatingShare, done: false))
       // Resolved once, above the fan-out, so both curves present the same token and a broken
       // credential fails here as a PortalCredentialError before any binary round trip.
-      let token = try resolveCredentialToken(self.credentials)
+      let token = try PortalCredentialSupport.resolveToken(self.credentials)
       // Generate both backup shares in parallel
       let generateResponse = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<PortalMpcGenerateResponse, Error>) in
         Task {
@@ -396,7 +396,10 @@ public class PortalMpc: PortalMpcProtocol {
       let ejectResult: EjectResult = try decoder.decode(EjectResult.self, from: jsonData)
 
       if let error = ejectResult.error, error.isValid() {
-        throw PortalMpcError(error)
+        // Classified like every other binary result: an `AUTH_FAILED` here invalidates the
+        // session and notifies the host, instead of surfacing as a generic eject error while the
+        // dead credential stays live.
+        throw self.mpcError(from: error, context: "PortalMpc.eject")
       }
 
       privateKeys[.eip155] = ejectResult.privateKey
@@ -413,7 +416,10 @@ public class PortalMpc: PortalMpcProtocol {
       let ejectResult: EjectResult = try decoder.decode(EjectResult.self, from: jsonData)
 
       if let error = ejectResult.error, error.isValid() {
-        throw PortalMpcError(error)
+        // Classified like every other binary result: an `AUTH_FAILED` here invalidates the
+        // session and notifies the host, instead of surfacing as a generic eject error while the
+        // dead credential stays live.
+        throw self.mpcError(from: error, context: "PortalMpc.eject")
       }
 
       privateKeys[.solana] = ejectResult.privateKey
@@ -489,7 +495,7 @@ public class PortalMpc: PortalMpcProtocol {
   private func generateSigningSharesViaBinary(withProgressCallback: ((MpcStatus) -> Void)? = nil, reqId: String?) async throws -> PortalMpcGenerateResponse {
     // Resolved once, above the fan-out, so both curves present the same token and a broken
     // credential fails here as a PortalCredentialError before any DKG round starts.
-    let token = try resolveCredentialToken(self.credentials)
+    let token = try PortalCredentialSupport.resolveToken(self.credentials)
 
     // Generate both signing shares in parallel
     return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<PortalMpcGenerateResponse, Error>) in
@@ -668,7 +674,7 @@ public class PortalMpc: PortalMpcProtocol {
 
       // Resolved once, above the fan-out and before the storage read, so a dead session fails
       // here instead of after the user has been prompted for their backup.
-      let token = try resolveCredentialToken(self.credentials)
+      let token = try PortalCredentialSupport.resolveToken(self.credentials)
 
       let recoverResponse = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<PortalMpcGenerateResponse, Error>) in
         Task {
@@ -785,7 +791,7 @@ public class PortalMpc: PortalMpcProtocol {
       usingProgressCallback?(MpcStatus(status: .generatingShare, done: false))
 
       // Resolved once, right above the binary call, after the local wallet checks.
-      let token = try resolveCredentialToken(self.credentials)
+      let token = try PortalCredentialSupport.resolveToken(self.credentials)
 
       // generate the ED25519 share
       let ed25519MpcShare = try await self.getSigningShare(.ED25519, reqId: traceId, token: token)
@@ -874,8 +880,8 @@ public class PortalMpc: PortalMpcProtocol {
     storage.api = self.api
 
     if #available(iOS 16, *) {
-      if method == .Passkey {
-        (storage as! PasskeyStorage).credentials = self.credentials
+      if method == .Passkey, let passkeyStorage = storage as? PasskeyStorage {
+        passkeyStorage.credentials = self.credentials
       }
     }
 
@@ -956,7 +962,7 @@ public class PortalMpc: PortalMpcProtocol {
   private func mpcError(from error: PortalError, context: String) -> PortalMpcError {
     let mpcError = PortalMpcError(error)
     if mpcError.isAuthFailure {
-      reportUnauthorizedAndLog(self.credentials, context: context)
+      PortalCredentialSupport.reportUnauthorizedAndLog(self.credentials, context: context)
     }
     return mpcError
   }

@@ -459,6 +459,18 @@ final class PortalAuthApiTests: XCTestCase {
     XCTAssertEqual(message.count, 200)
   }
 
+  func test_sendMagicLink_willPassThrough400ErrorBody_whenAccountAbstractionNotRequested() async {
+    // The same status and body shape is how ordinary validation failures come back. Only a
+    // request that asked for account abstraction may read it as an account-abstraction problem.
+    let error = AuthTestFixtures.clientError(status: 400, body: "{\"error\":\"redirectUrl is not allow-listed\"}")
+
+    self.requests.failWith = error
+    await XCTAssertThrowsAsync(try await self.sendMagicLink(isAccountAbstracted: nil), expected: error)
+
+    self.requests.failWith = error
+    await XCTAssertThrowsAsync(try await self.sendMagicLink(isAccountAbstracted: false), expected: error)
+  }
+
   func test_sendMagicLink_willPassThrough400_whenBodyLacksErrorKey() async {
     let error = AuthTestFixtures.clientError(status: 400, body: "{\"message\":\"x\"}")
     self.requests.failWith = error
@@ -696,6 +708,22 @@ final class PortalAuthApiTests: XCTestCase {
     await XCTAssertThrowsAsync(
       try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: true),
       expected: PortalAuthError.accountAbstractionUnavailable(message: "AA not configured")
+    )
+  }
+
+  func test_getOAuthUrls_willPassThrough400ErrorBody_whenAccountAbstractionNotRequested() async {
+    let error = AuthTestFixtures.clientError(status: 400, body: "{\"error\":\"redirectUrl is not allow-listed\"}")
+
+    self.requests.failWith = error
+    await XCTAssertThrowsAsync(
+      try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: nil),
+      expected: error
+    )
+
+    self.requests.failWith = error
+    await XCTAssertThrowsAsync(
+      try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: false),
+      expected: error
     )
   }
 

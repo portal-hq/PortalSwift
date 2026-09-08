@@ -315,7 +315,9 @@ final class KeychainAuthSessionStorage: AuthSessionStorage, @unchecked Sendable 
     case errSecSuccess:
       break
     default:
-      self.logger.error("KeychainAuthSessionStorage.getSession() - Keychain read failed with OSStatus \(status).")
+      // Shared by `getSession()` and `deleteIfCurrent(_:)`, so the label names the operation
+      // rather than one of its callers.
+      self.logger.error("KeychainAuthSessionStorage.read() - Keychain read failed with OSStatus \(status).")
       throw PortalAuthError.sessionStorageFailure(message: "The persisted session could not be read (OSStatus \(status)).")
     }
 

@@ -462,7 +462,7 @@ extension PasskeyStorageTests {
 
 @available(iOS 16, *)
 extension PasskeyStorageTests {
-  func test_credentials_didSet_willInstallUnauthorizedHookOnce() throws {
+  func test_credentials_didSet_willNotInstallUnauthorizedHook() throws {
     // given
     let spy = PortalRequestsSpy()
     initPasskeyStorage(requests: spy, credentials: nil)
@@ -474,9 +474,29 @@ extension PasskeyStorageTests {
     storage.credentials = credentials
     storage.credentials = credentials
 
-    // then: the first owner wins, so a second assignment must not re-install
-    XCTAssertNotNil(spy.onUnauthorized)
-    XCTAssertEqual(spy.onUnauthorizedSetCount, 1)
+    // then: a WebAuthn 401 is not attributed to the Portal session (Android / RN parity), so
+    // the storage never wires its transport to the hook
+    XCTAssertNil(spy.onUnauthorized)
+    XCTAssertEqual(spy.onUnauthorizedSetCount, 0)
+  }
+
+  func test_unauthorized_fromWebAuthnEndpoint_willNotInvalidateCredential_orNotifyHost() async throws {
+    // given
+    let spy = PortalRequestsSpy()
+    spy.executeThrowableErrorSequence = [PortalRequestsError.unauthorized]
+    let credentials = MockCredentials(tokenValue: "pk-tok-1")
+    let recorder = InvalidationListenerRecorder(credentials: credentials)
+    initPasskeyStorage(requests: spy, credentials: credentials)
+    let storage = try XCTUnwrap(self.storage)
+
+    // and given
+    await XCTAssertThrowsAsync(try await storage.getPasskeyStatus(), expected: PortalRequestsError.unauthorized)
+
+    // then: a wrong or cancelled passkey costs the user a retry, never the wallet session
+    XCTAssertEqual(credentials.invalidateCalls, 0)
+    XCTAssertNoThrow(try credentials.getToken())
+    let notified = await waitUntil(timeout: 0.3) { recorder.count > 0 }
+    XCTAssertFalse(notified, "A WebAuthn 401 must not tell the host the session ended.")
   }
 
   func test_credentials_didSet_willNotReplaceExistingHook() throws {
@@ -526,31 +546,10 @@ extension PasskeyStorageTests {
     XCTAssertEqual(spy.onUnauthorizedSetCount, 0)
   }
 
-  func test_installedHook_willReportCredentialOnce() async throws {
+  func test_credentials_didSet_willNotRetainStorage() async throws {
     // given
     let spy = PortalRequestsSpy()
     let credentials = MockCredentials(tokenValue: "pk-tok-1")
-    let recorder = InvalidationListenerRecorder(credentials: credentials)
-    initPasskeyStorage(requests: spy, credentials: credentials)
-
-    // and given
-    spy.onUnauthorized?(nil)
-    spy.onUnauthorized?(nil)
-
-    // then: the host hears about the dead session exactly once, however many 401s arrive.
-    // Invalidation itself is idempotent rather than guarded, so it runs per rejection.
-    let notified = await waitUntil { recorder.count == 1 }
-    XCTAssertTrue(notified)
-    let notifiedTwice = await waitUntil(timeout: 0.3) { recorder.count > 1 }
-    XCTAssertFalse(notifiedTwice, "The host must be told the session ended only once.")
-    XCTAssertEqual(credentials.invalidateCalls, 2)
-  }
-
-  func test_installedHook_willNotRetainStorage() async throws {
-    // given
-    let spy = PortalRequestsSpy()
-    let credentials = MockCredentials(tokenValue: "pk-tok-1")
-    let recorder = InvalidationListenerRecorder(credentials: credentials)
     initPasskeyStorage(requests: spy, credentials: credentials)
     weak var weakStorage = self.storage
 
@@ -558,13 +557,9 @@ extension PasskeyStorageTests {
     self.storage = nil
     self.passkeyAuth = nil
 
-    // then: the closure captured the credential, never the storage
+    // then: assigning a credential leaves nothing behind that keeps the storage alive
     let released = await waitUntil { weakStorage == nil }
-    XCTAssertTrue(released, "The installed hook must not keep the storage alive.")
-    spy.onUnauthorized?(nil)
-    XCTAssertEqual(credentials.invalidateCalls, 1)
-    let notified = await waitUntil { recorder.count == 1 }
-    XCTAssertTrue(notified)
+    XCTAssertTrue(released, "Assigning a credential must not keep the storage alive.")
   }
 }
 
@@ -1093,7 +1088,7 @@ extension PasskeyStorageTests {
 
 @available(iOS 16, *)
 extension PasskeyStorageTests {
-  func test_apiKey_set_willWrapStaticCredentials_andInstallHook() async throws {
+  func test_apiKey_set_willWrapStaticCredentials_andNotInstallHook() async throws {
     // given
     let spy = PortalRequestsSpy()
     spy.executeReturnDataSequence = try [encodedAuthenticationOptions(), encodedReadResponse()]
@@ -1105,7 +1100,7 @@ extension PasskeyStorageTests {
 
     // then
     XCTAssertTrue(storage.credentials is StaticCredentials)
-    XCTAssertEqual(spy.onUnauthorizedSetCount, 1)
+    XCTAssertEqual(spy.onUnauthorizedSetCount, 0)
     _ = try await storage.read()
     XCTAssertEqual(spy.executeRequestHistory.first?.headers["Authorization"], "Bearer test-api-key")
   }

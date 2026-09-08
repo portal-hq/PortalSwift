@@ -40,6 +40,7 @@ final class PortalApiCredentialsTests: XCTestCase {
   override func setUpWithError() throws {
     try super.setUpWithError()
     CredentialInvalidationRegistry.shared.resetForTesting()
+    PortalOwnedHosts.resetForTesting()
     MockURLProtocol.reset()
 
     self.previousLogLevel = PortalLogger.shared.logLevel
@@ -65,6 +66,7 @@ final class PortalApiCredentialsTests: XCTestCase {
     PortalLogger.shared.setLogLevel(self.previousLogLevel)
     MockURLProtocol.reset()
     CredentialInvalidationRegistry.shared.resetForTesting()
+    PortalOwnedHosts.resetForTesting()
     try super.tearDownWithError()
   }
 
@@ -407,18 +409,28 @@ extension PortalApiCredentialsTests {
     XCTAssertEqual(recorder.deliveries, 1, "The report happens once per credential.")
   }
 
-  func test_getClient_willNotInvalidate_when401FromNonPortalHost() async throws {
-    // given
+  func test_getClient_willInvalidate_when401FromTheConfiguredCustomHost() async throws {
+    // given: an integrator who fronts Portal through their own domain. The configured `apiHost`
+    // is registered as Portal-owned at init (`PortalOwnedHosts`), otherwise every 401 from their
+    // own backend would read as third-party and session invalidation would silently never fire.
     let credentials = MockCredentials(tokenValue: "first-token")
+    let recorder = InvalidationListenerRecorder(credentials: credentials)
     MockURLProtocol.respond(status: 401, body: "{\"message\":\"unauthorized\"}")
     let transport = PortalRequests(urlSession: MockURLProtocol.makeSession())
+    // `setUp` already built an API against this host; start from a clean registry so the
+    // registration proven below is this construction's.
+    PortalOwnedHosts.resetForTesting()
+    XCTAssertFalse(isPortalOwnedUrl("https://\(MockConstants.mockHost)/api/v3/clients/me"), "Precondition: not a Portal host until configured")
     let api = PortalApi(credentials: credentials, apiHost: MockConstants.mockHost, requests: transport)
 
     // when
     await XCTAssertThrowsAsync(try await api.getClient(), expected: PortalRequestsError.unauthorized)
 
     // then
-    XCTAssertEqual(credentials.invalidateCalls, 0, "A 401 from a host Portal does not own says nothing about the session.")
+    XCTAssertTrue(isPortalOwnedUrl("https://\(MockConstants.mockHost)/api/v3/clients/me"), "Constructing the API registers its host")
+    XCTAssertEqual(credentials.invalidateCalls, 1, "A 401 from the host this API was configured against ends the session.")
+    let delivered = await waitUntil { recorder.deliveries == 1 }
+    XCTAssertTrue(delivered, "The host must be told the session ended.")
     XCTAssertEqual(MockURLProtocol.recordedRequests.count, 1)
   }
 }

@@ -20,12 +20,17 @@ public enum FirebaseStorageError: LocalizedError, Equatable {
   case requestFailed(underlying: Error)
   /// Delete is not supported for Firebase backup storage.
   case deleteNotSupported
+  /// TBS answered 401 twice, but the `getToken` callback returned the same Firebase ID token on
+  /// the retry, so the second 401 cannot be attributed to the Portal credential. Make the
+  /// callback force a refresh (`getIDToken(forcingRefresh: true)`).
+  case tokenNotRefreshed
 
   public static func == (lhs: FirebaseStorageError, rhs: FirebaseStorageError) -> Bool {
     switch (lhs, rhs) {
     case (.noApiKey, .noApiKey),
       (.tokenUnavailable, .tokenUnavailable),
-      (.deleteNotSupported, .deleteNotSupported):
+      (.deleteNotSupported, .deleteNotSupported),
+      (.tokenNotRefreshed, .tokenNotRefreshed):
       return true
     case (.unexpectedResponse(let l), .unexpectedResponse(let r)):
       return l == r
@@ -48,6 +53,8 @@ public enum FirebaseStorageError: LocalizedError, Equatable {
       return "FirebaseStorage: Request to TBS failed - \(underlying.localizedDescription)"
     case .deleteNotSupported:
       return "FirebaseStorage: Delete is not supported for Firebase backup storage."
+    case .tokenNotRefreshed:
+      return "FirebaseStorage: TBS rejected the request twice, but getToken() returned the same Firebase ID token on retry. Force a refresh (getIDToken(forcingRefresh: true)) so a stale Firebase token is not mistaken for a rejected Portal session."
     }
   }
 }

@@ -23,17 +23,14 @@ public class PasskeyStorage: Storage, PortalStorage {
   ///
   /// Injected by `PortalMpc.registerBackupMethod(_:withStorage:)`; `nil` until then, which every
   /// request reports as `PasskeyStorageError.noApiKey`. The token is resolved per request, never
-  /// cached, so a rotated session is sent on the next call. Assigning a credential also wires the
-  /// transport's 401 hook to it (first owner wins), so a rejected bearer on any passkey endpoint
-  /// invalidates the session and notifies the host like a rejected `PortalApi` call would.
-  var credentials: PortalCredentials? {
-    didSet {
-      guard let credentials = self.credentials else {
-        return
-      }
-      installUnauthorizedHook(on: self.requests, for: credentials, context: "PasskeyStorage")
-    }
-  }
+  /// cached, so a rotated session is sent on the next call.
+  ///
+  /// A 401 from a WebAuthn endpoint is deliberately **not** attributed to the Portal session: the
+  /// WebAuthn host answers 401 for non-credential failures too (a wrong or cancelled passkey), and
+  /// a wrong passkey must cost the user a retry, not the wallet session. The Android and React
+  /// Native SDKs make the same choice, and RN pins it with a test. Do not wire this storage's
+  /// transport to the 401 hook.
+  var credentials: PortalCredentials?
 
   /// The raw Client API Key behind `credentials`, for callers that still assign one.
   ///
@@ -43,7 +40,7 @@ public class PasskeyStorage: Storage, PortalStorage {
   @available(*, deprecated, message: "Not a reliable source of authentication — returns \"\" when Portal was constructed with credentials. Supply credentials to the SDK instead of reading this.")
   var apiKey: String? {
     get {
-      self.credentials.map { staticApiKeyOf($0) }
+      self.credentials.map { PortalCredentialSupport.staticApiKey(of: $0) }
     }
     set {
       self.credentials = newValue.map { StaticCredentials($0) }
@@ -291,13 +288,13 @@ public class PasskeyStorage: Storage, PortalStorage {
   ///
   /// Throws `PasskeyStorageError.noApiKey` when no credential has been injected yet (the
   /// historical error, so hosts that match on it keep working) and otherwise whatever
-  /// `resolveCredentialToken(_:)` raises — `.unavailable`, `.providerFailure` or
+  /// `PortalCredentialSupport.resolveToken(_:)` raises — `.unavailable`, `.providerFailure` or
   /// `.sessionInvalidated` — before any request is built.
   private func resolvedToken() throws -> String {
     guard let credentials = self.credentials else {
       throw PasskeyStorageError.noApiKey
     }
-    return try resolveCredentialToken(credentials)
+    return try PortalCredentialSupport.resolveToken(credentials)
   }
 }
 

@@ -667,6 +667,30 @@ extension FirebaseStorageTests {
     XCTAssertTrue(notified, "A 401 that survived the Firebase refresh must report the credential.")
   }
 
+  func test_read_willNotReport_andThrowTokenNotRefreshed_whenSecond401CarriesTheSameFirebaseToken() async throws {
+    // given: a host whose `getToken` callback does not force a refresh, so the retry re-sends the
+    // same (stale) Firebase ID token. The second 401 then says nothing about the Portal credential.
+    firebaseTokens.values = ["fb-stale", "fb-stale"]
+    let credentials = MockCredentials(tokenValue: "portal-tok-1")
+    let recorder = InvalidationListenerRecorder(credentials: credentials)
+    let spy = initFirebaseStorageWithSpy(credentials: credentials)
+    spy.returnData = try encodedEncryptionKeyResponse()
+    spy.executeThrowableErrorSequence = [PortalRequestsError.unauthorized, PortalRequestsError.unauthorized]
+    let storage = try XCTUnwrap(self.storage)
+
+    // and given
+    await XCTAssertThrowsAsync(try await storage.read(), expected: FirebaseStorageError.tokenNotRefreshed)
+
+    // then: the retry still happened, but the Portal session is left alone — signing the user
+    // out of the wallet for a Firebase misconfiguration is the wrong outcome
+    XCTAssertEqual(spy.executeCallsCount, 2)
+    XCTAssertEqual(firebaseTokenCalls, 2)
+    XCTAssertEqual(credentials.invalidateCalls, 0)
+    XCTAssertNoThrow(try credentials.getToken())
+    let notified = await waitUntil(timeout: 0.3) { recorder.count > 0 }
+    XCTAssertFalse(notified, "An unchanged Firebase token cannot implicate the Portal credential.")
+  }
+
   func test_read_willThrowSessionInvalidated_whenCredentialInvalidatedBetweenAttempts() async throws {
     // given: the session dies while the retry is refreshing the Firebase token, which is the
     // window between the two attempts the storage re-resolves the bearer in.
