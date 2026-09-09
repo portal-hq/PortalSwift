@@ -68,8 +68,9 @@ public class PortalProvider: PortalProviderProtocol {
   /// The hosts this provider's owning `Portal` was configured with (`apiHost`, `mpcHost`,
   /// `enclaveMPCHost`), normalized. The RPC bearer is attached to the static Portal allow-list and
   /// these — never to hosts other instances registered in `PortalOwnedHosts`, so one instance's
-  /// credential cannot reach another instance's proxy through an `rpcConfig` URL.
-  private let configuredHosts: Set<String>
+  /// credential cannot reach another instance's proxy through an `rpcConfig` URL. Internal so
+  /// tests can assert what a `PortalConnect`-built provider trusts.
+  let configuredHosts: Set<String>
   private let signer: PortalSignerProtocol
   private let featureFlags: FeatureFlags?
 

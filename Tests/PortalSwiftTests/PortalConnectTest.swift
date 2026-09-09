@@ -382,3 +382,61 @@ class PortalConnectTest: XCTestCase {
     XCTAssertEqual(self.errorEvents.count, 1)
   }
 }
+
+// MARK: - Configured hosts
+
+extension PortalConnectTest {
+  /// The RPC URL `Portal.buildDefaultRpcConfig` produces for a custom API host: the gateway a
+  /// custom-host deployment's every RPC and signing request goes to.
+  private static let customApiHost = "api.custodian.example"
+  private static let customRpcUrl = "https://\(customApiHost)/rpc/v1/eip155/11155111"
+
+  func test_init_willTrustTheConfiguredApiHost_forTheProviderBearerGate() throws {
+    // given a PortalConnect on a custom API host, the way `Portal.createPortalConnectInstance`
+    // builds one for a Portal configured with that host
+    let connect = try PortalConnect(
+      credentials: self.session,
+      chainId: 11_155_111,
+      keychain: MockPortalKeychain(),
+      rpcConfig: ["eip155:11155111": Self.customRpcUrl],
+      featureFlags: FeatureFlags(),
+      webSocketServer: "connect.portalhq.io",
+      autoApprove: false,
+      apiHost: Self.customApiHost,
+      mpcHost: "mpc.portalhq.io",
+      version: "v6"
+    )
+
+    // then: the provider's bearer gate trusts the RPC URL on that host — before this the
+    // parameter was discarded and every RPC from this instance went out without the session token
+    XCTAssertTrue(
+      isPortalOwnedUrl(Self.customRpcUrl, configuredHosts: connect.provider.configuredHosts),
+      "The configured API host must be trusted for the RPC bearer, as it is for Portal's own providers"
+    )
+    XCTAssertTrue(
+      isPortalOwnedUrl("https://mpc.portalhq.io/", configuredHosts: connect.provider.configuredHosts),
+      "The MPC host stays trusted"
+    )
+    XCTAssertFalse(
+      isPortalOwnedUrl("https://rpc.other.example/", configuredHosts: connect.provider.configuredHosts),
+      "An unrelated gateway is still refused the credential"
+    )
+  }
+
+  func test_init_willRegisterTheConfiguredApiHost_forThe401Gate() throws {
+    _ = try PortalConnect(
+      credentials: self.session,
+      chainId: 11_155_111,
+      keychain: MockPortalKeychain(),
+      rpcConfig: ["eip155:11155111": Self.customRpcUrl],
+      featureFlags: FeatureFlags(),
+      webSocketServer: "connect.portalhq.io",
+      autoApprove: false,
+      apiHost: Self.customApiHost,
+      mpcHost: "mpc.portalhq.io",
+      version: "v6"
+    )
+
+    XCTAssertTrue(PortalOwnedHosts.contains(Self.customApiHost), "A 401 from the configured API host must be attributable to the credential")
+  }
+}

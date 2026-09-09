@@ -45,7 +45,8 @@ public class PortalConnect: EventBus {
   let credentials: PortalCredentials
 
   private let logger = PortalLogger.shared
-  private let provider: PortalProvider
+  /// Internal so tests can observe which hosts the provider's RPC bearer gate trusts.
+  let provider: PortalProvider
   private var rpcConfig: [String: String]
   private var topic: String?
 
@@ -59,6 +60,11 @@ public class PortalConnect: EventBus {
   /// replaced by a `PortalCredentials`, so a host moving from a Client API Key to a session only
   /// changes the first argument. The credential is never resolved here; it is resolved by the
   /// provider per request and by the web socket client per connection.
+  ///
+  /// `apiHost` is handed to the provider as a configured host: `Portal`'s default `rpcConfig`
+  /// lives on it, and the provider attaches the RPC bearer only to the static Portal hosts and
+  /// the hosts its owner was configured with — so on a custom-host deployment, dropping it here
+  /// would send every RPC and signing request from this instance without a session token.
   public init(
     credentials: PortalCredentials,
     _ chainId: Int,
@@ -67,7 +73,7 @@ public class PortalConnect: EventBus {
     _ featureFlags: FeatureFlags?,
     _ webSocketServer: String = "connect.portalhq.io",
     _ autoApprove: Bool = false,
-    _: String = "api.portalhq.io",
+    _ apiHost: String = "api.portalhq.io",
     _ mpcHost: String = "mpc.portalhq.io",
     _ version: String = "v6"
   ) throws {
@@ -78,11 +84,13 @@ public class PortalConnect: EventBus {
     self.webSocketServer = webSocketServer.starts(with: "localhost") ? "ws://\(webSocketServer)" : "wss://\(webSocketServer)"
     self.rpcConfig = rpcConfig
 
-    // The configured proxy host is Portal-owned for the 401 gate on the upgrade (see
-    // `PortalOwnedHosts`).
-    PortalOwnedHosts.register(webSocketServer)
+    // The configured proxy and API hosts are Portal-owned for the 401 gate on the upgrade and
+    // on the provider's requests (see `PortalOwnedHosts`).
+    PortalOwnedHosts.register(webSocketServer, apiHost)
 
-    // Initialize the PortalProvider
+    // Initialize the PortalProvider. `apiHost` is a configured host for the bearer gate, as it
+    // is for the providers `Portal` builds; without it a custom-host deployment's RPC URLs
+    // would get no credential from this instance.
     self.provider = try PortalProvider(
       credentials: credentials,
       rpcConfig: rpcConfig,
@@ -90,7 +98,8 @@ public class PortalConnect: EventBus {
       autoApprove: autoApprove,
       mpcHost: mpcHost,
       version: version,
-      featureFlags: featureFlags
+      featureFlags: featureFlags,
+      configuredHosts: [apiHost]
     )
 
     super.init(label: "PortalConnect")
