@@ -7,23 +7,28 @@
 
 import Foundation
 
-/// Joins duplicate adoptions of one session onto a single run, and queues the adoption of a
-/// different session behind whatever is in flight.
+/// Serializes session adoptions, and joins a redelivery of the very same session onto the run
+/// already in flight for it.
 ///
-/// A mutex would be the wrong primitive: it serializes but still runs the task twice, and on the
-/// race this exists for — a launch-time session restore and a redirect landing milliseconds
-/// apart for the *same* login — twice means two `createWallet()` calls.
+/// Runs are keyed by session identity — the caller passes `ObjectIdentifier(session)`, never the
+/// end user id. The distinction is the whole point: a launch-time restore and a redirect landing
+/// milliseconds apart for the *same* user carry two different sessions (the persisted token and a
+/// freshly minted one). Keyed by user they would join, the fresh login's own adoption would never
+/// run, and a stale restored credential's 401 would fail the valid login with it. Keyed by session
+/// the second is queued and runs on its own credential once the first settles.
 ///
-/// Runs are keyed by session identity (the caller passes the end user id). Two deliveries with
-/// the same key join one run — including a delivery that lands while that run sits queued behind
-/// another user's, which is why the live runs are tracked in a dictionary rather than as a single
-/// "current key": with A running and B queued, a third delivery of A must find A's run, not walk
-/// past it and enqueue a second one.
+/// Serial, never concurrent: two adoptions running side by side could each call `createWallet()`
+/// for the same client. Running one after the other cannot, because the adoption pipeline looks
+/// the wallet up before creating and reuses what the earlier run left behind — so a second run is
+/// a few redundant reads, not a second wallet. A different *user*'s run is queued for the same
+/// reason, plus one more: its completion must be the last writer, so the earlier user's data never
+/// lands on a screen that already holds the newcomer's session and Portal.
 ///
-/// A different key — launch restores user A while a redirect signs in user B — must not join A's
-/// run, because A's completion would then write A's user data into an app that already holds B's
-/// session and Portal; nor may it run alongside A, or two wallets could be created at once. It
-/// runs after A settles, so B's completion is the last writer.
+/// Two deliveries with the same key join one run — including a delivery that lands while that run
+/// sits queued behind another, which is why the live runs are tracked in a dictionary rather than
+/// as a single "current key": with A running and B queued, a third delivery of A must find A's
+/// run, not walk past it and enqueue a second one. No call site currently delivers the same
+/// session object twice; the join is a backstop, and serialization is the protection.
 ///
 /// The task's failure is captured into a `Result` rather than thrown out of the shared `Task`,
 /// for two reasons: a joiner awaiting the value must see the failure instead of inheriting a
