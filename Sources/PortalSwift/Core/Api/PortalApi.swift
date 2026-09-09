@@ -1036,11 +1036,13 @@ public class PortalApi: PortalApiProtocol {
       ],
       requestType: HttpRequestType.CustomRequest
     ) { (result: Result<String>) in
-      // This path bypasses `PortalRequests` and its hook, so it reports the 401 itself. Report
+      // This path bypasses `PortalRequests` and its hook, so it reports the 401 itself, for the
+      // bearer this request carried — a credential that rotated while the request was in flight
+      // is not invalidated for the old bearer's rejection, the same rule the hook applies. Report
       // first so the credential is already invalidated when the caller sees the error, then
       // surface the original 401 untouched: the report is bookkeeping, never the outcome.
       if let httpError = result.error as? HttpError, case .unauthorized = httpError {
-        PortalCredentialSupport.reportUnauthorizedAndLog(credentials, context: "PortalApi.storedClientBackupShare")
+        PortalCredentialSupport.reportUnauthorizedAndLog(credentials, rejectedToken: token, context: "PortalApi.storedClientBackupShare")
       }
 
       completion(result)

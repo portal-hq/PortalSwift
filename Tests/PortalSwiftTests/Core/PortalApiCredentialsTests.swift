@@ -498,6 +498,32 @@ extension PortalApiCredentialsTests {
     XCTAssertTrue(delivered, "The synchronous path reports the dead session too.")
   }
 
+  func test_storedClientBackupShare_willNotReport_when401RejectsARotatedOutToken() async throws {
+    // given: the bearer rotates in place after the request was built, so the 401 is for a token the
+    // credential no longer holds — the rule the transport hook applies, brought to the legacy path
+    let api = try self.sut()
+    let recorder = InvalidationListenerRecorder(credentials: self.credentials)
+    self.credentials.onGetToken = { [weak credentials = self.credentials] in
+      guard let credentials, credentials.getTokenCalls >= 2 else { return }
+      credentials.tokenValue = "second-token"
+    }
+    self.httpStub.errorToReturn = HttpError.unauthorized("401 - Unauthorized")
+    var observedError: Error?
+    var observedInvalidateCalls = -1
+
+    // when
+    try api.storedClientBackupShare(success: true, backupMethod: BackupMethods.GoogleDrive.rawValue) { [self] result in
+      observedError = result.error
+      observedInvalidateCalls = self.credentials.invalidateCalls
+    }
+
+    // then
+    XCTAssertEqual(observedError as? HttpError, .unauthorized("401 - Unauthorized"), "The 401 still surfaces to the caller")
+    XCTAssertEqual(observedInvalidateCalls, 0, "A rotated-out bearer's rejection must not invalidate the replacement.")
+    let delivered = await waitUntil(timeout: 0.3) { recorder.deliveries > 0 }
+    XCTAssertFalse(delivered, "Nothing the credential currently holds was rejected.")
+  }
+
   func test_storedClientBackupShare_willSurfaceOriginal401_whenInvalidationFails() throws {
     // given
     let api = try self.sut()

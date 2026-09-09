@@ -398,8 +398,8 @@ public class PortalMpc: PortalMpcProtocol {
       if let error = ejectResult.error, error.isValid() {
         // Classified like every other binary result: an `AUTH_FAILED` here invalidates the
         // session and notifies the host, instead of surfacing as a generic eject error while the
-        // dead credential stays live.
-        throw self.mpcError(from: error, context: "PortalMpc.eject")
+        // dead credential stays live. Eject hands the binary no token, so there is none to match.
+        throw self.mpcError(from: error, rejectedToken: nil, context: "PortalMpc.eject")
       }
 
       privateKeys[.eip155] = ejectResult.privateKey
@@ -418,8 +418,8 @@ public class PortalMpc: PortalMpcProtocol {
       if let error = ejectResult.error, error.isValid() {
         // Classified like every other binary result: an `AUTH_FAILED` here invalidates the
         // session and notifies the host, instead of surfacing as a generic eject error while the
-        // dead credential stays live.
-        throw self.mpcError(from: error, context: "PortalMpc.eject")
+        // dead credential stays live. Eject hands the binary no token, so there is none to match.
+        throw self.mpcError(from: error, rejectedToken: nil, context: "PortalMpc.eject")
       }
 
       privateKeys[.solana] = ejectResult.privateKey
@@ -959,10 +959,19 @@ public class PortalMpc: PortalMpcProtocol {
   /// credential (`AUTH_FAILED`), reports it to the credentials layer before the error is thrown.
   /// The binary is not behind the transport's 401 hook, so this is the MPC path's single
   /// reporting point; `context` names the operation for the log line only.
-  private func mpcError(from error: PortalError, context: String) -> PortalMpcError {
+  ///
+  /// `rejectedToken` is the token the binary was handed for this operation. The report is skipped
+  /// when the credential no longer holds it — it rotated in place while the binary ran, and the
+  /// replacement was never rejected. `nil` is for the eject calls, which hand the binary no token:
+  /// with nothing to compare, the rejection is attributed to the credential as before.
+  private func mpcError(from error: PortalError, rejectedToken: String?, context: String) -> PortalMpcError {
     let mpcError = PortalMpcError(error)
     if mpcError.isAuthFailure {
-      PortalCredentialSupport.reportUnauthorizedAndLog(self.credentials, context: context)
+      if let rejectedToken {
+        PortalCredentialSupport.reportUnauthorizedAndLog(self.credentials, rejectedToken: rejectedToken, context: context)
+      } else {
+        PortalCredentialSupport.reportUnauthorizedAndLog(self.credentials, context: context)
+      }
     }
     return mpcError
   }
@@ -996,7 +1005,7 @@ public class PortalMpc: PortalMpcProtocol {
 
           // Throw if there is an error getting the backup share.
           if let error = rotateResult.error, error.isValid() {
-            continuation.resume(throwing: self.mpcError(from: error, context: "PortalMpc.getBackupShare"))
+            continuation.resume(throwing: self.mpcError(from: error, rejectedToken: token, context: "PortalMpc.getBackupShare"))
             return
           }
 
@@ -1035,7 +1044,7 @@ public class PortalMpc: PortalMpcProtocol {
           // Throw if there is an error getting the backup share.
           if let error = rotateResult.error, error.isValid() {
             self.logger.error("Error generating \(forCurve.rawValue) share: \(rotateResult.error?.message ?? "")")
-            continuation.resume(throwing: self.mpcError(from: error, context: "PortalMpc.getSigningShare"))
+            continuation.resume(throwing: self.mpcError(from: error, rejectedToken: token, context: "PortalMpc.getSigningShare"))
             return
           }
 
@@ -1101,7 +1110,7 @@ public class PortalMpc: PortalMpcProtocol {
 
           // Throw if there is an error getting the backup share.
           if let error = rotateResult.error, error.isValid() {
-            continuation.resume(throwing: self.mpcError(from: error, context: "PortalMpc.recoverSigningShare"))
+            continuation.resume(throwing: self.mpcError(from: error, rejectedToken: token, context: "PortalMpc.recoverSigningShare"))
             return
           }
 

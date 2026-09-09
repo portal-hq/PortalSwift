@@ -175,6 +175,10 @@ class PresignatureManager: PresignatureSource {
         logger.debug("[PresignatureManager] Presign cancelled for \(curve.rawValue)")
         return nil
       }
+      // The token this attempt hands the binary, kept outside the `do` so the `AUTH_FAILED` catch
+      // can report the rejection against it rather than against whatever the credential holds by
+      // the time the binary answers.
+      var attemptedToken: String?
       do {
         let shares = try await keychain.getShares()
         guard let shareEntry = shares[curve.portalCurve.rawValue],
@@ -194,6 +198,7 @@ class PresignatureManager: PresignatureSource {
         let metadataString = try metadata.jsonString()
 
         let token = try PortalCredentialSupport.resolveToken(credentials)
+        attemptedToken = token
 
         // Resolving the token may have blocked on a host provider; a cancellation that landed
         // meanwhile must not turn into a network round trip.
@@ -226,7 +231,13 @@ class PresignatureManager: PresignatureSource {
         throw error
       } catch let error as PortalMpcError where error.isAuthFailure {
         logger.error("PresignatureManager.preSign() - The MPC service rejected the credential for \(curve.rawValue); reporting it and not retrying.")
-        PortalCredentialSupport.reportUnauthorizedAndLog(credentials, context: "PresignatureManager.preSign")
+        // Reported against the token the binary was handed: a credential that rotated in place
+        // while the binary ran is not invalidated for the old token's rejection.
+        if let attemptedToken {
+          PortalCredentialSupport.reportUnauthorizedAndLog(credentials, rejectedToken: attemptedToken, context: "PresignatureManager.preSign")
+        } else {
+          PortalCredentialSupport.reportUnauthorizedAndLog(credentials, context: "PresignatureManager.preSign")
+        }
         throw error
       } catch {
         logger.warn("[PresignatureManager] Presign failed for \(curve.rawValue) (attempt \(attempt + 1)/\(retryConfig.maxAttempts)): \(error.localizedDescription)")

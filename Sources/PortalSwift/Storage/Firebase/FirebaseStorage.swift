@@ -195,8 +195,10 @@ public class FirebaseStorage: Storage, PortalStorage {
         self.logger.error("FirebaseStorage.\(operation)() - TBS rejected the retried request with 401, but the Firebase token did not change on refresh; not attributing this to the Portal credential. Make getToken() force a refresh (getIDToken(forcingRefresh: true)).")
         throw FirebaseStorageError.tokenNotRefreshed
       }
+      // Attributed to the bearer the retry carried: a credential that rotated again while the
+      // retry was in flight is not invalidated for the old bearer's rejection.
       self.logger.error("FirebaseStorage.\(operation)() - TBS rejected the retried request with 401. Reporting the Portal credential as unauthorized.")
-      PortalCredentialSupport.reportUnauthorizedAndLog(credentials, context: "FirebaseStorage.\(operation)")
+      PortalCredentialSupport.reportUnauthorizedAndLog(credentials, rejectedToken: refreshedBearerToken, context: "FirebaseStorage.\(operation)")
       throw PortalRequestsError.unauthorized
     } catch {
       throw FirebaseStorageError.requestFailed(underlying: error)

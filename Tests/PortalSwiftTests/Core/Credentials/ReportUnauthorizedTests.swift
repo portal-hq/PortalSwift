@@ -367,6 +367,58 @@ final class ReportUnauthorizedTests: XCTestCase {
     self.logger.assertNoSecret(secret)
   }
 
+  // MARK: - reportUnauthorizedAndLog(_:rejectedToken:context:)
+
+  func test_reportUnauthorizedAndLog_rejectedToken_willReport_whenTheCredentialStillHoldsIt() async throws {
+    let credentials = MockCredentials(tokenValue: "token-now")
+    let recorder = InvalidationListenerRecorder(credentials: credentials)
+
+    PortalCredentialSupport.reportUnauthorizedAndLog(credentials, rejectedToken: "token-now", context: "Test")
+
+    XCTAssertEqual(credentials.invalidateCalls, 1)
+    let delivered = await waitUntil { recorder.deliveries == 1 }
+    XCTAssertTrue(delivered)
+  }
+
+  func test_reportUnauthorizedAndLog_rejectedToken_willNotReport_whenTheCredentialRotated() async throws {
+    // The rejection is for a token nobody holds any more: it rotated between the request and the
+    // response. The replacement was never rejected, and invalidating it would sign the user out for
+    // a stale response — the rule the transport hook already applies to a rotated-out bearer.
+    let credentials = MockCredentials(tokenValue: "token-now")
+    let recorder = InvalidationListenerRecorder(credentials: credentials)
+
+    PortalCredentialSupport.reportUnauthorizedAndLog(credentials, rejectedToken: "token-before-rotation", context: "Test")
+
+    XCTAssertEqual(credentials.invalidateCalls, 0)
+    let notified = await waitUntil(timeout: 0.3) { recorder.deliveries > 0 }
+    XCTAssertFalse(notified, "A rejected token that matches no current token is left unattributed")
+  }
+
+  func test_reportUnauthorizedAndLog_rejectedToken_willNotReport_whenTheCredentialCanNoLongerResolve() async throws {
+    // Already invalidated (a host sign-out, or an earlier report): `getToken()` throws, there is
+    // nothing left to invalidate, and the host must not be told about a session it already ended.
+    let session = MockPortalSession(tokenValue: "token-now")
+    try session.invalidate()
+    let recorder = InvalidationListenerRecorder(credentials: session)
+
+    PortalCredentialSupport.reportUnauthorizedAndLog(session, rejectedToken: "token-now", context: "Test")
+
+    XCTAssertEqual(session.invalidateCalls, 1, "Only the test's own sign-out touched the session")
+    let notified = await waitUntil(timeout: 0.3) { recorder.deliveries > 0 }
+    XCTAssertFalse(notified)
+  }
+
+  func test_reportUnauthorizedAndLog_rejectedToken_willNeverLogEitherToken() {
+    let current = "SECRET-CURRENT"
+    let rejected = "SECRET-REJECTED"
+    let credentials = MockCredentials(tokenValue: current)
+
+    PortalCredentialSupport.reportUnauthorizedAndLog(credentials, rejectedToken: rejected, context: "Test")
+
+    self.logger.assertNoSecret(current)
+    self.logger.assertNoSecret(rejected)
+  }
+
   // MARK: - onCredentialsInvalidated
 
   func test_onCredentialsInvalidated_willTreatSameClosureTwiceAsTwoSubscriptions() async throws {

@@ -2469,6 +2469,33 @@ extension PortalMpcTests {
     XCTAssertEqual(keychainSpy.setSharesCallCount, 0)
   }
 
+  func test_generate_willNotReport_whenTheCredentialRotatedWhileTheBinaryRan() async throws {
+    // given: a host credential that rotates in place after the token the binary was handed was
+    // resolved, so the AUTH_FAILED the binary returns is for a token the credential no longer holds
+    let credentials = MockCredentials(tokenValue: "mpc-tok-1")
+    credentials.onGetToken = { [weak credentials] in
+      guard let credentials, credentials.getTokenCalls >= 2 else { return }
+      credentials.tokenValue = "mpc-tok-2"
+    }
+    let recorder = InvalidationListenerRecorder(credentials: credentials)
+    let keychainSpy = PortalKeychainSpy()
+    let mobileSpy = MobileSpy()
+    mobileSpy.mobileGenerateEd25519ReturnValue = UnitTestMockConstants.validED25519ShareRotatedResultJSON
+    mobileSpy.mobileGenerateSecp256k1ReturnValue = MpcJSON.authFailed
+    initPortalMpcWith(credentials: credentials, keychain: keychainSpy, mobile: mobileSpy)
+
+    // and given
+    await XCTAssertThrowsAsync(try await mpc?.generate()) { error in
+      XCTAssertEqual((error as? PortalMpcError)?.isAuthFailure, true, "The rejection still surfaces to the caller: \(error)")
+    }
+
+    // then: the replacement token was never rejected, so it is not invalidated for the old one
+    XCTAssertEqual(credentials.invalidateCalls, 0)
+    let notified = await waitUntil(timeout: 0.3) { recorder.count > 0 }
+    XCTAssertFalse(notified, "A rotated credential must not be reported for a stale AUTH_FAILED.")
+    XCTAssertEqual(keychainSpy.setSharesCallCount, 0)
+  }
+
   func test_generate_willReportOnce_whenBothCurvesReturnAuthFailed() async throws {
     // given
     let session = SessionLikeCredentials(token: "session-token", throwsWhenInvalidated: true)

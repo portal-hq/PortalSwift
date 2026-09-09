@@ -703,6 +703,29 @@ final class PortalProviderCredentialTests: XCTestCase {
     await self.assertInvalidationDeliveredOnce(recorder)
   }
 
+  func test_request_sign_willNotReport_whenTheCredentialRotatedWhileSigning() async throws {
+    // A host credential that rotates in place once the binary has been handed the old token: the
+    // AUTH_FAILED is for that token, and the replacement was never rejected.
+    let credentials = MockCredentials(tokenValue: "sign-tok-1")
+    let spy = self.mobileSpy
+    credentials.onGetToken = { [weak credentials] in
+      guard let credentials, spy.mobileSignCallsCount >= 1 else { return }
+      credentials.tokenValue = "sign-tok-2"
+    }
+    let recorder = InvalidationListenerRecorder(credentials: credentials)
+    self.mobileSpy.mobileSignReturnValue = MpcJSON.authFailed
+    let provider = try makeProvider(credentials: credentials)
+
+    let error = await self.captureError { try await self.sign(provider) }
+
+    let mpcError = try XCTUnwrap(error as? PortalMpcError)
+    XCTAssertTrue(mpcError.isAuthFailure, "The rejection still surfaces to the caller")
+    XCTAssertEqual(self.mobileSpy.mobileSignApiKeyParam, "sign-tok-1", "The binary was handed the pre-rotation token")
+    XCTAssertEqual(credentials.invalidateCalls, 0, "The replacement token was never rejected")
+    let notified = await waitUntil(timeout: 0.3) { recorder.count > 0 }
+    XCTAssertFalse(notified, "A rotated credential must not be reported for a stale AUTH_FAILED.")
+  }
+
   func test_request_sign_willThrowSessionInvalidated_withoutBinaryCall_afterAuthFailed() async throws {
     let session = MockPortalSession(tokenValue: Self.sessionToken)
     self.mobileSpy.mobileSignReturnValue = MpcJSON.authFailed

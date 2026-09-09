@@ -640,6 +640,38 @@ final class WebSocketClientTests: XCTestCase {
     XCTAssertEqual(self.session.invalidateCalls, 2)
   }
 
+  func test_handleError_notAnUpgrade401_willReport_whenTheCredentialStillHoldsTheUpgradeBearer() async throws {
+    let credentials = MockCredentials(tokenValue: "ws-tok-1")
+    let recorder = InvalidationListenerRecorder(credentials: credentials)
+    let fixture = try self.makeFixture(credentials: credentials)
+    try fixture.client.connect(uri: wsUri)
+
+    fixture.client.didReceive(event: self.upgradeRejected(401), client: self.driver())
+
+    XCTAssertEqual(credentials.invalidateCalls, 1)
+    let notified = await waitUntil { recorder.count == 1 }
+    XCTAssertTrue(notified, "A 401 for the bearer the upgrade carried is this credential's")
+  }
+
+  func test_handleError_notAnUpgrade401_willNotReport_whenTheCredentialRotatedWhileTheUpgradeWasInFlight() async throws {
+    // The bearer the upgrade carried was resolved when the request was built. A host credential
+    // that rotated in place before the proxy answered was never rejected, so it is left alone —
+    // the rule the transport hook applies to a rotated-out bearer.
+    let credentials = MockCredentials(tokenValue: "ws-tok-1")
+    let recorder = InvalidationListenerRecorder(credentials: credentials)
+    let fixture = try self.makeFixture(credentials: credentials)
+    try fixture.client.connect(uri: wsUri)
+    credentials.tokenValue = "ws-tok-2"
+
+    fixture.client.didReceive(event: self.upgradeRejected(401), client: self.driver())
+
+    XCTAssertEqual(fixture.errors.last?.code, 401, "The rejection is still surfaced to the host")
+    XCTAssertEqual(fixture.client.connectState, .disconnected)
+    XCTAssertEqual(credentials.invalidateCalls, 0, "The replacement token was never rejected")
+    let notified = await waitUntil(timeout: 0.3) { recorder.count > 0 }
+    XCTAssertFalse(notified)
+  }
+
   // MARK: - handleError: other outcomes
 
   func test_handleError_notAnUpgrade403_willNotReport() async throws {

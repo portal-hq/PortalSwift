@@ -186,6 +186,24 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   /// code 500 and stopped after one attempt. Guarded by `reconnectLock`.
   private var _isRetryInFlight = false
 
+  /// The bearer the current (or most recent) upgrade request carried, kept so a 401 on that
+  /// upgrade is attributed to the token that was sent rather than to whatever the credential
+  /// holds when the rejection arrives. `nil` until the first connect. Guarded by `reconnectLock`.
+  private var _upgradeBearer: String?
+
+  private var upgradeBearer: String? {
+    get {
+      self.reconnectLock.lock()
+      defer { self.reconnectLock.unlock() }
+      return self._upgradeBearer
+    }
+    set {
+      self.reconnectLock.lock()
+      defer { self.reconnectLock.unlock() }
+      self._upgradeBearer = newValue
+    }
+  }
+
   private var isRetryInFlight: Bool {
     get {
       self.reconnectLock.lock()
@@ -285,15 +303,28 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   /// validation before credential access) and the token travels only in the `Authorization`
   /// header, never in the URL.
   func buildUpgradeRequest() throws -> URLRequest {
+    try self.buildUpgradeRequest(bearer: self.resolveUpgradeBearer())
+  }
+
+  /// The bearer for the next upgrade. The server URL is validated before the credential is
+  /// touched (local validation before credential access).
+  private func resolveUpgradeBearer() throws -> String {
+    guard Self.serverUrl(from: self.webSocketServer) != nil else {
+      throw WebSocketClientError.invalidServerUrl
+    }
+    return try PortalCredentialSupport.resolveToken(self.credentials)
+  }
+
+  /// The upgrade request carrying `bearer`. The token travels only in the `Authorization` header,
+  /// never in the URL.
+  private func buildUpgradeRequest(bearer: String) throws -> URLRequest {
     guard let url = Self.serverUrl(from: self.webSocketServer) else {
       throw WebSocketClientError.invalidServerUrl
     }
 
-    let token = try PortalCredentialSupport.resolveToken(self.credentials)
-
     var request = URLRequest(url: url)
     request.timeoutInterval = 5
-    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+    request.setValue("Bearer \(bearer)", forHTTPHeaderField: "Authorization")
     return request
   }
 
@@ -329,9 +360,11 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   /// one) cannot be mistaken for the new connection's, then force-stopped so its transport does
   /// not linger.
   private func openConnection(uri: String) throws {
-    let request = try self.buildUpgradeRequest()
+    let bearer = try self.resolveUpgradeBearer()
+    let request = try self.buildUpgradeRequest(bearer: bearer)
 
     self.uri = uri
+    self.upgradeBearer = bearer
     self.logger.info("WebSocketClient.connect() - Connecting to proxy...")
 
     if let previous = self.socket {
@@ -540,7 +573,14 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
 
       if statusCode == 401 {
         self.logger.warn("WebSocketClient.handleError() - Credential rejected by the proxy. Not reconnecting.")
-        PortalCredentialSupport.reportUnauthorizedAndLog(self.credentials, context: "WebSocketClient.handleError")
+        // Attributed to the bearer the upgrade carried, so a credential that rotated in place
+        // while the upgrade was in flight is not invalidated for the old bearer's rejection. With
+        // no upgrade on record the rejection can only be this credential's.
+        if let bearer = self.upgradeBearer {
+          PortalCredentialSupport.reportUnauthorizedAndLog(self.credentials, rejectedToken: bearer, context: "WebSocketClient.handleError")
+        } else {
+          PortalCredentialSupport.reportUnauthorizedAndLog(self.credentials, context: "WebSocketClient.handleError")
+        }
         self.isRetryInFlight = false
         self.pingTimer?.invalidate()
         self.connectState = .disconnected

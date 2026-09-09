@@ -148,6 +148,28 @@ extension PortalCredentialSupport {
       PortalLogger.shared.error("\(context) - reportUnauthorized() could not invalidate the credential after an unauthorized response; the host was still notified.")
     }
   }
+
+  /// `reportUnauthorizedAndLog(_:context:)` for a rejection whose bearer is known.
+  ///
+  /// A 401 or `AUTH_FAILED` says the token that was *sent* is dead. When the credential has since
+  /// rotated in place — a host-written `PortalCredentials` that fetches a fresh token underneath a
+  /// long-lived `Portal`, the case `resolveToken(_:)` exists for — the replacement was never
+  /// rejected, and invalidating it would sign the user out for a stale response. So the report is
+  /// skipped unless the credential still holds `rejectedToken`. This is the rule
+  /// `UnauthorizedHookRegistry.report(bearerToken:from:)` applies on the transport path, brought
+  /// to the call sites that bypass the transport hook: the MPC binary, the WebSocket upgrade, the
+  /// Firebase retry and the legacy `storedClientBackupShare` request.
+  ///
+  /// A credential that can no longer resolve (already invalidated, or a failing provider) counts
+  /// as not matching: there is nothing left to invalidate, and reporting is once-ever anyway. The
+  /// log line names the context only; neither token is logged.
+  static func reportUnauthorizedAndLog(_ credentials: PortalCredentials, rejectedToken: String, context: String) {
+    guard (try? credentials.getToken()) == rejectedToken else {
+      PortalLogger.shared.debug("\(context) - The rejected bearer is no longer the one this credential holds (rotated or already invalidated); not invalidating.")
+      return
+    }
+    reportUnauthorizedAndLog(credentials, context: context)
+  }
 }
 
 extension PortalCredentialSupport {

@@ -702,6 +702,33 @@ extension PresignatureManagerTests {
     withExtendedLifetime(manager) {}
   }
 
+  func test_fillBuffer_willNotReport_whenTheCredentialRotatedWhilePresigning() async throws {
+    // given: the token handed to MobilePresign is rotated out before the binary answers AUTH_FAILED
+    let credentials = MockCredentials(tokenValue: "presign-tok-1")
+    let spy = mobileSpy
+    credentials.onGetToken = { [weak credentials] in
+      guard let credentials, spy.mobilePresignCallsCount >= 1 else { return }
+      credentials.tokenValue = "presign-tok-2"
+    }
+    let recorder = InvalidationListenerRecorder(credentials: credentials)
+    mobileSpy.mobilePresignReturnValue = MpcJSON.presignAuthFailed
+    let manager = makeManager(credentials: credentials, maxPresignaturesPerCurve: [.SECP256K1: 3], retryConfig: .fast)
+
+    // and given
+    manager.initializeBuffers()
+
+    // then: the attempt still stops (AUTH_FAILED is not retried), but the rotated credential is
+    // not invalidated for the old token's rejection
+    let compared = await waitUntil { spy.mobilePresignCallsCount == 1 && credentials.getTokenCalls >= 2 }
+    XCTAssertTrue(compared, "The rejection should have been compared against the current token")
+    XCTAssertEqual(credentials.invalidateCalls, 0)
+    let notified = await waitUntil(timeout: 0.3) { recorder.count > 0 }
+    XCTAssertFalse(notified, "A rotated credential must not be reported for a stale AUTH_FAILED.")
+    XCTAssertEqual(spy.mobilePresignCallsCount, 1, "AUTH_FAILED is still not retried.")
+    XCTAssertEqual(keychainSpy.insertPresignatureCallCount, 0)
+    withExtendedLifetime(manager) {}
+  }
+
   func test_fillBuffer_willNotContinueNeededLoop_afterAuthFailed() async throws {
     // given
     let session = MockPortalSession()

@@ -667,6 +667,33 @@ extension FirebaseStorageTests {
     XCTAssertTrue(notified, "A 401 that survived the Firebase refresh must report the credential.")
   }
 
+  func test_read_willNotReport_whenTheBearerRotatedAgainWhileTheRetryWasInFlight() async throws {
+    // given: a bearer that rotates on every resolution, so by the time the second 401 arrives the
+    // credential holds a token the retry never sent
+    let credentials = MockCredentials(tokenValue: "portal-tok-1")
+    credentials.onGetToken = { [weak credentials] in
+      guard let credentials else { return }
+      // `MockCredentials` counts the call before running the hook and reads `tokenValue` after it.
+      credentials.tokenValue = "portal-tok-\(credentials.getTokenCalls)"
+    }
+    let recorder = InvalidationListenerRecorder(credentials: credentials)
+    let spy = initFirebaseStorageWithSpy(credentials: credentials)
+    spy.returnData = try encodedEncryptionKeyResponse()
+    spy.executeThrowableErrorSequence = [PortalRequestsError.unauthorized, PortalRequestsError.unauthorized]
+    let storage = try XCTUnwrap(self.storage)
+
+    // and given
+    await XCTAssertThrowsAsync(try await storage.read(), expected: PortalRequestsError.unauthorized)
+
+    // then: the retry carried portal-tok-2 and that is what TBS rejected; the credential has since
+    // moved on, so the replacement is left alone
+    XCTAssertEqual(spy.executeCallsCount, 2)
+    XCTAssertEqual(spy.executeRequestHistory.last?.headers["Authorization"], "Bearer portal-tok-2")
+    XCTAssertEqual(credentials.invalidateCalls, 0)
+    let notified = await waitUntil(timeout: 0.3) { recorder.count > 0 }
+    XCTAssertFalse(notified, "A bearer that rotated out during the retry cannot implicate the replacement.")
+  }
+
   func test_read_willNotReport_andThrowTokenNotRefreshed_whenSecond401CarriesTheSameFirebaseToken() async throws {
     // given: a host whose `getToken` callback does not force a refresh, so the retry re-sends the
     // same (stale) Firebase ID token. The second 401 then says nothing about the Portal credential.

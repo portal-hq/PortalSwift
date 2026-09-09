@@ -581,8 +581,10 @@ public class PortalProvider: PortalProviderProtocol {
       return PortalProviderResult(id: withPayload.id, result: signature)
     } catch let error as PortalMpcError where error.isAuthFailure {
       // The MPC service is not on the transport's 401 hook, so the signing path reports the
-      // rejected credential itself. The original error is rethrown unchanged.
-      PortalCredentialSupport.reportUnauthorizedAndLog(self.credentials, context: "PortalProvider.handleSignRequest")
+      // rejected credential itself — for the token that was actually sent, so a credential that
+      // rotated in place while the binary ran is not invalidated for the old token's rejection.
+      // The original error is rethrown unchanged.
+      PortalCredentialSupport.reportUnauthorizedAndLog(self.credentials, rejectedToken: token, context: "PortalProvider.handleSignRequest")
       throw error
     }
   }
