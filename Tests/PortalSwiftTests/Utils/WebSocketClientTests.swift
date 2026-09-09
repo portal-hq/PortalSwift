@@ -616,7 +616,10 @@ final class WebSocketClientTests: XCTestCase {
     fixture.client.didReceive(event: self.upgradeRejected(401), client: self.driver())
 
     XCTAssertFalse(fixture.client.pingTimer?.isValid ?? false, "The keep-alive must stop with the connection")
-    XCTAssertEqual(fixture.engine.stopCallsCount, 1)
+    // Force-stopped, not gracefully: a refused upgrade never had a writable frame, and Starscream's
+    // `stop()` before the upgrade is a silent no-op that leaves the engine believing it is connecting.
+    XCTAssertEqual(fixture.engine.forceStopCallsCount, 1)
+    XCTAssertEqual(fixture.engine.stopCallsCount, 0)
   }
 
   func test_handleError_notAnUpgrade401_twice_willReportOnce() async throws {
@@ -643,6 +646,8 @@ final class WebSocketClientTests: XCTestCase {
     let fixture = try self.defaultFixture()
     let recorder = try self.defaultRecorder()
     let error = HTTPUpgradeError.notAnUpgrade(403, [:])
+    // A socket exists only once something connected; without this there is nothing to stop.
+    try fixture.client.connect(uri: wsUri)
     fixture.client.connectState = .connected
 
     fixture.client.didReceive(event: .error(error), client: self.driver())
@@ -674,6 +679,7 @@ final class WebSocketClientTests: XCTestCase {
   func test_handleError_genericError_willEmit500_andDisconnect() throws {
     let fixture = try self.defaultFixture()
     let error = URLError(.timedOut)
+    try fixture.client.connect(uri: wsUri)
     fixture.client.connectState = .connected
 
     fixture.client.didReceive(event: .error(error), client: self.driver())
@@ -1014,6 +1020,96 @@ final class WebSocketClientTests: XCTestCase {
     XCTAssertEqual(fixture.errors.last?.code, 500)
     XCTAssertEqual(fixture.sleeper.sleepCallsCount, 0, "A drop while idle is not a failed retry")
     XCTAssertEqual(fixture.client.reconnectAttempts, 0)
+  }
+
+  // MARK: - A fresh socket per connect
+
+  /// A fixture whose engine behaves like Starscream's: `start` is ignored until `forceStop()`
+  /// clears a previous, failed start. Every case in this section needs that on.
+  private func makeStickyEngineFixture(
+    credentials: PortalCredentials? = nil
+  ) throws -> Fixture {
+    let fixture = try self.makeFixture(credentials: credentials ?? self.session)
+    fixture.engine.mimicsStarscreamStartGuard = true
+    return fixture
+  }
+
+  func test_reconnect_willWalkTheWholeBudget_whenTheEngineIgnoresStartWhileConnecting() async throws {
+    // The same outage as `test_reconnect_willWalkTheWholeBudget_whenEveryRetryFailsAtTheTransport`,
+    // on an engine that — like Starscream's — stays "connecting" after a pre-upgrade failure. With
+    // one socket reused across attempts, retry 2 onwards never reached the transport and the
+    // client parked in `.disconnected` without ever reporting exhaustion.
+    let fixture = try self.makeStickyEngineFixture()
+    try fixture.client.connect(uri: wsUri)
+    fixture.client.connectState = .connected
+    fixture.client.didReceive(event: .peerClosed, client: self.driver())
+
+    for attempt in 1 ... 5 {
+      let started = await waitUntil { fixture.engine.startCallsCount == 1 + attempt }
+      XCTAssertTrue(started, "Retry \(attempt) never reached the transport: the engine was still 'connecting' from the attempt before it")
+      fixture.client.didReceive(event: .error(URLError(.cannotConnectToHost)), client: self.driver())
+    }
+
+    let gaveUp = await waitUntil { fixture.errors.last?.message == "Reconnect attempts exhausted" }
+    XCTAssertTrue(gaveUp, "The sixth transport failure exhausts the budget")
+    XCTAssertEqual(fixture.engine.startCallsCount, 6, "One connect plus five retries, each on a socket whose engine was cleared first")
+    XCTAssertEqual(fixture.engine.ignoredStartCallsCount, 0, "No retry was swallowed by a stuck engine")
+    XCTAssertGreaterThanOrEqual(fixture.engine.forceStopCallsCount, 5, "Every retry force-stops the socket it replaces")
+    XCTAssertEqual(
+      fixture.sleeper.recordedNanoseconds,
+      [500_000_000, 1_000_000_000, 2_000_000_000, 4_000_000_000, 8_000_000_000]
+    )
+    XCTAssertEqual(fixture.client.connectState, .disconnected)
+  }
+
+  func test_connect_afterATransportFailure_willStartTheEngineAgain_whenTheEngineIgnoresStartWhileConnecting() throws {
+    let fixture = try self.makeStickyEngineFixture()
+    try fixture.client.connect(uri: wsUri)
+    // The first connect never reached the proxy; Starscream's engine is now stuck "connecting".
+    fixture.client.didReceive(event: .error(URLError(.cannotConnectToHost)), client: self.driver())
+    XCTAssertEqual(fixture.errors.last?.code, 500)
+
+    try fixture.client.connect(uri: wsUri)
+
+    XCTAssertEqual(fixture.engine.startCallsCount, 2, "The host's second connect must reach the transport on a fresh socket")
+    XCTAssertEqual(fixture.engine.ignoredStartCallsCount, 0)
+    XCTAssertEqual(fixture.engine.forceStopCallsCount, 2, "Once when the failure was handled, once when the stuck socket was replaced")
+    XCTAssertEqual(fixture.engine.authorizationHeaders, ["Bearer \(wsToken)", "Bearer \(wsToken)"])
+  }
+
+  func test_connect_after401_willStartTheEngineAgain_withTheRotatedCredential_whenTheEngineIgnoresStartWhileConnecting() throws {
+    // A host that recovers from a rejected credential by rotating it. `MockCredentials` keeps
+    // answering after `invalidate()`, which is what a re-authenticated session looks like to
+    // the client; with a reused socket the second connect was a silent no-op.
+    let credentials = MockCredentials(tokenValue: wsToken)
+    let fixture = try self.makeStickyEngineFixture(credentials: credentials)
+    try fixture.client.connect(uri: wsUri)
+    fixture.client.didReceive(event: self.upgradeRejected(401), client: self.driver())
+    XCTAssertEqual(fixture.errors.last?.code, 401)
+
+    credentials.tokenValue = "rotated-token"
+    try fixture.client.connect(uri: wsUri)
+
+    XCTAssertEqual(fixture.engine.startCallsCount, 2, "A 401 must not leave the client permanently unable to connect")
+    XCTAssertEqual(fixture.engine.ignoredStartCallsCount, 0)
+    XCTAssertEqual(fixture.engine.authorizationHeaders.last, "Bearer rotated-token")
+  }
+
+  func test_connect_willDetachThePreviousSocket_soItsLateEventsAreDropped() throws {
+    // Starscream forwards engine events only through the socket's `delegate`. After a second
+    // connect the first socket must no longer reach the client, or its own `.cancelled` (from
+    // the force-stop) would read as the new connection failing.
+    let fixture = try self.defaultFixture()
+    try fixture.client.connect(uri: wsUri)
+    let firstSocket = try XCTUnwrap(fixture.engine.registeredDelegate as? Starscream.WebSocket)
+
+    try fixture.client.connect(uri: wsUri)
+    let secondSocket = try XCTUnwrap(fixture.engine.registeredDelegate as? Starscream.WebSocket)
+
+    XCTAssertFalse(firstSocket === secondSocket, "Each connect starts a fresh socket")
+    XCTAssertNil(firstSocket.delegate, "The replaced socket is detached from the client")
+    XCTAssertTrue(secondSocket.delegate === fixture.client, "The live socket reports to the client")
+    XCTAssertEqual(fixture.engine.registerCallsCount, 2)
   }
 
   // MARK: - Main-actor delivery

@@ -155,6 +155,9 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   private let logger = PortalLogger.shared
   private let webSocketServer: String
   private let engine: Engine?
+
+  /// The socket of the current or most recent connection. Rebuilt by `openConnection(uri:)` on
+  /// every connect — see there for why a socket is never reused.
   private var socket: Starscream.WebSocket?
   private let reconnectPolicy: ReconnectPolicy
   private let sleep: (UInt64) async throws -> Void
@@ -206,10 +209,10 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
 
   /// Creates a client for `connect` that authenticates with `credentials`.
   ///
-  /// Nothing is resolved here: the socket is created against a credential-less request so the
-  /// engine exists for the lifetime of the client, and `connect(uri:)` swaps in a freshly built
-  /// upgrade request every time it opens a connection. `engine`, `reconnectPolicy` and `sleep`
-  /// are test seams; production callers leave them at their defaults.
+  /// Nothing is resolved and no socket exists yet: `connect(uri:)` builds a fresh upgrade request
+  /// and a fresh Starscream socket every time it opens a connection (see `openConnection(uri:)`).
+  /// `engine`, `reconnectPolicy` and `sleep` are test seams; production callers leave them at
+  /// their defaults.
   init(
     credentials: PortalCredentials,
     connect: PortalConnect,
@@ -224,14 +227,6 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
     self.engine = engine
     self.reconnectPolicy = reconnectPolicy
     self.sleep = sleep ?? { nanoseconds in try await Task.sleep(nanoseconds: nanoseconds) }
-
-    if let url = Self.serverUrl(from: webSocketServer) {
-      var request = URLRequest(url: url)
-      request.timeoutInterval = 5
-      let socket = Self.makeSocket(request: request, engine: engine)
-      socket.delegate = self
-      self.socket = socket
-    }
   }
 
   /// Wraps a Client API Key in `StaticCredentials`. Kept non-throwing like the original, so a
@@ -270,9 +265,16 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
 
   func close() {
     self.cancelPendingReconnect()
+    // A close frame only after the upgrade; before it Starscream's `stop()` is a silent no-op, so
+    // a connection that never got that far is cancelled at the transport instead.
+    let wasUpgraded = self.isConnected
     self.connectState = .disconnected
     self.pingTimer?.invalidate()
-    self.socket?.disconnect(closeCode: 1000)
+    if wasUpgraded {
+      self.socket?.disconnect(closeCode: 1000)
+    } else {
+      self.socket?.forceDisconnect()
+    }
   }
 
   /// Builds the HTTP upgrade request for the proxy with a freshly resolved bearer.
@@ -311,17 +313,34 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   }
 
   /// The shared body of `connect(uri:)` and a reconnect attempt: build the upgrade request with
-  /// a freshly resolved bearer, record `uri`, and start the socket. Does not touch the pending
-  /// reconnect bookkeeping, so the reconnect task can call it without cancelling itself.
+  /// a freshly resolved bearer, record `uri`, and start a **new** socket. Does not touch the
+  /// pending reconnect bookkeeping, so the reconnect task can call it without cancelling itself.
+  ///
+  /// A new socket every time, never `connect()` on the old one. Starscream's `WSEngine` ignores
+  /// `start` while it believes it is still connecting, and only a completed upgrade, a transport
+  /// cancellation or `forceStop()` clears that. A failure *before* the upgrade — proxy
+  /// unreachable, DNS, or an HTTP 401 — runs the engine's `stop()`, whose close-frame write is
+  /// skipped because nothing was ever writable, so the engine stays "connecting" and every later
+  /// `connect()` on that socket returns silently with no delegate event. That is exactly where
+  /// every reconnect attempt and every post-401 `connect(uri:)` starts from, so reusing the socket
+  /// made the retry budget a single attempt and a rejected credential permanent for the client.
+  ///
+  /// The previous socket is detached first, so a late event from it (its own `.cancelled`, for
+  /// one) cannot be mistaken for the new connection's, then force-stopped so its transport does
+  /// not linger.
   private func openConnection(uri: String) throws {
     let request = try self.buildUpgradeRequest()
-    guard let socket = self.socket else {
-      throw WebSocketClientError.invalidServerUrl
-    }
 
     self.uri = uri
     self.logger.info("WebSocketClient.connect() - Connecting to proxy...")
-    socket.request = request
+
+    if let previous = self.socket {
+      previous.delegate = nil
+      previous.forceDisconnect()
+    }
+    let socket = Self.makeSocket(request: request, engine: self.engine)
+    socket.delegate = self
+    self.socket = socket
     socket.connect()
   }
 
@@ -512,7 +531,9 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   /// `reconnectPolicy.maxAttempts` times rather than once; anything else (other upgrade codes,
   /// transport failures while idle, `nil`) emits code 500 and settles in `.disconnected`,
   /// exactly as before. Only the error's type and, for an upgrade rejection, its status code are
-  /// logged: the headers Starscream attaches to `notAnUpgrade` are never printed.
+  /// logged: the headers Starscream attaches to `notAnUpgrade` are never printed. The socket is
+  /// closed with a close frame when the upgrade had completed and cancelled at the transport
+  /// otherwise — before the upgrade, Starscream's `stop()` is a silent no-op.
   func handleError(_ error: (any Error)?) {
     if let upgradeError = error as? HTTPUpgradeError, case let .notAnUpgrade(statusCode, _) = upgradeError {
       self.logger.error("WebSocketClient.handleError() - The upgrade request was rejected with status \(statusCode).")
@@ -524,7 +545,8 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
         self.pingTimer?.invalidate()
         self.connectState = .disconnected
         self.emit("error", ConnectError(message: "401 - Unauthorized", code: 401))
-        self.socket?.disconnect(closeCode: 1000)
+        // The upgrade was refused, so a close frame has nowhere to go: cancel the transport.
+        self.socket?.forceDisconnect()
         return
       }
     } else if let error = error {
@@ -548,10 +570,15 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
       return
     }
 
+    let wasUpgraded = self.isConnected
     self.pingTimer?.invalidate()
     self.connectState = .disconnected
     self.emit("error", ConnectError(message: error?.localizedDescription ?? "An unknown error occurred.", code: 500))
-    self.socket?.disconnect(closeCode: 1000)
+    if wasUpgraded {
+      self.socket?.disconnect(closeCode: 1000)
+    } else {
+      self.socket?.forceDisconnect()
+    }
   }
 
   func handleText(_ text: String) {
@@ -862,9 +889,18 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
     let generation = self.reconnectGeneration
     self.reconnectLock.unlock()
 
-    // Whatever happens next, the connection we had is gone.
+    // Whatever happens next, the connection we had is gone. Say goodbye to it — a close frame
+    // when the upgrade had completed, a transport cancel otherwise (`stop()` is a no-op before
+    // the upgrade). The retry does not depend on this: `openConnection(uri:)` starts a fresh
+    // socket regardless.
+    let wasUpgraded = self.isConnected
     self.pingTimer?.invalidate()
     self.connectState = .disconnected
+    if wasUpgraded {
+      self.socket?.disconnect(closeCode: 1000)
+    } else {
+      self.socket?.forceDisconnect()
+    }
 
     guard !exhausted else {
       self.logger.warn("WebSocketClient.reconnect() - Reconnect attempts exhausted after \(attempts) attempts. Giving up.")
@@ -874,10 +910,6 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
 
     let delay = self.reconnectPolicy.delay(forAttempt: attempts)
     self.logger.info("WebSocketClient.reconnect() - Scheduling reconnect attempt \(attempts + 1) of \(self.reconnectPolicy.maxAttempts).")
-
-    // Starscream's engine refuses to start while it still believes the previous connection is
-    // open (a peer close leaves it in that state); closing it first lets the fresh start go out.
-    self.socket?.disconnect(closeCode: 1000)
 
     let task = Task { @MainActor [weak self] in
       guard let self = self else { return }

@@ -71,6 +71,12 @@ final class ClientAuthCoordinator {
   /// One-slot stash for a redirect that arrived with no screen to take it.
   private var pendingLaunchURL: URL?
 
+  /// Runs, on the main thread, right after a redirect is stashed with no screen to take it. The
+  /// main screen installs it so a warm redirect is acted on at once instead of waiting for a
+  /// `viewDidAppear` that a sheet dismissal never triggers. The closure decides whether it can
+  /// present; the URL stays in the stash until something calls `consumeLaunchURL()`.
+  var onLaunchURLStashed: (() -> Void)?
+
   private let firstLaunchLock = NSLock()
 
   /// Guarded by `firstLaunchLock`: the in-flight clear concurrent callers join. Its value is
@@ -87,7 +93,9 @@ final class ClientAuthCoordinator {
   // MARK: - Handoff
 
   /// Publishes an authenticated session for the main screen to adopt. Replaces any pending one:
-  /// only the newest login is worth adopting.
+  /// only the newest login is worth adopting. The slot is the cold-start path; a login completed on
+  /// a presented Client Auth screen also reaches the presenter through
+  /// `ClientAuthViewControllerDelegate`, which consumes the slot.
   func setHandoff(_ session: PortalSession) {
     self.handoffSession = session
   }
@@ -105,6 +113,7 @@ final class ClientAuthCoordinator {
   /// single-use grant token that must not survive the process.
   func stashLaunchURL(_ url: URL) {
     self.pendingLaunchURL = url
+    self.onLaunchURLStashed?()
   }
 
   /// Takes the stashed redirect, if any, and clears the slot so it is handled once.

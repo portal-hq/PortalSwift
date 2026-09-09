@@ -225,6 +225,7 @@ class ViewController: UIViewController, UITextFieldDelegate {
     // Set proper visibility states
     self.updateUIComponents()
     self.updateClientAuthUi()
+    self.installClientAuthLaunchURLHandler()
   }
 
   override func viewDidAppear(_ animated: Bool) {

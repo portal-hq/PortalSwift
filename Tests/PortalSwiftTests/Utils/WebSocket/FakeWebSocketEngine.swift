@@ -36,8 +36,43 @@ final class FakeWebSocketEngine: Engine {
   private var _writtenData: [(data: Data, opcode: FrameOpCode)] = []
   private var _onStart: ((URLRequest) -> Void)?
   private weak var _delegate: EngineDelegate?
+  private var _mimicsStarscreamStartGuard = false
+  private var _isStarted = false
+  private var _ignoredStartCallsCount = 0
 
   init() {}
+
+  // MARK: - Starscream's start guard
+
+  /// When `true`, `start(request:)` is ignored while a previous start has not been cleared by
+  /// `forceStop()` — the one piece of `WSEngine`'s state machine the SDK's connect path depends
+  /// on. The real engine sets `isConnecting` on `start` and clears it only on a completed
+  /// upgrade, a transport `.cancelled`, or `forceStop()`. A failure *before* the upgrade (transport
+  /// `.failed`, an HTTP 401) runs `stop()`, whose close-frame write is skipped because nothing is
+  /// writable yet, so `isConnecting` stays set and every later `start` on that engine returns
+  /// silently. `stop(closeCode:)` therefore does **not** clear the guard here either. Off by
+  /// default so the tests that drive the delegate directly keep their simple counts.
+  var mimicsStarscreamStartGuard: Bool {
+    get {
+      self.lock.lock()
+      defer { self.lock.unlock() }
+      return self._mimicsStarscreamStartGuard
+    }
+    set {
+      self.lock.lock()
+      defer { self.lock.unlock() }
+      self._mimicsStarscreamStartGuard = newValue
+    }
+  }
+
+  /// How many `start(request:)` calls the guard swallowed. Always `0` unless
+  /// `mimicsStarscreamStartGuard` is on; with it on, a non-zero value is the bug the SDK's
+  /// socket-per-connect rule exists to prevent.
+  var ignoredStartCallsCount: Int {
+    self.lock.lock()
+    defer { self.lock.unlock() }
+    return self._ignoredStartCallsCount
+  }
 
   // MARK: - Recording
 
@@ -168,6 +203,12 @@ final class FakeWebSocketEngine: Engine {
 
   func start(request: URLRequest) {
     self.lock.lock()
+    if self._mimicsStarscreamStartGuard, self._isStarted {
+      self._ignoredStartCallsCount += 1
+      self.lock.unlock()
+      return
+    }
+    self._isStarted = true
     self._startRequests.append(request)
     let hook = self._onStart
     self.lock.unlock()
@@ -185,6 +226,7 @@ final class FakeWebSocketEngine: Engine {
     self.lock.lock()
     defer { self.lock.unlock() }
     self._forceStopCallsCount += 1
+    self._isStarted = false
   }
 
   func write(data: Data, opcode: FrameOpCode, completion: (() -> Void)?) {

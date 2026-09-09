@@ -10,6 +10,18 @@ import os.log
 import PortalSwift
 import UIKit
 
+/// How the Client Auth screen hands a resolved session to the screen that presented it.
+///
+/// A delegate, not only the coordinator's handoff slot: this screen is presented as a sheet, and
+/// UIKit does not run the presenter's appearance callbacks when a sheet is dismissed, so a pickup
+/// driven by the presenter's `viewDidAppear` never fires on the ordinary "sign in, tap Back to
+/// app" path. Mirrors `FirebaseAuthDelegate`. The slot stays as the cold-start fallback.
+@available(iOS 16.0, *)
+protocol ClientAuthViewControllerDelegate: AnyObject {
+  /// A login completed and `session` is ready to adopt. Main thread, once per login.
+  func clientAuthDidPublish(_ session: PortalSession)
+}
+
 /// Portal's Client Auth demo surface: sign in, and nothing else.
 ///
 /// The screen owns authentication only. It builds no `Portal` and touches no custodian —
@@ -31,6 +43,10 @@ final class ClientAuthViewController: UIViewController {
   /// silently split both. Falls back to a locally built provider when the presenter sets none,
   /// which keeps the screen runnable on its own.
   var authProvider: PortalAuthProvider?
+
+  /// Told about each resolved session, so the presenter adopts it right away rather than waiting
+  /// for an appearance callback that a sheet dismissal never sends.
+  weak var delegate: ClientAuthViewControllerDelegate?
 
   /// A redirect that arrived before this screen existed (cold start through the URL handler).
   /// Consumed exactly once, in `viewDidAppear`.
@@ -688,8 +704,12 @@ final class ClientAuthViewController: UIViewController {
 
   /// Hands the session to the app. Deliberately does not dismiss: the step log is the point of
   /// this screen, so the user reads it and taps Back to app.
+  ///
+  /// The slot is filled first and the delegate told second, so a presenter that adopts through the
+  /// delegate can clear the slot and the cold-start drain cannot adopt the same login twice.
   private func publish(_ session: PortalSession) {
     ClientAuthCoordinator.shared.setHandoff(session)
+    self.delegate?.clientAuthDidPublish(session)
 
     // The JWT was scoped to submitting a code and the login is now complete, so it is dead weight —
     // and leaving it set would re-enable the TOTP section on the next redirect replay.
@@ -697,7 +717,11 @@ final class ClientAuthViewController: UIViewController {
     self.applyTotpUiState()
 
     self.append("✓ session resolved — endUserId=\(session.endUserId)")
-    self.append("• tap 'Back to app' to register Portal with this session")
+    if self.delegate == nil {
+      self.append("• tap 'Back to app' to register Portal with this session")
+    } else {
+      self.append("• the app is registering Portal with this session — tap 'Back to app' to return")
+    }
     self.statusLabel.text = "Signed in: \(session.endUserId)"
     self.showResult("Authenticated", success: true)
   }

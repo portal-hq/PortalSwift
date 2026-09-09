@@ -88,15 +88,20 @@ extension ViewController: ClientAuthReporter {
     // second one would silently split both.
     clientAuthViewController.authProvider = PortalAuthProvider.shared
     clientAuthViewController.initialURL = initialURL
+    clientAuthViewController.delegate = self
 
     let navigationController = UINavigationController(rootViewController: clientAuthViewController)
     self.present(navigationController, animated: true)
   }
 
-  /// Runs from `viewDidAppear`.
+  /// Runs from `viewDidAppear`, and from the coordinator's `onLaunchURLStashed` (see
+  /// `installClientAuthLaunchURLHandler`).
   ///
   /// Deliberately a synchronous read-and-return of two read-and-clear slots (Android's `onResume`):
-  /// it runs on every appearance, so it must not start I/O of its own.
+  /// it runs on every appearance, so it must not start I/O of its own. The handoff slot is the
+  /// cold-start path only; a login completed on the presented sheet reaches
+  /// `clientAuthDidPublish(_:)` directly, because dismissing a sheet does not re-run the
+  /// presenter's `viewDidAppear`.
   func clientAuthViewDidAppear() {
     if let session = ClientAuthCoordinator.shared.consumeHandoff() {
       self.adoptClientAuthSession(session)
@@ -106,6 +111,23 @@ extension ViewController: ClientAuthReporter {
     // launch-time deep link into a finished login.
     if let launchURL = ClientAuthCoordinator.shared.consumeLaunchURL() {
       self.presentClientAuth(initialURL: launchURL)
+    }
+  }
+
+  /// Runs from `viewDidLoad`. A redirect that arrives while this screen is up with no Client Auth
+  /// sheet presented — a magic link tapped from Mail — lands in the coordinator's stash, and no
+  /// `viewDidAppear` follows to drain it. This drains it the moment it is stashed, but only when
+  /// the view is on screen and nothing is presented: before the first appearance the launch path's
+  /// own `viewDidAppear` does the job, and presenting from a view that is not in a window would
+  /// fail and lose the single-use grant. While something is presented the stash is left alone:
+  /// a live Client Auth screen owns `redirectSink` and never lets a URL reach the stash, and a
+  /// sheet mid-dismissal is followed by the user's next tap, whose screen drains the stash on
+  /// appearance. Returning here is also what keeps `presentClientAuth` → stash → this closure
+  /// from recursing.
+  func installClientAuthLaunchURLHandler() {
+    ClientAuthCoordinator.shared.onLaunchURLStashed = { [weak self] in
+      guard let self, self.viewIfLoaded?.window != nil, self.presentedViewController == nil else { return }
+      self.clientAuthViewDidAppear()
     }
   }
 
@@ -429,5 +451,18 @@ extension ViewController: ClientAuthReporter {
     let response = try await self.requests.execute(request: apiRequest, mappingInResponse: ClientRegistrationResponse.self)
 
     return ClientRegistrationResult(exchangeUserId: response.exchangeUserId)
+  }
+}
+
+// MARK: - ClientAuthViewControllerDelegate
+
+@available(iOS 16.0, *)
+extension ViewController: ClientAuthViewControllerDelegate {
+  /// The sheet path: adopt now, while the Client Auth screen is still up, instead of waiting for a
+  /// `viewDidAppear` that its dismissal never triggers. `publish` filled the handoff slot with this
+  /// same session a moment ago; take it so the cold-start drain cannot adopt the login twice.
+  func clientAuthDidPublish(_ session: PortalSession) {
+    _ = ClientAuthCoordinator.shared.consumeHandoff()
+    self.adoptClientAuthSession(session)
   }
 }
