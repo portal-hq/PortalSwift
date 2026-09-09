@@ -44,9 +44,9 @@ import Foundation
 /// }
 /// ```
 ///
-/// Thread-safety: the replay memo is only touched under `grantMutex`; the presentation
-/// anchor, the ephemeral flag and the sign-in guard are guarded by `stateLock`. Everything
-/// else is immutable after `init`.
+/// Thread-safety: the replay memo and the pending TOTP write are only touched under
+/// `grantMutex`; the presentation anchor, the ephemeral flag and the sign-in guard are guarded
+/// by `stateLock`. Everything else is immutable after `init`.
 public final class PortalAuth: @unchecked Sendable {
   /// Upper bound on an inbound redirect URL, in UTF-16 code units, applied before parsing.
   ///
@@ -94,6 +94,25 @@ public final class PortalAuth: @unchecked Sendable {
   /// one operation, and only a lock held across all three keeps two deliveries of the same
   /// grant from both reaching the backend.
   private var consumedGrant: ConsumedGrant?
+
+  /// A `verifyTotp` whose code the backend accepted but whose Keychain write failed.
+  private struct PendingTotpPersist {
+    let userJwt: String
+    let result: AuthenticatedResult
+    let persisted: PersistedSession
+  }
+
+  /// The TOTP step `verifyTotp` last completed whose session has not reached the Keychain.
+  ///
+  /// The backend retires the `userJwt` before it answers, so a Keychain write failure after an
+  /// accepted code leaves a live session that no request can re-issue. The redirect memo
+  /// (`ConsumedGrant.pendingPersist`) finishes that login when a redirect is re-delivered, but
+  /// the host cannot cause a re-delivery — and in the `signInWith*` flow never sees the callback
+  /// at all — so the retry the host *can* make, `verifyTotp` again with the same `userJwt`, must
+  /// finish the write instead of re-sending a token that can only be rejected. One slot, matched
+  /// byte-exact on the JWT; cleared once any session reaches the Keychain (`_markPersisted`) and
+  /// by `clearPersistedSession()`. Guarded by `grantMutex`.
+  private var pendingTotpPersist: PendingTotpPersist?
 
   private let stateLock = NSLock()
   private weak var presentationAnchor: ASPresentationAnchor?
@@ -339,6 +358,11 @@ public final class PortalAuth: @unchecked Sendable {
   /// `handleRedirect(_:)`, and the grant that opened the TOTP step stops replaying as a step:
   /// a redirect re-delivered afterwards resolves to this same `AuthenticatedResult`'s session.
   ///
+  /// A Keychain write failure *after* the code was accepted is retryable with the **same**
+  /// `userJwt`: the backend has already retired the JWT, so the next `verifyTotp` for it finishes
+  /// the write and returns the session that was issued, without a network call (`code` is not
+  /// consulted on that path). A different `userJwt` starts a new verification.
+  ///
   /// - Throws: `PortalAuthError.invalidUserJwt(detail:)` when `userJwt` cannot be read — raised
   ///   **before** the network call, so a bad JWT never costs the user a live code;
   ///   `.malformedResponse(path, "clientSessionToken")` when the response carries no session
@@ -353,14 +377,23 @@ public final class PortalAuth: @unchecked Sendable {
     // it keeps `clearPersistedSession()` from landing between the two and leaving a signed-out
     // user with a session that outlived the sign-out.
     return try await self.grantMutex.withLock {
+      // The code for this JWT was already accepted and only the write is outstanding: finish it.
+      // Re-sending the JWT could only come back 401 — the backend retired it when it answered.
+      if let pending = self.pendingTotpPersist, pending.userJwt == userJwt {
+        return try self._finishPendingTotp(pending)
+      }
+
       let validation = try await self.api.validateTotp(code: code, userJwt: userJwt)
 
       let persisted = PersistedSession(clientSessionToken: validation.clientSessionToken, endUserId: endUserId)
       let result = self._makeAuthenticated(persisted, clientId: validation.clientId, isAccountAbstracted: validation.isAccountAbstracted)
       // Memoised before the write for the same reason as `_exchangeGrant`: the backend retires
       // the `userJwt` before it answers, so a persist failure must leave a re-delivered redirect
-      // able to finish the login rather than replaying a TOTP step that can never be accepted.
+      // able to finish the login rather than replaying a TOTP step that can never be accepted —
+      // and remembered against the JWT as well, so the host's own retry (the only retry it can
+      // make in the `signInWith*` flow) finishes the write rather than re-sending the spent JWT.
       self._completeTotpStep(userJwt: userJwt, result: result, pendingPersist: persisted)
+      self.pendingTotpPersist = PendingTotpPersist(userJwt: userJwt, result: result, persisted: persisted)
       try self._persist(persisted)
       self._markPersisted()
       PortalLogger.shared.debug("PortalAuth.verifyTotp() - TOTP accepted; session persisted for endUserId: \(endUserId).")
@@ -419,8 +452,8 @@ public final class PortalAuth: @unchecked Sendable {
   }
 
   /// Removes the locally persisted session and forgets the grant `handleRedirect(_:)` last
-  /// exchanged, so a redirect re-delivered after a sign-out cannot replay the session that was
-  /// just cleared.
+  /// exchanged and any TOTP write still pending, so neither a redirect re-delivered after a
+  /// sign-out nor a repeated `verifyTotp` can bring back the session that was just cleared.
   ///
   /// No server-side revoke endpoint exists, so this does not affect a `Portal` already holding
   /// the credential; it prevents a future `restoreSession()` from returning it. Waits for an
@@ -436,6 +469,7 @@ public final class PortalAuth: @unchecked Sendable {
         throw Self.storageFailure(error, context: "PortalAuth.clearPersistedSession()", message: "The persisted session could not be deleted.")
       }
       self.consumedGrant = nil
+      self.pendingTotpPersist = nil
       PortalLogger.shared.debug("PortalAuth.clearPersistedSession() - Persisted session cleared.")
     }
   }
@@ -622,8 +656,28 @@ public final class PortalAuth: @unchecked Sendable {
     self.consumedGrant = ConsumedGrant(token: pending.token, result: .authenticated(result), pendingPersist: pendingPersist)
   }
 
-  /// Records that the session in the current memo has reached the Keychain.
+  /// Finishes a `verifyTotp` whose code the backend already accepted but whose Keychain write
+  /// failed: retries the write and returns the same result, with no network call. A session the
+  /// backend has since rejected is not handed back — the slot is dropped and the call fails with
+  /// `PortalRequestsError.unauthorized`, as `_replay` does for a redirect. Called only with
+  /// `grantMutex` held.
+  private func _finishPendingTotp(_ pending: PendingTotpPersist) throws -> AuthenticatedResult {
+    guard (try? pending.result.session.getToken()) != nil else {
+      PortalLogger.shared.error("PortalAuth.verifyTotp() - The session issued for the already-accepted code has been invalidated; dropping it.")
+      self.pendingTotpPersist = nil
+      throw PortalRequestsError.unauthorized
+    }
+    PortalLogger.shared.debug("PortalAuth.verifyTotp() - The code was already accepted; retrying the persist instead of re-sending the userJwt.")
+    try self._persist(pending.persisted)
+    self._markPersisted()
+    return pending.result
+  }
+
+  /// Records that a session has reached the Keychain: the memo's pending write, if any, is done,
+  /// and a TOTP step still waiting on a write is dropped — either it is this very session, or a
+  /// newer login has since been persisted and a stale retry must not overwrite it.
   private func _markPersisted() {
+    self.pendingTotpPersist = nil
     guard let memo = self.consumedGrant, memo.pendingPersist != nil else {
       return
     }

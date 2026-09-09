@@ -1573,6 +1573,100 @@ final class PortalAuthTests: XCTestCase {
     XCTAssertNil(self.storage.stored)
   }
 
+  func test_verifyTotp_willRetryThePersist_notTheRequest_whenCalledAgainWithTheSameJwt_afterPersistFailed() async throws {
+    // The backend retired the JWT when it accepted the code, so the host's retry must finish the
+    // write it can still finish — not re-send a token that could only come back 401. In the
+    // `signInWith*` flow this is the only retry the host can make: it never sees a callback URL.
+    let userJwt = AuthTestFixtures.userJwt(endUserId: "user-from-jwt")
+    let failure = PortalAuthError.sessionStorageFailure(message: "keystore write failed")
+    self.storage.onSet = { [storage = self.storage] _ in
+      // `setCalls` is counted before the hook runs: the first write fails, every later one lands.
+      if storage.setCalls == 1 { throw failure }
+    }
+    self.requests.enqueue(AuthTestFixtures.totpResponse(clientSessionToken: "totp-session-token"))
+
+    await XCTAssertThrowsAsync(try await self.auth.verifyTotp("777870", userJwt: userJwt), expected: failure)
+    XCTAssertNil(self.storage.stored)
+    let result = try await self.auth.verifyTotp("777870", userJwt: userJwt)
+
+    XCTAssertEqual(self.requests.callCount, 1, "The spent userJwt is never re-sent")
+    XCTAssertEqual(self.storage.setCalls, 2, "The write is what gets retried")
+    XCTAssertEqual(try result.session.getToken(), "totp-session-token")
+    XCTAssertEqual(result.session.endUserId, "user-from-jwt")
+    let stored = try XCTUnwrap(self.storage.storedJSON)
+    XCTAssertEqual(stored["clientSessionToken"] as? String, "totp-session-token")
+    XCTAssertEqual(stored["endUserId"] as? String, "user-from-jwt")
+  }
+
+  func test_verifyTotp_willSendTheRequest_forADifferentJwt_afterPersistFailed() async throws {
+    let failure = PortalAuthError.sessionStorageFailure(message: "keystore write failed")
+    self.storage.onSet = { [storage = self.storage] _ in
+      if storage.setCalls == 1 { throw failure }
+    }
+    self.requests.enqueue(AuthTestFixtures.totpResponse(clientSessionToken: "first-token"))
+    self.requests.enqueue(AuthTestFixtures.totpResponse(clientSessionToken: "second-token"))
+
+    await XCTAssertThrowsAsync(
+      try await self.auth.verifyTotp("777870", userJwt: AuthTestFixtures.userJwt(endUserId: "user-a")),
+      expected: failure
+    )
+    let result = try await self.auth.verifyTotp("123456", userJwt: AuthTestFixtures.userJwt(endUserId: "user-b"))
+
+    XCTAssertEqual(self.requests.callCount, 2, "A different JWT is a new verification, not a retry of the pending one")
+    XCTAssertEqual(try result.session.getToken(), "second-token")
+    XCTAssertEqual(result.session.endUserId, "user-b")
+  }
+
+  func test_verifyTotp_willForgetThePendingSession_afterClearPersistedSession() async throws {
+    let userJwt = AuthTestFixtures.userJwt()
+    let failure = PortalAuthError.sessionStorageFailure(message: "keystore write failed")
+    self.storage.onSet = { [storage = self.storage] _ in
+      if storage.setCalls == 1 { throw failure }
+    }
+    self.requests.enqueue(AuthTestFixtures.totpResponse(clientSessionToken: "first-token"))
+    self.requests.enqueue(AuthTestFixtures.totpResponse(clientSessionToken: "second-token"))
+
+    await XCTAssertThrowsAsync(try await self.auth.verifyTotp("777870", userJwt: userJwt), expected: failure)
+    try await self.auth.clearPersistedSession()
+    let result = try await self.auth.verifyTotp("777870", userJwt: userJwt)
+
+    // A sign-out drops the pending write: the session the user just walked away from must not
+    // come back through a repeated `verifyTotp`, so the next call is a fresh verification.
+    XCTAssertEqual(self.requests.callCount, 2)
+    XCTAssertEqual(try result.session.getToken(), "second-token")
+  }
+
+  func test_verifyTotp_willNotRewriteAStaleSession_afterTheRedirectReplayPersistedIt() async throws {
+    // Redirect → TOTP step → code accepted → write fails → the system re-delivers the redirect and
+    // its replay finishes the write. A later `verifyTotp` with the same JWT must not treat the
+    // login as still pending: the slot is dropped as soon as a session reaches the Keychain, so a
+    // stale retry can never overwrite whatever was persisted since.
+    let userJwt = AuthTestFixtures.userJwt()
+    let failure = PortalAuthError.sessionStorageFailure(message: "keystore write failed")
+    self.requests.enqueue(AuthTestFixtures.grantResponse(clientSessionToken: nil, userJwt: userJwt, totpLink: nil))
+    self.requests.enqueue(AuthTestFixtures.totpResponse(clientSessionToken: "totp-session-token"))
+    _ = try self.totpRequired(await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
+    self.storage.onSet = { [storage = self.storage] _ in
+      if storage.setCalls == 1 { throw failure }
+    }
+
+    await XCTAssertThrowsAsync(try await self.auth.verifyTotp("777870", userJwt: userJwt), expected: failure)
+    let replayed = try await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect())
+    guard case let .authenticated(fromReplay)? = replayed else {
+      return XCTFail("The re-delivered redirect should replay as the authenticated session, got \(String(describing: replayed))")
+    }
+    XCTAssertEqual(try fromReplay.session.getToken(), "totp-session-token")
+    XCTAssertEqual(self.storage.setCalls, 2, "The replay finished the write")
+    XCTAssertEqual(self.requests.callCount, 2, "The replay made no request")
+
+    // The host retries anyway. Nothing is pending, so this is a fresh verification (which a real
+    // backend would reject — the JWT is spent — rather than a silent rewrite of the Keychain).
+    self.requests.enqueue(AuthTestFixtures.totpResponse(clientSessionToken: "second-token"))
+    let again = try await self.auth.verifyTotp("777870", userJwt: userJwt)
+    XCTAssertEqual(self.requests.callCount, 3)
+    XCTAssertEqual(try again.session.getToken(), "second-token")
+  }
+
   func test_verifyTotp_willPostCodeVerbatim_whenBlank() async throws {
     let userJwt = AuthTestFixtures.userJwt()
     self.requests.enqueue(AuthTestFixtures.totpResponse())
