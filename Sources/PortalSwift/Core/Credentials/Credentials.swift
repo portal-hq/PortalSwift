@@ -163,6 +163,15 @@ extension PortalCredentialSupport {
   /// A credential that can no longer resolve (already invalidated, or a failing provider) counts
   /// as not matching: there is nothing left to invalidate, and reporting is once-ever anyway. The
   /// log line names the context only; neither token is logged.
+  ///
+  /// The compare and the invalidation are two calls, not one atomic step: a host credential that
+  /// rotates in the gap between them is still invalidated for the old token's rejection. That
+  /// window is accepted rather than closed. The rotation runs in host code the SDK cannot lock,
+  /// so closing it would need a host-implemented compare-and-invalidate — a new `PortalCredentials`
+  /// requirement that no Portal SDK exposes and that would break parity with Android's two-method
+  /// contract and every existing conformer. What the check buys is shrinking the exposure from the
+  /// whole request duration to the gap between two calls; neither built-in credential can rotate
+  /// (`KeychainPortalSession` holds one token for life, `StaticCredentials` is never reported).
   static func reportUnauthorizedAndLog(_ credentials: PortalCredentials, rejectedToken: String, context: String) {
     guard (try? credentials.getToken()) == rejectedToken else {
       PortalLogger.shared.debug("\(context) - The rejected bearer is no longer the one this credential holds (rotated or already invalidated); not invalidating.")
@@ -610,6 +619,14 @@ final class UnauthorizedHookRegistry {
   /// the ambiguity is logged: invalidating the wrong session is worse than leaving the caller with
   /// the `PortalRequestsError.unauthorized` it is about to receive anyway. The token is compared,
   /// never logged.
+  ///
+  /// The match and the invalidation are separate calls, so a host credential that rotates in the
+  /// gap between them is still invalidated for the old bearer's 401. Accepted, not closed: the
+  /// rotation happens in host code the SDK cannot lock, and an atomic compare-and-invalidate would
+  /// be a new `PortalCredentials` requirement that breaks parity with Android's two-method
+  /// contract. The comparison narrows the exposure from the request's full duration to that gap;
+  /// see `PortalCredentialSupport.reportUnauthorizedAndLog(_:rejectedToken:context:)`, which
+  /// applies the same rule and accepts the same window on the non-transport paths.
   func report(bearerToken: String?, from transport: PortalUnauthorizedReporting) {
     self.lock.lock()
     self.pruneStaleEntries()
