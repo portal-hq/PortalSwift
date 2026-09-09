@@ -27,8 +27,11 @@ import Foundation
 /// Deliberately **non-reentrant** (a body that calls `withLock` on the same mutex deadlocks —
 /// `PortalAuth` keeps every locked body in a private `_`-prefixed function that never calls a
 /// public lock-taking method) and **not cancellation-aware** (a cancelled waiter still
-/// acquires the lock in turn, runs its body and releases; `PortalAuth` relies on this so a
-/// cancelled sign-in still finishes persisting a grant the backend has already burned).
+/// acquires the lock in turn, runs its body and releases). That covers the wait only: the body
+/// still runs in the caller's task, so a cancellation-aware call inside it — `URLSession` —
+/// would still be aborted. `PortalAuth` therefore also runs its locked bodies in a task of their
+/// own (`_shieldedFromCancellation`), so a cancelled sign-in still finishes exchanging and
+/// persisting a grant the backend has already burned.
 final class AsyncMutex: @unchecked Sendable {
   private let lock = NSLock()
   private var _isLocked = false

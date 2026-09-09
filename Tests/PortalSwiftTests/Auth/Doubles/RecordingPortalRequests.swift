@@ -124,6 +124,9 @@ struct RecordedRequest {
 /// test wait for that moment with a bounded poll, so a "two deliveries of one grant collapse
 /// into one exchange" test can start the second delivery while the first is provably inside the
 /// transport. Later requests are not gated; setting `gateFirstRequest = true` again re-arms it.
+/// A parked request honours task cancellation the way `URLSession.data(for:)` does: cancelling
+/// the task that issued it makes the request throw `URLError(.cancelled)` instead of waiting, so
+/// a test that cancels a caller mid-exchange exercises what production would do.
 ///
 /// **401 hook.** Conforms to `PortalUnauthorizedReporting` like the real `PortalRequests`, and
 /// mirrors its rule: `onUnauthorized` fires only for a `PortalRequestsError.unauthorized` on a
@@ -153,7 +156,7 @@ final class RecordingPortalRequests: PortalRequestsProtocol, PortalUnauthorizedR
   private var gateConsumed = false
   private var _gatedRequestArrived = false
   private var gateReleased = false
-  private var releaseWaiters: [CheckedContinuation<Void, Never>] = []
+  private var releaseWaiters: [UUID: CheckedContinuation<Void, Error>] = [:]
 
   private var _onUnauthorized: ((String?) -> Void)?
   private var _onUnauthorizedSetCount = 0
@@ -359,8 +362,8 @@ final class RecordingPortalRequests: PortalRequestsProtocol, PortalUnauthorizedR
   func release() {
     self.lock.lock()
     self.gateReleased = true
-    let waiters = self.releaseWaiters
-    self.releaseWaiters = []
+    let waiters = Array(self.releaseWaiters.values)
+    self.releaseWaiters = [:]
     self.lock.unlock()
 
     for waiter in waiters {
@@ -424,7 +427,7 @@ final class RecordingPortalRequests: PortalRequestsProtocol, PortalUnauthorizedR
     let recorded = self.record(request)
     defer { self.finishInFlight() }
 
-    await self.holdIfGated()
+    try await self.holdIfGated()
 
     do {
       return try self.resolve(recorded)
@@ -490,23 +493,42 @@ final class RecordingPortalRequests: PortalRequestsProtocol, PortalUnauthorizedR
 
   /// Parks the first request while the gate is armed and unreleased. The check and the enqueue
   /// happen under the lock, so a `release()` racing the arrival cannot be missed.
-  private func holdIfGated() async {
-    await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+  ///
+  /// Cancellation-aware, like the `URLSession` call it stands in for: cancelling the issuing task
+  /// resumes the parked continuation with `URLError(.cancelled)`. The cancellation handler and
+  /// the parking both take `lock`, so a cancel that lands before the continuation is stored is
+  /// caught by the `Task.isCancelled` check under the same lock and one that lands after finds
+  /// the waiter by id; neither can be missed or resumed twice.
+  private func holdIfGated() async throws {
+    let waiterId = UUID()
+    try await withTaskCancellationHandler {
+      try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+        self.lock.lock()
+        guard self._gateFirstRequest, !self.gateConsumed else {
+          self.lock.unlock()
+          continuation.resume()
+          return
+        }
+        self.gateConsumed = true
+        self._gatedRequestArrived = true
+        if self.gateReleased {
+          self.lock.unlock()
+          continuation.resume()
+          return
+        }
+        if Task.isCancelled {
+          self.lock.unlock()
+          continuation.resume(throwing: URLError(.cancelled))
+          return
+        }
+        self.releaseWaiters[waiterId] = continuation
+        self.lock.unlock()
+      }
+    } onCancel: {
       self.lock.lock()
-      guard self._gateFirstRequest, !self.gateConsumed else {
-        self.lock.unlock()
-        continuation.resume()
-        return
-      }
-      self.gateConsumed = true
-      self._gatedRequestArrived = true
-      if self.gateReleased {
-        self.lock.unlock()
-        continuation.resume()
-        return
-      }
-      self.releaseWaiters.append(continuation)
+      let waiter = self.releaseWaiters.removeValue(forKey: waiterId)
       self.lock.unlock()
+      waiter?.resume(throwing: URLError(.cancelled))
     }
   }
 

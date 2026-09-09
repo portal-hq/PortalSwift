@@ -325,6 +325,12 @@ public final class PortalAuth: @unchecked Sendable {
   /// failure rejects the login rather than handing back a session that will not survive a
   /// restart. URLs longer than 8192 UTF-16 units return `nil` without being parsed.
   ///
+  /// Cancellation is honoured only *before* the exchange starts: a call made from an already
+  /// cancelled task throws `CancellationError` and sends nothing. Once the exchange has begun it
+  /// runs to completion even if the calling task is cancelled meanwhile — the backend burns the
+  /// grant before it answers, so aborting the request would strand a session that exists
+  /// everywhere except on this device — and the result is still returned.
+  ///
   /// Returns `.totpRequired` when the grant carries a `userJwt` instead of a session token.
   /// Nothing is persisted on that path; complete it with `verifyTotp(_:userJwt:)`. A grant left
   /// on that step replays as the same step; once `verifyTotp` accepts the code the same grant
@@ -363,6 +369,10 @@ public final class PortalAuth: @unchecked Sendable {
   /// the write and returns the session that was issued, without a network call (`code` is not
   /// consulted on that path). A different `userJwt` starts a new verification.
   ///
+  /// Cancellation is honoured only before the request is sent, on the same terms as
+  /// `handleRedirect(_:)`: the JWT is retired by the backend before it answers, so a verification
+  /// that has begun runs to completion and returns even to a cancelled caller.
+  ///
   /// - Throws: `PortalAuthError.invalidUserJwt(detail:)` when `userJwt` cannot be read — raised
   ///   **before** the network call, so a bad JWT never costs the user a live code;
   ///   `.malformedResponse(path, "clientSessionToken")` when the response carries no session
@@ -373,10 +383,14 @@ public final class PortalAuth: @unchecked Sendable {
     // have spent a code the user physically typed.
     let endUserId = try UserJwt.readEndUserId(from: userJwt)
 
+    // A caller that is already cancelled must not spend a code it no longer wants. Past this
+    // point cancellation no longer reaches the verification — see `_shieldedFromCancellation`.
+    try Task.checkCancellation()
+
     // Held from before the request through the persist, on the same terms as `handleRedirect`:
     // it keeps `clearPersistedSession()` from landing between the two and leaving a signed-out
     // user with a session that outlived the sign-out.
-    return try await self.grantMutex.withLock {
+    return try await self._shieldedFromCancellation { try await self.grantMutex.withLock {
       // The code for this JWT was already accepted and only the write is outstanding: finish it.
       // Re-sending the JWT could only come back 401 — the backend retired it when it answered.
       if let pending = self.pendingTotpPersist, pending.userJwt == userJwt {
@@ -398,7 +412,7 @@ public final class PortalAuth: @unchecked Sendable {
       self._markPersisted()
       PortalLogger.shared.debug("PortalAuth.verifyTotp() - TOTP accepted; session persisted for endUserId: \(endUserId).")
       return result
-    }
+    } }
   }
 
   // MARK: - Persistence
@@ -528,12 +542,34 @@ public final class PortalAuth: @unchecked Sendable {
       return nil
     }
 
-    return try await self.grantMutex.withLock {
+    // A caller that is already cancelled must not exchange a grant it no longer wants: the grant
+    // is single-use, and a session minted for nobody is worse than one never minted. Past this
+    // point cancellation no longer reaches the exchange — see `_shieldedFromCancellation`.
+    try Task.checkCancellation()
+
+    return try await self._shieldedFromCancellation { try await self.grantMutex.withLock {
       if let memo = self.consumedGrant, memo.token == token {
         return try self._replay(memo)
       }
       return try await self._exchangeGrant(token: token, params: params)
-    }
+    } }
+  }
+
+  /// Runs `body` in a task of its own and awaits it, so a cancellation of the calling task that
+  /// lands after `body` has started cannot abort it.
+  ///
+  /// `AsyncMutex` ignores cancellation while *waiting*, but the body it then runs is still the
+  /// caller's task, and the production transport (`URLSession.data(for:)`) is cancellation-aware:
+  /// a cancel arriving after the request left the device aborts it client-side while the backend,
+  /// which burns the grant (and retires a TOTP `userJwt`) before answering, has already minted a
+  /// session nobody will ever receive — and a redelivered redirect can only fail. An unstructured
+  /// `Task` does not inherit the caller's cancellation, and awaiting its `value` is not itself a
+  /// cancellation point, so the exchange completes and its result reaches even a cancelled caller.
+  /// Callers check cancellation *before* entering, so nothing is started for a caller that is
+  /// already gone.
+  private func _shieldedFromCancellation<T: Sendable>(_ body: @escaping @Sendable () async throws -> T) async throws -> T {
+    let task = Task { try await body() }
+    return try await task.value
   }
 
   /// Serves a re-delivered redirect from the memo. Called only with `grantMutex` held.

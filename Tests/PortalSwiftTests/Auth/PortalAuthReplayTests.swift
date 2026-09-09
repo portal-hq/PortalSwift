@@ -689,8 +689,10 @@ final class PortalAuthReplayTests: XCTestCase {
     let didArrive = await requests.waitUntilArrived()
     XCTAssertTrue(didArrive, "The exchange reached the transport")
 
-    // The grant is already spent at the backend by this point, so abandoning the persist would
-    // strand the user with a session that exists everywhere except on this device.
+    // The grant is already spent at the backend by this point, so abandoning the exchange would
+    // strand the user with a session that exists everywhere except on this device. The transport
+    // double aborts a parked request on cancellation exactly as `URLSession` would, so this only
+    // passes if the exchange runs shielded from the caller's cancellation.
     cancelled.cancel()
     requests.release()
     try await cancelled.value
@@ -709,6 +711,67 @@ final class PortalAuthReplayTests: XCTestCase {
     let followUp = try self.expectAuthenticated(followUpBox.result)
     XCTAssertTrue(followUp.session === first.session, "The follow-up replayed the memo the cancelled call recorded")
     XCTAssertEqual(requests.callCount, 1, "The follow-up cost no request")
+  }
+
+  func test_handleRedirect_willNotExchange_whenCalledFromAnAlreadyCancelledTask() async throws {
+    // Shielding starts only once the exchange has begun. A caller that is cancelled before it
+    // asks must not spend the single-use grant on a login nobody is waiting for.
+    self.requests.defaultResponse = AuthTestFixtures.grantResponse()
+    let auth = self.auth
+    let redirect = AuthTestFixtures.magicLinkRedirect()
+
+    let task = Task<AuthResult?, Error> {
+      withUnsafeCurrentTask { $0?.cancel() }
+      return try await auth.handleRedirect(redirect)
+    }
+
+    await XCTAssertThrowsAsync(try await task.value) { error in
+      XCTAssertTrue(error is CancellationError, "Expected CancellationError, got \(type(of: error))")
+    }
+    XCTAssertEqual(self.requests.callCount, 0, "Nothing is sent for a caller that is already gone")
+    XCTAssertEqual(self.storage.setCalls, 0)
+  }
+
+  func test_verifyTotp_willCompleteVerification_whenCallerCancelled() async throws {
+    // The TOTP endpoint retires the userJwt before it answers, so an aborted verification would
+    // strand the issued session just like an aborted grant exchange.
+    self.requests.defaultResponse = AuthTestFixtures.totpResponse(clientSessionToken: "totp-session-token")
+    self.requests.gateFirstRequest = true
+    let auth = self.auth
+    let requests = self.requests
+    let userJwt = AuthTestFixtures.userJwt()
+    let box = ResultBox()
+
+    let cancelled = Task<Void, Error> {
+      box.store(.authenticated(try await auth.verifyTotp("777870", userJwt: userJwt)))
+    }
+    let didArrive = await requests.waitUntilArrived()
+    XCTAssertTrue(didArrive, "The verification reached the transport")
+
+    cancelled.cancel()
+    requests.release()
+    try await cancelled.value
+
+    XCTAssertEqual(requests.callCount, 1)
+    XCTAssertEqual(self.storage.setCalls, 1, "The cancelled call still finished verifying and persisting")
+    let result = try self.expectAuthenticated(box.result)
+    XCTAssertEqual(try result.session.getToken(), "totp-session-token")
+  }
+
+  func test_verifyTotp_willNotSend_whenCalledFromAnAlreadyCancelledTask() async throws {
+    self.requests.defaultResponse = AuthTestFixtures.totpResponse()
+    let auth = self.auth
+    let userJwt = AuthTestFixtures.userJwt()
+
+    let task = Task<AuthenticatedResult, Error> {
+      withUnsafeCurrentTask { $0?.cancel() }
+      return try await auth.verifyTotp("777870", userJwt: userJwt)
+    }
+
+    await XCTAssertThrowsAsync(try await task.value) { error in
+      XCTAssertTrue(error is CancellationError, "Expected CancellationError, got \(type(of: error))")
+    }
+    XCTAssertEqual(self.requests.callCount, 0, "A code is never spent for a caller that is already gone")
   }
 
   func test_handleRedirect_willBeIdempotent_underTenConcurrentDeliveries() async throws {

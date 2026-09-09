@@ -109,7 +109,7 @@ public struct AuthorizeUrlResult: Equatable {
 /// restart — so the host can pass it straight to `Portal(credentials:)`. Not `Equatable`:
 /// `session` is a protocol existential, and two results are meaningfully the same only when
 /// they carry the same session instance, which callers compare with `===`.
-public struct AuthenticatedResult {
+public struct AuthenticatedResult: Sendable {
   /// The credential to hand to `Portal(credentials:)`. Already persisted.
   public let session: PortalSession
   /// The Portal Client this session belongs to, when the backend reported one.
@@ -132,7 +132,7 @@ public struct AuthenticatedResult {
 /// `PortalAuth.verifyTotp(_:userJwt:)` and never persist it. `totpLink` is present only on
 /// first-time enrollment and embeds the TOTP secret, so it must never be logged (see
 /// `totpSecret` / `qrCodeImage(scale:)` for the supported ways to show it).
-public struct TotpRequiredResult: Equatable {
+public struct TotpRequiredResult: Equatable, Sendable {
   /// The short-lived token that authorises the TOTP step. Never persisted; pass back verbatim.
   public let userJwt: String
   /// An `otpauth://` URI (RFC 6238) on first-time enrollment, or `nil` when the user is already
@@ -185,7 +185,7 @@ extension TotpRequiredResult: CustomStringConvertible, CustomDebugStringConverti
 /// A two-case sum so a `switch` is exhaustive: either the login is done and a session exists,
 /// or a TOTP code is still required and nothing has been persisted. Mirrors the Android,
 /// React Native and Web SDKs.
-public enum AuthResult {
+public enum AuthResult: Sendable {
   /// The login is complete; `session` is persisted and ready for `Portal(credentials:)`.
   case authenticated(AuthenticatedResult)
   /// A TOTP code is required; complete the login with `PortalAuth.verifyTotp(_:userJwt:)`.
