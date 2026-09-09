@@ -336,14 +336,56 @@ final class KeychainPortalSessionTests: XCTestCase {
     }
   }
 
-  func test_invalidate_willNotRetryDelete_afterFailure() {
+  func test_invalidate_willRetryDelete_afterFailure() throws {
+    // One Keychain fault must not make every later sign-out a silent success while a restorable
+    // copy stays on disk: the compare token outlives the in-memory token until the delete lands.
+    let attempts = CallCounter()
+    self.storage.onDeleteIfCurrent = { _ in
+      attempts.increment()
+      if attempts.value == 1 {
+        throw PortalAuthError.sessionStorageFailure(message: "keychain locked")
+      }
+    }
+
+    XCTAssertThrowsError(try self.subject.invalidate())
+    XCTAssertThrowsError(try self.subject.getToken()) { error in
+      XCTAssertEqual(error as? PortalCredentialError, .sessionInvalidated, "The in-memory session is over even though the delete failed")
+    }
+    XCTAssertEqual(self.storage.deleteIfCurrentCalls, 1)
+
+    try self.subject.invalidate()
+
+    XCTAssertEqual(self.storage.deleteIfCurrentCalls, 2, "The retry runs the conditional delete again")
+    XCTAssertEqual(self.storage.deleteIfCurrentTokens.last, Self.sessionToken, "Against this session's own token")
+    XCTAssertNil(self.storage.stored)
+  }
+
+  func test_invalidate_willKeepRetrying_whileDeleteKeepsFailing() {
     self.storage.onDeleteIfCurrent = { _ in
       throw PortalAuthError.sessionStorageFailure(message: "keychain locked")
     }
 
     XCTAssertThrowsError(try self.subject.invalidate())
-    XCTAssertNoThrow(try self.subject.invalidate(), "The token is already nil, so the second call returns early")
-    XCTAssertEqual(self.storage.deleteIfCurrentCalls, 1)
+    XCTAssertThrowsError(try self.subject.invalidate(), "A retry that fails again reports the failure again, never a false success")
+    XCTAssertThrowsError(try self.subject.invalidate())
+    XCTAssertEqual(self.storage.deleteIfCurrentCalls, 3)
+  }
+
+  func test_invalidate_willNotTouchStorage_onceARetrySucceeded() throws {
+    let attempts = CallCounter()
+    self.storage.onDeleteIfCurrent = { _ in
+      attempts.increment()
+      if attempts.value == 1 {
+        throw PortalAuthError.sessionStorageFailure(message: "keychain locked")
+      }
+    }
+
+    XCTAssertThrowsError(try self.subject.invalidate())
+    try self.subject.invalidate()
+    try self.subject.invalidate()
+    try self.subject.invalidate()
+
+    XCTAssertEqual(self.storage.deleteIfCurrentCalls, 2, "Once the delete has landed, invalidate is a no-op again")
   }
 
   func test_invalidate_willNotDeleteNewerSession() throws {
@@ -505,13 +547,22 @@ final class KeychainPortalSessionTests: XCTestCase {
       XCTAssertEqual(error as? PortalAuthError, .sessionStorageFailure(message: "keychain locked"))
     }
 
-    let finished = try await withTimeout(2) {
-      try PortalCredentialSupport.invalidate(session)
-      return true
+    // The second call retries the delete — which still fails — instead of returning a false
+    // success. What this case guards is that it runs at all: the monitor was released by the throw.
+    let secondFailure = try await withTimeout(2) { () -> String? in
+      do {
+        try PortalCredentialSupport.invalidate(session)
+        return nil
+      } catch let error as PortalAuthError {
+        guard case let .sessionStorageFailure(message) = error else { return "unexpected PortalAuthError" }
+        return message
+      } catch {
+        return "unexpected \(type(of: error))"
+      }
     }
 
-    XCTAssertEqual(finished, true, "The per-credential monitor is released even when the invalidation throws")
-    XCTAssertEqual(storage.deleteIfCurrentCalls, 1, "The second call returns early and makes no further delete")
+    XCTAssertEqual(secondFailure, "keychain locked", "The per-credential monitor is released even when the invalidation throws, and the retry reports the failure again")
+    XCTAssertEqual(storage.deleteIfCurrentCalls, 2, "The second call retries the delete rather than returning early")
   }
 
   func test_staticApiKeyOf_willReturnEmptyForSession() {

@@ -550,7 +550,9 @@ public final class Portal: PortalProtocol {
   /// `async` for parity with Android's `suspend fun clearSession()`, and so a future session
   /// type can perform asynchronous cleanup without a signature change.
   /// - Throws: Whatever the credential's `invalidate()` throws when its persisted copy could
-  ///   not be deleted. The in-memory session is over either way.
+  ///   not be deleted. The in-memory session is over either way, and the call is retryable: for
+  ///   a `PortalSession` the next `clearSession()` runs the delete again rather than returning
+  ///   success while a restorable copy is still on disk.
   public func clearSession() async throws {
     try PortalCredentialSupport.invalidate(self.credentials)
   }
