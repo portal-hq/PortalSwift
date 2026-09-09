@@ -719,11 +719,13 @@ extension FirebaseStorageTests {
   }
 
   func test_read_willThrowSessionInvalidated_whenCredentialInvalidatedBetweenAttempts() async throws {
-    // given: the session dies while the retry is refreshing the Firebase token, which is the
-    // window between the two attempts the storage re-resolves the bearer in.
+    // given: the session dies between the first attempt and the retry, the window in which the
+    // storage re-resolves the bearer.
     let session = MockPortalSession(tokenValue: "portal-tok-1")
+    // Invalidated from the first Firebase callback: after the bearer for attempt one was resolved,
+    // so attempt one still goes out and 401s, and before the retry re-resolves the bearer.
     firebaseTokens.onCall = { call in
-      guard call == 2 else {
+      guard call == 1 else {
         return
       }
       try? session.invalidate()
@@ -739,6 +741,7 @@ extension FirebaseStorageTests {
 
     // then
     XCTAssertEqual(spy.executeCallsCount, 1)
+    XCTAssertEqual(firebaseTokenCalls, 1, "The retry checks the bearer before asking the host for another Firebase token")
     XCTAssertEqual(session.invalidateCalls, 1)
     let notified = await waitUntil(timeout: 0.3) { recorder.count > 0 }
     XCTAssertFalse(notified, "A credential error is not a backend rejection and must not be reported.")
@@ -747,8 +750,10 @@ extension FirebaseStorageTests {
   func test_read_willNotRewrapCredentialError_intoRequestFailed() async throws {
     // given
     let session = MockPortalSession(tokenValue: "portal-tok-1")
+    // Invalidated from the first Firebase callback: after the bearer for attempt one was resolved,
+    // so attempt one still goes out and 401s, and before the retry re-resolves the bearer.
     firebaseTokens.onCall = { call in
-      guard call == 2 else {
+      guard call == 1 else {
         return
       }
       try? session.invalidate()
@@ -944,8 +949,10 @@ extension FirebaseStorageTests {
   func test_write_willThrowSessionInvalidated_whenCredentialInvalidatedBetweenAttempts() async throws {
     // given
     let session = MockPortalSession(tokenValue: "portal-tok-1")
+    // Invalidated from the first Firebase callback: after the bearer for attempt one was resolved,
+    // so attempt one still goes out and 401s, and before the retry re-resolves the bearer.
     firebaseTokens.onCall = { call in
-      guard call == 2 else {
+      guard call == 1 else {
         return
       }
       try? session.invalidate()
@@ -963,6 +970,7 @@ extension FirebaseStorageTests {
     }
 
     XCTAssertEqual(spy.executeCallsCount, 1)
+    XCTAssertEqual(firebaseTokenCalls, 1, "The retry checks the bearer before asking the host for another Firebase token")
   }
 
   func test_write_willThrowTokenUnavailable_whenRefreshReturnsNil() async throws {

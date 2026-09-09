@@ -360,6 +360,60 @@ final class KeychainPortalSessionTests: XCTestCase {
     XCTAssertNil(self.storage.stored)
   }
 
+  func test_invalidate_willMakeAnOverlappingCallerObserveTheDeleteFailure() async throws {
+    // Two direct callers overlap: the first is inside a delete that will fail, the second arrives
+    // meanwhile. The second must not return a success it did not witness — it waits, finds the
+    // delete still pending, retries it and sees the failure too.
+    let session = self.subject
+    let attempts = CallCounter()
+    let release = DispatchSemaphore(value: 0)
+    self.storage.onDeleteIfCurrent = { _ in
+      attempts.increment()
+      if attempts.value == 1 {
+        release.wait()
+      }
+      throw PortalAuthError.sessionStorageFailure(message: "keychain locked")
+    }
+
+    final class Outcomes: @unchecked Sendable {
+      private let lock = NSLock()
+      private var _threw: [Bool] = []
+      var threw: [Bool] {
+        self.lock.lock()
+        defer { self.lock.unlock() }
+        return self._threw
+      }
+
+      func record(_ didThrow: Bool) {
+        self.lock.lock()
+        self._threw.append(didThrow)
+        self.lock.unlock()
+      }
+    }
+    let outcomes = Outcomes()
+    let call: () -> Void = {
+      do {
+        try session.invalidate()
+        outcomes.record(false)
+      } catch {
+        outcomes.record(true)
+      }
+    }
+
+    DispatchQueue.global().async(execute: call)
+    let firstInsideDelete = await waitUntil { attempts.value == 1 }
+    XCTAssertTrue(firstInsideDelete)
+    DispatchQueue.global().async(execute: call)
+    // Give the second caller time to reach the delete and block behind the first.
+    try await Task.sleep(nanoseconds: 100_000_000)
+    release.signal()
+
+    let bothFinished = await waitUntil { outcomes.threw.count == 2 }
+    XCTAssertTrue(bothFinished, "Both callers must return once the first delete resolves")
+    XCTAssertEqual(outcomes.threw, [true, true], "Neither caller may report a success it did not observe")
+    XCTAssertEqual(self.storage.deleteIfCurrentCalls, 2, "The second caller retried the delete after the first failed")
+  }
+
   func test_invalidate_willKeepRetrying_whileDeleteKeepsFailing() {
     self.storage.onDeleteIfCurrent = { _ in
       throw PortalAuthError.sessionStorageFailure(message: "keychain locked")

@@ -181,8 +181,10 @@ public class FirebaseStorage: Storage, PortalStorage {
       throw FirebaseStorageError.requestFailed(underlying: error)
     }
 
-    let refreshedFirebaseToken = try await self.obtainFirebaseToken()
+    // Same order as the first attempt: the bearer first, so a session that died under another
+    // request's 401 fails here without a wasted (and possibly network-bound) refresh at the host.
     let refreshedBearerToken = try PortalCredentialSupport.resolveToken(credentials)
+    let refreshedFirebaseToken = try await self.obtainFirebaseToken()
 
     do {
       return try await perform(refreshedBearerToken, refreshedFirebaseToken)
