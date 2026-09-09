@@ -172,10 +172,12 @@ extension ViewController: ClientAuthReporter {
   /// build runs in a `Task`, and if two different users' sessions were adopted in one main-thread
   /// turn the first task would wake to find the second session in the global and run the first
   /// user's adoption — `getClient`, the custodian `/clients/register` call, `createWallet` —
-  /// through the second user's credential. The coordinator's session is still set first, mirroring
-  /// Android, so the rest of the screen (`resolveAuthUiState`, sign-out, the eject guards) sees the
-  /// new credential immediately, and adoption runs against this screen's Portal rather than one
-  /// built inside the login screen.
+  /// through the second user's credential. The task also checks, before building anything, that
+  /// the coordinator still holds the session it was started for: a sign-out or a later adoption
+  /// landing in that same turn would otherwise leave the earlier task installing a Portal nobody
+  /// wants. The coordinator's session is still set first, mirroring Android, so the rest of the
+  /// screen (`resolveAuthUiState`, sign-out, the eject guards) sees the new credential immediately,
+  /// and adoption runs against this screen's Portal rather than one built inside the login screen.
   ///
   /// Overlapping calls for the same user (a launch-time restore and a redirect landing
   /// milliseconds apart) join one run through `AdoptionGuard`, so `createWallet()` can never be
@@ -188,6 +190,15 @@ extension ViewController: ClientAuthReporter {
     self.updateClientAuthUi()
 
     Task {
+      // Woke after a later adoption or a sign-out landed in the same main-thread turn: the
+      // coordinator no longer holds this session, so the Portal, the guard entry and the network
+      // calls below would all run for a user the screen has already moved past. The newcomer's own
+      // task does the work for the session that is current.
+      guard coordinator.session === session else {
+        self.log("Client Auth adoption of \(session.endUserId) superseded before it started; skipped")
+        return
+      }
+
       let portal: Portal
       do {
         portal = try await self.registerPortal(credentialSource: .session(session))

@@ -39,13 +39,19 @@ private let ipv6LoopbackLiteral = "::1"
 /// Without this, an integrator who points `apiHost` / `mpcHost` / `enclaveMPCHost` /
 /// `webSocketServer` at a domain outside `portalhq.io` — a custodian proxy, a private staging
 /// domain — would have every 401 from their own backend classified as third-party, and session
-/// invalidation would silently never fire; the RPC bearer and the trace header would be withheld
-/// the same way. The Web SDK's `isPortalGatewayUrl` trusts the configured host for the same
-/// reason. Only hosts the SDK was *constructed* with are registered; `rpcConfig` URLs never are,
-/// because a custom RPC gateway is exactly what the bearer gate must keep untrusted. Process-wide
-/// and lock-guarded, like `CredentialInvalidationRegistry`: a host is a deployment fact, not
-/// per-instance state. Public so a host that fronts Portal through its own domain can register
-/// it explicitly.
+/// invalidation would silently never fire; the trace header would be withheld the same way. The
+/// Web SDK's `isPortalGatewayUrl` trusts the configured host for the same reason. Only hosts the
+/// SDK was *constructed* with are registered; `rpcConfig` URLs never are, because a custom RPC
+/// gateway is exactly what the bearer gate must keep untrusted.
+///
+/// The RPC bearer — the one gate that *sends* a credential — does not consult this registry.
+/// `PortalProvider` trusts the static allow-list plus the hosts its own `Portal` was constructed
+/// with (`isPortalOwnedUrl(_:configuredHosts:)`), so constructing another `Portal`, `PortalApi`,
+/// `PortalAuth` or `PortalConnect` in the process with a custom host can never route this
+/// instance's credential to an `rpcConfig` URL on that host or a subdomain of it. Process-wide
+/// and lock-guarded, like `CredentialInvalidationRegistry`, for the 401 and trace gates, where a
+/// false positive costs a spurious invalidation or a trace id — never a credential. Public so a
+/// host that fronts Portal through its own domain can register it explicitly.
 public enum PortalOwnedHosts {
   private static let lock = NSLock()
   private static var hosts: Set<String> = []
@@ -70,7 +76,21 @@ public enum PortalOwnedHosts {
   static func contains(_ host: String) -> Bool {
     self.lock.lock()
     defer { self.lock.unlock() }
-    return self.hosts.contains { registered in host == registered || hasDotAnchoredSuffix(host, registered) }
+    return Self.matches(host, anyOf: self.hosts)
+  }
+
+  /// The normalized form of every value that yields a well-formed host — the same normalization
+  /// `register` applies — for a caller that keeps an instance-scoped host set instead of using the
+  /// registry (`PortalProvider`'s bearer gate).
+  static func normalize(_ values: [String]) -> Set<String> {
+    Set(values.compactMap(Self.normalizedHost))
+  }
+
+  /// `true` when `host` — already lowercased and trailing-dot trimmed — equals one of `hosts` or
+  /// is a subdomain of one. The single matching rule shared by the registry and the
+  /// instance-scoped gate, so the two can never disagree on what a configured host covers.
+  static func matches(_ host: String, anyOf hosts: Set<String>) -> Bool {
+    hosts.contains { configured in host == configured || hasDotAnchoredSuffix(host, configured) }
   }
 
   /// Test seam: forgets every registered host.
@@ -129,7 +149,8 @@ public enum PortalOwnedHosts {
 /// - Only then are the allow-lists consulted: `localhost`, `127.0.0.1` and `*.localhost` for
 ///   local development, `portalhq.io` / `portalhq.dev` as the whole host or as a dot-anchored
 ///   suffix, and finally the hosts the SDK was configured with (`PortalOwnedHosts`), matched the
-///   same way.
+///   same way. `isPortalOwnedUrl(_:configuredHosts:)` is the same test with that last step
+///   limited to one instance's own hosts; it is what the RPC bearer gate uses.
 ///
 /// The scan is a hand-rolled linear pass over the UTF-8 bytes (no regular expressions), so a
 /// hostile multi-hundred-kilobyte input completes in linear time.
@@ -137,47 +158,91 @@ public enum PortalOwnedHosts {
 /// - Parameter url: The absolute URL string to classify.
 /// - Returns: `true` only when the host is unambiguously Portal-owned or a local loopback.
 public func isPortalOwnedUrl(_ url: String) -> Bool {
+  switch classifyPortalHost(url) {
+  case .owned:
+    return true
+  case .rejected:
+    return false
+  case let .candidate(host):
+    // Hosts an SDK instance was configured with (`apiHost`, `mpcHost`, `enclaveMPCHost`,
+    // `webSocketServer`, `PortalAuth`'s `apiHost`) — see `PortalOwnedHosts`.
+    return PortalOwnedHosts.contains(host)
+  }
+}
+
+/// `isPortalOwnedUrl(_:)` with the configured-host step limited to `configuredHosts` — the
+/// normalized hosts *one* SDK instance was constructed with (`PortalOwnedHosts.normalize`) —
+/// instead of the process-wide registry.
+///
+/// This is the gate for the RPC bearer, the one place the SDK sends a credential. Trusting the
+/// registry there would let any other `Portal`, `PortalApi`, `PortalAuth` or `PortalConnect` in
+/// the process, merely by being constructed with a custom host, route this instance's credential
+/// to an `rpcConfig` URL on that host or a subdomain of it. The loopback and static Portal
+/// allow-lists and every structural rejection are identical to `isPortalOwnedUrl(_:)`.
+func isPortalOwnedUrl(_ url: String, configuredHosts: Set<String>) -> Bool {
+  switch classifyPortalHost(url) {
+  case .owned:
+    return true
+  case .rejected:
+    return false
+  case let .candidate(host):
+    return PortalOwnedHosts.matches(host, anyOf: configuredHosts)
+  }
+}
+
+/// What the structural checks and static allow-lists decide about a URL before the
+/// configured-host step.
+private enum PortalHostClassification {
+  /// Loopback or a static Portal apex: owned regardless of configuration.
+  case owned
+  /// Malformed, hostile, or an IP literal other than loopback: never owned.
+  case rejected
+  /// A well-formed host outside the static lists; configured-host trust decides.
+  case candidate(String)
+}
+
+/// The shared front half of both `isPortalOwnedUrl` overloads — see `isPortalOwnedUrl(_:)` for
+/// the rules each step enforces.
+private func classifyPortalHost(_ url: String) -> PortalHostClassification {
   // Refuse any percent-encoding in the raw host before parsing. Foundation's URL parser changed
   // between iOS 17 (CFURL) and iOS 18+ (swift-foundation): the older one hands back an already
   // decoded host for some encodings, so `attacker.com%2f.portalhq.io` can reach the suffix test
   // as `attacker.com/.portalhq.io`, or `a%2eportalhq%2eio` as `a.portalhq.io`. No Portal or
   // loopback host is ever spelled with a `%`, so the raw string is the parser-independent gate.
   guard !rawHostContainsPercentEncoding(url) else {
-    return false
+    return .rejected
   }
 
   guard let components = URLComponents(string: url),
         let scheme = components.scheme, !scheme.isEmpty,
         let rawHost = components.percentEncodedHost, !rawHost.isEmpty
   else {
-    return false
+    return .rejected
   }
 
   let host = trimTrailingDots(rawHost.lowercased())
   guard !host.isEmpty else {
-    return false
+    return .rejected
   }
 
   // An IP literal is never matched against the domain allow-list; only loopback is accepted.
   if let ipv6Literal = ipv6LiteralValue(in: host) {
-    return ipv6Literal == ipv6LoopbackLiteral
+    return ipv6Literal == ipv6LoopbackLiteral ? .owned : .rejected
   }
 
   guard isWellFormedHostName(host) else {
-    return false
+    return .rejected
   }
 
   if localDevelopmentHosts.contains(host) || hasDotAnchoredSuffix(host, "localhost") {
-    return true
+    return .owned
   }
 
   for apex in portalOwnedApexDomains where host == apex || hasDotAnchoredSuffix(host, apex) {
-    return true
+    return .owned
   }
 
-  // Hosts an SDK instance was configured with (`apiHost`, `mpcHost`, `enclaveMPCHost`,
-  // `webSocketServer`, `PortalAuth`'s `apiHost`) — see `PortalOwnedHosts`.
-  return PortalOwnedHosts.contains(host)
+  return .candidate(host)
 }
 
 /// `true` when the authority's host portion of the raw URL string contains a `%`.

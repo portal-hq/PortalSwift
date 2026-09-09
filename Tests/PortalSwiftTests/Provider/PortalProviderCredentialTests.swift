@@ -55,6 +55,9 @@ final class PortalProviderCredentialTests: XCTestCase {
     static let userinfoHost = "https://api.portalhq.io@attacker.com/rpc"
     static let portalHostInPath = "https://attacker.com/api.portalhq.io/rpc"
     static let notPortalHost = "https://notportalhq.io/rpc"
+    static let customProxy = "https://api.custodian.example/rpc"
+    static let customProxySubdomain = "https://rpc.api.custodian.example/rpc"
+    static let customProxyLookalike = "https://api.custodian.example.attacker.com/rpc"
   }
 
   private var credentials = MockCredentials(tokenValue: PortalProviderCredentialTests.sessionToken)
@@ -65,6 +68,7 @@ final class PortalProviderCredentialTests: XCTestCase {
   override func setUpWithError() throws {
     try super.setUpWithError()
     CredentialInvalidationRegistry.shared.resetForTesting()
+    PortalOwnedHosts.resetForTesting()
     self.credentials = MockCredentials(tokenValue: Self.sessionToken)
     self.requestsSpy = PortalRequestsSpy()
     self.requestsSpy.returnData = try JSONEncoder().encode(MockConstants.mockRpcResponse)
@@ -76,6 +80,7 @@ final class PortalProviderCredentialTests: XCTestCase {
   override func tearDownWithError() throws {
     self.logger.uninstall()
     CredentialInvalidationRegistry.shared.resetForTesting()
+    PortalOwnedHosts.resetForTesting()
     try super.tearDownWithError()
   }
 
@@ -109,7 +114,8 @@ final class PortalProviderCredentialTests: XCTestCase {
     credentials: PortalCredentials? = nil,
     autoApprove: Bool = true,
     requests: PortalRequestsProtocol? = nil,
-    signer: PortalSignerProtocol? = nil
+    signer: PortalSignerProtocol? = nil,
+    configuredHosts: [String] = []
   ) throws -> PortalProvider {
     try PortalProvider(
       credentials: credentials ?? self.credentials,
@@ -118,7 +124,8 @@ final class PortalProviderCredentialTests: XCTestCase {
       autoApprove: autoApprove,
       requests: requests ?? self.requestsSpy,
       signer: signer,
-      binary: self.mobileSpy
+      binary: self.mobileSpy,
+      configuredHosts: configuredHosts
     )
   }
 
@@ -408,6 +415,63 @@ final class PortalProviderCredentialTests: XCTestCase {
     try await self.rpc(provider)
 
     self.assertBearerSent(Self.sessionToken)
+  }
+
+  // MARK: - request(): configured-host trust is per instance
+
+  func test_request_rpc_willAttachBearer_onTheOwningInstancesConfiguredHost() async throws {
+    let provider = try makeProvider(rpcUrl: Gateway.customProxy, configuredHosts: ["api.custodian.example"])
+
+    try await self.rpc(provider)
+
+    self.assertBearerSent(Self.sessionToken)
+  }
+
+  func test_request_rpc_willAttachBearer_onASubdomainOfTheOwningInstancesHost() async throws {
+    let provider = try makeProvider(rpcUrl: Gateway.customProxySubdomain, configuredHosts: ["api.custodian.example"])
+
+    try await self.rpc(provider)
+
+    self.assertBearerSent(Self.sessionToken)
+  }
+
+  func test_request_rpc_willAttachBearer_onTheMpcHost() async throws {
+    let provider = try PortalProvider(
+      credentials: self.credentials,
+      rpcConfig: [Self.chainId: "https://mpc.custodian.example/rpc"],
+      keychain: MockPortalKeychain(),
+      autoApprove: true,
+      mpcHost: "mpc.custodian.example",
+      requests: self.requestsSpy,
+      binary: self.mobileSpy
+    )
+
+    try await self.rpc(provider)
+
+    self.assertBearerSent(Self.sessionToken)
+  }
+
+  func test_request_rpc_willWithholdBearer_onALookalikeOfTheOwningInstancesHost() async throws {
+    let provider = try makeProvider(rpcUrl: Gateway.customProxyLookalike, configuredHosts: ["api.custodian.example"])
+
+    try await self.rpc(provider)
+
+    self.assertNoBearerSent()
+    XCTAssertEqual(self.credentials.getTokenCalls, 0)
+  }
+
+  func test_request_rpc_willWithholdBearer_onAHostRegisteredByAnotherInstance() async throws {
+    // Another `Portal` / `PortalApi` / `PortalAuth` / `PortalConnect` in the process was built with
+    // this host, so the 401 and trace gates trust it — but this provider's `Portal` was not, and a
+    // credential must never cross that instance boundary through an `rpcConfig` URL.
+    PortalOwnedHosts.register("api.custodian.example")
+    XCTAssertTrue(isPortalOwnedUrl(Gateway.customProxySubdomain), "Precondition: the registry does trust the host")
+    let provider = try makeProvider(rpcUrl: Gateway.customProxySubdomain)
+
+    try await self.rpc(provider)
+
+    self.assertNoBearerSent()
+    XCTAssertEqual(self.credentials.getTokenCalls, 0, "The credential is not even resolved for a host this instance was not configured with")
   }
 
   func test_request_rpc_willAttachBearer_onLocalhost() async throws {

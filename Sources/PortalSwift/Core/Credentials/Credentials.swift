@@ -578,12 +578,16 @@ final class UnauthorizedHookRegistry {
   /// Reports the owner(s) of `transport` whose credential presented `bearerToken`.
   ///
   /// Every owner whose current `getToken()` equals the rejected bearer is reported — normally
-  /// exactly one. When none matches (the token rotated between request and response, or the
-  /// header used a non-Bearer scheme so no token is known) a lone owner is still reported,
-  /// because its credential is the only one the transport could have sent. With several owners
-  /// and no match nothing is reported and the ambiguity is logged: invalidating the wrong
-  /// session is worse than leaving the caller with the `PortalRequestsError.unauthorized` it is
-  /// about to receive anyway. The token is compared, never logged.
+  /// exactly one. When the header used a non-Bearer scheme no token is known, and a lone owner is
+  /// reported anyway, because its credential is the only one the transport could have sent. A
+  /// bearer that *is* known but matches no owner's current token is left alone, however many
+  /// owners there are: the token rotated (or was invalidated) between request and response, so
+  /// the rejection was for a value nobody holds any more, and invalidating the value that
+  /// replaced it would sign the user out for a stale token's 401 — the very rotation
+  /// `resolveToken` exists to support. With several owners and no token nothing is reported and
+  /// the ambiguity is logged: invalidating the wrong session is worse than leaving the caller with
+  /// the `PortalRequestsError.unauthorized` it is about to receive anyway. The token is compared,
+  /// never logged.
   func report(bearerToken: String?, from transport: PortalUnauthorizedReporting) {
     self.lock.lock()
     self.pruneStaleEntries()
@@ -608,10 +612,13 @@ final class UnauthorizedHookRegistry {
     let targets: [(credentials: PortalCredentials, context: String)]
     if !matches.isEmpty {
       targets = matches
+    } else if bearerToken != nil {
+      PortalLogger.shared.debug("UnauthorizedHookRegistry.report() - A 401 rejected a bearer that no registered credential currently holds (rotated or already invalidated); no credential was invalidated.")
+      return
     } else if owners.count == 1 {
       targets = owners
     } else {
-      PortalLogger.shared.error("UnauthorizedHookRegistry.report() - A 401 on a transport shared by \(owners.count) credentials could not be attributed to any of them; no credential was invalidated.")
+      PortalLogger.shared.error("UnauthorizedHookRegistry.report() - A 401 with no bearer token on a transport shared by \(owners.count) credentials could not be attributed to any of them; no credential was invalidated.")
       return
     }
 

@@ -375,6 +375,31 @@ final class PortalOwnedUrlTests: XCTestCase {
     self.assertOwned(["https://api.custodian.example/api/v3/clients/me"], true)
   }
 
+  func test_isPortalOwnedUrl_configuredHosts_willIgnoreTheRegistry_andTrustOnlyTheGivenHosts() {
+    PortalOwnedHosts.register("api.custodian.example")
+    let mine = PortalOwnedHosts.normalize(["API.Mine.Example.", "https://mpc.mine.example:8443/path", "not a host%"])
+    XCTAssertEqual(mine, ["api.mine.example", "mpc.mine.example"])
+
+    // The registry's host is not this instance's.
+    XCTAssertTrue(isPortalOwnedUrl("https://rpc.api.custodian.example/rpc"))
+    XCTAssertFalse(isPortalOwnedUrl("https://rpc.api.custodian.example/rpc", configuredHosts: mine))
+    XCTAssertFalse(isPortalOwnedUrl("https://rpc.api.custodian.example/rpc", configuredHosts: []))
+
+    // This instance's hosts match whole or as a dot-anchored suffix, after the same normalization
+    // `register` applies.
+    XCTAssertTrue(isPortalOwnedUrl("https://api.mine.example/rpc", configuredHosts: mine))
+    XCTAssertTrue(isPortalOwnedUrl("https://API.Mine.Example./rpc", configuredHosts: mine))
+    XCTAssertTrue(isPortalOwnedUrl("https://rpc.mpc.mine.example/rpc", configuredHosts: mine))
+    XCTAssertFalse(isPortalOwnedUrl("https://api.mine.example.attacker.com/rpc", configuredHosts: mine))
+    XCTAssertFalse(isPortalOwnedUrl("https://notapi.mine.example/rpc", configuredHosts: mine))
+
+    // The loopback and static allow-lists and the structural rejections are unchanged.
+    XCTAssertTrue(isPortalOwnedUrl("https://api.portalhq.io/rpc", configuredHosts: []))
+    XCTAssertTrue(isPortalOwnedUrl("http://localhost:8545", configuredHosts: []))
+    XCTAssertFalse(isPortalOwnedUrl("https://attacker.com%2f.portalhq.io/rpc", configuredHosts: mine))
+    XCTAssertFalse(isPortalOwnedUrl("https://api.mine.example@attacker.com/rpc", configuredHosts: mine))
+  }
+
   func test_register_willAcceptFullUrlsAndPorts_andIgnoreValuesThatAreNotAHost() {
     PortalOwnedHosts.register(
       "https://proxy.custodian.example:8443/some/path?x=1",

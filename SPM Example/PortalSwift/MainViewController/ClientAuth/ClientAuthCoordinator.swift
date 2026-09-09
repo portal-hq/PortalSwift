@@ -187,6 +187,14 @@ final class ClientAuthCoordinator {
       return await existing.value
     }
 
+    // Re-read under the lock. A caller that read `false` above and was descheduled while another
+    // caller's clear ran to completion — flag set, slot emptied — would otherwise start a second
+    // clear, and that one could delete a session persisted in between.
+    guard !self.defaults.bool(forKey: Self.firstLaunchClearKey) else {
+      self.firstLaunchLock.unlock()
+      return true
+    }
+
     // Created under the lock so the body's own cleanup cannot clear the slot before it is filled.
     let started = Task<Bool, Never> { [weak self] in
       // A deallocated coordinator cannot vouch for the Keychain, and the caller is about to

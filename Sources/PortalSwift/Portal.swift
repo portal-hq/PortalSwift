@@ -245,11 +245,13 @@ public final class Portal: PortalProtocol {
     self.credentials = credentials
     self._apiKey = PortalCredentialSupport.staticApiKey(of: credentials)
     self.autoApprove = autoApprove
-    // The hosts this instance was configured with count as Portal-owned for the credential, 401
-    // and trace gates (see `PortalOwnedHosts`). Without this a custodian proxy or a private
-    // staging domain would have every 401 from its own backend classified as third-party, and
-    // session invalidation would silently never fire. `withRpcConfig` URLs are deliberately not
-    // registered: a custom RPC gateway is exactly what the bearer gate must keep untrusted.
+    // The hosts this instance was configured with count as Portal-owned for the 401 and trace
+    // gates (see `PortalOwnedHosts`). Without this a custodian proxy or a private staging domain
+    // would have every 401 from its own backend classified as third-party, and session
+    // invalidation would silently never fire. The RPC bearer gate does not read this registry: the
+    // provider is handed the same hosts directly (`configuredHosts`), so a host some *other*
+    // instance registered can never receive this credential. `withRpcConfig` URLs are deliberately
+    // registered nowhere: a custom RPC gateway is exactly what the bearer gate must keep untrusted.
     PortalOwnedHosts.register(apiHost, mpcHost, enclaveMPCHost)
 
     if let binary = binary {
@@ -292,7 +294,8 @@ public final class Portal: PortalProtocol {
       mpcHost: mpcHost,
       featureFlags: featureFlags,
       binary: self.binary,
-      presignatureSource: self.presignatureManager
+      presignatureSource: self.presignatureManager,
+      configuredHosts: [apiHost, enclaveMPCHost]
     )
 
     // Creating this as a variable first so it's usable to
@@ -440,7 +443,9 @@ public final class Portal: PortalProtocol {
       mpcHost: mpcHost,
       version: version,
       featureFlags: featureFlags,
-      presignatureSource: self.presignatureManager
+      presignatureSource: self.presignatureManager,
+      // This constructor predates `enclaveMPCHost`; the enclave is never used on this path.
+      configuredHosts: [apiHost]
     )
 
     // Retain backward compatible chainId behavior

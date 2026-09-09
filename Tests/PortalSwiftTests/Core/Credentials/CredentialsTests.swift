@@ -347,21 +347,29 @@ final class CredentialsTests: XCTestCase {
     XCTAssertEqual(second.invalidateCalls, 0)
   }
 
-  func test_installUnauthorizedHook_willReportLoneOwner_whenBearerIsUnknownOrRotated() {
+  func test_installUnauthorizedHook_willReportLoneOwner_whenBearerIsUnknown() {
     let requests = PortalRequestsSpy()
     let only = MockCredentials(tokenValue: "token-now")
     PortalCredentialSupport.installUnauthorizedHook(on: requests, for: only, context: "PortalApi")
 
-    // A non-Bearer scheme yields no token; a token that rotated between request and response
-    // matches nothing. With a single owner both are unambiguous.
+    // A non-Bearer scheme yields no token to compare. With a single owner the rejection is still
+    // unambiguous: its credential is the only one the transport could have sent.
     requests.onUnauthorized?(nil)
-    XCTAssertEqual(only.invalidateCalls, 1)
 
+    XCTAssertEqual(only.invalidateCalls, 1)
+  }
+
+  func test_installUnauthorizedHook_willNotReportLoneOwner_whenBearerWasRotatedOut() {
+    let requests = PortalRequestsSpy()
     let rotated = MockCredentials(tokenValue: "token-now")
-    let other = PortalRequestsSpy()
-    PortalCredentialSupport.installUnauthorizedHook(on: other, for: rotated, context: "PortalApi")
-    other.onUnauthorized?("token-before-rotation")
-    XCTAssertEqual(rotated.invalidateCalls, 1)
+    PortalCredentialSupport.installUnauthorizedHook(on: requests, for: rotated, context: "PortalApi")
+
+    // The 401 is for a token nobody holds any more: it rotated between request and response. The
+    // value that replaced it was never rejected, and invalidating it would sign the user out for a
+    // stale token — the rotation `resolveToken` exists to support.
+    requests.onUnauthorized?("token-before-rotation")
+
+    XCTAssertEqual(rotated.invalidateCalls, 0, "A known bearer that matches no current token is left unattributed, even with a single owner")
   }
 
   func test_installUnauthorizedHook_willRegisterSameCredentialOnce() {

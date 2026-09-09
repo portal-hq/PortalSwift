@@ -65,6 +65,11 @@ public class PortalProvider: PortalProviderProtocol {
   private var processedSignatureIds: [String] = []
   private let requests: PortalRequestsProtocol
   private let rpcConfig: [String: String]
+  /// The hosts this provider's owning `Portal` was configured with (`apiHost`, `mpcHost`,
+  /// `enclaveMPCHost`), normalized. The RPC bearer is attached to the static Portal allow-list and
+  /// these — never to hosts other instances registered in `PortalOwnedHosts`, so one instance's
+  /// credential cannot reach another instance's proxy through an `rpcConfig` URL.
+  private let configuredHosts: Set<String>
   private let signer: PortalSignerProtocol
   private let featureFlags: FeatureFlags?
 
@@ -82,13 +87,17 @@ public class PortalProvider: PortalProviderProtocol {
   ///   - credentials: The credential (Client API Key or session) that authenticates Portal-owned
   ///     RPC requests and signatures. Resolved per call, never cached.
   ///   - rpcConfig: CAIP-2 chain id → RPC URL. The credential is attached only to Portal-owned
-  ///     (or local loopback) URLs; third-party gateways never see it.
+  ///     (or local loopback) URLs and to `mpcHost` / `configuredHosts`; third-party gateways
+  ///     never see it.
   ///   - keychain: Where signing shares and addresses live.
   ///   - autoApprove: Auto approves all transactions.
   ///   - requests: The transport. When it reports 401s and has no hook yet, the provider wires
   ///     one so a rejected credential is invalidated and the host is notified.
   ///   - signer: Injectable signer; defaults to a `PortalMpcSigner` that receives the resolved
   ///     token per call.
+  ///   - configuredHosts: Further hosts the owning `Portal` was constructed with (`apiHost`,
+  ///     `enclaveMPCHost`), trusted for the RPC bearer alongside `mpcHost`. Hosts other
+  ///     instances registered process-wide in `PortalOwnedHosts` are deliberately not.
   public init(
     credentials: PortalCredentials,
     rpcConfig: [String: String],
@@ -100,13 +109,15 @@ public class PortalProvider: PortalProviderProtocol {
     requests: PortalRequestsProtocol? = nil,
     signer: PortalSignerProtocol? = nil,
     binary: Mobile? = nil,
-    presignatureSource: PresignatureSource? = nil
+    presignatureSource: PresignatureSource? = nil,
+    configuredHosts: [String] = []
   ) throws {
     // User-defined instance variables
     self.credentials = credentials
     self.autoApprove = autoApprove
     self.keychain = keychain
     self.rpcConfig = rpcConfig
+    self.configuredHosts = PortalOwnedHosts.normalize([mpcHost] + configuredHosts)
 
     // Other instance variables
     self.featureFlags = featureFlags
@@ -134,7 +145,7 @@ public class PortalProvider: PortalProviderProtocol {
   /// The key is wrapped in a `StaticCredentials`. A blank key now throws
   /// `PortalCredentialError.invalidApiKey` here instead of producing a provider that fails on its
   /// first Portal-owned request (parity with the Android and React Native SDKs).
-  @available(*, deprecated, message: "Use init(credentials:rpcConfig:keychain:autoApprove:mpcHost:version:featureFlags:requests:signer:binary:presignatureSource:) and pass StaticCredentials(apiKey) or a PortalSession.")
+  @available(*, deprecated, message: "Use init(credentials:rpcConfig:keychain:autoApprove:mpcHost:version:featureFlags:requests:signer:binary:presignatureSource:configuredHosts:) and pass StaticCredentials(apiKey) or a PortalSession.")
   public convenience init(
     apiKey: String,
     rpcConfig: [String: String],
@@ -457,8 +468,12 @@ public class PortalProvider: PortalProviderProtocol {
       )
       // Host-based, not a string prefix: `https://api.portalhq.io.attacker.com/rpc` passed the old
       // "starts with the production API URL" test and received the end user's session token,
-      // while `web.portalhq.io`, an uppercase spelling or a registered custom host got none.
-      let bearerToken: String? = try isPortalOwnedUrl(rpcUrl) ? PortalCredentialSupport.resolveToken(self.credentials) : nil
+      // while `web.portalhq.io`, an uppercase spelling or this instance's own custom host got none.
+      // Configured-host trust is this instance's (`configuredHosts`), not the process-wide
+      // registry: a host some other `Portal` was built with must never receive this credential.
+      let bearerToken: String? = try isPortalOwnedUrl(rpcUrl, configuredHosts: self.configuredHosts)
+        ? PortalCredentialSupport.resolveToken(self.credentials)
+        : nil
       let request = PortalAPIRequest(
         url: url,
         method: .post,
