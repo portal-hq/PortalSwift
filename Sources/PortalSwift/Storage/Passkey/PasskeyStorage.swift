@@ -27,9 +27,12 @@ public class PasskeyStorage: Storage, PortalStorage {
   ///
   /// A 401 from a WebAuthn endpoint is deliberately **not** attributed to the Portal session: the
   /// WebAuthn host answers 401 for non-credential failures too (a wrong or cancelled passkey), and
-  /// a wrong passkey must cost the user a retry, not the wallet session. The Android and React
-  /// Native SDKs make the same choice, and RN pins it with a test. Do not wire this storage's
-  /// transport to the 401 hook.
+  /// a wrong passkey must cost the user a retry, not the wallet session. A recorded decision, not
+  /// a cross-SDK consensus. The React Native SDK makes the same choice and pins it with a test
+  /// ("Should not invalidate the credential when the passkey host returns a 401"). The Android SDK
+  /// diverges: its `Portal` hands the shared, hooked request client to its passkey storage, so a
+  /// WebAuthn 401 there does invalidate the session. Do not wire this storage's transport to the
+  /// 401 hook.
   var credentials: PortalCredentials?
 
   /// The raw Client API Key behind `credentials`, for callers that still assign one.

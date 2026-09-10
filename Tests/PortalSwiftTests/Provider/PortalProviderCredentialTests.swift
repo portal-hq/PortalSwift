@@ -427,8 +427,24 @@ final class PortalProviderCredentialTests: XCTestCase {
     self.assertBearerSent(Self.sessionToken)
   }
 
-  func test_request_rpc_willAttachBearer_onASubdomainOfTheOwningInstancesHost() async throws {
+  func test_request_rpc_willWithholdBearer_onASubdomainOfTheOwningInstancesHost() async throws {
+    // A configured host is one endpoint, not a domain: `rpc.api.custodian.example` is not
+    // `api.custodian.example`, so it gets no credential unless it is configured itself — the line
+    // the Web SDK's `isPortalGatewayUrl` draws too. An apex passed as `apiHost` must not hand the
+    // credential to every host beneath it.
     let provider = try makeProvider(rpcUrl: Gateway.customProxySubdomain, configuredHosts: ["api.custodian.example"])
+
+    try await self.rpc(provider)
+
+    self.assertNoBearerSent()
+    XCTAssertEqual(self.credentials.getTokenCalls, 0)
+  }
+
+  func test_request_rpc_willAttachBearer_onASubdomainOfTheOwningInstancesHost_onlyWhenConfiguredItself() async throws {
+    let provider = try makeProvider(
+      rpcUrl: Gateway.customProxySubdomain,
+      configuredHosts: ["api.custodian.example", "rpc.api.custodian.example"]
+    )
 
     try await self.rpc(provider)
 
@@ -464,7 +480,7 @@ final class PortalProviderCredentialTests: XCTestCase {
     // Another `Portal` / `PortalApi` / `PortalAuth` / `PortalConnect` in the process was built with
     // this host, so the 401 and trace gates trust it — but this provider's `Portal` was not, and a
     // credential must never cross that instance boundary through an `rpcConfig` URL.
-    PortalOwnedHosts.register("api.custodian.example")
+    PortalOwnedHosts.register("rpc.api.custodian.example")
     XCTAssertTrue(isPortalOwnedUrl(Gateway.customProxySubdomain), "Precondition: the registry does trust the host")
     let provider = try makeProvider(rpcUrl: Gateway.customProxySubdomain)
 

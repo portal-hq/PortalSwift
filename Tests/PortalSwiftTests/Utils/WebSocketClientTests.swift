@@ -803,6 +803,48 @@ final class WebSocketClientTests: XCTestCase {
     XCTAssertEqual(fixture.sleeper.sleepCallsCount, 5, "An exhausted budget does not wait")
   }
 
+  func test_connect_afterExhaustion_willRefillTheBudget_soTheNextDropRetries() async throws {
+    // A host that connects again after the budget was spent starts a new connection lifecycle.
+    // Were the counter carried over, the explicit connect would inherit a budget already at the
+    // cap: one upgrade, and the first drop before the proxy's `connected` answer would give up
+    // again with no retry and no backoff, leaving the client degraded until some handshake
+    // happened to complete.
+    let fixture = try self.defaultFixture()
+    try fixture.client.connect(uri: wsUri)
+    await self.driveReconnects(5, fixture: fixture, startCallsBefore: 1)
+
+    let gaveUp = await waitUntil {
+      if fixture.errors.last?.message == "Reconnect attempts exhausted" {
+        return true
+      }
+      fixture.client.connectState = .connected
+      fixture.client.didReceive(event: .peerClosed, client: FakeStarscreamClient())
+      return false
+    }
+    XCTAssertTrue(gaveUp, "Precondition: the budget is spent")
+    XCTAssertEqual(fixture.client.reconnectAttempts, 5)
+    XCTAssertEqual(fixture.engine.startCallsCount, 6)
+
+    // The host connects again: a new lifecycle, so the counter is back at zero before the proxy
+    // has answered anything.
+    try fixture.client.connect(uri: wsUri)
+    XCTAssertEqual(fixture.client.reconnectAttempts, 0, "A host-initiated connect starts a new lifecycle with the full budget")
+    XCTAssertEqual(fixture.engine.startCallsCount, 7)
+
+    // The upgrade completes, then the socket drops before the proxy's `connected` message — the
+    // drop that used to land on an exhausted counter.
+    let errorsBefore = fixture.errors.count
+    fixture.sleeper.reset()
+    fixture.client.didReceive(event: .connected([:]), client: self.driver())
+    fixture.client.didReceive(event: .peerClosed, client: self.driver())
+
+    let retried = await waitUntil { fixture.engine.startCallsCount == 8 }
+    XCTAssertTrue(retried, "The drop after an explicit reconnect is retried, not reported as exhausted")
+    XCTAssertEqual(fixture.client.reconnectAttempts, 1, "The retry consumed the first attempt of the new budget")
+    XCTAssertEqual(fixture.sleeper.recordedNanoseconds, [500_000_000], "The new budget starts at the base delay")
+    XCTAssertEqual(fixture.errors.count, errorsBefore, "No exhaustion error is emitted for the new lifecycle")
+  }
+
   func test_reconnect_willStopWithoutReporting_whenCredentialInvalidatedBeforeReconnect() async throws {
     let fixture = try self.defaultFixture()
     let recorder = try self.defaultRecorder()

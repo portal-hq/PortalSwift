@@ -130,12 +130,18 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
   /// invalidated on every terminal path.
   private(set) var pingTimer: Timer?
 
-  /// How many reconnects have been started since the last successful `connected` handshake.
-  /// Reset to zero when `handleData()` receives the proxy's `connected` message — not when the
-  /// transport upgrade completes in `handleConnect()`, or a proxy that accepts every upgrade and
-  /// drops the socket during the handshake would refill the budget on each drop and reconnect
-  /// forever. When it reaches `reconnectPolicy.maxAttempts` the next drop gives up instead of
-  /// retrying.
+  /// How many reconnects have been started in the current connection lifecycle since the last
+  /// successful `connected` handshake.
+  ///
+  /// Reset to zero in two places only. `handleData()`, when the proxy's `connected` message
+  /// arrives — not when the transport upgrade completes in `handleConnect()`, or a proxy that
+  /// accepts every upgrade and drops the socket during the handshake would refill the budget on
+  /// each drop and reconnect forever. And `cancelPendingReconnect()`, which every host-initiated
+  /// `connect(uri:)` and teardown goes through: a host that connects again after an outage starts
+  /// a new lifecycle and gets the full budget, rather than inheriting a counter already at the cap
+  /// and giving up on the first drop with no retry and no backoff. Exhaustion itself does not
+  /// refill it, so the cap still holds within one lifecycle. When it reaches
+  /// `reconnectPolicy.maxAttempts` the next drop gives up instead of retrying.
   private(set) var reconnectAttempts: Int {
     get {
       self.reconnectLock.lock()
@@ -1002,15 +1008,19 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
     }
   }
 
-  /// Drops the reconnect that is sleeping in its backoff, if any, and resets the in-flight
+  /// Drops the reconnect that is sleeping in its backoff, if any, resets the in-flight
   /// bookkeeping so the delegate paths stop treating the next transport event as a failed
-  /// attempt. Called by every host-initiated teardown and by a host-initiated `connect(uri:)`.
+  /// attempt, and refills the reconnect budget. Called by every host-initiated teardown and by a
+  /// host-initiated `connect(uri:)` — the two ways a connection lifecycle ends — and never from the
+  /// reconnect path itself, so the attempts spent on one outage cannot leak into the next
+  /// lifecycle while an outage in progress still cannot refill its own budget.
   private func cancelPendingReconnect() {
     self.reconnectLock.lock()
     let task = self.reconnectTask
     self.reconnectTask = nil
     self.isReconnecting = false
     self._isRetryInFlight = false
+    self._reconnectAttempts = 0
     self.reconnectGeneration += 1
     self.reconnectLock.unlock()
     task?.cancel()

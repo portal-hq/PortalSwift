@@ -344,15 +344,26 @@ final class PortalOwnedUrlTests: XCTestCase {
 
   // MARK: - Registered hosts
 
-  func test_isPortalOwnedUrl_willAcceptARegisteredHost_wholeOrAsDotAnchoredSuffix() {
+  func test_isPortalOwnedUrl_willAcceptARegisteredHost_exactly_afterNormalization() {
     PortalOwnedHosts.register("api.custodian.example")
 
     self.assertOwned([
       "https://api.custodian.example/api/v3/clients/me",
       "https://API.Custodian.Example/api/v3/clients/me",
-      "https://api.custodian.example./api/v3/clients/me",
-      "https://rpc.api.custodian.example/rpc"
+      "https://api.custodian.example./api/v3/clients/me"
     ], true)
+  }
+
+  func test_isPortalOwnedUrl_willRejectASubdomainOfARegisteredHost_untilItIsRegisteredItself() {
+    // A registered host is one endpoint, not a domain. Registering an apex (`custodian.example`)
+    // must not trust every host beneath it — some may be third-party CNAMEs — so a subdomain is
+    // covered only once it is registered on its own. The static Portal apexes keep the suffix rule;
+    // configured hosts do not, matching the Web SDK's `isPortalGatewayUrl`.
+    PortalOwnedHosts.register("api.custodian.example")
+    self.assertOwned(["https://rpc.api.custodian.example/rpc"], false)
+
+    PortalOwnedHosts.register("rpc.api.custodian.example")
+    self.assertOwned(["https://rpc.api.custodian.example/rpc"], true)
   }
 
   func test_isPortalOwnedUrl_willRejectLookalikesOfARegisteredHost() {
@@ -376,7 +387,7 @@ final class PortalOwnedUrlTests: XCTestCase {
   }
 
   func test_isPortalOwnedUrl_configuredHosts_willIgnoreTheRegistry_andTrustOnlyTheGivenHosts() {
-    PortalOwnedHosts.register("api.custodian.example")
+    PortalOwnedHosts.register("rpc.api.custodian.example")
     let mine = PortalOwnedHosts.normalize(["API.Mine.Example.", "https://mpc.mine.example:8443/path", "not a host%"])
     XCTAssertEqual(mine, ["api.mine.example", "mpc.mine.example"])
 
@@ -385,11 +396,11 @@ final class PortalOwnedUrlTests: XCTestCase {
     XCTAssertFalse(isPortalOwnedUrl("https://rpc.api.custodian.example/rpc", configuredHosts: mine))
     XCTAssertFalse(isPortalOwnedUrl("https://rpc.api.custodian.example/rpc", configuredHosts: []))
 
-    // This instance's hosts match whole or as a dot-anchored suffix, after the same normalization
-    // `register` applies.
+    // This instance's hosts match exactly, after the same normalization `register` applies. A
+    // subdomain of one is not this instance's host either.
     XCTAssertTrue(isPortalOwnedUrl("https://api.mine.example/rpc", configuredHosts: mine))
     XCTAssertTrue(isPortalOwnedUrl("https://API.Mine.Example./rpc", configuredHosts: mine))
-    XCTAssertTrue(isPortalOwnedUrl("https://rpc.mpc.mine.example/rpc", configuredHosts: mine))
+    XCTAssertFalse(isPortalOwnedUrl("https://rpc.mpc.mine.example/rpc", configuredHosts: mine))
     XCTAssertFalse(isPortalOwnedUrl("https://api.mine.example.attacker.com/rpc", configuredHosts: mine))
     XCTAssertFalse(isPortalOwnedUrl("https://notapi.mine.example/rpc", configuredHosts: mine))
 

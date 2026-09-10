@@ -48,19 +48,21 @@ private let ipv6LoopbackLiteral = "::1"
 /// `PortalProvider` trusts the static allow-list plus the hosts its own `Portal` was constructed
 /// with (`isPortalOwnedUrl(_:configuredHosts:)`), so constructing another `Portal`, `PortalApi`,
 /// `PortalAuth` or `PortalConnect` in the process with a custom host can never route this
-/// instance's credential to an `rpcConfig` URL on that host or a subdomain of it. Process-wide
-/// and lock-guarded, like `CredentialInvalidationRegistry`, for the 401 and trace gates, where a
-/// false positive costs a spurious invalidation or a trace id — never a credential. Public so a
-/// host that fronts Portal through its own domain can register it explicitly.
+/// instance's credential to an `rpcConfig` URL on that host. Process-wide and lock-guarded, like
+/// `CredentialInvalidationRegistry`, for the 401 and trace gates, where a false positive costs a
+/// spurious invalidation or a trace id — never a credential. Public so a host that fronts Portal
+/// through its own domain can register it explicitly — each hostname on its own, because matching
+/// is exact (see `matches(_:anyOf:)`).
 public enum PortalOwnedHosts {
   private static let lock = NSLock()
   private static var hosts: Set<String> = []
 
   /// Registers each value as a Portal-owned host. Accepts a bare host (`api.custodian.example`),
   /// a host with a port, or a full URL; the host component is extracted, lowercased and
-  /// trailing-dot trimmed, and matched afterwards whole or as a dot-anchored suffix. Values
-  /// that do not yield a well-formed host name (percent-encoding, IP literals, userinfo) are
-  /// ignored rather than trusted.
+  /// trailing-dot trimmed, and matched afterwards by exact equality — a subdomain of a registered
+  /// host is not covered and has to be registered itself (see `matches(_:anyOf:)`). Values that
+  /// do not yield a well-formed host name (percent-encoding, IP literals, userinfo) are ignored
+  /// rather than trusted.
   public static func register(_ values: String...) {
     let normalized = values.compactMap(Self.normalizedHost)
     guard !normalized.isEmpty else {
@@ -71,8 +73,7 @@ public enum PortalOwnedHosts {
     self.hosts.formUnion(normalized)
   }
 
-  /// `true` when `host` — already lowercased and trailing-dot trimmed — is a registered host or
-  /// a subdomain of one.
+  /// `true` when `host` — already lowercased and trailing-dot trimmed — is a registered host.
   static func contains(_ host: String) -> Bool {
     self.lock.lock()
     defer { self.lock.unlock() }
@@ -86,11 +87,18 @@ public enum PortalOwnedHosts {
     Set(values.compactMap(Self.normalizedHost))
   }
 
-  /// `true` when `host` — already lowercased and trailing-dot trimmed — equals one of `hosts` or
-  /// is a subdomain of one. The single matching rule shared by the registry and the
-  /// instance-scoped gate, so the two can never disagree on what a configured host covers.
+  /// `true` when `host` — already lowercased and trailing-dot trimmed — equals one of `hosts`.
+  ///
+  /// Exact, with no suffix rule, unlike the static Portal apexes: a configured host names one
+  /// endpoint the integrator pointed the SDK at, not a domain they are known to own. Matching
+  /// subdomains would let an apex passed as `apiHost` (`custodian.example`) trust every host
+  /// beneath it — including third-party CNAMEs — and, through the RPC bearer gate, send the
+  /// credential to an `rpcConfig` URL there. The Web SDK's `isPortalGatewayUrl` draws the same
+  /// line; a second host has to be configured or registered on its own. The single matching rule
+  /// shared by the registry and the instance-scoped gate, so the two can never disagree on what a
+  /// configured host covers.
   static func matches(_ host: String, anyOf hosts: Set<String>) -> Bool {
-    hosts.contains { configured in host == configured || hasDotAnchoredSuffix(host, configured) }
+    hosts.contains(host)
   }
 
   /// Test seam: forgets every registered host.
@@ -148,9 +156,10 @@ public enum PortalOwnedHosts {
 ///   leading dots or hyphens.
 /// - Only then are the allow-lists consulted: `localhost`, `127.0.0.1` and `*.localhost` for
 ///   local development, `portalhq.io` / `portalhq.dev` as the whole host or as a dot-anchored
-///   suffix, and finally the hosts the SDK was configured with (`PortalOwnedHosts`), matched the
-///   same way. `isPortalOwnedUrl(_:configuredHosts:)` is the same test with that last step
-///   limited to one instance's own hosts; it is what the RPC bearer gate uses.
+///   suffix, and finally the hosts the SDK was configured with (`PortalOwnedHosts`), matched
+///   exactly — the suffix rule is reserved for the apexes Portal itself operates.
+///   `isPortalOwnedUrl(_:configuredHosts:)` is the same test with that last step limited to one
+///   instance's own hosts; it is what the RPC bearer gate uses.
 ///
 /// The scan is a hand-rolled linear pass over the UTF-8 bytes (no regular expressions), so a
 /// hostile multi-hundred-kilobyte input completes in linear time.
@@ -177,8 +186,8 @@ public func isPortalOwnedUrl(_ url: String) -> Bool {
 /// This is the gate for the RPC bearer, the one place the SDK sends a credential. Trusting the
 /// registry there would let any other `Portal`, `PortalApi`, `PortalAuth` or `PortalConnect` in
 /// the process, merely by being constructed with a custom host, route this instance's credential
-/// to an `rpcConfig` URL on that host or a subdomain of it. The loopback and static Portal
-/// allow-lists and every structural rejection are identical to `isPortalOwnedUrl(_:)`.
+/// to an `rpcConfig` URL on that host. The loopback and static Portal allow-lists and every
+/// structural rejection are identical to `isPortalOwnedUrl(_:)`.
 func isPortalOwnedUrl(_ url: String, configuredHosts: Set<String>) -> Bool {
   switch classifyPortalHost(url) {
   case .owned:
