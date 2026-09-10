@@ -70,7 +70,7 @@ xcodebuild -quiet \
 
 Adjust `-destination` to a simulator you have installed. In Xcode, `Product -> Destination -> Manage Run Destinations...` lists them.
 
-The example apps do not have test targets.
+The SPM example app does not have a test target.
 
 # Formatting rules
 
