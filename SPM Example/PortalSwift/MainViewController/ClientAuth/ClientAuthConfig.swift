@@ -187,11 +187,12 @@ struct PortalAuthParams: Equatable {
 /// storage — a single instance just removes any chance of them disagreeing about the redirect
 /// URL or the host, and it is what keeps the SDK's replay memo and sign-in guard meaningful.
 ///
-/// `isAccountAbstracted` is deliberately a value this type owns, snapshotted at construction and
-/// re-read only on an explicit user toggle or an environment change. `Settings.shared`'s copy is
-/// rewritten from the live client by `updateUIComponents()` on every refresh, and reading it here
-/// would silently mint a new `PortalAuth` mid-flow — discarding the replay memo and any pending
-/// TOTP step.
+/// `isAccountAbstracted` is deliberately a value this type owns: snapshotted at construction and
+/// changed only by `setAccountAbstracted(_:)`, which the Settings screen's toggle calls. An
+/// environment change (`environmentDidChange()`, called by the Settings screen's picker) rebuilds
+/// the instance with the flag it already has. `Settings.shared`'s copy is rewritten from the live
+/// client by `updateUIComponents()` on every refresh, and reading it here would silently mint a
+/// new `PortalAuth` mid-flow — discarding the replay memo and any pending TOTP step.
 final class PortalAuthProvider {
   /// The app-wide provider, wired to `Settings` and to the coordinator's pending TOTP step.
   ///
@@ -266,7 +267,8 @@ final class PortalAuthProvider {
     return built
   }
 
-  /// Records an explicit user toggle. Rebuilds on the next `get()` only when the value changed.
+  /// Records an explicit user toggle (the Settings screen's "Is Account Abstracted"). Rebuilds on
+  /// the next `get()` only when the value changed.
   func setAccountAbstracted(_ value: Bool) {
     self.lock.lock()
     guard value != self.accountAbstracted else {
@@ -283,7 +285,8 @@ final class PortalAuthProvider {
     }
   }
 
-  /// Records an environment (API host) change. The next `get()` rebuilds.
+  /// Records an environment change (the Settings screen's picker): the API host and the whole
+  /// `AUTH_*` set follow it. The next `get()` rebuilds from the reloaded config.
   func environmentDidChange() {
     self.lock.lock()
     let discardedInstance = self.instance != nil

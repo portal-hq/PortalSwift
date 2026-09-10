@@ -26,9 +26,14 @@ import UIKit
 /// lifecycle). Only the first-launch clear is thread-safe on its own, because it is `async` and
 /// two screens can reach it at once.
 final class ClientAuthCoordinator {
-  /// The app-wide instance, keyed to the redirect scheme the Info.plist registers.
+  /// The app-wide instance, routing on whichever redirect scheme `Settings` currently holds.
+  ///
+  /// A closure rather than a value, for the same reason `PortalAuthProvider.shared` reads its
+  /// config through one: the `AUTH_*` set follows the environment picker, and a scheme frozen at
+  /// first access would keep claiming the old environment's redirect — or, when the build-time
+  /// environment has no keys, claim nothing for the rest of the process.
   static let shared = ClientAuthCoordinator(
-    redirectScheme: Settings.shared.clientAuthConfig.redirectScheme,
+    redirectScheme: { Settings.shared.clientAuthConfig.redirectScheme },
     defaults: UserDefaults.standard
   )
 
@@ -37,9 +42,9 @@ final class ClientAuthCoordinator {
   /// the previous user's session on first launch.
   static let firstLaunchClearKey = "ClientAuth.didClearPersistedSessionAfterInstall"
 
-  /// The scheme this app owns, lowercased once at construction; `nil` when Client Auth is not
-  /// configured, in which case no URL is ever claimed.
-  private let redirectScheme: String?
+  /// Resolves the scheme this app owns. Read on every inbound URL, never cached; `nil` when
+  /// Client Auth is not configured, in which case that URL is not claimed.
+  private let redirectScheme: () -> String?
   private let defaults: UserDefaults
   private let warn: (String) -> Void
 
@@ -83,11 +88,25 @@ final class ClientAuthCoordinator {
   /// whether the clear completed, so a joiner learns the outcome rather than only the timing.
   private var firstLaunchClearTask: Task<Bool, Never>?
 
-  init(redirectScheme: String?, defaults: UserDefaults = .standard, warn: @escaping (String) -> Void = { print($0) }) {
-    let normalized = redirectScheme?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-    self.redirectScheme = (normalized?.isEmpty ?? true) ? nil : normalized
+  init(redirectScheme: @escaping () -> String?, defaults: UserDefaults = .standard, warn: @escaping (String) -> Void = { print($0) }) {
+    self.redirectScheme = redirectScheme
     self.defaults = defaults
     self.warn = warn
+  }
+
+  /// A scheme that cannot change for the life of the coordinator — what a test passes.
+  convenience init(redirectScheme: String?, defaults: UserDefaults = .standard, warn: @escaping (String) -> Void = { print($0) }) {
+    self.init(redirectScheme: { redirectScheme }, defaults: defaults, warn: warn)
+  }
+
+  /// The scheme to match right now, trimmed and lowercased; `nil` when blank or unconfigured.
+  private func currentRedirectScheme() -> String? {
+    guard let normalized = self.redirectScheme()?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+          !normalized.isEmpty
+    else {
+      return nil
+    }
+    return normalized
   }
 
   // MARK: - Handoff
@@ -129,8 +148,10 @@ final class ClientAuthCoordinator {
   ///
   /// Matching is on the scheme alone, case-insensitively: the OS matched the same scheme to
   /// deliver the URL here, and validating the full redirect target is the SDK's job inside
-  /// `handleRedirect`. A claimed URL goes to the live screen when there is one, and to the stash
-  /// otherwise; it is never both, so a redirect cannot be handled twice.
+  /// `handleRedirect`. The scheme is resolved at call time, so a redirect that arrives after an
+  /// environment switch is matched against the new environment's redirect URL. A claimed URL goes
+  /// to the live screen when there is one, and to the stash otherwise; it is never both, so a
+  /// redirect cannot be handled twice.
   ///
   /// The URL is never logged: its query carries the grant token.
   ///
@@ -138,7 +159,7 @@ final class ClientAuthCoordinator {
   ///   other handlers (the Google reversed-client-id scheme, WalletConnect) see the rest.
   @discardableResult
   func handleIfClientAuth(_ url: URL) -> Bool {
-    guard let redirectScheme = self.redirectScheme else { return false }
+    guard let redirectScheme = self.currentRedirectScheme() else { return false }
     guard let scheme = url.scheme?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), scheme == redirectScheme else {
       return false
     }
