@@ -17,10 +17,25 @@ import XCTest
 /// It installs itself into the logger's `sink` seam, which sees every level regardless of
 /// the configured `logLevel`, so a "never logs the token" assertion cannot pass vacuously
 /// because a test forgot to raise the level. The previously installed sink is remembered and
-/// restored by `uninstall()`, which tests call from `tearDown` so recorders never stack up
-/// across test cases. All state is lock-guarded because the SDK logs from whatever thread
-/// completed the work.
+/// restored by `uninstall()`, which tests call from `tearDown`.
+///
+/// The sink is process-global, so exactly one recorder owns it at a time (`owner`). XCTest runs
+/// the cases of a bundle one after another, which already keeps `setUp`/`tearDown` pairs from
+/// overlapping; the ownership rule makes the remaining way to overlap — a test that forgot to
+/// `uninstall()` — a loud failure in the next test's `install()` instead of a silently stacked
+/// sink whose out-of-order restore could leave a live recorder disconnected. Only the owner ever
+/// writes the global sink, so a stale recorder's late `uninstall()` cannot disturb the live one.
+///
+/// Instance state is lock-guarded because the SDK logs from whatever thread completed the work;
+/// `ownerLock` is taken before an instance lock, never the other way round, and `record` takes
+/// only the instance lock, so a sink that fires during `install()`/`uninstall()` cannot deadlock.
 final class RecordingLogger {
+  /// The recorder currently installed in `PortalLogger.shared.sink`, or `nil` between tests.
+  /// Strong, not weak, so a recorder a test leaked stays identifiable to the next `install()`.
+  /// Guarded by `ownerLock`.
+  private static var owner: RecordingLogger?
+  private static let ownerLock = NSLock()
+
   private let lock = NSLock()
   private var _entries: [(level: PortalLogLevel, message: String)] = []
   private var previousSink: ((PortalLogLevel, String) -> Void)?
@@ -66,8 +81,27 @@ final class RecordingLogger {
   }
 
   /// Starts recording by installing this logger as the `PortalLogger.shared` sink,
-  /// remembering whatever sink was there before. Installing twice is a no-op.
-  func install() {
+  /// remembering whatever sink was there before, and takes ownership of the sink. Installing
+  /// twice is a no-op.
+  ///
+  /// If another recorder still owns the sink, a previous test did not `uninstall()` in its
+  /// `tearDown`. That is reported as a failure of the calling test — at the caller's `file`/`line`,
+  /// so it points at the `setUp` that found the leak — and the stale recorder is evicted (its
+  /// saved sink restored) before this one installs, so this test still records its own messages
+  /// rather than passing or failing on a sink it does not own.
+  func install(file: StaticString = #filePath, line: UInt = #line) {
+    Self.ownerLock.lock()
+    defer { Self.ownerLock.unlock() }
+
+    if let stale = Self.owner, stale !== self {
+      XCTFail(
+        "RecordingLogger.install(): another recorder still owns PortalLogger.shared.sink, so a previous test did not call uninstall() in tearDown. Evicting it so this test records its own messages.",
+        file: file,
+        line: line
+      )
+      stale.evictLocked()
+    }
+
     self.lock.lock()
     defer { self.lock.unlock() }
     guard !self.isInstalled else {
@@ -78,10 +112,32 @@ final class RecordingLogger {
     PortalLogger.shared.sink = { [weak self] level, message in
       self?.record(level, message)
     }
+    Self.owner = self
   }
 
-  /// Stops recording and restores the sink that was installed before `install()`.
+  /// Stops recording and, when this recorder owns the sink, restores the one that was installed
+  /// before `install()`. A recorder that was evicted is already unwound, so its late `uninstall()`
+  /// leaves the live owner's sink alone.
   func uninstall() {
+    Self.ownerLock.lock()
+    defer { Self.ownerLock.unlock() }
+    self.lock.lock()
+    defer { self.lock.unlock() }
+    guard self.isInstalled else {
+      return
+    }
+    self.isInstalled = false
+    let previous = self.previousSink
+    self.previousSink = nil
+    if Self.owner === self {
+      PortalLogger.shared.sink = previous
+      Self.owner = nil
+    }
+  }
+
+  /// Unwinds a recorder a previous test left installed: restores the sink it had saved and
+  /// releases ownership. Called by a newer recorder's `install()` with `ownerLock` held.
+  private func evictLocked() {
     self.lock.lock()
     defer { self.lock.unlock() }
     guard self.isInstalled else {
@@ -90,6 +146,7 @@ final class RecordingLogger {
     self.isInstalled = false
     PortalLogger.shared.sink = self.previousSink
     self.previousSink = nil
+    Self.owner = nil
   }
 
   /// Forgets everything recorded so far without changing the installation state.
