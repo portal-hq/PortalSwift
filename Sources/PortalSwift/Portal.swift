@@ -31,7 +31,23 @@ public final class Portal: PortalProtocol {
   }
 
   public let api: PortalApiProtocol
-  public let apiKey: String
+
+  /// The single credential source every component under this `Portal` resolves its bearer
+  /// from — per call, never cached. Internal so tests can prove the provider, API, MPC and
+  /// connect layers share this exact instance (`===`) rather than a copy of a token.
+  let credentials: PortalCredentials
+
+  /// Backing store for the deprecated `apiKey` bridge. A separate stored property lets the
+  /// initializers assign it without tripping the deprecation warning meant for hosts.
+  private let _apiKey: String
+
+  /// The Client API Key this `Portal` was constructed with, or `""` when it was constructed
+  /// with `credentials` — a session token is deliberately never exposed here. Kept only so
+  /// existing hosts compile; new code should hold its own credential rather than read the
+  /// SDK's back.
+  @available(*, deprecated, message: "Not a reliable source of authentication — returns \"\" when Portal was constructed with credentials. Supply credentials to the SDK instead of reading this.")
+  public var apiKey: String { self._apiKey }
+
   public let autoApprove: Bool
   public var gatewayConfig: [Int: String] = [:]
   public var provider: PortalProviderProtocol
@@ -87,17 +103,23 @@ public final class Portal: PortalProtocol {
   private var presignatureManager: PresignatureManager?
   private let version: String
 
-  /// Create a Portal instance. This initializer is used by unit tests and mocks.
+  /// Create a Portal instance from a Client API Key.
+  ///
+  /// The key is wrapped in `StaticCredentials` so the rest of the SDK is written against one
+  /// credential abstraction instead of branching on "key or session" at each call site. A
+  /// blank key throws `PortalCredentialError.invalidApiKey` before any other construction
+  /// work (React Native / Android parity): a Portal that can never authenticate should fail
+  /// here, not at its first request.
   /// - Parameters:
   ///   - apiKey: The Client API key. You can obtain this through Portal's REST API.
   ///   - withRpcConfig: (optional) A dictionary of CAIP-2 Blockchain IDs (keys) and RPC URLs (values) in `[String:String]` format.
   ///   - featureFlags: (optional) a set of flags to opt into new or experimental features
-  ///   - isSimulator: (optional) Whether you are testing on the iOS simulator or not.
   ///   - autoApprove: (optional) Auto-approve transactions.
   ///   - apiHost: (optional) Portal's API host.
   ///   - mpcHost: (optional) Portal's MPC API host.
-
-  public init(
+  /// - Throws: `PortalCredentialError.invalidApiKey` for a blank key;
+  ///   `PortalArgumentError.versionNoLongerSupported` for a `version` other than `"v6"`.
+  public convenience init(
     _ apiKey: String,
     withRpcConfig: [String: String] = [:],
     // Optional
@@ -116,6 +138,103 @@ public final class Portal: PortalProtocol {
     passwords: PasswordStorage? = nil,
     maxPresignaturesPerCurve: [PresignatureSupportedCurve: Int] = [.SECP256K1: 3]
   ) throws {
+    let credentials = try PortalCredentialSupport.resolve(apiKey: apiKey, credentials: nil)
+    try self.init(
+      resolvedCredentials: credentials,
+      withRpcConfig: withRpcConfig,
+      autoApprove: autoApprove,
+      featureFlags: featureFlags,
+      version: version,
+      apiHost: apiHost,
+      mpcHost: mpcHost,
+      enclaveMPCHost: enclaveMPCHost,
+      api: api,
+      binary: binary,
+      gDrive: gDrive,
+      iCloud: iCloud,
+      keychain: keychain,
+      mpc: mpc,
+      passwords: passwords,
+      maxPresignaturesPerCurve: maxPresignaturesPerCurve
+    )
+  }
+
+  /// Create a Portal instance from a `PortalCredentials` source — a `PortalSession` returned
+  /// by `PortalAuth`, or a host-written provider that fetches a token from the host's backend.
+  ///
+  /// The SDK resolves the credential again on every request, so a session that rotates or is
+  /// invalidated underneath this instance takes effect immediately without rebuilding
+  /// `Portal`. When the backend rejects the credential the SDK invalidates it once and runs
+  /// the `onSessionInvalidated(_:)` listeners; the instance is spent afterwards, and the host
+  /// should authenticate again and construct a new `Portal`. The deprecated `apiKey` bridge
+  /// returns `""` for an instance built this way — a session token is never exposed there.
+  /// - Parameters:
+  ///   - credentials: The credential source. Shared by reference with every SDK component.
+  ///   - withRpcConfig: (optional) A dictionary of CAIP-2 Blockchain IDs (keys) and RPC URLs (values) in `[String:String]` format.
+  ///   - featureFlags: (optional) a set of flags to opt into new or experimental features
+  ///   - autoApprove: (optional) Auto-approve transactions.
+  ///   - apiHost: (optional) Portal's API host.
+  ///   - mpcHost: (optional) Portal's MPC API host.
+  /// - Throws: `PortalArgumentError.versionNoLongerSupported` for a `version` other than `"v6"`.
+  public convenience init(
+    credentials: PortalCredentials,
+    withRpcConfig: [String: String] = [:],
+    autoApprove: Bool = false,
+    featureFlags: FeatureFlags? = nil,
+    version: String = "v6",
+    apiHost: String = "api.portalhq.io",
+    mpcHost: String = "mpc.portalhq.io",
+    enclaveMPCHost: String = "mpc-client.portalhq.io",
+    api: PortalApiProtocol? = nil,
+    binary: Mobile? = nil,
+    gDrive: GDriveStorage? = nil,
+    iCloud: ICloudStorage? = nil,
+    keychain: PortalKeychainProtocol? = nil,
+    mpc: PortalMpcProtocol? = nil,
+    passwords: PasswordStorage? = nil,
+    maxPresignaturesPerCurve: [PresignatureSupportedCurve: Int] = [.SECP256K1: 3]
+  ) throws {
+    try self.init(
+      resolvedCredentials: credentials,
+      withRpcConfig: withRpcConfig,
+      autoApprove: autoApprove,
+      featureFlags: featureFlags,
+      version: version,
+      apiHost: apiHost,
+      mpcHost: mpcHost,
+      enclaveMPCHost: enclaveMPCHost,
+      api: api,
+      binary: binary,
+      gDrive: gDrive,
+      iCloud: iCloud,
+      keychain: keychain,
+      mpc: mpc,
+      passwords: passwords,
+      maxPresignaturesPerCurve: maxPresignaturesPerCurve
+    )
+  }
+
+  /// The one designated initializer behind both public forms. Private so a credential has
+  /// always been validated (`resolveCredentials`) or handed over by the host before it is
+  /// fanned out to the presignature, provider, API and MPC layers, which all share it.
+  private init(
+    resolvedCredentials credentials: PortalCredentials,
+    withRpcConfig: [String: String],
+    autoApprove: Bool,
+    featureFlags: FeatureFlags?,
+    version: String,
+    apiHost: String,
+    mpcHost: String,
+    enclaveMPCHost: String,
+    api: PortalApiProtocol?,
+    binary: Mobile?,
+    gDrive: GDriveStorage?,
+    iCloud: ICloudStorage?,
+    keychain: PortalKeychainProtocol?,
+    mpc: PortalMpcProtocol?,
+    passwords: PasswordStorage?,
+    maxPresignaturesPerCurve: [PresignatureSupportedCurve: Int]
+  ) throws {
     PortalLogger.shared.setLogLevel(.none)
 
     if version != "v6" {
@@ -123,11 +242,31 @@ public final class Portal: PortalProtocol {
     }
 
     self.apiHost = apiHost
-    self.apiKey = apiKey
+    self.credentials = credentials
+    self._apiKey = PortalCredentialSupport.staticApiKey(of: credentials)
     self.autoApprove = autoApprove
-    self.binary = binary ?? (
-      featureFlags?.useEnclaveMPCApi ?? false ? EnclaveMobileWrapper(enclaveMPCHost: enclaveMPCHost) : MobileWrapper()
-    )
+    // The hosts this instance was configured with count as Portal-owned for the 401 and trace
+    // gates (see `PortalOwnedHosts`). Without this a custodian proxy or a private staging domain
+    // would have every 401 from its own backend classified as third-party, and session
+    // invalidation would silently never fire. The RPC bearer gate does not read this registry: the
+    // provider is handed the same hosts directly (`configuredHosts`), so a host some *other*
+    // instance registered can never receive this credential. `withRpcConfig` URLs are deliberately
+    // registered nowhere: a custom RPC gateway is exactly what the bearer gate must keep untrusted.
+    PortalOwnedHosts.register(apiHost, mpcHost, enclaveMPCHost)
+
+    if let binary = binary {
+      self.binary = binary
+    } else if featureFlags?.useEnclaveMPCApi ?? false {
+      // The enclave wrapper talks to `enclaveMPCHost` on its own transport, which no `PortalApi`
+      // hooks. Without a hook of its own, a 401 there is logged as "no unauthorized hook is
+      // registered" and surfaces as a missing signature while the dead session stays live — the
+      // exact failure `onSessionInvalidated` exists to prevent.
+      let enclaveRequests = PortalRequests()
+      PortalCredentialSupport.installUnauthorizedHook(on: enclaveRequests, for: credentials, context: "EnclaveMobileWrapper")
+      self.binary = EnclaveMobileWrapper(requests: enclaveRequests, enclaveMPCHost: enclaveMPCHost)
+    } else {
+      self.binary = MobileWrapper()
+    }
 
     self.featureFlags = featureFlags
     self.keychain = keychain ?? PortalKeychain()
@@ -138,7 +277,7 @@ public final class Portal: PortalProtocol {
 
     if featureFlags?.usePresignatures == true {
       self.presignatureManager = PresignatureManager(
-        apiKey: apiKey,
+        credentials: credentials,
         mpcHost: mpcHost,
         binary: self.binary,
         keychain: self.keychain,
@@ -148,24 +287,33 @@ public final class Portal: PortalProtocol {
     }
 
     self.provider = try PortalProvider(
-      apiKey: apiKey,
+      credentials: credentials,
       rpcConfig: self.rpcConfig,
       keychain: self.keychain,
       autoApprove: autoApprove,
       mpcHost: mpcHost,
       featureFlags: featureFlags,
       binary: self.binary,
-      presignatureSource: self.presignatureManager
+      presignatureSource: self.presignatureManager,
+      configuredHosts: [apiHost, enclaveMPCHost]
     )
 
     // Creating this as a variable first so it's usable to
     // fetch the client in the Task at the end of the initializer
-    let api = api ?? PortalApi(apiKey: apiKey, apiHost: apiHost, enclaveMPCHost: enclaveMPCHost, provider: provider)
+    let api = api ?? PortalApi(credentials: credentials, apiHost: apiHost, enclaveMPCHost: enclaveMPCHost, provider: provider)
     self.api = api
     self.keychain.api = api
     self.provider.api = api
 
-    self.mpc = mpc ?? PortalMpc(apiKey: apiKey, api: self.api, keychain: self.keychain, host: mpcHost, mobile: self.binary, featureFlags: featureFlags)
+    // A host-supplied `PortalApi` may predate this Portal, so make sure its transport reports a
+    // rejected credential back to `credentials` as well. This is a no-op when the transport
+    // already carries a hook (`PortalApi` installs one for the credential it was built with)
+    // or when it cannot report 401s at all (test doubles, custom transports).
+    if let portalApi = api as? PortalApi {
+      PortalCredentialSupport.installUnauthorizedHook(on: portalApi.requests, for: credentials, context: "Portal.init()")
+    }
+
+    self.mpc = mpc ?? PortalMpc(credentials: credentials, api: self.api, keychain: self.keychain, host: mpcHost, mobile: self.binary, featureFlags: featureFlags)
 
     // Handle iCloud storage
     let iCloudStorage: ICloudStorage
@@ -229,6 +377,9 @@ public final class Portal: PortalProtocol {
     }
   }
 
+  /// - Throws: `PortalCredentialError.invalidApiKey` for a blank or whitespace-only `apiKey`
+  ///   (the legacy constructor used to accept one and then send an empty bearer on every
+  ///   request); `PortalArgumentError.versionNoLongerSupported` for a `version` other than `"v6"`.
   @available(*, deprecated, renamed: "Portal", message: "We've updated our constructor to be more streamlined and support multiple wallets. Please see the migration guide at https://docs.portalhq.io/resources/migrating-from-v3-to-v4/")
   public init(
     apiKey: String,
@@ -245,9 +396,13 @@ public final class Portal: PortalProtocol {
     featureFlags: FeatureFlags? = nil
   ) throws {
     // Basic setup
+    // Validate the key the same way the modern initializers do so a blank key fails here
+    // instead of silently authenticating every later request with an empty bearer.
+    let credentials = try PortalCredentialSupport.resolve(apiKey: apiKey, credentials: nil)
     self.binary = MobileWrapper()
     self.apiHost = apiHost
-    self.apiKey = apiKey
+    self.credentials = credentials
+    self._apiKey = PortalCredentialSupport.staticApiKey(of: credentials)
     self.autoApprove = autoApprove
     self.backup = backup
     self.gatewayConfig = gatewayConfig
@@ -270,7 +425,7 @@ public final class Portal: PortalProtocol {
 
     if featureFlags?.usePresignatures == true {
       self.presignatureManager = PresignatureManager(
-        apiKey: apiKey,
+        credentials: credentials,
         mpcHost: mpcHost,
         binary: self.binary,
         keychain: self.keychain,
@@ -281,21 +436,23 @@ public final class Portal: PortalProtocol {
 
     // Initialize the PortalProvider
     self.provider = try PortalProvider(
-      apiKey: apiKey,
+      credentials: credentials,
       rpcConfig: rpcConfig,
       keychain: keychain,
       autoApprove: autoApprove,
       mpcHost: mpcHost,
       version: version,
       featureFlags: featureFlags,
-      presignatureSource: self.presignatureManager
+      presignatureSource: self.presignatureManager,
+      // This constructor predates `enclaveMPCHost`; the enclave is never used on this path.
+      configuredHosts: [apiHost]
     )
 
     // Retain backward compatible chainId behavior
     self.provider.chainId = chainId
 
     // Initialize the Portal API
-    let api = PortalApi(apiKey: apiKey, apiHost: apiHost, provider: self.provider, featureFlags: self.featureFlags)
+    let api = PortalApi(credentials: credentials, apiHost: apiHost, provider: self.provider, featureFlags: self.featureFlags)
     self.api = api
     self.keychain.api = api
 
@@ -314,7 +471,7 @@ public final class Portal: PortalProtocol {
 
     // Initialize Mpc
     self.mpc = PortalMpc(
-      apiKey: apiKey,
+      credentials: credentials,
       api: self.api,
       keychain: keychain,
       host: mpcHost,
@@ -342,7 +499,7 @@ public final class Portal: PortalProtocol {
     }
     if #available(iOS 16, *) {
       if let passkeys = backup.passkeyStorage {
-        passkeys.apiKey = apiKey
+        passkeys.credentials = credentials
         mpc.registerBackupMethod(.Passkey, withStorage: passkeys)
       }
     }
@@ -379,6 +536,47 @@ public final class Portal: PortalProtocol {
   /// - Parameter level: The desired log level.
   public func setLogLevel(_ level: PortalLogLevel) {
     PortalLogger.shared.setLogLevel(level)
+  }
+
+  /// Ends the session this `Portal` was constructed with.
+  ///
+  /// Invalidates the underlying `PortalCredentials` — for a `PortalSession` that clears the
+  /// in-memory token and deletes the persisted copy — so no later request can present it.
+  /// This is the host-initiated sign-out and it is silent: `onSessionInvalidated(_:)`
+  /// listeners fire only when the backend rejects the credential, never when the host clears
+  /// it. A `Portal` built from a Client API Key has nothing to clear, so this is a no-op
+  /// there. The instance is spent afterwards; authenticate again and construct a new `Portal`.
+  ///
+  /// `async` for parity with Android's `suspend fun clearSession()`, and so a future session
+  /// type can perform asynchronous cleanup without a signature change.
+  /// - Throws: Whatever the credential's `invalidate()` throws when its persisted copy could
+  ///   not be deleted. The in-memory session is over either way, and the call is retryable: for
+  ///   a `PortalSession` the next `clearSession()` runs the delete again rather than returning
+  ///   success while a restorable copy is still on disk.
+  public func clearSession() async throws {
+    try PortalCredentialSupport.invalidate(self.credentials)
+  }
+
+  /// Registers `listener` to run once, on the main actor, after the backend rejects this
+  /// `Portal`'s credential (an HTTP 401 or an MPC `AUTH_FAILED`) and the SDK has invalidated it.
+  ///
+  /// This is the host's cue to route to sign-in. It never fires for a host-initiated
+  /// `clearSession()`, and never for a `Portal` built from a Client API Key, whose key is not a
+  /// session (that subscription hands back `PortalSessionInvalidationHandle.spent`). A
+  /// credential that was already rejected by the time the host subscribes — `init` starts an
+  /// authenticated client fetch immediately, and its 401 can land first — has that rejection
+  /// replayed: the listener runs once, on the main actor, as if it had been subscribed in time.
+  /// Do not subscribe again on the same `Portal` from inside the listener: the instance is spent,
+  /// and a new subscription would be replayed to as well.
+  /// - Parameter listener: Called at most once, on the main actor.
+  /// - Returns: A handle whose `cancel()` removes the listener. It is not cancelled on
+  ///   deallocation (React Native / Android parity), so it only needs to be kept by hosts that
+  ///   intend to unsubscribe. The listener itself is retained until it fires or the credential
+  ///   is deallocated, so capture `self` weakly inside it — a view controller captured strongly
+  ///   would live exactly as long as the session does.
+  @discardableResult
+  public func onSessionInvalidated(_ listener: @escaping @MainActor () -> Void) -> PortalSessionInvalidationHandle {
+    PortalCredentialSupport.onInvalidated(self.credentials, listener: listener)
   }
 
   // Primitive helpers
@@ -1047,7 +1245,10 @@ public final class Portal: PortalProtocol {
   /// - Returns: `.confirmed` on success, `.reverted` if the transaction was mined but reverted, or
   ///   `.timedOut` if no definitive receipt was obtained within `maxAttempts` (still pending or the
   ///   node was unreachable).
-  /// - Throws: `CancellationError` if the surrounding task is cancelled, so callers can stop promptly.
+  /// - Throws: `CancellationError` if the surrounding task is cancelled, so callers can stop promptly;
+  ///   `PortalCredentialError` or `PortalRequestsError.unauthorized` as soon as the session is
+  ///   found to be invalid — a credential that cannot be resolved is not a transient RPC failure,
+  ///   and polling on would only report a false `.timedOut` after `maxAttempts`.
   private func waitForTransactionConfirmation(
     txHash: String,
     chainId: String,
@@ -1078,6 +1279,15 @@ public final class Portal: PortalProtocol {
         // No receipt yet; keep polling until mined.
       } catch is CancellationError {
         throw CancellationError()
+      } catch let error as PortalCredentialError {
+        // The session is gone (invalidated by a 401 elsewhere, or a host sign-out). Every further
+        // tick would throw the same before touching the network; surface it now instead of
+        // reporting a timed-out transaction a minute later.
+        PortalLogger.shared.error("Portal.waitForTransactionConfirmation() - Credential unavailable (\(error.reason?.rawValue ?? "INVALID_API_KEY")); stopping the receipt poll.")
+        throw error
+      } catch PortalRequestsError.unauthorized {
+        PortalLogger.shared.error("Portal.waitForTransactionConfirmation() - The RPC gateway rejected the credential; stopping the receipt poll.")
+        throw PortalRequestsError.unauthorized
       } catch {
         // Transient RPC failure: log and retry rather than reporting a false revert.
         PortalLogger.shared.error("Portal.waitForTransactionConfirmation() - Error checking receipt: \(error.localizedDescription)")
@@ -2513,16 +2723,16 @@ public final class Portal: PortalProtocol {
     webSocketServer: String = "connect.portalhq.io"
   ) throws -> PortalConnect {
     try PortalConnect(
-      self.apiKey,
-      self.provider.chainId ?? 11_155_111,
-      self.keychain,
-      self.rpcConfig,
-      self.featureFlags,
-      webSocketServer,
-      self.autoApprove,
-      self.apiHost,
-      self.mpcHost,
-      self.version
+      credentials: self.credentials,
+      chainId: self.provider.chainId ?? 11_155_111,
+      keychain: self.keychain,
+      rpcConfig: self.rpcConfig,
+      featureFlags: self.featureFlags,
+      webSocketServer: webSocketServer,
+      autoApprove: self.autoApprove,
+      apiHost: self.apiHost,
+      mpcHost: self.mpcHost,
+      version: self.version
     )
   }
 

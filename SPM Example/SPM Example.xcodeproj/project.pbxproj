@@ -16,6 +16,7 @@
 		607FACE01AFB9204008FA782 /* LaunchScreen.xib in Resources */ = {isa = PBXBuildFile; fileRef = 607FACDE1AFB9204008FA782 /* LaunchScreen.xib */; };
 		7E4B874E2A58BFFB003A8DB5 /* WebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4B874D2A58BFFB003A8DB5 /* WebViewController.swift */; };
 		7E7F4C002A002D7F00756B6A /* ConnectViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E7F4BFF2A002D7F00756B6A /* ConnectViewController.swift */; };
+		D8CD00022EF3000000000002 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8CD00012EF3000000000001 /* SceneDelegate.swift */; };
 		D8PU00012EF2000000000001 /* Pulse in Frameworks */ = {isa = PBXBuildFile; productRef = D8PU00022EF2000000000002 /* Pulse */; };
 		D8PU00032EF2000000000003 /* PulseUI in Frameworks */ = {isa = PBXBuildFile; productRef = D8PU00042EF2000000000004 /* PulseUI */; };
 		D8PU00052EF2000000000005 /* PulseProxy in Frameworks */ = {isa = PBXBuildFile; productRef = D8PU00062EF2000000000006 /* PulseProxy */; };
@@ -39,6 +40,7 @@
 		7E7F4BFF2A002D7F00756B6A /* ConnectViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectViewController.swift; sourceTree = "<group>"; };
 		7EB608D3291EF2F000CF1346 /* PortalSwift.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = PortalSwift.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		7EBF73492BC84FBD0077FD03 /* PortalSwift.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = PortalSwift.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		D8CD00012EF3000000000001 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -103,6 +105,7 @@
 				D8AA920A2EF1ECE200F69B06 /* MainViewController */,
 				D8A2B4F92D02280000890CDA /* Settings */,
 				607FACD51AFB9204008FA782 /* AppDelegate.swift */,
+				D8CD00012EF3000000000001 /* SceneDelegate.swift */,
 				7E7F4BFF2A002D7F00756B6A /* ConnectViewController.swift */,
 				7E4B874D2A58BFFB003A8DB5 /* WebViewController.swift */,
 				607FACD91AFB9204008FA782 /* Main.storyboard */,
@@ -233,6 +236,7 @@
 				7E7F4C002A002D7F00756B6A /* ConnectViewController.swift in Sources */,
 				7E4B874E2A58BFFB003A8DB5 /* WebViewController.swift in Sources */,
 				607FACD61AFB9204008FA782 /* AppDelegate.swift in Sources */,
+				D8CD00022EF3000000000002 /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -548,22 +552,6 @@
 				minimumVersion = 11.0.0;
 			};
 		};
-		D8PU00072EF2000000000007 /* XCRemoteSwiftPackageReference "Pulse" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/kean/Pulse";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 5.1.4;
-			};
-		};
-		F9BF35A02BF8115000BF2862 /* XCRemoteSwiftPackageReference "Web3" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/Boilertalk/Web3.swift";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.8.8;
-			};
-		};
 		5E10AC010000000000000001 /* XCRemoteSwiftPackageReference "swift-nio" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/apple/swift-nio.git";
@@ -586,6 +574,22 @@
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 1.34.1;
+			};
+		};
+		D8PU00072EF2000000000007 /* XCRemoteSwiftPackageReference "Pulse" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/kean/Pulse";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.1.4;
+			};
+		};
+		F9BF35A02BF8115000BF2862 /* XCRemoteSwiftPackageReference "Web3" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Boilertalk/Web3.swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.8.8;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

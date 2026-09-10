@@ -16,6 +16,38 @@
 	<string>$(PORTAL_EX_BACKUP_WITH_PORTAL_PROD_API_KEY)</string>
 	<key>PORTAL_EX_BACKUP_WITH_PORTAL_STAGING_API_KEY</key>
 	<string>$(PORTAL_EX_BACKUP_WITH_PORTAL_STAGING_API_KEY)</string>
+	<key>AUTH_PROD_ENVIRONMENT_ID</key>
+	<string>$(AUTH_PROD_ENVIRONMENT_ID)</string>
+	<key>AUTH_PROD_REDIRECT_URL</key>
+	<string>$(AUTH_PROD_REDIRECT_URL)</string>
+	<key>AUTH_PROD_MAGIC_LINK_FROM_EMAIL</key>
+	<string>$(AUTH_PROD_MAGIC_LINK_FROM_EMAIL)</string>
+	<key>AUTH_PROD_MAGIC_LINK_TEMPLATE_ID</key>
+	<string>$(AUTH_PROD_MAGIC_LINK_TEMPLATE_ID)</string>
+	<key>AUTH_BACKUP_WITH_PORTAL_PROD_ENVIRONMENT_ID</key>
+	<string>$(AUTH_BACKUP_WITH_PORTAL_PROD_ENVIRONMENT_ID)</string>
+	<key>AUTH_BACKUP_WITH_PORTAL_PROD_REDIRECT_URL</key>
+	<string>$(AUTH_BACKUP_WITH_PORTAL_PROD_REDIRECT_URL)</string>
+	<key>AUTH_BACKUP_WITH_PORTAL_PROD_MAGIC_LINK_FROM_EMAIL</key>
+	<string>$(AUTH_BACKUP_WITH_PORTAL_PROD_MAGIC_LINK_FROM_EMAIL)</string>
+	<key>AUTH_BACKUP_WITH_PORTAL_PROD_MAGIC_LINK_TEMPLATE_ID</key>
+	<string>$(AUTH_BACKUP_WITH_PORTAL_PROD_MAGIC_LINK_TEMPLATE_ID)</string>
+	<key>AUTH_STAGING_ENVIRONMENT_ID</key>
+	<string>$(AUTH_STAGING_ENVIRONMENT_ID)</string>
+	<key>AUTH_STAGING_REDIRECT_URL</key>
+	<string>$(AUTH_STAGING_REDIRECT_URL)</string>
+	<key>AUTH_STAGING_MAGIC_LINK_FROM_EMAIL</key>
+	<string>$(AUTH_STAGING_MAGIC_LINK_FROM_EMAIL)</string>
+	<key>AUTH_STAGING_MAGIC_LINK_TEMPLATE_ID</key>
+	<string>$(AUTH_STAGING_MAGIC_LINK_TEMPLATE_ID)</string>
+	<key>AUTH_BACKUP_WITH_PORTAL_STAGING_ENVIRONMENT_ID</key>
+	<string>$(AUTH_BACKUP_WITH_PORTAL_STAGING_ENVIRONMENT_ID)</string>
+	<key>AUTH_BACKUP_WITH_PORTAL_STAGING_REDIRECT_URL</key>
+	<string>$(AUTH_BACKUP_WITH_PORTAL_STAGING_REDIRECT_URL)</string>
+	<key>AUTH_BACKUP_WITH_PORTAL_STAGING_MAGIC_LINK_FROM_EMAIL</key>
+	<string>$(AUTH_BACKUP_WITH_PORTAL_STAGING_MAGIC_LINK_FROM_EMAIL)</string>
+	<key>AUTH_BACKUP_WITH_PORTAL_STAGING_MAGIC_LINK_TEMPLATE_ID</key>
+	<string>$(AUTH_BACKUP_WITH_PORTAL_STAGING_MAGIC_LINK_TEMPLATE_ID)</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleExecutable</key>
@@ -42,6 +74,17 @@
 				<string>$(REVERSE_URL)</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>io.portalhq.ios.spm-example.client-auth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>portalswiftexample</string>
+				<string>portalexample</string>
+			</array>
+		</dict>
 	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
@@ -51,17 +94,29 @@
 	<string>$(GDRIVE_CLIENT_ID)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<false/>
 		<key>UISceneConfigurations</key>
-		<dict/>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneConfigurationName</key>
+					<string>Default Configuration</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+					<key>UISceneStoryboardFile</key>
+					<string>Main</string>
+				</dict>
+			</array>
+		</dict>
 	</dict>
-	<key>UILaunchStoryboardName</key>
-	<string>LaunchScreen</string>
-	<key>UIMainStoryboardFile</key>
-	<string>Main</string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>armv7</string>
