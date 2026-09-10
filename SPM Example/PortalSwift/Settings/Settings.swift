@@ -86,7 +86,11 @@ class Settings: ObservableObject {
 
   var portalConfig: PortalConfig = .init()
 
-  /// The four `AUTH_*` values, all blank unless `Secrets.xcconfig` defines them.
+  /// The four `AUTH_*` values for this build's environment, all blank unless `Secrets.xcconfig`
+  /// defines them.
+  ///
+  /// Which of the four key sets is read follows `ENV` and `BACKUP_WITH_PORTAL`; see
+  /// `ClientAuthKeys`.
   ///
   /// Populated by `loadApplicationConfig()` before the other keys are validated, so Client Auth
   /// stays readable even when an unrelated secret is missing.
@@ -132,6 +136,32 @@ private enum CustodianServer {
   }
 }
 
+// MARK: - Client Auth Configuration
+
+/// Info.plist key prefixes (fed from Secrets.xcconfig) for the four `AUTH_*` values, one set per
+/// `ENV` × `BACKUP_WITH_PORTAL` combination.
+///
+/// Client Auth follows the same switch as the custodian API key because an auth environment id
+/// exists on exactly one backend, and the magic-link template it sends belongs to that
+/// environment, so the four values only make sense as a set.
+private enum ClientAuthKeys {
+  static let production = "AUTH_PROD"
+  static let productionBackupWithPortal = "AUTH_BACKUP_WITH_PORTAL_PROD"
+  static let staging = "AUTH_STAGING"
+  static let stagingBackupWithPortal = "AUTH_BACKUP_WITH_PORTAL_STAGING"
+
+  /// `.localHost` has no set of its own and reuses staging's: a local backend is the closest
+  /// thing to staging, and a locally minted auth environment would need its own keys here.
+  static func plistKeyPrefix(for environment: Environment, isBackupWithPortal: Bool) -> String {
+    switch environment {
+    case .production:
+      return isBackupWithPortal ? self.productionBackupWithPortal : self.production
+    case .staging, .localHost:
+      return isBackupWithPortal ? self.stagingBackupWithPortal : self.staging
+    }
+  }
+}
+
 // MARK: - App Configuration
 
 extension Settings {
@@ -142,12 +172,20 @@ extension Settings {
         throw PortalExampleAppError.cantLoadInfoPlist()
       }
       // Read before the required keys are validated: Client Auth is optional, and a missing
-      // ALCHEMY_API_KEY must not leave `clientAuthConfig` unpopulated.
+      // ALCHEMY_API_KEY must not leave `clientAuthConfig` unpopulated. `BACKUP_WITH_PORTAL` is
+      // therefore read tolerantly here — the strict guard below still rejects a missing flag for
+      // the custodian config, and for key selection a missing flag reads as `false`, which is
+      // what that guard's `== "true"` does with any unexpected value too.
+      let clientAuthKeyPrefix = ClientAuthKeys.plistKeyPrefix(
+        for: self.portalConfig.environment,
+        isBackupWithPortal: optionalSecret("BACKUP_WITH_PORTAL", from: infoDictionary) == "true"
+      )
       self.clientAuthConfig = ClientAuthConfig(
-        authEnvironmentId: optionalSecret("AUTH_ENVIRONMENT_ID", from: infoDictionary),
-        redirectUrl: optionalSecret("AUTH_REDIRECT_URL", from: infoDictionary),
-        magicLinkFromEmail: optionalSecret("AUTH_MAGIC_LINK_FROM_EMAIL", from: infoDictionary),
-        magicLinkTemplateId: optionalSecret("AUTH_MAGIC_LINK_TEMPLATE_ID", from: infoDictionary)
+        authEnvironmentId: optionalSecret("\(clientAuthKeyPrefix)_ENVIRONMENT_ID", from: infoDictionary),
+        redirectUrl: optionalSecret("\(clientAuthKeyPrefix)_REDIRECT_URL", from: infoDictionary),
+        magicLinkFromEmail: optionalSecret("\(clientAuthKeyPrefix)_MAGIC_LINK_FROM_EMAIL", from: infoDictionary),
+        magicLinkTemplateId: optionalSecret("\(clientAuthKeyPrefix)_MAGIC_LINK_TEMPLATE_ID", from: infoDictionary),
+        keyPrefix: clientAuthKeyPrefix
       )
       // Flags and fixed key names only: the four values are configuration secrets, and the
       // unified log is persistent.

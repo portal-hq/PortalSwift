@@ -14,19 +14,27 @@ import PortalSwift
 ///
 /// A free function taking values rather than a property on `ClientAuthConfig` so a test asserts
 /// on the rule instead of on whatever `Secrets.xcconfig` the developer happens to have.
+///
+/// - Parameter keyPrefix: the environment-specific prefix the values were read under, so the
+///   names reported back are the ones the developer has to fill in (`AUTH_STAGING_*` on a
+///   staging build, `AUTH_BACKUP_WITH_PORTAL_PROD_*` on a prod backup-with-Portal build, …).
 func missingClientAuthKeys(
   authEnvironmentId: String,
   redirectUrl: String,
   magicLinkFromEmail: String,
-  magicLinkTemplateId: String
+  magicLinkTemplateId: String,
+  keyPrefix: String = defaultClientAuthKeyPrefix
 ) -> [String] {
   var missing: [String] = []
-  if isBlankClientAuthValue(authEnvironmentId) { missing.append("AUTH_ENVIRONMENT_ID") }
-  if isBlankClientAuthValue(redirectUrl) { missing.append("AUTH_REDIRECT_URL") }
-  if isBlankClientAuthValue(magicLinkFromEmail) { missing.append("AUTH_MAGIC_LINK_FROM_EMAIL") }
-  if isBlankClientAuthValue(magicLinkTemplateId) { missing.append("AUTH_MAGIC_LINK_TEMPLATE_ID") }
+  if isBlankClientAuthValue(authEnvironmentId) { missing.append("\(keyPrefix)_ENVIRONMENT_ID") }
+  if isBlankClientAuthValue(redirectUrl) { missing.append("\(keyPrefix)_REDIRECT_URL") }
+  if isBlankClientAuthValue(magicLinkFromEmail) { missing.append("\(keyPrefix)_MAGIC_LINK_FROM_EMAIL") }
+  if isBlankClientAuthValue(magicLinkTemplateId) { missing.append("\(keyPrefix)_MAGIC_LINK_TEMPLATE_ID") }
   return missing
 }
+
+/// The prefix used when no environment-specific one is given — the plain `AUTH_*` names.
+let defaultClientAuthKeyPrefix = "AUTH"
 
 /// Blank means "absent": Xcode expands an undefined `$(VAR)` to an empty string, so the
 /// Info.plist key exists either way, and a stray space in `Secrets.xcconfig` must not read as
@@ -97,17 +105,22 @@ struct ClientAuthConfig: Equatable, CustomStringConvertible {
   let redirectUrl: String
   let magicLinkFromEmail: String
   let magicLinkTemplateId: String
+  /// The Info.plist key prefix these four values were read under. Reported by `missingKeys`, and
+  /// never a value itself, so it is safe to log.
+  let keyPrefix: String
 
   init(
     authEnvironmentId: String = "",
     redirectUrl: String = "",
     magicLinkFromEmail: String = "",
-    magicLinkTemplateId: String = ""
+    magicLinkTemplateId: String = "",
+    keyPrefix: String = defaultClientAuthKeyPrefix
   ) {
     self.authEnvironmentId = authEnvironmentId
     self.redirectUrl = redirectUrl
     self.magicLinkFromEmail = magicLinkFromEmail
     self.magicLinkTemplateId = magicLinkTemplateId
+    self.keyPrefix = keyPrefix
   }
 
   /// What `PortalAuth(authEnvironmentId:redirectUrl:)` requires to be non-blank.
@@ -133,7 +146,8 @@ struct ClientAuthConfig: Equatable, CustomStringConvertible {
       authEnvironmentId: self.authEnvironmentId,
       redirectUrl: self.redirectUrl,
       magicLinkFromEmail: self.magicLinkFromEmail,
-      magicLinkTemplateId: self.magicLinkTemplateId
+      magicLinkTemplateId: self.magicLinkTemplateId,
+      keyPrefix: self.keyPrefix
     )
   }
 
