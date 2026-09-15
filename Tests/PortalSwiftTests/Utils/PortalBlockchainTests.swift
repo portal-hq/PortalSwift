@@ -20,17 +20,19 @@ final class PortalBlockchainTests: XCTestCase {
     // then
     XCTAssertEqual(blockchain.namespace, .xrpl)
     XCTAssertEqual(blockchain.curve, .SECP256K1)
+    XCTAssertTrue(blockchain.isMainnet, "xrpl:0 is the XRPL mainnet chain id")
     XCTAssertFalse(blockchain.shouldMethodBeSigned(.rawSign))
     XCTAssertFalse(blockchain.shouldMethodBeSigned(.eth_sendTransaction))
     XCTAssertFalse(blockchain.shouldMethodBeSigned(.sol_signTransaction))
   }
 
-  func test_xrpl_testnetChainId_resolves() throws {
+  func test_xrpl_testnetChainId_resolves_andIsNotMainnet() throws {
     // given
     let blockchain = try PortalBlockchain(fromChainId: "xrpl:1")
 
     // then
     XCTAssertEqual(blockchain.namespace, .xrpl)
+    XCTAssertEqual(blockchain.curve, .SECP256K1)
     XCTAssertFalse(blockchain.isMainnet)
   }
 }

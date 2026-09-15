@@ -141,9 +141,8 @@ public class PortalKeychain: PortalKeychainProtocol {
       let metadata = try await getMetadata()
       guard let address = metadata.addresses?[blockchain.namespace] else {
         self.logger.error("PortalKeychain.getAddress() - No address found for namespace: \(blockchain.namespace.rawValue)")
-        // The legacy fallback below reads a key that only ever held the eip155 address, so a
-        // namespace that simply has no address must not fall through to it. Doing so would hand
-        // back the Ethereum address in answer to, say, an `xrpl:` or `solana:` lookup.
+        // A namespace that simply has no address is a `nil` result, not an error. Throwing here
+        // would send it into the legacy fallback below, which is eip155-only.
         guard blockchain.namespace == .eip155 else {
           return nil
         }
@@ -151,6 +150,13 @@ public class PortalKeychain: PortalKeychainProtocol {
       }
       return address
     } catch {
+      // The legacy keys below only ever held the eip155 address, from before multi-wallet
+      // support. They are meaningless for any other namespace, so when metadata is missing or
+      // unreadable a `solana:` or `xrpl:` lookup must surface that error rather than answer with
+      // the Ethereum address.
+      guard blockchain.namespace == .eip155 else {
+        throw error
+      }
       self.logger.debug("PortalKeychain.getAddress() - Attempting to read from legacy address data...")
       // Handle backward compatibility with legacy Keychain data
       guard let client = try await client else {
@@ -376,8 +382,8 @@ public class PortalKeychain: PortalKeychainProtocol {
     // address becomes a JSON `null` inside it. Foundation on iOS 17 and older fails to decode an
     // optional value from that `null`, which makes the *entire* metadata blob unreadable and turns
     // every later `getMetadata()` into `KeychainError.unableToDecodeMetadata`. Omitting the entry
-    // keeps the blob decodable on every supported OS; callers cannot tell the difference, because
-    // an absent key and a key holding `nil` both read back as `nil`.
+    // keeps the blob decodable on every supported OS. Reading a missing namespace by subscript
+    // still yields `nil`; only `keys` and `count` reveal that the entry is absent.
     var addresses: [PortalNamespace: String?] = [:]
     if let eip155Address = client.metadata.namespaces.eip155?.address {
       addresses[.eip155] = eip155Address

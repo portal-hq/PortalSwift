@@ -128,6 +128,28 @@ extension PortalKeychainTests {
     XCTAssertEqual(address, addressExpect)
   }
 
+  /// Companion to the test above: the legacy pre-multi-wallet entry only ever held the eip155
+  /// address, so when metadata is unreadable a lookup for any other namespace must surface the
+  /// metadata error rather than answer with the Ethereum address.
+  func test_getAddress_rethrowsMetadataError_insteadOfLegacyAddress_forNonEip155Namespace() async throws {
+    // given a keychain whose every item decodes as the legacy eip155 address
+    let keyChainAccessMock = PortalKeyChainAccessMock()
+    keyChainAccessMock.getItemReturnValue = "legacy-eip155-address"
+    initKeychainWith(keychainAccess: keyChainAccessMock)
+
+    // then the eip155 lookup still uses the legacy entry
+    let eip155Address = try await keychain.getAddress("eip155:11155111")
+    XCTAssertEqual(eip155Address, "legacy-eip155-address")
+
+    // and an xrpl lookup does not
+    do {
+      let address = try await keychain.getAddress("xrpl:0")
+      XCTFail("Expected getAddress(\"xrpl:0\") to throw when metadata is unreadable, got \(String(describing: address))")
+    } catch {
+      XCTAssertEqual(error as? PortalKeychain.KeychainError, PortalKeychain.KeychainError.unableToDecodeMetadata)
+    }
+  }
+
   func test_getAddress_willCall_keychainGetItem() async throws {
     // given
     let keyChainAccessSpy = PortalKeyChainAccessSpy()
@@ -717,10 +739,11 @@ extension PortalKeychainTests {
 /// In-memory keychain access for presignature tests.
 /// Simulates real keychain behavior: throws itemNotFound when key doesn't exist.
 ///
-/// Access is serialised by a lock. Setting `PortalKeychain.api` kicks off a detached
-/// `Task { loadMetadata() }`, so a test that also drives the keychain itself has two threads
-/// writing here at once. Without the lock that is a data race on the backing dictionary, which
-/// surfaces as an intermittent failure under full-suite load rather than a reproducible one.
+/// Access is serialised by a lock. Setting `PortalKeychain.api` starts an unstructured
+/// `Task { loadMetadata() }` that runs concurrently with the test body, so a test that also
+/// drives the keychain itself has overlapping accesses to this store from two tasks. Without the
+/// lock that is a data race on the backing dictionary, which surfaces as an intermittent failure
+/// under full-suite load rather than a reproducible one.
 private class InMemoryKeychainAccess: PortalKeychainAccessProtocol {
   private let lock = NSLock()
   private var _store: [String: String] = [:]
