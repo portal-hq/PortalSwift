@@ -12,6 +12,25 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
+## Unreleased
+- Added XRP Ledger (XRPL) addresses to the SDK's address APIs. The XRPL classic address is derived by
+  the Portal API from the client's existing SECP256K1 wallet, so no new wallet or curve is generated.
+    - Added `PortalNamespace.xrpl`. If you switch exhaustively over `PortalNamespace`, add a case for it.
+    - `portal.addresses` and `portal.getAddresses()` now include an `.xrpl` entry. Its value is `nil`
+      when the client has no SECP256K1 wallet.
+    - `portal.getAddress("xrpl:0")` and `portal.getAddress("xrpl:1")` return the XRPL address instead
+      of failing with an unsupported namespace.
+    - Added `ClientResponseMetadataNamespaces.xrpl`, mirroring the `xrpl` entry in
+      `GET /api/v3/clients/me`.
+    - `xrpl:` chain IDs now resolve to the SECP256K1 wallet in the wallet-status helpers
+      (`availableRecoveryMethods`, `doesWalletExist`, `isWalletBackedUp`, `isWalletOnDevice`,
+      `getBackupShares`) instead of throwing an unsupported-chain error.
+    - Added `MockConstants.mockXrplAddress` for tests.
+    - XRPL signing is not supported yet. No XRPL request is routed to the MPC signer, so
+      `portal.request(chainId: "xrpl:…", …)` fails with
+      `PortalProviderError.noRpcUrlFoundForChainId` unless an RPC URL is configured for that chain.
+      It previously failed with `PortalBlockchainError.noSupportedCurveForChainId`.
+
 ## 7.4.0 - 2026-09-01
 - Changed Google Drive backup to request only the OAuth scopes your configured `GDriveBackupOption` actually needs, so users see a smaller Google consent screen when enabling Google Drive backup.
     - `.appDataFolder` now requests only the hidden app-data scope (`https://www.googleapis.com/auth/drive.appdata`) — one consent checkbox instead of two.

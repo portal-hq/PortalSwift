@@ -65,14 +65,16 @@ extension ClientResponseMetadataNamespaces {
     solana: ClientResponseNamespaceMetadataItem? = .stub(),
     bip122: ClientResponseNamespaceMetadataItem? = .stub(),
     stellar: ClientResponseNamespaceMetadataItem? = .stub(),
-    tron: ClientResponseNamespaceMetadataItem? = .stub()
+    tron: ClientResponseNamespaceMetadataItem? = .stub(),
+    xrpl: ClientResponseNamespaceMetadataItem? = .stub()
   ) -> Self {
     return ClientResponseMetadataNamespaces(
       eip155: eip155,
       solana: solana,
       bip122: bip122,
       stellar: stellar,
-      tron: tron
+      tron: tron,
+      xrpl: xrpl
     )
   }
 }

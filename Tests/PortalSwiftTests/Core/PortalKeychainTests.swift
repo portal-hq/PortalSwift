@@ -93,8 +93,10 @@ extension PortalKeychainTests {
     let expectation = XCTestExpectation(description: "PortalKeychain.getAddress(forChainId)")
     let eip155Address = try await keychain.getAddress("eip155:11155111")
     let solanaAddress = try await keychain.getAddress("solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z")
+    let xrplAddress = try await keychain.getAddress("xrpl:0")
     XCTAssert(eip155Address == MockConstants.mockEip155Address)
     XCTAssert(solanaAddress == MockConstants.mockSolanaAddress)
+    XCTAssert(xrplAddress == MockConstants.mockXrplAddress)
     expectation.fulfill()
     await fulfillment(of: [expectation], timeout: 5.0)
   }
@@ -143,6 +145,7 @@ extension PortalKeychainTests {
     let addresses = try await keychain.getAddresses()
     XCTAssert(addresses[.eip155] == MockConstants.mockEip155Address)
     XCTAssert(addresses[.solana] == MockConstants.mockSolanaAddress)
+    XCTAssert(addresses[.xrpl] == MockConstants.mockXrplAddress)
     expectation.fulfill()
     await fulfillment(of: [expectation], timeout: 5.0)
   }
@@ -160,6 +163,42 @@ extension PortalKeychainTests {
 
     // then
     XCTAssertTrue(keyChainAccessSpy.getItemCallsCount >= 1)
+  }
+
+  func test_loadMetadata_storesXrplAddressAndCurve_whenApiReturnsIt() async throws {
+    // given
+    let client = ClientResponse.stub(
+      metadata: .stub(namespaces: .stub(xrpl: .stub(address: MockConstants.mockXrplAddress)))
+    )
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: client))
+
+    // and given
+    try await keychain.loadMetadata()
+
+    // then
+    let addresses = try await keychain.getAddresses()
+    XCTAssertEqual(addresses[.xrpl] ?? nil, MockConstants.mockXrplAddress)
+    let address = try await keychain.getAddress("xrpl:0")
+    XCTAssertEqual(address, MockConstants.mockXrplAddress)
+    let metadata = try await keychain.metadata
+    XCTAssertEqual(metadata?.namespaces[.xrpl], .SECP256K1)
+  }
+
+  func test_loadMetadata_omitsXrplAddressAndCurve_whenApiDoesNotReturnIt() async throws {
+    // given
+    let client = ClientResponse.stub(metadata: .stub(namespaces: .stub(xrpl: nil)))
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: client))
+
+    // and given
+    try await keychain.loadMetadata()
+
+    // then
+    let addresses = try await keychain.getAddresses()
+    XCTAssertNil(addresses[.xrpl] ?? nil)
+    let address = try await keychain.getAddress("xrpl:0")
+    XCTAssertNil(address)
+    let metadata = try await keychain.metadata
+    XCTAssertNil(metadata?.namespaces[.xrpl])
   }
 
   func test_getAddresses_willThrowCorrectError_WhenThereIsNoMetadata() async throws {

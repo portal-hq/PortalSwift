@@ -332,6 +332,9 @@ public class PortalKeychain: PortalKeychainProtocol {
     if let solanaCurve = client.metadata.namespaces.solana?.curve {
       metadata.namespaces[.solana] = solanaCurve
     }
+    if let xrplCurve = client.metadata.namespaces.xrpl?.curve {
+      metadata.namespaces[.xrpl] = xrplCurve
+    }
 
     self._metadata = metadata
 
@@ -365,7 +368,8 @@ public class PortalKeychain: PortalKeychainProtocol {
       id: client.id,
       addresses: [
         .eip155: client.metadata.namespaces.eip155?.address,
-        .solana: client.metadata.namespaces.solana?.address
+        .solana: client.metadata.namespaces.solana?.address,
+        .xrpl: client.metadata.namespaces.xrpl?.address
       ],
       custodian: client.custodian,
       wallets: wallets

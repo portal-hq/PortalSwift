@@ -51,6 +51,7 @@ public struct ClientResponseMetadataNamespaces: Codable, Equatable {
   public let bip122: ClientResponseNamespaceMetadataItem?
   public let stellar: ClientResponseNamespaceMetadataItem?
   public let tron: ClientResponseNamespaceMetadataItem?
+  public let xrpl: ClientResponseNamespaceMetadataItem?
 }
 
 public struct P2wpkhAddressInfo: Codable, Equatable {

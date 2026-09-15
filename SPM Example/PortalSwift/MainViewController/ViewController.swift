@@ -1054,6 +1054,10 @@ class ViewController: UIViewController, UITextFieldDelegate {
       addresses.append(WalletAddress(type: "Tron", address: tronAddress, namespace: .tron))
     }
 
+    if let xrplAddress = client.metadata.namespaces.xrpl?.address {
+      addresses.append(WalletAddress(type: "XRPL", address: xrplAddress, namespace: .xrpl))
+    }
+
     // Handle Bitcoin p2wpkh addresses (both mainnet and testnet)
     if let bitcoinInfo = client.metadata.namespaces.bip122?.bitcoin?.p2wpkh {
       // Add testnet address

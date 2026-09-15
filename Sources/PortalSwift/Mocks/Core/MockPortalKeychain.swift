@@ -21,6 +21,8 @@ public class MockPortalKeychain: PortalKeychainProtocol {
       return MockConstants.mockEip155Address
     } else if forChainId.starts(with: "solana") {
       return MockConstants.mockSolanaAddress
+    } else if forChainId.starts(with: "xrpl") {
+      return MockConstants.mockXrplAddress
     }
 
     throw PortalKeychain.KeychainError.unsupportedNamespace(forChainId)
@@ -29,7 +31,8 @@ public class MockPortalKeychain: PortalKeychainProtocol {
   public func getAddresses() async throws -> [PortalNamespace: String?] {
     return [
       .eip155: MockConstants.mockEip155Address,
-      .solana: MockConstants.mockSolanaAddress
+      .solana: MockConstants.mockSolanaAddress,
+      .xrpl: MockConstants.mockXrplAddress
     ]
   }
 

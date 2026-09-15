@@ -148,7 +148,8 @@ public enum MockConstants {
     id: MockConstants.mockClientId,
     addresses: [
       .eip155: mockEip155Address,
-      .solana: mockSolanaAddress
+      .solana: mockSolanaAddress,
+      .xrpl: mockXrplAddress
     ],
     custodian: mockCustodian,
     wallets: [
@@ -297,6 +298,7 @@ public enum MockConstants {
     createdAt: mockCreatedAt,
     status: .completed
   )
+  public static let mockXrplAddress = "rPMaML8R5BLG69NXKXsdTqK64LSkMTspaK"
 
   // Dynamically generated constants
   public static var mockClient: ClientResponse {
@@ -320,7 +322,11 @@ public enum MockConstants {
           solana: nil,
           bip122: nil,
           stellar: nil,
-          tron: nil
+          tron: nil,
+          xrpl: ClientResponseNamespaceMetadataItem(
+            address: mockXrplAddress,
+            curve: .SECP256K1
+          )
         )
       ),
       wallets: [
@@ -351,7 +357,11 @@ public enum MockConstants {
           solana: nil,
           bip122: nil,
           stellar: nil,
-          tron: nil
+          tron: nil,
+          xrpl: ClientResponseNamespaceMetadataItem(
+            address: mockXrplAddress,
+            curve: .SECP256K1
+          )
         )
       ),
       wallets: [
