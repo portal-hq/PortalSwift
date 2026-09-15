@@ -894,9 +894,15 @@ public final class Portal: PortalProtocol {
   /// This method fetches all wallet addresses stored in the device's keychain across
   /// all supported blockchain namespaces.
   ///
-  /// - Returns: A dictionary mapping `PortalNamespace` to optional wallet addresses, where:
-  ///   - `.eip155` key contains the Ethereum/EVM address
-  ///   - `.solana` key contains the Solana address
+  /// - Returns: A dictionary mapping `PortalNamespace` to wallet addresses, where:
+  ///   - `.eip155` holds the Ethereum/EVM address
+  ///   - `.solana` holds the Solana address
+  ///   - `.xrpl` holds the XRP Ledger classic address
+  ///
+  ///   An entry is present only for a namespace the Portal API returned an address for. `.eip155`
+  ///   and `.xrpl` are present when the client has a SECP256K1 wallet, `.solana` when it has an
+  ///   ED25519 wallet. A namespace the client has no wallet for is absent from the dictionary,
+  ///   so it is missing from `keys` and `count` and reads as `nil` by subscript.
   ///
   /// - Throws: Keychain-related errors if the retrieval fails.
   ///
@@ -2613,6 +2619,7 @@ public enum PortalNamespace: String, Codable {
   case bip122
   case stellar
   case tron
+  case xrpl
 }
 
 public enum PortalSharePairStatus: String, Codable {

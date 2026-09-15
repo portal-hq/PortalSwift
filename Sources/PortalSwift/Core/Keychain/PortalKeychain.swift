@@ -141,10 +141,22 @@ public class PortalKeychain: PortalKeychainProtocol {
       let metadata = try await getMetadata()
       guard let address = metadata.addresses?[blockchain.namespace] else {
         self.logger.error("PortalKeychain.getAddress() - No address found for namespace: \(blockchain.namespace.rawValue)")
+        // A namespace that simply has no address is a `nil` result, not an error. Throwing here
+        // would send it into the legacy fallback below, which is eip155-only.
+        guard blockchain.namespace == .eip155 else {
+          return nil
+        }
         throw KeychainError.noAddressForNamespace(blockchain.namespace)
       }
       return address
     } catch {
+      // The legacy keys below only ever held the eip155 address, from before multi-wallet
+      // support. They are meaningless for any other namespace, so when metadata is missing or
+      // unreadable a `solana:` or `xrpl:` lookup must surface that error rather than answer with
+      // the Ethereum address.
+      guard blockchain.namespace == .eip155 else {
+        throw error
+      }
       self.logger.debug("PortalKeychain.getAddress() - Attempting to read from legacy address data...")
       // Handle backward compatibility with legacy Keychain data
       guard let client = try await client else {
@@ -332,6 +344,9 @@ public class PortalKeychain: PortalKeychainProtocol {
     if let solanaCurve = client.metadata.namespaces.solana?.curve {
       metadata.namespaces[.solana] = solanaCurve
     }
+    if let xrplCurve = client.metadata.namespaces.xrpl?.curve {
+      metadata.namespaces[.xrpl] = xrplCurve
+    }
 
     self._metadata = metadata
 
@@ -360,13 +375,30 @@ public class PortalKeychain: PortalKeychainProtocol {
       )
     }
 
+    // Build the client's address map, writing only the namespaces the API actually returned.
+    //
+    // A `nil` value here would not be harmless. `PortalNamespace` is not a string coding key, so
+    // this dictionary encodes as a flattened array of alternating keys and values, and a `nil`
+    // address becomes a JSON `null` inside it. Foundation on iOS 17 and older fails to decode an
+    // optional value from that `null`, which makes the *entire* metadata blob unreadable and turns
+    // every later `getMetadata()` into `KeychainError.unableToDecodeMetadata`. Omitting the entry
+    // keeps the blob decodable on every supported OS. Reading a missing namespace by subscript
+    // still yields `nil`; only `keys` and `count` reveal that the entry is absent.
+    var addresses: [PortalNamespace: String?] = [:]
+    if let eip155Address = client.metadata.namespaces.eip155?.address {
+      addresses[.eip155] = eip155Address
+    }
+    if let solanaAddress = client.metadata.namespaces.solana?.address {
+      addresses[.solana] = solanaAddress
+    }
+    if let xrplAddress = client.metadata.namespaces.xrpl?.address {
+      addresses[.xrpl] = xrplAddress
+    }
+
     // Build the client's metadata
     let clientMetadata = PortalKeychainClientMetadata(
       id: client.id,
-      addresses: [
-        .eip155: client.metadata.namespaces.eip155?.address,
-        .solana: client.metadata.namespaces.solana?.address
-      ],
+      addresses: addresses,
       custodian: client.custodian,
       wallets: wallets
     )

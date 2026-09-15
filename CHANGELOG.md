@@ -12,6 +12,40 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
+## Unreleased
+- Added XRP Ledger (XRPL) addresses to the SDK's address APIs. The XRPL classic address is derived by
+  the Portal API from the client's existing SECP256K1 wallet, so no new wallet or curve is generated.
+    - Added `PortalNamespace.xrpl`. If you switch exhaustively over `PortalNamespace`, add a case for it.
+    - `portal.addresses` and `portal.getAddresses()` now include an `.xrpl` entry when the client
+      has a SECP256K1 wallet. As with every namespace, there is no entry for a wallet the client does
+      not have: the key is absent from the dictionary and reads as `nil` by subscript.
+    - `PortalBlockchain(fromChainId: "xrpl:0")` reports `isMainnet == true`; `xrpl:1` (testnet)
+      reports `false`.
+    - `portal.getAddress("xrpl:0")` and `portal.getAddress("xrpl:1")` return the XRPL address instead
+      of failing with an unsupported namespace.
+    - Added `ClientResponseMetadataNamespaces.xrpl`, mirroring the `xrpl` entry in
+      `GET /api/v3/clients/me`.
+    - `xrpl:` chain IDs now resolve to the SECP256K1 wallet in the wallet-status helpers
+      (`availableRecoveryMethods`, `doesWalletExist`, `isWalletBackedUp`, `isWalletOnDevice`,
+      `getBackupShares`) instead of throwing an unsupported-chain error.
+    - Added `MockConstants.mockXrplAddress` for tests.
+    - XRPL signing is not supported yet. No XRPL request is routed to the MPC signer, so
+      `portal.request(chainId: "xrpl:…", …)` fails with
+      `PortalProviderError.noRpcUrlFoundForChainId` unless an RPC URL is configured for that chain.
+      It previously failed with `PortalBlockchainError.noSupportedCurveForChainId`.
+- Fixed the keychain metadata becoming unreadable on iOS 17 and older when a client had no wallet
+  for one of the stored namespaces. `loadMetadata()` wrote a `nil` address for the missing
+  namespace, which encodes as a JSON `null` that older versions of Foundation cannot decode, so
+  every later `getAddresses()` call failed with `KeychainError.unableToDecodeMetadata`. Namespaces
+  with no address are now omitted from the stored metadata rather than written as `nil`. Reading
+  such a namespace by subscript still yields `nil`; the entry is simply no longer present in the
+  dictionary's `keys` or `count`.
+    - `portal.getAddress("<namespace>:<ref>")` no longer falls back to the legacy pre-multi-wallet
+      keychain entry for any namespace other than `eip155`. That entry only ever held the eip155
+      address, so the fallback could answer a `solana:` or `xrpl:` lookup with the Ethereum address.
+      A non-eip155 namespace with no address now returns `nil`, and when the stored metadata is
+      missing or unreadable the underlying error is thrown instead. `eip155` keeps the fallback.
+
 ## 7.4.0 - 2026-09-01
 - Changed Google Drive backup to request only the OAuth scopes your configured `GDriveBackupOption` actually needs, so users see a smaller Google consent screen when enabling Google Drive backup.
     - `.appDataFolder` now requests only the hidden app-data scope (`https://www.googleapis.com/auth/drive.appdata`) — one consent checkbox instead of two.

@@ -279,6 +279,12 @@ extension PortalApiTests {
     await fulfillment(of: [expectation], timeout: 5.0)
   }
 
+  func test_getClient_decodesXrplNamespace() async throws {
+    let clientResponse = try await api?.getClient()
+    XCTAssertEqual(clientResponse?.metadata.namespaces.xrpl?.address, MockConstants.mockXrplAddress)
+    XCTAssertEqual(clientResponse?.metadata.namespaces.xrpl?.curve, .SECP256K1)
+  }
+
   func testGetClientCompletion() throws {
     let expectation = XCTestExpectation(description: "PortalApi.getClient(completion)")
     let mockClientResponse = MockConstants.mockClient
