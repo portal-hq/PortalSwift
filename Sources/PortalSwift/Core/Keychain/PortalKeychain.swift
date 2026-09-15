@@ -141,6 +141,12 @@ public class PortalKeychain: PortalKeychainProtocol {
       let metadata = try await getMetadata()
       guard let address = metadata.addresses?[blockchain.namespace] else {
         self.logger.error("PortalKeychain.getAddress() - No address found for namespace: \(blockchain.namespace.rawValue)")
+        // The legacy fallback below reads a key that only ever held the eip155 address, so a
+        // namespace that simply has no address must not fall through to it. Doing so would hand
+        // back the Ethereum address in answer to, say, an `xrpl:` or `solana:` lookup.
+        guard blockchain.namespace == .eip155 else {
+          return nil
+        }
         throw KeychainError.noAddressForNamespace(blockchain.namespace)
       }
       return address
@@ -363,14 +369,30 @@ public class PortalKeychain: PortalKeychainProtocol {
       )
     }
 
+    // Build the client's address map, writing only the namespaces the API actually returned.
+    //
+    // A `nil` value here would not be harmless. `PortalNamespace` is not a string coding key, so
+    // this dictionary encodes as a flattened array of alternating keys and values, and a `nil`
+    // address becomes a JSON `null` inside it. Foundation on iOS 17 and older fails to decode an
+    // optional value from that `null`, which makes the *entire* metadata blob unreadable and turns
+    // every later `getMetadata()` into `KeychainError.unableToDecodeMetadata`. Omitting the entry
+    // keeps the blob decodable on every supported OS; callers cannot tell the difference, because
+    // an absent key and a key holding `nil` both read back as `nil`.
+    var addresses: [PortalNamespace: String?] = [:]
+    if let eip155Address = client.metadata.namespaces.eip155?.address {
+      addresses[.eip155] = eip155Address
+    }
+    if let solanaAddress = client.metadata.namespaces.solana?.address {
+      addresses[.solana] = solanaAddress
+    }
+    if let xrplAddress = client.metadata.namespaces.xrpl?.address {
+      addresses[.xrpl] = xrplAddress
+    }
+
     // Build the client's metadata
     let clientMetadata = PortalKeychainClientMetadata(
       id: client.id,
-      addresses: [
-        .eip155: client.metadata.namespaces.eip155?.address,
-        .solana: client.metadata.namespaces.solana?.address,
-        .xrpl: client.metadata.namespaces.xrpl?.address
-      ],
+      addresses: addresses,
       custodian: client.custodian,
       wallets: wallets
     )

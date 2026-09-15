@@ -30,6 +30,16 @@ Possible Types of changes include:
       `portal.request(chainId: "xrpl:…", …)` fails with
       `PortalProviderError.noRpcUrlFoundForChainId` unless an RPC URL is configured for that chain.
       It previously failed with `PortalBlockchainError.noSupportedCurveForChainId`.
+- Fixed the keychain metadata becoming unreadable on iOS 17 and older when a client had no wallet
+  for one of the stored namespaces. `loadMetadata()` wrote a `nil` address for the missing
+  namespace, which encodes as a JSON `null` that older versions of Foundation cannot decode, so
+  every later `getAddresses()` call failed with `KeychainError.unableToDecodeMetadata`. Namespaces
+  with no address are now omitted from the stored metadata rather than written as `nil`. Callers
+  see no difference, because an absent key and a key holding `nil` both read back as `nil`.
+    - `portal.getAddress("<namespace>:<ref>")` no longer falls back to the legacy pre-multi-wallet
+      keychain entry for a namespace that simply has no address. That entry only ever held the
+      eip155 address, so the fallback could answer a non-eip155 lookup with the Ethereum address.
+      It now returns `nil`, and the fallback still applies to `eip155`.
 
 ## 7.4.0 - 2026-09-01
 - Changed Google Drive backup to request only the OAuth scopes your configured `GDriveBackupOption` actually needs, so users see a smaller Google consent screen when enabling Google Drive backup.
