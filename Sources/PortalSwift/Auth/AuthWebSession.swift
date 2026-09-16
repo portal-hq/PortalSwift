@@ -95,6 +95,14 @@ final class AuthPresentationAnchorProvider: NSObject, ASWebAuthenticationPresent
 ///   `start()` has cancelled a session that was not yet started (a no-op on the system class),
 ///   so `begin` re-checks after `start()` and dismisses the session it just presented.
 ///   `cancel()` once the call has finished is a no-op.
+/// - Every `authenticate` call is a numbered run, and both the main-actor hop and the session's
+///   completion closure carry the number of the run that scheduled them; `begin` and `finish`
+///   act only while that run is still the active one. Without this, on an adapter that is
+///   reused, a hop queued by a call that was cancelled before it ran could adopt the continuation
+///   a later call had registered and present the earlier call's URL for it, and a completion
+///   from an earlier call's session could settle the later call. `PortalAuth` builds one adapter
+///   per sign-in, so neither ordering is reachable from it; the identity keeps the adapter
+///   correct as the reusable state machine described here.
 ///
 /// Errors from the completion go through `mapError(_:)`: `canceledLogin` → `.closed`,
 /// `presentationContextNotProvided` / `presentationContextInvalid` → `.unavailable`,
@@ -105,18 +113,33 @@ final class ASWebAuthenticationSessionAdapter: AuthWebSessionProviding, @uncheck
   /// `ASWebAuthenticationSession.init(url:callbackURLScheme:completionHandler:)`.
   typealias SessionFactory = (URL, String?, @escaping (URL?, Error?) -> Void) -> WebAuthenticationSessionHandle
 
+  /// Identifies one `authenticate` call from registration to resumption — see the class doc.
+  private typealias Run = Int
+
   private enum State {
     /// No `authenticate` call in flight.
     case idle
     /// A call has registered its continuation and is waiting for the main-actor hop.
-    case pending(CheckedContinuation<URL, Error>)
+    case pending(CheckedContinuation<URL, Error>, run: Run)
     /// The session has been built and started; both it and the provider are retained here.
-    case running(CheckedContinuation<URL, Error>, WebAuthenticationSessionHandle, AuthPresentationAnchorProvider)
+    case running(CheckedContinuation<URL, Error>, WebAuthenticationSessionHandle, AuthPresentationAnchorProvider, run: Run)
   }
 
   private let sessionFactory: SessionFactory
   private let lock = NSLock()
   private var state: State = .idle
+  /// The run number handed to the most recent `authenticate` call. Guarded by `lock`.
+  private var lastRun: Run = 0
+
+  /// Test seam: `true` while an `authenticate` call is registered or running.
+  var hasCallInFlight: Bool {
+    self.lock.lock()
+    defer { self.lock.unlock() }
+    if case .idle = self.state {
+      return false
+    }
+    return true
+  }
 
   /// The production adapter, backed by a real `ASWebAuthenticationSession`.
   convenience init() {
@@ -147,7 +170,9 @@ final class ASWebAuthenticationSessionAdapter: AuthWebSessionProviding, @uncheck
           continuation.resume(throwing: PortalAuthSignInError.signInInProgress)
           return
         }
-        self.state = .pending(continuation)
+        self.lastRun += 1
+        let run = self.lastRun
+        self.state = .pending(continuation, run: run)
         self.lock.unlock()
 
         // Entered on an already-cancelled task: `withTaskCancellationHandler` ran `cancel()`
@@ -163,6 +188,7 @@ final class ASWebAuthenticationSessionAdapter: AuthWebSessionProviding, @uncheck
 
         Task { @MainActor in
           self.begin(
+            run: run,
             url: url,
             callbackURLScheme: callbackURLScheme,
             anchor: anchor,
@@ -190,9 +216,9 @@ final class ASWebAuthenticationSessionAdapter: AuthWebSessionProviding, @uncheck
     switch previous {
     case .idle:
       return
-    case let .pending(continuation):
+    case let .pending(continuation, _):
       continuation.resume(throwing: PortalAuthSignInError.closed)
-    case let .running(continuation, handle, _):
+    case let .running(continuation, handle, _, _):
       handle.cancel()
       continuation.resume(throwing: PortalAuthSignInError.closed)
     }
@@ -219,45 +245,48 @@ final class ASWebAuthenticationSessionAdapter: AuthWebSessionProviding, @uncheck
 
   // MARK: Private
 
-  /// Builds, configures, retains and starts the session. Runs on the main actor because
-  /// `ASWebAuthenticationSession` presents UI.
+  /// Builds, configures, retains and starts the session for `run`. Runs on the main actor
+  /// because `ASWebAuthenticationSession` presents UI.
   @MainActor
   private func begin(
+    run: Run,
     url: URL,
     callbackURLScheme: String,
     anchor: ASPresentationAnchor,
     prefersEphemeralWebBrowserSession: Bool
   ) {
     let handle = self.sessionFactory(url, callbackURLScheme) { [weak self] callbackURL, error in
-      self?.complete(callbackURL: callbackURL, error: error)
+      self?.complete(run: run, callbackURL: callbackURL, error: error)
     }
     let provider = AuthPresentationAnchorProvider(anchor: anchor)
     handle.presentationContextProvider = provider
     handle.prefersEphemeralWebBrowserSession = prefersEphemeralWebBrowserSession
 
     self.lock.lock()
-    guard case let .pending(continuation) = self.state else {
-      // Cancelled between the registration and this hop: the continuation has already been
-      // failed with `.closed`, so the session is discarded without ever being started.
+    guard case let .pending(continuation, pendingRun) = self.state, pendingRun == run else {
+      // Either cancelled between the registration and this hop — the continuation has already
+      // been failed with `.closed` — or, on a reused adapter, a later call has registered since
+      // and this hop belongs to a call that is over. The session is discarded without ever being
+      // started; adopting the newer call's continuation would present this call's URL for it.
       self.lock.unlock()
       return
     }
-    self.state = .running(continuation, handle, provider)
+    self.state = .running(continuation, handle, provider, run: run)
     self.lock.unlock()
 
     guard handle.start() else {
-      self.finish(.failure(PortalAuthSignInError.unavailable))
+      self.finish(run: run, .failure(PortalAuthSignInError.unavailable))
       return
     }
 
     // `cancel()` may have run between the transition to `.running` above and `start()`. It
     // then cancelled a session that had not started — a no-op on `ASWebAuthenticationSession`
     // — and failed the continuation with `.closed`, and `start()` has just presented the browser
-    // anyway. If this handle is no longer the active run, dismiss it; every later completion is
-    // already ignored by `finish`.
+    // anyway. If this run is no longer the active one, dismiss the session it just presented;
+    // every later completion from it is already ignored by `finish`.
     self.lock.lock()
     let stillActive: Bool
-    if case let .running(_, activeHandle, _) = self.state, activeHandle === handle {
+    if case let .running(_, _, _, activeRun) = self.state, activeRun == run {
       stillActive = true
     } else {
       stillActive = false
@@ -269,33 +298,39 @@ final class ASWebAuthenticationSessionAdapter: AuthWebSessionProviding, @uncheck
     }
   }
 
-  private func complete(callbackURL: URL?, error: Error?) {
+  private func complete(run: Run, callbackURL: URL?, error: Error?) {
     if let error = error {
-      self.finish(.failure(Self.mapError(error)))
+      self.finish(run: run, .failure(Self.mapError(error)))
     } else if let callbackURL = callbackURL {
-      self.finish(.success(callbackURL))
+      self.finish(run: run, .success(callbackURL))
     } else {
-      self.finish(.failure(PortalAuthSignInError.callbackIncomplete))
+      self.finish(run: run, .failure(PortalAuthSignInError.callbackIncomplete))
     }
   }
 
-  /// Resumes the in-flight continuation exactly once and releases the session and provider.
-  /// A completion that arrives after the call has already finished is ignored.
-  private func finish(_ result: Swift.Result<URL, Error>) {
+  /// Resumes the continuation of `run` exactly once and releases the session and provider,
+  /// provided `run` is still the active call. A completion that arrives after the call has
+  /// already finished, or that belongs to an earlier call on a reused adapter, is ignored: only
+  /// the session the active run started may settle it.
+  private func finish(run: Run, _ result: Swift.Result<URL, Error>) {
     self.lock.lock()
-    let continuation: CheckedContinuation<URL, Error>
+    let active: (continuation: CheckedContinuation<URL, Error>, run: Run)
     switch self.state {
     case .idle:
       self.lock.unlock()
       return
-    case let .pending(pending):
-      continuation = pending
-    case let .running(running, _, _):
-      continuation = running
+    case let .pending(continuation, pendingRun):
+      active = (continuation, pendingRun)
+    case let .running(continuation, _, _, runningRun):
+      active = (continuation, runningRun)
+    }
+    guard active.run == run else {
+      self.lock.unlock()
+      return
     }
     self.state = .idle
     self.lock.unlock()
 
-    continuation.resume(with: result)
+    active.continuation.resume(with: result)
   }
 }

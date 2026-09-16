@@ -1758,4 +1758,122 @@ extension PortalAuthSignInTests {
     XCTAssertEqual(returned, callback, "A cancel after settlement changes nothing")
     XCTAssertEqual(retained.latest?.cancelCalls, 0, "The finished session is not dismissed again")
   }
+
+  // MARK: Run identity on a reused adapter
+
+  func test_adapter_willIgnoreCompletionFromAnEarlierRun_onAReusedAdapter() async throws {
+    // Run A is presented and then cancelled; run B is presented on the same adapter. A's session
+    // may still report in — the system delivers completions asynchronously — and that report
+    // belongs to A: B must stay in flight and settle only with its own session's result.
+    // `PortalAuth` builds one adapter per sign-in, so this is the adapter's own contract.
+    let recorder = FakeWebAuthenticationSessionHandle.Recorder()
+    let retained = RetainedHandles()
+    let adapter = self.makeAdapter(recorder: recorder, retaining: retained)
+    let googleUrl = try AuthTestFixtures.url(SignInFixtures.googleAuthorizeUrl)
+    let appleUrl = try AuthTestFixtures.url(SignInFixtures.appleAuthorizeUrl)
+    let googleCallback = try AuthTestFixtures.url(SignInFixtures.googleCallback)
+    let appleCallback = try AuthTestFixtures.url(SignInFixtures.appleCallback)
+
+    let taskA = self.startAuthenticate(adapter, url: googleUrl, anchor: self.anchor)
+    let aStarted = await waitUntil { retained.count == 1 && retained.latest?.startCalls == 1 }
+    XCTAssertTrue(aStarted)
+    let handleA = try XCTUnwrap(retained.latest)
+    taskA.cancel()
+    await XCTAssertThrowsAsync(
+      try await self.awaitBounded("run A") { try await taskA.value },
+      expected: PortalAuthSignInError.closed
+    )
+
+    let taskB = self.startAuthenticate(adapter, url: appleUrl, anchor: self.anchor)
+    let bStarted = await waitUntil { retained.count == 2 && retained.latest?.startCalls == 1 }
+    XCTAssertTrue(bStarted)
+    let handleB = try XCTUnwrap(retained.latest)
+    XCTAssertFalse(handleA === handleB)
+
+    // A's late report carries a URL, so a misattribution would show up as B returning it.
+    handleA.complete(url: googleCallback, error: nil)
+
+    XCTAssertTrue(adapter.hasCallInFlight, "A completion from A's session must not settle B")
+    XCTAssertEqual(handleB.cancelCalls, 0, "B's session stays presented")
+
+    handleB.complete(url: appleCallback, error: nil)
+    let returned = try await self.awaitBounded("run B") { try await taskB.value }
+    XCTAssertEqual(returned, appleCallback, "B settles with its own session's result")
+  }
+
+  func test_adapter_willNotAdoptALaterRun_whenItsOwnRunWasCancelledBeforeTheHop() async throws {
+    // Run A registers and is cancelled before its main-actor hop runs; run B registers on the same
+    // adapter before that hop gets to run. The hop still belongs to A, so it must not adopt B's
+    // continuation and present A's URL for it. The ordering is reproduced from inside the factory
+    // call A's hop makes, which is the last thing the hop does before it checks the state.
+    final class TaskBox: @unchecked Sendable {
+      private let lock = NSLock()
+      private var _task: Task<URL, Error>?
+      var task: Task<URL, Error>? {
+        get {
+          self.lock.lock()
+          defer { self.lock.unlock() }
+          return self._task
+        }
+        set {
+          self.lock.lock()
+          defer { self.lock.unlock() }
+          self._task = newValue
+        }
+      }
+    }
+
+    let recorder = FakeWebAuthenticationSessionHandle.Recorder()
+    let retained = RetainedHandles()
+    let adapter = self.makeAdapter(recorder: recorder, retaining: retained)
+    let googleUrl = try AuthTestFixtures.url(SignInFixtures.googleAuthorizeUrl)
+    let appleUrl = try AuthTestFixtures.url(SignInFixtures.appleAuthorizeUrl)
+    let appleCallback = try AuthTestFixtures.url(SignInFixtures.appleCallback)
+    let anchor = self.anchor
+    let runB = TaskBox()
+
+    // Replaces the retaining hook `makeAdapter` installed, so it retains too. The adapter is
+    // captured weakly: the recorder is owned by the adapter's factory, and a strong capture here
+    // would make a cycle.
+    recorder.onCreate = { [weak adapter] handle in
+      retained.append(handle)
+      guard retained.count == 1, let adapter = adapter else {
+        return
+      }
+      // A's hop is on the main actor right now, about to check the state. Cancel A here…
+      adapter.cancel()
+      // …and register B before the hop gets to look.
+      runB.task = Task.detached {
+        try await adapter.authenticate(
+          url: appleUrl,
+          callbackURLScheme: SignInFixtures.callbackScheme,
+          anchor: anchor,
+          prefersEphemeralWebBrowserSession: false
+        )
+      }
+      let deadline = Date().addingTimeInterval(2)
+      while !adapter.hasCallInFlight, Date() < deadline {
+        Thread.sleep(forTimeInterval: 0.002)
+      }
+    }
+
+    let taskA = self.startAuthenticate(adapter, url: googleUrl, anchor: anchor)
+    await XCTAssertThrowsAsync(
+      try await self.awaitBounded("run A") { try await taskA.value },
+      expected: PortalAuthSignInError.closed
+    )
+
+    let bStarted = await waitUntil { retained.count == 2 && retained.latest?.startCalls == 1 }
+    XCTAssertTrue(bStarted, "B's own hop presents B's session")
+    let handleA = try XCTUnwrap(retained.handles.first)
+    let handleB = try XCTUnwrap(retained.latest)
+    XCTAssertEqual(handleA.url, googleUrl)
+    XCTAssertEqual(handleA.startCalls, 0, "A's hop must not present A's URL on B's behalf")
+    XCTAssertEqual(handleB.url, appleUrl)
+
+    handleB.complete(url: appleCallback, error: nil)
+    let taskB = try XCTUnwrap(runB.task)
+    let returned = try await self.awaitBounded("run B") { try await taskB.value }
+    XCTAssertEqual(returned, appleCallback)
+  }
 }
