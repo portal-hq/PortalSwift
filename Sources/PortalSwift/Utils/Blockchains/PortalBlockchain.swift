@@ -11,12 +11,16 @@ public class PortalBlockchain {
   static let mainnetReferences: [PortalNamespace: String] = [
     .eip155: "1",
     .solana: "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+    .stellar: "pubnet",
+    .tron: "mainnet",
     .xrpl: "0"
   ]
   static let namespaceCurves: [PortalNamespace: PortalCurve] = [
     .eip155: .SECP256K1,
     .bip122: .SECP256K1,
     .solana: .ED25519,
+    .stellar: .ED25519,
+    .tron: .SECP256K1,
     .xrpl: .SECP256K1
   ]
   static let namespaceSignerMethods: [PortalNamespace: [PortalRequestMethod]] = [

@@ -45,6 +45,28 @@ Possible Types of changes include:
       address, so the fallback could answer a `solana:` or `xrpl:` lookup with the Ethereum address.
       A non-eip155 namespace with no address now returns `nil`, and when the stored metadata is
       missing or unreadable the underlying error is thrown instead. `eip155` keeps the fallback.
+- Added Stellar and Tron addresses to the SDK's address APIs. `GET /api/v3/clients/me` already
+  returned them under `metadata.namespaces.stellar` and `metadata.namespaces.tron`, derived from the
+  client's existing ED25519 and SECP256K1 wallets, so no new wallet or curve is involved.
+    - `portal.addresses` and `portal.getAddresses()` include `.stellar` and `.tron` when the Portal
+      API returns them, and omit the key when it does not. `portal.getAddress("stellar:pubnet")` and
+      `portal.getAddress("tron:mainnet")` return those addresses instead of failing with
+      `PortalBlockchainError.noSupportedCurveForChainId`.
+    - `portal.getAddresses()` now also omits a namespace whose address the Portal API returned blank,
+      which happens when server-side address derivation fails. Previously the key was present with an
+      empty string.
+    - `stellar:` and `tron:` chain IDs resolve to the ED25519 and SECP256K1 wallets in the
+      wallet-status helpers (`availableRecoveryMethods`, `doesWalletExist`, `isWalletBackedUp`,
+      `isWalletOnDevice`, `getBackupShares`) instead of throwing an unsupported-chain error.
+      `PortalBlockchain(fromChainId:)` reports `isMainnet == true` for `stellar:pubnet` and
+      `tron:mainnet`.
+    - Bitcoin is deliberately not in `getAddresses()`: it has no single canonical address, so the
+      Portal API leaves `bip122.address` blank and returns the usable addresses under
+      `client.metadata.namespaces.bip122?.bitcoin?.p2wpkh`.
+    - Stellar and Tron signing is not supported yet. `portal.request(chainId: "stellar:…", …)` and
+      `portal.request(chainId: "tron:…", …)` are not routed to the MPC signer and fail with
+      `PortalProviderError.noRpcUrlFoundForChainId` unless an RPC URL is configured for that chain.
+      They previously failed with `PortalBlockchainError.noSupportedCurveForChainId`.
 
 ## 7.4.0 - 2026-09-01
 - Changed Google Drive backup to request only the OAuth scopes your configured `GDriveBackupOption` actually needs, so users see a smaller Google consent screen when enabling Google Drive backup.

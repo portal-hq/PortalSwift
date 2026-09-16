@@ -21,6 +21,10 @@ public class MockPortalKeychain: PortalKeychainProtocol {
       return MockConstants.mockEip155Address
     } else if forChainId.starts(with: "solana") {
       return MockConstants.mockSolanaAddress
+    } else if forChainId.starts(with: "stellar") {
+      return MockConstants.mockStellarAddress
+    } else if forChainId.starts(with: "tron") {
+      return MockConstants.mockTronAddress
     } else if forChainId.starts(with: "xrpl") {
       return MockConstants.mockXrplAddress
     }
@@ -32,6 +36,8 @@ public class MockPortalKeychain: PortalKeychainProtocol {
     return [
       .eip155: MockConstants.mockEip155Address,
       .solana: MockConstants.mockSolanaAddress,
+      .stellar: MockConstants.mockStellarAddress,
+      .tron: MockConstants.mockTronAddress,
       .xrpl: MockConstants.mockXrplAddress
     ]
   }
