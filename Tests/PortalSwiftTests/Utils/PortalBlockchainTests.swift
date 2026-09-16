@@ -35,4 +35,34 @@ final class PortalBlockchainTests: XCTestCase {
     XCTAssertEqual(blockchain.curve, .SECP256K1)
     XCTAssertFalse(blockchain.isMainnet)
   }
+
+  /// Stellar and Tron are address-only, like XRPL: the namespace resolves to the wallet that backs
+  /// the address, but no method is signable. Flip these when signer support lands.
+  func test_stellar_resolvesEd25519_andHasNoSignerMethods() throws {
+    // given
+    let mainnet = try PortalBlockchain(fromChainId: "stellar:pubnet")
+    let testnet = try PortalBlockchain(fromChainId: "stellar:testnet")
+
+    // then
+    XCTAssertEqual(mainnet.namespace, .stellar)
+    XCTAssertEqual(mainnet.curve, .ED25519)
+    XCTAssertTrue(mainnet.isMainnet, "stellar:pubnet is the Stellar mainnet chain id")
+    XCTAssertFalse(testnet.isMainnet)
+    XCTAssertFalse(mainnet.shouldMethodBeSigned(.rawSign))
+    XCTAssertFalse(mainnet.shouldMethodBeSigned(.sol_signTransaction))
+  }
+
+  func test_tron_resolvesSecp256k1_andHasNoSignerMethods() throws {
+    // given
+    let mainnet = try PortalBlockchain(fromChainId: "tron:mainnet")
+    let nile = try PortalBlockchain(fromChainId: "tron:nile")
+
+    // then
+    XCTAssertEqual(mainnet.namespace, .tron)
+    XCTAssertEqual(mainnet.curve, .SECP256K1)
+    XCTAssertTrue(mainnet.isMainnet, "tron:mainnet is the Tron mainnet chain id")
+    XCTAssertFalse(nile.isMainnet)
+    XCTAssertFalse(mainnet.shouldMethodBeSigned(.rawSign))
+    XCTAssertFalse(mainnet.shouldMethodBeSigned(.eth_sendTransaction))
+  }
 }

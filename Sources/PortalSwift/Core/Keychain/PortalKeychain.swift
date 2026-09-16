@@ -344,6 +344,12 @@ public class PortalKeychain: PortalKeychainProtocol {
     if let solanaCurve = client.metadata.namespaces.solana?.curve {
       metadata.namespaces[.solana] = solanaCurve
     }
+    if let stellarCurve = client.metadata.namespaces.stellar?.curve {
+      metadata.namespaces[.stellar] = stellarCurve
+    }
+    if let tronCurve = client.metadata.namespaces.tron?.curve {
+      metadata.namespaces[.tron] = tronCurve
+    }
     if let xrplCurve = client.metadata.namespaces.xrpl?.curve {
       metadata.namespaces[.xrpl] = xrplCurve
     }
@@ -390,6 +396,12 @@ public class PortalKeychain: PortalKeychainProtocol {
     }
     if let solanaAddress = client.metadata.namespaces.solana?.address {
       addresses[.solana] = solanaAddress
+    }
+    if let stellarAddress = client.metadata.namespaces.stellar?.address {
+      addresses[.stellar] = stellarAddress
+    }
+    if let tronAddress = client.metadata.namespaces.tron?.address {
+      addresses[.tron] = tronAddress
     }
     if let xrplAddress = client.metadata.namespaces.xrpl?.address {
       addresses[.xrpl] = xrplAddress
