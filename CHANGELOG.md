@@ -52,6 +52,9 @@ Possible Types of changes include:
       API returns them, and omit the key when it does not. `portal.getAddress("stellar:pubnet")` and
       `portal.getAddress("tron:mainnet")` return those addresses instead of failing with
       `PortalBlockchainError.noSupportedCurveForChainId`.
+    - `portal.getAddresses()` now also omits a namespace whose address the Portal API returned blank,
+      which happens when server-side address derivation fails. Previously the key was present with an
+      empty string.
     - `stellar:` and `tron:` chain IDs resolve to the ED25519 and SECP256K1 wallets in the
       wallet-status helpers (`availableRecoveryMethods`, `doesWalletExist`, `isWalletBackedUp`,
       `isWalletOnDevice`, `getBackupShares`) instead of throwing an unsupported-chain error.

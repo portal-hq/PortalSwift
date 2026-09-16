@@ -390,20 +390,24 @@ public class PortalKeychain: PortalKeychainProtocol {
     // every later `getMetadata()` into `KeychainError.unableToDecodeMetadata`. Omitting the entry
     // keeps the blob decodable on every supported OS. Reading a missing namespace by subscript
     // still yields `nil`; only `keys` and `count` reveal that the entry is absent.
+    //
+    // A blank address is treated the same as a missing one. The API initialises every address to
+    // `""` and keeps the namespace key even when derivation fails server-side, so only a non-empty
+    // value means the client has a usable address for that namespace.
     var addresses: [PortalNamespace: String?] = [:]
-    if let eip155Address = client.metadata.namespaces.eip155?.address {
+    if let eip155Address = client.metadata.namespaces.eip155?.address, !eip155Address.isEmpty {
       addresses[.eip155] = eip155Address
     }
-    if let solanaAddress = client.metadata.namespaces.solana?.address {
+    if let solanaAddress = client.metadata.namespaces.solana?.address, !solanaAddress.isEmpty {
       addresses[.solana] = solanaAddress
     }
-    if let stellarAddress = client.metadata.namespaces.stellar?.address {
+    if let stellarAddress = client.metadata.namespaces.stellar?.address, !stellarAddress.isEmpty {
       addresses[.stellar] = stellarAddress
     }
-    if let tronAddress = client.metadata.namespaces.tron?.address {
+    if let tronAddress = client.metadata.namespaces.tron?.address, !tronAddress.isEmpty {
       addresses[.tron] = tronAddress
     }
-    if let xrplAddress = client.metadata.namespaces.xrpl?.address {
+    if let xrplAddress = client.metadata.namespaces.xrpl?.address, !xrplAddress.isEmpty {
       addresses[.xrpl] = xrplAddress
     }
 

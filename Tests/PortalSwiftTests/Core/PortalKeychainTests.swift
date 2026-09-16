@@ -260,6 +260,30 @@ extension PortalKeychainTests {
     XCTAssertNil(metadata?.namespaces[.tron])
   }
 
+  /// The API initialises every address to `""` and keeps the namespace key even when derivation
+  /// fails server-side. A blank must read as "no address", not as an address.
+  func test_loadMetadata_omitsANamespaceWhoseAddressIsBlank() async throws {
+    // given
+    let client = ClientResponse.stub(
+      metadata: .stub(namespaces: .stub(
+        eip155: .stub(address: ""),
+        stellar: .stub(address: "", curve: .ED25519)
+      ))
+    )
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: client))
+
+    // and given
+    try await keychain.loadMetadata()
+
+    // then
+    let addresses = try await keychain.getAddresses()
+    XCTAssertFalse(addresses.keys.contains(.eip155))
+    XCTAssertFalse(addresses.keys.contains(.stellar))
+    XCTAssertEqual(addresses[.tron] ?? nil, "default_address")
+    let stellarAddress = try await keychain.getAddress("stellar:pubnet")
+    XCTAssertNil(stellarAddress)
+  }
+
   /// `bip122.address` is blank on the wire because Bitcoin has no single canonical address; the
   /// usable P2WPKH addresses live under `bip122.bitcoin.p2wpkh`. It must never reach the map.
   func test_loadMetadata_neverStoresABitcoinAddress() async throws {

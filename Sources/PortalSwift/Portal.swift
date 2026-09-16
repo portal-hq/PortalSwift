@@ -903,8 +903,9 @@ public final class Portal: PortalProtocol {
   ///
   ///   An entry is present only for a namespace the Portal API returned an address for. `.eip155`,
   ///   `.tron` and `.xrpl` are present when the client has a SECP256K1 wallet, `.solana` and
-  ///   `.stellar` when it has an ED25519 wallet. A namespace the client has no wallet for is absent
-  ///   from the dictionary, so it is missing from `keys` and `count` and reads as `nil` by subscript.
+  ///   `.stellar` when it has an ED25519 wallet. A namespace is absent from the dictionary when the
+  ///   client has no wallet for it or the Portal API returned a blank address for it, so it is
+  ///   missing from `keys` and `count` and reads as `nil` by subscript.
   ///
   ///   `.bip122` is never present. Bitcoin has no single canonical address, so the Portal API leaves
   ///   `bip122.address` blank and returns the usable P2WPKH addresses per network under
