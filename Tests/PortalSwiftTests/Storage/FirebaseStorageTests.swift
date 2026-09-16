@@ -694,10 +694,12 @@ extension FirebaseStorageTests {
     XCTAssertFalse(notified, "A bearer that rotated out during the retry cannot implicate the replacement.")
   }
 
-  func test_read_willNotReport_andThrowTokenNotRefreshed_whenSecond401CarriesTheSameFirebaseToken() async throws {
-    // given: a host whose `getToken` callback does not force a refresh, so the retry re-sends the
-    // same (stale) Firebase ID token. The second 401 then says nothing about the Portal credential.
-    firebaseTokens.values = ["fb-stale", "fb-stale"]
+  func test_read_willReport_onSecond401_evenWhenTheFirebaseTokenDidNotChange() async throws {
+    // given: a host whose `getToken` callback hands back the same Firebase ID token on the retry.
+    // That is what Firebase's cached `getIDToken()` does for most of a token's lifetime, so the
+    // same bytes say nothing about whether a refresh happened — and nothing about the Portal
+    // credential either way.
+    firebaseTokens.values = ["fb-same", "fb-same"]
     let credentials = MockCredentials(tokenValue: "portal-tok-1")
     let recorder = InvalidationListenerRecorder(credentials: credentials)
     let spy = initFirebaseStorageWithSpy(credentials: credentials)
@@ -706,16 +708,20 @@ extension FirebaseStorageTests {
     let storage = try XCTUnwrap(self.storage)
 
     // and given
-    await XCTAssertThrowsAsync(try await storage.read(), expected: FirebaseStorageError.tokenNotRefreshed)
+    await XCTAssertThrowsAsync(try await storage.read(), expected: PortalRequestsError.unauthorized)
 
-    // then: the retry still happened, but the Portal session is left alone — signing the user
-    // out of the wallet for a Firebase misconfiguration is the wrong outcome
+    // then: the surviving 401 is attributed to the Portal credential regardless (Android / React
+    // Native parity). Refusing to would leave a genuinely revoked session unreported for as long
+    // as Firebase keeps serving the cached token.
     XCTAssertEqual(spy.executeCallsCount, 2)
     XCTAssertEqual(firebaseTokenCalls, 2)
-    XCTAssertEqual(credentials.invalidateCalls, 0)
-    XCTAssertNoThrow(try credentials.getToken())
-    let notified = await waitUntil(timeout: 0.3) { recorder.count > 0 }
-    XCTAssertFalse(notified, "An unchanged Firebase token cannot implicate the Portal credential.")
+    XCTAssertEqual(credentials.invalidateCalls, 1)
+    let notified = await waitUntil { recorder.count == 1 }
+    XCTAssertTrue(notified, "A 401 that survived the retry must report the credential even when the Firebase token did not change.")
+
+    // and: the integrator is told, once, that the callback may not be forcing a refresh
+    let logger = try XCTUnwrap(self.recordingLogger)
+    XCTAssertEqual(logger.messages(at: .warn).filter { $0.contains("did not change on refresh") }.count, 1)
   }
 
   func test_read_willThrowSessionInvalidated_whenCredentialInvalidatedBetweenAttempts() async throws {

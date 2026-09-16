@@ -74,7 +74,11 @@ public class FirebaseStorage: Storage, PortalStorage {
   /// - Parameters:
   ///   - getToken: A callback that returns a fresh Firebase ID token.
   ///     **Important:** This callback should always force-refresh the token (e.g., call
-  ///     `getIDToken(forcingRefresh: true)`) to ensure retry-on-401 works correctly.
+  ///     `getIDToken(forcingRefresh: true)`) to ensure retry-on-401 works correctly. The token is
+  ///     opaque to the SDK, so it cannot check that the callback did: Firebase's `getIDToken()`
+  ///     hands back the cached token until shortly before it expires, and a 401 that survives the
+  ///     retry is attributed to the Portal credential whether or not the token changed. A callback
+  ///     that never refreshes therefore turns an expired Firebase token into a spurious sign-out.
   ///   - tbsHost: The TBS host URL. Defaults to Portal's production TBS.
   ///   - encryption: The encryption implementation. Defaults to `PortalEncryption()`.
   ///   - requests: The HTTP request executor. Defaults to `PortalRequests()`.
@@ -165,6 +169,14 @@ public class FirebaseStorage: Storage, PortalStorage {
   /// reported; the raw `PortalRequestsError.unauthorized` is rethrown so callers see the same
   /// error `PortalApi` would raise. `PortalCredentialError` and `FirebaseStorageError` propagate
   /// unchanged; any other transport failure, on either attempt, is wrapped in `.requestFailed`.
+  ///
+  /// Whether the Firebase token changed between the attempts is logged, never decided on. The
+  /// token is opaque here, and sameness does not mean the host failed to refresh: Firebase's
+  /// `getIDToken()` returns the cached token until shortly before expiry by default, so a correct
+  /// refresh of a token that is not near expiry hands back the same bytes. Refusing to report in
+  /// that case would leave a genuinely revoked Portal session unreported for most of the token's
+  /// lifetime — the exact failure the second-401 attribution exists to catch — and the Android and
+  /// React Native SDKs attribute the surviving 401 unconditionally as well.
   private func executeWithUnauthorizedRetry<Response>(
     operation: String,
     _ perform: (_ bearerToken: String, _ firebaseToken: String) async throws -> Response
@@ -189,13 +201,10 @@ public class FirebaseStorage: Storage, PortalStorage {
     do {
       return try await perform(refreshedBearerToken, refreshedFirebaseToken)
     } catch PortalRequestsError.unauthorized {
-      // Attribution is only sound when the Firebase half actually changed. A host whose
-      // `getToken` callback handed back the same (stale) ID token did not refresh, so this second
-      // 401 says nothing about the Portal credential — signing the user out of the wallet for a
-      // Firebase misconfiguration is the wrong outcome.
-      guard refreshedFirebaseToken != firebaseToken else {
-        self.logger.error("FirebaseStorage.\(operation)() - TBS rejected the retried request with 401, but the Firebase token did not change on refresh; not attributing this to the Portal credential. Make getToken() force a refresh (getIDToken(forcingRefresh: true)).")
-        throw FirebaseStorageError.tokenNotRefreshed
+      if refreshedFirebaseToken == firebaseToken {
+        // Worth a line for the integrator, not a different outcome (see the method doc): the
+        // same bytes are what a correct refresh returns too when the token is not near expiry.
+        self.logger.warn("FirebaseStorage.\(operation)() - The Firebase ID token did not change on refresh. If getToken() does not force a refresh (getIDToken(forcingRefresh: true)), an expired Firebase token is indistinguishable from a rejected Portal session here.")
       }
       // Attributed to the bearer the retry carried: a credential that rotated again while the
       // retry was in flight is not invalidated for the old bearer's rejection.

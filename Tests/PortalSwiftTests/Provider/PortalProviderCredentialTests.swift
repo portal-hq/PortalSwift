@@ -37,14 +37,22 @@ final class PortalProviderCredentialTests: XCTestCase {
   private static let sessionToken = "session-token-1"
 
   /// The RPC URLs the bearer gate is exercised with. The withheld ones are the attacker shapes
-  /// `isPortalOwnedUrl` exists to reject; the attached ones include the local-loopback and
-  /// non-`api.` Portal hosts the pre-7.5 string-prefix check got wrong in both directions.
+  /// `isPortalRpcUrl` exists to reject, plus the cleartext and off-port shapes a credential must
+  /// not be sent to; the attached ones include the non-`api.` Portal hosts the pre-7.5
+  /// string-prefix check got wrong, and a loopback URL that is the configured API host itself.
   private enum Gateway {
     static let portalApi = "https://api.portalhq.io/rpc/v1/eip155/11155111"
     static let nonApiPortal = "https://web.portalhq.io/rpc/v1/eip155/11155111"
     static let portalDev = "https://api.portalhq.dev/rpc/v1/eip155/11155111"
     static let localhost = "http://localhost:8545"
     static let loopbackIp = "http://127.0.0.1:8545"
+    static let localApiHost = "localhost:3001"
+    static let localApi = "http://localhost:3001/rpc/v1/eip155/11155111"
+    static let localApiOtherPort = "http://localhost:8545/rpc/v1/eip155/11155111"
+    static let ipv6Loopback = "http://[::1]:3001/rpc/v1/eip155/11155111"
+    static let cleartextPortalApi = "http://api.portalhq.io/rpc/v1/eip155/11155111"
+    static let cleartextCustomProxy = "http://api.custodian.example/rpc"
+    static let customProxyOtherPort = "https://api.custodian.example:8443/rpc"
     static let uppercaseHost = "https://API.PORTALHQ.IO/rpc"
     static let trailingDotHost = "https://api.portalhq.io./rpc"
 
@@ -490,20 +498,108 @@ final class PortalProviderCredentialTests: XCTestCase {
     XCTAssertEqual(self.credentials.getTokenCalls, 0, "The credential is not even resolved for a host this instance was not configured with")
   }
 
-  func test_request_rpc_willAttachBearer_onLocalhost() async throws {
+  func test_request_rpc_willWithholdBearer_onLocalhost_thatIsNotTheConfiguredApiHost() async throws {
+    // A local Anvil or Hardhat node is the canonical custom gateway during development. It shares
+    // `localhost` with a local Portal API and differs only by port, so loopback alone earns
+    // nothing — as before 7.5, and as Android's `Provider.isPortalRpcUrl` decides.
     let provider = try makeProvider(rpcUrl: Gateway.localhost)
+
+    try await self.rpc(provider)
+
+    self.assertNoBearerSent()
+    XCTAssertEqual(self.credentials.getTokenCalls, 0)
+  }
+
+  func test_request_rpc_willWithholdBearer_onLoopbackIp_thatIsNotTheConfiguredApiHost() async throws {
+    let provider = try makeProvider(rpcUrl: Gateway.loopbackIp)
+
+    try await self.rpc(provider)
+
+    self.assertNoBearerSent()
+    XCTAssertEqual(self.credentials.getTokenCalls, 0)
+  }
+
+  func test_request_rpc_willAttachBearer_onLocalhost_whenItIsTheConfiguredApiHostAndPort() async throws {
+    // A `Portal` built against a local connect-api derives its default RPC URLs from that
+    // `apiHost`, so host and port match exactly — which is what says "this is our own endpoint".
+    // Cleartext is fine here and here alone: the request never leaves the machine.
+    let provider = try makeProvider(rpcUrl: Gateway.localApi, configuredHosts: [Gateway.localApiHost])
 
     try await self.rpc(provider)
 
     self.assertBearerSent(Self.sessionToken)
   }
 
-  func test_request_rpc_willAttachBearer_onLoopbackIp() async throws {
-    let provider = try makeProvider(rpcUrl: Gateway.loopbackIp)
+  func test_request_rpc_willWithholdBearer_onLocalhost_whenThePortDiffersFromTheConfiguredApiHost() async throws {
+    let provider = try makeProvider(rpcUrl: Gateway.localApiOtherPort, configuredHosts: [Gateway.localApiHost])
 
     try await self.rpc(provider)
 
-    self.assertBearerSent(Self.sessionToken)
+    self.assertNoBearerSent()
+    XCTAssertEqual(self.credentials.getTokenCalls, 0)
+  }
+
+  func test_request_rpc_willWithholdBearer_onIpv6Loopback() async throws {
+    // `[::1]` cannot be configured as an endpoint, so it never qualifies.
+    let provider = try makeProvider(rpcUrl: Gateway.ipv6Loopback, configuredHosts: [Gateway.localApiHost])
+
+    try await self.rpc(provider)
+
+    self.assertNoBearerSent()
+    XCTAssertEqual(self.credentials.getTokenCalls, 0)
+  }
+
+  func test_request_rpc_willWithholdBearer_onCleartextPortalHost() async throws {
+    // A genuine Portal host reached over `http`: the session token would travel unencrypted.
+    let provider = try makeProvider(rpcUrl: Gateway.cleartextPortalApi)
+
+    try await self.rpc(provider)
+
+    self.assertNoBearerSent()
+    XCTAssertEqual(self.credentials.getTokenCalls, 0)
+  }
+
+  func test_request_rpc_willWithholdBearer_onCleartextConfiguredHost() async throws {
+    let provider = try makeProvider(rpcUrl: Gateway.cleartextCustomProxy, configuredHosts: ["api.custodian.example"])
+
+    try await self.rpc(provider)
+
+    self.assertNoBearerSent()
+    XCTAssertEqual(self.credentials.getTokenCalls, 0)
+  }
+
+  func test_request_rpc_willWithholdBearer_onTheConfiguredHost_whenThePortDiffers() async throws {
+    // A configured host names one endpoint; a second port has to be configured on its own.
+    let provider = try makeProvider(rpcUrl: Gateway.customProxyOtherPort, configuredHosts: ["api.custodian.example"])
+
+    try await self.rpc(provider)
+
+    self.assertNoBearerSent()
+    XCTAssertEqual(self.credentials.getTokenCalls, 0)
+  }
+
+  func test_init_willRegisterMpcHostAndConfiguredHosts_forThe401Gate() throws {
+    // The bearer is sent to a configured host through this instance's own trust, but the
+    // transport's 401 hook fires only for a host the process-wide registry knows. `Portal`
+    // registers its hosts; a provider built on its own has to do it itself, or a 401 from its
+    // own gateway would never end the session.
+    XCTAssertFalse(isPortalOwnedUrl(Gateway.customProxy), "Precondition: not a Portal host until configured")
+    XCTAssertFalse(isPortalOwnedUrl("https://mpc.custodian.example/v1/sign"))
+
+    _ = try PortalProvider(
+      credentials: self.credentials,
+      rpcConfig: [Self.chainId: Gateway.customProxy],
+      keychain: MockPortalKeychain(),
+      autoApprove: true,
+      mpcHost: "mpc.custodian.example",
+      requests: self.requestsSpy,
+      binary: self.mobileSpy,
+      configuredHosts: ["api.custodian.example"]
+    )
+
+    XCTAssertTrue(isPortalOwnedUrl(Gateway.customProxy), "Constructing the provider registers its configured hosts")
+    XCTAssertTrue(isPortalOwnedUrl("https://mpc.custodian.example/v1/sign"), "and its MPC host")
+    XCTAssertFalse(isPortalOwnedUrl(Gateway.customProxySubdomain), "Exactly, not as a suffix")
   }
 
   func test_request_rpc_willResolveTokenPerRequest() async throws {

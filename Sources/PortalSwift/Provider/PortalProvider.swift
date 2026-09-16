@@ -65,12 +65,14 @@ public class PortalProvider: PortalProviderProtocol {
   private var processedSignatureIds: [String] = []
   private let requests: PortalRequestsProtocol
   private let rpcConfig: [String: String]
-  /// The hosts this provider's owning `Portal` was configured with (`apiHost`, `mpcHost`,
-  /// `enclaveMPCHost`), normalized. The RPC bearer is attached to the static Portal allow-list and
-  /// these — never to hosts other instances registered in `PortalOwnedHosts`, so one instance's
-  /// credential cannot reach another instance's proxy through an `rpcConfig` URL. Internal so
-  /// tests can assert what a `PortalConnect`-built provider trusts.
-  let configuredHosts: Set<String>
+  /// The hosts and ports this provider's owning `Portal` was configured with (`apiHost`,
+  /// `mpcHost`, `enclaveMPCHost`), normalized. The RPC bearer is attached to the static Portal
+  /// allow-list over `https` and to these — never to hosts other instances registered in
+  /// `PortalOwnedHosts`, so one instance's credential cannot reach another instance's proxy
+  /// through an `rpcConfig` URL, and never to a loopback URL that is not one of these, so a local
+  /// Anvil or Hardhat node does not receive it either (`isPortalRpcUrl(_:configuredEndpoints:)`).
+  /// Internal so tests can assert what a `PortalConnect`-built provider trusts.
+  let configuredEndpoints: Set<PortalConfiguredEndpoint>
   private let signer: PortalSignerProtocol
   private let featureFlags: FeatureFlags?
 
@@ -88,8 +90,9 @@ public class PortalProvider: PortalProviderProtocol {
   ///   - credentials: The credential (Client API Key or session) that authenticates Portal-owned
   ///     RPC requests and signatures. Resolved per call, never cached.
   ///   - rpcConfig: CAIP-2 chain id → RPC URL. The credential is attached only to Portal-owned
-  ///     (or local loopback) URLs and to `mpcHost` / `configuredHosts`; third-party gateways
-  ///     never see it.
+  ///     URLs over `https` and to `mpcHost` / `configuredHosts` (host and port); third-party
+  ///     gateways never see it, and neither does a loopback URL that is not a configured host —
+  ///     see `isPortalRpcUrl(_:configuredEndpoints:)`.
   ///   - keychain: Where signing shares and addresses live.
   ///   - autoApprove: Auto approves all transactions.
   ///   - requests: The transport. When it reports 401s and has no hook yet, the provider wires
@@ -97,8 +100,10 @@ public class PortalProvider: PortalProviderProtocol {
   ///   - signer: Injectable signer; defaults to a `PortalMpcSigner` that receives the resolved
   ///     token per call.
   ///   - configuredHosts: Further hosts the owning `Portal` was constructed with (`apiHost`,
-  ///     `enclaveMPCHost`), trusted for the RPC bearer alongside `mpcHost`. Hosts other
-  ///     instances registered process-wide in `PortalOwnedHosts` are deliberately not.
+  ///     `enclaveMPCHost`), optionally with a port, trusted for the RPC bearer alongside
+  ///     `mpcHost`. Hosts other instances registered process-wide in `PortalOwnedHosts` are
+  ///     deliberately not. They are registered there in turn, so a 401 from one of them reaches
+  ///     the hook this provider installs even when no `Portal` built it.
   public init(
     credentials: PortalCredentials,
     rpcConfig: [String: String],
@@ -118,7 +123,11 @@ public class PortalProvider: PortalProviderProtocol {
     self.autoApprove = autoApprove
     self.keychain = keychain
     self.rpcConfig = rpcConfig
-    self.configuredHosts = PortalOwnedHosts.normalize([mpcHost] + configuredHosts)
+    self.configuredEndpoints = PortalOwnedHosts.normalizeEndpoints([mpcHost] + configuredHosts)
+    // The same hosts are Portal-owned for the 401 gate (see `PortalOwnedHosts`): the bearer below
+    // is sent to them through this instance's own trust, and the transport's hook only fires for a
+    // host the registry knows. `Portal` registers them too; a standalone provider has only this.
+    PortalOwnedHosts.register(contentsOf: [mpcHost] + configuredHosts)
 
     // Other instance variables
     self.featureFlags = featureFlags
@@ -470,9 +479,11 @@ public class PortalProvider: PortalProviderProtocol {
       // Host-based, not a string prefix: `https://api.portalhq.io.attacker.com/rpc` passed the old
       // "starts with the production API URL" test and received the end user's session token,
       // while `web.portalhq.io`, an uppercase spelling or this instance's own custom host got none.
-      // Configured-host trust is this instance's (`configuredHosts`), not the process-wide
+      // Configured-host trust is this instance's (`configuredEndpoints`), not the process-wide
       // registry: a host some other `Portal` was built with must never receive this credential.
-      let bearerToken: String? = try isPortalOwnedUrl(rpcUrl, configuredHosts: self.configuredHosts)
+      // Loopback counts only as a configured endpoint (host and port) and public hosts only over
+      // `https` — see `isPortalRpcUrl(_:configuredEndpoints:)`.
+      let bearerToken: String? = try isPortalRpcUrl(rpcUrl, configuredEndpoints: self.configuredEndpoints)
         ? PortalCredentialSupport.resolveToken(self.credentials)
         : nil
       let request = PortalAPIRequest(

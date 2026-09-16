@@ -422,6 +422,57 @@ final class WebSocketClientTests: XCTestCase {
     XCTAssertEqual(fixture.client.uri, wsUri)
   }
 
+  func test_connect_fromManyThreadsAtOnce_willOpenOneSocketPerCall_andDetachEachPrevious() throws {
+    // `PortalConnect.connect(_:)` runs on whatever thread the host calls it from, while the
+    // Starscream callbacks and the reconnect task run on the main queue. The client serialises
+    // `openConnection(uri:)` and swaps `socket`, `uri` and the upgrade bearer under one lock, so
+    // concurrent connects still yield exactly one started socket per call, every previous socket
+    // detached and force-stopped once, and a `uri` that belongs to one of the calls. A smoke
+    // test: it exercises the locking on real threads, it cannot prove the absence of a race.
+    final class ErrorBox {
+      private let lock = NSLock()
+      private var _errors: [Error] = []
+      var errors: [Error] {
+        self.lock.lock()
+        defer { self.lock.unlock() }
+        return self._errors
+      }
+
+      func record(_ error: Error) {
+        self.lock.lock()
+        defer { self.lock.unlock() }
+        self._errors.append(error)
+      }
+    }
+
+    let fixture = try self.defaultFixture()
+    let callers = 16
+    let uris = (0 ..< callers).map { "wc:topic-\($0)@2?relay-protocol=irn&symKey=abc" }
+    let errors = ErrorBox()
+    let group = DispatchGroup()
+    let queue = DispatchQueue(label: "WebSocketClientTests.concurrentConnect", attributes: .concurrent)
+
+    for uri in uris {
+      group.enter()
+      queue.async {
+        defer { group.leave() }
+        do {
+          try fixture.client.connect(uri: uri)
+        } catch {
+          errors.record(error)
+        }
+      }
+    }
+    XCTAssertEqual(group.wait(timeout: .now() + 5), .success, "Every connect must return")
+
+    XCTAssertTrue(errors.errors.isEmpty, "No connect may fail: \(errors.errors)")
+    XCTAssertEqual(fixture.engine.startCallsCount, callers, "One fresh socket per connect")
+    XCTAssertEqual(fixture.engine.forceStopCallsCount, callers - 1, "Every connect but the first stops the socket it replaces")
+    XCTAssertEqual(fixture.engine.authorizationHeaders.compactMap { $0 }.count, callers, "Every upgrade carried the bearer")
+    let recordedUri = try XCTUnwrap(fixture.client.uri)
+    XCTAssertTrue(uris.contains(recordedUri), "The recorded uri is one caller's, never a torn value")
+  }
+
   func test_connect_willRebuildRequest_onEachCall() throws {
     let fixture = try self.defaultFixture()
 

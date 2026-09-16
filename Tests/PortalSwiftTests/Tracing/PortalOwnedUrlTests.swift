@@ -10,9 +10,10 @@ import Foundation
 @testable import PortalSwift
 import XCTest
 
-/// Pins the behaviour of `isPortalOwnedUrl(_:)`, the single gate that decides whether the
-/// client's bearer credential is attached to an RPC request, whether a 401 from that URL
-/// invalidates the credential, and whether the `X-Portal-Trace-Id` header is sent at all.
+/// Pins the behaviour of `isPortalOwnedUrl(_:)`, the gate that decides whether a 401 from a URL
+/// invalidates the credential and whether the `X-Portal-Trace-Id` header is sent at all, and of
+/// `isPortalRpcUrl(_:configuredEndpoints:)`, the stricter gate on the same parse that decides
+/// whether the client's bearer credential is attached to an RPC request.
 ///
 /// A false positive here hands a Client API Key or a session token to an attacker-controlled
 /// host, so the bulk of this suite is the attacker-hostname list the Android SDK regressed on
@@ -386,29 +387,116 @@ final class PortalOwnedUrlTests: XCTestCase {
     self.assertOwned(["https://api.custodian.example/api/v3/clients/me"], true)
   }
 
-  func test_isPortalOwnedUrl_configuredHosts_willIgnoreTheRegistry_andTrustOnlyTheGivenHosts() {
+  // MARK: - RPC bearer gate
+
+  func test_isPortalRpcUrl_willIgnoreTheRegistry_andTrustOnlyTheGivenEndpoints() {
     PortalOwnedHosts.register("rpc.api.custodian.example")
-    let mine = PortalOwnedHosts.normalize(["API.Mine.Example.", "https://mpc.mine.example:8443/path", "not a host%"])
-    XCTAssertEqual(mine, ["api.mine.example", "mpc.mine.example"])
+    let mine = PortalOwnedHosts.normalizeEndpoints(["API.Mine.Example.", "https://mpc.mine.example:8443/path", "not a host%"])
+    XCTAssertEqual(mine, [
+      PortalConfiguredEndpoint(host: "api.mine.example", port: nil),
+      PortalConfiguredEndpoint(host: "mpc.mine.example", port: 8443)
+    ])
 
     // The registry's host is not this instance's.
     XCTAssertTrue(isPortalOwnedUrl("https://rpc.api.custodian.example/rpc"))
-    XCTAssertFalse(isPortalOwnedUrl("https://rpc.api.custodian.example/rpc", configuredHosts: mine))
-    XCTAssertFalse(isPortalOwnedUrl("https://rpc.api.custodian.example/rpc", configuredHosts: []))
+    XCTAssertFalse(isPortalRpcUrl("https://rpc.api.custodian.example/rpc", configuredEndpoints: mine))
+    XCTAssertFalse(isPortalRpcUrl("https://rpc.api.custodian.example/rpc", configuredEndpoints: []))
 
     // This instance's hosts match exactly, after the same normalization `register` applies. A
     // subdomain of one is not this instance's host either.
-    XCTAssertTrue(isPortalOwnedUrl("https://api.mine.example/rpc", configuredHosts: mine))
-    XCTAssertTrue(isPortalOwnedUrl("https://API.Mine.Example./rpc", configuredHosts: mine))
-    XCTAssertFalse(isPortalOwnedUrl("https://rpc.mpc.mine.example/rpc", configuredHosts: mine))
-    XCTAssertFalse(isPortalOwnedUrl("https://api.mine.example.attacker.com/rpc", configuredHosts: mine))
-    XCTAssertFalse(isPortalOwnedUrl("https://notapi.mine.example/rpc", configuredHosts: mine))
+    XCTAssertTrue(isPortalRpcUrl("https://api.mine.example/rpc", configuredEndpoints: mine))
+    XCTAssertTrue(isPortalRpcUrl("https://API.Mine.Example./rpc", configuredEndpoints: mine))
+    XCTAssertTrue(isPortalRpcUrl("https://mpc.mine.example:8443/rpc", configuredEndpoints: mine))
+    XCTAssertFalse(isPortalRpcUrl("https://rpc.mpc.mine.example/rpc", configuredEndpoints: mine))
+    XCTAssertFalse(isPortalRpcUrl("https://api.mine.example.attacker.com/rpc", configuredEndpoints: mine))
+    XCTAssertFalse(isPortalRpcUrl("https://notapi.mine.example/rpc", configuredEndpoints: mine))
 
-    // The loopback and static allow-lists and the structural rejections are unchanged.
-    XCTAssertTrue(isPortalOwnedUrl("https://api.portalhq.io/rpc", configuredHosts: []))
-    XCTAssertTrue(isPortalOwnedUrl("http://localhost:8545", configuredHosts: []))
-    XCTAssertFalse(isPortalOwnedUrl("https://attacker.com%2f.portalhq.io/rpc", configuredHosts: mine))
-    XCTAssertFalse(isPortalOwnedUrl("https://api.mine.example@attacker.com/rpc", configuredHosts: mine))
+    // The static allow-list and the structural rejections are unchanged.
+    XCTAssertTrue(isPortalRpcUrl("https://api.portalhq.io/rpc", configuredEndpoints: []))
+    XCTAssertTrue(isPortalRpcUrl("https://API.PORTALHQ.IO./rpc", configuredEndpoints: []))
+    XCTAssertFalse(isPortalRpcUrl("https://api.portalhq.io.attacker.com/rpc", configuredEndpoints: mine))
+    XCTAssertFalse(isPortalRpcUrl("https://attacker.com%2f.portalhq.io/rpc", configuredEndpoints: mine))
+    XCTAssertFalse(isPortalRpcUrl("https://api.mine.example@attacker.com/rpc", configuredEndpoints: mine))
+    XCTAssertFalse(isPortalRpcUrl("//api.portalhq.io/rpc", configuredEndpoints: mine))
+  }
+
+  func test_isPortalRpcUrl_willCompareThePort_ofAConfiguredEndpoint() {
+    // A configured host names one endpoint. An absent port on either side means the scheme's
+    // default, so a port-less host matches the default port and nothing else (Android
+    // `Provider.matchesConfiguredApiHost`).
+    let portless = PortalOwnedHosts.normalizeEndpoints(["api.mine.example"])
+    XCTAssertTrue(isPortalRpcUrl("https://api.mine.example/rpc", configuredEndpoints: portless))
+    XCTAssertTrue(isPortalRpcUrl("https://api.mine.example:443/rpc", configuredEndpoints: portless))
+    XCTAssertFalse(isPortalRpcUrl("https://api.mine.example:8443/rpc", configuredEndpoints: portless))
+
+    let explicit = PortalOwnedHosts.normalizeEndpoints(["api.mine.example:8443"])
+    XCTAssertTrue(isPortalRpcUrl("https://api.mine.example:8443/rpc", configuredEndpoints: explicit))
+    XCTAssertFalse(isPortalRpcUrl("https://api.mine.example/rpc", configuredEndpoints: explicit))
+    XCTAssertFalse(isPortalRpcUrl("https://api.mine.example:443/rpc", configuredEndpoints: explicit))
+
+    // The static Portal apexes are trusted as a domain, so no port is compared there.
+    XCTAssertTrue(isPortalRpcUrl("https://api.portalhq.io:8443/rpc", configuredEndpoints: []))
+  }
+
+  func test_isPortalRpcUrl_willRequireTls_forEveryHostOffTheDevice() {
+    let mine = PortalOwnedHosts.normalizeEndpoints(["api.mine.example"])
+
+    // Genuine Portal hosts and this instance's own host, reached in cleartext: the credential
+    // would travel unencrypted. The 401 and trace gates still treat the host as Portal-owned.
+    for url in ["http://api.portalhq.io/rpc", "http://web.portalhq.io/rpc", "http://api.portalhq.dev/rpc"] {
+      XCTAssertTrue(isPortalOwnedUrl(url), url)
+      XCTAssertFalse(isPortalRpcUrl(url, configuredEndpoints: mine), url)
+    }
+    XCTAssertFalse(isPortalRpcUrl("http://api.mine.example/rpc", configuredEndpoints: mine))
+    XCTAssertFalse(isPortalRpcUrl("HTTP://api.mine.example/rpc", configuredEndpoints: mine))
+    XCTAssertTrue(isPortalRpcUrl("HTTPS://api.mine.example/rpc", configuredEndpoints: mine), "The scheme is compared case-insensitively, like the host")
+
+    // An RPC request cannot be made over any other scheme.
+    XCTAssertFalse(isPortalRpcUrl("wss://api.portalhq.io/rpc", configuredEndpoints: mine))
+    XCTAssertFalse(isPortalRpcUrl("ftp://api.mine.example/rpc", configuredEndpoints: mine))
+  }
+
+  func test_isPortalRpcUrl_willTrustLoopback_onlyAsAConfiguredEndpoint() {
+    // `isPortalOwnedUrl` treats loopback as Portal-owned, which is right for a trace id. For the
+    // bearer it is not: a local Anvil or Hardhat node shares `localhost` with a local Portal API
+    // and differs only by port, so a loopback URL qualifies only as this instance's own endpoint
+    // (Android `Provider.isPortalRpcUrl`).
+    let localApi = PortalOwnedHosts.normalizeEndpoints(["localhost:3001"])
+
+    XCTAssertTrue(isPortalOwnedUrl("http://localhost:8545"))
+    XCTAssertFalse(isPortalRpcUrl("http://localhost:8545", configuredEndpoints: []))
+    XCTAssertFalse(isPortalRpcUrl("http://localhost:8545", configuredEndpoints: localApi), "The port is what tells Anvil from the local Portal API")
+    XCTAssertFalse(isPortalRpcUrl("http://127.0.0.1:3001/rpc", configuredEndpoints: localApi), "A different loopback host is a different endpoint")
+    XCTAssertFalse(isPortalRpcUrl("http://api.localhost:3001/rpc", configuredEndpoints: localApi))
+
+    // Its own endpoint, over cleartext or TLS: the request never leaves the machine. The host is
+    // compared after the same normalization the URL gets.
+    XCTAssertTrue(isPortalRpcUrl("http://localhost:3001/rpc/v1/eip155/1", configuredEndpoints: localApi))
+    XCTAssertTrue(isPortalRpcUrl("https://localhost:3001/rpc/v1/eip155/1", configuredEndpoints: localApi))
+    XCTAssertTrue(isPortalRpcUrl("http://LOCALHOST.:3001/rpc", configuredEndpoints: localApi))
+
+    // A port-less loopback host means the scheme default, like any other configured host.
+    let portless = PortalOwnedHosts.normalizeEndpoints(["localhost"])
+    XCTAssertTrue(isPortalRpcUrl("http://localhost/rpc", configuredEndpoints: portless))
+    XCTAssertTrue(isPortalRpcUrl("http://localhost:80/rpc", configuredEndpoints: portless))
+    XCTAssertTrue(isPortalRpcUrl("https://localhost/rpc", configuredEndpoints: portless))
+    XCTAssertFalse(isPortalRpcUrl("http://localhost:8545/rpc", configuredEndpoints: portless))
+
+    // Dotted-decimal loopback and `*.localhost` follow the same rule.
+    let others = PortalOwnedHosts.normalizeEndpoints(["127.0.0.1:3001", "api.localhost:3001"])
+    XCTAssertTrue(isPortalRpcUrl("http://127.0.0.1:3001/rpc", configuredEndpoints: others))
+    XCTAssertTrue(isPortalRpcUrl("http://api.localhost:3001/rpc", configuredEndpoints: others))
+    XCTAssertFalse(isPortalRpcUrl("http://127.0.0.1:3002/rpc", configuredEndpoints: others))
+    XCTAssertFalse(isPortalRpcUrl("http://localhost:3001/rpc", configuredEndpoints: others))
+  }
+
+  func test_isPortalRpcUrl_willNeverTrustTheIpv6LoopbackLiteral() {
+    // Owned for the trace id, but it cannot be configured as an endpoint — `PortalOwnedHosts`
+    // rejects IP literals other than dotted decimals — so no instance is ever built against it.
+    XCTAssertTrue(isPortalOwnedUrl("http://[::1]:3001/rpc"))
+    XCTAssertEqual(PortalOwnedHosts.normalizeEndpoints(["[::1]:3001", "http://[::1]:3001"]), [])
+    XCTAssertFalse(isPortalRpcUrl("http://[::1]:3001/rpc", configuredEndpoints: []))
+    XCTAssertFalse(isPortalRpcUrl("http://[::1]:3001/rpc", configuredEndpoints: PortalOwnedHosts.normalizeEndpoints(["localhost:3001"])))
   }
 
   func test_register_willAcceptFullUrlsAndPorts_andIgnoreValuesThatAreNotAHost() {

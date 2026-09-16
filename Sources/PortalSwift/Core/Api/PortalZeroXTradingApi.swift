@@ -48,7 +48,10 @@ public class PortalZeroXTradingApi: PortalZeroXTradingApiProtocol {
   /// that rotates or is invalidated underneath this instance takes effect on the next call. The
   /// transport's 401 hook is wired to `credentials` only when the transport reports 401s and has
   /// no hook yet, so a standalone instance with its own transport still reports a dead session
-  /// while one built by `PortalApi` finds the hook already installed and leaves it alone.
+  /// while one built by `PortalApi` finds the hook already installed and leaves it alone. The
+  /// `apiHost` is registered as Portal-owned (`PortalOwnedHosts`) for the same reason: the hook
+  /// and the trace header are both gated on the host, so a custom host that was never registered
+  /// would silently get neither.
   /// - Parameters:
   ///   - credentials: The credential presented as the bearer on every request: a `StaticCredentials`
   ///     wrapping a Client API Key, or a session obtained through `PortalAuth`.
@@ -62,6 +65,10 @@ public class PortalZeroXTradingApi: PortalZeroXTradingApiProtocol {
     self.credentials = credentials
     self.baseUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
     self.requests = requests ?? PortalRequests()
+    // The configured host is Portal-owned for the 401 and trace gates (see `PortalOwnedHosts`);
+    // without this a standalone instance on a custom `apiHost` would never fire the hook it
+    // installs below, and would send no trace header.
+    PortalOwnedHosts.register(apiHost)
 
     PortalCredentialSupport.installUnauthorizedHook(on: self.requests, for: credentials, context: "PortalZeroXTradingApi")
   }

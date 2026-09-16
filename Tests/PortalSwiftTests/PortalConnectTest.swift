@@ -410,15 +410,15 @@ extension PortalConnectTest {
     // then: the provider's bearer gate trusts the RPC URL on that host — before this the
     // parameter was discarded and every RPC from this instance went out without the session token
     XCTAssertTrue(
-      isPortalOwnedUrl(Self.customRpcUrl, configuredHosts: connect.provider.configuredHosts),
+      isPortalRpcUrl(Self.customRpcUrl, configuredEndpoints: connect.provider.configuredEndpoints),
       "The configured API host must be trusted for the RPC bearer, as it is for Portal's own providers"
     )
     XCTAssertTrue(
-      isPortalOwnedUrl("https://mpc.portalhq.io/", configuredHosts: connect.provider.configuredHosts),
+      isPortalRpcUrl("https://mpc.portalhq.io/", configuredEndpoints: connect.provider.configuredEndpoints),
       "The MPC host stays trusted"
     )
     XCTAssertFalse(
-      isPortalOwnedUrl("https://rpc.other.example/", configuredHosts: connect.provider.configuredHosts),
+      isPortalRpcUrl("https://rpc.other.example/", configuredEndpoints: connect.provider.configuredEndpoints),
       "An unrelated gateway is still refused the credential"
     )
   }

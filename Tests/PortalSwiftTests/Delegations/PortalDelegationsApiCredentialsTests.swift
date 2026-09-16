@@ -20,7 +20,15 @@ import XCTest
 /// is built — after the local URL validation, so a malformed argument is reported as a bad URL
 /// rather than as a credential problem. The last case is the log-leak gate: the token must never
 /// reach a log line, not even by way of a server error message that echoes it back.
+///
+/// The host-registration cases at the end run through a real `PortalRequests` on
+/// `MockURLProtocol`, because what they pin — the 401 hook firing and the trace header going out
+/// for a custom `apiHost` — is decided inside the transport, which the spy bypasses.
 final class PortalDelegationsApiCredentialsTests: XCTestCase {
+  /// A host an integrator fronts Portal through. Not Portal-owned until an SDK object is built
+  /// against it, which is exactly what the registration cases prove.
+  private static let customApiHost = "api.custodian.example"
+
   private var credentials = MockCredentials(tokenValue: "first-token")
   private var spy = PortalRequestsSpy()
   private var sut: PortalDelegationsApi?
@@ -31,6 +39,10 @@ final class PortalDelegationsApiCredentialsTests: XCTestCase {
   override func setUpWithError() throws {
     try super.setUpWithError()
     CredentialInvalidationRegistry.shared.resetForTesting()
+    // The registry of configured hosts is process-wide; the registration cases assert on a host
+    // being unknown first.
+    PortalOwnedHosts.resetForTesting()
+    MockURLProtocol.reset()
 
     self.previousLogLevel = PortalLogger.shared.logLevel
     PortalLogger.shared.setLogLevel(.debug)
@@ -52,6 +64,8 @@ final class PortalDelegationsApiCredentialsTests: XCTestCase {
     self.logger.uninstall()
     PortalLogger.shared.setLogLevel(self.previousLogLevel)
     CredentialInvalidationRegistry.shared.resetForTesting()
+    PortalOwnedHosts.resetForTesting()
+    MockURLProtocol.reset()
     try super.tearDownWithError()
   }
 
@@ -281,5 +295,60 @@ extension PortalDelegationsApiCredentialsTests {
     await XCTAssertThrowsAsync(try await api.transferFrom(request: .stub())) { self.assertBadUrl($0, "transferFrom") }
     XCTAssertEqual(credentials.getTokenCalls, 0, "No credential access before local validation.")
     XCTAssertEqual(self.spy.executeCallsCount, 0)
+  }
+}
+
+// MARK: - Host registration
+
+extension PortalDelegationsApiCredentialsTests {
+  func test_init_willRegisterApiHost_soA401OnACustomHostReachesTheHook_andTheTraceHeaderIsSent() async throws {
+    // given: an integrator who fronts Portal through their own domain and builds the sub-API on
+    // its own, with its own transport. The 401 hook and the trace header are both gated on the
+    // host being Portal-owned, so a custom host nobody registered would silently get neither —
+    // and the hook this init installs could never fire.
+    let credentials = MockCredentials(tokenValue: "first-token")
+    let recorder = InvalidationListenerRecorder(credentials: credentials)
+    MockURLProtocol.respond(status: 401, body: "{\"message\":\"unauthorized\"}")
+    let transport = PortalRequests(urlSession: MockURLProtocol.makeSession())
+    XCTAssertFalse(isPortalOwnedUrl("https://\(Self.customApiHost)/api/v3/clients/me"), "Precondition: not a Portal host until configured")
+
+    // when
+    let api = PortalDelegationsApi(credentials: credentials, apiHost: Self.customApiHost, requests: transport)
+    await XCTAssertThrowsAsync(try await api.getStatus(request: .stub()), expected: PortalRequestsError.unauthorized)
+
+    // then
+    XCTAssertTrue(isPortalOwnedUrl("https://\(Self.customApiHost)/api/v3/clients/me"), "Constructing the API registers its host")
+    XCTAssertEqual(credentials.invalidateCalls, 1, "A 401 from the host this API was configured against ends the session.")
+    let delivered = await waitUntil { recorder.deliveries == 1 }
+    XCTAssertTrue(delivered, "The host must be told the session ended.")
+    XCTAssertEqual(MockURLProtocol.recordedRequests.count, 1)
+    let request = try XCTUnwrap(MockURLProtocol.lastRequest)
+    XCTAssertEqual(request.url?.host, Self.customApiHost)
+    XCTAssertNotNil(request.value(forHTTPHeaderField: PORTAL_TRACE_ID_HEADER), "The trace header goes to the configured host, as it did before hosts were classified.")
+  }
+
+  func test_init_everyIntegrationApi_willRegisterItsApiHost() {
+    // The eight sub-APIs share the init shape, and each has to register on its own: nothing else
+    // knows the host a standalone one was built against.
+    let credentials = MockCredentials(tokenValue: "first-token")
+    let hosts = (1 ... 8).map { "api\($0).custodian.example" }
+    for host in hosts {
+      XCTAssertFalse(isPortalOwnedUrl("https://\(host)/x"), "Precondition: \(host) is not a Portal host until configured")
+    }
+
+    _ = PortalBlockaidApi(credentials: credentials, apiHost: hosts[0], requests: self.spy)
+    _ = PortalDelegationsApi(credentials: credentials, apiHost: hosts[1], requests: self.spy)
+    _ = PortalEvmAccountTypeApi(credentials: credentials, apiHost: hosts[2], requests: self.spy)
+    _ = PortalHypernativeApi(credentials: credentials, apiHost: hosts[3], requests: self.spy)
+    _ = PortalLifiTradingApi(credentials: credentials, apiHost: hosts[4], requests: self.spy)
+    _ = PortalNoahApi(credentials: credentials, apiHost: hosts[5], requests: self.spy)
+    _ = PortalYieldXyzApi(credentials: credentials, apiHost: hosts[6], requests: self.spy)
+    _ = PortalZeroXTradingApi(credentials: credentials, apiHost: hosts[7], requests: self.spy)
+
+    for host in hosts {
+      XCTAssertTrue(isPortalOwnedUrl("https://\(host)/x"), "\(host) must be registered by the API built against it")
+    }
+    XCTAssertFalse(isPortalOwnedUrl("https://rpc.api1.custodian.example/x"), "Exactly, not as a suffix")
+    XCTAssertEqual(credentials.getTokenCalls, 0, "Registration does not touch the credential")
   }
 }

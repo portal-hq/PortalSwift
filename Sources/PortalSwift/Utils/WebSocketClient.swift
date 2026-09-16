@@ -124,7 +124,24 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
 
   /// The WalletConnect URI of the current (or last requested) session. Set by `connect(uri:)`
   /// and read back by the connect handshake and by every reconnect.
-  var uri: String?
+  ///
+  /// Guarded by `reconnectLock`: it is written by `openConnection(uri:)` on whatever thread the
+  /// host called `PortalConnect.connect(_:)` from, and read by the Starscream delegate callbacks
+  /// and the reconnect task on the main queue.
+  var uri: String? {
+    get {
+      self.reconnectLock.lock()
+      defer { self.reconnectLock.unlock() }
+      return self._uri
+    }
+    set {
+      self.reconnectLock.lock()
+      defer { self.reconnectLock.unlock() }
+      self._uri = newValue
+    }
+  }
+
+  private var _uri: String?
 
   /// The keep-alive timer started by the connect handshake. Readable so tests can assert it is
   /// invalidated on every terminal path.
@@ -164,10 +181,33 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
 
   /// The socket of the current or most recent connection. Rebuilt by `openConnection(uri:)` on
   /// every connect — see there for why a socket is never reused.
-  private var socket: Starscream.WebSocket?
+  ///
+  /// Guarded by `reconnectLock`, like `uri`: the swap happens on the caller's thread (a host
+  /// `connect(uri:)`) or on the main queue (a reconnect), while the ping timer, the delegate
+  /// callbacks and `send(_:)` read it — a concurrent read and write of a strong reference is
+  /// undefined behaviour, whatever the hardware does with the pointer itself. The getter returns
+  /// a retained reference taken under the lock, so a reader keeps the socket it saw alive for the
+  /// duration of its call even when the swap lands halfway through. Only `openConnection(uri:)`
+  /// writes it, as part of a single critical section with `uri` and the upgrade bearer.
+  private var socket: Starscream.WebSocket? {
+    self.reconnectLock.lock()
+    defer { self.reconnectLock.unlock() }
+    return self._socket
+  }
+
+  private var _socket: Starscream.WebSocket?
   private let reconnectPolicy: ReconnectPolicy
   private let sleep: (UInt64) async throws -> Void
   private let reconnectLock = NSLock()
+
+  /// Serialises `openConnection(uri:)` end to end, Starscream calls included. `reconnectLock`
+  /// cannot do that: the delegate callbacks take it, and an engine is free to deliver one
+  /// synchronously from inside `connect()`. Without this a host `connect(uri:)` racing a reconnect
+  /// that had already passed its cancellation check could each swap in a socket and then both
+  /// `connect()` — the loser's socket, already detached by the winner, would open a live
+  /// connection to the proxy with the bearer that nothing ever closes. Taken before
+  /// `reconnectLock`, never the other way round; no callback path takes it.
+  private let openConnectionLock = NSLock()
   private var _reconnectAttempts = 0
   private var isReconnecting = false
 
@@ -369,17 +409,30 @@ public class WebSocketClient: Starscream.WebSocketDelegate {
     let bearer = try self.resolveUpgradeBearer()
     let request = try self.buildUpgradeRequest(bearer: bearer)
 
-    self.uri = uri
-    self.upgradeBearer = bearer
-    self.logger.info("WebSocketClient.connect() - Connecting to proxy...")
+    self.openConnectionLock.lock()
+    defer { self.openConnectionLock.unlock() }
 
-    if let previous = self.socket {
+    self.logger.info("WebSocketClient.connect() - Connecting to proxy...")
+    let socket = Self.makeSocket(request: request, engine: self.engine)
+    socket.delegate = self
+
+    // One critical section for the three fields a connection is made of, so no reader — the
+    // ping timer, a delegate callback, the reconnect task's `uri` check — can observe the new
+    // socket with the old uri or bearer, or the other way round.
+    self.reconnectLock.lock()
+    let previous = self._socket
+    self._uri = uri
+    self._upgradeBearer = bearer
+    self._socket = socket
+    self.reconnectLock.unlock()
+
+    // Outside `reconnectLock`: both calls reach into Starscream, whose callbacks take that lock.
+    // The previous socket is detached before it is stopped so a synchronous `.cancelled` from a
+    // shared engine reaches a socket with no delegate rather than this client.
+    if let previous = previous {
       previous.delegate = nil
       previous.forceDisconnect()
     }
-    let socket = Self.makeSocket(request: request, engine: self.engine)
-    socket.delegate = self
-    self.socket = socket
     socket.connect()
   }
 
