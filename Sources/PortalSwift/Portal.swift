@@ -32,10 +32,16 @@ public final class Portal: PortalProtocol {
 
   public let api: PortalApiProtocol
 
-  /// The single credential source every component under this `Portal` resolves its bearer
-  /// from — per call, never cached. Internal so tests can prove the provider, API, MPC and
-  /// connect layers share this exact instance (`===`) rather than a copy of a token.
-  let credentials: PortalCredentials
+  /// The credential this `Portal` authenticates with: a `StaticCredentials` wrapping the
+  /// Client API Key for `Portal(_ apiKey:)`, or the `PortalSession` / host credential handed
+  /// to `Portal(credentials:)`. Every component under this instance resolves its bearer from
+  /// this exact object per call, never from a cached copy, so it is shared by reference with
+  /// the provider, API, MPC and connect layers.
+  ///
+  /// Read the current token with `try credentials.getToken()`; this is the replacement for
+  /// the deprecated `apiKey`. It throws `PortalCredentialError.sessionInvalidated` once the
+  /// session has been cleared or rejected.
+  public let credentials: PortalCredentials
 
   /// Backing store for the deprecated `apiKey` bridge. A separate stored property lets the
   /// initializers assign it without tripping the deprecation warning meant for hosts.
@@ -43,9 +49,9 @@ public final class Portal: PortalProtocol {
 
   /// The Client API Key this `Portal` was constructed with, or `""` when it was constructed
   /// with `credentials` — a session token is deliberately never exposed here. Kept only so
-  /// existing hosts compile; new code should hold its own credential rather than read the
-  /// SDK's back.
-  @available(*, deprecated, message: "Not a reliable source of authentication — returns \"\" when Portal was constructed with credentials. Supply credentials to the SDK instead of reading this.")
+  /// existing hosts compile; read `try credentials.getToken()` instead, which is correct for
+  /// both constructors.
+  @available(*, deprecated, message: "Read the credential through `try credentials.getToken()`. Returns the Client API Key only when Portal was constructed with one, and \"\" when constructed with credentials, so it is not a reliable source of authentication.")
   public var apiKey: String { self._apiKey }
 
   public let autoApprove: Bool

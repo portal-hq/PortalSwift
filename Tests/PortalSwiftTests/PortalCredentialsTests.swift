@@ -255,6 +255,7 @@ private enum StubPortalError: Error {
 /// must still compile and must get the documented no-op / spent-handle behaviour.
 private final class StubPortal: PortalProtocol {
   let api: PortalApiProtocol
+  let credentials: PortalCredentials
   let provider: PortalProviderProtocol
   let autoApprove = false
   var gatewayConfig: [Int: String] = [:]
@@ -281,6 +282,7 @@ private final class StubPortal: PortalProtocol {
   init() throws {
     let credentials = MockCredentials()
     let keychain = MockPortalKeychain()
+    self.credentials = credentials
     self.api = MockPortalApi(credentials: credentials, requests: MockPortalRequests())
     self.provider = try PortalProvider(
       credentials: credentials,
@@ -417,6 +419,25 @@ extension PortalCredentialsTests {
     XCTAssertEqual(portal.apiKey, MockConstants.mockApiKey)
     let credentials = try XCTUnwrap(portal.credentials as? StaticCredentials, "A Client API Key must be wrapped in StaticCredentials.")
     XCTAssertEqual(credentials.value, MockConstants.mockApiKey)
+  }
+
+  func test_credentials_getToken_willReturnApiKey_whenBuiltWithApiKey() throws {
+    let spy = try makeSpy()
+
+    let portal = try buildPortal(apiKey: MockConstants.mockApiKey, spy: spy)
+
+    XCTAssertEqual(try portal.credentials.getToken(), MockConstants.mockApiKey, "`credentials.getToken()` is the documented replacement for the deprecated `apiKey`.")
+  }
+
+  @available(*, deprecated, message: "Reads the deprecated apiKey bridge on purpose.")
+  func test_credentials_getToken_willReturnSessionToken_whenBuiltWithCredentials() throws {
+    let credentials = MockCredentials(tokenValue: "session-token")
+    let spy = try makeSpy()
+
+    let portal = try buildPortal(credentials: credentials, spy: spy)
+
+    XCTAssertEqual(try portal.credentials.getToken(), "session-token")
+    XCTAssertEqual(portal.apiKey, "", "The two surfaces must diverge exactly as the deprecation message says.")
   }
 
   @available(*, deprecated, message: "Reads the deprecated apiKey bridge on purpose.")
@@ -1156,6 +1177,18 @@ extension PortalCredentialsTests {
 
     let stub: PortalProtocol = try StubPortal()
     XCTAssertEqual(stub.apiKey, "")
+  }
+
+  func test_PortalProtocol_credentials_willBeRequirement() throws {
+    let spy = try makeSpy()
+    let portal = try buildPortal(apiKey: MockConstants.mockApiKey, spy: spy)
+
+    let asProtocol: PortalProtocol = portal
+    XCTAssertTrue(asProtocol.credentials === portal.credentials, "The protocol must expose the same credential instance as the class.")
+    XCTAssertEqual(try asProtocol.credentials.getToken(), MockConstants.mockApiKey)
+
+    let stub: PortalProtocol = try StubPortal()
+    XCTAssertNoThrow(try stub.credentials.getToken())
   }
 
   func test_init_willNeverLogCredential() async throws {

@@ -17,10 +17,14 @@ public protocol PortalProtocol {
   var gatewayConfig: [Int: String] { get set }
   var provider: PortalProviderProtocol { get }
   var rpcConfig: [String: String] { get set }
+  /// The credential the instance authenticates with; the replacement for the deprecated
+  /// `apiKey`. Exposed on the protocol so a host holding the abstraction can act on that
+  /// deprecation: read the current token with `try credentials.getToken()`.
+  var credentials: PortalCredentials { get }
   /// The Client API Key the instance was built with, or `""` when it was built with
   /// `credentials`. Deprecated on the protocol too so a host reading it through the
   /// abstraction gets the same warning it would get from `Portal` directly.
-  @available(*, deprecated, message: "Not a reliable source of authentication — returns \"\" when Portal was constructed with credentials. Supply credentials to the SDK instead of reading this.")
+  @available(*, deprecated, message: "Read the credential through `try credentials.getToken()`. Returns the Client API Key only when Portal was constructed with one, and \"\" when constructed with credentials, so it is not a reliable source of authentication.")
   var apiKey: String { get }
   var yield: Yield { get }
   var ramps: Ramps { get }
