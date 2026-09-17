@@ -133,7 +133,10 @@ public class Lifi: LifiProtocol {
   /// - Returns: The `LifiStatusRawResponse` for a DONE transfer, or the most recent non-terminal
   ///   status if `onUpdate` returned `false` to stop polling early.
   /// - Throws: `LifiTradeAssetError.lifiTransferFailed` if the transfer reaches a FAILED terminal
-  ///   state, or `LifiTradeAssetError.pollTimeout` if the timeout elapses first.
+  ///   state, or `LifiTradeAssetError.pollTimeout` if the timeout elapses first. A
+  ///   `PortalCredentialError` (the session is gone) or `PortalRequestsError.unauthorized` (the
+  ///   backend rejected the credential) is rethrown on the tick it occurs rather than retried
+  ///   until the timeout: nothing about waiting would change the answer.
   public func pollStatus(
     request: LifiStatusRequest,
     onUpdate: ((LifiStatusRawResponse) -> Bool)?,
@@ -311,6 +314,15 @@ public class Lifi: LifiProtocol {
       } catch is CancellationError {
         // Cancellation must stop polling immediately rather than being treated as transient.
         throw CancellationError()
+      } catch let error as PortalCredentialError {
+        // The session is gone (invalidated by a 401 elsewhere, or a host sign-out). Every further
+        // tick would throw the same before touching the network; surface it now rather than
+        // reporting a timed-out transfer ten minutes later.
+        logger.error("Lifi.pollStatus() - Credential unavailable (\(error.reason?.rawValue ?? "INVALID_API_KEY")); stopping the status poll.")
+        throw error
+      } catch PortalRequestsError.unauthorized {
+        logger.error("Lifi.pollStatus() - The backend rejected the credential; stopping the status poll.")
+        throw PortalRequestsError.unauthorized
       } catch {
         logger.warn("Lifi.pollStatus() - transient error, will retry: \(error.localizedDescription)")
       }

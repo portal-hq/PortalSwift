@@ -17,6 +17,14 @@ public protocol PortalProtocol {
   var gatewayConfig: [Int: String] { get set }
   var provider: PortalProviderProtocol { get }
   var rpcConfig: [String: String] { get set }
+  /// The credential the instance authenticates with; the replacement for the deprecated
+  /// `apiKey`. Exposed on the protocol so a host holding the abstraction can act on that
+  /// deprecation: read the current token with `try credentials.getToken()`.
+  var credentials: PortalCredentials { get }
+  /// The Client API Key the instance was built with, or `""` when it was built with
+  /// `credentials`. Deprecated on the protocol too so a host reading it through the
+  /// abstraction gets the same warning it would get from `Portal` directly.
+  @available(*, deprecated, message: "Read the credential through `try credentials.getToken()`. Returns the Client API Key only when Portal was constructed with one, and \"\" when constructed with credentials, so it is not a reliable source of authentication.")
   var apiKey: String { get }
   var yield: Yield { get }
   var ramps: Ramps { get }
@@ -115,6 +123,16 @@ public protocol PortalProtocol {
   func sendAsset(chainId: String, params: SendAssetParams) async throws -> SendAssetResponse
   func updateChain(newChainId: String)
   func gDriveSignOut() throws
+
+  // Session lifecycle
+  /// Ends the session the instance was constructed with; see `Portal.clearSession()`. Has a
+  /// default no-op implementation so conformers written before sessions existed still compile.
+  func clearSession() async throws
+  /// Runs `listener` once when the backend rejects the instance's credential; see
+  /// `Portal.onSessionInvalidated(_:)`. Has a default implementation returning
+  /// `PortalSessionInvalidationHandle.spent` so conformers without a session still compile.
+  @discardableResult
+  func onSessionInvalidated(_ listener: @escaping @MainActor () -> Void) -> PortalSessionInvalidationHandle
 
   // Deprecated functions
   @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of request().")
@@ -222,5 +240,17 @@ public extension PortalProtocol {
   @available(*, deprecated, message: "Use request(chainId:method:params:options:) instead.")
   func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any]) async throws -> PortalProviderResult {
     return try await request(chainId: chainId, method: withMethod, params: andParams, options: nil)
+  }
+
+  /// Default for conformers that hold no session (API-key-only wrappers and test doubles):
+  /// there is nothing to clear, so this is a no-op rather than a compile error for them.
+  func clearSession() async throws {}
+
+  /// Default for conformers that hold no session: the credential can never be reported, so the
+  /// listener is not retained and the shared spent handle is returned — the same contract
+  /// `Portal` follows for a Client API Key.
+  @discardableResult
+  func onSessionInvalidated(_: @escaping @MainActor () -> Void) -> PortalSessionInvalidationHandle {
+    .spent
   }
 }

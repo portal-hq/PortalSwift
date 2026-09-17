@@ -1,5 +1,29 @@
 import Foundation
 
+/// A transport that can tell its owner when a Portal-authenticated request was rejected with
+/// HTTP 401.
+///
+/// The SDK resolves the client's credential per request, so the transport is the only layer
+/// that reliably observes every rejection. Rather than teaching each API surface about
+/// sessions, the credentials layer installs a single closure here and the transport calls it,
+/// with the bearer the rejected request carried, whenever a request that carried an
+/// `Authorization` header to a Portal-owned host comes back `401`. The bearer is what lets one
+/// transport serve several SDK objects with different credentials: the credentials layer
+/// reports the credential that presented the rejected token, not whichever installed first.
+/// The hook fires before the `PortalRequestsError.unauthorized` is rethrown, so the credential
+/// is already invalidated by the time the caller handles the error.
+///
+/// `PortalRequestsProtocol` deliberately does not require this conformance: existing doubles
+/// and host-written transports keep compiling, and the credentials layer installs the hook
+/// only when `requests as? PortalUnauthorizedReporting` succeeds.
+public protocol PortalUnauthorizedReporting: AnyObject {
+  /// Called once per rejected request with the token from that request's `Authorization:
+  /// Bearer <token>` header, or `nil` when the header used another scheme. The closure is
+  /// non-throwing and must not assume any particular thread: the transport invokes it from
+  /// whichever context completed the request. Implementations must never log the token.
+  var onUnauthorized: ((_ rejectedBearerToken: String?) -> Void)? { get set }
+}
+
 public protocol PortalRequestsProtocol {
   /// Preferred method for executing requests and mapping responses.
   @discardableResult
@@ -49,15 +73,41 @@ public protocol PortalRequestsProtocol {
   func post(_ from: URL, withBearerToken: String?, andPayload: Codable?) async throws -> Data
 }
 
-public class PortalRequests: PortalRequestsProtocol {
-  private lazy var urlSession: URLSession = {
-    let configuration = URLSessionConfiguration.default
-    configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
-    configuration.urlCache = URLCache(memoryCapacity: 0, diskCapacity: 0, diskPath: nil)
-    return URLSession(configuration: configuration)
-  }()
+public class PortalRequests: PortalRequestsProtocol, PortalUnauthorizedReporting {
+  /// A session supplied through the internal test seam. When present it replaces the
+  /// per-request session so tests can register a `URLProtocol` and drive the real pipeline
+  /// without touching the network; production callers never set it.
+  private let injectedSession: URLSession?
 
-  public init() {}
+  private let unauthorizedHookLock = NSLock()
+  private var _onUnauthorized: ((String?) -> Void)?
+
+  /// The closure the credentials layer installs to learn about `401` rejections. Guarded by a
+  /// lock because requests complete on URLSession's threads while the hook is installed (and
+  /// in tests replaced) from elsewhere; the value read at invocation time is the one used.
+  public var onUnauthorized: ((String?) -> Void)? {
+    get {
+      self.unauthorizedHookLock.lock()
+      defer { self.unauthorizedHookLock.unlock() }
+      return self._onUnauthorized
+    }
+    set {
+      self.unauthorizedHookLock.lock()
+      defer { self.unauthorizedHookLock.unlock() }
+      self._onUnauthorized = newValue
+    }
+  }
+
+  public init() {
+    self.injectedSession = nil
+  }
+
+  /// Test seam: routes every request through `urlSession` instead of a fresh per-request
+  /// session, so a `URLProtocol` registered on that session observes exactly what the
+  /// transport would send over the wire (headers, body, trace gating, 401 handling).
+  init(urlSession: URLSession) {
+    self.injectedSession = urlSession
+  }
 
   @discardableResult
   public func execute(request: PortalBaseRequestProtocol) async throws -> Data {
@@ -170,7 +220,11 @@ public class PortalRequests: PortalRequestsProtocol {
 
     request.addValue("application/json", forHTTPHeaderField: "Accept")
     request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-    request.addValue(traceId ?? generateTraceId(), forHTTPHeaderField: PORTAL_TRACE_ID_HEADER)
+    // Portal's correlation id is for Portal's servers: a custom RPC gateway or Google Drive must
+    // not receive it (see `isPortalOwnedUrl`).
+    if isPortalOwnedUrl(url.absoluteString) {
+      request.addValue(traceId ?? generateTraceId(), forHTTPHeaderField: PORTAL_TRACE_ID_HEADER)
+    }
 
     return request
   }
@@ -179,12 +233,20 @@ public class PortalRequests: PortalRequestsProtocol {
     var request = URLRequest(url: portalRequest.url)
     request.httpMethod = portalRequest.method.rawValue
 
+    let isPortalTarget = isPortalOwnedUrl(portalRequest.url.absoluteString)
     for (key, value) in portalRequest.headers {
+      // A caller-supplied trace header is stripped for third-party targets rather than passed
+      // through: the correlation id is Portal's, whichever layer set it.
+      if !isPortalTarget, key.caseInsensitiveCompare(PORTAL_TRACE_ID_HEADER) == .orderedSame {
+        continue
+      }
       request.addValue(value, forHTTPHeaderField: key)
     }
 
-    // Guarantee a trace ID header even if a custom request omitted it.
-    if portalRequest.headers[PORTAL_TRACE_ID_HEADER] == nil {
+    // Guarantee a trace ID header for Portal targets even if a custom request omitted it. The
+    // lookup is case-insensitive (`value(forHTTPHeaderField:)`), so a caller spelling it
+    // `x-portal-trace-id` no longer ends up with a duplicate header.
+    if isPortalTarget, request.value(forHTTPHeaderField: PORTAL_TRACE_ID_HEADER) == nil {
       request.addValue(generateTraceId(), forHTTPHeaderField: PORTAL_TRACE_ID_HEADER)
     }
 
@@ -207,10 +269,51 @@ public class PortalRequests: PortalRequestsProtocol {
     }
 
     guard httpResponse.statusCode < 300 else {
-      throw self.buildError(httpResponse, withData: data, url: request.url?.absoluteString ?? "")
+      let error = self.buildError(httpResponse, withData: data, url: request.url?.absoluteString ?? "")
+      if httpResponse.statusCode == 401 {
+        // Notify first so the credential is already invalidated when the caller sees the error.
+        // The hook is non-throwing; nothing here may prevent the rethrow below.
+        self.notifyUnauthorizedIfApplicable(for: request, response: httpResponse)
+      }
+      throw error
     }
 
     return data
+  }
+
+  /// Fires `onUnauthorized` for a `401` only when the request is one the credentials layer is
+  /// responsible for: it carried an `Authorization` header (any scheme) and targeted a
+  /// Portal-owned host. A `401` from Google Drive with a Google token, or from a custom RPC
+  /// gateway, says nothing about the Portal session and must not invalidate it. The hook is
+  /// handed the bearer the request carried so the credentials layer can attribute the
+  /// rejection when one transport serves several credentials. Neither the header nor the
+  /// response body is ever logged.
+  private func notifyUnauthorizedIfApplicable(for request: URLRequest, response: HTTPURLResponse) {
+    guard let authorization = request.value(forHTTPHeaderField: "Authorization") else {
+      return
+    }
+    // The URL that actually answered 401, not the one asked: after a redirect the two differ,
+    // and it is the responder that judged the credential.
+    guard let url = response.url ?? request.url, isPortalOwnedUrl(url.absoluteString) else {
+      return
+    }
+    guard let hook = self.onUnauthorized else {
+      PortalLogger.shared.debug("PortalRequests.executeRequest() - Received 401 from a Portal host but no unauthorized hook is registered.")
+      return
+    }
+    PortalLogger.shared.debug("PortalRequests.executeRequest() - Received 401 from a Portal host; notifying the unauthorized hook.")
+    hook(Self.bearerToken(fromAuthorization: authorization))
+  }
+
+  /// The token in a `Bearer <token>` header value, or `nil` for any other scheme or an empty
+  /// token. Never logged.
+  private static func bearerToken(fromAuthorization value: String) -> String? {
+    let prefix = "Bearer "
+    guard value.hasPrefix(prefix) else {
+      return nil
+    }
+    let token = String(value.dropFirst(prefix.count))
+    return token.isEmpty ? nil : token
   }
 
   private func buildError(_ response: HTTPURLResponse, withData: Data, url: String) -> Error {
@@ -227,6 +330,10 @@ public class PortalRequests: PortalRequestsProtocol {
   }
 
   private func getURLSession() -> URLSession {
+    if let injectedSession = self.injectedSession {
+      return injectedSession
+    }
+
     let configuration = URLSessionConfiguration.default
     configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
     configuration.urlCache = URLCache(memoryCapacity: 0, diskCapacity: 0, diskPath: nil)
