@@ -30,9 +30,14 @@ public enum PortalCredentialErrorReason: String, Codable, Equatable {
 /// throws into this one family, so call sites catch a single type and hosts can key
 /// their recovery on `reason` / `requiresReauthentication` instead of on the shape of
 /// an arbitrary provider error. The underlying cause of a `providerFailure` is kept on
-/// the value but deliberately off `errorDescription`: a provider's own message may
-/// echo a token, a keystore path or an account identifier, and the description is the
-/// string that ends up in logs and crash reports.
+/// the value for `catch let .providerFailure(underlying)` but deliberately kept out of
+/// every rendering: a provider's own message may echo a token, a keystore path or an
+/// account identifier. `errorDescription` never includes it, and the
+/// `CustomStringConvertible` / `CustomDebugStringConvertible` / `CustomReflectable`
+/// extension below replaces the synthesized enum rendering — which would otherwise print
+/// the associated value in full through `"\(error)"`, `String(reflecting:)`, the `NSError`
+/// bridge and the `Mirror` that `dump` and crash reporters walk — with the cause's type
+/// name alone.
 ///
 /// `Equatable` is hand-written because `Error` is not `Equatable`, so synthesis fails on
 /// `.providerFailure`. Two errors are equal when they are the same case; the cause is
@@ -41,7 +46,7 @@ public enum PortalCredentialError: LocalizedError, Equatable {
   /// The provider returned an empty or whitespace-only token.
   case unavailable
   /// The provider threw. The cause is kept for diagnostics via pattern matching but is
-  /// never rendered into the message.
+  /// never rendered: every textual and reflective rendering shows only its type name.
   case providerFailure(underlying: Error)
   /// The session behind the credential has ended; the user must authenticate again.
   case sessionInvalidated
@@ -97,5 +102,54 @@ public enum PortalCredentialError: LocalizedError, Equatable {
     default:
       return false
     }
+  }
+}
+
+/// Rendering that never carries the provider's error.
+///
+/// `errorDescription` keeps the cause out of `localizedDescription`, but that is the only string
+/// it controls. String interpolation, `String(describing:)`, `String(reflecting:)`, an
+/// `XCTAssertEqual` failure message and the `NSError` bridge all fall back to the synthesized enum
+/// rendering, which prints the associated value in full, and `dump` and reflection-based crash
+/// reporters walk the synthesized `Mirror`, which exposes it as a child. A host `getToken()` error
+/// that echoes the token it failed to refresh would leak through every one of them. Each path is
+/// replaced here so the only thing a `providerFailure` reveals about its cause is the error's
+/// dynamic type name — a compile-time identifier, not data, and enough to tell a keystore failure
+/// from a network one in a log line. The cause itself stays on the value for
+/// `catch let .providerFailure(underlying)`.
+extension PortalCredentialError: CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+  /// The case name for a payload-less error, or `providerFailure(underlying: <redacted TypeName>)`.
+  public var description: String {
+    switch self {
+    case .unavailable:
+      return "unavailable"
+    case let .providerFailure(underlying):
+      return "providerFailure(underlying: \(Self.redactedCause(of: underlying)))"
+    case .sessionInvalidated:
+      return "sessionInvalidated"
+    case .invalidApiKey:
+      return "invalidApiKey"
+    }
+  }
+
+  public var debugDescription: String {
+    self.description
+  }
+
+  /// The enum's own shape — one `underlying` child for `providerFailure`, none otherwise — with
+  /// the redacted placeholder in place of the cause, so `dump` and reflection-based crash
+  /// reporters see the same string as `description`.
+  public var customMirror: Mirror {
+    switch self {
+    case let .providerFailure(underlying):
+      return Mirror(self, children: ["underlying": Self.redactedCause(of: underlying)], displayStyle: .enum)
+    case .unavailable, .sessionInvalidated, .invalidApiKey:
+      return Mirror(self, children: [], displayStyle: .enum)
+    }
+  }
+
+  /// `<redacted TypeName>`: the dynamic type of the cause and nothing else.
+  private static func redactedCause(of underlying: Error) -> String {
+    "<redacted \(type(of: underlying))>"
   }
 }

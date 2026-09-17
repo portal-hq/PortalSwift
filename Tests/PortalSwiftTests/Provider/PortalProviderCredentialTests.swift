@@ -941,8 +941,8 @@ final class PortalProviderCredentialTests: XCTestCase {
     XCTAssertFalse("\(providerError)".contains(Self.sessionToken))
     XCTAssertFalse(providerError.localizedDescription.contains(Self.sessionToken))
 
-    // And a provider failure whose cause does embed the token: `errorDescription` is the string
-    // that reaches logs and crash reports, and it must never carry the cause through.
+    // And a provider failure whose cause does embed the token: neither `errorDescription` nor
+    // the rendering behind `"\(error)"` / `String(reflecting:)` may carry the cause through.
     let leaky = MockCredentials(tokenValue: Self.sessionToken)
     leaky.onGetToken = {
       throw NSError(
@@ -958,6 +958,9 @@ final class PortalProviderCredentialTests: XCTestCase {
     XCTAssertFalse(leakyError.localizedDescription.contains(Self.sessionToken))
     let description = try XCTUnwrap(leakyError.errorDescription)
     XCTAssertFalse(description.contains(Self.sessionToken))
+    XCTAssertFalse("\(leakyError)".contains(Self.sessionToken))
+    XCTAssertFalse(String(reflecting: leakyError).contains(Self.sessionToken))
+    XCTAssertEqual("\(leakyError)", "providerFailure(underlying: <redacted NSError>)")
   }
 
   func test_request_sign_willNotLogToken() async throws {

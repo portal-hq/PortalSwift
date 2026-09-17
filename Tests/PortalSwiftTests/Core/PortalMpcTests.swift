@@ -3011,6 +3011,10 @@ extension PortalMpcTests {
       let description = try XCTUnwrap(credentialError.errorDescription)
       XCTAssertFalse(description.contains(MpcCredentialFixtures.secret), "The provider's cause is never rendered into the message.")
       XCTAssertFalse(error.localizedDescription.contains(MpcCredentialFixtures.secret))
+      // The caught value is an `any Error`, which is how a `catch { log("\(error)") }` sees it.
+      XCTAssertFalse("\(error)".contains(MpcCredentialFixtures.secret), "The synthesized rendering must be replaced, not just errorDescription.")
+      XCTAssertFalse(String(reflecting: error).contains(MpcCredentialFixtures.secret))
+      XCTAssertEqual("\(error)", "providerFailure(underlying: <redacted TokenEchoingProviderFailure>)")
     }
   }
 
