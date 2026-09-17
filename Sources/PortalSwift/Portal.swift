@@ -575,11 +575,13 @@ public final class Portal: PortalProtocol {
   /// Do not subscribe again on the same `Portal` from inside the listener: the instance is spent,
   /// and a new subscription would be replayed to as well.
   /// - Parameter listener: Called at most once, on the main actor.
-  /// - Returns: A handle whose `cancel()` removes the listener. It is not cancelled on
-  ///   deallocation (React Native / Android parity), so it only needs to be kept by hosts that
-  ///   intend to unsubscribe. The listener itself is retained until it fires or the credential
-  ///   is deallocated, so capture `self` weakly inside it — a view controller captured strongly
-  ///   would live exactly as long as the session does.
+  /// - Returns: A handle whose `cancel()` removes the listener and suppresses a delivery the SDK
+  ///   has already queued to the main actor but not yet run, so a host that replaces its `Portal`
+  ///   and subscribes on the new one in the same turn never hears the old instance's rejection.
+  ///   It is not cancelled on deallocation (React Native / Android parity), so it only needs to
+  ///   be kept by hosts that intend to unsubscribe. The listener itself is retained until it
+  ///   fires or the credential is deallocated, so capture `self` weakly inside it — a view
+  ///   controller captured strongly would live exactly as long as the session does.
   @discardableResult
   public func onSessionInvalidated(_ listener: @escaping @MainActor () -> Void) -> PortalSessionInvalidationHandle {
     PortalCredentialSupport.onInvalidated(self.credentials, listener: listener)

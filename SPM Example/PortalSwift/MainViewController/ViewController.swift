@@ -1101,8 +1101,16 @@ class ViewController: UIViewController, UITextFieldDelegate {
       // captures) behind. Subscribed immediately after construction because `Portal.init` fires two
       // eager `GET /clients/me` calls, which is where a dead restored session first surfaces.
       ClientAuthCoordinator.shared.sessionInvalidatedHandle?.cancel()
-      ClientAuthCoordinator.shared.sessionInvalidatedHandle = portal.onSessionInvalidated { [weak self] in
-        self?.handleSessionInvalidated()
+      ClientAuthCoordinator.shared.sessionInvalidatedHandle = portal.onSessionInvalidated { [weak self, weak portal] in
+        // Only a rejection of the credential the screen still holds may sign it out. The SDK already
+        // suppresses a delivery whose handle was cancelled, even one queued before the cancel; this
+        // guard covers the same case from the screen's side, so a rejection of a session the screen
+        // has since moved past can never clear the newcomer's persisted session. A Portal rebuilt for
+        // the *same* session (a settings toggle) still passes: that session is the one rejected.
+        guard let self, let portal, self.portal?.credentials === portal.credentials else {
+          return
+        }
+        self.handleSessionInvalidated()
       }
 
       portal.setLogLevel(.debug)

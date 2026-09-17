@@ -1002,6 +1002,28 @@ extension PortalCredentialsTests {
     XCTAssertEqual(recorder.deliveries, 0)
   }
 
+  func test_onSessionInvalidated_willNotDeliver_whenCancelledAfterRejectionWasQueued() async throws {
+    let credentials = MockCredentials(tokenValue: "session-token")
+    let spy = try makeSpy()
+    let portal = try buildPortal(credentials: credentials, spy: spy)
+    let (recorder, handle) = subscribe(portal)
+
+    // The rejection and the cancel land in one main-actor turn — exactly what a host does when
+    // it tears down one Portal and subscribes on the next — so the main-actor delivery the report
+    // queued has not run when the handle is cancelled. Without the per-subscription gate the
+    // report had already dropped the registry entry, cancel() found nothing to remove, and the
+    // stale listener signed the new session out.
+    await MainActor.run {
+      spy.onUnauthorized?(nil)
+      handle.cancel()
+    }
+
+    let fired = await waitUntil(timeout: 0.3) { recorder.deliveries > 0 }
+    XCTAssertFalse(fired, "A delivery queued before cancel() must still be suppressed.")
+    XCTAssertEqual(recorder.deliveries, 0)
+    XCTAssertGreaterThanOrEqual(credentials.invalidateCalls, 1, "Only the announcement is suppressed; the credential is still invalidated.")
+  }
+
   func test_onSessionInvalidated_willNotifyEverySubscriber() async throws {
     let credentials = MockCredentials(tokenValue: "session-token")
     let spy = try makeSpy()

@@ -219,7 +219,8 @@ extension PortalCredentialSupport {
   /// was already reported has that rejection replayed: the listener runs once, on the main actor,
   /// as if it had been subscribed in time, so a host that subscribes a moment after `Portal`'s
   /// eager client fetch came back 401 still learns its session ended. The returned handle cancels
-  /// that pending delivery like any other.
+  /// that pending delivery like any other; in both cases a delivery already queued to the main
+  /// actor but not yet run is suppressed as well.
   static func onInvalidated(
     _ credentials: PortalCredentials,
     listener: @escaping @MainActor () -> Void
@@ -233,10 +234,14 @@ extension PortalCredentialSupport {
 /// One host subscription to `Portal.onSessionInvalidated(_:)`.
 ///
 /// `cancel()` removes the listener and is idempotent, so a host can call it defensively from
-/// `deinit`, from a SwiftUI `onDisappear`, or from inside the listener itself. The handle
-/// does **not** cancel automatically when it is deallocated — parity with the React Native
-/// and Android SDKs, where the unsubscribe is an explicit call — so a host that discards the
-/// handle keeps receiving the notification. The initializer is public so host-written
+/// `deinit`, from a SwiftUI `onDisappear`, or from inside the listener itself. It also settles a
+/// delivery the SDK has already queued to the main actor but not yet run — once `cancel()` has
+/// returned, the listener is not called — so a host that tears one `Portal` down and subscribes
+/// on the next in the same turn cannot receive the old instance's rejection. (React Native and
+/// Android dispatch listeners synchronously from a snapshot, so no such window exists there.)
+/// The handle does **not** cancel automatically when it is deallocated — parity with the React
+/// Native and Android SDKs, where the unsubscribe is an explicit call — so a host that discards
+/// the handle keeps receiving the notification. The initializer is public so host-written
 /// `PortalProtocol` conformers and test doubles can hand back a real handle.
 public final class PortalSessionInvalidationHandle {
   /// The handle returned for a subscription that can never fire (a Client API Key, or a
@@ -253,7 +258,8 @@ public final class PortalSessionInvalidationHandle {
     self.onCancel = onCancel
   }
 
-  /// Removes the subscription. Safe to call any number of times, from any thread, and from
+  /// Removes the subscription and suppresses a delivery that is queued but has not run. Safe to
+  /// call any number of times, from any thread, and from
   /// inside the listener: the cancellation closure is taken under the handle's own lock and
   /// invoked outside it, so it can re-enter the registry without deadlocking.
   public func cancel() {
@@ -297,10 +303,14 @@ final class CredentialInvalidationRegistry {
   }
 
   /// One subscription. Wrapped with a unique id rather than stored as a bare closure so
-  /// subscribing the same closure twice yields two subscriptions, each cancellable alone.
+  /// subscribing the same closure twice yields two subscriptions, each cancellable alone. The
+  /// gate is what `cancel()` settles once the subscription has been snapshotted for delivery
+  /// and can no longer be removed from the list: the queued main-actor task claims it before
+  /// calling the listener, so a handle cancelled after the rejection was queued still wins.
   private struct Subscription {
     let id: UInt64
     let listener: @MainActor () -> Void
+    let gate: DeliveryGate
   }
 
   private final class ListenerEntry {
@@ -408,10 +418,17 @@ final class CredentialInvalidationRegistry {
 
     self.nextSubscriptionId += 1
     let subscriptionId = self.nextSubscriptionId
-    entry.subscriptions.append(Subscription(id: subscriptionId, listener: listener))
+    let gate = DeliveryGate()
+    entry.subscriptions.append(Subscription(id: subscriptionId, listener: listener, gate: gate))
     self.lock.unlock()
 
+    // The gate is settled first, so a delivery `notifyInvalidated` has already queued cannot run;
+    // then the list entry is removed, so the listener — and whatever it captured — is released
+    // while the credential is still live. The second step finds nothing once the credential has
+    // been reported, because delivery drops the whole entry; the first step is what makes
+    // `cancel()` hold in that window too.
     return PortalSessionInvalidationHandle(onCancel: { [weak self] in
+      gate.cancel()
       self?.unsubscribe(key: key, id: subscriptionId)
     })
   }
@@ -421,9 +438,11 @@ final class CredentialInvalidationRegistry {
   ///
   /// Listeners are snapshotted under the lock and dispatched outside it, each on the main
   /// actor via its own `Task`, so a listener is free to cancel itself, subscribe another
-  /// listener or report another credential from inside the callback. The entry is dropped
-  /// rather than kept: this fires once per credential, so the list can never be read again
-  /// and would otherwise go on holding whatever the listeners captured.
+  /// listener or report another credential from inside the callback. Each task claims the
+  /// subscription's gate before calling the listener, so a handle cancelled between the
+  /// snapshot and the task running suppresses that delivery instead of racing it. The entry is
+  /// dropped rather than kept: this fires once per credential, so the list can never be read
+  /// again and would otherwise go on holding whatever the listeners captured.
   func notifyInvalidated(_ credentials: PortalCredentials) {
     // A host-supplied credential is not necessarily a session, but only a static key is known
     // not to be one — anything else is treated as a session and reported.
@@ -450,15 +469,18 @@ final class CredentialInvalidationRegistry {
 
     for subscription in snapshot {
       Task { @MainActor in
-        subscription.listener()
+        if subscription.gate.claim() {
+          subscription.listener()
+        }
       }
     }
   }
 
   /// Delivers `listener` once, on the main actor, for a credential that was reported before the
-  /// subscription was made. The handle's `cancel()` suppresses the delivery if it has not run.
+  /// subscription was made. The handle's `cancel()` suppresses the delivery if it has not run,
+  /// through the same gate a live subscription carries.
   private static func replay(_ listener: @escaping @MainActor () -> Void) -> PortalSessionInvalidationHandle {
-    let gate = ReplayGate()
+    let gate = DeliveryGate()
     Task { @MainActor in
       if gate.claim() {
         listener()
@@ -467,9 +489,10 @@ final class CredentialInvalidationRegistry {
     return PortalSessionInvalidationHandle(onCancel: { gate.cancel() })
   }
 
-  /// One-shot flag shared by a replayed delivery and its handle: whichever of `claim()` and
-  /// `cancel()` runs first settles it.
-  private final class ReplayGate: @unchecked Sendable {
+  /// One-shot flag shared by a queued delivery and its handle: whichever of `claim()` and
+  /// `cancel()` runs first settles it. A live subscription carries one from `subscribe` on, so
+  /// the cancel-after-queue window is closed the same way for a live report and a replay.
+  private final class DeliveryGate: @unchecked Sendable {
     private let lock = NSLock()
     private var settled = false
 

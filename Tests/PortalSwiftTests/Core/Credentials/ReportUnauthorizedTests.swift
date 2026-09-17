@@ -19,7 +19,9 @@ import XCTest
 /// credential however many requesters saw the 401, it is delivered asynchronously on the main
 /// actor, it never happens for a Client API Key, and a listener may cancel itself, cancel
 /// others or subscribe more listeners from inside the callback without deadlocking — which is
-/// only possible because the registry lock is never held while a listener runs.
+/// only possible because the registry lock is never held while a listener runs. A handle
+/// cancelled while its delivery is queued but not yet run — by the host, or by a sibling
+/// listener — is suppressed, so `cancel()` means the same thing in every window.
 ///
 /// Delivery is asynchronous (`Task { @MainActor in … }`), so "runs once" is asserted in two
 /// steps: `waitUntil` the expected count arrives, then `flushPendingDeliveries()` so any extra
@@ -247,10 +249,18 @@ final class ReportUnauthorizedTests: XCTestCase {
     XCTAssertEqual(credentials.invalidateCalls, 1)
   }
 
-  func test_reportUnauthorized_willIsolateThrowingListener() async throws {
+  func test_reportUnauthorized_willHonourCancelsMadeFromInsideAListener_midDelivery() async throws {
     // Swift listeners cannot throw, so the closest failure a listener can inflict on its
     // siblings is to tear down the registry entry while the registry is delivering: the
-    // first listener cancels both subscriptions from inside its callback.
+    // first listener cancels both subscriptions from inside its callback. That must not
+    // deadlock (the registry lock is not held while a listener runs) and must not disturb the
+    // once-only invalidation. The sibling's outcome follows the handle contract: its delivery
+    // was queued on the main actor behind the first's and had not run when it was cancelled, so
+    // it is suppressed. Cancelling the running listener's own handle is a no-op.
+    //
+    // React Native and Android dispatch listeners synchronously from a snapshot, so there a
+    // sibling unsubscribed mid-dispatch still runs; the iOS hop to the main actor opens the
+    // window that makes honouring the cancel the only consistent choice.
     let credentials = MockCredentials()
     let first = InvalidationListenerRecorder(credentials: credentials)
     let second = InvalidationListenerRecorder(credentials: credentials)
@@ -261,11 +271,11 @@ final class ReportUnauthorizedTests: XCTestCase {
 
     try PortalCredentialSupport.reportUnauthorized(credentials)
 
-    let delivered = await waitUntil { first.deliveries == 1 && second.deliveries == 1 }
-    XCTAssertTrue(delivered, "The second listener must still run: deliveries are snapshotted before any listener is invoked")
+    let delivered = await waitUntil { first.deliveries == 1 }
+    XCTAssertTrue(delivered, "The cancelling listener itself runs; cancelling its own handle mid-callback is a no-op")
     await self.flushPendingDeliveries()
     XCTAssertEqual(first.deliveries, 1)
-    XCTAssertEqual(second.deliveries, 1)
+    XCTAssertEqual(second.deliveries, 0, "The sibling's queued delivery was cancelled before it claimed its gate")
     XCTAssertEqual(credentials.invalidateCalls, 1)
   }
 
@@ -437,6 +447,41 @@ final class ReportUnauthorizedTests: XCTestCase {
     XCTAssertTrue(delivered, "The surviving subscription must still run")
     await self.flushPendingDeliveries()
     XCTAssertEqual(counter.value, 1, "Cancelling one of two subscriptions to the same closure leaves exactly one")
+  }
+
+  func test_onCredentialsInvalidated_willNotDeliver_whenCancelledAfterReportQueuedIt() async throws {
+    let credentials = MockCredentials()
+    let recorder = InvalidationListenerRecorder(credentials: credentials)
+
+    // Report and cancel inside one main-actor turn. The report snapshots the subscription, drops
+    // the registry entry and queues the delivery on the main actor; that task cannot run before
+    // this closure returns, so cancel() finds no entry to remove and only the subscription's gate
+    // can stop the listener. This is the window a host hits when it tears down one Portal and
+    // subscribes on the next in the same turn.
+    try await MainActor.run {
+      try PortalCredentialSupport.reportUnauthorized(credentials)
+      recorder.handle.cancel()
+    }
+
+    await self.flushPendingDeliveries()
+    XCTAssertEqual(recorder.deliveries, 0, "A delivery queued before cancel() must not run")
+    XCTAssertGreaterThanOrEqual(credentials.invalidateCalls, 1, "Only the announcement is suppressed; the credential is still invalidated")
+  }
+
+  func test_onCredentialsInvalidated_willStillDeliverToOthers_whenOneIsCancelledAfterReportQueuedIt() async throws {
+    let credentials = MockCredentials()
+    let cancelled = InvalidationListenerRecorder(credentials: credentials)
+    let surviving = InvalidationListenerRecorder(credentials: credentials)
+
+    try await MainActor.run {
+      try PortalCredentialSupport.reportUnauthorized(credentials)
+      cancelled.handle.cancel()
+    }
+
+    await self.flushPendingDeliveries()
+    XCTAssertEqual(cancelled.deliveries, 0, "The gate is per subscription: the cancelled one stays silent")
+    XCTAssertEqual(surviving.deliveries, 1, "The other subscription to the same credential still hears the rejection once")
+    XCTAssertTrue(surviving.allDeliveredOnMainThread)
   }
 
   func test_onCredentialsInvalidated_willReplayReport_whenSubscribingAfterReport() async throws {
