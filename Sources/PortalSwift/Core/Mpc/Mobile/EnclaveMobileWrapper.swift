@@ -37,6 +37,7 @@ class EnclaveMobileWrapper: MPCMobile {
         apiKey: apiKey,
         signingShare: signingShare,
         params: params,
+        metadata: metadata,
         curve: curve
       )
     } else {
@@ -91,15 +92,20 @@ class EnclaveMobileWrapper: MPCMobile {
 }
 
 extension EnclaveMobileWrapper {
+  // The enclave reads `signatureApprovalMemo`, `isRaw` and `reqId` out of `metadataStr`
+  // for raw signs too (`RawSignRequest.MetadataStr`), so raw requests send the same
+  // metadata as `/v1/sign`, matching the React Native SDK.
   private func enclaveRawSign(
     apiKey: String?,
     signingShare: String?,
     params: String?,
+    metadata: String?,
     curve: PortalCurve?
   ) async -> String {
     guard let apiKey = apiKey,
           let signingShare = signingShare,
           let params = params,
+          let metadata,
           let curve
     else {
       return encodeErrorResult(id: "INVALID_PARAMETERS", message: "Invalid parameters provided")
@@ -112,6 +118,7 @@ extension EnclaveMobileWrapper {
     let requestBody: [String: String] = [
       "params": params,
       "share": signingShare,
+      "metadataStr": metadata,
       "clientPlatform": "NATIVE_IOS",
       "clientPlatformVersion": SDK_VERSION
     ]
@@ -212,6 +219,7 @@ extension EnclaveMobileWrapper {
         signingShare: shareStr,
         presignatureData: presignatureData,
         params: params,
+        metadata: metadataStr,
         curve: curve
       )
     } else {
@@ -314,12 +322,14 @@ extension EnclaveMobileWrapper {
     signingShare: String?,
     presignatureData: String?,
     params: String?,
+    metadata: String?,
     curve: PortalCurve?
   ) async -> String {
     guard let apiKey = apiKey,
           let signingShare = signingShare,
           let presignatureData = presignatureData,
           let params = params,
+          let metadata = metadata,
           let curve = curve
     else {
       return encodeErrorResult(id: "INVALID_PARAMETERS", message: "Invalid parameters provided")
@@ -333,6 +343,7 @@ extension EnclaveMobileWrapper {
       "params": params,
       "share": signingShare,
       "presignature": presignatureData,
+      "metadataStr": metadata,
       "clientPlatform": "NATIVE_IOS",
       "clientPlatformVersion": SDK_VERSION
     ]

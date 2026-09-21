@@ -12,6 +12,10 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
+## Unreleased
+- Fixed `signatureApprovalMemo` being dropped from raw sign requests that used a presignature (`FeatureFlags.usePresignatures`). The memo now reaches the MPC signing request and `PRE_SIGN_V1` webhooks. Updated the bundled MPC binary (built from MPC 4.0.128).
+- Fixed raw sign requests sent through the MPC Enclave API (`useEnclaveMPCApi`) omitting signing metadata, so `signatureApprovalMemo` and the request trace id now propagate on that path as well.
+
 ## 7.4.0 - 2026-09-01
 - Changed Google Drive backup to request only the OAuth scopes your configured `GDriveBackupOption` actually needs, so users see a smaller Google consent screen when enabling Google Drive backup.
     - `.appDataFolder` now requests only the hidden app-data scope (`https://www.googleapis.com/auth/drive.appdata`) — one consent checkbox instead of two.

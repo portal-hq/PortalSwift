@@ -117,6 +117,7 @@ extension EnclaveMobileWrapperTests {
     XCTAssertEqual(portalRequestsSpy.executeRequestParam?.payload as? [String: String] ?? [:], [
       "params": params,
       "share": signingShare,
+      "metadataStr": metadata,
       "clientPlatform": "NATIVE_IOS",
       "clientPlatformVersion": SDK_VERSION
     ])
@@ -295,6 +296,7 @@ extension EnclaveMobileWrapperTests {
       "params": "params",
       "share": "share",
       "presignature": "presig-data",
+      "metadataStr": "metadata",
       "clientPlatform": "NATIVE_IOS",
       "clientPlatformVersion": SDK_VERSION
     ])
@@ -323,5 +325,83 @@ extension EnclaveMobileWrapperTests {
     let resultData = result.data(using: .utf8)!
     let decoded = try? JSONDecoder().decode(SignResult.self, from: resultData)
     XCTAssertNotNil(decoded?.error)
+  }
+}
+
+// MARK: - Raw sign metadata (SDK-194)
+
+extension EnclaveMobileWrapperTests {
+  private var invalidParamsResult: String {
+    "{\"error\":{\"id\":\"INVALID_PARAMETERS\",\"message\":\"Invalid parameters provided\"}}"
+  }
+
+  private func rawMetadata(memo: String) throws -> String {
+    var metadata = MpcMetadata(clientPlatform: "NATIVE_IOS", mpcServerVersion: "v6")
+    metadata.isRaw = true
+    metadata.signatureApprovalMemo = memo
+    metadata.reqId = "trace-123"
+    return try metadata.jsonString()
+  }
+
+  func test_MobileSign_rawSign_returnsInvalidParameters_whenMetadataIsNil() async {
+    let portalRequestsSpy = PortalRequestsSpy()
+    initEnclaveMobileWrapper(portalRequests: portalRequestsSpy)
+
+    let result = await enclaveMobileWrapper.MobileSign(
+      "apiKey", "host", "share", nil, "74657374", "", "", nil, .SECP256K1, isRaw: true
+    )
+
+    AssertJSONEqual(result, invalidParamsResult)
+    XCTAssertNil(portalRequestsSpy.executeRequestParam)
+  }
+
+  func test_MobileSign_rawSign_forwardsSignatureApprovalMemo_insideMetadataStr() async throws {
+    let portalRequestsSpy = PortalRequestsSpy()
+    initEnclaveMobileWrapper(portalRequests: portalRequestsSpy, enclaveMPCHost: "mpc-client.portalhq.io")
+    let metadata = try rawMetadata(memo: "approve-this")
+
+    _ = await enclaveMobileWrapper.MobileSign(
+      "apiKey", "host", "share", nil, "74657374", "", "", metadata, .SECP256K1, isRaw: true
+    )
+
+    let payload = portalRequestsSpy.executeRequestParam?.payload as? [String: String]
+    let sentMetadata = try XCTUnwrap(payload?["metadataStr"])
+    let decoded = try JSONDecoder().decode(MpcMetadata.self, from: Data(sentMetadata.utf8))
+    XCTAssertEqual(decoded.signatureApprovalMemo, "approve-this")
+    XCTAssertEqual(decoded.isRaw, true)
+    XCTAssertEqual(decoded.reqId, "trace-123")
+  }
+
+  func test_MobileSignWithPresignature_raw_returnsInvalidParameters_whenMetadataIsNil() async {
+    let portalRequestsSpy = PortalRequestsSpy()
+    initEnclaveMobileWrapper(portalRequests: portalRequestsSpy)
+
+    let result = await enclaveMobileWrapper.MobileSignWithPresignature(
+      "apiKey", "host", "share", "presig-data", nil, "74657374", "", "", nil, .SECP256K1, isRaw: true
+    )
+
+    AssertJSONEqual(result, invalidParamsResult)
+    XCTAssertNil(portalRequestsSpy.executeRequestParam)
+  }
+
+  func test_MobileSignWithPresignature_raw_forwardsSignatureApprovalMemo_insideMetadataStr() async throws {
+    let portalRequestsSpy = PortalRequestsSpy()
+    initEnclaveMobileWrapper(portalRequests: portalRequestsSpy, enclaveMPCHost: "mpc-client.portalhq.io")
+    let metadata = try rawMetadata(memo: "approve-this")
+
+    _ = await enclaveMobileWrapper.MobileSignWithPresignature(
+      "apiKey", "host", "share", "presig-data", nil, "74657374", "", "", metadata, .SECP256K1, isRaw: true
+    )
+
+    XCTAssertEqual(
+      portalRequestsSpy.executeRequestParam?.url.absoluteString ?? "",
+      "https://mpc-client.portalhq.io/v1/raw/sign/SECP256K1"
+    )
+    let payload = portalRequestsSpy.executeRequestParam?.payload as? [String: String]
+    XCTAssertEqual(payload?["presignature"], "presig-data")
+    let sentMetadata = try XCTUnwrap(payload?["metadataStr"])
+    let decoded = try JSONDecoder().decode(MpcMetadata.self, from: Data(sentMetadata.utf8))
+    XCTAssertEqual(decoded.signatureApprovalMemo, "approve-this")
+    XCTAssertEqual(decoded.isRaw, true)
   }
 }
