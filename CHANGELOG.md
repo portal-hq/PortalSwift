@@ -12,6 +12,12 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
+## 7.5.0 - 
+
+### Fixed
+
+- `portal.availableRecoveryMethods()` with no chain ID returned a backup method once per wallet, so a client with an EVM and a Solana wallet both backed up with password got `[.Password, .Password]`. Each method is now returned once, in order of first appearance.
+
 ## 7.4.0 - 2026-09-01
 - Changed Google Drive backup to request only the OAuth scopes your configured `GDriveBackupOption` actually needs, so users see a smaller Google consent screen when enabling Google Drive backup.
     - `.appDataFolder` now requests only the hidden app-data scope (`https://www.googleapis.com/auth/drive.appdata`) — one consent checkbox instead of two.
