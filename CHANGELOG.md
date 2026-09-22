@@ -12,7 +12,7 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
-## 7.5.0 - 
+## 8.0.0 - 2026-09-23
 
 ### Added
 
@@ -28,10 +28,8 @@ Possible Types of changes include:
     - `portalAuth.signInWithGoogle()` and `portalAuth.signInWithApple()` — run the whole flow in an `ASWebAuthenticationSession` and return the `AuthResult`, so your app never opens the URL or handles the redirect. Call `setAuthPresentationAnchor(_:)` first; requires a custom-scheme `redirectUrl`. Failures are `PortalAuthSignInError` (`closed`, `unavailable`, `signInInProgress`, `callbackIncomplete`). Set `prefersEphemeralWebBrowserSession = true` when a sign-out must let the user switch Google or Apple accounts
     - `TotpRequiredResult.totpSecret`, `TotpRequiredResult.qrCodeImage(scale:)`, and `portalTotpQrCodeImage(otpAuthUrl:scale:)` — render the TOTP enrolment QR code locally with CoreImage. `TotpRequiredResult` redacts `userJwt` and `totpLink` when printed or interpolated
 
-  On success, pass the session straight through: `try Portal(credentials: result.session)`. Sessions are persisted in the Keychain (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, in the app's default access group, separate from MPC shares) and survive app restarts, so a returning user can be signed in with `restoreSession()` instead of a fresh login. Keychain items also survive app deletion; call `clearPersistedSession()` on first launch after install if that is not what you want. The session token never changes: the backend extends it on every authenticated request and hard-stops about a week after sign-in, so there is nothing to refresh client-side. Opening the authorize URL yourself is exposed to redirect hijacking — the callback carries no app-side `state`, so a same-scheme app can deliver a grant of its own; `signInWithGoogle()` / `signInWithApple()` are the mitigated path.
-
 - `portal.clearSession()` — signs the end user out locally, dropping the credential and deleting the persisted session. Does nothing on a `Portal` built from a Client API Key. The instance cannot be reused afterwards; construct a new `Portal` after the next sign-in.
-- `portal.onSessionInvalidated(_:)` — runs the listener once, on the main actor, when the backend rejects the credential (an HTTP 401 from a Portal-owned host, or an `AUTH_FAILED` from the MPC service), meaning the end user has to sign in again. Returns a `PortalSessionInvalidationHandle` whose `cancel()` removes the listener and suppresses a delivery that is already queued but has not run. Not fired by `clearSession()`, and never for a `Portal` built from a Client API Key (that subscription returns `.spent`). Subscribing after the credential was already rejected still fires once, so a host that discovers the rejection by awaiting a request before it subscribes does not miss the sign-out. Capture `self` weakly in the listener. A 401 from a WebAuthn (passkey) endpoint does not invalidate the session: a wrong or cancelled passkey costs the user a retry, not the wallet session (Android / React Native parity).
+- `portal.onSessionInvalidated(_:)` — runs the listener once, on the main actor, when the backend rejects the credential (an HTTP 401 from a Portal-owned host, or an `AUTH_FAILED` from the MPC service), meaning the end user has to sign in again. Returns a `PortalSessionInvalidationHandle` whose `cancel()` removes the listener and suppresses a delivery that is already queued but has not run. Not fired by `clearSession()`, and never for a `Portal` built from a Client API Key (that subscription returns `.spent`). Subscribing after the credential was already rejected still fires once, so a host that discovers the rejection by awaiting a request before it subscribes does not miss the sign-out. Capture `self` weakly in the listener. A 401 from a WebAuthn (passkey) endpoint does not invalidate the session: a wrong or cancelled passkey costs the user a retry, not the wallet session.
 - `portal.credentials` — the `PortalCredentials` this instance authenticates with; read the current token with `try portal.credentials.getToken()`.
 - `PortalCredentials` — implement `getToken()` and `invalidate()` to supply credentials from your own backend, as an alternative to a Client API Key or a `PortalSession`. Both are called concurrently from several queues, so implementations must be thread-safe (`@unchecked Sendable` with a lock). `StaticCredentials` wraps a Client API Key.
 - `PortalAuthError`, `PortalAuthSignInError`, and `PortalCredentialError` (`unavailable`, `providerFailure`, `sessionInvalidated`, `invalidApiKey`) with `PortalCredentialErrorReason` (`CREDENTIAL_UNAVAILABLE`, `CREDENTIAL_PROVIDER_FAILURE`, `SESSION_INVALIDATED`), for handling sign-in and session failures. If you switch exhaustively over SDK errors, add cases for them. `providerFailure` keeps the provider's error for pattern matching but never renders it: `description`, `debugDescription`, `localizedDescription` and its `Mirror` show only the error's type name.
@@ -40,7 +38,6 @@ Possible Types of changes include:
 
 ### Changed
 
-- **Breaking:** `PortalProtocol` now requires `credentials: PortalCredentials`. This affects only code that implements `PortalProtocol` itself, such as a test mock; `Portal` satisfies it. `clearSession()` and `onSessionInvalidated(_:)` have default implementations.
 - `PortalSignerProtocol.sign` gains a `token:` overload, which the SDK now calls with the bearer resolved for that signature. Existing conformers keep compiling: a default forwards the new overload to the token-less one they implement, so they keep authenticating on their own. New conformers implement only the `token:` overload; the token-less default throws `PortalSignerError.tokenLessSignUnsupported`. A custom signer used under Client Auth must implement the `token:` overload.
 - `Portal("")` now throws `PortalCredentialError.invalidApiKey`, and a blank API key on an integration API fails with `CREDENTIAL_UNAVAILABLE` before the request instead of sending an empty bearer.
 
@@ -57,10 +54,6 @@ Possible Types of changes include:
 - Transaction-confirmation polling (`Trading.lifi` via `Portal`, `YieldXyz` deposits and withdrawals) swallowed a 401 and polled to the timeout. `PortalRequestsError.unauthorized` and `PortalCredentialError` now surface on the first failing tick.
 - The presignature refill retried an `AUTH_FAILED` from the MPC service up to its attempt limit. It now stops on the first one.
 
-### Security
-
-- The provider attaches the Portal credential to an RPC request based on the URL's host, port, and scheme (`isPortalRpcUrl`), not the `https://api.portalhq.` string prefix 7.4 matched. `https://api.portalhq.io.attacker.com` no longer receives the credential. Any `https` host under `portalhq.io` / `portalhq.dev` now does, so `web.portalhq.io` and an uppercase spelling qualify, and so does the `apiHost` the `Portal` was built with, over `https` on the configured port — in 7.4 the default RPC URLs of a `Portal` on an `apiHost` outside `api.portalhq.*` were sent without a bearer. A loopback RPC URL (`localhost`, `127.0.0.1`, `*.localhost`) receives the credential only when its host and port are a configured endpoint; a local Anvil or Hardhat node on `http://localhost:8545` still gets nothing (Android `Provider.isPortalRpcUrl` parity).
-- The `X-Portal-Trace-Id` header is sent only to Portal-owned hosts. 7.4 attached it to every request, including custom RPC gateways and Google Drive. A caller-supplied trace header is stripped for third-party targets, and the header lookup is case-insensitive so `x-portal-trace-id` is no longer duplicated.
 
 ## 7.4.0 - 2026-09-01
 - Changed Google Drive backup to request only the OAuth scopes your configured `GDriveBackupOption` actually needs, so users see a smaller Google consent screen when enabling Google Drive backup.
