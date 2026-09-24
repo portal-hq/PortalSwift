@@ -12,7 +12,7 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
-## 8.0.0 - 2026-09-23
+## 8.0.0 - 2026-09-24
 
 ### Added
 
