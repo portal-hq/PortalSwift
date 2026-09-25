@@ -131,6 +131,47 @@ extension PortalMpcSignerTests {
     XCTAssertEqual(response, MockConstants.mockSignature)
   }
 
+  // Raw sign + presignature is the path MPC commit 2cb4559 fixed: the binary only forwards the
+  // memo it finds in `metadataStr`, so the SDK must put it there. Pins the Swift half of that contract.
+  func test_sign_withPresignature_rawSign_forwardsSignatureApprovalMemoInMetadata() async throws {
+    let mobileSpy = MobileSpy()
+    mobileSpy.mobileSignWithPresignatureReturnValue = MockConstants.mockSignatureResponse
+    let keychainSpy = PortalKeychainSpy()
+    let source = MockPresignatureSource(entry: PresignatureEntry(
+      id: "presig-1", expiresAt: "2099-01-01T00:00:00Z", data: "mock-presig-data"
+    ))
+
+    let signer = PortalMpcSigner(
+      apiKey: MockConstants.mockApiKey,
+      keychain: keychainSpy,
+      featureFlags: FeatureFlags(usePresignatures: true),
+      binary: mobileSpy,
+      presignatureSource: source
+    )
+
+    let blockchain = try XCTUnwrap(blockchain)
+    // Same shape PortalProvider.getPortalRawSignRequest builds for `raw_sign`.
+    let rawSignRequest = PortalSignRequest(method: nil, params: "74657374", isRaw: true)
+
+    let response = try await signer.sign(
+      "eip155:11155111",
+      withPayload: rawSignRequest,
+      andRpcUrl: MockConstants.mockHost,
+      usingBlockchain: blockchain,
+      signatureApprovalMemo: "approve-this"
+    )
+
+    XCTAssertEqual(response, MockConstants.mockSignature)
+    XCTAssertEqual(mobileSpy.mobileSignWithPresignatureCallsCount, 1)
+    XCTAssertEqual(mobileSpy.mobileSignCallsCount, 0)
+    XCTAssertEqual(mobileSpy.mobileSignWithPresignatureIsRawParam, true)
+
+    let metadataStr = try XCTUnwrap(mobileSpy.mobileSignWithPresignatureMetadataStrParam)
+    let metadata = try JSONDecoder().decode(MpcMetadata.self, from: Data(metadataStr.utf8))
+    XCTAssertEqual(metadata.signatureApprovalMemo, "approve-this")
+    XCTAssertEqual(metadata.isRaw, true)
+  }
+
   func test_sign_withPresignatureDisabled_usesNormalSign() async throws {
     let mobileSpy = MobileSpy()
     mobileSpy.mobileSignReturnValue = MockConstants.mockSignatureResponse
