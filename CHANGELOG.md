@@ -12,6 +12,10 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
+## Unreleased
+- Fixed `signatureApprovalMemo` being dropped from raw sign requests that used a presignature (`FeatureFlags.usePresignatures`). The memo now reaches the MPC signing request and `PRE_SIGN_V1` webhooks. Updated the bundled MPC binary (built from MPC 4.0.128).
+- Fixed raw sign requests sent through the MPC Enclave API (`useEnclaveMPCApi`) omitting signing metadata, so `signatureApprovalMemo` and the request trace id now propagate on that path as well.
+
 ## 8.0.0 - 2026-09-24
 
 ### Added
