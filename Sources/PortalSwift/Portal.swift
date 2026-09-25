@@ -1335,8 +1335,12 @@ public final class Portal: PortalProtocol {
   ///
   /// - Note: The method only returns backup methods where the corresponding backup share pairs
   ///   have a status of `.completed`. Methods with incomplete or pending backups are excluded.
+  ///   Each method appears at most once, in order of first appearance, even when several wallets
+  ///   (for example the SECP256K1 and ED25519 wallets) are backed up with the same method.
   public func availableRecoveryMethods(_ forChainId: String? = nil) async throws -> [BackupMethods] {
     if let client = try await client {
+      let wallets: [ClientResponseWallet]
+
       // Filter by chainId if one is provided
       if let chainId = forChainId {
         let chainIdParts = chainId.split(separator: ":").map(String.init)
@@ -1350,24 +1354,17 @@ public final class Portal: PortalProtocol {
           throw PortalClassError.noWalletFoundForChain(chainId)
         }
 
-        let availableRecoveryMethods = wallet.backupSharePairs.filter { share in
-          share.status == .completed
-        }.map { share in
-          share.backupMethod
-        }
-
-        return availableRecoveryMethods
+        wallets = [wallet]
       } else {
-        let availableRecoveryMethods = client.wallets.map { wallet in
-          wallet.backupSharePairs.filter { share in
-            share.status == .completed
-          }.map { share in
-            share.backupMethod
-          }
-        }.flatMap { $0 }
-
-        return availableRecoveryMethods
+        wallets = client.wallets
       }
+
+      var seen = Set<BackupMethods>()
+      return wallets
+        .flatMap { wallet in wallet.backupSharePairs }
+        .filter { share in share.status == .completed }
+        .map { share in share.backupMethod }
+        .filter { method in seen.insert(method).inserted }
     }
 
     throw PortalClassError.clientNotAvailable

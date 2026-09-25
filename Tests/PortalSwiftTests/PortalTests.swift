@@ -1342,11 +1342,40 @@ extension PortalTests {
 
 extension PortalTests {
   func test_availableRecoveryMethods_willReturn_correctResult_forNilChainId() async throws {
-    // given
+    // given: MockConstants.mockClient has an ED25519 and a SECP256K1 wallet, each with a completed Password backup
     let availableRecoveryMethods = try await portal.availableRecoveryMethods()
 
-    // then
-    XCTAssertEqual(availableRecoveryMethods, [.Password, .Password])
+    // then: the shared method is reported once, not once per wallet
+    XCTAssertEqual(availableRecoveryMethods, [.Password])
+  }
+
+  func test_availableRecoveryMethods_forNilChainId_returnsEachMethodOnce_acrossWallets_inFirstAppearanceOrder() async throws {
+    // given
+    let portalApiMock = PortalApiMock()
+    portalApiMock.client = ClientResponse.stub(wallets: [
+      .stub(
+        backupSharePairs: [
+          .stub(backupMethod: .Password),
+          .stub(backupMethod: .iCloud)
+        ],
+        curve: .SECP256K1
+      ),
+      .stub(
+        backupSharePairs: [
+          .stub(backupMethod: .Password),
+          .stub(backupMethod: .GoogleDrive),
+          .stub(backupMethod: .Passkey, status: .incomplete)
+        ],
+        curve: .ED25519
+      )
+    ])
+    try initPortalWithSpy(api: portalApiMock)
+
+    // and given
+    let availableRecoveryMethods = try await portal.availableRecoveryMethods()
+
+    // then: Password is deduplicated across wallets, order follows first appearance, incomplete pairs are excluded
+    XCTAssertEqual(availableRecoveryMethods, [.Password, .iCloud, .GoogleDrive])
   }
 
   // TODO: - to fix mocking the PortalKeychain.metadata
