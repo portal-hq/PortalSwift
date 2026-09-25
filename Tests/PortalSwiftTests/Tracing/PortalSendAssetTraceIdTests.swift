@@ -13,7 +13,7 @@ extension PortalTests {
     let apiSpy = PortalApiSpy()
     try initPortalWithSpy(api: apiSpy)
 
-    let providerSpy = PortalProviderSpy()
+    let providerSpy = try PortalProviderSpy()
     setToPortal(portalProvider: providerSpy)
 
     _ = try await portal.sendAsset(
@@ -30,7 +30,7 @@ extension PortalTests {
     let apiSpy = PortalApiSpy()
     try initPortalWithSpy(api: apiSpy)
 
-    let providerSpy = PortalProviderSpy()
+    let providerSpy = try PortalProviderSpy()
     setToPortal(portalProvider: providerSpy)
 
     _ = try await portal.sendAsset(

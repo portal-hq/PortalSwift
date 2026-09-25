@@ -42,8 +42,15 @@ public enum MockConstants {
   public static let mockBackupPath = "test-backup-path"
   public static let mockCiphertext = "test-cipher-text"
   public static let mockClientId = "test-client-id"
+  /// A stand-in client session token for `PortalSession` test doubles and credential tests. Not a
+  /// real token shape on purpose, so it can never be mistaken for one in a log assertion.
+  public static let mockClientSessionToken = "test-client-session-token"
   public static let mockCloudBackupPath = "test-cloud-backup-path"
   public static let mockCreatedAt = "test-created-at"
+  /// `mockApiKey` wrapped as the credential every credentials-mode mock (`MockPortalApi`,
+  /// `mockApi`, ...) is built with, so the mocks share one credential instance the way a
+  /// real `Portal` shares one across its subsystems.
+  public static let mockCredentials = StaticCredentials(mockApiKey)
   public static let mockCustodian = ClientResponseCustodian(
     id: "test-custodian-id",
     name: "test-custodian-name"
@@ -90,6 +97,8 @@ public enum MockConstants {
 
   public static let mockEncryptWithPasswordResult = "{\"data\":{\"cipherText\":\"\(mockCiphertext)\"},\"error\":{\"code\":0,\"message\":\"\"}}"
   public static let mockEncryptionKey = "test-encryption-key"
+  /// The end-user id a `PortalSession` test double reports by default.
+  public static let mockEndUserId = "test-end-user-id"
   public static let mockedFetchedBalance = FetchedBalance(contractAddress: mockEip155Address, balance: "test-balance")
   public static let mockFetchedShairPair = FetchedSharePair(
     id: mockMpcShareId,

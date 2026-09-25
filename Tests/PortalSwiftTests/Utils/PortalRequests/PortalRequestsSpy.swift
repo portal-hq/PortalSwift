@@ -9,11 +9,112 @@ import Foundation
 @testable import PortalSwift
 import XCTest
 
-final class PortalRequestsSpy: PortalRequestsProtocol {
+/// A recording `PortalRequestsProtocol` double that also conforms to
+/// `PortalUnauthorizedReporting`, so the credentials layer treats it like the real transport
+/// and installs its 401 hook on it. Tests observe the installation through
+/// `onUnauthorizedSetCount`, replay a Portal 401 through `simulatePortalUnauthorizedOnce`, and
+/// read the exact bearer sent per call from `bearerTokensSent`.
+final class PortalRequestsSpy: PortalRequestsProtocol, PortalUnauthorizedReporting {
   var returnData = Data()
 
   // Thread-safe serial queue for synchronizing access to counters and parameters
   private let queue = DispatchQueue(label: "com.portal.PortalRequestsSpy.queue")
+
+  // MARK: - PortalUnauthorizedReporting
+
+  private var _onUnauthorized: ((String?) -> Void)?
+  private var _onUnauthorizedSetCount = 0
+
+  /// The hook the credentials layer installs. Assigning a non-nil closure counts as an
+  /// install (see `onUnauthorizedSetCount`); assigning `nil` clears it without counting so a
+  /// test can reset between phases.
+  var onUnauthorized: ((String?) -> Void)? {
+    get {
+      queue.sync { _onUnauthorized }
+    }
+    set {
+      queue.sync {
+        _onUnauthorized = newValue
+        if newValue != nil {
+          _onUnauthorizedSetCount += 1
+        }
+      }
+    }
+  }
+
+  /// Number of times a non-nil `onUnauthorized` closure was installed. Lets tests prove the
+  /// "install only when the transport has no hook yet" rule (a preset hook must leave this at 1).
+  var onUnauthorizedSetCount: Int {
+    queue.sync { _onUnauthorizedSetCount }
+  }
+
+  /// When `true`, the next call (any verb) behaves like the real transport receiving a `401`
+  /// from a Portal host: it invokes `onUnauthorized` with the bearer that call carried, clears
+  /// the flag, and throws `PortalRequestsError.unauthorized`. Subsequent calls proceed normally.
+  var simulatePortalUnauthorizedOnce = false
+
+  // MARK: - Cross-verb recording
+
+  private var _executeRequestHistory: [PortalBaseRequestProtocol] = []
+  private var _bearerTokensSent: [String?] = []
+
+  /// Every request passed to either `execute` overload, in call order.
+  var executeRequestHistory: [PortalBaseRequestProtocol] {
+    queue.sync { _executeRequestHistory }
+  }
+
+  /// The bearer token carried by each call, in call order, across every verb: `nil` when no
+  /// `Authorization` header (or bearer parameter) was supplied. The `Bearer ` prefix is
+  /// stripped so tests compare against the raw credential value.
+  var bearerTokensSent: [String?] {
+    queue.sync { _bearerTokensSent }
+  }
+
+  /// Bodies returned by successive `execute` calls (both overloads), consumed in order before
+  /// falling back to `returnData`. A call that throws (via `simulatePortalUnauthorizedOnce` or
+  /// `executeThrowableErrorSequence`) does not consume an entry.
+  var executeReturnDataSequence: [Data] = []
+
+  private func recordBearer(_ token: String?) {
+    queue.sync { _bearerTokensSent.append(token) }
+  }
+
+  private func recordExecute(_ request: PortalBaseRequestProtocol) {
+    queue.sync {
+      _executeRequestHistory.append(request)
+      _bearerTokensSent.append(Self.bearerToken(in: request.headers))
+    }
+  }
+
+  private static func bearerToken(in headers: [String: String]) -> String? {
+    guard let authorization = headers.first(where: { $0.key.caseInsensitiveCompare("Authorization") == .orderedSame })?.value else {
+      return nil
+    }
+    let prefix = "Bearer "
+    if authorization.hasPrefix(prefix) {
+      return String(authorization.dropFirst(prefix.count))
+    }
+    return authorization
+  }
+
+  private func simulateUnauthorizedIfRequested() throws {
+    guard simulatePortalUnauthorizedOnce else {
+      return
+    }
+    simulatePortalUnauthorizedOnce = false
+    // The bearer was recorded by the caller just before this, so the hook sees what the real
+    // transport would hand it: the token of the request that was rejected.
+    let rejectedBearer = queue.sync { _bearerTokensSent.last ?? nil }
+    onUnauthorized?(rejectedBearer)
+    throw PortalRequestsError.unauthorized
+  }
+
+  private func nextExecuteReturnData() -> Data {
+    if !executeReturnDataSequence.isEmpty {
+      return executeReturnDataSequence.removeFirst()
+    }
+    return returnData
+  }
 
   // Tracking variables for `delete` function
   private var _deleteCallsCount = 0
@@ -38,6 +139,8 @@ final class PortalRequestsSpy: PortalRequestsProtocol {
       _deleteFromParam = from
       _deleteWithBearerTokenParam = withBearerToken
     }
+    recordBearer(withBearerToken)
+    try simulateUnauthorizedIfRequested()
     return returnData
   }
 
@@ -64,6 +167,8 @@ final class PortalRequestsSpy: PortalRequestsProtocol {
       _getFromParam = from
       _getWithBearerTokenParam = withBearerToken
     }
+    recordBearer(withBearerToken)
+    try simulateUnauthorizedIfRequested()
     return returnData
   }
 
@@ -96,6 +201,8 @@ final class PortalRequestsSpy: PortalRequestsProtocol {
       _patchWithBearerTokenParam = withBearerToken
       _patchAndPayloadParam = andPayload
     }
+    recordBearer(withBearerToken)
+    try simulateUnauthorizedIfRequested()
     return returnData
   }
 
@@ -128,6 +235,8 @@ final class PortalRequestsSpy: PortalRequestsProtocol {
       _putWithBearerTokenParam = withBearerToken
       _putAndPayloadParam = andPayload
     }
+    recordBearer(withBearerToken)
+    try simulateUnauthorizedIfRequested()
     return returnData
   }
 
@@ -160,6 +269,8 @@ final class PortalRequestsSpy: PortalRequestsProtocol {
       _postWithBearerTokenParam = withBearerToken
       _postAndPayloadParam = andPayload
     }
+    recordBearer(withBearerToken)
+    try simulateUnauthorizedIfRequested()
     return returnData
   }
 
@@ -202,6 +313,8 @@ final class PortalRequestsSpy: PortalRequestsProtocol {
       _postMultiPartDataAndPayloadParam = andPayload
       _postMultiPartDataUsingBoundaryParam = usingBoundary
     }
+    recordBearer(withBearerToken)
+    try simulateUnauthorizedIfRequested()
     if !postMultiPartDataThrowableErrorSequence.isEmpty, let error = postMultiPartDataThrowableErrorSequence.removeFirst() {
       throw error
     }
@@ -229,16 +342,20 @@ final class PortalRequestsSpy: PortalRequestsProtocol {
       _executeCallsCount += 1
       _executeRequestParam = request
     }
+    recordExecute(request)
+    try simulateUnauthorizedIfRequested()
 
     if !executeThrowableErrorSequence.isEmpty, let error = executeThrowableErrorSequence.removeFirst() {
       throw error
     }
 
+    let data = nextExecuteReturnData()
+
     if ResponseType.self == Data.self {
-      return returnData as! ResponseType
+      return data as! ResponseType
     }
 
-    return try JSONDecoder().decode(ResponseType.self, from: returnData)
+    return try JSONDecoder().decode(ResponseType.self, from: data)
   }
 
   // Tracking variables for `execute` function
@@ -258,6 +375,8 @@ final class PortalRequestsSpy: PortalRequestsProtocol {
       _executeReturningDataCallsCount += 1
       _executeReturningDataRequestParam = request
     }
-    return returnData
+    recordExecute(request)
+    try simulateUnauthorizedIfRequested()
+    return nextExecuteReturnData()
   }
 }

@@ -21,7 +21,7 @@ class EnclaveMobileWrapper: MPCMobile {
 
   // Override sign method to use HTTP endpoint
   func MobileSign(
-    _ apiKey: String?,
+    _ token: String?,
     _: String?,
     _ signingShare: String?,
     _ method: String?,
@@ -34,7 +34,7 @@ class EnclaveMobileWrapper: MPCMobile {
   ) async -> String {
     if isRaw ?? false {
       return await enclaveRawSign(
-        apiKey: apiKey,
+        token: token,
         signingShare: signingShare,
         params: params,
         metadata: metadata,
@@ -42,7 +42,7 @@ class EnclaveMobileWrapper: MPCMobile {
       )
     } else {
       return await enclaveSign(
-        apiKey: apiKey,
+        token: token,
         signingShare: signingShare,
         method: method,
         params: params,
@@ -96,13 +96,13 @@ extension EnclaveMobileWrapper {
   // for raw signs too (`RawSignRequest.MetadataStr`), so raw requests send the same
   // metadata as `/v1/sign`, matching the React Native SDK.
   private func enclaveRawSign(
-    apiKey: String?,
+    token: String?,
     signingShare: String?,
     params: String?,
     metadata: String?,
     curve: PortalCurve?
   ) async -> String {
-    guard let apiKey = apiKey,
+    guard let token = token,
           let signingShare = signingShare,
           let params = params,
           let metadata,
@@ -124,7 +124,7 @@ extension EnclaveMobileWrapper {
     ]
 
     do {
-      let request = PortalAPIRequest(url: url, method: .post, payload: requestBody, bearerToken: apiKey)
+      let request = PortalAPIRequest(url: url, method: .post, payload: requestBody, bearerToken: token)
       let enclaveResponse = try await requests.execute(request: request, mappingInResponse: EnclaveSignResponse.self)
       return encodeSuccessResult(data: enclaveResponse.data)
     } catch {
@@ -137,7 +137,7 @@ extension EnclaveMobileWrapper {
   }
 
   private func enclaveSign(
-    apiKey: String?,
+    token: String?,
     signingShare: String?,
     method: String?,
     params: String?,
@@ -145,7 +145,7 @@ extension EnclaveMobileWrapper {
     chainId: String?,
     metadata: String?
   ) async -> String {
-    guard let apiKey,
+    guard let token,
           let signingShare,
           let method,
           let params,
@@ -172,7 +172,7 @@ extension EnclaveMobileWrapper {
     ]
 
     do {
-      let request = PortalAPIRequest(url: url, method: .post, payload: requestBody, bearerToken: apiKey)
+      let request = PortalAPIRequest(url: url, method: .post, payload: requestBody, bearerToken: token)
       let enclaveResponse = try await requests.execute(request: request, mappingInResponse: EnclaveSignResponse.self)
       return encodeSuccessResult(data: enclaveResponse.data)
     } catch {
@@ -187,22 +187,22 @@ extension EnclaveMobileWrapper {
 
 extension EnclaveMobileWrapper {
   func MobilePresign(
-    _ apiKey: String,
-    _ mpcAddr: String,
+    _ token: String,
+    _: String,
     _ shareStr: String,
-    _ metadataStr: String,
+    _: String,
     _ curve: PortalCurve?
   ) async -> String {
     return await enclavePresign(
-      apiKey: apiKey,
+      token: token,
       signingShare: shareStr,
       curve: curve
     )
   }
 
   func MobileSignWithPresignature(
-    _ apiKey: String?,
-    _ mpcAddr: String?,
+    _ token: String?,
+    _: String?,
     _ shareStr: String?,
     _ presignatureData: String?,
     _ method: String?,
@@ -215,7 +215,7 @@ extension EnclaveMobileWrapper {
   ) async -> String {
     if isRaw ?? false {
       return await enclaveRawSignWithPresignature(
-        apiKey: apiKey,
+        token: token,
         signingShare: shareStr,
         presignatureData: presignatureData,
         params: params,
@@ -224,7 +224,7 @@ extension EnclaveMobileWrapper {
       )
     } else {
       return await enclaveSignWithPresignature(
-        apiKey: apiKey,
+        token: token,
         signingShare: shareStr,
         presignatureData: presignatureData,
         method: method,
@@ -237,11 +237,11 @@ extension EnclaveMobileWrapper {
   }
 
   private func enclavePresign(
-    apiKey: String?,
+    token: String?,
     signingShare: String?,
     curve: PortalCurve?
   ) async -> String {
-    guard let apiKey = apiKey,
+    guard let token = token,
           let signingShare = signingShare,
           let curve = curve
     else {
@@ -259,7 +259,7 @@ extension EnclaveMobileWrapper {
     ]
 
     do {
-      let request = PortalAPIRequest(url: url, method: .post, payload: requestBody, bearerToken: apiKey)
+      let request = PortalAPIRequest(url: url, method: .post, payload: requestBody, bearerToken: token)
       let enclaveResponse = try await requests.execute(request: request, mappingInResponse: EnclavePresignResponse.self)
       let presignResponse = PresignResponse(id: enclaveResponse.id, expiresAt: enclaveResponse.expiresAt, data: enclaveResponse.data, error: nil)
       return encodeJSON(presignResponse)
@@ -273,7 +273,7 @@ extension EnclaveMobileWrapper {
   }
 
   private func enclaveSignWithPresignature(
-    apiKey: String?,
+    token: String?,
     signingShare: String?,
     presignatureData: String?,
     method: String?,
@@ -282,7 +282,7 @@ extension EnclaveMobileWrapper {
     chainId: String?,
     metadata: String?
   ) async -> String {
-    guard let apiKey, let signingShare, let presignatureData,
+    guard let token, let signingShare, let presignatureData,
           let method, let params, let rpcURL, let chainId, let metadata
     else {
       return encodeErrorResult(id: "INVALID_PARAMETERS", message: "Invalid parameters provided")
@@ -305,7 +305,7 @@ extension EnclaveMobileWrapper {
     ]
 
     do {
-      let request = PortalAPIRequest(url: url, method: .post, payload: requestBody, bearerToken: apiKey)
+      let request = PortalAPIRequest(url: url, method: .post, payload: requestBody, bearerToken: token)
       let enclaveResponse = try await requests.execute(request: request, mappingInResponse: EnclaveSignResponse.self)
       return encodeSuccessResult(data: enclaveResponse.data)
     } catch {
@@ -318,14 +318,14 @@ extension EnclaveMobileWrapper {
   }
 
   private func enclaveRawSignWithPresignature(
-    apiKey: String?,
+    token: String?,
     signingShare: String?,
     presignatureData: String?,
     params: String?,
     metadata: String?,
     curve: PortalCurve?
   ) async -> String {
-    guard let apiKey = apiKey,
+    guard let token = token,
           let signingShare = signingShare,
           let presignatureData = presignatureData,
           let params = params,
@@ -349,7 +349,7 @@ extension EnclaveMobileWrapper {
     ]
 
     do {
-      let request = PortalAPIRequest(url: url, method: .post, payload: requestBody, bearerToken: apiKey)
+      let request = PortalAPIRequest(url: url, method: .post, payload: requestBody, bearerToken: token)
       let enclaveResponse = try await requests.execute(request: request, mappingInResponse: EnclaveSignResponse.self)
       return encodeSuccessResult(data: enclaveResponse.data)
     } catch {
