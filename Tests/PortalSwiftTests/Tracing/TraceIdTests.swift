@@ -313,7 +313,7 @@ final class TraceIdTests: XCTestCase {
       keychain: MockPortalKeychain(),
       autoApprove: true,
       requests: MockPortalRequests(),
-      signer: MockPortalMpcSigner(apiKey: MockConstants.mockApiKey, keychain: MockPortalKeychain())
+      signer: MockPortalMpcSigner(credentials: MockConstants.mockCredentials, keychain: MockPortalKeychain())
     )
     provider.api = apiSpy
 

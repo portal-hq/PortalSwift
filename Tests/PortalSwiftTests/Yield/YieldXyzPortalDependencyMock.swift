@@ -19,6 +19,9 @@ final class YieldXyzPortalDependencyMock: YieldXyzPortalDependency {
   var receiptStatus: String? = "0x1"
   /// When false, eth_getTransactionReceipt returns a response with a nil result (not mined yet).
   var receiptAvailable = true
+  /// Thrown by every `eth_getTransactionReceipt` request when set, so a case can drive the
+  /// confirmation poller into a credential failure mid-poll.
+  var receiptError: Error?
   /// Solana confirmation status returned by getTransactionDetails.
   var solanaStatus = "confirmed"
   var solanaError: String?
@@ -52,6 +55,9 @@ final class YieldXyzPortalDependencyMock: YieldXyzPortalDependency {
       return PortalProviderResult(id: "1", result: hash)
     case .eth_getTransactionReceipt:
       receiptCalls += 1
+      if let receiptError {
+        throw receiptError
+      }
       return PortalProviderResult(id: "1", result: makeReceiptResponse())
     default:
       return PortalProviderResult(id: "1", result: "")
