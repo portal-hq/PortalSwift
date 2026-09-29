@@ -20,6 +20,9 @@ public struct MpcMetadata: Codable {
   var signatureApprovalMemo: String? = nil
   var sponsorGas: Bool? = nil
   var reqId: String? = nil
+  /// The caller's idempotency key for a broadcast, already trimmed and validated. Omitted from
+  /// the JSON when `nil`, so unkeyed requests serialize exactly as before.
+  var idempotencyKey: String? = nil
 }
 
 extension MpcMetadata {

@@ -810,11 +810,33 @@ final class PortalRequestsTests: XCTestCase {
 
   func test_PortalRequestsError_dataStr_willExtractBodyAfterSeparator() {
     XCTAssertEqual(PortalRequestsError.clientError("400 - body", url: "u").dataStr, "body")
-    XCTAssertEqual(PortalRequestsError.internalServerError("500 - a - b", url: "u").dataStr, "a", "Only the second ' - ' component is the body")
+    XCTAssertEqual(PortalRequestsError.internalServerError("500 - a - b", url: "u").dataStr, "a - b", "Everything after the first ' - ' is the body")
     XCTAssertEqual(PortalRequestsError.redirectError("302 - x").dataStr, "x")
     XCTAssertNil(PortalRequestsError.unauthorized.dataStr)
     XCTAssertNil(PortalRequestsError.couldNotParseHttpResponse.dataStr)
     XCTAssertNil(PortalRequestsError.clientError("no-separator", url: "u").dataStr, "A message without the separator has no extractable body")
+  }
+
+  func test_PortalRequestsError_dataStr_willKeepAJsonBodyWhoseMessageContainsTheSeparator() throws {
+    let body = #"{"id":"IDEMPOTENT_REQUEST_IN_PROGRESS","message":"a - b - c","code":216}"#
+
+    let dataStr = try XCTUnwrap(PortalRequestsError.clientError("409 - \(body)", url: "u").dataStr)
+
+    XCTAssertEqual(dataStr, body)
+    let decoded = try JSONDecoder().decode(PortalError.self, from: Data(dataStr.utf8))
+    XCTAssertEqual(decoded.id, "IDEMPOTENT_REQUEST_IN_PROGRESS")
+    XCTAssertEqual(decoded.message, "a - b - c")
+  }
+
+  func test_execute_409WithSeparatorInsideTheBody_willKeepTheWholeBodyInDataStr() async throws {
+    let body = #"{"id":"IDEMPOTENCY_KEY_REUSED","message":"reused - different payload","code":216}"#
+    MockURLProtocol.respond(status: 409, body: body)
+
+    let error = await self.expectError {
+      try await self.sut.execute(request: PortalAPIRequest(url: self.portalUrl, bearerToken: "t"))
+    }
+
+    XCTAssertEqual((error as? PortalRequestsError)?.dataStr, body)
   }
 
   func test_PortalRequestsError_willBeEquatable() {
@@ -904,7 +926,113 @@ final class PortalRequestsTests: XCTestCase {
     XCTAssertFalse(self.hasTraceHeader(thirdParty))
   }
 
+  // MARK: - Idempotency-Key passthrough
+
+  // `PortalRequests` is a generic transport that integrators also use against their own
+  // backends, where `Idempotency-Key` is a standard header. It forwards a caller-supplied
+  // `Idempotency-Key` to any host unchanged; only the trace header is Portal's and gated. The SDK
+  // attaches its own key only inside `EnclaveMobileWrapper`, which applies the Portal-host gate.
+
+  func test_idempotencyKeyHeader_callerSupplied_willBeKept_forPortalHost() async throws {
+    MockURLProtocol.respond(status: 200, body: "{}")
+    let request = PortalAPIRequest(url: self.portalUrl, bearerToken: "t", additionalHeaders: [PORTAL_IDEMPOTENCY_KEY_HEADER: "key-1"])
+
+    _ = try await self.sut.execute(request: request)
+
+    let recorded = try XCTUnwrap(MockURLProtocol.lastRequest)
+    XCTAssertEqual(recorded.value(forHTTPHeaderField: PORTAL_IDEMPOTENCY_KEY_HEADER), "key-1")
+    XCTAssertEqual(recorded.value(forHTTPHeaderField: "Authorization"), "Bearer t")
+    XCTAssertTrue(self.hasTraceHeader(recorded))
+  }
+
+  func test_idempotencyKeyHeader_callerSupplied_willReachThirdPartyHostUnchanged_whileTheTraceHeaderIsStripped() async throws {
+    MockURLProtocol.respond(status: 200, body: "{}")
+    let request = PortalAPIRequest(
+      url: self.thirdPartyUrl,
+      bearerToken: nil,
+      traceId: "caller-trace",
+      additionalHeaders: [PORTAL_IDEMPOTENCY_KEY_HEADER: "order-42"]
+    )
+
+    _ = try await self.sut.execute(request: request)
+
+    let recorded = try XCTUnwrap(MockURLProtocol.lastRequest)
+    XCTAssertEqual(
+      recorded.value(forHTTPHeaderField: PORTAL_IDEMPOTENCY_KEY_HEADER),
+      "order-42",
+      "An integrator's own Idempotency-Key must reach their backend unchanged"
+    )
+    XCTAssertFalse(self.hasTraceHeader(recorded), "Portal's correlation id is still stripped for a third party")
+  }
+
+  func test_idempotencyKeyHeader_callerSupplied_willReachCustomRpcGatewayUnchanged_whileTheTraceHeaderIsStripped() async throws {
+    MockURLProtocol.respond(status: 200, body: "{}")
+    let request = PortalAPIRequest(
+      url: self.rpcUrl,
+      method: .post,
+      payload: TestPayload(k: "v"),
+      bearerToken: nil,
+      traceId: "caller-trace",
+      additionalHeaders: [PORTAL_IDEMPOTENCY_KEY_HEADER: "order-42"]
+    )
+
+    _ = try await self.sut.execute(request: request)
+
+    let recorded = try XCTUnwrap(MockURLProtocol.lastRequest)
+    XCTAssertEqual(recorded.value(forHTTPHeaderField: PORTAL_IDEMPOTENCY_KEY_HEADER), "order-42")
+    XCTAssertFalse(self.hasTraceHeader(recorded))
+  }
+
+  func test_idempotencyKeyHeader_inAnyCasing_willBeForwardedUnchanged_toThirdPartyAndPortalHosts() async throws {
+    MockURLProtocol.respond(status: 200, body: "{}")
+    let headers = ["idempotency-key": "order-42", "x-portal-trace-id": "caller-trace"]
+
+    _ = try await self.sut.execute(request: BareRequest(url: self.thirdPartyUrl, headers: headers))
+    let thirdParty = try XCTUnwrap(MockURLProtocol.lastRequest)
+    XCTAssertEqual(thirdParty.value(forHTTPHeaderField: PORTAL_IDEMPOTENCY_KEY_HEADER), "order-42")
+    XCTAssertEqual(self.idempotencyKeyHeaderCount(thirdParty), 1)
+    XCTAssertFalse(self.hasTraceHeader(thirdParty), "Only the trace header is stripped, in any casing")
+
+    _ = try await self.sut.execute(request: BareRequest(url: self.portalUrl, headers: headers))
+    let portal = try XCTUnwrap(MockURLProtocol.lastRequest)
+    XCTAssertEqual(portal.value(forHTTPHeaderField: PORTAL_IDEMPOTENCY_KEY_HEADER), "order-42")
+    XCTAssertEqual(self.idempotencyKeyHeaderCount(portal), 1)
+    XCTAssertEqual(portal.value(forHTTPHeaderField: PORTAL_TRACE_ID_HEADER), "caller-trace")
+  }
+
+  func test_idempotencyKeyHeader_willNotDisplaceAuthorizationOrContentType() async throws {
+    MockURLProtocol.respond(status: 200, body: "{}")
+    let request = PortalAPIRequest(
+      url: self.portalUrl,
+      method: .post,
+      payload: TestPayload(k: "v"),
+      bearerToken: "t",
+      traceId: "trace-1",
+      additionalHeaders: [
+        PORTAL_IDEMPOTENCY_KEY_HEADER: "key-1",
+        "authorization": "Bearer attacker",
+        "Content-Type": "text/plain",
+        "x-portal-trace-id": "other-trace"
+      ]
+    )
+
+    _ = try await self.sut.execute(request: request)
+
+    let recorded = try XCTUnwrap(MockURLProtocol.lastRequest)
+    XCTAssertEqual(recorded.value(forHTTPHeaderField: "Authorization"), "Bearer t")
+    XCTAssertEqual(recorded.value(forHTTPHeaderField: "Content-Type"), "application/json")
+    XCTAssertEqual(recorded.value(forHTTPHeaderField: PORTAL_TRACE_ID_HEADER), "trace-1")
+    XCTAssertEqual(recorded.value(forHTTPHeaderField: PORTAL_IDEMPOTENCY_KEY_HEADER), "key-1")
+  }
+
   // MARK: - Helpers
+
+  /// How many headers named `Idempotency-Key`, under any casing, the recorded request carries.
+  private func idempotencyKeyHeaderCount(_ request: URLRequest) -> Int {
+    (request.allHTTPHeaderFields ?? [:]).keys.filter {
+      $0.caseInsensitiveCompare(PORTAL_IDEMPOTENCY_KEY_HEADER) == .orderedSame
+    }.count
+  }
 
   /// Installs a counting `onUnauthorized` hook on the subject and returns the counter, so a
   /// test can assert exactly how many times (usually zero or one) the transport fired it.

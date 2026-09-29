@@ -55,4 +55,29 @@ public class PortalAPIRequest: PortalBaseRequestProtocol {
 
     self.headers = defaultHeaders
   }
+
+  /// Creates a request that also carries `additionalHeaders`.
+  ///
+  /// - Parameter additionalHeaders: Extra headers for this request only, such as
+  ///   `PORTAL_IDEMPOTENCY_KEY_HEADER`. They are added to the default headers and never replace
+  ///   one: a name matching a default header, in any casing, is ignored. The defaults are `Accept`,
+  ///   `Content-Type`, the trace id header, and `Authorization` when `bearerToken` is set.
+  public convenience init(
+    url: URL,
+    method: HttpMethod = .get,
+    payload: (any Codable)? = nil,
+    bearerToken: String? = nil,
+    traceId: String? = nil,
+    additionalHeaders: [String: String]
+  ) {
+    self.init(url: url, method: method, payload: payload, bearerToken: bearerToken, traceId: traceId)
+
+    let defaultHeaderNames = Array(self.headers.keys)
+    for (name, value) in additionalHeaders {
+      let overridesDefault = defaultHeaderNames.contains { $0.caseInsensitiveCompare(name) == .orderedSame }
+      if !overridesDefault {
+        self.headers[name] = value
+      }
+    }
+  }
 }

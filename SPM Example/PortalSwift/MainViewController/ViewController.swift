@@ -1684,7 +1684,9 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.startLoading()
 
         let chainId = "eip155:10143"
-        let params = SendAssetParams(to: address, amount: amount, token: "NATIVE")
+        // One key per transfer. To retry this exact transfer, reuse the same key so Portal refuses
+        // to broadcast it twice.
+        let params = SendAssetParams(to: address, amount: amount, token: "NATIVE", idempotencyKey: generateIdempotencyKey())
 
         let response = try await portal?.sendAsset(chainId: chainId, params: params)
 

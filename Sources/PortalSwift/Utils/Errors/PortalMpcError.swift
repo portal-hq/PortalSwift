@@ -46,6 +46,22 @@ public class PortalMpcError: LocalizedError, CustomStringConvertible, Equatable 
     self.id == "AUTH_FAILED"
   }
 
+  /// `true` when Portal refused the request because of its idempotency key: `id` is one of
+  /// `PortalIdempotencyErrorId.all`. The comparison is exact and case-sensitive, like
+  /// `isAuthFailure`.
+  public var isIdempotencyRejection: Bool {
+    guard let id = self.id else {
+      return false
+    }
+    return PortalIdempotencyErrorId.all.contains(id)
+  }
+
+  /// `true` when the idempotency key was already used for a request with a different payload
+  /// (`PortalIdempotencyErrorId.keyReused`).
+  public var isIdempotencyKeyReused: Bool {
+    self.id == PortalIdempotencyErrorId.keyReused
+  }
+
   public static func == (lhs: PortalMpcError, rhs: PortalMpcError) -> Bool {
     return lhs.code == rhs.code && lhs.message == rhs.message && lhs.id == rhs.id
   }

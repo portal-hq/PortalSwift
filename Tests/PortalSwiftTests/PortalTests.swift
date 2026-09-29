@@ -1152,6 +1152,19 @@ extension PortalTests {
     XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.sponsorGas, true)
   }
 
+  func test_requestWithChainIdMethodParams_willPass_optionsWithIdempotencyKey() async throws {
+    // given
+    let portalProviderSpy = try PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let options = RequestOptions(idempotencyKey: "order-42")
+
+    // when
+    _ = try await portal.request(chainId: "eip155:1", method: .eth_sendTransaction, params: [], options: options)
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.idempotencyKey, "order-42")
+  }
+
   func test_requestWithChainIdMethodParams_willPass_emptyOptions() async throws {
     // given
     let portalProviderSpy = try PortalProviderSpy()
