@@ -80,6 +80,7 @@
 @property (nonatomic) NSString* _Nonnull signingScheme;
 @property (nonatomic) NSString* _Nonnull chainId;
 @property (nonatomic) NSString* _Nonnull reqId;
+@property (nonatomic) NSString* _Nonnull idempotencyKey;
 @property (nonatomic) NSString* _Nonnull logLevel;
 @property (nonatomic) BOOL isRaw;
 @property (nonatomic) NSString* _Nonnull mpcClientHeader;
