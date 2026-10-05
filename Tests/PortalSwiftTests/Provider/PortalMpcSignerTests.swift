@@ -1375,11 +1375,10 @@ extension PortalMpcSignerTests {
 // MARK: - Idempotency key over the MPC Enclave API
 
 /// `PortalMpcSigner` over a real `EnclaveMobileWrapper` over a recording transport: the whole
-/// enclave path short of the network. These cases pin that a keyed request skips the
-/// presignature (the enclave drops the key on presignature signs) and makes exactly one protected
-/// `/v1/sign`, that unkeyed and device-side requests keep the presignature path, and that the
-/// enclave's HTTP 409 / 422 / 400 idempotency bodies surface from the signer exactly like the
-/// device path: a `PortalMpcError` with the server's id, with no fallback or retry.
+/// enclave path short of the network. These cases pin that a keyed request sends the key on the
+/// presignature `/v1/sign` and on its normal-sign fallback, that a raw sign never sends it, and
+/// that the enclave's HTTP 409 / 422 / 400 idempotency bodies surface from the signer exactly like
+/// the device path: a `PortalMpcError` with the server's id, with no fallback or retry.
 extension PortalMpcSignerTests {
   private static let enclaveKey = "enclave-idem-key-9d2e"
   private static let enclaveToken = "tok-enclave-idem-secret"
@@ -1435,9 +1434,9 @@ extension PortalMpcSignerTests {
     )
   }
 
-  // MARK: Presignature skip
+  // MARK: Presignature path
 
-  func test_enclave_keyedRequest_skipsThePresignature_andSendsOneProtectedSign() async throws {
+  func test_enclave_keyedRequest_usesThePresignature_andSendsOneProtectedSign() async throws {
     for method in [PortalRequestMethod.eth_sendTransaction, .sol_signAndSendTransaction, .sol_signAndConfirmTransaction] {
       self.logger.reset()
       let spy = try self.enclaveSigningSpy()
@@ -1448,19 +1447,40 @@ extension PortalMpcSignerTests {
 
       withExtendedLifetime(keychain) {}
       XCTAssertEqual(signature, "0xenclave-tx-hash", method.rawValue)
-      XCTAssertEqual(source.consumeCallCount, 0, "A keyed enclave request must not consume a presignature (\(method.rawValue)).")
+      XCTAssertEqual(source.consumeCallCount, 1, method.rawValue)
       XCTAssertEqual(spy.executeCallsCount, 1, method.rawValue)
       let request = try XCTUnwrap(spy.executeRequestParam, method.rawValue)
       XCTAssertEqual(request.url.absoluteString, "https://\(Self.enclaveHost)/v1/sign", method.rawValue)
       XCTAssertEqual(self.enclaveKeyHeader(of: request), Self.enclaveKey, method.rawValue)
       let payload = try XCTUnwrap(request.payload as? [String: String], method.rawValue)
-      XCTAssertNil(payload["presignature"], method.rawValue)
+      XCTAssertEqual(payload["presignature"], "presig-data", method.rawValue)
       XCTAssertEqual(payload["method"], method.rawValue)
       XCTAssertEqual(try self.decodeMetadata(payload["metadataStr"]).idempotencyKey, Self.enclaveKey, method.rawValue)
-      XCTAssertTrue(self.logger.contains("Skipping the presignature"), "\(self.logger.messages(at: .debug))")
       self.logger.assertNoSecret(Self.enclaveKey)
       self.logger.assertNoSecret(Self.enclaveToken)
     }
+  }
+
+  func test_enclave_keyedPresignatureFailsWithoutAnIdempotencyId_fallsBackToOneNormalSign_withTheSameKey() async throws {
+    let spy = try self.enclaveSigningSpy()
+    spy.executeThrowableErrorSequence = [
+      PortalRequestsError.internalServerError("502 - Bad Gateway", url: "https://\(Self.enclaveHost)/v1/sign")
+    ]
+    let source = self.makePresignatureSource()
+    let (signer, keychain) = self.makeEnclaveSigner(requests: spy, source: source)
+
+    let signature = try await self.signBroadcast(signer)
+
+    withExtendedLifetime(keychain) {}
+    XCTAssertEqual(signature, "0xenclave-tx-hash")
+    XCTAssertEqual(source.consumeCallCount, 1)
+    let requests = spy.executeRequestHistory
+    XCTAssertEqual(requests.count, 2, "The presignature failure falls back to one normal sign.")
+    XCTAssertEqual((requests.first?.payload as? [String: String])?["presignature"], "presig-data")
+    XCTAssertNil((requests.last?.payload as? [String: String])?["presignature"])
+    XCTAssertEqual(requests.map { self.enclaveKeyHeader(of: $0) }, [Self.enclaveKey, Self.enclaveKey])
+    self.logger.assertNoSecret(Self.enclaveKey)
+    self.logger.assertNoSecret(Self.enclaveToken)
   }
 
   func test_enclave_unkeyedRequest_keepsThePresignaturePath() async throws {
@@ -1478,11 +1498,10 @@ extension PortalMpcSignerTests {
     XCTAssertEqual(request.url.absoluteString, "https://\(Self.enclaveHost)/v1/sign")
     XCTAssertEqual((request.payload as? [String: String])?["presignature"], "presig-data")
     XCTAssertNil(self.enclaveKeyHeader(of: request))
-    XCTAssertFalse(self.logger.contains("Skipping the presignature"))
   }
 
   func test_enclave_rawSign_withKey_keepsThePresignaturePath_withoutTheHeader() async throws {
-    // A raw sign never carries the key, so there is nothing for the enclave to drop.
+    // A raw sign is never broadcast, so it never carries the key.
     let spy = try self.enclaveSigningSpy()
     let source = self.makePresignatureSource()
     let (signer, keychain) = self.makeEnclaveSigner(requests: spy, source: source)
@@ -1494,10 +1513,9 @@ extension PortalMpcSignerTests {
     let request = try XCTUnwrap(spy.executeRequestParam)
     XCTAssertTrue(request.url.absoluteString.contains("/v1/raw/sign/"), request.url.absoluteString)
     XCTAssertNil(self.enclaveKeyHeader(of: request))
-    XCTAssertFalse(self.logger.contains("Skipping the presignature"))
   }
 
-  func test_enclave_keyedRequest_withPresignaturesDisabled_signsNormally_withoutTheSkipLog() async throws {
+  func test_enclave_keyedRequest_withPresignaturesDisabled_signsNormally_withTheKey() async throws {
     let spy = try self.enclaveSigningSpy()
     let source = self.makePresignatureSource()
     let (signer, keychain) = self.makeEnclaveSigner(requests: spy, featureFlags: nil, source: source)
@@ -1507,12 +1525,10 @@ extension PortalMpcSignerTests {
     withExtendedLifetime(keychain) {}
     XCTAssertEqual(source.consumeCallCount, 0)
     XCTAssertEqual(self.enclaveKeyHeader(of: spy.executeRequestParam), Self.enclaveKey)
-    XCTAssertFalse(self.logger.contains("Skipping the presignature"), "Nothing was skipped.")
   }
 
   func test_device_keyedRequest_keepsThePresignaturePath_withTheKeyInMetadata() async throws {
-    // The gateway enforces the key on `/v6/sign?presignatureId=`, so device-side signing keeps
-    // using presignatures.
+    // The gateway enforces the key on `/v6/sign?presignatureId=`.
     let mobileSpy = MobileSpy()
     mobileSpy.mobileSignWithPresignatureReturnValue = MockConstants.mockSignatureResponse
     let source = self.makePresignatureSource()
@@ -1524,7 +1540,6 @@ extension PortalMpcSignerTests {
     XCTAssertEqual(mobileSpy.mobileSignWithPresignatureCallsCount, 1)
     XCTAssertEqual(mobileSpy.mobileSignCallsCount, 0)
     XCTAssertEqual(try self.decodeMetadata(mobileSpy.mobileSignWithPresignatureMetadataStrParam).idempotencyKey, Self.enclaveKey)
-    XCTAssertFalse(self.logger.contains("Skipping the presignature"))
   }
 
   // MARK: Enclave idempotency errors, end to end
@@ -1556,8 +1571,9 @@ extension PortalMpcSignerTests {
       XCTAssertEqual(mpcError.message, message, "\(status)")
       XCTAssertTrue(mpcError.isIdempotencyRejection, "\(status) \(id)")
       XCTAssertEqual(mpcError.isIdempotencyKeyReused, id == PortalIdempotencyErrorId.keyReused, id)
-      XCTAssertEqual(spy.executeCallsCount, 1, "\(id) must not be retried.")
-      XCTAssertEqual(source.consumeCallCount, 0, id)
+      XCTAssertEqual(spy.executeCallsCount, 1, "\(id) must not be retried through the normal sign.")
+      XCTAssertEqual(source.consumeCallCount, 1, id)
+      XCTAssertEqual((spy.executeRequestParam?.payload as? [String: String])?["presignature"], "presig-data", id)
       XCTAssertEqual(self.enclaveKeyHeader(of: spy.executeRequestParam), Self.enclaveKey, id)
     }
     self.logger.assertNoSecret(Self.enclaveKey)
@@ -1627,7 +1643,8 @@ extension PortalMpcSignerTests {
 
   func test_enclave_409HtmlBodyAnd422EmptyBody_overTheRealTransport_surfaceAsSigningNetworkError_withTheStatus() async throws {
     // E.g. a proxy in front of the enclave: the body carries no error id, so the HTTP status is
-    // what the caller gets, not a missing-signature error.
+    // what the caller gets, not a missing-signature error. Without an idempotency id the
+    // presignature failure falls back to one normal sign, which carries the same key.
     for (status, body) in [(409, "<html><body>409 Conflict</body></html>"), (422, "")] {
       MockURLProtocol.reset()
       let session = MockURLProtocol.makeSession()
@@ -1646,9 +1663,12 @@ extension PortalMpcSignerTests {
       XCTAssertEqual(mpcError.id, "SIGNING_NETWORK_ERROR", "\(status)")
       XCTAssertEqual(mpcError.message, "\(status) - \(body)", "\(status)")
       XCTAssertFalse(mpcError.isIdempotencyRejection, "\(status)")
-      XCTAssertEqual(MockURLProtocol.recordedRequests.count, 1, "\(status)")
-      XCTAssertEqual(MockURLProtocol.lastRequest?.value(forHTTPHeaderField: PORTAL_IDEMPOTENCY_KEY_HEADER), Self.enclaveKey, "\(status)")
-      XCTAssertEqual(source.consumeCallCount, 0, "\(status)")
+      XCTAssertEqual(
+        MockURLProtocol.recordedRequests.map { $0.value(forHTTPHeaderField: PORTAL_IDEMPOTENCY_KEY_HEADER) },
+        [Self.enclaveKey, Self.enclaveKey],
+        "\(status)"
+      )
+      XCTAssertEqual(source.consumeCallCount, 1, "\(status)")
     }
     self.logger.assertNoSecret(Self.enclaveKey)
     self.logger.assertNoSecret(Self.enclaveToken)

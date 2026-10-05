@@ -144,10 +144,8 @@ public class PortalMpcSigner: PortalSignerProtocol {
   /// instead: an `AUTH_FAILED` from the MPC service (the credential is dead, so a second round
   /// trip with the same token would only fail the same way, and the caller reports the rejected
   /// credential), and an idempotency rejection (`PortalMpcError.isIdempotencyRejection`), which a
-  /// second attempt with the same key would only repeat. A request with an idempotency key over
-  /// the MPC Enclave API skips the presignature path, because the enclave enforces the key only
-  /// on a normal sign. `token` is never stored on the instance, and `idempotencyKey` is never
-  /// logged.
+  /// second attempt with the same key would only repeat. `token` is never stored on the instance,
+  /// and `idempotencyKey` is never logged.
   public func sign(
     _ chainId: String,
     withPayload: PortalSignRequest,
@@ -172,20 +170,7 @@ public class PortalMpcSigner: PortalSignerProtocol {
     // Why the presignature attempt failed, when the normal sign below is its fallback.
     var presignatureFailure: Error?
 
-    // The MPC Enclave API does not forward the idempotency key when a presignature is used (mpc
-    // `enclave-client/adapter/mpc/client.go`, `SignWithPresignature`), so a keyed presignature sign
-    // would broadcast unprotected. A keyed request over the Enclave API therefore leaves the
-    // presignature unused and takes the normal sign, which the enclave protects. Remove this skip
-    // once the enclave forwards keys on presignature signs. Device-side signing is unaffected.
-    let usePresignature: Bool
-    if self.featureFlags?.usePresignatures == true, mpcMetadata.idempotencyKey != nil, self.binary is EnclaveMobileWrapper {
-      self.logger.debug("[PortalMpcSigner] Skipping the presignature for a request with an idempotency key: the MPC Enclave API enforces the key only on a normal sign.")
-      usePresignature = false
-    } else {
-      usePresignature = self.featureFlags?.usePresignatures == true
-    }
-
-    if usePresignature,
+    if self.featureFlags?.usePresignatures == true,
        let presignature = await self.presignatureSource?.consumePresignature(forCurve: usingBlockchain.curve)
     {
       self.logger.debug("[PortalMpcSigner] Signing with presignature for \(withPayload.method?.rawValue ?? "unknown")")

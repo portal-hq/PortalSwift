@@ -782,9 +782,8 @@ final class PortalProviderIdempotencyKeyTests: XCTestCase {
     return (provider, keychain)
   }
 
-  /// The presignature skip keys off the concrete binary type, so these cases go through the
-  /// provider's own `PortalMpcSigner` rather than one built by hand.
-  func test_defaultMpcSigner_enclave_presignaturesOn_withKey_skipsThePresignature_andSendsTheTrimmedKeyHeader() async throws {
+  /// These cases go through the provider's own `PortalMpcSigner` rather than one built by hand.
+  func test_defaultMpcSigner_enclave_presignaturesOn_withKey_usesThePresignature_andSendsTheTrimmedKeyHeader() async throws {
     let enclaveSpy = try enclaveSigningSpy()
     let source = FixedPresignatureSource()
     let (provider, keychain) = try makeProviderWithEnclaveSigner(enclaveRequests: enclaveSpy, presignatureSource: source)
@@ -793,13 +792,13 @@ final class PortalProviderIdempotencyKeyTests: XCTestCase {
 
     withExtendedLifetime(keychain) {}
     XCTAssertEqual(result.result as? String, "0xenclave-tx-hash")
-    XCTAssertEqual(source.consumeCallCount, 0, "A keyed request over the MPC Enclave API must not consume a presignature.")
+    XCTAssertEqual(source.consumeCallCount, 1)
     XCTAssertEqual(enclaveSpy.executeCallsCount, 1)
     let request = try XCTUnwrap(enclaveSpy.executeRequestParam)
     XCTAssertEqual(request.url.absoluteString, "https://mpc-client.portalhq.io/v1/sign")
     XCTAssertEqual(request.headers[PORTAL_IDEMPOTENCY_KEY_HEADER], Self.key)
     let payload = try XCTUnwrap(request.payload as? [String: String])
-    XCTAssertNil(payload["presignature"])
+    XCTAssertEqual(payload["presignature"], "presig-data")
     XCTAssertEqual(try self.decodeMetadata(payload["metadataStr"]).idempotencyKey, Self.key)
     self.logger.assertNoSecret(Self.key)
   }

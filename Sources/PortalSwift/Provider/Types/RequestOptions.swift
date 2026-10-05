@@ -35,13 +35,10 @@ public struct RequestOptions: Codable {
   /// after that is treated as a new request, so check the chain before retrying an operation older
   /// than 24 hours, whatever key you use.
   ///
-  /// Portal enforces the key when the transaction is signed through the MPC Enclave API
-  /// (`useEnclaveMPCApi`), and when it is signed on the device by a bundled MPC binary that
-  /// supports idempotency keys (see the CHANGELOG). Earlier binaries accept the key without
-  /// enforcing it. Through the MPC Enclave API, a request with a key is signed without a
-  /// presignature, even when `usePresignatures` is on. A custom `PortalSignerProtocol` signer
-  /// receives the key only if it implements `sign(...idempotencyKey:token:)`; otherwise the key is
-  /// dropped with a warning.
+  /// Portal enforces the key whether the transaction is signed on the device by the bundled MPC
+  /// binary or through the MPC Enclave API (`useEnclaveMPCApi`), with or without presignatures
+  /// (`usePresignatures`). A custom `PortalSignerProtocol` signer receives the key only if it
+  /// implements `sign(...idempotencyKey:token:)`; otherwise the key is dropped with a warning.
   public var idempotencyKey: String? = nil
 
   public init(
