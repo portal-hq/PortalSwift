@@ -144,14 +144,16 @@ final class PortalIdempotencyTests: XCTestCase {
   }
 
   func test_trimVector_noOtherScalarIsTrimmed() {
-    // Every Unicode scalar outside the 25, wrapped around "k-1", stays in the key: an allowed
-    // character is accepted untrimmed and anything else fails the character check. This pins the
-    // implemented set to exactly JavaScript's, so adding a code point to it fails here.
+    // Every Basic Multilingual Plane scalar outside the 25, wrapped around "k-1", stays in the key:
+    // an allowed character is accepted untrimmed and anything else fails the character check. This
+    // pins the implemented set to exactly JavaScript's, so adding a code point to it fails here.
+    // Every character Unicode or Foundation treats as whitespace is in the BMP, so the sweep stops
+    // at U+FFFF, as on Android.
     let trimmed = Set(Self.javaScriptTrimmedCodePoints.flatMap { $0.unicodeScalars.map { $0.value } })
     let allowed = Set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._~-".unicodeScalars.map { $0.value })
     var mismatches: [String] = []
 
-    for value in UInt32(0) ... 0x10FFFF where !trimmed.contains(value) {
+    for value in UInt32(0) ... 0xFFFF where !trimmed.contains(value) {
       guard let scalar = Unicode.Scalar(value) else {
         continue // A surrogate code point, which no String can hold.
       }

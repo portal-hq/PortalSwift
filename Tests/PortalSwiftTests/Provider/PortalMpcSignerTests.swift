@@ -1134,6 +1134,46 @@ extension PortalMpcSignerTests {
     XCTAssertFalse(metadataString.contains("idempotencyKey"), metadataString)
   }
 
+  func test_sign_invalidIdempotencyKey_throwsInvalidKey_beforeAnythingIsSigned() async throws {
+    // `PortalMpcSigner` is public, so a direct caller can pass a key the provider never validated.
+    for key in ["", "   ", "order 42", "order=42", String(repeating: "k", count: 256)] {
+      let mobileSpy = MobileSpy()
+      let source = self.makePresignatureSource()
+      let signer = self.makeSigner(binary: mobileSpy, source: source)
+
+      let error = await self.captureError { try await self.signWithKey(signer, idempotencyKey: key) }
+
+      guard case .invalidKey = error as? PortalIdempotencyError else {
+        return XCTFail("Expected invalidKey for a \(key.count)-character key, got \(String(describing: error))")
+      }
+      XCTAssertEqual(source.consumeCallCount, 0)
+      XCTAssertEqual(mobileSpy.mobileSignCallsCount, 0)
+      XCTAssertEqual(mobileSpy.mobileSignWithPresignatureCallsCount, 0)
+    }
+  }
+
+  func test_sign_idempotencyKeyWithSurroundingWhitespace_isTrimmedInMetadata() async throws {
+    let mobileSpy = MobileSpy()
+    mobileSpy.mobileSignReturnValue = MockConstants.mockSignatureResponse
+    let signer = self.makeSigner(binary: mobileSpy)
+
+    try await self.signWithKey(signer, idempotencyKey: " \t\(Self.idempotencyKey)\n")
+
+    XCTAssertEqual(try self.decodeMetadata(mobileSpy.mobileSignMetadataParam).idempotencyKey, Self.idempotencyKey)
+  }
+
+  func test_sign_rawPayload_withInvalidIdempotencyKey_dropsItUnchecked() async throws {
+    // A raw sign never carries a key, so its key is not validated.
+    let mobileSpy = MobileSpy()
+    mobileSpy.mobileSignReturnValue = MockConstants.mockSignatureResponse
+    let signer = self.makeSigner(binary: mobileSpy)
+
+    try await self.signWithKey(signer, idempotencyKey: "order=42", request: PortalSignRequest(method: nil, params: "deadbeef", isRaw: true))
+
+    XCTAssertEqual(mobileSpy.mobileSignCallsCount, 1)
+    XCTAssertFalse(try XCTUnwrap(mobileSpy.mobileSignMetadataParam).contains("idempotencyKey"))
+  }
+
   func test_sign_nonRawPayload_withIsRawFalse_keepsTheKey() async throws {
     let mobileSpy = MobileSpy()
     mobileSpy.mobileSignReturnValue = MockConstants.mockSignatureResponse

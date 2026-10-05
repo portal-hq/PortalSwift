@@ -146,6 +146,9 @@ public class PortalMpcSigner: PortalSignerProtocol {
   /// credential), and an idempotency rejection (`PortalMpcError.isIdempotencyRejection`), which a
   /// second attempt with the same key would only repeat. `token` is never stored on the instance,
   /// and `idempotencyKey` is never logged.
+  ///
+  /// - Throws: `PortalIdempotencyError.invalidKey` before anything is signed when `idempotencyKey`
+  ///   breaks Portal's rules, checked as `PortalProvider` does. A raw sign's key is dropped unchecked.
   public func sign(
     _ chainId: String,
     withPayload: PortalSignRequest,
@@ -164,8 +167,10 @@ public class PortalMpcSigner: PortalSignerProtocol {
     mpcMetadata.signatureApprovalMemo = signatureApprovalMemo
     mpcMetadata.sponsorGas = sponsorGas
     mpcMetadata.reqId = reqId
-    // A raw sign is never broadcast, so Portal could never settle a key sent with one.
-    mpcMetadata.idempotencyKey = withPayload.isRaw == true ? nil : idempotencyKey
+    // A raw sign is never broadcast, so Portal could never settle a key sent with one. Any other key
+    // is checked here as well as in `PortalProvider`, because this method is public; for a key the
+    // provider already validated, this changes nothing.
+    mpcMetadata.idempotencyKey = withPayload.isRaw == true ? nil : try idempotencyKey.map(validateIdempotencyKey)
 
     // Why the presignature attempt failed, when the normal sign below is its fallback.
     var presignatureFailure: Error?
