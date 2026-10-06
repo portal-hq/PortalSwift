@@ -93,8 +93,14 @@ extension PortalKeychainTests {
     let expectation = XCTestExpectation(description: "PortalKeychain.getAddress(forChainId)")
     let eip155Address = try await keychain.getAddress("eip155:11155111")
     let solanaAddress = try await keychain.getAddress("solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z")
+    let stellarAddress = try await keychain.getAddress("stellar:pubnet")
+    let tronAddress = try await keychain.getAddress("tron:mainnet")
+    let xrplAddress = try await keychain.getAddress("xrpl:0")
     XCTAssert(eip155Address == MockConstants.mockEip155Address)
     XCTAssert(solanaAddress == MockConstants.mockSolanaAddress)
+    XCTAssert(stellarAddress == MockConstants.mockStellarAddress)
+    XCTAssert(tronAddress == MockConstants.mockTronAddress)
+    XCTAssert(xrplAddress == MockConstants.mockXrplAddress)
     expectation.fulfill()
     await fulfillment(of: [expectation], timeout: 5.0)
   }
@@ -126,6 +132,28 @@ extension PortalKeychainTests {
     XCTAssertEqual(address, addressExpect)
   }
 
+  /// Companion to the test above: the legacy pre-multi-wallet entry only ever held the eip155
+  /// address, so when metadata is unreadable a lookup for any other namespace must surface the
+  /// metadata error rather than answer with the Ethereum address.
+  func test_getAddress_rethrowsMetadataError_insteadOfLegacyAddress_forNonEip155Namespace() async throws {
+    // given a keychain whose every item decodes as the legacy eip155 address
+    let keyChainAccessMock = PortalKeyChainAccessMock()
+    keyChainAccessMock.getItemReturnValue = "legacy-eip155-address"
+    initKeychainWith(keychainAccess: keyChainAccessMock)
+
+    // then the eip155 lookup still uses the legacy entry
+    let eip155Address = try await keychain.getAddress("eip155:11155111")
+    XCTAssertEqual(eip155Address, "legacy-eip155-address")
+
+    // and an xrpl lookup does not
+    do {
+      let address = try await keychain.getAddress("xrpl:0")
+      XCTFail("Expected getAddress(\"xrpl:0\") to throw when metadata is unreadable, got \(String(describing: address))")
+    } catch {
+      XCTAssertEqual(error as? PortalKeychain.KeychainError, PortalKeychain.KeychainError.unableToDecodeMetadata)
+    }
+  }
+
   func test_getAddress_willCall_keychainGetItem() async throws {
     // given
     let keyChainAccessSpy = PortalKeyChainAccessSpy()
@@ -143,6 +171,10 @@ extension PortalKeychainTests {
     let addresses = try await keychain.getAddresses()
     XCTAssert(addresses[.eip155] == MockConstants.mockEip155Address)
     XCTAssert(addresses[.solana] == MockConstants.mockSolanaAddress)
+    XCTAssert(addresses[.stellar] == MockConstants.mockStellarAddress)
+    XCTAssert(addresses[.tron] == MockConstants.mockTronAddress)
+    XCTAssert(addresses[.xrpl] == MockConstants.mockXrplAddress)
+    XCTAssertNil(addresses[.bip122] ?? nil, "Bitcoin has no single canonical address and must stay out of the map")
     expectation.fulfill()
     await fulfillment(of: [expectation], timeout: 5.0)
   }
@@ -160,6 +192,317 @@ extension PortalKeychainTests {
 
     // then
     XCTAssertTrue(keyChainAccessSpy.getItemCallsCount >= 1)
+  }
+
+  func test_loadMetadata_storesXrplAddressAndCurve_whenApiReturnsIt() async throws {
+    // given
+    let client = ClientResponse.stub(
+      metadata: .stub(namespaces: .stub(xrpl: .stub(address: MockConstants.mockXrplAddress)))
+    )
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: client))
+
+    // and given
+    try await keychain.loadMetadata()
+
+    // then
+    let addresses = try await keychain.getAddresses()
+    XCTAssertEqual(addresses[.xrpl] ?? nil, MockConstants.mockXrplAddress)
+    let address = try await keychain.getAddress("xrpl:0")
+    XCTAssertEqual(address, MockConstants.mockXrplAddress)
+    let metadata = try await keychain.metadata
+    XCTAssertEqual(metadata?.namespaces[.xrpl], .SECP256K1)
+  }
+
+  func test_loadMetadata_storesStellarAndTronAddressesAndCurves_whenApiReturnsThem() async throws {
+    // given
+    let client = ClientResponse.stub(
+      metadata: .stub(namespaces: .stub(
+        stellar: .stub(address: MockConstants.mockStellarAddress, curve: .ED25519),
+        tron: .stub(address: MockConstants.mockTronAddress, curve: .SECP256K1)
+      ))
+    )
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: client))
+
+    // and given
+    try await keychain.loadMetadata()
+
+    // then
+    let addresses = try await keychain.getAddresses()
+    XCTAssertEqual(addresses[.stellar] ?? nil, MockConstants.mockStellarAddress)
+    XCTAssertEqual(addresses[.tron] ?? nil, MockConstants.mockTronAddress)
+    let stellarAddress = try await keychain.getAddress("stellar:pubnet")
+    let tronAddress = try await keychain.getAddress("tron:mainnet")
+    XCTAssertEqual(stellarAddress, MockConstants.mockStellarAddress)
+    XCTAssertEqual(tronAddress, MockConstants.mockTronAddress)
+    let metadata = try await keychain.metadata
+    XCTAssertEqual(metadata?.namespaces[.stellar], .ED25519)
+    XCTAssertEqual(metadata?.namespaces[.tron], .SECP256K1)
+  }
+
+  func test_loadMetadata_omitsStellarAndTronAddressesAndCurves_whenApiDoesNotReturnThem() async throws {
+    // given
+    let client = ClientResponse.stub(metadata: .stub(namespaces: .stub(stellar: nil, tron: nil)))
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: client))
+
+    // and given
+    try await keychain.loadMetadata()
+
+    // then
+    let addresses = try await keychain.getAddresses()
+    XCTAssertFalse(addresses.keys.contains(.stellar))
+    XCTAssertFalse(addresses.keys.contains(.tron))
+    let stellarAddress = try await keychain.getAddress("stellar:pubnet")
+    let tronAddress = try await keychain.getAddress("tron:mainnet")
+    XCTAssertNil(stellarAddress)
+    XCTAssertNil(tronAddress)
+    let metadata = try await keychain.metadata
+    XCTAssertNil(metadata?.namespaces[.stellar])
+    XCTAssertNil(metadata?.namespaces[.tron])
+  }
+
+  /// The API initialises every address to `""` and keeps the namespace key even when derivation
+  /// fails server-side. A blank must read as "no address", not as an address.
+  func test_loadMetadata_omitsANamespaceWhoseAddressIsBlank() async throws {
+    // given
+    let client = ClientResponse.stub(
+      metadata: .stub(namespaces: .stub(
+        eip155: .stub(address: ""),
+        stellar: .stub(address: "", curve: .ED25519)
+      ))
+    )
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: client))
+
+    // and given
+    try await keychain.loadMetadata()
+
+    // then
+    let addresses = try await keychain.getAddresses()
+    XCTAssertFalse(addresses.keys.contains(.eip155))
+    XCTAssertFalse(addresses.keys.contains(.stellar))
+    XCTAssertEqual(addresses[.tron] ?? nil, "default_address")
+    let stellarAddress = try await keychain.getAddress("stellar:pubnet")
+    XCTAssertNil(stellarAddress)
+  }
+
+  /// `bip122.address` is blank on the wire because Bitcoin has no single canonical address; the
+  /// usable P2WPKH addresses live under `bip122.bitcoin.p2wpkh`. It must never reach the map.
+  func test_loadMetadata_neverStoresABitcoinAddress() async throws {
+    // given
+    let client = ClientResponse.stub(metadata: .stub(namespaces: .stub(bip122: .stub(address: ""))))
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: client))
+
+    // and given
+    try await keychain.loadMetadata()
+
+    // then
+    let addresses = try await keychain.getAddresses()
+    XCTAssertFalse(addresses.keys.contains(.bip122))
+    let bitcoinAddress = try await keychain.getAddress("bip122:000000000019d6689c085ae165831e93")
+    XCTAssertNil(bitcoinAddress)
+  }
+
+  /// The P2WPKH chain IDs the SDK signs with each identify exactly one Bitcoin address.
+  func test_getAddress_returnsTheP2wpkhAddress_forEachBitcoinP2wpkhChainId() async throws {
+    // given
+    let bip122 = ClientResponseNamespaceMetadataItem(
+      address: "",
+      curve: .SECP256K1,
+      bitcoin: BitcoinAddressInfo(p2wpkh: P2wpkhAddressInfo(mainnet: "bc1qmockmainnet", testnet: "tb1qmocktestnet"))
+    )
+    let client = ClientResponse.stub(metadata: .stub(namespaces: .stub(bip122: bip122)))
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: client))
+    try await keychain.loadMetadata()
+
+    // then
+    let mainnet = try await keychain.getAddress(PortalBlockchain.bitcoinP2wpkhMainnetChainId)
+    let testnet = try await keychain.getAddress(PortalBlockchain.bitcoinP2wpkhTestnetChainId)
+    XCTAssertEqual(mainnet, "bc1qmockmainnet")
+    XCTAssertEqual(testnet, "tb1qmocktestnet")
+
+    // and Bitcoin stays out of the namespace map
+    let addresses = try await keychain.getAddresses()
+    XCTAssertFalse(addresses.keys.contains(.bip122))
+  }
+
+  func test_getAddress_returnsNil_forABlankP2wpkhAddress() async throws {
+    // given
+    let bip122 = ClientResponseNamespaceMetadataItem(
+      address: "",
+      curve: .SECP256K1,
+      bitcoin: BitcoinAddressInfo(p2wpkh: P2wpkhAddressInfo(mainnet: "", testnet: "tb1qmocktestnet"))
+    )
+    let client = ClientResponse.stub(metadata: .stub(namespaces: .stub(bip122: bip122)))
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: client))
+
+    // then
+    let mainnet = try await keychain.getAddress(PortalBlockchain.bitcoinP2wpkhMainnetChainId)
+    XCTAssertNil(mainnet)
+  }
+
+  func test_getAddress_returnsNil_forABitcoinChainIdWithoutP2wpkhAddresses() async throws {
+    // given
+    let client = ClientResponse.stub(metadata: .stub(namespaces: .stub(bip122: nil)))
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: client))
+
+    // then
+    let address = try await keychain.getAddress(PortalBlockchain.bitcoinP2wpkhMainnetChainId)
+    XCTAssertNil(address)
+  }
+
+  /// The deprecated `portal.address` reads `legacyAddress`, which must follow the same blank rule
+  /// as `portal.addresses[.eip155]`.
+  func test_loadMetadata_leavesLegacyAddressNil_whenTheEip155AddressIsBlank() async throws {
+    // given
+    let client = ClientResponse.stub(metadata: .stub(namespaces: .stub(eip155: .stub(address: ""))))
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: client))
+
+    // and given
+    try await keychain.loadMetadata()
+
+    // then
+    XCTAssertNil(keychain.legacyAddress)
+  }
+
+  func test_loadMetadata_setsLegacyAddress_toTheEip155Address() async throws {
+    // given
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: ClientResponse.stub()))
+
+    // and given
+    try await keychain.loadMetadata()
+
+    // then
+    XCTAssertEqual(keychain.legacyAddress, "default_address")
+  }
+
+  func test_loadMetadata_omitsXrplAddressAndCurve_whenApiDoesNotReturnIt() async throws {
+    // given
+    let client = ClientResponse.stub(metadata: .stub(namespaces: .stub(xrpl: nil)))
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: client))
+
+    // and given
+    try await keychain.loadMetadata()
+
+    // then
+    let addresses = try await keychain.getAddresses()
+    XCTAssertNil(addresses[.xrpl] ?? nil)
+    let address = try await keychain.getAddress("xrpl:0")
+    XCTAssertNil(address)
+    let metadata = try await keychain.metadata
+    XCTAssertNil(metadata?.namespaces[.xrpl])
+  }
+
+  /// Foundation on iOS 17 and older cannot decode an optional value from a JSON `null` inside the
+  /// flattened key/value array that `[PortalNamespace: String?]` encodes to. One `null` therefore
+  /// makes the whole metadata blob unreadable. `loadMetadata()` must never write one, so this
+  /// pins the invariant on any OS, including the newer ones that decode `null` happily.
+  func test_loadMetadata_neverPersistsANullAddress_whenNamespacesAreMissing() async throws {
+    // given
+    let access = InMemoryKeychainAccess()
+    let client = ClientResponse.stub(metadata: .stub(namespaces: .stub(solana: nil, xrpl: nil)))
+    initKeychainWith(keychainAccess: access, api: PortalApiMock(client: client))
+
+    // and given
+    try await keychain.loadMetadata()
+
+    // then
+    let persisted = try access.getItem("\(client.id).metadata")
+    XCTAssertFalse(
+      persisted.contains("null"),
+      "loadMetadata() persisted a null address, which older Foundation cannot decode: \(persisted)"
+    )
+
+    // and the blob still round-trips
+    let addresses = try await keychain.getAddresses()
+    XCTAssertEqual(addresses[.eip155] ?? nil, "default_address")
+    XCTAssertNil(addresses[.solana] ?? nil)
+    XCTAssertNil(addresses[.xrpl] ?? nil)
+  }
+
+  /// A namespace with no address must not fall back to the legacy keychain entry, which only ever
+  /// held the eip155 address.
+  func test_getAddress_returnsNil_andDoesNotReadLegacyAddress_forANamespaceWithNoAddress() async throws {
+    // given
+    let access = InMemoryKeychainAccess()
+    let client = ClientResponse.stub(metadata: .stub(namespaces: .stub(xrpl: nil)))
+    initKeychainWith(keychainAccess: access, api: PortalApiMock(client: client))
+    try await keychain.loadMetadata()
+
+    // and given a legacy eip155 address is present
+    try access.addItem("\(client.id).address", value: "legacy-eip155-address")
+
+    // then
+    let xrplAddress = try await keychain.getAddress("xrpl:0")
+    XCTAssertNil(xrplAddress)
+
+    // and eip155 still reads its address from the metadata
+    let eip155Address = try await keychain.getAddress("eip155:1")
+    XCTAssertEqual(eip155Address, "default_address")
+  }
+
+  /// `loadMetadata()` omits the eip155 entry when the Portal API returns a blank address, and that
+  /// absent key must read as `nil`. Falling back to the legacy entry would answer with an address the
+  /// Portal API no longer reports, and disagree with `portal.addresses[.eip155]`.
+  func test_getAddress_returnsNil_andDoesNotReadLegacyAddress_whenTheEip155AddressIsBlank() async throws {
+    // given
+    let access = InMemoryKeychainAccess()
+    let client = ClientResponse.stub(metadata: .stub(namespaces: .stub(eip155: .stub(address: ""))))
+    initKeychainWith(keychainAccess: access, api: PortalApiMock(client: client))
+    try await keychain.loadMetadata()
+
+    // and given a legacy eip155 address is present
+    try access.addItem("\(client.id).address", value: "legacy-eip155-address")
+
+    // then
+    let address = try await keychain.getAddress("eip155:1")
+    XCTAssertNil(address)
+    let addresses = try await keychain.getAddresses()
+    XCTAssertNil(addresses[.eip155] ?? nil)
+  }
+
+  /// Without a legacy entry, an eip155 lookup for a client with no eip155 address must answer `nil`
+  /// rather than throw the keychain's item-not-found error from the legacy fallback.
+  func test_getAddress_returnsNil_forEip155_whenTheClientHasNoEip155Address() async throws {
+    // given
+    let client = ClientResponse.stub(metadata: .stub(namespaces: .stub(eip155: nil)))
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: client))
+    try await keychain.loadMetadata()
+
+    // then
+    let address = try await keychain.getAddress("eip155:1")
+    XCTAssertNil(address)
+  }
+
+  /// Clients that ran an earlier SDK on iOS 17 or older may still have a metadata blob with a `null`
+  /// address, which that Foundation cannot decode. `loadMetadata()` rebuilds the record from the
+  /// Portal API without reading the stored one, so it must replace the blob with one that has no
+  /// `null`. The assertions hold on any OS, including the newer ones that decode `null` happily.
+  func test_loadMetadata_repairsAPersistedNullAddress() async throws {
+    // given a stored blob with a `null` address, as earlier SDK versions wrote it
+    let access = InMemoryKeychainAccess()
+    let client = ClientResponse.stub(metadata: .stub(namespaces: .stub(solana: nil)))
+    let corrupted = PortalKeychainClientMetadata(
+      id: client.id,
+      addresses: [.eip155: "default_address", .solana: nil],
+      custodian: client.custodian,
+      wallets: nil
+    )
+    let corruptedBlob = try String(decoding: JSONEncoder().encode(corrupted), as: UTF8.self)
+    XCTAssertTrue(corruptedBlob.contains("null"), "The seeded blob must hold a null address: \(corruptedBlob)")
+    try access.addItem("\(client.id).metadata", value: corruptedBlob)
+    initKeychainWith(keychainAccess: access, api: PortalApiMock(client: client))
+
+    // and given
+    try await keychain.loadMetadata()
+
+    // then
+    let persisted = try access.getItem("\(client.id).metadata")
+    XCTAssertFalse(
+      persisted.contains("null"),
+      "loadMetadata() left a null address in place, which older Foundation cannot decode: \(persisted)"
+    )
+    let addresses = try await keychain.getAddresses()
+    XCTAssertEqual(addresses[.eip155] ?? nil, "default_address")
+    XCTAssertNil(addresses[.solana] ?? nil)
   }
 
   func test_getAddresses_willThrowCorrectError_WhenThereIsNoMetadata() async throws {
@@ -629,39 +972,63 @@ extension PortalKeychainTests {
 
 /// In-memory keychain access for presignature tests.
 /// Simulates real keychain behavior: throws itemNotFound when key doesn't exist.
+///
+/// Access is serialised by a lock. Setting `PortalKeychain.api` starts an unstructured
+/// `Task { loadMetadata() }` that runs concurrently with the test body, so a test that also
+/// drives the keychain itself has overlapping accesses to this store from two tasks. Without the
+/// lock that is a data race on the backing dictionary, which surfaces as an intermittent failure
+/// under full-suite load rather than a reproducible one.
 private class InMemoryKeychainAccess: PortalKeychainAccessProtocol {
-  private var store: [String: String] = [:]
-  private(set) var deleteItemKeys: [String] = []
-  private(set) var updateItemKeys: [String] = []
-  private(set) var addItemKeys: [String] = []
+  private let lock = NSLock()
+  private var _store: [String: String] = [:]
+  private var _deleteItemKeys: [String] = []
+  private var _updateItemKeys: [String] = []
+  private var _addItemKeys: [String] = []
+
+  private func locked<T>(_ body: () -> T) -> T {
+    lock.lock()
+    defer { lock.unlock() }
+    return body()
+  }
+
+  var deleteItemKeys: [String] { locked { _deleteItemKeys } }
+  var updateItemKeys: [String] { locked { _updateItemKeys } }
+  var addItemKeys: [String] { locked { _addItemKeys } }
 
   func addItem(_ key: String, value: String) throws {
-    addItemKeys.append(key)
-    store[key] = value
+    locked {
+      _addItemKeys.append(key)
+      _store[key] = value
+    }
   }
 
   func deleteItem(_ key: String) throws {
-    deleteItemKeys.append(key)
-    store.removeValue(forKey: key)
+    locked {
+      _deleteItemKeys.append(key)
+      _store.removeValue(forKey: key)
+    }
   }
 
   func getItem(_ key: String) throws -> String {
-    guard let value = store[key] else {
+    guard let value = locked({ _store[key] }) else {
       throw PortalKeychainAccessError.itemNotFound(key)
     }
     return value
   }
 
   func updateItem(_ key: String, value: String) throws {
-    updateItemKeys.append(key)
-    if store[key] == nil {
-      try addItem(key, value: value)
-    } else {
-      store[key] = value
+    locked {
+      _updateItemKeys.append(key)
+      // Mirrors the original helper: an update to a key that does not exist yet also counts as an
+      // add. Inlined rather than calling addItem, because NSLock is not recursive.
+      if _store[key] == nil {
+        _addItemKeys.append(key)
+      }
+      _store[key] = value
     }
   }
 
   func hasKey(_ key: String) -> Bool {
-    store[key] != nil
+    locked { _store[key] != nil }
   }
 }

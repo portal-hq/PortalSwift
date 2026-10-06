@@ -958,4 +958,34 @@ extension PortalProviderTests {
     )
     XCTAssertEqual(signResult.result as? String, MockConstants.mockSignature)
   }
+
+  /// Stellar, Tron and XRPL have no signer yet. A signing request on them must fail with
+  /// `unsupportedRequestMethod`, even when an RPC URL is configured for the chain, instead of being
+  /// POSTed to that URL as a JSON-RPC call.
+  func testRequest_signingOnAddressOnlyNamespace_throwsUnsupportedRequestMethod_evenWithRpcUrl() async throws {
+    // given
+    let chainIds = ["stellar:pubnet", "tron:mainnet", "xrpl:0"]
+    let rpcConfig = Dictionary(uniqueKeysWithValues: chainIds.map { ($0, "https://\(MockConstants.mockHost)/test-rpc") })
+    let provider = try PortalProvider(
+      apiKey: MockConstants.mockApiKey,
+      rpcConfig: rpcConfig,
+      keychain: keychain,
+      autoApprove: true,
+      requests: MockPortalRequests(),
+      signer: MockPortalMpcSigner(apiKey: MockConstants.mockApiKey, keychain: MockPortalKeychain())
+    )
+
+    for chainId in chainIds {
+      for method in [PortalRequestMethod.rawSign, .personal_sign] {
+        do {
+          // and given
+          _ = try await provider.request(chainId: chainId, method: method, params: [AnyCodable("0xdeadbeef")])
+          XCTFail("Expected \(method.rawValue) on \(chainId) to throw")
+        } catch {
+          // then
+          XCTAssertEqual(error as? PortalProviderError, .unsupportedRequestMethod(method.rawValue))
+        }
+      }
+    }
+  }
 }
