@@ -37,8 +37,12 @@ public struct RequestOptions: Codable {
   ///
   /// Portal enforces the key whether the transaction is signed on the device by the bundled MPC
   /// binary or through the MPC Enclave API (`useEnclaveMPCApi`), with or without presignatures
-  /// (`usePresignatures`). A custom `PortalSignerProtocol` signer receives the key only if it
-  /// implements `sign(...idempotencyKey:token:)`; otherwise the key is dropped with a warning.
+  /// (`usePresignatures`). With presignatures on, if the presignature attempt fails after reaching
+  /// Portal, the fallback sign reuses the key and can be rejected (for example with
+  /// `IDEMPOTENT_REQUEST_IN_PROGRESS` or `IDEMPOTENT_REQUEST_PREVIOUSLY_FAILED`) where a request
+  /// without a key would have been signed. Check the transaction's status before retrying with a
+  /// new key. A custom `PortalSignerProtocol` signer receives the key only if it implements
+  /// `sign(...idempotencyKey:token:)`; otherwise the key is dropped with a warning.
   public var idempotencyKey: String? = nil
 
   public init(
