@@ -29,10 +29,10 @@ Possible Types of changes include:
       (`availableRecoveryMethods`, `doesWalletExist`, `isWalletBackedUp`, `isWalletOnDevice`,
       `getBackupShares`) instead of throwing an unsupported-chain error.
     - Added `MockConstants.mockXrplAddress` for tests.
-    - XRPL signing is not supported yet. No XRPL request is routed to the MPC signer, so
-      `portal.request(chainId: "xrpl:…", …)` fails with
-      `PortalProviderError.noRpcUrlFoundForChainId` unless an RPC URL is configured for that chain.
-      It previously failed with `PortalBlockchainError.noSupportedCurveForChainId`.
+    - XRPL signing is not supported yet. A signing request such as `rawSign` or `personal_sign` on
+      an `xrpl:` chain ID fails with `PortalProviderError.unsupportedRequestMethod`, whether or not
+      an RPC URL is configured for that chain. It previously failed with
+      `PortalBlockchainError.noSupportedCurveForChainId`.
 - Fixed the keychain metadata becoming unreadable on iOS 17 and older when a client had no wallet
   for one of the stored namespaces. `loadMetadata()` wrote a `nil` address for the missing
   namespace, which encodes as a JSON `null` that older versions of Foundation cannot decode, so
@@ -45,6 +45,32 @@ Possible Types of changes include:
       address, so the fallback could answer a `solana:` or `xrpl:` lookup with the Ethereum address.
       A non-eip155 namespace with no address now returns `nil`, and when the stored metadata is
       missing or unreadable the underlying error is thrown instead. `eip155` keeps the fallback.
+- Added Stellar and Tron addresses to the SDK's address APIs. `GET /api/v3/clients/me` already
+  returned them under `metadata.namespaces.stellar` and `metadata.namespaces.tron`, derived from the
+  client's existing ED25519 and SECP256K1 wallets, so no new wallet or curve is involved.
+    - `portal.addresses` and `portal.getAddresses()` include `.stellar` and `.tron` when the Portal
+      API returns them, and omit the key when it does not. `portal.getAddress("stellar:pubnet")` and
+      `portal.getAddress("tron:mainnet")` return those addresses instead of failing with
+      `PortalBlockchainError.noSupportedCurveForChainId`.
+    - `portal.getAddresses()` now also omits a namespace whose address the Portal API returned blank,
+      which happens when server-side address derivation fails. Previously the key was present with an
+      empty string.
+    - `stellar:` and `tron:` chain IDs resolve to the ED25519 and SECP256K1 wallets in the
+      wallet-status helpers (`availableRecoveryMethods`, `doesWalletExist`, `isWalletBackedUp`,
+      `isWalletOnDevice`, `getBackupShares`) instead of throwing an unsupported-chain error.
+      `PortalBlockchain(fromChainId:)` reports `isMainnet == true` for `stellar:pubnet` and
+      `tron:mainnet`.
+    - `portal.getAddress("bip122:000000000019d6689c085ae165831e93-p2wpkh")` returns the Bitcoin
+      mainnet P2WPKH address and `portal.getAddress("bip122:000000000933ea01ad0ee984209779ba-p2wpkh")`
+      the testnet one, the same chain IDs `sendAsset` accepts for Bitcoin. Any other `bip122:` chain
+      ID returns `nil`. Bitcoin is not in `getAddresses()`, because it has no single canonical
+      address per namespace.
+    - The deprecated `portal.address` now returns `nil` instead of `""` when the Portal API returned
+      a blank EVM address, matching `portal.addresses[.eip155]`.
+    - Stellar and Tron signing is not supported yet. A signing request such as `rawSign` or
+      `personal_sign` on a `stellar:` or `tron:` chain ID fails with
+      `PortalProviderError.unsupportedRequestMethod`, whether or not an RPC URL is configured for
+      that chain. It previously failed with `PortalBlockchainError.noSupportedCurveForChainId`.
 
 ## 7.4.0 - 2026-09-01
 - Changed Google Drive backup to request only the OAuth scopes your configured `GDriveBackupOption` actually needs, so users see a smaller Google consent screen when enabling Google Drive backup.

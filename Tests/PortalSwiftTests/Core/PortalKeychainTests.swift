@@ -93,9 +93,13 @@ extension PortalKeychainTests {
     let expectation = XCTestExpectation(description: "PortalKeychain.getAddress(forChainId)")
     let eip155Address = try await keychain.getAddress("eip155:11155111")
     let solanaAddress = try await keychain.getAddress("solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z")
+    let stellarAddress = try await keychain.getAddress("stellar:pubnet")
+    let tronAddress = try await keychain.getAddress("tron:mainnet")
     let xrplAddress = try await keychain.getAddress("xrpl:0")
     XCTAssert(eip155Address == MockConstants.mockEip155Address)
     XCTAssert(solanaAddress == MockConstants.mockSolanaAddress)
+    XCTAssert(stellarAddress == MockConstants.mockStellarAddress)
+    XCTAssert(tronAddress == MockConstants.mockTronAddress)
     XCTAssert(xrplAddress == MockConstants.mockXrplAddress)
     expectation.fulfill()
     await fulfillment(of: [expectation], timeout: 5.0)
@@ -167,7 +171,10 @@ extension PortalKeychainTests {
     let addresses = try await keychain.getAddresses()
     XCTAssert(addresses[.eip155] == MockConstants.mockEip155Address)
     XCTAssert(addresses[.solana] == MockConstants.mockSolanaAddress)
+    XCTAssert(addresses[.stellar] == MockConstants.mockStellarAddress)
+    XCTAssert(addresses[.tron] == MockConstants.mockTronAddress)
     XCTAssert(addresses[.xrpl] == MockConstants.mockXrplAddress)
+    XCTAssertNil(addresses[.bip122] ?? nil, "Bitcoin has no single canonical address and must stay out of the map")
     expectation.fulfill()
     await fulfillment(of: [expectation], timeout: 5.0)
   }
@@ -204,6 +211,167 @@ extension PortalKeychainTests {
     XCTAssertEqual(address, MockConstants.mockXrplAddress)
     let metadata = try await keychain.metadata
     XCTAssertEqual(metadata?.namespaces[.xrpl], .SECP256K1)
+  }
+
+  func test_loadMetadata_storesStellarAndTronAddressesAndCurves_whenApiReturnsThem() async throws {
+    // given
+    let client = ClientResponse.stub(
+      metadata: .stub(namespaces: .stub(
+        stellar: .stub(address: MockConstants.mockStellarAddress, curve: .ED25519),
+        tron: .stub(address: MockConstants.mockTronAddress, curve: .SECP256K1)
+      ))
+    )
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: client))
+
+    // and given
+    try await keychain.loadMetadata()
+
+    // then
+    let addresses = try await keychain.getAddresses()
+    XCTAssertEqual(addresses[.stellar] ?? nil, MockConstants.mockStellarAddress)
+    XCTAssertEqual(addresses[.tron] ?? nil, MockConstants.mockTronAddress)
+    let stellarAddress = try await keychain.getAddress("stellar:pubnet")
+    let tronAddress = try await keychain.getAddress("tron:mainnet")
+    XCTAssertEqual(stellarAddress, MockConstants.mockStellarAddress)
+    XCTAssertEqual(tronAddress, MockConstants.mockTronAddress)
+    let metadata = try await keychain.metadata
+    XCTAssertEqual(metadata?.namespaces[.stellar], .ED25519)
+    XCTAssertEqual(metadata?.namespaces[.tron], .SECP256K1)
+  }
+
+  func test_loadMetadata_omitsStellarAndTronAddressesAndCurves_whenApiDoesNotReturnThem() async throws {
+    // given
+    let client = ClientResponse.stub(metadata: .stub(namespaces: .stub(stellar: nil, tron: nil)))
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: client))
+
+    // and given
+    try await keychain.loadMetadata()
+
+    // then
+    let addresses = try await keychain.getAddresses()
+    XCTAssertFalse(addresses.keys.contains(.stellar))
+    XCTAssertFalse(addresses.keys.contains(.tron))
+    let stellarAddress = try await keychain.getAddress("stellar:pubnet")
+    let tronAddress = try await keychain.getAddress("tron:mainnet")
+    XCTAssertNil(stellarAddress)
+    XCTAssertNil(tronAddress)
+    let metadata = try await keychain.metadata
+    XCTAssertNil(metadata?.namespaces[.stellar])
+    XCTAssertNil(metadata?.namespaces[.tron])
+  }
+
+  /// The API initialises every address to `""` and keeps the namespace key even when derivation
+  /// fails server-side. A blank must read as "no address", not as an address.
+  func test_loadMetadata_omitsANamespaceWhoseAddressIsBlank() async throws {
+    // given
+    let client = ClientResponse.stub(
+      metadata: .stub(namespaces: .stub(
+        eip155: .stub(address: ""),
+        stellar: .stub(address: "", curve: .ED25519)
+      ))
+    )
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: client))
+
+    // and given
+    try await keychain.loadMetadata()
+
+    // then
+    let addresses = try await keychain.getAddresses()
+    XCTAssertFalse(addresses.keys.contains(.eip155))
+    XCTAssertFalse(addresses.keys.contains(.stellar))
+    XCTAssertEqual(addresses[.tron] ?? nil, "default_address")
+    let stellarAddress = try await keychain.getAddress("stellar:pubnet")
+    XCTAssertNil(stellarAddress)
+  }
+
+  /// `bip122.address` is blank on the wire because Bitcoin has no single canonical address; the
+  /// usable P2WPKH addresses live under `bip122.bitcoin.p2wpkh`. It must never reach the map.
+  func test_loadMetadata_neverStoresABitcoinAddress() async throws {
+    // given
+    let client = ClientResponse.stub(metadata: .stub(namespaces: .stub(bip122: .stub(address: ""))))
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: client))
+
+    // and given
+    try await keychain.loadMetadata()
+
+    // then
+    let addresses = try await keychain.getAddresses()
+    XCTAssertFalse(addresses.keys.contains(.bip122))
+    let bitcoinAddress = try await keychain.getAddress("bip122:000000000019d6689c085ae165831e93")
+    XCTAssertNil(bitcoinAddress)
+  }
+
+  /// The P2WPKH chain IDs the SDK signs with each identify exactly one Bitcoin address.
+  func test_getAddress_returnsTheP2wpkhAddress_forEachBitcoinP2wpkhChainId() async throws {
+    // given
+    let bip122 = ClientResponseNamespaceMetadataItem(
+      address: "",
+      curve: .SECP256K1,
+      bitcoin: BitcoinAddressInfo(p2wpkh: P2wpkhAddressInfo(mainnet: "bc1qmockmainnet", testnet: "tb1qmocktestnet"))
+    )
+    let client = ClientResponse.stub(metadata: .stub(namespaces: .stub(bip122: bip122)))
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: client))
+    try await keychain.loadMetadata()
+
+    // then
+    let mainnet = try await keychain.getAddress(PortalBlockchain.bitcoinP2wpkhMainnetChainId)
+    let testnet = try await keychain.getAddress(PortalBlockchain.bitcoinP2wpkhTestnetChainId)
+    XCTAssertEqual(mainnet, "bc1qmockmainnet")
+    XCTAssertEqual(testnet, "tb1qmocktestnet")
+
+    // and Bitcoin stays out of the namespace map
+    let addresses = try await keychain.getAddresses()
+    XCTAssertFalse(addresses.keys.contains(.bip122))
+  }
+
+  func test_getAddress_returnsNil_forABlankP2wpkhAddress() async throws {
+    // given
+    let bip122 = ClientResponseNamespaceMetadataItem(
+      address: "",
+      curve: .SECP256K1,
+      bitcoin: BitcoinAddressInfo(p2wpkh: P2wpkhAddressInfo(mainnet: "", testnet: "tb1qmocktestnet"))
+    )
+    let client = ClientResponse.stub(metadata: .stub(namespaces: .stub(bip122: bip122)))
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: client))
+
+    // then
+    let mainnet = try await keychain.getAddress(PortalBlockchain.bitcoinP2wpkhMainnetChainId)
+    XCTAssertNil(mainnet)
+  }
+
+  func test_getAddress_returnsNil_forABitcoinChainIdWithoutP2wpkhAddresses() async throws {
+    // given
+    let client = ClientResponse.stub(metadata: .stub(namespaces: .stub(bip122: nil)))
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: client))
+
+    // then
+    let address = try await keychain.getAddress(PortalBlockchain.bitcoinP2wpkhMainnetChainId)
+    XCTAssertNil(address)
+  }
+
+  /// The deprecated `portal.address` reads `legacyAddress`, which must follow the same blank rule
+  /// as `portal.addresses[.eip155]`.
+  func test_loadMetadata_leavesLegacyAddressNil_whenTheEip155AddressIsBlank() async throws {
+    // given
+    let client = ClientResponse.stub(metadata: .stub(namespaces: .stub(eip155: .stub(address: ""))))
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: client))
+
+    // and given
+    try await keychain.loadMetadata()
+
+    // then
+    XCTAssertNil(keychain.legacyAddress)
+  }
+
+  func test_loadMetadata_setsLegacyAddress_toTheEip155Address() async throws {
+    // given
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: ClientResponse.stub()))
+
+    // and given
+    try await keychain.loadMetadata()
+
+    // then
+    XCTAssertEqual(keychain.legacyAddress, "default_address")
   }
 
   func test_loadMetadata_omitsXrplAddressAndCurve_whenApiDoesNotReturnIt() async throws {

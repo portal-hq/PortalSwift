@@ -137,6 +137,10 @@ public class PortalKeychain: PortalKeychainProtocol {
       throw KeychainError.unsupportedNamespace(forChainId)
     }
 
+    if blockchain.namespace == .bip122 {
+      return try await self.getBitcoinAddress(forChainId)
+    }
+
     do {
       let metadata = try await getMetadata()
       guard let address = metadata.addresses?[blockchain.namespace] else {
@@ -335,18 +339,9 @@ public class PortalKeychain: PortalKeychainProtocol {
       throw KeychainError.clientNotFound
     }
     // Load the curve map into memory
-    var metadata = PortalKeychainMetadata(
-      namespaces: [:]
+    let metadata = PortalKeychainMetadata(
+      namespaces: client.metadata.namespaces.toCurveMap()
     )
-    if let eip155Curve = client.metadata.namespaces.eip155?.curve {
-      metadata.namespaces[.eip155] = eip155Curve
-    }
-    if let solanaCurve = client.metadata.namespaces.solana?.curve {
-      metadata.namespaces[.solana] = solanaCurve
-    }
-    if let xrplCurve = client.metadata.namespaces.xrpl?.curve {
-      metadata.namespaces[.xrpl] = xrplCurve
-    }
 
     self._metadata = metadata
 
@@ -375,25 +370,8 @@ public class PortalKeychain: PortalKeychainProtocol {
       )
     }
 
-    // Build the client's address map, writing only the namespaces the API actually returned.
-    //
-    // A `nil` value here would not be harmless. `PortalNamespace` is not a string coding key, so
-    // this dictionary encodes as a flattened array of alternating keys and values, and a `nil`
-    // address becomes a JSON `null` inside it. Foundation on iOS 17 and older fails to decode an
-    // optional value from that `null`, which makes the *entire* metadata blob unreadable and turns
-    // every later `getMetadata()` into `KeychainError.unableToDecodeMetadata`. Omitting the entry
-    // keeps the blob decodable on every supported OS. Reading a missing namespace by subscript
-    // still yields `nil`; only `keys` and `count` reveal that the entry is absent.
-    var addresses: [PortalNamespace: String?] = [:]
-    if let eip155Address = client.metadata.namespaces.eip155?.address {
-      addresses[.eip155] = eip155Address
-    }
-    if let solanaAddress = client.metadata.namespaces.solana?.address {
-      addresses[.solana] = solanaAddress
-    }
-    if let xrplAddress = client.metadata.namespaces.xrpl?.address {
-      addresses[.xrpl] = xrplAddress
-    }
+    // Build the client's address map
+    let addresses = client.metadata.namespaces.toAddressMap()
 
     // Build the client's metadata
     let clientMetadata = PortalKeychainClientMetadata(
@@ -404,7 +382,9 @@ public class PortalKeychain: PortalKeychainProtocol {
     )
 
     // TODO: Remove this when we go fully async and chain agnostic
-    self.legacyAddress = client.metadata.namespaces.eip155?.address
+    // Follows the same blank-address rule as `addresses`, so the deprecated `portal.address` agrees
+    // with `portal.addresses[.eip155]`.
+    self.legacyAddress = addresses[.eip155] ?? nil
     self.clientId = client.id
 
     // Write the metadata to the keychain
@@ -570,6 +550,35 @@ public class PortalKeychain: PortalKeychainProtocol {
   /*******************************************
    * Private functions
    *******************************************/
+
+  /// Resolves a `bip122:` chain ID to one of the client's Bitcoin addresses.
+  ///
+  /// Bitcoin has no single canonical address, so the Portal API leaves `bip122.address` blank and
+  /// `bip122` is never in the stored address map. The P2WPKH chain IDs the SDK signs with name an
+  /// address type and a network, though, so each maps to exactly one address under
+  /// `bip122.bitcoin.p2wpkh`. Any other `bip122:` chain ID, or a blank address, yields `nil`.
+  private func getBitcoinAddress(_ forChainId: String) async throws -> String? {
+    guard let client = try await client else {
+      self.logger.error("PortalKeychain.getAddress() - Client not found")
+      throw KeychainError.clientNotFound
+    }
+    guard let p2wpkh = client.metadata.namespaces.bip122?.bitcoin?.p2wpkh else {
+      return nil
+    }
+
+    let address: String
+    switch forChainId {
+    case PortalBlockchain.bitcoinP2wpkhMainnetChainId:
+      address = p2wpkh.mainnet
+    case PortalBlockchain.bitcoinP2wpkhTestnetChainId:
+      address = p2wpkh.testnet
+    default:
+      self.logger.error("PortalKeychain.getAddress() - No address found for Bitcoin chainId: \(forChainId)")
+      return nil
+    }
+
+    return address.isEmpty ? nil : address
+  }
 
   private func deleteItem(_ key: String) throws {
     try self.keychain.deleteItem(key)
@@ -767,5 +776,57 @@ public class PortalKeychain: PortalKeychainProtocol {
     }
 
     return self.clientId!
+  }
+}
+
+private extension ClientResponseMetadataNamespaces {
+  /// Every namespace whose address and curve the SDK stores, paired with its entry in the Portal
+  /// API response. `bip122` is left out: see `PortalKeychain.getBitcoinAddress(_:)`.
+  var addressNamespaces: [(PortalNamespace, ClientResponseNamespaceMetadataItem?)] {
+    [
+      (.eip155, self.eip155),
+      (.solana, self.solana),
+      (.stellar, self.stellar),
+      (.tron, self.tron),
+      (.xrpl, self.xrpl)
+    ]
+  }
+
+  /// Maps the namespaces the Portal API reports on the client to the curve each one signs with.
+  ///
+  /// Unlike `toAddressMap()` this keeps a namespace whose address is blank: the wallet still exists,
+  /// only its address derivation failed.
+  func toCurveMap() -> [PortalNamespace: PortalCurve] {
+    var curves: [PortalNamespace: PortalCurve] = [:]
+    for (namespace, item) in self.addressNamespaces {
+      if let item {
+        curves[namespace] = item.curve
+      }
+    }
+    return curves
+  }
+
+  /// Maps the namespaces the Portal API reports on the client to their addresses, keeping only the
+  /// namespaces that have a usable address.
+  ///
+  /// A `nil` value here would not be harmless. `PortalNamespace` is not a string coding key, so
+  /// this dictionary encodes as a flattened array of alternating keys and values, and a `nil`
+  /// address becomes a JSON `null` inside it. Foundation on iOS 17 and older fails to decode an
+  /// optional value from that `null`, which makes the *entire* metadata blob unreadable and turns
+  /// every later `getMetadata()` into `KeychainError.unableToDecodeMetadata`. Omitting the entry
+  /// keeps the blob decodable on every supported OS. Reading a missing namespace by subscript
+  /// still yields `nil`; only `keys` and `count` reveal that the entry is absent.
+  ///
+  /// A blank address is treated the same as a missing one. The API initialises every address to
+  /// `""` and keeps the namespace key even when derivation fails server-side, so only a non-empty
+  /// value means the client has a usable address for that namespace.
+  func toAddressMap() -> [PortalNamespace: String?] {
+    var addresses: [PortalNamespace: String?] = [:]
+    for (namespace, item) in self.addressNamespaces {
+      if let address = item?.address, !address.isEmpty {
+        addresses[namespace] = address
+      }
+    }
+    return addresses
   }
 }

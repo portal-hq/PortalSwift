@@ -877,6 +877,11 @@ public final class Portal: PortalProtocol {
   ///
   /// - Returns: The wallet address as a string if found, nil otherwise.
   ///
+  ///   For Bitcoin, pass one of the P2WPKH chain IDs the SDK signs with:
+  ///   `bip122:000000000019d6689c085ae165831e93-p2wpkh` returns the mainnet P2WPKH address and
+  ///   `bip122:000000000933ea01ad0ee984209779ba-p2wpkh` the testnet one. Any other `bip122:` chain
+  ///   ID returns nil, because it does not say which Bitcoin address it means.
+  ///
   /// - Note: This method handles errors internally and returns nil instead of throwing.
   ///   For error handling, use `getAddresses()` instead.
   public func getAddress(_ forChainId: String) async -> String? {
@@ -897,12 +902,19 @@ public final class Portal: PortalProtocol {
   /// - Returns: A dictionary mapping `PortalNamespace` to wallet addresses, where:
   ///   - `.eip155` holds the Ethereum/EVM address
   ///   - `.solana` holds the Solana address
+  ///   - `.stellar` holds the Stellar address
+  ///   - `.tron` holds the Tron address
   ///   - `.xrpl` holds the XRP Ledger classic address
   ///
-  ///   An entry is present only for a namespace the Portal API returned an address for. `.eip155`
-  ///   and `.xrpl` are present when the client has a SECP256K1 wallet, `.solana` when it has an
-  ///   ED25519 wallet. A namespace the client has no wallet for is absent from the dictionary,
-  ///   so it is missing from `keys` and `count` and reads as `nil` by subscript.
+  ///   An entry is present only for a namespace the Portal API returned an address for. `.eip155`,
+  ///   `.tron` and `.xrpl` are present when the client has a SECP256K1 wallet, `.solana` and
+  ///   `.stellar` when it has an ED25519 wallet. A namespace is absent from the dictionary when the
+  ///   client has no wallet for it or the Portal API returned a blank address for it, so it is
+  ///   missing from `keys` and `count` and reads as `nil` by subscript.
+  ///
+  ///   `.bip122` is never present. Bitcoin has no single canonical address, so the Portal API leaves
+  ///   `bip122.address` blank and returns a P2WPKH address per network instead. Read those with
+  ///   `getAddress(_:)` and a P2WPKH chain ID.
   ///
   /// - Throws: Keychain-related errors if the retrieval fails.
   ///
@@ -1807,8 +1819,7 @@ public final class Portal: PortalProtocol {
 
     case .bip122:
       // Ensure the chain is bitcoin p2wpkh
-      let p2wpkhChains = ["bip122:000000000019d6689c085ae165831e93-p2wpkh", "bip122:000000000933ea01ad0ee984209779ba-p2wpkh"]
-      guard p2wpkhChains.contains(chainId) else {
+      guard PortalBlockchain.bitcoinP2wpkhChainIds.contains(chainId) else {
         throw PortalClassError.unsupportedChainId(chainId)
       }
 
