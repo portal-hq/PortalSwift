@@ -148,7 +148,8 @@ public class PortalMpcSigner: PortalSignerProtocol {
   /// and `idempotencyKey` is never logged.
   ///
   /// - Throws: `PortalIdempotencyError.invalidKey` before anything is signed when `idempotencyKey`
-  ///   breaks Portal's rules, checked as `PortalProvider` does. A raw sign's key is dropped unchecked.
+  ///   breaks Portal's rules, checked as `PortalProvider` does. A raw sign's key is dropped unchecked,
+  ///   and a key on any other method Portal does not protect is dropped with a warning.
   public func sign(
     _ chainId: String,
     withPayload: PortalSignRequest,
@@ -168,9 +169,16 @@ public class PortalMpcSigner: PortalSignerProtocol {
     mpcMetadata.sponsorGas = sponsorGas
     mpcMetadata.reqId = reqId
     // A raw sign is never broadcast, so Portal could never settle a key sent with one. Any other key
-    // is checked here as well as in `PortalProvider`, because this method is public; for a key the
-    // provider already validated, this changes nothing.
-    mpcMetadata.idempotencyKey = withPayload.isRaw == true ? nil : try idempotencyKey.map(validateIdempotencyKey)
+    // is checked here as well as in `PortalProvider`, because this method is public: it must pass
+    // Portal's rules, and on a method Portal does not protect it is dropped, since the server would
+    // reserve it without ever settling it. For a key the provider already resolved, this changes
+    // nothing.
+    var key = withPayload.isRaw == true ? nil : try idempotencyKey.map(validateIdempotencyKey)
+    if key != nil, withPayload.method?.supportsIdempotencyKey != true {
+      self.logger.warn("PortalMpcSigner.sign() - idempotencyKey ignored for \(withPayload.method?.rawValue ?? "unknown"); only eth_sendTransaction, sol_signAndSendTransaction and sol_signAndConfirmTransaction are protected")
+      key = nil
+    }
+    mpcMetadata.idempotencyKey = key
 
     // Why the presignature attempt failed, when the normal sign below is its fallback.
     var presignatureFailure: Error?

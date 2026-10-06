@@ -1162,6 +1162,24 @@ extension PortalMpcSignerTests {
     XCTAssertEqual(try self.decodeMetadata(mobileSpy.mobileSignMetadataParam).idempotencyKey, Self.idempotencyKey)
   }
 
+  func test_sign_keyOnAMethodPortalDoesNotProtect_isDroppedWithAWarning() async throws {
+    // `PortalMpcSigner` is public, so a direct caller can skip the provider's method filter. The
+    // binary would send the key, and the server would reserve it without ever settling it.
+    for method in [PortalRequestMethod.personal_sign, .eth_signTransaction, .eth_signTypedData_v4, .sol_signTransaction] {
+      self.logger.reset()
+      let mobileSpy = MobileSpy()
+      mobileSpy.mobileSignReturnValue = MockConstants.mockSignatureResponse
+      let signer = self.makeSigner(binary: mobileSpy)
+
+      try await self.signWithKey(signer, idempotencyKey: Self.idempotencyKey, request: PortalSignRequest(method: method, params: "[]"))
+
+      let metadata = try XCTUnwrap(mobileSpy.mobileSignMetadataParam, method.rawValue)
+      XCTAssertFalse(metadata.contains("idempotencyKey"), "\(method.rawValue): \(metadata)")
+      XCTAssertTrue(self.logger.contains("idempotencyKey ignored for \(method.rawValue); only eth_sendTransaction"), method.rawValue)
+      self.logger.assertNoSecret(Self.idempotencyKey)
+    }
+  }
+
   func test_sign_rawPayload_withInvalidIdempotencyKey_dropsItUnchecked() async throws {
     // A raw sign never carries a key, so its key is not validated.
     let mobileSpy = MobileSpy()
