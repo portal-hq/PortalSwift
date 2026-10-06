@@ -40,6 +40,8 @@ public enum MockConstants {
 
   public static let mockApiKey = "test-api-key"
   public static let mockBackupPath = "test-backup-path"
+  public static let mockBitcoinP2wpkhMainnetAddress = "bc1qmockmainnet"
+  public static let mockBitcoinP2wpkhTestnetAddress = "tb1qmocktestnet"
   public static let mockCiphertext = "test-cipher-text"
   public static let mockClientId = "test-client-id"
   /// A stand-in client session token for `PortalSession` test doubles and credential tests. Not a
@@ -157,7 +159,10 @@ public enum MockConstants {
     id: MockConstants.mockClientId,
     addresses: [
       .eip155: mockEip155Address,
-      .solana: mockSolanaAddress
+      .solana: mockSolanaAddress,
+      .stellar: mockStellarAddress,
+      .tron: mockTronAddress,
+      .xrpl: mockXrplAddress
     ],
     custodian: mockCustodian,
     wallets: [
@@ -290,9 +295,11 @@ public enum MockConstants {
     changes: []
   )
   public static let mockSolanaAddress = "6LmSRCiu3z6NCSpF19oz1pHXkYkN4jWbj9K1nVELpDkT"
+  public static let mockStellarAddress = "GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H"
   public static let mockSolanaEjectResponse = "{\"privateKey\":\"\(mockSolanaPrivateKey)\",\"error\":{\"code\":0,\"message\":\"\"}}"
   public static let mockSolanaPrivateKey = "099cabf8c65c81e629d59e72f04a549aafa531329e25685a5b8762b926597209"
   public static let mockTransactionHash = "0x926c5168c5646425d5dcf8e3dac7359ddb77e9ff95884393a6a9a8e3de066fc1"
+  public static let mockTronAddress = "TJRabPrwbZy45sbavfcjinPJC18kjpRTv8"
   public static let mockTransactionHashResponse = "{\"data\":\"\(mockTransactionHash)\",\"error\":{\"code\":0,\"message\":\"\"}}"
   public static let mockWalletBackupShare = ClientResponseBackupSharePair(
     backupMethod: .Password,
@@ -306,6 +313,7 @@ public enum MockConstants {
     createdAt: mockCreatedAt,
     status: .completed
   )
+  public static let mockXrplAddress = "rPMaML8R5BLG69NXKXsdTqK64LSkMTspaK"
 
   // Dynamically generated constants
   public static var mockClient: ClientResponse {
@@ -328,8 +336,18 @@ public enum MockConstants {
           ),
           solana: nil,
           bip122: nil,
-          stellar: nil,
-          tron: nil
+          stellar: ClientResponseNamespaceMetadataItem(
+            address: mockStellarAddress,
+            curve: .ED25519
+          ),
+          tron: ClientResponseNamespaceMetadataItem(
+            address: mockTronAddress,
+            curve: .SECP256K1
+          ),
+          xrpl: ClientResponseNamespaceMetadataItem(
+            address: mockXrplAddress,
+            curve: .SECP256K1
+          )
         )
       ),
       wallets: [
@@ -359,8 +377,18 @@ public enum MockConstants {
           ),
           solana: nil,
           bip122: nil,
-          stellar: nil,
-          tron: nil
+          stellar: ClientResponseNamespaceMetadataItem(
+            address: mockStellarAddress,
+            curve: .ED25519
+          ),
+          tron: ClientResponseNamespaceMetadataItem(
+            address: mockTronAddress,
+            curve: .SECP256K1
+          ),
+          xrpl: ClientResponseNamespaceMetadataItem(
+            address: mockXrplAddress,
+            curve: .SECP256K1
+          )
         )
       ),
       wallets: [

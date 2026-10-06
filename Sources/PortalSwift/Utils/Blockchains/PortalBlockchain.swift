@@ -8,14 +8,26 @@
 import Foundation
 
 public class PortalBlockchain {
+  /// The Bitcoin chain IDs the SDK can sign for. Unlike a bare `bip122:` chain ID, each one names an
+  /// address type and a network, so it identifies exactly one of the client's Bitcoin addresses.
+  static let bitcoinP2wpkhMainnetChainId = "bip122:000000000019d6689c085ae165831e93-p2wpkh"
+  static let bitcoinP2wpkhTestnetChainId = "bip122:000000000933ea01ad0ee984209779ba-p2wpkh"
+  static let bitcoinP2wpkhChainIds = [bitcoinP2wpkhMainnetChainId, bitcoinP2wpkhTestnetChainId]
+
   static let mainnetReferences: [PortalNamespace: String] = [
     .eip155: "1",
-    .solana: "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+    .solana: "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+    .stellar: "pubnet",
+    .tron: "mainnet",
+    .xrpl: "0"
   ]
   static let namespaceCurves: [PortalNamespace: PortalCurve] = [
     .eip155: .SECP256K1,
     .bip122: .SECP256K1,
-    .solana: .ED25519
+    .solana: .ED25519,
+    .stellar: .ED25519,
+    .tron: .SECP256K1,
+    .xrpl: .SECP256K1
   ]
   static let namespaceSignerMethods: [PortalNamespace: [PortalRequestMethod]] = [
     .eip155: [
@@ -39,6 +51,8 @@ public class PortalBlockchain {
       .rawSign
     ]
   ]
+  /// Every method that at least one namespace routes to the MPC signer.
+  static let allSignerMethods = Set(namespaceSignerMethods.values.joined())
 
   public let curve: PortalCurve
   public let isMainnet: Bool
@@ -79,7 +93,11 @@ public class PortalBlockchain {
         method == .wallet_revokePermissions ||
         method == .wallet_getCapabilities
     default:
-      true
+      // A namespace with no signer methods is address-only: the SDK knows its address but cannot
+      // sign for it yet. Rejecting signing methods here keeps them from being sent to the RPC URL
+      // configured for the chain, which could only answer with an unrelated RPC error.
+      PortalBlockchain.namespaceSignerMethods[self.namespace] != nil ||
+        !PortalBlockchain.allSignerMethods.contains(method)
     }
   }
 
