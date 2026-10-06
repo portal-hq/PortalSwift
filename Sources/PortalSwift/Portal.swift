@@ -877,6 +877,11 @@ public final class Portal: PortalProtocol {
   ///
   /// - Returns: The wallet address as a string if found, nil otherwise.
   ///
+  ///   For Bitcoin, pass one of the P2WPKH chain IDs the SDK signs with:
+  ///   `bip122:000000000019d6689c085ae165831e93-p2wpkh` returns the mainnet P2WPKH address and
+  ///   `bip122:000000000933ea01ad0ee984209779ba-p2wpkh` the testnet one. Any other `bip122:` chain
+  ///   ID returns nil, because it does not say which Bitcoin address it means.
+  ///
   /// - Note: This method handles errors internally and returns nil instead of throwing.
   ///   For error handling, use `getAddresses()` instead.
   public func getAddress(_ forChainId: String) async -> String? {
@@ -908,8 +913,8 @@ public final class Portal: PortalProtocol {
   ///   missing from `keys` and `count` and reads as `nil` by subscript.
   ///
   ///   `.bip122` is never present. Bitcoin has no single canonical address, so the Portal API leaves
-  ///   `bip122.address` blank and returns the usable P2WPKH addresses per network under
-  ///   `client.metadata.namespaces.bip122?.bitcoin?.p2wpkh`.
+  ///   `bip122.address` blank and returns a P2WPKH address per network instead. Read those with
+  ///   `getAddress(_:)` and a P2WPKH chain ID.
   ///
   /// - Throws: Keychain-related errors if the retrieval fails.
   ///
@@ -1814,8 +1819,7 @@ public final class Portal: PortalProtocol {
 
     case .bip122:
       // Ensure the chain is bitcoin p2wpkh
-      let p2wpkhChains = ["bip122:000000000019d6689c085ae165831e93-p2wpkh", "bip122:000000000933ea01ad0ee984209779ba-p2wpkh"]
-      guard p2wpkhChains.contains(chainId) else {
+      guard PortalBlockchain.bitcoinP2wpkhChainIds.contains(chainId) else {
         throw PortalClassError.unsupportedChainId(chainId)
       }
 

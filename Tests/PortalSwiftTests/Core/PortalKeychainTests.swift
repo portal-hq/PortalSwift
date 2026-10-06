@@ -301,6 +301,79 @@ extension PortalKeychainTests {
     XCTAssertNil(bitcoinAddress)
   }
 
+  /// The P2WPKH chain IDs the SDK signs with each identify exactly one Bitcoin address.
+  func test_getAddress_returnsTheP2wpkhAddress_forEachBitcoinP2wpkhChainId() async throws {
+    // given
+    let bip122 = ClientResponseNamespaceMetadataItem(
+      address: "",
+      curve: .SECP256K1,
+      bitcoin: BitcoinAddressInfo(p2wpkh: P2wpkhAddressInfo(mainnet: "bc1qmockmainnet", testnet: "tb1qmocktestnet"))
+    )
+    let client = ClientResponse.stub(metadata: .stub(namespaces: .stub(bip122: bip122)))
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: client))
+    try await keychain.loadMetadata()
+
+    // then
+    let mainnet = try await keychain.getAddress(PortalBlockchain.bitcoinP2wpkhMainnetChainId)
+    let testnet = try await keychain.getAddress(PortalBlockchain.bitcoinP2wpkhTestnetChainId)
+    XCTAssertEqual(mainnet, "bc1qmockmainnet")
+    XCTAssertEqual(testnet, "tb1qmocktestnet")
+
+    // and Bitcoin stays out of the namespace map
+    let addresses = try await keychain.getAddresses()
+    XCTAssertFalse(addresses.keys.contains(.bip122))
+  }
+
+  func test_getAddress_returnsNil_forABlankP2wpkhAddress() async throws {
+    // given
+    let bip122 = ClientResponseNamespaceMetadataItem(
+      address: "",
+      curve: .SECP256K1,
+      bitcoin: BitcoinAddressInfo(p2wpkh: P2wpkhAddressInfo(mainnet: "", testnet: "tb1qmocktestnet"))
+    )
+    let client = ClientResponse.stub(metadata: .stub(namespaces: .stub(bip122: bip122)))
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: client))
+
+    // then
+    let mainnet = try await keychain.getAddress(PortalBlockchain.bitcoinP2wpkhMainnetChainId)
+    XCTAssertNil(mainnet)
+  }
+
+  func test_getAddress_returnsNil_forABitcoinChainIdWithoutP2wpkhAddresses() async throws {
+    // given
+    let client = ClientResponse.stub(metadata: .stub(namespaces: .stub(bip122: nil)))
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: client))
+
+    // then
+    let address = try await keychain.getAddress(PortalBlockchain.bitcoinP2wpkhMainnetChainId)
+    XCTAssertNil(address)
+  }
+
+  /// The deprecated `portal.address` reads `legacyAddress`, which must follow the same blank rule
+  /// as `portal.addresses[.eip155]`.
+  func test_loadMetadata_leavesLegacyAddressNil_whenTheEip155AddressIsBlank() async throws {
+    // given
+    let client = ClientResponse.stub(metadata: .stub(namespaces: .stub(eip155: .stub(address: ""))))
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: client))
+
+    // and given
+    try await keychain.loadMetadata()
+
+    // then
+    XCTAssertNil(keychain.legacyAddress)
+  }
+
+  func test_loadMetadata_setsLegacyAddress_toTheEip155Address() async throws {
+    // given
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: ClientResponse.stub()))
+
+    // and given
+    try await keychain.loadMetadata()
+
+    // then
+    XCTAssertEqual(keychain.legacyAddress, "default_address")
+  }
+
   func test_loadMetadata_omitsXrplAddressAndCurve_whenApiDoesNotReturnIt() async throws {
     // given
     let client = ClientResponse.stub(metadata: .stub(namespaces: .stub(xrpl: nil)))

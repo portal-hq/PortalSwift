@@ -29,10 +29,10 @@ Possible Types of changes include:
       (`availableRecoveryMethods`, `doesWalletExist`, `isWalletBackedUp`, `isWalletOnDevice`,
       `getBackupShares`) instead of throwing an unsupported-chain error.
     - Added `MockConstants.mockXrplAddress` for tests.
-    - XRPL signing is not supported yet. No XRPL request is routed to the MPC signer, so
-      `portal.request(chainId: "xrpl:…", …)` fails with
-      `PortalProviderError.noRpcUrlFoundForChainId` unless an RPC URL is configured for that chain.
-      It previously failed with `PortalBlockchainError.noSupportedCurveForChainId`.
+    - XRPL signing is not supported yet. A signing request such as `rawSign` or `personal_sign` on
+      an `xrpl:` chain ID fails with `PortalProviderError.unsupportedRequestMethod`, whether or not
+      an RPC URL is configured for that chain. It previously failed with
+      `PortalBlockchainError.noSupportedCurveForChainId`.
 - Fixed the keychain metadata becoming unreadable on iOS 17 and older when a client had no wallet
   for one of the stored namespaces. `loadMetadata()` wrote a `nil` address for the missing
   namespace, which encodes as a JSON `null` that older versions of Foundation cannot decode, so
@@ -60,13 +60,17 @@ Possible Types of changes include:
       `isWalletOnDevice`, `getBackupShares`) instead of throwing an unsupported-chain error.
       `PortalBlockchain(fromChainId:)` reports `isMainnet == true` for `stellar:pubnet` and
       `tron:mainnet`.
-    - Bitcoin is deliberately not in `getAddresses()`: it has no single canonical address, so the
-      Portal API leaves `bip122.address` blank and returns the usable addresses under
-      `client.metadata.namespaces.bip122?.bitcoin?.p2wpkh`.
-    - Stellar and Tron signing is not supported yet. `portal.request(chainId: "stellar:…", …)` and
-      `portal.request(chainId: "tron:…", …)` are not routed to the MPC signer and fail with
-      `PortalProviderError.noRpcUrlFoundForChainId` unless an RPC URL is configured for that chain.
-      They previously failed with `PortalBlockchainError.noSupportedCurveForChainId`.
+    - `portal.getAddress("bip122:000000000019d6689c085ae165831e93-p2wpkh")` returns the Bitcoin
+      mainnet P2WPKH address and `portal.getAddress("bip122:000000000933ea01ad0ee984209779ba-p2wpkh")`
+      the testnet one, the same chain IDs `sendAsset` accepts for Bitcoin. Any other `bip122:` chain
+      ID returns `nil`. Bitcoin is not in `getAddresses()`, because it has no single canonical
+      address per namespace.
+    - The deprecated `portal.address` now returns `nil` instead of `""` when the Portal API returned
+      a blank EVM address, matching `portal.addresses[.eip155]`.
+    - Stellar and Tron signing is not supported yet. A signing request such as `rawSign` or
+      `personal_sign` on a `stellar:` or `tron:` chain ID fails with
+      `PortalProviderError.unsupportedRequestMethod`, whether or not an RPC URL is configured for
+      that chain. It previously failed with `PortalBlockchainError.noSupportedCurveForChainId`.
 
 ## 7.4.0 - 2026-09-01
 - Changed Google Drive backup to request only the OAuth scopes your configured `GDriveBackupOption` actually needs, so users see a smaller Google consent screen when enabling Google Drive backup.

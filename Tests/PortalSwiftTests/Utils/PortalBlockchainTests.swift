@@ -65,4 +65,31 @@ final class PortalBlockchainTests: XCTestCase {
     XCTAssertFalse(mainnet.shouldMethodBeSigned(.rawSign))
     XCTAssertFalse(mainnet.shouldMethodBeSigned(.eth_sendTransaction))
   }
+
+  /// An address-only namespace has no signer, so a signing method must be rejected up front rather
+  /// than sent to whatever RPC URL the app configured for the chain.
+  func test_addressOnlyNamespaces_rejectSignerMethods_andAllowOtherMethods() throws {
+    for chainId in ["stellar:pubnet", "tron:mainnet", "xrpl:0"] {
+      // given
+      let blockchain = try PortalBlockchain(fromChainId: chainId)
+
+      // then
+      for method in PortalBlockchain.allSignerMethods {
+        XCTAssertFalse(blockchain.isMethodSupported(method), "\(method.rawValue) should be unsupported on \(chainId)")
+      }
+      XCTAssertTrue(blockchain.isMethodSupported(.eth_blockNumber), "non-signing methods still reach RPC on \(chainId)")
+    }
+  }
+
+  /// The guard only applies to namespaces with no signer. Solana and Bitcoin keep their behavior.
+  func test_namespacesWithSigners_stillSupportEveryMethod() throws {
+    // given
+    let solana = try PortalBlockchain(fromChainId: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp")
+    let bitcoin = try PortalBlockchain(fromChainId: PortalBlockchain.bitcoinP2wpkhMainnetChainId)
+
+    // then
+    XCTAssertTrue(solana.isMethodSupported(.sol_signTransaction))
+    XCTAssertTrue(solana.isMethodSupported(.rawSign))
+    XCTAssertTrue(bitcoin.isMethodSupported(.rawSign))
+  }
 }
