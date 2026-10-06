@@ -254,9 +254,10 @@ final class ReportUnauthorizedTests: XCTestCase {
     // siblings is to tear down the registry entry while the registry is delivering: the
     // first listener cancels both subscriptions from inside its callback. That must not
     // deadlock (the registry lock is not held while a listener runs) and must not disturb the
-    // once-only invalidation. The sibling's outcome follows the handle contract: its delivery
-    // was queued on the main actor behind the first's and had not run when it was cancelled, so
-    // it is suppressed. Cancelling the running listener's own handle is a no-op.
+    // once-only invalidation. The sibling's outcome follows the handle contract: the registry
+    // delivers in subscription order from one main-actor task, so the sibling's delivery had not
+    // run when it was cancelled, and it is suppressed. Cancelling the running listener's own
+    // handle is a no-op.
     //
     // React Native and Android dispatch listeners synchronously from a snapshot, so there a
     // sibling unsubscribed mid-dispatch still runs; the iOS hop to the main actor opens the

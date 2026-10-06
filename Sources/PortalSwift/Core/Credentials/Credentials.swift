@@ -436,11 +436,13 @@ final class CredentialInvalidationRegistry {
   /// Tells the host the session behind `credentials` ended — at most once per credential,
   /// and never for a `StaticCredentials`.
   ///
-  /// Listeners are snapshotted under the lock and dispatched outside it, each on the main
-  /// actor via its own `Task`, so a listener is free to cancel itself, subscribe another
-  /// listener or report another credential from inside the callback. Each task claims the
-  /// subscription's gate before calling the listener, so a handle cancelled between the
-  /// snapshot and the task running suppresses that delivery instead of racing it. The entry is
+  /// Listeners are snapshotted under the lock and dispatched outside it, in subscription order,
+  /// from one main-actor `Task`, so a listener is free to cancel itself, subscribe another
+  /// listener or report another credential from inside the callback. One task rather than one
+  /// per listener, because separate tasks are not guaranteed to run in the order they were
+  /// created. The task claims each subscription's gate just before calling its listener, so a
+  /// handle cancelled after the snapshot, including by an earlier listener, suppresses that
+  /// delivery instead of racing it. The entry is
   /// dropped rather than kept: this fires once per credential, so the list can never be read
   /// again and would otherwise go on holding whatever the listeners captured.
   func notifyInvalidated(_ credentials: PortalCredentials) {
@@ -460,15 +462,20 @@ final class CredentialInvalidationRegistry {
     }
     self.reported[key] = WeakCredential(credentials)
 
-    var snapshot: [Subscription] = []
+    let snapshot: [Subscription]
     if let entry = self.entries[key], entry.credential === credentials {
       snapshot = entry.subscriptions
       self.entries.removeValue(forKey: key)
+    } else {
+      snapshot = []
     }
     self.lock.unlock()
 
-    for subscription in snapshot {
-      Task { @MainActor in
+    guard !snapshot.isEmpty else {
+      return
+    }
+    Task { @MainActor in
+      for subscription in snapshot {
         if subscription.gate.claim() {
           subscription.listener()
         }
