@@ -17,7 +17,15 @@ public class MockPortalKeychain: PortalKeychainProtocol {
   public func deleteShares() async throws {}
 
   public func getAddress(_ forChainId: String) async throws -> String? {
-    if forChainId.starts(with: "eip155") {
+    // Mirrors `PortalKeychain.getAddress(_:)`: only the two P2WPKH chain IDs name a Bitcoin address,
+    // and any other `bip122:` chain ID answers nil.
+    if forChainId == PortalBlockchain.bitcoinP2wpkhMainnetChainId {
+      return MockConstants.mockBitcoinP2wpkhMainnetAddress
+    } else if forChainId == PortalBlockchain.bitcoinP2wpkhTestnetChainId {
+      return MockConstants.mockBitcoinP2wpkhTestnetAddress
+    } else if forChainId.starts(with: "bip122:") {
+      return nil
+    } else if forChainId.starts(with: "eip155") {
       return MockConstants.mockEip155Address
     } else if forChainId.starts(with: "solana") {
       return MockConstants.mockSolanaAddress

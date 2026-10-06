@@ -22,8 +22,6 @@ Possible Types of changes include:
     - `portal.addresses` and `portal.getAddresses()` now include an `.xrpl` entry when the client
       has a SECP256K1 wallet. As with every namespace, there is no entry for a wallet the client does
       not have: the key is absent from the dictionary and reads as `nil` by subscript.
-    - `PortalBlockchain(fromChainId: "xrpl:0")` reports `isMainnet == true`; `xrpl:1` (testnet)
-      reports `false`.
     - `portal.getAddress("xrpl:0")` and `portal.getAddress("xrpl:1")` return the XRPL address instead
       of failing with an unsupported namespace.
     - Added `ClientResponseMetadataNamespaces.xrpl`, mirroring the `xrpl` entry in
@@ -49,8 +47,6 @@ Possible Types of changes include:
     - `stellar:` and `tron:` chain IDs resolve to the ED25519 and SECP256K1 wallets in the
       wallet-status helpers (`availableRecoveryMethods`, `doesWalletExist`, `isWalletBackedUp`,
       `isWalletOnDevice`, `getBackupShares`) instead of throwing an unsupported-chain error.
-      `PortalBlockchain(fromChainId:)` reports `isMainnet == true` for `stellar:pubnet` and
-      `tron:mainnet`.
     - `portal.getAddress("bip122:000000000019d6689c085ae165831e93-p2wpkh")` returns the Bitcoin
       mainnet P2WPKH address and `portal.getAddress("bip122:000000000933ea01ad0ee984209779ba-p2wpkh")`
       the testnet one, the same chain IDs `sendAsset` accepts for Bitcoin. Any other `bip122:` chain

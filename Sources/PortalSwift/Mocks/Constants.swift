@@ -40,6 +40,8 @@ public enum MockConstants {
 
   public static let mockApiKey = "test-api-key"
   public static let mockBackupPath = "test-backup-path"
+  public static let mockBitcoinP2wpkhMainnetAddress = "bc1qmockmainnet"
+  public static let mockBitcoinP2wpkhTestnetAddress = "tb1qmocktestnet"
   public static let mockCiphertext = "test-cipher-text"
   public static let mockClientId = "test-client-id"
   /// A stand-in client session token for `PortalSession` test doubles and credential tests. Not a
