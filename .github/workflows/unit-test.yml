@@ -19,7 +19,26 @@ jobs:
 
       - name: Run Tests
         run: |
-          xcodebuild -quiet -scheme Unit\ Tests -workspace PortalSwift.xcworkspace test -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.4'
+          xcodebuild -quiet -scheme Unit\ Tests -workspace PortalSwift.xcworkspace test -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.4' -resultBundlePath TestResults.xcresult
+
+      # -quiet keeps the log short but drops assertion messages, so print each failure's message
+      # from the result bundle. Xcode 16 and later need --legacy for this JSON; Xcode 15 rejects it.
+      - name: Show test failures
+        if: failure()
+        run: |
+          [ -d TestResults.xcresult ] || exit 0
+          xcrun xcresulttool get --legacy --path TestResults.xcresult --format json > TestResults.json 2>/dev/null \
+            || xcrun xcresulttool get --path TestResults.xcresult --format json > TestResults.json
+          jq -r '.issues.testFailureSummaries._values[]? | "\(.testCaseName._value): \(.message._value)"' TestResults.json
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: TestResults
+          path: TestResults.xcresult
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1.2.1

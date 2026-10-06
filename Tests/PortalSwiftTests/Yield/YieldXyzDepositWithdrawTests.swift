@@ -146,6 +146,24 @@ extension YieldXyzDepositWithdrawTests {
     XCTAssertEqual(result.hashes, ["0xhash1"]) // stopped after uncertain
   }
 
+  func test_deposit_willRethrowCredentialFailure_fromConfirmationPolling_insteadOfPollingToUncertain() async throws {
+    // The session dies while the receipt is being polled. Every further tick would throw the
+    // same before touching the network, so the poller must surface it now rather than spin to
+    // `timeoutSeconds` (15 minutes by default) and report `.uncertain`.
+    portalMock.receiptError = PortalCredentialError.sessionInvalidated
+    let tx = YieldXyzActionTransaction.stub(unsignedTransaction: evmUnsignedTransaction(), stepIndex: 0)
+    apiMock.enterYieldReturnValue = makeEnterResponse(transactions: [tx])
+
+    await XCTAssertThrowsAsync(
+      try await yieldXyz.deposit(params: YieldDepositParams(target: .yieldId("yield-1"), amount: "1.0"), options: fastOptions)
+    ) { error in
+      guard case .sessionInvalidated? = error as? PortalCredentialError else {
+        return XCTFail("Expected the credential failure to surface, got \(error)")
+      }
+    }
+    XCTAssertEqual(portalMock.receiptCalls, 1, "A credential failure ends the poll on its first tick")
+  }
+
   func test_deposit_emitsProgressSteps() async throws {
     let tx = YieldXyzActionTransaction.stub(unsignedTransaction: evmUnsignedTransaction(), stepIndex: 0)
     apiMock.enterYieldReturnValue = makeEnterResponse(transactions: [tx])

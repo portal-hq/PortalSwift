@@ -615,16 +615,20 @@ extension PortalLifiTradingApiTests {
     XCTAssertEqual(requestsSpy.executeRequestParam?.headers["Authorization"], "Bearer \(customApiKey)")
   }
 
-  func test_emptyApiKey_stillSendsAuthorizationHeader() async throws {
+  /// Behaviour change in the credentials layer: a blank key is no longer sent as an empty
+  /// bearer. It resolves to no credential at all and the call fails before anything is sent,
+  /// which is what the other Portal SDKs do and what stops a silent 401 loop.
+  func test_getRoutes_willThrowUnavailable_whenApiKeyBlank() async throws {
     // given
     let emptyApiKeyApi = PortalLifiTradingApi(apiKey: "", requests: requestsSpy)
     try setReturnValue(LifiRoutesResponse.stub())
 
-    // when
-    _ = try await emptyApiKeyApi.getRoutes(request: LifiRoutesRequest.stub())
-
-    // then
-    XCTAssertEqual(requestsSpy.executeRequestParam?.headers["Authorization"], "Bearer ")
+    // when & then
+    await XCTAssertThrowsAsync(
+      try await emptyApiKeyApi.getRoutes(request: LifiRoutesRequest.stub()),
+      expected: PortalCredentialError.unavailable
+    )
+    XCTAssertEqual(requestsSpy.executeCallsCount, 0, "A blank key must fail before the request is sent.")
   }
 }
 

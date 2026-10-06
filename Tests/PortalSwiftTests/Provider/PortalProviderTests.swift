@@ -22,7 +22,7 @@ final class PortalProviderTests: XCTestCase {
       keychain: keychain,
       autoApprove: true,
       requests: MockPortalRequests(),
-      signer: MockPortalMpcSigner(apiKey: MockConstants.mockApiKey, keychain: MockPortalKeychain())
+      signer: MockPortalMpcSigner(credentials: MockConstants.mockCredentials, keychain: MockPortalKeychain())
     )
 
     self.provider.on(event: Events.PortalSigningRequested.rawValue) { data in

@@ -14,14 +14,22 @@ class PortalProviderSpy: PortalProviderProtocol {
   var address: String?
   var api: PortalApiProtocol?
 
-  let mockPortalProvider: PortalProvider!
+  /// The concrete provider the chainable spy methods hand back.
+  ///
+  /// It is stored non-optionally: the credentials layer now rejects a blank Client API Key, so the
+  /// old implicitly-unwrapped optional (built with `apiKey: ""`) became `nil` and trapped — killing
+  /// the whole `xctest` process — the first time a test called `emit`/`on`/`once`.
+  let mockPortalProvider: PortalProvider
 
-  init() {
-    do {
-      mockPortalProvider = try PortalProvider(apiKey: "", rpcConfig: [:], keychain: PortalKeychain(), autoApprove: true)
-    } catch {
-      mockPortalProvider = nil
-    }
+  /// - Parameter credentials: The credential the returned provider is built with. Defaults to
+  ///   `MockConstants.mockCredentials` so the credentials layer accepts it.
+  init(credentials: PortalCredentials = MockConstants.mockCredentials) throws {
+    self.mockPortalProvider = try PortalProvider(
+      credentials: credentials,
+      rpcConfig: [:],
+      keychain: PortalKeychain(),
+      autoApprove: true
+    )
   }
 
   // Tracking variables for `emit` function
