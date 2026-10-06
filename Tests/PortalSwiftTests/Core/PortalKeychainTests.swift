@@ -434,9 +434,75 @@ extension PortalKeychainTests {
     let xrplAddress = try await keychain.getAddress("xrpl:0")
     XCTAssertNil(xrplAddress)
 
-    // and the legacy entry is still served for eip155
+    // and eip155 still reads its address from the metadata
     let eip155Address = try await keychain.getAddress("eip155:1")
     XCTAssertEqual(eip155Address, "default_address")
+  }
+
+  /// `loadMetadata()` omits the eip155 entry when the Portal API returns a blank address, and that
+  /// absent key must read as `nil`. Falling back to the legacy entry would answer with an address the
+  /// Portal API no longer reports, and disagree with `portal.addresses[.eip155]`.
+  func test_getAddress_returnsNil_andDoesNotReadLegacyAddress_whenTheEip155AddressIsBlank() async throws {
+    // given
+    let access = InMemoryKeychainAccess()
+    let client = ClientResponse.stub(metadata: .stub(namespaces: .stub(eip155: .stub(address: ""))))
+    initKeychainWith(keychainAccess: access, api: PortalApiMock(client: client))
+    try await keychain.loadMetadata()
+
+    // and given a legacy eip155 address is present
+    try access.addItem("\(client.id).address", value: "legacy-eip155-address")
+
+    // then
+    let address = try await keychain.getAddress("eip155:1")
+    XCTAssertNil(address)
+    let addresses = try await keychain.getAddresses()
+    XCTAssertNil(addresses[.eip155] ?? nil)
+  }
+
+  /// Without a legacy entry, an eip155 lookup for a client with no eip155 address must answer `nil`
+  /// rather than throw the keychain's item-not-found error from the legacy fallback.
+  func test_getAddress_returnsNil_forEip155_whenTheClientHasNoEip155Address() async throws {
+    // given
+    let client = ClientResponse.stub(metadata: .stub(namespaces: .stub(eip155: nil)))
+    initKeychainWith(keychainAccess: InMemoryKeychainAccess(), api: PortalApiMock(client: client))
+    try await keychain.loadMetadata()
+
+    // then
+    let address = try await keychain.getAddress("eip155:1")
+    XCTAssertNil(address)
+  }
+
+  /// Clients that ran an earlier SDK on iOS 17 or older may still have a metadata blob with a `null`
+  /// address, which that Foundation cannot decode. `loadMetadata()` rebuilds the record from the
+  /// Portal API without reading the stored one, so it must replace the blob with one that has no
+  /// `null`. The assertions hold on any OS, including the newer ones that decode `null` happily.
+  func test_loadMetadata_repairsAPersistedNullAddress() async throws {
+    // given a stored blob with a `null` address, as earlier SDK versions wrote it
+    let access = InMemoryKeychainAccess()
+    let client = ClientResponse.stub(metadata: .stub(namespaces: .stub(solana: nil)))
+    let corrupted = PortalKeychainClientMetadata(
+      id: client.id,
+      addresses: [.eip155: "default_address", .solana: nil],
+      custodian: client.custodian,
+      wallets: nil
+    )
+    let corruptedBlob = try String(decoding: JSONEncoder().encode(corrupted), as: UTF8.self)
+    XCTAssertTrue(corruptedBlob.contains("null"), "The seeded blob must hold a null address: \(corruptedBlob)")
+    try access.addItem("\(client.id).metadata", value: corruptedBlob)
+    initKeychainWith(keychainAccess: access, api: PortalApiMock(client: client))
+
+    // and given
+    try await keychain.loadMetadata()
+
+    // then
+    let persisted = try access.getItem("\(client.id).metadata")
+    XCTAssertFalse(
+      persisted.contains("null"),
+      "loadMetadata() left a null address in place, which older Foundation cannot decode: \(persisted)"
+    )
+    let addresses = try await keychain.getAddresses()
+    XCTAssertEqual(addresses[.eip155] ?? nil, "default_address")
+    XCTAssertNil(addresses[.solana] ?? nil)
   }
 
   func test_getAddresses_willThrowCorrectError_WhenThereIsNoMetadata() async throws {

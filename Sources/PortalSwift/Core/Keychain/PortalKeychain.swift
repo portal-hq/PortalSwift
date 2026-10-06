@@ -143,16 +143,19 @@ public class PortalKeychain: PortalKeychainProtocol {
 
     do {
       let metadata = try await getMetadata()
-      guard let address = metadata.addresses?[blockchain.namespace] else {
-        self.logger.error("PortalKeychain.getAddress() - No address found for namespace: \(blockchain.namespace.rawValue)")
-        // A namespace that simply has no address is a `nil` result, not an error. Throwing here
-        // would send it into the legacy fallback below, which is eip155-only.
+      guard let addresses = metadata.addresses else {
+        self.logger.error("PortalKeychain.getAddress() - No address map found for namespace: \(blockchain.namespace.rawValue)")
+        // Only a stored record without an address map can predate multi-wallet support, so only
+        // then is the eip155-only legacy fallback below worth trying.
         guard blockchain.namespace == .eip155 else {
           return nil
         }
         throw KeychainError.noAddressForNamespace(blockchain.namespace)
       }
-      return address
+      // `loadMetadata()` omits a namespace the Portal API reported no address for, so a missing key
+      // means the client has no address there. It must not reach the legacy fallback, whose entry
+      // can hold an eip155 address the Portal API no longer reports.
+      return addresses[blockchain.namespace] ?? nil
     } catch {
       // The legacy keys below only ever held the eip155 address, from before multi-wallet
       // support. They are meaningless for any other namespace, so when metadata is missing or

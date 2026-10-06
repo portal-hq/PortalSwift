@@ -44,7 +44,9 @@ Possible Types of changes include:
       keychain entry for any namespace other than `eip155`. That entry only ever held the eip155
       address, so the fallback could answer a `solana:` or `xrpl:` lookup with the Ethereum address.
       A non-eip155 namespace with no address now returns `nil`, and when the stored metadata is
-      missing or unreadable the underlying error is thrown instead. `eip155` keeps the fallback.
+      missing or unreadable the underlying error is thrown instead. `eip155` keeps the fallback only
+      for missing or unreadable metadata: a client the Portal API reports no eip155 address for gets
+      `nil`, matching `portal.addresses[.eip155]`.
 - Added Stellar and Tron addresses to the SDK's address APIs. `GET /api/v3/clients/me` already
   returned them under `metadata.namespaces.stellar` and `metadata.namespaces.tron`, derived from the
   client's existing ED25519 and SECP256K1 wallets, so no new wallet or curve is involved.

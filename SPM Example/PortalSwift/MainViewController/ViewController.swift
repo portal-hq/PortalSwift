@@ -1038,23 +1038,23 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
 
     // Get addresses from client metadata namespaces
-    if let eip155Address = client.metadata.namespaces.eip155?.address {
+    if let eip155Address = client.metadata.namespaces.eip155?.address, !eip155Address.isEmpty {
       addresses.append(WalletAddress(type: "EIP-155", address: eip155Address, namespace: .eip155))
     }
 
-    if let solanaAddress = client.metadata.namespaces.solana?.address {
+    if let solanaAddress = client.metadata.namespaces.solana?.address, !solanaAddress.isEmpty {
       addresses.append(WalletAddress(type: "Solana", address: solanaAddress, namespace: .solana))
     }
 
-    if let stellarAddress = client.metadata.namespaces.stellar?.address {
+    if let stellarAddress = client.metadata.namespaces.stellar?.address, !stellarAddress.isEmpty {
       addresses.append(WalletAddress(type: "Stellar", address: stellarAddress, namespace: .stellar))
     }
 
-    if let tronAddress = client.metadata.namespaces.tron?.address {
+    if let tronAddress = client.metadata.namespaces.tron?.address, !tronAddress.isEmpty {
       addresses.append(WalletAddress(type: "Tron", address: tronAddress, namespace: .tron))
     }
 
-    if let xrplAddress = client.metadata.namespaces.xrpl?.address {
+    if let xrplAddress = client.metadata.namespaces.xrpl?.address, !xrplAddress.isEmpty {
       addresses.append(WalletAddress(type: "XRPL", address: xrplAddress, namespace: .xrpl))
     }
 
