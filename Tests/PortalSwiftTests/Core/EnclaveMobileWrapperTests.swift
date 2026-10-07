@@ -15,7 +15,8 @@ final class EnclaveMobileWrapperTests: XCTestCase {
 
   override func setUpWithError() throws {
     CredentialInvalidationRegistry.shared.resetForTesting()
-    // The Idempotency-Key host gate reads this process-wide registry.
+    // Tests here register Enclave hosts in this process-wide registry, which gates the trace
+    // header. The Idempotency-Key header has no host gate.
     PortalOwnedHosts.resetForTesting()
     recordingLogger = RecordingLogger()
     recordingLogger.install()
@@ -1214,26 +1215,35 @@ extension EnclaveMobileWrapperTests {
 
   func test_signRequests_longErrorBodyWithoutAnId_willKeepOnlyTheStartOfTheMessage() async throws {
     // A proxy page can run to several KB, and the signer logs this message when a presignature
-    // sign fails, so only its start is kept.
+    // sign fails, so only its first `signingNetworkErrorMessageLimit` Unicode scalars are kept.
     let limit = EnclaveMobileWrapper.signingNetworkErrorMessageLimit
+    let marker = "… (truncated)"
     let longBody = "<html>" + String(repeating: "x", count: 10000) + "TAIL-MARKER</html>"
     let bodyAtTheLimit = String(repeating: "y", count: limit - "502 - ".count)
     let bodyOverTheLimit = bodyAtTheLimit + "z"
+    // One character: "a" and 10,000 combining acute accents, about 20 KB. A character limit would
+    // keep all of it.
+    let combiningMark = "\u{0301}"
+    let combiningMarksBody = "a" + String(repeating: combiningMark, count: 10000) + "TAIL-MARKER"
+    let combiningMarksKept = "502 - a" + String(repeating: combiningMark, count: limit - "502 - a".unicodeScalars.count)
     for (name, sign) in try signRequests() {
       for (body, expectedMessage) in [
-        (longBody, String("502 - \(longBody)".prefix(limit)) + "… (truncated)"),
+        (longBody, String("502 - \(longBody)".unicodeScalars.prefix(limit)) + marker),
         (bodyAtTheLimit, "502 - \(bodyAtTheLimit)"),
-        (bodyOverTheLimit, "502 - \(bodyAtTheLimit)… (truncated)")
+        (bodyOverTheLimit, "502 - \(bodyAtTheLimit)" + marker),
+        (combiningMarksBody, combiningMarksKept + marker)
       ] {
         let spy = PortalRequestsSpy()
         spy.executeThrowableErrorSequence = [transportError(status: 502, body: body)]
 
         let result = await sign(makeWrapper(requests: spy))
 
+        let label = "\(name) \(body.unicodeScalars.count)"
         let decoded = try decodeSign(result)
-        XCTAssertEqual(decoded.error?.id, "SIGNING_NETWORK_ERROR", "\(name) \(body.count)")
-        XCTAssertEqual(decoded.error?.message, expectedMessage, "\(name) \(body.count)")
-        XCTAssertFalse(result.contains("TAIL-MARKER"), "\(name) \(body.count)")
+        XCTAssertEqual(decoded.error?.id, "SIGNING_NETWORK_ERROR", label)
+        XCTAssertEqual(decoded.error?.message, expectedMessage, label)
+        XCTAssertLessThanOrEqual(decoded.error?.message?.unicodeScalars.count ?? .max, limit + marker.unicodeScalars.count, label)
+        XCTAssertFalse(result.contains("TAIL-MARKER"), label)
       }
     }
   }

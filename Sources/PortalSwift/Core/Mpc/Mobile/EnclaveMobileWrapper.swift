@@ -81,8 +81,8 @@ class EnclaveMobileWrapper: MPCMobile {
   /// A body carrying an error `id`, the enclave's own `{"id", "message"}` shape, is passed through
   /// unchanged so callers can match on the id. Any other body (an HTML or plain-text page from a
   /// proxy, an empty body, or JSON without an `id`) becomes a `SIGNING_NETWORK_ERROR` whose message
-  /// is the transport's `"<status> - <body>"`, cut to `signingNetworkErrorMessageLimit`
-  /// characters, so the signer throws a `PortalMpcError` that keeps the HTTP status instead of
+  /// is the transport's `"<status> - <body>"`, cut to `signingNetworkErrorMessageLimit` Unicode
+  /// scalars, so the signer throws a `PortalMpcError` that keeps the HTTP status instead of
   /// reporting a missing signature. A 401 keeps its result with no error: the transport's
   /// unauthorized hook, installed by `Portal.init`, handles the rejected credential (see
   /// `PortalMpcError.isAuthFailure`).
@@ -102,18 +102,22 @@ class EnclaveMobileWrapper: MPCMobile {
     }
   }
 
-  /// The most characters of a transport message a `SIGNING_NETWORK_ERROR` keeps. The body comes
-  /// from whatever answered, such as a proxy page that can run to several KB, and the signer logs
-  /// the message when a presignature sign fails, so only the start of a longer message is kept.
+  /// The most Unicode scalars of a transport message a `SIGNING_NETWORK_ERROR` keeps. The body
+  /// comes from whatever answered, such as a proxy page that can run to several KB, and the signer
+  /// logs the message when a presignature sign fails, so only the start of a longer message is
+  /// kept. The limit counts scalars, at most 4 UTF-8 bytes each, rather than characters: one
+  /// character can carry any number of combining marks, so a character limit bounds nothing.
   static let signingNetworkErrorMessageLimit = 256
 
-  /// `transportMessage`, or its first `signingNetworkErrorMessageLimit` characters followed by a
-  /// truncation marker when it is longer.
+  /// `transportMessage`, or its first `signingNetworkErrorMessageLimit` Unicode scalars followed by
+  /// a truncation marker when it is longer. The cut can split a character, such as a letter from
+  /// its accent, which is harmless in an error message.
   private static func signingNetworkErrorMessage(_ transportMessage: String) -> String {
-    guard transportMessage.count > signingNetworkErrorMessageLimit else {
+    let scalars = transportMessage.unicodeScalars
+    guard scalars.count > signingNetworkErrorMessageLimit else {
       return transportMessage
     }
-    return String(transportMessage.prefix(signingNetworkErrorMessageLimit)) + "… (truncated)"
+    return String(scalars.prefix(signingNetworkErrorMessageLimit)) + "… (truncated)"
   }
 
   // Helper function to encode any Encodable to JSON string
