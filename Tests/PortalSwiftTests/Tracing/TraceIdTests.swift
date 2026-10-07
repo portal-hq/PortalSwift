@@ -40,6 +40,112 @@ final class TraceIdTests: XCTestCase {
     XCTAssertEqual(request.headers[PORTAL_TRACE_ID_HEADER], "explicit-trace-id")
   }
 
+  func test_portalAPIRequest_mergesAdditionalHeaders_withoutDroppingDefaults() throws {
+    let url = try XCTUnwrap(URL(string: "https://mpc-client.portalhq.io/v1/sign"))
+    let request = PortalAPIRequest(
+      url: url,
+      method: .post,
+      bearerToken: "test-key",
+      traceId: "explicit-trace-id",
+      additionalHeaders: [PORTAL_IDEMPOTENCY_KEY_HEADER: "key-1"]
+    )
+
+    XCTAssertEqual(request.headers, [
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+      PORTAL_TRACE_ID_HEADER: "explicit-trace-id",
+      "Authorization": "Bearer test-key",
+      PORTAL_IDEMPOTENCY_KEY_HEADER: "key-1"
+    ])
+  }
+
+  func test_portalAPIRequest_additionalHeaders_cannotReplaceADefaultHeader_inAnyCasing() throws {
+    let url = try XCTUnwrap(URL(string: "https://mpc-client.portalhq.io/v1/sign"))
+    let request = PortalAPIRequest(
+      url: url,
+      bearerToken: "test-key",
+      traceId: "explicit-trace-id",
+      additionalHeaders: [
+        "Authorization": "Bearer other",
+        "authorization": "Bearer other",
+        "CONTENT-TYPE": "text/plain",
+        "accept": "*/*",
+        "x-portal-trace-id": "other-trace"
+      ]
+    )
+
+    XCTAssertEqual(request.headers, [
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+      PORTAL_TRACE_ID_HEADER: "explicit-trace-id",
+      "Authorization": "Bearer test-key"
+    ])
+  }
+
+  func test_portalAPIRequest_additionalAuthorization_withoutBearerToken_isKept() throws {
+    // With no bearer there is no default `Authorization` to displace, so an extra one is kept.
+    let url = try XCTUnwrap(URL(string: "https://api.custodian.example/transfers"))
+    let request = PortalAPIRequest(
+      url: url,
+      traceId: "explicit-trace-id",
+      additionalHeaders: ["Authorization": "Basic Y3VzdG9kaWFu"]
+    )
+
+    XCTAssertEqual(request.headers, [
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+      PORTAL_TRACE_ID_HEADER: "explicit-trace-id",
+      "Authorization": "Basic Y3VzdG9kaWFu"
+    ])
+  }
+
+  func test_portalAPIRequest_withoutAdditionalHeaders_keepsTheDefaultsOnly() throws {
+    let url = try XCTUnwrap(URL(string: "https://api.portalhq.io/api/v3/clients/me"))
+    let request = PortalAPIRequest(url: url, traceId: "explicit-trace-id")
+
+    XCTAssertEqual(request.headers, [
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+      PORTAL_TRACE_ID_HEADER: "explicit-trace-id"
+    ])
+  }
+
+  func test_portalAPIRequest_designatedInitializer_keepsIts8_0_0Signature() throws {
+    // `additionalHeaders` lives on a separate convenience initializer, so code that names the
+    // designated initializer in full still compiles.
+    let makeRequest: (URL, HttpMethod, (any Codable)?, String?, String?) -> PortalAPIRequest =
+      PortalAPIRequest.init(url:method:payload:bearerToken:traceId:)
+    let url = try XCTUnwrap(URL(string: "https://api.portalhq.io/api/v3/clients/me"))
+
+    let request = makeRequest(url, .post, nil, "test-key", "explicit-trace-id")
+
+    XCTAssertEqual(request.method, .post)
+    XCTAssertEqual(request.headers, [
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+      PORTAL_TRACE_ID_HEADER: "explicit-trace-id",
+      "Authorization": "Bearer test-key"
+    ])
+  }
+
+  func test_portalAPIRequest_additionalHeaders_buildOnASubclassDesignatedInitializer_withoutReplacingItsHeaders() throws {
+    let url = try XCTUnwrap(URL(string: "https://api.portalhq.io/api/v3/clients/me"))
+
+    let request = StampedAPIRequest(
+      url: url,
+      traceId: "explicit-trace-id",
+      additionalHeaders: ["x-stamp": "other", PORTAL_IDEMPOTENCY_KEY_HEADER: "key-1"]
+    )
+
+    XCTAssertEqual(request.headers, [
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+      PORTAL_TRACE_ID_HEADER: "explicit-trace-id",
+      "X-Stamp": "stamped",
+      PORTAL_IDEMPOTENCY_KEY_HEADER: "key-1"
+    ])
+  }
+
   // MARK: - PortalApi forwards the header
 
   func test_portalApi_buildEip155Transaction_forwardsExplicitTraceIdHeader() async throws {
@@ -374,5 +480,20 @@ private final class TraceIdEvmAccountTypePortalMock: EvmAccountTypePortalDepende
     options _: RequestOptions?
   ) async throws -> PortalProviderResult {
     PortalProviderResult(id: "1", result: "0xtxhash")
+  }
+}
+
+/// Overrides the designated initializer to add a header, for the `additionalHeaders` initializer to
+/// build on.
+private final class StampedAPIRequest: PortalAPIRequest {
+  required init(
+    url: URL,
+    method: HttpMethod = .get,
+    payload: (any Codable)? = nil,
+    bearerToken: String? = nil,
+    traceId: String? = nil
+  ) {
+    super.init(url: url, method: method, payload: payload, bearerToken: bearerToken, traceId: traceId)
+    headers["X-Stamp"] = "stamped"
   }
 }

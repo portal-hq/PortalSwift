@@ -287,8 +287,15 @@ public class PortalProvider: PortalProviderProtocol {
   ///   - method: A member of the PortalRequestMethod enum
   ///   - params: An array of parameters for the request (either RPC parameters or a transaction if signing)
   ///   - connect: Optional `PortalConnect` object to use for the request.
-  ///   - options: Optional request options containing signature approval memo and gas sponsorship settings.
+  ///   - options: Optional request options: signature approval memo, gas sponsorship, trace ID, and an
+  ///     idempotency key for `eth_sendTransaction`, `sol_signAndSendTransaction` and
+  ///     `sol_signAndConfirmTransaction` (see `RequestOptions.idempotencyKey`).
   /// - Returns: PortalProviderResult
+  /// - Throws: `PortalIdempotencyError.invalidKey` for a malformed `options.idempotencyKey` and
+  ///   `PortalIdempotencyError.unsupportedTarget` for a key on `eth_sendRawTransaction` or
+  ///   `sol_sendTransaction`, both before the approval prompt or any network request; a
+  ///   `PortalMpcError` whose `isIdempotencyRejection` is `true` when Portal refuses to broadcast a
+  ///   key it has already seen.
   public func request(
     chainId: String,
     method: PortalRequestMethod,
@@ -305,6 +312,9 @@ public class PortalProvider: PortalProviderProtocol {
     // A single trace ID is shared across the request. If the caller provided one
     // via options, reuse it; otherwise generate a fresh one for this request.
     let traceId = options?.traceId ?? generateTraceId()
+    // Resolved before the approval prompt, the token and the signer, so a malformed key or a key on
+    // a target that cannot be protected fails before the user is asked to approve anything.
+    let idempotencyKey = try self.resolveIdempotencyKey(for: method, on: blockchain, chainId: chainId, options: options)
 
     // This switch is here to handle methods that should be
     // resolved by the provider directly before passing the
@@ -325,7 +335,7 @@ public class PortalProvider: PortalProviderProtocol {
     default:
       if blockchain.shouldMethodBeSigned(method) {
         let payload = PortalProviderRequestWithId(id: id, method: method, params: params, chainId: chainId)
-        return try await self.handleSignRequest(chainId, withPayload: payload, forId: id, onBlockchain: blockchain, connect: connect, options: options, traceId: traceId)
+        return try await self.handleSignRequest(chainId, withPayload: payload, forId: id, onBlockchain: blockchain, connect: connect, options: options, traceId: traceId, idempotencyKey: idempotencyKey)
       } else {
         return try await self.handleRpcRequest(chainId, withMethod: method, andParams: params, forId: id, traceId: traceId)
       }
@@ -404,6 +414,44 @@ public class PortalProvider: PortalProviderProtocol {
   /*******************************************
    * Private functions
    *******************************************/
+
+  /// Applies the idempotency-key rules to `options?.idempotencyKey` for `method`, in order:
+  /// 1. no key: `nil`;
+  /// 2. a raw broadcast (`eth_sendRawTransaction`, `sol_sendTransaction`) throws
+  ///    `unsupportedTarget`, whatever the key's shape: the SDK only relays the signed transaction
+  ///    to RPC, where Portal cannot deduplicate it;
+  /// 3. a malformed key throws `invalidKey`;
+  /// 4. a key on any method other than the three protected broadcasts is dropped with a warning;
+  /// 5. a key on a protected broadcast that `blockchain` does not sign (and so relays to RPC) is
+  ///    dropped with a warning;
+  /// 6. otherwise the trimmed key is returned.
+  ///
+  /// - Returns: The trimmed key for `eth_sendTransaction`, `sol_signAndSendTransaction` and
+  ///   `sol_signAndConfirmTransaction` when `blockchain` signs them; otherwise `nil`. The key is
+  ///   never logged.
+  private func resolveIdempotencyKey(
+    for method: PortalRequestMethod,
+    on blockchain: PortalBlockchain,
+    chainId: String,
+    options: RequestOptions?
+  ) throws -> String? {
+    guard let rawKey = options?.idempotencyKey else {
+      return nil
+    }
+    if method.isRawBroadcast {
+      throw PortalIdempotencyError.unsupportedRawBroadcast(method)
+    }
+    let key = try validateIdempotencyKey(rawKey)
+    guard method.supportsIdempotencyKey else {
+      self.logger.warn("PortalProvider.request() - idempotencyKey ignored for \(method.rawValue); only eth_sendTransaction, sol_signAndSendTransaction and sol_signAndConfirmTransaction are protected")
+      return nil
+    }
+    guard blockchain.shouldMethodBeSigned(method) else {
+      self.logger.warn("PortalProvider.request() - idempotencyKey ignored for \(method.rawValue) on \(chainId); the method is not signed on this chain, so the key cannot be enforced")
+      return nil
+    }
+    return key
+  }
 
   private func dispatchConnect() {
     if let chainId = chainId {
@@ -562,7 +610,8 @@ public class PortalProvider: PortalProviderProtocol {
     onBlockchain: PortalBlockchain,
     connect: PortalConnect? = nil,
     options: RequestOptions? = nil,
-    traceId: String? = nil
+    traceId: String? = nil,
+    idempotencyKey: String? = nil
   ) async throws -> PortalProviderResult {
     guard try await self.getApproval(onChainId, forPayload: withPayload, connect: connect) else {
       throw ProviderSigningError.userDeclinedApproval
@@ -585,6 +634,7 @@ public class PortalProvider: PortalProviderProtocol {
         signatureApprovalMemo: options?.signatureApprovalMemo,
         sponsorGas: options?.sponsorGas,
         reqId: traceId ?? options?.traceId,
+        idempotencyKey: idempotencyKey,
         token: token
       )
 
@@ -625,7 +675,13 @@ public class PortalProvider: PortalProviderProtocol {
     params: [AnyCodable]?
   ) throws -> PortalSignRequest {
     let params = try prepareParamsForNoneRawSignRequest(method, params: params)
-    let paramsJson = try JSONEncoder().encode(params)
+    // `JSONEncoder` fixes the key order of neither dictionaries nor synthesized `Encodable` types,
+    // so without sorted keys two encodes of the same params can differ. Portal compares the params
+    // of a request carrying an idempotency key byte for byte, so an identical retry, even after an
+    // app restart, must produce the same bytes.
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.sortedKeys]
+    let paramsJson = try encoder.encode(params)
     guard let paramsStr = String(data: paramsJson, encoding: .utf8) else {
       throw PortalMpcSignerError.unableToEncodeParams
     }

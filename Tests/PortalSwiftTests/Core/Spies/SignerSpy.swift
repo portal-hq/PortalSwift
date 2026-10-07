@@ -14,16 +14,18 @@ import Foundation
 /// unchanged.
 ///
 /// The provider is supposed to resolve the bearer token only after the user has approved a
-/// signing request and then pass it to the `token:` overload for that one call. This spy keeps
-/// every argument of every call (`signCalls`), the tokens in order (`signTokenParams`), and
-/// counts calls to the token-less legacy overload separately (`legacySignCallsCount`) so a
+/// signing request and then pass it, with the idempotency key, to the `idempotencyKey:` overload
+/// for that one call. This spy keeps every argument of every call (`signCalls`), the tokens in
+/// order (`signTokenParams`), and counts calls to the token-less legacy overload separately
+/// (`legacySignCallsCount`) so a
 /// regression that routes the SDK back through the old contract shows up as a non-zero count.
 /// `onSign` runs synchronously inside the call, before the return value or error is produced,
 /// which is how a test observes state at signing time (for example, how many times
 /// `getToken()` had been called by then). All state is lock-guarded because the provider signs
 /// from its own queue.
 final class SignerSpy: PortalSignerProtocol {
-  /// Everything one `sign` call received. `token` is `nil` for the legacy token-less overload.
+  /// Everything one `sign` call received. `token` is `nil` for the legacy token-less overload;
+  /// `idempotencyKey` is `nil` for every overload but the `idempotencyKey:` one.
   struct SignCall {
     let chainId: String
     let payload: PortalSignRequest
@@ -32,9 +34,14 @@ final class SignerSpy: PortalSignerProtocol {
     let signatureApprovalMemo: String?
     let sponsorGas: Bool?
     let reqId: String?
+    let idempotencyKey: String?
     let token: String?
+    /// `true` when the call came through the `idempotencyKey:` overload, the one `PortalProvider`
+    /// calls today.
+    var isIdempotencyKeyOverload = false
 
-    /// `true` when the call came through the `token:` overload the SDK is expected to use.
+    /// `true` when the call carried a token: it came through the `token:` overload or the
+    /// `idempotencyKey:` overload the SDK calls.
     var isTokenOverload: Bool {
       self.token != nil
     }
@@ -97,46 +104,59 @@ final class SignerSpy: PortalSignerProtocol {
 
   // MARK: - Recording
 
-  /// Every call to either overload, in call order.
+  /// Every call to any overload, in call order.
   var signCalls: [SignCall] {
     self.lock.lock()
     defer { self.lock.unlock() }
     return self._signCalls
   }
 
-  /// The most recent call to either overload, if any.
+  /// The most recent call to any overload, if any.
   var lastSignCall: SignCall? {
     self.signCalls.last
   }
 
-  /// Calls that came through the `token:` overload, in call order.
+  /// Calls that came through the `token:` or `idempotencyKey:` overload, in call order.
   var signTokenCalls: [SignCall] {
     self.signCalls.filter { $0.isTokenOverload }
   }
 
-  /// How many calls came through the `token:` overload.
+  /// How many calls came through the `token:` or `idempotencyKey:` overload.
   var signTokenCallsCount: Int {
     self.signTokenCalls.count
   }
 
-  /// The `token` argument of every `token:` overload call, in call order.
+  /// The `token` argument of every `token:` or `idempotencyKey:` overload call, in call order.
   var signTokenParams: [String] {
     self.signTokenCalls.compactMap { $0.token }
   }
 
-  /// The `chainId` argument of every `token:` overload call, in call order.
+  /// The `chainId` argument of every `token:` or `idempotencyKey:` overload call, in call order.
   var signChainIdParams: [String] {
     self.signTokenCalls.map { $0.chainId }
   }
 
-  /// The `withPayload` argument of every `token:` overload call, in call order.
+  /// The `withPayload` argument of every `token:` or `idempotencyKey:` overload call, in call
+  /// order.
   var signPayloadParams: [PortalSignRequest] {
     self.signTokenCalls.map { $0.payload }
   }
 
-  /// The `reqId` argument of every `token:` overload call, in call order.
+  /// The `reqId` argument of every `token:` or `idempotencyKey:` overload call, in call order.
   var signReqIdParams: [String?] {
     self.signTokenCalls.map { $0.reqId }
+  }
+
+  /// The `idempotencyKey` argument of every `token:` / `idempotencyKey:` overload call, in call
+  /// order (`nil` for a call through the plain `token:` overload).
+  var signIdempotencyKeyParams: [String?] {
+    self.signTokenCalls.map { $0.idempotencyKey }
+  }
+
+  /// How many calls came through the `idempotencyKey:` overload, which is the one
+  /// `PortalProvider` uses.
+  var idempotencyKeyOverloadCallsCount: Int {
+    self.signCalls.filter { $0.isIdempotencyKeyOverload }.count
   }
 
   /// How many calls came through the legacy token-less overload. The SDK never calls it, so
@@ -175,12 +195,13 @@ final class SignerSpy: PortalSignerProtocol {
         signatureApprovalMemo: signatureApprovalMemo,
         sponsorGas: sponsorGas,
         reqId: reqId,
+        idempotencyKey: nil,
         token: nil
       )
     )
   }
 
-  /// The overload the SDK uses: records every argument including `token`, runs `onSign`, then
+  /// The `token:` overload: records every argument including `token`, runs `onSign`, then
   /// throws `errorToThrow` or returns `returnValue`. The token is kept only in the recorded call,
   /// never used, so the spy has no opinion about its validity.
   func sign(
@@ -202,7 +223,37 @@ final class SignerSpy: PortalSignerProtocol {
         signatureApprovalMemo: signatureApprovalMemo,
         sponsorGas: sponsorGas,
         reqId: reqId,
+        idempotencyKey: nil,
         token: token
+      )
+    )
+  }
+
+  /// The overload the SDK uses: records every argument including `token` and `idempotencyKey`,
+  /// then behaves like the `token:` overload.
+  func sign(
+    _ chainId: String,
+    withPayload: PortalSignRequest,
+    andRpcUrl: String,
+    usingBlockchain: PortalBlockchain,
+    signatureApprovalMemo: String?,
+    sponsorGas: Bool?,
+    reqId: String?,
+    idempotencyKey: String?,
+    token: String
+  ) async throws -> String {
+    try self.record(
+      SignCall(
+        chainId: chainId,
+        payload: withPayload,
+        rpcUrl: andRpcUrl,
+        blockchain: usingBlockchain,
+        signatureApprovalMemo: signatureApprovalMemo,
+        sponsorGas: sponsorGas,
+        reqId: reqId,
+        idempotencyKey: idempotencyKey,
+        token: token,
+        isIdempotencyKeyOverload: true
       )
     )
   }

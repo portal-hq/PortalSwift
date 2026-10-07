@@ -58,6 +58,17 @@ Possible Types of changes include:
       `personal_sign` on a `stellar:` or `tron:` chain ID fails with
       `PortalProviderError.unsupportedRequestMethod`, whether or not an RPC URL is configured for
       that chain. It previously failed with `PortalBlockchainError.noSupportedCurveForChainId`.
+- Idempotency keys for transaction broadcasts. Pass `idempotencyKey` in `RequestOptions` to `portal.request(...)` with `eth_sendTransaction`, `sol_signAndSendTransaction` or `sol_signAndConfirmTransaction`, and Portal refuses to broadcast the same key twice, so a retry after a timeout cannot double-send. Generate a key with `generateIdempotencyKey()`, store it with the pending operation, and reuse it only for an identical retry.
+    - Portal remembers a key for at least 24 hours after the request was last updated. A retry after that is treated as a new request, so check the chain before retrying an operation older than 24 hours, whatever key you use.
+    - A repeated request is rejected with a `PortalMpcError` whose `id` is one of `PortalIdempotencyErrorId`; check it with `isIdempotencyRejection` or `isIdempotencyKeyReused`. The SDK surfaces the rejection as-is and does not retry the request. A rejection does not return the original transaction hash; for `IDEMPOTENT_REQUEST_ALREADY_COMPLETED`, look the transaction up instead of sending it again. Before retrying a rejected request with a new key, check the transaction's status on-chain, since the earlier attempt may already have been broadcast.
+    - Keys are checked before the approval prompt: 1–255 characters of `A-Z a-z 0-9 . _ ~ -`, with surrounding whitespace trimmed. An invalid key throws `PortalIdempotencyError.invalidKey`. A key on `eth_sendRawTransaction` or `sol_sendTransaction` throws `PortalIdempotencyError.unsupportedTarget`. A key on any other method, or on a method the chain relays to RPC instead of signing (such as `eth_sendTransaction` on a `solana:` chain), is ignored with a warning.
+    - `portal.sendAsset(...)` takes the key too, as `SendAssetParams(idempotencyKey:)`, on EVM and Solana chains, and forwards it to the underlying `eth_sendTransaction` or `sol_signAndSendTransaction`. See `SendAssetParams.idempotencyKey` for how retries behave. Bitcoin `sendAsset` with a key throws `PortalIdempotencyError.unsupportedTarget`, because its broadcast cannot be protected yet.
+    - Custom signers receive the key through the new `PortalSignerProtocol.sign(...idempotencyKey:token:)` overload. Existing conformers keep compiling and signing as before; until they implement the new overload, they sign without the key and log a warning, so their requests are not protected.
+    - Portal enforces the key whether the transaction is signed on the device by the bundled MPC binary or through the MPC Enclave API (`useEnclaveMPCApi`), with or without presignatures (`usePresignatures`).
+
+### Changed
+
+- Signing request parameters are JSON-encoded with sorted keys, so an identical retry sends identical parameters.
 
 ### Fixed
 
@@ -78,6 +89,10 @@ Possible Types of changes include:
       missing or unreadable the underlying error is thrown instead. `eip155` keeps the fallback only
       for missing or unreadable metadata: a client the Portal API reports no eip155 address for gets
       `nil`, matching `portal.addresses[.eip155]`.
+
+### Improved
+
+- Signing errors from the MPC Enclave API (`useEnclaveMPCApi`) keep the server's error `id` and complete message whatever the message text, so the resulting `PortalMpcError` can be matched reliably by `id`, for example with `isIdempotencyRejection`. An error response without an `id`, such as a page from a proxy, surfaces as a `PortalMpcError` with the id `SIGNING_NETWORK_ERROR`, with the HTTP status and the start of the response body in its message. HTTP 401 responses are handled as before.
 
 ## 8.0.0 - 2026-09-24
 

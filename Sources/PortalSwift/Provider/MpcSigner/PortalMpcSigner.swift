@@ -112,11 +112,7 @@ public class PortalMpcSigner: PortalSignerProtocol {
 
   /// Signs `withPayload`, presenting `token` to the MPC service for this call only.
   ///
-  /// When presignatures are enabled and one is available, the presignature path is tried first
-  /// and most of its failures fall back to a normal sign. The one exception is an `AUTH_FAILED`
-  /// from the MPC service: the credential is dead, so a second round trip with the same token
-  /// would only fail the same way, and the error is surfaced unchanged so the caller can report
-  /// the rejected credential. `token` is never stored on the instance.
+  /// Forwards to the `idempotencyKey:` overload without a key.
   public func sign(
     _ chainId: String,
     withPayload: PortalSignRequest,
@@ -127,6 +123,44 @@ public class PortalMpcSigner: PortalSignerProtocol {
     reqId: String? = nil,
     token: String
   ) async throws -> String {
+    try await self.sign(
+      chainId,
+      withPayload: withPayload,
+      andRpcUrl: andRpcUrl,
+      usingBlockchain: usingBlockchain,
+      signatureApprovalMemo: signatureApprovalMemo,
+      sponsorGas: sponsorGas,
+      reqId: reqId,
+      idempotencyKey: nil,
+      token: token
+    )
+  }
+
+  /// Signs `withPayload`, presenting `token` to the MPC service for this call only and attaching
+  /// `idempotencyKey` to the signing metadata (omitted when `nil` or when the payload is raw).
+  ///
+  /// When presignatures are enabled and one is available, the presignature path is tried first
+  /// and most of its failures fall back to a normal sign. Two exceptions are surfaced unchanged
+  /// instead: an `AUTH_FAILED` from the MPC service (the credential is dead, so a second round
+  /// trip with the same token would only fail the same way, and the caller reports the rejected
+  /// credential), and an idempotency rejection (`PortalMpcError.isIdempotencyRejection`), which a
+  /// second attempt with the same key would only repeat. `token` is never stored on the instance,
+  /// and `idempotencyKey` is never logged.
+  ///
+  /// - Throws: `PortalIdempotencyError.invalidKey` before anything is signed when `idempotencyKey`
+  ///   breaks Portal's rules, checked as `PortalProvider` does. A raw sign's key is dropped unchecked,
+  ///   and a key on any other method Portal does not protect is dropped with a warning.
+  public func sign(
+    _ chainId: String,
+    withPayload: PortalSignRequest,
+    andRpcUrl: String,
+    usingBlockchain: PortalBlockchain,
+    signatureApprovalMemo: String? = nil,
+    sponsorGas: Bool? = nil,
+    reqId: String? = nil,
+    idempotencyKey: String?,
+    token: String
+  ) async throws -> String {
     var mpcMetadata = self.mpcMetadata
     mpcMetadata.curve = usingBlockchain.curve
     mpcMetadata.chainId = chainId
@@ -134,6 +168,20 @@ public class PortalMpcSigner: PortalSignerProtocol {
     mpcMetadata.signatureApprovalMemo = signatureApprovalMemo
     mpcMetadata.sponsorGas = sponsorGas
     mpcMetadata.reqId = reqId
+    // A raw sign is never broadcast, so Portal could never settle a key sent with one. Any other key
+    // is checked here as well as in `PortalProvider`, because this method is public: it must pass
+    // Portal's rules, and on a method Portal does not protect it is dropped, since the server would
+    // reserve it without ever settling it. For a key the provider already resolved, this changes
+    // nothing.
+    var key = withPayload.isRaw == true ? nil : try idempotencyKey.map(validateIdempotencyKey)
+    if key != nil, withPayload.method?.supportsIdempotencyKey != true {
+      self.logger.warn("PortalMpcSigner.sign() - idempotencyKey ignored for \(withPayload.method?.rawValue ?? "unknown"); only eth_sendTransaction, sol_signAndSendTransaction and sol_signAndConfirmTransaction are protected")
+      key = nil
+    }
+    mpcMetadata.idempotencyKey = key
+
+    // Why the presignature attempt failed, when the normal sign below is its fallback.
+    var presignatureFailure: Error?
 
     if self.featureFlags?.usePresignatures == true,
        let presignature = await self.presignatureSource?.consumePresignature(forCurve: usingBlockchain.curve)
@@ -152,7 +200,11 @@ public class PortalMpcSigner: PortalSignerProtocol {
       } catch let error as PortalMpcError where error.isAuthFailure {
         self.logger.error("PortalMpcSigner.sign() - The MPC service rejected the credential while signing with a presignature; not falling back to a normal sign.")
         throw error
+      } catch let error as PortalMpcError where error.isIdempotencyRejection {
+        self.logger.error("PortalMpcSigner.sign() - Portal rejected the request's idempotency key while signing with a presignature (id=\(error.id ?? "unknown")); not falling back to a normal sign.")
+        throw error
       } catch {
+        presignatureFailure = error
         self.logger.warn("[PortalMpcSigner] signWithPresignature failed, falling back to normal sign: \(error.localizedDescription)")
       }
     }
@@ -181,13 +233,28 @@ public class PortalMpcSigner: PortalSignerProtocol {
 
     let signResult: SignResult = try JSONDecoder().decode(SignResult.self, from: data)
     if let error = signResult.error, error.isValid() {
-      throw PortalMpcError(error)
+      let mpcError = PortalMpcError(error)
+      if mpcError.isIdempotencyRejection, let presignatureFailure = presignatureFailure {
+        // The presignature attempt carried the same key, so it may be what the fallback was
+        // refused over. Surface its failure, which the thrown error no longer carries.
+        self.logger.warn("[PortalMpcSigner] The fallback sign was rejected with \(mpcError.id ?? "unknown") after the presignature attempt failed with \(Self.logDescription(of: presignatureFailure)); that attempt may already have used this idempotency key. Check the transaction's status before retrying with a new key.")
+      }
+      throw mpcError
     }
     guard let signature = signResult.data else {
       throw PortalMpcSignerError.noSignatureFoundInSignResult
     }
 
     return signature
+  }
+
+  /// The id and message of a `PortalMpcError`, or the type and description of any other error,
+  /// for a log line. Neither carries the token or the idempotency key.
+  private static func logDescription(of error: Error) -> String {
+    if let mpcError = error as? PortalMpcError {
+      return "id=\(mpcError.id ?? "unknown") message=\(mpcError.message ?? "unknown")"
+    }
+    return "\(type(of: error)): \(error.localizedDescription)"
   }
 
   private func signWithPresignature(
