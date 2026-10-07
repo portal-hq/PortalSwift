@@ -25,7 +25,7 @@ Possible Types of changes include:
 - Bitcoin addresses through `portal.getAddress(_:)`, using the same P2WPKH chain IDs `sendAsset` accepts: `bip122:000000000019d6689c085ae165831e93-p2wpkh` (mainnet) and `bip122:000000000933ea01ad0ee984209779ba-p2wpkh` (testnet).
 - Idempotency keys for transaction broadcasts, so retrying after a timeout cannot send the same transaction twice.
     - Create a key with `generateIdempotencyKey()` and pass it as `idempotencyKey` in `RequestOptions` to `portal.request(...)` for `eth_sendTransaction`, `sol_signAndSendTransaction`, or `sol_signAndConfirmTransaction`, or in `SendAssetParams` to `portal.sendAsset(...)` on EVM and Solana.
-    - Reuse a key only to retry the identical request. Portal remembers a key for at least 24 hours.
+    - Reuse a key only to retry the identical request. Portal remembers a key for at least 24 hours; after that a retry is treated as a new request, so check the chain before retrying an older operation.
     - A repeated request is rejected with a `PortalMpcError`; detect it with `isIdempotencyRejection` or `isIdempotencyKeyReused`. An invalid key, or a key on `eth_sendRawTransaction` or `sol_sendTransaction`, throws `PortalIdempotencyError`; on other methods the key is ignored.
     - Custom signers receive the key by implementing the new `PortalSignerProtocol.sign(...idempotencyKey:token:)` overload. Existing signers keep working, but their requests are not protected until they implement it.
 
