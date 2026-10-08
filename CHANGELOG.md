@@ -12,87 +12,36 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
-## Unreleased
+## 8.1.0 - 2026-10-08
 
 ### Added
 
-- Added XRP Ledger (XRPL) addresses to the SDK's address APIs. The XRPL classic address is derived by
-  the Portal API from the client's existing SECP256K1 wallet, so no new wallet or curve is generated.
-    - Added `PortalNamespace.xrpl`. If you switch exhaustively over `PortalNamespace`, add a case for it.
-    - `portal.addresses` and `portal.getAddresses()` now include an `.xrpl` entry when the client
-      has a SECP256K1 wallet. As with every namespace, there is no entry for a wallet the client does
-      not have: the key is absent from the dictionary and reads as `nil` by subscript.
-    - `portal.getAddress("xrpl:0")` and `portal.getAddress("xrpl:1")` return the XRPL address instead
-      of failing with an unsupported namespace.
-    - Added `ClientResponseMetadataNamespaces.xrpl`, mirroring the `xrpl` entry in
-      `GET /api/v3/clients/me`.
-    - `xrpl:` chain IDs now resolve to the SECP256K1 wallet in the wallet-status helpers
-      (`availableRecoveryMethods`, `doesWalletExist`, `isWalletBackedUp`, `isWalletOnDevice`,
-      `getBackupShares`) instead of throwing an unsupported-chain error.
-    - Added `MockConstants.mockXrplAddress` for tests.
-    - XRPL signing is not supported yet. A signing request such as `rawSign` or `personal_sign` on
-      an `xrpl:` chain ID fails with `PortalProviderError.unsupportedRequestMethod`, whether or not
-      an RPC URL is configured for that chain. It previously failed with
-      `PortalBlockchainError.noSupportedCurveForChainId`.
-- Added Stellar and Tron addresses to the SDK's address APIs. `GET /api/v3/clients/me` already
-  returned them under `metadata.namespaces.stellar` and `metadata.namespaces.tron`, derived from the
-  client's existing ED25519 and SECP256K1 wallets, so no new wallet or curve is involved.
-    - `portal.addresses` and `portal.getAddresses()` include `.stellar` and `.tron` when the Portal
-      API returns them, and omit the key when it does not. `portal.getAddress("stellar:pubnet")` and
-      `portal.getAddress("tron:mainnet")` return those addresses instead of failing with
-      `PortalBlockchainError.noSupportedCurveForChainId`.
-    - `portal.getAddresses()` now also omits a namespace whose address the Portal API returned blank,
-      which happens when server-side address derivation fails. Previously the key was present with an
-      empty string.
-    - `stellar:` and `tron:` chain IDs resolve to the ED25519 and SECP256K1 wallets in the
-      wallet-status helpers (`availableRecoveryMethods`, `doesWalletExist`, `isWalletBackedUp`,
-      `isWalletOnDevice`, `getBackupShares`) instead of throwing an unsupported-chain error.
-    - `portal.getAddress("bip122:000000000019d6689c085ae165831e93-p2wpkh")` returns the Bitcoin
-      mainnet P2WPKH address and `portal.getAddress("bip122:000000000933ea01ad0ee984209779ba-p2wpkh")`
-      the testnet one, the same chain IDs `sendAsset` accepts for Bitcoin. Any other `bip122:` chain
-      ID returns `nil`. Bitcoin is not in `getAddresses()`, because it has no single canonical
-      address per namespace.
-    - The deprecated `portal.address` now returns `nil` instead of `""` when the Portal API returned
-      a blank EVM address, matching `portal.addresses[.eip155]`.
-    - Stellar and Tron signing is not supported yet. A signing request such as `rawSign` or
-      `personal_sign` on a `stellar:` or `tron:` chain ID fails with
-      `PortalProviderError.unsupportedRequestMethod`, whether or not an RPC URL is configured for
-      that chain. It previously failed with `PortalBlockchainError.noSupportedCurveForChainId`.
-- Idempotency keys for transaction broadcasts. Pass `idempotencyKey` in `RequestOptions` to `portal.request(...)` with `eth_sendTransaction`, `sol_signAndSendTransaction` or `sol_signAndConfirmTransaction`, and Portal refuses to broadcast the same key twice, so a retry after a timeout cannot double-send. Generate a key with `generateIdempotencyKey()`, store it with the pending operation, and reuse it only for an identical retry.
-    - Portal remembers a key for at least 24 hours after the request was last updated. A retry after that is treated as a new request, so check the chain before retrying an operation older than 24 hours, whatever key you use.
-    - A repeated request is rejected with a `PortalMpcError` whose `id` is one of `PortalIdempotencyErrorId`; check it with `isIdempotencyRejection` or `isIdempotencyKeyReused`. The SDK surfaces the rejection as-is and does not retry the request. A rejection does not return the original transaction hash; for `IDEMPOTENT_REQUEST_ALREADY_COMPLETED`, look the transaction up instead of sending it again. Before retrying a rejected request with a new key, check the transaction's status on-chain, since the earlier attempt may already have been broadcast.
-    - Keys are checked before the approval prompt: 1–255 characters of `A-Z a-z 0-9 . _ ~ -`, with surrounding whitespace trimmed. An invalid key throws `PortalIdempotencyError.invalidKey`. A key on `eth_sendRawTransaction` or `sol_sendTransaction` throws `PortalIdempotencyError.unsupportedTarget`. A key on any other method, or on a method the chain relays to RPC instead of signing (such as `eth_sendTransaction` on a `solana:` chain), is ignored with a warning.
-    - `portal.sendAsset(...)` takes the key too, as `SendAssetParams(idempotencyKey:)`, on EVM and Solana chains, and forwards it to the underlying `eth_sendTransaction` or `sol_signAndSendTransaction`. See `SendAssetParams.idempotencyKey` for how retries behave. Bitcoin `sendAsset` with a key throws `PortalIdempotencyError.unsupportedTarget`, because its broadcast cannot be protected yet.
-    - Custom signers receive the key through the new `PortalSignerProtocol.sign(...idempotencyKey:token:)` overload. Existing conformers keep compiling and signing as before; until they implement the new overload, they sign without the key and log a warning, so their requests are not protected.
-    - Portal enforces the key whether the transaction is signed on the device by the bundled MPC binary or through the MPC Enclave API (`useEnclaveMPCApi`), with or without presignatures (`usePresignatures`).
+- XRP Ledger (XRPL), Stellar, and Tron addresses, derived from the client's existing wallets (no new wallet is created).
+    - `portal.addresses` and `portal.getAddresses()` include `.xrpl`, `.stellar`, and `.tron` when available.
+    - `portal.getAddress(_:)` supports `xrpl:`, `stellar:`, and `tron:` chain IDs, for example `"xrpl:0"`, `"stellar:pubnet"`, and `"tron:mainnet"`.
+    - The wallet-status helpers (`availableRecoveryMethods`, `doesWalletExist`, `isWalletBackedUp`, `isWalletOnDevice`, `getBackupShares`) accept these chain IDs.
+    - New `PortalNamespace.xrpl` case. If you switch exhaustively over `PortalNamespace`, add a case for it.
+    - Signing on these chains is not supported yet; signing requests fail with `PortalProviderError.unsupportedRequestMethod`.
+- Bitcoin addresses through `portal.getAddress(_:)`, using the same P2WPKH chain IDs `sendAsset` accepts: `bip122:000000000019d6689c085ae165831e93-p2wpkh` (mainnet) and `bip122:000000000933ea01ad0ee984209779ba-p2wpkh` (testnet).
+- Idempotency keys for transaction broadcasts, so retrying after a timeout cannot send the same transaction twice.
+    - Create a key with `generateIdempotencyKey()` and pass it as `idempotencyKey` in `RequestOptions` to `portal.request(...)` for `eth_sendTransaction`, `sol_signAndSendTransaction`, or `sol_signAndConfirmTransaction`, or in `SendAssetParams` to `portal.sendAsset(...)` on EVM and Solana.
+    - Reuse a key only to retry the identical request. Portal remembers a key for at least 24 hours; after that a retry is treated as a new request, so check the chain before retrying an older operation.
+    - A repeated request is rejected with a `PortalMpcError`; detect it with `isIdempotencyRejection` or `isIdempotencyKeyReused`. An invalid key, or a key on `eth_sendRawTransaction` or `sol_sendTransaction`, throws `PortalIdempotencyError`; on other methods the key is ignored.
+    - Custom signers receive the key by implementing the new `PortalSignerProtocol.sign(...idempotencyKey:token:)` overload. Existing signers keep working, but their requests are not protected until they implement it.
 
 ### Changed
 
-- Signing request parameters are JSON-encoded with sorted keys, so an identical retry sends identical parameters.
-
-### Fixed
-
-- `portal.availableRecoveryMethods()` with no chain ID returned a backup method once per wallet, so a client with an EVM and a Solana wallet both backed up with password got `[.Password, .Password]`. Each method is now returned once, in order of first appearance.
-- Fixed `signatureApprovalMemo` being dropped from raw sign requests that used a presignature (`FeatureFlags.usePresignatures`). The memo now reaches the MPC signing request and `PRE_SIGN_V1` webhooks. Updated the bundled MPC binary (built from MPC 4.0.128).
-- Fixed raw sign requests sent through the MPC Enclave API (`useEnclaveMPCApi`) omitting signing metadata, so `signatureApprovalMemo` and the request trace id now propagate on that path as well.
-- Fixed the keychain metadata becoming unreadable on iOS 17 and older when a client had no wallet
-  for one of the stored namespaces. `loadMetadata()` wrote a `nil` address for the missing
-  namespace, which encodes as a JSON `null` that older versions of Foundation cannot decode, so
-  every later `getAddresses()` call failed with `KeychainError.unableToDecodeMetadata`. Namespaces
-  with no address are now omitted from the stored metadata rather than written as `nil`. Reading
-  such a namespace by subscript still yields `nil`; the entry is simply no longer present in the
-  dictionary's `keys` or `count`.
-    - `portal.getAddress("<namespace>:<ref>")` no longer falls back to the legacy pre-multi-wallet
-      keychain entry for any namespace other than `eip155`. That entry only ever held the eip155
-      address, so the fallback could answer a `solana:` or `xrpl:` lookup with the Ethereum address.
-      A non-eip155 namespace with no address now returns `nil`, and when the stored metadata is
-      missing or unreadable the underlying error is thrown instead. `eip155` keeps the fallback only
-      for missing or unreadable metadata: a client the Portal API reports no eip155 address for gets
-      `nil`, matching `portal.addresses[.eip155]`.
+- `portal.addresses` and `portal.getAddresses()` only contain namespaces that have an address. Reading a missing namespace by subscript still returns `nil`.
+- `portal.address` returns `nil` instead of `""` when there is no EVM address.
+- `portal.getAddress(_:)` returns `nil` for a non-EVM chain ID when the client has no address for that namespace.
 
 ### Improved
 
-- Signing errors from the MPC Enclave API (`useEnclaveMPCApi`) keep the server's error `id` and complete message whatever the message text, so the resulting `PortalMpcError` can be matched reliably by `id`, for example with `isIdempotencyRejection`. An error response without an `id`, such as a page from a proxy, surfaces as a `PortalMpcError` with the id `SIGNING_NETWORK_ERROR`, with the HTTP status and the start of the response body in its message. HTTP 401 responses are handled as before.
+- `portal.availableRecoveryMethods()` returns each backup method once, even when several wallets use the same method.
+- `signatureApprovalMemo` is now included on raw sign requests that use presignatures (`usePresignatures`) or the MPC Enclave API (`useEnclaveMPCApi`), and reaches `PRE_SIGN_V1` webhooks.
+- Signing errors from the MPC Enclave API keep the server's error `id` and message, so they can be matched by `id`.
+- More reliable address storage on iOS 17 and earlier.
+- Updated the bundled MPC binary to MPC 4.0.128.
 
 ## 8.0.0 - 2026-09-24
 
