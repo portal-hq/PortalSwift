@@ -362,10 +362,12 @@ public enum PortalRequestsError: LocalizedError, Equatable {
     }
   }
 
+  /// The response body of a `"<status> - <body>"` message: everything after the first separator,
+  /// so a body whose message itself contains " - " is kept whole and still decodes.
   private func getDataStr(from message: String) -> String? {
     let messageComponents = message.components(separatedBy: " - ")
     if messageComponents.count >= 2 {
-      return messageComponents[1]
+      return messageComponents[1...].joined(separator: " - ")
     }
     return nil
   }

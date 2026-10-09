@@ -30,6 +30,12 @@ public enum SignerType {
 /// `sign(_:withPayload:andRpcUrl:usingBlockchain:signatureApprovalMemo:sponsorGas:reqId:token:)`.
 /// The token-less overload remains for conformers written against the earlier contract; the
 /// extension default forwards the new overload to it so those conformers keep compiling.
+///
+/// A third overload adds the caller's idempotency key:
+/// `sign(_:withPayload:andRpcUrl:usingBlockchain:signatureApprovalMemo:sponsorGas:reqId:idempotencyKey:token:)`
+/// is the one `PortalProvider` calls. Its extension default forwards to the `token:` overload,
+/// so existing conformers keep compiling; they drop the key (with a warning) until they
+/// implement it.
 public protocol PortalSignerProtocol {
   /// Signs `withPayload` authenticating with whatever credential the conformer holds itself.
   ///
@@ -59,6 +65,24 @@ public protocol PortalSignerProtocol {
     signatureApprovalMemo: String?,
     sponsorGas: Bool?,
     reqId: String?,
+    token: String
+  ) async throws -> String
+
+  /// Signs `withPayload` presenting `token` as the bearer credential and attaching
+  /// `idempotencyKey`, so Portal refuses to broadcast the same key twice.
+  ///
+  /// `PortalProvider` calls this overload. `idempotencyKey` is already trimmed and validated, and
+  /// is non-`nil` only for `eth_sendTransaction`, `sol_signAndSendTransaction` and
+  /// `sol_signAndConfirmTransaction`. The same rules as the `token:` overload apply to `token`.
+  func sign(
+    _ chainId: String,
+    withPayload: PortalSignRequest,
+    andRpcUrl: String,
+    usingBlockchain: PortalBlockchain,
+    signatureApprovalMemo: String?,
+    sponsorGas: Bool?,
+    reqId: String?,
+    idempotencyKey: String?,
     token: String
   ) async throws -> String
 }
@@ -111,6 +135,35 @@ public extension PortalSignerProtocol {
       signatureApprovalMemo: signatureApprovalMemo,
       sponsorGas: sponsorGas,
       reqId: reqId
+    )
+  }
+
+  /// Source-compatibility default for conformers that predate the `idempotencyKey:` overload:
+  /// forwards to the `token:` overload they implemented. The key cannot travel further, so a
+  /// non-`nil` key is dropped with a warning (the key itself is never logged).
+  func sign(
+    _ chainId: String,
+    withPayload: PortalSignRequest,
+    andRpcUrl: String,
+    usingBlockchain: PortalBlockchain,
+    signatureApprovalMemo: String?,
+    sponsorGas: Bool?,
+    reqId: String?,
+    idempotencyKey: String?,
+    token: String
+  ) async throws -> String {
+    if idempotencyKey != nil {
+      PortalLogger.shared.warn("PortalSignerProtocol - This signer does not accept idempotencyKey; the key was dropped. Implement sign(...idempotencyKey:token:) to forward it.")
+    }
+    return try await self.sign(
+      chainId,
+      withPayload: withPayload,
+      andRpcUrl: andRpcUrl,
+      usingBlockchain: usingBlockchain,
+      signatureApprovalMemo: signatureApprovalMemo,
+      sponsorGas: sponsorGas,
+      reqId: reqId,
+      token: token
     )
   }
 }

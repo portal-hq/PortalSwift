@@ -10,9 +10,11 @@ import Foundation
 /// A `PortalMpcSigner` that never reaches the MPC binary: it answers every sign request with
 /// `MockConstants.mockTransactionHash` (send methods) or `MockConstants.mockSignature`.
 ///
-/// Only the `token:` overload is overridden. The deprecated token-less `sign(...)` still works
-/// because the base class resolves `credentials` and forwards to the overridden overload, which
-/// is why both initializers hand the credential to the base as `legacyCredentials`.
+/// The `token:` and `idempotencyKey:` overloads are overridden; the latter is the one
+/// `PortalProvider` calls, and without the override it would reach the base class body and the
+/// real binary. The deprecated token-less `sign(...)` still works because the base class resolves
+/// `credentials` and forwards to the overridden `token:` overload, which is why both initializers
+/// hand the credential to the base as `legacyCredentials`.
 public class MockPortalMpcSigner: PortalMpcSigner {
   /// Builds the mock around `credentials`, which is consulted only if a caller still uses the
   /// deprecated token-less `sign(...)`; the `token:` overload ignores the credential entirely.
@@ -69,7 +71,27 @@ public class MockPortalMpcSigner: PortalMpcSigner {
     reqId _: String? = nil,
     token _: String
   ) async throws -> String {
-    switch withPayload.method {
+    Self.mockResult(for: withPayload)
+  }
+
+  /// Returns the canned mock value for the payload's method without using `token` or
+  /// `idempotencyKey`.
+  override public func sign(
+    _: String,
+    withPayload: PortalSignRequest,
+    andRpcUrl _: String,
+    usingBlockchain _: PortalBlockchain,
+    signatureApprovalMemo _: String?,
+    sponsorGas _: Bool?,
+    reqId _: String? = nil,
+    idempotencyKey _: String?,
+    token _: String
+  ) async throws -> String {
+    Self.mockResult(for: withPayload)
+  }
+
+  private static func mockResult(for payload: PortalSignRequest) -> String {
+    switch payload.method {
     case .eth_sendTransaction, .eth_sendRawTransaction:
       return MockConstants.mockTransactionHash
     default:

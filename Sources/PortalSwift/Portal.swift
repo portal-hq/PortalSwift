@@ -1083,6 +1083,11 @@ public final class Portal: PortalProtocol {
   ///
   /// - Returns: The wallet address as a string if found, nil otherwise.
   ///
+  ///   For Bitcoin, pass one of the P2WPKH chain IDs the SDK signs with:
+  ///   `bip122:000000000019d6689c085ae165831e93-p2wpkh` returns the mainnet P2WPKH address and
+  ///   `bip122:000000000933ea01ad0ee984209779ba-p2wpkh` the testnet one. Any other `bip122:` chain
+  ///   ID returns nil, because it does not say which Bitcoin address it means.
+  ///
   /// - Note: This method handles errors internally and returns nil instead of throwing.
   ///   For error handling, use `getAddresses()` instead.
   public func getAddress(_ forChainId: String) async -> String? {
@@ -1100,9 +1105,22 @@ public final class Portal: PortalProtocol {
   /// This method fetches all wallet addresses stored in the device's keychain across
   /// all supported blockchain namespaces.
   ///
-  /// - Returns: A dictionary mapping `PortalNamespace` to optional wallet addresses, where:
-  ///   - `.eip155` key contains the Ethereum/EVM address
-  ///   - `.solana` key contains the Solana address
+  /// - Returns: A dictionary mapping `PortalNamespace` to wallet addresses, where:
+  ///   - `.eip155` holds the Ethereum/EVM address
+  ///   - `.solana` holds the Solana address
+  ///   - `.stellar` holds the Stellar address
+  ///   - `.tron` holds the Tron address
+  ///   - `.xrpl` holds the XRP Ledger classic address
+  ///
+  ///   An entry is present only for a namespace the Portal API returned an address for. `.eip155`,
+  ///   `.tron` and `.xrpl` are present when the client has a SECP256K1 wallet, `.solana` and
+  ///   `.stellar` when it has an ED25519 wallet. A namespace is absent from the dictionary when the
+  ///   client has no wallet for it or the Portal API returned a blank address for it, so it is
+  ///   missing from `keys` and `count` and reads as `nil` by subscript.
+  ///
+  ///   `.bip122` is never present. Bitcoin has no single canonical address, so the Portal API leaves
+  ///   `bip122.address` blank and returns a P2WPKH address per network instead. Read those with
+  ///   `getAddress(_:)` and a P2WPKH chain ID.
   ///
   /// - Throws: Keychain-related errors if the retrieval fails.
   ///
@@ -1213,12 +1231,19 @@ public final class Portal: PortalProtocol {
   ///   - method: The string literal of your RPC method.
   ///   - params: An array of parameters for the request (either RPC parameters or a transaction if signing).
   ///   - connect: Optional `PortalConnect` object to use for the request.
-  ///   - options: Optional request options containing signature approval memo and gas sponsorship settings.
+  ///   - options: Optional request options: signature approval memo, gas sponsorship, trace ID, and an
+  ///     idempotency key for `eth_sendTransaction`, `sol_signAndSendTransaction` and
+  ///     `sol_signAndConfirmTransaction` (see `RequestOptions.idempotencyKey`).
   ///
   /// - Returns: A `PortalProviderResult` containing the response from the blockchain.
   ///
   /// - Throws:
   ///   - `PortalProviderError.invalidRequestParams` if andParams is nil
+  ///   - `PortalIdempotencyError.invalidKey` for a malformed `options.idempotencyKey`, or
+  ///     `.unsupportedTarget` for a key on `eth_sendRawTransaction` or `sol_sendTransaction`, before
+  ///     the approval prompt
+  ///   - `PortalMpcError` with `isIdempotencyRejection == true` when Portal refuses to broadcast a
+  ///     key it has already seen
   ///   - Other blockchain-specific errors if the request fails
   ///
   /// - Note: Parameters are automatically converted to a format compatible with
@@ -1335,8 +1360,12 @@ public final class Portal: PortalProtocol {
   ///
   /// - Note: The method only returns backup methods where the corresponding backup share pairs
   ///   have a status of `.completed`. Methods with incomplete or pending backups are excluded.
+  ///   Each method appears at most once, in order of first appearance, even when several wallets
+  ///   (for example the SECP256K1 and ED25519 wallets) are backed up with the same method.
   public func availableRecoveryMethods(_ forChainId: String? = nil) async throws -> [BackupMethods] {
     if let client = try await client {
+      let wallets: [ClientResponseWallet]
+
       // Filter by chainId if one is provided
       if let chainId = forChainId {
         let chainIdParts = chainId.split(separator: ":").map(String.init)
@@ -1350,24 +1379,17 @@ public final class Portal: PortalProtocol {
           throw PortalClassError.noWalletFoundForChain(chainId)
         }
 
-        let availableRecoveryMethods = wallet.backupSharePairs.filter { share in
-          share.status == .completed
-        }.map { share in
-          share.backupMethod
-        }
-
-        return availableRecoveryMethods
+        wallets = [wallet]
       } else {
-        let availableRecoveryMethods = client.wallets.map { wallet in
-          wallet.backupSharePairs.filter { share in
-            share.status == .completed
-          }.map { share in
-            share.backupMethod
-          }
-        }.flatMap { $0 }
-
-        return availableRecoveryMethods
+        wallets = client.wallets
       }
+
+      var seen = Set<BackupMethods>()
+      return wallets
+        .flatMap { wallet in wallet.backupSharePairs }
+        .filter { share in share.status == .completed }
+        .map { share in share.backupMethod }
+        .filter { method in seen.insert(method).inserted }
     }
 
     throw PortalClassError.clientNotAvailable
@@ -1947,13 +1969,23 @@ public final class Portal: PortalProtocol {
   ///     - amount: The amount to send as a string
   ///     - signatureApprovalMemo: Optional signature approval memo to use for the request.
   ///     - sponsorGas: Optional flag to `enable/disable` sponsor the gas,  to be used for the send asset request.
+  ///     - idempotencyKey: Optional key that stops Portal from broadcasting the same transfer twice,
+  ///       forwarded to `eth_sendTransaction` (EVM) or `sol_signAndSendTransaction` (Solana). Not
+  ///       supported on Bitcoin. See `SendAssetParams.idempotencyKey` for how retries behave.
   ///
   /// - Returns: A SendAssetResponse containing:
   ///   - data: Transaction data including hash and explorer URL if successful
   ///   - metadata: Additional transaction metadata
   ///   - error: Error information if the transaction failed
   ///
-  /// - Throws: Various errors if transaction building or sending fails
+  /// - Throws:
+  ///   - `PortalIdempotencyError.invalidKey` for a malformed `params.idempotencyKey`, before the
+  ///     transaction is built
+  ///   - `PortalIdempotencyError.unsupportedTarget` for a `params.idempotencyKey` on a Bitcoin
+  ///     chain, before the transaction is built
+  ///   - `PortalMpcError` with `isIdempotencyRejection == true` when Portal refuses to broadcast a
+  ///     key it has already seen
+  ///   - Various errors if transaction building or sending fails
   ///
   /// - Note: Chain identifiers must follow CAIP-2 format (namespace:reference)
   public func sendAsset(chainId: String, params: SendAssetParams) async throws -> SendAssetResponse {
@@ -1971,6 +2003,9 @@ public final class Portal: PortalProtocol {
     let namespace = PortalNamespace(rawValue: String(chainParts[0]))
     // A single trace ID is shared across all build/sign/broadcast requests for this operation.
     let traceId = params.traceId ?? generateTraceId()
+    // Validated before any build request, so a malformed key fails without network I/O. The
+    // provider validates the trimmed key again, which leaves it unchanged.
+    let idempotencyKey = try params.idempotencyKey.map(validateIdempotencyKey)
     // Build the appropriate transaction based on chain type
     let transactionParam = BuildTransactionParam(
       to: params.to,
@@ -1988,7 +2023,7 @@ public final class Portal: PortalProtocol {
         chainId: chainId,
         method: .eth_sendTransaction,
         params: [transactionResponse.transaction],
-        options: RequestOptions(signatureApprovalMemo: params.signatureApprovalMemo, sponsorGas: params.sponsorGas, traceId: traceId)
+        options: RequestOptions(signatureApprovalMemo: params.signatureApprovalMemo, sponsorGas: params.sponsorGas, traceId: traceId, idempotencyKey: idempotencyKey)
       )
 
       guard let txHash = sendResponse.result as? String else {
@@ -2007,7 +2042,7 @@ public final class Portal: PortalProtocol {
         chainId: chainId,
         method: .sol_signAndSendTransaction,
         params: [transactionResponse.transaction],
-        options: RequestOptions(signatureApprovalMemo: params.signatureApprovalMemo, sponsorGas: params.sponsorGas, traceId: traceId)
+        options: RequestOptions(signatureApprovalMemo: params.signatureApprovalMemo, sponsorGas: params.sponsorGas, traceId: traceId, idempotencyKey: idempotencyKey)
       )
 
       guard let txHash = sendResponse.result as? String else {
@@ -2018,9 +2053,14 @@ public final class Portal: PortalProtocol {
       return SendAssetResponse(txHash: txHash)
 
     case .bip122:
+      // The inputs are raw-signed and the transaction is broadcast by its own request, neither of
+      // which can carry the key, so refuse it before anything is built or signed.
+      if idempotencyKey != nil {
+        throw PortalIdempotencyError.unsupportedBitcoinSendAsset
+      }
+
       // Ensure the chain is bitcoin p2wpkh
-      let p2wpkhChains = ["bip122:000000000019d6689c085ae165831e93-p2wpkh", "bip122:000000000933ea01ad0ee984209779ba-p2wpkh"]
-      guard p2wpkhChains.contains(chainId) else {
+      guard PortalBlockchain.bitcoinP2wpkhChainIds.contains(chainId) else {
         throw PortalClassError.unsupportedChainId(chainId)
       }
 
@@ -2831,6 +2871,7 @@ public enum PortalNamespace: String, Codable {
   case bip122
   case stellar
   case tron
+  case xrpl
 }
 
 public enum PortalSharePairStatus: String, Codable {

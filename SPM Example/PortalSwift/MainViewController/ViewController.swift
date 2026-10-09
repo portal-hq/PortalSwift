@@ -1221,20 +1221,24 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
 
     // Get addresses from client metadata namespaces
-    if let eip155Address = client.metadata.namespaces.eip155?.address {
+    if let eip155Address = client.metadata.namespaces.eip155?.address, !eip155Address.isEmpty {
       addresses.append(WalletAddress(type: "EIP-155", address: eip155Address, namespace: .eip155))
     }
 
-    if let solanaAddress = client.metadata.namespaces.solana?.address {
+    if let solanaAddress = client.metadata.namespaces.solana?.address, !solanaAddress.isEmpty {
       addresses.append(WalletAddress(type: "Solana", address: solanaAddress, namespace: .solana))
     }
 
-    if let stellarAddress = client.metadata.namespaces.stellar?.address {
+    if let stellarAddress = client.metadata.namespaces.stellar?.address, !stellarAddress.isEmpty {
       addresses.append(WalletAddress(type: "Stellar", address: stellarAddress, namespace: .stellar))
     }
 
-    if let tronAddress = client.metadata.namespaces.tron?.address {
+    if let tronAddress = client.metadata.namespaces.tron?.address, !tronAddress.isEmpty {
       addresses.append(WalletAddress(type: "Tron", address: tronAddress, namespace: .tron))
+    }
+
+    if let xrplAddress = client.metadata.namespaces.xrpl?.address, !xrplAddress.isEmpty {
+      addresses.append(WalletAddress(type: "XRPL", address: xrplAddress, namespace: .xrpl))
     }
 
     // Handle Bitcoin p2wpkh addresses (both mainnet and testnet)
@@ -1684,7 +1688,9 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.startLoading()
 
         let chainId = "eip155:10143"
-        let params = SendAssetParams(to: address, amount: amount, token: "NATIVE")
+        // One key per transfer. To retry this exact transfer, reuse the same key so Portal refuses
+        // to broadcast it twice.
+        let params = SendAssetParams(to: address, amount: amount, token: "NATIVE", idempotencyKey: generateIdempotencyKey())
 
         let response = try await portal?.sendAsset(chainId: chainId, params: params)
 
@@ -1701,6 +1707,56 @@ class ViewController: UIViewController, UITextFieldDelegate {
         self.logger.error("Error sending transaction: \(error)")
         self.showStatusView(message: "\(self.failureStatus) Error sending transaction: \(error)")
       }
+    }
+  }
+
+  /// Sends a transaction with an idempotency key, repeats the identical request with the same key,
+  /// then sends a different transaction with that key. Portal must broadcast only the first: the
+  /// repeat is rejected with `IDEMPOTENT_REQUEST_ALREADY_COMPLETED` (or `IN_PROGRESS` while the
+  /// first is still settling), and the different transaction with `IDEMPOTENCY_KEY_REUSED`.
+  @IBAction func handleIdempotencyRejection() {
+    Task {
+      guard let portal = self.portal else {
+        self.showStatusView(message: "\(self.failureStatus) Portal not initialized")
+        return
+      }
+      self.startLoading()
+      do {
+        let chainId = "eip155:10143"
+        let to = "0xdFd8302f44727A6348F702fF7B594f127dE3A902"
+        let options = RequestOptions(idempotencyKey: generateIdempotencyKey())
+        let transaction = try await portal.buildEip155Transaction(chainId: chainId, params: BuildTransactionParam(to: to, token: "NATIVE", amount: "0.0001")).transaction
+        let differentTransaction = try await portal.buildEip155Transaction(chainId: chainId, params: BuildTransactionParam(to: to, token: "NATIVE", amount: "0.0002")).transaction
+
+        // "broadcast <hash>", or the error id Portal rejected the send with.
+        func send(_ transaction: Any) async throws -> String {
+          do {
+            let result = try await portal.request(chainId: chainId, method: .eth_sendTransaction, params: [transaction], options: options)
+            return "broadcast \(result.result)"
+          } catch let error as PortalMpcError {
+            return error.id ?? "PortalMpcError without an id"
+          }
+        }
+
+        let first = try await send(transaction)
+        let repeated = try await send(transaction)
+        let different = try await send(differentTransaction)
+
+        let passed = first.hasPrefix("broadcast ")
+          && [PortalIdempotencyErrorId.requestAlreadyCompleted, PortalIdempotencyErrorId.requestInProgress].contains(repeated)
+          && different == PortalIdempotencyErrorId.keyReused
+        let summary = "first: \(first), repeat: \(repeated), different transaction: \(different)"
+        if passed {
+          self.logger.info("ViewController.handleIdempotencyRejection() - ✅ \(summary)")
+        } else {
+          self.logger.error("ViewController.handleIdempotencyRejection() - ❌ \(summary)")
+        }
+        self.showStatusView(message: "\(passed ? self.successStatus : self.failureStatus) Idempotency rejection - \(summary)")
+      } catch {
+        self.logger.error("ViewController.handleIdempotencyRejection() - ❌ \(error)")
+        self.showStatusView(message: "\(self.failureStatus) Idempotency rejection - \(error)")
+      }
+      self.stopLoading()
     }
   }
 
