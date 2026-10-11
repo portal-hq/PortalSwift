@@ -41,7 +41,16 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
     let publicKeyCredentialProvider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: domain)
 
     let challenge = options.publicKey.challenge.decodeBase64Url()!
-    let userId = Data(options.publicKey.user.id.utf8)
+    // user.id is a base64url-encoded byte string per the WebAuthn JSON spec
+    // (PublicKeyCredentialUserEntityJSON) and must be decoded to raw bytes.
+    // Previously this stored the UTF-8 bytes of the base64url string itself as
+    // the credential's userHandle, which broke cross-device (iOS -> web)
+    // recovery. See SDK-166 / BAC-162.
+    guard let userId = options.publicKey.user.id.decodeBase64Url() else {
+      self.logger.error("[PasskeyAuth] Unable to decode user.id as base64url")
+      self.continuation?.resume(throwing: PasskeyAuthError.MissingUserID)
+      return
+    }
     let username = options.publicKey.user.displayName
 
     let registrationRequest = publicKeyCredentialProvider.createCredentialRegistrationRequest(challenge: challenge, name: username, userID: userId)
@@ -149,7 +158,14 @@ public class PasskeyAuth: NSObject, ASAuthorizationControllerPresentationContext
                      "clientDataJSON": clientDataJSON.toBase64Url(),
                      "authenticatorData": authenticatorData.toBase64Url(),
                      "signature": signature.toBase64Url(),
-                     "userHandle": String(data: userID, encoding: .utf8)
+                     // The userHandle is raw bytes and must be base64url-encoded for
+                     // the relying party server, exactly like the other binary fields.
+                     // Previously this used String(data:encoding:.utf8), which only
+                     // "worked" for credentials registered by this SDK's old
+                     // UTF-8-mangled registration path, and returned nil (failing the
+                     // whole assertion) for correctly-registered credentials synced
+                     // from web/Android. See SDK-166 / BAC-162.
+                     "userHandle": userID.toBase64Url()
                    ]] as [String: Any]
 
     if let payloadJSONData = try? JSONSerialization.data(withJSONObject: payload, options: .fragmentsAllowed) {
