@@ -115,6 +115,7 @@ extension PortalTests {
         "eip155:1": "https://\(apiHost)/rpc/v1/eip155/1", // Ethereum Mainnet
         "eip155:137": "https://\(apiHost)/rpc/v1/eip155/137", // Polygon Mainnet
         "eip155:8453": "https://\(apiHost)/rpc/v1/eip155/8453", // Base Mainnet
+        "eip155:42161": "https://\(apiHost)/rpc/v1/eip155/42161", // Arbitrum One
         "eip155:80002": "https://\(apiHost)/rpc/v1/eip155/80002", // Polygon Amoy
         "eip155:84532": "https://\(apiHost)/rpc/v1/eip155/84532", // Base Testnet
         "eip155:11155111": "https://\(apiHost)/rpc/v1/eip155/11155111", // Ethereum Sepolia
@@ -3928,5 +3929,114 @@ extension PortalTests {
     }
 
     XCTAssertEqual(lifiApiMock.getRoutesCalls, callCount)
+  }
+}
+
+// MARK: - perps property tests
+
+extension PortalTests {
+  private func perpsOrderAction() -> YieldXyzPerpsAction {
+    YieldXyzPerpsFixtures.perpsAction(transactions: [YieldXyzPerpsFixtures.orderTransaction(address: MockConstants.mockEip155Address)])
+  }
+
+  private func perpsFundingAction() -> YieldXyzPerpsAction {
+    let payload = YieldXyzPerpsFixtures.fundingTransactionPayload(from: MockConstants.mockEip155Address)
+    return YieldXyzPerpsFixtures.perpsAction(transactions: [
+      YieldXyzPerpsFixtures.fundingTransaction(address: MockConstants.mockEip155Address, signablePayload: AnyCodable(payload))
+    ])
+  }
+
+  /// A Portal whose perps API returns `action` and whose provider is a spy.
+  private func initPortalForPerps(_ action: YieldXyzPerpsAction) throws -> (PortalYieldXyzPerpsApiMock, PortalProviderSpy) {
+    let perpsApi = PortalYieldXyzPerpsApiMock()
+    perpsApi.getActionReturnValue = action
+    try initPortalWithSpy(api: PortalApiMock(yieldxyzPerps: perpsApi))
+    let providerSpy = try PortalProviderSpy()
+    setToPortal(portalProvider: providerSpy)
+    return (perpsApi, providerSpy)
+  }
+
+  private var oneShotPerpsOptions: YieldXyzPerpsExecuteOptions {
+    YieldXyzPerpsExecuteOptions(pollAction: false, pollOptions: YieldXyzPerpsPollOptions(intervalSeconds: 0.001, timeoutSeconds: 1))
+  }
+
+  func test_perps_returnsTheSameYieldXyzPerpsInstance() {
+    let first = portal.perps
+    let second = portal.perps
+
+    XCTAssertTrue(first === second)
+    XCTAssertTrue(first.yieldxyz is YieldXyzPerps)
+  }
+
+  func test_perps_defaultsAccountRequestsToTheEvmWalletAddress() async throws {
+    let (perpsApi, _) = try initPortalForPerps(perpsOrderAction())
+
+    _ = try await portal.perps.yieldxyz.getBalances(params: YieldXyzPerpsBalancesParams(providerId: "hyperliquid"))
+
+    XCTAssertEqual(perpsApi.getBalancesRequest?.address, MockConstants.mockEip155Address)
+  }
+
+  func test_perps_signsTypedDataWithEthSignTypedDataV4ThroughArbitrum() async throws {
+    let (perpsApi, providerSpy) = try initPortalForPerps(perpsOrderAction())
+    providerSpy.requestOptionsReturnValues[.eth_signTypedData_v4] = YieldXyzPerpsFixtures.signature
+
+    let result = try await portal.perps.yieldxyz.signAndSubmitAction(perpsOrderAction(), options: oneShotPerpsOptions)
+
+    let call = try XCTUnwrap(providerSpy.requestOptionsHistory.first)
+    XCTAssertEqual(call.method, .eth_signTypedData_v4)
+    XCTAssertEqual(call.chainId, "eip155:42161")
+    XCTAssertEqual(call.params?.first, AnyCodable(MockConstants.mockEip155Address))
+    let typedData = try XCTUnwrap(call.params?.last?.value as? String)
+    XCTAssertTrue(typedData.contains("EIP712Domain"))
+    XCTAssertNil(call.options?.idempotencyKey)
+    XCTAssertEqual(perpsApi.submitTransactionParams.first?.signedPayload, YieldXyzPerpsFixtures.signature)
+    XCTAssertEqual(result.transactions.count, 1)
+  }
+
+  func test_perps_mapsADeclinedTypedDataSignatureToARejection() async throws {
+    let (perpsApi, providerSpy) = try initPortalForPerps(perpsOrderAction())
+    providerSpy.requestOptionsError = ProviderSigningError.userDeclinedApproval
+
+    do {
+      _ = try await portal.perps.yieldxyz.signAndSubmitAction(perpsOrderAction(), options: oneShotPerpsOptions)
+      XCTFail("Expected error not thrown.")
+    } catch let error as YieldXyzPerpsExecutionError {
+      XCTAssertEqual(error.reason, .signatureRejected)
+      XCTAssertTrue(perpsApi.submitTransactionParams.isEmpty)
+    }
+  }
+
+  func test_perps_rejectsASigningChainWithoutAnRpcEndpoint() async throws {
+    let (perpsApi, providerSpy) = try initPortalForPerps(perpsOrderAction())
+    providerSpy.getRpcUrlError = PortalProviderError.noRpcUrlFoundForChainId("eip155:42161")
+
+    do {
+      _ = try await portal.perps.yieldxyz.signAndSubmitAction(perpsOrderAction(), options: oneShotPerpsOptions)
+      XCTFail("Expected error not thrown.")
+    } catch let error as YieldXyzPerpsExecutionError {
+      XCTAssertEqual(error.reason, .signingChainNotConfigured)
+      XCTAssertTrue(providerSpy.requestOptionsHistory.isEmpty)
+      XCTAssertTrue(perpsApi.submitTransactionParams.isEmpty)
+    }
+  }
+
+  func test_perps_sendsAnEvmLegWithItsIdempotencyKey() async throws {
+    let (perpsApi, providerSpy) = try initPortalForPerps(perpsFundingAction())
+    providerSpy.requestOptionsReturnValues[.eth_sendTransaction] = YieldXyzPerpsFixtures.fundingTxHash
+    var options = oneShotPerpsOptions
+    options.waitForConfirmation = { _, _ in true }
+
+    _ = try await portal.perps.yieldxyz.signAndSubmitAction(perpsFundingAction(), options: options)
+
+    let call = try XCTUnwrap(providerSpy.requestOptionsHistory.first)
+    XCTAssertEqual(call.method, .eth_sendTransaction)
+    XCTAssertEqual(call.chainId, "eip155:42161")
+    XCTAssertEqual(call.options?.idempotencyKey, "yieldxyz-perps-tx-fund-1")
+    let param = try XCTUnwrap(call.params?.first?.value as? ETHTransactionParam)
+    XCTAssertEqual(param.from, MockConstants.mockEip155Address)
+    XCTAssertEqual(param.to, YieldXyzPerpsFixtures.arbitrumUsdc)
+    XCTAssertEqual(param.gas, "0x186a0")
+    XCTAssertEqual(param.value, "0x0")
+    XCTAssertEqual(perpsApi.submitTransactionParams.first?.transactionHash, YieldXyzPerpsFixtures.fundingTxHash)
   }
 }

@@ -82,6 +82,45 @@ public final class Portal: PortalProtocol {
     }
   )
 
+  /// Access to perpetual-futures functionality (Yield.xyz Perps).
+  public lazy var perps: Perps = .init(
+    api: self.api,
+    dependencies: YieldXyzPerpsExecutionDependencies(
+      getWalletAddress: { [weak self] in
+        guard let self else {
+          throw PortalClassError.clientNotAvailable
+        }
+        return await self.getAddress(YieldXyzPerps.defaultSigningChainId)
+      },
+      signTypedData: { [weak self] request in
+        guard let self else {
+          throw PortalClassError.clientNotAvailable
+        }
+        return try await self.signPerpsTypedData(request)
+      },
+      signAndSendTransaction: { [weak self] transaction, chainId, idempotencyKey in
+        guard let self else {
+          throw PortalClassError.clientNotAvailable
+        }
+        return try await self.signAndSendPerpsTransaction(transaction, chainId: chainId, idempotencyKey: idempotencyKey)
+      },
+      waitForConfirmation: { [weak self] txHash, chainId in
+        guard let self else {
+          throw PortalClassError.clientNotAvailable
+        }
+        // Up to 15 minutes, like the other Portal SDKs: a funding leg can wait on a congested chain.
+        let result = try await self.waitForTransactionConfirmation(txHash: txHash, chainId: chainId, maxAttempts: 225, waitingInSeconds: 4)
+        return result == .confirmed
+      },
+      isChainConfigured: { [weak self] chainId in
+        guard let self else {
+          return false
+        }
+        return await self.getRpcUrl(forChainId: chainId) != nil
+      }
+    )
+  )
+
   /// Access to security-related functionality.
   public lazy var security: Security = .init(api: self.api)
 
@@ -1267,6 +1306,47 @@ public final class Portal: PortalProtocol {
       throw PortalClassError.invalidResponseTypeForRequest
     }
     return txHash
+  }
+
+  /// Signs EIP-712 typed data for a Yield.xyz Perps transaction with `eth_signTypedData_v4`.
+  /// - Returns: The signature, or `nil` when the user declined the signing request.
+  private func signPerpsTypedData(_ request: YieldXyzPerpsSignTypedDataRequest) async throws -> String? {
+    do {
+      let response = try await self.request(
+        chainId: request.chainId,
+        method: .eth_signTypedData_v4,
+        params: [request.address, request.typedData]
+      )
+      guard let signature = response.result as? String else {
+        throw PortalClassError.invalidResponseTypeForRequest
+      }
+      return signature
+    } catch ProviderSigningError.userDeclinedApproval {
+      return nil
+    }
+  }
+
+  /// Signs and broadcasts a Yield.xyz Perps on-chain leg via `eth_sendTransaction`.
+  /// - Returns: The transaction hash, or `nil` when the user declined the signing request.
+  private func signAndSendPerpsTransaction(
+    _ transaction: ETHTransactionParam,
+    chainId: String,
+    idempotencyKey: String?
+  ) async throws -> String? {
+    do {
+      let response = try await self.request(
+        chainId: chainId,
+        method: .eth_sendTransaction,
+        params: [transaction],
+        options: idempotencyKey.map { RequestOptions(idempotencyKey: $0) }
+      )
+      guard let txHash = response.result as? String else {
+        throw PortalClassError.invalidResponseTypeForRequest
+      }
+      return txHash
+    } catch ProviderSigningError.userDeclinedApproval {
+      return nil
+    }
   }
 
   /// Polls `eth_getTransactionReceipt` until the transaction is mined and confirmed.
@@ -2789,6 +2869,7 @@ public final class Portal: PortalProtocol {
       "eip155:1": "https://\(apiHost)/rpc/v1/eip155/1", // Ethereum Mainnet
       "eip155:137": "https://\(apiHost)/rpc/v1/eip155/137", // Polygon Mainnet
       "eip155:8453": "https://\(apiHost)/rpc/v1/eip155/8453", // Base Mainnet
+      "eip155:42161": "https://\(apiHost)/rpc/v1/eip155/42161", // Arbitrum One
       "eip155:80002": "https://\(apiHost)/rpc/v1/eip155/80002", // Polygon Amoy
       "eip155:84532": "https://\(apiHost)/rpc/v1/eip155/84532", // Base Testnet
       "eip155:11155111": "https://\(apiHost)/rpc/v1/eip155/11155111", // Ethereum Sepolia
