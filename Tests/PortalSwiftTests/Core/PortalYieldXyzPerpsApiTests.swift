@@ -355,6 +355,26 @@ final class PortalYieldXyzPerpsApiTests: XCTestCase {
     XCTAssertEqual(lastUrl, "\(base)/activity?address=\(wallet)&providerIds=hyperliquid")
   }
 
+  func test_blankIds_areRejectedBeforeAnyRequest() async {
+    let calls: [(String, () async throws -> Void)] = [
+      ("providerId", { _ = try await self.api.getProvider(providerId: "") }),
+      ("marketId", { _ = try await self.api.getMarket(marketId: "") }),
+      ("actionId", { _ = try await self.api.getAction(actionId: "") }),
+      ("eventId", { _ = try await self.api.getEvent(eventId: "") }),
+      ("transactionId", { _ = try await self.api.submitTransaction(params: YieldXyzPerpsSubmitTransactionParams(transactionId: "", transactionHash: "0x1")) })
+    ]
+
+    for (name, call) in calls {
+      do {
+        try await call()
+        XCTFail("Expected \(name) to be rejected.")
+      } catch {
+        XCTAssertEqual(error as? YieldXyzPerpsError, .emptyIdentifier(name: name))
+      }
+    }
+    XCTAssertEqual(spy.executeCallsCount, 0)
+  }
+
   // MARK: - Errors
 
   func test_failures_areRethrownUnchanged() async throws {

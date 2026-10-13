@@ -33,6 +33,8 @@ public enum YieldXyzPerpsError: LocalizedError, Equatable {
   case submissionRequired
   /// `submitTransaction` needs `actionId` with a `signedPayload`.
   case actionIdRequired
+  /// An id sent in the request path (for example `marketId`) is empty.
+  case emptyIdentifier(name: String)
 
   public var errorDescription: String? {
     switch self {
@@ -44,6 +46,8 @@ public enum YieldXyzPerpsError: LocalizedError, Equatable {
       return "[YieldXyzPerps] submitTransaction requires a signedPayload or a transactionHash."
     case .actionIdRequired:
       return "[YieldXyzPerps] submitTransaction requires actionId when submitting a signedPayload."
+    case let .emptyIdentifier(name):
+      return "[YieldXyzPerps] \(name) must not be empty."
     }
   }
 }

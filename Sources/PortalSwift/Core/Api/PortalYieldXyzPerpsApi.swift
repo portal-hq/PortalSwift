@@ -112,7 +112,7 @@ public class PortalYieldXyzPerpsApi: PortalYieldXyzPerpsApiProtocol {
 
   /// Get one trading venue.
   public func getProvider(providerId: String) async throws -> YieldXyzPerpsGetProviderResponse {
-    try await get("getProvider", path: "/providers/\(pathSegment(providerId))")
+    try await get("getProvider", path: "/providers/\(pathSegment("providerId", providerId))")
   }
 
   /// List markets, optionally filtered by venue and sorted.
@@ -128,7 +128,7 @@ public class PortalYieldXyzPerpsApi: PortalYieldXyzPerpsApiProtocol {
 
   /// Get one market.
   public func getMarket(marketId: String) async throws -> YieldXyzPerpsGetMarketResponse {
-    try await get("getMarket", path: "/markets/\(pathSegment(marketId))")
+    try await get("getMarket", path: "/markets/\(pathSegment("marketId", marketId))")
   }
 
   /// Get OHLCV candles of a market over a time window.
@@ -136,7 +136,7 @@ public class PortalYieldXyzPerpsApi: PortalYieldXyzPerpsApiProtocol {
     marketId: String,
     params: YieldXyzPerpsGetMarketCandlesParams
   ) async throws -> YieldXyzPerpsGetMarketCandlesResponse {
-    try await get("getMarketCandles", path: "/markets/\(pathSegment(marketId))/candles", query: [
+    try await get("getMarketCandles", path: "/markets/\(pathSegment("marketId", marketId))/candles", query: [
       ("interval", params.interval.rawValue),
       ("from", String(params.from)),
       ("to", params.to.map { String($0) })
@@ -180,7 +180,7 @@ public class PortalYieldXyzPerpsApi: PortalYieldXyzPerpsApiProtocol {
 
   /// Get one action with its transactions and status.
   public func getAction(actionId: String) async throws -> YieldXyzPerpsGetActionResponse {
-    try await get("getAction", path: "/actions/\(pathSegment(actionId))")
+    try await get("getAction", path: "/actions/\(pathSegment("actionId", actionId))")
   }
 
   /// Submit a signature or a broadcast transaction hash for one transaction. Keys left `nil` are
@@ -191,7 +191,7 @@ public class PortalYieldXyzPerpsApi: PortalYieldXyzPerpsApiProtocol {
       transactionHash: params.transactionHash,
       actionId: params.actionId
     )
-    return try await post("submitTransaction", path: "/transactions/\(pathSegment(params.transactionId))/submit", payload: body)
+    return try await post("submitTransaction", path: "/transactions/\(pathSegment("transactionId", params.transactionId))/submit", payload: body)
   }
 
   /// Get an account's unified activity feed (actions and events, newest first).
@@ -229,7 +229,7 @@ public class PortalYieldXyzPerpsApi: PortalYieldXyzPerpsApiProtocol {
 
   /// Get one lifecycle event.
   public func getEvent(eventId: String) async throws -> YieldXyzPerpsGetEventResponse {
-    try await get("getEvent", path: "/events/\(pathSegment(eventId))")
+    try await get("getEvent", path: "/events/\(pathSegment("eventId", eventId))")
   }
 
   /// Get the Yield.xyz Perps API health.
@@ -259,7 +259,12 @@ public class PortalYieldXyzPerpsApi: PortalYieldXyzPerpsApiProtocol {
     return values.joined(separator: ",")
   }
 
-  private func pathSegment(_ value: String) throws -> String {
+  /// Encodes an id as a single path segment. A blank id is rejected: `/markets/` would reach the list
+  /// route instead.
+  private func pathSegment(_ name: String, _ value: String) throws -> String {
+    guard !value.isEmpty else {
+      throw YieldXyzPerpsError.emptyIdentifier(name: name)
+    }
     guard let encoded = Self.encodeURIComponent(value) else {
       throw PortalApiError.unableToEncodeData
     }
