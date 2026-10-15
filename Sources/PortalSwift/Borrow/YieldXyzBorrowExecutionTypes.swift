@@ -237,7 +237,8 @@ public enum YieldXyzBorrowExecutionErrorReason: String, Equatable {
   case unsupportedSigningFormat = "UNSUPPORTED_SIGNING_FORMAT"
   /// The transaction's `network` is not an EIP-155 chain Portal supports.
   case unsupportedNetwork = "UNSUPPORTED_NETWORK"
-  /// The `signablePayload` is missing or is not a valid EVM transaction.
+  /// The `signablePayload` is missing or is not a valid EVM transaction, or the transaction has no
+  /// id to submit it under.
   case invalidSignablePayload = "INVALID_SIGNABLE_PAYLOAD"
   /// No EVM wallet address is available to sign with.
   case missingWalletAddress = "MISSING_WALLET_ADDRESS"
@@ -267,7 +268,8 @@ public enum YieldXyzBorrowExecutionErrorReason: String, Equatable {
   case userOperationFailed = "USER_OPERATION_FAILED"
   /// Yield.xyz reported the transaction as `FAILED`.
   case transactionFailed = "TRANSACTION_FAILED"
-  /// The Portal API rejected the submission; `underlyingError` holds the backend error.
+  /// The Portal API rejected the submission, or the SDK could not send it; `underlyingError` holds
+  /// the backend error, or the SDK's.
   case submitRejected = "SUBMIT_REJECTED"
   /// The submission was accepted but Yield.xyz reported the transaction as `FAILED`.
   case submitFailed = "SUBMIT_FAILED"

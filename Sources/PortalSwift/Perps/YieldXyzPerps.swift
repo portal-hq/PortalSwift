@@ -981,7 +981,9 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
           context,
           transaction,
           reason: .submitRejected,
-          message: "Yield.xyz rejected the submission of transaction \(transaction.id).",
+          message: YieldXyzRequestFailure.isRefusedBeforeSending(failure)
+            ? "The submission of transaction \(transaction.id) could not be sent."
+            : "Yield.xyz rejected the submission of transaction \(transaction.id).",
           broadcastHash: transactionHash,
           underlyingError: failure
         )

@@ -15,9 +15,46 @@ import UIKit
 
 /// What the example keeps between taps: the last action built, and the last failed execution to
 /// resume from.
+/// What the example keeps between runs to resume an execution. Touched on the main actor only.
 private enum BorrowExampleState {
+  /// The action to continue, with its transactions in signing order: the one built, then the latest
+  /// step or failure an execution reported.
   static var lastAction: YieldXyzBorrowAction?
   static var lastFailure: YieldXyzBorrowExecutionError?
+  /// Every transaction already broadcast, by id. A resume submits these instead of signing them
+  /// again, whichever failure came last.
+  static var broadcastHashes: [String: String] = [:]
+
+  static func start(_ action: YieldXyzBorrowAction) {
+    lastAction = action
+    lastFailure = nil
+    broadcastHashes = [:]
+  }
+}
+
+/// Collects what an execution reports while it runs: the hash of each transaction it broadcasts,
+/// and the latest step it moved to. The runner reports from any thread.
+private final class BorrowProgressRecorder {
+  private let lock = NSLock()
+  private var hashes: [String: String] = [:]
+  private var stepAction: YieldXyzBorrowAction?
+
+  func record(_ progress: YieldXyzBorrowExecutionProgress) {
+    lock.lock()
+    defer { lock.unlock() }
+    if progress.step == .confirming, let transactionId = progress.transactionId, let broadcastHash = progress.broadcastHash {
+      hashes[transactionId] = broadcastHash
+    }
+    if progress.step == .nextStep, let action = progress.action {
+      stepAction = action
+    }
+  }
+
+  var recorded: (hashes: [String: String], stepAction: YieldXyzBorrowAction?) {
+    lock.lock()
+    defer { lock.unlock() }
+    return (hashes, stepAction)
+  }
 }
 
 @available(iOS 16.0, *)
@@ -182,7 +219,7 @@ extension ViewController {
         return "Cancelled"
       }
       let action = try await self.buildBorrowSupply(portal)
-      BorrowExampleState.lastAction = action
+      BorrowExampleState.start(action)
       let transactions = action.transactions.map { "\($0.type) (\($0.status))" }.joined(separator: ", ")
       let metadata = action.metadata.map { "LTV \($0.currentLtv) → \($0.predictedLtv), health \($0.predictedHealthFactor ?? "unknown")" } ?? "no metadata"
       return "Built \(action.action) \(action.id) step \(action.currentStep)/\(action.totalSteps): \(transactions); \(metadata)"
@@ -202,7 +239,8 @@ extension ViewController {
   }
 
   /// Supplies 0.1 WMON as collateral: signs and submits each transaction in order, then tracks the
-  /// action. It moves real funds on Monad mainnet, so it asks first.
+  /// action. It continues the action built or left by the last execution, if any, with the hashes it
+  /// already broadcast. It moves real funds on Monad mainnet, so it asks first.
   @IBAction func borrowExecuteSupply(_: Any) {
     let alert = UIAlertController(
       title: "Supply 0.1 WMON on Morpho Blue?",
@@ -218,64 +256,67 @@ extension ViewController {
         guard let self else {
           return "Cancelled"
         }
-        let action: YieldXyzBorrowAction
-        if let built = BorrowExampleState.lastAction {
-          action = built
-        } else {
-          action = try await self.buildBorrowSupply(portal)
+        if BorrowExampleState.lastAction == nil {
+          try await BorrowExampleState.start(self.buildBorrowSupply(portal))
         }
-        return try await self.signAndSubmitBorrowAction(portal, action, broadcastHashes: [:])
+        return try await self.continueBorrowExecution(portal)
       }
     })
     present(alert, animated: true)
   }
 
-  /// Resumes the last failed execution from its action, without signing again a transaction it had
-  /// already broadcast. A transaction whose user operation failed is signed again, without its
-  /// idempotency key: Portal remembers the key and would refuse to send it again.
+  /// Resumes the last failed execution from the latest action it reported, submitting the
+  /// transactions it had already broadcast instead of signing them again.
   @IBAction func borrowResumeLastFailure(_: Any) {
     runBorrow("Resume") { [weak self] portal in
       guard let self else {
         return "Cancelled"
       }
-      guard let failure = BorrowExampleState.lastFailure, let action = failure.action else {
+      guard BorrowExampleState.lastFailure != nil, BorrowExampleState.lastAction != nil else {
         return "No failed execution to resume."
       }
-      let userOperationFailed = failure.reason == .userOperationFailed
-      var broadcastHashes: [String: String] = [:]
-      if let transactionId = failure.transactionId, let broadcastHash = failure.broadcastHash, !userOperationFailed {
-        broadcastHashes[transactionId] = broadcastHash
-      }
-      return try await self.signAndSubmitBorrowAction(
-        portal,
-        action,
-        broadcastHashes: broadcastHashes,
-        useIdempotencyKeys: !userOperationFailed
-      )
+      return try await self.continueBorrowExecution(portal)
     }
   }
 
-  private func signAndSubmitBorrowAction(
-    _ portal: PortalProtocol,
-    _ action: YieldXyzBorrowAction,
-    broadcastHashes: [String: String],
-    useIdempotencyKeys: Bool = true
-  ) async throws -> String {
+  /// Executes `BorrowExampleState.lastAction` with every hash broadcast so far, and keeps what the
+  /// execution reported for the next attempt. After `userOperationFailed`, that transaction is signed
+  /// again without its idempotency key: Portal remembers the key and would refuse to send it again.
+  private func continueBorrowExecution(_ portal: PortalProtocol) async throws -> String {
+    guard let action = BorrowExampleState.lastAction else {
+      return "No action to execute."
+    }
+    let userOperationFailed = BorrowExampleState.lastFailure?.reason == .userOperationFailed
+    let recorder = BorrowProgressRecorder()
     let logger = self.logger
     do {
       let result = try await portal.borrow.yieldxyz.signAndSubmitAction(action, options: YieldXyzBorrowExecuteOptions(
         onProgress: { progress in
+          recorder.record(progress)
           logger.info("⏳ [Borrow] \(progress.step.rawValue) \(progress.transactionId ?? "") \(progress.broadcastHash ?? "") \(progress.actionStatus?.rawValue ?? "")")
         },
-        useIdempotencyKeys: useIdempotencyKeys,
-        broadcastHashes: broadcastHashes
+        useIdempotencyKeys: !userOperationFailed,
+        broadcastHashes: BorrowExampleState.broadcastHashes
       ))
       BorrowExampleState.lastAction = nil
       BorrowExampleState.lastFailure = nil
+      BorrowExampleState.broadcastHashes = [:]
       let hashes = result.transactions.map(\.transactionHash).joined(separator: ", ")
       return "Action \(result.actionId) ended \(result.status) after \(result.transactions.count) transaction(s): \(hashes)"
-    } catch let error as YieldXyzBorrowExecutionError {
-      BorrowExampleState.lastFailure = error
+    } catch {
+      let recorded = recorder.recorded
+      BorrowExampleState.broadcastHashes.merge(recorded.hashes) { _, latest in latest }
+      let failure = error as? YieldXyzBorrowExecutionError
+      if let failure, let transactionId = failure.transactionId {
+        if failure.reason == .userOperationFailed {
+          // Its user operation was processed and did not succeed: sign it again rather than resume it.
+          BorrowExampleState.broadcastHashes[transactionId] = nil
+        } else if let broadcastHash = failure.broadcastHash {
+          BorrowExampleState.broadcastHashes[transactionId] = broadcastHash
+        }
+      }
+      BorrowExampleState.lastAction = failure?.action ?? recorded.stepAction ?? action
+      BorrowExampleState.lastFailure = failure
       throw error
     }
   }

@@ -1161,9 +1161,22 @@ final class YieldXyzBorrowExecutionTests: XCTestCase {
 
     let error = await expectFailure(.submitRejected) { try await self.execute(action) }
 
+    XCTAssertEqual(error?.message, "The submission of transaction tx-approval could not be sent.")
     XCTAssertEqual(error?.underlyingError as? YieldXyzBorrowError, .emptyIdentifier(name: "transactionId"))
     XCTAssertEqual(error?.broadcastHash, F.approvalHash)
     XCTAssertEqual(api.submitTransactionCallsCount, 1)
+  }
+
+  func test_rejectsATransactionWithoutAnIdBeforeSigningIt() async throws {
+    let action = F.borrowAction(transactions: [F.approvalTransaction(id: "")])
+    serve(action)
+
+    let error = await expectFailure(.invalidSignablePayload) { try await self.execute(action) }
+
+    XCTAssertNil(error?.transactionId)
+    XCTAssertNil(error?.broadcastHash)
+    XCTAssertEqual(signer.calls.count, 0)
+    XCTAssertEqual(api.submitTransactionCallsCount, 0)
   }
 
   func test_doesNotRetryAReadTheApiRefusedBeforeSendingIt() async throws {
@@ -1737,8 +1750,10 @@ final class YieldXyzBorrowExecutionTests: XCTestCase {
     serve(action)
     lookup.results = [.failure(backendError(503))]
     lookup.fallback = .failure(backendError(404))
+    // Long enough for the 404s to follow the 503 even on a slow machine.
+    let poll = YieldXyzBorrowPollOptions(intervalSeconds: 0.005, timeoutSeconds: 0.3)
 
-    let error = await expectFailure(.timeout) { try await self.execute(action, self.options(poll: self.shortPoll)) }
+    let error = await expectFailure(.timeout) { try await self.execute(action, self.options(poll: poll)) }
 
     XCTAssertGreaterThan(lookup.callsCount, 1)
     XCTAssertNil(error?.underlyingError)

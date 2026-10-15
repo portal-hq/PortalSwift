@@ -588,6 +588,17 @@ public class YieldXyzBorrow: YieldXyzBorrowProtocol {
     try assertBuiltForWallet(context, subject: "Action \(context.actionId)", address: context.latestAction.address, transactionId: transaction.id, hashes: hashes)
     try assertBuiltForWallet(context, subject: "Transaction \(transaction.id)", address: transaction.address, transactionId: transaction.id, hashes: hashes)
 
+    // Yield.xyz records a submission under the transaction's id: without one, the transaction could
+    // be broadcast but never submitted.
+    guard !transaction.id.isEmpty else {
+      throw executionError(
+        context,
+        reason: .invalidSignablePayload,
+        message: "A transaction of action \(context.actionId) has no id, so it could not be submitted once broadcast.",
+        hashes: hashes
+      )
+    }
+
     let request: YieldXyzEvmTransactionRequest
     switch YieldXyzEvmTransactionParams.parse(transaction.signablePayload, defaultFrom: nil) {
     case let .success(parsed):
@@ -1016,7 +1027,9 @@ public class YieldXyzBorrow: YieldXyzBorrowProtocol {
         throw executionError(
           context,
           reason: .submitRejected,
-          message: "Yield.xyz rejected the submission of transaction \(transaction.id).",
+          message: YieldXyzRequestFailure.isRefusedBeforeSending(failure)
+            ? "The submission of transaction \(transaction.id) could not be sent."
+            : "Yield.xyz rejected the submission of transaction \(transaction.id).",
           transactionId: transaction.id,
           hashes: errorHashes,
           underlyingError: failure
