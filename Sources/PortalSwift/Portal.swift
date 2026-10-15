@@ -82,9 +82,15 @@ public final class Portal: PortalProtocol {
     }
   )
 
+  /// The Perps guard against executing one action twice at once. Initialized with the instance,
+  /// unlike the lazy `perps`: two threads reading `perps` first at the same time can each build one,
+  /// and both must share this guard.
+  private let perpsInFlightActions = YieldXyzPerpsInFlightActions()
+
   /// Access to perpetual-futures functionality (Yield.xyz Perps).
   public lazy var perps: Perps = .init(
     api: self.api,
+    inFlightActions: self.perpsInFlightActions,
     dependencies: YieldXyzPerpsExecutionDependencies(
       getWalletAddress: { [weak self] in
         guard let self else {
@@ -2869,7 +2875,6 @@ public final class Portal: PortalProtocol {
       "eip155:1": "https://\(apiHost)/rpc/v1/eip155/1", // Ethereum Mainnet
       "eip155:137": "https://\(apiHost)/rpc/v1/eip155/137", // Polygon Mainnet
       "eip155:8453": "https://\(apiHost)/rpc/v1/eip155/8453", // Base Mainnet
-      "eip155:42161": "https://\(apiHost)/rpc/v1/eip155/42161", // Arbitrum One
       "eip155:80002": "https://\(apiHost)/rpc/v1/eip155/80002", // Polygon Amoy
       "eip155:84532": "https://\(apiHost)/rpc/v1/eip155/84532", // Base Testnet
       "eip155:11155111": "https://\(apiHost)/rpc/v1/eip155/11155111", // Ethereum Sepolia

@@ -160,8 +160,10 @@ public struct YieldXyzPerpsExecuteOptions {
   /// A send Portal reports as still in progress is retried a few times with the same key; each retry
   /// is a new signing request, so it asks for approval again when `autoApprove` is off. A leg Portal
   /// refuses to send again fails with `transactionAlreadyBroadcast` (resume with `broadcastHashes`)
-  /// or `signingFailed` naming the idempotency error. To send a leg again, for example after it
-  /// reverted, check the chain and build a new action: its legs get new keys.
+  /// or `signingFailed` naming the idempotency error. That includes a leg whose earlier send failed,
+  /// for example for lack of gas: Portal refuses its key even once the cause is fixed. To send a
+  /// leg again, check the chain first, then build a new action (its legs get new keys) or resume
+  /// this one with `useIdempotencyKeys` set to `false`.
   public var useIdempotencyKeys: Bool
   /// Per-call override of the typed-data signer.
   public var signTypedData: YieldXyzPerpsSignTypedData?
@@ -284,8 +286,9 @@ public enum YieldXyzPerpsExecutionErrorReason: String, Equatable {
   case submitRejected = "SUBMIT_REJECTED"
   /// The submission was accepted but Yield.xyz reported the transaction as `FAILED`.
   case submitFailed = "SUBMIT_FAILED"
-  /// The submission failed ambiguously and its outcome could not be confirmed; do not resubmit
-  /// blindly.
+  /// The outcome of a transaction could not be confirmed: its submission failed ambiguously, or
+  /// the task was cancelled after an on-chain leg was broadcast (`broadcastHash` is then set:
+  /// resume with it in `broadcastHashes`). Do not resubmit blindly.
   case submitOutcomeUnknown = "SUBMIT_OUTCOME_UNKNOWN"
   /// The action ended as `FAILED`, `CANCELED` or `STALE`.
   case actionFailed = "ACTION_FAILED"

@@ -622,6 +622,19 @@ final class YieldXyzPerpsExecutionTests: XCTestCase {
     XCTAssertEqual(error?.underlyingError as? URLError, URLError(.timedOut))
   }
 
+  func test_evm_cancellingTheConfirmationKeepsTheBroadcastHash_withoutReportingTheLegAsNotConfirmed() async {
+    setBackend(Fixtures.perpsAction(transactions: [Fixtures.fundingTransaction()]))
+    signers.confirmError = CancellationError()
+
+    let error = await expectFailure(.submitOutcomeUnknown)
+
+    XCTAssertEqual(error?.transactionId, "tx-fund-1")
+    XCTAssertEqual(error?.broadcastHash, Fixtures.fundingTxHash)
+    XCTAssertEqual(error?.transactionHash, Fixtures.fundingTxHash)
+    XCTAssertTrue(error?.underlyingError is CancellationError)
+    XCTAssertTrue(backend.submitted.isEmpty)
+  }
+
   func test_evm_rejectsAnOpaqueHexPayload() async {
     setBackend(Fixtures.perpsAction(transactions: [Fixtures.fundingTransaction(signablePayload: AnyCodable("0xdeadbeef"))]))
 
@@ -695,6 +708,9 @@ final class YieldXyzPerpsExecutionTests: XCTestCase {
 
     XCTAssertEqual((error?.underlyingError as? PortalMpcError)?.id, PortalIdempotencyErrorId.requestPreviouslyFailed)
     XCTAssertTrue(error?.message.contains(PortalIdempotencyErrorId.requestPreviouslyFailed) == true, error?.message ?? "")
+    // The message names both ways forward: resuming from a broadcast hash, or sending the leg anew.
+    XCTAssertTrue(error?.message.contains("broadcastHashes") == true, error?.message ?? "")
+    XCTAssertTrue(error?.message.contains("useIdempotencyKeys set to false") == true, error?.message ?? "")
     XCTAssertEqual(signers.sends.count, 1)
   }
 
@@ -1095,6 +1111,30 @@ final class YieldXyzPerpsExecutionTests: XCTestCase {
 
     signers.gate.release()
     let result = try await first.value
+    XCTAssertEqual(result.status, .success)
+  }
+
+  func test_rejectsASecondCallFromAnotherInstanceSharingTheGuard() async throws {
+    signers.holdSigning = true
+    let guardShared = YieldXyzPerpsInFlightActions()
+    let first = YieldXyzPerps(api: backend, dependencies: signers.dependencies, retryPolicy: fastPolicy, inFlightActions: guardShared)
+    let second = YieldXyzPerps(api: backend, dependencies: signers.dependencies, retryPolicy: fastPolicy, inFlightActions: guardShared)
+    let action = backend.initial
+    let fastOptions = options()
+
+    let running = Task { try await first.signAndSubmitAction(action, options: fastOptions) }
+    await signers.gate.waitUntilEntered()
+
+    do {
+      _ = try await second.signAndSubmitAction(action, options: fastOptions)
+      XCTFail("Expected the second instance to refuse the action.")
+    } catch let error as YieldXyzPerpsExecutionError {
+      XCTAssertEqual(error.reason, .actionInProgress)
+    }
+    XCTAssertEqual(signers.typedDataRequests.count, 1)
+
+    signers.gate.release()
+    let result = try await running.value
     XCTAssertEqual(result.status, .success)
   }
 

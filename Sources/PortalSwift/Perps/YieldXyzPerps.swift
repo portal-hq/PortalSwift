@@ -83,8 +83,9 @@ public protocol YieldXyzPerpsProtocol: AnyObject {
   /// executing the same action fails with `actionInProgress` and signs nothing.
   ///
   /// Cancelling the surrounding task stops the execution with `CancellationError`, except once an
-  /// on-chain leg is broadcast: then it fails with an error carrying that leg's `broadcastHash`. The
-  /// `confirming` progress event also reports the hash as soon as the leg is broadcast.
+  /// on-chain leg is broadcast: then it fails with `submitOutcomeUnknown` carrying that leg's
+  /// `broadcastHash`. The `confirming` progress event also reports the hash as soon as the leg is
+  /// broadcast.
   func signAndSubmitAction(_ action: YieldXyzPerpsAction, options: YieldXyzPerpsExecuteOptions) async throws -> YieldXyzPerpsExecutionResult
 }
 
@@ -143,8 +144,9 @@ struct YieldXyzPerpsRetryPolicy {
   )
 }
 
-/// Ids of the actions an instance is executing. Two overlapping executions of one action would
-/// both read a transaction awaiting a signature and both sign it.
+/// Ids of the actions being executed. Two overlapping executions of one action would both read a
+/// transaction awaiting a signature and both sign it. `Portal` owns one and shares it with every
+/// `YieldXyzPerps` it builds, so the guard holds even if two of them are created.
 final class YieldXyzPerpsInFlightActions {
   private let lock = NSLock()
   private var actionIds = Set<String>()
@@ -179,7 +181,7 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
   private let api: PortalYieldXyzPerpsApiProtocol
   private let dependencies: YieldXyzPerpsExecutionDependencies
   private let retryPolicy: YieldXyzPerpsRetryPolicy
-  private let inFlightActions = YieldXyzPerpsInFlightActions()
+  private let inFlightActions: YieldXyzPerpsInFlightActions
   private let logger = PortalLogger.shared
 
   /// Create an instance of YieldXyzPerps.
@@ -197,11 +199,13 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
   init(
     api: PortalYieldXyzPerpsApiProtocol,
     dependencies: YieldXyzPerpsExecutionDependencies,
-    retryPolicy: YieldXyzPerpsRetryPolicy
+    retryPolicy: YieldXyzPerpsRetryPolicy,
+    inFlightActions: YieldXyzPerpsInFlightActions = YieldXyzPerpsInFlightActions()
   ) {
     self.api = api
     self.dependencies = dependencies
     self.retryPolicy = retryPolicy
+    self.inFlightActions = inFlightActions
   }
 
   // MARK: - Market data
@@ -751,6 +755,17 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
     let confirmed: Bool
     do {
       confirmed = try await waitForConfirmation(transactionHash, chainId)
+    } catch is CancellationError {
+      // The leg is on-chain and may still confirm: it has not failed, so keep its hash for a resume
+      // with `broadcastHashes` instead of reporting it as not confirmed.
+      throw transactionError(
+        context,
+        transaction,
+        reason: .submitOutcomeUnknown,
+        message: "Confirming transaction \(transaction.id) (\(transactionHash)) was cancelled; resume with broadcastHashes.",
+        broadcastHash: transactionHash,
+        underlyingError: CancellationError()
+      )
     } catch {
       throw transactionError(
         context,
@@ -871,12 +886,12 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
         )
       } catch let error as PortalMpcError where idempotencyKey != nil && error.isIdempotencyRejection {
         // Every later send of this leg under the same key gets the same answer while Portal
-        // remembers the key: check the chain, then build a new action (its legs get new keys).
+        // remembers the key, even once the cause (for example missing gas) is fixed.
         throw transactionError(
           context,
           transaction,
           reason: .signingFailed,
-          message: "Portal refused to send transaction \(transaction.id) again under its idempotency key (\(error.id ?? "unknown")); check the chain before building a new action.",
+          message: "Portal refused to send transaction \(transaction.id) under its idempotency key (\(error.id ?? "unknown")): an earlier send of this leg failed or has an unknown outcome, and Portal gives that answer for at least 24 hours. Check the chain for that send: if it was broadcast, resume with broadcastHashes; if not, build a new action, or resume this one with useIdempotencyKeys set to false.",
           underlyingError: error
         )
       } catch {

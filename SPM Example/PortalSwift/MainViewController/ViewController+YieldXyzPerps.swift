@@ -5,7 +5,8 @@
 //  Created by Ahmed Ragab
 //
 //  Yield.xyz Perps testing functionality. Perps is mainnet-only: the read actions are free, and
-//  the one write action (approve agent) moves no funds and asks for confirmation first.
+//  the one write action (approve agent) moves no funds but authorizes an agent wallet to trade on
+//  the Hyperliquid account, so it asks for confirmation first.
 //
 
 import Foundation
@@ -159,11 +160,12 @@ extension ViewController {
   }
 
   /// Approves the venue's agent wallet: signs and submits each transaction, then tracks the action.
-  /// It moves no funds, but it is a real mainnet signature, so it asks first.
+  /// It moves no funds, but it is a real mainnet signature that lets the agent trade on the
+  /// account, so it asks first.
   @IBAction func perpsExecuteApproveAgent(_: Any) {
     let alert = UIAlertController(
       title: "Approve Hyperliquid agent?",
-      message: "This signs a real mainnet approval with your Portal wallet. It moves no funds. The client must not use account abstraction.",
+      message: "This signs a real mainnet approval with your Portal wallet. It authorizes an agent wallet to place orders on your Hyperliquid account. It moves no funds. The client must not use account abstraction.",
       preferredStyle: .alert
     )
     alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
