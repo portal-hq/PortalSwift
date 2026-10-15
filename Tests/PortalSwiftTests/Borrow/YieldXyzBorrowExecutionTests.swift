@@ -1643,6 +1643,18 @@ final class YieldXyzBorrowExecutionTests: XCTestCase {
     XCTAssertEqual(signer.calls.count, 0)
   }
 
+  func test_aLookupTimeoutDoesNotReportAnEarlierTransientErrorAsItsCause() async throws {
+    let action = singleTransactionAction()
+    serve(action)
+    lookup.results = [.failure(backendError(503))]
+    lookup.fallback = .failure(backendError(404))
+
+    let error = await expectFailure(.timeout) { try await self.execute(action, self.options(poll: self.shortPoll)) }
+
+    XCTAssertGreaterThan(lookup.callsCount, 1)
+    XCTAssertNil(error?.underlyingError)
+  }
+
   func test_validatesARecoveredTransactionAndItsActionBeforeContinuing() async throws {
     for action in [
       F.borrowAction(transactions: [F.approvalTransaction(address: F.otherWallet)]),

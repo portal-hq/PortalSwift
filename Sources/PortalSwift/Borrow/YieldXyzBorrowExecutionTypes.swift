@@ -144,9 +144,11 @@ public struct YieldXyzBorrowExecuteOptions {
   /// A send Portal reports as still in progress is retried a few times with the same key; each
   /// retry is a new signing request, so it asks for approval again when `autoApprove` is off. A
   /// transaction Portal refuses to send again fails with `transactionAlreadyBroadcast` (resume with
-  /// `broadcastHashes`) or `signingFailed` naming the idempotency error. To sign a transaction
-  /// again on purpose, for example after `userOperationFailed`, build a new action (its
-  /// transactions get new keys) or set this to `false`.
+  /// `broadcastHashes`) or `signingFailed` naming the idempotency error. Portal also remembers a
+  /// send that failed, for example for insufficient funds, and refuses to retry it under the same
+  /// key (`IDEMPOTENT_REQUEST_PREVIOUSLY_FAILED`). To sign a transaction again on purpose, for
+  /// example after `userOperationFailed` or a failed send, build a new action (its transactions
+  /// get new keys) or set this to `false`.
   public var useIdempotencyKeys: Bool
   /// Per-call signer. The chain then needs no `rpcConfig` entry.
   public var signAndSendTransaction: YieldXyzBorrowSignAndSendTransaction?

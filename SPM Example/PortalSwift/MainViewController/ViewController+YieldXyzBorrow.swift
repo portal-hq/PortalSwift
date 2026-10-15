@@ -231,7 +231,8 @@ extension ViewController {
   }
 
   /// Resumes the last failed execution from its action, without signing again a transaction it had
-  /// already broadcast.
+  /// already broadcast. A transaction whose user operation failed is signed again, without its
+  /// idempotency key: Portal remembers the key and would refuse to send it again.
   @IBAction func borrowResumeLastFailure(_: Any) {
     runBorrow("Resume") { [weak self] portal in
       guard let self else {
@@ -240,18 +241,25 @@ extension ViewController {
       guard let failure = BorrowExampleState.lastFailure, let action = failure.action else {
         return "No failed execution to resume."
       }
+      let userOperationFailed = failure.reason == .userOperationFailed
       var broadcastHashes: [String: String] = [:]
-      if let transactionId = failure.transactionId, let broadcastHash = failure.broadcastHash, failure.reason != .userOperationFailed {
+      if let transactionId = failure.transactionId, let broadcastHash = failure.broadcastHash, !userOperationFailed {
         broadcastHashes[transactionId] = broadcastHash
       }
-      return try await self.signAndSubmitBorrowAction(portal, action, broadcastHashes: broadcastHashes)
+      return try await self.signAndSubmitBorrowAction(
+        portal,
+        action,
+        broadcastHashes: broadcastHashes,
+        useIdempotencyKeys: !userOperationFailed
+      )
     }
   }
 
   private func signAndSubmitBorrowAction(
     _ portal: PortalProtocol,
     _ action: YieldXyzBorrowAction,
-    broadcastHashes: [String: String]
+    broadcastHashes: [String: String],
+    useIdempotencyKeys: Bool = true
   ) async throws -> String {
     let logger = self.logger
     do {
@@ -259,6 +267,7 @@ extension ViewController {
         onProgress: { progress in
           logger.info("⏳ [Borrow] \(progress.step.rawValue) \(progress.transactionId ?? "") \(progress.broadcastHash ?? "") \(progress.actionStatus?.rawValue ?? "")")
         },
+        useIdempotencyKeys: useIdempotencyKeys,
         broadcastHashes: broadcastHashes
       ))
       BorrowExampleState.lastAction = nil

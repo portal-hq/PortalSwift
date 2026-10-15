@@ -729,11 +729,12 @@ public class YieldXyzBorrow: YieldXyzBorrowProtocol {
         )
       } catch let error as PortalMpcError where idempotencyKey != nil && error.isIdempotencyRejection {
         // Every later send of this transaction under the same key gets the same answer while Portal
-        // remembers the key: check the chain, then build a new action (its transactions get new keys).
+        // remembers the key, including after a send that failed: check the chain, then build a new
+        // action (its transactions get new keys) or send without a key.
         throw executionError(
           context,
           reason: .signingFailed,
-          message: "Portal refused to send transaction \(transaction.id) again under its idempotency key (\(error.id ?? "unknown")); check the chain before building a new action.",
+          message: "Portal refused to send transaction \(transaction.id) again under its idempotency key (\(error.id ?? "unknown")); check the chain, then build a new action or set useIdempotencyKeys to false.",
           transactionId: transaction.id,
           underlyingError: error
         )
@@ -879,7 +880,6 @@ public class YieldXyzBorrow: YieldXyzBorrowProtocol {
   ) async throws -> OnChainHashes {
     let hashes = Hashes(broadcastHash: broadcastHash)
     var consecutiveErrors = 0
-    var lastError: Error?
 
     let resolved: ResolvedHash
     do {
@@ -900,7 +900,6 @@ public class YieldXyzBorrow: YieldXyzBorrowProtocol {
             consecutiveErrors = 0
             return .continue
           }
-          lastError = error
           if !YieldXyzRequestFailure.isTransient(error) {
             throw error
           }
@@ -913,7 +912,6 @@ public class YieldXyzBorrow: YieldXyzBorrowProtocol {
 
         guard let lookup else {
           let error = LookupReturnedNoData(hash: broadcastHash)
-          lastError = error
           consecutiveErrors += 1
           if consecutiveErrors >= retryPolicy.maxConsecutivePollErrors {
             throw error
@@ -938,8 +936,7 @@ public class YieldXyzBorrow: YieldXyzBorrowProtocol {
         reason: .timeout,
         message: "The on-chain transaction of \(transaction.id) (\(broadcastHash)) was not found in time.",
         transactionId: transaction.id,
-        hashes: hashes,
-        underlyingError: lastError
+        hashes: hashes
       )
     } catch is CancellationError {
       throw CancellationError()
