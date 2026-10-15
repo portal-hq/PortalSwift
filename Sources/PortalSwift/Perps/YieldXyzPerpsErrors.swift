@@ -52,6 +52,8 @@ public enum YieldXyzPerpsError: LocalizedError, Equatable {
   }
 }
 
+extension YieldXyzPerpsError: YieldXyzRequestRefusedBeforeSending {}
+
 /// The Portal API error behind a failed Yield.xyz Perps request: its HTTP status and the `error`,
 /// `id` and `details` of the response body. `details.code` carries the venue's machine-readable
 /// code when there is one (for example `EXECUTE_PRECONDITION_FAILED`).

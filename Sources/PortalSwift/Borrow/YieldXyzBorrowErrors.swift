@@ -34,6 +34,8 @@ public enum YieldXyzBorrowError: LocalizedError, Equatable {
   }
 }
 
+extension YieldXyzBorrowError: YieldXyzRequestRefusedBeforeSending {}
+
 /// The Portal API error behind a failed Yield.xyz Borrow request: its HTTP status and the `error`,
 /// `id` and `details` of the response body.
 ///

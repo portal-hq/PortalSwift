@@ -22,7 +22,7 @@ public enum YieldXyzBorrowExecutionStep: String, Equatable {
   case polling
   /// Yield.xyz reports the transaction as `CONFIRMED` or `SKIPPED`.
   case confirmed
-  /// The next step's transactions were fetched.
+  /// The next step's transactions were fetched; `action` carries the new step in signing order.
   case nextStep
   /// Execution stopped; `error` carries the reason.
   case failed
@@ -47,6 +47,9 @@ public struct YieldXyzBorrowExecutionProgress {
   public let transactionHash: String?
   public let userOperationHash: String?
   public let actionStatus: YieldXyzBorrowActionStatus?
+  /// With `nextStep`: the action as the new step returned it, with its transactions in signing
+  /// order. Persist it: resuming that step from it keeps this order, which `getAction` may not.
+  public let action: YieldXyzBorrowAction?
   public let error: YieldXyzBorrowExecutionError?
 
   public init(
@@ -60,6 +63,7 @@ public struct YieldXyzBorrowExecutionProgress {
     transactionHash: String? = nil,
     userOperationHash: String? = nil,
     actionStatus: YieldXyzBorrowActionStatus? = nil,
+    action: YieldXyzBorrowAction? = nil,
     error: YieldXyzBorrowExecutionError? = nil
   ) {
     self.step = step
@@ -72,6 +76,7 @@ public struct YieldXyzBorrowExecutionProgress {
     self.transactionHash = transactionHash
     self.userOperationHash = userOperationHash
     self.actionStatus = actionStatus
+    self.action = action
     self.error = error
   }
 }
@@ -269,8 +274,10 @@ public enum YieldXyzBorrowExecutionErrorReason: String, Equatable {
   /// The submission failed ambiguously, or was cancelled, and its outcome could not be confirmed;
   /// check the action before retrying.
   case submitOutcomeUnknown = "SUBMIT_OUTCOME_UNKNOWN"
-  /// The next step could not be fetched, or had nothing to sign. Yield.xyz may have moved to the
-  /// next step even though its response was lost, so `action` can still be the previous step's.
+  /// The next step could not be fetched, or had nothing to sign; `underlyingError` holds the backend
+  /// error when there is one. Yield.xyz may have moved to the next step even though its response was
+  /// lost, so `action` can still be the previous step's: resuming from it then signs the new step's
+  /// transactions in the order `getAction` lists them, which may not be their signing order.
   case nextStepFailed = "NEXT_STEP_FAILED"
   /// The action ended as `FAILED`, `CANCELED` or `STALE`.
   case actionFailed = "ACTION_FAILED"
@@ -292,6 +299,10 @@ public enum YieldXyzBorrowExecutionErrorReason: String, Equatable {
 /// have recorded it yet: resume with `broadcastHashes: [transactionId: broadcastHash]`, so the
 /// transaction is submitted instead of signed again. `userOperationFailed` is the exception: its
 /// user operation was already processed and did not succeed.
+///
+/// Two failures cannot be fully recovered from: without an idempotency key, a `signingFailed`
+/// signer may have broadcast without returning a hash, and after a `nextStepFailed` the `action`
+/// may still be the previous step's.
 public struct YieldXyzBorrowExecutionError: LocalizedError {
   public let reason: YieldXyzBorrowExecutionErrorReason
   public let message: String

@@ -300,4 +300,22 @@ final class YieldXyzPerpsTests: XCTestCase {
     XCTAssertFalse(YieldXyzRequestFailure.isAmbiguous(PortalRequestsError.unauthorized))
     XCTAssertFalse(YieldXyzRequestFailure.isAmbiguous(PortalCredentialError.sessionInvalidated))
   }
+
+  func test_requestFailure_aRequestNeverSentIsNeitherTransientNorAmbiguous() {
+    let neverSent: [Error] = [
+      YieldXyzPerpsError.emptyIdentifier(name: "actionId"),
+      YieldXyzPerpsError.submissionRequired,
+      YieldXyzBorrowError.emptyIdentifier(name: "actionId"),
+      YieldXyzBorrowError.submissionRequired,
+      PortalApiError.unableToEncodeData,
+      URLError(.badURL)
+    ]
+    for error in neverSent {
+      XCTAssertTrue(YieldXyzRequestFailure.isRefusedBeforeSending(error), "\(error)")
+      XCTAssertFalse(YieldXyzRequestFailure.isTransient(error), "\(error)")
+      XCTAssertFalse(YieldXyzRequestFailure.isAmbiguous(error), "\(error)")
+    }
+    XCTAssertFalse(YieldXyzRequestFailure.isRefusedBeforeSending(URLError(.timedOut)))
+    XCTAssertFalse(YieldXyzRequestFailure.isRefusedBeforeSending(PortalApiError.unableToReadStringResponse))
+  }
 }

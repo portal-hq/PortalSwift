@@ -59,8 +59,9 @@ public protocol YieldXyzBorrowProtocol: AnyObject {
   /// Executes an existing action step by step. The action is read back first: its current state on
   /// Yield.xyz decides what still needs signing, and the transactions of the action passed in give
   /// the signing order, matched by id. Pass an action whose transactions are in signing order: the
-  /// one `createAction` returned, or the `action` of an execution result or of a
-  /// `YieldXyzBorrowExecutionError`. `getAction` may list transactions in a different order.
+  /// one `createAction` returned, the `action` of the latest `nextStep` progress event, or the
+  /// `action` of an execution result or of a `YieldXyzBorrowExecutionError`. `getAction` may list
+  /// transactions in a different order.
   ///
   /// Each `EVM_TRANSACTION` awaiting a signature (`CREATED` or `WAITING_FOR_SIGNATURE`) is sent with
   /// `eth_sendTransaction` on its own chain, with the idempotency key
@@ -1172,7 +1173,8 @@ public class YieldXyzBorrow: YieldXyzBorrowProtocol {
       actionId: context.actionId,
       currentStep: next.currentStep,
       totalSteps: next.totalSteps,
-      actionStatus: next.status
+      actionStatus: next.status,
+      action: next
     ))
     return next.transactions
   }

@@ -3968,6 +3968,21 @@ extension PortalTests {
     XCTAssertTrue(first.yieldxyz is YieldXyzPerps)
   }
 
+  func test_perps_isBuiltOnceWhenFirstReadFromSeveralThreadsAtOnce() throws {
+    let portal = try XCTUnwrap(self.portal)
+    let lock = NSLock()
+    var instances = Set<ObjectIdentifier>()
+
+    try runConcurrently(16) { _ in
+      let perps = portal.perps
+      lock.lock()
+      instances.insert(ObjectIdentifier(perps))
+      lock.unlock()
+    }
+
+    XCTAssertEqual(instances.count, 1)
+  }
+
   func test_perps_defaultsAccountRequestsToTheEvmWalletAddress() async throws {
     let (perpsApi, _) = try initPortalForPerps(perpsOrderAction())
 
@@ -4082,6 +4097,21 @@ extension PortalTests {
 
     XCTAssertTrue(first === second)
     XCTAssertTrue(first.yieldxyz is YieldXyzBorrow)
+  }
+
+  func test_borrow_isBuiltOnceWhenFirstReadFromSeveralThreadsAtOnce() throws {
+    let portal = try XCTUnwrap(self.portal)
+    let lock = NSLock()
+    var instances = Set<ObjectIdentifier>()
+
+    try runConcurrently(16) { _ in
+      let borrow = portal.borrow
+      lock.lock()
+      instances.insert(ObjectIdentifier(borrow))
+      lock.unlock()
+    }
+
+    XCTAssertEqual(instances.count, 1)
   }
 
   func test_borrow_sendsATransactionWithItsIdempotencyKey_andSubmitsTheHashTheLookupResolves() async throws {

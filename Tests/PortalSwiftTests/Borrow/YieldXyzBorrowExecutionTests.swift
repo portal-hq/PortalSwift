@@ -825,6 +825,47 @@ final class YieldXyzBorrowExecutionTests: XCTestCase {
     XCTAssertEqual(result.transactions.map(\.transactionId), ["tx-approval", "tx-step-2"])
   }
 
+  func test_keepsTheSigningOrderOfTheStepResponseInALaterStep_andReportsItWithNextStep() async throws {
+    let stepOne = F.borrowAction(transactions: [F.approvalTransaction()], hasNextStep: true, totalSteps: 2)
+    let stepTwo = F.borrowAction(
+      transactions: [F.approvalTransaction(id: "tx-step-2-approval"), F.supplyTransaction(id: "tx-step-2-supply")],
+      currentStep: 2,
+      totalSteps: 2
+    )
+    let backend = TwoStepBackend(stepOne, stepTwo)
+    backend.reorder = true
+    backend.install(on: api)
+    signer.results = [
+      .success(F.approvalHash),
+      .success("0x" + String(repeating: "e1", count: 32)),
+      .success("0x" + String(repeating: "e2", count: 32))
+    ]
+    var progress: [YieldXyzBorrowExecutionProgress] = []
+
+    let result = try await execute(stepOne, options(onProgress: { progress.append($0) }))
+
+    XCTAssertEqual(submittedCalls.map(\.0), ["tx-approval", "tx-step-2-approval", "tx-step-2-supply"])
+    XCTAssertEqual(signer.calls.map(\.param.to), [F.usdcBase, F.usdcBase, F.aavePoolBase])
+    XCTAssertEqual(result.action.transactions.map(\.id), ["tx-step-2-approval", "tx-step-2-supply"])
+    let nextStep = try XCTUnwrap(progress.first { $0.step == .nextStep })
+    XCTAssertEqual(nextStep.action?.transactions.map(\.id), ["tx-step-2-approval", "tx-step-2-supply"])
+    XCTAssertTrue(progress.filter { $0.step != .nextStep }.allSatisfy { $0.action == nil })
+  }
+
+  func test_doesNotSignTransactionsOfAnEarlierStepThatYieldXyzNoLongerLists() async throws {
+    let stepOne = F.borrowAction(transactions: [F.approvalTransaction()], hasNextStep: true, totalSteps: 2)
+    let stepTwo = F.borrowAction(transactions: [F.supplyTransaction(id: "tx-step-2")], currentStep: 2, totalSteps: 2)
+    fakeBackend(stepTwo)
+    signer.results = []
+    signer.defaultResult = .success(F.supplyHash)
+
+    _ = try await execute(stepOne)
+
+    XCTAssertEqual(signer.calls.map(\.param.to), [F.aavePoolBase])
+    XCTAssertEqual(submittedCalls.map(\.0), ["tx-step-2"])
+    XCTAssertEqual(api.stepActionCallsCount, 0)
+  }
+
   func test_resumesAnActionWhoseCurrentStepIsAlreadyConfirmed_byFetchingTheNextStep() async throws {
     let confirmed = F.borrowAction(status: .waitingForNext, transactions: [F.approvalTransaction(status: .confirmed)], hasNextStep: true)
     let next = F.borrowAction(transactions: [F.supplyTransaction()], currentStep: 2, totalSteps: 2)
@@ -1112,6 +1153,28 @@ final class YieldXyzBorrowExecutionTests: XCTestCase {
 
     XCTAssertEqual(YieldXyzBorrowApiError.from(error)?.message, "Yield.xyz Borrow rejected the request: invalid hash")
     XCTAssertEqual(api.submitTransactionCallsCount, 1)
+  }
+
+  func test_doesNotReconcileOrResubmitASubmissionTheApiRefusedBeforeSendingIt() async throws {
+    let action = singleTransactionAction()
+    fakeBackend(action).submitFailures = [YieldXyzBorrowError.emptyIdentifier(name: "transactionId")]
+
+    let error = await expectFailure(.submitRejected) { try await self.execute(action) }
+
+    XCTAssertEqual(error?.underlyingError as? YieldXyzBorrowError, .emptyIdentifier(name: "transactionId"))
+    XCTAssertEqual(error?.broadcastHash, F.approvalHash)
+    XCTAssertEqual(api.submitTransactionCallsCount, 1)
+  }
+
+  func test_doesNotRetryAReadTheApiRefusedBeforeSendingIt() async throws {
+    let action = singleTransactionAction()
+    api.getActionHandler = { _ in throw YieldXyzBorrowError.emptyIdentifier(name: "actionId") }
+
+    let error = await expectFailure(.pollingFailed) { try await self.execute(action, self.options(poll: self.shortPoll)) }
+
+    XCTAssertEqual(error?.underlyingError as? YieldXyzBorrowError, .emptyIdentifier(name: "actionId"))
+    XCTAssertEqual(api.getActionCallsCount, 1)
+    XCTAssertEqual(signer.calls.count, 0)
   }
 
   func test_treatsAnAmbiguousFailureAsSubmittedWhenTheActionShowsTheHashWasRecorded() async throws {
@@ -1465,6 +1528,32 @@ final class YieldXyzBorrowExecutionTests: XCTestCase {
     XCTAssertEqual(api.submitTransactionCallsCount, 1)
   }
 
+  func test_executesAnotherActionWhileOneIsStillExecuting() async throws {
+    let first = F.borrowAction(transactions: [F.approvalTransaction()])
+    let other = F.borrowAction(id: "act-2", transactions: [F.supplyTransaction()])
+    let firstBackend = FakeBackend(first)
+    let otherBackend = FakeBackend(other)
+    api.getActionHandler = { actionId in try actionId == "act-1" ? firstBackend.read() : otherBackend.read() }
+    api.submitTransactionHandler = { transactionId, params in
+      try transactionId == "tx-approval" ? firstBackend.submit(transactionId, params) : otherBackend.submit(transactionId, params)
+    }
+    let gate = SignatureGate()
+    signer.gate = gate
+    let options = self.options()
+    let running = Task { try await self.borrow.signAndSubmitAction(first, options: options) }
+    await gate.waitUntilStarted()
+
+    let otherResult = try await execute(other)
+    gate.release(F.approvalHash)
+    let firstResult = try await running.value
+
+    XCTAssertEqual(otherResult.actionId, "act-2")
+    XCTAssertEqual(otherResult.status, .success)
+    XCTAssertEqual(firstResult.actionId, "act-1")
+    XCTAssertEqual(firstResult.status, .success)
+    assertSubmitted([("tx-supply", F.supplyHash), ("tx-approval", F.approvalHash)])
+  }
+
   func test_acceptsANewCallOnTheActionOnceTheEarlierCallSucceeded() async throws {
     let action = singleTransactionAction()
     fakeBackend(action)
@@ -1718,6 +1807,53 @@ final class YieldXyzBorrowExecutionTests: XCTestCase {
     XCTAssertEqual(error?.transactionHash, F.bundleHash)
     XCTAssertEqual(error?.userOperationHash, F.userOperationHash)
     XCTAssertEqual(error?.action?.transactions.map(\.id), ["tx-approval", "tx-supply"])
+  }
+
+  func test_reportsTheActionOfAFailureInSigningOrder_soResumingFromItCannotSignOutOfOrder() async throws {
+    let action = F.borrowAction()
+    let backend = fakeBackend(action)
+    backend.reorder = true
+    var submits = 0
+    api.submitTransactionHandler = { [unowned self] transactionId, params in
+      submits += 1
+      if transactionId == "tx-supply", submits == 2 {
+        throw self.backendError(400, #"{"error":"Temporarily rejected"}"#)
+      }
+      return try backend.submit(transactionId, params)
+    }
+
+    let failure = await expectFailure(.submitRejected) { try await self.execute(action) }
+    XCTAssertEqual(failure?.action?.transactions.map(\.id), ["tx-approval", "tx-supply"])
+
+    let failedAction = try XCTUnwrap(failure?.action)
+    let transactionId = try XCTUnwrap(failure?.transactionId)
+    let broadcastHash = try XCTUnwrap(failure?.broadcastHash)
+    let resumed = try await execute(failedAction, options(broadcastHashes: [transactionId: broadcastHash]))
+
+    XCTAssertEqual(signer.calls.map(\.param.to), [F.usdcBase, F.aavePoolBase])
+    XCTAssertEqual(submittedCalls.map(\.0), ["tx-approval", "tx-supply", "tx-supply"])
+    XCTAssertEqual(resumed.status, .success)
+  }
+
+  func test_reportsTheLatestActionInSigningOrderAfterAFailureThatFollowsTheBroadcast() async throws {
+    for reason in [YieldXyzBorrowExecutionErrorReason.timeout, .submitRejected, .userOperationFailed] {
+      resetState()
+      let action = F.borrowAction()
+      fakeBackend(action).reorder = true
+      switch reason {
+      case .timeout:
+        lookup.fallback = .failure(backendError(404))
+      case .submitRejected:
+        api.submitTransactionHandler = { [unowned self] _, _ in throw self.backendError(400) }
+      default:
+        lookup.fallback = .success(F.userOperationLookup(receiptHash: F.bundleHash, success: false))
+      }
+
+      let failure = await expectFailure(reason) { try await self.execute(action, self.options(poll: self.shortPoll)) }
+
+      XCTAssertNotNil(failure?.broadcastHash, "\(reason)")
+      XCTAssertEqual(failure?.action?.transactions.map(\.id), ["tx-approval", "tx-supply"], "\(reason)")
+    }
   }
 
   func test_neverSignsTwiceWhenAnEoaAttemptIsResumedWithTheHashItsErrorReported() async throws {
