@@ -1074,8 +1074,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
         usePreGeneratedWallet: Settings.shared.usePreGeneratedWallet
       )
 
-      let rpcConfig = Self.rpcConfig(apiHost: config.apiUrl)
-
       // The two arms differ only in the credential — every other argument is identical, so the
       // branch is verifiable by reading it.
       let portal: Portal
@@ -1083,7 +1081,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
       case let .session(session):
         portal = try Portal(
           credentials: session,
-          withRpcConfig: rpcConfig,
           featureFlags: featureFlags,
           apiHost: config.apiUrl,
           mpcHost: config.mpcUrl,
@@ -1092,7 +1089,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
       case let .apiKey(apiKey):
         portal = try Portal(
           apiKey,
-          withRpcConfig: rpcConfig,
           featureFlags: featureFlags,
           apiHost: config.apiUrl,
           mpcHost: config.mpcUrl,
@@ -1196,25 +1192,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
     }
 
     return password
-  }
-
-  /// The SDK's default chains plus Arbitrum One, which Yield.xyz Perps signs its EIP-712 requests
-  /// through and funds and withdraws on. A custom `rpcConfig` replaces the defaults, so they are
-  /// listed again here.
-  private static func rpcConfig(apiHost: String) -> [String: String] {
-    [
-      "eip155:1": "https://\(apiHost)/rpc/v1/eip155/1", // Ethereum Mainnet
-      "eip155:137": "https://\(apiHost)/rpc/v1/eip155/137", // Polygon Mainnet
-      "eip155:8453": "https://\(apiHost)/rpc/v1/eip155/8453", // Base Mainnet
-      "eip155:42161": "https://\(apiHost)/rpc/v1/eip155/42161", // Arbitrum One (Yield.xyz Perps)
-      "eip155:80002": "https://\(apiHost)/rpc/v1/eip155/80002", // Polygon Amoy
-      "eip155:84532": "https://\(apiHost)/rpc/v1/eip155/84532", // Base Testnet
-      "eip155:11155111": "https://\(apiHost)/rpc/v1/eip155/11155111", // Ethereum Sepolia
-      "eip155:143": "https://\(apiHost)/rpc/v1/eip155/143", // Monad Mainnet
-      "eip155:10143": "https://\(apiHost)/rpc/v1/eip155/10143", // Monad Testnet
-      "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": "https://\(apiHost)/rpc/v1/solana/5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", // Solana Mainnet
-      "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": "https://\(apiHost)/rpc/v1/solana/EtWTRABZaYq6iMfeYKouRu166VU2xqa1" // Solana Devnet
-    ]
   }
 
   func startLoading() {

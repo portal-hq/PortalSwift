@@ -25,7 +25,7 @@ Possible Types of changes include:
     - History and health: `getActivity(params:)`, `getEvents(params:)`, `getEvent(eventId:)`, `getHealth()` and `getProvidersHealth()`.
     - `YieldXyzPerpsApiError.from(_:)` reads the Portal error `id` and `details` of a failed request, for example `INTEGRATION_REQUIRES_EOA_CLIENT` or `INTEGRATION_RESPONSE_SCHEMA_DRIFT`.
     - Perps requires a client without account abstraction, and runs on mainnet only.
-    - Add Arbitrum One (`eip155:42161`) to your `rpcConfig` to use Perps: it signs its EIP-712 requests through it, and funds and withdraws on it.
+- Arbitrum One (`eip155:42161`) in the default `rpcConfig`, so it is also offered to dApps through Portal Connect. Perps signs its EIP-712 requests through it, and funds and withdraws on it. If you pass your own `rpcConfig`, add `eip155:42161` to use Perps.
 
 ## 8.1.0 - 2026-10-08
 
