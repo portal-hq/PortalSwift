@@ -1141,30 +1141,7 @@ public class YieldXyzBorrow: YieldXyzBorrowProtocol {
   }
 
   private func fetchNextStep(_ context: ExecutionContext) async throws -> [YieldXyzBorrowTransaction] {
-    var rateLimitRetries = 0
-    var next: YieldXyzBorrowAction
-
-    while true {
-      do {
-        next = try await api.stepAction(actionId: context.actionId).data
-        break
-      } catch is CancellationError {
-        throw CancellationError()
-      } catch {
-        if YieldXyzRequestFailure.isRateLimit(error), rateLimitRetries < retryPolicy.rateLimitDelays.count {
-          try await YieldXyzExecutionClock.sleep(seconds: retryPolicy.rateLimitDelays[rateLimitRetries])
-          rateLimitRetries += 1
-          continue
-        }
-        throw executionError(
-          context,
-          reason: .nextStepFailed,
-          message: "Fetching the next step of action \(context.actionId) failed.",
-          underlyingError: error
-        )
-      }
-    }
-
+    let next = try await requestNextStep(context)
     try assertActionNotFailed(context, next)
 
     let hasTransactionToProcess = next.transactions.contains {
@@ -1190,6 +1167,30 @@ public class YieldXyzBorrow: YieldXyzBorrowProtocol {
       action: next
     ))
     return next.transactions
+  }
+
+  /// POSTs `/step`, retrying a rate-limited request.
+  private func requestNextStep(_ context: ExecutionContext) async throws -> YieldXyzBorrowAction {
+    var rateLimitRetries = 0
+    while true {
+      do {
+        return try await api.stepAction(actionId: context.actionId).data
+      } catch is CancellationError {
+        throw CancellationError()
+      } catch {
+        if YieldXyzRequestFailure.isRateLimit(error), rateLimitRetries < retryPolicy.rateLimitDelays.count {
+          try await YieldXyzExecutionClock.sleep(seconds: retryPolicy.rateLimitDelays[rateLimitRetries])
+          rateLimitRetries += 1
+          continue
+        }
+        throw executionError(
+          context,
+          reason: .nextStepFailed,
+          message: "Fetching the next step of action \(context.actionId) failed.",
+          underlyingError: error
+        )
+      }
+    }
   }
 
   /// Reads the action back until `check` returns a value. Rate limits, 5xx, transport failures and
