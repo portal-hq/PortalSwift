@@ -143,26 +143,6 @@ struct YieldXyzPerpsRetryPolicy {
   )
 }
 
-/// Ids of the actions an instance is executing. Two overlapping executions of one action would
-/// both read a transaction awaiting a signature and both sign it.
-final class YieldXyzPerpsInFlightActions {
-  private let lock = NSLock()
-  private var actionIds = Set<String>()
-
-  /// Claims `actionId` for one execution; `false` when another execution holds it.
-  func claim(_ actionId: String) -> Bool {
-    lock.lock()
-    defer { lock.unlock() }
-    return actionIds.insert(actionId).inserted
-  }
-
-  func release(_ actionId: String) {
-    lock.lock()
-    defer { lock.unlock() }
-    actionIds.remove(actionId)
-  }
-}
-
 /// Yield.xyz Perps provider implementation. Reach it through `portal.perps.yieldxyz`.
 public class YieldXyzPerps: YieldXyzPerpsProtocol {
   static let defaultSigningChainId = "eip155:42161"
@@ -179,7 +159,7 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
   private let api: PortalYieldXyzPerpsApiProtocol
   private let dependencies: YieldXyzPerpsExecutionDependencies
   private let retryPolicy: YieldXyzPerpsRetryPolicy
-  private let inFlightActions = YieldXyzPerpsInFlightActions()
+  private let inFlightActions = YieldXyzInFlightActions()
   private let logger = PortalLogger.shared
 
   /// Create an instance of YieldXyzPerps.
@@ -451,11 +431,7 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
   /// The idempotency key of an `EVM_TRANSACTION` leg, or `nil` when the transaction id cannot form a
   /// valid key (1–255 characters of `A-Z a-z 0-9 . _ ~ -`).
   static func idempotencyKey(forTransactionId transactionId: String) -> String? {
-    let key = idempotencyKeyPrefix + transactionId
-    guard !transactionId.isEmpty, (try? validateIdempotencyKey(key)) == key else {
-      return nil
-    }
-    return key
+    YieldXyzIdempotency.key(prefix: idempotencyKeyPrefix, transactionId: transactionId)
   }
 
   private func emit(_ context: ExecutionContext, _ progress: YieldXyzPerpsExecutionProgress) {
@@ -676,8 +652,8 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
     transaction: YieldXyzPerpsTransaction,
     index: Int
   ) async throws -> YieldXyzPerpsTransactionExecution {
-    let request: YieldXyzPerpsEvmTransactionRequest
-    switch YieldXyzPerpsPayloads.parseEvmTransactionRequest(transaction.signablePayload, defaultFrom: transaction.address) {
+    let request: YieldXyzEvmTransactionRequest
+    switch YieldXyzEvmTransactionParams.parse(transaction.signablePayload, defaultFrom: transaction.address) {
     case let .success(parsed):
       request = parsed
     case let .failure(problem):
@@ -717,7 +693,7 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
     if let suppliedBroadcastHash {
       // A leg the caller reports as already broadcast is confirmed and submitted from that hash
       // but never signed, so it cannot be broadcast twice.
-      guard YieldXyzPerpsPayloads.isTransactionHash(suppliedBroadcastHash) else {
+      guard YieldXyzEvmTransactionParams.isTransactionHash(suppliedBroadcastHash) else {
         throw transactionError(
           context,
           transaction,
@@ -731,7 +707,7 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
         context,
         transaction: transaction,
         index: index,
-        param: YieldXyzPerpsPayloads.toSendTransactionParam(request),
+        param: YieldXyzEvmTransactionParams.toSendTransactionParam(request),
         chainId: chainId,
         signAndSendTransaction: signAndSendTransaction
       )
@@ -898,7 +874,7 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
         message: "The signing request for transaction \(transaction.id) was rejected."
       )
     }
-    guard YieldXyzPerpsPayloads.isTransactionHash(returned) else {
+    guard YieldXyzEvmTransactionParams.isTransactionHash(returned) else {
       throw transactionError(
         context,
         transaction,
@@ -911,11 +887,11 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
 
   /// Real chains arrive as CAIP-2 in `network`; otherwise fall back to the numeric `chainId`.
   private func resolveEvmChainId(_ context: ExecutionContext, _ transaction: YieldXyzPerpsTransaction) throws -> String {
-    if YieldXyzPerpsPayloads.isEvmChainId(transaction.network) {
+    if YieldXyzEvmTransactionParams.isEvmChainId(transaction.network) {
       return transaction.network
     }
     let fromChainId = "eip155:\(transaction.chainId)"
-    if YieldXyzPerpsPayloads.isEvmChainId(fromChainId) {
+    if YieldXyzEvmTransactionParams.isEvmChainId(fromChainId) {
       return fromChainId
     }
     throw transactionError(
@@ -994,13 +970,13 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
         failure = error
       }
 
-      if YieldXyzPerpsRequestFailure.status(of: failure) == 429, rateLimitRetries < retryPolicy.rateLimitDelays.count {
+      if YieldXyzRequestFailure.status(of: failure) == 429, rateLimitRetries < retryPolicy.rateLimitDelays.count {
         try await Self.sleep(seconds: retryPolicy.rateLimitDelays[rateLimitRetries])
         rateLimitRetries += 1
         continue
       }
 
-      if !YieldXyzPerpsRequestFailure.isAmbiguous(failure) {
+      if !YieldXyzRequestFailure.isAmbiguous(failure) {
         throw transactionError(
           context,
           transaction,
@@ -1105,32 +1081,36 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
     check: (YieldXyzPerpsAction) -> T?,
     timeoutMessage: () -> String
   ) async throws -> T {
-    // Monotonic: a wall-clock change must not cut a wait short or stretch it.
-    let deadline = Self.now() + max(0, schedule.timeoutSeconds)
-    var interval = max(retryPolicy.minPollInterval, schedule.intervalSeconds)
     var consecutiveErrors = 0
-
-    while Self.now() < deadline {
-      var action: YieldXyzPerpsAction?
-      var failure: Error?
-      do {
-        action = try await api.getAction(actionId: context.actionId).data
-      } catch is CancellationError {
-        throw CancellationError()
-      } catch {
-        failure = error
-      }
-
-      if let action {
-        consecutiveErrors = 0
-        context.latestAction = action
-        emit(context, YieldXyzPerpsExecutionProgress(step: .polling, actionId: context.actionId, actionStatus: action.status))
-        if let value = check(action) {
-          return value
+    do {
+      return try await YieldXyzPollLoop.run(
+        intervalSeconds: schedule.intervalSeconds,
+        timeoutSeconds: schedule.timeoutSeconds,
+        minIntervalSeconds: retryPolicy.minPollInterval,
+        maxIntervalSeconds: retryPolicy.maxPollInterval
+      ) { () async throws -> YieldXyzPollStep<T> in
+        var action: YieldXyzPerpsAction?
+        var failure: Error?
+        do {
+          action = try await api.getAction(actionId: context.actionId).data
+        } catch is CancellationError {
+          throw CancellationError()
+        } catch {
+          failure = error
         }
-      } else {
+
+        if let action {
+          consecutiveErrors = 0
+          context.latestAction = action
+          emit(context, YieldXyzPerpsExecutionProgress(step: .polling, actionId: context.actionId, actionStatus: action.status))
+          if let value = check(action) {
+            return .stop(value)
+          }
+          return .continue
+        }
+
         consecutiveErrors += 1
-        let transient = failure.map(YieldXyzPerpsRequestFailure.isTransient) ?? true
+        let transient = failure.map(YieldXyzRequestFailure.isTransient) ?? true
         if !transient || consecutiveErrors >= retryPolicy.maxConsecutivePollErrors {
           throw YieldXyzPerpsExecutionError(
             reason: .pollingFailed,
@@ -1140,36 +1120,19 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
             underlyingError: failure
           )
         }
+        return .continue
       }
-
-      let remaining = deadline - Self.now()
-      if remaining <= 0 {
-        break
-      }
-      try await Self.sleep(seconds: min(interval, remaining))
-      interval = min(interval * 1.5, retryPolicy.maxPollInterval)
+    } catch is YieldXyzPollLoopTimeout {
+      throw YieldXyzPerpsExecutionError(
+        reason: .timeout,
+        message: timeoutMessage(),
+        actionId: context.actionId,
+        action: context.latestAction
+      )
     }
-
-    throw YieldXyzPerpsExecutionError(
-      reason: .timeout,
-      message: timeoutMessage(),
-      actionId: context.actionId,
-      action: context.latestAction
-    )
-  }
-
-  /// Seconds on a monotonic clock.
-  private static func now() -> TimeInterval {
-    ProcessInfo.processInfo.systemUptime
   }
 
   private static func sleep(seconds: TimeInterval) async throws {
-    guard seconds > 0, !seconds.isNaN else {
-      try Task.checkCancellation()
-      return
-    }
-    // Clamped so the nanosecond conversion cannot overflow UInt64 (about 584 years).
-    let nanoseconds = min(seconds, 18_000_000_000) * 1_000_000_000
-    try await Task.sleep(nanoseconds: UInt64(nanoseconds))
+    try await YieldXyzExecutionClock.sleep(seconds: seconds)
   }
 }

@@ -288,16 +288,16 @@ final class YieldXyzPerpsTests: XCTestCase {
   }
 
   func test_requestFailure_classification() {
-    XCTAssertTrue(YieldXyzPerpsRequestFailure.isTransient(PortalRequestsError.clientError("429 - {}", url: "")))
-    XCTAssertTrue(YieldXyzPerpsRequestFailure.isTransient(PortalRequestsError.internalServerError("503 - {}", url: "")))
-    XCTAssertTrue(YieldXyzPerpsRequestFailure.isTransient(URLError(.networkConnectionLost)))
-    XCTAssertFalse(YieldXyzPerpsRequestFailure.isTransient(PortalRequestsError.clientError("404 - {}", url: "")))
-    XCTAssertFalse(YieldXyzPerpsRequestFailure.isTransient(PortalRequestsError.unauthorized))
+    XCTAssertTrue(YieldXyzRequestFailure.isTransient(PortalRequestsError.clientError("429 - {}", url: "")))
+    XCTAssertTrue(YieldXyzRequestFailure.isTransient(PortalRequestsError.internalServerError("503 - {}", url: "")))
+    XCTAssertTrue(YieldXyzRequestFailure.isTransient(URLError(.networkConnectionLost)))
+    XCTAssertFalse(YieldXyzRequestFailure.isTransient(PortalRequestsError.clientError("404 - {}", url: "")))
+    XCTAssertFalse(YieldXyzRequestFailure.isTransient(PortalRequestsError.unauthorized))
 
-    XCTAssertTrue(YieldXyzPerpsRequestFailure.isAmbiguous(PortalRequestsError.internalServerError("502 - {}", url: "")))
-    XCTAssertTrue(YieldXyzPerpsRequestFailure.isAmbiguous(URLError(.timedOut)))
-    XCTAssertFalse(YieldXyzPerpsRequestFailure.isAmbiguous(PortalRequestsError.clientError("429 - {}", url: "")))
-    XCTAssertFalse(YieldXyzPerpsRequestFailure.isAmbiguous(PortalRequestsError.unauthorized))
-    XCTAssertFalse(YieldXyzPerpsRequestFailure.isAmbiguous(PortalCredentialError.sessionInvalidated))
+    XCTAssertTrue(YieldXyzRequestFailure.isAmbiguous(PortalRequestsError.internalServerError("502 - {}", url: "")))
+    XCTAssertTrue(YieldXyzRequestFailure.isAmbiguous(URLError(.timedOut)))
+    XCTAssertFalse(YieldXyzRequestFailure.isAmbiguous(PortalRequestsError.clientError("429 - {}", url: "")))
+    XCTAssertFalse(YieldXyzRequestFailure.isAmbiguous(PortalRequestsError.unauthorized))
+    XCTAssertFalse(YieldXyzRequestFailure.isAmbiguous(PortalCredentialError.sessionInvalidated))
   }
 }

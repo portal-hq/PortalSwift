@@ -26,6 +26,15 @@ Possible Types of changes include:
     - `YieldXyzPerpsApiError.from(_:)` reads the Portal error `id` and `details` of a failed request, for example `INTEGRATION_REQUIRES_EOA_CLIENT` or `INTEGRATION_RESPONSE_SCHEMA_DRIFT`.
     - Perps requires a client without account abstraction, and runs on mainnet only.
 - Arbitrum One (`eip155:42161`) in the default `rpcConfig`, so it is also offered to dApps through Portal Connect. Perps signs its EIP-712 requests through it, and funds and withdraws on it. If you pass your own `rpcConfig`, add `eip155:42161` to use Perps.
+- Yield.xyz Borrow: supply, borrow, repay and withdraw on lending markets such as Morpho Blue and Aave with the Portal wallet, through the new `portal.borrow.yieldxyz` namespace.
+    - Discovery: `getHealth()`, `getIntegrations()`, `getIntegration(integrationId:)`, `getMarkets(params:)` (pass `scope: .all` to list every market) and `getMarket(marketId:)`.
+    - Positions: `getPositions(params:)` and `getLiquidations(params:)`, including health factors and the actions available on each balance.
+    - Actions: `createAction(params:)` builds a lending action (`supply`, `borrow`, `repay`, `withdraw`, `enableCollateral`, `disableCollateral`, `supplyAndBorrow`) with its unsigned transactions and the predicted health factor and LTV; `getActions(params:)`, `getAction(actionId:)`, `stepAction(actionId:)` and `submitTransaction(transactionId:params:)` track, advance and submit it.
+    - `executeAction(params:options:)` and `signAndSubmitAction(_:options:)` sign every transaction of an action in order on its own chain, submit it, wait for Yield.xyz to confirm it, and continue through multi-step actions until the action succeeds, with progress reported through `onProgress`.
+    - Works with account-abstracted clients: the on-chain transaction that included the user operation is submitted to Yield.xyz.
+    - Transactions are sent with an idempotency key derived from the transaction, so a resumed action does not broadcast the same transaction again while Portal remembers the key (at least 24 hours). A transaction broadcast by an earlier attempt can be resumed from its hash with `broadcastHashes`. To sign a transaction again after its user operation failed, build a new action or set `useIdempotencyKeys` to `false`.
+    - `YieldXyzBorrowApiError.from(_:)` reads the Portal error `id` and `details` of a failed request, for example `INTEGRATION_RESPONSE_SCHEMA_DRIFT`.
+    - Every chain a transaction is signed on needs an RPC endpoint in `rpcConfig`, unless you pass your own signer in `signAndSendTransaction`.
 
 ## 8.1.0 - 2026-10-08
 
