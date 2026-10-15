@@ -145,10 +145,11 @@ public struct YieldXyzBorrowExecuteOptions {
   /// retry is a new signing request, so it asks for approval again when `autoApprove` is off. A
   /// transaction Portal refuses to send again fails with `transactionAlreadyBroadcast` (resume with
   /// `broadcastHashes`) or `signingFailed` naming the idempotency error. Portal also remembers a
-  /// send that failed, for example for insufficient funds, and refuses to retry it under the same
-  /// key (`IDEMPOTENT_REQUEST_PREVIOUSLY_FAILED`). To sign a transaction again on purpose, for
-  /// example after `userOperationFailed` or a failed send, build a new action (its transactions
-  /// get new keys) or set this to `false`.
+  /// send that failed or ended in an unknown state, and refuses to retry it under the same key
+  /// (`IDEMPOTENT_REQUEST_PREVIOUSLY_FAILED`); such a send may still have reached the chain. To sign
+  /// a transaction again on purpose, after `userOperationFailed` or once you have checked the chain
+  /// that a failed send did not go through, build a new action (its transactions get new keys) or
+  /// set this to `false`.
   public var useIdempotencyKeys: Bool
   /// Per-call signer. The chain then needs no `rpcConfig` entry.
   public var signAndSendTransaction: YieldXyzBorrowSignAndSendTransaction?
@@ -246,7 +247,10 @@ public enum YieldXyzBorrowExecutionErrorReason: String, Equatable {
   case signatureRejected = "SIGNATURE_REJECTED"
   /// The signer returned, or `broadcastHashes` supplied, a value that is not a 32-byte hex hash.
   case invalidTransactionHash = "INVALID_TRANSACTION_HASH"
-  /// Signing or broadcasting failed; `underlyingError` holds the cause.
+  /// Signing or broadcasting failed; `underlyingError` holds the cause. Without an idempotency key
+  /// (or once Portal no longer remembers it), the signer may still have broadcast the transaction
+  /// without returning its hash: there is then no `broadcastHash` to resume with, and a retry may
+  /// broadcast it a second time. Check the chain before signing it again.
   case signingFailed = "SIGNING_FAILED"
   /// Portal refused to broadcast the transaction again because its idempotency key shows it was
   /// already broadcast. Portal does not return that broadcast's hash: resume with the
