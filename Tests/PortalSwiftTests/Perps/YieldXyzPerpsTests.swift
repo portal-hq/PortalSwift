@@ -301,6 +301,44 @@ final class YieldXyzPerpsTests: XCTestCase {
     XCTAssertFalse(YieldXyzRequestFailure.isAmbiguous(PortalCredentialError.sessionInvalidated))
   }
 
+  func test_pollLoop_aZeroTimeoutTicksOnce_unlessTickingPastTheDeadlineIsOff() async throws {
+    var ticks = 0
+    do {
+      _ = try await YieldXyzPollLoop.run(intervalSeconds: 0.001, timeoutSeconds: 0, maxIntervalSeconds: 0.001) { () -> YieldXyzPollStep<Int> in
+        ticks += 1
+        return .continue
+      }
+      XCTFail("Expected a timeout")
+    } catch is YieldXyzPollLoopTimeout {}
+    XCTAssertEqual(ticks, 1)
+
+    ticks = 0
+    do {
+      _ = try await YieldXyzPollLoop.run(
+        intervalSeconds: 0.001,
+        timeoutSeconds: 0,
+        maxIntervalSeconds: 0.001,
+        ticksPastDeadline: false
+      ) { () -> YieldXyzPollStep<Int> in
+        ticks += 1
+        return .continue
+      }
+      XCTFail("Expected a timeout")
+    } catch is YieldXyzPollLoopTimeout {}
+    XCTAssertEqual(ticks, 0)
+  }
+
+  func test_cancellation_countsACancelledURLSessionRequestOnlyWhileTheTaskIsCancelled() async {
+    XCTAssertTrue(YieldXyzCancellation.isCancellation(CancellationError()))
+    XCTAssertFalse(YieldXyzCancellation.isCancellation(URLError(.cancelled)))
+    let cancelled = Task { () -> Bool in
+      withUnsafeCurrentTask { $0?.cancel() }
+      return YieldXyzCancellation.isCancellation(URLError(.cancelled))
+    }
+    let counted = await cancelled.value
+    XCTAssertTrue(counted)
+  }
+
   func test_requestFailure_aRequestNeverSentIsNeitherTransientNorAmbiguous() {
     let neverSent: [Error] = [
       YieldXyzPerpsError.emptyIdentifier(name: "actionId"),

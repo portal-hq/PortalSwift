@@ -250,8 +250,18 @@ public class YieldXyzBorrow: YieldXyzBorrowProtocol {
     params: YieldXyzBorrowCreateActionParams,
     options: YieldXyzBorrowExecuteOptions
   ) async throws -> YieldXyzBorrowExecutionResult {
-    let action = try await createAction(params: params).data
+    let action: YieldXyzBorrowAction
+    do {
+      action = try await createAction(params: params).data
+    } catch let error where Self.isCancellation(error) {
+      throw CancellationError()
+    }
     return try await signAndSubmitAction(action, options: options)
+  }
+
+  /// Whether `error` stops the execution as a cancellation (see `YieldXyzCancellation`).
+  static func isCancellation(_ error: Error) -> Bool {
+    YieldXyzCancellation.isCancellation(error)
   }
 
   public func signAndSubmitAction(
@@ -305,7 +315,7 @@ public class YieldXyzBorrow: YieldXyzBorrowProtocol {
           transactions: executions
         )
       }
-    } catch is CancellationError {
+    } catch let error where Self.isCancellation(error) {
       logger.warn("YieldXyzBorrow.signAndSubmitAction() - Execution of action \(actionId) was cancelled.")
       throw CancellationError()
     } catch {
@@ -449,7 +459,7 @@ public class YieldXyzBorrow: YieldXyzBorrowProtocol {
     var cause: Error?
     do {
       walletAddress = try await dependencies.getWalletAddress?()
-    } catch is CancellationError {
+    } catch let error where Self.isCancellation(error) {
       throw CancellationError()
     } catch {
       cause = error
@@ -719,14 +729,15 @@ public class YieldXyzBorrow: YieldXyzBorrowProtocol {
       do {
         returned = try await signAndSendTransaction(param, chainId, idempotencyKey)
         break
-      } catch is CancellationError {
+      } catch let error where Self.isCancellation(error) {
         throw CancellationError()
       } catch let error as PortalMpcError where idempotencyKey != nil && error.id == PortalIdempotencyErrorId.requestInProgress {
         guard inProgressRetries < retryPolicy.idempotencyInProgressDelays.count else {
+          // The send Portal is still processing may yet broadcast the transaction.
           throw executionError(
             context,
-            reason: .signingFailed,
-            message: "Portal is still processing the send of transaction \(transaction.id); resume the action later.",
+            reason: .broadcastOutcomeUnknown,
+            message: "Portal is still processing the send of transaction \(transaction.id) and may yet broadcast it; resume the action later.",
             transactionId: transaction.id,
             underlyingError: error
           )
@@ -742,13 +753,13 @@ public class YieldXyzBorrow: YieldXyzBorrowProtocol {
           underlyingError: error
         )
       } catch let error as PortalMpcError where idempotencyKey != nil && error.isIdempotencyRejection {
-        // Every later send of this transaction under the same key gets the same answer while Portal
-        // remembers the key, including after a send that failed: check the chain, then build a new
-        // action (its transactions get new keys) or send without a key.
+        // Portal cannot say whether the earlier send under this key broadcast the transaction, and
+        // gives every later send the same answer while it remembers the key, even once the cause (for
+        // example missing gas) is fixed.
         throw executionError(
           context,
-          reason: .signingFailed,
-          message: "Portal refused to send transaction \(transaction.id) again under its idempotency key (\(error.id ?? "unknown")); check the chain, then build a new action or set useIdempotencyKeys to false.",
+          reason: .broadcastOutcomeUnknown,
+          message: "Portal refused to send transaction \(transaction.id) under its idempotency key (\(error.id ?? "unknown")): an earlier send of it failed or has an unknown outcome, and Portal gives that answer for at least 24 hours. Check the chain for that send: if it was broadcast, resume with broadcastHashes; if not, build a new action, or resume this one with useIdempotencyKeys set to false.",
           transactionId: transaction.id,
           underlyingError: error
         )
@@ -847,7 +858,7 @@ public class YieldXyzBorrow: YieldXyzBorrowProtocol {
       hashes = try await resolveOnChainHashes(context, transaction, chainId: chainId, broadcastHash: broadcastHash, lookupEvmTransaction: lookupEvmTransaction)
       resolvedHashes = hashes
       submitResult = try await submitWithReconciliation(context, transaction, broadcastHash: broadcastHash, hashes: hashes)
-    } catch is CancellationError {
+    } catch let error where Self.isCancellation(error) {
       // The transaction is on-chain: keep its hash so the caller can resume with `broadcastHashes`.
       throw executionError(
         context,
@@ -901,12 +912,14 @@ public class YieldXyzBorrow: YieldXyzBorrowProtocol {
         intervalSeconds: context.options.pollOptions.intervalSeconds,
         timeoutSeconds: context.options.pollOptions.timeoutSeconds,
         minIntervalSeconds: retryPolicy.minPollInterval,
-        maxIntervalSeconds: retryPolicy.maxPollInterval
+        maxIntervalSeconds: retryPolicy.maxPollInterval,
+        // React Native parity: a zero timeout times out before reading, so nothing is signed.
+        ticksPastDeadline: false
       ) { () async throws -> YieldXyzPollStep<ResolvedHash> in
         let lookup: YieldXyzEvmTransactionLookup?
         do {
           lookup = try await lookupEvmTransaction(chainId, broadcastHash)
-        } catch is CancellationError {
+        } catch let error where Self.isCancellation(error) {
           throw CancellationError()
         } catch {
           // The Portal API answers 404 until the transaction or user operation is visible.
@@ -952,7 +965,7 @@ public class YieldXyzBorrow: YieldXyzBorrowProtocol {
         transactionId: transaction.id,
         hashes: hashes
       )
-    } catch is CancellationError {
+    } catch let error where Self.isCancellation(error) {
       throw CancellationError()
     } catch {
       throw executionError(
@@ -1013,7 +1026,7 @@ public class YieldXyzBorrow: YieldXyzBorrowProtocol {
         return result
       } catch let error as YieldXyzBorrowExecutionError {
         throw error
-      } catch is CancellationError {
+      } catch let error where Self.isCancellation(error) {
         throw CancellationError()
       } catch {
         failure = error
@@ -1066,7 +1079,7 @@ public class YieldXyzBorrow: YieldXyzBorrowProtocol {
     let action: YieldXyzBorrowAction
     do {
       action = try await api.getAction(actionId: context.actionId).data
-    } catch is CancellationError {
+    } catch let error where Self.isCancellation(error) {
       throw CancellationError()
     } catch {
       logger.warn("YieldXyzBorrow - Could not read action \(context.actionId) to reconcile a failed submission: \(error.localizedDescription)")
@@ -1177,7 +1190,7 @@ public class YieldXyzBorrow: YieldXyzBorrowProtocol {
     while true {
       do {
         return try await api.stepAction(actionId: context.actionId).data
-      } catch is CancellationError {
+      } catch let error where Self.isCancellation(error) {
         throw CancellationError()
       } catch {
         if YieldXyzRequestFailure.isRateLimit(error), rateLimitRetries < retryPolicy.rateLimitDelays.count {
@@ -1211,13 +1224,15 @@ public class YieldXyzBorrow: YieldXyzBorrowProtocol {
         intervalSeconds: context.options.pollOptions.intervalSeconds,
         timeoutSeconds: context.options.pollOptions.timeoutSeconds,
         minIntervalSeconds: retryPolicy.minPollInterval,
-        maxIntervalSeconds: retryPolicy.maxPollInterval
+        maxIntervalSeconds: retryPolicy.maxPollInterval,
+        // React Native parity: a zero timeout times out before reading, so nothing is signed.
+        ticksPastDeadline: false
       ) { () async throws -> YieldXyzPollStep<T> in
         var action: YieldXyzBorrowAction?
         var failure: Error?
         do {
           action = try await api.getAction(actionId: context.actionId).data
-        } catch is CancellationError {
+        } catch let error where Self.isCancellation(error) {
           throw CancellationError()
         } catch {
           failure = error

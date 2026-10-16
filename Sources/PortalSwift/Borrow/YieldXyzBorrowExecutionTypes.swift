@@ -126,7 +126,8 @@ public struct YieldXyzBorrowPollOptions: Equatable {
   /// Seconds between reads (at least 0.25); grows by 1.5× after each read, up to 10 seconds.
   public var intervalSeconds: TimeInterval
   /// Applies to each wait separately: each wait for a transaction to be signable, to be resolved
-  /// on-chain or to be confirmed by Yield.xyz, and each wait for the step's outcome.
+  /// on-chain or to be confirmed by Yield.xyz, and each wait for the step's outcome. A zero timeout
+  /// fails with `timeout` before the action is read, so nothing is signed.
   public var timeoutSeconds: TimeInterval
 
   public init(intervalSeconds: TimeInterval = 2, timeoutSeconds: TimeInterval = 600) {
@@ -149,12 +150,12 @@ public struct YieldXyzBorrowExecuteOptions {
   /// A send Portal reports as still in progress is retried a few times with the same key; each
   /// retry is a new signing request, so it asks for approval again when `autoApprove` is off. A
   /// transaction Portal refuses to send again fails with `transactionAlreadyBroadcast` (resume with
-  /// `broadcastHashes`) or `signingFailed` naming the idempotency error. Portal also remembers a
-  /// send that failed or ended in an unknown state, and refuses to retry it under the same key
-  /// (`IDEMPOTENT_REQUEST_PREVIOUSLY_FAILED`); such a send may still have reached the chain. To sign
-  /// a transaction again on purpose, after `userOperationFailed` or once you have checked the chain
-  /// that a failed send did not go through, build a new action (its transactions get new keys) or
-  /// set this to `false`.
+  /// `broadcastHashes`) or, when Portal cannot say whether the earlier send broadcast it,
+  /// `broadcastOutcomeUnknown` naming the idempotency error. That includes a transaction whose
+  /// earlier send failed, for example for lack of gas: Portal refuses its key even once the cause
+  /// is fixed. To sign a transaction again, after `userOperationFailed` or once you have checked the
+  /// chain that the earlier send did not go through, build a new action (its transactions get new
+  /// keys) or set this to `false`.
   public var useIdempotencyKeys: Bool
   /// Per-call signer. The chain then needs no `rpcConfig` entry.
   public var signAndSendTransaction: YieldXyzBorrowSignAndSendTransaction?
@@ -256,12 +257,19 @@ public enum YieldXyzBorrowExecutionErrorReason: String, Equatable {
   /// Signing or broadcasting failed; `underlyingError` holds the cause. Without an idempotency key
   /// (or once Portal no longer remembers it), the signer may still have broadcast the transaction
   /// without returning its hash: there is then no `broadcastHash` to resume with, and a retry may
-  /// broadcast it a second time. Check the chain before signing it again.
+  /// broadcast it a second time. Check the chain before signing it again. With a key, a send whose
+  /// outcome Portal cannot confirm fails with `broadcastOutcomeUnknown` instead.
   case signingFailed = "SIGNING_FAILED"
   /// Portal refused to broadcast the transaction again because its idempotency key shows it was
   /// already broadcast. Portal does not return that broadcast's hash: resume with the
   /// `broadcastHash` the `confirming` progress event reported, or look the transaction up on-chain.
   case transactionAlreadyBroadcast = "TRANSACTION_ALREADY_BROADCAST"
+  /// Portal cannot say whether the transaction was broadcast: an earlier send under its idempotency
+  /// key is still in progress, failed, or has an unknown outcome. Nothing here proves the
+  /// transaction was not sent, so do not build a new action blindly: check the chain, then resume
+  /// with `broadcastHashes` if it was broadcast, or else build a new action or resume with
+  /// `useIdempotencyKeys` set to `false`. `underlyingError` holds Portal's idempotency error.
+  case broadcastOutcomeUnknown = "BROADCAST_OUTCOME_UNKNOWN"
   /// The user operation was included on-chain but did not succeed. It was already processed:
   /// passing its `broadcastHash` in `broadcastHashes` only reproduces this failure, and signing the
   /// transaction again needs a new action, or `useIdempotencyKeys` set to `false`.

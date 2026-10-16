@@ -1768,6 +1768,18 @@ final class YieldXyzBorrowExecutionTests: XCTestCase {
     XCTAssertEqual(signer.calls.count, 0)
   }
 
+  func test_aZeroTimeoutTimesOutBeforeReadingTheAction_soNothingIsSigned() async throws {
+    let action = singleTransactionAction()
+    fakeBackend(action)
+
+    _ = await expectFailure(.timeout) {
+      try await self.execute(action, self.options(poll: YieldXyzBorrowPollOptions(intervalSeconds: 0.005, timeoutSeconds: 0)))
+    }
+
+    XCTAssertEqual(api.getActionCallsCount, 0)
+    XCTAssertEqual(signer.calls.count, 0)
+  }
+
   func test_aLookupTimeoutDoesNotReportAnEarlierTransientErrorAsItsCause() async throws {
     let action = singleTransactionAction()
     serve(action)
@@ -2006,7 +2018,7 @@ final class YieldXyzBorrowExecutionTests: XCTestCase {
     signer.results = []
     signer.defaultResult = .failure(idempotencyError(PortalIdempotencyErrorId.requestInProgress))
 
-    let error = await expectFailure(.signingFailed) { try await self.execute(self.singleTransactionAction()) }
+    let error = await expectFailure(.broadcastOutcomeUnknown) { try await self.execute(self.singleTransactionAction()) }
 
     XCTAssertEqual(signer.calls.count, 4)
     XCTAssertTrue(error?.message.contains("resume the action later") ?? false)
@@ -2024,13 +2036,34 @@ final class YieldXyzBorrowExecutionTests: XCTestCase {
     XCTAssertEqual(lookup.callsCount, 0)
   }
 
-  func test_failsWithSigningFailedOnAnyOtherIdempotencyRejection() async throws {
+  func test_failsWithBroadcastOutcomeUnknownOnAnyOtherIdempotencyRejection() async throws {
+    for id in [
+      PortalIdempotencyErrorId.requestPreviouslyFailed,
+      PortalIdempotencyErrorId.requestUnexpectedState,
+      PortalIdempotencyErrorId.txMissing,
+      PortalIdempotencyErrorId.keyReused
+    ] {
+      resetState()
+      serve(singleTransactionAction())
+      signer.results = [.failure(idempotencyError(id))]
+
+      let error = await expectFailure(.broadcastOutcomeUnknown) { try await self.execute(self.singleTransactionAction()) }
+
+      XCTAssertTrue(error?.message.contains(id) ?? false, id)
+      XCTAssertEqual(error?.transactionId, "tx-approval", id)
+      XCTAssertEqual(signer.calls.count, 1, id)
+      XCTAssertEqual(api.submitTransactionCallsCount, 0, id)
+    }
+  }
+
+  func test_failsWithSigningFailedWhenASendWithAKeyFailsForAnyOtherReason() async throws {
     serve(singleTransactionAction())
-    signer.results = [.failure(idempotencyError("IDEMPOTENCY_KEY_REUSED"))]
+    signer.results = [.failure(PortalMpcError(PortalError(code: nil, id: "SOMETHING_ELSE", message: "boom")))]
 
     let error = await expectFailure(.signingFailed) { try await self.execute(self.singleTransactionAction()) }
 
-    XCTAssertTrue(error?.message.contains("IDEMPOTENCY_KEY_REUSED") ?? false)
+    XCTAssertEqual(signer.calls.first?.idempotencyKey, "yieldxyz-borrow-tx-approval")
+    XCTAssertNotNil(error?.underlyingError)
   }
 
   func test_afterAFailedUserOperation_signingAgainNeedsTheOptOut() async throws {
@@ -2055,6 +2088,99 @@ final class YieldXyzBorrowExecutionTests: XCTestCase {
   }
 
   // MARK: - Cancellation (native)
+
+  /// What URLSession throws for a request whose task was cancelled: the task is cancelled first.
+  private func cancelledRequest() -> URLError {
+    withUnsafeCurrentTask { task in
+      task?.cancel()
+    }
+    return URLError(.cancelled)
+  }
+
+  /// Runs the execution in its own task, which a `cancelledRequest()` cancels, and returns the
+  /// error it ends with.
+  private func executionErrorInOwnTask(_ action: YieldXyzBorrowAction) async -> Error? {
+    let borrow = self.borrow!
+    let options = self.options()
+    let task = Task { try await borrow.signAndSubmitAction(action, options: options) }
+    do {
+      _ = try await task.value
+      return nil
+    } catch {
+      return error
+    }
+  }
+
+  func test_urlSessionCancellation_ofARead_stopsWithCancellationError() async throws {
+    let action = singleTransactionAction()
+    api.getActionHandler = { [unowned self] _ in throw self.cancelledRequest() }
+
+    let error = await executionErrorInOwnTask(action)
+
+    XCTAssertTrue(error is CancellationError, "\(String(describing: error))")
+    XCTAssertEqual(api.getActionCallsCount, 1)
+    XCTAssertEqual(signer.calls.count, 0)
+  }
+
+  func test_urlSessionCancellation_ofTheNextStep_stopsWithCancellationError() async throws {
+    let stepOne = F.borrowAction(transactions: [F.approvalTransaction()], hasNextStep: true, totalSteps: 2)
+    let stepTwo = F.borrowAction(transactions: [F.supplyTransaction(id: "tx-step-2")], currentStep: 2, totalSteps: 2)
+    TwoStepBackend(stepOne, stepTwo).install(on: api)
+    api.stepActionHandler = { [unowned self] _ in throw self.cancelledRequest() }
+
+    let error = await executionErrorInOwnTask(stepOne)
+
+    XCTAssertTrue(error is CancellationError, "\(String(describing: error))")
+    XCTAssertEqual(api.stepActionCallsCount, 1)
+  }
+
+  func test_urlSessionCancellation_ofASubmit_keepsTheBroadcastHash() async throws {
+    let action = singleTransactionAction()
+    fakeBackend(action)
+    api.submitTransactionHandler = { [unowned self] _, _ in throw self.cancelledRequest() }
+
+    let error = await executionErrorInOwnTask(action) as? YieldXyzBorrowExecutionError
+
+    XCTAssertEqual(error?.reason, .submitOutcomeUnknown)
+    XCTAssertEqual(error?.broadcastHash, F.approvalHash)
+    XCTAssertTrue(error?.underlyingError is CancellationError)
+  }
+
+  func test_urlSessionCancellation_ofCreateAction_stopsWithCancellationError() async throws {
+    api.createActionError = URLError(.cancelled)
+    let borrow = self.borrow!
+    let params = YieldXyzBorrowCreateActionParams(
+      integrationId: "aave-borrow",
+      action: .supply,
+      address: F.wallet,
+      args: YieldXyzBorrowActionArguments(marketId: F.marketId, amount: "5")
+    )
+    let options = self.options()
+
+    let task = Task {
+      // URLSession throws `URLError(.cancelled)` once the task is cancelled.
+      withUnsafeCurrentTask { $0?.cancel() }
+      return try await borrow.executeAction(params: params, options: options)
+    }
+    do {
+      _ = try await task.value
+      XCTFail("Expected the execution to be cancelled.")
+    } catch {
+      XCTAssertTrue(error is CancellationError, "\(error)")
+    }
+  }
+
+  func test_aCancelledRequestWhileTheTaskRuns_isAnOrdinaryAmbiguousFailure() async throws {
+    let action = singleTransactionAction()
+    fakeBackend(action).submitFailures = [URLError(.cancelled)]
+
+    let result = try await execute(action)
+
+    // Reconciled like any transport failure: the hash is resubmitted once.
+    XCTAssertEqual(result.status, .success)
+    XCTAssertEqual(api.submitTransactionCallsCount, 2)
+    XCTAssertEqual(signer.calls.count, 1)
+  }
 
   func test_cancellationBeforeABroadcast_stopsWithCancellationError() async throws {
     let action = singleTransactionAction()
