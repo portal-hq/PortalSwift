@@ -30,6 +30,9 @@ final class FakePerpsBackend: PortalYieldXyzPerpsApiProtocol {
   var scriptedReads: [Swift.Result<YieldXyzPerpsAction, Error>] = []
   var scriptedSubmits: [Swift.Result<YieldXyzPerpsSubmitResult, Error>] = []
   var createActionError: Error?
+  /// URLSession throws `URLError(.cancelled)` for a request whose task was cancelled. A scripted
+  /// `URLError(.cancelled)` cancels the current task first, as that would, unless this is `false`.
+  var cancelsTaskOnCancelledRequest = true
   let log: PerpsCallLog
 
   private(set) var submitted: [YieldXyzPerpsSubmitTransactionParams] = []
@@ -53,7 +56,7 @@ final class FakePerpsBackend: PortalYieldXyzPerpsApiProtocol {
     getActionCallsCount += 1
     log.append("read")
     if !scriptedReads.isEmpty {
-      return try YieldXyzPerpsResponse(data: scriptedReads.removeFirst().get())
+      return try YieldXyzPerpsResponse(data: resolve(scriptedReads.removeFirst()))
     }
     return YieldXyzPerpsResponse(data: currentAction())
   }
@@ -62,7 +65,7 @@ final class FakePerpsBackend: PortalYieldXyzPerpsApiProtocol {
     submitted.append(params)
     log.append("submit:\(params.transactionId)")
     if !scriptedSubmits.isEmpty {
-      let result = try scriptedSubmits.removeFirst().get()
+      let result = try resolve(scriptedSubmits.removeFirst())
       if result.status != .failed {
         statuses[params.transactionId] = .confirmed
       }
@@ -75,9 +78,20 @@ final class FakePerpsBackend: PortalYieldXyzPerpsApiProtocol {
   func createAction(request: YieldXyzPerpsCreateActionRequest) async throws -> YieldXyzPerpsCreateActionResponse {
     createActionRequests.append(request)
     if let createActionError {
-      throw createActionError
+      try resolve(Swift.Result<Void, Error>.failure(createActionError))
     }
     return YieldXyzPerpsResponse(data: initial)
+  }
+
+  private func resolve<T>(_ result: Swift.Result<T, Error>) throws -> T {
+    if case let .failure(error) = result, (error as? URLError)?.code == .cancelled, cancelsTaskOnCancelledRequest {
+      withUnsafeCurrentTask { task in
+        if let task {
+          task.cancel()
+        }
+      }
+    }
+    return try result.get()
   }
 
   func getProviders() async throws -> YieldXyzPerpsGetProvidersResponse { YieldXyzPerpsResponse(data: []) }
@@ -676,11 +690,11 @@ final class YieldXyzPerpsExecutionTests: XCTestCase {
     XCTAssertEqual(result.transactions.first?.transactionHash, Fixtures.fundingTxHash)
   }
 
-  func test_idempotency_givesUpOnASendThatStaysInProgress() async {
+  func test_idempotency_givesUpOnASendThatStaysInProgress_withoutClaimingNothingWasSent() async {
     setBackend(Fixtures.perpsAction(transactions: [Fixtures.fundingTransaction()]))
     signers.scriptedSends = Array(repeating: .failure(mpcError(PortalIdempotencyErrorId.requestInProgress)), count: 4)
 
-    let error = await expectFailure(.signingFailed)
+    let error = await expectFailure(.broadcastOutcomeUnknown)
 
     XCTAssertEqual(signers.sends.count, 4)
     XCTAssertEqual((error?.underlyingError as? PortalMpcError)?.id, PortalIdempotencyErrorId.requestInProgress)
@@ -700,18 +714,28 @@ final class YieldXyzPerpsExecutionTests: XCTestCase {
     XCTAssertTrue(backend.submitted.isEmpty)
   }
 
-  func test_idempotency_reportsOtherRejectionsAsSigningFailures_namingTheId() async {
-    setBackend(Fixtures.perpsAction(transactions: [Fixtures.fundingTransaction()]))
-    signers.scriptedSends = [.failure(mpcError(PortalIdempotencyErrorId.requestPreviouslyFailed))]
+  func test_idempotency_reportsAnUncertainRejectionAsBroadcastOutcomeUnknown_namingTheId() async {
+    let uncertain = [
+      PortalIdempotencyErrorId.requestPreviouslyFailed,
+      PortalIdempotencyErrorId.requestUnexpectedState,
+      PortalIdempotencyErrorId.txMissing,
+      PortalIdempotencyErrorId.keyReused
+    ]
+    for id in uncertain {
+      resetDoubles()
+      setBackend(Fixtures.perpsAction(transactions: [Fixtures.fundingTransaction()]))
+      signers.scriptedSends = [.failure(mpcError(id))]
 
-    let error = await expectFailure(.signingFailed)
+      let error = await expectFailure(.broadcastOutcomeUnknown)
 
-    XCTAssertEqual((error?.underlyingError as? PortalMpcError)?.id, PortalIdempotencyErrorId.requestPreviouslyFailed)
-    XCTAssertTrue(error?.message.contains(PortalIdempotencyErrorId.requestPreviouslyFailed) == true, error?.message ?? "")
-    // The message names both ways forward: resuming from a broadcast hash, or sending the leg anew.
-    XCTAssertTrue(error?.message.contains("broadcastHashes") == true, error?.message ?? "")
-    XCTAssertTrue(error?.message.contains("useIdempotencyKeys set to false") == true, error?.message ?? "")
-    XCTAssertEqual(signers.sends.count, 1)
+      XCTAssertEqual((error?.underlyingError as? PortalMpcError)?.id, id)
+      XCTAssertTrue(error?.message.contains(id) == true, error?.message ?? "")
+      // The message names both ways forward: resuming from a broadcast hash, or sending the leg anew.
+      XCTAssertTrue(error?.message.contains("broadcastHashes") == true, error?.message ?? "")
+      XCTAssertTrue(error?.message.contains("useIdempotencyKeys set to false") == true, error?.message ?? "")
+      XCTAssertEqual(signers.sends.count, 1, id)
+      XCTAssertTrue(backend.submitted.isEmpty, id)
+    }
   }
 
   func test_idempotency_stopsWhenARetriedSendTurnsOutAlreadyBroadcast() async {
@@ -1337,5 +1361,111 @@ final class YieldXyzPerpsExecutionTests: XCTestCase {
     } catch {
       XCTAssertTrue(error is CancellationError, "\(error)")
     }
+  }
+
+  // MARK: Cancellation as URLSession reports it
+
+  /// Runs the execution in its own task, which a scripted `URLError(.cancelled)` cancels, and
+  /// returns the error it ends with.
+  private func executionErrorInOwnTask(_ action: YieldXyzPerpsAction? = nil) async -> Error? {
+    let perps = self.perps!
+    let action = action ?? backend.initial
+    let fastOptions = options()
+    let task = Task { try await perps.signAndSubmitAction(action, options: fastOptions) }
+    do {
+      _ = try await task.value
+      return nil
+    } catch {
+      return error
+    }
+  }
+
+  func test_urlSessionCancellation_ofASignatureSubmit_stopsWithCancellationError() async {
+    backend.scriptedSubmits = [.failure(URLError(.cancelled))]
+
+    let error = await executionErrorInOwnTask()
+
+    XCTAssertTrue(error is CancellationError, "\(String(describing: error))")
+    XCTAssertEqual(backend.submitted.count, 1)
+    // Stopped at once: no read-back to reconcile the submission.
+    XCTAssertEqual(backend.getActionCallsCount, 1)
+  }
+
+  func test_urlSessionCancellation_ofAHashSubmit_keepsTheBroadcastHash() async {
+    setBackend(Fixtures.perpsAction(transactions: [Fixtures.fundingTransaction()]))
+    backend.scriptedSubmits = [.failure(URLError(.cancelled))]
+
+    let error = await executionErrorInOwnTask() as? YieldXyzPerpsExecutionError
+
+    XCTAssertEqual(error?.reason, .submitOutcomeUnknown)
+    XCTAssertEqual(error?.broadcastHash, Fixtures.fundingTxHash)
+    XCTAssertTrue(error?.underlyingError is CancellationError)
+  }
+
+  func test_urlSessionCancellation_ofARead_stopsWithCancellationError() async {
+    backend.scriptedReads = [.failure(URLError(.cancelled))]
+
+    let error = await executionErrorInOwnTask()
+
+    XCTAssertTrue(error is CancellationError, "\(String(describing: error))")
+    XCTAssertTrue(signers.typedDataRequests.isEmpty)
+  }
+
+  func test_urlSessionCancellation_ofCreateAction_stopsWithCancellationError() async {
+    backend.createActionError = URLError(.cancelled)
+    let perps = self.perps!
+    let params = YieldXyzPerpsCreateActionParams(providerId: "hyperliquid", action: .open, args: YieldXyzPerpsActionArgs(), address: Fixtures.wallet)
+    let fastOptions = options()
+
+    let task = Task { try await perps.executeAction(params: params, options: fastOptions) }
+    do {
+      _ = try await task.value
+      XCTFail("Expected the execution to be cancelled.")
+    } catch {
+      XCTAssertTrue(error is CancellationError, "\(error)")
+    }
+  }
+
+  func test_aCancelledRequestWhileTheTaskRuns_isAnOrdinaryAmbiguousFailure() async {
+    backend.cancelsTaskOnCancelledRequest = false
+    backend.scriptedSubmits = [.failure(URLError(.cancelled))]
+
+    let error = await expectFailure(.submitOutcomeUnknown)
+
+    XCTAssertEqual(error?.underlyingError as? URLError, URLError(.cancelled))
+    // Reconciled like any transport failure, and the signature is not resubmitted.
+    XCTAssertEqual(backend.getActionCallsCount, 2)
+    XCTAssertEqual(backend.submitted.count, 1)
+  }
+
+  // MARK: Poll schedule edges
+
+  func test_aZeroTimeoutStillReadsTheActionOnce_thenSigns() async throws {
+    let result = try await execute(nil, options(pollAction: false, timeoutSeconds: 0))
+
+    XCTAssertEqual(backend.getActionCallsCount, 1)
+    XCTAssertEqual(signers.typedDataRequests.count, 1)
+    XCTAssertEqual(result.transactions.map(\.transactionId), ["tx-order-1"])
+  }
+
+  func test_aZeroTimeoutStillTracksTheActionToItsFinalStatus() async throws {
+    let result = try await execute(nil, options(timeoutSeconds: 0))
+
+    XCTAssertEqual(result.status, .success)
+  }
+
+  func test_withoutPolling_signsTransactionsTheReadBackAddsToAStaleAction() async throws {
+    let current = Fixtures.perpsAction(transactions: [
+      Fixtures.orderTransaction(id: "tx-order-1"),
+      Fixtures.orderTransaction(id: "tx-order-2")
+    ])
+    setBackend(current)
+    let stale = Fixtures.perpsAction(transactions: [Fixtures.orderTransaction(id: "tx-order-1")])
+
+    let result = try await execute(stale, options(pollAction: false))
+
+    XCTAssertEqual(backend.submitted.map(\.transactionId), ["tx-order-1", "tx-order-2"])
+    XCTAssertEqual(signers.typedDataRequests.count, 2)
+    XCTAssertEqual(result.transactions.map(\.transactionId), ["tx-order-1", "tx-order-2"])
   }
 }

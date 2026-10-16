@@ -82,10 +82,10 @@ public protocol YieldXyzPerpsProtocol: AnyObject {
   /// in `broadcastHashes` when resuming. A call made while another call on this instance is still
   /// executing the same action fails with `actionInProgress` and signs nothing.
   ///
-  /// Cancelling the surrounding task stops the execution with `CancellationError`, except once an
-  /// on-chain leg is broadcast: then it fails with `submitOutcomeUnknown` carrying that leg's
-  /// `broadcastHash`. The `confirming` progress event also reports the hash as soon as the leg is
-  /// broadcast.
+  /// Cancelling the surrounding task stops the execution with `CancellationError`, except between
+  /// an on-chain leg's broadcast and the submission of its hash: then it fails with
+  /// `submitOutcomeUnknown` carrying that leg's `broadcastHash`. The `confirming` progress event
+  /// also reports the hash as soon as the leg is broadcast.
   func signAndSubmitAction(_ action: YieldXyzPerpsAction, options: YieldXyzPerpsExecuteOptions) async throws -> YieldXyzPerpsExecutionResult
 }
 
@@ -322,7 +322,12 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
     params: YieldXyzPerpsCreateActionParams,
     options: YieldXyzPerpsExecuteOptions
   ) async throws -> YieldXyzPerpsExecutionResult {
-    let action = try await createAction(params: params).data
+    let action: YieldXyzPerpsAction
+    do {
+      action = try await createAction(params: params).data
+    } catch let error where Self.isCancellation(error) {
+      throw CancellationError()
+    }
     return try await signAndSubmitAction(action, options: options)
   }
 
@@ -372,7 +377,15 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
         }
 
         // A final status read back before a signature needs no further polling.
-        guard let pollOptions, !Self.finalActionStatuses.contains(context.latestAction.status) else {
+        if Self.finalActionStatuses.contains(context.latestAction.status) {
+          break
+        }
+        // A read-back can list transactions the pass above never saw, for example when the action
+        // passed in is stale: sign them now, without waiting, whether or not the action is polled.
+        if Self.hasTransactionsToSign(context.latestAction, processed: processed) {
+          continue
+        }
+        guard let pollOptions else {
           break
         }
         context.latestAction = try await pollForProgress(context, processed: processed, pollOptions: pollOptions)
@@ -394,7 +407,7 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
         status: finalAction.status,
         transactions: executions
       )
-    } catch is CancellationError {
+    } catch let error where Self.isCancellation(error) {
       logger.warn("YieldXyzPerps.signAndSubmitAction() - Execution of action \(actionId) was cancelled.")
       throw CancellationError()
     } catch {
@@ -448,6 +461,22 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
     signableTransactionStatuses.contains(transaction.status)
   }
 
+  /// Whether `action` lists a transaction awaiting a signature that this execution has not
+  /// processed yet.
+  private static func hasTransactionsToSign(_ action: YieldXyzPerpsAction, processed: Set<String>) -> Bool {
+    action.transactions.contains { !processed.contains($0.id) && awaitsSignature($0) }
+  }
+
+  /// Whether `error` stops the execution as a cancellation. URLSession reports a cancelled task as
+  /// `URLError(.cancelled)`, not `CancellationError`; that counts only while the surrounding task
+  /// is cancelled, so a request cancelled for any other reason stays an ordinary failure.
+  private static func isCancellation(_ error: Error) -> Bool {
+    if error is CancellationError {
+      return true
+    }
+    return (error as? URLError)?.code == .cancelled && Task.isCancelled
+  }
+
   private static func isBlank(_ value: String?) -> Bool {
     value?.isEmpty ?? true
   }
@@ -492,7 +521,7 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
     var cause: Error?
     do {
       walletAddress = try await dependencies.getWalletAddress?()
-    } catch is CancellationError {
+    } catch let error where Self.isCancellation(error) {
       throw CancellationError()
     } catch {
       cause = error
@@ -624,7 +653,7 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
         typedData: typedDataJSON,
         chainId: chainId
       ))
-    } catch is CancellationError {
+    } catch let error where Self.isCancellation(error) {
       throw CancellationError()
     } catch {
       throw transactionError(
@@ -755,7 +784,7 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
     let confirmed: Bool
     do {
       confirmed = try await waitForConfirmation(transactionHash, chainId)
-    } catch is CancellationError {
+    } catch let error where Self.isCancellation(error) {
       // The leg is on-chain and may still confirm: it has not failed, so keep its hash for a resume
       // with `broadcastHashes` instead of reporting it as not confirmed.
       throw transactionError(
@@ -798,7 +827,7 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
     let submitResult: YieldXyzPerpsSubmitResult?
     do {
       submitResult = try await submitWithReconciliation(context, transaction, body: .transactionHash(transactionHash))
-    } catch is CancellationError {
+    } catch let error where Self.isCancellation(error) {
       // The leg is on-chain: keep its hash so the caller can resume with `broadcastHashes`.
       throw transactionError(
         context,
@@ -862,15 +891,16 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
       do {
         returned = try await signAndSendTransaction(param, chainId, idempotencyKey)
         break
-      } catch is CancellationError {
+      } catch let error where Self.isCancellation(error) {
         throw CancellationError()
       } catch let error as PortalMpcError where idempotencyKey != nil && error.id == PortalIdempotencyErrorId.requestInProgress {
         guard inProgressRetries < retryPolicy.idempotencyInProgressDelays.count else {
+          // The send Portal is still processing may yet broadcast the leg.
           throw transactionError(
             context,
             transaction,
-            reason: .signingFailed,
-            message: "Portal is still processing the send of transaction \(transaction.id); resume the action later.",
+            reason: .broadcastOutcomeUnknown,
+            message: "Portal is still processing the send of transaction \(transaction.id) and may yet broadcast it; resume the action later.",
             underlyingError: error
           )
         }
@@ -885,12 +915,13 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
           underlyingError: error
         )
       } catch let error as PortalMpcError where idempotencyKey != nil && error.isIdempotencyRejection {
-        // Every later send of this leg under the same key gets the same answer while Portal
-        // remembers the key, even once the cause (for example missing gas) is fixed.
+        // Portal cannot say whether the earlier send under this key broadcast the leg, and gives
+        // every later send the same answer while it remembers the key, even once the cause (for
+        // example missing gas) is fixed.
         throw transactionError(
           context,
           transaction,
-          reason: .signingFailed,
+          reason: .broadcastOutcomeUnknown,
           message: "Portal refused to send transaction \(transaction.id) under its idempotency key (\(error.id ?? "unknown")): an earlier send of this leg failed or has an unknown outcome, and Portal gives that answer for at least 24 hours. Check the chain for that send: if it was broadcast, resume with broadcastHashes; if not, build a new action, or resume this one with useIdempotencyKeys set to false.",
           underlyingError: error
         )
@@ -1003,7 +1034,7 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
         return result
       } catch let error as YieldXyzPerpsExecutionError {
         throw error
-      } catch is CancellationError {
+      } catch let error where Self.isCancellation(error) {
         throw CancellationError()
       } catch {
         failure = error
@@ -1054,7 +1085,7 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
     let action: YieldXyzPerpsAction
     do {
       action = try await api.getAction(actionId: context.actionId).data
-    } catch is CancellationError {
+    } catch let error where Self.isCancellation(error) {
       throw CancellationError()
     } catch {
       logger.warn("YieldXyzPerps - Could not read action \(context.actionId) to reconcile a failed submission: \(error.localizedDescription)")
@@ -1104,8 +1135,7 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
       context,
       schedule: pollOptions,
       check: { action in
-        let hasNewTransactions = action.transactions.contains { !processed.contains($0.id) && Self.awaitsSignature($0) }
-        return Self.finalActionStatuses.contains(action.status) || hasNewTransactions ? action : nil
+        Self.finalActionStatuses.contains(action.status) || Self.hasTransactionsToSign(action, processed: processed) ? action : nil
       },
       timeoutMessage: { "Action \(context.actionId) did not reach a final status in time (last status \(context.latestAction.status))." }
     )
@@ -1125,12 +1155,14 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
     var interval = max(retryPolicy.minPollInterval, schedule.intervalSeconds)
     var consecutiveErrors = 0
 
-    while Self.now() < deadline {
+    // The action is read at least once, even with a zero timeout; the deadline is checked after
+    // each read.
+    while true {
       var action: YieldXyzPerpsAction?
       var failure: Error?
       do {
         action = try await api.getAction(actionId: context.actionId).data
-      } catch is CancellationError {
+      } catch let error where Self.isCancellation(error) {
         throw CancellationError()
       } catch {
         failure = error
