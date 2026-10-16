@@ -145,7 +145,7 @@ public class YieldXyzBorrow: YieldXyzBorrowProtocol {
   private let dependencies: YieldXyzBorrowExecutionDependencies
   private let lookupEvmTransaction: YieldXyzBorrowLookupEvmTransaction?
   private let retryPolicy: YieldXyzBorrowRetryPolicy
-  private let inFlightActions = YieldXyzInFlightActions()
+  private let inFlightActions: YieldXyzInFlightActions
   private let logger = PortalLogger.shared
 
   /// Create an instance of YieldXyzBorrow.
@@ -166,12 +166,14 @@ public class YieldXyzBorrow: YieldXyzBorrowProtocol {
     api: PortalYieldXyzBorrowApiProtocol,
     dependencies: YieldXyzBorrowExecutionDependencies,
     lookupEvmTransaction: YieldXyzBorrowLookupEvmTransaction?,
-    retryPolicy: YieldXyzBorrowRetryPolicy = .standard
+    retryPolicy: YieldXyzBorrowRetryPolicy = .standard,
+    inFlightActions: YieldXyzInFlightActions = YieldXyzInFlightActions()
   ) {
     self.api = api
     self.dependencies = dependencies
     self.lookupEvmTransaction = lookupEvmTransaction
     self.retryPolicy = retryPolicy
+    self.inFlightActions = inFlightActions
   }
 
   /// The transaction lookup `api` serves, when it serves one.

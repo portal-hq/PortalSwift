@@ -42,9 +42,9 @@ struct YieldXyzPollLoopTimeout: Error {}
 /// SDK's `internal/pollLoop.ts`. Callers classify each read in `tick`.
 enum YieldXyzPollLoop {
   /// Runs `tick` until it returns `.stop` (the value is returned) or throws (the error is
-  /// rethrown). The first tick runs at once; between ticks the loop sleeps `interval`, never past
-  /// the deadline, and the interval grows by 1.5× up to `maxIntervalSeconds`. Throws
-  /// `YieldXyzPollLoopTimeout` once the deadline passes.
+  /// rethrown). The first tick runs at once, even with a zero timeout; between ticks the loop
+  /// sleeps `interval`, never past the deadline, and the interval grows by 1.5× up to
+  /// `maxIntervalSeconds`. Throws `YieldXyzPollLoopTimeout` once the deadline passes.
   static func run<T>(
     intervalSeconds: TimeInterval,
     timeoutSeconds: TimeInterval,
@@ -56,7 +56,8 @@ enum YieldXyzPollLoop {
     let deadline = YieldXyzExecutionClock.now() + max(0, timeoutSeconds)
     var interval = max(minIntervalSeconds, intervalSeconds)
 
-    while YieldXyzExecutionClock.now() < deadline {
+    // The deadline is checked after each tick, so a zero timeout still reads once.
+    while true {
       if case let .stop(value) = try await tick() {
         return value
       }

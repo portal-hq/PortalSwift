@@ -3968,21 +3968,6 @@ extension PortalTests {
     XCTAssertTrue(first.yieldxyz is YieldXyzPerps)
   }
 
-  func test_perps_isBuiltOnceWhenFirstReadFromSeveralThreadsAtOnce() throws {
-    let portal = try XCTUnwrap(self.portal)
-    let lock = NSLock()
-    var instances = Set<ObjectIdentifier>()
-
-    try runConcurrently(16) { _ in
-      let perps = portal.perps
-      lock.lock()
-      instances.insert(ObjectIdentifier(perps))
-      lock.unlock()
-    }
-
-    XCTAssertEqual(instances.count, 1)
-  }
-
   func test_perps_defaultsAccountRequestsToTheEvmWalletAddress() async throws {
     let (perpsApi, _) = try initPortalForPerps(perpsOrderAction())
 
@@ -4054,6 +4039,42 @@ extension PortalTests {
     XCTAssertEqual(param.value, "0x0")
     XCTAssertEqual(perpsApi.submitTransactionParams.first?.transactionHash, YieldXyzPerpsFixtures.fundingTxHash)
   }
+
+  /// A mined receipt with `status`, as `eth_getTransactionReceipt` returns it.
+  private func receipt(status: String) throws -> EthTransactionResponse {
+    let json = """
+    {"jsonrpc":"2.0","id":1,"result":{"blockHash":"0xblock","blockNumber":"0x1","from":"\(MockConstants.mockEip155Address)","transactionIndex":"0x0","type":"0x2","status":"\(status)"}}
+    """
+    return try JSONDecoder().decode(EthTransactionResponse.self, from: Data(json.utf8))
+  }
+
+  func test_perps_confirmsAnEvmLegThroughPortalsOwnReceiptPoll_thenSubmitsTheHash() async throws {
+    let (perpsApi, providerSpy) = try initPortalForPerps(perpsFundingAction())
+    providerSpy.requestOptionsReturnValues[.eth_sendTransaction] = YieldXyzPerpsFixtures.fundingTxHash
+    providerSpy.requestOptionsReturnValues[.eth_getTransactionReceipt] = try receipt(status: "0x1")
+
+    _ = try await portal.perps.yieldxyz.signAndSubmitAction(perpsFundingAction(), options: oneShotPerpsOptions)
+
+    let receiptCall = try XCTUnwrap(providerSpy.requestOptionsHistory.first { $0.method == .eth_getTransactionReceipt })
+    XCTAssertEqual(receiptCall.chainId, "eip155:42161")
+    XCTAssertEqual(receiptCall.params?.first, AnyCodable(YieldXyzPerpsFixtures.fundingTxHash))
+    XCTAssertEqual(perpsApi.submitTransactionParams.first?.transactionHash, YieldXyzPerpsFixtures.fundingTxHash)
+  }
+
+  func test_perps_reportsALegPortalsReceiptPollSeesReverted_asNotConfirmed() async throws {
+    let (perpsApi, providerSpy) = try initPortalForPerps(perpsFundingAction())
+    providerSpy.requestOptionsReturnValues[.eth_sendTransaction] = YieldXyzPerpsFixtures.fundingTxHash
+    providerSpy.requestOptionsReturnValues[.eth_getTransactionReceipt] = try receipt(status: "0x0")
+
+    do {
+      _ = try await portal.perps.yieldxyz.signAndSubmitAction(perpsFundingAction(), options: oneShotPerpsOptions)
+      XCTFail("Expected error not thrown.")
+    } catch let error as YieldXyzPerpsExecutionError {
+      XCTAssertEqual(error.reason, .transactionNotConfirmed)
+      XCTAssertEqual(error.broadcastHash, YieldXyzPerpsFixtures.fundingTxHash)
+      XCTAssertTrue(perpsApi.submitTransactionParams.isEmpty)
+    }
+  }
 }
 
 // MARK: - borrow property tests
@@ -4097,21 +4118,6 @@ extension PortalTests {
 
     XCTAssertTrue(first === second)
     XCTAssertTrue(first.yieldxyz is YieldXyzBorrow)
-  }
-
-  func test_borrow_isBuiltOnceWhenFirstReadFromSeveralThreadsAtOnce() throws {
-    let portal = try XCTUnwrap(self.portal)
-    let lock = NSLock()
-    var instances = Set<ObjectIdentifier>()
-
-    try runConcurrently(16) { _ in
-      let borrow = portal.borrow
-      lock.lock()
-      instances.insert(ObjectIdentifier(borrow))
-      lock.unlock()
-    }
-
-    XCTAssertEqual(instances.count, 1)
   }
 
   func test_borrow_sendsATransactionWithItsIdempotencyKey_andSubmitsTheHashTheLookupResolves() async throws {

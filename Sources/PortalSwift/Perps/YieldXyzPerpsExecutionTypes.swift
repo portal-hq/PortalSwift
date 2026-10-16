@@ -130,7 +130,8 @@ public struct YieldXyzPerpsPollOptions: Equatable {
   public var intervalSeconds: TimeInterval
   /// Applies to each wait separately: the read before each signature, and each wait for the action
   /// to reach a final status or add a transaction to sign. The read before each signature uses these
-  /// options even when `pollAction` is `false`.
+  /// options even when `pollAction` is `false`. Each wait reads the action at least once, even
+  /// with a timeout of `0`.
   public var timeoutSeconds: TimeInterval
 
   public init(intervalSeconds: TimeInterval = 2, timeoutSeconds: TimeInterval = 600) {
@@ -149,7 +150,8 @@ public struct YieldXyzPerpsExecuteOptions {
   /// for routing.
   public var signingChainId: String
   /// Poll the action after its transactions are submitted until it reaches a final status,
-  /// signing any transactions Yield.xyz adds meanwhile.
+  /// signing any transactions Yield.xyz adds meanwhile. Without polling, the call still signs every
+  /// awaiting transaction the action lists when it is read back, then returns without waiting.
   public var pollAction: Bool
   public var pollOptions: YieldXyzPerpsPollOptions
   /// Attach the idempotency key `yieldxyz-perps-<transactionId>` to each `EVM_TRANSACTION` leg, so
@@ -160,8 +162,11 @@ public struct YieldXyzPerpsExecuteOptions {
   /// A send Portal reports as still in progress is retried a few times with the same key; each retry
   /// is a new signing request, so it asks for approval again when `autoApprove` is off. A leg Portal
   /// refuses to send again fails with `transactionAlreadyBroadcast` (resume with `broadcastHashes`)
-  /// or `signingFailed` naming the idempotency error. To send a leg again, for example after it
-  /// reverted, check the chain and build a new action: its legs get new keys.
+  /// or, when Portal cannot say whether the earlier send broadcast it, `broadcastOutcomeUnknown`
+  /// naming the idempotency error. That includes a leg whose earlier send failed, for example for
+  /// lack of gas: Portal refuses its key even once the cause is fixed. To send a leg again, check
+  /// the chain first, then build a new action (its legs get new keys) or resume this one with
+  /// `useIdempotencyKeys` set to `false`.
   public var useIdempotencyKeys: Bool
   /// Per-call override of the typed-data signer.
   public var signTypedData: YieldXyzPerpsSignTypedData?
@@ -278,6 +283,12 @@ public enum YieldXyzPerpsExecutionErrorReason: String, Equatable {
   /// it was already broadcast. Portal does not return that broadcast's hash: look the transaction
   /// up on-chain and resume with `broadcastHashes`.
   case transactionAlreadyBroadcast = "TRANSACTION_ALREADY_BROADCAST"
+  /// Portal cannot say whether an `EVM_TRANSACTION` leg was broadcast: an earlier send under its
+  /// idempotency key is still in progress, failed, or has an unknown outcome. Nothing here proves
+  /// the leg was not sent, so do not build a new action blindly: check the chain, then resume with
+  /// `broadcastHashes` if it was broadcast, or else build a new action or resume with
+  /// `useIdempotencyKeys` set to `false`. `underlyingError` holds Portal's idempotency error.
+  case broadcastOutcomeUnknown = "BROADCAST_OUTCOME_UNKNOWN"
   /// An on-chain leg was broadcast but did not confirm successfully.
   case transactionNotConfirmed = "TRANSACTION_NOT_CONFIRMED"
   /// The Portal API rejected the submission, or the SDK refused to send it (for example an empty
@@ -285,8 +296,9 @@ public enum YieldXyzPerpsExecutionErrorReason: String, Equatable {
   case submitRejected = "SUBMIT_REJECTED"
   /// The submission was accepted but Yield.xyz reported the transaction as `FAILED`.
   case submitFailed = "SUBMIT_FAILED"
-  /// The submission failed ambiguously and its outcome could not be confirmed; do not resubmit
-  /// blindly.
+  /// The outcome of a transaction could not be confirmed: its submission failed ambiguously, or
+  /// the task was cancelled after an on-chain leg was broadcast (`broadcastHash` is then set:
+  /// resume with it in `broadcastHashes`). Do not resubmit blindly.
   case submitOutcomeUnknown = "SUBMIT_OUTCOME_UNKNOWN"
   /// The action ended as `FAILED`, `CANCELED` or `STALE`.
   case actionFailed = "ACTION_FAILED"

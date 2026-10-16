@@ -1541,6 +1541,29 @@ final class YieldXyzBorrowExecutionTests: XCTestCase {
     XCTAssertEqual(api.submitTransactionCallsCount, 1)
   }
 
+  func test_rejectsASecondCallFromAnotherInstanceSharingTheGuard() async throws {
+    let action = singleTransactionAction()
+    fakeBackend(action)
+    let shared = YieldXyzInFlightActions()
+    let first = YieldXyzBorrow(api: api, dependencies: dependencies(), lookupEvmTransaction: { [unowned self] chainId, hash in
+      try await self.lookup.lookup(chainId, hash)
+    }, retryPolicy: fastPolicy, inFlightActions: shared)
+    let second = YieldXyzBorrow(api: api, dependencies: dependencies(), lookupEvmTransaction: nil, retryPolicy: fastPolicy, inFlightActions: shared)
+    let gate = SignatureGate()
+    signer.gate = gate
+    let options = self.options()
+    let running = Task { try await first.signAndSubmitAction(action, options: options) }
+    await gate.waitUntilStarted()
+
+    let error = await expectFailure(.actionInProgress) { try await second.signAndSubmitAction(action, options: options) }
+    gate.release(F.approvalHash)
+
+    let result = try await running.value
+    XCTAssertEqual(error?.actionId, "act-1")
+    XCTAssertEqual(result.status, .success)
+    XCTAssertEqual(signer.callsCount, 1)
+  }
+
   func test_executesAnotherActionWhileOneIsStillExecuting() async throws {
     let first = F.borrowAction(transactions: [F.approvalTransaction()])
     let other = F.borrowAction(id: "act-2", transactions: [F.supplyTransaction()])

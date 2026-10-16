@@ -82,107 +82,86 @@ public final class Portal: PortalProtocol {
     }
   )
 
+  /// The Perps guard against executing one action twice at once. Initialized with the instance,
+  /// unlike the lazy `perps`: two threads reading `perps` first at the same time can each build one,
+  /// and both must share this guard.
+  private let perpsInFlightActions = YieldXyzInFlightActions()
+
   /// Access to perpetual-futures functionality (Yield.xyz Perps).
-  public var perps: Perps {
-    yieldXyzClientsLock.lock()
-    defer { yieldXyzClientsLock.unlock() }
-    if let perpsStorage {
-      return perpsStorage
-    }
-    let perps = makePerps()
-    perpsStorage = perps
-    return perps
-  }
-
-  /// Access to lending functionality (Yield.xyz Borrow).
-  public var borrow: Borrow {
-    yieldXyzClientsLock.lock()
-    defer { yieldXyzClientsLock.unlock() }
-    if let borrowStorage {
-      return borrowStorage
-    }
-    let borrow = makeBorrow()
-    borrowStorage = borrow
-    return borrow
-  }
-
-  // `perps` and `borrow` are built once, under a lock, even when first read from several threads at
-  // once: each holds the guard that stops two calls from executing the same action concurrently.
-  private let yieldXyzClientsLock = NSLock()
-  private var perpsStorage: Perps?
-  private var borrowStorage: Borrow?
-
-  private func makePerps() -> Perps {
-    .init(
-      api: self.api,
-      dependencies: YieldXyzPerpsExecutionDependencies(
-        getWalletAddress: { [weak self] in
-          guard let self else {
-            throw PortalClassError.clientNotAvailable
-          }
-          return await self.getAddress(YieldXyzPerps.defaultSigningChainId)
-        },
-        signTypedData: { [weak self] request in
-          guard let self else {
-            throw PortalClassError.clientNotAvailable
-          }
-          return try await self.signPerpsTypedData(request)
-        },
-        signAndSendTransaction: { [weak self] transaction, chainId, idempotencyKey in
-          guard let self else {
-            throw PortalClassError.clientNotAvailable
-          }
-          return try await self.signAndSendYieldXyzTransaction(transaction, chainId: chainId, idempotencyKey: idempotencyKey)
-        },
-        waitForConfirmation: { [weak self] txHash, chainId in
-          guard let self else {
-            throw PortalClassError.clientNotAvailable
-          }
-          // Up to 15 minutes, like the other Portal SDKs: a funding leg can wait on a congested chain.
-          let result = try await self.waitForTransactionConfirmation(txHash: txHash, chainId: chainId, maxAttempts: 225, waitingInSeconds: 4)
-          return result == .confirmed
-        },
-        isChainConfigured: { [weak self] chainId in
-          guard let self else {
-            return false
-          }
-          return await self.getRpcUrl(forChainId: chainId) != nil
-        }
-      )
-    )
-  }
-
-  private func makeBorrow() -> Borrow {
-    .init(
-      api: self.api,
-      dependencies: YieldXyzBorrowExecutionDependencies(
-        getWalletAddress: { [weak self] in
-          guard let self else {
-            throw PortalClassError.clientNotAvailable
-          }
-          return await self.getAddress(YieldXyzBorrow.walletChainId)
-        },
-        signAndSendTransaction: { [weak self] transaction, chainId, idempotencyKey in
-          guard let self else {
-            throw PortalClassError.clientNotAvailable
-          }
-          return try await self.signAndSendYieldXyzTransaction(transaction, chainId: chainId, idempotencyKey: idempotencyKey)
-        },
-        isChainConfigured: { [weak self] chainId in
-          guard let self else {
-            return false
-          }
-          return await self.getRpcUrl(forChainId: chainId) != nil
-        }
-      ),
-      lookupEvmTransaction: { [weak self] chainId, hash in
+  public lazy var perps: Perps = .init(
+    api: self.api,
+    inFlightActions: self.perpsInFlightActions,
+    dependencies: YieldXyzPerpsExecutionDependencies(
+      getWalletAddress: { [weak self] in
         guard let self else {
           throw PortalClassError.clientNotAvailable
         }
-        return try await YieldXyzEvmTransactionLookup(self.api.getTransactionDetails(chain: chainId, signature: hash))
+        return await self.getAddress(YieldXyzPerps.defaultSigningChainId)
+      },
+      signTypedData: { [weak self] request in
+        guard let self else {
+          throw PortalClassError.clientNotAvailable
+        }
+        return try await self.signPerpsTypedData(request)
+      },
+      signAndSendTransaction: { [weak self] transaction, chainId, idempotencyKey in
+        guard let self else {
+          throw PortalClassError.clientNotAvailable
+        }
+        return try await self.signAndSendYieldXyzTransaction(transaction, chainId: chainId, idempotencyKey: idempotencyKey)
+      },
+      waitForConfirmation: { [weak self] txHash, chainId in
+        guard let self else {
+          throw PortalClassError.clientNotAvailable
+        }
+        // Up to 15 minutes, like the other Portal SDKs: a funding leg can wait on a congested chain.
+        let result = try await self.waitForTransactionConfirmation(txHash: txHash, chainId: chainId, maxAttempts: 225, waitingInSeconds: 4)
+        return result == .confirmed
+      },
+      isChainConfigured: { [weak self] chainId in
+        guard let self else {
+          return false
+        }
+        return await self.getRpcUrl(forChainId: chainId) != nil
       }
     )
-  }
+  )
+
+  /// The Borrow guard against executing one action twice at once, shared by every `borrow` built for
+  /// the same reason as `perpsInFlightActions`.
+  private let borrowInFlightActions = YieldXyzInFlightActions()
+
+  /// Access to lending functionality (Yield.xyz Borrow).
+  public lazy var borrow: Borrow = .init(
+    api: self.api,
+    inFlightActions: self.borrowInFlightActions,
+    dependencies: YieldXyzBorrowExecutionDependencies(
+      getWalletAddress: { [weak self] in
+        guard let self else {
+          throw PortalClassError.clientNotAvailable
+        }
+        return await self.getAddress(YieldXyzBorrow.walletChainId)
+      },
+      signAndSendTransaction: { [weak self] transaction, chainId, idempotencyKey in
+        guard let self else {
+          throw PortalClassError.clientNotAvailable
+        }
+        return try await self.signAndSendYieldXyzTransaction(transaction, chainId: chainId, idempotencyKey: idempotencyKey)
+      },
+      isChainConfigured: { [weak self] chainId in
+        guard let self else {
+          return false
+        }
+        return await self.getRpcUrl(forChainId: chainId) != nil
+      }
+    ),
+    lookupEvmTransaction: { [weak self] chainId, hash in
+      guard let self else {
+        throw PortalClassError.clientNotAvailable
+      }
+      return try await YieldXyzEvmTransactionLookup(self.api.getTransactionDetails(chain: chainId, signature: hash))
+    }
+  )
 
   /// Access to security-related functionality.
   public lazy var security: Security = .init(api: self.api)
