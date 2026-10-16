@@ -82,7 +82,7 @@ extension ViewController {
       ("Asset", summary.asset),
       ("Direction", summary.direction?.rawValue),
       ("Size", summary.size),
-      ("Leverage", summary.leverage.map { "\($0)x" }),
+      ("Leverage", summary.leverage.map { String(format: "%gx", $0) }),
       ("Price", summary.price.map { "\($0)" }),
       ("Collateral", summary.collateral),
       ("Fee", summary.fee),
@@ -203,14 +203,14 @@ extension ViewController {
   /// its `summary` for the user to confirm, then sign and submit it. It moves no funds, but it is a
   /// real mainnet signature that lets the agent trade on the account.
   @IBAction func perpsExecuteApproveAgent(_: Any) {
-    runPerps("Build Approve Agent") { [weak self, perpsProviderId] portal in
+    runPerps("Execute Approve Agent (build, nothing signed)") { [weak self, perpsProviderId] portal in
       let action = try await portal.perps.yieldxyz.createAction(params: YieldXyzPerpsCreateActionParams(
         providerId: perpsProviderId,
         action: .approveAgent,
         args: YieldXyzPerpsActionArgs(agentName: "portal-example")
       )).data
       await self?.confirmAndExecute(action)
-      return "Built \(action.action) \(action.id); waiting for confirmation."
+      return "Built \(action.action) \(action.id); nothing signed yet, awaiting approval."
     }
   }
 
@@ -222,7 +222,10 @@ extension ViewController {
       message: "\(Self.describe(action.summary))\n\nThis signs a real mainnet approval with your Portal wallet. It authorizes an agent wallet to place orders on your Hyperliquid account. It moves no funds. The client must not use account abstraction.",
       preferredStyle: .alert
     )
-    alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+    alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { [weak self] _ in
+      self?.logger.info("⏹ [Perps Execute Approve Agent] Cancelled; nothing was signed.")
+      self?.showStatusView(message: "Execute Approve Agent cancelled; nothing was signed.")
+    })
     alert.addAction(UIAlertAction(title: "Approve", style: .destructive) { [weak self] _ in
       guard let self else {
         return

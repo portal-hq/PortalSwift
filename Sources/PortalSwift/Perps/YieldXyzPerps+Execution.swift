@@ -7,7 +7,8 @@
 
 import Foundation
 
-// The execution runner: its state, the pass over an action's transactions, and the EIP-712 leg.
+// The execution runner's state and per-transaction steps (read-back, dispatch) and the EIP-712 leg.
+// The pass over an action's transactions is `signAndSubmitAction`, in YieldXyzPerps.swift.
 extension YieldXyzPerps {
   /// The mutable state of one execution.
   final class ExecutionContext {

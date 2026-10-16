@@ -59,6 +59,10 @@ public protocol YieldXyzPerpsProtocol: AnyObject {
 
   /// Creates an action, then signs and submits its transactions in order and tracks it to a final
   /// status (see `signAndSubmitAction`).
+  ///
+  /// A failure to create the action is thrown as the API reported it (read it with
+  /// `YieldXyzPerpsApiError.from(_:)`), with no `failed` progress event; only the signing and tracking
+  /// that follow throw `YieldXyzPerpsExecutionError`.
   func executeAction(params: YieldXyzPerpsCreateActionParams, options: YieldXyzPerpsExecuteOptions) async throws -> YieldXyzPerpsExecutionResult
 
   /// Signs and submits the transactions of an existing action that await a signature, strictly in
@@ -433,16 +437,6 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
 
   private static func isBlank(_ value: String?) -> Bool {
     value?.isEmpty ?? true
-  }
-
-  /// The idempotency key of an `EVM_TRANSACTION` leg, or `nil` when the transaction id cannot form a
-  /// valid key (1–255 characters of `A-Z a-z 0-9 . _ ~ -`).
-  static func idempotencyKey(forTransactionId transactionId: String) -> String? {
-    let key = idempotencyKeyPrefix + transactionId
-    guard !transactionId.isEmpty, (try? validateIdempotencyKey(key)) == key else {
-      return nil
-    }
-    return key
   }
 
   private func resolveAddress(_ address: String?) async throws -> String {
