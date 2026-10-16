@@ -6,7 +6,8 @@
 //
 //  Yield.xyz Perps testing functionality. Perps is mainnet-only: the read actions are free, and
 //  the one write action (approve agent) moves no funds but authorizes an agent wallet to trade on
-//  the Hyperliquid account, so it asks for confirmation first.
+//  the Hyperliquid account. It follows the flow the SDK recommends: build the action, show its
+//  `summary`, and sign only once the user confirms.
 //
 
 import Foundation
@@ -46,13 +47,52 @@ extension ViewController {
     }
   }
 
-  /// A readable description of a perps failure, including the Portal error id when there is one.
+  /// A readable description of a perps failure. An execution failure carries what a resume needs:
+  /// its `reason`, the action and transaction ids, and the `broadcastHash` of an on-chain leg that
+  /// was already sent. The Portal error id, when there is one, comes from `YieldXyzPerpsApiError`.
   private static func describePerpsError(_ error: Error) -> String {
+    var parts: [String] = []
+    if let execution = error as? YieldXyzPerpsExecutionError {
+      parts.append("\(execution.reason.rawValue): \(execution.message)")
+      if let actionId = execution.actionId {
+        parts.append("action \(actionId)")
+      }
+      if let transactionId = execution.transactionId {
+        parts.append("transaction \(transactionId)")
+      }
+      // The leg is on-chain: resume with `broadcastHashes: [transactionId: hash]`, never by re-signing.
+      if let broadcastHash = execution.broadcastHash {
+        parts.append("broadcastHash \(broadcastHash) (resume with broadcastHashes)")
+      }
+    }
     if let apiError = YieldXyzPerpsApiError.from(error) {
       let status = apiError.status.map(String.init) ?? "?"
-      return "HTTP \(status) \(apiError.id ?? "") \(apiError.message ?? "")"
+      parts.append("HTTP \(status) \(apiError.id ?? "") \(apiError.message ?? "")")
     }
-    return error.localizedDescription
+    return parts.isEmpty ? error.localizedDescription : parts.joined(separator: "; ")
+  }
+
+  /// The fields of an action summary worth showing before the user signs; Yield.xyz fills only the
+  /// ones that apply to the action.
+  private static func describe(_ summary: YieldXyzPerpsActionSummary?) -> String {
+    guard let summary else {
+      return "Yield.xyz returned no summary for this action."
+    }
+    let fields: [(String, String?)] = [
+      ("Asset", summary.asset),
+      ("Direction", summary.direction?.rawValue),
+      ("Size", summary.size),
+      ("Leverage", summary.leverage.map { "\($0)x" }),
+      ("Price", summary.price.map { "\($0)" }),
+      ("Collateral", summary.collateral),
+      ("Fee", summary.fee),
+      ("Est. liquidation", summary.estimatedLiquidationPrice.map { "\($0)" }),
+      ("Amount", summary.amount),
+      ("Agent", summary.agentName),
+      ("Agent address", summary.agentAddress)
+    ]
+    let lines = fields.compactMap { label, value in value.map { "\(label): \($0)" } }
+    return ([summary.type] + lines).joined(separator: "\n")
   }
 
   // MARK: - Market data
@@ -159,13 +199,27 @@ extension ViewController {
     }
   }
 
-  /// Approves the venue's agent wallet: signs and submits each transaction, then tracks the action.
-  /// It moves no funds, but it is a real mainnet signature that lets the agent trade on the
-  /// account, so it asks first.
+  /// Approves the venue's agent wallet in the two steps the SDK recommends: build the action, show
+  /// its `summary` for the user to confirm, then sign and submit it. It moves no funds, but it is a
+  /// real mainnet signature that lets the agent trade on the account.
   @IBAction func perpsExecuteApproveAgent(_: Any) {
+    runPerps("Build Approve Agent") { [weak self, perpsProviderId] portal in
+      let action = try await portal.perps.yieldxyz.createAction(params: YieldXyzPerpsCreateActionParams(
+        providerId: perpsProviderId,
+        action: .approveAgent,
+        args: YieldXyzPerpsActionArgs(agentName: "portal-example")
+      )).data
+      await self?.confirmAndExecute(action)
+      return "Built \(action.action) \(action.id); waiting for confirmation."
+    }
+  }
+
+  /// Shows the action's summary and signs nothing unless the user confirms.
+  @MainActor
+  private func confirmAndExecute(_ action: YieldXyzPerpsAction) {
     let alert = UIAlertController(
       title: "Approve Hyperliquid agent?",
-      message: "This signs a real mainnet approval with your Portal wallet. It authorizes an agent wallet to place orders on your Hyperliquid account. It moves no funds. The client must not use account abstraction.",
+      message: "\(Self.describe(action.summary))\n\nThis signs a real mainnet approval with your Portal wallet. It authorizes an agent wallet to place orders on your Hyperliquid account. It moves no funds. The client must not use account abstraction.",
       preferredStyle: .alert
     )
     alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
@@ -174,15 +228,11 @@ extension ViewController {
         return
       }
       let logger = self.logger
-      self.runPerps("Execute Approve Agent") { [perpsProviderId] portal in
-        let result = try await portal.perps.yieldxyz.executeAction(
-          params: YieldXyzPerpsCreateActionParams(
-            providerId: perpsProviderId,
-            action: .approveAgent,
-            args: YieldXyzPerpsActionArgs(agentName: "portal-example")
-          ),
+      self.runPerps("Sign and Submit Approve Agent") { portal in
+        let result = try await portal.perps.yieldxyz.signAndSubmitAction(
+          action,
           options: YieldXyzPerpsExecuteOptions(onProgress: { progress in
-            logger.info("⏳ [Perps Execute Approve Agent] \(progress.step.rawValue) \(progress.transactionId ?? "") \(progress.actionStatus?.rawValue ?? "")")
+            logger.info("⏳ [Perps Approve Agent] \(progress.step.rawValue) \(progress.transactionId ?? "") \(progress.actionStatus?.rawValue ?? "")")
           })
         )
         return "Action \(result.actionId) ended \(result.status) after \(result.transactions.count) transaction(s)."

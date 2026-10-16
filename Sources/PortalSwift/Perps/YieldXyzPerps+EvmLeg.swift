@@ -1,0 +1,279 @@
+//
+//  YieldXyzPerps+EvmLeg.swift
+//  PortalSwift
+//
+//  Created by Ahmed Ragab
+//
+
+import Foundation
+
+// The `EVM_TRANSACTION` leg: send under an idempotency key, confirm, then submit the hash.
+extension YieldXyzPerps {
+  func processEvmTransaction(
+    _ context: ExecutionContext,
+    transaction: YieldXyzPerpsTransaction,
+    index: Int
+  ) async throws -> YieldXyzPerpsTransactionExecution {
+    let request: YieldXyzPerpsEvmTransactionRequest
+    switch YieldXyzPerpsPayloads.parseEvmTransactionRequest(transaction.signablePayload, defaultFrom: transaction.address) {
+    case let .success(parsed):
+      request = parsed
+    case let .failure(problem):
+      throw transactionError(
+        context,
+        transaction,
+        reason: .invalidSignablePayload,
+        message: "The signablePayload of transaction \(transaction.id) \(problem.description)."
+      )
+    }
+    guard request.from.lowercased() == context.walletAddress.lowercased() else {
+      throw transactionError(
+        context,
+        transaction,
+        reason: .signerAddressMismatch,
+        message: "The signablePayload of transaction \(transaction.id) sends from \(request.from), not the Portal wallet \(context.walletAddress)."
+      )
+    }
+
+    let chainId = try resolveEvmChainId(context, transaction)
+    try await assertSigningChain(context, transaction, chainId: chainId)
+
+    let signAndSendTransaction = context.options.signAndSendTransaction ?? dependencies.signAndSendTransaction
+    let suppliedBroadcastHash = context.options.broadcastHashes[transaction.id]
+    guard let waitForConfirmation = context.options.waitForConfirmation ?? dependencies.waitForConfirmation else {
+      throw transactionError(
+        context,
+        transaction,
+        reason: .dependencyUnavailable,
+        message: suppliedBroadcastHash == nil && signAndSendTransaction == nil
+          ? "No transaction signer and confirmation waiter are configured."
+          : "No confirmation waiter is configured."
+      )
+    }
+
+    let transactionHash: String
+    if let suppliedBroadcastHash {
+      // A leg the caller reports as already broadcast is confirmed and submitted from that hash
+      // but never signed, so it cannot be broadcast twice.
+      guard YieldXyzPerpsPayloads.isTransactionHash(suppliedBroadcastHash) else {
+        throw transactionError(
+          context,
+          transaction,
+          reason: .invalidSignature,
+          message: "The broadcast hash supplied for transaction \(transaction.id) is not a transaction hash."
+        )
+      }
+      transactionHash = suppliedBroadcastHash
+    } else if let signAndSendTransaction {
+      transactionHash = try await signAndSendEvmTransaction(
+        context,
+        transaction: transaction,
+        index: index,
+        param: YieldXyzPerpsPayloads.toSendTransactionParam(request),
+        chainId: chainId,
+        signAndSendTransaction: signAndSendTransaction
+      )
+    } else {
+      throw transactionError(context, transaction, reason: .dependencyUnavailable, message: "No transaction signer is configured.")
+    }
+
+    emit(context, YieldXyzPerpsExecutionProgress(
+      step: .confirming,
+      actionId: context.actionId,
+      transactionId: transaction.id,
+      index: index,
+      signingFormat: transaction.signingFormat,
+      transactionHash: transactionHash
+    ))
+
+    let confirmed: Bool
+    do {
+      confirmed = try await waitForConfirmation(transactionHash, chainId)
+    } catch let error where Self.isCancellation(error) {
+      // The leg is on-chain and may still confirm: it has not failed, so keep its hash for a resume
+      // with `broadcastHashes` instead of reporting it as not confirmed.
+      throw transactionError(
+        context,
+        transaction,
+        reason: .submitOutcomeUnknown,
+        message: "Confirming transaction \(transaction.id) (\(transactionHash)) was cancelled; resume with broadcastHashes.",
+        broadcastHash: transactionHash,
+        underlyingError: CancellationError()
+      )
+    } catch {
+      throw transactionError(
+        context,
+        transaction,
+        reason: .transactionNotConfirmed,
+        message: "Confirming transaction \(transaction.id) (\(transactionHash)) failed.",
+        broadcastHash: transactionHash,
+        underlyingError: error
+      )
+    }
+    guard confirmed else {
+      throw transactionError(
+        context,
+        transaction,
+        reason: .transactionNotConfirmed,
+        message: "Transaction \(transaction.id) (\(transactionHash)) did not confirm successfully.",
+        broadcastHash: transactionHash
+      )
+    }
+
+    emit(context, YieldXyzPerpsExecutionProgress(
+      step: .confirmed,
+      actionId: context.actionId,
+      transactionId: transaction.id,
+      index: index,
+      signingFormat: transaction.signingFormat,
+      transactionHash: transactionHash
+    ))
+
+    let submitResult: YieldXyzPerpsSubmitResult?
+    do {
+      submitResult = try await submitWithReconciliation(context, transaction, body: .transactionHash(transactionHash))
+    } catch let error where Self.isCancellation(error) {
+      // The leg is on-chain: keep its hash so the caller can resume with `broadcastHashes`.
+      throw transactionError(
+        context,
+        transaction,
+        reason: .submitOutcomeUnknown,
+        message: "Submitting transaction \(transaction.id) (\(transactionHash)) was cancelled; resume with broadcastHashes.",
+        broadcastHash: transactionHash,
+        underlyingError: CancellationError()
+      )
+    }
+
+    emit(context, YieldXyzPerpsExecutionProgress(
+      step: .submitted,
+      actionId: context.actionId,
+      transactionId: transaction.id,
+      index: index,
+      signingFormat: transaction.signingFormat,
+      transactionHash: transactionHash
+    ))
+
+    return YieldXyzPerpsTransactionExecution(
+      transactionId: transaction.id,
+      type: transaction.type,
+      signingFormat: .evmTransaction,
+      transactionHash: transactionHash,
+      submitResult: submitResult
+    )
+  }
+
+  /// Signs and broadcasts an on-chain leg. With an idempotency key, Portal broadcasts the leg at
+  /// most once: a send it reports as still in progress is retried with the same key a few times,
+  /// and a send it reports as already completed stops with `transactionAlreadyBroadcast`, because
+  /// Portal does not return the hash of that broadcast.
+  func signAndSendEvmTransaction(
+    _ context: ExecutionContext,
+    transaction: YieldXyzPerpsTransaction,
+    index: Int,
+    param: ETHTransactionParam,
+    chainId: String,
+    signAndSendTransaction: YieldXyzPerpsSignAndSendTransaction
+  ) async throws -> String {
+    var idempotencyKey: String?
+    if context.options.useIdempotencyKeys {
+      idempotencyKey = Self.idempotencyKey(forTransactionId: transaction.id)
+      if idempotencyKey == nil {
+        logger.warn("YieldXyzPerps - Transaction id \(transaction.id) cannot form an idempotency key; it is sent without one.")
+      }
+    }
+
+    emit(context, YieldXyzPerpsExecutionProgress(
+      step: .signing,
+      actionId: context.actionId,
+      transactionId: transaction.id,
+      index: index,
+      signingFormat: transaction.signingFormat
+    ))
+
+    var inProgressRetries = 0
+    var returned: String?
+    while true {
+      do {
+        returned = try await signAndSendTransaction(param, chainId, idempotencyKey)
+        break
+      } catch let error where Self.isCancellation(error) {
+        throw CancellationError()
+      } catch let error as PortalMpcError where idempotencyKey != nil && error.id == PortalIdempotencyErrorId.requestInProgress {
+        guard inProgressRetries < retryPolicy.idempotencyInProgressDelays.count else {
+          // The send Portal is still processing may yet broadcast the leg.
+          throw transactionError(
+            context,
+            transaction,
+            reason: .broadcastOutcomeUnknown,
+            message: "Portal is still processing the send of transaction \(transaction.id) and may yet broadcast it; resume the action later.",
+            underlyingError: error
+          )
+        }
+        try await Self.sleep(seconds: retryPolicy.idempotencyInProgressDelays[inProgressRetries])
+        inProgressRetries += 1
+      } catch let error as PortalMpcError where idempotencyKey != nil && error.id == PortalIdempotencyErrorId.requestAlreadyCompleted {
+        throw transactionError(
+          context,
+          transaction,
+          reason: .transactionAlreadyBroadcast,
+          message: "Portal already broadcast transaction \(transaction.id) and does not return its hash; look it up on-chain and resume with broadcastHashes.",
+          underlyingError: error
+        )
+      } catch let error as PortalMpcError where idempotencyKey != nil && error.isIdempotencyRejection {
+        // Portal cannot say whether the earlier send under this key broadcast the leg, and gives
+        // every later send the same answer while it remembers the key, even once the cause (for
+        // example missing gas) is fixed.
+        throw transactionError(
+          context,
+          transaction,
+          reason: .broadcastOutcomeUnknown,
+          message: "Portal refused to send transaction \(transaction.id) under its idempotency key (\(error.id ?? "unknown")): an earlier send of this leg failed or has an unknown outcome, and Portal gives that answer for at least 24 hours. Check the chain for that send: if it was broadcast, resume with broadcastHashes; if not, build a new action, or resume this one with useIdempotencyKeys set to false.",
+          underlyingError: error
+        )
+      } catch {
+        throw transactionError(
+          context,
+          transaction,
+          reason: .signingFailed,
+          message: "Sending transaction \(transaction.id) failed.",
+          underlyingError: error
+        )
+      }
+    }
+
+    guard let returned else {
+      throw transactionError(
+        context,
+        transaction,
+        reason: .signatureRejected,
+        message: "The signing request for transaction \(transaction.id) was rejected."
+      )
+    }
+    guard YieldXyzPerpsPayloads.isTransactionHash(returned) else {
+      throw transactionError(
+        context,
+        transaction,
+        reason: .invalidSignature,
+        message: "The signer did not return a transaction hash for transaction \(transaction.id)."
+      )
+    }
+    return returned
+  }
+
+  /// Real chains arrive as CAIP-2 in `network`; otherwise fall back to the numeric `chainId`.
+  func resolveEvmChainId(_ context: ExecutionContext, _ transaction: YieldXyzPerpsTransaction) throws -> String {
+    if YieldXyzPerpsPayloads.isEvmChainId(transaction.network) {
+      return transaction.network
+    }
+    let fromChainId = "eip155:\(transaction.chainId)"
+    if YieldXyzPerpsPayloads.isEvmChainId(fromChainId) {
+      return fromChainId
+    }
+    throw transactionError(
+      context,
+      transaction,
+      reason: .invalidSignablePayload,
+      message: "Transaction \(transaction.id) does not identify an EVM chain (network \"\(transaction.network)\", chainId \"\(transaction.chainId)\")."
+    )
+  }
+}

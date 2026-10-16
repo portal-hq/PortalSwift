@@ -321,11 +321,10 @@ final class YieldXyzPerpsCodableTests: XCTestCase {
 
   // MARK: - Envelope
 
-  func test_envelope_toleratesMetadata() throws {
+  func test_envelope_ignoresAKeyItDoesNotModel() throws {
     let response = try decode(YieldXyzPerpsGetHealthResponse.self, #"{"data":{"status":"FAIL","timestamp":"t"},"metadata":{"requestId":"r-1"}}"#)
 
     XCTAssertEqual(response.data.status, .fail)
-    XCTAssertEqual(response.metadata?["requestId"], AnyCodable("r-1"))
   }
 
   // MARK: - Open values

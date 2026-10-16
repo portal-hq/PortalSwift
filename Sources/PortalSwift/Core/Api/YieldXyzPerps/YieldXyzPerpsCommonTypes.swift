@@ -13,12 +13,9 @@ import Foundation
 /// The success envelope every Yield.xyz Perps endpoint returns: `{ "data": ... }`.
 public struct YieldXyzPerpsResponse<T: Codable & Equatable>: Codable, Equatable {
   public let data: T
-  /// Not sent by the Portal API today; kept so an additive field does not fail decoding.
-  public let metadata: [String: AnyCodable]?
 
-  public init(data: T, metadata: [String: AnyCodable]? = nil) {
+  public init(data: T) {
     self.data = data
-    self.metadata = metadata
   }
 }
 
