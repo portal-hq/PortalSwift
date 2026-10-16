@@ -291,7 +291,8 @@ public enum YieldXyzPerpsExecutionErrorReason: String, Equatable {
   case broadcastOutcomeUnknown = "BROADCAST_OUTCOME_UNKNOWN"
   /// An on-chain leg was broadcast but did not confirm successfully.
   case transactionNotConfirmed = "TRANSACTION_NOT_CONFIRMED"
-  /// The Portal API rejected the submission; `underlyingError` holds the backend error.
+  /// The Portal API rejected the submission, or the SDK refused to send it (for example an empty
+  /// transaction id); `underlyingError` holds the backend error, or the SDK's.
   case submitRejected = "SUBMIT_REJECTED"
   /// The submission was accepted but Yield.xyz reported the transaction as `FAILED`.
   case submitFailed = "SUBMIT_FAILED"

@@ -54,18 +54,20 @@ extension YieldXyzPerps {
         failure = error
       }
 
-      if YieldXyzPerpsRequestFailure.status(of: failure) == 429, rateLimitRetries < retryPolicy.rateLimitDelays.count {
+      if YieldXyzRequestFailure.status(of: failure) == 429, rateLimitRetries < retryPolicy.rateLimitDelays.count {
         try await Self.sleep(seconds: retryPolicy.rateLimitDelays[rateLimitRetries])
         rateLimitRetries += 1
         continue
       }
 
-      if !YieldXyzPerpsRequestFailure.isAmbiguous(failure) {
+      if !YieldXyzRequestFailure.isAmbiguous(failure) {
         throw transactionError(
           context,
           transaction,
           reason: .submitRejected,
-          message: "Yield.xyz rejected the submission of transaction \(transaction.id).",
+          message: YieldXyzRequestFailure.isRefusedBeforeSending(failure)
+            ? "The submission of transaction \(transaction.id) could not be sent."
+            : "Yield.xyz rejected the submission of transaction \(transaction.id).",
           broadcastHash: transactionHash,
           underlyingError: failure
         )
@@ -164,34 +166,37 @@ extension YieldXyzPerps {
     check: (YieldXyzPerpsAction) -> T?,
     timeoutMessage: () -> String
   ) async throws -> T {
-    // Monotonic: a wall-clock change must not cut a wait short or stretch it.
-    let deadline = Self.now() + max(0, schedule.timeoutSeconds)
-    var interval = max(retryPolicy.minPollInterval, schedule.intervalSeconds)
     var consecutiveErrors = 0
-
-    // The action is read at least once, even with a zero timeout; the deadline is checked after
-    // each read.
-    while true {
-      var action: YieldXyzPerpsAction?
-      var failure: Error?
-      do {
-        action = try await api.getAction(actionId: context.actionId).data
-      } catch let error where Self.isCancellation(error) {
-        throw CancellationError()
-      } catch {
-        failure = error
-      }
-
-      if let action {
-        consecutiveErrors = 0
-        context.latestAction = action
-        emit(context, YieldXyzPerpsExecutionProgress(step: .polling, actionId: context.actionId, actionStatus: action.status))
-        if let value = check(action) {
-          return value
+    do {
+      // The action is read at least once, even with a zero timeout.
+      return try await YieldXyzPollLoop.run(
+        intervalSeconds: schedule.intervalSeconds,
+        timeoutSeconds: schedule.timeoutSeconds,
+        minIntervalSeconds: retryPolicy.minPollInterval,
+        maxIntervalSeconds: retryPolicy.maxPollInterval
+      ) { () async throws -> YieldXyzPollStep<T> in
+        var action: YieldXyzPerpsAction?
+        var failure: Error?
+        do {
+          action = try await api.getAction(actionId: context.actionId).data
+        } catch let error where Self.isCancellation(error) {
+          throw CancellationError()
+        } catch {
+          failure = error
         }
-      } else {
+
+        if let action {
+          consecutiveErrors = 0
+          context.latestAction = action
+          emit(context, YieldXyzPerpsExecutionProgress(step: .polling, actionId: context.actionId, actionStatus: action.status))
+          if let value = check(action) {
+            return .stop(value)
+          }
+          return .continue
+        }
+
         consecutiveErrors += 1
-        let transient = failure.map(YieldXyzPerpsRequestFailure.isTransient) ?? true
+        let transient = failure.map(YieldXyzRequestFailure.isTransient) ?? true
         if !transient || consecutiveErrors >= retryPolicy.maxConsecutivePollErrors {
           throw YieldXyzPerpsExecutionError(
             reason: .pollingFailed,
@@ -201,36 +206,19 @@ extension YieldXyzPerps {
             underlyingError: failure
           )
         }
+        return .continue
       }
-
-      let remaining = deadline - Self.now()
-      if remaining <= 0 {
-        break
-      }
-      try await Self.sleep(seconds: min(interval, remaining))
-      interval = min(interval * 1.5, retryPolicy.maxPollInterval)
+    } catch is YieldXyzPollLoopTimeout {
+      throw YieldXyzPerpsExecutionError(
+        reason: .timeout,
+        message: timeoutMessage(),
+        actionId: context.actionId,
+        action: context.latestAction
+      )
     }
-
-    throw YieldXyzPerpsExecutionError(
-      reason: .timeout,
-      message: timeoutMessage(),
-      actionId: context.actionId,
-      action: context.latestAction
-    )
-  }
-
-  /// Seconds on a monotonic clock.
-  static func now() -> TimeInterval {
-    ProcessInfo.processInfo.systemUptime
   }
 
   static func sleep(seconds: TimeInterval) async throws {
-    guard seconds > 0, !seconds.isNaN else {
-      try Task.checkCancellation()
-      return
-    }
-    // Clamped so the nanosecond conversion cannot overflow UInt64 (about 584 years).
-    let nanoseconds = min(seconds, 18_000_000_000) * 1_000_000_000
-    try await Task.sleep(nanoseconds: UInt64(nanoseconds))
+    try await YieldXyzExecutionClock.sleep(seconds: seconds)
   }
 }

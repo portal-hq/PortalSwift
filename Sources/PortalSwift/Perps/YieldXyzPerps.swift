@@ -148,27 +148,6 @@ struct YieldXyzPerpsRetryPolicy {
   )
 }
 
-/// Ids of the actions being executed. Two overlapping executions of one action would both read a
-/// transaction awaiting a signature and both sign it. `Portal` owns one and shares it with every
-/// `YieldXyzPerps` it builds, so the guard holds even if two of them are created.
-final class YieldXyzPerpsInFlightActions {
-  private let lock = NSLock()
-  private var actionIds = Set<String>()
-
-  /// Claims `actionId` for one execution; `false` when another execution holds it.
-  func claim(_ actionId: String) -> Bool {
-    lock.lock()
-    defer { lock.unlock() }
-    return actionIds.insert(actionId).inserted
-  }
-
-  func release(_ actionId: String) {
-    lock.lock()
-    defer { lock.unlock() }
-    actionIds.remove(actionId)
-  }
-}
-
 /// Yield.xyz Perps provider implementation. Reach it through `portal.perps.yieldxyz`.
 public class YieldXyzPerps: YieldXyzPerpsProtocol {
   static let defaultSigningChainId = "eip155:42161"
@@ -185,7 +164,7 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
   let api: PortalYieldXyzPerpsApiProtocol
   let dependencies: YieldXyzPerpsExecutionDependencies
   let retryPolicy: YieldXyzPerpsRetryPolicy
-  let inFlightActions: YieldXyzPerpsInFlightActions
+  let inFlightActions: YieldXyzInFlightActions
   let logger = PortalLogger.shared
 
   /// Create an instance of YieldXyzPerps.
@@ -204,7 +183,7 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
     api: PortalYieldXyzPerpsApiProtocol,
     dependencies: YieldXyzPerpsExecutionDependencies,
     retryPolicy: YieldXyzPerpsRetryPolicy,
-    inFlightActions: YieldXyzPerpsInFlightActions = YieldXyzPerpsInFlightActions()
+    inFlightActions: YieldXyzInFlightActions = YieldXyzInFlightActions()
   ) {
     self.api = api
     self.dependencies = dependencies

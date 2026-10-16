@@ -36,40 +36,8 @@ public struct YieldXyzPerpsPage<Item: Codable & Equatable>: Codable, Equatable {
 
 // MARK: - Open values
 
-/// A string value the backend types as an open set: the known values are listed as static
-/// members, and a value Yield.xyz adds later decodes as-is and re-encodes verbatim instead of
-/// failing or collapsing to `unknown`.
-///
-/// Compare with `==` or `switch` on the static members (a `switch` needs a `default`).
-public protocol YieldXyzPerpsOpenValue: RawRepresentable, Codable, Hashable, ExpressibleByStringLiteral,
-  CustomStringConvertible where RawValue == String
-{
-  init(rawValue: String)
-}
-
-public extension YieldXyzPerpsOpenValue {
-  init(stringLiteral value: String) {
-    self.init(rawValue: value)
-  }
-
-  /// Decodes the bare string, whatever its value.
-  init(from decoder: Decoder) throws {
-    try self.init(rawValue: decoder.singleValueContainer().decode(String.self))
-  }
-
-  /// Encodes the raw string unchanged.
-  func encode(to encoder: Encoder) throws {
-    var container = encoder.singleValueContainer()
-    try container.encode(rawValue)
-  }
-
-  var description: String {
-    rawValue
-  }
-}
-
 /// A perps action type. Known values are the ones Portal accepts on `createAction`.
-public struct YieldXyzPerpsActionType: YieldXyzPerpsOpenValue {
+public struct YieldXyzPerpsActionType: YieldXyzOpenValue {
   public let rawValue: String
   public init(rawValue: String) { self.rawValue = rawValue }
 
@@ -90,7 +58,7 @@ public struct YieldXyzPerpsActionType: YieldXyzPerpsOpenValue {
 }
 
 /// The lifecycle status of an action.
-public struct YieldXyzPerpsActionStatus: YieldXyzPerpsOpenValue {
+public struct YieldXyzPerpsActionStatus: YieldXyzOpenValue {
   public let rawValue: String
   public init(rawValue: String) { self.rawValue = rawValue }
 
@@ -104,7 +72,7 @@ public struct YieldXyzPerpsActionStatus: YieldXyzPerpsOpenValue {
 }
 
 /// The lifecycle status of a transaction within an action.
-public struct YieldXyzPerpsTransactionStatus: YieldXyzPerpsOpenValue {
+public struct YieldXyzPerpsTransactionStatus: YieldXyzOpenValue {
   public let rawValue: String
   public init(rawValue: String) { self.rawValue = rawValue }
 
@@ -117,7 +85,7 @@ public struct YieldXyzPerpsTransactionStatus: YieldXyzPerpsOpenValue {
 }
 
 /// The kind of a transaction within an action.
-public struct YieldXyzPerpsTransactionType: YieldXyzPerpsOpenValue {
+public struct YieldXyzPerpsTransactionType: YieldXyzOpenValue {
   public let rawValue: String
   public init(rawValue: String) { self.rawValue = rawValue }
 
@@ -140,7 +108,7 @@ public struct YieldXyzPerpsTransactionType: YieldXyzPerpsOpenValue {
 }
 
 /// How a transaction must be signed.
-public struct YieldXyzPerpsSigningFormat: YieldXyzPerpsOpenValue {
+public struct YieldXyzPerpsSigningFormat: YieldXyzOpenValue {
   public let rawValue: String
   public init(rawValue: String) { self.rawValue = rawValue }
 
@@ -151,7 +119,7 @@ public struct YieldXyzPerpsSigningFormat: YieldXyzPerpsOpenValue {
 }
 
 /// The kind of a lifecycle event.
-public struct YieldXyzPerpsEventType: YieldXyzPerpsOpenValue {
+public struct YieldXyzPerpsEventType: YieldXyzOpenValue {
   public let rawValue: String
   public init(rawValue: String) { self.rawValue = rawValue }
 
@@ -162,7 +130,7 @@ public struct YieldXyzPerpsEventType: YieldXyzPerpsOpenValue {
 }
 
 /// A position direction.
-public struct YieldXyzPerpsSide: YieldXyzPerpsOpenValue {
+public struct YieldXyzPerpsSide: YieldXyzOpenValue {
   public let rawValue: String
   public init(rawValue: String) { self.rawValue = rawValue }
 
@@ -171,7 +139,7 @@ public struct YieldXyzPerpsSide: YieldXyzPerpsOpenValue {
 }
 
 /// How margin is held for a position.
-public struct YieldXyzPerpsMarginMode: YieldXyzPerpsOpenValue {
+public struct YieldXyzPerpsMarginMode: YieldXyzOpenValue {
   public let rawValue: String
   public init(rawValue: String) { self.rawValue = rawValue }
 
@@ -180,7 +148,7 @@ public struct YieldXyzPerpsMarginMode: YieldXyzPerpsOpenValue {
 }
 
 /// The kind of an order.
-public struct YieldXyzPerpsOrderType: YieldXyzPerpsOpenValue {
+public struct YieldXyzPerpsOrderType: YieldXyzOpenValue {
   public let rawValue: String
   public init(rawValue: String) { self.rawValue = rawValue }
 
@@ -191,7 +159,7 @@ public struct YieldXyzPerpsOrderType: YieldXyzPerpsOpenValue {
 }
 
 /// How a venue routes a `fund` deposit.
-public struct YieldXyzPerpsFundingMethod: YieldXyzPerpsOpenValue {
+public struct YieldXyzPerpsFundingMethod: YieldXyzOpenValue {
   public let rawValue: String
   public init(rawValue: String) { self.rawValue = rawValue }
 
@@ -200,7 +168,7 @@ public struct YieldXyzPerpsFundingMethod: YieldXyzPerpsOpenValue {
 }
 
 /// A market sort key.
-public struct YieldXyzPerpsMarketSortKey: YieldXyzPerpsOpenValue {
+public struct YieldXyzPerpsMarketSortKey: YieldXyzOpenValue {
   public let rawValue: String
   public init(rawValue: String) { self.rawValue = rawValue }
 
@@ -210,7 +178,7 @@ public struct YieldXyzPerpsMarketSortKey: YieldXyzPerpsOpenValue {
 }
 
 /// A candle interval.
-public struct YieldXyzPerpsCandleInterval: YieldXyzPerpsOpenValue {
+public struct YieldXyzPerpsCandleInterval: YieldXyzOpenValue {
   public let rawValue: String
   public init(rawValue: String) { self.rawValue = rawValue }
 
@@ -223,7 +191,7 @@ public struct YieldXyzPerpsCandleInterval: YieldXyzPerpsOpenValue {
 }
 
 /// The overall Yield.xyz Perps API health.
-public struct YieldXyzPerpsHealthStatus: YieldXyzPerpsOpenValue {
+public struct YieldXyzPerpsHealthStatus: YieldXyzOpenValue {
   public let rawValue: String
   public init(rawValue: String) { self.rawValue = rawValue }
 
@@ -232,7 +200,7 @@ public struct YieldXyzPerpsHealthStatus: YieldXyzPerpsOpenValue {
 }
 
 /// The health of a single venue.
-public struct YieldXyzPerpsProviderHealthState: YieldXyzPerpsOpenValue {
+public struct YieldXyzPerpsProviderHealthState: YieldXyzOpenValue {
   public let rawValue: String
   public init(rawValue: String) { self.rawValue = rawValue }
 

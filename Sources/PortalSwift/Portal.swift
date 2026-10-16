@@ -85,7 +85,7 @@ public final class Portal: PortalProtocol {
   /// The Perps guard against executing one action twice at once. Initialized with the instance,
   /// unlike the lazy `perps`: two threads reading `perps` first at the same time can each build one,
   /// and both must share this guard.
-  private let perpsInFlightActions = YieldXyzPerpsInFlightActions()
+  private let perpsInFlightActions = YieldXyzInFlightActions()
 
   /// Access to perpetual-futures functionality (Yield.xyz Perps).
   public lazy var perps: Perps = .init(
@@ -108,7 +108,7 @@ public final class Portal: PortalProtocol {
         guard let self else {
           throw PortalClassError.clientNotAvailable
         }
-        return try await self.signAndSendPerpsTransaction(transaction, chainId: chainId, idempotencyKey: idempotencyKey)
+        return try await self.signAndSendYieldXyzTransaction(transaction, chainId: chainId, idempotencyKey: idempotencyKey)
       },
       waitForConfirmation: { [weak self] txHash, chainId in
         guard let self else {
@@ -125,6 +125,42 @@ public final class Portal: PortalProtocol {
         return await self.getRpcUrl(forChainId: chainId) != nil
       }
     )
+  )
+
+  /// The Borrow guard against executing one action twice at once, shared by every `borrow` built for
+  /// the same reason as `perpsInFlightActions`.
+  private let borrowInFlightActions = YieldXyzInFlightActions()
+
+  /// Access to lending functionality (Yield.xyz Borrow).
+  public lazy var borrow: Borrow = .init(
+    api: self.api,
+    inFlightActions: self.borrowInFlightActions,
+    dependencies: YieldXyzBorrowExecutionDependencies(
+      getWalletAddress: { [weak self] in
+        guard let self else {
+          throw PortalClassError.clientNotAvailable
+        }
+        return await self.getAddress(YieldXyzBorrow.walletChainId)
+      },
+      signAndSendTransaction: { [weak self] transaction, chainId, idempotencyKey in
+        guard let self else {
+          throw PortalClassError.clientNotAvailable
+        }
+        return try await self.signAndSendYieldXyzTransaction(transaction, chainId: chainId, idempotencyKey: idempotencyKey)
+      },
+      isChainConfigured: { [weak self] chainId in
+        guard let self else {
+          return false
+        }
+        return await self.getRpcUrl(forChainId: chainId) != nil
+      }
+    ),
+    lookupEvmTransaction: { [weak self] chainId, hash in
+      guard let self else {
+        throw PortalClassError.clientNotAvailable
+      }
+      return try await YieldXyzEvmTransactionLookup(self.api.getTransactionDetails(chain: chainId, signature: hash))
+    }
   )
 
   /// Access to security-related functionality.
@@ -1332,9 +1368,10 @@ public final class Portal: PortalProtocol {
     }
   }
 
-  /// Signs and broadcasts a Yield.xyz Perps on-chain leg via `eth_sendTransaction`.
-  /// - Returns: The transaction hash, or `nil` when the user declined the signing request.
-  private func signAndSendPerpsTransaction(
+  /// Signs and broadcasts a Yield.xyz Perps or Borrow transaction via `eth_sendTransaction`.
+  /// - Returns: The hash `eth_sendTransaction` returned (a user operation hash for an
+  ///   account-abstracted client), or `nil` when the user declined the signing request.
+  private func signAndSendYieldXyzTransaction(
     _ transaction: ETHTransactionParam,
     chainId: String,
     idempotencyKey: String?
