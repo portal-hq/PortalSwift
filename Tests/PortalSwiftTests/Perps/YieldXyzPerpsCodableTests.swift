@@ -97,7 +97,7 @@ final class YieldXyzPerpsCodableTests: XCTestCase {
 
   func test_order_decodes_withMissingNullishFields() throws {
     let order = try decode(YieldXyzPerpsOrder.self, """
-    {"marketId":"hyperliquid-eth-usdc","side":"long","type":"limit","size":"0.5","limitPrice":3900,"reduceOnly":false,"createdAt":1733332000,
+    {"marketId":"hyperliquid-eth-usdc","side":"long","type":"limit","size":"0.5","limitPrice":3900,"reduceOnly":false,"createdAt":1733332000000,
       "pendingActions":[{"type":"cancelOrder","label":"Cancel Order","args":{"orderId":"12345"}}]}
     """)
 
@@ -107,10 +107,10 @@ final class YieldXyzPerpsCodableTests: XCTestCase {
 
   func test_order_decodesAFractionalCreatedAt() throws {
     let order = try decode(YieldXyzPerpsOrder.self, """
-    {"marketId":"m","side":"short","type":"stop_loss","size":"1","triggerPrice":3600,"reduceOnly":true,"createdAt":1733332000.5,"pendingActions":[]}
+    {"marketId":"m","side":"short","type":"stop_loss","size":"1","triggerPrice":3600,"reduceOnly":true,"createdAt":1733332000000.5,"pendingActions":[]}
     """)
 
-    XCTAssertEqual(order.createdAt, 1_733_332_000.5)
+    XCTAssertEqual(order.createdAt, 1_733_332_000_000.5)
     XCTAssertEqual(order.type, .stopLoss)
   }
 

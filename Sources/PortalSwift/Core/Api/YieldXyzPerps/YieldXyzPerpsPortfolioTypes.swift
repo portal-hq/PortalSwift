@@ -75,8 +75,8 @@ public struct YieldXyzPerpsOrder: Codable, Equatable {
   public let leverage: Double?
   public let margin: Double?
   public let reduceOnly: Bool
-  /// Unix timestamp, as the venue reports it. A JSON number the Portal API does not constrain to an
-  /// integer, so it is kept as a `Double`.
+  /// Unix milliseconds, as Hyperliquid reports it. A JSON number the Portal API does not constrain to
+  /// an integer, so it is kept as a `Double`.
   public let createdAt: Double
   public let pendingActions: [YieldXyzPerpsPendingAction]
 

@@ -210,7 +210,7 @@ extension YieldXyzPerpsOrder {
       size: "0.5",
       limitPrice: 3900,
       reduceOnly: false,
-      createdAt: 1_733_332_000,
+      createdAt: 1_733_332_000_000,
       pendingActions: [YieldXyzPerpsPendingAction(type: .cancelOrder, label: "Cancel Order", args: YieldXyzPerpsActionArgs(orderId: "12345"))]
     )
   }
