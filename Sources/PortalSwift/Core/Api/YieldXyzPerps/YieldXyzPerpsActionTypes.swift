@@ -29,8 +29,8 @@ public struct YieldXyzPerpsTransaction: Codable, Equatable {
   public let signablePayload: AnyCodable?
   /// Opaque: the venue payload the signature commits to, returned byte-for-byte. Any JSON value.
   public let rawPayload: AnyCodable?
-  /// Opaque vendor failure detail on a `FAILED` transaction.
-  public let error: [String: AnyCodable]?
+  /// Why a `FAILED` transaction failed, when the venue says.
+  public let error: YieldXyzPerpsTransactionError?
   public let explorerUrls: [String]
 
   public init(
@@ -44,7 +44,7 @@ public struct YieldXyzPerpsTransaction: Codable, Equatable {
     signingFormat: YieldXyzPerpsSigningFormat? = nil,
     signablePayload: AnyCodable? = nil,
     rawPayload: AnyCodable? = nil,
-    error: [String: AnyCodable]? = nil,
+    error: YieldXyzPerpsTransactionError? = nil,
     explorerUrls: [String]
   ) {
     self.id = id
@@ -59,6 +59,37 @@ public struct YieldXyzPerpsTransaction: Codable, Equatable {
     self.rawPayload = rawPayload
     self.error = error
     self.explorerUrls = explorerUrls
+  }
+}
+
+/// Why a `FAILED` transaction failed, as the Portal API reports it: the venue's string `code` and
+/// `message`, when it sends them.
+public struct YieldXyzPerpsTransactionError: Codable, Equatable {
+  /// The venue's machine-readable code. Open-ended: compare against known values, never assume a
+  /// closed set.
+  public let code: String?
+  /// The venue's reason. Fine to show the user; do not parse it.
+  public let message: String?
+
+  public init(code: String? = nil, message: String? = nil) {
+    self.code = code
+    self.message = message
+  }
+
+  private enum CodingKeys: String, CodingKey {
+    case code, message
+  }
+
+  /// Never fails: a key that is not a string is read as `nil`, and a bare string is the message,
+  /// as the Portal API maps a venue's error.
+  public init(from decoder: Decoder) throws {
+    if let container = try? decoder.container(keyedBy: CodingKeys.self) {
+      self.code = try? container.decodeIfPresent(String.self, forKey: .code)
+      self.message = try? container.decodeIfPresent(String.self, forKey: .message)
+    } else {
+      self.code = nil
+      self.message = try? decoder.singleValueContainer().decode(String.self)
+    }
   }
 }
 
@@ -178,8 +209,9 @@ public struct YieldXyzPerpsAction: Codable, Equatable {
   public let status: YieldXyzPerpsActionStatus
   /// Always present in the response; `nil` when the venue returns no summary.
   public let summary: YieldXyzPerpsActionSummary?
-  /// Opaque, returned untouched. Any JSON value.
-  public let signedMetadata: AnyCodable?
+  /// A hex string Yield.xyz signs that describes the action; `nil` when there is none (for example
+  /// on `fund` actions). Not needed to sign or submit.
+  public let signedMetadata: String?
   public let transactions: [YieldXyzPerpsTransaction]
   /// ISO-8601.
   public let createdAt: String
@@ -192,7 +224,7 @@ public struct YieldXyzPerpsAction: Codable, Equatable {
     action: YieldXyzPerpsActionType,
     status: YieldXyzPerpsActionStatus,
     summary: YieldXyzPerpsActionSummary? = nil,
-    signedMetadata: AnyCodable? = nil,
+    signedMetadata: String? = nil,
     transactions: [YieldXyzPerpsTransaction],
     createdAt: String,
     completedAt: String? = nil
@@ -206,6 +238,25 @@ public struct YieldXyzPerpsAction: Codable, Equatable {
     self.transactions = transactions
     self.createdAt = createdAt
     self.completedAt = completedAt
+  }
+
+  private enum CodingKeys: String, CodingKey {
+    case id, providerId, action, status, summary, signedMetadata, transactions, createdAt, completedAt
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.id = try container.decode(String.self, forKey: .id)
+    self.providerId = try container.decode(String.self, forKey: .providerId)
+    self.action = try container.decode(YieldXyzPerpsActionType.self, forKey: .action)
+    self.status = try container.decode(YieldXyzPerpsActionStatus.self, forKey: .status)
+    self.summary = try container.decodeIfPresent(YieldXyzPerpsActionSummary.self, forKey: .summary)
+    // Yield.xyz's spec types it as an object but sends a hex string: anything else reads as `nil`
+    // instead of failing the whole action.
+    self.signedMetadata = try? container.decodeIfPresent(String.self, forKey: .signedMetadata)
+    self.transactions = try container.decode([YieldXyzPerpsTransaction].self, forKey: .transactions)
+    self.createdAt = try container.decode(String.self, forKey: .createdAt)
+    self.completedAt = try container.decodeIfPresent(String.self, forKey: .completedAt)
   }
 }
 

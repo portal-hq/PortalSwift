@@ -24,8 +24,18 @@ public struct YieldXyzPerpsEventOrder: Codable, Equatable {
   public let triggerPrice: Double?
   public let reduceOnly: Bool
   public let isPositionLevel: Bool
-  /// Opaque client id (a string or an object), returned untouched; `nil` when the venue has none.
-  public let clientOrderId: AnyCodable?
+  /// The client order id, when the venue sends it as a string (Hyperliquid's `cloid` is a hex
+  /// string); `nil` when there is none.
+  public var clientOrderId: String? {
+    clientOrderIdValue?.string
+  }
+
+  /// The client order id when the venue sends an object instead of a string; `nil` otherwise.
+  public var clientOrderIdObject: [String: AnyCodable]? {
+    clientOrderIdValue?.object
+  }
+
+  private let clientOrderIdValue: YieldXyzPerpsClientOrderIdValue?
   public let childOrderIds: [String]
   /// ISO-8601.
   public let createdAt: String
@@ -47,7 +57,8 @@ public struct YieldXyzPerpsEventOrder: Codable, Equatable {
     triggerPrice: Double? = nil,
     reduceOnly: Bool,
     isPositionLevel: Bool,
-    clientOrderId: AnyCodable? = nil,
+    clientOrderId: String? = nil,
+    clientOrderIdObject: [String: AnyCodable]? = nil,
     childOrderIds: [String],
     createdAt: String,
     closedPnl: String? = nil,
@@ -65,11 +76,63 @@ public struct YieldXyzPerpsEventOrder: Codable, Equatable {
     self.triggerPrice = triggerPrice
     self.reduceOnly = reduceOnly
     self.isPositionLevel = isPositionLevel
-    self.clientOrderId = clientOrderId
+    self.clientOrderIdValue = clientOrderId.map(YieldXyzPerpsClientOrderIdValue.string)
+      ?? clientOrderIdObject.map(YieldXyzPerpsClientOrderIdValue.object)
     self.childOrderIds = childOrderIds
     self.createdAt = createdAt
     self.closedPnl = closedPnl
     self.fillPrice = fillPrice
+  }
+
+  private enum CodingKeys: String, CodingKey {
+    case orderId, marketId, asset, side, type, originalSizeBase, remainingSizeBase, limitPrice, timeInForce
+    case triggerPrice, reduceOnly, isPositionLevel, childOrderIds, createdAt, closedPnl, fillPrice
+    case clientOrderIdValue = "clientOrderId"
+  }
+}
+
+/// A client order id as the Portal API sends it: a string, or an object. Decoding never fails; any
+/// other value reads as having no id.
+enum YieldXyzPerpsClientOrderIdValue: Codable, Equatable {
+  case string(String)
+  case object([String: AnyCodable])
+  case unrecognized
+
+  var string: String? {
+    if case let .string(value) = self {
+      return value
+    }
+    return nil
+  }
+
+  var object: [String: AnyCodable]? {
+    if case let .object(value) = self {
+      return value
+    }
+    return nil
+  }
+
+  init(from decoder: Decoder) throws {
+    let container = try decoder.singleValueContainer()
+    if let value = try? container.decode(String.self) {
+      self = .string(value)
+    } else if let value = try? container.decode([String: AnyCodable].self) {
+      self = .object(value)
+    } else {
+      self = .unrecognized
+    }
+  }
+
+  func encode(to encoder: Encoder) throws {
+    var container = encoder.singleValueContainer()
+    switch self {
+    case let .string(value):
+      try container.encode(value)
+    case let .object(value):
+      try container.encode(value)
+    case .unrecognized:
+      try container.encodeNil()
+    }
   }
 }
 

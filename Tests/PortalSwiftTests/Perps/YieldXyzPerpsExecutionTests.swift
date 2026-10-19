@@ -590,6 +590,25 @@ final class YieldXyzPerpsExecutionTests: XCTestCase {
     XCTAssertEqual(result.transactions.first?.signingFormat, .evmTransaction)
   }
 
+  /// Perps sends the unsigned transaction as a JSON object today (Borrow documents a JSON string);
+  /// both forms must send the same transaction.
+  func test_evm_sendsAPayloadThatArrivesAsAnObject_likeOneThatArrivesAsAString() async throws {
+    let objectPayload = Fixtures.decode(AnyCodable.self, Fixtures.fundingTransactionPayload())
+    XCTAssertNotNil(objectPayload.value as? [String: Any])
+    setBackend(Fixtures.perpsAction(transactions: [Fixtures.fundingTransaction(signablePayload: objectPayload)]))
+
+    _ = try await execute()
+
+    let send = try XCTUnwrap(signers.sends.first)
+    XCTAssertEqual(send.param.from, Fixtures.wallet)
+    XCTAssertEqual(send.param.to, Fixtures.arbitrumUsdc)
+    XCTAssertEqual(send.param.data, Fixtures.fundingTransferData)
+    XCTAssertEqual(send.param.value, "0x0")
+    XCTAssertEqual(send.param.gas, "0x186a0")
+    XCTAssertNil(send.param.nonce)
+    XCTAssertEqual(backend.submitted.first?.transactionHash, Fixtures.fundingTxHash)
+  }
+
   func test_evm_sendsWithoutAKeyWhenIdempotencyKeysAreOff() async throws {
     setBackend(Fixtures.perpsAction(transactions: [Fixtures.fundingTransaction()]))
 
@@ -951,6 +970,7 @@ final class YieldXyzPerpsExecutionTests: XCTestCase {
 
     XCTAssertEqual(backend.submitted.count, 1)
     XCTAssertEqual(YieldXyzPerpsApiError.from(error)?.details?["code"], AnyCodable("EXECUTE_PRECONDITION_FAILED"))
+    XCTAssertEqual(YieldXyzPerpsApiError.from(error)?.code, "EXECUTE_PRECONDITION_FAILED")
   }
 
   func test_submit_surfacesASignatureVerificationRejection() async {

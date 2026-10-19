@@ -238,8 +238,22 @@ final class YieldXyzPerpsTests: XCTestCase {
     XCTAssertEqual(apiError.id, YieldXyzPerpsErrorId.signatureAddressMismatch)
     XCTAssertEqual(apiError.message, "Signature recovered to 0x1 but the action was built for 0x2")
     XCTAssertEqual(apiError.details?["expected"], AnyCodable("0x2"))
+    XCTAssertNil(apiError.code)
     XCTAssertTrue(apiError.isSignatureError)
     XCTAssertFalse(apiError.isRateLimit)
+  }
+
+  func test_apiError_readsTheVenueCodeOfA503() throws {
+    let error = PortalRequestsError.internalServerError(
+      #"503 - {"error":"Yield.xyz Perps is unavailable","details":{"code":"SUBMIT_BROADCAST_FAILED","integration":"yield-xyz-perps"}}"#,
+      url: "https://api.portalhq.io"
+    )
+
+    let apiError = try XCTUnwrap(YieldXyzPerpsApiError.from(error))
+
+    XCTAssertEqual(apiError.status, 503)
+    XCTAssertEqual(apiError.code, "SUBMIT_BROADCAST_FAILED")
+    XCTAssertEqual(apiError.details?["integration"], AnyCodable("yield-xyz-perps"))
   }
 
   func test_apiError_readsSchemaDrift() throws {
