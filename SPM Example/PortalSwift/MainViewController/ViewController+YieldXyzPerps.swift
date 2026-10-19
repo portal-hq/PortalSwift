@@ -5,9 +5,9 @@
 //  Created by Ahmed Ragab
 //
 //  Yield.xyz Perps testing functionality. Perps is mainnet-only: the read actions are free, and
-//  the one write action (approve agent) moves no funds but authorizes an agent wallet to trade on
-//  the Hyperliquid account. It follows the flow the SDK recommends: build the action, show its
-//  `summary`, and sign only once the user confirms.
+//  the one write action (approve agent) moves no funds. It registers a random agent address that no
+//  one holds a key for, so the agent can never trade. It follows the flow the SDK recommends: build
+//  the action, show its `summary`, and sign only once the user confirms.
 //
 
 import Foundation
@@ -186,28 +186,35 @@ extension ViewController {
 
   // MARK: - Actions
 
+  /// The `agentAddress` `approveAgent` requires. A real integration registers the address of a trading
+  /// key it generated and holds, so orders need no wallet prompt; this example has no such key, so it
+  /// registers a random address no one holds, which can never trade.
+  private static func throwawayAgentAddress() -> String {
+    "0x" + (0 ..< 20).map { _ in String(format: "%02x", UInt8.random(in: .min ... .max)) }.joined()
+  }
+
   /// Builds an `approveAgent` action without signing it, to show what the API returns.
   @IBAction func perpsBuildApproveAgent(_: Any) {
     runPerps("Build Approve Agent") { [perpsProviderId] portal in
       let action = try await portal.perps.yieldxyz.createAction(params: YieldXyzPerpsCreateActionParams(
         providerId: perpsProviderId,
         action: .approveAgent,
-        args: YieldXyzPerpsActionArgs(agentName: "portal-example")
+        args: YieldXyzPerpsActionArgs(agentAddress: Self.throwawayAgentAddress(), agentName: "portal-example")
       )).data
       let formats = action.transactions.map { "\($0.type) (\($0.signingFormat?.rawValue ?? "none"))" }.joined(separator: ", ")
       return "Built \(action.action) \(action.id) [\(action.status)]: \(formats)"
     }
   }
 
-  /// Approves the venue's agent wallet in the two steps the SDK recommends: build the action, show
-  /// its `summary` for the user to confirm, then sign and submit it. It moves no funds, but it is a
-  /// real mainnet signature that lets the agent trade on the account.
+  /// Approves an agent in the two steps the SDK recommends: build the action, show its `summary` for
+  /// the user to confirm, then sign and submit it. It is a real mainnet signature, but it moves no
+  /// funds and the agent (a random address no one holds) can never trade.
   @IBAction func perpsExecuteApproveAgent(_: Any) {
     runPerps("Execute Approve Agent (build, nothing signed)") { [weak self, perpsProviderId] portal in
       let action = try await portal.perps.yieldxyz.createAction(params: YieldXyzPerpsCreateActionParams(
         providerId: perpsProviderId,
         action: .approveAgent,
-        args: YieldXyzPerpsActionArgs(agentName: "portal-example")
+        args: YieldXyzPerpsActionArgs(agentAddress: Self.throwawayAgentAddress(), agentName: "portal-example")
       )).data
       await self?.confirmAndExecute(action)
       return "Built \(action.action) \(action.id); nothing signed yet, awaiting approval."
@@ -219,7 +226,7 @@ extension ViewController {
   private func confirmAndExecute(_ action: YieldXyzPerpsAction) {
     let alert = UIAlertController(
       title: "Approve Hyperliquid agent?",
-      message: "\(Self.describe(action.summary))\n\nThis signs a real mainnet approval with your Portal wallet. It authorizes an agent wallet to place orders on your Hyperliquid account. It moves no funds. The client must not use account abstraction.",
+      message: "\(Self.describe(action.summary))\n\nThis signs a real mainnet approval with your Portal wallet. It registers a random agent address that no one holds a key for, so it can never trade, and it moves no funds. The client must not use account abstraction.",
       preferredStyle: .alert
     )
     alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { [weak self] _ in
