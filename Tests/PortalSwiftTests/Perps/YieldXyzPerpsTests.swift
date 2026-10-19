@@ -134,7 +134,7 @@ final class YieldXyzPerpsTests: XCTestCase {
       _ = try await self.perps.getPositions(params: YieldXyzPerpsPortfolioParams(providerId: "hyperliquid"))
     }
     await assertThrows(.noAddress) {
-      _ = try await self.perps.getActivity()
+      _ = try await self.perps.getActivity(params: YieldXyzPerpsGetActivityParams(providerId: "hyperliquid"))
     }
   }
 
@@ -142,8 +142,25 @@ final class YieldXyzPerpsTests: XCTestCase {
     perps = YieldXyzPerps(api: api)
 
     await assertThrows(.noAddress) {
-      _ = try await self.perps.getEvents()
+      _ = try await self.perps.getEvents(params: YieldXyzPerpsGetEventsParams(providerId: "hyperliquid"))
     }
+  }
+
+  /// Yield.xyz rejects these lists without a venue, and the Portal API forwards them, so the SDK
+  /// refuses them before sending anything.
+  func test_listRequests_requireAVenue_beforeSendingAnything() async {
+    await assertThrows(.providerRequired(method: "getActions")) {
+      _ = try await self.perps.getActions(params: YieldXyzPerpsGetActionsParams(limit: 10))
+    }
+    await assertThrows(.providerRequired(method: "getActivity")) {
+      _ = try await self.perps.getActivity(params: YieldXyzPerpsGetActivityParams(limit: 10, providerIds: [""]))
+    }
+    await assertThrows(.providerRequired(method: "getEvents")) {
+      _ = try await self.perps.getEvents(params: YieldXyzPerpsGetEventsParams(limit: 10))
+    }
+    XCTAssertNil(api.getActionsRequest)
+    XCTAssertNil(api.getActivityRequest)
+    XCTAssertNil(api.getEventsRequest)
   }
 
   // MARK: - Actions
@@ -167,9 +184,9 @@ final class YieldXyzPerpsTests: XCTestCase {
   }
 
   func test_listRequests_defaultTheAddress_andForwardTheFilters() async throws {
-    let actionsParams = YieldXyzPerpsGetActionsParams(limit: 10, type: .open, statuses: [.success])
+    let actionsParams = YieldXyzPerpsGetActionsParams(limit: 10, providerId: "hyperliquid", type: .open, statuses: [.success])
     let activityParams = YieldXyzPerpsGetActivityParams(providerIds: ["hyperliquid"], actionStatus: .failed)
-    let eventsParams = YieldXyzPerpsGetEventsParams(address: other, eventType: .liquidation, fromDate: "2026-09-01T00:00:00.000Z")
+    let eventsParams = YieldXyzPerpsGetEventsParams(address: other, providerId: "hyperliquid", eventType: .liquidation, fromDate: "2026-09-01T00:00:00.000Z")
 
     _ = try await perps.getActions(params: actionsParams)
     _ = try await perps.getActivity(params: activityParams)

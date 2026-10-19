@@ -36,7 +36,7 @@ public protocol YieldXyzPerpsProtocol: AnyObject {
   /// Builds an action and returns it with its **unsigned** transactions. Nothing is signed or
   /// submitted: pass the action to `signAndSubmitAction`, or use `executeAction` to do both.
   func createAction(params: YieldXyzPerpsCreateActionParams) async throws -> YieldXyzPerpsCreateActionResponse
-  /// Lists an account's actions.
+  /// Lists an account's actions on one venue. Requires `providerId`.
   func getActions(params: YieldXyzPerpsGetActionsParams) async throws -> YieldXyzPerpsGetActionsResponse
   /// Gets one action with its transactions and status.
   func getAction(actionId: String) async throws -> YieldXyzPerpsGetActionResponse
@@ -46,8 +46,10 @@ public protocol YieldXyzPerpsProtocol: AnyObject {
   func submitTransaction(params: YieldXyzPerpsSubmitTransactionParams) async throws -> YieldXyzPerpsSubmitTransactionResponse
 
   /// Gets an account's unified activity feed: its actions and lifecycle events, newest first.
+  /// Requires `providerId` or `providerIds`.
   func getActivity(params: YieldXyzPerpsGetActivityParams) async throws -> YieldXyzPerpsGetActivityResponse
   /// Lists an account's lifecycle events (fills, liquidations, stop-loss / take-profit triggers).
+  /// Requires `providerId` or `providerIds`.
   func getEvents(params: YieldXyzPerpsGetEventsParams) async throws -> YieldXyzPerpsGetEventsResponse
   /// Gets one lifecycle event.
   func getEvent(eventId: String) async throws -> YieldXyzPerpsGetEventResponse
@@ -97,21 +99,6 @@ public extension YieldXyzPerpsProtocol {
   /// Convenience overload of `getMarkets` without filters.
   func getMarkets() async throws -> YieldXyzPerpsGetMarketsResponse {
     try await getMarkets(params: YieldXyzPerpsGetMarketsParams())
-  }
-
-  /// Convenience overload of `getActions` for the Portal wallet, without filters.
-  func getActions() async throws -> YieldXyzPerpsGetActionsResponse {
-    try await getActions(params: YieldXyzPerpsGetActionsParams())
-  }
-
-  /// Convenience overload of `getActivity` for the Portal wallet, without filters.
-  func getActivity() async throws -> YieldXyzPerpsGetActivityResponse {
-    try await getActivity(params: YieldXyzPerpsGetActivityParams())
-  }
-
-  /// Convenience overload of `getEvents` for the Portal wallet, without filters.
-  func getEvents() async throws -> YieldXyzPerpsGetEventsResponse {
-    try await getEvents(params: YieldXyzPerpsGetEventsParams())
   }
 
   /// Convenience overload of `executeAction` with default options.
@@ -283,7 +270,11 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
   }
 
   public func getActions(params: YieldXyzPerpsGetActionsParams) async throws -> YieldXyzPerpsGetActionsResponse {
-    try await api.getActions(request: YieldXyzPerpsGetActionsRequest(address: resolveAddress(params.address), params: params))
+    // Yield.xyz rejects a list without a venue; the Portal API forwards it, so fail here first.
+    guard !Self.isBlank(params.providerId) else {
+      throw YieldXyzPerpsError.providerRequired(method: "getActions")
+    }
+    return try await api.getActions(request: YieldXyzPerpsGetActionsRequest(address: resolveAddress(params.address), params: params))
   }
 
   public func getAction(actionId: String) async throws -> YieldXyzPerpsGetActionResponse {
@@ -303,11 +294,13 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
   // MARK: - History
 
   public func getActivity(params: YieldXyzPerpsGetActivityParams) async throws -> YieldXyzPerpsGetActivityResponse {
-    try await api.getActivity(request: YieldXyzPerpsGetActivityRequest(address: resolveAddress(params.address), params: params))
+    try assertAtLeastOneProvider("getActivity", providerId: params.providerId, providerIds: params.providerIds)
+    return try await api.getActivity(request: YieldXyzPerpsGetActivityRequest(address: resolveAddress(params.address), params: params))
   }
 
   public func getEvents(params: YieldXyzPerpsGetEventsParams) async throws -> YieldXyzPerpsGetEventsResponse {
-    try await api.getEvents(request: YieldXyzPerpsGetEventsRequest(address: resolveAddress(params.address), params: params))
+    try assertAtLeastOneProvider("getEvents", providerId: params.providerId, providerIds: params.providerIds)
+    return try await api.getEvents(request: YieldXyzPerpsGetEventsRequest(address: resolveAddress(params.address), params: params))
   }
 
   public func getEvent(eventId: String) async throws -> YieldXyzPerpsGetEventResponse {

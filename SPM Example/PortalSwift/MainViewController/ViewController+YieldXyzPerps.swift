@@ -161,15 +161,15 @@ extension ViewController {
   // MARK: - History
 
   @IBAction func perpsGetActivity(_: Any) {
-    runPerps("Get Activity") { portal in
-      let page = try await portal.perps.yieldxyz.getActivity(params: YieldXyzPerpsGetActivityParams(limit: 10)).data
+    runPerps("Get Activity") { [perpsProviderId] portal in
+      let page = try await portal.perps.yieldxyz.getActivity(params: YieldXyzPerpsGetActivityParams(limit: 10, providerId: perpsProviderId)).data
       return "\(page.total) activity items: " + page.items.map(\.type).joined(separator: ", ")
     }
   }
 
   @IBAction func perpsGetEvents(_: Any) {
-    runPerps("Get Events") { portal in
-      let page = try await portal.perps.yieldxyz.getEvents(params: YieldXyzPerpsGetEventsParams(limit: 10)).data
+    runPerps("Get Events") { [perpsProviderId] portal in
+      let page = try await portal.perps.yieldxyz.getEvents(params: YieldXyzPerpsGetEventsParams(limit: 10, providerId: perpsProviderId)).data
       return "\(page.total) events: " + page.items.map(\.eventType.rawValue).joined(separator: ", ")
     }
   }
