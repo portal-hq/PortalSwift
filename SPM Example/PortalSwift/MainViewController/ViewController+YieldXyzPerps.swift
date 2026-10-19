@@ -64,6 +64,11 @@ extension ViewController {
       if let broadcastHash = execution.broadcastHash {
         parts.append("broadcastHash \(broadcastHash) (resume with broadcastHashes)")
       }
+      // The venue's reason for a failed leg, when it gave one.
+      for transaction in execution.action?.transactions ?? [] where transaction.status == .failed {
+        let reason = [transaction.error?.code, transaction.error?.message].compactMap { $0 }.joined(separator: " ")
+        parts.append("transaction \(transaction.id) FAILED: \(reason.isEmpty ? "no reason given" : reason)")
+      }
     }
     if let apiError = YieldXyzPerpsApiError.from(error) {
       let status = apiError.status.map(String.init) ?? "?"
