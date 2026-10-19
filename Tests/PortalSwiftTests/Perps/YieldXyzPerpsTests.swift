@@ -120,6 +120,13 @@ final class YieldXyzPerpsTests: XCTestCase {
     }
   }
 
+  func test_createAction_rejectsAnEmptyVenue_beforeSendingAnything() async {
+    await assertThrows(.providerRequired(method: "createAction")) {
+      _ = try await self.perps.createAction(params: YieldXyzPerpsCreateActionParams(providerId: "", action: .open, args: YieldXyzPerpsActionArgs()))
+    }
+    XCTAssertEqual(api.createActionCallsCount, 0)
+  }
+
   func test_accountRequests_failWithoutAnyAddress() async {
     walletAddress = nil
 

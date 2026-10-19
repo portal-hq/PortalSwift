@@ -156,8 +156,8 @@ extension YieldXyzPerps {
   }
 
   /// Reads the action back until `check` returns a value. Rate limits, 5xx, transport failures and
-  /// undecodable bodies are retried up to `maxConsecutivePollErrors` times in a row; any other
-  /// failure stops polling. The wait between reads grows by 1.5× up to `maxPollInterval`.
+  /// undecodable bodies are retried until `maxConsecutivePollErrors` reads in a row have failed;
+  /// any other failure stops polling. The wait between reads grows by 1.5× up to `maxPollInterval`.
   func pollAction<T>(
     _ context: ExecutionContext,
     schedule: YieldXyzPerpsPollOptions,

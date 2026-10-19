@@ -136,7 +136,8 @@ struct YieldXyzPerpsRetryPolicy {
   var minPollInterval: TimeInterval
   /// The longest wait between two reads of an action.
   var maxPollInterval: TimeInterval
-  /// Consecutive failed reads of an action tolerated before polling fails.
+  /// Polling fails on this many consecutive failed reads of an action (with 5, four in a row are
+  /// retried and the fifth fails).
   var maxConsecutivePollErrors: Int
 
   static let standard = YieldXyzPerpsRetryPolicy(
@@ -270,7 +271,10 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
   // MARK: - Actions
 
   public func createAction(params: YieldXyzPerpsCreateActionParams) async throws -> YieldXyzPerpsCreateActionResponse {
-    try await api.createAction(request: YieldXyzPerpsCreateActionRequest(
+    guard !params.providerId.isEmpty else {
+      throw YieldXyzPerpsError.providerRequired(method: "createAction")
+    }
+    return try await api.createAction(request: YieldXyzPerpsCreateActionRequest(
       providerId: params.providerId,
       address: resolveAddress(params.address),
       action: params.action,
