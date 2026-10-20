@@ -150,7 +150,7 @@ final class YieldXyzPerpsTests: XCTestCase {
   /// refuses them before sending anything.
   func test_listRequests_requireAVenue_beforeSendingAnything() async {
     await assertThrows(.providerRequired(method: "getActions")) {
-      _ = try await self.perps.getActions(params: YieldXyzPerpsGetActionsParams(limit: 10))
+      _ = try await self.perps.getActions(params: YieldXyzPerpsGetActionsParams(limit: 10, providerIds: [""]))
     }
     await assertThrows(.providerRequired(method: "getActivity")) {
       _ = try await self.perps.getActivity(params: YieldXyzPerpsGetActivityParams(limit: 10, providerIds: [""]))
@@ -195,6 +195,14 @@ final class YieldXyzPerpsTests: XCTestCase {
     XCTAssertEqual(api.getActionsRequest, YieldXyzPerpsGetActionsRequest(address: wallet, params: actionsParams))
     XCTAssertEqual(api.getActivityRequest, YieldXyzPerpsGetActivityRequest(address: wallet, params: activityParams))
     XCTAssertEqual(api.getEventsRequest, YieldXyzPerpsGetEventsRequest(address: other, params: eventsParams))
+  }
+
+  func test_getActions_acceptsProviderIdsAlone() async throws {
+    let params = YieldXyzPerpsGetActionsParams(providerIds: ["hyperliquid"])
+
+    _ = try await perps.getActions(params: params)
+
+    XCTAssertEqual(api.getActionsRequest, YieldXyzPerpsGetActionsRequest(address: wallet, params: params))
   }
 
   func test_submitTransaction_requiresASignatureOrAHash() async {

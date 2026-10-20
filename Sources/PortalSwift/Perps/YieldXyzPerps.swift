@@ -36,7 +36,7 @@ public protocol YieldXyzPerpsProtocol: AnyObject {
   /// Builds an action and returns it with its **unsigned** transactions. Nothing is signed or
   /// submitted: pass the action to `signAndSubmitAction`, or use `executeAction` to do both.
   func createAction(params: YieldXyzPerpsCreateActionParams) async throws -> YieldXyzPerpsCreateActionResponse
-  /// Lists an account's actions on one venue. Requires `providerId`.
+  /// Lists an account's actions. Requires `providerId` or `providerIds`.
   func getActions(params: YieldXyzPerpsGetActionsParams) async throws -> YieldXyzPerpsGetActionsResponse
   /// Gets one action with its transactions and status.
   func getAction(actionId: String) async throws -> YieldXyzPerpsGetActionResponse
@@ -270,10 +270,7 @@ public class YieldXyzPerps: YieldXyzPerpsProtocol {
   }
 
   public func getActions(params: YieldXyzPerpsGetActionsParams) async throws -> YieldXyzPerpsGetActionsResponse {
-    // Yield.xyz rejects a list without a venue; the Portal API forwards it, so fail here first.
-    guard !Self.isBlank(params.providerId) else {
-      throw YieldXyzPerpsError.providerRequired(method: "getActions")
-    }
+    try assertAtLeastOneProvider("getActions", providerId: params.providerId, providerIds: params.providerIds)
     return try await api.getActions(request: YieldXyzPerpsGetActionsRequest(address: resolveAddress(params.address), params: params))
   }
 

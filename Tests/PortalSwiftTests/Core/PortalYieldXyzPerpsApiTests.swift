@@ -208,6 +208,16 @@ final class PortalYieldXyzPerpsApiTests: XCTestCase {
     XCTAssertEqual(lastUrl, "\(base)/actions?address=\(wallet)&status=SUCCESS")
   }
 
+  func test_getActions_joinsProviderIds() async throws {
+    try respond(with: YieldXyzPerpsGetActionsResponse(data: YieldXyzPerpsPage(total: 0, offset: 0, limit: 25, items: [])))
+
+    _ = try await api.getActions(request: YieldXyzPerpsGetActionsRequest(address: wallet, params: YieldXyzPerpsGetActionsParams(
+      providerIds: ["hyperliquid", "", "other-venue"]
+    )))
+
+    XCTAssertEqual(lastUrl, "\(base)/actions?address=\(wallet)&providerIds=hyperliquid%2Cother-venue")
+  }
+
   func test_getAction_encodesActionId() async throws {
     try respond(with: YieldXyzPerpsGetActionResponse(data: .stub()))
 
