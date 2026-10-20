@@ -271,7 +271,6 @@ final class YieldXyzPerpsCodableTests: XCTestCase {
     XCTAssertNil(event.providerOrderId)
     XCTAssertNil(event.explorerUrl)
     XCTAssertNil(event.order.clientOrderId)
-    XCTAssertEqual(event.order.clientOrderIdObject, ["cloid": AnyCodable("0xabc")])
     XCTAssertNil(event.order.limitPrice)
   }
 
@@ -279,14 +278,12 @@ final class YieldXyzPerpsCodableTests: XCTestCase {
     let event = try decode(YieldXyzPerpsEvent.self, eventJSON.replacingOccurrences(of: "\"clientOrderId\":null", with: "\"clientOrderId\":\"cl-1\""))
 
     XCTAssertEqual(event.order.clientOrderId, "cl-1")
-    XCTAssertNil(event.order.clientOrderIdObject)
   }
 
   func test_eventOrder_readsAnUnexpectedClientOrderIdAsNone_insteadOfFailing() throws {
     let event = try decode(YieldXyzPerpsEvent.self, eventJSON.replacingOccurrences(of: "\"clientOrderId\":null", with: "\"clientOrderId\":42"))
 
     XCTAssertNil(event.order.clientOrderId)
-    XCTAssertNil(event.order.clientOrderIdObject)
   }
 
   func test_eventOrder_encodesItsClientOrderIdUnderTheWireKey() throws {
@@ -295,7 +292,6 @@ final class YieldXyzPerpsCodableTests: XCTestCase {
     let json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(order)) as? [String: Any])
 
     XCTAssertEqual(json["clientOrderId"] as? String, "cl-1")
-    XCTAssertNil(json["clientOrderIdValue"])
   }
 
   // MARK: - Lenient, Portal-shaped fields

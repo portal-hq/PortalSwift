@@ -24,10 +24,13 @@ public struct YieldXyzPerpsTransaction: Codable, Equatable {
   public let address: String
   public let args: YieldXyzPerpsActionArgs?
   public let signingFormat: YieldXyzPerpsSigningFormat?
-  /// Opaque, returned byte-for-byte: EIP-712 typed data (an object) for `EIP712_TYPED_DATA`, or a
-  /// JSON-encoded unsigned transaction for `EVM_TRANSACTION`. Any JSON value.
+  /// What to sign, returned byte-for-byte. An object for both formats: EIP-712 typed data
+  /// (`domain`, `types`, `primaryType`, `message`) for `EIP712_TYPED_DATA`, or an unsigned
+  /// transaction (`from`, `to`, `data`, `value`, `gasLimit`, plus nonce, chain and fee fields) for
+  /// `EVM_TRANSACTION`.
   public let signablePayload: AnyCodable?
-  /// Opaque: the venue payload the signature commits to, returned byte-for-byte. Any JSON value.
+  /// The venue action the signature commits to, as `{ action, nonce }`, returned byte-for-byte.
+  /// Present on `EIP712_TYPED_DATA` transactions; absent on `EVM_TRANSACTION` ones.
   public let rawPayload: AnyCodable?
   /// Why a `FAILED` transaction failed, when the venue says.
   public let error: YieldXyzPerpsTransactionError?
@@ -209,8 +212,9 @@ public struct YieldXyzPerpsAction: Codable, Equatable {
   public let status: YieldXyzPerpsActionStatus
   /// Always present in the response; `nil` when the venue returns no summary.
   public let summary: YieldXyzPerpsActionSummary?
-  /// A hex string Yield.xyz signs that describes the action; `nil` when there is none (for example
-  /// on `fund` actions). Not needed to sign or submit.
+  /// Metadata Yield.xyz signs so Ledger devices can show the action in clear: lowercase hex without
+  /// a `0x` prefix. `nil` on actions Ledger has no format for (`fund`, `withdraw`, `approveAgent`,
+  /// `approveBuilderFee`) and when Yield.xyz doesn't sign it. Not needed to sign or submit.
   public let signedMetadata: String?
   public let transactions: [YieldXyzPerpsTransaction]
   /// ISO-8601.
@@ -262,14 +266,15 @@ public struct YieldXyzPerpsAction: Codable, Equatable {
 
 /// The result of submitting a signature or a broadcast transaction hash.
 public struct YieldXyzPerpsSubmitResult: Codable, Equatable {
-  /// Absent for immediate venue actions.
+  /// Set for a broadcast `EVM_TRANSACTION` (`BROADCASTED`). Absent for a signature, which Yield.xyz
+  /// queues (`QUEUED`) for the venue: poll the action for the outcome.
   public let transactionHash: String?
   public let link: String
   /// `FAILED` means the venue rejected the transaction even though the request succeeded.
   public let status: YieldXyzPerpsTransactionStatus
-  /// Present only when `status` is `FAILED`.
+  /// Reserved for a failure reason. Yield.xyz doesn't return it today.
   public let error: String?
-  /// Provider-specific fill details, opaque.
+  /// Reserved for provider-specific details, opaque. Yield.xyz doesn't return them today.
   public let details: [String: AnyCodable]?
 
   public init(
