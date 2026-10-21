@@ -66,13 +66,19 @@ public struct YieldXyzPerpsApiError: Error, Equatable {
   /// The response's `error` message, or its raw body when it is not a Portal error object.
   public let message: String?
   /// The rest of the error's detail, which depends on `id` (for example `recovered` and `expected`
-  /// on `PERPS_SIGNATURE_ADDRESS_MISMATCH`). Read the venue's code from `code`.
+  /// on `PERPS_SIGNATURE_ADDRESS_MISMATCH`). Read Yield.xyz's codes from `code` and `reason`.
   public let details: [String: AnyCodable]?
 
-  /// The venue's machine-readable code (`details.code`), when the error carries one. Open-ended:
-  /// compare against known values, never assume a closed set.
+  /// Yield.xyz's machine-readable code (`details.code`, for example `EXECUTE_INVALID_ARGUMENT`), when
+  /// the error carries one. Open-ended: compare against known values, never assume a closed set.
   public var code: String? {
     details?["code"]?.value as? String
+  }
+
+  /// Yield.xyz's machine-readable sub-code (`details.reason`, for example `NO_ROUTE_AVAILABLE`), when
+  /// the error carries one. It narrows `code`. Open-ended, like `code`.
+  public var reason: String? {
+    details?["reason"]?.value as? String
   }
 
   public init(status: Int?, id: String? = nil, message: String? = nil, details: [String: AnyCodable]? = nil) {

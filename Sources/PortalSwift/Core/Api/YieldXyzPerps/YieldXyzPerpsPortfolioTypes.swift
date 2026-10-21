@@ -75,9 +75,8 @@ public struct YieldXyzPerpsOrder: Codable, Equatable {
   public let leverage: Double?
   public let margin: Double?
   public let reduceOnly: Bool
-  /// Unix milliseconds, as Hyperliquid reports it. A JSON number the Portal API does not constrain to
-  /// an integer, so it is kept as a `Double`.
-  public let createdAt: Double
+  /// When the venue placed the order, in Unix milliseconds.
+  public let createdAt: Int64
   public let pendingActions: [YieldXyzPerpsPendingAction]
 
   public init(
@@ -90,7 +89,7 @@ public struct YieldXyzPerpsOrder: Codable, Equatable {
     leverage: Double? = nil,
     margin: Double? = nil,
     reduceOnly: Bool,
-    createdAt: Double,
+    createdAt: Int64,
     pendingActions: [YieldXyzPerpsPendingAction]
   ) {
     self.marketId = marketId

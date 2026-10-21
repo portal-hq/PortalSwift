@@ -264,6 +264,7 @@ final class YieldXyzPerpsTests: XCTestCase {
     XCTAssertEqual(apiError.message, "Signature recovered to 0x1 but the action was built for 0x2")
     XCTAssertEqual(apiError.details?["expected"], AnyCodable("0x2"))
     XCTAssertNil(apiError.code)
+    XCTAssertNil(apiError.reason)
     XCTAssertTrue(apiError.isSignatureError)
     XCTAssertFalse(apiError.isRateLimit)
   }
@@ -279,6 +280,19 @@ final class YieldXyzPerpsTests: XCTestCase {
     XCTAssertEqual(apiError.status, 503)
     XCTAssertEqual(apiError.code, "SUBMIT_BROADCAST_FAILED")
     XCTAssertEqual(apiError.details?["integration"], AnyCodable("yield-xyz-perps"))
+  }
+
+  func test_apiError_readsTheCodeAndReasonOfARejectedRequest() throws {
+    let error = PortalRequestsError.clientError(
+      #"400 - {"error":"Yield.xyz Perps rejected the request","details":{"code":"EXECUTE_INVALID_ARGUMENT","reason":"NO_ROUTE_AVAILABLE"}}"#,
+      url: "https://api.portalhq.io"
+    )
+
+    let apiError = try XCTUnwrap(YieldXyzPerpsApiError.from(error))
+
+    XCTAssertEqual(apiError.status, 400)
+    XCTAssertEqual(apiError.code, "EXECUTE_INVALID_ARGUMENT")
+    XCTAssertEqual(apiError.reason, "NO_ROUTE_AVAILABLE")
   }
 
   func test_apiError_readsSchemaDrift() throws {

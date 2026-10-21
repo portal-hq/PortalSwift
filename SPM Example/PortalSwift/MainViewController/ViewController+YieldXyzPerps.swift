@@ -72,7 +72,7 @@ extension ViewController {
     }
     if let apiError = YieldXyzPerpsApiError.from(error) {
       let status = "HTTP \(apiError.status.map(String.init) ?? "?")"
-      parts.append([status, apiError.id, apiError.code, apiError.message].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " "))
+      parts.append([status, apiError.id, apiError.code, apiError.reason, apiError.message].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " "))
     }
     return parts.isEmpty ? error.localizedDescription : parts.joined(separator: "; ")
   }

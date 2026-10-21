@@ -105,12 +105,12 @@ final class YieldXyzPerpsCodableTests: XCTestCase {
     XCTAssertNil(order.triggerPrice)
   }
 
-  func test_order_decodesAFractionalCreatedAt() throws {
+  func test_order_decodesCreatedAtAsUnixMilliseconds() throws {
     let order = try decode(YieldXyzPerpsOrder.self, """
-    {"marketId":"m","side":"short","type":"stop_loss","size":"1","triggerPrice":3600,"reduceOnly":true,"createdAt":1733332000000.5,"pendingActions":[]}
+    {"marketId":"m","side":"short","type":"stop_loss","size":"1","triggerPrice":3600,"reduceOnly":true,"createdAt":1776930725187,"pendingActions":[]}
     """)
 
-    XCTAssertEqual(order.createdAt, 1_733_332_000_000.5)
+    XCTAssertEqual(order.createdAt, 1_776_930_725_187)
     XCTAssertEqual(order.type, .stopLoss)
   }
 
