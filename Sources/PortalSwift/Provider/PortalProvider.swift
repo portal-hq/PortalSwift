@@ -17,23 +17,23 @@ public protocol PortalProviderProtocol: AnyObject {
   func on(event: Events.RawValue, callback: @escaping (_ data: Any) -> Void) -> PortalProvider
   func once(event: Events.RawValue, callback: @escaping (_ data: Any) throws -> Void) -> PortalProvider
   func removeListener(event: Events.RawValue) -> PortalProvider
-  func request(chainId: String, method: PortalRequestMethod, params: [AnyCodable]?, connect: PortalConnect?, options: RequestOptions?) async throws -> PortalProviderResult
+  func request(chainId: String, method: PortalRequestMethod, params: [AnyCodable]?, options: RequestOptions?) async throws -> PortalProviderResult
   func getRpcUrl(_ chainId: String) throws -> String
-  func updateChain(newChainId: String, connect: PortalConnect?)
+  func updateChain(newChainId: String)
 
   // deprecated functions
   @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of request().")
-  func request(payload: ETHRequestPayload, completion: @escaping (Result<RequestCompletionResult>) -> Void, connect: PortalConnect?)
+  func request(payload: ETHRequestPayload, completion: @escaping (Result<RequestCompletionResult>) -> Void)
   @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of request().")
-  func request(payload: ETHTransactionPayload, completion: @escaping (Result<TransactionCompletionResult>) -> Void, connect: PortalConnect?)
+  func request(payload: ETHTransactionPayload, completion: @escaping (Result<TransactionCompletionResult>) -> Void)
   @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of request().")
-  func request(payload: ETHAddressPayload, completion: @escaping (Result<AddressCompletionResult>) -> Void, connect: PortalConnect?)
+  func request(payload: ETHAddressPayload, completion: @escaping (Result<AddressCompletionResult>) -> Void)
   @available(*, deprecated, renamed: "NONE", message: "Please use the chain agnostic approach to using Portal by passing a CAIP-2 Blockchain ID to your request() calls.")
-  func setChainId(value: Int, connect: PortalConnect?) throws -> PortalProvider
-  @available(*, deprecated, message: "Use request(chainId:method:params:connect:options:) instead. Pass RequestOptions(signatureApprovalMemo: yourMemo) to provide the signature approval memo.")
-  func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [AnyCodable]?, connect: PortalConnect?, signatureApprovalMemo: String?) async throws -> PortalProviderResult
-  @available(*, deprecated, message: "Use request(chainId:method:params:connect:options:) instead. Pass RequestOptions(signatureApprovalMemo: yourMemo) to provide the signature approval memo.")
-  func request(_ chainId: String, withMethod: String, andParams: [AnyCodable]?, connect: PortalConnect?, signatureApprovalMemo: String?) async throws -> PortalProviderResult
+  func setChainId(value: Int) throws -> PortalProvider
+  @available(*, deprecated, message: "Use request(chainId:method:params:options:) instead. Pass RequestOptions(signatureApprovalMemo: yourMemo) to provide the signature approval memo.")
+  func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [AnyCodable]?, signatureApprovalMemo: String?) async throws -> PortalProviderResult
+  @available(*, deprecated, message: "Use request(chainId:method:params:options:) instead. Pass RequestOptions(signatureApprovalMemo: yourMemo) to provide the signature approval memo.")
+  func request(_ chainId: String, withMethod: String, andParams: [AnyCodable]?, signatureApprovalMemo: String?) async throws -> PortalProviderResult
 }
 
 /// Portal's EVM blockchain provider.
@@ -71,7 +71,7 @@ public class PortalProvider: PortalProviderProtocol {
   /// `PortalOwnedHosts`, so one instance's credential cannot reach another instance's proxy
   /// through an `rpcConfig` URL, and never to a loopback URL that is not one of these, so a local
   /// Anvil or Hardhat node does not receive it either (`isPortalRpcUrl(_:configuredEndpoints:)`).
-  /// Internal so tests can assert what a `PortalConnect`-built provider trusts.
+  /// Internal so tests can assert what a provider trusts.
   let configuredEndpoints: Set<PortalConfiguredEndpoint>
   private let signer: PortalSignerProtocol
   private let featureFlags: FeatureFlags?
@@ -286,7 +286,6 @@ public class PortalProvider: PortalProviderProtocol {
   ///   - chainId: A CAIP-2 Blockchain ID associated with the request.
   ///   - method: A member of the PortalRequestMethod enum
   ///   - params: An array of parameters for the request (either RPC parameters or a transaction if signing)
-  ///   - connect: Optional `PortalConnect` object to use for the request.
   ///   - options: Optional request options: signature approval memo, gas sponsorship, trace ID, and an
   ///     idempotency key for `eth_sendTransaction`, `sol_signAndSendTransaction` and
   ///     `sol_signAndConfirmTransaction` (see `RequestOptions.idempotencyKey`).
@@ -300,7 +299,6 @@ public class PortalProvider: PortalProviderProtocol {
     chainId: String,
     method: PortalRequestMethod,
     params: [AnyCodable]? = [],
-    connect: PortalConnect? = nil,
     options: RequestOptions? = nil
   ) async throws -> PortalProviderResult {
     let blockchain = try PortalBlockchain(fromChainId: chainId)
@@ -335,7 +333,7 @@ public class PortalProvider: PortalProviderProtocol {
     default:
       if blockchain.shouldMethodBeSigned(method) {
         let payload = PortalProviderRequestWithId(id: id, method: method, params: params, chainId: chainId)
-        return try await self.handleSignRequest(chainId, withPayload: payload, forId: id, onBlockchain: blockchain, connect: connect, options: options, traceId: traceId, idempotencyKey: idempotencyKey)
+        return try await self.handleSignRequest(chainId, withPayload: payload, forId: id, onBlockchain: blockchain, options: options, traceId: traceId, idempotencyKey: idempotencyKey)
       } else {
         return try await self.handleRpcRequest(chainId, withMethod: method, andParams: params, forId: id, traceId: traceId)
       }
@@ -347,23 +345,20 @@ public class PortalProvider: PortalProviderProtocol {
   ///   - chainId: A CAIP-2 Blockchain ID associated with the request.
   ///   - withMethod: A member of the PortalRequestMethod enum
   ///   - andParams: An array of parameters for the request (either RPC parameters or a transaction if signing)
-  ///   - connect: Optional `PortalConnect` object to use for the request.
   ///   - signatureApprovalMemo: Optional signature approval memo to use for the request.
   /// - Returns: PortalProviderResult
-  /// - Warning: This function is deprecated. Use `request(chainId:method:params:connect:options:)` instead.
-  @available(*, deprecated, message: "Use request(_:withMethod:andParams:connect:options:) instead. Pass RequestOptions(signatureApprovalMemo: yourMemo) to provide the signature approval memo.")
+  /// - Warning: This function is deprecated. Use `request(chainId:method:params:options:)` instead.
+  @available(*, deprecated, message: "Use request(_:withMethod:andParams:options:) instead. Pass RequestOptions(signatureApprovalMemo: yourMemo) to provide the signature approval memo.")
   public func request(
     _ chainId: String,
     withMethod: PortalRequestMethod,
     andParams: [AnyCodable]? = [],
-    connect: PortalConnect? = nil,
     signatureApprovalMemo: String? = nil
   ) async throws -> PortalProviderResult {
     return try await request(
       chainId: chainId,
       method: withMethod,
       params: andParams,
-      connect: connect,
       options: RequestOptions(signatureApprovalMemo: signatureApprovalMemo)
     )
   }
@@ -373,16 +368,14 @@ public class PortalProvider: PortalProviderProtocol {
   ///   - chainId: A CAIP-2 Blockchain ID associated with the request.
   ///   - withMethod: The string literal of your RPC method.
   ///   - andParams: An array of parameters for the request (either RPC parameters or a transaction if signing).
-  ///   - connect: Optional `PortalConnect` object to use for the request.
   ///   - signatureApprovalMemo: Optional signature approval memo to use for the request.
   /// - Returns: PortalProviderResult
-  /// - Warning: This function is deprecated. Use `request(chainId:method:params:connect:options:)` instead.
-  @available(*, deprecated, message: "Use request(_:withMethod:andParams:connect:options:) instead. Pass RequestOptions(signatureApprovalMemo: yourMemo) to provide the signature approval memo.")
+  /// - Warning: This function is deprecated. Use `request(chainId:method:params:options:)` instead.
+  @available(*, deprecated, message: "Use request(_:withMethod:andParams:options:) instead. Pass RequestOptions(signatureApprovalMemo: yourMemo) to provide the signature approval memo.")
   public func request(
     _ chainId: String,
     withMethod: String,
     andParams: [AnyCodable]? = [],
-    connect: PortalConnect? = nil,
     signatureApprovalMemo: String? = nil
   ) async throws -> PortalProviderResult {
     guard let method = PortalRequestMethod(rawValue: withMethod) else {
@@ -393,7 +386,6 @@ public class PortalProvider: PortalProviderProtocol {
       chainId: chainId,
       method: method,
       params: andParams,
-      connect: connect,
       options: RequestOptions(signatureApprovalMemo: signatureApprovalMemo)
     )
   }
@@ -460,11 +452,11 @@ public class PortalProvider: PortalProviderProtocol {
     }
   }
 
-  private func getApproval(_: String, forPayload: PortalProviderRequestWithId, connect: PortalConnect? = nil) async throws -> Bool {
+  private func getApproval(_: String, forPayload: PortalProviderRequestWithId) async throws -> Bool {
     if self.autoApprove {
       return true
     }
-    if connect == nil, self.events[Events.PortalSigningRequested.rawValue] == nil {
+    if self.events[Events.PortalSigningRequested.rawValue] == nil {
       throw ProviderSigningError.noBindingForSigningApprovalFound
     }
 
@@ -493,11 +485,7 @@ public class PortalProvider: PortalProviderProtocol {
         }
       })
 
-      if connect != nil {
-        _ = connect?.emit(event: Events.PortalSigningRequested.rawValue, data: forPayload)
-      } else {
-        _ = self.emit(event: Events.PortalSigningRequested.rawValue, data: forPayload)
-      }
+      _ = self.emit(event: Events.PortalSigningRequested.rawValue, data: forPayload)
     }
   }
 
@@ -608,12 +596,11 @@ public class PortalProvider: PortalProviderProtocol {
     withPayload: PortalProviderRequestWithId,
     forId _: String,
     onBlockchain: PortalBlockchain,
-    connect: PortalConnect? = nil,
     options: RequestOptions? = nil,
     traceId: String? = nil,
     idempotencyKey: String? = nil
   ) async throws -> PortalProviderResult {
-    guard try await self.getApproval(onChainId, forPayload: withPayload, connect: connect) else {
+    guard try await self.getApproval(onChainId, forPayload: withPayload) else {
       throw ProviderSigningError.userDeclinedApproval
     }
 
@@ -713,9 +700,8 @@ public class PortalProvider: PortalProviderProtocol {
     !registeredEventHandler.once
   }
 
-  public func updateChain(newChainId: String, connect: PortalConnect? = nil) {
+  public func updateChain(newChainId: String) {
     _ = self.emit(event: Events.ChainChanged.rawValue, data: newChainId)
-    connect?.emit(event: Events.PortalConnectChainChanged.rawValue, data: newChainId)
   }
 
   /*******************************************
@@ -730,8 +716,7 @@ public class PortalProvider: PortalProviderProtocol {
   @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of request().")
   public func request(
     payload: ETHRequestPayload,
-    completion: @escaping (Result<RequestCompletionResult>) -> Void,
-    connect _: PortalConnect? = nil
+    completion: @escaping (Result<RequestCompletionResult>) -> Void
   ) {
     Task {
       do {
@@ -765,8 +750,7 @@ public class PortalProvider: PortalProviderProtocol {
   @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of request().")
   public func request(
     payload: ETHTransactionPayload,
-    completion: @escaping (Result<TransactionCompletionResult>) -> Void,
-    connect _: PortalConnect? = nil
+    completion: @escaping (Result<TransactionCompletionResult>) -> Void
   ) {
     Task {
       do {
@@ -793,8 +777,7 @@ public class PortalProvider: PortalProviderProtocol {
   @available(*, deprecated, renamed: "request", message: "Please use the async/await implementation of request().")
   public func request(
     payload: ETHAddressPayload,
-    completion: @escaping (Result<AddressCompletionResult>) -> Void,
-    connect _: PortalConnect? = nil
+    completion: @escaping (Result<AddressCompletionResult>) -> Void
   ) {
     Task {
       do {
@@ -817,7 +800,7 @@ public class PortalProvider: PortalProviderProtocol {
   /// - Parameter value: The chainId.
   /// - Returns: An instance of Portal Provider.
   @available(*, deprecated, renamed: "NONE", message: "Please use the chain agnostic approach to using Portal by passing a CAIP-2 Blockchain ID to your request() calls.")
-  public func setChainId(value: Int, connect: PortalConnect? = nil) throws -> PortalProvider {
+  public func setChainId(value: Int) throws -> PortalProvider {
     self.chainId = value
     let hexChainId = String(format: "%02x", value)
 
@@ -831,9 +814,6 @@ public class PortalProvider: PortalProviderProtocol {
     }
     self.chainId = value
 
-    if connect != nil {
-      connect?.emit(event: Events.PortalConnectChainChanged.rawValue, data: value)
-    }
     return provider
   }
 }
@@ -845,20 +825,13 @@ public class PortalProvider: PortalProviderProtocol {
 /// The provider events that can be listened to.
 public enum Events: String {
   case ChainChanged = "chainChanged"
-  case PortalConnectChainChanged = "portalConnect_chainChanged"
   case Connect = "connect"
-  case ConnectError = "portal_connectError"
   case Disconnect = "disconnect"
   case PortalSignatureReceived = "portal_signatureReceived"
   case PortalSigningApproved = "portal_signingApproved"
   case PortalSigningRejected = "portal_signingRejected"
-  case PortalConnectSigningRequested = "portalConnect_signingRequested"
   case PortalSigningRequested = "portal_signingRequested"
   case PortalGetSessionRequest = "portal_getSessionRequest"
-  // Walletconnect V2
-  case PortalDappSessionRequested = "portal_dappSessionRequested"
-  case PortalDappSessionApproved = "portal_dappSessionApproved"
-  case PortalDappSessionRejected = "portal_dappSessionRejected"
 }
 
 public enum PortalRequestMethod: String, Codable {

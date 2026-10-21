@@ -157,7 +157,7 @@ extension PortalCredentialSupport {
   /// rejected, and invalidating it would sign the user out for a stale response. So the report is
   /// skipped unless the credential still holds `rejectedToken`. This is the rule
   /// `UnauthorizedHookRegistry.report(bearerToken:from:)` applies on the transport path, brought
-  /// to the call sites that bypass the transport hook: the MPC binary, the WebSocket upgrade, the
+  /// to the call sites that bypass the transport hook: the MPC binary, the
   /// Firebase retry and the legacy `storedClientBackupShare` request.
   ///
   /// A credential that can no longer resolve (already invalidated, or a failing provider) counts

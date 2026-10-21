@@ -34,14 +34,14 @@ private let ipv6LoopbackLiteral = "::1"
 // MARK: - Registered hosts
 
 /// Hosts an SDK object was configured with — `Portal`, `PortalApi` and each of its integration
-/// APIs, `PortalProvider`, `PortalConnect`, `PortalAuth` — treated as Portal-owned by
+/// APIs, `PortalProvider`, `PortalAuth` — treated as Portal-owned by
 /// `isPortalOwnedUrl(_:)` in addition to the static allow-list. Every object that installs a 401
 /// hook on a transport registers the host that transport will be talking to, so a standalone
 /// integration API on a custom `apiHost` reports a dead session the way one built by `PortalApi`
 /// does, and sends the trace header there.
 ///
-/// Without this, an integrator who points `apiHost` / `mpcHost` / `enclaveMPCHost` /
-/// `webSocketServer` at a domain outside `portalhq.io` — a custodian proxy, a private staging
+/// Without this, an integrator who points `apiHost` / `mpcHost` / `enclaveMPCHost`
+/// at a domain outside `portalhq.io` — a custodian proxy, a private staging
 /// domain — would have every 401 from their own backend classified as third-party, and session
 /// invalidation would silently never fire; the trace header would be withheld the same way. The
 /// Web SDK's `isPortalGatewayUrl` trusts the configured host for the same reason. Only hosts the
@@ -51,7 +51,7 @@ private let ipv6LoopbackLiteral = "::1"
 /// The RPC bearer — the one gate that *sends* a credential — does not consult this registry.
 /// `PortalProvider` trusts the static allow-list plus the hosts and ports its own `Portal` was
 /// constructed with (`isPortalRpcUrl(_:configuredEndpoints:)`), so constructing another `Portal`,
-/// `PortalApi`, `PortalAuth` or `PortalConnect` in the process with a custom host can never route
+/// `PortalApi` or `PortalAuth` in the process with a custom host can never route
 /// this instance's credential to an `rpcConfig` URL on that host. Process-wide and lock-guarded, like
 /// `CredentialInvalidationRegistry`, for the 401 and trace gates, where a false positive costs a
 /// spurious invalidation or a trace id — never a credential. Public so a host that fronts Portal
@@ -201,7 +201,7 @@ public func isPortalOwnedUrl(_ url: String) -> Bool {
     return true
   case .candidate:
     // Hosts an SDK instance was configured with (`apiHost`, `mpcHost`, `enclaveMPCHost`,
-    // `webSocketServer`, `PortalAuth`'s `apiHost`) — see `PortalOwnedHosts`.
+    // `PortalAuth`'s `apiHost`) — see `PortalOwnedHosts`.
     return PortalOwnedHosts.contains(parsed.host)
   }
 }
@@ -234,8 +234,8 @@ public func isPortalOwnedUrl(_ url: String) -> Bool {
 ///   because the scheme is pinned first — without that, a port-less configured host would compare
 ///   each URL's own default against itself, which no URL could fail.
 ///
-/// Trusting the registry here would let any other `Portal`, `PortalApi`, `PortalAuth` or
-/// `PortalConnect` in the process, merely by being constructed with a custom host, route this
+/// Trusting the registry here would let any other `Portal`, `PortalApi` or
+/// `PortalAuth` in the process, merely by being constructed with a custom host, route this
 /// instance's credential to an `rpcConfig` URL on that host. Every structural rejection is
 /// identical to `isPortalOwnedUrl(_:)`; a scheme other than `http` / `https` is refused, since an
 /// RPC request cannot be made over it.

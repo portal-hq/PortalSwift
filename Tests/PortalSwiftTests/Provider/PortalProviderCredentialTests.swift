@@ -160,7 +160,6 @@ final class PortalProviderCredentialTests: XCTestCase {
       chainId: Self.chainId,
       method: .eth_blockNumber,
       params: [],
-      connect: nil,
       options: nil
     )
   }
@@ -172,7 +171,6 @@ final class PortalProviderCredentialTests: XCTestCase {
       chainId: Self.chainId,
       method: .eth_sign,
       params: [AnyCodable(MockConstants.mockEip155Address), AnyCodable("test")],
-      connect: nil,
       options: nil
     )
   }
@@ -485,7 +483,7 @@ final class PortalProviderCredentialTests: XCTestCase {
   }
 
   func test_request_rpc_willWithholdBearer_onAHostRegisteredByAnotherInstance() async throws {
-    // Another `Portal` / `PortalApi` / `PortalAuth` / `PortalConnect` in the process was built with
+    // Another `Portal` / `PortalApi` / `PortalAuth` in the process was built with
     // this host, so the 401 and trace gates trust it — but this provider's `Portal` was not, and a
     // credential must never cross that instance boundary through an `rpcConfig` URL.
     PortalOwnedHosts.register("rpc.api.custodian.example")

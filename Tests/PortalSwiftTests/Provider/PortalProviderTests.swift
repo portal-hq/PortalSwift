@@ -261,7 +261,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_accounts,
       params: [],
-      connect: nil,
       options: nil
     )
     guard let accounts = result.result as? [String?] else {
@@ -277,7 +276,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_requestAccounts,
       params: [],
-      connect: nil,
       options: nil
     )
     guard let accounts = result.result as? [String?] else {
@@ -293,7 +291,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_accounts,
       params: [],
-      connect: nil,
       options: nil
     )
     XCTAssertFalse(result.id.isEmpty)
@@ -306,7 +303,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .wallet_switchEthereumChain,
       params: [],
-      connect: nil,
       options: nil
     )
     guard let resultValue = result.result as? String else {
@@ -321,7 +317,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .wallet_revokePermissions,
       params: [],
-      connect: nil,
       options: nil
     )
     guard let resultValue = result.result as? String else {
@@ -336,7 +331,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .wallet_requestPermissions,
       params: [],
-      connect: nil,
       options: nil
     )
     guard let resultValue = result.result as? String else {
@@ -353,7 +347,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_gasPrice,
       params: [],
-      connect: nil,
       options: nil
     )
     guard let response = result.result as? PortalProviderRpcResponse else {
@@ -368,7 +361,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_blockNumber,
       params: [],
-      connect: nil,
       options: nil
     )
     guard let response = result.result as? PortalProviderRpcResponse else {
@@ -383,7 +375,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_chainId,
       params: [],
-      connect: nil,
       options: nil
     )
     guard let response = result.result as? PortalProviderRpcResponse else {
@@ -401,7 +392,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_sign,
       params: params,
-      connect: nil,
       options: nil
     )
     guard let signature = result.result as? String else {
@@ -417,7 +407,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .personal_sign,
       params: params,
-      connect: nil,
       options: nil
     )
     guard let signature = result.result as? String else {
@@ -433,7 +422,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_signTransaction,
       params: [transaction],
-      connect: nil,
       options: nil
     )
     guard let signature = result.result as? String else {
@@ -449,7 +437,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_sendTransaction,
       params: [transaction],
-      connect: nil,
       options: nil
     )
     guard let transactionHash = result.result as? String else {
@@ -465,7 +452,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_signTypedData_v4,
       params: params,
-      connect: nil,
       options: nil
     )
     guard let signature = result.result as? String else {
@@ -492,7 +478,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_signUserOperation,
       params: [userOp],
-      connect: nil,
       options: nil
     )
     guard let signature = result.result as? String else {
@@ -513,7 +498,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_signUserOperation,
       params: [userOp],
-      connect: nil,
       options: nil
     )
     guard let signature = result.result as? String else {
@@ -535,7 +519,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_signUserOperation,
       params: [userOp],
-      connect: nil,
       options: options
     )
     guard let signature = result.result as? String else {
@@ -554,7 +537,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_sign,
       params: params,
-      connect: nil,
       options: options
     )
     guard let signature = result.result as? String else {
@@ -571,7 +553,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_sendTransaction,
       params: [transaction],
-      connect: nil,
       options: options
     )
     guard let transactionHash = result.result as? String else {
@@ -588,7 +569,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_sendTransaction,
       params: [transaction],
-      connect: nil,
       options: options
     )
     guard let transactionHash = result.result as? String else {
@@ -605,7 +585,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_sendTransaction,
       params: [transaction],
-      connect: nil,
       options: options
     )
     guard let transactionHash = result.result as? String else {
@@ -621,7 +600,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_accounts,
       params: [],
-      connect: nil,
       options: options
     )
     guard let accounts = result.result as? [String?] else {
@@ -638,7 +616,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_sendTransaction,
       params: [transaction],
-      connect: nil,
       options: options
     )
     guard let transactionHash = result.result as? String else {
@@ -655,7 +632,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .personal_sign,
       params: params,
-      connect: nil,
       options: options
     )
     guard let signature = result.result as? String else {
@@ -672,7 +648,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_signTypedData_v4,
       params: params,
-      connect: nil,
       options: options
     )
     guard let signature = result.result as? String else {
@@ -689,7 +664,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_signTransaction,
       params: [transaction],
-      connect: nil,
       options: options
     )
     guard let signature = result.result as? String else {
@@ -706,7 +680,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_accounts,
       params: [],
-      connect: nil,
       options: nil
     )
     XCTAssertNotNil(result)
@@ -717,7 +690,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_accounts,
       params: nil,
-      connect: nil,
       options: nil
     )
     XCTAssertNotNil(result)
@@ -729,7 +701,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_gasPrice,
       params: params,
-      connect: nil,
       options: nil
     )
     XCTAssertNotNil(result)
@@ -746,7 +717,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_sendTransaction,
       params: params,
-      connect: nil,
       options: nil
     )
     guard let transactionHash = result.result as? String else {
@@ -764,7 +734,6 @@ extension PortalProviderTests {
         chainId: "invalid_chain_id",
         method: .eth_accounts,
         params: [],
-        connect: nil,
         options: nil
       )
       XCTFail("Expected error to be thrown for invalid chain ID")
@@ -779,7 +748,6 @@ extension PortalProviderTests {
         chainId: "",
         method: .eth_accounts,
         params: [],
-        connect: nil,
         options: nil
       )
       XCTFail("Expected error to be thrown for empty chain ID")
@@ -794,7 +762,6 @@ extension PortalProviderTests {
         chainId: "eip155:",
         method: .eth_accounts,
         params: [],
-        connect: nil,
         options: nil
       )
       XCTFail("Expected error to be thrown for missing reference")
@@ -809,7 +776,6 @@ extension PortalProviderTests {
         chainId: "unsupported:12345",
         method: .eth_accounts,
         params: [],
-        connect: nil,
         options: nil
       )
       XCTFail("Expected error to be thrown for unsupported namespace")
@@ -826,7 +792,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_accounts,
       params: [],
-      connect: nil,
       options: nil
     )
     XCTAssertNotNil(result1)
@@ -845,14 +810,12 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_accounts,
       params: [],
-      connect: nil,
       options: nil
     )
     let result2 = try await provider.request(
       chainId: "eip155:11155111",
       method: .eth_accounts,
       params: [],
-      connect: nil,
       options: nil
     )
     XCTAssertNotEqual(result1.id, result2.id)
@@ -863,7 +826,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_accounts,
       params: [],
-      connect: nil,
       options: nil
     )
     // UUID strings are typically 36 characters (32 hex + 4 hyphens)
@@ -878,7 +840,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_accounts,
       params: [],
-      connect: nil,
       options: nil
     )
     XCTAssertNotNil(result)
@@ -891,7 +852,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_accounts,
       params: [],
-      connect: nil,
       options: nil
     )
     XCTAssertNotNil(result1)
@@ -900,7 +860,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_gasPrice,
       params: [],
-      connect: nil,
       options: nil
     )
     XCTAssertNotNil(result2)
@@ -910,7 +869,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_sign,
       params: params,
-      connect: nil,
       options: nil
     )
     XCTAssertNotNil(result3)
@@ -922,7 +880,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_accounts,
       params: [],
-      connect: nil,
       options: nil
     )
     XCTAssertTrue(accountResult.result is [String?])
@@ -932,7 +889,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .wallet_switchEthereumChain,
       params: [],
-      connect: nil,
       options: nil
     )
     XCTAssertEqual(walletResult.result as? String, "null")
@@ -942,7 +898,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_gasPrice,
       params: [],
-      connect: nil,
       options: nil
     )
     XCTAssertTrue(rpcResult.result is PortalProviderRpcResponse)
@@ -953,7 +908,6 @@ extension PortalProviderTests {
       chainId: "eip155:11155111",
       method: .eth_sign,
       params: params,
-      connect: nil,
       options: nil
     )
     XCTAssertEqual(signResult.result as? String, MockConstants.mockSignature)

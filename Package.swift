@@ -22,10 +22,6 @@ let package = Package(
       exact: "8.0.0"
     ),
     .package(
-      url: "https://github.com/daltoniam/Starscream.git",
-      exact: "4.0.8"
-    ),
-    .package(
       url: "https://github.com/Flight-School/AnyCodable.git",
       exact: "0.6.7"
     )
@@ -38,8 +34,7 @@ let package = Package(
       dependencies: [
         "Mpc",
         .product(name: "AnyCodable", package: "AnyCodable"),
-        .product(name: "GoogleSignIn", package: "GoogleSignIn-iOS"),
-        .product(name: "Starscream", package: "Starscream")
+        .product(name: "GoogleSignIn", package: "GoogleSignIn-iOS")
       ],
       linkerSettings: [
         .linkedLibrary("resolv")

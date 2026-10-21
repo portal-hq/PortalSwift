@@ -125,11 +125,6 @@ extension PortalTests {
       ]
     )
   }
-
-  func test_createPortalConnectInstance() async throws {
-    let portalConnect = try portal.createPortalConnectInstance()
-    XCTAssertNotNil(portalConnect)
-  }
 }
 
 // MARK: - Create Wallet tests
@@ -692,9 +687,9 @@ extension PortalTests {
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
-    portal.on(event: Events.PortalConnectSigningRequested.rawValue, callback: { _ in })
+    portal.on(event: Events.PortalSigningRequested.rawValue, callback: { _ in })
 
-    XCTAssertEqual(portalProviderSpy.onEventParam, Events.PortalConnectSigningRequested.rawValue)
+    XCTAssertEqual(portalProviderSpy.onEventParam, Events.PortalSigningRequested.rawValue)
   }
 
   func test_on_willCall_provider_on_onlyOnce() async throws {
@@ -714,9 +709,9 @@ extension PortalTests {
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
-    portal.on(event: Events.PortalConnectSigningRequested, callback: { _ in })
+    portal.on(event: Events.PortalSigningRequested, callback: { _ in })
 
-    XCTAssertEqual(portalProviderSpy.onEventParam, Events.PortalConnectSigningRequested.rawValue)
+    XCTAssertEqual(portalProviderSpy.onEventParam, Events.PortalSigningRequested.rawValue)
   }
 
   func test_deprecated_once_willCall_provider_once_onlyOnce() async throws {
@@ -1182,18 +1177,6 @@ extension PortalTests {
 
   // MARK: - Connect Parameter Tests
 
-  func test_requestWithChainIdMethodParams_willPass_nilConnect() async throws {
-    // given
-    let portalProviderSpy = try PortalProviderSpy()
-    setToPortal(portalProvider: portalProviderSpy)
-
-    // when
-    _ = try await portal.request(chainId: "eip155:1", method: .eth_accounts, params: [])
-
-    // then
-    XCTAssertNil(portalProviderSpy.requestOptionsConnectParam)
-  }
-
   // MARK: - Full Integration Tests
 
   func test_requestWithChainIdMethodParams_willPass_allParametersCorrectly() async throws {
@@ -1215,7 +1198,6 @@ extension PortalTests {
     XCTAssertEqual(portalProviderSpy.requestOptionsParamsParam, ["0xabc", "0x123"])
     XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.signatureApprovalMemo, expectedMemo)
     XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.sponsorGas, true)
-    XCTAssertNil(portalProviderSpy.requestOptionsConnectParam)
   }
 
   func test_requestWithChainIdMethodParams_willConvertParamsToAnyCodable() async throws {

@@ -12,6 +12,17 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
+## Unreleased
+
+### Removed
+
+- **Breaking:** Portal Connect is removed because its backend (`connect.portalhq.io`) shuts down on 2026-11-30. Apps that use any of the APIs below no longer compile and need to drop those calls.
+    - `PortalConnect` and `Portal.createPortalConnectInstance(webSocketServer:)`.
+    - The `connect:` parameter of `PortalProvider.request(...)`, `updateChain(newChainId:)`, and `setChainId(value:)`, and of the matching `PortalProviderProtocol` requirements. Calls that passed `connect: nil` only need the argument removed.
+    - The Portal Connect events `Events.PortalConnectChainChanged`, `Events.PortalConnectSigningRequested`, `Events.ConnectError`, `Events.PortalDappSessionRequested`, `Events.PortalDappSessionApproved`, and `Events.PortalDappSessionRejected`.
+    - The Portal Connect WebSocket message types (`ConnectData`, `ConnectError`, `SessionRequestData`, and the related types) and their `MockConstants` fixtures.
+- The Starscream dependency, which only Portal Connect used.
+
 ## 8.1.0 - 2026-10-08
 
 ### Added

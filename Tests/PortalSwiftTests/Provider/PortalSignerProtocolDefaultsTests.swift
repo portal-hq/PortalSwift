@@ -224,7 +224,6 @@ final class PortalSignerProtocolDefaultsTests: XCTestCase {
       chainId: "eip155:11155111",
       method: .eth_sendTransaction,
       params: [AnyCodable(["from": MockConstants.mockEip155Address, "to": MockConstants.mockEip155Address])],
-      connect: nil,
       options: RequestOptions(idempotencyKey: " \(self.idempotencyKey) ")
     )
 
@@ -248,7 +247,6 @@ final class PortalSignerProtocolDefaultsTests: XCTestCase {
       chainId: "eip155:11155111",
       method: .eth_sendTransaction,
       params: [AnyCodable(["from": MockConstants.mockEip155Address, "to": MockConstants.mockEip155Address])],
-      connect: nil,
       options: RequestOptions(idempotencyKey: self.idempotencyKey)
     )
 

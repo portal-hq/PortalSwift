@@ -22,12 +22,9 @@ PODS:
   - PortalSwift (4.2.1):
     - AnyCodable-FlightSchool (~> 0.6.7)
     - GoogleSignIn (~> 7.1.0)
-    - Starscream (~> 4.0.7)
   - PortalSwift/Tests (4.2.1):
     - AnyCodable-FlightSchool (~> 0.6.7)
     - GoogleSignIn (~> 7.1.0)
-    - Starscream (~> 4.0.7)
-  - Starscream (4.0.8)
 
 DEPENDENCIES:
   - AnyCodable-FlightSchool (~> 0.6.7)
@@ -44,7 +41,6 @@ SPEC REPOS:
     - GoogleSignIn
     - GTMAppAuth
     - GTMSessionFetcher
-    - Starscream
 
 EXTERNAL SOURCES:
   PortalSwift:
@@ -58,7 +54,6 @@ SPEC CHECKSUMS:
   GTMAppAuth: f69bd07d68cd3b766125f7e072c45d7340dea0de
   GTMSessionFetcher: 8000756fc1c19d2e5697b90311f7832d2e33f6cd
   PortalSwift: d9ae86958cf933ac287b2381fcf052fbc8a0b505
-  Starscream: 19b5533ddb925208db698f0ac508a100b884a1b9
 
 PODFILE CHECKSUM: 99229afc420496158d349102ae1ae382bfb25002
 

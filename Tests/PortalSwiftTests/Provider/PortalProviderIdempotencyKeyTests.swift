@@ -99,7 +99,6 @@ final class PortalProviderIdempotencyKeyTests: XCTestCase {
       chainId: chainId,
       method: method,
       params: params,
-      connect: nil,
       options: RequestOptions(signatureApprovalMemo: "memo", traceId: "trace-1", idempotencyKey: idempotencyKey)
     )
   }
@@ -217,7 +216,7 @@ final class PortalProviderIdempotencyKeyTests: XCTestCase {
   func test_withoutOptions_willPassNil() async throws {
     let provider = try makeProvider()
 
-    _ = try await provider.request(chainId: Self.evmChainId, method: .eth_sendTransaction, params: self.transactionParams, connect: nil, options: nil)
+    _ = try await provider.request(chainId: Self.evmChainId, method: .eth_sendTransaction, params: self.transactionParams, options: nil)
 
     XCTAssertEqual(self.signerSpy.signIdempotencyKeyParams, [nil])
   }
