@@ -5,9 +5,11 @@
 //  Created by Ahmed Ragab
 //
 //  Yield.xyz Perps testing functionality. Perps is mainnet-only: the read actions are free, and
-//  the one write action (approve agent) moves no funds. It registers a random agent address that no
-//  one holds a key for, so the agent can never trade. It follows the flow the SDK recommends: build
-//  the action, show its `summary`, and sign only once the user confirms.
+//  approve agent moves no funds. It registers a random agent address that no one holds a key for, so
+//  the agent can never trade. "Any action" builds any action from a preset or your own JSON, so the
+//  whole lifecycle (fund, leverage, open, TP/SL, close, withdraw) can be tested; it can move real
+//  funds. Every write follows the flow the SDK recommends: build the action, show its `summary`, and
+//  sign only once the user confirms.
 //
 
 import Foundation
@@ -254,5 +256,286 @@ extension ViewController {
       }
     })
     present(alert, animated: true)
+  }
+
+  // MARK: - Any action
+
+  /// An action to build, which the user can edit before anything is built.
+  private struct PerpsPreset {
+    let title: String
+    let action: YieldXyzPerpsActionType
+    let args: YieldXyzPerpsActionArgs
+  }
+
+  private struct PerpsExampleError: LocalizedError {
+    let errorDescription: String?
+
+    init(_ message: String) {
+      errorDescription = message
+    }
+  }
+
+  /// Arbitrum's native USDC, the token Hyperliquid's Bridge2 accepts.
+  private static let arbitrumUsdc = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831"
+
+  /// Hyperliquid's Bridge2 minimum: it never credits a smaller deposit, and the funds are lost.
+  private static let bridge2MinimumUsdc = 5.0
+
+  /// On-chain legs that were broadcast before a failure, by transaction id. They are passed to the
+  /// next sign, so resuming the action reuses the hash instead of broadcasting the leg again.
+  @MainActor private static var perpsBroadcastHashes: [String: String] = [:]
+
+  /// Builds any action from a preset or your own JSON. Nothing is signed until you review the built
+  /// action and confirm.
+  @IBAction func perpsPrepareAction(_: Any) {
+    runPerps("Any Action (load presets)") { [weak self, perpsProviderId] portal in
+      let presets = try await Self.perpsPresets(portal: portal, providerId: perpsProviderId)
+      await self?.choosePerpsPreset(presets)
+      return "Loaded \(presets.count) presets; choose one."
+    }
+  }
+
+  /// Loads an action by id to review and sign it, for example to resume one that failed part-way.
+  @IBAction func perpsLoadAction(_: Any) {
+    let alert = UIAlertController(
+      title: "Load a Perps action",
+      message: "Enter an action id to review and sign it, or to resume it after a failure.",
+      preferredStyle: .alert
+    )
+    alert.addTextField { field in
+      field.placeholder = "actionId"
+      Self.configureForCode(field)
+    }
+    alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+    alert.addAction(UIAlertAction(title: "Load", style: .default) { [weak self, weak alert] _ in
+      let actionId = alert?.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+      self?.runPerps("Load Action") { [weak self] portal in
+        let action = try await portal.perps.yieldxyz.getAction(actionId: actionId).data
+        await self?.reviewAndSign(action)
+        return "Loaded \(action.action) \(action.id) [\(action.status)]; nothing signed yet."
+      }
+    })
+    present(alert, animated: true)
+  }
+
+  /// Presets for the safe minimum of each step, filled from the account: the most traded BTC market
+  /// and its price, the available balance, and the actions Yield.xyz offers on open positions and
+  /// resting orders (`pendingActions`, with their args pre-filled).
+  private static func perpsPresets(portal: PortalProtocol, providerId: String) async throws -> [PerpsPreset] {
+    let perps = portal.perps.yieldxyz
+    let markets = try await perps.getMarkets(params: YieldXyzPerpsGetMarketsParams(
+      limit: 100,
+      providerId: providerId,
+      sortBy: .volume24h,
+      order: .desc
+    )).data.items
+    let available = try? await perps.getBalances(params: YieldXyzPerpsBalancesParams(providerId: providerId)).data.availableBalance
+    let positions = (try? await perps.getPositions(params: YieldXyzPerpsPortfolioParams(providerId: providerId)).data) ?? []
+    let orders = (try? await perps.getOrders(params: YieldXyzPerpsPortfolioParams(providerId: providerId)).data) ?? []
+
+    var presets = [
+      PerpsPreset(
+        title: "Fund 5 USDC from Arbitrum (Bridge2 minimum)",
+        action: .fund,
+        args: YieldXyzPerpsActionArgs(
+          amount: "5",
+          fromToken: YieldXyzPerpsTokenIdentifier(network: "eip155:42161", address: arbitrumUsdc),
+          fundingMethod: .bridge2
+        )
+      )
+    ]
+    if let market = markets.first(where: { $0.baseAsset.symbol == "BTC" }) ?? markets.first {
+      let symbol = market.baseAsset.symbol
+      // Prices far from the market, so a limit order never fills and TP/SL never trigger.
+      let farBelow = roundedPrice(market.markPrice * 0.5)
+      let farAbove = roundedPrice(market.markPrice * 2)
+      presets += [
+        PerpsPreset(
+          title: "Update \(symbol) leverage to 3x isolated (free)",
+          action: .updateLeverage,
+          args: YieldXyzPerpsActionArgs(marketId: market.id, leverage: 3, marginMode: .isolated)
+        ),
+        PerpsPreset(
+          title: "Place \(symbol) limit long at \(farBelow) (never fills; free)",
+          action: .open,
+          args: YieldXyzPerpsActionArgs(marketId: market.id, side: .long, amount: "4", leverage: 3, marginMode: .isolated, limitPrice: farBelow)
+        ),
+        PerpsPreset(
+          title: "Open \(symbol) long, 4 USDC at 3x (~$12, market)",
+          action: .open,
+          args: YieldXyzPerpsActionArgs(marketId: market.id, side: .long, amount: "4", leverage: 3, marginMode: .isolated)
+        ),
+        PerpsPreset(
+          title: "Set \(symbol) TP \(farAbove) / SL \(farBelow) (never trigger)",
+          action: .setTpAndSl,
+          args: YieldXyzPerpsActionArgs(marketId: market.id, stopLossPrice: farBelow, takeProfitPrice: farAbove)
+        ),
+        PerpsPreset(
+          title: "Close the \(symbol) position",
+          action: .close,
+          args: YieldXyzPerpsActionArgs(marketId: market.id)
+        )
+      ]
+    }
+    let withdrawable = available.map { floor($0 * 100) / 100 }.flatMap { $0 > 1 ? String(format: "%.2f", $0) : nil } ?? "2"
+    presets.append(PerpsPreset(
+      title: "Withdraw \(withdrawable) USDC to Arbitrum (Hyperliquid keeps $1)",
+      action: .withdraw,
+      args: YieldXyzPerpsActionArgs(amount: withdrawable)
+    ))
+    presets += (positions.flatMap(\.pendingActions) + orders.flatMap(\.pendingActions)).map { pending in
+      PerpsPreset(title: "\(pending.label) (\(pending.args.marketId ?? "account"))", action: pending.type, args: pending.args)
+    }
+    presets.append(PerpsPreset(title: "Custom: type an action and its args", action: YieldXyzPerpsActionType(rawValue: ""), args: YieldXyzPerpsActionArgs()))
+    return presets
+  }
+
+  /// Rounds a price to 5 significant figures, the precision Hyperliquid accepts.
+  private static func roundedPrice(_ price: Double) -> Double {
+    guard price > 0 else {
+      return price
+    }
+    let unit = pow(10, floor(log10(price)) - 4)
+    return (price / unit).rounded() * unit
+  }
+
+  @MainActor
+  private func choosePerpsPreset(_ presets: [PerpsPreset]) {
+    let sheet = UIAlertController(title: "Build a Perps action", message: "You can edit the action and its args next.", preferredStyle: .actionSheet)
+    for preset in presets {
+      sheet.addAction(UIAlertAction(title: preset.title, style: .default) { [weak self] _ in
+        self?.editPerpsPreset(preset)
+      })
+    }
+    sheet.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+    sheet.popoverPresentationController?.sourceView = view
+    present(sheet, animated: true)
+  }
+
+  @MainActor
+  private func editPerpsPreset(_ preset: PerpsPreset) {
+    let alert = UIAlertController(
+      title: preset.title,
+      message: "Edit the action and its args (JSON). Building signs nothing: you review the action before signing.",
+      preferredStyle: .alert
+    )
+    alert.addTextField { field in
+      field.text = preset.action.rawValue
+      field.placeholder = "action, for example updateLeverage"
+      Self.configureForCode(field)
+    }
+    alert.addTextField { field in
+      field.text = Self.json(preset.args)
+      field.placeholder = "args as JSON, for example {\"marketId\":\"...\"}"
+      Self.configureForCode(field)
+    }
+    alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+    alert.addAction(UIAlertAction(title: "Build", style: .default) { [weak self, weak alert] _ in
+      let action = alert?.textFields?[0].text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+      let argsJSON = alert?.textFields?[1].text ?? ""
+      self?.buildPerpsAction(action, argsJSON: argsJSON)
+    })
+    present(alert, animated: true)
+  }
+
+  /// JSON is typed, not prose: no smart quotes, autocorrection or capitalization.
+  private static func configureForCode(_ field: UITextField) {
+    field.autocapitalizationType = .none
+    field.autocorrectionType = .no
+    field.smartQuotesType = .no
+    field.smartDashesType = .no
+    field.spellCheckingType = .no
+  }
+
+  private static func json(_ args: YieldXyzPerpsActionArgs) -> String {
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+    return (try? encoder.encode(args)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+  }
+
+  private func buildPerpsAction(_ action: String, argsJSON: String) {
+    runPerps("Build \(action.isEmpty ? "action" : action)") { [weak self, perpsProviderId] portal in
+      guard !action.isEmpty else {
+        throw PerpsExampleError("Enter an action, for example updateLeverage.")
+      }
+      let args: YieldXyzPerpsActionArgs
+      do {
+        args = try JSONDecoder().decode(YieldXyzPerpsActionArgs.self, from: Data(argsJSON.utf8))
+      } catch {
+        throw PerpsExampleError("The args must be a JSON object: \(error.localizedDescription)")
+      }
+      try Self.checkBridge2Minimum(action: action, args: args)
+      let built = try await portal.perps.yieldxyz.createAction(params: YieldXyzPerpsCreateActionParams(
+        providerId: perpsProviderId,
+        action: YieldXyzPerpsActionType(rawValue: action),
+        args: args
+      )).data
+      await self?.reviewAndSign(built)
+      return "Built \(built.action) \(built.id) with \(built.transactions.count) transaction(s); nothing signed yet."
+    }
+  }
+
+  /// Refuses a Bridge2 deposit under Hyperliquid's minimum before anything is built: Hyperliquid
+  /// never credits it, and the funds are lost. The SDK leaves venue minimums to the app.
+  private static func checkBridge2Minimum(action: String, args: YieldXyzPerpsActionArgs) throws {
+    guard action == YieldXyzPerpsActionType.fund.rawValue else {
+      return
+    }
+    let isArbitrumUsdc = args.fromToken?.network == "eip155:42161"
+      && args.fromToken?.address?.lowercased() == arbitrumUsdc.lowercased()
+    let usesBridge2 = args.fundingMethod == .bridge2 || (args.fundingMethod == nil && isArbitrumUsdc)
+    guard usesBridge2 else {
+      return
+    }
+    guard let amount = args.amount.flatMap(Double.init), amount >= bridge2MinimumUsdc else {
+      throw PerpsExampleError("Hyperliquid never credits a Bridge2 deposit under 5 USDC, and the funds are lost. Fund at least 5.")
+    }
+  }
+
+  /// Shows what the action will do and signs nothing unless the user confirms.
+  @MainActor
+  private func reviewAndSign(_ action: YieldXyzPerpsAction) {
+    let legs = action.transactions.enumerated().map { index, transaction in
+      "\(index + 1). \(transaction.type.rawValue) (\(transaction.signingFormat?.rawValue ?? "no signing format")) \(transaction.status.rawValue)"
+    }.joined(separator: "\n")
+    let alert = UIAlertController(
+      title: "Sign and submit \(action.action.rawValue)?",
+      message: "\(Self.describe(action.summary))\n\nTransactions:\n\(legs)\n\nAction \(action.id) [\(action.status.rawValue)]. This signs with your Portal wallet on mainnet and may move real funds; Yield.xyz Perps has no testnet.",
+      preferredStyle: .alert
+    )
+    alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { [weak self] _ in
+      self?.logger.info("⏹ [Perps \(action.action.rawValue)] Cancelled; nothing was signed. Action \(action.id) can be loaded later.")
+      self?.showStatusView(message: "Cancelled; nothing was signed. Action \(action.id) can be loaded later.")
+    })
+    alert.addAction(UIAlertAction(title: "Sign & submit", style: .destructive) { [weak self] _ in
+      self?.signPerpsAction(action)
+    })
+    present(alert, animated: true)
+  }
+
+  private func signPerpsAction(_ action: YieldXyzPerpsAction) {
+    let logger = logger
+    let name = action.action.rawValue
+    runPerps("Sign and Submit \(name)") { portal in
+      let broadcastHashes = await MainActor.run { Self.perpsBroadcastHashes }
+      do {
+        let result = try await portal.perps.yieldxyz.signAndSubmitAction(
+          action,
+          options: YieldXyzPerpsExecuteOptions(
+            onProgress: { progress in
+              logger.info("⏳ [Perps \(name)] \(progress.step.rawValue) \(progress.transactionId ?? "") \(progress.transactionHash ?? "") \(progress.actionStatus?.rawValue ?? "")")
+            },
+            broadcastHashes: broadcastHashes
+          )
+        )
+        return "Action \(result.actionId) ended \(result.status) after \(result.transactions.count) transaction(s)."
+      } catch let error as YieldXyzPerpsExecutionError {
+        // Keep the hash of a leg that is already on-chain, so loading the action again resumes it.
+        if let transactionId = error.transactionId, let broadcastHash = error.broadcastHash {
+          await MainActor.run { Self.perpsBroadcastHashes[transactionId] = broadcastHash }
+        }
+        throw error
+      }
+    }
   }
 }
