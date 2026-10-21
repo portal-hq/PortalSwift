@@ -111,7 +111,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var generateButton: UIButton?
   @IBOutlet var generateSolanaButton: UIButton!
   @IBOutlet var logoutButton: UIButton?
-  @IBOutlet var portalConnectButton: UIButton?
 
   @IBOutlet var personalSignButton: UIButton?
   @IBOutlet var rawSignButton: UIButton?
@@ -257,10 +256,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
   override func prepare(for segue: UIStoryboardSegue, sender _: Any?) {
-    if let connectViewController = segue.destination as? ConnectViewController {
-      connectViewController.portal = self.portal
-    }
-
     if let webViewController = segue.destination as? WebViewController {
       webViewController.portal = self.portal
       webViewController.url = self.url?.text
@@ -1376,8 +1371,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
           // dApp connection buttons
           self.dappBrowserButton?.isEnabled = walletExists && isWalletOnDevice
           self.dappBrowserButton?.isHidden = !walletExists || !isWalletOnDevice
-          self.portalConnectButton?.isEnabled = walletExists && isWalletOnDevice
-          self.portalConnectButton?.isHidden = !walletExists || !isWalletOnDevice
 
           // Backup buttons
           self.gdriveBackupButton?.isEnabled = walletExists && isWalletOnDevice
@@ -2533,7 +2526,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
           chainId: chainId,
           method: .rawSign,
           params: [AnyCodable("74657374")],
-          connect: nil,
           options: RequestOptions(signatureApprovalMemo: "test")
         )
 
@@ -2584,7 +2576,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
           chainId: chainId,
           method: .eth_signUserOperation,
           params: [AnyCodable(userOp)],
-          connect: nil,
           options: nil
         )
 

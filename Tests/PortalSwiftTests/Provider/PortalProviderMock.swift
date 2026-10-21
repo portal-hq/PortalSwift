@@ -50,7 +50,7 @@ class PortalProviderMock: PortalProviderProtocol {
 
   var requestReturnValue: PortalSwift.PortalProviderResult?
 
-  func request(chainId _: String, method: PortalSwift.PortalRequestMethod, params _: [AnyCodable]?, connect _: PortalSwift.PortalConnect?, options _: PortalSwift.RequestOptions?) async throws -> PortalSwift.PortalProviderResult {
+  func request(chainId _: String, method: PortalSwift.PortalRequestMethod, params _: [AnyCodable]?, options _: PortalSwift.RequestOptions?) async throws -> PortalSwift.PortalProviderResult {
     if let requestReturnValue {
       return requestReturnValue
     }
@@ -81,22 +81,22 @@ class PortalProviderMock: PortalProviderProtocol {
     }
   }
 
-  func request(_ chainId: String, withMethod: PortalSwift.PortalRequestMethod, andParams params: [AnyCodable]?, connect connectParam: PortalSwift.PortalConnect?, signatureApprovalMemo signatureApprovalMemo: String?) async throws -> PortalSwift.PortalProviderResult {
+  func request(_ chainId: String, withMethod: PortalSwift.PortalRequestMethod, andParams params: [AnyCodable]?, signatureApprovalMemo signatureApprovalMemo: String?) async throws -> PortalSwift.PortalProviderResult {
     let options = signatureApprovalMemo.map { PortalSwift.RequestOptions(signatureApprovalMemo: $0) }
-    return try await request(chainId: chainId, method: withMethod, params: params, connect: connectParam, options: options)
+    return try await request(chainId: chainId, method: withMethod, params: params, options: options)
   }
 
-  func request(_ chainId: String, withMethod: String, andParams: [AnyCodable]?, connect: PortalSwift.PortalConnect?, signatureApprovalMemo: String?) async throws -> PortalSwift.PortalProviderResult {
-    try await self.request(chainId, withMethod: PortalRequestMethod(rawValue: withMethod)!, andParams: andParams, connect: connect, signatureApprovalMemo: signatureApprovalMemo)
+  func request(_ chainId: String, withMethod: String, andParams: [AnyCodable]?, signatureApprovalMemo: String?) async throws -> PortalSwift.PortalProviderResult {
+    try await self.request(chainId, withMethod: PortalRequestMethod(rawValue: withMethod)!, andParams: andParams, signatureApprovalMemo: signatureApprovalMemo)
   }
 
-  func request(payload _: PortalSwift.ETHRequestPayload, completion _: @escaping (PortalSwift.Result<PortalSwift.RequestCompletionResult>) -> Void, connect _: PortalSwift.PortalConnect?) {}
+  func request(payload _: PortalSwift.ETHRequestPayload, completion _: @escaping (PortalSwift.Result<PortalSwift.RequestCompletionResult>) -> Void) {}
 
-  func request(payload _: PortalSwift.ETHTransactionPayload, completion _: @escaping (PortalSwift.Result<PortalSwift.TransactionCompletionResult>) -> Void, connect _: PortalSwift.PortalConnect?) {}
+  func request(payload _: PortalSwift.ETHTransactionPayload, completion _: @escaping (PortalSwift.Result<PortalSwift.TransactionCompletionResult>) -> Void) {}
 
-  func request(payload _: PortalSwift.ETHAddressPayload, completion _: @escaping (PortalSwift.Result<PortalSwift.AddressCompletionResult>) -> Void, connect _: PortalSwift.PortalConnect?) {}
+  func request(payload _: PortalSwift.ETHAddressPayload, completion _: @escaping (PortalSwift.Result<PortalSwift.AddressCompletionResult>) -> Void) {}
 
-  func setChainId(value _: Int, connect _: PortalSwift.PortalConnect?) throws -> PortalSwift.PortalProvider {
+  func setChainId(value _: Int) throws -> PortalSwift.PortalProvider {
     mockPortalProvider
   }
 
@@ -105,5 +105,5 @@ class PortalProviderMock: PortalProviderProtocol {
     return getRpcUrlReturnValue
   }
 
-  func updateChain(newChainId _: String, connect _: PortalSwift.PortalConnect?) {}
+  func updateChain(newChainId _: String) {}
 }

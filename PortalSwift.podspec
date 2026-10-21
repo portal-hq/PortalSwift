@@ -25,7 +25,6 @@ Designed for performance and security, Portal SDK is optimized for iOS apps requ
 
   # Dependencies
   s.dependency "GoogleSignIn", "~> 7.1.0"
-  s.dependency "Starscream", "~> 4.0.7"
   s.dependency "AnyCodable-FlightSchool", "~> 0.6.7"
   
   s.libraries = 'resolv'

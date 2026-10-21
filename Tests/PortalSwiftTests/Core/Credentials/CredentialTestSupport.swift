@@ -99,21 +99,6 @@ final class InvalidationListenerRecorder {
   }
 }
 
-// MARK: - PeerResetError
-
-/// An error whose `localizedDescription` is exactly the text Starscream produces for a
-/// TCP "connection reset by peer", which is the string `WebSocketClient.handleError` matches
-/// on to decide whether to reconnect. Kept in one place so the peer-reset tests cannot drift
-/// from the production comparison by a single character (note the typographic apostrophe).
-struct PeerResetError: LocalizedError {
-  /// The exact Starscream wording, including the U+2019 apostrophe.
-  static let starscreamText = "The operation couldn’t be completed. Connection reset by peer"
-
-  var errorDescription: String? {
-    Self.starscreamText
-  }
-}
-
 // MARK: - MpcJSON
 
 /// Builders for the JSON envelopes the MPC binary and the enclave wrapper return, so tests

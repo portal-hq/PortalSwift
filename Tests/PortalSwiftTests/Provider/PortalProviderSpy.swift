@@ -83,15 +83,13 @@ class PortalProviderSpy: PortalProviderProtocol {
   private(set) var requestOptionsChainIdParam: String?
   private(set) var requestOptionsMethodParam: PortalRequestMethod?
   private(set) var requestOptionsParamsParam: [AnyCodable]?
-  private(set) var requestOptionsConnectParam: PortalConnect?
   private(set) var requestOptionsOptionsParam: RequestOptions?
 
-  func request(chainId: String, method: PortalRequestMethod, params: [AnyCodable]?, connect: PortalConnect?, options: RequestOptions?) async throws -> PortalProviderResult {
+  func request(chainId: String, method: PortalRequestMethod, params: [AnyCodable]?, options: RequestOptions?) async throws -> PortalProviderResult {
     requestOptionsCallsCount += 1
     requestOptionsChainIdParam = chainId
     requestOptionsMethodParam = method
     requestOptionsParamsParam = params
-    requestOptionsConnectParam = connect
     requestOptionsOptionsParam = options
     return PortalProviderResult(id: "", result: "")
   }
@@ -101,15 +99,13 @@ class PortalProviderSpy: PortalProviderProtocol {
   private(set) var requestAsyncMethodChainIdParam: String?
   private(set) var requestAsyncMethodMethodParam: PortalRequestMethod?
   private(set) var requestAsyncMethodParamsParam: [AnyCodable]?
-  private(set) var requestAsyncMethodConnectParam: PortalConnect?
   private(set) var requestAsyncMethodSignatureApprovalMemoParam: String?
 
-  func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [AnyCodable]?, connect: PortalConnect?, signatureApprovalMemo: String?) async throws -> PortalProviderResult {
+  func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [AnyCodable]?, signatureApprovalMemo: String?) async throws -> PortalProviderResult {
     requestAsyncMethodCallsCount += 1
     requestAsyncMethodChainIdParam = chainId
     requestAsyncMethodMethodParam = withMethod
     requestAsyncMethodParamsParam = andParams
-    requestAsyncMethodConnectParam = connect
     requestAsyncMethodSignatureApprovalMemoParam = signatureApprovalMemo
     return PortalProviderResult(id: "", result: "")
   }
@@ -119,15 +115,13 @@ class PortalProviderSpy: PortalProviderProtocol {
   private(set) var requestAsyncStringChainIdParam: String?
   private(set) var requestAsyncStringMethodParam: String?
   private(set) var requestAsyncStringParamsParam: [AnyCodable]?
-  private(set) var requestAsyncStringConnectParam: PortalConnect?
   private(set) var requestAsyncStringSignatureApprovalMemoParam: String?
 
-  func request(_ chainId: String, withMethod: String, andParams: [AnyCodable]?, connect: PortalConnect?, signatureApprovalMemo: String?) async throws -> PortalProviderResult {
+  func request(_ chainId: String, withMethod: String, andParams: [AnyCodable]?, signatureApprovalMemo: String?) async throws -> PortalProviderResult {
     requestAsyncStringCallsCount += 1
     requestAsyncStringChainIdParam = chainId
     requestAsyncStringMethodParam = withMethod
     requestAsyncStringParamsParam = andParams
-    requestAsyncStringConnectParam = connect
     requestAsyncStringSignatureApprovalMemoParam = signatureApprovalMemo
     return PortalProviderResult(id: "", result: "")
   }
@@ -136,50 +130,42 @@ class PortalProviderSpy: PortalProviderProtocol {
   private(set) var requestPayloadCompletionCallsCount = 0
   private(set) var requestPayloadCompletionPayloadParam: ETHRequestPayload?
   private(set) var requestPayloadCompletionCompletionParam: ((Result<RequestCompletionResult>) -> Void)?
-  private(set) var requestPayloadCompletionConnectParam: PortalConnect?
 
-  func request(payload: ETHRequestPayload, completion: @escaping (Result<RequestCompletionResult>) -> Void, connect: PortalConnect?) {
+  func request(payload: ETHRequestPayload, completion: @escaping (Result<RequestCompletionResult>) -> Void) {
     requestPayloadCompletionCallsCount += 1
     requestPayloadCompletionPayloadParam = payload
     requestPayloadCompletionCompletionParam = completion
-    requestPayloadCompletionConnectParam = connect
   }
 
   // Tracking variables for `request` function with ETHTransactionPayload
   private(set) var requestTransactionCompletionCallsCount = 0
   private(set) var requestTransactionCompletionPayloadParam: ETHTransactionPayload?
   private(set) var requestTransactionCompletionCompletionParam: ((Result<TransactionCompletionResult>) -> Void)?
-  private(set) var requestTransactionCompletionConnectParam: PortalConnect?
 
-  func request(payload: ETHTransactionPayload, completion: @escaping (Result<TransactionCompletionResult>) -> Void, connect: PortalConnect?) {
+  func request(payload: ETHTransactionPayload, completion: @escaping (Result<TransactionCompletionResult>) -> Void) {
     requestTransactionCompletionCallsCount += 1
     requestTransactionCompletionPayloadParam = payload
     requestTransactionCompletionCompletionParam = completion
-    requestTransactionCompletionConnectParam = connect
   }
 
   // Tracking variables for `request` function with ETHAddressPayload
   private(set) var requestAddressCompletionCallsCount = 0
   private(set) var requestAddressCompletionPayloadParam: ETHAddressPayload?
   private(set) var requestAddressCompletionCompletionParam: ((Result<AddressCompletionResult>) -> Void)?
-  private(set) var requestAddressCompletionConnectParam: PortalConnect?
 
-  func request(payload: ETHAddressPayload, completion: @escaping (Result<AddressCompletionResult>) -> Void, connect: PortalConnect?) {
+  func request(payload: ETHAddressPayload, completion: @escaping (Result<AddressCompletionResult>) -> Void) {
     requestAddressCompletionCallsCount += 1
     requestAddressCompletionPayloadParam = payload
     requestAddressCompletionCompletionParam = completion
-    requestAddressCompletionConnectParam = connect
   }
 
   // Tracking variables for `setChainId` function
   private(set) var setChainIdCallsCount = 0
   private(set) var setChainIdValueParam: Int?
-  private(set) var setChainIdConnectParam: PortalConnect?
 
-  func setChainId(value: Int, connect: PortalConnect?) throws -> PortalProvider {
+  func setChainId(value: Int) throws -> PortalProvider {
     setChainIdCallsCount += 1
     setChainIdValueParam = value
-    setChainIdConnectParam = connect
     return mockPortalProvider
   }
 
@@ -194,11 +180,9 @@ class PortalProviderSpy: PortalProviderProtocol {
 
   private(set) var updateChainCount = 0
   private(set) var updateChainNewChainIdParam: String?
-  private(set) var updateConnectParam: PortalConnect?
 
-  func updateChain(newChainId: String, connect: PortalConnect?) {
+  func updateChain(newChainId: String) {
     updateChainCount += 1
     updateChainNewChainIdParam = newChainId
-    updateConnectParam = connect
   }
 }

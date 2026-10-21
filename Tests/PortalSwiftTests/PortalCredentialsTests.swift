@@ -374,7 +374,6 @@ private final class StubPortal: PortalProtocol {
   func getWalletCapabilities() async throws -> WalletCapabilitiesResponse { throw StubPortalError.notImplemented }
   func provisionWallet(cipherText _: String, method _: BackupMethods.RawValue, backupConfigs _: BackupConfigs?, completion _: @escaping (PortalSwift.Result<String>) -> Void, progress _: ((MpcStatus) -> Void)?) {}
   func rawSign(message _: String, chainId _: String, signatureApprovalMemo _: String?, traceId _: String?) async throws -> PortalProviderResult { throw StubPortalError.notImplemented }
-  func createPortalConnectInstance(webSocketServer _: String) throws -> PortalConnect { throw StubPortalError.notImplemented }
   func receiveTestnetAsset(chainId _: String, params _: FundParams) async throws -> FundResponse { throw StubPortalError.notImplemented }
   func sendAsset(chainId _: String, params _: SendAssetParams) async throws -> SendAssetResponse { throw StubPortalError.notImplemented }
   func updateChain(newChainId _: String) {}
@@ -1157,16 +1156,6 @@ extension PortalCredentialsTests {
     _ = try await portal.api.getClient()
 
     XCTAssertEqual(portal.apiKey, "", "The bridge must never start reporting the session token.")
-  }
-
-  func test_createPortalConnectInstance_willShareCredentials() throws {
-    let credentials = MockCredentials(tokenValue: "session-token")
-    let spy = try makeSpy()
-    let portal = try buildPortal(credentials: credentials, spy: spy)
-
-    let connect = try portal.createPortalConnectInstance(webSocketServer: "localhost:9")
-
-    XCTAssertTrue(connect.credentials === credentials, "Portal Connect must share the Portal's credential instance.")
   }
 
   func test_PortalProtocol_clearSession_defaultImplementation_willNotThrow() async throws {

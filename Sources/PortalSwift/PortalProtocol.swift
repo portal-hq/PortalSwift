@@ -118,7 +118,6 @@ public protocol PortalProtocol {
   func getWalletCapabilities() async throws -> WalletCapabilitiesResponse
   func provisionWallet(cipherText: String, method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?)
   func rawSign(message: String, chainId: String, signatureApprovalMemo: String?, traceId: String?) async throws -> PortalProviderResult
-  func createPortalConnectInstance(webSocketServer: String) throws -> PortalConnect
   func receiveTestnetAsset(chainId: String, params: FundParams) async throws -> FundResponse
   func sendAsset(chainId: String, params: SendAssetParams) async throws -> SendAssetResponse
   func updateChain(newChainId: String)

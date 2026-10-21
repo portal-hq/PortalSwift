@@ -9,16 +9,9 @@
 import PortalSwift
 import UIKit
 
-protocol PortalExampleAppDelegate {
-  var connect: PortalConnect? { get set }
-  var connect2: PortalConnect? { get set }
-}
-
 @UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate, PortalExampleAppDelegate {
+class AppDelegate: UIResponder, UIApplicationDelegate {
   var window: UIWindow?
-  var connect: PortalConnect?
-  var connect2: PortalConnect?
 
   func application(_: UIApplication, didFinishLaunchingWithOptions _: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
     // Override point for customization after application launch.
@@ -43,25 +36,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate, PortalExampleAppDelegate 
   func applicationDidBecomeActive(_: UIApplication) {
     // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
     print("Application is now active...")
-    if
-      self.connect != nil
-    {
-      print("reconnecting connect 1...")
-      let uri = self.connect?.uri ?? nil
-      if uri != nil {
-        self.connect?.connect(uri! as String)
-      }
-    }
-
-    if
-      self.connect2 != nil
-    {
-      print("reconnecting connect 2...")
-      let uri = self.connect2?.uri ?? nil
-      if uri != nil {
-        self.connect2?.connect(uri! as String)
-      }
-    }
   }
 
   func applicationWillTerminate(_: UIApplication) {

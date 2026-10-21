@@ -1140,19 +1140,13 @@ public final class Portal: PortalProtocol {
   /// - Parameters:
   ///   - event: The event type to emit. Supported events include:
   ///     - `.ChainChanged`: Emitted when the active blockchain changes
-  ///     - `.PortalConnectChainChanged`: Emitted when Portal Connect chain changes
   ///     - `.Connect`: Emitted on successful connection
-  ///     - `.ConnectError`: Emitted when a connection error occurs
   ///     - `.Disconnect`: Emitted on disconnection
   ///     - `.PortalSignatureReceived`: Emitted when a signature is received
   ///     - `.PortalSigningApproved`: Emitted when signing is approved
   ///     - `.PortalSigningRejected`: Emitted when signing is rejected
-  ///     - `.PortalConnectSigningRequested`: Emitted when Portal Connect requests signing
   ///     - `.PortalSigningRequested`: Emitted when signing is requested
   ///     - `.PortalGetSessionRequest`: Emitted for session requests
-  ///     - `.PortalDappSessionRequested`: Emitted when a dApp requests a session
-  ///     - `.PortalDappSessionApproved`: Emitted when a dApp session is approved
-  ///     - `.PortalDappSessionRejected`: Emitted when a dApp session is rejected
   ///   - data: Any data to be passed along with the event.
   ///
   /// - Note: The emitted event can be captured by any listeners registered
@@ -1169,19 +1163,13 @@ public final class Portal: PortalProtocol {
   /// - Parameters:
   ///   - event: The event type to listen for. Supported events include:
   ///     - `.ChainChanged`: Triggered when the active blockchain changes
-  ///     - `.PortalConnectChainChanged`: Triggered when Portal Connect chain changes
   ///     - `.Connect`: Triggered on successful connection
-  ///     - `.ConnectError`: Triggered when a connection error occurs
   ///     - `.Disconnect`: Triggered on disconnection
   ///     - `.PortalSignatureReceived`: Triggered when a signature is received
   ///     - `.PortalSigningApproved`: Triggered when signing is approved
   ///     - `.PortalSigningRejected`: Triggered when signing is rejected
-  ///     - `.PortalConnectSigningRequested`: Triggered when Portal Connect requests signing
   ///     - `.PortalSigningRequested`: Triggered when signing is requested
   ///     - `.PortalGetSessionRequest`: Triggered for session requests
-  ///     - `.PortalDappSessionRequested`: Triggered when a dApp requests a session
-  ///     - `.PortalDappSessionApproved`: Triggered when a dApp session is approved
-  ///     - `.PortalDappSessionRejected`: Triggered when a dApp session is rejected
   ///   - callback: The function to be called when the event occurs. The callback receives
   ///     the event data as its parameter.
   ///
@@ -1199,19 +1187,13 @@ public final class Portal: PortalProtocol {
   /// - Parameters:
   ///   - event: The event type to listen for. Supported events include:
   ///     - `.ChainChanged`: Triggered when the active blockchain changes
-  ///     - `.PortalConnectChainChanged`: Triggered when Portal Connect chain changes
   ///     - `.Connect`: Triggered on successful connection
-  ///     - `.ConnectError`: Triggered when a connection error occurs
   ///     - `.Disconnect`: Triggered on disconnection
   ///     - `.PortalSignatureReceived`: Triggered when a signature is received
   ///     - `.PortalSigningApproved`: Triggered when signing is approved
   ///     - `.PortalSigningRejected`: Triggered when signing is rejected
-  ///     - `.PortalConnectSigningRequested`: Triggered when Portal Connect requests signing
   ///     - `.PortalSigningRequested`: Triggered when signing is requested
   ///     - `.PortalGetSessionRequest`: Triggered for session requests
-  ///     - `.PortalDappSessionRequested`: Triggered when a dApp requests a session
-  ///     - `.PortalDappSessionApproved`: Triggered when a dApp session is approved
-  ///     - `.PortalDappSessionRejected`: Triggered when a dApp session is rejected
   ///   - callback: The function to be called when the event occurs. The callback receives
   ///     the event data as its parameter.
   ///
@@ -1230,7 +1212,6 @@ public final class Portal: PortalProtocol {
   ///   - chainId: A CAIP-2 Blockchain ID associated with the request.
   ///   - method: The string literal of your RPC method.
   ///   - params: An array of parameters for the request (either RPC parameters or a transaction if signing).
-  ///   - connect: Optional `PortalConnect` object to use for the request.
   ///   - options: Optional request options: signature approval memo, gas sponsorship, trace ID, and an
   ///     idempotency key for `eth_sendTransaction`, `sol_signAndSendTransaction` and
   ///     `sol_signAndConfirmTransaction` (see `RequestOptions.idempotencyKey`).
@@ -1253,7 +1234,7 @@ public final class Portal: PortalProtocol {
       AnyCodable(param)
     }
 
-    return try await self.provider.request(chainId: chainId, method: method, params: anyCodableParams, connect: nil, options: options)
+    return try await self.provider.request(chainId: chainId, method: method, params: anyCodableParams, options: options)
   }
 
   /// Signs and submits an EVM transaction via `eth_sendTransaction`, returning the transaction hash.
@@ -1610,7 +1591,7 @@ public final class Portal: PortalProtocol {
   ///   updateChain(newChainId: "eip155:1") // Switches to Ethereum mainnet
   ///   ```
   public func updateChain(newChainId: String) {
-    provider.updateChain(newChainId: newChainId, connect: nil)
+    provider.updateChain(newChainId: newChainId)
   }
 
   // MARK: - Api helpers
@@ -2125,7 +2106,7 @@ public final class Portal: PortalProtocol {
       AnyCodable(param)
     }
 
-    return try await self.provider.request(chainId: chainId, method: withMethod, params: params, connect: nil, options: RequestOptions(signatureApprovalMemo: signatureApprovalMemo))
+    return try await self.provider.request(chainId: chainId, method: withMethod, params: params, options: RequestOptions(signatureApprovalMemo: signatureApprovalMemo))
   }
 
   @available(*, deprecated, renamed: "evaluateTransaction", message: "Please use evaluateTransaction().")
@@ -2219,19 +2200,13 @@ public final class Portal: PortalProtocol {
   /// - Parameters:
   ///   - event: The event type to emit. Supported events include:
   ///     - `.ChainChanged`: Emitted when the active blockchain changes
-  ///     - `.PortalConnectChainChanged`: Emitted when Portal Connect chain changes
   ///     - `.Connect`: Emitted on successful connection
-  ///     - `.ConnectError`: Emitted when a connection error occurs
   ///     - `.Disconnect`: Emitted on disconnection
   ///     - `.PortalSignatureReceived`: Emitted when a signature is received
   ///     - `.PortalSigningApproved`: Emitted when signing is approved
   ///     - `.PortalSigningRejected`: Emitted when signing is rejected
-  ///     - `.PortalConnectSigningRequested`: Emitted when Portal Connect requests signing
   ///     - `.PortalSigningRequested`: Emitted when signing is requested
   ///     - `.PortalGetSessionRequest`: Emitted for session requests
-  ///     - `.PortalDappSessionRequested`: Emitted when a dApp requests a session
-  ///     - `.PortalDappSessionApproved`: Emitted when a dApp session is approved
-  ///     - `.PortalDappSessionRejected`: Emitted when a dApp session is rejected
   ///   - data: Any data to be passed along with the event.
   ///
   /// - Note: The emitted event can be captured by any listeners registered
@@ -2249,19 +2224,13 @@ public final class Portal: PortalProtocol {
   /// - Parameters:
   ///   - event: The event type to listen for. Supported events include:
   ///     - `.ChainChanged`: Triggered when the active blockchain changes
-  ///     - `.PortalConnectChainChanged`: Triggered when Portal Connect chain changes
   ///     - `.Connect`: Triggered on successful connection
-  ///     - `.ConnectError`: Triggered when a connection error occurs
   ///     - `.Disconnect`: Triggered on disconnection
   ///     - `.PortalSignatureReceived`: Triggered when a signature is received
   ///     - `.PortalSigningApproved`: Triggered when signing is approved
   ///     - `.PortalSigningRejected`: Triggered when signing is rejected
-  ///     - `.PortalConnectSigningRequested`: Triggered when Portal Connect requests signing
   ///     - `.PortalSigningRequested`: Triggered when signing is requested
   ///     - `.PortalGetSessionRequest`: Triggered for session requests
-  ///     - `.PortalDappSessionRequested`: Triggered when a dApp requests a session
-  ///     - `.PortalDappSessionApproved`: Triggered when a dApp session is approved
-  ///     - `.PortalDappSessionRejected`: Triggered when a dApp session is rejected
   ///   - callback: The function to be called when the event occurs. The callback receives
   ///     the event data as its parameter.
   ///
@@ -2280,19 +2249,13 @@ public final class Portal: PortalProtocol {
   /// - Parameters:
   ///   - event: The event type to listen for. Supported events include:
   ///     - `.ChainChanged`: Triggered when the active blockchain changes
-  ///     - `.PortalConnectChainChanged`: Triggered when Portal Connect chain changes
   ///     - `.Connect`: Triggered on successful connection
-  ///     - `.ConnectError`: Triggered when a connection error occurs
   ///     - `.Disconnect`: Triggered on disconnection
   ///     - `.PortalSignatureReceived`: Triggered when a signature is received
   ///     - `.PortalSigningApproved`: Triggered when signing is approved
   ///     - `.PortalSigningRejected`: Triggered when signing is rejected
-  ///     - `.PortalConnectSigningRequested`: Triggered when Portal Connect requests signing
   ///     - `.PortalSigningRequested`: Triggered when signing is requested
   ///     - `.PortalGetSessionRequest`: Triggered for session requests
-  ///     - `.PortalDappSessionRequested`: Triggered when a dApp requests a session
-  ///     - `.PortalDappSessionApproved`: Triggered when a dApp session is approved
-  ///     - `.PortalDappSessionRejected`: Triggered when a dApp session is rejected
   ///   - callback: The function to be called when the event occurs. The callback receives
   ///     the event data as its parameter.
   ///
@@ -2355,7 +2318,7 @@ public final class Portal: PortalProtocol {
     self.provider.request(payload: ETHRequestPayload(
       method: ETHRequestMethods.EstimateGas.rawValue,
       params: [transaction]
-    ), completion: completion, connect: nil)
+    ), completion: completion)
   }
 
   /// Retrieves the current gas price on the Ethereum network.
@@ -2376,7 +2339,7 @@ public final class Portal: PortalProtocol {
     self.provider.request(payload: ETHRequestPayload(
       method: ETHRequestMethods.GasPrice.rawValue,
       params: []
-    ), completion: completion, connect: nil)
+    ), completion: completion)
   }
 
   /// Retrieves the ETH balance for the current wallet address.
@@ -2404,7 +2367,7 @@ public final class Portal: PortalProtocol {
     self.provider.request(payload: ETHRequestPayload(
       method: ETHRequestMethods.GetBalance.rawValue,
       params: [address, "latest"]
-    ), completion: completion, connect: nil)
+    ), completion: completion)
   }
 
   /// Sends an Ethereum transaction to the network.
@@ -2430,7 +2393,7 @@ public final class Portal: PortalProtocol {
     self.provider.request(payload: ETHTransactionPayload(
       method: ETHRequestMethods.SendTransaction.rawValue,
       params: [transaction]
-    ), completion: completion, connect: nil)
+    ), completion: completion)
   }
 
   /// Signs an Ethereum message using the wallet's private key.
@@ -2464,7 +2427,7 @@ public final class Portal: PortalProtocol {
         address,
         message
       ]
-    ), completion: completion, connect: nil)
+    ), completion: completion)
   }
 
   /// Signs an Ethereum transaction without broadcasting it to the network.
@@ -2492,7 +2455,7 @@ public final class Portal: PortalProtocol {
     self.provider.request(payload: ETHTransactionPayload(
       method: ETHRequestMethods.SignTransaction.rawValue,
       params: [transaction]
-    ), completion: completion, connect: nil)
+    ), completion: completion)
   }
 
   /// Signs typed data according to EIP-712 (v3) specification.
@@ -2528,7 +2491,7 @@ public final class Portal: PortalProtocol {
     self.provider.request(payload: ETHRequestPayload(
       method: ETHRequestMethods.SignTypedDataV3.rawValue,
       params: [address, message]
-    ), completion: completion, connect: nil)
+    ), completion: completion)
   }
 
   /// Signs typed data according to EIP-712 (v4) specification.
@@ -2566,7 +2529,7 @@ public final class Portal: PortalProtocol {
     self.provider.request(payload: ETHRequestPayload(
       method: ETHRequestMethods.SignTypedDataV4.rawValue,
       params: [address, message]
-    ), completion: completion, connect: nil)
+    ), completion: completion)
   }
 
   /// Signs a message using the Ethereum personal message format.
@@ -2605,7 +2568,7 @@ public final class Portal: PortalProtocol {
         message,
         address
       ]
-    ), completion: completion, connect: nil)
+    ), completion: completion)
   }
 
   /// Generates raw signatures using the underlying key share without chain-specific formatting.
@@ -2636,7 +2599,6 @@ public final class Portal: PortalProtocol {
       chainId: chainId,
       method: .rawSign,
       params: [AnyCodable(message)],
-      connect: nil,
       options: RequestOptions(signatureApprovalMemo: signatureApprovalMemo, traceId: traceId)
     )
   }
@@ -2653,7 +2615,7 @@ public final class Portal: PortalProtocol {
     self.provider.request(payload: ETHRequestPayload(
       method: method,
       params: encodedParams
-    ), completion: completion, connect: nil)
+    ), completion: completion)
   }
 
   // MARK: - Solana Methods
@@ -2730,7 +2692,7 @@ public final class Portal: PortalProtocol {
   /// - Returns: Void
   @available(*, deprecated, renamed: "REMOVED", message: "The PortalProvider class will be chain agnostic very soon. Please update to the chainId-specific implementations of all Provider helper methods as this function will be removed in the future.")
   public func setChainId(to: Int) throws {
-    _ = try self.provider.setChainId(value: to, connect: nil)
+    _ = try self.provider.setChainId(value: to)
   }
 
   /****************************************
@@ -2745,43 +2707,6 @@ public final class Portal: PortalProtocol {
   @available(*, deprecated, renamed: "deleteShares", message: "The Portal SDK is now multi-wallet. Please update to the multi-wallet-compatible deleteShares() as this function will be removed in the future.")
   public func deleteSigningShare() throws {
     try self.keychain.deleteSigningShare()
-  }
-
-  /****************************************
-   * Portal Connect Helper Methods
-   ****************************************/
-
-  /// Creates an instance of Portal Connect for remote transaction signing.
-  ///
-  /// This method instantiates a Portal Connect object that enables remote
-  /// transaction signing capabilities using WebSocket communication.
-  ///
-  /// - Parameter webSocketServer: The WebSocket server hostname to connect to.
-  ///   Defaults to "connect.portalhq.io"
-  ///
-  /// - Returns: A configured `PortalConnect` instance
-  ///
-  /// - Throws: Various initialization errors if Portal Connect setup fails
-  ///
-  /// - Note:
-  ///   - Uses the current Portal instance's configuration for setup
-  ///   - If no chainId is set, defaults to Sepolia testnet (11155111)
-  ///   - The WebSocket server must be accessible from the client device
-  public func createPortalConnectInstance(
-    webSocketServer: String = "connect.portalhq.io"
-  ) throws -> PortalConnect {
-    try PortalConnect(
-      credentials: self.credentials,
-      chainId: self.provider.chainId ?? 11_155_111,
-      keychain: self.keychain,
-      rpcConfig: self.rpcConfig,
-      featureFlags: self.featureFlags,
-      webSocketServer: webSocketServer,
-      autoApprove: self.autoApprove,
-      apiHost: self.apiHost,
-      mpcHost: self.mpcHost,
-      version: self.version
-    )
   }
 
   private static func buildDefaultRpcConfig(_ apiHost: String) -> [String: String] {

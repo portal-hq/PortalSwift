@@ -316,9 +316,9 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
     if method == PortalRequestMethod.wallet_switchEthereumChain.rawValue {
       try self.handleWalletSwitchEthereumChain(method: method, params: params)
     } else if signerMethods.contains(method) {
-      self.portal.provider.request(payload: payload, completion: self.signerRequestCompletion, connect: nil)
+      self.portal.provider.request(payload: payload, completion: self.signerRequestCompletion)
     } else {
-      self.portal.provider.request(payload: payload, completion: self.gatewayRequestCompletion, connect: nil)
+      self.portal.provider.request(payload: payload, completion: self.gatewayRequestCompletion)
     }
   }
 
@@ -351,9 +351,9 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
     let payload = ETHTransactionPayload(method: method, params: [transactionParam], chainId: chainId)
 
     if signerMethods.contains(method) {
-      self.portal.provider.request(payload: payload, completion: self.signerTransactionRequestCompletion, connect: nil)
+      self.portal.provider.request(payload: payload, completion: self.signerTransactionRequestCompletion)
     } else {
-      self.portal.provider.request(payload: payload, completion: self.gatewayTransactionRequestCompletion, connect: nil)
+      self.portal.provider.request(payload: payload, completion: self.gatewayTransactionRequestCompletion)
     }
   }
 

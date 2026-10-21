@@ -41,7 +41,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
   @IBOutlet var dappBrowserButton: UIButton?
   @IBOutlet var generateButton: UIButton?
   @IBOutlet var logoutButton: UIButton?
-  @IBOutlet var portalConnectButton: UIButton?
 
   @IBOutlet var signButton: UIButton?
   @IBOutlet var signInButton: UIButton?
@@ -130,7 +129,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
       self.dappBrowserButton?.isEnabled = false
       self.generateButton?.isEnabled = false
       self.logoutButton?.isEnabled = false
-      self.portalConnectButton?.isEnabled = false
       self.signButton?.isEnabled = false
       self.signInButton?.isEnabled = false
       self.signUpButton?.isEnabled = false
@@ -158,10 +156,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
   override func prepare(for segue: UIStoryboardSegue, sender _: Any?) {
-    if let connectViewController = segue.destination as? ConnectViewController {
-      connectViewController.portal = self.portal
-    }
-
     if let webViewController = segue.destination as? WebViewController {
       webViewController.portal = self.portal
       webViewController.url = self.url?.text
@@ -238,7 +232,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
 
       DispatchQueue.main.async {
         self.dappBrowserButton?.isEnabled = true
-        self.portalConnectButton?.isEnabled = true
         self.testButton?.isEnabled = true
         self.signButton?.isEnabled = true
         self.deleteKeychainButton?.isEnabled = true
@@ -709,7 +702,6 @@ class ViewController: UIViewController, UITextFieldDelegate {
           self.passkeyBackupButton?.isEnabled = hasAddress
           self.passwordBackupButton?.isEnabled = hasAddress
           self.dappBrowserButton?.isEnabled = hasAddress
-          self.portalConnectButton?.isEnabled = hasAddress
 
           self.gdriveBackupButton?.isEnabled = hasAddress
           self.gdriveRecoverButton?.isEnabled = hasAddress

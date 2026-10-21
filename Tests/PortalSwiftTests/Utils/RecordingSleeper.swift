@@ -9,8 +9,8 @@
 import Foundation
 @testable import PortalSwift
 
-/// A stand-in for `Task.sleep` injected into `WebSocketClient` through its `sleep:` seam, so the
-/// reconnect back-off can be asserted on instead of waited for.
+/// A stand-in for `Task.sleep` injected through a `sleep:` seam, so a back-off can be asserted on
+/// instead of waited for.
 ///
 /// Every call records the requested delay (`recordedNanoseconds`) and returns immediately, which
 /// turns "0.5 s, 1 s, 2 s, 4 s, 8 s" into an array equality instead of a fifteen-second test.
@@ -153,7 +153,7 @@ final class RecordingSleeper: @unchecked Sendable {
 
   // MARK: - The injected sleep
 
-  /// The function handed to `WebSocketClient(sleep:)`. Records `nanoseconds`, runs `onSleep`,
+  /// The function handed to a `sleep:` seam. Records `nanoseconds`, runs `onSleep`,
   /// throws `errorToThrow` if set, then either returns at once or suspends behind the hold gate.
   /// Throws `CancellationError` when the calling task is already cancelled, or becomes cancelled
   /// while held, matching `Task.sleep`.

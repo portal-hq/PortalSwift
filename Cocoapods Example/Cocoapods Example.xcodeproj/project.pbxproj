@@ -14,7 +14,6 @@
 		607FACE01AFB9204008FA782 /* LaunchScreen.xib in Resources */ = {isa = PBXBuildFile; fileRef = 607FACDE1AFB9204008FA782 /* LaunchScreen.xib */; };
 		607FACEC1AFB9204008FA782 /* WalletTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FACEB1AFB9204008FA782 /* WalletTests.swift */; };
 		7E4B874E2A58BFFB003A8DB5 /* WebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4B874D2A58BFFB003A8DB5 /* WebViewController.swift */; };
-		7E7F4C002A002D7F00756B6A /* ConnectViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E7F4BFF2A002D7F00756B6A /* ConnectViewController.swift */; };
 		8393571A51F495A6B549BA98 /* Pods_Cocoapods_E2E_Tests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E26142AD626683C9D3E7481C /* Pods_Cocoapods_E2E_Tests.framework */; };
 		AA6644BC13B8CF3F60375038 /* Pods_Cocoapods_Example.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 59C0FA907832C4A7AAF00127 /* Pods_Cocoapods_Example.framework */; };
 		F915F34E2A8195E70014C25B /* ProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F915F34D2A8195E70014C25B /* ProviderTests.swift */; };
@@ -53,7 +52,6 @@
 		7E1A4F6F2AF4652C00A6F7A5 /* Cocoapods E2E Tests.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Cocoapods E2E Tests.xctestplan"; sourceTree = "<group>"; };
 		7E4B874D2A58BFFB003A8DB5 /* WebViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewController.swift; sourceTree = "<group>"; };
 		7E65BFFB2AF321A400ACA0CE /* Cocoapods Example.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = "Cocoapods Example.entitlements"; sourceTree = "<group>"; };
-		7E7F4BFF2A002D7F00756B6A /* ConnectViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectViewController.swift; sourceTree = "<group>"; };
 		7EB608D3291EF2F000CF1346 /* PortalSwift.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = PortalSwift.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		BBF18862E46668EF9EC3D011 /* Pods-Cocoapods Example.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Cocoapods Example.debug.xcconfig"; path = "Target Support Files/Pods-Cocoapods Example/Pods-Cocoapods Example.debug.xcconfig"; sourceTree = "<group>"; };
 		E26142AD626683C9D3E7481C /* Pods_Cocoapods_E2E_Tests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Cocoapods_E2E_Tests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -112,7 +110,6 @@
 			children = (
 				607FACD51AFB9204008FA782 /* AppDelegate.swift */,
 				607FACD71AFB9204008FA782 /* ViewController.swift */,
-				7E7F4BFF2A002D7F00756B6A /* ConnectViewController.swift */,
 				7E4B874D2A58BFFB003A8DB5 /* WebViewController.swift */,
 				607FACD91AFB9204008FA782 /* Main.storyboard */,
 				607FACDC1AFB9204008FA782 /* Images.xcassets */,
@@ -308,7 +305,6 @@
 				"${BUILT_PRODUCTS_DIR}/GTMSessionFetcher/GTMSessionFetcher.framework",
 				"${BUILT_PRODUCTS_DIR}/GoogleSignIn/GoogleSignIn.framework",
 				"${BUILT_PRODUCTS_DIR}/PortalSwift/PortalSwift.framework",
-				"${BUILT_PRODUCTS_DIR}/Starscream/Starscream.framework",
 			);
 			name = "[CP] Embed Pods Frameworks";
 			outputPaths = (
@@ -318,7 +314,6 @@
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/GTMSessionFetcher.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/GoogleSignIn.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/PortalSwift.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Starscream.framework",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -394,7 +389,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7E7F4C002A002D7F00756B6A /* ConnectViewController.swift in Sources */,
 				F97145522A1450ED0034189F /* Portal.swift in Sources */,
 				607FACD81AFB9204008FA782 /* ViewController.swift in Sources */,
 				7E4B874E2A58BFFB003A8DB5 /* WebViewController.swift in Sources */,
