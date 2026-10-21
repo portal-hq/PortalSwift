@@ -1195,6 +1195,9 @@ class ViewController: UIViewController, UITextFieldDelegate {
   }
 
   func startLoading() {
+    // Resign the focused text field first: re-enabling interaction in stopLoading() would hand it
+    // first responder back, and UIKit scrolls the screen up to show it.
+    view.endEditing(true)
     self.overlayView.isHidden = false
     self.activityIndicator.startAnimating()
     // Disable user interaction while loading
