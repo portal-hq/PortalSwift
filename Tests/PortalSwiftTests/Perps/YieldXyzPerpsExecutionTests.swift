@@ -789,9 +789,63 @@ final class YieldXyzPerpsExecutionTests: XCTestCase {
     setBackend(Fixtures.perpsAction(transactions: [Fixtures.fundingTransaction()]))
     signers.scriptedSends = [.failure(mpcError(PortalIdempotencyErrorId.requestInProgress))]
 
-    _ = await expectFailure(.signingFailed, nil, options(useIdempotencyKeys: false))
+    _ = await expectFailure(.broadcastOutcomeUnknown, nil, options(useIdempotencyKeys: false))
 
     XCTAssertEqual(signers.sends.count, 1)
+  }
+
+  // MARK: Send failures
+
+  /// An RPC send that times out after the node accepted the transaction, or a connection dropped
+  /// after the broadcast, may have put the leg on-chain: a new action would send it again.
+  func test_evmSend_aFailureThatMayComeAfterTheBroadcast_isBroadcastOutcomeUnknown() async {
+    let failures: [Error] = [mpcError("RPC_OP_FAILED"), URLError(.networkConnectionLost)]
+    for failure in failures {
+      resetDoubles()
+      setBackend(Fixtures.perpsAction(transactions: [Fixtures.fundingTransaction()]))
+      signers.scriptedSends = [.failure(failure)]
+
+      let error = await expectFailure(.broadcastOutcomeUnknown)
+
+      XCTAssertEqual(error?.transactionId, "tx-fund-1")
+      XCTAssertNil(error?.broadcastHash)
+      XCTAssertTrue(error?.message.contains("broadcastHashes") == true, error?.message ?? "")
+      XCTAssertTrue(error?.message.contains("idempotency key") == true, error?.message ?? "")
+      XCTAssertEqual(signers.sends.count, 1)
+      XCTAssertTrue(signers.confirmations.isEmpty)
+      XCTAssertTrue(backend.submitted.isEmpty)
+    }
+  }
+
+  func test_evmSend_withoutAKey_doesNotPromiseThatResumingIsProtected() async {
+    setBackend(Fixtures.perpsAction(transactions: [Fixtures.fundingTransaction()]))
+    signers.scriptedSends = [.failure(mpcError("RPC_OP_FAILED"))]
+
+    let error = await expectFailure(.broadcastOutcomeUnknown, nil, options(useIdempotencyKeys: false))
+
+    XCTAssertFalse(error?.message.contains("idempotency key") == true, error?.message ?? "")
+  }
+
+  /// Failures known to happen before anything reaches the chain stay `signingFailed`.
+  func test_evmSend_aFailureBeforeTheBroadcast_isSigningFailed() async {
+    let failures: [Error] = [
+      mpcError(YieldXyzPerps.insufficientFundsErrorId),
+      mpcError("AUTH_FAILED"),
+      PortalIdempotencyError.invalidKey("too long"),
+      PortalCredentialError.sessionInvalidated,
+      ProviderSigningError.userDeclinedApproval
+    ]
+    for failure in failures {
+      resetDoubles()
+      setBackend(Fixtures.perpsAction(transactions: [Fixtures.fundingTransaction()]))
+      signers.scriptedSends = [.failure(failure)]
+
+      let error = await expectFailure(.signingFailed)
+
+      XCTAssertEqual(error?.transactionId, "tx-fund-1", "\(failure)")
+      XCTAssertEqual(signers.sends.count, 1, "\(failure)")
+      XCTAssertTrue(backend.submitted.isEmpty, "\(failure)")
+    }
   }
 
   func test_idempotency_sendsWithoutAKeyWhenTheTransactionIdCannotFormOne() async throws {

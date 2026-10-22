@@ -241,11 +241,26 @@ extension YieldXyzPerps {
           underlyingError: error
         )
       } catch {
+        if Self.failedBeforeSending(error) {
+          throw transactionError(
+            context,
+            transaction,
+            reason: .signingFailed,
+            message: "Sending transaction \(transaction.id) failed before it was broadcast.",
+            underlyingError: error
+          )
+        }
+        // Any other failure may come after the broadcast: an RPC call that times out after the node
+        // accepted the transaction, or a connection that drops once it was broadcast, looks the same
+        // as one that never reached the chain. Building a new action would send the leg again.
+        let ifNotBroadcast = idempotencyKey == nil
+          ? "resume this action or build a new one"
+          : "resume this action, which reuses its idempotency key so Portal sends the leg at most once"
         throw transactionError(
           context,
           transaction,
-          reason: .signingFailed,
-          message: "Sending transaction \(transaction.id) failed.",
+          reason: .broadcastOutcomeUnknown,
+          message: "Sending transaction \(transaction.id) failed and it may already have been broadcast. Check the chain for a mined or pending transaction before building a new action: if it was broadcast, resume with broadcastHashes; if not, \(ifNotBroadcast).",
           underlyingError: error
         )
       }
@@ -268,6 +283,23 @@ extension YieldXyzPerps {
       )
     }
     return returned
+  }
+
+  /// The id Portal's MPC server gives a node's insufficient-funds rejection (`errs.ErrInsufficientFunds`).
+  static let insufficientFundsErrorId = "INSUFFICIENT_FUNDS"
+
+  /// `true` for a send failure known to happen before the leg reaches the chain: the SDK's own checks
+  /// (idempotency key, credential, signing approval), Portal rejecting the credential, or the node
+  /// refusing the transaction for lack of funds, which it does before accepting it.
+  static func failedBeforeSending(_ error: Error) -> Bool {
+    switch error {
+    case is PortalIdempotencyError, is PortalCredentialError, is ProviderSigningError:
+      return true
+    case let error as PortalMpcError:
+      return error.isAuthFailure || error.id == insufficientFundsErrorId
+    default:
+      return false
+    }
   }
 
   /// Real chains arrive as CAIP-2 in `network`; otherwise fall back to the numeric `chainId`.
