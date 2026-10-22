@@ -346,9 +346,8 @@ extension ViewController {
     ]
     if let market = markets.first(where: { $0.baseAsset.symbol == "BTC" }) ?? markets.first {
       let symbol = market.baseAsset.symbol
-      // Prices far from the market, so a limit order never fills and TP/SL never trigger.
+      // Far below the market, so the limit order never fills.
       let farBelow = roundedPrice(market.markPrice * 0.5)
-      let farAbove = roundedPrice(market.markPrice * 2)
       presets += [
         PerpsPreset(
           title: "Update \(symbol) leverage to 3x isolated (free)",
@@ -356,7 +355,7 @@ extension ViewController {
           args: YieldXyzPerpsActionArgs(marketId: market.id, leverage: 3, marginMode: .isolated)
         ),
         PerpsPreset(
-          title: "Place \(symbol) limit long at \(farBelow) (never fills; free)",
+          title: "Place \(symbol) limit long at \(plainPrice(farBelow)) (never fills; free)",
           action: .open,
           args: YieldXyzPerpsActionArgs(marketId: market.id, side: .long, amount: "4", leverage: 3, marginMode: .isolated, limitPrice: farBelow)
         ),
@@ -366,16 +365,14 @@ extension ViewController {
           args: YieldXyzPerpsActionArgs(marketId: market.id, side: .long, amount: "4", leverage: 3, marginMode: .isolated)
         ),
         PerpsPreset(
-          title: "Set \(symbol) TP \(farAbove) / SL \(farBelow) (never trigger)",
-          action: .setTpAndSl,
-          args: YieldXyzPerpsActionArgs(marketId: market.id, stopLossPrice: farBelow, takeProfitPrice: farAbove)
-        ),
-        PerpsPreset(
           title: "Close the \(symbol) position",
           action: .close,
           args: YieldXyzPerpsActionArgs(marketId: market.id)
         )
       ]
+      if let position = positions.first(where: { $0.marketId == market.id }) {
+        presets.append(tpAndSlPreset(for: position, symbol: symbol))
+      }
     }
     let withdrawable = available.map { floor($0 * 100) / 100 }.flatMap { $0 > 1 ? String(format: "%.2f", $0) : nil } ?? "2"
     presets.append(PerpsPreset(
@@ -388,6 +385,25 @@ extension ViewController {
     }
     presets.append(PerpsPreset(title: "Custom: type an action and its args", action: YieldXyzPerpsActionType(rawValue: ""), args: YieldXyzPerpsActionArgs()))
     return presets
+  }
+
+  /// TP/SL protects an open position, so it is offered only for one. The stop sits halfway between the
+  /// price and the liquidation price, since a stop past liquidation can never trigger; the
+  /// take-profit sits far from the price. Neither should trigger during a test.
+  private static func tpAndSlPreset(for position: YieldXyzPerpsPosition, symbol: String) -> PerpsPreset {
+    let isLong = position.side == .long
+    let liquidation = position.liquidationPrice > 0 ? position.liquidationPrice : position.markPrice * (isLong ? 0.6 : 1.4)
+    let stopLoss = roundedPrice((position.markPrice + liquidation) / 2)
+    let takeProfit = roundedPrice(position.markPrice * (isLong ? 1.5 : 0.6))
+    return PerpsPreset(
+      title: "Set \(symbol) TP \(plainPrice(takeProfit)) / SL \(plainPrice(stopLoss)) on your \(position.side.rawValue)",
+      action: .setTpAndSl,
+      args: YieldXyzPerpsActionArgs(marketId: position.marketId, stopLossPrice: stopLoss, takeProfitPrice: takeProfit)
+    )
+  }
+
+  private static func plainPrice(_ price: Double) -> String {
+    price == price.rounded() ? String(Int64(price)) : String(price)
   }
 
   /// Rounds a price to 5 significant figures, the precision Hyperliquid accepts.
