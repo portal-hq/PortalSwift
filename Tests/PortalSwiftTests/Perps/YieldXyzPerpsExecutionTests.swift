@@ -580,7 +580,8 @@ final class YieldXyzPerpsExecutionTests: XCTestCase {
     XCTAssertEqual(send.param.to, Fixtures.arbitrumUsdc)
     XCTAssertEqual(send.param.data, Fixtures.fundingTransferData)
     XCTAssertEqual(send.param.value, "0x0")
-    XCTAssertEqual(send.param.gas, "0x186a0")
+    // The payload's gasLimit (0x186a0) is not sent: Portal's signer estimates the gas when it sends.
+    XCTAssertNil(send.param.gas)
     XCTAssertNil(send.param.nonce)
     XCTAssertNil(send.param.maxFeePerGas)
     XCTAssertEqual(signers.confirmations.first?.hash, Fixtures.fundingTxHash)
@@ -604,7 +605,7 @@ final class YieldXyzPerpsExecutionTests: XCTestCase {
     XCTAssertEqual(send.param.to, Fixtures.arbitrumUsdc)
     XCTAssertEqual(send.param.data, Fixtures.fundingTransferData)
     XCTAssertEqual(send.param.value, "0x0")
-    XCTAssertEqual(send.param.gas, "0x186a0")
+    XCTAssertNil(send.param.gas)
     XCTAssertNil(send.param.nonce)
     XCTAssertEqual(backend.submitted.first?.transactionHash, Fixtures.fundingTxHash)
   }
