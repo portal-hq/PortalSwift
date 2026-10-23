@@ -155,6 +155,9 @@ public final class Portal: PortalProtocol {
         return await self.getRpcUrl(forChainId: chainId) != nil
       }
     ),
+    // Used only when `api.yieldxyzBorrow` is a custom implementation: `PortalYieldXyzBorrowApi`
+    // serves its own lookup, which decodes only what Borrow needs. This one decodes the full
+    // `getTransactionDetails` response.
     lookupEvmTransaction: { [weak self] chainId, hash in
       guard let self else {
         throw PortalClassError.clientNotAvailable

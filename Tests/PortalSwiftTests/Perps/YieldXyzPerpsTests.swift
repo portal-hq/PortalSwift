@@ -392,10 +392,11 @@ final class YieldXyzPerpsTests: XCTestCase {
     for ticksPastDeadline in [false, true] {
       var ticks = 0
       do {
+        // The interval far exceeds the timeout, and the timeout leaves the first tick ample time.
         _ = try await YieldXyzPollLoop.run(
-          intervalSeconds: 1,
-          timeoutSeconds: 0.05,
-          maxIntervalSeconds: 1,
+          intervalSeconds: 10,
+          timeoutSeconds: 0.3,
+          maxIntervalSeconds: 10,
           ticksPastDeadline: ticksPastDeadline
         ) { () -> YieldXyzPollStep<Int> in
           ticks += 1

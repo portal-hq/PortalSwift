@@ -137,7 +137,7 @@ final class YieldXyzPerpsPayloadsTests: XCTestCase {
     XCTAssertEqual((reparsed["domain"] as? NSDictionary)?["chainId"] as? Int, 1337)
   }
 
-  // MARK: - parseEvmTransactionRequest
+  // MARK: - YieldXyzEvmTransactionParams.parse
 
   func test_parseEvm_narrowsTheJsonTransaction_droppingNonceFeesGasLimitAndChain() throws {
     let request = try YieldXyzEvmTransactionParams.parse(

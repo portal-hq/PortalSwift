@@ -110,14 +110,14 @@ final class YieldXyzBorrowTests: XCTestCase {
     let reasons: [YieldXyzBorrowExecutionErrorReason] = [
       .unsupportedSigningFormat, .unsupportedNetwork, .invalidSignablePayload, .missingWalletAddress, .signerAddressMismatch,
       .signingChainNotConfigured, .dependencyUnavailable, .signatureRejected, .invalidTransactionHash, .signingFailed,
-      .transactionAlreadyBroadcast, .userOperationFailed, .transactionFailed, .submitRejected, .submitFailed,
+      .transactionAlreadyBroadcast, .broadcastOutcomeUnknown, .userOperationFailed, .transactionFailed, .submitRejected, .submitFailed,
       .submitOutcomeUnknown, .nextStepFailed, .actionFailed, .actionInProgress, .pollingFailed, .timeout
     ]
 
     XCTAssertEqual(reasons.map(\.rawValue), [
       "UNSUPPORTED_SIGNING_FORMAT", "UNSUPPORTED_NETWORK", "INVALID_SIGNABLE_PAYLOAD", "MISSING_WALLET_ADDRESS", "SIGNER_ADDRESS_MISMATCH",
       "SIGNING_CHAIN_NOT_CONFIGURED", "DEPENDENCY_UNAVAILABLE", "SIGNATURE_REJECTED", "INVALID_TRANSACTION_HASH", "SIGNING_FAILED",
-      "TRANSACTION_ALREADY_BROADCAST", "USER_OPERATION_FAILED", "TRANSACTION_FAILED", "SUBMIT_REJECTED", "SUBMIT_FAILED",
+      "TRANSACTION_ALREADY_BROADCAST", "BROADCAST_OUTCOME_UNKNOWN", "USER_OPERATION_FAILED", "TRANSACTION_FAILED", "SUBMIT_REJECTED", "SUBMIT_FAILED",
       "SUBMIT_OUTCOME_UNKNOWN", "NEXT_STEP_FAILED", "ACTION_FAILED", "ACTION_IN_PROGRESS", "POLLING_FAILED", "TIMEOUT"
     ])
   }

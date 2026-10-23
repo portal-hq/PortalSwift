@@ -291,8 +291,8 @@ public enum YieldXyzBorrowExecutionErrorReason: String, Equatable {
   case nextStepFailed = "NEXT_STEP_FAILED"
   /// The action ended as `FAILED`, `CANCELED` or `STALE`.
   case actionFailed = "ACTION_FAILED"
-  /// Another call on this Portal instance is already executing the action; this call signed
-  /// nothing.
+  /// Another call on this instance (or on another `borrow` of the same Portal, which shares the
+  /// guard) is already executing the action; this call signed nothing.
   case actionInProgress = "ACTION_IN_PROGRESS"
   /// The action or a transaction could not be read back while tracking it; `underlyingError`
   /// holds the cause.

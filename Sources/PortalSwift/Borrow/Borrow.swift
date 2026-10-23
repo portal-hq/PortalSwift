@@ -23,7 +23,9 @@ public class Borrow {
   ///   - dependencies: What the high-level `executeAction` / `signAndSubmitAction` need to sign
   ///     transactions (injected by Portal).
   ///   - lookupEvmTransaction: Reads broadcast transactions back when `api.yieldxyzBorrow` cannot
-  ///     (a custom implementation).
+  ///     (a custom implementation). Unlike `PortalYieldXyzBorrowApi`, which decodes only the hashes
+  ///     and the user operation's outcome, Portal's fallback decodes the full
+  ///     `getTransactionDetails` response, so a field missing from it fails the lookup.
   init(
     api: PortalApiProtocol,
     inFlightActions: YieldXyzInFlightActions = YieldXyzInFlightActions(),

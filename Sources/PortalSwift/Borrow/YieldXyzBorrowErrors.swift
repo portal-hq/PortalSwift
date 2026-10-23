@@ -9,11 +9,15 @@ import AnyCodable
 import Foundation
 
 /// Stable error identifiers the Portal API returns as `id` for Yield.xyz Borrow requests. Other
-/// failures (validation, an unsupported chain, a request Yield.xyz rejected, the integration not
-/// being enabled) are `400`s without an `id`; their `message` says which.
+/// failures carry no `id`; their `message` says which: a `400` for validation, an unsupported
+/// chain, a request Yield.xyz rejected or the integration not being enabled; a `404` when
+/// Yield.xyz has no item with the requested id; a `429` when rate limited; and a `503` when
+/// Yield.xyz cannot be reached or fails.
 public enum YieldXyzBorrowErrorId {
-  /// Yield.xyz changed a response shape; the feature is unavailable until Portal adapts. Not the
-  /// caller's fault: treat it as a temporary outage, and do not retry in a tight loop.
+  /// Yield.xyz changed a response shape, sent with a `500`; the feature is unavailable until Portal
+  /// adapts. Not the caller's fault: treat it as a temporary outage, and do not retry in a tight
+  /// loop. The execution runner treats it like any `5xx`: a read is retried a few times and a
+  /// submission is reconciled.
   public static let integrationResponseSchemaDrift = "INTEGRATION_RESPONSE_SCHEMA_DRIFT"
 }
 
