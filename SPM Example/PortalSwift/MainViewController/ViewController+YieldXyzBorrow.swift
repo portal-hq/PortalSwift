@@ -115,22 +115,30 @@ extension ViewController {
     return address
   }
 
-  /// The Morpho Blue WMON/USDC market on Monad, or the first market listed.
+  /// The Morpho Blue WMON/USDC market on Monad, found across every page of markets. Nothing else
+  /// stands in for it: a supply posts the market's collateral, and the confirmation promises WMON.
   private func borrowMarket(_ portal: PortalProtocol) async throws -> YieldXyzBorrowMarket {
-    let page = try await portal.borrow.yieldxyz.getMarkets(params: YieldXyzBorrowGetMarketsParams(
-      limit: 25,
-      integrationId: borrowIntegrationId,
-      network: borrowNetwork,
-      // No Borrow market is enabled for the Yield.xyz project yet, so `enabled` lists none.
-      scope: .all
-    )).data
-    let wmonUsdc = page.items.first { market in
-      market.loanToken.symbol == "USDC" && market.collateralTokens.contains { $0.token.symbol == "WMON" }
+    var offset = 0
+    while true {
+      let page = try await portal.borrow.yieldxyz.getMarkets(params: YieldXyzBorrowGetMarketsParams(
+        offset: offset,
+        limit: 100,
+        integrationId: borrowIntegrationId,
+        network: borrowNetwork,
+        // No Borrow market is enabled for the Yield.xyz project yet, so `enabled` lists none.
+        scope: .all
+      )).data
+      let wmonUsdc = page.items.first { market in
+        market.loanToken.symbol == "USDC" && market.collateralTokens.contains { $0.token.symbol == "WMON" }
+      }
+      if let wmonUsdc {
+        return wmonUsdc
+      }
+      offset += page.items.count
+      if page.items.isEmpty || offset >= page.total {
+        throw PortalExampleBorrowError.noMarket
+      }
     }
-    guard let market = wmonUsdc ?? page.items.first else {
-      throw PortalExampleBorrowError.noMarket
-    }
-    return market
   }
 
   // MARK: - Reads
@@ -331,7 +339,7 @@ private enum PortalExampleBorrowError: LocalizedError {
     case .noEvmAddress:
       return "The wallet has no EVM address."
     case .noMarket:
-      return "No Borrow market is listed for this integration and chain."
+      return "The Morpho Blue WMON/USDC market is not listed on Monad."
     }
   }
 }

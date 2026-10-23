@@ -42,10 +42,17 @@ struct YieldXyzPollLoopTimeout: Error {}
 /// SDK's `internal/pollLoop.ts`. Callers classify each read in `tick`.
 enum YieldXyzPollLoop {
   /// Runs `tick` until it returns `.stop` (the value is returned) or throws (the error is
-  /// rethrown). The first tick runs at once, even with a zero timeout unless `ticksPastDeadline` is
-  /// `false`; between ticks the loop sleeps `interval`, never past the deadline, and the interval
-  /// grows by 1.5× up to `maxIntervalSeconds`. Throws `YieldXyzPollLoopTimeout` once the deadline
-  /// passes.
+  /// rethrown). The first tick runs at once; between ticks the loop sleeps `interval`, never past
+  /// the deadline, and the interval grows by 1.5× up to `maxIntervalSeconds`. Throws
+  /// `YieldXyzPollLoopTimeout` once the deadline passes.
+  ///
+  /// With `ticksPastDeadline` (the default), the deadline is checked after each tick: a zero
+  /// timeout still ticks once, and a tick can start right as the deadline passes. Without it, every
+  /// tick needs time left, as in the React Native SDK: a zero timeout times out before the first
+  /// tick, and no tick starts at or after the deadline.
+  ///
+  /// A cancelled task stops with `CancellationError` before each tick and before a result is
+  /// returned, even when `tick` itself does not check for cancellation.
   static func run<T>(
     intervalSeconds: TimeInterval,
     timeoutSeconds: TimeInterval,
@@ -58,13 +65,13 @@ enum YieldXyzPollLoop {
     let deadline = YieldXyzExecutionClock.now() + max(0, timeoutSeconds)
     var interval = max(minIntervalSeconds, intervalSeconds)
 
-    if !ticksPastDeadline, YieldXyzExecutionClock.now() >= deadline {
-      throw YieldXyzPollLoopTimeout()
-    }
-
-    // The deadline is checked after each tick, so a zero timeout still reads once.
     while true {
+      if !ticksPastDeadline, YieldXyzExecutionClock.now() >= deadline {
+        break
+      }
+      try Task.checkCancellation()
       if case let .stop(value) = try await tick() {
+        try Task.checkCancellation()
         return value
       }
 

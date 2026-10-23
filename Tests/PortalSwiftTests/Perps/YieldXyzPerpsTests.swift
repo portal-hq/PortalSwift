@@ -388,6 +388,60 @@ final class YieldXyzPerpsTests: XCTestCase {
     XCTAssertEqual(ticks, 0)
   }
 
+  func test_pollLoop_withoutTickingPastTheDeadline_startsNoTickOnceTheWaitUsesUpTheTimeout() async throws {
+    for ticksPastDeadline in [false, true] {
+      var ticks = 0
+      do {
+        _ = try await YieldXyzPollLoop.run(
+          intervalSeconds: 1,
+          timeoutSeconds: 0.05,
+          maxIntervalSeconds: 1,
+          ticksPastDeadline: ticksPastDeadline
+        ) { () -> YieldXyzPollStep<Int> in
+          ticks += 1
+          return .continue
+        }
+        XCTFail("Expected a timeout")
+      } catch is YieldXyzPollLoopTimeout {}
+      // The interval exceeds the timeout, so the loop sleeps until the deadline after the first tick.
+      XCTAssertEqual(ticks, ticksPastDeadline ? 2 : 1, "ticksPastDeadline: \(ticksPastDeadline)")
+    }
+  }
+
+  func test_pollLoop_stopsACancelledTask_evenWhenItsTickReturnsAValue() async {
+    let cancelledBefore = Task { () -> (ticks: Int, error: Error?) in
+      withUnsafeCurrentTask { $0?.cancel() }
+      var ticks = 0
+      do {
+        _ = try await YieldXyzPollLoop.run(intervalSeconds: 0.001, timeoutSeconds: 1, maxIntervalSeconds: 0.001) { () -> YieldXyzPollStep<Int> in
+          ticks += 1
+          return .stop(1)
+        }
+        return (ticks, nil)
+      } catch {
+        return (ticks, error)
+      }
+    }
+    let before = await cancelledBefore.value
+    XCTAssertEqual(before.ticks, 0)
+    XCTAssertTrue(before.error is CancellationError, "\(String(describing: before.error))")
+
+    let cancelledDuring = Task { () -> Error? in
+      do {
+        _ = try await YieldXyzPollLoop.run(intervalSeconds: 0.001, timeoutSeconds: 1, maxIntervalSeconds: 0.001) { () -> YieldXyzPollStep<Int> in
+          // A tick that ignores cancellation, such as a cached response.
+          withUnsafeCurrentTask { $0?.cancel() }
+          return .stop(1)
+        }
+        return nil
+      } catch {
+        return error
+      }
+    }
+    let during = await cancelledDuring.value
+    XCTAssertTrue(during is CancellationError, "\(String(describing: during))")
+  }
+
   func test_cancellation_countsACancelledURLSessionRequestOnlyWhileTheTaskIsCancelled() async {
     XCTAssertTrue(YieldXyzCancellation.isCancellation(CancellationError()))
     XCTAssertFalse(YieldXyzCancellation.isCancellation(URLError(.cancelled)))
