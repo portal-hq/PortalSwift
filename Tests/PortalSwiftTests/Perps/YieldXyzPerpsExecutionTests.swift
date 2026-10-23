@@ -830,12 +830,19 @@ final class YieldXyzPerpsExecutionTests: XCTestCase {
   /// Failures known to happen before anything reaches the chain stay `signingFailed`.
   func test_evmSend_aFailureBeforeTheBroadcast_isSigningFailed() async {
     let failures: [Error] = [
-      mpcError(YieldXyzPerps.insufficientFundsErrorId),
-      mpcError("AUTH_FAILED"),
+      "MSG_BUILD_FAILED",
+      "TX_BUILD_FAILED",
+      "BAD_REQUEST",
+      "ADDRESS_BLOCKED",
+      "POLICY_AMOUNT_LIMIT_EXCEEDED",
+      "INSUFFICIENT_FUNDS",
+      "AUTH_FAILED"
+    ].map { self.mpcError($0) as Error } + [
       PortalIdempotencyError.invalidKey("too long"),
       PortalCredentialError.sessionInvalidated,
       ProviderSigningError.userDeclinedApproval
     ]
+    XCTAssertEqual(failures.count, 10)
     for failure in failures {
       resetDoubles()
       setBackend(Fixtures.perpsAction(transactions: [Fixtures.fundingTransaction()]))

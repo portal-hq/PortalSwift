@@ -285,18 +285,28 @@ extension YieldXyzPerps {
     return returned
   }
 
-  /// The id Portal's MPC server gives a node's insufficient-funds rejection (`errs.ErrInsufficientFunds`).
-  static let insufficientFundsErrorId = "INSUFFICIENT_FUNDS"
+  /// Ids Portal's MPC server raises before a leg reaches the chain (`mpc/errs/error_ids.go`): building
+  /// the signing message or the transaction, a malformed request, a firewall or policy rule refusing
+  /// it, or the node refusing it for lack of funds. `RPC_OP_FAILED` is not one: the send itself can
+  /// fail after the node accepted the transaction.
+  static let preBroadcastErrorIds: Set<String> = [
+    "MSG_BUILD_FAILED",
+    "TX_BUILD_FAILED",
+    "BAD_REQUEST",
+    "ADDRESS_BLOCKED",
+    "POLICY_AMOUNT_LIMIT_EXCEEDED",
+    "INSUFFICIENT_FUNDS"
+  ]
 
   /// `true` for a send failure known to happen before the leg reaches the chain: the SDK's own checks
-  /// (idempotency key, credential, signing approval), Portal rejecting the credential, or the node
-  /// refusing the transaction for lack of funds, which it does before accepting it.
+  /// (idempotency key, credential, signing approval), Portal rejecting the credential, or one of
+  /// `preBroadcastErrorIds`.
   static func failedBeforeSending(_ error: Error) -> Bool {
     switch error {
     case is PortalIdempotencyError, is PortalCredentialError, is ProviderSigningError:
       return true
     case let error as PortalMpcError:
-      return error.isAuthFailure || error.id == insufficientFundsErrorId
+      return error.isAuthFailure || error.id.map(preBroadcastErrorIds.contains) == true
     default:
       return false
     }
