@@ -11,6 +11,7 @@ import Foundation
 public protocol PortalApiProtocol: AnyObject {
   var client: ClientResponse? { get async throws }
   var yieldxyz: PortalYieldXyzApiProtocol { get }
+  var yieldxyzPerps: PortalYieldXyzPerpsApiProtocol { get }
   var lifi: PortalLifiTradingApiProtocol { get }
   var zeroX: PortalZeroXTradingApiProtocol { get }
   var hypernative: PortalHypernativeApiProtocol { get }
@@ -186,6 +187,13 @@ public class PortalApi: PortalApiProtocol {
 
   /// Access to Yield.xyz integration functionality.
   public lazy var yieldxyz: PortalYieldXyzApiProtocol = PortalYieldXyzApi(
+    credentials: self.credentials,
+    apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
+    requests: self.requests
+  )
+
+  /// Access to Yield.xyz Perps integration functionality.
+  public lazy var yieldxyzPerps: PortalYieldXyzPerpsApiProtocol = PortalYieldXyzPerpsApi(
     credentials: self.credentials,
     apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
     requests: self.requests
