@@ -12,11 +12,7 @@ extension YieldXyzPerps {
   /// The idempotency key of an `EVM_TRANSACTION` leg, or `nil` when the transaction id cannot form a
   /// valid key (1–255 characters of `A-Z a-z 0-9 . _ ~ -`).
   static func idempotencyKey(forTransactionId transactionId: String) -> String? {
-    let key = idempotencyKeyPrefix + transactionId
-    guard !transactionId.isEmpty, (try? validateIdempotencyKey(key)) == key else {
-      return nil
-    }
-    return key
+    YieldXyzIdempotency.key(prefix: idempotencyKeyPrefix, transactionId: transactionId)
   }
 
   func processEvmTransaction(
@@ -24,8 +20,8 @@ extension YieldXyzPerps {
     transaction: YieldXyzPerpsTransaction,
     index: Int
   ) async throws -> YieldXyzPerpsTransactionExecution {
-    let request: YieldXyzPerpsEvmTransactionRequest
-    switch YieldXyzPerpsPayloads.parseEvmTransactionRequest(transaction.signablePayload, defaultFrom: transaction.address) {
+    let request: YieldXyzEvmTransactionRequest
+    switch YieldXyzEvmTransactionParams.parse(transaction.signablePayload, defaultFrom: transaction.address) {
     case let .success(parsed):
       request = parsed
     case let .failure(problem):
@@ -65,7 +61,7 @@ extension YieldXyzPerps {
     if let suppliedBroadcastHash {
       // A leg the caller reports as already broadcast is confirmed and submitted from that hash
       // but never signed, so it cannot be broadcast twice.
-      guard YieldXyzPerpsPayloads.isTransactionHash(suppliedBroadcastHash) else {
+      guard YieldXyzEvmTransactionParams.isTransactionHash(suppliedBroadcastHash) else {
         throw transactionError(
           context,
           transaction,
@@ -79,7 +75,7 @@ extension YieldXyzPerps {
         context,
         transaction: transaction,
         index: index,
-        param: YieldXyzPerpsPayloads.toSendTransactionParam(request),
+        param: YieldXyzEvmTransactionParams.toSendTransactionParam(request),
         chainId: chainId,
         signAndSendTransaction: signAndSendTransaction
       )
@@ -274,7 +270,7 @@ extension YieldXyzPerps {
         message: "The signing request for transaction \(transaction.id) was rejected."
       )
     }
-    guard YieldXyzPerpsPayloads.isTransactionHash(returned) else {
+    guard YieldXyzEvmTransactionParams.isTransactionHash(returned) else {
       throw transactionError(
         context,
         transaction,
@@ -314,11 +310,11 @@ extension YieldXyzPerps {
 
   /// Real chains arrive as CAIP-2 in `network`; otherwise fall back to the numeric `chainId`.
   func resolveEvmChainId(_ context: ExecutionContext, _ transaction: YieldXyzPerpsTransaction) throws -> String {
-    if YieldXyzPerpsPayloads.isEvmChainId(transaction.network) {
+    if YieldXyzEvmTransactionParams.isEvmChainId(transaction.network) {
       return transaction.network
     }
     let fromChainId = "eip155:\(transaction.chainId)"
-    if YieldXyzPerpsPayloads.isEvmChainId(fromChainId) {
+    if YieldXyzEvmTransactionParams.isEvmChainId(fromChainId) {
       return fromChainId
     }
     throw transactionError(

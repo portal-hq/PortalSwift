@@ -25,7 +25,7 @@ public class Perps {
   ///     Portal).
   init(
     api: PortalApiProtocol,
-    inFlightActions: YieldXyzPerpsInFlightActions = YieldXyzPerpsInFlightActions(),
+    inFlightActions: YieldXyzInFlightActions = YieldXyzInFlightActions(),
     dependencies: YieldXyzPerpsExecutionDependencies = YieldXyzPerpsExecutionDependencies()
   ) {
     self.yieldxyz = YieldXyzPerps(

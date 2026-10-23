@@ -46,14 +46,9 @@ extension YieldXyzPerps {
     action.transactions.contains { !processed.contains($0.id) && awaitsSignature($0) }
   }
 
-  /// Whether `error` stops the execution as a cancellation. URLSession reports a cancelled task as
-  /// `URLError(.cancelled)`, not `CancellationError`; that counts only while the surrounding task
-  /// is cancelled, so a request cancelled for any other reason stays an ordinary failure.
+  /// Whether `error` stops the execution as a cancellation (see `YieldXyzCancellation`).
   static func isCancellation(_ error: Error) -> Bool {
-    if error is CancellationError {
-      return true
-    }
-    return (error as? URLError)?.code == .cancelled && Task.isCancelled
+    YieldXyzCancellation.isCancellation(error)
   }
 
   func emit(_ context: ExecutionContext, _ progress: YieldXyzPerpsExecutionProgress) {

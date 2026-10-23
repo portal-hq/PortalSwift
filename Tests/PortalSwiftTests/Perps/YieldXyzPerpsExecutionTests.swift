@@ -1222,7 +1222,7 @@ final class YieldXyzPerpsExecutionTests: XCTestCase {
 
   func test_rejectsASecondCallFromAnotherInstanceSharingTheGuard() async throws {
     signers.holdSigning = true
-    let guardShared = YieldXyzPerpsInFlightActions()
+    let guardShared = YieldXyzInFlightActions()
     let first = YieldXyzPerps(api: backend, dependencies: signers.dependencies, retryPolicy: fastPolicy, inFlightActions: guardShared)
     let second = YieldXyzPerps(api: backend, dependencies: signers.dependencies, retryPolicy: fastPolicy, inFlightActions: guardShared)
     let action = backend.initial

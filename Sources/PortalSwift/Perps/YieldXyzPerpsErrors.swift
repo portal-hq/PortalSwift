@@ -52,6 +52,8 @@ public enum YieldXyzPerpsError: LocalizedError, Equatable {
   }
 }
 
+extension YieldXyzPerpsError: YieldXyzRequestRefusedBeforeSending {}
+
 /// The Portal API error behind a failed Yield.xyz Perps request: its HTTP status and the `error`,
 /// `id` and `details` of the response body. `code` is the venue's machine-readable code when there
 /// is one (for example `EXECUTE_PRECONDITION_FAILED`, or `SUBMIT_BROADCAST_FAILED` on a `503`, which
@@ -126,77 +128,9 @@ public struct YieldXyzPerpsApiError: Error, Equatable {
     status == 429
   }
 
-  private struct Body: Decodable {
-    let error: String?
-    let id: String?
-    let details: [String: AnyCodable]?
-  }
-
   private static func from(_ error: PortalRequestsError) -> YieldXyzPerpsApiError? {
-    let message: String
-    switch error {
-    case .unauthorized:
-      return YieldXyzPerpsApiError(status: 401)
-    case let .clientError(text, _), let .internalServerError(text, _), let .redirectError(text):
-      message = text
-    case .couldNotParseHttpResponse:
-      return nil
+    YieldXyzApiErrorBody.parse(error).map {
+      YieldXyzPerpsApiError(status: $0.status, id: $0.id, message: $0.message, details: $0.details)
     }
-
-    // The transport reports a failure as "<status> - <body>".
-    let status = message.components(separatedBy: " - ").first.flatMap { Int($0.trimmingCharacters(in: .whitespaces)) }
-    guard let body = error.dataStr, !body.isEmpty else {
-      return YieldXyzPerpsApiError(status: status)
-    }
-    guard let decoded = try? JSONDecoder().decode(Body.self, from: Data(body.utf8)) else {
-      return YieldXyzPerpsApiError(status: status, message: body)
-    }
-    return YieldXyzPerpsApiError(status: status, id: decoded.id, message: decoded.error ?? body, details: decoded.details)
-  }
-}
-
-/// How a failed Portal API request is retried by the execution runner.
-enum YieldXyzPerpsRequestFailure {
-  /// `true` when the credential is spent: retrying cannot help.
-  static func isCredentialFailure(_ error: Error) -> Bool {
-    if error is PortalCredentialError {
-      return true
-    }
-    if case PortalRequestsError.unauthorized = error {
-      return true
-    }
-    return false
-  }
-
-  /// The HTTP status of `error`, when the request got an HTTP response.
-  static func status(of error: Error) -> Int? {
-    guard error is PortalRequestsError else {
-      return nil
-    }
-    return YieldXyzPerpsApiError.from(error)?.status
-  }
-
-  /// A failed read worth repeating as-is: a rate limit, a 5xx, or a failure with no HTTP status
-  /// (transport, or a body that did not decode). A spent credential never is.
-  static func isTransient(_ error: Error) -> Bool {
-    if isCredentialFailure(error) {
-      return false
-    }
-    if let status = status(of: error) {
-      return status == 429 || status >= 500
-    }
-    return true
-  }
-
-  /// A failure after which the backend may or may not have processed the request: a 5xx, or a
-  /// failure with no HTTP status.
-  static func isAmbiguous(_ error: Error) -> Bool {
-    if isCredentialFailure(error) {
-      return false
-    }
-    if let status = status(of: error) {
-      return status >= 500
-    }
-    return true
   }
 }

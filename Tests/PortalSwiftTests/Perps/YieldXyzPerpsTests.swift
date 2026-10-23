@@ -348,16 +348,127 @@ final class YieldXyzPerpsTests: XCTestCase {
   }
 
   func test_requestFailure_classification() {
-    XCTAssertTrue(YieldXyzPerpsRequestFailure.isTransient(PortalRequestsError.clientError("429 - {}", url: "")))
-    XCTAssertTrue(YieldXyzPerpsRequestFailure.isTransient(PortalRequestsError.internalServerError("503 - {}", url: "")))
-    XCTAssertTrue(YieldXyzPerpsRequestFailure.isTransient(URLError(.networkConnectionLost)))
-    XCTAssertFalse(YieldXyzPerpsRequestFailure.isTransient(PortalRequestsError.clientError("404 - {}", url: "")))
-    XCTAssertFalse(YieldXyzPerpsRequestFailure.isTransient(PortalRequestsError.unauthorized))
+    XCTAssertTrue(YieldXyzRequestFailure.isTransient(PortalRequestsError.clientError("429 - {}", url: "")))
+    XCTAssertTrue(YieldXyzRequestFailure.isTransient(PortalRequestsError.internalServerError("503 - {}", url: "")))
+    XCTAssertTrue(YieldXyzRequestFailure.isTransient(URLError(.networkConnectionLost)))
+    XCTAssertFalse(YieldXyzRequestFailure.isTransient(PortalRequestsError.clientError("404 - {}", url: "")))
+    XCTAssertFalse(YieldXyzRequestFailure.isTransient(PortalRequestsError.unauthorized))
 
-    XCTAssertTrue(YieldXyzPerpsRequestFailure.isAmbiguous(PortalRequestsError.internalServerError("502 - {}", url: "")))
-    XCTAssertTrue(YieldXyzPerpsRequestFailure.isAmbiguous(URLError(.timedOut)))
-    XCTAssertFalse(YieldXyzPerpsRequestFailure.isAmbiguous(PortalRequestsError.clientError("429 - {}", url: "")))
-    XCTAssertFalse(YieldXyzPerpsRequestFailure.isAmbiguous(PortalRequestsError.unauthorized))
-    XCTAssertFalse(YieldXyzPerpsRequestFailure.isAmbiguous(PortalCredentialError.sessionInvalidated))
+    XCTAssertTrue(YieldXyzRequestFailure.isAmbiguous(PortalRequestsError.internalServerError("502 - {}", url: "")))
+    XCTAssertTrue(YieldXyzRequestFailure.isAmbiguous(URLError(.timedOut)))
+    XCTAssertFalse(YieldXyzRequestFailure.isAmbiguous(PortalRequestsError.clientError("429 - {}", url: "")))
+    XCTAssertFalse(YieldXyzRequestFailure.isAmbiguous(PortalRequestsError.unauthorized))
+    XCTAssertFalse(YieldXyzRequestFailure.isAmbiguous(PortalCredentialError.sessionInvalidated))
+  }
+
+  func test_pollLoop_aZeroTimeoutTicksOnce_unlessTickingPastTheDeadlineIsOff() async throws {
+    var ticks = 0
+    do {
+      _ = try await YieldXyzPollLoop.run(intervalSeconds: 0.001, timeoutSeconds: 0, maxIntervalSeconds: 0.001) { () -> YieldXyzPollStep<Int> in
+        ticks += 1
+        return .continue
+      }
+      XCTFail("Expected a timeout")
+    } catch is YieldXyzPollLoopTimeout {}
+    XCTAssertEqual(ticks, 1)
+
+    ticks = 0
+    do {
+      _ = try await YieldXyzPollLoop.run(
+        intervalSeconds: 0.001,
+        timeoutSeconds: 0,
+        maxIntervalSeconds: 0.001,
+        ticksPastDeadline: false
+      ) { () -> YieldXyzPollStep<Int> in
+        ticks += 1
+        return .continue
+      }
+      XCTFail("Expected a timeout")
+    } catch is YieldXyzPollLoopTimeout {}
+    XCTAssertEqual(ticks, 0)
+  }
+
+  func test_pollLoop_withoutTickingPastTheDeadline_startsNoTickOnceTheWaitUsesUpTheTimeout() async throws {
+    for ticksPastDeadline in [false, true] {
+      var ticks = 0
+      do {
+        // The interval far exceeds the timeout, and the timeout leaves the first tick ample time.
+        _ = try await YieldXyzPollLoop.run(
+          intervalSeconds: 10,
+          timeoutSeconds: 0.3,
+          maxIntervalSeconds: 10,
+          ticksPastDeadline: ticksPastDeadline
+        ) { () -> YieldXyzPollStep<Int> in
+          ticks += 1
+          return .continue
+        }
+        XCTFail("Expected a timeout")
+      } catch is YieldXyzPollLoopTimeout {}
+      // The interval exceeds the timeout, so the loop sleeps until the deadline after the first tick.
+      XCTAssertEqual(ticks, ticksPastDeadline ? 2 : 1, "ticksPastDeadline: \(ticksPastDeadline)")
+    }
+  }
+
+  func test_pollLoop_stopsACancelledTask_evenWhenItsTickReturnsAValue() async {
+    let cancelledBefore = Task { () -> (ticks: Int, error: Error?) in
+      withUnsafeCurrentTask { $0?.cancel() }
+      var ticks = 0
+      do {
+        _ = try await YieldXyzPollLoop.run(intervalSeconds: 0.001, timeoutSeconds: 1, maxIntervalSeconds: 0.001) { () -> YieldXyzPollStep<Int> in
+          ticks += 1
+          return .stop(1)
+        }
+        return (ticks, nil)
+      } catch {
+        return (ticks, error)
+      }
+    }
+    let before = await cancelledBefore.value
+    XCTAssertEqual(before.ticks, 0)
+    XCTAssertTrue(before.error is CancellationError, "\(String(describing: before.error))")
+
+    let cancelledDuring = Task { () -> Error? in
+      do {
+        _ = try await YieldXyzPollLoop.run(intervalSeconds: 0.001, timeoutSeconds: 1, maxIntervalSeconds: 0.001) { () -> YieldXyzPollStep<Int> in
+          // A tick that ignores cancellation, such as a cached response.
+          withUnsafeCurrentTask { $0?.cancel() }
+          return .stop(1)
+        }
+        return nil
+      } catch {
+        return error
+      }
+    }
+    let during = await cancelledDuring.value
+    XCTAssertTrue(during is CancellationError, "\(String(describing: during))")
+  }
+
+  func test_cancellation_countsACancelledURLSessionRequestOnlyWhileTheTaskIsCancelled() async {
+    XCTAssertTrue(YieldXyzCancellation.isCancellation(CancellationError()))
+    XCTAssertFalse(YieldXyzCancellation.isCancellation(URLError(.cancelled)))
+    let cancelled = Task { () -> Bool in
+      withUnsafeCurrentTask { $0?.cancel() }
+      return YieldXyzCancellation.isCancellation(URLError(.cancelled))
+    }
+    let counted = await cancelled.value
+    XCTAssertTrue(counted)
+  }
+
+  func test_requestFailure_aRequestNeverSentIsNeitherTransientNorAmbiguous() {
+    let neverSent: [Error] = [
+      YieldXyzPerpsError.emptyIdentifier(name: "actionId"),
+      YieldXyzPerpsError.submissionRequired,
+      YieldXyzBorrowError.emptyIdentifier(name: "actionId"),
+      YieldXyzBorrowError.submissionRequired,
+      PortalApiError.unableToEncodeData,
+      URLError(.badURL)
+    ]
+    for error in neverSent {
+      XCTAssertTrue(YieldXyzRequestFailure.isRefusedBeforeSending(error), "\(error)")
+      XCTAssertFalse(YieldXyzRequestFailure.isTransient(error), "\(error)")
+      XCTAssertFalse(YieldXyzRequestFailure.isAmbiguous(error), "\(error)")
+    }
+    XCTAssertFalse(YieldXyzRequestFailure.isRefusedBeforeSending(URLError(.timedOut)))
+    XCTAssertFalse(YieldXyzRequestFailure.isRefusedBeforeSending(PortalApiError.unableToReadStringResponse))
   }
 }
