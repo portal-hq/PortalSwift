@@ -281,9 +281,30 @@ extension ViewController {
   /// Hyperliquid's Bridge2 minimum: it never credits a smaller deposit, and the funds are lost.
   private static let bridge2MinimumUsdc = 5.0
 
-  /// On-chain legs that were broadcast before a failure, by transaction id. They are passed to the
-  /// next sign, so resuming the action reuses the hash instead of broadcasting the leg again.
-  @MainActor private static var perpsBroadcastHashes: [String: String] = [:]
+  /// Hashes of on-chain legs already broadcast, by transaction id, kept across launches as the SDK
+  /// recommends: saved from the `confirming` progress event and from a failure that carries one, and
+  /// passed to the next sign, so resuming the action (even after the app was closed mid-confirmation)
+  /// reuses the hash instead of broadcasting the leg again. An action's hashes are dropped once it
+  /// succeeds.
+  nonisolated private static let perpsBroadcastHashesKey = "perps.broadcastHashes"
+
+  nonisolated private static var savedBroadcastHashes: [String: String] {
+    UserDefaults.standard.dictionary(forKey: perpsBroadcastHashesKey) as? [String: String] ?? [:]
+  }
+
+  nonisolated private static func saveBroadcastHash(_ hash: String, forTransaction transactionId: String) {
+    var hashes = savedBroadcastHashes
+    hashes[transactionId] = hash
+    UserDefaults.standard.set(hashes, forKey: perpsBroadcastHashesKey)
+  }
+
+  nonisolated private static func forgetBroadcastHashes(of action: YieldXyzPerpsAction) {
+    var hashes = savedBroadcastHashes
+    for transaction in action.transactions {
+      hashes[transaction.id] = nil
+    }
+    UserDefaults.standard.set(hashes, forKey: perpsBroadcastHashesKey)
+  }
 
   /// Builds any action from a preset or your own JSON. Nothing is signed until you review the built
   /// action and confirm.
@@ -533,22 +554,28 @@ extension ViewController {
     let logger = logger
     let name = action.action.rawValue
     runPerps("Sign and Submit \(name)") { portal in
-      let broadcastHashes = await MainActor.run { Self.perpsBroadcastHashes }
       do {
         let result = try await portal.perps.yieldxyz.signAndSubmitAction(
           action,
           options: YieldXyzPerpsExecuteOptions(
             onProgress: { progress in
               logger.info("⏳ [Perps \(name)] \(progress.step.rawValue) \(progress.transactionId ?? "") \(progress.transactionHash ?? "") \(progress.actionStatus?.rawValue ?? "")")
+              // The leg is on-chain from here: save its hash before waiting for the receipt.
+              if progress.step == .confirming, let transactionId = progress.transactionId, let hash = progress.transactionHash {
+                Self.saveBroadcastHash(hash, forTransaction: transactionId)
+              }
             },
-            broadcastHashes: broadcastHashes
+            broadcastHashes: Self.savedBroadcastHashes
           )
         )
+        if result.status == .success {
+          Self.forgetBroadcastHashes(of: result.action)
+        }
         return "Action \(result.actionId) ended \(result.status) after \(result.transactions.count) transaction(s)."
       } catch let error as YieldXyzPerpsExecutionError {
         // Keep the hash of a leg that is already on-chain, so loading the action again resumes it.
         if let transactionId = error.transactionId, let broadcastHash = error.broadcastHash {
-          await MainActor.run { Self.perpsBroadcastHashes[transactionId] = broadcastHash }
+          Self.saveBroadcastHash(broadcastHash, forTransaction: transactionId)
         }
         throw error
       }
