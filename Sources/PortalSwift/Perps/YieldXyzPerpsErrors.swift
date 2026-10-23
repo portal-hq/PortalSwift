@@ -55,8 +55,9 @@ public enum YieldXyzPerpsError: LocalizedError, Equatable {
 extension YieldXyzPerpsError: YieldXyzRequestRefusedBeforeSending {}
 
 /// The Portal API error behind a failed Yield.xyz Perps request: its HTTP status and the `error`,
-/// `id` and `details` of the response body. `details.code` carries the venue's machine-readable
-/// code when there is one (for example `EXECUTE_PRECONDITION_FAILED`).
+/// `id` and `details` of the response body. `code` is the venue's machine-readable code when there
+/// is one (for example `EXECUTE_PRECONDITION_FAILED`, or `SUBMIT_BROADCAST_FAILED` on a `503`, which
+/// means the action should be built again).
 ///
 /// The API methods throw the transport's error unchanged; read this from it with `from(_:)`.
 public struct YieldXyzPerpsApiError: Error, Equatable {
@@ -66,7 +67,21 @@ public struct YieldXyzPerpsApiError: Error, Equatable {
   public let id: String?
   /// The response's `error` message, or its raw body when it is not a Portal error object.
   public let message: String?
+  /// The rest of the error's detail, which depends on `id` (for example `recovered` and `expected`
+  /// on `PERPS_SIGNATURE_ADDRESS_MISMATCH`). Read Yield.xyz's codes from `code` and `reason`.
   public let details: [String: AnyCodable]?
+
+  /// Yield.xyz's machine-readable code (`details.code`, for example `EXECUTE_INVALID_ARGUMENT`), when
+  /// the error carries one. Open-ended: compare against known values, never assume a closed set.
+  public var code: String? {
+    details?["code"]?.value as? String
+  }
+
+  /// Yield.xyz's machine-readable sub-code (`details.reason`, for example `NO_ROUTE_AVAILABLE`), when
+  /// the error carries one. It narrows `code`. Open-ended, like `code`.
+  public var reason: String? {
+    details?["reason"]?.value as? String
+  }
 
   public init(status: Int?, id: String? = nil, message: String? = nil, details: [String: AnyCodable]? = nil) {
     self.status = status

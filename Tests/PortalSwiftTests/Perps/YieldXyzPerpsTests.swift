@@ -120,6 +120,13 @@ final class YieldXyzPerpsTests: XCTestCase {
     }
   }
 
+  func test_createAction_rejectsAnEmptyVenue_beforeSendingAnything() async {
+    await assertThrows(.providerRequired(method: "createAction")) {
+      _ = try await self.perps.createAction(params: YieldXyzPerpsCreateActionParams(providerId: "", action: .open, args: YieldXyzPerpsActionArgs()))
+    }
+    XCTAssertEqual(api.createActionCallsCount, 0)
+  }
+
   func test_accountRequests_failWithoutAnyAddress() async {
     walletAddress = nil
 
@@ -127,7 +134,7 @@ final class YieldXyzPerpsTests: XCTestCase {
       _ = try await self.perps.getPositions(params: YieldXyzPerpsPortfolioParams(providerId: "hyperliquid"))
     }
     await assertThrows(.noAddress) {
-      _ = try await self.perps.getActivity()
+      _ = try await self.perps.getActivity(params: YieldXyzPerpsGetActivityParams(providerId: "hyperliquid"))
     }
   }
 
@@ -135,8 +142,25 @@ final class YieldXyzPerpsTests: XCTestCase {
     perps = YieldXyzPerps(api: api)
 
     await assertThrows(.noAddress) {
-      _ = try await self.perps.getEvents()
+      _ = try await self.perps.getEvents(params: YieldXyzPerpsGetEventsParams(providerId: "hyperliquid"))
     }
+  }
+
+  /// Yield.xyz rejects these lists without a venue, and the Portal API forwards them, so the SDK
+  /// refuses them before sending anything.
+  func test_listRequests_requireAVenue_beforeSendingAnything() async {
+    await assertThrows(.providerRequired(method: "getActions")) {
+      _ = try await self.perps.getActions(params: YieldXyzPerpsGetActionsParams(limit: 10, providerIds: [""]))
+    }
+    await assertThrows(.providerRequired(method: "getActivity")) {
+      _ = try await self.perps.getActivity(params: YieldXyzPerpsGetActivityParams(limit: 10, providerIds: [""]))
+    }
+    await assertThrows(.providerRequired(method: "getEvents")) {
+      _ = try await self.perps.getEvents(params: YieldXyzPerpsGetEventsParams(limit: 10))
+    }
+    XCTAssertNil(api.getActionsRequest)
+    XCTAssertNil(api.getActivityRequest)
+    XCTAssertNil(api.getEventsRequest)
   }
 
   // MARK: - Actions
@@ -160,9 +184,9 @@ final class YieldXyzPerpsTests: XCTestCase {
   }
 
   func test_listRequests_defaultTheAddress_andForwardTheFilters() async throws {
-    let actionsParams = YieldXyzPerpsGetActionsParams(limit: 10, type: .open, statuses: [.success])
+    let actionsParams = YieldXyzPerpsGetActionsParams(limit: 10, providerId: "hyperliquid", type: .open, statuses: [.success])
     let activityParams = YieldXyzPerpsGetActivityParams(providerIds: ["hyperliquid"], actionStatus: .failed)
-    let eventsParams = YieldXyzPerpsGetEventsParams(address: other, eventType: .liquidation, fromDate: "2026-09-01T00:00:00.000Z")
+    let eventsParams = YieldXyzPerpsGetEventsParams(address: other, providerId: "hyperliquid", eventType: .liquidation, fromDate: "2026-09-01T00:00:00.000Z")
 
     _ = try await perps.getActions(params: actionsParams)
     _ = try await perps.getActivity(params: activityParams)
@@ -171,6 +195,14 @@ final class YieldXyzPerpsTests: XCTestCase {
     XCTAssertEqual(api.getActionsRequest, YieldXyzPerpsGetActionsRequest(address: wallet, params: actionsParams))
     XCTAssertEqual(api.getActivityRequest, YieldXyzPerpsGetActivityRequest(address: wallet, params: activityParams))
     XCTAssertEqual(api.getEventsRequest, YieldXyzPerpsGetEventsRequest(address: other, params: eventsParams))
+  }
+
+  func test_getActions_acceptsProviderIdsAlone() async throws {
+    let params = YieldXyzPerpsGetActionsParams(providerIds: ["hyperliquid"])
+
+    _ = try await perps.getActions(params: params)
+
+    XCTAssertEqual(api.getActionsRequest, YieldXyzPerpsGetActionsRequest(address: wallet, params: params))
   }
 
   func test_submitTransaction_requiresASignatureOrAHash() async {
@@ -231,8 +263,36 @@ final class YieldXyzPerpsTests: XCTestCase {
     XCTAssertEqual(apiError.id, YieldXyzPerpsErrorId.signatureAddressMismatch)
     XCTAssertEqual(apiError.message, "Signature recovered to 0x1 but the action was built for 0x2")
     XCTAssertEqual(apiError.details?["expected"], AnyCodable("0x2"))
+    XCTAssertNil(apiError.code)
+    XCTAssertNil(apiError.reason)
     XCTAssertTrue(apiError.isSignatureError)
     XCTAssertFalse(apiError.isRateLimit)
+  }
+
+  func test_apiError_readsTheVenueCodeOfA503() throws {
+    let error = PortalRequestsError.internalServerError(
+      #"503 - {"error":"Yield.xyz Perps is unavailable","details":{"code":"SUBMIT_BROADCAST_FAILED","integration":"yield-xyz-perps"}}"#,
+      url: "https://api.portalhq.io"
+    )
+
+    let apiError = try XCTUnwrap(YieldXyzPerpsApiError.from(error))
+
+    XCTAssertEqual(apiError.status, 503)
+    XCTAssertEqual(apiError.code, "SUBMIT_BROADCAST_FAILED")
+    XCTAssertEqual(apiError.details?["integration"], AnyCodable("yield-xyz-perps"))
+  }
+
+  func test_apiError_readsTheCodeAndReasonOfARejectedRequest() throws {
+    let error = PortalRequestsError.clientError(
+      #"400 - {"error":"Yield.xyz Perps rejected the request","details":{"code":"EXECUTE_INVALID_ARGUMENT","reason":"NO_ROUTE_AVAILABLE"}}"#,
+      url: "https://api.portalhq.io"
+    )
+
+    let apiError = try XCTUnwrap(YieldXyzPerpsApiError.from(error))
+
+    XCTAssertEqual(apiError.status, 400)
+    XCTAssertEqual(apiError.code, "EXECUTE_INVALID_ARGUMENT")
+    XCTAssertEqual(apiError.reason, "NO_ROUTE_AVAILABLE")
   }
 
   func test_apiError_readsSchemaDrift() throws {

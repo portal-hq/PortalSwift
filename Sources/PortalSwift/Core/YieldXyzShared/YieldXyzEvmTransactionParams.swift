@@ -14,13 +14,12 @@ struct YieldXyzPayloadProblem: Error, Equatable {
   let description: String
 }
 
-/// An unsigned EVM transaction narrowed to the fields the SDK sends; quantities are decimal or
-/// `0x` hex strings.
+/// An unsigned EVM transaction narrowed to the fields the SDK sends; `value` is a decimal or `0x`
+/// hex string.
 struct YieldXyzEvmTransactionRequest: Equatable {
   let from: String
   let to: String
   var data: String?
-  var gasLimit: String?
   var value: String?
 }
 
@@ -29,9 +28,11 @@ struct YieldXyzEvmTransactionRequest: Equatable {
 /// every SDK signs the same bytes.
 enum YieldXyzEvmTransactionParams {
   /// Validates an unsigned EVM transaction (JSON-encoded, or the same object already decoded) and
-  /// narrows it to `from`, `to`, `data`, `gasLimit` and `value`. Other keys are not forwarded: the
-  /// signer sets the nonce and fees. A transaction without `from` takes `defaultFrom`; with no
-  /// `defaultFrom`, `from` is required.
+  /// narrows it to `from`, `to`, `data` and `value`. Other keys are not forwarded: Portal's signer
+  /// sets the nonce and fees, and estimates the gas limit when it sends, with headroom. Yield.xyz's
+  /// `gasLimit` has none, and gas use on chains such as Arbitrum moves with the cost of posting data
+  /// to Ethereum, so a forwarded limit can already be too low when the transaction is sent. A
+  /// transaction without `from` takes `defaultFrom`; with no `defaultFrom`, `from` is required.
   static func parse(
     _ payload: AnyCodable?,
     defaultFrom: String?
@@ -60,15 +61,6 @@ enum YieldXyzEvmTransactionParams {
       request.data = data
     }
 
-    switch readQuantity(transaction["gasLimit"]) {
-    case .invalid:
-      return .failure(YieldXyzPayloadProblem(description: "has an invalid \"gasLimit\""))
-    case let .value(gasLimit):
-      request.gasLimit = gasLimit
-    case .absent:
-      break
-    }
-
     switch readQuantity(transaction["value"]) {
     case .invalid:
       return .failure(YieldXyzPayloadProblem(description: "has an invalid \"value\""))
@@ -81,15 +73,12 @@ enum YieldXyzEvmTransactionParams {
     return .success(request)
   }
 
-  /// `eth_sendTransaction` params as Portal's signer expects them: quantities in canonical hex,
-  /// `value` always present.
+  /// `eth_sendTransaction` params as Portal's signer expects them: `value` in canonical hex and
+  /// always present, and no `gas`, so the signer estimates it when it sends.
   static func toSendTransactionParam(_ request: YieldXyzEvmTransactionRequest) -> ETHTransactionParam {
     var param = ETHTransactionParam(from: request.from, to: request.to, value: canonicalQuantityHex(request.value ?? "0"))
     if let data = request.data {
       param.data = data
-    }
-    if let gasLimit = request.gasLimit {
-      param.gas = canonicalQuantityHex(gasLimit)
     }
     return param
   }

@@ -277,17 +277,19 @@ public enum YieldXyzPerpsExecutionErrorReason: String, Equatable {
   /// The signer returned, or `broadcastHashes` supplied, a value that is not a 65-byte hex
   /// signature or a 32-byte transaction hash.
   case invalidSignature = "INVALID_SIGNATURE"
-  /// Signing or broadcasting failed; `underlyingError` holds the cause.
+  /// Signing failed, or an `EVM_TRANSACTION` leg failed before it was broadcast; `underlyingError`
+  /// holds the cause. A send that may have reached the chain is `broadcastOutcomeUnknown` instead.
   case signingFailed = "SIGNING_FAILED"
   /// Portal refused to broadcast an `EVM_TRANSACTION` leg again because its idempotency key shows
   /// it was already broadcast. Portal does not return that broadcast's hash: look the transaction
   /// up on-chain and resume with `broadcastHashes`.
   case transactionAlreadyBroadcast = "TRANSACTION_ALREADY_BROADCAST"
-  /// Portal cannot say whether an `EVM_TRANSACTION` leg was broadcast: an earlier send under its
-  /// idempotency key is still in progress, failed, or has an unknown outcome. Nothing here proves
-  /// the leg was not sent, so do not build a new action blindly: check the chain, then resume with
-  /// `broadcastHashes` if it was broadcast, or else build a new action or resume with
-  /// `useIdempotencyKeys` set to `false`. `underlyingError` holds Portal's idempotency error.
+  /// An `EVM_TRANSACTION` leg may have been broadcast: an earlier send under its idempotency key is
+  /// still in progress, failed, or has an unknown outcome, or the send failed in a way that does not
+  /// prove it never reached the chain (for example an RPC timeout after the node accepted it, or a
+  /// connection dropped after the broadcast). Do not build a new action blindly: check the chain,
+  /// then resume with `broadcastHashes` if it was broadcast, or else resume the action or build a new
+  /// one, as the message says. `underlyingError` holds the cause.
   case broadcastOutcomeUnknown = "BROADCAST_OUTCOME_UNKNOWN"
   /// An on-chain leg was broadcast but did not confirm successfully.
   case transactionNotConfirmed = "TRANSACTION_NOT_CONFIRMED"

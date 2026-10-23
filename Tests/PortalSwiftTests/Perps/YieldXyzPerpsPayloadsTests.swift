@@ -139,7 +139,7 @@ final class YieldXyzPerpsPayloadsTests: XCTestCase {
 
   // MARK: - parseEvmTransactionRequest
 
-  func test_parseEvm_narrowsTheJsonTransaction_droppingNonceFeesAndChain() throws {
+  func test_parseEvm_narrowsTheJsonTransaction_droppingNonceFeesGasLimitAndChain() throws {
     let request = try YieldXyzEvmTransactionParams.parse(
       AnyCodable(YieldXyzPerpsFixtures.fundingTransactionPayload()),
       defaultFrom: wallet
@@ -149,7 +149,6 @@ final class YieldXyzPerpsPayloadsTests: XCTestCase {
       from: wallet,
       to: usdc,
       data: YieldXyzPerpsFixtures.fundingTransferData,
-      gasLimit: "0x186a0",
       value: "0x0"
     ))
   }
@@ -160,7 +159,20 @@ final class YieldXyzPerpsPayloadsTests: XCTestCase {
       defaultFrom: wallet
     ).get()
 
-    XCTAssertEqual(request, YieldXyzEvmTransactionRequest(from: wallet, to: usdc, gasLimit: "56675", value: "1000000000000000001"))
+    XCTAssertEqual(request, YieldXyzEvmTransactionRequest(from: wallet, to: usdc, value: "1000000000000000001"))
+  }
+
+  /// The signer estimates the gas when it sends, so Yield.xyz's `gasLimit` is never read: not even an
+  /// invalid one rejects the transaction.
+  func test_parseEvm_ignoresTheGasLimit() throws {
+    for gasLimit in [#""0x9a0a""#, "39434", #""1e18""#, "true"] {
+      let request = try YieldXyzEvmTransactionParams.parse(
+        payload(#"{"to":"\#(usdc)","gasLimit":\#(gasLimit)}"#),
+        defaultFrom: wallet
+      ).get()
+
+      XCTAssertEqual(request, YieldXyzEvmTransactionRequest(from: wallet, to: usdc), gasLimit)
+    }
   }
 
   func test_parseEvm_keepsAFromThatDiffersFromTheTransactionAddress() throws {
@@ -188,7 +200,6 @@ final class YieldXyzPerpsPayloadsTests: XCTestCase {
       ("an object without to", payload(#"{"data":"0x","value":"0x0"}"#)),
       ("a malformed JSON string", AnyCodable(#"{"to": "#)),
       ("a nested transaction", payload(#"{"transaction":\#(fundingObject)}"#)),
-      ("an invalid gasLimit", payload(#"{"to":"\#(usdc)","gasLimit":"1e18"}"#)),
       ("a negative value", payload(#"{"to":"\#(usdc)","value":-1}"#)),
       ("a fractional value", payload(#"{"to":"\#(usdc)","value":1.5}"#)),
       ("an unsafe integer value", payload(#"{"to":"\#(usdc)","value":9007199254740993}"#)),
@@ -220,18 +231,17 @@ final class YieldXyzPerpsPayloadsTests: XCTestCase {
     )
   }
 
-  func test_toSendTransactionParam_canonicalizesQuantitiesAndDefaultsValue() {
+  func test_toSendTransactionParam_canonicalizesTheValue_andLeavesTheGasToTheSigner() {
     let param = YieldXyzEvmTransactionParams.toSendTransactionParam(YieldXyzEvmTransactionRequest(
       from: wallet,
       to: usdc,
       data: "0x095ea7b3",
-      gasLimit: "0xdd63",
       value: "0"
     ))
     XCTAssertEqual(param.from, wallet)
     XCTAssertEqual(param.to, usdc)
     XCTAssertEqual(param.data, "0x095ea7b3")
-    XCTAssertEqual(param.gas, "0xdd63")
+    XCTAssertNil(param.gas)
     XCTAssertEqual(param.value, "0x0")
     XCTAssertNil(param.nonce)
     XCTAssertNil(param.maxFeePerGas)

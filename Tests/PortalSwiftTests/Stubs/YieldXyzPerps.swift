@@ -111,7 +111,7 @@ enum YieldXyzPerpsFixtures {
       action: .open,
       status: status,
       summary: YieldXyzPerpsActionSummary(type: "Open Position", orderType: .market, direction: .long, asset: "ETH", size: "0.215", leverage: 20),
-      signedMetadata: AnyCodable("01012b02010181d0010081d1040000000b24034152421547"),
+      signedMetadata: "01012b02010181d0010081d1040000000b24034152421547",
       transactions: transactions,
       createdAt: "2026-09-20T10:30:00.000Z",
       completedAt: nil

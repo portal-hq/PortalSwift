@@ -580,7 +580,8 @@ final class YieldXyzPerpsExecutionTests: XCTestCase {
     XCTAssertEqual(send.param.to, Fixtures.arbitrumUsdc)
     XCTAssertEqual(send.param.data, Fixtures.fundingTransferData)
     XCTAssertEqual(send.param.value, "0x0")
-    XCTAssertEqual(send.param.gas, "0x186a0")
+    // The payload's gasLimit (0x186a0) is not sent: Portal's signer estimates the gas when it sends.
+    XCTAssertNil(send.param.gas)
     XCTAssertNil(send.param.nonce)
     XCTAssertNil(send.param.maxFeePerGas)
     XCTAssertEqual(signers.confirmations.first?.hash, Fixtures.fundingTxHash)
@@ -588,6 +589,25 @@ final class YieldXyzPerpsExecutionTests: XCTestCase {
     XCTAssertEqual(backend.submitted, [YieldXyzPerpsSubmitTransactionParams(transactionId: "tx-fund-1", transactionHash: Fixtures.fundingTxHash)])
     XCTAssertEqual(result.transactions.first?.transactionHash, Fixtures.fundingTxHash)
     XCTAssertEqual(result.transactions.first?.signingFormat, .evmTransaction)
+  }
+
+  /// Perps sends the unsigned transaction as a JSON object today (Borrow documents a JSON string);
+  /// both forms must send the same transaction.
+  func test_evm_sendsAPayloadThatArrivesAsAnObject_likeOneThatArrivesAsAString() async throws {
+    let objectPayload = Fixtures.decode(AnyCodable.self, Fixtures.fundingTransactionPayload())
+    XCTAssertNotNil(objectPayload.value as? [String: Any])
+    setBackend(Fixtures.perpsAction(transactions: [Fixtures.fundingTransaction(signablePayload: objectPayload)]))
+
+    _ = try await execute()
+
+    let send = try XCTUnwrap(signers.sends.first)
+    XCTAssertEqual(send.param.from, Fixtures.wallet)
+    XCTAssertEqual(send.param.to, Fixtures.arbitrumUsdc)
+    XCTAssertEqual(send.param.data, Fixtures.fundingTransferData)
+    XCTAssertEqual(send.param.value, "0x0")
+    XCTAssertNil(send.param.gas)
+    XCTAssertNil(send.param.nonce)
+    XCTAssertEqual(backend.submitted.first?.transactionHash, Fixtures.fundingTxHash)
   }
 
   func test_evm_sendsWithoutAKeyWhenIdempotencyKeysAreOff() async throws {
@@ -770,9 +790,70 @@ final class YieldXyzPerpsExecutionTests: XCTestCase {
     setBackend(Fixtures.perpsAction(transactions: [Fixtures.fundingTransaction()]))
     signers.scriptedSends = [.failure(mpcError(PortalIdempotencyErrorId.requestInProgress))]
 
-    _ = await expectFailure(.signingFailed, nil, options(useIdempotencyKeys: false))
+    _ = await expectFailure(.broadcastOutcomeUnknown, nil, options(useIdempotencyKeys: false))
 
     XCTAssertEqual(signers.sends.count, 1)
+  }
+
+  // MARK: Send failures
+
+  /// An RPC send that times out after the node accepted the transaction, or a connection dropped
+  /// after the broadcast, may have put the leg on-chain: a new action would send it again.
+  func test_evmSend_aFailureThatMayComeAfterTheBroadcast_isBroadcastOutcomeUnknown() async {
+    let failures: [Error] = [mpcError("RPC_OP_FAILED"), URLError(.networkConnectionLost)]
+    for failure in failures {
+      resetDoubles()
+      setBackend(Fixtures.perpsAction(transactions: [Fixtures.fundingTransaction()]))
+      signers.scriptedSends = [.failure(failure)]
+
+      let error = await expectFailure(.broadcastOutcomeUnknown)
+
+      XCTAssertEqual(error?.transactionId, "tx-fund-1")
+      XCTAssertNil(error?.broadcastHash)
+      XCTAssertTrue(error?.message.contains("broadcastHashes") == true, error?.message ?? "")
+      XCTAssertTrue(error?.message.contains("idempotency key") == true, error?.message ?? "")
+      XCTAssertEqual(signers.sends.count, 1)
+      XCTAssertTrue(signers.confirmations.isEmpty)
+      XCTAssertTrue(backend.submitted.isEmpty)
+    }
+  }
+
+  func test_evmSend_withoutAKey_doesNotPromiseThatResumingIsProtected() async {
+    setBackend(Fixtures.perpsAction(transactions: [Fixtures.fundingTransaction()]))
+    signers.scriptedSends = [.failure(mpcError("RPC_OP_FAILED"))]
+
+    let error = await expectFailure(.broadcastOutcomeUnknown, nil, options(useIdempotencyKeys: false))
+
+    XCTAssertFalse(error?.message.contains("idempotency key") == true, error?.message ?? "")
+  }
+
+  /// Failures known to happen before anything reaches the chain stay `signingFailed`.
+  func test_evmSend_aFailureBeforeTheBroadcast_isSigningFailed() async {
+    let failures: [Error] = [
+      "MSG_BUILD_FAILED",
+      "TX_BUILD_FAILED",
+      "BAD_REQUEST",
+      "ADDRESS_BLOCKED",
+      "POLICY_AMOUNT_LIMIT_EXCEEDED",
+      "INSUFFICIENT_FUNDS",
+      "AUTH_FAILED"
+    ].map { self.mpcError($0) as Error } + [
+      PortalIdempotencyError.invalidKey("too long"),
+      PortalCredentialError.sessionInvalidated,
+      ProviderSigningError.userDeclinedApproval
+    ]
+    XCTAssertEqual(failures.count, 10)
+    for failure in failures {
+      resetDoubles()
+      setBackend(Fixtures.perpsAction(transactions: [Fixtures.fundingTransaction()]))
+      signers.scriptedSends = [.failure(failure)]
+
+      let error = await expectFailure(.signingFailed)
+
+      XCTAssertEqual(error?.transactionId, "tx-fund-1", "\(failure)")
+      XCTAssertEqual(signers.sends.count, 1, "\(failure)")
+      XCTAssertTrue(backend.submitted.isEmpty, "\(failure)")
+    }
   }
 
   func test_idempotency_sendsWithoutAKeyWhenTheTransactionIdCannotFormOne() async throws {
@@ -951,6 +1032,7 @@ final class YieldXyzPerpsExecutionTests: XCTestCase {
 
     XCTAssertEqual(backend.submitted.count, 1)
     XCTAssertEqual(YieldXyzPerpsApiError.from(error)?.details?["code"], AnyCodable("EXECUTE_PRECONDITION_FAILED"))
+    XCTAssertEqual(YieldXyzPerpsApiError.from(error)?.code, "EXECUTE_PRECONDITION_FAILED")
   }
 
   func test_submit_surfacesASignatureVerificationRejection() async {

@@ -105,12 +105,12 @@ final class YieldXyzPerpsCodableTests: XCTestCase {
     XCTAssertNil(order.triggerPrice)
   }
 
-  func test_order_decodesAFractionalCreatedAt() throws {
+  func test_order_decodesCreatedAtAsUnixMilliseconds() throws {
     let order = try decode(YieldXyzPerpsOrder.self, """
-    {"marketId":"m","side":"short","type":"stop_loss","size":"1","triggerPrice":3600,"reduceOnly":true,"createdAt":1733332000000.5,"pendingActions":[]}
+    {"marketId":"m","side":"short","type":"stop_loss","size":"1","triggerPrice":3600,"reduceOnly":true,"createdAt":1776930725187,"pendingActions":[]}
     """)
 
-    XCTAssertEqual(order.createdAt, 1_733_332_000_000.5)
+    XCTAssertEqual(order.createdAt, 1_776_930_725_187)
     XCTAssertEqual(order.type, .stopLoss)
   }
 
@@ -151,7 +151,7 @@ final class YieldXyzPerpsCodableTests: XCTestCase {
     XCTAssertEqual(action.status, .created)
     XCTAssertEqual(action.summary?.estimatedLiquidationPrice, 4200)
     XCTAssertEqual(action.summary?.collateral, "43.00")
-    XCTAssertEqual(action.signedMetadata, AnyCodable("01012b02010181d0010081d1040000000b24034152421547"))
+    XCTAssertEqual(action.signedMetadata, "01012b02010181d0010081d1040000000b24034152421547")
     XCTAssertEqual(action.completedAt, "2026-08-26T10:30:05.000Z")
 
     let order = action.transactions[0]
@@ -215,7 +215,8 @@ final class YieldXyzPerpsCodableTests: XCTestCase {
     XCTAssertEqual(transaction.status, .failed)
     XCTAssertNil(transaction.signingFormat)
     XCTAssertNil(transaction.signablePayload)
-    XCTAssertEqual(transaction.error?["code"], AnyCodable("ORDER_REJECTED"))
+    // A key the Portal API does not map (`reason`) is not exposed.
+    XCTAssertEqual(transaction.error, YieldXyzPerpsTransactionError(code: "ORDER_REJECTED"))
     XCTAssertEqual((transaction.rawPayload?.value as? [Any])?.count, 3)
   }
 
@@ -269,14 +270,72 @@ final class YieldXyzPerpsCodableTests: XCTestCase {
     XCTAssertNil(event.perpActionId)
     XCTAssertNil(event.providerOrderId)
     XCTAssertNil(event.explorerUrl)
-    XCTAssertEqual((event.order.clientOrderId?.value as? [String: Any])?["cloid"] as? String, "0xabc")
+    XCTAssertNil(event.order.clientOrderId)
     XCTAssertNil(event.order.limitPrice)
   }
 
   func test_eventOrder_decodesAStringClientOrderId() throws {
     let event = try decode(YieldXyzPerpsEvent.self, eventJSON.replacingOccurrences(of: "\"clientOrderId\":null", with: "\"clientOrderId\":\"cl-1\""))
 
-    XCTAssertEqual(event.order.clientOrderId, AnyCodable("cl-1"))
+    XCTAssertEqual(event.order.clientOrderId, "cl-1")
+  }
+
+  func test_eventOrder_readsAnUnexpectedClientOrderIdAsNone_insteadOfFailing() throws {
+    let event = try decode(YieldXyzPerpsEvent.self, eventJSON.replacingOccurrences(of: "\"clientOrderId\":null", with: "\"clientOrderId\":42"))
+
+    XCTAssertNil(event.order.clientOrderId)
+  }
+
+  func test_eventOrder_encodesItsClientOrderIdUnderTheWireKey() throws {
+    let order = try decode(YieldXyzPerpsEvent.self, eventJSON.replacingOccurrences(of: "\"clientOrderId\":null", with: "\"clientOrderId\":\"cl-1\"")).order
+
+    let json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(order)) as? [String: Any])
+
+    XCTAssertEqual(json["clientOrderId"] as? String, "cl-1")
+  }
+
+  // MARK: - Lenient, Portal-shaped fields
+
+  func test_transactionError_readsOnlyStringCodeAndMessage_andABareStringAsTheMessage() throws {
+    func error(_ json: String) throws -> YieldXyzPerpsTransactionError? {
+      try decode(YieldXyzPerpsTransaction.self, """
+      {"id":"t","network":"hyperliquid","chainId":"1337","type":"CLOSE_POSITION","status":"FAILED","address":"0x1","error":\(json),"explorerUrls":[]}
+      """).error
+    }
+
+    XCTAssertEqual(try error(#"{"code":"BUILDER_FEE_REJECTED","message":"nonce too low"}"#), YieldXyzPerpsTransactionError(code: "BUILDER_FEE_REJECTED", message: "nonce too low"))
+    XCTAssertEqual(try error(#"{"code":42,"message":"Insufficient margin"}"#), YieldXyzPerpsTransactionError(message: "Insufficient margin"))
+    XCTAssertEqual(try error(#""Order rejected""#), YieldXyzPerpsTransactionError(message: "Order rejected"))
+    XCTAssertNil(try error("null"))
+  }
+
+  func test_action_readsANonStringSignedMetadataAsNil_insteadOfFailing() throws {
+    let action = try decode(YieldXyzPerpsAction.self, """
+    {"id":"a","providerId":"hyperliquid","action":"fund","status":"CREATED","summary":null,"signedMetadata":{"unexpected":true},"transactions":[],"createdAt":"t","completedAt":null}
+    """)
+
+    XCTAssertNil(action.signedMetadata)
+    XCTAssertEqual(action.action, .fund)
+  }
+
+  func test_actionArgs_readsTheUndocumentedFundKeys() throws {
+    let args = try decode(YieldXyzPerpsActionArgs.self, #"{"amount":"5","spenderAddress":"0xs","tokenAddress":"0xt","expectedSpenderAddress":"0xe"}"#)
+
+    XCTAssertEqual(args.spenderAddress, "0xs")
+    XCTAssertEqual(args.tokenAddress, "0xt")
+    XCTAssertEqual(args.expectedSpenderAddress, "0xe")
+    XCTAssertTrue(args.additionalFields.isEmpty)
+    XCTAssertEqual(try encodedObject(args), ["amount": "5", "spenderAddress": "0xs", "tokenAddress": "0xt", "expectedSpenderAddress": "0xe"])
+  }
+
+  func test_actionArgs_keepsANonStringFundKeyInAdditionalFields_andSendsItBack() throws {
+    let args = try decode(YieldXyzPerpsActionArgs.self, #"{"spenderAddress":{"address":"0xs"},"tokenAddress":null}"#)
+
+    XCTAssertNil(args.spenderAddress)
+    XCTAssertNil(args.tokenAddress)
+    XCTAssertEqual(Set(args.additionalFields.keys), ["spenderAddress"])
+    XCTAssertEqual((args.additionalFields["spenderAddress"]?.value as? [String: Any])?["address"] as? String, "0xs")
+    XCTAssertEqual(try encodedObject(args), ["spenderAddress": ["address": "0xs"]])
   }
 
   func test_activity_decodesEventActionAndUnknownItems() throws {

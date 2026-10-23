@@ -4035,7 +4035,8 @@ extension PortalTests {
     let param = try XCTUnwrap(call.params?.first?.value as? ETHTransactionParam)
     XCTAssertEqual(param.from, MockConstants.mockEip155Address)
     XCTAssertEqual(param.to, YieldXyzPerpsFixtures.arbitrumUsdc)
-    XCTAssertEqual(param.gas, "0x186a0")
+    // Portal's signer estimates the gas when it sends; Yield.xyz's gasLimit is not forwarded.
+    XCTAssertNil(param.gas)
     XCTAssertEqual(param.value, "0x0")
     XCTAssertEqual(perpsApi.submitTransactionParams.first?.transactionHash, YieldXyzPerpsFixtures.fundingTxHash)
   }
@@ -4133,7 +4134,8 @@ extension PortalTests {
     let param = try XCTUnwrap(call.params?.first?.value as? ETHTransactionParam)
     XCTAssertEqual(param.from, MockConstants.mockEip155Address)
     XCTAssertEqual(param.to, YieldXyzBorrowFixtures.usdcBase)
-    XCTAssertEqual(param.gas, "0xdbb0")
+    // Portal's signer estimates the gas when it sends; Yield.xyz's gasLimit is not forwarded.
+    XCTAssertNil(param.gas)
     XCTAssertEqual(param.value, "0x0")
     XCTAssertEqual(borrowApi.submitTransactionCalls.first?.params.transactionHash, YieldXyzBorrowFixtures.approvalHash)
     XCTAssertEqual(result.status, .success)

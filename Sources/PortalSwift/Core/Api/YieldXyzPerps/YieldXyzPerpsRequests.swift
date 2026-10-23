@@ -95,13 +95,15 @@ public struct YieldXyzPerpsCreateActionParams: Equatable {
   }
 }
 
-/// Filters for `getActions`. `address` defaults to the Portal wallet's EVM address.
+/// Filters for `getActions`. At least one of `providerId` and `providerIds` is required: Yield.xyz
+/// lists actions per venue. `address` defaults to the Portal wallet's EVM address.
 public struct YieldXyzPerpsGetActionsParams: Equatable {
   public var offset: Int?
   /// 1–100.
   public var limit: Int?
   public var address: String?
   public var providerId: String?
+  public var providerIds: [String]?
   public var marketId: String?
   /// Action type filter.
   public var type: YieldXyzPerpsActionType?
@@ -113,6 +115,7 @@ public struct YieldXyzPerpsGetActionsParams: Equatable {
     limit: Int? = nil,
     address: String? = nil,
     providerId: String? = nil,
+    providerIds: [String]? = nil,
     marketId: String? = nil,
     type: YieldXyzPerpsActionType? = nil,
     status: YieldXyzPerpsActionStatus? = nil,
@@ -122,6 +125,7 @@ public struct YieldXyzPerpsGetActionsParams: Equatable {
     self.limit = limit
     self.address = address
     self.providerId = providerId
+    self.providerIds = providerIds
     self.marketId = marketId
     self.type = type
     self.status = status
@@ -151,7 +155,8 @@ public struct YieldXyzPerpsSubmitTransactionParams: Equatable {
   }
 }
 
-/// Filters for `getActivity`. `address` defaults to the Portal wallet's EVM address.
+/// Filters for `getActivity`. At least one of `providerId` and `providerIds` is required: Yield.xyz
+/// builds the feed per venue. `address` defaults to the Portal wallet's EVM address.
 public struct YieldXyzPerpsGetActivityParams: Equatable {
   public var offset: Int?
   /// 1–100.
@@ -182,7 +187,8 @@ public struct YieldXyzPerpsGetActivityParams: Equatable {
   }
 }
 
-/// Filters for `getEvents`. `address` defaults to the Portal wallet's EVM address.
+/// Filters for `getEvents`. At least one of `providerId` and `providerIds` is required: Yield.xyz
+/// lists events per venue. `address` defaults to the Portal wallet's EVM address.
 public struct YieldXyzPerpsGetEventsParams: Equatable {
   public var offset: Int?
   /// 1–100.

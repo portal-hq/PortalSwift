@@ -5,7 +5,6 @@
 //  Created by Ahmed Ragab
 //
 
-import AnyCodable
 import Foundation
 
 /// The order an event concerns.
@@ -24,8 +23,9 @@ public struct YieldXyzPerpsEventOrder: Codable, Equatable {
   public let triggerPrice: Double?
   public let reduceOnly: Bool
   public let isPositionLevel: Bool
-  /// Opaque client id (a string or an object), returned untouched; `nil` when the venue has none.
-  public let clientOrderId: AnyCodable?
+  /// The venue's client order id (on Hyperliquid, the order's `cloid`: `0x` and 32 hex characters);
+  /// `nil` when there is none, which is the case for fill events.
+  public let clientOrderId: String?
   public let childOrderIds: [String]
   /// ISO-8601.
   public let createdAt: String
@@ -47,7 +47,7 @@ public struct YieldXyzPerpsEventOrder: Codable, Equatable {
     triggerPrice: Double? = nil,
     reduceOnly: Bool,
     isPositionLevel: Bool,
-    clientOrderId: AnyCodable? = nil,
+    clientOrderId: String? = nil,
     childOrderIds: [String],
     createdAt: String,
     closedPnl: String? = nil,
@@ -70,6 +70,34 @@ public struct YieldXyzPerpsEventOrder: Codable, Equatable {
     self.createdAt = createdAt
     self.closedPnl = closedPnl
     self.fillPrice = fillPrice
+  }
+
+  private enum CodingKeys: String, CodingKey {
+    case orderId, marketId, asset, side, type, originalSizeBase, remainingSizeBase, limitPrice, timeInForce
+    case triggerPrice, reduceOnly, isPositionLevel, clientOrderId, childOrderIds, createdAt, closedPnl, fillPrice
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    self.orderId = try container.decode(String.self, forKey: .orderId)
+    self.marketId = try container.decode(String.self, forKey: .marketId)
+    self.asset = try container.decode(String.self, forKey: .asset)
+    self.side = try container.decode(String.self, forKey: .side)
+    self.type = try container.decode(YieldXyzPerpsOrderType.self, forKey: .type)
+    self.originalSizeBase = try container.decode(String.self, forKey: .originalSizeBase)
+    self.remainingSizeBase = try container.decode(String.self, forKey: .remainingSizeBase)
+    self.limitPrice = try container.decodeIfPresent(Double.self, forKey: .limitPrice)
+    self.timeInForce = try container.decodeIfPresent(String.self, forKey: .timeInForce)
+    self.triggerPrice = try container.decodeIfPresent(Double.self, forKey: .triggerPrice)
+    self.reduceOnly = try container.decode(Bool.self, forKey: .reduceOnly)
+    self.isPositionLevel = try container.decode(Bool.self, forKey: .isPositionLevel)
+    // Yield.xyz's spec types it as an object but sends a string or null: anything else reads as
+    // `nil` instead of failing the whole event.
+    self.clientOrderId = try? container.decodeIfPresent(String.self, forKey: .clientOrderId)
+    self.childOrderIds = try container.decode([String].self, forKey: .childOrderIds)
+    self.createdAt = try container.decode(String.self, forKey: .createdAt)
+    self.closedPnl = try container.decodeIfPresent(String.self, forKey: .closedPnl)
+    self.fillPrice = try container.decodeIfPresent(Double.self, forKey: .fillPrice)
   }
 }
 

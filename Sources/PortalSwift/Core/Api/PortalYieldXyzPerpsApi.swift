@@ -166,6 +166,7 @@ public class PortalYieldXyzPerpsApi: PortalYieldXyzPerpsApiProtocol {
       ("limit", params.limit.map(String.init)),
       ("address", request.address),
       ("providerId", params.providerId),
+      ("providerIds", Self.joined(params.providerIds)),
       ("marketId", params.marketId),
       ("type", params.type?.rawValue),
       ("status", params.status?.rawValue),

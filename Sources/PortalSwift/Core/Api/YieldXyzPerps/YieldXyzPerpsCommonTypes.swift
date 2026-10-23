@@ -323,8 +323,15 @@ public struct YieldXyzPerpsActionArgs: Codable, Equatable {
   public var skipApproval: Bool?
   public var fundingMethod: YieldXyzPerpsFundingMethod?
   public var enabled: Bool?
+  /// Undocumented by Yield.xyz; seen on the transactions of `fund` actions.
+  public var spenderAddress: String?
+  /// Undocumented by Yield.xyz; seen on the transactions of `fund` actions.
+  public var tokenAddress: String?
+  /// Undocumented by Yield.xyz; seen on the transactions of `fund` actions.
+  public var expectedSpenderAddress: String?
   /// Keys this type does not model; sent unchanged. A key named like a typed field is ignored
-  /// here: set the typed field instead.
+  /// here: set the typed field instead. The exception is the three undocumented `fund` keys: a
+  /// value for one of them that is not a string is kept here, and sent, rather than dropped.
   public var additionalFields: [String: AnyCodable]
 
   public init(
@@ -349,6 +356,9 @@ public struct YieldXyzPerpsActionArgs: Codable, Equatable {
     skipApproval: Bool? = nil,
     fundingMethod: YieldXyzPerpsFundingMethod? = nil,
     enabled: Bool? = nil,
+    spenderAddress: String? = nil,
+    tokenAddress: String? = nil,
+    expectedSpenderAddress: String? = nil,
     additionalFields: [String: AnyCodable] = [:]
   ) {
     self.marketId = marketId
@@ -372,6 +382,9 @@ public struct YieldXyzPerpsActionArgs: Codable, Equatable {
     self.skipApproval = skipApproval
     self.fundingMethod = fundingMethod
     self.enabled = enabled
+    self.spenderAddress = spenderAddress
+    self.tokenAddress = tokenAddress
+    self.expectedSpenderAddress = expectedSpenderAddress
     self.additionalFields = additionalFields
   }
 
@@ -379,6 +392,7 @@ public struct YieldXyzPerpsActionArgs: Codable, Equatable {
     case marketId, side, amount, size, leverage, marginMode, limitPrice, stopLossPrice, takeProfitPrice
     case orderId, orderIds, assetIndex, fromToken, agentAddress, agentName, validUntil, stopLossOrderId
     case takeProfitOrderId, skipApproval, fundingMethod, enabled
+    case spenderAddress, tokenAddress, expectedSpenderAddress
 
     var codingKey: YieldXyzPerpsDynamicCodingKey {
       YieldXyzPerpsDynamicCodingKey(rawValue)
@@ -386,6 +400,22 @@ public struct YieldXyzPerpsActionArgs: Codable, Equatable {
   }
 
   private static let knownKeys = Set(Key.allCases.map(\.rawValue))
+
+  /// The undocumented `fund` keys, decoded leniently: a value that is not a string is kept in
+  /// `additionalFields` instead of failing the decode.
+  private static let lenientKeys: [Key] = [.spenderAddress, .tokenAddress, .expectedSpenderAddress]
+
+  /// The keys the typed fields write. An unset lenient key is left to `additionalFields`.
+  private var typedKeys: Set<String> {
+    var keys = Self.knownKeys
+    let lenient: [(Key, String?)] = [
+      (.spenderAddress, spenderAddress), (.tokenAddress, tokenAddress), (.expectedSpenderAddress, expectedSpenderAddress)
+    ]
+    for (key, value) in lenient where value == nil {
+      keys.remove(key.rawValue)
+    }
+    return keys
+  }
 
   public init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: YieldXyzPerpsDynamicCodingKey.self)
@@ -410,7 +440,20 @@ public struct YieldXyzPerpsActionArgs: Codable, Equatable {
     self.skipApproval = try container.decodeIfPresent(Bool.self, forKey: Key.skipApproval.codingKey)
     self.fundingMethod = try container.decodeIfPresent(YieldXyzPerpsFundingMethod.self, forKey: Key.fundingMethod.codingKey)
     self.enabled = try container.decodeIfPresent(Bool.self, forKey: Key.enabled.codingKey)
-    self.additionalFields = try decodeAdditionalFields(from: container, excluding: Self.knownKeys)
+    self.spenderAddress = try? container.decodeIfPresent(String.self, forKey: Key.spenderAddress.codingKey)
+    self.tokenAddress = try? container.decodeIfPresent(String.self, forKey: Key.tokenAddress.codingKey)
+    self.expectedSpenderAddress = try? container.decodeIfPresent(String.self, forKey: Key.expectedSpenderAddress.codingKey)
+
+    // A lenient key whose value is neither a string nor `null` stays in `additionalFields`.
+    var excluded = Self.knownKeys
+    for key in Self.lenientKeys {
+      let isString = (try? container.decode(String.self, forKey: key.codingKey)) != nil
+      let isAbsentOrNull = (try? container.decodeNil(forKey: key.codingKey)) ?? true
+      if !isString, !isAbsentOrNull {
+        excluded.remove(key.rawValue)
+      }
+    }
+    self.additionalFields = try decodeAdditionalFields(from: container, excluding: excluded)
   }
 
   public func encode(to encoder: Encoder) throws {
@@ -436,6 +479,9 @@ public struct YieldXyzPerpsActionArgs: Codable, Equatable {
     try container.encodeIfPresent(skipApproval, forKey: Key.skipApproval.codingKey)
     try container.encodeIfPresent(fundingMethod, forKey: Key.fundingMethod.codingKey)
     try container.encodeIfPresent(enabled, forKey: Key.enabled.codingKey)
-    try encodeAdditionalFields(additionalFields, into: &container, excluding: Self.knownKeys)
+    try container.encodeIfPresent(spenderAddress, forKey: Key.spenderAddress.codingKey)
+    try container.encodeIfPresent(tokenAddress, forKey: Key.tokenAddress.codingKey)
+    try container.encodeIfPresent(expectedSpenderAddress, forKey: Key.expectedSpenderAddress.codingKey)
+    try encodeAdditionalFields(additionalFields, into: &container, excluding: typedKeys)
   }
 }

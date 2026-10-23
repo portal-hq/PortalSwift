@@ -459,14 +459,15 @@ final class YieldXyzBorrowExecutionTests: XCTestCase {
     XCTAssertEqual(approval.param.from, F.wallet)
     XCTAssertEqual(approval.param.to, F.usdcBase)
     XCTAssertTrue(approval.param.data?.hasPrefix("0x095ea7b3") ?? false)
-    XCTAssertEqual(approval.param.gas, "0xdbb0")
+    // Portal's signer estimates the gas when it sends; Yield.xyz's gasLimit is not forwarded.
+    XCTAssertNil(approval.param.gas)
     XCTAssertEqual(approval.param.value, "0x0")
     XCTAssertEqual(approval.chainId, F.base)
     XCTAssertEqual(approval.idempotencyKey, "yieldxyz-borrow-tx-approval")
     let supply = signer.calls[1]
     XCTAssertEqual(supply.param.to, F.aavePoolBase)
     XCTAssertTrue(supply.param.data?.hasPrefix("0x617ba037") ?? false)
-    XCTAssertEqual(supply.param.gas, "0x668a0")
+    XCTAssertNil(supply.param.gas)
     XCTAssertEqual(supply.param.value, "0x0")
     XCTAssertEqual(supply.chainId, F.base)
     XCTAssertEqual(supply.idempotencyKey, "yieldxyz-borrow-tx-supply")
@@ -581,7 +582,7 @@ final class YieldXyzBorrowExecutionTests: XCTestCase {
 
     _ = try await execute(F.borrowAction(transactions: [blocked]))
 
-    XCTAssertEqual(signer.calls.map(\.param.gas), ["0x668a0"])
+    XCTAssertEqual(signer.calls.map(\.param.data), [F.supplyData])
   }
 
   func test_waitsForATransactionYieldXyzStopsListing_thenSignsThePayloadListedOnceItIsBack() async throws {
@@ -610,7 +611,7 @@ final class YieldXyzBorrowExecutionTests: XCTestCase {
 
     _ = try await execute(action)
 
-    XCTAssertEqual(signer.calls.map(\.param.gas), ["0xdbb0", "0x668a0"])
+    XCTAssertEqual(signer.calls.map(\.param.data), [F.approvalData, F.supplyData])
   }
 
   func test_neverSignsATransactionYieldXyzStopsListing() async throws {
@@ -630,7 +631,7 @@ final class YieldXyzBorrowExecutionTests: XCTestCase {
 
       let error = await expectFailure(reason) { try await self.execute(action, self.options(poll: self.shortPoll)) }
 
-      XCTAssertEqual(signer.calls.map(\.param.gas), ["0xdbb0"], "\(status)")
+      XCTAssertEqual(signer.calls.map(\.param.data), [F.approvalData], "\(status)")
       assertSubmitted([("tx-approval", F.approvalHash)])
       XCTAssertEqual(error?.transactionId, "tx-supply")
     }
@@ -1338,6 +1339,20 @@ final class YieldXyzBorrowExecutionTests: XCTestCase {
 
   func test_rejectsAMissingSignablePayload() async throws {
     _ = await expectNotSigned(F.borrowAction(transactions: [F.approvalTransaction(signablePayload: nil)]), .invalidSignablePayload)
+  }
+
+  func test_ignoresYieldXyzsGasLimit_soPortalsSignerEstimatesTheGas() async throws {
+    for gasLimit in [#""0x9a0a""#, "39434", #""1e18""#, "true"] {
+      resetState()
+      let payload = AnyCodable(#"{"from":"\#(F.wallet)","to":"\#(F.usdcBase)","data":"\#(F.approvalData)","gasLimit":\#(gasLimit)}"#)
+      let action = F.borrowAction(transactions: [F.approvalTransaction(signablePayload: payload)])
+      fakeBackend(action)
+
+      _ = try await execute(action)
+
+      XCTAssertEqual(signer.calls.count, 1, gasLimit)
+      XCTAssertNil(signer.calls.first?.param.gas, gasLimit)
+    }
   }
 
   func test_rejectsAPayloadWithoutFrom() async throws {
