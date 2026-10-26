@@ -5,53 +5,40 @@
 //  Created by Ahmed Ragab
 //
 //  Yield.xyz Borrow testing functionality, on the market the React Native and Web SDKs were
-//  validated on: Morpho Blue WMON/USDC on Monad mainnet. The read actions are free; the one write
-//  action (supply) moves real funds and asks for confirmation first.
+//  validated on: Morpho Blue WMON/USDC on Monad mainnet. The read actions are free. "Any action"
+//  builds any action from a preset or your own JSON, so the whole lifecycle (supply collateral,
+//  borrow, repay, withdraw) can be tested; it moves real funds. Every write follows the flow the SDK
+//  recommends: build the action, show its predicted health factor and LTV, and sign only once the
+//  user confirms.
 //
 
 import Foundation
 import PortalSwift
 import UIKit
 
-/// What the example keeps between runs to resume an execution. Touched on the main actor only.
+/// The action the last failed execution reported, in signing order, so Resume continues it.
+/// Touched on the main actor only.
 private enum BorrowExampleState {
-  /// The action to continue, with its transactions in signing order: the one built, then the latest
-  /// step or failure an execution reported.
-  static var lastAction: YieldXyzBorrowAction?
-  static var lastFailure: YieldXyzBorrowExecutionError?
-  /// Every transaction already broadcast, by id. A resume submits these instead of signing them
-  /// again, whichever failure came last.
-  static var broadcastHashes: [String: String] = [:]
-
-  static func start(_ action: YieldXyzBorrowAction) {
-    lastAction = action
-    lastFailure = nil
-    broadcastHashes = [:]
-  }
+  static var lastFailedAction: YieldXyzBorrowAction?
 }
 
-/// Collects what an execution reports while it runs: the hash of each transaction it broadcasts,
-/// and the latest step it moved to. The runner reports from any thread.
+/// Collects the latest step an execution moved to. The runner reports from any thread.
 private final class BorrowProgressRecorder {
   private let lock = NSLock()
-  private var hashes: [String: String] = [:]
   private var stepAction: YieldXyzBorrowAction?
 
   func record(_ progress: YieldXyzBorrowExecutionProgress) {
     lock.lock()
     defer { lock.unlock() }
-    if progress.step == .confirming, let transactionId = progress.transactionId, let broadcastHash = progress.broadcastHash {
-      hashes[transactionId] = broadcastHash
-    }
     if progress.step == .nextStep, let action = progress.action {
       stepAction = action
     }
   }
 
-  var recorded: (hashes: [String: String], stepAction: YieldXyzBorrowAction?) {
+  var recordedStepAction: YieldXyzBorrowAction? {
     lock.lock()
     defer { lock.unlock() }
-    return (hashes, stepAction)
+    return stepAction
   }
 }
 
@@ -92,17 +79,29 @@ extension ViewController {
     }
   }
 
-  /// A readable description of a borrow failure, including the Portal error id when there is one.
+  /// A readable description of a borrow failure. An execution failure carries what a resume needs:
+  /// its `reason`, the action and transaction ids, and the `broadcastHash` of a transaction that was
+  /// already sent. The Portal error id, when there is one, comes from `YieldXyzBorrowApiError`.
   private static func describeBorrowError(_ error: Error) -> String {
+    var parts: [String] = []
     if let execution = error as? YieldXyzBorrowExecutionError {
-      let hash = execution.broadcastHash.map { " (broadcast \($0))" } ?? ""
-      return "\(execution.reason.rawValue): \(execution.message)\(hash)"
+      parts.append("\(execution.reason.rawValue): \(execution.message)")
+      if let actionId = execution.actionId {
+        parts.append("action \(actionId)")
+      }
+      if let transactionId = execution.transactionId {
+        parts.append("transaction \(transactionId)")
+      }
+      // The transaction is on-chain: resume with `broadcastHashes: [transactionId: hash]`, never by re-signing.
+      if let broadcastHash = execution.broadcastHash {
+        parts.append("broadcastHash \(broadcastHash) (resume with broadcastHashes)")
+      }
     }
     if let apiError = YieldXyzBorrowApiError.from(error) {
-      let status = apiError.status.map(String.init) ?? "?"
-      return "HTTP \(status) \(apiError.id ?? "") \(apiError.message ?? "")"
+      let status = "HTTP \(apiError.status.map(String.init) ?? "?")"
+      parts.append([status, apiError.id, apiError.message].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " "))
     }
-    return error.localizedDescription
+    return parts.isEmpty ? error.localizedDescription : parts.joined(separator: "; ")
   }
 
   /// The wallet's EVM address; Borrow requests take it explicitly.
@@ -114,7 +113,7 @@ extension ViewController {
   }
 
   /// The Morpho Blue WMON/USDC market on Monad, found across every page of markets. Nothing else
-  /// stands in for it: a supply posts the market's collateral, and the confirmation promises WMON.
+  /// stands in for it: the presets supply WMON and borrow USDC.
   private func borrowMarket(_ portal: PortalProtocol) async throws -> YieldXyzBorrowMarket {
     var offset = 0
     while true {
@@ -215,115 +214,346 @@ extension ViewController {
     }
   }
 
-  // MARK: - Actions
+  // MARK: - Any action
 
-  /// Builds a supply of 0.1 WMON collateral without signing it, to show the transactions and the
-  /// predicted position the user would confirm.
-  @IBAction func borrowBuildSupply(_: Any) {
-    runBorrow("Build Supply") { [weak self] portal in
+  /// An action to build, which the user can edit before anything is built.
+  private struct BorrowPreset {
+    let title: String
+    let integrationId: String
+    let action: YieldXyzBorrowActionType
+    let args: YieldXyzBorrowActionArguments
+  }
+
+  /// The collateral the presets supply and the loan they borrow: the amounts the React Native and Web
+  /// SDKs were validated with.
+  private static let borrowPresetCollateral = "30"
+  private static let borrowPresetLoan = "0.2"
+
+  /// Hashes of transactions already broadcast, by transaction id, kept across launches as the SDK
+  /// recommends: saved from the `confirming` progress event and from a failure that carries one, and
+  /// passed to the next sign, so resuming the action (even after the app was closed mid-confirmation)
+  /// submits the hash instead of broadcasting the transaction again. An action's hashes are dropped
+  /// once it succeeds.
+  nonisolated private static let borrowBroadcastHashesKey = "borrow.broadcastHashes"
+
+  /// Transactions whose user operation was processed and did not succeed. Portal remembers their
+  /// idempotency key and would refuse to send them again, so an action that still lists one is signed
+  /// without idempotency keys.
+  nonisolated private static let borrowUnkeyedTransactionsKey = "borrow.unkeyedTransactions"
+
+  nonisolated private static var savedBorrowBroadcastHashes: [String: String] {
+    UserDefaults.standard.dictionary(forKey: borrowBroadcastHashesKey) as? [String: String] ?? [:]
+  }
+
+  nonisolated private static func saveBorrowBroadcastHash(_ hash: String?, forTransaction transactionId: String) {
+    var hashes = savedBorrowBroadcastHashes
+    hashes[transactionId] = hash
+    UserDefaults.standard.set(hashes, forKey: borrowBroadcastHashesKey)
+  }
+
+  nonisolated private static var unkeyedBorrowTransactions: Set<String> {
+    Set(UserDefaults.standard.stringArray(forKey: borrowUnkeyedTransactionsKey) ?? [])
+  }
+
+  nonisolated private static func markBorrowTransactionUnkeyed(_ transactionId: String) {
+    UserDefaults.standard.set(Array(unkeyedBorrowTransactions.union([transactionId])), forKey: borrowUnkeyedTransactionsKey)
+  }
+
+  nonisolated private static func forgetBorrowTransactions(of action: YieldXyzBorrowAction) {
+    let ids = Set(action.transactions.map(\.id))
+    UserDefaults.standard.set(savedBorrowBroadcastHashes.filter { !ids.contains($0.key) }, forKey: borrowBroadcastHashesKey)
+    UserDefaults.standard.set(Array(unkeyedBorrowTransactions.subtracting(ids)), forKey: borrowUnkeyedTransactionsKey)
+  }
+
+  /// Builds any action from a preset or your own JSON. Nothing is signed until you review the built
+  /// action and confirm.
+  @IBAction func borrowAnyAction(_: Any) {
+    runBorrow("Any Action (load presets)") { [weak self] portal in
       guard let self else {
         return "Cancelled"
       }
-      let action = try await self.buildBorrowSupply(portal)
-      BorrowExampleState.start(action)
-      let transactions = action.transactions.map { "\($0.type) (\($0.status))" }.joined(separator: ", ")
-      let metadata = action.metadata.map { "LTV \($0.currentLtv) → \($0.predictedLtv), health \($0.predictedHealthFactor ?? "unknown")" } ?? "no metadata"
-      return "Built \(action.action) \(action.id) step \(action.currentStep)/\(action.totalSteps): \(transactions); \(metadata)"
+      let presets = try await self.borrowPresets(portal)
+      await self.chooseBorrowPreset(presets)
+      return "Loaded \(presets.count) presets; choose one."
     }
   }
 
-  private func buildBorrowSupply(_ portal: PortalProtocol) async throws -> YieldXyzBorrowAction {
-    let address = try await Self.borrowWalletAddress(portal)
-    let market = try await borrowMarket(portal)
-    // Morpho Blue infers the token from the market; `supply` only posts collateral there.
-    return try await portal.borrow.yieldxyz.createAction(params: YieldXyzBorrowCreateActionParams(
-      integrationId: borrowIntegrationId,
-      action: .supply,
-      address: address,
-      args: YieldXyzBorrowActionArguments(marketId: market.id, amount: "0.1")
-    )).data
-  }
-
-  /// Supplies 0.1 WMON as collateral: signs and submits each transaction in order, then tracks the
-  /// action. It continues the action built or left by the last execution, if any, with the hashes it
-  /// already broadcast. It moves real funds on Monad mainnet, so it asks first.
-  @IBAction func borrowExecuteSupply(_: Any) {
+  /// Loads an action by id to review and sign it, for example to resume one that failed part-way.
+  @IBAction func borrowLoadAction(_: Any) {
     let alert = UIAlertController(
-      title: "Supply 0.1 WMON on Morpho Blue?",
-      message: "This signs real Monad mainnet transactions with your Portal wallet and posts 0.1 WMON (or wraps MON) as collateral.",
+      title: "Load a Borrow action",
+      message: "Enter an action id to review and sign it, or to resume it after a failure.",
       preferredStyle: .alert
     )
+    alert.addTextField { field in
+      field.placeholder = "actionId"
+      Self.configureBorrowCodeField(field)
+    }
     alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-    alert.addAction(UIAlertAction(title: "Supply", style: .destructive) { [weak self] _ in
-      guard let self else {
-        return
-      }
-      self.runBorrow("Execute Supply") { [weak self] portal in
-        guard let self else {
-          return "Cancelled"
-        }
-        if BorrowExampleState.lastAction == nil {
-          try await BorrowExampleState.start(self.buildBorrowSupply(portal))
-        }
-        return try await self.continueBorrowExecution(portal)
+    alert.addAction(UIAlertAction(title: "Load", style: .default) { [weak self, weak alert] _ in
+      let actionId = alert?.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+      self?.runBorrow("Load Action") { [weak self] portal in
+        let action = try await portal.borrow.yieldxyz.getAction(actionId: actionId).data
+        await self?.reviewAndSignBorrow(action)
+        return "Loaded \(action.action) \(action.id) [\(action.status)]; nothing signed yet."
       }
     })
     present(alert, animated: true)
   }
 
-  /// Resumes the last failed execution from the latest action it reported, submitting the
-  /// transactions it had already broadcast instead of signing them again.
+  /// Continues the last failed execution from the action it reported, which keeps the signing order,
+  /// with the hashes already broadcast. After an app restart, load the action by id instead.
   @IBAction func borrowResumeLastFailure(_: Any) {
-    runBorrow("Resume") { [weak self] portal in
-      guard let self else {
-        return "Cancelled"
+    guard let action = BorrowExampleState.lastFailedAction else {
+      showStatusView(message: "No failed execution to resume. To resume one from an earlier launch, load its action by id.")
+      return
+    }
+    reviewAndSignBorrow(action)
+  }
+
+  /// Presets for each step of the lifecycle on the WMON/USDC market, filtered to the actions the
+  /// integration offers, plus the actions Yield.xyz offers on the wallet's balances (`pendingActions`,
+  /// with their args pre-filled). The withdraw preset takes the collateral the wallet supplied.
+  private func borrowPresets(_ portal: PortalProtocol) async throws -> [BorrowPreset] {
+    let borrow = portal.borrow.yieldxyz
+    let address = try await Self.borrowWalletAddress(portal)
+    let market = try await borrowMarket(portal)
+    let offered = try? await borrow.getIntegration(integrationId: borrowIntegrationId).data.actions.map(\.id)
+    let position = try? await borrow.getPositions(params: YieldXyzBorrowGetPositionsParams(
+      integrationId: borrowIntegrationId,
+      network: borrowNetwork,
+      address: address
+    )).data
+
+    let collateral = market.collateralTokens.first?.token.symbol ?? "collateral"
+    let loan = market.loanToken.symbol
+    let supplied = position?.supplyBalances.first { $0.marketId == market.id && Double($0.balance) ?? 0 > 0 }?.balance
+    let minLoan = market.minLoan.map { " (min loan \($0))" } ?? ""
+    var presets = [
+      BorrowPreset(
+        title: "Supply \(Self.borrowPresetCollateral) \(collateral) as collateral (wraps MON if needed)",
+        integrationId: borrowIntegrationId,
+        action: .supply,
+        args: YieldXyzBorrowActionArguments(marketId: market.id, amount: Self.borrowPresetCollateral)
+      ),
+      BorrowPreset(
+        title: "Borrow \(Self.borrowPresetLoan) \(loan)\(minLoan)",
+        integrationId: borrowIntegrationId,
+        action: .borrow,
+        args: YieldXyzBorrowActionArguments(marketId: market.id, amount: Self.borrowPresetLoan)
+      ),
+      BorrowPreset(
+        title: "Supply \(Self.borrowPresetCollateral) \(collateral) and borrow \(Self.borrowPresetLoan) \(loan) in one action",
+        integrationId: borrowIntegrationId,
+        action: .supplyAndBorrow,
+        args: YieldXyzBorrowActionArguments(marketId: market.id, collateralAmount: Self.borrowPresetCollateral, borrowAmount: Self.borrowPresetLoan)
+      ),
+      BorrowPreset(
+        title: "Repay all \(loan) debt (avoids interest dust)",
+        integrationId: borrowIntegrationId,
+        action: .repay,
+        args: YieldXyzBorrowActionArguments(marketId: market.id, repayAll: true)
+      ),
+      BorrowPreset(
+        title: "Withdraw \(supplied ?? Self.borrowPresetCollateral) \(collateral) collateral (repay first)",
+        integrationId: borrowIntegrationId,
+        action: .withdraw,
+        args: YieldXyzBorrowActionArguments(marketId: market.id, amount: supplied ?? Self.borrowPresetCollateral)
+      )
+    ]
+    if let offered {
+      presets = presets.filter { offered.contains($0.action) }
+    }
+    let balances = (position?.supplyBalances.map { ($0.tokenSymbol, $0.pendingActions) } ?? [])
+      + (position?.debtBalances.map { ($0.tokenSymbol, $0.pendingActions) } ?? [])
+    presets += balances.flatMap { symbol, pendingActions in
+      pendingActions.map { pending in
+        BorrowPreset(title: "\(pending.label) (\(symbol))", integrationId: borrowIntegrationId, action: pending.type, args: pending.args)
       }
-      guard BorrowExampleState.lastFailure != nil, BorrowExampleState.lastAction != nil else {
-        return "No failed execution to resume."
+    }
+    presets.append(BorrowPreset(
+      title: "Custom: type an integration, an action and its args",
+      integrationId: borrowIntegrationId,
+      action: YieldXyzBorrowActionType(rawValue: ""),
+      args: YieldXyzBorrowActionArguments(marketId: market.id)
+    ))
+    return presets
+  }
+
+  @MainActor
+  private func chooseBorrowPreset(_ presets: [BorrowPreset]) {
+    let sheet = UIAlertController(title: "Build a Borrow action", message: "You can edit the action and its args next.", preferredStyle: .actionSheet)
+    for preset in presets {
+      sheet.addAction(UIAlertAction(title: preset.title, style: .default) { [weak self] _ in
+        self?.editBorrowPreset(preset)
+      })
+    }
+    sheet.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+    sheet.popoverPresentationController?.sourceView = view
+    present(sheet, animated: true)
+  }
+
+  @MainActor
+  private func editBorrowPreset(_ preset: BorrowPreset) {
+    let alert = UIAlertController(
+      title: preset.title,
+      message: "Edit the integration, the action and its args (JSON). Building signs nothing: you review the action before signing.",
+      preferredStyle: .alert
+    )
+    alert.addTextField { field in
+      field.text = preset.integrationId
+      field.placeholder = "integrationId, for example morpho-blue-borrow"
+      Self.configureBorrowCodeField(field)
+    }
+    alert.addTextField { field in
+      field.text = preset.action.rawValue
+      field.placeholder = "action, for example supply"
+      Self.configureBorrowCodeField(field)
+    }
+    alert.addTextField { field in
+      field.text = Self.borrowJSON(preset.args)
+      field.placeholder = "args as JSON, for example {\"marketId\":\"...\"}"
+      Self.configureBorrowCodeField(field)
+    }
+    alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+    alert.addAction(UIAlertAction(title: "Build", style: .default) { [weak self, weak alert] _ in
+      let fields = alert?.textFields ?? []
+      let value = { (index: Int) -> String in fields.indices.contains(index) ? fields[index].text ?? "" : "" }
+      self?.buildBorrowAction(
+        integrationId: value(0).trimmingCharacters(in: .whitespacesAndNewlines),
+        action: value(1).trimmingCharacters(in: .whitespacesAndNewlines),
+        argsJSON: value(2)
+      )
+    })
+    present(alert, animated: true)
+  }
+
+  /// JSON is typed, not prose: no smart quotes, autocorrection or capitalization.
+  private static func configureBorrowCodeField(_ field: UITextField) {
+    field.autocapitalizationType = .none
+    field.autocorrectionType = .no
+    field.smartQuotesType = .no
+    field.smartDashesType = .no
+    field.spellCheckingType = .no
+  }
+
+  private static func borrowJSON(_ args: YieldXyzBorrowActionArguments) -> String {
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+    return (try? encoder.encode(args)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+  }
+
+  private func buildBorrowAction(integrationId: String, action: String, argsJSON: String) {
+    runBorrow("Build \(action.isEmpty ? "action" : action)") { [weak self] portal in
+      guard !integrationId.isEmpty else {
+        throw PortalExampleBorrowError.invalidInput("Enter an integration, for example morpho-blue-borrow.")
       }
-      return try await self.continueBorrowExecution(portal)
+      guard !action.isEmpty else {
+        throw PortalExampleBorrowError.invalidInput("Enter an action, for example supply.")
+      }
+      let args: YieldXyzBorrowActionArguments
+      do {
+        args = try JSONDecoder().decode(YieldXyzBorrowActionArguments.self, from: Data(argsJSON.utf8))
+      } catch {
+        throw PortalExampleBorrowError.invalidInput("The args must be a JSON object with a marketId: \(error.localizedDescription)")
+      }
+      let address = try await Self.borrowWalletAddress(portal)
+      let built = try await portal.borrow.yieldxyz.createAction(params: YieldXyzBorrowCreateActionParams(
+        integrationId: integrationId,
+        action: YieldXyzBorrowActionType(rawValue: action),
+        address: address,
+        args: args
+      )).data
+      await self?.reviewAndSignBorrow(built)
+      return "Built \(built.action) \(built.id) with \(built.transactions.count) transaction(s); nothing signed yet."
     }
   }
 
-  /// Executes `BorrowExampleState.lastAction` with every hash broadcast so far, and keeps what the
-  /// execution reported for the next attempt. After `userOperationFailed`, that transaction is signed
-  /// again without its idempotency key: Portal remembers the key and would refuse to send it again.
-  private func continueBorrowExecution(_ portal: PortalProtocol) async throws -> String {
-    guard let action = BorrowExampleState.lastAction else {
-      return "No action to execute."
+  /// The predicted position worth showing before the user signs. A health factor at or below 1 can be
+  /// liquidated; a nil one is unknown, never safe.
+  private static func describeBorrowImpact(_ metadata: YieldXyzBorrowActionMetadata?) -> String {
+    guard let metadata else {
+      return "Yield.xyz returned no predicted position for this action."
     }
-    let userOperationFailed = BorrowExampleState.lastFailure?.reason == .userOperationFailed
-    let recorder = BorrowProgressRecorder()
-    let logger = self.logger
-    do {
-      let result = try await portal.borrow.yieldxyz.signAndSubmitAction(action, options: YieldXyzBorrowExecuteOptions(
-        onProgress: { progress in
-          recorder.record(progress)
-          logger.info("⏳ [Borrow] \(progress.step.rawValue) \(progress.transactionId ?? "") \(progress.broadcastHash ?? "") \(progress.actionStatus?.rawValue ?? "")")
-        },
-        useIdempotencyKeys: !userOperationFailed,
-        broadcastHashes: BorrowExampleState.broadcastHashes
-      ))
-      BorrowExampleState.lastAction = nil
-      BorrowExampleState.lastFailure = nil
-      BorrowExampleState.broadcastHashes = [:]
-      let hashes = result.transactions.map(\.transactionHash).joined(separator: ", ")
-      return "Action \(result.actionId) ended \(result.status) after \(result.transactions.count) transaction(s): \(hashes)"
-    } catch {
-      let recorded = recorder.recorded
-      BorrowExampleState.broadcastHashes.merge(recorded.hashes) { _, latest in latest }
-      let failure = error as? YieldXyzBorrowExecutionError
-      if let failure, let transactionId = failure.transactionId {
-        if failure.reason == .userOperationFailed {
-          // Its user operation was processed and did not succeed: sign it again rather than resume it.
-          BorrowExampleState.broadcastHashes[transactionId] = nil
-        } else if let broadcastHash = failure.broadcastHash {
-          BorrowExampleState.broadcastHashes[transactionId] = broadcastHash
+    let fields: [(String, String?)] = [
+      ("Health factor", "\(metadata.currentHealthFactor ?? "unknown") → \(metadata.predictedHealthFactor ?? "unknown")"),
+      ("LTV", "\(metadata.currentLtv) → \(metadata.predictedLtv) (liquidation at \(metadata.liquidationThreshold))"),
+      ("Total supplied", "$\(metadata.predictedTotalSupplyUsd)"),
+      ("Total debt", "$\(metadata.predictedTotalDebtUsd)"),
+      ("Origination fee", metadata.originationFeeAmount),
+      ("Fee", metadata.feeAmount),
+      ("Principal received", metadata.effectivePrincipalAmount),
+      ("Collateral posted", metadata.effectiveCollateralAmount)
+    ]
+    return fields.compactMap { label, value in value.map { "\(label): \($0)" } }.joined(separator: "\n")
+  }
+
+  /// Shows what the action will do and signs nothing unless the user confirms.
+  @MainActor
+  private func reviewAndSignBorrow(_ action: YieldXyzBorrowAction) {
+    let hashes = Self.savedBorrowBroadcastHashes
+    let transactions = action.transactions.enumerated().map { index, transaction in
+      let resumed = hashes[transaction.id] == nil ? "" : " (broadcast; resumed, not signed again)"
+      return "\(index + 1). \(transaction.type.rawValue) on \(transaction.network) \(transaction.status.rawValue)\(resumed)"
+    }.joined(separator: "\n")
+    let alert = UIAlertController(
+      title: "Sign and submit \(action.action.rawValue)?",
+      message: "\(Self.describeBorrowImpact(action.metadata))\n\nStep \(action.currentStep)/\(action.totalSteps), transactions:\n\(transactions)\n\n"
+        + "Action \(action.id) on \(action.integrationId) [\(action.status.rawValue)]. This signs with your Portal wallet on mainnet and moves real funds.",
+      preferredStyle: .alert
+    )
+    alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { [weak self] _ in
+      self?.logger.info("⏹ [Borrow \(action.action.rawValue)] Cancelled; nothing was signed. Action \(action.id) can be loaded later.")
+      self?.showStatusView(message: "Cancelled; nothing was signed. Action \(action.id) can be loaded later.")
+    })
+    alert.addAction(UIAlertAction(title: "Sign & submit", style: .destructive) { [weak self] _ in
+      self?.signBorrowAction(action)
+    })
+    present(alert, animated: true)
+  }
+
+  /// Signs and submits each transaction in order, then tracks the action through its steps, passing
+  /// the hashes already broadcast. A transaction whose user operation failed is signed again without
+  /// idempotency keys: Portal remembers its key and would refuse to send it again.
+  private func signBorrowAction(_ action: YieldXyzBorrowAction) {
+    let logger = logger
+    let name = action.action.rawValue
+    runBorrow("Sign and Submit \(name)") { portal in
+      let recorder = BorrowProgressRecorder()
+      let unkeyed = Self.unkeyedBorrowTransactions
+      do {
+        let result = try await portal.borrow.yieldxyz.signAndSubmitAction(action, options: YieldXyzBorrowExecuteOptions(
+          onProgress: { progress in
+            recorder.record(progress)
+            logger.info("⏳ [Borrow \(name)] \(progress.step.rawValue) \(progress.transactionId ?? "") \(progress.broadcastHash ?? "") \(progress.actionStatus?.rawValue ?? "")")
+            // The transaction is on-chain from here: save its hash before waiting for it.
+            if progress.step == .confirming, let transactionId = progress.transactionId, let hash = progress.broadcastHash {
+              Self.saveBorrowBroadcastHash(hash, forTransaction: transactionId)
+            }
+          },
+          useIdempotencyKeys: !action.transactions.contains { unkeyed.contains($0.id) },
+          broadcastHashes: Self.savedBorrowBroadcastHashes
+        ))
+        BorrowExampleState.lastFailedAction = nil
+        if result.status == .success {
+          Self.forgetBorrowTransactions(of: result.action)
         }
+        let hashes = result.transactions.map(\.transactionHash).joined(separator: ", ")
+        return "Action \(result.actionId) ended \(result.status) after \(result.transactions.count) transaction(s): \(hashes)"
+      } catch {
+        let failure = error as? YieldXyzBorrowExecutionError
+        if let failure, let transactionId = failure.transactionId {
+          if failure.reason == .userOperationFailed {
+            // Its user operation was processed and did not succeed: sign it again rather than resume it.
+            Self.saveBorrowBroadcastHash(nil, forTransaction: transactionId)
+            Self.markBorrowTransactionUnkeyed(transactionId)
+          } else if let broadcastHash = failure.broadcastHash {
+            Self.saveBorrowBroadcastHash(broadcastHash, forTransaction: transactionId)
+          }
+        }
+        BorrowExampleState.lastFailedAction = failure?.action ?? recorder.recordedStepAction ?? action
+        throw error
       }
-      BorrowExampleState.lastAction = failure?.action ?? recorded.stepAction ?? action
-      BorrowExampleState.lastFailure = failure
-      throw error
     }
   }
 }
@@ -331,6 +561,7 @@ extension ViewController {
 private enum PortalExampleBorrowError: LocalizedError {
   case noEvmAddress
   case noMarket
+  case invalidInput(String)
 
   var errorDescription: String? {
     switch self {
@@ -338,6 +569,8 @@ private enum PortalExampleBorrowError: LocalizedError {
       return "The wallet has no EVM address."
     case .noMarket:
       return "The Morpho Blue WMON/USDC market is not listed on Monad."
+    case let .invalidInput(message):
+      return message
     }
   }
 }
