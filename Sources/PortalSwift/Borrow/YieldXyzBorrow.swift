@@ -76,12 +76,17 @@ public protocol YieldXyzBorrowProtocol: AnyObject {
   /// a transaction that was already broadcast: pass it in `broadcastHashes`, so that transaction is
   /// resolved and submitted instead of signed again (except after `userOperationFailed`). A call
   /// made while another call on this instance is still executing the same action fails with
-  /// `actionInProgress` and signs nothing.
+  /// `actionInProgress` and signs nothing. An action with an empty `id` fails with
+  /// `YieldXyzBorrowError.emptyIdentifier(name: "actionId")` before anything is read or signed.
   ///
   /// Cancelling the surrounding task stops the execution with `CancellationError`, except while a
   /// broadcast transaction is being resolved and submitted: then it fails with
-  /// `submitOutcomeUnknown` carrying that transaction's `broadcastHash`. The `confirming` progress
-  /// event also reports the hash as soon as the transaction is broadcast.
+  /// `submitOutcomeUnknown` carrying that transaction's `broadcastHash`. Persist the hash the
+  /// `confirming` progress event reports as soon as the transaction is broadcast: it is the hash to
+  /// resume with. A cancellation that lands while the signer is still sending can lose that hash
+  /// and stop with `CancellationError` although the transaction was broadcast. With idempotency
+  /// keys on, a resume then fails with `transactionAlreadyBroadcast` (or `broadcastOutcomeUnknown`)
+  /// instead of sending the transaction again.
   func signAndSubmitAction(_ action: YieldXyzBorrowAction, options: YieldXyzBorrowExecuteOptions) async throws -> YieldXyzBorrowExecutionResult
 }
 
@@ -269,6 +274,10 @@ public class YieldXyzBorrow: YieldXyzBorrowProtocol {
     options: YieldXyzBorrowExecuteOptions
   ) async throws -> YieldXyzBorrowExecutionResult {
     let actionId = action.id
+    // Refused before the guard is claimed: an empty id would read `/actions/`, the list route.
+    guard !actionId.isEmpty else {
+      throw YieldXyzBorrowError.emptyIdentifier(name: "actionId")
+    }
     let claimed = inFlightActions.claim(actionId)
     defer {
       if claimed {

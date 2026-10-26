@@ -1180,6 +1180,27 @@ final class YieldXyzBorrowExecutionTests: XCTestCase {
     XCTAssertEqual(api.submitTransactionCallsCount, 0)
   }
 
+  func test_rejectsAnActionWithAnEmptyIdBeforeReadingOrClaimingIt() async throws {
+    let action = F.borrowAction(id: "", transactions: [F.approvalTransaction()])
+    serve(action)
+    let guardActions = YieldXyzInFlightActions()
+    let borrow = YieldXyzBorrow(api: api, dependencies: dependencies(), lookupEvmTransaction: nil, retryPolicy: fastPolicy, inFlightActions: guardActions)
+    var progress: [YieldXyzBorrowExecutionProgress] = []
+
+    do {
+      _ = try await borrow.signAndSubmitAction(action, options: options(onProgress: { progress.append($0) }))
+      XCTFail("Expected an empty action id to be refused.")
+    } catch let error as YieldXyzBorrowError {
+      XCTAssertEqual(error, .emptyIdentifier(name: "actionId"))
+    }
+
+    XCTAssertEqual(api.getActionCallsCount, 0)
+    XCTAssertEqual(signer.calls.count, 0)
+    XCTAssertTrue(progress.isEmpty)
+    // The guard was never claimed for the empty id.
+    XCTAssertTrue(guardActions.claim(""))
+  }
+
   func test_doesNotRetryAReadTheApiRefusedBeforeSendingIt() async throws {
     let action = singleTransactionAction()
     api.getActionHandler = { _ in throw YieldXyzBorrowError.emptyIdentifier(name: "actionId") }
