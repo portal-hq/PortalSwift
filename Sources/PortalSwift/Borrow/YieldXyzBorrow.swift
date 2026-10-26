@@ -75,8 +75,9 @@ public protocol YieldXyzBorrowProtocol: AnyObject {
   /// resume, call this again with the error's `action`. An error with a `broadcastHash` belongs to
   /// a transaction that was already broadcast: pass it in `broadcastHashes`, so that transaction is
   /// resolved and submitted instead of signed again (except after `userOperationFailed`). A call
-  /// made while another call on this instance is still executing the same action fails with
-  /// `actionInProgress` and signs nothing. An action with an empty `id` fails with
+  /// made while another call on this instance (or on another `borrow` of the same Portal, which
+  /// shares the guard) is still executing the same action fails with `actionInProgress` and signs
+  /// nothing. An action with an empty `id` fails with
   /// `YieldXyzBorrowError.emptyIdentifier(name: "actionId")` before anything is read or signed.
   ///
   /// Cancelling the surrounding task stops the execution with `CancellationError`, except while a
@@ -736,6 +737,9 @@ public class YieldXyzBorrow: YieldXyzBorrowProtocol {
     var returned: String?
     while true {
       do {
+        // Portal's signer does not check for cancellation before it broadcasts, so a task cancelled
+        // since the last read stops here instead of sending another transaction.
+        try Task.checkCancellation()
         returned = try await signAndSendTransaction(param, chainId, idempotencyKey)
         break
       } catch let error where Self.isCancellation(error) {
@@ -922,7 +926,7 @@ public class YieldXyzBorrow: YieldXyzBorrowProtocol {
         timeoutSeconds: context.options.pollOptions.timeoutSeconds,
         minIntervalSeconds: retryPolicy.minPollInterval,
         maxIntervalSeconds: retryPolicy.maxPollInterval,
-        // React Native parity: a zero timeout times out before reading, so nothing is signed.
+        // React Native parity: no lookup starts at or after the deadline.
         ticksPastDeadline: false
       ) { () async throws -> YieldXyzPollStep<ResolvedHash> in
         let lookup: YieldXyzEvmTransactionLookup?

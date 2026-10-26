@@ -2218,6 +2218,28 @@ final class YieldXyzBorrowExecutionTests: XCTestCase {
     XCTAssertEqual(signer.calls.count, 1)
   }
 
+  func test_cancellingAfterAConfirmation_stopsBeforeSigningTheNextTransaction() async throws {
+    let action = F.borrowAction()
+    fakeBackend(action)
+    let borrow = self.borrow!
+    let options = self.options(onProgress: { progress in
+      // The app cancels as soon as the approval is confirmed; the supply is signable right away.
+      if progress.step == .confirmed {
+        withUnsafeCurrentTask { $0?.cancel() }
+      }
+    })
+    let task = Task { try await borrow.signAndSubmitAction(action, options: options) }
+
+    do {
+      _ = try await task.value
+      XCTFail("Expected the execution to be cancelled")
+    } catch {
+      XCTAssertTrue(error is CancellationError, "\(error)")
+    }
+    XCTAssertEqual(signer.calls.map(\.param.to), [F.usdcBase])
+    assertSubmitted([("tx-approval", F.approvalHash)])
+  }
+
   func test_cancellationBeforeABroadcast_stopsWithCancellationError() async throws {
     let action = singleTransactionAction()
     let firstReadFailed = EventLog()

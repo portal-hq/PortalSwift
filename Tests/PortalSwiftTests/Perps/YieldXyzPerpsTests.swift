@@ -443,6 +443,46 @@ final class YieldXyzPerpsTests: XCTestCase {
     XCTAssertTrue(during is CancellationError, "\(String(describing: during))")
   }
 
+  func test_pollLoop_reportsACancelledTaskAsCancelled_notTimedOut() async {
+    // Past the deadline before the first tick.
+    let pastDeadline = Task { () -> (ticks: Int, error: Error?) in
+      withUnsafeCurrentTask { $0?.cancel() }
+      var ticks = 0
+      do {
+        _ = try await YieldXyzPollLoop.run(
+          intervalSeconds: 0.001,
+          timeoutSeconds: 0,
+          maxIntervalSeconds: 0.001,
+          ticksPastDeadline: false
+        ) { () -> YieldXyzPollStep<Int> in
+          ticks += 1
+          return .continue
+        }
+        return (ticks, nil)
+      } catch {
+        return (ticks, error)
+      }
+    }
+    let before = await pastDeadline.value
+    XCTAssertEqual(before.ticks, 0)
+    XCTAssertTrue(before.error is CancellationError, "\(String(describing: before.error))")
+
+    // Cancelled during a tick that returns "not done" as the deadline passes.
+    let afterTick = Task { () -> Error? in
+      do {
+        _ = try await YieldXyzPollLoop.run(intervalSeconds: 0.001, timeoutSeconds: 0, maxIntervalSeconds: 0.001) { () -> YieldXyzPollStep<Int> in
+          withUnsafeCurrentTask { $0?.cancel() }
+          return .continue
+        }
+        return nil
+      } catch {
+        return error
+      }
+    }
+    let after = await afterTick.value
+    XCTAssertTrue(after is CancellationError, "\(String(describing: after))")
+  }
+
   func test_cancellation_countsACancelledURLSessionRequestOnlyWhileTheTaskIsCancelled() async {
     XCTAssertTrue(YieldXyzCancellation.isCancellation(CancellationError()))
     XCTAssertFalse(YieldXyzCancellation.isCancellation(URLError(.cancelled)))

@@ -51,8 +51,8 @@ enum YieldXyzPollLoop {
   /// tick needs time left, as in the React Native SDK: a zero timeout times out before the first
   /// tick, and no tick starts at or after the deadline.
   ///
-  /// A cancelled task stops with `CancellationError` before each tick and before a result is
-  /// returned, even when `tick` itself does not check for cancellation.
+  /// A cancelled task stops with `CancellationError` before each tick and after each tick, ahead of
+  /// any deadline check or result, even when `tick` itself does not check for cancellation.
   static func run<T>(
     intervalSeconds: TimeInterval,
     timeoutSeconds: TimeInterval,
@@ -66,12 +66,13 @@ enum YieldXyzPollLoop {
     var interval = max(minIntervalSeconds, intervalSeconds)
 
     while true {
+      try Task.checkCancellation()
       if !ticksPastDeadline, YieldXyzExecutionClock.now() >= deadline {
         break
       }
+      let step = try await tick()
       try Task.checkCancellation()
-      if case let .stop(value) = try await tick() {
-        try Task.checkCancellation()
+      if case let .stop(value) = step {
         return value
       }
 

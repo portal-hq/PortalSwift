@@ -13,8 +13,6 @@ import Foundation
 import PortalSwift
 import UIKit
 
-/// What the example keeps between taps: the last action built, and the last failed execution to
-/// resume from.
 /// What the example keeps between runs to resume an execution. Touched on the main actor only.
 private enum BorrowExampleState {
   /// The action to continue, with its transactions in signing order: the one built, then the latest
