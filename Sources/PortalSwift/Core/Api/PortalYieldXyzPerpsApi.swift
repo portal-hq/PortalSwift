@@ -46,18 +46,9 @@ public class PortalYieldXyzPerpsApi: PortalYieldXyzPerpsApiProtocol {
   /// Resolved per request and never cached, so a session rotated or invalidated underneath
   /// this instance is honoured on the next call. Shared by identity with the owning `PortalApi`.
   private let credentials: PortalCredentials
-  private let baseUrl: String
   private let requests: PortalRequestsProtocol
+  private let requestBuilder: YieldXyzRequestBuilder
   private let logger = PortalLogger.shared
-
-  private static let basePath = "/api/v3/clients/me/integrations/yield-xyz-perps"
-
-  /// The characters `encodeURIComponent` leaves unescaped. Query values and path segments are
-  /// encoded with it so the wire format matches the other Portal SDKs, and so `+`, `&`, `=`, `,`,
-  /// `/` and `:` never reach the server unescaped (Express decodes a raw `+` as a space).
-  private static let uriComponentAllowed = CharacterSet(
-    charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.!~*'()"
-  )
 
   /// Create an instance of `PortalYieldXyzPerpsApi`.
   ///
@@ -77,7 +68,11 @@ public class PortalYieldXyzPerpsApi: PortalYieldXyzPerpsApiProtocol {
     requests: PortalRequestsProtocol? = nil
   ) {
     self.credentials = credentials
-    self.baseUrl = apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)"
+    self.requestBuilder = YieldXyzRequestBuilder(
+      baseUrl: apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)",
+      basePath: "/api/v3/clients/me/integrations/yield-xyz-perps",
+      emptyIdentifier: { YieldXyzPerpsError.emptyIdentifier(name: $0) }
+    )
     self.requests = requests ?? PortalRequests()
     PortalOwnedHosts.register(apiHost)
 
@@ -171,11 +166,11 @@ public class PortalYieldXyzPerpsApi: PortalYieldXyzPerpsApiProtocol {
       ("limit", params.limit.map(String.init)),
       ("address", request.address),
       ("providerId", params.providerId),
-      ("providerIds", Self.joined(params.providerIds)),
+      ("providerIds", YieldXyzRequestBuilder.joined(params.providerIds)),
       ("marketId", params.marketId),
       ("type", params.type?.rawValue),
       ("status", params.status?.rawValue),
-      ("statuses", Self.joined(params.statuses?.map(\.rawValue)))
+      ("statuses", YieldXyzRequestBuilder.joined(params.statuses?.map(\.rawValue)))
     ])
   }
 
@@ -203,9 +198,9 @@ public class PortalYieldXyzPerpsApi: PortalYieldXyzPerpsApiProtocol {
       ("limit", params.limit.map(String.init)),
       ("address", request.address),
       ("providerId", params.providerId),
-      ("providerIds", Self.joined(params.providerIds)),
+      ("providerIds", YieldXyzRequestBuilder.joined(params.providerIds)),
       ("actionStatus", params.actionStatus?.rawValue),
-      ("actionStatuses", Self.joined(params.actionStatuses?.map(\.rawValue)))
+      ("actionStatuses", YieldXyzRequestBuilder.joined(params.actionStatuses?.map(\.rawValue)))
     ])
   }
 
@@ -217,9 +212,9 @@ public class PortalYieldXyzPerpsApi: PortalYieldXyzPerpsApiProtocol {
       ("limit", params.limit.map(String.init)),
       ("address", request.address),
       ("providerId", params.providerId),
-      ("providerIds", Self.joined(params.providerIds)),
+      ("providerIds", YieldXyzRequestBuilder.joined(params.providerIds)),
       ("eventType", params.eventType?.rawValue),
-      ("eventTypes", Self.joined(params.eventTypes?.map(\.rawValue))),
+      ("eventTypes", YieldXyzRequestBuilder.joined(params.eventTypes?.map(\.rawValue))),
       ("marketId", params.marketId),
       ("perpActionId", params.perpActionId),
       ("providerOrderId", params.providerOrderId),
@@ -247,52 +242,9 @@ public class PortalYieldXyzPerpsApi: PortalYieldXyzPerpsApiProtocol {
    * Private functions
    *******************************************/
 
-  /// Percent-encodes `value` as a single URI component.
-  private static func encodeURIComponent(_ value: String) -> String? {
-    value.addingPercentEncoding(withAllowedCharacters: uriComponentAllowed)
-  }
-
-  /// Comma-joins a list filter, skipping blank entries; an empty list is not sent.
-  private static func joined(_ values: [String]?) -> String? {
-    guard let values = values?.filter({ !$0.isEmpty }), !values.isEmpty else {
-      return nil
-    }
-    return values.joined(separator: ",")
-  }
-
-  /// Encodes an id as a single path segment. A blank id is rejected: `/markets/` would reach the list
-  /// route instead.
+  /// Encodes an id as a single path segment; an empty id is rejected.
   private func pathSegment(_ name: String, _ value: String) throws -> String {
-    guard !value.isEmpty else {
-      throw YieldXyzPerpsError.emptyIdentifier(name: name)
-    }
-    guard let encoded = Self.encodeURIComponent(value) else {
-      throw PortalApiError.unableToEncodeData
-    }
-    return encoded
-  }
-
-  /// Builds the URL of `path` with the query items that have a value, in the order given. A blank
-  /// value is not sent: the Portal API rejects an empty string.
-  private func makeUrl(path: String, query: [(String, String?)]) throws -> URL {
-    var urlString = "\(baseUrl)\(Self.basePath)\(path)"
-    var pairs: [String] = []
-    for (name, value) in query {
-      guard let value, !value.isEmpty else {
-        continue
-      }
-      guard let encoded = Self.encodeURIComponent(value) else {
-        throw PortalApiError.unableToEncodeData
-      }
-      pairs.append("\(name)=\(encoded)")
-    }
-    if !pairs.isEmpty {
-      urlString += "?" + pairs.joined(separator: "&")
-    }
-    guard let url = URL(string: urlString) else {
-      throw URLError(.badURL)
-    }
-    return url
+    try requestBuilder.pathSegment(name, value)
   }
 
   private func get<ResponseType: Decodable>(
@@ -301,7 +253,7 @@ public class PortalYieldXyzPerpsApi: PortalYieldXyzPerpsApiProtocol {
     query: [(String, String?)] = []
   ) async throws -> ResponseType {
     do {
-      let url = try makeUrl(path: path(), query: query)
+      let url = try requestBuilder.makeUrl(path: path(), query: query)
       // Resolved here, at the moment the request is built, so a rotated session is sent on the
       // next call and a dead one fails before anything reaches the wire.
       let token = try PortalCredentialSupport.resolveToken(self.credentials)
@@ -319,7 +271,7 @@ public class PortalYieldXyzPerpsApi: PortalYieldXyzPerpsApiProtocol {
     payload: Codable
   ) async throws -> ResponseType {
     do {
-      let url = try makeUrl(path: path(), query: [])
+      let url = try requestBuilder.makeUrl(path: path())
       let token = try PortalCredentialSupport.resolveToken(self.credentials)
       let portalRequest = PortalAPIRequest(url: url, method: .post, payload: payload, bearerToken: token)
       return try await requests.execute(request: portalRequest, mappingInResponse: ResponseType.self)

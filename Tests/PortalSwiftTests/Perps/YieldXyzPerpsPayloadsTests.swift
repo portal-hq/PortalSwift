@@ -19,7 +19,7 @@ final class YieldXyzPerpsPayloadsTests: XCTestCase {
     YieldXyzPerpsFixtures.decode(AnyCodable.self, json)
   }
 
-  private func domainType(of result: Swift.Result<[String: Any], YieldXyzPerpsPayloadProblem>) throws -> [[String: String]] {
+  private func domainType(of result: Swift.Result<[String: Any], YieldXyzPayloadProblem>) throws -> [[String: String]] {
     let typedData = try result.get()
     let types = try XCTUnwrap(typedData["types"] as? [String: Any])
     return try XCTUnwrap(types["EIP712Domain"] as? [[String: String]])
@@ -137,15 +137,15 @@ final class YieldXyzPerpsPayloadsTests: XCTestCase {
     XCTAssertEqual((reparsed["domain"] as? NSDictionary)?["chainId"] as? Int, 1337)
   }
 
-  // MARK: - parseEvmTransactionRequest
+  // MARK: - YieldXyzEvmTransactionParams.parse
 
   func test_parseEvm_narrowsTheJsonTransaction_droppingNonceFeesGasLimitAndChain() throws {
-    let request = try YieldXyzPerpsPayloads.parseEvmTransactionRequest(
+    let request = try YieldXyzEvmTransactionParams.parse(
       AnyCodable(YieldXyzPerpsFixtures.fundingTransactionPayload()),
       defaultFrom: wallet
     ).get()
 
-    XCTAssertEqual(request, YieldXyzPerpsEvmTransactionRequest(
+    XCTAssertEqual(request, YieldXyzEvmTransactionRequest(
       from: wallet,
       to: usdc,
       data: YieldXyzPerpsFixtures.fundingTransferData,
@@ -154,39 +154,39 @@ final class YieldXyzPerpsPayloadsTests: XCTestCase {
   }
 
   func test_parseEvm_acceptsADecodedObject() throws {
-    let request = try YieldXyzPerpsPayloads.parseEvmTransactionRequest(
+    let request = try YieldXyzEvmTransactionParams.parse(
       payload(#"{"to":"\#(usdc)","value":"1000000000000000001","gasLimit":56675}"#),
       defaultFrom: wallet
     ).get()
 
-    XCTAssertEqual(request, YieldXyzPerpsEvmTransactionRequest(from: wallet, to: usdc, value: "1000000000000000001"))
+    XCTAssertEqual(request, YieldXyzEvmTransactionRequest(from: wallet, to: usdc, value: "1000000000000000001"))
   }
 
   /// The signer estimates the gas when it sends, so Yield.xyz's `gasLimit` is never read: not even an
   /// invalid one rejects the transaction.
   func test_parseEvm_ignoresTheGasLimit() throws {
     for gasLimit in [#""0x9a0a""#, "39434", #""1e18""#, "true"] {
-      let request = try YieldXyzPerpsPayloads.parseEvmTransactionRequest(
+      let request = try YieldXyzEvmTransactionParams.parse(
         payload(#"{"to":"\#(usdc)","gasLimit":\#(gasLimit)}"#),
         defaultFrom: wallet
       ).get()
 
-      XCTAssertEqual(request, YieldXyzPerpsEvmTransactionRequest(from: wallet, to: usdc), gasLimit)
+      XCTAssertEqual(request, YieldXyzEvmTransactionRequest(from: wallet, to: usdc), gasLimit)
     }
   }
 
   func test_parseEvm_keepsAFromThatDiffersFromTheTransactionAddress() throws {
     let other = "0x000000000000000000000000000000000000dEaD"
 
-    let request = try YieldXyzPerpsPayloads.parseEvmTransactionRequest(payload(#"{"to":"\#(usdc)","from":"\#(other)"}"#), defaultFrom: wallet).get()
+    let request = try YieldXyzEvmTransactionParams.parse(payload(#"{"to":"\#(usdc)","from":"\#(other)"}"#), defaultFrom: wallet).get()
 
-    XCTAssertEqual(request, YieldXyzPerpsEvmTransactionRequest(from: other, to: usdc))
+    XCTAssertEqual(request, YieldXyzEvmTransactionRequest(from: other, to: usdc))
   }
 
   func test_parseEvm_sendsAPayloadWithoutFromFromTheTransactionAddress() throws {
-    let request = try YieldXyzPerpsPayloads.parseEvmTransactionRequest(payload(#"{"to":"\#(usdc)","from":null,"data":null}"#), defaultFrom: wallet).get()
+    let request = try YieldXyzEvmTransactionParams.parse(payload(#"{"to":"\#(usdc)","from":null,"data":null}"#), defaultFrom: wallet).get()
 
-    XCTAssertEqual(request, YieldXyzPerpsEvmTransactionRequest(from: wallet, to: usdc))
+    XCTAssertEqual(request, YieldXyzEvmTransactionRequest(from: wallet, to: usdc))
   }
 
   func test_parseEvm_rejectsMalformedPayloads() {
@@ -209,7 +209,7 @@ final class YieldXyzPerpsPayloadsTests: XCTestCase {
     ]
 
     for (label, input) in cases {
-      if case .success = YieldXyzPerpsPayloads.parseEvmTransactionRequest(input, defaultFrom: wallet) {
+      if case .success = YieldXyzEvmTransactionParams.parse(input, defaultFrom: wallet) {
         XCTFail("Expected \(label) to be rejected.")
       }
     }
@@ -218,21 +218,21 @@ final class YieldXyzPerpsPayloadsTests: XCTestCase {
   // MARK: - Quantities and params
 
   func test_canonicalQuantityHex() {
-    XCTAssertEqual(YieldXyzPerpsPayloads.canonicalQuantityHex("0"), "0x0")
-    XCTAssertEqual(YieldXyzPerpsPayloads.canonicalQuantityHex("0x00"), "0x0")
-    XCTAssertEqual(YieldXyzPerpsPayloads.canonicalQuantityHex("0x0186a0"), "0x186a0")
-    XCTAssertEqual(YieldXyzPerpsPayloads.canonicalQuantityHex("0XDD63"), "0xdd63")
-    XCTAssertEqual(YieldXyzPerpsPayloads.canonicalQuantityHex("56675"), "0xdd63")
-    XCTAssertEqual(YieldXyzPerpsPayloads.canonicalQuantityHex("1000000000000000001"), "0xde0b6b3a7640001")
-    XCTAssertEqual(YieldXyzPerpsPayloads.canonicalQuantityHex("0x000de0b6b3a7640001"), "0xde0b6b3a7640001")
+    XCTAssertEqual(YieldXyzEvmTransactionParams.canonicalQuantityHex("0"), "0x0")
+    XCTAssertEqual(YieldXyzEvmTransactionParams.canonicalQuantityHex("0x00"), "0x0")
+    XCTAssertEqual(YieldXyzEvmTransactionParams.canonicalQuantityHex("0x0186a0"), "0x186a0")
+    XCTAssertEqual(YieldXyzEvmTransactionParams.canonicalQuantityHex("0XDD63"), "0xdd63")
+    XCTAssertEqual(YieldXyzEvmTransactionParams.canonicalQuantityHex("56675"), "0xdd63")
+    XCTAssertEqual(YieldXyzEvmTransactionParams.canonicalQuantityHex("1000000000000000001"), "0xde0b6b3a7640001")
+    XCTAssertEqual(YieldXyzEvmTransactionParams.canonicalQuantityHex("0x000de0b6b3a7640001"), "0xde0b6b3a7640001")
     XCTAssertEqual(
-      YieldXyzPerpsPayloads.canonicalQuantityHex("115792089237316195423570985008687907853269984665640564039457584007913129639935"),
+      YieldXyzEvmTransactionParams.canonicalQuantityHex("115792089237316195423570985008687907853269984665640564039457584007913129639935"),
       "0x" + String(repeating: "f", count: 64)
     )
   }
 
   func test_toSendTransactionParam_canonicalizesTheValue_andLeavesTheGasToTheSigner() {
-    let param = YieldXyzPerpsPayloads.toSendTransactionParam(YieldXyzPerpsEvmTransactionRequest(
+    let param = YieldXyzEvmTransactionParams.toSendTransactionParam(YieldXyzEvmTransactionRequest(
       from: wallet,
       to: usdc,
       data: "0x095ea7b3",
@@ -246,27 +246,27 @@ final class YieldXyzPerpsPayloadsTests: XCTestCase {
     XCTAssertNil(param.nonce)
     XCTAssertNil(param.maxFeePerGas)
 
-    let bare = YieldXyzPerpsPayloads.toSendTransactionParam(YieldXyzPerpsEvmTransactionRequest(from: wallet, to: usdc))
+    let bare = YieldXyzEvmTransactionParams.toSendTransactionParam(YieldXyzEvmTransactionRequest(from: wallet, to: usdc))
     XCTAssertEqual(bare.value, "0x0")
     XCTAssertNil(bare.gas)
     XCTAssertNil(bare.data)
   }
 
   func test_isEvmChainId() {
-    XCTAssertTrue(YieldXyzPerpsPayloads.isEvmChainId("eip155:42161"))
-    XCTAssertFalse(YieldXyzPerpsPayloads.isEvmChainId("eip155:0"))
-    XCTAssertFalse(YieldXyzPerpsPayloads.isEvmChainId("eip155:01"))
-    XCTAssertFalse(YieldXyzPerpsPayloads.isEvmChainId("eip155:"))
-    XCTAssertFalse(YieldXyzPerpsPayloads.isEvmChainId("hyperliquid"))
-    XCTAssertFalse(YieldXyzPerpsPayloads.isEvmChainId("solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"))
+    XCTAssertTrue(YieldXyzEvmTransactionParams.isEvmChainId("eip155:42161"))
+    XCTAssertFalse(YieldXyzEvmTransactionParams.isEvmChainId("eip155:0"))
+    XCTAssertFalse(YieldXyzEvmTransactionParams.isEvmChainId("eip155:01"))
+    XCTAssertFalse(YieldXyzEvmTransactionParams.isEvmChainId("eip155:"))
+    XCTAssertFalse(YieldXyzEvmTransactionParams.isEvmChainId("hyperliquid"))
+    XCTAssertFalse(YieldXyzEvmTransactionParams.isEvmChainId("solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"))
   }
 
   func test_signatureAndHashFormats() {
     XCTAssertTrue(YieldXyzPerpsPayloads.isSignature(YieldXyzPerpsFixtures.signature))
     XCTAssertFalse(YieldXyzPerpsPayloads.isSignature(String(YieldXyzPerpsFixtures.signature.dropFirst(2))))
     XCTAssertFalse(YieldXyzPerpsPayloads.isSignature("0x1234"))
-    XCTAssertTrue(YieldXyzPerpsPayloads.isTransactionHash(YieldXyzPerpsFixtures.fundingTxHash))
-    XCTAssertFalse(YieldXyzPerpsPayloads.isTransactionHash(YieldXyzPerpsFixtures.signature))
+    XCTAssertTrue(YieldXyzEvmTransactionParams.isTransactionHash(YieldXyzPerpsFixtures.fundingTxHash))
+    XCTAssertFalse(YieldXyzEvmTransactionParams.isTransactionHash(YieldXyzPerpsFixtures.signature))
   }
 
   func test_idempotencyKey_isDerivedFromTheTransactionId() {
@@ -281,7 +281,7 @@ final class YieldXyzPerpsPayloadsTests: XCTestCase {
   }
 }
 
-private extension Swift.Result where Failure == YieldXyzPerpsPayloadProblem {
+private extension Swift.Result where Failure == YieldXyzPayloadProblem {
   var failureDescription: String? {
     if case let .failure(problem) = self {
       return problem.description

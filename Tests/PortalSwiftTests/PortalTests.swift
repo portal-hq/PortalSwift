@@ -4035,7 +4035,8 @@ extension PortalTests {
     let param = try XCTUnwrap(call.params?.first?.value as? ETHTransactionParam)
     XCTAssertEqual(param.from, MockConstants.mockEip155Address)
     XCTAssertEqual(param.to, YieldXyzPerpsFixtures.arbitrumUsdc)
-    XCTAssertEqual(param.gas, "0x186a0")
+    // Portal's signer estimates the gas when it sends; Yield.xyz's gasLimit is not forwarded.
+    XCTAssertNil(param.gas)
     XCTAssertEqual(param.value, "0x0")
     XCTAssertEqual(perpsApi.submitTransactionParams.first?.transactionHash, YieldXyzPerpsFixtures.fundingTxHash)
   }
@@ -4073,6 +4074,112 @@ extension PortalTests {
       XCTAssertEqual(error.reason, .transactionNotConfirmed)
       XCTAssertEqual(error.broadcastHash, YieldXyzPerpsFixtures.fundingTxHash)
       XCTAssertTrue(perpsApi.submitTransactionParams.isEmpty)
+    }
+  }
+}
+
+// MARK: - borrow property tests
+
+extension PortalTests {
+  private func borrowApprovalAction(status: YieldXyzBorrowActionStatus = .created, transactionStatus: YieldXyzBorrowTransactionStatus = .created) -> YieldXyzBorrowAction {
+    YieldXyzBorrowFixtures.borrowAction(
+      address: MockConstants.mockEip155Address,
+      status: status,
+      transactions: [YieldXyzBorrowFixtures.approvalTransaction(
+        status: transactionStatus,
+        address: MockConstants.mockEip155Address,
+        signablePayload: AnyCodable(YieldXyzBorrowFixtures.approvalPayload(from: MockConstants.mockEip155Address))
+      )]
+    )
+  }
+
+  /// A Portal whose borrow API returns the approval action, then that action confirmed, and whose
+  /// provider is a spy.
+  private func initPortalForBorrow() throws -> (PortalYieldXyzBorrowApiMock, PortalApiMock, PortalProviderSpy) {
+    let borrowApi = PortalYieldXyzBorrowApiMock()
+    borrowApi.getActionResults = [.success(borrowApprovalAction())]
+    borrowApi.getActionReturnValue = borrowApprovalAction(status: .success, transactionStatus: .confirmed)
+    let apiMock = PortalApiMock(yieldxyzBorrow: borrowApi)
+    apiMock.getTransactionDetailsReturnValue = YieldXyzBorrowFixtures.decode(GetTransactionDetailsResponse.self, """
+    {"data":{"evmTransaction":{"hash":"\(YieldXyzBorrowFixtures.approvalHash)","from":"\(MockConstants.mockEip155Address)","to":null,"value":"0x0","nonce":"0x0","gas":"0xdbb0","input":"0x","type":"0x2"}},"metadata":{"chainId":"eip155:8453","signature":"\(YieldXyzBorrowFixtures.approvalHash)"}}
+    """)
+    try initPortalWithSpy(api: apiMock)
+    let providerSpy = try PortalProviderSpy()
+    setToPortal(portalProvider: providerSpy)
+    return (borrowApi, apiMock, providerSpy)
+  }
+
+  private var fastBorrowOptions: YieldXyzBorrowExecuteOptions {
+    YieldXyzBorrowExecuteOptions(pollOptions: YieldXyzBorrowPollOptions(intervalSeconds: 0.001, timeoutSeconds: 1))
+  }
+
+  func test_borrow_returnsTheSameYieldXyzBorrowInstance() {
+    let first = portal.borrow
+    let second = portal.borrow
+
+    XCTAssertTrue(first === second)
+    XCTAssertTrue(first.yieldxyz is YieldXyzBorrow)
+  }
+
+  func test_borrow_sendsATransactionWithItsIdempotencyKey_andSubmitsTheHashTheLookupResolves() async throws {
+    let (borrowApi, _, providerSpy) = try initPortalForBorrow()
+    providerSpy.requestOptionsReturnValues[.eth_sendTransaction] = YieldXyzBorrowFixtures.approvalHash
+
+    let result = try await portal.borrow.yieldxyz.signAndSubmitAction(borrowApprovalAction(), options: fastBorrowOptions)
+
+    let call = try XCTUnwrap(providerSpy.requestOptionsHistory.first)
+    XCTAssertEqual(call.method, .eth_sendTransaction)
+    XCTAssertEqual(call.chainId, YieldXyzBorrowFixtures.base)
+    XCTAssertEqual(call.options?.idempotencyKey, "yieldxyz-borrow-tx-approval")
+    let param = try XCTUnwrap(call.params?.first?.value as? ETHTransactionParam)
+    XCTAssertEqual(param.from, MockConstants.mockEip155Address)
+    XCTAssertEqual(param.to, YieldXyzBorrowFixtures.usdcBase)
+    // Portal's signer estimates the gas when it sends; Yield.xyz's gasLimit is not forwarded.
+    XCTAssertNil(param.gas)
+    XCTAssertEqual(param.value, "0x0")
+    XCTAssertEqual(borrowApi.submitTransactionCalls.first?.params.transactionHash, YieldXyzBorrowFixtures.approvalHash)
+    XCTAssertEqual(result.status, .success)
+  }
+
+  func test_borrow_mapsADeclinedSignatureToARejection() async throws {
+    let (borrowApi, _, providerSpy) = try initPortalForBorrow()
+    providerSpy.requestOptionsError = ProviderSigningError.userDeclinedApproval
+
+    do {
+      _ = try await portal.borrow.yieldxyz.signAndSubmitAction(borrowApprovalAction(), options: fastBorrowOptions)
+      XCTFail("Expected error not thrown.")
+    } catch let error as YieldXyzBorrowExecutionError {
+      XCTAssertEqual(error.reason, .signatureRejected)
+      XCTAssertTrue(borrowApi.submitTransactionCalls.isEmpty)
+    }
+  }
+
+  func test_borrow_rejectsAChainWithoutAnRpcEndpoint() async throws {
+    let (borrowApi, _, providerSpy) = try initPortalForBorrow()
+    providerSpy.getRpcUrlError = PortalProviderError.noRpcUrlFoundForChainId(YieldXyzBorrowFixtures.base)
+
+    do {
+      _ = try await portal.borrow.yieldxyz.signAndSubmitAction(borrowApprovalAction(), options: fastBorrowOptions)
+      XCTFail("Expected error not thrown.")
+    } catch let error as YieldXyzBorrowExecutionError {
+      XCTAssertEqual(error.reason, .signingChainNotConfigured)
+      XCTAssertTrue(providerSpy.requestOptionsHistory.isEmpty)
+      XCTAssertTrue(borrowApi.submitTransactionCalls.isEmpty)
+    }
+  }
+
+  func test_borrow_rejectsAnActionBuiltForAnotherWallet() async throws {
+    let (borrowApi, _, providerSpy) = try initPortalForBorrow()
+    borrowApi.getActionResults = []
+    borrowApi.getActionReturnValue = YieldXyzBorrowFixtures.borrowAction()
+
+    do {
+      _ = try await portal.borrow.yieldxyz.signAndSubmitAction(YieldXyzBorrowFixtures.borrowAction(), options: fastBorrowOptions)
+      XCTFail("Expected error not thrown.")
+    } catch let error as YieldXyzBorrowExecutionError {
+      XCTAssertEqual(error.reason, .signerAddressMismatch)
+      XCTAssertTrue(error.message.contains(MockConstants.mockEip155Address))
+      XCTAssertTrue(providerSpy.requestOptionsHistory.isEmpty)
     }
   }
 }
