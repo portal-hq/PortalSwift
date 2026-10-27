@@ -443,6 +443,31 @@ extension ViewController {
     return (try? encoder.encode(args)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
   }
 
+  /// The keys `YieldXyzBorrowActionArguments` encodes. Keep in step with its properties.
+  private static let borrowArgKeys: Set<String> = [
+    "marketId", "amount", "amountRaw", "repayAll", "tokenAddress", "collateralTokenAddress",
+    "collateralAmount", "collateralAmountRaw", "borrowAmount", "targetLtv"
+  ]
+
+  /// Decodes the typed args, refusing a key the SDK does not know. The decoder would drop it, so a
+  /// typo like `colateralAmount` would build the action without that field instead of getting
+  /// connect-api's 400.
+  private static func decodeBorrowArgs(_ json: String) throws -> YieldXyzBorrowActionArguments {
+    let data = Data(json.utf8)
+    guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+      throw PortalExampleBorrowError.invalidInput("The args must be a JSON object with a marketId.")
+    }
+    let unknown = Set(object.keys).subtracting(borrowArgKeys).sorted()
+    guard unknown.isEmpty else {
+      throw PortalExampleBorrowError.invalidInput("Unknown args key(s): \(unknown.joined(separator: ", ")).")
+    }
+    do {
+      return try JSONDecoder().decode(YieldXyzBorrowActionArguments.self, from: data)
+    } catch {
+      throw PortalExampleBorrowError.invalidInput("The args must be a JSON object with a marketId: \(error.localizedDescription)")
+    }
+  }
+
   private func buildBorrowAction(integrationId: String, action: String, argsJSON: String) {
     runBorrow("Build \(action.isEmpty ? "action" : action)") { [weak self] portal in
       guard !integrationId.isEmpty else {
@@ -451,12 +476,7 @@ extension ViewController {
       guard !action.isEmpty else {
         throw PortalExampleBorrowError.invalidInput("Enter an action, for example supply.")
       }
-      let args: YieldXyzBorrowActionArguments
-      do {
-        args = try JSONDecoder().decode(YieldXyzBorrowActionArguments.self, from: Data(argsJSON.utf8))
-      } catch {
-        throw PortalExampleBorrowError.invalidInput("The args must be a JSON object with a marketId: \(error.localizedDescription)")
-      }
+      let args = try Self.decodeBorrowArgs(argsJSON)
       let address = try await Self.borrowWalletAddress(portal)
       let built = try await portal.borrow.yieldxyz.createAction(params: YieldXyzBorrowCreateActionParams(
         integrationId: integrationId,
@@ -496,9 +516,11 @@ extension ViewController {
       let resumed = hashes[transaction.id] == nil ? "" : " (broadcast; resumed, not signed again)"
       return "\(index + 1). \(transaction.type.rawValue) on \(transaction.network) \(transaction.status.rawValue)\(resumed)"
     }.joined(separator: "\n")
+    // What is signed, so a tester can check the built amounts and market against what they meant.
+    let args = action.rawArguments.map(Self.borrowJSON) ?? "not returned"
     let alert = UIAlertController(
       title: "Sign and submit \(action.action.rawValue)?",
-      message: "\(Self.describeBorrowImpact(action.metadata))\n\nStep \(action.currentStep)/\(action.totalSteps), transactions:\n\(transactions)\n\n"
+      message: "Args: \(args)\n\n\(Self.describeBorrowImpact(action.metadata))\n\nStep \(action.currentStep)/\(action.totalSteps), transactions:\n\(transactions)\n\n"
         + "Action \(action.id) on \(action.integrationId) [\(action.status.rawValue)]. This signs with your Portal wallet on mainnet and moves real funds.",
       preferredStyle: .alert
     )
