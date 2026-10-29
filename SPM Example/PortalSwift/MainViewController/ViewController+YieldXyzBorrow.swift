@@ -109,13 +109,13 @@ extension ViewController {
     return parts.isEmpty ? error.localizedDescription : parts.joined(separator: "; ")
   }
 
-  /// An MPC failure's error id and message; otherwise the error as Swift prints it, which keeps an
-  /// enum's case and associated values.
+  /// An MPC failure's error id and message; otherwise the error's own description, or as a last
+  /// resort the error as Swift prints it, which keeps an enum's case and associated values.
   private static func describeBorrowCause(_ error: Error) -> String {
     if let mpcError = error as? PortalMpcError {
       return "\(mpcError.id ?? "unknown"): \(mpcError.message ?? "unknown")"
     }
-    return String(describing: error)
+    return (error as? LocalizedError)?.errorDescription ?? String(describing: error)
   }
 
   /// The wallet's EVM address; Borrow requests take it explicitly.
