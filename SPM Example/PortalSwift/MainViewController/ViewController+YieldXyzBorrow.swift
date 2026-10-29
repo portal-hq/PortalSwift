@@ -81,11 +81,16 @@ extension ViewController {
 
   /// A readable description of a borrow failure. An execution failure carries what a resume needs:
   /// its `reason`, the action and transaction ids, and the `broadcastHash` of a transaction that was
-  /// already sent. The Portal error id, when there is one, comes from `YieldXyzBorrowApiError`.
+  /// already sent, plus the error underneath it. The Portal error id, when there is one, comes from
+  /// `YieldXyzBorrowApiError`.
   private static func describeBorrowError(_ error: Error) -> String {
     var parts: [String] = []
     if let execution = error as? YieldXyzBorrowExecutionError {
       parts.append("\(execution.reason.rawValue): \(execution.message)")
+      // Why it failed, for example the revert Portal hit estimating gas. An HTTP failure is described below.
+      if let underlying = execution.underlyingError, YieldXyzBorrowApiError.from(underlying) == nil {
+        parts.append("cause: \(describeBorrowCause(underlying))")
+      }
       if let actionId = execution.actionId {
         parts.append("action \(actionId)")
       }
@@ -102,6 +107,15 @@ extension ViewController {
       parts.append([status, apiError.id, apiError.message].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " "))
     }
     return parts.isEmpty ? error.localizedDescription : parts.joined(separator: "; ")
+  }
+
+  /// An MPC failure's error id and message; otherwise the error as Swift prints it, which keeps an
+  /// enum's case and associated values.
+  private static func describeBorrowCause(_ error: Error) -> String {
+    if let mpcError = error as? PortalMpcError {
+      return "\(mpcError.id ?? "unknown"): \(mpcError.message ?? "unknown")"
+    }
+    return String(describing: error)
   }
 
   /// The wallet's EVM address; Borrow requests take it explicitly.
