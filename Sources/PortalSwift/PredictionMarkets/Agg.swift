@@ -612,9 +612,7 @@ public class Agg: AggProtocol {
         options: pollOptions,
         read: { try await self.linked(autoReconnect, notify) { try await self.api.getOrder(quoteId: quote.quoteId, mode: request.mode) }.data },
         isDone: { $0.terminal },
-        wait: { status in
-          status.pollAfterMs.map { min(max(Double($0) / 1000, Self.minOrderPollInterval), Self.maxOrderPollInterval) }
-        },
+        wait: { Self.orderPollWait(pollAfterMs: $0.pollAfterMs) },
         onRead: {
           last = $0
           notify(AggProgress(step: .pollingOrder, quote: quote, fill: fill, order: $0))
@@ -726,6 +724,12 @@ public class Agg: AggProtocol {
 
   private static func progress(_ onProgress: AggProgressHandler?) -> AggProgressHandler {
     onProgress ?? { _ in }
+  }
+
+  /// Seconds to wait before reading a fill again: Agg's `pollAfterMs`, kept between 0.25 and 10
+  /// seconds; `nil` when Agg sent none, to use the poll interval.
+  static func orderPollWait(pollAfterMs: Int?) -> TimeInterval? {
+    pollAfterMs.map { min(max(Double($0) / 1000, minOrderPollInterval), maxOrderPollInterval) }
   }
 
   /// The integer and fraction digits of a plain positive decimal string (`"1"`, `"1.5"`, `".5"`), or

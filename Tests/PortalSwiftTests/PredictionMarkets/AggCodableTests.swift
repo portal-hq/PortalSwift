@@ -138,8 +138,9 @@ final class AggCodableTests: XCTestCase {
     XCTAssertEqual(try encodedObject(notLinked), ["linked": false])
   }
 
-  func test_depositAddresses_decodesNotReady() throws {
+  func test_depositAddresses_decodesAndEncodesNotReady() throws {
     XCTAssertEqual(try decode(AggDepositAddresses.self, #"{"ready":false}"#), .notReady)
+    XCTAssertEqual(try encodedObject(AggDepositAddresses.notReady), ["ready": false])
   }
 
   func test_activityItem_keepsAnUnknownTypeInsteadOfFailingThePage() throws {

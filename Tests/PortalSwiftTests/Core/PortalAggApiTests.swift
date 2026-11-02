@@ -200,6 +200,76 @@ final class PortalAggApiTests: XCTestCase {
     )
   }
 
+  func test_everyFilter_isSentInOrderAsTheApiSpellsIt() async throws {
+    let cases: [(url: String, response: String, call: (PortalAggApi) async throws -> Void)] = [
+      ("/events/e1?cluster=true", AggFixtures.venueEventDetail, { _ = try await $0.getEvent(eventId: "e1", cluster: true) }),
+      ("/events/e1/bootstrap?limit=5", AggFixtures.venueEventBootstrap, { _ = try await $0.getEventBootstrap(eventId: "e1", limit: 5) }),
+      (
+        "/markets?venueEventId=ev1&status=resolved&venue=kalshi&search=fed%20rates&sortBy=updatedAt&sortDir=asc&projection=summary&limit=20&cursor=c1",
+        AggFixtures.venueMarkets,
+        { _ = try await $0.listMarkets(params: AggListMarketsParams(
+          venueEventId: "ev1", status: .resolved, venue: .kalshi, search: "fed rates", sortBy: .updatedAt, sortDir: .asc, projection: .summary, limit: 20, cursor: "c1"
+        )) }
+      ),
+      (
+        "/search?q=J.D.%20Vance&type=markets&status=open&limit=3&cursor=c2",
+        AggFixtures.searchMarkets,
+        { _ = try await $0.search(params: AggSearchParams(q: "J.D. Vance", type: .markets, status: .open, limit: 3, cursor: "c2")) }
+      ),
+      ("/categories?parentId=p1&limit=2&cursor=c3", AggFixtures.categories, { _ = try await $0.listCategories(params: AggListCategoriesParams(parentId: "p1", limit: 2, cursor: "c3")) }),
+      ("/midpoints?venueMarketIds=m1&bestPrice=true", AggFixtures.midpoints, { _ = try await $0.getMidpoints(venueMarketIds: ["m1"], bestPrice: true) }),
+      ("/orderbooks?venueMarketIds=m1%2Cm2&depth=10", AggFixtures.orderbooks, { _ = try await $0.getOrderbooks(venueMarketIds: ["m1", "m2"], depth: 10) }),
+      ("/orderbooks/outcome/o%2F1?depth=5", AggFixtures.orderbookOutcome, { _ = try await $0.getOutcomeOrderbook(outcomeId: "o/1", depth: 5) }),
+      (
+        "/charts/bars?venueMarketOutcomeId=o1&to=2000&from=1000&resolution=60&countBack=5",
+        AggFixtures.chartBars,
+        { _ = try await $0.getChartBars(params: AggChartParams(venueMarketOutcomeId: "o1", to: 2000, from: 1000, resolution: .oneHour, countBack: 5)) }
+      ),
+      (
+        "/charts/history/manifest?venueMarketOutcomeId=o1&to=2000&resolution=1D",
+        AggFixtures.chartHistoryManifest,
+        { _ = try await $0.getChartHistoryManifest(params: AggChartParams(venueMarketOutcomeId: "o1", to: 2000, resolution: .oneDay)) }
+      ),
+      (
+        "/positions?status=closed&mode=paper&limit=10&cursor=c4",
+        AggFixtures.positionsPaper,
+        { _ = try await $0.listPositions(params: AggListPositionsParams(status: .closed, mode: .paper, limit: 10, cursor: "c4")) }
+      ),
+      (
+        "/orders?quoteId=q1&orderType=limit&mode=live&limit=50&cursor=c5",
+        AggFixtures.orders,
+        { _ = try await $0.listOrders(params: AggListOrdersParams(quoteId: "q1", orderType: .limit, mode: .live, limit: 50, cursor: "c5")) }
+      ),
+      ("/activity?type=user_op&limit=25&cursor=c6", AggFixtures.activity, { _ = try await $0.listActivity(params: AggListActivityParams(type: .userOp, limit: 25, cursor: "c6")) })
+    ]
+    for testCase in cases {
+      spy = PortalRequestsSpy()
+      api = makeApi(retryDelays: [])
+      respond(data: testCase.response)
+
+      try await testCase.call(api)
+
+      XCTAssertEqual(lastUrl, base + testCase.url)
+    }
+  }
+
+  func test_emptyFilterValues_areLeftOut() async throws {
+    respond(data: AggFixtures.venueEvents)
+
+    _ = try await api.listEvents(params: AggListEventsParams(search: "", venues: ["", .polymarket], categoryIds: [], cursor: ""))
+
+    XCTAssertEqual(lastUrl, "\(base)/events?venues=polymarket")
+  }
+
+  func test_aLocalhostHost_isCalledOverHttp() async throws {
+    let api = PortalAggApi(credentials: StaticCredentials(MockConstants.mockApiKey), apiHost: "localhost:3000", requests: spy)
+    respond(data: #"{"linked":false}"#)
+
+    _ = try await api.getLink()
+
+    XCTAssertEqual(lastUrl, "http://localhost:3000/api/v3/clients/me/integrations/agg/link")
+  }
+
   func test_getBalances_sendsSyncAndMode() async throws {
     respond(data: AggFixtures.balances)
 

@@ -764,6 +764,26 @@ final class AggTests: XCTestCase {
     }
   }
 
+  func test_withdraw_aTimeout_failsWithOutcomeUnknownWrappingTheWithdrawalTimeout() async throws {
+    try stubWithdrawal(reads: [.success("transferring")])
+
+    do {
+      _ = try await makeAgg().withdraw(params: withdrawParams(poll: AggPollOptions(interval: 0.01, timeout: 0.05)))
+      XCTFail("Expected withdrawalOutcomeUnknown")
+    } catch AggError.withdrawalOutcomeUnknown(let request, let withdrawal, let last, let underlyingError) {
+      XCTAssertEqual(request.requestId, "r1")
+      XCTAssertEqual(withdrawal?.withdrawalId, "w1")
+      XCTAssertEqual(last?.status, .transferring)
+      guard case let AggError.withdrawalTimeout(withdrawalId, timeoutLast)? = underlyingError as? AggError else {
+        return XCTFail("Expected withdrawalTimeout, got \(underlyingError)")
+      }
+      XCTAssertEqual(withdrawalId, "w1")
+      XCTAssertEqual(timeoutLast?.status, .transferring)
+    } catch {
+      XCTFail("Unexpected error: \(error)")
+    }
+  }
+
   func test_withdraw_roundsTheAmountDownToTheTokenDecimals() async throws {
     try stubWithdrawal()
     var amountRaw: String?
@@ -858,6 +878,257 @@ final class AggTests: XCTestCase {
     } catch {
       XCTFail("Unexpected error: \(error)")
     }
+  }
+
+  // MARK: - Missing dependencies
+
+  func test_connect_withoutAPersonalSignDependency_failsBeforeAnyRequest() async {
+    let agg = makeAgg(dependencies: AggDependencies(getAddress: { _ in Self.wallet }))
+
+    do {
+      _ = try await agg.connect()
+      XCTFail("Expected missingDependency")
+    } catch AggError.missingDependency(let name) {
+      XCTAssertEqual(name, "personalSign")
+    } catch {
+      XCTFail("Unexpected error: \(error)")
+    }
+    XCTAssertTrue(api.calls.isEmpty)
+  }
+
+  func test_deposit_withoutASendAssetDependency_failsBeforeAnyRequest() async {
+    do {
+      _ = try await makeAgg().deposit(params: AggDepositParams(chainId: "eip155:8453", token: "USDC", amount: "1"))
+      XCTFail("Expected missingDependency")
+    } catch AggError.missingDependency(let name) {
+      XCTAssertEqual(name, "sendAsset")
+    } catch {
+      XCTFail("Unexpected error: \(error)")
+    }
+    XCTAssertTrue(api.calls.isEmpty)
+  }
+
+  // MARK: - Polling
+
+  func test_buy_readsThroughANetworkError() async throws {
+    let filled = try execution("filled", terminal: true)
+    try stubTrade(states: [])
+    let networkError = AggRequestError(traceId: "t", underlyingError: URLError(.networkConnectionLost))
+    let reads = Results<AggGetOrderResponse>([.failure(networkError), .success(filled)])
+    api.getOrderHandler = { _, _ in try reads.next() }
+
+    let result = try await makeAgg().buy(params: buyParams())
+
+    XCTAssertEqual(result.status.overallState, .filled)
+    XCTAssertEqual(api.callCount("getOrder"), 2)
+  }
+
+  func test_buy_aReadThatDoesNotDecode_endsTheWaitWithOutcomeUnknown() async throws {
+    try stubTrade(states: [])
+    let decodingError = DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "Unexpected shape"))
+    api.getOrderHandler = { _, _ in throw AggRequestError(traceId: "t", underlyingError: decodingError) }
+
+    do {
+      _ = try await makeAgg().buy(params: buyParams())
+      XCTFail("Expected orderOutcomeUnknown")
+    } catch AggError.orderOutcomeUnknown(_, let fill, _, let underlyingError) {
+      XCTAssertNotNil(fill)
+      XCTAssertTrue((underlyingError as? AggRequestError)?.underlyingError is DecodingError)
+    } catch {
+      XCTFail("Unexpected error: \(error)")
+    }
+    XCTAssertEqual(api.callCount("getOrder"), 1)
+  }
+
+  func test_buy_waitsAtLeastAQuarterSecondWhenAggAsksForLess() async throws {
+    let placing = try AggResponse<AggExecutionStatus>(data: Self.decode(Self.patched(
+      AggFixtures.executionStatus,
+      ["quoteId": "q1", "overallState": "placing", "terminal": false, "pollAfterMs": 1]
+    )))
+    let filled = try execution("filled", terminal: true)
+    try stubTrade(states: [])
+    let reads = Results<AggGetOrderResponse>([.success(placing), .success(filled)])
+    api.getOrderHandler = { _, _ in try reads.next() }
+    let start = Date()
+
+    _ = try await makeAgg().buy(params: buyParams())
+
+    XCTAssertGreaterThanOrEqual(Date().timeIntervalSince(start), Agg.minOrderPollInterval)
+  }
+
+  func test_orderPollWait_keepsAggsPollAfterMsBetweenAQuarterSecondAndTenSeconds() {
+    XCTAssertNil(Agg.orderPollWait(pollAfterMs: nil))
+    XCTAssertEqual(Agg.orderPollWait(pollAfterMs: 0), 0.25)
+    XCTAssertEqual(Agg.orderPollWait(pollAfterMs: 100), 0.25)
+    XCTAssertEqual(Agg.orderPollWait(pollAfterMs: 1500), 1.5)
+    XCTAssertEqual(Agg.orderPollWait(pollAfterMs: 60000), 10)
+  }
+
+  // MARK: - Cancellation
+
+  func test_buy_cancelledWhileWaitingForTheFill_throwsCancellationNotOutcomeUnknown() async throws {
+    try stubTrade(states: [])
+    let polling = expectation(description: "Reading the fill")
+    api.getOrderHandler = { _, _ in
+      polling.fulfill()
+      try await Task.sleep(nanoseconds: 10_000_000_000)
+      throw URLError(.timedOut)
+    }
+    let agg = makeAgg()
+    let params = buyParams(poll: AggPollOptions(interval: 0, timeout: 30))
+    let task = Task { try await agg.buy(params: params) }
+
+    await fulfillment(of: [polling], timeout: 5)
+    task.cancel()
+
+    do {
+      _ = try await task.value
+      XCTFail("Expected a cancellation")
+    } catch {
+      XCTAssertTrue(error is CancellationError, "\(error)")
+    }
+  }
+
+  func test_withdraw_cancelledWhileWaitingForTheWithdrawal_throwsCancellationNotOutcomeUnknown() async throws {
+    try stubWithdrawal()
+    let polling = expectation(description: "Reading the withdrawal")
+    api.getWithdrawalHandler = { _ in
+      polling.fulfill()
+      try await Task.sleep(nanoseconds: 10_000_000_000)
+      throw URLError(.timedOut)
+    }
+    let agg = makeAgg()
+    let params = withdrawParams(poll: AggPollOptions(interval: 0, timeout: 30))
+    let task = Task { try await agg.withdraw(params: params) }
+
+    await fulfillment(of: [polling], timeout: 5)
+    task.cancel()
+
+    do {
+      _ = try await task.value
+      XCTFail("Expected a cancellation")
+    } catch {
+      XCTAssertTrue(error is CancellationError, "\(error)")
+    }
+  }
+
+  // MARK: - Route methods
+
+  /// What a mock route received, thrown back so the test sees exactly what `Agg` passed on.
+  private struct Forwarded: Error, Equatable {
+    let method: String
+    let arguments: String
+
+    init(_ method: String, _ arguments: Any...) {
+      self.method = method
+      self.arguments = arguments.map { "\($0)" }.joined(separator: " | ")
+    }
+  }
+
+  private func assertForwards(_ expected: Forwarded, _ call: () async throws -> Void, file: StaticString = #filePath, line: UInt = #line) async {
+    do {
+      try await call()
+      XCTFail("\(expected.method) did not reach the API", file: file, line: line)
+    } catch let forwarded as Forwarded {
+      XCTAssertEqual(forwarded, expected, file: file, line: line)
+    } catch {
+      XCTFail("\(expected.method) failed with \(error)", file: file, line: line)
+    }
+  }
+
+  func test_everyRouteMethod_forwardsItsArgumentsToTheApiAndItsFailureUnchanged() async {
+    api.createLinkChallengeHandler = { throw Forwarded("createLinkChallenge", $0) }
+    api.createLinkHandler = { throw Forwarded("createLink", $0) }
+    api.getLinkHandler = { throw Forwarded("getLink") }
+    api.deleteLinkHandler = { throw Forwarded("deleteLink") }
+    api.listEventsHandler = { throw Forwarded("listEvents", $0) }
+    api.getEventHandler = { throw Forwarded("getEvent", $0, $1 as Any) }
+    api.getEventBootstrapHandler = { throw Forwarded("getEventBootstrap", $0, $1 as Any) }
+    api.listMarketsHandler = { throw Forwarded("listMarkets", $0) }
+    api.searchHandler = { throw Forwarded("search", $0) }
+    api.listCategoriesHandler = { throw Forwarded("listCategories", $0) }
+    api.getVenueGeoPolicyHandler = { throw Forwarded("getVenueGeoPolicy") }
+    api.getAppConfigHandler = { throw Forwarded("getAppConfig") }
+    api.getMidpointsHandler = { throw Forwarded("getMidpoints", $0, $1 as Any) }
+    api.getOrderbooksHandler = { throw Forwarded("getOrderbooks", $0, $1 as Any) }
+    api.getOutcomeOrderbookHandler = { throw Forwarded("getOutcomeOrderbook", $0, $1 as Any) }
+    api.getChartBarsHandler = { throw Forwarded("getChartBars", $0) }
+    api.getChartHistoryManifestHandler = { throw Forwarded("getChartHistoryManifest", $0) }
+    api.getUserHandler = { throw Forwarded("getUser") }
+    api.getDepositAddressesHandler = { throw Forwarded("getDepositAddresses") }
+    api.getBalancesHandler = { throw Forwarded("getBalances", $0 as Any, $1 as Any) }
+    api.listPositionsHandler = { throw Forwarded("listPositions", $0) }
+    api.listOrdersHandler = { throw Forwarded("listOrders", $0) }
+    api.listActivityHandler = { throw Forwarded("listActivity", $0) }
+    api.createQuoteHandler = { throw Forwarded("createQuote", $0) }
+    api.createOrderHandler = { throw Forwarded("createOrder", $0) }
+    api.getOrderHandler = { throw Forwarded("getOrder", $0, $1 as Any) }
+    api.createLimitOrderHandler = { throw Forwarded("createLimitOrder", $0) }
+    api.createDirectOrderHandler = { throw Forwarded("createDirectOrder", $0) }
+    api.cancelOrderHandler = { throw Forwarded("cancelOrder", $0) }
+    api.redeemPositionsHandler = { throw Forwarded("redeemPositions", $0) }
+    api.quoteWithdrawableHandler = { throw Forwarded("quoteWithdrawable", $0) }
+    api.previewWithdrawalHandler = { throw Forwarded("previewWithdrawal", $0) }
+    api.createWithdrawalHandler = { throw Forwarded("createWithdrawal", $0) }
+    api.getWithdrawalHandler = { throw Forwarded("getWithdrawal", $0) }
+
+    let agg = makeAgg()
+    let challenge = AggLinkChallengeRequest(chainId: "eip155:1")
+    let link = AggLinkRequest(signature: "0xsig")
+    let events = AggListEventsParams(status: .open, venues: [.kalshi], limit: 3)
+    let markets = AggListMarketsParams(venueEventId: "ev1", projection: .summary)
+    let search = AggSearchParams(q: "fed", type: .markets, limit: 2)
+    let categories = AggListCategoriesParams(parentId: "p1")
+    let chart = AggChartParams(venueMarketOutcomeId: "o1", to: 2000, from: 1000, resolution: .oneHour, countBack: 5)
+    let positions = AggListPositionsParams(status: .closed, mode: .paper)
+    let orders = AggListOrdersParams(quoteId: "q1", orderType: .limit)
+    let activity = AggListActivityParams(type: .redeem, limit: 4)
+    let quote = AggQuoteRequest(outcomeId: "o1", side: .buy, amount: "1", mode: .paper)
+    let order = AggOrderRequest(quoteId: "q1", mode: .paper)
+    let limitOrder = AggLimitOrderRequest(venue: .polymarket, venueMarketOutcomeId: "o1", side: .sell, limitPriceRaw: "1", sizeRaw: "2", timeInForce: .fok)
+    let directOrder = AggDirectOrderRequest(venue: .limitless, venueMarketOutcomeId: "o1", side: .buy, externalId: "x1", maxSpend: 1)
+    let cancel = AggCancelOrderRequest(orderId: "or1")
+    let redeem = AggRedeemRequest(venueMarketOutcomeIds: ["v1", "v2"])
+    let withdrawable = AggWithdrawableQuoteRequest(tokenSymbol: .usdt, destinationChainId: "eip155:56")
+    let withdrawal = AggWithdrawalRequest(tokenSymbol: .usdc, destinationChainId: "eip155:8453", amountRaw: "1", requestId: "r1")
+
+    await assertForwards(Forwarded("createLinkChallenge", challenge)) { _ = try await agg.createLinkChallenge(request: challenge) }
+    await assertForwards(Forwarded("createLink", link)) { _ = try await agg.createLink(request: link) }
+    await assertForwards(Forwarded("getLink")) { _ = try await agg.getLink() }
+    await assertForwards(Forwarded("deleteLink")) { _ = try await agg.deleteLink() }
+    await assertForwards(Forwarded("listEvents", events)) { _ = try await agg.listEvents(params: events) }
+    await assertForwards(Forwarded("getEvent", "e1", Bool?.some(true) as Any)) { _ = try await agg.getEvent(eventId: "e1", cluster: true) }
+    await assertForwards(Forwarded("getEventBootstrap", "e1", Int?.some(5) as Any)) { _ = try await agg.getEventBootstrap(eventId: "e1", limit: 5) }
+    await assertForwards(Forwarded("listMarkets", markets)) { _ = try await agg.listMarkets(params: markets) }
+    await assertForwards(Forwarded("search", search)) { _ = try await agg.search(params: search) }
+    await assertForwards(Forwarded("listCategories", categories)) { _ = try await agg.listCategories(params: categories) }
+    await assertForwards(Forwarded("getVenueGeoPolicy")) { _ = try await agg.getVenueGeoPolicy() }
+    await assertForwards(Forwarded("getAppConfig")) { _ = try await agg.getAppConfig() }
+    await assertForwards(Forwarded("getMidpoints", ["m1", "m2"], Bool?.some(true) as Any)) {
+      _ = try await agg.getMidpoints(venueMarketIds: ["m1", "m2"], bestPrice: true)
+    }
+    await assertForwards(Forwarded("getOrderbooks", ["m1"], Int?.some(10) as Any)) { _ = try await agg.getOrderbooks(venueMarketIds: ["m1"], depth: 10) }
+    await assertForwards(Forwarded("getOutcomeOrderbook", "o1", Int?.some(3) as Any)) { _ = try await agg.getOutcomeOrderbook(outcomeId: "o1", depth: 3) }
+    await assertForwards(Forwarded("getChartBars", chart)) { _ = try await agg.getChartBars(params: chart) }
+    await assertForwards(Forwarded("getChartHistoryManifest", chart)) { _ = try await agg.getChartHistoryManifest(params: chart) }
+    await assertForwards(Forwarded("getUser")) { _ = try await agg.getUser() }
+    await assertForwards(Forwarded("getDepositAddresses")) { _ = try await agg.getDepositAddresses() }
+    await assertForwards(Forwarded("getBalances", Bool?.some(true) as Any, AggMode?.some(.paper) as Any)) { _ = try await agg.getBalances(sync: true, mode: .paper) }
+    await assertForwards(Forwarded("listPositions", positions)) { _ = try await agg.listPositions(params: positions) }
+    await assertForwards(Forwarded("listOrders", orders)) { _ = try await agg.listOrders(params: orders) }
+    await assertForwards(Forwarded("listActivity", activity)) { _ = try await agg.listActivity(params: activity) }
+    await assertForwards(Forwarded("createQuote", quote)) { _ = try await agg.createQuote(request: quote) }
+    await assertForwards(Forwarded("createOrder", order)) { _ = try await agg.createOrder(request: order) }
+    await assertForwards(Forwarded("getOrder", "q1", AggMode?.some(.live) as Any)) { _ = try await agg.getOrder(quoteId: "q1", mode: .live) }
+    await assertForwards(Forwarded("createLimitOrder", limitOrder)) { _ = try await agg.createLimitOrder(request: limitOrder) }
+    await assertForwards(Forwarded("createDirectOrder", directOrder)) { _ = try await agg.createDirectOrder(request: directOrder) }
+    await assertForwards(Forwarded("cancelOrder", cancel)) { _ = try await agg.cancelOrder(request: cancel) }
+    await assertForwards(Forwarded("redeemPositions", redeem)) { _ = try await agg.redeemPositions(request: redeem) }
+    await assertForwards(Forwarded("quoteWithdrawable", withdrawable)) { _ = try await agg.quoteWithdrawable(request: withdrawable) }
+    await assertForwards(Forwarded("previewWithdrawal", withdrawal)) { _ = try await agg.previewWithdrawal(request: withdrawal) }
+    await assertForwards(Forwarded("createWithdrawal", withdrawal)) { _ = try await agg.createWithdrawal(request: withdrawal) }
+    await assertForwards(Forwarded("getWithdrawal", "w1")) { _ = try await agg.getWithdrawal(withdrawalId: "w1") }
+    XCTAssertEqual(Set(api.calls).count, 34)
   }
 
   // MARK: - Wiring
