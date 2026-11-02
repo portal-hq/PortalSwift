@@ -64,15 +64,24 @@ public class Agg: AggProtocol {
   /// The only final states in which the fill traded.
   static let successfulExecutionStates: Set<AggExecutionState> = [.filled, .partiallyFilled]
   static let finalWithdrawalStatuses: Set<AggWithdrawalStatus> = [.completed, .partial, .failed]
+  /// The most position pages `redeemAll` reads.
+  static let maxPositionPages = 100
 
   private let api: PortalAggApiProtocol
   private let dependencies: AggDependencies
   /// Seconds before the second attempt of a call `retryingTransient` repeats; the third waits twice
   /// as long.
   private let transientRetryDelay: TimeInterval
-  private let linkChainLock = NSLock()
+  /// Guards the link state below.
+  private let linkLock = NSLock()
   /// The chain the last successful `connect` signed on.
   private var lastLinkChainId: String?
+  /// Bumped by every successful `connect`, so a call refused for the link knows whether a link
+  /// completed after it was sent.
+  private var linkGeneration = 0
+  /// The reconnect `autoReconnect` is running. A helper refused for the link meanwhile waits for it
+  /// instead of signing again.
+  private var inFlightReconnect: Task<Void, Error>?
 
   /// Create an instance of `Agg`.
   /// - Parameters:
@@ -327,7 +336,7 @@ public class Agg: AggProtocol {
 
     let signature = try await personalSign(chainId, challenge.signParams)
     let link = try await api.createLink(request: AggLinkRequest(signature: signature)).data
-    rememberLinkChain(chainId)
+    recordLink(on: chainId)
     return link
   }
 
@@ -455,18 +464,29 @@ public class Agg: AggProtocol {
   /// Redeems every live position whose `redeemStatus` is `eligible`, in batches of 20, and returns
   /// each batch's result; an empty list when nothing is eligible. Holdings on a losing outcome are
   /// left out. The payouts land in the Agg balance at par.
+  ///
+  /// Positions are read page by page, up to 100 pages, and reading stops early if Agg sends back a
+  /// cursor it already sent. If a batch fails, the batches before it are redeemed already; calling
+  /// `redeemAll` again redeems only what is still eligible.
   public func redeemAll(params: AggRedeemAllParams) async throws -> [AggRedeemResult] {
     let notify = Self.progress(params.onProgress)
 
     var positions: [AggPosition] = []
     var cursor: String?
+    var seenCursors = Set<String>()
+    var pages = 0
     repeat {
       let pageCursor = cursor
       let page = try await linked(params.autoReconnect, notify) {
         try await self.api.listPositions(params: AggListPositionsParams(cursor: pageCursor))
       }.data
       positions += page.data
+      pages += 1
       cursor = page.hasMore ? page.nextCursor : nil
+      if let next = cursor, !seenCursors.insert(next).inserted || pages >= Self.maxPositionPages {
+        PortalLogger.shared.warn("[Agg] redeemAll stopped reading positions after \(pages) pages: Agg sent cursor \(next) again or too many pages.")
+        cursor = nil
+      }
     } while cursor != nil
 
     var seen = Set<String>()
@@ -631,36 +651,72 @@ public class Agg: AggProtocol {
     return AggTradeResult(quote: quote, fill: fill, status: status)
   }
 
-  /// Runs an API call; with `autoReconnect`, answers `AGG_LINK_REQUIRED` by running `connect` on the
-  /// chain the last `connect` used (Polygon before any) and retrying the call once. A call refused
-  /// for the link did nothing, so retrying it cannot trade or send twice.
+  /// Runs an API call; with `autoReconnect`, answers `AGG_LINK_REQUIRED` by linking again and
+  /// retrying the call once. A call refused for the link did nothing, so retrying it cannot trade or
+  /// send twice.
+  ///
+  /// Helpers refused at the same time share one reconnect, so the user signs once. A call sent
+  /// before a link that has since completed is only retried.
   private func linked<T>(
     _ autoReconnect: Bool,
     _ notify: AggProgressHandler,
     _ call: () async throws -> T
   ) async throws -> T {
+    let generation = currentLinkGeneration()
     do {
       return try await call()
     } catch {
       guard autoReconnect, AggApiError.from(error)?.isLinkRequired == true else {
         throw error
       }
-      notify(AggProgress(step: .reconnecting))
-      _ = try await connect(chainId: reconnectChainId())
+      if let reconnect = reconnectTask(unlessLinkedSince: generation) {
+        notify(AggProgress(step: .reconnecting))
+        // The reconnect is shared, so this caller's cancellation does not stop it; it is checked
+        // once the reconnect ends.
+        try await reconnect.value
+        try Task.checkCancellation()
+      }
       return try await call()
     }
   }
 
-  private func rememberLinkChain(_ chainId: String) {
-    linkChainLock.lock()
-    defer { linkChainLock.unlock() }
-    lastLinkChainId = chainId
+  private func currentLinkGeneration() -> Int {
+    linkLock.lock()
+    defer { linkLock.unlock() }
+    return linkGeneration
   }
 
-  private func reconnectChainId() -> String {
-    linkChainLock.lock()
-    defer { linkChainLock.unlock() }
-    return lastLinkChainId ?? Self.defaultLinkChainId
+  private func recordLink(on chainId: String) {
+    linkLock.lock()
+    defer { linkLock.unlock() }
+    lastLinkChainId = chainId
+    linkGeneration += 1
+  }
+
+  /// The reconnect to wait for: the one already running, or a new one on the chain of the last
+  /// `connect` (Polygon before any). `nil` when a link completed after `generation` was read.
+  private func reconnectTask(unlessLinkedSince generation: Int) -> Task<Void, Error>? {
+    linkLock.lock()
+    defer { linkLock.unlock() }
+    if linkGeneration != generation {
+      return nil
+    }
+    if let inFlightReconnect {
+      return inFlightReconnect
+    }
+    let chainId = lastLinkChainId ?? Self.defaultLinkChainId
+    let reconnect = Task { [self] in
+      defer { finishReconnect() }
+      _ = try await connect(chainId: chainId)
+    }
+    inFlightReconnect = reconnect
+    return reconnect
+  }
+
+  private func finishReconnect() {
+    linkLock.lock()
+    defer { linkLock.unlock() }
+    inFlightReconnect = nil
   }
 
   /// Reads with `read` until `isDone`, waiting `wait` (or the interval) between reads, for up to the
@@ -775,6 +831,17 @@ enum AggRequestFailure {
   /// Statuses that clear on retry: a rate limit and gateway errors.
   static let transientStatuses: Set<Int> = [429, 502, 503, 504]
 
+  /// Network failures that clear on retry. A TLS or certificate failure does not, so it is not
+  /// listed.
+  static let transientNetworkErrors: Set<URLError.Code> = [
+    .timedOut,
+    .networkConnectionLost,
+    .notConnectedToInternet,
+    .cannotConnectToHost,
+    .cannotFindHost,
+    .dnsLookupFailed
+  ]
+
   /// A failure that clears on retry: a rate limit, a gateway error or a network error.
   static func isTransient(_ error: Error) -> Bool {
     guard let requestError = error as? AggRequestError else {
@@ -783,7 +850,10 @@ enum AggRequestFailure {
     if let status = AggApiError.from(requestError)?.status {
       return transientStatuses.contains(status)
     }
-    return requestError.underlyingError is URLError
+    guard let urlError = requestError.underlyingError as? URLError else {
+      return false
+    }
+    return transientNetworkErrors.contains(urlError.code)
   }
 
   /// A failure after which Agg may or may not have acted on the request: a 5xx (other than a

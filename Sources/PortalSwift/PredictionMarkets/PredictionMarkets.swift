@@ -15,11 +15,18 @@ public class PredictionMarkets {
   /// This property can be set for custom implementations.
   public var agg: AggProtocol
 
+  /// Create an instance of PredictionMarkets around an Agg implementation, for example a test double
+  /// for a `PortalProtocol` conformance.
+  /// - Parameter agg: The Agg implementation `agg` returns.
+  public init(agg: AggProtocol) {
+    self.agg = agg
+  }
+
   /// Create an instance of PredictionMarkets.
   /// - Parameters:
   ///   - api: The Portal API instance to use for prediction-markets operations.
   ///   - dependencies: What `connect` and `deposit` need to sign and send (injected by Portal).
-  init(api: PortalApiProtocol, dependencies: AggDependencies = AggDependencies()) {
-    self.agg = Agg(api: api.agg, dependencies: dependencies)
+  convenience init(api: PortalApiProtocol, dependencies: AggDependencies = AggDependencies()) {
+    self.init(agg: Agg(api: api.agg, dependencies: dependencies))
   }
 }

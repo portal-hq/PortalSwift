@@ -68,6 +68,29 @@ final class AggTests: XCTestCase {
     }
   }
 
+  /// A value two tasks read and write at once.
+  private final class Locked<T> {
+    private let lock = NSLock()
+    private var stored: T
+
+    init(_ value: T) {
+      self.stored = value
+    }
+
+    var value: T {
+      get {
+        lock.lock()
+        defer { lock.unlock() }
+        return stored
+      }
+      set {
+        lock.lock()
+        stored = newValue
+        lock.unlock()
+      }
+    }
+  }
+
   private func makeAgg(dependencies: AggDependencies? = nil) -> Agg {
     Agg(api: api, dependencies: dependencies ?? linkDependencies(), transientRetryDelay: 0)
   }
@@ -542,6 +565,160 @@ final class AggTests: XCTestCase {
     XCTAssertEqual(challengeChains, [Agg.defaultLinkChainId])
   }
 
+  /// Two buys refused for the link while the account is unlinked. The signature waits until both
+  /// report `.reconnecting`, which a helper does once it holds the reconnect it waits for, so both
+  /// wait for the same one.
+  private func stubTwoHelpersRefusedForTheLink(personalSign: @escaping () throws -> String) throws -> (Agg, Locked<Int>) {
+    try stubTrade(states: [("filled", true)])
+    try stubLink()
+    let quote = try quote()
+    let linked = Locked(false)
+    let signatures = Locked(0)
+    let progress = try XCTUnwrap(self.progress)
+    api.createQuoteHandler = { _ in
+      guard linked.value else {
+        throw Self.linkRequired
+      }
+      return quote
+    }
+    let createLink = api.createLinkHandler
+    api.createLinkHandler = { request in
+      let link = try await XCTUnwrap(createLink)(request)
+      linked.value = true
+      return link
+    }
+    let agg = makeAgg(dependencies: AggDependencies(
+      getAddress: { _ in Self.wallet },
+      personalSign: { _, _ in
+        signatures.value += 1
+        let deadline = Date().addingTimeInterval(5)
+        while progress.steps.filter({ $0 == .reconnecting }).count < 2, Date() < deadline {
+          try await Task.sleep(nanoseconds: 1_000_000)
+        }
+        return try personalSign()
+      },
+      isChainConfigured: { _ in true }
+    ))
+    return (agg, signatures)
+  }
+
+  private func outcome(of agg: Agg, _ params: AggBuyParams) async -> Swift.Result<AggTradeResult, Error> {
+    do {
+      return try await .success(agg.buy(params: params))
+    } catch {
+      return .failure(error)
+    }
+  }
+
+  func test_autoReconnect_helpersRefusedAtTheSameTime_shareOneSignature() async throws {
+    let (agg, signatures) = try stubTwoHelpersRefusedForTheLink { "0xsig" }
+    let params = buyParams(autoReconnect: true)
+
+    async let first = agg.buy(params: params)
+    async let second = agg.buy(params: params)
+    let results = try await [first, second]
+
+    XCTAssertEqual(results.map(\.status.overallState), [.filled, .filled])
+    XCTAssertEqual(signatures.value, 1)
+    XCTAssertEqual(api.callCount("createLinkChallenge"), 1)
+    XCTAssertEqual(api.callCount("createLink"), 1)
+  }
+
+  func test_autoReconnect_aSharedReconnectThatFails_failsEveryHelperWaitingForIt() async throws {
+    let declined = NSError(domain: "AggTests", code: 2, userInfo: [NSLocalizedDescriptionKey: "Signature declined"])
+    let (agg, signatures) = try stubTwoHelpersRefusedForTheLink { throw declined }
+    let params = buyParams(autoReconnect: true)
+
+    async let first = outcome(of: agg, params)
+    async let second = outcome(of: agg, params)
+    let results = await [first, second]
+
+    for result in results {
+      guard case let .failure(error as NSError) = result else {
+        return XCTFail("Expected the declined signature, got \(result)")
+      }
+      XCTAssertEqual(error.domain, "AggTests")
+      XCTAssertEqual(error.code, 2)
+    }
+    XCTAssertEqual(signatures.value, 1)
+    XCTAssertEqual(api.callCount("createLink"), 0)
+  }
+
+  func test_autoReconnect_aCallSentBeforeALinkThatCompleted_isRetriedWithoutSigningAgain() async throws {
+    try stubTrade(states: [("filled", true)])
+    try stubLink()
+    let signatures = Box<[[String]]>([])
+    let agg = makeAgg(dependencies: linkDependencies(signatures: signatures))
+    let quote = try quote()
+    let quoteCalls = Locked(0)
+    api.createQuoteHandler = { _ in
+      quoteCalls.value += 1
+      guard quoteCalls.value > 1 else {
+        // The account links while this call is in flight, and the call is still refused.
+        _ = try await agg.connect()
+        throw Self.linkRequired
+      }
+      return quote
+    }
+
+    _ = try await agg.buy(params: buyParams(autoReconnect: true))
+
+    XCTAssertEqual(signatures.value.count, 1)
+    XCTAssertEqual(api.callCount("createQuote"), 2)
+    XCTAssertFalse(progress.steps.contains(.reconnecting))
+  }
+
+  // MARK: - Transient failures
+
+  func test_isTransient_coversRateLimitsGatewayErrorsAndNetworkFailures() {
+    let transient: [Error] = [
+      Self.apiError(429),
+      Self.apiError(502),
+      Self.apiError(503),
+      Self.apiError(504),
+      AggRequestError(traceId: "t", underlyingError: URLError(.timedOut)),
+      AggRequestError(traceId: "t", underlyingError: URLError(.networkConnectionLost)),
+      AggRequestError(traceId: "t", underlyingError: URLError(.notConnectedToInternet)),
+      AggRequestError(traceId: "t", underlyingError: URLError(.cannotConnectToHost)),
+      AggRequestError(traceId: "t", underlyingError: URLError(.cannotFindHost)),
+      AggRequestError(traceId: "t", underlyingError: URLError(.dnsLookupFailed))
+    ]
+    let lasting: [Error] = [
+      Self.apiError(400),
+      Self.apiError(409),
+      Self.apiError(500),
+      AggRequestError(traceId: "t", underlyingError: URLError(.serverCertificateUntrusted)),
+      AggRequestError(traceId: "t", underlyingError: URLError(.secureConnectionFailed)),
+      AggRequestError(traceId: "t", underlyingError: URLError(.clientCertificateRejected)),
+      AggRequestError(traceId: "t", underlyingError: DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "x"))),
+      URLError(.timedOut),
+      AggError.noAddress
+    ]
+
+    for error in transient {
+      XCTAssertTrue(AggRequestFailure.isTransient(error), "\(error)")
+    }
+    for error in lasting {
+      XCTAssertFalse(AggRequestFailure.isTransient(error), "\(error)")
+    }
+  }
+
+  func test_buy_aCertificateFailure_isNotReadThrough() async throws {
+    try stubTrade(states: [])
+    api.getOrderHandler = { _, _ in throw AggRequestError(traceId: "t", underlyingError: URLError(.serverCertificateUntrusted)) }
+
+    do {
+      _ = try await makeAgg().buy(params: buyParams())
+      XCTFail("Expected orderOutcomeUnknown")
+    } catch AggError.orderOutcomeUnknown(_, let fill, _, let underlyingError) {
+      XCTAssertNotNil(fill)
+      XCTAssertEqual(((underlyingError as? AggRequestError)?.underlyingError as? URLError)?.code, .serverCertificateUntrusted)
+    } catch {
+      XCTFail("Unexpected error: \(error)")
+    }
+    XCTAssertEqual(api.callCount("getOrder"), 1)
+  }
+
   // MARK: - placeLimitOrder
 
   func test_placeLimitOrder_scalesThePriceAndSharesBy1e6() async throws {
@@ -641,6 +818,41 @@ final class AggTests: XCTestCase {
 
     XCTAssertTrue(results.isEmpty)
     XCTAssertEqual(api.callCount("redeemPositions"), 0)
+  }
+
+  func test_redeemAll_stopsReadingWhenAggSendsACursorAgain_andRedeemsWhatItRead() async throws {
+    let page: AggListPositionsResponse = try AggResponse(data: Self.decode(
+      #"{"data":[\#(position(redeemStatus: "eligible", outcomes: [(true, ["v1"])]))],"nextCursor":"same","hasMore":true}"#
+    ))
+    var cursors: [String?] = []
+    api.listPositionsHandler = { params in
+      cursors.append(params.cursor)
+      return page
+    }
+    var batches: [[String]] = []
+    let redeemed: AggRedeemResult = try Self.decode(AggFixtures.redeem)
+    api.redeemPositionsHandler = { request in
+      batches.append(request.venueMarketOutcomeIds)
+      return AggResponse(data: redeemed)
+    }
+
+    _ = try await makeAgg().redeemAll()
+
+    XCTAssertEqual(cursors, [nil, "same"])
+    XCTAssertEqual(batches, [["v1"]])
+  }
+
+  func test_redeemAll_readsAtMost100Pages() async throws {
+    var calls = 0
+    api.listPositionsHandler = { _ in
+      calls += 1
+      return try AggResponse(data: Self.decode(#"{"data":[],"nextCursor":"c\#(calls)","hasMore":true}"#))
+    }
+
+    let results = try await makeAgg().redeemAll()
+
+    XCTAssertTrue(results.isEmpty)
+    XCTAssertEqual(calls, Agg.maxPositionPages)
   }
 
   // MARK: - withdraw
@@ -1132,6 +1344,12 @@ final class AggTests: XCTestCase {
   }
 
   // MARK: - Wiring
+
+  func test_predictionMarkets_canWrapAnAggImplementation() {
+    let agg = makeAgg()
+
+    XCTAssertTrue(PredictionMarkets(agg: agg).agg === agg)
+  }
 
   func test_predictionMarkets_routesAggThroughTheApisAgg() async throws {
     api.getLinkHandler = { AggGetLinkResponse(data: .notLinked) }

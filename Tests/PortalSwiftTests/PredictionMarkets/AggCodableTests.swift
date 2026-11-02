@@ -189,6 +189,18 @@ final class AggCodableTests: XCTestCase {
     XCTAssertEqual(AggActivityType.userOp.rawValue, "user_op")
   }
 
+  func test_openValues_matchFromALiteralAndPrintTheirRawValue() {
+    let status: AggOrderStatus = "filled"
+
+    switch status {
+    case .filled:
+      break
+    default:
+      XCTFail("Expected .filled to match.")
+    }
+    XCTAssertEqual(status.description, "filled")
+  }
+
   // MARK: - Requests
 
   func test_quoteRequest_encodesItsFieldsAndLeavesOutUnsetOnes() throws {

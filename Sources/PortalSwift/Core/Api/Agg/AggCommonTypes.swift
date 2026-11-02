@@ -125,12 +125,6 @@ public enum AggActivityType: String, Codable, Equatable {
 
 // MARK: - Open values
 
-/// A string Agg types as an open set: the known values are static members, and a value Agg adds
-/// later decodes as-is and re-encodes verbatim instead of failing.
-///
-/// Compare with `==` or `switch` on the static members (a `switch` needs a `default`).
-public protocol AggOpenValue: YieldXyzOpenValue {}
-
 /// A venue Agg routes to.
 public struct AggVenue: AggOpenValue {
   public let rawValue: String
