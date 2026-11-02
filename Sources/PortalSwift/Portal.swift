@@ -166,6 +166,38 @@ public final class Portal: PortalProtocol {
     }
   )
 
+  /// Access to prediction-markets functionality (Agg).
+  public lazy var predictionMarkets: PredictionMarkets = .init(
+    api: self.api,
+    dependencies: AggDependencies(
+      getAddress: { [weak self] chainId in
+        await self?.getAddress(chainId)
+      },
+      personalSign: { [weak self] chainId, params in
+        guard let self else {
+          throw PortalClassError.clientNotAvailable
+        }
+        let response = try await self.request(chainId: chainId, method: .personal_sign, params: params)
+        guard let signature = response.result as? String else {
+          throw PortalClassError.invalidResponseTypeForRequest
+        }
+        return signature
+      },
+      isChainConfigured: { [weak self] chainId in
+        guard let self else {
+          return false
+        }
+        return await self.getRpcUrl(forChainId: chainId) != nil
+      },
+      sendAsset: { [weak self] chainId, params in
+        guard let self else {
+          throw PortalClassError.clientNotAvailable
+        }
+        return try await self.sendAsset(chainId: chainId, params: params).txHash
+      }
+    )
+  )
+
   /// Access to security-related functionality.
   public lazy var security: Security = .init(api: self.api)
 

@@ -13,6 +13,7 @@ public protocol PortalApiProtocol: AnyObject {
   var yieldxyz: PortalYieldXyzApiProtocol { get }
   var yieldxyzPerps: PortalYieldXyzPerpsApiProtocol { get }
   var yieldxyzBorrow: PortalYieldXyzBorrowApiProtocol { get }
+  var agg: PortalAggApiProtocol { get }
   var lifi: PortalLifiTradingApiProtocol { get }
   var zeroX: PortalZeroXTradingApiProtocol { get }
   var hypernative: PortalHypernativeApiProtocol { get }
@@ -202,6 +203,13 @@ public class PortalApi: PortalApiProtocol {
 
   /// Access to Yield.xyz Borrow integration functionality.
   public lazy var yieldxyzBorrow: PortalYieldXyzBorrowApiProtocol = PortalYieldXyzBorrowApi(
+    credentials: self.credentials,
+    apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
+    requests: self.requests
+  )
+
+  /// Access to the Agg prediction-markets integration: one method per route.
+  public lazy var agg: PortalAggApiProtocol = PortalAggApi(
     credentials: self.credentials,
     apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
     requests: self.requests

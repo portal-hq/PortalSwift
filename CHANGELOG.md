@@ -34,10 +34,19 @@ Possible Types of changes include:
     - Transactions are sent with an idempotency key derived from the transaction, so a resumed action does not broadcast the same transaction again while Portal remembers the key (at least 24 hours). A transaction broadcast by an earlier attempt can be resumed from its hash with `broadcastHashes`, and a later step of a multi-step action from the `action` its `nextStep` progress event reports. To sign a transaction again after a failed send you have checked did not reach the chain, build a new action or set `useIdempotencyKeys` to `false`.
     - `YieldXyzBorrowApiError.from(_:)` reads the Portal error `id` and `details` of a failed request, for example `INTEGRATION_RESPONSE_SCHEMA_DRIFT`.
     - Every chain a transaction is signed on needs an RPC endpoint in `rpcConfig`, unless you pass your own signer in `signAndSendTransaction`.
+- Agg prediction markets: browse and trade prediction markets across venues such as Polymarket, Kalshi and Limitless through one Agg account linked to the Portal wallet, with the new `portal.predictionMarkets.agg` namespace. The same route methods are also on `portal.api.agg`.
+    - One method per Agg route: link (`createLinkChallenge`, `createLink`, `getLink`, `deleteLink`), discovery (`listEvents`, `getEvent`, `getEventBootstrap`, `listMarkets`, `search`, `listCategories`, `getVenueGeoPolicy`, `getAppConfig`), market data (`getMidpoints`, `getOrderbooks`, `getOutcomeOrderbook`, `getChartBars`, `getChartHistoryManifest`), account (`getUser`, `getDepositAddresses`, `getBalances`, `listPositions`, `listOrders`, `listActivity`), trading (`createQuote`, `createOrder`, `getOrder`, `createLimitOrder`, `createDirectOrder`, `cancelOrder`, `redeemPositions`) and withdrawals (`quoteWithdrawable`, `previewWithdrawal`, `createWithdrawal`, `getWithdrawal`). Discovery and market data work before linking.
+    - `connect(chainId:)` links the wallet with one `personal_sign` of Agg's sign-in challenge, after checking that the challenge names the wallet's own address. `isConnected()` reads the link.
+    - `deposit(params:)` waits for the user's Agg deposit address and sends funds to it from the Portal wallet, with an idempotency key so a retry never sends twice.
+    - `buy(params:)` and `sell(params:)` quote, fill and wait for the fill to finish, reporting each step through `onProgress`. Only a `filled` or `partially_filled` fill succeeds. A fill that may have gone through but could not be read back fails with `AggError.orderOutcomeUnknown`, which carries the quote to look the fill up with `getOrder` instead of trading again.
+    - `placeLimitOrder(params:)` takes the price and size as decimals, `redeemAll(params:)` redeems every eligible position, and `withdraw(params:)` previews, withdraws with a `requestId` that makes it safe to retry, and waits for the withdrawal to finish.
+    - Paper mode (`mode: .paper`) simulates trades from any country.
+    - `AggApiError.from(_:)` reads the Portal error `id`, Agg's `details` and the request's trace id of a failed request, for example `AGG_LINK_REQUIRED`.
+    - Agg executes orders from the user's Agg balance; self-custody fills are not available yet.
 
 ### Changed
 
-- `PortalProtocol` gains `perps` and `borrow`, and `PortalApiProtocol` gains `yieldxyzPerps` and `yieldxyzBorrow`. If you conform to either protocol yourself, for example in a test double, add the new members.
+- `PortalProtocol` gains `perps`, `borrow` and `predictionMarkets`, and `PortalApiProtocol` gains `yieldxyzPerps`, `yieldxyzBorrow` and `agg`. If you conform to either protocol yourself, for example in a test double, add the new members.
 
 ## 8.1.0 - 2026-10-08
 
