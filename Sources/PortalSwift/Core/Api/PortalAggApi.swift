@@ -121,8 +121,9 @@ public extension PortalAggApiProtocol {
 /// a bearer token, and return `{ "data": ... }`. A request the SDK refuses before sending it (an
 /// empty path id) throws `AggError.emptyIdentifier`. Every failure after the request was sent is
 /// thrown as an `AggRequestError`, which carries the transport's error and the `X-Portal-Trace-Id`
-/// the request was sent with; read the Portal error `id`, Agg's `details` and the trace id with
-/// `AggApiError.from(_:)`.
+/// the request was sent with, where the other Portal API classes throw the transport's error
+/// itself: match `PortalRequestsError` on its `underlyingError`. Read the Portal error `id`, Agg's
+/// `details` and the trace id with `AggApiError.from(_:)`.
 ///
 /// `503 AGG_SESSION_REFRESH_IN_PROGRESS` is retried after 0.5, 1 and 2 seconds. The Portal API
 /// returns it before it calls Agg, or after Agg rejected the session, so the request did nothing and

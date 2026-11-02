@@ -9,8 +9,10 @@ import Foundation
 
 /// Real Agg responses, from connect-api `src/libs/agg/fixtures/` (production runs on 2026-10-07/08,
 /// raw reads on 2026-10-20 and 2026-10-29). Each is the `data` Portal wraps in `{ "data": ... }`,
-/// with Agg's numeric chain ids turned into CAIP-2 as the Portal API returns them. Large lists are
-/// cut to their first items and long texts are shortened; neither changes a field's type.
+/// with Agg's numeric chain ids turned into CAIP-2 as the Portal API returns them (connect-api's
+/// `normalizeAggChainIds`). Large lists are cut to their first items and long texts are shortened;
+/// neither changes a field's type. A one-off snapshot: when connect-api adds a fixture or a field,
+/// copy the new response in the same way.
 enum AggFixtures {
   /// `fixtures/activity.json`
   static let activity = #"""

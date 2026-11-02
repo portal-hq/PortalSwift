@@ -69,9 +69,7 @@ final class AggTests: XCTestCase {
   }
 
   private func makeAgg(dependencies: AggDependencies? = nil) -> Agg {
-    let agg = Agg(api: api, dependencies: dependencies ?? linkDependencies())
-    agg.transientRetryDelay = 0
-    return agg
+    Agg(api: api, dependencies: dependencies ?? linkDependencies(), transientRetryDelay: 0)
   }
 
   private func linkDependencies(signatures: Box<[[String]]> = Box([])) -> AggDependencies {
@@ -447,6 +445,101 @@ final class AggTests: XCTestCase {
       XCTAssertEqual(AggApiError.from(error)?.isLinkRequired, true)
     }
     XCTAssertEqual(api.calls, ["createQuote"])
+  }
+
+  func test_buy_retriesATransientFillWithTheSameQuote() async throws {
+    try stubTrade(states: [("filled", true)])
+    let fill = try fill()
+    let attempts = Results<AggCreateOrderResponse>([.failure(Self.apiError(503)), .failure(Self.apiError(502)), .success(fill)])
+    var quoteIds: [String] = []
+    api.createOrderHandler = { request in
+      quoteIds.append(request.quoteId)
+      return try attempts.next()
+    }
+
+    let result = try await makeAgg().buy(params: buyParams())
+
+    XCTAssertEqual(result.status.overallState, .filled)
+    XCTAssertEqual(quoteIds, ["q1", "q1", "q1"])
+  }
+
+  func test_buy_aFillThatKeepsFailingTransiently_failsWithOutcomeUnknownAfterThreeAttempts() async throws {
+    try stubTrade(states: [("filled", true)])
+    api.createOrderHandler = { _ in throw Self.apiError(503) }
+
+    do {
+      _ = try await makeAgg().buy(params: buyParams())
+      XCTFail("Expected orderOutcomeUnknown")
+    } catch AggError.orderOutcomeUnknown(let quote, let fill, _, let underlyingError) {
+      XCTAssertEqual(quote.quoteId, "q1")
+      XCTAssertNil(fill)
+      XCTAssertEqual(AggApiError.from(underlyingError)?.status, 503)
+    } catch {
+      XCTFail("Unexpected error: \(error)")
+    }
+    XCTAssertEqual(api.callCount("createOrder"), 3)
+  }
+
+  /// A fill refused for the link did nothing, so a reconnect that fails afterwards is not an
+  /// unknown outcome.
+  func test_buy_aFailedReconnectAfterTheFillWasRefused_isNotOutcomeUnknown() async throws {
+    try stubTrade(states: [("filled", true)])
+    try stubLink()
+    api.createOrderHandler = { _ in throw Self.linkRequired }
+    let declined = NSError(domain: "AggTests", code: 1, userInfo: [NSLocalizedDescriptionKey: "Signature declined"])
+    let agg = makeAgg(dependencies: AggDependencies(
+      getAddress: { _ in Self.wallet },
+      personalSign: { _, _ in throw declined },
+      isChainConfigured: { _ in true }
+    ))
+
+    do {
+      _ = try await agg.buy(params: buyParams(autoReconnect: true))
+      XCTFail("Expected the signing error")
+    } catch let error as NSError where error.domain == "AggTests" {
+      XCTAssertEqual(error.code, 1)
+    } catch {
+      XCTFail("Unexpected error: \(error)")
+    }
+    XCTAssertEqual(api.calls, ["createQuote", "createOrder", "createLinkChallenge"])
+  }
+
+  func test_autoReconnect_linksAgainOnTheChainTheLastConnectUsed() async throws {
+    try stubTrade(states: [("filled", true)])
+    try stubLink()
+    var challengeChains: [String?] = []
+    let createLinkChallenge = api.createLinkChallengeHandler
+    api.createLinkChallengeHandler = { request in
+      challengeChains.append(request.chainId)
+      return try await XCTUnwrap(createLinkChallenge)(request)
+    }
+    let quote = try quote()
+    let quotes = Results<AggCreateQuoteResponse>([.failure(Self.linkRequired), .success(quote)])
+    api.createQuoteHandler = { _ in try quotes.next() }
+    let agg = makeAgg()
+
+    _ = try await agg.connect(chainId: "eip155:8453")
+    _ = try await agg.buy(params: buyParams(autoReconnect: true))
+
+    XCTAssertEqual(challengeChains, ["eip155:8453", "eip155:8453"])
+  }
+
+  func test_autoReconnect_beforeAnyConnect_linksOnPolygon() async throws {
+    try stubTrade(states: [("filled", true)])
+    try stubLink()
+    var challengeChains: [String?] = []
+    let createLinkChallenge = api.createLinkChallengeHandler
+    api.createLinkChallengeHandler = { request in
+      challengeChains.append(request.chainId)
+      return try await XCTUnwrap(createLinkChallenge)(request)
+    }
+    let quote = try quote()
+    let quotes = Results<AggCreateQuoteResponse>([.failure(Self.linkRequired), .success(quote)])
+    api.createQuoteHandler = { _ in try quotes.next() }
+
+    _ = try await makeAgg().buy(params: buyParams(autoReconnect: true))
+
+    XCTAssertEqual(challengeChains, [Agg.defaultLinkChainId])
   }
 
   // MARK: - placeLimitOrder

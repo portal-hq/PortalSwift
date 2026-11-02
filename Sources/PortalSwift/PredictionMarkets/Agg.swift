@@ -68,17 +68,25 @@ public class Agg: AggProtocol {
   private let api: PortalAggApiProtocol
   private let dependencies: AggDependencies
   /// Seconds before the second attempt of a call `retryingTransient` repeats; the third waits twice
-  /// as long. Settable for tests.
-  var transientRetryDelay: TimeInterval = 1
+  /// as long.
+  private let transientRetryDelay: TimeInterval
+  private let linkChainLock = NSLock()
+  /// The chain the last successful `connect` signed on.
+  private var lastLinkChainId: String?
 
   /// Create an instance of `Agg`.
   /// - Parameters:
   ///   - api: The Agg API.
   ///   - dependencies: What `connect` and `deposit` need to sign and send. `Portal` provides all of
   ///     them.
-  public init(api: PortalAggApiProtocol, dependencies: AggDependencies = AggDependencies()) {
+  public convenience init(api: PortalAggApiProtocol, dependencies: AggDependencies = AggDependencies()) {
+    self.init(api: api, dependencies: dependencies, transientRetryDelay: 1)
+  }
+
+  init(api: PortalAggApiProtocol, dependencies: AggDependencies, transientRetryDelay: TimeInterval) {
     self.api = api
     self.dependencies = dependencies
+    self.transientRetryDelay = transientRetryDelay
   }
 
   /*******************************************
@@ -294,7 +302,8 @@ public class Agg: AggProtocol {
   ///
   /// Nothing is signed unless `chainId` has an RPC URL configured (`AggError.missingRpcUrl`) and the
   /// challenge names the wallet's own address (`AggError.addressMismatch`). With Signature Approvals
-  /// on, the signature reaches the approval hook as a normal `personal_sign`.
+  /// on, the signature reaches the approval hook as a normal `personal_sign`. A helper's
+  /// `autoReconnect` links again on the chain of the last successful `connect`.
   /// - Parameter chainId: The CAIP-2 EVM chain named in the sign-in message and used to sign it.
   public func connect(chainId: String) async throws -> AggLink {
     if let isChainConfigured = dependencies.isChainConfigured {
@@ -317,7 +326,9 @@ public class Agg: AggProtocol {
     }
 
     let signature = try await personalSign(chainId, challenge.signParams)
-    return try await api.createLink(request: AggLinkRequest(signature: signature)).data
+    let link = try await api.createLink(request: AggLinkRequest(signature: signature)).data
+    rememberLinkChain(chainId)
+    return link
   }
 
   /// Whether the client is linked to Agg. Where the Portal API checks the Agg session on `GET /link`
@@ -346,6 +357,7 @@ public class Agg: AggProtocol {
       isDone: { $0.isReady },
       timeout: { AggError.depositAddressesTimeout(last: $0) }
     )
+    // `poll` returns only once `isDone` holds, so this unwraps a `.ready`; the `else` cannot run.
     guard case let .ready(ready) = addresses else {
       throw AggError.depositAddressesTimeout(last: addresses)
     }
@@ -370,7 +382,8 @@ public class Agg: AggProtocol {
   }
 
   /// Buys an outcome: quotes, fills at once (protected by `params.slippageBps`) and waits for the
-  /// fill to finish.
+  /// fill to finish. A fill that fails transiently is sent again with the same quote, which Agg
+  /// fills only once.
   ///
   /// Succeeds when the fill ends `filled` or `partially_filled` (read `status.orders[]` for how much
   /// traded). Fails with `AggError.quoteNotTradable` when the quote cannot be filled and nothing was
@@ -576,9 +589,13 @@ public class Agg: AggProtocol {
     notify(AggProgress(step: .filling, quote: quote))
     let fill: AggFill
     do {
-      fill = try await linked(autoReconnect, notify) {
-        try await self.api.createOrder(request: AggOrderRequest(quoteId: quote.quoteId, mode: request.mode))
-      }.data
+      // Agg fills a quote once: sending the same `quoteId` again returns that fill
+      // (`alreadyAccepted`), so a transient failure is safe to repeat.
+      fill = try await retryingTransient {
+        try await self.linked(autoReconnect, notify) {
+          try await self.api.createOrder(request: AggOrderRequest(quoteId: quote.quoteId, mode: request.mode))
+        }.data
+      }
     } catch {
       // A fill whose response was lost may have gone through: the quote id is how to find it.
       if !YieldXyzCancellation.isCancellation(error), AggRequestFailure.isAmbiguous(error) {
@@ -616,9 +633,9 @@ public class Agg: AggProtocol {
     return AggTradeResult(quote: quote, fill: fill, status: status)
   }
 
-  /// Runs an API call; with `autoReconnect`, answers `AGG_LINK_REQUIRED` by running `connect` and
-  /// retrying the call once. A call refused for the link did nothing, so retrying it cannot trade or
-  /// send twice.
+  /// Runs an API call; with `autoReconnect`, answers `AGG_LINK_REQUIRED` by running `connect` on the
+  /// chain the last `connect` used (Polygon before any) and retrying the call once. A call refused
+  /// for the link did nothing, so retrying it cannot trade or send twice.
   private func linked<T>(
     _ autoReconnect: Bool,
     _ notify: AggProgressHandler,
@@ -631,9 +648,21 @@ public class Agg: AggProtocol {
         throw error
       }
       notify(AggProgress(step: .reconnecting))
-      _ = try await connect(chainId: Self.defaultLinkChainId)
+      _ = try await connect(chainId: reconnectChainId())
       return try await call()
     }
+  }
+
+  private func rememberLinkChain(_ chainId: String) {
+    linkChainLock.lock()
+    defer { linkChainLock.unlock() }
+    lastLinkChainId = chainId
+  }
+
+  private func reconnectChainId() -> String {
+    linkChainLock.lock()
+    defer { linkChainLock.unlock() }
+    return lastLinkChainId ?? Self.defaultLinkChainId
   }
 
   /// Reads with `read` until `isDone`, waiting `wait` (or the interval) between reads, for up to the
@@ -734,31 +763,34 @@ public class Agg: AggProtocol {
   }
 }
 
-/// How the Agg helpers classify a failed request. `PortalAggApi` wraps every failure after sending
-/// in `AggRequestError`; these look through it.
+/// How the Agg helpers classify a failure. `PortalAggApi` throws every failure of a request it sent
+/// as an `AggRequestError`. Anything else never reached the Portal API (a request refused before
+/// sending, a missing credential, a reconnect whose signature was declined), so it is neither
+/// transient nor ambiguous.
 enum AggRequestFailure {
   /// Statuses that clear on retry: a rate limit and gateway errors.
   static let transientStatuses: Set<Int> = [429, 502, 503, 504]
 
-  static func underlying(_ error: Error) -> Error {
-    (error as? AggRequestError)?.underlyingError ?? error
-  }
-
   /// A failure that clears on retry: a rate limit, a gateway error or a network error.
   static func isTransient(_ error: Error) -> Bool {
-    if let status = AggApiError.from(error)?.status {
+    guard let requestError = error as? AggRequestError else {
+      return false
+    }
+    if let status = AggApiError.from(requestError)?.status {
       return transientStatuses.contains(status)
     }
-    return underlying(error) is URLError && !YieldXyzRequestFailure.isRefusedBeforeSending(underlying(error))
+    return requestError.underlyingError is URLError
   }
 
   /// A failure after which Agg may or may not have acted on the request: a 5xx (other than a
   /// session refresh, which the Portal API returns before calling Agg), a network error, or a
   /// response that did not decode.
   static func isAmbiguous(_ error: Error) -> Bool {
-    if AggApiError.from(error)?.isSessionRefreshInProgress == true {
+    guard let requestError = error as? AggRequestError,
+          AggApiError.from(requestError)?.isSessionRefreshInProgress != true
+    else {
       return false
     }
-    return YieldXyzRequestFailure.isAmbiguous(underlying(error))
+    return YieldXyzRequestFailure.isAmbiguous(requestError.underlyingError)
   }
 }

@@ -235,5 +235,3 @@ public enum AggError: LocalizedError {
     }
   }
 }
-
-extension AggError: YieldXyzRequestRefusedBeforeSending {}

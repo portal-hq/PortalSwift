@@ -4183,3 +4183,110 @@ extension PortalTests {
     }
   }
 }
+
+// MARK: - predictionMarkets property tests
+
+extension PortalTests {
+  private static let aggChallengeMessage = "0x706f7274616c68712e696f2077616e7473"
+
+  /// A Portal whose Agg API answers the link with a challenge for the mock wallet, and whose
+  /// provider is a spy.
+  private func initPortalForAgg() throws -> (PortalAggApiMock, PortalProviderSpy) {
+    let aggApi = PortalAggApiMock()
+    let challenge = AggLinkChallenge(
+      message: "portalhq.io wants you to sign in with your Ethereum account",
+      signParams: [Self.aggChallengeMessage, MockConstants.mockEip155Address],
+      expiresAt: "2026-10-29T13:30:36.281Z"
+    )
+    let link = AggLink(
+      linked: true,
+      aggUserId: "cmu1o0diz0xy609jxo13xrxm2",
+      linkedAddress: MockConstants.mockEip155Address,
+      linkedChainId: Agg.defaultLinkChainId,
+      externalIdLinked: true
+    )
+    aggApi.createLinkChallengeHandler = { _ in AggCreateLinkChallengeResponse(data: challenge) }
+    aggApi.createLinkHandler = { _ in AggCreateLinkResponse(data: link) }
+    try initPortalWithSpy(api: PortalApiMock(agg: aggApi))
+    let providerSpy = try PortalProviderSpy()
+    setToPortal(portalProvider: providerSpy)
+    return (aggApi, providerSpy)
+  }
+
+  func test_predictionMarkets_returnsTheSameAggInstance() {
+    let first = portal.predictionMarkets
+    let second = portal.predictionMarkets
+
+    XCTAssertTrue(first === second)
+    XCTAssertTrue(first.agg is Agg)
+  }
+
+  func test_predictionMarkets_connect_signsTheChallengeWithPersonalSignAndLinksWithTheSignature() async throws {
+    let (aggApi, providerSpy) = try initPortalForAgg()
+    providerSpy.requestOptionsReturnValues[.personal_sign] = "0xsignature"
+    var linkSignature: String?
+    let createLink = aggApi.createLinkHandler
+    aggApi.createLinkHandler = { request in
+      linkSignature = request.signature
+      return try await XCTUnwrap(createLink)(request)
+    }
+
+    _ = try await portal.predictionMarkets.agg.connect()
+
+    let call = try XCTUnwrap(providerSpy.requestOptionsHistory.first)
+    XCTAssertEqual(call.chainId, Agg.defaultLinkChainId)
+    XCTAssertEqual(call.method, .personal_sign)
+    XCTAssertEqual(call.params?.compactMap { $0.value as? String }, [Self.aggChallengeMessage, MockConstants.mockEip155Address])
+    XCTAssertEqual(linkSignature, "0xsignature")
+  }
+
+  func test_predictionMarkets_connect_refusesAChainWithoutAnRpcEndpoint() async throws {
+    let (aggApi, providerSpy) = try initPortalForAgg()
+    providerSpy.getRpcUrlError = PortalProviderError.noRpcUrlFoundForChainId(Agg.defaultLinkChainId)
+
+    do {
+      _ = try await portal.predictionMarkets.agg.connect()
+      XCTFail("Expected error not thrown.")
+    } catch AggError.missingRpcUrl(let chainId) {
+      XCTAssertEqual(chainId, Agg.defaultLinkChainId)
+    }
+    XCTAssertTrue(aggApi.calls.isEmpty)
+    XCTAssertTrue(providerSpy.requestOptionsHistory.isEmpty)
+  }
+
+  func test_predictionMarkets_connect_failsWhenPersonalSignReturnsNoSignature() async throws {
+    let (aggApi, providerSpy) = try initPortalForAgg()
+    providerSpy.requestOptionsReturnValues[.personal_sign] = 42
+
+    do {
+      _ = try await portal.predictionMarkets.agg.connect()
+      XCTFail("Expected error not thrown.")
+    } catch PortalClassError.invalidResponseTypeForRequest {}
+    XCTAssertEqual(aggApi.callCount("createLink"), 0)
+  }
+
+  func test_predictionMarkets_deposit_sendsThroughSendAssetWithTheIdempotencyKey() async throws {
+    let (aggApi, providerSpy) = try initPortalForAgg()
+    let addresses = try JSONDecoder().decode(AggDepositAddresses.self, from: Data(#"""
+    {"ready":true,"evmAddress":"0x44EE540F4663813277Cb6f4ee6A6299D80834ECC","svmAddress":"7Ct6tubhdLFsWmbjQNumjoLSyPM9ENLpkh5mPu9DCwUu",
+     "supportedChains":[{"chainId":"eip155:8453","name":"Base","tokens":[{"symbol":"USDC","address":"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913","decimals":6}]}]}
+    """#.utf8))
+    aggApi.getDepositAddressesHandler = { AggGetDepositAddressesResponse(data: addresses) }
+    providerSpy.requestOptionsReturnValues[.eth_sendTransaction] = "0xdeposit"
+
+    let result = try await portal.predictionMarkets.agg.deposit(params: AggDepositParams(
+      chainId: "eip155:8453",
+      token: "USDC",
+      amount: "2",
+      idempotencyKey: "agg-deposit-1",
+      addressPoll: AggPollOptions(interval: 0, timeout: 1)
+    ))
+
+    XCTAssertEqual(result.txHash, "0xdeposit")
+    XCTAssertEqual(result.depositAddress, "0x44EE540F4663813277Cb6f4ee6A6299D80834ECC")
+    let call = try XCTUnwrap(providerSpy.requestOptionsHistory.last)
+    XCTAssertEqual(call.method, .eth_sendTransaction)
+    XCTAssertEqual(call.chainId, "eip155:8453")
+    XCTAssertEqual(call.options?.idempotencyKey, "agg-deposit-1")
+  }
+}
