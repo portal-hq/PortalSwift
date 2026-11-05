@@ -196,6 +196,9 @@ final class AggViewController: UIViewController {
       if case let .withdrawalOutcomeUnknown(_, _, _, underlyingError) = aggError {
         return "\(aggError.localizedDescription)\n\(describe(underlyingError))"
       }
+      if case let .depositOutcomeUnknown(_, _, _, _, _, underlyingError) = aggError {
+        return "\(aggError.localizedDescription)\n\(describe(underlyingError))"
+      }
       return aggError.localizedDescription
     }
     guard let apiError = AggApiError.from(error) else {
@@ -244,11 +247,23 @@ final class AggViewController: UIViewController {
   private func logProgress(_ name: String) -> AggProgressHandler {
     let logger = logger
     return { progress in
-      let detail = progress.order.map { order in
-        "\(order.overallState): " + order.steps.map(\.label).joined(separator: " → ")
-      } ?? progress.withdrawal.map { "\($0.status)" } ?? progress.txHash ?? ""
-      logger.info("  ⏳ [Agg \(name)] \(progress.step.rawValue) \(detail)")
+      logger.info("  ⏳ [Agg \(name)] \(progress.step.rawValue) \(Self.detail(of: progress))")
     }
+  }
+
+  /// The most useful field of a progress event: the fill's steps, the withdrawal status, the
+  /// transaction hash, or the deposit's idempotency key.
+  private static func detail(of progress: AggProgress) -> String {
+    if let order = progress.order {
+      return "\(order.overallState): " + order.steps.map(\.label).joined(separator: " → ")
+    }
+    if let withdrawal = progress.withdrawal {
+      return "\(withdrawal.status)"
+    }
+    if let txHash = progress.txHash {
+      return txHash
+    }
+    return progress.idempotencyKey.map { "idempotency key \($0)" } ?? ""
   }
 
   // MARK: - API methods

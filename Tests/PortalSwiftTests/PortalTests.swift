@@ -4284,9 +4284,74 @@ extension PortalTests {
 
     XCTAssertEqual(result.txHash, "0xdeposit")
     XCTAssertEqual(result.depositAddress, "0x44EE540F4663813277Cb6f4ee6A6299D80834ECC")
+    XCTAssertEqual(result.idempotencyKey, "agg-deposit-1")
     let call = try XCTUnwrap(providerSpy.requestOptionsHistory.last)
     XCTAssertEqual(call.method, .eth_sendTransaction)
     XCTAssertEqual(call.chainId, "eip155:8453")
     XCTAssertEqual(call.options?.idempotencyKey, "agg-deposit-1")
+  }
+
+  /// A Portal whose Agg deposit addresses are ready, with Base USDC.
+  private func initPortalForAggDeposit() throws -> (PortalAggApiMock, PortalProviderSpy) {
+    let (aggApi, providerSpy) = try initPortalForAgg()
+    let addresses = try JSONDecoder().decode(AggDepositAddresses.self, from: Data(#"""
+    {"ready":true,"evmAddress":"0x44EE540F4663813277Cb6f4ee6A6299D80834ECC","svmAddress":"7Ct6tubhdLFsWmbjQNumjoLSyPM9ENLpkh5mPu9DCwUu",
+     "supportedChains":[{"chainId":"eip155:8453","name":"Base","tokens":[{"symbol":"USDC","address":"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913","decimals":6}]}]}
+    """#.utf8))
+    aggApi.getDepositAddressesHandler = { AggGetDepositAddressesResponse(data: addresses) }
+    return (aggApi, providerSpy)
+  }
+
+  private func aggDeposit() async throws -> AggDepositResult {
+    try await portal.predictionMarkets.agg.deposit(params: AggDepositParams(
+      chainId: "eip155:8453",
+      token: "USDC",
+      amount: "2",
+      idempotencyKey: "agg-deposit-2",
+      addressPoll: AggPollOptions(interval: 0, timeout: 1)
+    ))
+  }
+
+  func test_predictionMarkets_deposit_onAChainWithoutAnRpcUrl_sendsNothing() async throws {
+    let (aggApi, providerSpy) = try initPortalForAggDeposit()
+    providerSpy.getRpcUrlError = PortalProviderError.noRpcUrlFoundForChainId("eip155:8453")
+
+    do {
+      _ = try await aggDeposit()
+      XCTFail("Expected missingRpcUrl")
+    } catch AggError.missingRpcUrl(let chainId) {
+      XCTAssertEqual(chainId, "eip155:8453")
+    }
+    XCTAssertEqual(providerSpy.getRpcUrlChainIdParam, "eip155:8453")
+    XCTAssertEqual(aggApi.callCount("getDepositAddresses"), 0)
+    XCTAssertTrue(providerSpy.requestOptionsHistory.isEmpty)
+  }
+
+  func test_predictionMarkets_deposit_whoseSendIsCutOff_failsWithOutcomeUnknown() async throws {
+    let (_, providerSpy) = try initPortalForAggDeposit()
+    providerSpy.requestOptionsError = URLError(.networkConnectionLost)
+
+    do {
+      _ = try await aggDeposit()
+      XCTFail("Expected depositOutcomeUnknown")
+    } catch let AggError.depositOutcomeUnknown(idempotencyKey, chainId, depositAddress, token, amount, underlyingError) {
+      XCTAssertEqual(idempotencyKey, "agg-deposit-2")
+      XCTAssertEqual(chainId, "eip155:8453")
+      XCTAssertEqual(depositAddress, "0x44EE540F4663813277Cb6f4ee6A6299D80834ECC")
+      XCTAssertEqual(token.address, "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913")
+      XCTAssertEqual(amount, "2")
+      XCTAssertEqual((underlyingError as? URLError)?.code, .networkConnectionLost)
+    }
+    XCTAssertEqual(providerSpy.requestOptionsHistory.last?.options?.idempotencyKey, "agg-deposit-2")
+  }
+
+  func test_predictionMarkets_deposit_whoseSigningApprovalIsDeclined_failsWithThatError() async throws {
+    let (_, providerSpy) = try initPortalForAggDeposit()
+    providerSpy.requestOptionsError = ProviderSigningError.userDeclinedApproval
+
+    do {
+      _ = try await aggDeposit()
+      XCTFail("Expected userDeclinedApproval")
+    } catch ProviderSigningError.userDeclinedApproval {}
   }
 }

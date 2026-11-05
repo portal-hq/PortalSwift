@@ -49,7 +49,7 @@ public extension AggProtocol {
 /// Request failures are thrown as `AggRequestError`: read the Portal error `id`, Agg's `details` and
 /// the request's trace id with `AggApiError.from(_:)`. On `AGG_LINK_REQUIRED`, run `connect` again
 /// and retry. Cancelling the calling task cancels the call; a helper cancelled after it filled or
-/// withdrew does not undo it.
+/// withdrew does not undo it, and `deposit` finishes a send it has started.
 public class Agg: AggProtocol {
   /// The CAIP-2 chain `connect` signs the link on by default (Polygon), as the Portal API does.
   public static let defaultLinkChainId = "eip155:137"
@@ -315,12 +315,7 @@ public class Agg: AggProtocol {
   /// `autoReconnect` links again on the chain of the last successful `connect`.
   /// - Parameter chainId: The CAIP-2 EVM chain named in the sign-in message and used to sign it.
   public func connect(chainId: String) async throws -> AggLink {
-    if let isChainConfigured = dependencies.isChainConfigured {
-      let configured = await isChainConfigured(chainId)
-      if !configured {
-        throw AggError.missingRpcUrl(chainId: chainId)
-      }
-    }
+    try await requireChainConfigured(chainId)
     guard let personalSign = dependencies.personalSign else {
       throw AggError.missingDependency(name: "personalSign")
     }
@@ -348,15 +343,24 @@ public class Agg: AggProtocol {
 
   /// Sends funds from the Portal wallet to the user's Agg deposit address and returns once the
   /// transfer is broadcast. It waits for the deposit addresses, which Agg creates for a new user
-  /// after the first request, and sends nothing unless Agg takes `params.token` on `params.chainId`
-  /// (`AggError.unsupportedDepositToken`). Agg credits the funds once the transaction confirms: read
-  /// `getBalances(sync: true, mode: nil)` to see them. The send carries `params.idempotencyKey`, so
-  /// calling again with the same params never broadcasts it twice.
+  /// after the first request, and sends nothing unless `params.chainId` has an RPC URL configured
+  /// (`AggError.missingRpcUrl`) and `params.token` names exactly one token Agg takes on it
+  /// (`AggError.unsupportedDepositToken` when it names none, `AggError.ambiguousDepositToken` when it
+  /// names several). Agg credits the funds once the transaction confirms: read
+  /// `getBalances(sync: true, mode: nil)` to see them.
+  ///
+  /// The send carries `params.idempotencyKey`, so retrying with that key never broadcasts it twice.
+  /// Once the send starts it is never abandoned: cancelling the calling task after that point still
+  /// returns its result. A send that fails before anything could be broadcast (for example a
+  /// declined signing approval, or insufficient funds) throws its own error; any other failure, or a
+  /// send that returns no transaction hash, throws `AggError.depositOutcomeUnknown` with the key to
+  /// retry with. Every error other than `AggError.depositOutcomeUnknown` means nothing was sent.
   public func deposit(params: AggDepositParams) async throws -> AggDepositResult {
     try Self.requireAmount("amount", params.amount)
     guard let sendAsset = dependencies.sendAsset else {
       throw AggError.missingDependency(name: "sendAsset")
     }
+    try await requireChainConfigured(params.chainId)
     let notify = Self.progress(params.onProgress)
 
     notify(AggProgress(step: .awaitingDepositAddresses))
@@ -371,23 +375,41 @@ public class Agg: AggProtocol {
       throw AggError.depositAddressesTimeout(last: addresses)
     }
 
-    let requested = params.token.lowercased()
-    guard let token = ready.supportedChains
-      .first(where: { $0.chainId == params.chainId })?
-      .tokens
-      .first(where: { $0.symbol.lowercased() == requested || $0.address.lowercased() == requested })
-    else {
-      throw AggError.unsupportedDepositToken(chainId: params.chainId, token: params.token)
-    }
+    let token = try Self.resolveDepositToken(ready, chainId: params.chainId, token: params.token)
     let depositAddress = params.chainId.hasPrefix("solana:") ? ready.svmAddress : ready.evmAddress
+    let key = params.idempotencyKey
 
-    notify(AggProgress(step: .sendingDeposit))
-    let txHash = try await sendAsset(
-      params.chainId,
-      SendAssetParams(to: depositAddress, amount: params.amount, token: token.address, idempotencyKey: params.idempotencyKey)
-    )
-    notify(AggProgress(step: .depositSent, txHash: txHash))
-    return AggDepositResult(txHash: txHash, depositAddress: depositAddress, chainId: params.chainId, token: token)
+    // The last point a cancellation stops the deposit: nothing has been sent yet.
+    try Task.checkCancellation()
+    notify(AggProgress(step: .sendingDeposit, idempotencyKey: key))
+    let sendParams = SendAssetParams(to: depositAddress, amount: params.amount, token: token.address, idempotencyKey: key)
+    let outcomeUnknown = { (error: Error) in
+      AggError.depositOutcomeUnknown(
+        idempotencyKey: key,
+        chainId: params.chainId,
+        depositAddress: depositAddress,
+        token: token,
+        amount: params.amount,
+        underlyingError: error
+      )
+    }
+    // An unstructured task, so cancelling the caller does not reach the send: cut off mid-way, it
+    // could still be broadcast, and the caller would not learn whether the funds left.
+    let send = Task { [chainId = params.chainId] in try await sendAsset(chainId, sendParams) }
+    let txHash: String
+    do {
+      txHash = try await send.value
+    } catch {
+      if Self.failedBeforeSending(error) {
+        throw error
+      }
+      throw outcomeUnknown(error)
+    }
+    guard !txHash.isEmpty else {
+      throw outcomeUnknown(AggMissingTransactionHash())
+    }
+    notify(AggProgress(step: .depositSent, txHash: txHash, idempotencyKey: key))
+    return AggDepositResult(txHash: txHash, depositAddress: depositAddress, chainId: params.chainId, token: token, idempotencyKey: key)
   }
 
   /// Buys an outcome: quotes, fills at once (protected by `params.slippageBps`) and waits for the
@@ -782,6 +804,72 @@ public class Agg: AggProtocol {
     onProgress ?? { _ in }
   }
 
+  /// Throws `AggError.missingRpcUrl` when `chainId` has no RPC URL configured, so nothing can be
+  /// signed or sent on it. Without an `isChainConfigured` dependency, the chain is not checked.
+  private func requireChainConfigured(_ chainId: String) async throws {
+    if let isChainConfigured = dependencies.isChainConfigured, await isChainConfigured(chainId) == false {
+      throw AggError.missingRpcUrl(chainId: chainId)
+    }
+  }
+
+  /// The token `token` names on `chainId`: by address when it is an address Agg lists there,
+  /// otherwise by symbol, in any case. Agg identifies a token by chain and address and gives its
+  /// list order no meaning, so a match that is not a single token is refused rather than resolved
+  /// by position.
+  static func resolveDepositToken(
+    _ addresses: AggDepositAddresses.Ready,
+    chainId: String,
+    token: String
+  ) throws -> AggSupportedChainToken {
+    let listed = addresses.supportedChains.filter { $0.chainId == chainId }.flatMap(\.tokens)
+    var matches = listed.filter { isSameTokenAddress(chainId: chainId, $0.address, token) }
+    if matches.isEmpty {
+      let symbol = token.lowercased()
+      matches = listed.filter { $0.symbol.lowercased() == symbol }
+    }
+    matches.sort { ($0.address, $0.symbol, $0.decimals) < ($1.address, $1.symbol, $1.decimals) }
+    guard let first = matches.first else {
+      throw AggError.unsupportedDepositToken(chainId: chainId, token: token)
+    }
+    if matches.allSatisfy({ isSameTokenAddress(chainId: chainId, $0.address, first.address) && $0.decimals == first.decimals }) {
+      return first
+    }
+    var candidates: [AggSupportedChainToken] = []
+    for match in matches where !candidates.contains(match) {
+      candidates.append(match)
+    }
+    throw AggError.ambiguousDepositToken(chainId: chainId, token: token, candidates: candidates)
+  }
+
+  /// Whether `a` and `b` are the same token address on `chainId`. EVM addresses are hex, so any case
+  /// matches; any other address, such as a Solana mint, matches exactly.
+  static func isSameTokenAddress(chainId: String, _ a: String, _ b: String) -> Bool {
+    if chainId.hasPrefix("eip155:"), isEvmAddress(a), isEvmAddress(b) {
+      return a.lowercased() == b.lowercased()
+    }
+    return a == b
+  }
+
+  private static func isEvmAddress(_ value: String) -> Bool {
+    value.utf8.count == 42 && value.range(of: "^0x[0-9a-fA-F]{40}$", options: .regularExpression) != nil
+  }
+
+  /// `true` for a `sendAsset` failure known to happen before anything was broadcast: `sendAsset`'s
+  /// own checks of its parameters and chain, or a failure `PortalSendFailure` knows comes before the
+  /// broadcast. Anything else may come after it.
+  static func failedBeforeSending(_ error: Error) -> Bool {
+    if PortalSendFailure.failedBeforeSending(error) {
+      return true
+    }
+    switch error as? PortalClassError {
+    case .clientNotAvailable, .invalidParameters, .invalidChainId, .unsupportedChainId:
+      return true
+    // Thrown once the send returned, or not by `sendAsset`.
+    case .invalidResponseTypeForRequest, .noWalletFoundForChain, .cannotCreateWallet, .cannotRecoverWallet, nil:
+      return false
+    }
+  }
+
   /// Seconds to wait before reading a fill again: Agg's `pollAfterMs`, kept between 0.25 and 10
   /// seconds; `nil` when Agg sent none, to use the poll interval.
   static func orderPollWait(pollAfterMs: Int?) -> TimeInterval? {
@@ -820,6 +908,13 @@ public class Agg: AggProtocol {
       throw AggError.invalidAmount(name: name, value: value)
     }
     return raw
+  }
+}
+
+/// `sendAsset` returned an empty transaction hash, so whether the deposit was sent is unknown.
+struct AggMissingTransactionHash: LocalizedError {
+  var errorDescription: String? {
+    "[Agg] sendAsset returned no transaction hash."
   }
 }
 

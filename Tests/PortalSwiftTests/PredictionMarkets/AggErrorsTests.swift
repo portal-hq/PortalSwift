@@ -121,6 +121,8 @@ final class AggErrorsTests: XCTestCase {
     let withdrawal: AggWithdrawal = try Self.decode(AggFixtures.withdrawalStatus, ["withdrawalId": "w1", "status": "failed", "errorMessage": "Bridge failed"])
     let request = AggWithdrawalRequest(tokenSymbol: .usdc, destinationChainId: "eip155:8453", amountRaw: "1", requestId: "r1")
     let cause = URLError(.timedOut)
+    let usdc = AggSupportedChainToken(symbol: "USDC", address: "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359", decimals: 6)
+    let usdcE = AggSupportedChainToken(symbol: "USDC", address: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174", decimals: 6)
 
     let expectations: [(AggError, [String])] = [
       (.noAddress, ["No Portal EVM wallet address"]),
@@ -140,7 +142,19 @@ final class AggErrorsTests: XCTestCase {
       (.withdrawalTimeout(withdrawalId: "w1", last: nil), ["withdrawal w1"]),
       (.orderOutcomeUnknown(quote: quote, fill: nil, last: nil, underlyingError: cause), ["q1", "getOrder", cause.localizedDescription]),
       (.withdrawalOutcomeUnknown(request: request, withdrawal: nil, last: nil, underlyingError: cause), ["requestId r1", cause.localizedDescription]),
-      (.withdrawalOutcomeUnknown(request: request, withdrawal: withdrawal, last: nil, underlyingError: cause), ["w1"])
+      (.withdrawalOutcomeUnknown(request: request, withdrawal: withdrawal, last: nil, underlyingError: cause), ["w1"]),
+      (
+        .ambiguousDepositToken(chainId: "eip155:137", token: "USDC", candidates: [usdcE, usdc]),
+        ["USDC names 2 tokens on eip155:137", "USDC \(usdcE.address), USDC \(usdc.address)", "nothing was sent", "Pass the address"]
+      ),
+      (
+        .ambiguousDepositToken(chainId: "eip155:137", token: "USDC", candidates: [usdc, AggSupportedChainToken(symbol: "USDC", address: usdc.address.lowercased(), decimals: 18)]),
+        ["USDC on eip155:137 with conflicting decimals", "nothing was sent"]
+      ),
+      (
+        .depositOutcomeUnknown(idempotencyKey: "k1", chainId: "eip155:8453", depositAddress: "0xDeposit", token: usdc, amount: "1.5", underlyingError: cause),
+        ["1.5 USDC on eip155:8453 to 0xDeposit may have been sent", "idempotencyKey k1", "getBalances", cause.localizedDescription]
+      )
     ]
 
     for (error, fragments) in expectations {
@@ -149,6 +163,32 @@ final class AggErrorsTests: XCTestCase {
       for fragment in fragments {
         XCTAssertTrue(description.contains(fragment), "\"\(description)\" does not mention \"\(fragment)\"")
       }
+    }
+  }
+
+  func test_depositErrorDescriptions_readInFull() {
+    let usdc = AggSupportedChainToken(symbol: "USDC", address: "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359", decimals: 6)
+    let usdcE = AggSupportedChainToken(symbol: "USDC.e", address: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174", decimals: 6)
+    let cause = URLError(.networkConnectionLost)
+
+    let expectations: [(AggError, String)] = [
+      (.missingRpcUrl(chainId: "eip155:8453"), "[Agg] No RPC URL is configured for eip155:8453; add it to rpcConfig or use another chain."),
+      (
+        .ambiguousDepositToken(chainId: "eip155:137", token: "usdc", candidates: [usdcE, usdc]),
+        "[Agg] usdc names 2 tokens on eip155:137 (USDC.e \(usdcE.address), USDC \(usdc.address)); nothing was sent. Pass the address of the one to deposit."
+      ),
+      (
+        .ambiguousDepositToken(chainId: "eip155:137", token: "USDC", candidates: [usdc, AggSupportedChainToken(symbol: "USDC", address: usdc.address, decimals: 18)]),
+        "[Agg] Agg lists USDC on eip155:137 with conflicting decimals; nothing was sent."
+      ),
+      (
+        .depositOutcomeUnknown(idempotencyKey: "k1", chainId: "eip155:8453", depositAddress: "0xDeposit", token: usdc, amount: "1.5", underlyingError: cause),
+        "[Agg] The deposit of 1.5 USDC on eip155:8453 to 0xDeposit may have been sent; retry it only with idempotencyKey k1, which Portal never sends twice, or read getBalances(sync: true) before depositing again: \(cause.localizedDescription)"
+      )
+    ]
+
+    for (error, expected) in expectations {
+      XCTAssertEqual(error.errorDescription, expected)
     }
   }
 

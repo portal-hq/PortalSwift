@@ -143,7 +143,8 @@ public struct AggApiError: Error, Equatable {
 public enum AggError: LocalizedError {
   /// No Portal EVM wallet address is available to link.
   case noAddress
-  /// No RPC URL is configured for the chain the link is signed on, so `personal_sign` cannot run.
+  /// No RPC URL is configured for `chainId`: `connect` cannot sign the link on it, and `deposit`
+  /// cannot send on it. Nothing was signed or sent.
   case missingRpcUrl(chainId: String)
   /// The link challenge names an address other than the Portal wallet's, so it is not signed.
   case addressMismatch(expected: String, actual: String?)
@@ -157,6 +158,11 @@ public enum AggError: LocalizedError {
   case missingDependency(name: String)
   /// Agg does not take deposits of `token` on `chainId`; nothing was sent.
   case unsupportedDepositToken(chainId: String, token: String)
+  /// `token` names more than one token on `chainId`; nothing was sent. A token is its chain and
+  /// address, and a symbol is not unique. `candidates` are every token it matched, as Agg lists them,
+  /// sorted by address: they differ in address (pass the address of the one to deposit), or share
+  /// one with conflicting decimals (do not deposit it until Agg fixes its listing).
+  case ambiguousDepositToken(chainId: String, token: String, candidates: [AggSupportedChainToken])
   /// The quote cannot be filled: its `status` is not `ok`, or a venue reported a warning. Nothing was
   /// traded. Show `quote.warnings[].reason` or the status to the user.
   case quoteNotTradable(quote: AggQuote)
@@ -195,13 +201,27 @@ public enum AggError: LocalizedError {
     last: AggWithdrawal?,
     underlyingError: Error
   )
+  /// The deposit may have been sent, but `deposit` could not see how it ended: `sendAsset` failed
+  /// after it could have broadcast the transfer (`underlyingError`, for example a lost connection,
+  /// or Portal refusing a key whose send already went out or failed), or returned no transaction
+  /// hash. Retry with `AggDepositParams(idempotencyKey:)` set to `idempotencyKey`, which Portal never
+  /// broadcasts twice. Do not deposit with a new key until `getBalances(sync: true, mode: nil)` (or
+  /// the chain) shows this one did not land: that could send it twice.
+  case depositOutcomeUnknown(
+    idempotencyKey: String,
+    chainId: String,
+    depositAddress: String,
+    token: AggSupportedChainToken,
+    amount: String,
+    underlyingError: Error
+  )
 
   public var errorDescription: String? {
     switch self {
     case .noAddress:
       return "[Agg] No Portal EVM wallet address is available."
     case let .missingRpcUrl(chainId):
-      return "[Agg] No RPC URL is configured for \(chainId); add it to rpcConfig or connect with another chain."
+      return "[Agg] No RPC URL is configured for \(chainId); add it to rpcConfig or use another chain."
     case let .addressMismatch(expected, actual):
       return "[Agg] The link challenge is for \(actual ?? "no address"), not the wallet address \(expected)."
     case let .emptyIdentifier(name):
@@ -212,6 +232,12 @@ public enum AggError: LocalizedError {
       return "[Agg] This helper needs a \(name) dependency."
     case let .unsupportedDepositToken(chainId, token):
       return "[Agg] Agg does not take \(token) deposits on \(chainId); see the deposit addresses' supportedChains."
+    case let .ambiguousDepositToken(chainId, token, candidates):
+      if let first = candidates.first, candidates.allSatisfy({ Agg.isSameTokenAddress(chainId: chainId, $0.address, first.address) }) {
+        return "[Agg] Agg lists \(token) on \(chainId) with conflicting decimals; nothing was sent."
+      }
+      let listed = candidates.map { "\($0.symbol) \($0.address)" }.joined(separator: ", ")
+      return "[Agg] \(token) names \(candidates.count) tokens on \(chainId) (\(listed)); nothing was sent. Pass the address of the one to deposit."
     case let .quoteNotTradable(quote):
       let warnings = (quote.warnings ?? []).map { "; \($0.venue): \($0.reason)" }.joined()
       return "[Agg] Quote \(quote.quoteId) is not tradable: status \(quote.status)\(warnings)"
@@ -232,6 +258,8 @@ public enum AggError: LocalizedError {
     case let .withdrawalOutcomeUnknown(request, withdrawal, _, underlyingError):
       let id = withdrawal?.withdrawalId ?? "with requestId \(request.requestId ?? "none")"
       return "[Agg] Withdrawal \(id) may have been sent; read it before withdrawing again: \(underlyingError.localizedDescription)"
+    case let .depositOutcomeUnknown(idempotencyKey, chainId, depositAddress, token, amount, underlyingError):
+      return "[Agg] The deposit of \(amount) \(token.symbol) on \(chainId) to \(depositAddress) may have been sent; retry it only with idempotencyKey \(idempotencyKey), which Portal never sends twice, or read getBalances(sync: true) before depositing again: \(underlyingError.localizedDescription)"
     }
   }
 }

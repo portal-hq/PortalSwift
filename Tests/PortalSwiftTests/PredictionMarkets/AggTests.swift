@@ -37,6 +37,12 @@ final class AggTests: XCTestCase {
       return events.map(\.step)
     }
 
+    var idempotencyKeys: [String?] {
+      lock.lock()
+      defer { lock.unlock() }
+      return events.map(\.idempotencyKey)
+    }
+
     func record(_ event: AggProgress) {
       lock.lock()
       events.append(event)
@@ -1034,6 +1040,7 @@ final class AggTests: XCTestCase {
 
     XCTAssertEqual(result.txHash, "0xtx")
     XCTAssertEqual(result.depositAddress, "0xDeposit")
+    XCTAssertEqual(result.idempotencyKey, "k1")
     XCTAssertEqual(sent?.0, "eip155:8453")
     XCTAssertEqual(sent?.1.to, "0xDeposit")
     XCTAssertEqual(sent?.1.token, "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913")
@@ -1041,6 +1048,50 @@ final class AggTests: XCTestCase {
     XCTAssertEqual(sent?.1.idempotencyKey, "k1")
     XCTAssertEqual(api.callCount("getDepositAddresses"), 2)
     XCTAssertEqual(progress.steps, [.awaitingDepositAddresses, .sendingDeposit, .depositSent])
+    XCTAssertEqual(progress.idempotencyKeys, [nil, "k1", "k1"])
+  }
+
+  func test_deposit_withoutAKey_reportsTheGeneratedOneItSentWith() async throws {
+    let ready: AggDepositAddresses = try Self.decode(Self.depositAddresses)
+    api.getDepositAddressesHandler = { AggResponse(data: ready) }
+    let sentKey = Locked<String?>(nil)
+    let agg = makeAgg(dependencies: AggDependencies(sendAsset: { _, params in
+      sentKey.value = params.idempotencyKey
+      return "0xtx"
+    }))
+
+    let result = try await agg.deposit(params: AggDepositParams(chainId: "eip155:8453", token: "USDC", amount: "1", onProgress: progress.record, addressPoll: Self.fastPoll))
+
+    XCTAssertFalse(result.idempotencyKey.isEmpty)
+    XCTAssertEqual(sentKey.value, result.idempotencyKey)
+    XCTAssertEqual(progress.idempotencyKeys, [nil, result.idempotencyKey, result.idempotencyKey])
+  }
+
+  func test_deposit_onAChainWithoutAnRpcUrl_sendsNothing() async throws {
+    let checked = Locked<[String]>([])
+    let sends = Locked(0)
+    let agg = makeAgg(dependencies: AggDependencies(
+      isChainConfigured: { chainId in
+        checked.value.append(chainId)
+        return false
+      },
+      sendAsset: { _, _ in
+        sends.value += 1
+        return "0xtx"
+      }
+    ))
+
+    do {
+      _ = try await agg.deposit(params: AggDepositParams(chainId: "eip155:8453", token: "USDC", amount: "1", addressPoll: Self.fastPoll))
+      XCTFail("Expected missingRpcUrl")
+    } catch AggError.missingRpcUrl(let chainId) {
+      XCTAssertEqual(chainId, "eip155:8453")
+    } catch {
+      XCTFail("Unexpected error: \(error)")
+    }
+    XCTAssertEqual(checked.value, ["eip155:8453"])
+    XCTAssertTrue(api.calls.isEmpty)
+    XCTAssertEqual(sends.value, 0)
   }
 
   func test_deposit_onSolana_sendsToTheSvmAddress() async throws {
@@ -1090,6 +1141,408 @@ final class AggTests: XCTestCase {
     } catch {
       XCTFail("Unexpected error: \(error)")
     }
+  }
+
+  // MARK: - deposit token
+
+  // Agg identifies a deposit token by chain and address: a symbol is only a lookup convenience, and
+  // the order of its token list means nothing.
+
+  private static let polygon = "eip155:137"
+  private static let polygonUsdc = AggSupportedChainToken(symbol: "USDC", address: "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359", decimals: 6)
+  private static let polygonUsdcE = AggSupportedChainToken(symbol: "USDC.e", address: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174", decimals: 6)
+
+  private static func listing(_ chains: [(chainId: String, tokens: [AggSupportedChainToken])]) -> AggGetDepositAddressesResponse {
+    AggResponse(data: .ready(AggDepositAddresses.Ready(
+      evmAddress: "0xDeposit",
+      svmAddress: "SoLDeposit",
+      supportedChains: chains.map { AggDepositAddresses.Ready.SupportedChain(chainId: $0.chainId, name: $0.chainId, tokens: $0.tokens) }
+    )))
+  }
+
+  private static func inBothOrders(_ tokens: [AggSupportedChainToken]) -> [[AggSupportedChainToken]] {
+    [tokens, tokens.reversed()]
+  }
+
+  /// An `Agg` whose `sendAsset` records the token address of each send.
+  private func recordingAgg(_ sentTokens: Locked<[String]>) -> Agg {
+    makeAgg(dependencies: AggDependencies(sendAsset: { _, params in
+      sentTokens.value.append(params.token)
+      return "0xtx"
+    }))
+  }
+
+  private func deposit(_ agg: Agg, on chainId: String, token: String, autoReconnect: Bool = false) async throws -> AggDepositResult {
+    try await agg.deposit(params: AggDepositParams(chainId: chainId, token: token, amount: "10", autoReconnect: autoReconnect, addressPoll: Self.fastPoll))
+  }
+
+  /// The `ambiguousDepositToken` that `call` fails with; `nil`, failing the test, when it fails with
+  /// anything else or succeeds.
+  private func ambiguousDepositToken(
+    _ call: () async throws -> AggDepositResult,
+    file: StaticString = #filePath,
+    line: UInt = #line
+  ) async -> (chainId: String, token: String, candidates: [AggSupportedChainToken], error: AggError)? {
+    do {
+      _ = try await call()
+      XCTFail("Expected ambiguousDepositToken", file: file, line: line)
+    } catch let error as AggError {
+      if case let .ambiguousDepositToken(chainId, token, candidates) = error {
+        return (chainId, token, candidates, error)
+      }
+      XCTFail("Unexpected error: \(error)", file: file, line: line)
+    } catch {
+      XCTFail("Unexpected error: \(error)", file: file, line: line)
+    }
+    return nil
+  }
+
+  func test_deposit_ofUsdcAndUsdcE_inEitherOrder_sendsTheTokenEachSymbolAndAddressNames() async throws {
+    for tokens in Self.inBothOrders([Self.polygonUsdc, Self.polygonUsdcE]) {
+      let sent = Locked<[String]>([])
+      let agg = recordingAgg(sent)
+      api.getDepositAddressesHandler = { Self.listing([(Self.polygon, tokens)]) }
+
+      for token in ["usdc", "USDC.e", Self.polygonUsdc.address.lowercased(), "0x" + Self.polygonUsdcE.address.dropFirst(2).uppercased()] {
+        _ = try await deposit(agg, on: Self.polygon, token: token)
+      }
+
+      XCTAssertEqual(sent.value, [Self.polygonUsdc.address, Self.polygonUsdcE.address, Self.polygonUsdc.address, Self.polygonUsdcE.address])
+    }
+  }
+
+  func test_deposit_ofASymbolTwoTokensShare_inEitherOrder_isAmbiguousAndSendsNothing() async throws {
+    let bridged = AggSupportedChainToken(symbol: "USDC", address: Self.polygonUsdcE.address, decimals: 6)
+    let sent = Locked<[String]>([])
+    let agg = recordingAgg(sent)
+    for tokens in Self.inBothOrders([Self.polygonUsdc, bridged]) {
+      api.getDepositAddressesHandler = { Self.listing([(Self.polygon, tokens)]) }
+
+      let failure = await ambiguousDepositToken { try await self.deposit(agg, on: Self.polygon, token: "USDC") }
+
+      XCTAssertEqual(failure?.chainId, Self.polygon)
+      XCTAssertEqual(failure?.token, "USDC")
+      // Sorted by address, whatever order Agg listed them in.
+      XCTAssertEqual(failure?.candidates, [bridged, Self.polygonUsdc])
+      let description = failure?.error.errorDescription ?? ""
+      XCTAssertTrue(description.contains(Self.polygonUsdc.address), description)
+      XCTAssertTrue(description.contains(bridged.address), description)
+      XCTAssertNil(AggApiError.from(failure?.error))
+    }
+    XCTAssertEqual(sent.value, [])
+  }
+
+  func test_deposit_byAddress_picksOneOfTwoTokensThatShareASymbol() async throws {
+    let sent = Locked<[String]>([])
+    api.getDepositAddressesHandler = {
+      Self.listing([(Self.polygon, [Self.polygonUsdc, AggSupportedChainToken(symbol: "USDC", address: Self.polygonUsdcE.address, decimals: 6)])])
+    }
+
+    let result = try await deposit(recordingAgg(sent), on: Self.polygon, token: Self.polygonUsdcE.address)
+
+    XCTAssertEqual(sent.value, [Self.polygonUsdcE.address])
+    XCTAssertEqual(result.token.address, Self.polygonUsdcE.address)
+  }
+
+  func test_deposit_ofASolanaMint_matchesItExactly_neverInAnotherCase() async throws {
+    let solana = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+    let mint = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    let sent = Locked<[String]>([])
+    let agg = recordingAgg(sent)
+    api.getDepositAddressesHandler = { Self.listing([(solana, [AggSupportedChainToken(symbol: "USDC", address: mint, decimals: 6)])]) }
+
+    _ = try await deposit(agg, on: solana, token: mint)
+    do {
+      _ = try await deposit(agg, on: solana, token: mint.lowercased())
+      XCTFail("Expected unsupportedDepositToken")
+    } catch AggError.unsupportedDepositToken(let chainId, let token) {
+      XCTAssertEqual(chainId, solana)
+      XCTAssertEqual(token, mint.lowercased())
+    }
+
+    XCTAssertEqual(sent.value, [mint])
+  }
+
+  func test_deposit_byAnAddressListedUnderTwoSymbols_inEitherOrder_resolvesItTheSameWay() async throws {
+    let native = AggSupportedChainToken(symbol: "USDC.native", address: Self.polygonUsdc.address, decimals: 6)
+    for tokens in Self.inBothOrders([Self.polygonUsdc, native]) {
+      let sent = Locked<[String]>([])
+      api.getDepositAddressesHandler = { Self.listing([(Self.polygon, tokens)]) }
+
+      let result = try await deposit(recordingAgg(sent), on: Self.polygon, token: Self.polygonUsdc.address)
+
+      XCTAssertEqual(result.token, Self.polygonUsdc)
+      XCTAssertEqual(sent.value, [Self.polygonUsdc.address])
+    }
+  }
+
+  func test_deposit_ofATokenListedTwice_inEitherOrder_sendsItAsOneToken() async throws {
+    for tokens in Self.inBothOrders([Self.polygonUsdc, Self.polygonUsdcE, Self.polygonUsdc]) {
+      let sent = Locked<[String]>([])
+      api.getDepositAddressesHandler = { Self.listing([(Self.polygon, tokens)]) }
+
+      let result = try await deposit(recordingAgg(sent), on: Self.polygon, token: "USDC")
+
+      XCTAssertEqual(result.token, Self.polygonUsdc)
+      XCTAssertEqual(sent.value, [Self.polygonUsdc.address])
+    }
+  }
+
+  func test_deposit_ofAnEvmAddressListedInAnotherCase_isOneToken() async throws {
+    let lowercased = AggSupportedChainToken(symbol: "USDC", address: Self.polygonUsdc.address.lowercased(), decimals: 6)
+    for tokens in Self.inBothOrders([Self.polygonUsdc, lowercased]) {
+      let sent = Locked<[String]>([])
+      api.getDepositAddressesHandler = { Self.listing([(Self.polygon, tokens)]) }
+
+      let result = try await deposit(recordingAgg(sent), on: Self.polygon, token: "USDC")
+
+      XCTAssertEqual(result.token, Self.polygonUsdc)
+      XCTAssertEqual(sent.value, [Self.polygonUsdc.address])
+    }
+  }
+
+  func test_deposit_ofAnAddressListedWithConflictingDecimals_inEitherOrder_isRefusedBySymbolAndByAddress() async throws {
+    let wide = AggSupportedChainToken(symbol: "USDC", address: Self.polygonUsdc.address, decimals: 18)
+    let sent = Locked<[String]>([])
+    let agg = recordingAgg(sent)
+    for tokens in Self.inBothOrders([Self.polygonUsdc, wide]) {
+      api.getDepositAddressesHandler = { Self.listing([(Self.polygon, tokens)]) }
+
+      for token in ["USDC", Self.polygonUsdc.address] {
+        let failure = await ambiguousDepositToken { try await self.deposit(agg, on: Self.polygon, token: token) }
+
+        XCTAssertEqual(failure?.candidates, [Self.polygonUsdc, wide])
+        let description = failure?.error.errorDescription ?? ""
+        XCTAssertTrue(description.contains("conflicting decimals"), description)
+      }
+    }
+    XCTAssertEqual(sent.value, [])
+  }
+
+  func test_deposit_ofASymbolListedOnAnotherChainToo_isNotAConflict() async throws {
+    let base = "eip155:8453"
+    let baseUsdc = AggSupportedChainToken(symbol: "USDC", address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", decimals: 6)
+    let sent = Locked<[String]>([])
+    let agg = recordingAgg(sent)
+    api.getDepositAddressesHandler = { Self.listing([(base, [baseUsdc]), (Self.polygon, [Self.polygonUsdc])]) }
+
+    _ = try await deposit(agg, on: base, token: "USDC")
+    _ = try await deposit(agg, on: Self.polygon, token: "USDC")
+
+    XCTAssertEqual(sent.value, [baseUsdc.address, Self.polygonUsdc.address])
+  }
+
+  func test_deposit_onAChainListedInTwoEntries_searchesThemBoth() async throws {
+    let reads = Results<AggGetDepositAddressesResponse>([
+      .success(Self.listing([(Self.polygon, [Self.polygonUsdc]), (Self.polygon, [Self.polygonUsdcE])])),
+      .success(Self.listing([(Self.polygon, [Self.polygonUsdc]), (Self.polygon, [AggSupportedChainToken(symbol: "USDC", address: Self.polygonUsdcE.address, decimals: 6)])]))
+    ])
+    api.getDepositAddressesHandler = { try reads.next() }
+    let sent = Locked<[String]>([])
+    let agg = recordingAgg(sent)
+
+    _ = try await deposit(agg, on: Self.polygon, token: "USDC.e")
+    let failure = await ambiguousDepositToken { try await self.deposit(agg, on: Self.polygon, token: "USDC") }
+
+    XCTAssertEqual(sent.value, [Self.polygonUsdcE.address])
+    XCTAssertEqual(failure?.candidates.count, 2)
+  }
+
+  func test_deposit_ofAnAmbiguousSymbol_isNeitherRetriedNorAReconnect() async throws {
+    api.getDepositAddressesHandler = {
+      Self.listing([(Self.polygon, [Self.polygonUsdc, AggSupportedChainToken(symbol: "USDC", address: Self.polygonUsdcE.address, decimals: 6)])])
+    }
+    let sent = Locked<[String]>([])
+    let agg = recordingAgg(sent)
+
+    _ = await ambiguousDepositToken { try await self.deposit(agg, on: Self.polygon, token: "USDC", autoReconnect: true) }
+
+    XCTAssertEqual(api.callCount("getDepositAddresses"), 1)
+    XCTAssertEqual(api.callCount("createLinkChallenge"), 0)
+    XCTAssertEqual(api.callCount("createLink"), 0)
+    XCTAssertEqual(sent.value, [])
+  }
+
+  func test_isSameTokenAddress_ignoresCaseOnlyForEvmAddressesOnEvmChains() {
+    let evm = Self.polygonUsdc.address
+    let mint = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+
+    XCTAssertTrue(Agg.isSameTokenAddress(chainId: Self.polygon, evm, evm.lowercased()))
+    XCTAssertTrue(Agg.isSameTokenAddress(chainId: Self.polygon, evm, "0x" + evm.dropFirst(2).uppercased()))
+    // Only a whole EVM address compares in any case; anything else on an EVM chain is exact.
+    XCTAssertFalse(Agg.isSameTokenAddress(chainId: Self.polygon, "NATIVE", "native"))
+    XCTAssertFalse(Agg.isSameTokenAddress(chainId: Self.polygon, evm + "\n", evm.lowercased() + "\n"))
+    // Off EVM chains, an address is exact even when it looks like an EVM one.
+    XCTAssertFalse(Agg.isSameTokenAddress(chainId: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", mint, mint.lowercased()))
+    XCTAssertFalse(Agg.isSameTokenAddress(chainId: "hyperliquid:mainnet", evm, evm.lowercased()))
+    XCTAssertTrue(Agg.isSameTokenAddress(chainId: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", mint, mint))
+  }
+
+  // MARK: - deposit outcome
+
+  /// An `Agg` whose `sendAsset` counts its calls and answers with `send`.
+  private func sendingAgg(_ sends: Locked<Int>, _ send: @escaping () async throws -> String) -> Agg {
+    makeAgg(dependencies: AggDependencies(sendAsset: { _, _ in
+      sends.value += 1
+      return try await send()
+    }))
+  }
+
+  private func baseDeposit(_ agg: Agg) async throws -> AggDepositResult {
+    try await agg.deposit(params: AggDepositParams(
+      chainId: "eip155:8453", token: "USDC", amount: "1.5", idempotencyKey: "k1", onProgress: progress.record, autoReconnect: true, addressPoll: Self.fastPoll
+    ))
+  }
+
+  private static func mpcError(_ id: String) -> PortalMpcError {
+    PortalMpcError(PortalError(code: 400, id: id, message: "failed"))
+  }
+
+  func test_deposit_aSendThatMayHaveBeenBroadcast_failsWithOutcomeUnknownAndTheKeyToRetryWith() async throws {
+    let ready: AggDepositAddresses = try Self.decode(Self.depositAddresses)
+    api.getDepositAddressesHandler = { AggResponse(data: ready) }
+    let failures: [Error] = [
+      URLError(.timedOut),
+      URLError(.networkConnectionLost),
+      // The node may have accepted the transaction before the call failed.
+      Self.mpcError("RPC_OP_FAILED"),
+      // A retry of a send that already went out: Portal does not say whether it landed.
+      Self.mpcError(PortalIdempotencyErrorId.requestAlreadyCompleted),
+      Self.mpcError(PortalIdempotencyErrorId.requestPreviouslyFailed),
+      Self.mpcError(PortalIdempotencyErrorId.keyReused),
+      PortalClassError.invalidResponseTypeForRequest,
+      PortalRequestsError.internalServerError("500 - failed", url: "https://mpc.portalhq.io"),
+      // A cancellation the deposit did not ask for: the send may still have gone out.
+      CancellationError()
+    ]
+
+    for failure in failures {
+      let sends = Locked(0)
+      let agg = sendingAgg(sends) { throw failure }
+      progress = ProgressRecorder()
+
+      do {
+        _ = try await baseDeposit(agg)
+        XCTFail("Expected depositOutcomeUnknown for \(failure)")
+      } catch let AggError.depositOutcomeUnknown(idempotencyKey, chainId, depositAddress, token, amount, underlyingError) {
+        XCTAssertEqual(idempotencyKey, "k1")
+        XCTAssertEqual(chainId, "eip155:8453")
+        XCTAssertEqual(depositAddress, "0xDeposit")
+        XCTAssertEqual(token, AggSupportedChainToken(symbol: "USDC", address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", decimals: 6))
+        XCTAssertEqual(amount, "1.5")
+        XCTAssertEqual(String(describing: underlyingError), String(describing: failure))
+      } catch {
+        XCTFail("Unexpected error for \(failure): \(error)")
+      }
+      // Sent once: neither retried nor taken for a link failure.
+      XCTAssertEqual(sends.value, 1, "\(failure)")
+      XCTAssertEqual(progress.steps, [.awaitingDepositAddresses, .sendingDeposit], "\(failure)")
+    }
+    XCTAssertEqual(api.callCount("createLinkChallenge"), 0)
+  }
+
+  func test_deposit_aSendRefusedBeforeItCouldBroadcast_failsWithItsOwnError() async throws {
+    let ready: AggDepositAddresses = try Self.decode(Self.depositAddresses)
+    api.getDepositAddressesHandler = { AggResponse(data: ready) }
+    let failures: [Error] = [
+      PortalIdempotencyError.invalidKey("idempotencyKey must not be empty or whitespace-only"),
+      PortalIdempotencyError.unsupportedBitcoinSendAsset,
+      PortalCredentialError.sessionInvalidated,
+      ProviderSigningError.userDeclinedApproval,
+      ProviderSigningError.walletRequestRejected,
+      Self.mpcError("AUTH_FAILED"),
+      Self.mpcError("INSUFFICIENT_FUNDS"),
+      Self.mpcError("TX_BUILD_FAILED"),
+      Self.mpcError("ADDRESS_BLOCKED"),
+      PortalClassError.clientNotAvailable,
+      PortalClassError.invalidParameters("Missing required parameters: to, token, or amount"),
+      PortalClassError.invalidChainId("eip155"),
+      PortalClassError.unsupportedChainId("eip155:8453")
+    ]
+
+    for failure in failures {
+      let sends = Locked(0)
+      let agg = sendingAgg(sends) { throw failure }
+
+      do {
+        _ = try await baseDeposit(agg)
+        XCTFail("Expected \(failure)")
+      } catch {
+        XCTAssertFalse(error is AggError, "\(failure) became \(error)")
+        XCTAssertEqual(String(describing: error), String(describing: failure))
+        XCTAssertTrue(type(of: error) == type(of: failure), "\(failure) became \(error)")
+      }
+      XCTAssertEqual(sends.value, 1, "\(failure)")
+    }
+  }
+
+  func test_deposit_aSendThatReturnsNoTransactionHash_failsWithOutcomeUnknown() async throws {
+    let ready: AggDepositAddresses = try Self.decode(Self.depositAddresses)
+    api.getDepositAddressesHandler = { AggResponse(data: ready) }
+    let sends = Locked(0)
+
+    do {
+      _ = try await baseDeposit(sendingAgg(sends) { "" })
+      XCTFail("Expected depositOutcomeUnknown")
+    } catch let AggError.depositOutcomeUnknown(idempotencyKey, _, _, _, _, underlyingError) {
+      XCTAssertEqual(idempotencyKey, "k1")
+      XCTAssertTrue(underlyingError is AggMissingTransactionHash, "\(underlyingError)")
+      XCTAssertEqual(underlyingError.localizedDescription, "[Agg] sendAsset returned no transaction hash.")
+    }
+    XCTAssertEqual(sends.value, 1)
+    XCTAssertEqual(progress.steps, [.awaitingDepositAddresses, .sendingDeposit])
+  }
+
+  func test_deposit_cancelledOnceSending_finishesTheSendAndReturnsIt() async throws {
+    let ready: AggDepositAddresses = try Self.decode(Self.depositAddresses)
+    api.getDepositAddressesHandler = { AggResponse(data: ready) }
+    let sending = expectation(description: "Sending")
+    let released = Locked(false)
+    let sendSawCancellation = Locked<Bool?>(nil)
+    let agg = makeAgg(dependencies: AggDependencies(sendAsset: { _, _ in
+      sending.fulfill()
+      // A cancellation that reached the send would end this sleep with a `CancellationError`.
+      while !released.value {
+        try await Task.sleep(nanoseconds: 5_000_000)
+      }
+      sendSawCancellation.value = Task.isCancelled
+      return "0xtx"
+    }))
+    let task = Task { try await self.baseDeposit(agg) }
+
+    await fulfillment(of: [sending], timeout: 5)
+    task.cancel()
+    try await Task.sleep(nanoseconds: 50_000_000)
+    released.value = true
+
+    let result = try await task.value
+    XCTAssertEqual(result.txHash, "0xtx")
+    XCTAssertEqual(result.idempotencyKey, "k1")
+    XCTAssertEqual(sendSawCancellation.value, false)
+    XCTAssertEqual(progress.steps, [.awaitingDepositAddresses, .sendingDeposit, .depositSent])
+  }
+
+  func test_deposit_cancelledWhileWaitingForTheAddresses_sendsNothing() async throws {
+    let reading = expectation(description: "Reading the deposit addresses")
+    api.getDepositAddressesHandler = {
+      reading.fulfill()
+      try await Task.sleep(nanoseconds: 10_000_000_000)
+      return AggGetDepositAddressesResponse(data: .notReady)
+    }
+    let sends = Locked(0)
+    let agg = sendingAgg(sends) { "0xtx" }
+    let task = Task { try await self.baseDeposit(agg) }
+
+    await fulfillment(of: [reading], timeout: 5)
+    task.cancel()
+
+    do {
+      _ = try await task.value
+      XCTFail("Expected a cancellation")
+    } catch {
+      XCTAssertTrue(error is CancellationError, "\(error)")
+    }
+    XCTAssertEqual(sends.value, 0)
   }
 
   // MARK: - Missing dependencies

@@ -40,9 +40,9 @@ public enum AggHelperStep: String, Equatable {
   case reconnecting
   /// Reading the deposit addresses, which Agg creates for a new user after the first request.
   case awaitingDepositAddresses
-  /// Sending the deposit from the Portal wallet.
+  /// Sending the deposit from the Portal wallet; `AggProgress.idempotencyKey` is set.
   case sendingDeposit
-  /// The deposit was broadcast; `AggProgress.txHash` is set.
+  /// The deposit was broadcast; `AggProgress.txHash` and `AggProgress.idempotencyKey` are set.
   case depositSent
   /// Pricing the trade.
   case quoting
@@ -72,6 +72,9 @@ public struct AggProgress {
   public let txHash: String?
   public let withdrawalPreview: AggWithdrawalPreview?
   public let withdrawal: AggWithdrawal?
+  /// The key the deposit is sent with. Keep it from `sendingDeposit` on: retrying with it never
+  /// sends the deposit twice.
+  public let idempotencyKey: String?
 
   public init(
     step: AggHelperStep,
@@ -80,7 +83,8 @@ public struct AggProgress {
     order: AggExecutionStatus? = nil,
     txHash: String? = nil,
     withdrawalPreview: AggWithdrawalPreview? = nil,
-    withdrawal: AggWithdrawal? = nil
+    withdrawal: AggWithdrawal? = nil,
+    idempotencyKey: String? = nil
   ) {
     self.step = step
     self.quote = quote
@@ -89,6 +93,7 @@ public struct AggProgress {
     self.txHash = txHash
     self.withdrawalPreview = withdrawalPreview
     self.withdrawal = withdrawal
+    self.idempotencyKey = idempotencyKey
   }
 }
 
@@ -113,15 +118,26 @@ public struct AggPollOptions: Equatable {
 public struct AggDepositParams {
   /// The CAIP-2 chain to send on; it must be one of the deposit addresses' `supportedChains`.
   public let chainId: String
-  /// The token's symbol (e.g. `USDC`) or contract address, as Agg lists it for `chainId`.
+  /// The token to send, as Agg lists it for `chainId`: its contract address (an EVM address in any
+  /// case, any other address, such as a Solana mint, exactly) or its symbol (e.g. `USDC`, in any
+  /// case). A token is its chain and address. A symbol is only a convenience and is not guaranteed
+  /// to be unique: one that names several tokens on `chainId` fails with
+  /// `AggError.ambiguousDepositToken` and nothing is sent, so pass the address instead. The order
+  /// Agg lists tokens in never picks one.
   public let token: String
   /// The amount to send, as a decimal string, e.g. `"10"` or `"1.5"`.
   public let amount: String
-  /// Makes the send safe to retry: generated once when these params are created and passed to
-  /// `sendAsset`, so Portal never broadcasts it twice. Keep the same params to retry a failed
-  /// `deposit`, and create new params for a new deposit. A retry of a send that already went out is
-  /// refused, not sent again, and carries no transaction hash: read `getBalances(sync: true, mode:
-  /// nil)` to see whether it landed.
+  /// Makes the send safe to retry: passed to `sendAsset`, so Portal never broadcasts a deposit twice
+  /// under it. Generated when these params are created unless you pass one, and reported on
+  /// `sendingDeposit`, in the result and in `AggError.depositOutcomeUnknown`.
+  ///
+  /// After `AggError.depositOutcomeUnknown`, retry with this same key (or these params). Portal
+  /// refuses the key when the first send went out or failed, which ends in
+  /// `AggError.depositOutcomeUnknown` again with no transaction hash: read
+  /// `getBalances(sync: true, mode: nil)` to see whether it landed before depositing with a new key.
+  /// Any other error from `deposit` means nothing was sent, so deposit again with a new key: Portal
+  /// can keep refusing this one for a while after refusing its send (for example for insufficient
+  /// funds).
   public let idempotencyKey: String
   public let onProgress: AggProgressHandler?
   /// On `AGG_LINK_REQUIRED`, run `connect` and retry that call once.
@@ -157,12 +173,15 @@ public struct AggDepositResult: Equatable {
   public let chainId: String
   /// The token as Agg lists it on `chainId`.
   public let token: AggSupportedChainToken
+  /// The key the deposit was sent with.
+  public let idempotencyKey: String
 
-  public init(txHash: String, depositAddress: String, chainId: String, token: AggSupportedChainToken) {
+  public init(txHash: String, depositAddress: String, chainId: String, token: AggSupportedChainToken, idempotencyKey: String) {
     self.txHash = txHash
     self.depositAddress = depositAddress
     self.chainId = chainId
     self.token = token
+    self.idempotencyKey = idempotencyKey
   }
 }
 
