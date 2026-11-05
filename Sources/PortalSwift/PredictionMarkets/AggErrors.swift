@@ -156,6 +156,11 @@ public enum AggError: LocalizedError {
   case invalidAmount(name: String, value: String)
   /// A helper needs something `Portal` provides; a standalone `Agg` was built without it.
   case missingDependency(name: String)
+  /// A call was refused with `AGG_LINK_REQUIRED`, and the `connect` that `autoReconnect` ran failed
+  /// (`underlyingError`, for example a declined signature or a network error). The refused call did
+  /// nothing and was not sent again. The helper does not retry the reconnect, which would ask the
+  /// user to sign again: run `connect`, then call the helper again.
+  case reconnectFailed(underlyingError: Error)
   /// Agg does not take deposits of `token` on `chainId`; nothing was sent.
   case unsupportedDepositToken(chainId: String, token: String)
   /// `token` names more than one token on `chainId`; nothing was sent. A token is its chain and
@@ -230,6 +235,8 @@ public enum AggError: LocalizedError {
       return "[Agg] \(name) is not a valid amount: \"\(value)\"."
     case let .missingDependency(name):
       return "[Agg] This helper needs a \(name) dependency."
+    case let .reconnectFailed(underlyingError):
+      return "[Agg] A call was refused with AGG_LINK_REQUIRED and linking again failed, so it was not retried; run connect, then try again: \(underlyingError.localizedDescription)"
     case let .unsupportedDepositToken(chainId, token):
       return "[Agg] Agg does not take \(token) deposits on \(chainId); see the deposit addresses' supportedChains."
     case let .ambiguousDepositToken(chainId, token, candidates):

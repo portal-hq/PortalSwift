@@ -40,4 +40,41 @@ enum PortalSendFailure {
       return false
     }
   }
+
+  /// `true` for a `Portal.sendAsset` failure known to happen before anything was broadcast: its own
+  /// checks of its parameters and chain, a failed request to build the transaction (nothing is
+  /// signed until the build returns, so even a lost response sent nothing), or a failure
+  /// `failedBeforeSending` knows. Anything else may come after the broadcast.
+  static func sendAssetFailedBeforeSending(_ error: Error) -> Bool {
+    if failedBeforeSending(error) || isBuildTransactionFailure(error) {
+      return true
+    }
+    switch error as? PortalClassError {
+    case .clientNotAvailable, .invalidParameters, .invalidChainId, .unsupportedChainId:
+      return true
+    // Thrown once the send returned, or not by `sendAsset`.
+    case .invalidResponseTypeForRequest, .noWalletFoundForChain, .cannotCreateWallet, .cannotRecoverWallet, nil:
+      return false
+    }
+  }
+
+  /// Whether `error` is the failure of the request that builds a `sendAsset` transaction: an HTTP
+  /// error or a network error that names its URL. A `401` names no URL, so it is not recognised.
+  static func isBuildTransactionFailure(_ error: Error) -> Bool {
+    let url: URL?
+    switch error {
+    case let error as PortalRequestsError:
+      switch error {
+      case let .clientError(_, failingUrl), let .internalServerError(_, failingUrl):
+        url = URL(string: failingUrl)
+      case .couldNotParseHttpResponse, .redirectError, .unauthorized:
+        url = nil
+      }
+    case let error as URLError:
+      url = error.failingURL
+    default:
+      url = nil
+    }
+    return url?.path.hasSuffix(PortalApi.buildTransactionPathSuffix) == true
+  }
 }

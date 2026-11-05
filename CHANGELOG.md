@@ -41,7 +41,7 @@ Possible Types of changes include:
     - `buy(params:)` and `sell(params:)` quote, fill and wait for the fill to finish, reporting each step through `onProgress`. Only a `filled` or `partially_filled` fill succeeds. A fill that may have gone through but could not be read back fails with `AggError.orderOutcomeUnknown`, which carries the quote to look the fill up with `getOrder` instead of trading again.
     - `placeLimitOrder(params:)` takes the price and size as decimals, `redeemAll(params:)` redeems every eligible position, and `withdraw(params:)` previews, withdraws with a `requestId` that makes it safe to retry, and waits for the withdrawal to finish.
     - Paper mode (`mode: .paper`) simulates trades from any country.
-    - With `autoReconnect`, a helper refused with `AGG_LINK_REQUIRED` links again and retries once; helpers refused at the same time share one link, so the user signs once.
+    - With `autoReconnect`, a helper refused with `AGG_LINK_REQUIRED` links again and retries once; helpers refused at the same time share one link, so the user signs once. If linking again fails, the helper stops with `AggError.reconnectFailed` instead of asking the user to sign again.
     - Statuses, venues and token symbols are `AggOpenValue` types: a value Agg adds later still decodes.
     - A failed Agg request throws `AggRequestError`, which wraps the transport's error with the request's trace id, rather than the transport's error itself as the other Portal APIs do. `AggApiError.from(_:)` reads the Portal error `id`, Agg's `details` and the trace id from it, for example `AGG_LINK_REQUIRED`.
     - Agg executes orders from the user's Agg balance; self-custody fills are not available yet.

@@ -199,6 +199,9 @@ final class AggViewController: UIViewController {
       if case let .depositOutcomeUnknown(_, _, _, _, _, underlyingError) = aggError {
         return "\(aggError.localizedDescription)\n\(describe(underlyingError))"
       }
+      if case let .reconnectFailed(underlyingError) = aggError {
+        return "\(aggError.localizedDescription)\n\(describe(underlyingError))"
+      }
       return aggError.localizedDescription
     }
     guard let apiError = AggApiError.from(error) else {

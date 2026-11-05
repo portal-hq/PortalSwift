@@ -524,13 +524,120 @@ final class AggTests: XCTestCase {
 
     do {
       _ = try await agg.buy(params: buyParams(autoReconnect: true))
-      XCTFail("Expected the signing error")
-    } catch let error as NSError where error.domain == "AggTests" {
-      XCTAssertEqual(error.code, 1)
+      XCTFail("Expected reconnectFailed")
+    } catch AggError.reconnectFailed(let underlyingError as NSError) {
+      XCTAssertEqual(underlyingError.domain, "AggTests")
+      XCTAssertEqual(underlyingError.code, 1)
     } catch {
       XCTFail("Unexpected error: \(error)")
     }
     XCTAssertEqual(api.calls, ["createQuote", "createOrder", "createLinkChallenge"])
+  }
+
+  /// A reconnect that fails with a gateway error after the fill was refused for the link: the fill
+  /// did nothing, so the buy is neither an unknown outcome nor retried (which would ask the user to
+  /// sign again).
+  func test_buy_aFillRefusedForTheLinkWhoseReconnectFailsTransiently_signsOnceAndIsReconnectFailed() async throws {
+    try stubTrade(states: [("filled", true)])
+    try stubLink()
+    api.createOrderHandler = { _ in throw Self.linkRequired }
+    api.createLinkHandler = { _ in throw Self.apiError(502) }
+    let signatures = Box<[[String]]>([])
+
+    do {
+      _ = try await makeAgg(dependencies: linkDependencies(signatures: signatures)).buy(params: buyParams(autoReconnect: true))
+      XCTFail("Expected reconnectFailed")
+    } catch AggError.reconnectFailed(let underlyingError) {
+      XCTAssertEqual(AggApiError.from(underlyingError)?.status, 502)
+    } catch {
+      XCTFail("Unexpected error: \(error)")
+    }
+    XCTAssertEqual(api.calls, ["createQuote", "createOrder", "createLinkChallenge", "createLink"])
+    XCTAssertEqual(signatures.value.count, 1)
+  }
+
+  func test_withdraw_aWithdrawalRefusedForTheLinkWhoseReconnectFailsTransiently_signsOnceAndIsReconnectFailed() async throws {
+    try stubWithdrawal()
+    try stubLink()
+    api.createWithdrawalHandler = { _ in throw Self.linkRequired }
+    api.createLinkChallengeHandler = { _ in throw AggRequestError(traceId: "t", underlyingError: URLError(.networkConnectionLost)) }
+    let signatures = Box<[[String]]>([])
+
+    do {
+      _ = try await makeAgg(dependencies: linkDependencies(signatures: signatures)).withdraw(params: AggWithdrawParams(
+        amount: "1.5", tokenSymbol: .usdc, destinationChainId: "eip155:8453", autoReconnect: true, poll: Self.fastPoll
+      ))
+      XCTFail("Expected reconnectFailed")
+    } catch AggError.reconnectFailed(let underlyingError) {
+      XCTAssertEqual(((underlyingError as? AggRequestError)?.underlyingError as? URLError)?.code, .networkConnectionLost)
+    } catch {
+      XCTFail("Unexpected error: \(error)")
+    }
+    XCTAssertEqual(api.callCount("createWithdrawal"), 1)
+    XCTAssertEqual(api.callCount("createLinkChallenge"), 1)
+    XCTAssertEqual(signatures.value.count, 0)
+  }
+
+  /// Reading a fill that was placed, refused for the link, with a reconnect that fails with a
+  /// gateway error: the read is not repeated (each repeat would sign again), and the fill's outcome
+  /// is unknown.
+  func test_buy_aFillReadRefusedForTheLinkWhoseReconnectFailsTransiently_signsOnceAndIsOutcomeUnknown() async throws {
+    try stubTrade(states: [("filled", true)])
+    try stubLink()
+    api.getOrderHandler = { _, _ in throw Self.linkRequired }
+    api.createLinkHandler = { _ in throw Self.apiError(503) }
+    let signatures = Box<[[String]]>([])
+
+    do {
+      _ = try await makeAgg(dependencies: linkDependencies(signatures: signatures)).buy(params: buyParams(autoReconnect: true))
+      XCTFail("Expected orderOutcomeUnknown")
+    } catch let AggError.orderOutcomeUnknown(quote, fill, _, underlyingError) {
+      XCTAssertEqual(quote.quoteId, "q1")
+      XCTAssertNotNil(fill)
+      guard case let AggError.reconnectFailed(cause)? = underlyingError as? AggError else {
+        return XCTFail("Expected reconnectFailed, got \(underlyingError)")
+      }
+      XCTAssertEqual(AggApiError.from(cause)?.status, 503)
+    } catch {
+      XCTFail("Unexpected error: \(error)")
+    }
+    XCTAssertEqual(api.callCount("getOrder"), 1)
+    XCTAssertEqual(api.callCount("createLink"), 1)
+    XCTAssertEqual(signatures.value.count, 1)
+  }
+
+  func test_deposit_addressesRefusedForTheLinkWhoseReconnectFailsTransiently_signsOnceAndSendsNothing() async throws {
+    try stubLink()
+    api.getDepositAddressesHandler = { throw Self.linkRequired }
+    api.createLinkHandler = { _ in throw Self.apiError(504) }
+    let signatures = Box<[[String]]>([])
+    let sends = Locked(0)
+    var dependencies = linkDependencies(signatures: signatures)
+    dependencies.sendAsset = { _, _ in
+      sends.value += 1
+      return "0xtx"
+    }
+
+    do {
+      _ = try await makeAgg(dependencies: dependencies).deposit(params: AggDepositParams(
+        chainId: "eip155:8453", token: "USDC", amount: "1", autoReconnect: true, addressPoll: Self.fastPoll
+      ))
+      XCTFail("Expected reconnectFailed")
+    } catch AggError.reconnectFailed(let underlyingError) {
+      XCTAssertEqual(AggApiError.from(underlyingError)?.status, 504)
+    } catch {
+      XCTFail("Unexpected error: \(error)")
+    }
+    XCTAssertEqual(api.callCount("getDepositAddresses"), 1)
+    XCTAssertEqual(signatures.value.count, 1)
+    XCTAssertEqual(sends.value, 0)
+  }
+
+  func test_reconnectFailed_isNeitherTransientNorAmbiguous() {
+    let failed = AggError.reconnectFailed(underlyingError: Self.apiError(503))
+
+    XCTAssertFalse(AggRequestFailure.isTransient(failed))
+    XCTAssertFalse(AggRequestFailure.isAmbiguous(failed))
   }
 
   func test_autoReconnect_linksAgainOnTheChainTheLastConnectUsed() async throws {
@@ -640,7 +747,7 @@ final class AggTests: XCTestCase {
     let results = await [first, second]
 
     for result in results {
-      guard case let .failure(error as NSError) = result else {
+      guard case let .failure(AggError.reconnectFailed(error as NSError)) = result else {
         return XCTFail("Expected the declined signature, got \(result)")
       }
       XCTAssertEqual(error.domain, "AggTests")
@@ -1394,6 +1501,8 @@ final class AggTests: XCTestCase {
     ))
   }
 
+  private static let buildTransactionUrl = "https://api.portalhq.io/api/v3/clients/me/chains/eip155:8453/assets/send/build-transaction"
+
   private static func mpcError(_ id: String) -> PortalMpcError {
     PortalMpcError(PortalError(code: 400, id: id, message: "failed"))
   }
@@ -1412,6 +1521,9 @@ final class AggTests: XCTestCase {
       Self.mpcError(PortalIdempotencyErrorId.keyReused),
       PortalClassError.invalidResponseTypeForRequest,
       PortalRequestsError.internalServerError("500 - failed", url: "https://mpc.portalhq.io"),
+      // Requests other than the build may come after the transaction was signed.
+      PortalRequestsError.clientError("400 - failed", url: "https://rpc.example.com/eip155:8453"),
+      URLError(.networkConnectionLost, userInfo: [NSURLErrorFailingURLErrorKey: URL(string: "https://rpc.example.com/eip155:8453")!]),
       // A cancellation the deposit did not ask for: the send may still have gone out.
       CancellationError()
     ]
@@ -1457,7 +1569,11 @@ final class AggTests: XCTestCase {
       PortalClassError.clientNotAvailable,
       PortalClassError.invalidParameters("Missing required parameters: to, token, or amount"),
       PortalClassError.invalidChainId("eip155"),
-      PortalClassError.unsupportedChainId("eip155:8453")
+      PortalClassError.unsupportedChainId("eip155:8453"),
+      // Nothing is signed until the build returns, so a failed build sent nothing.
+      PortalRequestsError.clientError(#"400 - {"error":"Balance 1 is short of 2"}"#, url: Self.buildTransactionUrl),
+      PortalRequestsError.internalServerError("500 - failed", url: Self.buildTransactionUrl),
+      URLError(.networkConnectionLost, userInfo: [NSURLErrorFailingURLErrorKey: URL(string: Self.buildTransactionUrl)!])
     ]
 
     for failure in failures {

@@ -140,7 +140,8 @@ public struct AggDepositParams {
   /// funds).
   public let idempotencyKey: String
   public let onProgress: AggProgressHandler?
-  /// On `AGG_LINK_REQUIRED`, run `connect` and retry that call once.
+  /// On `AGG_LINK_REQUIRED`, run `connect` and retry that call once. A failed `connect` ends the
+  /// helper with `AggError.reconnectFailed`.
   public let autoReconnect: Bool
   /// How long to wait for the deposit addresses to be created.
   public let addressPoll: AggPollOptions
@@ -199,7 +200,8 @@ public struct AggBuyParams {
   /// `.paper` for a simulated trade, which works from any country.
   public let mode: AggMode?
   public let onProgress: AggProgressHandler?
-  /// On `AGG_LINK_REQUIRED`, run `connect` and retry that call once.
+  /// On `AGG_LINK_REQUIRED`, run `connect` and retry that call once. A failed `connect` ends the
+  /// helper with `AggError.reconnectFailed`.
   public let autoReconnect: Bool
   /// How often to read the fill when Agg sends no `pollAfterMs`, and how long to wait.
   public let poll: AggPollOptions
@@ -238,7 +240,8 @@ public struct AggSellParams {
   /// `.paper` to sell simulated shares.
   public let mode: AggMode?
   public let onProgress: AggProgressHandler?
-  /// On `AGG_LINK_REQUIRED`, run `connect` and retry that call once.
+  /// On `AGG_LINK_REQUIRED`, run `connect` and retry that call once. A failed `connect` ends the
+  /// helper with `AggError.reconnectFailed`.
   public let autoReconnect: Bool
   /// How often to read the fill when Agg sends no `pollAfterMs`, and how long to wait.
   public let poll: AggPollOptions
@@ -297,7 +300,8 @@ public struct AggPlaceLimitOrderParams {
   public let expiresAt: String?
   public let clientOrderId: String?
   public let onProgress: AggProgressHandler?
-  /// On `AGG_LINK_REQUIRED`, run `connect` and retry the order once.
+  /// On `AGG_LINK_REQUIRED`, run `connect` and retry the order once. A failed `connect` ends the
+  /// helper with `AggError.reconnectFailed`.
   public let autoReconnect: Bool
 
   public init(
@@ -330,7 +334,8 @@ public struct AggPlaceLimitOrderParams {
 /// Redeems every eligible live position.
 public struct AggRedeemAllParams {
   public let onProgress: AggProgressHandler?
-  /// On `AGG_LINK_REQUIRED`, run `connect` and retry that call once.
+  /// On `AGG_LINK_REQUIRED`, run `connect` and retry that call once. A failed `connect` ends the
+  /// helper with `AggError.reconnectFailed`.
   public let autoReconnect: Bool
 
   public init(onProgress: AggProgressHandler? = nil, autoReconnect: Bool = false) {
@@ -356,7 +361,8 @@ public struct AggWithdrawParams {
   /// says how to recover.
   public let requestId: String
   public let onProgress: AggProgressHandler?
-  /// On `AGG_LINK_REQUIRED`, run `connect` and retry that call once.
+  /// On `AGG_LINK_REQUIRED`, run `connect` and retry that call once. A failed `connect` ends the
+  /// helper with `AggError.reconnectFailed`.
   public let autoReconnect: Bool
   /// How often to read the withdrawal and how long to wait for it to finish.
   public let poll: AggPollOptions

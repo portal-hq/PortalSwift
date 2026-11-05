@@ -132,6 +132,7 @@ final class AggErrorsTests: XCTestCase {
       (.emptyIdentifier(name: "quoteId"), ["quoteId must not be empty"]),
       (.invalidAmount(name: "price", value: "1.5"), ["price", "\"1.5\""]),
       (.missingDependency(name: "sendAsset"), ["sendAsset"]),
+      (.reconnectFailed(underlyingError: cause), ["AGG_LINK_REQUIRED", "linking again failed", "run connect", cause.localizedDescription]),
       (.unsupportedDepositToken(chainId: "eip155:8453", token: "USDT"), ["USDT", "eip155:8453"]),
       (.quoteNotTradable(quote: quote), ["q1", "polymarket: Venue not available in your region (US)"]),
       (.orderFailed(status: status), ["q1", "expired", "Quote expired"]),

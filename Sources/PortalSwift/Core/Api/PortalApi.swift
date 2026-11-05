@@ -816,8 +816,12 @@ public class PortalApi: PortalApiProtocol {
    * Private functions
    *******************************************/
 
+  /// The end of the URL of the request that builds a `sendAsset` transaction; `PortalSendFailure`
+  /// recognises a failed build by it.
+  static let buildTransactionPathSuffix = "/assets/send/build-transaction"
+
   private func getBuildTransactionUrl(chainId: String) -> URL? {
-    return URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)/assets/send/build-transaction")
+    return URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)\(Self.buildTransactionPathSuffix)")
   }
 
   // Every helper resolves the bearer at the moment the request is built — never earlier, never

@@ -352,9 +352,10 @@ public class Agg: AggProtocol {
   /// The send carries `params.idempotencyKey`, so retrying with that key never broadcasts it twice.
   /// Once the send starts it is never abandoned: cancelling the calling task after that point still
   /// returns its result. A send that fails before anything could be broadcast (for example a
-  /// declined signing approval, or insufficient funds) throws its own error; any other failure, or a
-  /// send that returns no transaction hash, throws `AggError.depositOutcomeUnknown` with the key to
-  /// retry with. Every error other than `AggError.depositOutcomeUnknown` means nothing was sent.
+  /// declined signing approval, or a transaction Portal refuses to build for insufficient funds)
+  /// throws its own error; any other failure, or a send that returns no transaction hash, throws
+  /// `AggError.depositOutcomeUnknown` with the key to retry with. Every error other than
+  /// `AggError.depositOutcomeUnknown` means nothing was sent.
   public func deposit(params: AggDepositParams) async throws -> AggDepositResult {
     try Self.requireAmount("amount", params.amount)
     guard let sendAsset = dependencies.sendAsset else {
@@ -400,7 +401,7 @@ public class Agg: AggProtocol {
     do {
       txHash = try await send.value
     } catch {
-      if Self.failedBeforeSending(error) {
+      if PortalSendFailure.sendAssetFailedBeforeSending(error) {
         throw error
       }
       throw outcomeUnknown(error)
@@ -678,7 +679,9 @@ public class Agg: AggProtocol {
   /// send twice.
   ///
   /// Helpers refused at the same time share one reconnect, so the user signs once. A call sent
-  /// before a link that has since completed is only retried.
+  /// before a link that has since completed is only retried. A reconnect that fails ends the call
+  /// with `AggError.reconnectFailed`, which is neither transient nor ambiguous: retrying it would
+  /// ask the user to sign again, and the refused call did nothing.
   private func linked<T>(
     _ autoReconnect: Bool,
     _ notify: AggProgressHandler,
@@ -695,7 +698,11 @@ public class Agg: AggProtocol {
         notify(AggProgress(step: .reconnecting))
         // The reconnect is shared, so this caller's cancellation does not stop it; it is checked
         // once the reconnect ends.
-        try await reconnect.value
+        do {
+          try await reconnect.value
+        } catch {
+          throw AggError.reconnectFailed(underlyingError: error)
+        }
         try Task.checkCancellation()
       }
       return try await call()
@@ -854,22 +861,6 @@ public class Agg: AggProtocol {
     value.utf8.count == 42 && value.range(of: "^0x[0-9a-fA-F]{40}$", options: .regularExpression) != nil
   }
 
-  /// `true` for a `sendAsset` failure known to happen before anything was broadcast: `sendAsset`'s
-  /// own checks of its parameters and chain, or a failure `PortalSendFailure` knows comes before the
-  /// broadcast. Anything else may come after it.
-  static func failedBeforeSending(_ error: Error) -> Bool {
-    if PortalSendFailure.failedBeforeSending(error) {
-      return true
-    }
-    switch error as? PortalClassError {
-    case .clientNotAvailable, .invalidParameters, .invalidChainId, .unsupportedChainId:
-      return true
-    // Thrown once the send returned, or not by `sendAsset`.
-    case .invalidResponseTypeForRequest, .noWalletFoundForChain, .cannotCreateWallet, .cannotRecoverWallet, nil:
-      return false
-    }
-  }
-
   /// Seconds to wait before reading a fill again: Agg's `pollAfterMs`, kept between 0.25 and 10
   /// seconds; `nil` when Agg sent none, to use the poll interval.
   static func orderPollWait(pollAfterMs: Int?) -> TimeInterval? {
@@ -920,8 +911,8 @@ struct AggMissingTransactionHash: LocalizedError {
 
 /// How the Agg helpers classify a failure. `PortalAggApi` throws every failure of a request it sent
 /// as an `AggRequestError`. Anything else never reached the Portal API (a request refused before
-/// sending, a missing credential, a reconnect whose signature was declined), so it is neither
-/// transient nor ambiguous.
+/// sending, a missing credential), or is a failed reconnect (`AggError.reconnectFailed`) after the
+/// call was refused for the link, so it is neither transient nor ambiguous.
 enum AggRequestFailure {
   /// Statuses that clear on retry: a rate limit and gateway errors.
   static let transientStatuses: Set<Int> = [429, 502, 503, 504]
