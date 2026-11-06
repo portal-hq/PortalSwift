@@ -16,11 +16,15 @@ jobs:
       NEW_VERSION: ${{ inputs.version}}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@0717577d45739eb3c851188b29f50ed6c0b2194e # v2.8.0
         with:
           fetch-depth: 0
           path: main
           token: ${{ secrets.GH_PAT }}
+          # Keep GH_PAT out of .git/config, where every later step, including the Slack action, could
+          # read it. The steps that push hand it to their own git command through the environment
+          # (see PUSH_AUTH_HEADER), so it is in neither the config file nor the process arguments.
+          persist-credentials: false
 
       - name: Auto bump patch version
         if: ${{ !inputs.version}}
@@ -52,6 +56,8 @@ jobs:
           echo "$NEW_VERSION"
 
       - name: Push new version
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           cd ${{ github.workspace }}/main
           git config --local user.name "portal-release-bot"
@@ -71,20 +77,29 @@ jobs:
 
           git add -A
           git commit -m "Bump version to ${{ env.NEW_VERSION }}"
-          git push
+
+          # The header actions/checkout would have persisted, given to this push only.
+          PUSH_AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_PAT" | base64 | tr -d '\n')"
+          echo "::add-mask::${PUSH_AUTH_HEADER#AUTHORIZATION: basic }"
+          GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.https://github.com/.extraheader GIT_CONFIG_VALUE_0="$PUSH_AUTH_HEADER" git push
 
       - name: Tag repo with new version
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           cd ${{ github.workspace }}/main
           git config --local user.name "portal-release-bot"
           git config --local user.email "release-bot@portalhq.io"
 
           git tag -a ${{ env.NEW_VERSION }} -m "Version ${{ env.NEW_VERSION }}"
-          git push origin ${{ env.NEW_VERSION }}
+
+          PUSH_AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_PAT" | base64 | tr -d '\n')"
+          echo "::add-mask::${PUSH_AUTH_HEADER#AUTHORIZATION: basic }"
+          GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.https://github.com/.extraheader GIT_CONFIG_VALUE_0="$PUSH_AUTH_HEADER" git push origin ${{ env.NEW_VERSION }}
 
       - name: Slack - send pod published
         if: ${{ inputs.hot_fix == false }}
-        uses: slackapi/slack-github-action@v1.23.0
+        uses: slackapi/slack-github-action@007b2c3c751a190b6f0f040e47ed024deaa72844 # v1.23.0
         with:
           payload: |
             {
@@ -97,7 +112,7 @@ jobs:
 
       - name: Slack - send hotfix pod published
         if: ${{ inputs.hot_fix == true }}
-        uses: slackapi/slack-github-action@v1.23.0
+        uses: slackapi/slack-github-action@007b2c3c751a190b6f0f040e47ed024deaa72844 # v1.23.0
         with:
           payload: |
             {
@@ -110,6 +125,8 @@ jobs:
 
       - name: Merge main to release-candidate
         if: ${{ inputs.hot_fix == false }}
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           cd ${{ github.workspace }}/main
           git config --local user.name "portal-release-bot"
@@ -117,4 +134,7 @@ jobs:
           git checkout release-candidate
 
           git merge -X theirs -m "merge main into release-candidate" main
-          git push
+
+          PUSH_AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_PAT" | base64 | tr -d '\n')"
+          echo "::add-mask::${PUSH_AUTH_HEADER#AUTHORIZATION: basic }"
+          GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.https://github.com/.extraheader GIT_CONFIG_VALUE_0="$PUSH_AUTH_HEADER" git push

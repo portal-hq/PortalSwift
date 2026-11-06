@@ -1,0 +1,17 @@
+# Keeps the GitHub Actions in .github/workflows up to date. Each action is pinned to a full commit
+# SHA with its version in a trailing comment; Dependabot updates both together.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: release-candidate
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: CI
+    groups:
+      # Minor and patch updates come as one PR; each major update gets its own.
+      github-actions-minor-and-patch:
+        update-types:
+          - minor
+          - patch
