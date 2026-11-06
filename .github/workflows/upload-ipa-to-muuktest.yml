@@ -5,6 +5,9 @@ name: Build and Upload iOS ipa to Mukktest
 #    branches:
 #      - release-candidate
 
+permissions:
+  contents: read
+
 jobs:
   build-and-upload:
     runs-on: macos-latest

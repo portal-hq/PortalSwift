@@ -5,6 +5,9 @@ on:
     types:
       - completed
 
+# Only posts to Slack through SLACK_WEBHOOK_URL; the job's token needs no access at all.
+permissions: {}
+
 jobs:
   handle_workflow_status:
     runs-on: ubuntu-latest

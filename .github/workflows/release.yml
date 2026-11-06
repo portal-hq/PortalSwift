@@ -9,6 +9,10 @@ on:
         description: "Is this release a hotfix?"
         type: boolean
 
+# The pushes use GH_PAT, not GITHUB_TOKEN, so the job's own token needs nothing beyond the checkout.
+permissions:
+  contents: read
+
 jobs:
   release_sdk:
     runs-on: macos-latest
@@ -55,9 +59,22 @@ jobs:
           echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
           echo "$NEW_VERSION"
 
+      # The version, whether typed in or computed, reaches shell commands, a git tag and the Slack
+      # payloads below. Only a semantic version's characters are allowed, so it cannot carry quotes
+      # or shell syntax. The steps read it from the environment rather than pasting it into scripts.
+      - name: Check the version
+        env:
+          RELEASE_VERSION: ${{ env.NEW_VERSION }}
+        run: |
+          if ! [[ "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.]+)?$ ]]; then
+            echo "::error::The version must look like 1.2.3 or 1.2.3-beta.1, got: $RELEASE_VERSION"
+            exit 1
+          fi
+
       - name: Push new version
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
+          RELEASE_VERSION: ${{ env.NEW_VERSION }}
         run: |
           cd ${{ github.workspace }}/main
           git config --local user.name "portal-release-bot"
@@ -66,17 +83,17 @@ jobs:
           # Update the version in the podspec file
           export PODSPEC_FILE="PortalSwift.podspec"
 
-          sed -i.bak -E "s/^( *s.version *= *).*/\1\"${{ env.NEW_VERSION }}\"/" "$PODSPEC_FILE"
+          sed -i.bak -E "s/^( *s.version *= *).*/\1\"$RELEASE_VERSION\"/" "$PODSPEC_FILE"
           rm "$PODSPEC_FILE.bak"
 
           # Print the first 4 lines of the podspec file
           head -n 4 "$PODSPEC_FILE"
 
           # Update the version file
-          ./scripts/update_version_file.sh ${{ env.NEW_VERSION }}
+          ./scripts/update_version_file.sh "$RELEASE_VERSION"
 
           git add -A
-          git commit -m "Bump version to ${{ env.NEW_VERSION }}"
+          git commit -m "Bump version to $RELEASE_VERSION"
 
           # The header actions/checkout would have persisted, given to this push only.
           PUSH_AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_PAT" | base64 | tr -d '\n')"
@@ -86,21 +103,23 @@ jobs:
       - name: Tag repo with new version
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
+          RELEASE_VERSION: ${{ env.NEW_VERSION }}
         run: |
           cd ${{ github.workspace }}/main
           git config --local user.name "portal-release-bot"
           git config --local user.email "release-bot@portalhq.io"
 
-          git tag -a ${{ env.NEW_VERSION }} -m "Version ${{ env.NEW_VERSION }}"
+          git tag -a "$RELEASE_VERSION" -m "Version $RELEASE_VERSION"
 
           PUSH_AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_PAT" | base64 | tr -d '\n')"
           echo "::add-mask::${PUSH_AUTH_HEADER#AUTHORIZATION: basic }"
-          GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.https://github.com/.extraheader GIT_CONFIG_VALUE_0="$PUSH_AUTH_HEADER" git push origin ${{ env.NEW_VERSION }}
+          GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.https://github.com/.extraheader GIT_CONFIG_VALUE_0="$PUSH_AUTH_HEADER" git push origin "$RELEASE_VERSION"
 
       - name: Slack - send pod published
         if: ${{ inputs.hot_fix == false }}
         uses: slackapi/slack-github-action@007b2c3c751a190b6f0f040e47ed024deaa72844 # v1.23.0
         with:
+          # NEW_VERSION passed "Check the version", so it is safe inside this JSON.
           payload: |
             {
             "Title": "**Swift SDK ${{ env.NEW_VERSION }} Published**",
@@ -114,6 +133,7 @@ jobs:
         if: ${{ inputs.hot_fix == true }}
         uses: slackapi/slack-github-action@007b2c3c751a190b6f0f040e47ed024deaa72844 # v1.23.0
         with:
+          # NEW_VERSION passed "Check the version", so it is safe inside this JSON.
           payload: |
             {
             "Title": "**Swift SDK - Hotfix ${{ env.NEW_VERSION }} Published**",
