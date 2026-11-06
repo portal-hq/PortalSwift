@@ -22,7 +22,8 @@ jobs:
           path: main
           token: ${{ secrets.GH_PAT }}
           # Keep GH_PAT out of .git/config, where every later step, including the Slack action, could
-          # read it. The steps that push pass it to their own git command (see PUSH_AUTH_HEADER).
+          # read it. The steps that push hand it to their own git command through the environment
+          # (see PUSH_AUTH_HEADER), so it is in neither the config file nor the process arguments.
           persist-credentials: false
 
       - name: Auto bump patch version
@@ -80,7 +81,7 @@ jobs:
           # The header actions/checkout would have persisted, given to this push only.
           PUSH_AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_PAT" | base64 | tr -d '\n')"
           echo "::add-mask::${PUSH_AUTH_HEADER#AUTHORIZATION: basic }"
-          git -c http.https://github.com/.extraheader="$PUSH_AUTH_HEADER" push
+          GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.https://github.com/.extraheader GIT_CONFIG_VALUE_0="$PUSH_AUTH_HEADER" git push
 
       - name: Tag repo with new version
         env:
@@ -94,7 +95,7 @@ jobs:
 
           PUSH_AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_PAT" | base64 | tr -d '\n')"
           echo "::add-mask::${PUSH_AUTH_HEADER#AUTHORIZATION: basic }"
-          git -c http.https://github.com/.extraheader="$PUSH_AUTH_HEADER" push origin ${{ env.NEW_VERSION }}
+          GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.https://github.com/.extraheader GIT_CONFIG_VALUE_0="$PUSH_AUTH_HEADER" git push origin ${{ env.NEW_VERSION }}
 
       - name: Slack - send pod published
         if: ${{ inputs.hot_fix == false }}
@@ -136,4 +137,4 @@ jobs:
 
           PUSH_AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_PAT" | base64 | tr -d '\n')"
           echo "::add-mask::${PUSH_AUTH_HEADER#AUTHORIZATION: basic }"
-          git -c http.https://github.com/.extraheader="$PUSH_AUTH_HEADER" push
+          GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.https://github.com/.extraheader GIT_CONFIG_VALUE_0="$PUSH_AUTH_HEADER" git push
