@@ -240,6 +240,10 @@ final class YieldXyzPerpsTests: XCTestCase {
     XCTAssertEqual(perpsApi.getHealthCallsCount, 1)
   }
 
+  func test_perps_canWrapAYieldxyzImplementation() {
+    XCTAssertTrue(Perps(yieldxyz: perps).yieldxyz === perps)
+  }
+
   // MARK: - Errors
 
   func test_validationErrors_describeTheProblem() {
