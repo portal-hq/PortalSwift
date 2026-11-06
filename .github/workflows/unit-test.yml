@@ -4,7 +4,7 @@ on: [push, workflow_dispatch]
 
 jobs:
   test:
-    runs-on: macos-14-xlarge
+    runs-on: macos-26-xlarge
 
     steps:
       - uses: actions/checkout@v2
@@ -19,7 +19,7 @@ jobs:
 
       - name: Run Tests
         run: |
-          xcodebuild -quiet -scheme Unit\ Tests -workspace PortalSwift.xcworkspace test -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.4' -resultBundlePath TestResults.xcresult
+          xcodebuild -quiet -scheme Unit\ Tests -workspace .swiftpm/xcode/package.xcworkspace test -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 17' -resultBundlePath TestResults.xcresult
 
       # -quiet keeps the log short but drops assertion messages, so print each failure's message
       # from the result bundle. Xcode 16 and later need --legacy for this JSON; Xcode 15 rejects it.
