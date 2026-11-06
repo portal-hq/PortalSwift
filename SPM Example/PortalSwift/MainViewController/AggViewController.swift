@@ -152,6 +152,7 @@ final class AggViewController: UIViewController {
     addLabel("Live (mainnet, real funds)", font: .preferredFont(forTextStyle: .headline))
     addButton("Deposit 2 USDC on Base", live: true, deposit)
     addButton("Withdraw 1.5 USDC to Base", live: true, withdraw)
+    addButton("Withdraw All to Base", live: true, withdrawAll)
     addButton("Redeem All", live: true, redeemAll)
     addButton("Place + Cancel Limit Order", live: true, limitOrderRoundTrip)
     addLabel("Rests a $0.01 buy on a Limitless market (Base, like the deposit). If its cancel fails, use Cancel Open Limit Orders.", font: .preferredFont(forTextStyle: .footnote))
@@ -509,6 +510,64 @@ final class AggViewController: UIViewController {
     return "Withdrawal \(withdrawal.status): \(Self.formatRaw(withdrawal.completedAmountRaw, decimals: 6)) USDC, tx \(txHashes.isEmpty ? "-" : txHashes)"
   }
 
+  /// Withdraws all the live USDC Agg can send to Base back to this wallet, then lists what is left
+  /// on each chain. It withdraws the whole balance Agg counts for Base (the fee comes out of it)
+  /// and, if Agg prices that as unviable, the deliverable maximum instead. Open limit orders hold
+  /// part of the balance, so it stops while one is open. Agg refuses withdrawals under 1 USDC after
+  /// fees, and a Base destination counts only Base and Polygon funds.
+  private func withdrawAll() async throws -> String {
+    let destination = "eip155:8453"
+    let openOrders = try await agg.listOrders(params: AggListOrdersParams(orderType: .limit, limit: 50)).data.data
+      .filter { Self.openLimitOrderStatuses.contains($0.status) }
+    guard openOrders.isEmpty else {
+      throw ExampleError("\(openOrders.count) limit orders are open and hold funds: run Cancel Open Limit Orders first.")
+    }
+    let quote = try await agg.quoteWithdrawable(request: AggWithdrawableQuoteRequest(tokenSymbol: .usdc, destinationChainId: destination)).data
+    let balance = Self.formatRaw(quote.rawBalanceRaw, decimals: quote.decimals)
+    let deliverable = Self.formatRaw(quote.maxDeliverableRaw, decimals: quote.decimals)
+    logger.info("  ⏳ [Agg Withdraw All] \(balance) USDC withdrawable to Base, up to \(deliverable) USDC delivered")
+    guard (Decimal(string: quote.maxDeliverableRaw) ?? 0) > 0 else {
+      let left = await liveBalancesLeft()
+      return "Nothing to withdraw to Base (balance \(balance) USDC, deliverable \(deliverable) USDC)\nLive: \(left)"
+    }
+
+    let withdrawal: AggWithdrawal
+    do {
+      withdrawal = try await agg.withdraw(params: AggWithdrawParams(
+        amount: balance,
+        tokenSymbol: .usdc,
+        destinationChainId: destination,
+        onProgress: logProgress("Withdraw All")
+      ))
+    } catch let AggError.withdrawalNotViable(preview) {
+      // Thrown by the preview, before anything is created, so a second, smaller withdrawal is safe.
+      logger.info("  ⏳ [Agg Withdraw All] \(balance) USDC is unviable (\(preview.unviableReason ?? "-")), withdrawing \(deliverable) USDC")
+      withdrawal = try await agg.withdraw(params: AggWithdrawParams(
+        amount: deliverable,
+        tokenSymbol: .usdc,
+        destinationChainId: destination,
+        onProgress: logProgress("Withdraw All")
+      ))
+    }
+    let txHashes = withdrawal.legs.compactMap(\.txHash).joined(separator: ", ")
+    let left = await liveBalancesLeft()
+    return "Withdrawal \(withdrawal.status): \(Self.formatRaw(withdrawal.completedAmountRaw, decimals: 6)) USDC, tx \(txHashes.isEmpty ? "-" : txHashes)\nLive left: \(left)"
+  }
+
+  /// The live cash on each chain, re-read from the chains. Never throws, so a failed read cannot
+  /// hide a withdrawal that went through.
+  private func liveBalancesLeft() async -> String {
+    do {
+      let cash = try await agg.getBalances(sync: true, mode: nil).data.cash
+      let chains = cash.flatMap { balance in
+        balance.chains.map { "\(Self.formatRaw($0.availableRaw ?? $0.balanceRaw, decimals: $0.decimals)) \($0.tokenSymbol ?? balance.tokenSymbol) on \($0.chainId)" }
+      }
+      return chains.isEmpty ? "none" : chains.joined(separator: ", ")
+    } catch {
+      return "could not read balances, run Get Balances: \(Self.describe(error))"
+    }
+  }
+
   /// Places a live post-only buy at $0.01 (at least 5 shares, or the market's minimum) on an open
   /// Limitless outcome, far below the market so it rests instead of trading, then cancels it.
   /// Limitless trades on Base, where Deposit sends the funds, so the order needs no bridge: on
@@ -569,12 +628,14 @@ final class AggViewController: UIViewController {
     throw ExampleError("No open \(venue) outcome with an ask above the test price in \(markets.count) markets.\(reason)")
   }
 
+  /// Limit order statuses that still hold funds.
+  private static let openLimitOrderStatuses: Set<AggOrderStatus> = [.pending, .signing, .pendingBridge, .submitting, .submitted, .open, .partiallyFilledOpen]
+
   /// Cancels every live limit order still open on this Agg account, for when Place + Cancel Limit
   /// Order could not cancel its order. Reads the latest 50 limit orders.
   private func cancelOpenLimitOrders() async throws -> String {
-    let openStatuses: Set<AggOrderStatus> = [.pending, .signing, .pendingBridge, .submitting, .submitted, .open, .partiallyFilledOpen]
     let open = try await agg.listOrders(params: AggListOrdersParams(orderType: .limit, limit: 50)).data.data
-      .filter { openStatuses.contains($0.status) }
+      .filter { Self.openLimitOrderStatuses.contains($0.status) }
     guard !open.isEmpty else {
       return "No open limit orders"
     }
