@@ -23,9 +23,8 @@ final class AggViewController: UIViewController {
   private let activityIndicator = UIActivityIndicatorView(style: .medium)
   private var buttons: [UIButton] = []
 
-  /// The outcome List Events picked, and its venue, for the tests that need one.
+  /// The outcome List Events picked, for the tests that need one.
   private var outcomeId: String?
-  private var outcomeVenue: AggVenue?
   /// The last tradable paper quote, for Paper Fill + Poll.
   private var quoteId: String?
   /// The outcome and shares the last Buy got, for Sell.
@@ -155,7 +154,7 @@ final class AggViewController: UIViewController {
     addButton("Withdraw 1.5 USDC to Base", live: true, withdraw)
     addButton("Redeem All", live: true, redeemAll)
     addButton("Place + Cancel Limit Order", live: true, limitOrderRoundTrip)
-    addLabel("If its cancel fails, use Cancel Open Limit Orders.", font: .preferredFont(forTextStyle: .footnote))
+    addLabel("Rests a $0.01 buy on a Limitless market (Base, like the deposit). If its cancel fails, use Cancel Open Limit Orders.", font: .preferredFont(forTextStyle: .footnote))
     addButton("Cancel Open Limit Orders", live: true, cancelOpenLimitOrders)
   }
 
@@ -300,12 +299,10 @@ final class AggViewController: UIViewController {
          let outcome = market.venueMarketOutcomes.first
       {
         outcomeId = outcome.id
-        outcomeVenue = market.venue
         return "\(events.count) open events. Picked \"\(outcome.label)\" of \"\(market.question)\" (\(market.venue)) in \"\(event.title)\": \(outcome.id)"
       }
     }
     outcomeId = nil
-    outcomeVenue = nil
     return "\(events.count) open events, none with an open market."
   }
 
@@ -512,20 +509,24 @@ final class AggViewController: UIViewController {
     return "Withdrawal \(withdrawal.status): \(Self.formatRaw(withdrawal.completedAmountRaw, decimals: 6)) USDC, tx \(txHashes.isEmpty ? "-" : txHashes)"
   }
 
-  /// Places a live post-only buy of 5 shares at $0.01 on the picked outcome, far below the market
-  /// so it rests instead of trading, then cancels it. It reserves about $0.05 plus fees from the
-  /// live Agg balance until the cancel; if the cancel fails, the message names the order still open.
+  /// Places a live post-only buy at $0.01 (at least 5 shares, or the market's minimum) on an open
+  /// Limitless outcome, far below the market so it rests instead of trading, then cancels it.
+  /// Limitless trades on Base, where Deposit sends the funds, so the order needs no bridge: on
+  /// another venue's chain Agg would have to bridge a few cents, below the bridge minimums, and
+  /// refuses the order (`quote_insufficient_balance`). It reserves the order's cost plus fees from
+  /// the live Agg balance until the cancel; if the cancel fails, the message names the order still
+  /// open.
   private func limitOrderRoundTrip() async throws -> String {
-    let outcomeId = try requireOutcome()
-    guard let venue = outcomeVenue else {
-      throw ExampleError("Run List Events first to pick an outcome.")
-    }
+    let venue = AggVenue.limitless
+    let (market, outcome, price) = try await restingLimitOrderOutcome(venue: venue)
+    let shares = max(5, Int((market.minOrderSize ?? 0).rounded(.up)))
+    logger.info("  ⏳ [Agg Place + Cancel Limit Order] Buying \(shares) shares of \"\(outcome.label)\" of \"\(market.question)\" at \(price) on \(venue)")
     let order = try await agg.placeLimitOrder(params: AggPlaceLimitOrderParams(
       venue: venue,
-      venueMarketOutcomeId: outcomeId,
+      venueMarketOutcomeId: outcome.id,
       side: .buy,
-      price: "0.01",
-      shares: "5",
+      price: String(price),
+      shares: String(shares),
       postOnly: true
     ))
     logger.info("  ⏳ [Agg Place + Cancel Limit Order] Placed \(order.orderId) on \(venue) (\(order.status)), cancelling...")
@@ -537,6 +538,35 @@ final class AggViewController: UIViewController {
     } catch {
       throw ExampleError("Order \(order.orderId) on \(venue) may still be open, cancel failed: \(Self.describe(error))")
     }
+  }
+
+  /// Finds an open outcome on `venue` whose best ask is above the test price, so a post-only buy
+  /// rests instead of being refused for crossing the book. Reads the busiest open markets. The
+  /// price is $0.01, or the market's tick size when that is larger.
+  private func restingLimitOrderOutcome(venue: AggVenue) async throws -> (market: AggVenueMarket, outcome: AggVenueMarketOutcome, price: Double) {
+    let markets = try await agg.listMarkets(params: AggListMarketsParams(
+      status: .open,
+      venue: venue,
+      sortBy: .volume24hr,
+      sortDir: .desc,
+      limit: 10
+    )).data.data
+    var lastError: Error?
+    for market in markets where market.status == .open {
+      let price = max(0.01, market.tickSize ?? 0)
+      for outcome in market.venueMarketOutcomes {
+        do {
+          let book = try await agg.getOutcomeOrderbook(outcomeId: outcome.id, depth: 1).data.orderbook
+          if let bestAsk = book.asks.first?.price, bestAsk > price {
+            return (market, outcome, price)
+          }
+        } catch {
+          lastError = error
+        }
+      }
+    }
+    let reason = lastError.map { " Last order book error: \(Self.describe($0))" } ?? ""
+    throw ExampleError("No open \(venue) outcome with an ask above the test price in \(markets.count) markets.\(reason)")
   }
 
   /// Cancels every live limit order still open on this Agg account, for when Place + Cancel Limit
