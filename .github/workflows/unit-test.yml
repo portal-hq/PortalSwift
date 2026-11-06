@@ -2,6 +2,11 @@ name: Run Swift Unit Tests
 
 on: [push, workflow_dispatch]
 
+# Checkout only reads the repository; the cache and artifact actions use the runner's own token and
+# Codecov uses CODECOV_TOKEN, so GITHUB_TOKEN needs nothing more (the repository default is write).
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: macos-14-xlarge
