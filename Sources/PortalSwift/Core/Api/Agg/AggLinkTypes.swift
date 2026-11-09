@@ -59,8 +59,9 @@ public struct AggUnlink: Codable, Equatable {
   }
 }
 
-/// The stored link, discriminated on `linked`. It can read `.linked` while the next session call
-/// still fails with `AGG_LINK_REQUIRED`: branch on that error rather than on this status.
+/// The link as `GET /link` reports it, discriminated on `linked`. The Portal API checks the session
+/// with Agg, so `.notLinked` also covers an expired session. Only when Agg cannot be reached does it
+/// report the stored link, and a session call can then still fail with `AGG_LINK_REQUIRED`.
 public enum AggLinkStatus: Codable, Equatable {
   /// `linked: false`.
   case notLinked

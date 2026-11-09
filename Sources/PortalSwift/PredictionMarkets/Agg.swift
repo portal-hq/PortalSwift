@@ -112,8 +112,10 @@ public class Agg: AggProtocol {
     try await api.createLink(request: request)
   }
 
-  /// Gets the stored link. It can read linked while the next call still fails with
-  /// `AGG_LINK_REQUIRED`; branch on that error rather than on this status.
+  /// Gets the link, checked with Agg: `notLinked` when the client never linked or its Agg session is
+  /// gone (run `connect`). Only when Agg cannot be reached does the Portal API report the stored
+  /// link, and a call can then still fail with `AGG_LINK_REQUIRED` right after this reads linked, so
+  /// handle that error as well as this status.
   public func getLink() async throws -> AggGetLinkResponse {
     try await api.getLink()
   }
@@ -335,8 +337,9 @@ public class Agg: AggProtocol {
     return link
   }
 
-  /// Whether the client is linked to Agg. Where the Portal API checks the Agg session on `GET /link`
-  /// (LM2K-792), `false` also means the session expired: run `connect`.
+  /// Whether the client is linked to Agg, checked with Agg: `false` when the client never linked or
+  /// its Agg session expired; run `connect` then. See `getLink` for the one case it reads `true`
+  /// while a call is still refused for the link.
   public func isConnected() async throws -> Bool {
     try await getLink().data.isLinked
   }
@@ -414,14 +417,17 @@ public class Agg: AggProtocol {
   }
 
   /// Buys an outcome: quotes, fills at once (protected by `params.slippageBps`) and waits for the
-  /// fill to finish. A fill that fails transiently is sent again with the same quote, which Agg
-  /// fills only once.
+  /// fill to finish. The fill is sent once and never repeated: a fill whose answer was lost may have
+  /// gone through, and Agg refuses a repeat of the same quote rather than answering it with the
+  /// original fill.
   ///
   /// Succeeds when the fill ends `filled` or `partially_filled` (read `status.orders[]` for how much
   /// traded). Fails with `AggError.quoteNotTradable` when the quote cannot be filled and nothing was
   /// traded, `AggError.orderFailed` when the fill ends in any other final state (`failed`,
   /// `cancelled`, `expired`), and `AggError.orderOutcomeUnknown` when the fill may have gone through
-  /// but its outcome could not be read: then read `getOrder` rather than buying again.
+  /// but its outcome could not be read: then read `getOrder` rather than buying again. A fill Agg
+  /// refuses (a 4xx, including a rate limit) throws the request's error: nothing was traded, so the
+  /// trade can be quoted again.
   public func buy(params: AggBuyParams) async throws -> AggTradeResult {
     try Self.requireAmount("amount", params.amount)
     return try await trade(
@@ -625,22 +631,23 @@ public class Agg: AggProtocol {
   ) async throws -> AggTradeResult {
     notify(AggProgress(step: .quoting))
     let quote = try await linked(autoReconnect, notify) { try await self.api.createQuote(request: request) }.data
-    guard quote.status == .ok, (quote.warnings ?? []).isEmpty else {
+    // Agg can return `status: "ok"` with an `error` (for example an unfunded venue balance) and no
+    // warning. Paper mode fills such a quote and live is unverified, so it is refused too.
+    guard quote.status == .ok, (quote.warnings ?? []).isEmpty, (quote.error ?? "").isEmpty else {
       throw AggError.quoteNotTradable(quote: quote)
     }
 
     notify(AggProgress(step: .filling, quote: quote))
     let fill: AggFill
     do {
-      // Agg fills a quote once: sending the same `quoteId` again returns that fill
-      // (`alreadyAccepted`), so a transient failure is safe to repeat.
-      fill = try await retryingTransient {
-        try await self.linked(autoReconnect, notify) {
-          try await self.api.createOrder(request: AggOrderRequest(quoteId: quote.quoteId, mode: request.mode))
-        }.data
-      }
+      // Sent once, never repeated, not even after a transient failure. A fill whose answer was lost
+      // may have gone through, and Agg does not answer a repeat of the same quote with the original
+      // fill: it refuses it (`quote_not_found` in paper mode), and that refusal would read as a
+      // plain error and hide the trade. The quote id is how to find it: `orderOutcomeUnknown`.
+      fill = try await linked(autoReconnect, notify) {
+        try await self.api.createOrder(request: AggOrderRequest(quoteId: quote.quoteId, mode: request.mode))
+      }.data
     } catch {
-      // A fill whose response was lost may have gone through: the quote id is how to find it.
       if !YieldXyzCancellation.isCancellation(error), AggRequestFailure.isAmbiguous(error) {
         throw AggError.orderOutcomeUnknown(quote: quote, fill: nil, last: nil, underlyingError: error)
       }
@@ -791,7 +798,8 @@ public class Agg: AggProtocol {
   }
 
   /// Runs `call`, repeating it up to `maxCallAttempts` times while it fails transiently. Only for
-  /// calls safe to repeat.
+  /// calls safe to repeat: a withdrawal, whose `requestId` returns the original instead of sending
+  /// twice. Not a fill, which `trade` sends once.
   private func retryingTransient<T>(_ call: () async throws -> T) async throws -> T {
     var attempt = 1
     while true {

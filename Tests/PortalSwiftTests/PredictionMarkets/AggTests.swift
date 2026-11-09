@@ -133,8 +133,8 @@ final class AggTests: XCTestCase {
 
   private static let linkRequired = apiError(409, #"{"error":"This client is not linked to Agg.","id":"AGG_LINK_REQUIRED"}"#)
 
-  private func quote(status: String = "ok", warnings: Any = NSNull()) throws -> AggCreateQuoteResponse {
-    try AggResponse(data: Self.decode(Self.patched(AggFixtures.quotePaper, ["quoteId": "q1", "status": status, "warnings": warnings])))
+  private func quote(status: String = "ok", warnings: Any = NSNull(), error: Any = NSNull()) throws -> AggCreateQuoteResponse {
+    try AggResponse(data: Self.decode(Self.patched(AggFixtures.quotePaper, ["quoteId": "q1", "status": status, "warnings": warnings, "error": error])))
   }
 
   private func fill() throws -> AggCreateOrderResponse {
@@ -342,6 +342,53 @@ final class AggTests: XCTestCase {
     XCTAssertEqual(api.callCount("createOrder"), 0)
   }
 
+  /// Agg can attach an `error` to a quote whose `status` is `ok` and that carries no warning (seen
+  /// live: an unfunded venue balance). Paper mode fills such a quote; the helpers refuse it.
+  func test_buy_aQuoteWithAnErrorButStatusOk_isNotFilled() async throws {
+    let message = "Insufficient Kalshi venue balance for this order. Fund the venue account and re-quote."
+    let quote = try quote(error: message)
+    api.createQuoteHandler = { _ in quote }
+
+    do {
+      _ = try await makeAgg().buy(params: buyParams())
+      XCTFail("Expected quoteNotTradable")
+    } catch AggError.quoteNotTradable(let quote) {
+      XCTAssertEqual(quote.status, .ok)
+      XCTAssertNil(quote.warnings)
+      XCTAssertEqual(quote.error, message)
+    } catch {
+      XCTFail("Unexpected error: \(error)")
+    }
+    XCTAssertEqual(api.calls, ["createQuote"])
+  }
+
+  func test_sell_aQuoteWithAnErrorButStatusOk_isNotFilled() async throws {
+    let quote = try quote(error: "Insufficient position")
+    api.createQuoteHandler = { _ in quote }
+
+    do {
+      _ = try await makeAgg().sell(params: AggSellParams(outcomeId: "o1", shares: "2", poll: Self.fastPoll))
+      XCTFail("Expected quoteNotTradable")
+    } catch AggError.quoteNotTradable(let quote) {
+      XCTAssertEqual(quote.error, "Insufficient position")
+    } catch {
+      XCTFail("Unexpected error: \(error)")
+    }
+    XCTAssertEqual(api.calls, ["createQuote"])
+  }
+
+  /// An empty `error` says nothing, so it does not block an otherwise tradable quote.
+  func test_buy_aQuoteWithAnEmptyError_isFilled() async throws {
+    try stubTrade(states: [("filled", true)])
+    let quote = try quote(error: "")
+    api.createQuoteHandler = { _ in quote }
+
+    let result = try await makeAgg().buy(params: buyParams())
+
+    XCTAssertEqual(result.status.overallState, .filled)
+    XCTAssertEqual(api.callCount("createOrder"), 1)
+  }
+
   func test_buy_aFillWhoseResponseWasLost_failsWithOutcomeUnknown() async throws {
     try stubTrade(states: [("filled", true)])
     api.createOrderHandler = { _ in throw Self.apiError(500) }
@@ -357,8 +404,11 @@ final class AggTests: XCTestCase {
     } catch {
       XCTFail("Unexpected error: \(error)")
     }
+    XCTAssertEqual(api.callCount("createOrder"), 1)
+    XCTAssertEqual(api.callCount("getOrder"), 0)
   }
 
+  /// A refusal is not repeated and not an unknown outcome: Agg declined the fill, so nothing traded.
   func test_buy_aRejectedFill_failsWithTheApiError() async throws {
     try stubTrade(states: [("filled", true)])
     api.createOrderHandler = { _ in throw Self.apiError(422, #"{"error":"Agg rejected the request: quote expired"}"#) }
@@ -369,6 +419,8 @@ final class AggTests: XCTestCase {
     } catch {
       XCTAssertEqual(AggApiError.from(error)?.status, 422)
     }
+    XCTAssertEqual(api.callCount("createOrder"), 1)
+    XCTAssertEqual(api.callCount("getOrder"), 0)
   }
 
   func test_buy_aReadFailureAfterTheFill_failsWithOutcomeUnknownAndTheLastRead() async throws {
@@ -476,37 +528,87 @@ final class AggTests: XCTestCase {
     XCTAssertEqual(api.calls, ["createQuote"])
   }
 
-  func test_buy_retriesATransientFillWithTheSameQuote() async throws {
+  /// The regression this guards: the fill used to be repeated after a gateway error. In paper mode a
+  /// first attempt filled, its answer was lost, the repeat of the same quote was refused with a 400
+  /// (`quote_not_found`, "Quote has expired"), and that refusal reached the caller as a plain error
+  /// that hid the trade. The fill is sent once, and a lost answer is an unknown outcome: the second
+  /// response stubbed here must never be requested.
+  func test_buy_aFillWhoseAnswerWasLost_isNotSentAgainAndIsOutcomeUnknown() async throws {
     try stubTrade(states: [("filled", true)])
-    let fill = try fill()
-    let attempts = Results<AggCreateOrderResponse>([.failure(Self.apiError(503)), .failure(Self.apiError(502)), .success(fill)])
+    let replayRefused = Self.apiError(400, #"{"error":"Agg rejected the request: Quote has expired","details":{"code":"quote_not_found"}}"#)
+    let attempts = Results<AggCreateOrderResponse>([.failure(Self.apiError(503)), .failure(replayRefused)])
     var quoteIds: [String] = []
     api.createOrderHandler = { request in
       quoteIds.append(request.quoteId)
       return try attempts.next()
     }
 
-    let result = try await makeAgg().buy(params: buyParams())
-
-    XCTAssertEqual(result.status.overallState, .filled)
-    XCTAssertEqual(quoteIds, ["q1", "q1", "q1"])
-  }
-
-  func test_buy_aFillThatKeepsFailingTransiently_failsWithOutcomeUnknownAfterThreeAttempts() async throws {
-    try stubTrade(states: [("filled", true)])
-    api.createOrderHandler = { _ in throw Self.apiError(503) }
-
     do {
       _ = try await makeAgg().buy(params: buyParams())
       XCTFail("Expected orderOutcomeUnknown")
-    } catch AggError.orderOutcomeUnknown(let quote, let fill, _, let underlyingError) {
+    } catch AggError.orderOutcomeUnknown(let quote, let fill, let last, let underlyingError) {
       XCTAssertEqual(quote.quoteId, "q1")
       XCTAssertNil(fill)
+      XCTAssertNil(last)
       XCTAssertEqual(AggApiError.from(underlyingError)?.status, 503)
     } catch {
       XCTFail("Unexpected error: \(error)")
     }
-    XCTAssertEqual(api.callCount("createOrder"), 3)
+    XCTAssertEqual(quoteIds, ["q1"])
+    XCTAssertEqual(api.callCount("getOrder"), 0)
+  }
+
+  /// Every failure after which the fill may have reached Agg (a 5xx, a network error, an answer that
+  /// did not decode) ends the trade after one attempt, as an unknown outcome carrying that failure.
+  func test_buy_everyAmbiguousFillFailure_isOutcomeUnknownAfterOneAttempt() async throws {
+    let decodingError = DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "Unexpected shape"))
+    let failures: [(String, AggRequestError)] = [
+      ("500", Self.apiError(500) as! AggRequestError),
+      ("502", Self.apiError(502) as! AggRequestError),
+      ("503", Self.apiError(503) as! AggRequestError),
+      ("504", Self.apiError(504) as! AggRequestError),
+      ("timed out", AggRequestError(traceId: "t-timeout", underlyingError: URLError(.timedOut))),
+      ("connection lost", AggRequestError(traceId: "t-lost", underlyingError: URLError(.networkConnectionLost))),
+      ("no connection", AggRequestError(traceId: "t-offline", underlyingError: URLError(.notConnectedToInternet))),
+      ("did not decode", AggRequestError(traceId: "t-decode", underlyingError: decodingError))
+    ]
+    for (name, failure) in failures {
+      api = PortalAggApiMock()
+      try stubTrade(states: [("filled", true)])
+      api.createOrderHandler = { _ in throw failure }
+
+      do {
+        _ = try await makeAgg().buy(params: buyParams())
+        XCTFail("Expected orderOutcomeUnknown for \(name)")
+      } catch AggError.orderOutcomeUnknown(let quote, let fill, let last, let underlyingError) {
+        XCTAssertEqual(quote.quoteId, "q1", name)
+        XCTAssertNil(fill, name)
+        XCTAssertNil(last, name)
+        XCTAssertEqual((underlyingError as? AggRequestError)?.traceId, failure.traceId, name)
+      } catch {
+        XCTFail("Unexpected error for \(name): \(error)")
+      }
+      XCTAssertEqual(api.callCount("createOrder"), 1, name)
+      XCTAssertEqual(api.callCount("getOrder"), 0, name)
+    }
+  }
+
+  /// A rate limit refused the fill before Agg acted on it, so it is not an unknown outcome; like
+  /// every fill failure it is not repeated either. The caller quotes again.
+  func test_buy_aRateLimitedFill_isThrownAsIsAfterOneAttempt() async throws {
+    try stubTrade(states: [("filled", true)])
+    api.createOrderHandler = { _ in throw Self.apiError(429, #"{"error":"Too many requests"}"#) }
+
+    do {
+      _ = try await makeAgg().buy(params: buyParams())
+      XCTFail("Expected the API error")
+    } catch let error as AggRequestError {
+      XCTAssertEqual(AggApiError.from(error)?.status, 429)
+    } catch {
+      XCTFail("Unexpected error: \(error)")
+    }
+    XCTAssertEqual(api.callCount("createOrder"), 1)
+    XCTAssertEqual(api.callCount("getOrder"), 0)
   }
 
   /// A fill refused for the link did nothing, so a reconnect that fails afterwards is not an

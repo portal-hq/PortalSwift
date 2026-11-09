@@ -116,6 +116,10 @@ final class AggErrorsTests: XCTestCase {
       "quoteId": "q1",
       "warnings": [["venue": "polymarket", "venueMarketOutcomeId": "o1", "reason": "Venue not available in your region (US)"]]
     ])
+    let quoteWithError: AggQuote = try Self.decode(AggFixtures.quotePaper, [
+      "quoteId": "q1",
+      "error": "Insufficient Kalshi venue balance for this order. Fund the venue account and re-quote."
+    ])
     let status: AggExecutionStatus = try Self.decode(AggFixtures.executionStatus, ["quoteId": "q1", "overallState": "expired", "errorReason": "Quote expired"])
     let preview: AggWithdrawalPreview = try Self.decode(AggFixtures.withdrawalPreview, ["pricingStatus": "unviable", "unviableReason": "Minimum withdrawal is 1 USDC"])
     let withdrawal: AggWithdrawal = try Self.decode(AggFixtures.withdrawalStatus, ["withdrawalId": "w1", "status": "failed", "errorMessage": "Bridge failed"])
@@ -135,6 +139,7 @@ final class AggErrorsTests: XCTestCase {
       (.reconnectFailed(underlyingError: cause), ["AGG_LINK_REQUIRED", "linking again failed", "run connect", cause.localizedDescription]),
       (.unsupportedDepositToken(chainId: "eip155:8453", token: "USDT"), ["USDT", "eip155:8453"]),
       (.quoteNotTradable(quote: quote), ["q1", "polymarket: Venue not available in your region (US)"]),
+      (.quoteNotTradable(quote: quoteWithError), ["q1", "status ok", "; Insufficient Kalshi venue balance for this order"]),
       (.orderFailed(status: status), ["q1", "expired", "Quote expired"]),
       (.withdrawalNotViable(preview: preview), ["unviable", "Minimum withdrawal is 1 USDC"]),
       (.withdrawalFailed(withdrawal: withdrawal), ["w1", "Bridge failed"]),

@@ -198,7 +198,7 @@ public class PortalAggApi: PortalAggApiProtocol {
     try await send("createLink", .post, path: "/link", payload: request, retry: true)
   }
 
-  /// Gets the stored link. `GET /link`
+  /// Gets the link, checked with Agg; the stored link when Agg cannot be reached. `GET /link`
   public func getLink() async throws -> AggGetLinkResponse {
     try await send("getLink", .get, path: "/link")
   }
@@ -396,6 +396,10 @@ public class PortalAggApi: PortalAggApiProtocol {
   }
 
   /// Fills a quote; poll `getOrder` with its `quoteId` until it is terminal. `POST /orders`
+  ///
+  /// A quote is filled at most once, and a repeat of its `quoteId` is refused rather than answered
+  /// with the original fill: after a failure whose answer was lost, read `getOrder` instead of
+  /// sending it again.
   public func createOrder(request: AggOrderRequest) async throws -> AggCreateOrderResponse {
     try await send("createOrder", .post, path: "/orders", payload: request, retry: true)
   }

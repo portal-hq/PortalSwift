@@ -168,8 +168,9 @@ public enum AggError: LocalizedError {
   /// sorted by address: they differ in address (pass the address of the one to deposit), or share
   /// one with conflicting decimals (do not deposit it until Agg fixes its listing).
   case ambiguousDepositToken(chainId: String, token: String, candidates: [AggSupportedChainToken])
-  /// The quote cannot be filled: its `status` is not `ok`, or a venue reported a warning. Nothing was
-  /// traded. Show `quote.warnings[].reason` or the status to the user.
+  /// The quote cannot be filled: its `status` is not `ok`, a venue reported a warning, or Agg
+  /// attached an `error` (for example an unfunded venue balance). Nothing was traded. Show
+  /// `quote.warnings[].reason`, `quote.error` or the status to the user.
   case quoteNotTradable(quote: AggQuote)
   /// The fill finished without trading: `failed`, `cancelled`, `expired`, or a final state this SDK
   /// does not know. `status` holds the final read, with `errorReason`.
@@ -246,8 +247,9 @@ public enum AggError: LocalizedError {
       let listed = candidates.map { "\($0.symbol) \($0.address)" }.joined(separator: ", ")
       return "[Agg] \(token) names \(candidates.count) tokens on \(chainId) (\(listed)); nothing was sent. Pass the address of the one to deposit."
     case let .quoteNotTradable(quote):
+      let error = quote.error.flatMap { $0.isEmpty ? nil : "; \($0)" } ?? ""
       let warnings = (quote.warnings ?? []).map { "; \($0.venue): \($0.reason)" }.joined()
-      return "[Agg] Quote \(quote.quoteId) is not tradable: status \(quote.status)\(warnings)"
+      return "[Agg] Quote \(quote.quoteId) is not tradable: status \(quote.status)\(error)\(warnings)"
     case let .orderFailed(status):
       return "[Agg] Order \(status.quoteId) ended \(status.overallState)\(status.errorReason.map { ": \($0)" } ?? "")."
     case let .withdrawalNotViable(preview):
