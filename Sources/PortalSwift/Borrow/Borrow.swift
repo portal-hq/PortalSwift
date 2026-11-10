@@ -15,6 +15,13 @@ public class Borrow {
   /// This property can be set for custom implementations.
   public var yieldxyz: YieldXyzBorrowProtocol
 
+  /// Create an instance of Borrow around a Yield.xyz Borrow implementation, for example a test
+  /// double for a `PortalProtocol` conformance.
+  /// - Parameter yieldxyz: The Yield.xyz Borrow implementation `yieldxyz` returns.
+  public init(yieldxyz: YieldXyzBorrowProtocol) {
+    self.yieldxyz = yieldxyz
+  }
+
   /// Create an instance of Borrow.
   /// - Parameters:
   ///   - api: The Portal API instance to use for borrow operations.
@@ -26,18 +33,18 @@ public class Borrow {
   ///     (a custom implementation). Unlike `PortalYieldXyzBorrowApi`, which decodes only the hashes
   ///     and the user operation's outcome, Portal's fallback decodes the full
   ///     `getTransactionDetails` response, so a field missing from it fails the lookup.
-  init(
+  convenience init(
     api: PortalApiProtocol,
     inFlightActions: YieldXyzInFlightActions = YieldXyzInFlightActions(),
     dependencies: YieldXyzBorrowExecutionDependencies = YieldXyzBorrowExecutionDependencies(),
     lookupEvmTransaction: YieldXyzBorrowLookupEvmTransaction? = nil
   ) {
     let borrowApi = api.yieldxyzBorrow
-    self.yieldxyz = YieldXyzBorrow(
+    self.init(yieldxyz: YieldXyzBorrow(
       api: borrowApi,
       dependencies: dependencies,
       lookupEvmTransaction: YieldXyzBorrow.lookup(from: borrowApi) ?? lookupEvmTransaction,
       inFlightActions: inFlightActions
-    )
+    ))
   }
 }

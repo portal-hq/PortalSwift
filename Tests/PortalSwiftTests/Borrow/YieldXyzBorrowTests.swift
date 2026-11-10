@@ -124,6 +124,10 @@ final class YieldXyzBorrowTests: XCTestCase {
 
   // MARK: - Facade
 
+  func test_borrow_canWrapAYieldxyzImplementation() {
+    XCTAssertTrue(Borrow(yieldxyz: borrow).yieldxyz === borrow)
+  }
+
   func test_borrowFacade_prefersTheApiTransactionLookup() {
     let lookupApi = PortalYieldXyzBorrowApi(credentials: StaticCredentials(MockConstants.mockApiKey), apiHost: MockConstants.mockHost, requests: PortalRequestsSpy())
 
