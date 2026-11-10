@@ -315,6 +315,7 @@ extension PortalTests {
   }
 
   @available(iOS 16, *)
+  @MainActor
   func test_setPasskeyAuthenticationAnchor_willCall_mpc_setPasskeyAuthenticationAnchor_onlyOnce() async throws {
     // given
     let portalMpcSpy = PortalMpcSpy()
