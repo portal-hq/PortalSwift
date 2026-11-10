@@ -38,6 +38,17 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
   }
 
+  /// Replaces `applicationDidEnterBackground(_:)`, which UIKit does not call on this lifecycle.
+  func sceneDidEnterBackground(_: UIScene) {
+    print("application entered background...")
+  }
+
+  /// Replaces `applicationDidBecomeActive(_:)`, which UIKit does not call on this lifecycle.
+  func sceneDidBecomeActive(_: UIScene) {
+    print("Application is now active...")
+    (UIApplication.shared.delegate as? AppDelegate)?.reconnectPortalConnect()
+  }
+
   /// Warm start: a URL delivered while the app is already running.
   func scene(_: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
     for context in URLContexts {
