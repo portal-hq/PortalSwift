@@ -36,10 +36,21 @@ Possible Types of changes include:
     - `YieldXyzBorrowApiError.from(_:)` reads the Portal error `id` and `details` of a failed request, for example `INTEGRATION_RESPONSE_SCHEMA_DRIFT`.
     - `Borrow(yieldxyz:)` builds the namespace around your own `YieldXyzBorrowProtocol`, for example for a `PortalProtocol` test double.
     - Every chain a transaction is signed on needs an RPC endpoint in `rpcConfig`, unless you pass your own signer in `signAndSendTransaction`.
+- Agg prediction markets: browse and trade prediction markets across venues such as Polymarket, Kalshi and Limitless through one Agg account linked to the Portal wallet, with the new `portal.predictionMarkets.agg` namespace. The same route methods are also on `portal.api.agg`.
+    - One method per Agg route: link (`createLinkChallenge`, `createLink`, `getLink`, `deleteLink`), discovery (`listEvents`, `getEvent`, `getEventBootstrap`, `listMarkets`, `search`, `listCategories`, `getVenueGeoPolicy`, `getAppConfig`), market data (`getMidpoints`, `getOrderbooks`, `getOutcomeOrderbook`, `getChartBars`, `getChartHistoryManifest`), account (`getUser`, `getDepositAddresses`, `getBalances`, `listPositions`, `listOrders`, `listActivity`), trading (`createQuote`, `createOrder`, `getOrder`, `createLimitOrder`, `createDirectOrder`, `cancelOrder`, `redeemPositions`) and withdrawals (`quoteWithdrawable`, `previewWithdrawal`, `createWithdrawal`, `getWithdrawal`). Discovery and market data work before linking.
+    - `connect(chainId:)` links the wallet with one `personal_sign` of Agg's sign-in challenge, after checking that the challenge names the wallet's own address. `isConnected()` reads the link.
+    - `deposit(params:)` waits for the user's Agg deposit address and sends funds to it from the Portal wallet, with an idempotency key so a retry never sends twice. A token is matched by its address, or by a symbol only when that symbol names a single token: otherwise it fails with `AggError.ambiguousDepositToken`, listing the candidates to choose from by address. A send that may have gone out but could not be confirmed fails with `AggError.depositOutcomeUnknown`, which carries the idempotency key to retry with.
+    - `buy(params:)` and `sell(params:)` quote, fill and wait for the fill to finish, reporting each step through `onProgress`. A quote that is not `ok`, carries a venue warning or an Agg `error` is refused with `AggError.quoteNotTradable` before anything is sent. Only a `filled` or `partially_filled` fill succeeds. The fill is sent once: one that may have gone through but could not be read back fails with `AggError.orderOutcomeUnknown`, which carries the quote to look the fill up with `getOrder` instead of trading again.
+    - `placeLimitOrder(params:)` takes the price and size as decimals, `redeemAll(params:)` redeems every eligible position, and `withdraw(params:)` previews, withdraws with a `requestId` that makes it safe to retry, and waits for the withdrawal to finish.
+    - Paper mode (`mode: .paper`) simulates trades from any country.
+    - With `autoReconnect`, a helper refused with `AGG_LINK_REQUIRED` links again and retries once; helpers refused at the same time share one link, so the user signs once. If linking again fails, the helper stops with `AggError.reconnectFailed` instead of asking the user to sign again.
+    - Statuses, venues and token symbols are `AggOpenValue` types: a value Agg adds later still decodes.
+    - A failed Agg request throws `AggRequestError`, which wraps the transport's error with the request's trace id, rather than the transport's error itself as the other Portal APIs do. `AggApiError.from(_:)` reads the Portal error `id`, Agg's `details` and the trace id from it, for example `AGG_LINK_REQUIRED`.
+    - Agg executes orders from the user's Agg balance; self-custody fills are not available yet.
 
 ### Changed
 
-- `PortalProtocol` gains `perps` and `borrow`, and `PortalApiProtocol` gains `yieldxyzPerps` and `yieldxyzBorrow`. If you conform to either protocol yourself, for example in a test double, add the new members.
+- `PortalProtocol` gains `perps`, `borrow` and `predictionMarkets`, and `PortalApiProtocol` gains `yieldxyzPerps`, `yieldxyzBorrow` and `agg`. If you conform to either protocol yourself, for example in a test double, add the new members; `PredictionMarkets(agg:)` builds one around your own `AggProtocol`.
 
 ## 8.1.0 - 2026-10-08
 

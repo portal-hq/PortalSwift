@@ -269,6 +269,7 @@ private final class StubPortal: PortalProtocol {
   lazy var trading: Trading = .init(api: self.api)
   lazy var perps: Perps = .init(api: self.api)
   lazy var borrow: Borrow = .init(api: self.api)
+  lazy var predictionMarkets: PredictionMarkets = .init(api: self.api)
   lazy var security: Security = .init(api: self.api)
   lazy var delegations: DelegationsProtocol = Delegations(api: self.api.delegations)
   lazy var evmAccountType: EvmAccountTypeProtocol = EvmAccountType(api: self.api.evmAccountType, portal: nil)

@@ -13,6 +13,7 @@ class PortalApiSpy: PortalApiProtocol {
   var yieldxyz: any PortalSwift.PortalYieldXyzApiProtocol
   var yieldxyzPerps: any PortalSwift.PortalYieldXyzPerpsApiProtocol
   var yieldxyzBorrow: any PortalSwift.PortalYieldXyzBorrowApiProtocol
+  var agg: any PortalSwift.PortalAggApiProtocol
   var lifi: any PortalSwift.PortalLifiTradingApiProtocol
   var zeroX: any PortalSwift.PortalZeroXTradingApiProtocol
   var hypernative: any PortalSwift.PortalHypernativeApiProtocol
@@ -25,6 +26,7 @@ class PortalApiSpy: PortalApiProtocol {
     yieldxyz: any PortalSwift.PortalYieldXyzApiProtocol = PortalYieldXyzApiSpy(),
     yieldxyzPerps: any PortalSwift.PortalYieldXyzPerpsApiProtocol = PortalYieldXyzPerpsApiMock(),
     yieldxyzBorrow: any PortalSwift.PortalYieldXyzBorrowApiProtocol = PortalYieldXyzBorrowApiMock(),
+    agg: any PortalSwift.PortalAggApiProtocol = PortalAggApiMock(),
     lifi: any PortalSwift.PortalLifiTradingApiProtocol = PortalLifiTradingApiSpy(),
     zeroX: any PortalSwift.PortalZeroXTradingApiProtocol = PortalZeroXTradingApiMock(),
     hypernative: any PortalSwift.PortalHypernativeApiProtocol = PortalHypernativeApiMock(),
@@ -36,6 +38,7 @@ class PortalApiSpy: PortalApiProtocol {
     self.yieldxyz = yieldxyz
     self.yieldxyzPerps = yieldxyzPerps
     self.yieldxyzBorrow = yieldxyzBorrow
+    self.agg = agg
     self.lifi = lifi
     self.zeroX = zeroX
     self.hypernative = hypernative
