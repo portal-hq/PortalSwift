@@ -30,10 +30,14 @@ class GDriveClientSpy: GDriveClientProtocol {
   }
 
   var getAccessTokenCallsCount: Int = 0
-  var getAccessTokenReturnValue: String = ""
+  var getAccessTokenReturnValue: String = MockConstants.mockGoogleAccessToken
+  var getAccessTokenThrowableError: Error?
 
   func getAccessToken() async throws -> String {
     getAccessTokenCallsCount += 1
+    if let getAccessTokenThrowableError {
+      throw getAccessTokenThrowableError
+    }
     return getAccessTokenReturnValue
   }
 
@@ -41,11 +45,15 @@ class GDriveClientSpy: GDriveClientProtocol {
   var getIdForFilenameFilenameParam: String?
   var getIdForFilenameUseAppDataFolderParam: Bool?
   var getIdForFilenameReturnValue: String = ""
+  var getIdForFilenameThrowableError: Error?
 
   func getIdForFilename(_ filename: String, useAppDataFolder: Bool) async throws -> String {
     getIdForFilenameCallsCount += 1
     getIdForFilenameFilenameParam = filename
     getIdForFilenameUseAppDataFolderParam = useAppDataFolder
+    if let getIdForFilenameThrowableError {
+      throw getIdForFilenameThrowableError
+    }
     return getIdForFilenameReturnValue
   }
 
@@ -83,11 +91,15 @@ class GDriveClientSpy: GDriveClientProtocol {
   var recoverFilesHashesParam: [String: String]?
   var recoverFilesUseAppDataFolderParam: Bool?
   var recoverFilesReturnValue: [String: String] = ["default": "123456789.txt"]
+  var recoverFilesThrowableError: Error?
 
   func recoverFiles(for hashes: [String: String], useAppDataFolder: Bool) async throws -> [String: String] {
     recoverFilesCallsCount += 1
     recoverFilesHashesParam = hashes
     recoverFilesUseAppDataFolderParam = useAppDataFolder
+    if let recoverFilesThrowableError {
+      throw recoverFilesThrowableError
+    }
     return recoverFilesReturnValue
   }
 }

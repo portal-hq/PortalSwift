@@ -46,7 +46,10 @@ public class PortalProvider: PortalProviderProtocol {
     }
   }
 
-  private let apiKey: String
+  /// The credential every Portal-owned RPC request and every signature is authenticated with.
+  /// The token is resolved from it per call — never cached — so a session rotated or invalidated
+  /// under a long-lived provider takes effect on the next request.
+  let credentials: PortalCredentials
   public var autoApprove: Bool
   public var chainId: Int?
   public var delegate: PortalProviderDelegate?
@@ -62,7 +65,15 @@ public class PortalProvider: PortalProviderProtocol {
   private var processedSignatureIds: [String] = []
   private let requests: PortalRequestsProtocol
   private let rpcConfig: [String: String]
-  private let signer: PortalMpcSigner
+  /// The hosts and ports this provider's owning `Portal` was configured with (`apiHost`,
+  /// `mpcHost`, `enclaveMPCHost`), normalized. The RPC bearer is attached to the static Portal
+  /// allow-list over `https` and to these — never to hosts other instances registered in
+  /// `PortalOwnedHosts`, so one instance's credential cannot reach another instance's proxy
+  /// through an `rpcConfig` URL, and never to a loopback URL that is not one of these, so a local
+  /// Anvil or Hardhat node does not receive it either (`isPortalRpcUrl(_:configuredEndpoints:)`).
+  /// Internal so tests can assert what a `PortalConnect`-built provider trusts.
+  let configuredEndpoints: Set<PortalConfiguredEndpoint>
+  private let signer: PortalSignerProtocol
   private let featureFlags: FeatureFlags?
 
   private var walletMethods: [ETHRequestMethods.RawValue] = [
@@ -76,12 +87,76 @@ public class PortalProvider: PortalProviderProtocol {
 
   /// Creates an instance of PortalProvider.
   /// - Parameters:
-  ///   - apiKey: The client API key. You can obtain this via Portal's REST API.
-  ///   - chainId: The ID of the EVM network you are using.
-  ///   - gatewayUrl: The gateway URL, such as Infura or Alchemy.
-  ///   - apiHost: The hostname of the API to use.
+  ///   - credentials: The credential (Client API Key or session) that authenticates Portal-owned
+  ///     RPC requests and signatures. Resolved per call, never cached.
+  ///   - rpcConfig: CAIP-2 chain id → RPC URL. The credential is attached only to Portal-owned
+  ///     URLs over `https` and to `mpcHost` / `configuredHosts` (host and port); third-party
+  ///     gateways never see it, and neither does a loopback URL that is not a configured host —
+  ///     see `isPortalRpcUrl(_:configuredEndpoints:)`.
+  ///   - keychain: Where signing shares and addresses live.
   ///   - autoApprove: Auto approves all transactions.
+  ///   - requests: The transport. When it reports 401s and has no hook yet, the provider wires
+  ///     one so a rejected credential is invalidated and the host is notified.
+  ///   - signer: Injectable signer; defaults to a `PortalMpcSigner` that receives the resolved
+  ///     token per call.
+  ///   - configuredHosts: Further hosts the owning `Portal` was constructed with (`apiHost`,
+  ///     `enclaveMPCHost`), optionally with a port, trusted for the RPC bearer alongside
+  ///     `mpcHost`. Hosts other instances registered process-wide in `PortalOwnedHosts` are
+  ///     deliberately not. They are registered there in turn, so a 401 from one of them reaches
+  ///     the hook this provider installs even when no `Portal` built it.
   public init(
+    credentials: PortalCredentials,
+    rpcConfig: [String: String],
+    keychain: PortalKeychainProtocol,
+    autoApprove: Bool,
+    mpcHost: String = "mpc.portalhq.io",
+    version: String = "v6",
+    featureFlags: FeatureFlags? = nil,
+    requests: PortalRequestsProtocol? = nil,
+    signer: PortalSignerProtocol? = nil,
+    binary: Mobile? = nil,
+    presignatureSource: PresignatureSource? = nil,
+    configuredHosts: [String] = []
+  ) throws {
+    // User-defined instance variables
+    self.credentials = credentials
+    self.autoApprove = autoApprove
+    self.keychain = keychain
+    self.rpcConfig = rpcConfig
+    self.configuredEndpoints = PortalOwnedHosts.normalizeEndpoints([mpcHost] + configuredHosts)
+    // The same hosts are Portal-owned for the 401 gate (see `PortalOwnedHosts`): the bearer below
+    // is sent to them through this instance's own trust, and the transport's hook only fires for a
+    // host the registry knows. `Portal` registers them too; a standalone provider has only this.
+    PortalOwnedHosts.register(contentsOf: [mpcHost] + configuredHosts)
+
+    // Other instance variables
+    self.featureFlags = featureFlags
+    self.requests = requests ?? PortalRequests()
+    self.signer = signer ?? PortalMpcSigner(
+      keychain: keychain,
+      mpcUrl: mpcHost,
+      version: version,
+      featureFlags: featureFlags,
+      binary: binary,
+      presignatureSource: presignatureSource
+    )
+    // Create a serial dispatch queue with a unique label
+    self.mpcQueue = DispatchQueue.global(qos: .background)
+
+    // The transport is the single reporter of RPC 401s; the provider itself never invalidates
+    // on a transport error, so a 401 from a third-party gateway cannot end the Portal session.
+    PortalCredentialSupport.installUnauthorizedHook(on: self.requests, for: credentials, context: "PortalProvider")
+
+    self.dispatchConnect()
+  }
+
+  /// Creates an instance of PortalProvider from a Client API Key.
+  ///
+  /// The key is wrapped in a `StaticCredentials`. A blank key now throws
+  /// `PortalCredentialError.invalidApiKey` here instead of producing a provider that fails on its
+  /// first Portal-owned request (parity with the Android and React Native SDKs).
+  @available(*, deprecated, message: "Use init(credentials:rpcConfig:keychain:autoApprove:mpcHost:version:featureFlags:requests:signer:binary:presignatureSource:configuredHosts:) and pass StaticCredentials(apiKey) or a PortalSession.")
+  public convenience init(
     apiKey: String,
     rpcConfig: [String: String],
     keychain: PortalKeychainProtocol,
@@ -94,28 +169,19 @@ public class PortalProvider: PortalProviderProtocol {
     binary: Mobile? = nil,
     presignatureSource: PresignatureSource? = nil
   ) throws {
-    // User-defined instance variables
-    self.apiKey = apiKey
-    self.autoApprove = autoApprove
-    self.keychain = keychain
-    self.rpcConfig = rpcConfig
-
-    // Other instance variables
-    self.featureFlags = featureFlags
-    self.requests = requests ?? PortalRequests()
-    self.signer = signer ?? PortalMpcSigner(
-      apiKey: apiKey,
+    try self.init(
+      credentials: PortalCredentialSupport.resolve(apiKey: apiKey, credentials: nil),
+      rpcConfig: rpcConfig,
       keychain: keychain,
-      mpcUrl: mpcHost,
+      autoApprove: autoApprove,
+      mpcHost: mpcHost,
       version: version,
       featureFlags: featureFlags,
+      requests: requests,
+      signer: signer,
       binary: binary,
       presignatureSource: presignatureSource
     )
-    // Create a serial dispatch queue with a unique label
-    self.mpcQueue = DispatchQueue.global(qos: .background)
-
-    self.dispatchConnect()
   }
 
   /*******************************************
@@ -221,8 +287,15 @@ public class PortalProvider: PortalProviderProtocol {
   ///   - method: A member of the PortalRequestMethod enum
   ///   - params: An array of parameters for the request (either RPC parameters or a transaction if signing)
   ///   - connect: Optional `PortalConnect` object to use for the request.
-  ///   - options: Optional request options containing signature approval memo and gas sponsorship settings.
+  ///   - options: Optional request options: signature approval memo, gas sponsorship, trace ID, and an
+  ///     idempotency key for `eth_sendTransaction`, `sol_signAndSendTransaction` and
+  ///     `sol_signAndConfirmTransaction` (see `RequestOptions.idempotencyKey`).
   /// - Returns: PortalProviderResult
+  /// - Throws: `PortalIdempotencyError.invalidKey` for a malformed `options.idempotencyKey` and
+  ///   `PortalIdempotencyError.unsupportedTarget` for a key on `eth_sendRawTransaction` or
+  ///   `sol_sendTransaction`, both before the approval prompt or any network request; a
+  ///   `PortalMpcError` whose `isIdempotencyRejection` is `true` when Portal refuses to broadcast a
+  ///   key it has already seen.
   public func request(
     chainId: String,
     method: PortalRequestMethod,
@@ -239,6 +312,9 @@ public class PortalProvider: PortalProviderProtocol {
     // A single trace ID is shared across the request. If the caller provided one
     // via options, reuse it; otherwise generate a fresh one for this request.
     let traceId = options?.traceId ?? generateTraceId()
+    // Resolved before the approval prompt, the token and the signer, so a malformed key or a key on
+    // a target that cannot be protected fails before the user is asked to approve anything.
+    let idempotencyKey = try self.resolveIdempotencyKey(for: method, on: blockchain, chainId: chainId, options: options)
 
     // This switch is here to handle methods that should be
     // resolved by the provider directly before passing the
@@ -259,7 +335,7 @@ public class PortalProvider: PortalProviderProtocol {
     default:
       if blockchain.shouldMethodBeSigned(method) {
         let payload = PortalProviderRequestWithId(id: id, method: method, params: params, chainId: chainId)
-        return try await self.handleSignRequest(chainId, withPayload: payload, forId: id, onBlockchain: blockchain, connect: connect, options: options, traceId: traceId)
+        return try await self.handleSignRequest(chainId, withPayload: payload, forId: id, onBlockchain: blockchain, connect: connect, options: options, traceId: traceId, idempotencyKey: idempotencyKey)
       } else {
         return try await self.handleRpcRequest(chainId, withMethod: method, andParams: params, forId: id, traceId: traceId)
       }
@@ -324,9 +400,7 @@ public class PortalProvider: PortalProviderProtocol {
 
   public func getRpcUrl(_ chainId: String) throws -> String {
     // Skip getting the RPC url for bitcoin p2wpkh mainnet and testnet
-    if chainId == "bip122:000000000019d6689c085ae165831e93-p2wpkh" ||
-      chainId == "bip122:000000000933ea01ad0ee984209779ba-p2wpkh"
-    {
+    if PortalBlockchain.bitcoinP2wpkhChainIds.contains(chainId) {
       return ""
     }
 
@@ -340,6 +414,44 @@ public class PortalProvider: PortalProviderProtocol {
   /*******************************************
    * Private functions
    *******************************************/
+
+  /// Applies the idempotency-key rules to `options?.idempotencyKey` for `method`, in order:
+  /// 1. no key: `nil`;
+  /// 2. a raw broadcast (`eth_sendRawTransaction`, `sol_sendTransaction`) throws
+  ///    `unsupportedTarget`, whatever the key's shape: the SDK only relays the signed transaction
+  ///    to RPC, where Portal cannot deduplicate it;
+  /// 3. a malformed key throws `invalidKey`;
+  /// 4. a key on any method other than the three protected broadcasts is dropped with a warning;
+  /// 5. a key on a protected broadcast that `blockchain` does not sign (and so relays to RPC) is
+  ///    dropped with a warning;
+  /// 6. otherwise the trimmed key is returned.
+  ///
+  /// - Returns: The trimmed key for `eth_sendTransaction`, `sol_signAndSendTransaction` and
+  ///   `sol_signAndConfirmTransaction` when `blockchain` signs them; otherwise `nil`. The key is
+  ///   never logged.
+  private func resolveIdempotencyKey(
+    for method: PortalRequestMethod,
+    on blockchain: PortalBlockchain,
+    chainId: String,
+    options: RequestOptions?
+  ) throws -> String? {
+    guard let rawKey = options?.idempotencyKey else {
+      return nil
+    }
+    if method.isRawBroadcast {
+      throw PortalIdempotencyError.unsupportedRawBroadcast(method)
+    }
+    let key = try validateIdempotencyKey(rawKey)
+    guard method.supportsIdempotencyKey else {
+      self.logger.warn("PortalProvider.request() - idempotencyKey ignored for \(method.rawValue); only eth_sendTransaction, sol_signAndSendTransaction and sol_signAndConfirmTransaction are protected")
+      return nil
+    }
+    guard blockchain.shouldMethodBeSigned(method) else {
+      self.logger.warn("PortalProvider.request() - idempotencyKey ignored for \(method.rawValue) on \(chainId); the method is not signed on this chain, so the key cannot be enforced")
+      return nil
+    }
+    return key
+  }
 
   private func dispatchConnect() {
     if let chainId = chainId {
@@ -410,11 +522,21 @@ public class PortalProvider: PortalProviderProtocol {
         method: withMethod,
         params: andParams
       )
+      // Host-based, not a string prefix: `https://api.portalhq.io.attacker.com/rpc` passed the old
+      // "starts with the production API URL" test and received the end user's session token,
+      // while `web.portalhq.io`, an uppercase spelling or this instance's own custom host got none.
+      // Configured-host trust is this instance's (`configuredEndpoints`), not the process-wide
+      // registry: a host some other `Portal` was built with must never receive this credential.
+      // Loopback counts only as a configured endpoint (host and port) and public hosts only over
+      // `https` — see `isPortalRpcUrl(_:configuredEndpoints:)`.
+      let bearerToken: String? = try isPortalRpcUrl(rpcUrl, configuredEndpoints: self.configuredEndpoints)
+        ? PortalCredentialSupport.resolveToken(self.credentials)
+        : nil
       let request = PortalAPIRequest(
         url: url,
         method: .post,
         payload: payload,
-        bearerToken: rpcUrl.starts(with: "https://api.portalhq.") ? self.apiKey : nil,
+        bearerToken: bearerToken,
         traceId: traceId
       )
 
@@ -488,7 +610,8 @@ public class PortalProvider: PortalProviderProtocol {
     onBlockchain: PortalBlockchain,
     connect: PortalConnect? = nil,
     options: RequestOptions? = nil,
-    traceId: String? = nil
+    traceId: String? = nil,
+    idempotencyKey: String? = nil
   ) async throws -> PortalProviderResult {
     guard try await self.getApproval(onChainId, forPayload: withPayload, connect: connect) else {
       throw ProviderSigningError.userDeclinedApproval
@@ -498,17 +621,32 @@ public class PortalProvider: PortalProviderProtocol {
 
     let payload = try getPortalSignRequest(method: withPayload.method, params: withPayload.params)
 
-    let signature = try await self.signer.sign(
-      onChainId,
-      withPayload: payload,
-      andRpcUrl: rpcUrl,
-      usingBlockchain: onBlockchain,
-      signatureApprovalMemo: options?.signatureApprovalMemo,
-      sponsorGas: options?.sponsorGas,
-      reqId: traceId ?? options?.traceId
-    )
+    // Resolved only now, after the user approved: a declined request never touches the session,
+    // and a token resolved before a long approval wait could be stale by the time it is used.
+    let token = try PortalCredentialSupport.resolveToken(self.credentials)
 
-    return PortalProviderResult(id: withPayload.id, result: signature)
+    do {
+      let signature = try await self.signer.sign(
+        onChainId,
+        withPayload: payload,
+        andRpcUrl: rpcUrl,
+        usingBlockchain: onBlockchain,
+        signatureApprovalMemo: options?.signatureApprovalMemo,
+        sponsorGas: options?.sponsorGas,
+        reqId: traceId ?? options?.traceId,
+        idempotencyKey: idempotencyKey,
+        token: token
+      )
+
+      return PortalProviderResult(id: withPayload.id, result: signature)
+    } catch let error as PortalMpcError where error.isAuthFailure {
+      // The MPC service is not on the transport's 401 hook, so the signing path reports the
+      // rejected credential itself — for the token that was actually sent, so a credential that
+      // rotated in place while the binary ran is not invalidated for the old token's rejection.
+      // The original error is rethrown unchanged.
+      PortalCredentialSupport.reportUnauthorizedAndLog(self.credentials, rejectedToken: token, context: "PortalProvider.handleSignRequest")
+      throw error
+    }
   }
 
   private func getPortalSignRequest(
@@ -537,7 +675,13 @@ public class PortalProvider: PortalProviderProtocol {
     params: [AnyCodable]?
   ) throws -> PortalSignRequest {
     let params = try prepareParamsForNoneRawSignRequest(method, params: params)
-    let paramsJson = try JSONEncoder().encode(params)
+    // `JSONEncoder` fixes the key order of neither dictionaries nor synthesized `Encodable` types,
+    // so without sorted keys two encodes of the same params can differ. Portal compares the params
+    // of a request carrying an idempotency key byte for byte, so an identical retry, even after an
+    // app restart, must produce the same bytes.
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.sortedKeys]
+    let paramsJson = try encoder.encode(params)
     guard let paramsStr = String(data: paramsJson, encoding: .utf8) else {
       throw PortalMpcSignerError.unableToEncodeParams
     }

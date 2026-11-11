@@ -14,14 +14,22 @@ class PortalProviderSpy: PortalProviderProtocol {
   var address: String?
   var api: PortalApiProtocol?
 
-  let mockPortalProvider: PortalProvider!
+  /// The concrete provider the chainable spy methods hand back.
+  ///
+  /// It is stored non-optionally: the credentials layer now rejects a blank Client API Key, so the
+  /// old implicitly-unwrapped optional (built with `apiKey: ""`) became `nil` and trapped — killing
+  /// the whole `xctest` process — the first time a test called `emit`/`on`/`once`.
+  let mockPortalProvider: PortalProvider
 
-  init() {
-    do {
-      mockPortalProvider = try PortalProvider(apiKey: "", rpcConfig: [:], keychain: PortalKeychain(), autoApprove: true)
-    } catch {
-      mockPortalProvider = nil
-    }
+  /// - Parameter credentials: The credential the returned provider is built with. Defaults to
+  ///   `MockConstants.mockCredentials` so the credentials layer accepts it.
+  init(credentials: PortalCredentials = MockConstants.mockCredentials) throws {
+    self.mockPortalProvider = try PortalProvider(
+      credentials: credentials,
+      rpcConfig: [:],
+      keychain: PortalKeychain(),
+      autoApprove: true
+    )
   }
 
   // Tracking variables for `emit` function
@@ -77,6 +85,12 @@ class PortalProviderSpy: PortalProviderProtocol {
   private(set) var requestOptionsParamsParam: [AnyCodable]?
   private(set) var requestOptionsConnectParam: PortalConnect?
   private(set) var requestOptionsOptionsParam: RequestOptions?
+  /// Every call, in order.
+  private(set) var requestOptionsHistory: [(chainId: String, method: PortalRequestMethod, params: [AnyCodable]?, options: RequestOptions?)] = []
+  /// The `result` returned per method; `""` for a method not listed.
+  var requestOptionsReturnValues: [PortalRequestMethod: Any] = [:]
+  /// Thrown by every call when set.
+  var requestOptionsError: Error?
 
   func request(chainId: String, method: PortalRequestMethod, params: [AnyCodable]?, connect: PortalConnect?, options: RequestOptions?) async throws -> PortalProviderResult {
     requestOptionsCallsCount += 1
@@ -85,7 +99,11 @@ class PortalProviderSpy: PortalProviderProtocol {
     requestOptionsParamsParam = params
     requestOptionsConnectParam = connect
     requestOptionsOptionsParam = options
-    return PortalProviderResult(id: "", result: "")
+    requestOptionsHistory.append((chainId, method, params, options))
+    if let requestOptionsError {
+      throw requestOptionsError
+    }
+    return PortalProviderResult(id: "", result: requestOptionsReturnValues[method] ?? "")
   }
 
   // Tracking variables for the async `request` function with PortalRequestMethod
@@ -178,9 +196,15 @@ class PortalProviderSpy: PortalProviderProtocol {
   private(set) var getRpcUrlCallsCount = 0
   private(set) var getRpcUrlChainIdParam: String?
 
+  /// Thrown by `getRpcUrl` when set, as for a chain with no RPC endpoint configured.
+  var getRpcUrlError: Error?
+
   func getRpcUrl(_ chainId: String) throws -> String {
     getRpcUrlCallsCount += 1
     getRpcUrlChainIdParam = chainId
+    if let getRpcUrlError {
+      throw getRpcUrlError
+    }
     return ""
   }
 

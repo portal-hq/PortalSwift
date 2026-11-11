@@ -63,12 +63,36 @@ public class GDriveStorage: Storage, PortalStorage {
 
   public func delete() async throws -> Bool {
     let hashes = try await getFilenameHashes()
-    let useAppDataFolder = backupOption == .appDataFolder || backupOption == .appDataFolderWithFallback
+    let useAppDataFolder = backupOption.usesAppDataFolder
+
+    // One up-front token fetch so a missing or declined consent fails the whole
+    // delete once, instead of re-presenting the prompt for every hash below.
+    guard let accessToken = try? await drive.getAccessToken(), !accessToken.isEmpty else {
+      throw GDriveStorageError.unableToDeleteFile
+    }
+
     for hash in hashes.values {
-      if let fileId = try? await drive.getIdForFilename(hash, useAppDataFolder: useAppDataFolder) {
+      // The pre-flight cannot see a token that only Drive knows is revoked. If
+      // the recovery sign-in triggered by that 401 is declined, fail here so the
+      // remaining hashes do not each present the sheet again.
+      let fileId: String
+      do {
+        fileId = try await drive.getIdForFilename(hash, useAppDataFolder: useAppDataFolder)
+      } catch GDriveClientError.userNotAuthenticated {
+        throw GDriveStorageError.unableToDeleteFile
+      } catch {
+        // Most hashes belong to other platforms and legitimately have no file
+        // in this folder; log so a real failure on one of them stays visible.
+        self.logger.debug("GDriveStorage.delete() - Skipping hash \(hash): \(error)")
+        continue
+      }
+
+      do {
         if try await self.drive.delete(fileId) {
           return true
         }
+      } catch GDriveClientError.userNotAuthenticated {
+        throw GDriveStorageError.unableToDeleteFile
       }
     }
 
@@ -80,10 +104,17 @@ public class GDriveStorage: Storage, PortalStorage {
 
     do {
       var recoveredFiles: [String: String] = [:]
-      let shouldUseAppDataFolder: Bool = backupOption == .appDataFolder || backupOption == .appDataFolderWithFallback
+      let shouldUseAppDataFolder: Bool = backupOption.usesAppDataFolder
 
       do {
         recoveredFiles = try await drive.recoverFiles(for: hashes, useAppDataFolder: shouldUseAppDataFolder)
+      } catch GDriveClientError.userNotAuthenticated {
+        // An authentication failure applies to both Drive spaces equally, so
+        // the folder fallback below cannot succeed — it would only re-present
+        // the consent prompt the user just declined.
+        throw GDriveClientError.userNotAuthenticated
+      } catch let GDriveClientError.authenticationNotInitialized(message) {
+        throw GDriveClientError.authenticationNotInitialized(message)
       } catch {
         let shouldFallbackToGDrive: Bool = backupOption == .appDataFolderWithFallback
         if shouldFallbackToGDrive {
@@ -119,6 +150,11 @@ public class GDriveStorage: Storage, PortalStorage {
     return try await self.drive.write(filename, withContent: value)
   }
 
+  /// Runs the interactive Google sign-in, requesting the Drive scopes required
+  /// by the configured backup option in the sign-in sheet itself. Returns only
+  /// after the user has answered the consent prompt and every required scope
+  /// was granted; throws `GoogleAuthError.scopesNotGranted(missing:)` when the
+  /// user declines a required scope.
   public func signIn() async throws -> GIDGoogleUser {
     guard let auth = drive.auth else {
       self.logger.debug("GDriveStorage.signIn() - ❌ Authentication not initialized. GDrive config has not been set yet.")
@@ -126,6 +162,25 @@ public class GDriveStorage: Storage, PortalStorage {
     }
 
     return try await auth.signIn()
+  }
+
+  /// Clears the stored Google session so the next Drive operation runs a fresh
+  /// interactive sign-in. Use this to recover from a revoked or expired Google
+  /// grant, or to let the user switch Google accounts. Requires only
+  /// `setGDriveConfiguration`; no presenting view is needed to sign out.
+  public func signOut() throws {
+    guard drive.clientId != nil else {
+      self.logger.debug("GDriveStorage.signOut() - ❌ GDrive config has not been set yet.")
+      throw GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfiguration() to configure GoogleDrive")
+    }
+
+    if let auth = drive.auth {
+      auth.signOut()
+    } else {
+      // Configured, but no presenting view has been set yet so no GoogleAuth
+      // wrapper exists; clearing the stored session needs no view.
+      GIDSignIn.sharedInstance.signOut()
+    }
   }
 
   public func validateOperations() async throws -> Bool {

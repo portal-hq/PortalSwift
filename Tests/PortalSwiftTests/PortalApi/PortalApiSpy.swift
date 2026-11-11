@@ -11,6 +11,8 @@ import Foundation
 
 class PortalApiSpy: PortalApiProtocol {
   var yieldxyz: any PortalSwift.PortalYieldXyzApiProtocol
+  var yieldxyzPerps: any PortalSwift.PortalYieldXyzPerpsApiProtocol
+  var yieldxyzBorrow: any PortalSwift.PortalYieldXyzBorrowApiProtocol
   var lifi: any PortalSwift.PortalLifiTradingApiProtocol
   var zeroX: any PortalSwift.PortalZeroXTradingApiProtocol
   var hypernative: any PortalSwift.PortalHypernativeApiProtocol
@@ -21,6 +23,8 @@ class PortalApiSpy: PortalApiProtocol {
 
   init(
     yieldxyz: any PortalSwift.PortalYieldXyzApiProtocol = PortalYieldXyzApiSpy(),
+    yieldxyzPerps: any PortalSwift.PortalYieldXyzPerpsApiProtocol = PortalYieldXyzPerpsApiMock(),
+    yieldxyzBorrow: any PortalSwift.PortalYieldXyzBorrowApiProtocol = PortalYieldXyzBorrowApiMock(),
     lifi: any PortalSwift.PortalLifiTradingApiProtocol = PortalLifiTradingApiSpy(),
     zeroX: any PortalSwift.PortalZeroXTradingApiProtocol = PortalZeroXTradingApiMock(),
     hypernative: any PortalSwift.PortalHypernativeApiProtocol = PortalHypernativeApiMock(),
@@ -30,6 +34,8 @@ class PortalApiSpy: PortalApiProtocol {
     noah: any PortalSwift.PortalNoahApiProtocol = PortalNoahApiSpy()
   ) {
     self.yieldxyz = yieldxyz
+    self.yieldxyzPerps = yieldxyzPerps
+    self.yieldxyzBorrow = yieldxyzBorrow
     self.lifi = lifi
     self.zeroX = zeroX
     self.hypernative = hypernative

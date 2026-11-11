@@ -6,6 +6,7 @@
 //  Copyright © 2022 Portal Labs, Inc. All rights reserved.
 //
 
+import GoogleSignIn
 @testable import PortalSwift
 import XCTest
 
@@ -92,6 +93,61 @@ extension GDriveStorageTests {
     XCTAssertEqual(driveClient.getIdForFilenameCallsCount, 1)
   }
 
+  func test_delete_willThrowCorrectError_whenAccessTokenIsEmpty() async throws {
+    // given
+    let driveClient = GDriveClientSpy()
+    driveClient.getAccessTokenReturnValue = ""
+    initGDriveStorage(driveClient: driveClient)
+
+    do {
+      // and given
+      _ = try await storage?.delete()
+      XCTFail("Expected error not thrown when calling GDriveStorage.delete() with an empty access token.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? GDriveStorageError, GDriveStorageError.unableToDeleteFile)
+      XCTAssertEqual(driveClient.getIdForFilenameCallsCount, 0)
+      XCTAssertEqual(driveClient.deleteCallsCount, 0)
+    }
+  }
+
+  func test_delete_willFailOnce_whenRecoverySignInIsDeclinedMidLoop() async throws {
+    // given the pre-flight passes (cached token) but Drive rejects it and the
+    // user declines the recovery sign-in inside the loop
+    let driveClient = GDriveClientSpy()
+    driveClient.getIdForFilenameThrowableError = GDriveClientError.userNotAuthenticated
+    initGDriveStorage(driveClient: driveClient)
+
+    do {
+      // and given
+      _ = try await storage?.delete()
+      XCTFail("Expected error not thrown when calling GDriveStorage.delete() after the recovery sign-in was declined.")
+    } catch {
+      // then the remaining hashes must not each re-present the sign-in sheet
+      XCTAssertEqual(error as? GDriveStorageError, GDriveStorageError.unableToDeleteFile)
+      XCTAssertEqual(driveClient.getIdForFilenameCallsCount, 1)
+      XCTAssertEqual(driveClient.deleteCallsCount, 0)
+    }
+  }
+
+  func test_delete_willThrowCorrectError_whenGetAccessTokenThrows() async throws {
+    // given
+    let driveClient = GDriveClientSpy()
+    driveClient.getAccessTokenThrowableError = GDriveClientError.userNotAuthenticated
+    initGDriveStorage(driveClient: driveClient)
+
+    do {
+      // and given
+      _ = try await storage?.delete()
+      XCTFail("Expected error not thrown when calling GDriveStorage.delete() when fetching the access token fails.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? GDriveStorageError, GDriveStorageError.unableToDeleteFile)
+      XCTAssertEqual(driveClient.getIdForFilenameCallsCount, 0)
+      XCTAssertEqual(driveClient.deleteCallsCount, 0)
+    }
+  }
+
 //  func test_delete_willCall_driveGetIdForFilename_passingCorrectFilename() async throws {
 //    // given
 //    let driveClient = GDriveClientSpy()
@@ -168,6 +224,44 @@ extension GDriveStorageTests {
 //    XCTAssertEqual(driveClient.getIdForFilenameFilenameParam, filename)
 //  }
 
+  func test_read_willNotFallBackToGDriveFolder_whenUserIsNotAuthenticated() async throws {
+    // given
+    let driveClient = GDriveClientSpy()
+    driveClient.recoverFilesThrowableError = GDriveClientError.userNotAuthenticated
+    initGDriveStorage(driveClient: driveClient)
+    storage?.backupOption = .appDataFolderWithFallback
+
+    do {
+      // and given
+      _ = try await storage?.read()
+      XCTFail("Expected error not thrown when calling GDriveStorage.read() while the user is not authenticated.")
+    } catch {
+      // then an authentication failure must not trigger the user-visible-folder
+      // fallback, which would re-present the consent prompt the user declined
+      XCTAssertEqual(error as? GDriveStorageError, GDriveStorageError.unableToReadFile)
+      XCTAssertEqual(driveClient.recoverFilesCallsCount, 1)
+    }
+  }
+
+  func test_read_willFallBackToGDriveFolder_whenRecoveryFailsForOtherReasons() async throws {
+    // given
+    let driveClient = GDriveClientSpy()
+    driveClient.recoverFilesThrowableError = GDriveClientError.noFileFound
+    initGDriveStorage(driveClient: driveClient)
+    storage?.backupOption = .appDataFolderWithFallback
+
+    do {
+      // and given
+      _ = try await storage?.read()
+      XCTFail("Expected error not thrown when calling GDriveStorage.read() while recovery fails in both folders.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? GDriveStorageError, GDriveStorageError.unableToReadFile)
+      XCTAssertEqual(driveClient.recoverFilesCallsCount, 2)
+      XCTAssertEqual(driveClient.recoverFilesUseAppDataFolderParam, false)
+    }
+  }
+
   func test_read_willCall_driveRecoverFiles_onlyOnce() async throws {
     // given
     let driveClient = GDriveClientSpy()
@@ -221,6 +315,62 @@ extension GDriveStorageTests {
       // and given
       _ = try await storage?.signIn()
       XCTFail("Expected error not thrown when calling GDriveStorage.signIn() when there is no GDriveClient.auth object.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? GDriveClientError, GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfiguration() to configure GoogleDrive"))
+    }
+  }
+}
+
+// MARK: - signOut test
+
+private class SignOutCountingGoogleAuth: GoogleAuth {
+  var signOutCallsCount = 0
+
+  override func signOut() {
+    signOutCallsCount += 1
+  }
+}
+
+extension GDriveStorageTests {
+  func test_signOut_willCallGoogleAuthSignOut() throws {
+    // given a configured client with a live GoogleAuth wrapper
+    let driveClient = GDriveClientSpy()
+    driveClient.clientId = MockConstants.mockGDriveClientId
+    let auth = SignOutCountingGoogleAuth(config: GIDConfiguration(clientID: MockConstants.mockGDriveClientId))
+    driveClient.auth = auth
+    initGDriveStorage(driveClient: driveClient)
+
+    // and given
+    try storage?.signOut()
+
+    // then
+    XCTAssertEqual(auth.signOutCallsCount, 1)
+  }
+
+  func test_signOut_willNotThrow_whenConfiguredWithoutView() throws {
+    // given a configured client whose presenting view has not been set yet, so
+    // no GoogleAuth wrapper exists
+    let driveClient = GDriveClientSpy()
+    driveClient.clientId = MockConstants.mockGDriveClientId
+    driveClient.auth = nil
+    initGDriveStorage(driveClient: driveClient)
+
+    // then signing out needs no view
+    XCTAssertNoThrow(try storage?.signOut())
+  }
+
+  func test_signOut_willThrowCorrectError_whenDriveIsNotConfigured() throws {
+    // given
+    let driveClient = GDriveClientSpy()
+    driveClient.clientId = nil
+    driveClient.auth = nil
+    initGDriveStorage(driveClient: driveClient)
+
+    do {
+      // and given
+      try storage?.signOut()
+      XCTFail("Expected error not thrown when calling GDriveStorage.signOut() when there is no GDriveClient.auth object.")
     } catch {
       // then
       XCTAssertEqual(error as? GDriveClientError, GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfiguration() to configure GoogleDrive"))

@@ -503,6 +503,13 @@ public class YieldXyz: YieldXyzProtocol {
           }
         } catch is CancellationError {
           throw CancellationError()
+        } catch let error as PortalCredentialError {
+          // The session is gone: every further tick would throw the same before touching the
+          // network, and polling on would report `.uncertain` up to `timeoutSeconds` (15 minutes
+          // by default) later for what is a credential problem. Surface it now.
+          throw error
+        } catch PortalRequestsError.unauthorized {
+          throw PortalRequestsError.unauthorized
         } catch {
           // keep polling
         }
@@ -525,6 +532,13 @@ public class YieldXyz: YieldXyzProtocol {
           }
         } catch is CancellationError {
           throw CancellationError()
+        } catch let error as PortalCredentialError {
+          // The session is gone: every further tick would throw the same before touching the
+          // network, and polling on would report `.uncertain` up to `timeoutSeconds` (15 minutes
+          // by default) later for what is a credential problem. Surface it now.
+          throw error
+        } catch PortalRequestsError.unauthorized {
+          throw PortalRequestsError.unauthorized
         } catch {
           // keep polling
         }

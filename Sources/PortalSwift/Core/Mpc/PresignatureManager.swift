@@ -34,7 +34,9 @@ public protocol PresignatureSource: AnyObject {
 }
 
 class PresignatureManager: PresignatureSource {
-  private let apiKey: String
+  /// Resolved inside every presign attempt, never at construction, so a session that rotates
+  /// or dies while the buffer refills is seen by the very next attempt.
+  private let credentials: PortalCredentials
   private let mpcHost: String
   private let binary: Mobile
   private weak var keychain: PortalKeychainProtocol?
@@ -47,6 +49,28 @@ class PresignatureManager: PresignatureSource {
   private let logger = PortalLogger.shared
 
   init(
+    credentials: PortalCredentials,
+    mpcHost: String,
+    binary: Mobile,
+    keychain: PortalKeychainProtocol,
+    maxPresignaturesPerCurve: [PresignatureSupportedCurve: Int],
+    featureFlags: FeatureFlags?,
+    retryConfig: PresignRetryConfig = .default
+  ) {
+    self.credentials = credentials
+    self.mpcHost = mpcHost
+    self.binary = binary
+    self.keychain = keychain
+    self.maxPresignaturesPerCurve = maxPresignaturesPerCurve
+    self.featureFlags = featureFlags
+    self.retryConfig = retryConfig
+  }
+
+  /// Wraps `apiKey` in a `StaticCredentials`. Stays non-throwing like the original: a blank
+  /// key is discovered at the first presign attempt as `PortalCredentialError.unavailable`,
+  /// which stops the refill without retrying.
+  @available(*, deprecated, message: "Use init(credentials:mpcHost:binary:keychain:maxPresignaturesPerCurve:featureFlags:retryConfig:).")
+  convenience init(
     apiKey: String,
     mpcHost: String,
     binary: Mobile,
@@ -55,13 +79,15 @@ class PresignatureManager: PresignatureSource {
     featureFlags: FeatureFlags?,
     retryConfig: PresignRetryConfig = .default
   ) {
-    self.apiKey = apiKey
-    self.mpcHost = mpcHost
-    self.binary = binary
-    self.keychain = keychain
-    self.maxPresignaturesPerCurve = maxPresignaturesPerCurve
-    self.featureFlags = featureFlags
-    self.retryConfig = retryConfig
+    self.init(
+      credentials: StaticCredentials(apiKey),
+      mpcHost: mpcHost,
+      binary: binary,
+      keychain: keychain,
+      maxPresignaturesPerCurve: maxPresignaturesPerCurve,
+      featureFlags: featureFlags,
+      retryConfig: retryConfig
+    )
   }
 
   // MARK: - Public
@@ -130,7 +156,15 @@ class PresignatureManager: PresignatureSource {
     maxPresignaturesPerCurve[curve] ?? 0
   }
 
-  private func preSign(curve: PresignatureSupportedCurve) async -> PresignatureEntry? {
+  /// Generates one presignature for `curve`, retrying transient failures with backoff.
+  ///
+  /// Returns `nil` when there is no share, the task was cancelled, or every attempt failed with
+  /// a retryable error. Throws — without retrying — for the two failures no retry can fix: a
+  /// `PortalCredentialError` (no usable token) and an MPC `AUTH_FAILED` (the service rejected
+  /// the token), which is reported to the credentials layer here so the host learns its session
+  /// ended even though the refill runs in the background. The token is resolved inside each
+  /// attempt, so a session rotated during the backoff sleep is picked up by the next attempt.
+  private func preSign(curve: PresignatureSupportedCurve) async throws -> PresignatureEntry? {
     guard let keychain else {
       logger.error("[PresignatureManager] Keychain deallocated, cannot presign for \(curve.rawValue)")
       return nil
@@ -141,6 +175,10 @@ class PresignatureManager: PresignatureSource {
         logger.debug("[PresignatureManager] Presign cancelled for \(curve.rawValue)")
         return nil
       }
+      // The token this attempt hands the binary, kept outside the `do` so the `AUTH_FAILED` catch
+      // can report the rejection against it rather than against whatever the credential holds by
+      // the time the binary answers.
+      var attemptedToken: String?
       do {
         let shares = try await keychain.getShares()
         guard let shareEntry = shares[curve.portalCurve.rawValue],
@@ -159,8 +197,18 @@ class PresignatureManager: PresignatureSource {
         )
         let metadataString = try metadata.jsonString()
 
+        let token = try PortalCredentialSupport.resolveToken(credentials)
+        attemptedToken = token
+
+        // Resolving the token may have blocked on a host provider; a cancellation that landed
+        // meanwhile must not turn into a network round trip.
+        guard !Task.isCancelled else {
+          logger.debug("[PresignatureManager] Presign cancelled for \(curve.rawValue)")
+          return nil
+        }
+
         let result = await binary.MobilePresign(
-          apiKey, mpcHost, shareEntry.share, metadataString, curve.portalCurve
+          token, mpcHost, shareEntry.share, metadataString, curve.portalCurve
         )
 
         guard let data = result.data(using: .utf8) else {
@@ -178,6 +226,19 @@ class PresignatureManager: PresignatureSource {
 
         logger.debug("[PresignatureManager] Generated presignature \(id) for \(curve.rawValue)")
         return PresignatureEntry(id: id, expiresAt: expiresAt, data: presignData)
+      } catch let error as PortalCredentialError {
+        logger.error("PresignatureManager.preSign() - No usable credential for \(curve.rawValue) (\(error.reason?.rawValue ?? "INVALID_API_KEY")); not retrying.")
+        throw error
+      } catch let error as PortalMpcError where error.isAuthFailure {
+        logger.error("PresignatureManager.preSign() - The MPC service rejected the credential for \(curve.rawValue); reporting it and not retrying.")
+        // Reported against the token the binary was handed: a credential that rotated in place
+        // while the binary ran is not invalidated for the old token's rejection.
+        if let attemptedToken {
+          PortalCredentialSupport.reportUnauthorizedAndLog(credentials, rejectedToken: attemptedToken, context: "PresignatureManager.preSign")
+        } else {
+          PortalCredentialSupport.reportUnauthorizedAndLog(credentials, context: "PresignatureManager.preSign")
+        }
+        throw error
       } catch {
         logger.warn("[PresignatureManager] Presign failed for \(curve.rawValue) (attempt \(attempt + 1)/\(retryConfig.maxAttempts)): \(error.localizedDescription)")
         if attempt < retryConfig.maxAttempts - 1 {
@@ -234,7 +295,23 @@ class PresignatureManager: PresignatureSource {
           return
         }
 
-        guard let entry = await preSign(curve: curve) else {
+        let presigned: PresignatureEntry?
+        do {
+          presigned = try await preSign(curve: curve)
+        } catch let error as PortalCredentialError {
+          // Nothing to retry and nothing to report: the credential could not even be resolved.
+          logger.error("PresignatureManager.fillBuffer() - Stopping buffer fill for \(curve.rawValue) after \(generated)/\(needed): no usable credential (\(error.reason?.rawValue ?? "INVALID_API_KEY")).")
+          return
+        } catch let error as PortalMpcError where error.isAuthFailure {
+          // Already reported inside preSign; every further slot would fail the same way.
+          logger.error("PresignatureManager.fillBuffer() - Stopping buffer fill for \(curve.rawValue) after \(generated)/\(needed): the MPC service rejected the credential.")
+          return
+        } catch {
+          logger.error("PresignatureManager.fillBuffer() - Stopping buffer fill for \(curve.rawValue) after \(generated)/\(needed): unexpected \(type(of: error)).")
+          return
+        }
+
+        guard let entry = presigned else {
           logger.error("[PresignatureManager] Presign failed for \(curve.rawValue) after \(retryConfig.maxAttempts) attempts, stopping buffer fill")
           break
         }

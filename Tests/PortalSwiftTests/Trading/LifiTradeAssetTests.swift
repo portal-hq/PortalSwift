@@ -677,6 +677,44 @@ extension LifiTradeAssetTests {
     XCTAssertEqual(apiMock.getStatusCalls, 2)
   }
 
+  func test_pollStatus_sessionInvalidated_throwsOnThatTick_notAfterTheTimeout() async {
+    // given a credential that died mid-poll: every tick would throw the same before touching the
+    // network, so waiting out the timeout could only misreport a dead session as a slow transfer
+    apiMock.getStatusResultSequence = [
+      Swift.Result<LifiStatusResponse, Error>.failure(PortalCredentialError.sessionInvalidated),
+    ]
+    let lifi = Lifi(api: apiMock)
+    // A timeout long enough that a swallowed error would surface as `.pollTimeout` here, not a hang.
+    let options = LifiPollStatusOptions(everyMs: 1, initialDelayMs: 0, timeoutMs: 300)
+
+    // when / then
+    do {
+      _ = try await lifi.pollStatus(request: LifiStatusRequest.stub(), options: options)
+      XCTFail("Expected the credential error to propagate")
+    } catch {
+      XCTAssertEqual(error as? PortalCredentialError, .sessionInvalidated, "Surfaced as-is, not as a poll timeout")
+    }
+    XCTAssertEqual(apiMock.getStatusCalls, 1, "A dead credential is not retried")
+  }
+
+  func test_pollStatus_unauthorized_throwsOnThatTick_notAfterTheTimeout() async {
+    // given the backend rejects the credential on the first poll
+    apiMock.getStatusResultSequence = [
+      Swift.Result<LifiStatusResponse, Error>.failure(PortalRequestsError.unauthorized),
+    ]
+    let lifi = Lifi(api: apiMock)
+    let options = LifiPollStatusOptions(everyMs: 1, initialDelayMs: 0, timeoutMs: 300)
+
+    // when / then
+    do {
+      _ = try await lifi.pollStatus(request: LifiStatusRequest.stub(), options: options)
+      XCTFail("Expected the 401 to propagate")
+    } catch {
+      XCTAssertEqual(error as? PortalRequestsError, .unauthorized, "Surfaced as-is, not as a poll timeout")
+    }
+    XCTAssertEqual(apiMock.getStatusCalls, 1, "A rejected credential is not retried")
+  }
+
   func test_pollStatus_cancellation_throwsCancellationError() async {
     // given a status that never resolves and a long poll interval so the task parks in sleep
     apiMock.getStatusReturnValue = LifiStatusResponse.stub(

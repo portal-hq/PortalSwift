@@ -7,6 +7,13 @@
 
 import Foundation
 
+/// A `PortalApi` whose legacy completion-based endpoints answer canned results.
+///
+/// It declares no initializers of its own, so it inherits every `PortalApi` initializer:
+/// `MockPortalApi(credentials:apiHost:enclaveMPCHost:provider:featureFlags:requests:)` is the
+/// form to use, and the deprecated `MockPortalApi(apiKey:…)` keeps compiling for existing hosts.
+/// The credentials form is what `mockApi` below is built with, so the mocks share one credential
+/// instance the way a real `Portal` shares one across its subsystems.
 public class MockPortalApi: PortalApi {
   public var dapps: [Dapp]?
   public var networks: [ContractNetwork]?
@@ -42,4 +49,6 @@ public class MockPortalApi: PortalApi {
   }
 }
 
-public let mockApi = MockPortalApi(apiKey: MockConstants.mockApiKey)
+/// The shared mock API, built on `MockConstants.mockCredentials` so it authenticates with
+/// `MockConstants.mockApiKey` without going through the deprecated `apiKey` initializer.
+public let mockApi = MockPortalApi(credentials: MockConstants.mockCredentials)

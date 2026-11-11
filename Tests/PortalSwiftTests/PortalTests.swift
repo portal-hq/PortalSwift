@@ -36,6 +36,37 @@ class PortalTests: XCTestCase {
   override func tearDownWithError() throws {
     self.portal = nil
   }
+
+  // MARK: - Enclave transport 401 hook
+
+  func test_init_willHookTheEnclaveTransport_whenEnclaveMpcIsEnabled() throws {
+    let baseline = try self.hookedTransportCount(useEnclaveMPCApi: nil)
+    let withEnclave = try self.hookedTransportCount(useEnclaveMPCApi: true)
+
+    XCTAssertEqual(
+      withEnclave,
+      baseline + 1,
+      "The enclave wrapper talks to mpc-client on its own transport; without a hook of its own a 401 there is logged as 'no unauthorized hook is registered' and never invalidates the session"
+    )
+  }
+
+  /// Builds a session-backed `Portal` with the SDK's own binary (so the enclave wrapper is really
+  /// constructed) and counts the transports carrying a 401 hook while it is alive.
+  private func hookedTransportCount(useEnclaveMPCApi: Bool?) throws -> Int {
+    UnauthorizedHookRegistry.shared.resetForTesting()
+    let portal = try Portal(
+      credentials: MockPortalSession(tokenValue: "session-token-1"),
+      withRpcConfig: ["eip155:11155111": "https://\(MockConstants.mockHost)/test-rpc"],
+      featureFlags: FeatureFlags(useEnclaveMPCApi: useEnclaveMPCApi),
+      api: PortalApi(credentials: MockConstants.mockCredentials, requests: MockPortalRequests()),
+      gDrive: MockGDriveStorage(),
+      iCloud: MockICloudStorage(),
+      keychain: MockPortalKeychain(),
+      mpc: MockPortalMpc(),
+      passwords: MockPasswordStorage()
+    )
+    return withExtendedLifetime(portal) { UnauthorizedHookRegistry.shared.transportCount }
+  }
 }
 
 // MARK: - Test Helpers
@@ -84,6 +115,7 @@ extension PortalTests {
         "eip155:1": "https://\(apiHost)/rpc/v1/eip155/1", // Ethereum Mainnet
         "eip155:137": "https://\(apiHost)/rpc/v1/eip155/137", // Polygon Mainnet
         "eip155:8453": "https://\(apiHost)/rpc/v1/eip155/8453", // Base Mainnet
+        "eip155:42161": "https://\(apiHost)/rpc/v1/eip155/42161", // Arbitrum One
         "eip155:80002": "https://\(apiHost)/rpc/v1/eip155/80002", // Polygon Amoy
         "eip155:84532": "https://\(apiHost)/rpc/v1/eip155/84532", // Base Testnet
         "eip155:11155111": "https://\(apiHost)/rpc/v1/eip155/11155111", // Ethereum Sepolia
@@ -268,6 +300,18 @@ extension PortalTests {
 
     // then
     XCTAssertEqual(portalMpcSpy.setGDriveViewCallsCount, 1)
+  }
+
+  func test_gDriveSignOut_willCall_mpc_gDriveSignOut_onlyOnce() async throws {
+    // given
+    let portalMpcSpy = PortalMpcSpy()
+    try initPortalWithSpy(portalMpc: portalMpcSpy)
+
+    // and given
+    try portal.gDriveSignOut()
+
+    // then
+    XCTAssertEqual(portalMpcSpy.gDriveSignOutCallsCount, 1)
   }
 
   @available(iOS 16, *)
@@ -588,7 +632,7 @@ extension PortalTests {
 extension PortalTests {
   func test_deprecated_emit_willCall_provider_emit_onlyOnce() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -599,7 +643,7 @@ extension PortalTests {
 
   func test_deprecated_emit_willCall_provider_emit_passingCorrectParams() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -611,7 +655,7 @@ extension PortalTests {
 
   func test_emit_willCall_provider_emit_onlyOnce() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -622,7 +666,7 @@ extension PortalTests {
 
   func test_emit_willCall_provider_emit_passingCorrectParams() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -634,7 +678,7 @@ extension PortalTests {
 
   func test_deprecated_on_willCall_provider_on_onlyOnce() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -645,7 +689,7 @@ extension PortalTests {
 
   func test_deprecated_on_willCall_provider_on_passingCorrectParams() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -656,7 +700,7 @@ extension PortalTests {
 
   func test_on_willCall_provider_on_onlyOnce() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -667,7 +711,7 @@ extension PortalTests {
 
   func test_on_willCall_provider_on_passingCorrectParams() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -678,7 +722,7 @@ extension PortalTests {
 
   func test_deprecated_once_willCall_provider_once_onlyOnce() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -689,7 +733,7 @@ extension PortalTests {
 
   func test_deprecated_once_willCall_provider_once_passingCorrectParams() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -700,7 +744,7 @@ extension PortalTests {
 
   func test_once_willCall_provider_once_onlyOnce() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -711,7 +755,7 @@ extension PortalTests {
 
   func test_once_willCall_provider_once_passingCorrectParams() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -726,7 +770,7 @@ extension PortalTests {
 extension PortalTests {
   func test_request_willCall_provider_request_onlyOnce() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -737,7 +781,7 @@ extension PortalTests {
 
   func test_request_willCall_provider_request_passingCorrectParams() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -754,7 +798,7 @@ extension PortalTests {
 
   func test_request_withStringMethod_willCall_provider_request_onlyOnce() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -765,7 +809,7 @@ extension PortalTests {
 
   func test_request_withStringMethod_willThrowCorrectError_WhenPassingWrongMethod() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -781,7 +825,7 @@ extension PortalTests {
 
   func test_request_withStringMethod_willThrowCorrectError_WhenPassingNilParams() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -796,7 +840,7 @@ extension PortalTests {
 
   func test_request_withStringMethod_willCall_provider_request_passingCorrectParams() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -816,7 +860,7 @@ extension PortalTests {
 
   func test_requestWithChainIdMethodParams_willCall_provider_request_onlyOnce() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // when
@@ -828,7 +872,7 @@ extension PortalTests {
 
   func test_requestWithChainIdMethodParams_willCall_provider_request_onlyOnce_withOptions() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // when
@@ -843,7 +887,7 @@ extension PortalTests {
 
   func test_requestWithChainIdMethodParams_willPass_correctChainId() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     let expectedChainId = "eip155:11155111"
 
@@ -856,7 +900,7 @@ extension PortalTests {
 
   func test_requestWithChainIdMethodParams_willPass_correctChainId_forSolana() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     let expectedChainId = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
 
@@ -869,7 +913,7 @@ extension PortalTests {
 
   func test_requestWithChainIdMethodParams_willPass_emptyChainId() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // when
@@ -883,7 +927,7 @@ extension PortalTests {
 
   func test_requestWithChainIdMethodParams_willPass_correctMethod_ethAccounts() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     let expectedMethod = PortalRequestMethod.eth_accounts
 
@@ -896,7 +940,7 @@ extension PortalTests {
 
   func test_requestWithChainIdMethodParams_willPass_correctMethod_ethCall() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     let expectedMethod = PortalRequestMethod.eth_call
 
@@ -909,7 +953,7 @@ extension PortalTests {
 
   func test_requestWithChainIdMethodParams_willPass_correctMethod_ethSendTransaction() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     let expectedMethod = PortalRequestMethod.eth_sendTransaction
 
@@ -922,7 +966,7 @@ extension PortalTests {
 
   func test_requestWithChainIdMethodParams_willPass_correctMethod_personalSign() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     let expectedMethod = PortalRequestMethod.personal_sign
 
@@ -935,7 +979,7 @@ extension PortalTests {
 
   func test_requestWithChainIdMethodParams_willPass_correctMethod_solSignMessage() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     let expectedMethod = PortalRequestMethod.sol_signMessage
 
@@ -950,7 +994,7 @@ extension PortalTests {
 
   func test_requestWithChainIdMethodParams_willPass_emptyParams() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // when
@@ -962,7 +1006,7 @@ extension PortalTests {
 
   func test_requestWithChainIdMethodParams_willPass_stringParams() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // when
@@ -974,7 +1018,7 @@ extension PortalTests {
 
   func test_requestWithChainIdMethodParams_willPass_intParams() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // when
@@ -986,7 +1030,7 @@ extension PortalTests {
 
   func test_requestWithChainIdMethodParams_willPass_boolParams() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // when
@@ -998,7 +1042,7 @@ extension PortalTests {
 
   func test_requestWithChainIdMethodParams_willPass_mixedTypeParams() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // when
@@ -1010,7 +1054,7 @@ extension PortalTests {
 
   func test_requestWithChainIdMethodParams_willPass_dictionaryParams() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     let transactionParam: [String: Any] = [
       "from": "0x1234567890abcdef",
@@ -1028,7 +1072,7 @@ extension PortalTests {
 
   func test_requestWithChainIdMethodParams_willPass_nestedArrayParams() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     let nestedArray = ["inner1", "inner2"]
 
@@ -1044,7 +1088,7 @@ extension PortalTests {
 
   func test_requestWithChainIdMethodParams_willPass_nilOptions() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // when
@@ -1056,7 +1100,7 @@ extension PortalTests {
 
   func test_requestWithChainIdMethodParams_willPass_optionsWithSignatureApprovalMemo() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     let expectedMemo = "Please approve this signature"
     let options = RequestOptions(signatureApprovalMemo: expectedMemo)
@@ -1070,7 +1114,7 @@ extension PortalTests {
 
   func test_requestWithChainIdMethodParams_willPass_optionsWithSponsorGasTrue() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     let options = RequestOptions(sponsorGas: true)
 
@@ -1083,7 +1127,7 @@ extension PortalTests {
 
   func test_requestWithChainIdMethodParams_willPass_optionsWithSponsorGasFalse() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     let options = RequestOptions(sponsorGas: false)
 
@@ -1096,7 +1140,7 @@ extension PortalTests {
 
   func test_requestWithChainIdMethodParams_willPass_optionsWithBothMemoAndSponsorGas() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     let expectedMemo = "Sign this transaction"
     let options = RequestOptions(signatureApprovalMemo: expectedMemo, sponsorGas: true)
@@ -1109,9 +1153,22 @@ extension PortalTests {
     XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.sponsorGas, true)
   }
 
+  func test_requestWithChainIdMethodParams_willPass_optionsWithIdempotencyKey() async throws {
+    // given
+    let portalProviderSpy = try PortalProviderSpy()
+    setToPortal(portalProvider: portalProviderSpy)
+    let options = RequestOptions(idempotencyKey: "order-42")
+
+    // when
+    _ = try await portal.request(chainId: "eip155:1", method: .eth_sendTransaction, params: [], options: options)
+
+    // then
+    XCTAssertEqual(portalProviderSpy.requestOptionsOptionsParam?.idempotencyKey, "order-42")
+  }
+
   func test_requestWithChainIdMethodParams_willPass_emptyOptions() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     let options = RequestOptions()
 
@@ -1128,7 +1185,7 @@ extension PortalTests {
 
   func test_requestWithChainIdMethodParams_willPass_nilConnect() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // when
@@ -1142,7 +1199,7 @@ extension PortalTests {
 
   func test_requestWithChainIdMethodParams_willPass_allParametersCorrectly() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     let expectedChainId = "eip155:137"
     let expectedMethod = PortalRequestMethod.eth_sendTransaction
@@ -1164,7 +1221,7 @@ extension PortalTests {
 
   func test_requestWithChainIdMethodParams_willConvertParamsToAnyCodable() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // when
@@ -1183,7 +1240,7 @@ extension PortalTests {
 
   func test_requestWithChainIdMethodParams_multipleCallsWillIncrementCallCount() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // when
@@ -1197,7 +1254,7 @@ extension PortalTests {
 
   func test_requestWithChainIdMethodParams_lastCallParamsAreRetained() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // when
@@ -1299,11 +1356,40 @@ extension PortalTests {
 
 extension PortalTests {
   func test_availableRecoveryMethods_willReturn_correctResult_forNilChainId() async throws {
-    // given
+    // given: MockConstants.mockClient has an ED25519 and a SECP256K1 wallet, each with a completed Password backup
     let availableRecoveryMethods = try await portal.availableRecoveryMethods()
 
-    // then
-    XCTAssertEqual(availableRecoveryMethods, [.Password, .Password])
+    // then: the shared method is reported once, not once per wallet
+    XCTAssertEqual(availableRecoveryMethods, [.Password])
+  }
+
+  func test_availableRecoveryMethods_forNilChainId_returnsEachMethodOnce_acrossWallets_inFirstAppearanceOrder() async throws {
+    // given
+    let portalApiMock = PortalApiMock()
+    portalApiMock.client = ClientResponse.stub(wallets: [
+      .stub(
+        backupSharePairs: [
+          .stub(backupMethod: .Password),
+          .stub(backupMethod: .iCloud)
+        ],
+        curve: .SECP256K1
+      ),
+      .stub(
+        backupSharePairs: [
+          .stub(backupMethod: .Password),
+          .stub(backupMethod: .GoogleDrive),
+          .stub(backupMethod: .Passkey, status: .incomplete)
+        ],
+        curve: .ED25519
+      )
+    ])
+    try initPortalWithSpy(api: portalApiMock)
+
+    // and given
+    let availableRecoveryMethods = try await portal.availableRecoveryMethods()
+
+    // then: Password is deduplicated across wallets, order follows first appearance, incomplete pairs are excluded
+    XCTAssertEqual(availableRecoveryMethods, [.Password, .iCloud, .GoogleDrive])
   }
 
   // TODO: - to fix mocking the PortalKeychain.metadata
@@ -1504,7 +1590,7 @@ extension PortalTests {
 extension PortalTests {
   func test_ethEstimateGas_willCall_providerRequest_onlyOnce() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -1516,7 +1602,7 @@ extension PortalTests {
 
   func test_ethEstimateGas_willCall_providerRequest_passingCorrectMethodParams() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -1528,7 +1614,7 @@ extension PortalTests {
 
   func test_ethGasPrice_willCall_providerRequest_onlyOnce() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -1540,7 +1626,7 @@ extension PortalTests {
 
   func test_ethGasPrice_willCall_providerRequest_passingCorrectParams() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -1553,7 +1639,7 @@ extension PortalTests {
 
   func test_ethGetBalance_willCall_providerRequest_onlyOnce() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     portalProviderSpy.address = "dummy_address"
     setToPortal(portalProvider: portalProviderSpy)
 
@@ -1567,7 +1653,7 @@ extension PortalTests {
   func test_ethGetBalance_willCall_providerRequest_passingCorrectParams() async throws {
     // given
     let address = "dummy_address"
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     portalProviderSpy.address = address
     setToPortal(portalProvider: portalProviderSpy)
 
@@ -1582,7 +1668,7 @@ extension PortalTests {
   func test_ethGetBalance_willComplete_withCorrectError() async throws {
     // given
     let expectation = XCTestExpectation(description: "Completion handler invoked")
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     var result: Result<RequestCompletionResult>?
 
@@ -1599,7 +1685,7 @@ extension PortalTests {
 
   func test_ethSendTransaction_willCall_providerRequest_onlyOnce() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -1611,7 +1697,7 @@ extension PortalTests {
 
   func test_ethSendTransaction_willCall_providerRequest_passingCorrectParams() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -1623,7 +1709,7 @@ extension PortalTests {
 
   func test_ethSign_willCall_providerRequest_onlyOnce() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     portalProviderSpy.address = "dummy_address"
     setToPortal(portalProvider: portalProviderSpy)
 
@@ -1637,7 +1723,7 @@ extension PortalTests {
   func test_ethSign_willCall_providerRequest_passingCorrectParams() async throws {
     // given
     let address = "dummy_address"
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     portalProviderSpy.address = address
     setToPortal(portalProvider: portalProviderSpy)
     let message = "dummy_message"
@@ -1653,7 +1739,7 @@ extension PortalTests {
   func test_ethSign_willComplete_withCorrectError() async throws {
     // given
     let expectation = XCTestExpectation(description: "Completion handler invoked")
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     var result: Result<RequestCompletionResult>?
 
@@ -1670,7 +1756,7 @@ extension PortalTests {
 
   func test_ethSignTransaction_willCall_providerRequest_onlyOnce() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -1682,7 +1768,7 @@ extension PortalTests {
 
   func test_ethSignTransaction_willCall_providerRequest_passingCorrectParams() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -1694,7 +1780,7 @@ extension PortalTests {
 
   func test_ethSignTypedDataV3_willCall_providerRequest_onlyOnce() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     portalProviderSpy.address = "dummy_address"
     setToPortal(portalProvider: portalProviderSpy)
 
@@ -1708,7 +1794,7 @@ extension PortalTests {
   func test_ethSignTypedDataV3_willCall_providerRequest_passingCorrectParams() async throws {
     // given
     let address = "dummy_address"
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     portalProviderSpy.address = address
     setToPortal(portalProvider: portalProviderSpy)
     let message = "dummy_message"
@@ -1724,7 +1810,7 @@ extension PortalTests {
   func test_ethSignTypedDataV3_willComplete_withCorrectError() async throws {
     // given
     let expectation = XCTestExpectation(description: "Completion handler invoked")
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     var result: Result<RequestCompletionResult>?
 
@@ -1741,7 +1827,7 @@ extension PortalTests {
 
   func test_ethSignTypedData_willCall_providerRequest_onlyOnce() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     portalProviderSpy.address = "dummy_address"
     setToPortal(portalProvider: portalProviderSpy)
 
@@ -1755,7 +1841,7 @@ extension PortalTests {
   func test_ethSignTypedData_willCall_providerRequest_passingCorrectParams() async throws {
     // given
     let address = "dummy_address"
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     portalProviderSpy.address = address
     setToPortal(portalProvider: portalProviderSpy)
     let message = "dummy_message"
@@ -1771,7 +1857,7 @@ extension PortalTests {
   func test_ethSignTypedData_willComplete_withCorrectError() async throws {
     // given
     let expectation = XCTestExpectation(description: "Completion handler invoked")
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     var result: Result<RequestCompletionResult>?
 
@@ -1788,7 +1874,7 @@ extension PortalTests {
 
   func test_personalSign_willCall_providerRequest_onlyOnce() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     portalProviderSpy.address = "dummy_address"
     setToPortal(portalProvider: portalProviderSpy)
 
@@ -1802,7 +1888,7 @@ extension PortalTests {
   func test_personalSign_willCall_providerRequest_passingCorrectParams() async throws {
     // given
     let address = "dummy_address"
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     portalProviderSpy.address = address
     setToPortal(portalProvider: portalProviderSpy)
     let message = "dummy_message"
@@ -1818,7 +1904,7 @@ extension PortalTests {
   func test_personalSign_willComplete_withCorrectError() async throws {
     // given
     let expectation = XCTestExpectation(description: "Completion handler invoked")
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     var result: Result<RequestCompletionResult>?
 
@@ -1835,7 +1921,7 @@ extension PortalTests {
 
   func test_request_willCall_providerRequest_onlyOnce() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -1847,7 +1933,7 @@ extension PortalTests {
 
   func test_request_willCall_providerRequest_passingCorrectParams() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     let method = ETHRequestMethods.SendRawTransaction.rawValue
@@ -1882,7 +1968,7 @@ extension PortalTests {
     portalApiMock.buildSolanaTransactionReturnValue = BuildSolanaTransactionResponse.stub()
     try initPortalWithSpy(api: portalApiMock)
 
-    setToPortal(portalProvider: PortalProviderMock())
+    try setToPortal(portalProvider: PortalProviderMock())
 
     // and given
     let chainId = "solana:11155111"
@@ -1998,7 +2084,7 @@ extension PortalTests {
     let portalApiSpy = PortalApiMock()
     portalApiSpy.buildEip115TransactionReturnValue = BuildEip115TransactionResponse.stub()
     try initPortalWithSpy(api: portalApiSpy)
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -2013,7 +2099,7 @@ extension PortalTests {
     let portalApiSpy = PortalApiMock()
     portalApiSpy.buildSolanaTransactionReturnValue = BuildSolanaTransactionResponse.stub()
     try initPortalWithSpy(api: portalApiSpy)
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -2028,7 +2114,7 @@ extension PortalTests {
     let portalApiMock = PortalApiMock()
     portalApiMock.buildBitcoinP2wpkhTransactionReturnValue = BuildBitcoinP2wpkhTransactionResponse.stub()
     try initPortalWithSpy(api: portalApiMock)
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -2046,7 +2132,7 @@ extension PortalTests {
     portalApiMock.buildBitcoinP2wpkhTransactionReturnValue = BuildBitcoinP2wpkhTransactionResponse.stub(transaction: BitcoinP2wpkhTransaction.stub(signatureHashes: signatureHashes, rawTxHex: "rawTxHex"))
     try initPortalWithSpy(api: portalApiMock)
 
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     let params = SendAssetParams.stub(signatureApprovalMemo: "signatureApprovalMemo")
@@ -2064,7 +2150,7 @@ extension PortalTests {
     let portalApiSpy = PortalApiSpy()
     portalApiSpy.buildBitcoinP2wpkhTransactionReturnValue = BuildBitcoinP2wpkhTransactionResponse.stub()
     try initPortalWithSpy(api: portalApiSpy)
-    let portalProviderMock = PortalProviderMock()
+    let portalProviderMock = try PortalProviderMock()
     setToPortal(portalProvider: portalProviderMock)
 
     // and given
@@ -2079,7 +2165,7 @@ extension PortalTests {
     let portalApiSpy = PortalApiSpy()
     portalApiSpy.buildBitcoinP2wpkhTransactionReturnValue = BuildBitcoinP2wpkhTransactionResponse.stub()
     try initPortalWithSpy(api: portalApiSpy)
-    let portalProviderMock = PortalProviderMock()
+    let portalProviderMock = try PortalProviderMock()
     setToPortal(portalProvider: portalProviderMock)
 
     // and given
@@ -2093,7 +2179,7 @@ extension PortalTests {
     // given
     let portalApiSpy = PortalApiMock()
     try initPortalWithSpy(api: portalApiSpy)
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     let params = SendAssetParams.stub(signatureApprovalMemo: "signatureApprovalMemo", sponsorGas: true)
     let chainId = "eip155:11155111"
@@ -2112,7 +2198,7 @@ extension PortalTests {
     // given
     let portalApiSpy = PortalApiMock()
     try initPortalWithSpy(api: portalApiSpy)
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     let params = SendAssetParams.stub(signatureApprovalMemo: "signatureApprovalMemo", sponsorGas: true)
     let chainId = "solana:11155111"
@@ -2131,7 +2217,7 @@ extension PortalTests {
     // given
     let portalApiSpy = PortalApiMock()
     try initPortalWithSpy(api: portalApiSpy)
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     let params = SendAssetParams.stub(sponsorGas: true)
     let chainId = "eip155:11155111"
@@ -2147,7 +2233,7 @@ extension PortalTests {
     // given
     let portalApiSpy = PortalApiMock()
     try initPortalWithSpy(api: portalApiSpy)
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     let params = SendAssetParams.stub(sponsorGas: false)
     let chainId = "eip155:11155111"
@@ -2163,7 +2249,7 @@ extension PortalTests {
     // given
     let portalApiSpy = PortalApiMock()
     try initPortalWithSpy(api: portalApiSpy)
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     let params = SendAssetParams.stub(sponsorGas: nil)
     let chainId = "eip155:11155111"
@@ -2179,7 +2265,7 @@ extension PortalTests {
     // given
     let portalApiSpy = PortalApiMock()
     try initPortalWithSpy(api: portalApiSpy)
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     let params = SendAssetParams.stub(sponsorGas: true)
     let chainId = "solana:11155111"
@@ -2195,7 +2281,7 @@ extension PortalTests {
     // given
     let portalApiSpy = PortalApiMock()
     try initPortalWithSpy(api: portalApiSpy)
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     let params = SendAssetParams.stub(sponsorGas: false)
     let chainId = "solana:11155111"
@@ -2211,7 +2297,7 @@ extension PortalTests {
     // given
     let portalApiSpy = PortalApiMock()
     try initPortalWithSpy(api: portalApiSpy)
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     let params = SendAssetParams.stub(sponsorGas: nil)
     let chainId = "solana:11155111"
@@ -2227,7 +2313,7 @@ extension PortalTests {
     // given
     let portalApiSpy = PortalApiSpy()
     try initPortalWithSpy(api: portalApiSpy)
-    let portalProviderMock = PortalProviderMock()
+    let portalProviderMock = try PortalProviderMock()
     setToPortal(portalProvider: portalProviderMock)
     let params = SendAssetParams.stub(signatureApprovalMemo: "signatureApprovalMemo")
     let chainId = "bip122:000000000019d6689c085ae165831e93-p2wpkh"
@@ -2253,7 +2339,7 @@ extension PortalTests {
     portalApiSpy.buildBitcoinP2wpkhTransactionReturnValue = BuildBitcoinP2wpkhTransactionResponse.stub(transaction: BitcoinP2wpkhTransaction.stub(signatureHashes: ["SignatureHash"], rawTxHex: rawTxHex))
     try initPortalWithSpy(api: portalApiSpy)
 
-    let portalProviderMock = PortalProviderMock()
+    let portalProviderMock = try PortalProviderMock()
     let mockSignature = MockConstants.mockSignature
     portalProviderMock.requestReturnValue = PortalProviderResult(
       id: MockConstants.mockProviderRequestId,
@@ -2281,7 +2367,7 @@ extension PortalTests {
     portalApiSpy.buildBitcoinP2wpkhTransactionReturnValue = BuildBitcoinP2wpkhTransactionResponse.stub(transaction: BitcoinP2wpkhTransaction.stub(signatureHashes: ["SignatureHash-1", "SignatureHash-2", "SignatureHash-3"], rawTxHex: rawTxHex))
     try initPortalWithSpy(api: portalApiSpy)
 
-    let portalProviderMock = PortalProviderMock()
+    let portalProviderMock = try PortalProviderMock()
     let mockSignature = MockConstants.mockSignature
     portalProviderMock.requestReturnValue = PortalProviderResult(
       id: MockConstants.mockProviderRequestId,
@@ -2363,7 +2449,7 @@ extension PortalTests {
     // given
     let portalApiMock = PortalApiMock()
     try initPortalWithSpy(api: portalApiMock)
-    let portalProviderMock = PortalProviderMock()
+    let portalProviderMock = try PortalProviderMock()
     setToPortal(portalProvider: portalProviderMock)
 
     // and given
@@ -2406,7 +2492,7 @@ extension PortalTests {
 extension PortalTests {
   func test_updateChain_willCall_provider_updateChain_onlyOnce() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -2417,7 +2503,7 @@ extension PortalTests {
 
   func test_updateChain_willCall_provider_updateChain_passingCorrectParams() async throws {
     // given
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -2438,7 +2524,7 @@ extension PortalTests {
     let portalApiSpy = PortalApiMock()
     portalApiSpy.buildSolanaTransactionReturnValue = BuildSolanaTransactionResponse.stub()
     try initPortalWithSpy(api: portalApiSpy)
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
 
     // and given
@@ -2452,7 +2538,7 @@ extension PortalTests {
     // given
     let portalApiSpy = PortalApiMock()
     try initPortalWithSpy(api: portalApiSpy)
-    let portalProviderSpy = PortalProviderSpy()
+    let portalProviderSpy = try PortalProviderSpy()
     setToPortal(portalProvider: portalProviderSpy)
     let message = "message to sign"
     let chainId = "eip155:11155111"
@@ -3843,5 +3929,257 @@ extension PortalTests {
     }
 
     XCTAssertEqual(lifiApiMock.getRoutesCalls, callCount)
+  }
+}
+
+// MARK: - perps property tests
+
+extension PortalTests {
+  private func perpsOrderAction() -> YieldXyzPerpsAction {
+    YieldXyzPerpsFixtures.perpsAction(transactions: [YieldXyzPerpsFixtures.orderTransaction(address: MockConstants.mockEip155Address)])
+  }
+
+  private func perpsFundingAction() -> YieldXyzPerpsAction {
+    let payload = YieldXyzPerpsFixtures.fundingTransactionPayload(from: MockConstants.mockEip155Address)
+    return YieldXyzPerpsFixtures.perpsAction(transactions: [
+      YieldXyzPerpsFixtures.fundingTransaction(address: MockConstants.mockEip155Address, signablePayload: AnyCodable(payload))
+    ])
+  }
+
+  /// A Portal whose perps API returns `action` and whose provider is a spy.
+  private func initPortalForPerps(_ action: YieldXyzPerpsAction) throws -> (PortalYieldXyzPerpsApiMock, PortalProviderSpy) {
+    let perpsApi = PortalYieldXyzPerpsApiMock()
+    perpsApi.getActionReturnValue = action
+    try initPortalWithSpy(api: PortalApiMock(yieldxyzPerps: perpsApi))
+    let providerSpy = try PortalProviderSpy()
+    setToPortal(portalProvider: providerSpy)
+    return (perpsApi, providerSpy)
+  }
+
+  private var oneShotPerpsOptions: YieldXyzPerpsExecuteOptions {
+    YieldXyzPerpsExecuteOptions(pollAction: false, pollOptions: YieldXyzPerpsPollOptions(intervalSeconds: 0.001, timeoutSeconds: 1))
+  }
+
+  func test_perps_returnsTheSameYieldXyzPerpsInstance() {
+    let first = portal.perps
+    let second = portal.perps
+
+    XCTAssertTrue(first === second)
+    XCTAssertTrue(first.yieldxyz is YieldXyzPerps)
+  }
+
+  func test_perps_defaultsAccountRequestsToTheEvmWalletAddress() async throws {
+    let (perpsApi, _) = try initPortalForPerps(perpsOrderAction())
+
+    _ = try await portal.perps.yieldxyz.getBalances(params: YieldXyzPerpsBalancesParams(providerId: "hyperliquid"))
+
+    XCTAssertEqual(perpsApi.getBalancesRequest?.address, MockConstants.mockEip155Address)
+  }
+
+  func test_perps_signsTypedDataWithEthSignTypedDataV4ThroughArbitrum() async throws {
+    let (perpsApi, providerSpy) = try initPortalForPerps(perpsOrderAction())
+    providerSpy.requestOptionsReturnValues[.eth_signTypedData_v4] = YieldXyzPerpsFixtures.signature
+
+    let result = try await portal.perps.yieldxyz.signAndSubmitAction(perpsOrderAction(), options: oneShotPerpsOptions)
+
+    let call = try XCTUnwrap(providerSpy.requestOptionsHistory.first)
+    XCTAssertEqual(call.method, .eth_signTypedData_v4)
+    XCTAssertEqual(call.chainId, "eip155:42161")
+    XCTAssertEqual(call.params?.first, AnyCodable(MockConstants.mockEip155Address))
+    let typedData = try XCTUnwrap(call.params?.last?.value as? String)
+    XCTAssertTrue(typedData.contains("EIP712Domain"))
+    XCTAssertNil(call.options?.idempotencyKey)
+    XCTAssertEqual(perpsApi.submitTransactionParams.first?.signedPayload, YieldXyzPerpsFixtures.signature)
+    XCTAssertEqual(result.transactions.count, 1)
+  }
+
+  func test_perps_mapsADeclinedTypedDataSignatureToARejection() async throws {
+    let (perpsApi, providerSpy) = try initPortalForPerps(perpsOrderAction())
+    providerSpy.requestOptionsError = ProviderSigningError.userDeclinedApproval
+
+    do {
+      _ = try await portal.perps.yieldxyz.signAndSubmitAction(perpsOrderAction(), options: oneShotPerpsOptions)
+      XCTFail("Expected error not thrown.")
+    } catch let error as YieldXyzPerpsExecutionError {
+      XCTAssertEqual(error.reason, .signatureRejected)
+      XCTAssertTrue(perpsApi.submitTransactionParams.isEmpty)
+    }
+  }
+
+  func test_perps_rejectsASigningChainWithoutAnRpcEndpoint() async throws {
+    let (perpsApi, providerSpy) = try initPortalForPerps(perpsOrderAction())
+    providerSpy.getRpcUrlError = PortalProviderError.noRpcUrlFoundForChainId("eip155:42161")
+
+    do {
+      _ = try await portal.perps.yieldxyz.signAndSubmitAction(perpsOrderAction(), options: oneShotPerpsOptions)
+      XCTFail("Expected error not thrown.")
+    } catch let error as YieldXyzPerpsExecutionError {
+      XCTAssertEqual(error.reason, .signingChainNotConfigured)
+      XCTAssertTrue(providerSpy.requestOptionsHistory.isEmpty)
+      XCTAssertTrue(perpsApi.submitTransactionParams.isEmpty)
+    }
+  }
+
+  func test_perps_sendsAnEvmLegWithItsIdempotencyKey() async throws {
+    let (perpsApi, providerSpy) = try initPortalForPerps(perpsFundingAction())
+    providerSpy.requestOptionsReturnValues[.eth_sendTransaction] = YieldXyzPerpsFixtures.fundingTxHash
+    var options = oneShotPerpsOptions
+    options.waitForConfirmation = { _, _ in true }
+
+    _ = try await portal.perps.yieldxyz.signAndSubmitAction(perpsFundingAction(), options: options)
+
+    let call = try XCTUnwrap(providerSpy.requestOptionsHistory.first)
+    XCTAssertEqual(call.method, .eth_sendTransaction)
+    XCTAssertEqual(call.chainId, "eip155:42161")
+    XCTAssertEqual(call.options?.idempotencyKey, "yieldxyz-perps-tx-fund-1")
+    let param = try XCTUnwrap(call.params?.first?.value as? ETHTransactionParam)
+    XCTAssertEqual(param.from, MockConstants.mockEip155Address)
+    XCTAssertEqual(param.to, YieldXyzPerpsFixtures.arbitrumUsdc)
+    // Portal's signer estimates the gas when it sends; Yield.xyz's gasLimit is not forwarded.
+    XCTAssertNil(param.gas)
+    XCTAssertEqual(param.value, "0x0")
+    XCTAssertEqual(perpsApi.submitTransactionParams.first?.transactionHash, YieldXyzPerpsFixtures.fundingTxHash)
+  }
+
+  /// A mined receipt with `status`, as `eth_getTransactionReceipt` returns it.
+  private func receipt(status: String) throws -> EthTransactionResponse {
+    let json = """
+    {"jsonrpc":"2.0","id":1,"result":{"blockHash":"0xblock","blockNumber":"0x1","from":"\(MockConstants.mockEip155Address)","transactionIndex":"0x0","type":"0x2","status":"\(status)"}}
+    """
+    return try JSONDecoder().decode(EthTransactionResponse.self, from: Data(json.utf8))
+  }
+
+  func test_perps_confirmsAnEvmLegThroughPortalsOwnReceiptPoll_thenSubmitsTheHash() async throws {
+    let (perpsApi, providerSpy) = try initPortalForPerps(perpsFundingAction())
+    providerSpy.requestOptionsReturnValues[.eth_sendTransaction] = YieldXyzPerpsFixtures.fundingTxHash
+    providerSpy.requestOptionsReturnValues[.eth_getTransactionReceipt] = try receipt(status: "0x1")
+
+    _ = try await portal.perps.yieldxyz.signAndSubmitAction(perpsFundingAction(), options: oneShotPerpsOptions)
+
+    let receiptCall = try XCTUnwrap(providerSpy.requestOptionsHistory.first { $0.method == .eth_getTransactionReceipt })
+    XCTAssertEqual(receiptCall.chainId, "eip155:42161")
+    XCTAssertEqual(receiptCall.params?.first, AnyCodable(YieldXyzPerpsFixtures.fundingTxHash))
+    XCTAssertEqual(perpsApi.submitTransactionParams.first?.transactionHash, YieldXyzPerpsFixtures.fundingTxHash)
+  }
+
+  func test_perps_reportsALegPortalsReceiptPollSeesReverted_asNotConfirmed() async throws {
+    let (perpsApi, providerSpy) = try initPortalForPerps(perpsFundingAction())
+    providerSpy.requestOptionsReturnValues[.eth_sendTransaction] = YieldXyzPerpsFixtures.fundingTxHash
+    providerSpy.requestOptionsReturnValues[.eth_getTransactionReceipt] = try receipt(status: "0x0")
+
+    do {
+      _ = try await portal.perps.yieldxyz.signAndSubmitAction(perpsFundingAction(), options: oneShotPerpsOptions)
+      XCTFail("Expected error not thrown.")
+    } catch let error as YieldXyzPerpsExecutionError {
+      XCTAssertEqual(error.reason, .transactionNotConfirmed)
+      XCTAssertEqual(error.broadcastHash, YieldXyzPerpsFixtures.fundingTxHash)
+      XCTAssertTrue(perpsApi.submitTransactionParams.isEmpty)
+    }
+  }
+}
+
+// MARK: - borrow property tests
+
+extension PortalTests {
+  private func borrowApprovalAction(status: YieldXyzBorrowActionStatus = .created, transactionStatus: YieldXyzBorrowTransactionStatus = .created) -> YieldXyzBorrowAction {
+    YieldXyzBorrowFixtures.borrowAction(
+      address: MockConstants.mockEip155Address,
+      status: status,
+      transactions: [YieldXyzBorrowFixtures.approvalTransaction(
+        status: transactionStatus,
+        address: MockConstants.mockEip155Address,
+        signablePayload: AnyCodable(YieldXyzBorrowFixtures.approvalPayload(from: MockConstants.mockEip155Address))
+      )]
+    )
+  }
+
+  /// A Portal whose borrow API returns the approval action, then that action confirmed, and whose
+  /// provider is a spy.
+  private func initPortalForBorrow() throws -> (PortalYieldXyzBorrowApiMock, PortalApiMock, PortalProviderSpy) {
+    let borrowApi = PortalYieldXyzBorrowApiMock()
+    borrowApi.getActionResults = [.success(borrowApprovalAction())]
+    borrowApi.getActionReturnValue = borrowApprovalAction(status: .success, transactionStatus: .confirmed)
+    let apiMock = PortalApiMock(yieldxyzBorrow: borrowApi)
+    apiMock.getTransactionDetailsReturnValue = YieldXyzBorrowFixtures.decode(GetTransactionDetailsResponse.self, """
+    {"data":{"evmTransaction":{"hash":"\(YieldXyzBorrowFixtures.approvalHash)","from":"\(MockConstants.mockEip155Address)","to":null,"value":"0x0","nonce":"0x0","gas":"0xdbb0","input":"0x","type":"0x2"}},"metadata":{"chainId":"eip155:8453","signature":"\(YieldXyzBorrowFixtures.approvalHash)"}}
+    """)
+    try initPortalWithSpy(api: apiMock)
+    let providerSpy = try PortalProviderSpy()
+    setToPortal(portalProvider: providerSpy)
+    return (borrowApi, apiMock, providerSpy)
+  }
+
+  private var fastBorrowOptions: YieldXyzBorrowExecuteOptions {
+    YieldXyzBorrowExecuteOptions(pollOptions: YieldXyzBorrowPollOptions(intervalSeconds: 0.001, timeoutSeconds: 1))
+  }
+
+  func test_borrow_returnsTheSameYieldXyzBorrowInstance() {
+    let first = portal.borrow
+    let second = portal.borrow
+
+    XCTAssertTrue(first === second)
+    XCTAssertTrue(first.yieldxyz is YieldXyzBorrow)
+  }
+
+  func test_borrow_sendsATransactionWithItsIdempotencyKey_andSubmitsTheHashTheLookupResolves() async throws {
+    let (borrowApi, _, providerSpy) = try initPortalForBorrow()
+    providerSpy.requestOptionsReturnValues[.eth_sendTransaction] = YieldXyzBorrowFixtures.approvalHash
+
+    let result = try await portal.borrow.yieldxyz.signAndSubmitAction(borrowApprovalAction(), options: fastBorrowOptions)
+
+    let call = try XCTUnwrap(providerSpy.requestOptionsHistory.first)
+    XCTAssertEqual(call.method, .eth_sendTransaction)
+    XCTAssertEqual(call.chainId, YieldXyzBorrowFixtures.base)
+    XCTAssertEqual(call.options?.idempotencyKey, "yieldxyz-borrow-tx-approval")
+    let param = try XCTUnwrap(call.params?.first?.value as? ETHTransactionParam)
+    XCTAssertEqual(param.from, MockConstants.mockEip155Address)
+    XCTAssertEqual(param.to, YieldXyzBorrowFixtures.usdcBase)
+    // Portal's signer estimates the gas when it sends; Yield.xyz's gasLimit is not forwarded.
+    XCTAssertNil(param.gas)
+    XCTAssertEqual(param.value, "0x0")
+    XCTAssertEqual(borrowApi.submitTransactionCalls.first?.params.transactionHash, YieldXyzBorrowFixtures.approvalHash)
+    XCTAssertEqual(result.status, .success)
+  }
+
+  func test_borrow_mapsADeclinedSignatureToARejection() async throws {
+    let (borrowApi, _, providerSpy) = try initPortalForBorrow()
+    providerSpy.requestOptionsError = ProviderSigningError.userDeclinedApproval
+
+    do {
+      _ = try await portal.borrow.yieldxyz.signAndSubmitAction(borrowApprovalAction(), options: fastBorrowOptions)
+      XCTFail("Expected error not thrown.")
+    } catch let error as YieldXyzBorrowExecutionError {
+      XCTAssertEqual(error.reason, .signatureRejected)
+      XCTAssertTrue(borrowApi.submitTransactionCalls.isEmpty)
+    }
+  }
+
+  func test_borrow_rejectsAChainWithoutAnRpcEndpoint() async throws {
+    let (borrowApi, _, providerSpy) = try initPortalForBorrow()
+    providerSpy.getRpcUrlError = PortalProviderError.noRpcUrlFoundForChainId(YieldXyzBorrowFixtures.base)
+
+    do {
+      _ = try await portal.borrow.yieldxyz.signAndSubmitAction(borrowApprovalAction(), options: fastBorrowOptions)
+      XCTFail("Expected error not thrown.")
+    } catch let error as YieldXyzBorrowExecutionError {
+      XCTAssertEqual(error.reason, .signingChainNotConfigured)
+      XCTAssertTrue(providerSpy.requestOptionsHistory.isEmpty)
+      XCTAssertTrue(borrowApi.submitTransactionCalls.isEmpty)
+    }
+  }
+
+  func test_borrow_rejectsAnActionBuiltForAnotherWallet() async throws {
+    let (borrowApi, _, providerSpy) = try initPortalForBorrow()
+    borrowApi.getActionResults = []
+    borrowApi.getActionReturnValue = YieldXyzBorrowFixtures.borrowAction()
+
+    do {
+      _ = try await portal.borrow.yieldxyz.signAndSubmitAction(YieldXyzBorrowFixtures.borrowAction(), options: fastBorrowOptions)
+      XCTFail("Expected error not thrown.")
+    } catch let error as YieldXyzBorrowExecutionError {
+      XCTAssertEqual(error.reason, .signerAddressMismatch)
+      XCTAssertTrue(error.message.contains(MockConstants.mockEip155Address))
+      XCTAssertTrue(providerSpy.requestOptionsHistory.isEmpty)
+    }
   }
 }

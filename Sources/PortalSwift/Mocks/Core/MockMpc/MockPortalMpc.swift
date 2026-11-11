@@ -83,6 +83,8 @@ public class MockPortalMpc: PortalMpcProtocol {
 
   public func setGDriveView(_: UIViewController) throws {}
 
+  public func gDriveSignOut() throws {}
+
   public func setGDriveConfiguration(clientId _: String, backupOption _: GDriveBackupOption) throws {}
 
   public func setPasskeyAuthenticationAnchor(_: ASPresentationAnchor) throws {}

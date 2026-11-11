@@ -12,11 +12,19 @@ public enum HttpRequestType {
   case CustomRequest
 }
 
-private enum HttpError: LocalizedError {
+/// Errors produced by the legacy synchronous `HttpRequest`/`HttpRequester` path.
+///
+/// Internal (not private) so the callers that still use this path, `PortalApi`'s
+/// `storedClientBackupShare` in particular, can pattern-match on `.unauthorized` and report the
+/// rejected credential the same way the async `PortalRequests` transport does.
+enum HttpError: LocalizedError, Equatable {
   case clientError(String)
   case httpError(String)
   case internalServerError(String)
   case nilResponseError
+  /// HTTP 401. The response body is deliberately not carried in the payload: a rejected
+  /// credential is reported to the credentials layer, never surfaced or logged verbatim.
+  case unauthorized(String)
   case unknownError(String)
 }
 
@@ -150,6 +158,11 @@ public class HttpRequest<T: Codable, BodyType> {
                 )
               )
             }
+            if httpResponse!.statusCode == 401 {
+              // A rejected credential: the body is discarded so it can never be logged or
+              // interpolated into an error message; the caller reports the 401 upstream.
+              return completion(Result(error: HttpError.unauthorized("Status: 401 Unauthorized")))
+            }
             return completion(Result(error: HttpError.clientError("Status: \(httpResponse!.statusCode) " + String(data: data!, encoding: .utf8)!)))
           } else {
             return completion(Result(error: HttpError.internalServerError("Status: \(httpResponse!.statusCode) " + String(data: data!, encoding: .utf8)!)))
@@ -184,9 +197,15 @@ public class HttpRequest<T: Codable, BodyType> {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
       }
 
-      // Guarantee a trace ID header for the legacy HTTP path.
-      if self.headers[PORTAL_TRACE_ID_HEADER] == nil {
-        request.setValue(generateTraceId(), forHTTPHeaderField: PORTAL_TRACE_ID_HEADER)
+      // Guarantee a trace ID header for the legacy HTTP path — Portal targets only. A third-party
+      // host never receives Portal's correlation id, including one a caller set; the lookup is
+      // case-insensitive so an `x-portal-trace-id` spelling is not duplicated.
+      if isPortalOwnedUrl(request.url?.absoluteString ?? "") {
+        if request.value(forHTTPHeaderField: PORTAL_TRACE_ID_HEADER) == nil {
+          request.setValue(generateTraceId(), forHTTPHeaderField: PORTAL_TRACE_ID_HEADER)
+        }
+      } else {
+        request.setValue(nil, forHTTPHeaderField: PORTAL_TRACE_ID_HEADER)
       }
 
       // Set the request body to the string literal of the Dictionary

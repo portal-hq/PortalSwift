@@ -162,9 +162,12 @@ open class PortalWebView: UIViewController, WKNavigationDelegate, WKScriptMessag
     }
 
     // build WKUserScript
+    // The injected script never receives a credential (`injectPortal` discards this argument
+    // and writes `window.portalApiKey=''`), so pass a literal rather than reading the
+    // deprecated `apiKey` bridge, which would be `""` for a session-backed Portal anyway.
     let scriptSource = self.injectPortal(
       address: address,
-      apiKey: self.portal.apiKey,
+      apiKey: "",
       chainId: String(self.portal.chainId ?? 11_155_111),
       gatewayConfig: rpcUrl,
       eip6963Icon: self.eip6963Icon,

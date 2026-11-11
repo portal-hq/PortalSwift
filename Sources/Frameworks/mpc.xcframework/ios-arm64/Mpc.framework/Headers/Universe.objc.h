@@ -6,7 +6,7 @@
 #ifndef __Universe_H__
 #define __Universe_H__
 
-@import Foundation;
+#import <Foundation/Foundation.h>
 #include "ref.h"
 
 @protocol Universeerror;

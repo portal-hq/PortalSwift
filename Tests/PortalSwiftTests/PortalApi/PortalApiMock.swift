@@ -11,6 +11,8 @@ import Foundation
 
 class PortalApiMock: PortalApiProtocol {
   var yieldxyz: PortalSwift.PortalYieldXyzApiProtocol
+  var yieldxyzPerps: PortalSwift.PortalYieldXyzPerpsApiProtocol
+  var yieldxyzBorrow: PortalSwift.PortalYieldXyzBorrowApiProtocol
   var lifi: PortalSwift.PortalLifiTradingApiProtocol
   var zeroX: PortalSwift.PortalZeroXTradingApiProtocol
   var hypernative: PortalSwift.PortalHypernativeApiProtocol
@@ -23,6 +25,8 @@ class PortalApiMock: PortalApiProtocol {
 
   init(
     yieldxyz: PortalSwift.PortalYieldXyzApiProtocol = PortalYieldXyzApiMock(),
+    yieldxyzPerps: PortalSwift.PortalYieldXyzPerpsApiProtocol = PortalYieldXyzPerpsApiMock(),
+    yieldxyzBorrow: PortalSwift.PortalYieldXyzBorrowApiProtocol = PortalYieldXyzBorrowApiMock(),
     lifi: PortalSwift.PortalLifiTradingApiProtocol = PortalLifiTradingApiMock(),
     zeroX: PortalSwift.PortalZeroXTradingApiProtocol = PortalZeroXTradingApiMock(),
     hypernative: PortalSwift.PortalHypernativeApiProtocol = PortalHypernativeApiMock(),
@@ -33,6 +37,8 @@ class PortalApiMock: PortalApiProtocol {
     client: PortalSwift.ClientResponse? = nil
   ) {
     self.yieldxyz = yieldxyz
+    self.yieldxyzPerps = yieldxyzPerps
+    self.yieldxyzBorrow = yieldxyzBorrow
     self.lifi = lifi
     self.zeroX = zeroX
     self.hypernative = hypernative

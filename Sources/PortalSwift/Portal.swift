@@ -31,7 +31,29 @@ public final class Portal: PortalProtocol {
   }
 
   public let api: PortalApiProtocol
-  public let apiKey: String
+
+  /// The credential this `Portal` authenticates with: a `StaticCredentials` wrapping the
+  /// Client API Key for `Portal(_ apiKey:)`, or the `PortalSession` / host credential handed
+  /// to `Portal(credentials:)`. Every component under this instance resolves its bearer from
+  /// this exact object per call, never from a cached copy, so it is shared by reference with
+  /// the provider, API, MPC and connect layers.
+  ///
+  /// Read the current token with `try credentials.getToken()`; this is the replacement for
+  /// the deprecated `apiKey`. It throws `PortalCredentialError.sessionInvalidated` once the
+  /// session has been cleared or rejected.
+  public let credentials: PortalCredentials
+
+  /// Backing store for the deprecated `apiKey` bridge. A separate stored property lets the
+  /// initializers assign it without tripping the deprecation warning meant for hosts.
+  private let _apiKey: String
+
+  /// The Client API Key this `Portal` was constructed with, or `""` when it was constructed
+  /// with `credentials` — a session token is deliberately never exposed here. Kept only so
+  /// existing hosts compile; read `try credentials.getToken()` instead, which is correct for
+  /// both constructors.
+  @available(*, deprecated, message: "Read the credential through `try credentials.getToken()`. Returns the Client API Key only when Portal was constructed with one, and \"\" when constructed with credentials, so it is not a reliable source of authentication.")
+  public var apiKey: String { self._apiKey }
+
   public let autoApprove: Bool
   public var gatewayConfig: [Int: String] = [:]
   public var provider: PortalProviderProtocol
@@ -58,6 +80,90 @@ public final class Portal: PortalProtocol {
         throw PortalClassError.clientNotAvailable
       }
       return try await self.waitForTransactionConfirmation(txHash: txHash, chainId: chainId)
+    }
+  )
+
+  /// The Perps guard against executing one action twice at once. Initialized with the instance,
+  /// unlike the lazy `perps`: two threads reading `perps` first at the same time can each build one,
+  /// and both must share this guard.
+  private let perpsInFlightActions = YieldXyzInFlightActions()
+
+  /// Access to perpetual-futures functionality (Yield.xyz Perps).
+  public lazy var perps: Perps = .init(
+    api: self.api,
+    inFlightActions: self.perpsInFlightActions,
+    dependencies: YieldXyzPerpsExecutionDependencies(
+      getWalletAddress: { [weak self] in
+        guard let self else {
+          throw PortalClassError.clientNotAvailable
+        }
+        return await self.getAddress(YieldXyzPerps.defaultSigningChainId)
+      },
+      signTypedData: { [weak self] request in
+        guard let self else {
+          throw PortalClassError.clientNotAvailable
+        }
+        return try await self.signPerpsTypedData(request)
+      },
+      signAndSendTransaction: { [weak self] transaction, chainId, idempotencyKey in
+        guard let self else {
+          throw PortalClassError.clientNotAvailable
+        }
+        return try await self.signAndSendYieldXyzTransaction(transaction, chainId: chainId, idempotencyKey: idempotencyKey)
+      },
+      waitForConfirmation: { [weak self] txHash, chainId in
+        guard let self else {
+          throw PortalClassError.clientNotAvailable
+        }
+        // Up to 15 minutes, like the other Portal SDKs: a funding leg can wait on a congested chain.
+        let result = try await self.waitForTransactionConfirmation(txHash: txHash, chainId: chainId, maxAttempts: 225, waitingInSeconds: 4)
+        return result == .confirmed
+      },
+      isChainConfigured: { [weak self] chainId in
+        guard let self else {
+          return false
+        }
+        return await self.getRpcUrl(forChainId: chainId) != nil
+      }
+    )
+  )
+
+  /// The Borrow guard against executing one action twice at once, shared by every `borrow` built for
+  /// the same reason as `perpsInFlightActions`.
+  private let borrowInFlightActions = YieldXyzInFlightActions()
+
+  /// Access to lending functionality (Yield.xyz Borrow).
+  public lazy var borrow: Borrow = .init(
+    api: self.api,
+    inFlightActions: self.borrowInFlightActions,
+    dependencies: YieldXyzBorrowExecutionDependencies(
+      getWalletAddress: { [weak self] in
+        guard let self else {
+          throw PortalClassError.clientNotAvailable
+        }
+        return await self.getAddress(YieldXyzBorrow.walletChainId)
+      },
+      signAndSendTransaction: { [weak self] transaction, chainId, idempotencyKey in
+        guard let self else {
+          throw PortalClassError.clientNotAvailable
+        }
+        return try await self.signAndSendYieldXyzTransaction(transaction, chainId: chainId, idempotencyKey: idempotencyKey)
+      },
+      isChainConfigured: { [weak self] chainId in
+        guard let self else {
+          return false
+        }
+        return await self.getRpcUrl(forChainId: chainId) != nil
+      }
+    ),
+    // Used only when `api.yieldxyzBorrow` is a custom implementation: `PortalYieldXyzBorrowApi`
+    // serves its own lookup, which decodes only what Borrow needs. This one decodes the full
+    // `getTransactionDetails` response.
+    lookupEvmTransaction: { [weak self] chainId, hash in
+      guard let self else {
+        throw PortalClassError.clientNotAvailable
+      }
+      return try await YieldXyzEvmTransactionLookup(self.api.getTransactionDetails(chain: chainId, signature: hash))
     }
   )
 
@@ -88,17 +194,23 @@ public final class Portal: PortalProtocol {
   private var presignatureManager: PresignatureManager?
   private let version: String
 
-  /// Create a Portal instance. This initializer is used by unit tests and mocks.
+  /// Create a Portal instance from a Client API Key.
+  ///
+  /// The key is wrapped in `StaticCredentials` so the rest of the SDK is written against one
+  /// credential abstraction instead of branching on "key or session" at each call site. A
+  /// blank key throws `PortalCredentialError.invalidApiKey` before any other construction
+  /// work (React Native / Android parity): a Portal that can never authenticate should fail
+  /// here, not at its first request.
   /// - Parameters:
   ///   - apiKey: The Client API key. You can obtain this through Portal's REST API.
   ///   - withRpcConfig: (optional) A dictionary of CAIP-2 Blockchain IDs (keys) and RPC URLs (values) in `[String:String]` format.
   ///   - featureFlags: (optional) a set of flags to opt into new or experimental features
-  ///   - isSimulator: (optional) Whether you are testing on the iOS simulator or not.
   ///   - autoApprove: (optional) Auto-approve transactions.
   ///   - apiHost: (optional) Portal's API host.
   ///   - mpcHost: (optional) Portal's MPC API host.
-
-  public init(
+  /// - Throws: `PortalCredentialError.invalidApiKey` for a blank key;
+  ///   `PortalArgumentError.versionNoLongerSupported` for a `version` other than `"v6"`.
+  public convenience init(
     _ apiKey: String,
     withRpcConfig: [String: String] = [:],
     // Optional
@@ -117,6 +229,103 @@ public final class Portal: PortalProtocol {
     passwords: PasswordStorage? = nil,
     maxPresignaturesPerCurve: [PresignatureSupportedCurve: Int] = [.SECP256K1: 3]
   ) throws {
+    let credentials = try PortalCredentialSupport.resolve(apiKey: apiKey, credentials: nil)
+    try self.init(
+      resolvedCredentials: credentials,
+      withRpcConfig: withRpcConfig,
+      autoApprove: autoApprove,
+      featureFlags: featureFlags,
+      version: version,
+      apiHost: apiHost,
+      mpcHost: mpcHost,
+      enclaveMPCHost: enclaveMPCHost,
+      api: api,
+      binary: binary,
+      gDrive: gDrive,
+      iCloud: iCloud,
+      keychain: keychain,
+      mpc: mpc,
+      passwords: passwords,
+      maxPresignaturesPerCurve: maxPresignaturesPerCurve
+    )
+  }
+
+  /// Create a Portal instance from a `PortalCredentials` source — a `PortalSession` returned
+  /// by `PortalAuth`, or a host-written provider that fetches a token from the host's backend.
+  ///
+  /// The SDK resolves the credential again on every request, so a session that rotates or is
+  /// invalidated underneath this instance takes effect immediately without rebuilding
+  /// `Portal`. When the backend rejects the credential the SDK invalidates it once and runs
+  /// the `onSessionInvalidated(_:)` listeners; the instance is spent afterwards, and the host
+  /// should authenticate again and construct a new `Portal`. The deprecated `apiKey` bridge
+  /// returns `""` for an instance built this way — a session token is never exposed there.
+  /// - Parameters:
+  ///   - credentials: The credential source. Shared by reference with every SDK component.
+  ///   - withRpcConfig: (optional) A dictionary of CAIP-2 Blockchain IDs (keys) and RPC URLs (values) in `[String:String]` format.
+  ///   - featureFlags: (optional) a set of flags to opt into new or experimental features
+  ///   - autoApprove: (optional) Auto-approve transactions.
+  ///   - apiHost: (optional) Portal's API host.
+  ///   - mpcHost: (optional) Portal's MPC API host.
+  /// - Throws: `PortalArgumentError.versionNoLongerSupported` for a `version` other than `"v6"`.
+  public convenience init(
+    credentials: PortalCredentials,
+    withRpcConfig: [String: String] = [:],
+    autoApprove: Bool = false,
+    featureFlags: FeatureFlags? = nil,
+    version: String = "v6",
+    apiHost: String = "api.portalhq.io",
+    mpcHost: String = "mpc.portalhq.io",
+    enclaveMPCHost: String = "mpc-client.portalhq.io",
+    api: PortalApiProtocol? = nil,
+    binary: Mobile? = nil,
+    gDrive: GDriveStorage? = nil,
+    iCloud: ICloudStorage? = nil,
+    keychain: PortalKeychainProtocol? = nil,
+    mpc: PortalMpcProtocol? = nil,
+    passwords: PasswordStorage? = nil,
+    maxPresignaturesPerCurve: [PresignatureSupportedCurve: Int] = [.SECP256K1: 3]
+  ) throws {
+    try self.init(
+      resolvedCredentials: credentials,
+      withRpcConfig: withRpcConfig,
+      autoApprove: autoApprove,
+      featureFlags: featureFlags,
+      version: version,
+      apiHost: apiHost,
+      mpcHost: mpcHost,
+      enclaveMPCHost: enclaveMPCHost,
+      api: api,
+      binary: binary,
+      gDrive: gDrive,
+      iCloud: iCloud,
+      keychain: keychain,
+      mpc: mpc,
+      passwords: passwords,
+      maxPresignaturesPerCurve: maxPresignaturesPerCurve
+    )
+  }
+
+  /// The one designated initializer behind both public forms. Private so a credential has
+  /// always been validated (`resolveCredentials`) or handed over by the host before it is
+  /// fanned out to the presignature, provider, API and MPC layers, which all share it.
+  private init(
+    resolvedCredentials credentials: PortalCredentials,
+    withRpcConfig: [String: String],
+    autoApprove: Bool,
+    featureFlags: FeatureFlags?,
+    version: String,
+    apiHost: String,
+    mpcHost: String,
+    enclaveMPCHost: String,
+    api: PortalApiProtocol?,
+    binary: Mobile?,
+    gDrive: GDriveStorage?,
+    iCloud: ICloudStorage?,
+    keychain: PortalKeychainProtocol?,
+    mpc: PortalMpcProtocol?,
+    passwords: PasswordStorage?,
+    maxPresignaturesPerCurve: [PresignatureSupportedCurve: Int]
+  ) throws {
     PortalLogger.shared.setLogLevel(.none)
 
     if version != "v6" {
@@ -124,11 +333,31 @@ public final class Portal: PortalProtocol {
     }
 
     self.apiHost = apiHost
-    self.apiKey = apiKey
+    self.credentials = credentials
+    self._apiKey = PortalCredentialSupport.staticApiKey(of: credentials)
     self.autoApprove = autoApprove
-    self.binary = binary ?? (
-      featureFlags?.useEnclaveMPCApi ?? false ? EnclaveMobileWrapper(enclaveMPCHost: enclaveMPCHost) : MobileWrapper()
-    )
+    // The hosts this instance was configured with count as Portal-owned for the 401 and trace
+    // gates (see `PortalOwnedHosts`). Without this a custodian proxy or a private staging domain
+    // would have every 401 from its own backend classified as third-party, and session
+    // invalidation would silently never fire. The RPC bearer gate does not read this registry: the
+    // provider is handed the same hosts directly (`configuredHosts`), so a host some *other*
+    // instance registered can never receive this credential. `withRpcConfig` URLs are deliberately
+    // registered nowhere: a custom RPC gateway is exactly what the bearer gate must keep untrusted.
+    PortalOwnedHosts.register(apiHost, mpcHost, enclaveMPCHost)
+
+    if let binary = binary {
+      self.binary = binary
+    } else if featureFlags?.useEnclaveMPCApi ?? false {
+      // The enclave wrapper talks to `enclaveMPCHost` on its own transport, which no `PortalApi`
+      // hooks. Without a hook of its own, a 401 there is logged as "no unauthorized hook is
+      // registered" and surfaces as a missing signature while the dead session stays live — the
+      // exact failure `onSessionInvalidated` exists to prevent.
+      let enclaveRequests = PortalRequests()
+      PortalCredentialSupport.installUnauthorizedHook(on: enclaveRequests, for: credentials, context: "EnclaveMobileWrapper")
+      self.binary = EnclaveMobileWrapper(requests: enclaveRequests, enclaveMPCHost: enclaveMPCHost)
+    } else {
+      self.binary = MobileWrapper()
+    }
 
     self.featureFlags = featureFlags
     self.keychain = keychain ?? PortalKeychain()
@@ -139,7 +368,7 @@ public final class Portal: PortalProtocol {
 
     if featureFlags?.usePresignatures == true {
       self.presignatureManager = PresignatureManager(
-        apiKey: apiKey,
+        credentials: credentials,
         mpcHost: mpcHost,
         binary: self.binary,
         keychain: self.keychain,
@@ -149,24 +378,33 @@ public final class Portal: PortalProtocol {
     }
 
     self.provider = try PortalProvider(
-      apiKey: apiKey,
+      credentials: credentials,
       rpcConfig: self.rpcConfig,
       keychain: self.keychain,
       autoApprove: autoApprove,
       mpcHost: mpcHost,
       featureFlags: featureFlags,
       binary: self.binary,
-      presignatureSource: self.presignatureManager
+      presignatureSource: self.presignatureManager,
+      configuredHosts: [apiHost, enclaveMPCHost]
     )
 
     // Creating this as a variable first so it's usable to
     // fetch the client in the Task at the end of the initializer
-    let api = api ?? PortalApi(apiKey: apiKey, apiHost: apiHost, enclaveMPCHost: enclaveMPCHost, provider: provider)
+    let api = api ?? PortalApi(credentials: credentials, apiHost: apiHost, enclaveMPCHost: enclaveMPCHost, provider: provider)
     self.api = api
     self.keychain.api = api
     self.provider.api = api
 
-    self.mpc = mpc ?? PortalMpc(apiKey: apiKey, api: self.api, keychain: self.keychain, host: mpcHost, mobile: self.binary, featureFlags: featureFlags)
+    // A host-supplied `PortalApi` may predate this Portal, so make sure its transport reports a
+    // rejected credential back to `credentials` as well. This is a no-op when the transport
+    // already carries a hook (`PortalApi` installs one for the credential it was built with)
+    // or when it cannot report 401s at all (test doubles, custom transports).
+    if let portalApi = api as? PortalApi {
+      PortalCredentialSupport.installUnauthorizedHook(on: portalApi.requests, for: credentials, context: "Portal.init()")
+    }
+
+    self.mpc = mpc ?? PortalMpc(credentials: credentials, api: self.api, keychain: self.keychain, host: mpcHost, mobile: self.binary, featureFlags: featureFlags)
 
     // Handle iCloud storage
     let iCloudStorage: ICloudStorage
@@ -230,6 +468,9 @@ public final class Portal: PortalProtocol {
     }
   }
 
+  /// - Throws: `PortalCredentialError.invalidApiKey` for a blank or whitespace-only `apiKey`
+  ///   (the legacy constructor used to accept one and then send an empty bearer on every
+  ///   request); `PortalArgumentError.versionNoLongerSupported` for a `version` other than `"v6"`.
   @available(*, deprecated, renamed: "Portal", message: "We've updated our constructor to be more streamlined and support multiple wallets. Please see the migration guide at https://docs.portalhq.io/resources/migrating-from-v3-to-v4/")
   public init(
     apiKey: String,
@@ -246,9 +487,13 @@ public final class Portal: PortalProtocol {
     featureFlags: FeatureFlags? = nil
   ) throws {
     // Basic setup
+    // Validate the key the same way the modern initializers do so a blank key fails here
+    // instead of silently authenticating every later request with an empty bearer.
+    let credentials = try PortalCredentialSupport.resolve(apiKey: apiKey, credentials: nil)
     self.binary = MobileWrapper()
     self.apiHost = apiHost
-    self.apiKey = apiKey
+    self.credentials = credentials
+    self._apiKey = PortalCredentialSupport.staticApiKey(of: credentials)
     self.autoApprove = autoApprove
     self.backup = backup
     self.gatewayConfig = gatewayConfig
@@ -271,7 +516,7 @@ public final class Portal: PortalProtocol {
 
     if featureFlags?.usePresignatures == true {
       self.presignatureManager = PresignatureManager(
-        apiKey: apiKey,
+        credentials: credentials,
         mpcHost: mpcHost,
         binary: self.binary,
         keychain: self.keychain,
@@ -282,21 +527,23 @@ public final class Portal: PortalProtocol {
 
     // Initialize the PortalProvider
     self.provider = try PortalProvider(
-      apiKey: apiKey,
+      credentials: credentials,
       rpcConfig: rpcConfig,
       keychain: keychain,
       autoApprove: autoApprove,
       mpcHost: mpcHost,
       version: version,
       featureFlags: featureFlags,
-      presignatureSource: self.presignatureManager
+      presignatureSource: self.presignatureManager,
+      // This constructor predates `enclaveMPCHost`; the enclave is never used on this path.
+      configuredHosts: [apiHost]
     )
 
     // Retain backward compatible chainId behavior
     self.provider.chainId = chainId
 
     // Initialize the Portal API
-    let api = PortalApi(apiKey: apiKey, apiHost: apiHost, provider: self.provider, featureFlags: self.featureFlags)
+    let api = PortalApi(credentials: credentials, apiHost: apiHost, provider: self.provider, featureFlags: self.featureFlags)
     self.api = api
     self.keychain.api = api
 
@@ -315,7 +562,7 @@ public final class Portal: PortalProtocol {
 
     // Initialize Mpc
     self.mpc = PortalMpc(
-      apiKey: apiKey,
+      credentials: credentials,
       api: self.api,
       keychain: keychain,
       host: mpcHost,
@@ -343,7 +590,7 @@ public final class Portal: PortalProtocol {
     }
     if #available(iOS 16, *) {
       if let passkeys = backup.passkeyStorage {
-        passkeys.apiKey = apiKey
+        passkeys.credentials = credentials
         mpc.registerBackupMethod(.Passkey, withStorage: passkeys)
       }
     }
@@ -380,6 +627,49 @@ public final class Portal: PortalProtocol {
   /// - Parameter level: The desired log level.
   public func setLogLevel(_ level: PortalLogLevel) {
     PortalLogger.shared.setLogLevel(level)
+  }
+
+  /// Ends the session this `Portal` was constructed with.
+  ///
+  /// Invalidates the underlying `PortalCredentials` — for a `PortalSession` that clears the
+  /// in-memory token and deletes the persisted copy — so no later request can present it.
+  /// This is the host-initiated sign-out and it is silent: `onSessionInvalidated(_:)`
+  /// listeners fire only when the backend rejects the credential, never when the host clears
+  /// it. A `Portal` built from a Client API Key has nothing to clear, so this is a no-op
+  /// there. The instance is spent afterwards; authenticate again and construct a new `Portal`.
+  ///
+  /// `async` for parity with Android's `suspend fun clearSession()`, and so a future session
+  /// type can perform asynchronous cleanup without a signature change.
+  /// - Throws: Whatever the credential's `invalidate()` throws when its persisted copy could
+  ///   not be deleted. The in-memory session is over either way, and the call is retryable: for
+  ///   a `PortalSession` the next `clearSession()` runs the delete again rather than returning
+  ///   success while a restorable copy is still on disk.
+  public func clearSession() async throws {
+    try PortalCredentialSupport.invalidate(self.credentials)
+  }
+
+  /// Registers `listener` to run once, on the main actor, after the backend rejects this
+  /// `Portal`'s credential (an HTTP 401 or an MPC `AUTH_FAILED`) and the SDK has invalidated it.
+  ///
+  /// This is the host's cue to route to sign-in. It never fires for a host-initiated
+  /// `clearSession()`, and never for a `Portal` built from a Client API Key, whose key is not a
+  /// session (that subscription hands back `PortalSessionInvalidationHandle.spent`). A
+  /// credential that was already rejected by the time the host subscribes — `init` starts an
+  /// authenticated client fetch immediately, and its 401 can land first — has that rejection
+  /// replayed: the listener runs once, on the main actor, as if it had been subscribed in time.
+  /// Do not subscribe again on the same `Portal` from inside the listener: the instance is spent,
+  /// and a new subscription would be replayed to as well.
+  /// - Parameter listener: Called at most once, on the main actor.
+  /// - Returns: A handle whose `cancel()` removes the listener and suppresses a delivery the SDK
+  ///   has already queued to the main actor but not yet run, so a host that replaces its `Portal`
+  ///   and subscribes on the new one in the same turn never hears the old instance's rejection.
+  ///   It is not cancelled on deallocation (React Native / Android parity), so it only needs to
+  ///   be kept by hosts that intend to unsubscribe. The listener itself is retained until it
+  ///   fires or the credential is deallocated, so capture `self` weakly inside it — a view
+  ///   controller captured strongly would live exactly as long as the session does.
+  @discardableResult
+  public func onSessionInvalidated(_ listener: @escaping @MainActor () -> Void) -> PortalSessionInvalidationHandle {
+    PortalCredentialSupport.onInvalidated(self.credentials, listener: listener)
   }
 
   // Primitive helpers
@@ -457,6 +747,20 @@ public final class Portal: PortalProtocol {
   /// Use this method to specify the view controller that handles Google Drive-related interactions or presentations.
   public func setGDriveView(_ view: UIViewController) throws {
     try self.mpc.setGDriveView(view)
+  }
+
+  /// Clears the stored Google Drive session so the next backup or recovery runs
+  /// a fresh interactive Google sign-in.
+  ///
+  /// Use this to recover from a revoked or expired Google grant, or to let the
+  /// user switch Google accounts. Requires `setGDriveConfiguration` to have been
+  /// called; no presenting view is needed.
+  ///
+  /// - Throws: `MpcError.backupMethodNotRegistered` if Google Drive backup is not
+  ///   registered, or `GDriveClientError.authenticationNotInitialized` if it has
+  ///   not been configured.
+  public func gDriveSignOut() throws {
+    try self.mpc.gDriveSignOut()
   }
 
   /// Sets the presentation anchor for passkey authentication dialogs.
@@ -864,6 +1168,11 @@ public final class Portal: PortalProtocol {
   ///
   /// - Returns: The wallet address as a string if found, nil otherwise.
   ///
+  ///   For Bitcoin, pass one of the P2WPKH chain IDs the SDK signs with:
+  ///   `bip122:000000000019d6689c085ae165831e93-p2wpkh` returns the mainnet P2WPKH address and
+  ///   `bip122:000000000933ea01ad0ee984209779ba-p2wpkh` the testnet one. Any other `bip122:` chain
+  ///   ID returns nil, because it does not say which Bitcoin address it means.
+  ///
   /// - Note: This method handles errors internally and returns nil instead of throwing.
   ///   For error handling, use `getAddresses()` instead.
   public func getAddress(_ forChainId: String) async -> String? {
@@ -881,9 +1190,22 @@ public final class Portal: PortalProtocol {
   /// This method fetches all wallet addresses stored in the device's keychain across
   /// all supported blockchain namespaces.
   ///
-  /// - Returns: A dictionary mapping `PortalNamespace` to optional wallet addresses, where:
-  ///   - `.eip155` key contains the Ethereum/EVM address
-  ///   - `.solana` key contains the Solana address
+  /// - Returns: A dictionary mapping `PortalNamespace` to wallet addresses, where:
+  ///   - `.eip155` holds the Ethereum/EVM address
+  ///   - `.solana` holds the Solana address
+  ///   - `.stellar` holds the Stellar address
+  ///   - `.tron` holds the Tron address
+  ///   - `.xrpl` holds the XRP Ledger classic address
+  ///
+  ///   An entry is present only for a namespace the Portal API returned an address for. `.eip155`,
+  ///   `.tron` and `.xrpl` are present when the client has a SECP256K1 wallet, `.solana` and
+  ///   `.stellar` when it has an ED25519 wallet. A namespace is absent from the dictionary when the
+  ///   client has no wallet for it or the Portal API returned a blank address for it, so it is
+  ///   missing from `keys` and `count` and reads as `nil` by subscript.
+  ///
+  ///   `.bip122` is never present. Bitcoin has no single canonical address, so the Portal API leaves
+  ///   `bip122.address` blank and returns a P2WPKH address per network instead. Read those with
+  ///   `getAddress(_:)` and a P2WPKH chain ID.
   ///
   /// - Throws: Keychain-related errors if the retrieval fails.
   ///
@@ -994,12 +1316,19 @@ public final class Portal: PortalProtocol {
   ///   - method: The string literal of your RPC method.
   ///   - params: An array of parameters for the request (either RPC parameters or a transaction if signing).
   ///   - connect: Optional `PortalConnect` object to use for the request.
-  ///   - options: Optional request options containing signature approval memo and gas sponsorship settings.
+  ///   - options: Optional request options: signature approval memo, gas sponsorship, trace ID, and an
+  ///     idempotency key for `eth_sendTransaction`, `sol_signAndSendTransaction` and
+  ///     `sol_signAndConfirmTransaction` (see `RequestOptions.idempotencyKey`).
   ///
   /// - Returns: A `PortalProviderResult` containing the response from the blockchain.
   ///
   /// - Throws:
   ///   - `PortalProviderError.invalidRequestParams` if andParams is nil
+  ///   - `PortalIdempotencyError.invalidKey` for a malformed `options.idempotencyKey`, or
+  ///     `.unsupportedTarget` for a key on `eth_sendRawTransaction` or `sol_sendTransaction`, before
+  ///     the approval prompt
+  ///   - `PortalMpcError` with `isIdempotencyRejection == true` when Portal refuses to broadcast a
+  ///     key it has already seen
   ///   - Other blockchain-specific errors if the request fails
   ///
   /// - Note: Parameters are automatically converted to a format compatible with
@@ -1025,6 +1354,48 @@ public final class Portal: PortalProtocol {
     return txHash
   }
 
+  /// Signs EIP-712 typed data for a Yield.xyz Perps transaction with `eth_signTypedData_v4`.
+  /// - Returns: The signature, or `nil` when the user declined the signing request.
+  private func signPerpsTypedData(_ request: YieldXyzPerpsSignTypedDataRequest) async throws -> String? {
+    do {
+      let response = try await self.request(
+        chainId: request.chainId,
+        method: .eth_signTypedData_v4,
+        params: [request.address, request.typedData]
+      )
+      guard let signature = response.result as? String else {
+        throw PortalClassError.invalidResponseTypeForRequest
+      }
+      return signature
+    } catch ProviderSigningError.userDeclinedApproval {
+      return nil
+    }
+  }
+
+  /// Signs and broadcasts a Yield.xyz Perps or Borrow transaction via `eth_sendTransaction`.
+  /// - Returns: The hash `eth_sendTransaction` returned (a user operation hash for an
+  ///   account-abstracted client), or `nil` when the user declined the signing request.
+  private func signAndSendYieldXyzTransaction(
+    _ transaction: ETHTransactionParam,
+    chainId: String,
+    idempotencyKey: String?
+  ) async throws -> String? {
+    do {
+      let response = try await self.request(
+        chainId: chainId,
+        method: .eth_sendTransaction,
+        params: [transaction],
+        options: idempotencyKey.map { RequestOptions(idempotencyKey: $0) }
+      )
+      guard let txHash = response.result as? String else {
+        throw PortalClassError.invalidResponseTypeForRequest
+      }
+      return txHash
+    } catch ProviderSigningError.userDeclinedApproval {
+      return nil
+    }
+  }
+
   /// Polls `eth_getTransactionReceipt` until the transaction is mined and confirmed.
   /// - Parameters:
   ///   - txHash: The transaction hash to wait for.
@@ -1034,7 +1405,10 @@ public final class Portal: PortalProtocol {
   /// - Returns: `.confirmed` on success, `.reverted` if the transaction was mined but reverted, or
   ///   `.timedOut` if no definitive receipt was obtained within `maxAttempts` (still pending or the
   ///   node was unreachable).
-  /// - Throws: `CancellationError` if the surrounding task is cancelled, so callers can stop promptly.
+  /// - Throws: `CancellationError` if the surrounding task is cancelled, so callers can stop promptly;
+  ///   `PortalCredentialError` or `PortalRequestsError.unauthorized` as soon as the session is
+  ///   found to be invalid — a credential that cannot be resolved is not a transient RPC failure,
+  ///   and polling on would only report a false `.timedOut` after `maxAttempts`.
   private func waitForTransactionConfirmation(
     txHash: String,
     chainId: String,
@@ -1065,6 +1439,15 @@ public final class Portal: PortalProtocol {
         // No receipt yet; keep polling until mined.
       } catch is CancellationError {
         throw CancellationError()
+      } catch let error as PortalCredentialError {
+        // The session is gone (invalidated by a 401 elsewhere, or a host sign-out). Every further
+        // tick would throw the same before touching the network; surface it now instead of
+        // reporting a timed-out transaction a minute later.
+        PortalLogger.shared.error("Portal.waitForTransactionConfirmation() - Credential unavailable (\(error.reason?.rawValue ?? "INVALID_API_KEY")); stopping the receipt poll.")
+        throw error
+      } catch PortalRequestsError.unauthorized {
+        PortalLogger.shared.error("Portal.waitForTransactionConfirmation() - The RPC gateway rejected the credential; stopping the receipt poll.")
+        throw PortalRequestsError.unauthorized
       } catch {
         // Transient RPC failure: log and retry rather than reporting a false revert.
         PortalLogger.shared.error("Portal.waitForTransactionConfirmation() - Error checking receipt: \(error.localizedDescription)")
@@ -1104,8 +1487,12 @@ public final class Portal: PortalProtocol {
   ///
   /// - Note: The method only returns backup methods where the corresponding backup share pairs
   ///   have a status of `.completed`. Methods with incomplete or pending backups are excluded.
+  ///   Each method appears at most once, in order of first appearance, even when several wallets
+  ///   (for example the SECP256K1 and ED25519 wallets) are backed up with the same method.
   public func availableRecoveryMethods(_ forChainId: String? = nil) async throws -> [BackupMethods] {
     if let client = try await client {
+      let wallets: [ClientResponseWallet]
+
       // Filter by chainId if one is provided
       if let chainId = forChainId {
         let chainIdParts = chainId.split(separator: ":").map(String.init)
@@ -1119,24 +1506,17 @@ public final class Portal: PortalProtocol {
           throw PortalClassError.noWalletFoundForChain(chainId)
         }
 
-        let availableRecoveryMethods = wallet.backupSharePairs.filter { share in
-          share.status == .completed
-        }.map { share in
-          share.backupMethod
-        }
-
-        return availableRecoveryMethods
+        wallets = [wallet]
       } else {
-        let availableRecoveryMethods = client.wallets.map { wallet in
-          wallet.backupSharePairs.filter { share in
-            share.status == .completed
-          }.map { share in
-            share.backupMethod
-          }
-        }.flatMap { $0 }
-
-        return availableRecoveryMethods
+        wallets = client.wallets
       }
+
+      var seen = Set<BackupMethods>()
+      return wallets
+        .flatMap { wallet in wallet.backupSharePairs }
+        .filter { share in share.status == .completed }
+        .map { share in share.backupMethod }
+        .filter { method in seen.insert(method).inserted }
     }
 
     throw PortalClassError.clientNotAvailable
@@ -1716,13 +2096,23 @@ public final class Portal: PortalProtocol {
   ///     - amount: The amount to send as a string
   ///     - signatureApprovalMemo: Optional signature approval memo to use for the request.
   ///     - sponsorGas: Optional flag to `enable/disable` sponsor the gas,  to be used for the send asset request.
+  ///     - idempotencyKey: Optional key that stops Portal from broadcasting the same transfer twice,
+  ///       forwarded to `eth_sendTransaction` (EVM) or `sol_signAndSendTransaction` (Solana). Not
+  ///       supported on Bitcoin. See `SendAssetParams.idempotencyKey` for how retries behave.
   ///
   /// - Returns: A SendAssetResponse containing:
   ///   - data: Transaction data including hash and explorer URL if successful
   ///   - metadata: Additional transaction metadata
   ///   - error: Error information if the transaction failed
   ///
-  /// - Throws: Various errors if transaction building or sending fails
+  /// - Throws:
+  ///   - `PortalIdempotencyError.invalidKey` for a malformed `params.idempotencyKey`, before the
+  ///     transaction is built
+  ///   - `PortalIdempotencyError.unsupportedTarget` for a `params.idempotencyKey` on a Bitcoin
+  ///     chain, before the transaction is built
+  ///   - `PortalMpcError` with `isIdempotencyRejection == true` when Portal refuses to broadcast a
+  ///     key it has already seen
+  ///   - Various errors if transaction building or sending fails
   ///
   /// - Note: Chain identifiers must follow CAIP-2 format (namespace:reference)
   public func sendAsset(chainId: String, params: SendAssetParams) async throws -> SendAssetResponse {
@@ -1740,6 +2130,9 @@ public final class Portal: PortalProtocol {
     let namespace = PortalNamespace(rawValue: String(chainParts[0]))
     // A single trace ID is shared across all build/sign/broadcast requests for this operation.
     let traceId = params.traceId ?? generateTraceId()
+    // Validated before any build request, so a malformed key fails without network I/O. The
+    // provider validates the trimmed key again, which leaves it unchanged.
+    let idempotencyKey = try params.idempotencyKey.map(validateIdempotencyKey)
     // Build the appropriate transaction based on chain type
     let transactionParam = BuildTransactionParam(
       to: params.to,
@@ -1757,7 +2150,7 @@ public final class Portal: PortalProtocol {
         chainId: chainId,
         method: .eth_sendTransaction,
         params: [transactionResponse.transaction],
-        options: RequestOptions(signatureApprovalMemo: params.signatureApprovalMemo, sponsorGas: params.sponsorGas, traceId: traceId)
+        options: RequestOptions(signatureApprovalMemo: params.signatureApprovalMemo, sponsorGas: params.sponsorGas, traceId: traceId, idempotencyKey: idempotencyKey)
       )
 
       guard let txHash = sendResponse.result as? String else {
@@ -1776,7 +2169,7 @@ public final class Portal: PortalProtocol {
         chainId: chainId,
         method: .sol_signAndSendTransaction,
         params: [transactionResponse.transaction],
-        options: RequestOptions(signatureApprovalMemo: params.signatureApprovalMemo, sponsorGas: params.sponsorGas, traceId: traceId)
+        options: RequestOptions(signatureApprovalMemo: params.signatureApprovalMemo, sponsorGas: params.sponsorGas, traceId: traceId, idempotencyKey: idempotencyKey)
       )
 
       guard let txHash = sendResponse.result as? String else {
@@ -1787,9 +2180,14 @@ public final class Portal: PortalProtocol {
       return SendAssetResponse(txHash: txHash)
 
     case .bip122:
+      // The inputs are raw-signed and the transaction is broadcast by its own request, neither of
+      // which can carry the key, so refuse it before anything is built or signed.
+      if idempotencyKey != nil {
+        throw PortalIdempotencyError.unsupportedBitcoinSendAsset
+      }
+
       // Ensure the chain is bitcoin p2wpkh
-      let p2wpkhChains = ["bip122:000000000019d6689c085ae165831e93-p2wpkh", "bip122:000000000933ea01ad0ee984209779ba-p2wpkh"]
-      guard p2wpkhChains.contains(chainId) else {
+      guard PortalBlockchain.bitcoinP2wpkhChainIds.contains(chainId) else {
         throw PortalClassError.unsupportedChainId(chainId)
       }
 
@@ -2500,16 +2898,16 @@ public final class Portal: PortalProtocol {
     webSocketServer: String = "connect.portalhq.io"
   ) throws -> PortalConnect {
     try PortalConnect(
-      self.apiKey,
-      self.provider.chainId ?? 11_155_111,
-      self.keychain,
-      self.rpcConfig,
-      self.featureFlags,
-      webSocketServer,
-      self.autoApprove,
-      self.apiHost,
-      self.mpcHost,
-      self.version
+      credentials: self.credentials,
+      chainId: self.provider.chainId ?? 11_155_111,
+      keychain: self.keychain,
+      rpcConfig: self.rpcConfig,
+      featureFlags: self.featureFlags,
+      webSocketServer: webSocketServer,
+      autoApprove: self.autoApprove,
+      apiHost: self.apiHost,
+      mpcHost: self.mpcHost,
+      version: self.version
     )
   }
 
@@ -2518,6 +2916,7 @@ public final class Portal: PortalProtocol {
       "eip155:1": "https://\(apiHost)/rpc/v1/eip155/1", // Ethereum Mainnet
       "eip155:137": "https://\(apiHost)/rpc/v1/eip155/137", // Polygon Mainnet
       "eip155:8453": "https://\(apiHost)/rpc/v1/eip155/8453", // Base Mainnet
+      "eip155:42161": "https://\(apiHost)/rpc/v1/eip155/42161", // Arbitrum One
       "eip155:80002": "https://\(apiHost)/rpc/v1/eip155/80002", // Polygon Amoy
       "eip155:84532": "https://\(apiHost)/rpc/v1/eip155/84532", // Base Testnet
       "eip155:11155111": "https://\(apiHost)/rpc/v1/eip155/11155111", // Ethereum Sepolia
@@ -2602,6 +3001,7 @@ public enum PortalNamespace: String, Codable {
   case bip122
   case stellar
   case tron
+  case xrpl
 }
 
 public enum PortalSharePairStatus: String, Codable {

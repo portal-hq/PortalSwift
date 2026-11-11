@@ -68,7 +68,12 @@ struct SettingsView: View {
 
       Toggle("Is Account Abstracted", isOn: Binding(
         get: { Settings.shared.isAccountAbstracted },
-        set: { Settings.shared.isAccountAbstracted = $0 }
+        set: { value in
+          Settings.shared.isAccountAbstracted = value
+          // The Client Auth `PortalAuth` keeps its own copy of this flag, and an explicit toggle
+          // is the one place that copy is allowed to change; see `PortalAuthProvider`.
+          PortalAuthProvider.shared.setAccountAbstracted(value)
+        }
       ))
 
       Toggle("Use Enclave MPC", isOn: Binding(
@@ -121,6 +126,10 @@ struct SettingsView: View {
       print("Environment changed from: \(oldValue) to \(newValue)")
       Settings.shared.portalConfig.environment = newValue
       Settings.shared.loadApplicationConfig() // To refresh the Example App Environment Config
+      // The `AUTH_*` set and the API host both follow the environment, so a `PortalAuth` built
+      // before this point is stale from here on. Only reachable while signed out: the picker is
+      // disabled while a Portal exists.
+      PortalAuthProvider.shared.environmentDidChange()
     }
   }
 }

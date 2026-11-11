@@ -13,8 +13,118 @@ Possible Types of changes include:
 - Upgraded
 
 ## Unreleased
-- Added a high-level 0x swap method for one-call same-chain swaps.
-    - Added `portal.trading.zeroX.tradeAsset` — fetches a quote, then signs, submits, and waits for on-chain confirmation before resolving. Track progress with the optional `onProgress` callback (`fetching_quote` → `signing` → `submitted` → `confirming` → `confirmed`, or `failed`).
+
+### Added
+
+- Yield.xyz Perps: trade perpetual futures on venues such as Hyperliquid with the Portal wallet, through the new `portal.perps.yieldxyz` namespace.
+    - Market data: `getProviders()`, `getProvider(providerId:)`, `getMarkets(params:)`, `getMarket(marketId:)` and `getMarketCandles(marketId:params:)`.
+    - Account data: `getPositions(params:)`, `getOrders(params:)` and `getBalances(params:)`. The account defaults to the wallet's EVM address.
+    - Actions: `createAction(params:)` builds an action (`open`, `close`, `setTpAndSl`, `fund`, `withdraw`, `approveAgent` and more) with its unsigned transactions; `getActions(params:)`, `getAction(actionId:)` and `submitTransaction(params:)` track and submit them.
+    - `executeAction(params:options:)` and `signAndSubmitAction(_:options:)` sign every transaction of an action in order (EIP-712 typed data and on-chain legs), submit it, and track the action to a final status, with progress reported through `onProgress`.
+    - On-chain legs are sent with an idempotency key derived from the transaction, so a resumed action does not broadcast the same leg again while Portal remembers the key (at least 24 hours). A leg broadcast by an earlier attempt can be resumed from its hash with `broadcastHashes`.
+    - History and health: `getActivity(params:)`, `getEvents(params:)`, `getEvent(eventId:)`, `getHealth()` and `getProvidersHealth()`.
+    - `YieldXyzPerpsApiError.from(_:)` reads the Portal error `id` and `details` of a failed request, for example `INTEGRATION_REQUIRES_EOA_CLIENT` or `INTEGRATION_RESPONSE_SCHEMA_DRIFT`.
+    - `Perps(yieldxyz:)` builds the namespace around your own `YieldXyzPerpsProtocol`, for example for a `PortalProtocol` test double.
+    - Perps requires a client without account abstraction, and runs on mainnet only.
+- Arbitrum One (`eip155:42161`) in the default `rpcConfig`, so it is also offered to dApps through Portal Connect. Perps signs its EIP-712 requests through it, and funds and withdraws on it. If you pass your own `rpcConfig`, add `eip155:42161` to use Perps.
+- Yield.xyz Borrow: supply, borrow, repay and withdraw on lending markets such as Morpho Blue and Aave with the Portal wallet, through the new `portal.borrow.yieldxyz` namespace.
+    - Discovery: `getHealth()`, `getIntegrations()`, `getIntegration(integrationId:)`, `getMarkets(params:)` (pass `scope: .all` to list every market) and `getMarket(marketId:)`.
+    - Positions: `getPositions(params:)` and `getLiquidations(params:)`, including health factors and the actions available on each balance.
+    - Actions: `createAction(params:)` builds a lending action (`supply`, `borrow`, `repay`, `withdraw`, `enableCollateral`, `disableCollateral`, `supplyAndBorrow`) with its unsigned transactions and the predicted health factor and LTV; `getActions(params:)`, `getAction(actionId:)`, `stepAction(actionId:)` and `submitTransaction(transactionId:params:)` track, advance and submit it.
+    - `executeAction(params:options:)` and `signAndSubmitAction(_:options:)` sign every transaction of an action in order on its own chain, submit it, wait for Yield.xyz to confirm it, and continue through multi-step actions until the action succeeds, with progress reported through `onProgress`.
+    - Transactions are sent with an idempotency key derived from the transaction, so a resumed action does not broadcast the same transaction again while Portal remembers the key (at least 24 hours). A transaction broadcast by an earlier attempt can be resumed from its hash with `broadcastHashes`, and a later step of a multi-step action from the `action` its `nextStep` progress event reports. To sign a transaction again after a failed send you have checked did not reach the chain, build a new action or set `useIdempotencyKeys` to `false`.
+    - `YieldXyzBorrowApiError.from(_:)` reads the Portal error `id` and `details` of a failed request, for example `INTEGRATION_RESPONSE_SCHEMA_DRIFT`.
+    - `Borrow(yieldxyz:)` builds the namespace around your own `YieldXyzBorrowProtocol`, for example for a `PortalProtocol` test double.
+    - Every chain a transaction is signed on needs an RPC endpoint in `rpcConfig`, unless you pass your own signer in `signAndSendTransaction`.
+- 0x same-chain swaps in one call.
+    - `portal.trading.zeroX.tradeAsset` fetches a quote, then signs, submits, and waits for on-chain confirmation before resolving. Track progress with the optional `onProgress` callback (`fetching_quote` → `signing` → `submitted` → `confirming` → `confirmed`, or `failed`).
+
+### Changed
+
+- `PortalProtocol` gains `perps` and `borrow`, and `PortalApiProtocol` gains `yieldxyzPerps` and `yieldxyzBorrow`. If you conform to either protocol yourself, for example in a test double, add the new members.
+
+## 8.1.0 - 2026-10-08
+
+### Added
+
+- XRP Ledger (XRPL), Stellar, and Tron addresses, derived from the client's existing wallets (no new wallet is created).
+    - `portal.addresses` and `portal.getAddresses()` include `.xrpl`, `.stellar`, and `.tron` when available.
+    - `portal.getAddress(_:)` supports `xrpl:`, `stellar:`, and `tron:` chain IDs, for example `"xrpl:0"`, `"stellar:pubnet"`, and `"tron:mainnet"`.
+    - The wallet-status helpers (`availableRecoveryMethods`, `doesWalletExist`, `isWalletBackedUp`, `isWalletOnDevice`, `getBackupShares`) accept these chain IDs.
+    - New `PortalNamespace.xrpl` case. If you switch exhaustively over `PortalNamespace`, add a case for it.
+    - Signing on these chains is not supported yet; signing requests fail with `PortalProviderError.unsupportedRequestMethod`.
+- Bitcoin addresses through `portal.getAddress(_:)`, using the same P2WPKH chain IDs `sendAsset` accepts: `bip122:000000000019d6689c085ae165831e93-p2wpkh` (mainnet) and `bip122:000000000933ea01ad0ee984209779ba-p2wpkh` (testnet).
+- Idempotency keys for transaction broadcasts, so retrying after a timeout cannot send the same transaction twice.
+    - Create a key with `generateIdempotencyKey()` and pass it as `idempotencyKey` in `RequestOptions` to `portal.request(...)` for `eth_sendTransaction`, `sol_signAndSendTransaction`, or `sol_signAndConfirmTransaction`, or in `SendAssetParams` to `portal.sendAsset(...)` on EVM and Solana.
+    - Reuse a key only to retry the identical request. Portal remembers a key for at least 24 hours; after that a retry is treated as a new request, so check the chain before retrying an older operation.
+    - A repeated request is rejected with a `PortalMpcError`; detect it with `isIdempotencyRejection` or `isIdempotencyKeyReused`. An invalid key, or a key on `eth_sendRawTransaction` or `sol_sendTransaction`, throws `PortalIdempotencyError`; on other methods the key is ignored.
+    - Custom signers receive the key by implementing the new `PortalSignerProtocol.sign(...idempotencyKey:token:)` overload. Existing signers keep working, but their requests are not protected until they implement it.
+
+### Changed
+
+- `portal.addresses` and `portal.getAddresses()` only contain namespaces that have an address. Reading a missing namespace by subscript still returns `nil`.
+- `portal.address` returns `nil` instead of `""` when there is no EVM address.
+- `portal.getAddress(_:)` returns `nil` for a non-EVM chain ID when the client has no address for that namespace.
+
+### Improved
+
+- `portal.availableRecoveryMethods()` returns each backup method once, even when several wallets use the same method.
+- `signatureApprovalMemo` is now included on raw sign requests that use presignatures (`usePresignatures`) or the MPC Enclave API (`useEnclaveMPCApi`), and reaches `PRE_SIGN_V1` webhooks.
+- Signing errors from the MPC Enclave API keep the server's error `id` and message, so they can be matched by `id`.
+- More reliable address storage on iOS 17 and earlier.
+- Updated the bundled MPC binary to MPC 4.0.128.
+
+## 8.0.0 - 2026-09-24
+
+### Added
+
+- Portal Client Auth: sign end users in through the SDK with Google, Apple, or an email magic link, with optional TOTP. `PortalAuth` resolves a `PortalSession` that is passed to `Portal` as `credentials`, in place of a Client API Key. Existing Client API Key integrations keep working.
+    - `PortalAuth(authEnvironmentId:redirectUrl:)`, plus optional `apiHost`, `magicLink`, and `isAccountAbstracted`. `redirectUrl` must be allow-listed for your auth environment and match the URL scheme (or Universal Link) your app registers
+    - `portalAuth.signInWithGoogle()` and `portalAuth.signInWithApple()` — run the whole flow in an `ASWebAuthenticationSession` and return the `AuthResult`, so your app never opens a URL or handles a redirect. Call `setAuthPresentationAnchor(_:)` first; requires a custom-scheme `redirectUrl`. Set `prefersEphemeralWebBrowserSession = true` to let the user pick a different Google or Apple account after signing out
+    - `portalAuth.loginWithGoogle()` and `portalAuth.loginWithApple()` — return an `authorizeUrl` for your app to open, when you want to own the sign-in UI
+    - `portalAuth.sendMagicLink(_:)` — emails the user a sign-in link; requires `magicLink: MagicLinkConfig(fromEmail:templateId:)` at init
+    - `portalAuth.handleRedirect(_:)` — completes the `loginWith…` and magic-link flows from your deep-link handler (`String` or `URL`). Returns an `AuthResult` (`.authenticated` or `.totpRequired`), or `nil` for URLs that are not its own. Keep one long-lived `PortalAuth` instance so a redirect delivered twice resolves to the same result
+    - `portalAuth.verifyTotp(_:userJwt:)` — completes a flow that returned `.totpRequired`
+    - `TotpRequiredResult.totpSecret`, `TotpRequiredResult.qrCodeImage(scale:)`, and `portalTotpQrCodeImage(otpAuthUrl:scale:)` — render the TOTP enrolment QR code in your own UI
+    - `portalAuth.getMethods()` — the auth methods enabled for your auth environment
+    - `portalAuth.restoreSession()` — the session persisted by an earlier sign-in, or `nil`
+    - `portalAuth.clearPersistedSession()` — clears a stored session when no `Portal` instance is available
+
+  On success, pass the session straight through: `try Portal(credentials: result.session)`. Sessions persist across app restarts, so a returning user can be signed in with `restoreSession()` instead of a fresh login.
+
+- `portal.clearSession()` — signs the end user out locally, dropping the credential and the persisted session. Does nothing on a `Portal` built from a Client API Key. Construct a new `Portal` after the next sign-in.
+- `portal.onSessionInvalidated(_:)` — runs your listener once, on the main actor, when the session is no longer valid and the end user has to sign in again. Returns a `PortalSessionInvalidationHandle`; call `cancel()` to unsubscribe. Not fired by `clearSession()`, and never for a `Portal` built from a Client API Key. Subscribing after the session was already invalidated still fires once, so a late subscriber does not miss the sign-out. Capture `self` weakly in the listener.
+- `portal.credentials` — the `PortalCredentials` this instance authenticates with; read the current token with `try portal.credentials.getToken()`.
+- `PortalCredentials` — implement `getToken()` and `invalidate()` to supply credentials from your own backend, as an alternative to a Client API Key or a `PortalSession`. Implementations must be thread-safe.
+- `PortalAuthError`, `PortalAuthSignInError` (`closed`, `unavailable`, `signInInProgress`, `callbackIncomplete`), and `PortalCredentialError` (`unavailable`, `providerFailure`, `sessionInvalidated`, `invalidApiKey`), for handling sign-in and session failures. If you switch exhaustively over SDK errors, add cases for them.
+
+### Changed
+
+- `PortalSignerProtocol.sign` gains a `token:` overload that receives the credential resolved for that signature. Existing conformers keep compiling and authenticating as before; a custom signer used with Client Auth should implement the `token:` overload.
+- `Portal` now validates its Client API Key at init and throws `PortalCredentialError.invalidApiKey` for an empty key.
+
+### Deprecated
+
+- `Portal.apiKey`, `PasskeyStorage.apiKey`, `FirebaseStorage.apiKey`, and the `apiKey:` initializers of `PortalApi`, the integration APIs, `PortalProvider`, `PortalMpc`, `PortalConnect`, and `PortalMpcSigner` — read the credential through `try credentials.getToken()`, or inject a `PortalCredentials`. `Portal.apiKey` is an empty string when the instance was constructed with `credentials`.
+
+### Improved
+
+- Session-aware flows: Li.Fi trades, Yield.xyz deposits and withdrawals, `PortalConnect`, and background presignature refills stop as soon as the session is invalidated, so the sign-out is reported promptly through `onSessionInvalidated`.
+- `PortalConnect` reconnects with exponential backoff (5 attempts, 500 ms to 8 s) when the connection drops or the proxy is unreachable, ending with `ConnectError(code: 500)` if it cannot recover. `disconnect()`, `close()`, and a new `connect(_:)` cancel a pending reconnect. An authentication failure on the WebSocket now reports `ConnectError(code: 401)` and is not retried.
+
+## 7.4.0 - 2026-09-01
+- Changed Google Drive backup to request only the OAuth scopes your configured `GDriveBackupOption` actually needs, so users see a smaller Google consent screen when enabling Google Drive backup.
+    - `.appDataFolder` now requests only the hidden app-data scope (`https://www.googleapis.com/auth/drive.appdata`) — one consent checkbox instead of two.
+    - `.gdriveFolder(folderName:)` now requests only the user-visible files scope (`https://www.googleapis.com/auth/drive.file`).
+    - `.appDataFolderWithFallback` still requests both scopes, since it reads from both locations.
+    - Configurations that never set a backup option continue to request both scopes.
+    - Existing users are not re-prompted — their previously granted scopes already cover the narrower request.
+- Fixed Google Drive backup and recovery permanently failing authentication after Google revoked or expired the stored sign-in. The SDK now detects the dead session, clears it, and automatically falls back to a fresh interactive sign-in. Previously only reinstalling the app recovered. Transient network and server errors do not clear the session.
+- Fixed a race in the Google sign-in flow where Drive scopes were requested in a separate prompt after sign-in had already returned, so the first Drive call could run before the user finished consenting. Scopes are now requested in the sign-in sheet itself, and the flow waits for the user's answer.
+- Fixed silently restored Google sessions never re-checking their granted scopes. If your configured backup option needs scopes the restored session lacks (for example after switching backup options), the SDK now prompts the signed-in user for the missing consent instead of failing.
+- Added `portal.gDriveSignOut()` to clear the stored Google session so the next backup or recovery runs a fresh sign-in. It only requires `setGDriveConfiguration`; no presenting view is needed.
+- Added `GoogleAuthError.scopesNotGranted(missing:)`, thrown by `GDriveStorage.signIn()` when the user declines a required Drive scope on Google's consent screen. If you switch exhaustively over `GoogleAuthError`, add a case for it.
+
 
 ## 7.3.0 - 2026-07-21
 - Added Noah on/off-ramp integration for fiat payins, payouts, and KYC via the new `portal.ramps` namespace.

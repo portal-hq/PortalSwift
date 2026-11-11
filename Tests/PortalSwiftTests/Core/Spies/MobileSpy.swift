@@ -336,12 +336,16 @@ final class MobileSpy: Mobile {
   var mobileSignWithPresignatureCallsCount = 0
   private(set) var mobileSignWithPresignatureApiKeyParam: String?
   private(set) var mobileSignWithPresignaturePresignatureDataParam: String?
+  private(set) var mobileSignWithPresignatureMetadataStrParam: String?
+  private(set) var mobileSignWithPresignatureIsRawParam: Bool?
   var mobileSignWithPresignatureReturnValue: String = MockConstants.mockSignatureResponse
 
   public func MobileSignWithPresignature(_ clientAPIKey: String?, _ mpcAddr: String?, _ shareStr: String?, _ presignatureData: String?, _ method: String?, _ params: String?, _ rpcURL: String?, _ chainId: String?, _ metadataStr: String?, _ curve: PortalCurve?, isRaw: Bool?) async -> String {
     mobileSignWithPresignatureCallsCount += 1
     mobileSignWithPresignatureApiKeyParam = clientAPIKey
     mobileSignWithPresignaturePresignatureDataParam = presignatureData
+    mobileSignWithPresignatureMetadataStrParam = metadataStr
+    mobileSignWithPresignatureIsRawParam = isRaw
     return mobileSignWithPresignatureReturnValue
   }
 

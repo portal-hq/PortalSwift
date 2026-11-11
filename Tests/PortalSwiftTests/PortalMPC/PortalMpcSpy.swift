@@ -57,6 +57,7 @@ class PortalMpcSpy: PortalMpcProtocol {
   // GDrive View tracking
   var setGDriveViewCallsCount: Int = 0
   var setGDriveViewParam: UIViewController?
+  var gDriveSignOutCallsCount: Int = 0
 
   // Passkey Authentication Anchor tracking
   var setPasskeyAuthenticationAnchorCallsCount: Int = 0
@@ -164,6 +165,10 @@ class PortalMpcSpy: PortalMpcProtocol {
   func setGDriveView(_ view: UIViewController) throws {
     setGDriveViewCallsCount += 1
     setGDriveViewParam = view
+  }
+
+  func gDriveSignOut() throws {
+    gDriveSignOutCallsCount += 1
   }
 
   func setPasskeyAuthenticationAnchor(_ anchor: ASPresentationAnchor) throws {

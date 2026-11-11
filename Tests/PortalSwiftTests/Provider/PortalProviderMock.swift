@@ -16,14 +16,20 @@ class PortalProviderMock: PortalProviderProtocol {
 
   var api: PortalApiProtocol?
 
-  private let mockPortalProvider: PortalProvider!
+  /// The concrete provider the chainable mock methods hand back. Stored non-optionally for the
+  /// same reason as in `PortalProviderSpy`: a blank Client API Key is now rejected by the
+  /// credentials layer, so the old implicitly-unwrapped optional would trap when unwrapped.
+  private let mockPortalProvider: PortalProvider
 
-  init() {
-    do {
-      mockPortalProvider = try PortalProvider(apiKey: "", rpcConfig: [:], keychain: PortalKeychain(), autoApprove: true)
-    } catch {
-      mockPortalProvider = nil
-    }
+  /// - Parameter credentials: The credential the returned provider is built with. Defaults to
+  ///   `MockConstants.mockCredentials` so the credentials layer accepts it.
+  init(credentials: PortalCredentials = MockConstants.mockCredentials) throws {
+    self.mockPortalProvider = try PortalProvider(
+      credentials: credentials,
+      rpcConfig: [:],
+      keychain: PortalKeychain(),
+      autoApprove: true
+    )
   }
 
   func emit(event _: PortalSwift.Events.RawValue, data _: Any) -> PortalSwift.PortalProvider {

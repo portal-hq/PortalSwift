@@ -390,3 +390,60 @@ extension MpcMetadataTests {
     XCTAssertEqual(error1, error2)
   }
 }
+
+// MARK: - IdempotencyKey Tests
+
+extension MpcMetadataTests {
+  func test_init_setsDefaultIdempotencyKeyToNil() throws {
+    // given
+    let metadata = MpcMetadata(
+      clientPlatform: "NATIVE_IOS",
+      mpcServerVersion: "1.0.0"
+    )
+
+    // then
+    XCTAssertNil(metadata.idempotencyKey)
+  }
+
+  func test_jsonString_includesIdempotencyKeyWhenSet() throws {
+    // given
+    var metadata = MpcMetadata(
+      clientPlatform: "NATIVE_IOS",
+      mpcServerVersion: "1.0.0"
+    )
+    metadata.idempotencyKey = "order-42"
+
+    // when
+    let jsonString = try metadata.jsonString()
+
+    // then
+    XCTAssertTrue(jsonString.contains("\"idempotencyKey\":\"order-42\""))
+    let decoded = try decoder.decode(MpcMetadata.self, from: Data(jsonString.utf8))
+    XCTAssertEqual(decoded.idempotencyKey, "order-42")
+  }
+
+  func test_jsonString_omitsIdempotencyKeyWhenNil() throws {
+    // given
+    let metadata = MpcMetadata(
+      clientPlatform: "NATIVE_IOS",
+      mpcServerVersion: "1.0.0"
+    )
+
+    // when
+    let jsonString = try metadata.jsonString()
+
+    // then
+    XCTAssertFalse(jsonString.contains("idempotencyKey"))
+  }
+
+  func test_decoding_withoutIdempotencyKey_leavesItNil() throws {
+    // given
+    let json = Data(#"{"clientPlatform":"NATIVE_IOS","mpcServerVersion":"1.0.0","optimized":true}"#.utf8)
+
+    // when
+    let decoded = try decoder.decode(MpcMetadata.self, from: json)
+
+    // then
+    XCTAssertNil(decoded.idempotencyKey)
+  }
+}

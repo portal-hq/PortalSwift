@@ -491,7 +491,7 @@ extension GDriveClientTests {
       _ = try await client?.writeFile("", withContent: "", andAccessToken: "", useAppDataFolder: false)
       XCTFail("Expected error not thrown when calling GDriveClient.read() when there is no auth object.")
     } catch {
-      XCTAssertEqual(error as? GDriveClientError, GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfig() to configure GoogleDrive"))
+      XCTAssertEqual(error as? GDriveClientError, GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfiguration() to configure GoogleDrive"))
     }
   }
 
@@ -613,5 +613,422 @@ extension GDriveClientTests {
 
     // Compare the JSON objects
     return NSDictionary(dictionary: jsonObject1).isEqual(to: jsonObject2)
+  }
+}
+
+// MARK: - scope wiring tests
+
+extension GDriveClientTests {
+  @MainActor
+  func test_auth_requestsBothScopes_whenBackupOptionIsNil() {
+    // given the legacy configuration path (clientId + view, no backup option)
+    let client = GDriveClient(clientId: MockConstants.mockGDriveClientId, view: UIViewController(), requests: MockPortalRequests())
+
+    // then
+    XCTAssertEqual(
+      client.auth?.requiredScopes,
+      [GDriveBackupOption.DriveScope.file, GDriveBackupOption.DriveScope.appData]
+    )
+  }
+
+  @MainActor
+  func test_auth_requestsAppDataOnly_whenOptionIsSetAfterAuthWasBuilt() {
+    // given an auth built before any backup option exists
+    let client = GDriveClient(clientId: MockConstants.mockGDriveClientId, view: UIViewController(), requests: MockPortalRequests())
+
+    // and given the option changes without the auth being rebuilt
+    client.backupOption = .appDataFolder
+
+    // then the live auth resolves the new option's scopes
+    XCTAssertEqual(client.auth?.requiredScopes, [GDriveBackupOption.DriveScope.appData])
+  }
+
+  @MainActor
+  func test_auth_requestsLatestOptionScopes_afterOptionMutation() {
+    // given
+    let client = GDriveClient(clientId: MockConstants.mockGDriveClientId, view: UIViewController(), requests: MockPortalRequests())
+    client.backupOption = .appDataFolder
+    let auth = client.auth
+
+    // and given the option changes again on the same auth instance
+    client.backupOption = .gdriveFolder(folderName: "test-folder")
+
+    // then
+    XCTAssertEqual(auth?.requiredScopes, [GDriveBackupOption.DriveScope.file])
+  }
+
+  @MainActor
+  func test_auth_reflectsOption_whenClientIdIsSetAfterOption() {
+    // given the PortalMpc.setGDriveConfiguration ordering (option first, clientId second)
+    let client = GDriveClient(view: UIViewController(), requests: MockPortalRequests())
+    client.backupOption = .appDataFolder
+    client.clientId = MockConstants.mockGDriveClientId
+
+    // then
+    XCTAssertEqual(client.auth?.requiredScopes, [GDriveBackupOption.DriveScope.appData])
+  }
+
+  @MainActor
+  func test_auth_reflectsOption_afterViewReassignmentRebuildsAuth() {
+    // given a configured client
+    let client = GDriveClient(clientId: MockConstants.mockGDriveClientId, view: UIViewController(), requests: MockPortalRequests())
+    client.backupOption = .appDataFolderWithFallback
+    let originalAuth = client.auth
+
+    // and given setGDriveView is called again (the example apps do this on every backup)
+    client.view = UIViewController()
+
+    // then the rebuilt auth still resolves the configured option's scopes
+    XCTAssertFalse(client.auth === originalAuth)
+    XCTAssertEqual(
+      client.auth?.requiredScopes,
+      [GDriveBackupOption.DriveScope.file, GDriveBackupOption.DriveScope.appData]
+    )
+  }
+}
+
+// MARK: - recoverFiles tests
+
+private class EmptyTokenGoogleAuth: GoogleAuth {
+  override func getAccessToken() async -> String {
+    return ""
+  }
+}
+
+/// Returns a valid token for the first fetch (the recoverFiles pre-flight) and
+/// an empty token for every fetch after it, simulating the grant dying while
+/// the recovery loop is running.
+private class TokenLostAfterPreflightGoogleAuth: GoogleAuth {
+  private(set) var getAccessTokenCallsCount = 0
+
+  override func getAccessToken() async -> String {
+    getAccessTokenCallsCount += 1
+    return getAccessTokenCallsCount == 1 ? MockConstants.mockGoogleAccessToken : ""
+  }
+}
+
+extension GDriveClientTests {
+  func test_recoverFiles_willReturnRecoveredFiles_whenTokenIsValid() async throws {
+    // given
+    let hashes = ["default": MockConstants.mockGDriveFileName]
+
+    // and given
+    let recoveredFiles = try await client?.recoverFiles(for: hashes, useAppDataFolder: false)
+
+    // then
+    XCTAssertEqual(recoveredFiles?["default"], MockConstants.mockEncryptionKey)
+  }
+
+  func test_recoverFiles_willThrowCorrectError_whenThereIsNoAuth() async throws {
+    // given
+    client?.auth = nil
+
+    do {
+      // and given
+      _ = try await client?.recoverFiles(for: ["default": MockConstants.mockGDriveFileName], useAppDataFolder: false)
+      XCTFail("Expected error not thrown when calling GDriveClient.recoverFiles() when there is no auth object.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? GDriveClientError, GDriveClientError.authenticationNotInitialized("Please call Portal.setGDriveConfiguration() to configure GoogleDrive"))
+    }
+  }
+
+  func test_recoverFiles_willThrowUserNotAuthenticated_beforeAnyDriveRequest_whenAccessTokenIsEmpty() async throws {
+    // given
+    let portalRequestSpy = PortalRequestsSpy()
+    initGDriveClient(requests: portalRequestSpy)
+    client?.auth = EmptyTokenGoogleAuth(config: GIDConfiguration(clientID: MockConstants.mockGDriveClientId))
+
+    do {
+      // and given
+      _ = try await client?.recoverFiles(for: ["default": MockConstants.mockGDriveFileName], useAppDataFolder: false)
+      XCTFail("Expected error not thrown when calling GDriveClient.recoverFiles() with an empty access token.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? GDriveClientError, GDriveClientError.userNotAuthenticated)
+      XCTAssertEqual(portalRequestSpy.executeCallsCount, 0)
+    }
+  }
+
+  func test_recoverFiles_willRethrowUserNotAuthenticated_insteadOfCollectingIt_whenAccessTokenIsLostAfterPreflight() async throws {
+    // given
+    let portalRequestSpy = PortalRequestsSpy()
+    initGDriveClient(requests: portalRequestSpy)
+    let auth = TokenLostAfterPreflightGoogleAuth(config: GIDConfiguration(clientID: MockConstants.mockGDriveClientId))
+    client?.auth = auth
+    let hashes = [
+      "default": MockConstants.mockGDriveFileName,
+      "ios": MockConstants.mockGDriveFileName + "-ios",
+      "android": MockConstants.mockGDriveFileName + "-android"
+    ]
+
+    do {
+      // and given
+      _ = try await client?.recoverFiles(for: hashes, useAppDataFolder: false)
+      XCTFail("Expected error not thrown when calling GDriveClient.recoverFiles() and the access token is lost after the pre-flight.")
+    } catch {
+      // then: the auth failure surfaces as-is so GDriveStorage.read() can skip the folder fallback...
+      XCTAssertEqual(error as? GDriveClientError, GDriveClientError.userNotAuthenticated)
+      // ...the loop stops at the first failed fetch instead of re-fetching (and re-prompting) per remaining hash...
+      XCTAssertEqual(auth.getAccessTokenCallsCount, 2)
+      // ...and no Drive request was made with an empty token.
+      XCTAssertEqual(portalRequestSpy.executeCallsCount, 0)
+    }
+  }
+}
+
+// MARK: - createFolder tests
+
+extension GDriveClientTests {
+  func test_createFolder_willThrowUserNotAuthenticated_beforeAnyDriveRequest_whenAccessTokenIsEmpty() async throws {
+    // given
+    let portalRequestSpy = PortalRequestsSpy()
+    initGDriveClient(requests: portalRequestSpy)
+    client?.auth = EmptyTokenGoogleAuth(config: GIDConfiguration(clientID: MockConstants.mockGDriveClientId))
+
+    do {
+      // and given
+      _ = try await client?.createFolder()
+      XCTFail("Expected error not thrown when calling GDriveClient.createFolder() with an empty access token.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? GDriveClientError, GDriveClientError.userNotAuthenticated)
+      XCTAssertEqual(portalRequestSpy.executeCallsCount, 0)
+    }
+  }
+}
+
+// MARK: - rejected access token recovery tests
+
+/// Returns the scripted tokens in order (the last one repeats), so a test can
+/// model a session that only renews after signOut(), or one already renewed by
+/// an earlier recovery in the same operation.
+private class ScriptedTokenGoogleAuth: MockGoogleAuth {
+  var tokens: [String]
+  var signOutCallsCount = 0
+
+  init(tokens: [String]) {
+    self.tokens = tokens
+    super.init(config: GIDConfiguration(clientID: MockConstants.mockGDriveClientId))
+  }
+
+  override func getAccessToken() async -> String {
+    return tokens.count > 1 ? tokens.removeFirst() : tokens[0]
+  }
+
+  override func signOut() {
+    signOutCallsCount += 1
+  }
+}
+
+extension GDriveClientTests {
+  func test_read_willSignOutAndRetryOnce_whenDriveRejectsTheStoredToken() async throws {
+    // given Drive rejects the token the silent restore keeps returning until we sign out
+    let portalRequestSpy = PortalRequestsSpy()
+    portalRequestSpy.returnData = Data("file-contents".utf8)
+    portalRequestSpy.executeThrowableErrorSequence = [PortalRequestsError.unauthorized]
+    initGDriveClient(requests: portalRequestSpy)
+    let auth = ScriptedTokenGoogleAuth(tokens: ["revoked-token", "revoked-token", "fresh-token"])
+    client?.auth = auth
+
+    // and given
+    let contents = try await client?.read(MockConstants.mockGDriveFileId)
+
+    // then
+    XCTAssertEqual(contents, "file-contents")
+    XCTAssertEqual(auth.signOutCallsCount, 1)
+    XCTAssertEqual(portalRequestSpy.executeCallsCount, 2)
+  }
+
+  func test_read_willRetryWithoutSignOut_whenSessionWasAlreadyRenewed() async throws {
+    // given an earlier recovery in the same operation already renewed the session
+    let portalRequestSpy = PortalRequestsSpy()
+    portalRequestSpy.returnData = Data("file-contents".utf8)
+    portalRequestSpy.executeThrowableErrorSequence = [PortalRequestsError.unauthorized]
+    initGDriveClient(requests: portalRequestSpy)
+    let auth = ScriptedTokenGoogleAuth(tokens: ["stale-token", "fresh-token"])
+    client?.auth = auth
+
+    // and given
+    let contents = try await client?.read(MockConstants.mockGDriveFileId)
+
+    // then no second prompt: the renewed token is used as-is
+    XCTAssertEqual(contents, "file-contents")
+    XCTAssertEqual(auth.signOutCallsCount, 0)
+    XCTAssertEqual(portalRequestSpy.executeCallsCount, 2)
+  }
+
+  func test_read_willThrowUserNotAuthenticated_whenDriveRejectsTheRenewedTokenToo() async throws {
+    // given
+    let portalRequestSpy = PortalRequestsSpy()
+    portalRequestSpy.executeThrowableErrorSequence = [PortalRequestsError.unauthorized, PortalRequestsError.unauthorized]
+    initGDriveClient(requests: portalRequestSpy)
+    let auth = ScriptedTokenGoogleAuth(tokens: ["revoked-token", "revoked-token", "fresh-token"])
+    client?.auth = auth
+
+    do {
+      // and given
+      _ = try await client?.read(MockConstants.mockGDriveFileId)
+      XCTFail("Expected error not thrown when Drive rejects the renewed token as well.")
+    } catch {
+      // then exactly one retry, reported as an authentication failure so loops fail once
+      XCTAssertEqual(error as? GDriveClientError, GDriveClientError.userNotAuthenticated)
+      XCTAssertEqual(auth.signOutCallsCount, 1)
+      XCTAssertEqual(portalRequestSpy.executeCallsCount, 2)
+    }
+  }
+
+  func test_read_willThrowUserNotAuthenticated_whenFreshSignInFailsAfterRejection() async throws {
+    // given the fallback sign-in is declined (no token comes back)
+    let portalRequestSpy = PortalRequestsSpy()
+    portalRequestSpy.executeThrowableErrorSequence = [PortalRequestsError.unauthorized]
+    initGDriveClient(requests: portalRequestSpy)
+    let auth = ScriptedTokenGoogleAuth(tokens: ["revoked-token", "revoked-token", ""])
+    client?.auth = auth
+
+    do {
+      // and given
+      _ = try await client?.read(MockConstants.mockGDriveFileId)
+      XCTFail("Expected error not thrown when the fresh sign-in yields no token.")
+    } catch {
+      // then
+      XCTAssertEqual(error as? GDriveClientError, GDriveClientError.userNotAuthenticated)
+      XCTAssertEqual(auth.signOutCallsCount, 1)
+      XCTAssertEqual(portalRequestSpy.executeCallsCount, 1)
+    }
+  }
+
+  func test_read_willNotSignOut_whenDriveFailsForOtherReasons() async throws {
+    // given
+    let portalRequestSpy = PortalRequestsSpy()
+    portalRequestSpy.executeThrowableErrorSequence = [URLError(.timedOut)]
+    initGDriveClient(requests: portalRequestSpy)
+    let auth = ScriptedTokenGoogleAuth(tokens: ["token"])
+    client?.auth = auth
+
+    do {
+      // and given
+      _ = try await client?.read(MockConstants.mockGDriveFileId)
+      XCTFail("Expected error not thrown when the Drive request fails.")
+    } catch {
+      // then the session is left alone
+      XCTAssertEqual((error as? URLError)?.code, .timedOut)
+      XCTAssertEqual(auth.signOutCallsCount, 0)
+      XCTAssertEqual(portalRequestSpy.executeCallsCount, 1)
+    }
+  }
+
+  func test_writeFile_willSignOutAndRetryUploadOnce_whenDriveRejectsTheStoredToken() async throws {
+    // given the folder lookup succeeds but the upload is rejected with the stored token
+    let portalRequestSpy = PortalRequestsSpy()
+    portalRequestSpy.returnData = try JSONEncoder().encode(MockConstants.mockGDriveFile)
+    portalRequestSpy.postMultiPartDataThrowableErrorSequence = [PortalRequestsError.unauthorized]
+    initGDriveClient(requests: portalRequestSpy)
+    let auth = ScriptedTokenGoogleAuth(tokens: ["revoked-token", "revoked-token", "fresh-token"])
+    client?.auth = auth
+
+    // and given
+    let fileId = try await client?.writeFile(
+      MockConstants.mockGDriveFileName,
+      withContent: "content",
+      andAccessToken: "revoked-token",
+      useAppDataFolder: true
+    )
+
+    // then the upload is retried with the renewed token
+    XCTAssertEqual(fileId, MockConstants.mockGDriveFileId)
+    XCTAssertEqual(auth.signOutCallsCount, 1)
+    XCTAssertEqual(portalRequestSpy.postMultiPartDataCallsCount, 2)
+    XCTAssertEqual(portalRequestSpy.postMultiPartDataWithBearerTokenParam, "fresh-token")
+  }
+}
+
+// MARK: - write recovery tests
+
+extension GDriveClientTests {
+  func test_write_willNotFallBackToWriteFile_whenRecoverySignInIsDeclined() async throws {
+    // given Drive rejects the cached token during the existing-file lookup and
+    // the user declines the recovery sign-in: write() fetches the token at the
+    // top and again in getIdForFilename, the recovery re-check still yields the
+    // rejected token, and only the post-sign-out fetch comes back empty
+    let portalRequestSpy = PortalRequestsSpy()
+    portalRequestSpy.executeThrowableErrorSequence = [PortalRequestsError.unauthorized]
+    initGDriveClient(requests: portalRequestSpy)
+    let auth = ScriptedTokenGoogleAuth(tokens: ["revoked-token", "revoked-token", "revoked-token", ""])
+    client?.auth = auth
+    client?.backupOption = .appDataFolder
+
+    do {
+      // and given
+      _ = try await client?.write(MockConstants.mockGDriveFileName, withContent: "content")
+      XCTFail("Expected error not thrown when calling GDriveClient.write() after the recovery sign-in was declined.")
+    } catch {
+      // then the "no existing file" fallback must not run and prompt a second time
+      XCTAssertEqual(error as? GDriveClientError, GDriveClientError.userNotAuthenticated)
+      XCTAssertEqual(auth.signOutCallsCount, 1)
+      XCTAssertEqual(portalRequestSpy.executeCallsCount, 1)
+      XCTAssertEqual(portalRequestSpy.postMultiPartDataCallsCount, 0)
+    }
+  }
+}
+
+// MARK: - session transition through Drive requests
+
+extension GDriveClientTests {
+  func test_read_recoversWithOneFreshSignIn_thenRestoresSilently_whenDriveRejectsStoredToken() async throws {
+    // given Drive rejects the stored token once, and GIDSignIn keeps handing it
+    // back until the session is cleared
+    let portalRequestSpy = PortalRequestsSpy()
+    portalRequestSpy.returnData = Data("file-contents".utf8)
+    portalRequestSpy.executeThrowableErrorSequence = [PortalRequestsError.unauthorized]
+    initGDriveClient(requests: portalRequestSpy)
+    let auth = SessionStateGoogleAuth(silentToken: "revoked-token", interactiveToken: "fresh-token")
+    client?.auth = auth
+
+    // and given
+    let contents = try await client?.read(MockConstants.mockGDriveFileId)
+
+    // then: initial silent fetch, recovery re-check, sign-out, exactly one fresh sign-in
+    XCTAssertEqual(contents, "file-contents")
+    XCTAssertEqual(auth.events, ["restore", "restore", "signOut", "signIn"])
+    XCTAssertEqual(portalRequestSpy.executeCallsCount, 2)
+
+    // and given a later request
+    let nextContents = try await client?.read(MockConstants.mockGDriveFileId)
+
+    // then the re-established session is restored silently — no further prompt
+    XCTAssertEqual(nextContents, "file-contents")
+    XCTAssertEqual(auth.events, ["restore", "restore", "signOut", "signIn", "restore"])
+    XCTAssertEqual(portalRequestSpy.executeCallsCount, 3)
+  }
+
+  func test_read_failsOnce_andRetryPromptsDirectly_whenRecoverySignInIsCanceled() async throws {
+    // given the user cancels the recovery sign-in
+    let portalRequestSpy = PortalRequestsSpy()
+    portalRequestSpy.returnData = Data("file-contents".utf8)
+    portalRequestSpy.executeThrowableErrorSequence = [PortalRequestsError.unauthorized]
+    initGDriveClient(requests: portalRequestSpy)
+    let auth = SessionStateGoogleAuth(silentToken: "revoked-token", interactiveToken: nil)
+    client?.auth = auth
+
+    do {
+      // and given
+      _ = try await client?.read(MockConstants.mockGDriveFileId)
+      XCTFail("Expected error not thrown when the recovery sign-in is canceled.")
+    } catch {
+      // then one failure, one sheet, and the dead session is gone
+      XCTAssertEqual(error as? GDriveClientError, GDriveClientError.userNotAuthenticated)
+      XCTAssertEqual(auth.events, ["restore", "restore", "signOut", "signIn"])
+      XCTAssertEqual(portalRequestSpy.executeCallsCount, 1)
+      XCTAssertFalse(auth.hasSession)
+    }
+
+    // and given the user retries and completes the sign-in this time
+    auth.interactiveToken = "fresh-token"
+    let contents = try await client?.read(MockConstants.mockGDriveFileId)
+
+    // then the retry goes straight to sign-in (no restore on the cleared session) and succeeds
+    XCTAssertEqual(contents, "file-contents")
+    XCTAssertEqual(auth.events, ["restore", "restore", "signOut", "signIn", "signIn"])
   }
 }

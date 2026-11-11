@@ -179,6 +179,35 @@ public struct SendAssetParams: Codable {
   /// traceId: Optional trace ID for request tracing. If not provided, a trace ID is generated
   /// at the start of `sendAsset` and shared across all underlying build/sign/broadcast requests.
   public var traceId: String?
+  /// idempotencyKey: Optional key that stops Portal from broadcasting the same transfer twice, on
+  /// EVM and Solana chains. It is forwarded to the underlying `eth_sendTransaction` or
+  /// `sol_signAndSendTransaction` and follows the rules of `RequestOptions.idempotencyKey`:
+  /// surrounding whitespace is trimmed, and the key must then be 1–255 characters of
+  /// `A-Z a-z 0-9 . _ ~ -`, otherwise `sendAsset` throws `PortalIdempotencyError.invalidKey` before
+  /// the transaction is built. On a Bitcoin chain, whose broadcast cannot be protected yet, a key
+  /// throws `PortalIdempotencyError.unsupportedTarget` before anything is built or signed.
+  ///
+  /// `sendAsset` builds the transaction again on every call, and Portal compares the transaction
+  /// it is asked to send with the one first sent under the key. When the rebuilt transaction
+  /// differs, a retry with the same key is rejected with `IDEMPOTENCY_KEY_REUSED`
+  /// (`PortalMpcError.isIdempotencyKeyReused`) whatever state the first request is in, so that
+  /// answer does not tell you whether the first request is still in progress, completed or failed.
+  /// On Solana this is the usual outcome, because each build carries a new recent blockhash. An
+  /// EVM build normally matches the first one, so the retry gets the first request's status
+  /// instead. Either way the transfer is not broadcast twice under this key.
+  ///
+  /// No rejection returns the original transaction hash. Before retrying with a new key, confirm
+  /// on-chain that the first transfer did not land. On Solana, wait until the first transfer is
+  /// confirmed or its recent blockhash has expired, about 60–90 seconds after the transaction was
+  /// built, because a transfer that is still in flight can land after you check. On EVM, wait until
+  /// the first transfer is confirmed or the account nonce has moved past it. For the most
+  /// predictable retries, build the transaction once and call `request` with `eth_sendTransaction`
+  /// or `sol_signAndSendTransaction` and the same key on every attempt: a retry then gets the first
+  /// request's status, including `IDEMPOTENT_REQUEST_IN_PROGRESS`.
+  ///
+  /// Where Portal enforces the key, and how long it remembers it, is described on
+  /// `RequestOptions.idempotencyKey`.
+  public var idempotencyKey: String?
 
   /// Initializes parameters for sending an asset.
   /// - Parameters:
@@ -188,13 +217,16 @@ public struct SendAssetParams: Codable {
   ///   - signatureApprovalMemo: Optional signature approval memo to use for the request.
   ///   - sponsorGas: Optional flag to `enable/disable` sponsor the gas, to be used for the send asset request.
   ///   - traceId: Optional trace ID for request tracing. If not provided, one is generated automatically.
+  ///   - idempotencyKey: Optional key that stops Portal from broadcasting the same transfer twice
+  ///     (EVM and Solana only). See `idempotencyKey` for how retries behave.
   public init(
     to: String,
     amount: String,
     token: String,
     signatureApprovalMemo: String? = nil,
     sponsorGas: Bool? = nil,
-    traceId: String? = nil
+    traceId: String? = nil,
+    idempotencyKey: String? = nil
   ) {
     self.to = to
     self.amount = amount
@@ -202,6 +234,7 @@ public struct SendAssetParams: Codable {
     self.signatureApprovalMemo = signatureApprovalMemo
     self.sponsorGas = sponsorGas
     self.traceId = traceId
+    self.idempotencyKey = idempotencyKey
   }
 }
 
