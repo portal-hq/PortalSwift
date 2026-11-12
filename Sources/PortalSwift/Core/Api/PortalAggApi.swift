@@ -137,7 +137,7 @@ public class PortalAggApi: PortalAggApiProtocol {
   /// instance is honoured on the next call. Shared by identity with the owning `PortalApi`.
   private let credentials: PortalCredentials
   private let requests: PortalRequestsProtocol
-  private let requestBuilder: YieldXyzRequestBuilder
+  private let requestBuilder: PortalIntegrationRequestBuilder
   private let sessionRefreshRetryDelays: [TimeInterval]
   private let logger = PortalLogger.shared
 
@@ -172,7 +172,7 @@ public class PortalAggApi: PortalAggApiProtocol {
     sessionRefreshRetryDelays: [TimeInterval]
   ) {
     self.credentials = credentials
-    self.requestBuilder = YieldXyzRequestBuilder(
+    self.requestBuilder = PortalIntegrationRequestBuilder(
       baseUrl: apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)",
       basePath: "/api/v3/clients/me/integrations/agg",
       emptyIdentifier: { AggError.emptyIdentifier(name: $0) }
@@ -217,8 +217,8 @@ public class PortalAggApi: PortalAggApiProtocol {
     try await send("listEvents", .get, path: "/events", query: [
       ("status", params.status?.rawValue),
       ("search", params.search),
-      ("venues", YieldXyzRequestBuilder.joined(params.venues?.map(\.rawValue))),
-      ("categoryIds", YieldXyzRequestBuilder.joined(params.categoryIds)),
+      ("venues", PortalIntegrationRequestBuilder.joined(params.venues?.map(\.rawValue))),
+      ("categoryIds", PortalIntegrationRequestBuilder.joined(params.categoryIds)),
       ("sortBy", params.sortBy?.rawValue),
       ("sortDir", params.sortDir?.rawValue),
       ("limit", params.limit.map(String.init)),
@@ -299,7 +299,7 @@ public class PortalAggApi: PortalAggApiProtocol {
   /// Gets live midpoints for a batch of markets. `GET /midpoints`
   public func getMidpoints(venueMarketIds: [String], bestPrice: Bool?) async throws -> AggGetMidpointsResponse {
     try await send("getMidpoints", .get, path: "/midpoints", query: [
-      ("venueMarketIds", YieldXyzRequestBuilder.joined(venueMarketIds)),
+      ("venueMarketIds", PortalIntegrationRequestBuilder.joined(venueMarketIds)),
       ("bestPrice", bestPrice.map(String.init))
     ])
   }
@@ -307,7 +307,7 @@ public class PortalAggApi: PortalAggApiProtocol {
   /// Gets live order books for a batch of markets. `GET /orderbooks`
   public func getOrderbooks(venueMarketIds: [String], depth: Int?) async throws -> AggGetOrderbooksResponse {
     try await send("getOrderbooks", .get, path: "/orderbooks", query: [
-      ("venueMarketIds", YieldXyzRequestBuilder.joined(venueMarketIds)),
+      ("venueMarketIds", PortalIntegrationRequestBuilder.joined(venueMarketIds)),
       ("depth", depth.map(String.init))
     ])
   }

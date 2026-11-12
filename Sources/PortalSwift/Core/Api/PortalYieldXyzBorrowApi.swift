@@ -42,7 +42,7 @@ public class PortalYieldXyzBorrowApi: PortalYieldXyzBorrowApiProtocol, YieldXyzE
   /// this instance is honoured on the next call. Shared by identity with the owning `PortalApi`.
   private let credentials: PortalCredentials
   private let requests: PortalRequestsProtocol
-  private let requestBuilder: YieldXyzRequestBuilder
+  private let requestBuilder: PortalIntegrationRequestBuilder
   private let logger = PortalLogger.shared
 
   /// Create an instance of `PortalYieldXyzBorrowApi`.
@@ -63,7 +63,7 @@ public class PortalYieldXyzBorrowApi: PortalYieldXyzBorrowApiProtocol, YieldXyzE
     requests: PortalRequestsProtocol? = nil
   ) {
     self.credentials = credentials
-    self.requestBuilder = YieldXyzRequestBuilder(
+    self.requestBuilder = PortalIntegrationRequestBuilder(
       baseUrl: apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)",
       basePath: "/api/v3/clients/me/integrations/yield-xyz-borrow",
       emptyIdentifier: { YieldXyzBorrowError.emptyIdentifier(name: $0) }
@@ -161,7 +161,7 @@ public class PortalYieldXyzBorrowApi: PortalYieldXyzBorrowApiProtocol, YieldXyzE
       ("integrationId", params.integrationId),
       ("action", params.action?.rawValue),
       ("status", params.status?.rawValue),
-      ("statuses", YieldXyzRequestBuilder.joined(params.statuses?.map(\.rawValue)))
+      ("statuses", PortalIntegrationRequestBuilder.joined(params.statuses?.map(\.rawValue)))
     ])
   }
 
@@ -197,8 +197,8 @@ public class PortalYieldXyzBorrowApi: PortalYieldXyzBorrowApiProtocol, YieldXyzE
   /// decoding only the hashes and the user operation's outcome.
   func lookupEvmTransaction(chainId: String, hash: String) async throws -> YieldXyzEvmTransactionLookup? {
     do {
-      guard let encodedChainId = YieldXyzRequestBuilder.encodeURIComponent(chainId),
-            let encodedHash = YieldXyzRequestBuilder.encodeURIComponent(hash),
+      guard let encodedChainId = PortalIntegrationRequestBuilder.encodeURIComponent(chainId),
+            let encodedHash = PortalIntegrationRequestBuilder.encodeURIComponent(hash),
             let url = URL(string: "\(requestBuilder.baseUrl)/api/v3/clients/me/chains/\(encodedChainId)/transactions/\(encodedHash)")
       else {
         throw URLError(.badURL)
