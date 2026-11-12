@@ -47,7 +47,7 @@ public class PortalYieldXyzPerpsApi: PortalYieldXyzPerpsApiProtocol {
   /// this instance is honoured on the next call. Shared by identity with the owning `PortalApi`.
   private let credentials: PortalCredentials
   private let requests: PortalRequestsProtocol
-  private let requestBuilder: YieldXyzRequestBuilder
+  private let requestBuilder: PortalIntegrationRequestBuilder
   private let logger = PortalLogger.shared
 
   /// Create an instance of `PortalYieldXyzPerpsApi`.
@@ -68,7 +68,7 @@ public class PortalYieldXyzPerpsApi: PortalYieldXyzPerpsApiProtocol {
     requests: PortalRequestsProtocol? = nil
   ) {
     self.credentials = credentials
-    self.requestBuilder = YieldXyzRequestBuilder(
+    self.requestBuilder = PortalIntegrationRequestBuilder(
       baseUrl: apiHost.starts(with: "localhost") ? "http://\(apiHost)" : "https://\(apiHost)",
       basePath: "/api/v3/clients/me/integrations/yield-xyz-perps",
       emptyIdentifier: { YieldXyzPerpsError.emptyIdentifier(name: $0) }
@@ -166,11 +166,11 @@ public class PortalYieldXyzPerpsApi: PortalYieldXyzPerpsApiProtocol {
       ("limit", params.limit.map(String.init)),
       ("address", request.address),
       ("providerId", params.providerId),
-      ("providerIds", YieldXyzRequestBuilder.joined(params.providerIds)),
+      ("providerIds", PortalIntegrationRequestBuilder.joined(params.providerIds)),
       ("marketId", params.marketId),
       ("type", params.type?.rawValue),
       ("status", params.status?.rawValue),
-      ("statuses", YieldXyzRequestBuilder.joined(params.statuses?.map(\.rawValue)))
+      ("statuses", PortalIntegrationRequestBuilder.joined(params.statuses?.map(\.rawValue)))
     ])
   }
 
@@ -198,9 +198,9 @@ public class PortalYieldXyzPerpsApi: PortalYieldXyzPerpsApiProtocol {
       ("limit", params.limit.map(String.init)),
       ("address", request.address),
       ("providerId", params.providerId),
-      ("providerIds", YieldXyzRequestBuilder.joined(params.providerIds)),
+      ("providerIds", PortalIntegrationRequestBuilder.joined(params.providerIds)),
       ("actionStatus", params.actionStatus?.rawValue),
-      ("actionStatuses", YieldXyzRequestBuilder.joined(params.actionStatuses?.map(\.rawValue)))
+      ("actionStatuses", PortalIntegrationRequestBuilder.joined(params.actionStatuses?.map(\.rawValue)))
     ])
   }
 
@@ -212,9 +212,9 @@ public class PortalYieldXyzPerpsApi: PortalYieldXyzPerpsApiProtocol {
       ("limit", params.limit.map(String.init)),
       ("address", request.address),
       ("providerId", params.providerId),
-      ("providerIds", YieldXyzRequestBuilder.joined(params.providerIds)),
+      ("providerIds", PortalIntegrationRequestBuilder.joined(params.providerIds)),
       ("eventType", params.eventType?.rawValue),
-      ("eventTypes", YieldXyzRequestBuilder.joined(params.eventTypes?.map(\.rawValue))),
+      ("eventTypes", PortalIntegrationRequestBuilder.joined(params.eventTypes?.map(\.rawValue))),
       ("marketId", params.marketId),
       ("perpActionId", params.perpActionId),
       ("providerOrderId", params.providerOrderId),

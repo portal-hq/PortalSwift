@@ -129,7 +129,7 @@ public struct YieldXyzPerpsApiError: Error, Equatable {
   }
 
   private static func from(_ error: PortalRequestsError) -> YieldXyzPerpsApiError? {
-    YieldXyzApiErrorBody.parse(error).map {
+    PortalIntegrationApiErrorBody.parse(error).map {
       YieldXyzPerpsApiError(status: $0.status, id: $0.id, message: $0.message, details: $0.details)
     }
   }

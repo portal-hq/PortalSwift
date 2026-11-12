@@ -1,5 +1,5 @@
 //
-//  YieldXyzRequestBuilder.swift
+//  PortalIntegrationRequestBuilder.swift
 //  PortalSwift
 //
 //  Created by Ahmed Ragab
@@ -7,9 +7,9 @@
 
 import Foundation
 
-/// Builds the URLs of a Yield.xyz integration proxy (`/api/v3/clients/me/integrations/<name>`), with
+/// Builds the URLs of a Portal integration proxy (`/api/v3/clients/me/integrations/<name>`), with
 /// the same wire format as the other Portal SDKs.
-struct YieldXyzRequestBuilder {
+struct PortalIntegrationRequestBuilder {
   /// The characters `encodeURIComponent` leaves unescaped. Query values and path segments are
   /// encoded with it so the wire format matches the other Portal SDKs, and so `+`, `&`, `=`, `,`,
   /// `/` and `:` never reach the server unescaped (Express decodes a raw `+` as a space).
@@ -19,7 +19,7 @@ struct YieldXyzRequestBuilder {
 
   /// `https://<host>` (or `http://localhost…`).
   let baseUrl: String
-  /// The integration's base path, e.g. `/api/v3/clients/me/integrations/yield-xyz-borrow`.
+  /// The integration's base path, `/api/v3/clients/me/integrations/<name>`.
   let basePath: String
   /// The error thrown for an empty path id, named after the parameter.
   let emptyIdentifier: (_ name: String) -> Error

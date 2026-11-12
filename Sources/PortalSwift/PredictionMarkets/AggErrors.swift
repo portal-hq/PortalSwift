@@ -97,7 +97,7 @@ public struct AggApiError: Error, Equatable {
         AggApiError(status: $0.status, id: $0.id, message: $0.message, details: $0.details, traceId: requestError.traceId)
       }
     case let requestsError as PortalRequestsError:
-      return YieldXyzApiErrorBody.parse(requestsError).map {
+      return PortalIntegrationApiErrorBody.parse(requestsError).map {
         AggApiError(status: $0.status, id: $0.id, message: $0.message, details: details(from: $0))
       }
     default:
@@ -105,7 +105,7 @@ public struct AggApiError: Error, Equatable {
     }
   }
 
-  private static func details(from body: YieldXyzApiErrorBody) -> AggErrorDetails? {
+  private static func details(from body: PortalIntegrationApiErrorBody) -> AggErrorDetails? {
     guard let details = body.details else {
       return nil
     }

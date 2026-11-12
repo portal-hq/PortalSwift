@@ -69,7 +69,7 @@ public struct YieldXyzBorrowApiError: Error, Equatable {
     case let executionError as YieldXyzBorrowExecutionError:
       return from(executionError.underlyingError)
     case let requestsError as PortalRequestsError:
-      return YieldXyzApiErrorBody.parse(requestsError).map {
+      return PortalIntegrationApiErrorBody.parse(requestsError).map {
         YieldXyzBorrowApiError(status: $0.status, id: $0.id, message: $0.message, details: $0.details)
       }
     default:
