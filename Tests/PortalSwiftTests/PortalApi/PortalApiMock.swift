@@ -327,4 +327,28 @@ class PortalApiMock: PortalApiProtocol {
     getWalletCapabilitiesTraceIdParam = traceId
     return [:]
   }
+
+  // MARK: - Passkey PRF
+
+  /// Results returned by successive `getPasskeyPrfCredential` calls; `nil` (no record) once empty.
+  var getPasskeyPrfCredentialResults: [Swift.Result<PasskeyPrfCredential?, Error>] = []
+  var getPasskeyPrfCredentialCallsCount = 0
+  func getPasskeyPrfCredential(traceId _: String?) async throws -> PasskeyPrfCredential? {
+    getPasskeyPrfCredentialCallsCount += 1
+    if !getPasskeyPrfCredentialResults.isEmpty {
+      return try getPasskeyPrfCredentialResults.removeFirst().get()
+    }
+    return nil
+  }
+
+  /// Results returned by successive `storePasskeyPrfCredential` calls; echoes the body once empty.
+  var storePasskeyPrfCredentialResults: [Swift.Result<PasskeyPrfCredential, Error>] = []
+  var storePasskeyPrfCredentialParams: [PasskeyPrfCredential] = []
+  func storePasskeyPrfCredential(_ credential: PasskeyPrfCredential, traceId _: String?) async throws -> PasskeyPrfCredential {
+    storePasskeyPrfCredentialParams.append(credential)
+    if !storePasskeyPrfCredentialResults.isEmpty {
+      return try storePasskeyPrfCredentialResults.removeFirst().get()
+    }
+    return credential
+  }
 }

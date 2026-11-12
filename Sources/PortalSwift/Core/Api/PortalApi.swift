@@ -43,6 +43,10 @@ public protocol PortalApiProtocol: AnyObject {
   func getAssets(_ chainId: String) async throws -> AssetsResponse
   func getTransactionDetails(chain: String, signature: String) async throws -> GetTransactionDetailsResponse
   func getWalletCapabilities(traceId: String?) async throws -> WalletCapabilitiesResponse
+  /// The client's Passkey PRF credential record, or `nil` when the client has not enrolled one.
+  func getPasskeyPrfCredential(traceId: String?) async throws -> PasskeyPrfCredential?
+  /// Stores the client's Passkey PRF credential record and returns the record Portal holds.
+  func storePasskeyPrfCredential(_ credential: PasskeyPrfCredential, traceId: String?) async throws -> PasskeyPrfCredential
 
   // deprecated functions
   @available(*, deprecated, message: "This function has been moved to 'Portal'. Please use 'Portal.getBalances()' instead.") // this func need to be private thats why we deprecate it to move it to private later
@@ -112,6 +116,17 @@ public extension PortalApiProtocol {
 
   func getWalletCapabilities() async throws -> WalletCapabilitiesResponse {
     try await getWalletCapabilities(traceId: nil)
+  }
+
+  /// Default for conformers written before Passkey PRF existed, so adding the requirement does
+  /// not break them. `PortalApi` implements it.
+  func getPasskeyPrfCredential(traceId _: String?) async throws -> PasskeyPrfCredential? {
+    throw PasskeyPrfStorageError.apiUnsupported
+  }
+
+  /// Default for conformers written before Passkey PRF existed. `PortalApi` implements it.
+  func storePasskeyPrfCredential(_: PasskeyPrfCredential, traceId _: String?) async throws -> PasskeyPrfCredential {
+    throw PasskeyPrfStorageError.apiUnsupported
   }
 
   func buildEip155Transaction(chainId: String, params: BuildTransactionParam) async throws -> BuildEip115TransactionResponse {
@@ -432,6 +447,38 @@ public class PortalApi: PortalApiProtocol {
 
     throw URLError(.badURL)
   }
+
+  /// Reads the client's Passkey PRF credential record. A 404 means the client has not enrolled
+  /// one and is returned as `nil`; the record is unwrapped from Portal's `{ data, metadata }`
+  /// envelope.
+  public func getPasskeyPrfCredential(traceId: String? = nil) async throws -> PasskeyPrfCredential? {
+    let traceId = traceId ?? generateTraceId()
+    guard let url = URL(string: "\(baseUrl)\(Self.passkeyPrfCredentialPath)") else {
+      throw URLError(.badURL)
+    }
+
+    do {
+      let response = try await get(url, traceId: traceId, mappingInResponse: PasskeyPrfCredentialEnvelope.self)
+      return response.data
+    } catch let error as PortalRequestsError where error.statusCode == 404 {
+      // Not having enrolled yet is an answer, not a failure.
+      return nil
+    }
+  }
+
+  /// Stores the client's Passkey PRF credential record. The record is write-once: the PUT is
+  /// idempotent for the same credential and answers 409 when a different one is already stored.
+  public func storePasskeyPrfCredential(_ credential: PasskeyPrfCredential, traceId: String? = nil) async throws -> PasskeyPrfCredential {
+    let traceId = traceId ?? generateTraceId()
+    guard let url = URL(string: "\(baseUrl)\(Self.passkeyPrfCredentialPath)") else {
+      throw URLError(.badURL)
+    }
+
+    let response = try await put(url, andPayload: credential, traceId: traceId, mappingInResponse: PasskeyPrfCredentialEnvelope.self)
+    return response.data
+  }
+
+  static let passkeyPrfCredentialPath = "/api/v3/clients/me/passkey-prf-credential"
 
   public func getSources(_ swapsApiKey: String, forChainId: String) async throws -> [String: String] {
     let traceId = generateTraceId()
