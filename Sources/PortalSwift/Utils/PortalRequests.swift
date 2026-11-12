@@ -362,6 +362,23 @@ public enum PortalRequestsError: LocalizedError, Equatable {
     }
   }
 
+  /// The HTTP status of a `"<status> - <body>"` error, when the message starts with one.
+  /// `nil` for `.couldNotParseHttpResponse`; `.unauthorized` carries no message and reads `nil`.
+  var statusCode: Int? {
+    let message: String
+    switch self {
+    case let .clientError(value, _):
+      message = value
+    case let .internalServerError(value, _):
+      message = value
+    case let .redirectError(value):
+      message = value
+    default:
+      return nil
+    }
+    return Int(message.prefix(while: { $0.isASCII && $0.isNumber }))
+  }
+
   /// The response body of a `"<status> - <body>"` message: everything after the first separator,
   /// so a body whose message itself contains " - " is kept whole and still decodes.
   private func getDataStr(from message: String) -> String? {
