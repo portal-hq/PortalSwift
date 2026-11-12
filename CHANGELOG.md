@@ -56,10 +56,20 @@ Possible Types of changes include:
     - `Ramps(noah:meld:)` builds the namespace around your own `NoahProtocol` and `MeldProtocol`, for example for a `PortalProtocol` test double.
     - Some providers, such as Transak, need the user's public IP to open a widget session: pass it as `MeldSessionData.clientIpAddress`.
     - Meld must be enabled for the environment in the Portal Dashboard.
+- Passkey PRF backup (`BackupMethods.PasskeyPrf`, wire value `PASSKEY_PRF`, iOS 18+): backs up with a secret derived from a passkey through the WebAuthn PRF extension. Backups are interchangeable with the React Native and web SDKs for the same passkey and relying party.
+    - Register it with `portal.registerBackupMethod(.PasskeyPrf, withStorage: PasskeyPrfStorage(relyingParty: "your.domain"))`; it is not registered by default. The app must be associated with the relying party's domain through the `webcredentials` Associated Domains entitlement. The default relying party is `portalhq.io`.
+    - `portal.setPasskeyAuthenticationAnchor(_:)` sets the anchor for this storage too.
+    - Failures throw `PortalPasskeyPrfError`; branch on `reason` (`PRF_USER_CANCELLED`, `PRF_CREDENTIAL_NOT_FOUND`, `PRF_DECRYPT_FAILED`, ...).
+    - New `PortalApiProtocol` requirements `getPasskeyPrfCredential(traceId:)` and `storePasskeyPrfCredential(_:traceId:)` have default implementations, so existing conformers compile unchanged.
+    - New `BackupMethods.PasskeyPrf` case. If you switch exhaustively over `BackupMethods`, add a case for it.
 
 ### Changed
 
 - `PortalProtocol` gains `perps`, `borrow` and `predictionMarkets`, and `PortalApiProtocol` gains `yieldxyzPerps`, `yieldxyzBorrow`, `agg` and `meld`. If you conform to either protocol yourself, for example in a test double, add the new members; `PredictionMarkets(agg:)` builds one around your own `AggProtocol`.
+
+### Fixed
+
+- A client whose wallets carry a share pair backed up with a method this SDK version does not know no longer fails to decode; the method is reported as `.Unknown`.
 
 ## 8.1.0 - 2026-10-08
 
