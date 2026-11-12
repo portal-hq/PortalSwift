@@ -600,6 +600,8 @@ public final class Portal: PortalProtocol {
   ///     - `.iCloud`: iCloud storage
   ///     - `.Password`: Password-protected storage
   ///     - `.Passkey`: Passkey authentication storage
+  ///     - `.PasskeyPrf`: A secret derived from a passkey through the WebAuthn PRF extension
+  ///       (`PasskeyPrfStorage`, iOS 18+). Not registered by default.
   ///     - `.Firebase`: Firebase authentication storage
   ///     - `.local`: Local storage
   ///     - `.Unknown`: Can be used for custom storage
@@ -687,7 +689,8 @@ public final class Portal: PortalProtocol {
   ///
   /// - Throws: Errors if the passkey anchor configuration fails.
   ///
-  /// - Note: Required to be called before using passkey backup or recovery methods.
+  /// - Note: Required to be called before using passkey backup or recovery methods. Applies to
+  ///   both the `.Passkey` and `.PasskeyPrf` storages that are registered.
   @available(iOS 16, *)
   public func setPasskeyAuthenticationAnchor(_ anchor: ASPresentationAnchor) throws {
     try self.mpc.setPasskeyAuthenticationAnchor(anchor)
@@ -1350,6 +1353,7 @@ public final class Portal: PortalProtocol {
   ///   - `.iCloud`: iCloud backup
   ///   - `.Password`: Password-protected backup
   ///   - `.Passkey`: Passkey backup
+  ///   - `.PasskeyPrf`: Passkey PRF backup
   ///   - `.local`: Local backup
   ///
   /// - Throws:
@@ -2837,11 +2841,22 @@ public enum BackupMethods: String, Codable {
   case local = "CUSTOM"
   case Password = "PASSWORD"
   case Passkey = "PASSKEY"
+  /// A secret derived from a passkey through the WebAuthn PRF extension (`PasskeyPrfStorage`).
+  case PasskeyPrf = "PASSKEY_PRF"
   case Firebase = "FIREBASE"
   case Unknown = "UNKNOWN"
 
   init?(fromString: String) {
     self.init(rawValue: fromString)
+  }
+
+  /// Decodes a backup method Portal reports, mapping a value this SDK version does not know to
+  /// `.Unknown` instead of failing. A client response is decoded as a whole, so one share pair
+  /// backed up with a method added after this release must not make the client unreadable.
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.singleValueContainer()
+    let rawValue = try container.decode(String.self)
+    self = BackupMethods(rawValue: rawValue) ?? .Unknown
   }
 }
 
