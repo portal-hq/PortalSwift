@@ -17,7 +17,7 @@
                         <viewControllerLayoutGuide type="bottom" id="2fi-mo-0CV"/>
                     </layoutGuides>
                     <scrollView key="view" contentMode="scaleToFill" ambiguous="YES" restorationIdentifier="mainViewController" id="kh9-bI-dsS">
-                        <rect key="frame" x="0.0" y="0.0" width="375" height="5620"/>
+                        <rect key="frame" x="0.0" y="0.0" width="375" height="5660"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                         <subviews>
                             <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="WxW-BK-2tM">
@@ -1621,6 +1621,32 @@
                                     <action selector="openMeldRamps:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="Mld-OP-Ac1"/>
                                 </connections>
                             </button>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="PrF-Bk-Bt1">
+                                <rect key="frame" x="14" y="5600" width="165" height="39"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <state key="normal" title="Button"/>
+                                <buttonConfiguration key="configuration" style="filled" title="Passkey PRF Backup">
+                                    <backgroundConfiguration key="background"/>
+                                    <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
+                                    <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                </buttonConfiguration>
+                                <connections>
+                                    <action selector="handlePasskeyPrfBackup:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="PrF-Bk-Ac1"/>
+                                </connections>
+                            </button>
+                            <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="PrF-Rc-Bt1">
+                                <rect key="frame" x="188" y="5600" width="165" height="39"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <state key="normal" title="Button"/>
+                                <buttonConfiguration key="configuration" style="filled" title="Passkey PRF Recover">
+                                    <backgroundConfiguration key="background"/>
+                                    <color key="baseForegroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
+                                    <color key="baseBackgroundColor" red="0.027450980390000001" green="0.054901960780000002" blue="0.086274509799999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                </buttonConfiguration>
+                                <connections>
+                                    <action selector="handlePasskeyPrfRecover:" destination="vXZ-lx-hvc" eventType="touchUpInside" id="PrF-Rc-Ac1"/>
+                                </connections>
+                            </button>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="Credential: none (signed out)" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" minimumFontSize="7" translatesAutoresizingMaskIntoConstraints="NO" id="CAu-St-Lb1">
                                 <rect key="frame" x="16" y="206" width="343" height="61"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
@@ -1648,7 +1674,7 @@
                             </mask>
                         </variation>
                     </scrollView>
-                    <size key="freeformSize" width="375" height="5620"/>
+                    <size key="freeformSize" width="375" height="5660"/>
                     <connections>
                         <outlet property="addressInformation" destination="0fE-Dt-jQE" id="FgG-eb-2eu"/>
                         <outlet property="clientAuthButton" destination="CAu-Sg-Bt1" id="CAu-Sg-Ou1"/>
@@ -1673,6 +1699,8 @@
                         <outlet property="logoutButton" destination="nDW-CF-6N1" id="Ke0-ny-I4Y"/>
                         <outlet property="manageYieldButton" destination="9QG-3B-yfJ" id="hzs-Hw-rBt"/>
                         <outlet property="passkeyBackupButton" destination="4Nx-Pl-Jpk" id="fnc-e3-S4s"/>
+                        <outlet property="passkeyPrfBackupButton" destination="PrF-Bk-Bt1" id="PrF-Bk-Ol1"/>
+                        <outlet property="passkeyPrfRecoverButton" destination="PrF-Rc-Bt1" id="PrF-Rc-Ol1"/>
                         <outlet property="passkeyRecoverButton" destination="WxW-BK-2tM" id="Aqd-89-4Ay"/>
                         <outlet property="passwordBackupButton" destination="qJ9-JL-IHL" id="4YG-wF-Naj"/>
                         <outlet property="passwordRecoverButton" destination="e3a-WD-Rlx" id="1rg-cD-ovX"/>
