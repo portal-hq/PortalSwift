@@ -46,6 +46,8 @@ public struct MeldGetRetailQuoteRequest: Codable, Equatable {
   /// `MeldSessionData.sourceAmount` is a string.)
   public let sourceAmount: Double
   public let walletAddress: String?
+  /// A Meld customer Portal has on record for the client: the one `createCustomer` created or
+  /// `searchCustomer()` found. Any other id fails with `404` (`Meld customer does not exist.`).
   public let customerId: String?
   /// e.g. `CREDIT_DEBIT_CARD`.
   public let paymentMethodType: String?
@@ -83,6 +85,8 @@ public struct MeldCreateRetailWidgetRequest: Codable, Equatable {
   /// Your own id for the session, returned on its transactions.
   public let externalSessionId: String?
   /// The Meld customer to attach. Without it, Meld creates or reuses one for the client.
+  /// A Meld customer Portal has on record for the client: the one `createCustomer` created or
+  /// `searchCustomer()` found. Any other id fails with `404` (`Meld customer does not exist.`).
   public let customerId: String?
   public let bypassKyc: Bool?
 
@@ -108,10 +112,13 @@ public struct MeldSessionData: Codable, Equatable {
   public let serviceProvider: String
   public let sourceCurrencyCode: String
   /// The amount in `sourceCurrencyCode`, sent as a string, e.g. `"100"`. (The quote's
-  /// `MeldGetRetailQuoteRequest.sourceAmount` is a number.)
+  /// `MeldGetRetailQuoteRequest.sourceAmount` is a number.) Use a plain decimal such as `"99.5"`:
+  /// a `Double`'s description can carry an exponent (`1e+16`); format through `Decimal` or a
+  /// `NumberFormatter` with the `en_US_POSIX` locale.
   public let sourceAmount: String
   public let destinationCurrencyCode: String
-  /// The wallet that receives the crypto; it must be on the chain of `destinationCurrencyCode`.
+  /// On a `BUY`, the wallet that receives the crypto; it must be on the chain of
+  /// `destinationCurrencyCode`.
   public let walletAddress: String?
   /// The memo or tag some chains need next to the address.
   public let walletTag: String?
@@ -161,7 +168,7 @@ public struct MeldSearchRetailTransactionsParams: Equatable {
   public let sessionIds: [String]?
   public let externalSessionIds: [String]?
   public let serviceProviderTransactionId: String?
-  /// 1–100. There is no paging: narrow the search with `from` / `to` instead.
+  /// 1–100; Meld's default is 10. There is no paging: narrow the search with `from` / `to` instead.
   public let limit: Int?
   public let amountFrom: Double?
   public let amountTo: Double?

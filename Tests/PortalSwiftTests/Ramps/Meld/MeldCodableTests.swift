@@ -26,21 +26,26 @@ final class MeldCodableTests: XCTestCase {
     try XCTUnwrap(JSONSerialization.jsonObject(with: encoder.encode(value)) as? NSDictionary)
   }
 
-  /// `value` with every `null` and every key in `ignoring` removed, at any depth.
-  private func normalized(_ value: Any, ignoring: Set<String>) -> Any? {
+  /// `value` with every `null` and every ignored key removed, at any depth. An entry of `ignoring` is
+  /// a key (`"supportUrl"`), or a key under a parent key (`"paymentMethods.category"`) when the same
+  /// name is a real field elsewhere in the payload.
+  private func normalized(_ value: Any, ignoring: Set<String>, parentKey: String? = nil) -> Any? {
     switch value {
     case is NSNull:
       return nil
     case let dictionary as [String: Any]:
       var result: [String: Any] = [:]
-      for (key, element) in dictionary where !ignoring.contains(key) {
-        if let element = normalized(element, ignoring: ignoring) {
+      for (key, element) in dictionary {
+        if ignoring.contains(key) || parentKey.map({ ignoring.contains("\($0).\(key)") }) == true {
+          continue
+        }
+        if let element = normalized(element, ignoring: ignoring, parentKey: key) {
           result[key] = element
         }
       }
       return result
     case let array as [Any]:
-      return array.map { normalized($0, ignoring: ignoring) ?? NSNull() }
+      return array.map { normalized($0, ignoring: ignoring, parentKey: parentKey) ?? NSNull() }
     default:
       return value
     }
@@ -48,7 +53,8 @@ final class MeldCodableTests: XCTestCase {
 
   /// Decodes `json`, encodes the result and checks nothing was lost or renamed: the encoded JSON
   /// must equal the fixture, nulls aside. `ignoring` lists the keys Meld sends that the model leaves
-  /// out on purpose (not in connect-api's schema). A misspelled property fails here.
+  /// out on purpose (not in connect-api's schema). A misspelled property fails here as long as some
+  /// fixture gives it a value, which is why the `synthetic*Full` fixtures fill every optional.
   private func assertLosslessRoundTrip<T: Codable>(
     _: T.Type,
     _ json: String,
@@ -76,6 +82,7 @@ final class MeldCodableTests: XCTestCase {
     _ = try? decode(MeldCustomer.self, MeldFixtures.syntheticCustomerFull)
     _ = try? decode(MeldRetailQuoteResult.self, MeldFixtures.quote)
     _ = try? decode(MeldRetailQuoteResult.self, MeldFixtures.syntheticQuoteEmpty)
+    _ = try? decode(MeldRetailQuoteResult.self, MeldFixtures.syntheticQuoteFull)
     _ = try? decode(MeldWidgetSession.self, MeldFixtures.syntheticWidgetSession)
     _ = try? decode(MeldTransactionSearchResult.self, MeldFixtures.transactionsSearchEmpty)
     _ = try? decode(MeldTransactionSearchResult.self, MeldFixtures.syntheticTransactionsSearch)
@@ -87,8 +94,11 @@ final class MeldCodableTests: XCTestCase {
     _ = try? decode(MeldNetworkPartnerKycLimitsResult.self, MeldFixtures.npKycLimitsEmpty)
     _ = try? decode(MeldNetworkPartnerKycLimitsResult.self, MeldFixtures.syntheticNpKycLimits)
     _ = try? decode([MeldNetworkPartner].self, MeldFixtures.npPartners)
+    _ = try? decode([MeldNetworkPartner].self, MeldFixtures.syntheticNpPartnersFull)
     _ = try? decode([MeldNetworkPartnerPaymentMethod].self, MeldFixtures.npPaymentMethods)
+    _ = try? decode([MeldNetworkPartnerPaymentMethod].self, MeldFixtures.syntheticNpPaymentMethodsFull)
     _ = try? decode([MeldNetworkPartnerRoute].self, MeldFixtures.npRoutes)
+    _ = try? decode([MeldNetworkPartnerRoute].self, MeldFixtures.syntheticNpRoutesFull)
     _ = try? decode(MeldNetworkPartnerCountryDefaults.self, MeldFixtures.npDefaults)
   }
 
@@ -100,6 +110,7 @@ final class MeldCodableTests: XCTestCase {
     try assertLosslessRoundTrip(MeldCustomerSearchResult.self, MeldFixtures.customerSearchEmpty)
     try assertLosslessRoundTrip(MeldRetailQuoteResult.self, MeldFixtures.quote)
     try assertLosslessRoundTrip(MeldRetailQuoteResult.self, MeldFixtures.syntheticQuoteEmpty)
+    try assertLosslessRoundTrip(MeldRetailQuoteResult.self, MeldFixtures.syntheticQuoteFull)
     try assertLosslessRoundTrip(MeldWidgetSession.self, MeldFixtures.syntheticWidgetSession)
     try assertLosslessRoundTrip(MeldTransactionSearchResult.self, MeldFixtures.transactionsSearchEmpty)
     try assertLosslessRoundTrip(MeldNetworkPartnerCountriesResult.self, MeldFixtures.npCountries)
@@ -112,7 +123,11 @@ final class MeldCodableTests: XCTestCase {
     // Fields Meld sends that connect-api's schemas do not list (a backend finding), left out on purpose.
     try assertLosslessRoundTrip([MeldNetworkPartner].self, MeldFixtures.npPartners, ignoring: ["supportUrl", "checkout", "kycLevel", "kycShareMethods"])
     try assertLosslessRoundTrip([MeldNetworkPartnerPaymentMethod].self, MeldFixtures.npPaymentMethods, ignoring: ["category", "checkoutSupported"])
-    try assertLosslessRoundTrip([MeldNetworkPartnerRoute].self, MeldFixtures.npRoutes, ignoring: ["category", "checkoutSupported"])
+    try assertLosslessRoundTrip([MeldNetworkPartnerRoute].self, MeldFixtures.npRoutes, ignoring: ["paymentMethods.category", "paymentMethods.checkoutSupported"])
+    try assertLosslessRoundTrip([MeldNetworkPartner].self, MeldFixtures.syntheticNpPartnersFull, ignoring: ["supportUrl", "checkout", "kycLevel", "kycShareMethods"])
+    try assertLosslessRoundTrip([MeldNetworkPartnerPaymentMethod].self, MeldFixtures.syntheticNpPaymentMethodsFull, ignoring: ["category", "checkoutSupported"])
+    // `category` is a real field of the route's KYC limits; only the payment methods' one is extra.
+    try assertLosslessRoundTrip([MeldNetworkPartnerRoute].self, MeldFixtures.syntheticNpRoutesFull, ignoring: ["paymentMethods.category", "paymentMethods.checkoutSupported"])
   }
 
   /// The five provider-specific fields keep everything Meld sends, nested `null`s included.
@@ -222,8 +237,18 @@ final class MeldCodableTests: XCTestCase {
 
     XCTAssertNil(withNull.externalSessionId)
     XCTAssertNil(absent.externalSessionId)
-    XCTAssertNil(absent.serviceProviderWidgetUrl)
     XCTAssertEqual(withNull, absent)
+  }
+
+  func test_kycLimit_withoutLevels_decodes() throws {
+    let limit = try decode(
+      MeldNetworkPartnerKycLimit.self,
+      #"{"provider":"TRANSAK","countryCode":"US","limitType":"DAILY","currencyCode":"USD","level1":1000,"level2":null}"#
+    )
+
+    XCTAssertEqual(limit.level1, 1000)
+    XCTAssertNil(limit.level2)
+    XCTAssertNil(limit.level3)
   }
 
   func test_countryDefaults_dataCanBeNullOrMissing() throws {
@@ -238,6 +263,12 @@ final class MeldCodableTests: XCTestCase {
   }
 
   // MARK: - Requests
+
+  func test_sessionType_encodesEveryValue() throws {
+    let encoded = try [MeldSessionType.buy, .sell, .transfer].map { try String(decoding: encoder.encode($0), as: UTF8.self) }
+
+    XCTAssertEqual(encoded, [#""BUY""#, #""SELL""#, #""TRANSFER""#])
+  }
 
   func test_quoteRequest_sendsSourceAmountAsANumber() throws {
     let request = MeldGetRetailQuoteRequest(countryCode: "US", sourceCurrencyCode: "USD", destinationCurrencyCode: "ETH", sourceAmount: 100)

@@ -40,6 +40,8 @@ final class MeldViewController: UIViewController {
   private var quotedProvider: String?
   /// The last widget session, for Open Widget and the transaction reads.
   private var session: MeldWidgetSession?
+  /// The session whose widget was opened. Its URL is single-use, so it is not opened again.
+  private var openedSessionId: String?
   /// The last transaction id a search returned, for Get Transaction.
   private var transactionId: String?
 
@@ -117,12 +119,17 @@ final class MeldViewController: UIViewController {
     stackView.addArrangedSubview(label)
   }
 
-  private func addButton(_ title: String, _ action: @escaping () async throws -> String) {
+  /// `action` is unbound (`MeldViewController.buyFlow`, not `buyFlow`): a bound method would hold
+  /// the screen strongly from its own button and it would never be released.
+  private func addButton(_ title: String, _ action: @escaping (MeldViewController) -> () async throws -> String) {
     var configuration = UIButton.Configuration.filled()
     configuration.title = title
     configuration.baseBackgroundColor = .black
     let button = UIButton(configuration: configuration, primaryAction: UIAction { [weak self] _ in
-      self?.run(title, action)
+      guard let self else {
+        return
+      }
+      run(title, action(self))
     })
     buttons.append(button)
     stackView.addArrangedSubview(button)
@@ -141,29 +148,29 @@ final class MeldViewController: UIViewController {
     stackView.addArrangedSubview(cryptoField)
 
     addLabel("Guided", font: .preferredFont(forTextStyle: .title3))
-    addButton("Buy Flow (defaults → quote → widget → open)", buyFlow)
+    addButton("Buy Flow (defaults → quote → widget → open)", MeldViewController.buyFlow)
 
     addLabel("Customers", font: .preferredFont(forTextStyle: .title3))
-    addButton("Create Customer", createCustomer)
-    addButton("Search Customer", searchCustomer)
+    addButton("Create Customer", MeldViewController.createCustomer)
+    addButton("Search Customer", MeldViewController.searchCustomer)
 
     addLabel("Retail", font: .preferredFont(forTextStyle: .title3))
-    addButton("Get Quote", getQuote)
-    addButton("Create Widget Session", createWidgetSession)
-    addButton("Open Widget", openWidget)
-    addButton("Get Transaction by Session", getTransactionBySession)
-    addButton("Search Transactions", searchTransactions)
-    addButton("Get Transaction (from the search)", getTransaction)
+    addButton("Get Quote", MeldViewController.getQuote)
+    addButton("Create Widget Session", MeldViewController.createWidgetSession)
+    addButton("Open Widget", MeldViewController.openWidget)
+    addButton("Get Transaction by Session", MeldViewController.getTransactionBySession)
+    addButton("Search Transactions", MeldViewController.searchTransactions)
+    addButton("Get Transaction (from the search)", MeldViewController.getTransaction)
 
     addLabel("Network Partners", font: .preferredFont(forTextStyle: .title3))
-    addButton("Countries", getCountries)
-    addButton("Crypto Currencies", getCurrencies)
-    addButton("Fiat Limits", getFiatLimits)
-    addButton("KYC Limits", getKycLimits)
-    addButton("Partners", getPartners)
-    addButton("Payment Methods", getPaymentMethods)
-    addButton("Routes", getRoutes)
-    addButton("Country Defaults", getCountryDefaults)
+    addButton("Countries", MeldViewController.getCountries)
+    addButton("Crypto Currencies", MeldViewController.getCurrencies)
+    addButton("Fiat Limits", MeldViewController.getFiatLimits)
+    addButton("KYC Limits", MeldViewController.getKycLimits)
+    addButton("Partners", MeldViewController.getPartners)
+    addButton("Payment Methods", MeldViewController.getPaymentMethods)
+    addButton("Routes", MeldViewController.getRoutes)
+    addButton("Country Defaults", MeldViewController.getCountryDefaults)
   }
 
   // MARK: - Running
@@ -426,7 +433,10 @@ final class MeldViewController: UIViewController {
       category: Defaults.category,
       country: Defaults.countryCode
     )).data.kycLimits
-    return limits.isEmpty ? "No KYC limits." : limits.map { "\($0.provider) \($0.limitType): \($0.level1) / \($0.level2) / \($0.level3) \($0.currencyCode)" }.joined(separator: "\n")
+    return limits.isEmpty ? "No KYC limits." : limits.map { limit in
+      let levels = [limit.level1, limit.level2, limit.level3].map { $0.map { "\($0)" } ?? "–" }.joined(separator: " / ")
+      return "\(limit.provider) \(limit.limitType): \(levels) \(limit.currencyCode)"
+    }.joined(separator: "\n")
   }
 
   private func getPartners() async throws -> String {
@@ -466,9 +476,13 @@ final class MeldViewController: UIViewController {
   // MARK: - Widget
 
   private func presentWidget(_ session: MeldWidgetSession) throws {
+    guard openedSessionId != session.id else {
+      throw ExampleError("This session's widget was already opened, and its URL works once. Create a new widget session.")
+    }
     guard let url = URL(string: session.widgetUrl), url.scheme == "https" else {
       throw ExampleError("The widget URL is not an https URL.")
     }
+    openedSessionId = session.id
     let safari = SFSafariViewController(url: url)
     safari.delegate = self
     present(safari, animated: true)
@@ -486,8 +500,9 @@ final class MeldViewController: UIViewController {
 
   // MARK: - Formatting
 
+  /// A plain decimal such as `100` or `99.5`, never with an exponent (`String(1e16)` is `1e+16`).
   private static func amountString(_ amount: Double) -> String {
-    amount.rounded() == amount ? String(Int(amount)) : String(amount)
+    Decimal(string: "\(amount)", locale: Locale(identifier: "en_US_POSIX")).map { "\($0)" } ?? "\(amount)"
   }
 
   private static func summary(_ transaction: MeldTransaction) -> String {

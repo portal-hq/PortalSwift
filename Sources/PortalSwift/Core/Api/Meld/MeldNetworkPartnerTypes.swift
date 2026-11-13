@@ -116,16 +116,17 @@ public struct MeldNetworkPartnerFiatLimitsResult: Codable, Equatable {
   }
 }
 
-/// How much a customer can transact per period at each KYC level.
+/// How much a customer can transact per period at each KYC level. A level is `nil` when Meld
+/// sends none for it.
 public struct MeldNetworkPartnerKycLimit: Codable, Equatable {
   public let provider: String
   public let category: MeldCategory?
   public let countryCode: String
   public let limitType: MeldLimitType
   public let currencyCode: String
-  public let level1: Double
-  public let level2: Double
-  public let level3: Double
+  public let level1: Double?
+  public let level2: Double?
+  public let level3: Double?
 
   public init(
     provider: String,
@@ -133,9 +134,9 @@ public struct MeldNetworkPartnerKycLimit: Codable, Equatable {
     countryCode: String,
     limitType: MeldLimitType,
     currencyCode: String,
-    level1: Double,
-    level2: Double,
-    level3: Double
+    level1: Double? = nil,
+    level2: Double? = nil,
+    level3: Double? = nil
   ) {
     self.provider = provider
     self.category = category

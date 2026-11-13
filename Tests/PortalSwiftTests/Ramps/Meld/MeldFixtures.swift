@@ -115,7 +115,7 @@ enum MeldFixtures {
 
   /// `synthetic-customer-full.json` (synthetic, from `schemas.ts`)
   static let syntheticCustomerFull = #"""
-  {"id":"meld-customer-1","accountId":"meld-account-1","externalId":"REDACTED_externalId","key":"REDACTED_key","name":{"firstName":"REDACTED_firstName","lastName":null},"email":"REDACTED_email","phone":"REDACTED_phone","dateOfBirth":"1990-01-31","type":"INDIVIDUAL","status":"ACTIVE","addresses":[{"id":"address-1","customerId":"meld-customer-1","type":"RESIDENCE","status":"ACTIVE","addressDetails":{"lineOne":"1 Main St","lineTwo":null,"city":"Austin","region":"TX","postalCode":"78701","country":"US"}}],"emailVerifiedAt":"2026-11-12T10:00:00Z","phoneVerifiedAt":null,"verificationMeta":{"documentType":"PASSPORT","checks":{"liveness":true,"score":0.97,"notes":null},"tags":["manual",2]},"serviceProviders":{"TRANSAK":{"linked":true}},"previouslyUsedOnramps":[{"previouslyUsed":"2026-11-01T08:30:00Z","serviceProvider":"TRANSAK"}],"serviceProviderCustomers":[{"id":"spc-1","customerId":"meld-customer-1","serviceProvider":"TRANSAK","serviceProviderAccessProfileId":null,"serviceProviderDetails":{"partnerUserId":"abc","tier":2,"flags":[]},"status":"ACTIVE","wallets":["0x000000000000000000000000000000000000dEaD"],"kyc":{"additionalInfo":{"reason":null,"attempts":1},"onboardingMethod":{"kycProvider":"SUMSUB","onboardingType":"FULL"},"status":"APPROVED","updatedAt":"2026-11-02T09:00:00Z"},"createdAt":"2026-11-01T08:00:00Z","deletedAt":null}]}
+  {"id":"meld-customer-1","accountId":"meld-account-1","externalId":"REDACTED_externalId","key":"REDACTED_key","name":{"firstName":"REDACTED_firstName","lastName":"REDACTED_lastName"},"email":"REDACTED_email","phone":"REDACTED_phone","dateOfBirth":"1990-01-31","type":"INDIVIDUAL","status":"ACTIVE","addresses":[{"id":"address-1","customerId":"meld-customer-1","type":"RESIDENCE","status":"ACTIVE","addressDetails":{"lineOne":"1 Main St","lineTwo":"Suite 100","city":"Austin","region":"TX","postalCode":"78701","country":"US"}}],"emailVerifiedAt":"2026-11-12T10:00:00Z","phoneVerifiedAt":"2026-11-12T10:05:00Z","verificationMeta":{"documentType":"PASSPORT","checks":{"liveness":true,"score":0.97,"notes":null},"tags":["manual",2]},"serviceProviders":{"TRANSAK":{"linked":true}},"previouslyUsedOnramps":[{"previouslyUsed":"2026-11-01T08:30:00Z","serviceProvider":"TRANSAK"}],"serviceProviderCustomers":[{"id":"spc-1","customerId":"meld-customer-1","serviceProvider":"TRANSAK","serviceProviderAccessProfileId":"access-profile-1","serviceProviderDetails":{"partnerUserId":"abc","tier":2,"flags":[]},"status":"ACTIVE","wallets":["0x000000000000000000000000000000000000dEaD"],"kyc":{"additionalInfo":{"reason":null,"attempts":1},"onboardingMethod":{"kycProvider":"SUMSUB","onboardingType":"FULL"},"status":"APPROVED","updatedAt":"2026-11-02T09:00:00Z"},"createdAt":"2026-11-01T08:00:00Z","deletedAt":"2026-11-03T09:00:00Z"}]}
   """#
 
   /// `synthetic-np-kyc-limits.json` (synthetic, from `schemas.ts`)
@@ -123,14 +123,34 @@ enum MeldFixtures {
   {"kycLimits":[{"provider":"TRANSAK","category":"CRYPTO_ONRAMP","countryCode":"US","limitType":"DAILY","currencyCode":"USD","level1":1000,"level2":5000,"level3":25000}]}
   """#
 
+  /// `synthetic-np-partners-full.json` (synthetic, from `schemas.ts`)
+  static let syntheticNpPartnersFull = #"""
+  [{"serviceProvider":"TRANSAK","name":"Transak","status":"LIVE","categories":["CRYPTO_OFFRAMP","CRYPTO_ONRAMP"],"capabilities":[{"category":"CRYPTO_OFFRAMP","domains":["PAYMENT"],"status":"LIVE"},{"category":"CRYPTO_ONRAMP","domains":["PAYMENT"],"status":"LIVE"}],"url":"https://transak.com","supportUrl":"https://support.transak.com","lastLoadedAt":"2026-11-10T17:14:10.915806Z","logo":{"dark":"https://cdn.meld.io/images-serviceprovider/TRANSAK/logo_dark.png","light":"https://cdn.meld.io/images-serviceprovider/TRANSAK/logo_light.png","darkShort":"https://cdn.meld.io/images-serviceprovider/TRANSAK/short_logo_dark.png","lightShort":"https://cdn.meld.io/images-serviceprovider/TRANSAK/short_logo_light.png"},"headless":{"supported":true,"kycMode":"HEADLESS_KYC","uiCustomization":true},"checkout":true,"kycMode":"NONE","kycLevel":"LEVEL_2","kycShareMethods":[],"isExchange":false}]
+  """#
+
+  /// `synthetic-np-payment-methods-full.json` (synthetic, from `schemas.ts`)
+  static let syntheticNpPaymentMethodsFull = #"""
+  [{"countryCode":"US","providerMethod":"credit_debit_card","method":"CREDIT_DEBIT_CARD","category":"CRYPTO_ONRAMP","name":"Credit & Debit Card","type":"CARD","logo":{"dark":"https://cdn.meld.io/images-paymentmethod/CREDIT_DEBIT_CARD/logo_dark.png","light":"https://cdn.meld.io/images-paymentmethod/CREDIT_DEBIT_CARD/logo_light.png"},"headlessSupported":true,"checkoutSupported":true,"cardRenderMode":"IFRAME"}]
+  """#
+
+  /// `synthetic-np-routes-full.json` (synthetic, from `schemas.ts`)
+  static let syntheticNpRoutesFull = #"""
+  [{"partner":"TRANSAK","source":"USD","destination":"ETH","paymentMethods":[{"paymentType":"CARD","name":"CREDIT_DEBIT_CARD","partnerMethodName":"credit_debit_card","category":"CRYPTO_ONRAMP","limits":{"currencyCode":"USD","min":5,"max":3000},"logo":{"dark":"https://cdn.meld.io/images-paymentmethod/CREDIT_DEBIT_CARD/logo_dark.png","light":"https://cdn.meld.io/images-paymentmethod/CREDIT_DEBIT_CARD/logo_light.png"},"headlessSupported":false,"checkoutSupported":true,"cardRenderMode":"REDIRECT"}],"kycLimits":[{"provider":"TRANSAK","category":"CRYPTO_ONRAMP","countryCode":"US","limitType":"DAILY","currencyCode":"USD","level1":1000,"level2":5000,"level3":25000}]}]
+  """#
+
   /// `synthetic-quote-empty.json` (synthetic, from `schemas.ts`)
   static let syntheticQuoteEmpty = #"""
   {"quotes":[],"message":"No quotes available for this request","error":"NO_QUOTES","timestamp":"2026-11-13T09:00:00Z"}
   """#
 
+  /// `synthetic-quote-full.json` (synthetic, from `schemas.ts`)
+  static let syntheticQuoteFull = #"""
+  {"quotes":[{"transactionType":"CRYPTO_PURCHASE","sourceAmount":100,"sourceAmountWithoutFees":94.01,"fiatAmountWithoutFees":94.01,"destinationAmountWithoutFees":0.0433528,"sourceCurrencyCode":"USD","countryCode":"US","totalFee":5.99,"networkFee":0.5,"partnerFee":1,"transactionFee":4.99,"destinationAmount":0.0461126,"destinationCurrencyCode":"ETH","exchangeRate":2168.6,"paymentMethodType":"CREDIT_DEBIT_CARD","serviceProvider":"TRANSAK","rampIntelligence":{"rampScore":90.54,"lowKyc":true,"previouslyUsed":"2026-11-01T08:30:00Z"},"isNativeAvailable":true,"customerScore":20,"institutionName":"Transak"}],"message":"1 quote","error":null,"timestamp":"2026-11-13T09:00:00Z"}
+  """#
+
   /// `synthetic-transaction.json` (synthetic, from `schemas.ts`)
   static let syntheticTransaction = #"""
-  {"transaction":{"id":"WQ5Xa8b9Yx2nZdF3kJ7mPq","sessionId":"WePmn7gkbbsaRY3vHnNkdF","externalSessionId":null,"externalCustomerId":"REDACTED_externalCustomerId","customerId":"meld-customer-1","customer":{"externalId":"REDACTED_externalId"},"status":"SETTLED","transactionType":"CRYPTO_PURCHASE","serviceProvider":"TRANSAK","sourceAmount":100,"sourceCurrencyCode":"USD","destinationAmount":0.0461126,"destinationCurrencyCode":"ETH","createdAt":"2026-11-13T09:00:00.000Z","updatedAt":"2026-11-13T09:05:00.000Z","paymentMethodType":"CREDIT_DEBIT_CARD","cryptoDetails":{"blockchainTransactionId":"0x5c504ed432cb51138bcf09aa5e8a410dd4a1e204ef84bfed1be16dfba1b22060","chainId":"1","destinationWalletAddress":"0x000000000000000000000000000000000000dEaD","sourceWalletAddress":null,"sessionWalletAddress":null,"institution":null,"networkFee":0.5,"partnerFee":1,"swapFee":null,"totalFee":5.99,"transactionFee":4.99},"serviceProviderDetails":{"orderId":"transak-order-1","fees":{"network":0.5,"partner":null}},"fiatAmountInUsd":100}}
+  {"transaction":{"id":"WQ5Xa8b9Yx2nZdF3kJ7mPq","sessionId":"WePmn7gkbbsaRY3vHnNkdF","externalSessionId":"my-session-1","externalCustomerId":"REDACTED_externalCustomerId","customerId":"meld-customer-1","customer":{"externalId":"REDACTED_externalId"},"status":"SETTLED","transactionType":"CRYPTO_PURCHASE","serviceProvider":"TRANSAK","sourceAmount":100,"sourceCurrencyCode":"USD","destinationAmount":0.0461126,"destinationCurrencyCode":"ETH","createdAt":"2026-11-13T09:00:00.000Z","updatedAt":"2026-11-13T09:05:00.000Z","paymentMethodType":"CREDIT_DEBIT_CARD","cryptoDetails":{"blockchainTransactionId":"0x5c504ed432cb51138bcf09aa5e8a410dd4a1e204ef84bfed1be16dfba1b22060","chainId":"1","destinationWalletAddress":"0x000000000000000000000000000000000000dEaD","sourceWalletAddress":"0x1111111111111111111111111111111111111111","sessionWalletAddress":"0x000000000000000000000000000000000000dEaD","institution":"TRANSAK","networkFee":0.5,"partnerFee":1,"swapFee":0.25,"totalFee":5.99,"transactionFee":4.99},"serviceProviderDetails":{"orderId":"transak-order-1","fees":{"network":0.5,"partner":null}},"fiatAmountInUsd":100}}
   """#
 
   /// `synthetic-transactions-search.json` (synthetic, from `schemas.ts`)
@@ -140,7 +160,7 @@ enum MeldFixtures {
 
   /// `synthetic-widget-session.json` (synthetic, from `schemas.ts`)
   static let syntheticWidgetSession = #"""
-  {"id":"WePmn7gkbbsaRY3vHnNkdF","token":"REDACTED_token","customerId":"meld-customer-1","externalCustomerId":"REDACTED_externalCustomerId","externalSessionId":null,"widgetUrl":"https://meldcrypto.com/?token=REDACTED","serviceProviderWidgetUrl":null}
+  {"id":"WePmn7gkbbsaRY3vHnNkdF","token":"REDACTED_token","customerId":"meld-customer-1","externalCustomerId":"REDACTED_externalCustomerId","externalSessionId":"my-session-1","widgetUrl":"https://meldcrypto.com/?token=REDACTED"}
   """#
 
   /// `transactions-search-empty.json` (captured)

@@ -120,13 +120,15 @@ public class PortalMeldApi: PortalMeldApiProtocol {
    * Customers
    *******************************************/
 
-  /// `POST /customers`: create the client's Meld customer. A client has at most one; a second call
-  /// fails with `409`, and `MeldApiError.from(_:)?.meldCustomerId` is the existing customer's id.
+  /// `POST /customers`: create the client's Meld customer. A client has at most one: a second call
+  /// fails with `409`, and `MeldApiError.from(_:)?.meldCustomerId` is the existing customer's id
+  /// when Portal has it on record. When that id is `nil`, call `searchCustomer()`.
   public func createCustomer(request: MeldCreateCustomerRequest) async throws -> MeldCreateCustomerResponse {
     try await post("createCustomer", path: "/customers", payload: request)
   }
 
-  /// `GET /customers`: the client's Meld customer, if it has one.
+  /// `GET /customers`: the client's Meld customer, if it has one. Finding it also records it in
+  /// Portal, so its id can then be passed as a `customerId`.
   public func searchCustomer() async throws -> MeldSearchCustomerResponse {
     try await get("searchCustomer", path: "/customers")
   }
@@ -149,8 +151,9 @@ public class PortalMeldApi: PortalMeldApiProtocol {
     try await post("createRetailWidget", path: "/retail/widget", payload: request)
   }
 
-  /// `GET /retail/transactions`: the client's transactions, newest first. There is no paging: at most
-  /// `limit` (up to 100) come back; narrow the search with `from` / `to`.
+  /// `GET /retail/transactions`: the client's transactions, ordered by creation date. There is no
+  /// paging: up to `limit` come back (Meld's default is 10, the maximum 100); narrow the search with
+  /// `from` / `to`.
   public func searchRetailTransactions(params: MeldSearchRetailTransactionsParams) async throws -> MeldSearchRetailTransactionsResponse {
     try await get("searchRetailTransactions", path: "/retail/transactions", query: [
       ("statuses", PortalIntegrationRequestBuilder.joined(params.statuses?.map(\.rawValue))),
@@ -167,7 +170,9 @@ public class PortalMeldApi: PortalMeldApiProtocol {
     ])
   }
 
-  /// `GET /retail/transactions/:transactionId`: one transaction.
+  /// `GET /retail/transactions/:transactionId`: one transaction. One that does not exist or is not
+  /// the client's fails with `404` (`Meld transaction does not exist.`); a malformed id gets Meld's
+  /// `400`.
   public func getRetailTransaction(transactionId: String) async throws -> MeldGetRetailTransactionResponse {
     try await get("getRetailTransaction", path: "/retail/transactions/\(pathSegment("transactionId", transactionId))")
   }

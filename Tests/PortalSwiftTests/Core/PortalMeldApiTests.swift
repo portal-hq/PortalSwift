@@ -166,8 +166,70 @@ final class PortalMeldApiTests: XCTestCase {
     }
   }
 
-  /// Portal sets the customer's external ids from the client itself; the SDK never sends them.
-  func test_noRequest_sendsTheExternalCustomerIds() async throws {
+  /// With every field set, each body carries exactly the fields connect-api's Meld controller reads
+  /// (`src/controllers/api/v3/clients/integrations/meld/index.ts`). A misspelled key, or one the
+  /// backend sets itself such as `externalCustomerId`, fails here.
+  func test_fullyPopulatedBodies_sendExactlyTheFieldsTheBackendReads() async throws {
+    respond(data: MeldFixtures.customerCreate)
+    _ = try await api.createCustomer(request: MeldCreateCustomerRequest(
+      name: MeldCustomerName(firstName: "Ada", lastName: "Lovelace"),
+      email: "ada@example.com",
+      phone: "+15555550100",
+      dateOfBirth: "1990-01-31",
+      type: .individual
+    ))
+    let customer = try body(of: XCTUnwrap(spy.executeRequestParam))
+    XCTAssertEqual(Set(customer.allKeys as? [String] ?? []), ["name", "email", "phone", "dateOfBirth", "type"])
+    XCTAssertEqual(Set((customer["name"] as? NSDictionary)?.allKeys as? [String] ?? []), ["firstName", "lastName"])
+
+    respond(data: MeldFixtures.quote)
+    _ = try await api.getRetailQuote(request: MeldGetRetailQuoteRequest(
+      countryCode: "US",
+      sourceCurrencyCode: "USD",
+      destinationCurrencyCode: "ETH",
+      sourceAmount: 100,
+      walletAddress: "0xabc",
+      customerId: "meld-customer-1",
+      paymentMethodType: "CREDIT_DEBIT_CARD",
+      serviceProviders: ["TRANSAK"],
+      subdivision: "US-TX"
+    ))
+    let quote = try body(of: XCTUnwrap(spy.executeRequestParam))
+    XCTAssertEqual(Set(quote.allKeys as? [String] ?? []), [
+      "countryCode", "sourceCurrencyCode", "destinationCurrencyCode", "sourceAmount", "walletAddress",
+      "customerId", "paymentMethodType", "serviceProviders", "subdivision"
+    ])
+
+    respond(data: MeldFixtures.syntheticWidgetSession)
+    _ = try await api.createRetailWidget(request: MeldCreateRetailWidgetRequest(
+      sessionType: .buy,
+      sessionData: MeldSessionData(
+        countryCode: "US",
+        serviceProvider: "TRANSAK",
+        sourceCurrencyCode: "USD",
+        sourceAmount: "100",
+        destinationCurrencyCode: "ETH",
+        walletAddress: "0xabc",
+        walletTag: "memo",
+        paymentMethodType: "CREDIT_DEBIT_CARD",
+        redirectUrl: "https://example.com/done",
+        lockFields: [.sourceAmount],
+        clientIpAddress: "203.0.113.42"
+      ),
+      externalSessionId: "my-session",
+      customerId: "meld-customer-1",
+      bypassKyc: false
+    ))
+    let widget = try body(of: XCTUnwrap(spy.executeRequestParam))
+    XCTAssertEqual(Set(widget.allKeys as? [String] ?? []), ["sessionType", "sessionData", "externalSessionId", "customerId", "bypassKyc"])
+    XCTAssertEqual(Set((widget["sessionData"] as? NSDictionary)?.allKeys as? [String] ?? []), [
+      "countryCode", "serviceProvider", "sourceCurrencyCode", "sourceAmount", "destinationCurrencyCode", "walletAddress",
+      "walletTag", "paymentMethodType", "redirectUrl", "lockFields", "clientIpAddress"
+    ])
+  }
+
+  /// Portal sets the customer's external ids from the client itself; no query sends them either.
+  func test_noQuery_sendsTheExternalCustomerIds() async throws {
     for route in routes {
       spy = PortalRequestsSpy()
       api = makeApi()
@@ -177,11 +239,6 @@ final class PortalMeldApiTests: XCTestCase {
       let request = try XCTUnwrap(spy.executeRequestParam, route.name)
       XCTAssertFalse(request.url.absoluteString.contains("externalCustomerId"), route.name)
       XCTAssertFalse(request.url.absoluteString.contains("externalId"), route.name)
-      if request.payload != nil {
-        let keys = try allKeys(body(of: request))
-        XCTAssertFalse(keys.contains("externalCustomerId"), route.name)
-        XCTAssertFalse(keys.contains("externalId"), route.name)
-      }
     }
   }
 
@@ -477,9 +534,58 @@ final class PortalMeldApiTests: XCTestCase {
     }
   }
 
+  func test_a401_isRethrownUnchanged_andHasNoMessage() async {
+    spy.simulatePortalUnauthorizedOnce = true
+
+    do {
+      _ = try await api.searchCustomer()
+      XCTFail("Expected the transport's error")
+    } catch {
+      XCTAssertEqual(error as? PortalRequestsError, .unauthorized)
+      XCTAssertEqual(MeldApiError.from(error), MeldApiError(status: 401))
+    }
+  }
+
+  // MARK: - Hosts
+
+  func test_aLocalhostHost_isCalledOverHttp() async throws {
+    let api = PortalMeldApi(credentials: StaticCredentials(MockConstants.mockApiKey), apiHost: "localhost:3000", requests: spy)
+    respond(data: MeldFixtures.customerSearchEmpty)
+
+    _ = try await api.searchCustomer()
+
+    XCTAssertEqual(lastUrl, "http://localhost:3000/api/v3/clients/me/integrations/meld/customers")
+  }
+
+  /// `PortalApi.meld` reaches the Meld routes on the `PortalApi`'s host, with its credential and
+  /// transport.
+  func test_portalApiMeld_usesThePortalApisHostCredentialAndTransport() async throws {
+    let portalApi = PortalApi(credentials: StaticCredentials("client-key"), apiHost: MockConstants.mockHost, requests: spy)
+    respond(data: MeldFixtures.customerSearchEmpty)
+
+    _ = try await portalApi.meld.searchCustomer()
+
+    XCTAssertTrue(portalApi.meld is PortalMeldApi)
+    XCTAssertTrue(portalApi.meld === portalApi.meld)
+    XCTAssertEqual(lastUrl, "\(base)/customers")
+    XCTAssertEqual(spy.bearerTokensSent.last, "client-key")
+  }
+
   // MARK: - Credentials
 
   func test_construction_installsTheUnauthorizedHook() {
     XCTAssertEqual(spy.onUnauthorizedSetCount, 1)
+  }
+
+  func test_aBlankCredential_failsBeforeTheRequestIsSent() async {
+    api = PortalMeldApi(credentials: StaticCredentials(""), apiHost: MockConstants.mockHost, requests: spy)
+
+    do {
+      _ = try await api.searchCustomer()
+      XCTFail("Expected error not thrown.")
+    } catch {
+      XCTAssertTrue(error is PortalCredentialError, "\(error)")
+      XCTAssertEqual(spy.executeCallsCount, 0)
+    }
   }
 }

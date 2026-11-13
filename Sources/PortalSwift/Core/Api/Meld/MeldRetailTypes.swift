@@ -119,11 +119,13 @@ public struct MeldWidgetSession: Codable, Equatable {
   /// The session id; read the purchase with `getRetailTransactionBySession(sessionId:)`.
   public let id: String
   public let token: String
+  /// The client's Meld customer. Meld creates one when the request had no `customerId`; Portal
+  /// records it on the next `searchCustomer()`, and until then passing it as a `customerId` fails
+  /// with `404`.
   public let customerId: String
   public let externalCustomerId: String
   public let externalSessionId: String?
   public let widgetUrl: String
-  public let serviceProviderWidgetUrl: String?
 
   public init(
     id: String,
@@ -131,8 +133,7 @@ public struct MeldWidgetSession: Codable, Equatable {
     customerId: String,
     externalCustomerId: String,
     externalSessionId: String? = nil,
-    widgetUrl: String,
-    serviceProviderWidgetUrl: String? = nil
+    widgetUrl: String
   ) {
     self.id = id
     self.token = token
@@ -140,7 +141,6 @@ public struct MeldWidgetSession: Codable, Equatable {
     self.externalCustomerId = externalCustomerId
     self.externalSessionId = externalSessionId
     self.widgetUrl = widgetUrl
-    self.serviceProviderWidgetUrl = serviceProviderWidgetUrl
   }
 }
 
@@ -258,8 +258,8 @@ public struct MeldTransactionCryptoDetails: Codable, Equatable {
   }
 }
 
-/// The result of `searchRetailTransactions`. There is no paging: at most `limit` (up to 100)
-/// transactions come back, and `remaining` counts the rest.
+/// The result of `searchRetailTransactions`. There is no paging: up to `limit` transactions come
+/// back (Meld's default is 10, the maximum 100), and `remaining` counts the rest.
 public struct MeldTransactionSearchResult: Codable, Equatable {
   public let count: Int
   public let remaining: Int

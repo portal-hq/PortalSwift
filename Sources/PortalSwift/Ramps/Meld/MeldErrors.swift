@@ -24,10 +24,13 @@ public enum MeldError: LocalizedError, Equatable {
 /// response body.
 ///
 /// The API methods throw the transport's error unchanged; read this from it with `from(_:)`.
-/// - Meld's own rejections keep Meld's status (400, 401, 403, 404, 409 or 422) and a message starting
-///   `Meld API error:`; any other Meld failure is a `502`.
+/// - Meld's own rejections keep Meld's status (400, 403, 404, 409 or 422) and a message starting
+///   `Meld API error:`; any other Meld failure, a rate limit included, is a `502`.
+/// - A `401` has no message: the transport reports it as `PortalRequestsError.unauthorized`.
+/// - The transaction reads answer a transaction that does not exist, or is not the client's, with a
+///   `404` reading `Meld transaction does not exist.`, without the prefix.
 /// - `createCustomer` fails with `409` when the client already has a Meld customer; `meldCustomerId`
-///   is that customer's id.
+///   is that customer's id when Portal has it on record. When it is `nil`, call `searchCustomer()`.
 /// - A `400` with `Meld integration is not enabled…` means Meld is not enabled for the environment in
 ///   the Portal Dashboard.
 public struct MeldApiError: Error, Equatable {
@@ -37,7 +40,8 @@ public struct MeldApiError: Error, Equatable {
   public let id: String?
   /// The response's `error` message, or its raw body when it is not a Portal error object.
   public let message: String?
-  /// The existing customer's id, on the `409` from `createCustomer`.
+  /// The existing customer's id, on the `409` from `createCustomer`, when Portal has the customer on
+  /// record.
   public let meldCustomerId: String?
 
   public init(status: Int?, id: String? = nil, message: String? = nil, meldCustomerId: String? = nil) {

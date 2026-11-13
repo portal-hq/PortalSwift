@@ -33,12 +33,14 @@ public class Meld: MeldProtocol {
   // MARK: - Customers
 
   /// Creates the client's Meld customer. A second call fails with `409`;
-  /// `MeldApiError.from(_:)?.meldCustomerId` is the existing customer's id.
+  /// `MeldApiError.from(_:)?.meldCustomerId` is the existing customer's id when Portal has it on
+  /// record. When that id is `nil`, call `searchCustomer()`.
   public func createCustomer(request: MeldCreateCustomerRequest) async throws -> MeldCreateCustomerResponse {
     try await api.createCustomer(request: request)
   }
 
-  /// The client's Meld customer, if it has one.
+  /// The client's Meld customer, if it has one. Finding it also records it in Portal, so its id can
+  /// then be passed as a `customerId`.
   public func searchCustomer() async throws -> MeldSearchCustomerResponse {
     try await api.searchCustomer()
   }
@@ -55,7 +57,8 @@ public class Meld: MeldProtocol {
     try await api.createRetailWidget(request: request)
   }
 
-  /// The client's transactions, at most `limit` (up to 100); there is no paging.
+  /// The client's transactions, ordered by creation date: up to `limit` (Meld's default is 10, the
+  /// maximum 100). There is no paging.
   public func searchRetailTransactions(params: MeldSearchRetailTransactionsParams) async throws -> MeldSearchRetailTransactionsResponse {
     try await api.searchRetailTransactions(params: params)
   }
