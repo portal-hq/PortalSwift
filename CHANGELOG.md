@@ -47,10 +47,18 @@ Possible Types of changes include:
     - Statuses, venues and token symbols are `AggOpenValue` types: a value Agg adds later still decodes.
     - A failed Agg request throws `AggRequestError`, which wraps the transport's error with the request's trace id, rather than the transport's error itself as the other Portal APIs do. `AggApiError.from(_:)` reads the Portal error `id`, Agg's `details` and the trace id from it, for example `AGG_LINK_REQUIRED`.
     - Agg executes orders from the user's Agg balance; self-custody fills are not available yet.
+- Meld: buy and sell crypto with fiat through Meld's network of on- and off-ramp providers, such as Transak, with the new `portal.ramps.meld` namespace. The same methods are also on `portal.api.meld`.
+    - Customers: `createCustomer(request:)` creates the client's Meld customer and `searchCustomer()` reads it.
+    - Retail flow: `getRetailQuote(request:)` compares the providers' prices, `createRetailWidget(request:)` opens a provider's checkout as a `widgetUrl` to show in `SFSafariViewController`, and `searchRetailTransactions(params:)`, `getRetailTransaction(transactionId:)` and `getRetailTransactionBySession(sessionId:)` follow the resulting purchases and sales.
+    - Network Partners: `getNetworkPartners(params:)`, `getNetworkPartnerCountries(params:)`, `getNetworkPartnerCurrencies(params:)`, `getNetworkPartnerPaymentMethods(params:)`, `getNetworkPartnerFiatLimits(params:)`, `getNetworkPartnerKycLimits(params:)`, `getNetworkPartnerRoutes(params:)` and `getNetworkPartnerCountryDefaults(countryCode:category:)` describe what each provider supports, where and for how much.
+    - Statuses, categories, payment types and the other Meld enumerations are `MeldOpenValue` types: a value Meld adds later still decodes.
+    - `MeldApiError.from(_:)` reads the status and message of a failed request, and the existing customer's `meldCustomerId` when `createCustomer` finds one.
+    - `Ramps(noah:meld:)` builds the namespace around your own `NoahProtocol` and `MeldProtocol`, for example for a `PortalProtocol` test double.
+    - Meld must be enabled for the environment in the Portal Dashboard.
 
 ### Changed
 
-- `PortalProtocol` gains `perps`, `borrow` and `predictionMarkets`, and `PortalApiProtocol` gains `yieldxyzPerps`, `yieldxyzBorrow` and `agg`. If you conform to either protocol yourself, for example in a test double, add the new members; `PredictionMarkets(agg:)` builds one around your own `AggProtocol`.
+- `PortalProtocol` gains `perps`, `borrow` and `predictionMarkets`, and `PortalApiProtocol` gains `yieldxyzPerps`, `yieldxyzBorrow`, `agg` and `meld`. If you conform to either protocol yourself, for example in a test double, add the new members; `PredictionMarkets(agg:)` builds one around your own `AggProtocol`.
 
 ## 8.1.0 - 2026-10-08
 
