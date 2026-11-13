@@ -68,7 +68,8 @@ final class PortalMeldApiTests: XCTestCase {
       destinationCurrencyCode: "ETH",
       walletAddress: "0xabc",
       paymentMethodType: "CREDIT_DEBIT_CARD",
-      lockFields: [.sourceAmount]
+      lockFields: [.sourceAmount],
+      clientIpAddress: "203.0.113.42"
     ),
     externalSessionId: "my-session",
     customerId: "meld-customer-1"
@@ -214,7 +215,8 @@ final class PortalMeldApiTests: XCTestCase {
         "destinationCurrencyCode": "ETH",
         "walletAddress": "0xabc",
         "paymentMethodType": "CREDIT_DEBIT_CARD",
-        "lockFields": ["sourceAmount"]
+        "lockFields": ["sourceAmount"],
+        "clientIpAddress": "203.0.113.42"
       ],
       "externalSessionId": "my-session",
       "customerId": "meld-customer-1"

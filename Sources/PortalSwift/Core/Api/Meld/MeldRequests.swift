@@ -120,6 +120,9 @@ public struct MeldSessionData: Codable, Equatable {
   public let redirectUrl: String?
   /// Fields the user cannot change in the widget.
   public let lockFields: [MeldLockField]?
+  /// The user's public IP address. Some providers, such as Transak, refuse to open a session without it.
+  /// Portal forwards the value as given and does not fill it in.
+  public let clientIpAddress: String?
 
   public init(
     countryCode: String,
@@ -131,7 +134,8 @@ public struct MeldSessionData: Codable, Equatable {
     walletTag: String? = nil,
     paymentMethodType: String? = nil,
     redirectUrl: String? = nil,
-    lockFields: [MeldLockField]? = nil
+    lockFields: [MeldLockField]? = nil,
+    clientIpAddress: String? = nil
   ) {
     self.countryCode = countryCode
     self.serviceProvider = serviceProvider
@@ -143,6 +147,7 @@ public struct MeldSessionData: Codable, Equatable {
     self.paymentMethodType = paymentMethodType
     self.redirectUrl = redirectUrl
     self.lockFields = lockFields
+    self.clientIpAddress = clientIpAddress
   }
 }
 

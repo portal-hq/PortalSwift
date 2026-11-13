@@ -257,7 +257,8 @@ final class MeldCodableTests: XCTestCase {
         sourceCurrencyCode: "USD",
         sourceAmount: "100",
         destinationCurrencyCode: "ETH",
-        lockFields: [.sourceAmount]
+        lockFields: [.sourceAmount],
+        clientIpAddress: "203.0.113.42"
       )
     )
 
@@ -267,6 +268,7 @@ final class MeldCodableTests: XCTestCase {
     XCTAssertEqual(encoded["sessionType"] as? String, "BUY")
     XCTAssertEqual(sessionData["sourceAmount"] as? String, "100")
     XCTAssertEqual(sessionData["lockFields"] as? [String], ["sourceAmount"])
+    XCTAssertEqual(sessionData["clientIpAddress"] as? String, "203.0.113.42")
   }
 
   func test_requests_omitNilOptionals() throws {
