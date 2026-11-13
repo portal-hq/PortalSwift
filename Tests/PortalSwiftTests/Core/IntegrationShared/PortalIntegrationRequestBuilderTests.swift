@@ -66,6 +66,21 @@ final class PortalIntegrationRequestBuilderTests: XCTestCase {
     }
   }
 
+  func test_pathSegment_rejectsDotSegments() {
+    for value in [".", ".."] {
+      XCTAssertThrowsError(try builder.pathSegment("sessionId", value), value) { error in
+        XCTAssertEqual(error as? PortalApiError, .unableToEncodeData, value)
+      }
+    }
+  }
+
+  func test_pathSegment_acceptsDotsInsideAValue() throws {
+    XCTAssertEqual(try builder.pathSegment("id", "..."), "...")
+    XCTAssertEqual(try builder.pathSegment("id", "a.b"), "a.b")
+    XCTAssertEqual(try builder.pathSegment("id", "../x"), "..%2Fx")
+    XCTAssertEqual(try builder.pathSegment("id", "%2E%2E"), "%252E%252E")
+  }
+
   // MARK: - makeUrl
 
   func test_makeUrl_joinsTheHostBasePathAndPath() throws {
