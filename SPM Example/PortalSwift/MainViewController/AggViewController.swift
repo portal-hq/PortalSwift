@@ -67,9 +67,9 @@ final class AggViewController: UIViewController {
     resultView.text = "Results show here."
     activityIndicator.hidesWhenStopped = true
 
-    [scrollView, resultView, activityIndicator].forEach {
-      $0.translatesAutoresizingMaskIntoConstraints = false
-      view.addSubview($0)
+    for item in [scrollView, resultView, activityIndicator] {
+      item.translatesAutoresizingMaskIntoConstraints = false
+      view.addSubview(item)
     }
     stackView.translatesAutoresizingMaskIntoConstraints = false
     scrollView.addSubview(stackView)
@@ -104,12 +104,17 @@ final class AggViewController: UIViewController {
     stackView.addArrangedSubview(label)
   }
 
-  private func addButton(_ title: String, live: Bool = false, _ action: @escaping () async throws -> String) {
+  /// `action` is unbound (`AggViewController.connect`, not `connect`): a bound method would hold the
+  /// screen strongly from its own button and it would never be released.
+  private func addButton(_ title: String, live: Bool = false, _ action: @escaping (AggViewController) -> () async throws -> String) {
     var configuration = UIButton.Configuration.filled()
     configuration.title = title
     configuration.baseBackgroundColor = live ? UIColor(red: 0.75, green: 0.1, blue: 0.1, alpha: 1) : .black
     let button = UIButton(configuration: configuration, primaryAction: UIAction { [weak self] _ in
-      self?.run(title, action)
+      guard let self else {
+        return
+      }
+      run(title, action(self))
     })
     buttons.append(button)
     stackView.addArrangedSubview(button)
@@ -123,40 +128,40 @@ final class AggViewController: UIViewController {
 
     addLabel("API methods", font: .preferredFont(forTextStyle: .title3))
     addLabel("Link", font: .preferredFont(forTextStyle: .headline))
-    addButton("Connect", connect)
-    addButton("Get Link", getLink)
-    addButton("Unlink", deleteLink)
+    addButton("Connect", AggViewController.connect)
+    addButton("Get Link", AggViewController.getLink)
+    addButton("Unlink", AggViewController.deleteLink)
     addLabel("Discovery and market data", font: .preferredFont(forTextStyle: .headline))
-    addButton("List Events (picks an open outcome)", listEvents)
-    addButton("Search", search)
-    addButton("Get Outcome Orderbook", getOutcomeOrderbook)
-    addButton("Get Chart Bars", getChartBars)
+    addButton("List Events (picks an open outcome)", AggViewController.listEvents)
+    addButton("Search", AggViewController.search)
+    addButton("Get Outcome Orderbook", AggViewController.getOutcomeOrderbook)
+    addButton("Get Chart Bars", AggViewController.getChartBars)
     addLabel("Account", font: .preferredFont(forTextStyle: .headline))
-    addButton("Get User", getUser)
-    addButton("Get Deposit Addresses", getDepositAddresses)
-    addButton("Get Balances", getBalances)
+    addButton("Get User", AggViewController.getUser)
+    addButton("Get Deposit Addresses", AggViewController.getDepositAddresses)
+    addButton("Get Balances", AggViewController.getBalances)
     addLabel("Paper", font: .preferredFont(forTextStyle: .headline))
-    addButton("Quote $10 Buy", paperQuote)
-    addButton("Fill + Poll", paperFill)
-    addButton("List Positions", listPositions)
-    addButton("List Orders", listOrders)
+    addButton("Quote $10 Buy", AggViewController.paperQuote)
+    addButton("Fill + Poll", AggViewController.paperFill)
+    addButton("List Positions", AggViewController.listPositions)
+    addButton("List Orders", AggViewController.listOrders)
     addLabel("Live", font: .preferredFont(forTextStyle: .headline))
-    addButton("Preview Withdrawal", previewWithdrawal)
+    addButton("Preview Withdrawal", AggViewController.previewWithdrawal)
 
     addLabel("Helpers", font: .preferredFont(forTextStyle: .title3))
     addLabel("Link", font: .preferredFont(forTextStyle: .headline))
-    addButton("Is Connected", isConnected)
+    addButton("Is Connected", AggViewController.isConnected)
     addLabel("Paper", font: .preferredFont(forTextStyle: .headline))
-    addButton("Buy $10", buy)
-    addButton("Sell Bought Shares", sell)
+    addButton("Buy $10", AggViewController.buy)
+    addButton("Sell Bought Shares", AggViewController.sell)
     addLabel("Live (mainnet, real funds)", font: .preferredFont(forTextStyle: .headline))
-    addButton("Deposit 2 USDC on Base", live: true, deposit)
-    addButton("Withdraw 1.5 USDC to Base", live: true, withdraw)
-    addButton("Withdraw All to Base", live: true, withdrawAll)
-    addButton("Redeem All", live: true, redeemAll)
-    addButton("Place + Cancel Limit Order", live: true, limitOrderRoundTrip)
+    addButton("Deposit 2 USDC on Base", live: true, AggViewController.deposit)
+    addButton("Withdraw 1.5 USDC to Base", live: true, AggViewController.withdraw)
+    addButton("Withdraw All to Base", live: true, AggViewController.withdrawAll)
+    addButton("Redeem All", live: true, AggViewController.redeemAll)
+    addButton("Place + Cancel Limit Order", live: true, AggViewController.limitOrderRoundTrip)
     addLabel("Rests a $0.01 buy on a Limitless market (Base, like the deposit). If its cancel fails, use Cancel Open Limit Orders.", font: .preferredFont(forTextStyle: .footnote))
-    addButton("Cancel Open Limit Orders", live: true, cancelOpenLimitOrders)
+    addButton("Cancel Open Limit Orders", live: true, AggViewController.cancelOpenLimitOrders)
   }
 
   // MARK: - Running
