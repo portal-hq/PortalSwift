@@ -38,10 +38,15 @@ struct PortalIntegrationRequestBuilder {
   }
 
   /// Encodes an id as a single path segment. An empty id is rejected: `/markets/` would reach the
-  /// list route instead.
+  /// list route instead. `.` and `..` are rejected with `PortalApiError.unableToEncodeData`: they
+  /// are not percent-encoded, and a URL stack that resolves dot segments (OkHttp, a proxy) would
+  /// send the request to a different route.
   func pathSegment(_ name: String, _ value: String) throws -> String {
     guard !value.isEmpty else {
       throw emptyIdentifier(name)
+    }
+    guard value != ".", value != ".." else {
+      throw PortalApiError.unableToEncodeData
     }
     guard let encoded = Self.encodeURIComponent(value) else {
       throw PortalApiError.unableToEncodeData
