@@ -133,9 +133,10 @@ final class MeldCodableTests: XCTestCase {
   /// The five provider-specific fields keep everything Meld sends, nested `null`s included.
   func test_untypedFields_roundTripWithoutLosingAField() throws {
     try assertLosslessRoundTrip(MeldCustomer.self, MeldFixtures.syntheticCustomerFull)
-    // `fiatAmountInUsd` is a transaction field the schema passes through but does not list.
-    try assertLosslessRoundTrip(MeldTransactionResult.self, MeldFixtures.syntheticTransaction, ignoring: ["fiatAmountInUsd"])
-    try assertLosslessRoundTrip(MeldTransactionSearchResult.self, MeldFixtures.syntheticTransactionsSearch, ignoring: ["fiatAmountInUsd"])
+    // `unmodelledFieldForTest` is a made-up key standing in for a field Meld adds later: it must not
+    // break decoding, and the model drops it.
+    try assertLosslessRoundTrip(MeldTransactionResult.self, MeldFixtures.syntheticTransaction, ignoring: ["unmodelledFieldForTest"])
+    try assertLosslessRoundTrip(MeldTransactionSearchResult.self, MeldFixtures.syntheticTransactionsSearch, ignoring: ["unmodelledFieldForTest"])
   }
 
   // MARK: - Fields
