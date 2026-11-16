@@ -54,6 +54,7 @@ Possible Types of changes include:
     - Statuses, categories, payment types and the other Meld enumerations are `MeldOpenValue` types: a value Meld adds later still decodes.
     - `MeldApiError.from(_:)` reads the status and message of a failed request, and the existing customer's `meldCustomerId` when `createCustomer` finds one.
     - `Ramps(noah:meld:)` builds the namespace around your own `NoahProtocol` and `MeldProtocol`, for example for a `PortalProtocol` test double.
+    - Some providers, such as Transak, need the user's public IP to open a widget session: pass it as `MeldSessionData.clientIpAddress`.
     - Meld must be enabled for the environment in the Portal Dashboard.
 
 ### Changed

@@ -212,9 +212,19 @@ final class MeldViewController: UIViewController {
       apiError.status.map { "HTTP \($0)" } ?? "no HTTP status",
       apiError.id,
       apiError.message,
-      apiError.meldCustomerId.map { "existing customer: \($0)" }
+      apiError.meldCustomerId.map { "existing customer: \($0)" },
+      Self.clientIpHint(apiError)
     ]
     return parts.compactMap { $0 }.joined(separator: "\n")
+  }
+
+  /// What to do about the provider's `clientIpAddress is required` 400. This example does not send
+  /// the user's IP, and Portal does not fill it in yet.
+  private static func clientIpHint(_ apiError: MeldApiError) -> String? {
+    guard apiError.status == 400, apiError.message?.contains("clientIpAddress") == true else {
+      return nil
+    }
+    return "This provider needs the user's public IP. Pass it as `MeldSessionData.clientIpAddress`; this example does not send one."
   }
 
   private static func describe(_ error: DecodingError) -> String {
@@ -292,6 +302,8 @@ final class MeldViewController: UIViewController {
     }
     quotedProvider = quote.serviceProvider
 
+    // No `clientIpAddress`: providers such as Transak refuse the session without the user's public IP,
+    // which Portal does not fill in yet. Your app passes it in `MeldSessionData.clientIpAddress`.
     let created = try await meld.createRetailWidget(request: MeldCreateRetailWidgetRequest(
       sessionType: .buy,
       sessionData: MeldSessionData(
@@ -352,6 +364,8 @@ final class MeldViewController: UIViewController {
       throw ExampleError("Run Get Quote first to pick a provider.")
     }
     let address = try await walletAddress()
+    // No `clientIpAddress`: providers such as Transak refuse the session without the user's public IP,
+    // which Portal does not fill in yet. Your app passes it in `MeldSessionData.clientIpAddress`.
     let created = try await meld.createRetailWidget(request: MeldCreateRetailWidgetRequest(
       sessionType: .buy,
       sessionData: MeldSessionData(
