@@ -82,8 +82,10 @@ public class PasskeyPrfStorage: Storage, PortalDerivedSecretStorage {
   let webAuthnClient: PasskeyPrfWebAuthnClient
   private let logger = PortalLogger.shared
   private let isPlatformSupported: () -> Bool
+  /// Waits the given number of milliseconds between store attempts.
+  private let sleep: (_ milliseconds: UInt64) async throws -> Void
 
-  static let storeAttempts = 3
+  static let storeAttempts = PasskeyPrfConstants.storeRetryDelaysMs.count + 1
 
   /// - Parameters:
   ///   - relyingParty: The relying party ID. Defaults to `portalhq.io`. It must match the one the
@@ -109,14 +111,15 @@ public class PasskeyPrfStorage: Storage, PortalDerivedSecretStorage {
     )
   }
 
-  /// Test seam: injects the WebAuthn client and the platform check.
+  /// Test seam: injects the WebAuthn client, the platform check and the store retry wait.
   init(
     relyingParty: String? = nil,
     relyingPartyName: String? = nil,
     user: PasskeyPrfUser? = nil,
     encryption: PortalEncryptionProtocol? = nil,
     webAuthnClient: PasskeyPrfWebAuthnClient,
-    isPlatformSupported: @escaping () -> Bool = { PasskeyPrfStorage.platformSupportsPrf() }
+    isPlatformSupported: @escaping () -> Bool = { PasskeyPrfStorage.platformSupportsPrf() },
+    sleep: @escaping (_ milliseconds: UInt64) async throws -> Void = { try await Task.sleep(nanoseconds: $0 * 1_000_000) }
   ) {
     self.relyingParty = Self.normalizeRelyingParty(relyingParty)
     let name = relyingPartyName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -125,6 +128,7 @@ public class PasskeyPrfStorage: Storage, PortalDerivedSecretStorage {
     self.encryption = encryption ?? PortalEncryption()
     self.webAuthnClient = webAuthnClient
     self.isPlatformSupported = isPlatformSupported
+    self.sleep = sleep
   }
 
   /*******************************************
@@ -288,11 +292,15 @@ public class PasskeyPrfStorage: Storage, PortalDerivedSecretStorage {
    *******************************************/
 
   /// The record is write-once and the PUT is idempotent for the same credential, so a transient
-  /// failure is retried rather than left to orphan the passkey that was just created. If every
-  /// attempt fails, one read tells whether an earlier attempt landed after all.
+  /// failure is retried, after `PasskeyPrfConstants.storeRetryDelaysMs`, rather than left to
+  /// orphan the passkey that was just created. If every attempt fails, one read tells whether an
+  /// earlier attempt landed after all.
   private func storeCredential(_ api: PortalApiProtocol, _ credential: PasskeyPrfCredential) async throws -> PasskeyPrfCredential {
     var lastError: Error?
-    for _ in 0 ..< Self.storeAttempts {
+    for attempt in 0 ..< Self.storeAttempts {
+      if attempt > 0 {
+        try await self.sleep(PasskeyPrfConstants.storeRetryDelaysMs[attempt - 1])
+      }
       do {
         return try await api.storePasskeyPrfCredential(credential, traceId: nil)
       } catch {
