@@ -202,8 +202,9 @@ public class PasskeyPrfStorage: Storage, PortalDerivedSecretStorage {
     try await self.encryption.encrypt(value, withPassword: secret)
   }
 
-  /// Decrypts with the password cipher. The passkey already answered, so a cipher failure means
-  /// it was not the passkey this backup was made with: reported as `PRF_DECRYPT_FAILED`.
+  /// Decrypts with the password cipher. The passkey already answered, and an answer from any
+  /// passkey but the enrolled one is rejected, so a cipher failure usually means a ciphertext
+  /// that was not made with this method (or is corrupt): reported as `PRF_DECRYPT_FAILED`.
   public func decrypt(_ value: String, withKey: String) async throws -> String {
     do {
       return try await self.encryption.decrypt(value, withPassword: withKey)
@@ -363,9 +364,12 @@ public class PasskeyPrfStorage: Storage, PortalDerivedSecretStorage {
       )
     }
 
+    // `allowedCredentials` normally rules this out, but a client can hold more than one passkey
+    // for the relying party (a lost enrollment race, a store that never landed). The wrong
+    // passkey's output would encrypt a backup no one can recover, so it is never used.
     guard asserted.credentialId == allowCredentialId else {
       Self.zero(&asserted.prfOutput)
-      throw PortalPasskeyPrfError(.ceremonyFailed, context: "The platform answered with a different passkey.")
+      throw PortalPasskeyPrfError(.passkeyUnavailable, context: "A passkey other than this client's enrolled passkey answered.")
     }
     guard let output = asserted.prfOutput else {
       throw PortalPasskeyPrfError(.notSupported, context: "The passkey provider did not return a PRF output.")
@@ -397,8 +401,22 @@ public class PasskeyPrfStorage: Storage, PortalDerivedSecretStorage {
         context: "No presentation anchor is set. Call `portal.setPasskeyAuthenticationAnchor(_:)` or set `PasskeyPrfStorage.anchor`."
       )
     case let .failed(cause):
-      return PortalPasskeyPrfError(.ceremonyFailed, cause: cause, context: cause?.localizedDescription)
+      // The platform's own message stays in `cause`: it is not stable, and can carry
+      // implementation detail.
+      return PortalPasskeyPrfError(.ceremonyFailed, cause: cause, context: "The passkey ceremony failed (\(Self.ceremonyCode(of: cause))).")
     }
+  }
+
+  /// A stable code for a failed ceremony: the error's domain and code, or why there is none.
+  static func ceremonyCode(of cause: Error?) -> String {
+    guard let cause else {
+      return "UNEXPECTED_CREDENTIAL"
+    }
+    if let authorizationError = cause as? ASAuthorizationError {
+      return "ASAuthorizationError \(authorizationError.code.rawValue)"
+    }
+    let error = cause as NSError
+    return "\(error.domain) \(error.code)"
   }
 
   private func assertSupported() throws {
