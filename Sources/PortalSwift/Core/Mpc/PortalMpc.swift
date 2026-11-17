@@ -980,7 +980,7 @@ public class PortalMpc: PortalMpcProtocol {
     }
 
     guard didSetAnchor else {
-      throw MpcError.backupMethodNotRegistered("PortalMpc.setPasskeyAuthenticationAnchor() - Could not find an instance of `PasskeyStorage`. Please use `portal.registerBackupMethod()`")
+      throw MpcError.backupMethodNotRegistered("PortalMpc.setPasskeyAuthenticationAnchor() - Could not find an instance of `PasskeyStorage` or `PasskeyPrfStorage`. Please use `portal.registerBackupMethod()`")
     }
   }
 
@@ -1017,6 +1017,11 @@ public class PortalMpc: PortalMpcProtocol {
         throw MpcError.unsupportedStorageMethod
       }
       return nil
+    }
+    guard method == .PasskeyPrf else {
+      // A derived-secret storage registered for another method would back up a share pair
+      // labeled with that method that only this passkey can decrypt.
+      throw MpcError.unsupportedStorageMethod
     }
 
     let secret = try await derivedStorage.enroll(with: backupConfigs?.passkeyPrfStorage)

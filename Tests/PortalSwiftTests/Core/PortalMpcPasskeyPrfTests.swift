@@ -143,6 +143,22 @@ final class PortalMpcPasskeyPrfTests: XCTestCase {
     }
   }
 
+  func test_backup_withPasskeyPrfStorageRegisteredForAnotherMethod_throwsUnsupportedStorageMethod() async throws {
+    api.getPasskeyPrfCredentialResults = [.success(enrolled)]
+    let mpc = PortalMpc(credentials: MockConstants.mockCredentials, api: api, keychain: keychain, mobile: MockMobileWrapper())
+    mpc.registerBackupMethod(.Password, withStorage: storage)
+
+    do {
+      _ = try await mpc.backup(.Password)
+      XCTFail("Expected an error")
+    } catch {
+      XCTAssertEqual(error as? MpcError, MpcError.unsupportedStorageMethod)
+    }
+    // No passkey prompt and no cipher ran for the mislabeled backup.
+    XCTAssertTrue(client.getRequests.isEmpty)
+    XCTAssertTrue(encryption.encryptWithPasswordParams.isEmpty)
+  }
+
   // MARK: - recover / eject
 
   func test_recover_readsTheSecret_andDecryptsWithThePasswordCipher() async throws {

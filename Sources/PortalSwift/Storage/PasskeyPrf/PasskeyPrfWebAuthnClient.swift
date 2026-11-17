@@ -56,9 +56,8 @@ enum PasskeyPrfCeremonyError: Error {
   case failed(Error?)
 }
 
-/// Runs the WebAuthn ceremonies for `PasskeyPrfStorage`. Mirrors the `WebAuthnClient` that mera
-/// takes in the React Native and web SDKs, so the storage logic can be tested without a passkey
-/// provider.
+/// Runs the WebAuthn ceremonies for `PasskeyPrfStorage`. Mirrors the `WebAuthnClient` used by the
+/// React Native and web SDKs, so the storage logic can be tested without a passkey provider.
 protocol PasskeyPrfWebAuthnClient: AnyObject {
   var anchor: ASPresentationAnchor? { get set }
   func createCredential(_ request: PasskeyPrfCreateRequest) async throws -> PasskeyPrfCreateResult

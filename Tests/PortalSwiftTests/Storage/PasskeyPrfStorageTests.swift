@@ -703,6 +703,12 @@ final class PasskeyPrfStorageTests: XCTestCase {
     await assertPasskeyPrfError(.decryptFailed) { try await self.storage.decrypt("cipher", withKey: "wrong") }
   }
 
+  func test_decrypt_withUnusableCipherText_throwsDecryptFailed() async {
+    encryption.decryptWithPasswordError = MpcError.unexpectedErrorOnDecrypt("bad cipher text")
+
+    await assertPasskeyPrfError(.decryptFailed) { try await self.storage.decrypt("not-a-cipher", withKey: "abcd") }
+  }
+
   func test_write_isANoOp_andDeleteIsUnsupported() async throws {
     let written = try await storage.write("anything")
     XCTAssertTrue(written)

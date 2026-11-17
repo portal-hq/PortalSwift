@@ -221,7 +221,9 @@ public class PasskeyPrfStorage: Storage, PortalDerivedSecretStorage {
   public func decrypt(_ value: String, withKey: String) async throws -> String {
     do {
       return try await self.encryption.decrypt(value, withPassword: withKey)
-    } catch let error as PortalMpcError {
+    } catch {
+      // The cipher reports a wrong secret as a PortalMpcError and unusable cipher text as an
+      // MpcError; both mean this passkey's secret cannot open the backup.
       throw PortalPasskeyPrfError(.decryptFailed, cause: error)
     }
   }

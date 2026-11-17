@@ -2166,7 +2166,7 @@ extension PortalMpcTests {
       _ = try await mpc?.setPasskeyAuthenticationAnchor(UIWindow())
     } catch {
       // then
-      XCTAssertEqual(error as? MpcError, MpcError.backupMethodNotRegistered("PortalMpc.setPasskeyAuthenticationAnchor() - Could not find an instance of `PasskeyStorage`. Please use `portal.registerBackupMethod()`"))
+      XCTAssertEqual(error as? MpcError, MpcError.backupMethodNotRegistered("PortalMpc.setPasskeyAuthenticationAnchor() - Could not find an instance of `PasskeyStorage` or `PasskeyPrfStorage`. Please use `portal.registerBackupMethod()`"))
     }
   }
 
