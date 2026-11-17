@@ -183,6 +183,10 @@ final class PasskeyPrfStorageTests: XCTestCase {
       PortalPasskeyPrfError(.rpIdMismatch, context: "ctx").errorDescription,
       "[Portal] The passkey was enrolled under a different relying party. ctx"
     )
+    XCTAssertEqual(
+      PortalPasskeyPrfError(.decryptFailed).errorDescription,
+      "[Portal] The backup could not be decrypted with the secret from this passkey (wrong passkey or wrong ciphertext)."
+    )
   }
 
   func test_relyingParty_isTrimmedAndLowercased_withDefaults() {
@@ -220,6 +224,16 @@ final class PasskeyPrfStorageTests: XCTestCase {
     XCTAssertEqual(client.getRequests.first?.rpId, "portalhq.io")
     XCTAssertEqual(client.getRequests.first?.prfSalt, PasskeyPrfConstants.salt)
     XCTAssertEqual(client.getRequests.first?.challenge.count, 32)
+  }
+
+  func test_enroll_withExistingRecord_whenAnotherPasskeyAnswers_throwsPasskeyUnavailable() async {
+    // A re-backup must fail rather than encrypt with the wrong passkey.
+    api.getPasskeyPrfCredentialResults = [.success(record(Self.serverCredentialId))]
+    client.getResults = [.success(PasskeyPrfGetResult(credentialId: Data([0xEE]), prfOutput: Self.assertedOutput))]
+
+    await assertPasskeyPrfError(.passkeyUnavailable) { try await self.storage.enroll() }
+    XCTAssertTrue(client.createRequests.isEmpty)
+    XCTAssertTrue(encryption.encryptWithPasswordParams.isEmpty)
   }
 
   func test_enroll_withExistingRecordUnderAnotherRelyingParty_throwsRpIdMismatch_withoutACeremony() async {
@@ -291,6 +305,14 @@ final class PasskeyPrfStorageTests: XCTestCase {
     XCTAssertEqual(client.getRequests.count, 1)
     XCTAssertEqual(client.getRequests.first?.allowCredentialId, Self.createdCredentialId)
     XCTAssertEqual(secret, PasskeyPrfEncoding.hex(Self.assertedOutput))
+  }
+
+  func test_enroll_whenAnotherPasskeyAnswersTheAssertionAfterCreation_throwsPasskeyUnavailable_beforeStoring() async {
+    queueCreation(prfEnabled: true, prfOutput: nil)
+    client.getResults = [.success(PasskeyPrfGetResult(credentialId: Self.serverCredentialId, prfOutput: Self.assertedOutput))]
+
+    await assertPasskeyPrfError(.passkeyUnavailable) { try await self.storage.enroll() }
+    XCTAssertTrue(api.storePasskeyPrfCredentialParams.isEmpty)
   }
 
   func test_enroll_whenCreationReportsNoPrf_throwsNotSupported_beforeStoring() async {
@@ -458,11 +480,22 @@ final class PasskeyPrfStorageTests: XCTestCase {
     await assertPasskeyPrfError(.rpIdMismatch) { try await self.storage.read() }
   }
 
-  func test_read_whenThePlatformAnswersWithAnotherPasskey_throwsCeremonyFailed() async {
+  func test_read_whenThePlatformAnswersWithAnotherPasskey_throwsPasskeyUnavailable() async {
     api.getPasskeyPrfCredentialResults = [.success(record(Self.serverCredentialId))]
     client.getResults = [.success(PasskeyPrfGetResult(credentialId: Data([0xEE]), prfOutput: Self.assertedOutput))]
 
-    await assertPasskeyPrfError(.ceremonyFailed) { try await self.storage.read() }
+    do {
+      _ = try await storage.read()
+      XCTFail("Expected an error")
+    } catch let error as PortalPasskeyPrfError {
+      XCTAssertEqual(error, PortalPasskeyPrfError(.passkeyUnavailable, context: "A passkey other than this client's enrolled passkey answered."))
+      XCTAssertEqual(
+        error.errorDescription,
+        "[Portal] The enrolled passkey is not available on this device. A passkey other than this client's enrolled passkey answered."
+      )
+    } catch {
+      XCTFail("Expected PortalPasskeyPrfError, got \(error)")
+    }
   }
 
   func test_read_whenAssertionHasNoPrfOutput_throwsNotSupported() async {
@@ -514,6 +547,25 @@ final class PasskeyPrfStorageTests: XCTestCase {
     queueCreation()
     client.createResults = [.failure(PasskeyPrfCeremonyError.cancelled(nil))]
     await assertPasskeyPrfError(.userCancelled) { try await self.storage.enroll() }
+  }
+
+  func test_failedCeremony_reportsAStableCode_andKeepsThePlatformMessageInTheCause() {
+    let platformError = NSError(domain: "x", code: 7, userInfo: [NSLocalizedDescriptionKey: "internal detail"])
+    let error = PasskeyPrfStorage.portalError(from: .failed(platformError))
+
+    XCTAssertEqual(error.reason, .ceremonyFailed)
+    XCTAssertEqual(error.context, "The passkey ceremony failed (x 7).")
+    XCTAssertFalse(error.errorDescription?.contains("internal detail") ?? true)
+    XCTAssertEqual((error.cause as? NSError)?.code, 7)
+
+    XCTAssertEqual(
+      PasskeyPrfStorage.portalError(from: .failed(ASAuthorizationError(.failed))).context,
+      "The passkey ceremony failed (ASAuthorizationError 1004)."
+    )
+    XCTAssertEqual(
+      PasskeyPrfStorage.portalError(from: .failed(nil)).context,
+      "The passkey ceremony failed (UNEXPECTED_CREDENTIAL)."
+    )
   }
 
   func test_authorizationErrors_mapToCeremonyErrors() {

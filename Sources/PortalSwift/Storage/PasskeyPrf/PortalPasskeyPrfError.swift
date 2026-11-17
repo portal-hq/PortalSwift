@@ -17,9 +17,11 @@ public struct PortalPasskeyPrfError: LocalizedError, CustomStringConvertible, Eq
   public enum Reason: String, CaseIterable, Equatable {
     /// The passkey ceremony failed before a secret was derived, for a reason other than the two below.
     case ceremonyFailed = "PRF_CEREMONY_FAILED"
-    /// The user dismissed the passkey prompt.
+    /// The user dismissed the passkey prompt, or it timed out. iOS can also report a passkey
+    /// that is no longer available this way, so word the message to cover that too.
     case userCancelled = "PRF_USER_CANCELLED"
-    /// The platform reported that it has no passkey to offer for this request.
+    /// The platform reported that it has no passkey to offer for this request, or a passkey
+    /// other than the enrolled one answered.
     case passkeyUnavailable = "PRF_PASSKEY_UNAVAILABLE"
     /// No passkey has been enrolled for this client, so there is nothing to recover with.
     case credentialNotFound = "PRF_CREDENTIAL_NOT_FOUND"
@@ -41,7 +43,7 @@ public struct PortalPasskeyPrfError: LocalizedError, CustomStringConvertible, Eq
       case .credentialNotFound:
         return "No passkey has been enrolled for this backup method."
       case .decryptFailed:
-        return "The backup could not be decrypted with this passkey."
+        return "The backup could not be decrypted with the secret from this passkey (wrong passkey or wrong ciphertext)."
       case .notSupported:
         return "This device or passkey provider does not support the WebAuthn PRF extension."
       case .rpIdMismatch:
