@@ -21,6 +21,7 @@ public protocol PortalApiProtocol: AnyObject {
   var delegations: PortalDelegationsApiProtocol { get }
   var evmAccountType: PortalEvmAccountTypeApiProtocol { get }
   var noah: PortalNoahApiProtocol { get }
+  var meld: PortalMeldApiProtocol { get }
 
   func eject(traceId: String?) async throws -> String
   func fund(chainId: String, params: FundParams) async throws -> FundResponse
@@ -259,6 +260,13 @@ public class PortalApi: PortalApiProtocol {
 
   /// Access to Noah ramps integration functionality.
   public lazy var noah: PortalNoahApiProtocol = PortalNoahApi(
+    credentials: self.credentials,
+    apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
+    requests: self.requests
+  )
+
+  /// Access to Meld ramps integration functionality.
+  public lazy var meld: PortalMeldApiProtocol = PortalMeldApi(
     credentials: self.credentials,
     apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
     requests: self.requests
