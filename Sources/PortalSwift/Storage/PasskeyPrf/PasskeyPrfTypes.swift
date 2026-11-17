@@ -65,6 +65,9 @@ public enum PasskeyPrfConstants {
   public static let minimumIOSMajorVersion = 18
   /// The length of a PRF output, and of the salt.
   static let outputLength = 32
+  /// Waits before the second and third attempt to store the credential record, so a brief 503
+  /// or a 429 has time to clear. Matches the React Native SDK.
+  static let storeRetryDelaysMs: [UInt64] = [250, 1000]
 
   static var salt: Data {
     // The constant is valid hex; force-unwrapping documents that.

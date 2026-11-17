@@ -90,11 +90,14 @@ final class PasskeyPrfStorageTests: XCTestCase {
   var client: PasskeyPrfWebAuthnClientFake!
   var encryption: PasskeyPrfEncryptionFake!
   var storage: PasskeyPrfStorage!
+  /// The store retry waits the storage asked for, in milliseconds. Tests never wait for real.
+  var sleeps: [UInt64] = []
 
   override func setUpWithError() throws {
     api = PortalApiMock(client: ClientResponse.stub(custodian: .stub(name: "Acme")))
     client = PasskeyPrfWebAuthnClientFake()
     encryption = PasskeyPrfEncryptionFake()
+    sleeps = []
     storage = makeStorage()
   }
 
@@ -117,7 +120,8 @@ final class PasskeyPrfStorageTests: XCTestCase {
       user: user,
       encryption: encryption,
       webAuthnClient: client,
-      isPlatformSupported: { isPlatformSupported }
+      isPlatformSupported: { isPlatformSupported },
+      sleep: { [weak self] milliseconds in self?.sleeps.append(milliseconds) }
     )
     storage.api = api
     return storage
@@ -187,6 +191,11 @@ final class PasskeyPrfStorageTests: XCTestCase {
       PortalPasskeyPrfError(.decryptFailed).errorDescription,
       "[Portal] The backup could not be decrypted with the secret from this passkey (wrong passkey or wrong ciphertext)."
     )
+  }
+
+  func test_storeRetryDelays_matchTheOtherSdks() {
+    XCTAssertEqual(PasskeyPrfConstants.storeRetryDelaysMs, [250, 1000])
+    XCTAssertEqual(PasskeyPrfStorage.storeAttempts, 3)
   }
 
   func test_relyingParty_isTrimmedAndLowercased_withDefaults() {
@@ -379,6 +388,8 @@ final class PasskeyPrfStorageTests: XCTestCase {
 
     XCTAssertEqual(api.storePasskeyPrfCredentialParams.count, 3)
     XCTAssertEqual(secret, PasskeyPrfEncoding.hex(Self.createdOutput))
+    XCTAssertEqual(sleeps, [250, 1000])
+    XCTAssertEqual(client.createRequests.count, 1)
   }
 
   func test_enroll_retriesNetworkFailures() async throws {
@@ -388,6 +399,7 @@ final class PasskeyPrfStorageTests: XCTestCase {
     _ = try await storage.enroll()
 
     XCTAssertEqual(api.storePasskeyPrfCredentialParams.count, 2)
+    XCTAssertEqual(sleeps, [250])
   }
 
   func test_enroll_whenEveryStoreAttemptFails_readsOnceAndUsesARecordThatLanded() async throws {
@@ -417,6 +429,27 @@ final class PasskeyPrfStorageTests: XCTestCase {
     }
     XCTAssertEqual(api.storePasskeyPrfCredentialParams.count, 3)
     XCTAssertEqual(api.getPasskeyPrfCredentialCallsCount, 2)
+    XCTAssertEqual(sleeps, [250, 1000])
+  }
+
+  func test_enroll_whenTheRetryWaitIsCancelled_stopsRetrying() async {
+    queueCreation()
+    storage = PasskeyPrfStorage(
+      encryption: encryption,
+      webAuthnClient: client,
+      isPlatformSupported: { true },
+      sleep: { _ in throw CancellationError() }
+    )
+    storage.api = api
+    api.storePasskeyPrfCredentialResults = [.failure(PortalRequestsError.internalServerError("503 - unavailable", url: "u"))]
+
+    do {
+      _ = try await storage.enroll()
+      XCTFail("Expected the cancellation")
+    } catch {
+      XCTAssertTrue(error is CancellationError, "\(error)")
+    }
+    XCTAssertEqual(api.storePasskeyPrfCredentialParams.count, 1)
   }
 
   func test_enroll_doesNotRetryOtherClientErrors() async {
@@ -431,6 +464,7 @@ final class PasskeyPrfStorageTests: XCTestCase {
       XCTAssertEqual(error as? PortalRequestsError, failure)
     }
     XCTAssertEqual(api.storePasskeyPrfCredentialParams.count, 1)
+    XCTAssertEqual(sleeps, [])
   }
 
   func test_enroll_doesNotRetryAnUnauthorizedOrInvalidatedSession() async {
