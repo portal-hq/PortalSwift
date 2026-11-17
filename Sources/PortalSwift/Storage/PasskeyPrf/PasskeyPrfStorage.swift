@@ -17,12 +17,18 @@ import Security
 /// when recovering. Nothing is written by `write(_:)`.
 public protocol PortalDerivedSecretStorage: PortalStorage {
   /// Returns the secret to back up with, creating whatever it is derived from if needed.
-  func enroll() async throws -> String
-  /// Encrypts `value` with a secret `enroll()` returned.
+  /// `options` are the per-backup options passed with `BackupConfigs.passkeyPrfStorage`.
+  func enroll(with options: PasskeyPrfStorageConfig?) async throws -> String
+  /// Encrypts `value` with a secret `enroll(with:)` returned.
   func encrypt(_ value: String, withSecret secret: String) async throws -> String
 }
 
 public extension PortalDerivedSecretStorage {
+  /// Enrolls without per-backup options.
+  func enroll() async throws -> String {
+    try await self.enroll(with: nil)
+  }
+
   /// The password cipher, keyed by the derived secret.
   func encrypt(_ value: String, withSecret secret: String) async throws -> String {
     try await self.encryption.encrypt(value, withPassword: secret)
@@ -70,7 +76,8 @@ public class PasskeyPrfStorage: Storage, PortalDerivedSecretStorage {
   public let relyingParty: String
   /// The relying party name, used for the default user name.
   public let relyingPartyName: String
-  /// The user the passkey is created for. Defaults to `"<custodian name> Backup (PRF)"`.
+  /// The user the passkey is created for, unless a backup passes its own with
+  /// `BackupConfigs.passkeyPrfStorage`. Defaults to `"<custodian name> Backup (PRF)"`.
   public let user: PasskeyPrfUser?
 
   /// The window passkey prompts are presented from.
@@ -92,6 +99,7 @@ public class PasskeyPrfStorage: Storage, PortalDerivedSecretStorage {
   ///     backup was enrolled under on any platform, and the app must be associated with it.
   ///   - relyingPartyName: Defaults to `Portal`.
   ///   - user: The user the passkey is created for. Defaults to `"<custodian name> Backup (PRF)"`.
+  ///     A backup can override it with `BackupConfigs(passkeyPrfStorage:)`.
   ///   - anchor: The window passkey prompts are presented from. Can also be set later through
   ///     `anchor` or `portal.setPasskeyAuthenticationAnchor(_:)`.
   ///   - encryption: The cipher the secret is used with. Defaults to Portal's password cipher.
@@ -136,8 +144,9 @@ public class PasskeyPrfStorage: Storage, PortalDerivedSecretStorage {
    *******************************************/
 
   /// Returns the secret to back up with, creating the client's passkey if it does not have one
-  /// yet.
-  public func enroll() async throws -> String {
+  /// yet. `options.user` labels a passkey created here, over the storage's `user`; it is ignored
+  /// when the client already has a passkey, which is reused.
+  public func enroll(with options: PasskeyPrfStorageConfig?) async throws -> String {
     try self.assertSupported()
     let api = try self.requireApi()
 
@@ -146,7 +155,7 @@ public class PasskeyPrfStorage: Storage, PortalDerivedSecretStorage {
       return try await self.deriveSecret(existing)
     }
 
-    let user = try await self.resolveUser(api)
+    let user = try await self.resolveUser(api, override: options?.user)
     var created = try await self.createPasskey(user: user)
     // Hold the creation output only until Portal settles the permanent credential binding.
     defer { Self.zero(&created.prfOutput) }
@@ -449,8 +458,9 @@ public class PasskeyPrfStorage: Storage, PortalDerivedSecretStorage {
     return api
   }
 
-  private func resolveUser(_ api: PortalApiProtocol) async throws -> PasskeyPrfUser {
-    if let user = self.user {
+  /// The per-backup user, then the storage's, then `"<custodian name> Backup (PRF)"`.
+  private func resolveUser(_ api: PortalApiProtocol, override: PasskeyPrfUser?) async throws -> PasskeyPrfUser {
+    if let user = override ?? self.user {
       return user
     }
     let custodianName = (try? await api.client)?.custodian.name ?? ""

@@ -62,6 +62,49 @@ final class PortalMpcPasskeyPrfTests: XCTestCase {
     XCTAssertEqual(client.getRequests.count, 1)
   }
 
+  func test_backup_passesThePasskeyLabelsGivenWithTheBackup_toTheStorage() async throws {
+    client.createResults = [.success(PasskeyPrfCreateResult(
+      credentialId: PasskeyPrfFixtures.createdCredentialId,
+      transports: nil,
+      prfEnabled: true,
+      prfOutput: PasskeyPrfFixtures.createdOutput
+    ))]
+    let mpc = makeMpc()
+    let user = PasskeyPrfUser(name: "jane@example.com", displayName: "Jane, Acme wallet backup")
+
+    _ = try await mpc.backup(.PasskeyPrf, backupConfigs: BackupConfigs(passkeyPrfStorage: PasskeyPrfStorageConfig(user: user)))
+
+    XCTAssertEqual(client.createRequests.count, 1)
+    XCTAssertEqual(client.createRequests.first?.userName, user.name)
+    XCTAssertEqual(client.createRequests.first?.userDisplayName, user.displayName)
+    XCTAssertEqual(encryption.encryptWithPasswordParams.first?.password, PasskeyPrfEncoding.hex(PasskeyPrfFixtures.createdOutput))
+  }
+
+  @available(*, deprecated)
+  func test_deprecatedBackup_passesThePasskeyLabelsGivenWithTheBackup_toTheStorage() async throws {
+    client.createResults = [.success(PasskeyPrfCreateResult(
+      credentialId: PasskeyPrfFixtures.createdCredentialId,
+      transports: nil,
+      prfEnabled: true,
+      prfOutput: PasskeyPrfFixtures.createdOutput
+    ))]
+    let mpc = makeMpc()
+    let user = PasskeyPrfUser(name: "jane@example.com", displayName: "Jane")
+    let done = expectation(description: "backup completes")
+
+    mpc.backup(
+      method: BackupMethods.PasskeyPrf.rawValue,
+      backupConfigs: BackupConfigs(passkeyPrfStorage: PasskeyPrfStorageConfig(user: user)),
+      completion: { result in
+        XCTAssertNil(result.error)
+        done.fulfill()
+      }
+    )
+    await fulfillment(of: [done], timeout: 5)
+
+    XCTAssertEqual(client.createRequests.first?.userName, user.name)
+  }
+
   func test_backup_storesThePasswordCipherText_whenBackupWithPortalIsEnabled() async throws {
     api.client = ClientResponse.stub(environment: .stub(backupWithPortalEnabled: true))
     api.getPasskeyPrfCredentialResults = [.success(enrolled)]

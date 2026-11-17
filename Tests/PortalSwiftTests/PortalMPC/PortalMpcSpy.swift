@@ -13,6 +13,8 @@ class PortalMpcSpy: PortalMpcProtocol {
   var backupCallsCount: Int = 0
   var backupMethodParam: PortalSwift.BackupMethods?
   var backupUsingProgressCallbackParam: ((PortalSwift.MpcStatus) -> Void)?
+  var backupWithConfigsCallsCount: Int = 0
+  var backupBackupConfigsParam: PortalSwift.BackupConfigs?
 
   // Eject method tracking
   var ejectCallsCount: Int = 0
@@ -105,6 +107,12 @@ class PortalMpcSpy: PortalMpcProtocol {
       shareIds: [MockConstants.mockMpcShareId, MockConstants.mockMpcShareId],
       traceId: generateTraceId()
     )
+  }
+
+  func backup(_ method: PortalSwift.BackupMethods, backupConfigs: PortalSwift.BackupConfigs?, usingProgressCallback: ((PortalSwift.MpcStatus) -> Void)?) async throws -> PortalSwift.PortalMpcBackupResponse {
+    backupWithConfigsCallsCount += 1
+    backupBackupConfigsParam = backupConfigs
+    return try await backup(method, usingProgressCallback: usingProgressCallback)
   }
 
   func eject(_ method: PortalSwift.BackupMethods, withCipherText: String?, andOrganizationBackupShare: String?, andOrganizationSolanaBackupShare: String?) async throws -> [PortalSwift.PortalNamespace: String] {

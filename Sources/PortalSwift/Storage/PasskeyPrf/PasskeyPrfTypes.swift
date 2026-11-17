@@ -41,14 +41,29 @@ struct PasskeyPrfCredentialEnvelope: Decodable {
   let data: PasskeyPrfCredential
 }
 
-/// The user a Passkey PRF passkey is created for, as shown by the passkey provider.
+/// Labels a passkey provider stores with a Passkey PRF passkey and shows in its UI.
 public struct PasskeyPrfUser: Equatable {
+  /// Account name the passkey provider stores alongside the passkey.
   public let name: String
+  /// Name shown to the user when they are asked to pick a passkey.
   public let displayName: String
 
   public init(name: String, displayName: String) {
     self.name = name
     self.displayName = displayName
+  }
+}
+
+/// Per-backup options for the Passkey PRF backup method, passed as
+/// `BackupConfigs(passkeyPrfStorage:)` to `portal.backupWallet(_:backupConfigs:usingProgressCallback:)`.
+public struct PasskeyPrfStorageConfig: Equatable {
+  /// Labels for the passkey this backup creates. Used only when the client has no enrolled
+  /// passkey yet: an enrolled passkey is reused, and its labels cannot be changed. Overrides the
+  /// storage's `user`.
+  public var user: PasskeyPrfUser?
+
+  public init(user: PasskeyPrfUser? = nil) {
+    self.user = user
   }
 }
 

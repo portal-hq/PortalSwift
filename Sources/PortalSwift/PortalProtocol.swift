@@ -84,6 +84,8 @@ public protocol PortalProtocol {
   func setPasskeyConfiguration(relyingParty: String, webAuthnHost: String) throws
   func setPassword(_ value: String) throws
   func backupWallet(_ method: BackupMethods, usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> (cipherText: String, storageCallback: () async throws -> Void)
+  /// Backs up with per-backup options, such as `BackupConfigs.passkeyPrfStorage`.
+  func backupWallet(_ method: BackupMethods, backupConfigs: BackupConfigs?, usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> (cipherText: String, storageCallback: () async throws -> Void)
   func createWallet(usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> PortalCreateWalletResponse
   func createSolanaWallet(usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> String
   func eject(_ method: BackupMethods, withCipherText: String?, andOrganizationBackupShare: String?) async throws -> String
@@ -240,6 +242,11 @@ public extension PortalProtocol {
   @available(*, deprecated, message: "Use request(chainId:method:params:options:) instead.")
   func request(_ chainId: String, withMethod: PortalRequestMethod, andParams: [Any]) async throws -> PortalProviderResult {
     return try await request(chainId: chainId, method: withMethod, params: andParams, options: nil)
+  }
+
+  /// Default for conformers written before `backupConfigs` existed: they ignore the options.
+  func backupWallet(_ method: BackupMethods, backupConfigs _: BackupConfigs?, usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> (cipherText: String, storageCallback: () async throws -> Void) {
+    try await self.backupWallet(method, usingProgressCallback: usingProgressCallback)
   }
 
   /// Default for conformers that hold no session (API-key-only wrappers and test doubles):

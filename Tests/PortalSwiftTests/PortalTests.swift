@@ -379,6 +379,35 @@ extension PortalTests {
     // then
     XCTAssertEqual(portalApiSpy.updateShareStatusCallsCount, 1)
   }
+
+  func test_backupWallet_withBackupConfigs_passesThemToMpc() async throws {
+    // given
+    let portalMpcSpy = PortalMpcSpy()
+    try initPortalWithSpy(portalMpc: portalMpcSpy)
+    let user = PasskeyPrfUser(name: "jane@example.com", displayName: "Jane, Acme wallet backup")
+
+    // and given
+    _ = try await portal.backupWallet(.PasskeyPrf, backupConfigs: BackupConfigs(passkeyPrfStorage: PasskeyPrfStorageConfig(user: user)))
+
+    // then
+    XCTAssertEqual(portalMpcSpy.backupWithConfigsCallsCount, 1)
+    XCTAssertEqual(portalMpcSpy.backupMethodParam, .PasskeyPrf)
+    XCTAssertEqual(portalMpcSpy.backupBackupConfigsParam?.passkeyPrfStorage?.user, user)
+  }
+
+  func test_backupWallet_withoutBackupConfigs_passesNoneToMpc() async throws {
+    // given
+    let portalMpcSpy = PortalMpcSpy()
+    try initPortalWithSpy(portalMpc: portalMpcSpy)
+
+    // and given
+    _ = try await portal.backupWallet(.Password)
+
+    // then
+    XCTAssertEqual(portalMpcSpy.backupCallsCount, 1)
+    XCTAssertEqual(portalMpcSpy.backupWithConfigsCallsCount, 1)
+    XCTAssertNil(portalMpcSpy.backupBackupConfigsParam)
+  }
 }
 
 // MARK: - Recover tests
