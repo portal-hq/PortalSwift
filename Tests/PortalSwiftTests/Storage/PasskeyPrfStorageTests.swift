@@ -245,6 +245,16 @@ final class PasskeyPrfStorageTests: XCTestCase {
     XCTAssertTrue(encryption.encryptWithPasswordParams.isEmpty)
   }
 
+  func test_enroll_withExistingRecord_ignoresLabelsPassedWithTheBackup() async throws {
+    api.getPasskeyPrfCredentialResults = [.success(record(Self.serverCredentialId))]
+
+    let secret = try await storage.enroll(with: PasskeyPrfStorageConfig(user: PasskeyPrfUser(name: "new", displayName: "new")))
+
+    XCTAssertEqual(secret, PasskeyPrfEncoding.hex(Self.assertedOutput))
+    XCTAssertTrue(client.createRequests.isEmpty)
+    XCTAssertEqual(client.getRequests.count, 1)
+  }
+
   func test_enroll_withExistingRecordUnderAnotherRelyingParty_throwsRpIdMismatch_withoutACeremony() async {
     api.getPasskeyPrfCredentialResults = [.success(record(Self.serverCredentialId, rpId: "other.example"))]
 
@@ -294,6 +304,35 @@ final class PasskeyPrfStorageTests: XCTestCase {
 
     XCTAssertEqual(client.createRequests.first?.userName, "alice")
     XCTAssertEqual(client.createRequests.first?.userDisplayName, "Alice")
+  }
+
+  func test_enroll_usesLabelsPassedWithTheBackup_overTheConfiguredOnes() async throws {
+    storage = makeStorage(user: PasskeyPrfUser(name: "configured", displayName: "configured"))
+    queueCreation()
+    let user = PasskeyPrfUser(name: "me@customer.com", displayName: "Savings wallet")
+
+    _ = try await storage.enroll(with: PasskeyPrfStorageConfig(user: user))
+
+    XCTAssertEqual(client.createRequests.first?.userName, "me@customer.com")
+    XCTAssertEqual(client.createRequests.first?.userDisplayName, "Savings wallet")
+  }
+
+  func test_enroll_usesLabelsPassedWithTheBackup_overTheDefault() async throws {
+    queueCreation()
+
+    _ = try await storage.enroll(with: PasskeyPrfStorageConfig(user: PasskeyPrfUser(name: "jane", displayName: "Jane")))
+
+    XCTAssertEqual(client.createRequests.first?.userName, "jane")
+    XCTAssertEqual(client.createRequests.first?.userDisplayName, "Jane")
+  }
+
+  func test_enroll_withEmptyBackupOptions_fallsBackToTheConfiguredUser() async throws {
+    storage = makeStorage(user: PasskeyPrfUser(name: "alice", displayName: "Alice"))
+    queueCreation()
+
+    _ = try await storage.enroll(with: PasskeyPrfStorageConfig())
+
+    XCTAssertEqual(client.createRequests.first?.userName, "alice")
   }
 
   func test_enroll_createsUnderConfiguredRelyingParty() async throws {
