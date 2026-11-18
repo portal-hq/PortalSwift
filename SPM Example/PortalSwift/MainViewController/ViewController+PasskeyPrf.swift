@@ -40,13 +40,13 @@ extension ViewController {
           return
         }
         self.startLoading()
+        defer { self.stopLoading() }
         self.logger.debug("ViewController.handlePasskeyPrfBackup() - Starting backup...")
         _ = try await self.backup(userId, withMethod: .PasskeyPrf)
         self.logger.debug("ViewController.handlePasskeyPrfBackup(): ✅ Successfully backed up with Passkey PRF.")
         self.showStatusView(message: "\(self.successStatus) Successfully backed up with Passkey PRF.")
         self.updateUIComponents()
       } catch {
-        self.stopLoading()
         self.logger.error("ViewController.handlePasskeyPrfBackup() - Error running backup: \(Self.describePasskeyPrfError(error))")
         self.showStatusView(message: "\(self.failureStatus) Error running backup \(Self.describePasskeyPrfError(error))")
       }
@@ -61,6 +61,7 @@ extension ViewController {
           return
         }
         self.startLoading()
+        defer { self.stopLoading() }
         self.logger.debug("ViewController.handlePasskeyPrfRecover() - Starting recover...")
         let (ethereum, solana) = try await recover(userId, withBackupMethod: .PasskeyPrf)
         let debugMessage = "ViewController.handlePasskeyPrfRecover() - ✅ Wallet successfully recovered! ETH address: \(ethereum), Solana address: \(solana ?? "N/A")"
@@ -73,7 +74,6 @@ extension ViewController {
         }
         self.updateUIComponents()
       } catch {
-        self.stopLoading()
         self.logger.error("ViewController.handlePasskeyPrfRecover() - Error running recover: \(Self.describePasskeyPrfError(error))")
         self.showStatusView(message: "\(self.failureStatus) Error running recover \(Self.describePasskeyPrfError(error))")
       }
