@@ -11,6 +11,8 @@ import Security
 
 public protocol PortalMpcProtocol {
   func backup(_ method: BackupMethods, usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> PortalMpcBackupResponse
+  /// Backs up with per-backup options, such as `BackupConfigs.passkeyPrfStorage`.
+  func backup(_ method: BackupMethods, backupConfigs: BackupConfigs?, usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> PortalMpcBackupResponse
   func eject(_ method: BackupMethods, withCipherText: String?, andOrganizationBackupShare: String?, andOrganizationSolanaBackupShare: String?) async throws -> [PortalNamespace: String]
   func generate(withProgressCallback: ((MpcStatus) -> Void)?) async throws -> [PortalNamespace: String?]
   func recover(_ method: BackupMethods, withCipherText: String?, usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> [PortalNamespace: String?]
@@ -35,6 +37,13 @@ public protocol PortalMpcProtocol {
   func ejectPrivateKey(clientBackupCiphertext: String, method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, orgBackupShare: String, completion: @escaping (Result<String>) -> Void)
   @available(*, deprecated, renamed: "recover", message: "Please use the async/await implementation of recover().")
   func recover(cipherText: String, method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?)
+}
+
+public extension PortalMpcProtocol {
+  /// Keeps conformers written before `backupConfigs` existed compiling. They ignore the options.
+  func backup(_ method: BackupMethods, backupConfigs _: BackupConfigs?, usingProgressCallback: ((MpcStatus) -> Void)?) async throws -> PortalMpcBackupResponse {
+    try await self.backup(method, usingProgressCallback: usingProgressCallback)
+  }
 }
 
 /// The main interface with Portal's MPC service.
@@ -174,6 +183,20 @@ public class PortalMpc: PortalMpcProtocol {
     _ method: BackupMethods,
     usingProgressCallback: ((MpcStatus) -> Void)? = nil
   ) async throws -> PortalMpcBackupResponse {
+    try await self.backup(method, backupConfigs: nil, usingProgressCallback: usingProgressCallback)
+  }
+
+  /// Creates a backup share, encrypts it, and stores the private key in cloud storage.
+  /// - Parameters:
+  ///   - method: The backup method.
+  ///   - backupConfigs: Per-backup options. `passkeyPrfStorage.user` labels the passkey a
+  ///     `.PasskeyPrf` backup creates; it is ignored when the client already has one.
+  ///   - usingProgressCallback: Reports the backup's progress.
+  public func backup(
+    _ method: BackupMethods,
+    backupConfigs: BackupConfigs?,
+    usingProgressCallback: ((MpcStatus) -> Void)? = nil
+  ) async throws -> PortalMpcBackupResponse {
     if self.version != "v6" {
       throw MpcError.backupNoLongerSupported("[PortalMpc] Backup is no longer supported for this version of MPC. Please use `version = \"v6\"`.")
     }
@@ -200,6 +223,12 @@ public class PortalMpc: PortalMpcProtocol {
       // Resolved once, above the fan-out, so both curves present the same token and a broken
       // credential fails here as a PortalCredentialError before any binary round trip.
       let token = try PortalCredentialSupport.resolveToken(self.credentials)
+
+      // A derived secret (Passkey PRF) is resolved before the MPC backup runs: that step
+      // replaces the share pair on the server, so a passkey prompt cancelled afterwards would
+      // leave the previous backup with nothing to decrypt.
+      let derivedSecret = try await self.resolveDerivedSecret(method, storage: storage, backupConfigs: backupConfigs)
+
       // Generate both backup shares in parallel
       let generateResponse = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<PortalMpcGenerateResponse, Error>) in
         Task {
@@ -255,12 +284,23 @@ public class PortalMpc: PortalMpcProtocol {
       }
 
       usingProgressCallback?(MpcStatus(status: .encryptingShare, done: false))
-      let encryptResult = try await storage.encrypt(responseString)
+      let encryptResult: EncryptData
+      if let derivedSecret, let derivedStorage = storage as? PortalDerivedSecretStorage {
+        // The derived secret is used exactly like a backup password, so the cipher text is the
+        // same format the Password method and the other SDKs produce.
+        let cipherText = try await derivedStorage.encrypt(responseString, withSecret: derivedSecret)
+        encryptResult = EncryptData(key: "", cipherText: cipherText)
+      } else {
+        encryptResult = try await storage.encrypt(responseString)
+      }
 
       usingProgressCallback?(MpcStatus(status: .storingShare, done: false))
-      let success = try await storage.write(encryptResult.key)
-      if !success {
-        throw MpcError.unexpectedErrorOnBackup("Unable to write encryption key.")
+      // A derived secret is recomputed on demand, so there is no key to store.
+      if derivedSecret == nil {
+        let success = try await storage.write(encryptResult.key)
+        if !success {
+          throw MpcError.unexpectedErrorOnBackup("Unable to write encryption key.")
+        }
       }
 
       // Update the share statuses
@@ -923,13 +963,25 @@ public class PortalMpc: PortalMpcProtocol {
     try storage.signOut()
   }
 
+  /// Sets the anchor on every registered passkey storage: the enclave `PasskeyStorage` and, on
+  /// iOS 18, a `PasskeyPrfStorage`. Throws only when neither is registered.
   @available(iOS 16, *)
   public func setPasskeyAuthenticationAnchor(_ anchor: ASPresentationAnchor) throws {
-    guard let storage = backupOptions[.Passkey] as? PasskeyStorage else {
-      throw MpcError.backupMethodNotRegistered("PortalMpc.setPasskeyAuthenticationAnchor() - Could not find an instance of `PasskeyStorage`. Please use `portal.registerBackupMethod()`")
+    var didSetAnchor = false
+
+    if let storage = backupOptions[.Passkey] as? PasskeyStorage {
+      storage.anchor = anchor
+      didSetAnchor = true
     }
 
-    storage.anchor = anchor
+    if #available(iOS 18, *), let storage = backupOptions[.PasskeyPrf] as? PasskeyPrfStorage {
+      storage.anchor = anchor
+      didSetAnchor = true
+    }
+
+    guard didSetAnchor else {
+      throw MpcError.backupMethodNotRegistered("PortalMpc.setPasskeyAuthenticationAnchor() - Could not find an instance of `PasskeyStorage` or `PasskeyPrfStorage`. Please use `portal.registerBackupMethod()`")
+    }
   }
 
   @available(iOS 16, *)
@@ -954,6 +1006,30 @@ public class PortalMpc: PortalMpcProtocol {
   /*******************************************
    * Private functions
    *******************************************/
+
+  /// The secret a derived-secret storage (Passkey PRF) backs up with, or `nil` for methods whose
+  /// storage generates and stores its own key.
+  private func resolveDerivedSecret(_ method: BackupMethods, storage: PortalStorage, backupConfigs: BackupConfigs?) async throws -> String? {
+    guard let derivedStorage = storage as? PortalDerivedSecretStorage else {
+      if method == .PasskeyPrf {
+        // The method promises a derived secret; any other storage would fall into the random
+        // key path, whose key a Passkey PRF backup never stores.
+        throw MpcError.unsupportedStorageMethod
+      }
+      return nil
+    }
+    guard method == .PasskeyPrf else {
+      // A derived-secret storage registered for another method would back up a share pair
+      // labeled with that method that only this passkey can decrypt.
+      throw MpcError.unsupportedStorageMethod
+    }
+
+    let secret = try await derivedStorage.enroll(with: backupConfigs?.passkeyPrfStorage)
+    guard !secret.isEmpty else {
+      throw MpcError.unexpectedErrorOnBackup("\(method.rawValue) storage returned no secret to back up with.")
+    }
+    return secret
+  }
 
   /// Builds the `PortalMpcError` for a binary error result and, when the MPC service rejected the
   /// credential (`AUTH_FAILED`), reports it to the credentials layer before the error is thrown.
@@ -1149,7 +1225,7 @@ public class PortalMpc: PortalMpcProtocol {
           storage.password = backupConfigs?.passwordStorage?.password
         }
 
-        let response = try await backup(backupMethod, usingProgressCallback: progress)
+        let response = try await backup(backupMethod, backupConfigs: backupConfigs, usingProgressCallback: progress)
 
         completion(Result(data: response.cipherText))
       } catch {
