@@ -36,7 +36,8 @@ public protocol PortalSession: PortalCredentials {
 /// caller rather than surfaced, because the backend can enable a method before the SDK
 /// learns its name and that must never be a crash.
 public enum AuthMethod: String, Codable, CaseIterable, Sendable {
-  /// Email magic link: `sendMagicLink(_:)` followed by `handleRedirect(_:)`.
+  /// Email magic link: `sendMagicLink(_:)`, then `parseRedirect(_:)`, `getMagicLinkDetails(_:)`
+  /// and, once the user confirms the email, `confirmMagicLink(_:)`.
   case emailMagicLink = "EMAIL_MAGIC_LINK"
   /// Sign in with Google through the Portal-hosted OAuth flow.
   case google = "GOOGLE"
@@ -108,7 +109,7 @@ public struct AuthorizeUrlResult: Equatable {
 /// Show it on your own confirmation screen and call `PortalAuth.confirmMagicLink(_:)` only once
 /// the user confirms it is theirs. `email` is the full address, never masked: masking, if any,
 /// is up to that screen. It is personal data, so show it but do not log it.
-public struct MagicLinkDetails: Equatable, Sendable {
+public struct MagicLinkDetails: Hashable, Sendable {
   /// The full email address the magic link signs in to.
   public let email: String
 
@@ -211,24 +212,27 @@ extension TotpRequiredResult: CustomStringConvertible, CustomDebugStringConverti
 /// - `.failed`: the sign-in ended without a grant, for example `oauth_failed`. Nothing was sent
 ///   to Portal; offer to start again.
 ///
-/// Only `parseRedirect(_:)` builds one: the payload initializers are internal, so a
-/// `completeOAuthLogin(_:)` argument always comes from a redirect this instance read. Printing a
-/// value never shows its grant token — `description`, `debugDescription` and `customMirror`
-/// replace it with `<redacted>` — because a redirect is exactly the kind of value that ends up
-/// in a log line. `Equatable` still compares the real token.
-public enum AuthRedirect: Equatable, Sendable {
+/// Only `parseRedirect(_:)` can build a `.magicLink` or `.oauth` value — the payload
+/// initializers are internal — so a `completeOAuthLogin(_:)` argument always comes from a parsed
+/// redirect. Printing a value never shows its grant token — `description`, `debugDescription` and
+/// `customMirror` replace it with `<redacted>` — because a redirect is exactly the kind of value
+/// that ends up in a log line. `Equatable` and `Hashable` still use the real token.
+public enum AuthRedirect: Hashable, Sendable {
   /// A magic-link redirect, not yet exchanged.
   case magicLink(MagicLink)
   /// A Google or Apple redirect, not yet exchanged.
   case oauth(OAuth)
-  /// The redirect carried `?error=…` instead of a grant. The value comes from an inbound URL
-  /// and is bounded to 100 characters, because apps surface it straight to the user.
+  /// The redirect carried `?error=…` instead of a grant. Bounded to 100 characters, but it comes
+  /// from an inbound URL that any app or website can open, so treat it as untrusted: map the
+  /// codes you know, such as `oauth_failed`, to your own text rather than showing it raw.
   case failed(error: String)
 
   /// The grant of a magic-link redirect.
-  public struct MagicLink: Equatable, Sendable {
+  public struct MagicLink: Hashable, Sendable {
     /// The single-use grant token. Pass it to `getMagicLinkDetails(_:)` and
     /// `confirmMagicLink(_:)`, and keep it only while the user decides; never log or persist it.
+    /// Hold on to this `MagicLink` rather than the bare `String` where you can: the wrapper
+    /// redacts the token when printed, the string does not.
     public let token: String
 
     init(token: String) {
@@ -237,7 +241,7 @@ public enum AuthRedirect: Equatable, Sendable {
   }
 
   /// The grant of a Google or Apple redirect.
-  public struct OAuth: Equatable, Sendable {
+  public struct OAuth: Hashable, Sendable {
     /// The provider that issued the grant: `.google` or `.apple`.
     public let provider: AuthMethod
     /// The single-use grant token. Internal: `completeOAuthLogin(_:)` is the only reader.
@@ -331,8 +335,10 @@ public enum AuthResult: Sendable {
 /// These describe the *authentication* flow — sending a magic link, completing a redirect,
 /// reading a persisted session. Once a session exists, failures to turn it into a bearer token
 /// are `PortalCredentialError`s instead. Transport failures are deliberately not remapped
-/// here, so the backend's own signal reaches the host (Android parity): a refused Google or
-/// Apple grant surfaces as `PortalRequestsError.unauthorized`, unchanged. The exceptions —
+/// here, so the backend's own signal reaches the host (Android parity): a refused grant outside
+/// the two-step magic link — a Google or Apple grant, a magic link completed through the
+/// deprecated `handleRedirect(_:)`, or a TOTP code — surfaces as
+/// `PortalRequestsError.unauthorized`, unchanged. The exceptions —
 /// `grantRejected`, `accountAbstractionUnavailable` and `rateLimited` — exist because the
 /// backend's status codes there carry an actionable meaning the host would otherwise have to
 /// parse out of a message string.

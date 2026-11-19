@@ -14,8 +14,8 @@ import Foundation
 /// a fresh trace id come from `PortalAPIRequest`. Two calls carry a bearer: `getMagicLinkDetails`,
 /// whose bearer is the magic link's grant, and `validateTotp`, whose bearer is the short-lived
 /// `userJwt`. No other call does. The transport's `onUnauthorized` hook is deliberately never
-/// installed here: a `401` from any of these calls means the *grant* (or JWT) was rejected, and
-/// there is no credential yet to invalidate.
+/// installed here: a `401` from either of those two calls means the grant or the JWT was
+/// rejected, and there is no credential yet to invalidate.
 ///
 /// Transport failures propagate unchanged as `PortalRequestsError` so a rejected grant keeps
 /// the backend's own signal, with two deliberate exceptions where a status code carries an
@@ -181,11 +181,14 @@ final class PortalAuthApi {
   /// signs in to, read without spending the link.
   ///
   /// The grant travels as the bearer, never in the URL. A `401` (the link has expired, was
-  /// already used, or is otherwise unusable) passes through for `PortalAuth` to map, and so does
-  /// a `429`: the backend allows only a few reads per link.
+  /// already used, or is otherwise unusable) passes through for `PortalAuth` to map to
+  /// `grantRejected`. A `429` — the backend allows only a few reads per link — passes through
+  /// unmapped.
   ///
   /// - Throws: `PortalAuthError.malformedResponse(path, "email")` when the response carries no
-  ///   email, or an empty or whitespace-only one; every transport error unchanged.
+  ///   email, or an empty or whitespace-only one; `.malformedResponse(path, nil)` when the body
+  ///   has no `{ "data": … }` envelope or `email` is not a string; every transport error
+  ///   unchanged.
   func getMagicLinkDetails(token: String) async throws -> MagicLinkDetails {
     let request = try self.makeRequest(path: Self.magicLinkDetailsPath, method: .get, bearerToken: token)
     let data = try await self.requests.execute(request: request)

@@ -16,10 +16,9 @@ import XCTest
 /// that ride on every call (`x-portal-auth-environment-id`, `Accept`, `Content-Type`, a fresh
 /// trace id), which calls may carry a bearer (only `GET /magic-links/details`, with the magic
 /// link's grant, and `POST /totps/validations`, with the short-lived `userJwt`), the JSON body
-/// shape, and how a non-conforming response or an
-/// actionable status code is translated. The backend matches `redirectUrl` byte-for-byte
-/// against the environment's allow list, so the percent-encoding vectors are pinned
-/// individually rather than trusted to `URLQueryItem`.
+/// shape, and how a non-conforming response or an actionable status code is translated. The
+/// backend matches `redirectUrl` byte-for-byte against the environment's allow list, so the
+/// percent-encoding vectors are pinned individually rather than trusted to `URLQueryItem`.
 ///
 /// The 401 hook is deliberately never installed on this transport — a `401` from a grant
 /// exchange means the *grant* was rejected and there is no credential to invalidate — so every
@@ -646,6 +645,16 @@ final class PortalAuthApiTests: XCTestCase {
     let serverError = AuthTestFixtures.serverError503
     self.requests.failWith = serverError
     await XCTAssertThrowsAsync(try await self.api.getMagicLinkDetails(token: Self.grantToken), expected: serverError)
+  }
+
+  func test_grantRejected_willDescribeWithTheTextAgreedWithTheOtherSdks() {
+    // Word for word the Android, React Native and Web message, so one support answer covers
+    // every platform. Fixed text: no token, email or URL can reach it.
+    XCTAssertEqual(
+      PortalAuthError.grantRejected.errorDescription,
+      "[PortalAuth] The authentication grant was rejected. It may already have been used, expired, or been issued for a different auth environment. Start a new sign-in."
+    )
+    XCTAssertEqual(PortalAuthError.grantRejected.localizedDescription, PortalAuthError.grantRejected.errorDescription)
   }
 
   func test_getMagicLinkDetails_willNotLogTokenOrEmail() async throws {

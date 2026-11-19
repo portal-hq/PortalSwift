@@ -122,6 +122,20 @@ final class AuthRedirectRedactionTests: XCTestCase {
     XCTAssertEqual(AuthRedirect.failed(error: "oauth_failed"), AuthRedirect.failed(error: "oauth_failed"))
   }
 
+  func test_hashable_willUseTheRealValues() {
+    // `Hashable` lets a host push a redirect onto a SwiftUI `NavigationPath`; two different
+    // grants must stay two different elements even though they print the same.
+    let redirects: Set<AuthRedirect> = [
+      .magicLink(AuthRedirect.MagicLink(token: "a")),
+      .magicLink(AuthRedirect.MagicLink(token: "a")),
+      .magicLink(AuthRedirect.MagicLink(token: "b")),
+      .oauth(AuthRedirect.OAuth(provider: .google, token: "a")),
+      .failed(error: "oauth_failed")
+    ]
+    XCTAssertEqual(redirects.count, 4)
+    XCTAssertEqual(Set([MagicLinkDetails(email: "a@example.com"), MagicLinkDetails(email: "a@example.com")]).count, 1)
+  }
+
   func test_magicLinkToken_willBeReadableByTheApp() {
     // The magic-link token is public: the app passes it to `getMagicLinkDetails(_:)` and
     // `confirmMagicLink(_:)`. The OAuth token stays internal to the SDK.
