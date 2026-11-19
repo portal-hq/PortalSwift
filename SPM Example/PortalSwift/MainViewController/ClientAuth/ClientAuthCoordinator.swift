@@ -43,13 +43,16 @@ final class ClientAuthCoordinator {
   /// the previous user's session on first launch.
   static let firstLaunchClearKey = "ClientAuth.didClearPersistedSessionAfterInstall"
 
-  /// `UserDefaults` key for when this app last opened a Google or Apple sign-in in the external
-  /// browser (`loginWith*`). A timestamp, not a credential, so it may outlive the process: that
-  /// flow has to survive the app being killed while the browser is open.
+  /// `UserDefaults` keys for when, and with which provider, this app last opened a Google or Apple
+  /// sign-in in the external browser (`loginWith*`). A timestamp and a provider name, not
+  /// credentials, so they may outlive the process: that flow has to survive the app being killed
+  /// while the browser is open.
   static let externalOAuthStartedAtKey = "ClientAuth.externalOAuthStartedAt"
+  static let externalOAuthProviderKey = "ClientAuth.externalOAuthProvider"
 
-  /// How long after opening the browser a Google or Apple redirect is still expected. Portal
-  /// accepts the grant for 15 minutes from the start of the sign-in.
+  /// How long after opening the browser a Google or Apple redirect is still expected. Portal's
+  /// `state` lasts 10 minutes from the start of the sign-in and the grant 15 minutes from the
+  /// provider's callback, so 15 minutes comfortably covers a real sign-in.
   static let externalOAuthWindow: TimeInterval = 15 * 60
 
   /// Resolves the scheme this app owns. Read on every inbound URL, never cached; `nil` when
@@ -68,6 +71,10 @@ final class ClientAuthCoordinator {
   /// so a screen rebuilt by a re-delivered link shows the same confirmation without a second
   /// lookup. Never persisted, never logged.
   var pendingMagicLink: PendingMagicLink?
+
+  /// The magic link whose confirmation is in flight. Held here, not on a screen, so a screen
+  /// rebuilt by a re-delivered link knows not to ask about it again or send it a second time.
+  var confirmingMagicLink: AuthRedirect.MagicLink?
 
   /// The magic link the user last confirmed. Its details can no longer be read once it is spent,
   /// so a delivery of the same link afterwards is sent straight to `confirmMagicLink`, which
@@ -164,22 +171,33 @@ final class ClientAuthCoordinator {
 
   // MARK: - Google or Apple in the external browser
 
-  /// Records that this app opened a Google or Apple sign-in in the external browser.
-  func markExternalOAuthStarted(at now: Date = Date()) {
+  /// Records that this app is opening a `provider` sign-in in the external browser.
+  func markExternalOAuthStarted(_ provider: AuthMethod, at now: Date = Date()) {
     self.defaults.set(now.timeIntervalSince1970, forKey: Self.externalOAuthStartedAtKey)
+    self.defaults.set(provider.rawValue, forKey: Self.externalOAuthProviderKey)
   }
 
-  /// Whether a Google or Apple redirect arriving now belongs to a sign-in this app started, and
-  /// clears the record so it answers once.
+  /// Forgets the external-browser sign-in: it completed, was refused or abandoned, or the user
+  /// signed out.
+  func clearExternalOAuthStart() {
+    self.defaults.removeObject(forKey: Self.externalOAuthStartedAtKey)
+    self.defaults.removeObject(forKey: Self.externalOAuthProviderKey)
+  }
+
+  /// Whether a `provider` redirect arriving now belongs to a sign-in this app opened in the
+  /// browser.
   ///
   /// The OS hands the app any URL on its scheme, and any web page or message can open one with a
   /// grant someone else obtained, which would sign the user in to that person's account. So an
-  /// `.oauth` redirect is completed only within `externalOAuthWindow` of this app opening the
-  /// browser itself. The `signInWith*` sheet never routes its callback through here.
-  func consumeExternalOAuthStart(at now: Date = Date()) -> Bool {
+  /// `.oauth` redirect is completed only for the provider this app opened, within
+  /// `externalOAuthWindow`. Reading does not clear the record, so a completion that fails before
+  /// reaching Portal can be retried from the same redirect; `clearExternalOAuthStart()` ends it.
+  /// The `signInWith*` sheet never routes its callback through here.
+  func isExternalOAuthStarted(by provider: AuthMethod, at now: Date = Date()) -> Bool {
     let startedAt = self.defaults.double(forKey: Self.externalOAuthStartedAtKey)
-    self.defaults.removeObject(forKey: Self.externalOAuthStartedAtKey)
-    guard startedAt > 0 else { return false }
+    guard startedAt > 0, self.defaults.string(forKey: Self.externalOAuthProviderKey) == provider.rawValue else {
+      return false
+    }
     let elapsed = now.timeIntervalSince1970 - startedAt
     return elapsed >= 0 && elapsed <= Self.externalOAuthWindow
   }
@@ -192,10 +210,9 @@ final class ClientAuthCoordinator {
   /// deliver the URL here, and reading the redirect is the SDK's job, in `parseRedirect`. The
   /// example deliberately has no URL parser of its own: one that read a URL differently from the
   /// SDK could route a magic link past the confirmation step. The scheme is resolved at call time,
-  /// so a redirect that arrives after an
-  /// environment switch is matched against the new environment's redirect URL. A claimed URL goes
-  /// to the live screen when there is one, and to the stash otherwise; it is never both, so a
-  /// redirect cannot be handled twice.
+  /// so a redirect that arrives after an environment switch is matched against the new
+  /// environment's redirect URL. A claimed URL goes to the live screen when there is one, and to
+  /// the stash otherwise; it is never both, so a redirect cannot be handled twice.
   ///
   /// The URL is never logged: its query carries the grant token.
   ///
@@ -228,7 +245,9 @@ final class ClientAuthCoordinator {
     self.session = nil
     self.pendingTotpUserJwt = nil
     self.pendingMagicLink = nil
+    self.confirmingMagicLink = nil
     self.confirmedMagicLink = nil
+    self.clearExternalOAuthStart()
     self.handoffSession = nil
 
     let handle = self.sessionInvalidatedHandle

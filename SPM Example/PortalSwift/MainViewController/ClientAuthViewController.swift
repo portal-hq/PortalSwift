@@ -67,13 +67,10 @@ final class ClientAuthViewController: UIViewController {
   private var isOAuthRequestInFlight = false
   private var isSendingMagicLink = false
 
-  /// The magic link whose details lookup is in flight, so a second delivery of the same link
-  /// waits for it instead of spending another of the link's few lookups.
-  private var magicLinkLookupInFlight: AuthRedirect.MagicLink?
-
-  /// Whether a magic-link confirmation is in flight. A second Confirm does nothing until it
-  /// settles: the SDK would share the exchange anyway, but the screen should not report it twice.
-  private var isConfirmingMagicLink = false
+  /// The newest magic link whose details are being read. A second delivery of the same link waits
+  /// for that lookup instead of spending another of the link's few lookups, and a lookup that
+  /// finishes after a newer link arrived is set aside rather than replacing it.
+  private var latestMagicLinkLookup: AuthRedirect.MagicLink?
 
   /// The confirmation alert on screen, and the link it asks about.
   private weak var magicLinkAlert: UIAlertController?
@@ -188,7 +185,8 @@ final class ClientAuthViewController: UIViewController {
       self?.completeRedirect(url)
     }
 
-    // A magic link read on an earlier screen and never answered: ask again.
+    // A magic link read on an earlier screen and never answered: ask again (unless its
+    // confirmation is already running).
     if let pending = ClientAuthCoordinator.shared.pendingMagicLink {
       self.presentMagicLinkConfirmation(pending)
     }
@@ -426,7 +424,7 @@ final class ClientAuthViewController: UIViewController {
           // Two arms differing only in the call, so the branch is verifiable by reading it.
           let result = method == .apple ? try await auth.loginWithApple() : try await auth.loginWithGoogle()
           self.append("✓ \(step) — authorize URL resolved")
-          self.openAuthorizeUrl(result.authorizeUrl, step: step)
+          self.openAuthorizeUrl(result.authorizeUrl, provider: method, step: step)
         } else {
           guard let window = self.view.window else {
             self.append("✗ \(step) — no window to present the sign-in sheet from")
@@ -452,7 +450,7 @@ final class ClientAuthViewController: UIViewController {
   ///
   /// The scheme is checked first: this URL comes off the network, and opening an arbitrary scheme
   /// hands control to whichever app claims it.
-  private func openAuthorizeUrl(_ authorizeUrl: String, step: String) {
+  private func openAuthorizeUrl(_ authorizeUrl: String, provider: AuthMethod, step: String) {
     guard let url = URL(string: authorizeUrl),
           let scheme = url.scheme?.lowercased(),
           scheme == "http" || scheme == "https"
@@ -462,15 +460,17 @@ final class ClientAuthViewController: UIViewController {
       return
     }
 
+    // Recorded before the browser opens, so the redirect cannot outrun it: the redirect is
+    // completed only because this app started the sign-in (see
+    // `ClientAuthCoordinator.isExternalOAuthStarted(by:)`).
+    ClientAuthCoordinator.shared.markExternalOAuthStarted(provider)
     UIApplication.shared.open(url, options: [:]) { [weak self] didOpen in
       guard let self else { return }
       if didOpen {
-        // The redirect is completed only because this app started the sign-in (see
-        // `ClientAuthCoordinator.consumeExternalOAuthStart`).
-        ClientAuthCoordinator.shared.markExternalOAuthStarted()
         self.append("• opened the browser — complete the sign-in and the redirect returns here")
         self.showResult("Opened the browser", success: true)
       } else {
+        ClientAuthCoordinator.shared.clearExternalOAuthStart()
         self.append("• no browser on this device can open the authorize URL")
         self.showResult("\(step) failed", success: false)
       }
@@ -497,8 +497,8 @@ final class ClientAuthViewController: UIViewController {
   /// Reads a redirect with `parseRedirect` and completes it by kind. A magic link is never
   /// exchanged here: it goes to the confirmation step first (see `routeMagicLink`).
   ///
-  /// A Google or Apple redirect is completed only when this app opened that sign-in in the
-  /// browser, and once: a second delivery is logged as ignored rather than replayed.
+  /// A Google or Apple redirect is completed only for the provider this app opened in the
+  /// browser, within the sign-in window (see `ClientAuthCoordinator.isExternalOAuthStarted(by:)`).
   private func completeRedirect(_ rawUrl: String) {
     guard let auth = self.auth else { return }
 
@@ -508,6 +508,8 @@ final class ClientAuthViewController: UIViewController {
       // error: the app's router may have other handlers to try.
       self.append("• parseRedirect — ignored, not a Client Auth redirect")
     case let .failed(error)?:
+      // The browser sign-in, if one was running, is over.
+      ClientAuthCoordinator.shared.clearExternalOAuthStart()
       // The value comes from the URL, which any app or website can open, so it is mapped to the
       // screen's own text rather than shown.
       self.append(error == "oauth_failed" ? "✗ redirect — the sign-in was cancelled or rejected" : "✗ redirect — the sign-in failed")
@@ -515,7 +517,7 @@ final class ClientAuthViewController: UIViewController {
     case let .oauth(redirect)?:
       // Only a sign-in this app opened in the browser. Any web page or message can open the
       // redirect URL with a grant someone else obtained.
-      guard ClientAuthCoordinator.shared.consumeExternalOAuthStart() else {
+      guard ClientAuthCoordinator.shared.isExternalOAuthStarted(by: redirect.provider) else {
         self.append("• \(Self.providerLabel(redirect.provider)) redirect ignored — this app did not start that sign-in in the browser")
         return
       }
@@ -527,13 +529,21 @@ final class ClientAuthViewController: UIViewController {
 
   private func completeOAuthLogin(_ auth: PortalAuth, _ redirect: AuthRedirect.OAuth) {
     Task { @MainActor [weak self] in
+      // Held until the exchange settles, so a sign-in that completes after the screen closed is
+      // still handed to the app.
+      guard let self else { return }
       do {
         let result = try await auth.completeOAuthLogin(redirect)
-        guard let self else { return }
+        ClientAuthCoordinator.shared.clearExternalOAuthStart()
         self.append("✓ completeOAuthLogin — \(Self.providerLabel(redirect.provider)) sign-in completed")
         self.handle(authResult: result)
       } catch {
-        self?.reportFailure(step: "completeOAuthLogin", error: error)
+        if (error as? PortalRequestsError) == .unauthorized {
+          // Refused, so this sign-in is over. Any other failure keeps it, so the same redirect
+          // can be completed again (pasted, or delivered again).
+          ClientAuthCoordinator.shared.clearExternalOAuthStart()
+        }
+        self.reportFailure(step: "completeOAuthLogin", error: error)
       }
     }
   }
@@ -554,7 +564,15 @@ final class ClientAuthViewController: UIViewController {
   /// already confirmed, which `confirmMagicLink` replays.
   private func routeMagicLink(_ auth: PortalAuth, _ link: AuthRedirect.MagicLink) {
     let coordinator = ClientAuthCoordinator.shared
-    switch resolveMagicLinkRoute(link: link, pending: coordinator.pendingMagicLink, confirmed: coordinator.confirmedMagicLink) {
+    let route = resolveMagicLinkRoute(
+      link: link,
+      pending: coordinator.pendingMagicLink,
+      confirming: coordinator.confirmingMagicLink,
+      confirmed: coordinator.confirmedMagicLink
+    )
+    switch route {
+    case .alreadyConfirming:
+      self.append("• already confirming this magic link")
     case .replay:
       self.append("• magic link already confirmed — confirmMagicLink replays its result")
       self.confirmMagicLink(auth, link)
@@ -568,31 +586,38 @@ final class ClientAuthViewController: UIViewController {
   /// Reads the email the link signs in to, then asks the user. Whatever fails here, the link is
   /// not exchanged: one whose email the user has not seen must never be confirmed.
   private func fetchMagicLinkDetails(_ auth: PortalAuth, _ link: AuthRedirect.MagicLink) {
-    guard self.magicLinkLookupInFlight != link else { return }
-    self.magicLinkLookupInFlight = link
+    guard self.latestMagicLinkLookup != link else { return }
+    self.latestMagicLinkLookup = link
     self.statusLabel.text = "Reading the magic link…"
 
     Task { @MainActor [weak self] in
+      // Held until the lookup settles: each link can be looked up only a few times, so its
+      // result is not thrown away because the screen closed meanwhile.
+      guard let self else { return }
       do {
         let details = try await auth.getMagicLinkDetails(link.token)
-        guard let self else { return }
-        self.magicLinkLookupInFlight = nil
+        guard self.latestMagicLinkLookup == link else {
+          self.append("• a newer magic link arrived — this one was set aside, unconfirmed")
+          return
+        }
+        self.latestMagicLinkLookup = nil
         let pending = PendingMagicLink(link: link, email: details.email)
         ClientAuthCoordinator.shared.pendingMagicLink = pending
         // The email goes on the alert, never into the step log.
         self.append("✓ getMagicLinkDetails — read the link's email, awaiting confirmation")
         self.presentMagicLinkConfirmation(pending)
       } catch {
-        guard let self else { return }
-        self.magicLinkLookupInFlight = nil
-        self.restoreIdleStatus()
-        self.reportFailure(step: "getMagicLinkDetails", error: error)
+        if self.latestMagicLinkLookup == link {
+          self.latestMagicLinkLookup = nil
+        }
         if (error as? PortalAuthError) == .grantRejected {
-          self.append("• the link has expired or was already used — send a new one")
+          self.reportRejectedMagicLink(step: "getMagicLinkDetails", error: error)
         } else {
-          // A 429 means the link was looked up too many times; a network failure can be retried by
-          // opening the link again. Either way it stays unconfirmed.
+          // A 429 means the link was looked up too many times; a network failure can be retried
+          // by opening the link again. Either way it stays unconfirmed.
+          self.reportFailure(step: "getMagicLinkDetails", error: error)
           self.append("• the link was not confirmed — open it again, or send a new one")
+          self.restoreIdleStatus()
         }
       }
     }
@@ -600,11 +625,14 @@ final class ClientAuthViewController: UIViewController {
 
   /// Shows the confirmation for a link whose email was read. The SDK builds no UI for this; this
   /// alert is the example's. Replaces the alert of a different link; asking about the same link
-  /// twice shows it once.
+  /// twice shows it once, and a link whose exchange is already running is never asked about.
   private func presentMagicLinkConfirmation(_ pending: PendingMagicLink) {
     // Off screen: `viewDidAppear` asks from the coordinator once the screen is back.
     guard self.viewIfLoaded?.window != nil else { return }
-    if self.magicLinkAlert != nil, self.magicLinkAlertLink == pending.link { return }
+    guard ClientAuthCoordinator.shared.confirmingMagicLink != pending.link else { return }
+    if self.magicLinkAlertLink == pending.link, self.magicLinkAlert?.presentingViewController != nil {
+      return
+    }
 
     let alert = UIAlertController(
       title: "Confirm sign-in",
@@ -612,85 +640,122 @@ final class ClientAuthViewController: UIViewController {
       preferredStyle: .alert
     )
     alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { [weak self] _ in
+      self?.magicLinkAlertDidClose()
       self?.cancelMagicLink(pending)
     })
     alert.addAction(UIAlertAction(title: "Confirm", style: .default) { [weak self] _ in
       guard let self, let auth = self.auth else { return }
+      self.magicLinkAlertDidClose()
       self.confirmMagicLink(auth, pending.link)
     })
     alert.view.accessibilityIdentifier = "clientAuthMagicLinkConfirmation"
 
     self.statusLabel.text = "Awaiting magic-link confirmation"
     self.magicLinkAlertLink = pending.link
-    let present = { [weak self] in
-      guard let self else { return }
-      self.present(alert, animated: true)
-      self.magicLinkAlert = alert
-    }
+    self.magicLinkAlert = alert
     if let presented = self.presentedViewController {
-      presented.dismiss(animated: false, completion: present)
+      presented.dismiss(animated: false) { [weak self] in
+        self?.present(alert, animated: true)
+      }
     } else {
-      present()
+      self.present(alert, animated: true)
     }
   }
 
+  private func magicLinkAlertDidClose() {
+    self.magicLinkAlert = nil
+    self.magicLinkAlertLink = nil
+  }
+
+  /// Takes down the alert for `link`, if it is the one on screen.
+  private func dismissMagicLinkAlert(for link: AuthRedirect.MagicLink) {
+    guard self.magicLinkAlertLink == link else { return }
+    self.magicLinkAlert?.dismiss(animated: true)
+    self.magicLinkAlertDidClose()
+  }
+
   /// Exchanges `link`: on the user's Confirm, or for a link they already confirmed (`.replay`).
+  /// One confirmation at a time; a link asked about meanwhile waits on screen for its turn.
   private func confirmMagicLink(_ auth: PortalAuth, _ link: AuthRedirect.MagicLink) {
-    guard !self.isConfirmingMagicLink else { return }
-    self.isConfirmingMagicLink = true
+    let coordinator = ClientAuthCoordinator.shared
+    if let inFlight = coordinator.confirmingMagicLink {
+      self.append(inFlight == link
+        ? "• already confirming this magic link"
+        : "• another magic link is being confirmed — this one waits until it finishes")
+      return
+    }
+    coordinator.confirmingMagicLink = link
     self.statusLabel.text = "Confirming…"
 
     Task { @MainActor [weak self] in
+      // Held until the exchange settles, so a sign-in that completes after the screen closed is
+      // still handed to the app and the link's state is never left half-updated.
+      guard let self else { return }
       do {
         let result = try await auth.confirmMagicLink(link.token)
-        guard let self else { return }
-        self.isConfirmingMagicLink = false
-        let coordinator = ClientAuthCoordinator.shared
+        coordinator.confirmingMagicLink = nil
         coordinator.confirmedMagicLink = link
         if coordinator.pendingMagicLink?.link == link {
           coordinator.pendingMagicLink = nil
         }
-        // An alert for this link shown again by a re-delivery while the exchange ran is stale.
-        if self.magicLinkAlertLink == link {
-          self.magicLinkAlert?.dismiss(animated: true)
-        }
+        self.dismissMagicLinkAlert(for: link)
         self.append("✓ confirmMagicLink — sign-in confirmed")
         self.handle(authResult: result)
       } catch {
-        guard let self else { return }
-        self.isConfirmingMagicLink = false
+        coordinator.confirmingMagicLink = nil
         self.handleMagicLinkConfirmationFailure(error, link: link)
+      }
+
+      // A different link that came in meanwhile is still waiting on the user.
+      if let next = coordinator.pendingMagicLink, next.link != link {
+        self.presentMagicLinkConfirmation(next)
       }
     }
   }
 
   /// A rejected link is final — expired, already used, or otherwise unusable — so it is dropped.
-  /// Any other failure keeps the confirmation up so the user can try again. The retry sends the
-  /// link again, which succeeds only if the failed attempt never reached Portal; otherwise it
-  /// comes back rejected.
+  /// Any other failure keeps the confirmation so the user can try again: nothing tells the app
+  /// whether Portal received the link, and a retry succeeds only if it did not (otherwise it comes
+  /// back rejected). After a Keychain write failure, the retry only finishes the write.
   private func handleMagicLinkConfirmationFailure(_ error: Error, link: AuthRedirect.MagicLink) {
     let coordinator = ClientAuthCoordinator.shared
-    self.reportFailure(step: "confirmMagicLink", error: error)
 
     guard (error as? PortalAuthError) != .grantRejected else {
       if coordinator.pendingMagicLink?.link == link {
         coordinator.pendingMagicLink = nil
       }
       if coordinator.confirmedMagicLink == link {
-        // The session it signed in to has ended, so it can no longer be replayed either.
+        // The SDK no longer remembers it — its session ended, or a later sign-in replaced it —
+        // so it can no longer be replayed either.
         coordinator.confirmedMagicLink = nil
       }
-      self.append("• the link has expired or was already used — send a new one")
-      self.restoreIdleStatus()
+      self.dismissMagicLinkAlert(for: link)
+      self.reportRejectedMagicLink(step: "confirmMagicLink", error: error)
       return
     }
 
+    self.reportFailure(step: "confirmMagicLink", error: error)
     if let pending = coordinator.pendingMagicLink, pending.link == link {
-      self.append("• the link is still waiting — Confirm sends it again")
+      self.append("• the link is still waiting — Confirm tries again")
       self.presentMagicLinkConfirmation(pending)
     } else {
+      self.append("• the link could not be confirmed — open it again")
       self.restoreIdleStatus()
     }
+  }
+
+  /// A rejected link while the user is signed in is the link they already used — after a relaunch
+  /// neither the app nor the SDK remembers it — so it is nothing to do. Otherwise the user needs a
+  /// new link.
+  private func reportRejectedMagicLink(step: String, error: Error) {
+    if ClientAuthCoordinator.shared.session != nil {
+      self.append("• \(step) — the link was already used; you're signed in, nothing to do")
+      self.showResult("Already signed in", success: true)
+    } else {
+      self.reportFailure(step: step, error: error)
+      self.append("• the link has expired or was already used — send a new one")
+    }
+    self.restoreIdleStatus()
   }
 
   private func cancelMagicLink(_ pending: PendingMagicLink) {
@@ -924,6 +989,9 @@ final class ClientAuthViewController: UIViewController {
   private func publish(_ session: PortalSession) {
     ClientAuthCoordinator.shared.setHandoff(session)
     self.delegate?.clientAuthDidPublish(session)
+
+    // Signed in, however it happened: a browser sign-in still marked as started is over.
+    ClientAuthCoordinator.shared.clearExternalOAuthStart()
 
     // The JWT was scoped to submitting a code and the login is now complete, so it is dead weight —
     // and leaving it set would re-enable the TOTP section on the next redirect replay.
