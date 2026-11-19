@@ -31,9 +31,11 @@ import Foundation
 /// Every `loginWith*` / `signInWith*` call creates a one-time verifier, sends only its hash with
 /// `GET /oauth/urls`, keeps it in the Keychain (service
 /// `PortalSwift.auth.oauthVerifier.<authEnvironmentId>`) and sends it with the grant exchange, so
-/// only the sign-in in progress on this device can complete. A Google or Apple redirect that
-/// arrives with no sign-in in progress is refused before any network call with
-/// `PortalAuthError.oauthFlowNotStarted`; one from a different sign-in is refused by Portal. Each
+/// only the sign-in in progress on this device can complete. The binding has two halves. This SDK
+/// refuses a Google or Apple redirect that arrives with no sign-in in progress, before any
+/// network call, with `PortalAuthError.oauthFlowNotStarted`. A grant from a different sign-in is
+/// sent with this device's verifier and refused by Portal's servers, which check it against the
+/// challenge; that half relies on the backend enforcing the code verifier, as Portal's does. Each
 /// auth environment has one sign-in in progress (the newest wins), kept for 15 minutes; instances
 /// sharing an `authEnvironmentId` share it, while start ordering and cancellation are per instance.
 ///
@@ -321,12 +323,17 @@ public final class PortalAuth: @unchecked Sendable {
   /// grant this URL ends in can then only be exchanged by this device's `handleRedirect(_:)`,
   /// which sends the verifier with it — so a redirect another app intercepts is useless to it,
   /// and a Google or Apple grant another app crafts cannot sign your user in (a magic-link grant
-  /// is not bound this way; see `sendMagicLink(_:)`). The sign-in survives your app being
+  /// is not bound this way; see `sendMagicLink(_:)`). With no sign-in in progress, this SDK
+  /// refuses such a grant itself; while one is in progress, it is Portal's servers that refuse
+  /// it, by checking the verifier against the challenge. The sign-in survives your app being
   /// terminated while the browser is open, and stays completable for 15 minutes.
   ///
-  /// **One sign-in in progress.** Each call replaces the verifier of any earlier
-  /// `loginWith*` / `signInWith*` call for this auth environment, so only the URL returned last
-  /// can complete: request the URL when the user taps, not ahead of time.
+  /// **One sign-in in progress.** Each call replaces the verifier stored by any earlier
+  /// `loginWith*` / `signInWith*` call for this auth environment, so only the URL whose verifier
+  /// was stored last can complete: on one instance, the URL returned last; across instances
+  /// sharing the auth environment, whichever start stored its verifier last, which is not
+  /// necessarily the order callers received their URLs. Request the URL when the user taps, not
+  /// ahead of time.
   /// `clearPersistedSession()` cancels the sign-in in progress, so call it before this method,
   /// not after.
   ///

@@ -91,8 +91,10 @@ public struct AuthMethodsResult: Equatable {
 /// Wrapped in a struct rather than returned as a bare `String` for parity with the other
 /// SDKs and so the type can grow without breaking call sites. The URL embeds a single-use
 /// `state` shared by both providers in one backend response, so it must be opened promptly
-/// and never cached. Only the URL returned last for an auth environment can complete: each
-/// `loginWith*` call replaces the code verifier of the one before.
+/// and never cached. Only the URL whose code verifier was stored last for an auth environment
+/// can complete, because each `loginWith*` / `signInWith*` call replaces the verifier stored
+/// before it: on one `PortalAuth` instance that is the URL returned last; across instances that
+/// share the auth environment, whichever start stored its verifier last.
 public struct AuthorizeUrlResult: Equatable {
   /// The URL to open in a browser. Already trimmed of surrounding whitespace.
   public let authorizeUrl: String
