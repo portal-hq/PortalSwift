@@ -66,9 +66,10 @@ extension ViewController: ClientAuthReporter {
   /// Presents the Client Auth screen, optionally with a redirect URL that arrived before it
   /// existed.
   ///
-  /// The URL is handed to the screen rather than acted on here: only `PortalAuth.handleRedirect`
-  /// can turn a grant into a session, and the screen is what owns the `PortalAuth` call and the
-  /// step log that goes with it. The URL is never logged — it carries a single-use grant.
+  /// The URL is handed to the screen rather than acted on here: the screen reads it with
+  /// `PortalAuth.parseRedirect`, owns the confirmation a magic link needs before it is exchanged,
+  /// and keeps the step log that goes with it. The URL is never logged — it carries a single-use
+  /// grant.
   ///
   /// Presented modally like `FirebaseAuthViewController`, and never twice: a second present on an
   /// already-presenting controller is a UIKit no-op that logs a warning, and the coordinator's
