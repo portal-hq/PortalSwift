@@ -491,7 +491,10 @@ public final class PortalAuth: @unchecked Sendable {
   /// if the calling task is cancelled meanwhile — while it waits for another exchange to finish,
   /// or once the request is out, since Portal uses up the link before it answers — and the result
   /// is still returned and remembered. A `clearPersistedSession()` called meanwhile waits for it,
-  /// then deletes the session it persisted and forgets it.
+  /// then deletes the session it persisted and forgets it — but this call still returns that
+  /// result, and its session keeps working in memory. If your app signed out while the call ran,
+  /// discard the result instead of adopting it, or the user is signed in again with nothing
+  /// persisted: for example, capture a sign-out counter before the call and compare it after.
   ///
   /// - Parameter token: The `token` of the `.magicLink` that `parseRedirect(_:)` returned.
   /// - Throws: `PortalAuthError.invalidArgument(name: "token")` for an empty or whitespace-only
@@ -520,7 +523,8 @@ public final class PortalAuth: @unchecked Sendable {
   /// again replays the remembered result while its session is live, a failed exchange is not
   /// remembered (a Keychain write failure is, and calling again finishes the write), and only a
   /// task already cancelled when the call starts stops it. On success the session is persisted
-  /// before it is returned; `.totpRequired` leads to `verifyTotp(_:userJwt:)`.
+  /// before it is returned; `.totpRequired` leads to `verifyTotp(_:userJwt:)`. If your app signed
+  /// out while the call ran, discard its result, as `confirmMagicLink(_:)` describes.
   /// `signInWithGoogle()` / `signInWithApple()` do all of this for you.
   ///
   /// It trusts any grant it is given, so call it only while a sign-in your app started with
@@ -719,10 +723,19 @@ public final class PortalAuth: @unchecked Sendable {
   /// repeated `verifyTotp` can bring back the session that was just cleared.
   ///
   /// No server-side revoke endpoint exists, so this does not affect a `Portal` already holding
-  /// the credential; it prevents a future `restoreSession()` from returning it. Waits for an
-  /// in-flight `confirmMagicLink`, `completeOAuthLogin`, `signInWith*`, `handleRedirect` or
-  /// `verifyTotp` to finish persisting before deleting, so a login cannot write a session back
-  /// into storage after the delete.
+  /// the credential; it prevents a future `restoreSession()` from returning it. A sign-out needs
+  /// both calls: `portal.clearSession()` ends the credential that `Portal` holds, but it does not
+  /// reach what `PortalAuth` keeps — the grant it remembers, a pending TOTP write, or a session a
+  /// sign-in persisted after that `Portal` was built.
+  ///
+  /// It waits for an exchange that is already running or queued — from `confirmMagicLink`,
+  /// `completeOAuthLogin`, `handleRedirect`, `verifyTotp`, or `signInWith*` once its callback has
+  /// arrived — to finish persisting, then deletes what it persisted. It cannot wait for a
+  /// `signInWith*` whose sheet is still open: that holds no lock until its callback arrives, and
+  /// then exchanges and persists after this has returned. So on sign-out, cancel the task running
+  /// `signInWith*` first — a sign-in cancelled before its callback arrives exchanges nothing —
+  /// and discard any completion that still returns afterwards, as `confirmMagicLink(_:)`
+  /// describes.
   ///
   /// - Throws: `PortalAuthError.sessionStorageFailure` when the delete fails.
   public func clearPersistedSession() async throws {
@@ -752,8 +765,11 @@ public final class PortalAuth: @unchecked Sendable {
   /// custom-scheme `redirectUrl` (Universal Links are not supported by
   /// `ASWebAuthenticationSession`'s callback matching in this version). One sign-in at a time:
   /// both provider URLs share a single-use `state`, so a concurrent attempt throws
-  /// `.signInInProgress` rather than invalidating the first. Cancelling the calling task
-  /// dismisses the sheet and throws; the grant is never exchanged.
+  /// `.signInInProgress` rather than invalidating the first. Cancelling the calling task before
+  /// the callback arrives dismisses the sheet and throws, and nothing is exchanged; once the
+  /// callback has arrived, the exchange runs to completion as `completeOAuthLogin(_:)`'s does. On
+  /// sign-out, cancel this task before `clearPersistedSession()`, which cannot wait for an open
+  /// sheet.
   ///
   /// - Throws: `PortalAuthSignInError` (`.unavailable`, `.signInInProgress`, `.closed`,
   ///   `.callbackIncomplete`); `PortalAuthError.authenticationFailed(error:)` when the callback
