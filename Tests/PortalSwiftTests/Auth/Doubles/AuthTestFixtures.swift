@@ -67,6 +67,29 @@ enum AuthTestFixtures {
   static let googleAuthorizeUrl = "https://accounts.google.com/o/oauth2/v2/auth?state=google-state"
   static let appleAuthorizeUrl = "https://appleid.apple.com/auth/authorize?state=apple-state"
 
+  // MARK: - PKCE
+
+  /// RFC 7636 Appendix B code verifier, and the `S256` challenge it hashes to.
+  static let rfcCodeVerifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+  static let rfcCodeChallenge = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
+  /// A second well-formed verifier, for "a newer sign-in replaced it" cases.
+  static let otherCodeVerifier = "Zm9vYmFyYmF6cXV4cXV1eGNvcmdlZ3JhdWx0Z2FycGx5d2FsZG8"
+
+  /// The instant every `makeAuth`-built `PortalAuth` reads from its clock.
+  static let now = Date(timeIntervalSince1970: 1_700_000_000)
+  /// `now` in the milliseconds `PendingOAuthVerifier.createdAt` holds.
+  static var nowMillis: Int64 {
+    Int64((self.now.timeIntervalSince1970 * 1000).rounded())
+  }
+
+  /// A pending sign-in stored `ageMillis` before `now` (negative for one dated in the future).
+  static func pendingVerifier(
+    _ verifier: String = AuthTestFixtures.rfcCodeVerifier,
+    ageMillis: Int64 = 0
+  ) -> PendingOAuthVerifier {
+    PendingOAuthVerifier(verifier: verifier, createdAt: self.nowMillis - ageMillis)
+  }
+
   // MARK: - JSON bodies
 
   /// `Data` for any JSON object/array, with sorted keys so bodies are deterministic. A value
@@ -380,9 +403,16 @@ enum AuthTestFixtures {
   /// `logger.uninstall()` in `tearDown`. `magicLink` defaults to `AuthTestFixtures.magicLink`;
   /// pass `nil` explicitly to test `magicLinkNotConfigured`. When `webSessionFactory` is `nil`
   /// the module's production default (a real `ASWebAuthenticationSessionAdapter`) is kept.
+  ///
+  /// `verifierStorage` defaults to an **empty** `MockOAuthVerifierStorage`, so a Google or Apple
+  /// redirect with no prior `loginWith*` is refused, exactly as in production; a test that only
+  /// exercises an exchange seeds one with `AuthTestFixtures.pendingVerifier()`. The clock reads
+  /// `AuthTestFixtures.now`, so a seeded verifier is fresh unless the test ages it.
   static func makeAuth(
     requests: PortalRequestsProtocol,
     storage: AuthSessionStorage = MockAuthSessionStorage(),
+    verifierStorage: OAuthVerifierStorage = MockOAuthVerifierStorage(),
+    clock: @escaping () -> Date = { AuthTestFixtures.now },
     logger: RecordingLogger? = nil,
     magicLink: MagicLinkConfig? = AuthTestFixtures.magicLink,
     isAccountAbstracted: Bool? = nil,
@@ -400,8 +430,10 @@ enum AuthTestFixtures {
         redirectUrl: redirectUrl,
         api: api,
         storage: storage,
+        verifierStorage: verifierStorage,
         magicLink: magicLink,
         isAccountAbstracted: isAccountAbstracted,
+        clock: clock,
         webSessionFactory: webSessionFactory
       )
     }
@@ -409,8 +441,10 @@ enum AuthTestFixtures {
       redirectUrl: redirectUrl,
       api: api,
       storage: storage,
+      verifierStorage: verifierStorage,
       magicLink: magicLink,
-      isAccountAbstracted: isAccountAbstracted
+      isAccountAbstracted: isAccountAbstracted,
+      clock: clock
     )
   }
 

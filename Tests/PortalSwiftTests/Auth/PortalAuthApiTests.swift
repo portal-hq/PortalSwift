@@ -40,6 +40,11 @@ final class PortalAuthApiTests: XCTestCase {
   private static let encodedRedirectUrl = "myapp%3A%2F%2Fauth%2Fcallback"
   /// A grant token; single-use in production, a literal here.
   private static let grantToken = "grant-token"
+  /// The RFC 7636 Appendix B verifier and its `S256` challenge.
+  private static let codeVerifier = AuthTestFixtures.rfcCodeVerifier
+  private static let codeChallenge = AuthTestFixtures.rfcCodeChallenge
+  /// The PKCE query parameters `getOAuthUrls` appends after `redirectUrl`.
+  private static let pkceQuery = "&codeChallenge=\(AuthTestFixtures.rfcCodeChallenge)&codeChallengeMethod=S256"
   /// The bearer `validateTotp` sends. Short-lived in production; a literal here.
   private static let userJwt = "user-jwt"
   /// A six-digit TOTP code, posted verbatim by the module.
@@ -113,8 +118,8 @@ final class PortalAuthApiTests: XCTestCase {
     )
     _ = try await self.api.getMagicLinkDetails(token: Self.grantToken)
     _ = try await self.api.validateMagicLink(token: Self.grantToken)
-    _ = try await self.api.getOAuthUrls(redirectUrl: redirectUrl, isAccountAbstracted: nil)
-    _ = try await self.api.validateOAuthToken(token: Self.grantToken)
+    _ = try await self.api.getOAuthUrls(redirectUrl: redirectUrl, isAccountAbstracted: nil, codeChallenge: Self.codeChallenge)
+    _ = try await self.api.validateOAuthToken(token: Self.grantToken, codeVerifier: Self.codeVerifier)
     _ = try await self.api.validateTotp(code: Self.totpCode, userJwt: Self.userJwt)
 
     return self.requests.recorded
@@ -254,7 +259,7 @@ final class PortalAuthApiTests: XCTestCase {
       "https://api.portalhq.io/api/v3/auth/magic-links",
       "https://api.portalhq.io/api/v3/auth/magic-links/details",
       "https://api.portalhq.io/api/v3/auth/magic-links/validations",
-      "https://api.portalhq.io/api/v3/auth/oauth/urls?redirectUrl=myapp%3A%2F%2Fauth%2Fcallback",
+      "https://api.portalhq.io/api/v3/auth/oauth/urls?redirectUrl=myapp%3A%2F%2Fauth%2Fcallback" + Self.pkceQuery,
       "https://api.portalhq.io/api/v3/auth/oauth/tokens",
       "https://api.portalhq.io/api/v3/auth/totps/validations"
     ])
@@ -774,28 +779,28 @@ final class PortalAuthApiTests: XCTestCase {
   func test_getOAuthUrls_willTargetEndpointWithEncodedRedirectUrl() async throws {
     self.requests.enqueue(AuthTestFixtures.oauthUrlsResponse())
 
-    _ = try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: nil)
+    _ = try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: nil, codeChallenge: Self.codeChallenge)
 
     XCTAssertEqual(
       self.requests.lastRequest?.absoluteString,
-      "https://api.portalhq.io/api/v3/auth/oauth/urls?redirectUrl=" + Self.encodedRedirectUrl
+      "https://api.portalhq.io/api/v3/auth/oauth/urls?redirectUrl=" + Self.encodedRedirectUrl + Self.pkceQuery
     )
   }
 
   func test_getOAuthUrls_willEncodeSpaceAsPercent20() async throws {
     self.requests.enqueue(AuthTestFixtures.oauthUrlsResponse())
 
-    _ = try await self.api.getOAuthUrls(redirectUrl: "https://example.com/a b", isAccountAbstracted: nil)
+    _ = try await self.api.getOAuthUrls(redirectUrl: "https://example.com/a b", isAccountAbstracted: nil, codeChallenge: Self.codeChallenge)
 
     let url = try XCTUnwrap(self.requests.lastRequest?.absoluteString)
-    XCTAssertTrue(url.hasSuffix("https%3A%2F%2Fexample.com%2Fa%20b"), url)
+    XCTAssertTrue(url.contains("redirectUrl=https%3A%2F%2Fexample.com%2Fa%20b&"), url)
     XCTAssertFalse(url.contains("+"), "A `+` would be decoded as a space by the backend.")
   }
 
   func test_getOAuthUrls_willEncodeRedirectOwnQuery() async throws {
     self.requests.enqueue(AuthTestFixtures.oauthUrlsResponse())
 
-    _ = try await self.api.getOAuthUrls(redirectUrl: "https://example.com/cb?x=1&y=2", isAccountAbstracted: nil)
+    _ = try await self.api.getOAuthUrls(redirectUrl: "https://example.com/cb?x=1&y=2", isAccountAbstracted: nil, codeChallenge: Self.codeChallenge)
 
     let url = try XCTUnwrap(self.requests.lastRequest?.absoluteString)
     XCTAssertTrue(url.contains("%3Fx%3D1%26y%3D2"), url)
@@ -805,7 +810,7 @@ final class PortalAuthApiTests: XCTestCase {
   func test_getOAuthUrls_willOmitIsAccountAbstracted_whenNil() async throws {
     self.requests.enqueue(AuthTestFixtures.oauthUrlsResponse())
 
-    _ = try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: nil)
+    _ = try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: nil, codeChallenge: Self.codeChallenge)
 
     let url = try XCTUnwrap(self.requests.lastRequest?.absoluteString)
     XCTAssertFalse(url.contains("isAccountAbstracted"), url)
@@ -815,11 +820,11 @@ final class PortalAuthApiTests: XCTestCase {
     self.requests.enqueue(AuthTestFixtures.oauthUrlsResponse())
     self.requests.enqueue(AuthTestFixtures.oauthUrlsResponse())
 
-    _ = try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: true)
+    _ = try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: true, codeChallenge: Self.codeChallenge)
     let truthy = try XCTUnwrap(self.requests.lastRequest?.absoluteString)
     XCTAssertTrue(truthy.hasSuffix("&isAccountAbstracted=true"), truthy)
 
-    _ = try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: false)
+    _ = try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: false, codeChallenge: Self.codeChallenge)
     let falsy = try XCTUnwrap(self.requests.lastRequest?.absoluteString)
     XCTAssertTrue(falsy.hasSuffix("&isAccountAbstracted=false"), falsy)
   }
@@ -827,7 +832,7 @@ final class PortalAuthApiTests: XCTestCase {
   func test_getOAuthUrls_willSendEnvHeaderTraceIdAndNoBearer() async throws {
     self.requests.enqueue(AuthTestFixtures.envelope([String: Any]()))
 
-    _ = try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: nil)
+    _ = try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: nil, codeChallenge: Self.codeChallenge)
 
     let request = try XCTUnwrap(self.requests.lastRequest)
     XCTAssertEqual(request.headers[PortalAuthApi.authEnvironmentIdHeader], Self.authEnvironmentId)
@@ -839,7 +844,7 @@ final class PortalAuthApiTests: XCTestCase {
   func test_getOAuthUrls_willReadOnlyEnabledProviders() async throws {
     self.requests.enqueue(AuthTestFixtures.oauthUrlsResponse(google: "https://accounts.google.com/o/oauth2/v2/auth"))
 
-    let urls = try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: nil)
+    let urls = try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: nil, codeChallenge: Self.codeChallenge)
 
     XCTAssertEqual(urls.google, "https://accounts.google.com/o/oauth2/v2/auth")
     XCTAssertNil(urls.apple)
@@ -848,7 +853,7 @@ final class PortalAuthApiTests: XCTestCase {
   func test_getOAuthUrls_willReadEmptyObject() async throws {
     self.requests.enqueue(AuthTestFixtures.envelope([String: Any]()))
 
-    let urls = try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: nil)
+    let urls = try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: nil, codeChallenge: Self.codeChallenge)
 
     XCTAssertNil(urls.google)
     XCTAssertNil(urls.apple)
@@ -857,7 +862,7 @@ final class PortalAuthApiTests: XCTestCase {
   func test_getOAuthUrls_willTreatNullProviderAsAbsent() async throws {
     self.requests.enqueue(Data("{\"data\":{\"google\":null,\"apple\":\"https://appleid.apple.com/auth/authorize\"}}".utf8))
 
-    let urls = try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: nil)
+    let urls = try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: nil, codeChallenge: Self.codeChallenge)
 
     XCTAssertNil(urls.google)
     XCTAssertEqual(urls.apple, "https://appleid.apple.com/auth/authorize")
@@ -867,7 +872,7 @@ final class PortalAuthApiTests: XCTestCase {
     self.requests.enqueue(Data("{\"error\":\"Unauthorized\"}".utf8))
 
     let thrown = await XCTAssertThrowsAsync(
-      try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: nil),
+      try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: nil, codeChallenge: Self.codeChallenge),
       expected: PortalAuthError.malformedResponse(path: PortalAuthApi.oauthUrlsPath, missing: nil)
     )
 
@@ -880,7 +885,7 @@ final class PortalAuthApiTests: XCTestCase {
     self.requests.failWith = AuthTestFixtures.clientError(status: 400, body: "{\"error\":\"AA not configured\"}")
 
     await XCTAssertThrowsAsync(
-      try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: true),
+      try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: true, codeChallenge: Self.codeChallenge),
       expected: PortalAuthError.accountAbstractionUnavailable(message: "AA not configured")
     )
   }
@@ -890,13 +895,13 @@ final class PortalAuthApiTests: XCTestCase {
 
     self.requests.failWith = error
     await XCTAssertThrowsAsync(
-      try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: nil),
+      try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: nil, codeChallenge: Self.codeChallenge),
       expected: error
     )
 
     self.requests.failWith = error
     await XCTAssertThrowsAsync(
-      try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: false),
+      try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: false, codeChallenge: Self.codeChallenge),
       expected: error
     )
   }
@@ -905,7 +910,7 @@ final class PortalAuthApiTests: XCTestCase {
     self.requests.failWith = PortalRequestsError.unauthorized
 
     await XCTAssertThrowsAsync(
-      try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: nil),
+      try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: nil, codeChallenge: Self.codeChallenge),
       expected: PortalRequestsError.unauthorized
     )
   }
@@ -920,7 +925,7 @@ final class PortalAuthApiTests: XCTestCase {
       isAccountAbstracted: false
     ))
 
-    let grant = try await self.api.validateOAuthToken(token: Self.grantToken)
+    let grant = try await self.api.validateOAuthToken(token: Self.grantToken, codeVerifier: Self.codeVerifier)
 
     XCTAssertEqual(grant.clientSessionToken, "session")
     XCTAssertEqual(grant.endUserId, "user-1")
@@ -930,7 +935,10 @@ final class PortalAuthApiTests: XCTestCase {
     let request = try XCTUnwrap(self.requests.lastRequest)
     XCTAssertEqual(request.absoluteString, Self.apiBase + "/oauth/tokens")
     XCTAssertEqual(request.method, .post)
-    XCTAssertEqual(try XCTUnwrap(request.payloadJSON)["token"] as? String, Self.grantToken)
+    let body = try XCTUnwrap(request.payloadJSON)
+    XCTAssertEqual(body["token"] as? String, Self.grantToken)
+    XCTAssertEqual(body["codeVerifier"] as? String, Self.codeVerifier)
+    XCTAssertEqual(body.count, 2, "The OAuth exchange body is exactly { token, codeVerifier }.")
     XCTAssertEqual(request.headers[PortalAuthApi.authEnvironmentIdHeader], Self.authEnvironmentId)
     XCTAssertNil(request.bearerToken)
   }
@@ -943,7 +951,7 @@ final class PortalAuthApiTests: XCTestCase {
       totpLink: "otpauth://totp/Portal"
     ))
 
-    let grant = try await self.api.validateOAuthToken(token: Self.grantToken)
+    let grant = try await self.api.validateOAuthToken(token: Self.grantToken, codeVerifier: Self.codeVerifier)
 
     XCTAssertNil(grant.clientSessionToken)
     XCTAssertEqual(grant.userJwt, "jwt")
@@ -954,7 +962,7 @@ final class PortalAuthApiTests: XCTestCase {
     self.requests.enqueue(Data("{\"data\":{\"clientSessionToken\":\"session\",\"endUserId\":null}}".utf8))
 
     await XCTAssertThrowsAsync(
-      try await self.api.validateOAuthToken(token: Self.grantToken),
+      try await self.api.validateOAuthToken(token: Self.grantToken, codeVerifier: Self.codeVerifier),
       expected: PortalAuthError.malformedResponse(path: PortalAuthApi.oauthTokensPath, missing: "endUserId")
     )
   }
@@ -963,7 +971,7 @@ final class PortalAuthApiTests: XCTestCase {
     self.requests.enqueue(Data("{\"error\":\"Bad Request\"}".utf8))
 
     await XCTAssertThrowsAsync(
-      try await self.api.validateOAuthToken(token: Self.grantToken),
+      try await self.api.validateOAuthToken(token: Self.grantToken, codeVerifier: Self.codeVerifier),
       expected: PortalAuthError.malformedResponse(path: PortalAuthApi.oauthTokensPath, missing: nil)
     )
   }
@@ -1084,8 +1092,8 @@ final class PortalAuthApiTests: XCTestCase {
       (PortalAuthApi.methodsPath, { _ = try await self.api.getMethods() }),
       (PortalAuthApi.magicLinkDetailsPath, { _ = try await self.api.getMagicLinkDetails(token: Self.grantToken) }),
       (PortalAuthApi.magicLinkValidationsPath, { _ = try await self.api.validateMagicLink(token: Self.grantToken) }),
-      (PortalAuthApi.oauthUrlsPath, { _ = try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: nil) }),
-      (PortalAuthApi.oauthTokensPath, { _ = try await self.api.validateOAuthToken(token: Self.grantToken) }),
+      (PortalAuthApi.oauthUrlsPath, { _ = try await self.api.getOAuthUrls(redirectUrl: Self.redirectUrl, isAccountAbstracted: nil, codeChallenge: Self.codeChallenge) }),
+      (PortalAuthApi.oauthTokensPath, { _ = try await self.api.validateOAuthToken(token: Self.grantToken, codeVerifier: Self.codeVerifier) }),
       (PortalAuthApi.totpValidationsPath, { _ = try await self.api.validateTotp(code: Self.totpCode, userJwt: Self.userJwt) })
     ]
 

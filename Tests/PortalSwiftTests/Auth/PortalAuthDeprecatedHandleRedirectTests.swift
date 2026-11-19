@@ -24,6 +24,8 @@ final class PortalAuthDeprecatedHandleRedirectTests: XCTestCase {
 
   private var requests = RecordingPortalRequests()
   private var storage = MockAuthSessionStorage()
+  /// Holds a Google or Apple sign-in in progress, so an OAuth redirect reaches the exchange.
+  private var verifierStorage = MockOAuthVerifierStorage()
   private var logger = RecordingLogger()
   private var auth = AuthTestFixtures.makeAuth(requests: RecordingPortalRequests())
 
@@ -32,8 +34,14 @@ final class PortalAuthDeprecatedHandleRedirectTests: XCTestCase {
     CredentialInvalidationRegistry.shared.resetForTesting()
     self.requests = RecordingPortalRequests()
     self.storage = MockAuthSessionStorage()
+    self.verifierStorage = MockOAuthVerifierStorage(stored: AuthTestFixtures.pendingVerifier())
     self.logger = RecordingLogger()
-    self.auth = AuthTestFixtures.makeAuth(requests: self.requests, storage: self.storage, logger: self.logger)
+    self.auth = AuthTestFixtures.makeAuth(
+      requests: self.requests,
+      storage: self.storage,
+      verifierStorage: self.verifierStorage,
+      logger: self.logger
+    )
   }
 
   override func tearDownWithError() throws {
@@ -83,6 +91,8 @@ final class PortalAuthDeprecatedHandleRedirectTests: XCTestCase {
     self.requests.defaultResponse = AuthTestFixtures.grantResponse()
 
     _ = try await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect("google-grant", loginType: "GOOGLE"))
+    // A completed sign-in spends its verifier, so the second redirect needs a sign-in of its own.
+    self.verifierStorage.stored = AuthTestFixtures.pendingVerifier()
     _ = try await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect("apple-grant", loginType: "APPLE"))
 
     XCTAssertTrue(self.deprecationWarnings.isEmpty)

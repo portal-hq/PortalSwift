@@ -36,7 +36,14 @@ final class PortalAuthMagicLinkTests: XCTestCase {
     self.requests = RecordingPortalRequests()
     self.storage = MockAuthSessionStorage()
     self.logger = RecordingLogger()
-    self.auth = AuthTestFixtures.makeAuth(requests: self.requests, storage: self.storage, logger: self.logger)
+    // A Google or Apple sign-in in progress, for the cases that put an OAuth exchange next to a
+    // magic link; a magic link never reads it.
+    self.auth = AuthTestFixtures.makeAuth(
+      requests: self.requests,
+      storage: self.storage,
+      verifierStorage: MockOAuthVerifierStorage(stored: AuthTestFixtures.pendingVerifier()),
+      logger: self.logger
+    )
   }
 
   override func tearDownWithError() throws {
@@ -486,6 +493,23 @@ final class PortalAuthMagicLinkTests: XCTestCase {
     XCTAssertFalse(viaOAuth.session === viaConfirm.session)
     XCTAssertEqual(try viaConfirm.session.getToken(), "magic-link-session-token")
     XCTAssertEqual(self.paths, [PortalAuthApi.oauthTokensPath, PortalAuthApi.magicLinkValidationsPath])
+  }
+
+  func test_magicLink_willNeitherSendNorTouchAGoogleOrAppleSignInInProgress() async throws {
+    // A magic link is not bound to the device: its lookup and confirmation never read, send or
+    // spend the code verifier of a Google or Apple sign-in the user started meanwhile.
+    self.installMagicLinkResponder()
+    let verifierStorage = MockOAuthVerifierStorage(stored: AuthTestFixtures.pendingVerifier())
+    let auth = AuthTestFixtures.makeAuth(requests: self.requests, storage: self.storage, verifierStorage: verifierStorage)
+
+    _ = try await auth.getMagicLinkDetails(Self.token)
+    _ = try expectAuthenticatedResult(await auth.confirmMagicLink(Self.token))
+
+    let confirmation = try XCTUnwrap(self.requests.lastRequest)
+    XCTAssertEqual(confirmation.path, PortalAuthApi.magicLinkValidationsPath)
+    XCTAssertNil(confirmation.payloadJSON?["codeVerifier"])
+    XCTAssertTrue(verifierStorage.events.isEmpty)
+    XCTAssertEqual(verifierStorage.stored, AuthTestFixtures.pendingVerifier())
   }
 
   // MARK: - confirmMagicLink: concurrency and cancellation

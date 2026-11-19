@@ -309,10 +309,14 @@ final class PortalAuthParseRedirectTests: XCTestCase {
     ]
 
     for url in urls {
-      // A fresh instance per URL, so no replay memory can hide an exchange.
+      // A fresh instance per URL, so no replay memory can hide an exchange, with a Google or Apple
+      // sign-in in progress, so an OAuth redirect can reach the exchange at all.
       let requests = RecordingPortalRequests()
       requests.defaultResponse = AuthTestFixtures.grantResponse()
-      let auth = AuthTestFixtures.makeAuth(requests: requests)
+      let auth = AuthTestFixtures.makeAuth(
+        requests: requests,
+        verifierStorage: MockOAuthVerifierStorage(stored: AuthTestFixtures.pendingVerifier())
+      )
 
       let parsed = auth.parseRedirect(url)
       _ = try? await auth.legacy.handleRedirect(url)

@@ -17,11 +17,16 @@ import XCTest
 /// `handleRedirect(_:)` — one grant mutex, one remembered result keyed by sign-in kind and token,
 /// an exchange shielded from the caller's cancellation — but keeps a refused grant as the
 /// transport's `PortalRequestsError.unauthorized`, as `signInWith*` reports it.
+///
+/// Every case starts with a Google or Apple sign-in in progress, as `loginWith*` leaves it, so the
+/// exchange can be reached; the device binding itself is covered by `PortalAuthOAuthVerifierTests`,
+/// and only pinned here for this method.
 final class PortalAuthCompleteOAuthLoginTests: XCTestCase {
   private static let token = AuthTestFixtures.grantToken
 
   private var requests = RecordingPortalRequests()
   private var storage = MockAuthSessionStorage()
+  private var verifierStorage = MockOAuthVerifierStorage()
   private var logger = RecordingLogger()
   private var auth = AuthTestFixtures.makeAuth(requests: RecordingPortalRequests())
 
@@ -30,8 +35,14 @@ final class PortalAuthCompleteOAuthLoginTests: XCTestCase {
     CredentialInvalidationRegistry.shared.resetForTesting()
     self.requests = RecordingPortalRequests()
     self.storage = MockAuthSessionStorage()
+    self.verifierStorage = MockOAuthVerifierStorage(stored: AuthTestFixtures.pendingVerifier())
     self.logger = RecordingLogger()
-    self.auth = AuthTestFixtures.makeAuth(requests: self.requests, storage: self.storage, logger: self.logger)
+    self.auth = AuthTestFixtures.makeAuth(
+      requests: self.requests,
+      storage: self.storage,
+      verifierStorage: self.verifierStorage,
+      logger: self.logger
+    )
   }
 
   override func tearDownWithError() throws {
@@ -60,10 +71,75 @@ final class PortalAuthCompleteOAuthLoginTests: XCTestCase {
     XCTAssertEqual(request.method, .post)
     XCTAssertNil(request.bearerToken)
     let payload = try XCTUnwrap(request.payloadJSON)
-    XCTAssertEqual(payload.count, 1)
+    XCTAssertEqual(payload.count, 2)
     XCTAssertEqual(payload["token"] as? String, Self.token)
+    XCTAssertEqual(payload["codeVerifier"] as? String, AuthTestFixtures.rfcCodeVerifier, "Sent with the verifier of the sign-in in progress")
     XCTAssertEqual(try result.session.getToken(), AuthTestFixtures.clientSessionToken)
     XCTAssertEqual(self.storage.setCalls, 1)
+    XCTAssertNil(self.verifierStorage.stored, "Portal accepted the grant, so its verifier is spent")
+  }
+
+  // MARK: - Bound to the device
+
+  func test_completeOAuthLogin_willRefuseWithoutARequest_whenNoSignInIsInProgress() async throws {
+    self.requests.defaultResponse = AuthTestFixtures.grantResponse()
+    self.verifierStorage.stored = nil
+
+    for loginType in ["GOOGLE", "APPLE"] {
+      await XCTAssertThrowsAsync(
+        try await self.auth.completeOAuthLogin(self.oauth(loginType: loginType)),
+        expected: PortalAuthError.oauthFlowNotStarted
+      )
+    }
+
+    XCTAssertEqual(self.requests.callCount, 0, "A grant this device never asked for must never reach /oauth/tokens")
+    XCTAssertEqual(self.storage.setCalls, 0)
+  }
+
+  func test_completeOAuthLogin_willRefuseWithoutARequest_whenTheSignInIsFifteenMinutesOld() async throws {
+    self.requests.defaultResponse = AuthTestFixtures.grantResponse()
+    self.verifierStorage.stored = AuthTestFixtures.pendingVerifier(ageMillis: PortalAuth.verifierLifetimeMillis)
+
+    await XCTAssertThrowsAsync(try await self.auth.completeOAuthLogin(self.oauth()), expected: PortalAuthError.oauthFlowNotStarted)
+
+    XCTAssertEqual(self.requests.callCount, 0)
+    XCTAssertNil(self.verifierStorage.stored, "An expired sign-in is cleared")
+  }
+
+  func test_completeOAuthLogin_willKeepTheSignInInProgress_whenPortalRefusesTheGrant() async throws {
+    self.requests.failWith = PortalRequestsError.unauthorized
+
+    await XCTAssertThrowsAsync(try await self.auth.completeOAuthLogin(self.oauth()), expected: PortalRequestsError.unauthorized)
+
+    // A refused grant can be someone else's, sent with this device's verifier: the user's own
+    // redirect, arriving next, must still complete.
+    XCTAssertEqual(self.verifierStorage.stored, AuthTestFixtures.pendingVerifier())
+  }
+
+  func test_completeOAuthLogin_willThrowOAuthFlowNotStarted_whenClearPersistedSessionCancelsTheExchange() async throws {
+    self.requests.defaultResponse = AuthTestFixtures.grantResponse()
+    self.requests.gateFirstRequest = true
+    let auth = self.auth
+    let requests = self.requests
+    let redirect = try self.oauth()
+
+    let exchange = Task { try await auth.completeOAuthLogin(redirect) }
+    let didArrive = await requests.waitUntilArrived()
+    XCTAssertTrue(didArrive)
+
+    let clear = Task { try await auth.clearPersistedSession() }
+    let didPark = await AuthTestFixtures.pollUntil { auth.grantMutex.isContended }
+    XCTAssertTrue(didPark, "The clear waits for the exchange holding the lock")
+    requests.release()
+
+    await XCTAssertThrowsAsync(try await exchange.value, expected: PortalAuthError.oauthFlowNotStarted)
+    try await clear.value
+    XCTAssertEqual(self.storage.setCalls, 0, "No session is written for a cancelled sign-in")
+    XCTAssertNil(self.verifierStorage.stored)
+
+    // Delivered again after the clear: refused without a second request.
+    await XCTAssertThrowsAsync(try await auth.completeOAuthLogin(redirect), expected: PortalAuthError.oauthFlowNotStarted)
+    XCTAssertEqual(requests.callCount, 1)
   }
 
   func test_completeOAuthLogin_willExchangeAppleAtTheSameEndpoint() async throws {

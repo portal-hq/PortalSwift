@@ -200,13 +200,17 @@ final class PortalAuthApi {
     return MagicLinkDetails(email: email)
   }
 
-  /// `POST /magic-links/validations`: exchanges a magic-link grant.
+  /// `POST /magic-links/validations`: exchanges a magic-link grant. The body is `{ token }` only.
   func validateMagicLink(token: String) async throws -> AuthGrantValidationResponse {
-    try await self.exchangeGrant(path: Self.magicLinkValidationsPath, token: token)
+    try await self.exchangeGrant(path: Self.magicLinkValidationsPath, payload: GrantTokenRequest(token: token))
   }
 
-  /// `GET /oauth/urls?redirectUrl=…[&isAccountAbstracted=true|false]`: the provider authorize
-  /// URLs. A key is present only for a provider the environment has enabled.
+  /// `GET /oauth/urls?redirectUrl=…&codeChallenge=…&codeChallengeMethod=S256[&isAccountAbstracted=true|false]`:
+  /// the provider authorize URLs. A key is present only for a provider the environment has enabled.
+  ///
+  /// `codeChallenge` is the `S256` challenge of the sign-in's code verifier. The backend binds
+  /// the sign-in to it, so only the matching verifier can exchange the grant. It is public by
+  /// design, so it may appear in a logged URL; the verifier never does.
   ///
   /// The `state` embedded in these URLs is single-use and shared across both providers in one
   /// response, so callers must fetch fresh per tap and never cache. A `401` here is
@@ -215,8 +219,10 @@ final class PortalAuthApi {
   ///
   /// - Throws: `PortalAuthError.accountAbstractionUnavailable` on a `400` carrying
   ///   `{"error": …}`; every other transport error unchanged.
-  func getOAuthUrls(redirectUrl: String, isAccountAbstracted: Bool?) async throws -> OAuthUrlsResponse {
+  func getOAuthUrls(redirectUrl: String, isAccountAbstracted: Bool?, codeChallenge: String) async throws -> OAuthUrlsResponse {
     var query = "?redirectUrl=" + Self.formUrlEncode(redirectUrl)
+    query += "&codeChallenge=" + Self.formUrlEncode(codeChallenge)
+    query += "&codeChallengeMethod=" + PkceCodeVerifier.challengeMethod
     if let isAccountAbstracted = isAccountAbstracted {
       query += "&isAccountAbstracted=" + (isAccountAbstracted ? "true" : "false")
     }
@@ -234,9 +240,14 @@ final class PortalAuthApi {
     return try Self.unwrap(data, path: Self.oauthUrlsPath, as: OAuthUrlsResponse.self)
   }
 
-  /// `POST /oauth/tokens`: exchanges an OAuth grant. Both providers share the endpoint.
-  func validateOAuthToken(token: String) async throws -> AuthGrantValidationResponse {
-    try await self.exchangeGrant(path: Self.oauthTokensPath, token: token)
+  /// `POST /oauth/tokens` with `{ token, codeVerifier }`: exchanges a Google or Apple grant. Both
+  /// providers share the endpoint. A verifier that does not match the sign-in's challenge is
+  /// refused with a bare `401` after the backend has spent the grant, like a spent or expired one.
+  func validateOAuthToken(token: String, codeVerifier: String) async throws -> AuthGrantValidationResponse {
+    try await self.exchangeGrant(
+      path: Self.oauthTokensPath,
+      payload: OAuthGrantTokenRequest(token: token, codeVerifier: codeVerifier)
+    )
   }
 
   /// `POST /totps/validations` with `Authorization: Bearer <userJwt>`: submits a TOTP code.
@@ -275,12 +286,13 @@ final class PortalAuthApi {
 
   /// Exchanges a single-use grant for a session, or for the `userJwt` of a pending TOTP step.
   ///
-  /// Both grant endpoints take the same request and answer in the same shape, so they share
-  /// this body — including the `endUserId` guard: a completed grant must name the end user
-  /// the session belongs to, and catching it here (where the path is known) beats persisting a
-  /// session that would be rejected as incomplete on the next restore.
-  private func exchangeGrant(path: String, token: String) async throws -> AuthGrantValidationResponse {
-    let request = try self.makeRequest(path: path, method: .post, payload: GrantTokenRequest(token: token))
+  /// Both grant endpoints answer in the same shape, so they share this body — including the
+  /// `endUserId` guard: a completed grant must name the end user the session belongs to, and
+  /// catching it here (where the path is known) beats persisting a session that would be
+  /// rejected as incomplete on the next restore. Only the request body differs: the OAuth
+  /// exchange also carries the code verifier.
+  private func exchangeGrant(path: String, payload: any Codable) async throws -> AuthGrantValidationResponse {
+    let request = try self.makeRequest(path: path, method: .post, payload: payload)
     let data = try await self.requests.execute(request: request)
     let grant = try Self.unwrap(data, path: path, as: AuthGrantValidationResponse.self)
 

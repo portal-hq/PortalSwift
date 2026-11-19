@@ -117,6 +117,9 @@ final class ClientAuthViewController: UIViewController {
   private let pastedRedirectField = UITextField()
   private let completeRedirectButton = UIButton(type: .system)
 
+  private let unsolicitedRedirectButton = UIButton(type: .system)
+  private let cancelSignInButton = UIButton(type: .system)
+
   private let totpHintLabel = UILabel()
   private let totpSecretField = UITextField()
   private let copyTotpSecretButton = UIButton(type: .system)
@@ -248,6 +251,8 @@ final class ClientAuthViewController: UIViewController {
     self.notConfiguredLabel.isHidden = false
     self.setEnabled(self.getMethodsButton, false)
     self.setEnabled(self.completeRedirectButton, false)
+    self.setEnabled(self.unsolicitedRedirectButton, false)
+    self.setEnabled(self.cancelSignInButton, false)
     self.pastedRedirectField.isEnabled = false
     self.emailField.isEnabled = false
   }
@@ -400,12 +405,17 @@ final class ClientAuthViewController: UIViewController {
   ///
   /// Default (switch off) is `signInWith*`: the SDK owns an `ASWebAuthenticationSession`, matches
   /// the callback inside that session and completes the login without the URL ever passing
-  /// through the OS URL handler — the only path a same-scheme app on the device cannot hijack.
+  /// through the OS URL handler.
   ///
   /// Switch on is the URL-only path every SDK shares: `loginWith*` resolves the authorize URL,
   /// the app opens it in the external browser, and the redirect returns through the OS handler →
   /// `ClientAuthCoordinator` → `completeRedirect(_:)`. Nothing here waits for it, which is why
   /// that flow survives the app being backgrounded or killed while the browser is open.
+  ///
+  /// Both paths are bound to this device: the SDK stores a one-time code verifier (PKCE) when the
+  /// sign-in starts and sends it with the grant, so a redirect another app intercepts is useless to
+  /// it, and one another app crafts cannot complete a sign-in here. The "Device binding" section
+  /// exercises that.
   private func handleOAuthLogin(_ method: AuthMethod) {
     guard let auth = self.auth else { return }
     let usesExternalBrowser = self.externalBrowserSwitch.isOn
@@ -431,7 +441,7 @@ final class ClientAuthViewController: UIViewController {
             return
           }
           self.append("✓ \(step) — authorize URL resolved")
-          self.openAuthorizeUrl(result.authorizeUrl, provider: method, step: step)
+          self.openAuthorizeUrl(result.authorizeUrl, step: step)
         } else {
           guard let window = self.view.window else {
             self.append("✗ \(step) — no window to present the sign-in sheet from")
@@ -483,7 +493,7 @@ final class ClientAuthViewController: UIViewController {
   ///
   /// The scheme is checked first: this URL comes off the network, and opening an arbitrary scheme
   /// hands control to whichever app claims it.
-  private func openAuthorizeUrl(_ authorizeUrl: String, provider: AuthMethod, step: String) {
+  private func openAuthorizeUrl(_ authorizeUrl: String, step: String) {
     guard let url = URL(string: authorizeUrl),
           let scheme = url.scheme?.lowercased(),
           scheme == "http" || scheme == "https"
@@ -493,14 +503,10 @@ final class ClientAuthViewController: UIViewController {
       return
     }
 
-    // Recorded before the browser opens, so the redirect cannot outrun it: the redirect is
-    // completed only because this app started the sign-in (see
-    // `ClientAuthCoordinator.takeExternalOAuthStart(for:)`).
-    ClientAuthCoordinator.shared.markExternalOAuthStarted(provider)
+    // Nothing to record here: `loginWith*` already stored the sign-in's code verifier, which is
+    // what lets the SDK complete this redirect, and only this one, when it comes back.
     UIApplication.shared.open(url, options: [:]) { [weak self] didOpen in
       guard didOpen else {
-        // Cleared whether or not this screen is still around: no browser means no sign-in.
-        ClientAuthCoordinator.shared.clearExternalOAuthStart()
         self?.append("• no browser on this device can open the authorize URL")
         self?.showResult("\(step) failed", success: false)
         return
@@ -530,8 +536,8 @@ final class ClientAuthViewController: UIViewController {
   /// Reads a redirect with `parseRedirect` and completes it by kind. A magic link is never
   /// exchanged here: it goes to the confirmation step first (see `routeMagicLink`).
   ///
-  /// A Google or Apple redirect is completed only once per browser sign-in this app opened, for
-  /// its provider, within the sign-in window (see `ClientAuthCoordinator.takeExternalOAuthStart`).
+  /// A Google or Apple redirect always goes to `completeOAuthLogin`: the SDK completes only the
+  /// sign-in this device started with `loginWith*`, within 15 minutes, and refuses any other.
   private func completeRedirect(_ rawUrl: String) {
     guard let auth = self.auth else { return }
     // Dropped, not kept for later: the user is signing out. A magic link can be opened again.
@@ -543,26 +549,20 @@ final class ClientAuthViewController: UIViewController {
       // error: the app's router may have other handlers to try.
       self.append("• parseRedirect — ignored, not a Client Auth redirect")
     case let .failed(error)?:
-      // The browser sign-in, if one was running, is over. Any page can open such a URL, so it can
-      // end a sign-in in progress; the user simply starts again.
-      ClientAuthCoordinator.shared.clearExternalOAuthStart()
       // The value comes from the URL, so it is mapped to the screen's own text, not shown.
       self.append(error == "oauth_failed" ? "✗ redirect — the sign-in was not completed" : "✗ redirect — the sign-in failed")
       self.showResult("Sign-in not completed", success: false)
     case let .oauth(redirect)?:
-      // Only a sign-in this app opened in the browser. Any web page or message can open the
-      // redirect URL with a grant someone else obtained.
-      guard let startedAt = ClientAuthCoordinator.shared.takeExternalOAuthStart(for: redirect.provider) else {
-        self.append("• \(Self.providerLabel(redirect.provider)) redirect ignored — this app did not start that sign-in in the browser")
-        return
-      }
-      self.completeOAuthLogin(auth, redirect, startedAt: startedAt)
+      // Any web page or message can open the redirect URL with a grant someone else obtained. The
+      // SDK refuses that one (`oauthFlowNotStarted` with no sign-in in progress here, Portal's 401
+      // otherwise), so the app needs no record of its own of which sign-in it started.
+      self.completeOAuthLogin(auth, redirect)
     case let .magicLink(link)?:
       self.routeMagicLink(auth, link)
     }
   }
 
-  private func completeOAuthLogin(_ auth: PortalAuth, _ redirect: AuthRedirect.OAuth, startedAt: Date) {
+  private func completeOAuthLogin(_ auth: PortalAuth, _ redirect: AuthRedirect.OAuth) {
     let coordinator = ClientAuthCoordinator.shared
     let generation = coordinator.sessionGeneration
 
@@ -580,12 +580,65 @@ final class ClientAuthViewController: UIViewController {
         screen.append("✓ completeOAuthLogin — \(Self.providerLabel(redirect.provider)) sign-in completed")
         screen.handle(authResult: result)
       } catch {
-        if (error as? PortalRequestsError) != .unauthorized, coordinator.sessionGeneration == generation {
-          // Not refused by Portal, so the same redirect can be completed again (pasted, or
-          // delivered again) within the original window.
-          coordinator.restoreExternalOAuthStart(redirect.provider, startedAt: startedAt)
-        }
+        // A refusal (`oauthFlowNotStarted` or Portal's 401) signs nobody in. A failure before Portal
+        // answered leaves the sign-in in progress, so the same redirect can be completed again.
         self.liveScreen.reportFailure(step: "completeOAuthLogin", error: error)
+      }
+    }
+  }
+
+  // MARK: - Actions: device binding
+
+  /// Delivers a Google redirect carrying a grant this device never asked for — what a crafted or
+  /// intercepted redirect looks like. With no sign-in in progress the SDK refuses it before any
+  /// request; with one in progress it is sent with that sign-in's verifier and Portal refuses it,
+  /// and the sign-in in progress is kept. Either way nothing signs in.
+  @objc private func handleUnsolicitedRedirectTapped() {
+    guard let auth = self.auth else { return }
+    let separator = self.config.redirectUrl.contains("?") ? "&" : "?"
+    let crafted = self.config.redirectUrl + separator + "token=unsolicited-test-grant&login_type=GOOGLE"
+    let step = "unsolicitedRedirect"
+
+    guard case let .oauth(redirect)? = auth.parseRedirect(crafted) else {
+      // The configured redirect URL could not carry the test grant (for example a fragment).
+      self.append("• \(step) — ignored: not a Client Auth redirect for this redirect URL")
+      self.showResult("Unsolicited redirect ignored", success: true)
+      return
+    }
+
+    // Straight to the SDK, the way `completeRedirect` hands it any Google or Apple redirect.
+    Task { @MainActor [weak self] in
+      guard let self else { return }
+      do {
+        _ = try await auth.completeOAuthLogin(redirect)
+        self.append("✗ \(step) — an unsolicited grant was accepted")
+        self.showResult("Unsolicited redirect accepted", success: false)
+      } catch PortalAuthError.oauthFlowNotStarted {
+        self.append("✓ \(step) — refused on this device before any request: no sign-in in progress")
+        self.showResult("Unsolicited redirect refused", success: true)
+      } catch PortalRequestsError.unauthorized {
+        self.append("✓ \(step) — sent with this device's verifier and refused by Portal; the sign-in in progress is kept")
+        self.showResult("Unsolicited redirect refused", success: true)
+      } catch {
+        self.reportFailure(step: step, error: error)
+      }
+    }
+  }
+
+  /// Cancels a Google or Apple sign-in in progress through `clearPersistedSession()`, the only
+  /// public way to do it. That also deletes the stored session (not the session this app holds in
+  /// memory), and does not cancel a sign-in already at its two-factor step.
+  @objc private func handleCancelSignInTapped() {
+    guard let auth = self.auth else { return }
+
+    Task { @MainActor [weak self] in
+      guard let self else { return }
+      do {
+        try await auth.clearPersistedSession()
+        self.append("• clearPersistedSession — any Google or Apple sign-in in progress is cancelled (its redirect will be refused) and the stored session deleted; a sign-in already at its TOTP step is not cancelled")
+        self.showResult("Sign-in in progress cancelled", success: true)
+      } catch {
+        self.reportFailure(step: "clearPersistedSession", error: error)
       }
     }
   }
@@ -1104,9 +1157,6 @@ final class ClientAuthViewController: UIViewController {
     ClientAuthCoordinator.shared.setHandoff(session)
     self.delegate?.clientAuthDidPublish(session)
 
-    // Signed in, however it happened: a browser sign-in still marked as started is over.
-    ClientAuthCoordinator.shared.clearExternalOAuthStart()
-
     // The JWT was scoped to submitting a code and the login is now complete, so it is dead weight —
     // and leaving it set would re-enable the TOTP section on the next redirect replay.
     self.pendingUserJwt = nil
@@ -1133,6 +1183,9 @@ final class ClientAuthViewController: UIViewController {
     // put in it can reach the persistent unified log.
     self.logger.error("ClientAuth.\(step, privacy: .public) - ❌ \(error.localizedDescription)")
     self.append("✗ \(step) — \(error.localizedDescription)")
+    if let authError = error as? PortalAuthError, authError == .oauthFlowNotStarted {
+      self.append("• no Google or Apple sign-in in progress on this device for this redirect (never started here, already completed, older than 15 minutes or cancelled) — start a new sign-in")
+    }
     self.showResult("\(step) failed", success: false)
   }
 
@@ -1184,6 +1237,7 @@ final class ClientAuthViewController: UIViewController {
     self.setupSignInSection()
     self.setupSocialSection()
     self.setupRedirectSection()
+    self.setupDeviceBindingSection()
     self.setupTotpSection()
     self.setupResultSection()
   }
@@ -1287,7 +1341,9 @@ final class ClientAuthViewController: UIViewController {
     self.stack.addArrangedSubview(self.makeSectionHeader("Paste the callback URL"))
 
     let hint = UILabel()
-    hint.text = "A fallback for a redirect the OS could not deliver — paste it here to finish the login."
+    hint.text = "A fallback for a redirect the OS could not deliver — paste it here to finish the login. "
+      + "A Google or Apple redirect completes only on this device, within 15 minutes of the sign-in "
+      + "that produced it."
     hint.font = .systemFont(ofSize: 12)
     hint.textColor = .secondaryLabel
     hint.numberOfLines = 0
@@ -1304,6 +1360,41 @@ final class ClientAuthViewController: UIViewController {
     self.configureButton(self.completeRedirectButton, title: "Complete Redirect", color: .systemTeal, action: #selector(self.completeRedirectTapped))
     self.completeRedirectButton.accessibilityIdentifier = "clientAuthHandleRedirectButton"
     self.stack.addArrangedSubview(self.completeRedirectButton)
+
+    self.stack.addArrangedSubview(self.makeSeparator())
+  }
+
+  private func setupDeviceBindingSection() {
+    self.stack.addArrangedSubview(self.makeSectionHeader("Device binding (PKCE)"))
+
+    let hint = UILabel()
+    hint.text = "Google and Apple sign-ins are bound to this device: the SDK keeps a one-time code "
+      + "verifier in the Keychain for 15 minutes and sends it with the grant. Try an unsolicited "
+      + "redirect to see one this device did not start get refused; start a sign-in in the external "
+      + "browser and cancel it to see its redirect refused when it comes back. Cancelling also "
+      + "deletes the stored session, as clearPersistedSession() does."
+    hint.font = .systemFont(ofSize: 12)
+    hint.textColor = .secondaryLabel
+    hint.numberOfLines = 0
+    self.stack.addArrangedSubview(hint)
+
+    self.configureButton(
+      self.unsolicitedRedirectButton,
+      title: "Try an Unsolicited Redirect",
+      color: .systemOrange,
+      action: #selector(self.handleUnsolicitedRedirectTapped)
+    )
+    self.unsolicitedRedirectButton.accessibilityIdentifier = "clientAuthUnsolicitedRedirectButton"
+    self.stack.addArrangedSubview(self.unsolicitedRedirectButton)
+
+    self.configureButton(
+      self.cancelSignInButton,
+      title: "Cancel Sign-in in Progress",
+      color: .systemRed,
+      action: #selector(self.handleCancelSignInTapped)
+    )
+    self.cancelSignInButton.accessibilityIdentifier = "clientAuthCancelSignInButton"
+    self.stack.addArrangedSubview(self.cancelSignInButton)
 
     self.stack.addArrangedSubview(self.makeSeparator())
   }

@@ -28,6 +28,19 @@ import Foundation
 /// shows it on its own confirmation screen, and `confirmMagicLink(_:)` completes the sign-in only
 /// once the user confirms it. The SDK provides no UI for this.
 ///
+/// **Google and Apple sign-ins are bound to the device** with a PKCE code verifier (RFC 7636).
+/// Every `loginWith*` / `signInWith*` call creates a one-time verifier, sends only its hash with
+/// `GET /oauth/urls`, keeps it in the Keychain (service
+/// `PortalSwift.auth.oauthVerifier.<authEnvironmentId>`) and sends it with the grant exchange, so
+/// only the sign-in in progress on this device can complete. The binding has two halves. This SDK
+/// refuses a Google or Apple redirect that arrives with no sign-in in progress, before any
+/// network call, with `PortalAuthError.oauthFlowNotStarted`. A grant from a different sign-in is
+/// sent with this device's verifier and refused by Portal's servers, which check it against the
+/// challenge; that half relies on the backend enforcing the code verifier, as Portal's does. Each
+/// auth environment has one sign-in in progress (the newest wins), kept for 15 minutes; instances
+/// sharing an `authEnvironmentId` share it, while start ordering and cancellation are per instance.
+/// A magic link is not bound to the device, which is why it takes the confirmation step above.
+///
 /// **Hold one long-lived instance.** The completions remember the grant they last exchanged so a
 /// re-delivered redirect replays instead of failing the backend's single-use rejection, and that
 /// memory lives on the instance — one built per screen is destroyed by the very lifecycle event
@@ -56,11 +69,10 @@ import Foundation
 ///     confirmedLink = link
 ///     try complete(await auth.confirmMagicLink(link.token))
 ///   }
-/// case let .oauth(redirect)? where startedLoginWithGoogleOrApple:
-///   // Only a sign-in this app opened with loginWithGoogle() / loginWithApple(): any web page or
-///   // message can open your redirect URL with a grant someone else obtained.
+/// case let .oauth(redirect)?:
+///   // Completes only the sign-in this device started with loginWithGoogle() / loginWithApple();
+///   // any other throws .oauthFlowNotStarted or is refused by Portal, with nothing signed in.
 ///   try complete(await auth.completeOAuthLogin(redirect))
-/// case .oauth?: break // not started here — ignore it
 /// case .failed?: showSignInFailed()
 /// case nil: break // not ours — let another handler try
 /// }
@@ -74,8 +86,9 @@ import Foundation
 /// ```
 ///
 /// Thread-safety: the replay memo and the pending TOTP write are only touched under
-/// `grantMutex`; the presentation anchor, the ephemeral flag and the sign-in guard are guarded
-/// by `stateLock`. Everything else is immutable after `init`.
+/// `grantMutex`; starting a Google or Apple sign-in is serialised by `flowMutex`; the
+/// presentation anchor, the ephemeral flag, the sign-in guard and the OAuth generation are guarded
+/// by `stateLock`; the verifier storage locks itself. Everything else is immutable after `init`.
 public final class PortalAuth: @unchecked Sendable {
   /// Upper bound on an inbound redirect URL, in UTF-16 code units, applied before parsing.
   ///
@@ -86,6 +99,14 @@ public final class PortalAuth: @unchecked Sendable {
 
   /// Upper bound, in `Character`s, on an `error` value copied into an error message.
   static let maxErrorLength = 100
+
+  /// How long a Google or Apple sign-in in progress stays completable, in milliseconds.
+  ///
+  /// The backend's `state` lives 600 s from `/oauth/urls` to the provider callback, and the grant
+  /// 900 s from the callback to `/oauth/tokens`. 15 minutes covers a callback that lands just
+  /// before the state expires without keeping the verifier for the full theoretical 25. The
+  /// Android and React Native SDKs use the same value.
+  static let verifierLifetimeMillis: Int64 = 15 * 60 * 1000
 
   /// Which endpoint a grant is exchanged at: `/magic-links/validations` or `/oauth/tokens`.
   private enum GrantKind {
@@ -117,9 +138,24 @@ public final class PortalAuth: @unchecked Sendable {
   private let redirectUrl: String
   private let api: PortalAuthApi
   private let storage: AuthSessionStorage
+  private let verifierStorage: OAuthVerifierStorage
   private let magicLink: MagicLinkConfig?
   private let isAccountAbstracted: Bool?
+  private let clock: () -> Date
   private let webSessionFactory: () -> AuthWebSessionProviding
+
+  /// Serialises starting a Google or Apple sign-in on this instance — generate the verifier,
+  /// fetch the authorize URL, store the verifier — so the stored verifier always belongs to the
+  /// URL this instance returned last.
+  ///
+  /// Per instance, like the replay memo: a start on another `PortalAuth` with the same auth
+  /// environment is not serialised against this one. That instance shares the one verifier slot,
+  /// so whichever start stores last wins, and only one of two overlapping sign-ins can complete
+  /// either way.
+  ///
+  /// Separate from `grantMutex`, so starting a sign-in never waits on an exchange in flight.
+  /// Internal so tests can observe contention.
+  let flowMutex = AsyncMutex()
 
   /// Serialises every grant exchange, TOTP verification and persisted-session clear.
   ///
@@ -156,6 +192,13 @@ public final class PortalAuth: @unchecked Sendable {
   private weak var presentationAnchor: ASPresentationAnchor?
   private var _prefersEphemeralWebBrowserSession = false
   private var isSignInInFlight = false
+
+  /// Advanced by `clearPersistedSession()` *before* it waits for `grantMutex`, so a Google or Apple
+  /// exchange already holding that lock can see it was cancelled. `_redeemGrant` reads it before
+  /// waiting for the lock and fails with `oauthFlowNotStarted` once it has moved, rather than
+  /// handing back a session the clear is about to delete. Per instance, like the replay memo.
+  /// Guarded by `stateLock`.
+  private var oauthGeneration = 0
 
   // MARK: - Init
 
@@ -198,26 +241,32 @@ public final class PortalAuth: @unchecked Sendable {
       api: PortalAuthApi(authEnvironmentId: authEnvironmentId, apiHost: apiHost, requests: PortalRequests()),
       // Keyed by `authEnvironmentId`: instances sharing one share the session.
       storage: KeychainAuthSessionStorage(authEnvironmentId: authEnvironmentId),
+      // Keyed the same way: instances sharing one share the sign-in in progress.
+      verifierStorage: KeychainOAuthVerifierStorage(authEnvironmentId: authEnvironmentId),
       magicLink: magicLink,
       isAccountAbstracted: isAccountAbstracted
     )
   }
 
-  /// Designated initializer and test seam: injects the transport, the storage and the web
-  /// session factory. Performs no I/O.
+  /// Designated initializer and test seam: injects the transport, both storages, the clock the
+  /// verifier lifetime is measured with and the web session factory. Performs no I/O.
   init(
     redirectUrl: String,
     api: PortalAuthApi,
     storage: AuthSessionStorage,
+    verifierStorage: OAuthVerifierStorage,
     magicLink: MagicLinkConfig? = nil,
     isAccountAbstracted: Bool? = nil,
+    clock: @escaping () -> Date = { Date() },
     webSessionFactory: @escaping () -> AuthWebSessionProviding = { ASWebAuthenticationSessionAdapter() }
   ) {
     self.redirectUrl = redirectUrl
     self.api = api
     self.storage = storage
+    self.verifierStorage = verifierStorage
     self.magicLink = magicLink
     self.isAccountAbstracted = isAccountAbstracted
+    self.clock = clock
     self.webSessionFactory = webSessionFactory
   }
 
@@ -268,8 +317,9 @@ public final class PortalAuth: @unchecked Sendable {
   /// Returns once the email is **sent**; the eventual login arrives as a deep link, which you read
   /// with `parseRedirect(_:)` and complete in two steps: `getMagicLinkDetails(_:)`, your own
   /// confirmation screen, then `confirmMagicLink(_:)`. That deep link is delivered by the OS URL
-  /// handler, so anyone can get one in front of your user — a link they requested for their own
-  /// address and forwarded, or one an app that registered your scheme delivers — and the
+  /// handler and, unlike a Google or Apple grant, is not bound to this device, so anyone can get
+  /// one in front of your user — a link they requested for their own address and forwarded, or one
+  /// an app that registered your scheme delivers — and the
   /// confirmation step is what lets the user notice a link that is not theirs. The address is
   /// trimmed and lowercased first (the backend requires lowercase and does not trim). Every call
   /// delivers a real email and sends are rate limited, so **never retry automatically** — a resend
@@ -309,27 +359,36 @@ public final class PortalAuth: @unchecked Sendable {
   /// by both provider URLs in a single backend response, so a stale one fails at the provider
   /// with no useful message. For a flow that also owns the browser, see `signInWithGoogle()`.
   ///
-  /// **Redirect hijacking.** The callback this URL ends in comes back through the OS URL
-  /// handler, and `completeOAuthLogin(_:)` cannot tell a grant from *your* flow from one someone
-  /// else started, because the redirect carries no app-side binding (the backend's `state` binds
-  /// the provider to Portal, not the app to Portal). Anyone can therefore get a redirect carrying
-  /// a grant *they* obtained in front of your user — from a web page, a message, or an app that
-  /// registered the same scheme — and, if your app completes it, sign the user into *their*
-  /// end-user account. Prefer `signInWithGoogle()`: its `ASWebAuthenticationSession` returns the
-  /// callback to the SDK directly and never routes it through the OS. If you open the URL
-  /// yourself, complete an `.oauth` redirect only while a sign-in your app started this way is in
-  /// progress, and ignore one that arrives otherwise; an app that uses only `signInWith*` ignores
-  /// every `.oauth` redirect the OS delivers.
+  /// **Bound to this device.** Each call creates a one-time code verifier (PKCE, RFC 7636),
+  /// stores it in the Keychain before returning the URL, and sends Portal only its hash. The
+  /// grant this URL ends in can then only be exchanged by this device's `completeOAuthLogin(_:)`,
+  /// which sends the verifier with it — so a redirect another app intercepts is useless to it,
+  /// and a Google or Apple grant someone else obtained cannot sign your user in, whether a web
+  /// page, a message or an app that registered your scheme delivers it (a magic-link grant is not
+  /// bound this way; see `sendMagicLink(_:)`). With no sign-in in progress, this SDK refuses such
+  /// a grant itself; while one is in progress, it is Portal's servers that refuse it, by checking
+  /// the verifier against the challenge. The sign-in survives your app being terminated while the
+  /// browser is open, and stays completable for 15 minutes.
+  ///
+  /// **One sign-in in progress.** Each call replaces the verifier stored by any earlier
+  /// `loginWith*` / `signInWith*` call for this auth environment, so only the URL whose verifier
+  /// was stored last can complete: on one instance, the URL returned last; across instances
+  /// sharing the auth environment, whichever start stored its verifier last, which is not
+  /// necessarily the order callers received their URLs. Request the URL when the user taps, not
+  /// ahead of time.
+  /// `clearPersistedSession()` cancels the sign-in in progress, so call it before this method,
+  /// not after.
   ///
   /// - Throws: `PortalAuthError.authMethodUnavailable(.google)` when Google is not enabled for
   ///   this environment. Not retryable — check `getMethods()`.
+  ///   `PortalAuthError.sessionStorageFailure` when the verifier cannot be created or stored;
+  ///   no URL is returned and no sign-in is started, and a retry may succeed.
   public func loginWithGoogle() async throws -> AuthorizeUrlResult {
-    try await self.getAuthorizeUrl(.google)
+    try await self.startOAuthFlow(.google).authorizeUrl
   }
 
   /// The Apple authorize URL to open in a browser. See `loginWithGoogle()` for how to open it,
-  /// why the result must not be cached, and the redirect-hijacking exposure of opening the URL
-  /// yourself rather than through `signInWithApple()`.
+  /// why the result must not be cached, and how the sign-in is bound to this device.
   ///
   /// Sign in with Apple identifies end users differently: Portal identifies an end user by
   /// email, and a user who chooses *Hide My Email* becomes a distinct end user (with a distinct
@@ -337,9 +396,10 @@ public final class PortalAuth: @unchecked Sendable {
   /// supplies the email only on the user's first consent for a given Service ID, so changing
   /// the Service ID is a breaking change for existing users.
   ///
-  /// - Throws: `PortalAuthError.authMethodUnavailable(.apple)` when Apple is not enabled.
+  /// - Throws: `PortalAuthError.authMethodUnavailable(.apple)` when Apple is not enabled;
+  ///   `PortalAuthError.sessionStorageFailure` when the verifier cannot be created or stored.
   public func loginWithApple() async throws -> AuthorizeUrlResult {
-    try await self.getAuthorizeUrl(.apple)
+    try await self.startOAuthFlow(.apple).authorizeUrl
   }
 
   // MARK: - Redirect
@@ -518,24 +578,37 @@ public final class PortalAuth: @unchecked Sendable {
 
   /// Completes a Google or Apple redirect from `loginWithGoogle()` / `loginWithApple()`.
   ///
-  /// Pass the `.oauth` value `parseRedirect(_:)` returned. The grant is exchanged the way
-  /// `confirmMagicLink(_:)` exchanges a link: at most once on this instance, a redirect delivered
-  /// again replays the remembered result while its session is live, a failed exchange is not
-  /// remembered (a Keychain write failure is, and calling again finishes the write), and only a
-  /// task already cancelled when the call starts stops it. On success the session is persisted
-  /// before it is returned; `.totpRequired` leads to `verifyTotp(_:userJwt:)`. If your app signed
-  /// out while the call ran, discard its result, as `confirmMagicLink(_:)` describes.
-  /// `signInWithGoogle()` / `signInWithApple()` do all of this for you.
+  /// Pass the `.oauth` value `parseRedirect(_:)` returned. The grant is exchanged only with the
+  /// code verifier of the sign-in this device started (see `loginWithGoogle()`). With no sign-in
+  /// in progress — never started here, already completed outside this instance's replay memory,
+  /// older than 15 minutes, or cancelled by `clearPersistedSession()` — the redirect is refused
+  /// with `PortalAuthError.oauthFlowNotStarted` before any network call. A redirect from a sign-in
+  /// other than the one in progress is sent with this device's verifier and refused by Portal as
+  /// `PortalRequestsError.unauthorized`. Either way nobody is signed in, so the app can pass every
+  /// `.oauth` redirect the OS delivers.
   ///
-  /// It trusts any grant it is given, so call it only while a sign-in your app started with
-  /// `loginWithGoogle()` / `loginWithApple()` is in progress, and ignore an `.oauth` redirect that
-  /// arrives otherwise; see the redirect-hijacking note on `loginWithGoogle()`.
+  /// Otherwise the grant is exchanged the way `confirmMagicLink(_:)` exchanges a link: at most
+  /// once on this instance, a redirect delivered again replays the remembered result while its
+  /// session is live, a failed exchange is not remembered (a Keychain write failure is, and
+  /// calling again finishes the write), and only a task already cancelled when the call starts
+  /// stops it. The sign-in stays in progress when its exchange fails with an HTTP error or a
+  /// dropped connection, so the same redirect can be passed again (Portal refuses it if the first
+  /// attempt spent the grant). On success the session is persisted before it is returned;
+  /// `.totpRequired` leads to `verifyTotp(_:userJwt:)`. A `clearPersistedSession()` on this
+  /// instance while the exchange runs cancels it: this throws `oauthFlowNotStarted` rather than
+  /// return a session that call is about to delete. After a relaunch, a redirect delivered again
+  /// usually fails with `oauthFlowNotStarted`, because the completed sign-in no longer exists;
+  /// restore the session with `restoreSession()` instead. `signInWithGoogle()` /
+  /// `signInWithApple()` do all of this for you.
   ///
-  /// - Throws: a refused grant (expired, already used, or issued for another environment) as
-  ///   `PortalRequestsError.unauthorized`, unmapped, as `signInWith*` reports it;
-  ///   `PortalAuthError.invalidGrantResponse`, `.malformedResponse` and `.sessionStorageFailure`;
-  ///   other transport errors unchanged; `CancellationError` when called from a task that is
-  ///   already cancelled.
+  /// - Throws: `PortalAuthError.oauthFlowNotStarted` when no sign-in is in progress on this
+  ///   device (nothing sent; start a new sign-in), or when `clearPersistedSession()` cancels it
+  ///   meanwhile; a refused grant (expired, already used, issued for another environment, or from
+  ///   a sign-in other than the one in progress) as `PortalRequestsError.unauthorized`, unmapped,
+  ///   as `signInWith*` reports it; `.sessionStorageFailure` when the sign-in in progress could not
+  ///   be read (nothing sent) or the session could not be written — pass the same redirect again
+  ///   in both cases; `.invalidGrantResponse` and `.malformedResponse`; other transport errors
+  ///   unchanged; `CancellationError` when called from a task that is already cancelled.
   public func completeOAuthLogin(_ redirect: AuthRedirect.OAuth) async throws -> AuthResult {
     try await self._redeemGrant(token: redirect.token, kind: .oauth)
   }
@@ -551,9 +624,14 @@ public final class PortalAuth: @unchecked Sendable {
   ///
   /// Returns `nil` when `parseRedirect(_:)` would, so it is safe to call on every instance and
   /// safe for the app's router to try other handlers afterwards. Throws when the URL matches but
-  /// carries `?error=…`. It trusts any grant that arrives on your redirect URL — see the
-  /// redirect-hijacking note on `loginWithGoogle()` for what that means when the URL is delivered
-  /// by the OS.
+  /// carries `?error=…`.
+  ///
+  /// A Google or Apple grant is bound to this device as `completeOAuthLogin(_:)` describes: it is
+  /// exchanged only with the code verifier of the sign-in this device started, a redirect with no
+  /// sign-in in progress is refused with `PortalAuthError.oauthFlowNotStarted` before any network
+  /// call, and one from another sign-in is refused by Portal as `PortalRequestsError.unauthorized`.
+  /// A magic-link grant is not bound to the device: it is exchanged from any redirect that reaches
+  /// your URL.
   ///
   /// Safe to call twice with the same grant: the first exchange's result is remembered and
   /// replayed, so a redirect the system re-delivers resolves to the same `AuthResult` — and
@@ -562,9 +640,13 @@ public final class PortalAuth: @unchecked Sendable {
   /// remembered and stays retryable. A successful exchange whose Keychain write failed *is*
   /// remembered — the backend has already spent the grant — and the replay retries the write
   /// instead of re-sending the token. A remembered session the backend has since rejected is
-  /// not replayed: the redirect fails with `PortalRequestsError.unauthorized`, like a spent
-  /// grant. The memory belongs to this instance and this process: `clearPersistedSession()`
-  /// drops it, and after a process death the recovery is `restoreSession()`.
+  /// not replayed when it was rejected through the session this redirect returned: the redirect
+  /// fails with `PortalRequestsError.unauthorized`, like a spent grant. A session rebuilt by
+  /// `restoreSession()` is a separate instance, so call `clearPersistedSession()` from your
+  /// `onSessionInvalidated` listener to drop the memory as well. The memory belongs to this
+  /// instance and this process: `clearPersistedSession()` drops it, and after a process death the
+  /// recovery is `restoreSession()` — a Google or Apple redirect re-delivered to a new process
+  /// then fails, usually with `oauthFlowNotStarted` because the completed sign-in no longer exists.
   ///
   /// On success the session is persisted **before** it is returned, so a Keychain write
   /// failure rejects the login rather than handing back a session that will not survive a
@@ -582,9 +664,16 @@ public final class PortalAuth: @unchecked Sendable {
   /// replays as the `.authenticated` it resolved to.
   ///
   /// - Throws: `PortalAuthError.authenticationFailed(error:)` when the redirect reports an
-  ///   error; `.invalidGrantResponse` when the exchange returns neither a session token nor a
-  ///   `userJwt`; `.malformedResponse` / `.sessionStorageFailure`; a rejected grant surfaces
-  ///   as `PortalRequestsError.unauthorized`, unmapped.
+  ///   error; `.oauthFlowNotStarted` for a Google or Apple redirect with no sign-in in progress
+  ///   on this device — never started here, already completed outside this instance's replay
+  ///   memory, expired or cancelled (nothing sent; start a new sign-in) — or when
+  ///   `clearPersistedSession()` is called while it is being exchanged; `.invalidGrantResponse`
+  ///   when the exchange returns neither a session token nor a `userJwt`; `.malformedResponse`;
+  ///   `.sessionStorageFailure` when the sign-in in progress could not be read (nothing sent) or
+  ///   the session could not be written — pass the same URL again in both cases; a rejected
+  ///   grant surfaces as `PortalRequestsError.unauthorized`, unmapped. A Google or Apple sign-in
+  ///   stays in progress when its exchange fails with an HTTP error or a dropped connection, so
+  ///   the same URL can be passed again (Portal refuses it if the first attempt spent the grant).
   @available(*, deprecated, message: "Use parseRedirect(_:), then completeOAuthLogin(_:) for a Google or Apple login, or getMagicLinkDetails(_:) and, once the user confirms the email, confirmMagicLink(_:) for a magic link. handleRedirect(_:) is removed in the next major version.")
   public func handleRedirect(_ url: String) async throws -> AuthResult? {
     try await self._handleRedirect(url)
@@ -682,7 +771,8 @@ public final class PortalAuth: @unchecked Sendable {
   /// action makes it readable, so failing the launch would only strand the app. Treat `nil` as
   /// "show the sign-in screen". Note that Keychain items survive app deletion, so a
   /// delete-and-reinstall can restore a still-live session from the previous install; hosts
-  /// that want a clean slate call `clearPersistedSession()` on first launch after install.
+  /// that want a clean slate call `clearPersistedSession()` on first launch after install, before
+  /// starting any sign-in.
   ///
   /// Deliberately outside `grantMutex`. The read is atomic on its own — the storage serialises
   /// read, parse and self-heal under one lock — so it never observes a torn write. Ordering
@@ -728,26 +818,65 @@ public final class PortalAuth: @unchecked Sendable {
   /// reach what `PortalAuth` keeps — the grant it remembers, a pending TOTP write, or a session a
   /// sign-in persisted after that `Portal` was built.
   ///
-  /// It waits for an exchange that is already running or queued — from `confirmMagicLink`,
-  /// `completeOAuthLogin`, `handleRedirect`, `verifyTotp`, or `signInWith*` once its callback has
-  /// arrived — to finish persisting, then deletes what it persisted. It cannot wait for a
-  /// `signInWith*` whose sheet is still open: that holds no lock until its callback arrives, and
-  /// then exchanges and persists after this has returned. So on sign-out, cancel the task running
-  /// `signInWith*` first — a sign-in cancelled before its callback arrives exchanges nothing —
-  /// and discard any completion that still returns afterwards, as `confirmMagicLink(_:)`
-  /// describes.
+  /// **Also cancels a Google or Apple sign-in in progress**, whether its authorize URL came from
+  /// `loginWith*` or its `signInWith*` sheet is still open: its redirect then fails with
+  /// `PortalAuthError.oauthFlowNotStarted` — including one `completeOAuthLogin(_:)` or
+  /// `signInWith*` is already exchanging on this instance, which throws that instead of returning
+  /// a session this call is about to delete. Cancelling does not close an open sheet, so on
+  /// sign-out also cancel the task running `signInWith*`. Await this before `loginWithGoogle()` /
+  /// `loginWithApple()` / `signInWith*`, not after, and do not call it in your redirect handler
+  /// before `completeOAuthLogin(_:)`. A sign-in whose verifier is stored after this call has
+  /// deleted the previous one — for example one whose authorize URL was still being fetched —
+  /// counts as started after it. A sign-in already at its two-factor step is not cancelled: its
+  /// grant is spent, and `verifyTotp(_:userJwt:)` can still complete it. In an
+  /// `onSessionInvalidated` listener, call this before routing to sign-in. Cancelling an exchange
+  /// already in flight reaches this instance only; on another instance with the same auth
+  /// environment it completes, and its session survives until any instance for that auth
+  /// environment is cleared again.
   ///
-  /// - Throws: `PortalAuthError.sessionStorageFailure` when the delete fails.
+  /// It waits for any other exchange that is already running or queued — from
+  /// `confirmMagicLink`, `handleRedirect` given a magic link, or `verifyTotp` — to finish
+  /// persisting, then deletes what it persisted. That call still returns its result, so discard
+  /// a completion that returns after your sign-out, as `confirmMagicLink(_:)` describes.
+  ///
+  /// - Throws: `PortalAuthError.sessionStorageFailure` when either delete fails. Both are always
+  ///   attempted; when both fail, the session's failure is the one thrown.
   public func clearPersistedSession() async throws {
+    // Before the lock: a Google or Apple exchange in flight holds it until it returns, and must be
+    // able to see it was cancelled. Advanced even if the deletes below then fail.
+    self.advanceOAuthGeneration()
+
     try await self.grantMutex.withLock {
+      // `flowMutex` is deliberately not taken: it is held across `GET /oauth/urls`, so waiting on
+      // it would stall sign-out — and every redirect and TOTP call queued behind this lock — on a
+      // slow request. The verifier storage's own lock already orders this delete against a
+      // concurrent start's write: a start that writes after it counts as started after the clear.
+      var verifierFailure: Error?
+      do {
+        try self.verifierStorage.delete()
+      } catch {
+        verifierFailure = error
+      }
+
       do {
         try self.storage.delete()
       } catch {
+        if let verifierFailure = verifierFailure {
+          PortalLogger.shared.error("PortalAuth.clearPersistedSession() - The sign-in in progress could not be deleted either (\(type(of: verifierFailure))).")
+        }
         throw Self.storageFailure(error, context: "PortalAuth.clearPersistedSession()", message: "The persisted session could not be deleted.")
       }
       self.consumedGrant = nil
       self.pendingTotpPersist = nil
-      PortalLogger.shared.debug("PortalAuth.clearPersistedSession() - Persisted session cleared.")
+
+      if let verifierFailure = verifierFailure {
+        throw Self.storageFailure(
+          verifierFailure,
+          context: "PortalAuth.clearPersistedSession()",
+          message: "The sign-in in progress could not be deleted."
+        )
+      }
+      PortalLogger.shared.debug("PortalAuth.clearPersistedSession() - Persisted session and any sign-in in progress cleared.")
     }
   }
 
@@ -768,13 +897,21 @@ public final class PortalAuth: @unchecked Sendable {
   /// `.signInInProgress` rather than invalidating the first. Cancelling the calling task before
   /// the callback arrives dismisses the sheet and throws, and nothing is exchanged; once the
   /// callback has arrived, the exchange runs to completion as `completeOAuthLogin(_:)`'s does. On
-  /// sign-out, cancel this task before `clearPersistedSession()`, which cannot wait for an open
-  /// sheet.
+  /// sign-out, cancel this task to close the sheet; `clearPersistedSession()` cancels the sign-in
+  /// itself, so a callback that still arrives is refused.
+  ///
+  /// Bound to this device like `loginWithGoogle()`, and sharing its one-sign-in-in-progress
+  /// slot: a `loginWith*` call made while the sheet is open replaces this sign-in, which then
+  /// fails with `PortalAuthError.oauthFlowNotStarted` without sending its grant. Whatever the
+  /// outcome, the sign-in's verifier is removed when this call returns, since the host can never
+  /// resume a sheet.
   ///
   /// - Throws: `PortalAuthSignInError` (`.unavailable`, `.signInInProgress`, `.closed`,
   ///   `.callbackIncomplete`); `PortalAuthError.authenticationFailed(error:)` when the callback
-  ///   reports an error; any error `completeOAuthLogin(_:)` can throw, including a refused grant
-  ///   as `PortalRequestsError.unauthorized`; or the transport error unchanged.
+  ///   reports an error; `PortalAuthError.sessionStorageFailure` when the verifier cannot be
+  ///   created or stored (no sheet is shown); any error `completeOAuthLogin(_:)` can throw,
+  ///   including `.oauthFlowNotStarted` and a refused grant as `PortalRequestsError.unauthorized`;
+  ///   or the transport error unchanged.
   public func signInWithGoogle() async throws -> AuthResult {
     try await self.signIn(.google)
   }
@@ -819,21 +956,46 @@ public final class PortalAuth: @unchecked Sendable {
   /// `handleRedirect` and `signInWith*` all exchange through it, so they share one lock and one
   /// remembered result.
   ///
-  /// Under the lock, a remembered grant of the same kind and token replays (`_replay`); anything
-  /// else is exchanged (`_exchangeGrant`). The lock is held from reading the memory through the
-  /// exchange to the Keychain write, so two deliveries of one grant collapse into a single
-  /// exchange and a sign-out cannot land between an exchange and its persist.
-  private func _redeemGrant(token: String, kind: GrantKind) async throws -> AuthResult {
+  /// Under the lock, a remembered grant of the same kind and token replays (`_replay`) before any
+  /// verifier is read; anything else is exchanged (`_exchangeGrant`). The lock is held from
+  /// reading the memory through the exchange to the Keychain write, so two deliveries of one grant
+  /// collapse into a single exchange and a sign-out cannot land between an exchange and its
+  /// persist. `signIn` passes the verifier of the sheet's own sign-in (`sheetVerifier`).
+  private func _redeemGrant(token: String, kind: GrantKind, sheetVerifier: String? = nil) async throws -> AuthResult {
     // A caller that is already cancelled must not exchange a grant it no longer wants: the grant
     // is single-use, and a session minted for nobody is worse than one never minted. Past this
     // point cancellation no longer reaches the exchange — see `_shieldedFromCancellation`.
     try Task.checkCancellation()
 
+    // Read before waiting for the lock, so a clear that arrives while this call waits is seen
+    // too. `nil` for a magic link: `clearPersistedSession()` does not cancel one, it waits for it.
+    let oauthGeneration = kind == .oauth ? self.currentOAuthGeneration() : nil
+
     return try await self._shieldedFromCancellation { try await self.grantMutex.withLock {
+      try self.throwIfClearedSince(oauthGeneration)
       if let memo = self.consumedGrant, memo.kind == kind, memo.token == token {
-        return try self._replay(memo)
+        let replayed: AuthResult
+        do {
+          replayed = try self._replay(memo)
+        } catch {
+          if self.isClearedSince(oauthGeneration) {
+            throw self._abandonCancelledLogin(wroteSessionToken: nil)
+          }
+          throw error
+        }
+        // A clear that landed while the memo was served gets nothing back, and the write this
+        // replay just made (if it had one pending) is removed.
+        if self.isClearedSince(oauthGeneration) {
+          throw self._abandonCancelledLogin(wroteSessionToken: memo.pendingPersist?.clientSessionToken)
+        }
+        return replayed
       }
-      return try await self._exchangeGrant(token: token, kind: kind)
+      return try await self._exchangeGrant(
+        token: token,
+        kind: kind,
+        sheetVerifier: sheetVerifier,
+        oauthGeneration: oauthGeneration
+      )
     } }
   }
 
@@ -890,15 +1052,26 @@ public final class PortalAuth: @unchecked Sendable {
   /// A failed persist is different: the backend has already burned the grant by the time it
   /// answers, so the issued session is memoised *before* the Keychain write and a re-delivered
   /// redirect retries the write (`ConsumedGrant.pendingPersist`, `_replay`) instead of re-sending
-  /// a spent token. Called only with `grantMutex` held.
-  private func _exchangeGrant(token: String, kind: GrantKind) async throws -> AuthResult {
+  /// a spent token.
+  ///
+  /// A Google or Apple login cancelled by `clearPersistedSession()` (`oauthGeneration` moved) is
+  /// refused before anything is recorded; one cancelled while its session was being written drops
+  /// the memo and undoes the write (best effort) before throwing (`_abandonCancelledLogin`), so the
+  /// clear's own delete is not the only thing removing it. A replay gets the same treatment in
+  /// `_redeemGrant`. Called only with `grantMutex` held.
+  private func _exchangeGrant(
+    token: String,
+    kind: GrantKind,
+    sheetVerifier: String?,
+    oauthGeneration: Int?
+  ) async throws -> AuthResult {
     let grant: AuthGrantValidationResponse
     switch kind {
     case .magicLink:
       grant = try await self.api.validateMagicLink(token: token)
     case .oauth:
       // `/oauth/tokens` does not care which provider issued the grant, so both share it.
-      grant = try await self.api.validateOAuthToken(token: token)
+      grant = try await self._exchangeOAuthGrant(token: token, sheetVerifier: sheetVerifier, oauthGeneration: oauthGeneration)
     }
 
     // Blank counts as absent. `PersistedSessionCodec` and `resolveCredentialToken` both reject a
@@ -910,11 +1083,23 @@ public final class PortalAuth: @unchecked Sendable {
       let result = AuthResult.authenticated(
         self._makeAuthenticated(persisted, clientId: grant.clientId, isAccountAbstracted: grant.isAccountAbstracted)
       )
+      try self.throwIfClearedSince(oauthGeneration)
       // Memoised before the write: the grant is already spent, so a persist failure must leave
       // a re-delivered redirect able to finish this login (see `ConsumedGrant.pendingPersist`).
       self.consumedGrant = ConsumedGrant(kind: kind, token: token, result: result, pendingPersist: persisted)
-      try self._persist(persisted)
+      do {
+        try self._persist(persisted)
+      } catch {
+        // A cancelled login whose write failed keeps nothing to retry.
+        if self.isClearedSince(oauthGeneration) {
+          throw self._abandonCancelledLogin(wroteSessionToken: nil)
+        }
+        throw error
+      }
       self._markPersisted()
+      if self.isClearedSince(oauthGeneration) {
+        throw self._abandonCancelledLogin(wroteSessionToken: clientSessionToken)
+      }
       PortalLogger.shared.debug("PortalAuth.redeemGrant() - Exchanged the grant and persisted the session for endUserId: \(endUserId).")
       return result
     }
@@ -936,9 +1121,115 @@ public final class PortalAuth: @unchecked Sendable {
       endUserId: grant.endUserId ?? ""
     )
     let result = AuthResult.totpRequired(step)
+    try self.throwIfClearedSince(oauthGeneration)
     self.consumedGrant = ConsumedGrant(kind: kind, token: token, result: result, pendingPersist: nil)
     PortalLogger.shared.debug("PortalAuth.redeemGrant() - The grant requires a TOTP step; nothing persisted.")
     return result
+  }
+
+  /// Exchanges a Google or Apple grant with the code verifier of the sign-in this device started,
+  /// or refuses it without a request.
+  ///
+  /// No verifier means this device never asked for this grant — exactly what a crafted redirect
+  /// looks like — so nothing is sent. An expired one is refused the same way; see
+  /// `verifierLifetimeMillis` for why 15 minutes covers the realistic window. A sheet sign-in
+  /// (`sheetVerifier` set) whose verifier is no longer the stored one
+  /// was replaced by a newer sign-in; sending its grant with the newer verifier could only burn
+  /// it, so it is refused too.
+  ///
+  /// Only a response Portal actually accepted spends the verifier. A rejection (401 or another
+  /// HTTP error) can be a crafted redirect sent with this device's verifier, and deleting on it
+  /// would fail the user's own redirect arriving next; a dropped connection may have left the
+  /// grant unspent, so the same redirect can be retried. A 2xx whose body is unusable
+  /// (`malformedResponse`, the only error raised after a 2xx) did spend the grant, so the verifier
+  /// goes with it.
+  ///
+  /// A login cancelled by `clearPersistedSession()` while the request was in flight is refused
+  /// once it returns, and its spent verifier forgotten. Called only with `grantMutex` held.
+  private func _exchangeOAuthGrant(
+    token: String,
+    sheetVerifier: String?,
+    oauthGeneration: Int?
+  ) async throws -> AuthGrantValidationResponse {
+    let stored: PendingOAuthVerifier?
+    do {
+      stored = try self.verifierStorage.get()
+    } catch {
+      throw Self.storageFailure(error, context: "PortalAuth.redeemGrant()", message: "The sign-in in progress could not be read.")
+    }
+
+    guard let pending = stored, !self.isExpired(pending) else {
+      if let expired = stored {
+        PortalLogger.shared.debug("PortalAuth.redeemGrant() - OAuth redirect refused: the sign-in in progress has expired.")
+        self.forgetVerifier(expired.verifier)
+      } else {
+        PortalLogger.shared.debug("PortalAuth.redeemGrant() - OAuth redirect refused: no sign-in in progress on this device.")
+      }
+      throw PortalAuthError.oauthFlowNotStarted
+    }
+
+    if let sheetVerifier = sheetVerifier, sheetVerifier != pending.verifier {
+      PortalLogger.shared.debug("PortalAuth.signIn() - The sign-in was replaced by a newer one before its callback arrived; refusing it.")
+      throw PortalAuthError.oauthFlowNotStarted
+    }
+
+    let grant: AuthGrantValidationResponse
+    do {
+      grant = try await self.api.validateOAuthToken(token: token, codeVerifier: pending.verifier)
+    } catch {
+      if case .malformedResponse? = error as? PortalAuthError {
+        self.forgetVerifier(pending.verifier)
+      }
+      throw error
+    }
+
+    if self.isClearedSince(oauthGeneration) {
+      // Portal accepted the grant, so the verifier is spent either way: forget it (compare-and-
+      // delete, so a sign-in started after the clear keeps its own) rather than leave it to a
+      // clear whose delete could fail and let a re-delivered redirect re-send a spent grant.
+      self.forgetVerifier(pending.verifier)
+      throw self.cancelledByClear()
+    }
+    self.forgetVerifier(pending.verifier)
+    return grant
+  }
+
+  /// Compare-and-deletes `verifier`, so a sign-in started meanwhile keeps its own.
+  ///
+  /// Best effort: a failure is logged (type only) rather than thrown. The exchange it follows has
+  /// already been decided, and failing a completed sign-in over a secret that expires on its own
+  /// would cost the user a session.
+  private func forgetVerifier(_ verifier: String) {
+    do {
+      try self.verifierStorage.deleteIfCurrent(verifier)
+    } catch {
+      PortalLogger.shared.warn("PortalAuth - The sign-in in progress could not be deleted; it expires on its own (\(type(of: error))).")
+    }
+  }
+
+  /// Removes the session a cancelled login has just written, best effort. Compare-and-delete, so
+  /// a newer login's session is never touched; a failure is logged (type only), and the pending
+  /// `clearPersistedSession()` deletes the session anyway when it can.
+  private func _undoPersist(of clientSessionToken: String) {
+    do {
+      try self.storage.deleteIfCurrent(clientSessionToken)
+    } catch {
+      PortalLogger.shared.warn("PortalAuth.redeemGrant() - The cancelled login's session could not be removed (\(type(of: error))).")
+    }
+  }
+
+  /// `true` once `pending` is 15 minutes old, or dated in the future (the device clock moved
+  /// back, which says nothing trustworthy about its age). The subtraction cannot trap: an
+  /// overflowing age counts as expired.
+  private func isExpired(_ pending: PendingOAuthVerifier) -> Bool {
+    let (age, overflow) = self.nowMillis().subtractingReportingOverflow(pending.createdAt)
+    return overflow || age < 0 || age >= Self.verifierLifetimeMillis
+  }
+
+  /// The clock's reading in milliseconds since 1970, the unit `PendingOAuthVerifier.createdAt`
+  /// is stored in.
+  private func nowMillis() -> Int64 {
+    Int64((self.clock().timeIntervalSince1970 * 1000).rounded())
   }
 
   /// Advances the remembered grant from its TOTP step to the session that step resolved to.
@@ -1014,33 +1305,79 @@ public final class PortalAuth: @unchecked Sendable {
 
   // MARK: - Private: OAuth
 
-  /// Resolves a provider's authorize URL, fetched fresh on every call and trimmed.
+  /// A started Google or Apple sign-in: the URL to open, and the verifier stored for it. Its
+  /// description is redacted, like `PendingOAuthVerifier`'s.
+  private struct StartedOAuthFlow: CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+    let authorizeUrl: AuthorizeUrlResult
+    /// Never logged; kept only so `signIn` can tell its own sign-in from a newer one.
+    let codeVerifier: String
+
+    var description: String {
+      "StartedOAuthFlow(codeVerifier: <redacted>)"
+    }
+
+    var debugDescription: String {
+      self.description
+    }
+
+    var customMirror: Mirror {
+      Mirror(self, children: ["codeVerifier": "<redacted>"], displayStyle: .struct)
+    }
+  }
+
+  /// Starts a Google or Apple sign-in: creates a code verifier, fetches the authorize URLs with
+  /// its challenge, picks the provider's URL and stores the verifier — in that order, under
+  /// `flowMutex`, so the stored verifier always belongs to the URL this instance returned last.
   ///
-  /// Shared by `loginWith*` and `signInWith*`: the response carries one key per enabled
-  /// provider, and picking a different key is the whole difference between them. Absent or
-  /// blank means the provider is switched off for this environment, which a retry cannot change.
-  private func getAuthorizeUrl(_ method: AuthMethod) async throws -> AuthorizeUrlResult {
-    let urls = try await self.api.getOAuthUrls(redirectUrl: self.redirectUrl, isAccountAbstracted: self.isAccountAbstracted)
+  /// Shared by `loginWith*` and `signInWith*`: the response carries one key per enabled provider,
+  /// and picking a different key is the whole difference between them. Absent or blank means the
+  /// provider is switched off for this environment, which a retry cannot change. The verifier is
+  /// stored only once there is a URL to return, and before returning it: nothing is stored when
+  /// the request fails or the provider is off, and a URL whose verifier could not be stored is
+  /// never returned, since its redirect could only be refused.
+  private func startOAuthFlow(_ method: AuthMethod) async throws -> StartedOAuthFlow {
+    try await self.flowMutex.withLock {
+      // `AsyncMutex` is not cancellation-aware, so a caller cancelled while waiting still gets
+      // here; it must not replace the verifier of a sign-in someone else is completing.
+      try Task.checkCancellation()
 
-    // Exhaustive on purpose: a provider added to `AuthMethod` later is a compile error here
-    // rather than a silent "unavailable".
-    let rawUrl: String?
-    switch method {
-    case .google:
-      rawUrl = urls.google
-    case .apple:
-      rawUrl = urls.apple
-    case .emailMagicLink:
-      rawUrl = nil
+      let codeVerifier = try PkceCodeVerifier.generate()
+      let urls = try await self.api.getOAuthUrls(
+        redirectUrl: self.redirectUrl,
+        isAccountAbstracted: self.isAccountAbstracted,
+        codeChallenge: PkceCodeVerifier.challenge(for: codeVerifier)
+      )
+
+      // Exhaustive on purpose: a provider added to `AuthMethod` later is a compile error here
+      // rather than a silent "unavailable".
+      let rawUrl: String?
+      switch method {
+      case .google:
+        rawUrl = urls.google
+      case .apple:
+        rawUrl = urls.apple
+      case .emailMagicLink:
+        rawUrl = nil
+      }
+
+      let authorizeUrl = (rawUrl ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+      guard !authorizeUrl.isEmpty else {
+        PortalLogger.shared.error("PortalAuth.startOAuthFlow() - \(method.rawValue) is not an enabled auth method for this auth environment.")
+        throw PortalAuthError.authMethodUnavailable(method)
+      }
+
+      // Checked again now that the URL is in hand: a caller cancelled while the request was in
+      // flight wants no sign-in, and storing its verifier would still replace the one in progress.
+      try Task.checkCancellation()
+
+      do {
+        try self.verifierStorage.set(PendingOAuthVerifier(verifier: codeVerifier, createdAt: self.nowMillis()))
+      } catch {
+        throw Self.storageFailure(error, context: "PortalAuth.startOAuthFlow()", message: "The sign-in in progress could not be stored.")
+      }
+
+      return StartedOAuthFlow(authorizeUrl: AuthorizeUrlResult(authorizeUrl: authorizeUrl), codeVerifier: codeVerifier)
     }
-
-    let authorizeUrl = (rawUrl ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !authorizeUrl.isEmpty else {
-      PortalLogger.shared.error("PortalAuth.getAuthorizeUrl() - \(method.rawValue) is not an enabled auth method for this auth environment.")
-      throw PortalAuthError.authMethodUnavailable(method)
-    }
-
-    return AuthorizeUrlResult(authorizeUrl: authorizeUrl)
   }
 
   // MARK: - Private: sign in
@@ -1066,8 +1403,13 @@ public final class PortalAuth: @unchecked Sendable {
     try self.beginSignIn()
     defer { self.endSignIn() }
 
-    let authorizeUrl = try await self.getAuthorizeUrl(method)
-    guard let url = URL(string: authorizeUrl.authorizeUrl) else {
+    let flow = try await self.startOAuthFlow(method)
+    // The host never sees the callback of a sheet, so it can never resume this sign-in: whatever
+    // happens next, its verifier goes when this call returns. Compare-and-delete, so a sign-in
+    // that replaced this one keeps its own. Registered before anything below can throw.
+    defer { self.forgetVerifier(flow.codeVerifier) }
+
+    guard let url = URL(string: flow.authorizeUrl.authorizeUrl) else {
       PortalLogger.shared.error("PortalAuth.signIn() - The \(method.rawValue) authorize URL could not be parsed.")
       throw PortalAuthError.malformedResponse(path: PortalAuthApi.oauthUrlsPath, missing: method.rawValue.lowercased())
     }
@@ -1093,7 +1435,7 @@ public final class PortalAuth: @unchecked Sendable {
     // is not the sign-in the user started, so either is refused unexchanged.
     switch self.parseRedirect(callback.absoluteString) {
     case let .oauth(oauth)? where oauth.provider == method:
-      let result = try await self._redeemGrant(token: oauth.token, kind: .oauth)
+      let result = try await self._redeemGrant(token: oauth.token, kind: .oauth, sheetVerifier: flow.codeVerifier)
       PortalLogger.shared.debug("PortalAuth.signIn() - \(method.rawValue) sign-in completed.")
       return result
     case .oauth?:
@@ -1130,6 +1472,57 @@ public final class PortalAuth: @unchecked Sendable {
     self.stateLock.lock()
     defer { self.stateLock.unlock() }
     self.isSignInInFlight = false
+  }
+
+  // MARK: - OAuth generation
+
+  /// The current OAuth generation. Internal so tests can observe it.
+  func currentOAuthGeneration() -> Int {
+    self.stateLock.lock()
+    defer { self.stateLock.unlock() }
+    return self.oauthGeneration
+  }
+
+  /// Cancels every Google or Apple login this instance is completing. Called by
+  /// `clearPersistedSession()`; internal so tests can land a clear at an exact point.
+  func advanceOAuthGeneration() {
+    self.stateLock.lock()
+    defer { self.stateLock.unlock() }
+    self.oauthGeneration += 1
+  }
+
+  /// `true` when `generation` is a Google or Apple login's (non-`nil`) and a clear has moved past it.
+  private func isClearedSince(_ generation: Int?) -> Bool {
+    guard let generation = generation else {
+      return false
+    }
+    return self.currentOAuthGeneration() != generation
+  }
+
+  /// Throws `oauthFlowNotStarted` once `clearPersistedSession()` has cancelled this login.
+  private func throwIfClearedSince(_ generation: Int?) throws {
+    if self.isClearedSince(generation) {
+      throw self.cancelledByClear()
+    }
+  }
+
+  /// The error a login cancelled by `clearPersistedSession()` ends with, logged once.
+  private func cancelledByClear() -> PortalAuthError {
+    PortalLogger.shared.debug("PortalAuth.redeemGrant() - The sign-in in progress was cancelled by clearPersistedSession().")
+    return PortalAuthError.oauthFlowNotStarted
+  }
+
+  /// Ends a Google or Apple login that `clearPersistedSession()` cancelled after it had recorded or
+  /// written something: drops the replay memo and, when `token` names the session this call just
+  /// wrote, removes that write (best effort), so the clear's own delete is not the only thing
+  /// removing it. If the Keychain refuses both, the session remains and the clear throws. Returns
+  /// the error to throw. Called only with `grantMutex` held.
+  private func _abandonCancelledLogin(wroteSessionToken token: String?) -> PortalAuthError {
+    self.consumedGrant = nil
+    if let token = token {
+      self._undoPersist(of: token)
+    }
+    return self.cancelledByClear()
   }
 
   // MARK: - Private: helpers
