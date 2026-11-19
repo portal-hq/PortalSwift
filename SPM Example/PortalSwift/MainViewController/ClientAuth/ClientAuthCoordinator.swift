@@ -21,7 +21,8 @@ import UIKit
 /// magic links waiting on or past confirmation, and the redirect URL (which carries a single-use
 /// grant) are all bearer credentials: they live for the life of the process and are never written
 /// to `UserDefaults` or logged. The only persisted values are a boolean flag,
-/// `firstLaunchClearKey`, and a timestamp, `externalOAuthStartedAtKey` — neither is a credential.
+/// `firstLaunchClearKey`, and the start time and provider of a browser sign-in
+/// (`externalOAuthStartedAtKey`, `externalOAuthProviderKey`) — none of them is a credential.
 ///
 /// Threading: the mutable properties are touched from the main thread (URL callbacks, view
 /// lifecycle). Only the first-launch clear is thread-safe on its own, because it is `async` and
@@ -64,16 +65,39 @@ final class ClientAuthCoordinator {
   /// The adopted session, held for the life of the process.
   var session: PortalSession?
 
-  /// The `userJwt` of a TOTP step waiting on a code. Never persisted, never logged.
-  var pendingTotpUserJwt: String?
+  /// The `userJwt` of a TOTP step waiting on a code. Never persisted, never logged. Clearing it
+  /// also clears `pendingTotpLink`.
+  var pendingTotpUserJwt: String? {
+    didSet {
+      if self.pendingTotpUserJwt == nil {
+        self.pendingTotpLink = nil
+      }
+    }
+  }
+
+  /// The `otpauth://` enrollment link of that TOTP step, when it is a first-time enrollment. Held
+  /// here so a screen rebuilt mid-step can still show it: the backend sends it only once. Embeds
+  /// the TOTP secret, so never persisted, never logged.
+  var pendingTotpLink: String?
+
+  /// Counts the times the in-memory session was cleared (sign-out, custodian sign-in,
+  /// invalidation). An exchange captures it when it starts, and a sign-in that finishes after it
+  /// moved on is not adopted: the user has since signed out or signed in another way.
+  private(set) var sessionGeneration = 0
 
   /// A magic link whose email was read and is waiting on the user's Confirm or Cancel. Held here
   /// so a screen rebuilt by a re-delivered link shows the same confirmation without a second
   /// lookup. Never persisted, never logged.
   var pendingMagicLink: PendingMagicLink?
 
+  /// The newest magic link whose details are being read. A second delivery of the same link waits
+  /// for that lookup instead of spending another of the link's few lookups, and a lookup that
+  /// finishes after a newer link arrived — on this screen or another — is set aside.
+  var latestMagicLinkLookup: AuthRedirect.MagicLink?
+
   /// The magic link whose confirmation is in flight. Held here, not on a screen, so a screen
   /// rebuilt by a re-delivered link knows not to ask about it again or send it a second time.
+  /// Tracks a request rather than the signed-in user, so only that request clears it.
   var confirmingMagicLink: AuthRedirect.MagicLink?
 
   /// The magic link the user last confirmed. Its details can no longer be read once it is spent,
@@ -184,22 +208,34 @@ final class ClientAuthCoordinator {
     self.defaults.removeObject(forKey: Self.externalOAuthProviderKey)
   }
 
-  /// Whether a `provider` redirect arriving now belongs to a sign-in this app opened in the
-  /// browser.
+  /// Takes the record of a browser sign-in when a `provider` redirect arriving now belongs to it,
+  /// and returns it so `restoreExternalOAuthStart(_:)` can put it back; `nil` otherwise.
   ///
   /// The OS hands the app any URL on its scheme, and any web page or message can open one with a
   /// grant someone else obtained, which would sign the user in to that person's account. So an
-  /// `.oauth` redirect is completed only for the provider this app opened, within
-  /// `externalOAuthWindow`. Reading does not clear the record, so a completion that fails before
-  /// reaching Portal can be retried from the same redirect; `clearExternalOAuthStart()` ends it.
-  /// The `signInWith*` sheet never routes its callback through here.
-  func isExternalOAuthStarted(by provider: AuthMethod, at now: Date = Date()) -> Bool {
+  /// `.oauth` redirect is completed only within `externalOAuthWindow` of this app opening the
+  /// browser, and only one per sign-in: the record is taken on the first match, so a second
+  /// redirect arriving while the first is being completed is ignored. The provider check keeps
+  /// the flow consistent; it is not a defence, since the redirect names its own provider. The
+  /// `signInWith*` sheet never routes its callback through here.
+  func takeExternalOAuthStart(for provider: AuthMethod, at now: Date = Date()) -> Date? {
     let startedAt = self.defaults.double(forKey: Self.externalOAuthStartedAtKey)
     guard startedAt > 0, self.defaults.string(forKey: Self.externalOAuthProviderKey) == provider.rawValue else {
-      return false
+      return nil
     }
     let elapsed = now.timeIntervalSince1970 - startedAt
-    return elapsed >= 0 && elapsed <= Self.externalOAuthWindow
+    guard elapsed >= 0, elapsed <= Self.externalOAuthWindow else {
+      return nil
+    }
+    self.clearExternalOAuthStart()
+    return Date(timeIntervalSince1970: startedAt)
+  }
+
+  /// Puts a taken record back, with its original start time, after a completion that failed
+  /// before Portal could refuse it — so the same redirect can be completed again (pasted, or
+  /// delivered again) within the original window.
+  func restoreExternalOAuthStart(_ provider: AuthMethod, startedAt: Date) {
+    self.markExternalOAuthStarted(provider, at: startedAt)
   }
 
   // MARK: - URL routing
@@ -236,16 +272,20 @@ final class ClientAuthCoordinator {
 
   // MARK: - Teardown
 
-  /// Drops everything this process holds about the signed-in user.
+  /// Drops everything this process holds about the signed-in user, and any sign-in in progress.
   ///
-  /// Signing in as somebody else is not signing out, so this deliberately leaves persisted state
-  /// alone: clearing the Keychain session is `handleClientAuthSignOut`'s job. Idempotent, and the
-  /// invalidation subscription is cancelled exactly once.
+  /// Runs on Client Auth sign-out, before a custodian sign-in, and on session invalidation.
+  /// Signing in as somebody else is not signing out, so this leaves the Keychain session alone —
+  /// clearing it is `handleClientAuthSignOut`'s job — and only removes the browser sign-in record
+  /// from `UserDefaults`. An exchange already in flight is not cancelled, but the sign-in it
+  /// finishes is not adopted (`sessionGeneration`). Idempotent, and the invalidation subscription
+  /// is cancelled exactly once.
   func clearInMemorySession() {
+    self.sessionGeneration += 1
     self.session = nil
     self.pendingTotpUserJwt = nil
     self.pendingMagicLink = nil
-    self.confirmingMagicLink = nil
+    self.latestMagicLinkLookup = nil
     self.confirmedMagicLink = nil
     self.clearExternalOAuthStart()
     self.handoffSession = nil

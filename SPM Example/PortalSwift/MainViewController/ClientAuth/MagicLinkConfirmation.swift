@@ -14,12 +14,22 @@ import PortalSwift
 /// Holds the `AuthRedirect.MagicLink` rather than its bare token: the wrapper redacts the grant
 /// when printed. The email is shown on the confirmation alert and redacted here too, so printing
 /// this state cannot leak either.
-struct PendingMagicLink: Equatable, CustomStringConvertible {
+struct PendingMagicLink: Equatable {
   let link: AuthRedirect.MagicLink
   let email: String
+}
 
+extension PendingMagicLink: CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
   var description: String {
     "PendingMagicLink(link: \(self.link), email: <redacted>)"
+  }
+
+  var debugDescription: String {
+    self.description
+  }
+
+  var customMirror: Mirror {
+    Mirror(self, children: ["link": self.link, "email": "<redacted>"], displayStyle: .struct)
   }
 }
 

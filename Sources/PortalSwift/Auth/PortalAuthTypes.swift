@@ -384,11 +384,11 @@ public enum PortalAuthError: LocalizedError, Equatable {
   /// Portal refused a magic link: it has expired, was already used, or is otherwise unusable.
   /// Thrown by `getMagicLinkDetails(_:)` and `confirmMagicLink(_:)` for the backend's `401`. Also
   /// thrown without a request: by `getMagicLinkDetails(_:)` for a token that cannot be a Portal
-  /// grant, and by `confirmMagicLink(_:)` for a confirmed link whose session has since ended. Not
-  /// retryable: ask the user to request a new link — unless they
-  /// already confirmed this link and are signed in, when there is nothing to do (see
-  /// `getMagicLinkDetails(_:)`). `completeOAuthLogin(_:)`, `signInWith*` and the deprecated
-  /// `handleRedirect(_:)` keep reporting a refused grant as `PortalRequestsError.unauthorized`.
+  /// grant, and by `confirmMagicLink(_:)` for a confirmed link whose session has since ended.
+  /// Not retryable: ask the user to request a new link — unless they already confirmed this link
+  /// and are signed in, when there is nothing to do (see `getMagicLinkDetails(_:)`).
+  /// `completeOAuthLogin(_:)`, `signInWith*` and the deprecated `handleRedirect(_:)` keep
+  /// reporting a refused grant as `PortalRequestsError.unauthorized`.
   case grantRejected
   /// A Client Auth response did not carry what its endpoint documents: the `{ "data": … }`
   /// envelope itself (`missing == nil`) or a named field inside it.
