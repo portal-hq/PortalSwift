@@ -35,7 +35,7 @@ import Foundation
 /// arrives with no sign-in in progress is refused before any network call with
 /// `PortalAuthError.oauthFlowNotStarted`; one from a different sign-in is refused by Portal. Each
 /// auth environment has one sign-in in progress (the newest wins), kept for 15 minutes; instances
-/// sharing an `authEnvironmentId` share it.
+/// sharing an `authEnvironmentId` share it, while start ordering and cancellation are per instance.
 ///
 /// ```swift
 /// let auth = try PortalAuth(
@@ -104,8 +104,14 @@ public final class PortalAuth: @unchecked Sendable {
   private let clock: () -> Date
   private let webSessionFactory: () -> AuthWebSessionProviding
 
-  /// Serialises starting a Google or Apple sign-in — generate the verifier, fetch the authorize
-  /// URL, store the verifier — so the stored verifier always belongs to the URL returned last.
+  /// Serialises starting a Google or Apple sign-in on this instance — generate the verifier,
+  /// fetch the authorize URL, store the verifier — so the stored verifier always belongs to the
+  /// URL this instance returned last.
+  ///
+  /// Per instance, like the replay memo: a start on another `PortalAuth` with the same auth
+  /// environment is not serialised against this one. That instance shares the one verifier slot,
+  /// so whichever start stores last wins, and only one of two overlapping sign-ins can complete
+  /// either way.
   ///
   /// Separate from `grantMutex`, so starting a sign-in never waits on an exchange in flight.
   /// Internal so tests can observe contention.
@@ -1057,7 +1063,7 @@ public final class PortalAuth: @unchecked Sendable {
 
   /// Starts a Google or Apple sign-in: creates a code verifier, fetches the authorize URLs with
   /// its challenge, picks the provider's URL and stores the verifier — in that order, under
-  /// `flowMutex`, so the stored verifier always belongs to the URL returned last.
+  /// `flowMutex`, so the stored verifier always belongs to the URL this instance returned last.
   ///
   /// Shared by `loginWith*` and `signInWith*`: the response carries one key per enabled provider,
   /// and picking a different key is the whole difference between them. Absent or blank means the
