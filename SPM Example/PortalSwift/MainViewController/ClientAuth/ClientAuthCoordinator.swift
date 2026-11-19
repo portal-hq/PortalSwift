@@ -17,10 +17,12 @@ import UIKit
 /// running launches it. So the coordinator owns both halves: a `redirectSink` the live screen
 /// installs, and a one-slot stash the screen drains when it appears.
 ///
-/// Everything here is in-memory by design. The session token, the pending TOTP `userJwt` and the
-/// redirect URL (which carries a single-use grant) are all bearer credentials: they live for the
-/// life of the process and are never written to `UserDefaults` or logged. The only persisted
-/// value is a boolean flag, `firstLaunchClearKey`.
+/// Everything here is in-memory by design. The session token, the pending TOTP `userJwt`, the
+/// magic links waiting on or past confirmation, and the redirect URL (which carries a single-use
+/// grant) are all bearer credentials: they live for the life of the process and are never written
+/// to `UserDefaults` or logged. The only persisted values are a boolean flag,
+/// `firstLaunchClearKey`, and the start time and provider of a browser sign-in
+/// (`externalOAuthStartedAtKey`, `externalOAuthProviderKey`) — none of them is a credential.
 ///
 /// Threading: the mutable properties are touched from the main thread (URL callbacks, view
 /// lifecycle). Only the first-launch clear is thread-safe on its own, because it is `async` and
@@ -42,6 +44,18 @@ final class ClientAuthCoordinator {
   /// the previous user's session on first launch.
   static let firstLaunchClearKey = "ClientAuth.didClearPersistedSessionAfterInstall"
 
+  /// `UserDefaults` keys for when, and with which provider, this app last opened a Google or Apple
+  /// sign-in in the external browser (`loginWith*`). A timestamp and a provider name, not
+  /// credentials, so they may outlive the process: that flow has to survive the app being killed
+  /// while the browser is open.
+  static let externalOAuthStartedAtKey = "ClientAuth.externalOAuthStartedAt"
+  static let externalOAuthProviderKey = "ClientAuth.externalOAuthProvider"
+
+  /// How long after opening the browser a Google or Apple redirect is still expected. Portal's
+  /// `state` lasts 10 minutes from the start of the sign-in and the grant 15 minutes from the
+  /// provider's callback, so 15 minutes comfortably covers a real sign-in.
+  static let externalOAuthWindow: TimeInterval = 15 * 60
+
   /// Resolves the scheme this app owns. Read on every inbound URL, never cached; `nil` when
   /// Client Auth is not configured, in which case that URL is not claimed.
   private let redirectScheme: () -> String?
@@ -51,8 +65,59 @@ final class ClientAuthCoordinator {
   /// The adopted session, held for the life of the process.
   var session: PortalSession?
 
-  /// The `userJwt` of a TOTP step waiting on a code. Never persisted, never logged.
-  var pendingTotpUserJwt: String?
+  /// The `userJwt` of a TOTP step waiting on a code. Never persisted, never logged. Clearing it
+  /// also clears `pendingTotpLink`.
+  var pendingTotpUserJwt: String? {
+    didSet {
+      if self.pendingTotpUserJwt == nil {
+        self.pendingTotpLink = nil
+      }
+    }
+  }
+
+  /// The `otpauth://` enrollment link of that TOTP step, when it is a first-time enrollment. Held
+  /// here so a screen rebuilt mid-step can still show it: the backend sends it only once. Embeds
+  /// the TOTP secret, so never persisted, never logged.
+  var pendingTotpLink: String?
+
+  /// Counts the times the in-memory session was cleared (sign-out, custodian sign-in,
+  /// invalidation). An exchange captures it when it starts, and a sign-in that finishes after it
+  /// moved on is not adopted: the user has since signed out or signed in another way.
+  private(set) var sessionGeneration = 0
+
+  /// Sign-outs between `beginSignOut()` and `endSignOut()`. A count, so an invalidation that lands
+  /// during a sign-out does not end the other one's window early.
+  private var signOutsInProgress = 0
+
+  /// `true` while a sign-out is clearing the session. No sign-in may start then: one that started
+  /// during the cleanup could finish after it and be saved or adopted.
+  var isSigningOut: Bool {
+    self.signOutsInProgress > 0
+  }
+
+  /// The `signInWith*` sheet in progress. A sign-out cancels it: the SDK closes the sheet and
+  /// exchanges nothing, so a sign-in finished after a sign-out is never saved to the Keychain.
+  var sheetSignIn: Task<Void, Never>?
+
+  /// A magic link whose email was read and is waiting on the user's Confirm or Cancel. Held here
+  /// so a screen rebuilt by a re-delivered link shows the same confirmation without a second
+  /// lookup. Never persisted, never logged.
+  var pendingMagicLink: PendingMagicLink?
+
+  /// The newest magic link whose details are being read. A second delivery of the same link waits
+  /// for that lookup instead of spending another of the link's few lookups, and a lookup that
+  /// finishes after a newer link arrived — on this screen or another — is set aside.
+  var latestMagicLinkLookup: AuthRedirect.MagicLink?
+
+  /// The magic link whose confirmation is in flight. Held here, not on a screen, so a screen
+  /// rebuilt by a re-delivered link knows not to ask about it again or send it a second time.
+  /// Tracks a request rather than the signed-in user, so only that request clears it.
+  var confirmingMagicLink: AuthRedirect.MagicLink?
+
+  /// The magic link the user last confirmed. Its details can no longer be read once it is spent,
+  /// so a delivery of the same link afterwards is sent straight to `confirmMagicLink`, which
+  /// replays the sign-in. Cleared on sign-out.
+  var confirmedMagicLink: AuthRedirect.MagicLink?
 
   /// The live `Portal.onSessionInvalidated(_:)` subscription, cancelled before a new one is
   /// installed and on teardown.
@@ -142,16 +207,91 @@ final class ClientAuthCoordinator {
     return pending
   }
 
+  // MARK: - Google or Apple in the external browser
+
+  /// Records that this app is opening a `provider` sign-in in the external browser.
+  func markExternalOAuthStarted(_ provider: AuthMethod, at now: Date = Date()) {
+    self.defaults.set(now.timeIntervalSince1970, forKey: Self.externalOAuthStartedAtKey)
+    self.defaults.set(provider.rawValue, forKey: Self.externalOAuthProviderKey)
+  }
+
+  /// Forgets the external-browser sign-in: it completed, was refused or abandoned, or the user
+  /// signed out.
+  func clearExternalOAuthStart() {
+    self.defaults.removeObject(forKey: Self.externalOAuthStartedAtKey)
+    self.defaults.removeObject(forKey: Self.externalOAuthProviderKey)
+  }
+
+  /// Takes the record of a browser sign-in when a `provider` redirect arriving now belongs to it,
+  /// and returns it so `restoreExternalOAuthStart(_:startedAt:)` can put it back; `nil` otherwise.
+  ///
+  /// The OS hands the app any URL on its scheme, and any web page or message can open one with a
+  /// grant someone else obtained, which would sign the user in to that person's account. So an
+  /// `.oauth` redirect is completed only within `externalOAuthWindow` of this app opening the
+  /// browser, and only one per sign-in: the record is taken on the first match, so a second
+  /// redirect arriving while the first is being completed is ignored. The provider check keeps
+  /// the flow consistent; it is not a defence, since the redirect names its own provider. The
+  /// `signInWith*` sheet never routes its callback through here.
+  func takeExternalOAuthStart(for provider: AuthMethod, at now: Date = Date()) -> Date? {
+    let startedAt = self.defaults.double(forKey: Self.externalOAuthStartedAtKey)
+    guard startedAt > 0, self.defaults.string(forKey: Self.externalOAuthProviderKey) == provider.rawValue else {
+      return nil
+    }
+    let elapsed = now.timeIntervalSince1970 - startedAt
+    guard elapsed >= 0, elapsed <= Self.externalOAuthWindow else {
+      return nil
+    }
+    self.clearExternalOAuthStart()
+    return Date(timeIntervalSince1970: startedAt)
+  }
+
+  /// Marks a sign-out (or invalidation) as begun, before any of its `await`s.
+  ///
+  /// - An exchange still running sees it as soon as it finishes and does not adopt its sign-in.
+  /// - No sign-in starts until `endSignOut()` (`isSigningOut`).
+  /// - The browser sign-in record and the magic-link state are dropped now, so no redirect can
+  ///   use them during the cleanup.
+  /// - An open `signInWith*` sheet is closed without exchanging anything.
+  ///
+  /// `clearInMemorySession()` does the rest once the persisted session is gone.
+  func beginSignOut() {
+    self.sessionGeneration += 1
+    self.signOutsInProgress += 1
+    self.pendingMagicLink = nil
+    self.latestMagicLinkLookup = nil
+    self.confirmedMagicLink = nil
+    self.clearExternalOAuthStart()
+
+    let sheet = self.sheetSignIn
+    self.sheetSignIn = nil
+    sheet?.cancel()
+  }
+
+  /// Ends the window `beginSignOut()` opened, after the cleanup's `clearInMemorySession()`.
+  func endSignOut() {
+    self.signOutsInProgress = max(0, self.signOutsInProgress - 1)
+  }
+
+  /// Puts a taken record back, with its original start time, after a completion that failed
+  /// before Portal could refuse it — so the same redirect can be completed again (pasted, or
+  /// delivered again) within the original window.
+  func restoreExternalOAuthStart(_ provider: AuthMethod, startedAt: Date) {
+    // A newer browser sign-in started meanwhile owns the record now; leave it.
+    guard self.defaults.double(forKey: Self.externalOAuthStartedAtKey) == 0 else { return }
+    self.markExternalOAuthStarted(provider, at: startedAt)
+  }
+
   // MARK: - URL routing
 
   /// Claims `url` when it is this app's Client Auth redirect.
   ///
   /// Matching is on the scheme alone, case-insensitively: the OS matched the same scheme to
-  /// deliver the URL here, and validating the full redirect target is the SDK's job inside
-  /// `handleRedirect`. The scheme is resolved at call time, so a redirect that arrives after an
-  /// environment switch is matched against the new environment's redirect URL. A claimed URL goes
-  /// to the live screen when there is one, and to the stash otherwise; it is never both, so a
-  /// redirect cannot be handled twice.
+  /// deliver the URL here, and reading the redirect is the SDK's job, in `parseRedirect`. The
+  /// example deliberately has no URL parser of its own: one that read a URL differently from the
+  /// SDK could route a magic link past the confirmation step. The scheme is resolved at call time,
+  /// so a redirect that arrives after an environment switch is matched against the new
+  /// environment's redirect URL. A claimed URL goes to the live screen when there is one, and to
+  /// the stash otherwise; it is never both, so a redirect cannot be handled twice.
   ///
   /// The URL is never logged: its query carries the grant token.
   ///
@@ -175,14 +315,22 @@ final class ClientAuthCoordinator {
 
   // MARK: - Teardown
 
-  /// Drops everything this process holds about the signed-in user.
+  /// Drops everything this process holds about the signed-in user, and any sign-in in progress.
   ///
-  /// Signing in as somebody else is not signing out, so this deliberately leaves persisted state
-  /// alone: clearing the Keychain session is `handleClientAuthSignOut`'s job. Idempotent, and the
-  /// invalidation subscription is cancelled exactly once.
+  /// Runs on Client Auth sign-out, before a custodian sign-in, and on session invalidation.
+  /// Signing in as somebody else is not signing out, so this leaves the Keychain session alone —
+  /// clearing it is `handleClientAuthSignOut`'s job — and only removes the browser sign-in record
+  /// from `UserDefaults`. An exchange already in flight is not cancelled, but the sign-in it
+  /// finishes is not adopted (`sessionGeneration`); a sign-out also closes an open sheet first
+  /// (`beginSignOut()`). Idempotent, and the invalidation subscription is cancelled exactly once.
   func clearInMemorySession() {
+    self.sessionGeneration += 1
     self.session = nil
     self.pendingTotpUserJwt = nil
+    self.pendingMagicLink = nil
+    self.latestMagicLinkLookup = nil
+    self.confirmedMagicLink = nil
+    self.clearExternalOAuthStart()
     self.handoffSession = nil
 
     let handle = self.sessionInvalidatedHandle

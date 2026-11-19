@@ -8,22 +8,24 @@
 
 import Foundation
 
-/// Thin transport for the six Client Auth endpoints — no session, storage or sequencing logic.
+/// Thin transport for the seven Client Auth endpoints — no session, storage or sequencing logic.
 ///
 /// Every call carries `x-portal-auth-environment-id`; the `Accept`/`Content-Type` headers and
-/// a fresh trace id come from `PortalAPIRequest`. No call carries a bearer except
-/// `validateTotp`, whose bearer is the short-lived `userJwt`. The transport's `onUnauthorized`
-/// hook is deliberately never installed here: a `401` from a grant exchange means the *grant*
-/// was rejected, and there is no credential yet to invalidate.
+/// a fresh trace id come from `PortalAPIRequest`. Two calls carry a bearer: `getMagicLinkDetails`,
+/// whose bearer is the magic link's grant, and `validateTotp`, whose bearer is the short-lived
+/// `userJwt`. No other call does. The transport's `onUnauthorized` hook is deliberately never
+/// installed here: a `401` from either of those two calls means the grant or the JWT was
+/// rejected, and there is no credential yet to invalidate.
 ///
 /// Transport failures propagate unchanged as `PortalRequestsError` so a rejected grant keeps
 /// the backend's own signal, with two deliberate exceptions where a status code carries an
 /// actionable meaning: a `429` from `POST /magic-links` becomes `PortalAuthError.rateLimited`,
 /// and a `400` from `POST /magic-links` or `GET /oauth/urls` whose body is `{"error": …}`
 /// becomes `PortalAuthError.accountAbstractionUnavailable(message:)` — but only when that
-/// request asked for `isAccountAbstracted: true`; any other 400 passes through. Only a malformed
-/// `{ "data": … }` envelope, or a field the flow cannot continue without, is translated to
-/// `PortalAuthError.malformedResponse`.
+/// request asked for `isAccountAbstracted: true`; any other 400 passes through. A `429` from
+/// `GET /magic-links/details` is *not* `rateLimited`: that case is about sending links, and its
+/// message would mislead. Only a malformed `{ "data": … }` envelope, or a field the flow cannot
+/// continue without, is translated to `PortalAuthError.malformedResponse`.
 final class PortalAuthApi {
   /// The production API host, also the default of `PortalAuth.init`.
   static let defaultApiHost = "api.portalhq.io"
@@ -33,6 +35,7 @@ final class PortalAuthApi {
   static let basePath = "/api/v3/auth"
   static let methodsPath = basePath + "/methods"
   static let magicLinksPath = basePath + "/magic-links"
+  static let magicLinkDetailsPath = basePath + "/magic-links/details"
   static let magicLinkValidationsPath = basePath + "/magic-links/validations"
   static let oauthUrlsPath = basePath + "/oauth/urls"
   static let oauthTokensPath = basePath + "/oauth/tokens"
@@ -174,6 +177,29 @@ final class PortalAuthApi {
     }
   }
 
+  /// `GET /magic-links/details` with `Authorization: Bearer <token>`: the email a magic link
+  /// signs in to, read without spending the link.
+  ///
+  /// The grant travels as the bearer, never in the URL. A `401` (the link has expired, was
+  /// already used, or is otherwise unusable) passes through for `PortalAuth` to map to
+  /// `grantRejected`. A `429` — the backend allows only a few reads per link — passes through
+  /// unmapped.
+  ///
+  /// - Throws: `PortalAuthError.malformedResponse(path, "email")` when the response carries no
+  ///   email, or an empty or whitespace-only one; `.malformedResponse(path, nil)` when the body
+  ///   has no `{ "data": … }` envelope or `email` is not a string; every transport error
+  ///   unchanged.
+  func getMagicLinkDetails(token: String) async throws -> MagicLinkDetails {
+    let request = try self.makeRequest(path: Self.magicLinkDetailsPath, method: .get, bearerToken: token)
+    let data = try await self.requests.execute(request: request)
+    let body = try Self.unwrap(data, path: Self.magicLinkDetailsPath, as: MagicLinkDetailsResponse.self)
+
+    guard let email = body.email, !Self.isBlank(email) else {
+      throw PortalAuthError.malformedResponse(path: Self.magicLinkDetailsPath, missing: "email")
+    }
+    return MagicLinkDetails(email: email)
+  }
+
   /// `POST /magic-links/validations`: exchanges a magic-link grant.
   func validateMagicLink(token: String) async throws -> AuthGrantValidationResponse {
     try await self.exchangeGrant(path: Self.magicLinkValidationsPath, token: token)
@@ -215,9 +241,10 @@ final class PortalAuthApi {
 
   /// `POST /totps/validations` with `Authorization: Bearer <userJwt>`: submits a TOTP code.
   ///
-  /// The only Client Auth call that carries a bearer, so the only one that could ever reach
-  /// `PortalRequests.onUnauthorized` — which is why that hook is never installed on this
-  /// transport. The code is posted verbatim; a wrong code does not burn the JWT.
+  /// One of the two Client Auth calls that carry a bearer (with `getMagicLinkDetails`), so one of
+  /// the two that could ever reach `PortalRequests.onUnauthorized` — which is why that hook is
+  /// never installed on this transport. The code is posted verbatim; a wrong code does not burn
+  /// the JWT.
   ///
   /// - Throws: `PortalAuthError.malformedResponse(path, "clientSessionToken")` when the
   ///   response carries no session token, or an empty or whitespace-only one — the same

@@ -56,10 +56,22 @@ Possible Types of changes include:
     - `Ramps(noah:meld:)` builds the namespace around your own `NoahProtocol` and `MeldProtocol`, for example for a `PortalProtocol` test double.
     - Some providers, such as Transak, need the user's public IP to open a widget session: pass it as `MeldSessionData.clientIpAddress`.
     - Meld must be enabled for the environment in the Portal Dashboard.
+- Client Auth: confirm a magic link before signing in. Redirects are now read first and completed by sign-in method, so your app can show the user which email address a magic link signs in to and complete it only once they confirm it is theirs. The SDK provides the methods; the confirmation screen is your app's.
+    - `portalAuth.parseRedirect(_:)` (`String` or `URL`) reads a redirect into an `AuthRedirect`: `.magicLink` with the link's `token`, `.oauth` with its `provider`, or `.failed(error:)`. It returns `nil` for a URL that is not this instance's redirect, makes no network call, and never throws. An `AuthRedirect` never prints its token.
+    - `portalAuth.getMagicLinkDetails(_:)` returns a `MagicLinkDetails` with the `email` the link signs in to, without using up the link. Each link can be looked up only a few times, so call it once per confirmation screen. If it throws, don't confirm the link.
+    - `portalAuth.confirmMagicLink(_:)` completes the sign-in and returns an `AuthResult`. Call it once the user confirms the email, after `getMagicLinkDetails`, which reports an expired or already used link first. Calling it again with the same token returns the same result without using the link again, so send a link delivered again after the user confirmed it straight to `confirmMagicLink`.
+    - `portalAuth.completeOAuthLogin(_:)` completes a `loginWithGoogle()` / `loginWithApple()` redirect.
+    - `PortalAuthError.grantRejected` is thrown by `getMagicLinkDetails` and `confirmMagicLink` when the link has expired, was already used, or is otherwise unusable; ask the user for a new link. If you switch exhaustively over `PortalAuthError`, add a case for it.
 
 ### Changed
 
 - `PortalProtocol` gains `perps`, `borrow` and `predictionMarkets`, and `PortalApiProtocol` gains `yieldxyzPerps`, `yieldxyzBorrow`, `agg` and `meld`. If you conform to either protocol yourself, for example in a test double, add the new members; `PredictionMarkets(agg:)` builds one around your own `AggProtocol`.
+- `portalAuth.handleRedirect(_:)` returns `nil` for a URL that carries both `authMethod` and `login_type`, or a whitespace-only `token`. Portal never sends such a URL.
+- `portalAuth.signInWithGoogle()` and `portalAuth.signInWithApple()` complete only a result for the provider their sign-in sheet was opened for. A callback for the other provider, or a magic-link callback, neither of which Portal sends there, now throws `PortalAuthSignInError.callbackIncomplete` without being exchanged.
+
+### Deprecated
+
+- `portalAuth.handleRedirect(_:)`, which will be removed in the next major version. It keeps working, but it completes a magic link in one step, without the confirmation, and logs a deprecation warning (at `.warn`) each time it does. The SDK log is off by default, so the compile-time deprecation is usually the notice you see. Read redirects with `parseRedirect(_:)` instead, then complete a magic link with `getMagicLinkDetails(_:)` and, once the user confirms the email, `confirmMagicLink(_:)`, and a Google or Apple sign-in with `completeOAuthLogin(_:)`.
 
 ## 8.1.0 - 2026-10-08
 

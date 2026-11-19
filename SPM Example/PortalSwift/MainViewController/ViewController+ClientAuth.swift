@@ -66,9 +66,10 @@ extension ViewController: ClientAuthReporter {
   /// Presents the Client Auth screen, optionally with a redirect URL that arrived before it
   /// existed.
   ///
-  /// The URL is handed to the screen rather than acted on here: only `PortalAuth.handleRedirect`
-  /// can turn a grant into a session, and the screen is what owns the `PortalAuth` call and the
-  /// step log that goes with it. The URL is never logged — it carries a single-use grant.
+  /// The URL is handed to the screen rather than acted on here: the screen reads it with
+  /// `PortalAuth.parseRedirect`, owns the confirmation a magic link needs before it is exchanged,
+  /// and keeps the step log that goes with it. The URL is never logged — it carries a single-use
+  /// grant.
   ///
   /// Presented modally like `FirebaseAuthViewController`, and never twice: a second present on an
   /// already-presenting controller is a UIKit no-op that logs a warning, and the coordinator's
@@ -330,6 +331,10 @@ extension ViewController: ClientAuthReporter {
   /// reach `PortalAuth`'s replay memo — so without `clearPersistedSession()` a redirect delivered
   /// a second time would replay the login that was just signed out of.
   func handleClientAuthSignOut() {
+    // Before the first `await`: a sign-in still being exchanged must see the sign-out as soon as
+    // it finishes, not after `clearPersistedSession()` — which waits for that very exchange — and
+    // no sign-in may start until the cleanup below is done.
+    ClientAuthCoordinator.shared.beginSignOut()
     Task {
       if let portal {
         do {
@@ -342,6 +347,7 @@ extension ViewController: ClientAuthReporter {
       await self.clearPersistedClientAuthSession()
 
       self.clearClientAuthSession()
+      ClientAuthCoordinator.shared.endSignOut()
       self.signOutLocally()
       self.showStatusView(message: "\(self.successStatus) Client Auth session cleared")
     }
@@ -355,11 +361,13 @@ extension ViewController: ClientAuthReporter {
   /// session back on the next redirect.
   func handleSessionInvalidated() {
     self.logger.warning("ViewController.handleSessionInvalidated() - The backend rejected the Client Auth session")
+    ClientAuthCoordinator.shared.beginSignOut()
 
     Task {
       await self.clearPersistedClientAuthSession()
 
       self.clearClientAuthSession()
+      ClientAuthCoordinator.shared.endSignOut()
       self.signOutLocally()
       self.showStatusView(message: "\(self.failureStatus) Session invalidated - signed out")
     }
