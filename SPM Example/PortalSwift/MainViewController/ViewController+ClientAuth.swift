@@ -332,7 +332,8 @@ extension ViewController: ClientAuthReporter {
   /// a second time would replay the login that was just signed out of.
   func handleClientAuthSignOut() {
     // Before the first `await`: a sign-in still being exchanged must see the sign-out as soon as
-    // it finishes, not after `clearPersistedSession()` — which waits for that very exchange.
+    // it finishes, not after `clearPersistedSession()` — which waits for that very exchange — and
+    // no sign-in may start until the cleanup below is done.
     ClientAuthCoordinator.shared.beginSignOut()
     Task {
       if let portal {
@@ -346,6 +347,7 @@ extension ViewController: ClientAuthReporter {
       await self.clearPersistedClientAuthSession()
 
       self.clearClientAuthSession()
+      ClientAuthCoordinator.shared.endSignOut()
       self.signOutLocally()
       self.showStatusView(message: "\(self.successStatus) Client Auth session cleared")
     }
@@ -365,6 +367,7 @@ extension ViewController: ClientAuthReporter {
       await self.clearPersistedClientAuthSession()
 
       self.clearClientAuthSession()
+      ClientAuthCoordinator.shared.endSignOut()
       self.signOutLocally()
       self.showStatusView(message: "\(self.failureStatus) Session invalidated - signed out")
     }

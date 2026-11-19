@@ -410,16 +410,26 @@ final class ClientAuthViewController: UIViewController {
     guard let auth = self.auth else { return }
     let usesExternalBrowser = self.externalBrowserSwitch.isOn
     let step = (usesExternalBrowser ? "loginWith" : "signInWith") + ClientAuthViewController.providerLabel(method)
+    guard !self.refusedWhileSigningOut(step) else { return }
 
     self.isOAuthRequestInFlight = true
     self.applyOAuthUiState()
 
-    Task { @MainActor [weak self] in
+    let task = Task { @MainActor [weak self] in
       guard let self else { return }
       do {
         if usesExternalBrowser {
+          let generation = ClientAuthCoordinator.shared.sessionGeneration
           // Two arms differing only in the call, so the branch is verifiable by reading it.
           let result = method == .apple ? try await auth.loginWithApple() : try await auth.loginWithGoogle()
+          guard ClientAuthCoordinator.shared.sessionGeneration == generation else {
+            // A sign-out (or another sign-in) began while the URL was fetched: opening the browser
+            // now would record a sign-in after the sign-out cleared the record.
+            self.append("• \(step) — the session was cleared meanwhile, browser not opened")
+            self.isOAuthRequestInFlight = false
+            self.applyOAuthUiState()
+            return
+          }
           self.append("✓ \(step) — authorize URL resolved")
           self.openAuthorizeUrl(result.authorizeUrl, provider: method, step: step)
         } else {
@@ -444,11 +454,29 @@ final class ClientAuthViewController: UIViewController {
           self.handle(authResult: result)
         }
       } catch {
-        self.reportFailure(step: step, error: error)
+        if Task.isCancelled {
+          // A sign-out closed the sheet (`beginSignOut()`); the SDK exchanged nothing.
+          self.append("• \(step) — closed by a sign-out, nothing was exchanged")
+          self.restoreIdleStatus()
+        } else {
+          self.reportFailure(step: step, error: error)
+        }
       }
       self.isOAuthRequestInFlight = false
       self.applyOAuthUiState()
     }
+    if !usesExternalBrowser {
+      ClientAuthCoordinator.shared.sheetSignIn = task
+    }
+  }
+
+  /// A sign-out is clearing the session: nothing may start a sign-in until it is done, because a
+  /// sign-in started during the cleanup could finish after it and be saved or adopted. Returns
+  /// `true`, after saying so on the screen, when `step` must not run now.
+  private func refusedWhileSigningOut(_ step: String) -> Bool {
+    guard ClientAuthCoordinator.shared.isSigningOut else { return false }
+    self.append("• \(step) ignored — signing out")
+    return true
   }
 
   /// Hands the authorize URL to whatever browser the device has.
@@ -506,6 +534,8 @@ final class ClientAuthViewController: UIViewController {
   /// its provider, within the sign-in window (see `ClientAuthCoordinator.takeExternalOAuthStart`).
   private func completeRedirect(_ rawUrl: String) {
     guard let auth = self.auth else { return }
+    // Dropped, not kept for later: the user is signing out. A magic link can be opened again.
+    guard !self.refusedWhileSigningOut("redirect") else { return }
 
     switch auth.parseRedirect(rawUrl) {
     case .none:
@@ -718,6 +748,10 @@ final class ClientAuthViewController: UIViewController {
   /// Exchanges `link`: on the user's Confirm, or — `isReplay` — for the link they already
   /// confirmed, which the SDK replays. One confirmation at a time across every screen.
   private func confirmMagicLink(_ auth: PortalAuth, _ link: AuthRedirect.MagicLink, isReplay: Bool) {
+    guard !self.refusedWhileSigningOut("confirmMagicLink") else {
+      self.restoreIdleStatus()
+      return
+    }
     let coordinator = ClientAuthCoordinator.shared
     if let inFlight = coordinator.confirmingMagicLink {
       if inFlight == link {
@@ -1031,6 +1065,7 @@ final class ClientAuthViewController: UIViewController {
   /// expired one restarts the login — there is no refresh path.
   @objc private func handleVerifyTotp() {
     guard let auth = self.auth, let userJwt = self.pendingUserJwt else { return }
+    guard !self.refusedWhileSigningOut("verifyTotp") else { return }
     let code = (self.totpCodeField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
 
     self.setEnabled(self.verifyTotpButton, false)

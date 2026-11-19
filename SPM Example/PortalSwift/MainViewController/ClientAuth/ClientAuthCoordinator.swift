@@ -85,6 +85,20 @@ final class ClientAuthCoordinator {
   /// moved on is not adopted: the user has since signed out or signed in another way.
   private(set) var sessionGeneration = 0
 
+  /// Sign-outs between `beginSignOut()` and `endSignOut()`. A count, so an invalidation that lands
+  /// during a sign-out does not end the other one's window early.
+  private var signOutsInProgress = 0
+
+  /// `true` while a sign-out is clearing the session. No sign-in may start then: one that started
+  /// during the cleanup could finish after it and be saved or adopted.
+  var isSigningOut: Bool {
+    self.signOutsInProgress > 0
+  }
+
+  /// The `signInWith*` sheet in progress. A sign-out cancels it: the SDK closes the sheet and
+  /// exchanges nothing, so a sign-in finished after a sign-out is never saved to the Keychain.
+  var sheetSignIn: Task<Void, Never>?
+
   /// A magic link whose email was read and is waiting on the user's Confirm or Cancel. Held here
   /// so a screen rebuilt by a re-delivered link shows the same confirmation without a second
   /// lookup. Never persisted, never logged.
@@ -231,11 +245,31 @@ final class ClientAuthCoordinator {
     return Date(timeIntervalSince1970: startedAt)
   }
 
-  /// Marks a sign-out (or invalidation) as begun, before any of its `await`s: an exchange still
-  /// running sees it as soon as it finishes and does not adopt its sign-in. `clearInMemorySession()`
-  /// does the rest once the persisted session is gone.
+  /// Marks a sign-out (or invalidation) as begun, before any of its `await`s.
+  ///
+  /// - An exchange still running sees it as soon as it finishes and does not adopt its sign-in.
+  /// - No sign-in starts until `endSignOut()` (`isSigningOut`).
+  /// - The browser sign-in record and the magic-link state are dropped now, so no redirect can
+  ///   use them during the cleanup.
+  /// - An open `signInWith*` sheet is closed without exchanging anything.
+  ///
+  /// `clearInMemorySession()` does the rest once the persisted session is gone.
   func beginSignOut() {
     self.sessionGeneration += 1
+    self.signOutsInProgress += 1
+    self.pendingMagicLink = nil
+    self.latestMagicLinkLookup = nil
+    self.confirmedMagicLink = nil
+    self.clearExternalOAuthStart()
+
+    let sheet = self.sheetSignIn
+    self.sheetSignIn = nil
+    sheet?.cancel()
+  }
+
+  /// Ends the window `beginSignOut()` opened, after the cleanup's `clearInMemorySession()`.
+  func endSignOut() {
+    self.signOutsInProgress = max(0, self.signOutsInProgress - 1)
   }
 
   /// Puts a taken record back, with its original start time, after a completion that failed
@@ -287,8 +321,8 @@ final class ClientAuthCoordinator {
   /// Signing in as somebody else is not signing out, so this leaves the Keychain session alone —
   /// clearing it is `handleClientAuthSignOut`'s job — and only removes the browser sign-in record
   /// from `UserDefaults`. An exchange already in flight is not cancelled, but the sign-in it
-  /// finishes is not adopted (`sessionGeneration`). Idempotent, and the invalidation subscription
-  /// is cancelled exactly once.
+  /// finishes is not adopted (`sessionGeneration`); a sign-out also closes an open sheet first
+  /// (`beginSignOut()`). Idempotent, and the invalidation subscription is cancelled exactly once.
   func clearInMemorySession() {
     self.sessionGeneration += 1
     self.session = nil
