@@ -461,9 +461,10 @@ public enum PortalAuthSignInError: String, LocalizedError, Equatable {
   /// Another `signInWith*` call is still in flight. Both provider URLs share one single-use
   /// `state`, so a second concurrent attempt could only invalidate the first.
   case signInInProgress = "SIGN_IN_ALREADY_IN_PROGRESS"
-  /// The browser returned a callback URL that carried no Google or Apple sign-in result for this
-  /// instance (wrong target, no grant token, no auth-method marker, oversized, or another kind of
-  /// sign-in such as a magic link, which completes only through the app's confirmation step).
+  /// The browser returned a callback URL that carried no sign-in result for the provider the sheet
+  /// was opened for on this instance (wrong target, no grant token, no auth-method marker,
+  /// oversized, a result for the other provider, or another kind of sign-in such as a magic link,
+  /// which completes only through the app's confirmation step).
   case callbackIncomplete = "CALLBACK_INCOMPLETE"
 
   /// Fixed, secret-free text for each code.

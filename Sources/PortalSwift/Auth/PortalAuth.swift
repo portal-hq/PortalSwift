@@ -745,9 +745,10 @@ public final class PortalAuth: @unchecked Sendable {
   /// Fetches a fresh authorize URL, presents the system browser sheet from the anchor set with
   /// `setAuthPresentationAnchor(_:)`, reads the callback with `parseRedirect(_:)` and completes it
   /// the way `completeOAuthLogin(_:)` does — so replay, persist-before-return and the TOTP branch
-  /// behave identically. Only a Google or Apple result is completed: anything else the sheet
-  /// returns, a magic link included, throws `.callbackIncomplete` without being exchanged, because
-  /// a magic link is completed only through the app's own confirmation step. Requires a
+  /// behave identically. Only a result for the provider the sheet was opened for is completed:
+  /// anything else the sheet returns throws `.callbackIncomplete` without being exchanged — a
+  /// result for the other provider, which is not the sign-in the user started, or a magic link,
+  /// which is completed only through the app's own confirmation step. Requires a
   /// custom-scheme `redirectUrl` (Universal Links are not supported by
   /// `ASWebAuthenticationSession`'s callback matching in this version). One sign-in at a time:
   /// both provider URLs share a single-use `state`, so a concurrent attempt throws
@@ -1071,13 +1072,17 @@ public final class PortalAuth: @unchecked Sendable {
     // single-use credential and persisting one nobody will use is worse than dropping it.
     try Task.checkCancellation()
 
-    // Google or Apple only. A magic link reaches the user through the app's own confirmation
-    // step, never through this sheet, so one that arrives here is refused unexchanged.
+    // Only the provider this sheet was opened for. A magic link reaches the user through the
+    // app's own confirmation step, never through this sheet, and a result for the other provider
+    // is not the sign-in the user started, so either is refused unexchanged.
     switch self.parseRedirect(callback.absoluteString) {
-    case let .oauth(oauth)?:
+    case let .oauth(oauth)? where oauth.provider == method:
       let result = try await self._redeemGrant(token: oauth.token, kind: .oauth)
       PortalLogger.shared.debug("PortalAuth.signIn() - \(method.rawValue) sign-in completed.")
       return result
+    case .oauth?:
+      PortalLogger.shared.error("PortalAuth.signIn() - The callback carried a sign-in result for another provider.")
+      throw PortalAuthSignInError.callbackIncomplete
     case let .failed(error)?:
       PortalLogger.shared.error("PortalAuth.signIn() - The callback reported an authentication error.")
       throw PortalAuthError.authenticationFailed(error: error)

@@ -67,7 +67,7 @@ Possible Types of changes include:
 
 - `PortalProtocol` gains `perps`, `borrow` and `predictionMarkets`, and `PortalApiProtocol` gains `yieldxyzPerps`, `yieldxyzBorrow`, `agg` and `meld`. If you conform to either protocol yourself, for example in a test double, add the new members; `PredictionMarkets(agg:)` builds one around your own `AggProtocol`.
 - `portalAuth.handleRedirect(_:)` returns `nil` for a URL that carries both `authMethod` and `login_type`, or a whitespace-only `token`. Portal never sends such a URL.
-- `portalAuth.signInWithGoogle()` and `portalAuth.signInWithApple()` complete only a Google or Apple result from their sign-in sheet. A magic-link callback there, which Portal never sends, now throws `PortalAuthSignInError.callbackIncomplete` without being exchanged.
+- `portalAuth.signInWithGoogle()` and `portalAuth.signInWithApple()` complete only a result for the provider their sign-in sheet was opened for. A callback for the other provider, or a magic-link callback, neither of which Portal sends there, now throws `PortalAuthSignInError.callbackIncomplete` without being exchanged.
 
 ### Deprecated
 

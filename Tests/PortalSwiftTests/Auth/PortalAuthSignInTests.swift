@@ -876,6 +876,34 @@ extension PortalAuthSignInTests {
     XCTAssertEqual(self.storage.setCalls, 0)
   }
 
+  func test_signInWithGoogle_willThrowCallbackIncomplete_andSendNothing_whenCallbackIsForApple() async throws {
+    // The sheet was opened for Google, so an Apple result is not the sign-in the user started.
+    let subject = self.subject
+    self.web.results = try [.success(AuthTestFixtures.url(SignInFixtures.appleCallback))]
+
+    await XCTAssertThrowsAsync(
+      try await self.awaitSignIn { try await subject.signInWithGoogle() },
+      expected: PortalAuthSignInError.callbackIncomplete
+    )
+
+    XCTAssertEqual(self.tokenExchangeRequests.count, 0)
+    XCTAssertEqual(self.storage.setCalls, 0)
+    self.logger.assertNoSecret(SignInFixtures.grantToken)
+  }
+
+  func test_signInWithApple_willThrowCallbackIncomplete_andSendNothing_whenCallbackIsForGoogle() async throws {
+    let subject = self.subject
+    self.web.results = try [.success(AuthTestFixtures.url(SignInFixtures.googleCallback))]
+
+    await XCTAssertThrowsAsync(
+      try await self.awaitSignIn { try await subject.signInWithApple() },
+      expected: PortalAuthSignInError.callbackIncomplete
+    )
+
+    XCTAssertEqual(self.tokenExchangeRequests.count, 0)
+    XCTAssertEqual(self.storage.setCalls, 0)
+  }
+
   func test_signInWithGoogle_willNotExchange_whenCallbackHostDiffers() async throws {
     let subject = self.subject
     self.web.results = try [.success(AuthTestFixtures.url("myapp://attacker/callback?token=stolen&login_type=GOOGLE"))]
