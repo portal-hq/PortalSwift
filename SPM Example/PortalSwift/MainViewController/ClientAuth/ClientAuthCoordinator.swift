@@ -235,6 +235,8 @@ final class ClientAuthCoordinator {
   /// before Portal could refuse it — so the same redirect can be completed again (pasted, or
   /// delivered again) within the original window.
   func restoreExternalOAuthStart(_ provider: AuthMethod, startedAt: Date) {
+    // A newer browser sign-in started meanwhile owns the record now; leave it.
+    guard self.defaults.double(forKey: Self.externalOAuthStartedAtKey) == 0 else { return }
     self.markExternalOAuthStarted(provider, at: startedAt)
   }
 

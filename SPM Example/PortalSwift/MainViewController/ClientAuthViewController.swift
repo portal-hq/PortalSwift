@@ -431,7 +431,15 @@ final class ClientAuthViewController: UIViewController {
             return
           }
           auth.setAuthPresentationAnchor(window)
+          let generation = ClientAuthCoordinator.shared.sessionGeneration
           let result = method == .apple ? try await auth.signInWithApple() : try await auth.signInWithGoogle()
+          guard ClientAuthCoordinator.shared.sessionGeneration == generation else {
+            // Signed out, or signed in another way, while the sheet was up.
+            self.append("• \(step) finished after the session was cleared — not adopted")
+            self.isOAuthRequestInFlight = false
+            self.applyOAuthUiState()
+            return
+          }
           self.append("✓ \(step) — sign-in sheet completed")
           self.handle(authResult: result)
         }
@@ -528,13 +536,13 @@ final class ClientAuthViewController: UIViewController {
     let coordinator = ClientAuthCoordinator.shared
     let generation = coordinator.sessionGeneration
 
-    Task { @MainActor [weak self] in
-      // Held until the exchange settles, so a sign-in that completes after the screen closed is
-      // still handed to the app — through whichever Client Auth screen is live by then.
-      guard let self else { return }
-      let screen = self.liveScreen
+    // Captures `self` strongly: held until the exchange settles, so a sign-in that completes after
+    // the screen closed is still handed to the app — through whichever Client Auth screen is live
+    // by then, read once the exchange has settled.
+    Task { @MainActor in
       do {
         let result = try await auth.completeOAuthLogin(redirect)
+        let screen = self.liveScreen
         guard coordinator.sessionGeneration == generation else {
           screen.append("• the \(Self.providerLabel(redirect.provider)) sign-in finished after the session was cleared — not adopted")
           return
@@ -547,7 +555,7 @@ final class ClientAuthViewController: UIViewController {
           // delivered again) within the original window.
           coordinator.restoreExternalOAuthStart(redirect.provider, startedAt: startedAt)
         }
-        screen.reportFailure(step: "completeOAuthLogin", error: error)
+        self.liveScreen.reportFailure(step: "completeOAuthLogin", error: error)
       }
     }
   }
@@ -601,13 +609,13 @@ final class ClientAuthViewController: UIViewController {
     coordinator.latestMagicLinkLookup = link
     self.statusLabel.text = "Reading the magic link…"
 
-    Task { @MainActor [weak self] in
-      // Held until the lookup settles: each link can be looked up only a few times, so its
-      // result is not thrown away because the screen closed meanwhile.
-      guard let self else { return }
-      let screen = self.liveScreen
+    // Captures `self` strongly: held until the lookup settles, so the marker above is always
+    // cleared and a result — each link can be looked up only a few times — is never thrown away
+    // because the screen closed meanwhile.
+    Task { @MainActor in
       do {
         let details = try await auth.getMagicLinkDetails(link.token)
+        let screen = self.liveScreen
         // A newer link arrived meanwhile, on any screen, or the session was cleared.
         guard coordinator.latestMagicLinkLookup == link else {
           screen.append("• an older magic link was set aside, unconfirmed")
@@ -619,6 +627,7 @@ final class ClientAuthViewController: UIViewController {
         screen.append("✓ getMagicLinkDetails — read the link's email, awaiting confirmation")
         screen.presentPendingMagicLinkIfAny()
       } catch {
+        let screen = self.liveScreen
         guard coordinator.latestMagicLinkLookup == link else {
           screen.append("• an older magic link could not be read and was set aside")
           return
@@ -718,10 +727,10 @@ final class ClientAuthViewController: UIViewController {
     coordinator.confirmingMagicLink = link
     self.statusLabel.text = "Confirming…"
 
-    Task { @MainActor [weak self] in
-      // Held until the exchange settles, so a sign-in that completes after the screen closed is
-      // still handed to the app, through whichever Client Auth screen is live by then.
-      guard let self else { return }
+    // Captures `self` strongly: held until the exchange settles, so the marker above is always
+    // cleared and a sign-in that completes after the screen closed is still handed to the app,
+    // through whichever Client Auth screen is live by then.
+    Task { @MainActor in
       let outcome: Swift.Result<AuthResult, Error>
       do {
         outcome = try .success(await auth.confirmMagicLink(link.token))
@@ -1020,10 +1029,17 @@ final class ClientAuthViewController: UIViewController {
 
     self.setEnabled(self.verifyTotpButton, false)
 
+    let generation = ClientAuthCoordinator.shared.sessionGeneration
     Task { @MainActor [weak self] in
       guard let self else { return }
       do {
         let result = try await auth.verifyTotp(code, userJwt: userJwt)
+        guard ClientAuthCoordinator.shared.sessionGeneration == generation else {
+          // Signed out, or signed in another way, while the code was checked.
+          self.append("• verifyTotp finished after the session was cleared — not adopted")
+          self.applyTotpUiState()
+          return
+        }
         self.append("✓ verifyTotp — code accepted")
         self.publish(result.session)
       } catch {
