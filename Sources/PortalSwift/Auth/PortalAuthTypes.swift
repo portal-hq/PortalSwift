@@ -35,7 +35,7 @@ public protocol PortalSession: PortalCredentials {
 /// through `AuthMethod(rawValue:)`. A value this SDK version does not know is dropped by the
 /// caller rather than surfaced, because the backend can enable a method before the SDK
 /// learns its name and that must never be a crash.
-public enum AuthMethod: String, Codable, CaseIterable {
+public enum AuthMethod: String, Codable, CaseIterable, Sendable {
   /// Email magic link: `sendMagicLink(_:)` followed by `handleRedirect(_:)`.
   case emailMagicLink = "EMAIL_MAGIC_LINK"
   /// Sign in with Google through the Portal-hosted OAuth flow.
@@ -99,6 +99,22 @@ public struct AuthorizeUrlResult: Equatable {
   /// Memberwise initializer, public so host test bundles can construct one.
   public init(authorizeUrl: String) {
     self.authorizeUrl = authorizeUrl
+  }
+}
+
+/// The email address a magic link signs in to, read by `PortalAuth.getMagicLinkDetails(_:)`
+/// without using up the link.
+///
+/// Show it on your own confirmation screen and call `PortalAuth.confirmMagicLink(_:)` only once
+/// the user confirms it is theirs. `email` is the full address, never masked: masking, if any,
+/// is up to that screen. It is personal data, so show it but do not log it.
+public struct MagicLinkDetails: Equatable, Sendable {
+  /// The full email address the magic link signs in to.
+  public let email: String
+
+  /// Memberwise initializer, public so host test bundles can construct one.
+  public init(email: String) {
+    self.email = email
   }
 }
 
@@ -180,6 +196,122 @@ extension TotpRequiredResult: CustomStringConvertible, CustomDebugStringConverti
   }
 }
 
+// MARK: - Redirects
+
+/// What an inbound redirect URL completes, as read by `PortalAuth.parseRedirect(_:)`.
+///
+/// Reading a redirect is local and spends nothing. Completing it is a separate call, chosen by
+/// the case:
+/// - `.magicLink`: show the user the email from `getMagicLinkDetails(_:)` and call
+///   `confirmMagicLink(_:)` only once they confirm it. A magic link signs in whoever opens it,
+///   to the account it was sent for, so the confirmation is what lets the user notice a link
+///   someone else sent them.
+/// - `.oauth`: complete a `loginWithGoogle()` / `loginWithApple()` redirect with
+///   `completeOAuthLogin(_:)`.
+/// - `.failed`: the sign-in ended without a grant, for example `oauth_failed`. Nothing was sent
+///   to Portal; offer to start again.
+///
+/// Only `parseRedirect(_:)` builds one: the payload initializers are internal, so a
+/// `completeOAuthLogin(_:)` argument always comes from a redirect this instance read. Printing a
+/// value never shows its grant token — `description`, `debugDescription` and `customMirror`
+/// replace it with `<redacted>` — because a redirect is exactly the kind of value that ends up
+/// in a log line. `Equatable` still compares the real token.
+public enum AuthRedirect: Equatable, Sendable {
+  /// A magic-link redirect, not yet exchanged.
+  case magicLink(MagicLink)
+  /// A Google or Apple redirect, not yet exchanged.
+  case oauth(OAuth)
+  /// The redirect carried `?error=…` instead of a grant. The value comes from an inbound URL
+  /// and is bounded to 100 characters, because apps surface it straight to the user.
+  case failed(error: String)
+
+  /// The grant of a magic-link redirect.
+  public struct MagicLink: Equatable, Sendable {
+    /// The single-use grant token. Pass it to `getMagicLinkDetails(_:)` and
+    /// `confirmMagicLink(_:)`, and keep it only while the user decides; never log or persist it.
+    public let token: String
+
+    init(token: String) {
+      self.token = token
+    }
+  }
+
+  /// The grant of a Google or Apple redirect.
+  public struct OAuth: Equatable, Sendable {
+    /// The provider that issued the grant: `.google` or `.apple`.
+    public let provider: AuthMethod
+    /// The single-use grant token. Internal: `completeOAuthLogin(_:)` is the only reader.
+    let token: String
+
+    init(provider: AuthMethod, token: String) {
+      self.provider = provider
+      self.token = token
+    }
+  }
+}
+
+/// Redacted rendering. The synthesized description of an enum walks its payloads, so without
+/// these a `"\(redirect)"` would print the grant token in full.
+extension AuthRedirect: CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+  public var description: String {
+    switch self {
+    case let .magicLink(link):
+      return "AuthRedirect.magicLink(\(link))"
+    case let .oauth(oauth):
+      return "AuthRedirect.oauth(\(oauth))"
+    case let .failed(error):
+      return "AuthRedirect.failed(error: \(error))"
+    }
+  }
+
+  public var debugDescription: String {
+    self.description
+  }
+
+  public var customMirror: Mirror {
+    switch self {
+    case let .magicLink(link):
+      return Mirror(self, children: ["magicLink": link], displayStyle: .enum)
+    case let .oauth(oauth):
+      return Mirror(self, children: ["oauth": oauth], displayStyle: .enum)
+    case let .failed(error):
+      return Mirror(self, children: ["failed": error], displayStyle: .enum)
+    }
+  }
+}
+
+extension AuthRedirect.MagicLink: CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+  private static let redacted = "<redacted>"
+
+  public var description: String {
+    "MagicLink(token: \(Self.redacted))"
+  }
+
+  public var debugDescription: String {
+    self.description
+  }
+
+  public var customMirror: Mirror {
+    Mirror(self, children: ["token": Self.redacted], displayStyle: .struct)
+  }
+}
+
+extension AuthRedirect.OAuth: CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+  private static let redacted = "<redacted>"
+
+  public var description: String {
+    "OAuth(provider: \(self.provider.rawValue), token: \(Self.redacted))"
+  }
+
+  public var debugDescription: String {
+    self.description
+  }
+
+  public var customMirror: Mirror {
+    Mirror(self, children: ["provider": self.provider.rawValue, "token": Self.redacted], displayStyle: .struct)
+  }
+}
+
 /// The outcome of a completed grant exchange.
 ///
 /// A two-case sum so a `switch` is exhaustive: either the login is done and a session exists,
@@ -199,17 +331,17 @@ public enum AuthResult: Sendable {
 /// These describe the *authentication* flow — sending a magic link, completing a redirect,
 /// reading a persisted session. Once a session exists, failures to turn it into a bearer token
 /// are `PortalCredentialError`s instead. Transport failures are deliberately not remapped
-/// here: a rejected grant exchange surfaces as `PortalRequestsError.unauthorized`, unchanged,
-/// so the backend's own signal reaches the host (Android parity). The two exceptions —
-/// `accountAbstractionUnavailable` and `rateLimited` — exist because the backend's status
-/// codes there carry an actionable meaning the host would otherwise have to parse out of a
-/// message string.
+/// here, so the backend's own signal reaches the host (Android parity): a refused Google or
+/// Apple grant surfaces as `PortalRequestsError.unauthorized`, unchanged. The exceptions —
+/// `grantRejected`, `accountAbstractionUnavailable` and `rateLimited` — exist because the
+/// backend's status codes there carry an actionable meaning the host would otherwise have to
+/// parse out of a message string.
 ///
 /// No message ever embeds a token, JWT, session token, URL, `totpLink` or email; the
 /// associated values carry only server text (bounded), field names and fixed literals.
 public enum PortalAuthError: LocalizedError, Equatable {
   /// A required argument was empty or blank. `name` is the parameter (`authEnvironmentId`,
-  /// `redirectUrl`, `email`, `apiHost`).
+  /// `redirectUrl`, `email`, `apiHost`, `token`).
   case invalidArgument(name: String)
   /// `sendMagicLink(_:)` was called on an instance constructed without `magicLink`. Raised
   /// locally before any network call.
@@ -220,6 +352,12 @@ public enum PortalAuthError: LocalizedError, Equatable {
   /// A redirect targeting this instance carried `?error=…`. The value comes from an inbound
   /// deep link and is bounded to 100 characters because apps surface it straight to the user.
   case authenticationFailed(error: String)
+  /// Portal refused a magic link: it has expired, was already used, or is otherwise unusable.
+  /// Thrown by `getMagicLinkDetails(_:)` and `confirmMagicLink(_:)` for the backend's `401`. Not
+  /// retryable: ask the user to request a new link. `completeOAuthLogin(_:)`, `signInWith*` and
+  /// the deprecated `handleRedirect(_:)` keep reporting a refused grant as
+  /// `PortalRequestsError.unauthorized`.
+  case grantRejected
   /// A Client Auth response did not carry what its endpoint documents: the `{ "data": … }`
   /// envelope itself (`missing == nil`) or a named field inside it.
   case malformedResponse(path: String, missing: String?)
@@ -255,6 +393,8 @@ public enum PortalAuthError: LocalizedError, Equatable {
       return "[PortalAuth] \(method.rawValue) is not an enabled auth method for this auth environment."
     case let .authenticationFailed(error):
       return "[PortalAuth] Authentication failed: \(error)"
+    case .grantRejected:
+      return "[PortalAuth] The authentication grant was rejected. It may already have been used, expired, or been issued for a different auth environment. Start a new sign-in."
     case let .malformedResponse(path, missing):
       return "[PortalAuth] Malformed response from \(path): missing \"\(missing ?? "data")\"."
     case .invalidGrantResponse:
