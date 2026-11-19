@@ -825,6 +825,26 @@ extension PortalAuthSignInTests {
     XCTAssertEqual(self.tokenExchangeRequests.count, 0, "A callback for another target never reaches the exchange")
   }
 
+  func test_signInWithGoogle_willThrowCallbackIncomplete_andSendNothing_whenCallbackIsMagicLink() async throws {
+    // The sheet completes Google or Apple only. A magic link must go through the app's own
+    // confirmation step, so one that reaches the sheet is refused without being exchanged.
+    let subject = self.subject
+    let magicLinkCallback = "\(SignInFixtures.redirectUrl)?token=\(SignInFixtures.grantToken)&authMethod=EMAIL_MAGIC_LINK"
+    self.web.results = try [.success(AuthTestFixtures.url(magicLinkCallback))]
+
+    await XCTAssertThrowsAsync(
+      try await self.awaitSignIn { try await subject.signInWithGoogle() },
+      expected: PortalAuthSignInError.callbackIncomplete
+    )
+
+    XCTAssertEqual(self.tokenExchangeRequests.count, 0)
+    XCTAssertFalse(
+      self.requests.recorded.contains { $0.matches(path: PortalAuthApi.magicLinkValidationsPath) },
+      "The magic link was exchanged without the confirmation step"
+    )
+    XCTAssertEqual(self.storage.setCalls, 0)
+  }
+
   func test_signInWithGoogle_willNotExchange_whenCallbackHostDiffers() async throws {
     let subject = self.subject
     self.web.results = try [.success(AuthTestFixtures.url("myapp://attacker/callback?token=stolen&login_type=GOOGLE"))]
@@ -1202,16 +1222,15 @@ extension PortalAuthSignInTests {
     let task = self.startSignIn(.google)
     await self.waitForBrowser()
 
-    let magicLinkRedirect = "\(SignInFixtures.redirectUrl)?token=m&authMethod=\(AuthMethod.emailMagicLink.rawValue)"
-    let redirectResult = try await self.awaitBounded("handleRedirect during a sign-in") {
-      try await subject.handleRedirect(magicLinkRedirect)
+    let confirmResult = try await self.awaitBounded("confirmMagicLink during a sign-in") {
+      try await subject.confirmMagicLink("m")
     }
 
-    _ = try self.authenticated(XCTUnwrap(redirectResult))
+    _ = try self.authenticated(confirmResult)
     XCTAssertEqual(
       self.requests.requests(toPath: PortalAuthApi.magicLinkValidationsPath).count,
       1,
-      "Only _handleRedirect takes the grant mutex, so a magic link still completes while the browser is open"
+      "Only the exchange takes the grant mutex, so a magic link still completes while the browser is open"
     )
     XCTAssertEqual(self.web.calls.count, 1, "The sign-in is still parked in the browser")
 

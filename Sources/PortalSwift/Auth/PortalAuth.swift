@@ -17,15 +17,21 @@ import Foundation
 /// starts, all UI, deep-link registration and forwarding, and wallet creation.
 ///
 /// Two browser modes ship side by side. `loginWithGoogle()` / `loginWithApple()` return an
-/// authorize URL and nothing else — the host opens it however it likes and later forwards the
-/// deep link to `handleRedirect(_:)`. `signInWithGoogle()` / `signInWithApple()` own an
-/// `ASWebAuthenticationSession` end to end and return the `AuthResult` directly; they need a
-/// presentation anchor (`setAuthPresentationAnchor(_:)`) and a custom-scheme `redirectUrl`.
+/// authorize URL and nothing else — the host opens it however it likes, later reads the deep
+/// link with `parseRedirect(_:)` and completes it with `completeOAuthLogin(_:)`.
+/// `signInWithGoogle()` / `signInWithApple()` own an `ASWebAuthenticationSession` end to end and
+/// return the `AuthResult` directly; they need a presentation anchor
+/// (`setAuthPresentationAnchor(_:)`) and a custom-scheme `redirectUrl`.
 ///
-/// **Hold one long-lived instance.** `handleRedirect(_:)` remembers the grant it last
-/// exchanged so a re-delivered redirect replays instead of failing the backend's single-use
-/// rejection, and that memory lives on the instance — one built per screen is destroyed by
-/// the very lifecycle event the memory exists to survive.
+/// A magic link takes two steps, because it signs in whoever opens it to the account it was sent
+/// for: `getMagicLinkDetails(_:)` reads that account's email without using up the link, the host
+/// shows it on its own confirmation screen, and `confirmMagicLink(_:)` completes the sign-in only
+/// once the user confirms it. The SDK provides no UI for this.
+///
+/// **Hold one long-lived instance.** The completions remember the grant they last exchanged so a
+/// re-delivered redirect replays instead of failing the backend's single-use rejection, and that
+/// memory lives on the instance — one built per screen is destroyed by the very lifecycle event
+/// the memory exists to survive.
 ///
 /// ```swift
 /// let auth = try PortalAuth(
@@ -37,10 +43,27 @@ import Foundation
 /// try await auth.sendMagicLink("user@example.com")
 ///
 /// // later, in the host's deep-link handler:
-/// switch try await auth.handleRedirect(incomingUrl) {
-/// case let .authenticated(result)?: let portal = try Portal(credentials: result.session)
-/// case let .totpRequired(step)?: showTotpPrompt(step) // then auth.verifyTotp(code, userJwt: step.userJwt)
+/// switch auth.parseRedirect(incomingUrl) {
+/// case let .magicLink(link)?:
+///   if link == confirmedLink {
+///     // Delivered again after the user confirmed it: the link is spent, so replay the result.
+///     try complete(await auth.confirmMagicLink(link.token))
+///   } else {
+///     let details = try await auth.getMagicLinkDetails(link.token)
+///     // Show details.email; only once the user confirms it is theirs:
+///     confirmedLink = link
+///     try complete(await auth.confirmMagicLink(link.token))
+///   }
+/// case let .oauth(redirect)?: try complete(await auth.completeOAuthLogin(redirect))
+/// case .failed?: showSignInFailed()
 /// case nil: break // not ours — let another handler try
+/// }
+///
+/// func complete(_ result: AuthResult) throws {
+///   switch result {
+///   case let .authenticated(result): let portal = try Portal(credentials: result.session)
+///   case let .totpRequired(step): showTotpPrompt(step) // then auth.verifyTotp(code, userJwt: step.userJwt)
+///   }
 /// }
 /// ```
 ///
@@ -58,12 +81,21 @@ public final class PortalAuth: @unchecked Sendable {
   /// Upper bound, in `Character`s, on an `error` value copied into an error message.
   static let maxErrorLength = 100
 
-  /// The last grant `handleRedirect` exchanged, and what it resolved to.
+  /// Which endpoint a grant is exchanged at: `/magic-links/validations` or `/oauth/tokens`.
+  private enum GrantKind {
+    case magicLink
+    case oauth
+  }
+
+  /// The last grant a completion exchanged, and what it resolved to.
   ///
   /// One slot rather than a set: a replay is always of the most recent redirect, so remembering
   /// older grants would keep spent tokens — and the short-lived `userJwt` of a TOTP step —
-  /// alive for no gain. The key is byte-exact on the token.
+  /// alive for no gain. The key is the sign-in kind plus the token, byte-exact, so a magic-link
+  /// confirmation is only ever answered by a magic-link exchange and an OAuth completion only by
+  /// an OAuth one.
   private struct ConsumedGrant {
+    let kind: GrantKind
     let token: String
     let result: AuthResult
     /// The session record that has not yet reached the Keychain, or `nil` once it has (and
@@ -302,11 +334,195 @@ public final class PortalAuth: @unchecked Sendable {
 
   // MARK: - Redirect
 
-  /// The single completion path for every flow.
+  /// Reads a redirect URL into the sign-in it completes, without completing it.
   ///
-  /// Returns `nil` when the URL does not target this instance's `redirectUrl` or carries no
-  /// Client Auth grant, so it is safe to call on every instance and safe for the app's router
-  /// to try other handlers afterwards. Throws when the URL matches but carries `?error=…`. It
+  /// Local and synchronous: it sends nothing to Portal, touches no storage, logs nothing and
+  /// spends no grant, so it is safe to call on every URL the app receives. Complete the result
+  /// with the method for its case (see `AuthRedirect`): `getMagicLinkDetails(_:)` and, once the
+  /// user confirms the email, `confirmMagicLink(_:)` for a magic link; `completeOAuthLogin(_:)`
+  /// for Google or Apple. It never throws — a redirect that reports an error is `.failed(error:)`.
+  ///
+  /// Returns `nil`, so the app's router can try other handlers, when the URL:
+  /// - is empty or longer than 8192 UTF-16 code units (checked before it is parsed),
+  /// - does not target this instance's `redirectUrl` (scheme and host compared
+  ///   case-insensitively, the path exactly),
+  /// - carries both `authMethod` and `login_type`, so the sign-in it completes cannot be told
+  ///   apart (Portal never sends both),
+  /// - carries no `token`, or an empty or whitespace-only one, or
+  /// - carries no sign-in marker this SDK recognises.
+  public func parseRedirect(_ url: String) -> AuthRedirect? {
+    guard !url.isEmpty, url.utf16.count <= Self.maxRedirectUrlLength else {
+      return nil
+    }
+    guard RedirectUrl.matchesRedirectUrl(url, self.redirectUrl) else {
+      return nil
+    }
+
+    let params = RedirectUrl.parseQueryParams(url.trimmingCharacters(in: .whitespacesAndNewlines))
+
+    // Before `error` and the token: a URL claiming both kinds of sign-in is not one Portal
+    // built, so nothing it carries — not even an error — is acted on.
+    if params["authMethod"] != nil, params["login_type"] != nil {
+      return nil
+    }
+
+    // Before the token, so a redirect that reports an error never hands its token out.
+    if let error = params["error"] {
+      // Bounded: the backend only ever sends `oauth_failed`, but this string arrives from an
+      // inbound URL and apps routinely surface error messages straight to the user.
+      return .failed(error: String(error.prefix(Self.maxErrorLength)))
+    }
+
+    guard let token = params["token"], !Self.isBlank(token) else {
+      return nil
+    }
+
+    // Matched exactly on the wire value. Magic-link redirects carry `authMethod`; OAuth callbacks
+    // carry `login_type`.
+    if let authMethod = params["authMethod"] {
+      return AuthMethod(rawValue: authMethod) == .emailMagicLink ? .magicLink(AuthRedirect.MagicLink(token: token)) : nil
+    }
+    if let provider = params["login_type"].flatMap({ AuthMethod(rawValue: $0) }), provider == .google || provider == .apple {
+      return .oauth(AuthRedirect.OAuth(provider: provider, token: token))
+    }
+    return nil
+  }
+
+  /// `parseRedirect(_ url: String)` for a `URL` (the type `onOpenURL` and the scene and app
+  /// delegates hand out). Forwards `absoluteString`, which keeps the percent-encoding intact so
+  /// the grant is decoded exactly once.
+  public func parseRedirect(_ url: URL) -> AuthRedirect? {
+    self.parseRedirect(url.absoluteString)
+  }
+
+  /// Reads the email address a magic link signs in to, without using up the link.
+  ///
+  /// The first of the two steps that complete a magic link. A magic link signs in whoever opens
+  /// it, to the account it was sent for, and anyone can request one for their own address and
+  /// forward it to your user. So show this email on your own confirmation screen and call
+  /// `confirmMagicLink(_:)` only once the user confirms it is theirs. The SDK provides no UI for
+  /// this. The email is the full address; masking it, if you want to, is up to that screen. It is
+  /// personal data: show it, never log it.
+  ///
+  /// Nothing is exchanged, persisted or remembered, and the link stays usable until it expires,
+  /// 15 minutes after it was sent. Portal allows only a few lookups per link, after which they
+  /// fail with the transport's `429`, so call this once per confirmation screen and keep the
+  /// result while the user decides rather than polling it. **Whatever this throws, do not
+  /// confirm the link**: a link whose email the user has not seen must not be exchanged.
+  ///
+  /// A link that has already been confirmed is spent, so this rejects it with `.grantRejected`;
+  /// it never answers from memory. When the OS delivers a link again after the user confirmed
+  /// it, send it straight to `confirmMagicLink(_:)`, which replays the remembered result. The SDK
+  /// cannot tell that case apart from the token alone, so your app remembers which link the user
+  /// confirmed — keep the `AuthRedirect.MagicLink`, which redacts the token when printed, rather
+  /// than the bare string.
+  ///
+  /// - Parameter token: The `token` of the `.magicLink` that `parseRedirect(_:)` returned.
+  /// - Throws: `PortalAuthError.invalidArgument(name: "token")` for an empty or whitespace-only
+  ///   token, before any network call; `.grantRejected` when the link has expired, was already
+  ///   used, or is otherwise unusable — including a token that could not be a Portal grant
+  ///   (characters outside the bearer-token alphabet), refused without a request — which is not
+  ///   retryable: the user needs a new link, unless they already confirmed this one;
+  ///   `.malformedResponse` when the response carries no email; other transport errors unchanged
+  ///   (a `429` as `PortalRequestsError.clientError`); `CancellationError` when called from a task
+  ///   that is already cancelled.
+  public func getMagicLinkDetails(_ token: String) async throws -> MagicLinkDetails {
+    guard !Self.isBlank(token) else {
+      throw PortalAuthError.invalidArgument(name: "token")
+    }
+    // The only call that puts a grant into a header. Portal's grants are JWTs, so anything
+    // outside the RFC 6750 bearer alphabet did not come from Portal, and a CR or LF must never
+    // get the chance to start a header of its own.
+    guard Self.isBearerTokenSafe(token) else {
+      PortalLogger.shared.error("PortalAuth.getMagicLinkDetails() - The magic link's token is not a valid grant; nothing was sent.")
+      throw PortalAuthError.grantRejected
+    }
+    // Lookups are limited per link, so a caller that is already gone must not spend one.
+    try Task.checkCancellation()
+
+    do {
+      let details = try await self.api.getMagicLinkDetails(token: token)
+      PortalLogger.shared.debug("PortalAuth.getMagicLinkDetails() - Read the magic link's details.")
+      return details
+    } catch PortalRequestsError.unauthorized {
+      PortalLogger.shared.debug("PortalAuth.getMagicLinkDetails() - Portal rejected the magic link.")
+      throw PortalAuthError.grantRejected
+    }
+  }
+
+  /// Completes a magic link once the user has confirmed it, and returns the same `AuthResult` as
+  /// every other sign-in.
+  ///
+  /// The second of the two steps. Call it only after the user has seen the email from
+  /// `getMagicLinkDetails(_:)` on your own screen and confirmed it is theirs: that confirmation is
+  /// what stops someone else's link from signing your user in to the sender's account. Call
+  /// `getMagicLinkDetails(_:)` first even if your screen does not show the email — it reports an
+  /// expired or already used link before the user is asked to confirm. Portal does not require
+  /// the lookup, and the SDK does not enforce it.
+  ///
+  /// This uses up the link, and this instance exchanges it at most once. Concurrent calls with the
+  /// same token share one exchange. Once it has succeeded, calling again with the same token
+  /// returns the remembered result — the same `PortalSession` instance — without a request, for
+  /// as long as that session is live, which is what lets a link the OS delivers again after the
+  /// user confirmed it come straight here. Only the most recent sign-in is remembered, on this
+  /// instance and in this process. A failure is never remembered, so calling again sends the link
+  /// again; that succeeds only if the failed attempt never reached Portal, because Portal uses up
+  /// a link as soon as it receives it.
+  ///
+  /// On success the session is persisted **before** it is returned. Returns `.totpRequired` when
+  /// the user has TOTP enabled; nothing is persisted then, so complete it with
+  /// `verifyTotp(_:userJwt:)`. Cancellation is honoured only before the request is sent: once it
+  /// has begun it runs to completion even if the calling task is cancelled meanwhile — Portal
+  /// uses up the link before it answers — and the result is still returned and remembered. A
+  /// `clearPersistedSession()` called meanwhile waits for it, then deletes the session it
+  /// persisted and forgets it.
+  ///
+  /// - Parameter token: The `token` of the `.magicLink` that `parseRedirect(_:)` returned.
+  /// - Throws: `PortalAuthError.invalidArgument(name: "token")` for an empty or whitespace-only
+  ///   token, before any network call; `.grantRejected` when the link has expired, was already
+  ///   used, or is otherwise unusable, or the session it signed in to has since ended — not
+  ///   retryable: the user needs a new link; `.invalidGrantResponse`, `.malformedResponse` and
+  ///   `.sessionStorageFailure`; other transport errors unchanged; `CancellationError` when called
+  ///   from a task that is already cancelled.
+  public func confirmMagicLink(_ token: String) async throws -> AuthResult {
+    guard !Self.isBlank(token) else {
+      throw PortalAuthError.invalidArgument(name: "token")
+    }
+    do {
+      return try await self._redeemGrant(token: token, kind: .magicLink)
+    } catch PortalRequestsError.unauthorized {
+      // Portal's 401, or a remembered session that has since ended (`_replay`): either way this
+      // link cannot sign anyone in any more.
+      throw PortalAuthError.grantRejected
+    }
+  }
+
+  /// Completes a Google or Apple redirect from `loginWithGoogle()` / `loginWithApple()`.
+  ///
+  /// Pass the `.oauth` value `parseRedirect(_:)` returned. The grant is exchanged the way
+  /// `confirmMagicLink(_:)` exchanges a link: at most once on this instance, a redirect delivered
+  /// again replays the remembered result while its session is live, a failure is never
+  /// remembered, and cancellation is honoured only before the request is sent. On success the
+  /// session is persisted before it is returned; `.totpRequired` leads to
+  /// `verifyTotp(_:userJwt:)`. `signInWithGoogle()` / `signInWithApple()` do all of this for you.
+  ///
+  /// It trusts any grant that arrives on your redirect URL; see the redirect-hijacking note on
+  /// `loginWithGoogle()`.
+  ///
+  /// - Throws: a refused grant (expired, already used, or issued for another environment) as
+  ///   `PortalRequestsError.unauthorized`, unmapped, as `signInWith*` reports it;
+  ///   `PortalAuthError.invalidGrantResponse`, `.malformedResponse` and `.sessionStorageFailure`;
+  ///   other transport errors unchanged; `CancellationError` when called from a task that is
+  ///   already cancelled.
+  public func completeOAuthLogin(_ redirect: AuthRedirect.OAuth) async throws -> AuthResult {
+    try await self._redeemGrant(token: redirect.token, kind: .oauth)
+  }
+
+  /// Completes any Client Auth redirect in one step.
+  ///
+  /// Returns `nil` when `parseRedirect(_:)` would, so it is safe to call on every instance and
+  /// safe for the app's router to try other handlers afterwards. Throws when the URL matches but
+  /// carries `?error=…`. It
   /// trusts any grant that arrives on your redirect URL — see the redirect-hijacking note on
   /// `loginWithGoogle()` for what that means when the URL is delivered by the OS.
   ///
@@ -493,17 +709,21 @@ public final class PortalAuth: @unchecked Sendable {
   /// Completes a Google sign-in end to end using `ASWebAuthenticationSession`.
   ///
   /// Fetches a fresh authorize URL, presents the system browser sheet from the anchor set with
-  /// `setAuthPresentationAnchor(_:)`, and hands the callback URL to the same code path as
-  /// `handleRedirect(_:)` — so replay, persist-before-return and the TOTP branch behave
-  /// identically. Requires a custom-scheme `redirectUrl` (Universal Links are not supported by
+  /// `setAuthPresentationAnchor(_:)`, reads the callback with `parseRedirect(_:)` and completes it
+  /// the way `completeOAuthLogin(_:)` does — so replay, persist-before-return and the TOTP branch
+  /// behave identically. Only a Google or Apple result is completed: anything else the sheet
+  /// returns, a magic link included, throws `.callbackIncomplete` without being exchanged, because
+  /// a magic link is completed only through the app's own confirmation step. Requires a
+  /// custom-scheme `redirectUrl` (Universal Links are not supported by
   /// `ASWebAuthenticationSession`'s callback matching in this version). One sign-in at a time:
   /// both provider URLs share a single-use `state`, so a concurrent attempt throws
   /// `.signInInProgress` rather than invalidating the first. Cancelling the calling task
   /// dismisses the sheet and throws; the grant is never exchanged.
   ///
   /// - Throws: `PortalAuthSignInError` (`.unavailable`, `.signInInProgress`, `.closed`,
-  ///   `.callbackIncomplete`), any `PortalAuthError` `handleRedirect(_:)` can throw, or the
-  ///   transport error unchanged.
+  ///   `.callbackIncomplete`); `PortalAuthError.authenticationFailed(error:)` when the callback
+  ///   reports an error; any error `completeOAuthLogin(_:)` can throw, including a refused grant
+  ///   as `PortalRequestsError.unauthorized`; or the transport error unchanged.
   public func signInWithGoogle() async throws -> AuthResult {
     try await self.signIn(.google)
   }
@@ -514,44 +734,43 @@ public final class PortalAuth: @unchecked Sendable {
     try await self.signIn(.apple)
   }
 
-  // MARK: - Private: redirect (the only caller of `grantMutex` on this path)
+  // MARK: - Private: redirect
 
-  /// The one body that takes `grantMutex` for a redirect. Both public overloads forward here.
-  ///
-  /// Order is contractual: empty / oversized → `nil`; not our target → `nil`; parse; `error`
-  /// → throw (even when a token is present, and before any request); empty token → `nil`;
-  /// then, under the lock, memo hit → replay, else exchange.
+  /// The body of both `handleRedirect` overloads: reads the URL with `parseRedirect(_:)` and
+  /// completes whatever it reads in one step. `nil` and `.failed` are settled before any request.
   private func _handleRedirect(_ url: String) async throws -> AuthResult? {
-    guard !url.isEmpty, url.utf16.count <= Self.maxRedirectUrlLength else {
+    switch self.parseRedirect(url) {
+    case .none:
       return nil
-    }
-    guard RedirectUrl.matchesRedirectUrl(url, self.redirectUrl) else {
-      return nil
-    }
-
-    let params = RedirectUrl.parseQueryParams(url.trimmingCharacters(in: .whitespacesAndNewlines))
-
-    if let error = params["error"] {
-      // Bounded: the backend only ever sends `oauth_failed`, but this string arrives from an
-      // inbound URL and apps routinely surface error messages straight to the user.
+    case let .failed(error)?:
       PortalLogger.shared.error("PortalAuth.handleRedirect() - The redirect reported an authentication error.")
-      throw PortalAuthError.authenticationFailed(error: String(error.prefix(Self.maxErrorLength)))
+      throw PortalAuthError.authenticationFailed(error: error)
+    case let .oauth(oauth)?:
+      return try await self._redeemGrant(token: oauth.token, kind: .oauth)
+    case let .magicLink(link)?:
+      return try await self._redeemGrant(token: link.token, kind: .magicLink)
     }
+  }
 
-    guard let token = params["token"], !token.isEmpty else {
-      return nil
-    }
-
+  /// The one body that takes `grantMutex` for a grant: `confirmMagicLink`, `completeOAuthLogin`,
+  /// `handleRedirect` and `signInWith*` all exchange through it, so they share one lock and one
+  /// remembered result.
+  ///
+  /// Under the lock, a remembered grant of the same kind and token replays (`_replay`); anything
+  /// else is exchanged (`_exchangeGrant`). The lock is held from reading the memory through the
+  /// exchange to the Keychain write, so two deliveries of one grant collapse into a single
+  /// exchange and a sign-out cannot land between an exchange and its persist.
+  private func _redeemGrant(token: String, kind: GrantKind) async throws -> AuthResult {
     // A caller that is already cancelled must not exchange a grant it no longer wants: the grant
     // is single-use, and a session minted for nobody is worse than one never minted. Past this
     // point cancellation no longer reaches the exchange — see `_shieldedFromCancellation`.
     try Task.checkCancellation()
 
     return try await self._shieldedFromCancellation { try await self.grantMutex.withLock {
-      if let memo = self.consumedGrant, memo.token == token {
+      if let memo = self.consumedGrant, memo.kind == kind, memo.token == token {
         return try self._replay(memo)
       }
-      return try await self._exchangeGrant(token: token, params: params)
+      return try await self._exchangeGrant(token: token, kind: kind)
     } }
   }
 
@@ -582,22 +801,22 @@ public final class PortalAuth: @unchecked Sendable {
   /// the grant is spent server-side, so this retry is the only way that login can still finish.
   private func _replay(_ memo: ConsumedGrant) throws -> AuthResult {
     guard case let .authenticated(result) = memo.result else {
-      PortalLogger.shared.debug("PortalAuth.handleRedirect() - Replaying the TOTP step of an already-exchanged grant.")
+      PortalLogger.shared.debug("PortalAuth.redeemGrant() - Replaying the TOTP step of an already-exchanged grant.")
       return memo.result
     }
 
     guard (try? result.session.getToken()) != nil else {
-      PortalLogger.shared.error("PortalAuth.handleRedirect() - The replayed session has been invalidated; evicting the memo.")
+      PortalLogger.shared.error("PortalAuth.redeemGrant() - The replayed session has been invalidated; evicting the memo.")
       self.consumedGrant = nil
       throw PortalRequestsError.unauthorized
     }
 
     if let pending = memo.pendingPersist {
-      PortalLogger.shared.debug("PortalAuth.handleRedirect() - Retrying the persist of an already-exchanged grant.")
+      PortalLogger.shared.debug("PortalAuth.redeemGrant() - Retrying the persist of an already-exchanged grant.")
       try self._persist(pending)
       self._markPersisted()
     } else {
-      PortalLogger.shared.debug("PortalAuth.handleRedirect() - Replaying the result of an already-exchanged grant.")
+      PortalLogger.shared.debug("PortalAuth.redeemGrant() - Replaying the result of an already-exchanged grant.")
     }
     return memo.result
   }
@@ -609,9 +828,14 @@ public final class PortalAuth: @unchecked Sendable {
   /// answers, so the issued session is memoised *before* the Keychain write and a re-delivered
   /// redirect retries the write (`ConsumedGrant.pendingPersist`, `_replay`) instead of re-sending
   /// a spent token. Called only with `grantMutex` held.
-  private func _exchangeGrant(token: String, params: [String: String]) async throws -> AuthResult? {
-    guard let grant = try await self.exchangeGrantToken(token, params: params) else {
-      return nil
+  private func _exchangeGrant(token: String, kind: GrantKind) async throws -> AuthResult {
+    let grant: AuthGrantValidationResponse
+    switch kind {
+    case .magicLink:
+      grant = try await self.api.validateMagicLink(token: token)
+    case .oauth:
+      // `/oauth/tokens` does not care which provider issued the grant, so both share it.
+      grant = try await self.api.validateOAuthToken(token: token)
     }
 
     // Blank counts as absent. `PersistedSessionCodec` and `resolveCredentialToken` both reject a
@@ -625,10 +849,10 @@ public final class PortalAuth: @unchecked Sendable {
       )
       // Memoised before the write: the grant is already spent, so a persist failure must leave
       // a re-delivered redirect able to finish this login (see `ConsumedGrant.pendingPersist`).
-      self.consumedGrant = ConsumedGrant(token: token, result: result, pendingPersist: persisted)
+      self.consumedGrant = ConsumedGrant(kind: kind, token: token, result: result, pendingPersist: persisted)
       try self._persist(persisted)
       self._markPersisted()
-      PortalLogger.shared.debug("PortalAuth.handleRedirect() - Exchanged the grant and persisted the session for endUserId: \(endUserId).")
+      PortalLogger.shared.debug("PortalAuth.redeemGrant() - Exchanged the grant and persisted the session for endUserId: \(endUserId).")
       return result
     }
 
@@ -636,7 +860,7 @@ public final class PortalAuth: @unchecked Sendable {
     // persisted on this path — the login is not complete until `verifyTotp` resolves a session.
     // Blank counts as absent here too, matching the session-token check above.
     guard let userJwt = grant.userJwt, !Self.isBlank(userJwt) else {
-      PortalLogger.shared.error("PortalAuth.handleRedirect() - The grant response carried neither a session token nor a userJwt.")
+      PortalLogger.shared.error("PortalAuth.redeemGrant() - The grant response carried neither a session token nor a userJwt.")
       throw PortalAuthError.invalidGrantResponse
     }
 
@@ -649,29 +873,9 @@ public final class PortalAuth: @unchecked Sendable {
       endUserId: grant.endUserId ?? ""
     )
     let result = AuthResult.totpRequired(step)
-    self.consumedGrant = ConsumedGrant(token: token, result: result, pendingPersist: nil)
-    PortalLogger.shared.debug("PortalAuth.handleRedirect() - The grant requires a TOTP step; nothing persisted.")
+    self.consumedGrant = ConsumedGrant(kind: kind, token: token, result: result, pendingPersist: nil)
+    PortalLogger.shared.debug("PortalAuth.redeemGrant() - The grant requires a TOTP step; nothing persisted.")
     return result
-  }
-
-  /// Routes a grant to the endpoint that can exchange it, or returns `nil` when the URL carries
-  /// no recognisable auth-method marker.
-  ///
-  /// Magic-link redirects carry `authMethod`; OAuth callbacks carry `login_type`. Magic link is
-  /// checked first (Android order); the two only disagree on a URL carrying both markers, which
-  /// no healthy backend sends. Matching is exact on the wire value.
-  private func exchangeGrantToken(_ token: String, params: [String: String]) async throws -> AuthGrantValidationResponse? {
-    let authMethod = params["authMethod"].flatMap { AuthMethod(rawValue: $0) }
-    let loginType = params["login_type"].flatMap { AuthMethod(rawValue: $0) }
-
-    if authMethod == .emailMagicLink {
-      return try await self.api.validateMagicLink(token: token)
-    }
-    // `/oauth/tokens` does not care which provider issued the grant, so both share it.
-    if loginType == .google || loginType == .apple {
-      return try await self.api.validateOAuthToken(token: token)
-    }
-    return nil
   }
 
   /// Advances the remembered grant from its TOTP step to the session that step resolved to.
@@ -689,7 +893,7 @@ public final class PortalAuth: @unchecked Sendable {
     else {
       return
     }
-    self.consumedGrant = ConsumedGrant(token: pending.token, result: .authenticated(result), pendingPersist: pendingPersist)
+    self.consumedGrant = ConsumedGrant(kind: pending.kind, token: pending.token, result: .authenticated(result), pendingPersist: pendingPersist)
   }
 
   /// Finishes a `verifyTotp` whose code the backend already accepted but whose Keychain write
@@ -717,7 +921,7 @@ public final class PortalAuth: @unchecked Sendable {
     guard let memo = self.consumedGrant, memo.pendingPersist != nil else {
       return
     }
-    self.consumedGrant = ConsumedGrant(token: memo.token, result: memo.result, pendingPersist: nil)
+    self.consumedGrant = ConsumedGrant(kind: memo.kind, token: memo.token, result: memo.result, pendingPersist: nil)
   }
 
   /// Builds the result for `persisted` without touching storage; `_persist(_:)` writes it. Split
@@ -782,8 +986,8 @@ public final class PortalAuth: @unchecked Sendable {
   ///
   /// Preconditions (anchor, custom scheme) are checked before the in-flight guard so a
   /// misconfigured call never leaves the guard held; the guard is released by `defer` on every
-  /// exit. `grantMutex` is **not** held while the browser is open — only `_handleRedirect`
-  /// takes it — so a magic-link redirect arriving mid-sign-in is still processed.
+  /// exit. `grantMutex` is **not** held while the browser is open — only `_redeemGrant` takes
+  /// it — so a magic-link redirect arriving mid-sign-in is still processed.
   private func signIn(_ method: AuthMethod) async throws -> AuthResult {
     let (anchor, prefersEphemeral) = self.readSignInPreconditions()
 
@@ -821,13 +1025,20 @@ public final class PortalAuth: @unchecked Sendable {
     // single-use credential and persisting one nobody will use is worse than dropping it.
     try Task.checkCancellation()
 
-    guard let result = try await self._handleRedirect(callback.absoluteString) else {
+    // Google or Apple only. A magic link reaches the user through the app's own confirmation
+    // step, never through this sheet, so one that arrives here is refused unexchanged.
+    switch self.parseRedirect(callback.absoluteString) {
+    case let .oauth(oauth)?:
+      let result = try await self._redeemGrant(token: oauth.token, kind: .oauth)
+      PortalLogger.shared.debug("PortalAuth.signIn() - \(method.rawValue) sign-in completed.")
+      return result
+    case let .failed(error)?:
+      PortalLogger.shared.error("PortalAuth.signIn() - The callback reported an authentication error.")
+      throw PortalAuthError.authenticationFailed(error: error)
+    case .magicLink?, .none:
       PortalLogger.shared.error("PortalAuth.signIn() - The callback did not carry a sign-in result for this instance.")
       throw PortalAuthSignInError.callbackIncomplete
     }
-
-    PortalLogger.shared.debug("PortalAuth.signIn() - \(method.rawValue) sign-in completed.")
-    return result
   }
 
   /// Snapshots the anchor and the ephemeral flag together, so a sign-in uses the values that
@@ -858,6 +1069,20 @@ public final class PortalAuth: @unchecked Sendable {
 
   private static func isBlank(_ value: String) -> Bool {
     value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+  }
+
+  /// `true` when every character of `token` is in the RFC 6750 `b64token` alphabet — letters,
+  /// digits and `-._~+/=` — the only characters a bearer credential may carry. Portal's grants
+  /// are JWTs, a subset of it; anything else did not come from Portal and must not reach a header.
+  private static func isBearerTokenSafe(_ token: String) -> Bool {
+    token.unicodeScalars.allSatisfy { scalar in
+      switch scalar {
+      case "a" ... "z", "A" ... "Z", "0" ... "9", "-", ".", "_", "~", "+", "/", "=":
+        return true
+      default:
+        return false
+      }
+    }
   }
 
   /// Normalises a storage error: a `PortalAuthError` (the storage layer's own

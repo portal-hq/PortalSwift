@@ -877,12 +877,33 @@ final class PortalAuthTests: XCTestCase {
     XCTAssertEqual(self.requests.requestedPaths, ["/api/v3/auth/oauth/tokens", "/api/v3/auth/magic-links/validations"])
   }
 
-  func test_handleRedirect_willPreferAuthMethod_whenBothMarkersPresent() async throws {
-    self.requests.enqueue(AuthTestFixtures.grantResponse())
+  func test_handleRedirect_willReturnNil_whenBothMarkersPresent() async throws {
+    // Portal never puts both on one URL, so which sign-in it completes cannot be told apart.
+    // It used to be exchanged as a magic link; it is now ignored, with or without an `error`.
+    self.requests.defaultResponse = AuthTestFixtures.grantResponse()
+    let urls = [
+      AuthTestFixtures.redirectUrl + "?token=g&authMethod=EMAIL_MAGIC_LINK&login_type=GOOGLE",
+      AuthTestFixtures.redirectUrl + "?token=g&login_type=APPLE&authMethod=EMAIL_MAGIC_LINK",
+      AuthTestFixtures.redirectUrl + "?token=g&authMethod=EMAIL_MAGIC_LINK&login_type=GOOGLE&error=oauth_failed"
+    ]
 
-    _ = try await self.auth.handleRedirect(AuthTestFixtures.redirectUrl + "?token=g&authMethod=EMAIL_MAGIC_LINK&login_type=GOOGLE")
+    for url in urls {
+      let result = try await self.auth.handleRedirect(url)
+      XCTAssertNil(result, url)
+    }
 
-    XCTAssertEqual(self.requests.requestedPaths, ["/api/v3/auth/magic-links/validations"])
+    XCTAssertEqual(self.requests.callCount, 0)
+  }
+
+  func test_handleRedirect_willReturnNil_whenTokenBlank() async throws {
+    self.requests.defaultResponse = AuthTestFixtures.grantResponse()
+
+    for url in [AuthTestFixtures.magicLinkRedirect("%20%20"), AuthTestFixtures.oauthRedirect("+")] {
+      let result = try await self.auth.handleRedirect(url)
+      XCTAssertNil(result, url)
+    }
+
+    XCTAssertEqual(self.requests.callCount, 0, "A whitespace-only grant is not a grant")
   }
 
   func test_handleRedirect_willDecodePercentEncodedToken_andTolerateRedirectOwnQuery() async throws {

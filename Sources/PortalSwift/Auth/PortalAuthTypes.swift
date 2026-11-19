@@ -338,10 +338,12 @@ public enum AuthResult: Sendable {
 /// here, so the backend's own signal reaches the host (Android parity): a refused grant outside
 /// the two-step magic link — a Google or Apple grant, a magic link completed through the
 /// deprecated `handleRedirect(_:)`, or a TOTP code — surfaces as
-/// `PortalRequestsError.unauthorized`, unchanged. The exceptions —
-/// `grantRejected`, `accountAbstractionUnavailable` and `rateLimited` — exist because the
-/// backend's status codes there carry an actionable meaning the host would otherwise have to
-/// parse out of a message string.
+/// `PortalRequestsError.unauthorized`, unchanged. Three exceptions:
+/// `accountAbstractionUnavailable` and `rateLimited` exist because the backend's status codes
+/// there carry an actionable meaning the host would otherwise have to parse out of a message
+/// string, and `grantRejected` exists because the two-step magic link's `401` has one meaning —
+/// this link can no longer be used, request a new one — that a confirmation screen must be able
+/// to tell apart from a rejected session anywhere else in the SDK.
 ///
 /// No message ever embeds a token, JWT, session token, URL, `totpLink` or email; the
 /// associated values carry only server text (bounded), field names and fixed literals.
@@ -434,8 +436,9 @@ public enum PortalAuthSignInError: String, LocalizedError, Equatable {
   /// Another `signInWith*` call is still in flight. Both provider URLs share one single-use
   /// `state`, so a second concurrent attempt could only invalidate the first.
   case signInInProgress = "SIGN_IN_ALREADY_IN_PROGRESS"
-  /// The browser returned a callback URL that carried no sign-in result for this instance
-  /// (wrong target, no grant token, no auth-method marker, or oversized).
+  /// The browser returned a callback URL that carried no Google or Apple sign-in result for this
+  /// instance (wrong target, no grant token, no auth-method marker, oversized, or another kind of
+  /// sign-in such as a magic link, which completes only through the app's confirmation step).
   case callbackIncomplete = "CALLBACK_INCOMPLETE"
 
   /// Fixed, secret-free text for each code.
