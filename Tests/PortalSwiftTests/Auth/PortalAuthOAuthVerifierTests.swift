@@ -265,7 +265,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
   func test_handleRedirect_willSendThePendingVerifierWithTheGrant() async throws {
     self.seedPendingSignIn()
 
-    _ = try await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect())
+    _ = try await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect())
 
     let body = try XCTUnwrap(self.tokenRequests.first?.payloadJSON)
     XCTAssertEqual(body["token"] as? String, AuthTestFixtures.grantToken)
@@ -277,7 +277,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     _ = try await self.auth.loginWithGoogle()
     let started = try XCTUnwrap(self.verifierStorage.stored)
 
-    let result = try self.authenticated(await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect()))
+    let result = try self.authenticated(await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()))
 
     XCTAssertEqual(try result.session.getToken(), AuthTestFixtures.clientSessionToken)
     let sent = try XCTUnwrap(self.tokenRequests.first?.payloadJSON?["codeVerifier"] as? String)
@@ -289,7 +289,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
   func test_handleRedirect_willNeitherSendNorTouchTheVerifier_forAMagicLink() async throws {
     self.seedPendingSignIn()
 
-    _ = try await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect())
+    _ = try await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect())
 
     let request = try XCTUnwrap(self.requests.lastRequest)
     XCTAssertEqual(request.path, PortalAuthApi.magicLinkValidationsPath)
@@ -302,7 +302,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
   func test_handleRedirect_willRefuseAnOAuthRedirect_withNoSignInInProgress_sendingNothing() async throws {
     for loginType in ["GOOGLE", "APPLE"] {
       await XCTAssertThrowsAsync(
-        try await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect(loginType: loginType)),
+        try await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect(loginType: loginType)),
         expected: PortalAuthError.oauthFlowNotStarted
       )
     }
@@ -315,7 +315,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     self.seedPendingSignIn(ageMillis: PortalAuth.verifierLifetimeMillis)
 
     await XCTAssertThrowsAsync(
-      try await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect()),
+      try await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()),
       expected: PortalAuthError.oauthFlowNotStarted
     )
     XCTAssertEqual(self.requests.callCount, 0)
@@ -325,7 +325,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
   func test_handleRedirect_willExchange_aVerifierJustUnderFifteenMinutesOld() async throws {
     self.seedPendingSignIn(ageMillis: PortalAuth.verifierLifetimeMillis - 1)
 
-    _ = try self.authenticated(await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect()))
+    _ = try self.authenticated(await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()))
 
     XCTAssertEqual(self.tokenRequests.count, 1)
   }
@@ -335,7 +335,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     self.clock.now = AuthTestFixtures.now.addingTimeInterval(15 * 60)
 
     await XCTAssertThrowsAsync(
-      try await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect()),
+      try await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()),
       expected: PortalAuthError.oauthFlowNotStarted
     )
     XCTAssertEqual(self.tokenRequests.count, 0)
@@ -345,7 +345,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     self.seedPendingSignIn(ageMillis: -1)
 
     await XCTAssertThrowsAsync(
-      try await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect()),
+      try await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()),
       expected: PortalAuthError.oauthFlowNotStarted
     )
     XCTAssertEqual(self.requests.callCount, 0)
@@ -356,7 +356,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     self.verifierStorage.stored = PendingOAuthVerifier(verifier: AuthTestFixtures.rfcCodeVerifier, createdAt: .min)
 
     await XCTAssertThrowsAsync(
-      try await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect()),
+      try await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()),
       expected: PortalAuthError.oauthFlowNotStarted
     )
     XCTAssertEqual(self.requests.callCount, 0)
@@ -367,12 +367,12 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     let failure = PortalAuthError.sessionStorageFailure(message: "The sign-in in progress could not be read (OSStatus -25308).")
     self.verifierStorage.onGet = { throw failure }
 
-    await XCTAssertThrowsAsync(try await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect()), expected: failure)
+    await XCTAssertThrowsAsync(try await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()), expected: failure)
     XCTAssertEqual(self.requests.callCount, 0)
     XCTAssertEqual(self.verifierStorage.stored, AuthTestFixtures.pendingVerifier())
 
     self.verifierStorage.onGet = nil
-    _ = try self.authenticated(await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect()))
+    _ = try self.authenticated(await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()))
     XCTAssertEqual(self.tokenRequests.count, 1, "The same redirect completes once the Keychain can be read")
   }
 
@@ -380,7 +380,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     self.verifierStorage.onGet = { throw NSError(domain: "test", code: 1) }
 
     await XCTAssertThrowsAsync(
-      try await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect()),
+      try await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()),
       expected: PortalAuthError.sessionStorageFailure(message: "The sign-in in progress could not be read.")
     )
   }
@@ -388,7 +388,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
   func test_handleRedirect_willDeleteTheVerifier_afterASuccessfulExchange() async throws {
     self.seedPendingSignIn()
 
-    _ = try await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect())
+    _ = try await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect())
 
     XCTAssertNil(self.verifierStorage.stored)
     XCTAssertEqual(self.verifierStorage.deleteIfCurrentArguments, [AuthTestFixtures.rfcCodeVerifier])
@@ -398,7 +398,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     self.seedPendingSignIn()
     self.answerByPath(grant: AuthTestFixtures.grantResponse(clientSessionToken: nil, userJwt: AuthTestFixtures.userJwt()))
 
-    let result = try await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect())
+    let result = try await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect())
 
     guard case .totpRequired? = result else {
       return XCTFail("Expected AuthResult.totpRequired.")
@@ -416,7 +416,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
       self.seedPendingSignIn()
       self.answerByPath(grant: body)
 
-      await XCTAssertThrowsAsync(try await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect()), expected: expected)
+      await XCTAssertThrowsAsync(try await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()), expected: expected)
       XCTAssertNil(self.verifierStorage.stored, "A 2xx spent the grant, so the verifier goes with it")
     }
   }
@@ -426,7 +426,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     self.answerByPath(grant: AuthTestFixtures.grantResponse(clientSessionToken: nil, userJwt: nil))
 
     await XCTAssertThrowsAsync(
-      try await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect()),
+      try await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()),
       expected: PortalAuthError.invalidGrantResponse
     )
     XCTAssertNil(self.verifierStorage.stored)
@@ -436,13 +436,13 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     self.seedPendingSignIn()
     self.storage.onSet = { _ in throw PortalAuthError.sessionStorageFailure(message: "write failed") }
 
-    await XCTAssertThrowsAsync(try await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect()))
+    await XCTAssertThrowsAsync(try await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()))
     XCTAssertNil(self.verifierStorage.stored)
 
     // The grant is spent, so the re-delivered redirect finishes the write from the memo: no
     // second exchange, and no verifier is needed for it.
     self.storage.onSet = nil
-    _ = try self.authenticated(await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect()))
+    _ = try self.authenticated(await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()))
     XCTAssertEqual(self.tokenRequests.count, 1)
   }
 
@@ -450,7 +450,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     self.seedPendingSignIn()
     self.verifierStorage.onDeleteIfCurrent = { _ in throw PortalAuthError.sessionStorageFailure(message: "delete failed") }
 
-    let result = try self.authenticated(await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect()))
+    let result = try self.authenticated(await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()))
 
     XCTAssertEqual(try result.session.getToken(), AuthTestFixtures.clientSessionToken)
     XCTAssertEqual(self.logger.messages(at: .warn).count, 1)
@@ -462,13 +462,13 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
 
     // A crafted redirect carrying a grant this device did not ask for: Portal refuses it.
     await XCTAssertThrowsAsync(
-      try await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect("attacker-grant")),
+      try await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect("attacker-grant")),
       expected: PortalRequestsError.unauthorized
     )
     XCTAssertEqual(self.verifierStorage.stored, AuthTestFixtures.pendingVerifier())
 
     self.requests.fail(with: nil, onPath: PortalAuthApi.oauthTokensPath)
-    _ = try self.authenticated(await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect("own-grant")))
+    _ = try self.authenticated(await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect("own-grant")))
     XCTAssertEqual(self.tokenRequests.last?.payloadJSON?["codeVerifier"] as? String, AuthTestFixtures.rfcCodeVerifier)
   }
 
@@ -476,12 +476,12 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     self.seedPendingSignIn()
     self.requests.fail(with: AuthTestFixtures.serverError503, onPath: PortalAuthApi.oauthTokensPath)
 
-    await XCTAssertThrowsAsync(try await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect()))
+    await XCTAssertThrowsAsync(try await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()))
     XCTAssertEqual(self.tokenRequests.count, 1, "No automatic retry")
     XCTAssertNotNil(self.verifierStorage.stored)
 
     self.requests.fail(with: nil, onPath: PortalAuthApi.oauthTokensPath)
-    _ = try self.authenticated(await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect()))
+    _ = try self.authenticated(await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()))
     XCTAssertEqual(self.tokenRequests.count, 2)
   }
 
@@ -489,7 +489,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     self.seedPendingSignIn()
     self.requests.fail(with: URLError(.networkConnectionLost), onPath: PortalAuthApi.oauthTokensPath)
 
-    await XCTAssertThrowsAsync(try await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect())) { error in
+    await XCTAssertThrowsAsync(try await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect())) { error in
       XCTAssertEqual((error as? URLError)?.code, .networkConnectionLost)
     }
     XCTAssertEqual(self.verifierStorage.stored, AuthTestFixtures.pendingVerifier())
@@ -500,7 +500,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     self.seedPendingSignIn()
 
     await XCTAssertThrowsAsync(
-      try await subject.handleRedirect(AuthTestFixtures.oauthRedirect()),
+      try await subject.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()),
       expected: PortalAuthError.invalidArgument(name: "apiHost")
     )
     XCTAssertEqual(self.verifierStorage.stored, AuthTestFixtures.pendingVerifier(), "Nothing was sent, so nothing was spent")
@@ -510,7 +510,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     self.seedPendingSignIn()
 
     await XCTAssertThrowsAsync(
-      try await self.auth.handleRedirect(AuthTestFixtures.redirectUrl + "?token=x&login_type=GOOGLE&error=oauth_failed"),
+      try await self.auth.legacy.handleRedirect(AuthTestFixtures.redirectUrl + "?token=x&login_type=GOOGLE&error=oauth_failed"),
       expected: PortalAuthError.authenticationFailed(error: "oauth_failed")
     )
     XCTAssertTrue(self.verifierStorage.events.isEmpty)
@@ -519,8 +519,8 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
   func test_handleRedirect_willReplayARedeliveredRedirect_afterItsVerifierWasDeleted() async throws {
     self.seedPendingSignIn()
 
-    let first = try self.authenticated(await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect()))
-    let second = try self.authenticated(await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect()))
+    let first = try self.authenticated(await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()))
+    let second = try self.authenticated(await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()))
 
     XCTAssertTrue(first.session as AnyObject === second.session as AnyObject, "The re-delivered redirect replays the same session")
     XCTAssertEqual(self.tokenRequests.count, 1)
@@ -530,7 +530,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     self.seedPendingSignIn()
     let auth = self.auth
     self.requests.gateFirstRequest = true
-    let exchange = Task { _ = try await auth.handleRedirect(AuthTestFixtures.oauthRedirect()) }
+    let exchange = Task { _ = try await auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()) }
     let arrived = await self.requests.waitUntilArrived()
     XCTAssertTrue(arrived)
 
@@ -545,7 +545,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
   }
 
   func test_sessionInvalidation_willKeepTheSignInInProgress() async throws {
-    let result = try self.authenticated(await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
+    let result = try self.authenticated(await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
     self.seedPendingSignIn()
 
     try XCTUnwrap(result.session as? KeychainPortalSession).invalidate()
@@ -613,7 +613,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
 
     XCTAssertNil(self.verifierStorage.stored)
     await XCTAssertThrowsAsync(
-      try await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect()),
+      try await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()),
       expected: PortalAuthError.oauthFlowNotStarted
     )
     XCTAssertEqual(self.tokenRequests.count, 0)
@@ -628,7 +628,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
 
   func test_clearPersistedSession_willDeleteTheSession_evenWhenTheVerifierCannotBeDeleted() async throws {
     // A completed magic-link login, so the replay memo holds a grant.
-    _ = try self.authenticated(await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
+    _ = try self.authenticated(await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
     self.seedPendingSignIn()
     let failure = PortalAuthError.sessionStorageFailure(message: "The sign-in in progress could not be deleted (OSStatus -25308).")
     self.verifierStorage.onDelete = { throw failure }
@@ -640,7 +640,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     XCTAssertNil(restored)
 
     // The memo was dropped too: the re-delivered link is exchanged again, not replayed.
-    _ = try await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect())
+    _ = try await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect())
     XCTAssertEqual(self.requests.requests(toPath: PortalAuthApi.magicLinkValidationsPath).count, 2)
   }
 
@@ -694,7 +694,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     self.seedPendingSignIn()
     let auth = self.auth
     self.requests.gateFirstRequest = true
-    let exchange = Task { try await auth.handleRedirect(AuthTestFixtures.oauthRedirect()) }
+    let exchange = Task { try await auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()) }
     let arrived = await self.requests.waitUntilArrived()
     XCTAssertTrue(arrived)
 
@@ -715,7 +715,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
 
     // A re-delivered redirect after the clear is refused without a second request.
     await XCTAssertThrowsAsync(
-      try await auth.handleRedirect(AuthTestFixtures.oauthRedirect()),
+      try await auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()),
       expected: PortalAuthError.oauthFlowNotStarted
     )
     XCTAssertEqual(self.tokenRequests.count, 1)
@@ -729,7 +729,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     self.storage.onSet = { _ in auth.advanceOAuthGeneration() }
 
     await XCTAssertThrowsAsync(
-      try await auth.handleRedirect(AuthTestFixtures.oauthRedirect()),
+      try await auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()),
       expected: PortalAuthError.oauthFlowNotStarted
     )
 
@@ -738,7 +738,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     XCTAssertEqual(self.storage.deleteIfCurrentTokens, [AuthTestFixtures.clientSessionToken])
     self.storage.onSet = nil
     await XCTAssertThrowsAsync(
-      try await auth.handleRedirect(AuthTestFixtures.oauthRedirect()),
+      try await auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()),
       expected: PortalAuthError.oauthFlowNotStarted,
       "The cancelled login was not memoised, so it does not replay"
     )
@@ -750,7 +750,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     self.answerByPath(grant: AuthTestFixtures.grantResponse(clientSessionToken: nil, userJwt: AuthTestFixtures.userJwt()))
     let auth = self.auth
     self.requests.gateFirstRequest = true
-    let exchange = Task { try await auth.handleRedirect(AuthTestFixtures.oauthRedirect()) }
+    let exchange = Task { try await auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()) }
     let arrived = await self.requests.waitUntilArrived()
     XCTAssertTrue(arrived)
 
@@ -762,7 +762,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     await XCTAssertThrowsAsync(try await exchange.value, expected: PortalAuthError.oauthFlowNotStarted)
     try await clear.value
     await XCTAssertThrowsAsync(
-      try await auth.handleRedirect(AuthTestFixtures.oauthRedirect()),
+      try await auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()),
       expected: PortalAuthError.oauthFlowNotStarted,
       "A re-delivered redirect after the clear is refused"
     )
@@ -773,12 +773,12 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     self.seedPendingSignIn()
     let auth = self.auth
     self.requests.gateFirstRequest = true
-    let magicLink = Task { try await auth.handleRedirect(AuthTestFixtures.magicLinkRedirect()) }
+    let magicLink = Task { try await auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect()) }
     let arrived = await self.requests.waitUntilArrived()
     XCTAssertTrue(arrived)
 
     // A grant of its own, so only the entry check (not a memo replay of the magic link) can stop it.
-    let oauth = Task { try await auth.handleRedirect(AuthTestFixtures.oauthRedirect("oauth-grant")) }
+    let oauth = Task { try await auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect("oauth-grant")) }
     let oauthWaiting = await AuthTestFixtures.pollUntil { auth.grantMutex.waiterCount == 1 }
     XCTAssertTrue(oauthWaiting)
     let clear = Task { try await auth.clearPersistedSession() }
@@ -795,7 +795,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
   func test_clearPersistedSession_willNotCancelAMagicLinkExchangeInFlight() async throws {
     let auth = self.auth
     self.requests.gateFirstRequest = true
-    let magicLink = Task { try await auth.handleRedirect(AuthTestFixtures.magicLinkRedirect()) }
+    let magicLink = Task { try await auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect()) }
     let arrived = await self.requests.waitUntilArrived()
     XCTAssertTrue(arrived)
 
@@ -814,12 +814,12 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     let auth = self.auth
     // The first delivery's write fails, so the memo keeps the session to write on a replay.
     self.storage.onSet = { _ in throw PortalAuthError.sessionStorageFailure(message: "write failed") }
-    await XCTAssertThrowsAsync(try await auth.handleRedirect(AuthTestFixtures.oauthRedirect()))
+    await XCTAssertThrowsAsync(try await auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()))
 
     // The replay's write is where the clear lands.
     self.storage.onSet = { _ in auth.advanceOAuthGeneration() }
     await XCTAssertThrowsAsync(
-      try await auth.handleRedirect(AuthTestFixtures.oauthRedirect()),
+      try await auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()),
       expected: PortalAuthError.oauthFlowNotStarted
     )
     XCTAssertEqual(self.tokenRequests.count, 1, "The replay never re-sent the grant")
@@ -828,7 +828,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     // The memo went with it: a third delivery is refused instead of replaying.
     self.storage.onSet = nil
     await XCTAssertThrowsAsync(
-      try await auth.handleRedirect(AuthTestFixtures.oauthRedirect()),
+      try await auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()),
       expected: PortalAuthError.oauthFlowNotStarted
     )
     XCTAssertEqual(self.tokenRequests.count, 1)
@@ -839,7 +839,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     let auth = self.auth
     // The first delivery's write fails, leaving the memo with a write pending for a replay.
     self.storage.onSet = { _ in throw PortalAuthError.sessionStorageFailure(message: "write failed") }
-    await XCTAssertThrowsAsync(try await auth.handleRedirect(AuthTestFixtures.oauthRedirect()))
+    await XCTAssertThrowsAsync(try await auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()))
 
     // The replay's write fails too, and a clear lands during it.
     self.storage.onSet = { _ in
@@ -847,14 +847,14 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
       throw PortalAuthError.sessionStorageFailure(message: "write failed")
     }
     await XCTAssertThrowsAsync(
-      try await auth.handleRedirect(AuthTestFixtures.oauthRedirect()),
+      try await auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()),
       expected: PortalAuthError.oauthFlowNotStarted
     )
 
     // Had the pending write survived, this delivery (captured after the clear) would finish it.
     self.storage.onSet = nil
     await XCTAssertThrowsAsync(
-      try await auth.handleRedirect(AuthTestFixtures.oauthRedirect()),
+      try await auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()),
       expected: PortalAuthError.oauthFlowNotStarted
     )
     XCTAssertNil(self.storage.stored)
@@ -870,13 +870,13 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     }
 
     await XCTAssertThrowsAsync(
-      try await auth.handleRedirect(AuthTestFixtures.oauthRedirect()),
+      try await auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()),
       expected: PortalAuthError.oauthFlowNotStarted
     )
 
     self.storage.onSet = nil
     await XCTAssertThrowsAsync(
-      try await auth.handleRedirect(AuthTestFixtures.oauthRedirect()),
+      try await auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()),
       expected: PortalAuthError.oauthFlowNotStarted,
       "The cancelled login kept no pending write for a replay to finish"
     )
@@ -892,14 +892,14 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     self.verifierStorage.onDeleteIfCurrent = { _ in auth.advanceOAuthGeneration() }
 
     await XCTAssertThrowsAsync(
-      try await auth.handleRedirect(AuthTestFixtures.oauthRedirect()),
+      try await auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()),
       expected: PortalAuthError.oauthFlowNotStarted
     )
 
     // Had the step been memoised, this delivery (captured after the clear) would replay it.
     self.verifierStorage.onDeleteIfCurrent = nil
     await XCTAssertThrowsAsync(
-      try await auth.handleRedirect(AuthTestFixtures.oauthRedirect()),
+      try await auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()),
       expected: PortalAuthError.oauthFlowNotStarted
     )
     XCTAssertEqual(self.tokenRequests.count, 1)
@@ -911,14 +911,14 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     self.verifierStorage.onDeleteIfCurrent = { _ in auth.advanceOAuthGeneration() }
 
     await XCTAssertThrowsAsync(
-      try await auth.handleRedirect(AuthTestFixtures.oauthRedirect()),
+      try await auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()),
       expected: PortalAuthError.oauthFlowNotStarted
     )
     XCTAssertEqual(self.storage.setCalls, 0, "Refused before the memo and the write")
 
     self.verifierStorage.onDeleteIfCurrent = nil
     await XCTAssertThrowsAsync(
-      try await auth.handleRedirect(AuthTestFixtures.oauthRedirect()),
+      try await auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()),
       expected: PortalAuthError.oauthFlowNotStarted
     )
   }
@@ -930,7 +930,7 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     self.storage.onDeleteIfCurrent = { _ in throw PortalAuthError.sessionStorageFailure(message: "delete failed") }
 
     await XCTAssertThrowsAsync(
-      try await auth.handleRedirect(AuthTestFixtures.oauthRedirect()),
+      try await auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()),
       expected: PortalAuthError.oauthFlowNotStarted
     )
     XCTAssertTrue(self.logger.messages(at: .warn).contains { $0.contains("could not be removed") })
@@ -940,19 +940,19 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     try await self.auth.clearPersistedSession()
 
     _ = try await self.auth.loginWithGoogle()
-    let result = try self.authenticated(await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect()))
+    let result = try self.authenticated(await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()))
 
     XCTAssertEqual(try result.session.getToken(), AuthTestFixtures.clientSessionToken, "A clear never cancels a sign-in started after it")
   }
 
   func test_clearPersistedSession_willStopARedeliveredOAuthRedirectFromReplaying() async throws {
     self.seedPendingSignIn()
-    _ = try self.authenticated(await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect()))
+    _ = try self.authenticated(await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()))
 
     try await self.auth.clearPersistedSession()
 
     await XCTAssertThrowsAsync(
-      try await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect()),
+      try await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()),
       expected: PortalAuthError.oauthFlowNotStarted
     )
     XCTAssertEqual(self.tokenRequests.count, 1)
@@ -976,8 +976,8 @@ final class PortalAuthOAuthVerifierTests: XCTestCase {
     _ = try await self.auth.loginWithGoogle()
     let started = try XCTUnwrap(self.verifierStorage.stored)
     let challenge = PkceCodeVerifier.challenge(for: started.verifier)
-    _ = try await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect())
-    await XCTAssertThrowsAsync(try await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect("unsolicited")))
+    _ = try await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect())
+    await XCTAssertThrowsAsync(try await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect("unsolicited")))
 
     for request in self.requests.recorded {
       XCTAssertFalse(request.absoluteString.contains(started.verifier), "The verifier must never travel in a URL")

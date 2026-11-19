@@ -45,7 +45,7 @@ enum AuthTestFixtures {
   static let redirectUrl = "portalexample://auth/callback"
   /// The production host; resolves to `https://api.portalhq.io`.
   static let apiHost = "api.portalhq.io"
-  /// The scheme-qualified base of the six endpoints.
+  /// The scheme-qualified base of the seven endpoints.
   static let apiBase = "https://api.portalhq.io/api/v3/auth"
   /// The magic-link config `makeAuth` installs by default, so `sendMagicLink` works out of the
   /// box and the four backend-required body fields have known values.
@@ -60,6 +60,8 @@ enum AuthTestFixtures {
   static let totpClientSessionToken = "totp-session-token"
   /// Default grant token of the redirect builders.
   static let grantToken = "grant-token"
+  /// Default email of `magicLinkDetailsResponse`.
+  static let magicLinkEmail = "user@example.com"
   /// Authorize URLs for `oauthUrlsResponse`; each carries a `state` so a log-leak check can
   /// look for it.
   static let googleAuthorizeUrl = "https://accounts.google.com/o/oauth2/v2/auth?state=google-state"
@@ -211,6 +213,16 @@ enum AuthTestFixtures {
   /// `methodsResponse` taking the SDK enum.
   static func methodsResponse(_ methods: [AuthMethod], autoCreateWallet: Bool? = nil) -> Data {
     self.methodsResponse(methods.map { $0.rawValue }, autoCreateWallet: autoCreateWallet)
+  }
+
+  /// A `GET /magic-links/details` response: `{"data":{"email":…}}`, the only field the backend
+  /// sends. `nil` omits the key.
+  static func magicLinkDetailsResponse(email: String? = AuthTestFixtures.magicLinkEmail) -> Data {
+    var payload: [String: Any] = [:]
+    if let email = email {
+      payload["email"] = email
+    }
+    return self.envelope(payload)
   }
 
   /// The `POST /magic-links` success body. The module ignores it; only the status matters.

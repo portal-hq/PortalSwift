@@ -17,10 +17,12 @@ import UIKit
 /// running launches it. So the coordinator owns both halves: a `redirectSink` the live screen
 /// installs, and a one-slot stash the screen drains when it appears.
 ///
-/// Everything here is in-memory by design. The session token, the pending TOTP `userJwt` and the
-/// redirect URL (which carries a single-use grant) are all bearer credentials: they live for the
-/// life of the process and are never written to `UserDefaults` or logged. The only persisted
-/// value is a boolean flag, `firstLaunchClearKey`.
+/// Everything here is in-memory by design. The session token, the pending TOTP `userJwt`, the
+/// magic links waiting on or past confirmation, and the redirect URL (which carries a single-use
+/// grant) are all bearer credentials: they live for the life of the process and are never written
+/// to `UserDefaults` or logged. The only persisted value is a boolean flag,
+/// `firstLaunchClearKey`, which is not a credential. A Google or Apple sign-in in progress is
+/// recorded by the SDK itself (its code verifier, in the Keychain), not here.
 ///
 /// Threading: the mutable properties are touched from the main thread (URL callbacks, view
 /// lifecycle). Only the first-launch clear is thread-safe on its own, because it is `async` and
@@ -51,8 +53,59 @@ final class ClientAuthCoordinator {
   /// The adopted session, held for the life of the process.
   var session: PortalSession?
 
-  /// The `userJwt` of a TOTP step waiting on a code. Never persisted, never logged.
-  var pendingTotpUserJwt: String?
+  /// The `userJwt` of a TOTP step waiting on a code. Never persisted, never logged. Clearing it
+  /// also clears `pendingTotpLink`.
+  var pendingTotpUserJwt: String? {
+    didSet {
+      if self.pendingTotpUserJwt == nil {
+        self.pendingTotpLink = nil
+      }
+    }
+  }
+
+  /// The `otpauth://` enrollment link of that TOTP step, when it is a first-time enrollment. Held
+  /// here so a screen rebuilt mid-step can still show it: the backend sends it only once. Embeds
+  /// the TOTP secret, so never persisted, never logged.
+  var pendingTotpLink: String?
+
+  /// Counts the times the in-memory session was cleared (sign-out, custodian sign-in,
+  /// invalidation). An exchange captures it when it starts, and a sign-in that finishes after it
+  /// moved on is not adopted: the user has since signed out or signed in another way.
+  private(set) var sessionGeneration = 0
+
+  /// Sign-outs between `beginSignOut()` and `endSignOut()`. A count, so an invalidation that lands
+  /// during a sign-out does not end the other one's window early.
+  private var signOutsInProgress = 0
+
+  /// `true` while a sign-out is clearing the session. No sign-in may start then: one that started
+  /// during the cleanup could finish after it and be saved or adopted.
+  var isSigningOut: Bool {
+    self.signOutsInProgress > 0
+  }
+
+  /// The `signInWith*` sheet in progress. A sign-out cancels it: the SDK closes the sheet and
+  /// exchanges nothing, so a sign-in finished after a sign-out is never saved to the Keychain.
+  var sheetSignIn: Task<Void, Never>?
+
+  /// A magic link whose email was read and is waiting on the user's Confirm or Cancel. Held here
+  /// so a screen rebuilt by a re-delivered link shows the same confirmation without a second
+  /// lookup. Never persisted, never logged.
+  var pendingMagicLink: PendingMagicLink?
+
+  /// The newest magic link whose details are being read. A second delivery of the same link waits
+  /// for that lookup instead of spending another of the link's few lookups, and a lookup that
+  /// finishes after a newer link arrived — on this screen or another — is set aside.
+  var latestMagicLinkLookup: AuthRedirect.MagicLink?
+
+  /// The magic link whose confirmation is in flight. Held here, not on a screen, so a screen
+  /// rebuilt by a re-delivered link knows not to ask about it again or send it a second time.
+  /// Tracks a request rather than the signed-in user, so only that request clears it.
+  var confirmingMagicLink: AuthRedirect.MagicLink?
+
+  /// The magic link the user last confirmed. Its details can no longer be read once it is spent,
+  /// so a delivery of the same link afterwards is sent straight to `confirmMagicLink`, which
+  /// replays the sign-in. Cleared on sign-out.
+  var confirmedMagicLink: AuthRedirect.MagicLink?
 
   /// The live `Portal.onSessionInvalidated(_:)` subscription, cancelled before a new one is
   /// installed and on teardown.
@@ -142,16 +195,43 @@ final class ClientAuthCoordinator {
     return pending
   }
 
+  /// Marks a sign-out (or invalidation) as begun, before any of its `await`s.
+  ///
+  /// - An exchange still running sees it as soon as it finishes and does not adopt its sign-in.
+  /// - No sign-in starts until `endSignOut()` (`isSigningOut`).
+  /// - The magic-link state is dropped now, so no redirect can use it during the cleanup. A
+  ///   Google or Apple sign-in in progress is cancelled by the cleanup's `clearPersistedSession()`.
+  /// - An open `signInWith*` sheet is closed without exchanging anything.
+  ///
+  /// `clearInMemorySession()` does the rest once the persisted session is gone.
+  func beginSignOut() {
+    self.sessionGeneration += 1
+    self.signOutsInProgress += 1
+    self.pendingMagicLink = nil
+    self.latestMagicLinkLookup = nil
+    self.confirmedMagicLink = nil
+
+    let sheet = self.sheetSignIn
+    self.sheetSignIn = nil
+    sheet?.cancel()
+  }
+
+  /// Ends the window `beginSignOut()` opened, after the cleanup's `clearInMemorySession()`.
+  func endSignOut() {
+    self.signOutsInProgress = max(0, self.signOutsInProgress - 1)
+  }
+
   // MARK: - URL routing
 
   /// Claims `url` when it is this app's Client Auth redirect.
   ///
   /// Matching is on the scheme alone, case-insensitively: the OS matched the same scheme to
-  /// deliver the URL here, and validating the full redirect target is the SDK's job inside
-  /// `handleRedirect`. The scheme is resolved at call time, so a redirect that arrives after an
-  /// environment switch is matched against the new environment's redirect URL. A claimed URL goes
-  /// to the live screen when there is one, and to the stash otherwise; it is never both, so a
-  /// redirect cannot be handled twice.
+  /// deliver the URL here, and reading the redirect is the SDK's job, in `parseRedirect`. The
+  /// example deliberately has no URL parser of its own: one that read a URL differently from the
+  /// SDK could route a magic link past the confirmation step. The scheme is resolved at call time,
+  /// so a redirect that arrives after an environment switch is matched against the new
+  /// environment's redirect URL. A claimed URL goes to the live screen when there is one, and to
+  /// the stash otherwise; it is never both, so a redirect cannot be handled twice.
   ///
   /// The URL is never logged: its query carries the grant token.
   ///
@@ -175,14 +255,21 @@ final class ClientAuthCoordinator {
 
   // MARK: - Teardown
 
-  /// Drops everything this process holds about the signed-in user.
+  /// Drops everything this process holds about the signed-in user, and any sign-in in progress.
   ///
-  /// Signing in as somebody else is not signing out, so this deliberately leaves persisted state
-  /// alone: clearing the Keychain session is `handleClientAuthSignOut`'s job. Idempotent, and the
-  /// invalidation subscription is cancelled exactly once.
+  /// Runs on Client Auth sign-out, before a custodian sign-in, and on session invalidation.
+  /// Signing in as somebody else is not signing out, so this leaves the Keychain session alone —
+  /// clearing it is `handleClientAuthSignOut`'s job, which also cancels a Google or Apple sign-in
+  /// in progress. An exchange already in flight is not cancelled, but the sign-in it
+  /// finishes is not adopted (`sessionGeneration`); a sign-out also closes an open sheet first
+  /// (`beginSignOut()`). Idempotent, and the invalidation subscription is cancelled exactly once.
   func clearInMemorySession() {
+    self.sessionGeneration += 1
     self.session = nil
     self.pendingTotpUserJwt = nil
+    self.pendingMagicLink = nil
+    self.latestMagicLinkLookup = nil
+    self.confirmedMagicLink = nil
     self.handoffSession = nil
 
     let handle = self.sessionInvalidatedHandle

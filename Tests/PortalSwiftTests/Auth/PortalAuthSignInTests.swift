@@ -698,6 +698,16 @@ extension PortalAuthSignInTests {
     XCTAssertNil(self.verifierStorage.stored, "A completed sheet sign-in leaves nothing in progress")
   }
 
+  func test_signInWithGoogle_willNotLogHandleRedirectDeprecationWarning() async throws {
+    // The sheet completes its callback through the same exchange as the deprecated
+    // `handleRedirect(_:)`, but never through `handleRedirect` itself, so it never warns.
+    let subject = self.subject
+
+    _ = try await self.awaitSignIn { try await subject.signInWithGoogle() }
+
+    XCTAssertTrue(self.logger.messages(at: .warn).filter { $0.contains("handleRedirect() is deprecated") }.isEmpty)
+  }
+
   func test_signInWithApple_willReturnAuthenticated() async throws {
     let subject = self.subject
     self.web.results = try [.success(AuthTestFixtures.url(SignInFixtures.appleCallback))]
@@ -737,7 +747,7 @@ extension PortalAuthSignInTests {
     // the write: a re-delivered callback retries the Keychain write — still failing here — and
     // never re-sends a token the backend has already spent.
     await XCTAssertThrowsAsync(
-      try await self.awaitBounded("The replayed redirect") { try await subject.handleRedirect(SignInFixtures.googleCallback) },
+      try await self.awaitBounded("The replayed redirect") { try await subject.legacy.handleRedirect(SignInFixtures.googleCallback) },
       expected: failure
     )
     XCTAssertEqual(self.tokenExchangeRequests.count, 1, "A spent grant is never exchanged twice")
@@ -745,7 +755,7 @@ extension PortalAuthSignInTests {
     // Once the Keychain recovers, the same redirect completes the login the first attempt
     // could not, again without going back to the backend.
     self.storage.onSet = nil
-    let result = try await self.awaitBounded("The recovered redirect") { try await subject.handleRedirect(SignInFixtures.googleCallback) }
+    let result = try await self.awaitBounded("The recovered redirect") { try await subject.legacy.handleRedirect(SignInFixtures.googleCallback) }
     let authenticated = try self.authenticated(XCTUnwrap(result, "The recovered redirect must still be recognised as ours"))
     XCTAssertEqual(try authenticated.session.getToken(), SignInFixtures.clientSessionToken)
     XCTAssertEqual(self.tokenExchangeRequests.count, 1)
@@ -796,7 +806,7 @@ extension PortalAuthSignInTests {
     let first = try self.authenticated(result)
 
     let replayed = try await self.awaitBounded("The replayed redirect") {
-      try await subject.handleRedirect(SignInFixtures.googleCallback)
+      try await subject.legacy.handleRedirect(SignInFixtures.googleCallback)
     }
 
     let second = try self.authenticated(XCTUnwrap(replayed))
@@ -840,6 +850,75 @@ extension PortalAuthSignInTests {
     )
 
     XCTAssertEqual(self.tokenExchangeRequests.count, 0, "A callback for another target never reaches the exchange")
+  }
+
+  func test_signInWithGoogle_willThrowCallbackIncomplete_andSendNothing_whenCallbackIsMagicLink() async throws {
+    // The sheet completes Google or Apple only. A magic link must go through the app's own
+    // confirmation step, so one that reaches the sheet is refused without being exchanged.
+    let subject = self.subject
+    let magicLinkCallback = "\(SignInFixtures.redirectUrl)?token=\(SignInFixtures.grantToken)&authMethod=EMAIL_MAGIC_LINK"
+    self.web.results = try [.success(AuthTestFixtures.url(magicLinkCallback))]
+
+    await XCTAssertThrowsAsync(
+      try await self.awaitSignIn { try await subject.signInWithGoogle() },
+      expected: PortalAuthSignInError.callbackIncomplete
+    )
+
+    XCTAssertEqual(self.tokenExchangeRequests.count, 0)
+    XCTAssertFalse(
+      self.requests.recorded.contains { $0.matches(path: PortalAuthApi.magicLinkValidationsPath) },
+      "The magic link was exchanged without the confirmation step"
+    )
+    XCTAssertEqual(self.storage.setCalls, 0)
+    XCTAssertTrue(
+      self.logger.messages(at: .warn).filter { $0.contains("handleRedirect() is deprecated") }.isEmpty,
+      "The sheet never routes a callback through the deprecated one-step path"
+    )
+  }
+
+  func test_signInWithGoogle_willThrowCallbackIncomplete_andSendNothing_whenCallbackCarriesBothMarkers() async throws {
+    // Such a callback used to be exchanged as a magic link. Which sign-in it completes cannot be
+    // told apart, so it is now refused without an exchange.
+    let subject = self.subject
+    let callback = "\(SignInFixtures.redirectUrl)?token=\(SignInFixtures.grantToken)&authMethod=EMAIL_MAGIC_LINK&login_type=GOOGLE"
+    self.web.results = try [.success(AuthTestFixtures.url(callback))]
+
+    await XCTAssertThrowsAsync(
+      try await self.awaitSignIn { try await subject.signInWithGoogle() },
+      expected: PortalAuthSignInError.callbackIncomplete
+    )
+
+    XCTAssertEqual(self.tokenExchangeRequests.count, 0)
+    XCTAssertTrue(self.requests.requests(toPath: PortalAuthApi.magicLinkValidationsPath).isEmpty)
+    XCTAssertEqual(self.storage.setCalls, 0)
+  }
+
+  func test_signInWithGoogle_willThrowCallbackIncomplete_andSendNothing_whenCallbackIsForApple() async throws {
+    // The sheet was opened for Google, so an Apple result is not the sign-in the user started.
+    let subject = self.subject
+    self.web.results = try [.success(AuthTestFixtures.url(SignInFixtures.appleCallback))]
+
+    await XCTAssertThrowsAsync(
+      try await self.awaitSignIn { try await subject.signInWithGoogle() },
+      expected: PortalAuthSignInError.callbackIncomplete
+    )
+
+    XCTAssertEqual(self.tokenExchangeRequests.count, 0)
+    XCTAssertEqual(self.storage.setCalls, 0)
+    self.logger.assertNoSecret(SignInFixtures.grantToken)
+  }
+
+  func test_signInWithApple_willThrowCallbackIncomplete_andSendNothing_whenCallbackIsForGoogle() async throws {
+    let subject = self.subject
+    self.web.results = try [.success(AuthTestFixtures.url(SignInFixtures.googleCallback))]
+
+    await XCTAssertThrowsAsync(
+      try await self.awaitSignIn { try await subject.signInWithApple() },
+      expected: PortalAuthSignInError.callbackIncomplete
+    )
+
+    XCTAssertEqual(self.tokenExchangeRequests.count, 0)
+    XCTAssertEqual(self.storage.setCalls, 0)
   }
 
   func test_signInWithGoogle_willNotExchange_whenCallbackHostDiffers() async throws {
@@ -940,7 +1019,7 @@ extension PortalAuthSignInTests {
     // released by the throw, so a new sign-in can start.
     self.requests.fail(with: nil, onPath: PortalAuthApi.oauthTokensPath)
     await XCTAssertThrowsAsync(
-      try await subject.handleRedirect(SignInFixtures.googleCallback),
+      try await subject.legacy.handleRedirect(SignInFixtures.googleCallback),
       expected: PortalAuthError.oauthFlowNotStarted
     )
     XCTAssertEqual(self.tokenExchangeRequests.count, 1)
@@ -1058,6 +1137,14 @@ extension PortalAuthSignInTests {
     let web = self.web
     let outcomes = SignInOutcomes()
     web.holdUntilReleased = true
+    // Either provider can win the guard, and `signInWith*` completes only its own provider's
+    // callback, so the browser answers the winner with that provider's callback.
+    web.onAuthenticate = { [weak web] call in
+      let isApple = call.url.absoluteString == SignInFixtures.appleAuthorizeUrl
+      let callback = isApple ? SignInFixtures.appleCallback : SignInFixtures.googleCallback
+      guard let url = URL(string: callback) else { return }
+      web?.results = [.success(url)]
+    }
 
     let finished = try await self.awaitBounded("The 8 concurrent attempts") {
       await withTaskGroup(of: Void.self) { group in
@@ -1232,16 +1319,15 @@ extension PortalAuthSignInTests {
     let task = self.startSignIn(.google)
     await self.waitForBrowser()
 
-    let magicLinkRedirect = "\(SignInFixtures.redirectUrl)?token=m&authMethod=\(AuthMethod.emailMagicLink.rawValue)"
-    let redirectResult = try await self.awaitBounded("handleRedirect during a sign-in") {
-      try await subject.handleRedirect(magicLinkRedirect)
+    let confirmResult = try await self.awaitBounded("confirmMagicLink during a sign-in") {
+      try await subject.confirmMagicLink("m")
     }
 
-    _ = try self.authenticated(XCTUnwrap(redirectResult))
+    _ = try self.authenticated(confirmResult)
     XCTAssertEqual(
       self.requests.requests(toPath: PortalAuthApi.magicLinkValidationsPath).count,
       1,
-      "Only _handleRedirect takes the grant mutex, so a magic link still completes while the browser is open"
+      "Only the exchange takes the grant mutex, so a magic link still completes while the browser is open"
     )
     XCTAssertEqual(self.web.calls.count, 1, "The sign-in is still parked in the browser")
 

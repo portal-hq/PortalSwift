@@ -58,6 +58,12 @@ struct OAuthUrlsResponse: Decodable {
   let apple: String?
 }
 
+/// Returned by `GET /magic-links/details`: the email the link signs in to. The endpoint returns
+/// nothing else today; any other key is ignored.
+struct MagicLinkDetailsResponse: Decodable {
+  let email: String?
+}
+
 /// Returned by both grant-exchange endpoints (`/magic-links/validations`, `/oauth/tokens`).
 ///
 /// Either `clientSessionToken` is set (the login is done) or `userJwt` is (a TOTP step is
