@@ -251,7 +251,8 @@ public enum AuthRedirect: Hashable, Sendable {
   /// The grant of a magic-link redirect.
   public struct MagicLink: Hashable, Sendable {
     /// The single-use grant token. Pass it to `getMagicLinkDetails(_:)` and
-    /// `confirmMagicLink(_:)`, and keep it only while the user decides; never log or persist it.
+    /// `confirmMagicLink(_:)`, and keep it only while the user decides and, once they confirm it, to
+    /// recognise the same link delivered again; never log or persist it.
     /// Hold on to this `MagicLink` rather than the bare `String` where you can: the wrapper
     /// redacts the token when printed, the string does not.
     public let token: String

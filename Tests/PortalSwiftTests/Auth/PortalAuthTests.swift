@@ -867,7 +867,7 @@ final class PortalAuthTests: XCTestCase {
     XCTAssertEqual(self.storage.setCalls, 1)
   }
 
-  func test_handleRedirect_willRouteBothMarkers_onOneInstance() async throws {
+  func test_handleRedirect_willRouteEachKind_onOneInstance() async throws {
     self.requests.enqueue(AuthTestFixtures.grantResponse())
     self.requests.enqueue(AuthTestFixtures.grantResponse())
 

@@ -147,9 +147,9 @@ public final class PortalAuth: @unchecked Sendable {
   /// (`ConsumedGrant.pendingPersist`) finishes that login when the same grant is completed again,
   /// but a host on the TOTP screen has no reason to — and in the `signInWith*` flow never sees the
   /// grant at all — so the retry the host naturally makes, `verifyTotp` again with the same
-  /// `userJwt`, must finish the write instead of re-sending a token that can only be rejected. One slot, matched
-  /// byte-exact on the JWT; cleared once any session reaches the Keychain (`_markPersisted`) and
-  /// by `clearPersistedSession()`. Guarded by `grantMutex`.
+  /// `userJwt`, must finish the write instead of re-sending a token that can only be rejected.
+  /// One slot, matched byte-exact on the JWT; cleared once any session reaches the Keychain
+  /// (`_markPersisted`) and by `clearPersistedSession()`. Guarded by `grantMutex`.
   private var pendingTotpPersist: PendingTotpPersist?
 
   private let stateLock = NSLock()
@@ -359,8 +359,8 @@ public final class PortalAuth: @unchecked Sendable {
   ///   whitespace),
   /// - carries both `authMethod` and `login_type`, so the sign-in it completes cannot be told
   ///   apart (Portal never sends both),
-  /// - carries no `token`, or an empty or whitespace-only one, or
-  /// - carries no sign-in marker this SDK recognises.
+  /// - has no `error` parameter and carries no `token`, or an empty or whitespace-only one, or
+  /// - has no `error` parameter and carries no sign-in marker this SDK recognises.
   public func parseRedirect(_ url: String) -> AuthRedirect? {
     guard !url.isEmpty, url.utf16.count <= Self.maxRedirectUrlLength else {
       return nil
@@ -1032,8 +1032,8 @@ public final class PortalAuth: @unchecked Sendable {
   ///
   /// Preconditions (anchor, custom scheme) are checked before the in-flight guard so a
   /// misconfigured call never leaves the guard held; the guard is released by `defer` on every
-  /// exit. `grantMutex` is **not** held while the browser is open — only `_redeemGrant` takes
-  /// it — so a magic-link redirect arriving mid-sign-in is still processed.
+  /// exit. The browser phase takes no lock — only the exchange takes `grantMutex` — so a
+  /// `confirmMagicLink` (or `verifyTotp`) made mid-sign-in still runs.
   private func signIn(_ method: AuthMethod) async throws -> AuthResult {
     let (anchor, prefersEphemeral) = self.readSignInPreconditions()
 
