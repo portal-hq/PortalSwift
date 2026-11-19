@@ -331,6 +331,9 @@ extension ViewController: ClientAuthReporter {
   /// reach `PortalAuth`'s replay memo — so without `clearPersistedSession()` a redirect delivered
   /// a second time would replay the login that was just signed out of.
   func handleClientAuthSignOut() {
+    // Before the first `await`: a sign-in still being exchanged must see the sign-out as soon as
+    // it finishes, not after `clearPersistedSession()` — which waits for that very exchange.
+    ClientAuthCoordinator.shared.beginSignOut()
     Task {
       if let portal {
         do {
@@ -356,6 +359,7 @@ extension ViewController: ClientAuthReporter {
   /// session back on the next redirect.
   func handleSessionInvalidated() {
     self.logger.warning("ViewController.handleSessionInvalidated() - The backend rejected the Client Auth session")
+    ClientAuthCoordinator.shared.beginSignOut()
 
     Task {
       await self.clearPersistedClientAuthSession()

@@ -209,7 +209,7 @@ final class ClientAuthCoordinator {
   }
 
   /// Takes the record of a browser sign-in when a `provider` redirect arriving now belongs to it,
-  /// and returns it so `restoreExternalOAuthStart(_:)` can put it back; `nil` otherwise.
+  /// and returns it so `restoreExternalOAuthStart(_:startedAt:)` can put it back; `nil` otherwise.
   ///
   /// The OS hands the app any URL on its scheme, and any web page or message can open one with a
   /// grant someone else obtained, which would sign the user in to that person's account. So an
@@ -229,6 +229,13 @@ final class ClientAuthCoordinator {
     }
     self.clearExternalOAuthStart()
     return Date(timeIntervalSince1970: startedAt)
+  }
+
+  /// Marks a sign-out (or invalidation) as begun, before any of its `await`s: an exchange still
+  /// running sees it as soon as it finishes and does not adopt its sign-in. `clearInMemorySession()`
+  /// does the rest once the persisted session is gone.
+  func beginSignOut() {
+    self.sessionGeneration += 1
   }
 
   /// Puts a taken record back, with its original start time, after a completion that failed

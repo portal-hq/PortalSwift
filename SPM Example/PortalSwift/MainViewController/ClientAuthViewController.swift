@@ -115,7 +115,7 @@ final class ClientAuthViewController: UIViewController {
   private let appleButton = UIButton(type: .system)
 
   private let pastedRedirectField = UITextField()
-  private let handleRedirectButton = UIButton(type: .system)
+  private let completeRedirectButton = UIButton(type: .system)
 
   private let totpHintLabel = UILabel()
   private let totpSecretField = UITextField()
@@ -247,7 +247,7 @@ final class ClientAuthViewController: UIViewController {
       : "Client Auth is not configured. Add these to Secrets.xcconfig: " + missingKeys.joined(separator: ", ")
     self.notConfiguredLabel.isHidden = false
     self.setEnabled(self.getMethodsButton, false)
-    self.setEnabled(self.handleRedirectButton, false)
+    self.setEnabled(self.completeRedirectButton, false)
     self.pastedRedirectField.isEnabled = false
     self.emailField.isEnabled = false
   }
@@ -484,7 +484,7 @@ final class ClientAuthViewController: UIViewController {
 
   // MARK: - Actions: redirect
 
-  @objc private func handleRedirectTapped() {
+  @objc private func completeRedirectTapped() {
     let raw = (self.pastedRedirectField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
     guard !raw.isEmpty else {
       self.showResult("Paste the callback URL first", success: false)
@@ -618,7 +618,10 @@ final class ClientAuthViewController: UIViewController {
         let screen = self.liveScreen
         // A newer link arrived meanwhile, on any screen, or the session was cleared.
         guard coordinator.latestMagicLinkLookup == link else {
-          screen.append("• an older magic link was set aside, unconfirmed")
+          screen.append("• a magic link lookup was set aside, unconfirmed")
+          if coordinator.latestMagicLinkLookup == nil {
+            screen.restoreIdleStatus()
+          }
           return
         }
         coordinator.latestMagicLinkLookup = nil
@@ -629,7 +632,10 @@ final class ClientAuthViewController: UIViewController {
       } catch {
         let screen = self.liveScreen
         guard coordinator.latestMagicLinkLookup == link else {
-          screen.append("• an older magic link could not be read and was set aside")
+          screen.append("• a magic link lookup failed and was set aside")
+          if coordinator.latestMagicLinkLookup == nil {
+            screen.restoreIdleStatus()
+          }
           return
         }
         coordinator.latestMagicLinkLookup = nil
@@ -1260,9 +1266,9 @@ final class ClientAuthViewController: UIViewController {
     self.pastedRedirectField.accessibilityIdentifier = "clientAuthPastedRedirectField"
     self.stack.addArrangedSubview(self.pastedRedirectField)
 
-    self.configureButton(self.handleRedirectButton, title: "Complete Redirect", color: .systemTeal, action: #selector(self.handleRedirectTapped))
-    self.handleRedirectButton.accessibilityIdentifier = "clientAuthHandleRedirectButton"
-    self.stack.addArrangedSubview(self.handleRedirectButton)
+    self.configureButton(self.completeRedirectButton, title: "Complete Redirect", color: .systemTeal, action: #selector(self.completeRedirectTapped))
+    self.completeRedirectButton.accessibilityIdentifier = "clientAuthHandleRedirectButton"
+    self.stack.addArrangedSubview(self.completeRedirectButton)
 
     self.stack.addArrangedSubview(self.makeSeparator())
   }
