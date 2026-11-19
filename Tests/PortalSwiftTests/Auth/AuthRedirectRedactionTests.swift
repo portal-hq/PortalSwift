@@ -136,6 +136,17 @@ final class AuthRedirectRedactionTests: XCTestCase {
     XCTAssertEqual(Set([MagicLinkDetails(email: "a@example.com"), MagicLinkDetails(email: "a@example.com")]).count, 1)
   }
 
+  func test_magicLinkDetails_willRedactTheEmail_inEveryRendering_butKeepItReadable() {
+    let email = "person-that-must-not-leak@example.com"
+    let details = MagicLinkDetails(email: email)
+
+    for rendering in self.renderings(of: details) + self.renderings(of: [details]) {
+      XCTAssertFalse(rendering.contains(email), "A rendering leaked the email: \(rendering)")
+    }
+    XCTAssertEqual(String(describing: details), "MagicLinkDetails(email: <redacted>)")
+    XCTAssertEqual(details.email, email, "The app reads `email` to show it on its confirmation screen")
+  }
+
   func test_magicLinkToken_willBeReadableByTheApp() {
     // The magic-link token is public: the app passes it to `getMagicLinkDetails(_:)` and
     // `confirmMagicLink(_:)`. The OAuth token stays internal to the SDK.

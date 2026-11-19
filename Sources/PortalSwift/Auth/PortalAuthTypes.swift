@@ -108,7 +108,8 @@ public struct AuthorizeUrlResult: Equatable {
 ///
 /// Show it on your own confirmation screen and call `PortalAuth.confirmMagicLink(_:)` only once
 /// the user confirms it is theirs. `email` is the full address, never masked: masking, if any,
-/// is up to that screen. It is personal data, so show it but do not log it.
+/// is up to that screen. It is personal data, so show it but do not log it — printing the value
+/// itself (`"\(details)"`, `dump`) shows `<redacted>`; read `email` to display it.
 public struct MagicLinkDetails: Hashable, Sendable {
   /// The full email address the magic link signs in to.
   public let email: String
@@ -116,6 +117,24 @@ public struct MagicLinkDetails: Hashable, Sendable {
   /// Memberwise initializer, public so host test bundles can construct one.
   public init(email: String) {
     self.email = email
+  }
+}
+
+/// Redacted rendering, like `TotpRequiredResult`: a value interpolated into a log line or shown in
+/// an assertion message must not carry the user's email.
+extension MagicLinkDetails: CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+  private static let redacted = "<redacted>"
+
+  public var description: String {
+    "MagicLinkDetails(email: \(Self.redacted))"
+  }
+
+  public var debugDescription: String {
+    self.description
+  }
+
+  public var customMirror: Mirror {
+    Mirror(self, children: ["email": Self.redacted], displayStyle: .struct)
   }
 }
 
@@ -363,9 +382,10 @@ public enum PortalAuthError: LocalizedError, Equatable {
   /// deep link and is bounded to 100 characters because apps surface it straight to the user.
   case authenticationFailed(error: String)
   /// Portal refused a magic link: it has expired, was already used, or is otherwise unusable.
-  /// Thrown by `getMagicLinkDetails(_:)` and `confirmMagicLink(_:)` for the backend's `401`, and
-  /// without a request for a token that cannot be a Portal grant or for a confirmed link whose
-  /// session has since ended. Not retryable: ask the user to request a new link — unless they
+  /// Thrown by `getMagicLinkDetails(_:)` and `confirmMagicLink(_:)` for the backend's `401`. Also
+  /// thrown without a request: by `getMagicLinkDetails(_:)` for a token that cannot be a Portal
+  /// grant, and by `confirmMagicLink(_:)` for a confirmed link whose session has since ended. Not
+  /// retryable: ask the user to request a new link — unless they
   /// already confirmed this link and are signed in, when there is nothing to do (see
   /// `getMagicLinkDetails(_:)`). `completeOAuthLogin(_:)`, `signInWith*` and the deprecated
   /// `handleRedirect(_:)` keep reporting a refused grant as `PortalRequestsError.unauthorized`.
