@@ -111,9 +111,36 @@ struct SendMagicLinkRequest: Codable {
   let isAccountAbstracted: Bool?
 }
 
-/// Body of `POST /magic-links/validations` and `POST /oauth/tokens`.
+/// Body of `POST /magic-links/validations`. A Google or Apple grant is exchanged with
+/// `OAuthGrantTokenRequest` instead, which also carries the code verifier.
 struct GrantTokenRequest: Codable {
   let token: String
+}
+
+/// Body of `POST /oauth/tokens`: the grant, and the code verifier of the sign-in this device
+/// started. The backend refuses the exchange unless the verifier hashes to the challenge sent with
+/// `GET /oauth/urls`, which is what binds the sign-in to this device.
+struct OAuthGrantTokenRequest: Codable {
+  let token: String
+  let codeVerifier: String
+}
+
+/// Redacted rendering: both values are single-use secrets, and the synthesized description of a
+/// struct prints every stored property.
+extension OAuthGrantTokenRequest: CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+  private static let redacted = "<redacted>"
+
+  var description: String {
+    "OAuthGrantTokenRequest(token: \(Self.redacted), codeVerifier: \(Self.redacted))"
+  }
+
+  var debugDescription: String {
+    self.description
+  }
+
+  var customMirror: Mirror {
+    Mirror(self, children: ["token": Self.redacted, "codeVerifier": Self.redacted], displayStyle: .struct)
+  }
 }
 
 /// Body of `POST /totps/validations`. The `userJwt` travels as the bearer, not in the body.

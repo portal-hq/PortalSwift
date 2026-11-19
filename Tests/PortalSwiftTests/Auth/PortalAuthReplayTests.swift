@@ -135,6 +135,8 @@ private final class CallCounter: @unchecked Sendable {
 final class PortalAuthReplayTests: XCTestCase {
   private var requests = RecordingPortalRequests()
   private var storage = MockAuthSessionStorage()
+  /// Empty by default; an OAuth case seeds the sign-in in progress `loginWith*` would have stored.
+  private var verifierStorage = MockOAuthVerifierStorage()
   private var logger = RecordingLogger()
   private var auth = AuthTestFixtures.makeAuth(requests: RecordingPortalRequests())
 
@@ -144,7 +146,13 @@ final class PortalAuthReplayTests: XCTestCase {
     self.requests = RecordingPortalRequests()
     self.storage = MockAuthSessionStorage()
     self.logger = RecordingLogger()
-    self.auth = AuthTestFixtures.makeAuth(requests: self.requests, storage: self.storage, logger: self.logger)
+    self.verifierStorage = MockOAuthVerifierStorage()
+    self.auth = AuthTestFixtures.makeAuth(
+      requests: self.requests,
+      storage: self.storage,
+      verifierStorage: self.verifierStorage,
+      logger: self.logger
+    )
   }
 
   override func tearDownWithError() throws {
@@ -513,6 +521,7 @@ final class PortalAuthReplayTests: XCTestCase {
   }
 
   func test_handleRedirect_willRunOauthAndMagicLinkConcurrently_withoutCrossTalk() async throws {
+    self.verifierStorage.stored = AuthTestFixtures.pendingVerifier()
     self.requests.responder = { request in
       if request.matches(path: PortalAuthApi.oauthTokensPath) {
         return AuthTestFixtures.grantResponse(clientSessionToken: "oauth-session-token", endUserId: "user-oauth")

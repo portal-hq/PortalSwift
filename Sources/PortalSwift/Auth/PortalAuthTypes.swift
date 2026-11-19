@@ -91,7 +91,8 @@ public struct AuthMethodsResult: Equatable {
 /// Wrapped in a struct rather than returned as a bare `String` for parity with the other
 /// SDKs and so the type can grow without breaking call sites. The URL embeds a single-use
 /// `state` shared by both providers in one backend response, so it must be opened promptly
-/// and never cached.
+/// and never cached. Only the URL returned last for an auth environment can complete: each
+/// `loginWith*` call replaces the code verifier of the one before.
 public struct AuthorizeUrlResult: Equatable {
   /// The URL to open in a browser. Already trimmed of surrounding whitespace.
   public let authorizeUrl: String
@@ -228,9 +229,10 @@ public enum PortalAuthError: LocalizedError, Equatable {
   /// The `userJwt` handed to `verifyTotp(_:userJwt:)` cannot be read. Raised before any
   /// network call so a bad JWT never costs the user a live code.
   case invalidUserJwt(detail: String)
-  /// Device storage could not be read, written or deleted *this time*. Distinct from "no
-  /// usable session", which `restoreSession()` reports as `nil`. The message names the
-  /// operation and, where available, the `OSStatus` — never the stored value.
+  /// Device storage could not be read, written or deleted *this time* — the session, or the
+  /// Google or Apple sign-in in progress — or a secure random code verifier could not be
+  /// generated. Distinct from "no usable session", which `restoreSession()` reports as `nil`. The
+  /// message names the operation and, where available, the `OSStatus` — never the stored value.
   case sessionStorageFailure(message: String)
   /// A `400` from `POST /magic-links` or `GET /oauth/urls` whose body carried an `error`:
   /// `isAccountAbstracted: true` was requested against a custodian or environment without
@@ -242,6 +244,17 @@ public enum PortalAuthError: LocalizedError, Equatable {
   /// A TOTP QR code could not be generated: the `totpLink` is missing, is not an
   /// `otpauth://` URL, or CoreImage produced no output.
   case totpQrUnavailable
+  /// A Google or Apple redirect arrived with no sign-in in progress on this device — none was
+  /// started here, it already completed and is no longer remembered (a redirect delivered again
+  /// to a new launch, another instance, or after `clearPersistedSession()`), it is more than 15
+  /// minutes old, or `clearPersistedSession()` cancelled it — or a `signInWith*` sheet's sign-in
+  /// was replaced by a newer one before its callback arrived.
+  /// Usually raised before any network call, so the grant is not spent; when
+  /// `clearPersistedSession()` cancels a redirect that is already being exchanged, it is raised
+  /// after the request and the grant may be spent. (A redirect from a different sign-in while one
+  /// *is* in progress is sent, and Portal refuses it as `PortalRequestsError.unauthorized`.) Not
+  /// retryable with the same redirect: start a new sign-in.
+  case oauthFlowNotStarted
 
   /// The user-facing text agreed with the Android SDK, prefixed with `[PortalAuth]` so it is
   /// attributable when it surfaces through a generic `localizedDescription`.
@@ -269,6 +282,8 @@ public enum PortalAuthError: LocalizedError, Equatable {
       return "[PortalAuth] Too many magic links were sent to this address. Wait a minute before trying again."
     case .totpQrUnavailable:
       return "[PortalAuth] A TOTP QR code could not be generated: the totpLink is missing or is not an otpauth:// URL."
+    case .oauthFlowNotStarted:
+      return "[PortalAuth] The login could not be completed. Start a new login."
     }
   }
 }

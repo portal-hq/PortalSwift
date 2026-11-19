@@ -25,6 +25,9 @@ import XCTest
 final class PortalAuthTests: XCTestCase {
   private var requests = RecordingPortalRequests()
   private var storage = MockAuthSessionStorage()
+  /// Empty by default, so a Google or Apple redirect is refused unless a case seeds a sign-in
+  /// in progress (`seedPendingSignIn()`) or starts one with `loginWith*`.
+  private var verifierStorage = MockOAuthVerifierStorage()
   private var logger = RecordingLogger()
   private var auth = AuthTestFixtures.makeAuth(requests: RecordingPortalRequests())
 
@@ -33,11 +36,17 @@ final class PortalAuthTests: XCTestCase {
     CredentialInvalidationRegistry.shared.resetForTesting()
     self.requests = RecordingPortalRequests()
     self.storage = MockAuthSessionStorage()
+    self.verifierStorage = MockOAuthVerifierStorage()
     self.logger = RecordingLogger()
     // The sink sees every message regardless of the level, but the level is raised anyway so a
     // "never logs the token" case exercises the same code path a debugging host would.
     PortalLogger.shared.setLogLevel(.debug)
-    self.auth = AuthTestFixtures.makeAuth(requests: self.requests, storage: self.storage, logger: self.logger)
+    self.auth = AuthTestFixtures.makeAuth(
+      requests: self.requests,
+      storage: self.storage,
+      verifierStorage: self.verifierStorage,
+      logger: self.logger
+    )
   }
 
   override func tearDownWithError() throws {
@@ -95,6 +104,7 @@ final class PortalAuthTests: XCTestCase {
   private func makeSubject(
     requests: RecordingPortalRequests,
     storage: MockAuthSessionStorage = MockAuthSessionStorage(),
+    verifierStorage: MockOAuthVerifierStorage = MockOAuthVerifierStorage(),
     magicLink: MagicLinkConfig? = AuthTestFixtures.magicLink,
     isAccountAbstracted: Bool? = nil,
     apiHost: String = AuthTestFixtures.apiHost,
@@ -103,12 +113,24 @@ final class PortalAuthTests: XCTestCase {
     AuthTestFixtures.makeAuth(
       requests: requests,
       storage: storage,
+      verifierStorage: verifierStorage,
       logger: self.logger,
       magicLink: magicLink,
       isAccountAbstracted: isAccountAbstracted,
       apiHost: apiHost,
       webSessionFactory: webSessionFactory
     )
+  }
+
+  /// Seeds a fresh Google or Apple sign-in in progress, as `loginWith*` would have stored, so a
+  /// case about the exchange itself can deliver an OAuth redirect directly.
+  private func seedPendingSignIn() {
+    self.verifierStorage.stored = AuthTestFixtures.pendingVerifier()
+  }
+
+  /// A verifier storage holding a fresh sign-in in progress, for a `makeSubject` instance.
+  private func pendingSignInStorage() -> MockOAuthVerifierStorage {
+    MockOAuthVerifierStorage(stored: AuthTestFixtures.pendingVerifier())
   }
 
   /// The `AuthenticatedResult` of a successful login, or a failed assertion.
@@ -562,9 +584,11 @@ final class PortalAuthTests: XCTestCase {
 
     _ = try await self.auth.loginWithGoogle()
 
+    let stored = try XCTUnwrap(self.verifierStorage.stored)
     XCTAssertEqual(
       self.requests.lastRequest?.absoluteString,
       "https://api.portalhq.io/api/v3/auth/oauth/urls?redirectUrl=portalexample%3A%2F%2Fauth%2Fcallback"
+        + "&codeChallenge=\(PkceCodeVerifier.challenge(for: stored.verifier))&codeChallengeMethod=S256"
     )
   }
 
@@ -846,6 +870,7 @@ final class PortalAuthTests: XCTestCase {
   }
 
   func test_handleRedirect_willRouteLoginTypeGoogleToOauthTokens() async throws {
+    self.seedPendingSignIn()
     self.requests.enqueue(AuthTestFixtures.grantResponse())
 
     _ = try await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect())
@@ -857,6 +882,7 @@ final class PortalAuthTests: XCTestCase {
   }
 
   func test_handleRedirect_willRouteLoginTypeAppleToOauthTokens() async throws {
+    self.seedPendingSignIn()
     self.requests.enqueue(AuthTestFixtures.grantResponse())
 
     let result = try await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect(loginType: "APPLE"))
@@ -868,6 +894,7 @@ final class PortalAuthTests: XCTestCase {
   }
 
   func test_handleRedirect_willRouteBothMarkers_onOneInstance() async throws {
+    self.seedPendingSignIn()
     self.requests.enqueue(AuthTestFixtures.grantResponse())
     self.requests.enqueue(AuthTestFixtures.grantResponse())
 
@@ -902,6 +929,7 @@ final class PortalAuthTests: XCTestCase {
   }
 
   func test_handleRedirect_willUseLastDuplicatedToken_oauth() async throws {
+    self.seedPendingSignIn()
     self.requests.enqueue(AuthTestFixtures.grantResponse())
 
     _ = try await self.auth.handleRedirect(AuthTestFixtures.redirectUrl + "?token=stale&token=real-grant&login_type=GOOGLE")
@@ -960,6 +988,7 @@ final class PortalAuthTests: XCTestCase {
   }
 
   func test_handleRedirect_willReturnAuthenticated_andPersist_oauth() async throws {
+    self.seedPendingSignIn()
     self.requests.enqueue(AuthTestFixtures.grantResponse())
 
     let result = try self.authenticated(await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect()))
@@ -993,7 +1022,7 @@ final class PortalAuthTests: XCTestCase {
 
     for redirect in redirects {
       let requests = RecordingPortalRequests()
-      let subject = self.makeSubject(requests: requests)
+      let subject = self.makeSubject(requests: requests, verifierStorage: self.pendingSignInStorage())
       requests.enqueue(AuthTestFixtures.grantResponse(clientId: "client-9", isAccountAbstracted: true))
 
       let result = try self.authenticated(await subject.handleRedirect(redirect))
@@ -1008,7 +1037,7 @@ final class PortalAuthTests: XCTestCase {
 
     for redirect in redirects {
       let requests = RecordingPortalRequests()
-      let subject = self.makeSubject(requests: requests)
+      let subject = self.makeSubject(requests: requests, verifierStorage: self.pendingSignInStorage())
       requests.enqueue(AuthTestFixtures.grantResponse())
 
       let result = try self.authenticated(await subject.handleRedirect(redirect))
@@ -1201,7 +1230,7 @@ final class PortalAuthTests: XCTestCase {
     for redirect in redirects {
       let requests = RecordingPortalRequests()
       let storage = MockAuthSessionStorage()
-      let subject = self.makeSubject(requests: requests, storage: storage)
+      let subject = self.makeSubject(requests: requests, storage: storage, verifierStorage: self.pendingSignInStorage())
       requests.enqueue(AuthTestFixtures.grantResponse(
         clientSessionToken: nil,
         userJwt: "user-jwt",

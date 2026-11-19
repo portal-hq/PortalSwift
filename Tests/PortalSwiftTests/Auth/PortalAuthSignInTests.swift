@@ -217,6 +217,7 @@ private final class RetainedHandles: @unchecked Sendable {
 final class PortalAuthSignInTests: XCTestCase {
   private var requests = RecordingPortalRequests()
   private var storage = MockAuthSessionStorage()
+  private var verifierStorage = MockOAuthVerifierStorage()
   private var web = FakeAuthWebSession()
   private var logger = RecordingLogger()
   private var anchor = MockAuthenticationAnchor()
@@ -228,6 +229,7 @@ final class PortalAuthSignInTests: XCTestCase {
 
     self.requests = RecordingPortalRequests()
     self.storage = MockAuthSessionStorage()
+    self.verifierStorage = MockOAuthVerifierStorage()
     self.web = try FakeAuthWebSession(results: [.success(AuthTestFixtures.url(SignInFixtures.googleCallback))])
     self.logger = RecordingLogger()
     // Created here rather than in a test body: `ASPresentationAnchor` is a `UIWindow`, whose
@@ -257,7 +259,8 @@ final class PortalAuthSignInTests: XCTestCase {
         apiHost: AuthTestFixtures.apiHost,
         requests: RecordingPortalRequests()
       ),
-      storage: MockAuthSessionStorage()
+      storage: MockAuthSessionStorage(),
+      verifierStorage: MockOAuthVerifierStorage()
     )
   }
 
@@ -270,6 +273,7 @@ final class PortalAuthSignInTests: XCTestCase {
     let auth = AuthTestFixtures.makeAuth(
       requests: self.requests,
       storage: self.storage,
+      verifierStorage: self.verifierStorage,
       logger: self.logger,
       redirectUrl: redirectUrl,
       authEnvironmentId: SignInFixtures.authEnvironmentId,
@@ -548,7 +552,12 @@ extension PortalAuthSignInTests {
     _ = try await self.awaitSignIn { try await subject.signInWithGoogle() }
 
     let request = try XCTUnwrap(self.oauthUrlRequests.first)
-    XCTAssertEqual(request.query, "redirectUrl=myapp%3A%2F%2Fauth%2Fcallback", "The backend matches the redirect byte-for-byte")
+    let verifier = try XCTUnwrap(self.tokenExchangeRequests.first?.payloadJSON?["codeVerifier"] as? String)
+    XCTAssertEqual(
+      request.query,
+      "redirectUrl=myapp%3A%2F%2Fauth%2Fcallback&codeChallenge=\(PkceCodeVerifier.challenge(for: verifier))&codeChallengeMethod=S256",
+      "The backend matches the redirect byte-for-byte, and binds the sign-in to the challenge"
+    )
     XCTAssertEqual(request.header(PortalAuthApi.authEnvironmentIdHeader), SignInFixtures.authEnvironmentId)
     XCTAssertNil(request.bearerToken)
   }
@@ -678,7 +687,15 @@ extension PortalAuthSignInTests {
     let exchange = try XCTUnwrap(self.tokenExchangeRequests.first)
     XCTAssertEqual(exchange.method, .post)
     XCTAssertEqual(exchange.payloadJSON?["token"] as? String, SignInFixtures.grantToken)
-    XCTAssertEqual(exchange.payloadJSON?.count, 1)
+    XCTAssertEqual(exchange.payloadJSON?.count, 2, "The OAuth exchange body is exactly { token, codeVerifier }")
+    let verifier = try XCTUnwrap(exchange.payloadJSON?["codeVerifier"] as? String)
+    XCTAssertTrue(PkceCodeVerifier.isWellFormed(verifier))
+    let challengeSent = try XCTUnwrap(self.oauthUrlRequests.first?.url.absoluteString)
+    XCTAssertTrue(
+      challengeSent.contains("codeChallenge=\(PkceCodeVerifier.challenge(for: verifier))&"),
+      "The verifier sent with the grant is the one whose challenge started the sign-in"
+    )
+    XCTAssertNil(self.verifierStorage.stored, "A completed sheet sign-in leaves nothing in progress")
   }
 
   func test_signInWithApple_willReturnAuthenticated() async throws {
@@ -916,14 +933,19 @@ extension PortalAuthSignInTests {
     )
     XCTAssertEqual(self.storage.setCalls, 0)
     XCTAssertEqual(self.tokenExchangeRequests.count, 1)
+    XCTAssertNil(self.verifierStorage.stored, "The host can never resume a sheet, so its sign-in ends with the call")
 
-    // A failed exchange is not memoised: the same callback is retried on the wire, and the
-    // in-flight guard was released by the throw.
+    // The sheet's callback never reached the host, so a copy delivered later belongs to no
+    // sign-in in progress: it is refused locally and nothing is sent. The in-flight guard was
+    // released by the throw, so a new sign-in can start.
     self.requests.fail(with: nil, onPath: PortalAuthApi.oauthTokensPath)
-    let replayed = try await self.awaitBounded("The retried redirect") {
-      try await subject.handleRedirect(SignInFixtures.googleCallback)
-    }
-    _ = try self.authenticated(XCTUnwrap(replayed))
+    await XCTAssertThrowsAsync(
+      try await subject.handleRedirect(SignInFixtures.googleCallback),
+      expected: PortalAuthError.oauthFlowNotStarted
+    )
+    XCTAssertEqual(self.tokenExchangeRequests.count, 1)
+    self.web.results = try [.success(AuthTestFixtures.url(SignInFixtures.callback(token: SignInFixtures.secondGrantToken)))]
+    _ = try await self.awaitSignIn { try await subject.signInWithGoogle() }
     XCTAssertEqual(self.tokenExchangeRequests.count, 2)
   }
 
@@ -1190,9 +1212,17 @@ extension PortalAuthSignInTests {
 
     XCTAssertEqual(urlResult.authorizeUrl, SignInFixtures.googleAuthorizeUrl, "The URL-only path is the manual escape hatch and is never gated")
     XCTAssertEqual(self.oauthUrlRequests.count, 2)
+    let newerSignIn = try XCTUnwrap(self.verifierStorage.stored)
 
+    // The newer sign-in replaced the sheet's in the one slot, so the sheet's grant could only be
+    // refused by Portal: it is refused locally instead, without being sent.
     self.web.release()
-    _ = try await self.awaitBounded("The running sign-in") { try await task.value }
+    await XCTAssertThrowsAsync(
+      try await self.awaitBounded("The replaced sign-in") { try await task.value },
+      expected: PortalAuthError.oauthFlowNotStarted
+    )
+    XCTAssertEqual(self.tokenExchangeRequests.count, 0)
+    XCTAssertEqual(self.verifierStorage.stored, newerSignIn, "The sheet's exit must not delete the newer sign-in")
   }
 
   func test_signInWithGoogle_willNotHoldGrantMutex_whileBrowserOpen() async throws {
