@@ -845,6 +845,23 @@ extension PortalAuthSignInTests {
     XCTAssertEqual(self.storage.setCalls, 0)
   }
 
+  func test_signInWithGoogle_willThrowCallbackIncomplete_andSendNothing_whenCallbackCarriesBothMarkers() async throws {
+    // Such a callback used to be exchanged as a magic link. Which sign-in it completes cannot be
+    // told apart, so it is now refused without an exchange.
+    let subject = self.subject
+    let callback = "\(SignInFixtures.redirectUrl)?token=\(SignInFixtures.grantToken)&authMethod=EMAIL_MAGIC_LINK&login_type=GOOGLE"
+    self.web.results = try [.success(AuthTestFixtures.url(callback))]
+
+    await XCTAssertThrowsAsync(
+      try await self.awaitSignIn { try await subject.signInWithGoogle() },
+      expected: PortalAuthSignInError.callbackIncomplete
+    )
+
+    XCTAssertEqual(self.tokenExchangeRequests.count, 0)
+    XCTAssertTrue(self.requests.requests(toPath: PortalAuthApi.magicLinkValidationsPath).isEmpty)
+    XCTAssertEqual(self.storage.setCalls, 0)
+  }
+
   func test_signInWithGoogle_willNotExchange_whenCallbackHostDiffers() async throws {
     let subject = self.subject
     self.web.results = try [.success(AuthTestFixtures.url("myapp://attacker/callback?token=stolen&login_type=GOOGLE"))]

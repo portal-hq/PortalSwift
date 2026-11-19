@@ -226,19 +226,22 @@ final class PortalAuthMagicLinkTests: XCTestCase {
 
   func test_getMagicLinkDetails_willNotPutTokenOrEmailInErrorMessages() async {
     let token = "secret-grant"
-    let failures: [Data] = [
-      AuthTestFixtures.magicLinkDetailsResponse(email: nil),
-      Data("{\"email\":\"secret-user@example.com\"}".utf8)
-    ]
-
-    for body in failures {
-      self.requests.enqueue(body)
-      await XCTAssertThrowsAsync(try await self.auth.getMagicLinkDetails(token)) { error in
-        let message = error.localizedDescription
-        XCTAssertFalse(message.contains(token))
-        XCTAssertFalse(message.contains("secret-user@example.com"))
-      }
+    let assertClean: (Error) -> Void = { error in
+      let message = error.localizedDescription
+      XCTAssertFalse(message.contains(token))
+      XCTAssertFalse(message.contains("secret-user@example.com"))
     }
+
+    // Malformed bodies.
+    for body in [AuthTestFixtures.magicLinkDetailsResponse(email: nil), Data("{\"email\":\"secret-user@example.com\"}".utf8)] {
+      self.requests.enqueue(body)
+      await XCTAssertThrowsAsync(try await self.auth.getMagicLinkDetails(token), "", assertClean)
+    }
+    // A token refused locally, before any request.
+    await XCTAssertThrowsAsync(try await self.auth.getMagicLinkDetails("secret grant"), "", assertClean)
+    // Portal's rejection.
+    self.requests.failWith = PortalRequestsError.unauthorized
+    await XCTAssertThrowsAsync(try await self.auth.getMagicLinkDetails(token), "", assertClean)
   }
 
   // MARK: - confirmMagicLink: the exchange
@@ -383,6 +386,41 @@ final class PortalAuthMagicLinkTests: XCTestCase {
     XCTAssertEqual(self.requests.callCount, 1, "The spent link was not sent again")
     XCTAssertEqual(self.storage.setCalls, 2, "The retry finished the write")
     XCTAssertEqual(try retried.session.getToken(), AuthTestFixtures.clientSessionToken)
+  }
+
+  func test_confirmMagicLink_willReplayAPendingTotpStep_withOneRequest() async throws {
+    self.requests.defaultResponse = AuthTestFixtures.grantResponse(clientSessionToken: nil, userJwt: AuthTestFixtures.userJwt())
+
+    let first = try expectTotpRequiredResult(await self.auth.confirmMagicLink(Self.token))
+    let again = try expectTotpRequiredResult(await self.auth.confirmMagicLink(Self.token))
+
+    XCTAssertEqual(again, first, "A link confirmed again while its TOTP step is open resumes the same step")
+    XCTAssertEqual(self.requests.callCount, 1)
+  }
+
+  func test_verifyTotp_willKeepTheSignInKind_whenItAdvancesAMagicLinkStep() async throws {
+    // The memory advanced to `.authenticated` by `verifyTotp` still belongs to the magic link, so
+    // an OAuth completion carrying the same token is not answered from it.
+    self.requests.responder = { request in
+      if request.matches(path: PortalAuthApi.totpValidationsPath) {
+        return AuthTestFixtures.totpResponse()
+      }
+      if request.matches(path: PortalAuthApi.oauthTokensPath) {
+        return AuthTestFixtures.grantResponse(clientSessionToken: "oauth-session-token")
+      }
+      return AuthTestFixtures.grantResponse(clientSessionToken: nil, userJwt: AuthTestFixtures.userJwt())
+    }
+
+    let step = try expectTotpRequiredResult(await self.auth.confirmMagicLink(Self.token))
+    let verified = try await self.auth.verifyTotp("777870", userJwt: step.userJwt)
+    let oauth = try expectOAuthRedirect(self.auth.parseRedirect(AuthTestFixtures.oauthRedirect(Self.token)))
+    let viaOAuth = try expectAuthenticatedResult(await self.auth.completeOAuthLogin(oauth))
+
+    XCTAssertFalse(viaOAuth.session === verified.session)
+    XCTAssertEqual(
+      self.paths,
+      [PortalAuthApi.magicLinkValidationsPath, PortalAuthApi.totpValidationsPath, PortalAuthApi.oauthTokensPath]
+    )
   }
 
   func test_confirmMagicLink_willReplayAuthenticated_afterVerifyTotpAdvancedStep() async throws {

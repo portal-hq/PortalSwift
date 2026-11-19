@@ -50,7 +50,9 @@ import Foundation
 ///     try complete(await auth.confirmMagicLink(link.token))
 ///   } else {
 ///     let details = try await auth.getMagicLinkDetails(link.token)
-///     // Show details.email; only once the user confirms it is theirs:
+///     // Your own screen: show details.email and wait for the user's answer. If they cancel,
+///     // nothing is exchanged and the link expires on its own.
+///     guard await userConfirms(email: details.email) else { return }
 ///     confirmedLink = link
 ///     try complete(await auth.confirmMagicLink(link.token))
 ///   }
@@ -137,11 +139,11 @@ public final class PortalAuth: @unchecked Sendable {
   /// The TOTP step `verifyTotp` last completed whose session has not reached the Keychain.
   ///
   /// The backend retires the `userJwt` before it answers, so a Keychain write failure after an
-  /// accepted code leaves a live session that no request can re-issue. The redirect memo
-  /// (`ConsumedGrant.pendingPersist`) finishes that login when a redirect is re-delivered, but
-  /// the host cannot cause a re-delivery — and in the `signInWith*` flow never sees the callback
-  /// at all — so the retry the host *can* make, `verifyTotp` again with the same `userJwt`, must
-  /// finish the write instead of re-sending a token that can only be rejected. One slot, matched
+  /// accepted code leaves a live session that no request can re-issue. The grant memo
+  /// (`ConsumedGrant.pendingPersist`) finishes that login when the same grant is completed again,
+  /// but a host on the TOTP screen has no reason to — and in the `signInWith*` flow never sees the
+  /// grant at all — so the retry the host naturally makes, `verifyTotp` again with the same
+  /// `userJwt`, must finish the write instead of re-sending a token that can only be rejected. One slot, matched
   /// byte-exact on the JWT; cleared once any session reaches the Keychain (`_markPersisted`) and
   /// by `clearPersistedSession()`. Guarded by `grantMutex`.
   private var pendingTotpPersist: PendingTotpPersist?
@@ -259,12 +261,15 @@ public final class PortalAuth: @unchecked Sendable {
 
   /// Sends a magic-link email.
   ///
-  /// Returns once the email is **sent**; the eventual login arrives as a deep link and
-  /// completes through `handleRedirect(_:)`. That deep link is delivered by the OS URL handler,
-  /// so the redirect-hijacking note on `loginWithGoogle()` applies to it as well: an app that
-  /// registered your scheme can deliver a grant of its own. The address is trimmed and lowercased first (the
-  /// backend requires lowercase and does not trim). Every call delivers a real email and sends
-  /// are rate limited, so **never retry automatically** — a resend is an explicit user action.
+  /// Returns once the email is **sent**; the eventual login arrives as a deep link, which you read
+  /// with `parseRedirect(_:)` and complete in two steps: `getMagicLinkDetails(_:)`, your own
+  /// confirmation screen, then `confirmMagicLink(_:)`. That deep link is delivered by the OS URL
+  /// handler, so anyone can get one in front of your user — a link they requested for their own
+  /// address and forwarded, or one an app that registered your scheme delivers — and the
+  /// confirmation step is what lets the user notice a link that is not theirs. The address is
+  /// trimmed and lowercased first (the backend requires lowercase and does not trim). Every call
+  /// delivers a real email and sends are rate limited, so **never retry automatically** — a resend
+  /// is an explicit user action.
   ///
   /// - Throws: `PortalAuthError.magicLinkNotConfigured` when the instance has no `magicLink`;
   ///   `.invalidArgument(name: "email")` for a blank address — both before any network call;
@@ -302,7 +307,7 @@ public final class PortalAuth: @unchecked Sendable {
   ///
   /// **Redirect hijacking.** The callback this URL ends in comes back through the OS URL
   /// handler, which delivers it to whichever installed app registered your URL scheme — and
-  /// `handleRedirect(_:)` cannot tell a grant from *your* flow from one another app started,
+  /// `completeOAuthLogin(_:)` cannot tell a grant from *your* flow from one another app started,
   /// because the redirect carries no app-side `state` (the backend's `state` binds the provider
   /// to Portal, not the app to Portal). An app that claims the same scheme can therefore hand
   /// your user a grant *it* obtained and sign them into *its* end-user account. Prefer
@@ -404,18 +409,20 @@ public final class PortalAuth: @unchecked Sendable {
   /// this. The email is the full address; masking it, if you want to, is up to that screen. It is
   /// personal data: show it, never log it.
   ///
-  /// Nothing is exchanged, persisted or remembered, and the link stays usable until it expires,
-  /// 15 minutes after it was sent. Portal allows only a few lookups per link, after which they
-  /// fail with the transport's `429`, so call this once per confirmation screen and keep the
-  /// result while the user decides rather than polling it. **Whatever this throws, do not
-  /// confirm the link**: a link whose email the user has not seen must not be exchanged.
+  /// Nothing is exchanged, persisted or remembered, and the link stays usable until it expires
+  /// (15 minutes after it was sent, by default). Portal allows only a few lookups per link, after
+  /// which they fail with the transport's `429`, so call this once per confirmation screen and
+  /// keep the result while the user decides rather than polling it. **Whatever this throws, do
+  /// not confirm the link**: a link whose email the user has not seen must not be exchanged.
   ///
   /// A link that has already been confirmed is spent, so this rejects it with `.grantRejected`;
   /// it never answers from memory. When the OS delivers a link again after the user confirmed
   /// it, send it straight to `confirmMagicLink(_:)`, which replays the remembered result. The SDK
   /// cannot tell that case apart from the token alone, so your app remembers which link the user
   /// confirmed — keep the `AuthRedirect.MagicLink`, which redacts the token when printed, rather
-  /// than the bare string.
+  /// than the bare string. That memory, like the SDK's, lasts only while the app runs: after a
+  /// relaunch, restore the session with `restoreSession()` before routing redirects, and treat a
+  /// `.grantRejected` for a link that arrives while the user is signed in as nothing to do.
   ///
   /// - Parameter token: The `token` of the `.magicLink` that `parseRedirect(_:)` returned.
   /// - Throws: `PortalAuthError.invalidArgument(name: "token")` for an empty or whitespace-only
@@ -456,26 +463,29 @@ public final class PortalAuth: @unchecked Sendable {
   /// The second of the two steps. Call it only after the user has seen the email from
   /// `getMagicLinkDetails(_:)` on your own screen and confirmed it is theirs: that confirmation is
   /// what stops someone else's link from signing your user in to the sender's account. Call
-  /// `getMagicLinkDetails(_:)` first even if your screen does not show the email — it reports an
-  /// expired or already used link before the user is asked to confirm. Portal does not require
-  /// the lookup, and the SDK does not enforce it.
+  /// `getMagicLinkDetails(_:)` first in any case — it also reports an expired or already used
+  /// link before the user is asked to confirm. Portal does not require the lookup, and the SDK
+  /// does not enforce it.
   ///
   /// This uses up the link, and this instance exchanges it at most once. Concurrent calls with the
   /// same token share one exchange. Once it has succeeded, calling again with the same token
   /// returns the remembered result — the same `PortalSession` instance — without a request, for
   /// as long as that session is live, which is what lets a link the OS delivers again after the
   /// user confirmed it come straight here. Only the most recent sign-in is remembered, on this
-  /// instance and in this process. A failure is never remembered, so calling again sends the link
-  /// again; that succeeds only if the failed attempt never reached Portal, because Portal uses up
-  /// a link as soon as it receives it.
+  /// instance and in this process. A failed exchange is not remembered, so calling again sends the
+  /// link again; that succeeds only if the failed attempt never reached Portal, because Portal uses
+  /// up a link as soon as it receives it. The exception is a Keychain write failure
+  /// (`.sessionStorageFailure`) after a successful exchange: that result *is* remembered, and
+  /// calling again finishes the write without sending the link.
   ///
   /// On success the session is persisted **before** it is returned. Returns `.totpRequired` when
   /// the user has TOTP enabled; nothing is persisted then, so complete it with
-  /// `verifyTotp(_:userJwt:)`. Cancellation is honoured only before the request is sent: once it
-  /// has begun it runs to completion even if the calling task is cancelled meanwhile — Portal
-  /// uses up the link before it answers — and the result is still returned and remembered. A
-  /// `clearPersistedSession()` called meanwhile waits for it, then deletes the session it
-  /// persisted and forgets it.
+  /// `verifyTotp(_:userJwt:)`. A call made from a task that is already cancelled throws
+  /// `CancellationError` and sends nothing. Past that point the exchange runs to completion even
+  /// if the calling task is cancelled meanwhile — while it waits for another exchange to finish,
+  /// or once the request is out, since Portal uses up the link before it answers — and the result
+  /// is still returned and remembered. A `clearPersistedSession()` called meanwhile waits for it,
+  /// then deletes the session it persisted and forgets it.
   ///
   /// - Parameter token: The `token` of the `.magicLink` that `parseRedirect(_:)` returned.
   /// - Throws: `PortalAuthError.invalidArgument(name: "token")` for an empty or whitespace-only
@@ -501,10 +511,11 @@ public final class PortalAuth: @unchecked Sendable {
   ///
   /// Pass the `.oauth` value `parseRedirect(_:)` returned. The grant is exchanged the way
   /// `confirmMagicLink(_:)` exchanges a link: at most once on this instance, a redirect delivered
-  /// again replays the remembered result while its session is live, a failure is never
-  /// remembered, and cancellation is honoured only before the request is sent. On success the
-  /// session is persisted before it is returned; `.totpRequired` leads to
-  /// `verifyTotp(_:userJwt:)`. `signInWithGoogle()` / `signInWithApple()` do all of this for you.
+  /// again replays the remembered result while its session is live, a failed exchange is not
+  /// remembered (a Keychain write failure is, and calling again finishes the write), and only a
+  /// task already cancelled when the call starts stops it. On success the session is persisted
+  /// before it is returned; `.totpRequired` leads to `verifyTotp(_:userJwt:)`.
+  /// `signInWithGoogle()` / `signInWithApple()` do all of this for you.
   ///
   /// It trusts any grant that arrives on your redirect URL; see the redirect-hijacking note on
   /// `loginWithGoogle()`.
@@ -522,9 +533,9 @@ public final class PortalAuth: @unchecked Sendable {
   ///
   /// Returns `nil` when `parseRedirect(_:)` would, so it is safe to call on every instance and
   /// safe for the app's router to try other handlers afterwards. Throws when the URL matches but
-  /// carries `?error=…`. It
-  /// trusts any grant that arrives on your redirect URL — see the redirect-hijacking note on
-  /// `loginWithGoogle()` for what that means when the URL is delivered by the OS.
+  /// carries `?error=…`. It trusts any grant that arrives on your redirect URL — see the
+  /// redirect-hijacking note on `loginWithGoogle()` for what that means when the URL is delivered
+  /// by the OS.
   ///
   /// Safe to call twice with the same grant: the first exchange's result is remembered and
   /// replayed, so a redirect the system re-delivers resolves to the same `AuthResult` — and
@@ -577,17 +588,19 @@ public final class PortalAuth: @unchecked Sendable {
   /// restarts from the beginning.
   ///
   /// On success the session is persisted before it is returned, on the same terms as
-  /// `handleRedirect(_:)`, and the grant that opened the TOTP step stops replaying as a step:
-  /// a redirect re-delivered afterwards resolves to this same `AuthenticatedResult`'s session.
+  /// `confirmMagicLink(_:)` and `completeOAuthLogin(_:)`, and the grant that opened the TOTP step
+  /// stops replaying as a step: completing that grant again afterwards resolves to this same
+  /// `AuthenticatedResult`'s session.
   ///
   /// A Keychain write failure *after* the code was accepted is retryable with the **same**
   /// `userJwt`: the backend has already retired the JWT, so the next `verifyTotp` for it finishes
   /// the write and returns the session that was issued, without a network call (`code` is not
   /// consulted on that path). A different `userJwt` starts a new verification.
   ///
-  /// Cancellation is honoured only before the request is sent, on the same terms as
-  /// `handleRedirect(_:)`: the JWT is retired by the backend before it answers, so a verification
-  /// that has begun runs to completion and returns even to a cancelled caller.
+  /// Cancellation is honoured only when the calling task is already cancelled as the call starts,
+  /// on the same terms as `confirmMagicLink(_:)`: the JWT is retired by the backend before it
+  /// answers, so a verification that has begun runs to completion and returns even to a cancelled
+  /// caller.
   ///
   /// - Throws: `PortalAuthError.invalidUserJwt(detail:)` when `userJwt` cannot be read — raised
   ///   **before** the network call, so a bad JWT never costs the user a live code;
@@ -603,7 +616,7 @@ public final class PortalAuth: @unchecked Sendable {
     // point cancellation no longer reaches the verification — see `_shieldedFromCancellation`.
     try Task.checkCancellation()
 
-    // Held from before the request through the persist, on the same terms as `handleRedirect`:
+    // Held from before the request through the persist, on the same terms as a grant exchange:
     // it keeps `clearPersistedSession()` from landing between the two and leaving a signed-out
     // user with a session that outlived the sign-out.
     return try await self._shieldedFromCancellation { try await self.grantMutex.withLock {
@@ -681,14 +694,15 @@ public final class PortalAuth: @unchecked Sendable {
     )
   }
 
-  /// Removes the locally persisted session and forgets the grant `handleRedirect(_:)` last
-  /// exchanged and any TOTP write still pending, so neither a redirect re-delivered after a
-  /// sign-out nor a repeated `verifyTotp` can bring back the session that was just cleared.
+  /// Removes the locally persisted session and forgets the grant this instance last exchanged and
+  /// any TOTP write still pending, so neither a redirect completed again after a sign-out nor a
+  /// repeated `verifyTotp` can bring back the session that was just cleared.
   ///
   /// No server-side revoke endpoint exists, so this does not affect a `Portal` already holding
   /// the credential; it prevents a future `restoreSession()` from returning it. Waits for an
-  /// in-flight `handleRedirect` / `verifyTotp` to finish persisting before deleting, so a login
-  /// cannot write a session back into storage after the delete.
+  /// in-flight `confirmMagicLink`, `completeOAuthLogin`, `signInWith*`, `handleRedirect` or
+  /// `verifyTotp` to finish persisting before deleting, so a login cannot write a session back
+  /// into storage after the delete.
   ///
   /// - Throws: `PortalAuthError.sessionStorageFailure` when the delete fails.
   public func clearPersistedSession() async throws {
@@ -1071,9 +1085,10 @@ public final class PortalAuth: @unchecked Sendable {
     value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
   }
 
-  /// `true` when every character of `token` is in the RFC 6750 `b64token` alphabet — letters,
-  /// digits and `-._~+/=` — the only characters a bearer credential may carry. Portal's grants
-  /// are JWTs, a subset of it; anything else did not come from Portal and must not reach a header.
+  /// `true` when every character of `token` is one of the characters of the RFC 6750 `b64token`
+  /// grammar — letters, digits and `-._~+/=` (where `=` may appear is not enforced) — the only
+  /// characters a bearer credential may carry. Portal's grants are JWTs, a subset of it; anything
+  /// else did not come from Portal and must not reach a header.
   private static func isBearerTokenSafe(_ token: String) -> Bool {
     token.unicodeScalars.allSatisfy { scalar in
       switch scalar {

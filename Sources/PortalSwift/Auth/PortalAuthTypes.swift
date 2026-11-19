@@ -361,7 +361,9 @@ public enum PortalAuthError: LocalizedError, Equatable {
   /// deep link and is bounded to 100 characters because apps surface it straight to the user.
   case authenticationFailed(error: String)
   /// Portal refused a magic link: it has expired, was already used, or is otherwise unusable.
-  /// Thrown by `getMagicLinkDetails(_:)` and `confirmMagicLink(_:)` for the backend's `401`. Not
+  /// Thrown by `getMagicLinkDetails(_:)` and `confirmMagicLink(_:)` for the backend's `401`, and
+  /// without a request for a token that cannot be a Portal grant or for a confirmed link whose
+  /// session has since ended. Not
   /// retryable: ask the user to request a new link. `completeOAuthLogin(_:)`, `signInWith*` and
   /// the deprecated `handleRedirect(_:)` keep reporting a refused grant as
   /// `PortalRequestsError.unauthorized`.
