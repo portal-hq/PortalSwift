@@ -1115,6 +1115,14 @@ extension PortalAuthSignInTests {
     let web = self.web
     let outcomes = SignInOutcomes()
     web.holdUntilReleased = true
+    // Either provider can win the guard, and `signInWith*` completes only its own provider's
+    // callback, so the browser answers the winner with that provider's callback.
+    web.onAuthenticate = { [weak web] call in
+      let isApple = call.url.absoluteString == SignInFixtures.appleAuthorizeUrl
+      let callback = isApple ? SignInFixtures.appleCallback : SignInFixtures.googleCallback
+      guard let url = URL(string: callback) else { return }
+      web?.results = [.success(url)]
+    }
 
     let finished = try await self.awaitBounded("The 8 concurrent attempts") {
       await withTaskGroup(of: Void.self) { group in
