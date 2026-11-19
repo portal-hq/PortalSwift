@@ -132,6 +132,9 @@ private final class CallCounter: @unchecked Sendable {
 /// second delivery provably starts while the first is inside the exchange, and every wait is a
 /// bounded poll of at most 2 s — a re-entrancy or deadlock regression then fails as an
 /// assertion rather than hanging the suite.
+/// Calls the deprecated `handleRedirect(_:)` throughout on purpose: these cases pin its one-step
+/// behaviour, which stays supported until the next major version.
+@available(*, deprecated, message: "Exercises the deprecated handleRedirect(_:) on purpose.")
 final class PortalAuthReplayTests: XCTestCase {
   private var requests = RecordingPortalRequests()
   private var storage = MockAuthSessionStorage()
@@ -743,7 +746,7 @@ final class PortalAuthReplayTests: XCTestCase {
     let box = ResultBox()
 
     let cancelled = Task<Void, Error> {
-      box.store(.authenticated(try await auth.verifyTotp("777870", userJwt: userJwt)))
+      try box.store(.authenticated(await auth.verifyTotp("777870", userJwt: userJwt)))
     }
     let didArrive = await requests.waitUntilArrived()
     XCTAssertTrue(didArrive, "The verification reached the transport")

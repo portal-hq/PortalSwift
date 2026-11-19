@@ -109,6 +109,7 @@ final class PortalAuthCompleteOAuthLoginTests: XCTestCase {
     XCTAssertEqual(self.storage.setCalls, 1)
   }
 
+  @available(*, deprecated, message: "Exercises the deprecated handleRedirect(_:) on purpose.")
   func test_completeOAuthLogin_willShareMemoryWithHandleRedirect() async throws {
     self.requests.defaultResponse = AuthTestFixtures.grantResponse()
 

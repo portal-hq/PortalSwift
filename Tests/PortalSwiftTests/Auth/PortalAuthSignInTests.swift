@@ -681,6 +681,16 @@ extension PortalAuthSignInTests {
     XCTAssertEqual(exchange.payloadJSON?.count, 1)
   }
 
+  func test_signInWithGoogle_willNotLogHandleRedirectDeprecationWarning() async throws {
+    // The sheet completes its callback through the same exchange as the deprecated
+    // `handleRedirect(_:)`, but never through `handleRedirect` itself, so it never warns.
+    let subject = self.subject
+
+    _ = try await self.awaitSignIn { try await subject.signInWithGoogle() }
+
+    XCTAssertTrue(self.logger.messages(at: .warn).filter { $0.contains("handleRedirect() is deprecated") }.isEmpty)
+  }
+
   func test_signInWithApple_willReturnAuthenticated() async throws {
     let subject = self.subject
     self.web.results = try [.success(AuthTestFixtures.url(SignInFixtures.appleCallback))]
@@ -705,6 +715,7 @@ extension PortalAuthSignInTests {
     XCTAssertEqual(try authenticated.session.getToken(), SignInFixtures.clientSessionToken)
   }
 
+  @available(*, deprecated, message: "Exercises the deprecated handleRedirect(_:) on purpose.")
   func test_signInWithGoogle_willThrowSessionStorageFailure_whenPersistFails() async throws {
     let subject = self.subject
     let failure = PortalAuthError.sessionStorageFailure(message: "The session could not be persisted.")
@@ -772,6 +783,7 @@ extension PortalAuthSignInTests {
     )
   }
 
+  @available(*, deprecated, message: "Exercises the deprecated handleRedirect(_:) on purpose.")
   func test_signInWithGoogle_willNotExchangeTwice_whenCallbackRedelivered() async throws {
     let subject = self.subject
 
@@ -943,6 +955,7 @@ extension PortalAuthSignInTests {
 // MARK: - Exchange and browser failures
 
 extension PortalAuthSignInTests {
+  @available(*, deprecated, message: "Exercises the deprecated handleRedirect(_:) on purpose.")
   func test_signInWithGoogle_willPropagateUnauthorized_whenGrantRejected() async throws {
     let subject = self.subject
     self.requests.fail(with: PortalRequestsError.unauthorized, onPath: PortalAuthApi.oauthTokensPath)

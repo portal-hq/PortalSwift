@@ -453,6 +453,7 @@ final class PortalAuthMagicLinkTests: XCTestCase {
 
   // MARK: - confirmMagicLink: memory shared by kind
 
+  @available(*, deprecated, message: "Exercises the deprecated handleRedirect(_:) on purpose.")
   func test_confirmMagicLink_willShareMemoryWithHandleRedirect() async throws {
     self.requests.defaultResponse = AuthTestFixtures.grantResponse()
 

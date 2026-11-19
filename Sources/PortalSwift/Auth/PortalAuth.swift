@@ -538,6 +538,13 @@ public final class PortalAuth: @unchecked Sendable {
 
   /// Completes any Client Auth redirect in one step.
   ///
+  /// - Warning: This function is deprecated and is removed in the next major version. Use
+  ///   `parseRedirect(_:)`, then `completeOAuthLogin(_:)` for a Google or Apple sign-in, or
+  ///   `getMagicLinkDetails(_:)` and, once the user confirms the email, `confirmMagicLink(_:)` for
+  ///   a magic link. It completes a magic link without that confirmation, so the user never sees
+  ///   which account the link signs in to, and it logs a deprecation warning each time it is given
+  ///   one (at `.warn`, which the SDK's default log level of `.none` hides).
+  ///
   /// Returns `nil` when `parseRedirect(_:)` would, so it is safe to call on every instance and
   /// safe for the app's router to try other handlers afterwards. Throws when the URL matches but
   /// carries `?error=…`. It trusts any grant that arrives on your redirect URL — see the
@@ -574,6 +581,7 @@ public final class PortalAuth: @unchecked Sendable {
   ///   error; `.invalidGrantResponse` when the exchange returns neither a session token nor a
   ///   `userJwt`; `.malformedResponse` / `.sessionStorageFailure`; a rejected grant surfaces
   ///   as `PortalRequestsError.unauthorized`, unmapped.
+  @available(*, deprecated, message: "Use parseRedirect(_:), then completeOAuthLogin(_:) for a Google or Apple login, or getMagicLinkDetails(_:) and, once the user confirms the email, confirmMagicLink(_:) for a magic link. handleRedirect(_:) is removed in the next major version.")
   public func handleRedirect(_ url: String) async throws -> AuthResult? {
     try await self._handleRedirect(url)
   }
@@ -581,6 +589,11 @@ public final class PortalAuth: @unchecked Sendable {
   /// `handleRedirect(_ url: String)` for a `URL` (the type `UIApplicationDelegate` and
   /// `onOpenURL` hand out). Forwards `absoluteString`, which keeps the percent-encoding intact
   /// so the grant is decoded exactly once.
+  ///
+  /// - Warning: This function is deprecated and is removed in the next major version. Use
+  ///   `parseRedirect(_:)` and the method for the sign-in it reads; see
+  ///   `handleRedirect(_ url: String)`.
+  @available(*, deprecated, message: "Use parseRedirect(_:), then completeOAuthLogin(_:) for a Google or Apple login, or getMagicLinkDetails(_:) and, once the user confirms the email, confirmMagicLink(_:) for a magic link. handleRedirect(_:) is removed in the next major version.")
   public func handleRedirect(_ url: URL) async throws -> AuthResult? {
     try await self._handleRedirect(url.absoluteString)
   }
@@ -769,9 +782,20 @@ public final class PortalAuth: @unchecked Sendable {
     case let .oauth(oauth)?:
       return try await self._redeemGrant(token: oauth.token, kind: .oauth)
     case let .magicLink(link)?:
+      // Only here: a magic link completed in one step skips the confirmation the two-step methods
+      // exist for. A Google or Apple redirect is flagged by the `@available` attribute alone.
+      PortalLogger.shared.warn(Self.magicLinkRedirectDeprecation)
       return try await self._redeemGrant(token: link.token, kind: .magicLink)
     }
   }
+
+  /// Logged by the deprecated `handleRedirect(_:)` each time it is given a magic link.
+  ///
+  /// The same text as the Android, React Native and Web SDKs, word for word, so one migration note
+  /// covers every platform. That is why it names the calls the way the other SDKs spell them
+  /// (`parseRedirect(url)`, `completeOAuthLogin(redirect)`) rather than with Swift argument labels.
+  static let magicLinkRedirectDeprecation =
+    "[PortalAuth] handleRedirect() is deprecated and will be removed in the next major version. Read the redirect with parseRedirect(url), then complete a magic link with getMagicLinkDetails(token) and, once the user confirms the email, confirmMagicLink(token), or a Google or Apple login with completeOAuthLogin(redirect)."
 
   /// The one body that takes `grantMutex` for a grant: `confirmMagicLink`, `completeOAuthLogin`,
   /// `handleRedirect` and `signInWith*` all exchange through it, so they share one lock and one

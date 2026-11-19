@@ -276,6 +276,7 @@ final class PortalAuthParseRedirectTests: XCTestCase {
 
   // MARK: - The one-step path cannot skip the confirmation
 
+  @available(*, deprecated, message: "Exercises the deprecated handleRedirect(_:) on purpose.")
   func test_handleRedirect_willExchangeOnlyWhatParseRedirectReads() async throws {
     let r = Self.redirectUrl
     let urls = [

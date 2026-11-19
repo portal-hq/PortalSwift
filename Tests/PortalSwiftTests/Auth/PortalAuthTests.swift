@@ -22,6 +22,9 @@ import XCTest
 /// Every case installs a `RecordingLogger` into `PortalLogger.shared.sink`, so the "never logs
 /// a secret" assertions see every message at every level, and resets
 /// `CredentialInvalidationRegistry.shared` so once-ever flags cannot leak between cases.
+/// Calls the deprecated `handleRedirect(_:)` throughout on purpose: these cases pin its one-step
+/// behaviour, which stays supported until the next major version.
+@available(*, deprecated, message: "Exercises the deprecated handleRedirect(_:) on purpose.")
 final class PortalAuthTests: XCTestCase {
   private var requests = RecordingPortalRequests()
   private var storage = MockAuthSessionStorage()
