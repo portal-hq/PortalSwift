@@ -67,11 +67,11 @@ Possible Types of changes include:
 
 - `PortalProtocol` gains `perps`, `borrow` and `predictionMarkets`, and `PortalApiProtocol` gains `yieldxyzPerps`, `yieldxyzBorrow`, `agg` and `meld`. If you conform to either protocol yourself, for example in a test double, add the new members; `PredictionMarkets(agg:)` builds one around your own `AggProtocol`.
 - `portalAuth.handleRedirect(_:)` returns `nil` for a URL that carries both `authMethod` and `login_type`, or a whitespace-only `token`. Portal never sends such a URL.
-- `portalAuth.signInWithGoogle()` and `portalAuth.signInWithApple()` complete only a Google or Apple result from their sign-in sheet; any other callback throws `PortalAuthSignInError.callbackIncomplete` without being exchanged.
+- `portalAuth.signInWithGoogle()` and `portalAuth.signInWithApple()` complete only a Google or Apple result from their sign-in sheet. A magic-link callback there, which Portal never sends, now throws `PortalAuthSignInError.callbackIncomplete` without being exchanged.
 
 ### Deprecated
 
-- `portalAuth.handleRedirect(_:)`, which will be removed in the next major version. It keeps working, but it completes a magic link in one step, without the confirmation, and logs a warning each time it does. That warning appears only if you raise the log level to `.warn` with `portal.setLogLevel(_:)` after creating your `Portal`, so the compile-time deprecation is usually the notice you see. Read redirects with `parseRedirect(_:)` instead, then complete a magic link with `getMagicLinkDetails(_:)` and, once the user confirms the email, `confirmMagicLink(_:)`, and a Google or Apple sign-in with `completeOAuthLogin(_:)`.
+- `portalAuth.handleRedirect(_:)`, which will be removed in the next major version. It keeps working, but it completes a magic link in one step, without the confirmation, and logs a deprecation warning (at `.warn`) each time it does. The SDK log is off by default, so the compile-time deprecation is usually the notice you see. Read redirects with `parseRedirect(_:)` instead, then complete a magic link with `getMagicLinkDetails(_:)` and, once the user confirms the email, `confirmMagicLink(_:)`, and a Google or Apple sign-in with `completeOAuthLogin(_:)`.
 
 ## 8.1.0 - 2026-10-08
 

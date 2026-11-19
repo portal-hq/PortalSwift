@@ -453,11 +453,10 @@ final class PortalAuthMagicLinkTests: XCTestCase {
 
   // MARK: - confirmMagicLink: memory shared by kind
 
-  @available(*, deprecated, message: "Exercises the deprecated handleRedirect(_:) on purpose.")
   func test_confirmMagicLink_willShareMemoryWithHandleRedirect() async throws {
     self.requests.defaultResponse = AuthTestFixtures.grantResponse()
 
-    let viaRedirect = try expectAuthenticatedResult(await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect(Self.token)))
+    let viaRedirect = try expectAuthenticatedResult(await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect(Self.token)))
     let viaConfirm = try expectAuthenticatedResult(await self.auth.confirmMagicLink(Self.token))
 
     XCTAssertTrue(viaRedirect.session === viaConfirm.session)
@@ -465,7 +464,7 @@ final class PortalAuthMagicLinkTests: XCTestCase {
 
     let other = AuthTestFixtures.makeAuth(requests: self.requests, storage: MockAuthSessionStorage())
     let confirmed = try expectAuthenticatedResult(await other.confirmMagicLink("grant-2"))
-    let redelivered = try expectAuthenticatedResult(await other.handleRedirect(AuthTestFixtures.magicLinkRedirect("grant-2")))
+    let redelivered = try expectAuthenticatedResult(await other.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect("grant-2")))
     XCTAssertTrue(confirmed.session === redelivered.session, "A link confirmed first replays through the one-step path too")
     XCTAssertEqual(self.requests.callCount, 2)
   }

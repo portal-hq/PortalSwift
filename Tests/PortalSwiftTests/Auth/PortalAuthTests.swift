@@ -22,9 +22,6 @@ import XCTest
 /// Every case installs a `RecordingLogger` into `PortalLogger.shared.sink`, so the "never logs
 /// a secret" assertions see every message at every level, and resets
 /// `CredentialInvalidationRegistry.shared` so once-ever flags cannot leak between cases.
-/// Calls the deprecated `handleRedirect(_:)` throughout on purpose: these cases pin its one-step
-/// behaviour, which stays supported until the next major version.
-@available(*, deprecated, message: "Exercises the deprecated handleRedirect(_:) on purpose.")
 final class PortalAuthTests: XCTestCase {
   private var requests = RecordingPortalRequests()
   private var storage = MockAuthSessionStorage()
@@ -642,14 +639,14 @@ final class PortalAuthTests: XCTestCase {
   // MARK: - handleRedirect(String) — matching and parsing
 
   func test_handleRedirect_willReturnNil_whenEmpty() async throws {
-    let result = try await self.auth.handleRedirect("")
+    let result = try await self.auth.legacy.handleRedirect("")
 
     XCTAssertNil(result)
     XCTAssertEqual(self.requests.callCount, 0)
   }
 
   func test_handleRedirect_willReturnNil_whenWhitespaceOnly() async throws {
-    let result = try await self.auth.handleRedirect("   \n")
+    let result = try await self.auth.legacy.handleRedirect("   \n")
 
     XCTAssertNil(result)
     XCTAssertEqual(self.requests.callCount, 0)
@@ -658,7 +655,7 @@ final class PortalAuthTests: XCTestCase {
   func test_handleRedirect_willReturnNil_whenOversized_withoutParsing() async throws {
     let url = AuthTestFixtures.redirectUrl + "?authMethod=EMAIL_MAGIC_LINK&token=" + String(repeating: "a", count: 9000)
 
-    let result = try await self.auth.handleRedirect(url)
+    let result = try await self.auth.legacy.handleRedirect(url)
 
     XCTAssertNil(result)
     XCTAssertEqual(self.requests.callCount, 0)
@@ -667,7 +664,7 @@ final class PortalAuthTests: XCTestCase {
   func test_handleRedirect_willReturnNil_whenExactly8193Utf16Units() async throws {
     let url = try self.paddedMagicLinkRedirect(totalUtf16: 8193)
 
-    let result = try await self.auth.handleRedirect(url)
+    let result = try await self.auth.legacy.handleRedirect(url)
 
     XCTAssertNil(result)
     XCTAssertEqual(self.requests.callCount, 0)
@@ -677,7 +674,7 @@ final class PortalAuthTests: XCTestCase {
     let url = try self.paddedMagicLinkRedirect(totalUtf16: 8192)
     self.requests.enqueue(AuthTestFixtures.grantResponse())
 
-    let result = try await self.auth.handleRedirect(url)
+    let result = try await self.auth.legacy.handleRedirect(url)
 
     _ = try self.authenticated(result)
     XCTAssertEqual(self.requests.callCount, 1)
@@ -689,28 +686,28 @@ final class PortalAuthTests: XCTestCase {
     XCTAssertLessThan(url.count, 8192)
     XCTAssertGreaterThan(url.utf16.count, 8192)
 
-    let result = try await self.auth.handleRedirect(url)
+    let result = try await self.auth.legacy.handleRedirect(url)
 
     XCTAssertNil(result)
     XCTAssertEqual(self.requests.callCount, 0)
   }
 
   func test_handleRedirect_willReturnNil_whenTargetsOtherHandler() async throws {
-    let result = try await self.auth.handleRedirect("otherapp://auth/callback?token=grant&authMethod=EMAIL_MAGIC_LINK")
+    let result = try await self.auth.legacy.handleRedirect("otherapp://auth/callback?token=grant&authMethod=EMAIL_MAGIC_LINK")
 
     XCTAssertNil(result)
     XCTAssertEqual(self.requests.callCount, 0)
   }
 
   func test_handleRedirect_willReturnNil_whenPathCaseDiffers() async throws {
-    let result = try await self.auth.handleRedirect("portalexample://auth/Callback?token=g&authMethod=EMAIL_MAGIC_LINK")
+    let result = try await self.auth.legacy.handleRedirect("portalexample://auth/Callback?token=g&authMethod=EMAIL_MAGIC_LINK")
 
     XCTAssertNil(result)
     XCTAssertEqual(self.requests.callCount, 0)
   }
 
   func test_handleRedirect_willReturnNil_whenNoToken() async throws {
-    let result = try await self.auth.handleRedirect(AuthTestFixtures.redirectUrl + "?authMethod=EMAIL_MAGIC_LINK")
+    let result = try await self.auth.legacy.handleRedirect(AuthTestFixtures.redirectUrl + "?authMethod=EMAIL_MAGIC_LINK")
 
     XCTAssertNil(result)
     XCTAssertEqual(self.requests.callCount, 0)
@@ -723,7 +720,7 @@ final class PortalAuthTests: XCTestCase {
     ]
 
     for url in urls {
-      let result = try await self.auth.handleRedirect(url)
+      let result = try await self.auth.legacy.handleRedirect(url)
       XCTAssertNil(result, url)
     }
 
@@ -731,7 +728,7 @@ final class PortalAuthTests: XCTestCase {
   }
 
   func test_handleRedirect_willReturnNil_whenNoMarker() async throws {
-    let result = try await self.auth.handleRedirect(AuthTestFixtures.redirectUrl + "?token=grant-token")
+    let result = try await self.auth.legacy.handleRedirect(AuthTestFixtures.redirectUrl + "?token=grant-token")
 
     XCTAssertNil(result)
     XCTAssertEqual(self.requests.callCount, 0)
@@ -741,7 +738,7 @@ final class PortalAuthTests: XCTestCase {
     let markers = ["login_type=FACEBOOK", "login_type=google", "authMethod=GOOGLE", "authMethod=email_magic_link"]
 
     for marker in markers {
-      let result = try await self.auth.handleRedirect("\(AuthTestFixtures.redirectUrl)?token=grant-token&\(marker)")
+      let result = try await self.auth.legacy.handleRedirect("\(AuthTestFixtures.redirectUrl)?token=grant-token&\(marker)")
       XCTAssertNil(result, marker)
     }
 
@@ -752,7 +749,7 @@ final class PortalAuthTests: XCTestCase {
 
   func test_handleRedirect_willThrowAuthenticationFailed_whenErrorParam_withoutRequest() async throws {
     let error = await XCTAssertThrowsAsync(
-      try await self.auth.handleRedirect(AuthTestFixtures.redirectUrl + "?error=oauth_failed"),
+      try await self.auth.legacy.handleRedirect(AuthTestFixtures.redirectUrl + "?error=oauth_failed"),
       expected: PortalAuthError.authenticationFailed(error: "oauth_failed")
     )
 
@@ -763,7 +760,7 @@ final class PortalAuthTests: XCTestCase {
   func test_handleRedirect_willTruncateErrorToExactly100() async throws {
     let url = AuthTestFixtures.redirectUrl + "?error=" + String(repeating: "x", count: 500)
 
-    await XCTAssertThrowsAsync(try await self.auth.handleRedirect(url)) { error in
+    await XCTAssertThrowsAsync(try await self.auth.legacy.handleRedirect(url)) { error in
       guard case let .authenticationFailed(reported)? = error as? PortalAuthError else {
         XCTFail("Expected PortalAuthError.authenticationFailed, got \(type(of: error)).")
         return
@@ -779,7 +776,7 @@ final class PortalAuthTests: XCTestCase {
     let reported = String(repeating: "x", count: 100)
 
     await XCTAssertThrowsAsync(
-      try await self.auth.handleRedirect(AuthTestFixtures.redirectUrl + "?error=" + reported),
+      try await self.auth.legacy.handleRedirect(AuthTestFixtures.redirectUrl + "?error=" + reported),
       expected: PortalAuthError.authenticationFailed(error: reported)
     )
   }
@@ -787,7 +784,7 @@ final class PortalAuthTests: XCTestCase {
   func test_handleRedirect_willTruncateErrorByCharacters_forMultiByte() async throws {
     let url = AuthTestFixtures.redirectUrl + "?error=" + String(repeating: "%C3%A9", count: 200)
 
-    await XCTAssertThrowsAsync(try await self.auth.handleRedirect(url)) { error in
+    await XCTAssertThrowsAsync(try await self.auth.legacy.handleRedirect(url)) { error in
       guard case let .authenticationFailed(reported)? = error as? PortalAuthError else {
         XCTFail("Expected PortalAuthError.authenticationFailed, got \(type(of: error)).")
         return
@@ -799,7 +796,7 @@ final class PortalAuthTests: XCTestCase {
 
   func test_handleRedirect_willDecodeErrorBeforeTruncating() async throws {
     await XCTAssertThrowsAsync(
-      try await self.auth.handleRedirect(AuthTestFixtures.redirectUrl + "?error=oauth%5Ffailed+now"),
+      try await self.auth.legacy.handleRedirect(AuthTestFixtures.redirectUrl + "?error=oauth%5Ffailed+now"),
       expected: PortalAuthError.authenticationFailed(error: "oauth_failed now")
     )
   }
@@ -808,7 +805,7 @@ final class PortalAuthTests: XCTestCase {
     let url = AuthTestFixtures.redirectUrl + "?token=grant-token&authMethod=EMAIL_MAGIC_LINK&error=denied"
 
     await XCTAssertThrowsAsync(
-      try await self.auth.handleRedirect(url),
+      try await self.auth.legacy.handleRedirect(url),
       expected: PortalAuthError.authenticationFailed(error: "denied")
     )
     XCTAssertEqual(self.requests.callCount, 0)
@@ -819,14 +816,14 @@ final class PortalAuthTests: XCTestCase {
     let url = AuthTestFixtures.redirectUrl + "?error=&token=grant-token&authMethod=EMAIL_MAGIC_LINK"
 
     await XCTAssertThrowsAsync(
-      try await self.auth.handleRedirect(url),
+      try await self.auth.legacy.handleRedirect(url),
       expected: PortalAuthError.authenticationFailed(error: "")
     )
     XCTAssertEqual(self.requests.callCount, 0)
   }
 
   func test_handleRedirect_willReturnNil_whenErrorOnOtherTarget() async throws {
-    let result = try await self.auth.handleRedirect("otherapp://auth/callback?error=oauth_failed")
+    let result = try await self.auth.legacy.handleRedirect("otherapp://auth/callback?error=oauth_failed")
 
     XCTAssertNil(result)
     XCTAssertEqual(self.requests.callCount, 0)
@@ -837,7 +834,7 @@ final class PortalAuthTests: XCTestCase {
   func test_handleRedirect_willRouteAuthMethodToMagicLinkValidations() async throws {
     self.requests.enqueue(AuthTestFixtures.grantResponse())
 
-    _ = try await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect())
+    _ = try await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect())
 
     XCTAssertEqual(self.requests.callCount, 1)
     let request = try XCTUnwrap(self.requests.lastRequest)
@@ -851,7 +848,7 @@ final class PortalAuthTests: XCTestCase {
   func test_handleRedirect_willRouteLoginTypeGoogleToOauthTokens() async throws {
     self.requests.enqueue(AuthTestFixtures.grantResponse())
 
-    _ = try await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect())
+    _ = try await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect())
 
     let request = try XCTUnwrap(self.requests.lastRequest)
     XCTAssertEqual(request.method, .post)
@@ -862,7 +859,7 @@ final class PortalAuthTests: XCTestCase {
   func test_handleRedirect_willRouteLoginTypeAppleToOauthTokens() async throws {
     self.requests.enqueue(AuthTestFixtures.grantResponse())
 
-    let result = try await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect(loginType: "APPLE"))
+    let result = try await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect(loginType: "APPLE"))
 
     let authenticated = try self.authenticated(result)
     XCTAssertEqual(self.requests.lastRequest?.path, "/api/v3/auth/oauth/tokens")
@@ -874,8 +871,8 @@ final class PortalAuthTests: XCTestCase {
     self.requests.enqueue(AuthTestFixtures.grantResponse())
     self.requests.enqueue(AuthTestFixtures.grantResponse())
 
-    _ = try await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect("oauth-grant"))
-    _ = try await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect("magic-link-grant"))
+    _ = try await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect("oauth-grant"))
+    _ = try await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect("magic-link-grant"))
 
     XCTAssertEqual(self.requests.requestedPaths, ["/api/v3/auth/oauth/tokens", "/api/v3/auth/magic-links/validations"])
   }
@@ -891,7 +888,7 @@ final class PortalAuthTests: XCTestCase {
     ]
 
     for url in urls {
-      let result = try await self.auth.handleRedirect(url)
+      let result = try await self.auth.legacy.handleRedirect(url)
       XCTAssertNil(result, url)
     }
 
@@ -902,7 +899,7 @@ final class PortalAuthTests: XCTestCase {
     self.requests.defaultResponse = AuthTestFixtures.grantResponse()
 
     for url in [AuthTestFixtures.magicLinkRedirect("%20%20"), AuthTestFixtures.oauthRedirect("+")] {
-      let result = try await self.auth.handleRedirect(url)
+      let result = try await self.auth.legacy.handleRedirect(url)
       XCTAssertNil(result, url)
     }
 
@@ -912,7 +909,7 @@ final class PortalAuthTests: XCTestCase {
   func test_handleRedirect_willDecodePercentEncodedToken_andTolerateRedirectOwnQuery() async throws {
     self.requests.enqueue(AuthTestFixtures.grantResponse())
 
-    _ = try await self.auth.handleRedirect(AuthTestFixtures.redirectUrl + "?source=email&token=grant%2Btoken&authMethod=EMAIL_MAGIC_LINK")
+    _ = try await self.auth.legacy.handleRedirect(AuthTestFixtures.redirectUrl + "?source=email&token=grant%2Btoken&authMethod=EMAIL_MAGIC_LINK")
 
     XCTAssertEqual(try self.lastPayload()["token"] as? String, "grant+token")
   }
@@ -920,7 +917,7 @@ final class PortalAuthTests: XCTestCase {
   func test_handleRedirect_willUseLastDuplicatedToken_magicLink() async throws {
     self.requests.enqueue(AuthTestFixtures.grantResponse())
 
-    _ = try await self.auth.handleRedirect(AuthTestFixtures.redirectUrl + "?token=configured&authMethod=EMAIL_MAGIC_LINK&token=live-grant")
+    _ = try await self.auth.legacy.handleRedirect(AuthTestFixtures.redirectUrl + "?token=configured&authMethod=EMAIL_MAGIC_LINK&token=live-grant")
 
     XCTAssertEqual(try self.lastPayload()["token"] as? String, "live-grant")
   }
@@ -928,7 +925,7 @@ final class PortalAuthTests: XCTestCase {
   func test_handleRedirect_willUseLastDuplicatedToken_oauth() async throws {
     self.requests.enqueue(AuthTestFixtures.grantResponse())
 
-    _ = try await self.auth.handleRedirect(AuthTestFixtures.redirectUrl + "?token=stale&token=real-grant&login_type=GOOGLE")
+    _ = try await self.auth.legacy.handleRedirect(AuthTestFixtures.redirectUrl + "?token=stale&token=real-grant&login_type=GOOGLE")
 
     XCTAssertEqual(try self.lastPayload()["token"] as? String, "real-grant")
   }
@@ -936,7 +933,7 @@ final class PortalAuthTests: XCTestCase {
   func test_handleRedirect_willMatch_whenSchemeCaseAndTrailingSlashDiffer() async throws {
     self.requests.enqueue(AuthTestFixtures.grantResponse())
 
-    let result = try await self.auth.handleRedirect("PortalExample://auth/callback/?token=grant-token&authMethod=EMAIL_MAGIC_LINK")
+    let result = try await self.auth.legacy.handleRedirect("PortalExample://auth/callback/?token=grant-token&authMethod=EMAIL_MAGIC_LINK")
 
     _ = try self.authenticated(result)
     XCTAssertEqual(self.requests.callCount, 1)
@@ -945,14 +942,14 @@ final class PortalAuthTests: XCTestCase {
   func test_handleRedirect_willMatch_whenFragmentPresent() async throws {
     self.requests.enqueue(AuthTestFixtures.grantResponse())
 
-    let result = try await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect() + "#state=xyz")
+    let result = try await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect() + "#state=xyz")
 
     _ = try self.authenticated(result)
     XCTAssertEqual(try self.lastPayload()["token"] as? String, "grant-token")
   }
 
   func test_handleRedirect_willReturnNil_whenQueryLivesInFragment() async throws {
-    let result = try await self.auth.handleRedirect(AuthTestFixtures.redirectUrl + "#?token=grant&authMethod=EMAIL_MAGIC_LINK")
+    let result = try await self.auth.legacy.handleRedirect(AuthTestFixtures.redirectUrl + "#?token=grant&authMethod=EMAIL_MAGIC_LINK")
 
     XCTAssertNil(result)
     XCTAssertEqual(self.requests.callCount, 0)
@@ -961,7 +958,7 @@ final class PortalAuthTests: XCTestCase {
   func test_handleRedirect_willMatch_whenSurroundingWhitespace() async throws {
     self.requests.enqueue(AuthTestFixtures.grantResponse())
 
-    let result = try await self.auth.handleRedirect("  " + AuthTestFixtures.magicLinkRedirect() + "\n")
+    let result = try await self.auth.legacy.handleRedirect("  " + AuthTestFixtures.magicLinkRedirect() + "\n")
 
     _ = try self.authenticated(result)
     XCTAssertEqual(self.requests.callCount, 1)
@@ -972,7 +969,7 @@ final class PortalAuthTests: XCTestCase {
   func test_handleRedirect_willReturnAuthenticated_andPersistExactJson_magicLink() async throws {
     self.requests.enqueue(AuthTestFixtures.grantResponse())
 
-    let result = try self.authenticated(await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
+    let result = try self.authenticated(await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
 
     XCTAssertEqual(try result.session.getToken(), "session-token")
     XCTAssertEqual(result.session.endUserId, "user-1")
@@ -986,7 +983,7 @@ final class PortalAuthTests: XCTestCase {
   func test_handleRedirect_willReturnAuthenticated_andPersist_oauth() async throws {
     self.requests.enqueue(AuthTestFixtures.grantResponse())
 
-    let result = try self.authenticated(await self.auth.handleRedirect(AuthTestFixtures.oauthRedirect()))
+    let result = try self.authenticated(await self.auth.legacy.handleRedirect(AuthTestFixtures.oauthRedirect()))
 
     XCTAssertEqual(result.session.endUserId, "user-1")
     XCTAssertEqual(try result.session.getToken(), "session-token")
@@ -1002,7 +999,7 @@ final class PortalAuthTests: XCTestCase {
     self.storage.onSet = { _ in persistObserved.set() }
     self.requests.enqueue(AuthTestFixtures.grantResponse())
 
-    let result = try self.authenticated(await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
+    let result = try self.authenticated(await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
 
     XCTAssertTrue(persistObserved.value, "The session was returned without ever being written to storage.")
     XCTAssertNotNil(self.storage.stored)
@@ -1020,7 +1017,7 @@ final class PortalAuthTests: XCTestCase {
       let subject = self.makeSubject(requests: requests)
       requests.enqueue(AuthTestFixtures.grantResponse(clientId: "client-9", isAccountAbstracted: true))
 
-      let result = try self.authenticated(await subject.handleRedirect(redirect))
+      let result = try self.authenticated(await subject.legacy.handleRedirect(redirect))
 
       XCTAssertEqual(result.clientId, "client-9", redirect)
       XCTAssertEqual(result.isAccountAbstracted, true, redirect)
@@ -1035,7 +1032,7 @@ final class PortalAuthTests: XCTestCase {
       let subject = self.makeSubject(requests: requests)
       requests.enqueue(AuthTestFixtures.grantResponse())
 
-      let result = try self.authenticated(await subject.handleRedirect(redirect))
+      let result = try self.authenticated(await subject.legacy.handleRedirect(redirect))
 
       XCTAssertNil(result.clientId, redirect)
       XCTAssertNil(result.isAccountAbstracted, redirect)
@@ -1045,7 +1042,7 @@ final class PortalAuthTests: XCTestCase {
   func test_handleRedirect_willReportIsAccountAbstractedFalse_whenFalse() async throws {
     self.requests.enqueue(AuthTestFixtures.grantResponse(isAccountAbstracted: false))
 
-    let result = try self.authenticated(await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
+    let result = try self.authenticated(await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
 
     XCTAssertEqual(result.isAccountAbstracted, false)
     XCTAssertNotNil(result.isAccountAbstracted)
@@ -1057,7 +1054,7 @@ final class PortalAuthTests: XCTestCase {
     self.requests.enqueue(AuthTestFixtures.grantResponse())
 
     await XCTAssertThrowsAsync(
-      try await self.auth.handleRedirect(redirect),
+      try await self.auth.legacy.handleRedirect(redirect),
       expected: PortalAuthError.sessionStorageFailure(message: "keystore write failed")
     )
 
@@ -1065,7 +1062,7 @@ final class PortalAuthTests: XCTestCase {
     // The issued session was memoised before the write; the replay retries the write instead.
     self.storage.onSet = nil
 
-    let result = try self.authenticated(await self.auth.handleRedirect(redirect))
+    let result = try self.authenticated(await self.auth.legacy.handleRedirect(redirect))
 
     XCTAssertEqual(try result.session.getToken(), "session-token")
     XCTAssertEqual(self.requests.callCount, 1, "A spent grant is never re-sent to the backend.")
@@ -1079,7 +1076,7 @@ final class PortalAuthTests: XCTestCase {
 
     for _ in 0 ..< 2 {
       await XCTAssertThrowsAsync(
-        try await self.auth.handleRedirect(redirect),
+        try await self.auth.legacy.handleRedirect(redirect),
         expected: PortalAuthError.sessionStorageFailure(message: "keystore write failed")
       )
     }
@@ -1091,7 +1088,7 @@ final class PortalAuthTests: XCTestCase {
   func test_handleRedirect_willNotReplayAnInvalidatedSession() async throws {
     let redirect = AuthTestFixtures.magicLinkRedirect()
     self.requests.enqueue(AuthTestFixtures.grantResponse())
-    let first = try self.authenticated(await self.auth.handleRedirect(redirect))
+    let first = try self.authenticated(await self.auth.legacy.handleRedirect(redirect))
 
     // A 401 elsewhere (or a host sign-out) ended the session behind the memo.
     try first.session.invalidate()
@@ -1099,7 +1096,7 @@ final class PortalAuthTests: XCTestCase {
     // Handing back `.authenticated` with a session whose `getToken()` throws would leave the
     // host signed in against a dead credential; the redirect fails like a spent grant instead.
     await XCTAssertThrowsAsync(
-      try await self.auth.handleRedirect(redirect),
+      try await self.auth.legacy.handleRedirect(redirect),
       expected: PortalRequestsError.unauthorized
     )
     XCTAssertEqual(self.requests.callCount, 1, "The spent grant is not re-sent after eviction either.")
@@ -1111,7 +1108,7 @@ final class PortalAuthTests: XCTestCase {
     self.requests.enqueue(AuthTestFixtures.grantResponse(clientSessionToken: nil, userJwt: "   "))
 
     await XCTAssertThrowsAsync(
-      try await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect()),
+      try await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect()),
       expected: PortalAuthError.invalidGrantResponse
     )
   }
@@ -1132,7 +1129,7 @@ final class PortalAuthTests: XCTestCase {
       requests.enqueue(body)
 
       await XCTAssertThrowsAsync(
-        try await subject.handleRedirect(AuthTestFixtures.magicLinkRedirect()),
+        try await subject.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect()),
         expected: PortalAuthError.malformedResponse(path: "/api/v3/auth/magic-links/validations", missing: "endUserId")
       )
       XCTAssertEqual(storage.setCalls, 0)
@@ -1143,7 +1140,7 @@ final class PortalAuthTests: XCTestCase {
     self.requests.enqueue(AuthTestFixtures.grantResponse(clientSessionToken: nil, endUserId: "user-1"))
 
     let error = await XCTAssertThrowsAsync(
-      try await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect()),
+      try await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect()),
       expected: PortalAuthError.invalidGrantResponse
     )
 
@@ -1158,7 +1155,7 @@ final class PortalAuthTests: XCTestCase {
     self.requests.enqueue(AuthTestFixtures.grantResponse(clientSessionToken: "", endUserId: "user-1", userJwt: ""))
 
     await XCTAssertThrowsAsync(
-      try await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect()),
+      try await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect()),
       expected: PortalAuthError.invalidGrantResponse
     )
     XCTAssertEqual(self.storage.setCalls, 0)
@@ -1171,7 +1168,7 @@ final class PortalAuthTests: XCTestCase {
     self.requests.enqueue(AuthTestFixtures.grantResponse(clientSessionToken: "  \n", endUserId: "user-1"))
 
     await XCTAssertThrowsAsync(
-      try await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect()),
+      try await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect()),
       expected: PortalAuthError.invalidGrantResponse
     )
     XCTAssertEqual(self.storage.setCalls, 0)
@@ -1181,7 +1178,7 @@ final class PortalAuthTests: XCTestCase {
   func test_handleRedirect_willReturnTotpRequired_whenCstWhitespaceOnlyAndJwtPresent() async throws {
     self.requests.enqueue(AuthTestFixtures.grantResponse(clientSessionToken: "   ", userJwt: AuthTestFixtures.userJwt()))
 
-    let step = try self.totpRequired(await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
+    let step = try self.totpRequired(await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
 
     XCTAssertEqual(step.userJwt, AuthTestFixtures.userJwt())
     XCTAssertEqual(self.storage.setCalls, 0)
@@ -1190,7 +1187,7 @@ final class PortalAuthTests: XCTestCase {
   func test_handleRedirect_willReturnTotpRequired_whenCstEmptyStringAndJwtPresent() async throws {
     self.requests.enqueue(AuthTestFixtures.grantResponse(clientSessionToken: "", userJwt: AuthTestFixtures.userJwt()))
 
-    let step = try self.totpRequired(await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
+    let step = try self.totpRequired(await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
 
     XCTAssertEqual(step.userJwt, AuthTestFixtures.userJwt())
     XCTAssertEqual(self.storage.setCalls, 0)
@@ -1201,7 +1198,7 @@ final class PortalAuthTests: XCTestCase {
     let totpLink = "otpauth://totp/Portal:user@example.com?secret=GEZDGNBVGY3TQOJQ"
     self.requests.enqueue(AuthTestFixtures.grantResponse(clientSessionToken: nil, userJwt: userJwt, totpLink: totpLink))
 
-    let step = try self.totpRequired(await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
+    let step = try self.totpRequired(await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
 
     XCTAssertEqual(step.userJwt, userJwt)
     XCTAssertEqual(step.totpLink, totpLink)
@@ -1213,7 +1210,7 @@ final class PortalAuthTests: XCTestCase {
   func test_handleRedirect_willReturnTotpRequired_withNilLink_forEnrolledUser() async throws {
     self.requests.enqueue(AuthTestFixtures.grantResponse(clientSessionToken: nil, userJwt: AuthTestFixtures.userJwt(), totpLink: nil))
 
-    let step = try self.totpRequired(await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
+    let step = try self.totpRequired(await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
 
     XCTAssertNil(step.totpLink)
     XCTAssertEqual(self.storage.setCalls, 0)
@@ -1232,7 +1229,7 @@ final class PortalAuthTests: XCTestCase {
         totpLink: "otpauth://totp/Portal:user@example.com?secret=GEZDGNBVGY3TQOJQ"
       ))
 
-      let step = try self.totpRequired(await subject.handleRedirect(redirect))
+      let step = try self.totpRequired(await subject.legacy.handleRedirect(redirect))
 
       XCTAssertEqual(step.userJwt, "user-jwt", redirect)
       XCTAssertEqual(storage.setCalls, 0, redirect)
@@ -1242,7 +1239,7 @@ final class PortalAuthTests: XCTestCase {
   func test_handleRedirect_willReturnTotpRequired_withEmptyEndUserId_whenOmitted() async throws {
     self.requests.enqueue(AuthTestFixtures.grantResponse(clientSessionToken: nil, endUserId: nil, userJwt: AuthTestFixtures.userJwt()))
 
-    let step = try self.totpRequired(await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
+    let step = try self.totpRequired(await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
 
     XCTAssertEqual(step.endUserId, "")
   }
@@ -1253,7 +1250,7 @@ final class PortalAuthTests: XCTestCase {
     self.requests.failWith = AuthTestFixtures.unauthorized
 
     await XCTAssertThrowsAsync(
-      try await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect()),
+      try await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect()),
       expected: PortalRequestsError.unauthorized
     )
     XCTAssertEqual(self.storage.setCalls, 0)
@@ -1264,7 +1261,7 @@ final class PortalAuthTests: XCTestCase {
     let transportError = AuthTestFixtures.clientError(status: 400, body: "{\"error\":\"token already used\"}")
     self.requests.failWith = transportError
 
-    await XCTAssertThrowsAsync(try await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect())) { error in
+    await XCTAssertThrowsAsync(try await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect())) { error in
       XCTAssertEqual(error as? PortalRequestsError, transportError)
       XCTAssertNil(error as? PortalAuthError, "A grant-exchange 400 must not be mapped to accountAbstractionUnavailable.")
     }
@@ -1280,7 +1277,7 @@ final class PortalAuthTests: XCTestCase {
       let subject = self.makeSubject(requests: requests, storage: storage)
       requests.failWith = failure
 
-      await XCTAssertThrowsAsync(try await subject.handleRedirect(AuthTestFixtures.magicLinkRedirect())) { error in
+      await XCTAssertThrowsAsync(try await subject.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect())) { error in
         if let expected = failure as? PortalRequestsError {
           XCTAssertEqual(error as? PortalRequestsError, expected)
         } else {
@@ -1296,7 +1293,7 @@ final class PortalAuthTests: XCTestCase {
     let subject = self.makeSubject(requests: self.requests, storage: self.storage, apiHost: "localhost:3000")
     self.requests.enqueue(AuthTestFixtures.grantResponse())
 
-    _ = try await subject.handleRedirect(AuthTestFixtures.magicLinkRedirect())
+    _ = try await subject.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect())
 
     XCTAssertEqual(self.requests.requestedUrls, ["http://localhost:3000/api/v3/auth/magic-links/validations"])
   }
@@ -1304,7 +1301,7 @@ final class PortalAuthTests: XCTestCase {
   func test_handleRedirect_willNotLogTokenUrlOrCst() async throws {
     self.requests.enqueue(AuthTestFixtures.grantResponse(clientSessionToken: "CST-SECRET"))
 
-    _ = try await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect("GRANT-SECRET"))
+    _ = try await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect("GRANT-SECRET"))
 
     self.assertNoSecrets(["GRANT-SECRET", "CST-SECRET", "portalexample://auth/callback?"])
   }
@@ -1314,7 +1311,7 @@ final class PortalAuthTests: XCTestCase {
     let totpLink = "otpauth://totp/Portal:user@example.com?secret=GEZDGNBVGY3TQOJQ"
     self.requests.enqueue(AuthTestFixtures.grantResponse(clientSessionToken: nil, userJwt: userJwt, totpLink: totpLink))
 
-    _ = try await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect())
+    _ = try await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect())
 
     self.assertNoSecrets([userJwt, "GEZDGNBVGY3TQOJQ", "otpauth://"])
   }
@@ -1328,7 +1325,7 @@ final class PortalAuthTests: XCTestCase {
     let persistSubject = self.makeSubject(requests: persistRequests, storage: failingStorage)
     persistRequests.enqueue(AuthTestFixtures.grantResponse(clientSessionToken: "CST-SECRET"))
 
-    await XCTAssertThrowsAsync(try await persistSubject.handleRedirect(AuthTestFixtures.magicLinkRedirect("GRANT-SECRET"))) { error in
+    await XCTAssertThrowsAsync(try await persistSubject.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect("GRANT-SECRET"))) { error in
       let description = (error as? LocalizedError)?.errorDescription ?? "\(error)"
       for secret in secrets {
         XCTAssertFalse(description.contains(secret), description)
@@ -1339,7 +1336,7 @@ final class PortalAuthTests: XCTestCase {
     let malformedSubject = self.makeSubject(requests: malformedRequests)
     malformedRequests.enqueue(AuthTestFixtures.grantResponse(clientSessionToken: "CST-SECRET", endUserId: nil))
 
-    await XCTAssertThrowsAsync(try await malformedSubject.handleRedirect(AuthTestFixtures.magicLinkRedirect("GRANT-SECRET"))) { error in
+    await XCTAssertThrowsAsync(try await malformedSubject.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect("GRANT-SECRET"))) { error in
       let description = (error as? LocalizedError)?.errorDescription ?? "\(error)"
       for secret in secrets {
         XCTAssertFalse(description.contains(secret), description)
@@ -1350,7 +1347,7 @@ final class PortalAuthTests: XCTestCase {
   func test_handleRedirect_willNotExposeCstInSessionDescription() async throws {
     self.requests.enqueue(AuthTestFixtures.grantResponse())
 
-    let result = try self.authenticated(await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
+    let result = try self.authenticated(await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
 
     XCTAssertFalse(String(describing: result.session).contains("session-token"), String(describing: result.session))
     XCTAssertFalse(String(reflecting: result.session).contains("session-token"), String(reflecting: result.session))
@@ -1362,7 +1359,7 @@ final class PortalAuthTests: XCTestCase {
     self.requests.enqueue(AuthTestFixtures.grantResponse())
     let url = try AuthTestFixtures.url(AuthTestFixtures.magicLinkRedirect())
 
-    let result = try await self.auth.handleRedirect(url)
+    let result = try await self.auth.legacy.handleRedirect(url)
 
     _ = try self.authenticated(result)
     XCTAssertEqual(try self.lastPayload()["token"] as? String, "grant-token")
@@ -1372,7 +1369,7 @@ final class PortalAuthTests: XCTestCase {
   func test_handleRedirectURL_willReturnNil_whenOtherTarget() async throws {
     let url = try AuthTestFixtures.url("otherapp://auth/callback?token=g&authMethod=EMAIL_MAGIC_LINK")
 
-    let result = try await self.auth.handleRedirect(url)
+    let result = try await self.auth.legacy.handleRedirect(url)
 
     XCTAssertNil(result)
     XCTAssertEqual(self.requests.callCount, 0)
@@ -1382,7 +1379,7 @@ final class PortalAuthTests: XCTestCase {
     let url = try AuthTestFixtures.url(AuthTestFixtures.redirectUrl + "?error=oauth_failed")
 
     await XCTAssertThrowsAsync(
-      try await self.auth.handleRedirect(url),
+      try await self.auth.legacy.handleRedirect(url),
       expected: PortalAuthError.authenticationFailed(error: "oauth_failed")
     )
   }
@@ -1390,7 +1387,7 @@ final class PortalAuthTests: XCTestCase {
   func test_handleRedirectURL_willReturnNil_whenNoQuery() async throws {
     let url = try AuthTestFixtures.url(AuthTestFixtures.redirectUrl)
 
-    let result = try await self.auth.handleRedirect(url)
+    let result = try await self.auth.legacy.handleRedirect(url)
 
     XCTAssertNil(result)
     XCTAssertEqual(self.requests.callCount, 0)
@@ -1400,7 +1397,7 @@ final class PortalAuthTests: XCTestCase {
     self.requests.enqueue(AuthTestFixtures.grantResponse())
     let url = try AuthTestFixtures.url(AuthTestFixtures.redirectUrl + "?token=grant%2Btoken&authMethod=EMAIL_MAGIC_LINK")
 
-    _ = try await self.auth.handleRedirect(url)
+    _ = try await self.auth.legacy.handleRedirect(url)
 
     XCTAssertEqual(try self.lastPayload()["token"] as? String, "grant+token")
   }
@@ -1410,7 +1407,7 @@ final class PortalAuthTests: XCTestCase {
       AuthTestFixtures.redirectUrl + "?authMethod=EMAIL_MAGIC_LINK&token=" + String(repeating: "a", count: 9000)
     )
 
-    let result = try await self.auth.handleRedirect(url)
+    let result = try await self.auth.legacy.handleRedirect(url)
 
     XCTAssertNil(result)
     XCTAssertEqual(self.requests.callCount, 0)
@@ -1669,13 +1666,13 @@ final class PortalAuthTests: XCTestCase {
     let failure = PortalAuthError.sessionStorageFailure(message: "keystore write failed")
     self.requests.enqueue(AuthTestFixtures.grantResponse(clientSessionToken: nil, userJwt: userJwt, totpLink: nil))
     self.requests.enqueue(AuthTestFixtures.totpResponse(clientSessionToken: "totp-session-token"))
-    _ = try self.totpRequired(await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
+    _ = try self.totpRequired(await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
     self.storage.onSet = { [storage = self.storage] _ in
       if storage.setCalls == 1 { throw failure }
     }
 
     await XCTAssertThrowsAsync(try await self.auth.verifyTotp("777870", userJwt: userJwt), expected: failure)
-    let replayed = try await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect())
+    let replayed = try await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect())
     guard case let .authenticated(fromReplay)? = replayed else {
       return XCTFail("The re-delivered redirect should replay as the authenticated session, got \(String(describing: replayed))")
     }
@@ -1736,7 +1733,7 @@ final class PortalAuthTests: XCTestCase {
 
   func test_restoreSession_willRestoreSessionJustPersisted() async throws {
     self.requests.enqueue(AuthTestFixtures.grantResponse())
-    _ = try await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect())
+    _ = try await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect())
 
     let restored = try await self.auth.restoreSession()
     let session = try XCTUnwrap(restored)

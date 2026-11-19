@@ -538,7 +538,7 @@ public final class PortalAuth: @unchecked Sendable {
 
   /// Completes any Client Auth redirect in one step.
   ///
-  /// - Warning: This function is deprecated and is removed in the next major version. Use
+  /// - Warning: This function is deprecated and will be removed in the next major version. Use
   ///   `parseRedirect(_:)`, then `completeOAuthLogin(_:)` for a Google or Apple sign-in, or
   ///   `getMagicLinkDetails(_:)` and, once the user confirms the email, `confirmMagicLink(_:)` for
   ///   a magic link. It completes a magic link without that confirmation, so the user never sees
@@ -590,7 +590,7 @@ public final class PortalAuth: @unchecked Sendable {
   /// `onOpenURL` hand out). Forwards `absoluteString`, which keeps the percent-encoding intact
   /// so the grant is decoded exactly once.
   ///
-  /// - Warning: This function is deprecated and is removed in the next major version. Use
+  /// - Warning: This function is deprecated and will be removed in the next major version. Use
   ///   `parseRedirect(_:)` and the method for the sign-in it reads; see
   ///   `handleRedirect(_ url: String)`.
   @available(*, deprecated, message: "Use parseRedirect(_:), then completeOAuthLogin(_:) for a Google or Apple login, or getMagicLinkDetails(_:) and, once the user confirms the email, confirmMagicLink(_:) for a magic link. handleRedirect(_:) is removed in the next major version.")
@@ -791,10 +791,11 @@ public final class PortalAuth: @unchecked Sendable {
 
   /// Logged by the deprecated `handleRedirect(_:)` each time it is given a magic link.
   ///
-  /// The same text as the Android, React Native and Web SDKs, word for word, so one migration note
-  /// covers every platform. That is why it names the calls the way the other SDKs spell them
-  /// (`parseRedirect(url)`, `completeOAuthLogin(redirect)`) rather than with Swift argument labels.
-  static let magicLinkRedirectDeprecation =
+  /// Word for word the Android SDK's text — React Native and Web differ only in naming the last
+  /// call `completeOAuthLogin(token)` — so one migration note covers every platform. That is why it
+  /// spells the calls the way the other SDKs do (`parseRedirect(url)`, `completeOAuthLogin(redirect)`)
+  /// rather than with Swift argument labels.
+  private static let magicLinkRedirectDeprecation =
     "[PortalAuth] handleRedirect() is deprecated and will be removed in the next major version. Read the redirect with parseRedirect(url), then complete a magic link with getMagicLinkDetails(token) and, once the user confirms the email, confirmMagicLink(token), or a Google or Apple login with completeOAuthLogin(redirect)."
 
   /// The one body that takes `grantMutex` for a grant: `confirmMagicLink`, `completeOAuthLogin`,

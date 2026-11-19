@@ -715,7 +715,6 @@ extension PortalAuthSignInTests {
     XCTAssertEqual(try authenticated.session.getToken(), SignInFixtures.clientSessionToken)
   }
 
-  @available(*, deprecated, message: "Exercises the deprecated handleRedirect(_:) on purpose.")
   func test_signInWithGoogle_willThrowSessionStorageFailure_whenPersistFails() async throws {
     let subject = self.subject
     let failure = PortalAuthError.sessionStorageFailure(message: "The session could not be persisted.")
@@ -731,7 +730,7 @@ extension PortalAuthSignInTests {
     // the write: a re-delivered callback retries the Keychain write — still failing here — and
     // never re-sends a token the backend has already spent.
     await XCTAssertThrowsAsync(
-      try await self.awaitBounded("The replayed redirect") { try await subject.handleRedirect(SignInFixtures.googleCallback) },
+      try await self.awaitBounded("The replayed redirect") { try await subject.legacy.handleRedirect(SignInFixtures.googleCallback) },
       expected: failure
     )
     XCTAssertEqual(self.tokenExchangeRequests.count, 1, "A spent grant is never exchanged twice")
@@ -739,7 +738,7 @@ extension PortalAuthSignInTests {
     // Once the Keychain recovers, the same redirect completes the login the first attempt
     // could not, again without going back to the backend.
     self.storage.onSet = nil
-    let result = try await self.awaitBounded("The recovered redirect") { try await subject.handleRedirect(SignInFixtures.googleCallback) }
+    let result = try await self.awaitBounded("The recovered redirect") { try await subject.legacy.handleRedirect(SignInFixtures.googleCallback) }
     let authenticated = try self.authenticated(XCTUnwrap(result, "The recovered redirect must still be recognised as ours"))
     XCTAssertEqual(try authenticated.session.getToken(), SignInFixtures.clientSessionToken)
     XCTAssertEqual(self.tokenExchangeRequests.count, 1)
@@ -783,7 +782,6 @@ extension PortalAuthSignInTests {
     )
   }
 
-  @available(*, deprecated, message: "Exercises the deprecated handleRedirect(_:) on purpose.")
   func test_signInWithGoogle_willNotExchangeTwice_whenCallbackRedelivered() async throws {
     let subject = self.subject
 
@@ -791,7 +789,7 @@ extension PortalAuthSignInTests {
     let first = try self.authenticated(result)
 
     let replayed = try await self.awaitBounded("The replayed redirect") {
-      try await subject.handleRedirect(SignInFixtures.googleCallback)
+      try await subject.legacy.handleRedirect(SignInFixtures.googleCallback)
     }
 
     let second = try self.authenticated(XCTUnwrap(replayed))
@@ -855,6 +853,10 @@ extension PortalAuthSignInTests {
       "The magic link was exchanged without the confirmation step"
     )
     XCTAssertEqual(self.storage.setCalls, 0)
+    XCTAssertTrue(
+      self.logger.messages(at: .warn).filter { $0.contains("handleRedirect() is deprecated") }.isEmpty,
+      "The sheet never routes a callback through the deprecated one-step path"
+    )
   }
 
   func test_signInWithGoogle_willThrowCallbackIncomplete_andSendNothing_whenCallbackCarriesBothMarkers() async throws {
@@ -955,7 +957,6 @@ extension PortalAuthSignInTests {
 // MARK: - Exchange and browser failures
 
 extension PortalAuthSignInTests {
-  @available(*, deprecated, message: "Exercises the deprecated handleRedirect(_:) on purpose.")
   func test_signInWithGoogle_willPropagateUnauthorized_whenGrantRejected() async throws {
     let subject = self.subject
     self.requests.fail(with: PortalRequestsError.unauthorized, onPath: PortalAuthApi.oauthTokensPath)
@@ -971,7 +972,7 @@ extension PortalAuthSignInTests {
     // in-flight guard was released by the throw.
     self.requests.fail(with: nil, onPath: PortalAuthApi.oauthTokensPath)
     let replayed = try await self.awaitBounded("The retried redirect") {
-      try await subject.handleRedirect(SignInFixtures.googleCallback)
+      try await subject.legacy.handleRedirect(SignInFixtures.googleCallback)
     }
     _ = try self.authenticated(XCTUnwrap(replayed))
     XCTAssertEqual(self.tokenExchangeRequests.count, 2)
