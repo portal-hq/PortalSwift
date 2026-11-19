@@ -56,7 +56,11 @@ import Foundation
 ///     confirmedLink = link
 ///     try complete(await auth.confirmMagicLink(link.token))
 ///   }
-/// case let .oauth(redirect)?: try complete(await auth.completeOAuthLogin(redirect))
+/// case let .oauth(redirect)? where startedLoginWithGoogleOrApple:
+///   // Only a sign-in this app opened with loginWithGoogle() / loginWithApple(): any web page or
+///   // message can open your redirect URL with a grant someone else obtained.
+///   try complete(await auth.completeOAuthLogin(redirect))
+/// case .oauth?: break // not started here — ignore it
 /// case .failed?: showSignInFailed()
 /// case nil: break // not ours — let another handler try
 /// }
@@ -306,15 +310,16 @@ public final class PortalAuth: @unchecked Sendable {
   /// with no useful message. For a flow that also owns the browser, see `signInWithGoogle()`.
   ///
   /// **Redirect hijacking.** The callback this URL ends in comes back through the OS URL
-  /// handler, which delivers it to whichever installed app registered your URL scheme — and
-  /// `completeOAuthLogin(_:)` cannot tell a grant from *your* flow from one another app started,
-  /// because the redirect carries no app-side `state` (the backend's `state` binds the provider
-  /// to Portal, not the app to Portal). An app that claims the same scheme can therefore hand
-  /// your user a grant *it* obtained and sign them into *its* end-user account. Prefer
-  /// `signInWithGoogle()`: its `ASWebAuthenticationSession` returns the callback to the SDK
-  /// directly and never routes it through the OS. If you must open the URL yourself, treat this
-  /// as a known exposure shared by every Portal SDK; binding an app-side state is tracked as a
-  /// cross-platform backend change.
+  /// handler, and `completeOAuthLogin(_:)` cannot tell a grant from *your* flow from one someone
+  /// else started, because the redirect carries no app-side binding (the backend's `state` binds
+  /// the provider to Portal, not the app to Portal). Anyone can therefore get a redirect carrying
+  /// a grant *they* obtained in front of your user — from a web page, a message, or an app that
+  /// registered the same scheme — and, if your app completes it, sign the user into *their*
+  /// end-user account. Prefer `signInWithGoogle()`: its `ASWebAuthenticationSession` returns the
+  /// callback to the SDK directly and never routes it through the OS. If you open the URL
+  /// yourself, complete an `.oauth` redirect only while a sign-in your app started this way is in
+  /// progress, and ignore one that arrives otherwise; an app that uses only `signInWith*` ignores
+  /// every `.oauth` redirect the OS delivers.
   ///
   /// - Throws: `PortalAuthError.authMethodUnavailable(.google)` when Google is not enabled for
   ///   this environment. Not retryable — check `getMethods()`.
@@ -350,7 +355,8 @@ public final class PortalAuth: @unchecked Sendable {
   /// Returns `nil`, so the app's router can try other handlers, when the URL:
   /// - is empty or longer than 8192 UTF-16 code units (checked before it is parsed),
   /// - does not target this instance's `redirectUrl` (scheme and host compared
-  ///   case-insensitively, the path exactly),
+  ///   case-insensitively, the path case-sensitively, ignoring trailing slashes and surrounding
+  ///   whitespace),
   /// - carries both `authMethod` and `login_type`, so the sign-in it completes cannot be told
   ///   apart (Portal never sends both),
   /// - carries no `token`, or an empty or whitespace-only one, or
@@ -517,8 +523,9 @@ public final class PortalAuth: @unchecked Sendable {
   /// before it is returned; `.totpRequired` leads to `verifyTotp(_:userJwt:)`.
   /// `signInWithGoogle()` / `signInWithApple()` do all of this for you.
   ///
-  /// It trusts any grant that arrives on your redirect URL; see the redirect-hijacking note on
-  /// `loginWithGoogle()`.
+  /// It trusts any grant it is given, so call it only while a sign-in your app started with
+  /// `loginWithGoogle()` / `loginWithApple()` is in progress, and ignore an `.oauth` redirect that
+  /// arrives otherwise; see the redirect-hijacking note on `loginWithGoogle()`.
   ///
   /// - Throws: a refused grant (expired, already used, or issued for another environment) as
   ///   `PortalRequestsError.unauthorized`, unmapped, as `signInWith*` reports it;

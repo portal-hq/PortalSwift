@@ -208,7 +208,9 @@ extension TotpRequiredResult: CustomStringConvertible, CustomDebugStringConverti
 ///   to the account it was sent for, so the confirmation is what lets the user notice a link
 ///   someone else sent them.
 /// - `.oauth`: complete a `loginWithGoogle()` / `loginWithApple()` redirect with
-///   `completeOAuthLogin(_:)`.
+///   `completeOAuthLogin(_:)` — only while a sign-in your app started that way is in progress.
+///   Any web page or message can open your redirect URL with a grant someone else obtained (see
+///   the redirect-hijacking note on `loginWithGoogle()`).
 /// - `.failed`: the sign-in ended without a grant, for example `oauth_failed`. Nothing was sent
 ///   to Portal; offer to start again.
 ///
@@ -363,10 +365,10 @@ public enum PortalAuthError: LocalizedError, Equatable {
   /// Portal refused a magic link: it has expired, was already used, or is otherwise unusable.
   /// Thrown by `getMagicLinkDetails(_:)` and `confirmMagicLink(_:)` for the backend's `401`, and
   /// without a request for a token that cannot be a Portal grant or for a confirmed link whose
-  /// session has since ended. Not
-  /// retryable: ask the user to request a new link. `completeOAuthLogin(_:)`, `signInWith*` and
-  /// the deprecated `handleRedirect(_:)` keep reporting a refused grant as
-  /// `PortalRequestsError.unauthorized`.
+  /// session has since ended. Not retryable: ask the user to request a new link — unless they
+  /// already confirmed this link and are signed in, when there is nothing to do (see
+  /// `getMagicLinkDetails(_:)`). `completeOAuthLogin(_:)`, `signInWith*` and the deprecated
+  /// `handleRedirect(_:)` keep reporting a refused grant as `PortalRequestsError.unauthorized`.
   case grantRejected
   /// A Client Auth response did not carry what its endpoint documents: the `{ "data": … }`
   /// envelope itself (`missing == nil`) or a named field inside it.
