@@ -12,73 +12,37 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
-## Unreleased
+## 8.2.0 - 2026-11-23
 
 ### Added
 
-- Yield.xyz Perps: trade perpetual futures on venues such as Hyperliquid with the Portal wallet, through the new `portal.perps.yieldxyz` namespace.
-    - Market data: `getProviders()`, `getProvider(providerId:)`, `getMarkets(params:)`, `getMarket(marketId:)` and `getMarketCandles(marketId:params:)`.
-    - Account data: `getPositions(params:)`, `getOrders(params:)` and `getBalances(params:)`. The account defaults to the wallet's EVM address.
-    - Actions: `createAction(params:)` builds an action (`open`, `close`, `setTpAndSl`, `fund`, `withdraw`, `approveAgent` and more) with its unsigned transactions; `getActions(params:)`, `getAction(actionId:)` and `submitTransaction(params:)` track and submit them.
-    - `executeAction(params:options:)` and `signAndSubmitAction(_:options:)` sign every transaction of an action in order (EIP-712 typed data and on-chain legs), submit it, and track the action to a final status, with progress reported through `onProgress`.
-    - On-chain legs are sent with an idempotency key derived from the transaction, so a resumed action does not broadcast the same leg again while Portal remembers the key (at least 24 hours). A leg broadcast by an earlier attempt can be resumed from its hash with `broadcastHashes`.
-    - History and health: `getActivity(params:)`, `getEvents(params:)`, `getEvent(eventId:)`, `getHealth()` and `getProvidersHealth()`.
-    - `YieldXyzPerpsApiError.from(_:)` reads the Portal error `id` and `details` of a failed request, for example `INTEGRATION_REQUIRES_EOA_CLIENT` or `INTEGRATION_RESPONSE_SCHEMA_DRIFT`.
-    - `Perps(yieldxyz:)` builds the namespace around your own `YieldXyzPerpsProtocol`, for example for a `PortalProtocol` test double.
-    - Perps requires a client without account abstraction, and runs on mainnet only.
-- Arbitrum One (`eip155:42161`) in the default `rpcConfig`, so it is also offered to dApps through Portal Connect. Perps signs its EIP-712 requests through it, and funds and withdraws on it. If you pass your own `rpcConfig`, add `eip155:42161` to use Perps.
-- Yield.xyz Borrow: supply, borrow, repay and withdraw on lending markets such as Morpho Blue and Aave with the Portal wallet, through the new `portal.borrow.yieldxyz` namespace.
-    - Discovery: `getHealth()`, `getIntegrations()`, `getIntegration(integrationId:)`, `getMarkets(params:)` (pass `scope: .all` to list every market) and `getMarket(marketId:)`.
-    - Positions: `getPositions(params:)` and `getLiquidations(params:)`, including health factors and the actions available on each balance.
-    - Actions: `createAction(params:)` builds a lending action (`supply`, `borrow`, `repay`, `withdraw`, `enableCollateral`, `disableCollateral`, `supplyAndBorrow`) with its unsigned transactions and the predicted health factor and LTV; `getActions(params:)`, `getAction(actionId:)`, `stepAction(actionId:)` and `submitTransaction(transactionId:params:)` track, advance and submit it.
-    - `executeAction(params:options:)` and `signAndSubmitAction(_:options:)` sign every transaction of an action in order on its own chain, submit it, wait for Yield.xyz to confirm it, and continue through multi-step actions until the action succeeds, with progress reported through `onProgress`.
-    - Transactions are sent with an idempotency key derived from the transaction, so a resumed action does not broadcast the same transaction again while Portal remembers the key (at least 24 hours). A transaction broadcast by an earlier attempt can be resumed from its hash with `broadcastHashes`, and a later step of a multi-step action from the `action` its `nextStep` progress event reports. To sign a transaction again after a failed send you have checked did not reach the chain, build a new action or set `useIdempotencyKeys` to `false`.
-    - `YieldXyzBorrowApiError.from(_:)` reads the Portal error `id` and `details` of a failed request, for example `INTEGRATION_RESPONSE_SCHEMA_DRIFT`.
-    - `Borrow(yieldxyz:)` builds the namespace around your own `YieldXyzBorrowProtocol`, for example for a `PortalProtocol` test double.
-    - Every chain a transaction is signed on needs an RPC endpoint in `rpcConfig`, unless you pass your own signer in `signAndSendTransaction`.
-- Agg prediction markets: browse and trade prediction markets across venues such as Polymarket, Kalshi and Limitless through one Agg account linked to the Portal wallet, with the new `portal.predictionMarkets.agg` namespace. The same route methods are also on `portal.api.agg`.
-    - One method per Agg route: link (`createLinkChallenge`, `createLink`, `getLink`, `deleteLink`), discovery (`listEvents`, `getEvent`, `getEventBootstrap`, `listMarkets`, `search`, `listCategories`, `getVenueGeoPolicy`, `getAppConfig`), market data (`getMidpoints`, `getOrderbooks`, `getOutcomeOrderbook`, `getChartBars`, `getChartHistoryManifest`), account (`getUser`, `getDepositAddresses`, `getBalances`, `listPositions`, `listOrders`, `listActivity`), trading (`createQuote`, `createOrder`, `getOrder`, `createLimitOrder`, `createDirectOrder`, `cancelOrder`, `redeemPositions`) and withdrawals (`quoteWithdrawable`, `previewWithdrawal`, `createWithdrawal`, `getWithdrawal`). Discovery and market data work before linking.
-    - `connect(chainId:)` links the wallet with one `personal_sign` of Agg's sign-in challenge, after checking that the challenge names the wallet's own address. `isConnected()` reads the link.
-    - `deposit(params:)` waits for the user's Agg deposit address and sends funds to it from the Portal wallet, with an idempotency key so a retry never sends twice. A token is matched by its address, or by a symbol only when that symbol names a single token: otherwise it fails with `AggError.ambiguousDepositToken`, listing the candidates to choose from by address. A send that may have gone out but could not be confirmed fails with `AggError.depositOutcomeUnknown`, which carries the idempotency key to retry with.
-    - `buy(params:)` and `sell(params:)` quote, fill and wait for the fill to finish, reporting each step through `onProgress`. A quote that is not `ok`, carries a venue warning or an Agg `error` is refused with `AggError.quoteNotTradable` before anything is sent. Only a `filled` or `partially_filled` fill succeeds. The fill is sent once: one that may have gone through but could not be read back fails with `AggError.orderOutcomeUnknown`, which carries the quote to look the fill up with `getOrder` instead of trading again.
-    - `placeLimitOrder(params:)` takes the price and size as decimals, `redeemAll(params:)` redeems every eligible position, and `withdraw(params:)` previews, withdraws with a `requestId` that makes it safe to retry, and waits for the withdrawal to finish.
-    - Paper mode (`mode: .paper`) simulates trades from any country.
-    - With `autoReconnect`, a helper refused with `AGG_LINK_REQUIRED` links again and retries once; helpers refused at the same time share one link, so the user signs once. If linking again fails, the helper stops with `AggError.reconnectFailed` instead of asking the user to sign again.
-    - Statuses, venues and token symbols are `AggOpenValue` types: a value Agg adds later still decodes.
-    - A failed Agg request throws `AggRequestError`, which wraps the transport's error with the request's trace id, rather than the transport's error itself as the other Portal APIs do. `AggApiError.from(_:)` reads the Portal error `id`, Agg's `details` and the trace id from it, for example `AGG_LINK_REQUIRED`.
-    - Agg executes orders from the user's Agg balance; self-custody fills are not available yet.
-- Meld: buy crypto with fiat through Meld's network of ramp providers, such as Transak, with the new `portal.ramps.meld` namespace. The same methods are also on `portal.api.meld`.
-    - Customers: `createCustomer(request:)` creates the client's Meld customer and `searchCustomer()` reads it.
-    - Retail flow: `getRetailQuote(request:)` compares the providers' prices, `createRetailWidget(request:)` returns the `widgetUrl` of Meld's hosted widget to show in `SFSafariViewController`, and `searchRetailTransactions(params:)`, `getRetailTransaction(transactionId:)` and `getRetailTransactionBySession(sessionId:)` follow the resulting purchases.
-    - Network Partners: `getNetworkPartners(params:)`, `getNetworkPartnerCountries(params:)`, `getNetworkPartnerCurrencies(params:)`, `getNetworkPartnerPaymentMethods(params:)`, `getNetworkPartnerFiatLimits(params:)`, `getNetworkPartnerKycLimits(params:)`, `getNetworkPartnerRoutes(params:)` and `getNetworkPartnerCountryDefaults(countryCode:category:)` describe what each provider supports, where and for how much.
-    - Statuses, categories, payment types and the other Meld enumerations are `MeldOpenValue` types: a value Meld adds later still decodes.
-    - `MeldApiError.from(_:)` reads the status and message of a failed request, and the existing customer's `meldCustomerId` when `createCustomer` finds one.
-    - `Ramps(noah:meld:)` builds the namespace around your own `NoahProtocol` and `MeldProtocol`, for example for a `PortalProtocol` test double.
-    - Some providers, such as Transak, need the user's public IP to open a widget session: pass it as `MeldSessionData.clientIpAddress`.
-    - Meld must be enabled for the environment in the Portal Dashboard.
-- Client Auth: confirm a magic link before signing in. Redirects are now read first and completed by sign-in method, so your app can show the user which email address a magic link signs in to and complete it only once they confirm it is theirs. The SDK provides the methods; the confirmation screen is your app's.
-    - `portalAuth.parseRedirect(_:)` (`String` or `URL`) reads a redirect into an `AuthRedirect`: `.magicLink` with the link's `token`, `.oauth` with its `provider`, or `.failed(error:)`. It returns `nil` for a URL that is not this instance's redirect, makes no network call, and never throws. An `AuthRedirect` never prints its token.
-    - `portalAuth.getMagicLinkDetails(_:)` returns a `MagicLinkDetails` with the `email` the link signs in to, without using up the link. Each link can be looked up only a few times, so call it once per confirmation screen. If it throws, don't confirm the link.
-    - `portalAuth.confirmMagicLink(_:)` completes the sign-in and returns an `AuthResult`. Call it once the user confirms the email, after `getMagicLinkDetails`, which reports an expired or already used link first. Calling it again with the same token returns the same result without using the link again, so send a link delivered again after the user confirmed it straight to `confirmMagicLink`.
-    - `portalAuth.completeOAuthLogin(_:)` completes a `loginWithGoogle()` / `loginWithApple()` redirect started on this device.
-    - `PortalAuthError.grantRejected` is thrown by `getMagicLinkDetails` and `confirmMagicLink` when the link has expired, was already used, or is otherwise unusable; ask the user for a new link. If you switch exhaustively over `PortalAuthError`, add a case for it.
-- Client Auth: Google and Apple sign-ins are bound to the device that started them, using a PKCE code verifier (RFC 7636). Upgrade before Portal starts requiring the code verifier: earlier SDK versions will then no longer complete Google or Apple sign-ins. Most apps need no code change; see the two **Breaking** items under Changed.
-    - `loginWithGoogle()`, `loginWithApple()`, `signInWithGoogle()` and `signInWithApple()` create a one-time secret for each sign-in and keep it in the Keychain. Portal receives only its hash when the sign-in starts, and the secret itself when the sign-in completes.
-    - A sign-in completes only in the app and on the device that started it, within 15 minutes. One started with `loginWithGoogle()` / `loginWithApple()` still completes if the app is closed while the browser is open.
-    - Each auth environment has one Google or Apple sign-in in progress, and starting another replaces it. Request the authorize URL when the user taps, not ahead of time: fetching both providers' URLs up front leaves only the second one usable, and the first one's redirect is refused with `PortalRequestsError.unauthorized`.
+- Yield.xyz Perps: trade perpetual futures on venues such as Hyperliquid through the new `portal.perps.yieldxyz` namespace.
+    - Market and account data, such as `getMarkets(params:)` and `getPositions(params:)`.
+    - `executeAction(params:options:)` creates, signs, and submits an action, such as opening or closing a position, in one call.
+- Arbitrum One (`eip155:42161`) in the default `rpcConfig`.
+- Yield.xyz Borrow: supply, borrow, repay, and withdraw on lending markets such as Morpho Blue and Aave through the new `portal.borrow.yieldxyz` namespace.
+    - Market and position data, such as `getMarkets(params:)` and `getPositions(params:)`.
+    - `executeAction(params:options:)` creates, signs, and submits a lending action in one call.
+- Agg prediction markets: browse and trade prediction markets on venues such as Polymarket, Kalshi, and Limitless through the new `portal.predictionMarkets.agg` namespace.
+    - `connect(chainId:)` links the Portal wallet to an Agg account.
+    - `deposit(params:)`, `buy(params:)`, `sell(params:)`, `placeLimitOrder(params:)`, `redeemAll(params:)`, and `withdraw(params:)` cover the common flows.
+    - Paper mode (`mode: .paper`) for simulated trading.
+- Meld: buy crypto with fiat through Meld's ramp providers, such as Transak, with the new `portal.ramps.meld` namespace.
+    - `getRetailQuote(request:)` compares provider quotes, and `createRetailWidget(request:)` returns Meld's hosted purchase widget.
+- Client Auth: let the user confirm a magic link's email address before signing in.
+    - `portalAuth.parseRedirect(_:)` reads an incoming redirect.
+    - `portalAuth.getMagicLinkDetails(_:)` returns the email the link signs in to, and `portalAuth.confirmMagicLink(_:)` completes the sign-in.
+    - `portalAuth.completeOAuthLogin(_:)` completes a Google or Apple sign-in redirect.
 
 ### Changed
 
-- **Breaking:** `handleRedirect(_:)`, `signInWithGoogle()` and `signInWithApple()`, like the new `completeOAuthLogin(_:)`, throw the new `PortalAuthError.oauthFlowNotStarted` when a Google or Apple redirect arrives with no sign-in in progress on this device (it was never started here, already completed and is no longer remembered (an earlier launch, another `PortalAuth` instance, or after `clearPersistedSession()`), started more than 15 minutes ago, or was cancelled by `clearPersistedSession()`), and when a sign-in sheet is replaced by a newer sign-in. Start a new sign-in. If you switch exhaustively over `PortalAuthError`, add a case for it.
-- **Breaking:** `clearPersistedSession()` also cancels a Google or Apple sign-in in progress, including one `completeOAuthLogin(_:)` or `handleRedirect(_:)` on the same `PortalAuth` is already completing, which then throws `oauthFlowNotStarted` instead of returning a session. Await it before calling `loginWithGoogle()`, `loginWithApple()`, `signInWithGoogle()` or `signInWithApple()`, not after them, and do not call it in your redirect handler before `completeOAuthLogin(_:)`. In an `onSessionInvalidated` listener, call it before you route to sign-in. A sign-in already at its two-factor step is not cancelled.
-- `PortalAuthError.sessionStorageFailure` is also thrown when the Keychain fails for a Google or Apple sign-in in progress: by `loginWithGoogle()`, `loginWithApple()`, `signInWithGoogle()` and `signInWithApple()` when the sign-in cannot be created or stored (no sign-in is started); by `completeOAuthLogin(_:)` and `handleRedirect(_:)` when it cannot be read (nothing is sent, and the same redirect can be passed again); and by `clearPersistedSession()` when it cannot be deleted.
-- `PortalProtocol` gains `perps`, `borrow` and `predictionMarkets`, and `PortalApiProtocol` gains `yieldxyzPerps`, `yieldxyzBorrow`, `agg` and `meld`. If you conform to either protocol yourself, for example in a test double, add the new members; `PredictionMarkets(agg:)` builds one around your own `AggProtocol`.
-- `portalAuth.handleRedirect(_:)` returns `nil` for a URL that carries both `authMethod` and `login_type`, or a whitespace-only `token`. Portal never sends such a URL.
-- `portalAuth.signInWithGoogle()` and `portalAuth.signInWithApple()` complete only a result for the provider their sign-in sheet was opened for. A callback for the other provider, or a magic-link callback, neither of which Portal sends there, now throws `PortalAuthSignInError.callbackIncomplete` without being exchanged.
+- **Breaking:** Completing a Google or Apple sign-in throws the new `PortalAuthError.oauthFlowNotStarted` when the sign-in was not started in this app within the last 15 minutes.
+- **Breaking:** `clearPersistedSession()` also cancels a Google or Apple sign-in in progress.
+- `PortalAuthError` gains `grantRejected` and `oauthFlowNotStarted`, and `PortalProtocol` and `PortalApiProtocol` gain the new namespaces. If you switch exhaustively over `PortalAuthError`, or conform to either protocol yourself, add them.
 
 ### Deprecated
 
-- `portalAuth.handleRedirect(_:)`, which will be removed in the next major version. It keeps working, but it completes a magic link in one step, without the confirmation, and logs a deprecation warning (at `.warn`) each time it does. The SDK log is off by default, so the compile-time deprecation is usually the notice you see. Read redirects with `parseRedirect(_:)` instead, then complete a magic link with `getMagicLinkDetails(_:)` and, once the user confirms the email, `confirmMagicLink(_:)`, and a Google or Apple sign-in with `completeOAuthLogin(_:)`.
+- `portalAuth.handleRedirect(_:)`, to be removed in the next major version. Use `parseRedirect(_:)`, then `confirmMagicLink(_:)` or `completeOAuthLogin(_:)`.
 
 ## 8.1.0 - 2026-10-08
 
