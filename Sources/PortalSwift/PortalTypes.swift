@@ -55,13 +55,9 @@ public struct FeatureFlags {
 
 public struct BackupConfigs {
   public var passwordStorage: PasswordStorageConfig?
-  /// Per-backup options for `BackupMethods.PasskeyPrf`, such as the labels of the passkey the
-  /// backup creates.
-  public var passkeyPrfStorage: PasskeyPrfStorageConfig?
 
-  public init(passwordStorage: PasswordStorageConfig? = nil, passkeyPrfStorage: PasskeyPrfStorageConfig? = nil) {
+  public init(passwordStorage: PasswordStorageConfig? = nil) {
     self.passwordStorage = passwordStorage
-    self.passkeyPrfStorage = passkeyPrfStorage
   }
 }
 

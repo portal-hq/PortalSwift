@@ -62,7 +62,7 @@ final class PortalMpcPasskeyPrfTests: XCTestCase {
     XCTAssertEqual(client.getRequests.count, 1)
   }
 
-  func test_backup_passesThePasskeyLabelsGivenWithTheBackup_toTheStorage() async throws {
+  func test_setPasskeyPrfUser_labelsThePasskeyTheNextBackupCreates() async throws {
     client.createResults = [.success(PasskeyPrfCreateResult(
       credentialId: PasskeyPrfFixtures.createdCredentialId,
       transports: nil,
@@ -72,37 +72,23 @@ final class PortalMpcPasskeyPrfTests: XCTestCase {
     let mpc = makeMpc()
     let user = PasskeyPrfUser(name: "jane@example.com", displayName: "Jane, Acme wallet backup")
 
-    _ = try await mpc.backup(.PasskeyPrf, backupConfigs: BackupConfigs(passkeyPrfStorage: PasskeyPrfStorageConfig(user: user)))
+    try mpc.setPasskeyPrfUser(user)
+    _ = try await mpc.backup(.PasskeyPrf)
 
+    XCTAssertEqual(storage.user, user)
     XCTAssertEqual(client.createRequests.count, 1)
     XCTAssertEqual(client.createRequests.first?.userName, user.name)
     XCTAssertEqual(client.createRequests.first?.userDisplayName, user.displayName)
-    XCTAssertEqual(encryption.encryptWithPasswordParams.first?.password, PasskeyPrfEncoding.hex(PasskeyPrfFixtures.createdOutput))
   }
 
-  @available(*, deprecated)
-  func test_deprecatedBackup_passesThePasskeyLabelsGivenWithTheBackup_toTheStorage() async throws {
-    client.createResults = [.success(PasskeyPrfCreateResult(
-      credentialId: PasskeyPrfFixtures.createdCredentialId,
-      transports: nil,
-      prfEnabled: true,
-      prfOutput: PasskeyPrfFixtures.createdOutput
-    ))]
-    let mpc = makeMpc()
-    let user = PasskeyPrfUser(name: "jane@example.com", displayName: "Jane")
-    let done = expectation(description: "backup completes")
+  func test_setPasskeyPrfUser_throws_whenNoPasskeyPrfStorageIsRegistered() throws {
+    let mpc = PortalMpc(credentials: MockConstants.mockCredentials, api: api, keychain: keychain, mobile: MockMobileWrapper())
 
-    mpc.backup(
-      method: BackupMethods.PasskeyPrf.rawValue,
-      backupConfigs: BackupConfigs(passkeyPrfStorage: PasskeyPrfStorageConfig(user: user)),
-      completion: { result in
-        XCTAssertNil(result.error)
-        done.fulfill()
+    XCTAssertThrowsError(try mpc.setPasskeyPrfUser(PasskeyPrfUser(name: "jane", displayName: "Jane"))) { error in
+      guard case MpcError.backupMethodNotRegistered = error else {
+        return XCTFail("Expected backupMethodNotRegistered, got \(error)")
       }
-    )
-    await fulfillment(of: [done], timeout: 5)
-
-    XCTAssertEqual(client.createRequests.first?.userName, user.name)
+    }
   }
 
   func test_backup_storesThePasswordCipherText_whenBackupWithPortalIsEnabled() async throws {

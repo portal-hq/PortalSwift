@@ -13,8 +13,6 @@ class PortalMpcSpy: PortalMpcProtocol {
   var backupCallsCount: Int = 0
   var backupMethodParam: PortalSwift.BackupMethods?
   var backupUsingProgressCallbackParam: ((PortalSwift.MpcStatus) -> Void)?
-  var backupWithConfigsCallsCount: Int = 0
-  var backupBackupConfigsParam: PortalSwift.BackupConfigs?
 
   // Eject method tracking
   var ejectCallsCount: Int = 0
@@ -109,12 +107,6 @@ class PortalMpcSpy: PortalMpcProtocol {
     )
   }
 
-  func backup(_ method: PortalSwift.BackupMethods, backupConfigs: PortalSwift.BackupConfigs?, usingProgressCallback: ((PortalSwift.MpcStatus) -> Void)?) async throws -> PortalSwift.PortalMpcBackupResponse {
-    backupWithConfigsCallsCount += 1
-    backupBackupConfigsParam = backupConfigs
-    return try await backup(method, usingProgressCallback: usingProgressCallback)
-  }
-
   func eject(_ method: PortalSwift.BackupMethods, withCipherText: String?, andOrganizationBackupShare: String?, andOrganizationSolanaBackupShare: String?) async throws -> [PortalSwift.PortalNamespace: String] {
     ejectCallsCount += 1
     ejectMethodParam = method
@@ -193,6 +185,13 @@ class PortalMpcSpy: PortalMpcProtocol {
   func setPassword(_ value: String) throws {
     setPasswordCallsCount += 1
     setPasswordParam = value
+  }
+
+  var setPasskeyPrfUserCallsCount = 0
+  var setPasskeyPrfUserParam: PortalSwift.PasskeyPrfUser?
+  func setPasskeyPrfUser(_ user: PortalSwift.PasskeyPrfUser?) throws {
+    setPasskeyPrfUserCallsCount += 1
+    setPasskeyPrfUserParam = user
   }
 
   func backup(method: PortalSwift.BackupMethods.RawValue, backupConfigs: PortalSwift.BackupConfigs?, completion _: @escaping (PortalSwift.Result<String>) -> Void, progress: ((PortalSwift.MpcStatus) -> Void)?) {

@@ -848,6 +848,18 @@ public final class Portal: PortalProtocol {
     try self.mpc.setPassword(value)
   }
 
+  /// Sets the user the Passkey PRF passkey is created for, for example the end user's account
+  /// name, so they can tell the passkey apart in their passkey provider.
+  ///
+  /// Defaults to `"<custodian name> Backup (PRF)"`. Only used when a `.PasskeyPrf` backup creates
+  /// the passkey: a client that already has one reuses it, and its labels cannot be changed.
+  /// Pass `nil` to go back to the default.
+  ///
+  /// - Throws: `MpcError.backupMethodNotRegistered` if no `PasskeyPrfStorage` is registered.
+  public func setPasskeyPrfUser(_ user: PasskeyPrfUser?) throws {
+    try self.mpc.setPasskeyPrfUser(user)
+  }
+
   // Wallet management helpers
 
   /// Creates a backup of the wallet using the specified backup method.
@@ -861,8 +873,6 @@ public final class Portal: PortalProtocol {
   ///     - `.iCloud`: Back up to iCloud
   ///     - `.Password`: Back up with password protection
   ///     - `.Passkey`: Back up with passkey authentication
-  ///     - `.PasskeyPrf`: Back up with a secret derived from a passkey (iOS 18+). To name the
-  ///       passkey for this backup, use `backupWallet(_:backupConfigs:usingProgressCallback:)`.
   ///     - `.local`: Back up to local storage
   ///   - usingProgressCallback: Optional callback to track the backup progress.
   ///     The callback receives an `MpcStatus` object containing:
@@ -888,28 +898,8 @@ public final class Portal: PortalProtocol {
     _ method: BackupMethods,
     usingProgressCallback: ((MpcStatus) -> Void)? = nil
   ) async throws -> (cipherText: String, storageCallback: () async throws -> Void) {
-    try await self.backupWallet(method, backupConfigs: nil, usingProgressCallback: usingProgressCallback)
-  }
-
-  /// Backs up the wallet like `backupWallet(_:usingProgressCallback:)`, with per-backup options.
-  ///
-  /// - Parameters:
-  ///   - method: The backup method to use.
-  ///   - backupConfigs: Per-backup options. For `.PasskeyPrf`, `passkeyPrfStorage.user` names
-  ///     the passkey this backup creates, over the `user` the `PasskeyPrfStorage` was built with
-  ///     and the default `"<custodian name> Backup (PRF)"`. It is only used when the backup
-  ///     creates the passkey: a client that already has one reuses it, and a passkey's name
-  ///     cannot be changed afterwards.
-  ///   - usingProgressCallback: Optional callback to track the backup progress.
-  ///
-  /// - Returns: The cipher text and the storage callback, as `backupWallet(_:usingProgressCallback:)` does.
-  public func backupWallet(
-    _ method: BackupMethods,
-    backupConfigs: BackupConfigs?,
-    usingProgressCallback: ((MpcStatus) -> Void)? = nil
-  ) async throws -> (cipherText: String, storageCallback: () async throws -> Void) {
     // Run backup
-    let response = try await mpc.backup(method, backupConfigs: backupConfigs, usingProgressCallback: usingProgressCallback)
+    let response = try await mpc.backup(method, usingProgressCallback: usingProgressCallback)
 
     // Build the storage callback — reuse the backup operation's trace ID for correlation.
     let storageCallback: () async throws -> Void = {
