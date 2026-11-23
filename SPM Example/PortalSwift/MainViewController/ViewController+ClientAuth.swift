@@ -264,7 +264,7 @@ extension ViewController: ClientAuthReporter {
                 throw PortalExampleAppError.portalNotInitialized()
               }
 
-              return try await self.registerClientAuthClient(request)
+              return try await self.registerClientAuthClient(request, credentials: session)
             },
             isBuiltWithBackupWithPortal: Settings.shared.isBuiltWithBackupWithPortal,
             onAuthenticated: { [weak self] adopted in
@@ -445,7 +445,16 @@ extension ViewController: ClientAuthReporter {
   /// Without it a session that authenticated through Portal has no `exchangeUserId`, and every
   /// backup, recover and funding button on this screen has nowhere to read or write. Idempotent per
   /// `clientId`, so a resumed session can re-register safely.
-  func registerClientAuthClient(_ request: ClientRegistrationRequest) async throws -> ClientRegistrationResult {
+  ///
+  /// PortalEx only registers a `clientId` for a caller that proves it owns that client: it resolves
+  /// the `Authorization: Bearer` credential through `GET /api/v3/clients/me` and answers
+  /// `403 Credential does not match clientId` when the ids differ or the header is missing. The
+  /// session's own token is that proof. It is read here, at the HTTP call, and never logged, so
+  /// adoption itself stays token-free.
+  func registerClientAuthClient(
+    _ request: ClientRegistrationRequest,
+    credentials: PortalCredentials
+  ) async throws -> ClientRegistrationResult {
     guard let config else {
       throw PortalExampleAppError.configurationNotSet()
     }
@@ -456,6 +465,8 @@ extension ViewController: ClientAuthReporter {
     self.logger.info("ViewController.registerClientAuthClient() - Registering clientId: \(request.clientId)")
 
     let apiRequest = PortalAPIRequest.custodian(url: url, method: .post, payload: request)
+    let token = try credentials.getToken()
+    apiRequest.headers["Authorization"] = "Bearer \(token)"
     let response = try await self.requests.execute(request: apiRequest, mappingInResponse: ClientRegistrationResponse.self)
 
     return ClientRegistrationResult(exchangeUserId: response.exchangeUserId)
