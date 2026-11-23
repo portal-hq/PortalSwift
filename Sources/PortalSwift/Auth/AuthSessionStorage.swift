@@ -121,10 +121,10 @@ enum PersistedSessionCodec {
 
 // MARK: - AuthKeychainItemStore
 
-/// The four `SecItem*` calls `KeychainAuthSessionStorage` makes, behind a protocol so the
-/// storage logic (status taxonomy, self-heal, add-then-update, compare-and-delete, locking)
-/// can be unit-tested against an in-memory store that scripts any `OSStatus`, without the
-/// simulator Keychain and without an entitlement.
+/// The four `SecItem*` calls `KeychainAuthSessionStorage` and `KeychainOAuthVerifierStorage`
+/// make, behind a protocol so the storage logic (status taxonomy, self-heal, add-then-update,
+/// compare-and-delete, locking) can be unit-tested against an in-memory store that scripts any
+/// `OSStatus`, without the simulator Keychain and without an entitlement.
 ///
 /// Implementations are pass-throughs: they must not interpret the status or mutate the
 /// dictionaries, because the tests assert on the exact queries the storage builds.

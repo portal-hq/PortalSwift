@@ -135,6 +135,8 @@ private final class CallCounter: @unchecked Sendable {
 final class PortalAuthReplayTests: XCTestCase {
   private var requests = RecordingPortalRequests()
   private var storage = MockAuthSessionStorage()
+  /// Empty by default; an OAuth case seeds the sign-in in progress `loginWith*` would have stored.
+  private var verifierStorage = MockOAuthVerifierStorage()
   private var logger = RecordingLogger()
   private var auth = AuthTestFixtures.makeAuth(requests: RecordingPortalRequests())
 
@@ -144,7 +146,13 @@ final class PortalAuthReplayTests: XCTestCase {
     self.requests = RecordingPortalRequests()
     self.storage = MockAuthSessionStorage()
     self.logger = RecordingLogger()
-    self.auth = AuthTestFixtures.makeAuth(requests: self.requests, storage: self.storage, logger: self.logger)
+    self.verifierStorage = MockOAuthVerifierStorage()
+    self.auth = AuthTestFixtures.makeAuth(
+      requests: self.requests,
+      storage: self.storage,
+      verifierStorage: self.verifierStorage,
+      logger: self.logger
+    )
   }
 
   override func tearDownWithError() throws {
@@ -159,8 +167,8 @@ final class PortalAuthReplayTests: XCTestCase {
     self.requests.defaultResponse = AuthTestFixtures.grantResponse()
     let redirect = AuthTestFixtures.magicLinkRedirect()
 
-    let first = try self.expectAuthenticated(await self.auth.handleRedirect(redirect))
-    let replay = try self.expectAuthenticated(await self.auth.handleRedirect(redirect))
+    let first = try self.expectAuthenticated(await self.auth.legacy.handleRedirect(redirect))
+    let replay = try self.expectAuthenticated(await self.auth.legacy.handleRedirect(redirect))
 
     XCTAssertTrue(first.session === replay.session, "The replay hands back the very session the first exchange produced")
     XCTAssertEqual(self.requests.callCount, 1, "The grant was exchanged once; the second delivery never reached the backend")
@@ -172,11 +180,11 @@ final class PortalAuthReplayTests: XCTestCase {
   func test_handleRedirect_willReplay_whenDifferentUrlCarriesSameGrant() async throws {
     self.requests.defaultResponse = AuthTestFixtures.grantResponse()
 
-    let first = try self.expectAuthenticated(await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
+    let first = try self.expectAuthenticated(await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
     // Same grant, different spelling of the same target: a different scheme case and a trailing
     // slash, both of which the redirect matcher normalises away.
     let replay = try self.expectAuthenticated(
-      await self.auth.handleRedirect("PortalExample://auth/callback/?token=grant-token&authMethod=EMAIL_MAGIC_LINK")
+      await self.auth.legacy.handleRedirect("PortalExample://auth/callback/?token=grant-token&authMethod=EMAIL_MAGIC_LINK")
     )
 
     XCTAssertTrue(first.session === replay.session, "The memo is keyed on the grant, not on the URL it arrived in")
@@ -190,8 +198,8 @@ final class PortalAuthReplayTests: XCTestCase {
     )
     let redirect = AuthTestFixtures.magicLinkRedirect()
 
-    let first = try self.expectTotpRequired(await self.auth.handleRedirect(redirect))
-    let replay = try self.expectTotpRequired(await self.auth.handleRedirect(redirect))
+    let first = try self.expectTotpRequired(await self.auth.legacy.handleRedirect(redirect))
+    let replay = try self.expectTotpRequired(await self.auth.legacy.handleRedirect(redirect))
 
     XCTAssertEqual(replay, first, "A re-delivered redirect resumes the same TOTP step")
     XCTAssertEqual(self.requests.callCount, 1, "The grant was exchanged once")
@@ -205,9 +213,9 @@ final class PortalAuthReplayTests: XCTestCase {
     ]
     let redirect = AuthTestFixtures.magicLinkRedirect()
 
-    let step = try self.expectTotpRequired(await self.auth.handleRedirect(redirect))
+    let step = try self.expectTotpRequired(await self.auth.legacy.handleRedirect(redirect))
     let verified = try await self.auth.verifyTotp("777870", userJwt: step.userJwt)
-    let replay = try self.expectAuthenticated(await self.auth.handleRedirect(redirect))
+    let replay = try self.expectAuthenticated(await self.auth.legacy.handleRedirect(redirect))
 
     XCTAssertTrue(replay.session === verified.session, "The memo advanced to the session the step resolved to, not the step")
     XCTAssertEqual(self.requests.callCount, 2, "One exchange and one TOTP validation; the redelivery cost no request")
@@ -223,11 +231,11 @@ final class PortalAuthReplayTests: XCTestCase {
     ]
     let redirect = AuthTestFixtures.magicLinkRedirect()
 
-    let step = try self.expectTotpRequired(await self.auth.handleRedirect(redirect))
+    let step = try self.expectTotpRequired(await self.auth.legacy.handleRedirect(redirect))
     // A different step's JWT: matching nothing in the memo, it must leave the remembered step
     // alone rather than invent an entry no redirect can replay.
     _ = try await self.auth.verifyTotp("777870", userJwt: AuthTestFixtures.userJwt(endUserId: "user-2"))
-    let redelivery = try self.expectTotpRequired(await self.auth.handleRedirect(redirect))
+    let redelivery = try self.expectTotpRequired(await self.auth.legacy.handleRedirect(redirect))
 
     XCTAssertEqual(redelivery, step, "The remembered step still replays as a step")
     XCTAssertEqual(self.requests.callCount, 2, "One exchange and one TOTP validation; the redelivery cost no request")
@@ -240,7 +248,7 @@ final class PortalAuthReplayTests: XCTestCase {
     ]
 
     _ = try await self.auth.verifyTotp("777870", userJwt: AuthTestFixtures.userJwt())
-    let result = try self.expectAuthenticated(await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
+    let result = try self.expectAuthenticated(await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
 
     XCTAssertEqual(try result.session.getToken(), AuthTestFixtures.clientSessionToken)
     XCTAssertEqual(self.requests.callCount, 2, "Verifying with no pending step records nothing, so the redirect is still exchanged")
@@ -251,8 +259,8 @@ final class PortalAuthReplayTests: XCTestCase {
   func test_handleRedirect_willExchangeDifferentGrant() async throws {
     self.requests.defaultResponse = AuthTestFixtures.grantResponse()
 
-    _ = try self.expectAuthenticated(await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect("first-grant")))
-    _ = try self.expectAuthenticated(await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect("second-grant")))
+    _ = try self.expectAuthenticated(await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect("first-grant")))
+    _ = try self.expectAuthenticated(await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect("second-grant")))
 
     XCTAssertEqual(self.requests.callCount, 2, "A different grant is a different login and is exchanged")
     XCTAssertEqual(self.requests.lastRequest?.payloadJSON?["token"] as? String, "second-grant")
@@ -261,9 +269,9 @@ final class PortalAuthReplayTests: XCTestCase {
   func test_handleRedirect_willReplayOnlyMostRecentGrant() async throws {
     self.requests.defaultResponse = AuthTestFixtures.grantResponse()
 
-    _ = try self.expectAuthenticated(await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect("grant-a")))
-    _ = try self.expectAuthenticated(await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect("grant-b")))
-    _ = try self.expectAuthenticated(await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect("grant-a")))
+    _ = try self.expectAuthenticated(await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect("grant-a")))
+    _ = try self.expectAuthenticated(await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect("grant-b")))
+    _ = try self.expectAuthenticated(await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect("grant-a")))
 
     XCTAssertEqual(
       self.requests.callCount,
@@ -275,8 +283,8 @@ final class PortalAuthReplayTests: XCTestCase {
   func test_handleRedirect_willNotReplay_whenTokenDiffersOnlyByCase() async throws {
     self.requests.defaultResponse = AuthTestFixtures.grantResponse()
 
-    _ = try self.expectAuthenticated(await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect("grant-token")))
-    _ = try self.expectAuthenticated(await self.auth.handleRedirect(AuthTestFixtures.magicLinkRedirect("Grant-Token")))
+    _ = try self.expectAuthenticated(await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect("grant-token")))
+    _ = try self.expectAuthenticated(await self.auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect("Grant-Token")))
 
     XCTAssertEqual(self.requests.callCount, 2, "The memo key is byte-exact: a token differing only in case is a different token")
   }
@@ -288,13 +296,13 @@ final class PortalAuthReplayTests: XCTestCase {
     let failure = AuthTestFixtures.clientError(status: 400, body: "{\"error\":\"bad request\"}")
     self.requests.failWith = failure
 
-    await XCTAssertThrowsAsync(try await self.auth.handleRedirect(redirect)) { error in
+    await XCTAssertThrowsAsync(try await self.auth.legacy.handleRedirect(redirect)) { error in
       XCTAssertEqual(error as? PortalRequestsError, failure, "The transport error reaches the host unmapped")
     }
 
     self.requests.failWith = nil
     self.requests.defaultResponse = AuthTestFixtures.grantResponse()
-    let retry = try self.expectAuthenticated(await self.auth.handleRedirect(redirect))
+    let retry = try self.expectAuthenticated(await self.auth.legacy.handleRedirect(redirect))
 
     XCTAssertEqual(try retry.session.getToken(), AuthTestFixtures.clientSessionToken)
     XCTAssertEqual(self.requests.callCount, 2, "Only a successful exchange is remembered, so the redirect stayed retryable")
@@ -304,13 +312,13 @@ final class PortalAuthReplayTests: XCTestCase {
     let redirect = AuthTestFixtures.magicLinkRedirect()
     self.requests.failWith = AuthTestFixtures.serverError503
 
-    await XCTAssertThrowsAsync(try await self.auth.handleRedirect(redirect)) { error in
+    await XCTAssertThrowsAsync(try await self.auth.legacy.handleRedirect(redirect)) { error in
       XCTAssertEqual(error as? PortalRequestsError, AuthTestFixtures.serverError503)
     }
 
     self.requests.failWith = nil
     self.requests.defaultResponse = AuthTestFixtures.grantResponse()
-    _ = try self.expectAuthenticated(await self.auth.handleRedirect(redirect))
+    _ = try self.expectAuthenticated(await self.auth.legacy.handleRedirect(redirect))
 
     XCTAssertEqual(self.requests.callCount, 2, "A grant lost to a transient failure is exchanged again, not written off")
   }
@@ -319,13 +327,13 @@ final class PortalAuthReplayTests: XCTestCase {
     let redirect = AuthTestFixtures.magicLinkRedirect()
     self.requests.failWith = AuthTestFixtures.unauthorized
 
-    await XCTAssertThrowsAsync(try await self.auth.handleRedirect(redirect)) { error in
+    await XCTAssertThrowsAsync(try await self.auth.legacy.handleRedirect(redirect)) { error in
       XCTAssertEqual(error as? PortalRequestsError, .unauthorized, "A rejected grant surfaces as the backend's own 401")
     }
 
     self.requests.failWith = nil
     self.requests.defaultResponse = AuthTestFixtures.grantResponse()
-    _ = try self.expectAuthenticated(await self.auth.handleRedirect(redirect))
+    _ = try self.expectAuthenticated(await self.auth.legacy.handleRedirect(redirect))
 
     XCTAssertEqual(self.requests.callCount, 2, "A rejected exchange is not remembered")
     XCTAssertEqual(self.requests.unauthorizedHookInvocations, 0, "The auth module installs no 401 hook: there is no credential yet to invalidate")
@@ -338,11 +346,11 @@ final class PortalAuthReplayTests: XCTestCase {
       .success(AuthTestFixtures.grantResponse())
     ]
 
-    await XCTAssertThrowsAsync(try await self.auth.handleRedirect(redirect)) { error in
+    await XCTAssertThrowsAsync(try await self.auth.legacy.handleRedirect(redirect)) { error in
       XCTAssertEqual(error as? PortalAuthError, .invalidGrantResponse)
     }
 
-    _ = try self.expectAuthenticated(await self.auth.handleRedirect(redirect))
+    _ = try self.expectAuthenticated(await self.auth.legacy.handleRedirect(redirect))
 
     XCTAssertEqual(self.requests.callCount, 2, "A protocol error is not a completed exchange, so nothing was memoised")
   }
@@ -356,9 +364,9 @@ final class PortalAuthReplayTests: XCTestCase {
     ]
     let redirect = AuthTestFixtures.magicLinkRedirect()
 
-    let first = try self.expectAuthenticated(await self.auth.handleRedirect(redirect))
+    let first = try self.expectAuthenticated(await self.auth.legacy.handleRedirect(redirect))
     try await self.auth.clearPersistedSession()
-    let second = try self.expectAuthenticated(await self.auth.handleRedirect(redirect))
+    let second = try self.expectAuthenticated(await self.auth.legacy.handleRedirect(redirect))
 
     XCTAssertEqual(self.requests.callCount, 2, "A redirect re-delivered after a sign-out cannot replay the session that was just cleared")
     XCTAssertEqual(self.storage.setCalls, 2)
@@ -373,8 +381,8 @@ final class PortalAuthReplayTests: XCTestCase {
     let other = AuthTestFixtures.makeAuth(requests: self.requests, storage: self.storage)
     let redirect = AuthTestFixtures.magicLinkRedirect()
 
-    _ = try self.expectAuthenticated(await self.auth.handleRedirect(redirect))
-    _ = try self.expectAuthenticated(await other.handleRedirect(redirect))
+    _ = try self.expectAuthenticated(await self.auth.legacy.handleRedirect(redirect))
+    _ = try self.expectAuthenticated(await other.legacy.handleRedirect(redirect))
 
     XCTAssertEqual(
       self.requests.callCount,
@@ -387,9 +395,9 @@ final class PortalAuthReplayTests: XCTestCase {
     self.requests.defaultResponse = AuthTestFixtures.grantResponse()
     let redirect = AuthTestFixtures.magicLinkRedirect()
 
-    let first = try self.expectAuthenticated(await self.auth.handleRedirect(redirect))
+    let first = try self.expectAuthenticated(await self.auth.legacy.handleRedirect(redirect))
     let restored = try await self.auth.restoreSession()
-    let replay = try self.expectAuthenticated(await self.auth.handleRedirect(redirect))
+    let replay = try self.expectAuthenticated(await self.auth.legacy.handleRedirect(redirect))
 
     XCTAssertNotNil(restored, "The login persisted a session for restoreSession() to find")
     XCTAssertEqual(self.requests.callCount, 1, "restoreSession() is a read and does not touch the memo")
@@ -401,14 +409,14 @@ final class PortalAuthReplayTests: XCTestCase {
   func test_handleRedirectURL_willReplayStringLogin_withinTimeout() async throws {
     self.requests.defaultResponse = AuthTestFixtures.grantResponse()
     let auth = self.auth
-    let first = try self.expectAuthenticated(await auth.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
+    let first = try self.expectAuthenticated(await auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
     let url = try AuthTestFixtures.url(AuthTestFixtures.magicLinkRedirect())
     let box = ResultBox()
 
     // Both overloads forward into one locked body; a re-entrant lock regression would deadlock
     // here, so it is bounded and fails as a timeout rather than hanging the suite.
     let completed = try await AuthTestFixtures.withTimeout(2) { () -> Bool in
-      try box.store(await auth.handleRedirect(url))
+      try box.store(await auth.legacy.handleRedirect(url))
       return true
     }
 
@@ -427,11 +435,11 @@ final class PortalAuthReplayTests: XCTestCase {
     let secondBox = ResultBox()
 
     let firstCompleted = try await AuthTestFixtures.withTimeout(2) { () -> Bool in
-      try firstBox.store(await auth.handleRedirect(firstUrl))
+      try firstBox.store(await auth.legacy.handleRedirect(firstUrl))
       return true
     }
     let secondCompleted = try await AuthTestFixtures.withTimeout(2) { () -> Bool in
-      try secondBox.store(await auth.handleRedirect(secondUrl))
+      try secondBox.store(await auth.legacy.handleRedirect(secondUrl))
       return true
     }
 
@@ -454,13 +462,13 @@ final class PortalAuthReplayTests: XCTestCase {
     let secondBox = ResultBox()
 
     let first = Task<Void, Error> {
-      try firstBox.store(await auth.handleRedirect(redirect))
+      try firstBox.store(await auth.legacy.handleRedirect(redirect))
     }
     let didArrive = await requests.waitUntilArrived()
     XCTAssertTrue(didArrive, "The first delivery reached the transport")
 
     let second = Task<Void, Error> {
-      try secondBox.store(await auth.handleRedirect(redirect))
+      try secondBox.store(await auth.legacy.handleRedirect(redirect))
     }
     let didPark = await AuthTestFixtures.pollUntil { auth.grantMutex.isContended }
     XCTAssertTrue(didPark, "The second delivery parked on the grant mutex instead of starting its own exchange")
@@ -486,7 +494,7 @@ final class PortalAuthReplayTests: XCTestCase {
     let box = ResultBox()
 
     let login = Task<Void, Error> {
-      try box.store(await auth.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
+      try box.store(await auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect()))
     }
     let didArrive = await requests.waitUntilArrived()
     XCTAssertTrue(didArrive, "The login reached the transport")
@@ -513,6 +521,7 @@ final class PortalAuthReplayTests: XCTestCase {
   }
 
   func test_handleRedirect_willRunOauthAndMagicLinkConcurrently_withoutCrossTalk() async throws {
+    self.verifierStorage.stored = AuthTestFixtures.pendingVerifier()
     self.requests.responder = { request in
       if request.matches(path: PortalAuthApi.oauthTokensPath) {
         return AuthTestFixtures.grantResponse(clientSessionToken: "oauth-session-token", endUserId: "user-oauth")
@@ -530,10 +539,10 @@ final class PortalAuthReplayTests: XCTestCase {
     let magicLinkBox = ResultBox()
 
     let oauth = Task<Void, Error> {
-      try oauthBox.store(await auth.handleRedirect(oauthRedirect))
+      try oauthBox.store(await auth.legacy.handleRedirect(oauthRedirect))
     }
     let magicLink = Task<Void, Error> {
-      try magicLinkBox.store(await auth.handleRedirect(magicLinkRedirect))
+      try magicLinkBox.store(await auth.legacy.handleRedirect(magicLinkRedirect))
     }
     try await oauth.value
     try await magicLink.value
@@ -557,13 +566,13 @@ final class PortalAuthReplayTests: XCTestCase {
     let secondBox = ResultBox()
 
     let first = Task<Void, Error> {
-      try firstBox.store(await auth.handleRedirect(AuthTestFixtures.magicLinkRedirect("grant-a")))
+      try firstBox.store(await auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect("grant-a")))
     }
     let didArrive = await requests.waitUntilArrived()
     XCTAssertTrue(didArrive, "The first exchange reached the transport")
 
     let second = Task<Void, Error> {
-      try secondBox.store(await auth.handleRedirect(AuthTestFixtures.magicLinkRedirect("grant-b")))
+      try secondBox.store(await auth.legacy.handleRedirect(AuthTestFixtures.magicLinkRedirect("grant-b")))
     }
     let didPark = await AuthTestFixtures.pollUntil { auth.grantMutex.isContended }
     XCTAssertTrue(didPark, "The second grant parked on the mutex")
@@ -593,7 +602,7 @@ final class PortalAuthReplayTests: XCTestCase {
     let verifiedBox = AuthenticatedBox()
 
     let exchange = Task<Void, Error> {
-      try stepBox.store(await auth.handleRedirect(redirect))
+      try stepBox.store(await auth.legacy.handleRedirect(redirect))
     }
     let didArrive = await requests.waitUntilArrived()
     XCTAssertTrue(didArrive, "The grant exchange reached the transport")
@@ -618,7 +627,7 @@ final class PortalAuthReplayTests: XCTestCase {
       return XCTFail("verifyTotp produced no result")
     }
 
-    let replay = try self.expectAuthenticated(await auth.handleRedirect(redirect))
+    let replay = try self.expectAuthenticated(await auth.legacy.handleRedirect(redirect))
     XCTAssertTrue(replay.session === verified.session, "The memo advanced to the verified session")
     XCTAssertEqual(requests.callCount, 2, "The redelivery replayed and cost no request")
   }
@@ -628,7 +637,7 @@ final class PortalAuthReplayTests: XCTestCase {
     let redirect = AuthTestFixtures.magicLinkRedirect()
     self.requests.failWith = AuthTestFixtures.serverError503
 
-    await XCTAssertThrowsAsync(try await auth.handleRedirect(redirect)) { error in
+    await XCTAssertThrowsAsync(try await auth.legacy.handleRedirect(redirect)) { error in
       XCTAssertEqual(error as? PortalRequestsError, AuthTestFixtures.serverError503)
     }
 
@@ -636,7 +645,7 @@ final class PortalAuthReplayTests: XCTestCase {
     self.requests.defaultResponse = AuthTestFixtures.grantResponse()
     let box = ResultBox()
     let completed = try await AuthTestFixtures.withTimeout(2) { () -> Bool in
-      try box.store(await auth.handleRedirect(redirect))
+      try box.store(await auth.legacy.handleRedirect(redirect))
       return true
     }
 
@@ -656,7 +665,7 @@ final class PortalAuthReplayTests: XCTestCase {
       }
     }
 
-    await XCTAssertThrowsAsync(try await auth.handleRedirect(redirect)) { error in
+    await XCTAssertThrowsAsync(try await auth.legacy.handleRedirect(redirect)) { error in
       XCTAssertEqual(
         error as? PortalAuthError,
         .sessionStorageFailure(message: "The session could not be persisted."),
@@ -666,7 +675,7 @@ final class PortalAuthReplayTests: XCTestCase {
 
     let box = ResultBox()
     let completed = try await AuthTestFixtures.withTimeout(2) { () -> Bool in
-      try box.store(await auth.handleRedirect(redirect))
+      try box.store(await auth.legacy.handleRedirect(redirect))
       return true
     }
 
@@ -684,7 +693,7 @@ final class PortalAuthReplayTests: XCTestCase {
     let box = ResultBox()
 
     let cancelled = Task<Void, Error> {
-      try box.store(await auth.handleRedirect(redirect))
+      try box.store(await auth.legacy.handleRedirect(redirect))
     }
     let didArrive = await requests.waitUntilArrived()
     XCTAssertTrue(didArrive, "The exchange reached the transport")
@@ -703,7 +712,7 @@ final class PortalAuthReplayTests: XCTestCase {
 
     let followUpBox = ResultBox()
     let completed = try await AuthTestFixtures.withTimeout(2) { () -> Bool in
-      try followUpBox.store(await auth.handleRedirect(redirect))
+      try followUpBox.store(await auth.legacy.handleRedirect(redirect))
       return true
     }
 
@@ -722,7 +731,7 @@ final class PortalAuthReplayTests: XCTestCase {
 
     let task = Task<AuthResult?, Error> {
       withUnsafeCurrentTask { $0?.cancel() }
-      return try await auth.handleRedirect(redirect)
+      return try await auth.legacy.handleRedirect(redirect)
     }
 
     await XCTAssertThrowsAsync(try await task.value) { error in
@@ -743,7 +752,7 @@ final class PortalAuthReplayTests: XCTestCase {
     let box = ResultBox()
 
     let cancelled = Task<Void, Error> {
-      box.store(.authenticated(try await auth.verifyTotp("777870", userJwt: userJwt)))
+      try box.store(.authenticated(await auth.verifyTotp("777870", userJwt: userJwt)))
     }
     let didArrive = await requests.waitUntilArrived()
     XCTAssertTrue(didArrive, "The verification reached the transport")
@@ -787,7 +796,7 @@ final class PortalAuthReplayTests: XCTestCase {
       let box = ResultBox()
       boxes.append(box)
       deliveries.append(Task<Void, Error> {
-        try box.store(await auth.handleRedirect(redirect))
+        try box.store(await auth.legacy.handleRedirect(redirect))
       })
     }
 

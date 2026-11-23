@@ -29,6 +29,9 @@ public protocol PortalProtocol {
   var yield: Yield { get }
   var ramps: Ramps { get }
   var trading: Trading { get }
+  var perps: Perps { get }
+  var borrow: Borrow { get }
+  var predictionMarkets: PredictionMarkets { get }
   var security: Security { get }
   var delegations: DelegationsProtocol { get }
   var evmAccountType: EvmAccountTypeProtocol { get }

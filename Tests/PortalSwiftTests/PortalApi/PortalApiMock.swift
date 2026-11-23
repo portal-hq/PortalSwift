@@ -11,6 +11,9 @@ import Foundation
 
 class PortalApiMock: PortalApiProtocol {
   var yieldxyz: PortalSwift.PortalYieldXyzApiProtocol
+  var yieldxyzPerps: PortalSwift.PortalYieldXyzPerpsApiProtocol
+  var yieldxyzBorrow: PortalSwift.PortalYieldXyzBorrowApiProtocol
+  var agg: PortalSwift.PortalAggApiProtocol
   var lifi: PortalSwift.PortalLifiTradingApiProtocol
   var zeroX: PortalSwift.PortalZeroXTradingApiProtocol
   var hypernative: PortalSwift.PortalHypernativeApiProtocol
@@ -18,11 +21,15 @@ class PortalApiMock: PortalApiProtocol {
   var delegations: PortalSwift.PortalDelegationsApiProtocol
   var evmAccountType: PortalSwift.PortalEvmAccountTypeApiProtocol
   var noah: PortalSwift.PortalNoahApiProtocol
+  var meld: PortalSwift.PortalMeldApiProtocol
 
   var client: PortalSwift.ClientResponse?
 
   init(
     yieldxyz: PortalSwift.PortalYieldXyzApiProtocol = PortalYieldXyzApiMock(),
+    yieldxyzPerps: PortalSwift.PortalYieldXyzPerpsApiProtocol = PortalYieldXyzPerpsApiMock(),
+    yieldxyzBorrow: PortalSwift.PortalYieldXyzBorrowApiProtocol = PortalYieldXyzBorrowApiMock(),
+    agg: PortalSwift.PortalAggApiProtocol = PortalAggApiMock(),
     lifi: PortalSwift.PortalLifiTradingApiProtocol = PortalLifiTradingApiMock(),
     zeroX: PortalSwift.PortalZeroXTradingApiProtocol = PortalZeroXTradingApiMock(),
     hypernative: PortalSwift.PortalHypernativeApiProtocol = PortalHypernativeApiMock(),
@@ -30,9 +37,13 @@ class PortalApiMock: PortalApiProtocol {
     delegations: PortalSwift.PortalDelegationsApiProtocol = PortalDelegationsApiMock(),
     evmAccountType: PortalSwift.PortalEvmAccountTypeApiProtocol = PortalEvmAccountTypeApiMock(),
     noah: PortalSwift.PortalNoahApiProtocol = PortalNoahApiMock(),
+    meld: PortalSwift.PortalMeldApiProtocol = PortalMeldApiMock(),
     client: PortalSwift.ClientResponse? = nil
   ) {
     self.yieldxyz = yieldxyz
+    self.yieldxyzPerps = yieldxyzPerps
+    self.yieldxyzBorrow = yieldxyzBorrow
+    self.agg = agg
     self.lifi = lifi
     self.zeroX = zeroX
     self.hypernative = hypernative
@@ -40,6 +51,7 @@ class PortalApiMock: PortalApiProtocol {
     self.delegations = delegations
     self.evmAccountType = evmAccountType
     self.noah = noah
+    self.meld = meld
     self.client = client
   }
 

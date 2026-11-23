@@ -11,6 +11,9 @@ import Foundation
 public protocol PortalApiProtocol: AnyObject {
   var client: ClientResponse? { get async throws }
   var yieldxyz: PortalYieldXyzApiProtocol { get }
+  var yieldxyzPerps: PortalYieldXyzPerpsApiProtocol { get }
+  var yieldxyzBorrow: PortalYieldXyzBorrowApiProtocol { get }
+  var agg: PortalAggApiProtocol { get }
   var lifi: PortalLifiTradingApiProtocol { get }
   var zeroX: PortalZeroXTradingApiProtocol { get }
   var hypernative: PortalHypernativeApiProtocol { get }
@@ -18,6 +21,7 @@ public protocol PortalApiProtocol: AnyObject {
   var delegations: PortalDelegationsApiProtocol { get }
   var evmAccountType: PortalEvmAccountTypeApiProtocol { get }
   var noah: PortalNoahApiProtocol { get }
+  var meld: PortalMeldApiProtocol { get }
 
   func eject(traceId: String?) async throws -> String
   func fund(chainId: String, params: FundParams) async throws -> FundResponse
@@ -191,6 +195,27 @@ public class PortalApi: PortalApiProtocol {
     requests: self.requests
   )
 
+  /// Access to Yield.xyz Perps integration functionality.
+  public lazy var yieldxyzPerps: PortalYieldXyzPerpsApiProtocol = PortalYieldXyzPerpsApi(
+    credentials: self.credentials,
+    apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
+    requests: self.requests
+  )
+
+  /// Access to Yield.xyz Borrow integration functionality.
+  public lazy var yieldxyzBorrow: PortalYieldXyzBorrowApiProtocol = PortalYieldXyzBorrowApi(
+    credentials: self.credentials,
+    apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
+    requests: self.requests
+  )
+
+  /// Access to the Agg prediction-markets integration: one method per route.
+  public lazy var agg: PortalAggApiProtocol = PortalAggApi(
+    credentials: self.credentials,
+    apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
+    requests: self.requests
+  )
+
   /// Access to Lifi trading integration functionality.
   public lazy var lifi: PortalLifiTradingApiProtocol = PortalLifiTradingApi(
     credentials: self.credentials,
@@ -235,6 +260,13 @@ public class PortalApi: PortalApiProtocol {
 
   /// Access to Noah ramps integration functionality.
   public lazy var noah: PortalNoahApiProtocol = PortalNoahApi(
+    credentials: self.credentials,
+    apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
+    requests: self.requests
+  )
+
+  /// Access to Meld ramps integration functionality.
+  public lazy var meld: PortalMeldApiProtocol = PortalMeldApi(
     credentials: self.credentials,
     apiHost: self.baseUrl.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""),
     requests: self.requests
@@ -792,8 +824,12 @@ public class PortalApi: PortalApiProtocol {
    * Private functions
    *******************************************/
 
+  /// The end of the URL of the request that builds a `sendAsset` transaction; `PortalSendFailure`
+  /// recognises a failed build by it.
+  static let buildTransactionPathSuffix = "/assets/send/build-transaction"
+
   private func getBuildTransactionUrl(chainId: String) -> URL? {
-    return URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)/assets/send/build-transaction")
+    return URL(string: "\(baseUrl)/api/v3/clients/me/chains/\(chainId)\(Self.buildTransactionPathSuffix)")
   }
 
   // Every helper resolves the bearer at the moment the request is built — never earlier, never

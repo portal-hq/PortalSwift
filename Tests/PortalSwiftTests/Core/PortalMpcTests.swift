@@ -2154,6 +2154,7 @@ extension PortalMpcTests {
 
 extension PortalMpcTests {
   @available(iOS 16, *)
+  @MainActor
   func test_setPasskeyAuthenticationAnchor_willThrowCorrectError_whenThereIsNoPassKeyStorage() async throws {
     // given
     initPortalMpcWith(
@@ -2170,10 +2171,11 @@ extension PortalMpcTests {
   }
 
   @available(iOS 16, *)
+  @MainActor
   func test_setPasskeyAuthenticationAnchor_willPassCorrectView_toPasskeyStorage() async throws {
     // given
     let passkeyStorage = PasskeyStorage()
-    let anchor = await UIWindow()
+    let anchor = UIWindow()
     initPortalMpcWith(
       passKeyStorage: passkeyStorage
     )

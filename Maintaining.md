@@ -61,12 +61,14 @@ From the command line, this is the same invocation CI runs (`.github/workflows/u
 
 ```bash
 xcodebuild -quiet \
-  -workspace PortalSwift.xcworkspace \
+  -workspace .swiftpm/xcode/package.xcworkspace \
   -scheme "Unit Tests" \
   -sdk iphonesimulator \
-  -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.4' \
+  -destination 'platform=iOS Simulator,arch=arm64,name=iPhone 17' \
   test
 ```
+
+It uses the package workspace, which builds only the SDK and its tests: from Xcode 16.3, `PortalSwift.xcworkspace` fails package resolution, because Firebase (used by the example apps) enables swift-protobuf traits that the pinned swift-protobuf does not support.
 
 Adjust `-destination` to a simulator you have installed. In Xcode, `Product -> Destination -> Manage Run Destinations...` lists them.
 

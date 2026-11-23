@@ -175,3 +175,39 @@ extension RampsTests {
     XCTAssertTrue(first as AnyObject === second as AnyObject)
   }
 }
+
+// MARK: - Meld
+
+extension RampsTests {
+  func test_initWithApi_buildsAMeldOverApiMeld() async throws {
+    let meldApi = PortalMeldApiMock()
+    meldApi.searchCustomerHandler = {
+      MeldSearchCustomerResponse(data: MeldCustomerSearchResult(customers: [], count: 0, remaining: 0))
+    }
+    let ramps = Ramps(api: PortalApiMock(meld: meldApi))
+
+    XCTAssertTrue(ramps.meld is Meld)
+    let response = try await ramps.meld.searchCustomer()
+
+    XCTAssertEqual(response.data.count, 0)
+    XCTAssertEqual(meldApi.calls, ["searchCustomer"])
+  }
+
+  func test_initWithProviders_keepsTheInstancesItIsGiven() {
+    let noah = NoahMock()
+    let meld = PortalMeldApiMock()
+
+    let ramps = Ramps(noah: noah, meld: meld)
+
+    XCTAssertTrue(ramps.noah as AnyObject === noah)
+    XCTAssertTrue(ramps.meld as AnyObject === meld)
+  }
+
+  func test_meld_canBeReplaced() {
+    let replacement = PortalMeldApiMock()
+
+    rampsInstance.meld = replacement
+
+    XCTAssertTrue(rampsInstance.meld as AnyObject === replacement)
+  }
+}

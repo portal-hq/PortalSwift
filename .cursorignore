@@ -1,0 +1,2 @@
+# Keep Cursor from indexing or reading local secrets (see .claude/settings.json for Claude Code)
+/SPM Example/Secrets.xcconfig

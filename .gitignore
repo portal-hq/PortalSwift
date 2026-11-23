@@ -43,3 +43,6 @@ Secrets.xcconfig
 .build/
 xcuserdata/
 SPM Example/PortalSwift/GoogleService-Info.plist
+
+# Claude Code — personal settings (shared .claude/settings.json is tracked)
+.claude/settings.local.json

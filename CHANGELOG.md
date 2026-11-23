@@ -12,6 +12,38 @@ Possible Types of changes include:
 - Improved
 - Upgraded
 
+## 8.2.0 - 2026-11-23
+
+### Added
+
+- Yield.xyz Perps: trade perpetual futures on venues such as Hyperliquid through the new `portal.perps.yieldxyz` namespace.
+    - Market and account data, such as `getMarkets(params:)` and `getPositions(params:)`.
+    - `executeAction(params:options:)` creates, signs, and submits an action, such as opening or closing a position, in one call.
+- Arbitrum One (`eip155:42161`) in the default `rpcConfig`.
+- Yield.xyz Borrow: supply, borrow, repay, and withdraw on lending markets such as Morpho Blue and Aave through the new `portal.borrow.yieldxyz` namespace.
+    - Market and position data, such as `getMarkets(params:)` and `getPositions(params:)`.
+    - `executeAction(params:options:)` creates, signs, and submits a lending action in one call.
+- Agg prediction markets: browse and trade prediction markets on venues such as Polymarket, Kalshi, and Limitless through the new `portal.predictionMarkets.agg` namespace.
+    - `connect(chainId:)` links the Portal wallet to an Agg account.
+    - `deposit(params:)`, `buy(params:)`, `sell(params:)`, `placeLimitOrder(params:)`, `redeemAll(params:)`, and `withdraw(params:)` cover the common flows.
+    - Paper mode (`mode: .paper`) for simulated trading.
+- Meld: buy crypto with fiat through Meld's ramp providers, such as Transak, with the new `portal.ramps.meld` namespace.
+    - `getRetailQuote(request:)` compares provider quotes, and `createRetailWidget(request:)` returns Meld's hosted purchase widget.
+- Client Auth: let the user confirm a magic link's email address before signing in.
+    - `portalAuth.parseRedirect(_:)` reads an incoming redirect.
+    - `portalAuth.getMagicLinkDetails(_:)` returns the email the link signs in to, and `portalAuth.confirmMagicLink(_:)` completes the sign-in.
+    - `portalAuth.completeOAuthLogin(_:)` completes a Google or Apple sign-in redirect.
+
+### Changed
+
+- **Breaking:** Completing a Google or Apple sign-in throws the new `PortalAuthError.oauthFlowNotStarted` when the sign-in was not started in this app within the last 15 minutes.
+- **Breaking:** `clearPersistedSession()` also cancels a Google or Apple sign-in in progress.
+- `PortalAuthError` gains `grantRejected` and `oauthFlowNotStarted`, and `PortalProtocol` and `PortalApiProtocol` gain the new namespaces. If you switch exhaustively over `PortalAuthError`, or conform to either protocol yourself, add them.
+
+### Deprecated
+
+- `portalAuth.handleRedirect(_:)`, to be removed in the next major version. Use `parseRedirect(_:)`, then `confirmMagicLink(_:)` or `completeOAuthLogin(_:)`.
+
 ## 8.1.0 - 2026-10-08
 
 ### Added

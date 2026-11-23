@@ -115,6 +115,7 @@ extension PortalTests {
         "eip155:1": "https://\(apiHost)/rpc/v1/eip155/1", // Ethereum Mainnet
         "eip155:137": "https://\(apiHost)/rpc/v1/eip155/137", // Polygon Mainnet
         "eip155:8453": "https://\(apiHost)/rpc/v1/eip155/8453", // Base Mainnet
+        "eip155:42161": "https://\(apiHost)/rpc/v1/eip155/42161", // Arbitrum One
         "eip155:80002": "https://\(apiHost)/rpc/v1/eip155/80002", // Polygon Amoy
         "eip155:84532": "https://\(apiHost)/rpc/v1/eip155/84532", // Base Testnet
         "eip155:11155111": "https://\(apiHost)/rpc/v1/eip155/11155111", // Ethereum Sepolia
@@ -314,6 +315,7 @@ extension PortalTests {
   }
 
   @available(iOS 16, *)
+  @MainActor
   func test_setPasskeyAuthenticationAnchor_willCall_mpc_setPasskeyAuthenticationAnchor_onlyOnce() async throws {
     // given
     let portalMpcSpy = PortalMpcSpy()
@@ -3928,5 +3930,429 @@ extension PortalTests {
     }
 
     XCTAssertEqual(lifiApiMock.getRoutesCalls, callCount)
+  }
+}
+
+// MARK: - perps property tests
+
+extension PortalTests {
+  private func perpsOrderAction() -> YieldXyzPerpsAction {
+    YieldXyzPerpsFixtures.perpsAction(transactions: [YieldXyzPerpsFixtures.orderTransaction(address: MockConstants.mockEip155Address)])
+  }
+
+  private func perpsFundingAction() -> YieldXyzPerpsAction {
+    let payload = YieldXyzPerpsFixtures.fundingTransactionPayload(from: MockConstants.mockEip155Address)
+    return YieldXyzPerpsFixtures.perpsAction(transactions: [
+      YieldXyzPerpsFixtures.fundingTransaction(address: MockConstants.mockEip155Address, signablePayload: AnyCodable(payload))
+    ])
+  }
+
+  /// A Portal whose perps API returns `action` and whose provider is a spy.
+  private func initPortalForPerps(_ action: YieldXyzPerpsAction) throws -> (PortalYieldXyzPerpsApiMock, PortalProviderSpy) {
+    let perpsApi = PortalYieldXyzPerpsApiMock()
+    perpsApi.getActionReturnValue = action
+    try initPortalWithSpy(api: PortalApiMock(yieldxyzPerps: perpsApi))
+    let providerSpy = try PortalProviderSpy()
+    setToPortal(portalProvider: providerSpy)
+    return (perpsApi, providerSpy)
+  }
+
+  private var oneShotPerpsOptions: YieldXyzPerpsExecuteOptions {
+    YieldXyzPerpsExecuteOptions(pollAction: false, pollOptions: YieldXyzPerpsPollOptions(intervalSeconds: 0.001, timeoutSeconds: 1))
+  }
+
+  func test_perps_returnsTheSameYieldXyzPerpsInstance() {
+    let first = portal.perps
+    let second = portal.perps
+
+    XCTAssertTrue(first === second)
+    XCTAssertTrue(first.yieldxyz is YieldXyzPerps)
+  }
+
+  func test_perps_defaultsAccountRequestsToTheEvmWalletAddress() async throws {
+    let (perpsApi, _) = try initPortalForPerps(perpsOrderAction())
+
+    _ = try await portal.perps.yieldxyz.getBalances(params: YieldXyzPerpsBalancesParams(providerId: "hyperliquid"))
+
+    XCTAssertEqual(perpsApi.getBalancesRequest?.address, MockConstants.mockEip155Address)
+  }
+
+  func test_perps_signsTypedDataWithEthSignTypedDataV4ThroughArbitrum() async throws {
+    let (perpsApi, providerSpy) = try initPortalForPerps(perpsOrderAction())
+    providerSpy.requestOptionsReturnValues[.eth_signTypedData_v4] = YieldXyzPerpsFixtures.signature
+
+    let result = try await portal.perps.yieldxyz.signAndSubmitAction(perpsOrderAction(), options: oneShotPerpsOptions)
+
+    let call = try XCTUnwrap(providerSpy.requestOptionsHistory.first)
+    XCTAssertEqual(call.method, .eth_signTypedData_v4)
+    XCTAssertEqual(call.chainId, "eip155:42161")
+    XCTAssertEqual(call.params?.first, AnyCodable(MockConstants.mockEip155Address))
+    let typedData = try XCTUnwrap(call.params?.last?.value as? String)
+    XCTAssertTrue(typedData.contains("EIP712Domain"))
+    XCTAssertNil(call.options?.idempotencyKey)
+    XCTAssertEqual(perpsApi.submitTransactionParams.first?.signedPayload, YieldXyzPerpsFixtures.signature)
+    XCTAssertEqual(result.transactions.count, 1)
+  }
+
+  func test_perps_mapsADeclinedTypedDataSignatureToARejection() async throws {
+    let (perpsApi, providerSpy) = try initPortalForPerps(perpsOrderAction())
+    providerSpy.requestOptionsError = ProviderSigningError.userDeclinedApproval
+
+    do {
+      _ = try await portal.perps.yieldxyz.signAndSubmitAction(perpsOrderAction(), options: oneShotPerpsOptions)
+      XCTFail("Expected error not thrown.")
+    } catch let error as YieldXyzPerpsExecutionError {
+      XCTAssertEqual(error.reason, .signatureRejected)
+      XCTAssertTrue(perpsApi.submitTransactionParams.isEmpty)
+    }
+  }
+
+  func test_perps_rejectsASigningChainWithoutAnRpcEndpoint() async throws {
+    let (perpsApi, providerSpy) = try initPortalForPerps(perpsOrderAction())
+    providerSpy.getRpcUrlError = PortalProviderError.noRpcUrlFoundForChainId("eip155:42161")
+
+    do {
+      _ = try await portal.perps.yieldxyz.signAndSubmitAction(perpsOrderAction(), options: oneShotPerpsOptions)
+      XCTFail("Expected error not thrown.")
+    } catch let error as YieldXyzPerpsExecutionError {
+      XCTAssertEqual(error.reason, .signingChainNotConfigured)
+      XCTAssertTrue(providerSpy.requestOptionsHistory.isEmpty)
+      XCTAssertTrue(perpsApi.submitTransactionParams.isEmpty)
+    }
+  }
+
+  func test_perps_sendsAnEvmLegWithItsIdempotencyKey() async throws {
+    let (perpsApi, providerSpy) = try initPortalForPerps(perpsFundingAction())
+    providerSpy.requestOptionsReturnValues[.eth_sendTransaction] = YieldXyzPerpsFixtures.fundingTxHash
+    var options = oneShotPerpsOptions
+    options.waitForConfirmation = { _, _ in true }
+
+    _ = try await portal.perps.yieldxyz.signAndSubmitAction(perpsFundingAction(), options: options)
+
+    let call = try XCTUnwrap(providerSpy.requestOptionsHistory.first)
+    XCTAssertEqual(call.method, .eth_sendTransaction)
+    XCTAssertEqual(call.chainId, "eip155:42161")
+    XCTAssertEqual(call.options?.idempotencyKey, "yieldxyz-perps-tx-fund-1")
+    let param = try XCTUnwrap(call.params?.first?.value as? ETHTransactionParam)
+    XCTAssertEqual(param.from, MockConstants.mockEip155Address)
+    XCTAssertEqual(param.to, YieldXyzPerpsFixtures.arbitrumUsdc)
+    // Portal's signer estimates the gas when it sends; Yield.xyz's gasLimit is not forwarded.
+    XCTAssertNil(param.gas)
+    XCTAssertEqual(param.value, "0x0")
+    XCTAssertEqual(perpsApi.submitTransactionParams.first?.transactionHash, YieldXyzPerpsFixtures.fundingTxHash)
+  }
+
+  /// A mined receipt with `status`, as `eth_getTransactionReceipt` returns it.
+  private func receipt(status: String) throws -> EthTransactionResponse {
+    let json = """
+    {"jsonrpc":"2.0","id":1,"result":{"blockHash":"0xblock","blockNumber":"0x1","from":"\(MockConstants.mockEip155Address)","transactionIndex":"0x0","type":"0x2","status":"\(status)"}}
+    """
+    return try JSONDecoder().decode(EthTransactionResponse.self, from: Data(json.utf8))
+  }
+
+  func test_perps_confirmsAnEvmLegThroughPortalsOwnReceiptPoll_thenSubmitsTheHash() async throws {
+    let (perpsApi, providerSpy) = try initPortalForPerps(perpsFundingAction())
+    providerSpy.requestOptionsReturnValues[.eth_sendTransaction] = YieldXyzPerpsFixtures.fundingTxHash
+    providerSpy.requestOptionsReturnValues[.eth_getTransactionReceipt] = try receipt(status: "0x1")
+
+    _ = try await portal.perps.yieldxyz.signAndSubmitAction(perpsFundingAction(), options: oneShotPerpsOptions)
+
+    let receiptCall = try XCTUnwrap(providerSpy.requestOptionsHistory.first { $0.method == .eth_getTransactionReceipt })
+    XCTAssertEqual(receiptCall.chainId, "eip155:42161")
+    XCTAssertEqual(receiptCall.params?.first, AnyCodable(YieldXyzPerpsFixtures.fundingTxHash))
+    XCTAssertEqual(perpsApi.submitTransactionParams.first?.transactionHash, YieldXyzPerpsFixtures.fundingTxHash)
+  }
+
+  func test_perps_reportsALegPortalsReceiptPollSeesReverted_asNotConfirmed() async throws {
+    let (perpsApi, providerSpy) = try initPortalForPerps(perpsFundingAction())
+    providerSpy.requestOptionsReturnValues[.eth_sendTransaction] = YieldXyzPerpsFixtures.fundingTxHash
+    providerSpy.requestOptionsReturnValues[.eth_getTransactionReceipt] = try receipt(status: "0x0")
+
+    do {
+      _ = try await portal.perps.yieldxyz.signAndSubmitAction(perpsFundingAction(), options: oneShotPerpsOptions)
+      XCTFail("Expected error not thrown.")
+    } catch let error as YieldXyzPerpsExecutionError {
+      XCTAssertEqual(error.reason, .transactionNotConfirmed)
+      XCTAssertEqual(error.broadcastHash, YieldXyzPerpsFixtures.fundingTxHash)
+      XCTAssertTrue(perpsApi.submitTransactionParams.isEmpty)
+    }
+  }
+}
+
+// MARK: - borrow property tests
+
+extension PortalTests {
+  private func borrowApprovalAction(status: YieldXyzBorrowActionStatus = .created, transactionStatus: YieldXyzBorrowTransactionStatus = .created) -> YieldXyzBorrowAction {
+    YieldXyzBorrowFixtures.borrowAction(
+      address: MockConstants.mockEip155Address,
+      status: status,
+      transactions: [YieldXyzBorrowFixtures.approvalTransaction(
+        status: transactionStatus,
+        address: MockConstants.mockEip155Address,
+        signablePayload: AnyCodable(YieldXyzBorrowFixtures.approvalPayload(from: MockConstants.mockEip155Address))
+      )]
+    )
+  }
+
+  /// A Portal whose borrow API returns the approval action, then that action confirmed, and whose
+  /// provider is a spy.
+  private func initPortalForBorrow() throws -> (PortalYieldXyzBorrowApiMock, PortalApiMock, PortalProviderSpy) {
+    let borrowApi = PortalYieldXyzBorrowApiMock()
+    borrowApi.getActionResults = [.success(borrowApprovalAction())]
+    borrowApi.getActionReturnValue = borrowApprovalAction(status: .success, transactionStatus: .confirmed)
+    let apiMock = PortalApiMock(yieldxyzBorrow: borrowApi)
+    apiMock.getTransactionDetailsReturnValue = YieldXyzBorrowFixtures.decode(GetTransactionDetailsResponse.self, """
+    {"data":{"evmTransaction":{"hash":"\(YieldXyzBorrowFixtures.approvalHash)","from":"\(MockConstants.mockEip155Address)","to":null,"value":"0x0","nonce":"0x0","gas":"0xdbb0","input":"0x","type":"0x2"}},"metadata":{"chainId":"eip155:8453","signature":"\(YieldXyzBorrowFixtures.approvalHash)"}}
+    """)
+    try initPortalWithSpy(api: apiMock)
+    let providerSpy = try PortalProviderSpy()
+    setToPortal(portalProvider: providerSpy)
+    return (borrowApi, apiMock, providerSpy)
+  }
+
+  private var fastBorrowOptions: YieldXyzBorrowExecuteOptions {
+    YieldXyzBorrowExecuteOptions(pollOptions: YieldXyzBorrowPollOptions(intervalSeconds: 0.001, timeoutSeconds: 1))
+  }
+
+  func test_borrow_returnsTheSameYieldXyzBorrowInstance() {
+    let first = portal.borrow
+    let second = portal.borrow
+
+    XCTAssertTrue(first === second)
+    XCTAssertTrue(first.yieldxyz is YieldXyzBorrow)
+  }
+
+  func test_borrow_sendsATransactionWithItsIdempotencyKey_andSubmitsTheHashTheLookupResolves() async throws {
+    let (borrowApi, _, providerSpy) = try initPortalForBorrow()
+    providerSpy.requestOptionsReturnValues[.eth_sendTransaction] = YieldXyzBorrowFixtures.approvalHash
+
+    let result = try await portal.borrow.yieldxyz.signAndSubmitAction(borrowApprovalAction(), options: fastBorrowOptions)
+
+    let call = try XCTUnwrap(providerSpy.requestOptionsHistory.first)
+    XCTAssertEqual(call.method, .eth_sendTransaction)
+    XCTAssertEqual(call.chainId, YieldXyzBorrowFixtures.base)
+    XCTAssertEqual(call.options?.idempotencyKey, "yieldxyz-borrow-tx-approval")
+    let param = try XCTUnwrap(call.params?.first?.value as? ETHTransactionParam)
+    XCTAssertEqual(param.from, MockConstants.mockEip155Address)
+    XCTAssertEqual(param.to, YieldXyzBorrowFixtures.usdcBase)
+    // Portal's signer estimates the gas when it sends; Yield.xyz's gasLimit is not forwarded.
+    XCTAssertNil(param.gas)
+    XCTAssertEqual(param.value, "0x0")
+    XCTAssertEqual(borrowApi.submitTransactionCalls.first?.params.transactionHash, YieldXyzBorrowFixtures.approvalHash)
+    XCTAssertEqual(result.status, .success)
+  }
+
+  func test_borrow_mapsADeclinedSignatureToARejection() async throws {
+    let (borrowApi, _, providerSpy) = try initPortalForBorrow()
+    providerSpy.requestOptionsError = ProviderSigningError.userDeclinedApproval
+
+    do {
+      _ = try await portal.borrow.yieldxyz.signAndSubmitAction(borrowApprovalAction(), options: fastBorrowOptions)
+      XCTFail("Expected error not thrown.")
+    } catch let error as YieldXyzBorrowExecutionError {
+      XCTAssertEqual(error.reason, .signatureRejected)
+      XCTAssertTrue(borrowApi.submitTransactionCalls.isEmpty)
+    }
+  }
+
+  func test_borrow_rejectsAChainWithoutAnRpcEndpoint() async throws {
+    let (borrowApi, _, providerSpy) = try initPortalForBorrow()
+    providerSpy.getRpcUrlError = PortalProviderError.noRpcUrlFoundForChainId(YieldXyzBorrowFixtures.base)
+
+    do {
+      _ = try await portal.borrow.yieldxyz.signAndSubmitAction(borrowApprovalAction(), options: fastBorrowOptions)
+      XCTFail("Expected error not thrown.")
+    } catch let error as YieldXyzBorrowExecutionError {
+      XCTAssertEqual(error.reason, .signingChainNotConfigured)
+      XCTAssertTrue(providerSpy.requestOptionsHistory.isEmpty)
+      XCTAssertTrue(borrowApi.submitTransactionCalls.isEmpty)
+    }
+  }
+
+  func test_borrow_rejectsAnActionBuiltForAnotherWallet() async throws {
+    let (borrowApi, _, providerSpy) = try initPortalForBorrow()
+    borrowApi.getActionResults = []
+    borrowApi.getActionReturnValue = YieldXyzBorrowFixtures.borrowAction()
+
+    do {
+      _ = try await portal.borrow.yieldxyz.signAndSubmitAction(YieldXyzBorrowFixtures.borrowAction(), options: fastBorrowOptions)
+      XCTFail("Expected error not thrown.")
+    } catch let error as YieldXyzBorrowExecutionError {
+      XCTAssertEqual(error.reason, .signerAddressMismatch)
+      XCTAssertTrue(error.message.contains(MockConstants.mockEip155Address))
+      XCTAssertTrue(providerSpy.requestOptionsHistory.isEmpty)
+    }
+  }
+}
+
+// MARK: - predictionMarkets property tests
+
+extension PortalTests {
+  private static let aggChallengeMessage = "0x706f7274616c68712e696f2077616e7473"
+
+  /// A Portal whose Agg API answers the link with a challenge for the mock wallet, and whose
+  /// provider is a spy.
+  private func initPortalForAgg() throws -> (PortalAggApiMock, PortalProviderSpy) {
+    let aggApi = PortalAggApiMock()
+    let challenge = AggLinkChallenge(
+      message: "portalhq.io wants you to sign in with your Ethereum account",
+      signParams: [Self.aggChallengeMessage, MockConstants.mockEip155Address],
+      expiresAt: "2026-10-29T13:30:36.281Z"
+    )
+    let link = AggLink(
+      linked: true,
+      aggUserId: "cmu1o0diz0xy609jxo13xrxm2",
+      linkedAddress: MockConstants.mockEip155Address,
+      linkedChainId: Agg.defaultLinkChainId,
+      externalIdLinked: true
+    )
+    aggApi.createLinkChallengeHandler = { _ in AggCreateLinkChallengeResponse(data: challenge) }
+    aggApi.createLinkHandler = { _ in AggCreateLinkResponse(data: link) }
+    try initPortalWithSpy(api: PortalApiMock(agg: aggApi))
+    let providerSpy = try PortalProviderSpy()
+    setToPortal(portalProvider: providerSpy)
+    return (aggApi, providerSpy)
+  }
+
+  func test_predictionMarkets_returnsTheSameAggInstance() {
+    let first = portal.predictionMarkets
+    let second = portal.predictionMarkets
+
+    XCTAssertTrue(first === second)
+    XCTAssertTrue(first.agg is Agg)
+  }
+
+  func test_predictionMarkets_connect_signsTheChallengeWithPersonalSignAndLinksWithTheSignature() async throws {
+    let (aggApi, providerSpy) = try initPortalForAgg()
+    providerSpy.requestOptionsReturnValues[.personal_sign] = "0xsignature"
+    var linkSignature: String?
+    let createLink = aggApi.createLinkHandler
+    aggApi.createLinkHandler = { request in
+      linkSignature = request.signature
+      return try await XCTUnwrap(createLink)(request)
+    }
+
+    _ = try await portal.predictionMarkets.agg.connect()
+
+    let call = try XCTUnwrap(providerSpy.requestOptionsHistory.first)
+    XCTAssertEqual(call.chainId, Agg.defaultLinkChainId)
+    XCTAssertEqual(call.method, .personal_sign)
+    XCTAssertEqual(call.params?.compactMap { $0.value as? String }, [Self.aggChallengeMessage, MockConstants.mockEip155Address])
+    XCTAssertEqual(linkSignature, "0xsignature")
+  }
+
+  func test_predictionMarkets_connect_refusesAChainWithoutAnRpcEndpoint() async throws {
+    let (aggApi, providerSpy) = try initPortalForAgg()
+    providerSpy.getRpcUrlError = PortalProviderError.noRpcUrlFoundForChainId(Agg.defaultLinkChainId)
+
+    do {
+      _ = try await portal.predictionMarkets.agg.connect()
+      XCTFail("Expected error not thrown.")
+    } catch AggError.missingRpcUrl(let chainId) {
+      XCTAssertEqual(chainId, Agg.defaultLinkChainId)
+    }
+    XCTAssertTrue(aggApi.calls.isEmpty)
+    XCTAssertTrue(providerSpy.requestOptionsHistory.isEmpty)
+  }
+
+  func test_predictionMarkets_connect_failsWhenPersonalSignReturnsNoSignature() async throws {
+    let (aggApi, providerSpy) = try initPortalForAgg()
+    providerSpy.requestOptionsReturnValues[.personal_sign] = 42
+
+    do {
+      _ = try await portal.predictionMarkets.agg.connect()
+      XCTFail("Expected error not thrown.")
+    } catch PortalClassError.invalidResponseTypeForRequest {}
+    XCTAssertEqual(aggApi.callCount("createLink"), 0)
+  }
+
+  func test_predictionMarkets_deposit_sendsThroughSendAssetWithTheIdempotencyKey() async throws {
+    let (aggApi, providerSpy) = try initPortalForAgg()
+    let addresses = try JSONDecoder().decode(AggDepositAddresses.self, from: Data(#"""
+    {"ready":true,"evmAddress":"0x44EE540F4663813277Cb6f4ee6A6299D80834ECC","svmAddress":"7Ct6tubhdLFsWmbjQNumjoLSyPM9ENLpkh5mPu9DCwUu",
+     "supportedChains":[{"chainId":"eip155:8453","name":"Base","tokens":[{"symbol":"USDC","address":"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913","decimals":6}]}]}
+    """#.utf8))
+    aggApi.getDepositAddressesHandler = { AggGetDepositAddressesResponse(data: addresses) }
+    providerSpy.requestOptionsReturnValues[.eth_sendTransaction] = "0xdeposit"
+
+    let result = try await portal.predictionMarkets.agg.deposit(params: AggDepositParams(
+      chainId: "eip155:8453",
+      token: "USDC",
+      amount: "2",
+      idempotencyKey: "agg-deposit-1",
+      addressPoll: AggPollOptions(interval: 0, timeout: 1)
+    ))
+
+    XCTAssertEqual(result.txHash, "0xdeposit")
+    XCTAssertEqual(result.depositAddress, "0x44EE540F4663813277Cb6f4ee6A6299D80834ECC")
+    XCTAssertEqual(result.idempotencyKey, "agg-deposit-1")
+    let call = try XCTUnwrap(providerSpy.requestOptionsHistory.last)
+    XCTAssertEqual(call.method, .eth_sendTransaction)
+    XCTAssertEqual(call.chainId, "eip155:8453")
+    XCTAssertEqual(call.options?.idempotencyKey, "agg-deposit-1")
+  }
+
+  /// A Portal whose Agg deposit addresses are ready, with Base USDC.
+  private func initPortalForAggDeposit() throws -> (PortalAggApiMock, PortalProviderSpy) {
+    let (aggApi, providerSpy) = try initPortalForAgg()
+    let addresses = try JSONDecoder().decode(AggDepositAddresses.self, from: Data(#"""
+    {"ready":true,"evmAddress":"0x44EE540F4663813277Cb6f4ee6A6299D80834ECC","svmAddress":"7Ct6tubhdLFsWmbjQNumjoLSyPM9ENLpkh5mPu9DCwUu",
+     "supportedChains":[{"chainId":"eip155:8453","name":"Base","tokens":[{"symbol":"USDC","address":"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913","decimals":6}]}]}
+    """#.utf8))
+    aggApi.getDepositAddressesHandler = { AggGetDepositAddressesResponse(data: addresses) }
+    return (aggApi, providerSpy)
+  }
+
+  private func aggDeposit() async throws -> AggDepositResult {
+    try await portal.predictionMarkets.agg.deposit(params: AggDepositParams(
+      chainId: "eip155:8453",
+      token: "USDC",
+      amount: "2",
+      idempotencyKey: "agg-deposit-2",
+      addressPoll: AggPollOptions(interval: 0, timeout: 1)
+    ))
+  }
+
+  func test_predictionMarkets_deposit_onAChainWithoutAnRpcUrl_sendsNothing() async throws {
+    let (aggApi, providerSpy) = try initPortalForAggDeposit()
+    providerSpy.getRpcUrlError = PortalProviderError.noRpcUrlFoundForChainId("eip155:8453")
+
+    do {
+      _ = try await aggDeposit()
+      XCTFail("Expected missingRpcUrl")
+    } catch AggError.missingRpcUrl(let chainId) {
+      XCTAssertEqual(chainId, "eip155:8453")
+    }
+    XCTAssertEqual(providerSpy.getRpcUrlChainIdParam, "eip155:8453")
+    XCTAssertEqual(aggApi.callCount("getDepositAddresses"), 0)
+    XCTAssertTrue(providerSpy.requestOptionsHistory.isEmpty)
+  }
+
+  func test_predictionMarkets_deposit_whoseSendIsCutOff_failsWithOutcomeUnknown() async throws {
+    let (_, providerSpy) = try initPortalForAggDeposit()
+    providerSpy.requestOptionsError = URLError(.networkConnectionLost)
+
+    do {
+      _ = try await aggDeposit()
+      XCTFail("Expected depositOutcomeUnknown")
+    } catch let AggError.depositOutcomeUnknown(idempotencyKey, chainId, depositAddress, token, amount, underlyingError) {
+      XCTAssertEqual(idempotencyKey, "agg-deposit-2")
+      XCTAssertEqual(chainId, "eip155:8453")
+      XCTAssertEqual(depositAddress, "0x44EE540F4663813277Cb6f4ee6A6299D80834ECC")
+      XCTAssertEqual(token.address, "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913")
+      XCTAssertEqual(amount, "2")
+      XCTAssertEqual((underlyingError as? URLError)?.code, .networkConnectionLost)
+    }
+    XCTAssertEqual(providerSpy.requestOptionsHistory.last?.options?.idempotencyKey, "agg-deposit-2")
+  }
+
+  func test_predictionMarkets_deposit_whoseSigningApprovalIsDeclined_failsWithThatError() async throws {
+    let (_, providerSpy) = try initPortalForAggDeposit()
+    providerSpy.requestOptionsError = ProviderSigningError.userDeclinedApproval
+
+    do {
+      _ = try await aggDeposit()
+      XCTFail("Expected userDeclinedApproval")
+    } catch ProviderSigningError.userDeclinedApproval {}
   }
 }

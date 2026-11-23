@@ -11,6 +11,9 @@ import Foundation
 
 class PortalApiSpy: PortalApiProtocol {
   var yieldxyz: any PortalSwift.PortalYieldXyzApiProtocol
+  var yieldxyzPerps: any PortalSwift.PortalYieldXyzPerpsApiProtocol
+  var yieldxyzBorrow: any PortalSwift.PortalYieldXyzBorrowApiProtocol
+  var agg: any PortalSwift.PortalAggApiProtocol
   var lifi: any PortalSwift.PortalLifiTradingApiProtocol
   var zeroX: any PortalSwift.PortalZeroXTradingApiProtocol
   var hypernative: any PortalSwift.PortalHypernativeApiProtocol
@@ -18,18 +21,26 @@ class PortalApiSpy: PortalApiProtocol {
   var delegations: any PortalSwift.PortalDelegationsApiProtocol
   var evmAccountType: any PortalSwift.PortalEvmAccountTypeApiProtocol
   var noah: any PortalSwift.PortalNoahApiProtocol
+  var meld: any PortalSwift.PortalMeldApiProtocol
 
   init(
     yieldxyz: any PortalSwift.PortalYieldXyzApiProtocol = PortalYieldXyzApiSpy(),
+    yieldxyzPerps: any PortalSwift.PortalYieldXyzPerpsApiProtocol = PortalYieldXyzPerpsApiMock(),
+    yieldxyzBorrow: any PortalSwift.PortalYieldXyzBorrowApiProtocol = PortalYieldXyzBorrowApiMock(),
+    agg: any PortalSwift.PortalAggApiProtocol = PortalAggApiMock(),
     lifi: any PortalSwift.PortalLifiTradingApiProtocol = PortalLifiTradingApiSpy(),
     zeroX: any PortalSwift.PortalZeroXTradingApiProtocol = PortalZeroXTradingApiMock(),
     hypernative: any PortalSwift.PortalHypernativeApiProtocol = PortalHypernativeApiMock(),
     blockaid: any PortalSwift.PortalBlockaidApiProtocol = PortalBlockaidApiMock(),
     delegations: any PortalSwift.PortalDelegationsApiProtocol = PortalDelegationsApiMock(),
     evmAccountType: any PortalSwift.PortalEvmAccountTypeApiProtocol = PortalEvmAccountTypeApiMock(),
-    noah: any PortalSwift.PortalNoahApiProtocol = PortalNoahApiSpy()
+    noah: any PortalSwift.PortalNoahApiProtocol = PortalNoahApiSpy(),
+    meld: any PortalSwift.PortalMeldApiProtocol = PortalMeldApiMock()
   ) {
     self.yieldxyz = yieldxyz
+    self.yieldxyzPerps = yieldxyzPerps
+    self.yieldxyzBorrow = yieldxyzBorrow
+    self.agg = agg
     self.lifi = lifi
     self.zeroX = zeroX
     self.hypernative = hypernative
@@ -37,6 +48,7 @@ class PortalApiSpy: PortalApiProtocol {
     self.delegations = delegations
     self.evmAccountType = evmAccountType
     self.noah = noah
+    self.meld = meld
   }
 
   // Property to track client access

@@ -82,6 +82,122 @@ public final class Portal: PortalProtocol {
     }
   )
 
+  /// The Perps guard against executing one action twice at once. Initialized with the instance,
+  /// unlike the lazy `perps`: two threads reading `perps` first at the same time can each build one,
+  /// and both must share this guard.
+  private let perpsInFlightActions = YieldXyzInFlightActions()
+
+  /// Access to perpetual-futures functionality (Yield.xyz Perps).
+  public lazy var perps: Perps = .init(
+    api: self.api,
+    inFlightActions: self.perpsInFlightActions,
+    dependencies: YieldXyzPerpsExecutionDependencies(
+      getWalletAddress: { [weak self] in
+        guard let self else {
+          throw PortalClassError.clientNotAvailable
+        }
+        return await self.getAddress(YieldXyzPerps.defaultSigningChainId)
+      },
+      signTypedData: { [weak self] request in
+        guard let self else {
+          throw PortalClassError.clientNotAvailable
+        }
+        return try await self.signPerpsTypedData(request)
+      },
+      signAndSendTransaction: { [weak self] transaction, chainId, idempotencyKey in
+        guard let self else {
+          throw PortalClassError.clientNotAvailable
+        }
+        return try await self.signAndSendYieldXyzTransaction(transaction, chainId: chainId, idempotencyKey: idempotencyKey)
+      },
+      waitForConfirmation: { [weak self] txHash, chainId in
+        guard let self else {
+          throw PortalClassError.clientNotAvailable
+        }
+        // Up to 15 minutes, like the other Portal SDKs: a funding leg can wait on a congested chain.
+        let result = try await self.waitForTransactionConfirmation(txHash: txHash, chainId: chainId, maxAttempts: 225, waitingInSeconds: 4)
+        return result == .confirmed
+      },
+      isChainConfigured: { [weak self] chainId in
+        guard let self else {
+          return false
+        }
+        return await self.getRpcUrl(forChainId: chainId) != nil
+      }
+    )
+  )
+
+  /// The Borrow guard against executing one action twice at once, shared by every `borrow` built for
+  /// the same reason as `perpsInFlightActions`.
+  private let borrowInFlightActions = YieldXyzInFlightActions()
+
+  /// Access to lending functionality (Yield.xyz Borrow).
+  public lazy var borrow: Borrow = .init(
+    api: self.api,
+    inFlightActions: self.borrowInFlightActions,
+    dependencies: YieldXyzBorrowExecutionDependencies(
+      getWalletAddress: { [weak self] in
+        guard let self else {
+          throw PortalClassError.clientNotAvailable
+        }
+        return await self.getAddress(YieldXyzBorrow.walletChainId)
+      },
+      signAndSendTransaction: { [weak self] transaction, chainId, idempotencyKey in
+        guard let self else {
+          throw PortalClassError.clientNotAvailable
+        }
+        return try await self.signAndSendYieldXyzTransaction(transaction, chainId: chainId, idempotencyKey: idempotencyKey)
+      },
+      isChainConfigured: { [weak self] chainId in
+        guard let self else {
+          return false
+        }
+        return await self.getRpcUrl(forChainId: chainId) != nil
+      }
+    ),
+    // Used only when `api.yieldxyzBorrow` is a custom implementation: `PortalYieldXyzBorrowApi`
+    // serves its own lookup, which decodes only what Borrow needs. This one decodes the full
+    // `getTransactionDetails` response.
+    lookupEvmTransaction: { [weak self] chainId, hash in
+      guard let self else {
+        throw PortalClassError.clientNotAvailable
+      }
+      return try await YieldXyzEvmTransactionLookup(self.api.getTransactionDetails(chain: chainId, signature: hash))
+    }
+  )
+
+  /// Access to prediction-markets functionality (Agg).
+  public lazy var predictionMarkets: PredictionMarkets = .init(
+    api: self.api,
+    dependencies: AggDependencies(
+      getAddress: { [weak self] chainId in
+        await self?.getAddress(chainId)
+      },
+      personalSign: { [weak self] chainId, params in
+        guard let self else {
+          throw PortalClassError.clientNotAvailable
+        }
+        let response = try await self.request(chainId: chainId, method: .personal_sign, params: params)
+        guard let signature = response.result as? String else {
+          throw PortalClassError.invalidResponseTypeForRequest
+        }
+        return signature
+      },
+      isChainConfigured: { [weak self] chainId in
+        guard let self else {
+          return false
+        }
+        return await self.getRpcUrl(forChainId: chainId) != nil
+      },
+      sendAsset: { [weak self] chainId, params in
+        guard let self else {
+          throw PortalClassError.clientNotAvailable
+        }
+        return try await self.sendAsset(chainId: chainId, params: params).txHash
+      }
+    )
+  )
+
   /// Access to security-related functionality.
   public lazy var security: Security = .init(api: self.api)
 
@@ -1267,6 +1383,48 @@ public final class Portal: PortalProtocol {
       throw PortalClassError.invalidResponseTypeForRequest
     }
     return txHash
+  }
+
+  /// Signs EIP-712 typed data for a Yield.xyz Perps transaction with `eth_signTypedData_v4`.
+  /// - Returns: The signature, or `nil` when the user declined the signing request.
+  private func signPerpsTypedData(_ request: YieldXyzPerpsSignTypedDataRequest) async throws -> String? {
+    do {
+      let response = try await self.request(
+        chainId: request.chainId,
+        method: .eth_signTypedData_v4,
+        params: [request.address, request.typedData]
+      )
+      guard let signature = response.result as? String else {
+        throw PortalClassError.invalidResponseTypeForRequest
+      }
+      return signature
+    } catch ProviderSigningError.userDeclinedApproval {
+      return nil
+    }
+  }
+
+  /// Signs and broadcasts a Yield.xyz Perps or Borrow transaction via `eth_sendTransaction`.
+  /// - Returns: The hash `eth_sendTransaction` returned (a user operation hash for an
+  ///   account-abstracted client), or `nil` when the user declined the signing request.
+  private func signAndSendYieldXyzTransaction(
+    _ transaction: ETHTransactionParam,
+    chainId: String,
+    idempotencyKey: String?
+  ) async throws -> String? {
+    do {
+      let response = try await self.request(
+        chainId: chainId,
+        method: .eth_sendTransaction,
+        params: [transaction],
+        options: idempotencyKey.map { RequestOptions(idempotencyKey: $0) }
+      )
+      guard let txHash = response.result as? String else {
+        throw PortalClassError.invalidResponseTypeForRequest
+      }
+      return txHash
+    } catch ProviderSigningError.userDeclinedApproval {
+      return nil
+    }
   }
 
   /// Polls `eth_getTransactionReceipt` until the transaction is mined and confirmed.
@@ -2789,6 +2947,7 @@ public final class Portal: PortalProtocol {
       "eip155:1": "https://\(apiHost)/rpc/v1/eip155/1", // Ethereum Mainnet
       "eip155:137": "https://\(apiHost)/rpc/v1/eip155/137", // Polygon Mainnet
       "eip155:8453": "https://\(apiHost)/rpc/v1/eip155/8453", // Base Mainnet
+      "eip155:42161": "https://\(apiHost)/rpc/v1/eip155/42161", // Arbitrum One
       "eip155:80002": "https://\(apiHost)/rpc/v1/eip155/80002", // Polygon Amoy
       "eip155:84532": "https://\(apiHost)/rpc/v1/eip155/84532", // Base Testnet
       "eip155:11155111": "https://\(apiHost)/rpc/v1/eip155/11155111", // Ethereum Sepolia
