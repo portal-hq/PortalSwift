@@ -663,6 +663,26 @@ final class PasskeyPrfStorageTests: XCTestCase {
     }
   }
 
+  @MainActor
+  func test_authorizationClient_inACancelledTask_throwsCancellationError_beforePresenting() async {
+    let client = PasskeyPrfAuthorizationClient(anchor: UIWindow())
+    let request = PasskeyPrfGetRequest(rpId: "portalhq.io", challenge: Data(count: 32), allowCredentialId: Data([1]), prfSalt: PasskeyPrfConstants.salt)
+    // Cancelled before it runs: the test holds the main actor until it awaits the task.
+    let task = Task { @MainActor in
+      try await client.getCredential(request)
+    }
+    task.cancel()
+
+    do {
+      _ = try await task.value
+      XCTFail("Expected CancellationError")
+    } catch is CancellationError {
+      // expected
+    } catch {
+      XCTFail("Unexpected error \(error)")
+    }
+  }
+
   // MARK: - Cipher
 
   func test_encryptWithSecret_usesThePasswordCipher() async throws {

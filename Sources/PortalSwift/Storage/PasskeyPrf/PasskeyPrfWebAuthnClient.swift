@@ -154,42 +154,74 @@ final class PasskeyPrfAuthorizationClient: PasskeyPrfWebAuthnClient {
     key.withUnsafeBytes { Data($0) }
   }
 
+  /// Presents one passkey prompt. Cancelling the calling task dismisses the prompt and throws
+  /// `CancellationError`; a task that is already cancelled never shows it.
   @MainActor
   private func perform(_ makeRequest: () -> ASAuthorizationRequest) async throws -> ASAuthorizationCredential {
     guard let anchor = self.anchor else {
       throw PasskeyPrfCeremonyError.noPresentationAnchor
     }
+    try Task.checkCancellation()
     let request = makeRequest()
+    let session = PasskeyPrfAuthorizationSession(anchor: anchor)
 
-    return try await withCheckedThrowingContinuation { continuation in
-      let session = PasskeyPrfAuthorizationSession(anchor: anchor, continuation: continuation)
-      session.start(with: request)
+    return try await withTaskCancellationHandler {
+      try await withCheckedThrowingContinuation { continuation in
+        session.start(with: request, continuation: continuation)
+      }
+    } onCancel: {
+      Task { @MainActor in
+        session.cancel()
+      }
     }
   }
 }
 
 /// One `ASAuthorizationController` run. The controller holds its delegate weakly, so the
 /// session keeps itself alive until the system reports an outcome.
+///
+/// `@unchecked Sendable` because the task cancellation handler hands it to the main actor; all
+/// of its state is read and written on the main thread, where the controller calls its delegate.
 @available(iOS 18.0, *)
-private final class PasskeyPrfAuthorizationSession: NSObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
+private final class PasskeyPrfAuthorizationSession: NSObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding, @unchecked Sendable {
   private let anchor: ASPresentationAnchor
   private var continuation: CheckedContinuation<ASAuthorizationCredential, Error>?
   private var controller: ASAuthorizationController?
   private var retainedSelf: PasskeyPrfAuthorizationSession?
+  /// Set when the task running the ceremony is cancelled.
+  private var isCancelled = false
 
-  init(anchor: ASPresentationAnchor, continuation: CheckedContinuation<ASAuthorizationCredential, Error>) {
+  init(anchor: ASPresentationAnchor) {
     self.anchor = anchor
-    self.continuation = continuation
   }
 
   @MainActor
-  func start(with request: ASAuthorizationRequest) {
+  func start(with request: ASAuthorizationRequest, continuation: CheckedContinuation<ASAuthorizationCredential, Error>) {
+    self.continuation = continuation
+    guard !self.isCancelled else {
+      self.resume(.failure(CancellationError()))
+      return
+    }
     let controller = ASAuthorizationController(authorizationRequests: [request])
     controller.delegate = self
     controller.presentationContextProvider = self
     self.controller = controller
     self.retainedSelf = self
     controller.performRequests()
+  }
+
+  /// Dismisses the prompt for a cancelled task and throws `CancellationError` right away, rather
+  /// than waiting for the controller to report its own cancel. The session stays alive until that
+  /// report, so the controller is not released while it dismisses the prompt.
+  @MainActor
+  func cancel() {
+    self.isCancelled = true
+    guard let controller = self.controller else {
+      // Not started yet: `start` sees the flag and never presents.
+      return
+    }
+    controller.cancel()
+    self.resume(.failure(CancellationError()))
   }
 
   func presentationAnchor(for _: ASAuthorizationController) -> ASPresentationAnchor {
@@ -204,11 +236,18 @@ private final class PasskeyPrfAuthorizationSession: NSObject, ASAuthorizationCon
     self.finish(.failure(PasskeyPrfAuthorizationClient.ceremonyError(from: error)))
   }
 
+  /// The controller's outcome: resumes the caller unless a cancel already did, then releases
+  /// the controller and the session.
   private func finish(_ result: Swift.Result<ASAuthorizationCredential, Error>) {
-    let continuation = self.continuation
-    self.continuation = nil
+    self.resume(result)
     self.controller = nil
     self.retainedSelf = nil
+  }
+
+  /// Resumes the caller exactly once.
+  private func resume(_ result: Swift.Result<ASAuthorizationCredential, Error>) {
+    let continuation = self.continuation
+    self.continuation = nil
     continuation?.resume(with: result)
   }
 }
