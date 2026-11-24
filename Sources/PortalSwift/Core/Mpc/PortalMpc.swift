@@ -39,7 +39,6 @@ public protocol PortalMpcProtocol {
   func recover(cipherText: String, method: BackupMethods.RawValue, backupConfigs: BackupConfigs?, completion: @escaping (Result<String>) -> Void, progress: ((MpcStatus) -> Void)?)
 }
 
-/// The main interface with Portal's MPC service.
 public extension PortalMpcProtocol {
   /// Default for conformers written before Passkey PRF: they have no `PasskeyPrfStorage` to set.
   func setPasskeyPrfUser(_: PasskeyPrfUser?) throws {
@@ -47,6 +46,7 @@ public extension PortalMpcProtocol {
   }
 }
 
+/// The main interface with Portal's MPC service.
 public class PortalMpc: PortalMpcProtocol {
   private var address: String? {
     do {
